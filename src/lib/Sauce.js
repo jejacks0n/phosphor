@@ -1,7 +1,16 @@
+/**
+ * Generates and appends SAUCE (Standard Architecture for Universal Comment Extensions) 
+ * metadata records to ANSI files, including a comment block for Phosphor settings.
+ */
+import { Buffer } from 'buffer';
+
 const pad = (text, length) => {
   const bytes = new Uint8Array(length);
   bytes.fill(32);
-  bytes.set(Buffer.from(text, 'utf-8'), 0);
+  if (text) {
+    const textBytes = Buffer.from(text, 'utf-8');
+    bytes.set(textBytes.slice(0, length), 0);
+  }
   return bytes;
 };
 
@@ -11,28 +20,69 @@ export class Sauce {
     this.rows = file.rows;
 
     this.dataType = opts.dataType || 1;
-    this.fileType = opts.fileType || 0;
+    this.fileType = opts.fileType || 1;
     this.fileSize = opts.fileSize || 0;
 
-    this.title = opts.title;
-    this.author = opts.author;
-    this.group = opts.group;
+    this.title = opts.title || '';
+    this.author = opts.author || '';
+    this.group = opts.group || '';
     this.date = opts.date || new Date().toLocaleDateString('sv').replaceAll('-', '');
 
-    this.iceColors = opts.iceColors || true;
     this.use9pxFont = opts.use9pxFont || false;
     this.fontName = opts.fontName || 'IBM VGA';
-    this.comments = opts.comments || '';
+    
+    // Process comments into 64-char chunks
+    this.comments = this.#processComments(opts.comments);
+  }
+
+  #processComments(input) {
+    if (!input) return [];
+    const lines = Array.isArray(input) ? input : [input];
+    const processed = [];
+    lines.forEach(line => {
+      // Split long strings into 64-char chunks if necessary
+      for (let i = 0; i < line.length; i += 64) {
+        processed.push(line.substring(i, i + 64));
+      }
+    });
+    return processed.slice(0, 255); // SAUCE max is 255 lines
   }
 
   appendTo(fileBytes) {
-    const sauceBytes = this.#asBytes();
-    const merged = new Int8Array(fileBytes.length + 1 + sauceBytes.length);
-    merged.set(fileBytes, 0);
-    merged[fileBytes.length] = 26;
-    merged.set(sauceBytes, fileBytes.length + 1);
-
+    const sauceRecord = this.#asBytes();
+    const commentBlock = this.#commentsAsBytes();
+    
+    // Final structure: [EOF] [Comment Block (Optional)] [SAUCE Record]
+    const totalLength = fileBytes.length + 1 + commentBlock.length + sauceRecord.length;
+    const merged = new Uint8Array(totalLength);
+    
+    let offset = 0;
+    merged.set(fileBytes, offset);
+    offset += fileBytes.length;
+    
+    merged[offset] = 26; // EOF char (0x1A)
+    offset += 1;
+    
+    if (commentBlock.length) {
+      merged.set(commentBlock, offset);
+      offset += commentBlock.length;
+    }
+    
+    merged.set(sauceRecord, offset);
+    
     return merged;
+  }
+
+  #commentsAsBytes() {
+    if (!this.comments.length) return new Uint8Array(0);
+    
+    const output = new Uint8Array(5 + (this.comments.length * 64));
+    output.set(Buffer.from('COMNT', 'utf-8'), 0);
+    
+    for (let i = 0; i < this.comments.length; i++) {
+      output.set(pad(this.comments[i], 64), 5 + (i * 64));
+    }
+    return output;
   }
 
   #asBytes() {
@@ -46,30 +96,24 @@ export class Sauce {
     output[90] = this.fileSize & 0xff;
     output[91] = (this.fileSize >> 8) & 0xff;
     output[92] = (this.fileSize >> 16) & 0xff;
-    output[93] = this.fileSize >> 24;
+    output[93] = (this.fileSize >> 24) & 0xff;
 
     output[94] = this.dataType;
-    if (this.dataType === 5) { // BIN files
-      output[95] = this.cols / 2;
-    } else {
-      output[95] = this.fileType;
-      output[96] = this.cols & 0xff;
-      output[97] = this.cols >> 8;
-      output[98] = this.rows & 0xff;
-      output[99] = this.rows >> 8;
-    }
+    output[95] = this.fileType;
+    output[96] = this.cols & 0xff;
+    output[97] = (this.cols >> 8) & 0xff;
+    output[98] = this.rows & 0xff;
+    output[99] = (this.rows >> 8) & 0xff;
 
-    if (this.dataType === 6) { // XBIN files
-    } else {
-      output[105] = (this.iceColors) ? 1 : 0;
-      output[105] += (this.use9pxFont) ? 1 << 2 : 1 << 1;
+    // Flags: Bit 0 is iCE Colors. We always set it to 1.
+    let flags = 1; 
+    flags |= (this.use9pxFont) ? (1 << 2) : (1 << 1);
+    output[105] = flags;
 
-      // if (doc.font_name) {
-      //   add_text(bytes, 106, doc.font_name, doc.font_name.length);
-      // }
-    }
-
-    // if (doc.comments.length) bytes = add_comments_bytes(doc.comments, bytes);
+    output.set(pad(this.fontName, 20), 106);
+    
+    // Number of comments
+    output[104] = this.comments.length;
 
     return output;
   }

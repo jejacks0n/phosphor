@@ -1,56 +1,32 @@
-<!--<script setup>-->
-
-<!--import { ref, onMounted } from 'vue'-->
-
-<!--// reactive state-->
-<!--const count = ref(0)-->
-
-<!--// functions that mutate state and trigger updates-->
-<!--function increment() {-->
-<!--  count.value++-->
-<!--}-->
-
-<!--// lifecycle hooks-->
-<!--onMounted(() => {-->
-<!--  console.log(`The initial count is ${count.value}.`)-->
-<!--})-->
-
-<!--</script>-->
-
 <script>
-import PlayCoreCanvas from '@/components/PlayCoreCanvas.vue';
-import CommandPanel from '@/components/CommandPanel.vue';
+import AnsiWorkspace from '@/components/AnsiWorkspace.vue';
+import ControlPanel from '@/components/ControlPanel.vue';
 
 export default {
   name: 'App',
   components: {
-    PlayCoreCanvas,
-    CommandPanel,
+    AnsiWorkspace,
+    ControlPanel,
   },
-  // created() {
-  //   // console.log(storeToRefs(useCurrentFileStore()))
-  //   // this.$watch(allCurrentFileKeys, storeToRefs(useCurrentFileStore()), this.storeWatcher)
-  //   useCurrentFileStore().$subscribe((a, b) => {
-  //     // eslint-disable-next-line
-  //     debugger
-  //
-  //     console.log(a, b)
-  //   }, { detached: true })
-  // },
 };
-//<img alt="Vue logo" src="./assets/logo.png">
 </script>
 
 <template>
-  <PlayCoreCanvas/>
-  <CommandPanel/>
+  <main>
+    <ControlPanel/>
+    <AnsiWorkspace/>
+  </main>
 </template>
 
-<style>
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  background: #222222;
+<style scoped>
+main {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  width: 100%;
+  gap: 2px;
+  padding: 8px;
+  box-sizing: border-box;
+  background: #313439 radial-gradient(circle at 270px 0, rgba(255, 170, 73, 0.2) 0, #313439 400px);
 }
 </style>
