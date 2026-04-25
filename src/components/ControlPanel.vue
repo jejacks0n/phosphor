@@ -14,6 +14,9 @@ export default {
       get() { return this.rows; },
       set(val) { this.updateRows(val); },
     },
+    year() {
+      return new Date().getFullYear();
+    },
   },
   methods: {
     ...mapActions(useCurrentFileStore, [
@@ -32,7 +35,7 @@ export default {
 
 <template>
   <aside>
-    <img src="/logo.png" alt="Phosphor" class="logo"/>
+    <img src="/logo.png" alt="Phosphor" class="logo" width="210" height="150"/>
     <fieldset>
       <legend>Setup</legend>
 
@@ -200,6 +203,11 @@ export default {
       <button @click="exportFile('utf8ans')" :disabled="!image" class="primary">Export .utf8ans</button>
     </div>
 
+    <footer class="attribution">
+      Brought to you by <a href="https://ishifishi.work" target="_blank">ishifishi.work</a>
+      <div class="copyright">&copy; {{ year }} Phosphor</div>
+    </footer>
+
     <datalist id="default-ticks">
       <option value="100"></option>
     </datalist>
@@ -318,5 +326,27 @@ div.export-actions {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+footer {
+  margin-top: 12px;
+  font-size: 10px;
+  color: #fff;
+  text-align: center;
+  line-height: 1.6;
+}
+
+footer a {
+  color: #f5f;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+footer div.copyright {
+  opacity: 0.5;
 }
 </style>
