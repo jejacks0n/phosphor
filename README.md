@@ -6,22 +6,24 @@ Convert images to ANSI art in the browser. Provide an image, tune the output wit
 ## Setup & Usage
 
 ### Prerequisites
-- **Node.js**: Version 14+
-- **npm**: Version 6+
+- **Node.js**: Version 18+
+- **npm**: Version 9+
 
 ### Commands
 ```bash
 npm install       # Install dependencies
-npm run serve     # Start dev server at http://localhost:8080
+npm run dev       # Start dev server at http://localhost:5173
 npm run build     # Create production build in dist/
+npm run preview   # Preview the production build locally
 npm run lint      # Run ESLint
 ```
 
 ## Features
 
 - **Export in two formats**
-  - `.ans` — CGA 16-color or VGA 256-color, CP437-encoded characters, compatible with classic ANSI viewers (PabloDraw, Moebius, ACiDDraw, etc.)
-  - `.utf8ans` — 24-bit true-color or VGA 256-color ANSI escape sequences with raw UTF-8 characters
+  - `.ans` — Uses the legacy **CP437** character set (standard for DOS/BBS).
+  - `.utf8ans` — Uses modern **UTF-8** character encoding.
+- **Color Flexibility** — Any quantization mode (CGA, VGA, or 24-bit TrueColor) can be used for both file formats.
 - **Image adjustments** — smoothing, dimensions, brightness, contrast, saturation, hue rotation, invert, etc.
 - **Color quantization** - full color, CGA 16, VGA 256, or reduce to N colors (MMCQ) or a custom palette
 - **Randomized characters** - achieve various aesthetic foundations with a seedable RNG to generate character noise 
@@ -30,18 +32,24 @@ npm run lint      # Run ESLint
 
 ## How it works
 
-The image is drawn onto an off-screen canvas at `cols × (rows × 2)` pixels. Each pair of vertically adjacent pixels maps to one character cell: the top pixel becomes the background color, and the bottom pixel becomes the foreground color, using `▄` (U+2584 LOWER HALF BLOCK) as the character. This doubles the effective vertical resolution for the same character count. The character used for the foreground character can be randomized from set set of possible characters that can be provided.
+The image is drawn onto an off-screen canvas at `cols × (rows × 2)` pixels. Each pair of vertically adjacent pixels maps to one character cell: the top pixel becomes the background color, and the bottom pixel becomes the foreground color, using `▄` (U+2584 LOWER HALF BLOCK) as the character. This doubles the effective vertical resolution for the same character count. The character used for the foreground character can be randomized from a set of possible characters provided in the Setup panel.
 
 An optional color quantization pass replaces every pixel color with the nearest color from the chosen palette before the character assignment step.
 
 The exported file is a flat byte stream of ANSI escape sequences followed by a 128-byte SAUCE record.
 
+## Compatibility Note
+
+While Phosphor allows you to export high-color data (VGA 256 or 24-bit TrueColor) into standard `.ans` files, most legacy ANSI viewers and editors only support the basic 16-color CGA palette.
+
+For proper viewing and editing of advanced color `.ans` files, check out the **[Advanced Color fork of the Moebius editor](https://github.com/christiansacks/moebius)**.
+
 ## Output formats
 
-| Format     | Color                                           | Characters | Newlines          |
-|------------|-------------------------------------------------|------------|-------------------|
-| `.ans`     | CGA SGR (30-37 / 40-47, bold, blink)            | CP437      | none (raw stream) |
-| `.utf8ans` | 24-bit `ESC[38;2;R;G;Bm` / `ESC[48;2;R;G;Bm`  | UTF-8      | `\r\n` per row    |
+| Format     | Color                                        | Characters | Newlines          |
+|------------|----------------------------------------------|------------|-------------------|
+| `.ans`     | Legacy CGA SGR or Xterm-256 / TrueColor      | CP437      | none (raw stream) |
+| `.utf8ans` | 24-bit `ESC[38;2;R;G;Bm` / `ESC[48;2;R;G;Bm` | UTF-8      | `\r\n` per row    |
 
 ## Credits
 
