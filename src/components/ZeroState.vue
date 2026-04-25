@@ -13,12 +13,13 @@ export default {
 
 <template>
   <article>
-    <img src="/logo.png" alt="Phosphor" class="logo"/>
     <div class="drop-zone">
+      <img src="/logo.png" alt="Phosphor" class="logo"/>
       <span class="icon">⬆</span>
       <p>Drop an image here to start</p>
       <label>
-        Browse File
+        <span class="mobile">Upload File to Start</span>
+        <span class="desktop">Browse File</span>
         <input type="file" @change="onFileSelected" accept="image/*" hidden>
       </label>
     </div>
@@ -96,9 +97,25 @@ label:hover {
   color: var(--text);
 }
 
+span.mobile {
+  display: none;
+}
+
 @media (max-width: 768px) {
   img.logo {
     display: block;
+  }
+
+  span.icon,
+  p {
+    display: none;
+  }
+
+  span.desktop {
+    display: none;
+  }
+  span.mobile {
+    display: inline;
   }
 }
 </style>
