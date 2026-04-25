@@ -17,6 +17,24 @@ export default {
     year() {
       return new Date().getFullYear();
     },
+    isMobile() {
+      return this.mobileMode;
+    },
+    updateEvent() {
+      return this.mobileMode ? 'change' : 'input';
+    },
+  },
+  data() {
+    return {
+      mobileMode: false,
+    };
+  },
+  mounted() {
+    this.updateMobileMode();
+    window.addEventListener('resize', this.updateMobileMode);
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.updateMobileMode);
   },
   methods: {
     ...mapActions(useCurrentFileStore, [
@@ -29,6 +47,12 @@ export default {
       'updateCols',
       'updateRows',
     ]),
+    updateMobileMode() {
+      this.mobileMode = window.matchMedia('(max-width: 768px)').matches;
+    },
+    commitUpdate(key, event) {
+      this[key] = event.target.value;
+    }
   },
 };
 </script>
@@ -88,7 +112,7 @@ export default {
           <label for="color_count">Color Count</label>
           <span class="value">{{ colorCount }}</span>
         </div>
-        <input type="range" id="color_count" min="2" max="255" v-model="colorCount">
+        <input type="range" id="color_count" min="2" max="255" :value="colorCount" @[updateEvent]="commitUpdate('colorCount', $event)">
       </div>
       <div v-else-if="quantize === 'palette'" class="field">
         <label for="palette">Palette Colors</label>
@@ -109,7 +133,7 @@ export default {
           <label for="invert">Invert</label>
           <span class="value">{{ invert }}%</span>
         </div>
-        <input type="range" id="invert" min="0" max="100" v-model="invert">
+        <input type="range" id="invert" min="0" max="100" :value="invert" @[updateEvent]="commitUpdate('invert', $event)">
       </div>
 
       <div class="field">
@@ -117,7 +141,7 @@ export default {
           <label for="hue">Hue Rotation</label>
           <span class="value">{{ hue }}°</span>
         </div>
-        <input type="range" id="hue" min="0" max="360" v-model="hue">
+        <input type="range" id="hue" min="0" max="360" :value="hue" @[updateEvent]="commitUpdate('hue', $event)">
       </div>
     </fieldset>
 
@@ -132,7 +156,7 @@ export default {
           <label for="brightness">Brightness</label>
           <span class="value">{{ brightness }}%</span>
         </div>
-        <input type="range" id="brightness" min="0" max="500" v-model="brightness" list="default-ticks">
+        <input type="range" id="brightness" min="0" max="500" :value="brightness" @[updateEvent]="commitUpdate('brightness', $event)" list="default-ticks">
       </div>
 
       <div class="field">
@@ -140,7 +164,7 @@ export default {
           <label for="contrast">Contrast</label>
           <span class="value">{{ contrast }}%</span>
         </div>
-        <input type="range" id="contrast" min="0" max="500" v-model="contrast" list="default-ticks">
+        <input type="range" id="contrast" min="0" max="500" :value="contrast" @[updateEvent]="commitUpdate('contrast', $event)" list="default-ticks">
       </div>
 
       <div class="field">
@@ -148,7 +172,7 @@ export default {
           <label for="saturation">Saturation</label>
           <span class="value">{{ saturation }}%</span>
         </div>
-        <input type="range" id="saturation" min="0" max="500" v-model="saturation" list="default-ticks">
+        <input type="range" id="saturation" min="0" max="500" :value="saturation" @[updateEvent]="commitUpdate('saturation', $event)" list="default-ticks">
       </div>
     </fieldset>
 
@@ -163,7 +187,7 @@ export default {
           <label for="sharpen">Sharpen</label>
           <span class="value">{{ sharpen }}</span>
         </div>
-        <input type="range" id="sharpen" min="0" max="100" v-model="sharpen" list="zero-ticks">
+        <input type="range" id="sharpen" min="0" max="100" :value="sharpen" @[updateEvent]="commitUpdate('sharpen', $event)" list="zero-ticks">
       </div>
 
       <div class="field">
@@ -171,7 +195,7 @@ export default {
           <label for="flatten">Flatten</label>
           <span class="value">{{ flatten }}</span>
         </div>
-        <input type="range" id="flatten" min="0" max="10" v-model="flatten" list="zero-ticks">
+        <input type="range" id="flatten" min="0" max="10" :value="flatten" @[updateEvent]="commitUpdate('flatten', $event)" list="zero-ticks">
       </div>
 
       <div class="field">
@@ -180,7 +204,7 @@ export default {
           <span class="value">{{ edges }}</span>
         </div>
         <div class="row-inputs">
-          <input type="range" id="edges" min="0" max="20" step="0.01" v-model="edges" list="zero-ticks">
+          <input type="range" id="edges" min="0" max="20" step="0.01" :value="edges" @[updateEvent]="commitUpdate('edges', $event)" list="zero-ticks">
           <input type="color" v-model="edgeColor">
         </div>
       </div>
@@ -190,7 +214,7 @@ export default {
           <label for="edges">Edge Thickness</label>
           <span class="value">{{ edgeThickness }}</span>
         </div>
-        <input type="range" min="0" max="5" step="0.1" v-model="edgeThickness">
+        <input type="range" min="0" max="5" step="0.1" :value="edgeThickness" @[updateEvent]="commitUpdate('edgeThickness', $event)">
       </div>
     </fieldset>
 
@@ -329,7 +353,7 @@ div.export-actions {
 }
 
 footer {
-  margin-top: 12px;
+  margin: 12px 12px 50px;
   font-size: 10px;
   color: #fff;
   text-align: center;
@@ -348,5 +372,10 @@ footer a:hover {
 
 footer div.copyright {
   opacity: 0.5;
+}
+@media (max-width: 768px) {
+  aside {
+    height: 100dvh;
+  }
 }
 </style>

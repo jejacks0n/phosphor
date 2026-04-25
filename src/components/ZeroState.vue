@@ -13,6 +13,7 @@ export default {
 
 <template>
   <article>
+    <img src="/logo.png" alt="Phosphor" class="logo"/>
     <div class="drop-zone">
       <span class="icon">⬆</span>
       <p>Drop an image here to start</p>
@@ -28,18 +29,27 @@ export default {
 article {
   flex: 1;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   width: 100%;
+  padding: 20px;
+  gap: 40px;
+  box-sizing: border-box;
+}
+
+img.logo {
+  display: none;
+  width: 75%;
+  max-width: 320px;
 }
 
 div.drop-zone {
-  width: 100%;
+  width: 75%;
   max-width: 320px;
   display: flex;
   flex-direction: column;
   gap: 15px;
-  margin: 40px;
   border-radius: 10px;
   align-items: center;
   padding: 30px 20px 60px;
@@ -84,5 +94,11 @@ label:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   border-color: var(--accent);
   color: var(--text);
+}
+
+@media (max-width: 768px) {
+  img.logo {
+    display: block;
+  }
 }
 </style>

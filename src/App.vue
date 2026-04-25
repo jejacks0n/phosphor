@@ -42,7 +42,7 @@ export default {
 main {
   display: flex;
   flex-direction: row;
-  height: 100vh;
+  height: 100svh;
   width: 100%;
   gap: 2px;
   padding: 8px;

@@ -84,4 +84,10 @@ pre {
   background: var(--surface-black);
   outline: 2px dashed var(--border-light);
 }
+
+@media (max-width: 768px) {
+  article {
+    padding: 10px;
+  }
+}
 </style>

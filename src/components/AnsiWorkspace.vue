@@ -23,7 +23,7 @@ export default {
   data() {
     return {
       outputCanvas: null,
-    }
+    };
   },
   computed: {
     ...mapWritableState(useCurrentFileStore, allCurrentFileKeys),
@@ -90,7 +90,7 @@ export default {
 </script>
 
 <template>
-  <section>
+  <section :class="{ 'sidebar-open': settingsOpen }">
     <PreviewTabs v-model="previewTab"/>
     <DropZone @file-dropped="handleFileSelected">
       <div class="viewport" v-if="image">
@@ -118,5 +118,23 @@ div.viewport {
   display: inline-flex;
   min-width: 100%;
   min-height: 100%;
+}
+
+@media (max-width: 768px) {
+  section {
+    position: absolute;
+    width: 100vw;
+    height: 100dvh;
+    top: 0;
+    left: 0;
+    border: 0;
+    border-radius: 0;
+    transition: transform 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  section.sidebar-open {
+    transform: translateX(260px);
+  }
 }
 </style>

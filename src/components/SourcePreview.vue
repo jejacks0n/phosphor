@@ -94,4 +94,11 @@ button:hover {
   border-color: var(--text);
   transform: scale(1.1);
 }
+
+@media (max-width: 768px) {
+  article {
+    margin: auto;
+    padding: 10px;
+  }
+}
 </style>

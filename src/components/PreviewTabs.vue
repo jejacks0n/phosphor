@@ -1,4 +1,7 @@
 <script>
+import { mapActions } from 'pinia';
+import { useCurrentFileStore } from '@/store/CurrentFile';
+
 export default {
   name: 'PreviewTabs',
   props: {
@@ -8,33 +11,77 @@ export default {
     },
   },
   emits: ['update:modelValue'],
+  methods: {
+    ...mapActions(useCurrentFileStore, ['toggleSettings']),
+  },
 };
 </script>
 
 <template>
-  <ul>
-    <li :class="{ active: modelValue === 'source' }" @click="$emit('update:modelValue', 'source')">
-      Source
-    </li>
-    <li :class="{ active: modelValue === 'ansi' }" @click="$emit('update:modelValue', 'ansi')">
-      ANSI Output
-    </li>
-    <li :class="{ active: modelValue === 'sauce' }" @click="$emit('update:modelValue', 'sauce')">
-      Sauce
-    </li>
-  </ul>
+  <nav>
+    <button class="menu-btn" title="Toggle Settings" @click="toggleSettings">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <ul>
+      <li :class="{ active: modelValue === 'source' }" @click="$emit('update:modelValue', 'source')">
+        Source
+      </li>
+      <li :class="{ active: modelValue === 'ansi' }" @click="$emit('update:modelValue', 'ansi')">
+        ANSI Output
+      </li>
+      <li :class="{ active: modelValue === 'sauce' }" @click="$emit('update:modelValue', 'sauce')">
+        Sauce
+      </li>
+    </ul>
+  </nav>
 </template>
 
 <style scoped>
+nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 10px 0;
+  background: var(--surface-0);
+  border-bottom: 1px solid var(--border);
+}
+
+button {
+  display: none;
+  flex-shrink: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 20px;
+  height: 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+button:hover {
+  opacity: 1;
+}
+
+button span {
+  width: 100%;
+  height: 2px;
+  background-color: var(--text);
+  border-radius: 2px;
+}
+
 ul {
   display: flex;
   gap: 3px;
   flex-shrink: 0;
   margin: 0;
-  padding: 5px 10px 0 10px;
+  padding: 5px 0 0;
   list-style: none;
-  background: var(--surface-0);
-  border-bottom: 1px solid var(--border);
 }
 
 li {
@@ -62,5 +109,20 @@ li.active {
   font-weight: 500;
   background: var(--surface-1);
   color: var(--text);
+}
+
+@media (max-width: 768px) {
+  nav {
+    border-color: var(--accent);
+  }
+
+  li.active {
+    border-color: var(--accent);
+    border-bottom-color: transparent;
+  }
+
+  button {
+    display: flex;
+  }
 }
 </style>

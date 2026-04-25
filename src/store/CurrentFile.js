@@ -50,6 +50,7 @@ export const useCurrentFileStore = defineStore('current_file', {
     blockData: shallowRef([]),
     isDirty: false,
     isInitializing: false,
+    settingsOpen: false,
   }),
   getters: {
     imageRatio: (state) => {
@@ -168,6 +169,9 @@ export const useCurrentFileStore = defineStore('current_file', {
         edgeThickness: 1,
       });
       this.markDirty();
+    },
+    toggleSettings() {
+      this.settingsOpen = !this.settingsOpen;
     }
   },
 });
@@ -198,4 +202,5 @@ export const allKeys = [
   'filename',
   'blockData',
   'isDirty',
+  'settingsOpen',
 ];
