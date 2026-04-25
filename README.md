@@ -1,9 +1,13 @@
 Phosphor
 ========
 
+The app / a live demo is available at [phosphor.work](https://phosphor.work).
+
 Convert images to ANSI art in the browser. Provide an image, tune the output with image adjustments and color quantization options, then export as a standard `.ans` or modern `.utf8ans` file — both with embedded [SAUCE](https://www.acid.org/info/sauce/sauce.htm) metadata.
 
-## Setup & Usage
+[![Phosphor screenshot](screenshot.png)](https://phosphor.work)
+
+## Development Setup & Usage
 
 ### Prerequisites
 - **Node.js**: Version 18+
@@ -53,4 +57,14 @@ For proper viewing and editing of advanced color `.ans` files, check out the **[
 
 ## Credits
 
-ANSI art preview and rendering powered by the [play](https://github.com/nicholasstephan/play) creative-coding runtime by [ertdfgcvb](https://ertdfgcvb.xyz/).
+ANSI art preview and rendering was initially powered by the [play](https://github.com/nicholasstephan/play) creative-coding runtime by [ertdfgcvb](https://ertdfgcvb.xyz/), but it's since been adapted into a minimal subset of the functionality. I wanted to credit that work as the initial inspiration for the project, and suggest checking it out as something that's pretty awesome in its own right.
+
+## License
+
+Phosphor is released under the MIT license:
+
+* https://opensource.org/licenses/MIT
+
+Copyright 2026 [jejacks0n](https://github.com/jejacks0n)
+
+## Make Code Not War
