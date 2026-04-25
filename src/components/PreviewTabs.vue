@@ -1,5 +1,5 @@
 <script>
-import { mapActions } from 'pinia';
+import { mapState, mapActions } from 'pinia';
 import { useCurrentFileStore } from '@/store/CurrentFile';
 
 export default {
@@ -11,6 +11,9 @@ export default {
     },
   },
   emits: ['update:modelValue'],
+  computed: {
+    ...mapState(useCurrentFileStore, ['settingsOpen']),
+  },
   methods: {
     ...mapActions(useCurrentFileStore, ['toggleSettings']),
   },
@@ -19,7 +22,7 @@ export default {
 
 <template>
   <nav>
-    <button class="menu-btn" title="Toggle Settings" @click="toggleSettings">
+    <button class="menu-btn" :class="{ open: settingsOpen }" title="Toggle Settings" @click.stop="toggleSettings">
       <span></span>
       <span></span>
       <span></span>
@@ -73,6 +76,21 @@ button span {
   height: 2px;
   background-color: var(--text);
   border-radius: 2px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  transform-origin: center;
+}
+
+button.open span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+
+button.open span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+button.open span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
 }
 
 ul {

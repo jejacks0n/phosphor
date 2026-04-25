@@ -65,7 +65,7 @@ export default {
     },
   },
   methods: {
-    ...mapActions(useCurrentFileStore, ['setImageFromFile', 'clearImage', 'markDirty']),
+    ...mapActions(useCurrentFileStore, ['setImageFromFile', 'clearImage', 'markDirty', 'toggleSettings']),
     handleFileSelected(file) {
       if (this.image && this.isDirty) {
         if (!confirm('You have unsaved changes. Are you sure you want to load a new image?')) {
@@ -90,7 +90,7 @@ export default {
 </script>
 
 <template>
-  <section :class="{ 'sidebar-open': settingsOpen }">
+  <section :class="{ 'settings-open': settingsOpen }" @click="settingsOpen && toggleSettings()">
     <PreviewTabs v-model="previewTab"/>
     <DropZone @file-dropped="handleFileSelected">
       <div class="viewport" v-if="image">
@@ -133,7 +133,7 @@ div.viewport {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
 
-  section.sidebar-open {
+  section.settings-open {
     transform: translateX(260px);
   }
 }
