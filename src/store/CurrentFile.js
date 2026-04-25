@@ -5,9 +5,6 @@ import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
 
 export const useCurrentFileStore = defineStore('current_file', {
-  undo: {
-    omit: ['image', 'blockData', 'outputCanvas'],
-  },
   state: () => ({
     image: shallowRef(null),
     cols: useLocalStorage('current_file.cols', 80),
@@ -30,7 +27,7 @@ export const useCurrentFileStore = defineStore('current_file', {
     hue: useLocalStorage('current_file.hue', 0),
 
     quantize: useLocalStorage('current_file.quantize', 'none'),
-    palette: useLocalStorage('current_file.palette', ''),
+    palette: useLocalStorage('current_file.palette', '#FFFFFF #AA5601 #000000'),
     colorCount: useLocalStorage('current_file.colorCount', 16),
 
     previewTab: 'source',
