@@ -85,7 +85,7 @@ export default {
           <label for="color_count">Color Count</label>
           <span class="value">{{ colorCount }}</span>
         </div>
-        <input type="range" id="color_count" min="2" max="255" v-model.lazy="colorCount">
+        <input type="range" id="color_count" min="2" max="255" v-model="colorCount">
       </div>
       <div v-else-if="quantize === 'palette'" class="field">
         <label for="palette">Palette Colors</label>
