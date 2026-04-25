@@ -11,7 +11,7 @@ export default {
     }
   },
   computed: {
-    ...mapState(useCurrentFileStore, ['rows', 'cols']),
+    ...mapState(useCurrentFileStore, ['rows', 'cols', 'image', 'isDirty']),
     gridHeight() {
       return ((Math.floor(this.rows * 0.5) * 1.2) + 1) + 'em';
     },
@@ -27,6 +27,14 @@ export default {
   },
   methods: {
     ...mapActions(useCurrentFileStore, ['clearImage']),
+    confirmClear() {
+      if (this.isDirty) {
+        if (!confirm('You have unsaved changes. Are you sure you want to clear this image?')) {
+          return;
+        }
+      }
+      this.clearImage();
+    },
     updatePreview() {
       if (!this.$refs.preview) return;
       this.$refs.preview.innerHTML = '';
@@ -41,7 +49,7 @@ export default {
 <template>
   <article>
     <div ref="preview"></div>
-    <button title="Clear Image" @click="clearImage">×</button>
+    <button title="Clear Image" @click="confirmClear">×</button>
   </article>
 </template>
 

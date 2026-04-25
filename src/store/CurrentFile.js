@@ -48,6 +48,8 @@ export const useCurrentFileStore = defineStore('current_file', {
 
     filename: null,
     blockData: shallowRef([]),
+    isDirty: false,
+    isInitializing: false,
   }),
   getters: {
     imageRatio: (state) => {
@@ -68,18 +70,32 @@ export const useCurrentFileStore = defineStore('current_file', {
       const filename = file.name.replace(/\.[^/.]+$/, '');
       const image = new Image();
       image.onload = () => {
-        this.$patch({ image, filename, previewTab: 'ansi' });
-        this.sauce.title = '';
+        this.$patch({ image: shallowRef(image) });
         this.rows = Math.ceil(this.cols / this.imageRatio);
+        this.$patch({
+          filename,
+          isDirty: false,
+          isInitializing: true,
+          previewTab: 'ansi',
+          sauce: { ...this.sauce, title: '' }
+        });
+        setTimeout(() => { this.isInitializing = false; }, 0);
       };
       image.src = URL.createObjectURL(file);
+    },
+    markDirty() {
+      if (this.isInitializing) return;
+      if (this.image && !this.isDirty) {
+        this.isDirty = true;
+      }
     },
     clearImage() {
       this.$patch({
         image: null,
         filename: null,
         blockData: [],
-        previewTab: 'source'
+        previewTab: 'source',
+        isDirty: false
       });
     },
     async exportFile(ext, opts = {}) {
@@ -118,6 +134,7 @@ export const useCurrentFileStore = defineStore('current_file', {
       if (this.aspectLock && this.imageRatio) {
         this.rows = Math.ceil(val / this.imageRatio);
       }
+      this.markDirty();
     },
     updateRows(val) {
       if (isNaN(val)) return;
@@ -125,12 +142,14 @@ export const useCurrentFileStore = defineStore('current_file', {
       if (this.aspectLock && this.imageRatio) {
         this.cols = Math.round(val * this.imageRatio);
       }
+      this.markDirty();
     },
     resetTransform() {
       this.$patch({
         invert: 0,
         hue: 0,
       });
+      this.markDirty();
     },
     resetAdjust() {
       this.$patch({
@@ -138,6 +157,7 @@ export const useCurrentFileStore = defineStore('current_file', {
         contrast: 100,
         saturation: 100,
       });
+      this.markDirty();
     },
     resetEffects() {
       this.$patch({
@@ -147,6 +167,7 @@ export const useCurrentFileStore = defineStore('current_file', {
         edgeColor: '#000000',
         edgeThickness: 1,
       });
+      this.markDirty();
     }
   },
 });
@@ -176,4 +197,5 @@ export const allKeys = [
   'sauce',
   'filename',
   'blockData',
+  'isDirty',
 ];

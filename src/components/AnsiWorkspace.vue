@@ -58,11 +58,22 @@ export default {
   watch: {
     processParams: {
       deep: true,
-      handler: 'queueSetup',
+      handler() {
+        this.queueSetup();
+        this.markDirty();
+      },
     },
   },
   methods: {
-    ...mapActions(useCurrentFileStore, ['setImageFromFile', 'clearImage']),
+    ...mapActions(useCurrentFileStore, ['setImageFromFile', 'clearImage', 'markDirty']),
+    handleFileSelected(file) {
+      if (this.image && this.isDirty) {
+        if (!confirm('You have unsaved changes. Are you sure you want to load a new image?')) {
+          return;
+        }
+      }
+      this.setImageFromFile(file);
+    },
     queueSetup() {
       if (this._setupFrame) cancelAnimationFrame(this._setupFrame);
       this._setupFrame = requestAnimationFrame(() => this.setup());
@@ -81,13 +92,13 @@ export default {
 <template>
   <section>
     <PreviewTabs v-model="previewTab"/>
-    <DropZone @file-dropped="setImageFromFile">
+    <DropZone @file-dropped="handleFileSelected">
       <div class="viewport" v-if="image">
         <SourcePreview v-show="previewTab === 'source'" :canvas="outputCanvas"/>
         <AnsiPreview v-show="previewTab === 'ansi'"/>
         <SauceEditor v-show="previewTab === 'sauce'"/>
       </div>
-      <ZeroState v-else @file-selected="setImageFromFile"/>
+      <ZeroState v-else @file-selected="handleFileSelected"/>
     </DropZone>
   </section>
 </template>
