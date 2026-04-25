@@ -13,10 +13,10 @@ export default {
   computed: {
     ...mapState(useCurrentFileStore, ['rows', 'cols', 'image', 'isDirty']),
     gridHeight() {
-      return ((Math.floor(this.rows * 0.5) * 1.2) + 1) + 'em';
+      return ((Math.floor(this.rows * 0.5) * 1.22)) * 0.5 + 'em';
     },
     gridWidth() {
-      return (this.cols * 0.53) + 'em';
+      return (this.cols * 0.528) * 0.5 + 'em';
     },
   },
   watch: {
@@ -82,7 +82,7 @@ button {
   align-items: center;
   font-size: 20px;
   line-height: 1;
-  transition: all 0.2s ease;
+  transition: background-color, transform, border-color 0.2s ease;
   background: var(--surface-1);
   border: 2px solid var(--accent);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
@@ -90,15 +90,20 @@ button {
 }
 
 button:hover {
+  transform: scale(1.1);
   background: var(--accent-hot);
   border-color: var(--text);
-  transform: scale(1.1);
 }
 
 @media (max-width: 768px) {
   article {
     margin: auto;
     padding: 10px;
+  }
+
+  button {
+    top: 0;
+    right: 0;
   }
 }
 </style>
