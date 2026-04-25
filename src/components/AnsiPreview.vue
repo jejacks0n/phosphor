@@ -70,6 +70,7 @@ export default {
 article {
   margin: auto;
   padding: 60px;
+  user-select: none;
 }
 
 pre {
