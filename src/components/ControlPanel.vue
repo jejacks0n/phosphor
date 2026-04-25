@@ -355,15 +355,15 @@ div.export-actions {
 footer {
   margin: 12px 12px 50px;
   font-size: 10px;
-  color: #fff;
   text-align: center;
   line-height: 1.6;
+  color: var(--text);
 }
 
 footer a {
-  color: #f5f;
   text-decoration: none;
   font-weight: 600;
+  color: var(--accent-hover);
 }
 
 footer a:hover {

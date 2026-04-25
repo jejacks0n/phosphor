@@ -82,7 +82,7 @@ pre {
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: unset;
   white-space: pre;
-  background: var(--surface-black);
+  background: var(--surface-dark);
   outline: 2px dashed var(--border-light);
 }
 

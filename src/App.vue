@@ -47,6 +47,6 @@ main {
   gap: 2px;
   padding: 8px;
   box-sizing: border-box;
-  background: #313439 radial-gradient(circle at 270px 0, rgba(255, 170, 73, 0.2) 0, #313439 400px);
+  background: var(--background) radial-gradient(circle at 270px 0, var(--background-highlight) 0, transparent 400px);
 }
 </style>

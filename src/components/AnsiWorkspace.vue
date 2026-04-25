@@ -109,8 +109,8 @@ section {
   flex-direction: column;
   overflow: hidden;
   flex: 1;
-  background: #222;
   border-radius: 5px;
+  background: var(--surface-1);
   border: 1px solid var(--accent);
 }
 
