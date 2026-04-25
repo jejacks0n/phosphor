@@ -79,9 +79,8 @@ button {
   padding: 0;
   border-radius: 50%;
   justify-content: center;
-  align-items: center;
   font-size: 20px;
-  line-height: 1;
+  line-height: 1.2;
   transition: background-color, transform, border-color 0.2s ease;
   background: var(--surface-1);
   border: 2px solid var(--accent);
@@ -92,7 +91,8 @@ button {
 button:hover {
   transform: scale(1.1);
   background: var(--accent-hot);
-  border-color: var(--text);
+  border-color: var(--white);
+  color: var(--white);
 }
 
 @media (max-width: 768px) {

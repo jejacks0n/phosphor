@@ -1,4 +1,7 @@
 :root {
+  --logo: url('/logo.png');
+  --white: #fff;
+
   --background: #313439;
   --background-highlight: rgba(255, 170, 73, 0.2);
 
@@ -33,10 +36,52 @@
   --text-inverted: #000;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  button:hover {
+    transform: none !important;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #d6d6d6;
+
+    --surface-dark: #fff;
+    --surface-0: #f0f0f0;
+    --surface-1: #e8e8e8;
+    --surface-2: #dedede;
+    --surface-3: #d4d4d4;
+    --surface-4: #c8c8c8;
+    --surface-light: #000;
+
+    --border: #c8c8c8;
+    --border-dark: #bbbbbb;
+    --border-subtle: #dedede;
+    --border-light: #aaaaaa;
+
+    --text: #111;
+    --text-dim: #333;
+    --text-muted: #666;
+    --text-faint: #999;
+    --logo: url('/logo-light.png');
+    --text-inverted: #fff;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    filter: none !important;
+  }
+  button:not(.primary) {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  button:not(.primary):hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+}
+
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--surface-0);
   height: 100dvh;
   width: 100%;
   overflow: hidden;
@@ -44,6 +89,7 @@ html, body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--surface-0);
 }
 
 h3 {
@@ -101,7 +147,6 @@ button.primary:active {
   background: var(--accent);
   border-color: var(--accent);
 }
-
 
 input, select, textarea {
   width: 100%;
@@ -197,7 +242,7 @@ input[type=range]::-moz-range-thumb {
   border: 2px solid var(--border-subtle);
 }
 input[type=range]:hover::-webkit-slider-thumb,
-input[type=range]:focus::-webkit-slider-thumb { background: var(--surface-light); }
+input[type=range]:focus::-webkit-slider-thumb { background: var(--white); }
 input[type=range]:hover::-moz-range-thumb,
 input[type=range]:focus::-moz-range-thumb { background: var(--surface-light); }
 input[type=range]:active::-webkit-slider-thumb { background: var(--accent); }

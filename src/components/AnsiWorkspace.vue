@@ -137,4 +137,10 @@ div.viewport {
     transform: translateX(260px);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  section {
+    transition: none;
+  }
+}
 </style>

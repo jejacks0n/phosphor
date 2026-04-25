@@ -14,7 +14,7 @@ export default {
 <template>
   <article>
     <div class="drop-zone">
-      <img src="/logo.png" alt="Phosphor" class="logo"/>
+      <div class="logo"></div>
       <span class="icon">⬆</span>
       <p>Drop an image here to start</p>
       <label>
@@ -39,10 +39,15 @@ article {
   box-sizing: border-box;
 }
 
-img.logo {
+div.logo {
   display: none;
   width: 75%;
   max-width: 320px;
+  aspect-ratio: 210 / 150;
+  background-image: var(--logo);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 div.drop-zone {
@@ -56,7 +61,7 @@ div.drop-zone {
   padding: 30px 20px 60px;
   text-align: center;
   border: 2px dashed var(--border);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--surface-0);
 }
 
 span.icon {
@@ -102,7 +107,7 @@ span.mobile {
 }
 
 @media (max-width: 768px) {
-  img.logo {
+  div.logo {
     display: block;
   }
 

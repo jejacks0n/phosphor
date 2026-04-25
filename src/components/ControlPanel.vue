@@ -59,7 +59,7 @@ export default {
 
 <template>
   <aside>
-    <img src="/logo.png" alt="Phosphor" class="logo" width="210" height="150"/>
+    <div class="logo"></div>
     <fieldset>
       <legend>Setup</legend>
 
@@ -252,13 +252,17 @@ aside {
   overflow-y: auto;
 }
 
-img.logo {
+div.logo {
   display: block;
   width: 100%;
-  height: auto;
+  aspect-ratio: 210 / 150;
   margin-bottom: 10px;
   user-select: none;
   pointer-events: none;
+  background-image: var(--logo);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 fieldset {
@@ -287,7 +291,7 @@ legend button {
   float: right;
   padding: 3px;
   border: none;
-  box-shadow: none;
+  box-shadow: none !important;
   background: transparent;
   font-size: 10px;
   color: var(--text-faint);

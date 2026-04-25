@@ -29,13 +29,13 @@ export default {
     </button>
     <ul>
       <li :class="{ active: modelValue === 'source' }" @click="$emit('update:modelValue', 'source')">
-        Source
+        INPUT
       </li>
       <li :class="{ active: modelValue === 'ansi' }" @click="$emit('update:modelValue', 'ansi')">
-        ANSI Output
+        ANSI
       </li>
       <li :class="{ active: modelValue === 'sauce' }" @click="$emit('update:modelValue', 'sauce')">
-        Sauce
+        SAUCE
       </li>
     </ul>
   </nav>
@@ -65,6 +65,7 @@ button {
   margin: 0;
   opacity: 0.7;
   transition: opacity 0.2s ease;
+  box-shadow: none !important;
 }
 
 button:hover {
@@ -74,10 +75,10 @@ button:hover {
 button span {
   width: 100%;
   height: 2px;
-  background-color: var(--text);
   border-radius: 2px;
   transition: transform 0.2s ease, opacity 0.2s ease;
   transform-origin: center;
+  background-color: var(--text);
 }
 
 button.open span:nth-child(1) {
