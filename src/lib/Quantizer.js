@@ -23,7 +23,7 @@ class VBox {
   }
 
   get count() {
-    if (!this._count) {
+    if (this._count === undefined) {
       let npix = 0;
       for (let r = this.r1; r <= this.r2; r++) {
         for (let g = this.g1; g <= this.g2; g++) {
@@ -91,6 +91,7 @@ export default function quantize(pixels, maxColors) {
 
   const initialVBox = new VBox(rmin, rmax, gmin, gmax, bmin, bmax, hist);
   const pq = [initialVBox];
+  const done = [];
 
   function splitVBox(vbox) {
     if (!vbox.count) return [];
@@ -127,24 +128,32 @@ export default function quantize(pixels, maxColors) {
     return [];
   }
 
-  // Recursive split
-  while (pq.length < maxColors) {
+  while (pq.length + done.length < maxColors) {
+    if (!pq.length) break;
     pq.sort((a, b) => (b.count * b.volume) - (a.count * a.volume));
     const target = pq.shift();
-    if (target.count === 0) {
-       pq.push(target);
-       break;
-    }
+    if (target.count === 0) break;
+
     const res = splitVBox(target);
-    if (res.length) {
-      pq.push(res[0]);
-      if (res[1]) pq.push(res[1]);
+    if (!res.length) {
+      done.push(target);
+      continue;
+    }
+
+    const [v1, v2] = res;
+    if (v2.count > 0) {
+      pq.push(v1, v2);
     } else {
-      break;
+      // v2 is empty; if v1 is identical to target it can't be split further
+      const identical = v1.r1 === target.r1 && v1.r2 === target.r2 &&
+                        v1.g1 === target.g1 && v1.g2 === target.g2 &&
+                        v1.b1 === target.b1 && v1.b2 === target.b2;
+      if (identical) done.push(v1);
+      else pq.push(v1);
     }
   }
 
-  return pq.map(vbox => {
+  return [...pq, ...done].map(vbox => {
     const [r, g, b] = vbox.avg();
     return { r, g, b };
   });
