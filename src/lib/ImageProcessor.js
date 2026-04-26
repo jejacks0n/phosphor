@@ -89,6 +89,7 @@ export async function processImage(image, params) {
 
   if (qColors) {
     canvas.quantize(qColors);
+    canvas.writePixels();
   }
 
   const targetDataLength = cols * rows;
