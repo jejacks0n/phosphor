@@ -22,7 +22,7 @@ export default {
   methods: {
     onBeforeUnload(e) {
       const store = useCurrentFileStore();
-      if (store.image && store.isDirty) {
+      if (store.image && store.hasEdits) {
         e.preventDefault();
         e.returnValue = '';
       }

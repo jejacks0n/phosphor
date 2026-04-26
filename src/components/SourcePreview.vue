@@ -11,7 +11,7 @@ export default {
     }
   },
   computed: {
-    ...mapState(useCurrentFileStore, ['rows', 'cols', 'image', 'isDirty']),
+    ...mapState(useCurrentFileStore, ['rows', 'cols', 'image', 'hasEdits']),
     gridHeight() {
       return ((Math.floor(this.rows * 0.5) * 1.22)) * 0.5 + 'em';
     },
@@ -28,7 +28,7 @@ export default {
   methods: {
     ...mapActions(useCurrentFileStore, ['clearImage']),
     confirmClear() {
-      if (this.isDirty) {
+      if (this.hasEdits) {
         if (!confirm('You have unsaved changes. Are you sure you want to clear this image?')) {
           return;
         }

@@ -6,14 +6,6 @@ export default {
   name: 'ControlPanel',
   computed: {
     ...mapWritableState(useCurrentFileStore, allCurrentFileKeys),
-    colsModel: {
-      get() { return this.cols; },
-      set(val) { this.updateCols(val); },
-    },
-    rowsModel: {
-      get() { return this.rows; },
-      set(val) { this.updateRows(val); },
-    },
     year() {
       return new Date().getFullYear();
     },
@@ -85,11 +77,29 @@ export default {
       <div class="field">
         <label for="cols">Dimensions</label>
         <div class="row-inputs">
-          <input type="number" id="cols" v-model.number="colsModel" min="1" max="1000" class="mono">
+          <input
+            type="number"
+            id="cols"
+            :value="cols"
+            @input="updateCols($event.target.value)"
+            @change="$event.target.value = cols"
+            min="1"
+            :max="maxCols"
+            class="mono"
+          >
           <button title="Lock Aspect Ratio" :class="{ active: aspectLock }" @click="aspectLock = !aspectLock">
             {{ aspectLock ? '🔒' : '🔓' }}
           </button>
-          <input type="number" id="rows" v-model.number="rowsModel" min="1" max="1000" class="mono">
+          <input
+            type="number"
+            id="rows"
+            :value="rows"
+            @input="updateRows($event.target.value)"
+            @change="$event.target.value = rows"
+            min="1"
+            :max="maxRows"
+            class="mono"
+          >
         </div>
       </div>
 

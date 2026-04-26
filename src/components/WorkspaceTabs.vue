@@ -3,7 +3,7 @@ import { mapState, mapActions } from 'pinia';
 import { useCurrentFileStore } from '@/store/CurrentFile';
 
 export default {
-  name: 'PreviewTabs',
+  name: 'WorkspaceTabs',
   props: {
     modelValue: {
       type: String,
@@ -12,7 +12,7 @@ export default {
   },
   emits: ['update:modelValue'],
   computed: {
-    ...mapState(useCurrentFileStore, ['settingsOpen']),
+    ...mapState(useCurrentFileStore, ['settingsOpen', 'image']),
   },
   methods: {
     ...mapActions(useCurrentFileStore, ['toggleSettings']),
@@ -31,10 +31,16 @@ export default {
       <li :class="{ active: modelValue === 'source' }" @click="$emit('update:modelValue', 'source')">
         INPUT
       </li>
-      <li :class="{ active: modelValue === 'ansi' }" @click="$emit('update:modelValue', 'ansi')">
+      <li
+          :class="{ active: modelValue === 'ansi', disabled: !image }"
+          @click="$emit('update:modelValue', 'ansi')"
+      >
         ANSI
       </li>
-      <li :class="{ active: modelValue === 'sauce' }" @click="$emit('update:modelValue', 'sauce')">
+      <li
+          :class="{ active: modelValue === 'sauce', disabled: !image }"
+          @click="$emit('update:modelValue', 'sauce')"
+      >
         SAUCE
       </li>
     </ul>
@@ -117,9 +123,10 @@ li {
   color: var(--text-muted);
 }
 
-li:hover {
-  background: var(--surface-2);
-  color: var(--accent);
+li.disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
 }
 
 li.active {
@@ -128,6 +135,11 @@ li.active {
   font-weight: 500;
   background: var(--surface-1);
   color: var(--text);
+}
+
+li:not(.disabled):not(.active):hover {
+  background: var(--surface-2);
+  color: var(--accent);
 }
 
 @media (max-width: 768px) {

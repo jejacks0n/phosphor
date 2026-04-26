@@ -31,6 +31,9 @@ const FRAGMENT_SHADER = `
     uniform vec3 uEdgeColor;
     uniform float uEdgeThickness;
 
+    // Filters
+    uniform bool uApplyFilters;
+
     // Quantization
     uniform sampler2D uPalette;
     uniform float uPaletteSize;
@@ -177,7 +180,9 @@ const FRAGMENT_SHADER = `
         }
 
         // CSS-equivalent adjustments
-        color = applyCSSFilters(color);
+        if (uApplyFilters) {
+            color = applyCSSFilters(color);
+        }
 
         // GPU Quantization
         if (uUsePalette && uPaletteSize > 0.0) {
@@ -381,6 +386,7 @@ export default class WebGLProcessor {
       setUniform('uEdgeThickness', params.edgeThickness ?? 1);
       setUniform('uPaletteSize', paletteSize);
       setUniform('uUsePalette', paletteSize > 0);
+      setUniform('uApplyFilters', i === passes - 1);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       currentSrc = destTex;
@@ -404,6 +410,7 @@ export default class WebGLProcessor {
     setUniform('uFlatten', 0);
     setUniform('uEdges', 0);
     setUniform('uUsePalette', false);
+    setUniform('uApplyFilters', false);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 

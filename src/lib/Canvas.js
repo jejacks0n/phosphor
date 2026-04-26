@@ -27,7 +27,7 @@ function drawImageStepped(ctx, source, sx, sy, sw, sh, dx, dy, dw, dh) {
 		const temp = document.createElement('canvas')
 		temp.width = nextW
 		temp.height = nextH
-		const tctx = temp.getContext('2d')
+		const tctx = temp.getContext('2d', { willReadFrequently: true })
 		tctx.imageSmoothingEnabled = true
 		tctx.imageSmoothingQuality = ctx.imageSmoothingQuality
 		tctx.drawImage(currSrc, 0, 0, currW, currH, 0, 0, nextW, nextH)
@@ -85,11 +85,13 @@ export default class Canvas {
 	get height() { return this.canvas.height }
 
 	resize(dWidth, dHeight) {
-		this.canvas.width = dWidth
-		this.canvas.height = dHeight
+		const w = Math.max(1, Math.floor(dWidth) || 1);
+		const h = Math.max(1, Math.floor(dHeight) || 1);
+		this.canvas.width = w
+		this.canvas.height = h
 		this.pixels.length = 0
 		// Initialize pixels array to correct size with black
-		for (let i = 0; i < dWidth * dHeight; i++) {
+		for (let i = 0; i < w * h; i++) {
 			this.pixels[i] = { r: 0, g: 0, b: 0, a: 1, v: 0 }
 		}
 		return this
@@ -114,7 +116,7 @@ export default class Canvas {
 		}
 
 		let srcData;
-		const srcCtx = (typeof source.getContext === 'function') ? source.getContext('2d') : null;
+		const srcCtx = (typeof source.getContext === 'function') ? source.getContext('2d', { willReadFrequently: true }) : null;
 
 		if (srcCtx) {
 			srcData = srcCtx.getImageData(0, 0, sw, sh).data;
@@ -124,7 +126,7 @@ export default class Canvas {
 			const temp = document.createElement('canvas');
 			temp.width = sw;
 			temp.height = sh;
-			const tctx = temp.getContext('2d');
+			const tctx = temp.getContext('2d', { willReadFrequently: true });
 			tctx.drawImage(source, 0, 0);
 			srcData = tctx.getImageData(0, 0, sw, sh).data;
 		}
