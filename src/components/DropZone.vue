@@ -1,4 +1,6 @@
 <script>
+import { PROJECT_EXTENSION } from '@/lib/SaveFormat';
+
 export default {
   name: 'DropZone',
   data() {
@@ -11,7 +13,7 @@ export default {
     handleDrop(e) {
       this.isDragging = false;
       const file = e.dataTransfer.files[0];
-      if (file && file.type.startsWith('image/')) {
+      if (file && (file.type.startsWith('image/') || file.name.endsWith(PROJECT_EXTENSION))) {
         this.$emit('file-dropped', file);
       }
     },

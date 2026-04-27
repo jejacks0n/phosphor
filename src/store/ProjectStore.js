@@ -11,7 +11,7 @@ import { bundleProject, unbundleProject, PROJECT_EXTENSION } from "@/lib/SaveFor
 
 export const MAX_DIMENSION = 500;
 
-export const useCurrentFileStore = defineStore('current_file', {
+export const useProjectStore = defineStore('project', {
   state: () => ({
     image: shallowRef(null),
     originalFileBuffer: null,
@@ -47,25 +47,8 @@ export const useCurrentFileStore = defineStore('current_file', {
     sauceDate: useLocalStorage('current_file.sauce.date', ''),
     sauceUserComments: useLocalStorage('current_file.sauce.userComments', ''),
 
-    previewTab: 'source',
-
-    activeTool: 'pencil',
-    previousTool: null,
-    editFgColor: '#ffffff',
-    editFillTolerance: 0,
-    editFillContiguous: true,
-    editZoom: 4,
-    editBrushSize: 4,
-    editBrushOpacity: 100,
-    editBrushFlow: 50,
-    editBrushHardness: 0,
-
     hasPaint: false,
     clearEditsFlag: 0,
-
-    // Edit layer: an RGBA canvas (paint strokes with preserved alpha) + a char-override Map.
-    // Colors in editCanvas are NOT pre-blended — alpha is retained so compositing against
-    // any updated pipeline output always produces correct results (e.g. after invert).
     editCanvas: shallowRef(null),
     charEditMap: shallowRef(new Map()),
 
@@ -74,14 +57,13 @@ export const useCurrentFileStore = defineStore('current_file', {
     pipelineBlockData: shallowRef([]),
     activePalette: shallowRef([]),
     isDirty: false,
-    editMode: false,
     isInitializing: false,
-    settingsOpen: false,
 
     // History for undo/redo
     historyStack: [],
     historyIndex: -1,
   }),
+
   getters: {
     canUndo: (state) => state.historyIndex > 0,
     canRedo: (state) => state.historyIndex < state.historyStack.length - 1,
@@ -109,13 +91,11 @@ export const useCurrentFileStore = defineStore('current_file', {
       return Math.ceil(Math.min(MAX_DIMENSION, MAX_DIMENSION / ratio));
     },
   },
+
   actions: {
     randomizeSeed() {
       this.seed = generateSlug(2);
     },
-    // async setImageFromInput(event) {
-    //   await this.setImageFromFile(event.target.files[0]);
-    // },
     async setImageFromFile(file) {
       if (!file) return;
 
@@ -149,7 +129,6 @@ export const useCurrentFileStore = defineStore('current_file', {
           filename,
           isDirty: false,
           isInitializing: true,
-          previewTab: 'ansi',
           sauceTitle: '',
           historyStack: [],
           historyIndex: -1,
@@ -159,12 +138,14 @@ export const useCurrentFileStore = defineStore('current_file', {
       };
       image.src = URL.createObjectURL(new Blob([buffer], { type: file.type }));
     },
+
     markDirty() {
       if (this.isInitializing) return;
       if (this.image && !this.isDirty) {
         this.isDirty = true;
       }
     },
+
     clearImage() {
       this.$patch({
         image: null,
@@ -173,19 +154,25 @@ export const useCurrentFileStore = defineStore('current_file', {
         editCanvas: null,
         charEditMap: new Map(),
         hasPaint: false,
-        previewTab: 'source',
         isDirty: false
       });
     },
+
     async saveProject() {
       if (!this.image || !this.originalFileBuffer) return;
 
       const settings = {};
-      const excluded = ['image', 'originalFileBuffer', 'editCanvas', 'charEditMap', 'blockData', 'pipelineBlockData', 'historyStack', 'historyIndex'];
-      for (const key of allKeys) {
-        if (!excluded.includes(key)) {
-          settings[key] = this[key];
-        }
+      
+      // We'll manually list keys or just filter state.
+      // For now, let's just grab the relevant document state.
+      const stateKeys = [
+        'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount',
+        'invert', 'brightness', 'contrast', 'saturation', 'hue', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness',
+        'sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments'
+      ];
+
+      for (const key of stateKeys) {
+        settings[key] = this[key];
       }
       settings.charEditMap = Array.from(this.charEditMap.entries());
 
@@ -208,7 +195,7 @@ export const useCurrentFileStore = defineStore('current_file', {
 
       try {
         const { settings, originalBuffer, paintBuffer, hasPaint } = await unbundleProject(file);
-
+        
         const charMap = new Map(settings.charEditMap || []);
         delete settings.charEditMap;
 
@@ -284,15 +271,17 @@ export const useCurrentFileStore = defineStore('current_file', {
         ...opts
       });
     },
+
     resetSliders() {
       this.resetTransform();
       this.resetAdjust();
       this.resetEffects();
     },
+
     updateCols(val) {
       let num = parseInt(val);
       if (isNaN(num) || num < 1) return;
-
+      
       let cols = Math.min(MAX_DIMENSION, num);
       let rows = this.rows;
 
@@ -310,6 +299,7 @@ export const useCurrentFileStore = defineStore('current_file', {
       });
       this.markDirty();
     },
+
     updateRows(val) {
       let num = parseInt(val);
       if (isNaN(num) || num < 1) return;
@@ -331,6 +321,7 @@ export const useCurrentFileStore = defineStore('current_file', {
       });
       this.markDirty();
     },
+
     resetTransform() {
       this.$patch({
         invert: 0,
@@ -338,6 +329,7 @@ export const useCurrentFileStore = defineStore('current_file', {
       });
       this.markDirty();
     },
+
     resetAdjust() {
       this.$patch({
         brightness: 100,
@@ -346,6 +338,7 @@ export const useCurrentFileStore = defineStore('current_file', {
       });
       this.markDirty();
     },
+
     resetEffects() {
       this.$patch({
         sharpen: 0,
@@ -356,40 +349,8 @@ export const useCurrentFileStore = defineStore('current_file', {
       });
       this.markDirty();
     },
-    toggleSettings() {
-      this.settingsOpen = !this.settingsOpen;
-    },
-    setActiveTool(tool) {
-      this.activeTool = tool;
-    },
-    resetToolToHand() {
-      this.activeTool = 'hand';
-    },
-    setEditZoom(z) {
-      this.editZoom = Math.max(0.1, Math.min(32, z));
-    },
-    setEditBrushSize(size) {
-      this.editBrushSize = size;
-    },
-    setEditBrushOpacity(opacity) {
-      this.editBrushOpacity = opacity;
-    },
-    setEditBrushFlow(flow) {
-      this.editBrushFlow = flow;
-    },
-    setEditBrushHardness(hardness) {
-      this.editBrushHardness = hardness;
-    },
 
-    setEditFillTolerance(tolerance) {
-      this.editFillTolerance = tolerance;
-    },
-
-    setEditFillContiguous(contiguous) {
-      this.editFillContiguous = contiguous;
-    },
-
-    // Creates the edit canvas at the given dimensions (first run only).
+    // Edit canvas initialization
     initEditCanvas(w, h) {
       const c = document.createElement('canvas');
       c.width = Math.max(1, w || 1);
@@ -417,38 +378,26 @@ export const useCurrentFileStore = defineStore('current_file', {
       return { dx, dy, dw: Math.floor(dw), dh: Math.floor(dh) };
     },
 
-    // Composites pipelineCanvas + editCanvas into outputCanvas.
-    // The editCanvas pixels are transformed with the same brightness/contrast/saturation/hue/invert
-    // as the pipeline so painted strokes respond to adjustments identically to the base image.
     compositeEditCanvas(pipelineCanvas, outputCanvas) {
       if (!outputCanvas || !pipelineCanvas) return;
       const ctx = outputCanvas.getContext('2d', { willReadFrequently: true });
       const w = outputCanvas.width, h = outputCanvas.height;
 
-      // Clear output canvas
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, w, h);
-
-      // Draw pipeline output (already fitted by Canvas.fit)
       ctx.drawImage(pipelineCanvas, 0, 0, w, h);
 
       if (!this.editCanvas || !this.image) return;
 
       const { dx, dy, dw, dh } = this.getFitParams(w, h);
-
-      // 1. Create a temp canvas for the adjusted edit layer
       const downsampled = document.createElement('canvas');
       downsampled.width = dw;
       downsampled.height = dh;
       const dsCtx = downsampled.getContext('2d', { willReadFrequently: true });
 
-      // Nearest-neighbor: each output pixel maps to exactly one grid-pixel block in the
-      // editCanvas. Bilinear would blur block boundaries, creating a faint halo outside
-      // the brush edge where the pipeline bleeds through at reduced opacity.
       dsCtx.imageSmoothingEnabled = false;
       dsCtx.drawImage(this.editCanvas, 0, 0, dw, dh);
 
-      // 2. Run adjustments on the downsampled edit layer
       const br = parseFloat(this.brightness) / 100;
       const ct = parseFloat(this.contrast) / 100;
       const sa_val = parseFloat(this.saturation) / 100;
@@ -463,24 +412,18 @@ export const useCurrentFileStore = defineStore('current_file', {
         dsCtx.putImageData(id, 0, 0);
       }
 
-      // 3. Composite adjusted edit layer over pipeline at the correct offset
       ctx.drawImage(downsampled, dx, dy);
 
-      // 4. Late-stage Quantization (if activePalette exists)
-      // This ensures that during active painting, the stroke is also quantized.
       if (this.activePalette && this.activePalette.length > 0) {
         const wrapper = new Canvas(outputCanvas);
         applyQuantization(wrapper, this.activePalette);
       }
     },
 
-    // Re-applies all edits (paint and characters) to blockData.
     refreshBlockData(outputCanvas) {
       if (!this.pipelineBlockData.length || !outputCanvas) return;
 
       const w = this.cols, h = this.rows;
-
-      // Optimization: if no paint and no char edits, just use pipelineBlockData
       if (!this.hasPaint && this.charEditMap.size === 0) {
         this.blockData = this.pipelineBlockData;
         return;
@@ -489,7 +432,6 @@ export const useCurrentFileStore = defineStore('current_file', {
       const newBlockData = this.pipelineBlockData.slice();
       const { dx, dy, dw, dh } = this.getFitParams(w, h);
 
-      // 1. Apply paint from editCanvas if it exists
       if (this.hasPaint && this.editCanvas) {
         const editTemp = document.createElement('canvas');
         editTemp.width = dw;
@@ -518,7 +460,6 @@ export const useCurrentFileStore = defineStore('current_file', {
         }
       }
 
-      // 2. Apply character overrides
       if (this.charEditMap.size > 0) {
         for (const [cellIndex, char] of this.charEditMap.entries()) {
           const col = cellIndex % this.cols;
@@ -533,20 +474,13 @@ export const useCurrentFileStore = defineStore('current_file', {
       this.blockData = newBlockData;
     },
 
-    // Returns the effectively "un-filtered" hex color at grid coordinates x, y.
-    // Maps grid coordinates back to the original source image's pixels or raw paint layer.
     getRawColorAt(x, y) {
       if (!this.image) return '#000000';
       const { dx, dy, dw, dh } = this.getFitParams(this.cols, this.rows);
-
       const ix_grid = x - dx;
       const iy_grid = y - dy;
-
-      // If outside image area, return black
       if (ix_grid < 0 || iy_grid < 0 || ix_grid >= dw || iy_grid >= dh) return '#000000';
-
-      // 1. Check Edit Canvas (Paint) first.
-      // If there's paint there, we pick the RAW paint color.
+      
       if (this.editCanvas) {
         const wScale = this.editCanvas.width / dw;
         const hScale = this.editCanvas.height / dh;
@@ -558,43 +492,30 @@ export const useCurrentFileStore = defineStore('current_file', {
           return rgb2hex({ r: pixel[0], g: pixel[1], b: pixel[2] });
         }
       }
-
-      // 2. Check Original Image.
-      // We sample the TRUE RAW color from the source image.
+      
       if (!this._rawCanvas) {
         this._rawCanvas = document.createElement('canvas');
         this._rawCanvas.width = this.image.naturalWidth || this.image.width;
         this._rawCanvas.height = this.image.naturalHeight || this.image.height;
         this._rawCanvas.getContext('2d', { willReadFrequently: true }).drawImage(this.image, 0, 0);
       }
-
+      
       const rw = this._rawCanvas.width, rh = this._rawCanvas.height;
       const rx = Math.floor((ix_grid / dw) * rw);
       const ry = Math.floor((iy_grid / dh) * rh);
-
       const rCtx = this._rawCanvas.getContext('2d', { willReadFrequently: true });
       const rPixel = rCtx.getImageData(rx, ry, 1, 1).data;
       return rgb2hex({ r: rPixel[0], g: rPixel[1], b: rPixel[2] });
     },
 
-    // Writes pixels to the editCanvas (raw paint color + brush alpha, not pre-blended),
-    // composites pipelineCanvas + editCanvas into outputCanvas, then reads back the final
-    // composited colors from outputCanvas to update blockData. This ensures adjustments
-    // like invert correctly re-blend against the updated pipeline on future re-runs.
-    paintEditPixels(pixels, pipelineCanvas, outputCanvas) {
+    paintEditPixels(pixels, pipelineCanvas, outputCanvas, opacity) {
       if (!this.editCanvas || !pixels.length) return;
       this.hasPaint = true;
       const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true });
-
       const { dx, dy, dw, dh } = this.getFitParams(this.cols, this.rows);
-
-      // Calculate scaling factor between the FITTED image area in the grid and high-res canvas
       const wScale = this.editCanvas.width / dw;
       const hScale = this.editCanvas.height / dh;
 
-      // Collect canvas-space rects to paint, then apply additive alpha accumulation
-      // via pixel manipulation. Using source-over with globalAlpha causes edge pixels
-      // to converge logarithmically and never reach opaque, causing ghosting.
       const rects = [];
       for (const { x, y, r, g, b, alpha } of pixels) {
         const ix = x - dx;
@@ -603,8 +524,7 @@ export const useCurrentFileStore = defineStore('current_file', {
         const cx = Math.round(ix * wScale);
         const cy = Math.round(iy * hScale);
         rects.push({
-          cx,
-          cy,
+          cx, cy,
           cw: Math.max(1, Math.round((ix + 1) * wScale) - cx),
           ch: Math.max(1, Math.round((iy + 1) * hScale) - cy),
           r, g, b,
@@ -626,8 +546,7 @@ export const useCurrentFileStore = defineStore('current_file', {
         const regionH = maxY - minY;
         const imageData = editCtx.getImageData(minX, minY, regionW, regionH);
         const data = imageData.data;
-
-        const maxA = Math.round((this.editBrushOpacity / 100) * 255);
+        const maxA = Math.round((opacity / 100) * 255);
 
         for (const { cx, cy, cw, ch, r, g, b, a } of rects) {
           if (a === 0) continue;
@@ -635,18 +554,13 @@ export const useCurrentFileStore = defineStore('current_file', {
             for (let px = cx; px < cx + cw; px++) {
               const idx = ((py - minY) * regionW + (px - minX)) * 4;
               const existingA = data[idx + 3];
-              const totalA = existingA + a;
-
               if (existingA >= maxA) {
-                // Already at or above max opacity.
-                // We still blend the color if we have flow.
                 const blend = Math.min(1, a / 255);
                 data[idx]     = Math.round(data[idx]     + (r - data[idx])     * blend);
                 data[idx + 1] = Math.round(data[idx + 1] + (g - data[idx + 1]) * blend);
                 data[idx + 2] = Math.round(data[idx + 2] + (b - data[idx + 2]) * blend);
               } else {
-                data[idx + 3] = Math.min(maxA, totalA);
-                // Building up coverage: alpha-weighted average of existing and stroke.
+                data[idx + 3] = Math.min(maxA, existingA + a);
                 data[idx]     = Math.round((data[idx]     * existingA + r * a) / (existingA + a));
                 data[idx + 1] = Math.round((data[idx + 1] * existingA + g * a) / (existingA + a));
                 data[idx + 2] = Math.round((data[idx + 2] * existingA + b * a) / (existingA + a));
@@ -654,41 +568,16 @@ export const useCurrentFileStore = defineStore('current_file', {
             }
           }
         }
-
         editCtx.putImageData(imageData, minX, minY);
       }
 
       this.compositeEditCanvas(pipelineCanvas, outputCanvas);
-
-      const snapshot = outputCanvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, this.cols, this.rows);
-      const newBlockData = this.blockData.slice();
-
-      for (const { x, y } of pixels) {
-        const i = y * this.cols + x;
-        if (newBlockData[i]) {
-          // Only update blockData if we're inside the image area
-          if (x >= dx && x < dx + dw && y >= dy && y < dy + dh) {
-            const i4 = i * 4;
-            const r = snapshot.data[i4], g = snapshot.data[i4 + 1], b = snapshot.data[i4 + 2];
-            newBlockData[i] = { ...newBlockData[i], r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] };
-          }
-
-          // Apply any character override for this cell
-          const ansiRow = Math.floor(y / 2);
-          const cellIndex = ansiRow * this.cols + x;
-          if (this.charEditMap.has(cellIndex)) {
-            newBlockData[i].char = this.charEditMap.get(cellIndex);
-          }
-        }
-      }
-      this.blockData = newBlockData;
+      this.syncBlockData(pixels, outputCanvas, dx, dy, dw, dh);
     },
 
-    // Clears pixels on the editCanvas and updates blockData.
     eraseEditPixels(pixels, pipelineCanvas, outputCanvas) {
       if (!this.editCanvas || !pixels.length) return;
       const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true });
-
       const { dx, dy, dw, dh } = this.getFitParams(this.cols, this.rows);
       const wScale = this.editCanvas.width / dw;
       const hScale = this.editCanvas.height / dh;
@@ -697,20 +586,16 @@ export const useCurrentFileStore = defineStore('current_file', {
         const ix = x - dx;
         const iy = y - dy;
         if (ix < 0 || iy < 0 || ix >= dw || iy >= dh) continue;
-
-        editCtx.clearRect(
-          Math.floor(ix * wScale),
-          Math.floor(iy * hScale),
-          Math.ceil(wScale),
-          Math.ceil(hScale)
-        );
+        editCtx.clearRect(Math.floor(ix * wScale), Math.floor(iy * hScale), Math.ceil(wScale), Math.ceil(hScale));
       }
 
       this.compositeEditCanvas(pipelineCanvas, outputCanvas);
+      this.syncBlockData(pixels, outputCanvas, dx, dy, dw, dh);
+    },
 
+    syncBlockData(pixels, outputCanvas, dx, dy, dw, dh) {
       const snapshot = outputCanvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, this.cols, this.rows);
       const newBlockData = this.blockData.slice();
-
       for (const { x, y } of pixels) {
         const i = y * this.cols + x;
         if (newBlockData[i]) {
@@ -719,8 +604,6 @@ export const useCurrentFileStore = defineStore('current_file', {
             const r = snapshot.data[i4], g = snapshot.data[i4 + 1], b = snapshot.data[i4 + 2];
             newBlockData[i] = { ...newBlockData[i], r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] };
           }
-
-          // Apply any character override for this cell
           const ansiRow = Math.floor(y / 2);
           const cellIndex = ansiRow * this.cols + x;
           if (this.charEditMap.has(cellIndex)) {
@@ -731,20 +614,12 @@ export const useCurrentFileStore = defineStore('current_file', {
       this.blockData = newBlockData;
     },
 
-    // Sets a character override for a specific ANSI cell and rebuilds blockData.
     setCharEdit(col, ansiRow, char) {
       const cellIndex = ansiRow * this.cols + col;
       const newMap = new Map(this.charEditMap);
-      if (char === null) {
-        newMap.delete(cellIndex);
-      } else {
-        newMap.set(cellIndex, char);
-      }
+      if (char === null) newMap.delete(cellIndex);
+      else newMap.set(cellIndex, char);
       this.charEditMap = newMap;
-
-      // Need a way to refresh if we don't have outputCanvas here.
-      // But usually this is called from UI components that can trigger a refresh via the store.
-      // For now, let's just update blockData with what we have.
       this.applyCharEdits();
     },
 
@@ -758,15 +633,30 @@ export const useCurrentFileStore = defineStore('current_file', {
       const bg = this.blockData[bgIdx];
       const fg = this.blockData[fgIdx];
 
-      // Paint BG color onto FG position and vice versa
-      // We use paintEditPixels which handles the scaling and compositing
       this.paintEditPixels([
         { x: col, y: ansiRow * 2, r: fg.r, g: fg.g, b: fg.b, alpha: 1 },
         { x: col, y: ansiRow * 2 + 1, r: bg.r, g: bg.g, b: bg.b, alpha: 1 },
       ], pipelineCanvas, outputCanvas);
     },
 
-    // Removes character overrides for specific ANSI cells.
+    applyCharEdits() {
+      if (!this.blockData.length) return;
+      const newBlockData = this.blockData.slice();
+      if (this.charEditMap.size > 0) {
+        for (const [cellIndex, char] of this.charEditMap.entries()) {
+          const col = cellIndex % this.cols;
+          const ansiRow = Math.floor(cellIndex / this.cols);
+          const bgIdx = ansiRow * this.cols * 2 + col;
+          if (newBlockData[bgIdx]) newBlockData[bgIdx] = { ...newBlockData[bgIdx], char };
+        }
+      } else {
+        for (let i = 0; i < newBlockData.length; i++) {
+          if (this.pipelineBlockData[i]) newBlockData[i] = { ...newBlockData[i], char: this.pipelineBlockData[i].char };
+        }
+      }
+      this.blockData = newBlockData;
+    },
+
     clearCharEditsAt(pixels) {
       if (!this.charEditMap.size) return;
       const newMap = new Map(this.charEditMap);
@@ -783,36 +673,8 @@ export const useCurrentFileStore = defineStore('current_file', {
       }
     },
 
-    // Applies all charEditMap overrides to the CURRENT blockData (keeps paint colors).
-    applyCharEdits() {
-      if (!this.blockData.length) return;
-      const newBlockData = this.blockData.slice();
-      if (this.charEditMap.size > 0) {
-        for (const [cellIndex, char] of this.charEditMap.entries()) {
-          const col = cellIndex % this.cols;
-          const ansiRow = Math.floor(cellIndex / this.cols);
-          const bgIdx = ansiRow * this.cols * 2 + col;
-          if (newBlockData[bgIdx]) {
-            newBlockData[bgIdx] = { ...newBlockData[bgIdx], char };
-          }
-        }
-      } else {
-        // If map is empty, we need to revert characters but KEEP paint colors.
-        // This is tricky. Let's just use pipelineBlockData for characters.
-        for (let i = 0; i < newBlockData.length; i++) {
-          if (this.pipelineBlockData[i]) {
-            newBlockData[i] = { ...newBlockData[i], char: this.pipelineBlockData[i].char };
-          }
-        }
-      }
-      this.blockData = newBlockData;
-    },
-
-    // Clears all edits. Increments clearEditsFlag so AnsiWorkspace can watch and re-composite.
     clearEditLayer() {
-      if (this.editCanvas) {
-        this.editCanvas.getContext('2d', { willReadFrequently: true }).clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
-      }
+      if (this.editCanvas) this.editCanvas.getContext('2d').clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
       this.charEditMap = new Map();
       this.hasPaint = false;
       this.clearEditsFlag++;
@@ -821,24 +683,16 @@ export const useCurrentFileStore = defineStore('current_file', {
 
     takeSnapshot() {
       if (!this.editCanvas) return;
-      const ctx = this.editCanvas.getContext('2d', { willReadFrequently: true });
+      const ctx = this.editCanvas.getContext('2d');
       const snapshot = {
         imageData: ctx.getImageData(0, 0, this.editCanvas.width, this.editCanvas.height),
         charMap: new Map(this.charEditMap),
         hasPaint: this.hasPaint,
       };
-
-      // If we're not at the end of the stack, discard the "future"
-      if (this.historyIndex < this.historyStack.length - 1) {
-        this.historyStack = this.historyStack.slice(0, this.historyIndex + 1);
-      }
-
+      if (this.historyIndex < this.historyStack.length - 1) this.historyStack = this.historyStack.slice(0, this.historyIndex + 1);
       this.historyStack.push(snapshot);
-      if (this.historyStack.length > 50) {
-        this.historyStack.shift();
-      } else {
-        this.historyIndex++;
-      }
+      if (this.historyStack.length > 50) this.historyStack.shift();
+      else this.historyIndex++;
     },
 
     undo() {
@@ -853,107 +707,42 @@ export const useCurrentFileStore = defineStore('current_file', {
       this.restoreSnapshot(this.historyStack[this.historyIndex]);
     },
 
+    restoreSnapshot(snapshot) {
+      if (!this.editCanvas || !snapshot) return;
+      this.editCanvas.getContext('2d').putImageData(snapshot.imageData, 0, 0);
+      this.charEditMap = new Map(snapshot.charMap);
+      this.hasPaint = snapshot.hasPaint;
+      this.clearEditsFlag++;
+    },
+
     flattenEdits() {
       if (!this.editCanvas || !this.image) return;
-
       const canvas = document.createElement('canvas');
       canvas.width = this.image.naturalWidth || this.image.width;
       canvas.height = this.image.naturalHeight || this.image.height;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-      // 1. Draw original image
+      const ctx = canvas.getContext('2d');
       ctx.drawImage(this.image, 0, 0);
-
-      // 2. Draw edit canvas (paint) over it
-      // Note: We draw the RAW paint here so it continues to be subject to the global sliders.
       ctx.drawImage(this.editCanvas, 0, 0);
-
-      // 3. Update the source image
       const newImage = new Image();
       newImage.onload = () => {
         this.image = shallowRef(newImage);
-
-        // 4. Clear the edit layer now that it's baked in
-        const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true });
+        const editCtx = this.editCanvas.getContext('2d');
         editCtx.clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
         this.hasPaint = false;
-
-        // 5. Reset history to the new state
         this.historyStack = [];
         this.historyIndex = -1;
         this.takeSnapshot();
-
-        // 6. Signal a full pipeline rerun
         this.clearEditsFlag++;
         this.markDirty();
       };
       newImage.src = canvas.toDataURL('image/png');
     },
-
-    restoreSnapshot(snapshot) {
-      if (!this.editCanvas || !snapshot) return;
-      const ctx = this.editCanvas.getContext('2d', { willReadFrequently: true });
-      ctx.putImageData(snapshot.imageData, 0, 0);
-      this.charEditMap = new Map(snapshot.charMap);
-      this.hasPaint = snapshot.hasPaint;
-      this.clearEditsFlag++; // Signal Workspace to refresh
-    },
   },
 });
 
-export const allKeys = [
-  'image',
-  'cols',
-  'rows',
-  'aspectLock',
-  'chars',
-  'seed',
-  'smoothing',
-  'invert',
-  'brightness',
-  'contrast',
-  'saturation',
-  'sharpen',
-  'flatten',
-  'edges',
-  'edgeColor',
-  'edgeThickness',
-  'hue',
-  'quantize',
-  'palette',
-  'colorCount',
-  'alphaMode',
-  'activeTool',
-  'previousTool',
-  'editFgColor',
-  'editFillTolerance',
-  'editFillContiguous',
-  'editZoom',
-  'editBrushSize',
-  'editBrushOpacity',
-  'editBrushFlow',
-  'editBrushHardness',
-  'editCanvas',
-  'charEditMap',
-  'hasPaint',
-  'clearEditsFlag',
-  'previewTab',
-  'sauceUse9pxFont',
-  'sauceFontName',
-  'sauceTitle',
-  'sauceAuthor',
-  'sauceGroup',
-  'sauceDate',
-  'sauceUserComments',
-  'filename',
-  'blockData',
-  'pipelineBlockData',
-  'activePalette',
-  'isDirty',
-  'editMode',
-  'settingsOpen',
-  'maxCols',
-  'maxRows',
-  'historyStack',
-  'historyIndex',
+export const projectStateKeys = [
+  'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount',
+  'invert', 'brightness', 'contrast', 'saturation', 'hue', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness',
+  'sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments',
+  'filename', 'isDirty'
 ];

@@ -27,7 +27,8 @@ export default {
   },
   computed: {
     ...mapState(useCurrentFileStore, [
-      'cols', 'rows', 'editZoom', 'editBrushSize', 'activeTool',
+      'cols', 'rows', 'editZoom', 'editBrushSize',
+      'editBrushOpacity', 'editBrushFlow', 'editBrushHardness', 'activeTool',
       'brightness', 'contrast', 'saturation', 'hue', 'invert', 'editFillTolerance', 'editFillContiguous'
     ]),
     ...mapWritableState(useCurrentFileStore, ['editMode', 'editFgColor']),
@@ -38,7 +39,7 @@ export default {
       const isPencil = this.activeTool === 'pencil';
       const size = isPencil ? 1 : this.editBrushSize;
       const pixelSize = size * this.editZoom;
-      
+
       return {
         width: `${pixelSize}px`,
         height: `${pixelSize}px`,
@@ -90,12 +91,9 @@ export default {
       if (!this.canvas || !this.pipelineCanvas) return;
       const paintRgb = hex2rgb(this.editFgColor);
 
-      if (this.activeTool === 'pencil' || this.activeTool === 'eraser') {
-        const isEraser = this.activeTool === 'eraser';
-        const size = isEraser ? this.editBrushSize : 1;
-        const radius = Math.floor(size / 2);
-        const isEven = size % 2 === 0;
-
+      if (this.activeTool === 'pencil') {
+        const size = 1;
+        const radius = 0;
         const positions = this.interpolatedPositions(from.x, from.y, to.x, to.y);
         const pixels = [];
         const seen = new Set();
@@ -104,11 +102,41 @@ export default {
           const cx = Math.floor(x);
           const cy = Math.floor(y);
 
-          for (let dy = -radius; dy <= (isEven ? radius - 1 : radius); dy++) {
-            for (let dx = -radius; dx <= (isEven ? radius - 1 : radius); dx++) {
-              const ix = cx + dx;
-              const iy = cy + dy;
+          if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) continue;
+          const key = `${cx},${cy}`;
+          if (!seen.has(key)) {
+            pixels.push({ x: cx, y: cy, r: paintRgb.r, g: paintRgb.g, b: paintRgb.b, alpha: 1 });
+            seen.add(key);
+          }
+        }
+        this.paintEditPixels(pixels, this.pipelineCanvas, this.canvas);
+        this.redrawDisplay();
+        return;
+      }
+
+      if (this.activeTool === 'eraser') {
+        const size = this.editBrushSize;
+        const radius = size / 2;
+
+        const positions = this.interpolatedPositions(from.x, from.y, to.x, to.y);
+        const pixels = [];
+        const seen = new Set();
+
+        for (const { x, y } of positions) {
+          const x0 = Math.floor(x - radius);
+          const x1 = Math.ceil(x + radius);
+          const y0 = Math.floor(y - radius);
+          const y1 = Math.ceil(y + radius);
+
+          for (let iy = y0; iy < y1; iy++) {
+            for (let ix = x0; ix < x1; ix++) {
               if (ix < 0 || iy < 0 || ix >= this.cols || iy >= this.rows) continue;
+
+              const dx = (ix + 0.5) - x;
+              const dy = (iy + 0.5) - y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist > radius) continue;
+
               const key = `${ix},${iy}`;
               if (!seen.has(key)) {
                 pixels.push({ x: ix, y: iy, r: paintRgb.r, g: paintRgb.g, b: paintRgb.b, alpha: 1 });
@@ -117,12 +145,7 @@ export default {
             }
           }
         }
-
-        if (isEraser) {
-          this.eraseEditPixels(pixels, this.pipelineCanvas, this.canvas);
-        } else {
-          this.paintEditPixels(pixels, this.pipelineCanvas, this.canvas);
-        }
+        this.eraseEditPixels(pixels, this.pipelineCanvas, this.canvas);
         this.redrawDisplay();
         return;
       }
@@ -130,10 +153,12 @@ export default {
       const size = this.editBrushSize;
       const radius = size / 2;
       const isEraser = false; // Brush is the only one left
+      const flow = this.editBrushFlow / 100;
+      const h = this.editBrushHardness / 100;
 
       const positions = this.interpolatedPositions(from.x, from.y, to.x, to.y);
+      const pixels = [];
 
-      const alphaMap = new Map();
       for (const { x: cx, y: cy } of positions) {
         // Calculate bounding box of pixels affected
         const x0 = Math.floor(cx - radius);
@@ -145,45 +170,31 @@ export default {
           for (let ix = x0; ix < x1; ix++) {
             if (ix < 0 || iy < 0 || ix >= this.cols || iy >= this.rows) continue;
 
-            // Calculate overlap (coverage) of the 1x1 brush square with the 1x1 pixel
-            const x_cov = Math.max(0, Math.min(ix + 1, cx + radius) - Math.max(ix, cx - radius));
-            const y_cov = Math.max(0, Math.min(iy + 1, cy + radius) - Math.max(iy, cy - radius));
-            let alpha = (x_cov / size) * (y_cov / size) * size; // Normalized alpha
-            
-            if (!isEraser) {
-              // Add circular falloff for the 'brush' tool to keep it "soft"
-              const dx = (ix + 0.5) - cx;
-              const dy = (iy + 0.5) - cy;
-              const dist = Math.sqrt(dx * dx + dy * dy);
-              if (dist > radius) {
-                // If it's outside the radius but has coverage, we still want some paint
-                // but we'll scale it by the distance
-                alpha *= Math.max(0, 1 - (dist - radius) / 0.5);
-              }
-            }
+            const dx = (ix + 0.5) - cx;
+            const dy = (iy + 0.5) - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
 
-            const key = iy * this.cols + ix;
-            const prev = alphaMap.get(key);
-            if (prev === undefined || alpha > prev) alphaMap.set(key, alpha);
+            if (dist > radius) continue;
+
+            let alpha = dist <= radius * h
+                        ? 1
+                        : Math.pow(1 - (dist - radius * h) / (radius * (1 - h)), 1.5);
+
+            alpha *= flow;
+
+            if (alpha > 0.001) {
+              pixels.push({
+                x: ix, y: iy,
+                r: paintRgb.r, g: paintRgb.g, b: paintRgb.b,
+                alpha: alpha
+              });
+            }
           }
         }
       }
 
-      const pixels = [];
-      for (const [key, alpha] of alphaMap.entries()) {
-        pixels.push({
-          x: key % this.cols,
-          y: Math.floor(key / this.cols),
-          r: paintRgb.r, g: paintRgb.g, b: paintRgb.b, alpha: Math.min(1, alpha),
-        });
-      }
-
       if (pixels.length) {
-        if (isEraser) {
-          this.eraseEditPixels(pixels, this.pipelineCanvas, this.canvas);
-        } else {
-          this.paintEditPixels(pixels, this.pipelineCanvas, this.canvas);
-        }
+        this.paintEditPixels(pixels, this.pipelineCanvas, this.canvas);
         this.redrawDisplay();
       }
     },
@@ -232,12 +243,12 @@ export default {
         const ctx = this.canvas.getContext('2d', { willReadFrequently: true });
         const imageData = ctx.getImageData(0, 0, this.cols, this.rows);
         const pixels = floodFill(imageData, ix, iy, this.editFillTolerance, this.editFillContiguous);
-        
+
         const paintRgb = hex2rgb(this.editFgColor);
         const pixelPayload = pixels.map(p => ({
           ...p, r: paintRgb.r, g: paintRgb.g, b: paintRgb.b
         }));
-        
+
         this.paintEditPixels(pixelPayload, this.pipelineCanvas, this.canvas);
         this.takeSnapshot();
         this.redrawDisplay();
@@ -340,7 +351,7 @@ export default {
         }
       } else if (event.touches.length === 2 && this.lastTouchDistance !== null) {
         event.preventDefault();
-        
+
         // 1. Smooth Continuous Zoom
         const distance = this.getTouchDistance(event.touches);
         const ratio = distance / this.lastTouchDistance;
@@ -351,7 +362,7 @@ export default {
         if (this.lastTouchCenter) {
           const dx = this.lastTouchCenter.x - center.x;
           const dy = this.lastTouchCenter.y - center.y;
-          
+
           let scrollEl = this.$el.parentElement;
           while (scrollEl && scrollEl.tagName !== 'ARTICLE') {
             scrollEl = scrollEl.parentElement;
@@ -393,19 +404,19 @@ export default {
 <template>
   <article>
     <div
-      class="canvas-container"
-      :class="{ 
+        class="canvas-container"
+        :class="{
         'pencil-tool': activeTool === 'pencil' || activeTool === 'bucket',
         'picker-tool': activeTool === 'picker',
         'hand-tool': activeTool === 'hand',
         'is-painting': isPainting
       }"
-      @mouseenter="isMouseOver = true"
-      @mouseleave="isMouseOver = false"
-      @mousemove="onMouseMove"
-      @touchstart="handleTouchStart"
-      @touchmove="handleTouchMove"
-      @touchend="handleTouchEnd"
+        @mouseenter="isMouseOver = true"
+        @mouseleave="isMouseOver = false"
+        @mousemove="onMouseMove"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd"
     >
       <canvas ref="displayCanvas" @mousedown="startPaint"/>
       <div v-if="editZoom >= 16" class="grid-overlay"></div>
@@ -465,10 +476,10 @@ div.grid-overlay {
   pointer-events: none;
   background-size: v-bind('editZoom + "px"') v-bind('editZoom + "px"');
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-    linear-gradient(to right, rgba(0, 0, 0, 0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+      linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+      linear-gradient(to right, rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
   background-position: 0 0, 0 0, 0.5px 0.5px, 0.5px 0.5px;
 }
 </style>

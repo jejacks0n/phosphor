@@ -33,6 +33,7 @@ export default {
     ...mapActions(useCurrentFileStore, [
       'randomizeSeed',
       'exportFile',
+      'saveProject',
       'resetSliders',
       'resetTransform',
       'resetAdjust',
@@ -78,27 +79,27 @@ export default {
         <label for="cols">Dimensions</label>
         <div class="row-inputs">
           <input
-            type="number"
-            id="cols"
-            :value="cols"
-            @input="updateCols($event.target.value)"
-            @change="$event.target.value = cols"
-            min="1"
-            :max="maxCols"
-            class="mono"
+              type="number"
+              id="cols"
+              :value="cols"
+              @input="updateCols($event.target.value)"
+              @change="$event.target.value = cols"
+              min="1"
+              :max="maxCols"
+              class="mono"
           >
           <button title="Lock Aspect Ratio" :class="{ active: aspectLock }" @click="aspectLock = !aspectLock">
             {{ aspectLock ? '🔒' : '🔓' }}
           </button>
           <input
-            type="number"
-            id="rows"
-            :value="rows"
-            @input="updateRows($event.target.value)"
-            @change="$event.target.value = rows"
-            min="1"
-            :max="maxRows"
-            class="mono"
+              type="number"
+              id="rows"
+              :value="rows"
+              @input="updateRows($event.target.value)"
+              @change="$event.target.value = rows"
+              min="1"
+              :max="maxRows"
+              class="mono"
           >
         </div>
       </div>
@@ -282,6 +283,7 @@ export default {
     <hr/>
 
     <div class="export-actions">
+      <button @click="saveProject" :disabled="!image" class="secondary">Save Project (.phosphor)</button>
       <button @click="exportFile('ans')" :disabled="!image" class="primary">Export .ans</button>
       <button @click="exportFile('utf8ans')" :disabled="!image" class="primary">Export .utf8ans</button>
     </div>

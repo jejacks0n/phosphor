@@ -23,22 +23,22 @@ export default {
 
     <div class="field">
       <label for="sauce-title">Title</label>
-      <input id="sauce-title" v-model="sauce.title" type="text" placeholder="Title (35 chars)" maxlength="35">
+      <input id="sauce-title" v-model="sauceTitle" type="text" placeholder="Title (35 chars)" maxlength="35">
     </div>
 
     <div class="field">
       <label for="sauce-author">Author</label>
-      <input id="sauce-author" v-model="sauce.author" type="text" placeholder="Author (20 chars)" maxlength="20">
+      <input id="sauce-author" v-model="sauceAuthor" type="text" placeholder="Author (20 chars)" maxlength="20">
     </div>
 
     <div class="field">
       <label for="sauce-group">Group</label>
-      <input id="sauce-group" v-model="sauce.group" type="text" placeholder="Group (20 chars)" maxlength="20">
+      <input id="sauce-group" v-model="sauceGroup" type="text" placeholder="Group (20 chars)" maxlength="20">
     </div>
 
     <div class="field">
       <label for="sauce-comments">Custom Comments</label>
-      <textarea id="sauce-comments" v-model="sauce.userComments" placeholder="Add your own notes to the file metadata..."></textarea>
+      <textarea id="sauce-comments" v-model="sauceUserComments" placeholder="Add your own notes to the file metadata..."></textarea>
     </div>
 
     <div class="export-actions">

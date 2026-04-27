@@ -32,7 +32,8 @@ export default {
   },
   computed: {
     ...mapState(useCurrentFileStore, [
-      'blockData', 'cols', 'rows', 'activeTool', 'editBrushSize', 'chars',
+      'blockData', 'cols', 'rows', 'activeTool', 'editBrushSize',
+      'editBrushOpacity', 'editBrushFlow', 'editBrushHardness', 'chars',
       'brightness', 'contrast', 'saturation', 'hue', 'invert', 'editFillTolerance', 'editFillContiguous'
     ]),
     ...mapWritableState(useCurrentFileStore, ['editMode', 'editFgColor', 'editZoom']),
@@ -285,12 +286,9 @@ export default {
     },
 
     paintSegment(from, to) {
-      if (this.activeTool === 'pencil' || this.activeTool === 'eraser') {
-        const isEraser = this.activeTool === 'eraser';
-        const size = isEraser ? this.editBrushSize : 1;
-        const radius = Math.floor(size / 2);
-        const isEven = size % 2 === 0;
-
+      if (this.activeTool === 'pencil') {
+        const size = 1;
+        const radius = 0;
         const positions = this.interpolatedPositions(from.x, from.y, to.x, to.y);
         const pixels = [];
         const seen = new Set();
@@ -299,11 +297,36 @@ export default {
           const cx = Math.floor(x);
           const cy = Math.floor(y);
 
-          for (let dy = -radius; dy <= (isEven ? radius - 1 : radius); dy++) {
-            for (let dx = -radius; dx <= (isEven ? radius - 1 : radius); dx++) {
-              const ix = cx + dx;
-              const iy = cy + dy;
+          if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) continue;
+          const key = `${cx},${cy}`;
+          if (!seen.has(key)) {
+            pixels.push({ x: cx, y: cy, alpha: 1 });
+            seen.add(key);
+          }
+        }
+        this.paintPixels(pixels);
+      } else if (this.activeTool === 'eraser') {
+        const size = this.editBrushSize;
+        const radius = size / 2;
+        const positions = this.interpolatedPositions(from.x, from.y, to.x, to.y);
+        const pixels = [];
+        const seen = new Set();
+
+        for (const { x, y } of positions) {
+          const x0 = Math.floor(x - radius);
+          const x1 = Math.ceil(x + radius);
+          const y0 = Math.floor(y - radius);
+          const y1 = Math.ceil(y + radius);
+
+          for (let iy = y0; iy < y1; iy++) {
+            for (let ix = x0; ix < x1; ix++) {
               if (ix < 0 || iy < 0 || ix >= this.cols || iy >= this.rows) continue;
+
+              const dx = (ix + 0.5) - x;
+              const dy = (iy + 0.5) - y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist > radius) continue;
+
               const key = `${ix},${iy}`;
               if (!seen.has(key)) {
                 pixels.push({ x: ix, y: iy, alpha: 1 });
@@ -316,41 +339,41 @@ export default {
       } else if (this.activeTool === 'brush') {
         const positions = this.interpolatedPositions(from.x, from.y, to.x, to.y);
         const pixels = [];
-        const radius = this.editBrushSize;
-        const seen = new Set();
+        const radius = this.editBrushSize / 2;
+        const flow = this.editBrushFlow / 100;
+        const h = this.editBrushHardness / 100;
 
         for (const { x, y } of positions) {
-          const cx = Math.floor(x);
-          const cy = Math.floor(y);
+          const x0 = Math.floor(x - radius);
+          const x1 = Math.ceil(x + radius);
+          const y0 = Math.floor(y - radius);
+          const y1 = Math.ceil(y + radius);
 
-          for (let dy = -radius; dy <= radius; dy++) {
-            for (let dx = -radius; dx <= radius; dx++) {
-              const ix = cx + dx;
-              const iy = cy + dy;
+          for (let iy = y0; iy < y1; iy++) {
+            for (let ix = x0; ix < x1; ix++) {
               if (ix < 0 || iy < 0 || ix >= this.cols || iy >= this.rows) continue;
 
-              // For size-1 brushes, compute distance from the actual fractional cursor
-              // position so a cursor halfway between two pixels paints each at 50%.
-              // For larger brushes, snap to the integer center (fractional offset is
-              // imperceptible at larger radii and avoids disturbing the soft falloff).
-              const dist = radius <= 1
-                ? Math.sqrt((ix - x) ** 2 + (iy - y) ** 2)
-                : Math.sqrt(dx * dx + dy * dy);
+              const dx = (ix + 0.5) - x;
+              const dy = (iy + 0.5) - y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
 
               if (dist > radius) continue;
 
-              const alpha = radius <= 1
-                ? 1 - dist                              // linear: exact sub-pixel weighting
-                : Math.pow(1 - dist / radius, 1.5);    // soft curve for larger brushes
+              let alpha = 1.0;
+              if (radius > 0.5) {
+                alpha = dist <= radius * h
+                        ? 1
+                        : Math.pow(1 - (dist - radius * h) / (radius * (1 - h)), 1.5);
+              } else {
+                alpha = Math.max(0, 1 - dist / radius);
+              }
+
+              alpha *= flow;
 
               if (alpha <= 0) continue;
-              if (radius > 1 && alpha < 0.05) continue;
+              if (radius > 0.5 && alpha < 0.001) continue;
 
-              const key = `${ix},${iy}`;
-              if (!seen.has(key)) {
-                pixels.push({ x: ix, y: iy, alpha });
-                seen.add(key);
-              }
+              pixels.push({ x: ix, y: iy, alpha });
             }
           }
         }
@@ -423,7 +446,7 @@ export default {
         }
       } else if (event.touches.length === 2 && this.lastTouchDistance !== null) {
         event.preventDefault();
-        
+
         // 1. Smooth Continuous Zoom
         const distance = this.getTouchDistance(event.touches);
         const ratio = distance / this.lastTouchDistance;
@@ -434,7 +457,7 @@ export default {
         if (this.lastTouchCenter) {
           const dx = this.lastTouchCenter.x - center.x;
           const dy = this.lastTouchCenter.y - center.y;
-          
+
           let scrollEl = this.$el.parentElement;
           while (scrollEl && scrollEl.tagName !== 'ARTICLE') {
             scrollEl = scrollEl.parentElement;
@@ -475,49 +498,49 @@ export default {
 
 <template>
   <article
-    :class="{ 
+      :class="{
       'pencil-tool': activeTool === 'pencil' || activeTool === 'char' || activeTool === 'bucket' || activeTool === 'flip',
       'picker-tool': activeTool === 'picker',
       'hand-tool': activeTool === 'hand',
       'is-painting': isPainting
     }"
-    @mouseenter="isMouseOver = true"
-    @mouseleave="isMouseOver = false"
-    @mousemove="onMouseMove"
-    @touchstart="handleTouchStart"
-    @touchmove="handleTouchMove"
-    @touchend="handleTouchEnd"
+      @mouseenter="isMouseOver = true"
+      @mouseleave="isMouseOver = false"
+      @mousemove="onMouseMove"
+      @touchstart="handleTouchStart"
+      @touchmove="handleTouchMove"
+      @touchend="handleTouchEnd"
   >
     <pre ref="pre" @mousedown="startPaint"></pre>
     <div class="brush-preview" :style="brushPreviewStyle"></div>
 
     <div
-      v-if="picker"
-      class="picker-backdrop"
-      @mousedown="closePicker"
+        v-if="picker"
+        class="picker-backdrop"
+        @mousedown="closePicker"
     ></div>
 
     <div
-      v-if="picker"
-      class="char-picker"
-      :style="{ left: picker.x + 'px', top: picker.y + 'px' }"
-      @mousedown.stop
+        v-if="picker"
+        class="char-picker"
+        :style="{ left: picker.x + 'px', top: picker.y + 'px' }"
+        @mousedown.stop
     >
       <span
-        class="char-option erase"
-        title="Reset to original"
-        @mousedown="selectChar('ERASE')"
+          class="char-option erase"
+          title="Reset to original"
+          @mousedown="selectChar('ERASE')"
       >⌫</span>
       <span
-        class="char-option space"
-        title="Space"
-        @mousedown="selectChar(' ')"
+          class="char-option space"
+          title="Space"
+          @mousedown="selectChar(' ')"
       >␣</span>
       <span
-        v-for="ch in pickerChars"
-        :key="ch"
-        class="char-option"
-        @mousedown="selectChar(ch)"
+          v-for="ch in pickerChars"
+          :key="ch"
+          class="char-option"
+          @mousedown="selectChar(ch)"
       >{{ ch }}</span>
     </div>
   </article>

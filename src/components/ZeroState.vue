@@ -1,7 +1,14 @@
 <script>
+import { PROJECT_EXTENSION } from '@/lib/SaveFormat';
+
 export default {
   name: 'ZeroState',
   emits: ['file-dropped', 'file-selected'],
+  data() {
+    return {
+      PROJECT_EXTENSION,
+    };
+  },
   methods: {
     onFileSelected(e) {
       const file = e.target.files[0];
@@ -16,11 +23,11 @@ export default {
     <div class="drop-zone">
       <div class="logo"></div>
       <span class="icon">⬆</span>
-      <p>Drop an image here to start</p>
+      <p>Drop an image or {{ PROJECT_EXTENSION }} file here to start</p>
       <label>
         <span class="mobile">Upload File to Start</span>
         <span class="desktop">Browse File</span>
-        <input type="file" @change="onFileSelected" accept="image/*" hidden>
+        <input type="file" @change="onFileSelected" :accept="`image/*,${PROJECT_EXTENSION}`" hidden>
       </label>
     </div>
   </article>

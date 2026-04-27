@@ -2,6 +2,7 @@
 import { mapState, mapWritableState, mapActions } from 'pinia';
 import { useCurrentFileStore, allKeys as allCurrentFileKeys } from '@/store/CurrentFile';
 import { processImage, getPaletteColors, applyQuantization } from '@/lib/ImageProcessor';
+import { PROJECT_EXTENSION } from '@/lib/SaveFormat';
 import { rgb2hex } from '@/lib/ColorUtils';
 import Random from 'random-seed';
 import Canvas from '@/lib/Canvas';
@@ -96,7 +97,9 @@ export default {
       'compositeEditCanvas',
       'refreshBlockData',
       'applyCharEdits',
+      'saveProject',
       'setActiveTool',
+      'loadProject',
       'undo',
       'redo',
     ]),
@@ -117,6 +120,13 @@ export default {
         return;
       }
 
+      // Save shortcut
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        this.saveProject();
+        return;
+      }
+
       if (e.key === 'Control' && this.activeTool !== 'picker') {
         this.previousTool = this.activeTool;
         this.setActiveTool('picker');
@@ -129,6 +139,10 @@ export default {
       }
     },
     handleFileSelected(file) {
+      if (file.name.endsWith(PROJECT_EXTENSION)) {
+        this.loadProject(file);
+        return;
+      }
       if (this.image && this.hasEdits) {
         if (!confirm('You have unsaved changes. Are you sure you want to load a new image?')) {
           return;
@@ -171,7 +185,7 @@ export default {
       const charset = this.chars || "▄";
       const targetDataLength = this.cols * this.rows;
       const finalBlockData = new Array(targetDataLength);
-      
+
       const ctx = oc.getContext('2d', { willReadFrequently: true });
       const finalPixels = ctx.getImageData(0, 0, this.cols, this.rows).data;
 
@@ -190,7 +204,7 @@ export default {
 
       this.blockData = finalBlockData;
       this.pipelineBlockData = pipelineBlockData || [...finalBlockData];
-      
+
       // Still apply char overrides on top
       this.applyCharEdits();
 
@@ -211,15 +225,15 @@ export default {
       <div class="viewport" :class="{ editing: editMode }" v-if="image">
         <SourcePreview v-if="previewTab === 'source' && !alphaMode" :canvas="outputCanvas"/>
         <SourceEdit
-          v-if="previewTab === 'source' && alphaMode"
-          :canvas="outputCanvas"
-          :pipeline-canvas="pipelineCanvas"
+            v-if="previewTab === 'source' && alphaMode"
+            :canvas="outputCanvas"
+            :pipeline-canvas="pipelineCanvas"
         />
         <AnsiPreview v-if="previewTab === 'ansi' && !alphaMode"/>
         <AnsiEdit
-          v-if="previewTab === 'ansi' && alphaMode"
-          :pipeline-canvas="pipelineCanvas"
-          :output-canvas="outputCanvas"
+            v-if="previewTab === 'ansi' && alphaMode"
+            :pipeline-canvas="pipelineCanvas"
+            :output-canvas="outputCanvas"
         />
         <SauceEditor v-if="previewTab === 'sauce'"/>
       </div>
