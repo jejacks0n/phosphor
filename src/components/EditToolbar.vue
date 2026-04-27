@@ -57,13 +57,14 @@ export default {
       return rgb2hex({ r, g, b });
     },
     zoomLabel() {
-      return `${this.editZoom}×`;
+      const z = this.editZoom;
+      return z < 10 ? `${z.toFixed(1)}×` : `${Math.round(z)}×`;
     },
     canZoomOut() {
-      return ZOOM_STEPS.indexOf(this.editZoom) > 0;
+      return this.editZoom > 0.5;
     },
     canZoomIn() {
-      return ZOOM_STEPS.indexOf(this.editZoom) < ZOOM_STEPS.length - 1;
+      return this.editZoom < 32;
     },
     showSecondaryRow() {
       return ['brush', 'eraser', 'bucket'].includes(this.activeTool);
@@ -96,12 +97,18 @@ export default {
       }
     },
     zoomOut() {
-      const idx = ZOOM_STEPS.indexOf(this.editZoom);
-      if (idx > 0) this.setEditZoom(ZOOM_STEPS[idx - 1]);
+      if (this.editZoom > 2) {
+        this.setEditZoom(this.editZoom - 1);
+      } else {
+        this.setEditZoom(this.editZoom - 0.5);
+      }
     },
     zoomIn() {
-      const idx = ZOOM_STEPS.indexOf(this.editZoom);
-      if (idx < ZOOM_STEPS.length - 1) this.setEditZoom(ZOOM_STEPS[idx + 1]);
+      if (this.editZoom >= 2) {
+        this.setEditZoom(this.editZoom + 1);
+      } else {
+        this.setEditZoom(this.editZoom + 0.5);
+      }
     },
   },
 };
@@ -166,12 +173,11 @@ export default {
       <template v-if="previewTab === 'source'">
         <div class="divider"/>
         <div class="zoom-group">
-          <button @click="zoomOut" :disabled="!canZoomOut" title="Zoom out">−</button>
+          <button class="desktop-only" @click="zoomOut" :disabled="!canZoomOut" title="Zoom out">−</button>
           <span class="zoom-label">{{ zoomLabel }}</span>
-          <button @click="zoomIn" :disabled="!canZoomIn" title="Zoom in">+</button>
+          <button class="desktop-only" @click="zoomIn" :disabled="!canZoomIn" title="Zoom in">+</button>
         </div>
       </template>
-
       <div class="spacer"/>
 
       <div class="desktop-only actions-container">

@@ -4,7 +4,7 @@ import { useLocalStorage } from '@vueuse/core';
 import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
 import { rgb2hex } from "@/lib/ColorUtils.js";
-import { applyTransforms, applyInverseTransforms } from "@/lib/PixelTransforms.js";
+import { applyTransforms } from "@/lib/PixelTransforms.js";
 import { applyQuantization } from "@/lib/ImageProcessor.js";
 import Canvas from "@/lib/Canvas.js";
 
@@ -279,7 +279,7 @@ export const useCurrentFileStore = defineStore('current_file', {
       this.activeTool = tool;
     },
     setEditZoom(z) {
-      this.editZoom = z;
+      this.editZoom = Math.max(0.1, Math.min(32, z));
     },
     setEditBrushSize(size) {
       this.editBrushSize = size;

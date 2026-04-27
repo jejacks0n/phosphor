@@ -1,8 +1,7 @@
 <script>
 import { mapState, mapWritableState, mapActions } from 'pinia';
 import { useCurrentFileStore } from '@/store/CurrentFile';
-import { hex2rgb, rgb2hex } from '@/lib/ColorUtils';
-import { applyInverseTransforms } from '@/lib/PixelTransforms';
+import { hex2rgb } from '@/lib/ColorUtils';
 import { floodFill } from '@/lib/FloodFill';
 
 export default {
@@ -296,6 +295,7 @@ export default {
       } else if (event.touches.length === 2) {
         this.lastTouchDistance = this.getTouchDistance(event.touches);
         this.lastTouchCenter = this.getTouchCenter(event.touches);
+        this._initialPinchZoom = this.editZoom;
       }
     },
 
@@ -307,21 +307,10 @@ export default {
       } else if (event.touches.length === 2 && this.lastTouchDistance !== null) {
         event.preventDefault();
         
-        // 1. Handle Zoom
+        // 1. Smooth Continuous Zoom
         const distance = this.getTouchDistance(event.touches);
-        const deltaDist = distance - this.lastTouchDistance;
-
-        if (Math.abs(deltaDist) > 20) {
-          const ZOOM_STEPS = [1, 2, 4, 8, 16];
-          const currentIdx = ZOOM_STEPS.indexOf(this.editZoom);
-          
-          if (deltaDist > 0 && currentIdx < ZOOM_STEPS.length - 1) {
-            this.setEditZoom(ZOOM_STEPS[currentIdx + 1]);
-          } else if (deltaDist < 0 && currentIdx > 0) {
-            this.setEditZoom(ZOOM_STEPS[currentIdx - 1]);
-          }
-          this.lastTouchDistance = distance;
-        }
+        const ratio = distance / this.lastTouchDistance;
+        this.setEditZoom(this._initialPinchZoom * ratio);
 
         // 2. Handle Pan
         const center = this.getTouchCenter(event.touches);
@@ -329,8 +318,11 @@ export default {
           const dx = this.lastTouchCenter.x - center.x;
           const dy = this.lastTouchCenter.y - center.y;
           
-          // Scroll the DropZone container
-          const scrollEl = this.$el.closest('article'); // This is the DropZone article
+          let scrollEl = this.$el.parentElement;
+          while (scrollEl && scrollEl.tagName !== 'ARTICLE') {
+            scrollEl = scrollEl.parentElement;
+          }
+
           if (scrollEl) {
             scrollEl.scrollLeft += dx;
             scrollEl.scrollTop += dy;
