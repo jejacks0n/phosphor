@@ -1,6 +1,7 @@
 <script>
 import { mapState, mapWritableState, mapActions } from 'pinia';
 import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { floodFill } from '@/lib/FloodFill';
 
@@ -27,11 +28,15 @@ export default {
   },
   computed: {
     ...mapState(useCurrentFileStore, [
-      'cols', 'rows', 'editZoom', 'editBrushSize',
-      'editBrushOpacity', 'editBrushFlow', 'editBrushHardness', 'activeTool',
-      'brightness', 'contrast', 'saturation', 'hue', 'invert', 'editFillTolerance', 'editFillContiguous'
+      'cols', 'rows',
+      'brightness', 'contrast', 'saturation', 'hue', 'invert'
     ]),
-    ...mapWritableState(useCurrentFileStore, ['editMode', 'editFgColor']),
+    ...mapState(useWorkspaceStore, [
+      'editZoom', 'editBrushSize',
+      'editBrushOpacity', 'editBrushFlow', 'editBrushHardness', 'activeTool',
+      'editFillTolerance', 'editFillContiguous'
+    ]),
+    ...mapWritableState(useWorkspaceStore, ['editMode', 'editFgColor']),
     brushPreviewSize() {
       return this.editBrushSize * this.editZoom;
     },
@@ -65,7 +70,8 @@ export default {
   },
 
   methods: {
-    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'takeSnapshot', 'getRawColorAt', 'setEditZoom', 'resetToolToHand']),
+    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'takeSnapshot', 'getRawColorAt']),
+    ...mapActions(useWorkspaceStore, ['setEditZoom', 'resetToolToHand']),
 
     redrawDisplay() {
       if (!this.$refs.displayCanvas || !this.canvas) return;

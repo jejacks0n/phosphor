@@ -1,6 +1,7 @@
 <script>
 import { mapState, mapActions } from 'pinia';
 import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 export default {
   name: 'WorkspaceTabs',
@@ -12,10 +13,11 @@ export default {
   },
   emits: ['update:modelValue'],
   computed: {
-    ...mapState(useCurrentFileStore, ['settingsOpen', 'image']),
+    ...mapState(useCurrentFileStore, ['image']),
+    ...mapState(useWorkspaceStore, ['settingsOpen']),
   },
   methods: {
-    ...mapActions(useCurrentFileStore, ['toggleSettings']),
+    ...mapActions(useWorkspaceStore, ['toggleSettings']),
   },
 };
 </script>

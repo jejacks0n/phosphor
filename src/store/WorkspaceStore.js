@@ -12,9 +12,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     settingsOpen: false,
 
     // Brush Settings
-    editBrushSize: useLocalStorage('phosphor.editBrushSize', 4),
+    editBrushSize: useLocalStorage('phosphor.editBrushSize', 2.5),
     editBrushOpacity: useLocalStorage('phosphor.editBrushOpacity', 100),
-    editBrushFlow: useLocalStorage('phosphor.editBrushFlow', 20),
+    editBrushFlow: useLocalStorage('phosphor.editBrushFlow', 50),
     editBrushHardness: useLocalStorage('phosphor.editBrushHardness', 50),
 
     // Fill Settings
@@ -23,10 +23,22 @@ export const useWorkspaceStore = defineStore('workspace', {
   }),
   actions: {
     setActiveTool(tool) {
-      this.activeTool = tool;
+      if (this.activeTool !== tool) {
+        this.previousTool = this.activeTool;
+        this.activeTool = tool;
+      }
+    },
+    setEditFgColor(color) {
+      this.editFgColor = color;
     },
     setEditZoom(z) {
       this.editZoom = Math.max(0.1, Math.min(32, z));
+    },
+    setPreviewTab(tab) {
+      this.previewTab = tab;
+    },
+    setEditMode(mode) {
+      this.editMode = mode;
     },
     toggleSettings() {
       this.settingsOpen = !this.settingsOpen;
@@ -50,7 +62,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.editFillContiguous = contiguous;
     },
     resetToolToHand() {
-      this.activeTool = 'hand';
+      this.setActiveTool('hand');
     }
   }
 });

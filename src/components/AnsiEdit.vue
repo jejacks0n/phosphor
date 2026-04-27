@@ -1,6 +1,7 @@
 <script>
 import { mapState, mapWritableState, mapActions } from 'pinia';
 import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
@@ -32,11 +33,19 @@ export default {
   },
   computed: {
     ...mapState(useCurrentFileStore, [
-      'blockData', 'cols', 'rows', 'activeTool', 'editBrushSize',
-      'editBrushOpacity', 'editBrushFlow', 'editBrushHardness', 'chars',
-      'brightness', 'contrast', 'saturation', 'hue', 'invert', 'editFillTolerance', 'editFillContiguous'
+      'blockData', 'cols', 'rows', 'chars',
+      'brightness', 'contrast', 'saturation', 'hue', 'invert'
     ]),
-    ...mapWritableState(useCurrentFileStore, ['editMode', 'editFgColor', 'editZoom']),
+    ...mapState(useWorkspaceStore, [
+      'activeTool',
+      'editBrushSize',
+      'editBrushOpacity',
+      'editBrushFlow',
+      'editBrushHardness',
+      'editFillTolerance',
+      'editFillContiguous'
+    ]),
+    ...mapWritableState(useWorkspaceStore, ['editMode', 'editFgColor', 'editZoom']),
     pickerChars() {
       if (!this.chars) return [];
       return [...new Set(this.chars.split(''))].filter(c => c.trim());
@@ -74,7 +83,8 @@ export default {
     if (this._renderFrame) cancelAnimationFrame(this._renderFrame);
   },
   methods: {
-    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot', 'getRawColorAt', 'flipAnsiColors', 'setEditZoom', 'resetToolToHand']),
+    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot', 'getRawColorAt', 'flipAnsiColors']),
+    ...mapActions(useWorkspaceStore, ['setEditZoom', 'resetToolToHand']),
 
     queueRender() {
       if (this._renderFrame) return;

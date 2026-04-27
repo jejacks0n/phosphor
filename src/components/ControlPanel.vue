@@ -1,11 +1,15 @@
 <script>
-import { mapWritableState, mapActions } from 'pinia';
-import { useCurrentFileStore, allKeys as allCurrentFileKeys } from '@/store/CurrentFile';
+import { mapWritableState, mapActions, mapState } from 'pinia';
+import { useCurrentFileStore } from '@/store/CurrentFile';
 
 export default {
   name: 'ControlPanel',
   computed: {
-    ...mapWritableState(useCurrentFileStore, allCurrentFileKeys),
+    ...mapWritableState(useCurrentFileStore, [
+      'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'colorCount', 'palette',
+      'invert', 'hue', 'brightness', 'contrast', 'saturation', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'
+    ]),
+    ...mapState(useCurrentFileStore, ['maxCols', 'maxRows', 'image']),
     year() {
       return new Date().getFullYear();
     },

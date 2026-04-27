@@ -1,6 +1,7 @@
 <script>
 import { mapState, mapWritableState, mapActions } from 'pinia';
 import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils';
 import { applyTransforms } from '@/lib/PixelTransforms';
 import DropdownMenu from './DropdownMenu.vue';
@@ -12,15 +13,6 @@ export default {
   },
   computed: {
     ...mapState(useCurrentFileStore, {
-      activeTool: 'activeTool',
-      editZoom: 'editZoom',
-      editBrushSize: 'editBrushSize',
-      editBrushOpacity: 'editBrushOpacity',
-      editBrushFlow: 'editBrushFlow',
-      editBrushHardness: 'editBrushHardness',
-      editFillTolerance: 'editFillTolerance',
-      editFillContiguous: 'editFillContiguous',
-      previewTab: 'previewTab',
       hasEdits: (state) => state.hasEdits,
       hasPaint: (state) => state.hasPaint,
       brightness: 'brightness',
@@ -32,7 +24,18 @@ export default {
       canRedo: 'canRedo',
       activePalette: 'activePalette',
     }),
-    ...mapWritableState(useCurrentFileStore, ['editFgColor']),
+    ...mapState(useWorkspaceStore, [
+      'activeTool',
+      'editZoom',
+      'editBrushSize',
+      'editBrushOpacity',
+      'editBrushFlow',
+      'editBrushHardness',
+      'editFillTolerance',
+      'editFillContiguous',
+      'previewTab'
+    ]),
+    ...mapWritableState(useWorkspaceStore, ['editFgColor']),
     effectiveColor() {
       const rgb = hex2rgb(this.editFgColor);
       const data = new Uint8ClampedArray([rgb.r, rgb.g, rgb.b, 255]);
@@ -73,6 +76,12 @@ export default {
   },
   methods: {
     ...mapActions(useCurrentFileStore, [
+      'clearEditLayer',
+      'undo',
+      'redo',
+      'flattenEdits'
+    ]),
+    ...mapActions(useWorkspaceStore, [
       'setActiveTool',
       'setEditZoom',
       'setEditBrushSize',
@@ -80,11 +89,7 @@ export default {
       'setEditBrushFlow',
       'setEditBrushHardness',
       'setEditFillTolerance',
-      'setEditFillContiguous',
-      'clearEditLayer',
-      'undo',
-      'redo',
-      'flattenEdits'
+      'setEditFillContiguous'
     ]),
     confirmClear() {
       if (!this.hasEdits) {

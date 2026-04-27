@@ -1,6 +1,7 @@
 <script>
 import { mapState, mapWritableState, mapActions } from 'pinia';
-import { useCurrentFileStore, allKeys as allCurrentFileKeys } from '@/store/CurrentFile';
+import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { processImage, getPaletteColors, applyQuantization } from '@/lib/ImageProcessor';
 import { PROJECT_EXTENSION } from '@/lib/SaveFormat';
 import { rgb2hex } from '@/lib/ColorUtils';
@@ -37,8 +38,18 @@ export default {
     };
   },
   computed: {
-    ...mapWritableState(useCurrentFileStore, allCurrentFileKeys),
-    ...mapState(useCurrentFileStore, ['hasEdits']),
+    ...mapWritableState(useCurrentFileStore, [
+      'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount',
+      'invert', 'brightness', 'contrast', 'saturation', 'hue', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness',
+      'sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments',
+      'filename', 'blockData', 'pipelineBlockData', 'activePalette', 'isDirty', 'isInitializing'
+    ]),
+    ...mapWritableState(useWorkspaceStore, [
+      'activeTool', 'previousTool', 'editFgColor', 'editZoom', 'previewTab', 'editMode', 'settingsOpen',
+      'editBrushSize', 'editBrushOpacity', 'editBrushFlow', 'editBrushHardness',
+      'editFillTolerance', 'editFillContiguous'
+    ]),
+    ...mapState(useCurrentFileStore, ['hasEdits', 'clearEditsFlag', 'editCanvas', 'image', 'alphaMode']),
     processParams() {
       return {
         seed: this.seed,
@@ -92,16 +103,18 @@ export default {
       'setImageFromFile',
       'clearImage',
       'markDirty',
-      'toggleSettings',
       'initEditCanvas',
       'compositeEditCanvas',
       'refreshBlockData',
       'applyCharEdits',
       'saveProject',
-      'setActiveTool',
       'loadProject',
       'undo',
       'redo',
+    ]),
+    ...mapActions(useWorkspaceStore, [
+      'toggleSettings',
+      'setActiveTool',
     ]),
     handleContextMenu(e) {
       if (this.activeTool === 'picker') {

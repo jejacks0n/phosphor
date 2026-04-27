@@ -1,11 +1,15 @@
 <script>
 import { mapWritableState, mapActions } from 'pinia';
-import { useCurrentFileStore, allKeys as allCurrentFileKeys } from '@/store/CurrentFile';
+import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 export default {
   name: 'SauceEditor',
   computed: {
-    ...mapWritableState(useCurrentFileStore, allCurrentFileKeys),
+    ...mapWritableState(useCurrentFileStore, [
+      'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceUserComments', 'image'
+    ]),
+    ...mapWritableState(useWorkspaceStore, ['editMode']),
   },
   methods: {
     ...mapActions(useCurrentFileStore, ['exportFile']),
