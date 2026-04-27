@@ -5,6 +5,8 @@ import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
 import { rgb2hex } from "@/lib/ColorUtils.js";
 import { applyTransforms, applyInverseTransforms } from "@/lib/PixelTransforms.js";
+import { applyQuantization } from "@/lib/ImageProcessor.js";
+import Canvas from "@/lib/Canvas.js";
 
 export const MAX_DIMENSION = 500;
 
@@ -364,6 +366,13 @@ export const useCurrentFileStore = defineStore('current_file', {
 
       // 3. Composite adjusted edit layer over pipeline at the correct offset
       ctx.drawImage(downsampled, dx, dy);
+
+      // 4. Late-stage Quantization (if activePalette exists)
+      // This ensures that during active painting, the stroke is also quantized.
+      if (this.activePalette && this.activePalette.length > 0) {
+        const wrapper = new Canvas(outputCanvas);
+        applyQuantization(wrapper, this.activePalette);
+      }
     },
 
     // Re-applies all edits (paint and characters) to blockData.

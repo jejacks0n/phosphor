@@ -22,6 +22,8 @@ export default {
       isPainting: false,
       mousePos: { x: 0, y: 0 },
       isMouseOver: false,
+      lastTouchDistance: null,
+      lastTouchCenter: null,
     };
   },
   computed: {
@@ -62,7 +64,7 @@ export default {
   },
 
   methods: {
-    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'takeSnapshot', 'getRawColorAt']),
+    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'takeSnapshot', 'getRawColorAt', 'setEditZoom']),
 
     redrawDisplay() {
       if (!this.$refs.displayCanvas || !this.canvas) return;
@@ -76,9 +78,11 @@ export default {
 
     pixelCoordsAt(event) {
       const rect = this.$refs.displayCanvas.getBoundingClientRect();
+      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+      const clientY = event.touches ? event.touches[0].clientY : event.clientY;
       return {
-        x: (event.clientX - rect.left) / this.editZoom,
-        y: (event.clientY - rect.top)  / this.editZoom,
+        x: (clientX - rect.left) / this.editZoom,
+        y: (clientY - rect.top)  / this.editZoom,
       };
     },
 
@@ -228,31 +232,40 @@ export default {
       }
 
       if (this.activeTool === 'picker') {
-        event.preventDefault();
-        event.stopPropagation();
+        if (event.type === 'mousedown') {
+          event.preventDefault();
+          event.stopPropagation();
+        }
         this.isPainting = true;
         this.pickColor(pos);
-        window.addEventListener('mousemove', this.onMouseMove);
-        window.addEventListener('mouseup', this.commitPaint);
+        if (event.type === 'mousedown') {
+          window.addEventListener('mousemove', this.onMouseMove);
+          window.addEventListener('mouseup', this.commitPaint);
+        }
         return;
       }
 
       this.isPainting = true;
       this._lastPos = pos;
       this.paintSegment(pos, pos);
-      window.addEventListener('mousemove', this.onMouseMove);
-      window.addEventListener('mouseup', this.commitPaint);
+      if (event.type === 'mousedown') {
+        window.addEventListener('mousemove', this.onMouseMove);
+        window.addEventListener('mouseup', this.commitPaint);
+      }
     },
 
     onMouseMove(event) {
       const rect = this.$refs.displayCanvas.getBoundingClientRect();
+      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+      const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
       const pos = {
-        x: (event.clientX - rect.left) / this.editZoom,
-        y: (event.clientY - rect.top)  / this.editZoom,
+        x: (clientX - rect.left) / this.editZoom,
+        y: (clientY - rect.top)  / this.editZoom,
       };
       this.mousePos = {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
+        x: clientX - rect.left,
+        y: clientY - rect.top,
       };
 
       if (!this.isPainting || !this.canvas) return;
@@ -269,11 +282,83 @@ export default {
     },
 
     commitPaint() {
+      if (!this.isPainting) return;
       this.isPainting = false;
       this._lastPos = null;
       window.removeEventListener('mousemove', this.onMouseMove);
       window.removeEventListener('mouseup', this.commitPaint);
       this.takeSnapshot();
+    },
+
+    handleTouchStart(event) {
+      if (event.touches.length === 1) {
+        this.startPaint(event);
+      } else if (event.touches.length === 2) {
+        this.lastTouchDistance = this.getTouchDistance(event.touches);
+        this.lastTouchCenter = this.getTouchCenter(event.touches);
+      }
+    },
+
+    handleTouchMove(event) {
+      if (event.touches.length === 1) {
+        if (this.isPainting) {
+          this.onMouseMove(event);
+        }
+      } else if (event.touches.length === 2 && this.lastTouchDistance !== null) {
+        event.preventDefault();
+        
+        // 1. Handle Zoom
+        const distance = this.getTouchDistance(event.touches);
+        const deltaDist = distance - this.lastTouchDistance;
+
+        if (Math.abs(deltaDist) > 20) {
+          const ZOOM_STEPS = [1, 2, 4, 8, 16];
+          const currentIdx = ZOOM_STEPS.indexOf(this.editZoom);
+          
+          if (deltaDist > 0 && currentIdx < ZOOM_STEPS.length - 1) {
+            this.setEditZoom(ZOOM_STEPS[currentIdx + 1]);
+          } else if (deltaDist < 0 && currentIdx > 0) {
+            this.setEditZoom(ZOOM_STEPS[currentIdx - 1]);
+          }
+          this.lastTouchDistance = distance;
+        }
+
+        // 2. Handle Pan
+        const center = this.getTouchCenter(event.touches);
+        if (this.lastTouchCenter) {
+          const dx = this.lastTouchCenter.x - center.x;
+          const dy = this.lastTouchCenter.y - center.y;
+          
+          // Scroll the DropZone container
+          const scrollEl = this.$el.closest('article'); // This is the DropZone article
+          if (scrollEl) {
+            scrollEl.scrollLeft += dx;
+            scrollEl.scrollTop += dy;
+          }
+        }
+        this.lastTouchCenter = center;
+      }
+    },
+
+    handleTouchEnd(event) {
+      if (this.isPainting && event.touches.length === 0) {
+        this.commitPaint();
+      }
+      this.lastTouchDistance = null;
+      this.lastTouchCenter = null;
+    },
+
+    getTouchDistance(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    },
+
+    getTouchCenter(touches) {
+      return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2
+      };
     },
   },
 };
@@ -290,6 +375,9 @@ export default {
       @mouseenter="isMouseOver = true"
       @mouseleave="isMouseOver = false"
       @mousemove="onMouseMove"
+      @touchstart="handleTouchStart"
+      @touchmove="handleTouchMove"
+      @touchend="handleTouchEnd"
     >
       <canvas ref="displayCanvas" @mousedown="startPaint"/>
       <div v-if="editZoom >= 16" class="grid-overlay"></div>
@@ -305,6 +393,7 @@ article {
 
 div.canvas-container {
   position: relative;
+  touch-action: none; /* Crucial: prevent browser default touch handling inside container */
 }
 
 canvas {

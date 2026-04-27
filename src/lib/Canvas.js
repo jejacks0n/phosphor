@@ -62,9 +62,11 @@ function paletteQuantize(arrayIn, arrayOut, palette) {
 			const d = dr * dr + dg * dg + db * db
 			if (d < minDist) { minDist = d; nearest = b }
 		}
-		const out = arrayOut[i] || {}
-		out.r = nearest.r; out.g = nearest.g; out.b = nearest.b; out.c = nearest.c; out.hex = nearest.hex; out.v = a.v
-		arrayOut[i] = out
+		
+		// Optimization: Reuse existing object if possible to reduce GC pressure
+		if (!arrayOut[i]) arrayOut[i] = { r: 0, g: 0, b: 0, a: 1, v: 0 };
+		const out = arrayOut[i];
+		out.r = nearest.r; out.g = nearest.g; out.b = nearest.b; out.c = nearest.c; out.hex = nearest.hex; out.v = a.v;
 	}
 	return arrayOut
 }
