@@ -1,7 +1,10 @@
 <script>
 import { mapState, mapWritableState, mapActions } from 'pinia';
 import { useCurrentFileStore, allKeys as allCurrentFileKeys } from '@/store/CurrentFile';
-import { processImage } from '@/lib/ImageProcessor';
+import { processImage, getPaletteColors, applyQuantization } from '@/lib/ImageProcessor';
+import { rgb2hex } from '@/lib/ColorUtils';
+import Random from 'random-seed';
+import Canvas from '@/lib/Canvas';
 
 import WorkspaceTabs from './WorkspaceTabs.vue';
 import ZeroState from './ZeroState.vue';
@@ -140,24 +143,56 @@ export default {
     async setup() {
       if (!this.image) return;
 
-      const { canvas, blockData } = await processImage(this.image, this.processParams);
-      this.pipelineCanvas = canvas.canvas;
+      const { canvas: pipelineCanvas, blockData: pipelineBlockData, paletteColors } = await processImage(this.image, this.processParams);
+      this.pipelineCanvas = pipelineCanvas.canvas;
+      this.activePalette = paletteColors;
 
       if (!this.editCanvas) {
         this.initEditCanvas(this.image.naturalWidth, this.image.naturalHeight);
       }
 
-      // Create a fresh outputCanvas each pipeline run so SourceEdit's canvas-watch fires.
+      // 1. Prepare final output canvas at grid resolution
       const oc = document.createElement('canvas');
       oc.width = this.cols;
       oc.height = this.rows;
+      oc.getContext('2d', { willReadFrequently: true });
 
-      this.blockData = blockData;
-      this.pipelineBlockData = [...blockData];
-
-      // Composite edits over the fresh pipeline output.
+      // 2. Composite paint over filtered image
       this.compositeEditCanvas(this.pipelineCanvas, oc);
-      this.refreshBlockData(oc);
+
+      // 3. Late-stage Quantization (forced into the LOCKED palette from the base image)
+      if (this.activePalette) {
+        const canvasWrapper = new Canvas(oc);
+        applyQuantization(canvasWrapper, this.activePalette);
+      }
+
+      // 4. Generate blockData from final quantized pixels
+      const rand = new Random(this.seed);
+      const charset = this.chars || "▄";
+      const targetDataLength = this.cols * this.rows;
+      const finalBlockData = new Array(targetDataLength);
+      
+      const ctx = oc.getContext('2d', { willReadFrequently: true });
+      const finalPixels = ctx.getImageData(0, 0, this.cols, this.rows).data;
+
+      for (let i = 0; i < targetDataLength; i++) {
+        const i4 = i * 4;
+        const r = finalPixels[i4], g = finalPixels[i4 + 1], b = finalPixels[i4 + 2];
+        const hex = rgb2hex({ r, g, b });
+
+        finalBlockData[i] = {
+          r, g, b,
+          hex,
+          c: [r, g, b],
+          char: charset[rand(charset.length)]
+        };
+      }
+
+      this.blockData = finalBlockData;
+      this.pipelineBlockData = pipelineBlockData || [...finalBlockData];
+      
+      // Still apply char overrides on top
+      this.applyCharEdits();
 
       this.outputCanvas = oc;
     },

@@ -4,29 +4,31 @@
 // to match the pipeline output without relying on ctx.filter (no Safari < 18 support).
 
 function rgb2hsv(r, g, b) {
-  let px, py, pz, pw;
-  if (g >= b) { px = g; py = b; pz = 0;  pw = -1 / 3; }
-  else         { px = b; py = g; pz = -1; pw =  2 / 3; }
-  let qx, qy, qz, qw;
-  if (r >= px) { qx = r;  qy = py; qz = pz; qw = px; }
-  else          { qx = px; qy = py; qz = pw; qw = r;  }
-  const d = qx - Math.min(qw, qy);
-  const e = 1e-10;
-  const h = qz + (qw - qy) / (6 * d + e);
-  return [((h % 1) + 1) % 1, d / (qx + e), qx];
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  let h;
+  if (d === 0) h = 0;
+  else if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return [h / 6, max === 0 ? 0 : d / max, max];
 }
 
 function hsv2rgb(h, s, v) {
-  const fract = x => x - Math.floor(x);
-  const pr = Math.abs(fract(h + 1)     * 6 - 3);
-  const pg = Math.abs(fract(h + 2 / 3) * 6 - 3);
-  const pb = Math.abs(fract(h + 1 / 3) * 6 - 3);
-  const clamp01 = x => Math.max(0, Math.min(1, x));
-  return [
-    v * (1 - s + clamp01(pr - 1) * s),
-    v * (1 - s + clamp01(pg - 1) * s),
-    v * (1 - s + clamp01(pb - 1) * s),
-  ];
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  switch (i % 6) {
+    case 0: return [v, t, p];
+    case 1: return [q, v, p];
+    case 2: return [p, v, t];
+    case 3: return [p, q, v];
+    case 4: return [t, p, v];
+    case 5: return [v, p, q];
+  }
 }
 
 // Applies brightness/contrast/saturation/hue/invert to `data` (Uint8ClampedArray) in place.
@@ -35,11 +37,8 @@ export function applyTransforms(data, brightness, contrast, saturation, hue, inv
   const br = parseFloat(brightness) / 100;
   const ct = parseFloat(contrast) / 100;
   const sa = parseFloat(saturation) / 100;
-  const hu = parseFloat(hue) / 360;
+  const hu = (parseFloat(hue) / 360) % 1;
   const inv = parseFloat(invert) / 100;
-
-  if (br === 1 && ct === 1 && sa === 1 && hu === 0 && inv === 0) return;
-  const needHSV = sa !== 1 || hu !== 0;
 
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] === 0) continue;
@@ -48,22 +47,23 @@ export function applyTransforms(data, brightness, contrast, saturation, hue, inv
     let g = data[i + 1] / 255;
     let b = data[i + 2] / 255;
 
-    // Brightness
+    // 1. Brightness
     r *= br; g *= br; b *= br;
 
-    // Contrast
+    // 2. Contrast
     r = (r - 0.5) * ct + 0.5;
     g = (g - 0.5) * ct + 0.5;
     b = (b - 0.5) * ct + 0.5;
 
-    if (needHSV) {
+    // 3. Saturation & Hue
+    if (sa !== 1 || hu !== 0) {
       const [h, s, v] = rgb2hsv(Math.max(0, r), Math.max(0, g), Math.max(0, b));
-      const ns = Math.max(0, Math.min(1, s * sa));
-      const nh = ((h + hu) % 1 + 1) % 1;
+      const nh = (h + hu + 1) % 1;
+      const ns = Math.max(0, s * sa);
       [r, g, b] = hsv2rgb(nh, ns, v);
     }
 
-    // Invert
+    // 4. Invert
     r = r * (1 - inv) + (1 - r) * inv;
     g = g * (1 - inv) + (1 - g) * inv;
     b = b * (1 - inv) + (1 - b) * inv;
@@ -75,16 +75,13 @@ export function applyTransforms(data, brightness, contrast, saturation, hue, inv
 }
 
 // Inverts the brightness/contrast/saturation/hue/invert transforms.
-// Best effort for destructive transforms (saturation 0, brightness 0, etc).
+// Samples the final result and tries to find the original raw color.
 export function applyInverseTransforms(data, brightness, contrast, saturation, hue, invert) {
   const br = parseFloat(brightness) / 100;
   const ct = parseFloat(contrast) / 100;
   const sa = parseFloat(saturation) / 100;
-  const hu = parseFloat(hue) / 360;
+  const hu = (parseFloat(hue) / 360) % 1;
   const inv = parseFloat(invert) / 100;
-
-  if (br === 1 && ct === 1 && sa === 1 && hu === 0 && inv === 0) return;
-  const needHSV = sa !== 1 || hu !== 0;
 
   for (let i = 0; i < data.length; i += 4) {
     let r = data[i] / 255;
@@ -99,10 +96,10 @@ export function applyInverseTransforms(data, brightness, contrast, saturation, h
     }
 
     // 2. Un-hue/saturation
-    if (needHSV) {
+    if (sa !== 1 || hu !== 0) {
       const [h, s, v] = rgb2hsv(Math.max(0, r), Math.max(0, g), Math.max(0, b));
+      const nh = (h - hu + 1) % 1;
       const ns = sa <= 0.01 ? s : Math.max(0, Math.min(1, s / sa));
-      const nh = ((h - hu) % 1 + 1) % 1;
       [r, g, b] = hsv2rgb(nh, ns, v);
     }
 

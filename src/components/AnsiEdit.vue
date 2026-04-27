@@ -69,7 +69,7 @@ export default {
     if (this._renderFrame) cancelAnimationFrame(this._renderFrame);
   },
   methods: {
-    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot']),
+    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot', 'getRawColorAt']),
 
     queueRender() {
       if (this._renderFrame) return;
@@ -133,17 +133,7 @@ export default {
     },
 
     pickColor(pos) {
-      const ix = Math.floor(pos.x);
-      const iy = Math.floor(pos.y);
-      if (ix < 0 || iy < 0 || ix >= this.cols || iy >= this.rows) return;
-      const pixelI = iy * this.cols + ix;
-      const data = this.blockData[pixelI];
-      if (data) {
-        const rgb = hex2rgb(data.hex);
-        const pixelData = new Uint8ClampedArray([rgb.r, rgb.g, rgb.b, 255]);
-        applyInverseTransforms(pixelData, this.brightness, this.contrast, this.saturation, this.hue, this.invert);
-        this.editFgColor = rgb2hex({ r: pixelData[0], g: pixelData[1], b: pixelData[2] });
-      }
+      this.editFgColor = this.getRawColorAt(pos.x, pos.y);
     },
 
     startPaint(event) {

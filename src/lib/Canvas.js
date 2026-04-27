@@ -72,10 +72,14 @@ function paletteQuantize(arrayIn, arrayOut, palette) {
 export default class Canvas {
 	constructor(sourceCanvas) {
 		this.canvas = sourceCanvas || document.createElement('canvas')
-		this.canvas.width = 1
-		this.canvas.height = 1
+		if (!sourceCanvas) {
+			this.canvas.width = 1
+			this.canvas.height = 1
+		}
 		this.ctx = this.canvas.getContext('2d', { willReadFrequently: true })
-		this.ctx.putImageData(this.ctx.createImageData(1, 1), 0, 0);
+		if (!sourceCanvas) {
+			this.ctx.putImageData(this.ctx.createImageData(1, 1), 0, 0);
+		}
 
 		this.pixels = []
 		this.loadPixels()

@@ -61,7 +61,7 @@ export default {
   },
 
   methods: {
-    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'takeSnapshot']),
+    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'takeSnapshot', 'getRawColorAt']),
 
     redrawDisplay() {
       if (!this.$refs.displayCanvas || !this.canvas) return;
@@ -201,12 +201,7 @@ export default {
     },
 
     pickColor(pos) {
-      if (!this.canvas) return;
-      const ctx = this.canvas.getContext('2d', { willReadFrequently: true });
-      const pixel = ctx.getImageData(Math.floor(pos.x), Math.floor(pos.y), 1, 1).data;
-      const pixelData = new Uint8ClampedArray([pixel[0], pixel[1], pixel[2], 255]);
-      applyInverseTransforms(pixelData, this.brightness, this.contrast, this.saturation, this.hue, this.invert);
-      this.editFgColor = rgb2hex({ r: pixelData[0], g: pixelData[1], b: pixelData[2] });
+      this.editFgColor = this.getRawColorAt(pos.x, pos.y);
     },
 
     startPaint(event) {

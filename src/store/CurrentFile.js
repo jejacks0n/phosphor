@@ -4,7 +4,7 @@ import { useLocalStorage } from '@vueuse/core';
 import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
 import { rgb2hex } from "@/lib/ColorUtils.js";
-import { applyTransforms } from "@/lib/PixelTransforms.js";
+import { applyTransforms, applyInverseTransforms } from "@/lib/PixelTransforms.js";
 
 export const MAX_DIMENSION = 500;
 
@@ -38,6 +38,7 @@ export const useCurrentFileStore = defineStore('current_file', {
     activeTool: 'pencil',
     previousTool: null,
     editFgColor: '#ffffff',
+    editFillTolerance: useLocalStorage('current_file.editFillTolerance', 0),
     editZoom: 4,
     editBrushSize: 4,
 
@@ -68,6 +69,7 @@ export const useCurrentFileStore = defineStore('current_file', {
     filename: null,
     blockData: shallowRef([]),
     pipelineBlockData: shallowRef([]),
+    activePalette: shallowRef([]),
     isDirty: false,
     editMode: false,
     isInitializing: false,
@@ -81,7 +83,7 @@ export const useCurrentFileStore = defineStore('current_file', {
     canUndo: (state) => state.historyIndex > 0,
     canRedo: (state) => state.historyIndex < state.historyStack.length - 1,
     hasEdits() {
-      return this.charEditMap.size > 0 || this.hasPaint || this.isDirty;
+      return this.charEditMap.size > 0 || this.hasPaint;
     },
     imageRatio: (state) => {
       if (!state.image) return 1;
@@ -147,6 +149,7 @@ export const useCurrentFileStore = defineStore('current_file', {
           historyStack: [],
           historyIndex: -1,
         });
+        this._rawCanvas = null;
         setTimeout(() => { this.isInitializing = false; }, 0);
       };
       image.src = URL.createObjectURL(file);
@@ -288,42 +291,70 @@ export const useCurrentFileStore = defineStore('current_file', {
       this.takeSnapshot();
     },
 
+    getFitParams(w, h) {
+      if (!this.image) return { dx: 0, dy: 0, dw: w, dh: h };
+      const sw = this.image.naturalWidth || this.image.width;
+      const sh = this.image.naturalHeight || this.image.height;
+      const sa = sw / sh;
+      const ta = w / h;
+      let dw, dh;
+      if (sa > ta) {
+        dw = w;
+        dh = w / sa;
+      } else {
+        dw = h * sa;
+        dh = h;
+      }
+      const dx = Math.floor((w - dw) * 0.5);
+      const dy = Math.floor((h - dh) * 0.5);
+      return { dx, dy, dw: Math.floor(dw), dh: Math.floor(dh) };
+    },
+
     // Composites pipelineCanvas + editCanvas into outputCanvas.
     // The editCanvas pixels are transformed with the same brightness/contrast/saturation/hue/invert
     // as the pipeline so painted strokes respond to adjustments identically to the base image.
     compositeEditCanvas(pipelineCanvas, outputCanvas) {
       if (!outputCanvas || !pipelineCanvas) return;
       const ctx = outputCanvas.getContext('2d', { willReadFrequently: true });
-      ctx.drawImage(pipelineCanvas, 0, 0, outputCanvas.width, outputCanvas.height);
-
-      if (!this.editCanvas) return;
-
       const w = outputCanvas.width, h = outputCanvas.height;
 
-      // 1. Create a tiny temp canvas to downsample the high-res edit layer to current resolution
-      const downsampled = document.createElement('canvas');
-      downsampled.width = w;
-      downsampled.height = h;
-      const dsCtx = downsampled.getContext('2d', { willReadFrequently: true });
-      dsCtx.drawImage(this.editCanvas, 0, 0, w, h);
+      // Clear output canvas
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, w, h);
 
-      // 2. Run adjustments on the tiny canvas (performance optimized)
+      // Draw pipeline output (already fitted by Canvas.fit)
+      ctx.drawImage(pipelineCanvas, 0, 0, w, h);
+
+      if (!this.editCanvas || !this.image) return;
+
+      const { dx, dy, dw, dh } = this.getFitParams(w, h);
+
+      // 1. Create a temp canvas for the adjusted edit layer
+      const downsampled = document.createElement('canvas');
+      downsampled.width = dw;
+      downsampled.height = dh;
+      const dsCtx = downsampled.getContext('2d', { willReadFrequently: true });
+      
+      // Draw high-res edit canvas into the fitted dimensions
+      dsCtx.drawImage(this.editCanvas, 0, 0, dw, dh);
+
+      // 2. Run adjustments on the downsampled edit layer
       const br = parseFloat(this.brightness) / 100;
       const ct = parseFloat(this.contrast) / 100;
-      const sa = parseFloat(this.saturation) / 100;
+      const sa_val = parseFloat(this.saturation) / 100;
       const hu = parseFloat(this.hue) / 360;
       const inv = parseFloat(this.invert) / 100;
 
-      const needsTransform = br !== 1 || ct !== 1 || sa !== 1 || hu !== 0 || inv !== 0;
+      const needsTransform = br !== 1 || ct !== 1 || sa_val !== 1 || hu !== 0 || inv !== 0;
 
       if (needsTransform) {
-        const id = dsCtx.getImageData(0, 0, w, h);
+        const id = dsCtx.getImageData(0, 0, dw, dh);
         applyTransforms(id.data, this.brightness, this.contrast, this.saturation, this.hue, this.invert);
         dsCtx.putImageData(id, 0, 0);
       }
 
-      // 3. Composite adjusted edit layer over pipeline
-      ctx.drawImage(downsampled, 0, 0);
+      // 3. Composite adjusted edit layer over pipeline at the correct offset
+      ctx.drawImage(downsampled, dx, dy);
     },
 
     // Re-applies all edits (paint and characters) to blockData.
@@ -339,22 +370,33 @@ export const useCurrentFileStore = defineStore('current_file', {
       }
 
       const newBlockData = this.pipelineBlockData.slice();
+      const { dx, dy, dw, dh } = this.getFitParams(w, h);
 
       // 1. Apply paint from editCanvas if it exists
       if (this.hasPaint && this.editCanvas) {
         const editTemp = document.createElement('canvas');
-        editTemp.width = w;
-        editTemp.height = h;
-        editTemp.getContext('2d', { willReadFrequently: true }).drawImage(this.editCanvas, 0, 0, w, h);
+        editTemp.width = dw;
+        editTemp.height = dh;
+        const etCtx = editTemp.getContext('2d', { willReadFrequently: true });
+        etCtx.drawImage(this.editCanvas, 0, 0, dw, dh);
 
-        const editData = editTemp.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+        const editData = etCtx.getImageData(0, 0, dw, dh).data;
         const outData = outputCanvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
 
-        for (let i = 0; i < w * h; i++) {
-          if (editData[i * 4 + 3] > 0) {
-            const i4 = i * 4;
-            const r = outData[i4], g = outData[i4 + 1], b = outData[i4 + 2];
-            newBlockData[i] = { ...newBlockData[i], r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] };
+        for (let y = 0; y < dh; y++) {
+          const ty = y + dy;
+          if (ty < 0 || ty >= h) continue;
+          for (let x = 0; x < dw; x++) {
+            const tx = x + dx;
+            if (tx < 0 || tx >= w) continue;
+
+            const iEdit = (y * dw + x) * 4;
+            if (editData[iEdit + 3] > 0) {
+              const iOut = ty * w + tx;
+              const iOut4 = iOut * 4;
+              const r = outData[iOut4], g = outData[iOut4 + 1], b = outData[iOut4 + 2];
+              newBlockData[iOut] = { ...newBlockData[iOut], r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] };
+            }
           }
         }
       }
@@ -374,6 +416,50 @@ export const useCurrentFileStore = defineStore('current_file', {
       this.blockData = newBlockData;
     },
 
+    // Returns the effectively "un-filtered" hex color at grid coordinates x, y.
+    // Maps grid coordinates back to the original source image's pixels or raw paint layer.
+    getRawColorAt(x, y) {
+      if (!this.image) return '#000000';
+      const { dx, dy, dw, dh } = this.getFitParams(this.cols, this.rows);
+      
+      const ix_grid = x - dx;
+      const iy_grid = y - dy;
+      
+      // If outside image area, return black
+      if (ix_grid < 0 || iy_grid < 0 || ix_grid >= dw || iy_grid >= dh) return '#000000';
+      
+      // 1. Check Edit Canvas (Paint) first.
+      // If there's paint there, we pick the RAW paint color.
+      if (this.editCanvas) {
+        const wScale = this.editCanvas.width / dw;
+        const hScale = this.editCanvas.height / dh;
+        const ctx = this.editCanvas.getContext('2d', { willReadFrequently: true });
+        const px = Math.floor(ix_grid * wScale);
+        const py = Math.floor(iy_grid * hScale);
+        const pixel = ctx.getImageData(px, py, 1, 1).data;
+        if (pixel[3] > 0) {
+          return rgb2hex({ r: pixel[0], g: pixel[1], b: pixel[2] });
+        }
+      }
+      
+      // 2. Check Original Image.
+      // We sample the TRUE RAW color from the source image.
+      if (!this._rawCanvas) {
+        this._rawCanvas = document.createElement('canvas');
+        this._rawCanvas.width = this.image.naturalWidth || this.image.width;
+        this._rawCanvas.height = this.image.naturalHeight || this.image.height;
+        this._rawCanvas.getContext('2d', { willReadFrequently: true }).drawImage(this.image, 0, 0);
+      }
+      
+      const rw = this._rawCanvas.width, rh = this._rawCanvas.height;
+      const rx = Math.floor((ix_grid / dw) * rw);
+      const ry = Math.floor((iy_grid / dh) * rh);
+      
+      const rCtx = this._rawCanvas.getContext('2d', { willReadFrequently: true });
+      const rPixel = rCtx.getImageData(rx, ry, 1, 1).data;
+      return rgb2hex({ r: rPixel[0], g: rPixel[1], b: rPixel[2] });
+    },
+
     // Writes pixels to the editCanvas (raw paint color + brush alpha, not pre-blended),
     // composites pipelineCanvas + editCanvas into outputCanvas, then reads back the final
     // composited colors from outputCanvas to update blockData. This ensures adjustments
@@ -383,17 +469,25 @@ export const useCurrentFileStore = defineStore('current_file', {
       this.hasPaint = true;
       const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true });
 
-      // Calculate scaling factor between ANSI grid and high-res edit canvas
-      const wScale = this.editCanvas.width / this.cols;
-      const hScale = this.editCanvas.height / this.rows;
+      const { dx, dy, dw, dh } = this.getFitParams(this.cols, this.rows);
+      
+      // Calculate scaling factor between the FITTED image area in the grid and high-res canvas
+      const wScale = this.editCanvas.width / dw;
+      const hScale = this.editCanvas.height / dh;
 
       for (const { x, y, r, g, b, alpha } of pixels) {
+        // Map grid coordinate to image-space coordinate
+        const ix = x - dx;
+        const iy = y - dy;
+
+        // Skip if painting outside the actual image area (in the black bars)
+        if (ix < 0 || iy < 0 || ix >= dw || iy >= dh) continue;
+
         editCtx.globalAlpha = alpha;
         editCtx.fillStyle = `rgb(${r},${g},${b})`;
-        // Map ANSI cell to a high-res rectangle on the edit canvas
         editCtx.fillRect(
-          Math.floor(x * wScale),
-          Math.floor(y * hScale),
+          Math.floor(ix * wScale),
+          Math.floor(iy * hScale),
           Math.ceil(wScale),
           Math.ceil(hScale)
         );
@@ -404,14 +498,18 @@ export const useCurrentFileStore = defineStore('current_file', {
       
       const snapshot = outputCanvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, this.cols, this.rows);
       const newBlockData = this.blockData.slice();
+
       for (const { x, y } of pixels) {
         const i = y * this.cols + x;
         if (newBlockData[i]) {
-          const i4 = i * 4;
-          const r = snapshot.data[i4], g = snapshot.data[i4 + 1], b = snapshot.data[i4 + 2];
-          newBlockData[i] = { ...newBlockData[i], r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] };
+          // Only update blockData if we're inside the image area
+          if (x >= dx && x < dx + dw && y >= dy && y < dy + dh) {
+            const i4 = i * 4;
+            const r = snapshot.data[i4], g = snapshot.data[i4 + 1], b = snapshot.data[i4 + 2];
+            newBlockData[i] = { ...newBlockData[i], r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] };
+          }
           
-          // Also apply any character override for this cell
+          // Apply any character override for this cell
           const ansiRow = Math.floor(y / 2);
           const cellIndex = ansiRow * this.cols + x;
           if (this.charEditMap.has(cellIndex)) {
@@ -426,13 +524,19 @@ export const useCurrentFileStore = defineStore('current_file', {
     eraseEditPixels(pixels, pipelineCanvas, outputCanvas) {
       if (!this.editCanvas || !pixels.length) return;
       const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true });
-      const wScale = this.editCanvas.width / this.cols;
-      const hScale = this.editCanvas.height / this.rows;
+      
+      const { dx, dy, dw, dh } = this.getFitParams(this.cols, this.rows);
+      const wScale = this.editCanvas.width / dw;
+      const hScale = this.editCanvas.height / dh;
 
       for (const { x, y } of pixels) {
+        const ix = x - dx;
+        const iy = y - dy;
+        if (ix < 0 || iy < 0 || ix >= dw || iy >= dh) continue;
+
         editCtx.clearRect(
-          Math.floor(x * wScale),
-          Math.floor(y * hScale),
+          Math.floor(ix * wScale),
+          Math.floor(iy * hScale),
           Math.ceil(wScale),
           Math.ceil(hScale)
         );
@@ -442,14 +546,17 @@ export const useCurrentFileStore = defineStore('current_file', {
 
       const snapshot = outputCanvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, this.cols, this.rows);
       const newBlockData = this.blockData.slice();
+
       for (const { x, y } of pixels) {
         const i = y * this.cols + x;
         if (newBlockData[i]) {
-          const i4 = i * 4;
-          const r = snapshot.data[i4], g = snapshot.data[i4 + 1], b = snapshot.data[i4 + 2];
-          newBlockData[i] = { ...newBlockData[i], r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] };
+          if (x >= dx && x < dx + dw && y >= dy && y < dy + dh) {
+            const i4 = i * 4;
+            const r = snapshot.data[i4], g = snapshot.data[i4 + 1], b = snapshot.data[i4 + 2];
+            newBlockData[i] = { ...newBlockData[i], r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] };
+          }
           
-          // Also apply any character override for this cell
+          // Apply any character override for this cell
           const ansiRow = Math.floor(y / 2);
           const cellIndex = ansiRow * this.cols + x;
           if (this.charEditMap.has(cellIndex)) {
@@ -570,7 +677,7 @@ export const useCurrentFileStore = defineStore('current_file', {
       const canvas = document.createElement('canvas');
       canvas.width = this.image.naturalWidth || this.image.width;
       canvas.height = this.image.naturalHeight || this.image.height;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
       // 1. Draw original image
       ctx.drawImage(this.image, 0, 0);
@@ -648,9 +755,12 @@ export const allKeys = [
   'filename',
   'blockData',
   'pipelineBlockData',
+  'activePalette',
   'isDirty',
   'editMode',
   'settingsOpen',
   'maxCols',
   'maxRows',
+  'historyStack',
+  'historyIndex',
 ];
