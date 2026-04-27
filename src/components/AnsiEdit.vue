@@ -5,6 +5,7 @@ import { hex2rgb, rgb2hex } from '@/lib/ColorUtils';
 import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { applyInverseTransforms } from '@/lib/PixelTransforms';
+import { floodFill } from '@/lib/FloodFill';
 
 export default {
   name: 'AnsiEdit',
@@ -15,6 +16,7 @@ export default {
       mousePos: { x: 0, y: 0 },
       isMouseOver: false,
       metrics: null,
+      flippedCells: new Set(), // Set of "col,row" strings
     };
   },
   props: {
@@ -30,7 +32,7 @@ export default {
   computed: {
     ...mapState(useCurrentFileStore, [
       'blockData', 'cols', 'rows', 'activeTool', 'editBrushSize', 'chars',
-      'brightness', 'contrast', 'saturation', 'hue', 'invert'
+      'brightness', 'contrast', 'saturation', 'hue', 'invert', 'editFillTolerance', 'editFillContiguous'
     ]),
     ...mapWritableState(useCurrentFileStore, ['editMode', 'editFgColor']),
     pickerChars() {
@@ -69,7 +71,7 @@ export default {
     if (this._renderFrame) cancelAnimationFrame(this._renderFrame);
   },
   methods: {
-    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot', 'getRawColorAt']),
+    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot', 'getRawColorAt', 'flipAnsiColors']),
 
     queueRender() {
       if (this._renderFrame) return;
@@ -143,6 +145,29 @@ export default {
       const pixel = this.pixelAt(event);
       if (!pixel) return;
 
+      if (this.activeTool === 'flip') {
+        const col = Math.floor(pixel.x);
+        const row = Math.floor(pixel.y / 2);
+        this.flippedCells.clear();
+        this.flippedCells.add(`${col},${row}`);
+        this.flipAnsiColors(col, row, this.pipelineCanvas, this.outputCanvas);
+        this.isPainting = true;
+        window.addEventListener('mousemove', this.onMouseMove);
+        window.addEventListener('mouseup', this.commitPaint);
+        return;
+      }
+
+      if (this.activeTool === 'bucket' && this.outputCanvas) {
+        const ix = Math.floor(pixel.x);
+        const iy = Math.floor(pixel.y);
+        const ctx = this.outputCanvas.getContext('2d', { willReadFrequently: true });
+        const imageData = ctx.getImageData(0, 0, this.cols, this.rows);
+        const pixels = floodFill(imageData, ix, iy, this.editFillTolerance, this.editFillContiguous);
+        this.paintPixels(pixels);
+        this.takeSnapshot();
+        return;
+      }
+
       if (this.activeTool === 'picker') {
         event.preventDefault();
         event.stopPropagation();
@@ -180,6 +205,17 @@ export default {
 
       if (!this.isPainting) return;
 
+      if (this.activeTool === 'flip') {
+        const col = Math.floor(pixel.x);
+        const row = Math.floor(pixel.y / 2);
+        const key = `${col},${row}`;
+        if (!this.flippedCells.has(key)) {
+          this.flippedCells.add(key);
+          this.flipAnsiColors(col, row, this.pipelineCanvas, this.outputCanvas);
+        }
+        return;
+      }
+
       if (this.activeTool === 'picker') {
         this.pickColor(pixel);
         return;
@@ -193,6 +229,7 @@ export default {
     commitPaint() {
       this.isPainting = false;
       this._lastPos = null;
+      this.flippedCells.clear();
       window.removeEventListener('mousemove', this.onMouseMove);
       window.removeEventListener('mouseup', this.commitPaint);
       this.takeSnapshot();
@@ -313,7 +350,7 @@ export default {
 <template>
   <article
     :class="{ 
-      'pencil-tool': activeTool === 'pencil' || activeTool === 'char',
+      'pencil-tool': activeTool === 'pencil' || activeTool === 'char' || activeTool === 'bucket' || activeTool === 'flip',
       'picker-tool': activeTool === 'picker'
     }"
     @mouseenter="isMouseOver = true"

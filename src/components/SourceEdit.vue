@@ -3,6 +3,7 @@ import { mapState, mapWritableState, mapActions } from 'pinia';
 import { useCurrentFileStore } from '@/store/CurrentFile';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils';
 import { applyInverseTransforms } from '@/lib/PixelTransforms';
+import { floodFill } from '@/lib/FloodFill';
 
 export default {
   name: 'SourceEdit',
@@ -26,7 +27,7 @@ export default {
   computed: {
     ...mapState(useCurrentFileStore, [
       'cols', 'rows', 'editZoom', 'editBrushSize', 'activeTool',
-      'brightness', 'contrast', 'saturation', 'hue', 'invert'
+      'brightness', 'contrast', 'saturation', 'hue', 'invert', 'editFillTolerance', 'editFillContiguous'
     ]),
     ...mapWritableState(useCurrentFileStore, ['editMode', 'editFgColor']),
     brushPreviewSize() {
@@ -208,6 +209,24 @@ export default {
       if (!this.canvas || !this.pipelineCanvas) return;
       const pos = this.pixelCoordsAt(event);
 
+      if (this.activeTool === 'bucket' && this.canvas) {
+        const ix = Math.floor(pos.x);
+        const iy = Math.floor(pos.y);
+        const ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+        const imageData = ctx.getImageData(0, 0, this.cols, this.rows);
+        const pixels = floodFill(imageData, ix, iy, this.editFillTolerance, this.editFillContiguous);
+        
+        const paintRgb = hex2rgb(this.editFgColor);
+        const pixelPayload = pixels.map(p => ({
+          ...p, r: paintRgb.r, g: paintRgb.g, b: paintRgb.b
+        }));
+        
+        this.paintEditPixels(pixelPayload, this.pipelineCanvas, this.canvas);
+        this.takeSnapshot();
+        this.redrawDisplay();
+        return;
+      }
+
       if (this.activeTool === 'picker') {
         event.preventDefault();
         event.stopPropagation();
@@ -265,7 +284,7 @@ export default {
     <div
       class="canvas-container"
       :class="{ 
-        'pencil-tool': activeTool === 'pencil',
+        'pencil-tool': activeTool === 'pencil' || activeTool === 'bucket',
         'picker-tool': activeTool === 'picker'
       }"
       @mouseenter="isMouseOver = true"

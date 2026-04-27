@@ -39,6 +39,7 @@ export const useCurrentFileStore = defineStore('current_file', {
     previousTool: null,
     editFgColor: '#ffffff',
     editFillTolerance: useLocalStorage('current_file.editFillTolerance', 0),
+    editFillContiguous: useLocalStorage('current_file.editFillContiguous', true),
     editZoom: 4,
     editBrushSize: 4,
 
@@ -280,6 +281,14 @@ export const useCurrentFileStore = defineStore('current_file', {
     },
     setEditBrushSize(size) {
       this.editBrushSize = size;
+    },
+
+    setEditFillTolerance(tolerance) {
+      this.editFillTolerance = tolerance;
+    },
+
+    setEditFillContiguous(contiguous) {
+      this.editFillContiguous = contiguous;
     },
 
     // Creates the edit canvas at the given dimensions (first run only).
@@ -584,6 +593,24 @@ export const useCurrentFileStore = defineStore('current_file', {
       this.applyCharEdits();
     },
 
+    flipAnsiColors(col, ansiRow, pipelineCanvas, outputCanvas) {
+      if (!this.editCanvas) return;
+      const bgIdx = ansiRow * this.cols * 2 + col;
+      const fgIdx = bgIdx + this.cols;
+
+      if (!this.blockData[bgIdx] || !this.blockData[fgIdx]) return;
+
+      const bg = this.blockData[bgIdx];
+      const fg = this.blockData[fgIdx];
+
+      // Paint BG color onto FG position and vice versa
+      // We use paintEditPixels which handles the scaling and compositing
+      this.paintEditPixels([
+        { x: col, y: ansiRow * 2, r: fg.r, g: fg.g, b: fg.b, alpha: 1 },
+        { x: col, y: ansiRow * 2 + 1, r: bg.r, g: bg.g, b: bg.b, alpha: 1 },
+      ], pipelineCanvas, outputCanvas);
+    },
+
     // Removes character overrides for specific ANSI cells.
     clearCharEditsAt(pixels) {
       if (!this.charEditMap.size) return;
@@ -744,6 +771,8 @@ export const allKeys = [
   'activeTool',
   'previousTool',
   'editFgColor',
+  'editFillTolerance',
+  'editFillContiguous',
   'editZoom',
   'editBrushSize',
   'editCanvas',
