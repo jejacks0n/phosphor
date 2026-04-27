@@ -17,6 +17,8 @@ export default {
       isMouseOver: false,
       metrics: null,
       flippedCells: new Set(), // Set of "col,row" strings
+      lastTouchDistance: null,
+      lastTouchCenter: null,
     };
   },
   props: {
@@ -34,7 +36,7 @@ export default {
       'blockData', 'cols', 'rows', 'activeTool', 'editBrushSize', 'chars',
       'brightness', 'contrast', 'saturation', 'hue', 'invert', 'editFillTolerance', 'editFillContiguous'
     ]),
-    ...mapWritableState(useCurrentFileStore, ['editMode', 'editFgColor']),
+    ...mapWritableState(useCurrentFileStore, ['editMode', 'editFgColor', 'editZoom']),
     pickerChars() {
       if (!this.chars) return [];
       return [...new Set(this.chars.split(''))].filter(c => c.trim());
@@ -71,7 +73,7 @@ export default {
     if (this._renderFrame) cancelAnimationFrame(this._renderFrame);
   },
   methods: {
-    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot', 'getRawColorAt', 'flipAnsiColors']),
+    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot', 'getRawColorAt', 'flipAnsiColors', 'setEditZoom']),
 
     queueRender() {
       if (this._renderFrame) return;
@@ -128,14 +130,16 @@ export default {
     pixelAt(event) {
       if (!this.metrics) return null;
       const rect = this.$refs.pre.getBoundingClientRect();
+      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+      const clientY = event.touches ? event.touches[0].clientY : event.clientY;
       return {
-        x: (event.clientX - rect.left) / this.metrics.cellWidth,
-        y: (event.clientY - rect.top)  / (this.metrics.lineHeight / 2)
+        x: (clientX - rect.left) / this.metrics.cellWidth,
+        y: (clientY - rect.top)  / (this.metrics.lineHeight / 2)
       };
     },
 
     pickColor(pos) {
-      this.editFgColor = this.getRawColorAt(pos.x, pos.y);
+      this.editFgColor = this.getRawColorAt(pos.x, pos.y, this.outputCanvas);
     },
 
     startPaint(event) {
@@ -152,8 +156,10 @@ export default {
         this.flippedCells.add(`${col},${row}`);
         this.flipAnsiColors(col, row, this.pipelineCanvas, this.outputCanvas);
         this.isPainting = true;
-        window.addEventListener('mousemove', this.onMouseMove);
-        window.addEventListener('mouseup', this.commitPaint);
+        if (event.type === 'mousedown') {
+          window.addEventListener('mousemove', this.onMouseMove);
+          window.addEventListener('mouseup', this.commitPaint);
+        }
         return;
       }
 
@@ -169,38 +175,47 @@ export default {
       }
 
       if (this.activeTool === 'picker') {
-        event.preventDefault();
-        event.stopPropagation();
+        if (event.type === 'mousedown') {
+          event.preventDefault();
+          event.stopPropagation();
+        }
         this.isPainting = true;
         this.pickColor(pixel);
-        window.addEventListener('mousemove', this.onMouseMove);
-        window.addEventListener('mouseup', this.commitPaint);
+        if (event.type === 'mousedown') {
+          window.addEventListener('mousemove', this.onMouseMove);
+          window.addEventListener('mouseup', this.commitPaint);
+        }
         return;
       }
 
       if (this.activeTool === 'char') {
         const col = Math.floor(pixel.x);
         const row = Math.floor(pixel.y / 2);
-        this.picker = { col, row, x: event.clientX, y: event.clientY };
+        this.picker = { col, row, x: event.touches ? event.touches[0].clientX : event.clientX, y: event.touches ? event.touches[0].clientY : event.clientY };
         return;
       }
 
       this.isPainting = true;
       this._lastPos = pixel;
       this.paintSegment(pixel, pixel);
-      window.addEventListener('mousemove', this.onMouseMove);
-      window.addEventListener('mouseup', this.commitPaint);
+      if (event.type === 'mousedown') {
+        window.addEventListener('mousemove', this.onMouseMove);
+        window.addEventListener('mouseup', this.commitPaint);
+      }
     },
 
     onMouseMove(event) {
       const rect = this.$refs.pre.getBoundingClientRect();
+      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+      const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
       const pixel = {
-        x: (event.clientX - rect.left) / this.metrics.cellWidth,
-        y: (event.clientY - rect.top)  / (this.metrics.lineHeight / 2)
+        x: (clientX - rect.left) / this.metrics.cellWidth,
+        y: (clientY - rect.top)  / (this.metrics.lineHeight / 2)
       };
       this.mousePos = {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
+        x: clientX - rect.left,
+        y: clientY - rect.top,
       };
 
       if (!this.isPainting) return;
@@ -227,6 +242,7 @@ export default {
     },
 
     commitPaint() {
+      if (!this.isPainting) return;
       this.isPainting = false;
       this._lastPos = null;
       this.flippedCells.clear();
@@ -343,6 +359,76 @@ export default {
     closePicker() {
       this.picker = null;
     },
+
+    handleTouchStart(event) {
+      if (event.touches.length === 1) {
+        this.startPaint(event);
+      } else if (event.touches.length === 2) {
+        this.lastTouchDistance = this.getTouchDistance(event.touches);
+        this.lastTouchCenter = this.getTouchCenter(event.touches);
+      }
+    },
+
+    handleTouchMove(event) {
+      if (event.touches.length === 1) {
+        if (this.isPainting) {
+          this.onMouseMove(event);
+        }
+      } else if (event.touches.length === 2 && this.lastTouchDistance !== null) {
+        event.preventDefault();
+        
+        // 1. Handle Zoom
+        const distance = this.getTouchDistance(event.touches);
+        const deltaDist = distance - this.lastTouchDistance;
+
+        if (Math.abs(deltaDist) > 20) {
+          const ZOOM_STEPS = [1, 2, 4, 8, 16];
+          const currentIdx = ZOOM_STEPS.indexOf(this.editZoom);
+          
+          if (deltaDist > 0 && currentIdx < ZOOM_STEPS.length - 1) {
+            this.setEditZoom(ZOOM_STEPS[currentIdx + 1]);
+          } else if (deltaDist < 0 && currentIdx > 0) {
+            this.setEditZoom(ZOOM_STEPS[currentIdx - 1]);
+          }
+          this.lastTouchDistance = distance;
+        }
+
+        // 2. Handle Pan
+        const center = this.getTouchCenter(event.touches);
+        if (this.lastTouchCenter) {
+          const dx = this.lastTouchCenter.x - center.x;
+          const dy = this.lastTouchCenter.y - center.y;
+          
+          const scrollEl = this.$el.closest('article');
+          if (scrollEl) {
+            scrollEl.scrollLeft += dx;
+            scrollEl.scrollTop += dy;
+          }
+        }
+        this.lastTouchCenter = center;
+      }
+    },
+
+    handleTouchEnd(event) {
+      if (this.isPainting && event.touches.length === 0) {
+        this.commitPaint();
+      }
+      this.lastTouchDistance = null;
+      this.lastTouchCenter = null;
+    },
+
+    getTouchDistance(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    },
+
+    getTouchCenter(touches) {
+      return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2
+      };
+    },
   },
 };
 </script>
@@ -356,6 +442,9 @@ export default {
     @mouseenter="isMouseOver = true"
     @mouseleave="isMouseOver = false"
     @mousemove="onMouseMove"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
   >
     <pre ref="pre" @mousedown="startPaint"></pre>
     <div class="brush-preview" :style="brushPreviewStyle"></div>
@@ -398,6 +487,7 @@ article {
   position: relative;
   user-select: none;
   padding: 0;
+  touch-action: none; /* Prevent browser defaults inside editor */
 }
 
 pre {
