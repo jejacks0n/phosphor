@@ -69,7 +69,6 @@ export default {
 <style scoped>
 article {
   margin: auto;
-  padding: 60px;
   user-select: none;
 }
 
@@ -84,11 +83,5 @@ pre {
   white-space: pre;
   background: var(--surface-dark);
   outline: 2px dashed var(--border-light);
-}
-
-@media (max-width: 768px) {
-  article {
-    padding: 10px;
-  }
 }
 </style>

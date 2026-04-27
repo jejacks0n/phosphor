@@ -66,13 +66,14 @@ export default {
   mounted() {
     this.queueRender();
     this.editMode = true;
+    this.resetToolToHand();
   },
   beforeUnmount() {
     this.editMode = false;
     if (this._renderFrame) cancelAnimationFrame(this._renderFrame);
   },
   methods: {
-    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot', 'getRawColorAt', 'flipAnsiColors', 'setEditZoom']),
+    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot', 'getRawColorAt', 'flipAnsiColors', 'setEditZoom', 'resetToolToHand']),
 
     queueRender() {
       if (this._renderFrame) return;
@@ -148,6 +149,19 @@ export default {
       const pixel = this.pixelAt(event);
       if (!pixel) return;
 
+      if (this.activeTool === 'hand') {
+        this.isPainting = true;
+        this._lastMousePos = {
+          x: event.touches ? event.touches[0].clientX : event.clientX,
+          y: event.touches ? event.touches[0].clientY : event.clientY
+        };
+        if (event.type === 'mousedown') {
+          window.addEventListener('mousemove', this.onMouseMove);
+          window.addEventListener('mouseup', this.commitPaint);
+        }
+        return;
+      }
+
       if (this.activeTool === 'flip') {
         const col = Math.floor(pixel.x);
         const row = Math.floor(pixel.y / 2);
@@ -219,6 +233,23 @@ export default {
 
       if (!this.isPainting) return;
 
+      if (this.activeTool === 'hand') {
+        const dx = this._lastMousePos.x - clientX;
+        const dy = this._lastMousePos.y - clientY;
+
+        let scrollEl = this.$el.parentElement;
+        while (scrollEl && scrollEl.tagName !== 'ARTICLE') {
+          scrollEl = scrollEl.parentElement;
+        }
+        if (scrollEl) {
+          scrollEl.scrollLeft += dx;
+          scrollEl.scrollTop += dy;
+        }
+
+        this._lastMousePos = { x: clientX, y: clientY };
+        return;
+      }
+
       if (this.activeTool === 'flip') {
         const col = Math.floor(pixel.x);
         const row = Math.floor(pixel.y / 2);
@@ -244,10 +275,13 @@ export default {
       if (!this.isPainting) return;
       this.isPainting = false;
       this._lastPos = null;
+      this._lastMousePos = null;
       this.flippedCells.clear();
       window.removeEventListener('mousemove', this.onMouseMove);
       window.removeEventListener('mouseup', this.commitPaint);
-      this.takeSnapshot();
+      if (this.activeTool !== 'hand') {
+        this.takeSnapshot();
+      }
     },
 
     paintSegment(from, to) {
@@ -295,14 +329,27 @@ export default {
               const iy = cy + dy;
               if (ix < 0 || iy < 0 || ix >= this.cols || iy >= this.rows) continue;
 
-              const dist = Math.sqrt(dx * dx + dy * dy);
-              if (dist <= radius) {
-                const key = `${ix},${iy}`;
-                if (!seen.has(key)) {
-                  const alpha = 1 - (dist / radius);
-                  pixels.push({ x: ix, y: iy, alpha: Math.pow(alpha, 1.5) });
-                  seen.add(key);
-                }
+              // For size-1 brushes, compute distance from the actual fractional cursor
+              // position so a cursor halfway between two pixels paints each at 50%.
+              // For larger brushes, snap to the integer center (fractional offset is
+              // imperceptible at larger radii and avoids disturbing the soft falloff).
+              const dist = radius <= 1
+                ? Math.sqrt((ix - x) ** 2 + (iy - y) ** 2)
+                : Math.sqrt(dx * dx + dy * dy);
+
+              if (dist > radius) continue;
+
+              const alpha = radius <= 1
+                ? 1 - dist                              // linear: exact sub-pixel weighting
+                : Math.pow(1 - dist / radius, 1.5);    // soft curve for larger brushes
+
+              if (alpha <= 0) continue;
+              if (radius > 1 && alpha < 0.05) continue;
+
+              const key = `${ix},${iy}`;
+              if (!seen.has(key)) {
+                pixels.push({ x: ix, y: iy, alpha });
+                seen.add(key);
               }
             }
           }
@@ -430,7 +477,9 @@ export default {
   <article
     :class="{ 
       'pencil-tool': activeTool === 'pencil' || activeTool === 'char' || activeTool === 'bucket' || activeTool === 'flip',
-      'picker-tool': activeTool === 'picker'
+      'picker-tool': activeTool === 'picker',
+      'hand-tool': activeTool === 'hand',
+      'is-painting': isPainting
     }"
     @mouseenter="isMouseOver = true"
     @mouseleave="isMouseOver = false"
@@ -503,6 +552,14 @@ pre {
 
 .picker-tool pre {
   cursor: crosshair;
+}
+
+.hand-tool pre {
+  cursor: grab;
+}
+
+.hand-tool.is-painting pre {
+  cursor: grabbing;
 }
 
 .brush-preview {

@@ -56,7 +56,7 @@ export default {
 <style scoped>
 article {
   margin: auto;
-  padding: 60px;
+  padding: 10px;
   position: relative;
 }
 
@@ -72,8 +72,8 @@ button {
   display: flex;
   position: absolute;
   z-index: 10;
-  top: 45px;
-  right: 45px;
+  top: 0;
+  right: 0;
   width: 30px;
   height: 30px;
   padding: 0;
@@ -93,17 +93,5 @@ button:hover {
   background: var(--accent-hot);
   border-color: var(--white);
   color: var(--white);
-}
-
-@media (max-width: 768px) {
-  article {
-    margin: auto;
-    padding: 10px;
-  }
-
-  button {
-    top: 0;
-    right: 0;
-  }
 }
 </style>

@@ -278,6 +278,9 @@ export const useCurrentFileStore = defineStore('current_file', {
     setActiveTool(tool) {
       this.activeTool = tool;
     },
+    resetToolToHand() {
+      this.activeTool = 'hand';
+    },
     setEditZoom(z) {
       this.editZoom = Math.max(0.1, Math.min(32, z));
     },
@@ -345,8 +348,11 @@ export const useCurrentFileStore = defineStore('current_file', {
       downsampled.width = dw;
       downsampled.height = dh;
       const dsCtx = downsampled.getContext('2d', { willReadFrequently: true });
-      
-      // Draw high-res edit canvas into the fitted dimensions
+
+      // Nearest-neighbor: each output pixel maps to exactly one grid-pixel block in the
+      // editCanvas. Bilinear would blur block boundaries, creating a faint halo outside
+      // the brush edge where the pipeline bleeds through at reduced opacity.
+      dsCtx.imageSmoothingEnabled = false;
       dsCtx.drawImage(this.editCanvas, 0, 0, dw, dh);
 
       // 2. Run adjustments on the downsampled edit layer
@@ -493,24 +499,70 @@ export const useCurrentFileStore = defineStore('current_file', {
       const wScale = this.editCanvas.width / dw;
       const hScale = this.editCanvas.height / dh;
 
+      // Collect canvas-space rects to paint, then apply additive alpha accumulation
+      // via pixel manipulation. Using source-over with globalAlpha causes edge pixels
+      // to converge logarithmically and never reach opaque, causing ghosting.
+      const rects = [];
       for (const { x, y, r, g, b, alpha } of pixels) {
-        // Map grid coordinate to image-space coordinate
         const ix = x - dx;
         const iy = y - dy;
-
-        // Skip if painting outside the actual image area (in the black bars)
         if (ix < 0 || iy < 0 || ix >= dw || iy >= dh) continue;
-
-        editCtx.globalAlpha = alpha;
-        editCtx.fillStyle = `rgb(${r},${g},${b})`;
-        editCtx.fillRect(
-          Math.floor(ix * wScale),
-          Math.floor(iy * hScale),
-          Math.ceil(wScale),
-          Math.ceil(hScale)
-        );
+        const cx = Math.round(ix * wScale);
+        const cy = Math.round(iy * hScale);
+        rects.push({
+          cx,
+          cy,
+          cw: Math.max(1, Math.round((ix + 1) * wScale) - cx),
+          ch: Math.max(1, Math.round((iy + 1) * hScale) - cy),
+          r, g, b,
+          a: Math.round(alpha * 255),
+        });
       }
-      editCtx.globalAlpha = 1;
+
+      if (rects.length) {
+        let minX = rects[0].cx, minY = rects[0].cy;
+        let maxX = rects[0].cx + rects[0].cw, maxY = rects[0].cy + rects[0].ch;
+        for (const { cx, cy, cw, ch } of rects) {
+          if (cx < minX) minX = cx;
+          if (cy < minY) minY = cy;
+          if (cx + cw > maxX) maxX = cx + cw;
+          if (cy + ch > maxY) maxY = cy + ch;
+        }
+
+        const regionW = maxX - minX;
+        const regionH = maxY - minY;
+        const imageData = editCtx.getImageData(minX, minY, regionW, regionH);
+        const data = imageData.data;
+
+        for (const { cx, cy, cw, ch, r, g, b, a } of rects) {
+          if (a === 0) continue;
+          for (let py = cy; py < cy + ch; py++) {
+            for (let px = cx; px < cx + cw; px++) {
+              const idx = ((py - minY) * regionW + (px - minX)) * 4;
+              const existingA = data[idx + 3];
+              const totalA = existingA + a;
+              data[idx + 3] = Math.min(255, totalA);
+
+              if (totalA > 255) {
+                // Already at full coverage: lerp existing color toward stroke color.
+                // blend = a/255 so a full-opacity stroke fully overwrites.
+                const blend = a / 255;
+                data[idx]     = Math.round(data[idx]     + (r - data[idx])     * blend);
+                data[idx + 1] = Math.round(data[idx + 1] + (g - data[idx + 1]) * blend);
+                data[idx + 2] = Math.round(data[idx + 2] + (b - data[idx + 2]) * blend);
+              } else {
+                // Building up coverage: alpha-weighted average of existing and stroke.
+                // Consistent with additive alpha — same color painted N times stays that color.
+                data[idx]     = Math.round((data[idx]     * existingA + r * a) / totalA);
+                data[idx + 1] = Math.round((data[idx + 1] * existingA + g * a) / totalA);
+                data[idx + 2] = Math.round((data[idx + 2] * existingA + b * a) / totalA);
+              }
+            }
+          }
+        }
+
+        editCtx.putImageData(imageData, minX, minY);
+      }
 
       this.compositeEditCanvas(pipelineCanvas, outputCanvas);
       

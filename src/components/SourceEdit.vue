@@ -56,6 +56,7 @@ export default {
   mounted() {
     this.redrawDisplay();
     this.editMode = true;
+    this.resetToolToHand();
   },
   beforeUnmount() {
     this.commitPaint();
@@ -63,7 +64,7 @@ export default {
   },
 
   methods: {
-    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'takeSnapshot', 'getRawColorAt', 'setEditZoom']),
+    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'takeSnapshot', 'getRawColorAt', 'setEditZoom', 'resetToolToHand']),
 
     redrawDisplay() {
       if (!this.$refs.displayCanvas || !this.canvas) return;
@@ -212,6 +213,19 @@ export default {
       if (!this.canvas || !this.pipelineCanvas) return;
       const pos = this.pixelCoordsAt(event);
 
+      if (this.activeTool === 'hand') {
+        this.isPainting = true;
+        this._lastMousePos = {
+          x: event.touches ? event.touches[0].clientX : event.clientX,
+          y: event.touches ? event.touches[0].clientY : event.clientY
+        };
+        if (event.type === 'mousedown') {
+          window.addEventListener('mousemove', this.onMouseMove);
+          window.addEventListener('mouseup', this.commitPaint);
+        }
+        return;
+      }
+
       if (this.activeTool === 'bucket' && this.canvas) {
         const ix = Math.floor(pos.x);
         const iy = Math.floor(pos.y);
@@ -269,6 +283,23 @@ export default {
 
       if (!this.isPainting || !this.canvas) return;
 
+      if (this.activeTool === 'hand') {
+        const dx = this._lastMousePos.x - clientX;
+        const dy = this._lastMousePos.y - clientY;
+
+        let scrollEl = this.$el.parentElement;
+        while (scrollEl && scrollEl.tagName !== 'ARTICLE') {
+          scrollEl = scrollEl.parentElement;
+        }
+        if (scrollEl) {
+          scrollEl.scrollLeft += dx;
+          scrollEl.scrollTop += dy;
+        }
+
+        this._lastMousePos = { x: clientX, y: clientY };
+        return;
+      }
+
       if (this.activeTool === 'picker') {
         this.pickColor(pos);
         return;
@@ -284,9 +315,12 @@ export default {
       if (!this.isPainting) return;
       this.isPainting = false;
       this._lastPos = null;
+      this._lastMousePos = null;
       window.removeEventListener('mousemove', this.onMouseMove);
       window.removeEventListener('mouseup', this.commitPaint);
-      this.takeSnapshot();
+      if (this.activeTool !== 'hand') {
+        this.takeSnapshot();
+      }
     },
 
     handleTouchStart(event) {
@@ -362,7 +396,9 @@ export default {
       class="canvas-container"
       :class="{ 
         'pencil-tool': activeTool === 'pencil' || activeTool === 'bucket',
-        'picker-tool': activeTool === 'picker'
+        'picker-tool': activeTool === 'picker',
+        'hand-tool': activeTool === 'hand',
+        'is-painting': isPainting
       }"
       @mouseenter="isMouseOver = true"
       @mouseleave="isMouseOver = false"
@@ -401,6 +437,14 @@ canvas {
 
 .picker-tool canvas {
   cursor: crosshair;
+}
+
+.hand-tool canvas {
+  cursor: grab;
+}
+
+.hand-tool.is-painting canvas {
+  cursor: grabbing;
 }
 
 .brush-preview {
