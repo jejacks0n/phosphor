@@ -240,7 +240,6 @@ export default {
 
     onMounted(() => {
       redrawDisplay();
-      workspaceStore.editMode = true;
       workspaceStore.resetToolToHand();
 
       if (rootRef.value) {
@@ -252,7 +251,6 @@ export default {
 
     onBeforeUnmount(() => {
       commitPaint();
-      workspaceStore.editMode = false;
       if (rootRef.value) {
         rootRef.value.removeEventListener('wheel', handleWheel);
       }
@@ -286,8 +284,8 @@ export default {
       @contextmenu.prevent
       @mouseenter="isMouseOver = true"
       @mouseleave="isMouseOver = false"
-      @mousemove="onMouseMove"
-      @mousedown="startPaint"
+      @pointermove="onMouseMove"
+      @pointerdown="startPaint"
       @touchstart="handleTouchStart"
       @touchmove="handleTouchMove"
       @touchend="handleTouchEnd"

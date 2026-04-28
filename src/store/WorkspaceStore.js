@@ -9,6 +9,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     previewTab: 'source',
     editMode: false,
     isPainting: false,
+    isCtrlPressed: false,
+    isMiddleClick: false,
     settingsOpen: false,
 
     // Brush Settings

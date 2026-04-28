@@ -23,14 +23,17 @@ export default {
 </script>
 
 <template>
-  <nav>
+  <nav class="workspace-tabs">
     <button class="menu-btn" :class="{ open: settingsOpen }" title="Toggle Settings" @click.stop="toggleSettings">
       <span></span>
       <span></span>
       <span></span>
     </button>
     <ul>
-      <li :class="{ active: modelValue === 'source' }" @click="$emit('update:modelValue', 'source')">
+      <li
+          :class="{ active: modelValue === 'source' }"
+          @click="$emit('update:modelValue', 'source')"
+      >
         INPUT
       </li>
       <li
@@ -50,7 +53,7 @@ export default {
 </template>
 
 <style scoped>
-nav {
+nav.workspace-tabs {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -145,7 +148,7 @@ li:not(.disabled):not(.active):hover {
 }
 
 @media (max-width: 768px) {
-  nav {
+  nav.workspace-tabs {
     border-color: var(--accent);
   }
 

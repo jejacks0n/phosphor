@@ -19,7 +19,7 @@ export default {
 </script>
 
 <template>
-  <article>
+  <article class="zero-state">
     <div class="drop-zone">
       <div class="logo"></div>
       <span class="icon">⬆</span>
@@ -34,7 +34,7 @@ export default {
 </template>
 
 <style scoped>
-article {
+article.zero-state {
   flex: 1;
   display: flex;
   flex-direction: column;

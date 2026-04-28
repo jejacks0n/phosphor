@@ -12,6 +12,9 @@
   --accent-hot: #e802fc;
   --accent-hover: #ff55ff;
   --accent-glow: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-faint: rgba(157, 85, 255, 0.05);
+  --danger: #ff4444;
+  --danger-hover: #ff2222;
 
   /* Surfaces */
   --surface-dark: #000;
@@ -108,6 +111,17 @@ button.primary:hover {
 button.primary:active {
   background: var(--accent);
   border-color: var(--accent);
+}
+
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--white);;
+}
+button.danger:hover:not(:disabled) {
+  background: var(--danger-hover);
+  border-color: var(--danger-hover);
+  color: var(--white);
 }
 
 input, select, textarea {
@@ -247,38 +261,48 @@ input[type=range]:active::-moz-range-thumb {
   background: var(--accent-hot);
 }
 
+/* General */
+hr {
+  width: 100%;
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
 /* Tool Cursors */
-main.tool-pencil div.edit-viewport,
-main.tool-bucket div.edit-viewport,
-main.tool-picker div.edit-viewport,
-main.tool-flip div.edit-viewport,
-main.tool-char div.edit-viewport {
+main.tool-pencil div.edit-viewport.editing,
+main.tool-bucket div.edit-viewport.editing,
+main.tool-picker div.edit-viewport.editing,
+main.tool-flip div.edit-viewport.editing,
+main.tool-char div.edit-viewport.editing {
   cursor: crosshair !important;
 }
 
-main.tool-hand div.edit-viewport {
+main.tool-hand div.edit-viewport.editing {
   cursor: grab !important;
 }
 main.tool-hand.is-painting,
-main.tool-hand.is-painting div.edit-viewport {
+main.tool-hand.is-painting div.edit-viewport.editing,
+main.middle-clicking div.edit-viewport.editing {
   cursor: grabbing !important;
 }
 
-main.tool-zoom div.edit-viewport {
+main.tool-zoom div.edit-viewport.editing,
+main.with-image.ctrl-pressed div.edit-viewport.editing {
   cursor: zoom-in !important;
 }
 main.tool-zoom.is-painting,
-main.tool-zoom.is-painting div.edit-viewport {
+main.tool-zoom.is-painting div.edit-viewport.editing {
   cursor: ew-resize !important;
 }
 
-main.tool-brush div.edit-viewport,
-main.tool-eraser div.edit-viewport {
+main.tool-brush div.edit-viewport.editing,
+main.tool-eraser div.edit-viewport.editing {
   cursor: none !important; /* a custom cursor indicator is used to indicate size */
 }
 
-main.tool-flip div.edit-viewport div.canvas-container,
-main.tool-char div.edit-viewport div.canvas-container {
+main.tool-flip div.edit-viewport.editing div.canvas-container,
+main.tool-char div.edit-viewport.editing div.canvas-container {
   cursor: none !important; /* a custom character highlight is used to indicate position */
 }
 

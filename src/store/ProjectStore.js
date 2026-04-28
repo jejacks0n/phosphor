@@ -66,7 +66,7 @@ export const useProjectStore = defineStore('project', {
     canUndo: (state) => state.historyIndex > 0,
     canRedo: (state) => state.historyIndex < state.historyStack.length - 1,
     hasEdits() {
-      return this.charEditMap.size > 0 || this.hasPaint;
+      return this.charEditMap.size > 0 || this.hasPaint || this.historyStack.length > 1;
     },
     imageRatio: (state) => {
       if (!state.image) return 1;

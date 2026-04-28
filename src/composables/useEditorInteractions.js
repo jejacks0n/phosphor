@@ -25,6 +25,7 @@ export function useEditorInteractions(options) {
   let lastTouchCenter = null;
   let _initialPinchZoom = null;
   let _initialZoom = null;
+  let _isMiddleClick = false;
 
   function interpolatedPositions(x0, y0, x1, y1) {
     const dx = x1 - x0;
@@ -96,8 +97,15 @@ export function useEditorInteractions(options) {
   function startPaint(event) {
     const tool = unref(activeTool);
     const pos = callbacks.pixelCoordsAt(event);
+    _isMiddleClick = (event.type === 'mousedown' || event.type === 'pointerdown') && event.button === 1;
+    if (_isMiddleClick) {
+      event.preventDefault();
+      if (workspaceStore) {
+        workspaceStore.isMiddleClick = true;
+      }
+    }
 
-    if (tool === 'hand' || tool === 'zoom') {
+    if (_isMiddleClick || tool === 'hand' || tool === 'zoom') {
       isPainting.value = true;
       if (workspaceStore) workspaceStore.isPainting = true;
 
@@ -105,10 +113,15 @@ export function useEditorInteractions(options) {
         x: event.touches ? event.touches[0].clientX : event.clientX,
         y: event.touches ? event.touches[0].clientY : event.clientY
       };
-      if (tool === 'zoom' && !disableZoom) {
+      if (tool === 'zoom' && !disableZoom && !_isMiddleClick) {
         _initialZoom = unref(editZoom);
       }
-      if (event.type === 'mousedown') {
+      
+      if (event.type === 'pointerdown') {
+        event.target.setPointerCapture(event.pointerId);
+        window.addEventListener('pointermove', onMouseMove);
+        window.addEventListener('pointerup', commitPaint);
+      } else if (event.type === 'mousedown') {
         window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('mouseup', commitPaint);
       }
@@ -118,7 +131,7 @@ export function useEditorInteractions(options) {
     if (!pos) return;
 
     if (tool === 'picker') {
-      if (event.type === 'mousedown') {
+      if (event.type === 'mousedown' || event.type === 'pointerdown') {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -126,7 +139,11 @@ export function useEditorInteractions(options) {
       if (workspaceStore) workspaceStore.isPainting = true;
 
       callbacks.onColorPick(pos);
-      if (event.type === 'mousedown') {
+      if (event.type === 'pointerdown') {
+        event.target.setPointerCapture(event.pointerId);
+        window.addEventListener('pointermove', onMouseMove);
+        window.addEventListener('pointerup', commitPaint);
+      } else if (event.type === 'mousedown') {
         window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('mouseup', commitPaint);
       }
@@ -144,7 +161,11 @@ export function useEditorInteractions(options) {
 
     _lastPos = pos;
     
-    if (event.type === 'mousedown') {
+    if (event.type === 'pointerdown') {
+      event.target.setPointerCapture(event.pointerId);
+      window.addEventListener('pointermove', onMouseMove);
+      window.addEventListener('pointerup', commitPaint);
+    } else if (event.type === 'mousedown') {
       window.addEventListener('mousemove', onMouseMove);
       window.addEventListener('mouseup', commitPaint);
     }
@@ -214,8 +235,8 @@ export function useEditorInteractions(options) {
 
     const tool = unref(activeTool);
 
-    if (tool === 'hand' || tool === 'zoom') {
-      if (tool === 'hand') {
+    if (_isMiddleClick || tool === 'hand' || tool === 'zoom') {
+      if (_isMiddleClick || tool === 'hand') {
         const dx = _lastMousePos.x - clientX;
         const dy = _lastMousePos.y - clientY;
 
@@ -257,8 +278,14 @@ export function useEditorInteractions(options) {
 
     _lastPos = null;
     _lastMousePos = null;
+    _isMiddleClick = false;
+    if (workspaceStore) {
+      workspaceStore.isMiddleClick = false;
+    }
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('mouseup', commitPaint);
+    window.removeEventListener('pointermove', onMouseMove);
+    window.removeEventListener('pointerup', commitPaint);
     callbacks.onPaintEnd();
   }
 

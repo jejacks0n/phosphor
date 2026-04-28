@@ -23,17 +23,18 @@ export default {
 
 <template>
   <article
-    :class="{ dragging: isDragging }"
-    @dragover.prevent="isDragging = true"
-    @dragleave.prevent="isDragging = false"
-    @drop.prevent="handleDrop"
+      class="drop-zone"
+      :class="{ dragging: isDragging }"
+      @dragover.prevent="isDragging = true"
+      @dragleave.prevent="isDragging = false"
+      @drop.prevent="handleDrop"
   >
     <slot></slot>
   </article>
 </template>
 
 <style scoped>
-article {
+article.drop-zone {
   flex: 1;
   overflow: auto;
   position: relative;
@@ -44,6 +45,6 @@ article {
 }
 
 article.dragging {
-  background: rgba(157, 85, 255, 0.05);
+  background: var(--accent-faint);
 }
 </style>

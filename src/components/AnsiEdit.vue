@@ -255,18 +255,10 @@ export default {
           const localX = (clientX - rect.left) / zoom;
           const localY = (clientY - rect.top) / zoom;
 
-          let col = 0;
+          let col;
           if (columnOffsets.value.length > 0) {
-            // Binary search or simple loop to find the column
-            for (let i = 0; i < columnOffsets.value.length - 1; i++) {
-              if (localX >= columnOffsets.value[i] && localX < columnOffsets.value[i+1]) {
-                col = i + (localX - columnOffsets.value[i]) / (columnOffsets.value[i+1] - columnOffsets.value[i]);
-                break;
-              }
-            }
-            if (localX >= columnOffsets.value[columnOffsets.value.length - 1]) {
-              col = projectStore.cols - 1;
-            }
+            const totalWidth = columnOffsets.value[columnOffsets.value.length - 1];
+            col = (localX / totalWidth) * projectStore.cols;
           } else {
             col = localX / metrics.value.cellWidth;
           }
@@ -397,12 +389,12 @@ export default {
 
     watch(() => projectStore.blockData, queueRender);
     watch(() => projectStore.cols, () => {
+      metrics.value = null;
       queueRender();
-      nextTick(() => centerContent());
     });
     watch(() => projectStore.rows, () => {
+      metrics.value = null;
       queueRender();
-      nextTick(() => centerContent());
     });
 
     const closePicker = () => {
@@ -417,7 +409,6 @@ export default {
 
     onMounted(() => {
       queueRender();
-      workspaceStore.editMode = true;
       workspaceStore.resetToolToHand();
 
       if (rootRef.value) {
@@ -430,7 +421,6 @@ export default {
 
     onBeforeUnmount(() => {
       commitPaint();
-      workspaceStore.editMode = false;
       if (rootRef.value) {
         rootRef.value.removeEventListener('wheel', handleWheel);
       }
@@ -479,8 +469,8 @@ export default {
       @contextmenu.prevent
       @mouseenter="isMouseOver = true"
       @mouseleave="isMouseOver = false"
-      @mousemove="onMouseMove"
-      @mousedown="startPaint"
+      @pointermove="onMouseMove"
+      @pointerdown="startPaint"
       @touchstart="handleTouchStart"
       @touchmove="handleTouchMove"
       @touchend="handleTouchEnd"

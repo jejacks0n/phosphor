@@ -1,21 +1,21 @@
 <script>
 import { mapWritableState, mapActions, mapState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
+import ProjectActions from '@/components/ProjectActions.vue';
+import ProjectFooter from '@/components/ProjectFooter.vue';
 
 export default {
   name: 'ControlPanel',
+  components: {
+    ProjectActions,
+    ProjectFooter,
+  },
   computed: {
     ...mapWritableState(useProjectStore, [
       'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'colorCount', 'palette',
       'invert', 'hue', 'brightness', 'contrast', 'saturation', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'
     ]),
     ...mapState(useProjectStore, ['maxCols', 'maxRows', 'image']),
-    year() {
-      return new Date().getFullYear();
-    },
-    isMobile() {
-      return this.mobileMode;
-    },
     updateEvent() {
       return this.mobileMode ? 'change' : 'input';
     },
@@ -36,8 +36,6 @@ export default {
   methods: {
     ...mapActions(useProjectStore, [
       'randomizeSeed',
-      'exportFile',
-      'saveProject',
       'resetSliders',
       'resetTransform',
       'resetAdjust',
@@ -74,7 +72,7 @@ export default {
 </script>
 
 <template>
-  <aside>
+  <aside class="control-panel">
     <div class="logo"></div>
     <fieldset>
       <legend>Setup</legend>
@@ -286,16 +284,8 @@ export default {
 
     <hr/>
 
-    <div class="export-actions">
-      <button @click="saveProject" :disabled="!image" class="secondary">Save Project (.phosphor)</button>
-      <button @click="exportFile('ans')" :disabled="!image" class="primary">Export .ans</button>
-      <button @click="exportFile('utf8ans')" :disabled="!image" class="primary">Export .utf8ans</button>
-    </div>
-
-    <footer class="attribution">
-      Brought to you by <a href="https://ishifishi.work" target="_blank">ishifishi.work</a>
-      <div class="copyright">&copy; {{ year }} Phosphor</div>
-    </footer>
+    <ProjectActions/>
+    <ProjectFooter/>
 
     <datalist id="default-ticks">
       <option value="100"></option>
@@ -448,43 +438,8 @@ span.value-tooltip::after {
   border-color: var(--black) transparent transparent transparent;
 }
 
-hr {
-  width: 100%;
-  margin: 12px 0;
-  border: 0;
-  border-top: 1px solid var(--border-subtle);
-}
-
-div.export-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-footer {
-  margin: 12px 12px 50px;
-  font-size: 10px;
-  text-align: center;
-  line-height: 1.6;
-  color: var(--text);
-}
-
-footer a {
-  text-decoration: none;
-  font-weight: 600;
-  color: var(--accent-hover);
-}
-
-footer a:hover {
-  text-decoration: underline;
-}
-
-footer div.copyright {
-  opacity: 0.5;
-}
-
 @media (max-width: 768px) {
-  aside {
+  aside.control-panel {
     height: 100dvh;
   }
 

@@ -22,37 +22,19 @@ export default {
 </script>
 
 <template>
-  <div class="project-actions">
-    <button @click="saveProject" :disabled="!image" class="secondary">Save Project (.phosphor)</button>
-    <button @click="exportFile('ans')" :disabled="!image" class="primary">Export .ans</button>
-    <button @click="exportFile('utf8ans')" :disabled="!image" class="primary">Export .utf8ans</button>
-    <div class="divider"></div>
+  <article class="project-actions">
+    <button @click="saveProject" :disabled="!image" class="primary">Save Project (.phosphor)</button>
+    <button @click="exportFile('ans')" :disabled="!image" class="secondary">Export .ans</button>
+    <button @click="exportFile('utf8ans')" :disabled="!image" class="secondary">Export .utf8ans</button>
+    <hr/>
     <button @click="confirmNewProject" :disabled="!image" class="danger">Start New Project</button>
-  </div>
+  </article>
 </template>
 
 <style scoped>
-.project-actions {
+article.project-actions {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-.divider {
-  height: 1px;
-  background: var(--border-subtle);
-  margin: 10px 0;
-}
-
-button.danger {
-  background: #ff4444;
-  border-color: #ff4444;
-  color: white;
-}
-
-button.danger:hover:not(:disabled) {
-  background: #ff2222;
-  border-color: #ff2222;
-  color: white;
 }
 </style>

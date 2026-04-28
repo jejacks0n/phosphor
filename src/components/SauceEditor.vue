@@ -1,7 +1,6 @@
 <script>
 import { mapWritableState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import ProjectActions from './ProjectActions.vue';
 
 export default {
@@ -13,50 +12,51 @@ export default {
     ...mapWritableState(useProjectStore, [
       'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceUserComments', 'image'
     ]),
-    ...mapWritableState(useWorkspaceStore, ['editMode']),
-  },
-  methods: {
-    //
-  },
-  mounted() {
-    this.editMode = false;
   },
 };
 </script>
 
 <template>
-  <article>
-    <h3>SAUCE Metadata</h3>
-    <p>This metadata is embedded in the exported .ans or .utf8ans file and can be viewed by other ANSI editors or viewer applications.</p>
+  <article class="sauce-editor">
+    <div class="editor-container">
+      <h3>SAUCE Metadata</h3>
+      <p>This metadata is embedded in the exported .ans or .utf8ans file and can be viewed by other ANSI editors or viewer applications.</p>
 
-    <div class="field">
-      <label for="sauce-title">Title</label>
-      <input id="sauce-title" v-model="sauceTitle" type="text" placeholder="Title (35 chars)" maxlength="35">
-    </div>
+      <div class="field">
+        <label for="sauce-title">Title</label>
+        <input id="sauce-title" v-model="sauceTitle" type="text" placeholder="Title (35 chars)" maxlength="35">
+      </div>
 
-    <div class="field">
-      <label for="sauce-author">Author</label>
-      <input id="sauce-author" v-model="sauceAuthor" type="text" placeholder="Author (20 chars)" maxlength="20">
-    </div>
+      <div class="field">
+        <label for="sauce-author">Author</label>
+        <input id="sauce-author" v-model="sauceAuthor" type="text" placeholder="Author (20 chars)" maxlength="20">
+      </div>
 
-    <div class="field">
-      <label for="sauce-group">Group</label>
-      <input id="sauce-group" v-model="sauceGroup" type="text" placeholder="Group (20 chars)" maxlength="20">
-    </div>
+      <div class="field">
+        <label for="sauce-group">Group</label>
+        <input id="sauce-group" v-model="sauceGroup" type="text" placeholder="Group (20 chars)" maxlength="20">
+      </div>
 
-    <div class="field">
-      <label for="sauce-comments">Custom Comments</label>
-      <textarea id="sauce-comments" v-model="sauceUserComments" placeholder="Add your own notes to the file metadata..."></textarea>
-    </div>
+      <div class="field">
+        <label for="sauce-comments">Custom Comments</label>
+        <textarea id="sauce-comments" v-model="sauceUserComments" placeholder="Add your own notes to the file metadata..."></textarea>
+      </div>
 
-    <div class="export-actions-container">
+      <hr/>
+
       <ProjectActions/>
     </div>
   </article>
 </template>
 
 <style scoped>
-article {
+article.sauce-editor {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+div.editor-container {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -91,9 +91,5 @@ textarea {
   resize: vertical;
   min-height: 100px;
   font-family: inherit;
-}
-
-.export-actions-container {
-  margin-top: 20px;
 }
 </style>

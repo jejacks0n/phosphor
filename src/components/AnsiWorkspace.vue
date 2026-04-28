@@ -36,15 +36,54 @@ export default {
   },
   computed: {
     ...mapWritableState(useProjectStore, [
-      'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount',
-      'invert', 'brightness', 'contrast', 'saturation', 'hue', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness',
-      'sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments',
-      'filename', 'blockData', 'pipelineBlockData', 'activePalette', 'isDirty', 'isInitializing'
+      'cols',
+      'rows',
+      'aspectLock',
+      'chars',
+      'seed',
+      'smoothing',
+      'quantize',
+      'palette',
+      'colorCount',
+      'invert',
+      'brightness',
+      'contrast',
+      'saturation',
+      'hue',
+      'sharpen',
+      'flatten',
+      'edges',
+      'edgeColor',
+      'edgeThickness',
+      'sauceUse9pxFont',
+      'sauceFontName',
+      'sauceTitle',
+      'sauceAuthor',
+      'sauceGroup',
+      'sauceDate',
+      'sauceUserComments',
+      'filename',
+      'blockData',
+      'pipelineBlockData',
+      'activePalette',
+      'isDirty',
+      'isInitializing',
     ]),
     ...mapWritableState(useWorkspaceStore, [
-      'activeTool', 'previousTool', 'editFgColor', 'editZoom', 'previewTab', 'editMode', 'settingsOpen',
-      'editBrushSize', 'editBrushOpacity', 'editBrushFlow', 'editBrushHardness',
-      'editFillTolerance', 'editFillContiguous'
+      'activeTool',
+      'previousTool',
+      'editFgColor',
+      'editZoom',
+      'previewTab',
+      'editMode',
+      'settingsOpen',
+      'editBrushSize',
+      'editBrushOpacity',
+      'editBrushFlow',
+      'editBrushHardness',
+      'editFillTolerance',
+      'editFillContiguous',
+      'isCtrlPressed',
     ]),
     ...mapState(useProjectStore, ['hasEdits', 'clearEditsFlag', 'editCanvas', 'image']),
     processParams() {
@@ -75,11 +114,13 @@ export default {
     this.queueSetup();
     window.addEventListener('keydown', this.handleGlobalKeyDown);
     window.addEventListener('keyup', this.handleGlobalKeyUp);
+    window.addEventListener('blur', this.handleBlur);
     window.addEventListener('contextmenu', this.handleContextMenu);
   },
   beforeUnmount() {
     window.removeEventListener('keydown', this.handleGlobalKeyDown);
     window.removeEventListener('keyup', this.handleGlobalKeyUp);
+    window.removeEventListener('blur', this.handleBlur);
     window.removeEventListener('contextmenu', this.handleContextMenu);
   },
   watch: {
@@ -92,6 +133,12 @@ export default {
     },
     clearEditsFlag() {
       this.queueSetup();
+    },
+    previewTab: {
+      immediate: true,
+      handler(newTab) {
+        this.editMode = (newTab === 'ansi' || newTab === 'source');
+      },
     },
   },
   methods: {
@@ -113,6 +160,10 @@ export default {
       'setActiveTool',
       'setEditZoom',
     ]),
+    handleBlur() {
+      this.isCtrlPressed = false;
+      this.isAltSwapped = false;
+    },
     handleZoomTo(newZoom) {
       if (this.previewTab === 'ansi') return;
       if (this.$refs.sourceEdit) {
@@ -127,6 +178,10 @@ export default {
       }
     },
     handleGlobalKeyDown(e) {
+      if (e.key === 'Control') {
+        this.isCtrlPressed = true;
+      }
+
       // Undo/Redo shortcuts
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault();
@@ -152,6 +207,10 @@ export default {
       }
     },
     handleGlobalKeyUp(e) {
+      if (e.key === 'Control') {
+        this.isCtrlPressed = false;
+      }
+
       if (e.key === 'Alt' && this.isAltSwapped) {
         this.setActiveTool(this.previousTool);
         this.isAltSwapped = false;
@@ -177,7 +236,11 @@ export default {
     async setup() {
       if (!this.image) return;
 
-      const { canvas: pipelineCanvas, blockData: pipelineBlockData, paletteColors } = await processImage(this.image, this.processParams);
+      const {
+        canvas: pipelineCanvas,
+        blockData: pipelineBlockData,
+        paletteColors,
+      } = await processImage(this.image, this.processParams);
       this.pipelineCanvas = pipelineCanvas.canvas;
       this.activePalette = paletteColors;
 
@@ -202,7 +265,7 @@ export default {
 
       // 4. Generate blockData from final quantized pixels
       const rand = new Random(this.seed);
-      const charset = this.chars || "▄";
+      const charset = this.chars || '▄';
       const targetDataLength = this.cols * this.rows;
       const finalBlockData = new Array(targetDataLength);
 
@@ -218,7 +281,7 @@ export default {
           r, g, b,
           hex,
           c: [r, g, b],
-          char: charset[rand(charset.length)]
+          char: charset[rand(charset.length)],
         };
       }
 
@@ -236,7 +299,8 @@ export default {
 
 <template>
   <section
-      :class="{ 'settings-open': settingsOpen, editing: editMode }"
+      class="ansi-workspace"
+      :class="{ 'settings-open': settingsOpen, editing: editMode, image: !!image }"
       @click="settingsOpen && toggleSettings()"
   >
     <WorkspaceTabs v-model="previewTab"/>
@@ -263,7 +327,7 @@ export default {
 </template>
 
 <style scoped>
-section {
+section.ansi-workspace {
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -273,14 +337,14 @@ section {
   border: 1px solid var(--accent);
 }
 
-section.editing {
+section.ansi-workspace.editing.image {
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
   background-color: var(--surface-0);
   background-image: linear-gradient(45deg, var(--surface-dark) 25%, transparent 25%),
   linear-gradient(-45deg, var(--surface-dark) 25%, transparent 25%),
   linear-gradient(45deg, transparent 75%, var(--surface-dark) 75%),
   linear-gradient(-45deg, transparent 75%, var(--surface-dark) 75%);
-  background-size: 20px 20px;
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
 }
 
 div.viewport {
@@ -291,7 +355,7 @@ div.viewport {
 }
 
 @media (max-width: 768px) {
-  section {
+  section.ansi-workspace {
     position: absolute;
     width: 100vw;
     height: 100dvh;
@@ -303,13 +367,13 @@ div.viewport {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
 
-  section.settings-open {
+  section.ansi-workspace.settings-open {
     transform: translateX(260px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  section {
+  section.ansi-workspace {
     transition: none;
   }
 }

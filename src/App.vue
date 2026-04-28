@@ -13,7 +13,7 @@ export default {
   },
   computed: {
     ...mapState(useProjectStore, ['image', 'hasEdits']),
-    ...mapState(useWorkspaceStore, ['activeTool', 'isPainting']),
+    ...mapState(useWorkspaceStore, ['activeTool', 'isPainting', 'isCtrlPressed', 'isMiddleClick']),
   },
   mounted() {
     window.addEventListener('beforeunload', this.onBeforeUnload);
@@ -29,11 +29,11 @@ export default {
       }
     },
   },
-};
-</script>
+  };
+  </script>
 
-<template>
-  <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting }]">
+  <template>
+  <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick }]">
     <ControlPanel/>
     <AnsiWorkspace/>
   </main>
