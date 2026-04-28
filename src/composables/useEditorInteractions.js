@@ -6,7 +6,9 @@ export function useEditorInteractions(options) {
     displayRef,
     activeTool,
     editZoom,
-    callbacks
+    callbacks,
+    workspaceStore,
+    disableZoom = false
   } = options;
 
   const isPainting = ref(false);
@@ -22,6 +24,7 @@ export function useEditorInteractions(options) {
   let lastTouchDistance = null;
   let lastTouchCenter = null;
   let _initialPinchZoom = null;
+  let _initialZoom = null;
 
   function interpolatedPositions(x0, y0, x1, y1) {
     const dx = x1 - x0;
@@ -91,17 +94,20 @@ export function useEditorInteractions(options) {
   }
 
   function startPaint(event) {
-    const pos = callbacks.pixelCoordsAt(event);
-    if (!pos) return;
-
     const tool = unref(activeTool);
+    const pos = callbacks.pixelCoordsAt(event);
 
-    if (tool === 'hand') {
+    if (tool === 'hand' || tool === 'zoom') {
       isPainting.value = true;
+      if (workspaceStore) workspaceStore.isPainting = true;
+
       _lastMousePos = {
         x: event.touches ? event.touches[0].clientX : event.clientX,
         y: event.touches ? event.touches[0].clientY : event.clientY
       };
+      if (tool === 'zoom' && !disableZoom) {
+        _initialZoom = unref(editZoom);
+      }
       if (event.type === 'mousedown') {
         window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('mouseup', commitPaint);
@@ -109,12 +115,16 @@ export function useEditorInteractions(options) {
       return;
     }
 
+    if (!pos) return;
+
     if (tool === 'picker') {
       if (event.type === 'mousedown') {
         event.preventDefault();
         event.stopPropagation();
       }
       isPainting.value = true;
+      if (workspaceStore) workspaceStore.isPainting = true;
+
       callbacks.onColorPick(pos);
       if (event.type === 'mousedown') {
         window.addEventListener('mousemove', onMouseMove);
@@ -130,12 +140,56 @@ export function useEditorInteractions(options) {
     }
 
     isPainting.value = true;
+    if (workspaceStore) workspaceStore.isPainting = true;
+
     _lastPos = pos;
     
     if (event.type === 'mousedown') {
       window.addEventListener('mousemove', onMouseMove);
       window.addEventListener('mouseup', commitPaint);
     }
+  }
+
+  function zoomToPoint(newZoom, clientX, clientY) {
+    const scrollEl = getScrollParent();
+    const displayEl = unref(displayRef);
+
+    if (!scrollEl || !displayEl) {
+      callbacks.onZoomChange(newZoom);
+      return;
+    }
+
+    const scrollRect = scrollEl.getBoundingClientRect();
+    const canvasRect = displayEl.getBoundingClientRect();
+    
+    // Position of the point relative to the scroll container's viewport
+    const viewportX = clientX - scrollRect.left;
+    const viewportY = clientY - scrollRect.top;
+
+    // Current position of the canvas content relative to the scroll container's content
+    const canvasContentX = scrollEl.scrollLeft + canvasRect.left - scrollRect.left;
+    const canvasContentY = scrollEl.scrollTop + canvasRect.top - scrollRect.top;
+
+    // Where the point is on the canvas (0-1 fraction)
+    const fractionX = canvasRect.width > 0 ? (clientX - canvasRect.left) / canvasRect.width : 0.5;
+    const fractionY = canvasRect.height > 0 ? (clientY - canvasRect.top) / canvasRect.height : 0.5;
+
+    if (_pendingZoomScroll) _pendingZoomScroll.cancelled = true;
+    const pending = { cancelled: false };
+    _pendingZoomScroll = pending;
+
+    callbacks.onZoomChange(newZoom);
+
+    nextTick(() => {
+      if (pending.cancelled) return;
+      _pendingZoomScroll = null;
+      const newCanvasRect = displayEl.getBoundingClientRect();
+      if (newCanvasRect) {
+        scrollEl.scrollLeft = canvasContentX + fractionX * newCanvasRect.width - viewportX;
+        scrollEl.scrollTop = canvasContentY + fractionY * newCanvasRect.height - viewportY;
+      }
+      refreshMousePos();
+    });
   }
 
   function onMouseMove(event) {
@@ -160,20 +214,31 @@ export function useEditorInteractions(options) {
 
     const tool = unref(activeTool);
 
-    if (tool === 'hand') {
-      const dx = _lastMousePos.x - clientX;
-      const dy = _lastMousePos.y - clientY;
+    if (tool === 'hand' || tool === 'zoom') {
+      if (tool === 'hand') {
+        const dx = _lastMousePos.x - clientX;
+        const dy = _lastMousePos.y - clientY;
 
-      const scrollEl = getScrollParent();
-      if (scrollEl) {
-        scrollEl.scrollLeft += dx;
-        scrollEl.scrollTop += dy;
+        const scrollEl = getScrollParent();
+        if (scrollEl) {
+          scrollEl.scrollLeft += dx;
+          scrollEl.scrollTop += dy;
+        }
+
+        _lastMousePos = { x: clientX, y: clientY };
+        refreshMousePos();
+      } else if (!disableZoom) {
+        const dx = clientX - _lastMousePos.x;
+        const sensitivity = 0.01;
+        const newZoom = _initialZoom + (dx * sensitivity);
+        const cappedZoom = Math.max(1, Math.min(16, newZoom));
+        
+        zoomToPoint(cappedZoom, _lastMousePos.x, _lastMousePos.y);
       }
-
-      _lastMousePos = { x: clientX, y: clientY };
-      refreshMousePos();
       return;
     }
+
+    if (!pos) return;
 
     if (tool === 'picker') {
       callbacks.onColorPick(pos);
@@ -188,6 +253,8 @@ export function useEditorInteractions(options) {
   function commitPaint() {
     if (!isPainting.value) return;
     isPainting.value = false;
+    if (workspaceStore) workspaceStore.isPainting = false;
+
     _lastPos = null;
     _lastMousePos = null;
     window.removeEventListener('mousemove', onMouseMove);
@@ -199,8 +266,8 @@ export function useEditorInteractions(options) {
     if (event.touches.length === 1) {
       startPaint(event);
     } else if (event.touches.length === 2) {
-      lastTouchDistance = getTouchDistance(event.touches);
-      lastTouchCenter = getTouchCenter(event.touches);
+      lastTouchDistance = unref(getTouchDistance(event.touches));
+      lastTouchCenter = unref(getTouchCenter(event.touches));
       _initialPinchZoom = unref(editZoom);
     }
   }
@@ -210,52 +277,20 @@ export function useEditorInteractions(options) {
       if (isPainting.value) {
         onMouseMove(event);
       }
-    } else if (event.touches.length === 2 && lastTouchDistance !== null) {
+    } else if (event.touches.length === 2 && lastTouchDistance !== null && !disableZoom) {
       event.preventDefault();
-
-      const scrollEl = getScrollParent();
 
       const distance = getTouchDistance(event.touches);
       const ratio = distance / lastTouchDistance;
       const newZoom = _initialPinchZoom * ratio;
       
       const cappedZoom = Math.max(0.1, Math.min(16, newZoom));
-      callbacks.onZoomChange(cappedZoom);
-
       const center = getTouchCenter(event.touches);
+      
       _lastClientX = center.x;
       _lastClientY = center.y;
 
-      if (scrollEl) {
-        const displayEl = unref(displayRef);
-        const scrollRect = scrollEl.getBoundingClientRect();
-        const viewportX = center.x - scrollRect.left;
-        const viewportY = center.y - scrollRect.top;
-        const canvasRect = displayEl ? displayEl.getBoundingClientRect() : null;
-
-        const canvasContentX = canvasRect ? scrollEl.scrollLeft + canvasRect.left - scrollRect.left : scrollEl.scrollLeft + viewportX;
-        const canvasContentY = canvasRect ? scrollEl.scrollTop + canvasRect.top - scrollRect.top : scrollEl.scrollTop + viewportY;
-        const fractionX = canvasRect && canvasRect.width > 0 ? (center.x - canvasRect.left) / canvasRect.width : 0.5;
-        const fractionY = canvasRect && canvasRect.height > 0 ? (center.y - canvasRect.top) / canvasRect.height : 0.5;
-
-        const dx = lastTouchCenter ? (lastTouchCenter.x - center.x) : 0;
-        const dy = lastTouchCenter ? (lastTouchCenter.y - center.y) : 0;
-
-        if (_pendingZoomScroll) _pendingZoomScroll.cancelled = true;
-        const pending = { cancelled: false };
-        _pendingZoomScroll = pending;
-
-        nextTick(() => {
-          if (pending.cancelled) return;
-          _pendingZoomScroll = null;
-          const newCanvasRect = displayEl ? displayEl.getBoundingClientRect() : null;
-          if (newCanvasRect) {
-            scrollEl.scrollLeft = canvasContentX + fractionX * newCanvasRect.width - viewportX + dx;
-            scrollEl.scrollTop = canvasContentY + fractionY * newCanvasRect.height - viewportY + dy;
-          }
-          refreshMousePos();
-        });
-      }
+      zoomToPoint(cappedZoom, center.x, center.y);
       
       lastTouchCenter = center;
     }
@@ -272,7 +307,7 @@ export function useEditorInteractions(options) {
   function handleWheel(event) {
     const scrollEl = getScrollParent();
 
-    if (event.ctrlKey) {
+    if (event.ctrlKey && !disableZoom) {
       event.preventDefault();
       const oldZoom = unref(editZoom) || 1;
 
@@ -283,38 +318,7 @@ export function useEditorInteractions(options) {
       _lastClientX = event.clientX;
       _lastClientY = event.clientY;
 
-      if (scrollEl) {
-        const displayEl = unref(displayRef);
-        const scrollRect = scrollEl.getBoundingClientRect();
-        const mouseX = event.clientX - scrollRect.left;
-        const mouseY = event.clientY - scrollRect.top;
-        const canvasRect = displayEl ? displayEl.getBoundingClientRect() : null;
-
-        const canvasContentX = canvasRect ? scrollEl.scrollLeft + canvasRect.left - scrollRect.left : scrollEl.scrollLeft + mouseX;
-        const canvasContentY = canvasRect ? scrollEl.scrollTop + canvasRect.top - scrollRect.top : scrollEl.scrollTop + mouseY;
-
-        const fractionX = canvasRect && canvasRect.width > 0 ? (event.clientX - canvasRect.left) / canvasRect.width : 0.5;
-        const fractionY = canvasRect && canvasRect.height > 0 ? (event.clientY - canvasRect.top) / canvasRect.height : 0.5;
-
-        if (_pendingZoomScroll) _pendingZoomScroll.cancelled = true;
-        const pending = { cancelled: false };
-        _pendingZoomScroll = pending;
-
-        callbacks.onZoomChange(cappedZoom);
-
-        nextTick(() => {
-          if (pending.cancelled) return;
-          _pendingZoomScroll = null;
-          const newCanvasRect = displayEl ? displayEl.getBoundingClientRect() : null;
-          if (newCanvasRect) {
-            scrollEl.scrollLeft = canvasContentX + fractionX * newCanvasRect.width - mouseX;
-            scrollEl.scrollTop = canvasContentY + fractionY * newCanvasRect.height - mouseY;
-          }
-          refreshMousePos();
-        });
-      } else {
-        callbacks.onZoomChange(cappedZoom);
-      }
+      zoomToPoint(cappedZoom, event.clientX, event.clientY);
       return;
     }
 
@@ -331,36 +335,14 @@ export function useEditorInteractions(options) {
 
   function zoomToViewCenter(newZoom) {
     const scrollEl = getScrollParent();
-    const displayEl = unref(displayRef);
-
-    if (!scrollEl || !displayEl) {
+    if (!scrollEl) {
       callbacks.onZoomChange(newZoom);
       return;
     }
-
     const scrollRect = scrollEl.getBoundingClientRect();
-    const canvasRect = displayEl.getBoundingClientRect();
-    const canvasContentX = scrollEl.scrollLeft + canvasRect.left - scrollRect.left;
-    const canvasContentY = scrollEl.scrollTop + canvasRect.top - scrollRect.top;
-    const viewportCenterX = scrollEl.clientWidth / 2;
-    const viewportCenterY = scrollEl.clientHeight / 2;
-    const fractionX = canvasRect.width > 0 ? (viewportCenterX - (canvasRect.left - scrollRect.left)) / canvasRect.width : 0.5;
-    const fractionY = canvasRect.height > 0 ? (viewportCenterY - (canvasRect.top - scrollRect.top)) / canvasRect.height : 0.5;
-
-    if (_pendingZoomScroll) _pendingZoomScroll.cancelled = true;
-    const pending = { cancelled: false };
-    _pendingZoomScroll = pending;
-
-    callbacks.onZoomChange(newZoom);
-
-    nextTick(() => {
-      if (pending.cancelled) return;
-      _pendingZoomScroll = null;
-      const newCanvasRect = displayEl.getBoundingClientRect();
-      scrollEl.scrollLeft = canvasContentX + fractionX * newCanvasRect.width - viewportCenterX;
-      scrollEl.scrollTop = canvasContentY + fractionY * newCanvasRect.height - viewportCenterY;
-      refreshMousePos();
-    });
+    const centerX = scrollRect.left + scrollEl.clientWidth / 2;
+    const centerY = scrollRect.top + scrollEl.clientHeight / 2;
+    zoomToPoint(newZoom, centerX, centerY);
   }
 
   return {
@@ -376,6 +358,7 @@ export function useEditorInteractions(options) {
     handleTouchEnd,
     handleWheel,
     centerContent,
-    zoomToViewCenter
+    zoomToViewCenter,
+    _initialZoom,
   };
 }

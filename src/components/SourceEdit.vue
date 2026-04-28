@@ -159,6 +159,7 @@ export default {
       displayRef,
       activeTool: computed(() => workspaceStore.activeTool),
       editZoom: computed(() => workspaceStore.editZoom),
+      workspaceStore,
       callbacks: {
         pixelCoordsAt(event) {
           const displayEl = displayRef.value;
@@ -282,12 +283,6 @@ export default {
 <template>
   <article
       ref="root"
-      :class="{
-        'pencil-tool': activeTool === 'pencil' || activeTool === 'bucket',
-        'picker-tool': activeTool === 'picker',
-        'hand-tool': activeTool === 'hand',
-        'is-painting': isPainting
-      }"
       @contextmenu.prevent
       @mouseenter="isMouseOver = true"
       @mouseleave="isMouseOver = false"
@@ -309,29 +304,11 @@ export default {
 
 <style scoped>
 article {
-  display: block;
   flex: 1;
   width: 100%;
   height: 100%;
   overflow: auto;
   overscroll-behavior: none;
-  cursor: none;
-}
-
-.pencil-tool {
-  cursor: crosshair;
-}
-
-.picker-tool {
-  cursor: crosshair;
-}
-
-.hand-tool {
-  cursor: grab;
-}
-
-.hand-tool.is-painting {
-  cursor: grabbing;
 }
 
 div.canvas-viewport {

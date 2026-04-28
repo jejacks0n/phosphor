@@ -1,6 +1,7 @@
 <script>
 import { mapState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import AnsiWorkspace from '@/components/AnsiWorkspace.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 
@@ -12,6 +13,7 @@ export default {
   },
   computed: {
     ...mapState(useProjectStore, ['image', 'hasEdits']),
+    ...mapState(useWorkspaceStore, ['activeTool', 'isPainting']),
   },
   mounted() {
     window.addEventListener('beforeunload', this.onBeforeUnload);
@@ -31,7 +33,7 @@ export default {
 </script>
 
 <template>
-  <main>
+  <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting }]">
     <ControlPanel/>
     <AnsiWorkspace/>
   </main>

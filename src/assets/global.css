@@ -3,6 +3,7 @@
   --white: #fff;
   --black: #000;
 
+  /* Background */
   --background: #313439;
   --background-highlight: rgba(255, 170, 73, 0.2);
 
@@ -10,6 +11,7 @@
   --accent: #9d55ff;
   --accent-hot: #e802fc;
   --accent-hover: #ff55ff;
+  --accent-glow: color-mix(in srgb, var(--accent) 15%, transparent);
 
   /* Surfaces */
   --surface-dark: #000;
@@ -26,9 +28,6 @@
   --border-subtle: #2a2a2a;
   --border-light: #444;
 
-  /* Accent utilities */
-  --accent-glow: color-mix(in srgb, var(--accent) 15%, transparent);
-
   /* Text */
   --text: #fff;
   --text-dim: #eee;
@@ -36,6 +35,7 @@
   --text-faint: #666;
   --text-inverted: #000;
 }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -46,7 +46,7 @@ html, body {
 }
 
 body {
-  position: fixed; /* Helps prevent pull-to-refresh and extra scrolling on iOS */
+  position: fixed; /* prevent pull-to-refresh */
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -142,8 +142,12 @@ input.mono {
   font-family: 'Simple Console', monospace;
 }
 
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
+input[type=checkbox] {
+  height: auto;
+}
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
   filter: invert(1);
   opacity: 1;
 }
@@ -243,6 +247,44 @@ input[type=range]:active::-moz-range-thumb {
   background: var(--accent-hot);
 }
 
+/* Tool Cursors */
+main.tool-pencil div.edit-viewport,
+main.tool-bucket div.edit-viewport,
+main.tool-picker div.edit-viewport,
+main.tool-flip div.edit-viewport,
+main.tool-char div.edit-viewport {
+  cursor: crosshair !important;
+}
+
+main.tool-hand div.edit-viewport {
+  cursor: grab !important;
+}
+main.tool-hand.is-painting,
+main.tool-hand.is-painting div.edit-viewport {
+  cursor: grabbing !important;
+}
+
+main.tool-zoom div.edit-viewport {
+  cursor: zoom-in !important;
+}
+main.tool-zoom.is-painting,
+main.tool-zoom.is-painting div.edit-viewport {
+  cursor: ew-resize !important;
+}
+
+main.tool-brush div.edit-viewport,
+main.tool-eraser div.edit-viewport {
+  cursor: none !important; /* a custom cursor indicator is used to indicate size */
+}
+
+main.tool-flip div.edit-viewport div.canvas-container,
+main.tool-char div.edit-viewport div.canvas-container {
+  cursor: none !important; /* a custom character highlight is used to indicate position */
+}
+
+
+/* Mobile overrides to make certain interface elements friendlier
+ ----------------------------------------------------------------------------*/
 @media (max-width: 768px) {
   input[type=range]::-webkit-slider-thumb {
     height: 23px;
@@ -255,16 +297,16 @@ input[type=range]:active::-moz-range-thumb {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  button:hover {
-    transform: none !important;
-  }
-}
-
+/* Light colored theme (only available via system level request)
+ ----------------------------------------------------------------------------*/
 @media (prefers-color-scheme: light) {
   :root {
+    --logo: url('/logo-light.png');
+
+    /* Background */
     --background: #d6d6d6;
 
+    /* Surfaces */
     --surface-dark: #fff;
     --surface-0: #f0f0f0;
     --surface-1: #e8e8e8;
@@ -273,16 +315,17 @@ input[type=range]:active::-moz-range-thumb {
     --surface-4: #c8c8c8;
     --surface-light: #000;
 
+    /* Borders */
     --border: #c8c8c8;
     --border-dark: #bbbbbb;
     --border-subtle: #dedede;
     --border-light: #aaaaaa;
 
+    /* Text */
     --text: #111;
     --text-dim: #333;
     --text-muted: #666;
     --text-faint: #999;
-    --logo: url('/logo-light.png');
     --text-inverted: #fff;
   }
 
@@ -290,10 +333,19 @@ input[type=range]:active::-moz-range-thumb {
   input[type="number"]::-webkit-outer-spin-button {
     filter: none !important;
   }
+
   button:not(.primary) {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
   button:not(.primary):hover {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Respect mah authoritah! (reduce motion animations)
+ ----------------------------------------------------------------------------*/
+@media (prefers-reduced-motion: reduce) {
+  button:hover {
+    transform: none !important;
   }
 }

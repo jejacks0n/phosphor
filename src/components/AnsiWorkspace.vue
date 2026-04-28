@@ -114,6 +114,7 @@ export default {
       'setEditZoom',
     ]),
     handleZoomTo(newZoom) {
+      if (this.previewTab === 'ansi') return;
       if (this.$refs.sourceEdit) {
         this.$refs.sourceEdit.zoomToViewCenter(newZoom);
       } else {
@@ -241,7 +242,7 @@ export default {
     <WorkspaceTabs v-model="previewTab"/>
     <EditToolbar v-if="image && editMode" :zoom-to="handleZoomTo"/>
     <DropZone @file-dropped="handleFileSelected">
-      <div class="viewport" :class="{ editing: editMode }" v-if="image">
+      <div class="edit-viewport viewport" :class="{ editing: editMode }" v-if="image">
         <SourceEdit
             ref="sourceEdit"
             v-if="previewTab === 'source'"
@@ -252,7 +253,6 @@ export default {
             v-if="previewTab === 'ansi'"
             :pipeline-canvas="pipelineCanvas"
             :output-canvas="outputCanvas"
-            :zoom-to="handleZoomTo"
         />
         <SauceEditor v-if="previewTab === 'sauce'"/>
       </div>

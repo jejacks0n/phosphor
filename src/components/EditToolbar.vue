@@ -32,7 +32,6 @@ export default {
     }),
     ...mapState(useWorkspaceStore, [
       'activeTool',
-      'editZoom',
       'editBrushSize',
       'editEraserSize',
       'editBrushOpacity',
@@ -67,16 +66,6 @@ export default {
 
       return rgb2hex({ r, g, b });
     },
-    zoomLabel() {
-      const z = this.editZoom;
-      return z < 10 ? `${z.toFixed(1)}×` : `${Math.round(z)}×`;
-    },
-    canZoomOut() {
-      return this.editZoom > 1;
-    },
-    canZoomIn() {
-      return this.editZoom < 16;
-    },
     showSecondaryRow() {
       return ['brush', 'eraser', 'bucket'].includes(this.activeTool);
     }
@@ -90,7 +79,6 @@ export default {
     ]),
     ...mapActions(useWorkspaceStore, [
       'setActiveTool',
-      'setEditZoom',
       'setEditBrushSize',
       'setEditEraserSize',
       'setEditBrushOpacity',
@@ -113,30 +101,6 @@ export default {
         this.flattenEdits();
       }
     },
-    startZoomDrag(event) {
-      this._lastY = event.clientY;
-      this._initialZoom = this.editZoom;
-      window.addEventListener('mousemove', this.onZoomDrag);
-      window.addEventListener('mouseup', this.stopZoomDrag);
-      document.body.style.cursor = 'ns-resize';
-    },
-    onZoomDrag(event) {
-      const dy = this._lastY - event.clientY;
-      const sensitivity = 0.05;
-      const newZoom = this._initialZoom + (dy * sensitivity);
-      const cappedZoom = Math.max(1, Math.min(16, newZoom));
-      
-      if (this.zoomTo) {
-        this.zoomTo(cappedZoom);
-      } else {
-        this.setEditZoom(cappedZoom);
-      }
-    },
-    stopZoomDrag() {
-      window.removeEventListener('mousemove', this.onZoomDrag);
-      window.removeEventListener('mouseup', this.stopZoomDrag);
-      document.body.style.cursor = '';
-    },
   },
 };
 </script>
@@ -156,11 +120,6 @@ export default {
       </div>
 
       <div class="tool-group">
-        <button
-            :class="{ active: activeTool === 'hand' }"
-            title="Hand Tool (Pan)"
-            @click="setActiveTool('hand')"
-        ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320.5 64C295.2 64 273.3 78.7 262.9 100C255.9 97.4 248.4 96 240.5 96C205.2 96 176.5 124.7 176.5 160L176.5 325.5L173.8 322.8C148.8 297.8 108.3 297.8 83.3 322.8C58.3 347.8 58.3 388.3 83.3 413.3L171 501C219 549 284.1 576 352 576L368.5 576C370 576 371.5 575.9 373 575.6C464.7 569.4 538 496.2 544.1 404.5C544.4 403 544.5 401.5 544.5 400L544.5 224C544.5 188.7 515.8 160 480.5 160C475 160 469.6 160.7 464.5 162L464.5 160C464.5 124.7 435.8 96 400.5 96C392.6 96 385.1 97.4 378.1 100C367.7 78.7 345.8 64 320.5 64zM304.5 160.1L304.5 160L304.5 128C304.5 119.2 311.7 112 320.5 112C329.3 112 336.5 119.2 336.5 128L336.5 296C336.5 309.3 347.2 320 360.5 320C373.8 320 384.5 309.3 384.5 296L384.5 160C384.5 151.2 391.7 144 400.5 144C409.3 144 416.5 151.2 416.5 160L416.5 296C416.5 309.3 427.2 320 440.5 320C453.8 320 464.5 309.3 464.5 296L464.5 224C464.5 215.2 471.7 208 480.5 208C489.3 208 496.5 215.2 496.5 224L496.5 396.9C496.4 397.5 496.4 398.2 496.3 398.8C492.9 468.5 437 524.4 367.3 527.8C366.7 527.8 366 527.9 365.4 528L352 528C296.9 528 244 506.1 205 467.1L117.2 379.3C111 373.1 111 362.9 117.2 356.7C123.4 350.5 133.6 350.5 139.8 356.7L183.5 400.4C190.4 407.3 200.7 409.3 209.7 405.6C218.7 401.9 224.5 393.1 224.5 383.4L224.5 160C224.5 151.2 231.7 144 240.5 144C249.3 144 256.5 151.1 256.5 159.9L256.5 296C256.5 309.3 267.2 320 280.5 320C293.8 320 304.5 309.3 304.5 296L304.5 160.1z"/></svg></button>
         <button
             :class="{ active: activeTool === 'pencil' }"
             title="Pencil (1px)"
@@ -186,6 +145,21 @@ export default {
             title="Color Picker"
             @click="setActiveTool('picker')"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M405.6 93.2L304 194.8L294.6 185.4C282.1 172.9 261.8 172.9 249.3 185.4C236.8 197.9 236.8 218.2 249.3 230.7L409.3 390.7C421.8 403.2 442.1 403.2 454.6 390.7C467.1 378.2 467.1 357.9 454.6 345.4L445.2 336L546.8 234.4C585.8 195.4 585.8 132.2 546.8 93.3C507.8 54.4 444.6 54.3 405.7 93.3zM119.4 387.3C104.4 402.3 96 422.7 96 443.9L96 486.3L69.4 526.2C60.9 538.9 62.6 555.8 73.4 566.6C84.2 577.4 101.1 579.1 113.8 570.6L153.7 544L196.1 544C217.3 544 237.7 535.6 252.7 520.6L362.1 411.2L316.8 365.9L207.4 475.3C204.4 478.3 200.3 480 196.1 480L160 480L160 443.9C160 439.7 161.7 435.6 164.7 432.6L274.1 323.2L228.8 277.9L119.4 387.3z"/></svg></button>
+        <div class="divider"/>
+        <button
+            :class="{ active: activeTool === 'hand' }"
+            title="Hand Tool (Pan)"
+            @click="setActiveTool('hand')"
+        ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320.5 64C295.2 64 273.3 78.7 262.9 100C255.9 97.4 248.4 96 240.5 96C205.2 96 176.5 124.7 176.5 160L176.5 325.5L173.8 322.8C148.8 297.8 108.3 297.8 83.3 322.8C58.3 347.8 58.3 388.3 83.3 413.3L171 501C219 549 284.1 576 352 576L368.5 576C370 576 371.5 575.9 373 575.6C464.7 569.4 538 496.2 544.1 404.5C544.4 403 544.5 401.5 544.5 400L544.5 224C544.5 188.7 515.8 160 480.5 160C475 160 469.6 160.7 464.5 162L464.5 160C464.5 124.7 435.8 96 400.5 96C392.6 96 385.1 97.4 378.1 100C367.7 78.7 345.8 64 320.5 64zM304.5 160.1L304.5 160L304.5 128C304.5 119.2 311.7 112 320.5 112C329.3 112 336.5 119.2 336.5 128L336.5 296C336.5 309.3 347.2 320 360.5 320C373.8 320 384.5 309.3 384.5 296L384.5 160C384.5 151.2 391.7 144 400.5 144C409.3 144 416.5 151.2 416.5 160L416.5 296C416.5 309.3 427.2 320 440.5 320C453.8 320 464.5 309.3 464.5 296L464.5 224C464.5 215.2 471.7 208 480.5 208C489.3 208 496.5 215.2 496.5 224L496.5 396.9C496.4 397.5 496.4 398.2 496.3 398.8C492.9 468.5 437 524.4 367.3 527.8C366.7 527.8 366 527.9 365.4 528L352 528C296.9 528 244 506.1 205 467.1L117.2 379.3C111 373.1 111 362.9 117.2 356.7C123.4 350.5 133.6 350.5 139.8 356.7L183.5 400.4C190.4 407.3 200.7 409.3 209.7 405.6C218.7 401.9 224.5 393.1 224.5 383.4L224.5 160C224.5 151.2 231.7 144 240.5 144C249.3 144 256.5 151.1 256.5 159.9L256.5 296C256.5 309.3 267.2 320 280.5 320C293.8 320 304.5 309.3 304.5 296L304.5 160.1z"/></svg></button>
+        <button
+            v-if="previewTab !== 'ansi'"
+            :class="{ active: activeTool === 'zoom' }"
+            title="Zoom Tool"
+            @click="setActiveTool('zoom')"
+        ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg></button>
+
+
+        <div class="divider" v-if="previewTab === 'ansi'"/>
         <button
             v-if="previewTab === 'ansi'"
             :class="{ active: activeTool === 'flip' }"
@@ -200,19 +174,6 @@ export default {
         >░</button>
       </div>
 
-      <template v-if="previewTab === 'source'">
-        <div class="divider"/>
-        <div class="zoom-group">
-          <button
-              class="zoom-drag-button desktop-only"
-              title="Click and drag up/down to zoom"
-              @mousedown="startZoomDrag"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/></svg>
-          </button>
-          <span class="zoom-label">{{ zoomLabel }}</span>
-        </div>
-      </template>
       <div class="spacer"/>
 
       <div class="desktop-only actions-container">
@@ -228,13 +189,13 @@ export default {
         </div>
 
         <button
-            class="final-btn"
+            class="primary"
             title="Bake paint into original image"
             :disabled="!hasPaint"
             @click="confirmFlatten"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M530.8 134.1C545.1 144.5 548.3 164.5 537.9 178.8L281.9 530.8C276.4 538.4 267.9 543.1 258.5 543.9C249.1 544.7 240 541.2 233.4 534.6L105.4 406.6C92.9 394.1 92.9 373.8 105.4 361.3C117.9 348.8 138.2 348.8 150.7 361.3L252.2 462.8L486.2 141.1C496.6 126.8 516.6 123.6 530.9 134z"/></svg></button>
         <button
-            class="final-btn"
+            class="primary"
             title="Clear all edits"
             :disabled="!hasEdits"
             @click="confirmClear"
@@ -350,12 +311,12 @@ export default {
         <span class="brush-size-value">{{ editFillTolerance }}</span>
         <div class="divider"/>
         <label class="checkbox-group">
+          <span>Contiguous</span>
           <input
               type="checkbox"
               :checked="editFillContiguous"
               @change="setEditFillContiguous($event.target.checked)"
           />
-          <span>Contiguous</span>
         </label>
       </div>
     </div>
@@ -376,36 +337,21 @@ export default {
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  min-height: 34px;
 }
 
 .secondary-row {
-  background: var(--surface-dark);
-  border-top: 1px solid var(--border);
-  padding: 4px 10px;
+  padding: 0 10px 4px;
   gap: 12px;
 }
 
 .tool-group,
 .color-group,
-.zoom-group,
 .history-group,
 .actions-container {
   display: flex;
   align-items: center;
   gap: 3px;
   user-select: none;
-}
-
-.zoom-drag-button {
-  cursor: ns-resize;
-  width: 26px;
-  padding: 0;
-}
-
-.zoom-drag-button svg {
-  width: 14px;
-  height: 14px;
 }
 
 .history-group {
@@ -426,28 +372,37 @@ export default {
 
 button {
   padding: 3px 8px;
-  font-size: 13px;
-  min-width: 36px;
-  height: 26px;
-  border-radius: 4px;
-  background: var(--surface-2);
+  //min-width: 36px;
+  //height: 26px;
+  border-radius: 3px;
+  //background: var(--surface-2);
   border: 1px solid var(--border);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  //color: var(--text-muted);
+  //transition: background 0.15s, color 0.15s, border-color 0.15s;
+  //display: flex;
+  //align-items: center;
+  //justify-content: center;
 }
 button svg {
   fill: var(--text-faint);
   width: 16px;
   height: 16px;
 }
+button.primary svg {
+  fill: var(--text);
+}
+button.primary:hover {
+  background: var(--surface-light);
+  border-color: var(--surface-light);
+}
+button.primary:hover svg {
+  fill: var(--text-inverted);
+}
+
 
 button:hover:not(:disabled) {
-  background: var(--surface-3);
-  color: var(--text);
+  //background: var(--surface-3);
+  //color: var(--text);
 }
 
 button:hover svg {
@@ -466,7 +421,6 @@ button.active svg {
 
 button:disabled {
   opacity: 0.35;
-  cursor: default;
 }
 
 .color-group input[type=color] {
@@ -477,7 +431,6 @@ button:disabled {
   border: 1px solid var(--border);
   border-right: none;
   background: var(--surface-2);
-  cursor: pointer;
 }
 
 .color-preview-container {
@@ -517,7 +470,6 @@ button:disabled {
 
 .brush-size-slider {
   width: 80px;
-  cursor: pointer;
   accent-color: var(--accent);
 }
 
@@ -530,38 +482,11 @@ button:disabled {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
-  cursor: pointer;
   user-select: none;
 }
 
 .checkbox-group input {
   margin: 0;
-  cursor: pointer;
-}
-
-.zoom-label {
-  font-family: 'Simple Console', monospace;
-  font-size: 12px;
-  min-width: 26px;
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.final-btn {
-  border-color: transparent !important;
-  background: transparent !important;
-  padding: 3px 5px;
-  height: 26px;
-  min-width: auto;
-}
-
-.final-btn:hover:not(:disabled) svg {
-  fill: var(--accent-hot);
-}
-
-.final-btn:disabled {
-  opacity: 0.3;
-  cursor: default;
 }
 
 .mobile-only {

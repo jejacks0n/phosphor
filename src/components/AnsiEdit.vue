@@ -20,10 +20,6 @@ export default {
       type: HTMLCanvasElement,
       required: false,
     },
-    zoomTo: {
-      type: Function,
-      default: null,
-    },
   },
   setup(props) {
     const rootRef = useTemplateRef('root');
@@ -34,6 +30,7 @@ export default {
 
     const picker = ref(null);
     const metrics = ref(null);
+    const columnOffsets = ref([]);
     const flippedCells = ref(new Set());
     const _renderFrame = ref(null);
 
@@ -49,13 +46,26 @@ export default {
       if (!projectStore.blockData || !projectStore.blockData.length || !displayRef.value) return;
 
       if (!metrics.value) {
-        const zoom = workspaceStore.editZoom / 5;
+        const zoom = 1;
         const m = calcMetrics(displayRef.value);
         metrics.value = {
           ...m,
           cellWidth: m.cellWidth / zoom,
           lineHeight: m.lineHeight / zoom
         };
+
+        // Calculate precise column offsets
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const style = getComputedStyle(displayRef.value);
+        ctx.font = style.fontSize + ' ' + style.fontFamily;
+        const totalWidth = ctx.measureText(''.padEnd(projectStore.cols, 'X')).width;
+        
+        columnOffsets.value = [];
+        for (let i = 0; i < projectStore.cols; i++) {
+          columnOffsets.value.push((i / projectStore.cols) * totalWidth);
+        }
+        columnOffsets.value.push(totalWidth); // End of last column
       }
 
       if (!metrics.value || metrics.value.cellWidth === 0 || metrics.value.lineHeight === 0) {
@@ -216,19 +226,20 @@ export default {
       handleTouchMove,
       handleTouchEnd,
       handleWheel,
-      centerContent,
-      zoomToViewCenter
+      centerContent
     } = useEditorInteractions({
       containerRef: rootRef,
       displayRef,
       activeTool: computed(() => workspaceStore.activeTool),
-      editZoom: computed(() => workspaceStore.editZoom),
+      editZoom: computed(() => 5),
+      workspaceStore,
+      disableZoom: true,
       callbacks: {
         pixelCoordsAt(event) {
           const displayEl = displayRef.value;
           if (!displayEl) return null;
           if (!metrics.value) {
-            const zoom = workspaceStore.editZoom / 5;
+            const zoom = 1;
             const m = calcMetrics(displayEl);
             metrics.value = {
               ...m,
@@ -236,17 +247,38 @@ export default {
               lineHeight: m.lineHeight / zoom
             };
           }
-          const zoom = workspaceStore.editZoom / 5;
+          const zoom = 1;
           const rect = displayEl.getBoundingClientRect();
           const clientX = event.touches ? event.touches[0].clientX : event.clientX;
           const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+          
+          const localX = (clientX - rect.left) / zoom;
+          const localY = (clientY - rect.top) / zoom;
+
+          let col = 0;
+          if (columnOffsets.value.length > 0) {
+            // Binary search or simple loop to find the column
+            for (let i = 0; i < columnOffsets.value.length - 1; i++) {
+              if (localX >= columnOffsets.value[i] && localX < columnOffsets.value[i+1]) {
+                col = i + (localX - columnOffsets.value[i]) / (columnOffsets.value[i+1] - columnOffsets.value[i]);
+                break;
+              }
+            }
+            if (localX >= columnOffsets.value[columnOffsets.value.length - 1]) {
+              col = projectStore.cols - 1;
+            }
+          } else {
+            col = localX / metrics.value.cellWidth;
+          }
+
           return {
-            x: (clientX - rect.left) / (metrics.value.cellWidth * zoom),
-            y: (clientY - rect.top) / (metrics.value.lineHeight / 2 * zoom),
+            x: col,
+            y: localY / (metrics.value.lineHeight / 2),
           };
         },
         onPaintStart(event, pos) {
           if (workspaceStore.activeTool === 'bucket' && props.outputCanvas) {
+            event.stopPropagation();
             const ix = Math.floor(pos.x);
             const iy = Math.floor(pos.y);
             const ctx = props.outputCanvas.getContext('2d', { willReadFrequently: true });
@@ -257,6 +289,7 @@ export default {
             return false;
           }
           if (workspaceStore.activeTool === 'char') {
+            event.stopPropagation();
             const col = Math.floor(pos.x);
             const row = Math.floor(pos.y / 2);
             picker.value = {
@@ -301,38 +334,61 @@ export default {
         onColorPick(pos) {
           workspaceStore.editFgColor = projectStore.getRawColorAt(pos.x, pos.y, props.outputCanvas);
         },
-        onZoomChange(newZoom) {
-          (props.zoomTo || workspaceStore.setEditZoom)(newZoom);
-        },
       },
     });
 
     const brushPreviewStyle = computed(() => {
       if (!metrics.value) return { display: 'none' };
-      const isEraser = workspaceStore.activeTool === 'eraser';
-      const isPencil = workspaceStore.activeTool === 'pencil';
-      const isChar = workspaceStore.activeTool === 'char';
-      
-      const zoom = workspaceStore.editZoom / 5;
-      const size = (isPencil || isChar) ? 1 : (isEraser ? workspaceStore.editEraserSize : workspaceStore.editBrushSize);
-      
-      const width = size * metrics.value.cellWidth * zoom;
-      const height = size * (metrics.value.lineHeight / 2) * zoom;
+      const tool = workspaceStore.activeTool;
+      const isChar = tool === 'char';
+      const isFlip = tool === 'flip';
+      const isEraser = tool === 'eraser';
+      const isBrush = tool === 'brush';
+
+      if (!isMouseOver.value || (!isChar && !isFlip && !isEraser && !isBrush)) return { display: 'none' };
+
+      if (isChar || isFlip) {
+        const col = Math.floor(mousePos.value.x / metrics.value.cellWidth);
+        const row = Math.floor(mousePos.value.y / metrics.value.lineHeight);
+        
+        const isInBounds = col >= 0 && col < projectStore.cols && 
+                          row >= 0 && row < (projectStore.rows / 2);
+
+        if (!isInBounds) return { display: 'none' };
+
+        return {
+          display: 'block',
+          width: `${metrics.value.cellWidth}px`,
+          height: `${metrics.value.lineHeight}px`,
+          left: `${col * metrics.value.cellWidth}px`,
+          top: `${row * metrics.value.lineHeight - 0.5}px`,
+          borderRadius: '0',
+          transform: 'none',
+          mixBlendMode: 'difference',
+          background: 'white',
+          outline: '1px solid red',
+          border: 'none',
+          boxShadow: 'none',
+        };
+      }
+
+      const size = isEraser ? workspaceStore.editEraserSize : workspaceStore.editBrushSize;
+      const width = size * metrics.value.cellWidth;
+      const height = size * (metrics.value.lineHeight / 2);
       
       return {
+        display: 'block',
         width: `${width}px`,
         height: `${height}px`,
         left: `${mousePos.value.x}px`,
         top: `${mousePos.value.y}px`,
-        display: isMouseOver.value && (workspaceStore.activeTool === 'brush' || workspaceStore.activeTool === 'eraser' || workspaceStore.activeTool === 'char')
-                 ? 'block'
-                 : 'none',
-        borderRadius: (isEraser || isChar) ? '0' : '50%',
+        borderRadius: isEraser ? '0' : '50%',
+        transform: 'translate(-50%, -50%)',
       };
     });
 
     const preStyle = computed(() => {
-      const zoom = workspaceStore.editZoom / 5;
+      const zoom = 1;
       return {
         transform: `scale(${zoom})`,
         transformOrigin: 'top left',
@@ -349,6 +405,16 @@ export default {
       nextTick(() => centerContent());
     });
 
+    const closePicker = () => {
+      picker.value = null;
+    };
+
+    const handleKeydown = (e) => {
+      if (e.key === 'Escape' && picker.value) {
+        closePicker();
+      }
+    };
+
     onMounted(() => {
       queueRender();
       workspaceStore.editMode = true;
@@ -357,6 +423,7 @@ export default {
       if (rootRef.value) {
         rootRef.value.addEventListener('wheel', handleWheel, { passive: false });
       }
+      window.addEventListener('keydown', handleKeydown);
 
       nextTick(() => centerContent());
     });
@@ -367,6 +434,7 @@ export default {
       if (rootRef.value) {
         rootRef.value.removeEventListener('wheel', handleWheel);
       }
+      window.removeEventListener('keydown', handleKeydown);
       if (_renderFrame.value) cancelAnimationFrame(_renderFrame.value);
     });
 
@@ -385,16 +453,13 @@ export default {
       picker,
       brushPreviewStyle,
       preStyle,
-      zoomToViewCenter,
       selectChar(char) {
         if (!picker.value) return;
         projectStore.setCharEdit(picker.value.col, picker.value.row, char === 'ERASE' ? null : char);
-        picker.value = null;
+        closePicker();
         projectStore.takeSnapshot();
       },
-      closePicker() {
-        picker.value = null;
-      },
+      closePicker,
     };
   },
   computed: {
@@ -411,12 +476,6 @@ export default {
 <template>
   <article
       ref="root"
-      :class="{
-      'pencil-tool': activeTool === 'pencil' || activeTool === 'char' || activeTool === 'bucket' || activeTool === 'flip',
-      'picker-tool': activeTool === 'picker',
-      'hand-tool': activeTool === 'hand',
-      'is-painting': isPainting
-    }"
       @contextmenu.prevent
       @mouseenter="isMouseOver = true"
       @mouseleave="isMouseOver = false"
@@ -434,7 +493,7 @@ export default {
         <div
             v-if="picker"
             class="picker-backdrop"
-            @mousedown="closePicker"
+            @mousedown.stop="closePicker"
         ></div>
 
         <div
@@ -467,23 +526,22 @@ export default {
 
 <style scoped>
 article {
-  display: block;
   flex: 1;
   width: 100%;
   height: 100%;
   overflow: auto;
-  overscroll-behavior: none;
-  cursor: none;
 }
 
 div.canvas-viewport {
   display: inline-flex;
-  margin: 70vh 70vw;
+  width: 100%;
+  height: 100%;
 }
 
 div.canvas-container {
   position: relative;
   touch-action: none;
+  margin: auto;
 }
 
 pre {
@@ -497,24 +555,11 @@ pre {
   white-space: pre;
   background: var(--surface-dark);
   outline: 2px dashed var(--border-light);
-  cursor: none;
   display: block;
-}
-
-.pencil-tool pre {
-  cursor: crosshair;
-}
-
-.picker-tool pre {
-  cursor: crosshair;
-}
-
-.hand-tool pre {
-  cursor: grab;
-}
-
-.hand-tool.is-painting pre {
-  cursor: grabbing;
+  user-select: none;
+  text-rendering: optimizeSpeed;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 .brush-preview {
