@@ -1,9 +1,11 @@
 <script>
-import { mapState, mapWritableState, mapActions } from 'pinia';
+import { computed, useTemplateRef, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { mapState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { floodFill } from '@/lib/FloodFill';
+import { useEditorInteractions } from '@/composables/useEditorInteractions';
 
 export default {
   name: 'SourceEdit',
@@ -17,88 +19,29 @@ export default {
       required: false,
     },
   },
-  data() {
-    return {
-      isPainting: false,
-      mousePos: { x: 0, y: 0 },
-      isMouseOver: false,
-      lastTouchDistance: null,
-      lastTouchCenter: null,
-    };
-  },
-  computed: {
-    ...mapState(useProjectStore, [
-      'cols', 'rows',
-      'brightness', 'contrast', 'saturation', 'hue', 'invert'
-    ]),
-    ...mapState(useWorkspaceStore, [
-      'editZoom', 'editBrushSize',
-      'editBrushOpacity', 'editBrushFlow', 'editBrushHardness', 'activeTool',
-      'editFillTolerance', 'editFillContiguous'
-    ]),
-    ...mapWritableState(useWorkspaceStore, ['editMode', 'editFgColor']),
-    brushPreviewSize() {
-      return this.editBrushSize * this.editZoom;
-    },
-    brushPreviewStyle() {
-      const isPencil = this.activeTool === 'pencil';
-      const size = isPencil ? 1 : this.editBrushSize;
-      const pixelSize = size * this.editZoom;
+  setup(props) {
+    const rootRef = useTemplateRef('root');
+    const containerRef = useTemplateRef('container');
+    const displayRef = useTemplateRef('displayCanvas');
+    const workspaceStore = useWorkspaceStore();
+    const projectStore = useProjectStore();
 
-      return {
-        width: `${pixelSize}px`,
-        height: `${pixelSize}px`,
-        left: `${this.mousePos.x}px`,
-        top: `${this.mousePos.y}px`,
-        display: this.isMouseOver && (this.activeTool === 'brush' || this.activeTool === 'eraser' || this.activeTool === 'pencil') ? 'block' : 'none',
-        borderRadius: this.activeTool === 'eraser' ? '0' : '50%',
-      };
-    },
-  },
-  watch: {
-    canvas: 'redrawDisplay',
-    editZoom: 'redrawDisplay',
-  },
-  mounted() {
-    this.redrawDisplay();
-    this.editMode = true;
-    this.resetToolToHand();
-  },
-  beforeUnmount() {
-    this.commitPaint();
-    this.editMode = false;
-  },
-
-  methods: {
-    ...mapActions(useProjectStore, ['paintEditPixels', 'eraseEditPixels', 'takeSnapshot', 'getRawColorAt']),
-    ...mapActions(useWorkspaceStore, ['setEditZoom', 'resetToolToHand']),
-
-    redrawDisplay() {
-      if (!this.$refs.displayCanvas || !this.canvas) return;
-      const dc = this.$refs.displayCanvas;
-      dc.width = this.cols * this.editZoom;
-      dc.height = this.rows * this.editZoom;
+    const redrawDisplay = () => {
+      const dc = displayRef.value;
+      if (!dc || !props.canvas) return;
+      dc.width = projectStore.cols * workspaceStore.editZoom;
+      dc.height = projectStore.rows * workspaceStore.editZoom;
       const ctx = dc.getContext('2d', { willReadFrequently: true });
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(this.canvas, 0, 0, dc.width, dc.height);
-    },
+      ctx.drawImage(props.canvas, 0, 0, dc.width, dc.height);
+    };
 
-    pixelCoordsAt(event) {
-      const rect = this.$refs.displayCanvas.getBoundingClientRect();
-      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-      const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-      return {
-        x: (clientX - rect.left) / this.editZoom,
-        y: (clientY - rect.top)  / this.editZoom,
-      };
-    },
+    const paintSegment = (from, to) => {
+      if (!props.canvas || !props.pipelineCanvas) return;
+      const paintRgb = hex2rgb(workspaceStore.editFgColor);
 
-    paintSegment(from, to) {
-      if (!this.canvas || !this.pipelineCanvas) return;
-      const paintRgb = hex2rgb(this.editFgColor);
-
-      if (this.activeTool === 'pencil') {
-        const positions = this.interpolatedPositions(from.x, from.y, to.x, to.y);
+      if (workspaceStore.activeTool === 'pencil') {
+        const positions = interpolatedPositions(from.x, from.y, to.x, to.y);
         const pixels = [];
         const seen = new Set();
 
@@ -106,60 +49,55 @@ export default {
           const cx = Math.floor(x);
           const cy = Math.floor(y);
 
-          if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) continue;
+          if (cx < 0 || cy < 0 || cx >= projectStore.cols || cy >= projectStore.rows) continue;
           const key = `${cx},${cy}`;
           if (!seen.has(key)) {
             pixels.push({ x: cx, y: cy, r: paintRgb.r, g: paintRgb.g, b: paintRgb.b, alpha: 1 });
             seen.add(key);
           }
         }
-        this.paintEditPixels(pixels, this.pipelineCanvas, this.canvas, this.editBrushOpacity);
-        this.redrawDisplay();
+        projectStore.paintEditPixels(pixels, props.pipelineCanvas, props.canvas, workspaceStore.editBrushOpacity);
+        redrawDisplay();
         return;
       }
 
-      if (this.activeTool === 'eraser') {
-        const size = this.editBrushSize;
-        const radius = size / 2;
+      if (workspaceStore.activeTool === 'eraser') {
+        const size = workspaceStore.editEraserSize;
+        const halfSize = size / 2;
 
-        const positions = this.interpolatedPositions(from.x, from.y, to.x, to.y);
+        const positions = interpolatedPositions(from.x, from.y, to.x, to.y);
         const pixels = [];
         const seen = new Set();
 
         for (const { x, y } of positions) {
-          const x0 = Math.floor(x - radius);
-          const x1 = Math.ceil(x + radius);
-          const y0 = Math.floor(y - radius);
-          const y1 = Math.ceil(y + radius);
+          const x0 = Math.floor(x - halfSize);
+          const x1 = Math.ceil(x + halfSize);
+          const y0 = Math.floor(y - halfSize);
+          const y1 = Math.ceil(y + halfSize);
 
           for (let iy = y0; iy < y1; iy++) {
             for (let ix = x0; ix < x1; ix++) {
-              if (ix < 0 || iy < 0 || ix >= this.cols || iy >= this.rows) continue;
-
-              const dx = (ix + 0.5) - x;
-              const dy = (iy + 0.5) - y;
-              const dist = Math.sqrt(dx * dx + dy * dy);
-              if (dist > radius) continue;
+              if (ix < 0 || iy < 0 || ix >= projectStore.cols || iy >= projectStore.rows) continue;
 
               const key = `${ix},${iy}`;
               if (!seen.has(key)) {
-                pixels.push({ x: ix, y: iy, r: paintRgb.r, g: paintRgb.g, b: paintRgb.b, alpha: 1 });
+                pixels.push({ x: ix, y: iy, alpha: 1 });
                 seen.add(key);
               }
             }
           }
         }
-        this.eraseEditPixels(pixels, this.pipelineCanvas, this.canvas);
-        this.redrawDisplay();
+        projectStore.eraseEditPixels(pixels, props.pipelineCanvas, props.canvas);
+        redrawDisplay();
         return;
       }
 
-      const size = this.editBrushSize;
+      const size = workspaceStore.editBrushSize;
       const radius = size / 2;
-      const flow = this.editBrushFlow / 100;
-      const h = this.editBrushHardness / 100;
+      const flow = workspaceStore.editBrushFlow / 100;
+      const h = workspaceStore.editBrushHardness / 100;
 
-      const positions = this.interpolatedPositions(from.x, from.y, to.x, to.y);
+      const positions = interpolatedPositions(from.x, from.y, to.x, to.y);
       const pixels = [];
 
       for (const { x: cx, y: cy } of positions) {
@@ -171,7 +109,7 @@ export default {
 
         for (let iy = y0; iy < y1; iy++) {
           for (let ix = x0; ix < x1; ix++) {
-            if (ix < 0 || iy < 0 || ix >= this.cols || iy >= this.rows) continue;
+            if (ix < 0 || iy < 0 || ix >= projectStore.cols || iy >= projectStore.rows) continue;
 
             const dx = (ix + 0.5) - cx;
             const dy = (iy + 0.5) - cy;
@@ -189,7 +127,7 @@ export default {
               pixels.push({
                 x: ix, y: iy,
                 r: paintRgb.r, g: paintRgb.g, b: paintRgb.b,
-                alpha: alpha
+                alpha: alpha,
               });
             }
           }
@@ -197,240 +135,208 @@ export default {
       }
 
       if (pixels.length) {
-        this.paintEditPixels(pixels, this.pipelineCanvas, this.canvas, this.editBrushOpacity);
-        this.redrawDisplay();
+        projectStore.paintEditPixels(pixels, props.pipelineCanvas, props.canvas, workspaceStore.editBrushOpacity);
+        redrawDisplay();
       }
-    },
+    };
 
-    interpolatedPositions(x0, y0, x1, y1) {
-      const dx = x1 - x0;
-      const dy = y1 - y0;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const steps = Math.ceil(dist * 2); // 0.5px steps for smoothness
-      if (steps === 0) return [{ x: x1, y: y1 }];
-      const positions = [];
-      for (let i = 0; i <= steps; i++) {
-        const t = i / steps;
-        positions.push({
-          x: x0 + t * dx,
-          y: y0 + t * dy,
-        });
-      }
-      return positions;
-    },
+    const {
+      isPainting,
+      mousePos,
+      isMouseOver,
+      interpolatedPositions,
+      startPaint,
+      onMouseMove,
+      commitPaint,
+      handleTouchStart,
+      handleTouchMove,
+      handleTouchEnd,
+      handleWheel,
+      centerContent,
+      zoomToViewCenter
+    } = useEditorInteractions({
+      containerRef: rootRef,
+      displayRef,
+      activeTool: computed(() => workspaceStore.activeTool),
+      editZoom: computed(() => workspaceStore.editZoom),
+      callbacks: {
+        pixelCoordsAt(event) {
+          const displayEl = displayRef.value;
+          if (!displayEl) return null;
+          const rect = displayEl.getBoundingClientRect();
+          const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+          const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+          return {
+            x: (clientX - rect.left) / workspaceStore.editZoom,
+            y: (clientY - rect.top) / workspaceStore.editZoom,
+          };
+        },
+        onPaintStart(event, pos) {
+          if (workspaceStore.activeTool === 'bucket' && props.canvas) {
+            const ix = Math.floor(pos.x);
+            const iy = Math.floor(pos.y);
+            const ctx = props.canvas.getContext('2d', { willReadFrequently: true });
+            const imageData = ctx.getImageData(0, 0, projectStore.cols, projectStore.rows);
+            const pixels = floodFill(imageData, ix, iy, workspaceStore.editFillTolerance, workspaceStore.editFillContiguous);
 
-    pickColor(pos) {
-      this.editFgColor = this.getRawColorAt(pos.x, pos.y);
-    },
+            const paintRgb = hex2rgb(workspaceStore.editFgColor);
+            const pixelPayload = pixels.map(p => ({
+              ...p, r: paintRgb.r, g: paintRgb.g, b: paintRgb.b, alpha: 1
+            }));
 
-    startPaint(event) {
-      if (!this.canvas || !this.pipelineCanvas) return;
-      const pos = this.pixelCoordsAt(event);
-
-      if (this.activeTool === 'hand') {
-        this.isPainting = true;
-        this._lastMousePos = {
-          x: event.touches ? event.touches[0].clientX : event.clientX,
-          y: event.touches ? event.touches[0].clientY : event.clientY
-        };
-        if (event.type === 'mousedown') {
-          window.addEventListener('mousemove', this.onMouseMove);
-          window.addEventListener('mouseup', this.commitPaint);
-        }
-        return;
-      }
-
-      if (this.activeTool === 'bucket' && this.canvas) {
-        const ix = Math.floor(pos.x);
-        const iy = Math.floor(pos.y);
-        const ctx = this.canvas.getContext('2d', { willReadFrequently: true });
-        const imageData = ctx.getImageData(0, 0, this.cols, this.rows);
-        const pixels = floodFill(imageData, ix, iy, this.editFillTolerance, this.editFillContiguous);
-
-        const paintRgb = hex2rgb(this.editFgColor);
-        const pixelPayload = pixels.map(p => ({
-          ...p, r: paintRgb.r, g: paintRgb.g, b: paintRgb.b
-        }));
-
-        this.paintEditPixels(pixelPayload, this.pipelineCanvas, this.canvas, this.editBrushOpacity);
-        this.takeSnapshot();
-        this.redrawDisplay();
-        return;
-      }
-
-      if (this.activeTool === 'picker') {
-        if (event.type === 'mousedown') {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        this.isPainting = true;
-        this.pickColor(pos);
-        if (event.type === 'mousedown') {
-          window.addEventListener('mousemove', this.onMouseMove);
-          window.addEventListener('mouseup', this.commitPaint);
-        }
-        return;
-      }
-
-      this.isPainting = true;
-      this._lastPos = pos;
-      this.paintSegment(pos, pos);
-      if (event.type === 'mousedown') {
-        window.addEventListener('mousemove', this.onMouseMove);
-        window.addEventListener('mouseup', this.commitPaint);
-      }
-    },
-
-    onMouseMove(event) {
-      const rect = this.$refs.displayCanvas.getBoundingClientRect();
-      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-      const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-
-      const pos = {
-        x: (clientX - rect.left) / this.editZoom,
-        y: (clientY - rect.top)  / this.editZoom,
-      };
-      this.mousePos = {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-      };
-
-      if (!this.isPainting || !this.canvas) return;
-
-      if (this.activeTool === 'hand') {
-        const dx = this._lastMousePos.x - clientX;
-        const dy = this._lastMousePos.y - clientY;
-
-        let scrollEl = this.$el.parentElement;
-        while (scrollEl && scrollEl.tagName !== 'ARTICLE') {
-          scrollEl = scrollEl.parentElement;
-        }
-        if (scrollEl) {
-          scrollEl.scrollLeft += dx;
-          scrollEl.scrollTop += dy;
-        }
-
-        this._lastMousePos = { x: clientX, y: clientY };
-        return;
-      }
-
-      if (this.activeTool === 'picker') {
-        this.pickColor(pos);
-        return;
-      }
-
-      const pPos = this.pixelCoordsAt(event);
-      const prev = this._lastPos || pPos;
-      this._lastPos = pPos;
-      this.paintSegment(prev, pPos);
-    },
-
-    commitPaint() {
-      if (!this.isPainting) return;
-      this.isPainting = false;
-      this._lastPos = null;
-      this._lastMousePos = null;
-      window.removeEventListener('mousemove', this.onMouseMove);
-      window.removeEventListener('mouseup', this.commitPaint);
-      if (this.activeTool !== 'hand') {
-        this.takeSnapshot();
-      }
-    },
-
-    handleTouchStart(event) {
-      if (event.touches.length === 1) {
-        this.startPaint(event);
-      } else if (event.touches.length === 2) {
-        this.lastTouchDistance = this.getTouchDistance(event.touches);
-        this.lastTouchCenter = this.getTouchCenter(event.touches);
-        this._initialPinchZoom = this.editZoom;
-      }
-    },
-
-    handleTouchMove(event) {
-      if (event.touches.length === 1) {
-        if (this.isPainting) {
-          this.onMouseMove(event);
-        }
-      } else if (event.touches.length === 2 && this.lastTouchDistance !== null) {
-        event.preventDefault();
-
-        // 1. Smooth Continuous Zoom
-        const distance = this.getTouchDistance(event.touches);
-        const ratio = distance / this.lastTouchDistance;
-        this.setEditZoom(this._initialPinchZoom * ratio);
-
-        // 2. Handle Pan
-        const center = this.getTouchCenter(event.touches);
-        if (this.lastTouchCenter) {
-          const dx = this.lastTouchCenter.x - center.x;
-          const dy = this.lastTouchCenter.y - center.y;
-
-          let scrollEl = this.$el.parentElement;
-          while (scrollEl && scrollEl.tagName !== 'ARTICLE') {
-            scrollEl = scrollEl.parentElement;
+            projectStore.paintEditPixels(pixelPayload, props.pipelineCanvas, props.canvas, workspaceStore.editBrushOpacity);
+            projectStore.takeSnapshot();
+            redrawDisplay();
+            return false;
           }
-
-          if (scrollEl) {
-            scrollEl.scrollLeft += dx;
-            scrollEl.scrollTop += dy;
+          paintSegment(pos, pos);
+          return true;
+        },
+        onPaintMove(prev, curr) {
+          paintSegment(prev, curr);
+        },
+        onPaintEnd() {
+          const toolsWithSnapshot = ['brush', 'pencil', 'eraser'];
+          if (toolsWithSnapshot.includes(workspaceStore.activeTool)) {
+            projectStore.takeSnapshot();
           }
-        }
-        this.lastTouchCenter = center;
-      }
-    },
+        },
+        onColorPick(pos) {
+          workspaceStore.editFgColor = projectStore.getRawColorAt(pos.x, pos.y);
+        },
+        onZoomChange(newZoom) {
+          workspaceStore.setEditZoom(newZoom);
+        },
+      },
+    });
 
-    handleTouchEnd(event) {
-      if (this.isPainting && event.touches.length === 0) {
-        this.commitPaint();
-      }
-      this.lastTouchDistance = null;
-      this.lastTouchCenter = null;
-    },
+    const brushPreviewStyle = computed(() => {
+      const isPencil = workspaceStore.activeTool === 'pencil';
+      const isEraser = workspaceStore.activeTool === 'eraser';
+      const size = isPencil ? 1 : (isEraser ? workspaceStore.editEraserSize : workspaceStore.editBrushSize);
+      const pixelSize = size * workspaceStore.editZoom;
 
-    getTouchDistance(touches) {
-      const dx = touches[0].clientX - touches[1].clientX;
-      const dy = touches[0].clientY - touches[1].clientY;
-      return Math.sqrt(dx * dx + dy * dy);
-    },
-
-    getTouchCenter(touches) {
       return {
-        x: (touches[0].clientX + touches[1].clientX) / 2,
-        y: (touches[0].clientY + touches[1].clientY) / 2
+        width: `${pixelSize}px`,
+        height: `${pixelSize}px`,
+        left: `${mousePos.value.x}px`,
+        top: `${mousePos.value.y}px`,
+        display: isMouseOver.value && (workspaceStore.activeTool === 'brush' || workspaceStore.activeTool === 'eraser')
+                 ? 'block'
+                 : 'none',
+        borderRadius: isEraser ? '0' : '50%',
       };
-    },
+    });
+
+    watch(() => props.canvas, (newCanvas, oldCanvas) => {
+      redrawDisplay();
+      if (!oldCanvas || newCanvas?.width !== oldCanvas?.width || newCanvas?.height !== oldCanvas?.height) {
+        nextTick(() => centerContent());
+      }
+    });
+    
+    watch(() => workspaceStore.editZoom, redrawDisplay);
+
+    onMounted(() => {
+      redrawDisplay();
+      workspaceStore.editMode = true;
+      workspaceStore.resetToolToHand();
+
+      if (rootRef.value) {
+        rootRef.value.addEventListener('wheel', handleWheel, { passive: false });
+      }
+
+      nextTick(() => centerContent());
+    });
+
+    onBeforeUnmount(() => {
+      commitPaint();
+      workspaceStore.editMode = false;
+      if (rootRef.value) {
+        rootRef.value.removeEventListener('wheel', handleWheel);
+      }
+    });
+
+    return {
+      rootRef,
+      containerRef,
+      displayRef,
+      isPainting,
+      mousePos,
+      isMouseOver,
+      startPaint,
+      onMouseMove,
+      handleTouchStart,
+      handleTouchMove,
+      handleTouchEnd,
+      brushPreviewStyle,
+      zoomToViewCenter,
+    };
+  },
+  computed: {
+    ...mapState(useWorkspaceStore, ['activeTool', 'editZoom']),
   },
 };
 </script>
 
 <template>
-  <article>
-    <div
-        class="canvas-container"
-        :class="{
+  <article
+      ref="root"
+      :class="{
         'pencil-tool': activeTool === 'pencil' || activeTool === 'bucket',
         'picker-tool': activeTool === 'picker',
         'hand-tool': activeTool === 'hand',
         'is-painting': isPainting
       }"
-        @mouseenter="isMouseOver = true"
-        @mouseleave="isMouseOver = false"
-        @mousemove="onMouseMove"
-        @touchstart="handleTouchStart"
-        @touchmove="handleTouchMove"
-        @touchend="handleTouchEnd"
-    >
-      <canvas ref="displayCanvas" @mousedown="startPaint"/>
-      <div v-if="editZoom >= 16" class="grid-overlay"></div>
-      <div class="brush-preview" :style="brushPreviewStyle"></div>
+      @contextmenu.prevent
+      @mouseenter="isMouseOver = true"
+      @mouseleave="isMouseOver = false"
+      @mousemove="onMouseMove"
+      @mousedown="startPaint"
+      @touchstart="handleTouchStart"
+      @touchmove="handleTouchMove"
+      @touchend="handleTouchEnd"
+  >
+    <div class="canvas-viewport" ref="container">
+      <div class="canvas-container">
+        <canvas ref="displayCanvas"/>
+        <div v-if="editZoom >= 16" class="grid-overlay"></div>
+        <div class="brush-preview" :style="brushPreviewStyle"></div>
+      </div>
     </div>
   </article>
 </template>
 
 <style scoped>
 article {
-  margin: auto;
+  display: block;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: none;
+  cursor: none;
+}
+
+.pencil-tool {
+  cursor: crosshair;
+}
+
+.picker-tool {
+  cursor: crosshair;
+}
+
+.hand-tool {
+  cursor: grab;
+}
+
+.hand-tool.is-painting {
+  cursor: grabbing;
+}
+
+div.canvas-viewport {
+  display: inline-flex;
+  margin: 70vh 70vw;
 }
 
 div.canvas-container {
@@ -440,25 +346,8 @@ div.canvas-container {
 
 canvas {
   display: block;
-  cursor: none;
   image-rendering: pixelated;
   outline: 2px dashed var(--border-light);
-}
-
-.pencil-tool canvas {
-  cursor: crosshair;
-}
-
-.picker-tool canvas {
-  cursor: crosshair;
-}
-
-.hand-tool canvas {
-  cursor: grab;
-}
-
-.hand-tool.is-painting canvas {
-  cursor: grabbing;
 }
 
 .brush-preview {

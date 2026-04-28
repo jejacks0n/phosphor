@@ -37,8 +37,6 @@ export const useProjectStore = defineStore('project', {
     edgeThickness: useLocalStorage('current_file.edgeThickness', 1),
     hue: useLocalStorage('current_file.hue', 0),
 
-    alphaMode: new URLSearchParams(window.location.search).get('alpha') === 'true',
-
     sauceUse9pxFont: useLocalStorage('current_file.sauce.use9pxFont', false),
     sauceFontName: useLocalStorage('current_file.sauce.fontName', 'IBM VGA'),
     sauceTitle: useLocalStorage('current_file.sauce.title', ''),
@@ -218,7 +216,7 @@ export const useProjectStore = defineStore('project', {
               const c = document.createElement('canvas');
               c.width = paintImg.width;
               c.height = paintImg.height;
-              const ctx = c.getContext('2d');
+              const ctx = c.getContext('2d', { willReadFrequently: true });
               ctx.drawImage(paintImg, 0, 0);
               this.editCanvas = c;
               this.clearEditsFlag++;
@@ -674,16 +672,18 @@ export const useProjectStore = defineStore('project', {
     },
 
     clearEditLayer() {
-      if (this.editCanvas) this.editCanvas.getContext('2d').clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
+      if (this.editCanvas) this.editCanvas.getContext('2d', { willReadFrequently: true }).clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
       this.charEditMap = new Map();
       this.hasPaint = false;
       this.clearEditsFlag++;
+      this.historyStack = [];
+      this.historyIndex = -1;
       this.takeSnapshot();
     },
 
     takeSnapshot() {
       if (!this.editCanvas) return;
-      const ctx = this.editCanvas.getContext('2d');
+      const ctx = this.editCanvas.getContext('2d', { willReadFrequently: true });
       const snapshot = {
         imageData: ctx.getImageData(0, 0, this.editCanvas.width, this.editCanvas.height),
         charMap: new Map(this.charEditMap),
@@ -709,7 +709,7 @@ export const useProjectStore = defineStore('project', {
 
     restoreSnapshot(snapshot) {
       if (!this.editCanvas || !snapshot) return;
-      this.editCanvas.getContext('2d').putImageData(snapshot.imageData, 0, 0);
+      this.editCanvas.getContext('2d', { willReadFrequently: true }).putImageData(snapshot.imageData, 0, 0);
       this.charEditMap = new Map(snapshot.charMap);
       this.hasPaint = snapshot.hasPaint;
       this.clearEditsFlag++;
@@ -720,13 +720,13 @@ export const useProjectStore = defineStore('project', {
       const canvas = document.createElement('canvas');
       canvas.width = this.image.naturalWidth || this.image.width;
       canvas.height = this.image.naturalHeight || this.image.height;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.drawImage(this.image, 0, 0);
       ctx.drawImage(this.editCanvas, 0, 0);
       const newImage = new Image();
       newImage.onload = () => {
         this.image = shallowRef(newImage);
-        const editCtx = this.editCanvas.getContext('2d');
+        const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true });
         editCtx.clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
         this.hasPaint = false;
         this.historyStack = [];

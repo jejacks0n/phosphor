@@ -14,6 +14,11 @@ function colorDistance(r1, g1, b1, r2, g2, b2) {
 
 export function floodFill(imageData, startX, startY, tolerance, contiguous = true) {
   const { width, height, data } = imageData;
+
+  if (startX < 0 || startX >= width || startY < 0 || startY >= height) {
+    return [];
+  }
+
   const targetIdx = (startY * width + startX) * 4;
   const targetR = data[targetIdx];
   const targetG = data[targetIdx + 1];
@@ -31,7 +36,7 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
         const b = data[offset + 2];
 
         if (colorDistance(targetR, targetG, targetB, r, g, b) <= tolerance) {
-          result.push({ x, y, alpha: 1 });
+          result.push({ x, y });
         }
       }
     }
@@ -46,7 +51,7 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
 
   while (queue.length > 0) {
     const [x, y] = queue.shift();
-    result.push({ x, y, alpha: 1 });
+    result.push({ x, y });
 
     const neighbors = [
       [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]

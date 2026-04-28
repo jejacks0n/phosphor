@@ -12,8 +12,6 @@ import WorkspaceTabs from './WorkspaceTabs.vue';
 import ZeroState from './ZeroState.vue';
 import SauceEditor from './SauceEditor.vue';
 import DropZone from './DropZone.vue';
-import AnsiPreview from './AnsiPreview.vue';
-import SourcePreview from './SourcePreview.vue';
 import AnsiEdit from './AnsiEdit.vue';
 import SourceEdit from './SourceEdit.vue';
 import EditToolbar from './EditToolbar.vue';
@@ -25,8 +23,6 @@ export default {
     ZeroState,
     SauceEditor,
     DropZone,
-    AnsiPreview,
-    SourcePreview,
     AnsiEdit,
     SourceEdit,
     EditToolbar,
@@ -35,6 +31,7 @@ export default {
     return {
       pipelineCanvas: null,
       outputCanvas: null,
+      isAltSwapped: false,
     };
   },
   computed: {
@@ -49,7 +46,7 @@ export default {
       'editBrushSize', 'editBrushOpacity', 'editBrushFlow', 'editBrushHardness',
       'editFillTolerance', 'editFillContiguous'
     ]),
-    ...mapState(useProjectStore, ['hasEdits', 'clearEditsFlag', 'editCanvas', 'image', 'alphaMode']),
+    ...mapState(useProjectStore, ['hasEdits', 'clearEditsFlag', 'editCanvas', 'image']),
     processParams() {
       return {
         seed: this.seed,
@@ -71,7 +68,6 @@ export default {
         palette: this.palette,
         colorCount: this.colorCount,
         image: this.image,
-        alphaMode: this.alphaMode,
       };
     },
   },
@@ -115,7 +111,15 @@ export default {
     ...mapActions(useWorkspaceStore, [
       'toggleSettings',
       'setActiveTool',
+      'setEditZoom',
     ]),
+    handleZoomTo(newZoom) {
+      if (this.$refs.sourceEdit) {
+        this.$refs.sourceEdit.zoomToViewCenter(newZoom);
+      } else {
+        this.setEditZoom(newZoom);
+      }
+    },
     handleContextMenu(e) {
       if (this.activeTool === 'picker') {
         e.preventDefault();
@@ -140,15 +144,16 @@ export default {
         return;
       }
 
-      if (e.key === 'Control' && this.activeTool !== 'picker') {
-        this.previousTool = this.activeTool;
+      const paintTools = ['pencil', 'brush', 'bucket'];
+      if (e.key === 'Alt' && paintTools.includes(this.activeTool) && !this.isAltSwapped) {
+        this.isAltSwapped = true;
         this.setActiveTool('picker');
       }
     },
     handleGlobalKeyUp(e) {
-      if (e.key === 'Control' && this.previousTool) {
+      if (e.key === 'Alt' && this.isAltSwapped) {
         this.setActiveTool(this.previousTool);
-        this.previousTool = null;
+        this.isAltSwapped = false;
       }
     },
     async handleFileSelected(file) {
@@ -234,20 +239,20 @@ export default {
       @click="settingsOpen && toggleSettings()"
   >
     <WorkspaceTabs v-model="previewTab"/>
-    <EditToolbar v-if="alphaMode && image && editMode"/>
+    <EditToolbar v-if="image && editMode" :zoom-to="handleZoomTo"/>
     <DropZone @file-dropped="handleFileSelected">
       <div class="viewport" :class="{ editing: editMode }" v-if="image">
-        <SourcePreview v-if="previewTab === 'source' && !alphaMode" :canvas="outputCanvas"/>
         <SourceEdit
-            v-if="previewTab === 'source' && alphaMode"
+            ref="sourceEdit"
+            v-if="previewTab === 'source'"
             :canvas="outputCanvas"
             :pipeline-canvas="pipelineCanvas"
         />
-        <AnsiPreview v-if="previewTab === 'ansi' && !alphaMode"/>
         <AnsiEdit
-            v-if="previewTab === 'ansi' && alphaMode"
+            v-if="previewTab === 'ansi'"
             :pipeline-canvas="pipelineCanvas"
             :output-canvas="outputCanvas"
+            :zoom-to="handleZoomTo"
         />
         <SauceEditor v-if="previewTab === 'sauce'"/>
       </div>
@@ -282,6 +287,7 @@ div.viewport {
   display: inline-flex;
   min-width: 100%;
   min-height: 100%;
+  overflow: hidden;
 }
 
 @media (max-width: 768px) {

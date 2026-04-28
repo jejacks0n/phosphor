@@ -1,25 +1,25 @@
 import { defineStore } from 'pinia';
-import { useLocalStorage } from '@vueuse/core';
 
 export const useWorkspaceStore = defineStore('workspace', {
   state: () => ({
     activeTool: 'pencil',
     previousTool: null,
-    editFgColor: useLocalStorage('phosphor.editFgColor', '#ffffff'),
-    editZoom: useLocalStorage('phosphor.editZoom', 4),
+    editFgColor:  '#ffffff',
+    editZoom:  5,
     previewTab: 'source',
     editMode: false,
     settingsOpen: false,
 
     // Brush Settings
-    editBrushSize: useLocalStorage('phosphor.editBrushSize', 2.5),
-    editBrushOpacity: useLocalStorage('phosphor.editBrushOpacity', 100),
-    editBrushFlow: useLocalStorage('phosphor.editBrushFlow', 50),
-    editBrushHardness: useLocalStorage('phosphor.editBrushHardness', 50),
+    editBrushSize:  2.5,
+    editEraserSize: 1,
+    editBrushOpacity:  100,
+    editBrushFlow:  25,
+    editBrushHardness:  50,
 
     // Fill Settings
-    editFillTolerance: useLocalStorage('phosphor.editFillTolerance', 0),
-    editFillContiguous: useLocalStorage('phosphor.editFillContiguous', true),
+    editFillTolerance:  10,
+    editFillContiguous:  true,
   }),
   actions: {
     setActiveTool(tool) {
@@ -32,7 +32,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.editFgColor = color;
     },
     setEditZoom(z) {
-      this.editZoom = Math.max(0.1, Math.min(32, z));
+      this.editZoom = Math.max(1, Math.min(16, z));
     },
     setPreviewTab(tab) {
       this.previewTab = tab;
@@ -45,6 +45,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     setEditBrushSize(size) {
       this.editBrushSize = size;
+    },
+    setEditEraserSize(size) {
+      this.editEraserSize = size;
     },
     setEditBrushOpacity(opacity) {
       this.editBrushOpacity = opacity;

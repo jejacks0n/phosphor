@@ -11,6 +11,12 @@ export default {
   components: {
     DropdownMenu
   },
+  props: {
+    zoomTo: {
+      type: Function,
+      default: null,
+    },
+  },
   computed: {
     ...mapState(useProjectStore, {
       hasEdits: (state) => state.hasEdits,
@@ -28,6 +34,7 @@ export default {
       'activeTool',
       'editZoom',
       'editBrushSize',
+      'editEraserSize',
       'editBrushOpacity',
       'editBrushFlow',
       'editBrushHardness',
@@ -65,10 +72,10 @@ export default {
       return z < 10 ? `${z.toFixed(1)}×` : `${Math.round(z)}×`;
     },
     canZoomOut() {
-      return this.editZoom > 0.5;
+      return this.editZoom > 1;
     },
     canZoomIn() {
-      return this.editZoom < 32;
+      return this.editZoom < 16;
     },
     showSecondaryRow() {
       return ['brush', 'eraser', 'bucket'].includes(this.activeTool);
@@ -85,6 +92,7 @@ export default {
       'setActiveTool',
       'setEditZoom',
       'setEditBrushSize',
+      'setEditEraserSize',
       'setEditBrushOpacity',
       'setEditBrushFlow',
       'setEditBrushHardness',
@@ -105,19 +113,29 @@ export default {
         this.flattenEdits();
       }
     },
-    zoomOut() {
-      if (this.editZoom > 2) {
-        this.setEditZoom(this.editZoom - 1);
+    startZoomDrag(event) {
+      this._lastY = event.clientY;
+      this._initialZoom = this.editZoom;
+      window.addEventListener('mousemove', this.onZoomDrag);
+      window.addEventListener('mouseup', this.stopZoomDrag);
+      document.body.style.cursor = 'ns-resize';
+    },
+    onZoomDrag(event) {
+      const dy = this._lastY - event.clientY;
+      const sensitivity = 0.05;
+      const newZoom = this._initialZoom + (dy * sensitivity);
+      const cappedZoom = Math.max(1, Math.min(16, newZoom));
+      
+      if (this.zoomTo) {
+        this.zoomTo(cappedZoom);
       } else {
-        this.setEditZoom(this.editZoom - 0.5);
+        this.setEditZoom(cappedZoom);
       }
     },
-    zoomIn() {
-      if (this.editZoom >= 2) {
-        this.setEditZoom(this.editZoom + 1);
-      } else {
-        this.setEditZoom(this.editZoom + 0.5);
-      }
+    stopZoomDrag() {
+      window.removeEventListener('mousemove', this.onZoomDrag);
+      window.removeEventListener('mouseup', this.stopZoomDrag);
+      document.body.style.cursor = '';
     },
   },
 };
@@ -185,9 +203,14 @@ export default {
       <template v-if="previewTab === 'source'">
         <div class="divider"/>
         <div class="zoom-group">
-          <button class="desktop-only" @click="zoomOut" :disabled="!canZoomOut" title="Zoom out">−</button>
+          <button
+              class="zoom-drag-button desktop-only"
+              title="Click and drag up/down to zoom"
+              @mousedown="startZoomDrag"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/></svg>
+          </button>
           <span class="zoom-label">{{ zoomLabel }}</span>
-          <button class="desktop-only" @click="zoomIn" :disabled="!canZoomIn" title="Zoom in">+</button>
         </div>
       </template>
       <div class="spacer"/>
@@ -241,7 +264,22 @@ export default {
     </div>
 
     <div class="toolbar-row secondary-row" v-if="showSecondaryRow">
-      <div class="brush-size-group" v-if="activeTool === 'brush' || activeTool === 'eraser'">
+      <div class="brush-size-group" v-if="activeTool === 'eraser'">
+        <span class="brush-size-label">Size</span>
+        <input
+            type="range"
+            min="1"
+            max="20"
+            step="1"
+            :value="editEraserSize"
+            @input="setEditEraserSize(+$event.target.value)"
+            title="Eraser size"
+            class="brush-size-slider"
+        />
+        <span class="brush-size-value">{{ editEraserSize }}</span>
+      </div>
+
+      <div class="brush-size-group" v-if="activeTool === 'brush'">
         <span class="brush-size-label">Size</span>
         <input
             type="range"
@@ -357,6 +395,17 @@ export default {
   align-items: center;
   gap: 3px;
   user-select: none;
+}
+
+.zoom-drag-button {
+  cursor: ns-resize;
+  width: 26px;
+  padding: 0;
+}
+
+.zoom-drag-button svg {
+  width: 14px;
+  height: 14px;
 }
 
 .history-group {

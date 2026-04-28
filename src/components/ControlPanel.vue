@@ -1,13 +1,9 @@
 <script>
 import { mapWritableState, mapActions, mapState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
-import ProjectActions from './ProjectActions.vue';
 
 export default {
   name: 'ControlPanel',
-  components: {
-    ProjectActions,
-  },
   computed: {
     ...mapWritableState(useProjectStore, [
       'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'colorCount', 'palette',
@@ -40,6 +36,8 @@ export default {
   methods: {
     ...mapActions(useProjectStore, [
       'randomizeSeed',
+      'exportFile',
+      'saveProject',
       'resetSliders',
       'resetTransform',
       'resetAdjust',
@@ -288,7 +286,11 @@ export default {
 
     <hr/>
 
-    <ProjectActions/>
+    <div class="export-actions">
+      <button @click="saveProject" :disabled="!image" class="secondary">Save Project (.phosphor)</button>
+      <button @click="exportFile('ans')" :disabled="!image" class="primary">Export .ans</button>
+      <button @click="exportFile('utf8ans')" :disabled="!image" class="primary">Export .utf8ans</button>
+    </div>
 
     <footer class="attribution">
       Brought to you by <a href="https://ishifishi.work" target="_blank">ishifishi.work</a>

@@ -1,5 +1,5 @@
 <script>
-import { mapState, mapWritableState, mapActions } from 'pinia';
+import { mapWritableState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import ProjectActions from './ProjectActions.vue';

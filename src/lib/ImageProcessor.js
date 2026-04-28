@@ -2,7 +2,6 @@
  * Orchestrates the image processing pipeline:
  */
 
-import Random from 'random-seed';
 import { rgb2hex, hex2rgb, PALETTES } from './ColorUtils.js';
 import Canvas from './Canvas.js';
 import WebGLProcessor from './WebGLProcessor.js';
@@ -45,13 +44,12 @@ export function applyQuantization(canvas, qColors) {
 
 export async function processImage(image, params) {
   const {
-    seed, cols, rows, chars, smoothing,
+    cols, rows, smoothing,
     invert, brightness, contrast, saturation,
     sharpen, flatten, edges, edgeColor, edgeThickness,
-    quantize, alphaMode
+    quantize
   } = params;
 
-  const rand = new Random(seed);
   const sw = image.naturalWidth || image.width;
   const sh = image.naturalHeight || image.height;
 
@@ -95,29 +93,7 @@ export async function processImage(image, params) {
   canvas.fit(glProcessor.canvas, smoothing);
   canvas.loadPixels();
 
-  // 3. Quantization (Only if not in editing mode, which will re-run it)
-  // If alphaMode is on, we skip quantization here and let the Workspace handle it after compositing.
-  let blockData = null;
-  if (!alphaMode) {
-    const qColors = getPaletteColors(params, canvas);
-    if (qColors) {
-      applyQuantization(canvas, qColors);
-    }
-
-    const targetDataLength = cols * rows;
-    blockData = new Array(targetDataLength);
-    const charset = chars || "▄";
-
-    for (let i = 0; i < targetDataLength; i++) {
-      const pixel = canvas.pixels[i];
-      if (!pixel) continue;
-      pixel.char = charset[rand(charset.length)];
-      pixel.hex = rgb2hex(pixel);
-      pixel.c ??= [pixel.r, pixel.g, pixel.b];
-      blockData[i] = pixel;
-    }
-    return { canvas, blockData, paletteColors: qColors };
-  }
-
+  // 3. Early Quantization is skipped - we handle it in AnsiWorkspace after compositing.
+  const blockData = null;
   return { canvas, blockData, paletteColors: getPaletteColors(params, canvas) };
 }
