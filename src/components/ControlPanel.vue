@@ -1,15 +1,19 @@
 <script>
 import { mapWritableState, mapActions, mapState } from 'pinia';
-import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useProjectStore } from '@/store/ProjectStore';
+import ProjectActions from './ProjectActions.vue';
 
 export default {
   name: 'ControlPanel',
+  components: {
+    ProjectActions,
+  },
   computed: {
-    ...mapWritableState(useCurrentFileStore, [
+    ...mapWritableState(useProjectStore, [
       'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'colorCount', 'palette',
       'invert', 'hue', 'brightness', 'contrast', 'saturation', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'
     ]),
-    ...mapState(useCurrentFileStore, ['maxCols', 'maxRows', 'image']),
+    ...mapState(useProjectStore, ['maxCols', 'maxRows', 'image']),
     year() {
       return new Date().getFullYear();
     },
@@ -34,10 +38,8 @@ export default {
     window.removeEventListener('resize', this.updateMobileMode);
   },
   methods: {
-    ...mapActions(useCurrentFileStore, [
+    ...mapActions(useProjectStore, [
       'randomizeSeed',
-      'exportFile',
-      'saveProject',
       'resetSliders',
       'resetTransform',
       'resetAdjust',
@@ -286,11 +288,7 @@ export default {
 
     <hr/>
 
-    <div class="export-actions">
-      <button @click="saveProject" :disabled="!image" class="secondary">Save Project (.phosphor)</button>
-      <button @click="exportFile('ans')" :disabled="!image" class="primary">Export .ans</button>
-      <button @click="exportFile('utf8ans')" :disabled="!image" class="primary">Export .utf8ans</button>
-    </div>
+    <ProjectActions/>
 
     <footer class="attribution">
       Brought to you by <a href="https://ishifishi.work" target="_blank">ishifishi.work</a>

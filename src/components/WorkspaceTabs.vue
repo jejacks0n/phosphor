@@ -1,6 +1,6 @@
 <script>
 import { mapState, mapActions } from 'pinia';
-import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 export default {
@@ -13,7 +13,7 @@ export default {
   },
   emits: ['update:modelValue'],
   computed: {
-    ...mapState(useCurrentFileStore, ['image']),
+    ...mapState(useProjectStore, ['image']),
     ...mapState(useWorkspaceStore, ['settingsOpen']),
   },
   methods: {

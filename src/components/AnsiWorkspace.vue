@@ -1,11 +1,11 @@
 <script>
 import { mapState, mapWritableState, mapActions } from 'pinia';
-import { useCurrentFileStore } from '@/store/CurrentFile';
+import Random from 'random-seed';
+import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { processImage, getPaletteColors, applyQuantization } from '@/lib/ImageProcessor';
+import { processImage, applyQuantization } from '@/lib/ImageProcessor';
 import { PROJECT_EXTENSION } from '@/lib/SaveFormat';
 import { rgb2hex } from '@/lib/ColorUtils';
-import Random from 'random-seed';
 import Canvas from '@/lib/Canvas';
 
 import WorkspaceTabs from './WorkspaceTabs.vue';
@@ -38,7 +38,7 @@ export default {
     };
   },
   computed: {
-    ...mapWritableState(useCurrentFileStore, [
+    ...mapWritableState(useProjectStore, [
       'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount',
       'invert', 'brightness', 'contrast', 'saturation', 'hue', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness',
       'sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments',
@@ -49,7 +49,7 @@ export default {
       'editBrushSize', 'editBrushOpacity', 'editBrushFlow', 'editBrushHardness',
       'editFillTolerance', 'editFillContiguous'
     ]),
-    ...mapState(useCurrentFileStore, ['hasEdits', 'clearEditsFlag', 'editCanvas', 'image', 'alphaMode']),
+    ...mapState(useProjectStore, ['hasEdits', 'clearEditsFlag', 'editCanvas', 'image', 'alphaMode']),
     processParams() {
       return {
         seed: this.seed,
@@ -99,7 +99,7 @@ export default {
     },
   },
   methods: {
-    ...mapActions(useCurrentFileStore, [
+    ...mapActions(useProjectStore, [
       'setImageFromFile',
       'clearImage',
       'markDirty',
@@ -151,17 +151,18 @@ export default {
         this.previousTool = null;
       }
     },
-    handleFileSelected(file) {
+    async handleFileSelected(file) {
       if (file.name.endsWith(PROJECT_EXTENSION)) {
-        this.loadProject(file);
-        return;
-      }
-      if (this.image && this.hasEdits) {
-        if (!confirm('You have unsaved changes. Are you sure you want to load a new image?')) {
-          return;
+        await this.loadProject(file);
+      } else {
+        if (this.image && this.hasEdits) {
+          if (!confirm('You have unsaved changes. Are you sure you want to load a new image?')) {
+            return;
+          }
         }
+        await this.setImageFromFile(file);
       }
-      this.setImageFromFile(file);
+      this.previewTab = 'ansi';
     },
     queueSetup() {
       if (this._setupFrame) cancelAnimationFrame(this._setupFrame);

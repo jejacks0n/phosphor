@@ -1,18 +1,22 @@
 <script>
-import { mapWritableState, mapActions } from 'pinia';
-import { useCurrentFileStore } from '@/store/CurrentFile';
+import { mapState, mapWritableState, mapActions } from 'pinia';
+import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import ProjectActions from './ProjectActions.vue';
 
 export default {
   name: 'SauceEditor',
+  components: {
+    ProjectActions,
+  },
   computed: {
-    ...mapWritableState(useCurrentFileStore, [
+    ...mapWritableState(useProjectStore, [
       'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceUserComments', 'image'
     ]),
     ...mapWritableState(useWorkspaceStore, ['editMode']),
   },
   methods: {
-    ...mapActions(useCurrentFileStore, ['exportFile']),
+    //
   },
   mounted() {
     this.editMode = false;
@@ -45,9 +49,8 @@ export default {
       <textarea id="sauce-comments" v-model="sauceUserComments" placeholder="Add your own notes to the file metadata..."></textarea>
     </div>
 
-    <div class="export-actions">
-      <button @click="exportFile('ans')" :disabled="!image" class="primary">Export .ans</button>
-      <button @click="exportFile('utf8ans')" :disabled="!image" class="primary">Export .utf8ans</button>
+    <div class="export-actions-container">
+      <ProjectActions/>
     </div>
   </article>
 </template>
@@ -90,10 +93,7 @@ textarea {
   font-family: inherit;
 }
 
-div.export-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.export-actions-container {
   margin-top: 20px;
 }
 </style>

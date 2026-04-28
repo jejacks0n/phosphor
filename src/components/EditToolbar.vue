@@ -1,10 +1,10 @@
 <script>
 import { mapState, mapWritableState, mapActions } from 'pinia';
-import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils';
 import { applyTransforms } from '@/lib/PixelTransforms';
-import DropdownMenu from './DropdownMenu.vue';
+import DropdownMenu from '@/components/DropdownMenu.vue';
 
 export default {
   name: 'EditToolbar',
@@ -12,7 +12,7 @@ export default {
     DropdownMenu
   },
   computed: {
-    ...mapState(useCurrentFileStore, {
+    ...mapState(useProjectStore, {
       hasEdits: (state) => state.hasEdits,
       hasPaint: (state) => state.hasPaint,
       brightness: 'brightness',
@@ -75,7 +75,7 @@ export default {
     }
   },
   methods: {
-    ...mapActions(useCurrentFileStore, [
+    ...mapActions(useProjectStore, [
       'clearEditLayer',
       'undo',
       'redo',

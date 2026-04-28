@@ -1,13 +1,13 @@
 <script>
 import { mapState } from 'pinia';
-import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useProjectStore } from '@/store/ProjectStore';
 import { calcMetrics, getContext } from '@/lib/AnsiRuntime';
 import { render as renderText } from '@/lib/TextRenderer';
 
 export default {
   name: 'AnsiPreview',
   computed: {
-    ...mapState(useCurrentFileStore, ['blockData', 'cols', 'rows']),
+    ...mapState(useProjectStore, ['blockData', 'cols', 'rows']),
   },
   watch: {
     blockData: 'render',

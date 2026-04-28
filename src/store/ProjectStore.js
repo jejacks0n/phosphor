@@ -508,7 +508,7 @@ export const useProjectStore = defineStore('project', {
       return rgb2hex({ r: rPixel[0], g: rPixel[1], b: rPixel[2] });
     },
 
-    paintEditPixels(pixels, pipelineCanvas, outputCanvas, opacity) {
+    paintEditPixels(pixels, pipelineCanvas, outputCanvas, opacity = 100) {
       if (!this.editCanvas || !pixels.length) return;
       this.hasPaint = true;
       const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true });

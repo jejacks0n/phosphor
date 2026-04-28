@@ -7,7 +7,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     previousTool: null,
     editFgColor: useLocalStorage('phosphor.editFgColor', '#ffffff'),
     editZoom: useLocalStorage('phosphor.editZoom', 4),
-    previewTab: useLocalStorage('phosphor.previewTab', 'source'),
+    previewTab: 'source',
     editMode: false,
     settingsOpen: false,
 

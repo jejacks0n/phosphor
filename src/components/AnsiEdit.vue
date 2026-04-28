@@ -1,6 +1,6 @@
 <script>
 import { mapState, mapWritableState, mapActions } from 'pinia';
-import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { render as renderText } from '@/lib/TextRenderer';
@@ -32,7 +32,7 @@ export default {
     },
   },
   computed: {
-    ...mapState(useCurrentFileStore, [
+    ...mapState(useProjectStore, [
       'blockData', 'cols', 'rows', 'chars',
       'brightness', 'contrast', 'saturation', 'hue', 'invert'
     ]),
@@ -63,7 +63,7 @@ export default {
         height: `${height}px`,
         left: `${this.mousePos.x}px`,
         top: `${this.mousePos.y}px`,
-        display: this.isMouseOver && (this.activeTool === 'brush' || this.activeTool === 'eraser') ? 'block' : 'none',
+        display: this.isMouseOver && (this.activeTool === 'brush' || this.activeTool === 'eraser' || this.activeTool === 'char') ? 'block' : 'none',
         borderRadius: (isEraser || isPencil || isChar) ? '0' : '50%',
       };
     },
@@ -83,7 +83,7 @@ export default {
     if (this._renderFrame) cancelAnimationFrame(this._renderFrame);
   },
   methods: {
-    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot', 'getRawColorAt', 'flipAnsiColors']),
+    ...mapActions(useProjectStore, ['paintEditPixels', 'eraseEditPixels', 'setCharEdit', 'clearCharEditsAt', 'takeSnapshot', 'getRawColorAt', 'flipAnsiColors']),
     ...mapActions(useWorkspaceStore, ['setEditZoom', 'resetToolToHand']),
 
     queueRender() {
@@ -297,8 +297,6 @@ export default {
 
     paintSegment(from, to) {
       if (this.activeTool === 'pencil') {
-        const size = 1;
-        const radius = 0;
         const positions = this.interpolatedPositions(from.x, from.y, to.x, to.y);
         const pixels = [];
         const seen = new Set();
@@ -424,7 +422,7 @@ export default {
         pixelPayload.push({ x, y, r: rgb.r, g: rgb.g, b: rgb.b, alpha });
       }
       if (pixelPayload.length) {
-        this.paintEditPixels(pixelPayload, this.pipelineCanvas, this.outputCanvas);
+        this.paintEditPixels(pixelPayload, this.pipelineCanvas, this.outputCanvas, this.editBrushOpacity);
       }
     },
 

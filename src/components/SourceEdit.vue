@@ -1,6 +1,6 @@
 <script>
 import { mapState, mapWritableState, mapActions } from 'pinia';
-import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { floodFill } from '@/lib/FloodFill';
@@ -27,7 +27,7 @@ export default {
     };
   },
   computed: {
-    ...mapState(useCurrentFileStore, [
+    ...mapState(useProjectStore, [
       'cols', 'rows',
       'brightness', 'contrast', 'saturation', 'hue', 'invert'
     ]),
@@ -50,7 +50,7 @@ export default {
         height: `${pixelSize}px`,
         left: `${this.mousePos.x}px`,
         top: `${this.mousePos.y}px`,
-        display: this.isMouseOver && (this.activeTool === 'brush' || this.activeTool === 'eraser') ? 'block' : 'none',
+        display: this.isMouseOver && (this.activeTool === 'brush' || this.activeTool === 'eraser' || this.activeTool === 'pencil') ? 'block' : 'none',
         borderRadius: this.activeTool === 'eraser' ? '0' : '50%',
       };
     },
@@ -70,7 +70,7 @@ export default {
   },
 
   methods: {
-    ...mapActions(useCurrentFileStore, ['paintEditPixels', 'eraseEditPixels', 'takeSnapshot', 'getRawColorAt']),
+    ...mapActions(useProjectStore, ['paintEditPixels', 'eraseEditPixels', 'takeSnapshot', 'getRawColorAt']),
     ...mapActions(useWorkspaceStore, ['setEditZoom', 'resetToolToHand']),
 
     redrawDisplay() {
@@ -98,8 +98,6 @@ export default {
       const paintRgb = hex2rgb(this.editFgColor);
 
       if (this.activeTool === 'pencil') {
-        const size = 1;
-        const radius = 0;
         const positions = this.interpolatedPositions(from.x, from.y, to.x, to.y);
         const pixels = [];
         const seen = new Set();
@@ -115,7 +113,7 @@ export default {
             seen.add(key);
           }
         }
-        this.paintEditPixels(pixels, this.pipelineCanvas, this.canvas);
+        this.paintEditPixels(pixels, this.pipelineCanvas, this.canvas, this.editBrushOpacity);
         this.redrawDisplay();
         return;
       }
@@ -158,7 +156,6 @@ export default {
 
       const size = this.editBrushSize;
       const radius = size / 2;
-      const isEraser = false; // Brush is the only one left
       const flow = this.editBrushFlow / 100;
       const h = this.editBrushHardness / 100;
 
@@ -200,7 +197,7 @@ export default {
       }
 
       if (pixels.length) {
-        this.paintEditPixels(pixels, this.pipelineCanvas, this.canvas);
+        this.paintEditPixels(pixels, this.pipelineCanvas, this.canvas, this.editBrushOpacity);
         this.redrawDisplay();
       }
     },
@@ -255,7 +252,7 @@ export default {
           ...p, r: paintRgb.r, g: paintRgb.g, b: paintRgb.b
         }));
 
-        this.paintEditPixels(pixelPayload, this.pipelineCanvas, this.canvas);
+        this.paintEditPixels(pixelPayload, this.pipelineCanvas, this.canvas, this.editBrushOpacity);
         this.takeSnapshot();
         this.redrawDisplay();
         return;

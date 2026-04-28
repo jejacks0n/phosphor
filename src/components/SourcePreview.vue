@@ -1,6 +1,6 @@
 <script>
 import { mapState, mapActions } from 'pinia';
-import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useProjectStore } from '@/store/ProjectStore';
 
 export default {
   name: 'SourcePreview',
@@ -11,7 +11,7 @@ export default {
     }
   },
   computed: {
-    ...mapState(useCurrentFileStore, ['rows', 'cols', 'image', 'hasEdits']),
+    ...mapState(useProjectStore, ['rows', 'cols', 'image', 'hasEdits']),
     gridHeight() {
       return ((Math.floor(this.rows * 0.5) * 1.22)) * 0.5 + 'em';
     },
@@ -26,7 +26,7 @@ export default {
     this.updatePreview();
   },
   methods: {
-    ...mapActions(useCurrentFileStore, ['clearImage']),
+    ...mapActions(useProjectStore, ['clearImage']),
     confirmClear() {
       if (this.hasEdits) {
         if (!confirm('You have unsaved changes. Are you sure you want to clear this image?')) {

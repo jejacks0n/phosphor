@@ -1,6 +1,6 @@
 <script>
 import { mapState } from 'pinia';
-import { useCurrentFileStore } from '@/store/CurrentFile';
+import { useProjectStore } from '@/store/ProjectStore';
 import AnsiWorkspace from '@/components/AnsiWorkspace.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 
@@ -11,7 +11,7 @@ export default {
     ControlPanel,
   },
   computed: {
-    ...mapState(useCurrentFileStore, ['image']),
+    ...mapState(useProjectStore, ['image', 'hasEdits']),
   },
   mounted() {
     window.addEventListener('beforeunload', this.onBeforeUnload);
@@ -21,8 +21,7 @@ export default {
   },
   methods: {
     onBeforeUnload(e) {
-      const store = useCurrentFileStore();
-      if (store.image && store.hasEdits) {
+      if (this.image && this.hasEdits) {
         e.preventDefault();
         e.returnValue = '';
       }
