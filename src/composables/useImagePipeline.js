@@ -27,7 +27,7 @@ export function useImagePipeline(projectStore) {
     const rand = new Random(params.seed);
     const charset = params.chars || '▄';
     const charMode = params.charMode || 'random';
-    const renderStyle = params.renderStyle || 'color';
+    const renderStyle = params.renderStyle || 'ansi';
     const targetDataLength = params.cols * params.rows;
     const finalBlockData = new Array(targetDataLength);
 
@@ -50,13 +50,18 @@ export function useImagePipeline(projectStore) {
         }
 
         // Determine Colors based on Render Style
-        if (renderStyle === 'ascii') {
+        if (renderStyle === 'colorAscii' || renderStyle === 'ascii') {
           const avgR = (p1.r + p2.r) / 2;
           const avgG = (p1.g + p2.g) / 2;
           const avgB = (p1.b + p2.b) / 2;
-          const avgColor = { r: avgR, g: avgG, b: avgB };
-          const avgHex = rgb2hex(avgColor);
-          const avgC = [avgR, avgG, avgB];
+
+          const isMonochrome = renderStyle === 'ascii';
+          const fgR = isMonochrome ? 255 : avgR;
+          const fgG = isMonochrome ? 255 : avgG;
+          const fgB = isMonochrome ? 255 : avgB;
+          
+          const fgHex = isMonochrome ? '#FFFFFF' : rgb2hex({ r: fgR, g: fgG, b: fgB });
+          const fgC = [fgR, fgG, fgB];
 
           // Top pixel (Background) - Set to Black
           finalBlockData[i1] = {
@@ -66,16 +71,16 @@ export function useImagePipeline(projectStore) {
             char: char,
           };
 
-          // Bottom pixel (Foreground) - Set to Average Color
+          // Bottom pixel (Foreground) - Set to Average Color or White
           if (i2 < targetDataLength) {
             finalBlockData[i2] = {
-              r: avgR, g: avgG, b: avgB,
-              hex: avgHex,
-              c: (p1.c !== undefined) ? avgC : [avgR, avgG, avgB],
+              r: fgR, g: fgG, b: fgB,
+              hex: fgHex,
+              c: (p1.c !== undefined) ? fgC : [fgR, fgG, fgB],
             };
           }
         } else {
-          // Full Color Style
+          // ANSI (Full Color Style)
           finalBlockData[i1] = {
             r: p1.r, g: p1.g, b: p1.b,
             hex: rgb2hex(p1),

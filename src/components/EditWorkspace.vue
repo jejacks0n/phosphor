@@ -60,7 +60,7 @@ export default {
     editorTab: {
       immediate: true,
       handler(newTab) {
-        this.editMode = (newTab === 'ansi' || newTab === 'input');
+        this.editMode = (newTab === 'output' || newTab === 'input');
       },
     },
   },
@@ -78,7 +78,7 @@ export default {
         }
         await this.setImageFromFile(file);
       }
-      this.editorTab = 'ansi';
+      this.editorTab = 'output';
     },
   },
 };
@@ -101,7 +101,7 @@ export default {
             :pipeline-canvas="pipelineCanvas"
         />
         <AnsiEditor
-            v-if="editorTab === 'ansi'"
+            v-if="editorTab === 'output'"
             :pipeline-canvas="pipelineCanvas"
             :output-canvas="outputCanvas"
         />

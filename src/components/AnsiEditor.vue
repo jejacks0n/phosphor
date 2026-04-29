@@ -453,11 +453,12 @@ export default {
     };
   },
   computed: {
-    ...mapState(useProjectStore, ['chars', 'cols', 'rows']),
+    ...mapState(useProjectStore, ['processParams', 'cols', 'rows']),
     ...mapState(useWorkspaceStore, ['activeTool', 'editZoom']),
     pickerChars() {
-      if (!this.chars) return [];
-      return [...new Set(this.chars.split(''))].filter(c => c.trim());
+      const chars = this.processParams.chars;
+      if (!chars) return [];
+      return [...new Set(chars.split(''))].filter(c => c.trim());
     },
   },
 };

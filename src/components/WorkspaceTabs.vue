@@ -27,7 +27,7 @@ export default {
     tabs() {
       return [
         { id: 'input', label: 'INPUT', disabled: false },
-        { id: 'ansi', label: 'ANSI', disabled: !this.image },
+        { id: 'output', label: 'OUTPUT', disabled: !this.image },
         { id: 'sauce', label: 'SAUCE', disabled: !this.image },
       ];
     },

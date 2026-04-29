@@ -22,7 +22,7 @@ export const useProjectStore = defineStore('project', {
     renderStyle: useLocalStorage('current_file.renderStyle', 'color'),
     charMode: useLocalStorage('current_file.charMode', 'random'),
     chars: useLocalStorage('current_file.chars', '*:|%.░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄'),
-    charsAscii: useLocalStorage('current_file.charsAscii', ' .:-=+*#%@'),
+    charsAscii: useLocalStorage('current_file.charsAscii', ' .:*%#@'),
     seed: useLocalStorage('current_file.seed', generateSlug(2)),
     smoothing: useLocalStorage('current_file.smoothing', 'low'),
     quantize: useLocalStorage('current_file.quantize', 'none'),
@@ -99,8 +99,8 @@ export const useProjectStore = defineStore('project', {
       seed: state.seed,
       cols: state.cols,
       rows: state.rows,
-      chars: state.renderStyle === 'ascii' ? state.charsAscii : state.chars,
-      charMode: state.renderStyle === 'ascii' ? 'brightness' : 'random',
+      chars: state.renderStyle === 'ansi' ? state.chars : state.charsAscii,
+      charMode: state.renderStyle === 'ansi' ? 'random' : 'brightness',
       renderStyle: state.renderStyle,
       smoothing: state.smoothing,
       invert: state.invert,
@@ -638,9 +638,7 @@ export const useProjectStore = defineStore('project', {
       const canvas = new Canvas(outputCanvas);
       if (this.activePalette) canvas.quantize(this.activePalette);
       const newBlockData = this.blockData.slice();
-      const renderStyle = this.renderStyle || 'color';
-      const charMode = renderStyle === 'ascii' ? 'brightness' : 'random';
-      const charset = renderStyle === 'ascii' ? (this.charsAscii || ' .:-=+*#%@') : (this.chars || '▄');
+      const { chars: charset, charMode, renderStyle } = this.processParams;
 
       for (const { x, y } of pixels) {
         const ansiRow = Math.floor(y / 2);
@@ -668,33 +666,8 @@ export const useProjectStore = defineStore('project', {
               }
 
               // Determine Colors based on Render Style
-              if (renderStyle === 'ascii') {
-                const avgR = (p1.r + p2.r) / 2;
-                const avgG = (p1.g + p2.g) / 2;
-                const avgB = (p1.b + p2.b) / 2;
-                const avgColor = { r: avgR, g: avgG, b: avgB };
-                const avgHex = rgb2hex(avgColor);
-                const avgC = [avgR, avgG, avgB];
-
-                // Background (Top) always black
-                newBlockData[bgIdx] = {
-                  ...newBlockData[bgIdx],
-                  r: 0, g: 0, b: 0,
-                  hex: '#000000',
-                  c: [0, 0, 0]
-                };
-
-                // Foreground (Bottom) always average color
-                if (fgIdx < newBlockData.length) {
-                  newBlockData[fgIdx] = {
-                    ...newBlockData[fgIdx],
-                    r: avgR, g: avgG, b: avgB,
-                    hex: avgHex,
-                    c: avgC
-                  };
-                }
-              } else {
-                // Full Color Style
+              if (renderStyle === 'ansi') {
+                // Full Color Style (ANSI)
                 newBlockData[bgIdx] = {
                   ...newBlockData[bgIdx],
                   r: p1.r, g: p1.g, b: p1.b,
@@ -708,6 +681,37 @@ export const useProjectStore = defineStore('project', {
                     r: p2.r, g: p2.g, b: p2.b,
                     hex: rgb2hex(p2),
                     c: (p2.c !== undefined) ? p2.c : [p2.r, p2.g, p2.b]
+                  };
+                }
+              } else {
+                // Color or monochrome ASCII style
+                const avgR = (p1.r + p2.r) / 2;
+                const avgG = (p1.g + p2.g) / 2;
+                const avgB = (p1.b + p2.b) / 2;
+
+                const isMonochrome = renderStyle === 'ascii';
+                const fgR = isMonochrome ? 255 : avgR;
+                const fgG = isMonochrome ? 255 : avgG;
+                const fgB = isMonochrome ? 255 : avgB;
+                
+                const fgHex = isMonochrome ? '#FFFFFF' : rgb2hex({ r: fgR, g: fgG, b: fgB });
+                const fgC = [fgR, fgG, fgB];
+
+                // Background (Top) always black
+                newBlockData[bgIdx] = {
+                  ...newBlockData[bgIdx],
+                  r: 0, g: 0, b: 0,
+                  hex: '#000000',
+                  c: [0, 0, 0]
+                };
+
+                // Foreground (Bottom) average color or white
+                if (fgIdx < newBlockData.length) {
+                  newBlockData[fgIdx] = {
+                    ...newBlockData[fgIdx],
+                    r: fgR, g: fgG, b: fgB,
+                    hex: fgHex,
+                    c: fgC
                   };
                 }
               }

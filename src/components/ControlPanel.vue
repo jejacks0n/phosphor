@@ -26,7 +26,7 @@ export default {
       localValues: {},
       help: {
         dimensions: 'Target output width (columns) and height (rows).',
-        artStyle: "'Full Color' uses background colors for detail; 'ASCII Art' uses characters only on a black background.",
+        artStyle: "'ANSI' uses both foreground and background colors for maximum detail. 'Color ASCII' uses characters on a black background. 'ASCII' is monochrome art.",
         chars: 'The character set used to represent density and texture.',
         seed: 'A unique value to randomize the character selection.',
         smoothing: 'Determines how details are preserved when downsizing to the grid.',
@@ -127,18 +127,19 @@ export default {
       <div class="field">
         <div class="label-group"><label for="renderStyle">Art Style</label><HelpInfo :text="help.artStyle" /></div>
         <select id="renderStyle" v-model="renderStyle">
-          <option value="color">Full Color</option>
-          <option value="ascii">ASCII Art (No Background)</option>
+          <option value="ansi">ANSI</option>
+          <option value="colorAscii">Color ASCII</option>
+          <option value="ascii">Monochrome ASCII</option>
         </select>
       </div>
 
       <div class="field">
         <div class="label-group"><label for="chars">Characters</label><HelpInfo :text="help.chars" /></div>
-        <input v-if="renderStyle === 'color'" type="text" id="chars" v-model.lazy="chars" placeholder="characters" class="mono">
+        <input v-if="renderStyle === 'ansi'" type="text" id="chars" v-model.lazy="chars" placeholder="characters" class="mono">
         <input v-else type="text" id="chars" v-model.lazy="charsAscii" placeholder="characters" class="mono">
       </div>
 
-      <div v-if="renderStyle === 'color'" class="field">
+      <div v-if="renderStyle === 'ansi'" class="field">
         <div class="label-group"><label for="seed">Character Seed</label><HelpInfo :text="help.seed" /></div>
         <div class="row-inputs">
           <input type="text" id="seed" v-model.lazy="seed" placeholder="seed">
