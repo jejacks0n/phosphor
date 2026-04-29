@@ -72,3 +72,40 @@ export const useWorkspaceStore = defineStore('workspace', {
     }
   }
 });
+
+export const workspaceStateKeys = [
+  'activeTool',
+  'previousTool',
+  'editFgColor',
+  'editZoom',
+  'previewTab',
+  'editMode',
+  'isPainting',
+  'isCtrlPressed',
+  'isMiddleClick',
+  'settingsOpen',
+  'editBrushSize',
+  'editEraserSize',
+  'editBrushOpacity',
+  'editBrushFlow',
+  'editBrushHardness',
+  'editFillTolerance',
+  'editFillContiguous'
+];
+
+export const workspaceActionKeys = [
+  'setActiveTool',
+  'setEditFgColor',
+  'setEditZoom',
+  'setPreviewTab',
+  'setEditMode',
+  'toggleSettings',
+  'setEditBrushSize',
+  'setEditEraserSize',
+  'setEditBrushOpacity',
+  'setEditBrushFlow',
+  'setEditBrushHardness',
+  'setEditFillTolerance',
+  'setEditFillContiguous',
+  'resetToolToHand'
+];

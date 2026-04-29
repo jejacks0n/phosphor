@@ -1,12 +1,10 @@
 <script>
 import { mapState, mapWritableState, mapActions } from 'pinia';
-import Random from 'random-seed';
-import { useProjectStore } from '@/store/ProjectStore';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { processImage, applyQuantization } from '@/lib/ImageProcessor';
+import { useProjectStore, projectStateKeys, projectActionKeys } from '@/store/ProjectStore';
+import { useWorkspaceStore, workspaceStateKeys, workspaceActionKeys } from '@/store/WorkspaceStore';
 import { PROJECT_EXTENSION } from '@/lib/SaveFormat';
-import { rgb2hex } from '@/lib/ColorUtils';
-import Canvas from '@/lib/Canvas';
+import { useImagePipeline } from '@/composables/useImagePipeline';
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 
 import WorkspaceTabs from './WorkspaceTabs.vue';
 import ZeroState from './ZeroState.vue';
@@ -27,112 +25,37 @@ export default {
     SourceEdit,
     EditToolbar,
   },
-  data() {
+  setup() {
+    const projectStore = useProjectStore();
+    const workspaceStore = useWorkspaceStore();
+    
+    const { pipelineCanvas, outputCanvas, queueSetup } = useImagePipeline(projectStore);
+    useKeyboardShortcuts(projectStore, workspaceStore);
+
     return {
-      pipelineCanvas: null,
-      outputCanvas: null,
-      isAltSwapped: false,
+      pipelineCanvas,
+      outputCanvas,
+      queueSetup,
     };
   },
   computed: {
-    ...mapWritableState(useProjectStore, [
-      'cols',
-      'rows',
-      'aspectLock',
-      'chars',
-      'seed',
-      'smoothing',
-      'quantize',
-      'palette',
-      'colorCount',
-      'invert',
-      'brightness',
-      'contrast',
-      'saturation',
-      'hue',
-      'sharpen',
-      'flatten',
-      'edges',
-      'edgeColor',
-      'edgeThickness',
-      'sauceUse9pxFont',
-      'sauceFontName',
-      'sauceTitle',
-      'sauceAuthor',
-      'sauceGroup',
-      'sauceDate',
-      'sauceUserComments',
-      'filename',
-      'blockData',
-      'pipelineBlockData',
-      'activePalette',
-      'isDirty',
-      'isInitializing',
-    ]),
-    ...mapWritableState(useWorkspaceStore, [
-      'activeTool',
-      'previousTool',
-      'editFgColor',
-      'editZoom',
-      'previewTab',
-      'editMode',
-      'settingsOpen',
-      'editBrushSize',
-      'editBrushOpacity',
-      'editBrushFlow',
-      'editBrushHardness',
-      'editFillTolerance',
-      'editFillContiguous',
-      'isCtrlPressed',
-    ]),
-    ...mapState(useProjectStore, ['hasEdits', 'clearEditsFlag', 'editCanvas', 'image']),
-    processParams() {
-      return {
-        seed: this.seed,
-        cols: this.cols,
-        rows: this.rows,
-        chars: this.chars,
-        smoothing: this.smoothing,
-        invert: this.invert,
-        brightness: this.brightness,
-        contrast: this.contrast,
-        saturation: this.saturation,
-        sharpen: this.sharpen,
-        flatten: this.flatten,
-        edges: this.edges,
-        edgeColor: this.edgeColor,
-        edgeThickness: this.edgeThickness,
-        hue: this.hue,
-        quantize: this.quantize,
-        palette: this.palette,
-        colorCount: this.colorCount,
-        image: this.image,
-      };
-    },
+    ...mapWritableState(useProjectStore, projectStateKeys),
+    ...mapWritableState(useWorkspaceStore, workspaceStateKeys),
+    ...mapState(useProjectStore, ['hasEdits', 'clearEditsFlag', 'editCanvas', 'image', 'processParams']),
   },
   mounted() {
-    this.queueSetup();
-    window.addEventListener('keydown', this.handleGlobalKeyDown);
-    window.addEventListener('keyup', this.handleGlobalKeyUp);
-    window.addEventListener('blur', this.handleBlur);
-    window.addEventListener('contextmenu', this.handleContextMenu);
-  },
-  beforeUnmount() {
-    window.removeEventListener('keydown', this.handleGlobalKeyDown);
-    window.removeEventListener('keyup', this.handleGlobalKeyUp);
-    window.removeEventListener('blur', this.handleBlur);
-    window.removeEventListener('contextmenu', this.handleContextMenu);
+    this.queueSetup(this.processParams);
   },
   watch: {
     processParams: {
       deep: true,
       handler() {
-        this.queueSetup();
+        this.queueSetup(this.processParams);
         this.markDirty();
       },
     },
     clearEditsFlag() {
-      this.queueSetup();
+      this.queueSetup(this.processParams);
     },
     previewTab: {
       immediate: true,
@@ -142,78 +65,14 @@ export default {
     },
   },
   methods: {
-    ...mapActions(useProjectStore, [
-      'setImageFromFile',
-      'clearImage',
-      'markDirty',
-      'initEditCanvas',
-      'compositeEditCanvas',
-      'refreshBlockData',
-      'applyCharEdits',
-      'saveProject',
-      'loadProject',
-      'undo',
-      'redo',
-    ]),
-    ...mapActions(useWorkspaceStore, [
-      'toggleSettings',
-      'setActiveTool',
-      'setEditZoom',
-    ]),
-    handleBlur() {
-      this.isCtrlPressed = false;
-      this.isAltSwapped = false;
-    },
+    ...mapActions(useProjectStore, projectActionKeys),
+    ...mapActions(useWorkspaceStore, workspaceActionKeys),
     handleZoomTo(newZoom) {
       if (this.previewTab === 'ansi') return;
       if (this.$refs.sourceEdit) {
         this.$refs.sourceEdit.zoomToViewCenter(newZoom);
       } else {
         this.setEditZoom(newZoom);
-      }
-    },
-    handleContextMenu(e) {
-      if (this.activeTool === 'picker') {
-        e.preventDefault();
-      }
-    },
-    handleGlobalKeyDown(e) {
-      if (e.key === 'Control') {
-        this.isCtrlPressed = true;
-      }
-
-      // Undo/Redo shortcuts
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) {
-          this.redo();
-        } else {
-          this.undo();
-        }
-        return;
-      }
-
-      // Save shortcut
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        this.saveProject();
-        return;
-      }
-
-      const paintTools = ['pencil', 'brush', 'bucket'];
-      if (e.key === 'Alt' && paintTools.includes(this.activeTool) && !this.isAltSwapped) {
-        this.isAltSwapped = true;
-        this.setActiveTool('picker');
-      }
-    },
-    handleGlobalKeyUp(e) {
-      if (e.key === 'Control') {
-        this.isCtrlPressed = false;
-      }
-
-      if (e.key === 'Alt' && this.isAltSwapped) {
-        this.setActiveTool(this.previousTool);
-        this.isAltSwapped = false;
       }
     },
     async handleFileSelected(file) {
@@ -228,70 +87,6 @@ export default {
         await this.setImageFromFile(file);
       }
       this.previewTab = 'ansi';
-    },
-    queueSetup() {
-      if (this._setupFrame) cancelAnimationFrame(this._setupFrame);
-      this._setupFrame = requestAnimationFrame(() => this.setup());
-    },
-    async setup() {
-      if (!this.image) return;
-
-      const {
-        canvas: pipelineCanvas,
-        blockData: pipelineBlockData,
-        paletteColors,
-      } = await processImage(this.image, this.processParams);
-      this.pipelineCanvas = pipelineCanvas.canvas;
-      this.activePalette = paletteColors;
-
-      if (!this.editCanvas) {
-        this.initEditCanvas(this.image.naturalWidth, this.image.naturalHeight);
-      }
-
-      // 1. Prepare final output canvas at grid resolution
-      const oc = document.createElement('canvas');
-      oc.width = this.cols;
-      oc.height = this.rows;
-      oc.getContext('2d', { willReadFrequently: true });
-
-      // 2. Composite paint over filtered image
-      this.compositeEditCanvas(this.pipelineCanvas, oc);
-
-      // 3. Late-stage Quantization (forced into the LOCKED palette from the base image)
-      if (this.activePalette) {
-        const canvasWrapper = new Canvas(oc);
-        applyQuantization(canvasWrapper, this.activePalette);
-      }
-
-      // 4. Generate blockData from final quantized pixels
-      const rand = new Random(this.seed);
-      const charset = this.chars || '▄';
-      const targetDataLength = this.cols * this.rows;
-      const finalBlockData = new Array(targetDataLength);
-
-      const ctx = oc.getContext('2d', { willReadFrequently: true });
-      const finalPixels = ctx.getImageData(0, 0, this.cols, this.rows).data;
-
-      for (let i = 0; i < targetDataLength; i++) {
-        const i4 = i * 4;
-        const r = finalPixels[i4], g = finalPixels[i4 + 1], b = finalPixels[i4 + 2];
-        const hex = rgb2hex({ r, g, b });
-
-        finalBlockData[i] = {
-          r, g, b,
-          hex,
-          c: [r, g, b],
-          char: charset[rand(charset.length)],
-        };
-      }
-
-      this.blockData = finalBlockData;
-      this.pipelineBlockData = pipelineBlockData || [...finalBlockData];
-
-      // Still apply char overrides on top
-      this.applyCharEdits();
-
-      this.outputCanvas = oc;
     },
   },
 };

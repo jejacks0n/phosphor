@@ -21,8 +21,7 @@ export function useEditorInteractions(options) {
   let _lastClientX = null;
   let _lastClientY = null;
   let _pendingZoomScroll = null;
-  let lastTouchDistance = null;
-  let lastTouchCenter = null;
+  let _lastTouchDistance = null;
   let _initialPinchZoom = null;
   let _initialZoom = null;
   let _isMiddleClick = false;
@@ -293,8 +292,7 @@ export function useEditorInteractions(options) {
     if (event.touches.length === 1) {
       startPaint(event);
     } else if (event.touches.length === 2) {
-      lastTouchDistance = unref(getTouchDistance(event.touches));
-      lastTouchCenter = unref(getTouchCenter(event.touches));
+      _lastTouchDistance = unref(getTouchDistance(event.touches));
       _initialPinchZoom = unref(editZoom);
     }
   }
@@ -304,11 +302,11 @@ export function useEditorInteractions(options) {
       if (isPainting.value) {
         onMouseMove(event);
       }
-    } else if (event.touches.length === 2 && lastTouchDistance !== null && !disableZoom) {
+    } else if (event.touches.length === 2 && _lastTouchDistance !== null && !disableZoom) {
       event.preventDefault();
 
       const distance = getTouchDistance(event.touches);
-      const ratio = distance / lastTouchDistance;
+      const ratio = distance / _lastTouchDistance;
       const newZoom = _initialPinchZoom * ratio;
       
       const cappedZoom = Math.max(0.1, Math.min(16, newZoom));
@@ -318,8 +316,6 @@ export function useEditorInteractions(options) {
       _lastClientY = center.y;
 
       zoomToPoint(cappedZoom, center.x, center.y);
-      
-      lastTouchCenter = center;
     }
   }
 
@@ -327,8 +323,7 @@ export function useEditorInteractions(options) {
     if (isPainting.value && event.touches.length === 0) {
       commitPaint();
     }
-    lastTouchDistance = null;
-    lastTouchCenter = null;
+    _lastTouchDistance = null;
   }
 
   function handleWheel(event) {
