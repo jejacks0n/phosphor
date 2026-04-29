@@ -43,31 +43,96 @@ export function useEditorInteractions(options) {
     return positions;
   }
 
-  function getTouchDistance(touches) {
+  function _getTouchDistance(touches) {
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  function getTouchCenter(touches) {
+  function _getTouchCenter(touches) {
     return {
       x: (touches[0].clientX + touches[1].clientX) / 2,
       y: (touches[0].clientY + touches[1].clientY) / 2
     };
   }
 
-  function refreshMousePos() {
-    if (_lastClientX === null || _lastClientY === null) return;
+  function _getPointerPos(event) {
+    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+    const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+    return { clientX, clientY };
+  }
+
+  function _startNavigation(event) {
+    const tool = unref(activeTool);
+    isPainting.value = true;
+    if (workspaceStore) workspaceStore.isPainting = true;
+
+    _lastMousePos = _getPointerPos(event);
+    if (tool === 'zoom' && !disableZoom && !_isMiddleClick) {
+      _initialZoom = unref(editZoom);
+    }
+    
+    if (event.pointerId !== undefined) {
+      event.target.setPointerCapture(event.pointerId);
+    }
+    window.addEventListener('pointermove', onMouseMove);
+    window.addEventListener('pointerup', commitPaint);
+  }
+
+  function _startPicking(event, pos) {
+    if (event.preventDefault) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    isPainting.value = true;
+    if (workspaceStore) workspaceStore.isPainting = true;
+
+    callbacks.onColorPick(pos);
+    if (event.pointerId !== undefined) {
+      event.target.setPointerCapture(event.pointerId);
+    }
+    window.addEventListener('pointermove', onMouseMove);
+    window.addEventListener('pointerup', commitPaint);
+  }
+
+  function _startPainting(event, pos) {
+    const shouldContinue = callbacks.onPaintStart(event, pos);
+    if (shouldContinue === false) {
+      _lastPos = null;
+      return;
+    }
+
+    isPainting.value = true;
+    if (workspaceStore) workspaceStore.isPainting = true;
+
+    _lastPos = pos;
+    
+    if (event.pointerId !== undefined) {
+      event.target.setPointerCapture(event.pointerId);
+    }
+    window.addEventListener('pointermove', onMouseMove);
+    window.addEventListener('pointerup', commitPaint);
+  }
+
+  function _updatePointerPos(clientX, clientY) {
+    _lastClientX = clientX;
+    _lastClientY = clientY;
+
     const displayEl = unref(displayRef);
     if (!displayEl) return;
     const rect = displayEl.getBoundingClientRect();
     mousePos.value = {
-      x: _lastClientX - rect.left,
-      y: _lastClientY - rect.top,
+      x: clientX - rect.left,
+      y: clientY - rect.top,
     };
   }
 
-  function getScrollParent() {
+  function _refreshMousePos() {
+    if (_lastClientX === null || _lastClientY === null) return;
+    _updatePointerPos(_lastClientX, _lastClientY);
+  }
+
+  function _getScrollParent() {
     let el = unref(containerRef);
     if (el && el.$el) el = el.$el;
     
@@ -87,91 +152,41 @@ export function useEditorInteractions(options) {
   }
 
   function centerContent() {
-    const scrollEl = getScrollParent();
+    const scrollEl = _getScrollParent();
     if (!scrollEl) return;
     scrollEl.scrollLeft = (scrollEl.scrollWidth - scrollEl.clientWidth) / 2;
     scrollEl.scrollTop = (scrollEl.scrollHeight - scrollEl.clientHeight) / 2;
   }
 
   function startPaint(event) {
+    if (event.preventDefault) event.preventDefault();
     const tool = unref(activeTool);
     const pos = callbacks.pixelCoordsAt(event);
     _isMiddleClick = (event.type === 'mousedown' || event.type === 'pointerdown') && event.button === 1;
+
     if (_isMiddleClick) {
-      event.preventDefault();
-      if (workspaceStore) {
-        workspaceStore.isMiddleClick = true;
-      }
+      if (event.preventDefault) event.preventDefault();
+      if (workspaceStore) workspaceStore.isMiddleClick = true;
+      _startNavigation(event);
+      return;
     }
 
-    if (_isMiddleClick || tool === 'hand' || tool === 'zoom') {
-      isPainting.value = true;
-      if (workspaceStore) workspaceStore.isPainting = true;
-
-      _lastMousePos = {
-        x: event.touches ? event.touches[0].clientX : event.clientX,
-        y: event.touches ? event.touches[0].clientY : event.clientY
-      };
-      if (tool === 'zoom' && !disableZoom && !_isMiddleClick) {
-        _initialZoom = unref(editZoom);
-      }
-      
-      if (event.type === 'pointerdown') {
-        event.target.setPointerCapture(event.pointerId);
-        window.addEventListener('pointermove', onMouseMove);
-        window.addEventListener('pointerup', commitPaint);
-      } else if (event.type === 'mousedown') {
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', commitPaint);
-      }
+    if (tool === 'hand' || tool === 'zoom') {
+      _startNavigation(event);
       return;
     }
 
     if (!pos) return;
 
     if (tool === 'picker') {
-      if (event.type === 'mousedown' || event.type === 'pointerdown') {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-      isPainting.value = true;
-      if (workspaceStore) workspaceStore.isPainting = true;
-
-      callbacks.onColorPick(pos);
-      if (event.type === 'pointerdown') {
-        event.target.setPointerCapture(event.pointerId);
-        window.addEventListener('pointermove', onMouseMove);
-        window.addEventListener('pointerup', commitPaint);
-      } else if (event.type === 'mousedown') {
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', commitPaint);
-      }
-      return;
-    }
-
-    const shouldContinue = callbacks.onPaintStart(event, pos);
-    if (shouldContinue === false) {
-      _lastPos = null;
-      return;
-    }
-
-    isPainting.value = true;
-    if (workspaceStore) workspaceStore.isPainting = true;
-
-    _lastPos = pos;
-    
-    if (event.type === 'pointerdown') {
-      event.target.setPointerCapture(event.pointerId);
-      window.addEventListener('pointermove', onMouseMove);
-      window.addEventListener('pointerup', commitPaint);
-    } else if (event.type === 'mousedown') {
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup', commitPaint);
+      _startPicking(event, pos);
+    } else {
+      _startPainting(event, pos);
     }
   }
 
-  function zoomToPoint(newZoom, clientX, clientY) {
-    const scrollEl = getScrollParent();
+  function _zoomToPoint(newZoom, clientX, clientY) {
+    const scrollEl = _getScrollParent();
     const displayEl = unref(displayRef);
 
     if (!scrollEl || !displayEl) {
@@ -208,27 +223,15 @@ export function useEditorInteractions(options) {
         scrollEl.scrollLeft = canvasContentX + fractionX * newCanvasRect.width - viewportX;
         scrollEl.scrollTop = canvasContentY + fractionY * newCanvasRect.height - viewportY;
       }
-      refreshMousePos();
+      _refreshMousePos();
     });
   }
 
   function onMouseMove(event) {
-    const displayEl = unref(displayRef);
-    if (!displayEl) return;
-
-    const rect = displayEl.getBoundingClientRect();
-    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-    const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-
-    _lastClientX = clientX;
-    _lastClientY = clientY;
+    const { clientX, clientY } = _getPointerPos(event);
+    _updatePointerPos(clientX, clientY);
 
     const pos = callbacks.pixelCoordsAt(event);
-
-    mousePos.value = {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-    };
 
     if (!isPainting.value) return;
 
@@ -236,24 +239,24 @@ export function useEditorInteractions(options) {
 
     if (_isMiddleClick || tool === 'hand' || tool === 'zoom') {
       if (_isMiddleClick || tool === 'hand') {
-        const dx = _lastMousePos.x - clientX;
-        const dy = _lastMousePos.y - clientY;
+        const dx = _lastMousePos.clientX - clientX;
+        const dy = _lastMousePos.clientY - clientY;
 
-        const scrollEl = getScrollParent();
+        const scrollEl = _getScrollParent();
         if (scrollEl) {
           scrollEl.scrollLeft += dx;
           scrollEl.scrollTop += dy;
         }
 
-        _lastMousePos = { x: clientX, y: clientY };
-        refreshMousePos();
+        _lastMousePos = { clientX, clientY };
+        _refreshMousePos();
       } else if (!disableZoom) {
-        const dx = clientX - _lastMousePos.x;
+        const dx = clientX - _lastMousePos.clientX;
         const sensitivity = 0.01;
         const newZoom = _initialZoom + (dx * sensitivity);
         const cappedZoom = Math.max(1, Math.min(16, newZoom));
         
-        zoomToPoint(cappedZoom, _lastMousePos.x, _lastMousePos.y);
+        _zoomToPoint(cappedZoom, _lastMousePos.clientX, _lastMousePos.clientY);
       }
       return;
     }
@@ -292,7 +295,7 @@ export function useEditorInteractions(options) {
     if (event.touches.length === 1) {
       startPaint(event);
     } else if (event.touches.length === 2) {
-      _lastTouchDistance = unref(getTouchDistance(event.touches));
+      _lastTouchDistance = unref(_getTouchDistance(event.touches));
       _initialPinchZoom = unref(editZoom);
     }
   }
@@ -305,17 +308,15 @@ export function useEditorInteractions(options) {
     } else if (event.touches.length === 2 && _lastTouchDistance !== null && !disableZoom) {
       event.preventDefault();
 
-      const distance = getTouchDistance(event.touches);
+      const distance = _getTouchDistance(event.touches);
       const ratio = distance / _lastTouchDistance;
       const newZoom = _initialPinchZoom * ratio;
       
       const cappedZoom = Math.max(0.1, Math.min(16, newZoom));
-      const center = getTouchCenter(event.touches);
+      const center = _getTouchCenter(event.touches);
       
-      _lastClientX = center.x;
-      _lastClientY = center.y;
-
-      zoomToPoint(cappedZoom, center.x, center.y);
+      _updatePointerPos(center.x, center.y);
+      _zoomToPoint(cappedZoom, center.x, center.y);
     }
   }
 
@@ -327,7 +328,7 @@ export function useEditorInteractions(options) {
   }
 
   function handleWheel(event) {
-    const scrollEl = getScrollParent();
+    const scrollEl = _getScrollParent();
 
     if (event.ctrlKey && !disableZoom) {
       event.preventDefault();
@@ -337,10 +338,8 @@ export function useEditorInteractions(options) {
       const newZoom = oldZoom * (1 + delta);
       const cappedZoom = Math.max(1, Math.min(16, newZoom));
 
-      _lastClientX = event.clientX;
-      _lastClientY = event.clientY;
-
-      zoomToPoint(cappedZoom, event.clientX, event.clientY);
+      _updatePointerPos(event.clientX, event.clientY);
+      _zoomToPoint(cappedZoom, event.clientX, event.clientY);
       return;
     }
 
@@ -349,14 +348,12 @@ export function useEditorInteractions(options) {
       scrollEl.scrollLeft += event.deltaX;
       scrollEl.scrollTop += event.deltaY;
 
-      _lastClientX = event.clientX;
-      _lastClientY = event.clientY;
-      refreshMousePos();
+      _updatePointerPos(event.clientX, event.clientY);
     }
   }
 
   function zoomToViewCenter(newZoom) {
-    const scrollEl = getScrollParent();
+    const scrollEl = _getScrollParent();
     if (!scrollEl) {
       callbacks.onZoomChange(newZoom);
       return;
@@ -364,7 +361,7 @@ export function useEditorInteractions(options) {
     const scrollRect = scrollEl.getBoundingClientRect();
     const centerX = scrollRect.left + scrollEl.clientWidth / 2;
     const centerY = scrollRect.top + scrollEl.clientHeight / 2;
-    zoomToPoint(newZoom, centerX, centerY);
+    _zoomToPoint(newZoom, centerX, centerY);
   }
 
   return {
@@ -381,6 +378,5 @@ export function useEditorInteractions(options) {
     handleWheel,
     centerContent,
     zoomToViewCenter,
-    _initialZoom,
   };
 }

@@ -452,14 +452,15 @@ export const useProjectStore = defineStore('project', {
       const { dx, dy, dw, dh } = this.getFitParams(w, h);
 
       if (this.hasPaint && this.editCanvas) {
+        const canvas = new Canvas(outputCanvas);
+        if (this.activePalette) canvas.quantize(this.activePalette);
+
         const editTemp = document.createElement('canvas');
         editTemp.width = dw;
         editTemp.height = dh;
         const etCtx = editTemp.getContext('2d', { willReadFrequently: true });
         etCtx.drawImage(this.editCanvas, 0, 0, dw, dh);
-
         const editData = etCtx.getImageData(0, 0, dw, dh).data;
-        const outData = outputCanvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
 
         for (let y = 0; y < dh; y++) {
           const ty = y + dy;
@@ -471,9 +472,13 @@ export const useProjectStore = defineStore('project', {
             const iEdit = (y * dw + x) * 4;
             if (editData[iEdit + 3] > 0) {
               const iOut = ty * w + tx;
-              const iOut4 = iOut * 4;
-              const r = outData[iOut4], g = outData[iOut4 + 1], b = outData[iOut4 + 2];
-              newBlockData[iOut] = { ...newBlockData[iOut], r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] };
+              const p = canvas.pixels[iOut];
+              newBlockData[iOut] = { 
+                ...newBlockData[iOut], 
+                r: p.r, g: p.g, b: p.b, 
+                hex: rgb2hex(p), 
+                c: (p.c !== undefined) ? p.c : [p.r, p.g, p.b] 
+              };
             }
           }
         }
@@ -613,15 +618,20 @@ export const useProjectStore = defineStore('project', {
     },
 
     syncBlockData(pixels, outputCanvas, dx, dy, dw, dh) {
-      const snapshot = outputCanvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, this.cols, this.rows);
+      const canvas = new Canvas(outputCanvas);
+      if (this.activePalette) canvas.quantize(this.activePalette);
       const newBlockData = this.blockData.slice();
       for (const { x, y } of pixels) {
         const i = y * this.cols + x;
         if (newBlockData[i]) {
           if (x >= dx && x < dx + dw && y >= dy && y < dy + dh) {
-            const i4 = i * 4;
-            const r = snapshot.data[i4], g = snapshot.data[i4 + 1], b = snapshot.data[i4 + 2];
-            newBlockData[i] = { ...newBlockData[i], r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] };
+            const p = canvas.pixels[i];
+            newBlockData[i] = { 
+              ...newBlockData[i], 
+              r: p.r, g: p.g, b: p.b, 
+              hex: rgb2hex(p), 
+              c: (p.c !== undefined) ? p.c : [p.r, p.g, p.b] 
+            };
           }
           const ansiRow = Math.floor(y / 2);
           const cellIndex = ansiRow * this.cols + x;
@@ -659,18 +669,17 @@ export const useProjectStore = defineStore('project', {
     },
 
     applyCharEdits() {
-      if (!this.blockData.length) return;
-      const newBlockData = this.blockData.slice();
+      if (!this.pipelineBlockData.length) return;
+      const newBlockData = this.pipelineBlockData.map(cell => ({ ...cell }));
+      
       if (this.charEditMap.size > 0) {
         for (const [cellIndex, char] of this.charEditMap.entries()) {
           const col = cellIndex % this.cols;
           const ansiRow = Math.floor(cellIndex / this.cols);
           const bgIdx = ansiRow * this.cols * 2 + col;
-          if (newBlockData[bgIdx]) newBlockData[bgIdx] = { ...newBlockData[bgIdx], char };
-        }
-      } else {
-        for (let i = 0; i < newBlockData.length; i++) {
-          if (this.pipelineBlockData[i]) newBlockData[i] = { ...newBlockData[i], char: this.pipelineBlockData[i].char };
+          if (newBlockData[bgIdx]) {
+            newBlockData[bgIdx].char = char;
+          }
         }
       }
       this.blockData = newBlockData;

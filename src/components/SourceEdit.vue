@@ -1,5 +1,5 @@
 <script>
-import { computed, useTemplateRef, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, useTemplateRef, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { mapState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -238,22 +238,89 @@ export default {
     
     watch(() => workspaceStore.editZoom, redrawDisplay);
 
+    const viewportWidth = ref(0);
+    const viewportHeight = ref(0);
+
+    const canvasWidth = computed(() => projectStore.cols * workspaceStore.editZoom);
+    const canvasHeight = computed(() => projectStore.rows * workspaceStore.editZoom);
+
+    const paddingX = computed(() => Math.max(0, viewportWidth.value - canvasWidth.value / 3));
+    const paddingY = computed(() => Math.max(0, viewportHeight.value - canvasHeight.value / 3));
+
+    const workspaceWidth = computed(() => {
+      if (viewportWidth.value === 0) return '100%';
+      return `${canvasWidth.value + 2 * paddingX.value}px`;
+    });
+
+    const workspaceHeight = computed(() => {
+      if (viewportHeight.value === 0) return '100%';
+      return `${canvasHeight.value + 2 * paddingY.value}px`;
+    });
+
+    const viewportStyle = computed(() => ({
+      width: workspaceWidth.value,
+      height: workspaceHeight.value,
+    }));
+
+    const offset = { x: 0, y: 0 };
+    const updateOffset = () => {
+      const el = rootRef.value;
+      if (!el) return;
+      // Store the offset of the viewport center relative to the content center
+      offset.x = (el.scrollLeft + el.clientWidth / 2) - (el.scrollWidth / 2);
+      offset.y = (el.scrollTop + el.clientHeight / 2) - (el.scrollHeight / 2);
+    };
+
+    const updateViewportSize = () => {
+      const el = rootRef.value;
+      if (el) {
+        viewportWidth.value = el.clientWidth;
+        viewportHeight.value = el.clientHeight;
+      }
+    };
+
+    const handleResize = () => {
+      const el = rootRef.value;
+      if (!el) return;
+      updateViewportSize();
+      // Restore the viewport center relative to the (potentially new) content center
+      el.scrollLeft = (el.scrollWidth / 2) + offset.x - (el.clientWidth / 2);
+      el.scrollTop = (el.scrollHeight / 2) + offset.y - (el.clientHeight / 2);
+    };
+
+    let resizeObserver = null;
+
     onMounted(() => {
       redrawDisplay();
       workspaceStore.resetToolToHand();
 
       if (rootRef.value) {
         rootRef.value.addEventListener('wheel', handleWheel, { passive: false });
+        rootRef.value.addEventListener('scroll', updateOffset);
+        
+        resizeObserver = new ResizeObserver(() => {
+          handleResize();
+        });
+        resizeObserver.observe(rootRef.value);
       }
 
-      nextTick(() => centerContent());
+      nextTick(() => {
+        updateViewportSize();
+        centerContent();
+        updateOffset();
+      });
     });
 
     onBeforeUnmount(() => {
       commitPaint();
       if (rootRef.value) {
         rootRef.value.removeEventListener('wheel', handleWheel);
+        rootRef.value.removeEventListener('scroll', updateOffset);
+        if (resizeObserver) {
+          resizeObserver.disconnect();
+        }
       }
+      window.removeEventListener('resize', handleResize);
     });
 
     return {
@@ -270,6 +337,7 @@ export default {
       handleTouchEnd,
       brushPreviewStyle,
       zoomToViewCenter,
+      viewportStyle,
     };
   },
   computed: {
@@ -290,29 +358,34 @@ export default {
       @touchmove="handleTouchMove"
       @touchend="handleTouchEnd"
   >
-    <div class="canvas-viewport" ref="container">
+    <div class="canvas-viewport" ref="container" :style="viewportStyle">
       <div class="canvas-container">
         <canvas ref="displayCanvas"/>
         <div v-if="editZoom >= 16" class="grid-overlay"></div>
         <div class="brush-preview" :style="brushPreviewStyle"></div>
       </div>
     </div>
-  </article>
-</template>
+    </article>
+    </template>
 
-<style scoped>
-article {
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  overscroll-behavior: none;
-}
+    <style scoped>
+    article {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    overscroll-behavior: none;
+    /* Safari fix for scrollbars being hidden behind content */
+    position: relative;
+    z-index: 0;
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    }
 
-div.canvas-viewport {
-  display: inline-flex;
-  margin: 70vh 70vw;
-}
+    div.canvas-viewport {
+    display: grid;
+    place-items: center;
+    }
 
 div.canvas-container {
   position: relative;

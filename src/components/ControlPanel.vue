@@ -398,44 +398,8 @@ span.value {
   color: var(--text-muted);
 }
 
-div.range-wrapper {
-  position: relative;
-  display: flex;
-  width: 100%;
-  align-items: center;
-}
-
 span.value-tooltip {
-  position: absolute;
-  bottom: 100%;
-  /* Account for thumb width (17px + 2px border on each side = 21px) */
-  left: calc(10.5px + (100% - 21px) * var(--percent, 0) / 100);
-  transform: translateX(-50%) translateY(-12px);
-  background: var(--black);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-family: 'Simple Console', monospace;
-  font-size: 14px;
-  font-weight: bold;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.1s ease-out, transform 0.1s ease-out;
-  z-index: 100;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  white-space: nowrap;
-}
-
-span.value-tooltip::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: var(--black) transparent transparent transparent;
+  visibility: hidden !important;
 }
 
 @media (max-width: 768px) {
@@ -444,13 +408,7 @@ span.value-tooltip::after {
   }
 
   input[type=range]:active + span.value-tooltip {
-    opacity: 1;
-    visibility: visible;
-  }
-
-  span.value-tooltip {
-    /* Account for thumb width (23px + 2px border on each side = 27px) */
-    left: calc(13.5px + (100% - 27px) * var(--percent, 0) / 100);
+    visibility: visible !important;
   }
 }
 </style>

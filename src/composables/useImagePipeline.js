@@ -9,7 +9,41 @@ export function useImagePipeline(projectStore) {
   const outputCanvas = shallowRef(null);
   let _setupFrame = null;
 
-  const runSetup = async (params) => {
+  const _initializeEditCanvas = (image) => {
+    if (!projectStore.editCanvas) {
+      projectStore.initEditCanvas(image.naturalWidth, image.naturalHeight);
+    }
+  };
+
+  const _prepareOutputCanvas = (params) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = params.cols;
+    canvas.height = params.rows;
+    canvas.getContext('2d', { willReadFrequently: true });
+    return canvas;
+  };
+
+  const _buildBlockData = (params, canvasWrapper) => {
+    const rand = new Random(params.seed);
+    const charset = params.chars || '▄';
+    const targetDataLength = params.cols * params.rows;
+    const finalBlockData = new Array(targetDataLength);
+
+    for (let i = 0; i < targetDataLength; i++) {
+      const p = canvasWrapper.pixels[i];
+      const hex = rgb2hex(p);
+
+      finalBlockData[i] = {
+        r: p.r, g: p.g, b: p.b,
+        hex,
+        c: (p.c !== undefined) ? p.c : [p.r, p.g, p.b],
+        char: charset[rand(charset.length)],
+      };
+    }
+    return finalBlockData;
+  };
+
+  const _runSetup = async (params) => {
     if (!params.image) return;
 
     const {
@@ -21,46 +55,22 @@ export function useImagePipeline(projectStore) {
     pipelineCanvas.value = pipelineCanvasResult.canvas;
     projectStore.activePalette = paletteColors;
 
-    if (!projectStore.editCanvas) {
-      projectStore.initEditCanvas(params.image.naturalWidth, params.image.naturalHeight);
-    }
+    _initializeEditCanvas(params.image);
 
-    // 1. Prepare final output canvas at grid resolution
-    const oc = document.createElement('canvas');
-    oc.width = params.cols;
-    oc.height = params.rows;
-    oc.getContext('2d', { willReadFrequently: true });
+    const tempOutputCanvas = _prepareOutputCanvas(params);
 
-    // 2. Composite paint over filtered image
-    projectStore.compositeEditCanvas(pipelineCanvas.value, oc);
+    // Composite paint over filtered image
+    projectStore.compositeEditCanvas(pipelineCanvas.value, tempOutputCanvas);
 
-    // 3. Late-stage Quantization (forced into the LOCKED palette from the base image)
+    // Late-stage Quantization (forced into the LOCKED palette from the base image)
+    const canvasWrapper = new Canvas(tempOutputCanvas);
     if (projectStore.activePalette) {
-      const canvasWrapper = new Canvas(oc);
       applyQuantization(canvasWrapper, projectStore.activePalette);
+    } else {
+      canvasWrapper.loadPixels();
     }
 
-    // 4. Generate blockData from final quantized pixels
-    const rand = new Random(params.seed);
-    const charset = params.chars || '▄';
-    const targetDataLength = params.cols * params.rows;
-    const finalBlockData = new Array(targetDataLength);
-
-    const ctx = oc.getContext('2d', { willReadFrequently: true });
-    const finalPixels = ctx.getImageData(0, 0, params.cols, params.rows).data;
-
-    for (let i = 0; i < targetDataLength; i++) {
-      const i4 = i * 4;
-      const r = finalPixels[i4], g = finalPixels[i4 + 1], b = finalPixels[i4 + 2];
-      const hex = rgb2hex({ r, g, b });
-
-      finalBlockData[i] = {
-        r, g, b,
-        hex,
-        c: [r, g, b],
-        char: charset[rand(charset.length)],
-      };
-    }
+    const finalBlockData = _buildBlockData(params, canvasWrapper);
 
     projectStore.blockData = finalBlockData;
     projectStore.pipelineBlockData = pipelineBlockData || [...finalBlockData];
@@ -68,12 +78,12 @@ export function useImagePipeline(projectStore) {
     // Still apply char overrides on top
     projectStore.applyCharEdits();
 
-    outputCanvas.value = oc;
+    outputCanvas.value = tempOutputCanvas;
   };
 
   const queueSetup = (params) => {
     if (_setupFrame) cancelAnimationFrame(_setupFrame);
-    _setupFrame = requestAnimationFrame(() => runSetup(params));
+    _setupFrame = requestAnimationFrame(() => _runSetup(params));
   };
 
   return {

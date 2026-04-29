@@ -157,7 +157,49 @@ input.mono {
 }
 
 input[type=checkbox] {
-  height: auto;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  margin: 0;
+  display: inline-block;
+  vertical-align: middle;
+  padding: 7px;
+}
+input[type=checkbox]:hover {
+  background: var(--surface-3);
+  border-color: var(--accent);
+}
+input[type=checkbox]:checked {
+  background: var(--accent-hot);
+  border-color: var(--accent-hot);
+}
+input[type=checkbox]:checked::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 8px;
+  border: solid var(--text-inverted);
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+}
+input[type=checkbox]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+input[type=checkbox]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(1);
 }
 
 input[type=number]::-webkit-inner-spin-button,
@@ -179,23 +221,19 @@ input[type=color] {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 input[type=color]:hover {
   transform: translateY(-1px);
   background: var(--surface-3);
   border-color: var(--accent);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
-
 input[type=color]::-webkit-color-swatch-wrapper {
   padding: 0;
 }
-
 input[type=color]::-webkit-color-swatch {
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 4px;
 }
-
 input[type=color]::-moz-color-swatch {
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 4px;
@@ -260,6 +298,10 @@ input[type=range]:active::-moz-range-thumb {
   transform: scale(1.4);
   background: var(--accent-hot);
 }
+input[type=range]:active + span.value-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
 
 /* General */
 hr {
@@ -269,6 +311,45 @@ hr {
   border-top: 1px solid var(--border-subtle);
 }
 
+div.range-wrapper {
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+}
+
+span.value-tooltip {
+  position: absolute;
+  bottom: 100%;
+  /* Account for thumb width (17px + 2px border on each side = 21px) */
+  left: calc(10.5px + (100% - 21px) * var(--percent, 0) / 100);
+  transform: translateX(-50%) translateY(-12px);
+  background: var(--black);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'Simple Console', monospace;
+  font-size: 14px;
+  font-weight: bold;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.1s ease-out, transform 0.1s ease-out;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+span.value-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--black) transparent transparent transparent;
+}
+
 /* Tool Cursors */
 main.tool-pencil div.edit-viewport.editing,
 main.tool-bucket div.edit-viewport.editing,
@@ -276,6 +357,8 @@ main.tool-picker div.edit-viewport.editing,
 main.tool-flip div.edit-viewport.editing,
 main.tool-char div.edit-viewport.editing {
   cursor: crosshair !important;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 main.tool-hand div.edit-viewport.editing {
@@ -306,7 +389,6 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
   cursor: none !important; /* a custom character highlight is used to indicate position */
 }
 
-
 /* Mobile overrides to make certain interface elements friendlier
  ----------------------------------------------------------------------------*/
 @media (max-width: 768px) {
@@ -318,6 +400,15 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
   input[type=range]::-moz-range-thumb {
     height: 23px;
     width: 23px;
+  }
+
+  input[type=checkbox] {
+    padding: 9px;
+  }
+
+  span.value-tooltip {
+    /* Account for thumb width (23px + 2px border on each side = 27px) */
+    left: calc(13.5px + (100% - 27px) * var(--percent, 0) / 100);
   }
 }
 

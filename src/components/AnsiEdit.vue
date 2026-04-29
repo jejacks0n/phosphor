@@ -324,7 +324,7 @@ export default {
           }
         },
         onColorPick(pos) {
-          workspaceStore.editFgColor = projectStore.getRawColorAt(pos.x, pos.y, props.outputCanvas);
+          workspaceStore.editFgColor = projectStore.getRawColorAt(pos.x, pos.y);
         },
       },
     });
@@ -483,30 +483,30 @@ export default {
         <div
             v-if="picker"
             class="picker-backdrop"
-            @mousedown.stop="closePicker"
+            @pointerdown.stop="closePicker"
         ></div>
 
         <div
             v-if="picker"
             class="char-picker"
             :style="{ left: picker.x + 'px', top: picker.y + 'px' }"
-            @mousedown.stop
+            @pointerdown.stop
         >
         <span
             class="char-option erase"
             title="Reset to original"
-            @mousedown="selectChar('ERASE')"
+            @pointerdown.stop="selectChar('ERASE')"
         >⌫</span>
           <span
               class="char-option space"
               title="Space"
-              @mousedown="selectChar(' ')"
+              @pointerdown.stop="selectChar(' ')"
           >␣</span>
           <span
               v-for="ch in pickerChars"
               :key="ch"
               class="char-option"
-              @mousedown="selectChar(ch)"
+              @pointerdown.stop="selectChar(ch)"
           >{{ ch }}</span>
         </div>
       </div>
@@ -532,6 +532,8 @@ div.canvas-container {
   position: relative;
   touch-action: none;
   margin: auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 pre {
@@ -547,6 +549,7 @@ pre {
   outline: 2px dashed var(--border-light);
   display: block;
   user-select: none;
+  -webkit-user-select: none;
   text-rendering: optimizeSpeed;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";

@@ -15,7 +15,7 @@ export const useWorkspaceStore = defineStore('workspace', {
 
     // Brush Settings
     editBrushSize:  2.5,
-    editEraserSize: 1,
+    editEraserSize: 5,
     editBrushOpacity:  100,
     editBrushFlow:  25,
     editBrushHardness:  50,
