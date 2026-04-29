@@ -194,20 +194,16 @@ export function useEditorInteractions(options) {
       return;
     }
 
+    const oldZoom = unref(editZoom);
     const scrollRect = scrollEl.getBoundingClientRect();
     const canvasRect = displayEl.getBoundingClientRect();
-    
-    // Position of the point relative to the scroll container's viewport
+
+    // Cursor position relative to canvas origin (in old-zoom pixel space)
+    const canvasX = clientX - canvasRect.left;
+    const canvasY = clientY - canvasRect.top;
+    // Cursor position relative to scroll container viewport
     const viewportX = clientX - scrollRect.left;
     const viewportY = clientY - scrollRect.top;
-
-    // Current position of the canvas content relative to the scroll container's content
-    const canvasContentX = scrollEl.scrollLeft + canvasRect.left - scrollRect.left;
-    const canvasContentY = scrollEl.scrollTop + canvasRect.top - scrollRect.top;
-
-    // Where the point is on the canvas (0-1 fraction)
-    const fractionX = canvasRect.width > 0 ? (clientX - canvasRect.left) / canvasRect.width : 0.5;
-    const fractionY = canvasRect.height > 0 ? (clientY - canvasRect.top) / canvasRect.height : 0.5;
 
     if (_pendingZoomScroll) _pendingZoomScroll.cancelled = true;
     const pending = { cancelled: false };
@@ -215,13 +211,24 @@ export function useEditorInteractions(options) {
 
     callbacks.onZoomChange(newZoom);
 
+    // nextTick fires after Vue has flushed DOM updates (canvas resized, padding recalculated).
+    // getBoundingClientRect() forces a synchronous layout so we get the post-zoom canvas position,
+    // letting us correct the scroll in the same frame — no visible jitter.
     nextTick(() => {
       if (pending.cancelled) return;
       _pendingZoomScroll = null;
+
       const newCanvasRect = displayEl.getBoundingClientRect();
       if (newCanvasRect) {
-        scrollEl.scrollLeft = canvasContentX + fractionX * newCanvasRect.width - viewportX;
-        scrollEl.scrollTop = canvasContentY + fractionY * newCanvasRect.height - viewportY;
+        // Content-space position of the canvas origin after the zoom change.
+        const canvasContentX = scrollEl.scrollLeft + (newCanvasRect.left - scrollRect.left);
+        const canvasContentY = scrollEl.scrollTop + (newCanvasRect.top - scrollRect.top);
+
+        // Scale the cursor's canvas-relative offset to new-zoom pixel space, then solve for the
+        // scroll position that keeps that image point under the cursor.
+        const zoomRatio = newZoom / oldZoom;
+        scrollEl.scrollLeft = canvasContentX + canvasX * zoomRatio - viewportX;
+        scrollEl.scrollTop = canvasContentY + canvasY * zoomRatio - viewportY;
       }
       _refreshMousePos();
     });

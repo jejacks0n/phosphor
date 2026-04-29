@@ -370,18 +370,18 @@ export default {
 
     <style scoped>
     article {
-    flex: 1;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    overscroll-behavior: none;
-    /* Safari fix for scrollbars being hidden behind content */
-    position: relative;
-    z-index: 0;
-    -webkit-transform: translate3d(0, 0, 0);
-    transform: translate3d(0, 0, 0);
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      overflow-anchor: none;
+      overscroll-behavior: none;
+      /* Safari fix for scrollbars being hidden behind content */
+      position: relative;
+      z-index: 0;
+      -webkit-transform: translate3d(0, 0, 0);
+      transform: translate3d(0, 0, 0);
     }
-
     div.canvas-viewport {
     display: grid;
     place-items: center;
