@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
 import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
-import { rgb2hex } from "@/lib/ColorUtils.js";
+import { rgb2hex, rgb2gray } from "@/lib/ColorUtils.js";
 import { applyTransforms } from "@/lib/PixelTransforms.js";
 import { applyQuantization } from "@/lib/ImageProcessor.js";
 import Canvas from "@/lib/Canvas.js";
@@ -18,7 +18,10 @@ export const useProjectStore = defineStore('project', {
     cols: useLocalStorage('current_file.cols', 80),
     rows: useLocalStorage('current_file.rows', 50),
     aspectLock: useLocalStorage('current_file.aspectLock', true),
+    renderStyle: useLocalStorage('current_file.renderStyle', 'color'),
+    charMode: useLocalStorage('current_file.charMode', 'random'),
     chars: useLocalStorage('current_file.chars', '*:|%.░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄'),
+    charsAscii: useLocalStorage('current_file.charsAscii', ' .:-=+*#%@'),
     seed: useLocalStorage('current_file.seed', generateSlug(2)),
     smoothing: useLocalStorage('current_file.smoothing', 'low'),
     quantize: useLocalStorage('current_file.quantize', 'none'),
@@ -95,7 +98,9 @@ export const useProjectStore = defineStore('project', {
       seed: state.seed,
       cols: state.cols,
       rows: state.rows,
-      chars: state.chars,
+      chars: state.renderStyle === 'ascii' ? state.charsAscii : state.chars,
+      charMode: state.renderStyle === 'ascii' ? 'brightness' : 'random',
+      renderStyle: state.renderStyle,
       smoothing: state.smoothing,
       invert: state.invert,
       brightness: state.brightness,
@@ -190,7 +195,7 @@ export const useProjectStore = defineStore('project', {
       // We'll manually list keys or just filter state.
       // For now, let's just grab the relevant document state.
       const stateKeys = [
-        'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount',
+        'cols', 'rows', 'aspectLock', 'renderStyle', 'charMode', 'chars', 'charsAscii', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount',
         'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness',
         'sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments'
       ];
@@ -628,22 +633,85 @@ export const useProjectStore = defineStore('project', {
       const canvas = new Canvas(outputCanvas);
       if (this.activePalette) canvas.quantize(this.activePalette);
       const newBlockData = this.blockData.slice();
+      const renderStyle = this.renderStyle || 'color';
+      const charMode = renderStyle === 'ascii' ? 'brightness' : 'random';
+      const charset = renderStyle === 'ascii' ? (this.charsAscii || ' .:-=+*#%@') : (this.chars || '▄');
+
       for (const { x, y } of pixels) {
-        const i = y * this.cols + x;
-        if (newBlockData[i]) {
+        const ansiRow = Math.floor(y / 2);
+        const bgIdx = ansiRow * this.cols * 2 + x;
+        const fgIdx = bgIdx + this.cols;
+
+        if (newBlockData[bgIdx]) {
           if (x >= dx && x < dx + dw && y >= dy && y < dy + dh) {
-            const p = canvas.pixels[i];
-            newBlockData[i] = { 
-              ...newBlockData[i], 
-              r: p.r, g: p.g, b: p.b, 
-              hex: rgb2hex(p), 
-              c: (p.c !== undefined) ? p.c : [p.r, p.g, p.b] 
-            };
+            const p1 = canvas.pixels[bgIdx];
+            const p2 = canvas.pixels[fgIdx] || p1;
+
+            if (p1 && p2) {
+              // 1. Determine Character (unless manually overridden)
+              if (!this.charEditMap.has(ansiRow * this.cols + x)) {
+                let char;
+                if (charMode === 'brightness') {
+                  const avgGray = (rgb2gray(p1) + rgb2gray(p2)) / 2;
+                  const charIdx = Math.max(0, Math.min(charset.length - 1, Math.round(avgGray * (charset.length - 1))));
+                  char = charset[charIdx];
+                } else {
+                  // In random mode, keep the existing character during paint synchronization
+                  char = newBlockData[bgIdx].char; 
+                }
+                newBlockData[bgIdx].char = char;
+              }
+
+              // 2. Determine Colors based on Render Style
+              if (renderStyle === 'ascii') {
+                const avgR = (p1.r + p2.r) / 2;
+                const avgG = (p1.g + p2.g) / 2;
+                const avgB = (p1.b + p2.b) / 2;
+                const avgColor = { r: avgR, g: avgG, b: avgB };
+                const avgHex = rgb2hex(avgColor);
+                const avgC = [avgR, avgG, avgB];
+
+                // Background (Top) always black
+                newBlockData[bgIdx] = {
+                  ...newBlockData[bgIdx],
+                  r: 0, g: 0, b: 0,
+                  hex: '#000000',
+                  c: [0, 0, 0]
+                };
+
+                // Foreground (Bottom) always average color
+                if (fgIdx < newBlockData.length) {
+                  newBlockData[fgIdx] = {
+                    ...newBlockData[fgIdx],
+                    r: avgR, g: avgG, b: avgB,
+                    hex: avgHex,
+                    c: avgC
+                  };
+                }
+              } else {
+                // Full Color Style
+                newBlockData[bgIdx] = {
+                  ...newBlockData[bgIdx],
+                  r: p1.r, g: p1.g, b: p1.b,
+                  hex: rgb2hex(p1),
+                  c: (p1.c !== undefined) ? p1.c : [p1.r, p1.g, p1.b]
+                };
+
+                if (fgIdx < newBlockData.length) {
+                  newBlockData[fgIdx] = {
+                    ...newBlockData[fgIdx],
+                    r: p2.r, g: p2.g, b: p2.b,
+                    hex: rgb2hex(p2),
+                    c: (p2.c !== undefined) ? p2.c : [p2.r, p2.g, p2.b]
+                  };
+                }
+              }
+            }
           }
-          const ansiRow = Math.floor(y / 2);
+          
           const cellIndex = ansiRow * this.cols + x;
           if (this.charEditMap.has(cellIndex)) {
-            newBlockData[i].char = this.charEditMap.get(cellIndex);
+            newBlockData[bgIdx].char = this.charEditMap.get(cellIndex);
           }
         }
       }
@@ -781,7 +849,10 @@ export const projectStateKeys = [
   'cols',
   'rows',
   'aspectLock',
+  'renderStyle',
+  'charMode',
   'chars',
+  'charsAscii',
   'seed',
   'smoothing',
   'quantize',

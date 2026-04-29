@@ -3,12 +3,14 @@ import { mapWritableState, mapActions, mapState } from 'pinia';
 import { useProjectStore, projectStateKeys } from '@/store/ProjectStore';
 import ProjectActions from '@/components/ProjectActions.vue';
 import ProjectFooter from '@/components/ProjectFooter.vue';
+import HelpInfo from '@/components/HelpInfo.vue';
 
 export default {
   name: 'ControlPanel',
   components: {
     ProjectActions,
     ProjectFooter,
+    HelpInfo,
   },
   computed: {
     ...mapWritableState(useProjectStore, projectStateKeys),
@@ -21,6 +23,24 @@ export default {
     return {
       mobileMode: false,
       localValues: {},
+      help: {
+        dimensions: 'Target output width (columns) and height (rows).',
+        artStyle: "\'Full Color\' uses background colors for detail; \'ASCII Art\' uses characters only on a black background.",
+        chars: 'The character set used to represent density and texture.',
+        seed: 'A unique value to randomize the character selection.',
+        smoothing: 'Determines how details are preserved when downsizing to the grid.',
+        quantize: 'Restricts the final output to specific color standards.',
+        invert: 'Flips colors to their negatives (applied last in the color pipeline).',
+        hue: 'Shifts all colors around the color wheel.',
+        colorize: 'Tints the image with a color while preserving lightness.',
+        brightness: 'Adjusts overall light levels.',
+        contrast: 'Increases or decreases the range between light and dark.',
+        saturation: 'Controls the intensity and vibrancy of colors.',
+        sharpen: 'Enhances local contrast to make details and edges pop.',
+        flatten: 'Groups similar colors to create a painted, simplified look.',
+        edges: 'Detects and strokes outlines in the image.',
+        edgeThickness: 'Controls the width of the detected edges.',
+      },
     };
   },
   mounted() {
@@ -75,7 +95,7 @@ export default {
       <legend>Setup</legend>
 
       <div class="field">
-        <label for="cols">Dimensions</label>
+        <div class="label-group"><label for="cols">Dimensions</label><HelpInfo :text="help.dimensions" /></div>
         <div class="row-inputs">
           <input
               type="number"
@@ -104,29 +124,114 @@ export default {
       </div>
 
       <div class="field">
-        <label for="chars">Characters</label>
-        <input type="text" id="chars" v-model.lazy="chars" placeholder="characters" class="mono">
+        <div class="label-group"><label for="renderStyle">Art Style</label><HelpInfo :text="help.artStyle" /></div>
+        <select id="renderStyle" v-model="renderStyle">
+          <option value="color">Full Color</option>
+          <option value="ascii">ASCII Art (No Background)</option>
+        </select>
       </div>
 
       <div class="field">
-        <label for="seed">Character Seed</label>
+        <div class="label-group"><label for="chars">Characters</label><HelpInfo :text="help.chars" /></div>
+        <input v-if="renderStyle === 'color'" type="text" id="chars" v-model.lazy="chars" placeholder="characters" class="mono">
+        <input v-else type="text" id="chars" v-model.lazy="charsAscii" placeholder="characters" class="mono">
+      </div>
+
+      <div v-if="renderStyle === 'color'" class="field">
+        <div class="label-group"><label for="seed">Character Seed</label><HelpInfo :text="help.seed" /></div>
         <div class="row-inputs">
           <input type="text" id="seed" v-model.lazy="seed" placeholder="seed">
           <button @click="randomizeSeed" title="Randomize Seed">🎲</button>
         </div>
       </div>
+    </fieldset>
+
+    <hr/>
+
+    <fieldset>
+      <legend>
+        Color & Light
+        <button @click="resetAdjust(); resetTransform();" tabindex="-1">RESET</button>
+      </legend>
 
       <div class="field">
-        <label for="smoothing">Smoothing</label>
-        <select id="smoothing" v-model="smoothing">
-          <option value="low">low</option>
-          <option value="medium">medium</option>
-          <option value="high">high</option>
-        </select>
+        <div class="label-row">
+          <div class="label-group"><label for="brightness">Brightness</label><HelpInfo :text="help.brightness" /></div>
+          <span class="value">{{ getFormattedValue('brightness') }}%</span>
+        </div>
+        <div class="range-wrapper" :style="{ '--percent': getPercent('brightness', 0, 500) }">
+          <input type="range" id="brightness" min="0" max="500" :value="getDisplayValue('brightness')" @input="onInput('brightness', $event)" @[updateEvent]="commitUpdate('brightness', $event)" list="default-ticks">
+          <span class="value-tooltip">{{ getFormattedValue('brightness') }}%</span>
+        </div>
       </div>
 
       <div class="field">
-        <label for="quantize">Color Palette</label>
+        <div class="label-row">
+          <div class="label-group"><label for="contrast">Contrast</label><HelpInfo :text="help.contrast" /></div>
+          <span class="value">{{ getFormattedValue('contrast') }}%</span>
+        </div>
+        <div class="range-wrapper" :style="{ '--percent': getPercent('contrast', 0, 500) }">
+          <input type="range" id="contrast" min="0" max="500" :value="getDisplayValue('contrast')" @input="onInput('contrast', $event)" @[updateEvent]="commitUpdate('contrast', $event)" list="default-ticks">
+          <span class="value-tooltip">{{ getFormattedValue('contrast') }}%</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <div class="label-group"><label for="colorize">Colorize</label><HelpInfo :text="help.colorize" /></div>
+          <span class="value">{{ getFormattedValue('colorizeStrength') }}%</span>
+        </div>
+        <div class="row-inputs">
+          <div class="range-wrapper" :style="{ '--percent': getPercent('colorizeStrength', 0, 100) }">
+            <input type="range" id="colorize" min="0" max="100" :value="getDisplayValue('colorizeStrength')" @input="onInput('colorizeStrength', $event)" @[updateEvent]="commitUpdate('colorizeStrength', $event)" list="zero-ticks">
+            <span class="value-tooltip">{{ getFormattedValue('colorizeStrength') }}%</span>
+          </div>
+          <input type="color" v-model="colorize">
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <div class="label-group"><label for="saturation">Saturation</label><HelpInfo :text="help.saturation" /></div>
+          <span class="value">{{ getFormattedValue('saturation') }}%</span>
+        </div>
+        <div class="range-wrapper" :style="{ '--percent': getPercent('saturation', 0, 500) }">
+          <input type="range" id="saturation" min="0" max="500" :value="getDisplayValue('saturation')" @input="onInput('saturation', $event)" @[updateEvent]="commitUpdate('saturation', $event)" list="default-ticks">
+          <span class="value-tooltip">{{ getFormattedValue('saturation') }}%</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <div class="label-group">
+            <label for="hue">Hue Rotation</label>
+            <HelpInfo :text="help.hue" />
+          </div>
+          <span class="value">{{ getFormattedValue('hue') }}°</span>
+        </div>
+        <div class="range-wrapper" :style="{ '--percent': getPercent('hue', 0, 360) }">
+          <input type="range" id="hue" min="0" max="360" :value="getDisplayValue('hue')" @input="onInput('hue', $event)" @[updateEvent]="commitUpdate('hue', $event)">
+          <span class="value-tooltip">{{ getFormattedValue('hue') }}°</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <div class="label-group"><label for="invert">Invert</label><HelpInfo :text="help.invert" /></div>
+          <span class="value">{{ getFormattedValue('invert') }}%</span>
+        </div>
+        <div class="range-wrapper" :style="{ '--percent': getPercent('invert', 0, 100) }">
+          <input type="range" id="invert" min="0" max="100" :value="getDisplayValue('invert')" @input="onInput('invert', $event)" @[updateEvent]="commitUpdate('invert', $event)">
+          <span class="value-tooltip">{{ getFormattedValue('invert') }}%</span>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Output & Palette</legend>
+
+      <div class="field">
+        <div class="label-group"><label for="quantize">Color Palette</label><HelpInfo :text="help.quantize" /></div>
         <select id="quantize" v-model="quantize">
           <option value="none">Full color (24-bit)</option>
           <option value="vga">VGA colors (8-bit)</option>
@@ -150,113 +255,28 @@ export default {
         <label for="palette">Palette Colors</label>
         <input type="text" id="palette" v-model.lazy="palette" placeholder="#FFFFFFF #000000">
       </div>
+
+      <div class="field">
+        <div class="label-group"><label for="smoothing">Smoothing</label><HelpInfo :text="help.smoothing" /></div>
+        <select id="smoothing" v-model="smoothing">
+          <option value="low">low</option>
+          <option value="medium">medium</option>
+          <option value="high">high</option>
+        </select>
+      </div>
     </fieldset>
 
     <hr/>
 
     <fieldset>
       <legend>
-        Transform
-        <button @click="resetTransform" tabindex="-1">RESET</button>
-      </legend>
-
-      <div class="field">
-        <div class="label-row">
-          <label for="invert">Invert</label>
-          <span class="value">{{ getFormattedValue('invert') }}%</span>
-        </div>
-        <div class="range-wrapper" :style="{ '--percent': getPercent('invert', 0, 100) }">
-          <input type="range" id="invert" min="0" max="100" :value="getDisplayValue('invert')" @input="onInput('invert', $event)" @[updateEvent]="commitUpdate('invert', $event)">
-          <span class="value-tooltip">{{ getFormattedValue('invert') }}%</span>
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="label-row">
-          <label for="hue">Hue Rotation</label>
-          <span class="value">{{ getFormattedValue('hue') }}°</span>
-        </div>
-        <div class="range-wrapper" :style="{ '--percent': getPercent('hue', 0, 360) }">
-          <input type="range" id="hue" min="0" max="360" :value="getDisplayValue('hue')" @input="onInput('hue', $event)" @[updateEvent]="commitUpdate('hue', $event)">
-          <span class="value-tooltip">{{ getFormattedValue('hue') }}°</span>
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="label-row">
-          <label for="colorize">Colorize</label>
-          <span class="value">{{ getFormattedValue('colorizeStrength') }}%</span>
-        </div>
-        <div class="row-inputs">
-          <div class="range-wrapper" :style="{ '--percent': getPercent('colorizeStrength', 0, 100) }">
-            <input type="range" id="colorize" min="0" max="100" :value="getDisplayValue('colorizeStrength')" @input="onInput('colorizeStrength', $event)" @[updateEvent]="commitUpdate('colorizeStrength', $event)" list="zero-ticks">
-            <span class="value-tooltip">{{ getFormattedValue('colorizeStrength') }}%</span>
-          </div>
-          <input type="color" v-model="colorize">
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>
-        Adjust
-        <button @click="resetAdjust" tabindex="-1">RESET</button>
-      </legend>
-
-      <div class="field">
-        <div class="label-row">
-          <label for="brightness">Brightness</label>
-          <span class="value">{{ getFormattedValue('brightness') }}%</span>
-        </div>
-        <div class="range-wrapper" :style="{ '--percent': getPercent('brightness', 0, 500) }">
-          <input type="range" id="brightness" min="0" max="500" :value="getDisplayValue('brightness')" @input="onInput('brightness', $event)" @[updateEvent]="commitUpdate('brightness', $event)" list="default-ticks">
-          <span class="value-tooltip">{{ getFormattedValue('brightness') }}%</span>
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="label-row">
-          <label for="contrast">Contrast</label>
-          <span class="value">{{ getFormattedValue('contrast') }}%</span>
-        </div>
-        <div class="range-wrapper" :style="{ '--percent': getPercent('contrast', 0, 500) }">
-          <input type="range" id="contrast" min="0" max="500" :value="getDisplayValue('contrast')" @input="onInput('contrast', $event)" @[updateEvent]="commitUpdate('contrast', $event)" list="default-ticks">
-          <span class="value-tooltip">{{ getFormattedValue('contrast') }}%</span>
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="label-row">
-          <label for="saturation">Saturation</label>
-          <span class="value">{{ getFormattedValue('saturation') }}%</span>
-        </div>
-        <div class="range-wrapper" :style="{ '--percent': getPercent('saturation', 0, 500) }">
-          <input type="range" id="saturation" min="0" max="500" :value="getDisplayValue('saturation')" @input="onInput('saturation', $event)" @[updateEvent]="commitUpdate('saturation', $event)" list="default-ticks">
-          <span class="value-tooltip">{{ getFormattedValue('saturation') }}%</span>
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>
-        Effects
+        Image Filters
         <button @click="resetEffects" tabindex="-1">RESET</button>
       </legend>
 
       <div class="field">
         <div class="label-row">
-          <label for="sharpen">Sharpen</label>
-          <span class="value">{{ getFormattedValue('sharpen') }}</span>
-        </div>
-        <div class="range-wrapper" :style="{ '--percent': getPercent('sharpen', 0, 100) }">
-          <input type="range" id="sharpen" min="0" max="100" :value="getDisplayValue('sharpen')" @input="onInput('sharpen', $event)" @[updateEvent]="commitUpdate('sharpen', $event)" list="zero-ticks">
-          <span class="value-tooltip">{{ getFormattedValue('sharpen') }}</span>
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="label-row">
-          <label for="flatten">Flatten</label>
+          <div class="label-group"><label for="flatten">Flatten</label><HelpInfo :text="help.flatten" /></div>
           <span class="value">{{ getFormattedValue('flatten') }}</span>
         </div>
         <div class="range-wrapper" :style="{ '--percent': getPercent('flatten', 0, 10) }">
@@ -267,7 +287,7 @@ export default {
 
       <div class="field">
         <div class="label-row">
-          <label for="edges">Edges</label>
+          <div class="label-group"><label for="edges">Edges</label><HelpInfo :text="help.edges" /></div>
           <span class="value">{{ getFormattedValue('edges') }}</span>
         </div>
         <div class="row-inputs">
@@ -281,17 +301,28 @@ export default {
 
       <div class="field">
         <div class="label-row">
-          <label for="edges">Edge Thickness</label>
+          <div class="label-group"><label for="edgeThickness">Edge Thickness</label><HelpInfo :text="help.edgeThickness" /></div>
           <span class="value">{{ getFormattedValue('edgeThickness') }}</span>
         </div>
         <div class="range-wrapper" :style="{ '--percent': getPercent('edgeThickness', 0, 5) }">
-          <input type="range" min="0" max="5" step="0.1" :value="getDisplayValue('edgeThickness')" @input="onInput('edgeThickness', $event)" @[updateEvent]="commitUpdate('edgeThickness', $event)">
+          <input type="range" id="edgeThickness" min="0" max="5" step="0.1" :value="getDisplayValue('edgeThickness')" @input="onInput('edgeThickness', $event)" @[updateEvent]="commitUpdate('edgeThickness', $event)">
           <span class="value-tooltip">{{ getFormattedValue('edgeThickness') }}</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <div class="label-group"><label for="sharpen">Sharpen</label><HelpInfo :text="help.sharpen" /></div>
+          <span class="value">{{ getFormattedValue('sharpen') }}</span>
+        </div>
+        <div class="range-wrapper" :style="{ '--percent': getPercent('sharpen', 0, 100) }">
+          <input type="range" id="sharpen" min="0" max="100" :value="getDisplayValue('sharpen')" @input="onInput('sharpen', $event)" @[updateEvent]="commitUpdate('sharpen', $event)" list="zero-ticks">
+          <span class="value-tooltip">{{ getFormattedValue('sharpen') }}</span>
         </div>
       </div>
     </fieldset>
 
-    <button @click="resetSliders">RESET ALL</button>
+    <button @click="resetSliders" class="primary">RESET ALL</button>
 
     <hr/>
 
@@ -395,12 +426,17 @@ div.row-inputs button {
 }
 
 label {
-  display: block;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--accent-hot);
+}
+
+.label-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 span.value {

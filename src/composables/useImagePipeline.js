@@ -1,7 +1,7 @@
 import { shallowRef } from 'vue';
 import Random from 'random-seed';
 import { processImage, applyQuantization } from '@/lib/ImageProcessor';
-import { rgb2hex } from '@/lib/ColorUtils';
+import { rgb2hex, rgb2gray } from '@/lib/ColorUtils';
 import Canvas from '@/lib/Canvas';
 
 export function useImagePipeline(projectStore) {
@@ -26,19 +26,72 @@ export function useImagePipeline(projectStore) {
   const _buildBlockData = (params, canvasWrapper) => {
     const rand = new Random(params.seed);
     const charset = params.chars || '▄';
+    const charMode = params.charMode || 'random';
+    const renderStyle = params.renderStyle || 'color';
     const targetDataLength = params.cols * params.rows;
     const finalBlockData = new Array(targetDataLength);
 
-    for (let i = 0; i < targetDataLength; i++) {
-      const p = canvasWrapper.pixels[i];
-      const hex = rgb2hex(p);
+    for (let y = 0; y < params.rows; y += 2) {
+      for (let x = 0; x < params.cols; x++) {
+        const i1 = y * params.cols + x;
+        const i2 = (y + 1) * params.cols + x;
+        
+        const p1 = canvasWrapper.pixels[i1];
+        const p2 = canvasWrapper.pixels[i2] || p1;
 
-      finalBlockData[i] = {
-        r: p.r, g: p.g, b: p.b,
-        hex,
-        c: (p.c !== undefined) ? p.c : [p.r, p.g, p.b],
-        char: charset[rand(charset.length)],
-      };
+        // 1. Determine Character
+        let char;
+        if (charMode === 'brightness') {
+          const avgGray = (rgb2gray(p1) + rgb2gray(p2)) / 2;
+          const charIdx = Math.max(0, Math.min(charset.length - 1, Math.round(avgGray * (charset.length - 1))));
+          char = charset[charIdx];
+        } else {
+          char = charset[rand(charset.length)];
+        }
+
+        // 2. Determine Colors based on Render Style
+        if (renderStyle === 'ascii') {
+          const avgR = (p1.r + p2.r) / 2;
+          const avgG = (p1.g + p2.g) / 2;
+          const avgB = (p1.b + p2.b) / 2;
+          const avgColor = { r: avgR, g: avgG, b: avgB };
+          const avgHex = rgb2hex(avgColor);
+          const avgC = [avgR, avgG, avgB];
+
+          // Top pixel (Background) - Set to Black
+          finalBlockData[i1] = {
+            r: 0, g: 0, b: 0,
+            hex: '#000000',
+            c: [0, 0, 0],
+            char: char,
+          };
+
+          // Bottom pixel (Foreground) - Set to Average Color
+          if (i2 < targetDataLength) {
+            finalBlockData[i2] = {
+              r: avgR, g: avgG, b: avgB,
+              hex: avgHex,
+              c: (p1.c !== undefined) ? avgC : [avgR, avgG, avgB],
+            };
+          }
+        } else {
+          // Full Color Style
+          finalBlockData[i1] = {
+            r: p1.r, g: p1.g, b: p1.b,
+            hex: rgb2hex(p1),
+            c: (p1.c !== undefined) ? p1.c : [p1.r, p1.g, p1.b],
+            char: char,
+          };
+
+          if (i2 < targetDataLength) {
+            finalBlockData[i2] = {
+              r: p2.r, g: p2.g, b: p2.b,
+              hex: rgb2hex(p2),
+              c: (p2.c !== undefined) ? p2.c : [p2.r, p2.g, p2.b],
+            };
+          }
+        }
+      }
     }
     return finalBlockData;
   };
