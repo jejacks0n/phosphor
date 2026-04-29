@@ -6,7 +6,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     previousTool: null,
     editFgColor:  '#ffffff',
     editZoom:  5,
-    previewTab: 'source',
+    editorTab: 'input',
     editMode: false,
     isPainting: false,
     isCtrlPressed: false,
@@ -37,8 +37,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     setEditZoom(z) {
       this.editZoom = Math.max(1, Math.min(16, z));
     },
-    setPreviewTab(tab) {
-      this.previewTab = tab;
+    setEditorTab(tab) {
+      this.editorTab = tab;
     },
     setEditMode(mode) {
       this.editMode = mode;
@@ -78,7 +78,7 @@ export const workspaceStateKeys = [
   'previousTool',
   'editFgColor',
   'editZoom',
-  'previewTab',
+  'editorTab',
   'editMode',
   'isPainting',
   'isCtrlPressed',
@@ -97,7 +97,7 @@ export const workspaceActionKeys = [
   'setActiveTool',
   'setEditFgColor',
   'setEditZoom',
-  'setPreviewTab',
+  'setEditorTab',
   'setEditMode',
   'toggleSettings',
   'setEditBrushSize',

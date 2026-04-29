@@ -26,7 +26,7 @@ export default {
       localValues: {},
       help: {
         dimensions: 'Target output width (columns) and height (rows).',
-        artStyle: "\'Full Color\' uses background colors for detail; \'ASCII Art\' uses characters only on a black background.",
+        artStyle: "'Full Color' uses background colors for detail; 'ASCII Art' uses characters only on a black background.",
         chars: 'The character set used to represent density and texture.',
         seed: 'A unique value to randomize the character selection.',
         smoothing: 'Determines how details are preserved when downsizing to the grid.',

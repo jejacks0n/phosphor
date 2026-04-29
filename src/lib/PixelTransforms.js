@@ -56,26 +56,26 @@ export function applyTransforms(data, brightness, contrast, saturation, hue, inv
     let g = data[i + 1] / 255;
     let b = data[i + 2] / 255;
 
-    // 1. Brightness
+    // Brightness
     r *= br; g *= br; b *= br;
 
-    // 2. Contrast
+    // Contrast
     r = (r - 0.5) * ct + 0.5;
     g = (g - 0.5) * ct + 0.5;
     b = (b - 0.5) * ct + 0.5;
 
-    // 3. Colorize (Applied before saturation/hue/invert to match GLSL order if we put it there)
+    // Colorize (Applied before saturation/hue/invert to match GLSL order if we put it there)
     // Actually, in the fragment shader, I should decide where it goes.
     // Usually it replaces saturation/hue or is applied instead.
     if (cStr > 0) {
-      const [h, s, v] = rgb2hsv(Math.max(0, r), Math.max(0, g), Math.max(0, b));
+      const [, , v] = rgb2hsv(Math.max(0, r), Math.max(0, g), Math.max(0, b));
       const [cr, cg, cb] = hsv2rgb(targetH, targetS, v);
       r = r * (1 - cStr) + cr * cStr;
       g = g * (1 - cStr) + cg * cStr;
       b = b * (1 - cStr) + cb * cStr;
     }
 
-    // 4. Saturation & Hue
+    // Saturation & Hue
     if (sa !== 1 || hu !== 0) {
       const [h, s, v] = rgb2hsv(Math.max(0, r), Math.max(0, g), Math.max(0, b));
       const nh = (h + hu + 1) % 1;
@@ -83,7 +83,7 @@ export function applyTransforms(data, brightness, contrast, saturation, hue, inv
       [r, g, b] = hsv2rgb(nh, ns, v);
     }
 
-    // 5. Invert
+    // Invert
     r = r * (1 - inv) + (1 - r) * inv;
     g = g * (1 - inv) + (1 - g) * inv;
     b = b * (1 - inv) + (1 - b) * inv;
@@ -108,14 +108,14 @@ export function applyInverseTransforms(data, brightness, contrast, saturation, h
     let g = data[i + 1] / 255;
     let b = data[i + 2] / 255;
 
-    // 1. Un-invert
+    // Un-invert
     if (inv !== 0.5) {
       r = (r - inv) / (1 - 2 * inv);
       g = (g - inv) / (1 - 2 * inv);
       b = (b - inv) / (1 - 2 * inv);
     }
 
-    // 2. Un-hue/saturation
+    // Un-hue/saturation
     if (sa !== 1 || hu !== 0) {
       const [h, s, v] = rgb2hsv(Math.max(0, r), Math.max(0, g), Math.max(0, b));
       const nh = (h - hu + 1) % 1;
@@ -123,14 +123,14 @@ export function applyInverseTransforms(data, brightness, contrast, saturation, h
       [r, g, b] = hsv2rgb(nh, ns, v);
     }
 
-    // 3. Un-contrast
+    // Un-contrast
     if (ct > 0.01) {
       r = (r - 0.5) / ct + 0.5;
       g = (g - 0.5) / ct + 0.5;
       b = (b - 0.5) / ct + 0.5;
     }
 
-    // 4. Un-brightness
+    // Un-brightness
     if (br > 0.01) {
       r /= br;
       g /= br;

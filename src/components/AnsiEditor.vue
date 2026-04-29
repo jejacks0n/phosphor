@@ -10,7 +10,7 @@ import { floodFill } from '@/lib/FloodFill';
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
 
 export default {
-  name: 'AnsiEdit',
+  name: 'AnsiEditor',
   props: {
     pipelineCanvas: {
       type: HTMLCanvasElement,

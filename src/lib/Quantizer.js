@@ -72,7 +72,7 @@ class VBox {
 export default function quantize(pixels, maxColors) {
   if (!pixels.length || maxColors < 2 || maxColors > 256) return [];
 
-  // 1. Build Histogram
+  // Build Histogram
   const hist = new Uint32Array(1 << (3 * SIGBITS));
   let rmin = 255, rmax = 0, gmin = 255, gmax = 0, bmin = 255, bmax = 0;
 

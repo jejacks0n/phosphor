@@ -26,7 +26,7 @@ export default {
     ...mapState(useWorkspaceStore, ['settingsOpen']),
     tabs() {
       return [
-        { id: 'source', label: 'INPUT', disabled: false },
+        { id: 'input', label: 'INPUT', disabled: false },
         { id: 'ansi', label: 'ANSI', disabled: !this.image },
         { id: 'sauce', label: 'SAUCE', disabled: !this.image },
       ];

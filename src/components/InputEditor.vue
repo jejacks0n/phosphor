@@ -9,7 +9,7 @@ import { floodFill } from '@/lib/FloodFill';
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
 
 export default {
-  name: 'SourceEdit',
+  name: 'InputEditor',
   props: {
     canvas: {
       type: HTMLCanvasElement,

@@ -179,19 +179,19 @@ const FRAGMENT_SHADER = `
             color = mix(color, uEdgeColor, edgeFactor);
         }
 
-        // Sharpen
-        if (uSharpen > 0.0) {
-            vec3 neighborSum = 
-                texture2D(uImage, vTexCoord + vec2(0.0,  texel.y)).rgb +
-                texture2D(uImage, vTexCoord + vec2(0.0, -texel.y)).rgb +
-                texture2D(uImage, vTexCoord + vec2( texel.x, 0.0)).rgb +
-                texture2D(uImage, vTexCoord + vec2(-texel.x, 0.0)).rgb;
-            color = color * (1.0 + 4.0 * uSharpen) - neighborSum * uSharpen;
-        }
-
         // CSS-equivalent adjustments
         if (uApplyFilters) {
             color = applyCSSFilters(color);
+
+            // Sharpen (Final pass only)
+            if (uSharpen > 0.0) {
+                vec3 neighborSum = 
+                    texture2D(uImage, vTexCoord + vec2(0.0,  texel.y)).rgb +
+                    texture2D(uImage, vTexCoord + vec2(0.0, -texel.y)).rgb +
+                    texture2D(uImage, vTexCoord + vec2( texel.x, 0.0)).rgb +
+                    texture2D(uImage, vTexCoord + vec2(-texel.x, 0.0)).rgb;
+                color = color * (1.0 + 4.0 * uSharpen) - neighborSum * uSharpen;
+            }
         }
 
         // GPU Quantization

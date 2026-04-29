@@ -1,6 +1,7 @@
 <script>
 import { mapState, mapActions } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 export default {
   name: 'ProjectActions',
@@ -9,6 +10,7 @@ export default {
   },
   methods: {
     ...mapActions(useProjectStore, ['exportFile', 'saveProject', 'clearImage']),
+    ...mapActions(useWorkspaceStore, ['setEditorTab']),
     confirmNewProject() {
       if (this.hasEdits) {
         if (!confirm('You have unsaved changes. Are you sure you want to start a new project?')) {
@@ -16,6 +18,7 @@ export default {
         }
       }
       this.clearImage();
+      this.setEditorTab('input');
     },
   },
 };

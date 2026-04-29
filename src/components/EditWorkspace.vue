@@ -10,19 +10,19 @@ import WorkspaceTabs from '@/components/WorkspaceTabs.vue';
 import ZeroState from '@/components/ZeroState.vue';
 import SauceEditor from '@/components/SauceEditor.vue';
 import DropZone from '@/components/DropZone.vue';
-import AnsiEdit from '@/components/AnsiEdit.vue';
-import SourceEdit from '@/components/SourceEdit.vue';
+import AnsiEditor from '@/components/AnsiEditor.vue';
+import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
 
 export default {
-  name: 'AnsiWorkspace',
+  name: 'EditWorkspace',
   components: {
     WorkspaceTabs,
     ZeroState,
     SauceEditor,
     DropZone,
-    AnsiEdit,
-    SourceEdit,
+    AnsiEditor,
+    InputEditor,
     EditToolbar,
   },
   setup() {
@@ -57,10 +57,10 @@ export default {
     clearEditsFlag() {
       this.queueSetup(this.processParams);
     },
-    previewTab: {
+    editorTab: {
       immediate: true,
       handler(newTab) {
-        this.editMode = (newTab === 'ansi' || newTab === 'source');
+        this.editMode = (newTab === 'ansi' || newTab === 'input');
       },
     },
   },
@@ -78,7 +78,7 @@ export default {
         }
         await this.setImageFromFile(file);
       }
-      this.previewTab = 'ansi';
+      this.editorTab = 'ansi';
     },
   },
 };
@@ -90,22 +90,22 @@ export default {
       :class="{ 'settings-open': settingsOpen, editing: editMode, image: !!image }"
       @click="settingsOpen && toggleSettings()"
   >
-    <WorkspaceTabs v-model="previewTab"/>
+    <WorkspaceTabs v-model="editorTab"/>
     <EditToolbar v-if="image && editMode"/>
     <DropZone @file-dropped="handleFileSelected">
       <div class="edit-viewport viewport" :class="{ editing: editMode }" v-if="image">
-        <SourceEdit
-            ref="sourceEdit"
-            v-if="previewTab === 'source'"
+        <InputEditor
+            ref="inputEditor"
+            v-if="editorTab === 'input'"
             :canvas="outputCanvas"
             :pipeline-canvas="pipelineCanvas"
         />
-        <AnsiEdit
-            v-if="previewTab === 'ansi'"
+        <AnsiEditor
+            v-if="editorTab === 'ansi'"
             :pipeline-canvas="pipelineCanvas"
             :output-canvas="outputCanvas"
         />
-        <SauceEditor v-if="previewTab === 'sauce'"/>
+        <SauceEditor v-if="editorTab === 'sauce'"/>
       </div>
 
       <ZeroState v-else @file-selected="handleFileSelected"/>

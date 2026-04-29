@@ -653,7 +653,7 @@ export const useProjectStore = defineStore('project', {
             const p2 = canvas.pixels[fgIdx] || p1;
 
             if (p1 && p2) {
-              // 1. Determine Character (unless manually overridden)
+              // Determine Character (unless manually overridden)
               if (!this.charEditMap.has(ansiRow * this.cols + x)) {
                 let char;
                 if (charMode === 'brightness') {
@@ -667,7 +667,7 @@ export const useProjectStore = defineStore('project', {
                 newBlockData[bgIdx].char = char;
               }
 
-              // 2. Determine Colors based on Render Style
+              // Determine Colors based on Render Style
               if (renderStyle === 'ascii') {
                 const avgR = (p1.r + p2.r) / 2;
                 const avgG = (p1.g + p2.g) / 2;

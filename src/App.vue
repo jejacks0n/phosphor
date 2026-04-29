@@ -2,13 +2,13 @@
 import { mapState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import AnsiWorkspace from '@/components/AnsiWorkspace.vue';
+import EditWorkspace from '@/components/EditWorkspace.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 
 export default {
   name: 'App',
   components: {
-    AnsiWorkspace,
+    EditWorkspace,
     ControlPanel,
   },
   computed: {
@@ -35,7 +35,7 @@ export default {
   <template>
   <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick }]">
     <ControlPanel/>
-    <AnsiWorkspace/>
+    <EditWorkspace/>
   </main>
 </template>
 

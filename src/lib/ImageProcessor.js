@@ -53,7 +53,7 @@ export async function processImage(image, params) {
   const sw = image.naturalWidth || image.width;
   const sh = image.naturalHeight || image.height;
 
-  // 1. Processing stage (High-ish res WebGL)
+  // Processing stage (High-ish res WebGL)
   const maxDim = 400;
   let pw = sw;
   let ph = sh;
@@ -88,7 +88,7 @@ export async function processImage(image, params) {
 
   glProcessor.process(image, glParams, pw, ph);
 
-  // 2. Final output stage (downsizing)
+  // Final output stage (downsizing)
   const canvas = new Canvas();
   canvas.resize(cols, rows);
   canvas.ctx.imageSmoothingEnabled = true;
@@ -96,7 +96,7 @@ export async function processImage(image, params) {
   canvas.fit(glProcessor.canvas, smoothing);
   canvas.loadPixels();
 
-  // 3. Early Quantization is skipped - we handle it in AnsiWorkspace after compositing.
+  // Early Quantization is skipped - we handle it in EditWorkspace after compositing.
   const blockData = null;
   return { canvas, blockData, paletteColors: getPaletteColors(params, canvas) };
 }

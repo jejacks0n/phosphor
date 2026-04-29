@@ -39,7 +39,7 @@ export function useImagePipeline(projectStore) {
         const p1 = canvasWrapper.pixels[i1];
         const p2 = canvasWrapper.pixels[i2] || p1;
 
-        // 1. Determine Character
+        // Determine Character
         let char;
         if (charMode === 'brightness') {
           const avgGray = (rgb2gray(p1) + rgb2gray(p2)) / 2;
@@ -49,7 +49,7 @@ export function useImagePipeline(projectStore) {
           char = charset[rand(charset.length)];
         }
 
-        // 2. Determine Colors based on Render Style
+        // Determine Colors based on Render Style
         if (renderStyle === 'ascii') {
           const avgR = (p1.r + p2.r) / 2;
           const avgG = (p1.g + p2.g) / 2;
