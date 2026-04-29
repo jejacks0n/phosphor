@@ -68,12 +68,15 @@ export async function processImage(image, params) {
   if (!glProcessor) glProcessor = new WebGLProcessor();
   
   const ec = hex2rgb(edgeColor);
+  const cz = hex2rgb(params.colorize || '#ff00ff');
   const glParams = {
     hue: parseFloat(params.hue),
     brightness: parseFloat(brightness),
     contrast: parseFloat(contrast),
     saturation: parseFloat(saturation),
     invert: parseFloat(invert),
+    colorize: [cz.r / 255, cz.g / 255, cz.b / 255],
+    colorizeStrength: parseFloat(params.colorizeStrength || 0),
     sharpen: parseFloat(sharpen),
     flatten: parseFloat(flatten),
     edges: parseFloat(edges),

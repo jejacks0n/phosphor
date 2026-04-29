@@ -25,6 +25,8 @@ const FRAGMENT_SHADER = `
     uniform float uContrast;
     uniform float uSaturation;
     uniform float uInvert;
+    uniform vec3 uColorize;
+    uniform float uColorizeStrength;
     uniform float uSharpen;
     uniform float uFlatten; // Kuwahara radius
     uniform float uEdges;   // Sobel intensity
@@ -64,6 +66,14 @@ const FRAGMENT_SHADER = `
 
         // Contrast
         color = (color - 0.5) * uContrast + 0.5;
+
+        // Colorize
+        if (uColorizeStrength > 0.0) {
+            vec3 hsv = rgb2hsv(color);
+            vec3 targetHsv = rgb2hsv(uColorize);
+            vec3 colorized = hsv2rgb(vec3(targetHsv.xy, hsv.z));
+            color = mix(color, colorized, uColorizeStrength);
+        }
 
         // Saturation
         vec3 hsv = rgb2hsv(color);
@@ -379,6 +389,8 @@ export default class WebGLProcessor {
       setUniform('uContrast', (params.contrast ?? 100) / 100);
       setUniform('uSaturation', (params.saturation ?? 100) / 100);
       setUniform('uInvert', (params.invert ?? 0) / 100);
+      setUniform('uColorize', params.colorize ?? [1, 0, 1]);
+      setUniform('uColorizeStrength', (params.colorizeStrength ?? 0) / 100);
       setUniform('uSharpen', (params.sharpen ?? 0) / 100);
       setUniform('uFlatten', params.flatten ?? 0);
       setUniform('uEdges', params.edges ?? 0);
@@ -406,6 +418,8 @@ export default class WebGLProcessor {
     setUniform('uContrast', 1);
     setUniform('uSaturation', 1);
     setUniform('uInvert', 0);
+    setUniform('uColorize', [1, 0, 1]);
+    setUniform('uColorizeStrength', 0);
     setUniform('uSharpen', 0);
     setUniform('uFlatten', 0);
     setUniform('uEdges', 0);

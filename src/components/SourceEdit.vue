@@ -1,5 +1,5 @@
 <script>
-import { ref, computed, useTemplateRef, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, useTemplateRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { mapState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -232,7 +232,7 @@ export default {
     watch(() => props.canvas, (newCanvas, oldCanvas) => {
       redrawDisplay();
       if (!oldCanvas || newCanvas?.width !== oldCanvas?.width || newCanvas?.height !== oldCanvas?.height) {
-        nextTick(() => centerContent());
+        requestAnimationFrame(() => centerContent());
       }
     });
     
@@ -304,8 +304,8 @@ export default {
         resizeObserver.observe(rootRef.value);
       }
 
-      nextTick(() => {
-        updateViewportSize();
+      updateViewportSize();
+      requestAnimationFrame(() => {
         centerContent();
         updateOffset();
       });

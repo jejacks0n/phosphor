@@ -1,6 +1,6 @@
 <script>
 import { mapWritableState, mapActions, mapState } from 'pinia';
-import { useProjectStore } from '@/store/ProjectStore';
+import { useProjectStore, projectStateKeys } from '@/store/ProjectStore';
 import ProjectActions from '@/components/ProjectActions.vue';
 import ProjectFooter from '@/components/ProjectFooter.vue';
 
@@ -11,10 +11,7 @@ export default {
     ProjectFooter,
   },
   computed: {
-    ...mapWritableState(useProjectStore, [
-      'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'colorCount', 'palette',
-      'invert', 'hue', 'brightness', 'contrast', 'saturation', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'
-    ]),
+    ...mapWritableState(useProjectStore, projectStateKeys),
     ...mapState(useProjectStore, ['maxCols', 'maxRows', 'image']),
     updateEvent() {
       return this.mobileMode ? 'change' : 'input';
@@ -182,6 +179,20 @@ export default {
         <div class="range-wrapper" :style="{ '--percent': getPercent('hue', 0, 360) }">
           <input type="range" id="hue" min="0" max="360" :value="getDisplayValue('hue')" @input="onInput('hue', $event)" @[updateEvent]="commitUpdate('hue', $event)">
           <span class="value-tooltip">{{ getFormattedValue('hue') }}°</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label for="colorize">Colorize</label>
+          <span class="value">{{ getFormattedValue('colorizeStrength') }}%</span>
+        </div>
+        <div class="row-inputs">
+          <div class="range-wrapper" :style="{ '--percent': getPercent('colorizeStrength', 0, 100) }">
+            <input type="range" id="colorize" min="0" max="100" :value="getDisplayValue('colorizeStrength')" @input="onInput('colorizeStrength', $event)" @[updateEvent]="commitUpdate('colorizeStrength', $event)" list="zero-ticks">
+            <span class="value-tooltip">{{ getFormattedValue('colorizeStrength') }}%</span>
+          </div>
+          <input type="color" v-model="colorize">
         </div>
       </div>
     </fieldset>

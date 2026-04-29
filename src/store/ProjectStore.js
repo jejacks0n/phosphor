@@ -30,6 +30,9 @@ export const useProjectStore = defineStore('project', {
     contrast: useLocalStorage('current_file.contrast', 100),
     saturation: useLocalStorage('current_file.saturation', 100),
 
+    colorize: useLocalStorage('current_file.colorize', '#ff00ff'),
+    colorizeStrength: useLocalStorage('current_file.colorizeStrength', 0),
+
     sharpen: useLocalStorage('current_file.sharpen', 0),
     flatten: useLocalStorage('current_file.flatten', 0),
     edges: useLocalStorage('current_file.edges', 0),
@@ -104,6 +107,8 @@ export const useProjectStore = defineStore('project', {
       edgeColor: state.edgeColor,
       edgeThickness: state.edgeThickness,
       hue: state.hue,
+      colorize: state.colorize,
+      colorizeStrength: state.colorizeStrength,
       quantize: state.quantize,
       palette: state.palette,
       colorCount: state.colorCount,
@@ -186,7 +191,7 @@ export const useProjectStore = defineStore('project', {
       // For now, let's just grab the relevant document state.
       const stateKeys = [
         'cols', 'rows', 'aspectLock', 'chars', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount',
-        'invert', 'brightness', 'contrast', 'saturation', 'hue', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness',
+        'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness',
         'sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments'
       ];
 
@@ -345,6 +350,7 @@ export const useProjectStore = defineStore('project', {
       this.$patch({
         invert: 0,
         hue: 0,
+        colorizeStrength: 0,
       });
       this.markDirty();
     },
@@ -422,12 +428,13 @@ export const useProjectStore = defineStore('project', {
       const sa_val = parseFloat(this.saturation) / 100;
       const hu = parseFloat(this.hue) / 360;
       const inv = parseFloat(this.invert) / 100;
+      const czStr = parseFloat(this.colorizeStrength) / 100;
 
-      const needsTransform = br !== 1 || ct !== 1 || sa_val !== 1 || hu !== 0 || inv !== 0;
+      const needsTransform = br !== 1 || ct !== 1 || sa_val !== 1 || hu !== 0 || inv !== 0 || czStr !== 0;
 
       if (needsTransform) {
         const id = dsCtx.getImageData(0, 0, dw, dh);
-        applyTransforms(id.data, this.brightness, this.contrast, this.saturation, this.hue, this.invert);
+        applyTransforms(id.data, this.brightness, this.contrast, this.saturation, this.hue, this.invert, this.colorize, this.colorizeStrength);
         dsCtx.putImageData(id, 0, 0);
       }
 
@@ -780,6 +787,8 @@ export const projectStateKeys = [
   'quantize',
   'palette',
   'colorCount',
+  'colorize',
+  'colorizeStrength',
   'invert',
   'brightness',
   'contrast',
