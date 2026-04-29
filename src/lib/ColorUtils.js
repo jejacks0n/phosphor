@@ -2,6 +2,8 @@
  * Some common palettes and simple color helpers
  */
 
+import { applyTransforms } from './PixelTransforms';
+
 const HEX_TABLE = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
 
 // Convert {r,g,b} values to '#RRGGBB' or '#RRGGBBAA'
@@ -66,3 +68,41 @@ export const PALETTES = {
   cga: CGA,
   vga: VGA
 };
+
+/**
+ * Calculates what a base color looks like after project-wide transforms
+ * and quantization are applied.
+ */
+export function getEffectiveColor(hex, params, palette = null) {
+  const rgb = hex2rgb(hex);
+  const data = new Uint8ClampedArray([rgb.r, rgb.g, rgb.b, 255]);
+
+  applyTransforms(
+    data,
+    params.brightness,
+    params.contrast,
+    params.saturation,
+    params.hue,
+    params.invert,
+    params.colorize,
+    params.colorizeStrength
+  );
+
+  let r = data[0], g = data[1], b = data[2];
+
+  if (palette && palette.length > 0) {
+    let minDist = Infinity;
+    let nearest = palette[0];
+    for (const p of palette) {
+      const dr = r - p.r, dg = g - p.g, db = b - p.b;
+      const dist = dr * dr + dg * dg + db * db;
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = p;
+      }
+    }
+    r = nearest.r; g = nearest.g; b = nearest.b;
+  }
+
+  return rgb2hex({ r, g, b });
+}

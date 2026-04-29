@@ -1,7 +1,8 @@
 <script>
 import { mapWritableState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
-import ProjectActions from './ProjectActions.vue';
+
+import ProjectActions from '@/components/ProjectActions.vue';
 
 export default {
   name: 'SauceEditor',
@@ -54,6 +55,8 @@ article.sauce-editor {
   width: 100%;
   height: 100%;
   overflow: auto;
+  display: flex;
+  align-items: center;
 }
 
 div.editor-container {

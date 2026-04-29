@@ -12,12 +12,69 @@ export default {
     },
   },
   emits: ['update:modelValue'],
+  data() {
+    return {
+      indicatorStyle: {
+        transform: 'translateX(0px)',
+        width: '0px',
+        opacity: 0,
+      },
+    };
+  },
   computed: {
     ...mapState(useProjectStore, ['image']),
     ...mapState(useWorkspaceStore, ['settingsOpen']),
+    tabs() {
+      return [
+        { id: 'source', label: 'INPUT', disabled: false },
+        { id: 'ansi', label: 'ANSI', disabled: !this.image },
+        { id: 'sauce', label: 'SAUCE', disabled: !this.image },
+      ];
+    },
+  },
+  watch: {
+    modelValue: {
+      handler() {
+        this.$nextTick(() => {
+          this.updateIndicator();
+        });
+      },
+      immediate: true,
+    },
+    image() {
+      this.$nextTick(() => {
+        this.updateIndicator();
+      });
+    },
+  },
+  mounted() {
+    window.addEventListener('resize', this.updateIndicator);
+    setTimeout(this.updateIndicator, 100);
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.updateIndicator);
   },
   methods: {
     ...mapActions(useWorkspaceStore, ['toggleSettings']),
+    updateIndicator() {
+      requestAnimationFrame(() => {
+        const listEl = this.$refs.tabList;
+        const activeEl = listEl?.querySelector('li.active');
+
+        if (activeEl && listEl) {
+          const listRect = listEl.getBoundingClientRect();
+          const activeRect = activeEl.getBoundingClientRect();
+
+          this.indicatorStyle = {
+            transform: `translateX(${Math.round(activeRect.left - listRect.left)}px)`,
+            width: `${Math.round(activeRect.width)}px`,
+            opacity: 1,
+          };
+        } else {
+          this.indicatorStyle.opacity = 0;
+        }
+      });
+    },
   },
 };
 </script>
@@ -29,25 +86,17 @@ export default {
       <span></span>
       <span></span>
     </button>
-    <ul>
+    <ul ref="tabList">
       <li
-          :class="{ active: modelValue === 'source' }"
-          @click="$emit('update:modelValue', 'source')"
+          v-for="tab in tabs"
+          :key="tab.id"
+          :class="{ active: modelValue === tab.id, disabled: tab.disabled }"
+          :data-text="tab.label"
+          @click="!tab.disabled && $emit('update:modelValue', tab.id)"
       >
-        INPUT
+        {{ tab.label }}
       </li>
-      <li
-          :class="{ active: modelValue === 'ansi', disabled: !image }"
-          @click="$emit('update:modelValue', 'ansi')"
-      >
-        ANSI
-      </li>
-      <li
-          :class="{ active: modelValue === 'sauce', disabled: !image }"
-          @click="$emit('update:modelValue', 'sauce')"
-      >
-        SAUCE
-      </li>
+      <div class="indicator" :style="indicatorStyle"></div>
     </ul>
   </nav>
 </template>
@@ -112,6 +161,7 @@ ul {
   margin: 0;
   padding: 5px 0 0;
   list-style: none;
+  position: relative;
 }
 
 li {
@@ -120,12 +170,28 @@ li {
   font-family: inherit;
   font-size: 13px;
   user-select: none;
-  transition: all 0.2s ease;
+  transition: color 0.3s ease;
   border-radius: 5px 5px 0 0;
   border: 1px solid var(--border);
-  border-bottom: none;
+  border-bottom: 1px solid transparent;
   background: var(--surface-0);
   color: var(--text-muted);
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+li::after {
+  content: attr(data-text);
+  height: 0;
+  visibility: hidden;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+  font-weight: 500;
 }
 
 li.disabled {
@@ -140,11 +206,24 @@ li.active {
   font-weight: 500;
   background: var(--surface-1);
   color: var(--text);
+  text-shadow: 0 0 5px var(--accent-glow);
 }
 
 li:not(.disabled):not(.active):hover {
   background: var(--surface-2);
   color: var(--accent);
+}
+
+div.indicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  box-shadow: 0 0 3px var(--accent), 0 0 20px var(--accent);
+  z-index: 2;
+  pointer-events: none;
 }
 
 @media (max-width: 768px) {

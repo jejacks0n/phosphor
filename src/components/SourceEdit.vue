@@ -5,6 +5,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { floodFill } from '@/lib/FloodFill';
+
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
 
 export default {

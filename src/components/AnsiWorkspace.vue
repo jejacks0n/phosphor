@@ -6,13 +6,13 @@ import { PROJECT_EXTENSION } from '@/lib/SaveFormat';
 import { useImagePipeline } from '@/composables/useImagePipeline';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 
-import WorkspaceTabs from './WorkspaceTabs.vue';
-import ZeroState from './ZeroState.vue';
-import SauceEditor from './SauceEditor.vue';
-import DropZone from './DropZone.vue';
-import AnsiEdit from './AnsiEdit.vue';
-import SourceEdit from './SourceEdit.vue';
-import EditToolbar from './EditToolbar.vue';
+import WorkspaceTabs from '@/components/WorkspaceTabs.vue';
+import ZeroState from '@/components/ZeroState.vue';
+import SauceEditor from '@/components/SauceEditor.vue';
+import DropZone from '@/components/DropZone.vue';
+import AnsiEdit from '@/components/AnsiEdit.vue';
+import SourceEdit from '@/components/SourceEdit.vue';
+import EditToolbar from '@/components/EditToolbar.vue';
 
 export default {
   name: 'AnsiWorkspace',
@@ -67,14 +67,6 @@ export default {
   methods: {
     ...mapActions(useProjectStore, projectActionKeys),
     ...mapActions(useWorkspaceStore, workspaceActionKeys),
-    handleZoomTo(newZoom) {
-      if (this.previewTab === 'ansi') return;
-      if (this.$refs.sourceEdit) {
-        this.$refs.sourceEdit.zoomToViewCenter(newZoom);
-      } else {
-        this.setEditZoom(newZoom);
-      }
-    },
     async handleFileSelected(file) {
       if (file.name.endsWith(PROJECT_EXTENSION)) {
         await this.loadProject(file);
@@ -99,7 +91,7 @@ export default {
       @click="settingsOpen && toggleSettings()"
   >
     <WorkspaceTabs v-model="previewTab"/>
-    <EditToolbar v-if="image && editMode" :zoom-to="handleZoomTo"/>
+    <EditToolbar v-if="image && editMode"/>
     <DropZone @file-dropped="handleFileSelected">
       <div class="edit-viewport viewport" :class="{ editing: editMode }" v-if="image">
         <SourceEdit

@@ -1,21 +1,3 @@
-<template>
-  <div class="help-info" @mouseenter="show" @mouseleave="hide" @click.stop="toggle">
-    <span class="help-icon" ref="icon">i</span>
-
-    <Teleport to="body">
-      <div
-          v-if="isVisible"
-          class="help-tooltip"
-          :style="tooltipStyle"
-          :class="{ 'is-bottom': isBottom }"
-          ref="tooltip"
-      >
-        {{ text }}
-      </div>
-    </Teleport>
-  </div>
-</template>
-
 <script>
 export default {
   name: 'HelpInfo',
@@ -95,6 +77,24 @@ export default {
   },
 };
 </script>
+
+<template>
+  <div class="help-info" @mouseenter="show" @mouseleave="hide" @click.stop="toggle">
+    <span class="help-icon" ref="icon">i</span>
+
+    <Teleport to="body">
+      <div
+          v-if="isVisible"
+          class="help-tooltip"
+          :style="tooltipStyle"
+          :class="{ 'is-bottom': isBottom }"
+          ref="tooltip"
+      >
+        {{ text }}
+      </div>
+    </Teleport>
+  </div>
+</template>
 
 <style scoped>
 div.help-info {

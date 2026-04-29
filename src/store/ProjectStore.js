@@ -3,11 +3,12 @@ import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
 import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
-import { rgb2hex, rgb2gray } from "@/lib/ColorUtils.js";
+import { rgb2hex, rgb2gray, getEffectiveColor } from "@/lib/ColorUtils.js";
 import { applyTransforms } from "@/lib/PixelTransforms.js";
 import { applyQuantization } from "@/lib/ImageProcessor.js";
 import Canvas from "@/lib/Canvas.js";
 import { bundleProject, unbundleProject, PROJECT_EXTENSION } from "@/lib/SaveFormat.js";
+import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 
 export const MAX_DIMENSION = 500;
 
@@ -119,6 +120,10 @@ export const useProjectStore = defineStore('project', {
       colorCount: state.colorCount,
       image: state.image,
     }),
+    effectiveColor(state) {
+      const workspaceStore = useWorkspaceStore();
+      return getEffectiveColor(workspaceStore.editFgColor, state, state.activePalette);
+    },
   },
 
   actions: {
