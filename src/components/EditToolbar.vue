@@ -17,6 +17,7 @@ export default {
       'canRedo',
       'hasPaint',
       'hasEdits',
+      'renderStyle',
     ]),
     ...mapState(useWorkspaceStore, workspaceStateKeys),
     ...mapWritableState(useWorkspaceStore, ['editFgColor']),
@@ -102,13 +103,14 @@ export default {
             @click="setActiveTool('zoom')"
             :class="{ active: activeTool === 'zoom' }"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg></button>
-        <div class="divider" v-if="editorTab === 'output'"/>
+        <div class="divider" v-if="editorTab === 'output' && (renderStyle === 'ansi' || activeTool === 'char')"/>
         <button
             title="Flip FG/BG Colors"
-            v-if="editorTab === 'output'"
+            v-if="editorTab === 'output' && renderStyle === 'ansi'"
             @click="setActiveTool('flip')"
             :class="{ active: activeTool === 'flip' }"
-        ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M544.1 256L552 256C565.3 256 576 245.3 576 232L576 88C576 78.3 570.2 69.5 561.2 65.8C552.2 62.1 541.9 64.2 535 71L483.3 122.8C439 86.1 382 64 320 64C191 64 84.3 159.4 66.6 283.5C64.1 301 76.2 317.2 93.7 319.7C111.2 322.2 127.4 310 129.9 292.6C143.2 199.5 223.3 128 320 128C364.4 128 405.2 143 437.7 168.3L391 215C384.1 221.9 382.1 232.2 385.8 241.2C389.5 250.2 398.3 256 408 256L544.1 256zM573.5 356.5C576 339 563.8 322.8 546.4 320.3C529 317.8 512.7 330 510.2 347.4C496.9 440.4 416.8 511.9 320.1 511.9C275.7 511.9 234.9 496.9 202.4 471.6L249 425C255.9 418.1 257.9 407.8 254.2 398.8C250.5 389.8 241.7 384 232 384L88 384C74.7 384 64 394.7 64 408L64 552C64 561.7 69.8 570.5 78.8 574.2C87.8 577.9 98.1 575.8 105 569L156.8 517.2C201 553.9 258 576 320 576C449 576 555.7 480.6 573.4 356.5z"/></svg></button>
+        >
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M544.1 256L552 256C565.3 256 576 245.3 576 232L576 88C576 78.3 570.2 69.5 561.2 65.8C552.2 62.1 541.9 64.2 535 71L483.3 122.8C439 86.1 382 64 320 64C191 64 84.3 159.4 66.6 283.5C64.1 301 76.2 317.2 93.7 319.7C111.2 322.2 127.4 310 129.9 292.6C143.2 199.5 223.3 128 320 128C364.4 128 405.2 143 437.7 168.3L391 215C384.1 221.9 382.1 232.2 385.8 241.2C389.5 250.2 398.3 256 408 256L544.1 256zM573.5 356.5C576 339 563.8 322.8 546.4 320.3C529 317.8 512.7 330 510.2 347.4C496.9 440.4 416.8 511.9 320.1 511.9C275.7 511.9 234.9 496.9 202.4 471.6L249 425C255.9 418.1 257.9 407.8 254.2 398.8C250.5 389.8 241.7 384 232 384L88 384C74.7 384 64 394.7 64 408L64 552C64 561.7 69.8 570.5 78.8 574.2C87.8 577.9 98.1 575.8 105 569L156.8 517.2C201 553.9 258 576 320 576C449 576 555.7 480.6 573.4 356.5z"/></svg></button>
         <button
             title="Character swap"
             v-if="editorTab === 'output'"
@@ -277,6 +279,19 @@ export default {
               @change="setEditFillContiguous($event.target.checked)"
           />
         </label>
+        <div class="divider"/>
+        <label>Feathering</label>
+        <div class="range-wrapper" :style="{ '--percent': getPercent(editFillFeather, 0, 100) }">
+          <input
+              title="Fill feathering"
+              type="range"
+              min="0"
+              max="100"
+              :value="editFillFeather"
+              @input="setEditFillFeather(+$event.target.value)"
+          />
+          <span class="value-tooltip">{{ editFillFeather }}</span>
+        </div>
       </div>
     </div>
   </article>

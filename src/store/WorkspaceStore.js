@@ -31,6 +31,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     // Fill Settings
     editFillTolerance:  10,
     editFillContiguous:  true,
+    editFillFeather: 2,
   }),
   getters: {
     activeTool(state) {
@@ -87,6 +88,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     setEditFillContiguous(contiguous) {
       this.editFillContiguous = contiguous;
     },
+    setEditFillFeather(feather) {
+      this.editFillFeather = feather;
+    },
     setShowAboutModal(show) {
       this.showAboutModal = show;
     },
@@ -117,7 +121,8 @@ export const workspaceStateKeys = [
   'editBrushFlow',
   'editBrushHardness',
   'editFillTolerance',
-  'editFillContiguous'
+  'editFillContiguous',
+  'editFillFeather'
 ];
 
 export const workspaceActionKeys = [
@@ -135,4 +140,5 @@ export const workspaceActionKeys = [
   'setEditBrushHardness',
   'setEditFillTolerance',
   'setEditFillContiguous',
+  'setEditFillFeather',
 ];

@@ -179,11 +179,16 @@ export default {
             const iy = Math.floor(pos.y);
             const ctx = props.canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
             const imageData = ctx.getImageData(0, 0, projectStore.cols, projectStore.rows);
-            const pixels = floodFill(imageData, ix, iy, workspaceStore.editFillTolerance, workspaceStore.editFillContiguous);
+            const pixels = floodFill(
+              imageData, ix, iy, 
+              workspaceStore.editFillTolerance, 
+              workspaceStore.editFillContiguous,
+              workspaceStore.editFillFeather
+            );
 
             const paintRgb = hex2rgb(workspaceStore.editFgColor);
             const pixelPayload = pixels.map(p => ({
-              ...p, r: paintRgb.r, g: paintRgb.g, b: paintRgb.b, alpha: 1
+              ...p, r: paintRgb.r, g: paintRgb.g, b: paintRgb.b, alpha: p.alpha
             }));
 
             projectStore.paintEditPixels(pixelPayload, props.pipelineCanvas, props.canvas, workspaceStore.editBrushOpacity);

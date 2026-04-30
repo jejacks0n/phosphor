@@ -628,7 +628,8 @@ export const useProjectStore = defineStore('project', {
     },
 
     eraseEditPixels(pixels, pipelineCanvas, outputCanvas) {
-      if (!this.editCanvas || !pixels.length) return;
+      if (!pixels.length) return;
+      this.ensureEditCanvas();
       const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
       const { dx, dy, dw, dh } = this.getFitParams(this.cols, this.rows);
       const wScale = this.editCanvas.width / dw;
@@ -744,6 +745,7 @@ export const useProjectStore = defineStore('project', {
     },
 
     setCharEdit(col, ansiRow, char) {
+      this.ensureEditCanvas();
       const cellIndex = ansiRow * this.cols + col;
       const newMap = new Map(this.charEditMap);
       if (char === null) newMap.delete(cellIndex);
@@ -760,14 +762,16 @@ export const useProjectStore = defineStore('project', {
 
       if (!this.blockData[bgIdx] || !this.blockData[fgIdx]) return;
 
-      // Use blockData directly to avoid expensive and Safari-broken getImageData loop.
-      // blockData contains the normalized colors (already filtered/quantized).
-      const p1 = this.blockData[bgIdx];
-      const p2 = this.blockData[fgIdx];
+      // We need the REAL colors from the canvas because blockData might be 
+      // normalized (e.g. background forced to black in ASCII mode).
+      // Safari requires explicit sRGB to avoid color space mismatch (P3).
+      const ctx = outputCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
+      const p1Data = ctx.getImageData(col, ansiRow * 2, 1, 1).data;
+      const p2Data = ctx.getImageData(col, ansiRow * 2 + 1, 1, 1).data;
 
       this.paintEditPixels([
-        { x: col, y: ansiRow * 2, r: p2.r, g: p2.g, b: p2.b, alpha: 1 },
-        { x: col, y: ansiRow * 2 + 1, r: p1.r, g: p1.g, b: p1.b, alpha: 1 },
+        { x: col, y: ansiRow * 2, r: p2Data[0], g: p2Data[1], b: p2Data[2], alpha: 1 },
+        { x: col, y: ansiRow * 2 + 1, r: p1Data[0], g: p1Data[1], b: p1Data[2], alpha: 1 },
       ], pipelineCanvas, outputCanvas);
     },
 
@@ -789,6 +793,7 @@ export const useProjectStore = defineStore('project', {
     },
 
     clearCharEditsAt(pixels) {
+      this.ensureEditCanvas();
       if (!this.charEditMap.size) return;
       const newMap = new Map(this.charEditMap);
       let changed = false;

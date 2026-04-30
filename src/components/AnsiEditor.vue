@@ -279,8 +279,13 @@ export default {
             const iy = Math.floor(pos.y);
             const ctx = props.outputCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
             const imageData = ctx.getImageData(0, 0, projectStore.cols, projectStore.rows);
-            const pixels = floodFill(imageData, ix, iy, workspaceStore.editFillTolerance, workspaceStore.editFillContiguous);
-            paintPixels(pixels.map(p => ({ ...p, alpha: 1 })));
+            const pixels = floodFill(
+              imageData, ix, iy, 
+              workspaceStore.editFillTolerance, 
+              workspaceStore.editFillContiguous,
+              workspaceStore.editFillFeather
+            );
+            paintPixels(pixels);
             projectStore.takeSnapshot();
             return false;
           }
