@@ -137,9 +137,9 @@ export const useProjectStore = defineStore('project', {
       const buffer = await file.arrayBuffer();
       const image = new Image();
       image.onload = () => {
-        const w = image.naturalWidth || image.width || 1;
-        const h = image.naturalHeight || image.height || 1;
-        const ratio = w / h;
+        const sw = image.naturalWidth || image.width || 1;
+        const sh = image.naturalHeight || image.height || 1;
+        const ratio = sw / sh;
 
         let cols = this.cols;
         let rows = Math.ceil(cols / ratio);
@@ -253,12 +253,11 @@ export const useProjectStore = defineStore('project', {
           if (hasPaint) {
             const paintImg = new Image();
             paintImg.onload = () => {
-              const c = document.createElement('canvas');
-              c.width = paintImg.width;
-              c.height = paintImg.height;
-              const ctx = c.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
-              ctx.drawImage(paintImg, 0, 0);
-              this.editCanvas = c;
+              // ensureEditCanvas will handle resizing the paint layer to the 
+              // required precision resolution if necessary.
+              this.ensureEditCanvas();
+              const ctx = this.editCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
+              ctx.drawImage(paintImg, 0, 0, paintImg.width, paintImg.height, 0, 0, this.editCanvas.width, this.editCanvas.height);
               this.clearEditsFlag++;
               this.applyCharEdits();
               this.takeSnapshot();
@@ -399,8 +398,32 @@ export const useProjectStore = defineStore('project', {
     },
 
     ensureEditCanvas() {
-      if (!this.editCanvas && this.image) {
-        this.initEditCanvas(this.image.naturalWidth, this.image.naturalHeight);
+      if (!this.image) return;
+
+      const sw = this.image.naturalWidth || this.image.width || 1;
+      const sh = this.image.naturalHeight || this.image.height || 1;
+
+      // Precision target: ensure editCanvas is at least 2x the grid dimensions 
+      // OR matching the source image resolution, whichever is larger.
+      const targetW = Math.max(sw, this.cols * 2);
+      const targetH = Math.max(sh, this.rows * 2);
+
+      if (!this.editCanvas) {
+        this.initEditCanvas(targetW, targetH);
+        return;
+      }
+
+      // If the grid has grown such that our editCanvas no longer meets the precision
+      // target, we upscale the edit layer.
+      if (this.editCanvas.width < targetW || this.editCanvas.height < targetH) {
+        const newEdit = document.createElement('canvas');
+        newEdit.width = targetW;
+        newEdit.height = targetH;
+        const neCtx = newEdit.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
+        neCtx.imageSmoothingEnabled = true;
+        neCtx.imageSmoothingQuality = 'high';
+        neCtx.drawImage(this.editCanvas, 0, 0, this.editCanvas.width, this.editCanvas.height, 0, 0, newEdit.width, newEdit.height);
+        this.editCanvas = newEdit;
       }
     },
 
@@ -425,6 +448,8 @@ export const useProjectStore = defineStore('project', {
 
     compositeEditCanvas(pipelineCanvas, outputCanvas) {
       if (!outputCanvas || !pipelineCanvas) return;
+      this.ensureEditCanvas();
+
       const ctx = outputCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
       const w = outputCanvas.width, h = outputCanvas.height;
 

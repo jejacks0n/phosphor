@@ -372,11 +372,13 @@ export default {
 <template>
   <article
       ref="root"
+      tabindex="0"
       @contextmenu.prevent
       @mouseenter="isMouseOver = true"
       @mouseleave="isMouseOver = false"
       @pointermove="onMouseMove"
       @pointerdown="startPaint"
+      @mousedown="startPaint"
       @touchstart="handleTouchStart"
       @touchmove="handleTouchMove"
       @touchend="handleTouchEnd"
@@ -399,6 +401,7 @@ export default {
       overflow: auto;
       overflow-anchor: none;
       overscroll-behavior: none;
+      outline: none;
       /* Safari fix for scrollbars being hidden behind content */
       position: relative;
       z-index: 0;

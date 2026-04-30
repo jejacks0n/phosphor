@@ -20,7 +20,7 @@ export default {
       Brought to you by<br/>
       <a href="https://ishifishi.work" target="_blank">ishifishi.work</a> and
       <a href="https://euphio.org" target="_blank">euphio.org</a>
-      <div class="copyright">&copy; {{ year }} Phosphor</div>
+      <div class="copyright">&copy; {{ year }} Phosphor Project</div>
     </div>
   </footer>
 </template>

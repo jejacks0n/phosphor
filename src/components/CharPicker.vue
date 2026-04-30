@@ -15,6 +15,7 @@ export default {
   data() {
     return {
       pickerStyle: {},
+      isBottom: false,
     };
   },
   mounted() {
@@ -45,7 +46,8 @@ export default {
       // Try to center horizontally on target
       let left = target.left + (target.width / 2) - (pickerRect.width / 2);
       // Position below target by default
-      let top = target.top + target.height + 8;
+      let top = target.top + target.height + 10;
+      this.isBottom = true;
 
       // Constraint to viewport horizontally
       if (left < padding) left = padding;
@@ -55,33 +57,48 @@ export default {
 
       // If it goes off the bottom, move it above the target
       if (top + pickerRect.height > window.innerHeight - padding) {
-        top = target.top - pickerRect.height - 8;
+        top = target.top - pickerRect.height - 10;
+        this.isBottom = false;
       }
 
       // If it still goes off the top (extremely small screen), just clamp it
       if (top < padding) top = padding;
 
+      // Calculate arrow position relative to picker
+      const targetCenter = target.left + (target.width / 2);
+      const arrowLeft = targetCenter - left;
+
       this.pickerStyle = {
         top: `${top}px`,
         left: `${left}px`,
         visibility: 'visible',
+        '--arrow-left': `${arrowLeft}px`,
       };
     },
-    select(char) {
-      this.$emit('select', char);
+    select(char, event) {
+      this.$emit('select', char, event);
     },
+    close(event) {
+      this.$emit('close', event);
+    }
   },
 };
 </script>
 
 <template>
   <Teleport to="body">
-    <article class="char-picker" ref="picker" :style="pickerStyle" @pointerdown.stop>
-      <span class="erase" title="Reset to original" @pointerdown.stop="select('ERASE')">⌫</span>
-      <span class="space" title="Space" @pointerdown.stop="select(' ')">␣</span>
-      <span v-for="ch in chars" :key="ch" @pointerdown.stop="select(ch)">{{ ch }}</span>
+    <article 
+        class="char-picker" 
+        :class="{ 'is-bottom': isBottom }"
+        ref="picker" 
+        :style="pickerStyle" 
+        @pointerdown.stop
+    >
+      <span class="erase" title="Reset to original" @pointerdown.stop="select('ERASE', $event)">⌫</span>
+      <span class="space" title="Space" @pointerdown.stop="select(' ', $event)">␣</span>
+      <span v-for="ch in chars" :key="ch" @pointerdown.stop="select(ch, $event)">{{ ch }}</span>
     </article>
-    <div class="picker-backdrop" @pointerdown.stop="$emit('close')"></div>
+    <div class="picker-backdrop" @pointerdown.stop="close($event)"></div>
   </Teleport>
 </template>
 
@@ -97,8 +114,25 @@ article.char-picker {
   border: 1px solid var(--accent);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  max-width: 200px;
+  max-width: 196px;
   visibility: hidden; /* Hidden until positioned */
+}
+
+article.char-picker::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: var(--arrow-left, 50%);
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: transparent transparent var(--accent) transparent;
+}
+
+article.char-picker:not(.is-bottom)::after {
+  bottom: auto;
+  top: 100%;
+  border-color: var(--accent) transparent transparent transparent;
 }
 
 div.picker-backdrop {

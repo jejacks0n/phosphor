@@ -456,7 +456,7 @@ aside.control-panel {
 div.logo {
   display: block;
   width: 100%;
-  aspect-ratio: 210 / 150;
+  padding: 30% 0;
   margin-bottom: 10px;
   user-select: none;
   pointer-events: none;

@@ -1,7 +1,14 @@
 <script>
+import { version } from '../../package.json';
+
 export default {
   name: 'AboutPhosphor',
   emits: ['close'],
+  data() {
+    return {
+      version,
+    };
+  },
 };
 </script>
 
@@ -12,7 +19,8 @@ export default {
       <div class="content-container">
         <header>
           <div class="logo"></div>
-          <p class="tagline">Convert images to ANSI and ASCII art with style.</p>
+          <p class="tagline">Convert images to ANSI and ASCII ... with style?</p>
+          <p class="version accent">v{{ version }}</p>
         </header>
 
         <hr/>
@@ -26,15 +34,15 @@ export default {
         </p>
 
         <p>
-          Today, Phosphor is a modern utility designed to bridge the gap between digital imagery and terminal art. It focuses on converting images to ANSI and ASCII with a heavy emphasis on style and granular customization. Whether you are a retro-computing enthusiast, an ASCII artist, or just looking for a unique way to process images for your terminal pipeline, I hope you find Phosphor a useful addition to your workflow.
+          Today, Phosphor is a modern utility designed to bridge the gap between digital imagery and terminal art. It focuses on converting images to ANSI and ASCII with a heavy emphasis on style and granular customization. Whether you're a retro-computing enthusiast, an ASCII artist, or just looking for a unique way to process images for your terminal pipeline, I hope you find Phosphor a useful addition to your workflow.
         </p>
 
         <p>
-          Importantly, Phosphor isn’t trying to be a full-blown editor. Instead, it’s designed to get you from concept to canvas, where you can iterate on your own vision. It handles the heavy lifting of the initial concepts so you can move into an editor to finalize your vision -- whether that’s "Pure ANSI" for the purists or the full-color, UTF-8 "ANSI Nouveau" style that inspired the project in the first place.
+          Importantly, Phosphor isn’t trying (yet?) to be a full-blown editor. Instead, it’s designed to get you from concept to canvas, where you can iterate on your own vision. It handles the heavy lifting of the initial concepts so you can explore quickly and move into a full editor to finalize your vision -- whether that’s "Pure ANSI" for the purists or the full-color, UTF-8 "ANSI Nouveau" style that inspired the project in the first place.
         </p>
 
         <p>
-          This is an early alpha, and I’m open to feedback. Please feel free to open an issue on <a href="https://github.com/jejacks0n/phosphor" target="blank">GitHub</a>, leave a comment, or fork the repo and take it in your own direction.
+          This is an early alpha project, expect bugs, lack of support for mobile and tablet, etc. I’m open to feedback and bug reports, so feel free to open an issue on <a href="https://github.com/jejacks0n/phosphor" target="blank">GitHub</a>, leave a comment, or fork the repo and take it in your own direction.
         </p>
 
         <p>Credits and special thanks:</p>
@@ -44,7 +52,7 @@ export default {
           <li>lordscarlet (Doug Moore) for creating <a href="https://16colo.rs" target="_blank">https://16colo.rs</a></li>
           <li>And the many authors, maintainers, and ANSI artists who have inspired me over the years -- too many to name</li>
         </ul>
-        <p>Thank you for the inspiration and for creating such a vibrant community around this unique art form.</p>
+        <p>Thank you for the inspiration and for helping to create such a vibrant community around this unique art form.</p>
 
         <hr/>
 
@@ -58,7 +66,7 @@ export default {
 </template>
 
 <style scoped>
-.modal-backdrop {
+div.modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
@@ -92,7 +100,6 @@ div.content-container {
 }
 
 header {
-  padding-bottom: 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -130,13 +137,19 @@ a {
   text-decoration: underline;
 }
 
+p.version {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 p.accent {
   color: var(--accent);
 }
 
+hr {
+  margin: 40px 0;
+}
 div.footer {
-  margin-top: 20px;
-  padding-top: 20px;
   color: var(--text-faint);
   font-size: 0.9rem;
   text-align: center;

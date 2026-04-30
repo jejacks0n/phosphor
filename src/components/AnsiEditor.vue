@@ -489,11 +489,13 @@ export default {
 <template>
   <article
       ref="root"
+      tabindex="0"
       @contextmenu.prevent
       @mouseenter="isMouseOver = true"
       @mouseleave="isMouseOver = false"
       @pointermove="onMouseMove"
       @pointerdown="startPaint"
+      @mousedown="startPaint"
       @touchstart="handleTouchStart"
       @touchmove="handleTouchMove"
       @touchend="handleTouchEnd"
@@ -521,6 +523,7 @@ article {
   width: 100%;
   height: 100%;
   overflow: auto;
+  outline: none;
 }
 
 div.canvas-viewport {

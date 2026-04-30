@@ -158,7 +158,25 @@ export function useEditorInteractions(options) {
     scrollEl.scrollTop = (scrollEl.scrollHeight - scrollEl.clientHeight) / 2;
   }
 
+  let _lastInteractionTime = 0;
   function startPaint(event) {
+    // Safari fix: if focus is stuck in a dropdown/select, the first click on the 
+    // canvas might be consumed just to clear focus. Proactively blurring 
+    // helps ensure the event is processed immediately. 
+    // We also use a debounce to allow both mousedown and pointerdown to be 
+    // mapped to this function without double-firing.
+    if (Date.now() - _lastInteractionTime < 50) return;
+    _lastInteractionTime = Date.now();
+
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur();
+    }
+
+    // Explicitly focus the container if it's focusable (helps Safari/keyboard sync)
+    if (event.currentTarget && typeof event.currentTarget.focus === 'function') {
+      event.currentTarget.focus();
+    }
+
     if (event.preventDefault) event.preventDefault();
     const tool = unref(activeTool);
     const pos = callbacks.pixelCoordsAt(event);
