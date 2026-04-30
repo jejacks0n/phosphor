@@ -13,6 +13,12 @@ export const useWorkspaceStore = defineStore('workspace', {
     isMiddleClick: false,
     settingsOpen: false,
 
+    // Scroll state persistence
+    inputScrollX: null,
+    inputScrollY: null,
+    ansiScrollX: null,
+    ansiScrollY: null,
+
     // Brush Settings
     editBrushSize:  2.5,
     editEraserSize: 5,
@@ -67,9 +73,6 @@ export const useWorkspaceStore = defineStore('workspace', {
     setEditFillContiguous(contiguous) {
       this.editFillContiguous = contiguous;
     },
-    resetToolToHand() {
-      this.setActiveTool('hand');
-    }
   }
 });
 
@@ -84,6 +87,10 @@ export const workspaceStateKeys = [
   'isCtrlPressed',
   'isMiddleClick',
   'settingsOpen',
+  'inputScrollX',
+  'inputScrollY',
+  'ansiScrollX',
+  'ansiScrollY',
   'editBrushSize',
   'editEraserSize',
   'editBrushOpacity',
@@ -107,5 +114,4 @@ export const workspaceActionKeys = [
   'setEditBrushHardness',
   'setEditFillTolerance',
   'setEditFillContiguous',
-  'resetToolToHand'
 ];

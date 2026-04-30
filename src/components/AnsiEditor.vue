@@ -1,5 +1,5 @@
 <script>
-import { ref, computed, useTemplateRef, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, useTemplateRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { mapState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -409,14 +409,30 @@ export default {
 
     onMounted(() => {
       queueRender();
-      workspaceStore.resetToolToHand();
 
       if (rootRef.value) {
         rootRef.value.addEventListener('wheel', handleWheel, { passive: false });
+        
+        rootRef.value.addEventListener('scroll', () => {
+          if (rootRef.value) {
+            workspaceStore.ansiScrollX = rootRef.value.scrollLeft;
+            workspaceStore.ansiScrollY = rootRef.value.scrollTop;
+          }
+        });
+
+        // Restore previous scroll position or center if none exists
+        // Wait for next frame to ensure render has happened and content has size
+        requestAnimationFrame(() => {
+          if (!rootRef.value) return;
+          if (workspaceStore.ansiScrollX !== null && workspaceStore.ansiScrollY !== null) {
+            rootRef.value.scrollLeft = workspaceStore.ansiScrollX;
+            rootRef.value.scrollTop = workspaceStore.ansiScrollY;
+          } else {
+            centerContent();
+          }
+        });
       }
       window.addEventListener('keydown', handleKeydown);
-
-      nextTick(() => centerContent());
     });
 
     onBeforeUnmount(() => {

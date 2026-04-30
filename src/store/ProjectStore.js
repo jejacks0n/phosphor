@@ -19,7 +19,7 @@ export const useProjectStore = defineStore('project', {
     cols: useLocalStorage('current_file.cols', 80),
     rows: useLocalStorage('current_file.rows', 50),
     aspectLock: useLocalStorage('current_file.aspectLock', true),
-    renderStyle: useLocalStorage('current_file.renderStyle', 'color'),
+    renderStyle: useLocalStorage('current_file.renderStyle', 'ansi'),
     charMode: useLocalStorage('current_file.charMode', 'random'),
     chars: useLocalStorage('current_file.chars', '*:|%.░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄'),
     charsAscii: useLocalStorage('current_file.charsAscii', ' .:*%#@'),
@@ -202,7 +202,8 @@ export const useProjectStore = defineStore('project', {
       const stateKeys = [
         'cols', 'rows', 'aspectLock', 'renderStyle', 'charMode', 'chars', 'charsAscii', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount',
         'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness',
-        'sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments'
+        'sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments',
+        'hasPaint'
       ];
 
       for (const key of stateKeys) {
@@ -226,10 +227,12 @@ export const useProjectStore = defineStore('project', {
 
     async loadProject(file) {
       if (!file || !file.name.endsWith(PROJECT_EXTENSION)) return;
+      const filename = file.name.replace(PROJECT_EXTENSION, '');
 
       try {
-        const { settings, originalBuffer, paintBuffer, hasPaint } = await unbundleProject(file);
-        
+        const { settings, originalBuffer, paintBuffer, hasPaint: fileHasPaint } = await unbundleProject(file);
+        const hasPaint = settings.hasPaint !== undefined ? settings.hasPaint : fileHasPaint;
+
         const charMap = new Map(settings.charEditMap || []);
         delete settings.charEditMap;
 
@@ -241,6 +244,7 @@ export const useProjectStore = defineStore('project', {
             originalFileBuffer: originalBuffer,
             charEditMap: charMap,
             hasPaint,
+            filename,
             isInitializing: true,
             historyStack: [],
             historyIndex: -1,
@@ -392,6 +396,12 @@ export const useProjectStore = defineStore('project', {
       c.height = Math.max(1, h || 1);
       this.editCanvas = c;
       this.takeSnapshot();
+    },
+
+    ensureEditCanvas() {
+      if (!this.editCanvas && this.image) {
+        this.initEditCanvas(this.image.naturalWidth, this.image.naturalHeight);
+      }
     },
 
     getFitParams(w, h) {
@@ -550,7 +560,8 @@ export const useProjectStore = defineStore('project', {
     },
 
     paintEditPixels(pixels, pipelineCanvas, outputCanvas, opacity = 100) {
-      if (!this.editCanvas || !pixels.length) return;
+      if (!pixels.length) return;
+      this.ensureEditCanvas();
       this.hasPaint = true;
       const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true });
       const { dx, dy, dw, dh } = this.getFitParams(this.cols, this.rows);
@@ -737,18 +748,24 @@ export const useProjectStore = defineStore('project', {
     },
 
     flipAnsiColors(col, ansiRow, pipelineCanvas, outputCanvas) {
-      if (!this.editCanvas) return;
+      if (!outputCanvas) return;
+
       const bgIdx = ansiRow * this.cols * 2 + col;
       const fgIdx = bgIdx + this.cols;
 
       if (!this.blockData[bgIdx] || !this.blockData[fgIdx]) return;
 
-      const bg = this.blockData[bgIdx];
-      const fg = this.blockData[fgIdx];
+      // Read actual pixel colors from the output canvas — blockData.r/g/b is normalized
+      // (e.g. bg forced to black in ascii/colorAscii modes) so it doesn't reflect true colors.
+      const canvas = new Canvas(outputCanvas);
+      const p1 = canvas.pixels[bgIdx];
+      const p2 = canvas.pixels[fgIdx] || p1;
+
+      if (!p1) return;
 
       this.paintEditPixels([
-        { x: col, y: ansiRow * 2, r: fg.r, g: fg.g, b: fg.b, alpha: 1 },
-        { x: col, y: ansiRow * 2 + 1, r: bg.r, g: bg.g, b: bg.b, alpha: 1 },
+        { x: col, y: ansiRow * 2, r: p2.r, g: p2.g, b: p2.b, alpha: 1 },
+        { x: col, y: ansiRow * 2 + 1, r: p1.r, g: p1.g, b: p1.b, alpha: 1 },
       ], pipelineCanvas, outputCanvas);
     },
 

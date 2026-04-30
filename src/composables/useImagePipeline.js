@@ -9,12 +9,6 @@ export function useImagePipeline(projectStore) {
   const outputCanvas = shallowRef(null);
   let _setupFrame = null;
 
-  const _initializeEditCanvas = (image) => {
-    if (!projectStore.editCanvas) {
-      projectStore.initEditCanvas(image.naturalWidth, image.naturalHeight);
-    }
-  };
-
   const _prepareOutputCanvas = (params) => {
     const canvas = document.createElement('canvas');
     canvas.width = params.cols;
@@ -112,8 +106,6 @@ export function useImagePipeline(projectStore) {
     
     pipelineCanvas.value = pipelineCanvasResult.canvas;
     projectStore.activePalette = paletteColors;
-
-    _initializeEditCanvas(params.image);
 
     const tempOutputCanvas = _prepareOutputCanvas(params);
 

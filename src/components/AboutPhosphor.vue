@@ -74,8 +74,6 @@ div.content-container {
 }
 
 header {
-  margin-bottom: 40px;
-  border-bottom: 1px solid var(--border);
   padding-bottom: 20px;
   display: flex;
   flex-direction: column;

@@ -270,6 +270,10 @@ export default {
       // Store the offset of the viewport center relative to the content center
       offset.x = (el.scrollLeft + el.clientWidth / 2) - (el.scrollWidth / 2);
       offset.y = (el.scrollTop + el.clientHeight / 2) - (el.scrollHeight / 2);
+      
+      // Persist absolute scroll position to workspace store
+      workspaceStore.inputScrollX = el.scrollLeft;
+      workspaceStore.inputScrollY = el.scrollTop;
     };
 
     const updateViewportSize = () => {
@@ -293,23 +297,36 @@ export default {
 
     onMounted(() => {
       redrawDisplay();
-      workspaceStore.resetToolToHand();
+
+      updateViewportSize();
 
       if (rootRef.value) {
         rootRef.value.addEventListener('wheel', handleWheel, { passive: false });
         rootRef.value.addEventListener('scroll', updateOffset);
         
-        resizeObserver = new ResizeObserver(() => {
-          handleResize();
-        });
-        resizeObserver.observe(rootRef.value);
-      }
+        // Restore previous scroll position or center if none exists
+        // Use rAF to ensure layout is ready
+        requestAnimationFrame(() => {
+          if (!rootRef.value) return;
 
-      updateViewportSize();
-      requestAnimationFrame(() => {
-        centerContent();
-        updateOffset();
-      });
+          if (workspaceStore.inputScrollX !== null && workspaceStore.inputScrollY !== null) {
+            rootRef.value.scrollLeft = workspaceStore.inputScrollX;
+            rootRef.value.scrollTop = workspaceStore.inputScrollY;
+          } else {
+            centerContent();
+          }
+          
+          // CRITICAL: Update the relative offset AFTER restoring/centering 
+          // so handleResize (via ResizeObserver) knows where we are.
+          updateOffset();
+
+          // Only start observing after we've established our initial position
+          resizeObserver = new ResizeObserver(() => {
+            handleResize();
+          });
+          resizeObserver.observe(rootRef.value);
+        });
+      }
     });
 
     onBeforeUnmount(() => {

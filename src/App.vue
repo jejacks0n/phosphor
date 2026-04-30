@@ -12,7 +12,7 @@ export default {
     ControlPanel,
   },
   computed: {
-    ...mapState(useProjectStore, ['image', 'hasEdits']),
+    ...mapState(useProjectStore, ['image', 'hasEdits', 'isDirty']),
     ...mapState(useWorkspaceStore, ['activeTool', 'isPainting', 'isCtrlPressed', 'isMiddleClick']),
   },
   mounted() {
@@ -23,7 +23,7 @@ export default {
   },
   methods: {
     onBeforeUnload(e) {
-      if (this.image && this.hasEdits) {
+      if (this.image && (this.hasEdits || this.isDirty)) {
         e.preventDefault();
         e.returnValue = '';
       }
