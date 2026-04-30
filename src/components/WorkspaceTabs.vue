@@ -22,13 +22,15 @@ export default {
     };
   },
   computed: {
-    ...mapState(useProjectStore, ['image']),
+    ...mapState(useProjectStore, ['image', 'renderStyle']),
     ...mapState(useWorkspaceStore, ['settingsOpen']),
     tabs() {
+      const outputLabel = this.renderStyle === 'ansi' ? 'ANSI' : 'ASCII';
       return [
         { id: 'input', label: 'INPUT', disabled: false },
-        { id: 'output', label: 'OUTPUT', disabled: !this.image },
+        { id: 'output', label: outputLabel, disabled: !this.image },
         { id: 'sauce', label: 'SAUCE', disabled: !this.image },
+        { id: 'about', label: 'ABOUT', disabled: false },
       ];
     },
   },

@@ -13,6 +13,7 @@ import DropZone from '@/components/DropZone.vue';
 import AnsiEditor from '@/components/AnsiEditor.vue';
 import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
+import AboutPhosphor from '@/components/AboutPhosphor.vue';
 
 export default {
   name: 'EditWorkspace',
@@ -24,6 +25,7 @@ export default {
     AnsiEditor,
     InputEditor,
     EditToolbar,
+    AboutPhosphor,
   },
   setup() {
     const projectStore = useProjectStore();
@@ -93,7 +95,7 @@ export default {
     <WorkspaceTabs v-model="editorTab"/>
     <EditToolbar v-if="image && editMode"/>
     <DropZone @file-dropped="handleFileSelected">
-      <div class="edit-viewport viewport" :class="{ editing: editMode }" v-if="image">
+      <div class="edit-viewport viewport" :class="{ editing: editMode }" v-if="image || editorTab === 'about'">
         <InputEditor
             ref="inputEditor"
             v-if="editorTab === 'input'"
@@ -106,6 +108,7 @@ export default {
             :output-canvas="outputCanvas"
         />
         <SauceEditor v-if="editorTab === 'sauce'"/>
+        <AboutPhosphor v-if="editorTab === 'about'"/>
       </div>
 
       <ZeroState v-else @file-selected="handleFileSelected"/>
