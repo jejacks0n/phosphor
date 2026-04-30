@@ -27,7 +27,7 @@ function drawImageStepped(ctx, source, sx, sy, sw, sh, dx, dy, dw, dh) {
 		const temp = document.createElement('canvas')
 		temp.width = nextW
 		temp.height = nextH
-		const tctx = temp.getContext('2d', { willReadFrequently: true })
+		const tctx = temp.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })
 		tctx.imageSmoothingEnabled = true
 		tctx.imageSmoothingQuality = ctx.imageSmoothingQuality
 		tctx.drawImage(currSrc, 0, 0, currW, currH, 0, 0, nextW, nextH)
@@ -78,7 +78,7 @@ export default class Canvas {
 			this.canvas.width = 1
 			this.canvas.height = 1
 		}
-		this.ctx = this.canvas.getContext('2d', { willReadFrequently: true })
+		this.ctx = this.canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })
 		if (!sourceCanvas) {
 			this.ctx.putImageData(this.ctx.createImageData(1, 1), 0, 0);
 		}
@@ -122,7 +122,7 @@ export default class Canvas {
 		}
 
 		let srcData;
-		const srcCtx = (typeof source.getContext === 'function') ? source.getContext('2d', { willReadFrequently: true }) : null;
+		const srcCtx = (typeof source.getContext === 'function') ? source.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' }) : null;
 
 		if (srcCtx) {
 			srcData = srcCtx.getImageData(0, 0, sw, sh).data;
@@ -132,7 +132,7 @@ export default class Canvas {
 			const temp = document.createElement('canvas');
 			temp.width = sw;
 			temp.height = sh;
-			const tctx = temp.getContext('2d', { willReadFrequently: true });
+			const tctx = temp.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
 			tctx.drawImage(source, 0, 0);
 			srcData = tctx.getImageData(0, 0, sw, sh).data;
 		}
@@ -252,14 +252,27 @@ export default class Canvas {
 	}
 
 	loadPixels() {
-		this.pixels.length = 0
 		const w = this.canvas.width
 		const h = this.canvas.height
 		const data = this.ctx.getImageData(0, 0, w, h).data
-		let idx = 0
+		
+		// Pre-allocate or truncate pixels array to match dimensions
+		const targetLen = w * h;
+		if (this.pixels.length !== targetLen) {
+			this.pixels.length = targetLen;
+		}
+
 		for (let i = 0; i < data.length; i += 4) {
+			const idx = i / 4;
 			const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3] / 255.0
-			this.pixels[idx++] = { r, g, b, a, v: toGray(r, g, b) }
+			
+			// Reuse object if it exists to avoid GC pressure
+			if (!this.pixels[idx]) {
+				this.pixels[idx] = { r, g, b, a, v: toGray(r, g, b) };
+			} else {
+				const p = this.pixels[idx];
+				p.r = r; p.g = g; p.b = b; p.a = a; p.v = toGray(r, g, b);
+			}
 		}
 		return this
 	}

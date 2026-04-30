@@ -164,7 +164,15 @@ export default {
           <span class="value">{{ getFormattedValue('colorCount') }}</span>
         </div>
         <div class="range-wrapper" :style="{ '--percent': getPercent('colorCount', 2, 255) }">
-          <input type="range" id="color_count" min="2" max="255" :value="getDisplayValue('colorCount')" @input="onInput('colorCount', $event)" @[updateEvent]="commitUpdate('colorCount', $event)">
+          <input
+              type="range"
+              id="color_count"
+              min="2"
+              max="255"
+              :value="getDisplayValue('colorCount')"
+              @input="onInput('colorCount', $event)"
+              @[updateEvent]="commitUpdate('colorCount', $event)"
+          >
           <span class="value-tooltip">{{ getFormattedValue('colorCount') }}</span>
         </div>
       </div>
@@ -198,7 +206,16 @@ export default {
         </div>
         <div class="row-inputs">
           <div class="range-wrapper" :style="{ '--percent': getPercent('colorizeStrength', 0, 100) }">
-            <input type="range" id="colorize" min="0" max="100" :value="getDisplayValue('colorizeStrength')" @input="onInput('colorizeStrength', $event)" @[updateEvent]="commitUpdate('colorizeStrength', $event)" list="zero-ticks">
+            <input
+                type="range"
+                id="colorize"
+                min="0"
+                max="100"
+                :value="getDisplayValue('colorizeStrength')"
+                @input="onInput('colorizeStrength', $event)"
+                @[updateEvent]="commitUpdate('colorizeStrength', $event)"
+                list="zero-ticks"
+            >
             <span class="value-tooltip">{{ getFormattedValue('colorizeStrength') }}%</span>
           </div>
           <input type="color" v-model="colorize">
@@ -214,7 +231,15 @@ export default {
           <span class="value">{{ getFormattedValue('hue') }}°</span>
         </div>
         <div class="range-wrapper" :style="{ '--percent': getPercent('hue', 0, 360) }">
-          <input type="range" id="hue" min="0" max="360" :value="getDisplayValue('hue')" @input="onInput('hue', $event)" @[updateEvent]="commitUpdate('hue', $event)">
+          <input
+              type="range"
+              id="hue"
+              min="0"
+              max="360"
+              :value="getDisplayValue('hue')"
+              @input="onInput('hue', $event)"
+              @[updateEvent]="commitUpdate('hue', $event)"
+          >
           <span class="value-tooltip">{{ getFormattedValue('hue') }}°</span>
         </div>
       </div>
@@ -225,7 +250,15 @@ export default {
           <span class="value">{{ getFormattedValue('invert') }}%</span>
         </div>
         <div class="range-wrapper" :style="{ '--percent': getPercent('invert', 0, 100) }">
-          <input type="range" id="invert" min="0" max="100" :value="getDisplayValue('invert')" @input="onInput('invert', $event)" @[updateEvent]="commitUpdate('invert', $event)">
+          <input
+              type="range"
+              id="invert"
+              min="0"
+              max="100"
+              :value="getDisplayValue('invert')"
+              @input="onInput('invert', $event)"
+              @[updateEvent]="commitUpdate('invert', $event)"
+          >
           <span class="value-tooltip">{{ getFormattedValue('invert') }}%</span>
         </div>
       </div>
@@ -245,7 +278,16 @@ export default {
           <span class="value">{{ getFormattedValue('brightness') }}%</span>
         </div>
         <div class="range-wrapper" :style="{ '--percent': getPercent('brightness', 0, 500) }">
-          <input type="range" id="brightness" min="0" max="500" :value="getDisplayValue('brightness')" @input="onInput('brightness', $event)" @[updateEvent]="commitUpdate('brightness', $event)" list="default-ticks">
+          <input
+              type="range"
+              id="brightness"
+              min="0"
+              max="500"
+              :value="getDisplayValue('brightness')"
+              @input="onInput('brightness', $event)"
+              @[updateEvent]="commitUpdate('brightness', $event)"
+              list="default-ticks"
+          >
           <span class="value-tooltip">{{ getFormattedValue('brightness') }}%</span>
         </div>
       </div>
@@ -256,7 +298,16 @@ export default {
           <span class="value">{{ getFormattedValue('contrast') }}%</span>
         </div>
         <div class="range-wrapper" :style="{ '--percent': getPercent('contrast', 0, 500) }">
-          <input type="range" id="contrast" min="0" max="500" :value="getDisplayValue('contrast')" @input="onInput('contrast', $event)" @[updateEvent]="commitUpdate('contrast', $event)" list="default-ticks">
+          <input
+              type="range"
+              id="contrast"
+              min="0"
+              max="500"
+              :value="getDisplayValue('contrast')"
+              @input="onInput('contrast', $event)"
+              @[updateEvent]="commitUpdate('contrast', $event)"
+              list="default-ticks"
+          >
           <span class="value-tooltip">{{ getFormattedValue('contrast') }}%</span>
         </div>
       </div>
@@ -267,7 +318,16 @@ export default {
           <span class="value">{{ getFormattedValue('saturation') }}%</span>
         </div>
         <div class="range-wrapper" :style="{ '--percent': getPercent('saturation', 0, 500) }">
-          <input type="range" id="saturation" min="0" max="500" :value="getDisplayValue('saturation')" @input="onInput('saturation', $event)" @[updateEvent]="commitUpdate('saturation', $event)" list="default-ticks">
+          <input
+              type="range"
+              id="saturation"
+              min="0"
+              max="500"
+              :value="getDisplayValue('saturation')"
+              @input="onInput('saturation', $event)"
+              @[updateEvent]="commitUpdate('saturation', $event)"
+              list="default-ticks"
+          >
           <span class="value-tooltip">{{ getFormattedValue('saturation') }}%</span>
         </div>
       </div>
@@ -287,7 +347,16 @@ export default {
           <span class="value">{{ getFormattedValue('flatten') }}</span>
         </div>
         <div class="range-wrapper" :style="{ '--percent': getPercent('flatten', 0, 10) }">
-          <input type="range" id="flatten" min="0" max="10" :value="getDisplayValue('flatten')" @input="onInput('flatten', $event)" @[updateEvent]="commitUpdate('flatten', $event)" list="zero-ticks">
+          <input
+              type="range"
+              id="flatten"
+              min="0"
+              max="10"
+              :value="getDisplayValue('flatten')"
+              @input="onInput('flatten', $event)"
+              @[updateEvent]="commitUpdate('flatten', $event)"
+              list="zero-ticks"
+          >
           <span class="value-tooltip">{{ getFormattedValue('flatten') }}</span>
         </div>
       </div>
@@ -298,7 +367,16 @@ export default {
           <span class="value">{{ getFormattedValue('sharpen') }}</span>
         </div>
         <div class="range-wrapper" :style="{ '--percent': getPercent('sharpen', 0, 100) }">
-          <input type="range" id="sharpen" min="0" max="100" :value="getDisplayValue('sharpen')" @input="onInput('sharpen', $event)" @[updateEvent]="commitUpdate('sharpen', $event)" list="zero-ticks">
+          <input
+              type="range"
+              id="sharpen"
+              min="0"
+              max="100"
+              :value="getDisplayValue('sharpen')"
+              @input="onInput('sharpen', $event)"
+              @[updateEvent]="commitUpdate('sharpen', $event)"
+              list="zero-ticks"
+          >
           <span class="value-tooltip">{{ getFormattedValue('sharpen') }}</span>
         </div>
       </div>
@@ -310,7 +388,17 @@ export default {
         </div>
         <div class="row-inputs">
           <div class="range-wrapper" :style="{ '--percent': getPercent('edges', 0, 20) }">
-            <input type="range" id="edges" min="0" max="20" step="0.01" :value="getDisplayValue('edges')" @input="onInput('edges', $event)" @[updateEvent]="commitUpdate('edges', $event)" list="zero-ticks">
+            <input
+                type="range"
+                id="edges"
+                min="0"
+                max="20"
+                step="0.01"
+                :value="getDisplayValue('edges')"
+                @input="onInput('edges', $event)"
+                @[updateEvent]="commitUpdate('edges', $event)"
+                list="zero-ticks"
+            >
             <span class="value-tooltip">{{ getFormattedValue('edges') }}</span>
           </div>
           <input type="color" v-model="edgeColor">
@@ -323,7 +411,16 @@ export default {
           <span class="value">{{ getFormattedValue('edgeThickness') }}</span>
         </div>
         <div class="range-wrapper" :style="{ '--percent': getPercent('edgeThickness', 0, 5) }">
-          <input type="range" id="edgeThickness" min="0" max="5" step="0.1" :value="getDisplayValue('edgeThickness')" @input="onInput('edgeThickness', $event)" @[updateEvent]="commitUpdate('edgeThickness', $event)">
+          <input
+              type="range"
+              id="edgeThickness"
+              min="0"
+              max="5"
+              step="0.1"
+              :value="getDisplayValue('edgeThickness')"
+              @input="onInput('edgeThickness', $event)"
+              @[updateEvent]="commitUpdate('edgeThickness', $event)"
+          >
           <span class="value-tooltip">{{ getFormattedValue('edgeThickness') }}</span>
         </div>
       </div>
@@ -346,7 +443,7 @@ export default {
 </template>
 
 <style scoped>
-aside {
+aside.control-panel {
   display: flex;
   flex-direction: column;
   flex: 0 0 210px;

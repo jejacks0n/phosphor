@@ -32,7 +32,7 @@ export default {
       if (!dc || !props.canvas) return;
       dc.width = projectStore.cols * workspaceStore.editZoom;
       dc.height = projectStore.rows * workspaceStore.editZoom;
-      const ctx = dc.getContext('2d', { willReadFrequently: true });
+      const ctx = dc.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(props.canvas, 0, 0, dc.width, dc.height);
     };
@@ -177,7 +177,7 @@ export default {
           if (workspaceStore.activeTool === 'bucket' && props.canvas) {
             const ix = Math.floor(pos.x);
             const iy = Math.floor(pos.y);
-            const ctx = props.canvas.getContext('2d', { willReadFrequently: true });
+            const ctx = props.canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
             const imageData = ctx.getImageData(0, 0, projectStore.cols, projectStore.rows);
             const pixels = floodFill(imageData, ix, iy, workspaceStore.editFillTolerance, workspaceStore.editFillContiguous);
 

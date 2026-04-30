@@ -4,7 +4,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 export default {
-  name: 'WorkspaceTabs',
+  name: 'EditTabs',
   props: {
     modelValue: {
       type: String,
@@ -30,7 +30,6 @@ export default {
         { id: 'input', label: 'INPUT', disabled: false },
         { id: 'output', label: outputLabel, disabled: !this.image },
         { id: 'sauce', label: 'SAUCE', disabled: !this.image },
-        { id: 'about', label: 'ABOUT', disabled: false },
       ];
     },
   },
@@ -161,7 +160,7 @@ ul {
   gap: 3px;
   flex-shrink: 0;
   margin: 0;
-  padding: 5px 0 0;
+  padding: 6px 0 0;
   list-style: none;
   position: relative;
 }
@@ -203,6 +202,7 @@ li.disabled {
 }
 
 li.active {
+  margin-top: -3px;
   margin-bottom: -1px;
   border-bottom: 1px solid transparent;
   font-weight: 500;
@@ -218,11 +218,12 @@ li:not(.disabled):not(.active):hover {
 
 div.indicator {
   position: absolute;
-  bottom: -1px;
+  top: 3px;
   left: 0;
-  height: 2px;
+  height: 4px;
+  border-radius: 4px 4px 0 0;
   background: var(--accent);
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: width 0.5s cubic-bezier(0.23, 1, 0.32, 1), transform 0.1s ease;
   box-shadow: 0 0 3px var(--accent), 0 0 20px var(--accent);
   z-index: 2;
   pointer-events: none;

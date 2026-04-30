@@ -6,26 +6,24 @@ import { PROJECT_EXTENSION } from '@/lib/SaveFormat';
 import { useImagePipeline } from '@/composables/useImagePipeline';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 
-import WorkspaceTabs from '@/components/WorkspaceTabs.vue';
+import EditTabs from '@/components/EditTabs.vue';
 import ZeroState from '@/components/ZeroState.vue';
 import SauceEditor from '@/components/SauceEditor.vue';
 import DropZone from '@/components/DropZone.vue';
 import AnsiEditor from '@/components/AnsiEditor.vue';
 import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
-import AboutPhosphor from '@/components/AboutPhosphor.vue';
 
 export default {
   name: 'EditWorkspace',
   components: {
-    WorkspaceTabs,
+    EditTabs,
     ZeroState,
     SauceEditor,
     DropZone,
     AnsiEditor,
     InputEditor,
     EditToolbar,
-    AboutPhosphor,
   },
   setup() {
     const projectStore = useProjectStore();
@@ -92,10 +90,10 @@ export default {
       :class="{ 'settings-open': settingsOpen, editing: editMode, image: !!image }"
       @click="settingsOpen && toggleSettings()"
   >
-    <WorkspaceTabs v-model="editorTab"/>
+    <EditTabs v-model="editorTab"/>
     <EditToolbar v-if="image && editMode"/>
     <DropZone @file-dropped="handleFileSelected">
-      <div class="edit-viewport viewport" :class="{ editing: editMode }" v-if="image || editorTab === 'about'">
+      <div class="edit-viewport viewport" :class="{ editing: editMode }" v-if="image">
         <InputEditor
             ref="inputEditor"
             v-if="editorTab === 'input'"
@@ -108,7 +106,6 @@ export default {
             :output-canvas="outputCanvas"
         />
         <SauceEditor v-if="editorTab === 'sauce'"/>
-        <AboutPhosphor v-if="editorTab === 'about'"/>
       </div>
 
       <ZeroState v-else @file-selected="handleFileSelected"/>

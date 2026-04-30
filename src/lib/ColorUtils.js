@@ -34,6 +34,23 @@ export function rgb2gray(rgb) {
   return Math.round(rgb.r * 0.2126 + rgb.g * 0.7152 + rgb.b * 0.0722) / 255.0;
 }
 
+export function nearestColor(rgb, palette) {
+  if (!palette || !palette.length) return rgb;
+  let minDist = Infinity;
+  let nearest = palette[0];
+  const { r: ar, g: ag, b: ab } = rgb;
+  for (let i = 0; i < palette.length; i++) {
+    const b = palette[i];
+    const dr = ar - b.r, dg = ag - b.g, db = ab - b.b;
+    const d = dr * dr + dg * dg + db * db;
+    if (d < minDist) {
+      minDist = d;
+      nearest = b;
+    }
+  }
+  return { ...nearest, a: rgb.a || 1, v: rgb2gray(nearest) };
+}
+
 export const CGA_COLORS_STR = '#000000 #aa0000 #00aa00 #aa5500 #0000aa #aa00aa #00aaaa #aaaaaa #555555 #ff5555 #55ff55 #ffff55 #5555ff #ff55ff #55ffff #ffffff';
 
 export const VGA_COLORS_STR = CGA_COLORS_STR + ' ' +

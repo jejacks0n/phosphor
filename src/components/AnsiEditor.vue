@@ -8,9 +8,13 @@ import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { floodFill } from '@/lib/FloodFill';
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
+import CharPicker from '@/components/CharPicker.vue';
 
 export default {
   name: 'AnsiEditor',
+  components: {
+    CharPicker,
+  },
   props: {
     pipelineCanvas: {
       type: HTMLCanvasElement,
@@ -273,7 +277,7 @@ export default {
             event.stopPropagation();
             const ix = Math.floor(pos.x);
             const iy = Math.floor(pos.y);
-            const ctx = props.outputCanvas.getContext('2d', { willReadFrequently: true });
+            const ctx = props.outputCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
             const imageData = ctx.getImageData(0, 0, projectStore.cols, projectStore.rows);
             const pixels = floodFill(imageData, ix, iy, workspaceStore.editFillTolerance, workspaceStore.editFillContiguous);
             paintPixels(pixels.map(p => ({ ...p, alpha: 1 })));
@@ -284,12 +288,17 @@ export default {
             event.stopPropagation();
             const col = Math.floor(pos.x);
             const row = Math.floor(pos.y / 2);
-            picker.value = {
-              col,
-              row,
-              x: event.touches ? event.touches[0].clientX : event.clientX,
-              y: event.touches ? event.touches[0].clientY : event.clientY,
+
+            const displayEl = displayRef.value;
+            const rect = displayEl.getBoundingClientRect();
+            const targetRect = {
+              left: rect.left + col * metrics.value.cellWidth,
+              top: rect.top + row * metrics.value.lineHeight,
+              width: metrics.value.cellWidth,
+              height: metrics.value.lineHeight,
             };
+
+            picker.value = { col, row, targetRect };
             return false;
           }
           if (workspaceStore.activeTool === 'flip') {
@@ -401,12 +410,6 @@ export default {
       picker.value = null;
     };
 
-    const handleKeydown = (e) => {
-      if (e.key === 'Escape' && picker.value) {
-        closePicker();
-      }
-    };
-
     onMounted(() => {
       queueRender();
 
@@ -432,7 +435,6 @@ export default {
           }
         });
       }
-      window.addEventListener('keydown', handleKeydown);
     });
 
     onBeforeUnmount(() => {
@@ -440,7 +442,6 @@ export default {
       if (rootRef.value) {
         rootRef.value.removeEventListener('wheel', handleWheel);
       }
-      window.removeEventListener('keydown', handleKeydown);
       if (_renderFrame.value) cancelAnimationFrame(_renderFrame.value);
     });
 
@@ -497,35 +498,13 @@ export default {
         <pre ref="pre" :style="preStyle"></pre>
         <div class="brush-preview" :style="brushPreviewStyle"></div>
 
-        <div
+        <CharPicker
             v-if="picker"
-            class="picker-backdrop"
-            @pointerdown.stop="closePicker"
-        ></div>
-
-        <div
-            v-if="picker"
-            class="char-picker"
-            :style="{ left: picker.x + 'px', top: picker.y + 'px' }"
-            @pointerdown.stop
-        >
-        <span
-            class="char-option erase"
-            title="Reset to original"
-            @pointerdown.stop="selectChar('ERASE')"
-        >⌫</span>
-          <span
-              class="char-option space"
-              title="Space"
-              @pointerdown.stop="selectChar(' ')"
-          >␣</span>
-          <span
-              v-for="ch in pickerChars"
-              :key="ch"
-              class="char-option"
-              @pointerdown.stop="selectChar(ch)"
-          >{{ ch }}</span>
-        </div>
+            :chars="pickerChars"
+            :target-rect="picker.targetRect"
+            @select="selectChar"
+            @close="closePicker"
+        />
       </div>
     </div>
   </article>
@@ -580,61 +559,5 @@ pre {
   transform: translate(-50%, -50%);
   box-shadow: 0 0 0 1px var(--black), inset 0 0 0 1px var(--black);
   z-index: 100;
-}
-
-.char-picker {
-  position: fixed;
-  z-index: 200;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  padding: 8px;
-  background: var(--surface-1);
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  max-width: 200px;
-}
-
-.char-option {
-  font-family: 'Simple Console', monospace;
-  font-size: 16px;
-  line-height: 1;
-  padding: 4px 6px;
-  cursor: pointer;
-  border-radius: 3px;
-  color: var(--text);
-  transition: background 0.1s;
-}
-
-.char-option:hover {
-  background: var(--accent);
-  color: var(--white);
-}
-
-.char-option.erase {
-  color: var(--accent-hot);
-  font-weight: bold;
-}
-
-.char-option.space {
-  color: var(--accent-glow);
-  font-weight: bold;
-}
-
-.char-option.erase:hover {
-  background: var(--accent-hot);
-  color: var(--white);
-}
-
-.char-option.space:hover {
-  background: var(--accent-glow);
-  color: var(--white);
-}
-
-.picker-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 199;
 }
 </style>

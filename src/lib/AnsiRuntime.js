@@ -10,7 +10,7 @@ export function calcMetrics(el) {
 
 	let cellWidth;
 	if (el.nodeName === 'CANVAS') {
-		const ctx = el.getContext('2d', { willReadFrequently: true });
+		const ctx = el.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
 		ctx.font = fontSize + 'px ' + fontFamily;
 		cellWidth = ctx.measureText(''.padEnd(50, 'X')).width / 50;
 	} else {

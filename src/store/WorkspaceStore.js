@@ -2,7 +2,8 @@ import { defineStore } from 'pinia';
 
 export const useWorkspaceStore = defineStore('workspace', {
   state: () => ({
-    activeTool: 'pencil',
+    inputActiveTool: 'hand',
+    outputActiveTool: 'pencil',
     previousTool: null,
     editFgColor:  '#ffffff',
     editZoom:  5,
@@ -12,6 +13,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     isCtrlPressed: false,
     isMiddleClick: false,
     settingsOpen: false,
+    showAboutModal: false,
 
     // Scroll state persistence
     inputScrollX: null,
@@ -30,11 +32,23 @@ export const useWorkspaceStore = defineStore('workspace', {
     editFillTolerance:  10,
     editFillContiguous:  true,
   }),
+  getters: {
+    activeTool(state) {
+      return state.editorTab === 'input' ? state.inputActiveTool : state.outputActiveTool;
+    }
+  },
   actions: {
     setActiveTool(tool) {
-      if (this.activeTool !== tool) {
-        this.previousTool = this.activeTool;
-        this.activeTool = tool;
+      if (this.editorTab === 'input') {
+        if (this.inputActiveTool !== tool) {
+          this.previousTool = this.inputActiveTool;
+          this.inputActiveTool = tool;
+        }
+      } else {
+        if (this.outputActiveTool !== tool) {
+          this.previousTool = this.outputActiveTool;
+          this.outputActiveTool = tool;
+        }
       }
     },
     setEditFgColor(color) {
@@ -73,11 +87,16 @@ export const useWorkspaceStore = defineStore('workspace', {
     setEditFillContiguous(contiguous) {
       this.editFillContiguous = contiguous;
     },
+    setShowAboutModal(show) {
+      this.showAboutModal = show;
+    },
   }
 });
 
 export const workspaceStateKeys = [
   'activeTool',
+  'inputActiveTool',
+  'outputActiveTool',
   'previousTool',
   'editFgColor',
   'editZoom',
@@ -87,6 +106,7 @@ export const workspaceStateKeys = [
   'isCtrlPressed',
   'isMiddleClick',
   'settingsOpen',
+  'showAboutModal',
   'inputScrollX',
   'inputScrollY',
   'ansiScrollX',
@@ -107,6 +127,7 @@ export const workspaceActionKeys = [
   'setEditorTab',
   'setEditMode',
   'toggleSettings',
+  'setShowAboutModal',
   'setEditBrushSize',
   'setEditEraserSize',
   'setEditBrushOpacity',

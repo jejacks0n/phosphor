@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
 import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
-import { rgb2hex, rgb2gray, getEffectiveColor } from "@/lib/ColorUtils.js";
+import { rgb2hex, rgb2gray, getEffectiveColor, nearestColor } from "@/lib/ColorUtils.js";
 import { applyTransforms } from "@/lib/PixelTransforms.js";
 import { applyQuantization } from "@/lib/ImageProcessor.js";
 import Canvas from "@/lib/Canvas.js";
@@ -256,7 +256,7 @@ export const useProjectStore = defineStore('project', {
               const c = document.createElement('canvas');
               c.width = paintImg.width;
               c.height = paintImg.height;
-              const ctx = c.getContext('2d', { willReadFrequently: true });
+              const ctx = c.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
               ctx.drawImage(paintImg, 0, 0);
               this.editCanvas = c;
               this.clearEditsFlag++;
@@ -425,7 +425,7 @@ export const useProjectStore = defineStore('project', {
 
     compositeEditCanvas(pipelineCanvas, outputCanvas) {
       if (!outputCanvas || !pipelineCanvas) return;
-      const ctx = outputCanvas.getContext('2d', { willReadFrequently: true });
+      const ctx = outputCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
       const w = outputCanvas.width, h = outputCanvas.height;
 
       ctx.fillStyle = 'black';
@@ -438,7 +438,7 @@ export const useProjectStore = defineStore('project', {
       const downsampled = document.createElement('canvas');
       downsampled.width = dw;
       downsampled.height = dh;
-      const dsCtx = downsampled.getContext('2d', { willReadFrequently: true });
+      const dsCtx = downsampled.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
 
       dsCtx.imageSmoothingEnabled = false;
       dsCtx.drawImage(this.editCanvas, 0, 0, dw, dh);
@@ -485,7 +485,7 @@ export const useProjectStore = defineStore('project', {
         const editTemp = document.createElement('canvas');
         editTemp.width = dw;
         editTemp.height = dh;
-        const etCtx = editTemp.getContext('2d', { willReadFrequently: true });
+        const etCtx = editTemp.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
         etCtx.drawImage(this.editCanvas, 0, 0, dw, dh);
         const editData = etCtx.getImageData(0, 0, dw, dh).data;
 
@@ -535,7 +535,7 @@ export const useProjectStore = defineStore('project', {
       if (this.editCanvas) {
         const wScale = this.editCanvas.width / dw;
         const hScale = this.editCanvas.height / dh;
-        const ctx = this.editCanvas.getContext('2d', { willReadFrequently: true });
+        const ctx = this.editCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
         const px = Math.floor(ix_grid * wScale);
         const py = Math.floor(iy_grid * hScale);
         const pixel = ctx.getImageData(px, py, 1, 1).data;
@@ -548,13 +548,13 @@ export const useProjectStore = defineStore('project', {
         this._rawCanvas = document.createElement('canvas');
         this._rawCanvas.width = this.image.naturalWidth || this.image.width;
         this._rawCanvas.height = this.image.naturalHeight || this.image.height;
-        this._rawCanvas.getContext('2d', { willReadFrequently: true }).drawImage(this.image, 0, 0);
+        this._rawCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' }).drawImage(this.image, 0, 0);
       }
       
       const rw = this._rawCanvas.width, rh = this._rawCanvas.height;
       const rx = Math.floor((ix_grid / dw) * rw);
       const ry = Math.floor((iy_grid / dh) * rh);
-      const rCtx = this._rawCanvas.getContext('2d', { willReadFrequently: true });
+      const rCtx = this._rawCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
       const rPixel = rCtx.getImageData(rx, ry, 1, 1).data;
       return rgb2hex({ r: rPixel[0], g: rPixel[1], b: rPixel[2] });
     },
@@ -563,7 +563,7 @@ export const useProjectStore = defineStore('project', {
       if (!pixels.length) return;
       this.ensureEditCanvas();
       this.hasPaint = true;
-      const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true });
+      const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
       const { dx, dy, dw, dh } = this.getFitParams(this.cols, this.rows);
       const wScale = this.editCanvas.width / dw;
       const hScale = this.editCanvas.height / dh;
@@ -629,7 +629,7 @@ export const useProjectStore = defineStore('project', {
 
     eraseEditPixels(pixels, pipelineCanvas, outputCanvas) {
       if (!this.editCanvas || !pixels.length) return;
-      const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true });
+      const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
       const { dx, dy, dw, dh } = this.getFitParams(this.cols, this.rows);
       const wScale = this.editCanvas.width / dw;
       const hScale = this.editCanvas.height / dh;
@@ -647,7 +647,6 @@ export const useProjectStore = defineStore('project', {
 
     syncBlockData(pixels, outputCanvas, dx, dy, dw, dh) {
       const canvas = new Canvas(outputCanvas);
-      if (this.activePalette) canvas.quantize(this.activePalette);
       const newBlockData = this.blockData.slice();
       const { chars: charset, charMode, renderStyle } = this.processParams;
 
@@ -658,10 +657,16 @@ export const useProjectStore = defineStore('project', {
 
         if (newBlockData[bgIdx]) {
           if (x >= dx && x < dx + dw && y >= dy && y < dy + dh) {
-            const p1 = canvas.pixels[bgIdx];
-            const p2 = canvas.pixels[fgIdx] || p1;
+            let p1 = canvas.pixels[bgIdx];
+            let p2 = canvas.pixels[fgIdx] || p1;
 
             if (p1 && p2) {
+              // Quantize only the active pixels instead of the entire canvas
+              if (this.activePalette) {
+                p1 = nearestColor(p1, this.activePalette);
+                p2 = nearestColor(p2, this.activePalette);
+              }
+
               // Determine Character (unless manually overridden)
               if (!this.charEditMap.has(ansiRow * this.cols + x)) {
                 let char;
@@ -755,13 +760,10 @@ export const useProjectStore = defineStore('project', {
 
       if (!this.blockData[bgIdx] || !this.blockData[fgIdx]) return;
 
-      // Read actual pixel colors from the output canvas — blockData.r/g/b is normalized
-      // (e.g. bg forced to black in ascii/colorAscii modes) so it doesn't reflect true colors.
-      const canvas = new Canvas(outputCanvas);
-      const p1 = canvas.pixels[bgIdx];
-      const p2 = canvas.pixels[fgIdx] || p1;
-
-      if (!p1) return;
+      // Use blockData directly to avoid expensive and Safari-broken getImageData loop.
+      // blockData contains the normalized colors (already filtered/quantized).
+      const p1 = this.blockData[bgIdx];
+      const p2 = this.blockData[fgIdx];
 
       this.paintEditPixels([
         { x: col, y: ansiRow * 2, r: p2.r, g: p2.g, b: p2.b, alpha: 1 },
@@ -803,7 +805,7 @@ export const useProjectStore = defineStore('project', {
     },
 
     clearEditLayer() {
-      if (this.editCanvas) this.editCanvas.getContext('2d', { willReadFrequently: true }).clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
+      if (this.editCanvas) this.editCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' }).clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
       this.charEditMap = new Map();
       this.hasPaint = false;
       this.clearEditsFlag++;
@@ -814,7 +816,7 @@ export const useProjectStore = defineStore('project', {
 
     takeSnapshot() {
       if (!this.editCanvas) return;
-      const ctx = this.editCanvas.getContext('2d', { willReadFrequently: true });
+      const ctx = this.editCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
       const snapshot = {
         imageData: ctx.getImageData(0, 0, this.editCanvas.width, this.editCanvas.height),
         charMap: new Map(this.charEditMap),
@@ -840,7 +842,7 @@ export const useProjectStore = defineStore('project', {
 
     restoreSnapshot(snapshot) {
       if (!this.editCanvas || !snapshot) return;
-      this.editCanvas.getContext('2d', { willReadFrequently: true }).putImageData(snapshot.imageData, 0, 0);
+      this.editCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' }).putImageData(snapshot.imageData, 0, 0);
       this.charEditMap = new Map(snapshot.charMap);
       this.hasPaint = snapshot.hasPaint;
       this.clearEditsFlag++;
@@ -851,13 +853,13 @@ export const useProjectStore = defineStore('project', {
       const canvas = document.createElement('canvas');
       canvas.width = this.image.naturalWidth || this.image.width;
       canvas.height = this.image.naturalHeight || this.image.height;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const ctx = canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
       ctx.drawImage(this.image, 0, 0);
       ctx.drawImage(this.editCanvas, 0, 0);
       const newImage = new Image();
       newImage.onload = () => {
         this.image = shallowRef(newImage);
-        const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true });
+        const editCtx = this.editCanvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
         editCtx.clearRect(0, 0, this.editCanvas.width, this.editCanvas.height);
         this.hasPaint = false;
         this.historyStack = [];

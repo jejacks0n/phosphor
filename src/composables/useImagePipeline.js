@@ -13,7 +13,7 @@ export function useImagePipeline(projectStore) {
     const canvas = document.createElement('canvas');
     canvas.width = params.cols;
     canvas.height = params.rows;
-    canvas.getContext('2d', { willReadFrequently: true });
+    canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
     return canvas;
   };
 

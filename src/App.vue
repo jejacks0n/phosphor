@@ -1,19 +1,23 @@
 <script>
-import { mapState } from 'pinia';
+import { mapState, mapActions, mapWritableState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
+import AboutPhosphor from '@/components/AboutPhosphor.vue';
 
 export default {
   name: 'App',
   components: {
     EditWorkspace,
     ControlPanel,
+    AboutPhosphor,
   },
   computed: {
     ...mapState(useProjectStore, ['image', 'hasEdits', 'isDirty']),
     ...mapState(useWorkspaceStore, ['activeTool', 'isPainting', 'isCtrlPressed', 'isMiddleClick']),
+    ...mapWritableState(useWorkspaceStore, ['showAboutModal']),
   },
   mounted() {
     window.addEventListener('beforeunload', this.onBeforeUnload);
@@ -22,6 +26,7 @@ export default {
     window.removeEventListener('beforeunload', this.onBeforeUnload);
   },
   methods: {
+    ...mapActions(useWorkspaceStore, ['setShowAboutModal']),
     onBeforeUnload(e) {
       if (this.image && (this.hasEdits || this.isDirty)) {
         e.preventDefault();
@@ -29,13 +34,14 @@ export default {
       }
     },
   },
-  };
-  </script>
+};
+</script>
 
-  <template>
+<template>
   <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick }]">
     <ControlPanel/>
     <EditWorkspace/>
+    <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
   </main>
 </template>
 

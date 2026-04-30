@@ -1,7 +1,11 @@
 <script>
+import { mapWritableState } from 'pinia';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
+
 export default {
   name: 'ProjectActions',
   computed: {
+    ...mapWritableState(useWorkspaceStore, ['showAboutModal']),
     year() {
       return new Date().getFullYear();
     },
@@ -11,10 +15,13 @@ export default {
 
 <template>
   <footer class="project-footer">
-    Brought to you by<br/>
-    <a href="https://ishifishi.work" target="_blank">ishifishi.work</a> and
-    <a href="https://euphio.org" target="_blank">euphio.org</a>
-    <div class="copyright">&copy; {{ year }} Phosphor</div>
+    <button class="link" @click="showAboutModal = true">About Phosphor</button>
+    <div>
+      Brought to you by<br/>
+      <a href="https://ishifishi.work" target="_blank">ishifishi.work</a> and
+      <a href="https://euphio.org" target="_blank">euphio.org</a>
+      <div class="copyright">&copy; {{ year }} Phosphor</div>
+    </div>
   </footer>
 </template>
 
@@ -27,17 +34,21 @@ footer.project-footer {
   color: var(--text);
 }
 
-footer a {
+a {
   text-decoration: none;
   font-weight: 600;
   color: var(--accent-hover);
 }
 
-footer a:hover {
+a:hover {
   text-decoration: underline;
 }
 
-footer div.copyright {
+div.copyright {
   opacity: 0.5;
+}
+
+button.link {
+  margin-bottom: 10px;
 }
 </style>
