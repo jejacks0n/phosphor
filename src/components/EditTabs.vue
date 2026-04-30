@@ -47,6 +47,14 @@ export default {
         this.updateIndicator();
       });
     },
+    tabs: {
+      handler() {
+        this.$nextTick(() => {
+          this.updateIndicator();
+        });
+      },
+      deep: true,
+    },
   },
   mounted() {
     window.addEventListener('resize', this.updateIndicator);

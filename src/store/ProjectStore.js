@@ -21,7 +21,7 @@ export const useProjectStore = defineStore('project', {
     aspectLock: useLocalStorage('current_file.aspectLock', true),
     renderStyle: useLocalStorage('current_file.renderStyle', 'ansi'),
     charMode: useLocalStorage('current_file.charMode', 'random'),
-    chars: useLocalStorage('current_file.chars', '*:|%.░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄'),
+    chars: useLocalStorage('current_file.chars', '.*:%░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄'),
     charsAscii: useLocalStorage('current_file.charsAscii', ' .:*%#@'),
     seed: useLocalStorage('current_file.seed', generateSlug(2)),
     smoothing: useLocalStorage('current_file.smoothing', 'low'),

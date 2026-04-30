@@ -46,7 +46,7 @@ export default {
       // Try to center horizontally on target
       let left = target.left + (target.width / 2) - (pickerRect.width / 2);
       // Position below target by default
-      let top = target.top + target.height + 10;
+      let top = target.top + target.height + 6;
       this.isBottom = true;
 
       // Constraint to viewport horizontally
@@ -57,7 +57,7 @@ export default {
 
       // If it goes off the bottom, move it above the target
       if (top + pickerRect.height > window.innerHeight - padding) {
-        top = target.top - pickerRect.height - 10;
+        top = target.top - pickerRect.height - 6;
         this.isBottom = false;
       }
 
@@ -72,7 +72,7 @@ export default {
         top: `${top}px`,
         left: `${left}px`,
         visibility: 'visible',
-        '--arrow-left': `${arrowLeft}px`,
+        '--arrow-left': `${arrowLeft - 1}px`,
       };
     },
     select(char, event) {

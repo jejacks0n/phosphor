@@ -139,7 +139,7 @@ export default {
         <input v-else type="text" id="chars" v-model.lazy="charsAscii" placeholder="characters" class="mono">
       </div>
 
-      <div v-if="renderStyle === 'ansi'" class="field">
+      <div v-if="renderStyle === 'ansi' && chars.length > 1" class="field">
         <div class="label-group"><label for="seed">Character Seed</label><HelpInfo :text="help.seed" /></div>
         <div class="row-inputs">
           <input type="text" id="seed" v-model.lazy="seed" placeholder="seed">

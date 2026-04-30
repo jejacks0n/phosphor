@@ -25,10 +25,13 @@ class VBox {
   get count() {
     if (this._count === undefined) {
       let npix = 0;
+      const hist = this.hist;
       for (let r = this.r1; r <= this.r2; r++) {
+        const rOff = r << (2 * SIGBITS);
         for (let g = this.g1; g <= this.g2; g++) {
+          const rgOff = rOff + (g << SIGBITS);
           for (let b = this.b1; b <= this.b2; b++) {
-            npix += this.hist[getColorIndex(r, g, b)] || 0;
+            npix += hist[rgOff + b] || 0;
           }
         }
       }
@@ -44,14 +47,19 @@ class VBox {
   avg() {
     if (!this._avg) {
       let ntot = 0, rsum = 0, gsum = 0, bsum = 0;
+      const hist = this.hist;
       for (let r = this.r1; r <= this.r2; r++) {
+        const rOff = r << (2 * SIGBITS);
         for (let g = this.g1; g <= this.g2; g++) {
+          const rgOff = rOff + (g << SIGBITS);
           for (let b = this.b1; b <= this.b2; b++) {
-            let h = this.hist[getColorIndex(r, g, b)] || 0;
-            ntot += h;
-            rsum += h * (r + 0.5) * (1 << RSHIFT);
-            gsum += h * (g + 0.5) * (1 << RSHIFT);
-            bsum += h * (b + 0.5) * (1 << RSHIFT);
+            let h = hist[rgOff + b] || 0;
+            if (h > 0) {
+              ntot += h;
+              rsum += h * (r + 0.5) * (1 << RSHIFT);
+              gsum += h * (g + 0.5) * (1 << RSHIFT);
+              bsum += h * (b + 0.5) * (1 << RSHIFT);
+            }
           }
         }
       }
@@ -77,13 +85,14 @@ export default function quantize(pixels, maxColors) {
   let rmin = 255, rmax = 0, gmin = 255, gmax = 0, bmin = 255, bmax = 0;
 
   for (let i = 0; i < pixels.length; i += 4) {
-    const r = pixels[i] >> RSHIFT;
-    const g = pixels[i + 1] >> RSHIFT;
-    const b = pixels[i + 2] >> RSHIFT;
     const a = pixels[i + 3];
     if (a < 128) continue; // Skip transparent
 
-    hist[getColorIndex(r, g, b)]++;
+    const r = pixels[i] >> RSHIFT;
+    const g = pixels[i + 1] >> RSHIFT;
+    const b = pixels[i + 2] >> RSHIFT;
+
+    hist[(r << (2 * SIGBITS)) + (g << SIGBITS) + b]++;
     if (r < rmin) rmin = r; if (r > rmax) rmax = r;
     if (g < gmin) gmin = g; if (g > gmax) gmax = g;
     if (b < bmin) bmin = b; if (b > bmax) bmax = b;
@@ -105,15 +114,21 @@ export default function quantize(pixels, maxColors) {
 
     const count = vbox.count;
     let sum = 0;
-    for (let i = vbox[axisToSplit + '1']; i <= vbox[axisToSplit + '2']; i++) {
+
+    // Optimized median split: calculate 1D projection first
+    const a1 = vbox[axisToSplit + '1'], a2 = vbox[axisToSplit + '2'];
+    const b1 = vbox[(axisToSplit === 'r' ? 'g' : 'r') + '1'], b2 = vbox[(axisToSplit === 'r' ? 'g' : 'r') + '2'];
+    const c1 = vbox[(axisToSplit === 'b' ? 'g' : 'b') + '1'], c2 = vbox[(axisToSplit === 'b' ? 'g' : 'b') + '2'];
+
+    for (let i = a1; i <= a2; i++) {
       let sliceCount = 0;
-      for (let j = vbox[(axisToSplit === 'r' ? 'g' : 'r') + '1']; j <= vbox[(axisToSplit === 'r' ? 'g' : 'r') + '2']; j++) {
-        for (let k = vbox[(axisToSplit === 'b' ? 'g' : 'b') + '1']; k <= vbox[(axisToSplit === 'b' ? 'g' : 'b') + '2']; k++) {
+      for (let j = b1; j <= b2; j++) {
+        for (let k = c1; k <= c2; k++) {
           let r, g, b;
           if (axisToSplit === 'r') { r = i; g = j; b = k; }
           else if (axisToSplit === 'g') { r = j; g = i; b = k; }
           else { r = j; g = k; b = i; }
-          sliceCount += hist[getColorIndex(r, g, b)] || 0;
+          sliceCount += hist[(r << (2 * SIGBITS)) + (g << SIGBITS) + b] || 0;
         }
       }
       sum += sliceCount;

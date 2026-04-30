@@ -48,22 +48,75 @@ function toGray(r, g, b) {
 	return Math.round(r * 0.2126 + g * 0.7152 + b * 0.0722) / 255.0
 }
 
+const paletteLUTs = new Map();
+
+function getPaletteLUT(palette) {
+	if (!palette || palette.length < 16) return null;
+	
+	// Create a unique key for the palette based on its colors
+	const key = palette.map(p => p.hex).join(',');
+	if (paletteLUTs.has(key)) return paletteLUTs.get(key);
+
+	const SIGBITS = 5;
+	const lut = new Uint16Array(1 << (3 * SIGBITS));
+	const palLen = palette.length;
+
+	for (let i = 0; i < lut.length; i++) {
+		const r = (i >> (2 * SIGBITS)) << (8 - SIGBITS);
+		const g = ((i >> SIGBITS) & ((1 << SIGBITS) - 1)) << (8 - SIGBITS);
+		const b = (i & ((1 << SIGBITS) - 1)) << (8 - SIGBITS);
+
+		let minDist = Infinity;
+		let nearestIdx = 0;
+		for (let j = 0; j < palLen; j++) {
+			const p = palette[j];
+			const dr = r - p.r, dg = g - p.g, db = b - p.b;
+			const d = dr * dr + dg * dg + db * db;
+			if (d < minDist) {
+				minDist = d;
+				nearestIdx = j;
+			}
+		}
+		lut[i] = nearestIdx;
+	}
+
+	// Simple cache management: keep only a few LUTs
+	if (paletteLUTs.size > 10) {
+		const firstKey = paletteLUTs.keys().next().value;
+		paletteLUTs.delete(firstKey);
+	}
+	
+	paletteLUTs.set(key, lut);
+	return lut;
+}
+
 function paletteQuantize(arrayIn, arrayOut, palette) {
 	arrayOut = arrayOut || []
 	const palLen = palette ? palette.length : 0
 	if (palLen === 0) return arrayOut
 
+	const lut = getPaletteLUT(palette);
+	const SIGBITS = 5;
+	const RSHIFT = 8 - SIGBITS;
+
 	for (let i = 0; i < arrayIn.length; i++) {
 		const a = arrayIn[i]; const ar = a.r, ag = a.g, ab = a.b
-		let minDist = Infinity; let nearest = palette[0]
-		for (let j = 0; j < palLen; j++) {
-			const b = palette[j]
-			const dr = ar - b.r, dg = ag - b.g, db = ab - b.b
-			const d = dr * dr + dg * dg + db * db
-			if (d < minDist) { minDist = d; nearest = b }
+		let nearest;
+
+		if (lut) {
+			const r = ar >> RSHIFT, g = ag >> RSHIFT, b = ab >> RSHIFT;
+			const idx = (r << (2 * SIGBITS)) + (g << SIGBITS) + b;
+			nearest = palette[lut[idx]];
+		} else {
+			let minDist = Infinity; nearest = palette[0]
+			for (let j = 0; j < palLen; j++) {
+				const b = palette[j]
+				const dr = ar - b.r, dg = ag - b.g, db = ab - b.b
+				const d = dr * dr + dg * dg + db * db
+				if (d < minDist) { minDist = d; nearest = b }
+			}
 		}
 		
-		// Optimization: Reuse existing object if possible to reduce GC pressure
 		if (!arrayOut[i]) arrayOut[i] = { r: 0, g: 0, b: 0, a: 1, v: 0 };
 		const out = arrayOut[i];
 		out.r = nearest.r; out.g = nearest.g; out.b = nearest.b; out.c = nearest.c; out.hex = nearest.hex; out.v = a.v;

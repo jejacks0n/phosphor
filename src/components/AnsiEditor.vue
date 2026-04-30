@@ -230,7 +230,8 @@ export default {
       handleTouchMove,
       handleTouchEnd,
       handleWheel,
-      centerContent
+      centerContent,
+      updateMousePos,
     } = useEditorInteractions({
       containerRef: rootRef,
       displayRef,
@@ -351,6 +352,26 @@ export default {
       const isEraser = tool === 'eraser';
       const isBrush = tool === 'brush';
 
+      // Pin the preview to the active picker cell if it exists
+      if (picker.value) {
+        return {
+          display: 'block',
+          position: 'absolute',
+          width: `${metrics.value.cellWidth}px`,
+          height: `${metrics.value.lineHeight}px`,
+          left: `${picker.value.col * metrics.value.cellWidth}px`,
+          top: `${picker.value.row * metrics.value.lineHeight}px`,
+          borderRadius: '0',
+          transform: 'none',
+          mixBlendMode: 'difference',
+          background: 'white',
+          outline: '1px solid red',
+          border: 'none',
+          boxShadow: 'none',
+          zIndex: 1000,
+        };
+      }
+
       if (!isMouseOver.value || (!isChar && !isFlip && !isEraser && !isBrush)) return { display: 'none' };
 
       if (isChar || isFlip) {
@@ -411,7 +432,8 @@ export default {
       queueRender();
     });
 
-    const closePicker = () => {
+    const closePicker = (event) => {
+      if (event) updateMousePos(event);
       picker.value = null;
     };
 
@@ -465,10 +487,10 @@ export default {
       picker,
       brushPreviewStyle,
       preStyle,
-      selectChar(char) {
+      selectChar(char, event) {
         if (!picker.value) return;
         projectStore.setCharEdit(picker.value.col, picker.value.row, char === 'ERASE' ? null : char);
-        closePicker();
+        closePicker(event);
         projectStore.takeSnapshot();
       },
       closePicker,

@@ -112,13 +112,10 @@ export function useImagePipeline(projectStore) {
     // Composite paint over filtered image
     projectStore.compositeEditCanvas(pipelineCanvas.value, tempOutputCanvas);
 
-    // Late-stage Quantization (forced into the LOCKED palette from the base image)
+    // Late-stage Quantization was already handled by compositeEditCanvas if activePalette was set.
+    // We just need a wrapper to build the block data.
     const canvasWrapper = new Canvas(tempOutputCanvas);
-    if (projectStore.activePalette) {
-      applyQuantization(canvasWrapper, projectStore.activePalette);
-    } else {
-      canvasWrapper.loadPixels();
-    }
+    // canvasWrapper.loadPixels() is called in constructor, which is sufficient if quantization happened.
 
     const finalBlockData = _buildBlockData(params, canvasWrapper);
 

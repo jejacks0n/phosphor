@@ -386,6 +386,13 @@ export function useEditorInteractions(options) {
     _zoomToPoint(newZoom, centerX, centerY);
   }
 
+  function updateMousePos(event) {
+    if (!event) return;
+    const { clientX, clientY } = _getPointerPos(event);
+    if (clientX === undefined || clientY === undefined) return;
+    _updatePointerPos(clientX, clientY);
+  }
+
   return {
     isPainting,
     mousePos,
@@ -400,5 +407,6 @@ export function useEditorInteractions(options) {
     handleWheel,
     centerContent,
     zoomToViewCenter,
+    updateMousePos,
   };
 }
