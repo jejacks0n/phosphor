@@ -1,4 +1,6 @@
 <script>
+import { PROJECT_EXTENSION } from '@/document/projectIO';
+
 export default {
   name: 'DropZone',
   data() {
@@ -11,7 +13,7 @@ export default {
     handleDrop(e) {
       this.isDragging = false;
       const file = e.dataTransfer.files[0];
-      if (file && file.type.startsWith('image/')) {
+      if (file && (file.type.startsWith('image/') || file.name.endsWith(PROJECT_EXTENSION))) {
         this.$emit('file-dropped', file);
       }
     },
@@ -21,19 +23,20 @@ export default {
 
 <template>
   <article
-    :class="{ dragging: isDragging }"
-    @dragover.prevent="isDragging = true"
-    @dragleave.prevent="isDragging = false"
-    @drop.prevent="handleDrop"
+      class="drop-zone"
+      :class="{ dragging: isDragging }"
+      @dragover.prevent="isDragging = true"
+      @dragleave.prevent="isDragging = false"
+      @drop.prevent="handleDrop"
   >
     <slot></slot>
   </article>
 </template>
 
 <style scoped>
-article {
+article.drop-zone {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   position: relative;
   background: transparent;
   display: flex;
@@ -42,6 +45,6 @@ article {
 }
 
 article.dragging {
-  background: rgba(157, 85, 255, 0.05);
+  background: var(--accent-faint);
 }
 </style>

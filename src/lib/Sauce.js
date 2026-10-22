@@ -2,13 +2,13 @@
  * Generates and appends SAUCE (Standard Architecture for Universal Comment Extensions) 
  * metadata records to ANSI files, including a comment block for Phosphor settings.
  */
-import { Buffer } from 'buffer';
+const utf8Encoder = new TextEncoder();
 
 const pad = (text, length) => {
   const bytes = new Uint8Array(length);
   bytes.fill(32);
   if (text) {
-    const textBytes = Buffer.from(text, 'utf-8');
+    const textBytes = utf8Encoder.encode(text);
     bytes.set(textBytes.slice(0, length), 0);
   }
   return bytes;
@@ -77,7 +77,7 @@ export class Sauce {
     if (!this.comments.length) return new Uint8Array(0);
     
     const output = new Uint8Array(5 + (this.comments.length * 64));
-    output.set(Buffer.from('COMNT', 'utf-8'), 0);
+    output.set(utf8Encoder.encode('COMNT'), 0);
     
     for (let i = 0; i < this.comments.length; i++) {
       output.set(pad(this.comments[i], 64), 5 + (i * 64));

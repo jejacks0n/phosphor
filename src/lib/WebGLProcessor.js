@@ -25,11 +25,16 @@ const FRAGMENT_SHADER = `
     uniform float uContrast;
     uniform float uSaturation;
     uniform float uInvert;
+    uniform vec3 uColorize;
+    uniform float uColorizeStrength;
     uniform float uSharpen;
     uniform float uFlatten; // Kuwahara radius
     uniform float uEdges;   // Sobel intensity
     uniform vec3 uEdgeColor;
     uniform float uEdgeThickness;
+
+    // Filters
+    uniform bool uApplyFilters;
 
     // Quantization
     uniform sampler2D uPalette;
@@ -61,6 +66,14 @@ const FRAGMENT_SHADER = `
 
         // Contrast
         color = (color - 0.5) * uContrast + 0.5;
+
+        // Colorize
+        if (uColorizeStrength > 0.0) {
+            vec3 hsv = rgb2hsv(color);
+            vec3 targetHsv = rgb2hsv(uColorize);
+            vec3 colorized = hsv2rgb(vec3(targetHsv.xy, hsv.z));
+            color = mix(color, colorized, uColorizeStrength);
+        }
 
         // Saturation
         vec3 hsv = rgb2hsv(color);
@@ -166,18 +179,20 @@ const FRAGMENT_SHADER = `
             color = mix(color, uEdgeColor, edgeFactor);
         }
 
-        // Sharpen
-        if (uSharpen > 0.0) {
-            vec3 neighborSum = 
-                texture2D(uImage, vTexCoord + vec2(0.0,  texel.y)).rgb +
-                texture2D(uImage, vTexCoord + vec2(0.0, -texel.y)).rgb +
-                texture2D(uImage, vTexCoord + vec2( texel.x, 0.0)).rgb +
-                texture2D(uImage, vTexCoord + vec2(-texel.x, 0.0)).rgb;
-            color = color * (1.0 + 4.0 * uSharpen) - neighborSum * uSharpen;
-        }
-
         // CSS-equivalent adjustments
-        color = applyCSSFilters(color);
+        if (uApplyFilters) {
+            color = applyCSSFilters(color);
+
+            // Sharpen (Final pass only)
+            if (uSharpen > 0.0) {
+                vec3 neighborSum = 
+                    texture2D(uImage, vTexCoord + vec2(0.0,  texel.y)).rgb +
+                    texture2D(uImage, vTexCoord + vec2(0.0, -texel.y)).rgb +
+                    texture2D(uImage, vTexCoord + vec2( texel.x, 0.0)).rgb +
+                    texture2D(uImage, vTexCoord + vec2(-texel.x, 0.0)).rgb;
+                color = color * (1.0 + 4.0 * uSharpen) - neighborSum * uSharpen;
+            }
+        }
 
         // GPU Quantization
         if (uUsePalette && uPaletteSize > 0.0) {
@@ -269,7 +284,7 @@ export default class WebGLProcessor {
     gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
   }
 
-  process(image, params, targetWidth, targetHeight, returnPixels = false) {
+  process(image, params, targetWidth, targetHeight) {
     const gl = this.gl;
     const program = this.program;
 
@@ -374,6 +389,8 @@ export default class WebGLProcessor {
       setUniform('uContrast', (params.contrast ?? 100) / 100);
       setUniform('uSaturation', (params.saturation ?? 100) / 100);
       setUniform('uInvert', (params.invert ?? 0) / 100);
+      setUniform('uColorize', params.colorize ?? [1, 0, 1]);
+      setUniform('uColorizeStrength', (params.colorizeStrength ?? 0) / 100);
       setUniform('uSharpen', (params.sharpen ?? 0) / 100);
       setUniform('uFlatten', params.flatten ?? 0);
       setUniform('uEdges', params.edges ?? 0);
@@ -381,6 +398,7 @@ export default class WebGLProcessor {
       setUniform('uEdgeThickness', params.edgeThickness ?? 1);
       setUniform('uPaletteSize', paletteSize);
       setUniform('uUsePalette', paletteSize > 0);
+      setUniform('uApplyFilters', i === passes - 1);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       currentSrc = destTex;
@@ -400,29 +418,19 @@ export default class WebGLProcessor {
     setUniform('uContrast', 1);
     setUniform('uSaturation', 1);
     setUniform('uInvert', 0);
+    setUniform('uColorize', [1, 0, 1]);
+    setUniform('uColorizeStrength', 0);
     setUniform('uSharpen', 0);
     setUniform('uFlatten', 0);
     setUniform('uEdges', 0);
     setUniform('uUsePalette', false);
+    setUniform('uApplyFilters', false);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    if (returnPixels) {
-      const pixels = new Uint8Array(w * h * 4);
-      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-
-      // Clean up multi-pass resources
-      gl.deleteFramebuffer(fb);
-      tempTextures.forEach(tex => gl.deleteTexture(tex));
-
-      return pixels;
-    }
 
     // Clean up multi-pass resources
     gl.deleteFramebuffer(fb);
     tempTextures.forEach(tex => gl.deleteTexture(tex));
-
-    return null;
   }
 
   destroy() {

@@ -4,22 +4,29 @@
 
 export function calcMetrics(el) {
 	const style = getComputedStyle(el);
-	const fontFamily = style.fontFamily;
-	const fontSize = parseFloat(style.fontSize);
-	const lineHeight = parseFloat(style.lineHeight);
-
-	let cellWidth;
-	if (el.nodeName === 'CANVAS') {
-		const ctx = el.getContext('2d', { willReadFrequently: true });
-		ctx.font = fontSize + 'px ' + fontFamily;
-		cellWidth = ctx.measureText(''.padEnd(50, 'X')).width / 50;
-	} else {
-		const span = document.createElement('span');
-		el.appendChild(span);
-		span.innerHTML = ''.padEnd(50, 'X');
-		cellWidth = span.getBoundingClientRect().width / 50;
-		el.removeChild(span);
-	}
+	
+	const span = document.createElement('span');
+	span.style.fontFamily = style.fontFamily;
+	span.style.fontSize = style.fontSize;
+	span.style.fontWeight = style.fontWeight;
+	span.style.fontVariantNumeric = style.fontVariantNumeric;
+	span.style.fontFeatureSettings = style.fontFeatureSettings;
+	span.style.lineHeight = style.lineHeight;
+	span.style.visibility = 'hidden';
+	span.style.position = 'absolute';
+	span.style.whiteSpace = 'pre';
+	span.style.display = 'block';
+	
+	// Measure width using a larger sample to average out sub-pixel errors
+	span.textContent = ''.padEnd(100, 'X');
+	document.body.appendChild(span);
+	const widthRect = span.getBoundingClientRect();
+	const cellWidth = widthRect.width / 100;
+	
+	// Measure height using a block element to get the actual line height
+	const lineHeight = widthRect.height;
+	
+	document.body.removeChild(span);
 
 	return {
 		cellWidth,

@@ -1,7 +1,14 @@
 <script>
+import { PROJECT_EXTENSION } from '@/document/projectIO';
+
 export default {
   name: 'ZeroState',
-  emits: ['file-dropped', 'file-selected'],
+  emits: ['file-dropped', 'file-selected', 'start-blank'],
+  data() {
+    return {
+      PROJECT_EXTENSION,
+    };
+  },
   methods: {
     onFileSelected(e) {
       const file = e.target.files[0];
@@ -12,22 +19,26 @@ export default {
 </script>
 
 <template>
-  <article>
+  <article class="zero-state">
     <div class="drop-zone">
       <div class="logo"></div>
       <span class="icon">⬆</span>
-      <p>Drop an image here to start</p>
+      <p>Drop an image or {{ PROJECT_EXTENSION }} file here to start</p>
       <label>
         <span class="mobile">Upload File to Start</span>
-        <span class="desktop">Browse File</span>
-        <input type="file" @change="onFileSelected" accept="image/*" hidden>
+        <span class="desktop">Browse Files</span>
+        <input type="file" @change="onFileSelected" :accept="`image/*,${PROJECT_EXTENSION}`" hidden>
       </label>
+
+      <button class="link" @click="$emit('start-blank')">
+        Start with a Blank Canvas Instead
+      </button>
     </div>
   </article>
 </template>
 
 <style scoped>
-article {
+article.zero-state {
   flex: 1;
   display: flex;
   flex-direction: column;
