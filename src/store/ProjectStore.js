@@ -8,7 +8,7 @@ import { cellIndex, charRowsOf } from "@/lib/Cells.js";
 import EditLayer, { editScaleFor } from "@/document/EditLayer.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
-import { cellKey, parseKey, withCellEdit, withoutCells } from "@/document/cellEdits.js";
+import { cellKey, parseKey, withCellEdit, withoutCells, shiftRow } from "@/document/cellEdits.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, sourceParams } from "@/store/settings.js";
@@ -411,6 +411,40 @@ export const useProjectStore = defineStore('project', {
         this.renderer.composite(this.layer, this.processParams);
       }
       this.cellEdits = withCellEdit(this.cellEdits, col, row, attrs);
+      this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.cellEdits, this.renderedCells);
+    },
+
+    // Typing: one undo entry per keystroke. Typed cells sit above paint (the last edit wins).
+    typeAt(col, row, char, attrs, { insert = false } = {}) {
+      this.ensureLayer();
+      this.beginEdit();
+      if (insert) this.shiftCells(row, col, 1);
+      this.editCell(col, row, { char, ...attrs }, { clearPaint: true });
+      this.commitEdit();
+    },
+
+    backspaceAt(col, row, attrs, { insert = false } = {}) {
+      if (col < 1) return;
+      this.ensureLayer();
+      this.beginEdit();
+      if (insert) this.shiftCells(row, col, -1);
+      else this.editCell(col - 1, row, { char: ' ', ...attrs }, { clearPaint: true });
+      this.commitEdit();
+    },
+
+    deleteAt(col, row) {
+      this.ensureLayer();
+      this.beginEdit();
+      this.shiftCells(row, col + 1, -1);
+      this.commitEdit();
+    },
+
+    // Move a row's authored cells (insert/delete); paint stays where it is.
+    shiftCells(row, fromCol, delta) {
+      const next = shiftRow(this.cellEdits, row, fromCol, delta, this.cols);
+      if (next === this.cellEdits) return;
+      this.cellEdits = next;
+      const pixels = Array.from({ length: this.cols }, (_, x) => ({ x, y: 2 * row }));
       this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.cellEdits, this.renderedCells);
     },
 

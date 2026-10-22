@@ -1,14 +1,19 @@
 <script setup>
 import { ref, computed, useTemplateRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useTextTool } from '@/composables/useTextTool';
 import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
 import EditorViewport from '@/components/EditorViewport.vue';
 import CharPicker from '@/components/CharPicker.vue';
+import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 
 // The ANSI view: cells rendered as text in a <pre>; a grid pixel is half a character cell tall.
 const projectStore = useProjectStore();
+const workspaceStore = useWorkspaceStore();
+useTextTool(projectStore, workspaceStore);
 const viewport = useTemplateRef('viewport');
 const displayRef = useTemplateRef('pre');
 
@@ -82,6 +87,19 @@ const openCharPicker = (col, row) => {
 };
 const toolContext = { openCharPicker };
 
+// The Text tool's cursor: a blinking outline on its cell.
+const cursorStyle = computed(() => {
+  const m = metrics.value, cursor = workspaceStore.textCursor;
+  if (!m || !cursor || workspaceStore.activeTool !== 'text') return { display: 'none' };
+  return {
+    display: 'block',
+    width: `${m.cellWidth}px`,
+    height: `${m.lineHeight}px`,
+    left: `${cursor.col * m.cellWidth + 2}px`,
+    top: `${cursor.row * m.lineHeight + 1}px`,
+  };
+});
+
 // While the picker is open, its cell stays highlighted.
 const pinnedStyle = computed(() => {
   const m = metrics.value;
@@ -139,6 +157,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <div class="ansi-editor">
   <EditorViewport
       ref="viewport"
       :display="displayRef"
@@ -160,11 +179,36 @@ onBeforeUnmount(() => {
     />
     <template #overlay>
       <div class="picker-cell" :style="pinnedStyle"></div>
+      <div class="text-cursor" :style="cursorStyle"></div>
     </template>
   </EditorViewport>
+  <AnsiStatusBar/>
+  </div>
 </template>
 
 <style scoped>
+div.ansi-editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.text-cursor {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 2px solid white;
+  mix-blend-mode: difference;
+  z-index: 1001;
+  animation: text-cursor-blink 1s steps(1) infinite;
+}
+
+@keyframes text-cursor-blink {
+  50% { opacity: 0; }
+}
+
 .interaction-overlay {
   position: absolute;
   inset: 0;

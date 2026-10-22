@@ -19,6 +19,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     recentColors: useLocalStorage('phosphor.recentColors', []),
     activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
     pickSwapped: false,    // the picker is only held by Alt from a paint tool
+    textCursor: null,      // { col, row } of the Text tool's cursor
+    insertMode: false,     // typing pushes the row right instead of overwriting
+    paletteLayerOpen: false, // the character palette layer has the keyboard
     editZoom:  5,
     editorTab: 'input',
     isPainting: false,
@@ -76,6 +79,13 @@ export const useWorkspaceStore = defineStore('workspace', {
       this[slot === 'fg' ? 'editFgColor' : 'editBgColor'] = hex;
       this[none] = false;
       if (remember) this.recentColors = [hex, ...this.recentColors.filter(c => c !== hex)].slice(0, RECENT_COLORS);
+    },
+    // What typing writes besides the character: a none slot is left out, so that attribute stays as it is.
+    typingAttrs() {
+      return {
+        fg: this.editFgNone ? undefined : this.editFgColor,
+        bg: this.editBgNone ? undefined : this.editBgColor,
+      };
     },
     swapColors() {
       [this.editFgColor, this.editBgColor] = [this.editBgColor, this.editFgColor];
