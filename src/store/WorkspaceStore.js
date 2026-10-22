@@ -27,6 +27,10 @@ export const useWorkspaceStore = defineStore('workspace', {
     selection: null,         // { c0, r0, c1, r1 }: the Select tool's cells (inclusive)
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     cellClipboard: null,     // a copied block of cells
+    shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse'
+    shapeFilled: false,
+    shapeDrawWith: 'double', // ANSI view: 'single' | 'double' | 'half' | 'char'
+    shapeDrag: null,         // { from, to } grid positions while a shape is being dragged
     editZoom:  5,
     editorTab: 'input',
     isPainting: false,

@@ -111,6 +111,24 @@ const previewStyle = computed(() => {
   };
 });
 
+// The Shapes tool's drag rectangle (grid positions -> CSS px), drawn while dragging.
+// In the ANSI view a line/character rectangle snaps to whole cells, so its outline does too; ANSI
+// overlays sit inside the display's 2px/1px border, like the cursor and cell highlights.
+const shapeDragStyle = computed(() => {
+  const drag = workspaceStore.shapeDrag, unit = props.unit;
+  if (!drag || !unit) return null;
+  const ansi = props.view === 'output';
+  const cellShape = ansi && workspaceStore.shapeKind === 'rect' && workspaceStore.shapeDrawWith !== 'half';
+  const x0 = Math.floor(Math.min(drag.from.x, drag.to.x)), x1 = Math.floor(Math.max(drag.from.x, drag.to.x)) + 1;
+  let y0 = Math.floor(Math.min(drag.from.y, drag.to.y)), y1 = Math.floor(Math.max(drag.from.y, drag.to.y)) + 1;
+  if (cellShape) {
+    y0 = Math.floor(y0 / 2) * 2;
+    y1 = Math.ceil(y1 / 2) * 2;
+  }
+  const [dx, dy] = ansi ? [2, 1] : [0, 0];
+  return { left: `${x0 * unit.x + dx}px`, top: `${y0 * unit.y + dy}px`, width: `${(x1 - x0) * unit.x}px`, height: `${(y1 - y0) * unit.y}px` };
+});
+
 // Padded layout: room to pan the content well past each edge.
 const viewportWidth = ref(0);
 const viewportHeight = ref(0);
@@ -204,6 +222,7 @@ defineExpose({ centerContent, updateMousePos });
       <div class="canvas-container">
         <slot/>
         <div class="tool-preview" :style="previewStyle"></div>
+        <div v-if="shapeDragStyle" class="shape-drag" :style="shapeDragStyle"></div>
         <slot name="overlay"/>
       </div>
     </div>
@@ -244,6 +263,15 @@ div.canvas-container {
 
 div.canvas-viewport.padded div.canvas-container {
   margin: 0;
+}
+
+div.shape-drag {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 100;
+  border: 1px dashed var(--white);
+  box-shadow: 0 0 0 1px var(--black);
 }
 
 div.tool-preview {

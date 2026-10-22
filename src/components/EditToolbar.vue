@@ -18,6 +18,8 @@ const tools = computed(() => {
   return offered.map((tool, i) => ({ tool, divider: i > 0 && (tool.section ?? 'draw') !== (offered[i - 1].section ?? 'draw') }));
 });
 const activeTool = computed(() => getTool(workspace.activeTool));
+// A tool's options for the current view (an option may be for one view only).
+const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option => !option.views || option.views.includes(workspace.editorTab)));
 
 // The pixel view's preview of the ANSI layer: authored cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'ANSI overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
@@ -138,12 +140,20 @@ function confirmFlatten() {
         </template>
       </div>
       <div v-if="activeTool.options" class="tool-setting-group">
-        <template v-for="(option, i) in activeTool.options" :key="option.key">
+        <template v-for="(option, i) in toolOptions" :key="option.key">
           <div v-if="i > 0" class="divider"/>
           <label v-if="option.type === 'checkbox'" class="checkbox-wrapper">
             <span>{{ option.label }}</span>
             <input type="checkbox" v-model="workspace[option.key]"/>
           </label>
+          <div v-else-if="option.type === 'segmented'" class="segmented" role="group" :aria-label="option.label">
+            <button
+                v-for="choice in option.choices"
+                :key="String(choice.value)"
+                :class="{ on: workspace[option.key] === choice.value }"
+                @click="workspace[option.key] = choice.value"
+            >{{ choice.label }}</button>
+          </div>
           <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
         </template>
       </div>
@@ -185,6 +195,23 @@ div.actions-container {
 
 div.history-group {
   margin-right: 4px;
+}
+
+div.segmented {
+  display: flex;
+  gap: 2px;
+}
+
+div.segmented button {
+  width: auto;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+div.segmented button.on {
+  background: var(--accent);
+  color: var(--white);
 }
 
 span.hint {
