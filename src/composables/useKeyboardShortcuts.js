@@ -35,6 +35,16 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return false;
   };
 
+  // X swaps the colour pair, unless something is taking text (a field, or the Text tool).
+  const _handleSwapColors = (e) => {
+    if (e.key.toLowerCase() !== 'x' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
+    const target = e.target;
+    if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName)) return false;
+    if (workspaceStore.activeTool === 'text') return false;
+    workspaceStore.swapColors();
+    return true;
+  };
+
   const _handleGlobalKeyDown = (e) => {
     if (e.key === 'Control') {
       workspaceStore.isCtrlPressed = true;
@@ -43,6 +53,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;
     if (_handleToolSwap(e)) return;
+    if (_handleSwapColors(e)) return;
   };
 
   const _handleGlobalKeyUp = (e) => {

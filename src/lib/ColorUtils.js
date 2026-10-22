@@ -131,3 +131,28 @@ export const PALETTES = {
   cga: CGA,
   vga: VGA
 };
+
+// How the colour picker lays out the active palette: one or more grids of swatches. CGA is the
+// classic 8 x 2; VGA (xterm 256) is the 16 system colours, the 6x6x6 cube and the 24 greys; custom
+// and adaptive palettes are a plain grid. 24-bit ('none') has no swatches.
+export function swatchSections(quantize, palette) {
+  if (!palette || !palette.length || quantize === 'none') return [];
+  if (quantize === 'cga') return [{ columns: 8, colors: palette }];
+  if (quantize === 'vga') {
+    return [
+      { columns: 16, colors: palette.slice(0, 16) },
+      { columns: 36, colors: palette.slice(16, 232) },
+      { columns: 24, colors: palette.slice(232, 256) },
+    ];
+  }
+  return [{ columns: Math.min(8, palette.length), colors: palette }];
+}
+
+// Distinct foreground/background colours used by authored cells, most used first.
+export function authoredColors(cellEdits, limit = 24) {
+  const counts = new Map();
+  for (const entry of cellEdits.values()) {
+    for (const hex of [entry.fg, entry.bg]) if (hex) counts.set(hex, (counts.get(hex) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([hex]) => hex);
+}

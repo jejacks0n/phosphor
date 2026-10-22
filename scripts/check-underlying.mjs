@@ -3,7 +3,7 @@
 // Run: node scripts/check-underlying.mjs
 import assert from 'node:assert/strict';
 import { sourceParams } from '../src/store/settings.js';
-import { nearestColor, nearestIndex, paletteIndex, PALETTES } from '../src/lib/ColorUtils.js';
+import { nearestColor, nearestIndex, paletteIndex, swatchSections, authoredColors, PALETTES } from '../src/lib/ColorUtils.js';
 
 const params = {
   cols: 80, rows: 50, smoothing: 'low', quantize: 'vga', renderStyle: 'ansi',
@@ -38,4 +38,13 @@ assert.equal(paletteIndex(200, 10, 10, tiny), nearestIndex(200, 10, 10, tiny));
 const t0 = performance.now();
 for (let i = 0; i < 90000; i++) paletteIndex(i & 255, (i >> 3) & 255, (i >> 7) & 255, PALETTES.vga);
 assert.ok(performance.now() - t0 < 60, `90k snaps took ${Math.round(performance.now() - t0)}ms`);
+// The picker lays out the active palette by type; colours already used by authored cells come first.
+assert.deepEqual(swatchSections('cga', PALETTES.cga).map(s => [s.columns, s.colors.length]), [[8, 16]]);
+assert.deepEqual(swatchSections('vga', PALETTES.vga).map(s => [s.columns, s.colors.length]), [[16, 16], [36, 216], [24, 24]]);
+assert.deepEqual(swatchSections('none', null), []);
+assert.deepEqual(swatchSections('palette', PALETTES.cga.slice(0, 3)).map(s => s.columns), [3]);
+assert.deepEqual(swatchSections('count', []), []);
+const edits = new Map([['0,0', { fg: '#ff0000' }], ['1,0', { fg: '#ff0000', bg: '#0000ff' }], ['2,0', { char: 'x' }]]);
+assert.deepEqual(authoredColors(edits), ['#ff0000', '#0000ff']);
+assert.equal(authoredColors(edits, 1).length, 1);
 console.log('underlying ok');

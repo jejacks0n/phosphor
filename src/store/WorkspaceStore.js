@@ -1,4 +1,7 @@
 import { defineStore } from 'pinia';
+import { useLocalStorage } from '@vueuse/core';
+
+const RECENT_COLORS = 12;
 
 export const clampZoom = (z) => Math.max(1, Math.min(16, z));
 
@@ -7,7 +10,13 @@ export const useWorkspaceStore = defineStore('workspace', {
     inputActiveTool: 'brush',
     outputActiveTool: 'hand',
     previousTool: null,
+    // The colour pair. Paint uses the foreground; typing uses both, where a none slot leaves that
+    // attribute as it is underneath (with the background none, typed text sits on the image).
     editFgColor:  '#ffffff',
+    editBgColor: '#000000',
+    editFgNone: false,
+    editBgNone: true,
+    recentColors: useLocalStorage('phosphor.recentColors', []),
     editZoom:  5,
     editorTab: 'input',
     isPainting: false,
@@ -53,6 +62,22 @@ export const useWorkspaceStore = defineStore('workspace', {
           this.outputActiveTool = tool;
         }
       }
+    },
+    // hex: choose that colour (and clear the slot's none flag); null: set the slot to none.
+    // remember: false while a native picker is being dragged, so only the final colour is recent.
+    setColor(slot, hex, { remember = true } = {}) {
+      const none = slot === 'fg' ? 'editFgNone' : 'editBgNone';
+      if (hex === null) {
+        this[none] = true;
+        return;
+      }
+      this[slot === 'fg' ? 'editFgColor' : 'editBgColor'] = hex;
+      this[none] = false;
+      if (remember) this.recentColors = [hex, ...this.recentColors.filter(c => c !== hex)].slice(0, RECENT_COLORS);
+    },
+    swapColors() {
+      [this.editFgColor, this.editBgColor] = [this.editBgColor, this.editFgColor];
+      [this.editFgNone, this.editBgNone] = [this.editBgNone, this.editFgNone];
     },
     setEditZoom(z) {
       this.editZoom = clampZoom(z);

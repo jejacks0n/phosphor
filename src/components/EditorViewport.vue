@@ -53,7 +53,8 @@ const {
     onPaintStart: (event, pos) => (tool.value.begin ? tool.value.begin(toolCtx(), pos, event) !== false : false),
     onPaintMove: (from, to) => tool.value.move?.(toolCtx(), from, to),
     onPaintEnd: () => tool.value.end?.(toolCtx()),
-    onColorPick: (pos) => { workspaceStore.editFgColor = projectStore.rawColorAt(pos.x, pos.y); },
+    // Picks repeat while dragging, so they don't fill the recent colours.
+    onColorPick: (pos) => workspaceStore.setColor('fg', projectStore.rawColorAt(pos.x, pos.y), { remember: false }),
     onZoomChange: (zoom) => workspaceStore.setEditZoom(zoom),
   },
 });

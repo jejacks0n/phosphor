@@ -3,7 +3,6 @@ import { defineStore } from 'pinia';
 import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
 import { rgb2hex, hex2rgb } from "@/lib/ColorUtils.js";
-import { getEffectiveColor } from "@/lib/PixelTransforms.js";
 import { fitRect, ctx2d } from "@/lib/Canvas.js";
 import { cellIndex, charRowsOf } from "@/lib/Cells.js";
 import EditLayer, { editScaleFor } from "@/document/EditLayer.js";
@@ -81,10 +80,6 @@ export const useProjectStore = defineStore('project', {
       charMode: state.renderStyle === 'ansi' ? 'random' : 'brightness',
       image: state.image,
     }),
-    effectiveColor(state) {
-      const workspaceStore = useWorkspaceStore();
-      return getEffectiveColor(workspaceStore.editFgColor, state, state.activePalette);
-    },
   },
 
   actions: {

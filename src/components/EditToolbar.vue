@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { TOOLS, getTool } from '@/tools';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
+import ColorPair from '@/components/ColorPair.vue';
 
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -39,10 +40,7 @@ function confirmFlatten() {
   <article class="edit-toolbar">
     <div class="toolbar-row primary-row">
       <div class="color-group">
-        <div class="color-preview-container">
-          <input type="color" v-model="workspace.editFgColor" title="Select paint color"/>
-          <div class="effective-preview" :style="{ backgroundColor: project.effectiveColor }" title="Effective color (after adjustments)"></div>
-        </div>
+        <ColorPair/>
       </div>
 
       <div class="tool-group">
@@ -167,29 +165,6 @@ div.actions-container {
 
 div.history-group {
   margin-right: 4px;
-}
-
-div.color-group input[type=color] {
-  width: 32px;
-  height: 26px;
-  padding: 3px;
-  border-radius: 4px 0 0 4px;
-  border: 1px solid var(--border);
-  border-right: none;
-  background: var(--surface-2);
-}
-
-div.color-group div.color-preview-container {
-  display: flex;
-  align-items: center;
-}
-
-div.color-group div.effective-preview {
-  width: 12px;
-  height: 24px;
-  border: 1px solid var(--border);
-  border-radius: 0 4px 4px 0;
-  box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.2);
 }
 
 div.tool-setting-group {
