@@ -3,6 +3,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { typeAtCursor } from '@/composables/useTextTool';
+import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 
 // The Text tool's F-key strip: the active palette's 12 glyphs (tap one to type it, which is how
 // touch screens use F-keys), and the palette controls on the right. No palette name, so the strip
@@ -39,12 +40,23 @@ const use = (glyph) => {
     <div class="spacer"></div>
     <!-- Clicks don't take focus, so a following Space/Enter types instead of re-pressing the button. -->
     <button class="nav" title="Previous palette (Alt+←)" aria-label="Previous palette" @mousedown.prevent @click="palettes.flip(-1)">◂</button>
+    <button
+        class="nav"
+        :class="{ on: workspace.paletteLayerOpen }"
+        data-palette-toggle
+        title="Palettes"
+        aria-label="Palettes"
+        @mousedown.prevent
+        @click="workspace.paletteLayerOpen = !workspace.paletteLayerOpen"
+    >▤</button>
     <button class="nav" title="Next palette (Alt+→)" aria-label="Next palette" @mousedown.prevent @click="palettes.flip(1)">▸</button>
+    <CharPaletteLayer v-if="workspace.paletteLayerOpen" @close="workspace.paletteLayerOpen = false"/>
   </div>
 </template>
 
 <style scoped>
 div.palette-strip {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
