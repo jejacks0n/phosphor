@@ -22,20 +22,29 @@ export default class Renderer {
   #pipelineData = null; // pipelineCanvas pixels: the image under authored cells
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
   #effective = new Map(); // stored colour -> displayed Color, until the next render
+  #source = null;       // { key, data }: the image through the pipeline with nothing applied (underlying colours)
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.pipelineCanvas = this.outputCanvas = this.palette = null;
-    this.#pipelineData = this.#paintData = null;
+    this.#pipelineData = this.#paintData = this.#source = null;
     this.#effective = new Map();
   }
 
-  async render(image, params, layer) {
+  // sourceParams: params with every adjustment, effect and palette neutral (settings.sourceParams).
+  async render(image, params, layer, sourceParams) {
     const { canvas: pipeline, paletteColors } = await processImage(image, params);
     this.pipelineCanvas = pipeline.canvas;
     this.palette = paletteColors;
     this.#pipelineData = ctx2d(this.pipelineCanvas).getImageData(0, 0, params.cols, params.rows);
     this.#effective = new Map();
+
+    // Underlying colours depend only on the image, grid, smoothing and CGA/VGA, so adjustments don't redo this.
+    const sourceKey = [params.cols, params.rows, params.smoothing, sourceParams?.quantize].join();
+    if (sourceParams && (this.#source?.image !== image || this.#source.key !== sourceKey)) {
+      const { canvas: source } = await processImage(image, sourceParams);
+      this.#source = { image, key: sourceKey, data: ctx2d(source.canvas).getImageData(0, 0, params.cols, params.rows) };
+    }
 
     const output = document.createElement('canvas');
     output.width = params.cols;
@@ -170,6 +179,16 @@ export default class Renderer {
     if (!data || x < 0 || y < 0 || x >= data.width || y >= data.height) return null;
     const o = (y * data.width + x) * 4;
     return data.data[o + 3] ? { r: data.data[o], g: data.data[o + 1], b: data.data[o + 2], a: data.data[o + 3] / 255 } : null;
+  }
+
+  // A grid pixel of the image downsampled by the pipeline with nothing applied, or null before the
+  // first render. Black in the letterbox, as the pipeline fills it.
+  // cols/rows: the current grid; between a resize and its render the cached pixels are stale.
+  sourceAt(x, y, cols, rows) {
+    const data = this.#source?.data;
+    if (!data || data.width !== cols || data.height !== rows || x < 0 || y < 0 || x >= cols || y >= rows) return null;
+    const o = (y * data.width + x) * 4;
+    return { r: data.data[o], g: data.data[o + 1], b: data.data[o + 2] };
   }
 
   // The generated cell from the image alone (no paint): what an authored cell sits on. Null while

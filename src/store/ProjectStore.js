@@ -12,7 +12,7 @@ import History from "@/document/History.js";
 import { cellKey, parseKey, withCellEdit, withoutCells } from "@/document/cellEdits.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
-import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults } from "@/store/settings.js";
+import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, sourceParams } from "@/store/settings.js";
 
 const MAX_DIMENSION = 300;
 const DEFAULT_COLS = getSetting('cols').default;
@@ -326,7 +326,7 @@ export const useProjectStore = defineStore('project', {
         this._renderQueued = false;
         if (!this.image) return;
         this.ensureLayer();
-        this.renderedCells = await this.renderer.render(this.image, this.processParams, this.layer);
+        this.renderedCells = await this.renderer.render(this.image, this.processParams, this.layer, sourceParams(this.processParams));
         this.activePalette = this.renderer.palette;
         this.applyCellEdits();
       });
@@ -338,32 +338,40 @@ export const useProjectStore = defineStore('project', {
       this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.cellEdits, this.renderedCells);
     },
 
-    getRawColorAt(x, y) {
+    // The colour under grid pixel (x, y) before adjustments: paint if there is any, else the source.
+    rawColorAt(x, y) {
       if (!this.image) return '#000000';
-
       this.ensureLayer();
+      x = Math.floor(x);
+      y = Math.floor(y);
       const painted = this.layer?.colorAt(x, y);
-      if (painted) return rgb2hex(painted);
+      return painted ? rgb2hex(painted) : this.sourceColorAt(x, y);
+    },
 
-      const { dx, dy, dw, dh } = this.getFitParams(this.cols, this.rows);
-      const ix_grid = x - dx;
-      const iy_grid = y - dy;
-      if (ix_grid < 0 || iy_grid < 0 || ix_grid >= dw || iy_grid >= dh) return '#000000';
+    // The image under grid pixel (x, y) before adjustments, as the pipeline downsamples it.
+    sourceColorAt(x, y) {
+      const source = this.renderer.sourceAt(x, y, this.cols, this.rows);
+      return source ? rgb2hex(source) : '#000000';
+    },
 
-      // Readable copy of the base image, rebuilt whenever the image changes (load, merge)
-      if (this._rawImage !== this.image) {
-        this._rawImage = this.image;
-        this._rawCanvas = document.createElement('canvas');
-        this._rawCanvas.width = this.image.naturalWidth || this.image.width;
-        this._rawCanvas.height = this.image.naturalHeight || this.image.height;
-        ctx2d(this._rawCanvas).drawImage(this.image, 0, 0);
-      }
-
-      const rw = this._rawCanvas.width, rh = this._rawCanvas.height;
-      const rx = Math.floor((ix_grid / dw) * rw);
-      const ry = Math.floor((iy_grid / dh) * rh);
-      const rPixel = ctx2d(this._rawCanvas).getImageData(rx, ry, 1, 1).data;
-      return rgb2hex({ r: rPixel[0], g: rPixel[1], b: rPixel[2] });
+    // What's under a cell, as stored colours (pre-adjustment), for the eyedropper, flip and bake.
+    // Spec "Bake and the eyedropper on generated cells", trial rule (a): stored colours are the
+    // pre-adjustment ones, so they keep following the adjustments. withPaint: paint (on top) wins
+    // per half; otherwise authored attributes, then the source image.
+    underlyingAt(col, row, { withPaint = true } = {}) {
+      const entry = this.cellEditAt(col, row) ?? {};
+      const half = (y, attr) => {
+        const painted = withPaint && this.layer?.colorAt(col, y);
+        if (painted) return rgb2hex(painted);
+        return entry[attr] ?? this.sourceColorAt(col, y);
+      };
+      const i = cellIndex(col, row, this.cols);
+      const shown = withPaint ? this.cells[i] : null;
+      return {
+        char: shown?.char ?? entry.char ?? this.renderedCells[i]?.char ?? ' ',
+        bg: half(2 * row, 'bg'),
+        fg: half(2 * row + 1, 'fg'),
+      };
     },
 
     paintEditPixels(pixels, opacity = 100) {
@@ -427,13 +435,13 @@ export const useProjectStore = defineStore('project', {
     },
 
     flipCell(col, row) {
-      const cell = this.cells[cellIndex(col, row, this.cols)];
-      if (!cell) return;
+      if (!this.cells[cellIndex(col, row, this.cols)]) return;
       if (!this.cellEditAt(col, row) || this.cellHasPaint(col, row)) {
         this.flipPaint(col, row);
         return;
       }
-      this.editCell(col, row, { fg: cell.bg.hex, bg: cell.fg.hex });
+      const { fg, bg } = this.underlyingAt(col, row);
+      this.editCell(col, row, { fg: bg, bg: fg });
     },
 
     // Swap a cell's two pixels in the paint layer, using the real colours from the output canvas
@@ -466,7 +474,7 @@ export const useProjectStore = defineStore('project', {
       for (const [key, entry] of this.cellEdits) {
         const { col, row } = parseKey(key);
         if (!this.cellHasPaint(col, row)) continue;
-        next = withCellEdit(next, col, row, { bg: this.getRawColorAt(col, 2 * row), fg: this.getRawColorAt(col, 2 * row + 1), char: entry.char });
+        next = withCellEdit(next, col, row, { bg: this.rawColorAt(col, 2 * row), fg: this.rawColorAt(col, 2 * row + 1), char: entry.char });
         pixels.push({ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 });
       }
       if (!pixels.length) return;

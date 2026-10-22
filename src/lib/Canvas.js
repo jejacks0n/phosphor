@@ -1,7 +1,7 @@
 /**
  * A wrapper for a canvas element providing high-quality downscaling and pixel management.
  */
-import { toGray, nearestIndex } from './ColorUtils.js'
+import { toGray, paletteIndex } from './ColorUtils.js'
 
 // 2D context with the settings every canvas in the app uses: CPU-backed for getImageData,
 // explicit sRGB so Safari doesn't hand back Display P3 values.
@@ -9,57 +9,14 @@ export function ctx2d(canvas) {
 	return canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })
 }
 
-const paletteLUTs = new Map();
-
-function getPaletteLUT(palette) {
-	if (!palette || palette.length < 16) return null;
-	
-	// Create a unique key for the palette based on its colors
-	const key = palette.map(p => p.hex).join(',');
-	if (paletteLUTs.has(key)) return paletteLUTs.get(key);
-
-	const SIGBITS = 5;
-	const lut = new Uint16Array(1 << (3 * SIGBITS));
-
-	for (let i = 0; i < lut.length; i++) {
-		const r = (i >> (2 * SIGBITS)) << (8 - SIGBITS);
-		const g = ((i >> SIGBITS) & ((1 << SIGBITS) - 1)) << (8 - SIGBITS);
-		const b = (i & ((1 << SIGBITS) - 1)) << (8 - SIGBITS);
-
-		lut[i] = nearestIndex(r, g, b, palette);
-	}
-
-	// Simple cache management: keep only a few LUTs
-	if (paletteLUTs.size > 10) {
-		const firstKey = paletteLUTs.keys().next().value;
-		paletteLUTs.delete(firstKey);
-	}
-	
-	paletteLUTs.set(key, lut);
-	return lut;
-}
-
 function paletteQuantize(arrayIn, arrayOut, palette) {
 	arrayOut = arrayOut || []
 	const palLen = palette ? palette.length : 0
 	if (palLen === 0) return arrayOut
 
-	const lut = getPaletteLUT(palette);
-	const SIGBITS = 5;
-	const RSHIFT = 8 - SIGBITS;
-
 	for (let i = 0; i < arrayIn.length; i++) {
-		const a = arrayIn[i]; const ar = a.r, ag = a.g, ab = a.b
-		let nearest;
-
-		if (lut) {
-			const r = ar >> RSHIFT, g = ag >> RSHIFT, b = ab >> RSHIFT;
-			const idx = (r << (2 * SIGBITS)) + (g << SIGBITS) + b;
-			nearest = palette[lut[idx]];
-		} else {
-			nearest = palette[nearestIndex(ar, ag, ab, palette)];
-		}
-		
+		const a = arrayIn[i]
+		const nearest = palette[paletteIndex(a.r, a.g, a.b, palette)]
 		if (!arrayOut[i]) arrayOut[i] = { r: 0, g: 0, b: 0, a: 1, v: 0 };
 		const out = arrayOut[i];
 		out.r = nearest.r; out.g = nearest.g; out.b = nearest.b; out.c = nearest.c; out.hex = nearest.hex; out.v = a.v;
