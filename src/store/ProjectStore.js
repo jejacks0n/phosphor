@@ -9,6 +9,7 @@ import { cellIndex, cellOfPixel, charRowsOf } from "@/lib/Cells.js";
 import EditLayer, { editScaleFor } from "@/document/EditLayer.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
+import { migrateCharEdits, parseKey } from "@/document/cellEdits.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults } from "@/store/settings.js";
@@ -188,7 +189,8 @@ export const useProjectStore = defineStore('project', {
         settings,
         imageBuffer: this.imageBuffer,
         paintBlob: this.layer ? await this.layer.toBlob() : null,
-        charEdits: this.charEditMap,
+        // Interim until the store holds the cell layer: char edits as char-only entries.
+        cellEdits: migrateCharEdits([...this.charEditMap], this.cols),
       });
       downloadBlob(blob, `${this.filename}${PROJECT_EXTENSION}`);
       this.markSaved();
@@ -198,7 +200,11 @@ export const useProjectStore = defineStore('project', {
       if (!file || !file.name.endsWith(PROJECT_EXTENSION)) return;
 
       try {
-        const { settings, imageBuffer, paintBuffer, charEdits } = await readProject(file);
+        const { settings, imageBuffer, paintBuffer, cellEdits } = await readProject(file);
+        const charEdits = new Map([...cellEdits].flatMap(([key, entry]) => {
+          const { col, row } = parseKey(key);
+          return entry.char ? [[cellIndex(col, row, settings.cols ?? this.cols), entry.char]] : [];
+        }));
         const image = await loadImage(imageBuffer);
         const paint = paintBuffer && await loadImage(paintBuffer, 'image/png');
 
