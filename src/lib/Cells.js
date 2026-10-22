@@ -6,7 +6,8 @@
  * Cell  = { char, fg: Color, bg: Color }
  */
 import Random from 'random-seed';
-import { rgb2hex, rgb2gray } from './ColorUtils.js';
+import { rgb2hex, rgb2gray, nearestColor } from './ColorUtils.js';
+import { coverageOf } from './GlyphCoverage.js';
 
 const ASCII_BG = { r: 0, g: 0, b: 0, hex: '#000000', c: 0 };
 
@@ -56,4 +57,55 @@ export function buildCells(pixels, cols, rows, { charset, charMode, renderStyle,
     }
   }
   return cells;
+}
+
+// The unique character cells under grid pixels, in order of first touch (off-grid pixels skipped).
+export function cellsOfPixels(pixels, cols, rows) {
+  const seen = new Set();
+  const cells = [];
+  for (const { x, y } of pixels) {
+    const cell = cellAt(x, y, cols, rows);
+    if (!cell || seen.has(cellIndex(cell.col, cell.row, cols))) continue;
+    seen.add(cellIndex(cell.col, cell.row, cols));
+    cells.push(cell);
+  }
+  return cells;
+}
+
+const mix = (a, b, t) => ({
+  r: Math.round(a.r + (b.r - a.r) * t),
+  g: Math.round(a.g + (b.g - a.g) * t),
+  b: Math.round(a.b + (b.b - a.b) * t),
+});
+
+// What a cell looks like at pixel scale: per half, the background blended toward the foreground by
+// how much of that half the glyph inks.
+export function halfColors(cell, coverage = coverageOf) {
+  const [top, bottom] = coverage(cell.char);
+  return [mix(cell.bg, cell.fg, top), mix(cell.bg, cell.fg, bottom)];
+}
+
+// An authored entry over the generated cell under it. effective(hex) turns a stored colour into the
+// Color it displays as. ASCII saves white on black, so authored colours are kept but not shown.
+export function composeCell(under, entry, renderStyle, effective) {
+  const char = entry.char ?? under.char;
+  if (renderStyle === 'ascii') return { char, fg: under.fg, bg: under.bg };
+  return {
+    char,
+    fg: entry.fg ? effective(entry.fg) : under.fg,
+    bg: entry.bg ? effective(entry.bg) : under.bg,
+  };
+}
+
+// Paint over a cell: a painted half shows the paint (blended by its alpha) over that half's colour,
+// and the cell becomes a half-block the way image cells are built. Unpainted cells are returned as is.
+export function coverCell(cell, paintTop, paintBottom, { renderStyle, charset, palette }) {
+  const aTop = paintTop?.a ?? 0, aBottom = paintBottom?.a ?? 0;
+  if (!aTop && !aBottom) return cell;
+  const [ht, hb] = halfColors(cell);
+  const snap = (p) => (palette && palette.length ? nearestColor(p, palette) : p);
+  const top = snap(aTop ? mix(ht, paintTop, aTop) : ht);
+  const bottom = snap(aBottom ? mix(hb, paintBottom, aBottom) : hb);
+  const char = renderStyle === 'ansi' ? '▄' : brightnessChar(top, bottom, charset || '▄');
+  return buildCell(top, bottom, char, renderStyle);
 }

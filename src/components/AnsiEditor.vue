@@ -173,6 +173,7 @@ onBeforeUnmount(() => {
 pre {
   margin: 0;
   padding: 0;
+  /* GlyphCoverage.DISPLAY_FONT must match this font, size and line-height */
   font-family: 'JetBrains Mono', monospace;
   font-size: 17px;
   line-height: 1.2;

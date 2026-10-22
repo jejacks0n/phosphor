@@ -1,0 +1,51 @@
+// Composition of authored cells: glyph coverage, half-cell colours, authored attributes over the
+// generated cell, paint over an authored cell, and effective (adjusted + snapped) colours.
+// Run: node scripts/check-compose.mjs
+import assert from 'node:assert/strict';
+import { coverageOf, setGlyphRasterizer } from '../src/lib/GlyphCoverage.js';
+import { halfColors, composeCell, coverCell, cellsOfPixels } from '../src/lib/Cells.js';
+import { effectiveColor, getEffectiveColor } from '../src/lib/PixelTransforms.js';
+import { rgb2hex, hex2rgb, PALETTES } from '../src/lib/ColorUtils.js';
+
+const C = (r, g, b, c) => ({ r, g, b, hex: rgb2hex({ r, g, b }), c: c ?? [r, g, b] });
+const hexToColor = (hex) => ({ ...hex2rgb(hex), hex });
+const NEUTRAL = { brightness: 100, contrast: 100, saturation: 100, hue: 0, invert: 0, colorize: '#ff00ff', colorizeStrength: 0 };
+const white = C(255, 255, 255), black = C(0, 0, 0), red = C(255, 0, 0), blue = C(0, 0, 255);
+
+assert.deepEqual(coverageOf('▀'), [1, 0]);
+assert.deepEqual(coverageOf('A'), [0.5, 0.5]);                      // no rasterizer in node
+setGlyphRasterizer(() => [0.2, 0.4]);
+assert.deepEqual(coverageOf('A'), [0.2, 0.4]);
+assert.deepEqual(coverageOf('▄'), [0, 1]);                          // exact table wins over the rasterizer
+setGlyphRasterizer(null);
+assert.deepEqual(coverageOf('A'), [0.5, 0.5]);                      // clearing the rasterizer clears its cache
+assert.deepEqual(halfColors({ char: '▀', fg: red, bg: blue }), [{ r: 255, g: 0, b: 0 }, { r: 0, g: 0, b: 255 }]);
+assert.deepEqual(halfColors({ char: '░', fg: white, bg: black }), [{ r: 64, g: 64, b: 64 }, { r: 64, g: 64, b: 64 }]);
+
+const under = { char: '▄', fg: blue, bg: black };
+const eff = (hex) => ({ ...hexToColor(hex), c: 'E' });              // stub marks effective colours
+const a = composeCell(under, { char: 'A', fg: '#ffff55' }, 'ansi', eff);
+assert.equal(a.char, 'A'); assert.equal(a.fg.c, 'E'); assert.equal(a.bg, black);
+assert.equal(composeCell(under, { fg: '#ffff55' }, 'ascii', eff).fg, blue);   // ascii ignores authored colours
+assert.equal(composeCell(under, { bg: '#ff0000' }, 'colorAscii', eff).bg.c, 'E');
+assert.equal(composeCell(under, {}, 'ansi', eff).char, '▄');
+
+const full = { char: '█', fg: white, bg: black };
+assert.equal(coverCell(full, null, { r: 1, g: 2, b: 3, a: 0 }, { renderStyle: 'ansi', charset: '', palette: null }), full);
+const covered = coverCell(full, { r: 255, g: 0, b: 0, a: 1 }, null, { renderStyle: 'ansi', charset: '', palette: null });
+assert.equal(covered.char, '▄');
+assert.equal(covered.bg.hex, '#ff0000');                           // painted top
+assert.equal(covered.fg.hex, '#ffffff');                           // unpainted bottom keeps the glyph's half colour
+const cga = coverCell(full, { r: 250, g: 90, b: 80, a: 1 }, null, { renderStyle: 'ansi', charset: '', palette: PALETTES.cga });
+assert.equal(cga.bg.c, 9);                                         // snapped to #ff5555: carries a palette index for CGA export
+const half = coverCell(full, { r: 255, g: 0, b: 0, a: 0.5 }, null, { renderStyle: 'ansi', charset: '', palette: null });
+assert.equal(half.bg.hex, rgb2hex({ r: 255, g: 128, b: 128 }));    // partial paint blends over the glyph's half colour
+assert.equal(coverCell(full, { r: 0, g: 0, b: 0, a: 1 }, null, { renderStyle: 'ascii', charset: ' .#', palette: null }).char, '.');
+
+assert.equal(effectiveColor('#ff5555', NEUTRAL, PALETTES.cga).c, 9);
+assert.equal(effectiveColor('#fe0101', NEUTRAL, PALETTES.cga).c, 1);   // nearest is #aa0000, not #ff5555
+assert.deepEqual(effectiveColor('#123456', NEUTRAL), { r: 0x12, g: 0x34, b: 0x56, hex: '#123456', c: [0x12, 0x34, 0x56] });
+assert.equal(getEffectiveColor('#123456', NEUTRAL), '#123456');
+assert.deepEqual(cellsOfPixels([{ x: 1.5, y: 0 }, { x: 1.2, y: 1 }, { x: -1, y: 0 }, { x: 0, y: 4 }], 4, 4), [{ col: 1, row: 0 }]);
+assert.equal(coverCell({ char: '█', fg: { r: 255, g: 255, b: 255, hex: '#ffffff', c: [255, 255, 255] }, bg: { r: 0, g: 0, b: 0, hex: '#000000', c: [0, 0, 0] } }, { r: 0, g: 0, b: 0, a: 1 }, null, { renderStyle: 'colorAscii', charset: '', palette: null }).char, '▄'); // empty charset falls back like buildCells
+console.log('compose ok');
