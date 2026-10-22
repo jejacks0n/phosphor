@@ -9,7 +9,7 @@ const flipAt = (project, pos) => {
   const key = `${cell.col},${cell.row}`;
   if (flipped.has(key)) return;
   flipped.add(key);
-  project.flipAnsiColors(cell.col, cell.row);
+  project.flipCell(cell.col, cell.row);
 };
 
 export default {

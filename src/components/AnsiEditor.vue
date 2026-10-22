@@ -108,7 +108,8 @@ const closePicker = (event) => {
 
 const selectChar = (char, event) => {
   if (!picker.value) return;
-  projectStore.setCharEdit(picker.value.col, picker.value.row, char === 'ERASE' ? null : char);
+  // The last edit to a cell wins: picking a character removes the paint over it.
+  projectStore.editCell(picker.value.col, picker.value.row, { char: char === 'ERASE' ? null : char }, { clearPaint: true });
   closePicker(event);
   projectStore.commitEdit();
 };

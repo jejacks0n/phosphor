@@ -2,6 +2,7 @@
 import { mapState, mapWritableState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { setGlyphRasterizer, rasterizeCoverage, DISPLAY_FONT_CSS } from '@/lib/GlyphCoverage';
 
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
@@ -21,6 +22,13 @@ export default {
   },
   mounted() {
     window.addEventListener('beforeunload', this.onBeforeUnload);
+    // Glyph coverage is measured in the ANSI view's font, which loads lazily; either view can be
+    // shown first, so install the rasterizer here once that font is ready, then re-render.
+    document.fonts.load(DISPLAY_FONT_CSS).then(() => {
+      setGlyphRasterizer(rasterizeCoverage);
+      const project = useProjectStore();
+      if (project.image) project.render();
+    });
   },
   beforeUnmount() {
     window.removeEventListener('beforeunload', this.onBeforeUnload);

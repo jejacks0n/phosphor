@@ -1,4 +1,10 @@
 import { squarePixels } from '@/lib/Brushes';
+import { cellsOfPixels } from '@/lib/Cells';
+
+// In the ANSI view the eraser removes paint first; a cell with no paint is released back to the
+// image. Cells whose paint this stroke erased aren't then released by the same stroke.
+let paintErased = new Set();
+const keyOf = ({ col, row }) => `${col},${row}`;
 
 const eraser = {
   id: 'eraser',
@@ -11,17 +17,24 @@ const eraser = {
     { key: 'editEraserSize', label: 'Size', title: 'Eraser size', min: 1, max: 20, step: 1 },
   ],
   begin(ctx, pos) {
+    paintErased = new Set();
     eraser.move(ctx, pos, pos);
     return true;
   },
   move({ project, workspace, view }, from, to) {
     if (!project.renderer.outputCanvas) return;
     const pixels = squarePixels(from, to, workspace.editEraserSize, project.cols, project.rows);
+    if (view !== 'output') {
+      project.eraseEditPixels(pixels);
+      return;
+    }
+    const cells = cellsOfPixels(pixels, project.cols, project.rows);
+    cells.filter(cell => project.cellHasPaint(cell.col, cell.row)).forEach(cell => paintErased.add(keyOf(cell)));
     project.eraseEditPixels(pixels);
-    // Char edits only show in the ANSI view, so only erase them there
-    if (view === 'output') project.clearCharEditsAt(pixels);
+    project.releaseCells(cells.filter(cell => !paintErased.has(keyOf(cell))));
   },
   end({ project }) {
+    paintErased = new Set();
     project.commitEdit();
   },
 };

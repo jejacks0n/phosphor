@@ -1,29 +1,41 @@
 /**
  * Turns the image + settings + paint layer into cells. Owns the two canvases the editors read:
  * pipelineCanvas (processed image at cols x rows, no paint) and outputCanvas (pipeline + paint,
- * quantized), which cells are built from.
+ * quantized), which generated cells are built from.
+ *
+ * Authored cells (cellEdits, see cellEdits.js) compose over the paint-free image, and paint draws
+ * over them: image -> authored cells -> paint.
  */
 import { processImage, applyQuantization } from '../lib/ImageProcessor.js';
 import { applyTransforms } from '../lib/PixelTransforms.js';
 import { nearestColor } from '../lib/ColorUtils.js';
+import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d } from '../lib/Canvas.js';
-import { buildCells, buildCell, brightnessChar, cellIndex, cellOfPixel } from '../lib/Cells.js';
+import { buildCells, buildCell, brightnessChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
+import { cellKey, parseKey } from './cellEdits.js';
 
 export default class Renderer {
   pipelineCanvas = null;
   outputCanvas = null;
   palette = null;
   #scratch = null;
+  #pipelineData = null; // pipelineCanvas pixels: the image under authored cells
+  #paintData = null;    // transformed paint at grid resolution, from the last composite()
+  #effective = new Map(); // stored colour -> displayed Color, until the next render
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.pipelineCanvas = this.outputCanvas = this.palette = null;
+    this.#pipelineData = this.#paintData = null;
+    this.#effective = new Map();
   }
 
   async render(image, params, layer) {
     const { canvas: pipeline, paletteColors } = await processImage(image, params);
     this.pipelineCanvas = pipeline.canvas;
     this.palette = paletteColors;
+    this.#pipelineData = ctx2d(this.pipelineCanvas).getImageData(0, 0, params.cols, params.rows);
+    this.#effective = new Map();
 
     const output = document.createElement('canvas');
     output.width = params.cols;
@@ -57,6 +69,7 @@ export default class Renderer {
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(this.pipelineCanvas, 0, 0, w, h);
 
+    this.#paintData = null;
     if (!layer) return;
 
     const br = parseFloat(params.brightness) / 100;
@@ -85,6 +98,7 @@ export default class Renderer {
       scratchCtx.putImageData(id, 0, 0);
     }
 
+    this.#paintData = scratchCtx.getImageData(0, 0, w, h);
     ctx.drawImage(this.#scratch, 0, 0);
 
     if (this.palette && this.palette.length > 0) {
@@ -94,7 +108,7 @@ export default class Renderer {
 
   // Rebuild only the cells under the given grid pixels from the (already composited) output canvas.
   // baseCells (the last full render) supplies a cell's character in random mode.
-  updateCells(cells, pixels, params, charEdits, baseCells) {
+  updateCells(cells, pixels, params, cellEdits, baseCells) {
     if (!this.outputCanvas) return cells;
     const canvas = new Canvas(this.outputCanvas);
     const next = cells.slice();
@@ -107,6 +121,12 @@ export default class Renderer {
       if (done.has(i) || !next[i]) continue;
       done.add(i);
 
+      const entry = cellEdits.get(cellKey(col, row));
+      if (entry) {
+        next[i] = this.#composeOne(col, row, params, entry, baseCells);
+        continue;
+      }
+
       let top = canvas.pixels[cellIndex(col, 2 * row, cols)];
       if (!top) continue; // output canvas from an older grid size
       let bottom = canvas.pixels[cellIndex(col, 2 * row + 1, cols)] || top;
@@ -116,10 +136,70 @@ export default class Renderer {
         bottom = nearestColor(bottom, this.palette);
       }
 
-      // Char edits win; random mode keeps the cell's rendered character
-      const char = charEdits.get(i) ?? (charMode === 'brightness' ? brightnessChar(top, bottom, charset) : (baseCells[i] ?? next[i]).char);
+      // Random mode keeps the cell's rendered character
+      const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset) : (baseCells[i] ?? next[i]).char;
       next[i] = buildCell(top, bottom, char, renderStyle);
     }
     return next;
+  }
+
+  // Generated cells with every in-grid authored cell composed in.
+  composeAll(baseCells, cellEdits, params) {
+    const cells = baseCells.slice();
+    const rows = charRowsOf(params.rows);
+    for (const [key, entry] of cellEdits) {
+      const { col, row } = parseKey(key);
+      if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#composeOne(col, row, params, entry, baseCells);
+    }
+    return cells;
+  }
+
+  // A stored colour as it displays: colour adjustments, then the active palette.
+  effective(hex, params) {
+    let color = this.#effective.get(hex);
+    if (!color) {
+      color = effectiveColor(hex, params, this.palette);
+      this.#effective.set(hex, color);
+    }
+    return color;
+  }
+
+  // Transformed paint at a grid pixel ({ r, g, b, a } with a in 0..1), or null where there's none.
+  paintAt(x, y) {
+    const data = this.#paintData;
+    if (!data || x < 0 || y < 0 || x >= data.width || y >= data.height) return null;
+    const o = (y * data.width + x) * 4;
+    return data.data[o + 3] ? { r: data.data[o], g: data.data[o + 1], b: data.data[o + 2], a: data.data[o + 3] / 255 } : null;
+  }
+
+  // The generated cell from the image alone (no paint): what an authored cell sits on. Null while
+  // the pipeline pixels are stale (between a grid resize and its render).
+  underCell(col, row, params, baseCells) {
+    const { cols, chars: charset, charMode, renderStyle } = params;
+    const data = this.#pipelineData;
+    // Between a grid resize and the render it queues, the pipeline pixels are the old size.
+    if (!data || data.width !== cols || data.height !== params.rows) return null;
+    const pixelAt = (y) => {
+      const o = (Math.min(y, params.rows - 1) * cols + col) * 4;
+      const p = { r: data.data[o], g: data.data[o + 1], b: data.data[o + 2] };
+      return this.palette ? nearestColor(p, this.palette) : p;
+    };
+    const top = pixelAt(2 * row), bottom = pixelAt(2 * row + 1);
+    const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset || '▄') : baseCells[cellIndex(col, row, cols)].char;
+    return buildCell(top, bottom, char, renderStyle);
+  }
+
+  // Spec "Paint and authored cells" (a trial rule, kept in this one place): the authored entry
+  // composes over the paint-free image, then any paint in the cell draws over it, so erasing the
+  // paint reveals the authored cell again.
+  #composeOne(col, row, params, entry, baseCells) {
+    const under = this.underCell(col, row, params, baseCells);
+    if (!under) return baseCells[cellIndex(col, row, params.cols)];
+    const cell = composeCell(under, entry, params.renderStyle, (hex) => this.effective(hex, params));
+    return coverCell(cell, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), {
+      renderStyle: params.renderStyle,
+      charset: params.chars,
+      palette: this.palette,
+    });
   }
 }
