@@ -1,52 +1,64 @@
 <script>
-import { mapWritableState, mapActions } from 'pinia';
-import { useCurrentFileStore, allKeys as allCurrentFileKeys } from '@/store/CurrentFile';
+import { mapWritableState } from 'pinia';
+import { useProjectStore } from '@/store/ProjectStore';
+import { SAUCE_KEYS } from '@/store/settings';
+
+import ProjectActions from '@/components/ProjectActions.vue';
 
 export default {
   name: 'SauceEditor',
-  computed: {
-    ...mapWritableState(useCurrentFileStore, allCurrentFileKeys),
+  components: {
+    ProjectActions,
   },
-  methods: {
-    ...mapActions(useCurrentFileStore, ['exportFile']),
+  computed: {
+    ...mapWritableState(useProjectStore, SAUCE_KEYS),
   },
 };
 </script>
 
 <template>
-  <article>
+  <article class="sauce-editor">
+    <div class="editor-container">
       <h3>SAUCE Metadata</h3>
       <p>This metadata is embedded in the exported .ans or .utf8ans file and can be viewed by other ANSI editors or viewer applications.</p>
-      
+
       <div class="field">
         <label for="sauce-title">Title</label>
-        <input id="sauce-title" v-model="sauce.title" type="text" placeholder="Title (35 chars)" maxlength="35">
+        <input id="sauce-title" v-model="sauceTitle" type="text" placeholder="Title (35 chars)" maxlength="35">
       </div>
 
       <div class="field">
         <label for="sauce-author">Author</label>
-        <input id="sauce-author" v-model="sauce.author" type="text" placeholder="Author (20 chars)" maxlength="20">
+        <input id="sauce-author" v-model="sauceAuthor" type="text" placeholder="Author (20 chars)" maxlength="20">
       </div>
 
       <div class="field">
         <label for="sauce-group">Group</label>
-        <input id="sauce-group" v-model="sauce.group" type="text" placeholder="Group (20 chars)" maxlength="20">
+        <input id="sauce-group" v-model="sauceGroup" type="text" placeholder="Group (20 chars)" maxlength="20">
       </div>
 
       <div class="field">
         <label for="sauce-comments">Custom Comments</label>
-        <textarea id="sauce-comments" v-model="sauce.userComments" placeholder="Add your own notes to the file metadata..."></textarea>
+        <textarea id="sauce-comments" v-model="sauceUserComments" placeholder="Add your own notes to the file metadata..."></textarea>
       </div>
 
-      <div class="export-actions">
-        <button @click="exportFile('ans')" :disabled="!image" class="primary">Export .ans</button>
-        <button @click="exportFile('utf8ans')" :disabled="!image" class="primary">Export .utf8ans</button>
-      </div>
+      <hr/>
+
+      <ProjectActions/>
+    </div>
   </article>
 </template>
 
 <style scoped>
-article {
+article.sauce-editor {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+}
+
+div.editor-container {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -81,12 +93,5 @@ textarea {
   resize: vertical;
   min-height: 100px;
   font-family: inherit;
-}
-
-div.export-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 20px;
 }
 </style>

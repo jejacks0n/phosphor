@@ -3,6 +3,10 @@
  * State is stored on the element itself to remain instance-safe and resilient to visibility changes.
  */
 
+import { VGA_COLORS_STR } from './ColorUtils';
+
+const VGA_PALETTE = VGA_COLORS_STR.split(' ');
+
 export function render(context, buffer) {
 	const element = context.settings.element;
 	if (!element) return;
@@ -66,8 +70,11 @@ export function render(context, buffer) {
 			if (!isSameCellStyle(currCell, prevCell)) {
 				if (tagIsOpen) html += '</span>';
 
-				let c = currCell.color === context.settings.color ? null : currCell.color;
-				let b = currCell.backgroundColor === context.settings.backgroundColor ? null : currCell.backgroundColor;
+				let c = currCell.color || (typeof currCell.fgIndex === 'number' ? VGA_PALETTE[currCell.fgIndex] : null);
+				let b = currCell.backgroundColor || (typeof currCell.bgIndex === 'number' ? VGA_PALETTE[currCell.bgIndex] : null);
+
+				if (c === context.settings.color) c = null;
+				if (b === context.settings.backgroundColor) b = null;
 
 				let css = '';
 				if (c) css += 'color:' + c + ';';

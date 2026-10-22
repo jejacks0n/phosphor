@@ -57,7 +57,7 @@ For proper viewing and editing of advanced color `.ans` files, check out the **[
 
 ## Credits
 
-ANSI art preview and rendering was initially powered by the [play](https://github.com/nicholasstephan/play) creative-coding runtime by [ertdfgcvb](https://ertdfgcvb.xyz/), but it's since been adapted into a minimal subset of the functionality. I wanted to credit that work as the initial inspiration for the project, and suggest checking it out as something that's pretty awesome in its own right.
+ANSI art preview and rendering was initially powered by the [play](https://github.com/ertdfgcvb/play.core) creative-coding runtime by [ertdfgcvb](https://ertdfgcvb.xyz/), but it's since been adapted into a minimal subset of the functionality. I wanted to credit that work as the initial inspiration for the project, and suggest checking it out as something that's pretty awesome in its own right.
 
 ## License
 

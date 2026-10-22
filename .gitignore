@@ -4,6 +4,7 @@ node_modules
 /input
 
 # local env files
+.envrc
 .env.local
 .env.*.local
 

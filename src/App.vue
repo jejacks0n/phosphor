@@ -1,17 +1,23 @@
 <script>
-import { mapState } from 'pinia';
-import { useCurrentFileStore } from '@/store/CurrentFile';
-import AnsiWorkspace from '@/components/AnsiWorkspace.vue';
+import { mapState, mapWritableState } from 'pinia';
+import { useProjectStore } from '@/store/ProjectStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
+
+import EditWorkspace from '@/components/EditWorkspace.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
+import AboutPhosphor from '@/components/AboutPhosphor.vue';
 
 export default {
   name: 'App',
   components: {
-    AnsiWorkspace,
+    EditWorkspace,
     ControlPanel,
+    AboutPhosphor,
   },
   computed: {
-    ...mapState(useCurrentFileStore, ['image']),
+    ...mapState(useProjectStore, ['image', 'isDirty']),
+    ...mapState(useWorkspaceStore, ['activeTool', 'isPainting', 'isCtrlPressed', 'isMiddleClick']),
+    ...mapWritableState(useWorkspaceStore, ['showAboutModal']),
   },
   mounted() {
     window.addEventListener('beforeunload', this.onBeforeUnload);
@@ -21,8 +27,7 @@ export default {
   },
   methods: {
     onBeforeUnload(e) {
-      const store = useCurrentFileStore();
-      if (store.image && store.isDirty) {
+      if (this.image && this.isDirty) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -32,9 +37,10 @@ export default {
 </script>
 
 <template>
-  <main>
+  <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick }]">
     <ControlPanel/>
-    <AnsiWorkspace/>
+    <EditWorkspace/>
+    <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
   </main>
 </template>
 
@@ -48,5 +54,6 @@ main {
   padding: 8px;
   box-sizing: border-box;
   background: var(--background) radial-gradient(circle at 270px 0, var(--background-highlight) 0, transparent 400px);
+  overscroll-behavior: none;
 }
 </style>

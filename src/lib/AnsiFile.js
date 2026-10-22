@@ -2,8 +2,9 @@
  * Handles exporting the character buffer to various ANSI file formats (.ans, .utf8ans).
  * Supports standard ANSI SGR, legacy iCE colors via SAUCE, and modern 256-color UTF-8 output.
  */
-import { Buffer } from 'buffer';
 import { Sauce } from '@/lib/Sauce';
+
+const utf8Encoder = new TextEncoder();
 
 const toBytes = (input) => Array.from(input).map((b) => b.charCodeAt(0));
 
@@ -31,10 +32,10 @@ const CP437_MAP = {
 };
 
 export class AnsiFile {
-  constructor(cols, rows, data) {
+  constructor(cols, rows, cells) {
     this.cols = cols;
     this.rows = rows;
-    this.data = data;
+    this.cells = cells;
   }
 
   static unicodeToCP437(char) {
@@ -42,36 +43,8 @@ export class AnsiFile {
     return CP437_MAP[code] || (code <= 127 ? code : 0);
   }
 
-  async exportAs(filename, opts = {}) {
-    const data = this.#asBytes(opts);
-    const file = new Blob([data], { type: 'application/octet-stream' });
-
-    if ('showSaveFilePicker' in window) {
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: filename,
-          types: [{
-            description: filename.endsWith('.ans') ? 'ANSI Art File' : 'UTF8 ANSI Art File',
-            accept: { 'application/octet-stream': [filename.slice(filename.lastIndexOf('.'))] }
-          }]
-        });
-        const writable = await handle.createWritable();
-        await writable.write(file);
-        await writable.close();
-        return;
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        console.error('Save File Picker failed, falling back to download:', err);
-      }
-    }
-
-    const link = document.createElement('a');
-    link.href = window.URL.createObjectURL(file);
-    link.download = filename;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+  toBlob(opts = {}) {
+    return new Blob([this.#asBytes(opts)], { type: 'application/octet-stream' });
   }
 
   #asBytes({ utf8 = false, colorMode = 'none', sauce = null } = {}) {
@@ -84,9 +57,7 @@ export class AnsiFile {
 
     for (let y = 0; y < this.rows; y++) {
       for (let x = 0; x < this.cols; x++) {
-        const i = y * this.cols * 2 + x;
-
-        if (lineFeeds && i > 0 && i % this.cols === 0) {
+        if (lineFeeds && x === 0 && y > 0) {
           addSgr(0);
           output.push(13, 10);
           active.fg = { hex: null };
@@ -95,12 +66,11 @@ export class AnsiFile {
           active.blink = false;
         }
 
-        let bg = this.data[i];
-        let fg = this.data[i + this.cols];
-        if (!fg) continue;
+        const cell = this.cells[y * this.cols + x];
+        if (!cell) continue;
 
-        let char = bg.char;
-        if (fg.hex === bg.hex) char = ' ';
+        const { fg, bg } = cell;
+        const char = fg.hex === bg.hex ? ' ' : cell.char;
 
         switch (colorMode) {
           case 'cga':
@@ -118,7 +88,7 @@ export class AnsiFile {
         }
 
         if (utf8) {
-          output.push(...Buffer.from(char));
+          output.push(...utf8Encoder.encode(char));
         } else {
           output.push(AnsiFile.unicodeToCP437(char));
         }
@@ -147,12 +117,14 @@ export class AnsiFile {
 
   #addVgaBytes(add, fg, bg, active) {
     if (fg.hex !== active.fg.hex) {
-      add(38, 5, fg.c);
+      const fgCode = Number.isInteger(Number(fg.c)) ? Number(fg.c) : 0;
+      add(38, 5, fgCode);
       active.fg = fg;
     }
 
     if (bg.hex !== active.bg.hex) {
-      add(48, 5, bg.c);
+      const bgCode = Number.isInteger(Number(bg.c)) ? Number(bg.c) : 0;
+      add(48, 5, bgCode);
       active.bg = bg;
     }
   }
@@ -161,17 +133,17 @@ export class AnsiFile {
     const sgr = [];
     let bold = false;
     let blink = false;
-    let fgCode = fg.c;
-    let bgCode = bg.c;
+    let fgCode = Number.isInteger(Number(fg.c)) ? Number(fg.c) : 0;
+    let bgCode = Number.isInteger(Number(bg.c)) ? Number(bg.c) : 0;
 
-    if (fg.c > 7 && fg.c < 16) {
+    if (fgCode > 7 && fgCode < 16) {
       bold = true;
-      fgCode = fg.c - 8;
+      fgCode = fgCode - 8;
     }
 
-    if (bg.c > 7 && bg.c < 16) {
+    if (bgCode > 7 && bgCode < 16) {
       blink = true;
-      bgCode = bg.c - 8;
+      bgCode = bgCode - 8;
     }
 
     // Reset if we need to turn off attributes
@@ -186,11 +158,13 @@ export class AnsiFile {
     if (utf8) {
       // Modern terminal codes using explicit 256-color indices (0-15)
       if (fg.hex !== active.fg.hex) {
-        add(38, 5, fg.c);
+        const fullFgCode = Number.isInteger(Number(fg.c)) ? Number(fg.c) : 0;
+        add(38, 5, fullFgCode);
         active.fg = fg;
       }
       if (bg.hex !== active.bg.hex) {
-        add(48, 5, bg.c);
+        const fullBgCode = Number.isInteger(Number(bg.c)) ? Number(bg.c) : 0;
+        add(48, 5, fullBgCode);
         active.bg = bg;
       }
     } else {

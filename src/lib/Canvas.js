@@ -1,51 +1,42 @@
 /**
  * A wrapper for a canvas element providing high-quality downscaling and pixel management.
  */
+import { toGray, nearestIndex } from './ColorUtils.js'
 
-function drawImageStepped(ctx, source, sx, sy, sw, sh, dx, dy, dw, dh) {
-	if (!ctx.imageSmoothingEnabled || (dw >= sw * 0.5 && dh >= sh * 0.5)) {
-		ctx.drawImage(source, sx, sy, sw, sh, dx, dy, dw, dh)
-		return
-	}
-
-	let currW = sw
-	let currH = sh
-	let currSrc = source
-
-	const targetW = dw
-	const targetH = dh
-
-	let maxSteps = 10
-	if (ctx.imageSmoothingQuality === 'low') maxSteps = 1
-	else if (ctx.imageSmoothingQuality === 'medium') maxSteps = 2
-
-	let stepCount = 0
-
-	while ((currW > targetW * 2 || currH > targetH * 2) && stepCount < maxSteps) {
-		const nextW = Math.max(targetW, Math.floor(currW * 0.5))
-		const nextH = Math.max(targetH, Math.floor(currH * 0.5))
-		const temp = document.createElement('canvas')
-		temp.width = nextW
-		temp.height = nextH
-		const tctx = temp.getContext('2d')
-		tctx.imageSmoothingEnabled = true
-		tctx.imageSmoothingQuality = ctx.imageSmoothingQuality
-		tctx.drawImage(currSrc, 0, 0, currW, currH, 0, 0, nextW, nextH)
-		currW = nextW
-		currH = nextH
-		currSrc = temp
-		stepCount++
-	}
-
-	ctx.drawImage(currSrc, 0, 0, currW, currH, dx, dy, dw, dh)
+// 2D context with the settings every canvas in the app uses: CPU-backed for getImageData,
+// explicit sRGB so Safari doesn't hand back Display P3 values.
+export function ctx2d(canvas) {
+	return canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' })
 }
 
-function getElementSize(source) {
-	return { width: source.width, height: source.height }
-}
+const paletteLUTs = new Map();
 
-function toGray(r, g, b) {
-	return Math.round(r * 0.2126 + g * 0.7152 + b * 0.0722) / 255.0
+function getPaletteLUT(palette) {
+	if (!palette || palette.length < 16) return null;
+	
+	// Create a unique key for the palette based on its colors
+	const key = palette.map(p => p.hex).join(',');
+	if (paletteLUTs.has(key)) return paletteLUTs.get(key);
+
+	const SIGBITS = 5;
+	const lut = new Uint16Array(1 << (3 * SIGBITS));
+
+	for (let i = 0; i < lut.length; i++) {
+		const r = (i >> (2 * SIGBITS)) << (8 - SIGBITS);
+		const g = ((i >> SIGBITS) & ((1 << SIGBITS) - 1)) << (8 - SIGBITS);
+		const b = (i & ((1 << SIGBITS) - 1)) << (8 - SIGBITS);
+
+		lut[i] = nearestIndex(r, g, b, palette);
+	}
+
+	// Simple cache management: keep only a few LUTs
+	if (paletteLUTs.size > 10) {
+		const firstKey = paletteLUTs.keys().next().value;
+		paletteLUTs.delete(firstKey);
+	}
+	
+	paletteLUTs.set(key, lut);
+	return lut;
 }
 
 function paletteQuantize(arrayIn, arrayOut, palette) {
@@ -53,29 +44,57 @@ function paletteQuantize(arrayIn, arrayOut, palette) {
 	const palLen = palette ? palette.length : 0
 	if (palLen === 0) return arrayOut
 
+	const lut = getPaletteLUT(palette);
+	const SIGBITS = 5;
+	const RSHIFT = 8 - SIGBITS;
+
 	for (let i = 0; i < arrayIn.length; i++) {
 		const a = arrayIn[i]; const ar = a.r, ag = a.g, ab = a.b
-		let minDist = Infinity; let nearest = palette[0]
-		for (let j = 0; j < palLen; j++) {
-			const b = palette[j]
-			const dr = ar - b.r, dg = ag - b.g, db = ab - b.b
-			const d = dr * dr + dg * dg + db * db
-			if (d < minDist) { minDist = d; nearest = b }
+		let nearest;
+
+		if (lut) {
+			const r = ar >> RSHIFT, g = ag >> RSHIFT, b = ab >> RSHIFT;
+			const idx = (r << (2 * SIGBITS)) + (g << SIGBITS) + b;
+			nearest = palette[lut[idx]];
+		} else {
+			nearest = palette[nearestIndex(ar, ag, ab, palette)];
 		}
-		const out = arrayOut[i] || {}
-		out.r = nearest.r; out.g = nearest.g; out.b = nearest.b; out.c = nearest.c; out.hex = nearest.hex; out.v = a.v
-		arrayOut[i] = out
+		
+		if (!arrayOut[i]) arrayOut[i] = { r: 0, g: 0, b: 0, a: 1, v: 0 };
+		const out = arrayOut[i];
+		out.r = nearest.r; out.g = nearest.g; out.b = nearest.b; out.c = nearest.c; out.hex = nearest.hex; out.v = a.v;
 	}
 	return arrayOut
+}
+
+// Letterbox sw x sh into tw x th. Shared by the pipeline and the store so they agree exactly.
+// Rounds (not floors) dw/dh so a grid-aspect image (e.g. a flattened one) fits as identity.
+export function fitRect(sw, sh, tw, th) {
+	const sa = sw / sh, ta = tw / th
+	let dw, dh
+	if (sa > ta) {
+		dw = tw
+		dh = tw / sa
+	} else {
+		dw = th * sa
+		dh = th
+	}
+	dw = Math.max(1, Math.round(dw))
+	dh = Math.max(1, Math.round(dh))
+	return { dx: Math.floor((tw - dw) * 0.5), dy: Math.floor((th - dh) * 0.5), dw, dh }
 }
 
 export default class Canvas {
 	constructor(sourceCanvas) {
 		this.canvas = sourceCanvas || document.createElement('canvas')
-		this.canvas.width = 1
-		this.canvas.height = 1
-		this.ctx = this.canvas.getContext('2d', { willReadFrequently: true })
-		this.ctx.putImageData(this.ctx.createImageData(1, 1), 0, 0);
+		if (!sourceCanvas) {
+			this.canvas.width = 1
+			this.canvas.height = 1
+		}
+		this.ctx = ctx2d(this.canvas)
+		if (!sourceCanvas) {
+			this.ctx.putImageData(this.ctx.createImageData(1, 1), 0, 0);
+		}
 
 		this.pixels = []
 		this.loadPixels()
@@ -85,11 +104,13 @@ export default class Canvas {
 	get height() { return this.canvas.height }
 
 	resize(dWidth, dHeight) {
-		this.canvas.width = dWidth
-		this.canvas.height = dHeight
+		const w = Math.max(1, Math.floor(dWidth) || 1);
+		const h = Math.max(1, Math.floor(dHeight) || 1);
+		this.canvas.width = w
+		this.canvas.height = h
 		this.pixels.length = 0
 		// Initialize pixels array to correct size with black
-		for (let i = 0; i < dWidth * dHeight; i++) {
+		for (let i = 0; i < w * h; i++) {
 			this.pixels[i] = { r: 0, g: 0, b: 0, a: 1, v: 0 }
 		}
 		return this
@@ -114,7 +135,7 @@ export default class Canvas {
 		}
 
 		let srcData;
-		const srcCtx = (typeof source.getContext === 'function') ? source.getContext('2d') : null;
+		const srcCtx = (typeof source.getContext === 'function') ? ctx2d(source) : null;
 
 		if (srcCtx) {
 			srcData = srcCtx.getImageData(0, 0, sw, sh).data;
@@ -124,7 +145,7 @@ export default class Canvas {
 			const temp = document.createElement('canvas');
 			temp.width = sw;
 			temp.height = sh;
-			const tctx = temp.getContext('2d');
+			const tctx = ctx2d(temp);
 			tctx.drawImage(source, 0, 0);
 			srcData = tctx.getImageData(0, 0, sw, sh).data;
 		}
@@ -188,26 +209,6 @@ export default class Canvas {
 		return this
 	}
 
-	fit(source, quality = 'low', aspect = 1) {
-		const s = getElementSize(source)
-		const sa = s.width / (s.height * aspect)
-		const tw = this.canvas.width
-		const th = this.canvas.height
-		const ta = tw / th
-		let dw, dh
-		if (sa > ta) {
-			dw = tw
-			dh = tw / sa
-		} else {
-			dw = th * sa
-			dh = th
-		}
-		const dx = Math.floor((tw - dw) * 0.5)
-		const dy = Math.floor((th - dh) * 0.5)
-		this.drawManual(source, dx, dy, Math.floor(dw), Math.floor(dh), quality)
-		return this
-	}
-
 	quantize(palette) {
 		paletteQuantize(this.pixels, this.pixels, palette)
 		return this
@@ -231,62 +232,29 @@ export default class Canvas {
 		return this
 	}
 
-	setPixels(data, w, h) {
-		this.resize(w, h)
-		this.pixels.length = 0
-		let idx = 0
-		for (let i = 0; i < data.length; i += 4) {
-			const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3] / 255.0
-			this.pixels[idx++] = { r, g, b, a, v: toGray(r, g, b) }
-		}
-		this.writePixels()
-		return this
-	}
-
 	loadPixels() {
-		this.pixels.length = 0
 		const w = this.canvas.width
 		const h = this.canvas.height
 		const data = this.ctx.getImageData(0, 0, w, h).data
-		let idx = 0
-		for (let i = 0; i < data.length; i += 4) {
-			const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3] / 255.0
-			this.pixels[idx++] = { r, g, b, a, v: toGray(r, g, b) }
+		
+		// Pre-allocate or truncate pixels array to match dimensions
+		const targetLen = w * h;
+		if (this.pixels.length !== targetLen) {
+			this.pixels.length = targetLen;
 		}
-		return this
-	}
 
-	process(callback) {
-		for (let i = 0; i < this.pixels.length; i++) callback(i, this.pixels[i])
-	}
-
-	copy(source, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight) {
-		sx = sx || 0; sy = sy || 0
-		sWidth = sWidth || source.videoWidth || source.width
-		sHeight = sHeight || source.videoHeight || source.height
-		dx = dx || 0; dy = dy || 0
-		dWidth = dWidth || this.canvas.width
-		dHeight = dHeight || this.canvas.height
-
-		drawImageStepped(this.ctx, source, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
-		this.loadPixels()
-		return this
-	}
-
-	center(source, scaleX = 1, scaleY = 1) {
-		const s = getElementSize(source)
-		const tw = this.canvas.width
-		const th = this.canvas.height
-		const dw = s.width * scaleX
-		const dh = s.height * scaleY
-		const dx = (tw - dw) * 0.5
-		const dy = (th - dh) * 0.5
-
-		const ctx = this.ctx
-		ctx.fillStyle = 'black'
-		ctx.fillRect(0, 0, tw, th)
-		drawImageStepped(ctx, source, 0, 0, s.width, s.height, dx, dy, dw, dh)
-		this.loadPixels()
+		for (let i = 0; i < data.length; i += 4) {
+			const idx = i / 4;
+			const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3] / 255.0
+			
+			// Reuse object if it exists to avoid GC pressure
+			if (!this.pixels[idx]) {
+				this.pixels[idx] = { r, g, b, a, v: toGray(r, g, b) };
+			} else {
+				const p = this.pixels[idx];
+				p.r = r; p.g = g; p.b = b; p.a = a; p.v = toGray(r, g, b);
+			}
+		}
 		return this
 	}
 }

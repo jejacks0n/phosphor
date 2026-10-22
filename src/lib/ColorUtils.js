@@ -27,9 +27,36 @@ export function hex2rgb(hex) {
   return { r: p(m[1]), g: p(m[2]), b: p(m[3]) };
 }
 
+// Convert r,g,b values to gray value [0-1]
+export function toGray(r, g, b) {
+  return Math.round(r * 0.2126 + g * 0.7152 + b * 0.0722) / 255.0;
+}
+
 // Convert {r,g,b} values to gray value [0-1]
 export function rgb2gray(rgb) {
-  return Math.round(rgb.r * 0.2126 + rgb.g * 0.7152 + rgb.b * 0.0722) / 255.0;
+  return toGray(rgb.r, rgb.g, rgb.b);
+}
+
+// Index of the palette entry closest to r,g,b (squared RGB distance; first match wins ties)
+export function nearestIndex(r, g, b, palette) {
+  let minDist = Infinity;
+  let nearest = 0;
+  for (let i = 0; i < palette.length; i++) {
+    const p = palette[i];
+    const dr = r - p.r, dg = g - p.g, db = b - p.b;
+    const d = dr * dr + dg * dg + db * db;
+    if (d < minDist) {
+      minDist = d;
+      nearest = i;
+    }
+  }
+  return nearest;
+}
+
+export function nearestColor(rgb, palette) {
+  if (!palette || !palette.length) return rgb;
+  const nearest = palette[nearestIndex(rgb.r, rgb.g, rgb.b, palette)];
+  return { ...nearest, a: rgb.a || 1, v: rgb2gray(nearest) };
 }
 
 export const CGA_COLORS_STR = '#000000 #aa0000 #00aa00 #aa5500 #0000aa #aa00aa #00aaaa #aaaaaa #555555 #ff5555 #55ff55 #ffff55 #5555ff #ff55ff #55ffff #ffffff';
