@@ -3,7 +3,7 @@
  * Supports standard ANSI SGR, legacy iCE colors via SAUCE, and modern 256-color UTF-8 output.
  */
 import { Sauce } from './Sauce.js';
-import { cp437Byte } from './Cp437.js';
+import { cp437Byte, cp437Substitute } from './Cp437.js';
 
 const utf8Encoder = new TextEncoder();
 
@@ -17,8 +17,23 @@ export class AnsiFile {
     this.cells = cells;
   }
 
+  // .ans is CP437: a character it can't encode is written as its closest lookalike, or '?'
+  // (exportFile lists them first).
   static unicodeToCP437(char) {
-    return cp437Byte(char) ?? 0;
+    return cp437Byte(char) ?? cp437Byte(cp437Substitute(char));
+  }
+
+  // Characters in cells that CP437 can't encode: how often each appears and what's written instead
+  // (most frequent first). A cell whose colours match is written as a space, so it doesn't count.
+  static unmappable(cells) {
+    const found = new Map();
+    for (const cell of cells) {
+      if (!cell || cell.fg.hex === cell.bg.hex || cp437Byte(cell.char) !== null) continue;
+      const entry = found.get(cell.char) ?? { count: 0, as: cp437Substitute(cell.char) };
+      entry.count++;
+      found.set(cell.char, entry);
+    }
+    return new Map([...found].sort((a, b) => b[1].count - a[1].count));
   }
 
   toBlob(opts = {}) {

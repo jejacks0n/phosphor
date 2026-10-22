@@ -30,8 +30,23 @@ const CP437_MAP = {
 
 // The CP437 byte for a character, or null when CP437 can't encode it.
 export function cp437Byte(char) {
+  if ([...char].length !== 1) return null;
   const code = char.codePointAt(0);
   return CP437_MAP[code] ?? (code <= 127 ? code : null);
 }
 
 export const isCp437 = (char) => cp437Byte(char) !== null;
+
+// Unicode block characters CP437 lacks, written as the closest CP437 glyph (the default character
+// set uses ▁▂▃▅). Anything else unencodable has no lookalike.
+const LOOKALIKES = {
+  '▁': '_', '▂': '▄', '▃': '▄', '▅': '▄', '▆': '█', '▇': '█', '▉': '█', '▊': '█', '▋': '▌', '▍': '▌',
+  '▎': '▌', '▏': '▌', '▔': '▀', '▕': '▐', '▖': '▄', '▗': '▄', '▘': '▀', '▝': '▀', '▙': '▄', '▟': '▄',
+  '▛': '▀', '▜': '▀', '▚': '▒', '▞': '▒',
+};
+
+// What .ans export writes for a character: itself, its lookalike, or '?' when CP437 has neither.
+export function cp437Substitute(char) {
+  if (cp437Byte(char) !== null) return char;
+  return LOOKALIKES[char] ?? '?';
+}

@@ -1,7 +1,8 @@
-// The CP437 table: every character maps to exactly the byte .ans export has always written, and
-// the 256-glyph display table agrees with the encoder. Run: node scripts/check-cp437.mjs
+// The CP437 table: every character maps to exactly the byte .ans export has always written (except
+// unencodable ones, which used to be NUL and are now '?'), and the 256-glyph display table agrees
+// with the encoder. Run: node scripts/check-cp437.mjs
 import assert from 'node:assert/strict';
-import { CP437, cp437Byte, isCp437 } from '../src/lib/Cp437.js';
+import { CP437, cp437Byte, cp437Substitute, isCp437 } from '../src/lib/Cp437.js';
 import { AnsiFile } from '../src/lib/AnsiFile.js';
 
 // main's encoder, frozen here as the reference
@@ -31,9 +32,10 @@ const mainByte = (char) => { const code = char.charCodeAt(0); return MAIN_MAP[co
 
 for (let code = 0; code <= 0xffff; code++) {
   const char = String.fromCharCode(code);
-  assert.equal(AnsiFile.unicodeToCP437(char), mainByte(char), `U+${code.toString(16)}`);
+  const expected = mainByte(char) === 0 && code !== 0 ? cp437Byte(cp437Substitute(char)) : mainByte(char);
+  assert.equal(AnsiFile.unicodeToCP437(char), expected, `U+${code.toString(16)}`);
 }
-assert.equal(AnsiFile.unicodeToCP437('🬀'), mainByte('🬀'));
+assert.equal(AnsiFile.unicodeToCP437('🬀'), 0x3f);
 
 assert.equal([...CP437].length, 256);
 for (let i = 1; i < 256; i++) assert.equal(cp437Byte([...CP437][i]), i, `byte ${i}`);
@@ -44,4 +46,6 @@ assert.equal(cp437Byte('★'), null);
 assert.equal(cp437Byte('🬀'), null);                    // astral: one character, not encodable
 assert.equal(isCp437('★'), false);
 assert.equal(isCp437('░'), true);
+assert.equal(cp437Byte('e\u0301'), null);             // more than one code point: not one CP437 character
+assert.equal(cp437Substitute('▏'), '▌');
 console.log('cp437 ok');

@@ -215,6 +215,13 @@ export const useProjectStore = defineStore('project', {
     },
 
     async exportFile(ext, opts = {}) {
+      // .ans is CP437: say which characters it can't keep, and what's written instead, first.
+      if (ext === 'ans') {
+        const missing = AnsiFile.unmappable(this.cells);
+        const list = [...missing].map(([char, { count, as }]) => `${char} ×${count} → ${as}`).join(', ');
+        if (missing.size && !confirm(`Some characters can't be saved in .ans and will be replaced: ${list}. Export as .utf8ans to keep them. Export anyway?`)) return;
+      }
+
       const comments = [
         `Created with Phosphor`,
         `Params: seed=${this.seed}, smoothing=${this.smoothing}, quantize=${this.quantize}`,
