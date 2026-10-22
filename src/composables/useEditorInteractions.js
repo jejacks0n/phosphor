@@ -83,7 +83,7 @@ export function useEditorInteractions(options) {
     isPainting.value = true;
     if (workspaceStore) workspaceStore.isPainting = true;
 
-    callbacks.onColorPick(pos);
+    callbacks.onColorPick(pos, event);
     if (event.pointerId !== undefined && event.currentTarget) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
@@ -298,7 +298,7 @@ export function useEditorInteractions(options) {
     if (!pos) return;
 
     if (tool.kind === 'pick') {
-      callbacks.onColorPick(pos);
+      callbacks.onColorPick(pos, event);
       return;
     }
 

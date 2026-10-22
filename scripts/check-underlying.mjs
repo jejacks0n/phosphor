@@ -3,6 +3,7 @@
 // Run: node scripts/check-underlying.mjs
 import assert from 'node:assert/strict';
 import { sourceParams } from '../src/store/settings.js';
+import { pickMode } from '../src/lib/pickMode.js';
 import { nearestColor, nearestIndex, paletteIndex, swatchSections, authoredColors, PALETTES } from '../src/lib/ColorUtils.js';
 
 const params = {
@@ -47,4 +48,12 @@ assert.deepEqual(swatchSections('count', []), []);
 const edits = new Map([['0,0', { fg: '#ff0000' }], ['1,0', { fg: '#ff0000', bg: '#0000ff' }], ['2,0', { char: 'x' }]]);
 assert.deepEqual(authoredColors(edits), ['#ff0000', '#0000ff']);
 assert.equal(authoredColors(edits, 1).length, 1);
+// What an eyedropper click picks.
+const pm = (o) => pickMode({ view: 'output', renderStyle: 'ansi', shiftKey: false, altKey: false, swapped: false, ...o });
+assert.equal(pm({ view: 'input', altKey: true }), 'fg');             // pixel view: always the paint colour
+assert.equal(pm({ altKey: true, swapped: true }), 'fg');             // Alt-swapped from a paint tool: the paint colour
+assert.equal(pm({ renderStyle: 'ascii', shiftKey: true }), 'char');  // ASCII has no colours to pick
+assert.equal(pm({ shiftKey: true }), 'fg');
+assert.equal(pm({ altKey: true }), 'bg');
+assert.equal(pm({}), 'cell');
 console.log('underlying ok');

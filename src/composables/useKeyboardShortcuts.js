@@ -29,6 +29,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _handleToolSwap = (e) => {
     if (e.key === 'Alt' && getTool(workspaceStore.activeTool).altPicks && !_isAltSwapped.value) {
       _isAltSwapped.value = true;
+      workspaceStore.pickSwapped = true;
       workspaceStore.setActiveTool('picker');
       return true;
     }
@@ -64,6 +65,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (e.key === 'Alt' && _isAltSwapped.value) {
       workspaceStore.setActiveTool(workspaceStore.previousTool);
       _isAltSwapped.value = false;
+      workspaceStore.pickSwapped = false;
     }
   };
 
@@ -73,6 +75,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_isAltSwapped.value) {
       workspaceStore.setActiveTool(workspaceStore.previousTool);
       _isAltSwapped.value = false;
+      workspaceStore.pickSwapped = false;
     }
   };
 

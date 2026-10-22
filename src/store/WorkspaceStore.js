@@ -17,6 +17,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     editFgNone: false,
     editBgNone: true,
     recentColors: useLocalStorage('phosphor.recentColors', []),
+    activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
+    pickSwapped: false,    // the picker is only held by Alt from a paint tool
     editZoom:  5,
     editorTab: 'input',
     isPainting: false,

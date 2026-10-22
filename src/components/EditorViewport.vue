@@ -4,7 +4,8 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
 import { getTool } from '@/tools';
-import { charRowsOf } from '@/lib/Cells';
+import { charRowsOf, cellAt } from '@/lib/Cells';
+import { pickMode } from '@/lib/pickMode';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
@@ -53,11 +54,37 @@ const {
     onPaintStart: (event, pos) => (tool.value.begin ? tool.value.begin(toolCtx(), pos, event) !== false : false),
     onPaintMove: (from, to) => tool.value.move?.(toolCtx(), from, to),
     onPaintEnd: () => tool.value.end?.(toolCtx()),
-    // Picks repeat while dragging, so they don't fill the recent colours.
-    onColorPick: (pos) => workspaceStore.setColor('fg', projectStore.rawColorAt(pos.x, pos.y), { remember: false }),
+    onColorPick: pickAt,
     onZoomChange: (zoom) => workspaceStore.setEditZoom(zoom),
   },
 });
+
+// The eyedropper: the pixel view picks the paint colour; the ANSI view picks the cell's underlying
+// colours and character (Shift: foreground only, Alt: background only). Picks repeat while
+// dragging, so they don't fill the recent colours.
+function pickAt(pos, event) {
+  const mode = pickMode({
+    view: props.view,
+    renderStyle: projectStore.renderStyle,
+    shiftKey: !!event?.shiftKey,
+    altKey: !!event?.altKey,
+    swapped: workspaceStore.pickSwapped,
+  });
+  const remember = { remember: false };
+  // The pixel view, and a picker held with Alt from a paint tool, pick exactly the half under the pointer.
+  if (props.view === 'input' || workspaceStore.pickSwapped) {
+    workspaceStore.setColor('fg', projectStore.rawColorAt(pos.x, pos.y), remember);
+    return;
+  }
+  const cell = cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows);
+  if (!cell) return;
+  const under = projectStore.underlyingAt(cell.col, cell.row);
+  // Color ASCII never shows a generated background: only an authored one is real.
+  const bg = projectStore.renderStyle === 'colorAscii' && !projectStore.cellEditAt(cell.col, cell.row)?.bg ? null : under.bg;
+  if (mode === 'fg' || mode === 'cell') workspaceStore.setColor('fg', under.fg, remember);
+  if (mode === 'bg' || mode === 'cell') workspaceStore.setColor('bg', bg, remember);
+  if (mode === 'char' || mode === 'cell') workspaceStore.activeChar = under.char;
+}
 
 // Brush/eraser outline under the pointer, or the character cell for cell tools.
 const CELL_HIGHLIGHT = { borderRadius: '0', transform: 'none', mixBlendMode: 'difference', background: 'white', outline: '1px solid red', border: 'none', boxShadow: 'none' };
