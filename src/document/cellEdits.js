@@ -59,3 +59,28 @@ export function migrateCharEdits(pairs, cols) {
   if (!cols) return new Map();
   return new Map(pairs.map(([index, char]) => [cellKey(index % cols, Math.floor(index / cols)), Object.freeze({ char })]));
 }
+
+// Insert/delete within one row. delta +1: entries at col >= fromCol move right, and any pushed to
+// col >= cols drop off. delta -1: the entry at fromCol - 1 is removed and entries at col >= fromCol
+// move left. Other rows, and entries kept beyond the grid (col >= cols), are untouched; returns the
+// same Map when the row has nothing to move.
+export function shiftRow(map, row, fromCol, delta, cols) {
+  if (delta < 0 && fromCol < 1) return map;
+  const moving = [], removed = [];
+  for (const [key, entry] of map) {
+    const at = parseKey(key);
+    if (at.row !== row || at.col >= cols) continue;
+    if (at.col >= fromCol) moving.push([at.col, entry]);
+    else if (delta < 0 && at.col === fromCol - 1) removed.push(key);
+  }
+  if (!moving.length && !removed.length) return map;
+
+  const result = new Map(map);
+  removed.forEach(key => result.delete(key));
+  moving.forEach(([col]) => result.delete(cellKey(col, row)));
+  for (const [col, entry] of moving) {
+    const to = col + delta;
+    if (to >= 0 && to < cols) result.set(cellKey(to, row), entry);
+  }
+  return result;
+}
