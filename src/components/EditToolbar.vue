@@ -6,6 +6,7 @@ import { TOOLS, getTool } from '@/tools';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
 import ColorPair from '@/components/ColorPair.vue';
+import PaletteStrip from '@/components/PaletteStrip.vue';
 
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -116,8 +117,9 @@ function confirmFlatten() {
       </div>
     </div>
 
-    <div class="toolbar-row secondary-row" v-if="activeTool.options">
-      <div class="tool-setting-group">
+    <div class="toolbar-row secondary-row" v-if="activeTool.options || activeTool.palette">
+      <PaletteStrip v-if="activeTool.palette"/>
+      <div v-if="activeTool.options" class="tool-setting-group">
         <template v-for="(option, i) in activeTool.options" :key="option.key">
           <div v-if="i > 0" class="divider"/>
           <label v-if="option.type === 'checkbox'" class="checkbox-wrapper">

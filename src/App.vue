@@ -7,6 +7,7 @@ import { setGlyphRasterizer, rasterizeCoverage, DISPLAY_FONT_CSS } from '@/lib/G
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
+import AppToast from '@/components/AppToast.vue';
 
 export default {
   name: 'App',
@@ -14,6 +15,7 @@ export default {
     EditWorkspace,
     ControlPanel,
     AboutPhosphor,
+    AppToast,
   },
   computed: {
     ...mapState(useProjectStore, ['image', 'isDirty']),
@@ -49,6 +51,7 @@ export default {
     <ControlPanel/>
     <EditWorkspace/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
+    <AppToast/>
   </main>
 </template>
 
