@@ -4,11 +4,11 @@ import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
 import { rgb2hex, hex2rgb } from "@/lib/ColorUtils.js";
 import { fitRect, ctx2d } from "@/lib/Canvas.js";
-import { cellIndex, charRowsOf } from "@/lib/Cells.js";
+import { cellIndex, charRowsOf, bakedEntry } from "@/lib/Cells.js";
 import EditLayer, { editScaleFor } from "@/document/EditLayer.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
-import { cellKey, parseKey, withCellEdit, withoutCells, shiftRow } from "@/document/cellEdits.js";
+import { cellKey, parseKey, withCellEdit, withoutCells, shiftRow, rectCells, copyBlock, pasteBlock, moveRect, updateRect } from "@/document/cellEdits.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, sourceParams } from "@/store/settings.js";
@@ -446,6 +446,77 @@ export const useProjectStore = defineStore('project', {
       this.cellEdits = next;
       const pixels = Array.from({ length: this.cols }, (_, x) => ({ x, y: 2 * row }));
       this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.cellEdits, this.renderedCells);
+    },
+
+    // --- Selection: each operation is one undo step, and none at all when nothing changes.
+
+    // The whole grid as a rect (Bake/Release with no selection).
+    gridRect() {
+      return { c0: 0, r0: 0, c1: this.cols - 1, r1: charRowsOf(this.rows) - 1 };
+    },
+
+    // Swap in a new cell layer and recompose just the cells in rects (the rest, including paint made
+    // since the last full render, is left as it is).
+    setCellEdits(next, rects) {
+      if (next === this.cellEdits) return;
+      this.ensureLayer();
+      this.beginEdit();
+      this.cellEdits = next;
+      const pixels = rects.flatMap(rect => rectCells(rect)).map(({ col, row }) => ({ x: col, y: 2 * row }));
+      this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.cellEdits, this.renderedCells);
+      this.commitEdit();
+    },
+
+    // The image's cell alone (no entry, no paint), as stored colours: bg the top half, fg the bottom.
+    imageCellAt(col, row) {
+      return {
+        char: this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ',
+        bg: this.sourceColorAt(col, 2 * row),
+        fg: this.sourceColorAt(col, 2 * row + 1),
+      };
+    },
+
+    // A whole entry for a cell as the cell layer shows it: its authored attributes, the rest frozen from
+    // the image the way the render style shows it (bakedEntry). Paint isn't part of it; it stays put.
+    completeAt(col, row, entry) {
+      return { ...bakedEntry(this.renderStyle, this.imageCellAt(col, row)), ...entry };
+    },
+
+    copyCells(rect) {
+      return copyBlock(this.cellEdits, rect, (col, row, entry) => this.completeAt(col, row, entry));
+    },
+
+    cutCells(rect) {
+      const block = this.copyCells(rect);
+      this.releaseCellsIn(rect);
+      return block;
+    },
+
+    pasteCells(block, col, row) {
+      const rect = { c0: col, r0: row, c1: Math.min(this.cols, col + block.w) - 1, r1: Math.min(charRowsOf(this.rows), row + block.h) - 1 };
+      this.setCellEdits(pasteBlock(this.cellEdits, block, col, row, this.cols, charRowsOf(this.rows)), [rect]);
+    },
+
+    fillCells(rect, attrs) {
+      this.setCellEdits(updateRect(this.cellEdits, rect, () => attrs), [rect]);
+    },
+
+    // Freeze the image's cells as authored (missing attributes from what's underneath, before paint).
+    bakeCells(rect) {
+      const area = rect ?? this.gridRect();
+      this.setCellEdits(updateRect(this.cellEdits, area, (col, row, entry) => this.completeAt(col, row, entry)), [area]);
+    },
+
+    releaseCellsIn(rect) {
+      const area = rect ?? this.gridRect();
+      this.setCellEdits(withoutCells(this.cellEdits, rectCells(area)), [area]);
+    },
+
+    moveCells(rect, dc, dr) {
+      const rows = charRowsOf(this.rows);
+      const next = moveRect(this.cellEdits, rect, dc, dr, this.cols, rows, (col, row, entry) => this.completeAt(col, row, entry));
+      const moved = { c0: Math.max(0, rect.c0 + dc), r0: Math.max(0, rect.r0 + dr), c1: Math.min(this.cols - 1, rect.c1 + dc), r1: Math.min(rows - 1, rect.r1 + dr) };
+      this.setCellEdits(next, moved.c0 <= moved.c1 && moved.r0 <= moved.r1 ? [rect, moved] : [rect]);
     },
 
     // Remove authored cells so the image shows through.

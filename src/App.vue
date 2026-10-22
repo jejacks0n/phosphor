@@ -3,6 +3,7 @@ import { mapState, mapWritableState } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { setGlyphRasterizer, rasterizeCoverage, DISPLAY_FONT_CSS } from '@/lib/GlyphCoverage';
+import { charRowsOf } from '@/lib/Cells';
 
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
@@ -30,6 +31,20 @@ export default {
       setGlyphRasterizer(rasterizeCoverage);
       const project = useProjectStore();
       if (project.image) project.render();
+    });
+
+    // When the grid or image changes (in either view), the Text cursor stays on the grid and the
+    // selection, which may no longer fit, is dropped.
+    const project = useProjectStore(), workspace = useWorkspaceStore();
+    this.$watch(() => [project.cols, project.rows, project.image], () => {
+      workspace.selection = null;
+      const cursor = workspace.textCursor;
+      if (cursor) {
+        workspace.textCursor = {
+          col: Math.min(cursor.col, Math.max(0, project.cols - 1)),
+          row: Math.min(cursor.row, Math.max(0, charRowsOf(project.rows) - 1)),
+        };
+      }
     });
   },
   beforeUnmount() {

@@ -38,16 +38,18 @@ const onPointerDown = (event) => {
   if (root.value && !root.value.contains(event.target) && !event.target.closest('.color-pair')) emit('close');
 };
 const onKeyDown = (event) => {
-  if (event.key === 'Escape') emit('close');
+  if (event.key !== 'Escape') return;
+  event.preventDefault(); // the popover takes this Escape (not the selection)
+  emit('close');
 };
 onMounted(() => {
   root.value?.querySelector('button')?.focus();
   document.addEventListener('pointerdown', onPointerDown, true);
-  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keydown', onKeyDown, true);
 });
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', onPointerDown, true);
-  window.removeEventListener('keydown', onKeyDown);
+  window.removeEventListener('keydown', onKeyDown, true);
 });
 </script>
 

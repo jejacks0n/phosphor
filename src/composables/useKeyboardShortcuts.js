@@ -46,6 +46,31 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
+  // Cmd/Ctrl+C, X, V and Escape for the ANSI view's selection (pasting goes to the selection, or
+  // the Text tool's cursor). Without a selection or clipboard, the browser keeps these keys.
+  const _handleSelectionKeys = (e) => {
+    // Something else already took the key (the palette layer, a popover).
+    if (e.defaultPrevented || workspaceStore.paletteLayerOpen) return false;
+    if (workspaceStore.editorTab !== 'output' || e.altKey || e.shiftKey) return false;
+    const target = e.target;
+    if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName)) return false;
+    const sel = workspaceStore.selection;
+    if (e.key === 'Escape' && sel && !e.metaKey && !e.ctrlKey) {
+      workspaceStore.selection = null;
+      return true;
+    }
+    if (!e.metaKey && !e.ctrlKey) return false;
+    const key = e.key.toLowerCase();
+    if (key === 'c' && sel) workspaceStore.cellClipboard = projectStore.copyCells(sel);
+    else if (key === 'x' && sel) workspaceStore.cellClipboard = projectStore.cutCells(sel);
+    else if (key === 'v' && workspaceStore.cellClipboard && (sel || workspaceStore.textCursor)) {
+      const at = sel ? { col: sel.c0, row: sel.r0 } : workspaceStore.textCursor;
+      projectStore.pasteCells(workspaceStore.cellClipboard, at.col, at.row);
+    } else return false;
+    e.preventDefault();
+    return true;
+  };
+
   const _handleGlobalKeyDown = (e) => {
     if (e.key === 'Control') {
       workspaceStore.isCtrlPressed = true;
@@ -55,6 +80,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_handleSave(e)) return;
     if (_handleToolSwap(e)) return;
     if (_handleSwapColors(e)) return;
+    if (_handleSelectionKeys(e)) return;
   };
 
   const _handleGlobalKeyUp = (e) => {

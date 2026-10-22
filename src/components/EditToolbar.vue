@@ -128,8 +128,15 @@ function confirmFlatten() {
       </div>
     </div>
 
-    <div class="toolbar-row secondary-row" v-if="activeTool.options || activeTool.palette">
+    <div class="toolbar-row secondary-row" v-if="activeTool.options || activeTool.palette || activeTool.id === 'select'">
       <PaletteStrip v-if="activeTool.palette"/>
+      <div v-if="activeTool.id === 'select'" class="tool-setting-group">
+        <span class="hint">{{ workspace.selection ? 'Drag inside the selection to move it' : 'Drag to select cells, or for the whole canvas:' }}</span>
+        <template v-if="!workspace.selection">
+          <button class="text" title="Freeze every image cell as authored" @click="project.bakeCells(null)">Bake all</button>
+          <button class="text" title="Return every authored cell to the image" @click="project.releaseCellsIn(null)">Release all</button>
+        </template>
+      </div>
       <div v-if="activeTool.options" class="tool-setting-group">
         <template v-for="(option, i) in activeTool.options" :key="option.key">
           <div v-if="i > 0" class="divider"/>
@@ -178,6 +185,18 @@ div.actions-container {
 
 div.history-group {
   margin-right: 4px;
+}
+
+span.hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+button.text {
+  width: auto;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-dim);
 }
 
 div.overlay-group {

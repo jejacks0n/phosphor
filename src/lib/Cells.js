@@ -6,7 +6,7 @@
  * Cell  = { char, fg: Color, bg: Color }
  */
 import Random from 'random-seed';
-import { rgb2hex, rgb2gray, nearestColor } from './ColorUtils.js';
+import { rgb2hex, hex2rgb, rgb2gray, nearestColor } from './ColorUtils.js';
 import { coverageOf } from './GlyphCoverage.js';
 
 const ASCII_BG = { r: 0, g: 0, b: 0, hex: '#000000', c: 0 };
@@ -127,4 +127,13 @@ export function cellsToPixels(cells, cols, rows, include) {
     }
   }
   return data;
+}
+
+// The entry that freezes an image cell as authored (bake, copy, move), from its underlying colours
+// ({ char, bg: top half, fg: bottom half }), so it looks as the render style builds it: ANSI keeps
+// both halves; Color ASCII shows their average on no background; ASCII shows only the character.
+export function bakedEntry(renderStyle, { char, fg, bg }) {
+  if (renderStyle === 'ascii') return { char };
+  if (renderStyle === 'colorAscii') return { char, fg: rgb2hex(mix(hex2rgb(bg), hex2rgb(fg), 0.5)) };
+  return { char, fg, bg };
 }

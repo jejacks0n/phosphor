@@ -24,6 +24,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     paletteLayerOpen: false, // the character palette layer has the keyboard
     ansiOverlay: 100,        // % opacity of the authored cells drawn over the pixel view
     ansiOverlayAll: false,   // draw every cell over the pixel view, not just authored ones
+    selection: null,         // { c0, r0, c1, r1 }: the Select tool's cells (inclusive)
+    selectionOffset: null,   // { dc, dr } while the selection is being dragged
+    cellClipboard: null,     // a copied block of cells
     editZoom:  5,
     editorTab: 'input',
     isPainting: false,

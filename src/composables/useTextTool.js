@@ -1,4 +1,4 @@
-import { onMounted, onBeforeUnmount, watch } from 'vue';
+import { onMounted, onBeforeUnmount } from 'vue';
 import { textKeyAction, moveCursor } from '@/lib/TextKeys';
 import { charRowsOf } from '@/lib/Cells';
 import { hex2rgb, paletteIndex } from '@/lib/ColorUtils';
@@ -80,11 +80,6 @@ export function useTextTool(project, workspace) {
     event.preventDefault();
     apply(action);
   };
-
-  // Keep the cursor on the grid when it changes size.
-  watch(() => [project.cols, project.rows], () => {
-    if (workspace.textCursor) move(0, 0);
-  });
 
   onMounted(() => window.addEventListener('keydown', onKeyDown));
   onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown));

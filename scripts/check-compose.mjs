@@ -3,7 +3,7 @@
 // Run: node scripts/check-compose.mjs
 import assert from 'node:assert/strict';
 import { coverageOf, setGlyphRasterizer } from '../src/lib/GlyphCoverage.js';
-import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels } from '../src/lib/Cells.js';
+import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels, bakedEntry } from '../src/lib/Cells.js';
 import { effectiveColor, getEffectiveColor } from '../src/lib/PixelTransforms.js';
 import { rgb2hex, hex2rgb, PALETTES } from '../src/lib/ColorUtils.js';
 
@@ -57,4 +57,10 @@ assert.deepEqual([...px.slice(8, 12)], [0, 0, 255, 255]);       // cell 0 bottom
 assert.equal(px[7], 0);                                          // cell 1 excluded
 assert.ok(px.slice(16).every(v => v === 0));                     // odd last pixel row: no cell
 assert.ok(cellsToPixels(pairs, 2, 2, () => true).slice(4, 8).every(v => v === 255)); // all cells: █ top is white
+// Baking/copying an image cell stores what that style shows: ANSI both halves; Color ASCII the
+// averaged foreground on no background; ASCII only the character.
+const imageCell = { char: '▄', bg: '#ff0000', fg: '#0000ff' };
+assert.deepEqual(bakedEntry('ansi', imageCell), { char: '▄', fg: '#0000ff', bg: '#ff0000' });
+assert.deepEqual(bakedEntry('colorAscii', imageCell), { char: '▄', fg: '#800080' });
+assert.deepEqual(bakedEntry('ascii', imageCell), { char: '▄' });
 console.log('compose ok');

@@ -9,6 +9,7 @@ import { charRowsOf } from '@/lib/Cells';
 import EditorViewport from '@/components/EditorViewport.vue';
 import CharPicker from '@/components/CharPicker.vue';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
+import SelectionBar from '@/components/SelectionBar.vue';
 
 // The ANSI view: cells rendered as text in a <pre>; a grid pixel is half a character cell tall.
 const projectStore = useProjectStore();
@@ -100,6 +101,21 @@ const cursorStyle = computed(() => {
   };
 });
 
+// The selection: marching ants (offset while it's being dragged), with its actions under it, or
+// above it near the bottom.
+const selectionBox = computed(() => {
+  const m = metrics.value, sel = workspaceStore.selection;
+  if (!m || !sel) return null;
+  const { dc, dr } = workspaceStore.selectionOffset ?? { dc: 0, dr: 0 };
+  const left = (sel.c0 + dc) * m.cellWidth + 2, top = (sel.r0 + dr) * m.lineHeight + 1;
+  const height = (sel.r1 - sel.r0 + 1) * m.lineHeight;
+  const below = sel.r1 + dr < charRowsOf(projectStore.rows) - 3;
+  return {
+    marquee: { left: `${left}px`, top: `${top}px`, width: `${(sel.c1 - sel.c0 + 1) * m.cellWidth}px`, height: `${height}px` },
+    bar: below ? { left: `${left}px`, top: `${top + height + 8}px` } : { left: `${left}px`, top: `${Math.max(top + 4, top - 36)}px` },
+  };
+});
+
 // While the picker is open, its cell stays highlighted.
 const pinnedStyle = computed(() => {
   const m = metrics.value;
@@ -180,6 +196,10 @@ onBeforeUnmount(() => {
     <template #overlay>
       <div class="picker-cell" :style="pinnedStyle"></div>
       <div class="text-cursor" :style="cursorStyle"></div>
+      <template v-if="selectionBox">
+        <div class="marquee" :style="selectionBox.marquee"></div>
+        <SelectionBar v-if="!workspaceStore.selectionOffset" :rect="workspaceStore.selection" :style="selectionBox.bar"/>
+      </template>
     </template>
   </EditorViewport>
   <AnsiStatusBar/>
@@ -193,6 +213,20 @@ div.ansi-editor {
   flex: 1;
   min-width: 0;
   min-height: 0;
+}
+
+.marquee {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 1001;
+  border: 1px dashed white;
+  box-shadow: 0 0 0 1px black;
+  animation: marquee-march 1s steps(1) infinite;
+}
+
+@keyframes marquee-march {
+  50% { border-color: black; box-shadow: 0 0 0 1px white; }
 }
 
 .text-cursor {
