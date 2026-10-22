@@ -19,6 +19,9 @@ const tools = computed(() => {
 });
 const activeTool = computed(() => getTool(workspace.activeTool));
 
+// The pixel view's preview of the ANSI layer: authored cells drawn over the image at pixel scale.
+const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'ANSI overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
+
 // A tool that stops being offered (flip after switching to an ASCII art style) shouldn't stay active unseen.
 watch(tools, (offered) => {
   if (!offered.some(({ tool }) => tool.id === workspace.activeTool)) workspace.setActiveTool('hand');
@@ -58,6 +61,14 @@ function confirmFlatten() {
       </div>
 
       <div class="spacer"/>
+
+      <div v-if="workspace.editorTab === 'input'" class="tool-setting-group overlay-group">
+        <RangeField compact :setting="OVERLAY_SETTING" v-model="workspace.ansiOverlay"/>
+        <label class="checkbox-wrapper" title="Preview every cell's characters, not just the ones you've authored">
+          <span>All cells</span>
+          <input type="checkbox" v-model="workspace.ansiOverlayAll"/>
+        </label>
+      </div>
 
       <div class="desktop-only actions-container">
         <div class="history-group">
@@ -167,6 +178,18 @@ div.actions-container {
 
 div.history-group {
   margin-right: 4px;
+}
+
+div.overlay-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 12px;
+}
+
+div.overlay-group :deep(label),
+div.overlay-group span {
+  white-space: nowrap;
 }
 
 div.tool-setting-group {

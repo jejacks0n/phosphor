@@ -22,6 +22,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     textCursor: null,      // { col, row } of the Text tool's cursor
     insertMode: false,     // typing pushes the row right instead of overwriting
     paletteLayerOpen: false, // the character palette layer has the keyboard
+    ansiOverlay: 100,        // % opacity of the authored cells drawn over the pixel view
+    ansiOverlayAll: false,   // draw every cell over the pixel view, not just authored ones
     editZoom:  5,
     editorTab: 'input',
     isPainting: false,

@@ -3,7 +3,7 @@
 // Run: node scripts/check-compose.mjs
 import assert from 'node:assert/strict';
 import { coverageOf, setGlyphRasterizer } from '../src/lib/GlyphCoverage.js';
-import { halfColors, composeCell, coverCell, cellsOfPixels } from '../src/lib/Cells.js';
+import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels } from '../src/lib/Cells.js';
 import { effectiveColor, getEffectiveColor } from '../src/lib/PixelTransforms.js';
 import { rgb2hex, hex2rgb, PALETTES } from '../src/lib/ColorUtils.js';
 
@@ -48,4 +48,13 @@ assert.deepEqual(effectiveColor('#123456', NEUTRAL), { r: 0x12, g: 0x34, b: 0x56
 assert.equal(getEffectiveColor('#123456', NEUTRAL), '#123456');
 assert.deepEqual(cellsOfPixels([{ x: 1.5, y: 0 }, { x: 1.2, y: 1 }, { x: -1, y: 0 }, { x: 0, y: 4 }], 4, 4), [{ col: 1, row: 0 }]);
 assert.equal(coverCell({ char: '█', fg: { r: 255, g: 255, b: 255, hex: '#ffffff', c: [255, 255, 255] }, bg: { r: 0, g: 0, b: 0, hex: '#000000', c: [0, 0, 0] } }, { r: 0, g: 0, b: 0, a: 1 }, null, { renderStyle: 'colorAscii', charset: '', palette: null }).char, '▄'); // empty charset falls back like buildCells
+// The pixel view's scale preview: each included cell as its two half-colours, one grid pixel each.
+const pairs = [{ char: '▀', fg: red, bg: blue }, { char: '█', fg: white, bg: black }];
+const px = cellsToPixels(pairs, 2, 3, (i) => i === 0);
+assert.equal(px.length, 2 * 3 * 4);
+assert.deepEqual([...px.slice(0, 4)], [255, 0, 0, 255]);        // cell 0 top half = fg (▀)
+assert.deepEqual([...px.slice(8, 12)], [0, 0, 255, 255]);       // cell 0 bottom half = bg
+assert.equal(px[7], 0);                                          // cell 1 excluded
+assert.ok(px.slice(16).every(v => v === 0));                     // odd last pixel row: no cell
+assert.ok(cellsToPixels(pairs, 2, 2, () => true).slice(4, 8).every(v => v === 255)); // all cells: █ top is white
 console.log('compose ok');

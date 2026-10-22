@@ -109,3 +109,22 @@ export function coverCell(cell, paintTop, paintBottom, { renderStyle, charset, p
   const char = renderStyle === 'ansi' ? '▄' : brightnessChar(top, bottom, charset || '▄');
   return buildCell(top, bottom, char, renderStyle);
 }
+
+// Cells as pixels: each included cell's two half-colours (top, bottom) at grid resolution, as an
+// RGBA buffer cols x rows (alpha 255 for included cells, 0 elsewhere and on an odd last pixel row).
+export function cellsToPixels(cells, cols, rows, include) {
+  const data = new Uint8ClampedArray(cols * rows * 4);
+  const cellRows = charRowsOf(rows);
+  for (let row = 0; row < cellRows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const i = cellIndex(col, row, cols);
+      if (!cells[i] || !include(i)) continue;
+      const [top, bottom] = halfColors(cells[i]);
+      for (const [half, { r, g, b }] of [[0, top], [1, bottom]]) {
+        const o = ((2 * row + half) * cols + col) * 4;
+        data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 255;
+      }
+    }
+  }
+  return data;
+}
