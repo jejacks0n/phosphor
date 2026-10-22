@@ -84,3 +84,66 @@ export function shiftRow(map, row, fromCol, delta, cols) {
   }
   return result;
 }
+
+// Rect = { c0, r0, c1, r1 }: inclusive, normalized. Block = { w, h, entries: (Entry | null)[] }, row-major.
+export function normalizeRect(a, b) {
+  return { c0: Math.min(a.col, b.col), r0: Math.min(a.row, b.row), c1: Math.max(a.col, b.col), r1: Math.max(a.row, b.row) };
+}
+
+export function rectCells({ c0, r0, c1, r1 }) {
+  const cells = [];
+  for (let row = r0; row <= r1; row++) for (let col = c0; col <= c1; col++) cells.push({ col, row });
+  return cells;
+}
+
+// complete(col, row, entry) fills in a whole entry for every cell (copying what's visible, not
+// just what's authored); without it, cells with no entry copy as null.
+export function copyBlock(map, rect, complete) {
+  const entries = rectCells(rect).map(({ col, row }) => {
+    const entry = map.get(cellKey(col, row)) ?? null;
+    return complete ? Object.freeze({ ...complete(col, row, entry) }) : entry;
+  });
+  return { w: rect.c1 - rect.c0 + 1, h: rect.r1 - rect.r0 + 1, entries };
+}
+
+// A block's entries at (col, row): null entries release that cell; anything off the grid is dropped.
+// Returns the same Map when nothing changed.
+export function pasteBlock(map, block, col, row, cols, rows) {
+  let result = null;
+  block.entries.forEach((entry, i) => {
+    const c = col + (i % block.w), r = row + Math.floor(i / block.w);
+    if (c < 0 || r < 0 || c >= cols || r >= rows) return;
+    const key = cellKey(c, r);
+    if (entry ? map.get(key) === entry || sameEntry(map.get(key), entry) : !(result ?? map).has(key)) return;
+    result ??= new Map(map);
+    if (entry) result.set(key, entry);
+    else result.delete(key);
+  });
+  return result ?? map;
+}
+
+const sameEntry = (a, b) => !!a && !!b && ATTRS.every(attr => a[attr] === b[attr]);
+
+// Lift a rect's entries (complete: as in copyBlock), release it, and paste them dc/dr away
+// (overlap-safe). Dropped where it started, nothing changes.
+export function moveRect(map, rect, dc, dr, cols, rows, complete) {
+  if (!dc && !dr) return map;
+  const block = copyBlock(map, rect, complete);
+  return pasteBlock(withoutCells(map, rectCells(rect)), block, rect.c0 + dc, rect.r0 + dr, cols, rows);
+}
+
+// Every cell of a rect merged with attrsFor(col, row, entry), on one Map copy (fill, bake).
+// Returns the same Map when nothing changed.
+export function updateRect(map, rect, attrsFor) {
+  let result = null;
+  for (const { col, row } of rectCells(rect)) {
+    const key = cellKey(col, row);
+    const old = map.get(key);
+    const next = mergeEntry(old, attrsFor(col, row, old));
+    if (next === (old ?? null)) continue;
+    result ??= new Map(map);
+    if (next) result.set(key, next);
+    else result.delete(key);
+  }
+  return result ?? map;
+}
