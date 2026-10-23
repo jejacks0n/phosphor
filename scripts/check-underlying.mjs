@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { sourceParams } from '../src/store/settings.js';
 import { pickMode } from '../src/lib/pickMode.js';
-import { nearestColor, nearestIndex, paletteIndex, swatchSections, authoredColors, PALETTES } from '../src/lib/ColorUtils.js';
+import { nearestColor, nearestIndex, paletteIndex, swatchSections, drawingColors, PALETTES } from '../src/lib/ColorUtils.js';
 
 const params = {
   cols: 80, rows: 50, smoothing: 'low', quantize: 'vga', renderStyle: 'ansi',
@@ -46,8 +46,9 @@ assert.deepEqual(swatchSections('none', null), []);
 assert.deepEqual(swatchSections('palette', PALETTES.cga.slice(0, 3)).map(s => s.columns), [3]);
 assert.deepEqual(swatchSections('count', []), []);
 const edits = new Map([['0,0', { fg: '#ff0000' }], ['1,0', { fg: '#ff0000', bg: '#0000ff' }], ['2,0', { char: 'x' }]]);
-assert.deepEqual(authoredColors(edits), ['#ff0000', '#0000ff']);
-assert.equal(authoredColors(edits, 1).length, 1);
+assert.deepEqual(drawingColors(edits), ['#ff0000', '#0000ff']);
+assert.equal(drawingColors(edits, undefined, 1).length, 1);
+assert.deepEqual(drawingColors(edits, new Map([['#00ff00', 5], ['#0000ff', 2]])), ['#00ff00', '#0000ff', '#ff0000']); // paint counts add to the cells'
 // What an eyedropper click picks.
 const pm = (o) => pickMode({ view: 'output', renderStyle: 'ansi', shiftKey: false, altKey: false, swapped: false, ...o });
 assert.equal(pm({ view: 'input', altKey: true }), 'fg');             // pixel view: always the paint colour

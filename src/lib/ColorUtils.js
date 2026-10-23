@@ -148,9 +148,10 @@ export function swatchSections(quantize, palette) {
   return [{ columns: Math.min(8, palette.length), colors: palette }];
 }
 
-// Distinct foreground/background colours used by authored cells, most used first.
-export function authoredColors(cellEdits, limit = 24) {
-  const counts = new Map();
+// Distinct colours in the drawing, most used first: authored cells' foregrounds and backgrounds,
+// plus paintCounts (hex -> grid pixels, from EditLayer.colorCounts()).
+export function drawingColors(cellEdits, paintCounts = new Map(), limit = 24) {
+  const counts = new Map(paintCounts);
   for (const entry of cellEdits.values()) {
     for (const hex of [entry.fg, entry.bg]) if (hex) counts.set(hex, (counts.get(hex) ?? 0) + 1);
   }

@@ -3,7 +3,7 @@ import { computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
-import { swatchSections, authoredColors } from '@/lib/ColorUtils';
+import { swatchSections, drawingColors } from '@/lib/ColorUtils';
 
 // The colour picker for one slot of the pair. Its middle follows the active palette: swatch grids
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colours already in use for
@@ -25,7 +25,8 @@ const isNone = computed(() => (props.slotName === 'fg' ? ansiView.value && works
 const offersNone = computed(() => props.slotName === 'bg' || ansiView.value);
 
 const sections = computed(() => swatchSections(project.quantize, project.activePalette));
-const inUse = computed(() => authoredColors(project.cellEdits));
+// Read when the popover opens (the paint layer isn't reactive; it doesn't change while this is open).
+const inUse = computed(() => drawingColors(project.cellEdits, project.hasPaint ? project.layer.colorCounts() : undefined));
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 
 const choose = (hex, remember = true) => workspace.setColor(props.slotName, hex, { remember });

@@ -11,6 +11,7 @@
  * LayerPatch = { tiles: { x, y, before: ImageData, after: ImageData }[], hadPaint, hasPaint }
  */
 import { ctx2d } from '../lib/Canvas.js';
+import { rgb2hex } from '../lib/ColorUtils.js';
 import { tilesForRect } from './History.js';
 
 export const MAX_LAYER_DIM = 4000;
@@ -61,6 +62,24 @@ export default class EditLayer {
     const rx = Math.floor(x * k), ry = Math.floor(y * k);
     if (rx < 0 || ry < 0 || rx >= this.canvas.width || ry >= this.canvas.height) return null;
     return { x: rx, y: ry, w: Math.max(1, Math.floor((x + 1) * k) - rx), h: Math.max(1, Math.floor((y + 1) * k) - ry) };
+  }
+
+  // How many grid pixels hold each paint colour, sampled one per grid pixel. Only (nearly) opaque
+  // paint counts: soft edges and overlaps blend into one-off colours nobody picked.
+  // ponytail: skips paint laid at under ~98% brush opacity; bucket it by colour if that matters.
+  colorCounts() {
+    const counts = new Map();
+    if (!this.hasPaint) return counts;
+    const ctx = ctx2d(newCanvas(this.cols, this.rows));
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.canvas, 0, 0, this.cols, this.rows);
+    const { data } = ctx.getImageData(0, 0, this.cols, this.rows);
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 250) continue;
+      const hex = rgb2hex({ r: data[i], g: data[i + 1], b: data[i + 2] });
+      counts.set(hex, (counts.get(hex) ?? 0) + 1);
+    }
+    return counts;
   }
 
   // pixels: { x, y, r, g, b, alpha }[] in grid pixels. Paint builds up to `opacity`, then blends.
