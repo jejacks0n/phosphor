@@ -234,6 +234,7 @@ article {
   overflow-anchor: none;
   outline: none;
   -webkit-overflow-scrolling: touch;
+  isolation: isolate; /* overlay z-indexes (cursor, marquee) stay below popovers and layers */
 }
 
 div.canvas-viewport {
