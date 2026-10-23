@@ -214,10 +214,9 @@ export default class PaintLayer {
     this.#stroke = null; // recorded tiles describe the old canvas
   }
 
-  // The image placed where the pipeline shows it (letterbox included, black), with paint on top.
-  // The image with this layer's paint merged over it, as a new picture the size of the layer.
-  // beneath(ctx, scale), if given, draws between the two (Merge down's cells).
-  bake(image, fit, beneath) {
+  // The image at its fit on a layer-sized canvas (black where it doesn't reach): the base as a
+  // picture at the layer's resolution, each grid pixel a whole scale x scale block.
+  picture(image, fit) {
     const k = this.scale;
     const out = newCanvas(this.canvas.width, this.canvas.height);
     const ctx = ctx2d(out);
@@ -225,7 +224,15 @@ export default class PaintLayer {
     ctx.fillRect(0, 0, out.width, out.height);
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(image, fit.dx * k, fit.dy * k, fit.dw * k, fit.dh * k);
-    beneath?.(ctx, k);
+    return out;
+  }
+
+  // The picture with this layer's paint merged over it. beneath(ctx, scale), if given, draws
+  // between the two (Merge down's cells).
+  bake(image, fit, beneath) {
+    const out = this.picture(image, fit);
+    const ctx = ctx2d(out);
+    beneath?.(ctx, this.scale);
     ctx.drawImage(this.canvas, 0, 0);
     return out;
   }

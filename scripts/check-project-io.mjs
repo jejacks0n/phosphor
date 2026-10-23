@@ -3,12 +3,13 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readProject, writeProject, PROJECT_EXTENSION } from '../src/document/projectIO.js';
-import { EMPTY_BASE, withErased, withPins } from '../src/document/baseRecords.js';
+import { EMPTY_BASE, withPins } from '../src/document/baseRecords.js';
 
 assert.equal(PROJECT_EXTENSION, '.phosphor');
 
 const bytes = (n, seed) => Uint8Array.from({ length: n }, (_, i) => (i * 31 + seed) & 255).buffer;
 const imageBuffer = bytes(100, 1);
+const fileOf = (json) => { const b = new TextEncoder().encode(JSON.stringify(json)); return new Blob([new TextEncoder().encode('PHOSPHOR'), new Uint32Array([b.byteLength, 0, 0]), b]); };
 const paintBlob = new Blob([bytes(40, 7)], { type: 'image/png' });
 const editCells = new Map([['3,2', { char: 'A', fg: '#ffff55' }]]);
 
@@ -19,13 +20,18 @@ assert.deepEqual([...new Uint8Array(back.imageBuffer)], [...new Uint8Array(image
 assert.deepEqual([...new Uint8Array(back.paintBuffer)], [...new Uint8Array(await paintBlob.arrayBuffer())]);
 assert.deepEqual([...back.editCells], [['3,2', { char: 'A', fg: '#ffff55' }]]);
 assert.equal(back.migrated, false);
-assert.equal(back.baseRecords, EMPTY_BASE);                             // nothing erased or pinned: none saved
+assert.equal(back.baseRecords, EMPTY_BASE);                             // nothing pinned: none saved
+assert.deepEqual(back.erasedCells, []);
 
-// The base layer's records (erased cells, pinned characters) round-trip; older files have none.
-const baseRecords = withPins(withErased(EMPTY_BASE, [{ col: 1, row: 1 }]), [{ col: 4, row: 2, char: 'Q' }]);
+// The base layer's pinned characters round-trip; older files have none.
+const baseRecords = withPins(EMPTY_BASE, [{ col: 4, row: 2, char: 'Q' }]);
 const withBase = await readProject(await writeProject({ settings: { cols: 80 }, imageBuffer, paintBlob: null, editCells, baseRecords }));
 assert.deepEqual(withBase.baseRecords, baseRecords);
 assert.ok(!('base' in withBase.settings));
+// Files from before the base was a picture kept erased cells as a record: they come back as cells to erase.
+const erasedFile = await readProject(fileOf({ cols: 4, base: { erased: ['1,1'], pins: [['2,0', 'Q']] } }));
+assert.deepEqual(erasedFile.erasedCells, [{ col: 1, row: 1 }]);
+assert.deepEqual([...erasedFile.baseRecords.pins], [['2,0', 'Q']]);
 
 const noPaint = await readProject(await writeProject({ settings: { cols: 1, hasPaint: false }, imageBuffer, paintBlob: null, editCells: new Map() }));
 assert.equal(noPaint.paintBuffer, null);
@@ -46,7 +52,6 @@ const old = await readProject(new Blob([new TextEncoder().encode('PHOSPHOR'), ne
 assert.deepEqual([...old.editCells], [['1,1', { char: '#' }]]);
 assert.equal(old.migrated, true);
 assert.deepEqual(old.settings, { cols: 4 });
-const fileOf = (json) => { const b = new TextEncoder().encode(JSON.stringify(json)); return new Blob([new TextEncoder().encode('PHOSPHOR'), new Uint32Array([b.byteLength, 0, 0]), b]); };
 const both = await readProject(fileOf({ cols: 4, cellEdits: [['0,0', { char: 'x' }]], charEditMap: [[5, '#']] })); // the file's key is cellEdits
 assert.deepEqual([...both.editCells], [['0,0', { char: 'x' }]]);       // the cell layer wins over older char edits
 assert.equal(both.migrated, false);

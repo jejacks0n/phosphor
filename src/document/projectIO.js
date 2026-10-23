@@ -23,7 +23,7 @@ export function loadImage(source, type) {
 
 // settings: plain JSON-able values (plus hasPaint); paintBlob: PNG of the paint layer, or null;
 // editCells: the edit layer's cells (saved under the file's original key, `cellEdits`);
-// baseRecords: the base layer's erased cells and pins (saved as `base`, left out when there are none).
+// baseRecords: the base layer's pinned characters (saved as `base`, left out when there are none).
 export async function writeProject({ settings, imageBuffer, paintBlob, editCells, baseRecords = EMPTY_BASE }) {
   const base = serializeBase(baseRecords);
   const json = new TextEncoder().encode(JSON.stringify({ ...settings, cellEdits: serializeEditCells(editCells), ...(base && { base }) }));
@@ -54,8 +54,14 @@ export async function readProject(file) {
   const usePaint = (hasPaint ?? paintLen > 0) && paintLen > 0;
   // Files from before the cell layer have charEditMap (cell index -> char) instead.
   const edits = cellEdits ? deserializeEditCells(cellEdits) : migrateCharEdits(charEditMap || [], settings.cols);
-  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, editCells: edits, baseRecords: deserializeBase(base), migrated: !cellEdits && edits.size > 0 };
+  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, editCells: edits, ...readBase(base), migrated: !cellEdits && edits.size > 0 };
 }
+
+// The base record, and (from files before the base was a picture) the cells to erase.
+const readBase = (json) => {
+  const { records, erased } = deserializeBase(json);
+  return { baseRecords: records, erasedCells: erased };
+};
 
 // Save via the browser's file picker where available, otherwise as a download.
 export async function saveFile(blob, filename, description) {

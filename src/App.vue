@@ -33,10 +33,11 @@ export default {
       if (project.image) project.render();
     });
 
-    // When the grid or image changes (in either view), the Text cursor stays on the grid and the
-    // selection (and the Picker's last pick), which may no longer fit, are dropped.
+    // When the grid changes (in either view), the Text cursor stays on the grid and the selection
+    // (and the Picker's last pick), which may no longer fit, are dropped. A new document drops them
+    // too (ProjectStore.newDocument); swapping the picture (a base edit, Merge down) keeps them.
     const project = useProjectStore(), workspace = useWorkspaceStore();
-    this.$watch(() => [project.cols, project.rows, project.image], () => {
+    this.$watch(() => [project.cols, project.rows], () => {
       workspace.selection = null;
       workspace.lastPick = null;
       const cursor = workspace.textCursor;

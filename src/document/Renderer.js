@@ -4,9 +4,10 @@
  * quantized), which generated cells are built from.
  *
  * Edit cells (editCells, see editCells.js) compose over the paint-free image, and paint draws
- * over them: base -> edit cells -> paint. The base layer's records (baseRecords.js, set by the
- * store) apply to the image's cells: an erased cell is blank (and black in outputCanvas, so the pixel
- * view and paint over it agree), a pinned one keeps its character.
+ * over them: base -> edit cells -> paint. The base layer's pins (baseRecords.js, set by the store)
+ * keep their characters. Cells being erased from the base (erasing, kept by the store until the
+ * picture renders without them) show blank: black in outputCanvas, so the pixel view and paint
+ * over them agree.
  */
 import { processImage, applyQuantization } from '../lib/ImageProcessor.js';
 import { applyTransforms } from '../lib/PixelTransforms.js';
@@ -22,6 +23,7 @@ export default class Renderer {
   outputCanvas = null;
   palette = null;
   baseRecords = EMPTY_BASE; // the store keeps this in step with its own
+  erasing = new Set();      // 'col,row' cells shown blank until the next render (the store's)
   #scratch = null;
   #pipelineData = null; // pipelineCanvas pixels: the image under edit cells
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
@@ -33,6 +35,11 @@ export default class Renderer {
     this.pipelineCanvas = this.outputCanvas = this.palette = null;
     this.#pipelineData = this.#paintData = this.#source = null;
     this.#effective = new Map();
+  }
+
+  // The picture was edited in place: its stored colours are read again on the next render.
+  pictureChanged() {
+    this.#source = null;
   }
 
   // baseParams: params with the colour adjustments neutral (settings.baseParams).
@@ -72,7 +79,7 @@ export default class Renderer {
       seed: params.seed,
     });
     const rows = charRowsOf(params.rows);
-    for (const key of [...this.baseRecords.erased, ...this.baseRecords.pins.keys()]) {
+    for (const key of [...this.erasing, ...this.baseRecords.pins.keys()]) {
       const { col, row } = parseKey(key);
       if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#onBase(col, row, params, cells[cellIndex(col, row, params.cols)], true);
     }
@@ -90,10 +97,10 @@ export default class Renderer {
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(this.pipelineCanvas, 0, 0, w, h);
 
-    // Erased base cells are blank: their background colour, both halves, under any paint.
-    if (this.baseRecords.erased.size) {
+    // Cells being erased are blank: their background colour, both halves, under any paint.
+    if (this.erasing.size) {
       ctx.fillStyle = this.effective(BLANK.bg, params).hex;
-      for (const key of this.baseRecords.erased) {
+      for (const key of this.erasing) {
         const { col, row } = parseKey(key);
         ctx.fillRect(col, 2 * row, 1, 2);
       }
@@ -229,12 +236,12 @@ export default class Renderer {
     return this.#onBase(col, row, params, buildCell(top, bottom, char, renderStyle), false);
   }
 
-  // A converted cell with the base layer's records applied: an erased cell is blank (withPaint: with
-  // the paint over it, as coverCell shows paint), a pinned one keeps its pinned character.
+  // A converted cell with the base layer's pins applied; a cell being erased is blank (withPaint:
+  // with the paint over it, as coverCell shows paint).
   #onBase(col, row, params, cell, withPaint) {
-    if (!this.baseRecords.erased.size && !this.baseRecords.pins.size) return cell;
+    if (!this.erasing.size && !this.baseRecords.pins.size) return cell;
     const key = cellKey(col, row);
-    if (this.baseRecords.erased.has(key)) {
+    if (this.erasing.has(key)) {
       const blank = buildCell(this.effective(BLANK.bg, params), this.effective(BLANK.fg, params), BLANK.char, params.renderStyle);
       if (!withPaint) return blank;
       return coverCell(blank, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), { renderStyle: params.renderStyle, palette: this.palette });

@@ -50,7 +50,7 @@ const eraser = {
     const painted = fresh.filter(c => project.cellHasPaint(c.col, c.row));
     const rest = fresh.filter(c => !painted.includes(c));
     const edited = rest.filter(c => project.editCellAt(c.col, c.row));
-    const bare = base ? rest.filter(c => !project.editCellAt(c.col, c.row) && !project.baseRecords.erased.has(keyOf(c))) : [];
+    const bare = base ? rest.filter(c => !project.editCellAt(c.col, c.row)) : [];
     project.eraseEditPixels(pixels);
     project.clearEditCells(edited);
     project.eraseBase(bare);
