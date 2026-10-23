@@ -3,7 +3,7 @@
 // Run: node scripts/check-underlying.mjs
 import assert from 'node:assert/strict';
 import { baseParams } from '../src/store/settings.js';
-import { pickMode } from '../src/lib/pickMode.js';
+import { pickMode, pickTargetOf } from '../src/lib/pickMode.js';
 import { nearestColor, nearestIndex, paletteIndex, swatchSections, drawingColors, PALETTES } from '../src/lib/ColorUtils.js';
 
 const params = {
@@ -67,4 +67,8 @@ assert.equal(pm({ target: 'fg' }), 'fg');
 assert.equal(pm({ target: 'bg', shiftKey: true }), 'fg');
 assert.equal(pm({ target: 'fg', altKey: true }), 'bg');
 assert.equal(pm({ view: 'input', target: 'both' }), 'fg');           // the pixel view picks the paint colour
+// The Picker's [FG][BG] toggles: both lit picks both.
+assert.equal(pickTargetOf({ fg: true, bg: true }), 'both');
+assert.equal(pickTargetOf({ fg: true, bg: false }), 'fg');
+assert.equal(pickTargetOf({ fg: false, bg: true }), 'bg');
 console.log('underlying ok');

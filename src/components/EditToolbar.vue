@@ -9,6 +9,7 @@ import RangeField from '@/components/RangeField.vue';
 import ColorPair from '@/components/ColorPair.vue';
 import PaletteStrip from '@/components/PaletteStrip.vue';
 import LayerToggles from '@/components/LayerToggles.vue';
+import ToggleGroup from '@/components/ToggleGroup.vue';
 
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -260,6 +261,10 @@ function confirmMergeDown() {
                 @click="workspace[option.key] = choice.value"
             ><span v-if="choice.icon" v-html="choice.icon"></span><template v-else>{{ choice.label }}</template></button>
           </div>
+          <template v-else-if="option.type === 'toggles'">
+            <span class="option-label">{{ option.label }}</span>
+            <ToggleGroup v-model="workspace[option.key]" :options="option.options" :label="option.label"/>
+          </template>
           <template v-else-if="option.type === 'layers'">
             <span class="option-label">{{ option.label }}</span>
             <LayerToggles v-model="workspace[option.key]" :label="option.label"/>

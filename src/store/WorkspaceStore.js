@@ -19,7 +19,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     recentColors: useLocalStorage('phosphor.recentColors', []),
     activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
     pickSwapped: false,    // the picker is only held by Alt from a paint tool
-    pickTarget: 'both',    // ANSI view: what a plain picker click picks ('fg' | 'bg' | 'both')
+    pickLayers: { fg: true, bg: true }, // ANSI view: what a plain picker click picks (both lit: both)
     textCursor: null,      // { col, row } of the Text tool's cursor
     insertMode: false,     // typing pushes the row right instead of overwriting
     paletteLayerOpen: false, // the character palette layer has the keyboard

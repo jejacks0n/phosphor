@@ -6,7 +6,7 @@ import { useEditorInteractions } from '@/composables/useEditorInteractions';
 import { getTool } from '@/tools';
 import { charRowsOf, cellAt, cellsOfPixels } from '@/lib/Cells';
 import { squarePixels } from '@/lib/Brushes';
-import { pickMode } from '@/lib/pickMode';
+import { pickMode, pickTargetOf } from '@/lib/pickMode';
 import { drawsCells } from '@/tools/shapes';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
@@ -59,7 +59,7 @@ const {
 });
 
 // The eyedropper: the pixel view picks the paint colour; the ANSI view picks the cell's underlying
-// colours (the FG/BG/Both option; Shift: foreground only, Alt: background only). Picks repeat while
+// colours (the [FG][BG] toggles; Shift: foreground only, Alt: background only). Picks repeat while
 // dragging, so they don't fill the recent colours.
 function pickAt(pos, event) {
   const mode = pickMode({
@@ -67,7 +67,7 @@ function pickAt(pos, event) {
     shiftKey: !!event?.shiftKey,
     altKey: !!event?.altKey,
     swapped: workspaceStore.pickSwapped,
-    target: workspaceStore.pickTarget,
+    target: pickTargetOf(workspaceStore.pickLayers),
   });
   const remember = { remember: false };
   // The pixel view, and a picker held with Alt from a paint tool, pick exactly the half under the pointer.

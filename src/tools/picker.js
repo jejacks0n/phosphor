@@ -8,8 +8,11 @@ export default {
   instant: true,
   options: [
     {
-      key: 'pickTarget', label: 'Pick', type: 'segmented', views: ['output'],
-      choices: [{ value: 'fg', label: 'FG' }, { value: 'bg', label: 'BG' }, { value: 'both', label: 'Both' }],
+      key: 'pickLayers', label: 'Pick', type: 'toggles', views: ['output'],
+      options: [
+        { key: 'fg', label: 'FG', title: "Pick the cell's foreground" },
+        { key: 'bg', label: 'BG', title: "Pick the cell's background" },
+      ],
     },
   ],
 };
