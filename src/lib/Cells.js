@@ -110,6 +110,17 @@ export function coverCell(cell, paintTop, paintBottom, { renderStyle, charset, p
   return buildCell(top, bottom, char, renderStyle);
 }
 
+// Paint flattened into a stored entry ({ char, fg, bg } as '#rrggbb'): like coverCell, in stored
+// colours and without palette snapping, so the result is an authored half-block. No paint: the entry.
+export function flattenEntry(entry, paintTop, paintBottom) {
+  const aTop = paintTop?.a ?? 0, aBottom = paintBottom?.a ?? 0;
+  if (!aTop && !aBottom) return entry;
+  const [ht, hb] = halfColors({ char: entry.char, fg: hex2rgb(entry.fg), bg: hex2rgb(entry.bg) });
+  const top = aTop ? mix(ht, paintTop, aTop) : ht;
+  const bottom = aBottom ? mix(hb, paintBottom, aBottom) : hb;
+  return { char: '▄', bg: rgb2hex(top), fg: rgb2hex(bottom) };
+}
+
 // Cells as pixels: each included cell's two half-colours (top, bottom) at grid resolution, as an
 // RGBA buffer cols x rows (alpha 255 for included cells, 0 elsewhere and on an odd last pixel row).
 export function cellsToPixels(cells, cols, rows, include) {

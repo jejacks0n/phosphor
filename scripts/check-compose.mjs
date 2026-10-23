@@ -3,7 +3,7 @@
 // Run: node scripts/check-compose.mjs
 import assert from 'node:assert/strict';
 import { coverageOf, setGlyphRasterizer } from '../src/lib/GlyphCoverage.js';
-import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels, bakedEntry } from '../src/lib/Cells.js';
+import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels, bakedEntry, flattenEntry } from '../src/lib/Cells.js';
 import { effectiveColor, getEffectiveColor } from '../src/lib/PixelTransforms.js';
 import { rgb2hex, hex2rgb, PALETTES } from '../src/lib/ColorUtils.js';
 
@@ -63,4 +63,10 @@ const imageCell = { char: '▄', bg: '#ff0000', fg: '#0000ff' };
 assert.deepEqual(bakedEntry('ansi', imageCell), { char: '▄', fg: '#0000ff', bg: '#ff0000' });
 assert.deepEqual(bakedEntry('colorAscii', imageCell), { char: '▄', fg: '#800080' });
 assert.deepEqual(bakedEntry('ascii', imageCell), { char: '▄' });
+// Flatten: paint over a stored entry becomes a half-block entry (stored colours, no palette snap).
+const solid = { char: '█', fg: '#ff0000', bg: '#0000ff' };
+assert.equal(flattenEntry(solid, null, null), solid);
+assert.equal(flattenEntry(solid, { r: 0, g: 0, b: 0, a: 0 }, null), solid);
+assert.deepEqual(flattenEntry(solid, { r: 0, g: 255, b: 0, a: 1 }, null), { char: '▄', bg: '#00ff00', fg: '#ff0000' });
+assert.deepEqual(flattenEntry({ char: ' ', fg: '#ffffff', bg: '#000000' }, null, { r: 255, g: 255, b: 255, a: 0.5 }), { char: '▄', bg: '#000000', fg: '#808080' });
 console.log('compose ok');
