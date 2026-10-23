@@ -311,14 +311,15 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* Opens from the toolbar's bottom right, inside its padding. */
 div.palette-layer {
   position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
+  top: calc(100% + 2px);
+  right: 10px;
   z-index: 300;
   display: flex;
   width: 300px;
-  max-width: 100%; /* the toolbar's width: never wider than the space it opens in */
+  max-width: calc(100% - 20px); /* never wider than the toolbar it opens from */
   max-height: min(560px, calc(100vh - 160px));
   background: var(--surface-1);
   border: 1px solid var(--accent);

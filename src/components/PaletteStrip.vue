@@ -54,12 +54,14 @@ const use = (glyph) => {
 </template>
 
 <style scoped>
+/* As wide as the row, or its content when the row is narrower (the row scrolls). The palette
+   layer opens from the toolbar, not the strip, so the scrolling row doesn't clip it. */
 div.palette-strip {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
   width: 100%;
+  min-width: max-content;
 }
 
 div.keys {

@@ -1,6 +1,6 @@
 <script setup>
-import { computed, watch } from 'vue';
-import { useMediaQuery } from '@vueuse/core';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { useMediaQuery, useResizeObserver } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { TOOLS, getTool } from '@/tools';
@@ -19,6 +19,37 @@ const tools = computed(() => {
   return offered.map((tool, i) => ({ tool, divider: i > 0 && (tool.section ?? 'draw') !== (offered[i - 1].section ?? 'draw') }));
 });
 const activeTool = computed(() => getTool(workspace.activeTool));
+
+// Tools that don't fit the row move into the ⋯ menu after the last one that does. All of them stay
+// in the row (clipped), so it always knows their full width. The room for tools is the tool group
+// plus the spacer after it (plus the menu's own slot while it's showing).
+const toolBox = useTemplateRef('toolBox');
+const toolSpacer = useTemplateRef('toolSpacer');
+const moreMenu = useTemplateRef('moreMenu');
+const hiddenTools = ref([]);
+const toolsWidth = ref(null); // the group's width while some tools are hidden: up to the last shown
+const MORE_GAP = 6;           // the row's gap
+function fitTools() {
+  const box = toolBox.value, spacer = toolSpacer.value;
+  if (!box || !spacer) return;
+  const items = [...box.children];
+  const right = (el) => el.offsetLeft + el.offsetWidth;
+  const moreSlot = (moreMenu.value?.$el.offsetWidth || 34) + MORE_GAP;
+  const room = box.clientWidth + spacer.offsetWidth + (hiddenTools.value.length ? moreSlot : 0);
+  if (!items.length || right(items.at(-1)) <= room) {
+    hiddenTools.value = [];
+    toolsWidth.value = null;
+    return;
+  }
+  const shown = items.filter(el => right(el) <= room - moreSlot);
+  hiddenTools.value = items.filter(el => el.dataset.tool && !shown.includes(el)).map(el => el.dataset.tool);
+  const lastTool = shown.filter(el => el.dataset.tool).at(-1);
+  toolsWidth.value = lastTool ? right(lastTool) : 0;
+}
+useResizeObserver([toolBox, toolSpacer], fitTools);
+watch(() => tools.value.length, () => nextTick(fitTools));
+const moreTools = computed(() => tools.value.filter(({ tool }) => hiddenTools.value.includes(tool.id)).map(({ tool }) => tool));
+const MORE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M96 320a56 56 0 1 1 112 0a56 56 0 1 1-112 0zm168 0a56 56 0 1 1 112 0a56 56 0 1 1-112 0zm224-56a56 56 0 1 1 0 112a56 56 0 1 1 0-112z"/></svg>';
 // A tool's options for the current view (an option may be for one view only).
 const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option =>
   (!option.views || option.views.includes(workspace.editorTab)) && (!option.when || option.when(workspace))));
@@ -64,10 +95,12 @@ function confirmFlatten() {
         <ColorPair/>
       </div>
 
-      <div class="tool-group">
+      <div ref="toolBox" class="tool-group" :style="{ maxWidth: toolsWidth === null ? null : `${toolsWidth}px` }">
         <template v-for="{ tool, divider } in tools" :key="tool.id">
           <div v-if="divider" class="divider"/>
           <button
+              :data-tool="tool.id"
+              :tabindex="hiddenTools.includes(tool.id) ? -1 : null"
               :title="tool.title"
               :aria-label="tool.title"
               @click="workspace.setActiveTool(tool.id)"
@@ -76,8 +109,21 @@ function confirmFlatten() {
           ></button>
         </template>
       </div>
+      <DropdownMenu
+          v-if="moreTools.length"
+          ref="moreMenu"
+          class="tools-menu"
+          :class="{ 'holds-active': hiddenTools.includes(workspace.activeTool) }"
+          label="More tools"
+          align="left"
+      >
+        <template #trigger><span v-html="MORE_ICON"></span></template>
+        <button v-for="tool in moreTools" :key="tool.id" class="choice" :class="{ on: workspace.activeTool === tool.id }" @click="workspace.setActiveTool(tool.id)">
+          <span class="tool-icon" v-html="tool.icon"></span>{{ tool.title }}
+        </button>
+      </DropdownMenu>
 
-      <div class="spacer"/>
+      <div ref="toolSpacer" class="spacer"/>
 
       <template v-if="workspace.editorTab === 'input'">
         <!-- Narrow screens fold the overlay controls into a button that opens a row of their own. -->
@@ -187,7 +233,7 @@ function confirmFlatten() {
           <div v-else-if="option.type === 'toggle'" class="segmented">
             <button class="text" :class="{ on: workspace[option.key] }" :aria-pressed="!!workspace[option.key]" @click="workspace[option.key] = !workspace[option.key]">{{ option.label }}</button>
           </div>
-          <DropdownMenu v-else-if="option.type === 'dropdown'" class="option-menu" :label="shownChoice(option)?.label ?? option.label">
+          <DropdownMenu v-else-if="option.type === 'dropdown'" class="option-menu" align="left" :label="shownChoice(option)?.label ?? option.label">
             <button
                 v-for="choice in offered(option)"
                 :key="String(choice.value)"
@@ -205,6 +251,7 @@ function confirmFlatten() {
 
 <style scoped>
 article.edit-toolbar {
+  position: relative; /* the palette layer opens from its bottom edge */
   display: flex;
   flex-direction: column;
   background: var(--surface-1);
@@ -220,9 +267,65 @@ div.toolbar-row {
   padding: 4px 10px;
 }
 
+/* The options row scrolls sideways when it doesn't fit, without a scrollbar. */
 div.secondary-row {
   padding: 0 10px 4px;
   gap: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+div.secondary-row::-webkit-scrollbar {
+  display: none;
+}
+
+div.secondary-row > *,
+div.tool-setting-group > * {
+  flex-shrink: 0;
+}
+
+/* Only the tool group gives way; it clips (sideways only, so hover lifts still show). */
+div.primary-row > * {
+  flex-shrink: 0;
+}
+
+div.primary-row > div.tool-group {
+  position: relative; /* its tools' offsets are measured from it */
+  flex-shrink: 1;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+div.tool-group > * {
+  flex-shrink: 0;
+}
+
+.tools-menu :deep(svg) {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: var(--text-faint);
+}
+
+.tools-menu :deep(.dropdown-trigger:hover) svg,
+.tools-menu button.choice.on :deep(svg) {
+  fill: var(--white);
+}
+
+/* The active tool is in the menu: the ⋯ lights up like a tool button. */
+.tools-menu.holds-active :deep(.dropdown-trigger) {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.tools-menu.holds-active :deep(svg) {
+  fill: var(--white);
+}
+
+.tools-menu span.tool-icon {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: -3px;
 }
 
 div.tool-group,
@@ -371,13 +474,9 @@ button:disabled {
   opacity: 0.35;
 }
 
-/* Option dropdowns open from their left edge, with the glyphs in an even column. */
-.option-menu :deep(div.dropdown-content) {
-  left: 0;
-  right: auto;
-}
-
-.option-menu button.choice.on {
+/* Option dropdowns list their glyphs in an even column; the current choice is lit. */
+.option-menu button.choice.on,
+.tools-menu button.choice.on {
   background: var(--accent);
   color: var(--white);
 }
