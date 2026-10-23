@@ -37,8 +37,9 @@ const help = (key) => getSetting(key).help;
               :max="store.maxCols"
               class="mono"
           >
-          <button title="Lock Aspect Ratio" :class="{ active: store.aspectLock }" @click="store.aspectLock = !store.aspectLock">
-            {{ store.aspectLock ? '🔒' : '🔓' }}
+          <button title="Lock Aspect Ratio" :aria-pressed="store.aspectLock" :class="{ active: store.aspectLock }" @click="store.aspectLock = !store.aspectLock">
+            <svg v-if="store.aspectLock" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M192 288V192A128 128 0 0 1 448 192V288H384V192A64 64 0 0 0 256 192V288ZM176 288H464A48 48 0 0 1 512 336V528A48 48 0 0 1 464 576H176A48 48 0 0 1 128 528V336A48 48 0 0 1 176 288Z"/></svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 288V192A128 128 0 0 1 576 192V256H512V192A64 64 0 0 0 384 192V288ZM112 288H400A48 48 0 0 1 448 336V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V336A48 48 0 0 1 112 288Z"/></svg>
           </button>
           <input
               type="number"
@@ -212,6 +213,14 @@ legend button:hover {
   width: 38px;
   padding: 8px;
   flex-shrink: 0;
+}
+
+:deep(div.row-inputs button svg) {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  fill: currentColor;
 }
 
 :deep(label) {
