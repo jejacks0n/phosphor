@@ -16,12 +16,16 @@ The base layer is your image. When you load a picture (or start with a blank can
 The colour transforms, adjustments and effects in the sidebar (Brightness, Contrast, Hue Rotation,
 Colorize, Edges, Flatten, Sharpen…) change the picture before it's converted.
 
-The base layer also remembers two things per cell, saved with your project:
+The base layer is a picture you can edit. Erasing, flipping or moving the base changes its
+pixels, and the converter runs on the result, effects included (so Edges outlines an erased
+patch). The first time you edit the base, Phosphor turns the image into a picture on the grid,
+which shifts a few cells slightly, once; undoing that first edit brings the original image
+back. Saving stores the edited picture.
 
-- **Erased cells** show as a **blank cell**: a space, in light grey on black.
-- **Pinned characters** are cells whose character the converter keeps instead of picking one, so
-  rolling the seed or changing the character set doesn't change them. Merge down pins characters
-  (see below).
+The base layer also remembers **pinned characters**: cells whose character the converter keeps
+instead of picking one, so rolling the seed or changing the character set doesn't change them.
+Merge down pins characters (see below), and erasing pins a space. Any other character belongs to
+its cell's position: the converter picks it there, whatever colours are underneath.
 
 ## The edit layer
 
@@ -54,25 +58,48 @@ with the picture. The colour palette (CGA, VGA, a colour count) applies to every
 The eraser's **Erase** toggles choose what it erases: **Base**, **Edit**, or both (one is always on).
 
 - **Edit** removes paint and edit cells.
-- **Base** erases the base layer, leaving blank cells, and removes any pinned characters there.
-  Your edits on top stay.
+- **Base** erases the base layer: the cells go black with a pinned space. Your edits on top
+  stay.
 - **Layer aware** (shown while Edit is on, in the ANSI view) takes one layer per pass: the first
   pass removes paint, the next the cells under it, and — with Base on too — the next erases the
   base. Turn it off to erase every chosen layer in one pass.
 
-In the Pixel view the eraser removes paint (Edit) and erases base cells (Base); erased cells show
-black there.
+Size 1 erases exactly what's under the pointer: one character in the ANSI view, one pixel in
+the Pixel view. In the Pixel view the eraser removes paint (Edit) and erases base cells (Base);
+erased cells show black there.
 
 ## The Select tool
 
 The Select tool's **Layers** toggles (**Base**, **Edit**) choose what Copy, Cut, Delete, moving and
 nudging act on:
 
-- **Copy** with Base on copies what the base shows; pasting puts it on the edit layer.
-- **Delete** with Base on erases the base there (blank cells); with Edit on it removes your edits.
-- **Moving** or nudging with both on moves everything you see and leaves blank cells behind.
+- **Base** is the picture's colours and any pinned characters. Moving the base moves those and
+  leaves the area it came from erased (black, with pinned spaces). Characters the converter picked
+  stay where they are, and your edits on top stay too.
+- **Edit** is your typed and drawn cells and paint.
+- With both on, each layer moves, copies and pastes as itself. Pasting puts base content back on
+  the base and edit content on the edit layer.
+- **Delete** erases the base (with Base on) and removes your edits (with Edit on).
+
+Choosing another tool drops the selection.
+
+## Flip FG/BG
+
+Flip's **Flip** toggles (**Base**, **Edit**) choose what it flips. **Edit** (the default) swaps an
+edit cell's colours or the paint there; on a cell with neither, the flip goes on the edit layer as
+paint. **Base** swaps the picture's two halves in each cell. With both on, both layers flip.
+
+## Other tools
+
+- **Shapes** draw their outline in the foreground colour and fill the inside with the background
+  colour; set the background to None for an outline only. In Character mode the shape is the
+  character in the foreground colour, the cells' backgrounds are left alone, and **Fill** fills the
+  inside with the character too.
+- **Color Picker**'s **FG** and **BG** toggles choose what a pick sets; both lit sets both.
+- **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
+  selection's size and place, and the Color Picker its last pick and where each colour came from.
 
 ## When the grid changes
 
-Changing the grid size keeps the picture where it is relative to the canvas: paint, erased cells
-and pinned characters move with it. (Edit cells stay at the same column and row.)
+Changing the grid size keeps the picture where it is relative to the canvas: paint and pinned
+characters move with it. (Edit cells stay at the same column and row.)
