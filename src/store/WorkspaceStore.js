@@ -32,7 +32,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     selectLayers: { base: true, edit: true }, // what the Select tool acts on: the base layer and/or the edit layer
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse'
-    shapeFilled: false,
+    shapeCharFill: false,    // Character mode: fill the inside with the character too (other modes fill with BG)
     shapeDrawWith: 'double', // ANSI view: 'single' | 'double' | 'half' | 'full' | 'char'
     shapeConnect: true,      // line boxes join the box characters they cross or meet
     shapeBlockChars: false,  // ANSI blocks: real ▄/█ characters, or paint over the cells' own

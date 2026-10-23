@@ -426,10 +426,10 @@ export const useProjectStore = defineStore('project', {
       this.refreshCells(pixels);
     },
 
-    // Paint grid pixels ({ x, y, alpha }) in the current colour and brush opacity.
-    paintStroke(pixels) {
+    // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground colour) at the brush opacity.
+    paintStroke(pixels, color) {
       const workspace = useWorkspaceStore();
-      const { r, g, b } = hex2rgb(workspace.editFgColor);
+      const { r, g, b } = hex2rgb(color ?? workspace.editFgColor);
       const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < this.cols && y < this.rows);
       this.paintEditPixels(inGrid.map(p => ({ ...p, r, g, b })), workspace.editBrushOpacity);
     },

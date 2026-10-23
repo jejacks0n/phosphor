@@ -263,9 +263,6 @@ function confirmMergeDown() {
             <span class="option-label">{{ option.label }}</span>
             <LayerToggles v-model="workspace[option.key]" :label="option.label"/>
           </template>
-          <div v-else-if="option.type === 'toggle'" class="segmented">
-            <button class="text" :class="{ on: workspace[option.key] }" :aria-pressed="!!workspace[option.key]" @click="workspace[option.key] = !workspace[option.key]">{{ option.label }}</button>
-          </div>
           <DropdownMenu v-else-if="option.type === 'dropdown'" class="option-menu" align="left" :label="shownChoice(option)?.label ?? option.label">
             <button
                 v-for="choice in offered(option)"
