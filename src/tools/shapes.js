@@ -1,12 +1,13 @@
 // Rectangles and ellipses, outlined or filled. The pixel view paints them; the ANSI view draws
-// rectangles as single/double line boxes, shapes in full blocks or the active character as cells,
-// and anything else (line-drawn ellipses, or "Half-block") as paint at grid resolution, which is
-// half-block drawing. Anti-aliased ellipses paint edge pixels by coverage, or shade cells ░▒▓█.
+// rectangles as single/double line boxes (Connect joins them to the lines they cross), shapes in
+// full blocks or the active character as cells, and anything else (line-drawn ellipses, or
+// "Half-block") as paint at grid resolution, which is half-block drawing. Anti-aliased ellipses paint edge pixels by coverage, or shade cells ░▒▓█.
 // Block characters (on by default) makes block shapes real ▄/█ cells; off, they paint over the
 // cells and each keeps its own character.
 import { rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/cellEdits';
 import { charRowsOf, cellsOfPixels } from '@/lib/Cells';
+import { joinBox, inwardArms } from '@/lib/BoxJoin';
 
 let start = null; // the drag's first grid position
 
@@ -69,7 +70,12 @@ function apply({ project, workspace, view }, end) {
     const charOf = (cover) => (drawWith === 'char' ? workspace.activeChar : SHADES.find(([min]) => cover >= min)?.[1]);
     cells = shape.map(c => ({ ...c, char: charOf(c.cover) })).filter(c => c.char).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs } }));
   } else {
-    cells = boxCells(rect, drawWith, project.cols, rows).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs } }));
+    // Connect joins the frame to the line characters it crosses or meets (not ones a fill erases).
+    const shown = (col, row) => (inGrid({ col, row }) ? project.cells[row * project.cols + col]?.char : undefined);
+    const erased = (col, row) => filled && col > rect.c0 && col < rect.c1 && row > rect.r0 && row < rect.r1;
+    const around = (col, row) => [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dc, dr]) => (erased(col + dc, row + dr) ? undefined : shown(col + dc, row + dr)));
+    const join = (col, row, char) => (workspace.shapeConnect ? joinBox(char, shown(col, row), inwardArms(around(col, row))) : char);
+    cells = boxCells(rect, drawWith, project.cols, rows).map(({ col, row, char }) => ({ col, row, attrs: { char: join(col, row, char), ...attrs } }));
     if (filled) {
       const interior = rectCells(rect).filter(inGrid).filter(c => !isEdge(c));
       cells.push(...interior.map(c => ({ ...c, attrs: { char: ' ', ...attrs } })));
@@ -105,6 +111,11 @@ export default {
         // Offered unless the active character is a block the other choices already draw.
         { value: 'char', label: 'Character', glyph: (workspace) => workspace.activeChar.repeat(2), when: (ws) => !'▀▄█'.includes(ws.activeChar) },
       ],
+    },
+    {
+      key: 'shapeConnect', label: 'Connect', type: 'checkbox', views: ['output'],
+      when: (ws) => ws.shapeKind === 'rect' && (ws.shapeDrawWith === 'single' || ws.shapeDrawWith === 'double'),
+      title: 'Join the frame to the line characters it crosses or meets',
     },
     {
       key: 'shapeBlockChars', label: 'Block characters', type: 'checkbox', views: ['output'], when: drawsBlocks,
