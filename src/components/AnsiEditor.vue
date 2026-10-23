@@ -7,7 +7,6 @@ import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
 import EditorViewport from '@/components/EditorViewport.vue';
-import CharPicker from '@/components/CharPicker.vue';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 import SelectionBar from '@/components/SelectionBar.vue';
 
@@ -15,10 +14,8 @@ import SelectionBar from '@/components/SelectionBar.vue';
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 useTextTool(projectStore, workspaceStore);
-const viewport = useTemplateRef('viewport');
 const displayRef = useTemplateRef('pre');
 
-const picker = ref(null);
 const metrics = ref(null);
 let renderFrame = null;
 
@@ -78,16 +75,6 @@ const coordsAt = (event) => {
 // CSS px per grid pixel (a grid pixel is half a character cell tall), for tool previews.
 const unit = computed(() => (metrics.value ? { x: metrics.value.cellWidth, y: metrics.value.lineHeight / 2 } : null));
 
-// The char tool asks for a picker on a cell; the picker is positioned on screen next to it.
-const openCharPicker = (col, row) => {
-  const m = ensureMetrics();
-  if (!m || !displayRef.value) return;
-  const rect = displayRef.value.getBoundingClientRect();
-  const targetRect = { left: rect.left + col * m.cellWidth + 2, top: rect.top + row * m.lineHeight + 2, width: m.cellWidth, height: m.lineHeight };
-  picker.value = { col, row, targetRect };
-};
-const toolContext = { openCharPicker };
-
 // The Text tool's cursor: a blinking outline on its cell.
 const cursorStyle = computed(() => {
   const m = metrics.value, cursor = workspaceStore.textCursor;
@@ -116,38 +103,6 @@ const selectionBox = computed(() => {
   };
 });
 
-// While the picker is open, its cell stays highlighted.
-const pinnedStyle = computed(() => {
-  const m = metrics.value;
-  if (!picker.value || !m) return { display: 'none' };
-  return {
-    display: 'block',
-    width: `${m.cellWidth}px`,
-    height: `${m.lineHeight}px`,
-    left: `${picker.value.col * m.cellWidth + 2}px`,
-    top: `${picker.value.row * m.lineHeight + 1}px`,
-  };
-});
-
-const pickerChars = computed(() => {
-  const chars = projectStore.processParams.chars;
-  if (!chars) return [];
-  return [...new Set(chars.split(''))].filter(c => c.trim());
-});
-
-const closePicker = (event) => {
-  if (event) viewport.value?.updateMousePos(event);
-  picker.value = null;
-};
-
-const selectChar = (char, event) => {
-  if (!picker.value) return;
-  // The last edit to a cell wins: picking a character removes the paint over it.
-  projectStore.editCell(picker.value.col, picker.value.row, { char: char === 'ERASE' ? null : char }, { clearPaint: true });
-  closePicker(event);
-  projectStore.commitEdit();
-};
-
 // The first content renders immediately so it's laid out before the viewport restores/centres its
 // scroll on the next frame; later updates (e.g. every paint move) coalesce to one render per frame.
 watch(() => projectStore.cells, () => (displayRef.value?.childElementCount ? queueRender() : render()));
@@ -175,26 +130,15 @@ onBeforeUnmount(() => {
 <template>
   <div class="ansi-editor">
   <EditorViewport
-      ref="viewport"
       :display="displayRef"
       :coords-at="coordsAt"
       scroll-key="ansi"
       view="output"
       :unit="unit"
-      :tool-context="toolContext"
-      :hide-preview="!!picker"
   >
     <pre ref="pre" :style="{ pointerEvents: 'none' }"></pre>
     <div class="interaction-overlay"></div>
-    <CharPicker
-        v-if="picker"
-        :chars="pickerChars"
-        :target-rect="picker.targetRect"
-        @select="selectChar"
-        @close="closePicker"
-    />
     <template #overlay>
-      <div class="picker-cell" :style="pinnedStyle"></div>
       <div class="text-cursor" :style="cursorStyle"></div>
       <template v-if="selectionBox">
         <div class="marquee" :style="selectionBox.marquee"></div>
@@ -268,14 +212,5 @@ pre {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
   -webkit-text-size-adjust: none;
-}
-
-.picker-cell {
-  position: absolute;
-  pointer-events: none;
-  mix-blend-mode: difference;
-  background: white;
-  outline: 1px solid red;
-  z-index: 1000;
 }
 </style>

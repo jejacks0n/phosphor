@@ -8,7 +8,7 @@
  *   preview?   { shape: 'circle' | 'square' | 'cell', size?: (workspace) => grid pixels }
  *   options?   toolbar settings: { key (workspace store field), label, title, min, max, step?, decimals?, unit?, type?: 'checkbox' }
  *   begin(ctx, pos, event) -> false when there's no stroke to continue; move(ctx, from, to); end(ctx)
- * ctx = { project, workspace, view, ...editor extras (e.g. openCharPicker) }; positions are fractional grid pixels.
+ * ctx = { project, workspace, view }; positions are fractional grid pixels.
  */
 import pencil from './pencil';
 import brush from './brush';
@@ -18,12 +18,11 @@ import picker from './picker';
 import hand from './hand';
 import zoom from './zoom';
 import flip from './flip';
-import char from './char';
 import text from './text';
 import select from './select';
 import shapes from './shapes';
 
-export const TOOLS = [pencil, brush, eraser, bucket, picker, hand, zoom, flip, char, text, select, shapes];
+export const TOOLS = [pencil, brush, eraser, bucket, picker, hand, zoom, flip, text, select, shapes];
 
 const BY_ID = new Map(TOOLS.map(tool => [tool.id, tool]));
 const NONE = { id: 'none', kind: 'none', views: [] };

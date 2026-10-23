@@ -18,14 +18,12 @@ const props = defineProps({
   contentSize: { type: Object, default: null },             // { width, height } -> padded layout that keeps its centre on resize
   view: { type: String, required: true },                   // 'input' (PIXEL) | 'output' (ANSI), passed to tools
   unit: { type: Object, default: null },                    // { x, y }: CSS px per grid pixel, for tool previews
-  toolContext: { type: Object, default: () => ({}) },       // editor extras for tools (e.g. openCharPicker)
-  hidePreview: { type: Boolean, default: false },
 });
 
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const tool = computed(() => getTool(workspaceStore.activeTool));
-const toolCtx = () => ({ project: projectStore, workspace: workspaceStore, view: props.view, ...props.toolContext });
+const toolCtx = () => ({ project: projectStore, workspace: workspaceStore, view: props.view });
 const rootRef = useTemplateRef('root');
 const isMouseOver = ref(false);
 
@@ -40,7 +38,6 @@ const {
   handleTouchCancel,
   handleWheel,
   centerContent,
-  updateMousePos,
 } = useEditorInteractions({
   containerRef: rootRef,
   displayRef: computed(() => props.display),
@@ -91,7 +88,7 @@ const CELL_HIGHLIGHT = { borderRadius: '0', transform: 'none', mixBlendMode: 'di
 const previewStyle = computed(() => {
   const preview = tool.value.preview;
   const pos = mousePos.value, unit = props.unit;
-  if (!preview || !pos || !isMouseOver.value || !unit || props.hidePreview) return { display: 'none' };
+  if (!preview || !pos || !isMouseOver.value || !unit) return { display: 'none' };
 
   if (preview.shape === 'cell') {
     const cellW = unit.x, cellH = unit.y * 2;
@@ -200,7 +197,7 @@ onBeforeUnmount(() => {
   if (resizeObserver) resizeObserver.disconnect();
 });
 
-defineExpose({ centerContent, updateMousePos });
+defineExpose({ centerContent });
 </script>
 
 <template>
