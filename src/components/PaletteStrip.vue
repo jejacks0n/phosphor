@@ -38,7 +38,7 @@ const use = (glyph) => {
     </div>
     <div class="spacer"></div>
     <!-- Clicks don't take focus, so a following Space/Enter types instead of re-pressing the button. -->
-    <button class="nav" title="Previous palette (Alt+←)" aria-label="Previous palette" @mousedown.prevent @click="palettes.flip(-1)">◂</button>
+    <button class="nav" title="Previous palette (Alt+←)" aria-label="Previous palette" @mousedown.prevent @click="palettes.flip(-1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 2v12L3 8z"/></svg></button>
     <button
         class="nav"
         :class="{ on: workspace.paletteLayerOpen }"
@@ -47,8 +47,8 @@ const use = (glyph) => {
         aria-label="Palettes"
         @mousedown.prevent
         @click="workspace.paletteLayerOpen = !workspace.paletteLayerOpen"
-    >▤</button>
-    <button class="nav" title="Next palette (Alt+→)" aria-label="Next palette" @mousedown.prevent @click="palettes.flip(1)">▸</button>
+    ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true"><rect x="144" y="42" width="60" height="60" rx="8"/><rect x="226" y="42" width="60" height="60" rx="8"/><rect x="308" y="42" width="60" height="60" rx="8"/><rect x="144" y="154" width="60" height="60" rx="8"/><rect x="226" y="154" width="60" height="60" rx="8"/><rect x="308" y="154" width="60" height="60" rx="8"/><rect x="144" y="266" width="60" height="60" rx="8"/><rect x="226" y="266" width="60" height="60" rx="8"/><rect x="308" y="266" width="60" height="60" rx="8"/><rect x="144" y="377" width="60" height="60" rx="8"/><rect x="226" y="377" width="60" height="60" rx="8"/><rect x="308" y="377" width="60" height="60" rx="8"/></svg></button>
+    <button class="nav" title="Next palette (Alt+→)" aria-label="Next palette" @mousedown.prevent @click="palettes.flip(1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2v12l8-6z"/></svg></button>
     <CharPaletteLayer v-if="workspace.paletteLayerOpen" @close="workspace.paletteLayerOpen = false"/>
   </div>
 </template>
@@ -74,6 +74,7 @@ button.key {
   align-items: center;
   width: 30px;
   margin-top: -2px;
+  margin-bottom: -1px;
   padding: 0;
   border: none;
   border-radius: 4px;
@@ -108,12 +109,23 @@ button.key.flash {
 }
 
 button.nav {
-  padding: 4px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  min-width: 28px;
+  padding: 0 6px;
   border: none;
   border-radius: 4px;
   background: var(--surface-3);
   color: var(--text-dim);
   cursor: pointer;
+}
+
+button.nav svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
 
 button.nav.on {
