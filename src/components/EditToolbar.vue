@@ -170,8 +170,13 @@ function confirmFlatten() {
                 class="text"
                 :key="String(choice.value)"
                 :class="{ on: workspace[option.key] === choice.value }"
+                :title="choice.icon && choice.label"
+                :aria-label="choice.icon && choice.label"
                 @click="workspace[option.key] = choice.value"
-            >{{ choice.label }}</button>
+            ><span v-if="choice.icon" v-html="choice.icon"></span><template v-else>{{ choice.label }}</template></button>
+          </div>
+          <div v-else-if="option.type === 'toggle'" class="segmented">
+            <button class="text" :class="{ on: workspace[option.key] }" :aria-pressed="!!workspace[option.key]" @click="workspace[option.key] = !workspace[option.key]">{{ option.label }}</button>
           </div>
           <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
         </template>
@@ -346,6 +351,13 @@ button.active :deep(svg) {
 
 button:disabled {
   opacity: 0.35;
+}
+
+/* Icon choices take the button's text colour, and are as tall as a text label. */
+button.text :deep(svg) {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
 }
 
 div.mobile-only {

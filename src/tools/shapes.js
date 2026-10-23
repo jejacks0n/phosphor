@@ -46,8 +46,14 @@ export default {
   kind: 'paint',
   instant: true,
   options: [
-    { key: 'shapeKind', label: 'Shape', type: 'segmented', choices: [{ value: 'rect', label: '▭ Rectangle' }, { value: 'ellipse', label: '◯ Ellipse' }] },
-    { key: 'shapeFilled', label: 'Fill', type: 'segmented', choices: [{ value: false, label: 'Outline' }, { value: true, label: 'Filled' }] },
+    {
+      key: 'shapeKind', label: 'Shape', type: 'segmented',
+      choices: [
+        { value: 'rect', label: 'Rectangle', icon: '<svg viewBox="0 0 16 16"><path d="M1 3h14v10H1zM3 5v6h10V5z"/></svg>' },
+        { value: 'ellipse', label: 'Ellipse', icon: '<svg viewBox="0 0 16 16"><path d="M8 2.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 1 1 0-11zM8 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/></svg>' },
+      ],
+    },
+    { key: 'shapeFilled', label: 'Filled', type: 'toggle' },
     {
       key: 'shapeDrawWith', label: 'Draw with', type: 'segmented', views: ['output'],
       choices: [{ value: 'single', label: '─ Single' }, { value: 'double', label: '═ Double' }, { value: 'half', label: '▀▄ Half-block' }, { value: 'char', label: 'Active char' }],
