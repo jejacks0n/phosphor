@@ -3,7 +3,7 @@
  * State is stored on the element itself to remain instance-safe and resilient to visibility changes.
  */
 
-import { VGA_COLORS_STR } from './ColorUtils';
+import { VGA_COLORS_STR } from './ColorUtils.js';
 
 const VGA_PALETTE = VGA_COLORS_STR.split(' ');
 
@@ -84,7 +84,7 @@ export function render(context, buffer) {
 				html += '<span' + css + '>';
 				tagIsOpen = true;
 			}
-			html += currCell.char;
+			html += escapeChar(currCell.char);
 			prevCell = currCell;
 		}
 		if (tagIsOpen) html += '</span>';
@@ -93,6 +93,13 @@ export function render(context, buffer) {
 			element.childNodes[j].innerHTML = html;
 		}
 	}
+}
+
+// A cell's character as HTML text (rows are written with innerHTML, and characters can be typed or
+// come from a project file).
+const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
+export function escapeChar(char) {
+	return ESCAPES[char] ?? char;
 }
 
 function isSameCell(cellA, cellB) {

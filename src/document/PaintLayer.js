@@ -11,6 +11,7 @@
  * LayerPatch = { tiles: { x, y, before: ImageData, after: ImageData }[], hadPaint, hasPaint }
  */
 import { ctx2d } from '../lib/Canvas.js';
+import { rgb2hex } from '../lib/ColorUtils.js';
 import { tilesForRect } from './History.js';
 
 export const MAX_LAYER_DIM = 4000;
@@ -44,7 +45,7 @@ const newCanvas = (w, h) => {
   return c;
 };
 
-export default class EditLayer {
+export default class PaintLayer {
   #stroke = null; // { tiles: Map<'x,y', { x, y, w, h, before }>, hadPaint } while recording
 
   constructor({ cols, rows, scale }) {
@@ -61,6 +62,24 @@ export default class EditLayer {
     const rx = Math.floor(x * k), ry = Math.floor(y * k);
     if (rx < 0 || ry < 0 || rx >= this.canvas.width || ry >= this.canvas.height) return null;
     return { x: rx, y: ry, w: Math.max(1, Math.floor((x + 1) * k) - rx), h: Math.max(1, Math.floor((y + 1) * k) - ry) };
+  }
+
+  // How many grid pixels hold each paint colour, sampled one per grid pixel. Only (nearly) opaque
+  // paint counts: soft edges and overlaps blend into one-off colours nobody picked.
+  // ponytail: skips paint laid at under ~98% brush opacity; bucket it by colour if that matters.
+  colorCounts() {
+    const counts = new Map();
+    if (!this.hasPaint) return counts;
+    const ctx = ctx2d(newCanvas(this.cols, this.rows));
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.canvas, 0, 0, this.cols, this.rows);
+    const { data } = ctx.getImageData(0, 0, this.cols, this.rows);
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 250) continue;
+      const hex = rgb2hex({ r: data[i], g: data[i + 1], b: data[i + 2] });
+      counts.set(hex, (counts.get(hex) ?? 0) + 1);
+    }
+    return counts;
   }
 
   // pixels: { x, y, r, g, b, alpha }[] in grid pixels. Paint builds up to `opacity`, then blends.
@@ -105,21 +124,74 @@ export default class EditLayer {
   }
 
   // pixels: { x, y }[] in grid pixels.
+  // Erases (and records) nothing where there's no paint, so a pass over bare cells isn't an undo step.
   erase(pixels) {
     const rects = pixels.map(({ x, y }) => this.#cellRect(x, y)).filter(Boolean);
-    if (!rects.length) return null;
+    if (!rects.length || !this.hasPaint) return null;
     const bounds = unionRect(rects);
+    if (!this.#anyPaint(bounds)) return null;
     this.#record(bounds);
     const ctx = ctx2d(this.canvas);
     for (const { x, y, w, h } of rects) ctx.clearRect(x, y, w, h);
     return bounds;
   }
 
-  colorAt(x, y) {
+  // Raw paint at grid pixel (x, y) with its alpha (0..1), or null where there's none.
+  pixelAt(x, y) {
     const rect = this.#cellRect(x, y);
     if (!rect) return null;
     const [r, g, b, a] = ctx2d(this.canvas).getImageData(rect.x, rect.y, 1, 1).data;
-    return a > 0 ? { r, g, b } : null;
+    return a > 0 ? { r, g, b, a: a / 255 } : null;
+  }
+
+  // Selection blocks. A cell rect ({ c0, r0, c1, r1 }) is scale x 2·scale layer pixels per cell.
+  // The paint over a cell rect, as its own canvas.
+  copyCells({ c0, r0, c1, r1 }) {
+    const k = this.scale;
+    const copy = newCanvas((c1 - c0 + 1) * k, 2 * (r1 - r0 + 1) * k);
+    ctx2d(copy).drawImage(this.canvas, -c0 * k, -2 * r0 * k);
+    return copy;
+  }
+
+  // Replace the paint over w x h cells at (col, row) with a copied block, scaled to this layer (so
+  // a block copied before a grid resize still fits) and clipped to it.
+  pasteCells(block, col, row, w, h) {
+    const k = this.scale;
+    const target = this.#layerRect({ c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 });
+    if (!target) return;
+    this.#record(target);
+    const ctx = ctx2d(this.canvas);
+    ctx.clearRect(target.x, target.y, target.w, target.h);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(block, col * k, 2 * row * k, w * k, 2 * h * k);
+    if (!this.hasPaint) this.hasPaint = this.#anyPaint(target);
+  }
+
+  // Erases nothing (and records nothing, so no empty undo step) where there's no paint.
+  eraseCells(rect) {
+    const target = this.#layerRect(rect);
+    if (!target || !this.hasPaint || !this.#anyPaint(target)) return;
+    this.#record(target);
+    ctx2d(this.canvas).clearRect(target.x, target.y, target.w, target.h);
+  }
+
+  #anyPaint({ x, y, w, h }) {
+    const { data } = ctx2d(this.canvas).getImageData(x, y, w, h);
+    for (let i = 3; i < data.length; i += 4) if (data[i]) return true;
+    return false;
+  }
+
+  // A cell rect's layer pixels, clipped to the layer; null when it's all outside.
+  #layerRect({ c0, r0, c1, r1 }) {
+    const k = this.scale;
+    const x0 = Math.max(0, c0 * k), y0 = Math.max(0, 2 * r0 * k);
+    const x1 = Math.min(this.canvas.width, (c1 + 1) * k), y1 = Math.min(this.canvas.height, 2 * (r1 + 1) * k);
+    return x1 > x0 && y1 > y0 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+  }
+
+  colorAt(x, y) {
+    const p = this.pixelAt(x, y);
+    return p && { r: p.r, g: p.g, b: p.b };
   }
 
   // Remap paint to a new grid size so it stays on the same part of the image.
@@ -143,7 +215,9 @@ export default class EditLayer {
   }
 
   // The image placed where the pipeline shows it (letterbox included, black), with paint on top.
-  bake(image, fit) {
+  // The image with this layer's paint merged over it, as a new picture the size of the layer.
+  // beneath(ctx, scale), if given, draws between the two (Merge down's cells).
+  bake(image, fit, beneath) {
     const k = this.scale;
     const out = newCanvas(this.canvas.width, this.canvas.height);
     const ctx = ctx2d(out);
@@ -151,6 +225,7 @@ export default class EditLayer {
     ctx.fillRect(0, 0, out.width, out.height);
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(image, fit.dx * k, fit.dy * k, fit.dw * k, fit.dh * k);
+    beneath?.(ctx, k);
     ctx.drawImage(this.canvas, 0, 0);
     return out;
   }

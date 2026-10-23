@@ -509,3 +509,21 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
     transform: none !important;
   }
 }
+
+/* A character drawn exactly as the ANSI view draws one cell (AnsiEditor's <pre>): same font, size and
+   line height, no anti-aliasing, and clipped to the cell, since JetBrains Mono's box-drawing and block
+   glyphs are taller than its line box (in the view, neighbouring rows cover the overflow). */
+.glyph-cell {
+  display: inline-block;
+  width: 1ch;
+  height: 1.2em;
+  overflow: hidden;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 17px;
+  line-height: 1.2;
+  text-align: center;
+  vertical-align: middle;
+  white-space: pre;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}

@@ -53,9 +53,47 @@ export function nearestIndex(r, g, b, palette) {
   return nearest;
 }
 
+// Palettes of 16+ colours snap through a 5-bit-per-channel lookup (fast, slightly coarser than an
+// exact search); smaller ones search exactly. Every quantization goes through here, so a cell
+// rebuilt on its own snaps exactly like a full render.
+const SIGBITS = 5;
+const RSHIFT = 8 - SIGBITS;
+const paletteLUTs = new Map();       // by the palette's colours
+const lutsByPalette = new WeakMap(); // by palette array: the per-pixel fast path
+
+function paletteLUT(palette) {
+  if (!palette || palette.length < 16) return null;
+  let lut = lutsByPalette.get(palette);
+  if (lut) return lut;
+  const key = palette.map(p => p.hex).join(',');
+  lut = paletteLUTs.get(key);
+  if (lut) {
+    lutsByPalette.set(palette, lut);
+    return lut;
+  }
+
+  lut = new Uint16Array(1 << (3 * SIGBITS));
+  for (let i = 0; i < lut.length; i++) {
+    const r = (i >> (2 * SIGBITS)) << RSHIFT;
+    const g = ((i >> SIGBITS) & ((1 << SIGBITS) - 1)) << RSHIFT;
+    const b = (i & ((1 << SIGBITS) - 1)) << RSHIFT;
+    lut[i] = nearestIndex(r, g, b, palette);
+  }
+  if (paletteLUTs.size > 10) paletteLUTs.delete(paletteLUTs.keys().next().value); // keep only a few
+  paletteLUTs.set(key, lut);
+  lutsByPalette.set(palette, lut);
+  return lut;
+}
+
+export function paletteIndex(r, g, b, palette) {
+  const lut = paletteLUT(palette);
+  if (!lut) return nearestIndex(r, g, b, palette);
+  return lut[((r >> RSHIFT) << (2 * SIGBITS)) + ((g >> RSHIFT) << SIGBITS) + (b >> RSHIFT)];
+}
+
 export function nearestColor(rgb, palette) {
   if (!palette || !palette.length) return rgb;
-  const nearest = palette[nearestIndex(rgb.r, rgb.g, rgb.b, palette)];
+  const nearest = palette[paletteIndex(rgb.r, rgb.g, rgb.b, palette)];
   return { ...nearest, a: rgb.a || 1, v: rgb2gray(nearest) };
 }
 
@@ -93,3 +131,29 @@ export const PALETTES = {
   cga: CGA,
   vga: VGA
 };
+
+// How the colour picker lays out the active palette: one or more grids of swatches. CGA is the
+// classic 8 x 2; VGA (xterm 256) is the 16 system colours, the 6x6x6 cube and the 24 greys; custom
+// and adaptive palettes are a plain grid. 24-bit ('none') has no swatches.
+export function swatchSections(quantize, palette) {
+  if (!palette || !palette.length || quantize === 'none') return [];
+  if (quantize === 'cga') return [{ columns: 8, colors: palette }];
+  if (quantize === 'vga') {
+    return [
+      { columns: 16, colors: palette.slice(0, 16) },
+      { columns: 36, colors: palette.slice(16, 232) },
+      { columns: 24, colors: palette.slice(232, 256) },
+    ];
+  }
+  return [{ columns: Math.min(8, palette.length), colors: palette }];
+}
+
+// Distinct colours in the drawing, most used first: edit cells' foregrounds and backgrounds,
+// plus paintCounts (hex -> grid pixels, from PaintLayer.colorCounts()).
+export function drawingColors(editCells, paintCounts = new Map(), limit = 24) {
+  const counts = new Map(paintCounts);
+  for (const entry of editCells.values()) {
+    for (const hex of [entry.fg, entry.bg]) if (hex) counts.set(hex, (counts.get(hex) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([hex]) => hex);
+}

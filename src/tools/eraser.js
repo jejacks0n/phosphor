@@ -1,4 +1,13 @@
 import { squarePixels } from '@/lib/Brushes';
+import { cellsOfPixels } from '@/lib/Cells';
+
+// The eraser erases the layers chosen with its [Base] [Edit] toggles (workspace.eraseLayers).
+// Edit: paint and edit cells. Base: the base layer, leaving blank cells (eraseBase). In the ANSI
+// view, Layer aware (Edit on) peels one layer per pass: each stroke takes only a cell's top layer
+// (its paint, else its edit cell, else, with Base on, the base), so the next pass shows what was
+// under it. Off, one pass erases every chosen layer.
+let peeled = new Set(); // cells this stroke has already taken a layer off
+const keyOf = ({ col, row }) => `${col},${row}`;
 
 const eraser = {
   id: 'eraser',
@@ -9,19 +18,44 @@ const eraser = {
   preview: { shape: 'square', size: (workspace) => workspace.editEraserSize },
   options: [
     { key: 'editEraserSize', label: 'Size', title: 'Eraser size', min: 1, max: 20, step: 1 },
+    { key: 'eraseLayers', label: 'Erase', type: 'layers' },
+    {
+      key: 'eraseLayerAware', label: 'Layer aware', type: 'checkbox', views: ['output'], when: (ws) => ws.eraseLayers.edit,
+      title: 'Erase one layer per pass: paint first, then the cells under it (then the base, with Base on)',
+    },
   ],
   begin(ctx, pos) {
+    peeled = new Set();
     eraser.move(ctx, pos, pos);
     return true;
   },
   move({ project, workspace, view }, from, to) {
     if (!project.renderer.outputCanvas) return;
     const pixels = squarePixels(from, to, workspace.editEraserSize, project.cols, project.rows);
+    const cells = cellsOfPixels(pixels, project.cols, project.rows);
+    const { base, edit } = workspace.eraseLayers;
+    // The pixel view, Base alone, or every chosen layer at once.
+    if (view !== 'output' || !edit || !workspace.eraseLayerAware) {
+      if (edit) {
+        project.eraseEditPixels(pixels);
+        if (view === 'output') project.clearEditCells(cells);
+      }
+      if (base) project.eraseBase(cells);
+      return;
+    }
+    // Layer aware: each cell loses only its top layer this stroke.
+    const fresh = cells.filter(c => !peeled.has(keyOf(c)));
+    const painted = fresh.filter(c => project.cellHasPaint(c.col, c.row));
+    const rest = fresh.filter(c => !painted.includes(c));
+    const edited = rest.filter(c => project.editCellAt(c.col, c.row));
+    const bare = base ? rest.filter(c => !project.editCellAt(c.col, c.row) && !project.baseRecords.erased.has(keyOf(c))) : [];
     project.eraseEditPixels(pixels);
-    // Char edits only show in the ANSI view, so only erase them there
-    if (view === 'output') project.clearCharEditsAt(pixels);
+    project.clearEditCells(edited);
+    project.eraseBase(bare);
+    [...painted, ...edited, ...bare].forEach(c => peeled.add(keyOf(c)));
   },
   end({ project }) {
+    peeled = new Set();
     project.commitEdit();
   },
 };

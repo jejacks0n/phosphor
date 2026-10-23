@@ -5,27 +5,49 @@ export default {
     label: { type: String, default: 'Actions' },
     icon: { type: String, default: null },
     disabled: { type: Boolean, default: false },
+    closeOnSelect: { type: Boolean, default: true }, // false for panels of controls (sliders, checkboxes)
+    align: { type: String, default: 'right' }, // the trigger edge the menu lines up with: 'right' | 'left'
   },
   data() {
     return {
       isOpen: false,
+      position: null,
     };
   },
   mounted() {
     window.addEventListener('mousedown', this.handleOutsideClick);
+    window.addEventListener('keydown', this.handleKeydown);
+    window.addEventListener('resize', this.close);
+    document.addEventListener('scroll', this.handleScroll, true);
   },
   beforeUnmount() {
     window.removeEventListener('mousedown', this.handleOutsideClick);
+    window.removeEventListener('keydown', this.handleKeydown);
+    window.removeEventListener('resize', this.close);
+    document.removeEventListener('scroll', this.handleScroll, true);
   },
   methods: {
+    // The menu is fixed under the trigger, so a scrolling toolbar row doesn't clip it.
     toggle() {
       if (this.disabled) return;
       this.isOpen = !this.isOpen;
+      if (!this.isOpen) return;
+      const rect = this.$el.getBoundingClientRect();
+      this.position = this.align === 'left'
+        ? { top: `${rect.bottom + 4}px`, left: `${rect.left}px` }
+        : { top: `${rect.bottom + 4}px`, right: `${document.documentElement.clientWidth - rect.right}px` };
+    },
+    // Scrolling anything but the menu itself would leave it behind, so it closes.
+    handleScroll(e) {
+      if (this.isOpen && !this.$el.contains(e.target)) this.isOpen = false;
     },
     handleOutsideClick(e) {
       if (this.isOpen && !this.$el.contains(e.target)) {
         this.isOpen = false;
       }
+    },
+    handleKeydown(e) {
+      if (this.isOpen && e.key === 'Escape') this.isOpen = false;
     },
     close() {
       this.isOpen = false;
@@ -45,7 +67,7 @@ export default {
         </svg>
       </slot>
     </button>
-    <div class="dropdown-content" v-if="isOpen" @click="close">
+    <div class="dropdown-content" v-if="isOpen" :style="position" @click="closeOnSelect && close()">
       <slot></slot>
     </div>
   </article>
@@ -90,9 +112,7 @@ button.dropdown-trigger svg {
 
 
 div.dropdown-content {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
+  position: fixed;
   border-radius: 6px;
   z-index: 1000;
   min-width: 140px;

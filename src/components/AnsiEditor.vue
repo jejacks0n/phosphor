@@ -1,18 +1,20 @@
 <script setup>
 import { ref, computed, useTemplateRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useTextTool } from '@/composables/useTextTool';
 import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
 import EditorViewport from '@/components/EditorViewport.vue';
-import CharPicker from '@/components/CharPicker.vue';
+import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 
 // The ANSI view: cells rendered as text in a <pre>; a grid pixel is half a character cell tall.
 const projectStore = useProjectStore();
-const viewport = useTemplateRef('viewport');
+const workspaceStore = useWorkspaceStore();
+useTextTool(projectStore, workspaceStore);
 const displayRef = useTemplateRef('pre');
 
-const picker = ref(null);
 const metrics = ref(null);
 let renderFrame = null;
 
@@ -63,55 +65,39 @@ const coordsAt = (event) => {
   const rect = displayEl.getBoundingClientRect();
   const clientX = event.touches ? event.touches[0].clientX : event.clientX;
   const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+  // Measured from inside the display's border, where the cells start.
   return {
-    x: (clientX - rect.left) / m.cellWidth,
-    y: (clientY - rect.top) / (m.lineHeight / 2),
+    x: (clientX - rect.left - displayEl.clientLeft) / m.cellWidth,
+    y: (clientY - rect.top - displayEl.clientTop) / (m.lineHeight / 2),
   };
 };
 
 // CSS px per grid pixel (a grid pixel is half a character cell tall), for tool previews.
 const unit = computed(() => (metrics.value ? { x: metrics.value.cellWidth, y: metrics.value.lineHeight / 2 } : null));
 
-// The char tool asks for a picker on a cell; the picker is positioned on screen next to it.
-const openCharPicker = (col, row) => {
-  const m = ensureMetrics();
-  if (!m || !displayRef.value) return;
-  const rect = displayRef.value.getBoundingClientRect();
-  const targetRect = { left: rect.left + col * m.cellWidth + 2, top: rect.top + row * m.lineHeight + 2, width: m.cellWidth, height: m.lineHeight };
-  picker.value = { col, row, targetRect };
-};
-const toolContext = { openCharPicker };
-
-// While the picker is open, its cell stays highlighted.
-const pinnedStyle = computed(() => {
-  const m = metrics.value;
-  if (!picker.value || !m) return { display: 'none' };
+// The Text tool's cursor: a blinking outline on its cell.
+const cursorStyle = computed(() => {
+  const m = metrics.value, cursor = workspaceStore.textCursor;
+  if (!m || !cursor || workspaceStore.activeTool !== 'text') return { display: 'none' };
   return {
     display: 'block',
     width: `${m.cellWidth}px`,
     height: `${m.lineHeight}px`,
-    left: `${picker.value.col * m.cellWidth + 2}px`,
-    top: `${picker.value.row * m.lineHeight + 1}px`,
+    left: `${cursor.col * m.cellWidth + 2}px`,
+    top: `${cursor.row * m.lineHeight + 1}px`,
   };
 });
 
-const pickerChars = computed(() => {
-  const chars = projectStore.processParams.chars;
-  if (!chars) return [];
-  return [...new Set(chars.split(''))].filter(c => c.trim());
+// The selection: marching ants, offset while it's being dragged. Its actions are on the options row.
+const selectionBox = computed(() => {
+  const m = metrics.value, sel = workspaceStore.selection;
+  if (!m || !sel) return null;
+  const { dc, dr } = workspaceStore.selectionOffset ?? { dc: 0, dr: 0 };
+  const left = (sel.c0 + dc) * m.cellWidth + 2, top = (sel.r0 + dr) * m.lineHeight + 1;
+  return {
+    marquee: { left: `${left}px`, top: `${top}px`, width: `${(sel.c1 - sel.c0 + 1) * m.cellWidth}px`, height: `${(sel.r1 - sel.r0 + 1) * m.lineHeight}px` },
+  };
 });
-
-const closePicker = (event) => {
-  if (event) viewport.value?.updateMousePos(event);
-  picker.value = null;
-};
-
-const selectChar = (char, event) => {
-  if (!picker.value) return;
-  projectStore.setCharEdit(picker.value.col, picker.value.row, char === 'ERASE' ? null : char);
-  closePicker(event);
-  projectStore.commitEdit();
-};
 
 // The first content renders immediately so it's laid out before the viewport restores/centres its
 // scroll on the next frame; later updates (e.g. every paint move) coalesce to one render per frame.
@@ -121,7 +107,30 @@ watch(() => [projectStore.cols, projectStore.rows], () => {
   queueRender();
 });
 
+// The first whole cell on screen (top-left), where a paste goes with no selection or text cursor.
+let originFrame = 0;
+let viewportEl = null;
+const publishOrigin = () => {
+  cancelAnimationFrame(originFrame);
+  originFrame = requestAnimationFrame(() => {
+    const pre = displayRef.value, m = ensureMetrics();
+    if (!pre || !m || !viewportEl) return;
+    const p = pre.getBoundingClientRect(), v = viewportEl.getBoundingClientRect();
+    const clamp = (n, max) => Math.max(0, Math.min(max, n));
+    // A cell hidden by under a pixel still counts as on screen.
+    workspaceStore.ansiViewOrigin = {
+      col: clamp(Math.ceil((v.left - p.left - pre.clientLeft - 1) / m.cellWidth), projectStore.cols - 1),
+      row: clamp(Math.ceil((v.top - p.top - pre.clientTop - 1) / m.lineHeight), charRowsOf(projectStore.rows) - 1),
+    };
+  });
+};
+watch([metrics, () => projectStore.cols, () => projectStore.rows], publishOrigin);
+
 onMounted(() => {
+  viewportEl = displayRef.value?.closest('article') ?? null;
+  viewportEl?.addEventListener('scroll', publishOrigin, { passive: true });
+  window.addEventListener('resize', publishOrigin);
+  publishOrigin();
   render(); // same reason as the cells watcher: lay out before the viewport's scroll restore
   if (document.fonts) {
     document.fonts.ready.then(() => {
@@ -134,36 +143,71 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (renderFrame) cancelAnimationFrame(renderFrame);
+  cancelAnimationFrame(originFrame);
+  viewportEl?.removeEventListener('scroll', publishOrigin);
+  window.removeEventListener('resize', publishOrigin);
 });
 </script>
 
 <template>
+  <div class="ansi-editor">
   <EditorViewport
-      ref="viewport"
       :display="displayRef"
       :coords-at="coordsAt"
       scroll-key="ansi"
       view="output"
       :unit="unit"
-      :tool-context="toolContext"
-      :hide-preview="!!picker"
   >
     <pre ref="pre" :style="{ pointerEvents: 'none' }"></pre>
     <div class="interaction-overlay"></div>
-    <CharPicker
-        v-if="picker"
-        :chars="pickerChars"
-        :target-rect="picker.targetRect"
-        @select="selectChar"
-        @close="closePicker"
-    />
     <template #overlay>
-      <div class="picker-cell" :style="pinnedStyle"></div>
+      <div class="text-cursor" :style="cursorStyle"></div>
+      <template v-if="selectionBox">
+        <div class="marquee" :style="selectionBox.marquee"></div>
+      </template>
     </template>
   </EditorViewport>
+  <AnsiStatusBar/>
+  </div>
 </template>
 
 <style scoped>
+div.ansi-editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.marquee {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 1001;
+  border: 1px dashed white;
+  box-shadow: 0 0 0 1px black;
+  animation: marquee-march 1s steps(1) infinite;
+}
+
+@keyframes marquee-march {
+  50% { border-color: black; box-shadow: 0 0 0 1px white; }
+}
+
+.text-cursor {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 2px solid white;
+  mix-blend-mode: difference;
+  z-index: 1001;
+  animation: text-cursor-blink 1s steps(1) infinite;
+}
+
+@keyframes text-cursor-blink {
+  50% { opacity: 0; }
+}
+
 .interaction-overlay {
   position: absolute;
   inset: 0;
@@ -173,6 +217,7 @@ onBeforeUnmount(() => {
 pre {
   margin: 0;
   padding: 0;
+  /* GlyphCoverage.DISPLAY_FONT must match this font, size and line-height */
   font-family: 'JetBrains Mono', monospace;
   font-size: 17px;
   line-height: 1.2;
@@ -188,14 +233,5 @@ pre {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
   -webkit-text-size-adjust: none;
-}
-
-.picker-cell {
-  position: absolute;
-  pointer-events: none;
-  mix-blend-mode: difference;
-  background: white;
-  outline: 1px solid red;
-  z-index: 1000;
 }
 </style>

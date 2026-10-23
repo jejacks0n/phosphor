@@ -83,7 +83,7 @@ export function useEditorInteractions(options) {
     isPainting.value = true;
     if (workspaceStore) workspaceStore.isPainting = true;
 
-    callbacks.onColorPick(pos);
+    callbacks.onColorPick(pos, event);
     if (event.pointerId !== undefined && event.currentTarget) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
@@ -119,9 +119,10 @@ export function useEditorInteractions(options) {
     const displayEl = unref(displayRef);
     if (!displayEl) return;
     const rect = displayEl.getBoundingClientRect();
+    // From inside the display's border (the ANSI view's pre has one), where the content starts.
     mousePos.value = {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+      x: clientX - rect.left - displayEl.clientLeft,
+      y: clientY - rect.top - displayEl.clientTop,
     };
   }
 
@@ -298,7 +299,7 @@ export function useEditorInteractions(options) {
     if (!pos) return;
 
     if (tool.kind === 'pick') {
-      callbacks.onColorPick(pos);
+      callbacks.onColorPick(pos, event);
       return;
     }
 
