@@ -39,7 +39,6 @@ const toggle = (slot) => { open.value = open.value === slot ? null : slot; };
         aria-label="Background colour"
         @click="toggle('bg')"
     ></button>
-    <button class="swap" title="Swap colours (X)" aria-label="Swap colours" @click="workspace.swapColors()">⇄</button>
     <ColorPopover v-if="open" v-model:slot-name="open" @close="open = null"/>
   </div>
 </template>
@@ -83,21 +82,5 @@ button.chip.none::after {
   position: absolute;
   inset: 0;
   background: linear-gradient(to top right, transparent 44%, var(--danger) 44% 56%, transparent 56%);
-}
-
-button.swap {
-  position: absolute;
-  right: -6px;
-  top: -5px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-button.swap:hover {
-  color: var(--text);
 }
 </style>

@@ -54,6 +54,11 @@ onBeforeUnmount(() => {
     <div class="head">
       <button :class="{ on: slotName === 'fg' }" @click="emit('update:slotName', 'fg')">FG</button>
       <button :class="{ on: slotName === 'bg' }" @click="emit('update:slotName', 'bg')">BG</button>
+      <span class="spacer"></span>
+      <button class="swap" title="Swap foreground and background (X)" @click="workspace.swapColors()">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2 1 5l3 3V6h8V4H4zm8 6v2H4v2h8v2l3-3z"/></svg>
+        Swap
+      </button>
     </div>
 
     <div v-for="(section, i) in sections" :key="i" class="swatches" :style="{ gridTemplateColumns: `repeat(${section.columns}, 1fr)` }">
@@ -129,6 +134,23 @@ div.head button {
   color: var(--text-dim);
   font-size: 11px;
   cursor: pointer;
+}
+
+div.head button.swap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+div.head button.swap:hover {
+  background: var(--surface-4);
+  color: var(--text);
+}
+
+div.head button.swap svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
 }
 
 div.head button.on {
