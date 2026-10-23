@@ -233,10 +233,6 @@ onBeforeUnmount(() => {
           <div class="glyphs"><span v-for="(g, i) in p.glyphs" :key="i" class="glyph-cell" :class="{ empty: !g }">{{ g || '·' }}</span></div>
         </div>
       </div>
-      <div class="foot">
-        <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>Enter</kbd> use · <kbd>E</kbd> edit · <kbd>Esc</kbd> close<br>
-        On the canvas: <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> flips palettes.
-      </div>
     </div>
 
     <!-- the editor: slots and glyph sources -->
@@ -468,24 +464,6 @@ div.row div.glyphs {
 
 div.row div.glyphs .empty {
   color: #555;
-}
-
-div.foot {
-  padding: 7px 8px;
-  border-top: 1px solid var(--surface-3);
-  color: var(--text-muted);
-  font-size: 10.5px;
-  line-height: 1.6;
-}
-
-kbd {
-  padding: 0 4px;
-  border: 1px solid var(--border-light);
-  border-bottom-width: 2px;
-  border-radius: 3px;
-  background: var(--surface-3);
-  color: var(--text-dim);
-  font: 10px ui-monospace, Menlo, monospace;
 }
 
 div.edit-side {
