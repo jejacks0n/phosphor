@@ -1,5 +1,6 @@
 <script setup>
-import { computed, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { useMediaQuery } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { TOOLS, getTool } from '@/tools';
@@ -23,6 +24,11 @@ const toolOptions = computed(() => (activeTool.value.options ?? []).filter(optio
 
 // The pixel view's preview of the ANSI layer: authored cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'ANSI overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
+// At 1100px and narrower the overlay controls fold into a button named for the art style.
+const overlayFolded = useMediaQuery('(max-width: 1100px)');
+const overlayRowOpen = ref(false);
+const STYLE_NAMES = { ansi: 'ANSI', colorAscii: 'Color ASCII', ascii: 'ASCII' };
+const styleName = computed(() => STYLE_NAMES[project.renderStyle] ?? 'ANSI');
 
 // A tool that stops being offered (flip after switching to an ASCII art style) shouldn't stay active unseen.
 watch(tools, (offered) => {
@@ -64,13 +70,24 @@ function confirmFlatten() {
 
       <div class="spacer"/>
 
-      <div v-if="workspace.editorTab === 'input'" class="tool-setting-group overlay-group">
-        <RangeField compact :setting="OVERLAY_SETTING" v-model="workspace.ansiOverlay"/>
-        <label class="checkbox-wrapper" title="Preview every cell's characters, not just the ones you've authored">
-          <span>All cells</span>
-          <input type="checkbox" v-model="workspace.ansiOverlayAll"/>
-        </label>
-      </div>
+      <template v-if="workspace.editorTab === 'input'">
+        <!-- Narrow screens fold the overlay controls into a button that opens a row of their own. -->
+        <button
+            v-if="overlayFolded"
+            class="text overlay-toggle"
+            :class="{ open: overlayRowOpen }"
+            :aria-expanded="overlayRowOpen"
+            title="ANSI overlay settings"
+            @click="overlayRowOpen = !overlayRowOpen"
+        >{{ styleName }} <span class="caret">▾</span></button>
+        <div v-else class="tool-setting-group overlay-group">
+          <RangeField compact :setting="OVERLAY_SETTING" v-model="workspace.ansiOverlay"/>
+          <label class="checkbox-wrapper" title="Preview every cell's characters, not just the ones you've authored">
+            <span>All cells</span>
+            <input type="checkbox" v-model="workspace.ansiOverlayAll"/>
+          </label>
+        </div>
+      </template>
 
       <div class="desktop-only actions-container">
         <div class="history-group">
@@ -127,6 +144,16 @@ function confirmFlatten() {
             Clear Edits
           </button>
         </DropdownMenu>
+      </div>
+    </div>
+
+    <div v-if="workspace.editorTab === 'input' && overlayFolded && overlayRowOpen" class="toolbar-row secondary-row">
+      <div class="tool-setting-group overlay-group">
+        <RangeField compact :setting="OVERLAY_SETTING" v-model="workspace.ansiOverlay"/>
+        <label class="checkbox-wrapper" title="Preview every cell's characters, not just the ones you've authored">
+          <span>All cells</span>
+          <input type="checkbox" v-model="workspace.ansiOverlayAll"/>
+        </label>
       </div>
     </div>
 
@@ -224,6 +251,25 @@ button.text {
   padding: 4px 10px;
   font-size: 12px;
   color: var(--text-dim);
+}
+
+button.overlay-toggle {
+  margin-right: 12px;
+  white-space: nowrap;
+}
+
+button.overlay-toggle .caret {
+  display: inline-block;
+  transition: transform 0.15s;
+}
+
+button.overlay-toggle.open {
+  background: var(--accent);
+  color: var(--white);
+}
+
+button.overlay-toggle.open .caret {
+  transform: rotate(180deg);
 }
 
 div.overlay-group {
