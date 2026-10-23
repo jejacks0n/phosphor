@@ -336,6 +336,16 @@ div.palette-layer.editing {
   width: 940px;
 }
 
+/* While editing, the list is only as wide as a palette's row of glyphs (they never wrap; long
+   names do), so the editor gets the rest. */
+div.palette-layer.editing div.list-side {
+  width: min-content;
+}
+
+div.palette-layer.editing div.row div.glyphs {
+  overflow: visible;
+}
+
 /* Editing needs 940px and its full height; where the toolbar can't give it that, it takes the
    whole window. On phone widths the list sits above the editor. */
 @media (max-width: 1240px), (max-height: 720px) {
