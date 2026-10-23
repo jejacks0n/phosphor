@@ -119,9 +119,10 @@ export function useEditorInteractions(options) {
     const displayEl = unref(displayRef);
     if (!displayEl) return;
     const rect = displayEl.getBoundingClientRect();
+    // From inside the display's border (the ANSI view's pre has one), where the content starts.
     mousePos.value = {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+      x: clientX - rect.left - displayEl.clientLeft,
+      y: clientY - rect.top - displayEl.clientTop,
     };
   }
 

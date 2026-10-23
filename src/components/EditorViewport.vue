@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, useTemplateRef, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, unref, useTemplateRef, onMounted, onBeforeUnmount } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
@@ -98,12 +98,13 @@ const previewStyle = computed(() => {
   }
 
   const size = preview.size(workspaceStore);
+  const display = unref(props.display); // pos is inside its border; the preview sits in its box
   return {
     display: 'block',
     width: `${size * unit.x}px`,
     height: `${size * unit.y}px`,
-    left: `${pos.x}px`,
-    top: `${pos.y}px`,
+    left: `${pos.x + (display?.clientLeft ?? 0)}px`,
+    top: `${pos.y + (display?.clientTop ?? 0)}px`,
     borderRadius: preview.shape === 'square' ? '0' : '50%',
   };
 });
@@ -127,6 +128,13 @@ const shapeDragStyle = computed(() => {
     left: `${x0 * unit.x + dx}px`, top: `${y0 * unit.y + dy}px`, width: `${(x1 - x0) * unit.x}px`, height: `${(y1 - y0) * unit.y}px`,
     borderRadius: workspaceStore.shapeKind === 'ellipse' ? '50%' : '0',
   };
+});
+
+// A tool's own pointer over the content (the Select tool's border vs inside), when it has one.
+const toolCursor = computed(() => {
+  const pos = mousePos.value, unit = props.unit;
+  if (!tool.value.cursor || !pos || !isMouseOver.value || !unit) return null;
+  return tool.value.cursor(toolCtx(), { x: pos.x / unit.x, y: pos.y / unit.y });
 });
 
 // Padded layout: room to pan the content well past each edge.
@@ -207,6 +215,7 @@ defineExpose({ centerContent });
   <article
       ref="root"
       tabindex="0"
+      :style="{ cursor: toolCursor }"
       @contextmenu.prevent
       @mouseenter="isMouseOver = true"
       @mouseleave="isMouseOver = false"

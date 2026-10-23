@@ -28,6 +28,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     selection: null,         // { c0, r0, c1, r1 }: the Select tool's cells (inclusive)
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     cellClipboard: null,     // a copied block of cells
+    selectLayers: { image: true, cells: true, paint: true }, // what the Select tool's operations act on
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse'
     shapeFilled: false,
     shapeDrawWith: 'double', // ANSI view: 'single' | 'double' | 'half' | 'full' | 'char'

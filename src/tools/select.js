@@ -1,16 +1,27 @@
-// Selects a rectangle of cells (ANSI view). Dragging inside the selection moves its contents;
-// dragging elsewhere draws a new one; a click outside clears it. The actions are in SelectionBar.
-import { normalizeRect } from '@/document/cellEdits';
+// Selects a rectangle of cells (ANSI view). Dragging inside the selection moves its contents on
+// the chosen layers (workspace.selectLayers); dragging its border moves just the outline; dragging
+// elsewhere draws a new one, and a click outside clears it. The actions are on the options row.
+import { normalizeRect, selectionHit } from '@/document/cellEdits';
 import { charRowsOf } from '@/lib/Cells';
 
-let drag = null; // { mode: 'select' | 'move', start: { col, row } }
+let drag = null; // { mode: 'select' | 'move' | 'outline', start: { col, row } }
 
 // The cell under a position, clamped to the grid (drags may leave it).
 const cellOf = (project, pos) => ({
   col: Math.max(0, Math.min(project.cols - 1, Math.floor(pos.x))),
   row: Math.max(0, Math.min(charRowsOf(project.rows) - 1, Math.floor(pos.y / 2))),
 });
-const inside = (rect, { col, row }) => rect && col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1;
+// Where a position (grid pixels) is relative to the selection, in fractional cells.
+const hitOf = (workspace, pos) => (workspace.selection ? selectionHit(workspace.selection, { col: pos.x, row: pos.y / 2 }) : 'outside');
+
+// An outline offset kept inside the grid.
+function clampOffset(project, sel, dc, dr) {
+  const rows = charRowsOf(project.rows);
+  return {
+    dc: Math.max(-sel.c0, Math.min(project.cols - 1 - sel.c1, dc)),
+    dr: Math.max(-sel.r0, Math.min(rows - 1 - sel.r1, dr)),
+  };
+}
 
 export default {
   id: 'select',
@@ -22,36 +33,47 @@ export default {
   section: 'cell',
   begin({ project, workspace }, pos) {
     const cell = cellOf(project, pos);
-    if (inside(workspace.selection, cell)) {
-      drag = { mode: 'move', start: cell };
-      workspace.selectionOffset = { dc: 0, dr: 0 };
-    } else {
+    const hit = hitOf(workspace, pos);
+    if (hit === 'outside') {
       drag = { mode: 'select', start: cell };
       workspace.selection = null;
+    } else {
+      drag = { mode: hit === 'border' ? 'outline' : 'move', start: cell };
+      workspace.selectionOffset = { dc: 0, dr: 0 };
     }
     return true;
   },
   move({ project, workspace }, from, to) {
     if (!drag) return;
+    if (drag.mode !== 'select' && !workspace.selection) return; // cleared mid-drag (Escape, a grid change)
     const cell = cellOf(project, to);
+    const dc = cell.col - drag.start.col, dr = cell.row - drag.start.row;
     if (drag.mode === 'move') {
-      workspace.selectionOffset = { dc: cell.col - drag.start.col, dr: cell.row - drag.start.row };
-    } else if (cell.col !== drag.start.col || cell.row !== drag.start.row || workspace.selection) {
+      workspace.selectionOffset = { dc, dr };
+    } else if (drag.mode === 'outline') {
+      workspace.selectionOffset = clampOffset(project, workspace.selection, dc, dr);
+    } else if (dc || dr || workspace.selection) {
       workspace.selection = normalizeRect(drag.start, cell);
     }
   },
   end({ project, workspace }) {
-    if (drag?.mode === 'move') {
-      const { dc, dr } = workspace.selectionOffset ?? { dc: 0, dr: 0 };
-      const sel = workspace.selection;
-      if (dc || dr) {
-        project.moveCells(sel, dc, dr);
-        const rows = charRowsOf(project.rows);
-        const moved = { c0: Math.max(0, sel.c0 + dc), r0: Math.max(0, sel.r0 + dr), c1: Math.min(project.cols - 1, sel.c1 + dc), r1: Math.min(rows - 1, sel.r1 + dr) };
-        workspace.selection = moved.c0 <= moved.c1 && moved.r0 <= moved.r1 ? moved : null;
-      }
-      workspace.selectionOffset = null;
+    const sel = workspace.selection;
+    const { dc, dr } = workspace.selectionOffset ?? { dc: 0, dr: 0 };
+    if (!sel) {
+      // cleared mid-drag: nothing to move
+    } else if (drag?.mode === 'move' && (dc || dr)) {
+      workspace.selection = project.moveSelection(sel, workspace.selectLayers, dc, dr);
+    } else if (drag?.mode === 'outline' && (dc || dr)) {
+      workspace.selection = { c0: sel.c0 + dc, r0: sel.r0 + dr, c1: sel.c1 + dc, r1: sel.r1 + dr };
     }
+    workspace.selectionOffset = null;
     drag = null;
+  },
+  // The border moves the outline, the inside the contents.
+  cursor({ workspace }, pos) {
+    const hit = drag ? { move: 'inside', outline: 'border' }[drag.mode] : hitOf(workspace, pos);
+    if (hit === 'border') return 'move';
+    if (hit === 'inside') return drag?.mode === 'move' ? 'grabbing' : 'grab';
+    return null;
   },
 };

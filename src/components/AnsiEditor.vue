@@ -66,9 +66,10 @@ const coordsAt = (event) => {
   const rect = displayEl.getBoundingClientRect();
   const clientX = event.touches ? event.touches[0].clientX : event.clientX;
   const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+  // Measured from inside the display's border, where the cells start.
   return {
-    x: (clientX - rect.left) / m.cellWidth,
-    y: (clientY - rect.top) / (m.lineHeight / 2),
+    x: (clientX - rect.left - displayEl.clientLeft) / m.cellWidth,
+    y: (clientY - rect.top - displayEl.clientTop) / (m.lineHeight / 2),
   };
 };
 

@@ -6,6 +6,7 @@
  *   available? (project) => boolean: offered in the toolbar only when true (e.g. flip needs the ANSI art style)
  *   section?   toolbar group ('navigate', 'cell'); a divider separates groups
  *   preview?   { shape: 'circle' | 'square' | 'cell', size?: (workspace) => grid pixels }
+ *   cursor?    (ctx, pos) => CSS cursor | null: the pointer over the content, at grid pixel pos
  *   options?   toolbar settings: { key (workspace store field), label, title, min, max, step?, decimals?, unit?, type?: 'checkbox' }
  *   begin(ctx, pos, event) -> false when there's no stroke to continue; move(ctx, from, to); end(ctx)
  * ctx = { project, workspace, view }; positions are fractional grid pixels.
