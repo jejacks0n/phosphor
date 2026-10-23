@@ -55,6 +55,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     editBrushSize:  2.5,
     editEraserSize: 5,
     eraseLayerAware: true, // ANSI view: one layer per pass (paint, then cells), or both at once
+    eraseImage: false,     // ANSI view: the eraser also erases the image, to blank cells
     editBrushOpacity:  100,
     editBrushFlow:  25,
     editBrushHardness:  50,

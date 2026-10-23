@@ -1,11 +1,14 @@
 import { squarePixels } from '@/lib/Brushes';
 import { cellsOfPixels } from '@/lib/Cells';
+import { BLANK } from '@/document/cellEdits';
 
-// In the ANSI view, Layer aware (on by default) peels one layer per pass: a stroke removes a cell's
-// paint, and only a cell with no paint is released back to the image (cells whose paint this stroke
-// erased aren't then released by the same stroke). Off, one pass clears both back to the image.
-let paintErased = new Set();
+// In the ANSI view the eraser takes a cell down through its layers: paint, then the authored cell,
+// then (with Image layer on) the image, which leaves a blank cell. Layer aware (on by default) peels
+// one layer per pass: each stroke removes only a cell's top layer, so the next pass shows what was
+// under it. Off, one pass goes all the way down (to the image, or to blank with Image layer).
+let peeled = new Set(); // cells this stroke has already taken a layer off
 const keyOf = ({ col, row }) => `${col},${row}`;
+const isBlank = (entry) => !!entry && entry.char === BLANK.char && entry.fg === BLANK.fg && entry.bg === BLANK.bg;
 
 const eraser = {
   id: 'eraser',
@@ -17,9 +20,10 @@ const eraser = {
   options: [
     { key: 'editEraserSize', label: 'Size', title: 'Eraser size', min: 1, max: 20, step: 1 },
     { key: 'eraseLayerAware', label: 'Layer aware', type: 'checkbox', views: ['output'], title: 'Erase one layer per pass: paint first, then the cells under it' },
+    { key: 'eraseImage', label: 'Image layer', type: 'checkbox', views: ['output'], title: 'Erase the image too, leaving blank cells' },
   ],
   begin(ctx, pos) {
-    paintErased = new Set();
+    peeled = new Set();
     eraser.move(ctx, pos, pos);
     return true;
   },
@@ -31,12 +35,26 @@ const eraser = {
       return;
     }
     const cells = cellsOfPixels(pixels, project.cols, project.rows);
-    if (workspace.eraseLayerAware) cells.filter(cell => project.cellHasPaint(cell.col, cell.row)).forEach(cell => paintErased.add(keyOf(cell)));
+    const blank = (list) => project.editCells(list.filter(c => !isBlank(project.cellEditAt(c.col, c.row))).map(c => ({ ...c, attrs: BLANK })));
+    if (!workspace.eraseLayerAware) {
+      project.eraseEditPixels(pixels);
+      if (workspace.eraseImage) blank(cells);
+      else project.releaseCells(cells);
+      return;
+    }
+    // Each cell loses only its top layer this stroke: paint, else its authored entry, else the image.
+    const fresh = cells.filter(c => !peeled.has(keyOf(c)));
+    const painted = fresh.filter(c => project.cellHasPaint(c.col, c.row));
+    const rest = fresh.filter(c => !painted.includes(c));
+    const authored = rest.filter(c => project.cellEditAt(c.col, c.row) && !(workspace.eraseImage && isBlank(project.cellEditAt(c.col, c.row))));
+    const image = workspace.eraseImage ? rest.filter(c => !project.cellEditAt(c.col, c.row)) : [];
     project.eraseEditPixels(pixels);
-    project.releaseCells(cells.filter(cell => !paintErased.has(keyOf(cell))));
+    project.releaseCells(authored);
+    if (image.length) blank(image);
+    [...painted, ...authored, ...image].forEach(c => peeled.add(keyOf(c)));
   },
   end({ project }) {
-    paintErased = new Set();
+    peeled = new Set();
     project.commitEdit();
   },
 };
