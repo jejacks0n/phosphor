@@ -5,6 +5,7 @@ export default {
     label: { type: String, default: 'Actions' },
     icon: { type: String, default: null },
     disabled: { type: Boolean, default: false },
+    closeOnSelect: { type: Boolean, default: true }, // false for panels of controls (sliders, checkboxes)
   },
   data() {
     return {
@@ -13,9 +14,11 @@ export default {
   },
   mounted() {
     window.addEventListener('mousedown', this.handleOutsideClick);
+    window.addEventListener('keydown', this.handleKeydown);
   },
   beforeUnmount() {
     window.removeEventListener('mousedown', this.handleOutsideClick);
+    window.removeEventListener('keydown', this.handleKeydown);
   },
   methods: {
     toggle() {
@@ -26,6 +29,9 @@ export default {
       if (this.isOpen && !this.$el.contains(e.target)) {
         this.isOpen = false;
       }
+    },
+    handleKeydown(e) {
+      if (this.isOpen && e.key === 'Escape') this.isOpen = false;
     },
     close() {
       this.isOpen = false;
@@ -45,7 +51,7 @@ export default {
         </svg>
       </slot>
     </button>
-    <div class="dropdown-content" v-if="isOpen" @click="close">
+    <div class="dropdown-content" v-if="isOpen" @click="closeOnSelect && close()">
       <slot></slot>
     </div>
   </article>

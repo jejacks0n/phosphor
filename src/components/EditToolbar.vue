@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed, watch, useTemplateRef } from 'vue';
-import { useMediaQuery, onClickOutside, onKeyStroke } from '@vueuse/core';
+import { computed, watch } from 'vue';
+import { useMediaQuery } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { TOOLS, getTool } from '@/tools';
@@ -24,13 +24,9 @@ const toolOptions = computed(() => (activeTool.value.options ?? []).filter(optio
 
 // The pixel view's preview of the ANSI layer: authored cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'ANSI overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
-// At 1100px and narrower the overlay controls fold into a button named for the art style, which opens
-// them in a small floating toolbar under it (closed by an outside click or Escape).
+// At 1100px and narrower the overlay controls fold into a dropdown named for the art style (like the
+// Actions dropdown), which opens them in a small floating toolbar under it.
 const overlayFolded = useMediaQuery('(max-width: 1100px)');
-const overlayRowOpen = ref(false);
-const overlayMenu = useTemplateRef('overlayMenu');
-onClickOutside(overlayMenu, () => { overlayRowOpen.value = false; });
-onKeyStroke('Escape', () => { overlayRowOpen.value = false; });
 const STYLE_NAMES = { ansi: 'ANSI', colorAscii: 'Color ASCII', ascii: 'ASCII' };
 const styleName = computed(() => STYLE_NAMES[project.renderStyle] ?? 'ANSI');
 
@@ -76,22 +72,15 @@ function confirmFlatten() {
 
       <template v-if="workspace.editorTab === 'input'">
         <!-- Narrow screens fold the overlay controls into a button that opens a row of their own. -->
-        <div v-if="overlayFolded" ref="overlayMenu" class="overlay-menu">
-          <button
-              class="text overlay-toggle"
-              :class="{ open: overlayRowOpen }"
-              :aria-expanded="overlayRowOpen"
-              title="ANSI overlay settings"
-              @click="overlayRowOpen = !overlayRowOpen"
-          >{{ styleName }} <span class="caret">▾</span></button>
-          <div v-if="overlayRowOpen" class="overlay-float tool-setting-group overlay-group" role="dialog" aria-label="ANSI overlay">
+        <DropdownMenu v-if="overlayFolded" class="overlay-menu" :label="styleName" :close-on-select="false">
+          <div class="tool-setting-group overlay-group overlay-panel" aria-label="ANSI overlay">
             <RangeField compact :setting="OVERLAY_SETTING" v-model="workspace.ansiOverlay"/>
             <label class="checkbox-wrapper" title="Preview every cell's characters, not just the ones you've authored">
               <span>All cells</span>
               <input type="checkbox" v-model="workspace.ansiOverlayAll"/>
             </label>
           </div>
-        </div>
+        </DropdownMenu>
         <div v-else class="tool-setting-group overlay-group">
           <RangeField compact :setting="OVERLAY_SETTING" v-model="workspace.ansiOverlay"/>
           <label class="checkbox-wrapper" title="Preview every cell's characters, not just the ones you've authored">
@@ -255,40 +244,14 @@ button.text {
   color: var(--text-dim);
 }
 
-div.overlay-menu {
-  position: relative;
-  margin-right: 12px;
+/* The two dropdowns sit 4px apart (the row's 6px gap, less 2px). */
+.overlay-menu {
+  margin-right: -2px;
 }
 
-button.overlay-toggle {
-  white-space: nowrap;
-}
-
-div.overlay-float.overlay-group {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 200;
+div.overlay-panel.overlay-group {
   margin: 0;
-  padding: 8px 12px;
-  background: var(--surface-1);
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-}
-
-button.overlay-toggle .caret {
-  display: inline-block;
-  transition: transform 0.15s;
-}
-
-button.overlay-toggle.open {
-  background: var(--accent);
-  color: var(--white);
-}
-
-button.overlay-toggle.open .caret {
-  transform: rotate(180deg);
+  padding: 4px 8px;
 }
 
 div.overlay-group {
