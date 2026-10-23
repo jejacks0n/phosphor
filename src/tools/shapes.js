@@ -62,7 +62,7 @@ export default {
         { value: 'double', label: 'Double', glyph: '╔═' },
         { value: 'half', label: 'Half-block', glyph: '▀▄' },
         { value: 'full', label: 'Full block', glyph: '██' },
-        { value: 'char', label: 'Active character', glyph: (workspace) => workspace.activeChar.repeat(2) },
+        { value: 'char', label: 'Character', glyph: (workspace) => workspace.activeChar.repeat(2) },
       ],
     },
   ],
