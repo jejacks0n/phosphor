@@ -6,6 +6,7 @@ import { useEditorInteractions } from '@/composables/useEditorInteractions';
 import { getTool } from '@/tools';
 import { charRowsOf, cellAt } from '@/lib/Cells';
 import { pickMode } from '@/lib/pickMode';
+import { drawsCells } from '@/tools/shapes';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
@@ -107,14 +108,14 @@ const previewStyle = computed(() => {
   };
 });
 
-// The Shapes tool's drag rectangle (grid positions -> CSS px), drawn while dragging.
+// The Shapes tool's drag outline (grid positions -> CSS px), drawn while dragging: the rect, or its ellipse.
 // In the ANSI view a line/character rectangle snaps to whole cells, so its outline does too; ANSI
 // overlays sit inside the display's 2px/1px border, like the cursor and cell highlights.
 const shapeDragStyle = computed(() => {
   const drag = workspaceStore.shapeDrag, unit = props.unit;
   if (!drag || !unit) return null;
   const ansi = props.view === 'output';
-  const cellShape = ansi && workspaceStore.shapeKind === 'rect' && workspaceStore.shapeDrawWith !== 'half';
+  const cellShape = ansi && drawsCells(workspaceStore);
   const x0 = Math.floor(Math.min(drag.from.x, drag.to.x)), x1 = Math.floor(Math.max(drag.from.x, drag.to.x)) + 1;
   let y0 = Math.floor(Math.min(drag.from.y, drag.to.y)), y1 = Math.floor(Math.max(drag.from.y, drag.to.y)) + 1;
   if (cellShape) {
@@ -122,7 +123,10 @@ const shapeDragStyle = computed(() => {
     y1 = Math.ceil(y1 / 2) * 2;
   }
   const [dx, dy] = ansi ? [2, 1] : [0, 0];
-  return { left: `${x0 * unit.x + dx}px`, top: `${y0 * unit.y + dy}px`, width: `${(x1 - x0) * unit.x}px`, height: `${(y1 - y0) * unit.y}px` };
+  return {
+    left: `${x0 * unit.x + dx}px`, top: `${y0 * unit.y + dy}px`, width: `${(x1 - x0) * unit.x}px`, height: `${(y1 - y0) * unit.y}px`,
+    borderRadius: workspaceStore.shapeKind === 'ellipse' ? '50%' : '0',
+  };
 });
 
 // Padded layout: room to pan the content well past each edge.

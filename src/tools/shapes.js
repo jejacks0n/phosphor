@@ -1,7 +1,8 @@
 // Rectangles and ellipses, outlined or filled. The pixel view paints them; the ANSI view draws
-// rectangles as single/double line boxes or with the active character, and anything else (all
-// ellipses, or "Half-block") as paint at grid resolution, which is half-block drawing.
-import { rectPixels, ellipsePixels, boxCells } from '@/lib/Brushes';
+// rectangles as single/double line boxes, shapes in full blocks or the active character as cells,
+// and anything else (line-drawn ellipses, or "Half-block") as paint at grid resolution, which is
+// half-block drawing. Anti-aliased ellipses paint edge pixels by coverage, or shade cells ░▒▓█.
+import { rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/cellEdits';
 import { charRowsOf } from '@/lib/Cells';
 
@@ -12,11 +13,18 @@ const cellRect = (a, b) => ({
   r0: Math.floor(Math.min(a.y, b.y) / 2), r1: Math.floor(Math.max(a.y, b.y) / 2),
 });
 
+const SHADES = [[7 / 8, '█'], [5 / 8, '▓'], [3 / 8, '▒'], [1 / 8, '░']];
+
+// Whether the ANSI view draws this shape as cells (rather than paint).
+export const drawsCells = ({ shapeKind, shapeDrawWith }) =>
+  shapeDrawWith === 'full' || shapeDrawWith === 'char' || (shapeKind === 'rect' && shapeDrawWith !== 'half');
+
 function apply({ project, workspace, view }, end) {
-  const { shapeKind: kind, shapeFilled: filled, shapeDrawWith: drawWith } = workspace;
-  const pixelShape = () => (kind === 'ellipse' ? ellipsePixels : rectPixels)(start, end, filled, project.cols, project.rows);
-  if (view === 'input' || kind === 'ellipse' || drawWith === 'half') {
-    project.paintStroke(pixelShape());
+  const { shapeKind: kind, shapeFilled: filled, shapeDrawWith: drawWith, shapeAntialias: antialias } = workspace;
+  if (view === 'input' || !drawsCells(workspace)) {
+    project.paintStroke(kind === 'ellipse'
+      ? ellipsePixels(start, end, filled, project.cols, project.rows, antialias)
+      : rectPixels(start, end, filled, project.cols, project.rows));
     return;
   }
 
@@ -26,8 +34,16 @@ function apply({ project, workspace, view }, end) {
   const inGrid = ({ col, row }) => col >= 0 && row >= 0 && col < project.cols && row < rows;
   const isEdge = ({ col, row }) => col === rect.c0 || col === rect.c1 || row === rect.r0 || row === rect.r1;
   let cells;
-  if (drawWith === 'full' || drawWith === 'char') {
-    const char = drawWith === 'full' ? '█' : workspace.activeChar;
+  const char = drawWith === 'full' ? '█' : workspace.activeChar;
+  if (kind === 'ellipse' && antialias && drawWith === 'full') {
+    const cover = ellipseCoverage(rect.c0, rect.r0, rect.c1, rect.r1, filled);
+    cells = rectCells(rect).filter(inGrid)
+      .map(c => ({ ...c, char: SHADES.find(([min]) => cover(c.col, c.row) >= min)?.[1] }))
+      .filter(c => c.char).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs } }));
+  } else if (kind === 'ellipse') {
+    cells = ellipsePixels({ x: rect.c0, y: rect.r0 }, { x: rect.c1, y: rect.r1 }, filled, project.cols, rows)
+      .map(({ x, y }) => ({ col: x, row: y, attrs: { char, ...attrs } }));
+  } else if (drawWith === 'full' || drawWith === 'char') {
     cells = rectCells(rect).filter(inGrid).filter(c => filled || isEdge(c)).map(c => ({ ...c, attrs: { char, ...attrs } }));
   } else {
     cells = boxCells(rect, drawWith, project.cols, rows).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs } }));
@@ -64,6 +80,10 @@ export default {
         { value: 'full', label: 'Full block', glyph: '██' },
         { value: 'char', label: 'Character', glyph: (workspace) => workspace.activeChar.repeat(2) },
       ],
+    },
+    {
+      key: 'shapeAntialias', label: 'Anti-aliased', type: 'checkbox',
+      when: (ws) => ws.shapeKind === 'ellipse' && (ws.editorTab === 'input' || ['half', 'full'].includes(ws.shapeDrawWith)),
     },
   ],
   begin({ workspace }, pos) {

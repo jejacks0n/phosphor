@@ -20,7 +20,8 @@ const tools = computed(() => {
 });
 const activeTool = computed(() => getTool(workspace.activeTool));
 // A tool's options for the current view (an option may be for one view only).
-const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option => !option.views || option.views.includes(workspace.editorTab)));
+const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option =>
+  (!option.views || option.views.includes(workspace.editorTab)) && (!option.when || option.when(workspace))));
 
 // The pixel view's preview of the ANSI layer: authored cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'Overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };

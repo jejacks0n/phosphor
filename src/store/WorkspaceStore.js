@@ -31,6 +31,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse'
     shapeFilled: false,
     shapeDrawWith: 'double', // ANSI view: 'single' | 'double' | 'half' | 'full' | 'char'
+    shapeAntialias: false,   // ellipses: edge pixels by coverage, or ░▒▓█ cells
     shapeDrag: null,         // { from, to } grid positions while a shape is being dragged
     editZoom:  5,
     editorTab: 'input',

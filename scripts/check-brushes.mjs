@@ -1,7 +1,7 @@
 // Brush pixel generation shared by both editors (grid pixels, clipped to the grid).
 // Run: node scripts/check-brushes.mjs
 import assert from 'node:assert/strict';
-import { interpolate, pencilPixels, squarePixels, brushPixels, rectPixels, ellipsePixels, boxCells } from '../src/lib/Brushes.js';
+import { interpolate, pencilPixels, squarePixels, brushPixels, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../src/lib/Brushes.js';
 
 assert.deepEqual(interpolate({ x: 0, y: 0 }, { x: 1, y: 0 }), [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 1, y: 0 }]);
 assert.deepEqual(interpolate({ x: 3, y: 3 }, { x: 3, y: 3 }), [{ x: 3, y: 3 }]);
@@ -44,7 +44,17 @@ assert.deepEqual(boxCells({ c0: 2, r0: 1, c1: 0, r1: 0 }, 'double', 80, 25).map(
 const clipped = boxCells({ c0: 78, r0: 23, c1: 81, r1: 26 }, 'single', 80, 25);
 assert.ok(clipped.every(c => c.col < 80 && c.row < 25));                                  // nothing off the grid
 assert.deepEqual(clipped.map(c => c.char).join(''), '┌─│');                               // cols 78-79, rows 23-24: the real corner stays a corner
+// Anti-aliased: full coverage inside, partial at the edge, nothing outside; the ring stays inside the disc.
+const cover = ellipseCoverage(0, 0, 9, 9, true);
+assert.equal(cover(4, 4), 1);
+assert.equal(cover(0, 0), 0);
+assert.ok(cover(1, 1) > 0 && cover(1, 1) < 1);
+const aaRing = ellipsePixels({ x: 0, y: 0 }, { x: 9, y: 9 }, false, 20, 20, true);
+assert.ok(aaRing.every(p => p.alpha > 0 && p.alpha <= cover(p.x, p.y)));
+assert.ok(!aaRing.some(p => p.x === 4 && p.y === 4));                                     // hollow
+assert.ok(ellipsePixels({ x: 2, y: 2 }, { x: 2, y: 2 }, false, 10, 10, true).length === 1);  // tiny: still a pixel
 const t0 = performance.now();
 ellipsePixels({ x: -1000, y: -1000 }, { x: 1300, y: 1300 }, false, 300, 300);
+ellipsePixels({ x: -1000, y: -1000 }, { x: 1300, y: 1300 }, false, 60, 60, true);
 assert.ok(performance.now() - t0 < 15, 'off-grid area is skipped');
 console.log('brushes ok');

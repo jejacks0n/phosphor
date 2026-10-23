@@ -92,8 +92,19 @@ export function rectPixels(from, to, filled, cols, rows) {
 // The ellipse inscribed in the dragged rect. A pixel is inside when its offset from the centre falls
 // within the radii plus half a pixel (so even a 1x1 rect draws); the outline is the inside pixels
 // with an outside neighbour.
-export function ellipsePixels(from, to, filled, cols, rows) {
+// With antialias, each pixel's alpha is how much of it the shape covers instead.
+export function ellipsePixels(from, to, filled, cols, rows, antialias = false) {
   const { x0, y0, x1, y1 } = bounds(from, to);
+  if (antialias) {
+    const cover = ellipseCoverage(x0, y0, x1, y1, filled), pixels = [];
+    for (let y = Math.max(0, y0); y <= Math.min(rows - 1, y1); y++) {
+      for (let x = Math.max(0, x0); x <= Math.min(cols - 1, x1); x++) {
+        const alpha = cover(x, y);
+        if (alpha > 0) pixels.push({ x, y, alpha });
+      }
+    }
+    return pixels;
+  }
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = (x1 - x0) / 2 + 0.5, ry = (y1 - y0) / 2 + 0.5;
   const inside = (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1 && ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
   const pixels = [];
@@ -105,6 +116,23 @@ export function ellipsePixels(from, to, filled, cols, rows) {
     }
   }
   return pixels;
+}
+
+// How much of each unit square (x..x+1, y..y+1) the ellipse filling the inclusive box x0..x1, y0..y1
+// covers, from n x n samples. An outline is a ring one unit thick.
+export function ellipseCoverage(x0, y0, x1, y1, filled, n = 4) {
+  const cx = (x0 + x1 + 1) / 2, cy = (y0 + y1 + 1) / 2, rx = (x1 - x0 + 1) / 2, ry = (y1 - y0 + 1) / 2;
+  const within = (sx, sy, ax, ay) => ax > 0 && ay > 0 && ((sx - cx) / ax) ** 2 + ((sy - cy) / ay) ** 2 <= 1;
+  return (x, y) => {
+    let hits = 0;
+    for (let j = 0; j < n; j++) {
+      for (let i = 0; i < n; i++) {
+        const sx = x + (i + 0.5) / n, sy = y + (j + 0.5) / n;
+        if (within(sx, sy, rx, ry) && (filled || !within(sx, sy, rx - 1, ry - 1))) hits++;
+      }
+    }
+    return hits / (n * n);
+  };
 }
 
 const BOX = {
