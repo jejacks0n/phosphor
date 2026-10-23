@@ -159,13 +159,10 @@ export function copyCellLayers(map, rect, { image, cells }, imageEntry) {
   });
 }
 
-// Delete the cell-side layers in a rect: Cells releases the authored entries; Image then gives
-// every cell BLANK's attributes it doesn't already have (so authored attributes stay). Returns the
-// same Map when nothing changed.
-export function deleteCellLayers(map, rect, { image, cells }) {
-  const result = cells ? withoutCells(map, rectCells(rect)) : map;
-  if (!image) return result;
-  return updateRect(result, rect, (col, row, entry) => Object.fromEntries(ATTRS.filter(attr => entry?.[attr] === undefined).map(attr => [attr, BLANK[attr]])));
+// Delete the edit cells in a rect (Cells), returning the same Map when nothing changed. (Erasing
+// the base layer is the base records' job: baseRecords.js.)
+export function deleteCellLayers(map, rect, { cells }) {
+  return cells ? withoutCells(map, rectCells(rect)) : map;
 }
 
 // Where a pointer is relative to a selection: on its border (a band ½ column / ¼ row outside the

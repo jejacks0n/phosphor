@@ -8,6 +8,7 @@ import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
 import ColorPair from '@/components/ColorPair.vue';
 import PaletteStrip from '@/components/PaletteStrip.vue';
+import LayerToggles from '@/components/LayerToggles.vue';
 
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -54,12 +55,7 @@ const MORE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
 const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option =>
   (!option.views || option.views.includes(workspace.editorTab)) && (!option.when || option.when(workspace))));
 
-// The Select tool's layer toggles and the actions on its selection (one undo step each).
-const SELECT_LAYERS = [
-  ['image', 'Image', 'The cells generated from the picture'],
-  ['edits', 'Edits', 'Everything drawn: typed, painted and pasted'],
-];
-const anyLayer = computed(() => Object.values(workspace.selectLayers).some(Boolean));
+// The actions on the Select tool's selection (one undo step each), on its chosen layers.
 const selectionSize = computed(() => {
   const sel = workspace.selection;
   return sel ? `${sel.c1 - sel.c0 + 1} × ${sel.r1 - sel.r0 + 1}` : '';
@@ -227,23 +223,13 @@ function confirmFlatten() {
       <PaletteStrip v-if="activeTool.palette"/>
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">
         <span class="option-label">Layers</span>
-        <div class="segmented" role="group" aria-label="Layers the selection acts on">
-          <button
-              v-for="[key, label, title] in SELECT_LAYERS"
-              :key="key"
-              class="text"
-              :class="{ on: workspace.selectLayers[key] }"
-              :aria-pressed="workspace.selectLayers[key]"
-              :title="title"
-              @click="workspace.selectLayers[key] = !workspace.selectLayers[key]"
-          >{{ label }}</button>
-        </div>
+        <LayerToggles v-model="workspace.selectLayers" label="Layers the selection acts on"/>
         <div class="divider"/>
         <template v-if="workspace.selection">
-          <button class="text" title="Copy (Cmd/Ctrl+C)" :disabled="!anyLayer" @click="copySelection">Copy</button>
-          <button class="text" title="Cut (Cmd/Ctrl+X)" :disabled="!anyLayer" @click="cutSelection">Cut</button>
+          <button class="text" title="Copy (Cmd/Ctrl+C)" @click="copySelection">Copy</button>
+          <button class="text" title="Cut (Cmd/Ctrl+X)" @click="cutSelection">Cut</button>
           <button class="text" title="Paste at the selection (Cmd/Ctrl+V)" :disabled="!workspace.clipboard" @click="pasteSelection">Paste</button>
-          <button class="text" title="Delete (Delete)" :disabled="!anyLayer" @click="project.deleteSelection(workspace.selection, workspace.selectLayers)">Delete</button>
+          <button class="text" title="Delete (Delete)" @click="project.deleteSelection(workspace.selection, workspace.selectLayers)">Delete</button>
           <div class="divider"/>
           <span class="hint">{{ selectionSize }}</span>
           <button class="text" title="Clear the selection (Esc)" @click="workspace.selection = null">Deselect</button>
@@ -273,6 +259,10 @@ function confirmFlatten() {
                 @click="workspace[option.key] = choice.value"
             ><span v-if="choice.icon" v-html="choice.icon"></span><template v-else>{{ choice.label }}</template></button>
           </div>
+          <template v-else-if="option.type === 'layers'">
+            <span class="option-label">{{ option.label }}</span>
+            <LayerToggles v-model="workspace[option.key]" :label="option.label"/>
+          </template>
           <div v-else-if="option.type === 'toggle'" class="segmented">
             <button class="text" :class="{ on: workspace[option.key] }" :aria-pressed="!!workspace[option.key]" @click="workspace[option.key] = !workspace[option.key]">{{ option.label }}</button>
           </div>

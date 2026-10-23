@@ -124,10 +124,12 @@ export default class EditLayer {
   }
 
   // pixels: { x, y }[] in grid pixels.
+  // Erases (and records) nothing where there's no paint, so a pass over bare cells isn't an undo step.
   erase(pixels) {
     const rects = pixels.map(({ x, y }) => this.#cellRect(x, y)).filter(Boolean);
-    if (!rects.length) return null;
+    if (!rects.length || !this.hasPaint) return null;
     const bounds = unionRect(rects);
+    if (!this.#anyPaint(bounds)) return null;
     this.#record(bounds);
     const ctx = ctx2d(this.canvas);
     for (const { x, y, w, h } of rects) ctx.clearRect(x, y, w, h);

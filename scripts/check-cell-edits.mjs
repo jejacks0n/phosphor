@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   withCellEdit, mergeEntry, withoutCells, parseKey, serializeCellEdits, deserializeCellEdits, migrateCharEdits,
   normalizeRect, rectCells, pasteBlock, updateRect,
-  BLANK, copyCellLayers, deleteCellLayers, selectionHit, clampOffset,
+  copyCellLayers, deleteCellLayers, selectionHit, clampOffset,
 } from '../src/document/cellEdits.js';
 
 const m0 = new Map();
@@ -70,8 +70,9 @@ assert.deepEqual(copyCellLayers(m, r, L(false, false), img), [null, null]);
 assert.ok(copyCellLayers(m, r, L(true, true), img).every(Object.isFrozen));
 assert.equal(deleteCellLayers(m, r, L(false, false)), m);
 assert.equal(deleteCellLayers(m, r, L(false, true)).size, 0);
-assert.deepEqual([...deleteCellLayers(m, r, L(true, true))], [['0,0', BLANK], ['1,0', BLANK]]);
-assert.deepEqual(deleteCellLayers(m, r, L(true, false)).get('1,0'), { char: 'A', fg: '#aaaaaa', bg: '#000000' }); // authored char stays
+// The base layer is erased through its own records (baseRecords.js), not with blank edit cells.
+assert.equal(deleteCellLayers(m, r, L(true, false)), m);
+assert.equal(deleteCellLayers(m, r, L(true, true)).size, 0);
 // The selection's border band: ½ column / ¼ row outside, ¼ column / ⅛ row inside.
 const sel = { c0: 2, r0: 2, c1: 5, r1: 4 }; // edges x 2..6, y 2..5
 assert.equal(selectionHit(sel, { col: 4, row: 3.5 }), 'inside');

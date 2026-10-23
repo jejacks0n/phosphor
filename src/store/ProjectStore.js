@@ -568,12 +568,13 @@ export const useProjectStore = defineStore('project', {
       this.setCellEdits(withoutCells(this.cellEdits, rectCells(area)), [area]);
     },
 
-    // Selection operations on the Select tool's layers: Layers = { image, edits }, where Edits is
-    // everything drawn (authored cells and paint, stored apart but one thing to the user). Block =
+    // Selection operations on the Select tool's layers: Layers = { base, edit }, where Edit is
+    // everything drawn (authored cells and paint, stored apart but one thing to the user), and Base
+    // is erased through its records (eraseBase) and copied as it shows (baseCellAt). Block =
     // { w, h, cells?: (Entry | null)[], paint?: canvas }. Each change is one undo step; rects are
     // clipped to the grid.
-    partsOf({ image, edits }) {
-      return { image, cells: edits, paint: edits };
+    partsOf({ base, edit }) {
+      return { image: base, cells: edit, paint: edit };
     },
 
     clipRect({ c0, r0, c1, r1 }) {
@@ -620,6 +621,7 @@ export const useProjectStore = defineStore('project', {
     deleteIn(rect, parts) {
       this.cellEdits = deleteCellLayers(this.cellEdits, rect, parts);
       if (parts.paint) this.layer.eraseCells(rect);
+      if (parts.image) this.eraseBase(rectCells(rect));
     },
 
     pasteAt(block, col, row) {

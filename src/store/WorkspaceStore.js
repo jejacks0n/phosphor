@@ -29,7 +29,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
-    selectLayers: { image: true, edits: true }, // what the Select tool acts on: the image, and everything drawn
+    selectLayers: { base: true, edit: true }, // what the Select tool acts on: the base layer and/or the edit layer
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse'
     shapeFilled: false,
     shapeDrawWith: 'double', // ANSI view: 'single' | 'double' | 'half' | 'full' | 'char'
@@ -54,8 +54,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     // Brush Settings
     editBrushSize:  2.5,
     editEraserSize: 5,
-    eraseLayerAware: true, // ANSI view: one layer per pass (paint, then cells), or both at once
-    eraseImage: false,     // ANSI view: the eraser also erases the image, to blank cells
+    eraseLayers: { base: false, edit: true }, // what the eraser erases: the base layer and/or the edit layer
+    eraseLayerAware: true, // ANSI view, Edit on: one layer per pass (paint, then cells, then the base)
     editBrushOpacity:  100,
     editBrushFlow:  25,
     editBrushHardness:  50,
