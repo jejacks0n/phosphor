@@ -406,6 +406,11 @@ div.tool-setting-group :deep(input[type=range]) {
   accent-color: var(--accent);
 }
 
+/* A compact slider is as wide as its 80px range, not the row (its wrapper is 100% elsewhere). */
+div.tool-setting-group :deep(div.range-wrapper) {
+  width: auto;
+}
+
 label.checkbox-wrapper {
   display: flex;
   align-items: center;
