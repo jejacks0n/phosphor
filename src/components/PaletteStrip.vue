@@ -67,9 +67,13 @@ div.keys {
   gap: 3px;
 }
 
+/* A tight column: the F-label, then the glyph cell, with no padding or line-box slack. */
 button.key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: 30px;
-  padding: 2px 0 3px;
+  padding: 0;
   border: none;
   border-radius: 4px;
   background: var(--surface-3);
@@ -79,8 +83,9 @@ button.key {
 }
 
 button.key small {
-  display: block;
+  padding-top: 2px;
   font-size: 8px;
+  line-height: 1;
   color: var(--text-muted);
 }
 
