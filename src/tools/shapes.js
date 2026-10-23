@@ -26,8 +26,8 @@ function apply({ project, workspace, view }, end) {
   const inGrid = ({ col, row }) => col >= 0 && row >= 0 && col < project.cols && row < rows;
   const isEdge = ({ col, row }) => col === rect.c0 || col === rect.c1 || row === rect.r0 || row === rect.r1;
   let cells;
-  if (drawWith === 'char') {
-    cells = rectCells(rect).filter(inGrid).filter(c => filled || isEdge(c)).map(c => ({ ...c, attrs: { char: workspace.activeChar, ...attrs } }));
+  if (drawWith === 'full') {
+    cells = rectCells(rect).filter(inGrid).filter(c => filled || isEdge(c)).map(c => ({ ...c, attrs: { char: '█', ...attrs } }));
   } else {
     cells = boxCells(rect, drawWith, project.cols, rows).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs } }));
     if (filled) {
@@ -55,8 +55,13 @@ export default {
     },
     { key: 'shapeFilled', label: 'Filled', type: 'toggle' },
     {
-      key: 'shapeDrawWith', label: 'Draw with', type: 'segmented', views: ['output'],
-      choices: [{ value: 'single', label: '─ Single' }, { value: 'double', label: '═ Double' }, { value: 'half', label: '▀▄ Half-block' }, { value: 'char', label: 'Active char' }],
+      key: 'shapeDrawWith', label: 'Draw with', type: 'dropdown', views: ['output'],
+      choices: [
+        { value: 'single', label: 'Single', glyph: '┌─' },
+        { value: 'double', label: 'Double', glyph: '╔═' },
+        { value: 'half', label: 'Half-block', glyph: '▀▄' },
+        { value: 'full', label: 'Full block', glyph: '██' },
+      ],
     },
   ],
   begin({ workspace }, pos) {

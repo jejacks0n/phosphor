@@ -178,6 +178,15 @@ function confirmFlatten() {
           <div v-else-if="option.type === 'toggle'" class="segmented">
             <button class="text" :class="{ on: workspace[option.key] }" :aria-pressed="!!workspace[option.key]" @click="workspace[option.key] = !workspace[option.key]">{{ option.label }}</button>
           </div>
+          <DropdownMenu v-else-if="option.type === 'dropdown'" class="option-menu" :label="option.choices.find(c => c.value === workspace[option.key])?.label ?? option.label">
+            <button
+                v-for="choice in option.choices"
+                :key="String(choice.value)"
+                class="choice"
+                :class="{ on: workspace[option.key] === choice.value }"
+                @click="workspace[option.key] = choice.value"
+            ><span class="glyph">{{ choice.glyph }}</span>{{ choice.label }}</button>
+          </DropdownMenu>
           <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
         </template>
       </div>
@@ -351,6 +360,26 @@ button.active :deep(svg) {
 
 button:disabled {
   opacity: 0.35;
+}
+
+/* Option dropdowns open from their left edge, with the glyphs in an even column. */
+.option-menu :deep(div.dropdown-content) {
+  left: 0;
+  right: auto;
+}
+
+.option-menu button.choice.on {
+  background: var(--accent);
+  color: var(--white);
+}
+
+.option-menu span.glyph {
+  display: inline-block;
+  width: 2ch;
+  margin-right: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1;
 }
 
 /* Icon choices take the button's text colour, and are as tall as a text label. */
