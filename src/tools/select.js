@@ -60,11 +60,11 @@ export default {
     workspace.selectionOffset = null;
     drag = null;
   },
-  // The border moves the outline, the inside the contents.
+  // The border moves the outline, the inside the contents; elsewhere a crosshair draws a new one.
   cursor({ workspace }, pos) {
     const hit = drag ? { move: 'inside', outline: 'border' }[drag.mode] : hitOf(workspace, pos);
     if (hit === 'border') return 'move';
     if (hit === 'inside') return drag?.mode === 'move' ? 'grabbing' : 'grab';
-    return null;
+    return 'crosshair';
   },
 };

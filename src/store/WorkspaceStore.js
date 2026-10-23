@@ -77,7 +77,12 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.selection = rect;
       this.setActiveTool('select');
     },
+    // Choosing any tool but Select in the ANSI view (where the selection lives) clears the selection.
     setActiveTool(tool) {
+      if (tool !== 'select' && this.editorTab === 'output') {
+        this.selection = null;
+        this.selectionOffset = null;
+      }
       if (this.editorTab === 'input') {
         if (this.inputActiveTool !== tool) {
           this.previousTool = this.inputActiveTool;
