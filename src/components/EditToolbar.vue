@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
-import { useMediaQuery } from '@vueuse/core';
+import { ref, computed, watch, useTemplateRef } from 'vue';
+import { useMediaQuery, onClickOutside, onKeyStroke } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { TOOLS, getTool } from '@/tools';
@@ -24,9 +24,13 @@ const toolOptions = computed(() => (activeTool.value.options ?? []).filter(optio
 
 // The pixel view's preview of the ANSI layer: authored cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'ANSI overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
-// At 1100px and narrower the overlay controls fold into a button named for the art style.
+// At 1100px and narrower the overlay controls fold into a button named for the art style, which opens
+// them in a small floating toolbar under it (closed by an outside click or Escape).
 const overlayFolded = useMediaQuery('(max-width: 1100px)');
 const overlayRowOpen = ref(false);
+const overlayMenu = useTemplateRef('overlayMenu');
+onClickOutside(overlayMenu, () => { overlayRowOpen.value = false; });
+onKeyStroke('Escape', () => { overlayRowOpen.value = false; });
 const STYLE_NAMES = { ansi: 'ANSI', colorAscii: 'Color ASCII', ascii: 'ASCII' };
 const styleName = computed(() => STYLE_NAMES[project.renderStyle] ?? 'ANSI');
 
@@ -72,14 +76,22 @@ function confirmFlatten() {
 
       <template v-if="workspace.editorTab === 'input'">
         <!-- Narrow screens fold the overlay controls into a button that opens a row of their own. -->
-        <button
-            v-if="overlayFolded"
-            class="text overlay-toggle"
-            :class="{ open: overlayRowOpen }"
-            :aria-expanded="overlayRowOpen"
-            title="ANSI overlay settings"
-            @click="overlayRowOpen = !overlayRowOpen"
-        >{{ styleName }} <span class="caret">▾</span></button>
+        <div v-if="overlayFolded" ref="overlayMenu" class="overlay-menu">
+          <button
+              class="text overlay-toggle"
+              :class="{ open: overlayRowOpen }"
+              :aria-expanded="overlayRowOpen"
+              title="ANSI overlay settings"
+              @click="overlayRowOpen = !overlayRowOpen"
+          >{{ styleName }} <span class="caret">▾</span></button>
+          <div v-if="overlayRowOpen" class="overlay-float tool-setting-group overlay-group" role="dialog" aria-label="ANSI overlay">
+            <RangeField compact :setting="OVERLAY_SETTING" v-model="workspace.ansiOverlay"/>
+            <label class="checkbox-wrapper" title="Preview every cell's characters, not just the ones you've authored">
+              <span>All cells</span>
+              <input type="checkbox" v-model="workspace.ansiOverlayAll"/>
+            </label>
+          </div>
+        </div>
         <div v-else class="tool-setting-group overlay-group">
           <RangeField compact :setting="OVERLAY_SETTING" v-model="workspace.ansiOverlay"/>
           <label class="checkbox-wrapper" title="Preview every cell's characters, not just the ones you've authored">
@@ -144,16 +156,6 @@ function confirmFlatten() {
             Clear Edits
           </button>
         </DropdownMenu>
-      </div>
-    </div>
-
-    <div v-if="workspace.editorTab === 'input' && overlayFolded && overlayRowOpen" class="toolbar-row secondary-row">
-      <div class="tool-setting-group overlay-group">
-        <RangeField compact :setting="OVERLAY_SETTING" v-model="workspace.ansiOverlay"/>
-        <label class="checkbox-wrapper" title="Preview every cell's characters, not just the ones you've authored">
-          <span>All cells</span>
-          <input type="checkbox" v-model="workspace.ansiOverlayAll"/>
-        </label>
       </div>
     </div>
 
@@ -253,9 +255,26 @@ button.text {
   color: var(--text-dim);
 }
 
-button.overlay-toggle {
+div.overlay-menu {
+  position: relative;
   margin-right: 12px;
+}
+
+button.overlay-toggle {
   white-space: nowrap;
+}
+
+div.overlay-float.overlay-group {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 200;
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
 }
 
 button.overlay-toggle .caret {
