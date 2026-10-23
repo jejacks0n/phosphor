@@ -395,7 +395,8 @@ div.mobile-only {
   display: none;
 }
 
-@media (max-width: 768px) {
+/* At 900px and narrower, undo/redo, merge and clear fold into the Actions dropdown. */
+@media (max-width: 900px) {
   div.desktop-only {
     display: none;
   }
