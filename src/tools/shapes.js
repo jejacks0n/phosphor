@@ -2,8 +2,8 @@
 // rectangles as single/double line boxes (Connect joins them to the lines they cross), shapes in
 // full blocks or the active character as cells, and anything else (line-drawn ellipses, or
 // "Half-block") as paint at grid resolution, which is half-block drawing. Anti-aliased ellipses paint edge pixels by coverage, or shade cells ░▒▓█.
-// Block characters (on by default) makes block shapes real ▄/█ cells; off, they paint over the
-// cells and each keeps its own character.
+// Block shapes paint over the cells, each keeping its own character; Block characters (off by
+// default) makes them real ▄/█ cells instead.
 import { rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/cellEdits';
 import { charRowsOf, cellsOfPixels } from '@/lib/Cells';
@@ -123,12 +123,12 @@ export default {
       title: 'Join the frame to the line characters it crosses or meets',
     },
     {
-      key: 'shapeBlockChars', label: 'Block characters', type: 'checkbox', views: ['output'], when: drawsBlocks,
-      title: "Draw with real block characters; off, the paint shows through each cell's own character",
-    },
-    {
       key: 'shapeAntialias', label: 'Anti-aliased', type: 'checkbox',
       when: (ws) => ws.shapeKind === 'ellipse' && (ws.editorTab === 'input' || ws.shapeDrawWith !== 'char'),
+    },
+    {
+      key: 'shapeBlockChars', label: 'Block characters', type: 'checkbox', views: ['output'], when: drawsBlocks,
+      title: "Draw with real block characters; off, the paint shows through each cell's own character",
     },
   ],
   begin({ workspace }, pos) {
