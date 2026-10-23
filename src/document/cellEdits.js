@@ -108,16 +108,6 @@ export function rectCells({ c0, r0, c1, r1 }) {
   return cells;
 }
 
-// complete(col, row, entry) fills in a whole entry for every cell (copying what's visible, not
-// just what's authored); without it, cells with no entry copy as null.
-export function copyBlock(map, rect, complete) {
-  const entries = rectCells(rect).map(({ col, row }) => {
-    const entry = map.get(cellKey(col, row)) ?? null;
-    return complete ? Object.freeze({ ...complete(col, row, entry) }) : entry;
-  });
-  return { w: rect.c1 - rect.c0 + 1, h: rect.r1 - rect.r0 + 1, entries };
-}
-
 // A block's entries at (col, row): null entries release that cell; anything off the grid is dropped.
 // Returns the same Map when nothing changed.
 export function pasteBlock(map, block, col, row, cols, rows) {
@@ -135,14 +125,6 @@ export function pasteBlock(map, block, col, row, cols, rows) {
 }
 
 const sameEntry = (a, b) => !!a && !!b && ATTRS.every(attr => a[attr] === b[attr]);
-
-// Lift a rect's entries (complete: as in copyBlock), release it, and paste them dc/dr away
-// (overlap-safe). Dropped where it started, nothing changes.
-export function moveRect(map, rect, dc, dr, cols, rows, complete) {
-  if (!dc && !dr) return map;
-  const block = copyBlock(map, rect, complete);
-  return pasteBlock(withoutCells(map, rectCells(rect)), block, rect.c0 + dc, rect.r0 + dr, cols, rows);
-}
 
 // Every cell of a rect merged with attrsFor(col, row, entry), on one Map copy (fill, bake).
 // Returns the same Map when nothing changed.

@@ -8,7 +8,7 @@ import { cellIndex, charRowsOf, bakedEntry, flattenEntry } from "@/lib/Cells.js"
 import EditLayer, { editScaleFor } from "@/document/EditLayer.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
-import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, copyBlock, pasteBlock, moveRect, updateRect, BLANK, copyCellLayers, deleteCellLayers } from "@/document/cellEdits.js";
+import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, BLANK, copyCellLayers, deleteCellLayers } from "@/document/cellEdits.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, sourceParams } from "@/store/settings.js";
@@ -504,25 +504,6 @@ export const useProjectStore = defineStore('project', {
       return { ...bakedEntry(this.renderStyle, this.imageCellAt(col, row)), ...entry };
     },
 
-    copyCells(rect) {
-      return copyBlock(this.cellEdits, rect, (col, row, entry) => this.completeAt(col, row, entry));
-    },
-
-    cutCells(rect) {
-      const block = this.copyCells(rect);
-      this.releaseCellsIn(rect);
-      return block;
-    },
-
-    pasteCells(block, col, row) {
-      const rect = { c0: col, r0: row, c1: Math.min(this.cols, col + block.w) - 1, r1: Math.min(charRowsOf(this.rows), row + block.h) - 1 };
-      this.setCellEdits(pasteBlock(this.cellEdits, block, col, row, this.cols, charRowsOf(this.rows)), [rect]);
-    },
-
-    fillCells(rect, attrs) {
-      this.setCellEdits(updateRect(this.cellEdits, rect, () => attrs), [rect]);
-    },
-
     // Freeze the image's cells as authored (missing attributes from what's underneath, before paint).
     bakeCells(rect) {
       const area = rect ?? this.gridRect();
@@ -532,13 +513,6 @@ export const useProjectStore = defineStore('project', {
     releaseCellsIn(rect) {
       const area = rect ?? this.gridRect();
       this.setCellEdits(withoutCells(this.cellEdits, rectCells(area)), [area]);
-    },
-
-    moveCells(rect, dc, dr) {
-      const rows = charRowsOf(this.rows);
-      const next = moveRect(this.cellEdits, rect, dc, dr, this.cols, rows, (col, row, entry) => this.completeAt(col, row, entry));
-      const moved = { c0: Math.max(0, rect.c0 + dc), r0: Math.max(0, rect.r0 + dr), c1: Math.min(this.cols - 1, rect.c1 + dc), r1: Math.min(rows - 1, rect.r1 + dr) };
-      this.setCellEdits(next, moved.c0 <= moved.c1 && moved.r0 <= moved.r1 ? [rect, moved] : [rect]);
     },
 
     // Selection operations on chosen layers (Layers = { image, cells, paint }). Block = { w, h,

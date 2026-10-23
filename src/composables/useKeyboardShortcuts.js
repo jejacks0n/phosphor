@@ -46,30 +46,39 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
-  // Cmd/Ctrl+C, X, V and Escape for the ANSI view's selection (pasting goes to the selection, or
-  // the Text tool's cursor). Without a selection or clipboard, the browser keeps these keys.
+  // The ANSI view's selection keys: Cmd/Ctrl+C, X, V (on the chosen layers; a paste goes to the
+  // selection, else the Text tool's cursor, else the top-left of the view, and becomes the
+  // selection), Cmd/Ctrl+A (select all), and Escape. With the Select tool: Delete/Backspace, and the
+  // arrow keys nudge the contents a cell. Fields, the palette layer and the Text tool keep their keys.
+  const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
   const _handleSelectionKeys = (e) => {
     // Something else already took the key (the palette layer, a popover).
     if (e.defaultPrevented || workspaceStore.paletteLayerOpen) return false;
     if (workspaceStore.editorTab !== 'output' || e.altKey || e.shiftKey) return false;
+    if (workspaceStore.isPainting) return false; // mid-drag: the drag's end decides
     const target = e.target;
     if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName)) return false;
-    const sel = workspaceStore.selection;
-    if (e.key === 'Escape' && sel && !e.metaKey && !e.ctrlKey) {
-      workspaceStore.selection = null;
+    const sel = workspaceStore.selection, layers = workspaceStore.selectLayers;
+    const selecting = workspaceStore.activeTool === 'select' && sel;
+    const command = e.metaKey || e.ctrlKey;
+    if (!command) {
+      if (e.key === 'Escape' && sel) workspaceStore.selection = null;
+      else if (selecting && (e.key === 'Delete' || e.key === 'Backspace')) projectStore.deleteSelection(sel, layers);
+      else if (selecting && ARROWS[e.key]) workspaceStore.selection = projectStore.moveSelection(sel, layers, ...ARROWS[e.key]);
+      else return false;
+      e.preventDefault();
       return true;
     }
-    if (!e.metaKey && !e.ctrlKey) return false;
     const key = e.key.toLowerCase();
-    const layers = workspaceStore.selectLayers;
-    if (key === 'c' && sel) workspaceStore.clipboard = projectStore.copySelection(sel, layers);
+    if (key === 'a') workspaceStore.selectAll(projectStore.gridRect());
+    else if (key === 'c' && sel) workspaceStore.clipboard = projectStore.copySelection(sel, layers);
     else if (key === 'x' && sel) {
       workspaceStore.clipboard = projectStore.copySelection(sel, layers);
       projectStore.deleteSelection(sel, layers);
-    } else if (key === 'v' && workspaceStore.clipboard && (sel || workspaceStore.textCursor)) {
-      const at = sel ? { col: sel.c0, row: sel.r0 } : workspaceStore.textCursor;
+    } else if (key === 'v' && workspaceStore.clipboard) {
+      const at = sel ? { col: sel.c0, row: sel.r0 } : workspaceStore.textCursor ?? workspaceStore.ansiViewOrigin;
       const pasted = projectStore.pasteSelection(workspaceStore.clipboard, at.col, at.row);
-      if (sel) workspaceStore.selection = pasted ?? sel;
+      if (pasted) workspaceStore.selectAll(pasted); // selected, with the Select tool, to drag into place
     } else return false;
     e.preventDefault();
     return true;

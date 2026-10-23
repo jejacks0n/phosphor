@@ -107,7 +107,30 @@ watch(() => [projectStore.cols, projectStore.rows], () => {
   queueRender();
 });
 
+// The first whole cell on screen (top-left), where a paste goes with no selection or text cursor.
+let originFrame = 0;
+let viewportEl = null;
+const publishOrigin = () => {
+  cancelAnimationFrame(originFrame);
+  originFrame = requestAnimationFrame(() => {
+    const pre = displayRef.value, m = ensureMetrics();
+    if (!pre || !m || !viewportEl) return;
+    const p = pre.getBoundingClientRect(), v = viewportEl.getBoundingClientRect();
+    const clamp = (n, max) => Math.max(0, Math.min(max, n));
+    // A cell hidden by under a pixel still counts as on screen.
+    workspaceStore.ansiViewOrigin = {
+      col: clamp(Math.ceil((v.left - p.left - pre.clientLeft - 1) / m.cellWidth), projectStore.cols - 1),
+      row: clamp(Math.ceil((v.top - p.top - pre.clientTop - 1) / m.lineHeight), charRowsOf(projectStore.rows) - 1),
+    };
+  });
+};
+watch([metrics, () => projectStore.cols, () => projectStore.rows], publishOrigin);
+
 onMounted(() => {
+  viewportEl = displayRef.value?.closest('article') ?? null;
+  viewportEl?.addEventListener('scroll', publishOrigin, { passive: true });
+  window.addEventListener('resize', publishOrigin);
+  publishOrigin();
   render(); // same reason as the cells watcher: lay out before the viewport's scroll restore
   if (document.fonts) {
     document.fonts.ready.then(() => {
@@ -120,6 +143,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (renderFrame) cancelAnimationFrame(renderFrame);
+  cancelAnimationFrame(originFrame);
+  viewportEl?.removeEventListener('scroll', publishOrigin);
+  window.removeEventListener('resize', publishOrigin);
 });
 </script>
 

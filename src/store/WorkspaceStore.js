@@ -28,6 +28,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     selection: null,         // { c0, r0, c1, r1 }: the Select tool's cells (inclusive)
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
+    ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     selectLayers: { image: true, cells: true, paint: true }, // what the Select tool's operations act on
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse'
     shapeFilled: false,
@@ -69,7 +70,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     editMode: (state) => state.editorTab !== 'sauce',
   },
   actions: {
-    // rect: the whole grid (project.gridRect()).
+    // Select rect (the whole grid: project.gridRect()) with the Select tool.
     selectAll(rect) {
       this.selection = rect;
       this.setActiveTool('select');
