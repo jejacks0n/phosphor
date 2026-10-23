@@ -17,9 +17,10 @@ export function typeAtCursor(project, workspace, char) {
 // at a field (or anything TextKeys doesn't map) are left alone.
 export function useTextTool(project, workspace) {
   const palettes = usePaletteStore();
+  // Keys belong elsewhere while focus is in a field or a dialog (the colour picker, the palette layer).
   const editableFocus = () => {
     const el = document.activeElement;
-    return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
+    return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || !!el.closest('[role="dialog"]'));
   };
 
   const move = (dc, dr) => {

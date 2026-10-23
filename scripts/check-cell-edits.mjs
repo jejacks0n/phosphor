@@ -28,6 +28,12 @@ assert.deepEqual([...migrateCharEdits([[5, '#'], [12, '@']], 4)], [['1,1', { cha
 assert.equal(migrateCharEdits([[5, '#']], undefined).size, 0);          // no column count: nothing to place
 assert.ok(Object.isFrozen(deserializeCellEdits([['0,0', { char: 'x' }]]).get('0,0')));
 assert.equal(deserializeCellEdits([['0,0', {}], ['1,0', null]]).size, 0); // empty entries never exist
+// Project files are untrusted: only one-character chars, #rrggbb colours and col,row keys load.
+const loaded = deserializeCellEdits([
+  ['0,0', { char: '<img src=x onerror=alert(1)>' }], ['1,0', { char: 'A', fg: 'javascript:x' }],
+  ['2,0', { char: 'B', fg: '#ffffff', bg: '#000000' }], ['x,y', { char: 'C' }], ['3,0', { char: 5 }],
+]);
+assert.deepEqual([...loaded], [['1,0', { char: 'A' }], ['2,0', { char: 'B', fg: '#ffffff', bg: '#000000' }]]);
 assert.equal(withCellEdit(m0, 0, 0, { char: null }), m0);               // no-op on a missing cell
 // mergeEntry: the per-cell rule bulk operations share (null = no entry)
 assert.equal(mergeEntry(undefined, { char: null }), null);

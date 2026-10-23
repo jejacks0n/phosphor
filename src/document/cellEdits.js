@@ -50,9 +50,21 @@ export function withoutCells(map, cells) {
 
 export const serializeCellEdits = (map) => [...map];
 
-export const deserializeCellEdits = (pairs) => new Map((pairs || [])
-  .filter(([, entry]) => entry && ATTRS.some(attr => attr in entry))
-  .map(([key, entry]) => [key, Object.freeze({ ...entry })]));
+// Project files are untrusted: keep only col,row keys, one-character chars and #rrggbb colours.
+const VALID = {
+  char: (v) => typeof v === 'string' && [...v].length === 1,
+  fg: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
+  bg: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
+};
+export function deserializeCellEdits(pairs) {
+  const map = new Map();
+  for (const [key, entry] of Array.isArray(pairs) ? pairs : []) {
+    if (typeof key !== 'string' || !/^\d+,\d+$/.test(key) || !entry) continue;
+    const clean = Object.fromEntries(ATTRS.filter(attr => VALID[attr](entry[attr])).map(attr => [attr, entry[attr]]));
+    if (Object.keys(clean).length) map.set(key, Object.freeze(clean));
+  }
+  return map;
+}
 
 // Older projects stored char edits keyed by cell index at the file's column count.
 export function migrateCharEdits(pairs, cols) {

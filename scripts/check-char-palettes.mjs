@@ -41,4 +41,9 @@ assert.equal(fitsOneCell('x', () => 0, 8), false);                       // zero
 assert.equal(fitsOneCell('☺', measure, 8), true);                        // text-presentation symbols are fine
 assert.deepEqual(parseFind('-'), { kind: 'paste', chars: ['-'] });        // not a block name: offered as typed
 assert.deepEqual(parseFind('a'), { kind: 'paste', chars: ['a'] });
+// "Exactly one cell": a glyph from a fallback font with a different advance (wider or narrower)
+// would shift the rest of its row, so it must match the cell width.
+assert.equal(fitsOneCell('⠿', () => 12, 10.2), false);
+assert.equal(fitsOneCell('⠿', () => 8, 10.2), false);
+assert.equal(fitsOneCell('⠿', () => 10.4, 10.2), true);
 console.log('char palettes ok');

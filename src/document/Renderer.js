@@ -204,7 +204,7 @@ export default class Renderer {
       return this.palette ? nearestColor(p, this.palette) : p;
     };
     const top = pixelAt(2 * row), bottom = pixelAt(2 * row + 1);
-    const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset || '▄') : baseCells[cellIndex(col, row, cols)].char;
+    const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset || '▄') : baseCells[cellIndex(col, row, cols)]?.char ?? ' ';
     return buildCell(top, bottom, char, renderStyle);
   }
 

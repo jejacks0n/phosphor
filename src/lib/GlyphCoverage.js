@@ -8,7 +8,7 @@
  */
 
 // The ANSI view's font (AnsiEditor.vue's <pre> styles must match).
-export const DISPLAY_FONT = { family: '"JetBrains Mono"', size: 17, lineHeight: 1.2 };
+export const DISPLAY_FONT = { family: '"JetBrains Mono", monospace', size: 17, lineHeight: 1.2 };
 export const DISPLAY_FONT_CSS = `${DISPLAY_FONT.size}px ${DISPLAY_FONT.family}`;
 
 const EXACT = new Map([

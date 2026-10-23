@@ -52,13 +52,12 @@ export function forkName(name, existingNames) {
 }
 
 // Whether a character fits exactly one cell of the grid: one visible character (not an emoji, mark,
-// control, format or unassigned code point) that's no wider than the cell in the display font and
-// draws something (measure: char => advance width in px).
+// control, format or unassigned code point) whose advance in the display font matches the cell's
+// (measure: char => advance in px). A fallback-font glyph of another width would shift its row.
 export function fitsOneCell(char, measure, cellWidth) {
   if ([...char].length !== 1) return false;
   if (/\p{Emoji_Presentation}|\p{M}|\p{C}/u.test(char)) return false;
-  const width = measure(char);
-  return width > 0 && width <= cellWidth * 1.25;
+  return Math.abs(measure(char) - cellWidth) < 0.5;
 }
 
 // The find field: a code point (U+2605), part of a Unicode block's name, or pasted characters.

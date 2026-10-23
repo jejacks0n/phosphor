@@ -17,6 +17,7 @@ const MAX_DIMENSION = 300;
 const DEFAULT_COLS = getSetting('cols').default;
 const DEFAULT_ROWS = getSetting('rows').default;
 const BLANK_CANVAS_SCALE = 10;
+const TYPING_PAUSE_MS = 1000; // a pause this long ends a typing run (one undo step)
 
 // Settings that feed the image pipeline (processParams); the rest only affect editing, saving or export.
 const PIPELINE_KEYS = SETTINGS.filter(s => s.group !== 'sauce' && s.pipeline !== false).map(s => s.key);
@@ -178,6 +179,7 @@ export const useProjectStore = defineStore('project', {
 
     async saveProject() {
       if (!this.image || !this.imageBuffer) return;
+      this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
       const settings = Object.fromEntries([...SAVED_KEYS, 'hasPaint'].map(key => [key, this[key]]));
       const blob = await writeProject({
@@ -423,27 +425,40 @@ export const useProjectStore = defineStore('project', {
 
     // Typing: one undo entry per keystroke. Typed cells sit above paint (the last edit wins).
     typeAt(col, row, char, attrs, { insert = false } = {}) {
-      this.ensureLayer();
-      this.beginEdit();
-      if (insert) this.shiftCells(row, col, 1);
-      this.editCell(col, row, { char, ...attrs }, { clearPaint: true });
-      this.commitEdit();
+      this.typing(() => {
+        if (insert) this.shiftCells(row, col, 1);
+        this.editCell(col, row, { char, ...attrs }, { clearPaint: true });
+      });
     },
 
     backspaceAt(col, row, attrs, { insert = false } = {}) {
       if (col < 1) return;
-      this.ensureLayer();
-      this.beginEdit();
-      if (insert) this.shiftCells(row, col, -1);
-      else this.editCell(col - 1, row, { char: ' ', ...attrs }, { clearPaint: true });
-      this.commitEdit();
+      this.typing(() => {
+        if (insert) this.shiftCells(row, col, -1);
+        else this.editCell(col - 1, row, { char: ' ', ...attrs }, { clearPaint: true });
+      });
     },
 
     deleteAt(col, row) {
+      this.typing(() => this.shiftCells(row, col + 1, -1));
+    },
+
+    // A run of typing is one undo step: its stroke stays open across keystrokes and is committed
+    // after a pause, by any other edit (beginEdit), or by undo/redo/save (commitPending).
+    typing(fn) {
       this.ensureLayer();
-      this.beginEdit();
-      this.shiftCells(row, col + 1, -1);
-      this.commitEdit();
+      this._typingNow = true;
+      try {
+        this.beginEdit();
+        fn();
+      } finally {
+        this._typingNow = false;
+      }
+      if (this._stroke) this._stroke.typing = true;
+      clearTimeout(this._typingTimer);
+      this._typingTimer = setTimeout(() => {
+        if (this._stroke?.typing) this.commitEdit();
+      }, TYPING_PAUSE_MS);
     },
 
     // Move a row's authored cells (insert/delete); paint stays where it is.
@@ -604,7 +619,12 @@ export const useProjectStore = defineStore('project', {
       for (const [key, entry] of this.cellEdits) {
         const { col, row } = parseKey(key);
         if (!this.cellHasPaint(col, row)) continue;
-        next = withCellEdit(next, col, row, { bg: this.rawColorAt(col, 2 * row), fg: this.rawColorAt(col, 2 * row + 1), char: entry.char });
+        // Only painted halves take the paint's colour; an unpainted half keeps showing the image.
+        const painted = (y) => {
+          const color = this.layer.colorAt(col, y);
+          return color ? rgb2hex(color) : undefined;
+        };
+        next = withCellEdit(next, col, row, { bg: painted(2 * row), fg: painted(2 * row + 1), char: entry.char });
         pixels.push({ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 });
       }
       if (!pixels.length) return;
@@ -631,6 +651,7 @@ export const useProjectStore = defineStore('project', {
 
     // An edit (stroke, fill, cell edit) records from its first change until commitEdit().
     beginEdit() {
+      if (this._stroke?.typing && !this._typingNow) this.commitEdit(); // another edit ends a typing run
       if (this._stroke || !this.layer) return;
       this._stroke = { cellEdits: this.cellEdits };
       this.layer.beginStroke();
@@ -690,15 +711,19 @@ export const useProjectStore = defineStore('project', {
 
       // Bake in grid space: the new base image IS the grid (letterbox included), sized like
       // the paint layer so paint overlays 1:1 and re-fitting the result is an identity.
-      const before = { image: this.image, imageBuffer: this.imageBuffer, layer: this.layer.snapshot() };
+      // Paint covers authored cells; once it's part of the image it must keep covering them, so those
+      // cells are released along with the merge.
+      const covered = [...this.cellEdits.keys()].map(parseKey).filter(({ col, row }) => this.cellHasPaint(col, row));
+      const before = { image: this.image, imageBuffer: this.imageBuffer, layer: this.layer.snapshot(), cellEdits: this.cellEdits };
       const baked = this.layer.bake(this.image, this.getFitParams(this.cols, this.rows));
       const blob = await new Promise(resolve => baked.toBlob(resolve, 'image/png'));
-      const after = { image: await loadImage(blob), imageBuffer: await blob.arrayBuffer(), layer: null };
+      const after = { image: await loadImage(blob), imageBuffer: await blob.arrayBuffer(), layer: null, cellEdits: withoutCells(before.cellEdits, covered) };
       if (this.image !== before.image) return; // a different image was loaded while this merge was encoding
-      const apply = ({ image, imageBuffer, layer }) => {
+      const apply = ({ image, imageBuffer, layer, cellEdits }) => {
         this.$patch({ image: shallowRef(image), imageBuffer });
         this.layer.restore(layer);
         this.hasPaint = this.layer.hasPaint;
+        this.cellEdits = cellEdits;
         this.render();
       };
       apply(after);
