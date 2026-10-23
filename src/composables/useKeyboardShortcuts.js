@@ -61,11 +61,15 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     }
     if (!e.metaKey && !e.ctrlKey) return false;
     const key = e.key.toLowerCase();
-    if (key === 'c' && sel) workspaceStore.cellClipboard = projectStore.copyCells(sel);
-    else if (key === 'x' && sel) workspaceStore.cellClipboard = projectStore.cutCells(sel);
-    else if (key === 'v' && workspaceStore.cellClipboard && (sel || workspaceStore.textCursor)) {
+    const layers = workspaceStore.selectLayers;
+    if (key === 'c' && sel) workspaceStore.clipboard = projectStore.copySelection(sel, layers);
+    else if (key === 'x' && sel) {
+      workspaceStore.clipboard = projectStore.copySelection(sel, layers);
+      projectStore.deleteSelection(sel, layers);
+    } else if (key === 'v' && workspaceStore.clipboard && (sel || workspaceStore.textCursor)) {
       const at = sel ? { col: sel.c0, row: sel.r0 } : workspaceStore.textCursor;
-      projectStore.pasteCells(workspaceStore.cellClipboard, at.col, at.row);
+      const pasted = projectStore.pasteSelection(workspaceStore.clipboard, at.col, at.row);
+      if (sel) workspaceStore.selection = pasted ?? sel;
     } else return false;
     e.preventDefault();
     return true;

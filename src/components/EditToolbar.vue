@@ -54,6 +54,27 @@ const MORE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
 const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option =>
   (!option.views || option.views.includes(workspace.editorTab)) && (!option.when || option.when(workspace))));
 
+// The Select tool's layer toggles and the actions on its selection (one undo step each).
+const SELECT_LAYERS = [
+  ['image', 'Image', 'The cells generated from the picture'],
+  ['cells', 'Cells', 'Authored cells: typed, drawn and pasted'],
+  ['paint', 'Paint', 'The paint layer'],
+];
+const anyLayer = computed(() => Object.values(workspace.selectLayers).some(Boolean));
+const selectionSize = computed(() => {
+  const sel = workspace.selection;
+  return sel ? `${sel.c1 - sel.c0 + 1} × ${sel.r1 - sel.r0 + 1}` : '';
+});
+const copySelection = () => { workspace.clipboard = project.copySelection(workspace.selection, workspace.selectLayers); };
+const cutSelection = () => {
+  copySelection();
+  project.deleteSelection(workspace.selection, workspace.selectLayers);
+};
+const pasteSelection = () => {
+  const sel = workspace.selection;
+  workspace.selection = project.pasteSelection(workspace.clipboard, sel.c0, sel.r0) ?? sel;
+};
+
 // A dropdown's choices on offer right now, and the one it shows: the setting's own choice, or when
 // that isn't on offer, the choice the tool draws instead.
 const offered = (option) => option.choices.filter(c => !c.when || c.when(workspace));
@@ -206,8 +227,37 @@ function confirmFlatten() {
     <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select'">
       <PaletteStrip v-if="activeTool.palette"/>
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">
-        <span class="hint">{{ workspace.selection ? 'Drag inside the selection to move it' : 'Drag to select cells, or for the whole canvas:' }}</span>
-        <template v-if="!workspace.selection">
+        <span class="option-label">Layers</span>
+        <div class="segmented" role="group" aria-label="Layers the selection acts on">
+          <button
+              v-for="[key, label, title] in SELECT_LAYERS"
+              :key="key"
+              class="text"
+              :class="{ on: workspace.selectLayers[key] }"
+              :aria-pressed="workspace.selectLayers[key]"
+              :title="title"
+              @click="workspace.selectLayers[key] = !workspace.selectLayers[key]"
+          >{{ label }}</button>
+        </div>
+        <div class="divider"/>
+        <template v-if="workspace.selection">
+          <button class="text" title="Copy (Cmd/Ctrl+C)" :disabled="!anyLayer" @click="copySelection">Copy</button>
+          <button class="text" title="Cut (Cmd/Ctrl+X)" :disabled="!anyLayer" @click="cutSelection">Cut</button>
+          <button class="text" title="Paste at the selection (Cmd/Ctrl+V)" :disabled="!workspace.clipboard" @click="pasteSelection">Paste</button>
+          <button class="text" title="Delete (Delete)" :disabled="!anyLayer" @click="project.deleteSelection(workspace.selection, workspace.selectLayers)">Delete</button>
+          <div class="divider"/>
+          <button
+              class="text"
+              title="Turn the chosen layers into authored cells: Image freezes the image's cells, Paint becomes half-blocks"
+              :disabled="!workspace.selectLayers.image && !workspace.selectLayers.paint"
+              @click="project.flattenSelection(workspace.selection, workspace.selectLayers)"
+          >Flatten</button>
+          <div class="divider"/>
+          <span class="hint">{{ selectionSize }}</span>
+        </template>
+        <template v-else>
+          <span class="hint">Drag to select cells, or:</span>
+          <button class="text" title="Select the whole canvas (Cmd/Ctrl+A)" @click="workspace.selectAll(project.gridRect())">Select all</button>
           <button class="text" title="Freeze every image cell as authored" @click="project.bakeCells(null)">Bake all</button>
           <button class="text" title="Return every authored cell to the image" @click="project.releaseCellsIn(null)">Release all</button>
         </template>
@@ -362,6 +412,16 @@ div.segmented button.on {
 span.hint {
   font-size: 12px;
   color: var(--text-muted);
+  white-space: nowrap;
+}
+
+span.option-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  user-select: none;
 }
 
 button.text {

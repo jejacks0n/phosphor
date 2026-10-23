@@ -27,7 +27,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     ansiOverlayAll: false,   // draw every cell over the pixel view, not just authored ones
     selection: null,         // { c0, r0, c1, r1 }: the Select tool's cells (inclusive)
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
-    cellClipboard: null,     // a copied block of cells
+    clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     selectLayers: { image: true, cells: true, paint: true }, // what the Select tool's operations act on
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse'
     shapeFilled: false,
@@ -69,6 +69,11 @@ export const useWorkspaceStore = defineStore('workspace', {
     editMode: (state) => state.editorTab !== 'sauce',
   },
   actions: {
+    // rect: the whole grid (project.gridRect()).
+    selectAll(rect) {
+      this.selection = rect;
+      this.setActiveTool('select');
+    },
     setActiveTool(tool) {
       if (this.editorTab === 'input') {
         if (this.inputActiveTool !== tool) {
