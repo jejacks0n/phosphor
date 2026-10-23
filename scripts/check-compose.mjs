@@ -3,7 +3,7 @@
 // Run: node scripts/check-compose.mjs
 import assert from 'node:assert/strict';
 import { coverageOf, setGlyphRasterizer } from '../src/lib/GlyphCoverage.js';
-import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels, bakedEntry, flattenEntry } from '../src/lib/Cells.js';
+import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels, bakedEntry } from '../src/lib/Cells.js';
 import { effectiveColor, getEffectiveColor } from '../src/lib/PixelTransforms.js';
 import { rgb2hex, hex2rgb, PALETTES } from '../src/lib/ColorUtils.js';
 
@@ -75,11 +75,4 @@ const imageCell = { char: '▄', bg: '#ff0000', fg: '#0000ff' };
 assert.deepEqual(bakedEntry('ansi', imageCell), { char: '▄', fg: '#0000ff', bg: '#ff0000' });
 assert.deepEqual(bakedEntry('colorAscii', imageCell), { char: '▄', fg: '#800080' });
 assert.deepEqual(bakedEntry('ascii', imageCell), { char: '▄' });
-// Flatten freezes what paint shows (coverCell's rule) as a stored entry: the character stays.
-const solid = { char: '#', fg: '#ff0000', bg: '#0000ff' };
-assert.equal(flattenEntry(solid, null, null), solid);
-assert.equal(flattenEntry(solid, { r: 0, g: 0, b: 0, a: 0 }, null), solid);
-assert.deepEqual(flattenEntry(solid, { r: 0, g: 255, b: 0, a: 1 }, null), { char: '#', bg: '#00ff00', fg: '#ff0000' });
-assert.deepEqual(flattenEntry({ char: 'x', fg: '#ffffff', bg: '#000000' }, null, { r: 255, g: 0, b: 0, a: 0.5 }), { char: 'x', bg: '#000000', fg: '#ff8080' });
-assert.deepEqual(flattenEntry({ char: ' ', fg: '#ffffff', bg: '#0000ff' }, null, { r: 255, g: 0, b: 0, a: 1 }), { char: '▄', bg: '#0000ff', fg: '#ff0000' }); // as coverCell shows it
 console.log('compose ok');

@@ -101,36 +101,18 @@ export function composeCell(under, entry, renderStyle, effective) {
 // through: under paint they become a real half-block instead.
 const solidGlyph = (char) => coverageOf(char).every(c => c === 0 || c === 1);
 
-// The colours a painted cell shows (top and bottom, as { r, g, b }) and its character:
-// textured characters stay, the paint tinting the background (top) and foreground (bottom), the way
-// image cells are built (buildCell); solid and empty ones become ▄, each half the glyph's own colour
-// under the paint. a: paint alpha (0..1) per half.
-function paintedHalves(char, fg, bg, paintTop, aTop, paintBottom, aBottom, renderStyle) {
-  const solid = solidGlyph(char);
-  const [ht, hb] = solid ? halfColors({ char, fg, bg }) : [bg, fg];
-  return {
-    char: solid && renderStyle === 'ansi' ? '▄' : char,
-    top: aTop ? mix(ht, paintTop, aTop) : ht,
-    bottom: aBottom ? mix(hb, paintBottom, aBottom) : hb,
-  };
-}
-
-// Paint over a cell (see paintedHalves). Unpainted cells are returned as is.
+// Paint over a cell: a textured character stays, the paint tinting the background (top half) and
+// foreground (bottom half), the way image cells are built (buildCell); a solid or empty one becomes
+// ▄, each half the glyph's own colour under the paint. Unpainted cells are returned as is.
 export function coverCell(cell, paintTop, paintBottom, { renderStyle, palette }) {
   const aTop = paintTop?.a ?? 0, aBottom = paintBottom?.a ?? 0;
   if (!aTop && !aBottom) return cell;
+  const solid = solidGlyph(cell.char);
+  const [ht, hb] = solid ? halfColors(cell) : [cell.bg, cell.fg];
   const snap = (p) => (palette && palette.length ? nearestColor(p, palette) : p);
-  const { char, top, bottom } = paintedHalves(cell.char, cell.fg, cell.bg, paintTop, aTop, paintBottom, aBottom, renderStyle);
-  return buildCell(snap(top), snap(bottom), char, renderStyle);
-}
-
-// What coverCell shows, frozen as a stored entry ({ char, fg, bg } as '#rrggbb', no palette snap,
-// ANSI cells: bg the top, fg the bottom). No paint: the entry.
-export function flattenEntry(entry, paintTop, paintBottom) {
-  const aTop = paintTop?.a ?? 0, aBottom = paintBottom?.a ?? 0;
-  if (!aTop && !aBottom) return entry;
-  const { char, top, bottom } = paintedHalves(entry.char, hex2rgb(entry.fg), hex2rgb(entry.bg), paintTop, aTop, paintBottom, aBottom, 'ansi');
-  return { char, bg: rgb2hex(top), fg: rgb2hex(bottom) };
+  const top = snap(aTop ? mix(ht, paintTop, aTop) : ht);
+  const bottom = snap(aBottom ? mix(hb, paintBottom, aBottom) : hb);
+  return buildCell(top, bottom, solid && renderStyle === 'ansi' ? '▄' : cell.char, renderStyle);
 }
 
 // Cells as pixels: each included cell's two half-colours (top, bottom) at grid resolution, as an

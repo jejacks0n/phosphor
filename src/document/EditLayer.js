@@ -142,19 +142,6 @@ export default class EditLayer {
     return a > 0 ? { r, g, b, a: a / 255 } : null;
   }
 
-  // Raw paint over a cell rect read in one go: (x, y) grid pixel -> { r, g, b, a } | null, like pixelAt.
-  paintReader(rect) {
-    const area = this.#layerRect(rect);
-    if (!area) return () => null;
-    const { data } = ctx2d(this.canvas).getImageData(area.x, area.y, area.w, area.h);
-    return (x, y) => {
-      const at = this.#cellRect(x, y);
-      if (!at || at.x < area.x || at.y < area.y || at.x >= area.x + area.w || at.y >= area.y + area.h) return null;
-      const o = ((at.y - area.y) * area.w + (at.x - area.x)) * 4;
-      return data[o + 3] ? { r: data[o], g: data[o + 1], b: data[o + 2], a: data[o + 3] / 255 } : null;
-    };
-  }
-
   // Selection blocks. A cell rect ({ c0, r0, c1, r1 }) is scale x 2·scale layer pixels per cell.
   // The paint over a cell rect, as its own canvas.
   copyCells({ c0, r0, c1, r1 }) {

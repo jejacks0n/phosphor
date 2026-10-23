@@ -4,11 +4,11 @@ import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
 import { rgb2hex, hex2rgb } from "@/lib/ColorUtils.js";
 import { fitRect, ctx2d } from "@/lib/Canvas.js";
-import { cellIndex, charRowsOf, bakedEntry, flattenEntry } from "@/lib/Cells.js";
+import { cellIndex, charRowsOf, bakedEntry } from "@/lib/Cells.js";
 import EditLayer, { editScaleFor } from "@/document/EditLayer.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
-import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, BLANK, copyCellLayers, deleteCellLayers } from "@/document/cellEdits.js";
+import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, copyCellLayers, deleteCellLayers } from "@/document/cellEdits.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, sourceParams } from "@/store/settings.js";
@@ -561,26 +561,6 @@ export const useProjectStore = defineStore('project', {
         this.pasteAt(block, col, row);
       });
       return landed;
-    },
-
-    // Turn what shows into authored cells: Image freezes the image's cells (bake); Edits freezes the
-    // paint as it shows (flattenEntry: the character stays, the paint tints it) and removes it.
-    // Authored cells are already cells, so they're kept either way.
-    flattenSelection(rect, layers) {
-      const { image, paint } = this.partsOf(layers);
-      if (!image && !paint) return;
-      const paintAt = paint && this.layer?.hasPaint ? this.layer.paintReader(rect) : () => null;
-      this.selectionEdit([rect], () => {
-        this.cellEdits = updateRect(this.cellEdits, rect, (col, row, entry) => {
-          const top = paintAt(col, 2 * row), bottom = paintAt(col, 2 * row + 1);
-          if (top || bottom) {
-            // Every attribute filled (bakedEntry drops colours in the ASCII styles), so paint never blends over a gap.
-            return flattenEntry({ ...BLANK, ...bakedEntry(this.renderStyle, this.imageCellAt(col, row)), ...entry }, top, bottom);
-          }
-          return image ? this.completeAt(col, row, entry) : {};
-        });
-        if (paint) this.layer.eraseCells(rect);
-      });
     },
 
     // The parts of the selection operations, inside selectionEdit (parts: partsOf's { image, cells, paint }).

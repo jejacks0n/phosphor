@@ -245,13 +245,6 @@ function confirmFlatten() {
           <button class="text" title="Paste at the selection (Cmd/Ctrl+V)" :disabled="!workspace.clipboard" @click="pasteSelection">Paste</button>
           <button class="text" title="Delete (Delete)" :disabled="!anyLayer" @click="project.deleteSelection(workspace.selection, workspace.selectLayers)">Delete</button>
           <div class="divider"/>
-          <button
-              class="text"
-              title="Freeze what shows as cells: Image freezes the image's cells, Edits fixes the paint into the cells it covers"
-              :disabled="!anyLayer"
-              @click="project.flattenSelection(workspace.selection, workspace.selectLayers)"
-          >Flatten</button>
-          <div class="divider"/>
           <span class="hint">{{ selectionSize }}</span>
           <button class="text" title="Clear the selection (Esc)" @click="workspace.selection = null">Deselect</button>
         </template>
