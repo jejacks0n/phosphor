@@ -57,10 +57,6 @@ const toolOptions = computed(() => (activeTool.value.options ?? []).filter(optio
   (!option.views || option.views.includes(workspace.editorTab)) && (!option.when || option.when(workspace))));
 
 // The actions on the Select tool's selection (one undo step each), on its chosen layers.
-const selectionSize = computed(() => {
-  const sel = workspace.selection;
-  return sel ? `${sel.c1 - sel.c0 + 1} × ${sel.r1 - sel.r0 + 1}` : '';
-});
 const copySelection = () => { workspace.clipboard = project.copySelection(workspace.selection, workspace.selectLayers); };
 const cutSelection = () => {
   copySelection();
@@ -234,8 +230,6 @@ function confirmMergeDown() {
           <div class="divider"/>
           <button class="text" title="Merge up: what the base layer shows here becomes edit cells" @click="project.mergeUp(workspace.selection)">Merge up</button>
           <button class="text" title="Clear the selection (Esc)" @click="workspace.selection = null">Deselect</button>
-          <div class="divider"/>
-          <span class="hint">{{ selectionSize }}</span>
         </template>
         <template v-else>
           <span class="hint">Drag to select cells, or:</span>

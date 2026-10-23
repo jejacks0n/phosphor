@@ -20,6 +20,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
     pickSwapped: false,    // the picker is only held by Alt from a paint tool
     pickLayers: { fg: true, bg: true }, // ANSI view: what a plain picker click picks (both lit: both)
+    lastPick: null,          // the Color Picker's last ANSI pick, for the status bar: { col, row, fg, bg, fgFrom, bgFrom }
     textCursor: null,      // { col, row } of the Text tool's cursor
     insertMode: false,     // typing pushes the row right instead of overwriting
     paletteLayerOpen: false, // the character palette layer has the keyboard

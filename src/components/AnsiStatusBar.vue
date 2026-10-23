@@ -2,11 +2,19 @@
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { getEffectiveColor } from '@/lib/PixelTransforms';
 
-// Under the ANSI view: the Text tool's cursor, what's in that cell (each attribute from the edit layer or
-// from the image), and the overwrite/insert toggle.
+// Under the ANSI view, following the tool: Edit Mode shows its cursor's cell (each attribute from the
+// edit layer or the base) and the overwrite/insert toggle; Select, the selection's size and place; the
+// Color Picker, its last pick and where each colour came from. Other tools leave it empty.
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
+const tool = computed(() => workspace.activeTool);
+const sel = computed(() => workspace.selection);
+const offset = computed(() => workspace.selectionOffset ?? { dc: 0, dr: 0 }); // while it's being dragged
+const pick = computed(() => workspace.lastPick);
+// A picked (stored) colour as it shows: the swatch matches the canvas, the hex is what was picked.
+const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 
 const cursor = computed(() => workspace.textCursor);
 const cell = computed(() => cursor.value && project.cells[cursor.value.row * project.cols + cursor.value.col]);
@@ -16,15 +24,27 @@ const origin = (attr) => (entry.value?.[attr] !== undefined ? 'edit' : 'base');
 
 <template>
   <footer class="ansi-status">
-    <template v-if="cursor && cell">
-      <span>Col <b>{{ cursor.col + 1 }}</b> Row <b>{{ cursor.row + 1 }}</b></span>
-      <span>Char <b class="glyph">{{ cell.char === ' ' ? '␣' : cell.char }}</b> {{ origin('char') }}</span>
-      <span>FG <i class="swatch" :style="{ backgroundColor: cell.fg.hex }"></i><b>{{ cell.fg.hex }}</b> {{ origin('fg') }}</span>
-      <span>BG <i class="swatch" :style="{ backgroundColor: cell.bg.hex }"></i><b>{{ cell.bg.hex }}</b> {{ origin('bg') }}</span>
+    <template v-if="tool === 'text'">
+      <template v-if="cursor && cell">
+        <span>Col <b>{{ cursor.col + 1 }}</b> Row <b>{{ cursor.row + 1 }}</b></span>
+        <span>Char <b class="glyph">{{ cell.char === ' ' ? '␣' : cell.char }}</b> {{ origin('char') }}</span>
+        <span>FG <i class="swatch" :style="{ backgroundColor: cell.fg.hex }"></i><b>{{ cell.fg.hex }}</b> {{ origin('fg') }}</span>
+        <span>BG <i class="swatch" :style="{ backgroundColor: cell.bg.hex }"></i><b>{{ cell.bg.hex }}</b> {{ origin('bg') }}</span>
+      </template>
+      <span v-else>Col — Row —</span>
     </template>
-    <span v-else>Col — Row —</span>
+    <template v-else-if="tool === 'select' && sel">
+      <span>Selection <b>{{ sel.c1 - sel.c0 + 1 }} × {{ sel.r1 - sel.r0 + 1 }}</b></span>
+      <span>at Col <b>{{ sel.c0 + offset.dc + 1 }}</b> Row <b>{{ sel.r0 + offset.dr + 1 }}</b></span>
+    </template>
+    <template v-else-if="tool === 'picker' && !workspace.pickSwapped && pick">
+      <span>Picked Col <b>{{ pick.col + 1 }}</b> Row <b>{{ pick.row + 1 }}</b></span>
+      <span>FG <i class="swatch" :style="{ backgroundColor: shown(pick.fg) }"></i><b>{{ pick.fg }}</b> {{ pick.fgFrom }}</span>
+      <span v-if="pick.bg">BG <i class="swatch" :style="{ backgroundColor: shown(pick.bg) }"></i><b>{{ pick.bg }}</b> {{ pick.bgFrom }}</span>
+    </template>
     <span class="spacer"></span>
     <button
+        v-if="tool === 'text'"
         :title="workspace.insertMode ? 'Insert: typing pushes the row right (Insert key)' : 'Overwrite: typing replaces the cell (Insert key)'"
         @click="workspace.insertMode = !workspace.insertMode"
     >{{ workspace.insertMode ? 'Insert' : 'Overwrite' }}</button>

@@ -78,8 +78,17 @@ function pickAt(pos, event) {
   const cell = cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows);
   if (!cell) return;
   const under = projectStore.underlyingAt(cell.col, cell.row);
+  const entry = projectStore.editCellAt(cell.col, cell.row);
   // Color ASCII never shows a generated background: only an edit cell's is real.
-  const bg = projectStore.renderStyle === 'colorAscii' && !projectStore.editCellAt(cell.col, cell.row)?.bg ? null : under.bg;
+  const bg = projectStore.renderStyle === 'colorAscii' && !entry?.bg ? null : under.bg;
+  // For the status bar: what this pick read, and which layer each colour came from (paint and edit
+  // cells are the edit layer; the rest is the base).
+  const fromEdit = (y, attr) => !!projectStore.paintLayer?.colorAt(cell.col, y) || entry?.[attr] !== undefined;
+  workspaceStore.lastPick = {
+    col: cell.col, row: cell.row, fg: under.fg, bg,
+    fgFrom: fromEdit(2 * cell.row + 1, 'fg') ? 'edit' : 'base',
+    bgFrom: fromEdit(2 * cell.row, 'bg') ? 'edit' : 'base',
+  };
   if (mode === 'fg' || mode === 'both') workspaceStore.setColor('fg', under.fg, remember);
   if (mode === 'bg' || mode === 'both') workspaceStore.setColor('bg', bg, remember);
 }
