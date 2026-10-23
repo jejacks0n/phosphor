@@ -22,13 +22,14 @@ for (const [h, v, chars] of SETS) {
 export const armsOf = (char) => ARMS.get(char) ?? null;
 
 // The piece for `char` laid over `under` (the character already in the cell), with `inward` the
-// arms pointing into the cell from its neighbours. Each axis takes the new piece's weight where it
-// has one. Characters that aren't box pieces come back unchanged.
-export function joinBox(char, under, inward = [0, 0, 0, 0]) {
+// arms pointing into the cell from its neighbours. `closed` directions take no arm but the new
+// piece's (a filled box's inside), so a line crossing there ends at the frame instead. Each axis
+// takes the new piece's weight where it has one. Characters that aren't box pieces come back unchanged.
+export function joinBox(char, under, inward = [0, 0, 0, 0], closed = [false, false, false, false]) {
   const own = ARMS.get(char);
   if (!own) return char;
   const below = ARMS.get(under) ?? [0, 0, 0, 0];
-  const arms = own.map((w, d) => w || below[d] || inward[d]);
+  const arms = own.map((w, d) => w || (closed[d] ? 0 : below[d] || inward[d]));
   const v = own[0] || own[2] || Math.max(arms[0], arms[2]) || 1;
   const h = own[1] || own[3] || Math.max(arms[1], arms[3]) || 1;
   return PIECES.get(`${arms.map(w => (w ? 1 : 0)).join('')}:${h}:${v}`) ?? char;

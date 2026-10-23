@@ -20,4 +20,7 @@ assert.equal(joinBox('A', '│'), 'A');   // not a box piece
 assert.equal(joinBox('║', ' ', inwardArms(['', '─', '', ''])), '╟'); // a single line ending against a double edge
 assert.equal(joinBox('═', ' ', inwardArms(['│', '', '', ''])), '╧');
 assert.equal(joinBox('─', ' ', inwardArms(['║', '', '║', ''])), '╫');
+assert.equal(joinBox('═', '│', [0, 0, 0, 0], [false, false, true, false]), '╧'); // a filled box's top edge: the line ends there
+assert.equal(joinBox('║', '─', [0, 0, 0, 0], [false, true, false, false]), '╢');  // its left edge
+assert.equal(joinBox('─', ' ', inwardArms(['', '', '│', '']), [false, false, true, false]), '─'); // nothing joins from inside
 console.log('box join ok');

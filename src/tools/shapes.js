@@ -70,11 +70,16 @@ function apply({ project, workspace, view }, end) {
     const charOf = (cover) => (drawWith === 'char' ? workspace.activeChar : SHADES.find(([min]) => cover >= min)?.[1]);
     cells = shape.map(c => ({ ...c, char: charOf(c.cover) })).filter(c => c.char).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs } }));
   } else {
-    // Connect joins the frame to the line characters it crosses or meets (not ones a fill erases).
+    // Connect joins the frame to the line characters it crosses or meets. A fill erases the inside,
+    // so lines crossing a filled box's frame end there.
     const shown = (col, row) => (inGrid({ col, row }) ? project.cells[row * project.cols + col]?.char : undefined);
     const erased = (col, row) => filled && col > rect.c0 && col < rect.c1 && row > rect.r0 && row < rect.r1;
-    const around = (col, row) => [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dc, dr]) => (erased(col + dc, row + dr) ? undefined : shown(col + dc, row + dr)));
-    const join = (col, row, char) => (workspace.shapeConnect ? joinBox(char, shown(col, row), inwardArms(around(col, row))) : char);
+    const STEPS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    const join = (col, row, char) => {
+      if (!workspace.shapeConnect) return char;
+      const closed = STEPS.map(([dc, dr]) => erased(col + dc, row + dr));
+      return joinBox(char, shown(col, row), inwardArms(STEPS.map(([dc, dr]) => shown(col + dc, row + dr))), closed);
+    };
     cells = boxCells(rect, drawWith, project.cols, rows).map(({ col, row, char }) => ({ col, row, attrs: { char: join(col, row, char), ...attrs } }));
     if (filled) {
       const interior = rectCells(rect).filter(inGrid).filter(c => !isEdge(c));
