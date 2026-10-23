@@ -215,7 +215,9 @@ export default class EditLayer {
   }
 
   // The image placed where the pipeline shows it (letterbox included, black), with paint on top.
-  bake(image, fit) {
+  // The image with this layer's paint merged over it, as a new picture the size of the layer.
+  // beneath(ctx, scale), if given, draws between the two (Merge down's cells).
+  bake(image, fit, beneath) {
     const k = this.scale;
     const out = newCanvas(this.canvas.width, this.canvas.height);
     const ctx = ctx2d(out);
@@ -223,6 +225,7 @@ export default class EditLayer {
     ctx.fillRect(0, 0, out.width, out.height);
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(image, fit.dx * k, fit.dy * k, fit.dw * k, fit.dh * k);
+    beneath?.(ctx, k);
     ctx.drawImage(this.canvas, 0, 0);
     return out;
   }

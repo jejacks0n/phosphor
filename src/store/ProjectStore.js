@@ -4,9 +4,9 @@ import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
 import { rgb2hex, hex2rgb } from "@/lib/ColorUtils.js";
 import { fitRect, ctx2d } from "@/lib/Canvas.js";
-import { cellIndex, charRowsOf, bakedEntry } from "@/lib/Cells.js";
+import { cellIndex, charRowsOf, bakedEntry, halfColors } from "@/lib/Cells.js";
 import EditLayer, { editScaleFor, resizeTransform } from "@/document/EditLayer.js";
-import { EMPTY_BASE, withErased, remapBaseRecords } from "@/document/baseRecords.js";
+import { EMPTY_BASE, withErased, withPins, withoutPins, remapBaseRecords } from "@/document/baseRecords.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
 import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, copyCellLayers, deleteCellLayers, BLANK } from "@/document/cellEdits.js";
@@ -510,7 +510,7 @@ export const useProjectStore = defineStore('project', {
 
     // --- Selection: each operation is one undo step, and none at all when nothing changes.
 
-    // The whole grid as a rect (Bake/Release with no selection).
+    // The whole grid as a rect (Merge up and Select all with no selection).
     gridRect() {
       return { c0: 0, r0: 0, c1: this.cols - 1, r1: charRowsOf(this.rows) - 1 };
     },
@@ -527,7 +527,6 @@ export const useProjectStore = defineStore('project', {
       this.commitEdit();
     },
 
-    // The image's cell alone (no entry, no paint), as stored colours: bg the top half, fg the bottom.
     // The base layer's cell (no edits, no paint), as stored colours: an erased cell is BLANK; otherwise
     // the converter's character (or the pinned one) on the image's colours (bg the top half, fg the bottom).
     baseCellAt(col, row) {
@@ -557,15 +556,14 @@ export const useProjectStore = defineStore('project', {
       return { ...bakedEntry(this.renderStyle, this.baseCellAt(col, row)), ...entry };
     },
 
-    // Freeze the image's cells as authored (missing attributes from what's underneath, before paint).
+    // Merge up: what the base shows in rect (or the whole grid) becomes edit cells (an edit cell's own
+    // attributes stay), and pins there are dropped, since the characters are now edit cells. One undo step.
     bakeCells(rect) {
       const area = rect ?? this.gridRect();
-      this.setCellEdits(updateRect(this.cellEdits, area, (col, row, entry) => this.completeAt(col, row, entry)), [area]);
-    },
-
-    releaseCellsIn(rect) {
-      const area = rect ?? this.gridRect();
-      this.setCellEdits(withoutCells(this.cellEdits, rectCells(area)), [area]);
+      this.selectionEdit([area], () => {
+        this.cellEdits = updateRect(this.cellEdits, area, (col, row, entry) => this.completeAt(col, row, entry));
+        this.setBaseRecords(withoutPins(this.baseRecords, rectCells(area)));
+      });
     },
 
     // Selection operations on the Select tool's layers: Layers = { base, edit }, where Edit is
@@ -805,26 +803,64 @@ export const useProjectStore = defineStore('project', {
       this.editVersion++;
     },
 
+    // Merge down: the whole edit layer goes into the base image. The new picture is the image, then
+    // erased cells (blank), then every edit cell, then the paint, so the converter rebuilds what
+    // showed: each edit cell as its background (top) and foreground (bottom) pixels with its character
+    // pinned; a cell that showed a different character (▄ for a solid one under paint) as its two half
+    // colours with the shown character pinned. Paint over an erased cell keeps its shown character too,
+    // and erased cells that got edit content stop being erased.
     async flattenEdits() {
       if (!this.image) return;
       this.ensureLayer();
       this.commitPending();
 
-      // Bake in grid space: the new base image IS the grid (letterbox included), sized like
-      // the paint layer so paint overlays 1:1 and re-fitting the result is an identity.
-      // Paint covers authored cells; once it's part of the image it must keep covering them, so those
-      // cells are released along with the merge.
-      const covered = [...this.cellEdits.keys()].map(parseKey).filter(({ col, row }) => this.cellHasPaint(col, row));
-      const before = { image: this.image, imageBuffer: this.imageBuffer, layer: this.layer.snapshot(), cellEdits: this.cellEdits };
-      const baked = this.layer.bake(this.image, this.getFitParams(this.cols, this.rows));
+      const rows = charRowsOf(this.rows);
+      const shownChar = (col, row) => this.cells[cellIndex(col, row, this.cols)]?.char;
+      const merged = [];   // { col, row, top, bottom, char }: edit cells, drawn under the paint
+      for (const [key, entry] of this.cellEdits) {
+        const { col, row } = parseKey(key);
+        if (col >= this.cols || row >= rows) continue;
+        const cell = { ...this.baseCellAt(col, row), ...entry };
+        const char = shownChar(col, row) ?? cell.char;
+        // Color ASCII shows only the foreground (on black) and rebuilds it as the halves' average.
+        const [top, bottom] = this.renderStyle === 'colorAscii' ? [hex2rgb(cell.fg), hex2rgb(cell.fg)]
+          : char === cell.char ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
+            : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
+        merged.push({ col, row, top, bottom, char });
+      }
+      const paintedErased = [...this.baseRecords.erased].map(parseKey)
+        .filter(({ col, row }) => !this.cellEdits.has(cellKey(col, row)) && this.cellHasPaint(col, row))
+        .map(({ col, row }) => ({ col, row, char: shownChar(col, row) ?? '▄' }));
+      const beneath = (ctx, k) => {
+        const fill = (rgb, x, y) => {
+          ctx.fillStyle = rgb2hex(rgb);
+          ctx.fillRect(x * k, y * k, k, k);
+        };
+        ctx.fillStyle = BLANK.bg;
+        for (const key of this.baseRecords.erased) {
+          const { col, row } = parseKey(key);
+          ctx.fillRect(col * k, 2 * row * k, k, 2 * k);
+        }
+        for (const { col, row, top, bottom } of merged) {
+          fill(top, col, 2 * row);
+          fill(bottom, col, 2 * row + 1);
+        }
+      };
+
+      const before = { image: this.image, imageBuffer: this.imageBuffer, layer: this.layer.snapshot(), cellEdits: this.cellEdits, baseRecords: this.baseRecords };
+      const version = this.historyVersion;
+      const baked = this.layer.bake(this.image, this.getFitParams(this.cols, this.rows), beneath);
       const blob = await new Promise(resolve => baked.toBlob(resolve, 'image/png'));
-      const after = { image: await loadImage(blob), imageBuffer: await blob.arrayBuffer(), layer: null, cellEdits: withoutCells(before.cellEdits, covered) };
-      if (this.image !== before.image) return; // a different image was loaded while this merge was encoding
-      const apply = ({ image, imageBuffer, layer, cellEdits }) => {
+      const pins = [...merged.map(({ col, row, char }) => ({ col, row, char })), ...paintedErased];
+      const after = { image: await loadImage(blob), imageBuffer: await blob.arrayBuffer(), layer: null, cellEdits: new Map(), baseRecords: withPins(before.baseRecords, pins) };
+      // Something changed while this merge was encoding (a new image, an edit): merging now would lose it.
+      if (this.image !== before.image || this.historyVersion !== version || this._stroke) return;
+      const apply = ({ image, imageBuffer, layer, cellEdits, baseRecords }) => {
         this.$patch({ image: shallowRef(image), imageBuffer });
         this.layer.restore(layer);
         this.hasPaint = this.layer.hasPaint;
         this.cellEdits = cellEdits;
+        this.setBaseRecords(baseRecords);
         this.render();
       };
       apply(after);
