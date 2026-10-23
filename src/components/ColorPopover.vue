@@ -29,10 +29,6 @@ const inUse = computed(() => authoredColors(project.cellEdits));
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 
 const choose = (hex, remember = true) => workspace.setColor(props.slotName, hex, { remember });
-const pickFromCanvas = () => {
-  workspace.setActiveTool('picker');
-  emit('close');
-};
 
 const onPointerDown = (event) => {
   if (root.value && !root.value.contains(event.target) && !event.target.closest('.color-pair')) emit('close');
@@ -58,8 +54,6 @@ onBeforeUnmount(() => {
     <div class="head">
       <button :class="{ on: slotName === 'fg' }" @click="emit('update:slotName', 'fg')">FG</button>
       <button :class="{ on: slotName === 'bg' }" @click="emit('update:slotName', 'bg')">BG</button>
-      <span class="spacer"></span>
-      <button title="Pick from the canvas" aria-label="Pick from the canvas" @click="pickFromCanvas">💧</button>
     </div>
 
     <div v-for="(section, i) in sections" :key="i" class="swatches" :style="{ gridTemplateColumns: `repeat(${section.columns}, 1fr)` }">
