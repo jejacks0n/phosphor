@@ -159,3 +159,38 @@ export function updateRect(map, rect, attrsFor) {
   }
   return result ?? map;
 }
+
+// Layers = { image, cells, paint } (booleans): which layers a selection operation acts on.
+
+// What deleting the image leaves: a space in the classic terminal grey on black, so an authored
+// character left in the cell still shows.
+export const BLANK = Object.freeze({ char: ' ', fg: '#aaaaaa', bg: '#000000' });
+
+// A rect's cells for the cell-side layers, row-major and frozen: Image and Cells give what shows
+// without paint (authored attributes, the rest from imageEntry(col, row)); Image alone gives the
+// image's cells; Cells alone the authored entries (null where there's none); neither, nulls.
+export function copyCellLayers(map, rect, { image, cells }, imageEntry) {
+  return rectCells(rect).map(({ col, row }) => {
+    const entry = cells ? map.get(cellKey(col, row)) ?? null : null;
+    if (!image) return entry;
+    return Object.freeze({ ...imageEntry(col, row), ...entry });
+  });
+}
+
+// Delete the cell-side layers in a rect: Cells releases the authored entries; Image then gives
+// every cell BLANK's attributes it doesn't already have (so authored attributes stay). Returns the
+// same Map when nothing changed.
+export function deleteCellLayers(map, rect, { image, cells }) {
+  const result = cells ? withoutCells(map, rectCells(rect)) : map;
+  if (!image) return result;
+  return updateRect(result, rect, (col, row, entry) => Object.fromEntries(ATTRS.filter(attr => entry?.[attr] === undefined).map(attr => [attr, BLANK[attr]])));
+}
+
+// Where a pointer is relative to a selection: on its border (a band ½ column / ¼ row outside the
+// edge and ¼ column / ⅛ row inside it; cells are twice as tall as wide), inside, or outside.
+// pos is fractional, in cells.
+export function selectionHit({ c0, r0, c1, r1 }, { col, row }) {
+  const within = (dc, dr) => col >= c0 - dc && col <= c1 + 1 + dc && row >= r0 - dr && row <= r1 + 1 + dr;
+  if (!within(0.5, 0.25)) return 'outside';
+  return within(-0.25, -0.125) ? 'inside' : 'border';
+}

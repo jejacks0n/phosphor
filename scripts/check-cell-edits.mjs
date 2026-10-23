@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   withCellEdit, mergeEntry, withoutCells, parseKey, serializeCellEdits, deserializeCellEdits, migrateCharEdits,
   normalizeRect, rectCells, copyBlock, pasteBlock, moveRect, updateRect,
+  BLANK, copyCellLayers, deleteCellLayers, selectionHit,
 } from '../src/document/cellEdits.js';
 
 const m0 = new Map();
@@ -65,4 +66,30 @@ assert.equal(updateRect(big, { c0: 0, r0: 0, c1: 9, r1: 9 }, () => ({ char: '#' 
 const t0 = performance.now();
 updateRect(big, { c0: 0, r0: 0, c1: 299, r1: 149 }, (c, r, old) => ({ ...old, fg: '#ffffff' }));
 assert.ok(performance.now() - t0 < 250, 'whole-grid update should be one pass');
+// Layer-aware copy and delete (the Select tool's layer toggles).
+const L = (image, cells, paint = false) => ({ image, cells, paint });
+const img = () => ({ char: '#', fg: '#111111', bg: '#222222' });
+const m = new Map([['1,0', Object.freeze({ char: 'A' })]]);
+const r = { c0: 0, r0: 0, c1: 1, r1: 0 };
+assert.deepEqual(copyCellLayers(m, r, L(true, true), img), [img(), { char: 'A', fg: '#111111', bg: '#222222' }]);
+assert.deepEqual(copyCellLayers(m, r, L(true, false), img), [img(), img()]);
+assert.deepEqual(copyCellLayers(m, r, L(false, true), img), [null, { char: 'A' }]);
+assert.deepEqual(copyCellLayers(m, r, L(false, false), img), [null, null]);
+assert.ok(copyCellLayers(m, r, L(true, true), img).every(Object.isFrozen));
+assert.equal(deleteCellLayers(m, r, L(false, false)), m);
+assert.equal(deleteCellLayers(m, r, L(false, true)).size, 0);
+assert.deepEqual([...deleteCellLayers(m, r, L(true, true))], [['0,0', BLANK], ['1,0', BLANK]]);
+assert.deepEqual(deleteCellLayers(m, r, L(true, false)).get('1,0'), { char: 'A', fg: '#aaaaaa', bg: '#000000' }); // authored char stays
+// The selection's border band: ½ column / ¼ row outside, ¼ column / ⅛ row inside.
+const sel = { c0: 2, r0: 2, c1: 5, r1: 4 }; // edges x 2..6, y 2..5
+assert.equal(selectionHit(sel, { col: 4, row: 3.5 }), 'inside');
+assert.equal(selectionHit(sel, { col: 1.6, row: 3.5 }), 'border');   // just outside the left edge
+assert.equal(selectionHit(sel, { col: 2.2, row: 3.5 }), 'border');   // just inside it
+assert.equal(selectionHit(sel, { col: 4, row: 5.2 }), 'border');     // just below the bottom edge
+assert.equal(selectionHit(sel, { col: 4, row: 5.3 }), 'outside');
+assert.equal(selectionHit(sel, { col: 1.4, row: 3.5 }), 'outside');
+assert.equal(selectionHit(sel, { col: 2.4, row: 3.5 }), 'inside');   // past the ¼-column inner band
+assert.equal(selectionHit(sel, { col: 4, row: 2.1 }), 'border');     // within the ⅛-row inner band at the top
+assert.equal(selectionHit(sel, { col: 4, row: 2.2 }), 'inside');
+assert.equal(selectionHit({ c0: 0, r0: 0, c1: 0, r1: 0 }, { col: 0.5, row: 0.5 }), 'inside'); // a 1-cell selection still has an inside
 console.log('cell edits ok');
