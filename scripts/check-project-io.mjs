@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readProject, writeProject, PROJECT_EXTENSION } from '../src/document/projectIO.js';
+import { EMPTY_BASE, withErased, withPins } from '../src/document/baseRecords.js';
 
 assert.equal(PROJECT_EXTENSION, '.phosphor');
 
@@ -18,6 +19,13 @@ assert.deepEqual([...new Uint8Array(back.imageBuffer)], [...new Uint8Array(image
 assert.deepEqual([...new Uint8Array(back.paintBuffer)], [...new Uint8Array(await paintBlob.arrayBuffer())]);
 assert.deepEqual([...back.cellEdits], [['3,2', { char: 'A', fg: '#ffff55' }]]);
 assert.equal(back.migrated, false);
+assert.equal(back.baseRecords, EMPTY_BASE);                             // nothing erased or pinned: none saved
+
+// The base layer's records (erased cells, pinned characters) round-trip; older files have none.
+const baseRecords = withPins(withErased(EMPTY_BASE, [{ col: 1, row: 1 }]), [{ col: 4, row: 2, char: 'Q' }]);
+const withBase = await readProject(await writeProject({ settings: { cols: 80 }, imageBuffer, paintBlob: null, cellEdits, baseRecords }));
+assert.deepEqual(withBase.baseRecords, baseRecords);
+assert.ok(!('base' in withBase.settings));
 
 const noPaint = await readProject(await writeProject({ settings: { cols: 1, hasPaint: false }, imageBuffer, paintBlob: null, cellEdits: new Map() }));
 assert.equal(noPaint.paintBuffer, null);
@@ -30,6 +38,7 @@ assert.equal(a1.settings.cols, 80);
 assert.ok(!('charMode' in a1.settings) && !('charEditMap' in a1.settings) && !('hasPaint' in a1.settings));
 assert.equal((await example('aeonflux3.phosphor')).paintBuffer, null);
 assert.ok(a1.cellEdits instanceof Map);
+assert.equal(a1.baseRecords, EMPTY_BASE);
 
 // Files written before the cell layer stored char edits keyed by cell index at the file's column count.
 const oldJson = new TextEncoder().encode(JSON.stringify({ cols: 4, charEditMap: [[5, '#']] }));

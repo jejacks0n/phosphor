@@ -4,7 +4,9 @@
  * quantized), which generated cells are built from.
  *
  * Authored cells (cellEdits, see cellEdits.js) compose over the paint-free image, and paint draws
- * over them: image -> authored cells -> paint.
+ * over them: image -> authored cells -> paint. The base layer's records (baseRecords.js, set by the
+ * store) apply to the image's cells: an erased cell is blank (and black in outputCanvas, so the pixel
+ * view and paint over it agree), a pinned one keeps its character.
  */
 import { processImage, applyQuantization } from '../lib/ImageProcessor.js';
 import { applyTransforms } from '../lib/PixelTransforms.js';
@@ -12,12 +14,14 @@ import { nearestColor } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d } from '../lib/Canvas.js';
 import { buildCells, buildCell, brightnessChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
-import { cellKey, parseKey } from './cellEdits.js';
+import { cellKey, parseKey, BLANK } from './cellEdits.js';
+import { EMPTY_BASE } from './baseRecords.js';
 
 export default class Renderer {
   pipelineCanvas = null;
   outputCanvas = null;
   palette = null;
+  baseRecords = EMPTY_BASE; // the store keeps this in step with its own
   #scratch = null;
   #pipelineData = null; // pipelineCanvas pixels: the image under authored cells
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
@@ -61,12 +65,18 @@ export default class Renderer {
     if (this.palette) applyQuantization(pixels, this.palette);
     else pixels.loadPixels();
 
-    return buildCells(pixels.pixels, params.cols, params.rows, {
+    const cells = buildCells(pixels.pixels, params.cols, params.rows, {
       charset: params.chars,
       charMode: params.charMode || 'random',
       renderStyle: params.renderStyle || 'ansi',
       seed: params.seed,
     });
+    const rows = charRowsOf(params.rows);
+    for (const key of [...this.baseRecords.erased, ...this.baseRecords.pins.keys()]) {
+      const { col, row } = parseKey(key);
+      if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#onBase(col, row, params, cells[cellIndex(col, row, params.cols)], true);
+    }
+    return cells;
   }
 
   // Redraw outputCanvas: the pipeline image, then the paint layer with the colour transforms applied.
@@ -79,6 +89,15 @@ export default class Renderer {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(this.pipelineCanvas, 0, 0, w, h);
+
+    // Erased base cells are blank: their background colour, both halves, under any paint.
+    if (this.baseRecords.erased.size) {
+      ctx.fillStyle = this.effective(BLANK.bg, params).hex;
+      for (const key of this.baseRecords.erased) {
+        const { col, row } = parseKey(key);
+        ctx.fillRect(col, 2 * row, 1, 2);
+      }
+    }
 
     this.#paintData = null;
     if (!layer) return;
@@ -149,7 +168,7 @@ export default class Renderer {
 
       // Random mode keeps the cell's rendered character
       const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset) : (baseCells[i] ?? next[i]).char;
-      next[i] = buildCell(top, bottom, char, renderStyle);
+      next[i] = this.#onBase(col, row, params, buildCell(top, bottom, char, renderStyle), true);
     }
     return next;
   }
@@ -207,7 +226,21 @@ export default class Renderer {
     };
     const top = pixelAt(2 * row), bottom = pixelAt(2 * row + 1);
     const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset || '▄') : baseCells[cellIndex(col, row, cols)]?.char ?? ' ';
-    return buildCell(top, bottom, char, renderStyle);
+    return this.#onBase(col, row, params, buildCell(top, bottom, char, renderStyle), false);
+  }
+
+  // A converted cell with the base layer's records applied: an erased cell is blank (withPaint: with
+  // the paint over it, as coverCell shows paint), a pinned one keeps its pinned character.
+  #onBase(col, row, params, cell, withPaint) {
+    if (!this.baseRecords.erased.size && !this.baseRecords.pins.size) return cell;
+    const key = cellKey(col, row);
+    if (this.baseRecords.erased.has(key)) {
+      const blank = buildCell(this.effective(BLANK.bg, params), this.effective(BLANK.fg, params), BLANK.char, params.renderStyle);
+      if (!withPaint) return blank;
+      return coverCell(blank, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), { renderStyle: params.renderStyle, palette: this.palette });
+    }
+    const pin = this.baseRecords.pins.get(key);
+    return pin ? { ...cell, char: pin } : cell;
   }
 
   // Spec "Paint and authored cells" (a trial rule, kept in this one place): the authored entry

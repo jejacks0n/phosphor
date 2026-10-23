@@ -5,10 +5,11 @@ import { AnsiFile } from "@/lib/AnsiFile.js";
 import { rgb2hex, hex2rgb } from "@/lib/ColorUtils.js";
 import { fitRect, ctx2d } from "@/lib/Canvas.js";
 import { cellIndex, charRowsOf, bakedEntry } from "@/lib/Cells.js";
-import EditLayer, { editScaleFor } from "@/document/EditLayer.js";
+import EditLayer, { editScaleFor, resizeTransform } from "@/document/EditLayer.js";
+import { EMPTY_BASE, withErased, remapBaseRecords } from "@/document/baseRecords.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
-import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, copyCellLayers, deleteCellLayers } from "@/document/cellEdits.js";
+import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, copyCellLayers, deleteCellLayers, BLANK } from "@/document/cellEdits.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, sourceParams } from "@/store/settings.js";
@@ -34,6 +35,7 @@ export const useProjectStore = defineStore('project', {
     renderer: markRaw(new Renderer()),
     layer: null, // EditLayer (markRaw); hasPaint mirrors layer.hasPaint for reactivity
     cellEdits: shallowRef(new Map()), // the authored cell layer (see document/cellEdits.js)
+    baseRecords: shallowRef(EMPTY_BASE), // the base layer's erased cells and pins (see document/baseRecords.js)
 
     filename: null,
     cells: shallowRef([]),          // what the ANSI view shows and exports (renderedCells + authored cells + paint)
@@ -149,8 +151,19 @@ export const useProjectStore = defineStore('project', {
         cellEdits: new Map(),
         hasPaint: false,
       });
+      this.setBaseRecords(EMPTY_BASE, { onGrid: true });
       this._stroke = null;
       this.clearHistory();
+    },
+
+    // The base layer's records, kept in step with the renderer's copy. They belong to the grid they
+    // were made on (render() remaps them when the grid changes); onGrid marks them as made on the
+    // current one (a new image, a load, a remap), so an edit between a grid change and that render
+    // doesn't relabel old-grid records.
+    setBaseRecords(records, { onGrid = false } = {}) {
+      this.baseRecords = records;
+      this.renderer.baseRecords = records;
+      if (onGrid || !this._baseGrid) this._baseGrid = { cols: this.cols, rows: this.rows };
     },
 
     // The current settings and edits are what's on disk (or there's nothing to lose).
@@ -172,6 +185,7 @@ export const useProjectStore = defineStore('project', {
         cellEdits: new Map(),
         hasPaint: false,
       });
+      this.setBaseRecords(EMPTY_BASE, { onGrid: true });
       this._stroke = null;
       this.clearHistory();
       this.markSaved();
@@ -187,6 +201,7 @@ export const useProjectStore = defineStore('project', {
         imageBuffer: this.imageBuffer,
         paintBlob: this.layer ? await this.layer.toBlob() : null,
         cellEdits: this.cellEdits,
+        baseRecords: this.baseRecords,
       });
       downloadBlob(blob, `${this.filename}${PROJECT_EXTENSION}`);
       this.markSaved();
@@ -196,12 +211,13 @@ export const useProjectStore = defineStore('project', {
       if (!file || !file.name.endsWith(PROJECT_EXTENSION)) return;
 
       try {
-        const { settings, imageBuffer, paintBuffer, cellEdits, migrated } = await readProject(file);
+        const { settings, imageBuffer, paintBuffer, cellEdits, baseRecords, migrated } = await readProject(file);
         const image = await loadImage(imageBuffer);
         const paint = paintBuffer && await loadImage(paintBuffer, 'image/png');
 
         this.replaceImage(image, imageBuffer, { ...settings, filename: file.name.replace(PROJECT_EXTENSION, '') });
         this.cellEdits = cellEdits;
+        this.setBaseRecords(baseRecords, { onGrid: true });
         if (paint) {
           this.ensureLayer();
           this.layer.load(paint, { width: image.naturalWidth, height: image.naturalHeight }, this.getFitParams(this.cols, this.rows));
@@ -317,6 +333,20 @@ export const useProjectStore = defineStore('project', {
       }
     },
 
+    // After a grid change, move the base records with the picture (as ensureLayer moves the paint).
+    // Like the paint's, the history can't be replayed onto the new grid, so it's cleared.
+    remapBaseRecords() {
+      const from = this._baseGrid;
+      if (!from || (from.cols === this.cols && from.rows === this.rows)) return;
+      const records = this.baseRecords;
+      const moved = remapBaseRecords(records, resizeTransform(this.getFitParams(from.cols, from.rows), this.getFitParams(this.cols, this.rows)), this.cols, this.rows);
+      this.setBaseRecords(moved, { onGrid: true });
+      if (moved !== records) {
+        this._stroke = null;
+        this.clearHistory();
+      }
+    },
+
     getFitParams(w, h) {
       if (!this.image) return { dx: 0, dy: 0, dw: w, dh: h };
       return fitRect(this.image.naturalWidth || this.image.width, this.image.naturalHeight || this.image.height, w, h);
@@ -330,6 +360,7 @@ export const useProjectStore = defineStore('project', {
         this._renderQueued = false;
         if (!this.image) return;
         this.ensureLayer();
+        this.remapBaseRecords();
         this.renderedCells = await this.renderer.render(this.image, this.processParams, this.layer, sourceParams(this.processParams));
         this.activePalette = this.renderer.palette;
         this.applyCellEdits();
@@ -349,7 +380,14 @@ export const useProjectStore = defineStore('project', {
       x = Math.floor(x);
       y = Math.floor(y);
       const painted = this.layer?.colorAt(x, y);
-      return painted ? rgb2hex(painted) : this.sourceColorAt(x, y);
+      return painted ? rgb2hex(painted) : this.baseColorAt(x, y);
+    },
+
+    // The base layer's colour at grid pixel (x, y), as stored (before adjustments): an erased cell's
+    // blank colours (background on top, foreground below), else the image.
+    baseColorAt(x, y) {
+      if (this.baseRecords.erased.has(cellKey(x, Math.floor(y / 2)))) return y % 2 ? BLANK.fg : BLANK.bg;
+      return this.sourceColorAt(x, y);
     },
 
     // The image under grid pixel (x, y) before adjustments, as the pipeline downsamples it.
@@ -367,7 +405,7 @@ export const useProjectStore = defineStore('project', {
       const half = (y, attr) => {
         const painted = withPaint && this.layer?.colorAt(col, y);
         if (painted) return rgb2hex(painted);
-        return entry[attr] ?? this.sourceColorAt(col, y);
+        return entry[attr] ?? this.baseColorAt(col, y);
       };
       const i = cellIndex(col, row, this.cols);
       const shown = withPaint ? this.cells[i] : null;
@@ -490,18 +528,33 @@ export const useProjectStore = defineStore('project', {
     },
 
     // The image's cell alone (no entry, no paint), as stored colours: bg the top half, fg the bottom.
-    imageCellAt(col, row) {
+    // The base layer's cell (no edits, no paint), as stored colours: an erased cell is BLANK; otherwise
+    // the converter's character (or the pinned one) on the image's colours (bg the top half, fg the bottom).
+    baseCellAt(col, row) {
+      const key = cellKey(col, row);
+      if (this.baseRecords.erased.has(key)) return { ...BLANK };
       return {
-        char: this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ',
+        char: this.baseRecords.pins.get(key) ?? this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ',
         bg: this.sourceColorAt(col, 2 * row),
         fg: this.sourceColorAt(col, 2 * row + 1),
       };
     },
 
+    // Erase the base layer in these cells (they show blank, and lose any pin). Part of the current
+    // edit; the caller commits it.
+    eraseBase(cells) {
+      const next = withErased(this.baseRecords, cells);
+      if (next === this.baseRecords) return;
+      this.ensureLayer();
+      this.beginEdit();
+      this.setBaseRecords(next);
+      this.refreshCells(cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
+    },
+
     // A whole entry for a cell as the cell layer shows it: its authored attributes, the rest frozen from
     // the image the way the render style shows it (bakedEntry). Paint isn't part of it; it stays put.
     completeAt(col, row, entry) {
-      return { ...bakedEntry(this.renderStyle, this.imageCellAt(col, row)), ...entry };
+      return { ...bakedEntry(this.renderStyle, this.baseCellAt(col, row)), ...entry };
     },
 
     // Freeze the image's cells as authored (missing attributes from what's underneath, before paint).
@@ -532,7 +585,7 @@ export const useProjectStore = defineStore('project', {
       const parts = this.partsOf(layers);
       const block = { w: rect.c1 - rect.c0 + 1, h: rect.r1 - rect.r0 + 1 };
       if (parts.image || parts.cells) {
-        block.cells = copyCellLayers(this.cellEdits, rect, parts, (col, row) => bakedEntry(this.renderStyle, this.imageCellAt(col, row)));
+        block.cells = copyCellLayers(this.cellEdits, rect, parts, (col, row) => bakedEntry(this.renderStyle, this.baseCellAt(col, row)));
       }
       if (parts.paint && this.layer) block.paint = this.layer.copyCells(rect);
       return block;
@@ -698,7 +751,7 @@ export const useProjectStore = defineStore('project', {
     beginEdit() {
       if (this._stroke?.typing && !this._typingNow) this.commitEdit(); // another edit ends a typing run
       if (this._stroke || !this.layer) return;
-      this._stroke = markRaw({ cellEdits: this.cellEdits }); // raw, so commitEdit's identity check sees the same Map
+      this._stroke = markRaw({ cellEdits: this.cellEdits, baseRecords: this.baseRecords }); // raw, so commitEdit's identity checks see the same objects
       this.layer.beginStroke();
     },
 
@@ -707,13 +760,14 @@ export const useProjectStore = defineStore('project', {
       const stroke = this._stroke;
       this._stroke = null;
       const patch = this.layer?.endStroke();
-      if (!stroke || (!patch && stroke.cellEdits === this.cellEdits)) return;
+      if (!stroke || (!patch && stroke.cellEdits === this.cellEdits && stroke.baseRecords === this.baseRecords)) return;
 
-      const sides = { before: stroke.cellEdits, after: this.cellEdits };
+      const sides = { before: [stroke.cellEdits, stroke.baseRecords], after: [this.cellEdits, this.baseRecords] };
       const apply = (side) => {
         if (patch) this.layer.applyPatch(patch, side);
         this.hasPaint = this.layer.hasPaint;
-        this.cellEdits = sides[side];
+        [this.cellEdits] = sides[side];
+        this.setBaseRecords(sides[side][1]);
         this.render();
       };
       this.pushEdit({ undo: () => apply('before'), redo: () => apply('after') });

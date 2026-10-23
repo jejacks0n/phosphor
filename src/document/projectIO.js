@@ -5,6 +5,7 @@
  * JSON, the source image bytes, and the paint layer PNG (empty when there's no paint).
  */
 import { serializeCellEdits, deserializeCellEdits, migrateCharEdits } from './cellEdits.js';
+import { EMPTY_BASE, serializeBase, deserializeBase } from './baseRecords.js';
 
 export const PROJECT_EXTENSION = '.phosphor';
 const MAGIC_HEADER = 'PHOSPHOR';
@@ -21,9 +22,11 @@ export function loadImage(source, type) {
 }
 
 // settings: plain JSON-able values (plus hasPaint); paintBlob: PNG of the paint layer, or null;
-// cellEdits: the authored cell layer.
-export async function writeProject({ settings, imageBuffer, paintBlob, cellEdits }) {
-  const json = new TextEncoder().encode(JSON.stringify({ ...settings, cellEdits: serializeCellEdits(cellEdits) }));
+// cellEdits: the authored cell layer; baseRecords: the base layer's erased cells and pins (saved as
+// `base`, left out when there are none).
+export async function writeProject({ settings, imageBuffer, paintBlob, cellEdits, baseRecords = EMPTY_BASE }) {
+  const base = serializeBase(baseRecords);
+  const json = new TextEncoder().encode(JSON.stringify({ ...settings, cellEdits: serializeCellEdits(cellEdits), ...(base && { base }) }));
   const paintBuffer = paintBlob ? await paintBlob.arrayBuffer() : new ArrayBuffer(0);
   const header = new TextEncoder().encode(MAGIC_HEADER);
   const lengths = new Uint32Array([json.byteLength, imageBuffer.byteLength, paintBuffer.byteLength]);
@@ -42,7 +45,7 @@ export async function readProject(file) {
   const paintLen = view.getUint32(16, true);
 
   let offset = 20;
-  const { cellEdits, charEditMap, hasPaint, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
+  const { cellEdits, charEditMap, hasPaint, base, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
   delete settings.charMode; // older files stored a charMode that's now derived from renderStyle
   const imageBuffer = buffer.slice(offset, offset += imageLen);
   const paint = buffer.slice(offset, offset + paintLen);
@@ -51,7 +54,7 @@ export async function readProject(file) {
   const usePaint = (hasPaint ?? paintLen > 0) && paintLen > 0;
   // Files from before the cell layer have charEditMap (cell index -> char) instead.
   const edits = cellEdits ? deserializeCellEdits(cellEdits) : migrateCharEdits(charEditMap || [], settings.cols);
-  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, cellEdits: edits, migrated: !cellEdits && edits.size > 0 };
+  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, cellEdits: edits, baseRecords: deserializeBase(base), migrated: !cellEdits && edits.size > 0 };
 }
 
 // Save via the browser's file picker where available, otherwise as a download.
