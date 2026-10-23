@@ -119,7 +119,7 @@ function confirmFlatten() {
       >
         <template #trigger><span v-html="MORE_ICON"></span></template>
         <button v-for="tool in moreTools" :key="tool.id" class="choice" :class="{ on: workspace.activeTool === tool.id }" @click="workspace.setActiveTool(tool.id)">
-          <span class="tool-icon" v-html="tool.icon"></span>{{ tool.title }}
+          <span class="tool-icon" v-html="tool.icon"></span><span>{{ tool.title }}</span>
         </button>
       </DropdownMenu>
 
@@ -240,7 +240,7 @@ function confirmFlatten() {
                 class="choice"
                 :class="{ on: shownChoice(option) === choice }"
                 @click="workspace[option.key] = choice.value"
-            ><span class="glyph">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span>{{ choice.label }}</button>
+            ><span class="glyph">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span><span>{{ choice.label }}</span></button>
           </DropdownMenu>
           <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
         </template>
@@ -322,10 +322,17 @@ div.tool-group > * {
   fill: var(--white);
 }
 
+/* Menu items are an icon (or glyph) and a label; a label that wraps stays in its own column. */
+.tools-menu button.choice,
+.option-menu button.choice {
+  display: flex;
+  align-items: flex-start;
+  text-align: left;
+}
+
 .tools-menu span.tool-icon {
-  display: inline-block;
+  flex-shrink: 0;
   margin-right: 8px;
-  vertical-align: -3px;
 }
 
 div.tool-group,
@@ -487,7 +494,7 @@ button:disabled {
 }
 
 .option-menu span.glyph {
-  display: inline-block;
+  flex-shrink: 0;
   width: 2ch;
   margin-right: 8px;
   font-family: 'JetBrains Mono', monospace;
