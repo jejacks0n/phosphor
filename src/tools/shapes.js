@@ -74,8 +74,9 @@ export default {
     {
       key: 'shapeDrawWith', label: 'Draw with', type: 'dropdown', views: ['output'],
       choices: [
-        { value: 'single', label: 'Single', glyph: '┌─' },
-        { value: 'double', label: 'Double', glyph: '╔═' },
+        // Line boxes are rectangles only; an ellipse set to them draws (and shows) half-blocks.
+        { value: 'single', label: 'Single', glyph: '┌─', when: (ws) => ws.shapeKind === 'rect', instead: 'half' },
+        { value: 'double', label: 'Double', glyph: '╔═', when: (ws) => ws.shapeKind === 'rect', instead: 'half' },
         { value: 'half', label: 'Half-block', glyph: '▀▄' },
         { value: 'full', label: 'Full block', glyph: '██' },
         // Offered unless the active character is a block the other choices already draw.
@@ -84,7 +85,7 @@ export default {
     },
     {
       key: 'shapeAntialias', label: 'Anti-aliased', type: 'checkbox',
-      when: (ws) => ws.shapeKind === 'ellipse' && (ws.editorTab === 'input' || ['half', 'full'].includes(ws.shapeDrawWith)),
+      when: (ws) => ws.shapeKind === 'ellipse' && (ws.editorTab === 'input' || ws.shapeDrawWith !== 'char'),
     },
   ],
   begin({ workspace }, pos) {

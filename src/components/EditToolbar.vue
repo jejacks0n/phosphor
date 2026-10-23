@@ -23,6 +23,14 @@ const activeTool = computed(() => getTool(workspace.activeTool));
 const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option =>
   (!option.views || option.views.includes(workspace.editorTab)) && (!option.when || option.when(workspace))));
 
+// A dropdown's choices on offer right now, and the one it shows: the setting's own choice, or when
+// that isn't on offer, the choice the tool draws instead.
+const offered = (option) => option.choices.filter(c => !c.when || c.when(workspace));
+const shownChoice = (option) => {
+  const current = option.choices.find(c => c.value === workspace[option.key]), list = offered(option);
+  return list.includes(current) ? current : list.find(c => c.value === current?.instead) ?? current;
+};
+
 // The pixel view's preview of the ANSI layer: authored cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'Overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
 // At 1100px and narrower the overlay controls fold into a dropdown named for the art style (like the
@@ -179,12 +187,12 @@ function confirmFlatten() {
           <div v-else-if="option.type === 'toggle'" class="segmented">
             <button class="text" :class="{ on: workspace[option.key] }" :aria-pressed="!!workspace[option.key]" @click="workspace[option.key] = !workspace[option.key]">{{ option.label }}</button>
           </div>
-          <DropdownMenu v-else-if="option.type === 'dropdown'" class="option-menu" :label="option.choices.find(c => c.value === workspace[option.key])?.label ?? option.label">
+          <DropdownMenu v-else-if="option.type === 'dropdown'" class="option-menu" :label="shownChoice(option)?.label ?? option.label">
             <button
-                v-for="choice in option.choices.filter(c => !c.when || c.when(workspace))"
+                v-for="choice in offered(option)"
                 :key="String(choice.value)"
                 class="choice"
-                :class="{ on: workspace[option.key] === choice.value }"
+                :class="{ on: shownChoice(option) === choice }"
                 @click="workspace[option.key] = choice.value"
             ><span class="glyph">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span>{{ choice.label }}</button>
           </DropdownMenu>
