@@ -148,7 +148,7 @@ function confirmFlatten() {
       </div>
     </div>
 
-    <div class="toolbar-row secondary-row" v-if="activeTool.options || activeTool.palette || activeTool.id === 'select'">
+    <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select'">
       <PaletteStrip v-if="activeTool.palette"/>
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">
         <span class="hint">{{ workspace.selection ? 'Drag inside the selection to move it' : 'Drag to select cells, or for the whole canvas:' }}</span>
@@ -157,7 +157,7 @@ function confirmFlatten() {
           <button class="text" title="Return every authored cell to the image" @click="project.releaseCellsIn(null)">Release all</button>
         </template>
       </div>
-      <div v-if="activeTool.options" class="tool-setting-group">
+      <div v-if="toolOptions.length" class="tool-setting-group">
         <template v-for="(option, i) in toolOptions" :key="option.key">
           <div v-if="i > 0" class="divider"/>
           <label v-if="option.type === 'checkbox'" class="checkbox-wrapper">

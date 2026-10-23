@@ -56,4 +56,10 @@ assert.equal(pm({ renderStyle: 'ascii', shiftKey: true }), 'char');  // ASCII ha
 assert.equal(pm({ shiftKey: true }), 'fg');
 assert.equal(pm({ altKey: true }), 'bg');
 assert.equal(pm({}), 'cell');
+// The ANSI view's picker option sets what a plain click picks; Shift/Alt still override it.
+assert.equal(pm({ target: 'bg' }), 'bg');
+assert.equal(pm({ target: 'char' }), 'char');
+assert.equal(pm({ target: 'char', shiftKey: true }), 'fg');
+assert.equal(pm({ target: 'fg', altKey: true }), 'bg');
+assert.equal(pm({ view: 'input', target: 'char' }), 'fg');           // the pixel view has only colours
 console.log('underlying ok');

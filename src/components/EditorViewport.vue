@@ -66,6 +66,7 @@ function pickAt(pos, event) {
     shiftKey: !!event?.shiftKey,
     altKey: !!event?.altKey,
     swapped: workspaceStore.pickSwapped,
+    target: workspaceStore.pickTarget,
   });
   const remember = { remember: false };
   // The pixel view, and a picker held with Alt from a paint tool, pick exactly the half under the pointer.

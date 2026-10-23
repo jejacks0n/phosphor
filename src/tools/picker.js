@@ -6,4 +6,10 @@ export default {
   views: ['input', 'output'],
   kind: 'pick',
   instant: true,
+  options: [
+    {
+      key: 'pickTarget', label: 'Pick', type: 'segmented', views: ['output'],
+      choices: [{ value: 'cell', label: 'Cell' }, { value: 'fg', label: 'Foreground' }, { value: 'bg', label: 'Background' }, { value: 'char', label: 'Character' }],
+    },
+  ],
 };
