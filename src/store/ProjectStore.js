@@ -4,11 +4,11 @@ import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
 import { rgb2hex, hex2rgb } from "@/lib/ColorUtils.js";
 import { fitRect, ctx2d } from "@/lib/Canvas.js";
-import { cellIndex, charRowsOf, bakedEntry } from "@/lib/Cells.js";
+import { cellIndex, charRowsOf, bakedEntry, flattenEntry } from "@/lib/Cells.js";
 import EditLayer, { editScaleFor } from "@/document/EditLayer.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
-import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, copyBlock, pasteBlock, moveRect, updateRect } from "@/document/cellEdits.js";
+import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, copyBlock, pasteBlock, moveRect, updateRect, BLANK, copyCellLayers, deleteCellLayers } from "@/document/cellEdits.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, sourceParams } from "@/store/settings.js";
@@ -541,6 +541,90 @@ export const useProjectStore = defineStore('project', {
       this.setCellEdits(next, moved.c0 <= moved.c1 && moved.r0 <= moved.r1 ? [rect, moved] : [rect]);
     },
 
+    // Selection operations on chosen layers (Layers = { image, cells, paint }). Block = { w, h,
+    // cells?: (Entry | null)[], paint?: canvas }: cells when Image or Cells was on, paint when Paint was.
+    // Each change is one undo step. Rects are clipped to the grid.
+    clipRect({ c0, r0, c1, r1 }) {
+      const rect = { c0: Math.max(0, c0), r0: Math.max(0, r0), c1: Math.min(this.cols - 1, c1), r1: Math.min(charRowsOf(this.rows) - 1, r1) };
+      return rect.c0 <= rect.c1 && rect.r0 <= rect.r1 ? rect : null;
+    },
+
+    copySelection(rect, layers) {
+      const block = { w: rect.c1 - rect.c0 + 1, h: rect.r1 - rect.r0 + 1 };
+      if (layers.image || layers.cells) {
+        block.cells = copyCellLayers(this.cellEdits, rect, layers, (col, row) => bakedEntry(this.renderStyle, this.imageCellAt(col, row)));
+      }
+      if (layers.paint && this.layer) block.paint = this.layer.copyCells(rect);
+      return block;
+    },
+
+    deleteSelection(rect, layers) {
+      this.selectionEdit([rect], () => this.deleteIn(rect, layers));
+    },
+
+    // Returns the pasted rect (clipped), or null when it's all off the grid.
+    pasteSelection(block, col, row) {
+      const rect = this.clipRect({ c0: col, r0: row, c1: col + block.w - 1, r1: row + block.h - 1 });
+      if (rect) this.selectionEdit([rect], () => this.pasteAt(block, col, row));
+      return rect;
+    },
+
+    // Lift, clear the source, drop dc/dr away (copied first, so an overlapping move keeps everything).
+    // Returns where it landed (clipped), or null when it left the grid.
+    moveSelection(rect, layers, dc, dr) {
+      if (!dc && !dr) return rect;
+      const block = this.copySelection(rect, layers);
+      const col = rect.c0 + dc, row = rect.r0 + dr;
+      const landed = this.clipRect({ c0: col, r0: row, c1: rect.c1 + dc, r1: rect.r1 + dr });
+      this.selectionEdit(landed ? [rect, landed] : [rect], () => {
+        this.deleteIn(rect, layers);
+        this.pasteAt(block, col, row);
+      });
+      return landed;
+    },
+
+    // Turn the chosen layers into authored cells: Image freezes the image's cells (bake); Paint
+    // blends the paint over what each painted cell showed, as a half-block, and removes it. Authored
+    // cells are already cells, so they're kept either way.
+    flattenSelection(rect, layers) {
+      if (!layers.image && !layers.paint) return;
+      const paintAt = layers.paint && this.layer?.hasPaint ? this.layer.paintReader(rect) : () => null;
+      this.selectionEdit([rect], () => {
+        this.cellEdits = updateRect(this.cellEdits, rect, (col, row, entry) => {
+          const top = paintAt(col, 2 * row), bottom = paintAt(col, 2 * row + 1);
+          if (top || bottom) {
+            // Every attribute filled (bakedEntry drops colours in the ASCII styles), so paint never blends over a gap.
+            return flattenEntry({ ...BLANK, ...bakedEntry(this.renderStyle, this.imageCellAt(col, row)), ...entry }, top, bottom);
+          }
+          return layers.image ? this.completeAt(col, row, entry) : {};
+        });
+        if (layers.paint) this.layer.eraseCells(rect);
+      });
+    },
+
+    // The parts of the selection operations, inside selectionEdit.
+    deleteIn(rect, layers) {
+      this.cellEdits = deleteCellLayers(this.cellEdits, rect, layers);
+      if (layers.paint) this.layer.eraseCells(rect);
+    },
+
+    pasteAt(block, col, row) {
+      if (block.cells) this.cellEdits = pasteBlock(this.cellEdits, { w: block.w, h: block.h, entries: block.cells }, col, row, this.cols, charRowsOf(this.rows));
+      if (block.paint) this.layer.pasteCells(block.paint, col, row, block.w, block.h);
+    },
+
+    // One undo step for a selection operation's cell and paint changes; the cells in rects recompose.
+    selectionEdit(rects, change) {
+      this.ensureLayer();
+      this.beginEdit();
+      change();
+      this.hasPaint = this.layer?.hasPaint ?? false;
+      this.renderer.composite(this.layer, this.processParams);
+      const pixels = rects.flatMap(rect => rectCells(rect)).map(({ col, row }) => ({ x: col, y: 2 * row }));
+      this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.cellEdits, this.renderedCells);
+      this.commitEdit();
+    },
+
     // Many cell edits at once ([{ col, row, attrs }], e.g. a shape): one Map copy, one paint erase.
     // Part of the current edit; the caller commits it.
     editCells(list, { clearPaint = false } = {}) {
@@ -653,7 +737,7 @@ export const useProjectStore = defineStore('project', {
     beginEdit() {
       if (this._stroke?.typing && !this._typingNow) this.commitEdit(); // another edit ends a typing run
       if (this._stroke || !this.layer) return;
-      this._stroke = { cellEdits: this.cellEdits };
+      this._stroke = markRaw({ cellEdits: this.cellEdits }); // raw, so commitEdit's identity check sees the same Map
       this.layer.beginStroke();
     },
 

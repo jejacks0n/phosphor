@@ -134,11 +134,75 @@ export default class EditLayer {
     return bounds;
   }
 
-  colorAt(x, y) {
+  // Raw paint at grid pixel (x, y) with its alpha (0..1), or null where there's none.
+  pixelAt(x, y) {
     const rect = this.#cellRect(x, y);
     if (!rect) return null;
     const [r, g, b, a] = ctx2d(this.canvas).getImageData(rect.x, rect.y, 1, 1).data;
-    return a > 0 ? { r, g, b } : null;
+    return a > 0 ? { r, g, b, a: a / 255 } : null;
+  }
+
+  // Raw paint over a cell rect read in one go: (x, y) grid pixel -> { r, g, b, a } | null, like pixelAt.
+  paintReader(rect) {
+    const area = this.#layerRect(rect);
+    if (!area) return () => null;
+    const { data } = ctx2d(this.canvas).getImageData(area.x, area.y, area.w, area.h);
+    return (x, y) => {
+      const at = this.#cellRect(x, y);
+      if (!at || at.x < area.x || at.y < area.y || at.x >= area.x + area.w || at.y >= area.y + area.h) return null;
+      const o = ((at.y - area.y) * area.w + (at.x - area.x)) * 4;
+      return data[o + 3] ? { r: data[o], g: data[o + 1], b: data[o + 2], a: data[o + 3] / 255 } : null;
+    };
+  }
+
+  // Selection blocks. A cell rect ({ c0, r0, c1, r1 }) is scale x 2·scale layer pixels per cell.
+  // The paint over a cell rect, as its own canvas.
+  copyCells({ c0, r0, c1, r1 }) {
+    const k = this.scale;
+    const copy = newCanvas((c1 - c0 + 1) * k, 2 * (r1 - r0 + 1) * k);
+    ctx2d(copy).drawImage(this.canvas, -c0 * k, -2 * r0 * k);
+    return copy;
+  }
+
+  // Replace the paint over w x h cells at (col, row) with a copied block, scaled to this layer (so
+  // a block copied before a grid resize still fits) and clipped to it.
+  pasteCells(block, col, row, w, h) {
+    const k = this.scale;
+    const target = this.#layerRect({ c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 });
+    if (!target) return;
+    this.#record(target);
+    const ctx = ctx2d(this.canvas);
+    ctx.clearRect(target.x, target.y, target.w, target.h);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(block, col * k, 2 * row * k, w * k, 2 * h * k);
+    if (!this.hasPaint) this.hasPaint = this.#anyPaint(target);
+  }
+
+  // Erases nothing (and records nothing, so no empty undo step) where there's no paint.
+  eraseCells(rect) {
+    const target = this.#layerRect(rect);
+    if (!target || !this.hasPaint || !this.#anyPaint(target)) return;
+    this.#record(target);
+    ctx2d(this.canvas).clearRect(target.x, target.y, target.w, target.h);
+  }
+
+  #anyPaint({ x, y, w, h }) {
+    const { data } = ctx2d(this.canvas).getImageData(x, y, w, h);
+    for (let i = 3; i < data.length; i += 4) if (data[i]) return true;
+    return false;
+  }
+
+  // A cell rect's layer pixels, clipped to the layer; null when it's all outside.
+  #layerRect({ c0, r0, c1, r1 }) {
+    const k = this.scale;
+    const x0 = Math.max(0, c0 * k), y0 = Math.max(0, 2 * r0 * k);
+    const x1 = Math.min(this.canvas.width, (c1 + 1) * k), y1 = Math.min(this.canvas.height, 2 * (r1 + 1) * k);
+    return x1 > x0 && y1 > y0 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+  }
+
+  colorAt(x, y) {
+    const p = this.pixelAt(x, y);
+    return p && { r: p.r, g: p.g, b: p.b };
   }
 
   // Remap paint to a new grid size so it stays on the same part of the image.
