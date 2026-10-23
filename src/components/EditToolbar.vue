@@ -167,6 +167,7 @@ function confirmFlatten() {
           <div v-else-if="option.type === 'segmented'" class="segmented" role="group" :aria-label="option.label">
             <button
                 v-for="choice in option.choices"
+                class="text"
                 :key="String(choice.value)"
                 :class="{ on: workspace[option.key] === choice.value }"
                 @click="workspace[option.key] = choice.value"
@@ -218,13 +219,6 @@ div.history-group {
 div.segmented {
   display: flex;
   gap: 2px;
-}
-
-div.segmented button {
-  width: auto;
-  padding: 3px 8px;
-  font-size: 11px;
-  color: var(--text-dim);
 }
 
 div.segmented button.on {
