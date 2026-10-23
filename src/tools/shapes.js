@@ -2,9 +2,11 @@
 // rectangles as single/double line boxes, shapes in full blocks or the active character as cells,
 // and anything else (line-drawn ellipses, or "Half-block") as paint at grid resolution, which is
 // half-block drawing. Anti-aliased ellipses paint edge pixels by coverage, or shade cells ░▒▓█.
+// Block characters (on by default) makes block shapes real ▄/█ cells; off, they paint over the
+// cells and each keeps its own character.
 import { rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/cellEdits';
-import { charRowsOf } from '@/lib/Cells';
+import { charRowsOf, cellsOfPixels } from '@/lib/Cells';
 
 let start = null; // the drag's first grid position
 
@@ -19,32 +21,53 @@ const SHADES = [[7 / 8, '█'], [5 / 8, '▓'], [3 / 8, '▒'], [1 / 8, '░']];
 export const drawsCells = ({ shapeKind, shapeDrawWith }) =>
   shapeDrawWith === 'full' || shapeDrawWith === 'char' || (shapeKind === 'rect' && shapeDrawWith !== 'half');
 
+// Whether the ANSI view draws this shape in blocks (half or full), so Block characters applies.
+const drawsBlocks = ({ shapeKind, shapeDrawWith }) =>
+  shapeDrawWith === 'half' || shapeDrawWith === 'full' || (shapeKind === 'ellipse' && shapeDrawWith !== 'char');
+
 function apply({ project, workspace, view }, end) {
-  const { shapeKind: kind, shapeFilled: filled, shapeDrawWith: drawWith, shapeAntialias: antialias } = workspace;
-  if (view === 'input' || !drawsCells(workspace)) {
-    project.paintStroke(kind === 'ellipse'
-      ? ellipsePixels(start, end, filled, project.cols, project.rows, antialias)
-      : rectPixels(start, end, filled, project.cols, project.rows));
+  const { shapeKind: kind, shapeFilled: filled, shapeDrawWith: drawWith, shapeBlockChars: blockChars } = workspace;
+  const antialias = workspace.shapeAntialias && kind === 'ellipse' && drawWith !== 'char';
+  const paint = (pixels) => project.paintStroke(pixels);
+  if (view === 'input') {
+    paint(kind === 'ellipse' ? ellipsePixels(start, end, filled, project.cols, project.rows, antialias) : rectPixels(start, end, filled, project.cols, project.rows));
+    return;
+  }
+
+  // Half-block: paint at grid resolution. Block characters makes each touched cell a ▄, so the
+  // paint colours its halves; without it the paint shows through the cell's own character.
+  if (!drawsCells(workspace)) {
+    const pixels = kind === 'ellipse' ? ellipsePixels(start, end, filled, project.cols, project.rows, antialias) : rectPixels(start, end, filled, project.cols, project.rows);
+    if (blockChars) project.editCells(cellsOfPixels(pixels, project.cols, project.rows).map(c => ({ ...c, attrs: { char: '▄' } })));
+    paint(pixels);
     return;
   }
 
   const rows = charRowsOf(project.rows);
   const rect = cellRect(start, end);
-  const attrs = workspace.typingAttrs();
   const inGrid = ({ col, row }) => col >= 0 && row >= 0 && col < project.cols && row < rows;
   const isEdge = ({ col, row }) => col === rect.c0 || col === rect.c1 || row === rect.r0 || row === rect.r1;
-  let cells;
-  const char = drawWith === 'full' ? '█' : workspace.activeChar;
-  if (kind === 'ellipse' && antialias && drawWith === 'full') {
+  let shape; // the shape's cells, with how much of each it covers
+  if (kind === 'ellipse' && antialias) {
     const cover = ellipseCoverage(rect.c0, rect.r0, rect.c1, rect.r1, filled);
-    cells = rectCells(rect).filter(inGrid)
-      .map(c => ({ ...c, char: SHADES.find(([min]) => cover(c.col, c.row) >= min)?.[1] }))
-      .filter(c => c.char).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs } }));
+    shape = rectCells(rect).filter(inGrid).map(c => ({ ...c, cover: cover(c.col, c.row) })).filter(c => c.cover > 0);
   } else if (kind === 'ellipse') {
-    cells = ellipsePixels({ x: rect.c0, y: rect.r0 }, { x: rect.c1, y: rect.r1 }, filled, project.cols, rows)
-      .map(({ x, y }) => ({ col: x, row: y, attrs: { char, ...attrs } }));
-  } else if (drawWith === 'full' || drawWith === 'char') {
-    cells = rectCells(rect).filter(inGrid).filter(c => filled || isEdge(c)).map(c => ({ ...c, attrs: { char, ...attrs } }));
+    shape = ellipsePixels({ x: rect.c0, y: rect.r0 }, { x: rect.c1, y: rect.r1 }, filled, project.cols, rows).map(({ x, y }) => ({ col: x, row: y, cover: 1 }));
+  } else if (drawWith !== 'single' && drawWith !== 'double') {
+    shape = rectCells(rect).filter(inGrid).filter(c => filled || isEdge(c)).map(c => ({ ...c, cover: 1 }));
+  }
+
+  // Full block without Block characters: paint whole cells, showing through their characters.
+  if (drawWith === 'full' && !blockChars) {
+    paint(shape.flatMap(({ col, row, cover }) => [{ x: col, y: 2 * row, alpha: cover }, { x: col, y: 2 * row + 1, alpha: cover }]));
+    return;
+  }
+
+  const attrs = workspace.typingAttrs();
+  let cells;
+  if (shape) {
+    const charOf = (cover) => (drawWith === 'char' ? workspace.activeChar : SHADES.find(([min]) => cover >= min)?.[1]);
+    cells = shape.map(c => ({ ...c, char: charOf(c.cover) })).filter(c => c.char).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs } }));
   } else {
     cells = boxCells(rect, drawWith, project.cols, rows).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs } }));
     if (filled) {
@@ -82,6 +105,10 @@ export default {
         // Offered unless the active character is a block the other choices already draw.
         { value: 'char', label: 'Character', glyph: (workspace) => workspace.activeChar.repeat(2), when: (ws) => !'▀▄█'.includes(ws.activeChar) },
       ],
+    },
+    {
+      key: 'shapeBlockChars', label: 'Block characters', type: 'checkbox', views: ['output'], when: drawsBlocks,
+      title: "Draw with real block characters; off, the paint shows through each cell's own character",
     },
     {
       key: 'shapeAntialias', label: 'Anti-aliased', type: 'checkbox',
