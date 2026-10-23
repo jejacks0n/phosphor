@@ -1,5 +1,5 @@
 /**
- * The base layer's own record, kept with the picture: pinned characters (the converter keeps them
+ * The base layer's record, kept with its pixels: pinned characters (the converter keeps them
  * instead of picking one). Erasing the base is black pixels plus a pinned space. Records are frozen
  * and replaced on every change, like the edit cells, so undo can keep both sides and identity says
  * what changed.
@@ -49,7 +49,7 @@ export function serializeBase(records) {
 }
 
 // Project files are untrusted: anything that isn't a 'col,row' key (or a one-character pin) is
-// skipped. Files from before the base was a picture kept erased cells as a record too; they come
+// skipped. Files from before the base had its own pixels kept erased cells as a record too; they come
 // back as cells (erased: [{ col, row }]) for the store to erase, unless a pin is on the same cell.
 const KEY = /^\d+,\d+$/;
 export function deserializeBase(json) {

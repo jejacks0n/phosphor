@@ -28,7 +28,14 @@ const baseRecords = withPins(EMPTY_BASE, [{ col: 4, row: 2, char: 'Q' }]);
 const withBase = await readProject(await writeProject({ settings: { cols: 80 }, imageBuffer, paintBlob: null, editCells, baseRecords }));
 assert.deepEqual(withBase.baseRecords, baseRecords);
 assert.ok(!('base' in withBase.settings));
-// Files from before the base was a picture kept erased cells as a record: they come back as cells to erase.
+assert.equal(withBase.baseBuffer, null);                                 // no base pixels: none saved
+// The base layer's own pixels round-trip as a section after the paint.
+const basePng = new Blob([bytes(24, 3)], { type: 'image/png' });
+const withPixels = await readProject(await writeProject({ settings: { cols: 80 }, imageBuffer, paintBlob, baseBlob: basePng, editCells }));
+assert.deepEqual([...new Uint8Array(withPixels.baseBuffer)], [...new Uint8Array(await basePng.arrayBuffer())]);
+assert.deepEqual([...new Uint8Array(withPixels.paintBuffer)], [...new Uint8Array(await paintBlob.arrayBuffer())]);
+assert.ok(!('baseLength' in withPixels.settings));
+// Files from before the base had its own pixels kept erased cells as a record: they come back as cells to erase.
 const erasedFile = await readProject(fileOf({ cols: 4, base: { erased: ['1,1'], pins: [['2,0', 'Q']] } }));
 assert.deepEqual(erasedFile.erasedCells, [{ col: 1, row: 1 }]);
 assert.deepEqual([...erasedFile.baseRecords.pins], [['2,0', 'Q']]);

@@ -48,10 +48,12 @@ const newCanvas = (w, h) => {
 export default class PaintLayer {
   #stroke = null; // { tiles: Map<'x,y', { x, y, w, h, before }>, hadPaint } while recording
 
-  constructor({ cols, rows, scale }) {
+  // smooth: a grid resize resamples smoothly (paint) or keeps hard pixel edges (the base layer's pixels).
+  constructor({ cols, rows, scale, smooth = true }) {
     this.cols = cols;
     this.rows = rows;
     this.scale = scale;
+    this.smooth = smooth;
     this.canvas = newCanvas(cols * scale, rows * scale);
     this.hasPaint = false;
   }
@@ -201,7 +203,7 @@ export default class PaintLayer {
     const { offsetX, offsetY, scaleX, scaleY } = resizeTransform(oldFit, newFit);
     const next = newCanvas(cols * scale, rows * scale);
     const ctx = ctx2d(next);
-    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingEnabled = this.smooth;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(
       this.canvas,
@@ -214,27 +216,12 @@ export default class PaintLayer {
     this.#stroke = null; // recorded tiles describe the old canvas
   }
 
-  // The image at its fit on a layer-sized canvas (black where it doesn't reach): the base as a
-  // picture at the layer's resolution, each grid pixel a whole scale x scale block.
-  picture(image, fit) {
-    const k = this.scale;
-    const out = newCanvas(this.canvas.width, this.canvas.height);
-    const ctx = ctx2d(out);
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, out.width, out.height);
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(image, fit.dx * k, fit.dy * k, fit.dw * k, fit.dh * k);
-    return out;
-  }
-
-  // The picture with this layer's paint merged over it. beneath(ctx, scale), if given, draws
-  // between the two (Merge down's cells).
-  bake(image, fit, beneath) {
-    const out = this.picture(image, fit);
-    const ctx = ctx2d(out);
-    beneath?.(ctx, this.scale);
-    ctx.drawImage(this.canvas, 0, 0);
-    return out;
+  // Another layer drawn over this one, a grid pixel at a time as the Renderer shows it (Merge down).
+  drawOver(layer) {
+    const ctx = ctx2d(this.canvas);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(layer.canvas, 0, 0, this.canvas.width, this.canvas.height);
+    this.hasPaint ||= layer.hasPaint;
   }
 
   clear() {
@@ -242,10 +229,13 @@ export default class PaintLayer {
     this.hasPaint = false;
   }
 
-  // paint: a saved paint PNG; image: { width, height } of the source image; fit: where it sits in the grid.
+  // paint: a saved paint PNG; image: { width, height } of the source image; fit: where it sits in the
+  // grid. Without an image, the PNG is the whole layer.
   load(paint, image, fit) {
-    const { x, y, w, h } = savedPaintRect(paint, image, fit, this.scale, this.canvas.width, this.canvas.height);
-    ctx2d(this.canvas).drawImage(paint, 0, 0, paint.width, paint.height, x, y, w, h);
+    const { x, y, w, h } = image ? savedPaintRect(paint, image, fit, this.scale, this.canvas.width, this.canvas.height) : { x: 0, y: 0, w: this.canvas.width, h: this.canvas.height };
+    const ctx = ctx2d(this.canvas);
+    ctx.imageSmoothingEnabled = this.smooth;
+    ctx.drawImage(paint, 0, 0, paint.width, paint.height, x, y, w, h);
     this.hasPaint = true;
   }
 

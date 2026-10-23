@@ -56,7 +56,7 @@ export async function processImage(image, params) {
   // Processing stage (High-ish res WebGL)
   // Process at a whole multiple m of the grid fit so every cell is exactly m x m processed pixels;
   // a fractional ratio lets cells straddle pixels and blurs merged paint into its neighbors.
-  // m comes from the grid (not the fit) so it doesn't change when a merge bakes in the letterbox.
+  // m comes from the grid (not the fit), so an image that fills the grid gets the same m as its fit.
   const maxDim = 400;
   const { dx, dy, dw, dh } = fitRect(sw, sh, cols, rows);
   const m = Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));

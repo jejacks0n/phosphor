@@ -16,11 +16,13 @@ The base layer is your image. When you load a picture (or start with a blank can
 The colour transforms, adjustments and effects in the sidebar (Brightness, Contrast, Hue Rotation,
 Colorize, Edges, Flatten, Sharpen…) change the picture before it's converted.
 
-The base layer is a picture you can edit. Erasing, flipping or moving the base changes its
-pixels, and the converter runs on the result, effects included (so Edges outlines an erased
-patch). The first time you edit the base, Phosphor turns the image into a picture on the grid,
-which shifts a few cells slightly, once; undoing that first edit brings the original image
-back. Saving stores the edited picture.
+You can edit the base like pixels in an image editor. Erasing, flipping, moving, pasting and
+merging down change the base's own pixels, two per cell, laid over the converted image. They're
+exact: never resampled, blurred or put through the effects, so a moved block keeps its hard edges
+and an erased cell stays black (or the palette's darkest colour, with a colour-count palette
+made from a picture that has no black). The effects keep working on the parts of the image you haven't
+edited; content you move takes the look it had where it came from. Colour adjustments and the
+colour palette still apply to everything. Your original image is never changed.
 
 The base layer also remembers **pinned characters**: cells whose character the converter keeps
 instead of picking one, so rolling the seed or changing the character set doesn't change them.
@@ -43,10 +45,9 @@ with the picture. The colour palette (CGA, VGA, a colour count) applies to every
 
 ## Moving things between layers
 
-- **Merge down** (top toolbar) puts the whole edit layer into the base image. Paint and cells
-  become part of the picture, so the effects and adjustments now treat them like the rest of it.
-  Your typed and drawn cells keep their characters: they're pinned on the base layer. Afterwards
-  the edit layer is empty.
+- **Merge down** (top toolbar) puts the whole edit layer into the base layer exactly as it shows:
+  paint and cells become base pixels, and your typed and drawn cells keep their characters, pinned
+  on the base layer. Nothing is resampled or re-filtered. Afterwards the edit layer is empty.
 - **Merge up** (the Select tool's row) does the opposite for the base: what the base layer shows —
   its characters and colours, effects included — becomes edit cells, which the seed, character set
   and effects no longer change. With a selection it merges that area; without one, the whole
@@ -65,15 +66,15 @@ The eraser's **Erase** toggles choose what it erases: **Base**, **Edit**, or bot
   base. Turn it off to erase every chosen layer in one pass.
 
 Size 1 erases exactly what's under the pointer: one character in the ANSI view, one pixel in
-the Pixel view. In the Pixel view the eraser removes paint (Edit) and erases base cells (Base);
-erased cells show black there.
+the Pixel view. In the Pixel view the eraser removes paint (Edit) and turns base pixels black
+(Base), leaving the characters as they are.
 
 ## The Select tool
 
 The Select tool's **Layers** toggles (**Base**, **Edit**) choose what Copy, Cut, Delete, moving and
 nudging act on:
 
-- **Base** is the picture's colours and any pinned characters. Moving the base moves those and
+- **Base** is the base's colours and any pinned characters. Moving the base moves those and
   leaves the area it came from erased (black, with pinned spaces). Characters the converter picked
   stay where they are, and your edits on top stay too.
 - **Edit** is your typed and drawn cells and paint.
@@ -87,7 +88,7 @@ Choosing another tool drops the selection.
 
 Flip's **Flip** toggles (**Base**, **Edit**) choose what it flips. **Edit** (the default) swaps an
 edit cell's colours or the paint there; on a cell with neither, the flip goes on the edit layer as
-paint. **Base** swaps the picture's two halves in each cell. With both on, both layers flip.
+paint. **Base** swaps the two halves of each cell's base colours. With both on, both layers flip.
 
 ## Other tools
 
@@ -101,5 +102,6 @@ paint. **Base** swaps the picture's two halves in each cell. With both on, both 
 
 ## When the grid changes
 
-Changing the grid size keeps the picture where it is relative to the canvas: paint and pinned
-characters move with it. (Edit cells stay at the same column and row.)
+Changing the grid size keeps the picture where it is relative to the canvas: paint, the base's
+own pixels (keeping their hard edges) and pinned characters move with it. (Edit cells stay at the
+same column and row.)

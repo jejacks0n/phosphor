@@ -2,7 +2,8 @@ import { squarePixels } from '@/lib/Brushes';
 import { cellsOfPixels } from '@/lib/Cells';
 
 // The eraser erases the layers chosen with its [Base] [Edit] toggles (workspace.eraseLayers).
-// Edit: paint and edit cells. Base: the base layer, leaving blank cells (eraseBase). In the ANSI
+// Edit: paint and edit cells. Base: the base layer, black with a pinned space in the ANSI view
+// (eraseBase), black pixels in the Pixel view (eraseBasePixels). In the ANSI
 // view, Layer aware (Edit on) peels one layer per pass: each stroke takes only a cell's top layer
 // (its paint, else its edit cell, else, with Base on, the base), so the next pass shows what was
 // under it. Off, one pass erases every chosen layer.
@@ -42,7 +43,7 @@ const eraser = {
         project.eraseEditPixels(pixels);
         if (view === 'output') project.clearEditCells(cells);
       }
-      if (base) project.eraseBase(cells);
+      if (base) view === 'output' ? project.eraseBase(cells) : project.eraseBasePixels(square);
       return;
     }
     // Layer aware: each cell loses only its top layer this stroke.

@@ -95,7 +95,7 @@ function confirmClear() {
 }
 
 function confirmMergeDown() {
-  if (confirm('Merge the edit layer down into the base image? Typed and drawn cells become part of the image and keep their characters.')) {
+  if (confirm('Merge the edit layer down into the base layer? Paint and cells become base pixels exactly as they show, and typed and drawn cells keep their characters.')) {
     project.mergeDown();
   }
 }
@@ -173,7 +173,7 @@ function confirmMergeDown() {
         </div>
 
         <button
-            title="Merge down: the edit layer into the base image"
+            title="Merge down: the edit layer into the base layer"
             @click="confirmMergeDown"
             class="primary"
             :disabled="!project.hasEdits"

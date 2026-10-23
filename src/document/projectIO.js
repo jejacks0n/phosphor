@@ -22,15 +22,18 @@ export function loadImage(source, type) {
 }
 
 // settings: plain JSON-able values (plus hasPaint); paintBlob: PNG of the paint layer, or null;
+// baseBlob: PNG of the base layer's own pixels, or null (saved after the paint; its length is in the
+// JSON as baseLength, so older readers just ignore it);
 // editCells: the edit layer's cells (saved under the file's original key, `cellEdits`);
 // baseRecords: the base layer's pinned characters (saved as `base`, left out when there are none).
-export async function writeProject({ settings, imageBuffer, paintBlob, editCells, baseRecords = EMPTY_BASE }) {
+export async function writeProject({ settings, imageBuffer, paintBlob, baseBlob = null, editCells, baseRecords = EMPTY_BASE }) {
   const base = serializeBase(baseRecords);
-  const json = new TextEncoder().encode(JSON.stringify({ ...settings, cellEdits: serializeEditCells(editCells), ...(base && { base }) }));
+  const baseBuffer = baseBlob ? await baseBlob.arrayBuffer() : new ArrayBuffer(0);
+  const json = new TextEncoder().encode(JSON.stringify({ ...settings, cellEdits: serializeEditCells(editCells), ...(base && { base }), ...(baseBlob && { baseLength: baseBuffer.byteLength }) }));
   const paintBuffer = paintBlob ? await paintBlob.arrayBuffer() : new ArrayBuffer(0);
   const header = new TextEncoder().encode(MAGIC_HEADER);
   const lengths = new Uint32Array([json.byteLength, imageBuffer.byteLength, paintBuffer.byteLength]);
-  return new Blob([header, lengths, json, imageBuffer, paintBuffer], { type: 'application/octet-stream' });
+  return new Blob([header, lengths, json, imageBuffer, paintBuffer, baseBuffer], { type: 'application/octet-stream' });
 }
 
 export async function readProject(file) {
@@ -45,19 +48,20 @@ export async function readProject(file) {
   const paintLen = view.getUint32(16, true);
 
   let offset = 20;
-  const { cellEdits, charEditMap, hasPaint, base, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
+  const { cellEdits, charEditMap, hasPaint, base, baseLength, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
   delete settings.charMode; // older files stored a charMode that's now derived from renderStyle
   const imageBuffer = buffer.slice(offset, offset += imageLen);
-  const paint = buffer.slice(offset, offset + paintLen);
+  const paint = buffer.slice(offset, offset += paintLen);
+  const baseBuffer = Number.isInteger(baseLength) && baseLength > 0 ? buffer.slice(offset, offset + baseLength) : null;
 
   // Older files have no hasPaint key: the paint section's presence decides.
   const usePaint = (hasPaint ?? paintLen > 0) && paintLen > 0;
   // Files from before the cell layer have charEditMap (cell index -> char) instead.
   const edits = cellEdits ? deserializeEditCells(cellEdits) : migrateCharEdits(charEditMap || [], settings.cols);
-  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, editCells: edits, ...readBase(base), migrated: !cellEdits && edits.size > 0 };
+  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, baseBuffer, editCells: edits, ...readBase(base), migrated: !cellEdits && edits.size > 0 };
 }
 
-// The base record, and (from files before the base was a picture) the cells to erase.
+// The base record, and (from files before the base had its own pixels) the cells to erase.
 const readBase = (json) => {
   const { records, erased } = deserializeBase(json);
   return { baseRecords: records, erasedCells: erased };
