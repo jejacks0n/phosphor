@@ -23,7 +23,7 @@ const activeTool = computed(() => getTool(workspace.activeTool));
 const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option => !option.views || option.views.includes(workspace.editorTab)));
 
 // The pixel view's preview of the ANSI layer: authored cells drawn over the image at pixel scale.
-const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'ANSI overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
+const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'Overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
 // At 1100px and narrower the overlay controls fold into a dropdown named for the art style (like the
 // Actions dropdown), which opens them in a small floating toolbar under it.
 const overlayFolded = useMediaQuery('(max-width: 1100px)');
