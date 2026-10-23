@@ -181,7 +181,7 @@ function confirmFlatten() {
           </div>
           <DropdownMenu v-else-if="option.type === 'dropdown'" class="option-menu" :label="option.choices.find(c => c.value === workspace[option.key])?.label ?? option.label">
             <button
-                v-for="choice in option.choices"
+                v-for="choice in option.choices.filter(c => !c.when || c.when(workspace))"
                 :key="String(choice.value)"
                 class="choice"
                 :class="{ on: workspace[option.key] === choice.value }"

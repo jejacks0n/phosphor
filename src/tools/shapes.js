@@ -78,7 +78,8 @@ export default {
         { value: 'double', label: 'Double', glyph: '╔═' },
         { value: 'half', label: 'Half-block', glyph: '▀▄' },
         { value: 'full', label: 'Full block', glyph: '██' },
-        { value: 'char', label: 'Character', glyph: (workspace) => workspace.activeChar.repeat(2) },
+        // Offered unless the active character is a block the other choices already draw.
+        { value: 'char', label: 'Character', glyph: (workspace) => workspace.activeChar.repeat(2), when: (ws) => !'▀▄█'.includes(ws.activeChar) },
       ],
     },
     {
