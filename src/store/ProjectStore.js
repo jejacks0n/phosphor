@@ -515,25 +515,31 @@ export const useProjectStore = defineStore('project', {
       this.setCellEdits(withoutCells(this.cellEdits, rectCells(area)), [area]);
     },
 
-    // Selection operations on chosen layers (Layers = { image, cells, paint }). Block = { w, h,
-    // cells?: (Entry | null)[], paint?: canvas }: cells when Image or Cells was on, paint when Paint was.
-    // Each change is one undo step. Rects are clipped to the grid.
+    // Selection operations on the Select tool's layers: Layers = { image, edits }, where Edits is
+    // everything drawn (authored cells and paint, stored apart but one thing to the user). Block =
+    // { w, h, cells?: (Entry | null)[], paint?: canvas }. Each change is one undo step; rects are
+    // clipped to the grid.
+    partsOf({ image, edits }) {
+      return { image, cells: edits, paint: edits };
+    },
+
     clipRect({ c0, r0, c1, r1 }) {
       const rect = { c0: Math.max(0, c0), r0: Math.max(0, r0), c1: Math.min(this.cols - 1, c1), r1: Math.min(charRowsOf(this.rows) - 1, r1) };
       return rect.c0 <= rect.c1 && rect.r0 <= rect.r1 ? rect : null;
     },
 
     copySelection(rect, layers) {
+      const parts = this.partsOf(layers);
       const block = { w: rect.c1 - rect.c0 + 1, h: rect.r1 - rect.r0 + 1 };
-      if (layers.image || layers.cells) {
-        block.cells = copyCellLayers(this.cellEdits, rect, layers, (col, row) => bakedEntry(this.renderStyle, this.imageCellAt(col, row)));
+      if (parts.image || parts.cells) {
+        block.cells = copyCellLayers(this.cellEdits, rect, parts, (col, row) => bakedEntry(this.renderStyle, this.imageCellAt(col, row)));
       }
-      if (layers.paint && this.layer) block.paint = this.layer.copyCells(rect);
+      if (parts.paint && this.layer) block.paint = this.layer.copyCells(rect);
       return block;
     },
 
     deleteSelection(rect, layers) {
-      this.selectionEdit([rect], () => this.deleteIn(rect, layers));
+      this.selectionEdit([rect], () => this.deleteIn(rect, this.partsOf(layers)));
     },
 
     // Returns the pasted rect (clipped), or null when it's all off the grid.
@@ -551,18 +557,19 @@ export const useProjectStore = defineStore('project', {
       const col = rect.c0 + dc, row = rect.r0 + dr;
       const landed = this.clipRect({ c0: col, r0: row, c1: rect.c1 + dc, r1: rect.r1 + dr });
       this.selectionEdit(landed ? [rect, landed] : [rect], () => {
-        this.deleteIn(rect, layers);
+        this.deleteIn(rect, this.partsOf(layers));
         this.pasteAt(block, col, row);
       });
       return landed;
     },
 
-    // Turn the chosen layers into authored cells: Image freezes the image's cells (bake); Paint
-    // blends the paint over what each painted cell showed, as a half-block, and removes it. Authored
-    // cells are already cells, so they're kept either way.
+    // Turn what shows into authored cells: Image freezes the image's cells (bake); Edits freezes the
+    // paint as it shows (flattenEntry: the character stays, the paint tints it) and removes it.
+    // Authored cells are already cells, so they're kept either way.
     flattenSelection(rect, layers) {
-      if (!layers.image && !layers.paint) return;
-      const paintAt = layers.paint && this.layer?.hasPaint ? this.layer.paintReader(rect) : () => null;
+      const { image, paint } = this.partsOf(layers);
+      if (!image && !paint) return;
+      const paintAt = paint && this.layer?.hasPaint ? this.layer.paintReader(rect) : () => null;
       this.selectionEdit([rect], () => {
         this.cellEdits = updateRect(this.cellEdits, rect, (col, row, entry) => {
           const top = paintAt(col, 2 * row), bottom = paintAt(col, 2 * row + 1);
@@ -570,16 +577,16 @@ export const useProjectStore = defineStore('project', {
             // Every attribute filled (bakedEntry drops colours in the ASCII styles), so paint never blends over a gap.
             return flattenEntry({ ...BLANK, ...bakedEntry(this.renderStyle, this.imageCellAt(col, row)), ...entry }, top, bottom);
           }
-          return layers.image ? this.completeAt(col, row, entry) : {};
+          return image ? this.completeAt(col, row, entry) : {};
         });
-        if (layers.paint) this.layer.eraseCells(rect);
+        if (paint) this.layer.eraseCells(rect);
       });
     },
 
-    // The parts of the selection operations, inside selectionEdit.
-    deleteIn(rect, layers) {
-      this.cellEdits = deleteCellLayers(this.cellEdits, rect, layers);
-      if (layers.paint) this.layer.eraseCells(rect);
+    // The parts of the selection operations, inside selectionEdit (parts: partsOf's { image, cells, paint }).
+    deleteIn(rect, parts) {
+      this.cellEdits = deleteCellLayers(this.cellEdits, rect, parts);
+      if (parts.paint) this.layer.eraseCells(rect);
     },
 
     pasteAt(block, col, row) {

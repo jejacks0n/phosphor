@@ -29,7 +29,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
-    selectLayers: { image: true, cells: true, paint: true }, // what the Select tool's operations act on
+    selectLayers: { image: true, edits: true }, // what the Select tool acts on: the image, and everything drawn
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse'
     shapeFilled: false,
     shapeDrawWith: 'double', // ANSI view: 'single' | 'double' | 'half' | 'full' | 'char'

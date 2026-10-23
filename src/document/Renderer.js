@@ -209,15 +209,14 @@ export default class Renderer {
   }
 
   // Spec "Paint and authored cells" (a trial rule, kept in this one place): the authored entry
-  // composes over the paint-free image, then any paint in the cell draws over it, so erasing the
-  // paint reveals the authored cell again.
+  // composes over the paint-free image, then any paint in the cell shows over it (coverCell), so
+  // erasing the paint reveals the authored cell again.
   #composeOne(col, row, params, entry, baseCells) {
     const under = this.underCell(col, row, params, baseCells);
     if (!under) return baseCells[cellIndex(col, row, params.cols)];
     const cell = composeCell(under, entry, params.renderStyle, (hex) => this.effective(hex, params));
     return coverCell(cell, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), {
       renderStyle: params.renderStyle,
-      charset: params.chars,
       palette: this.palette,
     });
   }

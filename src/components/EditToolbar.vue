@@ -57,8 +57,7 @@ const toolOptions = computed(() => (activeTool.value.options ?? []).filter(optio
 // The Select tool's layer toggles and the actions on its selection (one undo step each).
 const SELECT_LAYERS = [
   ['image', 'Image', 'The cells generated from the picture'],
-  ['cells', 'Cells', 'Authored cells: typed, drawn and pasted'],
-  ['paint', 'Paint', 'The paint layer'],
+  ['edits', 'Edits', 'Everything drawn: typed, painted and pasted'],
 ];
 const anyLayer = computed(() => Object.values(workspace.selectLayers).some(Boolean));
 const selectionSize = computed(() => {
@@ -248,8 +247,8 @@ function confirmFlatten() {
           <div class="divider"/>
           <button
               class="text"
-              title="Turn the chosen layers into authored cells: Image freezes the image's cells, Paint becomes half-blocks"
-              :disabled="!workspace.selectLayers.image && !workspace.selectLayers.paint"
+              title="Freeze what shows as cells: Image freezes the image's cells, Edits fixes the paint into the cells it covers"
+              :disabled="!anyLayer"
               @click="project.flattenSelection(workspace.selection, workspace.selectLayers)"
           >Flatten</button>
           <div class="divider"/>
