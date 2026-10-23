@@ -1,8 +1,9 @@
 import { squarePixels } from '@/lib/Brushes';
 import { cellsOfPixels } from '@/lib/Cells';
 
-// In the ANSI view the eraser removes paint first; a cell with no paint is released back to the
-// image. Cells whose paint this stroke erased aren't then released by the same stroke.
+// In the ANSI view, Layer aware (on by default) peels one layer per pass: a stroke removes a cell's
+// paint, and only a cell with no paint is released back to the image (cells whose paint this stroke
+// erased aren't then released by the same stroke). Off, one pass clears both back to the image.
 let paintErased = new Set();
 const keyOf = ({ col, row }) => `${col},${row}`;
 
@@ -15,6 +16,7 @@ const eraser = {
   preview: { shape: 'square', size: (workspace) => workspace.editEraserSize },
   options: [
     { key: 'editEraserSize', label: 'Size', title: 'Eraser size', min: 1, max: 20, step: 1 },
+    { key: 'eraseLayerAware', label: 'Layer aware', type: 'checkbox', views: ['output'], title: 'Erase one layer per pass: paint first, then the cells under it' },
   ],
   begin(ctx, pos) {
     paintErased = new Set();
@@ -29,7 +31,7 @@ const eraser = {
       return;
     }
     const cells = cellsOfPixels(pixels, project.cols, project.rows);
-    cells.filter(cell => project.cellHasPaint(cell.col, cell.row)).forEach(cell => paintErased.add(keyOf(cell)));
+    if (workspace.eraseLayerAware) cells.filter(cell => project.cellHasPaint(cell.col, cell.row)).forEach(cell => paintErased.add(keyOf(cell)));
     project.eraseEditPixels(pixels);
     project.releaseCells(cells.filter(cell => !paintErased.has(keyOf(cell))));
   },

@@ -54,6 +54,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     // Brush Settings
     editBrushSize:  2.5,
     editEraserSize: 5,
+    eraseLayerAware: true, // ANSI view: one layer per pass (paint, then cells), or both at once
     editBrushOpacity:  100,
     editBrushFlow:  25,
     editBrushHardness:  50,
