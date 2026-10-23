@@ -662,7 +662,10 @@ button.g {
   color: var(--text-dim);
 }
 
+/* No global hover lift: a transformed cell gets its own layer and the glyphs after it re-snap. */
 button.g:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
   background: var(--accent);
   color: var(--white);
 }
