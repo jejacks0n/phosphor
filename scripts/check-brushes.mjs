@@ -13,6 +13,14 @@ assert.ok(pencilPixels({ x: 0, y: 0 }, { x: 3, y: 0 }, 10, 10).every(p => p.alph
 assert.equal(squarePixels({ x: 5, y: 5 }, { x: 5, y: 5 }, 2, 10, 10).length, 4);
 assert.equal(squarePixels({ x: 5, y: 5 }, { x: 6, y: 5 }, 2, 10, 10).length, 6); // deduped across the stroke
 assert.equal(squarePixels({ x: 0, y: 0 }, { x: 0, y: 0 }, 4, 10, 10).length, 4); // clipped at the edge
+// A square covers the pixels whose centres are inside it: size 1 is the pixel under the pointer.
+const sq = (x, y, size) => squarePixels({ x, y }, { x, y }, size, 20, 20).map(p => [p.x, p.y]);
+assert.deepEqual(sq(3.7, 6.7, 1), [[3, 6]]);
+assert.deepEqual(sq(3.2, 6.1, 1), [[3, 6]]);
+assert.deepEqual(sq(3.999, 6.001, 1), [[3, 6]]);
+assert.deepEqual(sq(3, 6, 1), [[3, 6]]);                              // exactly on a pixel corner: the pixel it's in
+assert.deepEqual(sq(4, 6, 2).sort(), [[3, 5], [3, 6], [4, 5], [4, 6]]);
+assert.equal(sq(4.5, 6.5, 3).length, 9);
 
 const soft = brushPixels({ x: 5.5, y: 5.5 }, { x: 5.5, y: 5.5 }, { size: 1, flow: 1, hardness: 0.5 }, 10, 10);
 assert.deepEqual(soft, [{ x: 5, y: 5, alpha: 1 }]);

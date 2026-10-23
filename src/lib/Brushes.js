@@ -34,8 +34,10 @@ export function squarePixels(from, to, size, cols, rows) {
   const half = size / 2;
   const pixels = new Map();
   for (const { x, y } of interpolate(from, to)) {
-    for (let iy = Math.floor(y - half); iy < Math.ceil(y + half); iy++) {
-      for (let ix = Math.floor(x - half); ix < Math.ceil(x + half); ix++) {
+    // The pixels whose centres (i + 0.5) lie inside the square (x - half, x + half]: size 1 is the
+    // pixel under the pointer, including exactly on a pixel edge.
+    for (let iy = Math.floor(y - half - 0.5) + 1; iy <= Math.floor(y + half - 0.5); iy++) {
+      for (let ix = Math.floor(x - half - 0.5) + 1; ix <= Math.floor(x + half - 0.5); ix++) {
         if (inGrid(ix, iy, cols, rows)) pixels.set(`${ix},${iy}`, { x: ix, y: iy, alpha: 1 });
       }
     }

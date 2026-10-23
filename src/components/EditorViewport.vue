@@ -4,7 +4,8 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
 import { getTool } from '@/tools';
-import { charRowsOf, cellAt } from '@/lib/Cells';
+import { charRowsOf, cellAt, cellsOfPixels } from '@/lib/Cells';
+import { squarePixels } from '@/lib/Brushes';
 import { pickMode } from '@/lib/pickMode';
 import { drawsCells } from '@/tools/shapes';
 
@@ -84,6 +85,7 @@ function pickAt(pos, event) {
 }
 
 // Brush/eraser outline under the pointer, or the character cell for cell tools.
+const gridPos = (pos) => ({ x: pos.x / props.unit.x, y: pos.y / props.unit.y });
 const CELL_HIGHLIGHT = { borderRadius: '0', transform: 'none', mixBlendMode: 'difference', background: 'white', outline: '1px solid red', border: 'none', boxShadow: 'none' };
 const previewStyle = computed(() => {
   const preview = tool.value.preview;
@@ -98,6 +100,22 @@ const previewStyle = computed(() => {
   }
 
   const size = preview.size(workspaceStore);
+  // The eraser outlines exactly what it covers: whole cells in the ANSI view, pixels in the pixel view.
+  if (preview.snap) {
+    const square = squarePixels(gridPos(pos), gridPos(pos), size, projectStore.cols, projectStore.rows);
+    const ansi = props.view === 'output';
+    const parts = ansi ? cellsOfPixels(square, projectStore.cols, projectStore.rows).map(c => ({ x: c.col, y: c.row })) : square;
+    if (!parts.length) return { display: 'none' };
+    const x0 = Math.min(...parts.map(c => c.x)), x1 = Math.max(...parts.map(c => c.x));
+    const y0 = Math.min(...parts.map(c => c.y)), y1 = Math.max(...parts.map(c => c.y));
+    const w = unit.x, h = ansi ? unit.y * 2 : unit.y;
+    const display = unref(props.display);
+    return {
+      display: 'block', boxSizing: 'border-box', borderRadius: '0', transform: 'none',
+      width: `${(x1 - x0 + 1) * w}px`, height: `${(y1 - y0 + 1) * h}px`,
+      left: `${x0 * w + (display?.clientLeft ?? 0)}px`, top: `${y0 * h + (display?.clientTop ?? 0)}px`,
+    };
+  }
   const display = unref(props.display); // pos is inside its border; the preview sits in its box
   return {
     display: 'block',
