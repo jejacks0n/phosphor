@@ -58,12 +58,10 @@ with the picture. The colour palette (CGA, VGA, a colour count) applies to every
 
 The eraser's **Erase** toggles choose what it erases: **Base**, **Edit**, or both (one is always on).
 
-- **Edit** removes paint and edit cells.
+- **Edit** removes everything on the edit layer: paint and edit cells.
 - **Base** erases the base layer: the cells go black with a pinned space. Your edits on top
   stay.
-- **Layer aware** (shown while Edit is on, in the ANSI view) takes one layer per pass: the first
-  pass removes paint, the next the cells under it, and — with Base on too — the next erases the
-  base. Turn it off to erase every chosen layer in one pass.
+- With both on, one pass erases both.
 
 Size 1 erases exactly what's under the pointer: one character in the ANSI view, one pixel in
 the Pixel view. In the Pixel view the eraser removes paint (Edit) and turns base pixels black
