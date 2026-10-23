@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref, useTemplateRef } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
@@ -25,8 +25,11 @@ const isNone = computed(() => (props.slotName === 'fg' ? ansiView.value && works
 const offersNone = computed(() => props.slotName === 'bg' || ansiView.value);
 
 const sections = computed(() => swatchSections(project.quantize, project.activePalette));
-// Read when the popover opens (the paint layer isn't reactive; it doesn't change while this is open).
-const inUse = computed(() => drawingColors(project.cellEdits, project.hasPaint ? project.layer.colorCounts() : undefined));
+// Colours authored cells use, and (folded away until asked for) the other colours in the paint.
+// Paint is read when the popover opens: the layer isn't reactive, and doesn't change while this is open.
+const inUse = computed(() => drawingColors(project.cellEdits));
+const painted = computed(() => (project.hasPaint ? drawingColors(new Map(), project.layer.colorCounts()).filter(hex => !inUse.value.includes(hex)) : []));
+const showPainted = ref(false);
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 
 const choose = (hex, remember = true) => workspace.setColor(props.slotName, hex, { remember });
@@ -82,6 +85,12 @@ onBeforeUnmount(() => {
       <div v-if="inUse.length" class="row-label">In this drawing</div>
       <div v-if="inUse.length" class="swatches" style="grid-template-columns: repeat(8, 1fr)">
         <button v-for="hex in inUse" :key="hex" class="swatch" :style="{ backgroundColor: shown(hex) }" :title="hex" @click="choose(hex)"></button>
+      </div>
+      <button v-if="painted.length" class="row-label fold" :aria-expanded="showPainted" @click="showPainted = !showPainted">
+        {{ showPainted ? '▾' : '▸' }} Painted ({{ painted.length }})
+      </button>
+      <div v-if="showPainted && painted.length" class="swatches" style="grid-template-columns: repeat(8, 1fr)">
+        <button v-for="hex in painted" :key="hex" class="swatch" :style="{ backgroundColor: shown(hex) }" :title="hex" @click="choose(hex)"></button>
       </div>
     </template>
 
@@ -219,8 +228,25 @@ label.native input {
   background: var(--surface-2);
 }
 
-div.row-label {
+div.row-label,
+button.row-label {
   font-size: 11px;
   color: var(--text-muted);
+}
+
+button.fold {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+button.fold:hover {
+  transform: none;
+  box-shadow: none;
+  color: var(--text);
 }
 </style>
