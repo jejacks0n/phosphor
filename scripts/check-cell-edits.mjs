@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   withCellEdit, mergeEntry, withoutCells, parseKey, serializeCellEdits, deserializeCellEdits, migrateCharEdits,
   normalizeRect, rectCells, pasteBlock, updateRect,
-  BLANK, copyCellLayers, deleteCellLayers, selectionHit,
+  BLANK, copyCellLayers, deleteCellLayers, selectionHit, clampOffset,
 } from '../src/document/cellEdits.js';
 
 const m0 = new Map();
@@ -84,4 +84,9 @@ assert.equal(selectionHit(sel, { col: 2.4, row: 3.5 }), 'inside');   // past the
 assert.equal(selectionHit(sel, { col: 4, row: 2.1 }), 'border');     // within the ⅛-row inner band at the top
 assert.equal(selectionHit(sel, { col: 4, row: 2.2 }), 'inside');
 assert.equal(selectionHit({ c0: 0, r0: 0, c1: 0, r1: 0 }, { col: 0.5, row: 0.5 }), 'inside'); // a 1-cell selection still has an inside
+// A nudge or outline drag stops at the grid's edge instead of pushing the selection off it.
+assert.deepEqual(clampOffset({ c0: 30, r0: 5, c1: 39, r1: 9 }, 1, 0, 40, 25), { dc: 0, dr: 0 });  // already at the right edge
+assert.deepEqual(clampOffset({ c0: 30, r0: 5, c1: 38, r1: 9 }, 5, 0, 40, 25), { dc: 1, dr: 0 });
+assert.deepEqual(clampOffset({ c0: 0, r0: 0, c1: 3, r1: 3 }, -2, -1, 40, 25), { dc: 0, dr: 0 });
+assert.deepEqual(clampOffset({ c0: 2, r0: 2, c1: 3, r1: 3 }, 0, 30, 40, 25), { dc: 0, dr: 21 });
 console.log('cell edits ok');

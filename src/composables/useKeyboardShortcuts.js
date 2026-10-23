@@ -1,5 +1,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { getTool } from '@/tools';
+import { clampOffset } from '@/document/cellEdits';
+import { charRowsOf } from '@/lib/Cells';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _isAltSwapped = ref(false);
@@ -64,7 +66,11 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (!command) {
       if (e.key === 'Escape' && sel) workspaceStore.selection = null;
       else if (selecting && (e.key === 'Delete' || e.key === 'Backspace')) projectStore.deleteSelection(sel, layers);
-      else if (selecting && ARROWS[e.key]) workspaceStore.selection = projectStore.moveSelection(sel, layers, ...ARROWS[e.key]);
+      else if (selecting && ARROWS[e.key]) {
+        // A nudge stops at the grid's edge rather than pushing contents off it.
+        const { dc, dr } = clampOffset(sel, ...ARROWS[e.key], projectStore.cols, charRowsOf(projectStore.rows));
+        if (dc || dr) workspaceStore.selection = projectStore.moveSelection(sel, layers, dc, dr);
+      }
       else return false;
       e.preventDefault();
       return true;
@@ -76,7 +82,9 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       workspaceStore.clipboard = projectStore.copySelection(sel, layers);
       projectStore.deleteSelection(sel, layers);
     } else if (key === 'v' && workspaceStore.clipboard) {
-      const at = sel ? { col: sel.c0, row: sel.r0 } : workspaceStore.textCursor ?? workspaceStore.ansiViewOrigin;
+      // The Text cursor only counts in Edit Mode (it lingers, unseen, after switching tools).
+      const cursor = workspaceStore.activeTool === 'text' ? workspaceStore.textCursor : null;
+      const at = sel ? { col: sel.c0, row: sel.r0 } : cursor ?? workspaceStore.ansiViewOrigin;
       const pasted = projectStore.pasteSelection(workspaceStore.clipboard, at.col, at.row);
       if (pasted) workspaceStore.selectAll(pasted); // selected, with the Select tool, to drag into place
     } else return false;

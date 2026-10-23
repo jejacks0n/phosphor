@@ -1,7 +1,7 @@
 // Selects a rectangle of cells (ANSI view). Dragging inside the selection moves its contents on
 // the chosen layers (workspace.selectLayers); dragging its border moves just the outline; dragging
 // elsewhere draws a new one, and a click outside clears it. The actions are on the options row.
-import { normalizeRect, selectionHit } from '@/document/cellEdits';
+import { normalizeRect, selectionHit, clampOffset } from '@/document/cellEdits';
 import { charRowsOf } from '@/lib/Cells';
 
 let drag = null; // { mode: 'select' | 'move' | 'outline', start: { col, row } }
@@ -13,15 +13,6 @@ const cellOf = (project, pos) => ({
 });
 // Where a position (grid pixels) is relative to the selection, in fractional cells.
 const hitOf = (workspace, pos) => (workspace.selection ? selectionHit(workspace.selection, { col: pos.x, row: pos.y / 2 }) : 'outside');
-
-// An outline offset kept inside the grid.
-function clampOffset(project, sel, dc, dr) {
-  const rows = charRowsOf(project.rows);
-  return {
-    dc: Math.max(-sel.c0, Math.min(project.cols - 1 - sel.c1, dc)),
-    dr: Math.max(-sel.r0, Math.min(rows - 1 - sel.r1, dr)),
-  };
-}
 
 export default {
   id: 'select',
@@ -51,7 +42,7 @@ export default {
     if (drag.mode === 'move') {
       workspace.selectionOffset = { dc, dr };
     } else if (drag.mode === 'outline') {
-      workspace.selectionOffset = clampOffset(project, workspace.selection, dc, dr);
+      workspace.selectionOffset = clampOffset(workspace.selection, dc, dr, project.cols, charRowsOf(project.rows)); // the outline stays on the grid
     } else if (dc || dr || workspace.selection) {
       workspace.selection = normalizeRect(drag.start, cell);
     }

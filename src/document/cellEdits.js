@@ -176,3 +176,8 @@ export function selectionHit({ c0, r0, c1, r1 }, { col, row }) {
   if (!within(0.5, 0.25)) return 'outside';
   return within(-0.25, -0.125) ? 'inside' : 'border';
 }
+
+// An offset for a rect, cut short so the rect stays on a cols x rows grid (rows in cells).
+export function clampOffset({ c0, r0, c1, r1 }, dc, dr, cols, rows) {
+  return { dc: Math.max(0 - c0, Math.min(cols - 1 - c1, dc)), dr: Math.max(0 - r0, Math.min(rows - 1 - r1, dr)) };
+}
