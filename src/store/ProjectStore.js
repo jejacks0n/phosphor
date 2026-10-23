@@ -37,6 +37,8 @@ export const useProjectStore = defineStore('project', {
     renderer: markRaw(new Renderer()),
     paintLayer: null, // PaintLayer (markRaw); hasPaint mirrors paintLayer.hasPaint for reactivity
     baseLayer: null,  // the base layer's own pixels: a PaintLayer at grid resolution (markRaw), over the image
+    fit: null,        // where the image sits in the grid ({ dx, dy, dw, dh }); fixed while the edit layer has content
+    paintScale: null, // the paint layer's scale from a loaded file (its saved paint is at that scale)
     editCells: shallowRef(new Map()), // the edit cells (see document/editCells.js)
     baseRecords: shallowRef(EMPTY_BASE), // the base layer's pinned characters (see document/baseRecords.js)
 
@@ -58,7 +60,7 @@ export const useProjectStore = defineStore('project', {
   getters: {
     canUndo: (state) => state.historyVersion >= 0 && state.history.canUndo,
     canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo,
-    hasEdits: (state) => state.editCells.size > 0 || state.hasPaint,
+    hasEdits: (state) => state.editCells.size > 0 || state.hasPaint, // anything on the edit layer (a grid resize is then a canvas resize)
     isDirty: (state) => settingsJson(state) !== state.savedSettings || state.editVersion !== state.savedEditVersion,
     imageRatio: (state) => {
       if (!state.image) return 1;
@@ -67,14 +69,14 @@ export const useProjectStore = defineStore('project', {
       return w / h;
     },
     maxCols: (state) => {
-      if (!state.aspectLock || !state.image) return MAX_DIMENSION;
+      if (!state.aspectLock || !state.image || state.editCells.size > 0 || state.hasPaint) return MAX_DIMENSION;
       const w = state.image.naturalWidth || state.image.width || 1;
       const h = state.image.naturalHeight || state.image.height || 1;
       const ratio = w / h;
       return Math.ceil(Math.min(MAX_DIMENSION, MAX_DIMENSION * ratio));
     },
     maxRows: (state) => {
-      if (!state.aspectLock || !state.image) return MAX_DIMENSION;
+      if (!state.aspectLock || !state.image || state.editCells.size > 0 || state.hasPaint) return MAX_DIMENSION;
       const w = state.image.naturalWidth || state.image.width || 1;
       const h = state.image.naturalHeight || state.image.height || 1;
       const ratio = w / h;
@@ -85,6 +87,7 @@ export const useProjectStore = defineStore('project', {
       chars: state.renderStyle === 'ansi' ? state.chars : state.charsAscii,
       charMode: state.renderStyle === 'ansi' ? 'random' : 'brightness',
       image: state.image,
+      fit: state.fit,
     }),
   },
 
@@ -147,6 +150,8 @@ export const useProjectStore = defineStore('project', {
       this.renderer.reset();
       this.activePalette = [];
       this.$patch({
+        fit: null,
+        paintScale: null,
         ...patch,
         image: shallowRef(image),
         imageBuffer,
@@ -158,14 +163,10 @@ export const useProjectStore = defineStore('project', {
       this.newDocument();
     },
 
-    // The base layer's records, kept in step with the renderer's copy. They belong to the grid they
-    // were made on (render() remaps them when the grid changes); onGrid marks them as made on the
-    // current one (a new image, a load, a remap), so an edit between a grid change and that render
-    // doesn't relabel old-grid records.
-    setBaseRecords(records, { onGrid = false } = {}) {
+    // The base layer's records, kept in step with the renderer's copy.
+    setBaseRecords(records) {
       this.baseRecords = records;
       this.renderer.baseRecords = records;
-      if (onGrid || !this._baseGrid) this._baseGrid = { cols: this.cols, rows: this.rows };
     },
 
     // The current settings and edits are what's on disk (or there's nothing to lose).
@@ -180,6 +181,7 @@ export const useProjectStore = defineStore('project', {
       this.$patch({
         image: null,
         imageBuffer: null,
+        fit: null,
         filename: null,
         cells: [],
         renderedCells: [],
@@ -195,7 +197,7 @@ export const useProjectStore = defineStore('project', {
     // A fresh document: no base records or pixels, no history, and the selection (and the Picker's
     // last pick) dropped.
     newDocument() {
-      this.setBaseRecords(EMPTY_BASE, { onGrid: true });
+      this.setBaseRecords(EMPTY_BASE);
       this.renderer.baseLayer = null;
       this._stroke = null;
       this.clearHistory();
@@ -207,7 +209,7 @@ export const useProjectStore = defineStore('project', {
       if (!this.image || !this.imageBuffer) return;
       this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
-      const settings = Object.fromEntries([...SAVED_KEYS, 'hasPaint'].map(key => [key, this[key]]));
+      const settings = { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit'].map(key => [key, this[key]])), paintScale: this.paintLayer?.scale ?? null };
       const blob = await writeProject({
         settings,
         imageBuffer: this.imageBuffer,
@@ -231,16 +233,26 @@ export const useProjectStore = defineStore('project', {
 
         this.replaceImage(image, imageBuffer, { ...settings, filename: file.name.replace(PROJECT_EXTENSION, '') });
         this.editCells = editCells;
-        this.setBaseRecords(baseRecords, { onGrid: true });
+        this.setBaseRecords(baseRecords);
         if (paint) {
           this.ensureLayer();
-          this.paintLayer.load(paint, { width: image.naturalWidth, height: image.naturalHeight }, this.getFitParams(this.cols, this.rows));
+          // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
+          // files: paint at the image's size or the grid's.
+          if (settings.paintScale) this.paintLayer.extend(Math.round(paint.width / this.paintLayer.scale), Math.round(paint.height / this.paintLayer.scale));
+          this.paintLayer.load(paint, settings.paintScale ? null : { width: image.naturalWidth, height: image.naturalHeight }, this.fit);
           this.hasPaint = this.paintLayer.hasPaint;
           if (migrated) this.keepMigratedLook();
         }
         if (basePixels) {
           this.ensureLayer();
+          this.baseLayer.extend(basePixels.width, basePixels.height);
           this.baseLayer.load(basePixels);
+        }
+        // Both layers reach as far as either was saved (they're extended together from here on).
+        if (this.paintLayer) {
+          const cols = Math.max(this.paintLayer.cols, this.baseLayer.cols), rows = Math.max(this.paintLayer.rows, this.baseLayer.rows);
+          this.paintLayer.extend(cols, rows);
+          this.baseLayer.extend(cols, rows);
         }
         // Files from before the base had its own pixels kept erased cells as a record: erase them
         // now (as part of loading, not an edit).
@@ -309,7 +321,7 @@ export const useProjectStore = defineStore('project', {
       let cols = Math.min(MAX_DIMENSION, num);
       let rows = this.rows;
 
-      if (this.aspectLock && this.imageRatio) {
+      if (this.aspectLock && this.imageRatio && !this.hasEdits) {
         rows = Math.ceil(cols / this.imageRatio);
         if (rows > MAX_DIMENSION) {
           rows = MAX_DIMENSION;
@@ -330,7 +342,7 @@ export const useProjectStore = defineStore('project', {
       let rows = Math.min(MAX_DIMENSION, num);
       let cols = this.cols;
 
-      if (this.aspectLock && this.imageRatio) {
+      if (this.aspectLock && this.imageRatio && !this.hasEdits) {
         cols = Math.round(rows * this.imageRatio);
         if (cols > MAX_DIMENSION) {
           cols = MAX_DIMENSION;
@@ -344,34 +356,40 @@ export const useProjectStore = defineStore('project', {
       });
     },
 
-    // Create the paint and base pixel layers on first use, or remap them when the grid size changed.
-    // The base layer's pixels are grid pixels (scale 1), and keep hard edges when remapped.
+    // Create the paint and base pixel layers on first use, and follow grid changes. With anything on
+    // the edit layer, a grid change is a canvas resize: the image and every layer stay where they
+    // are, and the grid gains or loses cells at the right and bottom (what's past the edge is kept,
+    // for when it grows back). Otherwise it rescales: the image refits the grid, and the base's own
+    // pixels (grid pixels, scale 1, hard-edged) and pins move with it.
     ensureLayer() {
       if (!this.image) return;
+      const { cols, rows } = this;
       if (!this.paintLayer) {
         const sw = this.image.naturalWidth || this.image.width;
         const sh = this.image.naturalHeight || this.image.height;
-        this.paintLayer = markRaw(new PaintLayer({ cols: this.cols, rows: this.rows, scale: editScaleFor(sw, sh, this.cols, this.rows) }));
-        this.baseLayer = markRaw(new PaintLayer({ cols: this.cols, rows: this.rows, scale: 1, smooth: false }));
+        this.fit ??= this.fitFor(cols, rows);
+        this.paintLayer = markRaw(new PaintLayer({ cols, rows, scale: this.paintScale ?? editScaleFor(sw, sh, cols, rows) }));
+        this.baseLayer = markRaw(new PaintLayer({ cols, rows, scale: 1, smooth: false }));
         this.renderer.baseLayer = this.baseLayer;
-      } else if (this.paintLayer.cols !== this.cols || this.paintLayer.rows !== this.rows) {
-        const oldFit = this.getFitParams(this.paintLayer.cols, this.paintLayer.rows), newFit = this.getFitParams(this.cols, this.rows);
-        this.paintLayer.resize(this.cols, this.rows, oldFit, newFit);
-        this.baseLayer.resize(this.cols, this.rows, oldFit, newFit);
-        // Recorded edits are in the old layer's pixel coordinates; they can't be replayed onto the remapped layer.
-        this.dropEdits();
+        this._layerGrid = { cols, rows };
+        return;
       }
-    },
-
-    // After a grid change, move the base records with the picture (as ensureLayer moves the paint).
-    // Like the paint's, the history can't be replayed onto the new grid, so it's cleared.
-    remapBaseRecords() {
-      const from = this._baseGrid;
-      if (!from || (from.cols === this.cols && from.rows === this.rows)) return;
-      const records = this.baseRecords;
-      const moved = remapBaseRecords(records, resizeTransform(this.getFitParams(from.cols, from.rows), this.getFitParams(this.cols, this.rows)), this.cols, this.rows);
-      this.setBaseRecords(moved, { onGrid: true });
-      if (moved !== records) this.dropEdits();
+      if (this._layerGrid.cols === cols && this._layerGrid.rows === rows) return;
+      this._layerGrid = { cols, rows };
+      this.commitPending(); // an open edit (a typing run) was recorded on the old layers
+      if (this.hasEdits) {
+        const kept = this.paintLayer.extend(cols, rows);
+        this.baseLayer.extend(cols, rows);
+        if (!kept) this.dropEdits(); // the paint had to be resampled, so recorded strokes no longer fit
+        return;
+      }
+      // Recorded edits are in the old layers' pixel coordinates; they can't be replayed onto remapped ones.
+      const oldFit = this.fit, newFit = this.fitFor(cols, rows);
+      this.paintLayer.resize(cols, rows, oldFit, newFit);
+      this.baseLayer.resize(cols, rows, oldFit, newFit);
+      this.setBaseRecords(remapBaseRecords(this.baseRecords, resizeTransform(oldFit, newFit), cols, rows));
+      this.fit = newFit;
+      this.dropEdits();
     },
 
     // The grid changed under the history: forget it and the open edit.
@@ -380,9 +398,9 @@ export const useProjectStore = defineStore('project', {
       this.clearHistory();
     },
 
-    getFitParams(w, h) {
-      if (!this.image) return { dx: 0, dy: 0, dw: w, dh: h };
-      return fitRect(this.image.naturalWidth || this.image.width, this.image.naturalHeight || this.image.height, w, h);
+    // Where the image fits a cols x rows grid.
+    fitFor(cols, rows) {
+      return fitRect(this.image.naturalWidth || this.image.width, this.image.naturalHeight || this.image.height, cols, rows);
     },
 
     // Full re-render on the next frame (calls in the same frame coalesce).
@@ -393,7 +411,6 @@ export const useProjectStore = defineStore('project', {
         this._renderQueued = false;
         if (!this.image) return;
         this.ensureLayer();
-        this.remapBaseRecords();
         this.renderedCells = await this.renderer.render(this.image, this.processParams, this.paintLayer, baseParams(this.processParams));
         this.activePalette = this.renderer.palette;
         this.applyEditCells();
@@ -701,7 +718,7 @@ export const useProjectStore = defineStore('project', {
 
     pasteAt(block, col, row) {
       if (block.cells) this.editCells = pasteBlock(this.editCells, { w: block.w, h: block.h, entries: block.cells }, col, row, this.cols, charRowsOf(this.rows));
-      if (block.paint) this.paintLayer.pasteCells(block.paint, col, row, block.w, block.h);
+      if (block.paint) this.paintLayer.pasteCells(block.paint, col, row, block.w, block.h, this.gridRect());
       if (block.base) this.pasteBase(block, col, row);
     },
 
@@ -710,7 +727,7 @@ export const useProjectStore = defineStore('project', {
     pasteBase({ w, h, base }, col, row) {
       const rect = this.clipRect({ c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 });
       if (!rect) return;
-      this.baseLayer.pasteCells(base.pixels, col, row, w, h);
+      this.baseLayer.pasteCells(base.pixels, col, row, w, h, rect);
       const pins = base.pins.map((char, i) => ({ col: col + (i % w), row: row + Math.floor(i / w), char }))
         .filter(({ col: c, row: r }) => c >= rect.c0 && c <= rect.c1 && r >= rect.r0 && r <= rect.r1);
       this.setBaseRecords(withPins(withoutPins(this.baseRecords, pins.filter(p => !p.char)), pins.filter(p => p.char)));
@@ -823,6 +840,7 @@ export const useProjectStore = defineStore('project', {
       if (!pixels.length) return;
       this.editCells = next;
       this.paintLayer.erase(pixels);
+      this.paintLayer.recheckPaint();
       this.hasPaint = this.paintLayer.hasPaint;
     },
 
@@ -858,6 +876,7 @@ export const useProjectStore = defineStore('project', {
       this._stroke = null;
       const patch = this.paintLayer?.endStroke();
       const basePatch = this.baseLayer?.endStroke();
+      this.hasPaint = this.paintLayer?.hasPaint ?? false; // an erase may have left none
       if (!stroke || (!patch && !basePatch && stroke.editCells === this.editCells && stroke.baseRecords === this.baseRecords)) return;
 
       const sides = { before: [stroke.editCells, stroke.baseRecords], after: [this.editCells, this.baseRecords] };
@@ -916,9 +935,13 @@ export const useProjectStore = defineStore('project', {
       const rows = charRowsOf(this.rows);
       const shownChar = (col, row) => this.cells[cellIndex(col, row, this.cols)]?.char;
       const merged = [];   // { col, row, top, bottom, char }: edit cells, under the paint
+      const offGrid = new Map(); // edit cells past the grid (after a canvas resize shrank it) stay on the edit layer
       for (const [key, entry] of this.editCells) {
         const { col, row } = parseKey(key);
-        if (col >= this.cols || row >= rows) continue;
+        if (col >= this.cols || row >= rows) {
+          offGrid.set(key, entry);
+          continue;
+        }
         const cell = { ...this.baseCellAt(col, row), ...entry };
         const char = shownChar(col, row) ?? cell.char;
         // Color ASCII shows only the foreground (on black) and rebuilds it as the halves' average.
@@ -937,7 +960,7 @@ export const useProjectStore = defineStore('project', {
       this.baseLayer.paint(pixels);
       this.baseLayer.drawOver(this.paintLayer);
       const pins = [...merged.map(({ col, row, char }) => ({ col, row, char })), ...paintedPins];
-      const after = { base: this.baseLayer.snapshot(), paint: null, editCells: new Map(), baseRecords: withPins(before.baseRecords, pins) };
+      const after = { base: this.baseLayer.snapshot(), paint: null, editCells: offGrid, baseRecords: withPins(before.baseRecords, pins) };
       const apply = ({ base, paint, editCells, baseRecords }) => {
         this.baseLayer.restore(base);
         this.paintLayer.restore(paint);

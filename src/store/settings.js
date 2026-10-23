@@ -4,7 +4,7 @@ import { generateSlug } from 'random-word-slugs';
 // Every persisted project setting, declared once. Order within the transform, adjust and effects
 // groups is the ControlPanel's on-screen order. Storage keys must never change: they hold users' settings.
 export const SETTINGS = [
-  { key: 'cols', default: 80, group: 'setup', label: 'Dimensions', help: 'Target output width (columns) and height (rows).' },
+  { key: 'cols', default: 80, group: 'setup', label: 'Dimensions', help: 'Target output width (columns) and height (rows). Before you draw, resizing re-converts the image at the new size; once the edit layer has content, it adds or removes cells at the right and bottom instead.' },
   { key: 'rows', default: 50, group: 'setup' },
   { key: 'aspectLock', default: true, group: 'setup', pipeline: false },
   { key: 'renderStyle', default: 'ansi', group: 'setup', help: "'ANSI' uses both foreground and background colors for maximum detail. 'Color ASCII' uses characters on a black background. 'ASCII' is monochrome art." },

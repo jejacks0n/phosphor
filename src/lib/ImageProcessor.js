@@ -58,7 +58,8 @@ export async function processImage(image, params) {
   // a fractional ratio lets cells straddle pixels and blurs merged paint into its neighbors.
   // m comes from the grid (not the fit), so an image that fills the grid gets the same m as its fit.
   const maxDim = 400;
-  const { dx, dy, dw, dh } = fitRect(sw, sh, cols, rows);
+  // Where the image sits in the grid: params.fit when it's fixed (a canvas resize), else fitted.
+  const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows);
   const m = Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
   let pw = dw * m;
   let ph = dh * m;
@@ -97,7 +98,7 @@ export async function processImage(image, params) {
   canvas.resize(cols, rows);
   canvas.ctx.imageSmoothingEnabled = true;
   canvas.ctx.imageSmoothingQuality = smoothing;
-  // Fit by the image's natural aspect (same fitRect as the store's getFitParams), not pw x ph
+  // Fit by the image's natural aspect (the store's fit), not pw x ph
   canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
   canvas.loadPixels();
 

@@ -100,6 +100,15 @@ paint. **Base** swaps the two halves of each cell's base colours. With both on, 
 
 ## When the grid changes
 
-Changing the grid size keeps the picture where it is relative to the canvas: paint, the base's
-own pixels (keeping their hard edges) and pinned characters move with it. (Edit cells stay at the
-same column and row.)
+What a new grid size does depends on the edit layer:
+
+- **With anything on the edit layer** (typed cells, shapes, paint), resizing is a **canvas
+  resize**. The picture and everything on it stay exactly where they are; columns and rows are
+  added or removed at the right and bottom. What a shrink cuts off isn't lost: it comes back when
+  you make the grid bigger again, and it's saved with the project. The aspect-ratio lock is off
+  while this applies.
+- **With nothing on the edit layer**, resizing **rescales**: the image is converted again at the
+  new size. Base edits (erased, moved or merged-down pixels, pinned characters) scale with it, the
+  pixels as hard-edged blocks and each pinned character to the cell over where it was.
+
+Clearing or erasing everything on the edit layer brings rescaling back.

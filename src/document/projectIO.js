@@ -6,6 +6,7 @@
  */
 import { serializeEditCells, deserializeEditCells, migrateCharEdits } from './editCells.js';
 import { EMPTY_BASE, serializeBase, deserializeBase } from './baseRecords.js';
+import { MAX_LAYER_DIM } from './PaintLayer.js';
 
 export const PROJECT_EXTENSION = '.phosphor';
 const MAGIC_HEADER = 'PHOSPHOR';
@@ -50,6 +51,12 @@ export async function readProject(file) {
   let offset = 20;
   const { cellEdits, charEditMap, hasPaint, base, baseLength, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
   delete settings.charMode; // older files stored a charMode that's now derived from renderStyle
+  // Untrusted: a fit is four numbers with a size, and a paint scale a whole number, both small
+  // enough to draw (a layer stays within MAX_LAYER_DIM pixels a side).
+  const { fit, paintScale } = settings;
+  const size = Math.max(1, settings.cols | 0, settings.rows | 0);
+  if (!(fit && ['dx', 'dy', 'dw', 'dh'].every(k => Number.isFinite(fit[k]) && Math.abs(fit[k]) <= MAX_LAYER_DIM) && fit.dw > 0 && fit.dh > 0)) delete settings.fit;
+  if (!(Number.isInteger(paintScale) && paintScale > 0 && paintScale * size <= MAX_LAYER_DIM)) delete settings.paintScale;
   const imageBuffer = buffer.slice(offset, offset += imageLen);
   const paint = buffer.slice(offset, offset += paintLen);
   const baseBuffer = Number.isInteger(baseLength) && baseLength > 0 ? buffer.slice(offset, offset + baseLength) : null;

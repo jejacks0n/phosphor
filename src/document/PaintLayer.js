@@ -1,6 +1,7 @@
 /**
- * The paint layer: a transparent canvas covering the whole grid at an integer number of pixels
- * per grid cell (scale), so each cell is a whole scale x scale block. Cell bounds use the same
+ * The paint layer: a transparent canvas covering the grid (and, after a canvas resize shrank the
+ * grid, what's past its right and bottom edges) at an integer number of pixels per grid cell
+ * (scale), so each cell is a whole scale x scale block. cols x rows is the layer's extent. Cell bounds use the same
  * floor partition as the pipeline's box filter (Canvas.drawManual), so paint never bleeds into
  * neighbouring cells once merged.
  *
@@ -29,8 +30,9 @@ export function resizeTransform(oldFit, newFit) {
   return { offsetX: newFit.dx - oldFit.dx * scaleX, offsetY: newFit.dy - oldFit.dy * scaleY, scaleX, scaleY };
 }
 
-// Where a saved paint PNG goes on load. Current saves store the whole grid-sized layer; older
-// saves stored paint at the source image's size, aligned to the image (which sits at `fit`).
+// Where a saved paint PNG goes on load, for files saved before the paint scale was: those stored
+// the grid-sized layer, or (older still) paint at the source image's size, aligned to the image
+// (which sits at `fit`). Current saves are the whole layer at its scale.
 export function savedPaintRect(paint, image, fit, scale, layerWidth, layerHeight) {
   if (paint.width === image.width && paint.height === image.height) {
     return { x: fit.dx * scale, y: fit.dy * scale, w: fit.dw * scale, h: fit.dh * scale };
@@ -46,7 +48,7 @@ const newCanvas = (w, h) => {
 };
 
 export default class PaintLayer {
-  #stroke = null; // { tiles: Map<'x,y', { x, y, w, h, before }>, hadPaint } while recording
+  #stroke = null; // { tiles: Map<'x,y', { x, y, w, h, before }>, hadPaint, erased } while recording
 
   // smooth: a grid resize resamples smoothly (paint) or keeps hard pixel edges (the base layer's pixels).
   constructor({ cols, rows, scale, smooth = true }) {
@@ -132,7 +134,7 @@ export default class PaintLayer {
     if (!rects.length || !this.hasPaint) return null;
     const bounds = unionRect(rects);
     if (!this.#anyPaint(bounds)) return null;
-    this.#record(bounds);
+    this.#record(bounds, { erasing: true });
     const ctx = ctx2d(this.canvas);
     for (const { x, y, w, h } of rects) ctx.clearRect(x, y, w, h);
     return bounds;
@@ -157,15 +159,21 @@ export default class PaintLayer {
 
   // Replace the paint over w x h cells at (col, row) with a copied block, scaled to this layer (so
   // a block copied before a grid resize still fits) and clipped to it.
-  pasteCells(block, col, row, w, h) {
+  // clip: a cell rect the paste stays inside (the grid, so nothing lands unseen past its edge).
+  pasteCells(block, col, row, w, h, clip = { c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 }) {
     const k = this.scale;
-    const target = this.#layerRect({ c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 });
+    const target = this.#layerRect({ c0: Math.max(col, clip.c0), r0: Math.max(row, clip.r0), c1: Math.min(col + w - 1, clip.c1), r1: Math.min(row + h - 1, clip.r1) });
     if (!target) return;
-    this.#record(target);
+    this.#record(target, { erasing: true });
     const ctx = ctx2d(this.canvas);
     ctx.clearRect(target.x, target.y, target.w, target.h);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(target.x, target.y, target.w, target.h);
+    ctx.clip();
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(block, col * k, 2 * row * k, w * k, 2 * h * k);
+    ctx.restore();
     if (!this.hasPaint) this.hasPaint = this.#anyPaint(target);
   }
 
@@ -173,7 +181,7 @@ export default class PaintLayer {
   eraseCells(rect) {
     const target = this.#layerRect(rect);
     if (!target || !this.hasPaint || !this.#anyPaint(target)) return;
-    this.#record(target);
+    this.#record(target, { erasing: true });
     ctx2d(this.canvas).clearRect(target.x, target.y, target.w, target.h);
   }
 
@@ -194,6 +202,26 @@ export default class PaintLayer {
   colorAt(x, y) {
     const p = this.pixelAt(x, y);
     return p && { r: p.r, g: p.g, b: p.b };
+  }
+
+  // Grow the layer to cover at least cols x rows grid pixels, keeping its content where it is (a
+  // canvas resize: what's past the grid's edge stays, for when the grid grows back). Returns false
+  // when the scale had to drop to stay under MAX_LAYER_DIM: the content was resampled, so recorded
+  // strokes no longer fit it.
+  extend(cols, rows) {
+    cols = Math.max(this.cols, cols);
+    rows = Math.max(this.rows, rows);
+    if (cols === this.cols && rows === this.rows) return true;
+    const scale = Math.min(this.scale, editScaleFor(Infinity, Infinity, cols, rows));
+    const next = newCanvas(cols * scale, rows * scale);
+    const ctx = ctx2d(next);
+    ctx.imageSmoothingEnabled = this.smooth;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(this.canvas, 0, 0, this.cols * scale, this.rows * scale);
+    const kept = scale === this.scale;
+    Object.assign(this, { cols, rows, scale, canvas: next });
+    this.#stroke = null;
+    return kept;
   }
 
   // Remap paint to a new grid size so it stays on the same part of the image.
@@ -217,10 +245,11 @@ export default class PaintLayer {
   }
 
   // Another layer drawn over this one, a grid pixel at a time as the Renderer shows it (Merge down).
+  // Both are in grid pixels from the same origin, whatever their scales and extents.
   drawOver(layer) {
     const ctx = ctx2d(this.canvas);
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(layer.canvas, 0, 0, this.canvas.width, this.canvas.height);
+    ctx.drawImage(layer.canvas, 0, 0, layer.cols * this.scale, layer.rows * this.scale);
     this.hasPaint ||= layer.hasPaint;
   }
 
@@ -248,14 +277,16 @@ export default class PaintLayer {
   }
 
   beginStroke() {
-    this.#stroke = { tiles: new Map(), hadPaint: this.hasPaint };
+    this.#stroke = { tiles: new Map(), hadPaint: this.hasPaint, erased: false };
   }
 
-  // Finish recording; null when the stroke changed nothing.
+  // Finish recording; null when the stroke changed nothing. A stroke that erased may have left no
+  // paint at all, so hasPaint is checked again.
   endStroke() {
     const stroke = this.#stroke;
     this.#stroke = null;
     if (!stroke || !stroke.tiles.size) return null;
+    if (stroke.erased) this.recheckPaint();
     const ctx = ctx2d(this.canvas);
     const tiles = [...stroke.tiles.values()].map(({ x, y, w, h, before }) => ({ x, y, before, after: ctx.getImageData(x, y, w, h) }));
     return { tiles, hadPaint: stroke.hadPaint, hasPaint: this.hasPaint };
@@ -282,9 +313,22 @@ export default class PaintLayer {
     this.hasPaint = !!snapshot && snapshot.hasPaint;
   }
 
-  // Save the prior pixels of tiles this stroke hasn't touched yet.
-  #record(rect) {
+  // After erasing: whether any paint is left, sampled a grid pixel at a time as the Renderer
+  // draws it (paint covers whole grid pixels).
+  recheckPaint() {
+    if (!this.hasPaint) return;
+    const ctx = ctx2d(newCanvas(this.cols, this.rows));
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.canvas, 0, 0, this.cols, this.rows);
+    const { data } = ctx.getImageData(0, 0, this.cols, this.rows);
+    for (let i = 3; i < data.length; i += 4) if (data[i]) return;
+    this.hasPaint = false;
+  }
+
+  // Save the prior pixels of tiles this stroke hasn't touched yet (erasing: it removes paint).
+  #record(rect, { erasing = false } = {}) {
     if (!this.#stroke) return;
+    if (erasing) this.#stroke.erased = true;
     const ctx = ctx2d(this.canvas);
     for (const tile of tilesForRect(rect, this.canvas.width, this.canvas.height)) {
       const key = `${tile.x},${tile.y}`;

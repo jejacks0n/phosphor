@@ -49,7 +49,7 @@ export default class Renderer {
     // Underlying colours depend only on the image, grid, smoothing, effects and CGA/VGA, so colour
     // adjustments don't redo this.
     const sp = baseParams ?? {};
-    const sourceKey = [params.cols, params.rows, params.smoothing, sp.quantize, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness].join();
+    const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness].join();
     if (baseParams && (this.#source?.image !== image || this.#source.key !== sourceKey)) {
       const { canvas: source } = await processImage(image, baseParams);
       this.#source = { image, key: sourceKey, data: ctx2d(source.canvas).getImageData(0, 0, params.cols, params.rows) };
@@ -127,7 +127,7 @@ export default class Renderer {
     const scratchCtx = ctx2d(this.#scratch);
     scratchCtx.clearRect(0, 0, w, h);
     scratchCtx.imageSmoothingEnabled = false;
-    scratchCtx.drawImage(layer.canvas, 0, 0, w, h);
+    scratchCtx.drawImage(layer.canvas, 0, 0, w * layer.scale, h * layer.scale, 0, 0, w, h); // the grid's part (a layer can reach past it)
 
     if (needsTransform) {
       const id = scratchCtx.getImageData(0, 0, w, h);
