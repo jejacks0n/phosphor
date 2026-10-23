@@ -185,7 +185,7 @@ function confirmFlatten() {
                 class="choice"
                 :class="{ on: workspace[option.key] === choice.value }"
                 @click="workspace[option.key] = choice.value"
-            ><span class="glyph">{{ choice.glyph }}</span>{{ choice.label }}</button>
+            ><span class="glyph">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span>{{ choice.label }}</button>
           </DropdownMenu>
           <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
         </template>
