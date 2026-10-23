@@ -73,6 +73,7 @@ button.key {
   flex-direction: column;
   align-items: center;
   width: 30px;
+  margin-top: -2px;
   padding: 0;
   border: none;
   border-radius: 4px;
