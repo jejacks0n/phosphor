@@ -218,7 +218,7 @@ onBeforeUnmount(() => {
             @dblclick="use(p.id); startEditing()"
         >
           <div class="name"><span>{{ p.name }}</span><em>{{ p.glyphs.every(g => !g || isCp437(g)) ? '' : 'UTF-8' }}</em></div>
-          <div class="glyphs"><template v-for="(g, i) in p.glyphs" :key="i"><span v-if="g">{{ g }}</span><i v-else>·</i></template></div>
+          <div class="glyphs"><span v-for="(g, i) in p.glyphs" :key="i" class="glyph-cell" :class="{ empty: !g }">{{ g || '·' }}</span></div>
         </div>
         <div class="group">Yours<button class="new" @click="createPalette">＋ New</button></div>
         <div
@@ -230,7 +230,7 @@ onBeforeUnmount(() => {
             @dblclick="use(p.id); startEditing()"
         >
           <div class="name"><span>{{ p.name }}</span></div>
-          <div class="glyphs"><template v-for="(g, i) in p.glyphs" :key="i"><span v-if="g">{{ g }}</span><i v-else>·</i></template></div>
+          <div class="glyphs"><span v-for="(g, i) in p.glyphs" :key="i" class="glyph-cell" :class="{ empty: !g }">{{ g || '·' }}</span></div>
         </div>
       </div>
       <div class="foot">
@@ -273,7 +273,7 @@ onBeforeUnmount(() => {
             @drop.prevent="onDrop($event, i)"
         >
           <small>F{{ i + 1 }}</small>
-          <span class="glyph">{{ g }}&nbsp;</span>
+          <span class="glyph-cell">{{ g || ' ' }}</span>
           <button v-if="g" class="clear" title="Clear" aria-label="Clear slot" @click.stop="assign(i, '', false)">×</button>
           <span v-if="g && !isCp437(g)" class="badge">UTF-8</span>
         </div>
@@ -304,7 +304,7 @@ onBeforeUnmount(() => {
                 @mouseenter="onGlyphHover(char)"
                 @dragstart="onDragStart($event, `glyph:${char}`)"
                 @click="pickGlyph(char)"
-            >{{ char }}</button>
+            ><span class="glyph-cell">{{ char || ' ' }}</span></button>
           </div>
         </div>
         <div class="legend"><span class="l1">already in this palette</span><span class="l2">not CP437 (.ans export warns)</span><span class="l3">doesn't fit one cell</span></div>
@@ -322,7 +322,7 @@ div.palette-layer {
   z-index: 300;
   display: flex;
   width: 300px;
-  max-width: calc(100vw - 32px);
+  max-width: 100%; /* the toolbar's width: never wider than the space it opens in */
   max-height: min(560px, calc(100vh - 160px));
   background: var(--surface-1);
   border: 1px solid var(--accent);
@@ -443,16 +443,13 @@ div.row.active div.name span::before {
 }
 
 div.row div.glyphs {
+  display: flex;
+  gap: 5px;
   margin-top: 1px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
-  letter-spacing: 5px;
-  white-space: nowrap;
   overflow: hidden;
 }
 
-div.row div.glyphs i {
-  font-style: normal;
+div.row div.glyphs .empty {
   color: #555;
 }
 
@@ -534,10 +531,8 @@ div.slot small {
   color: var(--text-muted);
 }
 
-div.slot span.glyph {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 26px;
-  line-height: 32px;
+div.slot .glyph-cell {
+  margin-top: 6px;
 }
 
 div.slot.target {
@@ -670,9 +665,6 @@ button.g {
   border-radius: 0;
   background: var(--surface-0);
   color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 16px;
-  line-height: 24px;
 }
 
 button.g:hover:not(:disabled) {
@@ -703,8 +695,11 @@ button.g.utf::before {
 
 button.g.bad {
   color: #444;
-  text-decoration: line-through;
   cursor: not-allowed;
+}
+
+button.g.bad .glyph-cell {
+  text-decoration: line-through;
 }
 
 div.legend {

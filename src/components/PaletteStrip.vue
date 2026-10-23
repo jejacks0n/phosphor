@@ -33,8 +33,7 @@ const use = (glyph) => {
           @click="use(glyph)"
       >
         <small>F{{ i + 1 }}</small>
-        <span v-if="glyph">{{ glyph }}</span>
-        <span v-else>&nbsp;</span>
+        <span class="glyph-cell">{{ glyph || ' ' }}</span>
       </button>
     </div>
     <div class="spacer"></div>
@@ -83,12 +82,6 @@ button.key small {
   display: block;
   font-size: 8px;
   color: var(--text-muted);
-}
-
-button.key span {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 16px;
-  line-height: 18px;
 }
 
 button.key.empty {
