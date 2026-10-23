@@ -23,7 +23,7 @@ import text from './text';
 import select from './select';
 import shapes from './shapes';
 
-export const TOOLS = [pencil, brush, eraser, bucket, picker, hand, zoom, text, flip, select, shapes];
+export const TOOLS = [pencil, brush, eraser, bucket, shapes, picker, hand, zoom, text, flip, select];
 
 const BY_ID = new Map(TOOLS.map(tool => [tool.id, tool]));
 const NONE = { id: 'none', kind: 'none', views: [] };
