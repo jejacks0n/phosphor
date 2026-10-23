@@ -336,6 +336,43 @@ div.palette-layer.editing {
   width: 940px;
 }
 
+/* Editing needs 940px and its full height; where the toolbar can't give it that, it takes the
+   whole window. On phone widths the list sits above the editor. */
+@media (max-width: 1240px), (max-height: 720px) {
+  div.palette-layer.editing {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    width: auto;
+    max-width: none;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    transition: none;
+  }
+}
+
+@media (max-width: 700px) {
+  div.palette-layer.editing {
+    flex-direction: column;
+  }
+
+  div.palette-layer.editing div.list-side {
+    width: auto;
+    max-height: 35vh;
+    border-right: none;
+    border-bottom: 1px solid var(--surface-3);
+  }
+
+  div.palette-layer.editing div.edit-side {
+    min-height: 0;
+  }
+
+  div.palette-layer.editing div.slots {
+    flex-wrap: wrap;
+  }
+}
+
 div.list-side {
   width: 300px;
   flex: none;
