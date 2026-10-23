@@ -41,7 +41,7 @@ function apply({ project, workspace, view }, end) {
 export default {
   id: 'shapes',
   title: 'Shapes',
-  icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M48 64h256v192H48zm40 40v112h176V104zm280 96a112 112 0 1 1 0 224 112 112 0 0 1 0-224zm0 40a72 72 0 1 0 0 144 72 72 0 0 0 0-144zM48 296h184v40H88v112H48z"/></svg>`,
+  icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M112 64H336A48 48 0 0 1 384 112V218.6A200 200 0 0 0 328 236.4V120H120V328H236.4A200 200 0 0 0 218.6 384H112A48 48 0 0 1 64 336V112A48 48 0 0 1 112 64ZM256 416A160 160 0 1 0 576 416A160 160 0 1 0 256 416Z"/></svg>`,
   views: ['input', 'output'],
   kind: 'paint',
   instant: true,
