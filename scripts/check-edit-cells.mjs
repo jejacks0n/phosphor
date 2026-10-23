@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   withCellEdit, mergeEntry, withoutCells, parseKey, serializeEditCells, deserializeEditCells, migrateCharEdits,
   normalizeRect, rectCells, pasteBlock, updateRect,
-  copyCellLayers, deleteCellLayers, selectionHit, clampOffset,
+  selectionHit, clampOffset,
 } from '../src/document/editCells.js';
 
 const m0 = new Map();
@@ -58,21 +58,6 @@ assert.equal(updateRect(big, { c0: 0, r0: 0, c1: 9, r1: 9 }, () => ({ char: '#' 
 const t0 = performance.now();
 updateRect(big, { c0: 0, r0: 0, c1: 299, r1: 149 }, (c, r, old) => ({ ...old, fg: '#ffffff' }));
 assert.ok(performance.now() - t0 < 250, 'whole-grid update should be one pass');
-// Layer-aware copy and delete (the Select tool's layer toggles).
-const L = (base, cells, paint = false) => ({ base, cells, paint });
-const img = () => ({ char: '#', fg: '#111111', bg: '#222222' });
-const m = new Map([['1,0', Object.freeze({ char: 'A' })]]);
-const r = { c0: 0, r0: 0, c1: 1, r1: 0 };
-assert.deepEqual(copyCellLayers(m, r, L(true, true), img), [img(), { char: 'A', fg: '#111111', bg: '#222222' }]);
-assert.deepEqual(copyCellLayers(m, r, L(true, false), img), [img(), img()]);
-assert.deepEqual(copyCellLayers(m, r, L(false, true), img), [null, { char: 'A' }]);
-assert.deepEqual(copyCellLayers(m, r, L(false, false), img), [null, null]);
-assert.ok(copyCellLayers(m, r, L(true, true), img).every(Object.isFrozen));
-assert.equal(deleteCellLayers(m, r, L(false, false)), m);
-assert.equal(deleteCellLayers(m, r, L(false, true)).size, 0);
-// The base layer is erased through its own records (baseRecords.js), not with blank edit cells.
-assert.equal(deleteCellLayers(m, r, L(true, false)), m);
-assert.equal(deleteCellLayers(m, r, L(true, true)).size, 0);
 // The selection's border band: ½ column / ¼ row outside, ¼ column / ⅛ row inside.
 const sel = { c0: 2, r0: 2, c1: 5, r1: 4 }; // edges x 2..6, y 2..5
 assert.equal(selectionHit(sel, { col: 4, row: 3.5 }), 'inside');

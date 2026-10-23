@@ -9,7 +9,7 @@ import PaintLayer, { editScaleFor, resizeTransform } from "@/document/PaintLayer
 import { EMPTY_BASE, withPins, withoutPins, remapBaseRecords } from "@/document/baseRecords.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
-import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, copyCellLayers, deleteCellLayers, BLANK } from "@/document/editCells.js";
+import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, BLANK } from "@/document/editCells.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, baseParams } from "@/store/settings.js";
@@ -199,13 +199,13 @@ export const useProjectStore = defineStore('project', {
       this.markSaved();
     },
 
-    // A fresh document: no base records, nothing being erased, no history, and the selection (and
+    // A fresh document: no base records, no base edits queued, no history, and the selection (and
     // the Picker's last pick) dropped.
     newDocument() {
       this.setBaseRecords(EMPTY_BASE, { onGrid: true });
-      this.renderer.erasing = new Set();
-      this._erasePending = new Set();
-      this._eraseFlushed = new Set();
+      this.renderer.baseEdits = new Map();
+      this._baseQueue = new Map(); // the open edit's base edits, 'col,row' -> 'erase' | 'flip', until it's committed
+      this._baseFlushed = new Set(); // cells whose queued edits are in the picture, until it renders
       this._stroke = null;
       this.clearHistory();
       const workspace = useWorkspaceStore();
@@ -372,10 +372,10 @@ export const useProjectStore = defineStore('project', {
       if (moved !== records) this.dropEdits();
     },
 
-    // The grid changed under the history: forget it, the open edit and any cells it was erasing.
+    // The grid changed under the history: forget it, the open edit and the base edits it queued.
     dropEdits() {
-      this._erasePending.forEach(key => this.renderer.erasing.delete(key));
-      this._erasePending.clear();
+      this._baseQueue.forEach((op, key) => this.renderer.baseEdits.delete(key));
+      this._baseQueue.clear();
       this._stroke = null;
       this.clearHistory();
     },
@@ -394,9 +394,9 @@ export const useProjectStore = defineStore('project', {
         if (!this.image) return;
         this.ensureLayer();
         this.remapBaseRecords();
-        // Cells erased into the picture are drawn from it from now on (unless they're being erased again).
-        this._eraseFlushed.forEach(key => this._erasePending.has(key) || this.renderer.erasing.delete(key));
-        this._eraseFlushed.clear();
+        // Base edits in the picture are drawn from it from now on (unless the cell is being edited again).
+        this._baseFlushed.forEach(key => this._baseQueue.has(key) || this.renderer.baseEdits.delete(key));
+        this._baseFlushed.clear();
         this.renderedCells = await this.renderer.render(this.image, this.processParams, this.paintLayer, baseParams(this.processParams));
         this.activePalette = this.renderer.palette;
         this.applyEditCells();
@@ -420,10 +420,12 @@ export const useProjectStore = defineStore('project', {
     },
 
     // The base layer's colour at grid pixel (x, y), as stored (before adjustments): a cell being
-    // erased has its blank colours (background on top, foreground below), else the picture's.
+    // erased has its blank colours (background on top, foreground below), one being flipped its
+    // other half's, else the picture's.
     baseColorAt(x, y) {
-      if (this.renderer.erasing.has(cellKey(x, Math.floor(y / 2)))) return y % 2 ? BLANK.fg : BLANK.bg;
-      return this.imageColorAt(x, y);
+      const op = this.renderer.baseEdits.get(cellKey(x, Math.floor(y / 2)));
+      if (op === 'erase') return y % 2 ? BLANK.fg : BLANK.bg;
+      return this.imageColorAt(x, op === 'flip' ? y ^ 1 : y);
     },
 
     // The image under grid pixel (x, y) before adjustments, as the pipeline downsamples it.
@@ -568,11 +570,11 @@ export const useProjectStore = defineStore('project', {
     // half, fg the bottom).
     baseCellAt(col, row) {
       const key = cellKey(col, row);
-      if (this.renderer.erasing.has(key)) return { ...BLANK };
+      if (this.renderer.baseEdits.get(key) === 'erase') return { ...BLANK };
       return {
         char: this.baseRecords.pins.get(key) ?? this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ',
-        bg: this.imageColorAt(col, 2 * row),
-        fg: this.imageColorAt(col, 2 * row + 1),
+        bg: this.baseColorAt(col, 2 * row),
+        fg: this.baseColorAt(col, 2 * row + 1),
       };
     },
 
@@ -581,31 +583,50 @@ export const useProjectStore = defineStore('project', {
     // stroke); effects then run on the black too (Edges outlines an erased patch). Part of the
     // current edit; the caller commits it.
     eraseBase(cells) {
-      const fresh = cells.filter(({ col, row }) => !this._erasePending.has(cellKey(col, row)));
+      this.queueBase(cells, 'erase');
+    },
+
+    // Flip the base layer in these cells: swap each cell's two halves (background and foreground).
+    // Shown at once, into the picture at the commit, like eraseBase.
+    flipBase(cells) {
+      this.queueBase(cells, 'flip');
+    },
+
+    // Queue base edits for the open edit; the renderer shows them until the picture does.
+    queueBase(cells, op) {
+      const fresh = cells.filter(({ col, row }) => !this._baseQueue.has(cellKey(col, row)));
       if (!fresh.length) return;
       this.ensureLayer();
       this.beginEdit();
       for (const { col, row } of fresh) {
-        this._erasePending.add(cellKey(col, row));
-        this.renderer.erasing.add(cellKey(col, row));
+        this._baseQueue.set(cellKey(col, row), op);
+        this.renderer.baseEdits.set(cellKey(col, row), op);
       }
       this.refreshCells(fresh.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
     },
 
-    // At a commit, the cells being erased go into the picture: black pixels, a pinned space.
-    flushErasing() {
-      if (!this._erasePending.size) return;
-      const cells = [...this._erasePending].map(parseKey);
-      this._erasePending.forEach(key => this._eraseFlushed.add(key));
-      this._erasePending.clear();
-      this.editBase(cellRuns(cells), (ctx, cellRect) => {
+    // At a commit, the queued base edits go into the picture: an erased cell is black with a pinned
+    // space; a flipped one has its halves swapped.
+    flushBase() {
+      if (!this._baseQueue.size) return;
+      const queued = [...this._baseQueue].map(([key, op]) => ({ ...parseKey(key), op }));
+      this._baseQueue.forEach((op, key) => this._baseFlushed.add(key));
+      this._baseQueue.clear();
+      this.editBase(cellRuns(queued), (ctx, cellRect) => {
         ctx.fillStyle = BLANK.bg;
-        for (const { col, row } of cells) {
+        for (const { col, row, op } of queued) {
           const { x, y, w, h } = cellRect(col, row);
-          ctx.fillRect(x, y, w, h);
+          if (op === 'erase') {
+            ctx.fillRect(x, y, w, h);
+            continue;
+          }
+          const top = ctx.getImageData(x, y, w, h / 2);
+          ctx.putImageData(ctx.getImageData(x, y + h / 2, w, h / 2), x, y);
+          ctx.putImageData(top, x, y + h / 2);
         }
       });
-      this.setBaseRecords(withPins(this.baseRecords, cells.map(c => ({ ...c, char: ' ' }))));
+      const erased = queued.filter(({ op }) => op === 'erase');
+      this.setBaseRecords(withPins(this.baseRecords, erased.map(({ col, row }) => ({ col, row, char: ' ' }))));
     },
 
     // Change the base picture inside cell rects: change(ctx, cellRect) draws on it, where
@@ -648,31 +669,46 @@ export const useProjectStore = defineStore('project', {
     },
 
     // Selection operations on the Select tool's layers: Layers = { base, edit }, where Edit is
-    // everything drawn (edit cells and paint, stored apart but one thing to the user), and Base
-    // is erased as black pixels with a pinned space (eraseBase) and copied as it shows (baseCellAt). Block =
-    // { w, h, cells?: (Entry | null)[], paint?: canvas }. Each change is one undo step; rects are
-    // clipped to the grid.
-    partsOf({ base, edit }) {
-      return { base, cells: edit, paint: edit };
-    },
+    // everything drawn (edit cells and paint, stored apart but one thing to the user), and Base is
+    // the picture's pixels and pins (the converter's own characters belong to their cells and stay).
+    // Each layer moves, copies and pastes as itself. Block = { w, h, cells?: (Entry | null)[],
+    // paint?: canvas, base?: { picture: canvas, pins: (char | null)[] } }. Each change is one undo
+    // step; rects are clipped to the grid.
 
     clipRect({ c0, r0, c1, r1 }) {
       const rect = { c0: Math.max(0, c0), r0: Math.max(0, r0), c1: Math.min(this.cols - 1, c1), r1: Math.min(charRowsOf(this.rows) - 1, r1) };
       return rect.c0 <= rect.c1 && rect.r0 <= rect.r1 ? rect : null;
     },
 
-    copySelection(rect, layers) {
-      const parts = this.partsOf(layers);
+    copySelection(rect, { base, edit }) {
+      this.ensureLayer();
       const block = { w: rect.c1 - rect.c0 + 1, h: rect.r1 - rect.r0 + 1 };
-      if (parts.base || parts.cells) {
-        block.cells = copyCellLayers(this.editCells, rect, parts, (col, row) => bakedEntry(this.renderStyle, this.baseCellAt(col, row)));
+      const cells = rectCells(rect);
+      if (edit) {
+        block.cells = cells.map(({ col, row }) => this.editCellAt(col, row) ?? null);
+        if (this.paintLayer) block.paint = this.paintLayer.copyCells(rect);
       }
-      if (parts.paint && this.paintLayer) block.paint = this.paintLayer.copyCells(rect);
+      if (base) block.base = { picture: this.basePictureOf(rect), pins: cells.map(({ col, row }) => this.baseRecords.pins.get(cellKey(col, row)) ?? null) };
       return block;
     },
 
+    // The base picture over a cell rect, as a canvas at the paint layer's scale (from the image at
+    // its fit, when the base hasn't been edited yet).
+    basePictureOf({ c0, r0, c1, r1 }) {
+      const k = this.paintLayer.scale, fit = this.getFitParams(this.cols, this.rows);
+      const out = document.createElement('canvas');
+      out.width = (c1 - c0 + 1) * k;
+      out.height = 2 * (r1 - r0 + 1) * k;
+      const ctx = ctx2d(out);
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, out.width, out.height);
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(this.image, (fit.dx - c0) * k, (fit.dy - 2 * r0) * k, fit.dw * k, fit.dh * k);
+      return out;
+    },
+
     deleteSelection(rect, layers) {
-      this.selectionEdit([rect], () => this.deleteIn(rect, this.partsOf(layers)));
+      this.selectionEdit([rect], () => this.deleteIn(rect, layers));
     },
 
     // Returns the pasted rect (clipped), or null when it's all off the grid.
@@ -690,25 +726,50 @@ export const useProjectStore = defineStore('project', {
       const col = rect.c0 + dc, row = rect.r0 + dr;
       const landed = this.clipRect({ c0: col, r0: row, c1: rect.c1 + dc, r1: rect.r1 + dr });
       this.selectionEdit(landed ? [rect, landed] : [rect], () => {
-        this.deleteIn(rect, this.partsOf(layers));
+        this.deleteIn(rect, layers);
         this.pasteAt(block, col, row);
       });
       return landed;
     },
 
-    // The parts of the selection operations, inside selectionEdit (parts: partsOf's { base, cells, paint }).
-    deleteIn(rect, parts) {
-      this.editCells = deleteCellLayers(this.editCells, rect, parts);
-      if (parts.paint) this.paintLayer.eraseCells(rect);
-      if (parts.base) this.eraseBase(rectCells(rect));
+    // The parts of the selection operations, inside selectionEdit.
+    deleteIn(rect, { base, edit }) {
+      if (edit) {
+        this.editCells = withoutCells(this.editCells, rectCells(rect));
+        this.paintLayer.eraseCells(rect);
+      }
+      if (base) this.eraseBase(rectCells(rect));
     },
 
     pasteAt(block, col, row) {
       if (block.cells) this.editCells = pasteBlock(this.editCells, { w: block.w, h: block.h, entries: block.cells }, col, row, this.cols, charRowsOf(this.rows));
       if (block.paint) this.paintLayer.pasteCells(block.paint, col, row, block.w, block.h);
+      if (block.base) this.pasteBase(block, col, row);
     },
 
-    // One undo step for a selection operation's cell and paint changes; the cells in rects recompose.
+    // A block's base at (col, row): its picture over the base picture's, and its pins (a cell with
+    // none takes the converter's character there). Cells it lands on aren't erased by the same edit
+    // (a move's source overlapping where it lands).
+    pasteBase({ w, h, base }, col, row) {
+      const rect = this.clipRect({ c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 });
+      if (!rect) return;
+      for (const cell of rectCells(rect)) {
+        const key = cellKey(cell.col, cell.row);
+        if (this._baseQueue.get(key) !== 'erase') continue;
+        this._baseQueue.delete(key);
+        this.renderer.baseEdits.delete(key);
+      }
+      this.editBase([rect], (ctx, cellRect) => {
+        const at = cellRect(col, row);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(base.picture, at.x, at.y, w * at.w, h * at.h); // a block copied before a grid resize still fits
+      });
+      const pins = base.pins.map((char, i) => ({ col: col + (i % w), row: row + Math.floor(i / w), char }))
+        .filter(({ col: c, row: r }) => c >= rect.c0 && c <= rect.c1 && r >= rect.r0 && r <= rect.r1);
+      this.setBaseRecords(withPins(withoutPins(this.baseRecords, pins.filter(p => !p.char)), pins.filter(p => p.char)));
+    },
+
+    // One undo step for a selection operation's changes (cells, paint, picture, pins); the cells in rects recompose.
     selectionEdit(rects, change) {
       this.ensureLayer();
       this.beginEdit();
@@ -758,14 +819,20 @@ export const useProjectStore = defineStore('project', {
       return !!(this.paintLayer?.colorAt(col, 2 * row) || this.paintLayer?.colorAt(col, 2 * row + 1));
     },
 
-    flipCell(col, row) {
+    // Flip a cell's colours on the chosen layers. Edit: the paint (as it shows) or the edit cell's
+    // own colours; a cell with neither gets the flip as paint, unless the base is flipping it. Base:
+    // the picture's two halves. The edit side goes first, while the cell still shows unflipped.
+    flipCell(col, row, { base = false, edit = true } = {}) {
       if (!this.cells[cellIndex(col, row, this.cols)]) return;
-      if (!this.editCellAt(col, row) || this.cellHasPaint(col, row)) {
-        this.flipPaint(col, row);
-        return;
+      if (edit) {
+        if (this.editCellAt(col, row) && !this.cellHasPaint(col, row)) {
+          const { fg, bg } = this.underlyingAt(col, row);
+          this.editCell(col, row, { fg: bg, bg: fg });
+        } else if (this.cellHasPaint(col, row) || !base) {
+          this.flipPaint(col, row);
+        }
       }
-      const { fg, bg } = this.underlyingAt(col, row);
-      this.editCell(col, row, { fg: bg, bg: fg });
+      if (base) this.flipBase([{ col, row }]);
     },
 
     // Swap a cell's two pixels in the paint layer, using the real colours from the output canvas
@@ -840,7 +907,7 @@ export const useProjectStore = defineStore('project', {
     // End of a user edit: one undo entry for its paint tiles, cell-layer, pin and picture changes,
     // and it counts as unsaved.
     commitEdit() {
-      if (this._stroke) this.flushErasing();
+      if (this._stroke) this.flushBase();
       const stroke = this._stroke;
       this._stroke = null;
       const patch = this.paintLayer?.endStroke();
@@ -850,9 +917,9 @@ export const useProjectStore = defineStore('project', {
       const pictures = (stroke?.pictures ?? [])
         .map(({ canvas, area, before }) => ({ canvas, area, before, after: ctx2d(canvas).getImageData(area.x, area.y, area.w, area.h) }))
         .filter(({ before, after }) => before.data.some((v, i) => v !== after.data[i]));
-      // Render the edited pixels (effects run on them again), and cells erased to what they were
-      // already, so they show as the picture does rather than as the erase preview.
-      if (pictures.length || this._eraseFlushed.size) this.render();
+      // Render the edited pixels (effects run on them again), and queued edits that changed nothing
+      // (erasing black, flipping equal halves), so they show as the picture does, not as the preview.
+      if (pictures.length || this._baseFlushed.size) this.render();
       if (!stroke || (!patch && !pictures.length && stroke.image === this.image && stroke.editCells === this.editCells && stroke.baseRecords === this.baseRecords)) return;
 
       const sides = {

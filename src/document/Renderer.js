@@ -5,9 +5,9 @@
  *
  * Edit cells (editCells, see editCells.js) compose over the paint-free image, and paint draws
  * over them: base -> edit cells -> paint. The base layer's pins (baseRecords.js, set by the store)
- * keep their characters. Cells being erased from the base (erasing, kept by the store until the
- * picture renders without them) show blank: black in outputCanvas, so the pixel view and paint
- * over them agree.
+ * keep their characters. Base edits not yet in the rendered picture (baseEdits, kept by the store)
+ * show at once: a cell being erased is blank (black in outputCanvas, so the pixel view and paint
+ * over it agree), one being flipped has its two halves swapped.
  */
 import { processImage, applyQuantization } from '../lib/ImageProcessor.js';
 import { applyTransforms } from '../lib/PixelTransforms.js';
@@ -23,7 +23,7 @@ export default class Renderer {
   outputCanvas = null;
   palette = null;
   baseRecords = EMPTY_BASE; // the store keeps this in step with its own
-  erasing = new Set();      // 'col,row' cells shown blank until the next render (the store's)
+  baseEdits = new Map();    // 'col,row' -> 'erase' | 'flip', shown until the picture renders them (the store's)
   #scratch = null;
   #pipelineData = null; // pipelineCanvas pixels: the image under edit cells
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
@@ -79,7 +79,7 @@ export default class Renderer {
       seed: params.seed,
     });
     const rows = charRowsOf(params.rows);
-    for (const key of [...this.erasing, ...this.baseRecords.pins.keys()]) {
+    for (const key of [...this.baseEdits.keys(), ...this.baseRecords.pins.keys()]) {
       const { col, row } = parseKey(key);
       if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#onBase(col, row, params, cells[cellIndex(col, row, params.cols)], true);
     }
@@ -97,12 +97,20 @@ export default class Renderer {
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(this.pipelineCanvas, 0, 0, w, h);
 
-    // Cells being erased are blank: their background colour, both halves, under any paint.
-    if (this.erasing.size) {
-      ctx.fillStyle = this.effective(BLANK.bg, params).hex;
-      for (const key of this.erasing) {
-        const { col, row } = parseKey(key);
+    // Base edits under any paint: a cell being erased is blank (its background colour, both
+    // halves); one being flipped swaps its halves.
+    const blank = this.effective(BLANK.bg, params).hex;
+    for (const [key, op] of this.baseEdits) {
+      const { col, row } = parseKey(key);
+      if (op === 'erase') {
+        ctx.fillStyle = blank;
         ctx.fillRect(col, 2 * row, 1, 2);
+      } else if (2 * row + 1 < h) {
+        const [top, bottom] = [this.#pipelinePixel(col, 2 * row), this.#pipelinePixel(col, 2 * row + 1)];
+        ctx.fillStyle = bottom;
+        ctx.fillRect(col, 2 * row, 1, 1);
+        ctx.fillStyle = top;
+        ctx.fillRect(col, 2 * row + 1, 1, 1);
       }
     }
 
@@ -219,6 +227,12 @@ export default class Renderer {
     return { r: data.data[o], g: data.data[o + 1], b: data.data[o + 2] };
   }
 
+  // A pipeline pixel as a CSS colour.
+  #pipelinePixel(x, y) {
+    const { data, width } = this.#pipelineData, o = (y * width + x) * 4;
+    return `rgb(${data[o]}, ${data[o + 1]}, ${data[o + 2]})`;
+  }
+
   // The generated cell from the image alone (no paint): what an edit cell sits on. Null while
   // the pipeline pixels are stale (between a grid resize and its render).
   underCell(col, row, params, baseCells) {
@@ -231,7 +245,8 @@ export default class Renderer {
       const p = { r: data.data[o], g: data.data[o + 1], b: data.data[o + 2] };
       return this.palette ? nearestColor(p, this.palette) : p;
     };
-    const top = pixelAt(2 * row), bottom = pixelAt(2 * row + 1);
+    const [ty, by] = this.baseEdits.get(cellKey(col, row)) === 'flip' ? [2 * row + 1, 2 * row] : [2 * row, 2 * row + 1];
+    const top = pixelAt(ty), bottom = pixelAt(by);
     const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset || '▄') : baseCells[cellIndex(col, row, cols)]?.char ?? ' ';
     return this.#onBase(col, row, params, buildCell(top, bottom, char, renderStyle), false);
   }
@@ -239,9 +254,9 @@ export default class Renderer {
   // A converted cell with the base layer's pins applied; a cell being erased is blank (withPaint:
   // with the paint over it, as coverCell shows paint).
   #onBase(col, row, params, cell, withPaint) {
-    if (!this.erasing.size && !this.baseRecords.pins.size) return cell;
+    if (!this.baseEdits.size && !this.baseRecords.pins.size) return cell;
     const key = cellKey(col, row);
-    if (this.erasing.has(key)) {
+    if (this.baseEdits.get(key) === 'erase') {
       const blank = buildCell(this.effective(BLANK.bg, params), this.effective(BLANK.fg, params), BLANK.char, params.renderStyle);
       if (!withPaint) return blank;
       return coverCell(blank, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), { renderStyle: params.renderStyle, palette: this.palette });

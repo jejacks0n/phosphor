@@ -142,28 +142,8 @@ export function updateRect(map, rect, attrsFor) {
   return result ?? map;
 }
 
-// Parts = { base, cells, paint } (booleans): which stores a selection operation acts on (the Select
-// tool's Edit toggle is cells and paint together; ProjectStore.partsOf).
-
 // What an erased base cell shows: a space in the classic terminal grey on black.
 export const BLANK = Object.freeze({ char: ' ', fg: '#aaaaaa', bg: '#000000' });
-
-// A rect's cells for the cell-side parts, row-major and frozen: Base and Cells give what shows
-// without paint (edit-cell attributes, the rest from baseEntry(col, row)); Base alone gives the
-// base layer's cells; Cells alone the edit cells' entries (null where there's none); neither, nulls.
-export function copyCellLayers(map, rect, { base, cells }, baseEntry) {
-  return rectCells(rect).map(({ col, row }) => {
-    const entry = cells ? map.get(cellKey(col, row)) ?? null : null;
-    if (!base) return entry;
-    return Object.freeze({ ...baseEntry(col, row), ...entry });
-  });
-}
-
-// Delete the edit cells in a rect (Cells), returning the same Map when nothing changed. (Erasing
-// the base layer is the base records' job: baseRecords.js.)
-export function deleteCellLayers(map, rect, { cells }) {
-  return cells ? withoutCells(map, rectCells(rect)) : map;
-}
 
 // Where a pointer is relative to a selection: on its border (a band ½ column / ¼ row outside the
 // edge and ¼ column / ⅛ row inside it; cells are twice as tall as wide), inside, or outside.
