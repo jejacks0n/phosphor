@@ -26,7 +26,13 @@ assert.equal(brightnessChar(px(0, 0, 0), px(0, 0, 0), ' .#'), ' ');
 assert.equal(brightnessChar(px(255, 255, 255), px(255, 255, 255), ' .#'), '#');
 assert.deepEqual(ansi.map(c => c.char), buildCells(pixels, 2, 2, opts).map(c => c.char)); // seeded
 // draw order pinned against the pre-Cells pipeline: one draw per cell, row-major (4 cols x 2 cell rows)
-assert.equal(buildCells(Array(16).fill(px(0, 0, 0)), 4, 4, { ...opts, charset: 'abcdefgh' }).map(c => c.char).join(''), 'hfbfgahg');
+// A cell's random character depends on the seed and its own position, so it survives any change
+// of the grid's width or height (no rewrapping), and different seeds and cells differ.
+const charsAt = (cols, rows, seed = opts.seed) => buildCells(Array(cols * rows).fill(px(0, 0, 0)), cols, rows, { ...opts, seed, charset: 'abcdefgh' });
+const wide = charsAt(9, 8), narrow = charsAt(5, 12);
+for (let row = 0; row < 4; row++) for (let col = 0; col < 5; col++) assert.equal(narrow[cellIndex(col, row, 5)].char, wide[cellIndex(col, row, 9)].char);
+assert.ok(new Set(wide.map(c => c.char)).size > 4);                                       // spread over the set
+assert.notEqual(charsAt(9, 8, 'other').map(c => c.char).join(''), wide.map(c => c.char).join(''));
 assert.ok(buildCells(pixels, 2, 2, { ...opts, charset: '' }).every(c => c.char === '▄'));
 
 assert.equal(charRowsOf(167), 83);

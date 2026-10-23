@@ -5,7 +5,6 @@
  * Color = { r, g, b, hex, c }   c: palette index (number) when quantized, else [r, g, b]
  * Cell  = { char, fg: Color, bg: Color }
  */
-import Random from 'random-seed';
 import { rgb2hex, hex2rgb, rgb2gray, nearestColor } from './ColorUtils.js';
 import { coverageOf } from './GlyphCoverage.js';
 
@@ -43,16 +42,30 @@ export function buildCell(top, bottom, char, renderStyle) {
   return { char, bg: { ...ASCII_BG }, fg };
 }
 
+// A cell's random character comes from the seed and the cell's own position (not its place in
+// reading order), so every cell keeps its character whatever the grid's width or height.
+const fmix = (h) => {
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
+};
+const seedHash = (seed) => {
+  let h = 2166136261;
+  for (const ch of String(seed ?? '')) h = Math.imul(h ^ ch.codePointAt(0), 16777619);
+  return h >>> 0;
+};
+const cellRandom = (h, col, row) => fmix(h ^ Math.imul(col + 1, 0x9e3779b1) ^ Math.imul(row + 1, 0x85ebca77));
+
 export function buildCells(pixels, cols, rows, { charset, charMode, renderStyle, seed }) {
   const chars = charset || '▄';
-  const rand = new Random(seed);
+  const h = seedHash(seed);
   const cells = new Array(cols * charRowsOf(rows));
 
   for (let row = 0; row < charRowsOf(rows); row++) {
     for (let col = 0; col < cols; col++) {
       const top = pixels[2 * row * cols + col];
       const bottom = pixels[(2 * row + 1) * cols + col] || top;
-      const char = charMode === 'brightness' ? brightnessChar(top, bottom, chars) : chars[rand(chars.length)];
+      const char = charMode === 'brightness' ? brightnessChar(top, bottom, chars) : chars[cellRandom(h, col, row) % chars.length];
       cells[cellIndex(col, row, cols)] = buildCell(top, bottom, char, renderStyle);
     }
   }
