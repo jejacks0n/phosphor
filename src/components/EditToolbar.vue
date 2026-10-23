@@ -253,6 +253,7 @@ function confirmFlatten() {
           >Flatten</button>
           <div class="divider"/>
           <span class="hint">{{ selectionSize }}</span>
+          <button class="text" title="Clear the selection (Esc)" @click="workspace.selection = null">Deselect</button>
         </template>
         <template v-else>
           <span class="hint">Drag to select cells, or:</span>
