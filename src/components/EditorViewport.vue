@@ -57,13 +57,11 @@ const {
 });
 
 // The eyedropper: the pixel view picks the paint colour; the ANSI view picks the cell's underlying
-// colours (the FG/BG/Both option; Shift: foreground only, Alt: background only), or the
-// character in ASCII. Picks repeat while
+// colours (the FG/BG/Both option; Shift: foreground only, Alt: background only). Picks repeat while
 // dragging, so they don't fill the recent colours.
 function pickAt(pos, event) {
   const mode = pickMode({
     view: props.view,
-    renderStyle: projectStore.renderStyle,
     shiftKey: !!event?.shiftKey,
     altKey: !!event?.altKey,
     swapped: workspaceStore.pickSwapped,
@@ -82,7 +80,6 @@ function pickAt(pos, event) {
   const bg = projectStore.renderStyle === 'colorAscii' && !projectStore.cellEditAt(cell.col, cell.row)?.bg ? null : under.bg;
   if (mode === 'fg' || mode === 'both') workspaceStore.setColor('fg', under.fg, remember);
   if (mode === 'bg' || mode === 'both') workspaceStore.setColor('bg', bg, remember);
-  if (mode === 'char') workspaceStore.activeChar = under.char;
 }
 
 // Brush/eraser outline under the pointer, or the character cell for cell tools.

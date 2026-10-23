@@ -52,7 +52,7 @@ assert.equal(authoredColors(edits, 1).length, 1);
 const pm = (o) => pickMode({ view: 'output', renderStyle: 'ansi', shiftKey: false, altKey: false, swapped: false, ...o });
 assert.equal(pm({ view: 'input', altKey: true }), 'fg');             // pixel view: always the paint colour
 assert.equal(pm({ altKey: true, swapped: true }), 'fg');             // Alt-swapped from a paint tool: the paint colour
-assert.equal(pm({ renderStyle: 'ascii', shiftKey: true }), 'char');  // ASCII has no colours to pick
+assert.equal(pm({ renderStyle: 'ascii', shiftKey: true }), 'fg');    // only ever colours, in every art style
 assert.equal(pm({ shiftKey: true }), 'fg');
 assert.equal(pm({ altKey: true }), 'bg');
 assert.equal(pm({}), 'both');                                        // default: foreground and background
