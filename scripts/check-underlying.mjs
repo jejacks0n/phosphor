@@ -15,7 +15,11 @@ const neutral = sourceParams(params);
 assert.deepEqual(
   { brightness: neutral.brightness, contrast: neutral.contrast, saturation: neutral.saturation, hue: neutral.hue, invert: neutral.invert, colorizeStrength: neutral.colorizeStrength },
   { brightness: 100, contrast: 100, saturation: 100, hue: 0, invert: 0, colorizeStrength: 0 });
-assert.deepEqual({ sharpen: neutral.sharpen, flatten: neutral.flatten, edges: neutral.edges }, { sharpen: 0, flatten: 0, edges: 0 });
+// Effects (Flatten, Edges, Sharpen) work on neighbouring pixels, so a cell can't re-apply them: the
+// source run keeps them, and baked/picked colours include the outline. Only per-pixel colour
+// adjustments are neutral (they're re-applied per cell by effectiveColor).
+assert.deepEqual({ sharpen: neutral.sharpen, flatten: neutral.flatten, edges: neutral.edges, edgeColor: neutral.edgeColor, edgeThickness: neutral.edgeThickness },
+  { sharpen: 30, flatten: 4, edges: 2, edgeColor: '#ff0000', edgeThickness: 3 });
 // CGA/VGA are applied per pixel inside the pipeline before downsampling, so the source run keeps
 // them (that's what makes picking up and putting back exact); other palettes are applied after.
 assert.equal(neutral.quantize, 'vga');

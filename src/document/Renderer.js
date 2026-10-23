@@ -31,7 +31,7 @@ export default class Renderer {
     this.#effective = new Map();
   }
 
-  // sourceParams: params with every adjustment, effect and palette neutral (settings.sourceParams).
+  // sourceParams: params with the colour adjustments neutral (settings.sourceParams).
   async render(image, params, layer, sourceParams) {
     const { canvas: pipeline, paletteColors } = await processImage(image, params);
     this.pipelineCanvas = pipeline.canvas;
@@ -39,8 +39,10 @@ export default class Renderer {
     this.#pipelineData = ctx2d(this.pipelineCanvas).getImageData(0, 0, params.cols, params.rows);
     this.#effective = new Map();
 
-    // Underlying colours depend only on the image, grid, smoothing and CGA/VGA, so adjustments don't redo this.
-    const sourceKey = [params.cols, params.rows, params.smoothing, sourceParams?.quantize].join();
+    // Underlying colours depend only on the image, grid, smoothing, effects and CGA/VGA, so colour
+    // adjustments don't redo this.
+    const sp = sourceParams ?? {};
+    const sourceKey = [params.cols, params.rows, params.smoothing, sp.quantize, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness].join();
     if (sourceParams && (this.#source?.image !== image || this.#source.key !== sourceKey)) {
       const { canvas: source } = await processImage(image, sourceParams);
       this.#source = { image, key: sourceKey, data: ctx2d(source.canvas).getImageData(0, 0, params.cols, params.rows) };
