@@ -3,15 +3,15 @@ import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
-// Under the ANSI view: the Text tool's cursor, what's in that cell (each attribute authored or
+// Under the ANSI view: the Text tool's cursor, what's in that cell (each attribute from the edit layer or
 // from the image), and the overwrite/insert toggle.
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 
 const cursor = computed(() => workspace.textCursor);
 const cell = computed(() => cursor.value && project.cells[cursor.value.row * project.cols + cursor.value.col]);
-const entry = computed(() => cursor.value && project.cellEditAt(cursor.value.col, cursor.value.row));
-const origin = (attr) => (entry.value?.[attr] !== undefined ? 'authored' : 'image');
+const entry = computed(() => cursor.value && project.editCellAt(cursor.value.col, cursor.value.row));
+const origin = (attr) => (entry.value?.[attr] !== undefined ? 'edit' : 'base');
 </script>
 
 <template>

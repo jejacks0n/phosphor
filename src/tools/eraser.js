@@ -38,7 +38,7 @@ const eraser = {
     if (view !== 'output' || !edit || !workspace.eraseLayerAware) {
       if (edit) {
         project.eraseEditPixels(pixels);
-        if (view === 'output') project.releaseCells(cells);
+        if (view === 'output') project.clearEditCells(cells);
       }
       if (base) project.eraseBase(cells);
       return;
@@ -47,12 +47,12 @@ const eraser = {
     const fresh = cells.filter(c => !peeled.has(keyOf(c)));
     const painted = fresh.filter(c => project.cellHasPaint(c.col, c.row));
     const rest = fresh.filter(c => !painted.includes(c));
-    const authored = rest.filter(c => project.cellEditAt(c.col, c.row));
-    const bare = base ? rest.filter(c => !project.cellEditAt(c.col, c.row) && !project.baseRecords.erased.has(keyOf(c))) : [];
+    const edited = rest.filter(c => project.editCellAt(c.col, c.row));
+    const bare = base ? rest.filter(c => !project.editCellAt(c.col, c.row) && !project.baseRecords.erased.has(keyOf(c))) : [];
     project.eraseEditPixels(pixels);
-    project.releaseCells(authored);
+    project.clearEditCells(edited);
     project.eraseBase(bare);
-    [...painted, ...authored, ...bare].forEach(c => peeled.add(keyOf(c)));
+    [...painted, ...edited, ...bare].forEach(c => peeled.add(keyOf(c)));
   },
   end({ project }) {
     peeled = new Set();

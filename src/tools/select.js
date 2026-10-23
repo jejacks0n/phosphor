@@ -1,7 +1,7 @@
 // Selects a rectangle of cells (ANSI view). Dragging inside the selection moves its contents on
 // the chosen layers (workspace.selectLayers); dragging its border moves just the outline; dragging
 // elsewhere draws a new one, and a click outside clears it. The actions are on the options row.
-import { normalizeRect, selectionHit, clampOffset } from '@/document/cellEdits';
+import { normalizeRect, selectionHit, clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
 
 let drag = null; // { mode: 'select' | 'move' | 'outline', start: { col, row } }

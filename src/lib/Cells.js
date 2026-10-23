@@ -85,8 +85,8 @@ export function halfColors(cell, coverage = coverageOf) {
   return [mix(cell.bg, cell.fg, top), mix(cell.bg, cell.fg, bottom)];
 }
 
-// An authored entry over the generated cell under it. effective(hex) turns a stored colour into the
-// Color it displays as. ASCII saves white on black, so authored colours are kept but not shown.
+// An edit cell's entry over the generated cell under it. effective(hex) turns a stored colour into the
+// Color it displays as. ASCII saves white on black, so edit-cell colours are kept but not shown.
 export function composeCell(under, entry, renderStyle, effective) {
   const char = entry.char ?? under.char;
   if (renderStyle === 'ascii') return { char, fg: under.fg, bg: under.bg };
@@ -134,7 +134,7 @@ export function cellsToPixels(cells, cols, rows, include) {
   return data;
 }
 
-// The entry that freezes an image cell as authored (bake, copy, move), from its underlying colours
+// The entry that freezes a base cell as an edit cell (merge up, copy, move), from its underlying colours
 // ({ char, bg: top half, fg: bottom half }), so it looks as the render style builds it: ANSI keeps
 // both halves; Color ASCII shows their average on no background; ASCII shows only the character.
 export function bakedEntry(renderStyle, { char, fg, bg }) {

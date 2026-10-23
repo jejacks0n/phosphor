@@ -25,10 +25,10 @@ const isNone = computed(() => (props.slotName === 'fg' ? ansiView.value && works
 const offersNone = computed(() => props.slotName === 'bg' || ansiView.value);
 
 const sections = computed(() => swatchSections(project.quantize, project.activePalette));
-// Colours authored cells use, and (folded away until asked for) the other colours in the paint.
+// Colours edit cells use, and (folded away until asked for) the other colours in the paint.
 // Paint is read when the popover opens: the layer isn't reactive, and doesn't change while this is open.
-const inUse = computed(() => drawingColors(project.cellEdits));
-const painted = computed(() => (project.hasPaint ? drawingColors(new Map(), project.layer.colorCounts()).filter(hex => !inUse.value.includes(hex)) : []));
+const inUse = computed(() => drawingColors(project.editCells));
+const painted = computed(() => (project.hasPaint ? drawingColors(new Map(), project.paintLayer.colorCounts()).filter(hex => !inUse.value.includes(hex)) : []));
 const showPainted = ref(false);
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 

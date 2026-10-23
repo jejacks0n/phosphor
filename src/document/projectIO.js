@@ -4,7 +4,7 @@
  * .phosphor layout: 'PHOSPHOR' (8 bytes), three little-endian uint32 lengths, then the settings
  * JSON, the source image bytes, and the paint layer PNG (empty when there's no paint).
  */
-import { serializeCellEdits, deserializeCellEdits, migrateCharEdits } from './cellEdits.js';
+import { serializeEditCells, deserializeEditCells, migrateCharEdits } from './editCells.js';
 import { EMPTY_BASE, serializeBase, deserializeBase } from './baseRecords.js';
 
 export const PROJECT_EXTENSION = '.phosphor';
@@ -22,11 +22,11 @@ export function loadImage(source, type) {
 }
 
 // settings: plain JSON-able values (plus hasPaint); paintBlob: PNG of the paint layer, or null;
-// cellEdits: the authored cell layer; baseRecords: the base layer's erased cells and pins (saved as
-// `base`, left out when there are none).
-export async function writeProject({ settings, imageBuffer, paintBlob, cellEdits, baseRecords = EMPTY_BASE }) {
+// editCells: the edit layer's cells (saved under the file's original key, `cellEdits`);
+// baseRecords: the base layer's erased cells and pins (saved as `base`, left out when there are none).
+export async function writeProject({ settings, imageBuffer, paintBlob, editCells, baseRecords = EMPTY_BASE }) {
   const base = serializeBase(baseRecords);
-  const json = new TextEncoder().encode(JSON.stringify({ ...settings, cellEdits: serializeCellEdits(cellEdits), ...(base && { base }) }));
+  const json = new TextEncoder().encode(JSON.stringify({ ...settings, cellEdits: serializeEditCells(editCells), ...(base && { base }) }));
   const paintBuffer = paintBlob ? await paintBlob.arrayBuffer() : new ArrayBuffer(0);
   const header = new TextEncoder().encode(MAGIC_HEADER);
   const lengths = new Uint32Array([json.byteLength, imageBuffer.byteLength, paintBuffer.byteLength]);
@@ -53,8 +53,8 @@ export async function readProject(file) {
   // Older files have no hasPaint key: the paint section's presence decides.
   const usePaint = (hasPaint ?? paintLen > 0) && paintLen > 0;
   // Files from before the cell layer have charEditMap (cell index -> char) instead.
-  const edits = cellEdits ? deserializeCellEdits(cellEdits) : migrateCharEdits(charEditMap || [], settings.cols);
-  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, cellEdits: edits, baseRecords: deserializeBase(base), migrated: !cellEdits && edits.size > 0 };
+  const edits = cellEdits ? deserializeEditCells(cellEdits) : migrateCharEdits(charEditMap || [], settings.cols);
+  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, editCells: edits, baseRecords: deserializeBase(base), migrated: !cellEdits && edits.size > 0 };
 }
 
 // Save via the browser's file picker where available, otherwise as a download.

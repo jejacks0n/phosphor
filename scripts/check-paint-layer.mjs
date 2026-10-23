@@ -1,7 +1,7 @@
-// EditLayer's pure math: integer paint scale, grid-resize remapping, and where a saved
-// paint layer lands on load. Run: node scripts/check-edit-layer.mjs
+// PaintLayer's pure math: integer paint scale, grid-resize remapping, and where a saved
+// paint layer lands on load. Run: node scripts/check-paint-layer.mjs
 import assert from 'node:assert/strict';
-import { editScaleFor, resizeTransform, savedPaintRect } from '../src/document/EditLayer.js';
+import { editScaleFor, resizeTransform, savedPaintRect } from '../src/document/PaintLayer.js';
 
 assert.equal(editScaleFor(378, 790, 80, 168), 5);
 assert.equal(editScaleFor(10, 10, 80, 50), 1);
@@ -18,4 +18,4 @@ assert.deepEqual(savedPaintRect({ width: 400, height: 500 }, { width: 378, heigh
 // Older saves (examples/*.phosphor) store paint at the image's size: place it where the image sits.
 assert.deepEqual(savedPaintRect({ width: 378, height: 790 }, { width: 378, height: 790 }, { dx: 16, dy: 0, dw: 48, dh: 100 }, 5, 400, 500),
   { x: 80, y: 0, w: 240, h: 500 });
-console.log('edit layer ok');
+console.log('paint layer ok');

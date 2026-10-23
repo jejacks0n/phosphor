@@ -2,7 +2,7 @@
 // neutral: the image downsampled exactly as the pipeline does, before adjustments.
 // Run: node scripts/check-underlying.mjs
 import assert from 'node:assert/strict';
-import { sourceParams } from '../src/store/settings.js';
+import { baseParams } from '../src/store/settings.js';
 import { pickMode } from '../src/lib/pickMode.js';
 import { nearestColor, nearestIndex, paletteIndex, swatchSections, drawingColors, PALETTES } from '../src/lib/ColorUtils.js';
 
@@ -11,7 +11,7 @@ const params = {
   brightness: 150, contrast: 80, saturation: 0, hue: 90, invert: 20, colorize: '#123456', colorizeStrength: 50,
   sharpen: 30, flatten: 4, edges: 2, edgeColor: '#ff0000', edgeThickness: 3,
 };
-const neutral = sourceParams(params);
+const neutral = baseParams(params);
 assert.deepEqual(
   { brightness: neutral.brightness, contrast: neutral.contrast, saturation: neutral.saturation, hue: neutral.hue, invert: neutral.invert, colorizeStrength: neutral.colorizeStrength },
   { brightness: 100, contrast: 100, saturation: 100, hue: 0, invert: 0, colorizeStrength: 0 });
@@ -23,8 +23,8 @@ assert.deepEqual({ sharpen: neutral.sharpen, flatten: neutral.flatten, edges: ne
 // CGA/VGA are applied per pixel inside the pipeline before downsampling, so the source run keeps
 // them (that's what makes picking up and putting back exact); other palettes are applied after.
 assert.equal(neutral.quantize, 'vga');
-assert.equal(sourceParams({ ...params, quantize: 'count' }).quantize, 'none');
-assert.equal(sourceParams({ ...params, quantize: 'palette' }).quantize, 'none');
+assert.equal(baseParams({ ...params, quantize: 'count' }).quantize, 'none');
+assert.equal(baseParams({ ...params, quantize: 'palette' }).quantize, 'none');
 assert.deepEqual([neutral.cols, neutral.rows, neutral.smoothing], [80, 50, 'low']); // same grid and downsampling
 assert.equal(params.brightness, 150);                    // input untouched
 
@@ -43,7 +43,7 @@ assert.equal(paletteIndex(200, 10, 10, tiny), nearestIndex(200, 10, 10, tiny));
 const t0 = performance.now();
 for (let i = 0; i < 90000; i++) paletteIndex(i & 255, (i >> 3) & 255, (i >> 7) & 255, PALETTES.vga);
 assert.ok(performance.now() - t0 < 60, `90k snaps took ${Math.round(performance.now() - t0)}ms`);
-// The picker lays out the active palette by type; colours already used by authored cells come first.
+// The picker lays out the active palette by type; colours already used by edit cells come first.
 assert.deepEqual(swatchSections('cga', PALETTES.cga).map(s => [s.columns, s.colors.length]), [[8, 16]]);
 assert.deepEqual(swatchSections('vga', PALETTES.vga).map(s => [s.columns, s.colors.length]), [[16, 16], [36, 216], [24, 24]]);
 assert.deepEqual(swatchSections('none', null), []);

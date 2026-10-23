@@ -1,6 +1,6 @@
 /**
  * How much of a glyph's top and bottom half is inked, as [top, bottom] fractions (0..1) of its
- * character cell. A cell's two half-colours are bg × (1 − ink) + fg × ink, which is how authored cells
+ * character cell. A cell's two half-colours are bg × (1 − ink) + fg × ink, which is how edit cells
  * look at pixel scale and what paint blends over.
  *
  * Block elements are exact. Other glyphs are rasterized in the ANSI view's font once a rasterizer is

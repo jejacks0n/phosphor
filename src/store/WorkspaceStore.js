@@ -23,8 +23,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     textCursor: null,      // { col, row } of the Text tool's cursor
     insertMode: false,     // typing pushes the row right instead of overwriting
     paletteLayerOpen: false, // the character palette layer has the keyboard
-    ansiOverlay: 100,        // % opacity of the authored cells drawn over the pixel view
-    ansiOverlayAll: false,   // draw every cell over the pixel view, not just authored ones
+    ansiOverlay: 100,        // % opacity of the edit cells drawn over the pixel view
+    ansiOverlayAll: false,   // draw every cell over the pixel view, not just the edit cells
     selection: null,         // { c0, r0, c1, r1 }: the Select tool's cells (inclusive)
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)

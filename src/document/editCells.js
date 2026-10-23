@@ -1,5 +1,5 @@
 /**
- * The authored cell layer: a sparse Map<'col,row', Entry> over the generated cells. Entries are
+ * The edit layer's cells: a sparse Map<'col,row', Entry> over the generated cells. Entries are
  * frozen and the Map is replaced on every change (copy-on-write), so undo can keep both sides and
  * callers can compare identity to see whether anything changed.
  *
@@ -48,7 +48,7 @@ export function withoutCells(map, cells) {
   return result;
 }
 
-export const serializeCellEdits = (map) => [...map];
+export const serializeEditCells = (map) => [...map];
 
 // Project files are untrusted: keep only col,row keys, one-character chars and #rrggbb colours.
 const VALID = {
@@ -56,7 +56,7 @@ const VALID = {
   fg: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
   bg: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
 };
-export function deserializeCellEdits(pairs) {
+export function deserializeEditCells(pairs) {
   const map = new Map();
   for (const [key, entry] of Array.isArray(pairs) ? pairs : []) {
     if (typeof key !== 'string' || !/^\d+,\d+$/.test(key) || !entry) continue;
@@ -126,7 +126,7 @@ export function pasteBlock(map, block, col, row, cols, rows) {
 
 const sameEntry = (a, b) => !!a && !!b && ATTRS.every(attr => a[attr] === b[attr]);
 
-// Every cell of a rect merged with attrsFor(col, row, entry), on one Map copy (fill, bake).
+// Every cell of a rect merged with attrsFor(col, row, entry), on one Map copy (merge up).
 // Returns the same Map when nothing changed.
 export function updateRect(map, rect, attrsFor) {
   let result = null;
@@ -142,20 +142,20 @@ export function updateRect(map, rect, attrsFor) {
   return result ?? map;
 }
 
-// Layers = { image, cells, paint } (booleans): which layers a selection operation acts on.
+// Parts = { base, cells, paint } (booleans): which stores a selection operation acts on (the Select
+// tool's Edit toggle is cells and paint together; ProjectStore.partsOf).
 
-// What deleting the image leaves: a space in the classic terminal grey on black, so an authored
-// character left in the cell still shows.
+// What an erased base cell shows: a space in the classic terminal grey on black.
 export const BLANK = Object.freeze({ char: ' ', fg: '#aaaaaa', bg: '#000000' });
 
-// A rect's cells for the cell-side layers, row-major and frozen: Image and Cells give what shows
-// without paint (authored attributes, the rest from imageEntry(col, row)); Image alone gives the
-// image's cells; Cells alone the authored entries (null where there's none); neither, nulls.
-export function copyCellLayers(map, rect, { image, cells }, imageEntry) {
+// A rect's cells for the cell-side parts, row-major and frozen: Base and Cells give what shows
+// without paint (edit-cell attributes, the rest from baseEntry(col, row)); Base alone gives the
+// base layer's cells; Cells alone the edit cells' entries (null where there's none); neither, nulls.
+export function copyCellLayers(map, rect, { base, cells }, baseEntry) {
   return rectCells(rect).map(({ col, row }) => {
     const entry = cells ? map.get(cellKey(col, row)) ?? null : null;
-    if (!image) return entry;
-    return Object.freeze({ ...imageEntry(col, row), ...entry });
+    if (!base) return entry;
+    return Object.freeze({ ...baseEntry(col, row), ...entry });
   });
 }
 

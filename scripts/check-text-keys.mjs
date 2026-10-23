@@ -2,7 +2,7 @@
 // Run: node scripts/check-text-keys.mjs
 import assert from 'node:assert/strict';
 import { textKeyAction, moveCursor } from '../src/lib/TextKeys.js';
-import { shiftRow } from '../src/document/cellEdits.js';
+import { shiftRow } from '../src/document/editCells.js';
 
 const k = (key, mods = {}) => textKeyAction({ key, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, ...mods }, { editable: false });
 assert.deepEqual(k('a'), { type: 'char', char: 'a' });

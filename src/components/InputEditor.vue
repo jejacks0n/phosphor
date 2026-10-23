@@ -4,7 +4,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ctx2d } from '@/lib/Canvas';
 import { cellsToPixels, charRowsOf } from '@/lib/Cells';
-import { parseKey } from '@/document/cellEdits';
+import { parseKey } from '@/document/editCells';
 import EditorViewport from '@/components/EditorViewport.vue';
 
 // The PIXEL view: the composited output canvas scaled up by editZoom.
@@ -13,25 +13,25 @@ const workspaceStore = useWorkspaceStore();
 const viewport = useTemplateRef('viewport');
 const displayRef = useTemplateRef('displayCanvas');
 
-// Authored cells (or all, with "All cells") drawn over the image as their half-cell colours: the
+// Edit cells (or all, with "All cells") drawn over the image as their half-cell colours: the
 // ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible.
 // The bitmap is rebuilt only when the cells or what's included change, not on zoom or opacity.
-const overlay = { canvas: null, cells: null, cellEdits: null, all: null, empty: true };
+const overlay = { canvas: null, cells: null, editCells: null, all: null, empty: true };
 const updateOverlay = () => {
-  const { cols, rows, cells, cellEdits } = projectStore;
+  const { cols, rows, cells, editCells } = projectStore;
   const all = workspaceStore.ansiOverlayAll;
-  if (overlay.cells === cells && overlay.cellEdits === cellEdits && overlay.all === all) return;
-  Object.assign(overlay, { cells, cellEdits, all });
+  if (overlay.cells === cells && overlay.editCells === editCells && overlay.all === all) return;
+  Object.assign(overlay, { cells, editCells, all });
 
   let include = () => true;
   if (!all) {
-    const authored = new Set();
-    for (const key of cellEdits.keys()) {
+    const edited = new Set();
+    for (const key of editCells.keys()) {
       const { col, row } = parseKey(key);
-      if (col < cols && row < charRowsOf(rows)) authored.add(row * cols + col);
+      if (col < cols && row < charRowsOf(rows)) edited.add(row * cols + col);
     }
-    include = (i) => authored.has(i);
-    overlay.empty = !authored.size;
+    include = (i) => edited.has(i);
+    overlay.empty = !edited.size;
   } else {
     overlay.empty = !cells.length;
   }

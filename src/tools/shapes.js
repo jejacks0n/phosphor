@@ -5,7 +5,7 @@
 // Block shapes paint over the cells, each keeping its own character; Block characters (off by
 // default) makes them real ▄/█ cells instead.
 import { rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
-import { rectCells } from '@/document/cellEdits';
+import { rectCells } from '@/document/editCells';
 import { charRowsOf, cellsOfPixels } from '@/lib/Cells';
 import { joinBox, inwardArms } from '@/lib/BoxJoin';
 
@@ -39,7 +39,7 @@ function apply({ project, workspace, view }, end) {
   // paint colours its halves; without it the paint shows through the cell's own character.
   if (!drawsCells(workspace)) {
     const pixels = kind === 'ellipse' ? ellipsePixels(start, end, filled, project.cols, project.rows, antialias) : rectPixels(start, end, filled, project.cols, project.rows);
-    if (blockChars) project.editCells(cellsOfPixels(pixels, project.cols, project.rows).map(c => ({ ...c, attrs: { char: '▄' } })));
+    if (blockChars) project.writeEditCells(cellsOfPixels(pixels, project.cols, project.rows).map(c => ({ ...c, attrs: { char: '▄' } })));
     paint(pixels);
     return;
   }
@@ -86,7 +86,7 @@ function apply({ project, workspace, view }, end) {
       cells.push(...interior.map(c => ({ ...c, attrs: { char: ' ', ...attrs } })));
     }
   }
-  project.editCells(cells, { clearPaint: true });
+  project.writeEditCells(cells, { clearPaint: true });
 }
 
 export default {

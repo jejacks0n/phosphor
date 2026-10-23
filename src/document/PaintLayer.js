@@ -45,7 +45,7 @@ const newCanvas = (w, h) => {
   return c;
 };
 
-export default class EditLayer {
+export default class PaintLayer {
   #stroke = null; // { tiles: Map<'x,y', { x, y, w, h, before }>, hadPaint } while recording
 
   constructor({ cols, rows, scale }) {

@@ -67,7 +67,7 @@ export function groupDefaults(group) {
 // each pixel to them before downsampling, so the result matches; other palettes are applied after
 // downsampling and are dropped.
 const NEUTRAL_GROUPS = ['transform', 'adjust'];
-export function sourceParams(params) {
+export function baseParams(params) {
   const quantize = params.quantize === 'cga' || params.quantize === 'vga' ? params.quantize : 'none';
   return { ...params, ...Object.assign({}, ...NEUTRAL_GROUPS.map(groupDefaults)), quantize };
 }

@@ -3,7 +3,7 @@
 // Run: node scripts/check-base-records.mjs
 import assert from 'node:assert/strict';
 import { EMPTY_BASE, withErased, withPins, withoutPins, remapBaseRecords, serializeBase, deserializeBase } from '../src/document/baseRecords.js';
-import { resizeTransform } from '../src/document/EditLayer.js';
+import { resizeTransform } from '../src/document/PaintLayer.js';
 
 const a = withErased(EMPTY_BASE, [{ col: 1, row: 1 }, { col: 2, row: 1 }]);
 assert.deepEqual([...a.erased], ['1,1', '2,1']);

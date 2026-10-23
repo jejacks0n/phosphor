@@ -1,6 +1,6 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { getTool } from '@/tools';
-import { clampOffset } from '@/document/cellEdits';
+import { clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {

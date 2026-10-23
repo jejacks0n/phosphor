@@ -1,11 +1,11 @@
-// Authored cell map: merge/remove semantics, grid-position keys, (de)serialization and the
-// migration of older index-keyed char edits. Run: node scripts/check-cell-edits.mjs
+// Edit cell map: merge/remove semantics, grid-position keys, (de)serialization and the
+// migration of older index-keyed char edits. Run: node scripts/check-edit-cells.mjs
 import assert from 'node:assert/strict';
 import {
-  withCellEdit, mergeEntry, withoutCells, parseKey, serializeCellEdits, deserializeCellEdits, migrateCharEdits,
+  withCellEdit, mergeEntry, withoutCells, parseKey, serializeEditCells, deserializeEditCells, migrateCharEdits,
   normalizeRect, rectCells, pasteBlock, updateRect,
   copyCellLayers, deleteCellLayers, selectionHit, clampOffset,
-} from '../src/document/cellEdits.js';
+} from '../src/document/editCells.js';
 
 const m0 = new Map();
 const m1 = withCellEdit(m0, 3, 2, { char: 'A', fg: '#ffff55' });
@@ -23,14 +23,14 @@ assert.equal(withoutCells(m3, [{ col: 3, row: 2 }]).size, 0);
 // keys are grid positions: an entry at col 120 survives any cols value
 const far = withCellEdit(new Map(), 120, 0, { char: '#' });
 assert.deepEqual(parseKey([...far.keys()][0]), { col: 120, row: 0 });
-assert.deepEqual(deserializeCellEdits(serializeCellEdits(m2)), m2);
-assert.equal(deserializeCellEdits(undefined).size, 0);
+assert.deepEqual(deserializeEditCells(serializeEditCells(m2)), m2);
+assert.equal(deserializeEditCells(undefined).size, 0);
 assert.deepEqual([...migrateCharEdits([[5, '#'], [12, '@']], 4)], [['1,1', { char: '#' }], ['0,3', { char: '@' }]]);
 assert.equal(migrateCharEdits([[5, '#']], undefined).size, 0);          // no column count: nothing to place
-assert.ok(Object.isFrozen(deserializeCellEdits([['0,0', { char: 'x' }]]).get('0,0')));
-assert.equal(deserializeCellEdits([['0,0', {}], ['1,0', null]]).size, 0); // empty entries never exist
+assert.ok(Object.isFrozen(deserializeEditCells([['0,0', { char: 'x' }]]).get('0,0')));
+assert.equal(deserializeEditCells([['0,0', {}], ['1,0', null]]).size, 0); // empty entries never exist
 // Project files are untrusted: only one-character chars, #rrggbb colours and col,row keys load.
-const loaded = deserializeCellEdits([
+const loaded = deserializeEditCells([
   ['0,0', { char: '<img src=x onerror=alert(1)>' }], ['1,0', { char: 'A', fg: 'javascript:x' }],
   ['2,0', { char: 'B', fg: '#ffffff', bg: '#000000' }], ['x,y', { char: 'C' }], ['3,0', { char: 5 }],
 ]);
@@ -51,7 +51,7 @@ assert.deepEqual([...pasted.keys()], ['78,24', '79,24']);                     //
 assert.equal(pasteBlock(new Map([['2,0', { char: 'z' }]]), blk, 0, 0, 80, 25).has('2,0'), false); // a null entry releases
 assert.equal(pasteBlock(g, { w: 2, h: 1, entries: [{ char: 'a' }, { char: 'b' }] }, 0, 0, 80, 25), g); // same content: same map
 assert.equal(pasteBlock(g, blk, 100, 0, 80, 25), g);                          // entirely off the grid
-// updateRect: one Map copy for a whole rect, merging per cell (fill, bake)
+// updateRect: one Map copy for a whole rect, merging per cell (merge up)
 const big = updateRect(new Map(), { c0: 0, r0: 0, c1: 299, r1: 149 }, () => ({ char: '#' }));
 assert.equal(big.size, 300 * 150);
 assert.equal(updateRect(big, { c0: 0, r0: 0, c1: 9, r1: 9 }, () => ({ char: '#' })), big); // nothing changed: same map
@@ -59,7 +59,7 @@ const t0 = performance.now();
 updateRect(big, { c0: 0, r0: 0, c1: 299, r1: 149 }, (c, r, old) => ({ ...old, fg: '#ffffff' }));
 assert.ok(performance.now() - t0 < 250, 'whole-grid update should be one pass');
 // Layer-aware copy and delete (the Select tool's layer toggles).
-const L = (image, cells, paint = false) => ({ image, cells, paint });
+const L = (base, cells, paint = false) => ({ base, cells, paint });
 const img = () => ({ char: '#', fg: '#111111', bg: '#222222' });
 const m = new Map([['1,0', Object.freeze({ char: 'A' })]]);
 const r = { c0: 0, r0: 0, c1: 1, r1: 0 };

@@ -6,7 +6,7 @@
  * BaseRecords = { erased: Set<'col,row'>, pins: Map<'col,row', char> }. A cell is in at most one:
  * erasing a cell drops its pin, pinning one un-erases it.
  */
-import { cellKey, parseKey } from './cellEdits.js';
+import { cellKey, parseKey } from './editCells.js';
 import { cellAt, charRowsOf } from '../lib/Cells.js';
 
 const make = (erased, pins) => Object.freeze({ erased, pins });

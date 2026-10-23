@@ -1,5 +1,5 @@
-// Composition of authored cells: glyph coverage, half-cell colours, authored attributes over the
-// generated cell, paint over an authored cell, and effective (adjusted + snapped) colours.
+// Composition of edit cells: glyph coverage, half-cell colours, edit-cell attributes over the
+// generated cell, paint over an edit cell, and effective (adjusted + snapped) colours.
 // Run: node scripts/check-compose.mjs
 import assert from 'node:assert/strict';
 import { coverageOf, setGlyphRasterizer } from '../src/lib/GlyphCoverage.js';
@@ -26,7 +26,7 @@ const under = { char: '▄', fg: blue, bg: black };
 const eff = (hex) => ({ ...hexToColor(hex), c: 'E' });              // stub marks effective colours
 const a = composeCell(under, { char: 'A', fg: '#ffff55' }, 'ansi', eff);
 assert.equal(a.char, 'A'); assert.equal(a.fg.c, 'E'); assert.equal(a.bg, black);
-assert.equal(composeCell(under, { fg: '#ffff55' }, 'ascii', eff).fg, blue);   // ascii ignores authored colours
+assert.equal(composeCell(under, { fg: '#ffff55' }, 'ascii', eff).fg, blue);   // ascii ignores edit-cell colours
 assert.equal(composeCell(under, { bg: '#ff0000' }, 'colorAscii', eff).bg.c, 'E');
 assert.equal(composeCell(under, {}, 'ansi', eff).char, '▄');
 
