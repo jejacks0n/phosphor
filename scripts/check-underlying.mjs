@@ -55,11 +55,11 @@ assert.equal(pm({ altKey: true, swapped: true }), 'fg');             // Alt-swap
 assert.equal(pm({ renderStyle: 'ascii', shiftKey: true }), 'char');  // ASCII has no colours to pick
 assert.equal(pm({ shiftKey: true }), 'fg');
 assert.equal(pm({ altKey: true }), 'bg');
-assert.equal(pm({}), 'cell');
-// The ANSI view's picker option sets what a plain click picks; Shift/Alt still override it.
+assert.equal(pm({}), 'both');                                        // default: foreground and background
+// The ANSI view's picker option (FG, BG or Both) sets what a plain click picks; Shift/Alt override it.
 assert.equal(pm({ target: 'bg' }), 'bg');
-assert.equal(pm({ target: 'char' }), 'char');
-assert.equal(pm({ target: 'char', shiftKey: true }), 'fg');
+assert.equal(pm({ target: 'fg' }), 'fg');
+assert.equal(pm({ target: 'bg', shiftKey: true }), 'fg');
 assert.equal(pm({ target: 'fg', altKey: true }), 'bg');
-assert.equal(pm({ view: 'input', target: 'char' }), 'fg');           // the pixel view has only colours
+assert.equal(pm({ view: 'input', target: 'both' }), 'fg');           // the pixel view picks the paint colour
 console.log('underlying ok');

@@ -9,7 +9,7 @@ export default {
   options: [
     {
       key: 'pickTarget', label: 'Pick', type: 'segmented', views: ['output'],
-      choices: [{ value: 'cell', label: 'Cell' }, { value: 'fg', label: 'Foreground' }, { value: 'bg', label: 'Background' }, { value: 'char', label: 'Character' }],
+      choices: [{ value: 'fg', label: 'FG' }, { value: 'bg', label: 'BG' }, { value: 'both', label: 'Both' }],
     },
   ],
 };
