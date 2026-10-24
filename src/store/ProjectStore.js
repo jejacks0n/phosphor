@@ -18,6 +18,7 @@ import { cellWidth } from "@/lib/CharWidth.js";
 import { overwritesAll } from "@/document/wideChars.js";
 import { RESET_GROUPS, settingsState, groupDefaults, baseParams, slidersAtDefaults } from "@/store/settings.js";
 import { combineActions } from "@/store/project/combineActions.js";
+import { readingActions } from "@/store/project/reading.js";
 import { baseLayerActions } from "@/store/project/baseLayer.js";
 import { sliderActions } from "@/store/project/sliders.js";
 import { historyActions } from "@/store/project/history.js";
@@ -93,7 +94,7 @@ export const useProjectStore = defineStore('project', {
     }),
   },
 
-  actions: combineActions(historyActions, sliderActions, baseLayerActions, {
+  actions: combineActions(historyActions, sliderActions, baseLayerActions, readingActions, {
     randomizeSeed() {
       this.seed = generateSlug(2);
     },
@@ -517,50 +518,6 @@ export const useProjectStore = defineStore('project', {
       this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
     },
 
-    // The color under grid pixel (x, y) before adjustments: paint if there is any, else the source.
-    rawColorAt(x, y) {
-      if (!this.image) return '#000000';
-      this.ensureLayer();
-      x = Math.floor(x);
-      y = Math.floor(y);
-      const painted = this.paintLayer?.colorAt(x, y);
-      return painted ? rgb2hex(painted) : this.baseColorAt(x, y);
-    },
-
-    // The base layer's color at grid pixel (x, y), as stored (before adjustments): its own pixel
-    // over the image as the pipeline shows it.
-    baseColorAt(x, y) {
-      const own = this.baseLayer?.pixelAt(x, y);
-      if (!own || own.a >= 1) return own ? rgb2hex(own) : this.imageColorAt(x, y);
-      return rgb2hex(over(hex2rgb(this.imageColorAt(x, y)), own));
-    },
-
-    // The image under grid pixel (x, y) before adjustments, as the pipeline downsamples it.
-    imageColorAt(x, y) {
-      const source = this.renderer.imageAt(x, y, this.cols, this.rows);
-      return source ? rgb2hex(source) : '#000000';
-    },
-
-    // What's under a cell, as stored colors (pre-adjustment), for the eyedropper, flip and merge up.
-    // Stored, not as displayed: a picked or merged-up color keeps following the adjustments, as the
-    // picture's own colors do (picking a displayed color would apply the adjustments twice).
-    // withPaint: paint (on top) wins per half; otherwise edit-cell attributes, then the source image.
-    underlyingAt(col, row, { withPaint = true } = {}) {
-      const entry = this.editCellAt(col, row) ?? {};
-      const half = (y, attr) => {
-        const painted = withPaint && this.paintLayer?.colorAt(col, y);
-        if (painted) return rgb2hex(painted);
-        return entry[attr] ?? this.baseColorAt(col, y);
-      };
-      const i = cellIndex(col, row, this.cols);
-      const shown = withPaint ? this.cells[i] : null;
-      return {
-        char: shown?.char ?? entry.char ?? this.renderedCells[i]?.char ?? ' ',
-        bg: half(2 * row, 'bg'),
-        fg: half(2 * row + 1, 'fg'),
-      };
-    },
-
     paintEditPixels(pixels, opacity = 100) {
       if (!pixels.length || !this.renderer.outputCanvas) return;
       this.ensureLayer();
@@ -586,10 +543,6 @@ export const useProjectStore = defineStore('project', {
       this.paintLayer.erase(pixels);
 
       this.refreshCells(pixels);
-    },
-
-    editCellAt(col, row) {
-      return this.editCells.get(cellKey(col, row));
     },
 
     // Set (string), clear (null) or keep (undefined) a cell's edit-cell char/fg/bg. clearPaint removes
@@ -673,21 +626,6 @@ export const useProjectStore = defineStore('project', {
 
     // --- Selection: each operation is one undo step, and none at all when nothing changes.
 
-    // The whole grid as a rect (Merge up and Select all with no selection).
-    gridRect() {
-      return { c0: 0, r0: 0, c1: this.cols - 1, r1: charRowsOf(this.rows) - 1 };
-    },
-
-    // The base layer's cell (no edits, no paint), as stored colors: the converter's character (or
-    // the pinned one) on the base's colors (bg the top half, fg the bottom).
-    baseCellAt(col, row) {
-      return {
-        char: this.baseRecords.pins.get(cellKey(col, row)) ?? this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ',
-        bg: this.baseColorAt(col, 2 * row),
-        fg: this.baseColorAt(col, 2 * row + 1),
-      };
-    },
-
     // Base edits write the base layer's own pixels: exact, over the image as the pipeline shows it,
     // never resampled or put through the effects. Each is part of the current edit; the caller
     // commits it.
@@ -714,11 +652,6 @@ export const useProjectStore = defineStore('project', {
     // Each layer moves, copies and pastes as itself. Block = { w, h, cells?: (Entry | null)[],
     // paint?: canvas, base?: { pixels: canvas (a grid pixel each), pins: (char | null)[] } }. Each
     // change is one undo step; rects are clipped to the grid.
-
-    clipRect({ c0, r0, c1, r1 }) {
-      const rect = { c0: Math.max(0, c0), r0: Math.max(0, r0), c1: Math.min(this.cols - 1, c1), r1: Math.min(charRowsOf(this.rows) - 1, r1) };
-      return rect.c0 <= rect.c1 && rect.r0 <= rect.r1 ? rect : null;
-    },
 
     copySelection(rect, { base, edit }) {
       this.ensureLayer();
@@ -883,10 +816,6 @@ export const useProjectStore = defineStore('project', {
       this.editCells = next;
       const pixels = cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
       this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
-    },
-
-    cellHasPaint(col, row) {
-      return !!(this.paintLayer?.colorAt(col, 2 * row) || this.paintLayer?.colorAt(col, 2 * row + 1));
     },
 
     // Flip a cell's colors on the chosen layers. Edit: the paint (as it shows) or the edit cell's
@@ -1110,15 +1039,6 @@ export const useProjectStore = defineStore('project', {
       } finally {
         this._merging = false;
       }
-    },
-
-    // Whether anything is drawn inside a cell rect (an edit cell or paint): something to merge.
-    hasEditsIn(rect) {
-      for (const key of this.editCells.keys()) {
-        const { col, row } = parseKey(key);
-        if (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1) return true;
-      }
-      return !!this.paintLayer?.hasPaintIn(rect);
     },
 
     // rect: only the edit layer inside a cell rect (a selection) is merged; the rest stays.
