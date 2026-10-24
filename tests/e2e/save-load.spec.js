@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, store, settled, editAt } from './support.js';
+import { openApp, store, settled, editAt, saveAs } from './support.js';
 
 test('save a project and load it back through the file input', async ({ page }) => {
   await openApp(page);
@@ -8,7 +8,7 @@ test('save a project and load it back through the file input', async ({ page }) 
   await settled(page);
   const before = await store(page, 'project', (p) => JSON.stringify(p.cells.map((c) => c.char + c.fg.hex + c.bg.hex)));
 
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save Project (.phosphor)' }).click()]);
+  const download = await saveAs(page, 'Save Project (.phosphor)');
   expect(download.suggestedFilename()).toBe('gradient.phosphor');
   const path = await download.path();
 

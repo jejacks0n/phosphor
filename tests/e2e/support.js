@@ -4,16 +4,21 @@ import { fileURLToPath } from 'node:url';
 
 export const fixture = (path) => fileURLToPath(new URL(`../fixtures/${path}`, import.meta.url));
 
-// The app with an image loaded, on the ANSI tab. Saves download (no file picker), so tests can catch them.
+// The app with an image loaded, on the ANSI tab.
 export async function openApp(page, image = 'images/gradient.png') {
-  await page.addInitScript(() => {
-    delete window.showSaveFilePicker;
-    delete Window.prototype.showSaveFilePicker;
-  });
   await page.goto('/');
   await page.locator('input[type=file]').setInputFiles(fixture(image));
   await tab(page, 'ANSI').click();
   await settled(page);
+}
+
+// Save or export through the save dialog: the button, then the dialog's Save/Export; the download.
+export async function saveAs(page, button, { name } = {}) {
+  await page.getByRole('button', { name: button }).click();
+  const dialog = page.getByRole('dialog');
+  if (name !== undefined) await dialog.getByRole('textbox', { name: 'File name' }).fill(name);
+  const [download] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: /^(Save|Export)$/ }).click()]);
+  return download;
 }
 
 // An editor tab: PIXEL, ANSI or SAUCE.

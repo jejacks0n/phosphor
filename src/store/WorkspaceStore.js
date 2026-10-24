@@ -47,6 +47,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     isMiddleClick: false,
     settingsOpen: false,
     showAboutModal: false,
+    saveDialog: null,        // the save dialog's format while it's open: 'phosphor' | 'ans' | 'utf8ans' (SaveDialog)
 
     // Scroll state persistence
     inputScrollX: null,

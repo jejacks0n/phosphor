@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, store, settled, editAt } from './support.js';
+import { openApp, store, settled, editAt, saveAs } from './support.js';
 import { AnsiFile } from '../../src/lib/AnsiFile.js';
 import { readSauce } from '../support/sauce.js';
 import { terminalGrid } from '../support/terminal.js';
@@ -16,18 +16,19 @@ for (const ext of ['ans', 'utf8ans']) {
     await settled(page);
     const { cols, rows, cells, quantize } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2), cells: p.cells, quantize: p.quantize }));
 
-    // The default characters include ▁▂▃▅, which CP437 lacks: .ans asks before replacing them.
-    const asked = [];
-    page.on('dialog', (d) => { asked.push(d.message()); d.accept(); });
-    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: `Export .${ext}` }).click()]);
+    // The default characters include ▁▂▃▅, which CP437 lacks: the .ans dialog lists what they become.
+    await page.getByRole('button', { name: `Export .${ext}` }).click();
+    const replacements = page.getByRole('dialog').getByRole('list', { name: 'Replacements' });
+    if (ext === 'ans') await expect(replacements.getByRole('listitem').filter({ hasText: '▅' })).toHaveText(/▅\s*→\s*▄\s*\d+ cells?/);
+    else await expect(replacements).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    const download = await saveAs(page, `Export .${ext}`);
     expect(download.suggestedFilename()).toBe(`gradient.${ext}`);
     const bytes = new Uint8Array(await readFile(await download.path()));
     const expected = new Uint8Array(await new AnsiFile(cols, rows, cells).toBlob({ utf8: ext === 'utf8ans', colorMode: quantize }).arrayBuffer());
     expect(Buffer.from(art(bytes)).equals(Buffer.from(art(expected)))).toBe(true);
     const sauce = readSauce(bytes);
     expect([sauce.width, sauce.height]).toEqual([cols, rows]);
-    expect(asked.length).toBe(ext === 'ans' ? 1 : 0);
-    if (ext === 'ans') expect(asked[0]).toMatch(/▅ ×\d+ → /);
     if (ext === 'utf8ans') expect(terminalGrid(bytes, cols)[2].slice(2, 10)).toEqual(['H', 'é', ' ', '漢', '', '字', '', ' ']);
   });
 }

@@ -31,7 +31,6 @@ async function save(project) {
   const saved = new Promise((resolve) => {
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { resolve(this.href); });
   });
-  delete window.showSaveFilePicker;
   await project.saveProject();
   const blob = await (await fetch(await saved)).blob();
   vi.restoreAllMocks();

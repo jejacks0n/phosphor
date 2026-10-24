@@ -24,7 +24,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _handleSave = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
-      projectStore.saveProject();
+      if (projectStore.image) workspaceStore.saveDialog = 'phosphor';
       return true;
     }
     return false;

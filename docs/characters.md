@@ -59,8 +59,13 @@ you copied anywhere else since (see [Layers](layers.md#the-select-tool)).
 - **.utf8ans** keeps every character. A two-column character is written once and the terminal moves
   two columns for it, so the rows line up.
 - **.ans** is CP437 and can't hold most of these: each character it lacks is written as its closest
-  lookalike or `?`, and Phosphor tells you which ones before you export. A two-column character
-  becomes its stand-in plus a space, so the grid still lines up.
+  lookalike or `?`. The export dialog lists every one, what it becomes and how many cells use it,
+  before you export. A two-column character becomes its stand-in plus a space, so the grid still
+  lines up.
+
+Saving a project and both exports open the same dialog, where you name the file (Cmd/Ctrl+S opens it
+for the project). The name you give becomes the document's name, so the next save starts from it.
+Every browser saves it as a download with that name, Safari included.
 
 ## When art looks wrong in someone's terminal
 

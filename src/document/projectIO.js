@@ -75,26 +75,16 @@ const readBase = (json) => {
   return { baseRecords: records, erasedCells: erased };
 };
 
-// Save via the browser's file picker where available, otherwise as a download.
-export async function saveFile(blob, filename, description) {
-  if ('showSaveFilePicker' in window) {
-    try {
-      const handle = await window.showSaveFilePicker({
-        suggestedName: filename,
-        types: [{ description, accept: { 'application/octet-stream': [filename.slice(filename.lastIndexOf('.'))] } }],
-      });
-      const writable = await handle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      return;
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      console.error('Save File Picker failed, falling back to download:', err);
-    }
-  }
-  downloadBlob(blob, filename);
+// A filename as typed into the save dialog, without its extension (added back by the caller):
+// trimmed, the extension dropped if it was typed, slashes made dashes. '' when nothing's left.
+export function fileStem(input, ext) {
+  const name = input.trim().replace(/[/\\]/g, '-');
+  const suffix = `.${ext}`;
+  return (name.toLowerCase().endsWith(suffix.toLowerCase()) ? name.slice(0, -suffix.length) : name).trim();
 }
 
+// Every save and export is a download, named as typed in the save dialog (Safari has no save
+// picker; every browser honours a download's name).
 export function downloadBlob(blob, filename) {
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);

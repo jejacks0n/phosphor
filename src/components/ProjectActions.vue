@@ -7,10 +7,10 @@ export default {
   name: 'ProjectActions',
   computed: {
     ...mapState(useProjectStore, ['image', 'isDirty']),
-    ...mapWritableState(useWorkspaceStore, ['editorTab']),
+    ...mapWritableState(useWorkspaceStore, ['editorTab', 'saveDialog']),
   },
   methods: {
-    ...mapActions(useProjectStore, ['exportFile', 'saveProject', 'clearImage']),
+    ...mapActions(useProjectStore, ['clearImage']),
     confirmNewProject() {
       if (this.isDirty) {
         if (!confirm('You have unsaved changes. Are you sure you want to start a new project?')) {
@@ -26,9 +26,9 @@ export default {
 
 <template>
   <article class="project-actions">
-    <button @click="saveProject" :disabled="!image" class="primary">Save Project (.phosphor)</button>
-    <button @click="exportFile('ans')" :disabled="!image" class="secondary">Export .ans</button>
-    <button @click="exportFile('utf8ans')" :disabled="!image" class="secondary">Export .utf8ans</button>
+    <button @click="saveDialog = 'phosphor'" :disabled="!image" class="primary">Save Project (.phosphor)</button>
+    <button @click="saveDialog = 'ans'" :disabled="!image" class="secondary">Export .ans</button>
+    <button @click="saveDialog = 'utf8ans'" :disabled="!image" class="secondary">Export .utf8ans</button>
     <hr/>
     <button @click="confirmNewProject" :disabled="!image" class="danger">Start New Project</button>
   </article>

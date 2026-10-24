@@ -8,6 +8,7 @@ import { charRowsOf } from '@/lib/Cells';
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
+import SaveDialog from '@/components/SaveDialog.vue';
 import AppToast from '@/components/AppToast.vue';
 
 export default {
@@ -16,12 +17,13 @@ export default {
     EditWorkspace,
     ControlPanel,
     AboutPhosphor,
+    SaveDialog,
     AppToast,
   },
   computed: {
     ...mapState(useProjectStore, ['image', 'isDirty']),
     ...mapState(useWorkspaceStore, ['activeTool', 'isPainting', 'isCtrlPressed', 'isMiddleClick']),
-    ...mapWritableState(useWorkspaceStore, ['showAboutModal']),
+    ...mapWritableState(useWorkspaceStore, ['showAboutModal', 'saveDialog']),
   },
   mounted() {
     window.addEventListener('beforeunload', this.onBeforeUnload);
@@ -68,6 +70,7 @@ export default {
     <ControlPanel/>
     <EditWorkspace/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
+    <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>
     <AppToast/>
   </main>
 </template>

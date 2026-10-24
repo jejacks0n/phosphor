@@ -2,7 +2,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { readProject, writeProject, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
+import { readProject, writeProject, fileStem, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
 import { EMPTY_BASE, withPins } from '../../src/document/baseRecords.js';
 
 test('.phosphor read/write: round-trips, and reads older files (examples/) the same way the app always has', async () => {
@@ -66,4 +66,15 @@ test('.phosphor read/write: round-trips, and reads older files (examples/) the s
   assert.equal((await readProject(fileOf({ charEditMap: [[5, '#']] }))).migrated, false); // nothing could be placed
 
   await assert.rejects(readProject(new Blob([new Uint8Array(32)])), /Not a valid Phosphor project file/);
+});
+
+test('A typed filename: trimmed, its extension (if typed) dropped, slashes made dashes', () => {
+  assert.equal(fileStem('  my art  ', 'ans'), 'my art');
+  assert.equal(fileStem('my art.ans', 'ans'), 'my art');
+  assert.equal(fileStem('my art.ANS', 'ans'), 'my art');
+  assert.equal(fileStem('scene.phosphor', 'phosphor'), 'scene');
+  assert.equal(fileStem('v1.2', 'ans'), 'v1.2');        // a dot that isn't the extension stays
+  assert.equal(fileStem('a/b\\c', 'ans'), 'a-b-c');
+  assert.equal(fileStem('   ', 'ans'), '');
+  assert.equal(fileStem('.ans', 'ans'), '');
 });

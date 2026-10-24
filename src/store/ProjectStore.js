@@ -12,7 +12,7 @@ import History from "@/document/History.js";
 import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, BLANK, bakeEditCells, bakeEntry, mergeKind } from "@/document/editCells.js";
 import { processedImage, workingScale } from "@/lib/ImageProcessor.js";
 import { bakedCanvas, getEffectiveColor } from "@/lib/PixelTransforms.js";
-import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
+import { loadImage, readProject, writeProject, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { cellWidth } from "@/lib/CharWidth.js";
 import { overwritesAll } from "@/document/wideChars.js";
@@ -230,8 +230,15 @@ export const useProjectStore = defineStore('project', {
       workspace.selection = workspace.selectionOffset = workspace.lastPick = null;
     },
 
-    async saveProject() {
+    // Save and export take the name typed in the save dialog (fileStem: without the extension); it
+    // renames the document, so the next save starts from it.
+    rename(filename) {
+      if (filename?.trim()) this.filename = filename.trim();
+    },
+
+    async saveProject(filename = this.filename) {
       if (!this.image || !this.imageBuffer) return;
+      this.rename(filename);
       this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
       const settings = { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, this[key]])), paintScale: this.paintLayer?.scale ?? null };
@@ -295,13 +302,9 @@ export const useProjectStore = defineStore('project', {
       }
     },
 
-    async exportFile(ext, opts = {}) {
-      // .ans is CP437: say which characters it can't keep, and what's written instead, first.
-      if (ext === 'ans') {
-        const missing = AnsiFile.unmappable(this.cells);
-        const list = [...missing].map(([char, { count, as }]) => `${char} ×${count} → ${as}`).join(', ');
-        if (missing.size && !confirm(`Some characters can't be saved in .ans and will be replaced: ${list}. Export as .utf8ans to keep them. Export anyway?`)) return;
-      }
+    // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first.
+    async exportFile(ext, { filename = this.filename, ...opts } = {}) {
+      this.rename(filename);
 
       const comments = [
         `Created with Phosphor`,
@@ -328,7 +331,7 @@ export const useProjectStore = defineStore('project', {
         utf8: ext === 'utf8ans',
         ...opts,
       });
-      await saveFile(blob, `${this.filename}.${ext}`, ext === 'ans' ? 'ANSI Art File' : 'UTF8 ANSI Art File');
+      downloadBlob(blob, `${this.filename}.${ext}`);
     },
 
     // RESET ALL and a group's RESET: one undo step each.
