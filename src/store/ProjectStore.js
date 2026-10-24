@@ -1121,6 +1121,7 @@ export const useProjectStore = defineStore('project', {
           }
         }
 
+        if (!covered.size) return; // nothing drawn (in the rect): no empty undo step
         const ctx = ctx2d(canvas);
         const exactPixels = [], pictureCells = [], pins = [], unpins = [];
         for (const [key, { col, row }] of covered) {
@@ -1188,6 +1189,15 @@ export const useProjectStore = defineStore('project', {
       }
     },
 
+    // Whether anything is drawn inside a cell rect (an edit cell or paint): something to merge.
+    hasEditsIn(rect) {
+      for (const key of this.editCells.keys()) {
+        const { col, row } = parseKey(key);
+        if (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1) return true;
+      }
+      return !!this.paintLayer?.hasPaintIn(rect);
+    },
+
     // rect: only the edit layer inside a cell rect (a selection) is merged; the rest stays.
     mergeDown(rect = null) {
       if (!this.image) return;
@@ -1207,6 +1217,7 @@ export const useProjectStore = defineStore('project', {
         }
         merged.push(this.mergeCellOf(col, row));
       }
+      if (rect && !merged.length && !this.paintLayer.hasPaintIn(rect)) return; // nothing drawn inside: no empty undo step
       const paintedPins = [...this.baseRecords.pins.keys()].map(parseKey)
         .filter(({ col, row }) => inRect(col, row) && !this.editCells.has(cellKey(col, row)) && this.cellHasPaint(col, row))
         .map(({ col, row }) => ({ col, row, char: shownChar(col, row) ?? '▄' }));

@@ -10,6 +10,7 @@ import ColorPair from '@/components/ColorPair.vue';
 import PaletteStrip from '@/components/PaletteStrip.vue';
 import LayerToggles from '@/components/LayerToggles.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
+import MergeDialog from '@/components/MergeDialog.vue';
 
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -94,14 +95,33 @@ function confirmClear() {
   }
 }
 
-function confirmMergeDown() {
-  if (confirm('Merge the edit layer down into the base layer? Paint and cells become base pixels exactly as they show, and typed and drawn cells keep their characters.')) {
-    project.mergeDown();
-  }
+// Merge down asks how (MergeDialog): exactly, or into the picture. rect: a selection's, or null for
+// the whole edit layer.
+const merging = ref(null); // { rect } while the dialog is open
+function openMerge(rect = null) {
+  merging.value = { rect };
 }
+function merge(kind) {
+  const { rect } = merging.value;
+  merging.value = null;
+  if (kind === 'exact') project.mergeDown(rect);
+  else project.mergeIntoPicture(rect);
+}
+// The selection's Merge down: only when something's drawn inside it.
+const selectionHasEdits = computed(() => {
+  void project.editCells; void project.hasPaint; void project.historyVersion; // re-check after edits
+  return !!workspace.selection && project.hasEditsIn(workspace.selection);
+});
 </script>
 
 <template>
+  <MergeDialog
+      v-if="merging"
+      :selection="!!merging.rect"
+      :note="project.pictureIsOriginal"
+      @choose="merge"
+      @cancel="merging = null"
+  />
   <article class="edit-toolbar">
     <div class="toolbar-row primary-row">
       <div class="color-group">
@@ -180,7 +200,7 @@ function confirmMergeDown() {
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg></button>
         <button
             title="Merge down: the edit layer into the base layer"
-            @click="confirmMergeDown"
+            @click="openMerge()"
             class="primary"
             :disabled="!project.hasEdits"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg></button>
@@ -210,7 +230,7 @@ function confirmMergeDown() {
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg>
             Bake Effects
           </button>
-          <button @click="confirmMergeDown" :disabled="!project.hasEdits">
+          <button @click="openMerge()" :disabled="!project.hasEdits">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/>
             </svg>
@@ -239,12 +259,14 @@ function confirmMergeDown() {
           <button title="Delete (Delete)" aria-label="Delete (Delete)" @click="project.deleteSelection(workspace.selection, workspace.selectLayers)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
           <div class="divider"/>
           <button class="text" title="Merge up: what the base layer shows here becomes edit cells" @click="project.mergeUp(workspace.selection)">Merge up</button>
+          <button class="text" title="Merge down: what's drawn here goes into the base layer" :disabled="!selectionHasEdits" @click="openMerge(workspace.selection)">Merge down</button>
           <button class="text" title="Clear the selection (Esc)" @click="workspace.selection = null">Deselect</button>
         </template>
         <template v-else>
           <span class="hint">Drag to select cells, or:</span>
           <button class="text" title="Select the whole canvas (Cmd/Ctrl+A)" @click="workspace.selectAll(project.gridRect())">Select all</button>
           <button class="text" title="Merge up: what the base layer shows becomes edit cells, over the whole canvas" @click="project.mergeUp(null)">Merge up</button>
+          <button class="text" title="Merge down: the whole edit layer into the base layer" :disabled="!project.hasEdits" @click="openMerge()">Merge down</button>
         </template>
       </div>
       <div v-if="toolOptions.length" class="tool-setting-group">

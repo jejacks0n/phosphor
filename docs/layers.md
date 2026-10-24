@@ -64,9 +64,21 @@ with the picture. The colour palette (CGA, VGA, a colour count) applies to every
 
 ## Moving things between layers
 
-- **Merge down** (top toolbar) puts the whole edit layer into the base layer exactly as it shows:
-  paint and cells become base pixels, and your typed and drawn cells keep their characters, pinned
-  on the base layer. Nothing is resampled or re-filtered. Afterwards the edit layer is empty.
+- **Merge down** (top toolbar, or the Select tool's row) puts the edit layer into the base layer.
+  With a selection, only what's drawn inside it goes; the rest of the edit layer stays. Each time,
+  it asks how:
+  - **Exactly**: paint and cells become base pixels exactly as they show, and your typed and drawn
+    cells keep their characters, pinned on the base layer. Nothing is resampled or re-filtered, and
+    the effects never touch it.
+  - **Into the picture**: your drawing becomes part of the image itself, so every effect applies
+    to it, live, like the photo: Edges outlines it, Sharpen sharpens it, and moving the sliders keeps
+    changing it. Paint and solid cells (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep
+    showing their two halves; letters and other characters can't become picture pixels, so they
+    merge exactly, as does anything drawn in the bars around a picture that doesn't fill the grid.
+    Like Bake, the first time makes the picture the working-size copy the preview is made from, so
+    growing the grid later works from that, and effects like Edges can shift slightly across the
+    picture that first time. With a colour-count palette, the palette is worked out again from the
+    merged picture, so some colours can shift.
 - **Merge up** (the Select tool's row) does the opposite for the base: what the base layer shows —
   its characters and colours, effects included — becomes edit cells, which the seed, character set
   and effects no longer change. With a selection it merges that area; without one, the whole

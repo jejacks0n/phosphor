@@ -260,6 +260,12 @@ export default class PaintLayer {
     this.hasPaint ||= layer.hasPaint;
   }
 
+  // Whether any paint lies inside a cell rect.
+  hasPaintIn(rect) {
+    const target = this.hasPaint && this.#layerRect(rect);
+    return !!target && this.#anyPaint(target);
+  }
+
   // Clear a cell rect's pixels (what a selection's merge takes off the edit layer).
   clearCells(rect) {
     if (!this.hasPaint) return;
