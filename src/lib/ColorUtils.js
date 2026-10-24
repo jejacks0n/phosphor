@@ -54,10 +54,13 @@ export function nearestIndex(r, g, b, palette) {
 }
 
 // Palettes of 16+ colours snap through a 5-bit-per-channel lookup (fast, slightly coarser than an
-// exact search); smaller ones search exactly. Every quantization goes through here, so a cell
-// rebuilt on its own snaps exactly like a full render.
+// exact search); smaller ones search exactly. A colour that is in the palette is always itself (the
+// lookup alone could lump two shades closer than its 8-level steps). The lookup fills as colours
+// ask for it (a picture touches a fraction of it; the Number palette changes as you paint). Every
+// quantization goes through here, so a cell rebuilt on its own snaps exactly like a full render.
 const SIGBITS = 5;
 const RSHIFT = 8 - SIGBITS;
+const UNSET = 0xffff;
 const paletteLUTs = new Map();       // by the palette's colours
 const lutsByPalette = new WeakMap(); // by palette array: the per-pixel fast path
 
@@ -67,28 +70,28 @@ function paletteLUT(palette) {
   if (lut) return lut;
   const key = palette.map(p => p.hex).join(',');
   lut = paletteLUTs.get(key);
-  if (lut) {
-    lutsByPalette.set(palette, lut);
-    return lut;
+  if (!lut) {
+    const exact = new Map();
+    palette.forEach((p, i) => { if (!exact.has(rgbKey(p.r, p.g, p.b))) exact.set(rgbKey(p.r, p.g, p.b), i); });
+    lut = { table: new Uint16Array(1 << (3 * SIGBITS)).fill(UNSET), exact };
+    if (paletteLUTs.size > 10) paletteLUTs.delete(paletteLUTs.keys().next().value); // keep only a few
+    paletteLUTs.set(key, lut);
   }
-
-  lut = new Uint16Array(1 << (3 * SIGBITS));
-  for (let i = 0; i < lut.length; i++) {
-    const r = (i >> (2 * SIGBITS)) << RSHIFT;
-    const g = ((i >> SIGBITS) & ((1 << SIGBITS) - 1)) << RSHIFT;
-    const b = (i & ((1 << SIGBITS) - 1)) << RSHIFT;
-    lut[i] = nearestIndex(r, g, b, palette);
-  }
-  if (paletteLUTs.size > 10) paletteLUTs.delete(paletteLUTs.keys().next().value); // keep only a few
-  paletteLUTs.set(key, lut);
   lutsByPalette.set(palette, lut);
   return lut;
 }
 
+const rgbKey = (r, g, b) => (r << 16) | (g << 8) | b;
+
 export function paletteIndex(r, g, b, palette) {
   const lut = paletteLUT(palette);
   if (!lut) return nearestIndex(r, g, b, palette);
-  return lut[((r >> RSHIFT) << (2 * SIGBITS)) + ((g >> RSHIFT) << SIGBITS) + (b >> RSHIFT)];
+  const exact = lut.exact.get(rgbKey(r, g, b));
+  if (exact !== undefined) return exact;
+  const i = ((r >> RSHIFT) << (2 * SIGBITS)) + ((g >> RSHIFT) << SIGBITS) + (b >> RSHIFT);
+  let index = lut.table[i];
+  if (index === UNSET) index = lut.table[i] = nearestIndex((r >> RSHIFT) << RSHIFT, (g >> RSHIFT) << RSHIFT, (b >> RSHIFT) << RSHIFT, palette);
+  return index;
 }
 
 export function nearestColor(rgb, palette) {
