@@ -18,7 +18,7 @@ export function useEditorInteractions(options) {
   } = options;
 
   const isIOS = typeof navigator !== 'undefined' && (
-      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
   );
 
@@ -83,7 +83,7 @@ export function useEditorInteractions(options) {
     isPainting.value = true;
     if (workspaceStore) workspaceStore.isPainting = true;
 
-    callbacks.onColorPick(pos);
+    callbacks.onColorPick(pos, event);
     if (event.pointerId !== undefined && event.currentTarget) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
@@ -119,9 +119,10 @@ export function useEditorInteractions(options) {
     const displayEl = unref(displayRef);
     if (!displayEl) return;
     const rect = displayEl.getBoundingClientRect();
+    // From inside the display's border (the ANSI view's pre has one), where the content starts.
     mousePos.value = {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+      x: clientX - rect.left - displayEl.clientLeft,
+      y: clientY - rect.top - displayEl.clientTop,
     };
   }
 
@@ -165,10 +166,10 @@ export function useEditorInteractions(options) {
     // Safari fix: if focus is stuck in a dropdown/select, the first click on the 
     // canvas might be consumed just to clear focus. Proactively blurring 
     // helps ensure the event is processed immediately. 
-    // We also use a debounce to allow both mousedown and pointerdown to be 
-    // mapped to this function without double-firing.
-    if (Date.now() - _lastInteractionTime < 50) return;
-    _lastInteractionTime = Date.now();
+    // Both mousedown and pointerdown are mapped to this function: the mousedown a browser sends right
+    // after a pointerdown (the same press) is dropped; two pointerdowns are two presses, however quick.
+    if (event.type === 'mousedown' && Date.now() - _lastInteractionTime < 50) return;
+    if (event.type === 'pointerdown') _lastInteractionTime = Date.now();
 
     if (document.activeElement && typeof document.activeElement.blur === 'function') {
       document.activeElement.blur();
@@ -239,8 +240,8 @@ export function useEditorInteractions(options) {
     }
     Object.assign(_zoomAnchor, { clientX, clientY, time: now });
 
-    if (_pendingZoomScroll) _pendingZoomScroll.cancelled = true;
-    const pending = { cancelled: false };
+    if (_pendingZoomScroll) _pendingZoomScroll.canceled = true;
+    const pending = { canceled: false };
     _pendingZoomScroll = pending;
 
     callbacks.onZoomChange(newZoom);
@@ -249,7 +250,7 @@ export function useEditorInteractions(options) {
     // recalculated) AND after the browser has run layout. Reading getBoundingClientRect()
     // here is reliable in all browsers — nextTick (microtask) causes stale layout reads in Safari.
     requestAnimationFrame(() => {
-      if (pending.cancelled) return;
+      if (pending.canceled) return;
       _pendingZoomScroll = null;
 
       // Scroll so the anchor lands back under the pointer.
@@ -298,7 +299,7 @@ export function useEditorInteractions(options) {
     if (!pos) return;
 
     if (tool.kind === 'pick') {
-      callbacks.onColorPick(pos);
+      callbacks.onColorPick(pos, event);
       return;
     }
 

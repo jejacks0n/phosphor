@@ -53,9 +53,50 @@ export function nearestIndex(r, g, b, palette) {
   return nearest;
 }
 
+// Palettes of 16+ colors snap through a 5-bit-per-channel lookup (fast, slightly coarser than an
+// exact search); smaller ones search exactly. A color that is in the palette is always itself (the
+// lookup alone could lump two shades closer than its 8-level steps). The lookup fills as colors
+// ask for it (a picture touches a fraction of it; the Number palette changes as you paint). Every
+// quantization goes through here, so a cell rebuilt on its own snaps exactly like a full render.
+const SIGBITS = 5;
+const RSHIFT = 8 - SIGBITS;
+const UNSET = 0xffff;
+const paletteLUTs = new Map();       // by the palette's colors
+const lutsByPalette = new WeakMap(); // by palette array: the per-pixel fast path
+
+function paletteLUT(palette) {
+  if (!palette || palette.length < 16) return null;
+  let lut = lutsByPalette.get(palette);
+  if (lut) return lut;
+  const key = palette.map(p => p.hex).join(',');
+  lut = paletteLUTs.get(key);
+  if (!lut) {
+    const exact = new Map();
+    palette.forEach((p, i) => { if (!exact.has(rgbKey(p.r, p.g, p.b))) exact.set(rgbKey(p.r, p.g, p.b), i); });
+    lut = { table: new Uint16Array(1 << (3 * SIGBITS)).fill(UNSET), exact };
+    if (paletteLUTs.size > 10) paletteLUTs.delete(paletteLUTs.keys().next().value); // keep only a few
+    paletteLUTs.set(key, lut);
+  }
+  lutsByPalette.set(palette, lut);
+  return lut;
+}
+
+const rgbKey = (r, g, b) => (r << 16) | (g << 8) | b;
+
+export function paletteIndex(r, g, b, palette) {
+  const lut = paletteLUT(palette);
+  if (!lut) return nearestIndex(r, g, b, palette);
+  const exact = lut.exact.get(rgbKey(r, g, b));
+  if (exact !== undefined) return exact;
+  const i = ((r >> RSHIFT) << (2 * SIGBITS)) + ((g >> RSHIFT) << SIGBITS) + (b >> RSHIFT);
+  let index = lut.table[i];
+  if (index === UNSET) index = lut.table[i] = nearestIndex((r >> RSHIFT) << RSHIFT, (g >> RSHIFT) << RSHIFT, (b >> RSHIFT) << RSHIFT, palette);
+  return index;
+}
+
 export function nearestColor(rgb, palette) {
   if (!palette || !palette.length) return rgb;
-  const nearest = palette[nearestIndex(rgb.r, rgb.g, rgb.b, palette)];
+  const nearest = palette[paletteIndex(rgb.r, rgb.g, rgb.b, palette)];
   return { ...nearest, a: rgb.a || 1, v: rgb2gray(nearest) };
 }
 
@@ -93,3 +134,29 @@ export const PALETTES = {
   cga: CGA,
   vga: VGA
 };
+
+// How the color picker lays out the active palette: one or more grids of swatches. CGA is the
+// classic 8 x 2; VGA (xterm 256) is the 16 system colors, the 6x6x6 cube and the 24 grays; custom
+// and adaptive palettes are a plain grid. 24-bit ('none') has no swatches.
+export function swatchSections(quantize, palette) {
+  if (!palette || !palette.length || quantize === 'none') return [];
+  if (quantize === 'cga') return [{ columns: 8, colors: palette }];
+  if (quantize === 'vga') {
+    return [
+      { columns: 16, colors: palette.slice(0, 16) },
+      { columns: 36, colors: palette.slice(16, 232) },
+      { columns: 24, colors: palette.slice(232, 256) },
+    ];
+  }
+  return [{ columns: Math.min(8, palette.length), colors: palette }];
+}
+
+// Distinct colors in the drawing, most used first: edit cells' foregrounds and backgrounds,
+// plus paintCounts (hex -> grid pixels, from PaintLayer.colorCounts()).
+export function drawingColors(editCells, paintCounts = new Map(), limit = 24) {
+  const counts = new Map(paintCounts);
+  for (const entry of editCells.values()) {
+    for (const hex of [entry.fg, entry.bg]) if (hex) counts.set(hex, (counts.get(hex) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([hex]) => hex);
+}

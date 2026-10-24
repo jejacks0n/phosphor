@@ -3,6 +3,8 @@ import { computed, useTemplateRef, watch, onMounted } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ctx2d } from '@/lib/Canvas';
+import { cellsToPixels, charRowsOf } from '@/lib/Cells';
+import { parseKey } from '@/document/editCells';
 import EditorViewport from '@/components/EditorViewport.vue';
 
 // The PIXEL view: the composited output canvas scaled up by editZoom.
@@ -10,6 +12,46 @@ const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const viewport = useTemplateRef('viewport');
 const displayRef = useTemplateRef('displayCanvas');
+
+// Edit cells (or all, with "All cells") drawn over the image as their half-cell colors: the
+// ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible.
+// The bitmap is rebuilt only when the cells or what's included change, not on zoom or opacity.
+const overlay = { canvas: null, cells: null, editCells: null, all: null, empty: true };
+const updateOverlay = () => {
+  const { cols, rows, cells, editCells } = projectStore;
+  const all = workspaceStore.ansiOverlayAll;
+  if (overlay.cells === cells && overlay.editCells === editCells && overlay.all === all) return;
+  Object.assign(overlay, { cells, editCells, all });
+
+  let include = () => true;
+  if (!all) {
+    const edited = new Set();
+    for (const key of editCells.keys()) {
+      const { col, row } = parseKey(key);
+      if (col < cols && row < charRowsOf(rows)) edited.add(row * cols + col);
+    }
+    include = (i) => edited.has(i);
+    overlay.empty = !edited.size;
+  } else {
+    overlay.empty = !cells.length;
+  }
+  if (overlay.empty) return;
+  if (!overlay.canvas) overlay.canvas = document.createElement('canvas');
+  overlay.canvas.width = cols;
+  overlay.canvas.height = rows;
+  ctx2d(overlay.canvas).putImageData(new ImageData(cellsToPixels(cells, cols, rows, include), cols, rows), 0, 0);
+};
+
+const drawOverlay = (ctx, width, height) => {
+  const opacity = workspaceStore.ansiOverlay / 100;
+  if (!opacity || !projectStore.cells.length) return;
+  updateOverlay();
+  if (overlay.empty) return;
+  const overlayCanvas = overlay.canvas;
+  ctx.globalAlpha = opacity;
+  ctx.drawImage(overlayCanvas, 0, 0, width, height);
+  ctx.globalAlpha = 1;
+};
 
 const redrawDisplay = () => {
   const dc = displayRef.value;
@@ -20,6 +62,7 @@ const redrawDisplay = () => {
   const ctx = ctx2d(dc);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(output, 0, 0, dc.width, dc.height);
+  drawOverlay(ctx, dc.width, dc.height);
 };
 
 const coordsAt = (event) => {
@@ -40,7 +83,7 @@ const contentSize = computed(() => ({
 }));
 const unit = computed(() => ({ x: workspaceStore.editZoom, y: workspaceStore.editZoom }));
 
-// Every render and every paint replaces cells; re-centre when the output size changes
+// Every render and every paint replaces cells; re-center when the output size changes
 // (including when the first render arrives).
 const sizeOf = (canvas) => canvas && `${canvas.width}x${canvas.height}`;
 let lastOutputSize = sizeOf(projectStore.renderer.outputCanvas); // a remount keeps the restored scroll
@@ -52,7 +95,7 @@ watch(() => projectStore.cells, () => {
     requestAnimationFrame(() => viewport.value?.centerContent());
   }
 });
-watch(() => workspaceStore.editZoom, redrawDisplay);
+watch(() => [workspaceStore.editZoom, workspaceStore.ansiOverlay, workspaceStore.ansiOverlayAll], redrawDisplay);
 
 onMounted(redrawDisplay);
 </script>

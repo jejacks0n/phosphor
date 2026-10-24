@@ -76,6 +76,14 @@ class VBox {
 export default function quantize(pixels, maxColors) {
   if (!pixels.length || maxColors < 2 || maxColors > 256) return [];
 
+  // No more colors than asked for: those exact colors (median cut would return their buckets'
+  // middles, so pure red would come back #fc0404).
+  const distinct = new Set();
+  for (let i = 0; i < pixels.length && distinct.size <= maxColors; i += 4) {
+    if (pixels[i + 3] >= 128) distinct.add((pixels[i] << 16) | (pixels[i + 1] << 8) | pixels[i + 2]);
+  }
+  if (distinct.size <= maxColors) return [...distinct].map((v) => ({ r: v >> 16, g: (v >> 8) & 255, b: v & 255 }));
+
   // Build Histogram
   const hist = new Uint32Array(1 << (3 * SIGBITS));
   let rmin = 255, rmax = 0, gmin = 255, gmax = 0, bmin = 255, bmax = 0;
@@ -129,10 +137,14 @@ export default function quantize(pixels, maxColors) {
       }
       sum += sliceCount;
       if (sum >= count / 2) {
+        // A median in the box's last slice (a picture pushed to pure white) would leave nothing
+        // on the far side: cut before that slice instead, when there are pixels before it, so
+        // both halves have some (boxes aren't shrunk to their pixels, so that side can be empty).
+        const cut = i === a2 && sum > sliceCount ? i - 1 : i;
         const v1 = vbox.copy();
         const v2 = vbox.copy();
-        v1[axisToSplit + '2'] = i;
-        v2[axisToSplit + '1'] = i + 1;
+        v1[axisToSplit + '2'] = cut;
+        v2[axisToSplit + '1'] = cut + 1;
         return [v1, v2];
       }
     }
@@ -169,3 +181,4 @@ export default function quantize(pixels, maxColors) {
     return { r, g, b };
   });
 }
+

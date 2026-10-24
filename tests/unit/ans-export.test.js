@@ -1,0 +1,52 @@
+// .ans export never writes NUL for a character CP437 can't encode: it lists them (so the app can
+// warn) and writes '?'. .utf8ans is unchanged.
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
+import { AnsiFile } from '../../src/lib/AnsiFile.js';
+
+test(".ans export never writes NUL for a character CP437 can't encode: it lists them (so the app can warn) and writes '?'", async () => {
+  const A = { r: 255, g: 255, b: 85, hex: '#ffff55', c: [255, 255, 85] };
+  const B = { r: 0, g: 0, b: 170, hex: '#0000aa', c: [0, 0, 170] };
+  const cells = [{ char: '★', fg: A, bg: B }, { char: '★', fg: A, bg: B }, { char: '◆', fg: A, bg: A }];
+  assert.deepEqual([...AnsiFile.unmappable(cells)], [['★', { count: 2, as: '?' }]]); // ◆ is written as ' ' (fg == bg), so it doesn't count
+  assert.equal(AnsiFile.unmappable([{ char: '🬀', fg: A, bg: B }]).size, 1);
+  assert.equal(AnsiFile.unmappable([{ char: '╬', fg: A, bg: B }]).size, 0);
+
+  const bytes = async (opts) => new Uint8Array(await new AnsiFile(3, 1, cells).toBlob({ colorMode: 'none', ...opts }).arrayBuffer());
+  const all = await bytes({});
+  const ans = all.slice(0, all.indexOf(0x1a));                            // the art, before SAUCE (which pads with NULs)
+  assert.ok(ans.includes(0x3f));                                          // '?'
+  assert.ok(!ans.includes(0x00));                                         // no NUL
+  const utf8 = await bytes({ utf8: true });
+  const star = [0xe2, 0x98, 0x85];
+  assert.ok(utf8.some((_, i) => star.every((b, j) => utf8[i + j] === b))); // ★ in UTF-8
+  assert.equal(AnsiFile.unicodeToCP437('★'), 0x3f);
+  assert.equal(AnsiFile.unicodeToCP437('╬'), 206);
+  // Block characters CP437 lacks (the default character set has ▁▂▃▅) go out as their closest
+  // CP437 lookalike rather than '?'; they're still listed so the export can say so.
+  assert.equal(AnsiFile.unicodeToCP437('▃'), 220);                        // ▄
+  assert.equal(AnsiFile.unicodeToCP437('▇'), 219);                        // █
+  assert.equal(AnsiFile.unicodeToCP437('▁'), 95);                         // _
+  assert.equal(AnsiFile.unicodeToCP437('▘'), 223);                        // ▀
+  assert.deepEqual(AnsiFile.unmappable([{ char: '▂', fg: A, bg: B }]).get('▂'), { count: 1, as: '▄' });
+  // A wide character's two columns: .utf8ans writes it once (the terminal moves two columns); .ans
+  // writes its stand-in and a space, so the grid stays aligned; it counts once as unmappable.
+  const wide = [{ char: '漢', fg: A, bg: B, wide: 'lead' }, { char: '漢', fg: A, bg: B, wide: 'trail' }, { char: 'a', fg: A, bg: B }];
+  const art = async (cellsIn, opts) => {
+    const b = new Uint8Array(await new AnsiFile(3, 1, cellsIn).toBlob({ colorMode: 'none', ...opts }).arrayBuffer());
+    const end = b.indexOf(0x1a);
+    return [...b.slice(0, end < 0 ? b.length : end)];
+  };
+  const SGR = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
+  const text = (b) => new TextDecoder().decode(new Uint8Array(b)).replace(SGR, '');
+  assert.equal(text(await art(wide, { utf8: true })).replace(/\r\n/g, ''), '漢a');
+  assert.equal(text(await art(wide, {})), '? a');
+  assert.deepEqual([...AnsiFile.unmappable(wide)], [['漢', { count: 1, as: '?' }]]);
+  const hidden = [{ char: '漢', fg: A, bg: A, wide: 'lead' }, { char: '漢', fg: A, bg: A, wide: 'trail' }, { char: 'a', fg: A, bg: B }];
+  assert.equal(text(await art(hidden, { utf8: true })).replace(/\r\n/g, ''), '  a');  // written as a space: so is its trail
+
+  // A character typed or pasted decomposed (e + a combining accent) is the same character as its
+  // precomposed form, which CP437 has.
+  assert.equal(AnsiFile.unicodeToCP437('e\u0301'), 130); // é
+  assert.equal(AnsiFile.unmappable([{ char: 'e\u0301', fg: A, bg: B }]).size, 0);
+});

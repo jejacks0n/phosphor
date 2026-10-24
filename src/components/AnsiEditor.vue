@@ -1,24 +1,54 @@
 <script setup>
-import { ref, computed, useTemplateRef, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, useTemplateRef, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useTextTool } from '@/composables/useTextTool';
 import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
+import CellCanvas from '@/lib/CellCanvas';
 import EditorViewport from '@/components/EditorViewport.vue';
-import CharPicker from '@/components/CharPicker.vue';
+import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 
-// The ANSI view: cells rendered as text in a <pre>; a grid pixel is half a character cell tall.
+// The ANSI view: cells drawn on a canvas (CellCanvas), or rendered as text in a <pre> (the DOM
+// renderer, kept beside it for the trial: workspace.ansiRenderer); a grid pixel is half a
+// character cell tall.
 const projectStore = useProjectStore();
-const viewport = useTemplateRef('viewport');
-const displayRef = useTemplateRef('pre');
+const workspaceStore = useWorkspaceStore();
+const textInputRef = useTemplateRef('textInput');
+useTextTool(projectStore, workspaceStore, textInputRef);
+const useDom = computed(() => workspaceStore.ansiRenderer === 'dom');
+const preRef = useTemplateRef('pre'), canvasRef = useTemplateRef('canvas');
+const displayRef = computed(() => (useDom.value ? preRef.value : canvasRef.value));
 
-const picker = ref(null);
 const metrics = ref(null);
 let renderFrame = null;
+let cellCanvas = null;
 
-// Character cell size in CSS px, measured from the <pre>'s font (null until it can be measured).
+// The canvas renderer for the mounted canvas. No WebGL2: the DOM view instead.
+const ensureCellCanvas = () => {
+  if (cellCanvas?.canvas === canvasRef.value) return cellCanvas;
+  cellCanvas?.destroy();
+  try {
+    cellCanvas = new CellCanvas(canvasRef.value, { onRestored: queueRender });
+  } catch (error) {
+    console.warn('The ANSI view\'s canvas renderer is unavailable; using the DOM view.', error);
+    cellCanvas = null;
+    workspaceStore.ansiRenderer = 'dom';
+  }
+  return cellCanvas;
+};
+
+// Character cell size in CSS px (null until it can be measured): measured from the <pre>'s font,
+// or the canvas renderer's whole-device-pixel cells.
 const ensureMetrics = () => {
-  if (!metrics.value && displayRef.value) metrics.value = calcMetrics(displayRef.value);
+  if (metrics.value) return metrics.value;
+  if (useDom.value) {
+    if (displayRef.value) metrics.value = calcMetrics(displayRef.value);
+  } else if (canvasRef.value && ensureCellCanvas()) {
+    cellCanvas.resize(projectStore.cols, charRowsOf(projectStore.rows), window.devicePixelRatio);
+    metrics.value = cellCanvas.metrics;
+  }
   return metrics.value;
 };
 
@@ -40,14 +70,22 @@ const render = () => {
     return;
   }
 
+  if (!useDom.value) {
+    if (!ensureCellCanvas()) return;
+    // A resize here means the grid or the dpr changed; the overlays follow through metrics.
+    if (cellCanvas.resize(projectStore.cols, charRowsOf(projectStore.rows), window.devicePixelRatio)) metrics.value = cellCanvas.metrics;
+    cellCanvas.draw(projectStore.cells);
+    return;
+  }
+
   const context = getContext({
     element: displayRef.value,
     cols: projectStore.cols,
     rows: charRowsOf(projectStore.rows),
   }, m);
 
-  const buffer = projectStore.cells.map(({ char, fg, bg }) => ({
-    char,
+  const buffer = projectStore.cells.map(({ char, fg, bg, wide }) => ({
+    char: wide === 'trail' ? '' : char, // the lead's glyph is the whole wide character
     color: fg.hex,
     backgroundColor: bg.hex,
     fgIndex: fg.c,
@@ -63,69 +101,103 @@ const coordsAt = (event) => {
   const rect = displayEl.getBoundingClientRect();
   const clientX = event.touches ? event.touches[0].clientX : event.clientX;
   const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+  // Measured from inside the display's border, where the cells start.
   return {
-    x: (clientX - rect.left) / m.cellWidth,
-    y: (clientY - rect.top) / (m.lineHeight / 2),
+    x: (clientX - rect.left - displayEl.clientLeft) / m.cellWidth,
+    y: (clientY - rect.top - displayEl.clientTop) / (m.lineHeight / 2),
   };
 };
 
 // CSS px per grid pixel (a grid pixel is half a character cell tall), for tool previews.
 const unit = computed(() => (metrics.value ? { x: metrics.value.cellWidth, y: metrics.value.lineHeight / 2 } : null));
 
-// The char tool asks for a picker on a cell; the picker is positioned on screen next to it.
-const openCharPicker = (col, row) => {
-  const m = ensureMetrics();
-  if (!m || !displayRef.value) return;
-  const rect = displayRef.value.getBoundingClientRect();
-  const targetRect = { left: rect.left + col * m.cellWidth + 2, top: rect.top + row * m.lineHeight + 2, width: m.cellWidth, height: m.lineHeight };
-  picker.value = { col, row, targetRect };
-};
-const toolContext = { openCharPicker };
-
-// While the picker is open, its cell stays highlighted.
-const pinnedStyle = computed(() => {
-  const m = metrics.value;
-  if (!picker.value || !m) return { display: 'none' };
+// The Text tool's cursor: a blinking outline on its cell.
+const cursorStyle = computed(() => {
+  const m = metrics.value, cursor = workspaceStore.textCursor;
+  if (!m || !cursor || workspaceStore.activeTool !== 'text') return { display: 'none' };
   return {
     display: 'block',
     width: `${m.cellWidth}px`,
     height: `${m.lineHeight}px`,
-    left: `${picker.value.col * m.cellWidth + 2}px`,
-    top: `${picker.value.row * m.lineHeight + 1}px`,
+    left: `${cursor.col * m.cellWidth + 2}px`,
+    top: `${cursor.row * m.lineHeight + 1}px`,
   };
 });
 
-const pickerChars = computed(() => {
-  const chars = projectStore.processParams.chars;
-  if (!chars) return [];
-  return [...new Set(chars.split(''))].filter(c => c.trim());
+// The Text tool's textarea sits on the cursor's cell, so an input method's candidates open there.
+const textInputStyle = computed(() => {
+  const m = metrics.value, cursor = workspaceStore.textCursor;
+  if (!m || !cursor) return { left: '0px', top: '0px' };
+  return { left: `${cursor.col * m.cellWidth + 2}px`, top: `${cursor.row * m.lineHeight + 1}px`, height: `${m.lineHeight}px` };
 });
 
-const closePicker = (event) => {
-  if (event) viewport.value?.updateMousePos(event);
-  picker.value = null;
-};
+// The view follows the Text tool's cursor, like a text editor: when it moves (the arrow keys,
+// typing, a paste) past the visible area, the view scrolls just enough to keep it in sight, with a
+// margin around it (the cursor's scroll-margin). Nothing scrolls while it's already in view.
+const cursorRef = useTemplateRef('cursor');
+watch(() => workspaceStore.textCursor, (cursor) => {
+  if (!cursor || workspaceStore.activeTool !== 'text') return;
+  cursorRef.value?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}, { flush: 'post' });
 
-const selectChar = (char, event) => {
-  if (!picker.value) return;
-  projectStore.setCharEdit(picker.value.col, picker.value.row, char === 'ERASE' ? null : char);
-  closePicker(event);
-  projectStore.commitEdit();
-};
+// The selection: marching ants, offset while it's being dragged. Its actions are on the options row.
+const selectionBox = computed(() => {
+  const m = metrics.value, sel = workspaceStore.selection;
+  if (!m || !sel) return null;
+  const { dc, dr } = workspaceStore.selectionOffset ?? { dc: 0, dr: 0 };
+  const left = (sel.c0 + dc) * m.cellWidth + 2, top = (sel.r0 + dr) * m.lineHeight + 1;
+  return {
+    marquee: { left: `${left}px`, top: `${top}px`, width: `${(sel.c1 - sel.c0 + 1) * m.cellWidth}px`, height: `${(sel.r1 - sel.r0 + 1) * m.lineHeight}px` },
+  };
+});
 
-// The first content renders immediately so it's laid out before the viewport restores/centres its
+// The first content renders immediately so it's laid out before the viewport restores/centers its
 // scroll on the next frame; later updates (e.g. every paint move) coalesce to one render per frame.
-watch(() => projectStore.cells, () => (displayRef.value?.childElementCount ? queueRender() : render()));
+watch(() => projectStore.cells, () => ((useDom.value ? displayRef.value?.childElementCount : cellCanvas) ? queueRender() : render()));
 watch(() => [projectStore.cols, projectStore.rows], () => {
   metrics.value = null;
   queueRender();
 });
+// Swapping renderers: the overlays measure against the new element once it's mounted. The canvas
+// renderer's WebGL context goes with its canvas.
+watch(useDom, (dom) => {
+  if (dom) {
+    cellCanvas?.destroy();
+    cellCanvas = null;
+  }
+  metrics.value = null;
+  nextTick(queueRender);
+});
+
+// The first whole cell on screen (top-left), where a paste goes with no selection or text cursor.
+let originFrame = 0;
+let viewportEl = null;
+const publishOrigin = () => {
+  cancelAnimationFrame(originFrame);
+  originFrame = requestAnimationFrame(() => {
+    const pre = displayRef.value, m = ensureMetrics();
+    if (!pre || !m || !viewportEl) return;
+    const p = pre.getBoundingClientRect(), v = viewportEl.getBoundingClientRect();
+    const clamp = (n, max) => Math.max(0, Math.min(max, n));
+    // A cell hidden by under a pixel still counts as on screen.
+    workspaceStore.ansiViewOrigin = {
+      col: clamp(Math.ceil((v.left - p.left - pre.clientLeft - 1) / m.cellWidth), projectStore.cols - 1),
+      row: clamp(Math.ceil((v.top - p.top - pre.clientTop - 1) / m.lineHeight), charRowsOf(projectStore.rows) - 1),
+    };
+  });
+};
+watch([metrics, () => projectStore.cols, () => projectStore.rows], publishOrigin);
 
 onMounted(() => {
+  viewportEl = displayRef.value?.closest('article') ?? null;
+  viewportEl?.addEventListener('scroll', publishOrigin, { passive: true });
+  window.addEventListener('resize', publishOrigin);
+  publishOrigin();
   render(); // same reason as the cells watcher: lay out before the viewport's scroll restore
   if (document.fonts) {
     document.fonts.ready.then(() => {
       if (!displayRef.value) return; // unmounted meanwhile
+      cellCanvas?.invalidate(); // glyphs rasterized in a fallback font
       metrics.value = null;
       queueRender();
     });
@@ -134,68 +206,129 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (renderFrame) cancelAnimationFrame(renderFrame);
+  cancelAnimationFrame(originFrame);
+  cellCanvas?.destroy();
+  viewportEl?.removeEventListener('scroll', publishOrigin);
+  window.removeEventListener('resize', publishOrigin);
 });
 </script>
 
 <template>
+  <div class="ansi-editor">
   <EditorViewport
-      ref="viewport"
       :display="displayRef"
       :coords-at="coordsAt"
       scroll-key="ansi"
       view="output"
       :unit="unit"
-      :tool-context="toolContext"
-      :hide-preview="!!picker"
   >
-    <pre ref="pre" :style="{ pointerEvents: 'none' }"></pre>
+    <pre v-if="useDom" ref="pre" class="display" :style="{ pointerEvents: 'none' }"></pre>
+    <canvas v-else ref="canvas" class="display" :style="{ pointerEvents: 'none' }"></canvas>
     <div class="interaction-overlay"></div>
-    <CharPicker
-        v-if="picker"
-        :chars="pickerChars"
-        :target-rect="picker.targetRect"
-        @select="selectChar"
-        @close="closePicker"
-    />
     <template #overlay>
-      <div class="picker-cell" :style="pinnedStyle"></div>
+      <div ref="cursor" class="text-cursor" :style="cursorStyle"></div>
+      <textarea
+          ref="textInput"
+          class="text-input"
+          data-text-input
+          :style="textInputStyle"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          aria-label="Type into the canvas"
+      ></textarea>
+      <template v-if="selectionBox">
+        <div class="marquee" :style="selectionBox.marquee"></div>
+      </template>
     </template>
   </EditorViewport>
+  <AnsiStatusBar/>
+  </div>
 </template>
 
 <style scoped>
+div.ansi-editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.marquee {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 1001;
+  border: 1px dashed white;
+  box-shadow: 0 0 0 1px black;
+  animation: marquee-march 1s steps(1) infinite;
+}
+
+@keyframes marquee-march {
+  50% { border-color: black; box-shadow: 0 0 0 1px white; }
+}
+
+.text-input {
+  position: absolute;
+  width: 1px;
+  padding: 0;
+  border: 0;
+  margin: 0;
+  opacity: 0;
+  resize: none;
+  overflow: hidden;
+  pointer-events: none;
+  font: 17px 'JetBrains Mono', monospace;
+}
+
+.text-cursor {
+  position: absolute;
+  box-sizing: border-box;
+  scroll-margin: 40px 60px; /* the view keeps this much room around the cursor when it follows it */
+  pointer-events: none;
+  border: 2px solid white;
+  mix-blend-mode: difference;
+  z-index: 1001;
+  animation: text-cursor-blink 1s steps(1) infinite;
+}
+
+@keyframes text-cursor-blink {
+  50% { opacity: 0; }
+}
+
 .interaction-overlay {
   position: absolute;
   inset: 0;
   z-index: 5;
 }
 
-pre {
-  margin: 0;
-  padding: 0;
+.display {
+  /* GlyphCoverage.DISPLAY_FONT must match this font, size and line-height */
   font-family: 'JetBrains Mono', monospace;
   font-size: 17px;
   line-height: 1.2;
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: unset;
-  white-space: pre;
   background: var(--surface-dark);
   border: 2px dashed var(--border-light);
   display: block;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* crisp when the backing scale is capped below the dpr (CellCanvas) */
+canvas.display {
+  image-rendering: pixelated;
+}
+
+pre {
+  margin: 0;
+  padding: 0;
+  white-space: pre;
   text-rendering: optimizeSpeed;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
   -webkit-text-size-adjust: none;
-}
-
-.picker-cell {
-  position: absolute;
-  pointer-events: none;
-  mix-blend-mode: difference;
-  background: white;
-  outline: 1px solid red;
-  z-index: 1000;
 }
 </style>

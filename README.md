@@ -10,7 +10,7 @@ Convert images to ANSI art in the browser. Provide an image, tune the output wit
 ## Development Setup & Usage
 
 ### Prerequisites
-- **Node.js**: Version 18+
+- **Node.js**: Version 22.12+
 - **npm**: Version 9+
 
 ### Commands
@@ -20,7 +20,21 @@ npm run dev       # Start dev server at http://localhost:5173
 npm run build     # Create production build in dist/
 npm run preview   # Preview the production build locally
 npm run lint      # Run ESLint
+npm test          # Lint and every test layer (run `npx playwright install --with-deps chromium` once first)
+npm run test:unit     # Pure logic, in Node
+npm run test:browser  # The store, canvas and WebGL, in Chromium
+npm run test:e2e      # Real interactions against a production build
+npm run test:update   # Rewrite reference files (read the diff before committing)
 ```
+
+Tests run on every pull request and gate the GitHub Pages deploy. See [docs/testing.md](docs/testing.md)
+for which layer a new test belongs in, and [AGENTS.md](AGENTS.md) for the rules of the road.
+
+Every build is stamped with its version and the commit it was built from. The version is
+`package.json`'s major.minor with the day it was built as the third number (`v0.1.20261024`); the
+commit tells two builds on one day apart. The About box shows both, and so does the page's
+`<meta name="phosphor-build">` (so `curl -s <site> | grep phosphor-build` says what's deployed). A build
+from uncommitted changes says `-dirty` after the commit.
 
 ## Features
 

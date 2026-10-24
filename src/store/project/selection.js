@@ -1,0 +1,142 @@
+// The Select tool's operations: copy, delete, paste and move, each one undo step (none at all when
+// nothing changes), and a moved or pasted block floating until the selection is set down. Owns
+// _float (the move in progress).
+//
+// They act on the Select tool's layers: Layers = { base, edit }, where Edit is everything drawn
+// (edit cells and paint, stored apart but one thing to the user), and Base is the base's colors and
+// pins (the converter's own characters belong to their cells and stay). Each layer moves, copies
+// and pastes as itself. Block = { w, h, cells?: (Entry | null)[], paint?: canvas, base?: { pixels:
+// canvas (a grid pixel each), pins: (char | null)[] } }. Rects are clipped to the grid.
+import { withPins, withoutPins } from "@/document/baseRecords.js";
+import { cellKey, withoutCells, rectCells, pasteBlock } from "@/document/editCells.js";
+import { ctx2d } from "@/lib/Canvas.js";
+import { charRowsOf } from "@/lib/Cells.js";
+import { hex2rgb } from "@/lib/ColorUtils.js";
+import { over } from "@/store/project/shared.js";
+import { toRaw } from "vue";
+
+export const selectionActions = {
+  copySelection(rect, { base, edit }) {
+    this.ensureLayer();
+    const block = { w: rect.c1 - rect.c0 + 1, h: rect.r1 - rect.r0 + 1 };
+    const cells = rectCells(rect);
+    if (edit) {
+      block.cells = cells.map(({ col, row }) => this.editCellAt(col, row) ?? null);
+      if (this.paintLayer) block.paint = this.paintLayer.copyCells(rect);
+    }
+    if (base) block.base = { pixels: this.basePixelsOf(rect), pins: cells.map(({ col, row }) => this.baseRecords.pins.get(cellKey(col, row)) ?? null) };
+    return block;
+  },
+
+  // The base's stored colors over a cell rect, on a canvas a grid pixel per pixel.
+  basePixelsOf({ c0, r0, c1, r1 }) {
+    const w = c1 - c0 + 1, h = 2 * (r1 - r0 + 1);
+    const own = ctx2d(this.baseLayer.canvas).getImageData(c0, 2 * r0, w, h).data;
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    const ctx = ctx2d(out), pixels = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const o = (y * w + x) * 4;
+        const { r, g, b } = over(hex2rgb(this.imageColorAt(c0 + x, 2 * r0 + y)), { r: own[o], g: own[o + 1], b: own[o + 2], a: own[o + 3] / 255 });
+        pixels.data.set([r, g, b, 255], o);
+      }
+    }
+    ctx.putImageData(pixels, 0, 0);
+    return out;
+  },
+
+  deleteSelection(rect, layers) {
+    this.selectionEdit([rect], () => this.deleteIn(rect, layers));
+  },
+
+  // Returns the pasted rect (clipped), or null when it's all off the grid.
+  // A paste starts a float (floatSelection): moving it right after re-pastes it, so what it first
+  // landed on comes back.
+  pasteSelection(block, col, row) {
+    const paste = (c, r) => {
+      const rect = this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
+      if (rect) this.selectionEdit([rect], () => this.pasteAt(block, c, r));
+      return rect;
+    };
+    const landed = paste(col, row);
+    this._float = landed && { paste: true, redo: (dc, dr) => paste(col + dc, row + dr), from: landed, layers: null, dc: 0, dr: 0, landed, version: this.history.version };
+    return landed;
+  },
+
+  // A selection's contents float while you move them: every move of the same selection (a drag, an
+  // arrow-key nudge), and a paste with the moves after it, is one change from where it started,
+  // redone with each move (the last one undone first). What's under the path is only covered where
+  // the block comes to rest, and the run is one undo step. The run ends, leaving the block where it
+  // is, when the selection is cleared or replaced (Escape, Deselect, a new selection: tied to the
+  // selection object itself, so reselecting the same cells starts over), its layers change, or
+  // anything else is recorded. Returns where it landed (clipped), or null when it left the grid.
+  floatSelection(rect, layers, dc, dr) {
+    const run = this._float;
+    const sameRun = run && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
+      && (!run.layers || (run.layers.base === layers.base && run.layers.edit === layers.edit));
+    const current = sameRun ? run : { redo: (c, r) => this.moveSelection(rect, layers, c, r), from: rect, layers: { ...layers }, dc: 0, dr: 0 };
+    const offset = { dc: current.dc + dc, dr: current.dr + dr };
+    if (sameRun) this.undo();
+    if (!current.paste && !offset.dc && !offset.dr) { // back where the move started: nothing moved, nothing recorded
+      this._float = null;
+      return current.from;
+    }
+    const landed = current.redo(offset.dc, offset.dr);
+    this._float = landed && { ...current, ...offset, landed, version: this.history.version };
+    return landed;
+  },
+
+  // Lift, clear the source, drop dc/dr away (copied first, so an overlapping move keeps everything).
+  // Returns where it landed (clipped), or null when it left the grid.
+  moveSelection(rect, layers, dc, dr) {
+    if (!dc && !dr) return rect;
+    const block = this.copySelection(rect, layers);
+    const col = rect.c0 + dc, row = rect.r0 + dr;
+    const landed = this.clipRect({ c0: col, r0: row, c1: rect.c1 + dc, r1: rect.r1 + dr });
+    this.selectionEdit(landed ? [rect, landed] : [rect], () => {
+      this.deleteIn(rect, layers);
+      this.pasteAt(block, col, row);
+    });
+    return landed;
+  },
+
+  // The parts of the selection operations, inside selectionEdit.
+  deleteIn(rect, { base, edit }) {
+    if (edit) {
+      this.editCells = withoutCells(this.editCells, rectCells(rect));
+      this.paintLayer.eraseCells(rect);
+    }
+    if (base) this.eraseBase(rectCells(rect));
+  },
+
+  pasteAt(block, col, row) {
+    if (block.cells) this.editCells = pasteBlock(this.editCells, { w: block.w, h: block.h, entries: block.cells }, col, row, this.cols, charRowsOf(this.rows));
+    if (block.paint) this.paintLayer.pasteCells(block.paint, col, row, block.w, block.h, this.gridRect());
+    if (block.base) this.pasteBase(block, col, row);
+  },
+
+  // A block's base at (col, row): its pixels into the base layer, and its pins (a cell with none
+  // takes the converter's character there).
+  pasteBase({ w, h, base }, col, row) {
+    const rect = this.clipRect({ c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 });
+    if (!rect) return;
+    this.baseLayer.pasteCells(base.pixels, col, row, w, h, rect);
+    const pins = base.pins.map((char, i) => ({ col: col + (i % w), row: row + Math.floor(i / w), char }))
+      .filter(({ col: c, row: r }) => c >= rect.c0 && c <= rect.c1 && r >= rect.r0 && r <= rect.r1);
+    this.setBaseRecords(withPins(withoutPins(this.baseRecords, pins.filter(p => !p.char)), pins.filter(p => p.char)));
+  },
+
+  // One undo step for a selection operation's changes (cells, paint, base pixels, pins); the cells in rects recompose.
+  selectionEdit(rects, change) {
+    this.ensureLayer();
+    this.beginEdit();
+    change();
+    this.hasPaint = this.paintLayer?.hasPaint ?? false;
+    this.composite();
+    const pixels = rects.flatMap(rect => rectCells(rect)).map(({ col, row }) => ({ x: col, y: 2 * row }));
+    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
+    this.commitEdit();
+  },
+};

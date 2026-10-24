@@ -3,7 +3,7 @@
  */
 
 import { rgb2hex, hex2rgb, PALETTES } from './ColorUtils.js';
-import Canvas, { fitRect } from './Canvas.js';
+import Canvas, { fitRect, ctx2d } from './Canvas.js';
 import WebGLProcessor from './WebGLProcessor.js';
 import quantizeColors from './Quantizer.js';
 
@@ -42,9 +42,11 @@ export function applyQuantization(canvas, qColors) {
   }
 }
 
-export async function processImage(image, params) {
+// Where the image goes in the grid, the size it's processed at (m processed pixels per grid pixel,
+// or the native-size branch: m < 1) and the shader's parameters. scale: a fixed m instead.
+function prepare(image, params, scale = null) {
   const {
-    cols, rows, smoothing,
+    cols, rows,
     invert, brightness, contrast, saturation,
     sharpen, flatten, edges, edgeColor, edgeThickness,
     quantize
@@ -56,10 +58,11 @@ export async function processImage(image, params) {
   // Processing stage (High-ish res WebGL)
   // Process at a whole multiple m of the grid fit so every cell is exactly m x m processed pixels;
   // a fractional ratio lets cells straddle pixels and blurs merged paint into its neighbors.
-  // m comes from the grid (not the fit) so it doesn't change when a merge bakes in the letterbox.
+  // m comes from the grid (not the fit), so an image that fills the grid gets the same m as its fit.
   const maxDim = 400;
-  const { dx, dy, dw, dh } = fitRect(sw, sh, cols, rows);
-  const m = Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
+  // Where the image sits in the grid: params.fit when it's fixed (a canvas resize), else fitted.
+  const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows);
+  const m = scale ?? Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
   let pw = dw * m;
   let ph = dh * m;
   if (m < 1) {
@@ -69,8 +72,6 @@ export async function processImage(image, params) {
     ph = Math.floor(sh * s);
   }
 
-  if (!glProcessor) glProcessor = new WebGLProcessor();
-  
   const ec = hex2rgb(edgeColor);
   const cz = hex2rgb(params.colorize || '#ff00ff');
   const glParams = {
@@ -89,7 +90,20 @@ export async function processImage(image, params) {
     palette: (quantize === 'cga' || quantize === 'vga') ? PALETTES[quantize] : null,
     passes: Math.max(1, Math.floor(parseFloat(flatten) / 2))
   };
+  return { dx, dy, dw, dh, m, pw, ph, glParams };
+}
 
+// Processed pixels per grid pixel, or null when a source smaller than the grid is processed at its
+// native size (cells don't cover whole pixels there).
+export function workingScale(image, params) {
+  const { m } = prepare(image, params);
+  return m >= 1 ? m : null;
+}
+
+export async function processImage(image, params) {
+  const { cols, rows, smoothing } = params;
+  const { dx, dy, dw, dh, pw, ph, glParams } = prepare(image, params);
+  if (!glProcessor) glProcessor = new WebGLProcessor();
   glProcessor.process(image, glParams, pw, ph);
 
   // Final output stage (downsizing)
@@ -97,10 +111,26 @@ export async function processImage(image, params) {
   canvas.resize(cols, rows);
   canvas.ctx.imageSmoothingEnabled = true;
   canvas.ctx.imageSmoothingQuality = smoothing;
-  // Fit by the image's natural aspect (same fitRect as the store's getFitParams), not pw x ph
+  // Fit by the image's natural aspect (the store's fit), not pw x ph
   canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
   canvas.loadPixels();
 
-  // Quantization happens after paint is composited (Renderer), not here.
-  return { canvas, paletteColors: getPaletteColors(params, canvas) };
+  // Quantization happens after paint is composited (Renderer), not here. The Number palette is picked
+  // there too, from the composited picture (Renderer.composite), so it isn't worked out here.
+  return { canvas, paletteColors: params.quantize === 'count' ? null : getPaletteColors(params, canvas) };
+}
+
+// The image as the preview is made from it (the processed image before it's downsized to the
+// grid, at the size processImage processes it), without the palette snap in its last pass unless
+// snap (a bake locked to CGA/VGA): what a bake makes the new image. A copy, so the next render can't
+// draw over it. m: a fixed processing scale (an Into-the-picture merge needs whole pixels per grid pixel).
+export async function processedImage(image, params, { m = null, snap = false } = {}) {
+  const { pw, ph, glParams } = prepare(image, params, m);
+  if (!glProcessor) glProcessor = new WebGLProcessor();
+  glProcessor.process(image, glParams, pw, ph, { snapLastPass: snap });
+  const out = document.createElement('canvas');
+  out.width = pw;
+  out.height = ph;
+  ctx2d(out).drawImage(glProcessor.canvas, 0, 0);
+  return out;
 }

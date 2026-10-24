@@ -4,11 +4,11 @@ import { generateSlug } from 'random-word-slugs';
 // Every persisted project setting, declared once. Order within the transform, adjust and effects
 // groups is the ControlPanel's on-screen order. Storage keys must never change: they hold users' settings.
 export const SETTINGS = [
-  { key: 'cols', default: 80, group: 'setup', label: 'Dimensions', help: 'Target output width (columns) and height (rows).' },
+  { key: 'cols', default: 80, group: 'setup', label: 'Dimensions', help: 'Target output width (columns) and height (rows). Before you draw, resizing re-converts the image at the new size; once the edit layer has content, it adds or removes cells at the right and bottom instead.' },
   { key: 'rows', default: 50, group: 'setup' },
   { key: 'aspectLock', default: true, group: 'setup', pipeline: false },
   { key: 'renderStyle', default: 'ansi', group: 'setup', help: "'ANSI' uses both foreground and background colors for maximum detail. 'Color ASCII' uses characters on a black background. 'ASCII' is monochrome art." },
-  { key: 'chars', default: '.*:%░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, help: 'The character set used to represent density and texture.' },
+  { key: 'chars', default: '.*:%░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, help: 'The character set used to represent density and texture. Add duplicate characters if you want more of a given character. Characters two cells wide (like 漢) are skipped here: generated cells are one column.' },
   { key: 'charsAscii', default: ' .:*%#@', group: 'setup', pipeline: false },
   { key: 'seed', default: () => generateSlug(2), group: 'setup', help: 'A unique value to randomize the character selection.' },
   { key: 'quantize', default: 'none', group: 'setup', help: 'Restricts the final output to specific color standards.' },
@@ -48,6 +48,13 @@ export const SETTING_KEYS = SETTINGS.filter(s => s.group !== 'sauce').map(s => s
 export const SAUCE_KEYS = SETTINGS.filter(s => s.group === 'sauce').map(s => s.key);
 export const RESET_GROUPS = ['transform', 'adjust', 'effects'];
 
+// Whether every slider a bake (or Reset All) resets is at its default: nothing to bake. A slider
+// can hold its value as a numeric string.
+export function slidersAtDefaults(state) {
+  return RESET_GROUPS.every(group => Object.entries(groupDefaults(group)).every(([key, value]) =>
+    (typeof value === 'number' ? Number(state[key]) === value : state[key] === value)));
+}
+
 export function getSetting(key) {
   return BY_KEY.get(key);
 }
@@ -58,4 +65,16 @@ export function settingsState() {
 
 export function groupDefaults(group) {
   return Object.fromEntries(SETTINGS.filter(s => s.group === group && s.reset !== false).map(s => [s.key, defaultOf(s)]));
+}
+
+// Pipeline params with every per-pixel color adjustment neutral (transform, adjust): rendering with
+// these gives the image downsampled exactly as the pipeline does, before adjustments (underlying
+// colors), which effectiveColor re-applies per cell. Effects (Flatten, Edges, Sharpen) stay: they
+// work on neighboring pixels, so a cell couldn't re-apply them. CGA/VGA stay: the pipeline snaps
+// each pixel to them before downsampling, so the result matches; other palettes are applied after
+// downsampling and are dropped.
+const NEUTRAL_GROUPS = ['transform', 'adjust'];
+export function baseParams(params) {
+  const quantize = params.quantize === 'cga' || params.quantize === 'vga' ? params.quantize : 'none';
+  return { ...params, ...Object.assign({}, ...NEUTRAL_GROUPS.map(groupDefaults)), quantize };
 }

@@ -1,91 +1,68 @@
-<script>
-import { mapState, mapActions } from 'pinia';
+<script setup>
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
-export default {
-  name: 'EditTabs',
-  props: {
-    modelValue: {
-      type: String,
-      required: true,
-    },
-  },
-  emits: ['update:modelValue'],
-  data() {
-    return {
-      indicatorStyle: {
-        transform: 'translateX(0px)',
-        width: '0px',
-        opacity: 0,
-      },
+const props = defineProps({
+  modelValue: { type: String, required: true },
+});
+const emit = defineEmits(['update:modelValue']);
+
+const { image, renderStyle } = storeToRefs(useProjectStore());
+const workspace = useWorkspaceStore();
+const { settingsOpen } = storeToRefs(workspace);
+const toggleSettings = () => workspace.toggleSettings();
+
+const tabList = useTemplateRef('tabList');
+const indicatorStyle = ref({ transform: 'translateX(0px)', width: '0px', opacity: 0 });
+
+const tabs = computed(() => [
+  { id: 'input', label: 'PIXEL', disabled: false },
+  { id: 'output', label: renderStyle.value === 'ansi' ? 'ANSI' : 'ASCII', disabled: !image.value },
+  { id: 'sauce', label: 'SAUCE', disabled: !image.value },
+]);
+
+// The tabs pattern: Left/Right (wrapping), Home and End move to a tab and select it, skipping
+// disabled ones. The keys stop here, so they don't also nudge a selection or move the text cursor.
+function onKeyDown(event) {
+  const enabled = [...event.currentTarget.querySelectorAll('[role="tab"]:not(:disabled)')];
+  const at = enabled.indexOf(document.activeElement);
+  const next = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: enabled.length - 1 }[event.key];
+  if (next === undefined || at < 0) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const tab = enabled[(next + enabled.length) % enabled.length];
+  tab.focus();
+  emit('update:modelValue', tab.dataset.id);
+}
+
+// The underline slides to the selected tab.
+function updateIndicator() {
+  requestAnimationFrame(() => {
+    const activeEl = tabList.value?.querySelector('[role="tab"].active');
+    if (!activeEl) {
+      indicatorStyle.value = { ...indicatorStyle.value, opacity: 0 };
+      return;
+    }
+    const listRect = tabList.value.getBoundingClientRect();
+    const activeRect = activeEl.getBoundingClientRect();
+    indicatorStyle.value = {
+      transform: `translateX(${Math.round(activeRect.left - listRect.left)}px)`,
+      width: `${Math.round(activeRect.width)}px`,
+      opacity: 1,
     };
-  },
-  computed: {
-    ...mapState(useProjectStore, ['image', 'renderStyle']),
-    ...mapState(useWorkspaceStore, ['settingsOpen']),
-    tabs() {
-      const outputLabel = this.renderStyle === 'ansi' ? 'ANSI' : 'ASCII';
-      return [
-        { id: 'input', label: 'PIXEL', disabled: false },
-        { id: 'output', label: outputLabel, disabled: !this.image },
-        { id: 'sauce', label: 'SAUCE', disabled: !this.image },
-      ];
-    },
-  },
-  watch: {
-    modelValue: {
-      handler() {
-        this.$nextTick(() => {
-          this.updateIndicator();
-        });
-      },
-      immediate: true,
-    },
-    image() {
-      this.$nextTick(() => {
-        this.updateIndicator();
-      });
-    },
-    tabs: {
-      handler() {
-        this.$nextTick(() => {
-          this.updateIndicator();
-        });
-      },
-      deep: true,
-    },
-  },
-  mounted() {
-    window.addEventListener('resize', this.updateIndicator);
-    setTimeout(this.updateIndicator, 100);
-  },
-  beforeUnmount() {
-    window.removeEventListener('resize', this.updateIndicator);
-  },
-  methods: {
-    ...mapActions(useWorkspaceStore, ['toggleSettings']),
-    updateIndicator() {
-      requestAnimationFrame(() => {
-        const listEl = this.$refs.tabList;
-        const activeEl = listEl?.querySelector('li.active');
+  });
+}
 
-        if (activeEl && listEl) {
-          const listRect = listEl.getBoundingClientRect();
-          const activeRect = activeEl.getBoundingClientRect();
-
-          this.indicatorStyle = {
-            transform: `translateX(${Math.round(activeRect.left - listRect.left)}px)`,
-            width: `${Math.round(activeRect.width)}px`,
-            opacity: 1,
-          };
-        } else {
-          this.indicatorStyle.opacity = 0;
-        }
-      });
-    },
-  },
-};
+watch(() => props.modelValue, () => nextTick(updateIndicator), { immediate: true });
+watch(image, () => nextTick(updateIndicator));
+watch(tabs, () => nextTick(updateIndicator), { deep: true });
+onMounted(() => {
+  window.addEventListener('resize', updateIndicator);
+  setTimeout(updateIndicator, 100);
+});
+onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
 </script>
 
 <template>
@@ -95,18 +72,24 @@ export default {
       <span></span>
       <span></span>
     </button>
-    <ul ref="tabList">
-      <li
+    <div ref="tabList" class="tab-list" role="tablist" aria-label="Editor" @keydown="onKeyDown">
+      <button
           v-for="tab in tabs"
           :key="tab.id"
-          :class="{ active: modelValue === tab.id, disabled: tab.disabled }"
+          class="tab"
+          role="tab"
+          :class="{ active: modelValue === tab.id }"
+          :aria-selected="modelValue === tab.id"
+          :tabindex="modelValue === tab.id ? 0 : -1"
+          :disabled="tab.disabled"
+          :data-id="tab.id"
           :data-text="tab.label"
-          @click="!tab.disabled && $emit('update:modelValue', tab.id)"
+          @click="$emit('update:modelValue', tab.id)"
       >
         {{ tab.label }}
-      </li>
-      <div class="indicator" :style="indicatorStyle"></div>
-    </ul>
+      </button>
+      <div class="indicator" :style="indicatorStyle" aria-hidden="true"></div>
+    </div>
   </nav>
 </template>
 
@@ -120,7 +103,7 @@ nav.workspace-tabs {
   border-bottom: 1px solid var(--border);
 }
 
-button {
+button.menu-btn {
   display: none;
   flex-shrink: 0;
   flex-direction: column;
@@ -137,11 +120,11 @@ button {
   box-shadow: none !important;
 }
 
-button:hover {
+button.menu-btn:hover {
   opacity: 1;
 }
 
-button span {
+button.menu-btn span {
   width: 100%;
   height: 2px;
   border-radius: 2px;
@@ -150,36 +133,38 @@ button span {
   background-color: var(--text);
 }
 
-button.open span:nth-child(1) {
+button.menu-btn.open span:nth-child(1) {
   transform: translateY(6px) rotate(45deg);
 }
 
-button.open span:nth-child(2) {
+button.menu-btn.open span:nth-child(2) {
   opacity: 0;
   transform: scaleX(0);
 }
 
-button.open span:nth-child(3) {
+button.menu-btn.open span:nth-child(3) {
   transform: translateY(-6px) rotate(-45deg);
 }
 
-ul {
+div.tab-list {
   display: flex;
   gap: 3px;
   flex-shrink: 0;
   margin: 0;
   padding: 6px 0 0;
-  list-style: none;
   position: relative;
 }
 
-li {
+button.tab {
   padding: 5px 24px;
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
+  font-weight: normal;
+  line-height: normal;
   user-select: none;
   transition: color 0.3s ease;
+  box-shadow: none;
   border-radius: 5px 5px 0 0;
   position: relative;
   z-index: 1;
@@ -193,7 +178,7 @@ li {
   color: var(--text-muted);
 }
 
-li::after {
+button.tab::after {
   content: attr(data-text);
   height: 0;
   visibility: hidden;
@@ -203,13 +188,23 @@ li::after {
   font-weight: 500;
 }
 
-li.disabled {
+button.tab:disabled {
   opacity: 0.4;
   cursor: default;
-  pointer-events: none;
 }
 
-li.active {
+button.tab:hover { /* not the global button lift */
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border) var(--border) transparent;
+}
+
+button.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+button.tab.active {
   margin-top: -3px;
   margin-bottom: -1px;
   border-bottom: 1px solid transparent;
@@ -219,7 +214,7 @@ li.active {
   text-shadow: 0 0 5px var(--accent-glow);
 }
 
-li:not(.disabled):not(.active):hover {
+button.tab:not(:disabled):not(.active):hover {
   background: var(--surface-2);
   color: var(--accent);
 }
@@ -242,12 +237,12 @@ div.indicator {
     border-color: var(--accent);
   }
 
-  li.active {
+  button.tab.active {
     border-color: var(--accent);
     border-bottom-color: transparent;
   }
 
-  button {
+  button.menu-btn {
     display: flex;
   }
 }

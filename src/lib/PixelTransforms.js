@@ -4,6 +4,7 @@
 // to match the pipeline output without relying on ctx.filter (no Safari < 18 support).
 
 import { hex2rgb, rgb2hex, nearestColor } from './ColorUtils.js';
+import { ctx2d } from './Canvas.js';
 
 function rgb2hsv(r, g, b) {
   const max = Math.max(r, g, b);
@@ -94,11 +95,33 @@ export function applyTransforms(data, brightness, contrast, saturation, hue, inv
   }
 }
 
-// What a base color looks like after project-wide transforms and quantization are applied.
-export function getEffectiveColor(hex, params, palette = null) {
+// A copy of a canvas with the color transforms burnt into its pixels (a bake's paint and base
+// pixels): alpha kept, transparent pixels left alone, as the display transforms them.
+export function bakedCanvas(canvas, params) {
+  const out = document.createElement('canvas');
+  out.width = canvas.width;
+  out.height = canvas.height;
+  if (!out.width || !out.height) return out;
+  const ctx = ctx2d(out);
+  ctx.drawImage(canvas, 0, 0);
+  const pixels = ctx.getImageData(0, 0, out.width, out.height);
+  applyTransforms(pixels.data, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
+  ctx.putImageData(pixels, 0, 0);
+  return out;
+}
+
+// What a base color looks like after project-wide transforms and quantization are applied, as a
+// cell Color: { r, g, b, hex, c } where c is the palette index, or [r, g, b] without a palette.
+export function effectiveColor(hex, params, palette = null) {
   const rgb = hex2rgb(hex);
   const data = new Uint8ClampedArray([rgb.r, rgb.g, rgb.b, 255]);
   applyTransforms(data, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
   const transformed = { r: data[0], g: data[1], b: data[2] };
-  return rgb2hex(palette && palette.length ? nearestColor(transformed, palette) : transformed);
+  if (!palette || !palette.length) return { ...transformed, hex: rgb2hex(transformed), c: [transformed.r, transformed.g, transformed.b] };
+  const { r, g, b, c } = nearestColor(transformed, palette);
+  return { r, g, b, hex: rgb2hex({ r, g, b }), c };
+}
+
+export function getEffectiveColor(hex, params, palette = null) {
+  return effectiveColor(hex, params, palette).hex;
 }

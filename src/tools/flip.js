@@ -1,15 +1,16 @@
-// Swaps a character cell's foreground and background (ANSI art style only: ASCII styles force a black background).
+// Swaps a character cell's foreground and background (ANSI art style only: ASCII styles force a black
+// background), on the layers chosen with its [Base] [Edit] toggles (workspace.flipLayers).
 import { cellAt } from '@/lib/Cells';
 
 let flipped = new Set(); // cells flipped in the current stroke, so dragging back over one doesn't undo it
 
-const flipAt = (project, pos) => {
+const flipAt = (project, workspace, pos) => {
   const cell = cellAt(pos.x, pos.y, project.cols, project.rows);
   if (!cell) return;
   const key = `${cell.col},${cell.row}`;
   if (flipped.has(key)) return;
   flipped.add(key);
-  project.flipAnsiColors(cell.col, cell.row);
+  project.flipCell(cell.col, cell.row, workspace.flipLayers);
 };
 
 export default {
@@ -22,13 +23,14 @@ export default {
   section: 'cell',
   available: (project) => project.renderStyle === 'ansi',
   preview: { shape: 'cell' },
-  begin({ project }, pos) {
+  options: [{ key: 'flipLayers', label: 'Flip', type: 'layers' }],
+  begin({ project, workspace }, pos) {
     flipped = new Set();
-    flipAt(project, pos);
+    flipAt(project, workspace, pos);
     return true;
   },
-  move({ project }, from, to) {
-    flipAt(project, to);
+  move({ project, workspace }, from, to) {
+    flipAt(project, workspace, to);
   },
   end({ project }) {
     flipped = new Set();

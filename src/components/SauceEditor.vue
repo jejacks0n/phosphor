@@ -1,19 +1,9 @@
-<script>
-import { mapWritableState } from 'pinia';
+<script setup>
+import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
-import { SAUCE_KEYS } from '@/store/settings';
-
 import ProjectActions from '@/components/ProjectActions.vue';
 
-export default {
-  name: 'SauceEditor',
-  components: {
-    ProjectActions,
-  },
-  computed: {
-    ...mapWritableState(useProjectStore, SAUCE_KEYS),
-  },
-};
+const { sauceTitle, sauceAuthor, sauceGroup, sauceUserComments } = storeToRefs(useProjectStore());
 </script>
 
 <template>

@@ -6,4 +6,16 @@ export default {
   views: ['input', 'output'],
   kind: 'pick',
   instant: true,
+  end({ workspace }) {
+    workspace.endPick(); // the old and new colors into the recent colors
+  },
+  options: [
+    {
+      key: 'pickLayers', label: 'Pick', type: 'toggles', views: ['output'],
+      options: [
+        { key: 'fg', label: 'FG', title: "Pick the cell's foreground" },
+        { key: 'bg', label: 'BG', title: "Pick the cell's background" },
+      ],
+    },
+  ],
 };

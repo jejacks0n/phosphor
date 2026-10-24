@@ -10,11 +10,12 @@ const props = defineProps({
   modelValue: { type: [Number, String], default: 0 },
   compact: { type: Boolean, default: false }, // toolbar style: just label + slider (tooltip shows the value)
 });
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'commit']); // commit({ nudge }): a drag ended, or a key nudged it (undo steps)
 
 // On touch layouts, dragging only updates the readout; the value commits on release.
 const commitOnRelease = useMediaQuery('(max-width: 768px)');
 const draft = ref(null);
+let pointing = false; // a pointer drag, not a key
 
 const value = computed(() => draft.value ?? props.modelValue);
 const percent = computed(() => ((value.value - props.setting.min) / (props.setting.max - props.setting.min)) * 100);
@@ -23,12 +24,16 @@ const ticksId = computed(() => (props.setting.ticks ? `ticks-${props.setting.key
 
 function onInput(event) {
   draft.value = event.target.value;
-  if (!commitOnRelease.value) commit(event);
+  if (commitOnRelease.value) return;
+  emit('update:modelValue', Number(event.target.value));
+  draft.value = null;
 }
 
 function commit(event) {
   emit('update:modelValue', Number(event.target.value));
   draft.value = null;
+  emit('commit', { nudge: !pointing });
+  pointing = false;
 }
 </script>
 
@@ -46,6 +51,7 @@ function commit(event) {
           :value="value"
           @input="onInput"
           @change="commit"
+            @pointerdown="pointing = true"
       >
       <span class="value-tooltip">{{ formatted }}</span>
     </div>
@@ -72,6 +78,7 @@ function commit(event) {
             :list="ticksId"
             @input="onInput"
             @change="commit"
+            @pointerdown="pointing = true"
         >
         <span class="value-tooltip">{{ formatted }}</span>
       </div>

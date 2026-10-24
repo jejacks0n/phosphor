@@ -1,15 +1,8 @@
-<script>
-import { version } from '../../package.json';
+<script setup>
+// This build: the version (its third number is the day it was built) and the commit (vite.config.js, buildInfo).
+const { version, sha } = __BUILD__;
 
-export default {
-  name: 'AboutPhosphor',
-  emits: ['close'],
-  data() {
-    return {
-      version,
-    };
-  },
-};
+defineEmits(['close']);
 </script>
 
 <template>
@@ -21,6 +14,7 @@ export default {
           <div class="logo"></div>
           <p class="tagline">Convert images to ANSI and ASCII ... with style?</p>
           <p class="version accent">v{{ version }}</p>
+          <p class="build">build {{ sha }}</p>
         </header>
 
         <hr/>
@@ -135,6 +129,13 @@ p, li {
 a {
   color: var(--accent);
   text-decoration: underline;
+}
+
+p.build {
+  margin: 2px 0 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 p.version {

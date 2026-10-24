@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { SETTINGS, getSetting } from '@/store/settings';
 
@@ -6,6 +7,8 @@ import ProjectActions from '@/components/ProjectActions.vue';
 import ProjectFooter from '@/components/ProjectFooter.vue';
 import HelpInfo from '@/components/HelpInfo.vue';
 import RangeField from '@/components/RangeField.vue';
+import CharsetField from '@/components/CharsetField.vue';
+import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
 
 const store = useProjectStore();
 
@@ -16,6 +19,12 @@ const SLIDER_GROUPS = [
 ].map(group => ({ ...group, sliders: SETTINGS.filter(s => s.group === group.id && s.min !== undefined) }));
 
 const help = (key) => getSetting(key).help;
+
+// The ready-made set the Characters field holds, or Custom.
+const charsetName = computed(() => {
+  const [chars, presets] = store.renderStyle === 'ansi' ? [store.chars, ANSI_CHARSETS] : [store.charsAscii, ASCII_CHARSETS];
+  return presets.find((p) => p.chars === chars)?.name ?? 'Custom';
+});
 </script>
 
 <template>
@@ -37,8 +46,9 @@ const help = (key) => getSetting(key).help;
               :max="store.maxCols"
               class="mono"
           >
-          <button title="Lock Aspect Ratio" :class="{ active: store.aspectLock }" @click="store.aspectLock = !store.aspectLock">
-            {{ store.aspectLock ? '🔒' : '🔓' }}
+          <button :title="store.hasEdits ? 'With edits, resizing adds or removes cells at the right and bottom (the aspect ratio is free)' : 'Lock Aspect Ratio'" :aria-pressed="store.aspectLock && !store.hasEdits" :class="{ active: store.aspectLock && !store.hasEdits }" :disabled="store.hasEdits" @click="store.aspectLock = !store.aspectLock">
+            <svg v-if="store.aspectLock" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M192 288V192A128 128 0 0 1 448 192V288H384V192A64 64 0 0 0 256 192V288ZM176 288H464A48 48 0 0 1 512 336V528A48 48 0 0 1 464 576H176A48 48 0 0 1 128 528V336A48 48 0 0 1 176 288Z"/></svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 288V192A128 128 0 0 1 576 192V256H512V192A64 64 0 0 0 384 192V288ZM112 288H400A48 48 0 0 1 448 336V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V336A48 48 0 0 1 112 288Z"/></svg>
           </button>
           <input
               type="number"
@@ -63,9 +73,12 @@ const help = (key) => getSetting(key).help;
       </div>
 
       <div class="field">
-        <div class="label-group"><label for="chars">Characters</label><HelpInfo :text="help('chars')" /></div>
-        <input v-if="store.renderStyle === 'ansi'" type="text" id="chars" v-model.lazy="store.chars" placeholder="characters" class="mono">
-        <input v-else type="text" id="chars" v-model.lazy="store.charsAscii" placeholder="characters" class="mono">
+        <div class="label-row">
+          <div class="label-group"><label for="chars">Characters</label><HelpInfo :text="help('chars')" /></div>
+          <span class="value">{{ charsetName }}</span>
+        </div>
+        <CharsetField v-if="store.renderStyle === 'ansi'" id="chars" v-model="store.chars" :presets="ANSI_CHARSETS"/>
+        <CharsetField v-else id="chars" v-model="store.charsAscii" :presets="ASCII_CHARSETS"/>
       </div>
 
       <div v-if="store.renderStyle === 'ansi' && store.chars.length > 1" class="field">
@@ -112,8 +125,22 @@ const help = (key) => getSetting(key).help;
           <button @click="store.resetGroup(group.id)" tabindex="-1">RESET</button>
         </legend>
 
-        <RangeField v-for="slider in group.sliders" :key="slider.key" :setting="slider" v-model="store[slider.key]">
-          <input v-if="slider.companion" type="color" v-model="store[slider.companion]">
+        <!-- Undoable: each drag, nudge or color pick is one step (setSlider, then commitSliders). -->
+        <RangeField
+            v-for="slider in group.sliders"
+            :key="slider.key"
+            :setting="slider"
+            :model-value="store[slider.key]"
+            @update:model-value="store.setSlider(slider.key, $event)"
+            @commit="store.commitSliders(slider.key, $event)"
+        >
+          <input
+              v-if="slider.companion"
+              type="color"
+              :value="store[slider.companion]"
+              @input="store.setSlider(slider.companion, $event.target.value)"
+              @change="store.commitSliders(slider.companion)"
+          >
         </RangeField>
       </fieldset>
     </template>
@@ -212,6 +239,14 @@ legend button:hover {
   width: 38px;
   padding: 8px;
   flex-shrink: 0;
+}
+
+:deep(div.row-inputs button svg) {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  fill: currentColor;
 }
 
 :deep(label) {

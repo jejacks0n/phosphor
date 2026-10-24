@@ -1,10 +1,13 @@
 <script setup>
-import { ref, computed, useTemplateRef, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, unref, useTemplateRef, onMounted, onBeforeUnmount } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
 import { getTool } from '@/tools';
-import { charRowsOf } from '@/lib/Cells';
+import { charRowsOf, cellAt, cellsOfPixels } from '@/lib/Cells';
+import { squarePixels } from '@/lib/Brushes';
+import { pickMode, pickTargetOf } from '@/lib/pickMode';
+import { drawsCells } from '@/tools/shapes';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
@@ -14,17 +17,15 @@ const props = defineProps({
   coordsAt: { type: Function, required: true },             // (event) => { x, y } in fractional grid pixels, or null
   zoomable: { type: Boolean, default: false },              // zoom reads and writes workspaceStore.editZoom
   scrollKey: { type: String, required: true },              // 'input' | 'ansi': where scroll position is remembered
-  contentSize: { type: Object, default: null },             // { width, height } -> padded layout that keeps its centre on resize
+  contentSize: { type: Object, default: null },             // { width, height } -> padded layout that keeps its center on resize
   view: { type: String, required: true },                   // 'input' (PIXEL) | 'output' (ANSI), passed to tools
   unit: { type: Object, default: null },                    // { x, y }: CSS px per grid pixel, for tool previews
-  toolContext: { type: Object, default: () => ({}) },       // editor extras for tools (e.g. openCharPicker)
-  hidePreview: { type: Boolean, default: false },
 });
 
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const tool = computed(() => getTool(workspaceStore.activeTool));
-const toolCtx = () => ({ project: projectStore, workspace: workspaceStore, view: props.view, ...props.toolContext });
+const toolCtx = () => ({ project: projectStore, workspace: workspaceStore, view: props.view });
 const rootRef = useTemplateRef('root');
 const isMouseOver = ref(false);
 
@@ -39,7 +40,6 @@ const {
   handleTouchCancel,
   handleWheel,
   centerContent,
-  updateMousePos,
 } = useEditorInteractions({
   containerRef: rootRef,
   displayRef: computed(() => props.display),
@@ -53,17 +53,53 @@ const {
     onPaintStart: (event, pos) => (tool.value.begin ? tool.value.begin(toolCtx(), pos, event) !== false : false),
     onPaintMove: (from, to) => tool.value.move?.(toolCtx(), from, to),
     onPaintEnd: () => tool.value.end?.(toolCtx()),
-    onColorPick: (pos) => { workspaceStore.editFgColor = projectStore.getRawColorAt(pos.x, pos.y); },
+    onColorPick: pickAt,
     onZoomChange: (zoom) => workspaceStore.setEditZoom(zoom),
   },
 });
 
+// The eyedropper: the pixel view picks the paint color; the ANSI view picks the cell's underlying
+// colors (the [FG][BG] toggles; Shift: foreground only, Alt: background only). Picks repeat while
+// dragging; the recent colors get the old and new colors when the pick ends (workspace.endPick).
+function pickAt(pos, event) {
+  const mode = pickMode({
+    view: props.view,
+    shiftKey: !!event?.shiftKey,
+    altKey: !!event?.altKey,
+    swapped: workspaceStore.pickSwapped,
+    target: pickTargetOf(workspaceStore.pickLayers),
+  });
+  // The pixel view, and a picker held with Alt from a drawing tool, pick exactly the half under the
+  // pointer: into the foreground, or with Alt+Shift the background.
+  if (props.view === 'input' || workspaceStore.pickSwapped) {
+    workspaceStore.pickColor(mode === 'bg' ? 'bg' : 'fg', projectStore.rawColorAt(pos.x, pos.y));
+    return;
+  }
+  const cell = cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows);
+  if (!cell) return;
+  const under = projectStore.underlyingAt(cell.col, cell.row);
+  const entry = projectStore.editCellAt(cell.col, cell.row);
+  // Color ASCII never shows a generated background: only an edit cell's is real.
+  const bg = projectStore.renderStyle === 'colorAscii' && !entry?.bg ? null : under.bg;
+  // For the status bar: what this pick read, and which layer each color came from (paint and edit
+  // cells are the edit layer; the rest is the base).
+  const fromEdit = (y, attr) => !!projectStore.paintLayer?.colorAt(cell.col, y) || entry?.[attr] !== undefined;
+  workspaceStore.lastPick = {
+    col: cell.col, row: cell.row, fg: under.fg, bg,
+    fgFrom: fromEdit(2 * cell.row + 1, 'fg') ? 'edit' : 'base',
+    bgFrom: fromEdit(2 * cell.row, 'bg') ? 'edit' : 'base',
+  };
+  if (mode === 'fg' || mode === 'both') workspaceStore.pickColor('fg', under.fg);
+  if (mode === 'bg' || mode === 'both') workspaceStore.pickColor('bg', bg);
+}
+
 // Brush/eraser outline under the pointer, or the character cell for cell tools.
+const gridPos = (pos) => ({ x: pos.x / props.unit.x, y: pos.y / props.unit.y });
 const CELL_HIGHLIGHT = { borderRadius: '0', transform: 'none', mixBlendMode: 'difference', background: 'white', outline: '1px solid red', border: 'none', boxShadow: 'none' };
 const previewStyle = computed(() => {
   const preview = tool.value.preview;
   const pos = mousePos.value, unit = props.unit;
-  if (!preview || !pos || !isMouseOver.value || !unit || props.hidePreview) return { display: 'none' };
+  if (!preview || !pos || !isMouseOver.value || !unit) return { display: 'none' };
 
   if (preview.shape === 'cell') {
     const cellW = unit.x, cellH = unit.y * 2;
@@ -73,14 +109,59 @@ const previewStyle = computed(() => {
   }
 
   const size = preview.size(workspaceStore);
+  // The eraser outlines exactly what it covers: whole cells in the ANSI view, pixels in the pixel view.
+  if (preview.snap) {
+    const square = squarePixels(gridPos(pos), gridPos(pos), size, projectStore.cols, projectStore.rows);
+    const ansi = props.view === 'output';
+    const parts = ansi ? cellsOfPixels(square, projectStore.cols, projectStore.rows).map(c => ({ x: c.col, y: c.row })) : square;
+    if (!parts.length) return { display: 'none' };
+    const x0 = Math.min(...parts.map(c => c.x)), x1 = Math.max(...parts.map(c => c.x));
+    const y0 = Math.min(...parts.map(c => c.y)), y1 = Math.max(...parts.map(c => c.y));
+    const w = unit.x, h = ansi ? unit.y * 2 : unit.y;
+    const display = unref(props.display);
+    return {
+      display: 'block', boxSizing: 'border-box', borderRadius: '0', transform: 'none',
+      width: `${(x1 - x0 + 1) * w}px`, height: `${(y1 - y0 + 1) * h}px`,
+      left: `${x0 * w + (display?.clientLeft ?? 0)}px`, top: `${y0 * h + (display?.clientTop ?? 0)}px`,
+    };
+  }
+  const display = unref(props.display); // pos is inside its border; the preview sits in its box
   return {
     display: 'block',
     width: `${size * unit.x}px`,
     height: `${size * unit.y}px`,
-    left: `${pos.x}px`,
-    top: `${pos.y}px`,
+    left: `${pos.x + (display?.clientLeft ?? 0)}px`,
+    top: `${pos.y + (display?.clientTop ?? 0)}px`,
     borderRadius: preview.shape === 'square' ? '0' : '50%',
   };
+});
+
+// The Shapes tool's drag outline (grid positions -> CSS px), drawn while dragging: the rect, or its ellipse.
+// In the ANSI view a line/character rectangle snaps to whole cells, so its outline does too; ANSI
+// overlays sit inside the display's 2px/1px border, like the cursor and cell highlights.
+const shapeDragStyle = computed(() => {
+  const drag = workspaceStore.shapeDrag, unit = props.unit;
+  if (!drag || !unit) return null;
+  const ansi = props.view === 'output';
+  const cellShape = ansi && drawsCells(workspaceStore);
+  const x0 = Math.floor(Math.min(drag.from.x, drag.to.x)), x1 = Math.floor(Math.max(drag.from.x, drag.to.x)) + 1;
+  let y0 = Math.floor(Math.min(drag.from.y, drag.to.y)), y1 = Math.floor(Math.max(drag.from.y, drag.to.y)) + 1;
+  if (cellShape) {
+    y0 = Math.floor(y0 / 2) * 2;
+    y1 = Math.ceil(y1 / 2) * 2;
+  }
+  const [dx, dy] = ansi ? [2, 1] : [0, 0];
+  return {
+    left: `${x0 * unit.x + dx}px`, top: `${y0 * unit.y + dy}px`, width: `${(x1 - x0) * unit.x}px`, height: `${(y1 - y0) * unit.y}px`,
+    borderRadius: workspaceStore.shapeKind === 'ellipse' ? '50%' : '0',
+  };
+});
+
+// A tool's own pointer over the content (the Select tool's border vs inside), when it has one.
+const toolCursor = computed(() => {
+  const pos = mousePos.value, unit = props.unit;
+  if (!tool.value.cursor || !pos || !isMouseOver.value || !unit) return null;
+  return tool.value.cursor(toolCtx(), { x: pos.x / unit.x, y: pos.y / unit.y });
 });
 
 // Padded layout: room to pan the content well past each edge.
@@ -95,7 +176,7 @@ const viewportStyle = computed(() => {
   };
 });
 
-// Offset of the view centre from the content centre, so a viewport resize keeps the same spot centred.
+// Offset of the view center from the content center, so a viewport resize keeps the same spot centered.
 const offset = { x: 0, y: 0 };
 const onScroll = () => {
   const el = rootRef.value;
@@ -124,7 +205,7 @@ onMounted(() => {
   el.addEventListener('wheel', handleWheel, { passive: false });
   el.addEventListener('scroll', onScroll);
 
-  // Restore the previous scroll position, or centre; wait a frame so the content has its size.
+  // Restore the previous scroll position, or center; wait a frame so the content has its size.
   requestAnimationFrame(() => {
     if (!rootRef.value) return;
     const x = workspaceStore[`${props.scrollKey}ScrollX`];
@@ -154,16 +235,17 @@ onBeforeUnmount(() => {
   if (resizeObserver) resizeObserver.disconnect();
 });
 
-defineExpose({ centerContent, updateMousePos });
+defineExpose({ centerContent });
 </script>
 
 <template>
   <article
       ref="root"
       tabindex="0"
+      :style="{ cursor: toolCursor }"
       @contextmenu.prevent
-      @mouseenter="isMouseOver = true"
-      @mouseleave="isMouseOver = false"
+      @mouseenter="isMouseOver = workspaceStore.pointerOverEditor = true"
+      @mouseleave="isMouseOver = workspaceStore.pointerOverEditor = false"
       @pointermove="onMouseMove"
       @pointerdown="startPaint"
       @mousedown="startPaint"
@@ -176,6 +258,7 @@ defineExpose({ centerContent, updateMousePos });
       <div class="canvas-container">
         <slot/>
         <div class="tool-preview" :style="previewStyle"></div>
+        <div v-if="shapeDragStyle" class="shape-drag" :style="shapeDragStyle"></div>
         <slot name="overlay"/>
       </div>
     </div>
@@ -191,6 +274,7 @@ article {
   overflow-anchor: none;
   outline: none;
   -webkit-overflow-scrolling: touch;
+  isolation: isolate; /* overlay z-indexes (cursor, marquee) stay below popovers and layers */
 }
 
 div.canvas-viewport {
@@ -216,6 +300,15 @@ div.canvas-container {
 
 div.canvas-viewport.padded div.canvas-container {
   margin: 0;
+}
+
+div.shape-drag {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 100;
+  border: 1px dashed var(--white);
+  box-shadow: 0 0 0 1px var(--black);
 }
 
 div.tool-preview {

@@ -1,0 +1,118 @@
+# Testing Phosphor
+
+Every change comes with a test. The tests run on every pull request and before every deploy: if one
+fails, the site isn't deployed.
+
+```bash
+npm test               # everything: lint, unit, browser, end-to-end
+npm run test:unit      # pure logic, in Node (a second or two)
+npm run test:browser   # the store, canvas and WebGL, in Chromium (a few seconds)
+npm run test:e2e       # real clicks and keys against a production build (under a minute)
+npm run test:update    # rewrite the reference files (read the diff before committing)
+```
+
+The first time, install the browser: `npx playwright install --with-deps chromium`.
+
+## Which layer a test belongs in
+
+| What you're testing | Layer | Where |
+| --- | --- | --- |
+| A function that takes values and returns values (cells, colors, bytes, widths, parsing) | unit | `tests/unit/*.test.js` |
+| The store, or anything that needs a real canvas, WebGL, fonts or image decoding | browser | `tests/browser/*.test.js` |
+| What happens when someone clicks, drags, types or presses a shortcut in the UI | end-to-end | `tests/e2e/*.spec.js` |
+
+Pick the lowest layer that can see the bug. A unit test is fastest and says exactly what broke; an
+end-to-end test is for things only the real UI can get wrong (focus, events, dialogs, downloads).
+
+### Unit
+
+Plain Vitest in Node, as in `tests/unit/wide-chars.test.js`:
+
+```js
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
+import { overwrites } from '../../src/document/wideChars.js';
+
+test('typing over a wide character\'s trail turns its lead into a space', () => {
+  const cells = [{ char: '漢', wide: 'lead' }, { char: '漢', wide: 'trail' }, { char: 'a' }];
+  assert.deepEqual(overwrites(cells, 3, 1, 0, 1), [0]);
+});
+```
+
+### Browser
+
+Vitest in Chromium, driving the stores directly (no UI mounted). `createTestApp()` gives fresh
+stores with the display font loaded; `loadImage` and `settle` load a fixture and wait for the render.
+Read results from `project.cells` (char, fg, bg), not from the screen. From
+`tests/browser/wide-chars.test.js` (shortened):
+
+```js
+import { createTestApp, loadImage } from '../support/app.js';
+
+test('a wide character takes two columns; the last column refuses it', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  expect(project.typeAt(19, 1, '漢', { fg: '#ffffff', bg: '#000000' })).toBe(false);
+});
+```
+
+`tests/support/scenes.js` has a ready-made document with a bit of everything drawn on it.
+
+### End-to-end
+
+Playwright against `npm run build` served by `vite preview`. Act through the UI only (roles, labels,
+the mouse and keyboard); read the stores with `store(page, 'project', (p) => ...)` to check the result.
+From `tests/e2e/edit-drag-select.spec.js`:
+
+```js
+import { openApp, store, cellPoint, drag } from './support.js';
+
+test('a drag in Edit Mode becomes a Select selection', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Edit Mode' }).click();
+  await drag(page, await cellPoint(page, 3, 3), await cellPoint(page, 8, 6));
+  expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: 3, r0: 3, c1: 8, r1: 6 });
+});
+```
+
+## Running one test
+
+```bash
+npm run test:unit -- cells             # files matching "cells"
+npm run test:browser -- bake
+npx playwright test merge-dialog
+npx playwright test --headed export    # watch it run
+npm run test:browser -- -t "last column"   # by test name
+```
+
+Failed browser tests leave a screenshot under `.vitest/attachments/`; failed end-to-end tests leave a
+trace under `test-results/` (`npx playwright show-trace <path>`).
+
+## Software WebGL
+
+The image pipeline runs on WebGL, and GPUs round differently. Both browser layers launch Chromium
+with SwiftShader (software WebGL), locally and in CI, so a conversion gives the same cells on every
+machine and can be compared exactly. If a Chromium update shifts its rendering, the reference tests
+fail everywhere at once: regenerate the references (below) and check the diff is a level here and
+there, not a changed picture.
+
+## Reference files
+
+`tests/fixtures/reference/` holds outputs the tests must reproduce exactly: export bytes, converted
+cells, loaded projects' cells. A reference is a claim that today's output is right. They're written
+only by `npm run test:update`; a missing or different reference fails the test.
+
+When you change output on purpose, run `npm run test:update`, then read `git diff
+tests/fixtures/reference` and commit only what you meant to change.
+
+## Turning a bug report into a test
+
+1. Put the reporter's file under `tests/fixtures/`: an image in `images/`, a project in `projects/`,
+   named for the issue (`projects/issue-42.phosphor`).
+2. Add it to the test for its kind: `IMAGES` in `tests/browser/images.test.js`, `FIXTURES` in
+   `tests/browser/projects.test.js`, or a grid in `tests/unit/export.test.js` for an export problem.
+3. Make the test say what should happen (a cell, a byte, a round trip), watch it fail, then fix the
+   app until it passes.
+
+`tests/fixtures/README.md` lists every fixture and how it was made (`npm run fixtures` rebuilds the
+generated ones).
