@@ -18,8 +18,9 @@ import { cellWidth } from "@/lib/CharWidth.js";
 import { overwritesAll } from "@/document/wideChars.js";
 import { RESET_GROUPS, settingsState, groupDefaults, baseParams, slidersAtDefaults } from "@/store/settings.js";
 import { combineActions } from "@/store/project/combineActions.js";
+import { sliderActions } from "@/store/project/sliders.js";
 import { historyActions } from "@/store/project/history.js";
-import { MAX_DIMENSION, DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, TYPING_PAUSE_MS, PIPELINE_KEYS, SAVED_KEYS, settingsJson, copyOf, over, SLIDER_KEYS, NUDGE_MS } from "@/store/project/shared.js";
+import { MAX_DIMENSION, DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, TYPING_PAUSE_MS, PIPELINE_KEYS, SAVED_KEYS, settingsJson, copyOf, over } from "@/store/project/shared.js";
 
 export const useProjectStore = defineStore('project', {
   state: () => ({
@@ -91,7 +92,7 @@ export const useProjectStore = defineStore('project', {
     }),
   },
 
-  actions: combineActions(historyActions, {
+  actions: combineActions(historyActions, sliderActions, {
     randomizeSeed() {
       this.seed = generateSlug(2);
     },
@@ -309,50 +310,6 @@ export const useProjectStore = defineStore('project', {
         ...opts,
       });
       downloadBlob(blob, `${this.filename}.${ext}`);
-    },
-
-    // RESET ALL and a group's RESET: one undo step each.
-    resetSliders() {
-      this._sliderBefore ??= this.sliderValues();
-      RESET_GROUPS.forEach(group => this.$patch(groupDefaults(group)));
-      this.commitSliders();
-    },
-
-    resetGroup(group) {
-      this._sliderBefore ??= this.sliderValues();
-      this.$patch(groupDefaults(group));
-      this.commitSliders();
-    },
-
-    sliderValues() {
-      return Object.fromEntries(SLIDER_KEYS.map(key => [key, this[key]]));
-    },
-
-    // A slider moving (a drag, a nudge, a color being picked): the values from before it are noted
-    // once, and commitSliders makes the move one undo step when it ends.
-    setSlider(key, value) {
-      this._sliderBefore ??= this.sliderValues();
-      this[key] = value;
-    },
-
-    // The move ended: one undo step from the noted values to these, none if nothing changed. A key
-    // nudge on the same slider a moment after the last nudge, with nothing else recorded between,
-    // extends that step (a drag is always a step of its own).
-    commitSliders(key = null, { nudge = false } = {}) {
-      const before = this._sliderBefore;
-      this._sliderBefore = null;
-      if (!before) return;
-      const after = this.sliderValues(), last = this._lastSlider;
-      if (nudge && last?.key === key && last.version === this.history.version && Date.now() - last.at < NUDGE_MS) {
-        last.at = Date.now();
-        last.entry.after = after;
-        return;
-      }
-      if (SLIDER_KEYS.every(k => before[k] === after[k])) return;
-      this.commitPending();
-      const entry = { after, undo: () => this.$patch(before), redo: () => this.$patch(entry.after) };
-      this.pushEdit(entry);
-      this._lastSlider = nudge ? { key, entry, version: this.history.version, at: Date.now() } : null;
     },
 
     // Bake: the picture as it shows becomes the image and the Transform, Adjustment and Effect
