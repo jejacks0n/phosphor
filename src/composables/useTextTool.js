@@ -5,6 +5,7 @@ import { hex2rgb, paletteIndex } from '@/lib/ColorUtils';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { toast } from '@/composables/useToast';
 import { cellWidth } from '@/lib/CharWidth';
+import { isField, isTextInput } from '@/lib/fields';
 import { snapCursor } from '@/document/wideChars';
 
 // Type one character at the Text tool's cursor and move right by its width (the keyboard and the
@@ -46,12 +47,10 @@ export function typeText(project, workspace, text) {
 // keys (arrows, Backspace, F-keys...) still come through keydown.
 export function useTextTool(project, workspace, textInput) {
   const palettes = usePaletteStore();
-  const isTextInput = (el) => el?.dataset?.textInput !== undefined;
   // Keys belong elsewhere while focus is in a field or a dialog (the color picker, the palette layer).
   const editableFocus = () => {
     const el = document.activeElement;
-    if (!el || isTextInput(el)) return false;
-    return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || !!el.closest('[role="dialog"]');
+    return isField(el) || (!!el && !isTextInput(el) && !!el.closest('[role="dialog"]'));
   };
 
   const move = (dc, dr) => {

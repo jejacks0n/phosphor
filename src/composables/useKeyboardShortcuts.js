@@ -5,6 +5,7 @@ import { charRowsOf } from '@/lib/Cells';
 import { copySelection } from '@/composables/clipboard';
 import { typeText } from '@/composables/useTextTool';
 import { colorBoxKey, helpKey } from '@/lib/TextKeys';
+import { isField } from '@/lib/fields';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
@@ -70,13 +71,11 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // Colors, Moebius-style: Alt+F (or Alt+A) opens the color box on the foreground, Alt+B on the
   // background (from a drawing tool too: the held eyedropper gives way), and Shift+Cmd/Ctrl+X swaps
   // the two. Not in a real field (they type there); in Edit Mode they work while typing.
-  const _inField = (target) => target?.dataset?.textInput === undefined
-    && (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName));
   const _handleColorKeys = (e) => {
     const slot = colorBoxKey(e);
     const swap = e.code === 'KeyX' && e.shiftKey && (e.metaKey || e.ctrlKey) && !e.altKey;
     if (!slot && !swap) return false;
-    if (_inField(e.target) || !projectStore.image || !workspaceStore.editMode || workspaceStore.paletteLayerOpen) return false;
+    if (isField(e.target) || !projectStore.image || !workspaceStore.editMode || workspaceStore.paletteLayerOpen) return false;
     e.preventDefault();
     if (swap) {
       workspaceStore.swapColors();
@@ -91,7 +90,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // The shortcuts list: ?, or Alt+? while typing in Edit Mode (where ? types). Not in a field.
   const _handleHelp = (e) => {
     const typing = workspaceStore.activeTool === 'text' && !!workspaceStore.textCursor && workspaceStore.editorTab === 'output';
-    if (!helpKey(e, { typing }) || _inField(e.target) || workspaceStore.paletteLayerOpen) return false;
+    if (!helpKey(e, { typing }) || isField(e.target) || workspaceStore.paletteLayerOpen) return false;
     e.preventDefault();
     workspaceStore.shortcutsOpen = true;
     return true;
@@ -99,9 +98,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
   const _handleSwapColors = (e) => {
     if (e.key.toLowerCase() !== 'x' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
-    const target = e.target;
-    if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName)) return false;
-    if (workspaceStore.activeTool === 'text') return false;
+    if (isField(e.target) || workspaceStore.activeTool === 'text') return false; // in Edit Mode, X types
     workspaceStore.swapColors();
     return true;
   };
@@ -116,11 +113,9 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (e.defaultPrevented || workspaceStore.paletteLayerOpen) return false;
     if (workspaceStore.editorTab !== 'output' || e.altKey || e.shiftKey) return false;
     if (workspaceStore.isPainting) return false; // mid-drag: the drag's end decides
-    const target = e.target;
     // The Text tool's textarea isn't a field: Cmd/Ctrl+V there still pastes a Select block (and only
     // pastes text, through the textarea, when there's no block).
-    const field = target?.dataset?.textInput === undefined && (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName));
-    if (field) return false;
+    if (isField(e.target)) return false;
     const sel = workspaceStore.selection, layers = workspaceStore.selectLayers;
     const selecting = workspaceStore.activeTool === 'select' && sel;
     const command = e.metaKey || e.ctrlKey;

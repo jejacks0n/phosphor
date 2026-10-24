@@ -6,6 +6,7 @@ import { usePaletteStore } from '@/store/PaletteStore';
 import { UNICODE_BLOCKS, fitsGrid, parseFind } from '@/lib/charPalettes';
 import { CP437, cp437Byte, isCp437 } from '@/lib/Cp437';
 import { cellWidth } from '@/lib/CharWidth';
+import { isField } from '@/lib/fields';
 import { toast } from '@/composables/useToast';
 
 // The character palette layer: one element in two sizes. Compact, it's the list of palettes (each
@@ -143,9 +144,8 @@ const onGlyphHover = (char) => {
   info.value = `${char}  ${code(char)} · ${byte !== null && isCp437(char) ? `CP437 ${byte}` : 'UTF-8 only'}${!fits(char) ? " · can't be used" : cellWidth(char) === 2 ? ' · 2 cells wide' : ''}${slot >= 0 ? ` · already on F${slot + 1}` : ''}`;
 };
 
-const editableTarget = (el) => el?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el?.tagName);
 const onKeyDown = (event) => {
-  if (editableTarget(event.target)) {
+  if (isField(event.target)) {
     if (event.key === 'Escape') event.target.blur();
     return;
   }
