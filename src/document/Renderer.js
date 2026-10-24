@@ -11,8 +11,7 @@
  */
 import { processImage, applyQuantization, getPaletteColors } from '../lib/ImageProcessor.js';
 import { applyTransforms } from '../lib/PixelTransforms.js';
-import { nearestColor, paletteIndex, rgb2hex } from '../lib/ColorUtils.js';
-import quantize, { makeRoom } from '../lib/Quantizer.js';
+import { nearestColor } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d } from '../lib/Canvas.js';
 import { buildCells, buildCell, brightnessChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
@@ -31,10 +30,6 @@ export default class Renderer {
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
   #effective = new Map(); // stored colour -> displayed Color, until the next render
   #source = null;       // { key, data }: the image through the pipeline with colour adjustments neutral (stored colours)
-  #picture = null;      // { data, n, palette }: the picture's own Number palette, for "Make room"
-  // How the Number palette follows the drawing (trial): 'live' (recount as you draw), 'release' (the
-  // store recounts when a stroke ends) or 'room' (the picture's palette, with room made for drawn colours).
-  countStrategy = 'live';
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
@@ -115,31 +110,12 @@ export default class Renderer {
 
   // The Number palette from the output as composited (before it's quantized); true when it changed.
   #recount(params) {
-    const next = this.countStrategy === 'room' ? this.#roomPalette(params) : getPaletteColors(params, new Canvas(this.outputCanvas));
+    const next = getPaletteColors(params, new Canvas(this.outputCanvas));
     const key = (palette) => palette?.map((p) => p.hex).join();
     if (key(next) === key(this.palette)) return false;
     this.palette = next;
     this.#effective = new Map(); // displayed colours snap to the palette
     return true;
-  }
-
-  // "Make room": the picture's own palette (from the pipeline alone, so painting never moves it), with
-  // the drawn colours (output pixels the base layer or paint changed) given slots (makeRoom).
-  #roomPalette(params) {
-    const n = Number(params.colorCount), data = this.#pipelineData;
-    if (this.#picture?.data !== data || this.#picture.n !== n) {
-      const palette = quantize(data.data, n).map((c) => ({ ...c, hex: rgb2hex(c), weight: 0 }));
-      for (let o = 0; o < data.data.length; o += 4) palette[paletteIndex(data.data[o], data.data[o + 1], data.data[o + 2], palette)].weight++;
-      this.#picture = { data, n, palette };
-    }
-    const out = ctx2d(this.outputCanvas).getImageData(0, 0, data.width, data.height).data, counts = new Map();
-    for (let o = 0; o < out.length; o += 4) {
-      if (out[o] === data.data[o] && out[o + 1] === data.data[o + 1] && out[o + 2] === data.data[o + 2]) continue;
-      const key = (out[o] << 16) | (out[o + 1] << 8) | out[o + 2];
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    const drawn = [...counts].map(([key, count]) => ({ r: key >> 16, g: (key >> 8) & 255, b: key & 255, count }));
-    return makeRoom(this.#picture.palette, drawn, n).map((c, i) => ({ ...c, c: i, hex: rgb2hex(c) }));
   }
 
   // Draw a layer at grid resolution (a grid pixel at a time) with the colour transforms applied;

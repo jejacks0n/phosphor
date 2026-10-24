@@ -508,7 +508,6 @@ export const useProjectStore = defineStore('project', {
         this._rendering = true;
         try {
           this.ensureLayer();
-          this.renderer.countStrategy = useWorkspaceStore().countPalette;
           this.renderedCells = await this.renderer.render(this.image, this.processParams, this.paintLayer, baseParams(this.processParams));
           this.activePalette = this.renderer.palette;
           this.applyEditCells();
@@ -529,8 +528,8 @@ export const useProjectStore = defineStore('project', {
     // would, without rerunning the pipeline). Trial: 'release' leaves the palette alone until the
     // stroke ends (commitEdit recounts).
     composite() {
-      const strategy = this.renderer.countStrategy = useWorkspaceStore().countPalette;
-      if (!this.renderer.composite(this.paintLayer, this.processParams, { recount: strategy !== 'release' || !this._stroke })) return;
+      const release = useWorkspaceStore().countPalette === 'release';
+      if (!this.renderer.composite(this.paintLayer, this.processParams, { recount: !release || !this._stroke })) return;
       this.activePalette = this.renderer.palette;
       this.renderedCells = this.renderer.cellsFromOutput(this.processParams);
       this.applyEditCells();
