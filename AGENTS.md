@@ -15,6 +15,29 @@ npm run test:update               # rewrite reference files (see below)
 npm run build
 ```
 
+## Where things live
+
+- `src/store/ProjectStore.js`: the document's state and getters. Its actions are in
+  `src/store/project/`, one file per area, joined in `ProjectStore.js` by `combineActions` (which
+  refuses a name defined twice):
+  - `document.js`: new image or canvas, open, save, export, the filename
+  - `rendering.js`: the grid's size, renders and recomposites, the cells the views show
+  - `reading.js`: colors and cells under a point, without changing anything
+  - `editLayer.js`: paint, typing, flipping, clearing the edit layer
+  - `baseLayer.js`: the base layer's own pixels and pins
+  - `selection.js`: copy, cut, paste and floating moves
+  - `merging.js`: Merge up, Merge down, Into the image, Bake
+  - `sliders.js`: slider moves as undo steps
+  - `history.js`: recording edits, undo and redo
+  - `shared.js`: constants the groups share
+
+  Actions call each other through `this` (they're all one store), so the files don't import each
+  other. A new action goes in its area's file; `tests/browser/store-actions.test.js` lists every
+  action, so update it with the new name.
+- `src/store/WorkspaceStore.js`: the editor around the document: the tool, colors, selection, views.
+- `src/document/`: the document's data (layers, cells, history, files); `src/lib/`: the libraries
+  (cells, colors, the image pipeline, exports); `src/tools/`: one file per tool.
+
 ## Rules
 
 - **Every change comes with a test in the right layer**: pure logic in `tests/unit`, the store,
