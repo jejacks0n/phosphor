@@ -1038,41 +1038,51 @@ export const useProjectStore = defineStore('project', {
     // with the shown character pinned), then the paint over them, a grid pixel at a time as it
     // shows. Paint over a pinned cell (an erased one's space) pins what it shows too. Nothing is
     // resampled or put through the effects.
-    mergeDown() {
+    // What merging a cell into the base shows: its two halves (top, bottom) under the paint, and
+    // the character to pin. Color ASCII shows only the foreground (on black) and rebuilds it as the
+    // halves' average; a cell showing another character than its own (▄ for a solid one under
+    // paint) goes in as its two half colours.
+    mergeCellOf(col, row) {
+      const cell = { ...this.baseCellAt(col, row), ...this.editCellAt(col, row) };
+      // Before the wide layout: a wide character's trail pins its own character, not its lead's.
+      const char = this.composedCells[cellIndex(col, row, this.cols)]?.char ?? cell.char;
+      const [top, bottom] = this.renderStyle === 'colorAscii' ? [hex2rgb(cell.fg), hex2rgb(cell.fg)]
+        : char === cell.char ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
+          : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
+      return { col, row, top, bottom, char };
+    },
+
+    // rect: only the edit layer inside a cell rect (a selection) is merged; the rest stays.
+    mergeDown(rect = null) {
       if (!this.image) return;
       this.ensureLayer();
       this.commitPending();
 
       const rows = charRowsOf(this.rows);
-      // Before the wide layout: a wide character's trail pins its own character, not its lead's.
+      const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);
       const shownChar = (col, row) => this.composedCells[cellIndex(col, row, this.cols)]?.char;
       const merged = [];   // { col, row, top, bottom, char }: edit cells, under the paint
-      const offGrid = new Map(); // edit cells past the grid (after a canvas resize shrank it) stay on the edit layer
+      const kept = new Map(); // edit cells past the grid (after a canvas resize shrank it) or outside the rect stay on the edit layer
       for (const [key, entry] of this.editCells) {
         const { col, row } = parseKey(key);
-        if (col >= this.cols || row >= rows) {
-          offGrid.set(key, entry);
+        if (col >= this.cols || row >= rows || !inRect(col, row)) {
+          kept.set(key, entry);
           continue;
         }
-        const cell = { ...this.baseCellAt(col, row), ...entry };
-        const char = shownChar(col, row) ?? cell.char;
-        // Color ASCII shows only the foreground (on black) and rebuilds it as the halves' average.
-        const [top, bottom] = this.renderStyle === 'colorAscii' ? [hex2rgb(cell.fg), hex2rgb(cell.fg)]
-          : char === cell.char ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
-            : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
-        merged.push({ col, row, top, bottom, char });
+        merged.push(this.mergeCellOf(col, row));
       }
       const paintedPins = [...this.baseRecords.pins.keys()].map(parseKey)
-        .filter(({ col, row }) => !this.editCells.has(cellKey(col, row)) && this.cellHasPaint(col, row))
+        .filter(({ col, row }) => inRect(col, row) && !this.editCells.has(cellKey(col, row)) && this.cellHasPaint(col, row))
         .map(({ col, row }) => ({ col, row, char: shownChar(col, row) ?? '▄' }));
 
       const before = { base: this.baseLayer.snapshot(), paint: this.paintLayer.snapshot(), editCells: this.editCells, baseRecords: this.baseRecords };
       const pixels = merged.flatMap(({ col, row, top, bottom }) => [{ x: col, y: 2 * row, ...top, alpha: 1 }, { x: col, y: 2 * row + 1, ...bottom, alpha: 1 }]);
       this.baseLayer.erase(pixels);
       this.baseLayer.paint(pixels);
-      this.baseLayer.drawOver(this.paintLayer);
+      this.baseLayer.drawOver(this.paintLayer, rect);
+      if (rect) this.paintLayer.clearCells(rect);
       const pins = [...merged.map(({ col, row, char }) => ({ col, row, char })), ...paintedPins];
-      const after = { base: this.baseLayer.snapshot(), paint: null, editCells: offGrid, baseRecords: withPins(before.baseRecords, pins) };
+      const after = { base: this.baseLayer.snapshot(), paint: rect ? this.paintLayer.snapshot() : null, editCells: kept, baseRecords: withPins(before.baseRecords, pins) };
       const apply = ({ base, paint, editCells, baseRecords }) => {
         this.baseLayer.restore(base);
         this.paintLayer.restore(paint);

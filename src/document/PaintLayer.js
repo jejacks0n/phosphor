@@ -246,11 +246,31 @@ export default class PaintLayer {
 
   // Another layer drawn over this one, a grid pixel at a time as the Renderer shows it (Merge down).
   // Both are in grid pixels from the same origin, whatever their scales and extents.
-  drawOver(layer) {
+  drawOver(layer, rect = null) {
     const ctx = ctx2d(this.canvas);
+    ctx.save();
+    if (rect) { // only inside a cell rect (a selection's merge)
+      ctx.beginPath();
+      ctx.rect(...this.#rectPixels(rect));
+      ctx.clip();
+    }
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(layer.canvas, 0, 0, layer.cols * this.scale, layer.rows * this.scale);
+    ctx.restore();
     this.hasPaint ||= layer.hasPaint;
+  }
+
+  // Clear a cell rect's pixels (what a selection's merge takes off the edit layer).
+  clearCells(rect) {
+    if (!this.hasPaint) return;
+    ctx2d(this.canvas).clearRect(...this.#rectPixels(rect));
+    this.recheckPaint();
+  }
+
+  // A cell rect in this layer's pixels: [x, y, w, h].
+  #rectPixels({ c0, r0, c1, r1 }) {
+    const k = this.scale;
+    return [c0 * k, 2 * r0 * k, (c1 - c0 + 1) * k, 2 * (r1 - r0 + 1) * k];
   }
 
   clear() {
