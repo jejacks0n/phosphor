@@ -16,6 +16,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20 # a hung test (an endless loop can't be timed out from inside) fails, not runs for hours
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

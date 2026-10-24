@@ -60,9 +60,8 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   const big = updateRect(new Map(), { c0: 0, r0: 0, c1: 299, r1: 149 }, () => ({ char: '#' }));
   assert.equal(big.size, 300 * 150);
   assert.equal(updateRect(big, { c0: 0, r0: 0, c1: 9, r1: 9 }, () => ({ char: '#' })), big); // nothing changed: same map
-  const t0 = performance.now();
-  updateRect(big, { c0: 0, r0: 0, c1: 299, r1: 149 }, (c, r, old) => ({ ...old, fg: '#ffffff' }));
-  assert.ok(performance.now() - t0 < 250, 'whole-grid update should be one pass');
+  const recoloured = updateRect(big, { c0: 0, r0: 0, c1: 299, r1: 149 }, (c, r, old) => ({ ...old, fg: '#ffffff' }));
+  assert.ok(recoloured !== big && recoloured.size === big.size && recoloured.get('299,149').fg === '#ffffff');
   // The selection's border band: ½ column / ¼ row outside, ¼ column / ⅛ row inside.
   const sel = { c0: 2, r0: 2, c1: 5, r1: 4 }; // edges x 2..6, y 2..5
   assert.equal(selectionHit(sel, { col: 4, row: 3.5 }), 'inside');

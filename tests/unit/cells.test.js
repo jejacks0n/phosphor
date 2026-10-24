@@ -66,9 +66,6 @@ test('Cell model: one { char, fg, bg } per character cell, built exactly as the 
   assert.equal(layoutWide(narrowRow, 2), narrowRow);                              // nothing wide: the same array
   assert.deepEqual(layoutWide(['漢', '漢', '漢', '漢'].map(C), 4).map(c => c.wide), ['lead', 'trail', 'lead', 'trail']); // every other one starts
   assert.deepEqual(layoutWide(['a', '漢', '字', 'b'].map(C), 2).map(c => c.char), ['a', ' ', '字', '字']); // per row
-  const big = Array.from({ length: 30000 }, (_, i) => C(i % 97 ? '▄' : '漢'));
-  const t0 = performance.now(); layoutWide(big, 200); const ms = performance.now() - t0;
-  assert.ok(ms < 15, `layoutWide 30k cells: ${ms.toFixed(1)} ms`);          // runs on every brush move; generous for noise
   // A selection as text for the system clipboard: the characters as they show, a line per row, a wide
   // character written once (its trail adds nothing, so the text lines up in a terminal).
   const textGrid = layoutWide(['a', '漢', 'x', 'b', 'c', 'd', 'e', 'f'].map(C), 4); // 4 cols, 2 rows

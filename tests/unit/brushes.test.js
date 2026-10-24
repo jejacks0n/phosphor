@@ -62,8 +62,9 @@ test('Brush pixel generation shared by both editors (grid pixels, clipped to the
   assert.ok(aaRing.every(p => p.alpha > 0 && p.alpha <= cover(p.x, p.y)));
   assert.ok(!aaRing.some(p => p.x === 4 && p.y === 4));                                     // hollow
   assert.ok(ellipsePixels({ x: 2, y: 2 }, { x: 2, y: 2 }, false, 10, 10, true).length === 1);  // tiny: still a pixel
-  const t0 = performance.now();
-  ellipsePixels({ x: -1000, y: -1000 }, { x: 1300, y: 1300 }, false, 300, 300);
-  ellipsePixels({ x: -1000, y: -1000 }, { x: 1300, y: 1300 }, false, 60, 60, true);
-  assert.ok(performance.now() - t0 < 15, 'off-grid area is skipped');
+  // Off-grid area is skipped: walking this ellipse's ~10^12 off-grid pixels would never finish (the
+  // run hangs; CI's job timeout fails it), so it passes only if the work is bounded by the grid. No
+  // stopwatch: a timing threshold fails on a busy machine.
+  const huge = (aa) => ellipsePixels({ x: -1e6, y: -1e6 }, { x: 1e6, y: 1e6 }, false, 300, 300, aa);
+  for (const aa of [false, true]) assert.ok(huge(aa).every(p => p.x >= 0 && p.y >= 0 && p.x < 300 && p.y < 300));
 });
