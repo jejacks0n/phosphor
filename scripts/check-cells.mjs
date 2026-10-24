@@ -1,7 +1,7 @@
 // Cell model: one { char, fg, bg } per character cell, built exactly as the pipeline always has
 // (export bytes depend on it). Run: node scripts/check-cells.mjs
 import assert from 'node:assert/strict';
-import { buildCells, buildCell, brightnessChar, charRowsOf, cellIndex, cellOfPixel, cellAt } from '../src/lib/Cells.js';
+import { buildCells, buildCell, brightnessChar, charRowsOf, cellIndex, cellOfPixel, cellAt, layoutWide } from '../src/lib/Cells.js';
 
 const px = (r, g, b, c) => (c === undefined ? { r, g, b } : { r, g, b, c });
 const opts = { charset: 'ab', charMode: 'random', renderStyle: 'ansi', seed: 's' };
@@ -51,4 +51,20 @@ assert.ok(grid('𝔸').every(c => c === '𝔸'));
 assert.ok(grid('漢').every(c => c === '▄'));
 assert.equal(brightnessChar(px(0, 0, 0), px(0, 0, 0), ' 漢#'), ' ');
 assert.equal(brightnessChar(px(255, 255, 255), px(255, 255, 255), ' 漢#'), '#');
+// A wide character takes its cell and the one to its right, the way a terminal lays it out: the
+// covered cell shows the lead's character and colours; one in the last column has no room and
+// shows as a space.
+const C = (char) => ({ char, fg: { hex: '#ffffff' }, bg: { hex: '#000000' } });
+const wideRow = ['a', '漢', 'x', 'b', '字'].map(C);                       // 5 cols, one row
+const laid = layoutWide(wideRow, 5);
+assert.deepEqual(laid.map(c => [c.char, c.wide]), [['a', undefined], ['漢', 'lead'], ['漢', 'trail'], ['b', undefined], [' ', undefined]]);
+assert.equal(laid[2].fg, wideRow[1].fg);                                  // the trail has the lead's colours
+assert.equal(layoutWide(wideRow.slice(0, 1), 1)[0].char, 'a');
+const narrowRow = ['a', 'b'].map(C);
+assert.equal(layoutWide(narrowRow, 2), narrowRow);                              // nothing wide: the same array
+assert.deepEqual(layoutWide(['漢', '漢', '漢', '漢'].map(C), 4).map(c => c.wide), ['lead', 'trail', 'lead', 'trail']); // every other one starts
+assert.deepEqual(layoutWide(['a', '漢', '字', 'b'].map(C), 2).map(c => c.char), ['a', ' ', '字', '字']); // per row
+const big = Array.from({ length: 30000 }, (_, i) => C(i % 97 ? '▄' : '漢'));
+const t0 = performance.now(); layoutWide(big, 200); const ms = performance.now() - t0;
+assert.ok(ms < 15, `layoutWide 30k cells: ${ms.toFixed(1)} ms`);          // runs on every brush move; generous for noise
 console.log('cells ok');

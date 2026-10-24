@@ -24,11 +24,12 @@ export class AnsiFile {
   }
 
   // Characters in cells that CP437 can't encode: how often each appears and what's written instead
-  // (most frequent first). A cell whose colours match is written as a space, so it doesn't count.
+  // (most frequent first). A cell whose colours match is written as a space, so it doesn't count; a
+  // wide character counts once (its trail is written as a space).
   static unmappable(cells) {
     const found = new Map();
     for (const cell of cells) {
-      if (!cell || cell.fg.hex === cell.bg.hex || cp437Byte(cell.char) !== null) continue;
+      if (!cell || cell.wide === 'trail' || cell.fg.hex === cell.bg.hex || cp437Byte(cell.char) !== null) continue;
       const entry = found.get(cell.char) ?? { count: 0, as: cp437Substitute(cell.char) };
       entry.count++;
       found.set(cell.char, entry);
@@ -48,6 +49,10 @@ export class AnsiFile {
 
     addSgr(0);
 
+    // A wide character's trail: in UTF-8 the terminal has already moved two columns, so it writes
+    // nothing, unless its lead went out as a space; in CP437 the lead's stand-in is one column, so
+    // the trail is a space (its colours are the lead's: no SGR change).
+    let leadAsSpace = false;
     for (let y = 0; y < this.rows; y++) {
       for (let x = 0; x < this.cols; x++) {
         if (lineFeeds && x === 0 && y > 0) {
@@ -63,7 +68,9 @@ export class AnsiFile {
         if (!cell) continue;
 
         const { fg, bg } = cell;
-        const char = fg.hex === bg.hex ? ' ' : cell.char;
+        const trail = cell.wide === 'trail';
+        const char = trail ? (utf8 && !leadAsSpace ? '' : ' ') : fg.hex === bg.hex ? ' ' : cell.char;
+        leadAsSpace = cell.wide === 'lead' && char === ' ';
 
         switch (colorMode) {
           case 'cga':

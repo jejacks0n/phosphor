@@ -4,7 +4,7 @@ import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
 import { rgb2hex, hex2rgb } from "@/lib/ColorUtils.js";
 import { fitRect, ctx2d } from "@/lib/Canvas.js";
-import { cellIndex, charRowsOf, bakedEntry, halfColors } from "@/lib/Cells.js";
+import { cellIndex, charRowsOf, bakedEntry, halfColors, layoutWide } from "@/lib/Cells.js";
 import PaintLayer, { editScaleFor, resizeTransform } from "@/document/PaintLayer.js";
 import { EMPTY_BASE, withPins, withoutPins, remapBaseRecords } from "@/document/baseRecords.js";
 import Renderer from "@/document/Renderer.js";
@@ -44,6 +44,7 @@ export const useProjectStore = defineStore('project', {
 
     filename: null,
     cells: shallowRef([]),          // what the ANSI view shows and exports (renderedCells + edit cells + paint)
+    composedCells: shallowRef([]),  // the same before the wide-character layout (what partial updates rebuild from)
     renderedCells: shallowRef([]),  // last full render: generated cells only
     activePalette: shallowRef([]),
 
@@ -184,6 +185,7 @@ export const useProjectStore = defineStore('project', {
         fit: null,
         filename: null,
         cells: [],
+        composedCells: [],
         renderedCells: [],
         paintLayer: null,
         baseLayer: null,
@@ -417,10 +419,16 @@ export const useProjectStore = defineStore('project', {
       });
     },
 
+    // New composed cells: laid out with their wide characters as what the views show and export.
+    setCells(composed) {
+      this.composedCells = composed;
+      this.cells = layoutWide(composed, this.cols);
+    },
+
     // After the paint or base pixels changed under `pixels`: recomposite and rebuild just those cells.
     refreshCells(pixels) {
       this.renderer.composite(this.paintLayer, this.processParams);
-      this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.editCells, this.renderedCells);
+      this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
     },
 
     // The colour under grid pixel (x, y) before adjustments: paint if there is any, else the source.
@@ -509,7 +517,7 @@ export const useProjectStore = defineStore('project', {
         this.renderer.composite(this.paintLayer, this.processParams);
       }
       this.editCells = withCellEdit(this.editCells, col, row, attrs);
-      this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.editCells, this.renderedCells);
+      this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
     },
 
     // Typing: one undo entry per keystroke. Typed cells sit above paint (the last edit wins).
@@ -556,7 +564,7 @@ export const useProjectStore = defineStore('project', {
       if (next === this.editCells) return;
       this.editCells = next;
       const pixels = Array.from({ length: this.cols }, (_, x) => ({ x, y: 2 * row }));
-      this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.editCells, this.renderedCells);
+      this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
     },
 
     // --- Selection: each operation is one undo step, and none at all when nothing changes.
@@ -574,7 +582,7 @@ export const useProjectStore = defineStore('project', {
       this.beginEdit();
       this.editCells = next;
       const pixels = rects.flatMap(rect => rectCells(rect)).map(({ col, row }) => ({ x: col, y: 2 * row }));
-      this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.editCells, this.renderedCells);
+      this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
       this.commitEdit();
     },
 
@@ -741,7 +749,7 @@ export const useProjectStore = defineStore('project', {
       this.hasPaint = this.paintLayer?.hasPaint ?? false;
       this.renderer.composite(this.paintLayer, this.processParams);
       const pixels = rects.flatMap(rect => rectCells(rect)).map(({ col, row }) => ({ x: col, y: 2 * row }));
-      this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.editCells, this.renderedCells);
+      this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
       this.commitEdit();
     },
 
@@ -765,7 +773,7 @@ export const useProjectStore = defineStore('project', {
         this.renderer.composite(this.paintLayer, this.processParams);
       }
       this.editCells = next;
-      this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.editCells, this.renderedCells);
+      this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
     },
 
     // Remove edit cells so the image shows through.
@@ -776,7 +784,7 @@ export const useProjectStore = defineStore('project', {
       this.beginEdit();
       this.editCells = next;
       const pixels = cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
-      this.cells = this.renderer.updateCells(this.cells, pixels, this.processParams, this.editCells, this.renderedCells);
+      this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
     },
 
     cellHasPaint(col, row) {
@@ -817,7 +825,7 @@ export const useProjectStore = defineStore('project', {
 
     applyEditCells() {
       if (!this.renderedCells.length) return;
-      this.cells = this.renderer.composeAll(this.renderedCells, this.editCells, this.processParams);
+      this.setCells(this.renderer.composeAll(this.renderedCells, this.editCells, this.processParams));
     },
 
     // Files from before the cell layer drew char edits over paint; now paint draws over edit
@@ -933,7 +941,8 @@ export const useProjectStore = defineStore('project', {
       this.commitPending();
 
       const rows = charRowsOf(this.rows);
-      const shownChar = (col, row) => this.cells[cellIndex(col, row, this.cols)]?.char;
+      // Before the wide layout: a wide character's trail pins its own character, not its lead's.
+      const shownChar = (col, row) => this.composedCells[cellIndex(col, row, this.cols)]?.char;
       const merged = [];   // { col, row, top, bottom, char }: edit cells, under the paint
       const offGrid = new Map(); // edit cells past the grid (after a canvas resize shrank it) stay on the edit layer
       for (const [key, entry] of this.editCells) {

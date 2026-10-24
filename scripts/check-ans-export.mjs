@@ -27,4 +27,19 @@ assert.equal(AnsiFile.unicodeToCP437('▇'), 219);                        // █
 assert.equal(AnsiFile.unicodeToCP437('▁'), 95);                         // _
 assert.equal(AnsiFile.unicodeToCP437('▘'), 223);                        // ▀
 assert.deepEqual(AnsiFile.unmappable([{ char: '▂', fg: A, bg: B }]).get('▂'), { count: 1, as: '▄' });
+// A wide character's two columns: .utf8ans writes it once (the terminal moves two columns); .ans
+// writes its stand-in and a space, so the grid stays aligned; it counts once as unmappable.
+const wide = [{ char: '漢', fg: A, bg: B, wide: 'lead' }, { char: '漢', fg: A, bg: B, wide: 'trail' }, { char: 'a', fg: A, bg: B }];
+const art = async (cellsIn, opts) => {
+  const b = new Uint8Array(await new AnsiFile(3, 1, cellsIn).toBlob({ colorMode: 'none', ...opts }).arrayBuffer());
+  const end = b.indexOf(0x1a);
+  return [...b.slice(0, end < 0 ? b.length : end)];
+};
+const SGR = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
+const text = (b) => new TextDecoder().decode(new Uint8Array(b)).replace(SGR, '');
+assert.equal(text(await art(wide, { utf8: true })).replace(/\r\n/g, ''), '漢a');
+assert.equal(text(await art(wide, {})), '? a');
+assert.deepEqual([...AnsiFile.unmappable(wide)], [['漢', { count: 1, as: '?' }]]);
+const hidden = [{ char: '漢', fg: A, bg: A, wide: 'lead' }, { char: '漢', fg: A, bg: A, wide: 'trail' }, { char: 'a', fg: A, bg: B }];
+assert.equal(text(await art(hidden, { utf8: true })).replace(/\r\n/g, ''), '  a');  // written as a space: so is its trail
 console.log('ans export ok');

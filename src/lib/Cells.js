@@ -87,6 +87,28 @@ export function buildCells(pixels, cols, rows, { charset, charMode, renderStyle,
   return cells;
 }
 
+// The composed cells laid out the way a terminal shows them: along each row, left to right, a
+// two-column character marks its cell the lead and covers the next as its trail (the lead's
+// character and colours: a terminal paints both columns with them), so a covered cell never starts
+// one of its own; in the last column it has no room (a terminal would wrap it) and shows as a
+// space. The same array when nothing is wide.
+export function layoutWide(cells, cols) {
+  let out = null;
+  for (let i = 0; i < cells.length; i++) {
+    const cell = cells[i];
+    if (!cell || cellWidth(cell.char) !== 2) continue;
+    out ??= cells.slice();
+    if (i % cols === cols - 1) {
+      out[i] = { ...cell, char: ' ' };
+      continue;
+    }
+    out[i] = { ...cell, wide: 'lead' };
+    out[i + 1] = { ...cell, wide: 'trail' };
+    i++; // covered
+  }
+  return out ?? cells;
+}
+
 // The unique character cells under grid pixels, in order of first touch (off-grid pixels skipped).
 export function cellsOfPixels(pixels, cols, rows) {
   const seen = new Set();
