@@ -171,6 +171,16 @@ These work in both the ANSI and the pixel view, for as long as you hold the key:
 Let go in the middle of a drag and the tool comes back when the drag ends, so a pick or a pan never
 turns into a stroke.
 
+### Color keys
+
+As in Moebius, these work with any tool, in Edit Mode while you type too (they never type a
+character):
+
+- **Alt+F** (Option+F), or Moebius's **Alt+A**: open the color box on the foreground.
+- **Alt+B**: open it on the background.
+- **Shift+Cmd+X** (Shift+Ctrl+X): swap the foreground and background. Plain **X** swaps them too,
+  except in Edit Mode, where it types.
+
 ## When the grid changes
 
 What a new grid size does depends on the edit layer:

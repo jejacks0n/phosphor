@@ -4,6 +4,7 @@ import { clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
 import { copySelection } from '@/composables/clipboard';
 import { typeText } from '@/composables/useTextTool';
+import { colorBoxKey } from '@/lib/TextKeys';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
@@ -66,6 +67,27 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
 
   // X swaps the color pair, unless something is taking text (a field, or the Text tool).
+  // Colors, Moebius-style: Alt+F (or Alt+A) opens the color box on the foreground, Alt+B on the
+  // background (from a drawing tool too: the held eyedropper gives way), and Shift+Cmd/Ctrl+X swaps
+  // the two. Not in a real field (they type there); in Edit Mode they work while typing.
+  const _inField = (target) => target?.dataset?.textInput === undefined
+    && (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName));
+  const _handleColorKeys = (e) => {
+    const slot = colorBoxKey(e);
+    const swap = e.code === 'KeyX' && e.shiftKey && (e.metaKey || e.ctrlKey) && !e.altKey;
+    if (!slot && !swap) return false;
+    if (_inField(e.target) || !projectStore.image || !workspaceStore.editMode || workspaceStore.paletteLayerOpen) return false;
+    e.preventDefault();
+    if (swap) {
+      workspaceStore.swapColors();
+      return true;
+    }
+    if (workspaceStore.heldTool?.by === 'alt') workspaceStore.releaseTool();
+    // ASCII in the ANSI view has no colors to choose (ColorPair hides itself).
+    if (!(workspaceStore.editorTab === 'output' && projectStore.renderStyle === 'ascii')) workspaceStore.colorBox = slot;
+    return true;
+  };
+
   const _handleSwapColors = (e) => {
     if (e.key.toLowerCase() !== 'x' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
     const target = e.target;
@@ -158,6 +180,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;
+    if (_handleColorKeys(e)) return;
     if (_handleToolSwap(e)) return;
     if (_handleSwapColors(e)) return;
     if (_handleSelectionKeys(e)) return;

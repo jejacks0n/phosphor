@@ -1,15 +1,15 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import ColorPopover from '@/components/ColorPopover.vue';
 
 // The foreground/background chips: each shows its color as it displays (after adjustments and the
-// palette); a none slot shows a checkerboard. Clicking a chip opens the picker for that slot.
+// palette); a none slot shows a checkerboard. Clicking a chip opens the picker for that slot (so do
+// Alt+F / Alt+A and Alt+B: workspace.colorBox).
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
-const open = ref(null); // 'fg' | 'bg' | null
 
 const ansiView = computed(() => workspace.editorTab === 'output');
 // ASCII saves white on black: there's nothing to choose in the ANSI view.
@@ -18,7 +18,7 @@ const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 // The foreground only means "none" for typing, in the ANSI view; paint always uses its color.
 const fgNone = computed(() => ansiView.value && workspace.editFgNone);
 
-const toggle = (slot) => { open.value = open.value === slot ? null : slot; };
+const toggle = (slot) => { workspace.colorBox = workspace.colorBox === slot ? null : slot; };
 </script>
 
 <template>
@@ -39,7 +39,7 @@ const toggle = (slot) => { open.value = open.value === slot ? null : slot; };
         aria-label="Background color"
         @click="toggle('bg')"
     ></button>
-    <ColorPopover v-if="open" v-model:slot-name="open" @close="open = null"/>
+    <ColorPopover v-if="workspace.colorBox" v-model:slot-name="workspace.colorBox" @close="workspace.colorBox = null"/>
   </div>
 </template>
 

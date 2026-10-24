@@ -20,8 +20,17 @@ const fKey = (key) => {
 };
 const single = (key) => [...key].length === 1;
 
+// The color box's shortcuts (Moebius's Alt+A, and Alt+F / Alt+B for each slot): the slot, or null.
+// By physical key, so Option's characters (ƒ, å, ∫) don't matter; AltGr (Ctrl+Alt) still types.
+const COLOR_BOX_KEYS = { KeyF: 'fg', KeyA: 'fg', KeyB: 'bg' };
+export function colorBoxKey(e) {
+  if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return null;
+  return COLOR_BOX_KEYS[e.code] ?? null;
+}
+
 export function textKeyAction(e, { editable }) {
   if (editable || e.metaKey || e.isComposing || e.keyCode === 229) return null; // a field, Cmd, or an IME
+  if (colorBoxKey(e)) return null; // opens the color box (useKeyboardShortcuts), never types
   // AltGr (Windows/Linux) arrives as Ctrl+Alt and produces characters such as @ or €: those type.
   if (e.ctrlKey && e.altKey) return single(e.key) ? { type: 'char', char: e.key } : null;
   if (e.ctrlKey) {

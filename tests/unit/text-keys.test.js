@@ -1,7 +1,7 @@
 // The Text tool's keys -> editing actions, cursor clamping, and row shifting for insert mode.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { textKeyAction, moveCursor, typedText } from '../../src/lib/TextKeys.js';
+import { colorBoxKey, textKeyAction, moveCursor, typedText } from '../../src/lib/TextKeys.js';
 import { shiftRow } from '../../src/document/editCells.js';
 
 test("The Text tool's keys -> editing actions, cursor clamping, and row shifting for insert mode", async () => {
@@ -60,4 +60,17 @@ test("The Text tool's keys -> editing actions, cursor clamping, and row shifting
   ]);
   assert.deepEqual(typedText('\n\r'), [{ type: 'newline' }, { type: 'newline' }]);
   assert.deepEqual(typedText(''), []);
+});
+
+test('Alt+F / Alt+A open the color box on the foreground, Alt+B on the background; they never type', () => {
+  const key = (code, mods = {}) => ({ code, key: { KeyF: 'ƒ', KeyA: 'å', KeyB: '∫' }[code] ?? code, altKey: true, ...mods });
+  assert.equal(colorBoxKey(key('KeyF')), 'fg');
+  assert.equal(colorBoxKey(key('KeyA')), 'fg');
+  assert.equal(colorBoxKey(key('KeyB')), 'bg');
+  assert.equal(colorBoxKey(key('KeyF', { altKey: false })), null);
+  assert.equal(colorBoxKey(key('KeyF', { ctrlKey: true })), null);   // AltGr (Ctrl+Alt) still types
+  assert.equal(colorBoxKey(key('KeyF', { shiftKey: true })), null);
+  assert.equal(colorBoxKey(key('KeyC')), null);
+  assert.equal(textKeyAction(key('KeyF'), { editable: false }), null);
+  assert.deepEqual(textKeyAction(key('KeyC', { key: 'ç' }), { editable: false }), { type: 'char', char: 'ç' }); // other Alt keys type
 });
