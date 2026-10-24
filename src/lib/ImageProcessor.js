@@ -115,8 +115,9 @@ export async function processImage(image, params) {
   canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
   canvas.loadPixels();
 
-  // Quantization happens after paint is composited (Renderer), not here.
-  return { canvas, paletteColors: getPaletteColors(params, canvas) };
+  // Quantization happens after paint is composited (Renderer), not here. The Number palette is picked
+  // there too, from the composited picture (Renderer.composite), so it isn't worked out here.
+  return { canvas, paletteColors: params.quantize === 'count' ? null : getPaletteColors(params, canvas) };
 }
 
 // The image as the preview is made from it (the processed image before it's downsized to the
