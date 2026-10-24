@@ -148,7 +148,7 @@ const selectionHasEdits = computed(() => {
       title="Merge down"
       :sub="merging.rect
         ? 'Only what\'s drawn inside the selection moves into the base layer; the rest of the edit layer stays where it is.'
-        : 'Everything you\'ve drawn moves into the base layer. Select how you want it to be merged:'"
+        : 'Everything you\'ve drawn is merged into the base layer. Select how you want it to be merged:'"
       :choices="mergeChoices"
       @choose="merge"
       @cancel="merging = null"
