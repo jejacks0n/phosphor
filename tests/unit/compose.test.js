@@ -1,5 +1,5 @@
-// Composition of edit cells: glyph coverage, half-cell colours, edit-cell attributes over the
-// generated cell, paint over an edit cell, and effective (adjusted + snapped) colours.
+// Composition of edit cells: glyph coverage, half-cell colors, edit-cell attributes over the
+// generated cell, paint over an edit cell, and effective (adjusted + snapped) colors.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { coverageOf, setGlyphRasterizer } from '../../src/lib/GlyphCoverage.js';
@@ -7,7 +7,7 @@ import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels, baked
 import { effectiveColor, getEffectiveColor } from '../../src/lib/PixelTransforms.js';
 import { rgb2hex, hex2rgb, PALETTES } from '../../src/lib/ColorUtils.js';
 
-test('Composition of edit cells: glyph coverage, half-cell colours, edit-cell attributes over the generated cell, paint over an edit cell, and effective (adjusted + snapped) colours', async () => {
+test('Composition of edit cells: glyph coverage, half-cell colors, edit-cell attributes over the generated cell, paint over an edit cell, and effective (adjusted + snapped) colors', async () => {
   const C = (r, g, b, c) => ({ r, g, b, hex: rgb2hex({ r, g, b }), c: c ?? [r, g, b] });
   const hexToColor = (hex) => ({ ...hex2rgb(hex), hex });
   const NEUTRAL = { brightness: 100, contrast: 100, saturation: 100, hue: 0, invert: 0, colorize: '#ff00ff', colorizeStrength: 0 };
@@ -24,10 +24,10 @@ test('Composition of edit cells: glyph coverage, half-cell colours, edit-cell at
   assert.deepEqual(halfColors({ char: '░', fg: white, bg: black }), [{ r: 64, g: 64, b: 64 }, { r: 64, g: 64, b: 64 }]);
 
   const under = { char: '▄', fg: blue, bg: black };
-  const eff = (hex) => ({ ...hexToColor(hex), c: 'E' });              // stub marks effective colours
+  const eff = (hex) => ({ ...hexToColor(hex), c: 'E' });              // stub marks effective colors
   const a = composeCell(under, { char: 'A', fg: '#ffff55' }, 'ansi', eff);
   assert.equal(a.char, 'A'); assert.equal(a.fg.c, 'E'); assert.equal(a.bg, black);
-  assert.equal(composeCell(under, { fg: '#ffff55' }, 'ascii', eff).fg, blue);   // ascii ignores edit-cell colours
+  assert.equal(composeCell(under, { fg: '#ffff55' }, 'ascii', eff).fg, blue);   // ascii ignores edit-cell colors
   assert.equal(composeCell(under, { bg: '#ff0000' }, 'colorAscii', eff).bg.c, 'E');
   assert.equal(composeCell(under, {}, 'ansi', eff).char, '▄');
 
@@ -47,7 +47,7 @@ test('Composition of edit cells: glyph coverage, half-cell colours, edit-cell at
   assert.equal(half.bg.hex, rgb2hex({ r: 128, g: 0, b: 0 }));        // partial paint blends over the background
   assert.equal(coverCell(letter, { r: 0, g: 0, b: 0, a: 1 }, null, { renderStyle: 'ascii', palette: null }).char, 'A'); // every style keeps the character
   // Solid and empty characters have no texture to show paint through: they become a real half-block,
-  // each half the glyph's own colour with the paint over it.
+  // each half the glyph's own color with the paint over it.
   const solidTop = coverCell(full, { r: 255, g: 0, b: 0, a: 1 }, null, { renderStyle: 'ansi', palette: null });
   assert.deepEqual([solidTop.char, solidTop.bg.hex, solidTop.fg.hex], ['▄', '#ff0000', '#ffffff']);
   const spaceBottom = coverCell({ char: ' ', fg: white, bg: blue }, null, { r: 255, g: 0, b: 0, a: 1 }, { renderStyle: 'ansi', palette: null });
@@ -61,7 +61,7 @@ test('Composition of edit cells: glyph coverage, half-cell colours, edit-cell at
 
   assert.equal(getEffectiveColor('#123456', NEUTRAL), '#123456');
   assert.deepEqual(cellsOfPixels([{ x: 1.5, y: 0 }, { x: 1.2, y: 1 }, { x: -1, y: 0 }, { x: 0, y: 4 }], 4, 4), [{ col: 1, row: 0 }]);
-  // The pixel view's scale preview: each included cell as its two half-colours, one grid pixel each.
+  // The pixel view's scale preview: each included cell as its two half-colors, one grid pixel each.
   const pairs = [{ char: '▀', fg: red, bg: blue }, { char: '█', fg: white, bg: black }];
   const px = cellsToPixels(pairs, 2, 3, (i) => i === 0);
   assert.equal(px.length, 2 * 3 * 4);

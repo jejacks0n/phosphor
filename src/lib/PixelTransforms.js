@@ -95,7 +95,7 @@ export function applyTransforms(data, brightness, contrast, saturation, hue, inv
   }
 }
 
-// A copy of a canvas with the colour transforms burnt into its pixels (a bake's paint and base
+// A copy of a canvas with the color transforms burnt into its pixels (a bake's paint and base
 // pixels): alpha kept, transparent pixels left alone, as the display transforms them.
 export function bakedCanvas(canvas, params) {
   const out = document.createElement('canvas');

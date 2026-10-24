@@ -26,6 +26,6 @@ npm run build
   or say plainly that the test was wrong and why.
 - Bug reports with a file: the file goes in `tests/fixtures/`, a case goes in its test (the routine is
   in [docs/testing.md](docs/testing.md)).
-- User-facing behaviour is described in `docs/` ([layers](docs/layers.md),
-  [characters](docs/characters.md)); update it when behaviour changes.
+- User-facing behavior is described in `docs/` ([layers](docs/layers.md),
+  [characters](docs/characters.md)); update it when behavior changes.
 - Never commit `docs/superpowers/` or `.superpowers/` (local planning notes).

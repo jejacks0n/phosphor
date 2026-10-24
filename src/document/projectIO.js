@@ -84,7 +84,7 @@ export function fileStem(input, ext) {
 }
 
 // Every save and export is a download, named as typed in the save dialog (Safari has no save
-// picker; every browser honours a download's name).
+// picker; every browser honors a download's name).
 export function downloadBlob(blob, filename) {
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);

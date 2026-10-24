@@ -28,7 +28,7 @@ const TYPING_PAUSE_MS = 1000; // a pause this long ends a typing run (one undo s
 const PIPELINE_KEYS = SETTINGS.filter(s => s.group !== 'sauce' && s.pipeline !== false).map(s => s.key);
 const SAVED_KEYS = [...SETTING_KEYS, ...SAUCE_KEYS];
 const settingsJson = (state) => JSON.stringify(SAVED_KEYS.map(key => state[key]));
-// A colour ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
+// A color ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
 // An image's pixels on a canvas of its own.
 const copyOf = (image, width, height) => {
   const canvas = document.createElement('canvas');
@@ -39,7 +39,7 @@ const copyOf = (image, width, height) => {
 };
 const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
 
-// The Transforms, Adjustments and Image Filters settings (sliders and their colours): what a slider
+// The Transforms, Adjustments and Image Filters settings (sliders and their colors): what a slider
 // undo step records. Keyboard nudges on one slider this close together are one step.
 const SLIDER_KEYS = SETTINGS.filter(s => RESET_GROUPS.includes(s.group)).map(s => s.key);
 const NUDGE_MS = 1000;
@@ -351,7 +351,7 @@ export const useProjectStore = defineStore('project', {
       return Object.fromEntries(SLIDER_KEYS.map(key => [key, this[key]]));
     },
 
-    // A slider moving (a drag, a nudge, a colour being picked): the values from before it are noted
+    // A slider moving (a drag, a nudge, a color being picked): the values from before it are noted
     // once, and commitSliders makes the move one undo step when it ends.
     setSlider(key, value) {
       this._sliderBefore ??= this.sliderValues();
@@ -383,9 +383,9 @@ export const useProjectStore = defineStore('project', {
     // preview is made from (the processed image at its processing size; the palette isn't baked,
     // it keeps applying). Under CGA/VGA that can tip a cell near a palette boundary (8-bit rounding);
     // lockPalette bakes the palette into the image instead, so nothing moves, but the picture keeps
-    // only the palette's colours. The colour transforms also tint the drawing when it's shown, so they're
-    // burnt into it (paint, the base's own pixels, edit cells) and into the colour pair and the
-    // clipboard; recent colours are shared across projects and stay. One undo step (slider moves after
+    // only the palette's colors. The color transforms also tint the drawing when it's shown, so they're
+    // burnt into it (paint, the base's own pixels, edit cells) and into the color pair and the
+    // clipboard; recent colors are shared across projects and stay. One undo step (slider moves after
     // it are steps of their own).
     async bake({ lockPalette = false } = {}) {
       if (!this.canBake || this._baking) return;
@@ -426,8 +426,8 @@ export const useProjectStore = defineStore('project', {
           },
         };
 
-        // The colour pair and the clipboard swap only while they hold what the other side left: a
-        // colour picked or a block copied since is kept.
+        // The color pair and the clipboard swap only while they hold what the other side left: a
+        // color picked or a block copied since is kept.
         const apply = (state, from) => {
           this.$patch({ image: shallowRef(state.image), imageBuffer: state.imageBuffer, imageIsWorkingCopy: state.workingCopy, ...state.sliders });
           this.paintLayer.restore(state.paint);
@@ -565,9 +565,9 @@ export const useProjectStore = defineStore('project', {
     },
 
     // Recomposite the output after the paint or base pixels changed. When that rebalanced the Number
-    // palette, every cell's colours can change: the cells are rebuilt from the output (as a full render
+    // palette, every cell's colors can change: the cells are rebuilt from the output (as a full render
     // would, without rerunning the pipeline). While an edit is open (a stroke, a shape) the Number
-    // palette holds still and the paint shows in its own colours; commitEdit catches up (rebuild).
+    // palette holds still and the paint shows in its own colors; commitEdit catches up (rebuild).
     composite({ rebuild = false } = {}) {
       const hold = !!this._stroke && this.quantize === 'count';
       if (!this.renderer.composite(this.paintLayer, this.processParams, { hold }) && !rebuild) return;
@@ -582,7 +582,7 @@ export const useProjectStore = defineStore('project', {
       this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
     },
 
-    // The colour under grid pixel (x, y) before adjustments: paint if there is any, else the source.
+    // The color under grid pixel (x, y) before adjustments: paint if there is any, else the source.
     rawColorAt(x, y) {
       if (!this.image) return '#000000';
       this.ensureLayer();
@@ -592,7 +592,7 @@ export const useProjectStore = defineStore('project', {
       return painted ? rgb2hex(painted) : this.baseColorAt(x, y);
     },
 
-    // The base layer's colour at grid pixel (x, y), as stored (before adjustments): its own pixel
+    // The base layer's color at grid pixel (x, y), as stored (before adjustments): its own pixel
     // over the image as the pipeline shows it.
     baseColorAt(x, y) {
       const own = this.baseLayer?.pixelAt(x, y);
@@ -606,8 +606,8 @@ export const useProjectStore = defineStore('project', {
       return source ? rgb2hex(source) : '#000000';
     },
 
-    // What's under a cell, as stored colours (pre-adjustment), for the eyedropper, flip and merge up.
-    // Spec "Bake and the eyedropper on generated cells" (bake is now Merge up), trial rule (a): stored colours are the
+    // What's under a cell, as stored colors (pre-adjustment), for the eyedropper, flip and merge up.
+    // Spec "Bake and the eyedropper on generated cells" (bake is now Merge up), trial rule (a): stored colors are the
     // pre-adjustment ones, so they keep following the adjustments. withPaint: paint (on top) wins
     // per half; otherwise edit-cell attributes, then the source image.
     underlyingAt(col, row, { withPaint = true } = {}) {
@@ -636,7 +636,7 @@ export const useProjectStore = defineStore('project', {
       this.refreshCells(pixels);
     },
 
-    // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground colour) at the brush opacity.
+    // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground color) at the brush opacity.
     paintStroke(pixels, color) {
       const workspace = useWorkspaceStore();
       const { r, g, b } = hex2rgb(color ?? workspace.editFgColor);
@@ -755,8 +755,8 @@ export const useProjectStore = defineStore('project', {
       this.commitEdit();
     },
 
-    // The base layer's cell (no edits, no paint), as stored colours: the converter's character (or
-    // the pinned one) on the base's colours (bg the top half, fg the bottom).
+    // The base layer's cell (no edits, no paint), as stored colors: the converter's character (or
+    // the pinned one) on the base's colors (bg the top half, fg the bottom).
     baseCellAt(col, row) {
       return {
         char: this.baseRecords.pins.get(cellKey(col, row)) ?? this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ',
@@ -818,7 +818,7 @@ export const useProjectStore = defineStore('project', {
 
     // Selection operations on the Select tool's layers: Layers = { base, edit }, where Edit is
     // everything drawn (edit cells and paint, stored apart but one thing to the user), and Base is
-    // the base's colours and pins (the converter's own characters belong to their cells and stay).
+    // the base's colors and pins (the converter's own characters belong to their cells and stay).
     // Each layer moves, copies and pastes as itself. Block = { w, h, cells?: (Entry | null)[],
     // paint?: canvas, base?: { pixels: canvas (a grid pixel each), pins: (char | null)[] } }. Each
     // change is one undo step; rects are clipped to the grid.
@@ -840,7 +840,7 @@ export const useProjectStore = defineStore('project', {
       return block;
     },
 
-    // The base's stored colours over a cell rect, on a canvas a grid pixel per pixel.
+    // The base's stored colors over a cell rect, on a canvas a grid pixel per pixel.
     basePixelsOf({ c0, r0, c1, r1 }) {
       const w = c1 - c0 + 1, h = 2 * (r1 - r0 + 1);
       const own = ctx2d(this.baseLayer.canvas).getImageData(c0, 2 * r0, w, h).data;
@@ -924,7 +924,7 @@ export const useProjectStore = defineStore('project', {
 
     // Many cell edits at once ([{ col, row, attrs }], e.g. a shape): one Map copy, one paint erase.
     // A character written over half of a wide character turns its other half into a space, as a
-    // terminal does (that space keeps its colours and paint). Part of the current edit; the caller
+    // terminal does (that space keeps its colors and paint). Part of the current edit; the caller
     // commits it.
     writeEditCells(list, { clearPaint = false } = {}) {
       if (!list.length) return;
@@ -967,8 +967,8 @@ export const useProjectStore = defineStore('project', {
       return !!(this.paintLayer?.colorAt(col, 2 * row) || this.paintLayer?.colorAt(col, 2 * row + 1));
     },
 
-    // Flip a cell's colours on the chosen layers. Edit: the paint (as it shows) or the edit cell's
-    // own colours; a cell with neither gets the flip as paint, unless the base is flipping it. Base:
+    // Flip a cell's colors on the chosen layers. Edit: the paint (as it shows) or the edit cell's
+    // own colors; a cell with neither gets the flip as paint, unless the base is flipping it. Base:
     // the base's two halves. The edit side goes first, while the cell still shows unflipped.
     flipCell(col, row, { base = false, edit = true } = {}) {
       if (!this.cells[cellIndex(col, row, this.cols)]) return;
@@ -983,7 +983,7 @@ export const useProjectStore = defineStore('project', {
       if (base) this.flipBase([{ col, row }]);
     },
 
-    // Swap a cell's two pixels in the paint layer, using the real colours from the output canvas
+    // Swap a cell's two pixels in the paint layer, using the real colors from the output canvas
     // (cells may be normalized, e.g. a background forced to black in ASCII mode).
     flipPaint(col, row) {
       const outputCanvas = this.renderer.outputCanvas;
@@ -1005,7 +1005,7 @@ export const useProjectStore = defineStore('project', {
     },
 
     // Files from before the cell layer drew char edits over paint; now paint draws over edit
-    // cells. A migrated char edit on paint takes that paint's colours and the paint is removed, so
+    // cells. A migrated char edit on paint takes that paint's colors and the paint is removed, so
     // the file looks as it did. Runs on load, before it's marked saved; not undoable.
     keepMigratedLook() {
       let next = this.editCells;
@@ -1013,7 +1013,7 @@ export const useProjectStore = defineStore('project', {
       for (const [key, entry] of this.editCells) {
         const { col, row } = parseKey(key);
         if (!this.cellHasPaint(col, row)) continue;
-        // Only painted halves take the paint's colour; an unpainted half keeps showing the image.
+        // Only painted halves take the paint's color; an unpainted half keeps showing the image.
         const painted = (y) => {
           const color = this.paintLayer.colorAt(col, y);
           return color ? rgb2hex(color) : undefined;
@@ -1061,7 +1061,7 @@ export const useProjectStore = defineStore('project', {
       const patch = this.paintLayer?.endStroke();
       const basePatch = this.baseLayer?.endStroke();
       this.hasPaint = this.paintLayer?.hasPaint ?? false; // an erase may have left none
-      if (stroke && this.quantize === 'count') this.composite({ rebuild: true }); // the Number palette and the stroke's colours catch up
+      if (stroke && this.quantize === 'count') this.composite({ rebuild: true }); // the Number palette and the stroke's colors catch up
       if (!stroke || (!patch && !basePatch && stroke.editCells === this.editCells && stroke.baseRecords === this.baseRecords)) return;
 
       const sides = { before: [stroke.editCells, stroke.baseRecords], after: [this.editCells, this.baseRecords] };
@@ -1109,14 +1109,14 @@ export const useProjectStore = defineStore('project', {
 
     // Merge down: the whole edit layer goes into the base layer's pixels exactly as it shows: each
     // edit cell as its background (top) and foreground (bottom) pixels with its character pinned (a
-    // cell that showed a different character, ▄ for a solid one under paint, as its two half colours
+    // cell that showed a different character, ▄ for a solid one under paint, as its two half colors
     // with the shown character pinned), then the paint over them, a grid pixel at a time as it
     // shows. Paint over a pinned cell (an erased one's space) pins what it shows too. Nothing is
     // resampled or put through the effects.
     // What merging a cell into the base shows: its two halves (top, bottom) under the paint, and
     // the character to pin. Color ASCII shows only the foreground (on black) and rebuilds it as the
     // halves' average; a cell showing another character than its own (▄ for a solid one under
-    // paint) goes in as its two half colours.
+    // paint) goes in as its two half colors.
     mergeCellOf(col, row) {
       const cell = { ...this.baseCellAt(col, row), ...this.editCellAt(col, row) };
       // Before the wide layout: a wide character's trail pins its own character, not its lead's.

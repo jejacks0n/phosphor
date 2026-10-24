@@ -29,7 +29,7 @@ writeFileSync(at('images/tall.png'), writePng(image(40, 1200, (x, y) => (Math.fl
 // A GIF, written without compression: 3-bit codes with a clear code before the table would grow.
 function gif({ width, height, palette, indices }) {
   const bytes = [...Buffer.from('GIF89a'), width & 255, width >> 8, height & 255, height >> 8, 0xf1, 0, 0];
-  for (const [r, g, b] of palette) bytes.push(r, g, b); // 4 colours (size flag 1)
+  for (const [r, g, b] of palette) bytes.push(r, g, b); // 4 colors (size flag 1)
   bytes.push(0x2c, 0, 0, 0, 0, width & 255, width >> 8, height & 255, height >> 8, 0, 2); // image, LZW min 2
   const codes = [];
   indices.forEach((index, i) => {

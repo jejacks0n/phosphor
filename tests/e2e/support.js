@@ -40,7 +40,7 @@ export async function settled(page) {
   });
 }
 
-// The page position of a cell's centre in the ANSI view (half: 0 top, 1 bottom, or the middle).
+// The page position of a cell's center in the ANSI view (half: 0 top, 1 bottom, or the middle).
 export async function cellPoint(page, col, row, half) {
   const box = await page.locator('.ansi-editor .display').boundingBox();
   const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2) }));

@@ -3,7 +3,7 @@
  * grid, what's past its right and bottom edges) at an integer number of pixels per grid cell
  * (scale), so each cell is a whole scale x scale block. cols x rows is the layer's extent. Cell bounds use the same
  * floor partition as the pipeline's box filter (Canvas.drawManual), so paint never bleeds into
- * neighbouring cells once merged.
+ * neighboring cells once merged.
  *
  * Rect = { x, y, w, h } in layer pixels. Grid pixels are the cols x rows pipeline pixels.
  *
@@ -68,9 +68,9 @@ export default class PaintLayer {
     return { x: rx, y: ry, w: Math.max(1, Math.floor((x + 1) * k) - rx), h: Math.max(1, Math.floor((y + 1) * k) - ry) };
   }
 
-  // How many grid pixels hold each paint colour, sampled one per grid pixel. Only (nearly) opaque
-  // paint counts: soft edges and overlaps blend into one-off colours nobody picked.
-  // ponytail: skips paint laid at under ~98% brush opacity; bucket it by colour if that matters.
+  // How many grid pixels hold each paint color, sampled one per grid pixel. Only (nearly) opaque
+  // paint counts: soft edges and overlaps blend into one-off colors nobody picked.
+  // ponytail: skips paint laid at under ~98% brush opacity; bucket it by color if that matters.
   colorCounts() {
     const counts = new Map();
     if (!this.hasPaint) return counts;

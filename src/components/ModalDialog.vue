@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, useTemplateRef } from 'vue';
 
-// A box centred over the page like a confirm box, for ChoiceDialog and SaveDialog: a title, a line
+// A box centered over the page like a confirm box, for ChoiceDialog and SaveDialog: a title, a line
 // under it, and the slot. Focus goes to the slot's [autofocus] element, else its first control.
 // While it's up, keys are the dialog's: none reach the app's shortcuts (Backspace would delete a
 // selection, the arrows nudge it). Escape and the backdrop cancel; Tab keeps to the dialog.

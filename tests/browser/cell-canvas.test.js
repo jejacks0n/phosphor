@@ -24,12 +24,12 @@ function drawAndRead(cols, rows, cells, dpr = 1) {
 }
 
 const GLYPHS = ['A', 'g', '@', '░', '▒', '▓', '█', '▀', '▄', '▌', '─', '╬', 'é', '☺', ' ', '~'];
-const COLOURS = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff', '#ffffff', '#000000', '#808080', '#aa5500'];
+const COLORS = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff', '#ffffff', '#000000', '#808080', '#aa5500'];
 
 test('every pixel is exactly its cell\'s fg or bg', async () => {
   await createTestApp(); // the display font, as the app loads it
   const cols = 16, rows = 4;
-  const cells = Array.from({ length: cols * rows }, (_, i) => cell(GLYPHS[i % GLYPHS.length], COLOURS[i % COLOURS.length], COLOURS[(i * 3 + 1) % COLOURS.length]));
+  const cells = Array.from({ length: cols * rows }, (_, i) => cell(GLYPHS[i % GLYPHS.length], COLORS[i % COLORS.length], COLORS[(i * 3 + 1) % COLORS.length]));
   for (const dpr of [1, 2]) {
     const { width, height, cw, ch, at } = drawAndRead(cols, rows, cells, dpr);
     expect(Number.isInteger(cw) && Number.isInteger(ch)).toBe(true);

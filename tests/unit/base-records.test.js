@@ -17,7 +17,7 @@ test("The base layer's records: pinned characters, moved with the picture on a g
 
   const t = resizeTransform({ dx: 0, dy: 0, dw: 40, dh: 50 }, { dx: 0, dy: 0, dw: 80, dh: 100 }); // the grid doubles
   const big = remapBaseRecords(b, t, 80, 100);
-  assert.equal(big.pins.get('5,3'), 'Q'); assert.equal(big.pins.size, 2);            // a pin goes to the one cell over its centre
+  assert.equal(big.pins.get('5,3'), 'Q'); assert.equal(big.pins.size, 2);            // a pin goes to the one cell over its center
   assert.equal(remapBaseRecords(withPins(EMPTY_BASE, [{ col: 0, row: 0, char: 'Z' }]),
     resizeTransform({ dx: 0, dy: 0, dw: 40, dh: 50 }, { dx: -5, dy: 0, dw: 40, dh: 50 }), 40, 50).pins.size, 0); // pushed off the left: dropped
   assert.equal(remapBaseRecords(EMPTY_BASE, t, 80, 100), EMPTY_BASE);

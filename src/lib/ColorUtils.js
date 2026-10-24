@@ -53,15 +53,15 @@ export function nearestIndex(r, g, b, palette) {
   return nearest;
 }
 
-// Palettes of 16+ colours snap through a 5-bit-per-channel lookup (fast, slightly coarser than an
-// exact search); smaller ones search exactly. A colour that is in the palette is always itself (the
-// lookup alone could lump two shades closer than its 8-level steps). The lookup fills as colours
+// Palettes of 16+ colors snap through a 5-bit-per-channel lookup (fast, slightly coarser than an
+// exact search); smaller ones search exactly. A color that is in the palette is always itself (the
+// lookup alone could lump two shades closer than its 8-level steps). The lookup fills as colors
 // ask for it (a picture touches a fraction of it; the Number palette changes as you paint). Every
 // quantization goes through here, so a cell rebuilt on its own snaps exactly like a full render.
 const SIGBITS = 5;
 const RSHIFT = 8 - SIGBITS;
 const UNSET = 0xffff;
-const paletteLUTs = new Map();       // by the palette's colours
+const paletteLUTs = new Map();       // by the palette's colors
 const lutsByPalette = new WeakMap(); // by palette array: the per-pixel fast path
 
 function paletteLUT(palette) {
@@ -135,8 +135,8 @@ export const PALETTES = {
   vga: VGA
 };
 
-// How the colour picker lays out the active palette: one or more grids of swatches. CGA is the
-// classic 8 x 2; VGA (xterm 256) is the 16 system colours, the 6x6x6 cube and the 24 greys; custom
+// How the color picker lays out the active palette: one or more grids of swatches. CGA is the
+// classic 8 x 2; VGA (xterm 256) is the 16 system colors, the 6x6x6 cube and the 24 grays; custom
 // and adaptive palettes are a plain grid. 24-bit ('none') has no swatches.
 export function swatchSections(quantize, palette) {
   if (!palette || !palette.length || quantize === 'none') return [];
@@ -151,7 +151,7 @@ export function swatchSections(quantize, palette) {
   return [{ columns: Math.min(8, palette.length), colors: palette }];
 }
 
-// Distinct colours in the drawing, most used first: edit cells' foregrounds and backgrounds,
+// Distinct colors in the drawing, most used first: edit cells' foregrounds and backgrounds,
 // plus paintCounts (hex -> grid pixels, from PaintLayer.colorCounts()).
 export function drawingColors(editCells, paintCounts = new Map(), limit = 24) {
   const counts = new Map(paintCounts);

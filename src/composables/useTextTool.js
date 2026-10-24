@@ -47,7 +47,7 @@ export function typeText(project, workspace, text) {
 export function useTextTool(project, workspace, textInput) {
   const palettes = usePaletteStore();
   const isTextInput = (el) => el?.dataset?.textInput !== undefined;
-  // Keys belong elsewhere while focus is in a field or a dialog (the colour picker, the palette layer).
+  // Keys belong elsewhere while focus is in a field or a dialog (the color picker, the palette layer).
   const editableFocus = () => {
     const el = document.activeElement;
     if (!el || isTextInput(el)) return false;
@@ -58,7 +58,7 @@ export function useTextTool(project, workspace, textInput) {
     workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(workspace.textCursor, dc, dr, project.cols, charRowsOf(project.rows)), dc);
   };
 
-  // Alt+Up/Down: the slot's colour steps through the active palette (nothing to step in 24-bit).
+  // Alt+Up/Down: the slot's color steps through the active palette (nothing to step in 24-bit).
   const stepColor = (slot, delta) => {
     const palette = project.activePalette;
     if (!palette || !palette.length) return;

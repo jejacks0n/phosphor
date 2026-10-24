@@ -3,7 +3,7 @@
  * frozen and the Map is replaced on every change (copy-on-write), so undo can keep both sides and
  * callers can compare identity to see whether anything changed.
  *
- * Entry = { char?, fg?, bg? }: fg/bg are underlying colours ('#rrggbb'); a missing attribute shows
+ * Entry = { char?, fg?, bg? }: fg/bg are underlying colors ('#rrggbb'); a missing attribute shows
  * what's underneath. Keys are grid positions, so entries outside a shrunken grid are kept.
  */
 import { usableChar } from '../lib/CharWidth.js';
@@ -54,7 +54,7 @@ export function withoutCells(map, cells) {
 
 export const serializeEditCells = (map) => [...map];
 
-// Project files are untrusted: keep only col,row keys, chars a cell can hold and #rrggbb colours.
+// Project files are untrusted: keep only col,row keys, chars a cell can hold and #rrggbb colors.
 const VALID = {
   char: usableChar,
   fg: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
@@ -101,7 +101,7 @@ export function shiftRow(map, row, fromCol, delta, cols) {
   return result;
 }
 
-// A bake burns the colour transforms (params) into an entry's colours, so it looks as it did once
+// A bake burns the color transforms (params) into an entry's colors, so it looks as it did once
 // the sliders are back at neutral; its character is kept. The palette isn't burnt in: it still
 // applies at display.
 export function bakeEntry(entry, params) {
@@ -174,7 +174,7 @@ export function updateRect(map, rect, attrsFor) {
   return result ?? map;
 }
 
-// What an erased base cell shows: a space in the classic terminal grey on black.
+// What an erased base cell shows: a space in the classic terminal gray on black.
 export const BLANK = Object.freeze({ char: ' ', fg: '#aaaaaa', bg: '#000000' });
 
 // Where a pointer is relative to a selection: on its border (a band ½ column / ¼ row outside the

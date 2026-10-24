@@ -54,13 +54,13 @@ test('Cell model: one { char, fg, bg } per character cell, built exactly as the 
   assert.equal(brightnessChar(px(0, 0, 0), px(0, 0, 0), ' 漢#'), ' ');
   assert.equal(brightnessChar(px(255, 255, 255), px(255, 255, 255), ' 漢#'), '#');
   // A wide character takes its cell and the one to its right, the way a terminal lays it out: the
-  // covered cell shows the lead's character and colours; one in the last column has no room and
+  // covered cell shows the lead's character and colors; one in the last column has no room and
   // shows as a space.
   const C = (char) => ({ char, fg: { hex: '#ffffff' }, bg: { hex: '#000000' } });
   const wideRow = ['a', '漢', 'x', 'b', '字'].map(C);                       // 5 cols, one row
   const laid = layoutWide(wideRow, 5);
   assert.deepEqual(laid.map(c => [c.char, c.wide]), [['a', undefined], ['漢', 'lead'], ['漢', 'trail'], ['b', undefined], [' ', undefined]]);
-  assert.equal(laid[2].fg, wideRow[1].fg);                                  // the trail has the lead's colours
+  assert.equal(laid[2].fg, wideRow[1].fg);                                  // the trail has the lead's colors
   assert.equal(layoutWide(wideRow.slice(0, 1), 1)[0].char, 'a');
   const narrowRow = ['a', 'b'].map(C);
   assert.equal(layoutWide(narrowRow, 2), narrowRow);                              // nothing wide: the same array

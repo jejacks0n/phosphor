@@ -24,7 +24,7 @@ export const BUILTIN_PALETTES = Object.freeze([
   builtin('double-single', 'Double → single', '╓╖╙╜─║╥╨╟╢╫·'),
   builtin('faces', 'Faces & suits', '☺☻♥♦♣♠•◘○◙♪♫'),
   builtin('arrows', 'Arrows', '↑↓→←↕↔▲▼►◄∟⌂'),
-  builtin('greek', 'Greek & maths', 'αßΓπΣσµτΦΘΩδ'),
+  builtin('greek', 'Greek & math', 'αßΓπΣσµτΦΘΩδ'),
   builtin('quadrants', 'Quadrants', '▖▗▘▝▚▞▙▛▜▟▀▄'),
 ]);
 
@@ -36,7 +36,7 @@ export const UNICODE_BLOCKS = Object.freeze([
   ['Shapes', 0x25A0, 0x25FF],
   ['Braille', 0x2800, 0x28FF],
   ['Arrows', 0x2190, 0x21FF],
-  ['Maths', 0x2200, 0x22FF],
+  ['Math', 0x2200, 0x22FF],
   ['Misc symbols', 0x2600, 0x26FF],
   ['Dingbats', 0x2700, 0x27BF],
   ['Latin-1', 0x00A1, 0x00FF],

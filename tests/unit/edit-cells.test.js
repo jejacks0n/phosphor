@@ -34,7 +34,7 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   // characters or a lone combining mark are skipped.
   assert.deepEqual([...deserializeEditCells([['0,0', { char: '👍🏽' }], ['1,0', { char: '漢' }], ['2,0', { char: 'ab' }], ['3,0', { char: '\u0301' }]]).keys()], ['0,0', '1,0']);
   assert.equal(deserializeEditCells([['0,0', {}], ['1,0', null]]).size, 0); // empty entries never exist
-  // Project files are untrusted: only one-character chars, #rrggbb colours and col,row keys load.
+  // Project files are untrusted: only one-character chars, #rrggbb colors and col,row keys load.
   const loaded = deserializeEditCells([
     ['0,0', { char: '<img src=x onerror=alert(1)>' }], ['1,0', { char: 'A', fg: 'javascript:x' }],
     ['2,0', { char: 'B', fg: '#ffffff', bg: '#000000' }], ['x,y', { char: 'C' }], ['3,0', { char: 5 }],
@@ -60,8 +60,8 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   const big = updateRect(new Map(), { c0: 0, r0: 0, c1: 299, r1: 149 }, () => ({ char: '#' }));
   assert.equal(big.size, 300 * 150);
   assert.equal(updateRect(big, { c0: 0, r0: 0, c1: 9, r1: 9 }, () => ({ char: '#' })), big); // nothing changed: same map
-  const recoloured = updateRect(big, { c0: 0, r0: 0, c1: 299, r1: 149 }, (c, r, old) => ({ ...old, fg: '#ffffff' }));
-  assert.ok(recoloured !== big && recoloured.size === big.size && recoloured.get('299,149').fg === '#ffffff');
+  const recolored = updateRect(big, { c0: 0, r0: 0, c1: 299, r1: 149 }, (c, r, old) => ({ ...old, fg: '#ffffff' }));
+  assert.ok(recolored !== big && recolored.size === big.size && recolored.get('299,149').fg === '#ffffff');
   // The selection's border band: ½ column / ¼ row outside, ¼ column / ⅛ row inside.
   const sel = { c0: 2, r0: 2, c1: 5, r1: 4 }; // edges x 2..6, y 2..5
   assert.equal(selectionHit(sel, { col: 4, row: 3.5 }), 'inside');
@@ -79,7 +79,7 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   assert.deepEqual(clampOffset({ c0: 30, r0: 5, c1: 38, r1: 9 }, 5, 0, 40, 25), { dc: 1, dr: 0 });
   assert.deepEqual(clampOffset({ c0: 0, r0: 0, c1: 3, r1: 3 }, -2, -1, 40, 25), { dc: 0, dr: 0 });
   assert.deepEqual(clampOffset({ c0: 2, r0: 2, c1: 3, r1: 3 }, 0, 30, 40, 25), { dc: 0, dr: 21 });
-  // A bake burns the colour transforms into edit cells' colours (characters stay).
+  // A bake burns the color transforms into edit cells' colors (characters stay).
   const P = { brightness: 50, contrast: 100, saturation: 100, hue: 0, invert: 0, colorize: '#ff00ff', colorizeStrength: 0 };
   const baked = bakeEditCells(new Map([['0,0', Object.freeze({ char: 'A', fg: '#ffffff', bg: '#808080' })], ['1,0', Object.freeze({ char: 'B' })]]), P);
   assert.deepEqual(baked.get('0,0'), { char: 'A', fg: '#808080', bg: '#404040' });   // half brightness, burnt in

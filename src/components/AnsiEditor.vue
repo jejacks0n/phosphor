@@ -151,7 +151,7 @@ const selectionBox = computed(() => {
   };
 });
 
-// The first content renders immediately so it's laid out before the viewport restores/centres its
+// The first content renders immediately so it's laid out before the viewport restores/centers its
 // scroll on the next frame; later updates (e.g. every paint move) coalesce to one render per frame.
 watch(() => projectStore.cells, () => ((useDom.value ? displayRef.value?.childElementCount : cellCanvas) ? queueRender() : render()));
 watch(() => [projectStore.cols, projectStore.rows], () => {

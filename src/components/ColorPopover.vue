@@ -5,9 +5,9 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { swatchSections, drawingColors } from '@/lib/ColorUtils';
 
-// The colour picker for one slot of the pair. Its middle follows the active palette: swatch grids
-// for CGA, VGA, custom and adaptive palettes; the native picker plus colours already in use for
-// 24-bit. Swatches show how a colour displays (adjusted, snapped) and store the colour itself, so
+// The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
+// for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
+// 24-bit. Swatches show how a color displays (adjusted, snapped) and store the color itself, so
 // you get exactly the look you clicked.
 const props = defineProps({
   slotName: { type: String, required: true }, // 'fg' | 'bg'
@@ -25,7 +25,7 @@ const isNone = computed(() => (props.slotName === 'fg' ? ansiView.value && works
 const offersNone = computed(() => props.slotName === 'bg' || ansiView.value);
 
 const sections = computed(() => swatchSections(project.quantize, project.activePalette));
-// Colours edit cells use, and (folded away until asked for) the other colours in the paint.
+// Colors edit cells use, and (folded away until asked for) the other colors in the paint.
 // Paint is read when the popover opens: the layer isn't reactive, and doesn't change while this is open.
 const inUse = computed(() => drawingColors(project.editCells));
 const painted = computed(() => (project.hasPaint ? drawingColors(new Map(), project.paintLayer.colorCounts()).filter(hex => !inUse.value.includes(hex)) : []));
@@ -54,7 +54,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="color-popover" role="dialog" aria-label="Colour picker">
+  <div ref="root" class="color-popover" role="dialog" aria-label="Color picker">
     <div class="head">
       <button :class="{ on: slotName === 'fg' }" @click="emit('update:slotName', 'fg')">FG</button>
       <button :class="{ on: slotName === 'bg' }" @click="emit('update:slotName', 'bg')">BG</button>

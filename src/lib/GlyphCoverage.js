@@ -1,6 +1,6 @@
 /**
  * How much of a glyph's top and bottom half is inked, as [top, bottom] fractions (0..1) of its
- * character cell. A cell's two half-colours are bg × (1 − ink) + fg × ink, which is how edit cells
+ * character cell. A cell's two half-colors are bg × (1 − ink) + fg × ink, which is how edit cells
  * look at pixel scale and what paint blends over.
  *
  * Block elements are exact. Other glyphs are rasterized in the ANSI view's font once a rasterizer is
@@ -37,7 +37,7 @@ export function coverageOf(char) {
 }
 
 // Browser only: draw the glyph in the display font in one cell (advance width x line height, text
-// centred in the line like CSS does) and count inked pixels per half.
+// centered in the line like CSS does) and count inked pixels per half.
 let scratch = null;
 export function rasterizeCoverage(char) {
   if (!scratch) scratch = document.createElement('canvas');

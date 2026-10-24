@@ -1,4 +1,4 @@
-// Rectangles and ellipses: the outline in the foreground colour, the inside in the background colour
+// Rectangles and ellipses: the outline in the foreground color, the inside in the background color
 // (BG None: no fill). The pixel view paints them; the ANSI view draws rectangles as single/double line
 // boxes (Connect joins them to the lines they cross), shapes in full blocks or the active character as
 // cells, and anything else (line-drawn ellipses, or "Half-block") as paint at grid resolution, which
@@ -60,7 +60,7 @@ function apply({ project, workspace, view }, end) {
   }
 
   // Half-block: paint at grid resolution. Block characters makes each touched cell a ▄, so the
-  // paint colours its halves; without it the paint shows through the cell's own character.
+  // paint colors its halves; without it the paint shows through the cell's own character.
   if (!drawsCells(workspace)) {
     if (blockChars) project.writeEditCells(cellsOfPixels(pixelsOf(fill), project.cols, project.rows).map(c => ({ ...c, attrs: { char: '▄' } })));
     paintShape();

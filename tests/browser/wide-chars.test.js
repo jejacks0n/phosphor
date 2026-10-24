@@ -53,7 +53,7 @@ test('typing over either half breaks the other into a space', async () => {
   expect(line(project, 0).slice(0, 4)).toBe(' xy ');
 });
 
-test('a wide character written over a neighbour\'s lead breaks that neighbour', async () => {
+test('a wide character written over a neighbor\'s lead breaks that neighbor', async () => {
   const { project } = await blank();
   type(project, 1, 0, '漢');
   project.typeAt(0, 0, '字', ATTRS); // covers col 1, the old lead: its trail (col 2) becomes a space

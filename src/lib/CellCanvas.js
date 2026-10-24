@@ -273,7 +273,7 @@ export default class CellCanvas {
   }
 
   // A character in the display font across cells cells (1, or 2 for a wide one), as GlyphCoverage
-  // rasterizes it: centred in the line, squeezed into its cells when wider, inked where alpha > 127.
+  // rasterizes it: centered in the line, squeezed into its cells when wider, inked where alpha > 127.
   #rasterize(char, cells) {
     const { ch, scale } = this.#geom, cw = this.#geom.cw * cells;
     this.#scratch ??= document.createElement('canvas');

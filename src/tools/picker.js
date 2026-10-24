@@ -7,7 +7,7 @@ export default {
   kind: 'pick',
   instant: true,
   end({ workspace }) {
-    workspace.endPick(); // the old and new colours into the recent colours
+    workspace.endPick(); // the old and new colors into the recent colors
   },
   options: [
     {

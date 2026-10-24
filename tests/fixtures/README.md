@@ -13,7 +13,7 @@ Inputs the tests read, and (under `reference/`) the outputs they must reproduce.
 | `images/tall.png` | a very tall image (40×1200) | `npm run fixtures` |
 | `images/tiny.gif` | GIF | `npm run fixtures` |
 | `images/photo.jpg`, `images/photo.webp` | JPEG, WebP | `npm run fixtures` (headless Chromium, kept once made) |
-| `images/p3.png` | a PNG with an embedded Display P3 colour profile | `npm run fixtures` (headless Chromium, kept once made) |
+| `images/p3.png` | a PNG with an embedded Display P3 color profile | `npm run fixtures` (headless Chromium, kept once made) |
 | `projects/pre-cell-layer.phosphor` | the oldest layout: typed characters as `charEditMap` | `npm run fixtures` |
 | `projects/no-haspaint.phosphor` | paint with no `hasPaint` flag or paint scale | `npm run fixtures` |
 | `projects/erased-cells.phosphor` | erased cells as a record, from before the base had its own pixels | `npm run fixtures` |

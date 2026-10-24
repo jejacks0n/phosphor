@@ -10,7 +10,7 @@ async function drawLine(page, row) {
   await drag(page, await cellPoint(page, 4, row, 0), await cellPoint(page, 14, row, 0));
 }
 
-test('the merge dialog: centred, cancelled three ways, keys kept inside, each choice merges', async ({ page }) => {
+test('the merge dialog: centered, canceled three ways, keys kept inside, each choice merges', async ({ page }) => {
   await openApp(page);
   await drawLine(page, 5);
 

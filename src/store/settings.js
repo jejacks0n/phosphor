@@ -67,10 +67,10 @@ export function groupDefaults(group) {
   return Object.fromEntries(SETTINGS.filter(s => s.group === group && s.reset !== false).map(s => [s.key, defaultOf(s)]));
 }
 
-// Pipeline params with every per-pixel colour adjustment neutral (transform, adjust): rendering with
+// Pipeline params with every per-pixel color adjustment neutral (transform, adjust): rendering with
 // these gives the image downsampled exactly as the pipeline does, before adjustments (underlying
-// colours), which effectiveColor re-applies per cell. Effects (Flatten, Edges, Sharpen) stay: they
-// work on neighbouring pixels, so a cell couldn't re-apply them. CGA/VGA stay: the pipeline snaps
+// colors), which effectiveColor re-applies per cell. Effects (Flatten, Edges, Sharpen) stay: they
+// work on neighboring pixels, so a cell couldn't re-apply them. CGA/VGA stay: the pipeline snaps
 // each pixel to them before downsampling, so the result matches; other palettes are applied after
 // downsampling and are dropped.
 const NEUTRAL_GROUPS = ['transform', 'adjust'];

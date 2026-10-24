@@ -10,7 +10,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     inputActiveTool: 'brush',
     outputActiveTool: 'hand',
     previousTool: null,
-    // The colour pair. Paint uses the foreground; typing uses both, where a none slot leaves that
+    // The color pair. Paint uses the foreground; typing uses both, where a none slot leaves that
     // attribute as it is underneath (with the background none, typed text sits on the image).
     editFgColor:  '#ffffff',
     editBgColor: '#000000',
@@ -99,8 +99,8 @@ export const useWorkspaceStore = defineStore('workspace', {
         }
       }
     },
-    // hex: choose that colour (and clear the slot's none flag); null: set the slot to none.
-    // remember: false while a native picker is being dragged, so only the final colour is recent.
+    // hex: choose that color (and clear the slot's none flag); null: set the slot to none.
+    // remember: false while a native picker is being dragged, so only the final color is recent.
     setColor(slot, hex, { remember = true } = {}) {
       const none = slot === 'fg' ? 'editFgNone' : 'editBgNone';
       if (hex === null) {
@@ -114,9 +114,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     rememberColor(hex) {
       this.recentColors = [hex, ...this.recentColors.filter(c => c !== hex)].slice(0, RECENT_COLORS);
     },
-    // The eyedropper: picks repeat while dragging, so they leave the recent colours alone until the
-    // pick ends (endPick); then the colour each pick replaced and the colour it picked both go in,
-    // so getting the old colour back is one click.
+    // The eyedropper: picks repeat while dragging, so they leave the recent colors alone until the
+    // pick ends (endPick); then the color each pick replaced and the color it picked both go in,
+    // so getting the old color back is one click.
     pickColor(slot, hex) {
       this._pickedFrom ??= {
         fg: this.editFgNone ? null : this.editFgColor,

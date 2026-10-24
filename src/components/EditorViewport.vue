@@ -17,7 +17,7 @@ const props = defineProps({
   coordsAt: { type: Function, required: true },             // (event) => { x, y } in fractional grid pixels, or null
   zoomable: { type: Boolean, default: false },              // zoom reads and writes workspaceStore.editZoom
   scrollKey: { type: String, required: true },              // 'input' | 'ansi': where scroll position is remembered
-  contentSize: { type: Object, default: null },             // { width, height } -> padded layout that keeps its centre on resize
+  contentSize: { type: Object, default: null },             // { width, height } -> padded layout that keeps its center on resize
   view: { type: String, required: true },                   // 'input' (PIXEL) | 'output' (ANSI), passed to tools
   unit: { type: Object, default: null },                    // { x, y }: CSS px per grid pixel, for tool previews
 });
@@ -58,9 +58,9 @@ const {
   },
 });
 
-// The eyedropper: the pixel view picks the paint colour; the ANSI view picks the cell's underlying
-// colours (the [FG][BG] toggles; Shift: foreground only, Alt: background only). Picks repeat while
-// dragging; the recent colours get the old and new colours when the pick ends (workspace.endPick).
+// The eyedropper: the pixel view picks the paint color; the ANSI view picks the cell's underlying
+// colors (the [FG][BG] toggles; Shift: foreground only, Alt: background only). Picks repeat while
+// dragging; the recent colors get the old and new colors when the pick ends (workspace.endPick).
 function pickAt(pos, event) {
   const mode = pickMode({
     view: props.view,
@@ -80,7 +80,7 @@ function pickAt(pos, event) {
   const entry = projectStore.editCellAt(cell.col, cell.row);
   // Color ASCII never shows a generated background: only an edit cell's is real.
   const bg = projectStore.renderStyle === 'colorAscii' && !entry?.bg ? null : under.bg;
-  // For the status bar: what this pick read, and which layer each colour came from (paint and edit
+  // For the status bar: what this pick read, and which layer each color came from (paint and edit
   // cells are the edit layer; the rest is the base).
   const fromEdit = (y, attr) => !!projectStore.paintLayer?.colorAt(cell.col, y) || entry?.[attr] !== undefined;
   workspaceStore.lastPick = {
@@ -175,7 +175,7 @@ const viewportStyle = computed(() => {
   };
 });
 
-// Offset of the view centre from the content centre, so a viewport resize keeps the same spot centred.
+// Offset of the view center from the content center, so a viewport resize keeps the same spot centered.
 const offset = { x: 0, y: 0 };
 const onScroll = () => {
   const el = rootRef.value;
@@ -204,7 +204,7 @@ onMounted(() => {
   el.addEventListener('wheel', handleWheel, { passive: false });
   el.addEventListener('scroll', onScroll);
 
-  // Restore the previous scroll position, or centre; wait a frame so the content has its size.
+  // Restore the previous scroll position, or center; wait a frame so the content has its size.
   requestAnimationFrame(() => {
     if (!rootRef.value) return;
     const x = workspaceStore[`${props.scrollKey}ScrollX`];

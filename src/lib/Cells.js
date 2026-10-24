@@ -89,7 +89,7 @@ export function buildCells(pixels, cols, rows, { charset, charMode, renderStyle,
 
 // The composed cells laid out the way a terminal shows them: along each row, left to right, a
 // two-column character marks its cell the lead and covers the next as its trail (the lead's
-// character and colours: a terminal paints both columns with them), so a covered cell never starts
+// character and colors: a terminal paints both columns with them), so a covered cell never starts
 // one of its own; in the last column it has no room (a terminal would wrap it) and shows as a
 // space. The same array when nothing is wide.
 export function layoutWide(cells, cols) {
@@ -151,8 +151,8 @@ export function halfColors(cell, coverage = coverageOf) {
   return [mix(cell.bg, cell.fg, top), mix(cell.bg, cell.fg, bottom)];
 }
 
-// An edit cell's entry over the generated cell under it. effective(hex) turns a stored colour into the
-// Color it displays as. ASCII saves white on black, so edit-cell colours are kept but not shown.
+// An edit cell's entry over the generated cell under it. effective(hex) turns a stored color into the
+// Color it displays as. ASCII saves white on black, so edit-cell colors are kept but not shown.
 export function composeCell(under, entry, renderStyle, effective) {
   const char = entry.char ?? under.char;
   if (renderStyle === 'ascii') return { char, fg: under.fg, bg: under.bg };
@@ -169,7 +169,7 @@ export const isSolidGlyph = (char) => coverageOf(char).every(c => c === 0 || c =
 
 // Paint over a cell: a textured character stays, the paint tinting the background (top half) and
 // foreground (bottom half), the way image cells are built (buildCell); a solid or empty one becomes
-// ▄, each half the glyph's own colour under the paint. Unpainted cells are returned as is.
+// ▄, each half the glyph's own color under the paint. Unpainted cells are returned as is.
 export function coverCell(cell, paintTop, paintBottom, { renderStyle, palette }) {
   const aTop = paintTop?.a ?? 0, aBottom = paintBottom?.a ?? 0;
   if (!aTop && !aBottom) return cell;
@@ -181,7 +181,7 @@ export function coverCell(cell, paintTop, paintBottom, { renderStyle, palette })
   return buildCell(top, bottom, solid && renderStyle === 'ansi' ? '▄' : cell.char, renderStyle);
 }
 
-// Cells as pixels: each included cell's two half-colours (top, bottom) at grid resolution, as an
+// Cells as pixels: each included cell's two half-colors (top, bottom) at grid resolution, as an
 // RGBA buffer cols x rows (alpha 255 for included cells, 0 elsewhere and on an odd last pixel row).
 export function cellsToPixels(cells, cols, rows, include) {
   const data = new Uint8ClampedArray(cols * rows * 4);
@@ -200,7 +200,7 @@ export function cellsToPixels(cells, cols, rows, include) {
   return data;
 }
 
-// The entry that freezes a base cell as an edit cell (merge up, copy, move), from its underlying colours
+// The entry that freezes a base cell as an edit cell (merge up, copy, move), from its underlying colors
 // ({ char, bg: top half, fg: bottom half }), so it looks as the render style builds it: ANSI keeps
 // both halves; Color ASCII shows their average on no background; ASCII shows only the character.
 export function bakedEntry(renderStyle, { char, fg, bg }) {

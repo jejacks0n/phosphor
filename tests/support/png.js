@@ -1,5 +1,5 @@
 // A small PNG writer for test fixtures (Node): RGBA, 8 or 16 bits per channel, with an optional
-// iCCP colour-profile chunk. Deterministic: the same pixels always give the same bytes.
+// iCCP color-profile chunk. Deterministic: the same pixels always give the same bytes.
 import { deflateSync } from 'node:zlib';
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
@@ -22,7 +22,7 @@ const chunk = (type, data) => {
 };
 
 // pixels: width x height RGBA values, 0-255 (bitDepth 8) or 0-65535 (bitDepth 16), row-major.
-// iccp: { name, profile: Buffer } to embed a colour profile.
+// iccp: { name, profile: Buffer } to embed a color profile.
 export function writePng({ width, height, pixels, bitDepth = 8, iccp = null }) {
   const bytesPerSample = bitDepth / 8, stride = width * 4 * bytesPerSample;
   const raw = Buffer.alloc(height * (stride + 1));

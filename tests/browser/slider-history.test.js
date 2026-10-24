@@ -1,4 +1,4 @@
-// The Transforms, Adjustments and Image Filters sliders (and their colours) are in undo/redo: a drag
+// The Transforms, Adjustments and Image Filters sliders (and their colors) are in undo/redo: a drag
 // is one step (setSlider while it moves, commitSliders on release), keyboard nudges on one slider a
 // moment apart are one step, and RESET / RESET ALL are one step each.
 import { test, expect, vi, afterEach } from 'vitest';
@@ -40,7 +40,7 @@ test('a drag is one step: undo puts the value and the picture back, redo repeats
   expect(cellsKey(project)).toEqual(dragged);
 });
 
-test('a drag that ends where it began adds nothing; the colours count too', async () => {
+test('a drag that ends where it began adds nothing; the colors count too', async () => {
   const { project } = await app();
   drag(project, 'brightness', [120, 100]);
   expect(project.canUndo).toBe(false);

@@ -22,5 +22,5 @@ test('Editing around wide characters, like a terminal: writing over either half 
   const line = [0, 1, 2, 3].map(col => ({ col, row: 0, char: '─' }));        // a line over a, 漢 and 字's lead
   assert.deepEqual(overwritesAll(r, 6, line).map(c => c.col), [4]);          // 漢 is written over whole; 字's trail blanks
   assert.deepEqual(overwritesAll(r, 6, [{ col: 2, row: 0, char: '│' }]).map(c => c.col), [1]); // one cell on 漢's trail
-  assert.deepEqual(overwritesAll(r, 6, [{ col: 2, row: 0 }]), []);             // colours only: nothing breaks
+  assert.deepEqual(overwritesAll(r, 6, [{ col: 2, row: 0 }]), []);             // colors only: nothing breaks
 });

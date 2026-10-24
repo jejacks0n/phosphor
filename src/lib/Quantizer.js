@@ -76,7 +76,7 @@ class VBox {
 export default function quantize(pixels, maxColors) {
   if (!pixels.length || maxColors < 2 || maxColors > 256) return [];
 
-  // No more colours than asked for: those exact colours (median cut would return their buckets'
+  // No more colors than asked for: those exact colors (median cut would return their buckets'
   // middles, so pure red would come back #fc0404).
   const distinct = new Set();
   for (let i = 0; i < pixels.length && distinct.size <= maxColors; i += 4) {

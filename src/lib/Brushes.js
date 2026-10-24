@@ -29,12 +29,12 @@ export function pencilPixels(from, to, cols, rows) {
   return [...pixels.values()];
 }
 
-// Hard square of `size` grid pixels centred on the stroke (the eraser).
+// Hard square of `size` grid pixels centered on the stroke (the eraser).
 export function squarePixels(from, to, size, cols, rows) {
   const half = size / 2;
   const pixels = new Map();
   for (const { x, y } of interpolate(from, to)) {
-    // The pixels whose centres (i + 0.5) lie inside the square (x - half, x + half]: size 1 is the
+    // The pixels whose centers (i + 0.5) lie inside the square (x - half, x + half]: size 1 is the
     // pixel under the pointer, including exactly on a pixel edge.
     for (let iy = Math.floor(y - half - 0.5) + 1; iy <= Math.floor(y + half - 0.5); iy++) {
       for (let ix = Math.floor(x - half - 0.5) + 1; ix <= Math.floor(x + half - 0.5); ix++) {
@@ -91,9 +91,9 @@ export function rectPixels(from, to, filled, cols, rows) {
   return pixels;
 }
 
-// The ellipse inscribed in the dragged rect. A pixel is inside when its offset from the centre falls
+// The ellipse inscribed in the dragged rect. A pixel is inside when its offset from the center falls
 // within the radii plus half a pixel (so even a 1x1 rect draws); the outline is the inside pixels
-// with an outside neighbour.
+// with an outside neighbor.
 // With antialias, each pixel's alpha is how much of it the shape covers instead.
 export function ellipsePixels(from, to, filled, cols, rows, antialias = false) {
   const { x0, y0, x1, y1 } = bounds(from, to);

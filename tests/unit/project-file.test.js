@@ -68,5 +68,5 @@ test('hostile fields are dropped, and only those', async () => {
   expect((await read(project({ ...BASE, cellEdits: [], imageIsWorkingCopy: 'yes' }))).settings.imageIsWorkingCopy).toBeUndefined();
   expect((await read(project({ ...BASE, cellEdits: [], imageIsWorkingCopy: true }))).settings.imageIsWorkingCopy).toBe(true);
   const cells = (await read(project({ ...BASE, cellEdits: [['0,0', { char: 'ab' }], ['1,0', { char: 'Z', fg: 'red' }], ['x', { char: 'Q' }], ['2,0', { char: '́' }]] }))).editCells;
-  expect(Object.fromEntries(cells)).toEqual({ '1,0': { char: 'Z' } }); // a bad colour is dropped, the char kept
+  expect(Object.fromEntries(cells)).toEqual({ '1,0': { char: 'Z' } }); // a bad color is dropped, the char kept
 });

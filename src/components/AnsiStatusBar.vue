@@ -6,14 +6,14 @@ import { getEffectiveColor } from '@/lib/PixelTransforms';
 
 // Under the ANSI view, following the tool: Edit Mode shows its cursor's cell (each attribute from the
 // edit layer or the base) and the overwrite/insert toggle; Select, the selection's size and place; the
-// Color Picker, its last pick and where each colour came from. Other tools leave it empty.
+// Color Picker, its last pick and where each color came from. Other tools leave it empty.
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const tool = computed(() => workspace.activeTool);
 const sel = computed(() => workspace.selection);
 const offset = computed(() => workspace.selectionOffset ?? { dc: 0, dr: 0 }); // while it's being dragged
 const pick = computed(() => workspace.lastPick);
-// A picked (stored) colour as it shows: the swatch matches the canvas, the hex is what was picked.
+// A picked (stored) color as it shows: the swatch matches the canvas, the hex is what was picked.
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 
 const cursor = computed(() => workspace.textCursor);

@@ -5,7 +5,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import ColorPopover from '@/components/ColorPopover.vue';
 
-// The foreground/background chips: each shows its colour as it displays (after adjustments and the
+// The foreground/background chips: each shows its color as it displays (after adjustments and the
 // palette); a none slot shows a checkerboard. Clicking a chip opens the picker for that slot.
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -15,7 +15,7 @@ const ansiView = computed(() => workspace.editorTab === 'output');
 // ASCII saves white on black: there's nothing to choose in the ANSI view.
 const hidden = computed(() => ansiView.value && project.renderStyle === 'ascii');
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
-// The foreground only means "none" for typing, in the ANSI view; paint always uses its colour.
+// The foreground only means "none" for typing, in the ANSI view; paint always uses its color.
 const fgNone = computed(() => ansiView.value && workspace.editFgNone);
 
 const toggle = (slot) => { open.value = open.value === slot ? null : slot; };
@@ -28,7 +28,7 @@ const toggle = (slot) => { open.value = open.value === slot ? null : slot; };
         :class="{ none: fgNone }"
         :style="fgNone ? null : { backgroundColor: shown(workspace.editFgColor) }"
         :title="`Foreground: ${fgNone ? 'none' : workspace.editFgColor}`"
-        aria-label="Foreground colour"
+        aria-label="Foreground color"
         @click="toggle('fg')"
     ></button>
     <button
@@ -36,7 +36,7 @@ const toggle = (slot) => { open.value = open.value === slot ? null : slot; };
         :class="{ none: workspace.editBgNone }"
         :style="workspace.editBgNone ? null : { backgroundColor: shown(workspace.editBgColor) }"
         :title="`Background: ${workspace.editBgNone ? 'none' : workspace.editBgColor}`"
-        aria-label="Background colour"
+        aria-label="Background color"
         @click="toggle('bg')"
     ></button>
     <ColorPopover v-if="open" v-model:slot-name="open" @close="open = null"/>

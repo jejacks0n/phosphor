@@ -240,8 +240,8 @@ export function useEditorInteractions(options) {
     }
     Object.assign(_zoomAnchor, { clientX, clientY, time: now });
 
-    if (_pendingZoomScroll) _pendingZoomScroll.cancelled = true;
-    const pending = { cancelled: false };
+    if (_pendingZoomScroll) _pendingZoomScroll.canceled = true;
+    const pending = { canceled: false };
     _pendingZoomScroll = pending;
 
     callbacks.onZoomChange(newZoom);
@@ -250,7 +250,7 @@ export function useEditorInteractions(options) {
     // recalculated) AND after the browser has run layout. Reading getBoundingClientRect()
     // here is reliable in all browsers — nextTick (microtask) causes stale layout reads in Safari.
     requestAnimationFrame(() => {
-      if (pending.cancelled) return;
+      if (pending.canceled) return;
       _pendingZoomScroll = null;
 
       // Scroll so the anchor lands back under the pointer.

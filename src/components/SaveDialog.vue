@@ -15,8 +15,8 @@ const project = useProjectStore();
 
 const FORMATS = {
   phosphor: { title: 'Save project', sub: 'Everything, to open again in Phosphor: the image, both layers and the settings.', action: 'Save' },
-  ans: { title: 'Export .ans', sub: 'Classic ANSI art: CP437 characters with ANSI colours, for art viewers and BBS-era tools.', action: 'Export' },
-  utf8ans: { title: 'Export .utf8ans', sub: 'ANSI art as UTF-8 text with ANSI colours, for modern terminals. Every character is kept.', action: 'Export' },
+  ans: { title: 'Export .ans', sub: 'Classic ANSI art: CP437 characters with ANSI colors, for art viewers and BBS-era tools.', action: 'Export' },
+  utf8ans: { title: 'Export .utf8ans', sub: 'ANSI art as UTF-8 text with ANSI colors, for modern terminals. Every character is kept.', action: 'Export' },
 };
 const format = computed(() => FORMATS[props.ext]);
 

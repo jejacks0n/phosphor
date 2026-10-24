@@ -125,7 +125,7 @@ const charsetName = computed(() => {
           <button @click="store.resetGroup(group.id)" tabindex="-1">RESET</button>
         </legend>
 
-        <!-- Undoable: each drag, nudge or colour pick is one step (setSlider, then commitSliders). -->
+        <!-- Undoable: each drag, nudge or color pick is one step (setSlider, then commitSliders). -->
         <RangeField
             v-for="slider in group.sliders"
             :key="slider.key"

@@ -31,7 +31,7 @@ export function withoutPins(records, cells) {
 
 // The records on a resized grid (cols x rows grid pixels), following the picture the way the paint
 // does (transform: resizeTransform's, in grid pixels): a pin goes to the one cell over its old
-// centre, and drops when that's off the grid.
+// center, and drops when that's off the grid.
 export function remapBaseRecords(records, { offsetX, offsetY, scaleX, scaleY }, cols, rows) {
   if (!records.pins.size) return records;
   const pins = new Map();

@@ -14,7 +14,7 @@ test('Brush pixel generation shared by both editors (grid pixels, clipped to the
   assert.equal(squarePixels({ x: 5, y: 5 }, { x: 5, y: 5 }, 2, 10, 10).length, 4);
   assert.equal(squarePixels({ x: 5, y: 5 }, { x: 6, y: 5 }, 2, 10, 10).length, 6); // deduped across the stroke
   assert.equal(squarePixels({ x: 0, y: 0 }, { x: 0, y: 0 }, 4, 10, 10).length, 4); // clipped at the edge
-  // A square covers the pixels whose centres are inside it: size 1 is the pixel under the pointer.
+  // A square covers the pixels whose centers are inside it: size 1 is the pixel under the pointer.
   const sq = (x, y, size) => squarePixels({ x, y }, { x, y }, size, 20, 20).map(p => [p.x, p.y]);
   assert.deepEqual(sq(3.7, 6.7, 1), [[3, 6]]);
   assert.deepEqual(sq(3.2, 6.1, 1), [[3, 6]]);

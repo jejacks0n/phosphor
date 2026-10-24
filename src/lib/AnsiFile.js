@@ -24,7 +24,7 @@ export class AnsiFile {
   }
 
   // Characters in cells that CP437 can't encode: how often each appears and what's written instead
-  // (most frequent first). A cell whose colours match is written as a space, so it doesn't count; a
+  // (most frequent first). A cell whose colors match is written as a space, so it doesn't count; a
   // wide character counts once (its trail is written as a space).
   static unmappable(cells) {
     const found = new Map();
@@ -51,7 +51,7 @@ export class AnsiFile {
 
     // A wide character's trail: in UTF-8 the terminal has already moved two columns, so it writes
     // nothing, unless its lead went out as a space; in CP437 the lead's stand-in is one column, so
-    // the trail is a space (its colours are the lead's: no SGR change).
+    // the trail is a space (its colors are the lead's: no SGR change).
     let leadAsSpace = false;
     for (let y = 0; y < this.rows; y++) {
       for (let x = 0; x < this.cols; x++) {

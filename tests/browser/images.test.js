@@ -1,5 +1,5 @@
 // Images in: every kind the fixtures cover loads and converts to the same cells as its reference
-// (software WebGL makes conversion the same on every machine). Plus one image across the colour
+// (software WebGL makes conversion the same on every machine). Plus one image across the color
 // palettes, art styles and adjustments.
 import { describe, test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';

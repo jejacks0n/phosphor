@@ -40,7 +40,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return false;
   };
 
-  // X swaps the colour pair, unless something is taking text (a field, or the Text tool).
+  // X swaps the color pair, unless something is taking text (a field, or the Text tool).
   const _handleSwapColors = (e) => {
     if (e.key.toLowerCase() !== 'x' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
     const target = e.target;

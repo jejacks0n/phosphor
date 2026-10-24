@@ -29,8 +29,8 @@ export default class Renderer {
   #baseData = null;     // the pipeline with the base layer's pixels over it, from the last composite(): what edit cells sit on
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
   #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
-  #effective = new Map(); // stored colour -> displayed Color, until the next render
-  #source = null;       // { key, data }: the image through the pipeline with colour adjustments neutral (stored colours)
+  #effective = new Map(); // stored color -> displayed Color, until the next render
+  #source = null;       // { key, data }: the image through the pipeline with color adjustments neutral (stored colors)
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
@@ -39,7 +39,7 @@ export default class Renderer {
     this.#effective = new Map();
   }
 
-  // baseParams: params with the colour adjustments neutral (settings.baseParams).
+  // baseParams: params with the color adjustments neutral (settings.baseParams).
   async render(image, params, paintLayer, baseParams) {
     const { canvas: pipeline, paletteColors } = await processImage(image, params);
     this.pipelineCanvas = pipeline.canvas;
@@ -47,7 +47,7 @@ export default class Renderer {
     this.#pipelineData = ctx2d(this.pipelineCanvas).getImageData(0, 0, params.cols, params.rows);
     this.#effective = new Map();
 
-    // Underlying colours depend only on the image, grid, smoothing, effects and CGA/VGA, so colour
+    // Underlying colors depend only on the image, grid, smoothing, effects and CGA/VGA, so color
     // adjustments don't redo this.
     const sp = baseParams ?? {};
     const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness].join();
@@ -87,10 +87,10 @@ export default class Renderer {
   }
 
   // Redraw outputCanvas: the pipeline image, then the base layer's pixels and the paint layer, each
-  // with the colour transforms applied. The Number palette (quantize 'count') is picked from what
-  // that shows, so the drawing's colours have places in it; true when that changed the palette
-  // (every cell may need its colours again, not just those under the change). hold: an edit is open
-  // and the Number palette waits for it to end; meanwhile the paint shows in its own colours
+  // with the color transforms applied. The Number palette (quantize 'count') is picked from what
+  // that shows, so the drawing's colors have places in it; true when that changed the palette
+  // (every cell may need its colors again, not just those under the change). hold: an edit is open
+  // and the Number palette waits for it to end; meanwhile the paint shows in its own colors
   // (updateCells).
   composite(paintLayer, params, { hold = false } = {}) {
     if (!this.outputCanvas || !this.pipelineCanvas) return false;
@@ -118,11 +118,11 @@ export default class Renderer {
     const key = (palette) => palette?.map((p) => p.hex).join();
     if (key(next) === key(this.palette)) return false;
     this.palette = next;
-    this.#effective = new Map(); // displayed colours snap to the palette
+    this.#effective = new Map(); // displayed colors snap to the palette
     return true;
   }
 
-  // Draw a layer at grid resolution (a grid pixel at a time) with the colour transforms applied;
+  // Draw a layer at grid resolution (a grid pixel at a time) with the color transforms applied;
   // returns the transformed pixels.
   #drawLayer(ctx, layer, params) {
     const w = this.outputCanvas.width, h = this.outputCanvas.height;
@@ -181,7 +181,7 @@ export default class Renderer {
       let top = canvas.pixels[cellIndex(col, 2 * row, cols)];
       if (!top) continue; // output canvas from an older grid size
       let bottom = canvas.pixels[cellIndex(col, 2 * row + 1, cols)] || top;
-      // Quantize only the touched pixels instead of the entire canvas (held paint keeps its colours)
+      // Quantize only the touched pixels instead of the entire canvas (held paint keeps its colors)
       if (this.palette) {
         top = this.#held(col, 2 * row, cols) ?? nearestColor(top, this.palette);
         bottom = this.#held(col, 2 * row + 1, cols) ?? nearestColor(bottom, this.palette);
@@ -194,7 +194,7 @@ export default class Renderer {
     return next;
   }
 
-  // A painted grid pixel's colour before the palette snap, while a stroke is held; else null.
+  // A painted grid pixel's color before the palette snap, while a stroke is held; else null.
   #held(x, y, cols) {
     if (!this.#heldData || !this.paintAt(x, y)) return null;
     const o = (y * cols + x) * 4, d = this.#heldData;
@@ -212,7 +212,7 @@ export default class Renderer {
     return cells;
   }
 
-  // A stored colour as it displays: colour adjustments, then the active palette.
+  // A stored color as it displays: color adjustments, then the active palette.
   effective(hex, params) {
     let color = this.#effective.get(hex);
     if (!color) {

@@ -1,11 +1,11 @@
 // The ANSI view's canvas renderer: its backing size stays under the browsers' canvas limits, its
 // cells snap to whole device pixels (an even height, so the halves match), block characters are
-// exact rectangles, and each cell's colours and 16-bit glyph index pack into the data textures.
+// exact rectangles, and each cell's colors and 16-bit glyph index pack into the data textures.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { backingScale, cellGeometry, blockMask, packCells, MAX_BACKING_AREA } from '../../src/lib/CellCanvas.js';
 
-test("The ANSI view's canvas renderer: its backing size stays under the browsers' canvas limits, its cells snap to whole device pixels (an even height, so the halves match), block characters are exact rectangles, and each cell's colours and 16-bit glyph index pack into the data textures", async () => {
+test("The ANSI view's canvas renderer: its backing size stays under the browsers' canvas limits, its cells snap to whole device pixels (an even height, so the halves match), block characters are exact rectangles, and each cell's colors and 16-bit glyph index pack into the data textures", async () => {
   assert.equal(backingScale(800, 600, 2), 2);                                    // small grid: full dpr
   const s = backingScale(2040, 3060, 2);                                         // 200x300 at dpr 2 is 25M px: capped
   assert.ok(s < 2 && s * 2040 * s * 3060 <= MAX_BACKING_AREA + 1);

@@ -52,7 +52,7 @@ export async function loadImage(project, url, { cols, rows } = {}) {
 // The cells as text, one per cell: character, foreground, background (what views and exports show).
 export const cellsKey = (project) => project.cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`);
 
-// Each cell's two shown half-colours (top, bottom) as [r, g, b, r, g, b].
+// Each cell's two shown half-colors (top, bottom) as [r, g, b, r, g, b].
 export const halves = (project) => project.cells.map((c) => {
   const [t, b] = halfColors(c);
   return [t.r, t.g, t.b, b.r, b.g, b.b];

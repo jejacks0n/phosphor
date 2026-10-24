@@ -1,8 +1,8 @@
 <script setup>
 import ModalDialog from '@/components/ModalDialog.vue';
 
-// A choice in a centred confirm box (Merge down: exactly or into the picture; Bake under CGA/VGA:
-// keep full colour or lock to the palette). choices: [{ id, title, text, note? }], the first
+// A choice in a centered confirm box (Merge down: exactly or into the picture; Bake under CGA/VGA:
+// keep full color or lock to the palette). choices: [{ id, title, text, note? }], the first
 // focused, the second accented as the alternative; choosing emits its id.
 const props = defineProps({
   title: { type: String, required: true },

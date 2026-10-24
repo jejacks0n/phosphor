@@ -18,14 +18,14 @@ test('Bake from the toolbar: the sliders go back to neutral and the picture stay
   await raiseContrast(page);
   const cells = await cellsOf(page);
 
-  await bake.click(); // full colour: no question to ask
+  await bake.click(); // full color: no question to ask
   await expect.poll(() => store(page, 'project', (p) => p.contrast)).toBe(100);
   await settled(page);
   expect(await cellsOf(page)).toBe(cells);
   await expect(bake).toBeDisabled();
 });
 
-test('Bake under CGA asks first: Keep full colour is the default, Lock changes nothing on the canvas', async ({ page }) => {
+test('Bake under CGA asks first: Keep full color is the default, Lock changes nothing on the canvas', async ({ page }) => {
   await openApp(page);
   await page.getByRole('combobox', { name: 'Color Palette' }).selectOption('cga');
   await raiseContrast(page);
@@ -33,7 +33,7 @@ test('Bake under CGA asks first: Keep full colour is the default, Lock changes n
   const dialog = page.getByRole('dialog', { name: 'Bake with the CGA palette' });
 
   await page.getByTitle(/^Bake:/).click();
-  await expect(dialog.getByRole('button', { name: /^Keep full colour/ })).toBeFocused();
+  await expect(dialog.getByRole('button', { name: /^Keep full color/ })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   expect(await store(page, 'project', (p) => p.contrast)).toBeGreaterThan(100); // nothing baked

@@ -1,6 +1,6 @@
-// The Number palette (quantize 'count'): its colours are picked from everything you see (the
-// picture, the base's own pixels, the paint), so a colour you draw with gets a place in it, and
-// a picture with no more colours than asked for keeps exactly its own.
+// The Number palette (quantize 'count'): its colors are picked from everything you see (the
+// picture, the base's own pixels, the paint), so a color you draw with gets a place in it, and
+// a picture with no more colors than asked for keeps exactly its own.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 
@@ -14,7 +14,7 @@ async function fullRender(project) {
   return cellsKey(project);
 }
 
-test('a few-colour picture keeps its exact colours, and white paint is white', async () => {
+test('a few-color picture keeps its exact colors, and white paint is white', async () => {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/tiny.gif', { cols: 20, rows: 20 });
   project.quantize = 'count';
@@ -30,7 +30,7 @@ test('a few-colour picture keeps its exact colours, and white paint is white', a
   expect(cellsKey(project)).toEqual(await fullRender(project));
 });
 
-test('with more colours than asked for, a finished stroke rebalances the palette across the picture', async () => {
+test('with more colors than asked for, a finished stroke rebalances the palette across the picture', async () => {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
   project.quantize = 'count';
@@ -65,7 +65,7 @@ test('base pixels count too, and undo brings the palette back', async () => {
   expect(cellsKey(project)).toEqual(cells);
 });
 
-// With more colours than asked for.
+// With more colors than asked for.
 async function gradient8() {
   const { project, workspace } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
@@ -78,13 +78,13 @@ const WHITE = [...line(8), ...line(9), ...line(10), ...line(11)];
 // Cells outside the painted rows (char rows 4 and 5) whose look changed.
 const untouchedChanged = (before, after) => before.filter((v, i) => Math.floor(i / 40) !== 4 && Math.floor(i / 40) !== 5 && v !== after[i]).length;
 
-test('the palette holds during a stroke (the stroke in its own colours) and catches up when it ends', async () => {
+test('the palette holds during a stroke (the stroke in its own colors) and catches up when it ends', async () => {
   const { project } = await gradient8();
   const before = hexes(project), cells = cellsKey(project);
   project.paintStroke(WHITE, '#ffffff');
   expect(hexes(project)).toEqual(before);
   expect(untouchedChanged(cells, cellsKey(project))).toBe(0);
-  const painted = project.cells[4 * 40 + 8]; // meanwhile the stroke shows in its own colour
+  const painted = project.cells[4 * 40 + 8]; // meanwhile the stroke shows in its own color
   expect([painted.fg.hex.toLowerCase(), painted.bg.hex.toLowerCase()]).toEqual(['#ffffff', '#ffffff']);
   project.commitEdit();
   expect(hexes(project)).not.toEqual(before);

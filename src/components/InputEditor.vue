@@ -13,7 +13,7 @@ const workspaceStore = useWorkspaceStore();
 const viewport = useTemplateRef('viewport');
 const displayRef = useTemplateRef('displayCanvas');
 
-// Edit cells (or all, with "All cells") drawn over the image as their half-cell colours: the
+// Edit cells (or all, with "All cells") drawn over the image as their half-cell colors: the
 // ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible.
 // The bitmap is rebuilt only when the cells or what's included change, not on zoom or opacity.
 const overlay = { canvas: null, cells: null, editCells: null, all: null, empty: true };
@@ -83,7 +83,7 @@ const contentSize = computed(() => ({
 }));
 const unit = computed(() => ({ x: workspaceStore.editZoom, y: workspaceStore.editZoom }));
 
-// Every render and every paint replaces cells; re-centre when the output size changes
+// Every render and every paint replaces cells; re-center when the output size changes
 // (including when the first render arrives).
 const sizeOf = (canvas) => canvas && `${canvas.width}x${canvas.height}`;
 let lastOutputSize = sizeOf(projectStore.renderer.outputCanvas); // a remount keeps the restored scroll

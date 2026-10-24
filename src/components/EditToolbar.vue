@@ -116,7 +116,7 @@ const ORIGINAL_NOTE = 'The picture becomes the working-size copy the preview is 
 const mergeChoices = computed(() => (project.pictureIsOriginal ? [MERGE_CHOICES[0], { ...MERGE_CHOICES[1], note: ORIGINAL_NOTE }] : MERGE_CHOICES));
 
 // Bake under CGA or VGA asks whether to lock the picture to the palette (exact, but the in-between
-// colours are gone) or keep full colour (a few cells near palette boundaries can tip). Other
+// colors are gone) or keep full color (a few cells near palette boundaries can tip). Other
 // palettes bake exactly either way.
 const baking = ref(null); // the palette's name while the dialog is open
 function bake() {
@@ -125,8 +125,8 @@ function bake() {
   else project.bake();
 }
 const bakeChoices = computed(() => [
-  { id: 'full', title: 'Keep full colour', text: `The picture keeps its in-between colours, so switching the palette later still has them. A few cells near the edges between ${baking.value} colours may change, more with many sliders on.` },
-  { id: 'lock', title: `Lock to the ${baking.value} palette`, text: `Nothing on the canvas changes. The picture keeps only the ${baking.value} colours, so switching to full colour later won't bring the in-between shades back (undo will).` },
+  { id: 'full', title: 'Keep full color', text: `The picture keeps its in-between colors, so switching the palette later still has them. A few cells near the edges between ${baking.value} colors may change, more with many sliders on.` },
+  { id: 'lock', title: `Lock to the ${baking.value} palette`, text: `Nothing on the canvas changes. The picture keeps only the ${baking.value} colors, so switching to full color later won't bring the in-between shades back (undo will).` },
 ]);
 function chooseBake(id) {
   baking.value = null;
@@ -154,7 +154,7 @@ const selectionHasEdits = computed(() => {
   <ChoiceDialog
       v-if="baking"
       :title="`Bake with the ${baking} palette`"
-      sub="The picture as it looks now becomes the image, and the sliders go back to neutral. How should it keep its colours?"
+      sub="The picture as it looks now becomes the image, and the sliders go back to neutral. How should it keep its colors?"
       :choices="bakeChoices"
       @choose="chooseBake"
       @cancel="baking = null"
@@ -230,7 +230,7 @@ const selectionHasEdits = computed(() => {
         </div>
 
         <button
-            title="Bake: the picture as it looks now becomes the image, and the Transforms, Adjustments and Image Filters sliders go back to neutral. Your drawing keeps its colours; undo brings the original back."
+            title="Bake: the picture as it looks now becomes the image, and the Transforms, Adjustments and Image Filters sliders go back to neutral. Your drawing keeps its colors; undo brings the original back."
             @click="bake"
             class="primary"
             :disabled="!project.canBake"
@@ -611,7 +611,7 @@ button:disabled {
   line-height: 1;
 }
 
-/* Icon choices take the button's text colour, and are as tall as a text label. */
+/* Icon choices take the button's text color, and are as tall as a text label. */
 button.text :deep(svg) {
   width: 15px;
   height: 15px;

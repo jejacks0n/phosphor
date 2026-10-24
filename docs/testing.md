@@ -17,7 +17,7 @@ The first time, install the browser: `npx playwright install --with-deps chromiu
 
 | What you're testing | Layer | Where |
 | --- | --- | --- |
-| A function that takes values and returns values (cells, colours, bytes, widths, parsing) | unit | `tests/unit/*.test.js` |
+| A function that takes values and returns values (cells, colors, bytes, widths, parsing) | unit | `tests/unit/*.test.js` |
 | The store, or anything that needs a real canvas, WebGL, fonts or image decoding | browser | `tests/browser/*.test.js` |
 | What happens when someone clicks, drags, types or presses a shortcut in the UI | end-to-end | `tests/e2e/*.spec.js` |
 
