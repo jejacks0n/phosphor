@@ -54,6 +54,8 @@ test('Underlying colors come from the pipeline run with every color adjustment, 
   const pm = (o) => pickMode({ view: 'output', renderStyle: 'ansi', shiftKey: false, altKey: false, swapped: false, ...o });
   assert.equal(pm({ view: 'input', altKey: true }), 'fg');             // pixel view: always the paint color
   assert.equal(pm({ altKey: true, swapped: true }), 'fg');             // Alt-swapped from a paint tool: the paint color
+  assert.equal(pm({ altKey: true, shiftKey: true, swapped: true }), 'bg');                 // Alt+Shift: the background
+  assert.equal(pm({ view: 'input', altKey: true, shiftKey: true, swapped: true }), 'bg');  // in the pixel view too
   assert.equal(pm({ renderStyle: 'ascii', shiftKey: true }), 'fg');    // only ever colors, in every art style
   assert.equal(pm({ shiftKey: true }), 'fg');
   assert.equal(pm({ altKey: true }), 'bg');

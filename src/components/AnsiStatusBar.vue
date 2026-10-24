@@ -1,12 +1,16 @@
 <script setup>
 import { computed } from 'vue';
+import { useMediaQuery } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
+import { getTool } from '@/tools';
 
 // Under the ANSI view, following the tool: Edit Mode shows its cursor's cell (each attribute from the
 // edit layer or the base) and the overwrite/insert toggle; Select, the selection's size and place; the
-// Color Picker, its last pick and where each color came from. Other tools leave it empty.
+// Color Picker, its last pick and where each color came from. On the right, with a mouse or trackpad,
+// the held-key shortcuts for the tool (they work in the pixel view too; this is where they're taught),
+// or what a held key is doing.
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const tool = computed(() => workspace.activeTool);
@@ -20,6 +24,19 @@ const cursor = computed(() => workspace.textCursor);
 const cell = computed(() => cursor.value && project.cells[cursor.value.row * project.cols + cursor.value.col]);
 const entry = computed(() => cursor.value && project.editCellAt(cursor.value.col, cursor.value.row));
 const origin = (attr) => (entry.value?.[attr] !== undefined ? 'edit' : 'base');
+
+const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const KEYS = mac ? { alt: '⌥', altShift: '⌥⇧', shift: '⇧' } : { alt: 'Alt', altShift: 'Alt+Shift', shift: 'Shift' };
+const keyboard = useMediaQuery('(pointer: fine)');
+// [key, what it does] pairs, or a sentence while a key is held.
+const hint = computed(() => {
+  const held = workspace.heldTool?.by;
+  if (held === 'space') return 'Panning';
+  if (held === 'alt') return workspace.isShiftPressed ? 'Picking the background color' : `Picking the foreground color · add ${KEYS.shift} for the background`;
+  if (getTool(tool.value)?.altPicks) return [[KEYS.alt, 'pick color'], [KEYS.altShift, 'pick background'], ['Space', 'pan']];
+  if (tool.value !== 'text' && tool.value !== 'hand') return [['Space', 'pan']];
+  return null;
+});
 </script>
 
 <template>
@@ -43,6 +60,10 @@ const origin = (attr) => (entry.value?.[attr] !== undefined ? 'edit' : 'base');
       <span v-if="pick.bg">BG <i class="swatch" :style="{ backgroundColor: shown(pick.bg) }"></i><b>{{ pick.bg }}</b> {{ pick.bgFrom }}</span>
     </template>
     <span class="spacer"></span>
+    <span v-if="keyboard && hint" class="hint">
+      <template v-if="typeof hint === 'string'">{{ hint }}</template>
+      <template v-else v-for="([key, does], i) in hint" :key="key">{{ i ? ' · ' : '' }}<kbd>{{ key }}</kbd> {{ does }}</template>
+    </span>
     <button
         title="ANSI view renderer (trial): canvas or DOM"
         @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
@@ -71,6 +92,19 @@ footer.ansi-status {
 b {
   color: var(--text-dim);
   font-weight: 500;
+}
+
+span.hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+kbd {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  color: var(--text-dim);
+  font: inherit;
 }
 
 b.glyph {

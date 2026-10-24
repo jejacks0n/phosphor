@@ -157,6 +157,19 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
 - **Color Picker**'s **FG** and **BG** toggles choose what a pick sets; both lit sets both.
 - **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
   selection's size and place, and the Color Picker its last pick and where each color came from.
+  On the right it shows the held-key shortcuts for the tool.
+
+### Held keys
+
+These work in both the ANSI and the pixel view, for as long as you hold the key:
+
+- **Alt** (Option on a Mac), with the Pencil, Brush, Paint Bucket or Shapes: the Color Picker. A
+  click picks the foreground color; add **Shift** to pick the background color instead.
+- **Space**, with any tool: the Hand, to drag the view around (the middle mouse button does too).
+  Space still types in Edit Mode and in text fields.
+
+Let go in the middle of a drag and the tool comes back when the drag ends, so a pick or a pan never
+turns into a stroke.
 
 ## When the grid changes
 

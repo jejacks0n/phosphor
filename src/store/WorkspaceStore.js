@@ -9,7 +9,7 @@ export const useWorkspaceStore = defineStore('workspace', {
   state: () => ({
     inputActiveTool: 'brush',
     outputActiveTool: 'hand',
-    previousTool: null,
+    heldTool: null,          // a tool held with a key: { key, tool (the one to go back to), by: 'alt' | 'space' }
     // The color pair. Paint uses the foreground; typing uses both, where a none slot leaves that
     // attribute as it is underneath (with the background none, typed text sits on the image).
     editFgColor:  '#ffffff',
@@ -19,7 +19,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     recentColors: useLocalStorage('phosphor.recentColors', []),
     ansiRenderer: useLocalStorage('phosphor.ansiRenderer', 'canvas'), // the ANSI view's renderer (trial): 'canvas' | 'dom'
     activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
-    pickSwapped: false,    // the picker is only held by Alt from a paint tool
+    isShiftPressed: false,
+    pointerOverEditor: false, // the pointer is over the canvas (Space pans even with a button focused)
     pickLayers: { fg: true, bg: true }, // ANSI view: what a plain picker click picks (both lit: both)
     lastPick: null,          // the Color Picker's last ANSI pick, for the status bar: { col, row, fg, bg, fgFrom, bgFrom }
     textCursor: null,      // { col, row } of the Text tool's cursor
@@ -74,6 +75,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       return state.editorTab === 'input' ? state.inputActiveTool : state.outputActiveTool;
     },
     editMode: (state) => state.editorTab !== 'sauce',
+    pickSwapped: (state) => state.heldTool?.by === 'alt', // the picker is only held by Alt from a drawing tool
   },
   actions: {
     // Select rect (the whole grid: project.gridRect()) with the Select tool.
@@ -87,17 +89,25 @@ export const useWorkspaceStore = defineStore('workspace', {
         this.selection = null;
         this.selectionOffset = null;
       }
-      if (this.editorTab === 'input') {
-        if (this.inputActiveTool !== tool) {
-          this.previousTool = this.inputActiveTool;
-          this.inputActiveTool = tool;
-        }
-      } else {
-        if (this.outputActiveTool !== tool) {
-          this.previousTool = this.outputActiveTool;
-          this.outputActiveTool = tool;
-        }
-      }
+      this.heldTool = null; // a tool chosen while another is held stays chosen
+      if (this.editorTab === 'input') this.inputActiveTool = tool;
+      else this.outputActiveTool = tool;
+    },
+    // A tool held with a key (Alt: the picker; Space: the hand) swaps in without what choosing a tool
+    // does (the selection stays), and releaseTool puts the tool back. False when one is already held.
+    holdTool(tool, by) {
+      if (this.heldTool) return false;
+      const key = this.editorTab === 'input' ? 'inputActiveTool' : 'outputActiveTool';
+      this.heldTool = { key, tool: this[key], by };
+      this[key] = tool;
+      return true;
+    },
+    releaseTool() {
+      const held = this.heldTool;
+      if (!held) return;
+      this.heldTool = null;
+      this[held.key] = held.tool;
+      if (held.by === 'alt') this.endPick(); // a pick that ended with the key, not the pointer
     },
     // hex: choose that color (and clear the slot's none flag); null: set the slot to none.
     // remember: false while a native picker is being dragged, so only the final color is recent.

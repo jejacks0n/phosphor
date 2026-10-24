@@ -166,10 +166,10 @@ export function useEditorInteractions(options) {
     // Safari fix: if focus is stuck in a dropdown/select, the first click on the 
     // canvas might be consumed just to clear focus. Proactively blurring 
     // helps ensure the event is processed immediately. 
-    // We also use a debounce to allow both mousedown and pointerdown to be 
-    // mapped to this function without double-firing.
-    if (Date.now() - _lastInteractionTime < 50) return;
-    _lastInteractionTime = Date.now();
+    // Both mousedown and pointerdown are mapped to this function: the mousedown a browser sends right
+    // after a pointerdown (the same press) is dropped; two pointerdowns are two presses, however quick.
+    if (event.type === 'mousedown' && Date.now() - _lastInteractionTime < 50) return;
+    if (event.type === 'pointerdown') _lastInteractionTime = Date.now();
 
     if (document.activeElement && typeof document.activeElement.blur === 'function') {
       document.activeElement.blur();

@@ -69,9 +69,10 @@ function pickAt(pos, event) {
     swapped: workspaceStore.pickSwapped,
     target: pickTargetOf(workspaceStore.pickLayers),
   });
-  // The pixel view, and a picker held with Alt from a paint tool, pick exactly the half under the pointer.
+  // The pixel view, and a picker held with Alt from a drawing tool, pick exactly the half under the
+  // pointer: into the foreground, or with Alt+Shift the background.
   if (props.view === 'input' || workspaceStore.pickSwapped) {
-    workspaceStore.pickColor('fg', projectStore.rawColorAt(pos.x, pos.y));
+    workspaceStore.pickColor(mode === 'bg' ? 'bg' : 'fg', projectStore.rawColorAt(pos.x, pos.y));
     return;
   }
   const cell = cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows);
@@ -243,8 +244,8 @@ defineExpose({ centerContent });
       tabindex="0"
       :style="{ cursor: toolCursor }"
       @contextmenu.prevent
-      @mouseenter="isMouseOver = true"
-      @mouseleave="isMouseOver = false"
+      @mouseenter="isMouseOver = workspaceStore.pointerOverEditor = true"
+      @mouseleave="isMouseOver = workspaceStore.pointerOverEditor = false"
       @pointermove="onMouseMove"
       @pointerdown="startPaint"
       @mousedown="startPaint"

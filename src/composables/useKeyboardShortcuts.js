@@ -1,4 +1,4 @@
-import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { onMounted, onBeforeUnmount, watch } from 'vue';
 import { getTool } from '@/tools';
 import { clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
@@ -6,7 +6,6 @@ import { copySelection } from '@/composables/clipboard';
 import { typeText } from '@/composables/useTextTool';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
-  const _isAltSwapped = ref(false);
 
   const _handleUndoRedo = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
@@ -30,12 +29,38 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return false;
   };
 
+  // Held keys: Alt swaps a drawing tool for the picker (Shift added: the background color), Space any
+  // tool for the hand. Let go mid-drag and the tool comes back when the drag ends, so a pick or a pan
+  // never turns into a stroke.
+  let _releasePending = false;
+  const _release = () => {
+    _releasePending = workspaceStore.isPainting;
+    if (!_releasePending) workspaceStore.releaseTool();
+  };
+  watch(() => workspaceStore.isPainting, (painting) => { if (!painting && _releasePending) _release(); });
+
+  // Space pans unless it types (a text field, Edit Mode's typing) or presses a focused control (a
+  // button, a menu) while the pointer isn't over the canvas.
+  const TYPES = 'input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, select, [contenteditable]';
+  const PRESSES = 'button, a, [role="tab"], [role="button"], input[type=checkbox], input[type=radio]';
+  const _spacePans = (e) => {
+    if (workspaceStore.editorTab === 'sauce' || workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false;
+    const target = e.target?.closest ? e.target : null;
+    if (target?.closest(TYPES)) return false;
+    return !target?.closest(PRESSES) || workspaceStore.pointerOverEditor;
+  };
+
   const _handleToolSwap = (e) => {
-    if (e.key === 'Alt' && getTool(workspaceStore.activeTool).altPicks && !_isAltSwapped.value) {
-      _isAltSwapped.value = true;
-      workspaceStore.pickSwapped = true;
-      workspaceStore.setActiveTool('picker');
+    if (e.key === 'Alt' && !e.repeat && !workspaceStore.isPainting && getTool(workspaceStore.activeTool).altPicks) {
+      return workspaceStore.holdTool('picker', 'alt');
+    }
+    if (e.code === 'Space' && workspaceStore.heldTool?.by === 'space') {
+      e.preventDefault(); // held: no page scroll, no button press
       return true;
+    }
+    if (e.code === 'Space' && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && _spacePans(e)) {
+      e.preventDefault();
+      return workspaceStore.holdTool('hand', 'space');
     }
     return false;
   };
@@ -129,6 +154,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (e.key === 'Control') {
       workspaceStore.isCtrlPressed = true;
     }
+    if (e.key === 'Shift') workspaceStore.isShiftPressed = true;
 
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;
@@ -142,23 +168,19 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       workspaceStore.isCtrlPressed = false;
     }
 
-    if (e.key === 'Alt' && _isAltSwapped.value) {
-      workspaceStore.setActiveTool(workspaceStore.previousTool);
-      _isAltSwapped.value = false;
-      workspaceStore.pickSwapped = false;
-      workspaceStore.endPick(); // a pick that ended with the Alt key, not the pointer
+    if (e.key === 'Shift') workspaceStore.isShiftPressed = false;
+    const held = workspaceStore.heldTool?.by;
+    if ((e.key === 'Alt' && held === 'alt') || (e.code === 'Space' && held === 'space')) {
+      if (e.code === 'Space') e.preventDefault(); // a focused button isn't pressed by the Space that panned
+      _release();
     }
   };
 
   const _handleBlur = () => {
     workspaceStore.isCtrlPressed = false;
     workspaceStore.isMiddleClick = false;
-    if (_isAltSwapped.value) {
-      workspaceStore.setActiveTool(workspaceStore.previousTool);
-      _isAltSwapped.value = false;
-      workspaceStore.pickSwapped = false;
-      workspaceStore.endPick(); // a pick that ended with the Alt key, not the pointer
-    }
+    workspaceStore.isShiftPressed = false;
+    if (workspaceStore.heldTool) _release(); // the keys were let go while the window was away
   };
 
   const _handleContextMenu = (e) => {
