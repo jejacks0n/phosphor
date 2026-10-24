@@ -9,12 +9,14 @@ import PaintLayer, { editScaleFor, resizeTransform } from "@/document/PaintLayer
 import { EMPTY_BASE, withPins, withoutPins, remapBaseRecords } from "@/document/baseRecords.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
-import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, BLANK } from "@/document/editCells.js";
+import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, BLANK, bakeEditCells, bakeEntry } from "@/document/editCells.js";
+import { processedImage } from "@/lib/ImageProcessor.js";
+import { bakedCanvas, getEffectiveColor } from "@/lib/PixelTransforms.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { cellWidth } from "@/lib/CharWidth.js";
 import { overwritesAll } from "@/document/wideChars.js";
-import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, baseParams } from "@/store/settings.js";
+import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, baseParams, slidersAtDefaults } from "@/store/settings.js";
 
 const MAX_DIMENSION = 300;
 const DEFAULT_COLS = getSetting('cols').default;
@@ -62,6 +64,8 @@ export const useProjectStore = defineStore('project', {
 
   getters: {
     canUndo: (state) => state.historyVersion >= 0 && state.history.canUndo,
+    // Something to bake: an image, and a Transform, Adjustment or Effect slider off its default.
+    canBake: (state) => !!state.image && !slidersAtDefaults(state),
     canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo,
     hasEdits: (state) => state.editCells.size > 0 || state.hasPaint, // anything on the edit layer (a grid resize is then a canvas resize)
     isDirty: (state) => settingsJson(state) !== state.savedSettings || state.editVersion !== state.savedEditVersion,
@@ -316,6 +320,72 @@ export const useProjectStore = defineStore('project', {
 
     resetGroup(group) {
       this.$patch(groupDefaults(group));
+    },
+
+    // Bake: the picture as it shows becomes the image and the Transform, Adjustment and Effect
+    // sliders go back to neutral, with nothing on the canvas changing. The image is what the
+    // preview is made from (the processed image at its processing size; the palette isn't baked,
+    // it keeps applying). The colour transforms also tint the drawing when it's shown, so they're
+    // burnt into it (paint, the base's own pixels, edit cells) and into the colour pair and the
+    // clipboard; recent colours are shared across projects and stay. One undo step; undoing after a
+    // second round of slider changes keeps that round for redo.
+    async bake() {
+      if (!this.canBake || this._baking) return;
+      this._baking = true;
+      try {
+        this.ensureLayer();
+        this.commitPending();
+        const workspace = useWorkspaceStore();
+        const params = this.processParams;
+
+        const canvas = await processedImage(this.image, params);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const image = await loadImage(blob);
+        const imageBuffer = await blob.arrayBuffer();
+
+        const defaults = Object.assign({}, ...RESET_GROUPS.map(groupDefaults));
+        const sliders = () => Object.fromEntries(Object.keys(defaults).map(key => [key, this[key]]));
+        const baked = (snapshot) => snapshot && { ...snapshot, canvas: bakedCanvas(snapshot.canvas, params) };
+        const clip = workspace.clipboard;
+        const before = {
+          image: this.image, imageBuffer: this.imageBuffer, sliders: sliders(),
+          paint: this.paintLayer.snapshot(), base: this.baseLayer.snapshot(), editCells: this.editCells,
+          fg: workspace.editFgColor, bg: workspace.editBgColor, clipboard: clip,
+        };
+        const after = {
+          image, imageBuffer, sliders: defaults,
+          paint: baked(before.paint), base: baked(before.base), editCells: bakeEditCells(this.editCells, params),
+          fg: getEffectiveColor(before.fg, params), bg: getEffectiveColor(before.bg, params),
+          clipboard: clip && {
+            ...clip,
+            ...(clip.cells && { cells: clip.cells.map(entry => entry && bakeEntry(entry, params)) }),
+            ...(clip.paint && { paint: bakedCanvas(clip.paint, params) }),
+            ...(clip.base && { base: { ...clip.base, pixels: bakedCanvas(clip.base.pixels, params) } }),
+          },
+        };
+
+        const apply = (state) => {
+          this.$patch({ image: shallowRef(state.image), imageBuffer: state.imageBuffer, ...state.sliders });
+          this.paintLayer.restore(state.paint);
+          this.baseLayer.restore(state.base);
+          this.hasPaint = this.paintLayer.hasPaint;
+          this.editCells = state.editCells;
+          workspace.editFgColor = state.fg;
+          workspace.editBgColor = state.bg;
+          workspace.clipboard = state.clipboard;
+          this.render();
+        };
+        apply(after);
+        this.pushEdit({
+          undo: () => {
+            after.sliders = sliders(); // a second round of slider changes comes back on redo
+            apply(before);
+          },
+          redo: () => apply(after),
+        });
+      } finally {
+        this._baking = false;
+      }
     },
 
     updateCols(val) {

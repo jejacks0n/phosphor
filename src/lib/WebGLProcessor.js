@@ -284,7 +284,9 @@ export default class WebGLProcessor {
     gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
   }
 
-  process(image, params, targetWidth, targetHeight) {
+  // snapLastPass: false leaves the CGA/VGA palette snap out of the last pass (a bake captures the
+  // picture without it; the palette keeps applying when it's rendered).
+  process(image, params, targetWidth, targetHeight, { snapLastPass = true } = {}) {
     const gl = this.gl;
     const program = this.program;
 
@@ -397,7 +399,7 @@ export default class WebGLProcessor {
       setUniform('uEdgeColor', params.edgeColor ?? [0, 0, 0]);
       setUniform('uEdgeThickness', params.edgeThickness ?? 1);
       setUniform('uPaletteSize', paletteSize);
-      setUniform('uUsePalette', paletteSize > 0);
+      setUniform('uUsePalette', paletteSize > 0 && (snapLastPass || i < passes - 1));
       setUniform('uApplyFilters', i === passes - 1);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);

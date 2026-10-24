@@ -3,7 +3,7 @@
  */
 
 import { rgb2hex, hex2rgb, PALETTES } from './ColorUtils.js';
-import Canvas, { fitRect } from './Canvas.js';
+import Canvas, { fitRect, ctx2d } from './Canvas.js';
 import WebGLProcessor from './WebGLProcessor.js';
 import quantizeColors from './Quantizer.js';
 
@@ -42,9 +42,10 @@ export function applyQuantization(canvas, qColors) {
   }
 }
 
-export async function processImage(image, params) {
+// Where the image goes in the grid, the size it's processed at and the shader's parameters.
+function prepare(image, params) {
   const {
-    cols, rows, smoothing,
+    cols, rows,
     invert, brightness, contrast, saturation,
     sharpen, flatten, edges, edgeColor, edgeThickness,
     quantize
@@ -70,8 +71,6 @@ export async function processImage(image, params) {
     ph = Math.floor(sh * s);
   }
 
-  if (!glProcessor) glProcessor = new WebGLProcessor();
-  
   const ec = hex2rgb(edgeColor);
   const cz = hex2rgb(params.colorize || '#ff00ff');
   const glParams = {
@@ -90,7 +89,13 @@ export async function processImage(image, params) {
     palette: (quantize === 'cga' || quantize === 'vga') ? PALETTES[quantize] : null,
     passes: Math.max(1, Math.floor(parseFloat(flatten) / 2))
   };
+  return { dx, dy, dw, dh, pw, ph, glParams };
+}
 
+export async function processImage(image, params) {
+  const { cols, rows, smoothing } = params;
+  const { dx, dy, dw, dh, pw, ph, glParams } = prepare(image, params);
+  if (!glProcessor) glProcessor = new WebGLProcessor();
   glProcessor.process(image, glParams, pw, ph);
 
   // Final output stage (downsizing)
@@ -104,4 +109,18 @@ export async function processImage(image, params) {
 
   // Quantization happens after paint is composited (Renderer), not here.
   return { canvas, paletteColors: getPaletteColors(params, canvas) };
+}
+
+// The image as the preview is made from it (the processed image before it's downsized to the
+// grid, at the size processImage processes it), without the palette snap in its last pass: what a
+// bake makes the new image. A copy, so the next render can't draw over it.
+export async function processedImage(image, params) {
+  const { pw, ph, glParams } = prepare(image, params);
+  if (!glProcessor) glProcessor = new WebGLProcessor();
+  glProcessor.process(image, glParams, pw, ph, { snapLastPass: false });
+  const out = document.createElement('canvas');
+  out.width = pw;
+  out.height = ph;
+  ctx2d(out).drawImage(glProcessor.canvas, 0, 0);
+  return out;
 }
