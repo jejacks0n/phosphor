@@ -1,18 +1,18 @@
 <script setup>
 import { onMounted, useTemplateRef } from 'vue';
 
-// Merge down's choice, centred over the page like a confirm box: merge exactly (crisp, untouched by
-// effects), or into the picture (part of the image, so every effect applies to it, live).
-// selection: only the selection's part of the edit layer is merging. note: the picture is still
-// the original image, so say what the first Into-the-picture merge costs.
+// A choice centred over the page like a confirm box (Merge down: exactly or into the picture; Bake
+// under CGA/VGA: keep full colour or lock to the palette). choices: [{ id, title, text, note? }],
+// the first focused, the second accented as the alternative; choosing emits its id.
 const props = defineProps({
-  selection: { type: Boolean, default: false },
-  note: { type: Boolean, default: false },
+  title: { type: String, required: true },
+  sub: { type: String, required: true },
+  choices: { type: Array, required: true },
 });
 const emit = defineEmits(['choose', 'cancel']);
-const exactly = useTemplateRef('exactly');
+const dialog = useTemplateRef('dialog');
 
-onMounted(() => exactly.value?.focus());
+onMounted(() => dialog.value?.querySelector('button.choice')?.focus());
 
 // While it's up, keys are the dialog's: none reach the app's shortcuts (Backspace would delete the
 // selection that's merging, the arrows nudge it). Escape cancels; Tab keeps to the dialog's buttons.
@@ -33,26 +33,20 @@ function onKeyDown(event) {
 
 <template>
   <Teleport to="body">
-    <div class="merge-backdrop" @click.self="emit('cancel')">
-      <div class="merge-dialog" role="dialog" aria-modal="true" aria-labelledby="merge-dialog-title" @keydown="onKeyDown">
-        <h3 id="merge-dialog-title">{{ props.selection ? 'Merge the selection down' : 'Merge the edit layer down' }}</h3>
-        <p class="sub">
-          {{ props.selection
-            ? "Only what's drawn inside the selection moves into the base layer; the rest of the edit layer stays where it is."
-            : "Everything you've drawn moves into the base layer. How should it go in?" }}
-        </p>
-        <button ref="exactly" class="choice" @click="emit('choose', 'exact')">
-          <b>Exactly</b>
-          <span>Stays crisp, cell for cell, as it shows now. Effects like Edges and Sharpen don't touch it.</span>
-        </button>
-        <button class="choice into" @click="emit('choose', 'picture')">
-          <b>Into the picture</b>
-          <span>Becomes part of the image itself, so every effect applies to it, live, like the photo.</span>
-          <span v-if="props.note" class="warn">
-            The picture becomes the working-size copy the preview is made from (like Bake), so growing the
-            grid later works from that, and effects like Edges can shift slightly across the picture this
-            first time.
-          </span>
+    <div class="choice-backdrop" @click.self="emit('cancel')">
+      <div ref="dialog" class="choice-dialog" role="dialog" aria-modal="true" aria-labelledby="choice-dialog-title" @keydown="onKeyDown">
+        <h3 id="choice-dialog-title">{{ props.title }}</h3>
+        <p class="sub">{{ props.sub }}</p>
+        <button
+            v-for="(choice, i) in props.choices"
+            :key="choice.id"
+            class="choice"
+            :class="{ alternative: i === 1 }"
+            @click="emit('choose', choice.id)"
+        >
+          <b>{{ choice.title }}</b>
+          <span>{{ choice.text }}</span>
+          <span v-if="choice.note" class="warn">{{ choice.note }}</span>
         </button>
         <div class="actions">
           <button class="cancel" @click="emit('cancel')">Cancel</button>
@@ -63,7 +57,7 @@ function onKeyDown(event) {
 </template>
 
 <style scoped>
-div.merge-backdrop {
+div.choice-backdrop {
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -75,7 +69,7 @@ div.merge-backdrop {
   backdrop-filter: blur(2px);
 }
 
-div.merge-dialog {
+div.choice-dialog {
   width: 100%;
   max-width: 440px;
   padding: 18px;
@@ -128,11 +122,11 @@ button.choice span {
   font-size: 13px;
 }
 
-button.choice.into {
+button.choice.alternative {
   border-color: var(--accent);
 }
 
-button.choice.into b {
+button.choice.alternative b {
   color: var(--accent-hot);
 }
 

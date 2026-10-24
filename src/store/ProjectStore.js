@@ -337,11 +337,13 @@ export const useProjectStore = defineStore('project', {
     // Bake: the picture as it shows becomes the image and the Transform, Adjustment and Effect
     // sliders go back to neutral, with nothing on the canvas changing. The image is what the
     // preview is made from (the processed image at its processing size; the palette isn't baked,
-    // it keeps applying). The colour transforms also tint the drawing when it's shown, so they're
+    // it keeps applying). Under CGA/VGA that can tip a cell near a palette boundary (8-bit rounding);
+    // lockPalette bakes the palette into the image instead, so nothing moves, but the picture keeps
+    // only the palette's colours. The colour transforms also tint the drawing when it's shown, so they're
     // burnt into it (paint, the base's own pixels, edit cells) and into the colour pair and the
     // clipboard; recent colours are shared across projects and stay. One undo step; undoing after a
     // second round of slider changes keeps that round for redo.
-    async bake() {
+    async bake({ lockPalette = false } = {}) {
       if (!this.canBake || this._baking) return;
       this._baking = true;
       try {
@@ -350,7 +352,7 @@ export const useProjectStore = defineStore('project', {
         const workspace = useWorkspaceStore();
         const params = this.processParams;
 
-        const canvas = await processedImage(this.image, params);
+        const canvas = await processedImage(this.image, params, { snap: lockPalette });
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
         const image = await loadImage(blob);
         const imageBuffer = await blob.arrayBuffer();

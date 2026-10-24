@@ -1,8 +1,8 @@
 // Bake: the picture as it shows becomes the image and the sliders go back to neutral, with nothing on
-// the canvas changing (docs/layers.md, Baking). The colour palette isn't baked: under CGA and VGA,
-// cells can tip to the neighbouring palette colour (the baked image is rounded to 8 bits, the shader
-// snapped at full precision; on a smooth gradient that's ~14% of cells). Whether to bake those
-// palettes in instead is an open decision; until then the test pins only what's guaranteed.
+// the canvas changing (docs/layers.md, Baking). Under CGA and VGA, keeping full colour can tip
+// cells to the neighbouring palette colour (the baked image is rounded to 8 bits, the shader snapped
+// at full precision; with many sliders on a gradient that's ~13% of cells), so that test pins only
+// what's guaranteed; locking to the palette bakes it in, and nothing moves.
 import { describe, test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { drawnDocument, outputKey } from '../support/scenes.js';
@@ -43,6 +43,24 @@ describe('nothing on the canvas changes', () => {
         expect(palette.has(cell.fg.hex.toLowerCase()) && palette.has(cell.bg.hex.toLowerCase())).toBe(true);
       }
       expect(project.canBake).toBe(false);
+    });
+
+    test(`colour palette: ${quantize}, locked to it: nothing changes, and the picture is palette colours only`, async () => {
+      const { project, workspace } = await createTestApp();
+      await drawnDocument(project, workspace, { quantize, clipboard: true });
+      Object.assign(project, SLIDERS);
+      await settle(project);
+      const cells = cellsKey(project), output = outputKey(project);
+      await project.bake({ lockPalette: true });
+      await settle(project);
+      expect(cellsKey(project)).toEqual(cells);
+      expect(outputKey(project)).toBe(output);
+      const palette = new Set(project.activePalette.map((p) => p.hex.toLowerCase()));
+      const { naturalWidth: w, naturalHeight: h } = project.image;
+      const ctx = Object.assign(document.createElement('canvas'), { width: w, height: h }).getContext('2d');
+      ctx.drawImage(project.image, 0, 0);
+      const data = ctx.getImageData(0, 0, w, h).data, hex = (o) => `#${[0, 1, 2].map((k) => data[o + k].toString(16).padStart(2, '0')).join('')}`;
+      for (let o = 0; o < data.length; o += 4) if (!palette.has(hex(o))) throw new Error(`baked pixel ${o / 4} is ${hex(o)}, not a ${quantize} colour`);
     });
   }
 

@@ -40,8 +40,14 @@ round on top of the result. Nothing on the canvas changes when you bake:
 - Your drawing keeps its colours. The colour sliders tint your paint, your edit cells and your
   edits to the base, so baking burns them in; the same goes for your colour pair and anything
   you've copied.
-- The colour palette isn't baked: it keeps applying afterwards. (With CGA or VGA, a handful of
-  cells can come out as the neighbouring palette colour.)
+- The colour palette isn't baked: it keeps applying afterwards.
+- With the CGA or VGA palette, Bake asks how to keep the colours:
+  - **Keep full colour** (the default): the picture keeps its in-between colours, so switching the
+    palette later still has them. A few cells near the edges between palette colours can come out
+    as the neighbouring colour, more with many sliders on.
+  - **Lock to the palette**: nothing on the canvas changes, but the picture keeps only the
+    palette's colours, so switching to full colour later won't bring the in-between shades back.
+    Your drawing keeps its own colours either way.
 - Undo brings the original image and the sliders back. Once you've baked, saving keeps only the
   baked image.
 

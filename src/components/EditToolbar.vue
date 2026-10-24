@@ -10,7 +10,7 @@ import ColorPair from '@/components/ColorPair.vue';
 import PaletteStrip from '@/components/PaletteStrip.vue';
 import LayerToggles from '@/components/LayerToggles.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
-import MergeDialog from '@/components/MergeDialog.vue';
+import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import { copySelection as copyToClipboards } from '@/composables/clipboard';
 
 const project = useProjectStore();
@@ -108,6 +108,31 @@ function merge(kind) {
   if (kind === 'exact') project.mergeDown(rect);
   else project.mergeIntoPicture(rect);
 }
+const MERGE_CHOICES = [
+  { id: 'exact', title: 'Exactly', text: "Stays crisp, cell for cell, as it shows now. Effects like Edges and Sharpen don't touch it." },
+  { id: 'picture', title: 'Into the picture', text: 'Becomes part of the image itself, so every effect applies to it, live, like the photo.' },
+];
+const ORIGINAL_NOTE = 'The picture becomes the working-size copy the preview is made from (like Bake), so growing the grid later works from that, and effects like Edges can shift slightly across the picture this first time.';
+const mergeChoices = computed(() => (project.pictureIsOriginal ? [MERGE_CHOICES[0], { ...MERGE_CHOICES[1], note: ORIGINAL_NOTE }] : MERGE_CHOICES));
+
+// Bake under CGA or VGA asks whether to lock the picture to the palette (exact, but the in-between
+// colours are gone) or keep full colour (a few cells near palette boundaries can tip). Other
+// palettes bake exactly either way.
+const baking = ref(null); // the palette's name while the dialog is open
+function bake() {
+  const palette = { cga: 'CGA', vga: 'VGA' }[project.quantize];
+  if (palette) baking.value = palette;
+  else project.bake();
+}
+const bakeChoices = computed(() => [
+  { id: 'full', title: 'Keep full colour', text: `The picture keeps its in-between colours, so switching the palette later still has them. A few cells near the edges between ${baking.value} colours may change, more with many sliders on.` },
+  { id: 'lock', title: `Lock to the ${baking.value} palette`, text: `Nothing on the canvas changes. The picture keeps only the ${baking.value} colours, so switching to full colour later won't bring the in-between shades back (undo will).` },
+]);
+function chooseBake(id) {
+  baking.value = null;
+  project.bake({ lockPalette: id === 'lock' });
+}
+
 // The selection's Merge down: only when something's drawn inside it.
 const selectionHasEdits = computed(() => {
   void project.editCells; void project.hasPaint; void project.historyVersion; // re-check after edits
@@ -116,12 +141,23 @@ const selectionHasEdits = computed(() => {
 </script>
 
 <template>
-  <MergeDialog
+  <ChoiceDialog
       v-if="merging"
-      :selection="!!merging.rect"
-      :note="project.pictureIsOriginal"
+      :title="merging.rect ? 'Merge the selection down' : 'Merge the edit layer down'"
+      :sub="merging.rect
+        ? 'Only what\'s drawn inside the selection moves into the base layer; the rest of the edit layer stays where it is.'
+        : 'Everything you\'ve drawn moves into the base layer. How should it go in?'"
+      :choices="mergeChoices"
       @choose="merge"
       @cancel="merging = null"
+  />
+  <ChoiceDialog
+      v-if="baking"
+      :title="`Bake with the ${baking} palette`"
+      sub="The picture as it looks now becomes the image, and the sliders go back to neutral. How should it keep its colours?"
+      :choices="bakeChoices"
+      @choose="chooseBake"
+      @cancel="baking = null"
   />
   <article class="edit-toolbar">
     <div class="toolbar-row primary-row">
@@ -195,7 +231,7 @@ const selectionHasEdits = computed(() => {
 
         <button
             title="Bake: the picture as it looks now becomes the image, and the Transforms, Adjustments and Image Filters sliders go back to neutral. Your drawing keeps its colours; undo brings the original back."
-            @click="project.bake()"
+            @click="bake"
             class="primary"
             :disabled="!project.canBake"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg></button>
@@ -227,7 +263,7 @@ const selectionHasEdits = computed(() => {
             </svg>
             Redo
           </button>
-          <button @click="project.bake()" :disabled="!project.canBake">
+          <button @click="bake" :disabled="!project.canBake">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg>
             Bake Effects
           </button>

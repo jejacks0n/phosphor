@@ -120,13 +120,13 @@ export async function processImage(image, params) {
 }
 
 // The image as the preview is made from it (the processed image before it's downsized to the
-// grid, at the size processImage processes it), without the palette snap in its last pass: what a
-// bake makes the new image. A copy, so the next render can't draw over it. m: a fixed processing
-// scale (an Into-the-picture merge needs whole pixels per grid pixel).
-export async function processedImage(image, params, { m = null } = {}) {
+// grid, at the size processImage processes it), without the palette snap in its last pass unless
+// snap (a bake locked to CGA/VGA): what a bake makes the new image. A copy, so the next render can't
+// draw over it. m: a fixed processing scale (an Into-the-picture merge needs whole pixels per grid pixel).
+export async function processedImage(image, params, { m = null, snap = false } = {}) {
   const { pw, ph, glParams } = prepare(image, params, m);
   if (!glProcessor) glProcessor = new WebGLProcessor();
-  glProcessor.process(image, glParams, pw, ph, { snapLastPass: false });
+  glProcessor.process(image, glParams, pw, ph, { snapLastPass: snap });
   const out = document.createElement('canvas');
   out.width = pw;
   out.height = ph;

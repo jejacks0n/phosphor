@@ -15,7 +15,7 @@ test('the merge dialog: centred, cancelled three ways, keys kept inside, each ch
   await drawLine(page, 5);
 
   await mergeButton(page).click();
-  const box = await page.locator('.merge-dialog').boundingBox();
+  const box = await page.locator('.choice-dialog').boundingBox();
   const viewport = page.viewportSize();
   expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(2);
   expect(Math.abs(box.y + box.height / 2 - viewport.height / 2)).toBeLessThan(2);
