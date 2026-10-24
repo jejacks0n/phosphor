@@ -48,3 +48,25 @@ test('the ASCII styles have their own sets', async ({ page }) => {
   await list(page).getByRole('option', { name: /^Classic ramp/ }).click();
   expect(await store(page, 'project', (p) => p.charsAscii)).toBe(' .:-=+*#%@');
 });
+
+test.describe('on a touch screen', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+  test('the ▾ is a native select (the system picker), and the field still types', async ({ page }) => {
+    await openApp(page);
+    await page.getByTitle('Toggle Settings').click();
+    const native = page.getByRole('combobox', { name: 'Character sets' });
+    await expect(native).toHaveJSProperty('tagName', 'SELECT');
+    await expect(native.locator('option:checked')).toHaveText(/^Default/);
+
+    await native.selectOption({ label: 'Pixel  ▄' });
+    await expect(field(page)).toHaveValue('▄');
+    await expect(label(page)).toHaveText('Pixel');
+    await expect(list(page)).toHaveCount(0); // no custom list
+
+    await field(page).fill('#@');
+    await field(page).press('Enter');
+    await expect(label(page)).toHaveText('Custom');
+    await expect(native.locator('option:checked')).toHaveText('Custom');
+  });
+});

@@ -1,9 +1,12 @@
 <script setup>
 import { ref, computed, useId, onMounted, onBeforeUnmount } from 'vue';
+import { useMediaQuery } from '@vueuse/core';
 
 // A text field you can type any characters into, with a ▾ list of ready-made sets that fills it
 // (the ARIA editable combobox pattern: the list doesn't filter, it offers). Typing commits on change,
-// like the field it replaces; picking a set commits at once.
+// like the field it replaces; picking a set commits at once. On touch screens the ▾ is a native
+// <select> laid invisibly over it, so the sets come up in the system's own picker, as the other
+// menus do (iOS's wheel or popover, Android's sheet).
 const props = defineProps({
   modelValue: { type: String, required: true },
   presets: { type: Array, required: true }, // [{ name, chars }]
@@ -18,6 +21,12 @@ const active = ref(-1);
 const listId = `${useId()}-list`;
 const optionId = (i) => `${listId}-${i}`;
 const current = computed(() => props.presets.findIndex((p) => p.chars === props.modelValue));
+const touch = useMediaQuery('(pointer: coarse)');
+const preview = (chars) => { const all = [...chars]; return all.length > 14 ? `${all.slice(0, 14).join('')}…` : chars; };
+function pickNative(event) {
+  const preset = props.presets[Number(event.target.value)];
+  if (preset) choose(preset);
+}
 
 function show() {
   open.value = true;
@@ -77,7 +86,11 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside, tru
         @keydown="onKeyDown"
         @blur="open = false"
     >
-    <button type="button" class="toggle" tabindex="-1" aria-label="Character sets" :aria-expanded="open" :aria-controls="listId" @mousedown.prevent @click="toggle">
+    <select v-if="touch" class="native" aria-label="Character sets" :value="current" @change="pickNative">
+      <option v-if="current < 0" :value="-1" disabled>Custom</option>
+      <option v-for="(preset, i) in presets" :key="preset.name" :value="i">{{ preset.name }}  {{ preview(preset.chars) }}</option>
+    </select>
+    <button type="button" class="toggle" tabindex="-1" :aria-hidden="touch" aria-label="Character sets" :aria-expanded="open" :aria-controls="listId" @mousedown.prevent @click="toggle">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
     </button>
     <ul v-if="open" :id="listId" role="listbox" aria-label="Character sets">
@@ -105,6 +118,19 @@ div.charset-field {
 
 input {
   padding-right: 34px;
+}
+
+/* Over the ▾, invisible: a tap opens the system picker. */
+select.native {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  width: 34px;
+  height: 100%;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 button.toggle {
