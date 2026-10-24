@@ -129,10 +129,14 @@ export default function quantize(pixels, maxColors) {
       }
       sum += sliceCount;
       if (sum >= count / 2) {
+        // A median in the box's last slice (a picture pushed to pure white) would leave nothing
+        // on the far side: cut before that slice instead, when there are pixels before it, so
+        // both halves have some (boxes aren't shrunk to their pixels, so that side can be empty).
+        const cut = i === a2 && sum > sliceCount ? i - 1 : i;
         const v1 = vbox.copy();
         const v2 = vbox.copy();
-        v1[axisToSplit + '2'] = i;
-        v2[axisToSplit + '1'] = i + 1;
+        v1[axisToSplit + '2'] = cut;
+        v2[axisToSplit + '1'] = cut + 1;
         return [v1, v2];
       }
     }
