@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { SETTINGS, getSetting } from '@/store/settings';
@@ -7,6 +8,8 @@ import ProjectActions from '@/components/ProjectActions.vue';
 import ProjectFooter from '@/components/ProjectFooter.vue';
 import HelpInfo from '@/components/HelpInfo.vue';
 import RangeField from '@/components/RangeField.vue';
+import CharsetField from '@/components/CharsetField.vue';
+import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
 
 const store = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -19,6 +22,12 @@ const SLIDER_GROUPS = [
 ].map(group => ({ ...group, sliders: SETTINGS.filter(s => s.group === group.id && s.min !== undefined) }));
 
 const help = (key) => getSetting(key).help;
+
+// The ready-made set the Characters field holds, or Custom.
+const charsetName = computed(() => {
+  const [chars, presets] = store.renderStyle === 'ansi' ? [store.chars, ANSI_CHARSETS] : [store.charsAscii, ASCII_CHARSETS];
+  return presets.find((p) => p.chars === chars)?.name ?? 'Custom';
+});
 </script>
 
 <template>
@@ -67,9 +76,12 @@ const help = (key) => getSetting(key).help;
       </div>
 
       <div class="field">
-        <div class="label-group"><label for="chars">Characters</label><HelpInfo :text="help('chars')" /></div>
-        <input v-if="store.renderStyle === 'ansi'" type="text" id="chars" v-model.lazy="store.chars" placeholder="characters" class="mono">
-        <input v-else type="text" id="chars" v-model.lazy="store.charsAscii" placeholder="characters" class="mono">
+        <div class="label-row">
+          <div class="label-group"><label for="chars">Characters</label><HelpInfo :text="help('chars')" /></div>
+          <span class="value">{{ charsetName }}</span>
+        </div>
+        <CharsetField v-if="store.renderStyle === 'ansi'" id="chars" v-model="store.chars" :presets="ANSI_CHARSETS"/>
+        <CharsetField v-else id="chars" v-model="store.charsAscii" :presets="ASCII_CHARSETS"/>
       </div>
 
       <div v-if="store.renderStyle === 'ansi' && store.chars.length > 1" class="field">
