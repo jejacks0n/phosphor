@@ -8,7 +8,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: 'http://localhost:4180',
     viewport: { width: 1400, height: 900 },
     trace: 'retain-on-failure',
   },
@@ -16,8 +16,8 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } } },
   ],
   webServer: {
-    command: 'npm run build && npx vite preview --port 4173 --strictPort',
-    url: 'http://localhost:4173',
+    command: 'npm run build && npx vite preview --port 4180 --strictPort',
+    url: 'http://localhost:4180',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
