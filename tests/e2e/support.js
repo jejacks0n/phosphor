@@ -17,7 +17,7 @@ export async function openApp(page, image = 'images/gradient.png') {
 }
 
 // An editor tab: PIXEL, ANSI or SAUCE.
-export const tab = (page, label) => page.locator('nav.workspace-tabs li', { hasText: new RegExp(`^${label}$`) });
+export const tab = (page, label) => page.getByRole('tab', { name: label, exact: true });
 
 // A store's state, or an expression over it: store(page, 'project', (p) => p.cells.length).
 export function store(page, name, read = (s) => s.$state) {

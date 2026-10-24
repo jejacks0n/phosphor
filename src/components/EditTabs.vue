@@ -65,10 +65,23 @@ export default {
   },
   methods: {
     ...mapActions(useWorkspaceStore, ['toggleSettings']),
+    // The tabs pattern: Left/Right (wrapping), Home and End move to a tab and select it, skipping
+    // disabled ones. The keys stop here, so they don't also nudge a selection or move the text cursor.
+    onKeyDown(event) {
+      const tabs = [...event.currentTarget.querySelectorAll('[role="tab"]:not(:disabled)')];
+      const at = tabs.indexOf(document.activeElement);
+      const next = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: tabs.length - 1 }[event.key];
+      if (next === undefined || at < 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const tab = tabs[(next + tabs.length) % tabs.length];
+      tab.focus();
+      this.$emit('update:modelValue', tab.dataset.id);
+    },
     updateIndicator() {
       requestAnimationFrame(() => {
         const listEl = this.$refs.tabList;
-        const activeEl = listEl?.querySelector('li.active');
+        const activeEl = listEl?.querySelector('[role="tab"].active');
 
         if (activeEl && listEl) {
           const listRect = listEl.getBoundingClientRect();
@@ -95,18 +108,24 @@ export default {
       <span></span>
       <span></span>
     </button>
-    <ul ref="tabList">
-      <li
+    <div ref="tabList" class="tab-list" role="tablist" aria-label="Editor" @keydown="onKeyDown">
+      <button
           v-for="tab in tabs"
           :key="tab.id"
-          :class="{ active: modelValue === tab.id, disabled: tab.disabled }"
+          class="tab"
+          role="tab"
+          :class="{ active: modelValue === tab.id }"
+          :aria-selected="modelValue === tab.id"
+          :tabindex="modelValue === tab.id ? 0 : -1"
+          :disabled="tab.disabled"
+          :data-id="tab.id"
           :data-text="tab.label"
-          @click="!tab.disabled && $emit('update:modelValue', tab.id)"
+          @click="$emit('update:modelValue', tab.id)"
       >
         {{ tab.label }}
-      </li>
-      <div class="indicator" :style="indicatorStyle"></div>
-    </ul>
+      </button>
+      <div class="indicator" :style="indicatorStyle" aria-hidden="true"></div>
+    </div>
   </nav>
 </template>
 
@@ -120,7 +139,7 @@ nav.workspace-tabs {
   border-bottom: 1px solid var(--border);
 }
 
-button {
+button.menu-btn {
   display: none;
   flex-shrink: 0;
   flex-direction: column;
@@ -137,11 +156,11 @@ button {
   box-shadow: none !important;
 }
 
-button:hover {
+button.menu-btn:hover {
   opacity: 1;
 }
 
-button span {
+button.menu-btn span {
   width: 100%;
   height: 2px;
   border-radius: 2px;
@@ -150,36 +169,38 @@ button span {
   background-color: var(--text);
 }
 
-button.open span:nth-child(1) {
+button.menu-btn.open span:nth-child(1) {
   transform: translateY(6px) rotate(45deg);
 }
 
-button.open span:nth-child(2) {
+button.menu-btn.open span:nth-child(2) {
   opacity: 0;
   transform: scaleX(0);
 }
 
-button.open span:nth-child(3) {
+button.menu-btn.open span:nth-child(3) {
   transform: translateY(-6px) rotate(-45deg);
 }
 
-ul {
+div.tab-list {
   display: flex;
   gap: 3px;
   flex-shrink: 0;
   margin: 0;
   padding: 6px 0 0;
-  list-style: none;
   position: relative;
 }
 
-li {
+button.tab {
   padding: 5px 24px;
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
+  font-weight: normal;
+  line-height: normal;
   user-select: none;
   transition: color 0.3s ease;
+  box-shadow: none;
   border-radius: 5px 5px 0 0;
   position: relative;
   z-index: 1;
@@ -193,7 +214,7 @@ li {
   color: var(--text-muted);
 }
 
-li::after {
+button.tab::after {
   content: attr(data-text);
   height: 0;
   visibility: hidden;
@@ -203,13 +224,23 @@ li::after {
   font-weight: 500;
 }
 
-li.disabled {
+button.tab:disabled {
   opacity: 0.4;
   cursor: default;
-  pointer-events: none;
 }
 
-li.active {
+button.tab:hover { /* not the global button lift */
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border) var(--border) transparent;
+}
+
+button.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+button.tab.active {
   margin-top: -3px;
   margin-bottom: -1px;
   border-bottom: 1px solid transparent;
@@ -219,7 +250,7 @@ li.active {
   text-shadow: 0 0 5px var(--accent-glow);
 }
 
-li:not(.disabled):not(.active):hover {
+button.tab:not(:disabled):not(.active):hover {
   background: var(--surface-2);
   color: var(--accent);
 }
@@ -242,12 +273,12 @@ div.indicator {
     border-color: var(--accent);
   }
 
-  li.active {
+  button.tab.active {
     border-color: var(--accent);
     border-bottom-color: transparent;
   }
 
-  button {
+  button.menu-btn {
     display: flex;
   }
 }
