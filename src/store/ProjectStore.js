@@ -16,33 +16,9 @@ import { loadImage, readProject, writeProject, downloadBlob, PROJECT_EXTENSION }
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { cellWidth } from "@/lib/CharWidth.js";
 import { overwritesAll } from "@/document/wideChars.js";
-import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, baseParams, slidersAtDefaults } from "@/store/settings.js";
-
-const MAX_DIMENSION = 300;
-const DEFAULT_COLS = getSetting('cols').default;
-const DEFAULT_ROWS = getSetting('rows').default;
-const BLANK_CANVAS_SCALE = 10;
-const TYPING_PAUSE_MS = 1000; // a pause this long ends a typing run (one undo step)
-
-// Settings that feed the image pipeline (processParams); the rest only affect editing, saving or export.
-const PIPELINE_KEYS = SETTINGS.filter(s => s.group !== 'sauce' && s.pipeline !== false).map(s => s.key);
-const SAVED_KEYS = [...SETTING_KEYS, ...SAUCE_KEYS];
-const settingsJson = (state) => JSON.stringify(SAVED_KEYS.map(key => state[key]));
-// A color ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
-// An image's pixels on a canvas of its own.
-const copyOf = (image, width, height) => {
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  ctx2d(canvas).drawImage(image, 0, 0);
-  return canvas;
-};
-const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
-
-// The Transforms, Adjustments and Image Filters settings (sliders and their colors): what a slider
-// undo step records. Keyboard nudges on one slider this close together are one step.
-const SLIDER_KEYS = SETTINGS.filter(s => RESET_GROUPS.includes(s.group)).map(s => s.key);
-const NUDGE_MS = 1000;
+import { RESET_GROUPS, settingsState, groupDefaults, baseParams, slidersAtDefaults } from "@/store/settings.js";
+import { combineActions } from "@/store/project/combineActions.js";
+import { MAX_DIMENSION, DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, TYPING_PAUSE_MS, PIPELINE_KEYS, SAVED_KEYS, settingsJson, copyOf, over, SLIDER_KEYS, NUDGE_MS } from "@/store/project/shared.js";
 
 export const useProjectStore = defineStore('project', {
   state: () => ({
@@ -114,7 +90,7 @@ export const useProjectStore = defineStore('project', {
     }),
   },
 
-  actions: {
+  actions: combineActions({
     randomizeSeed() {
       this.seed = generateSlug(2);
     },
@@ -1323,6 +1299,5 @@ export const useProjectStore = defineStore('project', {
       apply(after);
       this.pushEdit({ undo: () => apply(before), redo: () => apply(after) });
     },
-  },
+  }),
 });
-
