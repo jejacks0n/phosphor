@@ -563,10 +563,10 @@ export const useProjectStore = defineStore('project', {
 
     // Recomposite the output after the paint or base pixels changed. When that rebalanced the Number
     // palette, every cell's colours can change: the cells are rebuilt from the output (as a full render
-    // would, without rerunning the pipeline). Trial, When you let go: while a stroke is open the
-    // Number palette holds (the paint shows in its own colours); commitEdit catches up with rebuild.
+    // would, without rerunning the pipeline). While an edit is open (a stroke, a shape) the Number
+    // palette holds still and the paint shows in its own colours; commitEdit catches up (rebuild).
     composite({ rebuild = false } = {}) {
-      const hold = !!this._stroke && this.quantize === 'count' && useWorkspaceStore().countPalette === 'release';
+      const hold = !!this._stroke && this.quantize === 'count';
       if (!this.renderer.composite(this.paintLayer, this.processParams, { hold }) && !rebuild) return;
       this.activePalette = this.renderer.palette;
       this.renderedCells = this.renderer.cellsFromOutput(this.processParams);
@@ -1058,7 +1058,7 @@ export const useProjectStore = defineStore('project', {
       const patch = this.paintLayer?.endStroke();
       const basePatch = this.baseLayer?.endStroke();
       this.hasPaint = this.paintLayer?.hasPaint ?? false; // an erase may have left none
-      if (stroke && this.quantize === 'count' && useWorkspaceStore().countPalette === 'release') this.composite({ rebuild: true }); // the palette and the stroke's colours catch up
+      if (stroke && this.quantize === 'count') this.composite({ rebuild: true }); // the Number palette and the stroke's colours catch up
       if (!stroke || (!patch && !basePatch && stroke.editCells === this.editCells && stroke.baseRecords === this.baseRecords)) return;
 
       const sides = { before: [stroke.editCells, stroke.baseRecords], after: [this.editCells, this.baseRecords] };

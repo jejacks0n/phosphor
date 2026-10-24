@@ -30,7 +30,7 @@ test('a few-colour picture keeps its exact colours, and white paint is white', a
   expect(cellsKey(project)).toEqual(await fullRender(project));
 });
 
-test('with more colours than asked for, a stroke rebalances the palette across the picture, live', async () => {
+test('with more colours than asked for, a finished stroke rebalances the palette across the picture', async () => {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
   project.quantize = 'count';
@@ -65,10 +65,9 @@ test('base pixels count too, and undo brings the palette back', async () => {
   expect(cellsKey(project)).toEqual(cells);
 });
 
-// Trial (workspace.countPalette): 'release' recounts once a stroke ends instead of as you draw.
-async function gradient8(strategy) {
+// With more colours than asked for.
+async function gradient8() {
   const { project, workspace } = await createTestApp();
-  workspace.countPalette = strategy;
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
   project.quantize = 'count';
   project.colorCount = 8;
@@ -79,8 +78,8 @@ const WHITE = [...line(8), ...line(9), ...line(10), ...line(11)];
 // Cells outside the painted rows (char rows 4 and 5) whose look changed.
 const untouchedChanged = (before, after) => before.filter((v, i) => Math.floor(i / 40) !== 4 && Math.floor(i / 40) !== 5 && v !== after[i]).length;
 
-test('When you let go: the palette holds during a stroke and catches up when it ends', async () => {
-  const { project } = await gradient8('release');
+test('the palette holds during a stroke (the stroke in its own colours) and catches up when it ends', async () => {
+  const { project } = await gradient8();
   const before = hexes(project), cells = cellsKey(project);
   project.paintStroke(WHITE, '#ffffff');
   expect(hexes(project)).toEqual(before);
@@ -92,3 +91,18 @@ test('When you let go: the palette holds during a stroke and catches up when it 
   expect(cellsKey(project)).toEqual(await fullRender(project));
 });
 
+
+test('a shape updates the palette once, when it is drawn', async () => {
+  const { project, workspace } = await gradient8();
+  const { default: shapes } = await import('@/tools/shapes');
+  Object.assign(workspace, { shapeKind: 'rect', shapeDrawWith: 'full', editFgColor: '#ffffff', editBgColor: '#ffffff' });
+  const before = hexes(project), cells = cellsKey(project);
+  const ctx = { project, workspace, view: 'output' };
+  shapes.begin(ctx, { x: 4, y: 4 });
+  shapes.move(ctx, { x: 4, y: 4 }, { x: 30, y: 30 });
+  expect(hexes(project)).toEqual(before); // dragging only previews
+  expect(cellsKey(project)).toEqual(cells);
+  shapes.end(ctx);
+  expect(hexes(project)).not.toEqual(before);
+  expect(cellsKey(project)).toEqual(await fullRender(project));
+});

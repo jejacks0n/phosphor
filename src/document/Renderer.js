@@ -89,9 +89,9 @@ export default class Renderer {
   // Redraw outputCanvas: the pipeline image, then the base layer's pixels and the paint layer, each
   // with the colour transforms applied. The Number palette (quantize 'count') is picked from what
   // that shows, so the drawing's colours have places in it; true when that changed the palette
-  // (every cell may need its colours again, not just those under the change). hold: a stroke is open
-  // and the Number palette waits for it to end (trial: When you let go); meanwhile the paint shows in
-  // its own colours (updateCells).
+  // (every cell may need its colours again, not just those under the change). hold: an edit is open
+  // and the Number palette waits for it to end; meanwhile the paint shows in its own colours
+  // (updateCells).
   composite(paintLayer, params, { hold = false } = {}) {
     if (!this.outputCanvas || !this.pipelineCanvas) return false;
 

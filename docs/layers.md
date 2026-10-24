@@ -75,9 +75,11 @@ Colour adjustments apply to the edit layer too: moving Brightness or Hue changes
 with the picture. The colour palette (CGA, VGA, a colour count) applies to everything, so an
 `.ans` export always fits it. With **Number**, the colours are picked from everything you see (the
 picture, your base edits and your paint), so a colour you paint with gets a place in the palette.
-When the picture has no more colours than the number you set, it keeps exactly its own; when there
-are more, painting a new colour can move some untouched cells to a neighbouring palette colour as
-the palette rebalances. (Typed cells' colours don't count toward it yet.)
+The palette updates when you finish a stroke or a shape: while you're painting, the picture holds
+still and your stroke shows in its own colours. When the picture has no more colours than the number
+you set, it keeps exactly its own; when there are more, a new colour can move some untouched cells to
+a neighbouring palette colour as the palette rebalances. (Typed cells' colours don't count toward it
+yet.)
 
 ## Moving things between layers
 
