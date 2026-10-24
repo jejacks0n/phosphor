@@ -9,8 +9,9 @@ or emoji a terminal can show, not only the 256 characters of classic DOS ANSI ar
 Every character takes one or two columns, by the same Unicode rules terminals use:
 
 - **One column**: letters and digits, punctuation, box drawing (`╬`), block elements (`▀ ▄ █ ░ ▒ ▓`),
-  most symbols (`★ ☺ ♥`), half-width katakana (`ｱ`), and even very wide-looking ones like `﷽`,
-  which a terminal squeezes into its single column.
+  most symbols (`★ ☺ ♥`), half-width katakana (`ｱ`), and some that draw far wider than that, like
+  `﷽`. A terminal gives `﷽` one column, then draws it at its full width over the characters after
+  it. Phosphor's canvas view squeezes it into its one cell instead.
 - **Two columns**: Chinese, Japanese and Korean characters (`漢 か 가`), fullwidth forms (`Ａ`) and
   emoji (`👍🏽 🇯🇵`).
 
