@@ -22,10 +22,12 @@ export function backingScale(cssWidth, cssHeight, dpr) {
 }
 
 // A cell in whole device pixels (an even height, so the two halves match, as GlyphCoverage
-// rasterizes) and in CSS px. advance: the font's character width at its CSS size.
-export function cellGeometry(advance, scale) {
-  const cw = Math.round(advance * scale);
-  const ch = Math.round(DISPLAY_FONT.size * DISPLAY_FONT.lineHeight * scale / 2) * 2;
+// rasterizes) and in CSS px. advance: the font's character width at its CSS size. capped: the scale
+// was lowered to the cap, so sizes round down (rounding up would pass it again).
+export function cellGeometry(advance, scale, capped = false) {
+  const round = capped ? Math.floor : Math.round;
+  const cw = round(advance * scale);
+  const ch = round(DISPLAY_FONT.size * DISPLAY_FONT.lineHeight * scale / 2) * 2;
   return { cw, ch, cellWidth: cw / scale, lineHeight: ch / scale };
 }
 
@@ -132,7 +134,7 @@ export default class CellCanvas {
   resize(cols, rows, dpr) {
     if (this.#advance === null) this.#advance = measureAdvance();
     const scale = backingScale(cols * this.#advance, rows * DISPLAY_FONT.size * DISPLAY_FONT.lineHeight, dpr);
-    const { cw, ch } = cellGeometry(this.#advance, scale);
+    const { cw, ch } = cellGeometry(this.#advance, scale, scale < dpr);
     const g = this.#geom;
     if (g && g.cols === cols && g.rows === rows && g.cw === cw && g.ch === ch && g.scale === scale) return false;
 

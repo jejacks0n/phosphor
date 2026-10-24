@@ -14,6 +14,8 @@ test("The ANSI view's canvas renderer: its backing size stays under the browsers
   assert.deepEqual(cellGeometry(10.2, 2), { cw: 20, ch: 40, cellWidth: 10, lineHeight: 20 });
   assert.deepEqual(cellGeometry(10.2, 1), { cw: 10, ch: 20, cellWidth: 10, lineHeight: 20 });
   assert.equal(cellGeometry(10.2, 1.601).ch % 2, 0);                            // even at any scale
+  const capped = cellGeometry(10.2, backingScale(200 * 10.2, 300 * 20.4, 2), true); // rounded down under the cap
+  assert.ok(200 * capped.cw * 300 * capped.ch <= MAX_BACKING_AREA);
 
   const ink = (m, cw, x, y) => m[y * cw + x] === 255;
   const full = blockMask('█', 4, 4), top = blockMask('▀', 4, 4), bottom = blockMask('▄', 4, 4);
