@@ -131,6 +131,15 @@ const textInputStyle = computed(() => {
   return { left: `${cursor.col * m.cellWidth + 2}px`, top: `${cursor.row * m.lineHeight + 1}px`, height: `${m.lineHeight}px` };
 });
 
+// The view follows the Text tool's cursor, like a text editor: when it moves (the arrow keys,
+// typing, a paste) past the visible area, the view scrolls just enough to keep it in sight, with a
+// margin around it (the cursor's scroll-margin). Nothing scrolls while it's already in view.
+const cursorRef = useTemplateRef('cursor');
+watch(() => workspaceStore.textCursor, (cursor) => {
+  if (!cursor || workspaceStore.activeTool !== 'text') return;
+  cursorRef.value?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}, { flush: 'post' });
+
 // The selection: marching ants, offset while it's being dragged. Its actions are on the options row.
 const selectionBox = computed(() => {
   const m = metrics.value, sel = workspaceStore.selection;
@@ -217,7 +226,7 @@ onBeforeUnmount(() => {
     <canvas v-else ref="canvas" class="display" :style="{ pointerEvents: 'none' }"></canvas>
     <div class="interaction-overlay"></div>
     <template #overlay>
-      <div class="text-cursor" :style="cursorStyle"></div>
+      <div ref="cursor" class="text-cursor" :style="cursorStyle"></div>
       <textarea
           ref="textInput"
           class="text-input"
@@ -276,6 +285,7 @@ div.ansi-editor {
 .text-cursor {
   position: absolute;
   box-sizing: border-box;
+  scroll-margin: 40px 60px; /* the view keeps this much room around the cursor when it follows it */
   pointer-events: none;
   border: 2px solid white;
   mix-blend-mode: difference;
