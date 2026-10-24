@@ -10,6 +10,7 @@ export const ANSI_CHARSETS = [
   { name: 'Shades', chars: '░▒▓█' },
   { name: 'Rising blocks', chars: '▁▂▃▄▅▆▇█' },
   { name: 'Half blocks', chars: '▀▄█' },
+  { name: 'Pixel', chars: '▄' }, // every cell two pixels: the top half the background, the bottom the foreground
   { name: 'Quadrants', chars: '▖▗▘▝▚▞▙▛▜▟' },
   { name: 'CP437 only', chars: ANSI_DEFAULT.replace(/[▁▂▃▅]/g, '') },
 ];
