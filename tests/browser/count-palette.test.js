@@ -85,6 +85,8 @@ test('When you let go: the palette holds during a stroke and catches up when it 
   project.paintStroke(WHITE, '#ffffff');
   expect(hexes(project)).toEqual(before);
   expect(untouchedChanged(cells, cellsKey(project))).toBe(0);
+  const painted = project.cells[4 * 40 + 8]; // meanwhile the stroke shows in its own colour
+  expect([painted.fg.hex.toLowerCase(), painted.bg.hex.toLowerCase()]).toEqual(['#ffffff', '#ffffff']);
   project.commitEdit();
   expect(hexes(project)).not.toEqual(before);
   expect(cellsKey(project)).toEqual(await fullRender(project));

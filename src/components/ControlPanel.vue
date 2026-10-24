@@ -95,7 +95,7 @@ const help = (key) => getSetting(key).help;
         <RangeField :setting="getSetting('colorCount')" v-model="store.colorCount"/>
         <!-- Trial: how the palette follows what you draw. -->
         <div class="field">
-          <div class="label-group"><label for="countPalette">Palette Updates (trial)</label><HelpInfo text="How the palette follows what you draw. Live: recounted from everything as you paint (the picture can shift on every stroke). When you let go: the same, once per stroke." /></div>
+          <div class="label-group"><label for="countPalette">Palette Updates (trial)</label><HelpInfo text="How the palette follows what you draw. Live: recounted from everything as you paint (the picture can shift on every stroke). When you let go: the picture holds still while you paint (your stroke shows in its own colours), and the palette catches up when you let go." /></div>
           <select id="countPalette" v-model="workspace.countPalette" @change="store.render()">
             <option value="live">Live</option>
             <option value="release">When you let go</option>

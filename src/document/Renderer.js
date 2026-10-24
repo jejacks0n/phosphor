@@ -28,6 +28,7 @@ export default class Renderer {
   #pipelineData = null; // pipelineCanvas pixels
   #baseData = null;     // the pipeline with the base layer's pixels over it, from the last composite(): what edit cells sit on
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
+  #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
   #effective = new Map(); // stored colour -> displayed Color, until the next render
   #source = null;       // { key, data }: the image through the pipeline with colour adjustments neutral (stored colours)
 
@@ -88,8 +89,10 @@ export default class Renderer {
   // Redraw outputCanvas: the pipeline image, then the base layer's pixels and the paint layer, each
   // with the colour transforms applied. The Number palette (quantize 'count') is picked from what
   // that shows, so the drawing's colours have places in it; true when that changed the palette
-  // (every cell may need its colours again, not just those under the change).
-  composite(paintLayer, params, { recount = true } = {}) {
+  // (every cell may need its colours again, not just those under the change). hold: a stroke is open
+  // and the Number palette waits for it to end (trial: When you let go); meanwhile the paint shows in
+  // its own colours (updateCells).
+  composite(paintLayer, params, { hold = false } = {}) {
     if (!this.outputCanvas || !this.pipelineCanvas) return false;
 
     const ctx = ctx2d(this.outputCanvas);
@@ -103,7 +106,8 @@ export default class Renderer {
     this.#baseData = this.baseLayer?.hasPaint ? ctx.getImageData(0, 0, w, h) : this.#pipelineData;
 
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params) : null;
-    const changed = recount && params.quantize === 'count' && this.#recount(params);
+    const changed = !hold && params.quantize === 'count' && this.#recount(params);
+    this.#heldData = hold ? ctx.getImageData(0, 0, w, h).data : null;
     if (paintLayer && this.palette?.length) applyQuantization(new Canvas(this.outputCanvas), this.palette);
     return changed;
   }
@@ -177,10 +181,10 @@ export default class Renderer {
       let top = canvas.pixels[cellIndex(col, 2 * row, cols)];
       if (!top) continue; // output canvas from an older grid size
       let bottom = canvas.pixels[cellIndex(col, 2 * row + 1, cols)] || top;
-      // Quantize only the touched pixels instead of the entire canvas
+      // Quantize only the touched pixels instead of the entire canvas (held paint keeps its colours)
       if (this.palette) {
-        top = nearestColor(top, this.palette);
-        bottom = nearestColor(bottom, this.palette);
+        top = this.#held(col, 2 * row, cols) ?? nearestColor(top, this.palette);
+        bottom = this.#held(col, 2 * row + 1, cols) ?? nearestColor(bottom, this.palette);
       }
 
       // Random mode keeps the cell's rendered character
@@ -188,6 +192,13 @@ export default class Renderer {
       next[i] = this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
     }
     return next;
+  }
+
+  // A painted grid pixel's colour before the palette snap, while a stroke is held; else null.
+  #held(x, y, cols) {
+    if (!this.#heldData || !this.paintAt(x, y)) return null;
+    const o = (y * cols + x) * 4, d = this.#heldData;
+    return { r: d[o], g: d[o + 1], b: d[o + 2], a: 1 };
   }
 
   // Generated cells with every in-grid edit cell composed in.
