@@ -496,16 +496,22 @@ export const useProjectStore = defineStore('project', {
     },
 
     // Full re-render on the next frame (calls in the same frame coalesce).
+    // _renderQueued and _rendering say whether one is still to come (tests wait on them).
     render() {
       if (this._renderQueued) return;
       this._renderQueued = true;
       requestAnimationFrame(async () => {
         this._renderQueued = false;
         if (!this.image) return;
-        this.ensureLayer();
-        this.renderedCells = await this.renderer.render(this.image, this.processParams, this.paintLayer, baseParams(this.processParams));
-        this.activePalette = this.renderer.palette;
-        this.applyEditCells();
+        this._rendering = true;
+        try {
+          this.ensureLayer();
+          this.renderedCells = await this.renderer.render(this.image, this.processParams, this.paintLayer, baseParams(this.processParams));
+          this.activePalette = this.renderer.palette;
+          this.applyEditCells();
+        } finally {
+          this._rendering = false;
+        }
       });
     },
 

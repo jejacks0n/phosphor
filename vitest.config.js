@@ -1,8 +1,14 @@
 import { defineConfig } from 'vitest/config';
 import vue from '@vitejs/plugin-vue';
+import { playwright } from '@vitest/browser-playwright';
 import { fileURLToPath } from 'node:url';
 
-// The test layers (docs/testing.md): unit tests in Node for pure logic.
+// The test layers (docs/testing.md): unit tests in Node for pure logic, and browser tests in Chromium
+// for the store and everything that needs a real canvas or WebGL. Chromium runs on software WebGL
+// (SwiftShader) on every machine, so a conversion gives the same cells locally and in CI. Adding
+// WebKit later: another entry in the browser project's instances.
+const SOFTWARE_WEBGL = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
+
 export default defineConfig({
   plugins: [vue()],
   resolve: {
@@ -10,11 +16,27 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  define: {
+    __UPDATE_REFERENCES__: JSON.stringify(process.env.UPDATE_REFERENCES === '1'), // tests/support/references.js
+  },
   test: {
     projects: [
       {
         extends: true,
         test: { name: 'unit', environment: 'node', include: ['tests/unit/**/*.test.js'] },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'browser',
+          include: ['tests/browser/**/*.test.js'],
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright({ launchOptions: { args: SOFTWARE_WEBGL } }),
+            instances: [{ browser: 'chromium' }],
+          },
+        },
       },
     ],
   },
