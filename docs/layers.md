@@ -130,6 +130,12 @@ nudging act on:
   the base and edit content on the edit layer.
 - **Delete** erases the base (with Base on) and removes your edits (with Edit on).
 
+**Moving** (dragging inside the selection, or the arrow keys) floats the contents over the canvas
+until you're done: you can let go, drag again and nudge as often as you like, and whatever the
+block passes over or pauses on comes back as it moves on. It's set down when you deselect (Escape,
+**Deselect**, a click outside), select something else, or make any other change, and the whole move
+is one undo step. A paste floats the same way, so you can paste and then drag it into place.
+
 **Copy and Cut** also put the selection's characters on your system clipboard as plain text, a line
 per row, so you can paste them into a terminal, a chat or a text editor. **Paste** (Cmd/Ctrl+V)
 pastes whatever you copied last: the block you copied in Phosphor, with its colors and layers; or,

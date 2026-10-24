@@ -53,7 +53,7 @@ export default {
     if (!sel) {
       // cleared mid-drag: nothing to move
     } else if (drag?.mode === 'move' && (dc || dr)) {
-      workspace.selection = project.moveSelection(sel, workspace.selectLayers, dc, dr);
+      workspace.selection = project.floatSelection(sel, workspace.selectLayers, dc, dr); // floats until deselected
     } else if (drag?.mode === 'outline' && (dc || dr)) {
       workspace.selection = { c0: sel.c0 + dc, r0: sel.r0 + dr, c1: sel.c1 + dc, r1: sel.r1 + dr };
     }

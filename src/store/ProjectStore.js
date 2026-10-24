@@ -864,28 +864,39 @@ export const useProjectStore = defineStore('project', {
     },
 
     // Returns the pasted rect (clipped), or null when it's all off the grid.
+    // A paste starts a float (floatSelection): moving it right after re-pastes it, so what it first
+    // landed on comes back.
     pasteSelection(block, col, row) {
-      const rect = this.clipRect({ c0: col, r0: row, c1: col + block.w - 1, r1: row + block.h - 1 });
-      if (rect) this.selectionEdit([rect], () => this.pasteAt(block, col, row));
-      return rect;
+      const paste = (c, r) => {
+        const rect = this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
+        if (rect) this.selectionEdit([rect], () => this.pasteAt(block, c, r));
+        return rect;
+      };
+      const landed = paste(col, row);
+      this._float = landed && { paste: true, redo: (dc, dr) => paste(col + dc, row + dr), from: landed, layers: null, dc: 0, dr: 0, landed, version: this.history.version };
+      return landed;
     },
 
-    // An arrow-key nudge. A run of nudges is one move from where it started, redone with each nudge
-    // (the last one undone first): the block floats over what's under its path, as a mouse move
-    // does, instead of overwriting it and then clearing it as it moves on, and the run is one undo
-    // step. The run ends when anything else is recorded, or the selection or its layers change.
-    nudgeSelection(rect, layers, dc, dr) {
-      const run = this._nudge;
-      const sameRun = run && run.version === this.history.version && JSON.stringify(run.landed) === JSON.stringify(rect)
-        && run.layers.base === layers.base && run.layers.edit === layers.edit;
-      const from = sameRun ? run.from : rect, offset = sameRun ? { dc: run.dc + dc, dr: run.dr + dr } : { dc, dr };
+    // A selection's contents float while you move them: every move of the same selection (a drag, an
+    // arrow-key nudge), and a paste with the moves after it, is one change from where it started,
+    // redone with each move (the last one undone first). What's under the path is only covered where
+    // the block comes to rest, and the run is one undo step. The run ends, leaving the block where it
+    // is, when the selection is cleared or replaced (Escape, Deselect, a new selection: tied to the
+    // selection object itself, so reselecting the same cells starts over), its layers change, or
+    // anything else is recorded. Returns where it landed (clipped), or null when it left the grid.
+    floatSelection(rect, layers, dc, dr) {
+      const run = this._float;
+      const sameRun = run && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
+        && (!run.layers || (run.layers.base === layers.base && run.layers.edit === layers.edit));
+      const current = sameRun ? run : { redo: (c, r) => this.moveSelection(rect, layers, c, r), from: rect, layers: { ...layers }, dc: 0, dr: 0 };
+      const offset = { dc: current.dc + dc, dr: current.dr + dr };
       if (sameRun) this.undo();
-      if (!offset.dc && !offset.dr) { // back where the run started: nothing moved, nothing recorded
-        this._nudge = null;
-        return from;
+      if (!current.paste && !offset.dc && !offset.dr) { // back where the move started: nothing moved, nothing recorded
+        this._float = null;
+        return current.from;
       }
-      const landed = this.moveSelection(from, layers, offset.dc, offset.dr);
-      this._nudge = landed && { from, layers: { ...layers }, ...offset, landed, version: this.history.version };
+      const landed = current.redo(offset.dc, offset.dr);
+      this._float = landed && { ...current, ...offset, landed, version: this.history.version };
       return landed;
     },
 
