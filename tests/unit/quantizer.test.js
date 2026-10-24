@@ -21,4 +21,11 @@ test('The colour-count palette (median cut)', async () => {
 
   assert.equal(quantize(image([...Array(50).fill([255, 0, 0]), ...Array(50).fill([0, 0, 255])]), 16).length, 2); // two colours: two
   assert.equal(quantize(image(Array(10).fill([9, 9, 9])), 16).length, 1);                                         // one colour: one
+
+  // No more colours than asked for: those exact colours, not their 5-bit buckets' middles.
+  const four = image([...Array(30).fill([255, 0, 0]), ...Array(20).fill([0, 255, 0]), ...Array(10).fill([0, 0, 255]), ...Array(5).fill([255, 255, 255])]);
+  const hex = (p) => p.map(({ r, g, b }) => [r, g, b].join()).sort();
+  assert.deepEqual(hex(quantize(four, 256)), ['0,0,255', '0,255,0', '255,0,0', '255,255,255']);
+  assert.deepEqual(hex(quantize(four, 4)), ['0,0,255', '0,255,0', '255,0,0', '255,255,255']);
+  assert.equal(quantize(four, 3).length, 3);                                                                       // more than asked: median cut
 });

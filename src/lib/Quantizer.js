@@ -76,6 +76,14 @@ class VBox {
 export default function quantize(pixels, maxColors) {
   if (!pixels.length || maxColors < 2 || maxColors > 256) return [];
 
+  // No more colours than asked for: those exact colours (median cut would return their buckets'
+  // middles, so pure red would come back #fc0404).
+  const distinct = new Set();
+  for (let i = 0; i < pixels.length && distinct.size <= maxColors; i += 4) {
+    if (pixels[i + 3] >= 128) distinct.add((pixels[i] << 16) | (pixels[i + 1] << 8) | pixels[i + 2]);
+  }
+  if (distinct.size <= maxColors) return [...distinct].map((v) => ({ r: v >> 16, g: (v >> 8) & 255, b: v & 255 }));
+
   // Build Histogram
   const hist = new Uint32Array(1 << (3 * SIGBITS));
   let rmin = 255, rmax = 0, gmin = 255, gmax = 0, bmin = 255, bmax = 0;

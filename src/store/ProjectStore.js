@@ -523,9 +523,19 @@ export const useProjectStore = defineStore('project', {
       this.cells = layoutWide(composed, this.cols);
     },
 
+    // Recomposite the output after the paint or base pixels changed. When that rebalanced the Number
+    // palette, every cell's colours can change: the cells are rebuilt from the output (as a full render
+    // would, without rerunning the pipeline).
+    composite() {
+      if (!this.renderer.composite(this.paintLayer, this.processParams)) return;
+      this.activePalette = this.renderer.palette;
+      this.renderedCells = this.renderer.cellsFromOutput(this.processParams);
+      this.applyEditCells();
+    },
+
     // After the paint or base pixels changed under `pixels`: recomposite and rebuild just those cells.
     refreshCells(pixels) {
-      this.renderer.composite(this.paintLayer, this.processParams);
+      this.composite();
       this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
     },
 
@@ -612,7 +622,7 @@ export const useProjectStore = defineStore('project', {
       const pixels = [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }];
       if (clearPaint && this.cellHasPaint(col, row)) {
         this.paintLayer.erase(pixels);
-        this.renderer.composite(this.paintLayer, this.processParams);
+        this.composite();
       }
       this.editCells = withCellEdit(this.editCells, col, row, attrs);
       this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
@@ -863,7 +873,7 @@ export const useProjectStore = defineStore('project', {
       this.beginEdit();
       change();
       this.hasPaint = this.paintLayer?.hasPaint ?? false;
-      this.renderer.composite(this.paintLayer, this.processParams);
+      this.composite();
       const pixels = rects.flatMap(rect => rectCells(rect)).map(({ col, row }) => ({ x: col, y: 2 * row }));
       this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
       this.commitEdit();
@@ -889,7 +899,7 @@ export const useProjectStore = defineStore('project', {
       }
       if (clearPaint && this.paintLayer?.hasPaint) {
         this.paintLayer.erase(pixels);
-        this.renderer.composite(this.paintLayer, this.processParams);
+        this.composite();
       }
       for (const { col, row } of blanks) {
         next.set(cellKey(col, row), mergeEntry(next.get(cellKey(col, row)), { char: ' ' }));

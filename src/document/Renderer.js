@@ -9,7 +9,7 @@
  * editCells.js) compose over the base, and paint draws over them: base -> edit cells -> paint. The
  * base layer's pins (baseRecords.js, set by the store) keep their characters.
  */
-import { processImage, applyQuantization } from '../lib/ImageProcessor.js';
+import { processImage, applyQuantization, getPaletteColors } from '../lib/ImageProcessor.js';
 import { applyTransforms } from '../lib/PixelTransforms.js';
 import { nearestColor } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
@@ -61,10 +61,13 @@ export default class Renderer {
     ctx2d(output);
     this.outputCanvas = output;
     this.composite(paintLayer, params);
+    return this.cellsFromOutput(params);
+  }
 
-    // Late-stage quantization (forced into the palette locked from the base image); this also
-    // gives the pixels their palette index (c), which the cells and CGA/VGA export rely on.
-    const pixels = new Canvas(output);
+  // The generated cells from the composited output (no edit cells): quantized to the palette, which
+  // also gives the pixels their palette index (c), which the cells and CGA/VGA export rely on.
+  cellsFromOutput(params) {
+    const pixels = new Canvas(this.outputCanvas);
     if (this.palette) applyQuantization(pixels, this.palette);
     else pixels.loadPixels();
 
@@ -83,9 +86,11 @@ export default class Renderer {
   }
 
   // Redraw outputCanvas: the pipeline image, then the base layer's pixels and the paint layer, each
-  // with the colour transforms applied.
+  // with the colour transforms applied. The Number palette (quantize 'count') is picked from what
+  // that shows, so the drawing's colours have places in it; true when that changed the palette
+  // (every cell may need its colours again, not just those under the change).
   composite(paintLayer, params) {
-    if (!this.outputCanvas || !this.pipelineCanvas) return;
+    if (!this.outputCanvas || !this.pipelineCanvas) return false;
 
     const ctx = ctx2d(this.outputCanvas);
     const w = this.outputCanvas.width, h = this.outputCanvas.height;
@@ -98,11 +103,19 @@ export default class Renderer {
     this.#baseData = this.baseLayer?.hasPaint ? ctx.getImageData(0, 0, w, h) : this.#pipelineData;
 
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params) : null;
-    if (!paintLayer) return;
+    const changed = params.quantize === 'count' && this.#recount(params);
+    if (paintLayer && this.palette?.length) applyQuantization(new Canvas(this.outputCanvas), this.palette);
+    return changed;
+  }
 
-    if (this.palette && this.palette.length > 0) {
-      applyQuantization(new Canvas(this.outputCanvas), this.palette);
-    }
+  // The Number palette from the output as composited (before it's quantized); true when it changed.
+  #recount(params) {
+    const next = getPaletteColors(params, new Canvas(this.outputCanvas));
+    const key = (palette) => palette?.map((p) => p.hex).join();
+    if (key(next) === key(this.palette)) return false;
+    this.palette = next;
+    this.#effective = new Map(); // displayed colours snap to the palette
+    return true;
   }
 
   // Draw a layer at grid resolution (a grid pixel at a time) with the colour transforms applied;
