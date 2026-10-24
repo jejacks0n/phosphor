@@ -149,7 +149,7 @@ export function composeCell(under, entry, renderStyle, effective) {
 
 // Characters that are solid or empty in each half (space, █, ▀, ▄) have no texture to show paint
 // through: under paint they become a real half-block instead.
-const solidGlyph = (char) => coverageOf(char).every(c => c === 0 || c === 1);
+export const isSolidGlyph = (char) => coverageOf(char).every(c => c === 0 || c === 1);
 
 // Paint over a cell: a textured character stays, the paint tinting the background (top half) and
 // foreground (bottom half), the way image cells are built (buildCell); a solid or empty one becomes
@@ -157,7 +157,7 @@ const solidGlyph = (char) => coverageOf(char).every(c => c === 0 || c === 1);
 export function coverCell(cell, paintTop, paintBottom, { renderStyle, palette }) {
   const aTop = paintTop?.a ?? 0, aBottom = paintBottom?.a ?? 0;
   if (!aTop && !aBottom) return cell;
-  const solid = solidGlyph(cell.char);
+  const solid = isSolidGlyph(cell.char);
   const [ht, hb] = solid ? halfColors(cell) : [cell.bg, cell.fg];
   const snap = (p) => (palette && palette.length ? nearestColor(p, palette) : p);
   const top = snap(aTop ? mix(ht, paintTop, aTop) : ht);

@@ -8,6 +8,7 @@
  */
 import { usableChar } from '../lib/CharWidth.js';
 import { getEffectiveColor } from '../lib/PixelTransforms.js';
+import { isSolidGlyph } from '../lib/Cells.js';
 
 const ATTRS = ['char', 'fg', 'bg'];
 
@@ -113,6 +114,19 @@ export function bakeEntry(entry, params) {
 export function bakeEditCells(map, params) {
   if (!map.size) return map;
   return new Map([...map].map(([key, entry]) => [key, bakeEntry(entry, params)]));
+}
+
+// How a covered cell merges into the picture. char: its user character (an edit cell's, else a
+// pin's), or undefined for the converter's own, which goes in as it is and comes back from the
+// picture. A solid character (each half all ink or none) goes in as it shows, pinned to ▄ so it
+// shows those two halves; any other character merges exactly, as a picture pixel can't hold a
+// glyph, and so does a cell not wholly inside the picture's area (the letterbox). The ASCII styles
+// don't show halves, so a user character there always merges exactly.
+export function mergeKind({ char, renderStyle, inPicture }) {
+  if (!inPicture) return 'exact';
+  if (char === undefined) return 'picture';
+  if (renderStyle !== 'ansi') return 'exact';
+  return isSolidGlyph(char) ? 'picture-pinned' : 'exact';
 }
 
 // Rect = { c0, r0, c1, r1 }: inclusive, normalized. Block = { w, h, entries: (Entry | null)[] }, row-major.

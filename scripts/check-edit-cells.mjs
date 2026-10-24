@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   withCellEdit, mergeEntry, withoutCells, parseKey, serializeEditCells, deserializeEditCells, migrateCharEdits,
   normalizeRect, rectCells, pasteBlock, updateRect,
-  selectionHit, clampOffset, bakeEditCells,
+  selectionHit, clampOffset, bakeEditCells, mergeKind,
 } from '../src/document/editCells.js';
 
 const m0 = new Map();
@@ -86,4 +86,15 @@ assert.deepEqual(baked.get('1,0'), { char: 'B' });                              
 assert.ok(Object.isFrozen(baked.get('0,0')));
 const none = new Map();
 assert.equal(bakeEditCells(none, P), none);
+// How a covered cell merges into the picture: the converter's own character goes in as it is
+// (it comes back from the picture); a solid character goes in as it shows, pinned to ▄; any other
+// character merges exactly (a picture pixel can't hold a glyph), as does anything in the letterbox.
+const at = (char, renderStyle = 'ansi', inPicture = true) => mergeKind({ char, renderStyle, inPicture });
+assert.equal(at(undefined), 'picture');
+for (const solid of [' ', '█', '▀', '▄']) assert.equal(at(solid), 'picture-pinned', solid);
+for (const glyph of ['A', '░', '╬', '漢', '▌']) assert.equal(at(glyph), 'exact', glyph); // ▌ is half-inked, not solid
+assert.equal(at('█', 'colorAscii'), 'exact');               // ASCII styles: a user character stays exact
+assert.equal(at(undefined, 'ascii'), 'picture');
+assert.equal(at(undefined, 'ansi', false), 'exact');        // not wholly in the picture's area
+assert.equal(at('█', 'ansi', false), 'exact');
 console.log('cell edits ok');
