@@ -1,5 +1,6 @@
-<script>
-import { mapState, mapWritableState } from 'pinia';
+<script setup>
+import { watch, onMounted, onBeforeUnmount } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { setGlyphRasterizer, rasterizeCoverage, DISPLAY_FONT_CSS } from '@/lib/GlyphCoverage';
@@ -12,59 +13,44 @@ import SaveDialog from '@/components/SaveDialog.vue';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
 import AppToast from '@/components/AppToast.vue';
 
-export default {
-  name: 'App',
-  components: {
-    EditWorkspace,
-    ControlPanel,
-    AboutPhosphor,
-    SaveDialog,
-    ShortcutsDialog,
-    AppToast,
-  },
-  computed: {
-    ...mapState(useProjectStore, ['image', 'isDirty']),
-    ...mapState(useWorkspaceStore, ['activeTool', 'isPainting', 'isCtrlPressed', 'isMiddleClick']),
-    ...mapWritableState(useWorkspaceStore, ['showAboutModal', 'saveDialog', 'shortcutsOpen']),
-  },
-  mounted() {
-    window.addEventListener('beforeunload', this.onBeforeUnload);
-    // Glyph coverage is measured in the ANSI view's font, which loads lazily; either view can be
-    // shown first, so install the rasterizer here once that font is ready, then re-render.
-    document.fonts.load(DISPLAY_FONT_CSS).then(() => {
-      setGlyphRasterizer(rasterizeCoverage);
-      const project = useProjectStore();
-      if (project.image) project.render();
-    });
+const project = useProjectStore();
+const workspace = useWorkspaceStore();
+const { image } = storeToRefs(project);
+const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen } = storeToRefs(workspace);
 
-    // When the grid changes (in either view), the Text cursor stays on the grid and the selection
-    // (and the Picker's last pick), which may no longer fit, are dropped. A new document drops them
-    // too (ProjectStore.newDocument).
-    const project = useProjectStore(), workspace = useWorkspaceStore();
-    this.$watch(() => [project.cols, project.rows], () => {
-      workspace.selection = null;
-      workspace.lastPick = null;
-      const cursor = workspace.textCursor;
-      if (cursor) {
-        workspace.textCursor = {
-          col: Math.min(cursor.col, Math.max(0, project.cols - 1)),
-          row: Math.min(cursor.row, Math.max(0, charRowsOf(project.rows) - 1)),
-        };
-      }
-    });
-  },
-  beforeUnmount() {
-    window.removeEventListener('beforeunload', this.onBeforeUnload);
-  },
-  methods: {
-    onBeforeUnload(e) {
-      if (this.image && this.isDirty) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    },
-  },
-};
+// Leaving with unsaved changes asks first.
+function onBeforeUnload(e) {
+  if (project.image && project.isDirty) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+}
+
+// When the grid changes (in either view), the Text cursor stays on the grid and the selection (and
+// the Picker's last pick), which may no longer fit, are dropped. A new document drops them too
+// (ProjectStore.newDocument).
+watch(() => [project.cols, project.rows], () => {
+  workspace.selection = null;
+  workspace.lastPick = null;
+  const cursor = workspace.textCursor;
+  if (cursor) {
+    workspace.textCursor = {
+      col: Math.min(cursor.col, Math.max(0, project.cols - 1)),
+      row: Math.min(cursor.row, Math.max(0, charRowsOf(project.rows) - 1)),
+    };
+  }
+});
+
+onMounted(() => {
+  window.addEventListener('beforeunload', onBeforeUnload);
+  // Glyph coverage is measured in the ANSI view's font, which loads lazily; either view can be
+  // shown first, so install the rasterizer here once that font is ready, then re-render.
+  document.fonts.load(DISPLAY_FONT_CSS).then(() => {
+    setGlyphRasterizer(rasterizeCoverage);
+    if (project.image) project.render();
+  });
+});
+onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload));
 </script>
 
 <template>

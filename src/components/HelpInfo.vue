@@ -1,81 +1,62 @@
-<script>
-export default {
-  name: 'HelpInfo',
-  props: {
-    text: {
-      type: String,
-      required: true,
-    },
-  },
-  data() {
-    return {
-      isVisible: false,
-      tooltipStyle: {},
-      isBottom: false,
-    };
-  },
-  methods: {
-    show() {
-      this.isVisible = true;
-      this.$nextTick(() => {
-        this.updatePosition();
-      });
-      window.addEventListener('resize', this.updatePosition);
-      window.addEventListener('scroll', this.updatePosition, true);
-    },
-    hide() {
-      this.isVisible = false;
-      window.removeEventListener('resize', this.updatePosition);
-      window.removeEventListener('scroll', this.updatePosition, true);
-    },
-    toggle() {
-      if (this.isVisible) this.hide();
-      else this.show();
-    },
-    updatePosition() {
-      const icon = this.$refs.icon;
-      const tooltip = this.$refs.tooltip;
-      if (!icon || !tooltip) return;
+<script setup>
+import { ref, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 
-      const iconRect = icon.getBoundingClientRect();
-      const tooltipRect = tooltip.getBoundingClientRect();
-      const padding = 10;
+defineProps({
+  text: { type: String, required: true },
+});
 
-      let left = iconRect.left + (iconRect.width / 2) - (tooltipRect.width / 2);
-      let top = iconRect.top - tooltipRect.height - 10;
+const icon = useTemplateRef('icon');
+const tooltip = useTemplateRef('tooltip');
+const isVisible = ref(false);
+const tooltipStyle = ref({});
+const isBottom = ref(false);
 
-      // Constraint to viewport
-      if (left < padding) left = padding;
-      if (left + tooltipRect.width > window.innerWidth - padding) {
-        left = window.innerWidth - tooltipRect.width - padding;
-      }
+function show() {
+  isVisible.value = true;
+  nextTick(updatePosition);
+  window.addEventListener('resize', updatePosition);
+  window.addEventListener('scroll', updatePosition, true);
+}
 
-      // Flip to bottom if no space at top
-      if (top < padding) {
-        top = iconRect.bottom + 10;
-        this.isBottom = true;
-      } else {
-        this.isBottom = false;
-      }
+function hide() {
+  isVisible.value = false;
+  window.removeEventListener('resize', updatePosition);
+  window.removeEventListener('scroll', updatePosition, true);
+}
 
-      // Calculate arrow position relative to tooltip
-      const iconCenter = iconRect.left + (iconRect.width / 2);
-      const arrowLeft = iconCenter - left;
+function toggle() {
+  if (isVisible.value) hide();
+  else show();
+}
 
-      this.tooltipStyle = {
-        top: `${top}px`,
-        left: `${left}px`,
-        opacity: 1,
-        visibility: 'visible',
-        transform: 'translateY(0)',
-        '--arrow-left': `${arrowLeft}px`,
-      };
-    },
-  },
-  beforeUnmount() {
-    this.hide();
-  },
-};
+// Above the icon, kept inside the viewport (below it when there's no room above), with the arrow
+// pointing back at the icon.
+function updatePosition() {
+  if (!icon.value || !tooltip.value) return;
+  const iconRect = icon.value.getBoundingClientRect();
+  const tooltipRect = tooltip.value.getBoundingClientRect();
+  const padding = 10;
+
+  let left = iconRect.left + (iconRect.width / 2) - (tooltipRect.width / 2);
+  let top = iconRect.top - tooltipRect.height - 10;
+  if (left < padding) left = padding;
+  if (left + tooltipRect.width > window.innerWidth - padding) left = window.innerWidth - tooltipRect.width - padding;
+
+  isBottom.value = top < padding;
+  if (isBottom.value) top = iconRect.bottom + 10;
+
+  const arrowLeft = iconRect.left + (iconRect.width / 2) - left;
+  tooltipStyle.value = {
+    top: `${top}px`,
+    left: `${left}px`,
+    opacity: 1,
+    visibility: 'visible',
+    transform: 'translateY(0)',
+    '--arrow-left': `${arrowLeft}px`,
+  };
+}
+
+onBeforeUnmount(hide);
 </script>
 
 <template>

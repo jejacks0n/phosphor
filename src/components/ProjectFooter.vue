@@ -1,16 +1,9 @@
-<script>
-import { mapWritableState } from 'pinia';
+<script setup>
+import { storeToRefs } from 'pinia';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
-export default {
-  name: 'ProjectActions',
-  computed: {
-    ...mapWritableState(useWorkspaceStore, ['showAboutModal']),
-    year() {
-      return new Date().getFullYear();
-    },
-  },
-};
+const { showAboutModal } = storeToRefs(useWorkspaceStore());
+const year = new Date().getFullYear();
 </script>
 
 <template>

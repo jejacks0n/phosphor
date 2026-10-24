@@ -1,27 +1,17 @@
-<script>
-import { mapState, mapActions, mapWritableState } from 'pinia';
+<script setup>
+import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
-export default {
-  name: 'ProjectActions',
-  computed: {
-    ...mapState(useProjectStore, ['image', 'isDirty']),
-    ...mapWritableState(useWorkspaceStore, ['editorTab', 'saveDialog']),
-  },
-  methods: {
-    ...mapActions(useProjectStore, ['clearImage']),
-    confirmNewProject() {
-      if (this.isDirty) {
-        if (!confirm('You have unsaved changes. Are you sure you want to start a new project?')) {
-          return;
-        }
-      }
-      this.clearImage();
-      this.editorTab = 'input';
-    },
-  },
-};
+const project = useProjectStore();
+const { image } = storeToRefs(project);
+const { editorTab, saveDialog } = storeToRefs(useWorkspaceStore());
+
+function confirmNewProject() {
+  if (project.isDirty && !confirm('You have unsaved changes. Are you sure you want to start a new project?')) return;
+  project.clearImage();
+  editorTab.value = 'input';
+}
 </script>
 
 <template>

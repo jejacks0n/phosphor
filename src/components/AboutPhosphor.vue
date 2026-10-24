@@ -1,15 +1,7 @@
-<script>
+<script setup>
 import { version } from '../../package.json';
 
-export default {
-  name: 'AboutPhosphor',
-  emits: ['close'],
-  data() {
-    return {
-      version,
-    };
-  },
-};
+defineEmits(['close']);
 </script>
 
 <template>

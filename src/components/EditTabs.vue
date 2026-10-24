@@ -1,104 +1,68 @@
-<script>
-import { mapState, mapActions } from 'pinia';
+<script setup>
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
-export default {
-  name: 'EditTabs',
-  props: {
-    modelValue: {
-      type: String,
-      required: true,
-    },
-  },
-  emits: ['update:modelValue'],
-  data() {
-    return {
-      indicatorStyle: {
-        transform: 'translateX(0px)',
-        width: '0px',
-        opacity: 0,
-      },
+const props = defineProps({
+  modelValue: { type: String, required: true },
+});
+const emit = defineEmits(['update:modelValue']);
+
+const { image, renderStyle } = storeToRefs(useProjectStore());
+const workspace = useWorkspaceStore();
+const { settingsOpen } = storeToRefs(workspace);
+const toggleSettings = () => workspace.toggleSettings();
+
+const tabList = useTemplateRef('tabList');
+const indicatorStyle = ref({ transform: 'translateX(0px)', width: '0px', opacity: 0 });
+
+const tabs = computed(() => [
+  { id: 'input', label: 'PIXEL', disabled: false },
+  { id: 'output', label: renderStyle.value === 'ansi' ? 'ANSI' : 'ASCII', disabled: !image.value },
+  { id: 'sauce', label: 'SAUCE', disabled: !image.value },
+]);
+
+// The tabs pattern: Left/Right (wrapping), Home and End move to a tab and select it, skipping
+// disabled ones. The keys stop here, so they don't also nudge a selection or move the text cursor.
+function onKeyDown(event) {
+  const enabled = [...event.currentTarget.querySelectorAll('[role="tab"]:not(:disabled)')];
+  const at = enabled.indexOf(document.activeElement);
+  const next = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: enabled.length - 1 }[event.key];
+  if (next === undefined || at < 0) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const tab = enabled[(next + enabled.length) % enabled.length];
+  tab.focus();
+  emit('update:modelValue', tab.dataset.id);
+}
+
+// The underline slides to the selected tab.
+function updateIndicator() {
+  requestAnimationFrame(() => {
+    const activeEl = tabList.value?.querySelector('[role="tab"].active');
+    if (!activeEl) {
+      indicatorStyle.value = { ...indicatorStyle.value, opacity: 0 };
+      return;
+    }
+    const listRect = tabList.value.getBoundingClientRect();
+    const activeRect = activeEl.getBoundingClientRect();
+    indicatorStyle.value = {
+      transform: `translateX(${Math.round(activeRect.left - listRect.left)}px)`,
+      width: `${Math.round(activeRect.width)}px`,
+      opacity: 1,
     };
-  },
-  computed: {
-    ...mapState(useProjectStore, ['image', 'renderStyle']),
-    ...mapState(useWorkspaceStore, ['settingsOpen']),
-    tabs() {
-      const outputLabel = this.renderStyle === 'ansi' ? 'ANSI' : 'ASCII';
-      return [
-        { id: 'input', label: 'PIXEL', disabled: false },
-        { id: 'output', label: outputLabel, disabled: !this.image },
-        { id: 'sauce', label: 'SAUCE', disabled: !this.image },
-      ];
-    },
-  },
-  watch: {
-    modelValue: {
-      handler() {
-        this.$nextTick(() => {
-          this.updateIndicator();
-        });
-      },
-      immediate: true,
-    },
-    image() {
-      this.$nextTick(() => {
-        this.updateIndicator();
-      });
-    },
-    tabs: {
-      handler() {
-        this.$nextTick(() => {
-          this.updateIndicator();
-        });
-      },
-      deep: true,
-    },
-  },
-  mounted() {
-    window.addEventListener('resize', this.updateIndicator);
-    setTimeout(this.updateIndicator, 100);
-  },
-  beforeUnmount() {
-    window.removeEventListener('resize', this.updateIndicator);
-  },
-  methods: {
-    ...mapActions(useWorkspaceStore, ['toggleSettings']),
-    // The tabs pattern: Left/Right (wrapping), Home and End move to a tab and select it, skipping
-    // disabled ones. The keys stop here, so they don't also nudge a selection or move the text cursor.
-    onKeyDown(event) {
-      const tabs = [...event.currentTarget.querySelectorAll('[role="tab"]:not(:disabled)')];
-      const at = tabs.indexOf(document.activeElement);
-      const next = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: tabs.length - 1 }[event.key];
-      if (next === undefined || at < 0) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const tab = tabs[(next + tabs.length) % tabs.length];
-      tab.focus();
-      this.$emit('update:modelValue', tab.dataset.id);
-    },
-    updateIndicator() {
-      requestAnimationFrame(() => {
-        const listEl = this.$refs.tabList;
-        const activeEl = listEl?.querySelector('[role="tab"].active');
+  });
+}
 
-        if (activeEl && listEl) {
-          const listRect = listEl.getBoundingClientRect();
-          const activeRect = activeEl.getBoundingClientRect();
-
-          this.indicatorStyle = {
-            transform: `translateX(${Math.round(activeRect.left - listRect.left)}px)`,
-            width: `${Math.round(activeRect.width)}px`,
-            opacity: 1,
-          };
-        } else {
-          this.indicatorStyle.opacity = 0;
-        }
-      });
-    },
-  },
-};
+watch(() => props.modelValue, () => nextTick(updateIndicator), { immediate: true });
+watch(image, () => nextTick(updateIndicator));
+watch(tabs, () => nextTick(updateIndicator), { deep: true });
+onMounted(() => {
+  window.addEventListener('resize', updateIndicator);
+  setTimeout(updateIndicator, 100);
+});
+onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
 </script>
 
 <template>

@@ -1,21 +1,12 @@
-<script>
+<script setup>
 import { PROJECT_EXTENSION } from '@/document/projectIO';
 
-export default {
-  name: 'ZeroState',
-  emits: ['file-dropped', 'file-selected', 'start-blank'],
-  data() {
-    return {
-      PROJECT_EXTENSION,
-    };
-  },
-  methods: {
-    onFileSelected(e) {
-      const file = e.target.files[0];
-      if (file) this.$emit('file-selected', file);
-    },
-  },
-};
+const emit = defineEmits(['file-dropped', 'file-selected', 'start-blank']);
+
+function onFileSelected(e) {
+  const file = e.target.files[0];
+  if (file) emit('file-selected', file);
+}
 </script>
 
 <template>

@@ -1,24 +1,15 @@
-<script>
+<script setup>
+import { ref } from 'vue';
 import { PROJECT_EXTENSION } from '@/document/projectIO';
 
-export default {
-  name: 'DropZone',
-  data() {
-    return {
-      isDragging: false,
-    };
-  },
-  emits: ['file-dropped'],
-  methods: {
-    handleDrop(e) {
-      this.isDragging = false;
-      const file = e.dataTransfer.files[0];
-      if (file && (file.type.startsWith('image/') || file.name.endsWith(PROJECT_EXTENSION))) {
-        this.$emit('file-dropped', file);
-      }
-    },
-  },
-};
+const emit = defineEmits(['file-dropped']);
+const isDragging = ref(false);
+
+function handleDrop(e) {
+  isDragging.value = false;
+  const file = e.dataTransfer.files[0];
+  if (file && (file.type.startsWith('image/') || file.name.endsWith(PROJECT_EXTENSION))) emit('file-dropped', file);
+}
 </script>
 
 <template>
