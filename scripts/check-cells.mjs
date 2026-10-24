@@ -1,7 +1,7 @@
 // Cell model: one { char, fg, bg } per character cell, built exactly as the pipeline always has
 // (export bytes depend on it). Run: node scripts/check-cells.mjs
 import assert from 'node:assert/strict';
-import { buildCells, buildCell, brightnessChar, charRowsOf, cellIndex, cellOfPixel, cellAt, layoutWide } from '../src/lib/Cells.js';
+import { buildCells, buildCell, brightnessChar, charRowsOf, cellIndex, cellOfPixel, cellAt, layoutWide, selectionText } from '../src/lib/Cells.js';
 
 const px = (r, g, b, c) => (c === undefined ? { r, g, b } : { r, g, b, c });
 const opts = { charset: 'ab', charMode: 'random', renderStyle: 'ansi', seed: 's' };
@@ -67,4 +67,11 @@ assert.deepEqual(layoutWide(['a', '漢', '字', 'b'].map(C), 2).map(c => c.char)
 const big = Array.from({ length: 30000 }, (_, i) => C(i % 97 ? '▄' : '漢'));
 const t0 = performance.now(); layoutWide(big, 200); const ms = performance.now() - t0;
 assert.ok(ms < 15, `layoutWide 30k cells: ${ms.toFixed(1)} ms`);          // runs on every brush move; generous for noise
+// A selection as text for the system clipboard: the characters as they show, a line per row, a wide
+// character written once (its trail adds nothing, so the text lines up in a terminal).
+const textGrid = layoutWide(['a', '漢', 'x', 'b', 'c', 'd', 'e', 'f'].map(C), 4); // 4 cols, 2 rows
+assert.equal(selectionText(textGrid, 4, { c0: 0, r0: 0, c1: 3, r1: 1 }), 'a漢b\ncdef');
+assert.equal(selectionText(textGrid, 4, { c0: 1, r0: 0, c1: 2, r1: 0 }), '漢');        // lead and trail
+assert.equal(selectionText(textGrid, 4, { c0: 2, r0: 0, c1: 3, r1: 0 }), 'b');         // starting on a trail: nothing for it
+assert.equal(selectionText([], 4, { c0: 0, r0: 0, c1: 1, r1: 0 }), '  ');           // no cells (yet): spaces
 console.log('cells ok');

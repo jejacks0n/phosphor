@@ -109,6 +109,22 @@ export function layoutWide(cells, cols) {
   return out ?? cells;
 }
 
+// A cell rect as text (for the system clipboard): the characters as they show, a line per row. A
+// wide character is written once (its trail adds nothing), so the text lines up in a terminal; a
+// cell that isn't there (cells from before a grid change) is a space.
+export function selectionText(cells, cols, { c0, r0, c1, r1 }) {
+  const lines = [];
+  for (let row = r0; row <= r1; row++) {
+    let line = '';
+    for (let col = c0; col <= c1; col++) {
+      const cell = cells[cellIndex(col, row, cols)];
+      if (cell?.wide !== 'trail') line += cell?.char ?? ' ';
+    }
+    lines.push(line);
+  }
+  return lines.join('\n');
+}
+
 // The unique character cells under grid pixels, in order of first touch (off-grid pixels skipped).
 export function cellsOfPixels(pixels, cols, rows) {
   const seen = new Set();

@@ -51,7 +51,8 @@ You can also paste text. It types from the cursor; each new line starts on the n
 column where the paste began; and once a row is full, the rest of that line is dropped.
 Characters a cell can't hold (tabs, invisible ones) are skipped. A paste is one undo step.
 
-Cmd/Ctrl+V still pastes a Select-tool block when you've copied one.
+Cmd/Ctrl+V pastes whatever you copied last: a Select-tool block you copied in Phosphor, or text
+you copied anywhere else since (see [Layers](layers.md#the-select-tool)).
 
 ## Saving: .utf8ans and .ans
 

@@ -11,6 +11,7 @@ import PaletteStrip from '@/components/PaletteStrip.vue';
 import LayerToggles from '@/components/LayerToggles.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
 import MergeDialog from '@/components/MergeDialog.vue';
+import { copySelection as copyToClipboards } from '@/composables/clipboard';
 
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -58,7 +59,7 @@ const toolOptions = computed(() => (activeTool.value.options ?? []).filter(optio
   (!option.views || option.views.includes(workspace.editorTab)) && (!option.when || option.when(workspace))));
 
 // The actions on the Select tool's selection (one undo step each), on its chosen layers.
-const copySelection = () => { workspace.clipboard = project.copySelection(workspace.selection, workspace.selectLayers); };
+const copySelection = () => copyToClipboards(project, workspace, workspace.selection, workspace.selectLayers);
 const cutSelection = () => {
   copySelection();
   project.deleteSelection(workspace.selection, workspace.selectLayers);

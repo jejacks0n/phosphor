@@ -30,6 +30,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     selection: null,         // { c0, r0, c1, r1 }: the Select tool's cells (inclusive)
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
+    clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     selectLayers: { base: true, edit: true }, // what the Select tool acts on: the base layer and/or the edit layer
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse'

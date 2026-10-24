@@ -111,6 +111,12 @@ nudging act on:
   the base and edit content on the edit layer.
 - **Delete** erases the base (with Base on) and removes your edits (with Edit on).
 
+**Copy and Cut** also put the selection's characters on your system clipboard as plain text, a line
+per row, so you can paste them into a terminal, a chat or a text editor. **Paste** (Cmd/Ctrl+V)
+pastes whatever you copied last: the block you copied in Phosphor, with its colours and layers; or,
+if you've copied text anywhere else since, that text, typed in at the Edit Mode cursor (or at the
+selection, or the top-left of the view).
+
 In Edit Mode, dragging across cells switches to the Select tool and selects them, the way dragging
 selects text in a text editor; a plain click still just places the cursor.
 

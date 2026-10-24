@@ -19,6 +19,26 @@ export function typeAtCursor(project, workspace, char) {
   workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(cursor, cellWidth(char), 0, project.cols, charRowsOf(project.rows)), 1);
 }
 
+// Text as typing, from the Text tool's cursor (a paste, an input method, the emoji picker): a line
+// break goes to the next row at the column the text started in, and once a row is full the rest of
+// that line is dropped (not piled into its last cell). One undo step, like a run of typing.
+export function typeText(project, workspace, text) {
+  const start = workspace.textCursor;
+  if (!start) return;
+  let full = false;
+  for (const action of typedText(text)) {
+    if (action.type === 'newline') {
+      full = false;
+      const { row } = workspace.textCursor;
+      workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor({ col: start.col, row }, 0, 1, project.cols, charRowsOf(project.rows)), 0);
+    } else if (!full) {
+      const before = workspace.textCursor.col;
+      typeAtCursor(project, workspace, action.char);
+      full = workspace.textCursor.col - before < cellWidth(action.char);
+    }
+  }
+}
+
 // The Text tool's keyboard, while it's active in the ANSI view with a cursor placed. Keys aimed
 // at a field (or anything TextKeys doesn't map) are left alone. Text arrives through textInput, a
 // hidden textarea at the cursor that has focus while the tool is in use: an input method's
@@ -93,36 +113,17 @@ export function useTextTool(project, workspace, textInput) {
     apply(action);
   };
 
-  // Text as typing, from the cursor: a line break goes to the next row at the column the text
-  // started in, and once a row is full the rest of that line is dropped (not piled into its last cell).
-  const typeText = (text) => {
-    const start = workspace.textCursor;
-    if (!start) return;
-    let full = false;
-    for (const action of typedText(text)) {
-      if (action.type === 'newline') {
-        full = false;
-        const { row } = workspace.textCursor;
-        workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor({ col: start.col, row }, 0, 1, project.cols, charRowsOf(project.rows)), 0);
-      } else if (!full) {
-        const before = workspace.textCursor.col;
-        typeAtCursor(project, workspace, action.char);
-        full = workspace.textCursor.col - before < cellWidth(action.char);
-      }
-    }
-  };
-
   // An input method commits with compositionend (its in-progress input events are skipped: Safari
   // and Firefox follow compositionend with one more, which would type it twice); everything else
   // inserted is typed as it arrives. A paste's text is in the field, not the event.
   const COMPOSING = new Set(['insertCompositionText', 'insertFromComposition']);
   const onInput = (event) => {
     if (event.isComposing || COMPOSING.has(event.inputType)) return;
-    if (event.inputType?.startsWith('insert')) typeText(event.data ?? event.target.value);
+    if (event.inputType?.startsWith('insert')) typeText(project, workspace, event.data ?? event.target.value);
     event.target.value = '';
   };
   const onCompositionEnd = (event) => {
-    if (event.data) typeText(event.data);
+    if (event.data) typeText(project, workspace, event.data);
     event.target.value = '';
   };
 

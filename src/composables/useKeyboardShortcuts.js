@@ -2,6 +2,8 @@ import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { getTool } from '@/tools';
 import { clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
+import { copySelection } from '@/composables/clipboard';
+import { typeText } from '@/composables/useTextTool';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _isAltSwapped = ref(false);
@@ -79,20 +81,48 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       return true;
     }
     const key = e.key.toLowerCase();
-    if (key === 'a') workspaceStore.selectAll(projectStore.gridRect());
-    else if (key === 'c' && sel) workspaceStore.clipboard = projectStore.copySelection(sel, layers);
-    else if (key === 'x' && sel) {
-      workspaceStore.clipboard = projectStore.copySelection(sel, layers);
-      projectStore.deleteSelection(sel, layers);
-    } else if (key === 'v' && workspaceStore.clipboard) {
+    if (key === 'v') {
+      // Left to the browser: its paste event carries the system clipboard's text (_handlePaste
+      // decides what to paste). A browser that sends no paste event here pastes Phosphor's own block.
       // The Text cursor only counts in Edit Mode (it lingers, unseen, after switching tools).
       const cursor = workspaceStore.activeTool === 'text' ? workspaceStore.textCursor : null;
       const at = sel ? { col: sel.c0, row: sel.r0 } : cursor ?? workspaceStore.ansiViewOrigin;
-      const pasted = projectStore.pasteSelection(workspaceStore.clipboard, at.col, at.row);
-      if (pasted) workspaceStore.selectAll(pasted); // selected, with the Select tool, to drag into place
+      clearTimeout(_pendingPaste?.timer);
+      _pendingPaste = { at, timer: setTimeout(() => { _pendingPaste = null; _pasteBlock(at); }, 50) };
+      return true;
+    }
+    if (key === 'a') workspaceStore.selectAll(projectStore.gridRect());
+    else if (key === 'c' && sel) copySelection(projectStore, workspaceStore, sel, layers);
+    else if (key === 'x' && sel) {
+      copySelection(projectStore, workspaceStore, sel, layers);
+      projectStore.deleteSelection(sel, layers);
     } else return false;
     e.preventDefault();
     return true;
+  };
+
+  // Paste: Phosphor's own block (a Select copy), unless the system clipboard holds something newer
+  // (text that isn't what the last copy put there), which is typed in instead: at the Text cursor in
+  // Edit Mode, else at the selection or the top-left of the view.
+  let _pendingPaste = null; // { at, timer } from Cmd/Ctrl+V until its paste event
+  const _pasteBlock = (at) => {
+    if (!workspaceStore.clipboard) return;
+    const pasted = projectStore.pasteSelection(workspaceStore.clipboard, at.col, at.row);
+    if (pasted) workspaceStore.selectAll(pasted); // selected, with the Select tool, to drag into place
+  };
+  const _handlePaste = (e) => {
+    if (!_pendingPaste) return; // not a Cmd/Ctrl+V we routed (a field's own paste, the context menu)
+    const { at, timer } = _pendingPaste;
+    clearTimeout(timer);
+    _pendingPaste = null;
+    e.preventDefault();
+    const text = e.clipboardData?.getData('text/plain') ?? '';
+    const ours = workspaceStore.clipboardText;
+    if (workspaceStore.clipboard && (!text || ours === null || text === ours)) _pasteBlock(at);
+    else if (text) {
+      if (workspaceStore.activeTool !== 'text' || !workspaceStore.textCursor) workspaceStore.textCursor = at;
+      typeText(projectStore, workspaceStore, text);
+    }
   };
 
   const _handleGlobalKeyDown = (e) => {
@@ -140,6 +170,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     window.addEventListener('keyup', _handleGlobalKeyUp);
     window.addEventListener('blur', _handleBlur);
     window.addEventListener('contextmenu', _handleContextMenu);
+    document.addEventListener('paste', _handlePaste, true);
   });
 
   onBeforeUnmount(() => {
@@ -147,6 +178,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     window.removeEventListener('keyup', _handleGlobalKeyUp);
     window.removeEventListener('blur', _handleBlur);
     window.removeEventListener('contextmenu', _handleContextMenu);
+    document.removeEventListener('paste', _handlePaste, true);
+    clearTimeout(_pendingPaste?.timer);
   });
 
   return {};
