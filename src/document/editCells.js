@@ -85,7 +85,7 @@ export function shiftRow(map, row, fromCol, delta, cols) {
     const at = parseKey(key);
     if (at.row !== row || at.col >= cols) continue;
     if (at.col >= fromCol) moving.push([at.col, entry]);
-    else if (delta < 0 && at.col === fromCol - 1) removed.push(key);
+    else if (delta < 0 && at.col >= fromCol + delta) removed.push(key); // the cells a left shift covers
   }
   if (!moving.length && !removed.length) return map;
 

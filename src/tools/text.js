@@ -1,5 +1,6 @@
 // Types into cells: a click places the cursor; the keys are handled by useTextTool.
 import { cellAt } from '@/lib/Cells';
+import { snapCursor } from '@/document/wideChars';
 
 export default {
   id: 'text',
@@ -13,7 +14,7 @@ export default {
   preview: { shape: 'cell' },
   begin({ project, workspace }, pos) {
     const cell = cellAt(pos.x, pos.y, project.cols, project.rows);
-    if (cell) workspace.textCursor = cell;
+    if (cell) workspace.textCursor = snapCursor(project.cells, project.cols, cell, 0); // a wide character's trail: its lead
     return false;
   },
 };

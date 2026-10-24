@@ -12,6 +12,8 @@ import History from "@/document/History.js";
 import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, BLANK } from "@/document/editCells.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
+import { cellWidth } from "@/lib/CharWidth.js";
+import { overwrites } from "@/document/wideChars.js";
 import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, baseParams } from "@/store/settings.js";
 
 const MAX_DIMENSION = 300;
@@ -520,24 +522,44 @@ export const useProjectStore = defineStore('project', {
       this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
     },
 
-    // Typing: one undo entry per keystroke. Typed cells sit above paint (the last edit wins).
+    // Typing: one undo entry per keystroke. Typed cells sit above paint (the last edit wins). A
+    // two-column character takes the cell to its right too, so there's no room for one in the last
+    // column: false, and nothing is typed.
     typeAt(col, row, char, attrs, { insert = false } = {}) {
+      const width = cellWidth(char);
+      if (width === 2 && col === this.cols - 1) return false;
       this.typing(() => {
-        if (insert) this.shiftCells(row, col, 1);
-        this.editCell(col, row, { char, ...attrs }, { clearPaint: true });
+        if (insert) this.shiftCells(row, col, width);
+        this.writeAt(col, row, { char, ...attrs }, width);
       });
+      return true;
     },
 
+    // Write a typed cell, turning the half of any wide character it breaks into a space, as a
+    // terminal does (wideChars.overwrites reads the layout before the write).
+    writeAt(col, row, attrs, width) {
+      const blanks = overwrites(this.cells, this.cols, col, row, width);
+      this.editCell(col, row, attrs, { clearPaint: true });
+      this.writeEditCells(blanks.map(c => ({ col: c, row, attrs: { char: ' ' } })));
+    },
+
+    // Backspace over a wide character takes all of it: the columns the cursor moves back (0 at the
+    // row's start).
     backspaceAt(col, row, attrs, { insert = false } = {}) {
-      if (col < 1) return;
+      if (col < 1) return 0;
+      const target = this.cells[cellIndex(col - 1, row, this.cols)]?.wide === 'trail' ? col - 2 : col - 1;
+      const k = col - target;
       this.typing(() => {
-        if (insert) this.shiftCells(row, col, -1);
-        else this.editCell(col - 1, row, { char: ' ', ...attrs }, { clearPaint: true });
+        if (insert) this.shiftCells(row, col, -k);
+        else this.writeAt(target, row, { char: ' ', ...attrs }, 1);
       });
+      return k;
     },
 
+    // Delete on a wide character takes all of it.
     deleteAt(col, row) {
-      this.typing(() => this.shiftCells(row, col + 1, -1));
+      const k = this.cells[cellIndex(col, row, this.cols)]?.wide === 'lead' ? 2 : 1;
+      this.typing(() => this.shiftCells(row, col + k, -k));
     },
 
     // A run of typing is one undo step: its stroke stays open across keystrokes and is committed

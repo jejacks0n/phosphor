@@ -1,5 +1,6 @@
 import { squarePixels } from '@/lib/Brushes';
 import { cellsOfPixels } from '@/lib/Cells';
+import { withLeads } from '@/document/wideChars';
 
 // The eraser erases the layers chosen with its [Base] [Edit] toggles (workspace.eraseLayers).
 // Edit: paint and edit cells. Base: the base layer, black with a pinned space in the ANSI view
@@ -23,8 +24,10 @@ const eraser = {
   move({ project, workspace, view }, from, to) {
     if (!project.renderer.outputCanvas) return;
     const square = squarePixels(from, to, workspace.editEraserSize, project.cols, project.rows);
-    const cells = cellsOfPixels(square, project.cols, project.rows);
-    // The ANSI view erases whole cells (size 1 is one character); the pixel view, exact pixels.
+    // The ANSI view erases whole cells (size 1 is one character, and a wide character's trail takes
+    // its lead with it); the pixel view, exact pixels.
+    const under = cellsOfPixels(square, project.cols, project.rows);
+    const cells = view === 'output' ? withLeads(project.cells, project.cols, under) : under;
     const pixels = view === 'output' ? cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]) : square;
     const { base, edit } = workspace.eraseLayers;
     if (edit) {

@@ -38,6 +38,10 @@ const row = new Map([['78,0', { char: 'a' }], ['79,0', { char: 'b' }], ['5,1', {
 assert.deepEqual([...shiftRow(row, 0, 78, 1, 80).keys()].sort(), ['5,1', '79,0']);   // 'b' falls off; row 1 untouched
 assert.deepEqual(shiftRow(row, 0, 78, 1, 80).get('79,0'), { char: 'a' });
 assert.deepEqual(shiftRow(row, 0, 79, -1, 80).get('78,0'), { char: 'b' });          // 'a' removed, 'b' pulled left
+// Pulling a row left by two (a wide character's width) removes both cells it covers.
+// (Nothing to the right moving in: both still go.)
+const span = new Map([['1,0', { char: 'x' }], ['2,0', { char: 'y' }], ['5,0', { char: 'z' }]]);
+assert.deepEqual([...shiftRow(span, 0, 3, -2, 80)], [['3,0', { char: 'z' }]]);
 assert.equal(shiftRow(row, 0, 79, -1, 80).has('79,0'), false);
 assert.equal(shiftRow(row, 3, 0, 1, 80), row);                                        // nothing on that row: same map
 assert.deepEqual(k('@', { ctrlKey: true, altKey: true }), { type: 'char', char: '@' }); // AltGr (Windows/Linux) types

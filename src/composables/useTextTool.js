@@ -4,13 +4,19 @@ import { charRowsOf } from '@/lib/Cells';
 import { hex2rgb, paletteIndex } from '@/lib/ColorUtils';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { toast } from '@/composables/useToast';
+import { cellWidth } from '@/lib/CharWidth';
+import { snapCursor } from '@/document/wideChars';
 
-// Type one character at the Text tool's cursor and move right (the keyboard and the F-key strip).
+// Type one character at the Text tool's cursor and move right by its width (the keyboard and the
+// F-key strip). The cursor never rests on a wide character's trail.
 export function typeAtCursor(project, workspace, char) {
   const cursor = workspace.textCursor;
   if (!cursor) return;
-  project.typeAt(cursor.col, cursor.row, char, workspace.typingAttrs(), { insert: workspace.insertMode });
-  workspace.textCursor = moveCursor(cursor, 1, 0, project.cols, charRowsOf(project.rows));
+  if (!project.typeAt(cursor.col, cursor.row, char, workspace.typingAttrs(), { insert: workspace.insertMode })) {
+    toast('No room for a two-column character in the last column.');
+    return;
+  }
+  workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(cursor, cellWidth(char), 0, project.cols, charRowsOf(project.rows)), 1);
 }
 
 // The Text tool's keyboard, while it's active in the ANSI view with a cursor placed. Keys aimed
@@ -24,7 +30,7 @@ export function useTextTool(project, workspace) {
   };
 
   const move = (dc, dr) => {
-    workspace.textCursor = moveCursor(workspace.textCursor, dc, dr, project.cols, charRowsOf(project.rows));
+    workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(workspace.textCursor, dc, dr, project.cols, charRowsOf(project.rows)), dc);
   };
 
   // Alt+Up/Down: the slot's colour steps through the active palette (nothing to step in 24-bit).
@@ -46,8 +52,7 @@ export function useTextTool(project, workspace) {
       case 'end': move(project.cols, 0); break;
       case 'newline': move(-col, 1); break;
       case 'backspace':
-        project.backspaceAt(col, row, workspace.typingAttrs(), { insert });
-        move(-1, 0);
+        move(-project.backspaceAt(col, row, workspace.typingAttrs(), { insert }), 0);
         break;
       case 'delete': project.deleteAt(col, row); break;
       case 'toggleInsert': workspace.insertMode = !workspace.insertMode; break;
