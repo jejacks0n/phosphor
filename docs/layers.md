@@ -111,6 +111,9 @@ nudging act on:
   the base and edit content on the edit layer.
 - **Delete** erases the base (with Base on) and removes your edits (with Edit on).
 
+In Edit Mode, dragging across cells switches to the Select tool and selects them, the way dragging
+selects text in a text editor; a plain click still just places the cursor.
+
 Choosing another tool drops the selection.
 
 ## Flip FG/BG
