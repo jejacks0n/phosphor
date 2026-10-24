@@ -59,10 +59,16 @@ test('Space pans with any tool, keeps a selection, and never paints', async ({ p
   const top = await scroller(page).evaluate((el) => el.scrollTop);
   await page.keyboard.down('Space');
   await expect(hint(page)).toHaveText('Panning');
+  // The hand is drawn at the pointer, not the system cursor (Safari hides that on each key repeat).
+  await page.mouse.move(from.x + 1, from.y);
+  await expect(page.locator('div.held-hand')).toBeVisible();
+  expect(await page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [from.x + 1, from.y])).toBe('none');
   await page.mouse.down();
   await page.mouse.move(from.x, from.y - 120, { steps: 6 });
+  await expect(page.locator('div.held-hand.grabbing')).toBeVisible();
   await page.mouse.up();
   await page.keyboard.up('Space');
+  await expect(page.locator('div.held-hand')).toHaveCount(0);
   expect(await scroller(page).evaluate((el) => el.scrollTop)).toBeGreaterThan(top);
   expect(await ws(page, (w) => w.activeTool)).toBe('brush');
   expect(await store(page, 'project', (p) => p.hasEdits)).toBe(false);

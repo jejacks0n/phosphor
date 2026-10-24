@@ -28,6 +28,15 @@ const tool = computed(() => getTool(workspaceStore.activeTool));
 const toolCtx = () => ({ project: projectStore, workspace: workspaceStore, view: props.view });
 const rootRef = useTemplateRef('root');
 const isMouseOver = ref(false);
+// While Space holds the hand, the hand is drawn here rather than as the system cursor: Safari hides the
+// system cursor on every key press a page handles (each repeat of the held key), so it would flicker.
+const HAND_ICON = getTool('hand').icon;
+const pointer = ref(null); // { x, y } in client px
+const heldHand = computed(() => workspaceStore.heldTool?.by === 'space' && isMouseOver.value && pointer.value);
+function onPointerMove(event) {
+  pointer.value = { x: event.clientX, y: event.clientY };
+  onMouseMove(event);
+}
 
 const {
   mousePos,
@@ -246,7 +255,7 @@ defineExpose({ centerContent });
       @contextmenu.prevent
       @mouseenter="isMouseOver = workspaceStore.pointerOverEditor = true"
       @mouseleave="isMouseOver = workspaceStore.pointerOverEditor = false"
-      @pointermove="onMouseMove"
+      @pointermove="onPointerMove"
       @pointerdown="startPaint"
       @mousedown="startPaint"
       @touchstart.prevent.stop="handleTouchStart"
@@ -258,12 +267,48 @@ defineExpose({ centerContent });
       <div class="canvas-container">
         <slot/>
         <div class="tool-preview" :style="previewStyle"></div>
+        <Teleport to="body">
+          <div
+              v-if="heldHand"
+              class="held-hand"
+              :class="{ grabbing: workspaceStore.isPainting }"
+              :style="{ transform: `translate(${pointer.x}px, ${pointer.y}px)` }"
+              aria-hidden="true"
+              v-html="HAND_ICON"
+          ></div>
+        </Teleport>
         <div v-if="shapeDragStyle" class="shape-drag" :style="shapeDragStyle"></div>
         <slot name="overlay"/>
       </div>
     </div>
   </article>
 </template>
+
+<style>
+/* The hand drawn at the pointer while Space pans (EditorViewport.heldHand); centered on the hotspot. */
+div.held-hand {
+  position: fixed;
+  z-index: 2000;
+  top: -11px;
+  left: -11px;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  will-change: transform;
+}
+
+div.held-hand svg {
+  width: 100%;
+  height: 100%;
+  fill: #fff;
+  filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000);
+  transition: transform 0.08s ease;
+}
+
+div.held-hand.grabbing svg {
+  transform: scale(0.88);
+}
+</style>
 
 <style scoped>
 article {

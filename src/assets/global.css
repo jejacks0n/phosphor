@@ -415,6 +415,13 @@ main.middle-clicking div.edit-viewport.editing {
   cursor: grabbing !important;
 }
 
+/* Space-panning draws its own hand (EditorViewport): the system cursor flickers in Safari. */
+main.space-panning div.edit-viewport.editing,
+main.space-panning.is-painting,
+main.space-panning.is-painting div.edit-viewport.editing {
+  cursor: none !important;
+}
+
 main.tool-zoom div.edit-viewport.editing,
 main.with-image.ctrl-pressed div.edit-viewport.editing {
   cursor: zoom-in !important;
