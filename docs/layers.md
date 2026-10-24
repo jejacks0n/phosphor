@@ -178,6 +178,8 @@ character):
 
 - **Alt+F** (Option+F), or Moebius's **Alt+A**: open the color box on the foreground.
 - **Alt+B**: open it on the background.
+- In the color box, the **arrow keys** move between the swatches (starting on the current color),
+  **Enter** or **Space** picks one, and **Escape** closes it.
 - **Shift+Cmd+X** (Shift+Ctrl+X): swap the foreground and background. Plain **X** swaps them too,
   except in Edit Mode, where it types.
 

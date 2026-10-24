@@ -4,6 +4,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { swatchSections, drawingColors } from '@/lib/ColorUtils';
+import { nearestInDirection } from '@/lib/spatialFocus';
 
 // The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
@@ -42,8 +43,22 @@ const onKeyDown = (event) => {
   event.preventDefault(); // the popover takes this Escape (not the selection)
   emit('close');
 };
+// The arrow keys move focus to the nearest control that way (the swatches, None, the recent colors,
+// the FG/BG switch); Enter or Space picks, as a click does. Taken here, so they don't also nudge a
+// selection or move the text cursor.
+const onArrow = (event) => {
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key) || event.altKey || event.metaKey || event.ctrlKey) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const controls = [...root.value.querySelectorAll('button, input')];
+  const from = document.activeElement;
+  if (!controls.includes(from)) return controls[0]?.focus();
+  const next = nearestInDirection(from.getBoundingClientRect(), controls.map((el) => el.getBoundingClientRect()), event.key);
+  if (next >= 0) controls[next].focus();
+};
 onMounted(() => {
-  root.value?.querySelector('button')?.focus();
+  // Focus starts on the slot's color, so the arrows go from there.
+  (root.value?.querySelector('.swatch.selected') ?? root.value?.querySelector('button'))?.focus();
   document.addEventListener('pointerdown', onPointerDown, true);
   window.addEventListener('keydown', onKeyDown, true);
 });
@@ -54,7 +69,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="color-popover" role="dialog" aria-label="Color picker">
+  <div ref="root" class="color-popover" role="dialog" aria-label="Color picker" @keydown="onArrow">
     <div class="head">
       <button :class="{ on: slotName === 'fg' }" @click="emit('update:slotName', 'fg')">FG</button>
       <button :class="{ on: slotName === 'bg' }" @click="emit('update:slotName', 'bg')">BG</button>
@@ -196,6 +211,14 @@ button.swatch.selected {
   outline-offset: 1px;
   position: relative;
   z-index: 1;
+}
+
+/* Where the arrow keys are (the selected color keeps its white ring when it isn't focused). */
+button.swatch:focus-visible {
+  outline: 2px solid var(--accent-hot);
+  outline-offset: 1px;
+  position: relative;
+  z-index: 2;
 }
 
 button.swatch.none {
