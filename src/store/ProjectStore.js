@@ -607,9 +607,9 @@ export const useProjectStore = defineStore('project', {
     },
 
     // What's under a cell, as stored colors (pre-adjustment), for the eyedropper, flip and merge up.
-    // Spec "Bake and the eyedropper on generated cells" (bake is now Merge up), trial rule (a): stored colors are the
-    // pre-adjustment ones, so they keep following the adjustments. withPaint: paint (on top) wins
-    // per half; otherwise edit-cell attributes, then the source image.
+    // Stored, not as displayed: a picked or merged-up color keeps following the adjustments, as the
+    // picture's own colors do (picking a displayed color would apply the adjustments twice).
+    // withPaint: paint (on top) wins per half; otherwise edit-cell attributes, then the source image.
     underlyingAt(col, row, { withPaint = true } = {}) {
       const entry = this.editCellAt(col, row) ?? {};
       const half = (y, attr) => {
@@ -741,18 +741,6 @@ export const useProjectStore = defineStore('project', {
     // The whole grid as a rect (Merge up and Select all with no selection).
     gridRect() {
       return { c0: 0, r0: 0, c1: this.cols - 1, r1: charRowsOf(this.rows) - 1 };
-    },
-
-    // Swap in a new cell layer and recompose just the cells in rects (the rest, including paint made
-    // since the last full render, is left as it is).
-    setEditCells(next, rects) {
-      if (next === this.editCells) return;
-      this.ensureLayer();
-      this.beginEdit();
-      this.editCells = next;
-      const pixels = rects.flatMap(rect => rectCells(rect)).map(({ col, row }) => ({ x: col, y: 2 * row }));
-      this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
-      this.commitEdit();
     },
 
     // The base layer's cell (no edits, no paint), as stored colors: the converter's character (or
