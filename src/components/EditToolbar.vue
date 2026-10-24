@@ -84,6 +84,8 @@ const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'Overlay', title: 'ANSI lay
 const overlayFolded = useMediaQuery('(max-width: 1100px)');
 const STYLE_NAMES = { ansi: 'ANSI', colorAscii: 'Color ASCII', ascii: 'ASCII' };
 const styleName = computed(() => STYLE_NAMES[project.renderStyle] ?? 'ANSI');
+// Unfolded, the slider names the layer itself ("ANSI Overlay"); folded, the dropdown's button does.
+const overlaySetting = computed(() => ({ ...OVERLAY_SETTING, label: `${styleName.value} Overlay` }));
 
 // A tool that stops being offered (flip after switching to an ASCII art style) shouldn't stay active unseen.
 watch(tools, (offered) => {
@@ -207,7 +209,7 @@ const selectionHasEdits = computed(() => {
           </div>
         </DropdownMenu>
         <div v-else class="tool-setting-group overlay-group">
-          <RangeField compact :setting="OVERLAY_SETTING" v-model="workspace.ansiOverlay"/>
+          <RangeField compact :setting="overlaySetting" v-model="workspace.ansiOverlay"/>
           <label class="checkbox-wrapper" title="Preview every cell's characters, not just the edit cells">
             <span>All cells</span>
             <input type="checkbox" v-model="workspace.ansiOverlayAll"/>
