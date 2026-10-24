@@ -6,6 +6,7 @@
  * is broken the same way, by an edit cell's space.
  */
 import { cellIndex } from '../lib/Cells.js';
+import { cellWidth } from '../lib/CharWidth.js';
 
 const wideAt = (cells, cols, col, row) => (col >= 0 && col < cols ? cells[cellIndex(col, row, cols)]?.wide : undefined);
 
@@ -18,6 +19,20 @@ export function overwrites(cells, cols, col, row, width) {
   if (width === 2 && wideAt(cells, cols, col + 1, row) === 'lead') blanks.add(col + 2);
   blanks.delete(col);
   return [...blanks].filter(c => c >= 0 && c < cols);
+}
+
+// The same for many cells written at once ([{ col, row, char? }]: a shape): the cells to turn into
+// spaces, leaving out cells the batch writes itself. Cells written without a char break nothing.
+export function overwritesAll(cells, cols, list) {
+  const written = new Set(list.map(({ col, row }) => `${col},${row}`));
+  const blanks = new Map();
+  for (const { col, row, char } of list) {
+    if (typeof char !== 'string') continue;
+    for (const c of overwrites(cells, cols, col, row, cellWidth(char))) {
+      if (!written.has(`${c},${row}`)) blanks.set(`${c},${row}`, { col: c, row });
+    }
+  }
+  return [...blanks.values()];
 }
 
 // Where the cursor goes instead of a trail: past it moving right (dc > 0), else onto its lead.

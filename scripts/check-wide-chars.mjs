@@ -3,7 +3,7 @@
 // Run: node scripts/check-wide-chars.mjs
 import assert from 'node:assert/strict';
 import { layoutWide } from '../src/lib/Cells.js';
-import { overwrites, snapCursor, withLeads } from '../src/document/wideChars.js';
+import { overwrites, overwritesAll, snapCursor, withLeads } from '../src/document/wideChars.js';
 
 const lay = (chars) => layoutWide(chars.map(c => ({ char: c, fg: {}, bg: {} })), chars.length);
 const r = lay(['a', '漢', '_', '字', '_', 'b']);                     // 漢 at 1-2, 字 at 3-4
@@ -16,4 +16,10 @@ assert.deepEqual(snapCursor(r, 6, { col: 2, row: 0 }, 1), { col: 3, row: 0 });  
 assert.deepEqual(snapCursor(r, 6, { col: 2, row: 0 }, -1), { col: 1, row: 0 });  // anything else lands on the lead
 assert.deepEqual(snapCursor(r, 6, { col: 0, row: 0 }, 1), { col: 0, row: 0 });   // not a trail: unchanged
 assert.deepEqual(withLeads(r, 6, [{ col: 4, row: 0 }, { col: 5, row: 0 }]).map(c => c.col).sort(), [3, 4, 5]);
+// Many cells written at once (a shape): each breaks the wide characters it lands on, and the
+// blanks skip cells the batch writes itself.
+const line = [0, 1, 2, 3].map(col => ({ col, row: 0, char: '─' }));        // a line over a, 漢 and 字's lead
+assert.deepEqual(overwritesAll(r, 6, line).map(c => c.col), [4]);          // 漢 is written over whole; 字's trail blanks
+assert.deepEqual(overwritesAll(r, 6, [{ col: 2, row: 0, char: '│' }]).map(c => c.col), [1]); // one cell on 漢's trail
+assert.deepEqual(overwritesAll(r, 6, [{ col: 2, row: 0 }]), []);             // colours only: nothing breaks
 console.log('wide chars ok');

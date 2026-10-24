@@ -139,14 +139,34 @@ export function useTextTool(project, workspace, textInput) {
     }
   }));
 
+  // A click elsewhere (a toolbar button, the F-key strip) takes focus too; the textarea takes it
+  // back, so an input method keeps typing into cells. Only after a pointer: Tab and other keyboard
+  // moves keep their focus.
+  let pointerDown = false;
+  const onPointerDown = () => { pointerDown = true; };
+  const onPointerUp = () => setTimeout(() => { pointerDown = false; });
+  const onFocusOut = () => {
+    if (!pointerDown) return;
+    setTimeout(() => {
+      const el = textInput?.value;
+      if (el && inUse() && document.activeElement !== el && !editableFocus()) el.focus({ preventScroll: true });
+    });
+  };
+
   onMounted(() => {
     window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('pointerup', onPointerUp, true);
     textInput?.value?.addEventListener('input', onInput);
     textInput?.value?.addEventListener('compositionend', onCompositionEnd);
+    textInput?.value?.addEventListener('focusout', onFocusOut);
   });
   onBeforeUnmount(() => {
     window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('pointerdown', onPointerDown, true);
+    window.removeEventListener('pointerup', onPointerUp, true);
     textInput?.value?.removeEventListener('input', onInput);
     textInput?.value?.removeEventListener('compositionend', onCompositionEnd);
+    textInput?.value?.removeEventListener('focusout', onFocusOut);
   });
 }

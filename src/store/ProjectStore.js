@@ -13,7 +13,7 @@ import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, re
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
 import { cellWidth } from "@/lib/CharWidth.js";
-import { overwrites } from "@/document/wideChars.js";
+import { overwritesAll } from "@/document/wideChars.js";
 import { SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS, getSetting, settingsState, groupDefaults, baseParams } from "@/store/settings.js";
 
 const MAX_DIMENSION = 300;
@@ -530,17 +530,15 @@ export const useProjectStore = defineStore('project', {
       if (width === 2 && col === this.cols - 1) return false;
       this.typing(() => {
         if (insert) this.shiftCells(row, col, width);
-        this.writeAt(col, row, { char, ...attrs }, width);
+        this.writeAt(col, row, { char, ...attrs });
       });
       return true;
     },
 
-    // Write a typed cell, turning the half of any wide character it breaks into a space, as a
-    // terminal does (wideChars.overwrites reads the layout before the write).
-    writeAt(col, row, attrs, width) {
-      const blanks = overwrites(this.cells, this.cols, col, row, width);
-      this.editCell(col, row, attrs, { clearPaint: true });
-      this.writeEditCells(blanks.map(c => ({ col: c, row, attrs: { char: ' ' } })));
+    // Write a typed cell over any paint; the half of a wide character it breaks becomes a space
+    // (writeEditCells).
+    writeAt(col, row, attrs) {
+      this.writeEditCells([{ col, row, attrs }], { clearPaint: true });
     },
 
     // Backspace over a wide character takes all of it: the columns the cursor moves back (0 at the
@@ -551,7 +549,7 @@ export const useProjectStore = defineStore('project', {
       const k = col - target;
       this.typing(() => {
         if (insert) this.shiftCells(row, col, -k);
-        else this.writeAt(target, row, { char: ' ', ...attrs }, 1);
+        else this.writeAt(target, row, { char: ' ', ...attrs });
       });
       return k;
     },
@@ -776,11 +774,14 @@ export const useProjectStore = defineStore('project', {
     },
 
     // Many cell edits at once ([{ col, row, attrs }], e.g. a shape): one Map copy, one paint erase.
-    // Part of the current edit; the caller commits it.
+    // A character written over half of a wide character turns its other half into a space, as a
+    // terminal does (that space keeps its colours and paint). Part of the current edit; the caller
+    // commits it.
     writeEditCells(list, { clearPaint = false } = {}) {
       if (!list.length) return;
       this.ensureLayer();
       this.beginEdit();
+      const blanks = overwritesAll(this.cells, this.cols, list.map(({ col, row, attrs }) => ({ col, row, char: attrs.char })));
       const next = new Map(this.editCells);
       const pixels = [];
       for (const { col, row, attrs } of list) {
@@ -793,6 +794,10 @@ export const useProjectStore = defineStore('project', {
       if (clearPaint && this.paintLayer?.hasPaint) {
         this.paintLayer.erase(pixels);
         this.renderer.composite(this.paintLayer, this.processParams);
+      }
+      for (const { col, row } of blanks) {
+        next.set(cellKey(col, row), mergeEntry(next.get(cellKey(col, row)), { char: ' ' }));
+        pixels.push({ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 });
       }
       this.editCells = next;
       this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
