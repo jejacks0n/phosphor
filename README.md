@@ -30,9 +30,11 @@ npm run test:update   # Rewrite reference files (read the diff before committing
 Tests run on every pull request and gate the GitHub Pages deploy. See [docs/testing.md](docs/testing.md)
 for which layer a new test belongs in, and [AGENTS.md](AGENTS.md) for the rules of the road.
 
-Every build is stamped with its version, the commit it was built from and the day it was built: the
-About box shows it, and so does the page's `<meta name="phosphor-build">` (so `curl -s <site> | grep
-phosphor-build` says what's deployed). A build from uncommitted changes says `-dirty` after the commit.
+Every build is stamped with its version and the commit it was built from. The version is
+`package.json`'s major.minor with the day it was built as the third number (`v0.1.20261024`); the
+commit tells two builds on one day apart. The About box shows both, and so does the page's
+`<meta name="phosphor-build">` (so `curl -s <site> | grep phosphor-build` says what's deployed). A build
+from uncommitted changes says `-dirty` after the commit.
 
 ## Features
 

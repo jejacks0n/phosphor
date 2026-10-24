@@ -1,6 +1,6 @@
 <script setup>
-// This build: the version, the commit and the day it was built (vite.config.js, buildInfo).
-const { version, sha, date } = __BUILD__;
+// This build: the version (its third number is the day it was built) and the commit (vite.config.js, buildInfo).
+const { version, sha } = __BUILD__;
 
 defineEmits(['close']);
 </script>
@@ -14,7 +14,7 @@ defineEmits(['close']);
           <div class="logo"></div>
           <p class="tagline">Convert images to ANSI and ASCII ... with style?</p>
           <p class="version accent">v{{ version }}</p>
-          <p class="build">build {{ sha }} · {{ date }}</p>
+          <p class="build">build {{ sha }}</p>
         </header>
 
         <hr/>

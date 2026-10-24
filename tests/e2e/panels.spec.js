@@ -9,13 +9,16 @@ test('About opens from the footer, says which build it is, and closes', async ({
   await openApp(page);
   await page.getByRole('button', { name: 'Read About Phosphor' }).click();
   await expect(page.locator('.modal-backdrop')).toBeVisible();
-  await expect(page.locator('p.version')).toHaveText(/^v\d+\.\d+\.\d+/);
-  // The build it is: the commit (GitHub Actions' when deploying; "-dirty" with uncommitted changes)
-  // and the day it was built, in About and in the page's <meta name="phosphor-build">.
+  // The build it is: major.minor with the day it was built as the third number, and the commit
+  // (GitHub Actions' when deploying; "-dirty" with uncommitted changes), in About and in the page's
+  // <meta name="phosphor-build">.
+  const day = (ago) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10).replaceAll('-', '');
+  const today = `(${day(0)}|${day(1)})`; // built moments ago: today, or yesterday across midnight UTC
   const sha = process.env.GITHUB_SHA?.slice(0, 7) ?? execSync('git rev-parse --short=7 HEAD').toString().trim();
-  await expect(page.locator('p.build')).toHaveText(new RegExp(`^build ${sha}(-dirty)? · \\d{4}-\\d{2}-\\d{2}$`));
+  await expect(page.locator('p.version')).toHaveText(new RegExp(`^v\\d+\\.\\d+\\.${today}$`));
+  await expect(page.locator('p.build')).toHaveText(new RegExp(`^build ${sha}(-dirty)?$`));
   const meta = await page.locator('meta[name="phosphor-build"]').getAttribute('content');
-  expect(meta).toMatch(new RegExp(`^v\\d+\\.\\d+\\.\\d+ ${sha}(-dirty)? \\d{4}-\\d{2}-\\d{2}$`));
+  expect(meta).toMatch(new RegExp(`^v\\d+\\.\\d+\\.${today} ${sha}(-dirty)?$`));
   await page.getByTitle('Close').click();
   await expect(page.locator('.modal-backdrop')).toBeHidden();
 });

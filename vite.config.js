@@ -5,8 +5,9 @@ import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 // What a build is, baked into it (__BUILD__ in the app; a <meta name="phosphor-build"> in index.html):
-// the package version, the commit it was built from (GitHub Actions' GITHUB_SHA when deploying;
-// "-dirty" when built from uncommitted changes) and the day it was built (UTC).
+// the version, package.json's major.minor with the day it was built (UTC) as the third number
+// (0.1.20261024), and the commit it was built from (GitHub Actions' GITHUB_SHA when deploying;
+// "-dirty" when built from uncommitted changes), which tells two builds on one day apart.
 export function buildInfo() {
   const git = (cmd) => {
     try {
@@ -17,8 +18,9 @@ export function buildInfo() {
   };
   const sha = (process.env.GITHUB_SHA || git('git rev-parse HEAD')).slice(0, 7) || 'unknown';
   const dirty = !process.env.GITHUB_SHA && git('git status --porcelain') ? '-dirty' : '';
-  const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url)));
-  return { version, sha: sha + dirty, date: new Date().toISOString().slice(0, 10) };
+  const [major, minor] = JSON.parse(readFileSync(new URL('./package.json', import.meta.url))).version.split('.');
+  const day = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+  return { version: `${major}.${minor}.${day}`, sha: sha + dirty };
 }
 
 export default defineConfig(({ mode }) => {
@@ -31,7 +33,7 @@ export default defineConfig(({ mode }) => {
       vue(),
       {
         name: 'phosphor-build',
-        transformIndexHtml: () => [{ tag: 'meta', attrs: { name: 'phosphor-build', content: `v${build.version} ${build.sha} ${build.date}` }, injectTo: 'head' }],
+        transformIndexHtml: () => [{ tag: 'meta', attrs: { name: 'phosphor-build', content: `v${build.version} ${build.sha}` }, injectTo: 'head' }],
       },
     ],
     define: {
