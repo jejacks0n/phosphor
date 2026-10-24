@@ -6,6 +6,8 @@
  * Entry = { char?, fg?, bg? }: fg/bg are underlying colours ('#rrggbb'); a missing attribute shows
  * what's underneath. Keys are grid positions, so entries outside a shrunken grid are kept.
  */
+import { usableChar } from '../lib/CharWidth.js';
+
 const ATTRS = ['char', 'fg', 'bg'];
 
 export const cellKey = (col, row) => `${col},${row}`;
@@ -50,9 +52,9 @@ export function withoutCells(map, cells) {
 
 export const serializeEditCells = (map) => [...map];
 
-// Project files are untrusted: keep only col,row keys, one-character chars and #rrggbb colours.
+// Project files are untrusted: keep only col,row keys, chars a cell can hold and #rrggbb colours.
 const VALID = {
-  char: (v) => typeof v === 'string' && [...v].length === 1,
+  char: usableChar,
   fg: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
   bg: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
 };

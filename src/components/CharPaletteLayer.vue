@@ -3,9 +3,9 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, useTemplateRef, nextT
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
-import { UNICODE_BLOCKS, fitsOneCell, parseFind } from '@/lib/charPalettes';
+import { UNICODE_BLOCKS, fitsGrid, parseFind } from '@/lib/charPalettes';
 import { CP437, cp437Byte, isCp437 } from '@/lib/Cp437';
-import { DISPLAY_FONT_CSS } from '@/lib/GlyphCoverage';
+import { cellWidth } from '@/lib/CharWidth';
 import { toast } from '@/composables/useToast';
 
 // The character palette layer: one element in two sizes. Compact, it's the list of palettes (each
@@ -36,15 +36,8 @@ const builtins = computed(() => palettes.all.filter(p => p.builtin && matches(p)
 const yours = computed(() => palettes.all.filter(p => !p.builtin && matches(p)));
 const visible = computed(() => [...builtins.value, ...yours.value]);
 
-// Whether a glyph fits one grid cell, measured in the display font (cached per character).
-const measureCtx = document.createElement('canvas').getContext('2d');
-measureCtx.font = DISPLAY_FONT_CSS;
-const cellWidth = measureCtx.measureText('M').width;
-const fitCache = new Map();
-const fits = (char) => {
-  if (!fitCache.has(char)) fitCache.set(char, fitsOneCell(char, (c) => measureCtx.measureText(c).width, cellWidth));
-  return fitCache.get(char);
-};
+// Whether a glyph can go in a cell: one or two columns wide, as a terminal lays it out.
+const fits = fitsGrid;
 const code = (char) => `U+${char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`;
 
 // The glyphs the source pane shows, plus a note above them.
@@ -79,7 +72,7 @@ const followFork = ({ id, forked }) => {
 };
 const assign = (index, char, advance = true) => {
   if (char && !fits(char)) {
-    setHint(`${char} doesn't fit one cell (it's double-width, invisible or missing from the font), so it can't go in a palette.`, true);
+    setHint(`${char} can't go in a cell (it's invisible, a control, or more than one character), so it can't go in a palette.`, true);
     return;
   }
   followFork(palettes.setSlot(current.value.id, index, char));
@@ -147,7 +140,7 @@ const onGlyphHover = (char) => {
   if (!char) return;
   const byte = cp437Byte(char);
   const slot = current.value.glyphs.indexOf(char);
-  info.value = `${char}  ${code(char)} · ${byte !== null && isCp437(char) ? `CP437 ${byte}` : 'UTF-8 only'}${fits(char) ? '' : " · doesn't fit one cell"}${slot >= 0 ? ` · already on F${slot + 1}` : ''}`;
+  info.value = `${char}  ${code(char)} · ${byte !== null && isCp437(char) ? `CP437 ${byte}` : 'UTF-8 only'}${!fits(char) ? " · can't be used" : cellWidth(char) === 2 ? ' · 2 cells wide' : ''}${slot >= 0 ? ` · already on F${slot + 1}` : ''}`;
 };
 
 const editableTarget = (el) => el?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el?.tagName);

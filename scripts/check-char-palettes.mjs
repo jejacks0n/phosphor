@@ -1,8 +1,8 @@
-// Character palettes: the built-in sets, glyph lists, fork naming, the one-cell rule and the
+// Character palettes: the built-in sets, glyph lists, fork naming, what a cell may hold and the
 // palette layer's find field. Run: node scripts/check-char-palettes.mjs
 import assert from 'node:assert/strict';
 import {
-  BUILTIN_PALETTES, UNICODE_BLOCKS, normalizeGlyphs, forkName, fitsOneCell, parseFind,
+  BUILTIN_PALETTES, UNICODE_BLOCKS, normalizeGlyphs, forkName, fitsGrid, parseFind,
 } from '../src/lib/charPalettes.js';
 import { isCp437 } from '../src/lib/Cp437.js';
 
@@ -21,13 +21,10 @@ assert.deepEqual(normalizeGlyphs(['x', undefined]).slice(0, 2), ['x', '']);
 assert.equal(forkName('Double lines', ['Double lines']), 'Double lines (mine)');
 assert.equal(forkName('Double lines', ['Double lines (mine)']), 'Double lines (mine 2)');
 assert.equal(forkName('Double lines', ['Double lines (mine)', 'Double lines (mine 2)']), 'Double lines (mine 3)');
-const measure = (c) => (c === '中' ? 16 : 8);
-assert.equal(fitsOneCell('╬', measure, 8), true);
-assert.equal(fitsOneCell('中', measure, 8), false);
-assert.equal(fitsOneCell('🙂', measure, 8), false);
-assert.equal(fitsOneCell('', measure, 8), false);
-assert.equal(fitsOneCell('́', measure, 8), false);                 // a combining mark alone
-assert.equal(fitsOneCell('ab', measure, 8), false);                     // more than one character
+// What a cell may hold: one character, one or two columns wide (a terminal's width, not the
+// display font's advance), assigned and not private use.
+for (const ok of ['╬', '中', '🙂', '﷽', '☺', '👍🏽']) assert.equal(fitsGrid(ok), true, ok);
+for (const bad of ['', '\u0301', 'ab', '\u200d', '\u00ad', '\ufeff', String.fromCharCode(0xd800), '\uE000', '\u0378']) assert.equal(fitsGrid(bad), false, escape(bad));
 assert.deepEqual(parseFind('U+2605'), { kind: 'code', chars: ['★'] });
 assert.deepEqual(parseFind('u+1fb00'), { kind: 'code', chars: ['🬀'] });
 assert.deepEqual(parseFind('box'), { kind: 'block', query: 'box' });
@@ -36,14 +33,7 @@ assert.deepEqual(parseFind('★ ★◆'), { kind: 'paste', chars: ['★', '◆']
 assert.equal(parseFind(''), null);
 assert.equal(parseFind('   '), null);
 assert.equal(parseFind('U+FFFFFF'), null);                              // beyond Unicode: nothing to offer
-for (const invisible of ['\u200d', '\u00ad', '\ufeff', String.fromCharCode(0xd800)]) assert.equal(fitsOneCell(invisible, measure, 8), false, escape(invisible));
-assert.equal(fitsOneCell('x', () => 0, 8), false);                       // zero advance: draws nothing
-assert.equal(fitsOneCell('☺', measure, 8), true);                        // text-presentation symbols are fine
 assert.deepEqual(parseFind('-'), { kind: 'paste', chars: ['-'] });        // not a block name: offered as typed
 assert.deepEqual(parseFind('a'), { kind: 'paste', chars: ['a'] });
-// "Exactly one cell": a glyph from a fallback font with a different advance (wider or narrower)
-// would shift the rest of its row, so it must match the cell width.
-assert.equal(fitsOneCell('⠿', () => 12, 10.2), false);
-assert.equal(fitsOneCell('⠿', () => 8, 10.2), false);
-assert.equal(fitsOneCell('⠿', () => 10.4, 10.2), true);
+assert.deepEqual(parseFind('👍🏽漢'), { kind: 'paste', chars: ['👍🏽', '漢'] }); // pasted characters are whole clusters
 console.log('char palettes ok');

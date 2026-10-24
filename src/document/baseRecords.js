@@ -8,6 +8,7 @@
  */
 import { cellKey, parseKey } from './editCells.js';
 import { cellAt } from '../lib/Cells.js';
+import { usableChar } from '../lib/CharWidth.js';
 
 const make = (pins) => Object.freeze({ pins });
 
@@ -48,13 +49,13 @@ export function serializeBase(records) {
   return { pins: [...records.pins] };
 }
 
-// Project files are untrusted: anything that isn't a 'col,row' key (or a one-character pin) is
+// Project files are untrusted: anything that isn't a 'col,row' key (or a pin a cell can hold) is
 // skipped. Files from before the base had its own pixels kept erased cells as a record too; they come
 // back as cells (erased: [{ col, row }]) for the store to erase, unless a pin is on the same cell.
 const KEY = /^\d+,\d+$/;
 export function deserializeBase(json) {
   const pins = (Array.isArray(json?.pins) ? json.pins : []).filter(pair =>
-    Array.isArray(pair) && typeof pair[0] === 'string' && KEY.test(pair[0]) && typeof pair[1] === 'string' && [...pair[1]].length === 1);
+    Array.isArray(pair) && typeof pair[0] === 'string' && KEY.test(pair[0]) && usableChar(pair[1]));
   const pinned = new Set(pins.map(([key]) => key));
   const erased = (Array.isArray(json?.erased) ? json.erased : [])
     .filter(key => typeof key === 'string' && KEY.test(key) && !pinned.has(key)).map(parseKey);

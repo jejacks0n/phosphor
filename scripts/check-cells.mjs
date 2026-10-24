@@ -43,4 +43,12 @@ assert.deepEqual(cellAt(3.7, 5.2, 80, 167), { col: 3, row: 2 });
 assert.equal(cellAt(80.5, 0, 80, 167), null);
 assert.equal(cellAt(-0.5, 0, 80, 167), null);
 assert.equal(cellAt(0, 166.5, 80, 167), null); // row 83 doesn't exist with 167 pixel rows
+// Generated characters stay one column: the charset is split into whole characters (an astral one
+// isn't two UTF-16 halves) and two-column ones are skipped, falling back to ▄ when nothing's left.
+const grid = (charset) => buildCells(Array.from({ length: 32 }, () => px(9, 9, 9)), 4, 8, { ...opts, charset }).map(c => c.char);
+assert.ok(grid('a漢b').every(c => c === 'a' || c === 'b'));
+assert.ok(grid('𝔸').every(c => c === '𝔸'));
+assert.ok(grid('漢').every(c => c === '▄'));
+assert.equal(brightnessChar(px(0, 0, 0), px(0, 0, 0), ' 漢#'), ' ');
+assert.equal(brightnessChar(px(255, 255, 255), px(255, 255, 255), ' 漢#'), '#');
 console.log('cells ok');

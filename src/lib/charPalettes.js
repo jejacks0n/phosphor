@@ -4,10 +4,12 @@
  *
  * Palette = { id, name, glyphs: string[12], builtin? }
  */
+import { graphemes, usableChar } from './CharWidth.js';
+
 const SLOTS = 12;
 
 export function normalizeGlyphs(input) {
-  const glyphs = typeof input === 'string' ? [...input] : [...input];
+  const glyphs = typeof input === 'string' ? graphemes(input) : [...input];
   return Array.from({ length: SLOTS }, (_, i) => glyphs[i] ?? '');
 }
 
@@ -51,13 +53,10 @@ export function forkName(name, existingNames) {
   return `${name} (mine ${n})`;
 }
 
-// Whether a character fits exactly one cell of the grid: one visible character (not an emoji, mark,
-// control, format or unassigned code point) whose advance in the display font matches the cell's
-// (measure: char => advance in px). A fallback-font glyph of another width would shift its row.
-export function fitsOneCell(char, measure, cellWidth) {
-  if ([...char].length !== 1) return false;
-  if (/\p{Emoji_Presentation}|\p{M}|\p{C}/u.test(char)) return false;
-  return Math.abs(measure(char) - cellWidth) < 0.5;
+// Whether a character can go in a palette: one a cell can hold (one or two columns wide, as a
+// terminal lays it out), assigned and not private use.
+export function fitsGrid(char) {
+  return usableChar(char) && !/\p{Cn}|\p{Co}/u.test(char);
 }
 
 // The find field: a code point (U+2605), part of a Unicode block's name, or pasted characters.
@@ -70,8 +69,8 @@ export function parseFind(query) {
   }
   // A single character is always itself; a word searches block names.
   const name = q.toLowerCase();
-  if ([...q].length > 1 && /^[a-z -]+$/.test(name) && UNICODE_BLOCKS.some(([block]) => block.toLowerCase().includes(name))) {
+  if (graphemes(q).length > 1 && /^[a-z -]+$/.test(name) && UNICODE_BLOCKS.some(([block]) => block.toLowerCase().includes(name))) {
     return { kind: 'block', query: q };
   }
-  return { kind: 'paste', chars: [...new Set([...q].filter(c => c.trim()))] };
+  return { kind: 'paste', chars: [...new Set(graphemes(q).filter(c => c.trim()))] };
 }

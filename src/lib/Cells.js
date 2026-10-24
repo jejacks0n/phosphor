@@ -7,6 +7,7 @@
  */
 import { rgb2hex, hex2rgb, rgb2gray, nearestColor } from './ColorUtils.js';
 import { coverageOf } from './GlyphCoverage.js';
+import { graphemes, cellWidth } from './CharWidth.js';
 
 const ASCII_BG = { r: 0, g: 0, b: 0, hex: '#000000', c: 0 };
 
@@ -23,9 +24,23 @@ export function cellAt(x, y, cols, rows) {
 
 const colorOf = (p) => ({ r: p.r, g: p.g, b: p.b, hex: rgb2hex(p), c: p.c !== undefined ? p.c : [p.r, p.g, p.b] });
 
+// The characters a charset generates from: whole characters (an astral one isn't two UTF-16
+// halves), one column wide only so generated cells never overlap, ▄ when nothing's left. Cached for
+// the last charset: it's asked once per cell.
+let lastCharset = null, lastGlyphs = null;
+function glyphsOf(charset) {
+  if (charset !== lastCharset) {
+    const glyphs = graphemes(charset || '').filter(c => cellWidth(c) === 1);
+    lastCharset = charset;
+    lastGlyphs = glyphs.length ? glyphs : ['▄'];
+  }
+  return lastGlyphs;
+}
+
 export function brightnessChar(top, bottom, charset) {
+  const glyphs = glyphsOf(charset);
   const avgGray = (rgb2gray(top) + rgb2gray(bottom)) / 2;
-  return charset[Math.max(0, Math.min(charset.length - 1, Math.round(avgGray * (charset.length - 1))))];
+  return glyphs[Math.max(0, Math.min(glyphs.length - 1, Math.round(avgGray * (glyphs.length - 1))))];
 }
 
 export function buildCell(top, bottom, char, renderStyle) {
@@ -57,7 +72,7 @@ const seedHash = (seed) => {
 const cellRandom = (h, col, row) => fmix(h ^ Math.imul(col + 1, 0x9e3779b1) ^ Math.imul(row + 1, 0x85ebca77));
 
 export function buildCells(pixels, cols, rows, { charset, charMode, renderStyle, seed }) {
-  const chars = charset || '▄';
+  const chars = glyphsOf(charset);
   const h = seedHash(seed);
   const cells = new Array(cols * charRowsOf(rows));
 

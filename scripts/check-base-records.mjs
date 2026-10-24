@@ -30,4 +30,5 @@ for (const json of [undefined, null, {}]) assert.deepEqual(deserializeBase(json)
 const old = deserializeBase({ erased: ['1,1', '3,3', 'x', 5, '-1,2'], pins: [['3,3', 'A'], ['4,4', 'AB'], ['5,5', 5], 'bad', ['zz', 'B']] });
 assert.deepEqual(old.erased, [{ col: 1, row: 1 }]); assert.deepEqual([...old.records.pins], [['3,3', 'A']]);
 assert.deepEqual(deserializeBase({ erased: 5, pins: 'x' }), { records: EMPTY_BASE, erased: [] });
+assert.deepEqual([...deserializeBase({ pins: [['1,1', '☺\uFE0F'], ['2,2', '漢字']] }).records.pins.keys()], ['1,1']); // a cluster pins; two characters don't
 console.log('base records ok');

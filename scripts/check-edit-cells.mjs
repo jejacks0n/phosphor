@@ -28,6 +28,9 @@ assert.equal(deserializeEditCells(undefined).size, 0);
 assert.deepEqual([...migrateCharEdits([[5, '#'], [12, '@']], 4)], [['1,1', { char: '#' }], ['0,3', { char: '@' }]]);
 assert.equal(migrateCharEdits([[5, '#']], undefined).size, 0);          // no column count: nothing to place
 assert.ok(Object.isFrozen(deserializeEditCells([['0,0', { char: 'x' }]]).get('0,0')));
+// A char is one character a cell can hold: a whole cluster (👍🏽), one or two columns wide; two
+// characters or a lone combining mark are skipped.
+assert.deepEqual([...deserializeEditCells([['0,0', { char: '👍🏽' }], ['1,0', { char: '漢' }], ['2,0', { char: 'ab' }], ['3,0', { char: '\u0301' }]]).keys()], ['0,0', '1,0']);
 assert.equal(deserializeEditCells([['0,0', {}], ['1,0', null]]).size, 0); // empty entries never exist
 // Project files are untrusted: only one-character chars, #rrggbb colours and col,row keys load.
 const loaded = deserializeEditCells([
