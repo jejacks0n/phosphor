@@ -53,7 +53,7 @@ export function blockMask(char, cw, ch) {
 }
 
 // The data textures' bytes for the first count cells: fg rgb + the glyph index's low byte, bg rgb
-// + its high byte. A missing cell (a grid between its resize and its render) is black on black.
+// + its high byte (glyphOf(cell): a wide character's lead and trail are its two halves). A missing cell (a grid between its resize and its render) is black on black.
 export function packCells(cells, count, glyphOf, fg, bg) {
   for (let i = 0; i < count; i++) {
     const cell = cells[i], o = i * 4;
@@ -62,7 +62,7 @@ export function packCells(cells, count, glyphOf, fg, bg) {
       bg.fill(0, o, o + 4);
       continue;
     }
-    const g = glyphOf(cell.char);
+    const g = glyphOf(cell);
     fg[o] = cell.fg.r; fg[o + 1] = cell.fg.g; fg[o + 2] = cell.fg.b; fg[o + 3] = g & 255;
     bg[o] = cell.bg.r; bg[o + 1] = cell.bg.g; bg[o + 2] = cell.bg.b; bg[o + 3] = g >> 8;
   }
@@ -159,8 +159,8 @@ export default class CellCanvas {
   draw(cells) {
     const gl = this.#gl, g = this.#geom;
     if (!g || gl.isContextLost() || cells.length !== g.cols * g.rows) return;
-    if (!this.#glyphs.size) this.#glyphOf(' '); // glyph 0: what a missing cell draws
-    packCells(cells, g.cols * g.rows, (char) => this.#glyphOf(char), this.#fg, this.#bg);
+    if (!this.#glyphs.size) this.#glyphOf({ char: ' ' }); // glyph 0: what a missing cell draws
+    packCells(cells, g.cols * g.rows, (cell) => this.#glyphOf(cell), this.#fg, this.#bg);
 
     const [fgTexture, bgTexture, atlasTexture] = this.#textures;
     for (const [unit, texture, data] of [[0, fgTexture, this.#fg], [1, bgTexture, this.#bg]]) {
@@ -233,15 +233,30 @@ export default class CellCanvas {
     this.#atlasDirty = true;
   }
 
-  // A character's atlas index, rasterizing it the first time.
-  #glyphOf(char) {
-    let index = this.#glyphs.get(char);
+  // A cell's atlas index, rasterizing its character the first time. A wide character is drawn
+  // once across two cells and kept as two glyphs, its lead's half and its trail's.
+  #glyphOf({ char, wide }) {
+    const key = wide ? `${char}\u0000${wide}` : char;
+    const index = this.#glyphs.get(key);
     if (index !== undefined) return index;
     const { cw, ch } = this.#geom;
-    index = this.#glyphs.size;
-    this.#glyphs.set(char, index);
+    if (!wide) return this.#store(key, blockMask(char, cw, ch) ?? this.#rasterize(char, 1));
 
-    const mask = blockMask(char, cw, ch) ?? this.#rasterize(char);
+    const both = this.#rasterize(char, 2), half = (x0) => {
+      const mask = new Uint8Array(cw * ch);
+      for (let y = 0; y < ch; y++) mask.set(both.subarray(y * 2 * cw + x0, y * 2 * cw + x0 + cw), y * cw);
+      return mask;
+    };
+    const lead = this.#store(`${char}\u0000lead`, half(0));
+    const trail = this.#store(`${char}\u0000trail`, half(cw));
+    return wide === 'lead' ? lead : trail;
+  }
+
+  // Put a cw x ch mask in the next atlas slot (growing the atlas a row at a time); its index.
+  #store(key, mask) {
+    const { cw, ch } = this.#geom;
+    const index = this.#glyphs.size;
+    this.#glyphs.set(key, index);
     const row = Math.floor(index / ATLAS_COLS), width = ATLAS_COLS * cw;
     if (row >= this.#atlasRows) {
       const grown = new Uint8Array(width * (row + 1) * ch);
@@ -255,10 +270,10 @@ export default class CellCanvas {
     return index;
   }
 
-  // Any other character in the display font, as GlyphCoverage rasterizes it: centred in the line,
-  // squeezed into the cell when wider, and inked where alpha > 127.
-  #rasterize(char) {
-    const { cw, ch, scale } = this.#geom;
+  // A character in the display font across cells cells (1, or 2 for a wide one), as GlyphCoverage
+  // rasterizes it: centred in the line, squeezed into its cells when wider, inked where alpha > 127.
+  #rasterize(char, cells) {
+    const { ch, scale } = this.#geom, cw = this.#geom.cw * cells;
     this.#scratch ??= document.createElement('canvas');
     if (this.#scratch.width !== cw || this.#scratch.height !== ch) {
       this.#scratch.width = cw;

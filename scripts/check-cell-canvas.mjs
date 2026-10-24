@@ -27,8 +27,9 @@ assert.ok(ink(q, 4, 0, 0) && !ink(q, 4, 3, 0) && !ink(q, 4, 0, 3) && ink(q, 4, 3
 assert.ok(ink(blockMask('▙', 4, 4), 4, 0, 0) && !ink(blockMask('▙', 4, 4), 4, 3, 0)); // all but top-right
 assert.equal(blockMask('A', 4, 4), null);
 
-const fg = new Uint8Array(8), bg = new Uint8Array(8);
-packCells([{ char: 'x', fg: { r: 1, g: 2, b: 3 }, bg: { r: 4, g: 5, b: 6 } }], 2, () => 0x1234, fg, bg);
-assert.deepEqual([...fg], [1, 2, 3, 0x34, 0, 0, 0, 0]);                       // index low byte; a missing cell is zeros
-assert.deepEqual([...bg], [4, 5, 6, 0x12, 0, 0, 0, 0]);                       // index high byte
+const fg = new Uint8Array(12), bg = new Uint8Array(12);
+const glyphOf = (cell) => (cell.wide === 'trail' ? 0x0102 : 0x1234);          // a wide character's halves are separate glyphs
+packCells([{ char: 'x', fg: { r: 1, g: 2, b: 3 }, bg: { r: 4, g: 5, b: 6 } }, undefined, { char: '漢', wide: 'trail', fg: { r: 7, g: 8, b: 9 }, bg: { r: 0, g: 0, b: 0 } }], 3, glyphOf, fg, bg);
+assert.deepEqual([...fg], [1, 2, 3, 0x34, 0, 0, 0, 0, 7, 8, 9, 0x02]);        // index low byte; a missing cell is zeros
+assert.deepEqual([...bg], [4, 5, 6, 0x12, 0, 0, 0, 0, 0, 0, 0, 0x01]);        // index high byte
 console.log('cell canvas ok');

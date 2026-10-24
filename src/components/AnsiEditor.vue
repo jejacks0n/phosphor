@@ -83,8 +83,8 @@ const render = () => {
     rows: charRowsOf(projectStore.rows),
   }, m);
 
-  const buffer = projectStore.cells.map(({ char, fg, bg }) => ({
-    char,
+  const buffer = projectStore.cells.map(({ char, fg, bg, wide }) => ({
+    char: wide === 'trail' ? '' : char, // the lead's glyph is the whole wide character
     color: fg.hex,
     backgroundColor: bg.hex,
     fgIndex: fg.c,
