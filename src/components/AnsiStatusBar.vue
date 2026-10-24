@@ -44,6 +44,10 @@ const origin = (attr) => (entry.value?.[attr] !== undefined ? 'edit' : 'base');
     </template>
     <span class="spacer"></span>
     <button
+        title="ANSI view renderer (trial): canvas or DOM"
+        @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
+    >{{ workspace.ansiRenderer === 'dom' ? 'DOM' : 'Canvas' }}</button>
+    <button
         v-if="tool === 'text'"
         :title="workspace.insertMode ? 'Insert: typing pushes the row right (Insert key)' : 'Overwrite: typing replaces the cell (Insert key)'"
         @click="workspace.insertMode = !workspace.insertMode"

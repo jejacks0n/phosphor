@@ -1,26 +1,52 @@
 <script setup>
-import { ref, computed, useTemplateRef, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, useTemplateRef, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useTextTool } from '@/composables/useTextTool';
 import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
+import CellCanvas from '@/lib/CellCanvas';
 import EditorViewport from '@/components/EditorViewport.vue';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 
-// The ANSI view: cells rendered as text in a <pre>; a grid pixel is half a character cell tall.
+// The ANSI view: cells drawn on a canvas (CellCanvas), or rendered as text in a <pre> (the DOM
+// renderer, kept beside it for the trial: workspace.ansiRenderer); a grid pixel is half a
+// character cell tall.
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 useTextTool(projectStore, workspaceStore);
-const displayRef = useTemplateRef('pre');
+const useDom = computed(() => workspaceStore.ansiRenderer === 'dom');
+const preRef = useTemplateRef('pre'), canvasRef = useTemplateRef('canvas');
+const displayRef = computed(() => (useDom.value ? preRef.value : canvasRef.value));
 
 const metrics = ref(null);
 let renderFrame = null;
+let cellCanvas = null;
 
-// Character cell size in CSS px, measured from the <pre>'s font (null until it can be measured).
+// The canvas renderer for the mounted canvas. No WebGL2: the DOM view instead.
+const ensureCellCanvas = () => {
+  if (cellCanvas?.canvas === canvasRef.value) return cellCanvas;
+  cellCanvas?.destroy();
+  try {
+    cellCanvas = new CellCanvas(canvasRef.value, { onRestored: queueRender });
+  } catch {
+    cellCanvas = null;
+    workspaceStore.ansiRenderer = 'dom';
+  }
+  return cellCanvas;
+};
+
+// Character cell size in CSS px (null until it can be measured): measured from the <pre>'s font,
+// or the canvas renderer's whole-device-pixel cells.
 const ensureMetrics = () => {
-  if (!metrics.value && displayRef.value) metrics.value = calcMetrics(displayRef.value);
+  if (metrics.value) return metrics.value;
+  if (useDom.value) {
+    if (displayRef.value) metrics.value = calcMetrics(displayRef.value);
+  } else if (canvasRef.value && ensureCellCanvas()) {
+    cellCanvas.resize(projectStore.cols, charRowsOf(projectStore.rows), window.devicePixelRatio);
+    metrics.value = cellCanvas.metrics;
+  }
   return metrics.value;
 };
 
@@ -39,6 +65,14 @@ const render = () => {
   if (!m || m.cellWidth === 0 || m.lineHeight === 0) {
     metrics.value = null;
     queueRender();
+    return;
+  }
+
+  if (!useDom.value) {
+    if (!ensureCellCanvas()) return;
+    // A resize here means the grid or the dpr changed; the overlays follow through metrics.
+    if (cellCanvas.resize(projectStore.cols, charRowsOf(projectStore.rows), window.devicePixelRatio)) metrics.value = cellCanvas.metrics;
+    cellCanvas.draw(projectStore.cells);
     return;
   }
 
@@ -101,10 +135,20 @@ const selectionBox = computed(() => {
 
 // The first content renders immediately so it's laid out before the viewport restores/centres its
 // scroll on the next frame; later updates (e.g. every paint move) coalesce to one render per frame.
-watch(() => projectStore.cells, () => (displayRef.value?.childElementCount ? queueRender() : render()));
+watch(() => projectStore.cells, () => ((useDom.value ? displayRef.value?.childElementCount : cellCanvas) ? queueRender() : render()));
 watch(() => [projectStore.cols, projectStore.rows], () => {
   metrics.value = null;
   queueRender();
+});
+// Swapping renderers: the overlays measure against the new element once it's mounted. The canvas
+// renderer's WebGL context goes with its canvas.
+watch(useDom, (dom) => {
+  if (dom) {
+    cellCanvas?.destroy();
+    cellCanvas = null;
+  }
+  metrics.value = null;
+  nextTick(queueRender);
 });
 
 // The first whole cell on screen (top-left), where a paste goes with no selection or text cursor.
@@ -135,6 +179,7 @@ onMounted(() => {
   if (document.fonts) {
     document.fonts.ready.then(() => {
       if (!displayRef.value) return; // unmounted meanwhile
+      cellCanvas?.invalidate(); // glyphs rasterized in a fallback font
       metrics.value = null;
       queueRender();
     });
@@ -144,6 +189,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (renderFrame) cancelAnimationFrame(renderFrame);
   cancelAnimationFrame(originFrame);
+  cellCanvas?.destroy();
   viewportEl?.removeEventListener('scroll', publishOrigin);
   window.removeEventListener('resize', publishOrigin);
 });
@@ -158,7 +204,8 @@ onBeforeUnmount(() => {
       view="output"
       :unit="unit"
   >
-    <pre ref="pre" :style="{ pointerEvents: 'none' }"></pre>
+    <pre v-if="useDom" ref="pre" class="display" :style="{ pointerEvents: 'none' }"></pre>
+    <canvas v-else ref="canvas" class="display" :style="{ pointerEvents: 'none' }"></canvas>
     <div class="interaction-overlay"></div>
     <template #overlay>
       <div class="text-cursor" :style="cursorStyle"></div>
@@ -214,21 +261,29 @@ div.ansi-editor {
   z-index: 5;
 }
 
-pre {
-  margin: 0;
-  padding: 0;
+.display {
   /* GlyphCoverage.DISPLAY_FONT must match this font, size and line-height */
   font-family: 'JetBrains Mono', monospace;
   font-size: 17px;
   line-height: 1.2;
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: unset;
-  white-space: pre;
   background: var(--surface-dark);
   border: 2px dashed var(--border-light);
   display: block;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* crisp when the backing scale is capped below the dpr (CellCanvas) */
+canvas.display {
+  image-rendering: pixelated;
+}
+
+pre {
+  margin: 0;
+  padding: 0;
+  white-space: pre;
   text-rendering: optimizeSpeed;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
