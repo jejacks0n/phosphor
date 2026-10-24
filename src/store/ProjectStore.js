@@ -18,6 +18,7 @@ import { cellWidth } from "@/lib/CharWidth.js";
 import { overwritesAll } from "@/document/wideChars.js";
 import { RESET_GROUPS, settingsState, groupDefaults, baseParams, slidersAtDefaults } from "@/store/settings.js";
 import { combineActions } from "@/store/project/combineActions.js";
+import { historyActions } from "@/store/project/history.js";
 import { MAX_DIMENSION, DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, TYPING_PAUSE_MS, PIPELINE_KEYS, SAVED_KEYS, settingsJson, copyOf, over, SLIDER_KEYS, NUDGE_MS } from "@/store/project/shared.js";
 
 export const useProjectStore = defineStore('project', {
@@ -90,7 +91,7 @@ export const useProjectStore = defineStore('project', {
     }),
   },
 
-  actions: combineActions({
+  actions: combineActions(historyActions, {
     randomizeSeed() {
       this.seed = generateSlug(2);
     },
@@ -1036,69 +1037,6 @@ export const useProjectStore = defineStore('project', {
       };
       apply(after);
       this.pushEdit({ undo: () => apply(before), redo: () => apply(after) });
-    },
-
-    // An edit (stroke, fill, cell edit) records from its first change until commitEdit().
-    beginEdit() {
-      if (this._stroke?.typing && !this._typingNow) this.commitEdit(); // another edit ends a typing run
-      if (this._stroke || !this.paintLayer) return;
-      this._stroke = markRaw({ editCells: this.editCells, baseRecords: this.baseRecords }); // raw, so commitEdit's identity checks see the same objects
-      this.paintLayer.beginStroke();
-      this.baseLayer.beginStroke();
-    },
-
-    // End of a user edit: one undo entry for its paint and base pixel tiles and its cell-layer and
-    // pin changes, and it counts as unsaved.
-    commitEdit() {
-      const stroke = this._stroke;
-      this._stroke = null;
-      const patch = this.paintLayer?.endStroke();
-      const basePatch = this.baseLayer?.endStroke();
-      this.hasPaint = this.paintLayer?.hasPaint ?? false; // an erase may have left none
-      if (stroke && this.quantize === 'count') this.composite({ rebuild: true }); // the Number palette and the stroke's colors catch up
-      if (!stroke || (!patch && !basePatch && stroke.editCells === this.editCells && stroke.baseRecords === this.baseRecords)) return;
-
-      const sides = { before: [stroke.editCells, stroke.baseRecords], after: [this.editCells, this.baseRecords] };
-      const apply = (side) => {
-        if (patch) this.paintLayer.applyPatch(patch, side);
-        if (basePatch) this.baseLayer.applyPatch(basePatch, side);
-        this.hasPaint = this.paintLayer.hasPaint;
-        [this.editCells] = sides[side];
-        this.setBaseRecords(sides[side][1]);
-        this.render();
-      };
-      this.pushEdit({ undo: () => apply('before'), redo: () => apply('after') });
-    },
-
-    // Fold an unfinished stroke into history before an edit that replaces the whole layer.
-    commitPending() {
-      if (this._stroke) this.commitEdit();
-      this.commitSliders(); // a slider move still open
-    },
-
-    pushEdit(entry) {
-      this.history.push(entry);
-      this.historyVersion = this.history.version;
-      this.editVersion++;
-    },
-
-    clearHistory() {
-      this.history.clear();
-      this.historyVersion = this.history.version;
-    },
-
-    undo() {
-      this.commitPending();
-      if (!this.history.undo()) return;
-      this.historyVersion = this.history.version;
-      this.editVersion++; // undo moves away from what was saved (undoing back to it still counts as dirty)
-    },
-
-    redo() {
-      this.commitPending();
-      if (!this.history.redo()) return;
-      this.historyVersion = this.history.version;
-      this.editVersion++;
     },
 
     // Merge down: the whole edit layer goes into the base layer's pixels exactly as it shows: each
