@@ -870,6 +870,25 @@ export const useProjectStore = defineStore('project', {
       return rect;
     },
 
+    // An arrow-key nudge. A run of nudges is one move from where it started, redone with each nudge
+    // (the last one undone first): the block floats over what's under its path, as a mouse move
+    // does, instead of overwriting it and then clearing it as it moves on, and the run is one undo
+    // step. The run ends when anything else is recorded, or the selection or its layers change.
+    nudgeSelection(rect, layers, dc, dr) {
+      const run = this._nudge;
+      const sameRun = run && run.version === this.history.version && JSON.stringify(run.landed) === JSON.stringify(rect)
+        && run.layers.base === layers.base && run.layers.edit === layers.edit;
+      const from = sameRun ? run.from : rect, offset = sameRun ? { dc: run.dc + dc, dr: run.dr + dr } : { dc, dr };
+      if (sameRun) this.undo();
+      if (!offset.dc && !offset.dr) { // back where the run started: nothing moved, nothing recorded
+        this._nudge = null;
+        return from;
+      }
+      const landed = this.moveSelection(from, layers, offset.dc, offset.dr);
+      this._nudge = landed && { from, layers: { ...layers }, ...offset, landed, version: this.history.version };
+      return landed;
+    },
+
     // Lift, clear the source, drop dc/dr away (copied first, so an overlapping move keeps everything).
     // Returns where it landed (clipped), or null when it left the grid.
     moveSelection(rect, layers, dc, dr) {
