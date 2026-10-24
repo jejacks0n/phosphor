@@ -119,14 +119,7 @@ const help = (key) => getSetting(key).help;
       </fieldset>
     </template>
 
-    <div class="slider-actions">
-      <button @click="store.resetSliders">RESET ALL</button>
-      <button
-          :disabled="!store.canBake"
-          title="Make the picture as it looks now the image, and put these sliders back to neutral. Your drawing keeps its colours. Undo brings the original back."
-          @click="store.bake()"
-      >BAKE</button>
-    </div>
+    <button @click="store.resetSliders">RESET ALL</button>
 
     <hr/>
 
@@ -179,15 +172,6 @@ legend {
   text-transform: uppercase;
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text);
-}
-
-div.slider-actions {
-  display: flex;
-  gap: 8px;
-}
-
-div.slider-actions button {
-  flex: 1;
 }
 
 legend button {

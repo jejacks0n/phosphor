@@ -32,7 +32,8 @@ its cell's position: the converter picks it there, whatever colours are undernea
 
 ### Baking
 
-**Bake** (beside Reset All, under the sliders) makes the picture as it looks now your image, and
+**Bake** (the flame button in the toolbar, beside Merge down and Clear edit layer; Bake Effects
+in the Actions menu on narrow screens) makes the picture as it looks now your image, and
 puts the Transforms, Adjustments and Image Filters sliders back to neutral, so you can start another
 round on top of the result. Nothing on the canvas changes when you bake:
 

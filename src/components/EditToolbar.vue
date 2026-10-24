@@ -173,6 +173,12 @@ function confirmMergeDown() {
         </div>
 
         <button
+            title="Bake: the picture as it looks now becomes the image, and the Transforms, Adjustments and Image Filters sliders go back to neutral. Your drawing keeps its colours; undo brings the original back."
+            @click="project.bake()"
+            class="primary"
+            :disabled="!project.canBake"
+        ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg></button>
+        <button
             title="Merge down: the edit layer into the base layer"
             @click="confirmMergeDown"
             class="primary"
@@ -199,6 +205,10 @@ function confirmMergeDown() {
               <path d="M552 256L408 256C398.3 256 389.5 250.2 385.8 241.2C382.1 232.2 384.1 221.9 391 215L437.7 168.3C362.4 109.7 253.4 115 184.2 184.2C109.2 259.2 109.2 380.7 184.2 455.7C259.2 530.7 380.7 530.7 455.7 455.7C463.9 447.5 471.2 438.8 477.6 429.6C487.7 415.1 507.7 411.6 522.2 421.7C536.7 431.8 540.2 451.8 530.1 466.3C521.6 478.5 511.9 490.1 501 501C401 601 238.9 601 139 501C39.1 401 39 239 139 139C233.3 44.7 382.7 39.4 483.3 122.8L535 71C541.9 64.1 552.2 62.1 561.2 65.8C570.2 69.5 576 78.3 576 88L576 232C576 245.3 565.3 256 552 256z"/>
             </svg>
             Redo
+          </button>
+          <button @click="project.bake()" :disabled="!project.canBake">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg>
+            Bake Effects
           </button>
           <button @click="confirmMergeDown" :disabled="!project.hasEdits">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
