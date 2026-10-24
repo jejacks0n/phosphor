@@ -22,7 +22,7 @@ export default {
   },
   computed: {
     ...mapState(useProjectStore, ['image', 'isDirty']),
-    ...mapState(useWorkspaceStore, ['activeTool', 'isPainting', 'isCtrlPressed', 'isMiddleClick', 'heldTool']),
+    ...mapState(useWorkspaceStore, ['activeTool', 'isPainting', 'isCtrlPressed', 'isMiddleClick']),
     ...mapWritableState(useWorkspaceStore, ['showAboutModal', 'saveDialog']),
   },
   mounted() {
@@ -66,7 +66,7 @@ export default {
 </script>
 
 <template>
-  <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick, 'space-panning': heldTool?.by === 'space' }]">
+  <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick }]">
     <ControlPanel/>
     <EditWorkspace/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
