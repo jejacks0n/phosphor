@@ -263,9 +263,9 @@ export default class Renderer {
     return pin ? { ...cell, char: pin } : cell;
   }
 
-  // Spec "Paint and edit cells" (a trial rule, kept in this one place): the edit cell's entry
-  // composes over the paint-free image, then any paint in the cell shows over it (coverCell), so
-  // erasing the paint reveals the edit cell again.
+  // An edit cell and paint in the same cell: the edit cell's entry composes over the paint-free
+  // image, then any paint in the cell shows over it (coverCell), so erasing the paint reveals the edit
+  // cell again. (A rule chosen to try out; it lives only here, so it's one place to change.)
   #composeOne(col, row, params, entry, baseCells) {
     const under = this.underCell(col, row, params, baseCells);
     if (!under) return baseCells[cellIndex(col, row, params.cols)];

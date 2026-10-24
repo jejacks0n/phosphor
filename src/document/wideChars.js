@@ -1,5 +1,5 @@
 /**
- * Editing around wide characters the way a terminal does (spec rule 4), on the laid-out cells
+ * Editing around wide characters the way a terminal does, on the laid-out cells
  * (layoutWide: a wide character's cell is its lead, the cell it covers its trail). Writing over
  * either half of a wide character turns the other half into a space; the text cursor never rests on
  * a trail; erasing a trail erases its lead. Layers don't matter: a wide character pinned in the base
