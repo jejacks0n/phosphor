@@ -1,4 +1,4 @@
-import { shallowRef, markRaw } from 'vue';
+import { shallowRef, markRaw, toRaw } from 'vue';
 import { defineStore } from 'pinia';
 import { generateSlug } from "random-word-slugs";
 import { AnsiFile } from "@/lib/AnsiFile.js";
@@ -342,13 +342,17 @@ export const useProjectStore = defineStore('project', {
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
         const image = await loadImage(blob);
         const imageBuffer = await blob.arrayBuffer();
+        // Meanwhile: another image means another document, left alone; a stroke begun is part of
+        // what's baked (closed now, so its undo isn't recorded against the baked layers).
+        if (this.image !== params.image) return;
+        this.commitPending();
 
         const defaults = Object.assign({}, ...RESET_GROUPS.map(groupDefaults));
-        const sliders = () => Object.fromEntries(Object.keys(defaults).map(key => [key, this[key]]));
+        const sliders = (from = this) => Object.fromEntries(Object.keys(defaults).map(key => [key, from[key]]));
         const baked = (snapshot) => snapshot && { ...snapshot, canvas: bakedCanvas(snapshot.canvas, params) };
-        const clip = workspace.clipboard;
+        const clip = toRaw(workspace.clipboard);
         const before = {
-          image: this.image, imageBuffer: this.imageBuffer, sliders: sliders(),
+          image: this.image, imageBuffer: this.imageBuffer, sliders: sliders(params), // what it was baked with
           paint: this.paintLayer.snapshot(), base: this.baseLayer.snapshot(), editCells: this.editCells,
           fg: workspace.editFgColor, bg: workspace.editBgColor, clipboard: clip,
         };
@@ -364,24 +368,26 @@ export const useProjectStore = defineStore('project', {
           },
         };
 
-        const apply = (state) => {
+        // The colour pair and the clipboard swap only while they hold what the other side left: a
+        // colour picked or a block copied since is kept.
+        const apply = (state, from) => {
           this.$patch({ image: shallowRef(state.image), imageBuffer: state.imageBuffer, ...state.sliders });
           this.paintLayer.restore(state.paint);
           this.baseLayer.restore(state.base);
           this.hasPaint = this.paintLayer.hasPaint;
           this.editCells = state.editCells;
-          workspace.editFgColor = state.fg;
-          workspace.editBgColor = state.bg;
-          workspace.clipboard = state.clipboard;
+          if (workspace.editFgColor === from.fg) workspace.editFgColor = state.fg;
+          if (workspace.editBgColor === from.bg) workspace.editBgColor = state.bg;
+          if (toRaw(workspace.clipboard) === from.clipboard) workspace.clipboard = state.clipboard;
           this.render();
         };
-        apply(after);
+        apply(after, before);
         this.pushEdit({
           undo: () => {
             after.sliders = sliders(); // a second round of slider changes comes back on redo
-            apply(before);
+            apply(before, after);
           },
-          redo: () => apply(after),
+          redo: () => apply(after, before),
         });
       } finally {
         this._baking = false;
