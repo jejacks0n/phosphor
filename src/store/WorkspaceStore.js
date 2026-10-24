@@ -108,7 +108,31 @@ export const useWorkspaceStore = defineStore('workspace', {
       }
       this[slot === 'fg' ? 'editFgColor' : 'editBgColor'] = hex;
       this[none] = false;
-      if (remember) this.recentColors = [hex, ...this.recentColors.filter(c => c !== hex)].slice(0, RECENT_COLORS);
+      if (remember) this.rememberColor(hex);
+    },
+    rememberColor(hex) {
+      this.recentColors = [hex, ...this.recentColors.filter(c => c !== hex)].slice(0, RECENT_COLORS);
+    },
+    // The eyedropper: picks repeat while dragging, so they leave the recent colours alone until the
+    // pick ends (endPick); then the colour each pick replaced and the colour it picked both go in,
+    // so getting the old colour back is one click.
+    pickColor(slot, hex) {
+      this._pickedFrom ??= {
+        fg: this.editFgNone ? null : this.editFgColor,
+        bg: this.editBgNone ? null : this.editBgColor,
+      };
+      this.setColor(slot, hex, { remember: false });
+    },
+    endPick() {
+      const from = this._pickedFrom;
+      this._pickedFrom = null;
+      if (!from) return;
+      for (const slot of ['fg', 'bg']) {
+        const now = slot === 'fg' ? (this.editFgNone ? null : this.editFgColor) : (this.editBgNone ? null : this.editBgColor);
+        if (now === from[slot]) continue;
+        if (from[slot]) this.rememberColor(from[slot]);
+        if (now) this.rememberColor(now);
+      }
     },
     // What typing writes besides the character: a none slot is left out, so that attribute stays as it is.
     typingAttrs() {

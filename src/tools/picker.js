@@ -6,6 +6,9 @@ export default {
   views: ['input', 'output'],
   kind: 'pick',
   instant: true,
+  end({ workspace }) {
+    workspace.endPick(); // the old and new colours into the recent colours
+  },
   options: [
     {
       key: 'pickLayers', label: 'Pick', type: 'toggles', views: ['output'],

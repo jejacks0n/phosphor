@@ -60,7 +60,7 @@ const {
 
 // The eyedropper: the pixel view picks the paint colour; the ANSI view picks the cell's underlying
 // colours (the [FG][BG] toggles; Shift: foreground only, Alt: background only). Picks repeat while
-// dragging, so they don't fill the recent colours.
+// dragging; the recent colours get the old and new colours when the pick ends (workspace.endPick).
 function pickAt(pos, event) {
   const mode = pickMode({
     view: props.view,
@@ -69,10 +69,9 @@ function pickAt(pos, event) {
     swapped: workspaceStore.pickSwapped,
     target: pickTargetOf(workspaceStore.pickLayers),
   });
-  const remember = { remember: false };
   // The pixel view, and a picker held with Alt from a paint tool, pick exactly the half under the pointer.
   if (props.view === 'input' || workspaceStore.pickSwapped) {
-    workspaceStore.setColor('fg', projectStore.rawColorAt(pos.x, pos.y), remember);
+    workspaceStore.pickColor('fg', projectStore.rawColorAt(pos.x, pos.y));
     return;
   }
   const cell = cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows);
@@ -89,8 +88,8 @@ function pickAt(pos, event) {
     fgFrom: fromEdit(2 * cell.row + 1, 'fg') ? 'edit' : 'base',
     bgFrom: fromEdit(2 * cell.row, 'bg') ? 'edit' : 'base',
   };
-  if (mode === 'fg' || mode === 'both') workspaceStore.setColor('fg', under.fg, remember);
-  if (mode === 'bg' || mode === 'both') workspaceStore.setColor('bg', bg, remember);
+  if (mode === 'fg' || mode === 'both') workspaceStore.pickColor('fg', under.fg);
+  if (mode === 'bg' || mode === 'both') workspaceStore.pickColor('bg', bg);
 }
 
 // Brush/eraser outline under the pointer, or the character cell for cell tools.

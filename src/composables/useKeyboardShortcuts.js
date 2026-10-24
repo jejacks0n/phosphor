@@ -146,6 +146,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       workspaceStore.setActiveTool(workspaceStore.previousTool);
       _isAltSwapped.value = false;
       workspaceStore.pickSwapped = false;
+      workspaceStore.endPick(); // a pick that ended with the Alt key, not the pointer
     }
   };
 
@@ -156,6 +157,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       workspaceStore.setActiveTool(workspaceStore.previousTool);
       _isAltSwapped.value = false;
       workspaceStore.pickSwapped = false;
+      workspaceStore.endPick(); // a pick that ended with the Alt key, not the pointer
     }
   };
 
