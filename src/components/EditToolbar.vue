@@ -64,6 +64,12 @@ const cutSelection = () => {
   copySelection();
   project.deleteSelection(workspace.selection, workspace.selectLayers);
 };
+// Paste pastes Phosphor's block, so it's on only while Cmd/Ctrl+V would paste that same block.
+const pasteTitle = computed(() => {
+  if (!workspace.clipboard) return 'Paste at the selection (Cmd/Ctrl+V): copy or cut something first';
+  if (!workspace.pasteMatchesShortcut) return 'Your clipboard may hold something copied since: Cmd/Ctrl+V pastes whichever is newer';
+  return 'Paste at the selection (Cmd/Ctrl+V)';
+});
 const pasteSelection = () => {
   const sel = workspace.selection;
   workspace.selection = project.pasteSelection(workspace.clipboard, sel.c0, sel.r0) ?? sel;
@@ -256,7 +262,7 @@ const selectionHasEdits = computed(() => {
         <template v-if="workspace.selection">
           <button title="Copy (Cmd/Ctrl+C)" aria-label="Copy (Cmd/Ctrl+C)" @click="copySelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M240 64H528A48 48 0 0 1 576 112V400A48 48 0 0 1 528 448H448V384H512V128H256V192H192V112A48 48 0 0 1 240 64ZM112 192H400A48 48 0 0 1 448 240V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V240A48 48 0 0 1 112 192Z"/></svg></button>
           <button title="Cut (Cmd/Ctrl+X)" aria-label="Cut (Cmd/Ctrl+X)" @click="cutSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M192 368A96 96 0 1 1 192 560A96 96 0 1 1 192 368ZM192 416A48 48 0 1 0 192 512A48 48 0 1 0 192 416ZM448 368A96 96 0 1 1 448 560A96 96 0 1 1 448 368ZM448 416A48 48 0 1 0 448 512A48 48 0 1 0 448 416Z"/><path d="M480 48L544 88L310 408L254 372ZM160 48L96 88L330 408L386 372Z"/></svg></button>
-          <button title="Paste at the selection (Cmd/Ctrl+V)" aria-label="Paste at the selection (Cmd/Ctrl+V)" :disabled="!workspace.clipboard" @click="pasteSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M160 96H208V176H432V96H480A64 64 0 0 1 544 160V528A64 64 0 0 1 480 592H160A64 64 0 0 1 96 528V160A64 64 0 0 1 160 96ZM160 224V528H480V224Z"/><path d="M256 48H384A32 32 0 0 1 416 80V144H224V80A32 32 0 0 1 256 48Z"/></svg></button>
+          <button :title="pasteTitle" :aria-label="pasteTitle" :disabled="!workspace.pasteMatchesShortcut" @click="pasteSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M160 96H208V176H432V96H480A64 64 0 0 1 544 160V528A64 64 0 0 1 480 592H160A64 64 0 0 1 96 528V160A64 64 0 0 1 160 96ZM160 224V528H480V224Z"/><path d="M256 48H384A32 32 0 0 1 416 80V144H224V80A32 32 0 0 1 256 48Z"/></svg></button>
           <button title="Delete (Delete)" aria-label="Delete (Delete)" @click="project.deleteSelection(workspace.selection, workspace.selectLayers)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
           <div class="divider"/>
           <button class="text" title="Merge up: what the base layer shows here becomes edit cells" @click="project.mergeUp(workspace.selection)">Merge up</button>
