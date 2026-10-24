@@ -22,12 +22,30 @@ exact: never resampled, blurred or put through the effects, so a moved block kee
 and an erased cell stays black (or the palette's darkest colour, with a colour-count palette
 made from a picture that has no black). The effects keep working on the parts of the image you haven't
 edited; content you move takes the look it had where it came from. Colour adjustments and the
-colour palette still apply to everything. Your original image is never changed.
+colour palette still apply to everything. Your original image is never changed, unless you
+bake (below).
 
 The base layer also remembers **pinned characters**: cells whose character the converter keeps
 instead of picking one, so rolling the seed or changing the character set doesn't change them.
 Merge down pins characters (see below), and erasing pins a space. Any other character belongs to
 its cell's position: the converter picks it there, whatever colours are underneath.
+
+### Baking
+
+**Bake** (beside Reset All, under the sliders) makes the picture as it looks now your image, and
+puts the Transforms, Adjustments and Image Filters sliders back to neutral, so you can start another
+round on top of the result. Nothing on the canvas changes when you bake:
+
+- Your drawing keeps its colours. The colour sliders tint your paint, your edit cells and your
+  edits to the base, so baking burns them in; the same goes for your colour pair and anything
+  you've copied.
+- The colour palette isn't baked: it keeps applying afterwards. (With CGA or VGA, a handful of
+  cells can come out as the neighbouring palette colour.)
+- Undo brings the original image and the sliders back. Once you've baked, saving keeps only the
+  baked image.
+
+The baked image is the size Phosphor works from to make the preview, not your photo's full size, so
+making the grid bigger afterwards works from that smaller image.
 
 ## The edit layer
 
