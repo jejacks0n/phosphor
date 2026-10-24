@@ -86,19 +86,16 @@ export const useProjectStore = defineStore('project', {
     }),
   },
 
-  actions: combineActions(historyActions, sliderActions, baseLayerActions, readingActions, renderingActions, editLayerActions, selectionActions, mergingActions, documentActions, {
-    // --- Selection: each operation is one undo step, and none at all when nothing changes.
-
-    // Base edits write the base layer's own pixels: exact, over the image as the pipeline shows it,
-    // never resampled or put through the effects. Each is part of the current edit; the caller
-    // commits it.
-
-    // Selection operations on the Select tool's layers: Layers = { base, edit }, where Edit is
-    // everything drawn (edit cells and paint, stored apart but one thing to the user), and Base is
-    // the base's colors and pins (the converter's own characters belong to their cells and stay).
-    // Each layer moves, copies and pastes as itself. Block = { w, h, cells?: (Entry | null)[],
-    // paint?: canvas, base?: { pixels: canvas (a grid pixel each), pins: (char | null)[] } }. Each
-    // change is one undo step; rects are clipped to the grid.
-
-  }),
+  // One file per area in store/project/ (AGENTS.md, "Where things live").
+  actions: combineActions(
+    documentActions,
+    renderingActions,
+    readingActions,
+    editLayerActions,
+    baseLayerActions,
+    selectionActions,
+    mergingActions,
+    sliderActions,
+    historyActions,
+  ),
 });

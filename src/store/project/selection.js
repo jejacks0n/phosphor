@@ -1,5 +1,12 @@
-// The Select tool's operations: copy, delete, paste and move, each one undo step, and a moved or
-// pasted block floating until the selection is set down. Owns _float (the move in progress).
+// The Select tool's operations: copy, delete, paste and move, each one undo step (none at all when
+// nothing changes), and a moved or pasted block floating until the selection is set down. Owns
+// _float (the move in progress).
+//
+// They act on the Select tool's layers: Layers = { base, edit }, where Edit is everything drawn
+// (edit cells and paint, stored apart but one thing to the user), and Base is the base's colors and
+// pins (the converter's own characters belong to their cells and stay). Each layer moves, copies
+// and pastes as itself. Block = { w, h, cells?: (Entry | null)[], paint?: canvas, base?: { pixels:
+// canvas (a grid pixel each), pins: (char | null)[] } }. Rects are clipped to the grid.
 import { withPins, withoutPins } from "@/document/baseRecords.js";
 import { cellKey, withoutCells, rectCells, pasteBlock } from "@/document/editCells.js";
 import { ctx2d } from "@/lib/Canvas.js";
