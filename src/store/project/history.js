@@ -1,6 +1,7 @@
 // History: each edit is recorded between beginEdit and commitEdit as one undo step (paint and base
 // patches, edit cells, base records); undo and redo replay them. Owns _stroke, the edit being
-// recorded (a typing run keeps it open across keystrokes: editLayer.js).
+// recorded (a typing run keeps it open across keystrokes: editLayer.js; clearImage and dropEdits
+// drop it when the document or the grid changes under it).
 import { markRaw } from "vue";
 
 export const historyActions = {

@@ -52,7 +52,7 @@ export const useProjectStore = defineStore('project', {
     canUndo: (state) => state.historyVersion >= 0 && state.history.canUndo,
     // Something to bake: an image, and a Transform, Adjustment or Effect slider off its default.
     canBake: (state) => !!state.image && !slidersAtDefaults(state),
-    // The image is still the one loaded, at its own size (the merge dialog says what Into the picture costs).
+    // The image is still the one loaded, at its own size (the merge dialog says what Into the image costs).
     pictureIsOriginal: (state) => !state.imageIsWorkingCopy,
     canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo,
     hasEdits: (state) => state.editCells.size > 0 || state.hasPaint, // anything on the edit layer (a grid resize is then a canvas resize)

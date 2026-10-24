@@ -1,6 +1,6 @@
 // Moving things between the layers and into the image: Merge up (what the base shows becomes edit
 // cells), Merge down exactly or into the image, and Bake (the picture as it looks becomes the image).
-// Owns _baking and _merging (one at a time: a second waits out the first).
+// Owns _baking and _merging (one at a time: a second call while one runs is ignored).
 import { withPins, withoutPins } from "@/document/baseRecords.js";
 import { cellKey, parseKey, rectCells, updateRect, bakeEditCells, bakeEntry, mergeKind } from "@/document/editCells.js";
 import { loadImage } from "@/document/projectIO.js";
