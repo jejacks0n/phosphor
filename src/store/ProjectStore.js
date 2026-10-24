@@ -9,7 +9,7 @@ import PaintLayer, { editScaleFor, resizeTransform } from "@/document/PaintLayer
 import { EMPTY_BASE, withPins, withoutPins, remapBaseRecords } from "@/document/baseRecords.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
-import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, BLANK, bakeEditCells, bakeEntry, mergeKind } from "@/document/editCells.js";
+import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, bakeEditCells, bakeEntry, mergeKind } from "@/document/editCells.js";
 import { processedImage, workingScale } from "@/lib/ImageProcessor.js";
 import { bakedCanvas, getEffectiveColor } from "@/lib/PixelTransforms.js";
 import { loadImage, readProject, writeProject, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
@@ -18,6 +18,7 @@ import { cellWidth } from "@/lib/CharWidth.js";
 import { overwritesAll } from "@/document/wideChars.js";
 import { RESET_GROUPS, settingsState, groupDefaults, baseParams, slidersAtDefaults } from "@/store/settings.js";
 import { combineActions } from "@/store/project/combineActions.js";
+import { baseLayerActions } from "@/store/project/baseLayer.js";
 import { sliderActions } from "@/store/project/sliders.js";
 import { historyActions } from "@/store/project/history.js";
 import { MAX_DIMENSION, DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, TYPING_PAUSE_MS, PIPELINE_KEYS, SAVED_KEYS, settingsJson, copyOf, over } from "@/store/project/shared.js";
@@ -92,7 +93,7 @@ export const useProjectStore = defineStore('project', {
     }),
   },
 
-  actions: combineActions(historyActions, sliderActions, {
+  actions: combineActions(historyActions, sliderActions, baseLayerActions, {
     randomizeSeed() {
       this.seed = generateSlug(2);
     },
@@ -690,37 +691,6 @@ export const useProjectStore = defineStore('project', {
     // Base edits write the base layer's own pixels: exact, over the image as the pipeline shows it,
     // never resampled or put through the effects. Each is part of the current edit; the caller
     // commits it.
-
-    // Erase the base in these cells: black, with a pinned space.
-    eraseBase(cells) {
-      if (!cells.length) return;
-      this.writeBase(cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row, hex: BLANK.bg }, { x: col, y: 2 * row + 1, hex: BLANK.bg }]));
-      this.setBaseRecords(withPins(this.baseRecords, cells.map(({ col, row }) => ({ col, row, char: ' ' }))));
-    },
-
-    // Erase base pixels (the Pixel view): black, the characters left as they are.
-    eraseBasePixels(pixels) {
-      this.writeBase(pixels.map(({ x, y }) => ({ x, y, hex: BLANK.bg })));
-    },
-
-    // Flip the base in these cells: swap each cell's two halves (background and foreground).
-    flipBase(cells) {
-      this.writeBase(cells.flatMap(({ col, row }) => [
-        { x: col, y: 2 * row, hex: this.baseColorAt(col, 2 * row + 1) },
-        { x: col, y: 2 * row + 1, hex: this.baseColorAt(col, 2 * row) },
-      ]));
-    },
-
-    // Set base pixels ({ x, y, hex } in grid pixels; off-grid ones are skipped) and show them.
-    writeBase(pixels) {
-      const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < this.cols && y < this.rows);
-      if (!inGrid.length) return;
-      this.ensureLayer();
-      this.beginEdit();
-      this.baseLayer.erase(inGrid); // so a pixel left part-covered by a merge is replaced, not blended
-      this.baseLayer.paint(inGrid.map(({ x, y, hex }) => ({ x, y, ...hex2rgb(hex), alpha: 1 })));
-      this.refreshCells(inGrid);
-    },
 
     // A whole entry for a cell as the cell layer shows it: its own attributes, the rest frozen from
     // the image the way the render style shows it (bakedEntry). Paint isn't part of it; it stays put.
