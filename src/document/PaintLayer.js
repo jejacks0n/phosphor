@@ -260,10 +260,19 @@ export default class PaintLayer {
     this.hasPaint ||= layer.hasPaint;
   }
 
-  // Whether any paint lies inside a cell rect.
+  // Whether any paint lies inside a cell rect, sampled a grid pixel at a time as the Renderer draws
+  // it (cheap enough to ask on every move of a selection drag).
   hasPaintIn(rect) {
     const target = this.hasPaint && this.#layerRect(rect);
-    return !!target && this.#anyPaint(target);
+    if (!target) return false;
+    const k = this.scale, w = Math.ceil(target.w / k), h = Math.ceil(target.h / k);
+    const scratch = newCanvas(w, h);
+    const ctx = ctx2d(scratch);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.canvas, target.x, target.y, target.w, target.h, 0, 0, w, h);
+    const { data } = ctx.getImageData(0, 0, w, h);
+    for (let i = 3; i < data.length; i += 4) if (data[i]) return true;
+    return false;
   }
 
   // Clear a cell rect's pixels (what a selection's merge takes off the edit layer).

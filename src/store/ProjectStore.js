@@ -1166,11 +1166,12 @@ export const useProjectStore = defineStore('project', {
         // picture now). The edit layer keeps what's outside the rect (and past the grid).
         this.baseLayer.erase([...exactPixels, ...pictureCells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }])]);
         this.baseLayer.paint(exactPixels);
-        if (rect) this.paintLayer.clearCells(rect);
+        // Paint past a shrunk grid's edge isn't in the picture: it stays, for when the grid grows back.
+        this.paintLayer.clearCells(rect ?? this.gridRect());
         const kept = new Map([...this.editCells].filter(([key]) => !covered.has(key)));
         const after = {
           image, imageBuffer, workingCopy: true,
-          base: this.baseLayer.snapshot(), paint: rect ? this.paintLayer.snapshot() : null, editCells: kept,
+          base: this.baseLayer.snapshot(), paint: this.paintLayer.snapshot(), editCells: kept,
           baseRecords: withPins(withoutPins(this.baseRecords, unpins), pins),
         };
         const apply = (state) => {

@@ -14,12 +14,20 @@ const exactly = useTemplateRef('exactly');
 
 onMounted(() => exactly.value?.focus());
 
-// Escape cancels, and doesn't go on to the app's own keys (Escape also drops the selection there).
+// While it's up, keys are the dialog's: none reach the app's shortcuts (Backspace would delete the
+// selection that's merging, the arrows nudge it). Escape cancels; Tab keeps to the dialog's buttons.
 function onKeyDown(event) {
-  if (event.key !== 'Escape') return;
-  event.preventDefault();
   event.stopPropagation();
-  emit('cancel');
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    emit('cancel');
+  } else if (event.key === 'Tab') {
+    const buttons = [...event.currentTarget.querySelectorAll('button')];
+    const at = buttons.indexOf(document.activeElement);
+    const next = event.shiftKey ? (at <= 0 ? buttons.length - 1 : at - 1) : (at === buttons.length - 1 ? 0 : at + 1);
+    event.preventDefault();
+    buttons[next]?.focus();
+  }
 }
 </script>
 
