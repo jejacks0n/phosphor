@@ -1,5 +1,6 @@
 <script setup>
-import { version } from '../../package.json';
+// This build: the version, the commit and the day it was built (vite.config.js, buildInfo).
+const { version, sha, date } = __BUILD__;
 
 defineEmits(['close']);
 </script>
@@ -13,6 +14,7 @@ defineEmits(['close']);
           <div class="logo"></div>
           <p class="tagline">Convert images to ANSI and ASCII ... with style?</p>
           <p class="version accent">v{{ version }}</p>
+          <p class="build">build {{ sha }} · {{ date }}</p>
         </header>
 
         <hr/>
@@ -127,6 +129,13 @@ p, li {
 a {
   color: var(--accent);
   text-decoration: underline;
+}
+
+p.build {
+  margin: 2px 0 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 p.version {

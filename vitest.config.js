@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import vue from '@vitejs/plugin-vue';
 import { playwright } from '@vitest/browser-playwright';
+import { buildInfo } from './vite.config.js';
 import { fileURLToPath } from 'node:url';
 
 // The test layers (docs/testing.md): unit tests in Node for pure logic, and browser tests in Chromium
@@ -21,6 +22,7 @@ export default defineConfig({
   },
   define: {
     __UPDATE_REFERENCES__: JSON.stringify(process.env.UPDATE_REFERENCES === '1'), // tests/support/references.js
+    __BUILD__: JSON.stringify(buildInfo()), // as the app is built (vite.config.js)
   },
   test: {
     projects: [

@@ -9,7 +9,7 @@ export default [
   ...pluginVue.configs['flat/essential'],
   {
     languageOptions: {
-      globals: { ...globals.browser },
+      globals: { ...globals.browser, __BUILD__: 'readonly' }, // { version, sha, date }, from vite.config.js
     },
     rules: {
       'no-debugger': 'off',

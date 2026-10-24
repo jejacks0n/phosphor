@@ -1,14 +1,21 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { execSync } from 'node:child_process';
 import { openApp, store, settled, fixture } from './support.js';
 
 // The smaller pieces of the interface: About, the help tooltips, the dropdown menus, dropping a
 // file, and starting a new project.
-test('About opens from the footer and closes', async ({ page }) => {
+test('About opens from the footer, says which build it is, and closes', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Read About Phosphor' }).click();
   await expect(page.locator('.modal-backdrop')).toBeVisible();
   await expect(page.locator('p.version')).toHaveText(/^v\d+\.\d+\.\d+/);
+  // The build it is: the commit (GitHub Actions' when deploying; "-dirty" with uncommitted changes)
+  // and the day it was built, in About and in the page's <meta name="phosphor-build">.
+  const sha = process.env.GITHUB_SHA?.slice(0, 7) ?? execSync('git rev-parse --short=7 HEAD').toString().trim();
+  await expect(page.locator('p.build')).toHaveText(new RegExp(`^build ${sha}(-dirty)? · \\d{4}-\\d{2}-\\d{2}$`));
+  const meta = await page.locator('meta[name="phosphor-build"]').getAttribute('content');
+  expect(meta).toMatch(new RegExp(`^v\\d+\\.\\d+\\.\\d+ ${sha}(-dirty)? \\d{4}-\\d{2}-\\d{2}$`));
   await page.getByTitle('Close').click();
   await expect(page.locator('.modal-backdrop')).toBeHidden();
 });
