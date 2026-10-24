@@ -508,6 +508,7 @@ export const useProjectStore = defineStore('project', {
         this._rendering = true;
         try {
           this.ensureLayer();
+          this.renderer.countStrategy = useWorkspaceStore().countPalette;
           this.renderedCells = await this.renderer.render(this.image, this.processParams, this.paintLayer, baseParams(this.processParams));
           this.activePalette = this.renderer.palette;
           this.applyEditCells();
@@ -525,9 +526,11 @@ export const useProjectStore = defineStore('project', {
 
     // Recomposite the output after the paint or base pixels changed. When that rebalanced the Number
     // palette, every cell's colours can change: the cells are rebuilt from the output (as a full render
-    // would, without rerunning the pipeline).
+    // would, without rerunning the pipeline). Trial: 'release' leaves the palette alone until the
+    // stroke ends (commitEdit recounts).
     composite() {
-      if (!this.renderer.composite(this.paintLayer, this.processParams)) return;
+      const strategy = this.renderer.countStrategy = useWorkspaceStore().countPalette;
+      if (!this.renderer.composite(this.paintLayer, this.processParams, { recount: strategy !== 'release' || !this._stroke })) return;
       this.activePalette = this.renderer.palette;
       this.renderedCells = this.renderer.cellsFromOutput(this.processParams);
       this.applyEditCells();
@@ -1018,6 +1021,7 @@ export const useProjectStore = defineStore('project', {
       const patch = this.paintLayer?.endStroke();
       const basePatch = this.baseLayer?.endStroke();
       this.hasPaint = this.paintLayer?.hasPaint ?? false; // an erase may have left none
+      if (stroke && this.quantize === 'count' && useWorkspaceStore().countPalette === 'release') this.composite(); // the palette catches up
       if (!stroke || (!patch && !basePatch && stroke.editCells === this.editCells && stroke.baseRecords === this.baseRecords)) return;
 
       const sides = { before: [stroke.editCells, stroke.baseRecords], after: [this.editCells, this.baseRecords] };

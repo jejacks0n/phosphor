@@ -181,3 +181,37 @@ export default function quantize(pixels, maxColors) {
     return { r, g, b };
   });
 }
+
+// The Number palette's "Make room" trial: the picture's palette (base: [{ r, g, b, weight }], weight
+// its pixels) with the drawing's colours (drawn: [{ r, g, b, count }]) given slots, most-used first.
+// A colour within `near` of the palette needs none (a soft-brush blend). With no slot free, the two
+// closest colours merge (weighted) to make one, so only the cells using those two change. At most
+// `share` of the slots go to the drawing. Deterministic: the same picture and drawing, the same palette.
+// ponytail: O(n²) closest-pair search per added colour; fine to 256 colours, keep a pair heap if it isn't.
+export function makeRoom(base, drawn, maxColors, { near = 24, share = 0.5 } = {}) {
+  const palette = base.map(({ r, g, b, weight }) => ({ r, g, b, weight }));
+  const dist = (a, b) => (a.r - b.r) ** 2 + (a.g - b.g) ** 2 + (a.b - b.b) ** 2;
+  const order = [...drawn].sort((a, b) => b.count - a.count || ((a.r << 16) | (a.g << 8) | a.b) - ((b.r << 16) | (b.g << 8) | b.b));
+  let room = Math.max(1, Math.floor(maxColors * share));
+  for (const c of order) {
+    if (!room) break;
+    const nearest = Math.min(...palette.map((p) => dist(p, c)));
+    if (nearest === 0 || (palette.length >= maxColors && nearest <= near * near)) continue;
+    if (palette.length >= maxColors) {
+      let best = Infinity, bi = 0, bj = 1;
+      for (let i = 0; i < palette.length; i++) {
+        for (let j = i + 1; j < palette.length; j++) {
+          const d = dist(palette[i], palette[j]);
+          if (d < best) { best = d; bi = i; bj = j; }
+        }
+      }
+      const a = palette[bi], b = palette[bj], wa = a.weight || 1, wb = b.weight || 1; // unused colours weigh alike
+      const mix = (k) => Math.round((a[k] * wa + b[k] * wb) / (wa + wb));
+      palette[bi] = { r: mix('r'), g: mix('g'), b: mix('b'), weight: a.weight + b.weight };
+      palette.splice(bj, 1);
+    }
+    palette.push({ r: c.r, g: c.g, b: c.b, weight: c.count });
+    room--;
+  }
+  return palette.map(({ r, g, b }) => ({ r, g, b }));
+}

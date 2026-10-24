@@ -1,5 +1,6 @@
 <script setup>
 import { useProjectStore } from '@/store/ProjectStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { SETTINGS, getSetting } from '@/store/settings';
 
 import ProjectActions from '@/components/ProjectActions.vue';
@@ -8,6 +9,7 @@ import HelpInfo from '@/components/HelpInfo.vue';
 import RangeField from '@/components/RangeField.vue';
 
 const store = useProjectStore();
+const workspace = useWorkspaceStore();
 
 const SLIDER_GROUPS = [
   { id: 'transform', title: 'Transforms' },
@@ -88,7 +90,18 @@ const help = (key) => getSetting(key).help;
         </select>
       </div>
 
-      <RangeField v-if="store.quantize === 'count'" :setting="getSetting('colorCount')" v-model="store.colorCount"/>
+      <template v-if="store.quantize === 'count'">
+        <RangeField :setting="getSetting('colorCount')" v-model="store.colorCount"/>
+        <!-- Trial: how the palette follows what you draw. -->
+        <div class="field">
+          <div class="label-group"><label for="countPalette">Palette Updates (trial)</label><HelpInfo text="How the palette follows what you draw. Live: recounted from everything as you paint (the picture can shift on every stroke). When you let go: the same, once per stroke. Make room: the picture keeps its own colours; a new colour you draw takes a slot made by merging the two most similar ones." /></div>
+          <select id="countPalette" v-model="workspace.countPalette" @change="store.render()">
+            <option value="live">Live</option>
+            <option value="release">When you let go</option>
+            <option value="room">Make room</option>
+          </select>
+        </div>
+      </template>
       <div v-else-if="store.quantize === 'palette'" class="field">
         <label for="palette">Palette Colors</label>
         <input type="text" id="palette" v-model.lazy="store.palette" placeholder="#FFFFFFF #000000">

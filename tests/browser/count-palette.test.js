@@ -64,3 +64,56 @@ test('base pixels count too, and undo brings the palette back', async () => {
   expect(hexes(project)).toEqual(before);
   expect(cellsKey(project)).toEqual(cells);
 });
+
+// Trial strategies (workspace.countPalette): 'release' recounts once a stroke ends; 'room' keeps the
+// picture's own palette and makes room for drawn colours by merging its two closest colours.
+async function gradient8(strategy) {
+  const { project, workspace } = await createTestApp();
+  workspace.countPalette = strategy;
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+  project.quantize = 'count';
+  project.colorCount = 8;
+  await settle(project);
+  return { project, workspace };
+}
+const WHITE = [...line(8), ...line(9), ...line(10), ...line(11)];
+// Cells outside the painted rows (char rows 4 and 5) whose look changed.
+const untouchedChanged = (before, after) => before.filter((v, i) => Math.floor(i / 40) !== 4 && Math.floor(i / 40) !== 5 && v !== after[i]).length;
+
+test('When you let go: the palette holds during a stroke and catches up when it ends', async () => {
+  const { project } = await gradient8('release');
+  const before = hexes(project), cells = cellsKey(project);
+  project.paintStroke(WHITE, '#ffffff');
+  expect(hexes(project)).toEqual(before);
+  expect(untouchedChanged(cells, cellsKey(project))).toBe(0);
+  project.commitEdit();
+  expect(hexes(project)).not.toEqual(before);
+  expect(cellsKey(project)).toEqual(await fullRender(project));
+});
+
+test('Make room: white gets a slot, and far fewer untouched cells move than live', async () => {
+  const moved = {};
+  for (const strategy of ['live', 'room']) {
+    const { project } = await gradient8(strategy);
+    const cells = cellsKey(project);
+    project.paintStroke(WHITE, '#ffffff');
+    project.commitEdit();
+    expect(hexes(project)).toHaveLength(8);
+    if (strategy === 'room') expect(hexes(project)).toContain('#ffffff');
+    expect(cellsKey(project)).toEqual(await fullRender(project));
+    moved[strategy] = untouchedChanged(cells, cellsKey(project));
+  }
+  expect(moved.room).toBeLessThan(moved.live);
+});
+
+test('Make room with spare slots: the picture keeps exactly its colours and white is added', async () => {
+  const { project, workspace } = await createTestApp();
+  workspace.countPalette = 'room';
+  await loadImage(project, '/tests/fixtures/images/tiny.gif', { cols: 20, rows: 20 });
+  project.quantize = 'count';
+  project.colorCount = 16;
+  await settle(project);
+  project.paintStroke([...line(8), ...line(9)], '#ffffff');
+  project.commitEdit();
+  expect(hexes(project)).toEqual(['#000000', '#0000ff', '#00ff00', '#ff0000', '#ffffff']);
+});

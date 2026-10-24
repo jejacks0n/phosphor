@@ -18,6 +18,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     editBgNone: true,
     recentColors: useLocalStorage('phosphor.recentColors', []),
     ansiRenderer: useLocalStorage('phosphor.ansiRenderer', 'canvas'), // the ANSI view's renderer (trial): 'canvas' | 'dom'
+    countPalette: useLocalStorage('phosphor.countPalette', 'live'), // how the Number palette follows the drawing (trial): 'live' | 'release' | 'room'
     activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
     pickSwapped: false,    // the picker is only held by Alt from a paint tool
     pickLayers: { fg: true, bg: true }, // ANSI view: what a plain picker click picks (both lit: both)
