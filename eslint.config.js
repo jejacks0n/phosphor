@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import pluginVue from 'eslint-plugin-vue';
 import globals from 'globals';
+import stylistic from '@stylistic/eslint-plugin';
 
 export default [
   { ignores: ['dist/**', 'input/**', '.vitest/**', 'test-results/**', 'playwright-report/**'] },
@@ -12,6 +13,15 @@ export default [
     },
     rules: {
       'no-debugger': 'off',
+    },
+  },
+  {
+    // The house style, enforced so it stays one style: 2-space indents, no tabs, semicolons.
+    plugins: { '@stylistic': stylistic },
+    rules: {
+      '@stylistic/indent': ['error', 2, { SwitchCase: 1 }],
+      '@stylistic/no-tabs': 'error',
+      '@stylistic/semi': ['error', 'always'],
     },
   },
   {
