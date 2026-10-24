@@ -11,7 +11,7 @@ const updating = () => (inBrowser ? __UPDATE_REFERENCES__ : process.env.UPDATE_R
 
 // A reference's path (Node: absolute, from the repo root).
 export function referencePath(name) {
-  return new URL(`../../${ROOT}${name}`, import.meta.url).pathname;
+  return decodeURIComponent(new URL(`../../${ROOT}${name}`, import.meta.url).pathname); // a checkout path may have spaces
 }
 
 async function read(name, binary) {

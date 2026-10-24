@@ -7,7 +7,7 @@ extend it for their own use; these notes are for anyone (person or coding agent)
 
 ```bash
 npm install
-npx playwright install chromium   # once, for the browser and end-to-end tests
+npx playwright install --with-deps chromium   # once, for the browser and end-to-end tests
 npm run dev                       # http://localhost:5173
 npm test                          # lint, unit, browser and end-to-end tests: run before you call a change done
 npm run test:unit                 # or one layer: test:unit, test:browser, test:e2e

@@ -11,7 +11,7 @@ npm run test:e2e       # real clicks and keys against a production build (under 
 npm run test:update    # rewrite the reference files (read the diff before committing)
 ```
 
-The first time, install the browser: `npx playwright install chromium`.
+The first time, install the browser: `npx playwright install --with-deps chromium`.
 
 ## Which layer a test belongs in
 

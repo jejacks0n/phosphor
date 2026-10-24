@@ -6,10 +6,11 @@ import { execSync, spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, copyFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
-const repo = new URL('../../', import.meta.url).pathname;
-const out = new URL('projects/live-main.phosphor', import.meta.url).pathname;
+const repo = fileURLToPath(new URL('../../', import.meta.url));
+const out = fileURLToPath(new URL('projects/live-main.phosphor', import.meta.url));
 const dir = join(mkdtempSync(join(tmpdir(), 'phosphor-main-')), 'main');
 const run = (cmd, cwd = dir) => execSync(cmd, { cwd, stdio: 'inherit' });
 

@@ -3,11 +3,12 @@
 // made in headless Chromium, once: an existing one is kept, since browser encoders can change.
 // Run: npm run fixtures
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { writePng } from '../support/png.js';
 import { buildProjectFile } from '../support/projectFile.js';
 
-const at = (path) => new URL(path, import.meta.url).pathname;
+const at = (path) => fileURLToPath(new URL(path, import.meta.url));
 mkdirSync(at('images/'), { recursive: true });
 mkdirSync(at('projects/'), { recursive: true });
 

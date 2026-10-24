@@ -4,7 +4,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, cellsKey } from '../support/app.js';
 import { matchReference } from '../support/references.js';
-import { DISPLAY_FONT_CSS, coverageOf } from '@/lib/GlyphCoverage';
+import { coverageOf } from '@/lib/GlyphCoverage';
 
 test('runs on software WebGL', () => {
   const gl = document.createElement('canvas').getContext('webgl');
@@ -14,7 +14,8 @@ test('runs on software WebGL', () => {
 
 test('the display font is loaded and glyph coverage measured', async () => {
   await createTestApp();
-  expect(document.fonts.check(DISPLAY_FONT_CSS)).toBe(true);
+  // fonts.check() is true when no face matches at all, so ask for the face itself.
+  expect([...document.fonts].filter((f) => f.family.includes('JetBrains Mono')).map((f) => f.status)).toContain('loaded');
   expect(coverageOf('A')).not.toEqual([0.5, 0.5]); // measured, not the unknown default
 });
 

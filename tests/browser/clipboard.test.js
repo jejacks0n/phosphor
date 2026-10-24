@@ -29,7 +29,8 @@ async function editor({ writes = true } = {}) {
   project.commitEdit();
   const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(() => (writes ? Promise.resolve() : Promise.reject(new Error('denied'))));
   copySelection(project, workspace, SOURCE, { base: true, edit: true });
-  await Promise.resolve(); await Promise.resolve();
+  await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
+  if (writes) await vi.waitFor(() => expect(workspace.clipboardText).not.toBe(null));
   return { project, workspace, writeText };
 }
 

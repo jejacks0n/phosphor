@@ -9,6 +9,9 @@ import { fileURLToPath } from 'node:url';
 // WebKit later: another entry in the browser project's instances.
 const SOFTWARE_WEBGL = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
 
+// An update run in CI would write references and pass whatever they say.
+if (process.env.CI && process.env.UPDATE_REFERENCES === '1') throw new Error('Refusing to update reference files in CI');
+
 export default defineConfig({
   plugins: [vue()],
   resolve: {
@@ -30,6 +33,7 @@ export default defineConfig({
         test: {
           name: 'browser',
           include: ['tests/browser/**/*.test.js'],
+          testTimeout: 20_000, // software WebGL on a small CI runner
           browser: {
             enabled: true,
             headless: true,

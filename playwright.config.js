@@ -6,6 +6,7 @@ export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  expect: { timeout: process.env.CI ? 10_000 : 5_000 }, // software WebGL on a small CI runner
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://localhost:4180',

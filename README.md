@@ -20,7 +20,7 @@ npm run dev       # Start dev server at http://localhost:5173
 npm run build     # Create production build in dist/
 npm run preview   # Preview the production build locally
 npm run lint      # Run ESLint
-npm test          # Lint and every test layer (run `npx playwright install chromium` once first)
+npm test          # Lint and every test layer (run `npx playwright install --with-deps chromium` once first)
 npm run test:unit     # Pure logic, in Node
 npm run test:browser  # The store, canvas and WebGL, in Chromium
 npm run test:e2e      # Real interactions against a production build

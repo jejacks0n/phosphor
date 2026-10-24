@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: ${{ github.event_name == 'pull_request' && format('test-{0}', github.ref) || 'pages' }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }} # never stop a deploy halfway
 
 jobs:
   test:
