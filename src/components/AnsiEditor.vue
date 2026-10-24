@@ -30,7 +30,8 @@ const ensureCellCanvas = () => {
   cellCanvas?.destroy();
   try {
     cellCanvas = new CellCanvas(canvasRef.value, { onRestored: queueRender });
-  } catch {
+  } catch (error) {
+    console.warn('The ANSI view\'s canvas renderer is unavailable; using the DOM view.', error);
     cellCanvas = null;
     workspaceStore.ansiRenderer = 'dom';
   }

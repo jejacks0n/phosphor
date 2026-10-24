@@ -205,6 +205,7 @@ export default class CellCanvas {
       gl.attachShader(program, shader);
     }
     gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS) && !gl.isContextLost()) throw new Error(gl.getProgramInfoLog(program));
     gl.useProgram(program);
 
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
