@@ -42,8 +42,9 @@ export function applyQuantization(canvas, qColors) {
   }
 }
 
-// Where the image goes in the grid, the size it's processed at and the shader's parameters.
-function prepare(image, params) {
+// Where the image goes in the grid, the size it's processed at (m processed pixels per grid pixel,
+// or the native-size branch: m < 1) and the shader's parameters. scale: a fixed m instead.
+function prepare(image, params, scale = null) {
   const {
     cols, rows,
     invert, brightness, contrast, saturation,
@@ -61,7 +62,7 @@ function prepare(image, params) {
   const maxDim = 400;
   // Where the image sits in the grid: params.fit when it's fixed (a canvas resize), else fitted.
   const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows);
-  const m = Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
+  const m = scale ?? Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
   let pw = dw * m;
   let ph = dh * m;
   if (m < 1) {
@@ -89,7 +90,14 @@ function prepare(image, params) {
     palette: (quantize === 'cga' || quantize === 'vga') ? PALETTES[quantize] : null,
     passes: Math.max(1, Math.floor(parseFloat(flatten) / 2))
   };
-  return { dx, dy, dw, dh, pw, ph, glParams };
+  return { dx, dy, dw, dh, m, pw, ph, glParams };
+}
+
+// Processed pixels per grid pixel, or null when a source smaller than the grid is processed at its
+// native size (cells don't cover whole pixels there).
+export function workingScale(image, params) {
+  const { m } = prepare(image, params);
+  return m >= 1 ? m : null;
 }
 
 export async function processImage(image, params) {
@@ -113,9 +121,10 @@ export async function processImage(image, params) {
 
 // The image as the preview is made from it (the processed image before it's downsized to the
 // grid, at the size processImage processes it), without the palette snap in its last pass: what a
-// bake makes the new image. A copy, so the next render can't draw over it.
-export async function processedImage(image, params) {
-  const { pw, ph, glParams } = prepare(image, params);
+// bake makes the new image. A copy, so the next render can't draw over it. m: a fixed processing
+// scale (an Into-the-picture merge needs whole pixels per grid pixel).
+export async function processedImage(image, params, { m = null } = {}) {
+  const { pw, ph, glParams } = prepare(image, params, m);
   if (!glProcessor) glProcessor = new WebGLProcessor();
   glProcessor.process(image, glParams, pw, ph, { snapLastPass: false });
   const out = document.createElement('canvas');

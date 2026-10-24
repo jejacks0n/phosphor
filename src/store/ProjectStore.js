@@ -9,8 +9,8 @@ import PaintLayer, { editScaleFor, resizeTransform } from "@/document/PaintLayer
 import { EMPTY_BASE, withPins, withoutPins, remapBaseRecords } from "@/document/baseRecords.js";
 import Renderer from "@/document/Renderer.js";
 import History from "@/document/History.js";
-import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, BLANK, bakeEditCells, bakeEntry } from "@/document/editCells.js";
-import { processedImage } from "@/lib/ImageProcessor.js";
+import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, rectCells, pasteBlock, updateRect, BLANK, bakeEditCells, bakeEntry, mergeKind } from "@/document/editCells.js";
+import { processedImage, workingScale } from "@/lib/ImageProcessor.js";
 import { bakedCanvas, getEffectiveColor } from "@/lib/PixelTransforms.js";
 import { loadImage, readProject, writeProject, saveFile, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
 import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
@@ -29,12 +29,21 @@ const PIPELINE_KEYS = SETTINGS.filter(s => s.group !== 'sauce' && s.pipeline !==
 const SAVED_KEYS = [...SETTING_KEYS, ...SAUCE_KEYS];
 const settingsJson = (state) => JSON.stringify(SAVED_KEYS.map(key => state[key]));
 // A colour ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
+// An image's pixels on a canvas of its own.
+const copyOf = (image, width, height) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  ctx2d(canvas).drawImage(image, 0, 0);
+  return canvas;
+};
 const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
 
 export const useProjectStore = defineStore('project', {
   state: () => ({
     image: shallowRef(null),
     imageBuffer: null, // the image's encoded bytes, saved into .phosphor files
+    imageIsWorkingCopy: false, // the image is a working-size copy (after a Bake or an Into-the-picture merge), not the one loaded
     ...settingsState(),
 
     hasPaint: false,
@@ -66,6 +75,8 @@ export const useProjectStore = defineStore('project', {
     canUndo: (state) => state.historyVersion >= 0 && state.history.canUndo,
     // Something to bake: an image, and a Transform, Adjustment or Effect slider off its default.
     canBake: (state) => !!state.image && !slidersAtDefaults(state),
+    // The image is still the one loaded, at its own size (the merge dialog says what Into the picture costs).
+    pictureIsOriginal: (state) => !state.imageIsWorkingCopy,
     canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo,
     hasEdits: (state) => state.editCells.size > 0 || state.hasPaint, // anything on the edit layer (a grid resize is then a canvas resize)
     isDirty: (state) => settingsJson(state) !== state.savedSettings || state.editVersion !== state.savedEditVersion,
@@ -159,6 +170,7 @@ export const useProjectStore = defineStore('project', {
       this.$patch({
         fit: null,
         paintScale: null,
+        imageIsWorkingCopy: false,
         ...patch,
         image: shallowRef(image),
         imageBuffer,
@@ -217,7 +229,7 @@ export const useProjectStore = defineStore('project', {
       if (!this.image || !this.imageBuffer) return;
       this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
-      const settings = { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit'].map(key => [key, this[key]])), paintScale: this.paintLayer?.scale ?? null };
+      const settings = { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, this[key]])), paintScale: this.paintLayer?.scale ?? null };
       const blob = await writeProject({
         settings,
         imageBuffer: this.imageBuffer,
@@ -352,12 +364,12 @@ export const useProjectStore = defineStore('project', {
         const baked = (snapshot) => snapshot && { ...snapshot, canvas: bakedCanvas(snapshot.canvas, params) };
         const clip = toRaw(workspace.clipboard);
         const before = {
-          image: this.image, imageBuffer: this.imageBuffer, sliders: sliders(params), // what it was baked with
+          image: this.image, imageBuffer: this.imageBuffer, workingCopy: this.imageIsWorkingCopy, sliders: sliders(params), // what it was baked with
           paint: this.paintLayer.snapshot(), base: this.baseLayer.snapshot(), editCells: this.editCells,
           fg: workspace.editFgColor, bg: workspace.editBgColor, clipboard: clip,
         };
         const after = {
-          image, imageBuffer, sliders: defaults,
+          image, imageBuffer, workingCopy: true, sliders: defaults,
           paint: baked(before.paint), base: baked(before.base), editCells: bakeEditCells(this.editCells, params),
           fg: getEffectiveColor(before.fg, params), bg: getEffectiveColor(before.bg, params),
           clipboard: clip && {
@@ -371,7 +383,7 @@ export const useProjectStore = defineStore('project', {
         // The colour pair and the clipboard swap only while they hold what the other side left: a
         // colour picked or a block copied since is kept.
         const apply = (state, from) => {
-          this.$patch({ image: shallowRef(state.image), imageBuffer: state.imageBuffer, ...state.sliders });
+          this.$patch({ image: shallowRef(state.image), imageBuffer: state.imageBuffer, imageIsWorkingCopy: state.workingCopy, ...state.sliders });
           this.paintLayer.restore(state.paint);
           this.baseLayer.restore(state.base);
           this.hasPaint = this.paintLayer.hasPaint;
@@ -1050,6 +1062,130 @@ export const useProjectStore = defineStore('project', {
         : char === cell.char ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
           : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
       return { col, row, top, bottom, char };
+    },
+
+    // Merge into the picture: the edit layer (inside rect, or all of it) becomes part of the image,
+    // so every effect applies to it, live, like the photo. The image becomes the picture at its
+    // working size (m processed pixels per grid pixel) with nothing applied, each picture cell
+    // painted in as exact m x m blocks: the converter's own characters go in as they are and come
+    // back from the picture; solid characters go in as they show, pinned to ▄; any other character,
+    // and anything outside the picture's area (the letterbox), merges exactly (mergeKind). The
+    // sliders aren't touched. One undo step.
+    async mergeIntoPicture(rect = null) {
+      if (!this.image || this._merging) return;
+      this._merging = true;
+      try {
+        this.ensureLayer();
+        this.commitPending();
+        const params = this.processParams;
+        const neutral = { ...params, ...Object.assign({}, ...RESET_GROUPS.map(groupDefaults)) };
+        const m = workingScale(this.image, params) ?? Math.max(2, Math.floor(400 / Math.max(this.cols, this.rows)));
+        const fitNow = params.fit ?? this.fitFor(this.cols, this.rows);
+        const width = this.image.naturalWidth || this.image.width, height = this.image.naturalHeight || this.image.height;
+        // Already at its working size (after a Bake or an earlier merge): its own pixels, exactly; a
+        // render through the pipeline would round them a level here and there.
+        const atSize = width === fitNow.dw * m && height === fitNow.dh * m;
+        const canvas = atSize ? copyOf(this.image, width, height) : await processedImage(this.image, neutral, { m });
+        // Meanwhile: another image means another document, left alone; a stroke begun is merged too.
+        if (this.image !== params.image) return;
+        this.commitPending();
+
+        const fit = params.fit ?? this.fitFor(this.cols, this.rows);
+        const rows = charRowsOf(this.rows);
+        const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);
+        const inPicture = (col, row) => col >= fit.dx && col < fit.dx + fit.dw && 2 * row >= fit.dy && 2 * row + 1 < fit.dy + fit.dh;
+
+        // The paint at grid resolution, as stored (the Renderer draws it this way before adjusting it).
+        const paint = document.createElement('canvas');
+        paint.width = this.cols;
+        paint.height = this.rows;
+        const paintCtx = ctx2d(paint);
+        paintCtx.imageSmoothingEnabled = false;
+        const k = this.paintLayer.scale;
+        paintCtx.drawImage(this.paintLayer.canvas, 0, 0, this.cols * k, this.rows * k, 0, 0, this.cols, this.rows);
+        const paintData = paintCtx.getImageData(0, 0, this.cols, this.rows).data;
+        const paintAt = (x, y) => {
+          const o = (y * this.cols + x) * 4;
+          return { r: paintData[o], g: paintData[o + 1], b: paintData[o + 2], a: paintData[o + 3] / 255 };
+        };
+
+        // The covered cells: edit cells and cells with paint, in the grid (and the rect).
+        const covered = new Map();
+        for (const key of this.editCells.keys()) {
+          const { col, row } = parseKey(key);
+          if (col < this.cols && row < rows && inRect(col, row)) covered.set(key, { col, row });
+        }
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < this.cols; col++) {
+            if (inRect(col, row) && (paintAt(col, 2 * row).a || paintAt(col, 2 * row + 1).a)) covered.set(cellKey(col, row), { col, row });
+          }
+        }
+
+        const ctx = ctx2d(canvas);
+        const exactPixels = [], pictureCells = [], pins = [], unpins = [];
+        for (const [key, { col, row }] of covered) {
+          const entry = this.editCellAt(col, row);
+          const pin = this.baseRecords.pins.get(key);
+          const kind = mergeKind({ char: entry?.char ?? pin, renderStyle: this.renderStyle, inPicture: inPicture(col, row) });
+          let top, bottom;
+          if (kind === 'exact') {
+            ({ top, bottom } = this.mergeCellOf(col, row));
+            if (entry || pin) pins.push({ col, row, char: entry ? this.mergeCellOf(col, row).char : this.composedCells[cellIndex(col, row, this.cols)]?.char ?? pin });
+          } else {
+            const cell = { ...this.baseCellAt(col, row), ...entry };
+            [top, bottom] = kind === 'picture' ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
+              : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
+            if (kind === 'picture-pinned') pins.push({ col, row, char: '▄' });
+            else unpins.push({ col, row });
+            pictureCells.push({ col, row });
+          }
+          const shown = [over(top, paintAt(col, 2 * row)), over(bottom, paintAt(col, 2 * row + 1))];
+          if (kind === 'exact') {
+            exactPixels.push({ x: col, y: 2 * row, ...shown[0], alpha: 1 }, { x: col, y: 2 * row + 1, ...shown[1], alpha: 1 });
+          } else {
+            shown.forEach(({ r, g, b }, half) => {
+              ctx.fillStyle = rgb2hex({ r, g, b });
+              ctx.fillRect((col - fit.dx) * m, (2 * row + half - fit.dy) * m, m, m);
+            });
+          }
+        }
+        const version = this.editVersion;
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const image = await loadImage(blob);
+        const imageBuffer = await blob.arrayBuffer();
+        // What's merged was read before encoding: an edit since (or one still open) means it's stale.
+        if (this.image !== params.image || this.editVersion !== version || this._stroke) return;
+
+        const before = {
+          image: this.image, imageBuffer: this.imageBuffer, workingCopy: this.imageIsWorkingCopy,
+          base: this.baseLayer.snapshot(), paint: this.paintLayer.snapshot(), editCells: this.editCells, baseRecords: this.baseRecords,
+        };
+
+        // The base: exact cells written as they show; picture cells' own pixels cleared (they're the
+        // picture now). The edit layer keeps what's outside the rect (and past the grid).
+        this.baseLayer.erase([...exactPixels, ...pictureCells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }])]);
+        this.baseLayer.paint(exactPixels);
+        if (rect) this.paintLayer.clearCells(rect);
+        const kept = new Map([...this.editCells].filter(([key]) => !covered.has(key)));
+        const after = {
+          image, imageBuffer, workingCopy: true,
+          base: this.baseLayer.snapshot(), paint: rect ? this.paintLayer.snapshot() : null, editCells: kept,
+          baseRecords: withPins(withoutPins(this.baseRecords, unpins), pins),
+        };
+        const apply = (state) => {
+          this.$patch({ image: shallowRef(state.image), imageBuffer: state.imageBuffer, imageIsWorkingCopy: state.workingCopy });
+          this.baseLayer.restore(state.base);
+          this.paintLayer.restore(state.paint);
+          this.hasPaint = this.paintLayer.hasPaint;
+          this.editCells = state.editCells;
+          this.setBaseRecords(state.baseRecords);
+          this.render();
+        };
+        apply(after);
+        this.pushEdit({ undo: () => apply(before), redo: () => apply(after) });
+      } finally {
+        this._merging = false;
+      }
     },
 
     // rect: only the edit layer inside a cell rect (a selection) is merged; the rest stays.

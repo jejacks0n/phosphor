@@ -57,6 +57,7 @@ export async function readProject(file) {
   const size = Math.max(1, settings.cols | 0, settings.rows | 0);
   if (!(fit && ['dx', 'dy', 'dw', 'dh'].every(k => Number.isFinite(fit[k]) && Math.abs(fit[k]) <= MAX_LAYER_DIM) && fit.dw > 0 && fit.dh > 0)) delete settings.fit;
   if (!(Number.isInteger(paintScale) && paintScale > 0 && paintScale * size <= MAX_LAYER_DIM)) delete settings.paintScale;
+  if (typeof settings.imageIsWorkingCopy !== 'boolean') delete settings.imageIsWorkingCopy;
   const imageBuffer = buffer.slice(offset, offset += imageLen);
   const paint = buffer.slice(offset, offset += paintLen);
   const baseBuffer = Number.isInteger(baseLength) && baseLength > 0 ? buffer.slice(offset, offset + baseLength) : null;
