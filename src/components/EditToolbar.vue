@@ -109,8 +109,8 @@ function merge(kind) {
   else project.mergeIntoPicture(rect);
 }
 const MERGE_CHOICES = [
-  { id: 'exact', title: 'Exactly', text: "Stays crisp, cell for cell, as it shows now. Effects like Edges and Sharpen don't touch it." },
-  { id: 'picture', title: 'Into the picture', text: 'Becomes part of the image itself, so every effect applies to it, live, like the photo.' },
+  { id: 'exact', title: 'Exactly as is', text: "Stays crisp, cell for cell, as it shows now. Effects like Edges and Sharpen don't touch it." },
+  { id: 'picture', title: 'Into the image', text: 'Becomes part of the image itself, so every effect applies to it, live, like the photo.' },
 ];
 const ORIGINAL_NOTE = 'The picture becomes the working-size copy the preview is made from (like Bake), so growing the grid later works from that, and effects like Edges can shift slightly across the picture this first time.';
 const mergeChoices = computed(() => (project.pictureIsOriginal ? [MERGE_CHOICES[0], { ...MERGE_CHOICES[1], note: ORIGINAL_NOTE }] : MERGE_CHOICES));
@@ -146,7 +146,7 @@ const selectionHasEdits = computed(() => {
       :title="merging.rect ? 'Merge the selection down' : 'Merge the edit layer down'"
       :sub="merging.rect
         ? 'Only what\'s drawn inside the selection moves into the base layer; the rest of the edit layer stays where it is.'
-        : 'Everything you\'ve drawn moves into the base layer. How should it go in?'"
+        : 'Everything you\'ve drawn moves into the base layer. Select how you want it to be merged:'"
       :choices="mergeChoices"
       @choose="merge"
       @cancel="merging = null"
@@ -236,7 +236,7 @@ const selectionHasEdits = computed(() => {
             :disabled="!project.canBake"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg></button>
         <button
-            title="Merge down: the edit layer into the base layer"
+            title="Merge Down: Merges the edit layer into the base layer."
             @click="openMerge()"
             class="primary"
             :disabled="!project.hasEdits"

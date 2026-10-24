@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { openApp, store, cellPoint, drag } from './support.js';
 
-const mergeButton = (page) => page.getByRole('button', { name: 'Merge down: the edit layer into the base layer' });
+const mergeButton = (page) => page.getByRole('button', { name: 'Merge Down: Merges the edit layer into the base layer.' });
 const dialog = (page) => page.getByRole('dialog', { name: 'Merge the edit layer down' });
 const hasEdits = (page) => store(page, 'project', (p) => p.hasEdits);
 
@@ -19,7 +19,7 @@ test('the merge dialog: centered, canceled three ways, keys kept inside, each ch
   const viewport = page.viewportSize();
   expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(2);
   expect(Math.abs(box.y + box.height / 2 - viewport.height / 2)).toBeLessThan(2);
-  await expect(dialog(page).getByRole('button', { name: /^Exactly/ })).toBeFocused();
+  await expect(dialog(page).getByRole('button', { name: /^Exactly as is/ })).toBeFocused();
 
   await page.keyboard.press('Escape');
   await expect(dialog(page)).toBeHidden();
@@ -38,12 +38,12 @@ test('the merge dialog: centered, canceled three ways, keys kept inside, each ch
   await expect(dialog(page)).toBeVisible();
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(cells);
 
-  await dialog(page).getByRole('button', { name: /^Exactly/ }).click();
+  await dialog(page).getByRole('button', { name: /^Exactly as is/ }).click();
   await expect(dialog(page)).toBeHidden();
   expect(await hasEdits(page)).toBe(false);
 
   await drawLine(page, 10);
   await mergeButton(page).click();
-  await dialog(page).getByRole('button', { name: /^Into the picture/ }).click();
+  await dialog(page).getByRole('button', { name: /^Into the image/ }).click();
   await expect.poll(() => hasEdits(page)).toBe(false);
 });

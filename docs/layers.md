@@ -86,10 +86,10 @@ yet.)
 - **Merge down** (top toolbar, or the Select tool's row) puts the edit layer into the base layer.
   With a selection, only what's drawn inside it goes; the rest of the edit layer stays. Each time,
   it asks how:
-  - **Exactly**: paint and cells become base pixels exactly as they show, and your typed and drawn
+  - **Exactly as is**: paint and cells become base pixels exactly as they show, and your typed and drawn
     cells keep their characters, pinned on the base layer. Nothing is resampled or re-filtered, and
     the effects never touch it.
-  - **Into the picture**: your drawing becomes part of the image itself, so every effect applies
+  - **Into the image**: your drawing becomes part of the image itself, so every effect applies
     to it, live, like the photo: Edges outlines it, Sharpen sharpens it, and moving the sliders keeps
     changing it. Paint and solid cells (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep
     showing their two halves; letters and other characters can't become picture pixels, so they
