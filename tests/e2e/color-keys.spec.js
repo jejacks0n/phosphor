@@ -56,7 +56,7 @@ test('in a text field Alt+F is left to the field', async ({ page }) => {
   await expect(box(page)).toBeHidden();
 });
 
-test('in the color box the arrow keys move between swatches, Enter picks, and nothing else moves', async ({ page }) => {
+test('in the color box the arrow keys move between swatches, Space picks, Enter picks and closes, and nothing else moves', async ({ page }) => {
   await openApp(page);
   await page.getByRole('combobox', { name: 'Color Palette' }).selectOption('cga');
   await page.getByRole('button', { name: 'Select', exact: true }).click();
@@ -77,8 +77,13 @@ test('in the color box the arrow keys move between swatches, Enter picks, and no
   const picked = await focused();
   expect(picked).toMatch(/^#[0-9a-f]{6}$/i);
   expect(picked).not.toBe(fg);
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Space'); // picks, and the box stays open
   expect(await ws(page, (w) => w.editFgColor)).toBe(picked);
-  expect(await ws(page, (w) => w.selection)).toEqual(selection); // the arrows didn't nudge it
   await expect(box(page)).toBeVisible();
+  await page.keyboard.press('ArrowLeft');
+  const entered = await focused();
+  await page.keyboard.press('Enter'); // picks and closes
+  await expect(box(page)).toBeHidden();
+  expect(await ws(page, (w) => w.editFgColor)).toBe(entered);
+  expect(await ws(page, (w) => w.selection)).toEqual(selection); // the arrows didn't nudge it
 });

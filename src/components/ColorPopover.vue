@@ -44,9 +44,15 @@ const onKeyDown = (event) => {
   emit('close');
 };
 // The arrow keys move focus to the nearest control that way (the swatches, None, the recent colors,
-// the FG/BG switch); Enter or Space picks, as a click does. Taken here, so they don't also nudge a
-// selection or move the text cursor.
+// the FG/BG switch); Enter on a swatch picks it and closes the box, Space picks it (as a click does)
+// and leaves it open. Taken here, so they don't also nudge a selection or move the text cursor.
 const onArrow = (event) => {
+  if (event.key === 'Enter' && document.activeElement?.classList.contains('swatch')) {
+    event.preventDefault();
+    document.activeElement.click();
+    emit('close');
+    return;
+  }
   if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key) || event.altKey || event.metaKey || event.ctrlKey) return;
   event.preventDefault();
   event.stopPropagation();
