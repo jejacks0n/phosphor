@@ -30,8 +30,9 @@ const CP437_MAP = {
 
 // The CP437 byte for a character, or null when CP437 can't encode it.
 export function cp437Byte(char) {
-  if ([...char].length !== 1) return null;
-  const code = char.codePointAt(0);
+  const composed = char.normalize('NFC'); // e + a combining accent is é, which CP437 has
+  if ([...composed].length !== 1) return null;
+  const code = composed.codePointAt(0);
   return CP437_MAP[code] ?? (code <= 127 ? code : null);
 }
 

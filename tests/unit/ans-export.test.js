@@ -44,4 +44,9 @@ test(".ans export never writes NUL for a character CP437 can't encode: it lists 
   assert.deepEqual([...AnsiFile.unmappable(wide)], [['漢', { count: 1, as: '?' }]]);
   const hidden = [{ char: '漢', fg: A, bg: A, wide: 'lead' }, { char: '漢', fg: A, bg: A, wide: 'trail' }, { char: 'a', fg: A, bg: B }];
   assert.equal(text(await art(hidden, { utf8: true })).replace(/\r\n/g, ''), '  a');  // written as a space: so is its trail
+
+  // A character typed or pasted decomposed (e + a combining accent) is the same character as its
+  // precomposed form, which CP437 has.
+  assert.equal(AnsiFile.unicodeToCP437('e\u0301'), 130); // é
+  assert.equal(AnsiFile.unmappable([{ char: 'e\u0301', fg: A, bg: B }]).size, 0);
 });

@@ -48,6 +48,6 @@ test("The CP437 table: every character maps to exactly the byte .ans export has 
   assert.equal(cp437Byte('🬀'), null);                    // astral: one character, not encodable
   assert.equal(isCp437('★'), false);
   assert.equal(isCp437('░'), true);
-  assert.equal(cp437Byte('e\u0301'), null);             // more than one code point: not one CP437 character
+  assert.equal(cp437Byte('e\u0301'), 130);              // e + a combining accent: é, composed
   assert.equal(cp437Substitute('▏'), '▌');
 });
