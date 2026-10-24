@@ -30,6 +30,13 @@ instead of picking one, so rolling the seed or changing the character set doesn'
 Merge down pins characters (see below), and erasing pins a space. Any other character belongs to
 its cell's position: the converter picks it there, whatever colours are underneath.
 
+### The sliders and undo
+
+Moving a slider in Transforms, Adjustments or Image Filters is an undo step, like a brush stroke:
+a whole drag is one step, a run of arrow-key nudges on one slider is one step, and so are RESET,
+RESET ALL and picking the Colorize or Edges colour. Undo goes back through slider moves and drawing
+in the order you made them.
+
 ### Baking
 
 **Bake** (the flame button in the toolbar, beside Merge down and Clear edit layer; Bake Effects

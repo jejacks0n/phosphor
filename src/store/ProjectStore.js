@@ -39,6 +39,11 @@ const copyOf = (image, width, height) => {
 };
 const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
 
+// The Transforms, Adjustments and Image Filters settings (sliders and their colours): what a slider
+// undo step records. Keyboard nudges on one slider this close together are one step.
+const SLIDER_KEYS = SETTINGS.filter(s => RESET_GROUPS.includes(s.group)).map(s => s.key);
+const NUDGE_MS = 1000;
+
 export const useProjectStore = defineStore('project', {
   state: () => ({
     image: shallowRef(null),
@@ -326,12 +331,48 @@ export const useProjectStore = defineStore('project', {
       await saveFile(blob, `${this.filename}.${ext}`, ext === 'ans' ? 'ANSI Art File' : 'UTF8 ANSI Art File');
     },
 
+    // RESET ALL and a group's RESET: one undo step each.
     resetSliders() {
-      RESET_GROUPS.forEach(group => this.resetGroup(group));
+      this._sliderBefore ??= this.sliderValues();
+      RESET_GROUPS.forEach(group => this.$patch(groupDefaults(group)));
+      this.commitSliders();
     },
 
     resetGroup(group) {
+      this._sliderBefore ??= this.sliderValues();
       this.$patch(groupDefaults(group));
+      this.commitSliders();
+    },
+
+    sliderValues() {
+      return Object.fromEntries(SLIDER_KEYS.map(key => [key, this[key]]));
+    },
+
+    // A slider moving (a drag, a nudge, a colour being picked): the values from before it are noted
+    // once, and commitSliders makes the move one undo step when it ends.
+    setSlider(key, value) {
+      this._sliderBefore ??= this.sliderValues();
+      this[key] = value;
+    },
+
+    // The move ended: one undo step from the noted values to these, none if nothing changed. A key
+    // nudge on the same slider a moment after the last nudge, with nothing else recorded between,
+    // extends that step (a drag is always a step of its own).
+    commitSliders(key = null, { nudge = false } = {}) {
+      const before = this._sliderBefore;
+      this._sliderBefore = null;
+      if (!before) return;
+      const after = this.sliderValues(), last = this._lastSlider;
+      if (nudge && last?.key === key && last.version === this.history.version && Date.now() - last.at < NUDGE_MS) {
+        last.at = Date.now();
+        last.entry.after = after;
+        return;
+      }
+      if (SLIDER_KEYS.every(k => before[k] === after[k])) return;
+      this.commitPending();
+      const entry = { after, undo: () => this.$patch(before), redo: () => this.$patch(entry.after) };
+      this.pushEdit(entry);
+      this._lastSlider = nudge ? { key, entry, version: this.history.version, at: Date.now() } : null;
     },
 
     // Bake: the picture as it shows becomes the image and the Transform, Adjustment and Effect
@@ -341,8 +382,8 @@ export const useProjectStore = defineStore('project', {
     // lockPalette bakes the palette into the image instead, so nothing moves, but the picture keeps
     // only the palette's colours. The colour transforms also tint the drawing when it's shown, so they're
     // burnt into it (paint, the base's own pixels, edit cells) and into the colour pair and the
-    // clipboard; recent colours are shared across projects and stay. One undo step; undoing after a
-    // second round of slider changes keeps that round for redo.
+    // clipboard; recent colours are shared across projects and stay. One undo step (slider moves after
+    // it are steps of their own).
     async bake({ lockPalette = false } = {}) {
       if (!this.canBake || this._baking) return;
       this._baking = true;
@@ -397,10 +438,7 @@ export const useProjectStore = defineStore('project', {
         };
         apply(after, before);
         this.pushEdit({
-          undo: () => {
-            after.sliders = sliders(); // a second round of slider changes comes back on redo
-            apply(before, after);
-          },
+          undo: () => apply(before, after),
           redo: () => apply(after, before),
         });
       } finally {
@@ -1038,6 +1076,7 @@ export const useProjectStore = defineStore('project', {
     // Fold an unfinished stroke into history before an edit that replaces the whole layer.
     commitPending() {
       if (this._stroke) this.commitEdit();
+      this.commitSliders(); // a slider move still open
     },
 
     pushEdit(entry) {

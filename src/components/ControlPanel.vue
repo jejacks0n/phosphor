@@ -138,8 +138,22 @@ const charsetName = computed(() => {
           <button @click="store.resetGroup(group.id)" tabindex="-1">RESET</button>
         </legend>
 
-        <RangeField v-for="slider in group.sliders" :key="slider.key" :setting="slider" v-model="store[slider.key]">
-          <input v-if="slider.companion" type="color" v-model="store[slider.companion]">
+        <!-- Undoable: each drag, nudge or colour pick is one step (setSlider, then commitSliders). -->
+        <RangeField
+            v-for="slider in group.sliders"
+            :key="slider.key"
+            :setting="slider"
+            :model-value="store[slider.key]"
+            @update:model-value="store.setSlider(slider.key, $event)"
+            @commit="store.commitSliders(slider.key, $event)"
+        >
+          <input
+              v-if="slider.companion"
+              type="color"
+              :value="store[slider.companion]"
+              @input="store.setSlider(slider.companion, $event.target.value)"
+              @change="store.commitSliders(slider.companion)"
+          >
         </RangeField>
       </fieldset>
     </template>

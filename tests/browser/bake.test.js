@@ -98,7 +98,7 @@ test('the colour pair and a copied block keep their look', async () => {
   expect(Math.max(...shown.flatMap((h, i) => h.map((v, k) => Math.abs(v - after[i][k]))))).toBeLessThanOrEqual(1);
 });
 
-test('undo and redo, and a second round of sliders kept for redo', async () => {
+test('undo and redo', async () => {
   const { project, workspace } = await createTestApp();
   await drawnDocument(project, workspace);
   Object.assign(project, SLIDERS);
@@ -115,12 +115,7 @@ test('undo and redo, and a second round of sliders kept for redo', async () => {
   project.redo();
   await settle(project);
   expect(cellsKey(project)).toEqual(after);
-  project.contrast = 150;
-  await settle(project);
-  project.undo();
-  project.redo();
-  await settle(project);
-  expect(project.contrast).toBe(150);
+  expect(project.brightness).toBe(100); // slider moves after a bake are steps of their own (slider-history.test.js)
 });
 
 test('another image loaded while baking is left alone', async () => {
