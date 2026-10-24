@@ -8,7 +8,7 @@ export const SETTINGS = [
   { key: 'rows', default: 50, group: 'setup' },
   { key: 'aspectLock', default: true, group: 'setup', pipeline: false },
   { key: 'renderStyle', default: 'ansi', group: 'setup', help: "'ANSI' uses both foreground and background colors for maximum detail. 'Color ASCII' uses characters on a black background. 'ASCII' is monochrome art." },
-  { key: 'chars', default: '.*:%░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, help: 'The character set used to represent density and texture. Characters two cells wide (like 漢) are skipped here: generated cells are one column.' },
+  { key: 'chars', default: '.*:%░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, help: 'The character set used to represent density and texture. Add duplicate characters if you want more of a given character. Characters two cells wide (like 漢) are skipped here: generated cells are one column.' },
   { key: 'charsAscii', default: ' .:*%#@', group: 'setup', pipeline: false },
   { key: 'seed', default: () => generateSlug(2), group: 'setup', help: 'A unique value to randomize the character selection.' },
   { key: 'quantize', default: 'none', group: 'setup', help: 'Restricts the final output to specific color standards.' },
