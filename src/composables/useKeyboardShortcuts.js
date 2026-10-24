@@ -118,7 +118,6 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     e.preventDefault();
     const text = e.clipboardData?.getData('text/plain') ?? '';
     const ours = workspaceStore.clipboardText;
-    if (ours !== null) workspaceStore.clipboardFresh = !text || text === ours; // now known
     if (workspaceStore.clipboard && (!text || ours === null || text === ours)) _pasteBlock(at);
     else if (text) {
       if (workspaceStore.activeTool !== 'text' || !workspaceStore.textCursor) workspaceStore.textCursor = at;
@@ -150,24 +149,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     }
   };
 
-  // Whether the system clipboard still holds Phosphor's copy (so the Paste button and Cmd/Ctrl+V
-  // agree): a page can't watch it, so anything that may have changed it counts. Something copied in
-  // the page outside Phosphor's copy, or leaving the window (another app may copy). Coming back, a
-  // browser that already allows reading the clipboard is asked; Phosphor never prompts for it.
-  const _handleOutsideCopy = () => { workspaceStore.clipboardFresh = false; };
-  const _handleFocus = async () => {
-    const ours = workspaceStore.clipboardText;
-    if (ours === null || workspaceStore.clipboardFresh) return;
-    try {
-      const { state } = await navigator.permissions.query({ name: 'clipboard-read' });
-      if (state === 'granted') workspaceStore.clipboardFresh = (await navigator.clipboard.readText()) === ours;
-    } catch {
-      // not allowed or not supported: it stays unknown until the next Cmd/Ctrl+V
-    }
-  };
-
   const _handleBlur = () => {
-    workspaceStore.clipboardFresh = false;
     workspaceStore.isCtrlPressed = false;
     workspaceStore.isMiddleClick = false;
     if (_isAltSwapped.value) {
@@ -189,9 +171,6 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     window.addEventListener('blur', _handleBlur);
     window.addEventListener('contextmenu', _handleContextMenu);
     document.addEventListener('paste', _handlePaste, true);
-    document.addEventListener('copy', _handleOutsideCopy, true);
-    document.addEventListener('cut', _handleOutsideCopy, true);
-    window.addEventListener('focus', _handleFocus);
   });
 
   onBeforeUnmount(() => {
@@ -200,9 +179,6 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     window.removeEventListener('blur', _handleBlur);
     window.removeEventListener('contextmenu', _handleContextMenu);
     document.removeEventListener('paste', _handlePaste, true);
-    document.removeEventListener('copy', _handleOutsideCopy, true);
-    document.removeEventListener('cut', _handleOutsideCopy, true);
-    window.removeEventListener('focus', _handleFocus);
     clearTimeout(_pendingPaste?.timer);
   });
 

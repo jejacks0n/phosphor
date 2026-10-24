@@ -115,10 +115,8 @@ nudging act on:
 per row, so you can paste them into a terminal, a chat or a text editor. **Paste** (Cmd/Ctrl+V)
 pastes whatever you copied last: the block you copied in Phosphor, with its colours and layers; or,
 if you've copied text anywhere else since, that text, typed in at the Edit Mode cursor (or at the
-selection, or the top-left of the view). The **Paste** button only pastes the Phosphor block, so it's
-on only while that's what Cmd/Ctrl+V would paste too: right after you copy, and until something else
-may have been copied (copying elsewhere in the page, or switching to another window or app; a
-Cmd/Ctrl+V that finds Phosphor's copy still there turns it back on).
+selection, or the top-left of the view). The **Paste** button always pastes the block you copied in
+Phosphor, whatever's on your system clipboard.
 
 In Edit Mode, dragging across cells switches to the Select tool and selects them, the way dragging
 selects text in a text editor; a plain click still just places the cursor.

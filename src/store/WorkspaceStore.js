@@ -31,7 +31,6 @@ export const useWorkspaceStore = defineStore('workspace', {
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
-    clipboardFresh: false,   // the system clipboard is known to still hold clipboardText (clipboard.js)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     selectLayers: { base: true, edit: true }, // what the Select tool acts on: the base layer and/or the edit layer
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse'
@@ -70,10 +69,6 @@ export const useWorkspaceStore = defineStore('workspace', {
     editFillFeather: 2,
   }),
   getters: {
-    // Paste (the button) pastes Phosphor's block; Cmd/Ctrl+V pastes whichever was copied last. They
-    // agree while the system clipboard is known to still hold Phosphor's copy, or when Phosphor
-    // couldn't write it (then Cmd/Ctrl+V pastes the block too).
-    pasteMatchesShortcut: (state) => !!state.clipboard && (state.clipboardText === null || state.clipboardFresh),
     activeTool(state) {
       return state.editorTab === 'input' ? state.inputActiveTool : state.outputActiveTool;
     },
