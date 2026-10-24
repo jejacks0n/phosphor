@@ -28,9 +28,17 @@ export function colorBoxKey(e) {
   return COLOR_BOX_KEYS[e.code] ?? null;
 }
 
+// The shortcuts list: ?, or Alt+? (by physical key: Option+? types ¿), which also works while
+// typing in Edit Mode, where ? types.
+const altHelp = (e) => e.altKey && e.shiftKey && e.code === 'Slash' && !e.ctrlKey && !e.metaKey;
+export function helpKey(e, { typing }) {
+  if (altHelp(e)) return true;
+  return !typing && e.key === '?' && !e.altKey && !e.ctrlKey && !e.metaKey;
+}
+
 export function textKeyAction(e, { editable }) {
   if (editable || e.metaKey || e.isComposing || e.keyCode === 229) return null; // a field, Cmd, or an IME
-  if (colorBoxKey(e)) return null; // opens the color box (useKeyboardShortcuts), never types
+  if (colorBoxKey(e) || altHelp(e)) return null; // the color box or the shortcuts list, never types
   // AltGr (Windows/Linux) arrives as Ctrl+Alt and produces characters such as @ or €: those type.
   if (e.ctrlKey && e.altKey) return single(e.key) ? { type: 'char', char: e.key } : null;
   if (e.ctrlKey) {

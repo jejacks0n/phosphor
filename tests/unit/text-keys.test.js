@@ -1,7 +1,7 @@
 // The Text tool's keys -> editing actions, cursor clamping, and row shifting for insert mode.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { colorBoxKey, textKeyAction, moveCursor, typedText } from '../../src/lib/TextKeys.js';
+import { colorBoxKey, helpKey, textKeyAction, moveCursor, typedText } from '../../src/lib/TextKeys.js';
 import { shiftRow } from '../../src/document/editCells.js';
 
 test("The Text tool's keys -> editing actions, cursor clamping, and row shifting for insert mode", async () => {
@@ -73,4 +73,15 @@ test('Alt+F / Alt+A open the color box on the foreground, Alt+B on the backgroun
   assert.equal(colorBoxKey(key('KeyC')), null);
   assert.equal(textKeyAction(key('KeyF'), { editable: false }), null);
   assert.deepEqual(textKeyAction(key('KeyC', { key: 'ç' }), { editable: false }), { type: 'char', char: 'ç' }); // other Alt keys type
+});
+
+test('? opens the shortcuts list, and Alt+? does even while typing (it never types)', () => {
+  const ev = (key, code, mods = {}) => ({ key, code, altKey: false, shiftKey: true, ctrlKey: false, metaKey: false, ...mods });
+  assert.equal(helpKey(ev('?', 'Slash'), { typing: false }), true);
+  assert.equal(helpKey(ev('?', 'Slash'), { typing: true }), false);                    // Edit Mode: ? types
+  assert.equal(helpKey(ev('¿', 'Slash', { altKey: true }), { typing: true }), true);   // Alt+? (Option types ¿)
+  assert.equal(helpKey(ev('/', 'Slash', { shiftKey: false }), { typing: false }), false);
+  assert.equal(helpKey(ev('?', 'Slash', { metaKey: true }), { typing: false }), false);
+  assert.equal(textKeyAction(ev('¿', 'Slash', { altKey: true }), { editable: false }), null);
+  assert.deepEqual(textKeyAction(ev('?', 'Slash'), { editable: false }), { type: 'char', char: '?' });
 });

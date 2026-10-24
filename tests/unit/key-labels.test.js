@@ -7,4 +7,5 @@ test('Shortcut labels as the platform writes them', () => {
   assert.equal(shortcut('alt', 'F'), isMac ? '⌥F' : 'Alt+F');
   assert.equal(shortcut('shift', 'mod', 'X'), isMac ? '⇧⌘X' : 'Shift+Ctrl+X');
   assert.equal(shortcut('Space'), 'Space');
+  assert.equal(shortcut('ctrl', 'F1'), isMac ? '⌃F1' : 'Ctrl+F1'); // the Control key itself, on a Mac too
 });

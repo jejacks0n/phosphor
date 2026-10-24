@@ -48,6 +48,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     isMiddleClick: false,
     settingsOpen: false,
     showAboutModal: false,
+    shortcutsOpen: false,    // the keyboard shortcuts list (ShortcutsDialog)
     colorBox: null,          // the color box (ColorPair's popover) while it's open: 'fg' | 'bg'
     saveDialog: null,        // the save dialog's format while it's open: 'phosphor' | 'ans' | 'utf8ans' (SaveDialog)
 

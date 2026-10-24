@@ -4,7 +4,7 @@ import { clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
 import { copySelection } from '@/composables/clipboard';
 import { typeText } from '@/composables/useTextTool';
-import { colorBoxKey } from '@/lib/TextKeys';
+import { colorBoxKey, helpKey } from '@/lib/TextKeys';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
@@ -85,6 +85,15 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (workspaceStore.heldTool?.by === 'alt') workspaceStore.releaseTool();
     // ASCII in the ANSI view has no colors to choose (ColorPair hides itself).
     if (!(workspaceStore.editorTab === 'output' && projectStore.renderStyle === 'ascii')) workspaceStore.colorBox = slot;
+    return true;
+  };
+
+  // The shortcuts list: ?, or Alt+? while typing in Edit Mode (where ? types). Not in a field.
+  const _handleHelp = (e) => {
+    const typing = workspaceStore.activeTool === 'text' && !!workspaceStore.textCursor && workspaceStore.editorTab === 'output';
+    if (!helpKey(e, { typing }) || _inField(e.target) || workspaceStore.paletteLayerOpen) return false;
+    e.preventDefault();
+    workspaceStore.shortcutsOpen = true;
     return true;
   };
 
@@ -180,6 +189,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;
+    if (_handleHelp(e)) return;
     if (_handleColorKeys(e)) return;
     if (_handleToolSwap(e)) return;
     if (_handleSwapColors(e)) return;

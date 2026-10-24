@@ -9,6 +9,7 @@ import EditWorkspace from '@/components/EditWorkspace.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
 import SaveDialog from '@/components/SaveDialog.vue';
+import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
 import AppToast from '@/components/AppToast.vue';
 
 export default {
@@ -18,12 +19,13 @@ export default {
     ControlPanel,
     AboutPhosphor,
     SaveDialog,
+    ShortcutsDialog,
     AppToast,
   },
   computed: {
     ...mapState(useProjectStore, ['image', 'isDirty']),
     ...mapState(useWorkspaceStore, ['activeTool', 'isPainting', 'isCtrlPressed', 'isMiddleClick']),
-    ...mapWritableState(useWorkspaceStore, ['showAboutModal', 'saveDialog']),
+    ...mapWritableState(useWorkspaceStore, ['showAboutModal', 'saveDialog', 'shortcutsOpen']),
   },
   mounted() {
     window.addEventListener('beforeunload', this.onBeforeUnload);
@@ -71,6 +73,7 @@ export default {
     <EditWorkspace/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
     <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>
+    <ShortcutsDialog v-if="shortcutsOpen" @close="shortcutsOpen = false"/>
     <AppToast/>
   </main>
 </template>

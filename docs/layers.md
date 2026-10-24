@@ -171,6 +171,11 @@ These work in both the ANSI and the pixel view, for as long as you hold the key:
 Let go in the middle of a drag and the tool comes back when the drag ends, so a pick or a pan never
 turns into a stroke.
 
+### All the shortcuts
+
+Press **?** for the list of every keyboard shortcut (in Edit Mode, where ? types, press **Alt+?**,
+Option+? on a Mac).
+
 ### Color keys
 
 As in Moebius, these work with any tool, in Edit Mode while you type too (they never type a
