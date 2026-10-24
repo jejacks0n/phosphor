@@ -84,7 +84,9 @@ export function render(context, buffer) {
         html += '<span' + css + '>';
         tagIsOpen = true;
       }
-      html += escapeChar(currCell.char);
+      // A character that doesn't draw exactly its columns wide is held to them (fit), as a terminal
+      // keeps its grid: the row stays in line, and a wider shape draws over what follows.
+      html += currCell.fit ? '<span class="fit" style="width:' + currCell.fit + 'ch">' + escapeChar(currCell.char) + '</span>' : escapeChar(currCell.char);
       prevCell = currCell;
     }
     if (tagIsOpen) html += '</span>';
@@ -104,7 +106,7 @@ export function escapeChar(char) {
 
 function isSameCell(cellA, cellB) {
   if (!cellA || !cellB) return false;
-  return cellA.char === cellB.char && isSameCellStyle(cellA, cellB);
+  return cellA.char === cellB.char && cellA.fit === cellB.fit && isSameCellStyle(cellA, cellB);
 }
 
 function isSameCellStyle(cellA, cellB) {

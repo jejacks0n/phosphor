@@ -7,6 +7,7 @@ import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
 import CellCanvas from '@/lib/CellCanvas';
+import { fitColumns } from '@/lib/DrawnWidth';
 import EditorViewport from '@/components/EditorViewport.vue';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 
@@ -86,6 +87,7 @@ const render = () => {
 
   const buffer = projectStore.cells.map(({ char, fg, bg, wide }) => ({
     char: wide === 'trail' ? '' : char, // the lead's glyph is the whole wide character
+    fit: wide === 'trail' ? 0 : fitColumns(char), // held to its columns, its shape spilling over what follows
     color: fg.hex,
     backgroundColor: bg.hex,
     fgIndex: fg.c,
@@ -315,6 +317,17 @@ div.ansi-editor {
   display: block;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* The DOM view: a character held to its columns (TextRenderer's span.fit), as a terminal keeps its
+   grid. Its shape spills over the cells after it, on top of them, without changing the row's height. */
+.display :deep(span.fit) {
+  display: inline-block;
+  height: 1lh;
+  vertical-align: top;
+  position: relative;
+  z-index: 1;
+  white-space: pre;
 }
 
 /* crisp when the backing scale is capped below the dpr (CellCanvas) */

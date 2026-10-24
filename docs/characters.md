@@ -11,7 +11,10 @@ Every character takes one or two columns, by the same Unicode rules terminals us
 - **One column**: letters and digits, punctuation, box drawing (`╬`), block elements (`▀ ▄ █ ░ ▒ ▓`),
   most symbols (`★ ☺ ♥`), half-width katakana (`ｱ`), and some that draw far wider than that, like
   `﷽`. A terminal gives `﷽` one column, then draws it at its full width over the characters after
-  it. Phosphor's canvas view squeezes it into its one cell instead.
+  it, and Phosphor draws it the same way: the row keeps its columns, and the shape covers what
+  follows (to the end of its row). This applies to any character drawing wider than its columns.
+  How much wider depends on the fonts, so Phosphor measures it in the browser's; a terminal using
+  other fonts can draw it a little wider or narrower.
 - **Two columns**: Chinese, Japanese and Korean characters (`漢 か 가`), fullwidth forms (`Ａ`) and
   emoji (`👍🏽 🇯🇵`).
 

@@ -8,8 +8,14 @@
  *
  * Cells snap to whole device pixels at a backing scale capped to stay under the browsers' canvas
  * limits; metrics is the cell size in CSS px that the editor's overlays measure with.
+ *
+ * A character drawing wider than its columns (﷽ gets one and draws about eleven: DrawnWidth) is drawn
+ * as a terminal draws it: its cell keeps its column, and its full shape covers the cells after it,
+ * over their characters and backgrounds. Its shape is cut into a glyph per column it covers; two more
+ * data textures give each covered cell the slice that lands there and the character's color.
  */
 import { DISPLAY_FONT, DISPLAY_FONT_CSS } from './GlyphCoverage.js';
+import { drawnColumns, layoutSpills } from './DrawnWidth.js';
 
 // Safari refuses 2D canvases of 16,777,216 pixels or more, and WebGL drawing buffers past the
 // browser's limits are silently shrunk.
@@ -70,6 +76,23 @@ export function packCells(cells, count, glyphOf, fg, bg) {
   }
 }
 
+// The spill textures' bytes (layoutSpills: for a cell an overflowing character draws over, that
+// character's cell and which of its columns lands here): its fg rgb + the slice's glyph index low
+// byte, and the high byte with a 255 "present" flag. sliceOf(cell, k): the glyph of column k.
+export function packSpills(cells, spills, count, sliceOf, ov, ovHi) {
+  for (let i = 0; i < count; i++) {
+    const spill = spills[i], o = i * 4;
+    if (!spill) {
+      ov.fill(0, o, o + 4);
+      ovHi.fill(0, o, o + 4);
+      continue;
+    }
+    const source = cells[spill.from], g = sliceOf(source, spill.slice);
+    ov[o] = source.fg.r; ov[o + 1] = source.fg.g; ov[o + 2] = source.fg.b; ov[o + 3] = g & 255;
+    ovHi[o] = g >> 8; ovHi[o + 1] = 255; ovHi[o + 2] = 0; ovHi[o + 3] = 0;
+  }
+}
+
 const VERTEX = `#version 300 es
 void main() { // one triangle covering the viewport
   gl_Position = vec4(gl_VertexID == 1 ? 3. : -1., gl_VertexID == 2 ? 3. : -1., 0., 1.);
@@ -77,7 +100,7 @@ void main() { // one triangle covering the viewport
 
 const FRAGMENT = `#version 300 es
 precision highp float; precision highp int;
-uniform sampler2D uFg, uBg, uAtlas;
+uniform sampler2D uFg, uBg, uAtlas, uOv, uOvHi;
 uniform ivec2 uCell;        // cw, ch in device px
 uniform int uHeight;        // canvas height in device px
 uniform int uAtlasCols;     // glyphs per atlas row
@@ -89,21 +112,32 @@ void main() {
   int g = int(f.a * 255. + .5) + 256 * int(b.a * 255. + .5);
   ivec2 l = p - c * uCell;
   float ink = texelFetch(uAtlas, ivec2((g % uAtlasCols) * uCell.x + l.x, (g / uAtlasCols) * uCell.y + l.y), 0).r;
-  color = vec4(ink > .5 ? f.rgb : b.rgb, 1.);
+  // A spill: part of an overflowing character to the left, drawn over this cell's background, under
+  // its own character (a terminal draws left to right).
+  vec4 o = texelFetch(uOv, c, 0), oh = texelFetch(uOvHi, c, 0);
+  float spill = 0.;
+  if (oh.g > .5) {
+    int s = int(o.a * 255. + .5) + 256 * int(oh.r * 255. + .5);
+    spill = texelFetch(uAtlas, ivec2((s % uAtlasCols) * uCell.x + l.x, (s / uAtlasCols) * uCell.y + l.y), 0).r;
+  }
+  color = vec4(ink > .5 ? f.rgb : spill > .5 ? o.rgb : b.rgb, 1.);
 }`;
 
 export default class CellCanvas {
   canvas;
   #gl = null;
   #uniforms = null;
-  #textures = null;     // [fg, bg, atlas], bound to texture units 0, 1, 2
+  #textures = null;     // [fg, bg, atlas, ov, ovHi], bound to texture units 0-4
   #allocated = false;   // the data textures have the grid's size
   #onRestored = null;
   #advance = null;      // the font's character width in CSS px, measured by resize
   #geom = null;         // { cols, rows, cw, ch, scale }
   #fg = null;
   #bg = null;
+  #ov = null;
+  #ovHi = null;
   #glyphs = new Map();  // char -> atlas index
+  #slices = new Map();  // char -> the atlas indexes of its columns (wide and overflowing characters)
   #atlas = new Uint8Array(0);
   #atlasRows = 0;
   #atlasDirty = true;
@@ -145,6 +179,8 @@ export default class CellCanvas {
     this.#geom = { cols, rows, cw, ch, scale };
     this.#fg = new Uint8Array(cols * rows * 4);
     this.#bg = new Uint8Array(cols * rows * 4);
+    this.#ov = new Uint8Array(cols * rows * 4);
+    this.#ovHi = new Uint8Array(cols * rows * 4);
     this.#allocated = false;
     this.#dropAtlas();
     return true;
@@ -163,9 +199,11 @@ export default class CellCanvas {
     if (!g || gl.isContextLost() || cells.length !== g.cols * g.rows) return;
     if (!this.#glyphs.size) this.#glyphOf({ char: ' ' }); // glyph 0: what a missing cell draws
     packCells(cells, g.cols * g.rows, (cell) => this.#glyphOf(cell), this.#fg, this.#bg);
+    const spills = layoutSpills(cells, g.cols, (cell) => drawnColumns(cell.char));
+    packSpills(cells, spills, g.cols * g.rows, (cell, k) => this.#slicesOf(cell.char)[k], this.#ov, this.#ovHi);
 
-    const [fgTexture, bgTexture, atlasTexture] = this.#textures;
-    for (const [unit, texture, data] of [[0, fgTexture, this.#fg], [1, bgTexture, this.#bg]]) {
+    const [fgTexture, bgTexture, atlasTexture, ovTexture, ovHiTexture] = this.#textures;
+    for (const [unit, texture, data] of [[0, fgTexture, this.#fg], [1, bgTexture, this.#bg], [3, ovTexture, this.#ov], [4, ovHiTexture, this.#ovHi]]) {
       gl.activeTexture(gl.TEXTURE0 + unit);
       gl.bindTexture(gl.TEXTURE_2D, texture);
       if (this.#allocated) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, g.cols, g.rows, gl.RGBA, gl.UNSIGNED_BYTE, data);
@@ -211,7 +249,7 @@ export default class CellCanvas {
     gl.useProgram(program);
 
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    this.#textures = [0, 1, 2].map((unit) => {
+    this.#textures = [0, 1, 2, 3, 4].map((unit) => {
       const texture = gl.createTexture();
       gl.activeTexture(gl.TEXTURE0 + unit);
       gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -223,6 +261,8 @@ export default class CellCanvas {
     gl.uniform1i(at('uFg'), 0);
     gl.uniform1i(at('uBg'), 1);
     gl.uniform1i(at('uAtlas'), 2);
+    gl.uniform1i(at('uOv'), 3);
+    gl.uniform1i(at('uOvHi'), 4);
     gl.uniform1i(at('uAtlasCols'), ATLAS_COLS);
     this.#uniforms = { cell: at('uCell'), height: at('uHeight') };
     this.#allocated = false;
@@ -230,28 +270,37 @@ export default class CellCanvas {
 
   #dropAtlas() {
     this.#glyphs.clear();
+    this.#slices.clear();
     this.#atlas = new Uint8Array(0);
     this.#atlasRows = 0;
     this.#atlasDirty = true;
   }
 
-  // A cell's atlas index, rasterizing its character the first time. A wide character is drawn
-  // once across two cells and kept as two glyphs, its lead's half and its trail's.
+  // A cell's atlas index, rasterizing its character the first time. A character covering more than
+  // one column (a wide one, or one drawing wider than its columns) is drawn once at its full width and
+  // cut into a glyph per column (#slicesOf); a cell shows its own column's, a wide character's trail
+  // the second.
   #glyphOf({ char, wide }) {
-    const key = wide ? `${char}\u0000${wide}` : char;
-    const index = this.#glyphs.get(key);
+    if (wide || drawnColumns(char) > 1) return this.#slicesOf(char)[wide === 'trail' ? 1 : 0];
+    const index = this.#glyphs.get(char);
     if (index !== undefined) return index;
     const { cw, ch } = this.#geom;
-    if (!wide) return this.#store(key, blockMask(char, cw, ch) ?? this.#rasterize(char, 1));
+    return this.#store(char, blockMask(char, cw, ch) ?? this.#rasterize(char, 1));
+  }
 
-    const both = this.#rasterize(char, 2), half = (x0) => {
+  // A character's shape at its full width (the columns it draws over), cut into one glyph per column.
+  #slicesOf(char) {
+    let indexes = this.#slices.get(char);
+    if (indexes) return indexes;
+    const { cw, ch } = this.#geom, span = Math.max(drawnColumns(char), 1);
+    const whole = this.#rasterize(char, span);
+    indexes = Array.from({ length: span }, (_, k) => {
       const mask = new Uint8Array(cw * ch);
-      for (let y = 0; y < ch; y++) mask.set(both.subarray(y * 2 * cw + x0, y * 2 * cw + x0 + cw), y * cw);
-      return mask;
-    };
-    const lead = this.#store(`${char}\u0000lead`, half(0));
-    const trail = this.#store(`${char}\u0000trail`, half(cw));
-    return wide === 'lead' ? lead : trail;
+      for (let y = 0; y < ch; y++) mask.set(whole.subarray(y * span * cw + k * cw, y * span * cw + (k + 1) * cw), y * cw);
+      return this.#store(`${char}\u0000${k}`, mask);
+    });
+    this.#slices.set(char, indexes);
+    return indexes;
   }
 
   // Put a cw x ch mask in the next atlas slot (growing the atlas a row at a time); its index.

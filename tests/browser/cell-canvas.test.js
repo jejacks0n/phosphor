@@ -68,3 +68,30 @@ test('a 200×300 grid at dpr 2 stays under the backing cap', async () => {
   expect(canvas.height % 300).toBe(0);
   view.destroy();
 });
+
+test('a character drawing wider than its column covers the cells after it, as a terminal draws it', async () => {
+  await createTestApp();
+  const { drawnColumns } = await import('@/lib/DrawnWidth');
+  const span = drawnColumns('﷽');
+  expect(span).toBeGreaterThan(3); // it draws far wider than its one column
+  const cols = span + 3;
+  const row = [cell('﷽', '#ff0000', '#000000'), ...Array.from({ length: cols - 1 }, (_, i) => cell(i % 2 ? 'x' : ' ', '#ffffff', '#0000ff'))];
+  const { cw, ch, at } = drawAndRead(cols, 2, [...row, ...Array.from({ length: cols }, () => cell(' ', '#ffffff', '#0000ff'))]);
+  const colorsIn = (c0, r = 0) => {
+    const seen = new Set();
+    for (let y = r * ch; y < (r + 1) * ch; y++) for (let x = c0 * cw; x < (c0 + 1) * cw; x++) seen.add(at(x, y).join());
+    return seen;
+  };
+  const RED = '255,0,0', WHITE = '255,255,255', BLUE = '0,0,255', BLACK = '0,0,0';
+  expect(colorsIn(0).has(RED)).toBe(true);                                // its own column: the shape's start
+  let spilled = 0;
+  for (let c = 1; c < cols; c++) {
+    const seen = colorsIn(c);
+    for (const color of seen) expect([RED, WHITE, BLUE]).toContain(color); // over the cell's own colors, nothing blended
+    if (seen.has(RED)) spilled = c;
+  }
+  expect(spilled).toBeGreaterThanOrEqual(span - 2);                         // it reaches across its whole width
+  expect(colorsIn(span + 1).has(RED)).toBe(false);                          // and no further
+  for (let c = 0; c < cols; c++) expect(colorsIn(c, 1).has(RED)).toBe(false); // nor into the next row
+  expect(colorsIn(1).has(BLACK)).toBe(false);                               // the spill doesn't bring its own background
+});
