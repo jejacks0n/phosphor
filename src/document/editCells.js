@@ -7,6 +7,7 @@
  * what's underneath. Keys are grid positions, so entries outside a shrunken grid are kept.
  */
 import { usableChar } from '../lib/CharWidth.js';
+import { getEffectiveColor } from '../lib/PixelTransforms.js';
 
 const ATTRS = ['char', 'fg', 'bg'];
 
@@ -97,6 +98,21 @@ export function shiftRow(map, row, fromCol, delta, cols) {
     if (to >= 0 && to < cols) result.set(cellKey(to, row), entry);
   }
   return result;
+}
+
+// A bake burns the colour transforms (params) into an entry's colours, so it looks as it did once
+// the sliders are back at neutral; its character is kept. The palette isn't burnt in: it still
+// applies at display.
+export function bakeEntry(entry, params) {
+  const baked = { ...entry };
+  if (entry.fg) baked.fg = getEffectiveColor(entry.fg, params);
+  if (entry.bg) baked.bg = getEffectiveColor(entry.bg, params);
+  return Object.freeze(baked);
+}
+
+export function bakeEditCells(map, params) {
+  if (!map.size) return map;
+  return new Map([...map].map(([key, entry]) => [key, bakeEntry(entry, params)]));
 }
 
 // Rect = { c0, r0, c1, r1 }: inclusive, normalized. Block = { w, h, entries: (Entry | null)[] }, row-major.

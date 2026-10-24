@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   withCellEdit, mergeEntry, withoutCells, parseKey, serializeEditCells, deserializeEditCells, migrateCharEdits,
   normalizeRect, rectCells, pasteBlock, updateRect,
-  selectionHit, clampOffset,
+  selectionHit, clampOffset, bakeEditCells,
 } from '../src/document/editCells.js';
 
 const m0 = new Map();
@@ -78,4 +78,12 @@ assert.deepEqual(clampOffset({ c0: 30, r0: 5, c1: 39, r1: 9 }, 1, 0, 40, 25), { 
 assert.deepEqual(clampOffset({ c0: 30, r0: 5, c1: 38, r1: 9 }, 5, 0, 40, 25), { dc: 1, dr: 0 });
 assert.deepEqual(clampOffset({ c0: 0, r0: 0, c1: 3, r1: 3 }, -2, -1, 40, 25), { dc: 0, dr: 0 });
 assert.deepEqual(clampOffset({ c0: 2, r0: 2, c1: 3, r1: 3 }, 0, 30, 40, 25), { dc: 0, dr: 21 });
+// A bake burns the colour transforms into edit cells' colours (characters stay).
+const P = { brightness: 50, contrast: 100, saturation: 100, hue: 0, invert: 0, colorize: '#ff00ff', colorizeStrength: 0 };
+const baked = bakeEditCells(new Map([['0,0', Object.freeze({ char: 'A', fg: '#ffffff', bg: '#808080' })], ['1,0', Object.freeze({ char: 'B' })]]), P);
+assert.deepEqual(baked.get('0,0'), { char: 'A', fg: '#808080', bg: '#404040' });   // half brightness, burnt in
+assert.deepEqual(baked.get('1,0'), { char: 'B' });                                  // nothing to tint
+assert.ok(Object.isFrozen(baked.get('0,0')));
+const none = new Map();
+assert.equal(bakeEditCells(none, P), none);
 console.log('cell edits ok');

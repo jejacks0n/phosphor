@@ -48,6 +48,13 @@ export const SETTING_KEYS = SETTINGS.filter(s => s.group !== 'sauce').map(s => s
 export const SAUCE_KEYS = SETTINGS.filter(s => s.group === 'sauce').map(s => s.key);
 export const RESET_GROUPS = ['transform', 'adjust', 'effects'];
 
+// Whether every slider a bake (or Reset All) resets is at its default: nothing to bake. A slider
+// can hold its value as a numeric string.
+export function slidersAtDefaults(state) {
+  return RESET_GROUPS.every(group => Object.entries(groupDefaults(group)).every(([key, value]) =>
+    (typeof value === 'number' ? Number(state[key]) === value : state[key] === value)));
+}
+
 export function getSetting(key) {
   return BY_KEY.get(key);
 }

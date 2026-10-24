@@ -4,6 +4,7 @@
 // to match the pipeline output without relying on ctx.filter (no Safari < 18 support).
 
 import { hex2rgb, rgb2hex, nearestColor } from './ColorUtils.js';
+import { ctx2d } from './Canvas.js';
 
 function rgb2hsv(r, g, b) {
   const max = Math.max(r, g, b);
@@ -92,6 +93,21 @@ export function applyTransforms(data, brightness, contrast, saturation, hue, inv
     data[i + 1] = Math.round(Math.max(0, Math.min(1, g)) * 255);
     data[i + 2] = Math.round(Math.max(0, Math.min(1, b)) * 255);
   }
+}
+
+// A copy of a canvas with the colour transforms burnt into its pixels (a bake's paint and base
+// pixels): alpha kept, transparent pixels left alone, as the display transforms them.
+export function bakedCanvas(canvas, params) {
+  const out = document.createElement('canvas');
+  out.width = canvas.width;
+  out.height = canvas.height;
+  if (!out.width || !out.height) return out;
+  const ctx = ctx2d(out);
+  ctx.drawImage(canvas, 0, 0);
+  const pixels = ctx.getImageData(0, 0, out.width, out.height);
+  applyTransforms(pixels.data, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
+  ctx.putImageData(pixels, 0, 0);
+  return out;
 }
 
 // What a base color looks like after project-wide transforms and quantization are applied, as a
