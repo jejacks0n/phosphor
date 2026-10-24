@@ -59,7 +59,10 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (workspaceStore.editorTab !== 'output' || e.altKey || e.shiftKey) return false;
     if (workspaceStore.isPainting) return false; // mid-drag: the drag's end decides
     const target = e.target;
-    if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName)) return false;
+    // The Text tool's textarea isn't a field: Cmd/Ctrl+V there still pastes a Select block (and only
+    // pastes text, through the textarea, when there's no block).
+    const field = target?.dataset?.textInput === undefined && (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName));
+    if (field) return false;
     const sel = workspaceStore.selection, layers = workspaceStore.selectLayers;
     const selecting = workspaceStore.activeTool === 'select' && sel;
     const command = e.metaKey || e.ctrlKey;

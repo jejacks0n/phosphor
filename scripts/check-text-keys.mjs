@@ -1,7 +1,7 @@
 // The Text tool's keys -> editing actions, cursor clamping, and row shifting for insert mode.
 // Run: node scripts/check-text-keys.mjs
 import assert from 'node:assert/strict';
-import { textKeyAction, moveCursor } from '../src/lib/TextKeys.js';
+import { textKeyAction, moveCursor, typedText } from '../src/lib/TextKeys.js';
 import { shiftRow } from '../src/document/editCells.js';
 
 const k = (key, mods = {}) => textKeyAction({ key, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, ...mods }, { editable: false });
@@ -52,4 +52,11 @@ const hidden = new Map([['85,0', { char: 'x' }], ['2,0', { char: 'y' }]]);      
 assert.deepEqual(shiftRow(hidden, 0, 0, 1, 80).get('85,0'), { char: 'x' });             // off-grid entries stay put
 assert.deepEqual(shiftRow(hidden, 0, 1, -1, 80).get('85,0'), { char: 'x' });
 assert.equal(shiftRow(hidden, 0, 0, -1, 80), hidden);                                    // nothing left of col 0
+// Text from an input method, the emoji picker or a paste: whole characters in order, a line break
+// of any kind as one newline, anything a cell can't hold dropped.
+assert.deepEqual(typedText('a漢\r\nb\t\u0301👍🏽'), [
+  { type: 'char', char: 'a' }, { type: 'char', char: '漢' }, { type: 'newline' }, { type: 'char', char: 'b' }, { type: 'char', char: '👍🏽' },
+]);
+assert.deepEqual(typedText('\n\r'), [{ type: 'newline' }, { type: 'newline' }]);
+assert.deepEqual(typedText(''), []);
 console.log('text keys ok');

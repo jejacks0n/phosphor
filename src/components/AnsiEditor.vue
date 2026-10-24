@@ -15,7 +15,8 @@ import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 // character cell tall.
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
-useTextTool(projectStore, workspaceStore);
+const textInputRef = useTemplateRef('textInput');
+useTextTool(projectStore, workspaceStore, textInputRef);
 const useDom = computed(() => workspaceStore.ansiRenderer === 'dom');
 const preRef = useTemplateRef('pre'), canvasRef = useTemplateRef('canvas');
 const displayRef = computed(() => (useDom.value ? preRef.value : canvasRef.value));
@@ -123,6 +124,13 @@ const cursorStyle = computed(() => {
   };
 });
 
+// The Text tool's textarea sits on the cursor's cell, so an input method's candidates open there.
+const textInputStyle = computed(() => {
+  const m = metrics.value, cursor = workspaceStore.textCursor;
+  if (!m || !cursor) return { left: '0px', top: '0px' };
+  return { left: `${cursor.col * m.cellWidth + 2}px`, top: `${cursor.row * m.lineHeight + 1}px`, height: `${m.lineHeight}px` };
+});
+
 // The selection: marching ants, offset while it's being dragged. Its actions are on the options row.
 const selectionBox = computed(() => {
   const m = metrics.value, sel = workspaceStore.selection;
@@ -210,6 +218,16 @@ onBeforeUnmount(() => {
     <div class="interaction-overlay"></div>
     <template #overlay>
       <div class="text-cursor" :style="cursorStyle"></div>
+      <textarea
+          ref="textInput"
+          class="text-input"
+          data-text-input
+          :style="textInputStyle"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          aria-label="Type into the canvas"
+      ></textarea>
       <template v-if="selectionBox">
         <div class="marquee" :style="selectionBox.marquee"></div>
       </template>
@@ -240,6 +258,19 @@ div.ansi-editor {
 
 @keyframes marquee-march {
   50% { border-color: black; box-shadow: 0 0 0 1px white; }
+}
+
+.text-input {
+  position: absolute;
+  width: 1px;
+  padding: 0;
+  border: 0;
+  margin: 0;
+  opacity: 0;
+  resize: none;
+  overflow: hidden;
+  pointer-events: none;
+  font: 17px 'JetBrains Mono', monospace;
 }
 
 .text-cursor {

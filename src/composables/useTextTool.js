@@ -1,5 +1,5 @@
-import { onMounted, onBeforeUnmount } from 'vue';
-import { textKeyAction, moveCursor } from '@/lib/TextKeys';
+import { onMounted, onBeforeUnmount, watch } from 'vue';
+import { textKeyAction, moveCursor, typedText } from '@/lib/TextKeys';
 import { charRowsOf } from '@/lib/Cells';
 import { hex2rgb, paletteIndex } from '@/lib/ColorUtils';
 import { usePaletteStore } from '@/store/PaletteStore';
@@ -20,13 +20,18 @@ export function typeAtCursor(project, workspace, char) {
 }
 
 // The Text tool's keyboard, while it's active in the ANSI view with a cursor placed. Keys aimed
-// at a field (or anything TextKeys doesn't map) are left alone.
-export function useTextTool(project, workspace) {
+// at a field (or anything TextKeys doesn't map) are left alone. Text arrives through textInput, a
+// hidden textarea at the cursor that has focus while the tool is in use: an input method's
+// compositions, dead keys, the emoji picker and pastes all type into cells from there; the other
+// keys (arrows, Backspace, F-keys...) still come through keydown.
+export function useTextTool(project, workspace, textInput) {
   const palettes = usePaletteStore();
+  const isTextInput = (el) => el?.dataset?.textInput !== undefined;
   // Keys belong elsewhere while focus is in a field or a dialog (the colour picker, the palette layer).
   const editableFocus = () => {
     const el = document.activeElement;
-    return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || !!el.closest('[role="dialog"]'));
+    if (!el || isTextInput(el)) return false;
+    return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || !!el.closest('[role="dialog"]');
   };
 
   const move = (dc, dr) => {
@@ -83,10 +88,65 @@ export function useTextTool(project, workspace) {
     if (!action) return;
     // Without a cursor only palette flips and slot choices apply (a slot still sets the character to draw with).
     if (!workspace.textCursor && action.type !== 'palette' && action.type !== 'slot') return;
+    if (action.type === 'char' && isTextInput(document.activeElement)) return; // the textarea's input event types it
     event.preventDefault();
     apply(action);
   };
 
-  onMounted(() => window.addEventListener('keydown', onKeyDown));
-  onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown));
+  // Text as typing, from the cursor: a line break goes to the next row at the column the text
+  // started in, and once a row is full the rest of that line is dropped (not piled into its last cell).
+  const typeText = (text) => {
+    const start = workspace.textCursor;
+    if (!start) return;
+    let full = false;
+    for (const action of typedText(text)) {
+      if (action.type === 'newline') {
+        full = false;
+        const { row } = workspace.textCursor;
+        workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor({ col: start.col, row }, 0, 1, project.cols, charRowsOf(project.rows)), 0);
+      } else if (!full) {
+        const before = workspace.textCursor.col;
+        typeAtCursor(project, workspace, action.char);
+        full = workspace.textCursor.col - before < cellWidth(action.char);
+      }
+    }
+  };
+
+  // An input method commits with compositionend (its in-progress input events are skipped: Safari
+  // and Firefox follow compositionend with one more, which would type it twice); everything else
+  // inserted is typed as it arrives. A paste's text is in the field, not the event.
+  const COMPOSING = new Set(['insertCompositionText', 'insertFromComposition']);
+  const onInput = (event) => {
+    if (event.isComposing || COMPOSING.has(event.inputType)) return;
+    if (event.inputType?.startsWith('insert')) typeText(event.data ?? event.target.value);
+    event.target.value = '';
+  };
+  const onCompositionEnd = (event) => {
+    if (event.data) typeText(event.data);
+    event.target.value = '';
+  };
+
+  // The textarea has focus while the tool is in use (after the click that placed the cursor has
+  // focused whatever it focuses), and never takes it from a real field.
+  const inUse = () => workspace.editorTab === 'output' && workspace.activeTool === 'text' && !!workspace.textCursor && !workspace.paletteLayerOpen;
+  watch(() => [inUse(), workspace.textCursor], () => setTimeout(() => {
+    const el = textInput?.value;
+    if (!el) return;
+    if (!inUse()) {
+      if (document.activeElement === el) el.blur();
+    } else if (document.activeElement !== el && !editableFocus()) {
+      el.focus({ preventScroll: true });
+    }
+  }));
+
+  onMounted(() => {
+    window.addEventListener('keydown', onKeyDown);
+    textInput?.value?.addEventListener('input', onInput);
+    textInput?.value?.addEventListener('compositionend', onCompositionEnd);
+  });
+  onBeforeUnmount(() => {
+    window.removeEventListener('keydown', onKeyDown);
+    textInput?.value?.removeEventListener('input', onInput);
+    textInput?.value?.removeEventListener('compositionend', onCompositionEnd);
+  });
 }

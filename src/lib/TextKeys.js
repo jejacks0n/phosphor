@@ -7,6 +7,8 @@
  *        | { type: 'slot', index } (F1–F12) | { type: 'grab', index } (Ctrl+F1–F12)
  *        | { type: 'palette', delta } (Alt+←/→) | { type: 'color', slot, delta } (Alt+↑/↓, Shift for bg)
  */
+import { graphemes, usableChar } from './CharWidth.js';
+
 const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 const NAMED = { Home: 'home', End: 'end', Enter: 'newline', Backspace: 'backspace', Delete: 'delete', Insert: 'toggleInsert' };
 
@@ -43,4 +45,15 @@ export function moveCursor({ col, row }, dc, dr, cols, rows) {
     col: Math.max(0, Math.min(cols - 1, col + dc)),
     row: Math.max(0, Math.min(rows - 1, row + dr)),
   };
+}
+
+// Text from an input method, the emoji picker or a paste, as typing actions: whole characters in
+// order, any line break (\r\n, \n, \r) as one newline, anything a cell can't hold dropped.
+export function typedText(text) {
+  const actions = [];
+  for (const char of graphemes(text)) {
+    if (char === '\r\n' || char === '\n' || char === '\r') actions.push({ type: 'newline' });
+    else if (usableChar(char)) actions.push({ type: 'char', char });
+  }
+  return actions;
 }
