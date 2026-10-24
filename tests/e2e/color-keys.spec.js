@@ -87,3 +87,11 @@ test('in the color box the arrow keys move between swatches, Space picks, Enter 
   expect(await ws(page, (w) => w.editFgColor)).toBe(entered);
   expect(await ws(page, (w) => w.selection)).toEqual(selection); // the arrows didn't nudge it
 });
+
+test('the color tooltips show their shortcuts', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByRole('button', { name: 'Foreground color' })).toHaveAttribute('title', /\((⌥F|Alt\+F)\)$/);
+  await expect(page.getByRole('button', { name: 'Background color' })).toHaveAttribute('title', /\((⌥B|Alt\+B)\)$/);
+  await page.keyboard.press('Alt+f');
+  await expect(box(page).getByRole('button', { name: 'Swap' })).toHaveAttribute('title', /\(X or (⇧⌘X|Shift\+Ctrl\+X)\)$/);
+});

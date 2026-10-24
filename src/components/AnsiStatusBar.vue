@@ -5,6 +5,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { getTool } from '@/tools';
+import { shortcut } from '@/lib/keyLabels';
 
 // Under the ANSI view, following the tool: Edit Mode shows its cursor's cell (each attribute from the
 // edit layer or the base) and the overwrite/insert toggle; Select, the selection's size and place; the
@@ -25,8 +26,7 @@ const cell = computed(() => cursor.value && project.cells[cursor.value.row * pro
 const entry = computed(() => cursor.value && project.editCellAt(cursor.value.col, cursor.value.row));
 const origin = (attr) => (entry.value?.[attr] !== undefined ? 'edit' : 'base');
 
-const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-const KEYS = mac ? { alt: '⌥', altShift: '⌥⇧', shift: '⇧' } : { alt: 'Alt', altShift: 'Alt+Shift', shift: 'Shift' };
+const KEYS = { alt: shortcut('alt'), altShift: shortcut('alt', 'shift'), shift: shortcut('shift') };
 const keyboard = useMediaQuery('(pointer: fine)');
 // [key, what it does] pairs, or a sentence while a key is held.
 const hint = computed(() => {

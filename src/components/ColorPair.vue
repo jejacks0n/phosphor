@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
+import { shortcut } from '@/lib/keyLabels';
 import ColorPopover from '@/components/ColorPopover.vue';
 
 // The foreground/background chips: each shows its color as it displays (after adjustments and the
@@ -27,7 +28,7 @@ const toggle = (slot) => { workspace.colorBox = workspace.colorBox === slot ? nu
         class="chip fg"
         :class="{ none: fgNone }"
         :style="fgNone ? null : { backgroundColor: shown(workspace.editFgColor) }"
-        :title="`Foreground: ${fgNone ? 'none' : workspace.editFgColor}`"
+        :title="`Foreground: ${fgNone ? 'none' : workspace.editFgColor} (${shortcut('alt', 'F')})`"
         aria-label="Foreground color"
         @click="toggle('fg')"
     ></button>
@@ -35,7 +36,7 @@ const toggle = (slot) => { workspace.colorBox = workspace.colorBox === slot ? nu
         class="chip bg"
         :class="{ none: workspace.editBgNone }"
         :style="workspace.editBgNone ? null : { backgroundColor: shown(workspace.editBgColor) }"
-        :title="`Background: ${workspace.editBgNone ? 'none' : workspace.editBgColor}`"
+        :title="`Background: ${workspace.editBgNone ? 'none' : workspace.editBgColor} (${shortcut('alt', 'B')})`"
         aria-label="Background color"
         @click="toggle('bg')"
     ></button>

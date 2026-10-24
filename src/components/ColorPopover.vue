@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { swatchSections, drawingColors } from '@/lib/ColorUtils';
 import { nearestInDirection } from '@/lib/spatialFocus';
+import { shortcut } from '@/lib/keyLabels';
 
 // The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
@@ -80,7 +81,7 @@ onBeforeUnmount(() => {
       <button :class="{ on: slotName === 'fg' }" @click="emit('update:slotName', 'fg')">FG</button>
       <button :class="{ on: slotName === 'bg' }" @click="emit('update:slotName', 'bg')">BG</button>
       <span class="spacer"></span>
-      <button class="swap" title="Swap foreground and background (X)" @click="workspace.swapColors()">
+      <button class="swap" :title="`Swap foreground and background (X or ${shortcut('shift', 'mod', 'X')})`" @click="workspace.swapColors()">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2 1 5l3 3V6h8V4H4zm8 6v2H4v2h8v2l3-3z"/></svg>
         Swap
       </button>
