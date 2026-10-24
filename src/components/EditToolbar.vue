@@ -145,7 +145,7 @@ const selectionHasEdits = computed(() => {
 <template>
   <ChoiceDialog
       v-if="merging"
-      :title="merging.rect ? 'Merge the selection down' : 'Merge the edit layer down'"
+      title="Merge down"
       :sub="merging.rect
         ? 'Only what\'s drawn inside the selection moves into the base layer; the rest of the edit layer stays where it is.'
         : 'Everything you\'ve drawn moves into the base layer. Select how you want it to be merged:'"
