@@ -4,7 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp } from '../support/app.js';
 
 const ACTIONS = [
-  'applyEditCells', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'basePixelsOf', 'beginEdit',
+  'applyEditCells', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit',
   'cancelEdit', 'cellHasPaint', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect',
   'commitEdit', 'commitPending', 'commitSliders', 'completeAt', 'composite', 'copySelection',
   'deleteAt', 'deleteIn', 'deleteSelection', 'dropEdits', 'editCell', 'editCellAt', 'ensureLayer',

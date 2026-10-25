@@ -29,15 +29,15 @@ test('Underlying colors come from the pipeline run with every color adjustment, 
   assert.deepEqual([neutral.cols, neutral.rows, neutral.smoothing], [80, 50, 'low']); // same grid and downsampling
   assert.equal(params.brightness, 150);                    // input untouched
 
-  // One snapping rule everywhere: nearestColor uses the same 5-bit lookup the full render quantizes
-  // with (palettes of 16+), so incremental updates and stored colors snap like a full render.
-  let lutDiffersFromExact = 0;
+  // One snapping rule everywhere: the exact nearest color (what the shader's CGA/VGA snap picks
+  // too), remembered per color for palettes of 16+, so incremental updates, stored colors and a
+  // moved block of the base snap like a full render.
   for (let i = 0; i < 4096; i++) {
     const r = (i * 97) & 255, g = (i * 61) & 255, b = (i * 151) & 255;
     assert.equal(nearestColor({ r, g, b }, PALETTES.vga).c, paletteIndex(r, g, b, PALETTES.vga));
-    if (paletteIndex(r, g, b, PALETTES.vga) !== nearestIndex(r, g, b, PALETTES.vga)) lutDiffersFromExact++;
+    assert.equal(paletteIndex(r, g, b, PALETTES.vga), nearestIndex(r, g, b, PALETTES.vga));
+    assert.equal(paletteIndex(r, g, b, PALETTES.cga), nearestIndex(r, g, b, PALETTES.cga));
   }
-  assert.ok(lutDiffersFromExact > 0);                     // the lookup really is coarser than exact search
   const tiny = PALETTES.cga.slice(0, 3);                  // under 16 colors: exact search
   assert.equal(paletteIndex(200, 10, 10, tiny), nearestIndex(200, 10, 10, tiny));
   // The picker lays out the active palette by type; colors already used by edit cells come first.

@@ -39,12 +39,14 @@ export default class Renderer {
   #effective = new Map(); // stored color -> displayed Color, until the next render
   #source = null;       // { key, data }: the image through the pipeline with color adjustments neutral (stored colors)
   #processed = null;    // { image, key, scale, canvas }: the processed picture in the grid at the base layer's scale (processed)
-  #baseDrawn = null;    // { layer, version, key, canvas }: the base layer as drawn at grid resolution, until it or the settings change
+  #baseDrawn = null;    // { layer, version, key, data, canvas }: the base layer as drawn at grid resolution (#baseGrid)
+  #baseStored = null;   // the same for its stored colors (#baseGrid, stored)
+  #baseParams = null;   // the last render's baseParams
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.pipelineCanvas = this.outputCanvas = this.palette = null;
-    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = null;
+    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = null;
     this.#effective = new Map();
   }
 
@@ -58,6 +60,7 @@ export default class Renderer {
 
     // Underlying colors depend only on the image, grid, smoothing, effects and CGA/VGA, so color
     // adjustments don't redo this.
+    this.#baseParams = baseParams;
     const sp = baseParams ?? {};
     const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness].join();
     if (baseParams && (this.#source?.image !== image || this.#source.key !== sourceKey)) {
@@ -161,38 +164,71 @@ export default class Renderer {
     return true;
   }
 
-  // The base layer drawn the way the pipeline draws the picture: every pixel through the shader's
-  // color transforms and CGA/VGA snap (adjustedPixels), then each grid pixel's block averaged as
-  // Canvas.drawManual averages, or with Low smoothing its nearest pixel as the pipeline's drawImage
-  // picks it. Cached: a stroke recomposites on every move, and the base doesn't change under it.
-  #drawBase(ctx, layer, params) {
+  // The base layer at grid resolution, the way the pipeline draws the picture: every pixel through
+  // the color transforms or, with CGA/VGA, through the shader's adjustments and snap
+  // (adjustedPixels: a moved block of the picture is snapped as the picture is), then each grid
+  // pixel's block averaged as Canvas.drawManual averages, or with Low smoothing its nearest pixel as
+  // the pipeline's drawImage picks it. A pixel that's partly see-through (soft paint merged down)
+  // isn't snapped: it's blended over the picture and the output's palette snap takes it, as paint.
+  // stored: with the color adjustments neutral (baseParams), the colors the base stands for; a
+  // block of one color is that color (an exact pixel stays exact), one that isn't (a moved block of
+  // the picture) is snapped, then averaged, as the picture's own stored colors are (#source).
+  // Cached: a stroke recomposites on every move, and the base doesn't change under it.
+  #baseGrid(layer, params, stored = false) {
     const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
     const palette = (params.quantize === 'cga' || params.quantize === 'vga') && this.palette?.length ? this.palette : null;
     const key = [w, h, params.smoothing, palette && params.quantize, ...COLOR_KEYS.map(key => params[key])].join();
-    const drawn = this.#baseDrawn;
-    if (drawn?.layer !== layer || drawn.version !== layer.version || drawn.key !== key) {
-      const full = document.createElement('canvas');
-      full.width = w * k;
-      full.height = h * k;
-      const fullCtx = ctx2d(full);
-      fullCtx.drawImage(layer.canvas, 0, 0, w * k, h * k, 0, 0, w * k, h * k); // the grid's part (a layer can reach past it)
-      const pixels = fullCtx.getImageData(0, 0, w * k, h * k);
-      if (palette || transforms(params)) pixels.data.set(adjustedPixels(full, params));
-      const d = pixels.data;
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const gridCtx = ctx2d(canvas);
-      if (params.smoothing === 'low') {
-        fullCtx.putImageData(pixels, 0, 0);
-        gridCtx.imageSmoothingEnabled = false;
-        gridCtx.drawImage(full, 0, 0, w * k, h * k, 0, 0, w, h);
-      } else {
-        gridCtx.putImageData(averaged(d, w, h, k, params.smoothing === 'medium' ? 2 : 1), 0, 0);
+    const cached = stored ? this.#baseStored : this.#baseDrawn;
+    if (cached?.layer === layer && cached.version === layer.version && cached.key === key) return cached;
+
+    const full = document.createElement('canvas');
+    full.width = w * k;
+    full.height = h * k;
+    const fullCtx = ctx2d(full);
+    fullCtx.drawImage(layer.canvas, 0, 0, w * k, h * k, 0, 0, w * k, h * k); // the grid's part (a layer can reach past it)
+    const raw = fullCtx.getImageData(0, 0, w * k, h * k).data;
+    const pixels = new ImageData(new Uint8ClampedArray(raw), w * k, h * k), d = pixels.data;
+    if (transforms(params)) applyTransforms(d, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
+    if (palette) {
+      const snapped = adjustedPixels(full, params);
+      for (let i = 0; i < d.length; i += 4) {
+        if (raw[i + 3] === 255) d.set(snapped.subarray(i, i + 3), i);
       }
-      this.#baseDrawn = { layer, version: layer.version, key, canvas };
     }
-    ctx.drawImage(this.#baseDrawn.canvas, 0, 0);
+    let data;
+    if (params.smoothing === 'low') {
+      fullCtx.putImageData(pixels, 0, 0);
+      const nearest = ctx2d(Object.assign(document.createElement('canvas'), { width: w, height: h }));
+      nearest.imageSmoothingEnabled = false;
+      nearest.drawImage(full, 0, 0, w * k, h * k, 0, 0, w, h);
+      data = nearest.getImageData(0, 0, w, h);
+    } else {
+      data = averaged(d, w, h, k, params.smoothing === 'medium' ? 2 : 1);
+    }
+    if (stored) keepUniform(data, raw, w, h, k);
+    const result = { layer, version: layer.version, key, data, canvas: null };
+    if (stored) this.#baseStored = result;
+    else this.#baseDrawn = result;
+    return result;
+  }
+
+  #drawBase(ctx, layer, params) {
+    const drawn = this.#baseGrid(layer, params);
+    if (!drawn.canvas) {
+      drawn.canvas = Object.assign(document.createElement('canvas'), { width: drawn.data.width, height: drawn.data.height });
+      ctx2d(drawn.canvas).putImageData(drawn.data, 0, 0);
+    }
+    ctx.drawImage(drawn.canvas, 0, 0);
+  }
+
+  // The base layer's own color at grid pixel (x, y) as stored (before adjustments; see #baseGrid),
+  // with its alpha (0..1), or null where it has none.
+  baseStoredAt(x, y) {
+    if (!this.baseLayer?.hasPaint || !this.outputCanvas || !this.#baseParams) return null;
+    const { data } = this.#baseGrid(this.baseLayer, this.#baseParams, true);
+    if (x < 0 || y < 0 || x >= data.width || y >= data.height) return null;
+    const o = (y * data.width + x) * 4, p = data.data;
+    return p[o + 3] ? { r: p[o], g: p[o + 1], b: p[o + 2], a: p[o + 3] / 255 } : null;
   }
 
   // Draw a layer at grid resolution (a grid pixel at a time) with the color transforms applied;
@@ -377,4 +413,25 @@ function averaged(d, w, h, k, step) {
     }
   }
   return out;
+}
+
+// Where a k x k block of raw (w*k x h*k) is one color, that color in the w x h grid data.
+function keepUniform(data, raw, w, h, k) {
+  const rowLength = w * k, o = data.data;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const first = (y * k * rowLength + x * k) * 4;
+      let uniform = true;
+      for (let sy = y * k; uniform && sy < (y + 1) * k; sy++) {
+        for (let sx = x * k; sx < (x + 1) * k; sx++) {
+          const i = (sy * rowLength + sx) * 4;
+          if (raw[i] !== raw[first] || raw[i + 1] !== raw[first + 1] || raw[i + 2] !== raw[first + 2] || raw[i + 3] !== raw[first + 3]) {
+            uniform = false;
+            break;
+          }
+        }
+      }
+      if (uniform) o.set(raw.subarray(first, first + 4), (y * w + x) * 4);
+    }
+  }
 }

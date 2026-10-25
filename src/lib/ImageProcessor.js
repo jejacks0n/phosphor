@@ -8,6 +8,7 @@ import WebGLProcessor from './WebGLProcessor.js';
 import quantizeColors from './Quantizer.js';
 
 let glProcessor;
+let glBase; // the base layer's own, so the pipeline's processor keeps the picture uploaded
 const customPalettes = {};
 
 export function getPaletteColors(params, canvasForCount = null) {
@@ -55,12 +56,14 @@ function prepare(image, params, scale = null) {
   // a fractional ratio lets cells straddle pixels and blurs merged paint into its neighbors.
   // m comes from the grid (not the fit), so an image that fills the grid gets the same m as its fit.
   // While the base layer exists, m is its scale (params.workScale): its pixels are processed pixels,
-  // and a canvas resize keeps both (the native-size branch has no whole pixels to keep).
+  // and a canvas resize keeps both. Not a scale of 1: that base was made for an image smaller than
+  // the grid (processed at its own size, no whole pixels to keep), and holding a working-size copy
+  // of it (Into the image) to 1 would shrink the picture to the grid.
   const maxDim = 400;
   // Where the image sits in the grid: params.fit when it's fixed (a canvas resize), else fitted.
   const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows);
   const natural = Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
-  const m = scale ?? (params.workScale && natural >= 1 ? params.workScale : natural);
+  const m = scale ?? (params.workScale > 1 && natural >= 1 ? params.workScale : natural);
   let pw = dw * m;
   let ph = dh * m;
   if (m < 1) {
@@ -102,13 +105,13 @@ function shaderParams(params) {
 // would. Alpha is the canvas's.
 export function adjustedPixels(canvas, params) {
   const { width: w, height: h } = canvas;
-  if (!glProcessor) glProcessor = new WebGLProcessor();
-  glProcessor.process(canvas, { ...shaderParams(params), sharpen: 0, flatten: 0, edges: 0, passes: 1 }, w, h);
+  if (!glBase) glBase = new WebGLProcessor();
+  glBase.process(canvas, { ...shaderParams(params), sharpen: 0, flatten: 0, edges: 0, passes: 1 }, w, h);
   const out = document.createElement('canvas');
   out.width = w;
   out.height = h;
   const ctx = ctx2d(out);
-  ctx.drawImage(glProcessor.canvas, 0, 0);
+  ctx.drawImage(glBase.canvas, 0, 0);
   const pixels = ctx.getImageData(0, 0, w, h).data;
   const own = ctx2d(canvas).getImageData(0, 0, w, h).data;
   for (let i = 3; i < pixels.length; i += 4) pixels[i] = own[i];

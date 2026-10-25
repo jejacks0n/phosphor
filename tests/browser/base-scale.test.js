@@ -1,6 +1,6 @@
 // The base layer at the pipeline's processing scale: m x m pixels per grid pixel, so a moved block
 // of the picture keeps every pixel the converter made from it.
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import PaintLayer from '@/document/PaintLayer';
 import { ctx2d } from '@/lib/Canvas';
@@ -8,21 +8,6 @@ import { cellIndex } from '@/lib/Cells';
 import { workingScale } from '@/lib/ImageProcessor';
 
 const FIT = { dx: 0, dy: 0, dw: 2, dh: 2 };
-const fill = (layer, x, y, hex) => {
-  const ctx = ctx2d(layer.canvas);
-  ctx.fillStyle = hex;
-  ctx.fillRect(x, y, 1, 1);
-};
-
-test('averageAt averages a grid pixel\'s block and ignores transparency', () => {
-  const layer = new PaintLayer({ cols: 2, rows: 2, scale: 2, smooth: false });
-  fill(layer, 0, 0, '#000000');
-  fill(layer, 1, 0, '#000000');
-  fill(layer, 0, 1, '#ffffff');
-  fill(layer, 1, 1, '#ffffff');
-  expect(layer.averageAt(0, 0)).toEqual({ r: 128, g: 128, b: 128, a: 1 });
-  expect(layer.averageAt(1, 1)).toBe(null);
-});
 
 test('version changes with every edit', () => {
   const layer = new PaintLayer({ cols: 2, rows: 2, scale: 2, smooth: false });
@@ -46,7 +31,9 @@ test('resize can change the scale and keeps uniform blocks exact', () => {
   layer.paint([{ x: 1, y: 1, r: 255, g: 0, b: 0, alpha: 1 }]);
   layer.resize(2, 2, FIT, FIT, 3);
   expect(layer.scale).toBe(3);
-  expect(layer.averageAt(1, 1)).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+  const { data } = ctx2d(layer.canvas).getImageData(3, 3, 3, 3); // grid pixel (1, 1)
+  expect(new Set(data).size).toBe(2); // every pixel 255, 0, 0, 255
+  expect([...data.slice(0, 4)]).toEqual([255, 0, 0, 255]);
 });
 
 // An 800 x 800 picture (hue across, light down, with a fine checker), big enough that the processing
@@ -179,4 +166,80 @@ test('a moved block of an image smaller than the grid keeps its colors', async (
   project.floatSelection(rect, { base: true, edit: true }, 6, 0);
   project.render(); await settle(project);
   expect(hexes(colorsIn(project, rect, 6))).toEqual(before);
+});
+
+// Found in review: what a moved base block does next.
+const cellsIn = (project, rect, dc = 0, dr = 0) => {
+  const out = [];
+  for (let row = rect.r0; row <= rect.r1; row++) for (let col = rect.c0; col <= rect.c1; col++) out.push(cellsKey(project)[cellIndex(col + dc, row + dr, project.cols)]);
+  return out;
+};
+
+test('merging down soft paint under CGA shows what it showed', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 30, rows: 30 });
+  project.quantize = 'cga';
+  await settle(project);
+  workspace.editFgColor = '#ff8800';
+  workspace.editBrushOpacity = 50;
+  const pixels = [];
+  for (let y = 4; y < 20; y++) for (let x = 4; x < 20; x++) pixels.push({ x, y, alpha: 1 });
+  project.paintStroke(pixels);
+  project.commitEdit();
+  project.render(); await settle(project);
+  const area = { c0: 3, r0: 1, c1: 20, r1: 10 };
+  const before = cellsIn(project, area);
+  project.mergeDown();
+  project.render(); await settle(project);
+  expect(cellsIn(project, area)).toEqual(before);
+});
+
+test('merging up a moved block under CGA keeps its colors', async () => {
+  const project = await photo({ quantize: 'cga' });
+  const landed = project.floatSelection(RECT, { base: true, edit: true }, 15, 0);
+  project.render(); await settle(project);
+  const before = hexes(colorsIn(project, landed));
+  project.mergeUp(landed);
+  project.render(); await settle(project);
+  expect(hexes(colorsIn(project, landed))).toEqual(before);
+});
+
+test('an image smaller than the grid isn\'t pinned: merging into the picture twice keeps its size', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 80, rows: 80 });
+  for (const col of [5, 9]) {
+    project.typeAt(col, 5, '█', { fg: '#ff0000', bg: '#000000' });
+    project.commitEdit();
+    await project.mergeIntoPicture();
+    await settle(project);
+  }
+  expect(project.image.width).toBe(400); // the working-size copy: 5 processed pixels per grid pixel
+  expect(workingScale(project.image, project.processParams)).toBe(5);
+});
+
+test('a base block pasted at another scale shows the colors it was copied with', async () => {
+  const project = await photo({ quantize: 'cga' });
+  const block = project.copySelection(RECT, { base: true, edit: false });
+  const copied = hexes(colorsIn(project, RECT));
+  project.cols = 45; // a rescale (no edits): 2 processed pixels per grid pixel instead of 3
+  project.rows = 45;
+  project.render(); await settle(project);
+  expect(project.baseLayer.scale).toBe(2);
+  project.pasteSelection(block, 0, 0);
+  project.render(); await settle(project);
+  expect(hexes(colorsIn(project, { c0: 0, r0: 0, c1: 9, r1: 9 }))).toEqual(copied);
+});
+
+test('redrawing the base doesn\'t make the next render upload the picture again', async () => {
+  const project = await photo({ quantize: 'cga', brightness: 150 });
+  project.floatSelection(RECT, { base: true, edit: true }, 15, 0);
+  project.render(); await settle(project);
+  project.brightness = 151; // redraws the base (the cache misses on a setting)
+  await settle(project);
+  const upload = vi.spyOn(WebGLRenderingContext.prototype, 'texImage2D');
+  project.brightness = 152;
+  await settle(project);
+  const uploads = upload.mock.calls.filter((args) => args.includes(project.image)).length;
+  upload.mockRestore();
+  expect(uploads).toBe(0);
 });

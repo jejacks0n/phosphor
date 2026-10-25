@@ -151,25 +151,6 @@ export default class PaintLayer {
     return a > 0 ? { r, g, b, a: a / 255 } : null;
   }
 
-  // Grid pixel (x, y) as the average of its block (colors weighted by alpha, rounded as the
-  // pipeline's box filter rounds), or null where the block is empty or off the layer. A block of the
-  // picture moved into the base layer isn't one color; this is the color it stands for.
-  averageAt(x, y) {
-    const rect = this.#cellRect(x, y);
-    if (!rect) return null;
-    const w = Math.min(rect.w, this.canvas.width - rect.x), h = Math.min(rect.h, this.canvas.height - rect.y);
-    const { data } = ctx2d(this.canvas).getImageData(rect.x, rect.y, w, h);
-    let r = 0, g = 0, b = 0, a = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      r += data[i] * data[i + 3];
-      g += data[i + 1] * data[i + 3];
-      b += data[i + 2] * data[i + 3];
-      a += data[i + 3];
-    }
-    if (!a) return null;
-    return { r: Math.round(r / a), g: Math.round(g / a), b: Math.round(b / a), a: a / (w * h) / 255 };
-  }
-
   // Selection blocks. A cell rect ({ c0, r0, c1, r1 }) is scale x 2·scale layer pixels per cell.
   // The paint over a cell rect, as its own canvas.
   copyCells({ c0, r0, c1, r1 }) {
