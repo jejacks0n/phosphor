@@ -338,7 +338,7 @@
 ▄#5555ff#5555ff
 ▄#5555ff#5555ff
 ░#5555ff#5555ff
-▄#aaaaaa#5555ff
+▄#aaaaaa#aaaaaa
 ■#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
@@ -454,7 +454,7 @@
 ▄#5555ff#5555ff
 ▄#5555ff#5555ff
 ░#5555ff#5555ff
-*#aaaaaa#5555ff
+*#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
 .#aaaaaa#aaaaaa
@@ -568,7 +568,7 @@
 ■#00aaaa#00aaaa
 ▄#55ffff#00aaaa
 ░#55ffff#00aaaa
-■#55ffff#55ffff
+■#55ffff#00aaaa
 *#55ffff#55ffff
 ░#55ffff#55ffff
 :#55ffff#55ffff
@@ -638,7 +638,7 @@
 ■#ffff55#aaaaaa
 ■#ffff55#ffff55
 ▄#ffff55#ffff55
-■#55ffff#00aaaa
+■#00aaaa#00aaaa
 ■#55ffff#00aaaa
 ░#55ffff#55ffff
 ▓#55ffff#55ffff

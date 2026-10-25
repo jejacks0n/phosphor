@@ -58,6 +58,11 @@ const FRAGMENT_SHADER = `
         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
     }
 
+    // A color as an 8-bit pixel holds it.
+    vec3 round8(vec3 c) {
+        return floor(clamp(c, 0.0, 1.0) * 255.0 + 0.5) / 255.0;
+    }
+
     // --- Filters ---
 
     vec3 applyCSSFilters(vec3 color) {
@@ -181,6 +186,9 @@ const FRAGMENT_SHADER = `
 
         // CSS-equivalent adjustments
         if (uApplyFilters) {
+            // With a palette, adjust and snap 8-bit colors, as the base layer's pixels are adjusted and
+            // snapped (adjustedPixels): a block moved into it then shows exactly what it showed here.
+            if (uUsePalette && uPaletteSize > 0.0) color = round8(color);
             color = applyCSSFilters(color);
 
             // Sharpen (Final pass only)
@@ -196,6 +204,7 @@ const FRAGMENT_SHADER = `
 
         // GPU Quantization
         if (uUsePalette && uPaletteSize > 0.0) {
+            color = round8(color);
             float minDist = 1e10;
             vec3 bestColor = color;
             for (int i = 0; i < 256; i++) {

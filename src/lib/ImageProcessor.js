@@ -45,12 +45,7 @@ export function applyQuantization(canvas, qColors) {
 // Where the image goes in the grid, the size it's processed at (m processed pixels per grid pixel,
 // or the native-size branch: m < 1) and the shader's parameters. scale: a fixed m instead.
 function prepare(image, params, scale = null) {
-  const {
-    cols, rows,
-    invert, brightness, contrast, saturation,
-    sharpen, flatten, edges, edgeColor, edgeThickness,
-    quantize
-  } = params;
+  const { cols, rows } = params;
 
   const sw = image.naturalWidth || image.width;
   const sh = image.naturalHeight || image.height;
@@ -75,9 +70,15 @@ function prepare(image, params, scale = null) {
     ph = Math.floor(sh * s);
   }
 
+  return { dx, dy, dw, dh, m, pw, ph, glParams: shaderParams(params) };
+}
+
+// The shader's parameters for the pipeline params.
+function shaderParams(params) {
+  const { invert, brightness, contrast, saturation, sharpen, flatten, edges, edgeColor, edgeThickness, quantize } = params;
   const ec = hex2rgb(edgeColor);
   const cz = hex2rgb(params.colorize || '#ff00ff');
-  const glParams = {
+  return {
     hue: parseFloat(params.hue),
     brightness: parseFloat(brightness),
     contrast: parseFloat(contrast),
@@ -93,7 +94,25 @@ function prepare(image, params, scale = null) {
     palette: (quantize === 'cga' || quantize === 'vga') ? PALETTES[quantize] : null,
     passes: Math.max(1, Math.floor(parseFloat(flatten) / 2))
   };
-  return { dx, dy, dw, dh, m, pw, ph, glParams };
+}
+
+// A canvas's pixels through the shader's color adjustments and CGA/VGA snap, and nothing else (no
+// effects, nothing resampled): the base layer, drawn the way the pipeline draws the picture. The
+// snap has to be the shader's own, which can pick another color than an exact nearest-color search
+// would. Alpha is the canvas's.
+export function adjustedPixels(canvas, params) {
+  const { width: w, height: h } = canvas;
+  if (!glProcessor) glProcessor = new WebGLProcessor();
+  glProcessor.process(canvas, { ...shaderParams(params), sharpen: 0, flatten: 0, edges: 0, passes: 1 }, w, h);
+  const out = document.createElement('canvas');
+  out.width = w;
+  out.height = h;
+  const ctx = ctx2d(out);
+  ctx.drawImage(glProcessor.canvas, 0, 0);
+  const pixels = ctx.getImageData(0, 0, w, h).data;
+  const own = ctx2d(canvas).getImageData(0, 0, w, h).data;
+  for (let i = 3; i < pixels.length; i += 4) pixels[i] = own[i];
+  return pixels;
 }
 
 // Processed pixels per grid pixel, or null when a source smaller than the grid is processed at its

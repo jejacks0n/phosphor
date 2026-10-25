@@ -18,10 +18,11 @@ export const readingActions = {
     return rgb2hex(over(hex2rgb(this.baseColorAt(x, y)), painted));
   },
 
-  // The base layer's color at grid pixel (x, y), as stored (before adjustments): its own pixel
-  // over the image as the pipeline shows it.
+  // The base layer's color at grid pixel (x, y), as stored (before adjustments): its own pixels
+  // (averaged: a moved block of the picture keeps every processed pixel) over the image as the
+  // pipeline shows it.
   baseColorAt(x, y) {
-    const own = this.baseLayer?.pixelAt(x, y);
+    const own = this.baseLayer?.averageAt(x, y);
     if (!own || own.a >= 1) return own ? rgb2hex(own) : this.imageColorAt(x, y);
     return rgb2hex(over(hex2rgb(this.imageColorAt(x, y)), own));
   },

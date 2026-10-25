@@ -12,8 +12,6 @@ import { cellKey, withoutCells, rectCells, pasteBlock, mergeEntry } from '@/docu
 import { overwritesAll } from '@/document/wideChars.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { charRowsOf } from '@/lib/Cells.js';
-import { hex2rgb } from '@/lib/ColorUtils.js';
-import { over } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toRaw } from 'vue';
 
@@ -30,22 +28,25 @@ export const selectionActions = {
     return block;
   },
 
-  // The base's stored colors over a cell rect, on a canvas a grid pixel per pixel.
+  // The base over a cell rect at the base layer's scale: the processed picture (the Renderer's,
+  // every pixel the converter made, before the color adjustments and the palette) with the base's
+  // own pixels over it. Moved or pasted, it looks as it did here.
   basePixelsOf({ c0, r0, c1, r1 }) {
-    const w = c1 - c0 + 1, h = 2 * (r1 - r0 + 1);
-    const own = ctx2d(this.baseLayer.canvas).getImageData(c0, 2 * r0, w, h).data;
+    const k = this.baseLayer.scale;
+    const x = c0 * k, y = 2 * r0 * k, w = (c1 - c0 + 1) * k, h = 2 * (r1 - r0 + 1) * k;
     const out = document.createElement('canvas');
     out.width = w;
     out.height = h;
-    const ctx = ctx2d(out), pixels = ctx.createImageData(w, h);
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const o = (y * w + x) * 4;
-        const { r, g, b } = over(hex2rgb(this.imageColorAt(c0 + x, 2 * r0 + y)), { r: own[o], g: own[o + 1], b: own[o + 2], a: own[o + 3] / 255 });
-        pixels.data.set([r, g, b, 255], o);
-      }
+    const ctx = ctx2d(out);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, w, h);
+    ctx.imageSmoothingEnabled = false;
+    const processed = this.renderer.processed;
+    if (processed) { // at its own scale (the same, unless the grid changed and it's not rendered yet)
+      const ps = processed.scale / k;
+      ctx.drawImage(processed.canvas, x * ps, y * ps, w * ps, h * ps, 0, 0, w, h);
     }
-    ctx.putImageData(pixels, 0, 0);
+    ctx.drawImage(this.baseLayer.canvas, x, y, w, h, 0, 0, w, h);
     return out;
   },
 

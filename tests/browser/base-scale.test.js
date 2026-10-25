@@ -107,3 +107,65 @@ test('an image smaller than the grid keeps a scale-1 base', async () => {
   expect(project.baseLayer.scale).toBe(1);
   expect(workingScale(project.image, project.processParams)).toBe(null);
 });
+
+// A block of photo.jpg (30 x 30 grid, 3 processed pixels per grid pixel) moved 15 columns right.
+const RECT = { c0: 2, r0: 2, c1: 11, r1: 11 };
+async function photo(settings) {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 30, rows: 30 });
+  Object.assign(project, settings);
+  project.render(); await settle(project);
+  return project;
+}
+const colorsIn = (project, { c0, r0, c1, r1 }, dc = 0) => {
+  const out = [];
+  for (let row = r0; row <= r1; row++) {
+    for (let col = c0; col <= c1; col++) {
+      const { fg, bg } = project.cells[cellIndex(col + dc, row, project.cols)];
+      out.push({ fg, bg });
+    }
+  }
+  return out;
+};
+const hexes = (colors) => colors.map(({ fg, bg }) => fg.hex + bg.hex);
+
+test('a moved block keeps its colors under CGA and VGA with adjustments', async () => {
+  for (const settings of [{ quantize: 'cga' }, { quantize: 'cga', brightness: 150 }, { quantize: 'cga', contrast: 150 }, { quantize: 'cga', saturation: 200 }, { quantize: 'vga', brightness: 150 }]) {
+    const project = await photo(settings);
+    const before = hexes(colorsIn(project, RECT));
+    project.floatSelection(RECT, { base: true, edit: true }, 15, 0);
+    project.render(); await settle(project);
+    expect(hexes(colorsIn(project, RECT, 15)), JSON.stringify(settings)).toEqual(before);
+    project.undo();
+    project.render(); await settle(project);
+    expect(hexes(colorsIn(project, RECT)), `${JSON.stringify(settings)}, undone`).toEqual(before);
+  }
+});
+
+test('a moved block in full color stays within rounding', async () => {
+  const project = await photo({ brightness: 150 });
+  const before = colorsIn(project, RECT);
+  project.floatSelection(RECT, { base: true, edit: true }, 15, 0);
+  project.render(); await settle(project);
+  colorsIn(project, RECT, 15).forEach(({ fg, bg }, i) => {
+    for (const k of ['r', 'g', 'b']) {
+      expect(Math.abs(fg[k] - before[i].fg[k])).toBeLessThanOrEqual(2);
+      expect(Math.abs(bg[k] - before[i].bg[k])).toBeLessThanOrEqual(2);
+    }
+  });
+});
+
+test('flipping a base cell under CGA with brightness swaps its two shown colors', async () => {
+  const project = await photo({ quantize: 'cga', brightness: 150 });
+  const row = 5;
+  const col = [...Array(project.cols).keys()].find((c) => {
+    const { fg, bg } = project.cells[cellIndex(c, row, project.cols)];
+    return fg.hex !== bg.hex;
+  });
+  const { fg, bg } = project.cells[cellIndex(col, row, project.cols)];
+  project.flipCell(col, row, { base: true, edit: false });
+  project.commitEdit();
+  project.render(); await settle(project);
+  const flipped = project.cells[cellIndex(col, row, project.cols)];
+  expect([flipped.fg.hex, flipped.bg.hex]).toEqual([bg.hex, fg.hex]);
+});

@@ -8,12 +8,19 @@
  * exact, and never put through the pipeline's resampling or effects). Edit cells (editCells, see
  * editCells.js) compose over the base, and paint draws over them: base -> edit cells -> paint. The
  * base layer's pins (baseRecords.js, set by the store) keep their characters.
+ *
+ * The base layer is at the pipeline's processing scale (m x m pixels per grid pixel), so a block of
+ * the picture moved into it keeps every processed pixel (processed: the picture with its effects,
+ * before the color adjustments and the palette), and it's drawn the way the pipeline draws the
+ * picture: adjusted, snapped to CGA/VGA, then averaged down to the grid. It looks the same wherever
+ * it goes. (Sharpen is the exception: the shader sharpens after the adjustments, from neighbors
+ * that aren't adjusted, so a sharpened block can differ a little.)
  */
-import { processImage, applyQuantization, getPaletteColors } from '../lib/ImageProcessor.js';
+import { processImage, processedImage, adjustedPixels, applyQuantization, getPaletteColors } from '../lib/ImageProcessor.js';
 import { applyTransforms } from '../lib/PixelTransforms.js';
 import { nearestColor } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
-import Canvas, { ctx2d } from '../lib/Canvas.js';
+import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
 import { buildCells, buildCell, brightnessChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
 import { cellKey, parseKey } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
@@ -31,11 +38,13 @@ export default class Renderer {
   #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
   #effective = new Map(); // stored color -> displayed Color, until the next render
   #source = null;       // { key, data }: the image through the pipeline with color adjustments neutral (stored colors)
+  #processed = null;    // { image, key, scale, canvas }: the processed picture in the grid at the base layer's scale (processed)
+  #baseDrawn = null;    // { layer, version, key, canvas }: the base layer as drawn at grid resolution, until it or the settings change
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.pipelineCanvas = this.outputCanvas = this.palette = null;
-    this.#pipelineData = this.#baseData = this.#paintData = this.#source = null;
+    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = null;
     this.#effective = new Map();
   }
 
@@ -55,6 +64,10 @@ export default class Renderer {
       const { canvas: source } = await processImage(image, baseParams);
       this.#source = { image, key: sourceKey, data: ctx2d(source.canvas).getImageData(0, 0, params.cols, params.rows) };
     }
+    const scale = this.baseLayer?.scale;
+    if (baseParams && scale && (this.#processed?.image !== image || this.#processed.key !== sourceKey || this.#processed.scale !== scale)) {
+      this.#processed = { image, key: sourceKey, scale, canvas: await this.#processedInGrid(image, baseParams, scale) };
+    }
 
     const output = document.createElement('canvas');
     output.width = params.cols;
@@ -63,6 +76,25 @@ export default class Renderer {
     this.outputCanvas = output;
     this.composite(paintLayer, params);
     return this.cellsFromOutput(params);
+  }
+
+  // The processed picture (see the top) where it sits in the grid, at `scale` pixels per grid pixel;
+  // black around it, as the pipeline fills the letterbox. What a block of the base copies.
+  get processed() {
+    return this.#processed && { canvas: this.#processed.canvas, scale: this.#processed.scale };
+  }
+
+  async #processedInGrid(image, baseParams, scale) {
+    const picture = await processedImage(image, baseParams, { m: scale });
+    const { dx, dy } = baseParams.fit ?? fitRect(image.naturalWidth || image.width, image.naturalHeight || image.height, baseParams.cols, baseParams.rows);
+    const canvas = document.createElement('canvas');
+    canvas.width = baseParams.cols * scale;
+    canvas.height = baseParams.rows * scale;
+    const ctx = ctx2d(canvas);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(picture, dx * scale, dy * scale);
+    return canvas;
   }
 
   // The generated cells from the composited output (no edit cells, no pins: each has the converter's
@@ -97,7 +129,7 @@ export default class Renderer {
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(this.pipelineCanvas, 0, 0, w, h);
 
-    if (this.baseLayer?.hasPaint) this.#drawLayer(ctx, this.baseLayer, params);
+    if (this.baseLayer?.hasPaint) this.#drawBase(ctx, this.baseLayer, params);
     this.#baseData = this.baseLayer?.hasPaint ? ctx.getImageData(0, 0, w, h) : this.#pipelineData;
 
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params) : null;
@@ -117,17 +149,45 @@ export default class Renderer {
     return true;
   }
 
+  // The base layer drawn the way the pipeline draws the picture: every pixel through the shader's
+  // color transforms and CGA/VGA snap (adjustedPixels), then each grid pixel's block averaged as
+  // Canvas.drawManual averages, or with Low smoothing its nearest pixel as the pipeline's drawImage
+  // picks it. Cached: a stroke recomposites on every move, and the base doesn't change under it.
+  #drawBase(ctx, layer, params) {
+    const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
+    const palette = (params.quantize === 'cga' || params.quantize === 'vga') && this.palette?.length ? this.palette : null;
+    const key = [w, h, params.smoothing, palette && params.quantize, ...COLOR_KEYS.map(key => params[key])].join();
+    const drawn = this.#baseDrawn;
+    if (drawn?.layer !== layer || drawn.version !== layer.version || drawn.key !== key) {
+      const full = document.createElement('canvas');
+      full.width = w * k;
+      full.height = h * k;
+      const fullCtx = ctx2d(full);
+      fullCtx.drawImage(layer.canvas, 0, 0, w * k, h * k, 0, 0, w * k, h * k); // the grid's part (a layer can reach past it)
+      const pixels = fullCtx.getImageData(0, 0, w * k, h * k);
+      if (palette || transforms(params)) pixels.data.set(adjustedPixels(full, params));
+      const d = pixels.data;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const gridCtx = ctx2d(canvas);
+      if (params.smoothing === 'low') {
+        fullCtx.putImageData(pixels, 0, 0);
+        gridCtx.imageSmoothingEnabled = false;
+        gridCtx.drawImage(full, 0, 0, w * k, h * k, 0, 0, w, h);
+      } else {
+        gridCtx.putImageData(averaged(d, w, h, k, params.smoothing === 'medium' ? 2 : 1), 0, 0);
+      }
+      this.#baseDrawn = { layer, version: layer.version, key, canvas };
+    }
+    ctx.drawImage(this.#baseDrawn.canvas, 0, 0);
+  }
+
   // Draw a layer at grid resolution (a grid pixel at a time) with the color transforms applied;
   // returns the transformed pixels.
   #drawLayer(ctx, layer, params) {
     const w = this.outputCanvas.width, h = this.outputCanvas.height;
-    const br = parseFloat(params.brightness) / 100;
-    const ct = parseFloat(params.contrast) / 100;
-    const sa = parseFloat(params.saturation) / 100;
-    const hu = parseFloat(params.hue) / 360;
-    const inv = parseFloat(params.invert) / 100;
-    const czStr = parseFloat(params.colorizeStrength) / 100;
-    const needsTransform = br !== 1 || ct !== 1 || sa !== 1 || hu !== 0 || inv !== 0 || czStr !== 0;
+    const needsTransform = transforms(params);
 
     // Persistent scratch canvas for downsampling and transforming a layer
     if (!this.#scratch) this.#scratch = document.createElement('canvas');
@@ -274,4 +334,35 @@ export default class Renderer {
       palette: this.palette,
     });
   }
+}
+
+// The color settings a layer is drawn with.
+const COLOR_KEYS = ['brightness', 'contrast', 'saturation', 'hue', 'invert', 'colorize', 'colorizeStrength'];
+
+// Whether any color transform is off neutral.
+function transforms(params) {
+  return parseFloat(params.brightness) !== 100 || parseFloat(params.contrast) !== 100 || parseFloat(params.saturation) !== 100
+    || parseFloat(params.hue) !== 0 || parseFloat(params.invert) !== 0 || parseFloat(params.colorizeStrength) !== 0;
+}
+
+// RGBA pixels w*k x h*k averaged to w x h, a k x k block per pixel (every step-th pixel, as
+// Canvas.drawManual samples), colors weighted by alpha so an empty pixel adds nothing.
+function averaged(d, w, h, k, step) {
+  const out = new ImageData(w, h), o = out.data, rowLength = w * k;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let r = 0, g = 0, b = 0, a = 0, n = 0;
+      for (let sy = y * k; sy < (y + 1) * k; sy += step) {
+        for (let sx = x * k; sx < (x + 1) * k; sx += step) {
+          const i = (sy * rowLength + sx) * 4, al = d[i + 3];
+          r += d[i] * al; g += d[i + 1] * al; b += d[i + 2] * al; a += al;
+          n++;
+        }
+      }
+      if (!a) continue;
+      const j = (y * w + x) * 4;
+      o[j] = Math.round(r / a); o[j + 1] = Math.round(g / a); o[j + 2] = Math.round(b / a); o[j + 3] = Math.round(a / n);
+    }
+  }
+  return out;
 }
