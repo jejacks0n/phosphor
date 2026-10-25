@@ -81,6 +81,17 @@ test('a 200×300 grid at dpr 2 stays under the backing cap', async () => {
   view.destroy();
 });
 
+test('a 1000-line grid is never taller than the GPU can draw', async () => {
+  await createTestApp();
+  const canvas = document.createElement('canvas');
+  const view = new CellCanvas(canvas);
+  view.resize(80, 1000, 2);
+  const gl = canvas.getContext('webgl2');
+  expect([gl.drawingBufferWidth, gl.drawingBufferHeight]).toEqual([canvas.width, canvas.height]); // past its limit, the buffer is quietly cut short
+  expect(canvas.height % 1000).toBe(0);
+  view.destroy();
+});
+
 // ﷽ from a test font (tests/fixtures/fonts/wide.ttf) joined to the display font's family: a solid
 // bar 7.5 columns wide, drawing over 8, so these don't depend on the system's fallback fonts (Linux's draws ﷽
 // about two columns wide, macOS's about eleven).

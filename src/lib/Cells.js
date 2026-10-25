@@ -16,6 +16,25 @@ export const charRowsOf = (rows) => Math.floor(rows / 2);
 export const cellIndex = (col, row, cols) => row * cols + col;
 export const cellOfPixel = (x, y) => ({ col: x, row: Math.floor(y / 2) });
 
+// The largest grid: MAX_COLS wide, MAX_LINES lines tall (two pixel rows a line), MAX_CELLS in all, so
+// a narrow piece can run long. Past about MAX_LINES the ANSI view's canvas has to draw below the
+// display's resolution (CellCanvas's backingScale), and the budget keeps whole-grid work (a render,
+// a fill, an undo) under a tenth of a second.
+export const MAX_COLS = 300, MAX_LINES = 1000, MAX_CELLS = 120_000;
+export const gridFits = (cols, rows) => cols <= MAX_COLS && rows <= 2 * MAX_LINES && cols * charRowsOf(rows) <= MAX_CELLS;
+// The most columns there's room for beside rows, and the most rows beside cols.
+export const maxColsBeside = (rows) => Math.min(MAX_COLS, Math.floor(MAX_CELLS / Math.max(1, charRowsOf(rows))));
+export const maxRowsBeside = (cols) => Math.min(2 * MAX_LINES, 2 * Math.floor(MAX_CELLS / Math.max(1, cols)));
+
+// The widest grid, at most cols wide, that keeps a picture's ratio (width / height) and fits.
+export function lockedGrid(cols, ratio) {
+  for (let c = Math.min(cols, MAX_COLS); c > 1; c--) {
+    const rows = Math.max(1, Math.ceil(c / ratio));
+    if (gridFits(c, rows)) return { cols: c, rows };
+  }
+  return { cols: 1, rows: Math.min(2 * MAX_LINES, Math.max(1, Math.ceil(1 / ratio))) };
+}
+
 // The character cell under a (fractional) grid pixel position, or null when it's off the grid.
 export function cellAt(x, y, cols, rows) {
   const col = Math.floor(x), row = Math.floor(y / 2);

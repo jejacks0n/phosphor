@@ -4,7 +4,7 @@
 // grows). Random characters belong to their cell's position, so they survive a width change.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
-import { cellIndex } from '@/lib/Cells';
+import { cellIndex, MAX_LINES, MAX_CELLS } from '@/lib/Cells';
 
 async function grid(cols = 40, rows = 40) {
   const { project, workspace } = await createTestApp();
@@ -62,4 +62,29 @@ test('random characters stay with their cells when the width changes', async () 
   const before = chars(40);
   await resize(project, 60, 40);
   expect(chars(60)).toEqual(before);
+});
+
+test('a narrow grid runs to the line limit; a wider one stops at the cell budget', async () => {
+  const { project } = await grid(80, 40);
+  project.aspectLock = false;
+  project.updateRows(5000);
+  expect(project.rows).toBe(2 * MAX_LINES);
+  expect(project.maxCols).toBe(MAX_CELLS / MAX_LINES);
+  project.updateCols(300);
+  expect([project.cols, project.rows]).toEqual([MAX_CELLS / MAX_LINES, 2 * MAX_LINES]);
+});
+
+test('a tall picture opens as tall as the limits allow', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/tall.png'); // 40x1200, at the default 80 columns
+  expect([project.cols, project.rows]).toEqual([66, 1980]);
+  expect([project.maxCols, project.maxRows]).toEqual([66, 1980]); // aspect locked
+});
+
+test('before there is a picture, the aspect lock has no shape to keep: rows and columns set alone', async () => {
+  const { project } = await createTestApp();
+  expect(project.aspectLock).toBe(true);
+  project.updateRows(2000);
+  expect([project.cols, project.rows]).toEqual([80, 2000]);
+  expect(project.maxRows).toBe(2000);
 });

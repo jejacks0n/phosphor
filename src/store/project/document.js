@@ -5,11 +5,11 @@ import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { charRowsOf } from '@/lib/Cells.js';
+import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults } from '@/store/settings.js';
-import { MAX_DIMENSION, DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJson } from '@/store/project/shared.js';
+import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJson } from '@/store/project/shared.js';
 import { generateSlug } from 'random-word-slugs';
 import { shallowRef } from 'vue';
 
@@ -31,19 +31,8 @@ export const documentActions = {
     }
     const ratio = (image.naturalWidth || 1) / (image.naturalHeight || 1);
 
-    let cols = this.cols;
-    let rows = Math.ceil(cols / ratio);
-    if (rows > MAX_DIMENSION) {
-      rows = MAX_DIMENSION;
-      cols = Math.floor(rows * ratio);
-    } else if (cols > MAX_DIMENSION) {
-      cols = MAX_DIMENSION;
-      rows = Math.floor(cols / ratio);
-    }
-
     this.replaceImage(image, buffer, {
-      cols: Math.max(1, cols),
-      rows: Math.max(1, rows),
+      ...lockedGrid(this.cols, ratio),
       filename: file.name.replace(/\.[^/.]+$/, ''),
       sauceTitle: '',
     });

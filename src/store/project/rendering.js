@@ -5,9 +5,8 @@
 import PaintLayer, { editScaleFor, resizeTransform } from '@/document/PaintLayer.js';
 import { remapBaseRecords } from '@/document/baseRecords.js';
 import { fitRect } from '@/lib/Canvas.js';
-import { layoutWide } from '@/lib/Cells.js';
+import { layoutWide, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
-import { MAX_DIMENSION } from '@/store/project/shared.js';
 import { baseParams } from '@/store/settings.js';
 import { markRaw } from 'vue';
 
@@ -16,42 +15,20 @@ export const renderingActions = {
     let num = parseInt(val);
     if (isNaN(num) || num < 1) return;
 
-    let cols = Math.min(MAX_DIMENSION, num);
-    let rows = this.rows;
-
-    if (this.aspectLock && this.imageRatio && !this.hasEdits) {
-      rows = Math.ceil(cols / this.imageRatio);
-      if (rows > MAX_DIMENSION) {
-        rows = MAX_DIMENSION;
-        cols = Math.floor(rows * this.imageRatio);
-      }
-    }
-
-    this.$patch({
-      cols: Math.max(0, cols),
-      rows: Math.max(0, rows)
-    });
+    if (this.aspectLock && this.image && !this.hasEdits) this.$patch(lockedGrid(num, this.imageRatio));
+    else this.cols = Math.min(num, maxColsBeside(this.rows));
   },
 
   updateRows(val) {
     let num = parseInt(val);
     if (isNaN(num) || num < 1) return;
 
-    let rows = Math.min(MAX_DIMENSION, num);
-    let cols = this.cols;
-
-    if (this.aspectLock && this.imageRatio && !this.hasEdits) {
-      cols = Math.round(rows * this.imageRatio);
-      if (cols > MAX_DIMENSION) {
-        cols = MAX_DIMENSION;
-        rows = Math.floor(cols / this.imageRatio);
-      }
+    if (this.aspectLock && this.image && !this.hasEdits) {
+      const cols = Math.max(1, Math.round(num * this.imageRatio));
+      this.$patch(gridFits(cols, num) ? { cols, rows: num } : lockedGrid(cols, this.imageRatio));
+    } else {
+      this.rows = Math.min(num, maxRowsBeside(this.cols));
     }
-
-    this.$patch({
-      cols: Math.max(0, cols),
-      rows: Math.max(0, rows)
-    });
   },
 
   // Create the paint and base pixel layers on first use, and follow grid changes. With anything on
