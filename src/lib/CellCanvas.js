@@ -1,9 +1,9 @@
 /**
  * The ANSI view's cells drawn on a <canvas> with WebGL2, aliased like the DOM view's text: every
- * device pixel is exactly its cell's fg or bg. One full-screen pass reads each pixel's cell from
- * two cols x rows data textures (fg rgb + glyph index low byte, bg rgb + high byte) and its ink
- * from an atlas of 0/255 glyph masks, so a whole 30k-cell grid redraws in a few milliseconds and
- * every draw is a full redraw. (fillText anti-aliases; Path2D masks, a CPU blend and per-cell
+ * device pixel is exactly its cell's fg or bg, or a color glyph's (an emoji's) own color. One
+ * full-screen pass reads each pixel's cell from two cols x rows data textures (fg rgb + glyph index
+ * low byte, bg rgb + high byte) and its ink from an atlas of glyphs (see #rasterize), so a whole
+ * 30k-cell grid redraws in a few milliseconds and every draw is a full redraw. (fillText anti-aliases; Path2D masks, a CPU blend and per-cell
  * tinting were all far slower.)
  *
  * Cells snap to whole device pixels at a backing scale capped to stay under the browsers' canvas
@@ -105,22 +105,25 @@ uniform ivec2 uCell;        // cw, ch in device px
 uniform int uHeight;        // canvas height in device px
 uniform int uAtlasCols;     // glyphs per atlas row
 out vec4 color;
+// An atlas texel over what's under it: ink in the character's color (alpha 1), a color glyph's own
+// color (alpha .5), or nothing (0).
+vec3 over(vec4 t, vec3 ink, vec3 under) { return t.a > .75 ? ink : t.a > .25 ? t.rgb : under; }
 void main() {
   ivec2 p = ivec2(int(gl_FragCoord.x), uHeight - 1 - int(gl_FragCoord.y)); // top-left origin
   ivec2 c = p / uCell;
   vec4 f = texelFetch(uFg, c, 0), b = texelFetch(uBg, c, 0);
   int g = int(f.a * 255. + .5) + 256 * int(b.a * 255. + .5);
   ivec2 l = p - c * uCell;
-  float ink = texelFetch(uAtlas, ivec2((g % uAtlasCols) * uCell.x + l.x, (g / uAtlasCols) * uCell.y + l.y), 0).r;
+  vec4 ink = texelFetch(uAtlas, ivec2((g % uAtlasCols) * uCell.x + l.x, (g / uAtlasCols) * uCell.y + l.y), 0);
   // A spill: part of an overflowing character to the left, drawn on top of this cell (its character
   // and background), as a terminal draws it.
   vec4 o = texelFetch(uOv, c, 0), oh = texelFetch(uOvHi, c, 0);
-  float spill = 0.;
+  vec4 spill = vec4(0.);
   if (oh.g > .5) {
     int s = int(o.a * 255. + .5) + 256 * int(oh.r * 255. + .5);
-    spill = texelFetch(uAtlas, ivec2((s % uAtlasCols) * uCell.x + l.x, (s / uAtlasCols) * uCell.y + l.y), 0).r;
+    spill = texelFetch(uAtlas, ivec2((s % uAtlasCols) * uCell.x + l.x, (s / uAtlasCols) * uCell.y + l.y), 0);
   }
-  color = vec4(spill > .5 ? o.rgb : ink > .5 ? f.rgb : b.rgb, 1.);
+  color = vec4(over(spill, o.rgb, over(ink, f.rgb, b.rgb)), 1.);
 }`;
 
 export default class CellCanvas {
@@ -213,7 +216,7 @@ export default class CellCanvas {
     if (this.#atlasDirty) {
       gl.activeTexture(gl.TEXTURE2);
       gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, ATLAS_COLS * g.cw, this.#atlasRows * g.ch, 0, gl.RED, gl.UNSIGNED_BYTE, this.#atlas);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, ATLAS_COLS * g.cw, this.#atlasRows * g.ch, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.#atlas);
       this.#atlasDirty = false;
     }
 
@@ -285,7 +288,8 @@ export default class CellCanvas {
     const index = this.#glyphs.get(char);
     if (index !== undefined) return index;
     const { cw, ch } = this.#geom;
-    return this.#store(char, blockMask(char, cw, ch) ?? this.#rasterize(char, 1));
+    const block = blockMask(char, cw, ch);
+    return this.#store(char, block ? inkTexels(block) : this.#rasterize(char, 1));
   }
 
   // A character's shape at its full width (the columns it draws over), cut into one glyph per column.
@@ -295,34 +299,36 @@ export default class CellCanvas {
     const { cw, ch } = this.#geom, span = Math.max(drawnColumns(char), 1);
     const whole = this.#rasterize(char, span);
     indexes = Array.from({ length: span }, (_, k) => {
-      const mask = new Uint8Array(cw * ch);
-      for (let y = 0; y < ch; y++) mask.set(whole.subarray(y * span * cw + k * cw, y * span * cw + (k + 1) * cw), y * cw);
-      return this.#store(`${char}\u0000${k}`, mask);
+      const texels = new Uint8Array(cw * ch * 4), row = span * cw * 4;
+      for (let y = 0; y < ch; y++) texels.set(whole.subarray(y * row + k * cw * 4, y * row + (k + 1) * cw * 4), y * cw * 4);
+      return this.#store(`${char}\u0000${k}`, texels);
     });
     this.#slices.set(char, indexes);
     return indexes;
   }
 
-  // Put a cw x ch mask in the next atlas slot (growing the atlas a row at a time); its index.
-  #store(key, mask) {
+  // Put a glyph's cw x ch RGBA texels in the next atlas slot (growing the atlas a row at a time); its index.
+  #store(key, texels) {
     const { cw, ch } = this.#geom;
     const index = this.#glyphs.size;
     this.#glyphs.set(key, index);
-    const row = Math.floor(index / ATLAS_COLS), width = ATLAS_COLS * cw;
+    const row = Math.floor(index / ATLAS_COLS), width = ATLAS_COLS * cw * 4;
     if (row >= this.#atlasRows) {
       const grown = new Uint8Array(width * (row + 1) * ch);
       grown.set(this.#atlas);
       this.#atlas = grown;
       this.#atlasRows = row + 1;
     }
-    const x0 = (index % ATLAS_COLS) * cw;
-    for (let y = 0; y < ch; y++) this.#atlas.set(mask.subarray(y * cw, (y + 1) * cw), (row * ch + y) * width + x0);
+    const x0 = (index % ATLAS_COLS) * cw * 4;
+    for (let y = 0; y < ch; y++) this.#atlas.set(texels.subarray(y * cw * 4, (y + 1) * cw * 4), (row * ch + y) * width + x0);
     this.#atlasDirty = true;
     return index;
   }
 
   // A character in the display font across cells cells (1, or 2 for a wide one), as GlyphCoverage
   // rasterizes it: centered in the line, squeezed into its cells when wider, inked where alpha > 127.
+  // Its atlas texels: ink (alpha 255, drawn in the cell's fg), or for a color glyph (an emoji: drawn
+  // in its own colors, whatever fillStyle says) its color with alpha 128.
   #rasterize(char, cells) {
     const { ch, scale } = this.#geom, cw = this.#geom.cw * cells;
     this.#scratch ??= document.createElement('canvas');
@@ -334,13 +340,26 @@ export default class CellCanvas {
     ctx.clearRect(0, 0, cw, ch);
     ctx.font = `${DISPLAY_FONT.size * scale}px ${DISPLAY_FONT.family}`;
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = '#f00';
     ctx.fillText(char, 0, ch / 2, cw);
     const { data } = ctx.getImageData(0, 0, cw, ch);
-    const mask = new Uint8Array(cw * ch);
-    for (let i = 0; i < mask.length; i++) mask[i] = data[i * 4 + 3] > 127 ? 255 : 0;
-    return mask;
+    let color = false; // any inked pixel that isn't the fillStyle's red
+    for (let i = 0; i < data.length && !color; i += 4) color = data[i + 3] > 127 && (data[i] < 224 || data[i + 1] > 31 || data[i + 2] > 31);
+    const texels = new Uint8Array(data.length);
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] <= 127) continue;
+      if (color) texels.set([data[i], data[i + 1], data[i + 2], 128], i);
+      else texels[i + 3] = 255;
+    }
+    return texels;
   }
+}
+
+// A mask's (0 or 255) atlas texels: ink in the cell's fg where it's set.
+function inkTexels(mask) {
+  const texels = new Uint8Array(mask.length * 4);
+  for (let i = 0; i < mask.length; i++) texels[i * 4 + 3] = mask[i];
+  return texels;
 }
 
 // The display font's character width in CSS px.
