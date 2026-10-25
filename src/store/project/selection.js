@@ -14,6 +14,7 @@ import { ctx2d } from '@/lib/Canvas.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { over } from '@/store/project/shared.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toRaw } from 'vue';
 
 export const selectionActions = {
@@ -48,7 +49,18 @@ export const selectionActions = {
     return out;
   },
 
+  // Delete (and Cut) on a block that's floating takes away the block, not what it's over: the move or
+  // paste is undone and, for a move, the place it came from is cleared (one undo step), and the
+  // selection goes with the block. Otherwise what's selected is deleted.
   deleteSelection(rect, layers) {
+    const run = this._float;
+    if (run?.recorded && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)) {
+      this._float = null;
+      this.undo();
+      if (!run.paste) this.selectionEdit([run.from], () => this.deleteIn(run.from, run.layers));
+      useWorkspaceStore().selection = null;
+      return;
+    }
     this.selectionEdit([rect], () => this.deleteIn(rect, layers));
   },
 

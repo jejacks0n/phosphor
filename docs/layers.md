@@ -134,7 +134,9 @@ nudging act on:
 until you're done: you can let go, drag again and nudge as often as you like, and whatever the
 block passes over or pauses on comes back as it moves on. It's set down when you deselect (Escape,
 **Deselect**, a click outside), select something else, or make any other change, and the whole move
-is one undo step. A paste floats the same way, so you can paste and then drag it into place.
+is one undo step. A paste floats the same way, so you can paste and then drag it into place. The
+block follows the pointer as you drag, and dragging it (or a new selection) to the edge of the view
+scrolls the view, faster the further you go.
 
 **Copy and Cut** also put the selection's characters on your system clipboard as plain text, a line
 per row, so you can paste them into a terminal, a chat or a text editor. **Paste** (Cmd/Ctrl+V)

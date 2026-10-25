@@ -166,3 +166,36 @@ test('stamp leaves a copy and floats the block on; undo takes back only the last
   expect(cell(project, 10, 5).char).not.toBe('A');
   expect(workspace.selection).toEqual({ c0: 8, r0: 5, c1: 8, r1: 5 });
 });
+
+test('Delete on a moved block takes away the block, not what it covered; one undo brings the block back where it started', async () => {
+  const { project, workspace } = await scene();
+  for (const [c, ch] of [[5, 'A'], [6, 'B'], [7, 'C']]) project.typeAt(c, 5, ch, ATTRS);
+  project.commitEdit();
+  const under = [5, 6, 7].map((c) => cell(project, c, 7).char).join('');
+  workspace.selectAll({ c0: 5, r0: 5, c1: 7, r1: 5 });
+  workspace.selection = project.floatSelection(workspace.selection, LAYERS, 0, 2);
+  project.deleteSelection(workspace.selection, LAYERS);
+  project.render(); await settle(project);
+  expect([5, 6, 7].map((c) => cell(project, c, 7).char).join('')).toBe(under);
+  expect([5, 6, 7].map((c) => cell(project, c, 5).char).join('')).not.toContain('A');
+  expect(workspace.selection).toBe(null);
+  project.undo(); await settle(project);
+  expect([5, 6, 7].map((c) => cell(project, c, 5).char).join('')).toBe('ABC');
+  expect([5, 6, 7].map((c) => cell(project, c, 7).char).join('')).toBe(under);
+});
+
+test('Delete on a stamped block that moved on leaves the stamped copy', async () => {
+  const { project, workspace } = await scene();
+  const EDIT = { base: false, edit: true };
+  project.typeAt(5, 5, 'A', ATTRS);
+  project.commitEdit();
+  workspace.selectAll({ c0: 5, r0: 5, c1: 5, r1: 5 });
+  workspace.selection = project.stampSelection(workspace.selection, EDIT);
+  workspace.selection = project.floatSelection(workspace.selection, EDIT, 3, 0);
+  const under = cell(project, 8, 5).char === 'A';
+  expect(under).toBe(true);
+  project.deleteSelection(workspace.selection, EDIT);
+  project.render(); await settle(project);
+  expect(cell(project, 5, 5).char).toBe('A');
+  expect(cell(project, 8, 5).char).not.toBe('A');
+});

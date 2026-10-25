@@ -5,6 +5,7 @@
  *   altPicks?  holding Alt switches to the picker (Alt+Shift: picking the background)
  *   available? (project) => boolean: offered in the toolbar only when true (e.g. flip needs the ANSI art style)
  *   section?   toolbar group ('navigate', 'cell'); a divider separates groups
+ *   autoScroll? a drag near the view's edge scrolls it (useEditorInteractions)
  *   preview?   { shape: 'circle' | 'square' | 'cell', size?: (workspace) => grid pixels }
  *   cursor?    (ctx, pos) => CSS cursor | null: the pointer over the content, at grid pixel pos
  *   options?   toolbar settings: { key (workspace store field), label, title, min, max, step?, decimals?, unit?, type?: 'checkbox' }

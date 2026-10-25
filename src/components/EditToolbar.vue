@@ -572,21 +572,27 @@ button :deep(svg) {
   display: block;
 }
 
-button:hover :deep(svg) {
-  fill: var(--text);
+@media (hover: hover) { /* a tap on a touch screen leaves no hover look behind */
+  button:hover :deep(svg) {
+    fill: var(--text);
+  }
 }
 
 button.primary :deep(svg) {
   fill: var(--text);
 }
 
-button.primary:hover {
-  background: var(--surface-light);
-  border-color: var(--surface-light);
+@media (hover: hover) {
+  button.primary:hover {
+    background: var(--surface-light);
+    border-color: var(--surface-light);
+  }
 }
 
-button.primary:hover :deep(svg) {
-  fill: var(--text-inverted);
+@media (hover: hover) {
+  button.primary:hover :deep(svg) {
+    fill: var(--text-inverted);
+  }
 }
 
 button.active {
