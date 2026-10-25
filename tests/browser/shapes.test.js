@@ -84,15 +84,32 @@ test('a filled anti-aliased ellipse over a smaller one hides its soft edge', asy
   }
 });
 
-test('paint laid fully over soft paint replaces it; soft over soft composites', async () => {
+test('paint laid fully over soft paint replaces it; over soft paint the new color is on top', async () => {
   const { default: PaintLayer } = await import('@/document/PaintLayer');
   const layer = new PaintLayer({ cols: 2, rows: 2, scale: 1 });
   layer.paint([{ x: 0, y: 0, r: 255, g: 0, b: 0, alpha: 0.5 }]);
   layer.paint([{ x: 0, y: 0, r: 0, g: 255, b: 0, alpha: 1 }]);
   expect(layer.pixelAt(0, 0)).toEqual({ r: 0, g: 255, b: 0, a: 1 });
-  // Half green over half red: a red quarter under three quarters' green, as one layer over another.
+  // Half green over half red: the alphas add up (paint builds up to its opacity), and the color is
+  // green over red, red showing a third (a quarter of the pixel under three quarters' green).
   layer.paint([{ x: 1, y: 0, r: 255, g: 0, b: 0, alpha: 0.5 }]);
   layer.paint([{ x: 1, y: 0, r: 0, g: 255, b: 0, alpha: 0.5 }]);
   const p = layer.pixelAt(1, 0);
-  expect([p.r, p.g, p.b, Math.round(p.a * 100)]).toEqual([85, 170, 0, 75]);
+  expect([p.r, p.g, p.b, Math.round(p.a * 100)]).toEqual([85, 170, 0, 100]);
+});
+
+test('paint of one color builds up to opacity as before: dabs add up, and low flow still reaches opaque', async () => {
+  const { default: PaintLayer } = await import('@/document/PaintLayer');
+  const layer = new PaintLayer({ cols: 2, rows: 2, scale: 1 });
+  const alphas = (flow, dabs) => {
+    layer.clear();
+    const out = [];
+    for (let i = 0; i < dabs; i++) {
+      layer.paint([{ x: 0, y: 0, r: 255, g: 0, b: 0, alpha: flow }]);
+      out.push(Math.round(layer.pixelAt(0, 0).a * 255));
+    }
+    return out;
+  };
+  expect(alphas(0.25, 4)).toEqual([64, 128, 192, 255]); // the soft Brush's default flow
+  expect(alphas(0.05, 25).at(-1)).toBe(255);
 });

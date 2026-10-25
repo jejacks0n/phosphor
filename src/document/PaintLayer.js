@@ -117,13 +117,14 @@ export default class PaintLayer {
             data[idx + 1] = Math.round(data[idx + 1] + (g - data[idx + 1]) * blend);
             data[idx + 2] = Math.round(data[idx + 2] + (b - data[idx + 2]) * blend);
           } else {
-            // Over what's there, as one layer over another: the old paint shows only through what
-            // the new doesn't cover (a shape laid fully over a soft edge hides it).
-            const under = existingA * (255 - a) / 255, total = a + under;
-            data[idx + 3] = Math.min(maxA, Math.round(total));
-            data[idx]     = Math.round((data[idx]     * under + r * a) / total);
-            data[idx + 1] = Math.round((data[idx + 1] * under + g * a) / total);
-            data[idx + 2] = Math.round((data[idx + 2] * under + b * a) / total);
+            // The alpha adds up (a stroke's dabs build up to `opacity`); the color is the new over
+            // the old, which shows only through what the new doesn't cover (a shape laid fully over
+            // a soft edge hides it).
+            const under = existingA * (255 - a) / 255;
+            data[idx + 3] = Math.min(maxA, existingA + a);
+            data[idx]     = Math.round((data[idx]     * under + r * a) / (a + under));
+            data[idx + 1] = Math.round((data[idx + 1] * under + g * a) / (a + under));
+            data[idx + 2] = Math.round((data[idx + 2] * under + b * a) / (a + under));
           }
         }
       }
