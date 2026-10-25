@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readProject, writeProject, fileStem, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
 import { EMPTY_BASE, withPins } from '../../src/document/baseRecords.js';
+import { MAX_COLS, maxRowsBeside } from '../../src/lib/Cells.js';
 
 test('.phosphor read/write: round-trips, and reads older files (examples/) the same way the app always has', async () => {
   assert.equal(PROJECT_EXTENSION, '.phosphor');
@@ -64,6 +65,11 @@ test('.phosphor read/write: round-trips, and reads older files (examples/) the s
   assert.deepEqual([...both.editCells], [['0,0', { char: 'x' }]]);       // the cell layer wins over older char edits
   assert.equal(both.migrated, false);
   assert.equal((await readProject(fileOf({ charEditMap: [[5, '#']] }))).migrated, false); // nothing could be placed
+
+  // Untrusted: a grid size from a hand-edited file is brought within the limits; one that fits is kept.
+  assert.deepEqual((await readProject(fileOf({ cols: 10_000, rows: 10_000 }))).settings, { cols: MAX_COLS, rows: maxRowsBeside(MAX_COLS) });
+  assert.deepEqual((await readProject(fileOf({ cols: 80, rows: 2000 }))).settings, { cols: 80, rows: 2000 });
+  assert.deepEqual((await readProject(fileOf({ cols: 'x', rows: -4 }))).settings, { cols: 1, rows: 1 });
 
   await assert.rejects(readProject(new Blob([new Uint8Array(32)])), /Not a valid Phosphor project file/);
 });

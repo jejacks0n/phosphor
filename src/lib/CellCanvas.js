@@ -22,14 +22,15 @@
 import { DISPLAY_FONT, displayFontCss, drawGlyph } from './displayFonts.js';
 import { drawnColumns, layoutSpills } from './DrawnWidth.js';
 
-// Safari refuses 2D canvases of 16,777,216 pixels or more, and WebGL drawing buffers past the
-// browser's limits are silently shrunk.
+// Safari refuses 2D canvases of 16,777,216 pixels or more, and a WebGL drawing buffer past the GPU's
+// largest side (16384 px on most, 8192 on software WebGL) is quietly cut short.
 export const MAX_BACKING_AREA = 16_000_000;
 const ATLAS_COLS = 64; // glyphs per atlas row
 
-// Device pixels per CSS pixel: the display's, or less when a grid that big would pass the cap.
-export function backingScale(cssWidth, cssHeight, dpr) {
-  return Math.min(dpr, Math.sqrt(MAX_BACKING_AREA / (cssWidth * cssHeight)));
+// Device pixels per CSS pixel: the display's, or less when a grid that big would pass the area cap
+// or have a side longer than maxSide.
+export function backingScale(cssWidth, cssHeight, dpr, maxSide = Infinity) {
+  return Math.min(dpr, Math.sqrt(MAX_BACKING_AREA / (cssWidth * cssHeight)), maxSide / cssWidth, maxSide / cssHeight);
 }
 
 // A cell in whole device pixels (an even height, so the two halves match, as GlyphCoverage
@@ -161,6 +162,7 @@ void main() {
 export default class CellCanvas {
   canvas;
   #gl = null;
+  #maxSide = Infinity; // the GPU's longest drawing buffer side
   #uniforms = null;
   #textures = null;     // [fg, bg, atlas, ov, ovHi], bound to texture units 0-4
   #allocated = false;   // the data textures have the grid's size
@@ -213,7 +215,7 @@ export default class CellCanvas {
   // Size the canvas for cols x rows cells at the display's dpr; true when anything changed.
   resize(cols, rows, dpr) {
     if (this.#advance === null) this.#advance = measureAdvance();
-    const scale = backingScale(cols * this.#advance, rows * DISPLAY_FONT.size * DISPLAY_FONT.lineHeight, dpr);
+    const scale = backingScale(cols * this.#advance, rows * DISPLAY_FONT.size * DISPLAY_FONT.lineHeight, dpr, this.#maxSide);
     const { cw, ch } = cellGeometry(this.#advance, scale, scale < dpr);
     const g = this.#geom;
     if (g && g.cols === cols && g.rows === rows && g.cw === cw && g.ch === ch && g.scale === scale) return false;
@@ -282,6 +284,7 @@ export default class CellCanvas {
     const gl = this.canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false });
     if (!gl) throw new Error('WebGL2 unavailable');
     this.#gl = gl;
+    this.#maxSide = Math.min(...gl.getParameter(gl.MAX_VIEWPORT_DIMS), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE));
 
     const program = gl.createProgram();
     for (const [type, source] of [[gl.VERTEX_SHADER, VERTEX], [gl.FRAGMENT_SHADER, FRAGMENT]]) {

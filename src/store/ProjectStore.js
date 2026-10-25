@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
+import { MAX_COLS, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { combineActions } from '@/store/project/combineActions.js';
 import { documentActions } from '@/store/project/document.js';
@@ -14,7 +15,7 @@ import { readingActions } from '@/store/project/reading.js';
 import { baseLayerActions } from '@/store/project/baseLayer.js';
 import { sliderActions } from '@/store/project/sliders.js';
 import { historyActions } from '@/store/project/history.js';
-import { MAX_DIMENSION, PIPELINE_KEYS, settingsJson } from '@/store/project/shared.js';
+import { PIPELINE_KEYS, settingsJson } from '@/store/project/shared.js';
 
 export const useProjectStore = defineStore('project', {
   state: () => ({
@@ -64,19 +65,13 @@ export const useProjectStore = defineStore('project', {
       const h = state.image.naturalHeight || state.image.height || 1;
       return w / h;
     },
-    maxCols: (state) => {
-      if (!state.aspectLock || !state.image || state.editCells.size > 0 || state.hasPaint) return MAX_DIMENSION;
-      const w = state.image.naturalWidth || state.image.width || 1;
-      const h = state.image.naturalHeight || state.image.height || 1;
-      const ratio = w / h;
-      return Math.ceil(Math.min(MAX_DIMENSION, MAX_DIMENSION * ratio));
+    // The grid's largest size (Cells.js): aspect locked, the biggest that keeps the picture's ratio;
+    // otherwise the most there's room for beside the other side.
+    maxCols() {
+      return this.aspectLock && this.image && !this.hasEdits ? lockedGrid(MAX_COLS, this.imageRatio).cols : maxColsBeside(this.rows);
     },
-    maxRows: (state) => {
-      if (!state.aspectLock || !state.image || state.editCells.size > 0 || state.hasPaint) return MAX_DIMENSION;
-      const w = state.image.naturalWidth || state.image.width || 1;
-      const h = state.image.naturalHeight || state.image.height || 1;
-      const ratio = w / h;
-      return Math.ceil(Math.min(MAX_DIMENSION, MAX_DIMENSION / ratio));
+    maxRows() {
+      return this.aspectLock && this.image && !this.hasEdits ? lockedGrid(MAX_COLS, this.imageRatio).rows : maxRowsBeside(this.cols);
     },
     processParams: (state) => ({
       ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),

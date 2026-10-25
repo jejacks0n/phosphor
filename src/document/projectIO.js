@@ -7,6 +7,7 @@
 import { serializeEditCells, deserializeEditCells, migrateCharEdits } from './editCells.js';
 import { EMPTY_BASE, serializeBase, deserializeBase } from './baseRecords.js';
 import { MAX_LAYER_DIM } from './PaintLayer.js';
+import { MAX_COLS, maxRowsBeside } from '../lib/Cells.js';
 
 export const PROJECT_EXTENSION = '.phosphor';
 export const isProjectFile = (name) => name.toLowerCase().endsWith(PROJECT_EXTENSION);
@@ -52,8 +53,11 @@ export async function readProject(file) {
   let offset = 20;
   const { cellEdits, charEditMap, hasPaint, base, baseLength, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
   delete settings.charMode; // older files stored a charMode that's now derived from renderStyle
-  // Untrusted: a fit is four numbers with a size, and a paint scale a whole number, both small
-  // enough to draw (a layer stays within MAX_LAYER_DIM pixels a side).
+  // Untrusted: a grid within the limits (Cells.js; left out, the columns are the default, which fits
+  // any height), a fit four numbers with a size, and a paint scale a whole number, both small enough
+  // to draw (a layer stays within MAX_LAYER_DIM pixels a side).
+  if (settings.cols !== undefined) settings.cols = Math.min(MAX_COLS, Math.max(1, settings.cols | 0));
+  if (settings.rows !== undefined) settings.rows = Math.min(maxRowsBeside(settings.cols ?? 1), Math.max(1, settings.rows | 0));
   const { fit, paintScale } = settings;
   const size = Math.max(1, settings.cols | 0, settings.rows | 0);
   if (!(fit && ['dx', 'dy', 'dw', 'dh'].every(k => Number.isFinite(fit[k]) && Math.abs(fit[k]) <= MAX_LAYER_DIM) && fit.dw > 0 && fit.dh > 0)) delete settings.fit;

@@ -10,6 +10,7 @@ test("The ANSI view's canvas renderer: its backing size stays under the browsers
   const s = backingScale(2040, 3060, 2);                                         // 200x300 at dpr 2 is 25M px: capped
   assert.ok(s < 2 && s * 2040 * s * 3060 <= MAX_BACKING_AREA + 1);
   assert.equal(backingScale(2040, 3060, 1), 1);                                  // under the cap at dpr 1
+  assert.equal(backingScale(800, 20400, 2, 16384), 16384 / 20400);               // 1000 lines tall: no side past the GPU's largest buffer
 
   assert.deepEqual(cellGeometry(10.2, 2), { cw: 20, ch: 40, cellWidth: 10, lineHeight: 20 });
   assert.deepEqual(cellGeometry(10.2, 1), { cw: 10, ch: 20, cellWidth: 10, lineHeight: 20 });

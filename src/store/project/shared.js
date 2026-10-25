@@ -2,7 +2,6 @@
 import { getSetting, SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS } from '@/store/settings.js';
 import { ctx2d } from '@/lib/Canvas.js';
 
-export const MAX_DIMENSION = 300;
 export const DEFAULT_COLS = getSetting('cols').default;
 export const DEFAULT_ROWS = getSetting('rows').default;
 export const BLANK_CANVAS_SCALE = 10;
