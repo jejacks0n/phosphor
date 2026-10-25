@@ -10,6 +10,7 @@ import { rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brus
 import { rectCells } from '@/document/editCells';
 import { charRowsOf, cellsOfPixels } from '@/lib/Cells';
 import { joinBox, inwardArms } from '@/lib/BoxJoin';
+import { hex2rgb } from '@/lib/ColorUtils';
 
 let start = null; // the drag's first grid position
 
@@ -37,6 +38,19 @@ const insideOf = (all, outline, keyOf, field) => {
 const pixelKey = ({ x, y }) => `${x},${y}`;
 const cellKey = ({ col, row }) => `${col},${row}`;
 
+// A filled shape's pixels ({ x, y, alpha }: the whole shape) as one stroke of paint: each pixel its
+// outline's share in FG, the rest BG. Two strokes (inside, then outline) would each blend with the
+// paint under an anti-aliased edge, and what's under would show through where the shape covers it.
+const twoTone = (all, outline, fg, bg) => {
+  const ring = new Map(outline.map(p => [pixelKey(p), p.alpha]));
+  const f = hex2rgb(fg), b = hex2rgb(bg);
+  const mix = (k, t) => Math.round(b[k] + (f[k] - b[k]) * t);
+  return all.map((p) => {
+    const t = Math.min(1, (ring.get(pixelKey(p)) ?? 0) / p.alpha);
+    return { ...p, r: mix('r', t), g: mix('g', t), b: mix('b', t) };
+  });
+};
+
 function apply({ project, workspace, view }, end) {
   const { shapeKind: kind, shapeDrawWith: drawWith, shapeBlockChars: blockChars } = workspace;
   const antialias = workspace.shapeAntialias && kind === 'ellipse' && drawWith !== 'char';
@@ -48,11 +62,11 @@ function apply({ project, workspace, view }, end) {
   const pixelsOf = (filled) => (kind === 'ellipse'
     ? ellipsePixels(start, end, filled, project.cols, project.rows, antialias)
     : rectPixels(start, end, filled, project.cols, project.rows));
-  // Paint: the inside in BG, then the outline in FG (one stroke, one undo step).
+  // Paint: the outline in FG and, filled, the inside in BG (one stroke, one undo step).
   const paintShape = () => {
     const outline = pixelsOf(false);
-    if (fill) project.paintStroke(insideOf(pixelsOf(true), outline, pixelKey, 'alpha'), bg);
-    project.paintStroke(outline, fg);
+    if (fill) project.paintEditPixels(twoTone(pixelsOf(true), outline, fg, bg), workspace.editBrushOpacity);
+    else project.paintStroke(outline, fg);
   };
   if (view === 'input') {
     paintShape();
@@ -90,8 +104,8 @@ function apply({ project, workspace, view }, end) {
   // through their characters.
   if (drawWith === 'full' && !blockChars) {
     const both = (list) => list.flatMap(({ col, row, cover }) => [{ x: col, y: 2 * row, alpha: cover }, { x: col, y: 2 * row + 1, alpha: cover }]);
-    project.paintStroke(both(inside), bg);
-    project.paintStroke(both(outline), fg);
+    if (fill) project.paintEditPixels(twoTone(both(shapeOf(true)), both(outline), fg, bg), workspace.editBrushOpacity);
+    else project.paintStroke(both(outline), fg);
     return;
   }
 
