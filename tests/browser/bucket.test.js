@@ -52,3 +52,22 @@ test('a fill on the background leaves typed text readable', async () => {
   expect(cell.char).toBe('A');
   expect(cell.fg.hex).not.toBe(cell.bg.hex);
 });
+
+test('a box hidden under paint of one color isn\'t a wall: the fill covers what you see', async () => {
+  const { project, workspace } = await blank();
+  const ctx = { project, workspace, view: 'output' };
+  Object.assign(workspace, { shapeKind: 'rect', shapeDrawWith: 'single', editBgNone: true, editFgColor: '#ffffff' });
+  shapes.begin(ctx, { x: 8.5, y: 8.5 });
+  shapes.move(ctx, { x: 8.5, y: 8.5 }, { x: 20.5, y: 20.5 });
+  shapes.end(ctx); // cells 8..20, rows 4..10
+  const pixels = [];
+  for (let y = 4; y < 26; y++) for (let x = 4; x < 26; x++) pixels.push({ x, y, alpha: 1 });
+  project.paintStroke(pixels, '#00aa00'); // over the whole box: its lines are green on green
+  project.commitEdit();
+  await settle(project);
+
+  workspace.editFgColor = '#ff0000';
+  bucket.begin(ctx, { x: 5.5, y: 5.5 }, ev);
+  await settle(project);
+  expect(project.paintLayer.colorAt(14, 14)).toEqual({ r: 255, g: 0, b: 0 }); // inside the hidden box
+});

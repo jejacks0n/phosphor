@@ -1,16 +1,17 @@
 import { floodFill } from '@/lib/FloodFill';
 import { ctx2d } from '@/lib/Canvas';
 import { parseKey } from '@/document/editCells';
-import { cellIndex, isSolidGlyph } from '@/lib/Cells';
+import { cellIndex, isSolidGlyph, showsChar } from '@/lib/Cells';
 
 // Grid pixels the fill stops at: edit cells showing a character with something to see through (text,
-// box lines), so a fill stays inside a drawn box and never covers typed text.
+// box lines), so a fill stays inside a drawn box and never covers typed text. A line hidden under
+// paint (showsChar) isn't one: the fill covers what you see.
 function wallsOf(project) {
   const walls = new Uint8Array(project.cols * project.rows);
   for (const key of project.editCells.keys()) {
     const { col, row } = parseKey(key);
     const cell = project.cells[cellIndex(col, row, project.cols)];
-    if (!cell || isSolidGlyph(cell.char)) continue;
+    if (!cell || isSolidGlyph(cell.char) || !showsChar(cell)) continue;
     for (const c of cell.wide === 'lead' ? [col, col + 1] : [col]) {
       if (c < project.cols) walls[2 * row * project.cols + c] = walls[(2 * row + 1) * project.cols + c] = 1;
     }
