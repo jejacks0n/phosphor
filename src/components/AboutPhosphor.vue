@@ -1,18 +1,28 @@
 <script setup>
+import { onMounted, useTemplateRef } from 'vue';
+
 // This build: the version (its third number is the day it was built) and the commit (vite.config.js, buildInfo).
 const { version, sha } = __BUILD__;
 
-defineEmits(['close']);
+const emit = defineEmits(['close']);
+const close = useTemplateRef('close');
+onMounted(() => close.value?.focus());
+
+// Keys are the dialog's while it's up (none reach the app's shortcuts); Escape closes it.
+function onKeyDown(event) {
+  event.stopPropagation();
+  if (event.key === 'Escape') emit('close');
+}
 </script>
 
 <template>
-  <div class="modal-backdrop" @click.self="$emit('close')">
-    <article class="about-phosphor">
-      <button class="close" @click="$emit('close')" title="Close">×</button>
+  <div class="modal-backdrop" @click.self="emit('close')">
+    <article class="about-phosphor" role="dialog" aria-modal="true" aria-label="About Phosphor" @keydown="onKeyDown">
+      <button ref="close" class="close" @click="emit('close')" title="Close" aria-label="Close">×</button>
       <div class="content-container">
         <header>
           <div class="logo"></div>
-          <p class="tagline">Convert images to ANSI and ASCII ... with style?</p>
+          <p class="tagline">Turn images into ANSI and ASCII, then keep drawing ... with style?</p>
           <p class="version accent">v{{ version }}</p>
           <p class="build">build {{ sha }}</p>
         </header>
@@ -24,30 +34,26 @@ defineEmits(['close']);
         </p>
 
         <p>
-          Years later, I came across a fantastic <a href="https://github.com/christiansacks/moebius" target="blank">fork of the Moebius ANSI editor</a> that introduced full-color/256 color support. It reminded me of this project, so I dragged it out of storage, dusted off the code -- and leveraging modern tools and techniques, brought it back to life.
+          Years later, I came across a fantastic <a href="https://github.com/christiansacks/moebius" target="_blank">fork of the Moebius ANSI editor</a> that added 256-color and full-color support. It reminded me of this project, so I dragged it out of storage, dusted off the code -- and leveraging modern tools and techniques, brought it back to life.
         </p>
 
         <p>
-          Today, Phosphor is a modern utility designed to bridge the gap between digital imagery and terminal art. It focuses on converting images to ANSI and ASCII with a heavy emphasis on style and granular customization. Whether you're a retro-computing enthusiast, an ASCII artist, or just looking for a unique way to process images for your terminal pipeline, I hope you find Phosphor a useful addition to your workflow.
+          Today Phosphor does two things. It turns an image into ANSI or ASCII art that you can tune until it looks right, and it lets you draw and type over that, cell by cell, then save it as .ans or .utf8ans. Finish the piece here, or take the file into another editor for the last pass -- whether you're after "Pure ANSI" for the purists or the full-color, UTF-8 "ANSI Nouveau" style that started all this.
         </p>
 
         <p>
-          Importantly, Phosphor isn’t presently trying to be a full-blown ANSI editor. Instead, it’s designed to get you from ideation, to where you can iterate further. The intent is to allow quick exploration and then move into a full editor to finalize your vision -- whether that’s "Pure ANSI" for the purists or the full-color, UTF-8 "ANSI Nouveau" style that inspired the project in the first place.
-        </p>
-
-        <p>
-          This is an early alpha project, expect bugs, lack of support for mobile and tablet, etc. I’m open to feedback, bug reports, and ideas, so feel free to open an issue on <a href="https://github.com/jejacks0n/phosphor" target="blank">GitHub</a>, leave a comment, or fork the repo and take it in your own direction.
+          It's early. Expect bugs, and expect it to be rough on phones and tablets. Feedback, bug reports and ideas are welcome: open an issue on <a href="https://github.com/jejacks0n/phosphor" target="_blank">GitHub</a>, or fork the repo and take it in your own direction.
         </p>
 
         <p>Credits and special thanks:</p>
         <ul>
           <li><a href="https://ertdfgcvb.xyz" target="_blank">ertdfgcvb</a> (Andreas Gysin) for the inspiration for Phosphor with the (awesome) <a href="https://play.ertdfgcvb.xyz" target="_blank">play.core</a> library</li>
-          <li>Blocktronics and MeaTLoTioN for your work on Moebius</li>
+          <li>Andy Herbert, Blocktronics and MeaTLoTioN for their work on Moebius</li>
           <li>lordscarlet (Doug Moore) for creating <a href="https://16colo.rs" target="_blank">https://16colo.rs</a></li>
           <li>The fonts: <a href="https://int10h.org/oldschool-pc-fonts/" target="_blank">IBM VGA 8x16</a> from VileR's Ultimate Oldschool PC Font Pack (<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a>), <a href="https://github.com/JetBrains/JetBrainsMono" target="_blank">JetBrains Mono</a> by The JetBrains Mono Project Authors (<a href="https://openfontlicense.org" target="_blank">SIL OFL 1.1</a>), <a href="http://viznut.fi/unscii/" target="_blank">Unscii</a> by viznut (public domain), and <a href="https://unifoundry.com/unifont/" target="_blank">GNU Unifont</a> by Roman Czyborra, Paul Hardy and others (<a href="https://openfontlicense.org" target="_blank">SIL OFL 1.1</a>)</li>
           <li>And the many authors, maintainers, and ANSI artists who have inspired me over the years -- too many to name</li>
         </ul>
-        <p>Thank you for the inspiration and for helping to create such a vibrant community around this unique art form.</p>
+        <p>Thanks to all of you for the inspiration, and for keeping the scene going.</p>
 
         <hr/>
 

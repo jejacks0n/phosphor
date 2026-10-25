@@ -1,16 +1,13 @@
 /**
- * Generates and appends SAUCE (Standard Architecture for Universal Comment Extensions) 
+ * Generates and appends SAUCE (Standard Architecture for Universal Comment Extensions)
  * metadata records to ANSI files, including a comment block for Phosphor settings.
  */
-const utf8Encoder = new TextEncoder();
+import { cp437Byte, cp437Substitute } from './Cp437.js';
 
+// SAUCE text is CP437, one byte a character, space-padded.
 const pad = (text, length) => {
-  const bytes = new Uint8Array(length);
-  bytes.fill(32);
-  if (text) {
-    const textBytes = utf8Encoder.encode(text);
-    bytes.set(textBytes.slice(0, length), 0);
-  }
+  const bytes = new Uint8Array(length).fill(32);
+  [...(text ?? '')].slice(0, length).forEach((char, i) => { bytes[i] = cp437Byte(cp437Substitute(char)); });
   return bytes;
 };
 
@@ -30,7 +27,7 @@ export class Sauce {
 
     this.use9pxFont = opts.use9pxFont || false;
     this.fontName = opts.fontName || 'IBM VGA';
-    
+
     // Process comments into 64-char chunks
     this.comments = this.#processComments(opts.comments);
   }
@@ -40,7 +37,7 @@ export class Sauce {
     const lines = Array.isArray(input) ? input : [input];
     const processed = [];
     lines.forEach(line => {
-      // Split long strings into 64-char chunks if necessary
+      if (!line.length) processed.push(''); // a blank line stays
       for (let i = 0; i < line.length; i += 64) {
         processed.push(line.substring(i, i + 64));
       }
@@ -51,34 +48,34 @@ export class Sauce {
   appendTo(fileBytes) {
     const sauceRecord = this.#asBytes();
     const commentBlock = this.#commentsAsBytes();
-    
+
     // Final structure: [EOF] [Comment Block (Optional)] [SAUCE Record]
     const totalLength = fileBytes.length + 1 + commentBlock.length + sauceRecord.length;
     const merged = new Uint8Array(totalLength);
-    
+
     let offset = 0;
     merged.set(fileBytes, offset);
     offset += fileBytes.length;
-    
+
     merged[offset] = 26; // EOF char (0x1A)
     offset += 1;
-    
+
     if (commentBlock.length) {
       merged.set(commentBlock, offset);
       offset += commentBlock.length;
     }
-    
+
     merged.set(sauceRecord, offset);
-    
+
     return merged;
   }
 
   #commentsAsBytes() {
     if (!this.comments.length) return new Uint8Array(0);
-    
+
     const output = new Uint8Array(5 + (this.comments.length * 64));
-    output.set(utf8Encoder.encode('COMNT'), 0);
-    
+    output.set(pad('COMNT', 5), 0);
+
     for (let i = 0; i < this.comments.length; i++) {
       output.set(pad(this.comments[i], 64), 5 + (i * 64));
     }
@@ -106,12 +103,12 @@ export class Sauce {
     output[99] = (this.rows >> 8) & 0xff;
 
     // Flags: Bit 0 is iCE Colors. We always set it to 1.
-    let flags = 1; 
+    let flags = 1;
     flags |= (this.use9pxFont) ? (1 << 2) : (1 << 1);
     output[105] = flags;
 
     output.set(pad(this.fontName, 20), 106);
-    
+
     // Number of comments
     output[104] = this.comments.length;
 

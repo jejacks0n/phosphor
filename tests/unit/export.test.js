@@ -1,7 +1,8 @@
 // Every export, byte for byte: .ans (CP437) and .utf8ans (UTF-8) in every color mode, with SAUCE.
 // Reference drawings are hand-built grids covering each character and color case; the exported bytes
 // must equal the committed references (tests/fixtures/reference/export/), every .utf8ans must lay out
-// in a terminal exactly as the grid does, and every .ans must be one byte per cell.
+// in a terminal exactly as the grid does, and every .ans must be one byte per cell (rows under 80
+// columns end in CR LF, so a viewer that ignores SAUCE doesn't run them together).
 import { describe, test, expect } from 'vitest';
 import { AnsiFile } from '../../src/lib/AnsiFile.js';
 import { buildCell, layoutWide } from '../../src/lib/Cells.js';
@@ -71,7 +72,8 @@ for (const [name, grid] of Object.entries(GRIDS)) {
         const art = bytes.slice(0, bytes.indexOf(0x1a));
         let text = '';
         for (const b of art) text += String.fromCharCode(b);
-        expect(text.replace(/\x1b\[[0-9;]*m/g, '')).toHaveLength(grid.cols * grid.rows.length); // eslint-disable-line no-control-regex
+        const lines = text.replace(/\x1b\[[0-9;]*m/g, '').split('\r\n'); // eslint-disable-line no-control-regex
+        expect(lines.map((line) => line.length)).toEqual(grid.rows.map(() => grid.cols));
       });
     }
   });

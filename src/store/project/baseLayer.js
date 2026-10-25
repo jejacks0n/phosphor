@@ -1,9 +1,9 @@
 // The base layer's own pixels and pins: erasing (black, with a pinned space), flipping a cell's
 // halves, and writing pixels. Base edits are exact: over the image as the pipeline shows it, never
 // resampled or put through the effects. Each is part of the current edit; the caller commits it.
-import { withPins } from "@/document/baseRecords.js";
-import { BLANK } from "@/document/editCells.js";
-import { hex2rgb } from "@/lib/ColorUtils.js";
+import { withPins } from '@/document/baseRecords.js';
+import { BLANK } from '@/document/editCells.js';
+import { hex2rgb } from '@/lib/ColorUtils.js';
 
 export const baseLayerActions = {
   // Erase the base in these cells: black, with a pinned space.

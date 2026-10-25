@@ -1,14 +1,14 @@
 // The edit layer: painting and erasing paint, edit cells, typing (with the terminal's rules for wide
 // characters), flipping a cell's colors, and clearing the layer. Owns _typingNow (a keystroke is
 // being applied) and _typingTimer (the pause that ends a typing run).
-import { cellKey, withCellEdit, mergeEntry, withoutCells, shiftRow } from "@/document/editCells.js";
-import { overwritesAll } from "@/document/wideChars.js";
-import { ctx2d } from "@/lib/Canvas.js";
-import { cellIndex, bakedEntry } from "@/lib/Cells.js";
-import { cellWidth } from "@/lib/CharWidth.js";
-import { hex2rgb } from "@/lib/ColorUtils.js";
-import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
-import { TYPING_PAUSE_MS } from "@/store/project/shared.js";
+import { cellKey, withCellEdit, mergeEntry, withoutCells, shiftRow } from '@/document/editCells.js';
+import { overwritesAll } from '@/document/wideChars.js';
+import { ctx2d } from '@/lib/Canvas.js';
+import { cellIndex, bakedEntry } from '@/lib/Cells.js';
+import { cellWidth } from '@/lib/CharWidth.js';
+import { hex2rgb } from '@/lib/ColorUtils.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
+import { TYPING_PAUSE_MS } from '@/store/project/shared.js';
 
 export const editLayerActions = {
   paintEditPixels(pixels, opacity = 100) {
@@ -97,6 +97,7 @@ export const editLayerActions = {
     this._typingNow = true;
     try {
       this.beginEdit();
+      if (this._stroke && !this._stroke.typing) this._stroke.cursor = useWorkspaceStore().textCursor; // where undo puts it back
       fn();
     } finally {
       this._typingNow = false;

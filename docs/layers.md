@@ -39,8 +39,8 @@ in the order you made them.
 
 ### Baking
 
-**Bake** (the flame button in the toolbar, beside Merge down and Clear edit layer; Bake Effects
-in the Actions menu on narrow screens) makes the picture as it looks now your image, and
+**Bake** (the flame button in the toolbar, beside Merge down and Clear edit layer; Bake in the
+Actions menu on narrow screens) makes the picture as it looks now your image, and
 puts the Transforms, Adjustments and Image Filters sliders back to neutral, so you can start another
 round on top of the result. Nothing on the canvas changes when you bake:
 
@@ -73,7 +73,7 @@ instead.
 
 Color adjustments apply to the edit layer too: moving Brightness or Hue changes your edits along
 with the picture. The color palette (CGA, VGA, a color count) applies to everything, so an
-`.ans` export always fits it. With **Number**, the colors are picked from everything you see (the
+`.ans` export always fits it. With **Color count**, the colors are picked from everything you see (the
 picture, your base edits and your paint), so a color you paint with gets a place in the palette.
 The palette updates when you finish a stroke or a shape: while you're painting, the picture holds
 still and your stroke shows in its own colors. When the picture has no more colors than the number
@@ -160,6 +160,9 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   color; set the background to None for an outline only. In Character mode the shape is the
   character in the foreground color, the cells' backgrounds are left alone, and **Fill** fills the
   inside with the character too.
+- **Paint Bucket** fills what you see, in the foreground color. Text and lines you've drawn (any
+  edit cell whose character isn't a space, █, ▀ or ▄) are walls: a fill stops at them and never
+  covers them, so it stays inside a box and leaves your text readable.
 - **Color Picker**'s **FG** and **BG** toggles choose what a pick sets; both lit sets both.
 - **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
   selection's size and place, and the Color Picker its last pick and where each color came from.

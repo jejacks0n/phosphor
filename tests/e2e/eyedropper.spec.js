@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, store, cellPoint, drag } from './support.js';
+import { openApp, store, cellPoint, drag, tab, settled, editAt } from './support.js';
 
 const workspace = (page, read) => store(page, 'workspace', read);
 
@@ -31,4 +31,47 @@ test('an eyedropper pick puts the color it replaced and the color it picked in R
   await page.getByRole('button', { name: 'Foreground color' }).click();
   await page.getByTitle(`Recent: ${before.fg}`).click();
   expect(await workspace(page, (w) => w.editFgColor)).toBe(before.fg);
+});
+
+test('PIXEL view: the picker clicked off the canvas leaves the color alone', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'PIXEL').click();
+  await settled(page);
+  await page.getByRole('button', { name: 'Color Picker' }).click();
+  const box = await page.locator('article canvas').first().boundingBox();
+  const y = box.y + box.height * 0.5;
+  await page.mouse.click(box.x + box.width * 0.8, y);
+  const picked = await workspace(page, (w) => w.editFgColor);
+  expect(picked).not.toBe('#000000');
+  await page.mouse.click(box.x + box.width + 30, y); // in the padding right of the canvas
+  expect(await workspace(page, (w) => w.editFgColor)).toBe(picked);
+});
+
+test('ANSI view: an Alt-held pick off the canvas leaves the color alone', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  const box = await page.locator('.ansi-editor .display').boundingBox();
+  const inside = await cellPoint(page, 30, 5, 1);
+  await page.mouse.move(inside.x, inside.y);
+  await page.keyboard.down('Alt');
+  await page.mouse.click(inside.x, inside.y);
+  const picked = await workspace(page, (w) => w.editFgColor);
+  expect(picked).not.toBe('#000000');
+  await page.mouse.click(box.x + box.width + 20, inside.y);
+  await page.keyboard.up('Alt');
+  expect(await workspace(page, (w) => w.editFgColor)).toBe(picked);
+});
+
+test('the picker on the right half of a wide character picks the wide character\'s colors', async ({ page }) => {
+  await openApp(page);
+  await editAt(page, 5, 3);
+  await page.keyboard.insertText('漢');
+  const wide = await store(page, 'project', (p) => p.underlyingAt(5, 3));
+  await page.getByRole('button', { name: 'Color Picker' }).click();
+  const elsewhere = await cellPoint(page, 20, 10);
+  await page.mouse.click(elsewhere.x, elsewhere.y);
+  expect(await workspace(page, (w) => w.editFgColor)).not.toBe(wide.fg);
+  const trail = await cellPoint(page, 6, 3);
+  await page.mouse.click(trail.x, trail.y);
+  expect(await workspace(page, (w) => [w.editFgColor, w.editBgColor])).toEqual([wide.fg, wide.bg]);
 });

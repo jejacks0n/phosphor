@@ -22,6 +22,7 @@ const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, sa
 
 // Leaving with unsaved changes asks first.
 function onBeforeUnload(e) {
+  project.commitPending(); // text typed a moment ago counts
   if (project.image && project.isDirty) {
     e.preventDefault();
     e.returnValue = '';

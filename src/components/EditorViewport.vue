@@ -8,6 +8,7 @@ import { charRowsOf, cellAt, cellsOfPixels } from '@/lib/Cells';
 import { squarePixels } from '@/lib/Brushes';
 import { pickMode, pickTargetOf } from '@/lib/pickMode';
 import { drawsCells } from '@/tools/shapes';
+import { snapCursor } from '@/document/wideChars';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
@@ -53,6 +54,11 @@ const {
     onPaintStart: (event, pos) => (tool.value.begin ? tool.value.begin(toolCtx(), pos, event) !== false : false),
     onPaintMove: (from, to) => tool.value.move?.(toolCtx(), from, to),
     onPaintEnd: () => tool.value.end?.(toolCtx()),
+    // A stroke a pinch interrupted: what it drew is taken back, then the tool's cancel (or its end) runs.
+    onPaintCancel: () => {
+      projectStore.cancelEdit();
+      (tool.value.cancel ?? tool.value.end)?.(toolCtx());
+    },
     onColorPick: pickAt,
     onZoomChange: (zoom) => workspaceStore.setEditZoom(zoom),
   },
@@ -62,6 +68,7 @@ const {
 // colors (the [FG][BG] toggles; Shift: foreground only, Alt: background only). Picks repeat while
 // dragging; the recent colors get the old and new colors when the pick ends (workspace.endPick).
 function pickAt(pos, event) {
+  if (pos.x < 0 || pos.y < 0 || pos.x >= projectStore.cols || pos.y >= projectStore.rows) return; // off the grid
   const mode = pickMode({
     view: props.view,
     shiftKey: !!event?.shiftKey,
@@ -75,8 +82,9 @@ function pickAt(pos, event) {
     workspaceStore.pickColor(mode === 'bg' ? 'bg' : 'fg', projectStore.rawColorAt(pos.x, pos.y));
     return;
   }
-  const cell = cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows);
-  if (!cell) return;
+  const at = cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows);
+  if (!at) return;
+  const cell = snapCursor(projectStore.cells, projectStore.cols, at, 0); // a wide character's trail: its lead's colors
   const under = projectStore.underlyingAt(cell.col, cell.row);
   const entry = projectStore.editCellAt(cell.col, cell.row);
   // Color ASCII never shows a generated background: only an edit cell's is real.
@@ -105,7 +113,11 @@ const previewStyle = computed(() => {
     const cellW = unit.x, cellH = unit.y * 2;
     const col = Math.floor(pos.x / cellW), row = Math.floor(pos.y / cellH);
     if (col < 0 || row < 0 || col >= projectStore.cols || row >= charRowsOf(projectStore.rows)) return { display: 'none' };
-    return { display: 'block', width: `${cellW}px`, height: `${cellH}px`, left: `${col * cellW + 2}px`, top: `${row * cellH + 1}px`, ...CELL_HIGHLIGHT };
+    const display = unref(props.display); // inside its border, as pos is
+    return {
+      display: 'block', width: `${cellW}px`, height: `${cellH}px`, ...CELL_HIGHLIGHT,
+      left: `${col * cellW + (display?.clientLeft ?? 0)}px`, top: `${row * cellH + (display?.clientTop ?? 0)}px`,
+    };
   }
 
   const size = preview.size(workspaceStore);
@@ -137,8 +149,8 @@ const previewStyle = computed(() => {
 });
 
 // The Shapes tool's drag outline (grid positions -> CSS px), drawn while dragging: the rect, or its ellipse.
-// In the ANSI view a line/character rectangle snaps to whole cells, so its outline does too; ANSI
-// overlays sit inside the display's 2px/1px border, like the cursor and cell highlights.
+// In the ANSI view a line/character rectangle snaps to whole cells, so its outline does too; it sits
+// inside the display's border, like the cursor and cell highlights.
 const shapeDragStyle = computed(() => {
   const drag = workspaceStore.shapeDrag, unit = props.unit;
   if (!drag || !unit) return null;
@@ -150,7 +162,8 @@ const shapeDragStyle = computed(() => {
     y0 = Math.floor(y0 / 2) * 2;
     y1 = Math.ceil(y1 / 2) * 2;
   }
-  const [dx, dy] = ansi ? [2, 1] : [0, 0];
+  const display = unref(props.display);
+  const dx = display?.clientLeft ?? 0, dy = display?.clientTop ?? 0;
   return {
     left: `${x0 * unit.x + dx}px`, top: `${y0 * unit.y + dy}px`, width: `${(x1 - x0) * unit.x}px`, height: `${(y1 - y0) * unit.y}px`,
     borderRadius: workspaceStore.shapeKind === 'ellipse' ? '50%' : '0',

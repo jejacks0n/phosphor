@@ -10,7 +10,7 @@ import { isField } from '@/lib/fields';
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
   const _handleUndoRedo = (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { // Shift makes it 'Z'
       e.preventDefault();
       if (e.shiftKey) {
         projectStore.redo();
@@ -47,6 +47,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const PRESSES = 'button, a, [role="tab"], [role="button"], input[type=checkbox], input[type=radio]';
   const _spacePans = (e) => {
     if (workspaceStore.editorTab === 'sauce' || workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false;
+    if (workspaceStore.activeTool === 'text' && workspaceStore.textCursor && workspaceStore.editorTab === 'output') return false; // typing, wherever focus is
     const target = e.target?.closest ? e.target : null;
     if (target?.closest(TYPES)) return false;
     return !target?.closest(PRESSES) || workspaceStore.pointerOverEditor;
@@ -167,8 +168,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     clearTimeout(timer);
     _pendingPaste = null;
     e.preventDefault();
-    const text = e.clipboardData?.getData('text/plain') ?? '';
-    const ours = workspaceStore.clipboardText;
+    const text = (e.clipboardData?.getData('text/plain') ?? '').replace(/\r\n/g, '\n'); // Windows' clipboard adds CRs
+    const ours = workspaceStore.clipboardText?.replace(/\r\n/g, '\n') ?? null;
     if (workspaceStore.clipboard && (!text || ours === null || text === ours)) _pasteBlock(at);
     else if (text) {
       if (workspaceStore.activeTool !== 'text' || !workspaceStore.textCursor) workspaceStore.textCursor = at;

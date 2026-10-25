@@ -114,6 +114,12 @@ const coordsAt = (event) => {
 // CSS px per grid pixel (a grid pixel is half a character cell tall), for tool previews.
 const unit = computed(() => (metrics.value ? { x: metrics.value.cellWidth, y: metrics.value.lineHeight / 2 } : null));
 
+// A cell's top-left in the overlays, inside the display's border where the cells start.
+const cellOrigin = (m, col, row) => ({
+  left: `${col * m.cellWidth + (displayRef.value?.clientLeft ?? 0)}px`,
+  top: `${row * m.lineHeight + (displayRef.value?.clientTop ?? 0)}px`,
+});
+
 // The Text tool's cursor: a blinking outline on its cell.
 const cursorStyle = computed(() => {
   const m = metrics.value, cursor = workspaceStore.textCursor;
@@ -122,8 +128,7 @@ const cursorStyle = computed(() => {
     display: 'block',
     width: `${m.cellWidth}px`,
     height: `${m.lineHeight}px`,
-    left: `${cursor.col * m.cellWidth + 2}px`,
-    top: `${cursor.row * m.lineHeight + 1}px`,
+    ...cellOrigin(m, cursor.col, cursor.row),
   };
 });
 
@@ -131,7 +136,7 @@ const cursorStyle = computed(() => {
 const textInputStyle = computed(() => {
   const m = metrics.value, cursor = workspaceStore.textCursor;
   if (!m || !cursor) return { left: '0px', top: '0px' };
-  return { left: `${cursor.col * m.cellWidth + 2}px`, top: `${cursor.row * m.lineHeight + 1}px`, height: `${m.lineHeight}px` };
+  return { ...cellOrigin(m, cursor.col, cursor.row), height: `${m.lineHeight}px` };
 });
 
 // The view follows the Text tool's cursor, like a text editor: when it moves (the arrow keys,
@@ -148,9 +153,8 @@ const selectionBox = computed(() => {
   const m = metrics.value, sel = workspaceStore.selection;
   if (!m || !sel) return null;
   const { dc, dr } = workspaceStore.selectionOffset ?? { dc: 0, dr: 0 };
-  const left = (sel.c0 + dc) * m.cellWidth + 2, top = (sel.r0 + dr) * m.lineHeight + 1;
   return {
-    marquee: { left: `${left}px`, top: `${top}px`, width: `${(sel.c1 - sel.c0 + 1) * m.cellWidth}px`, height: `${(sel.r1 - sel.r0 + 1) * m.lineHeight}px` },
+    marquee: { ...cellOrigin(m, sel.c0 + dc, sel.r0 + dr), width: `${(sel.c1 - sel.c0 + 1) * m.cellWidth}px`, height: `${(sel.r1 - sel.r0 + 1) * m.lineHeight}px` },
   };
 });
 

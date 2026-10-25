@@ -1,6 +1,7 @@
 /**
  * Iterative BFS Flood Fill algorithm for finding contiguous pixels within a tolerance.
- * Also supports non-contiguous global replacement if contiguous = false.
+ * Also supports non-contiguous global replacement if contiguous = false. walls (a byte per pixel,
+ * optional): pixels the fill neither paints nor crosses.
  */
 
 function colorDistance(r1, g1, b1, r2, g2, b2) {
@@ -9,13 +10,13 @@ function colorDistance(r1, g1, b1, r2, g2, b2) {
   const dg = g1 - g2;
   const db = b1 - b2;
   // Map 0-255 RGB range to 0-100 percentage for tolerance matching
-  return Math.sqrt(dr * dr + dg * dg + db * db) / 4.4167; 
+  return Math.sqrt(dr * dr + dg * dg + db * db) / 4.4167;
 }
 
-export function floodFill(imageData, startX, startY, tolerance, contiguous = true, feather = 2.0) {
+export function floodFill(imageData, startX, startY, tolerance, contiguous = true, feather = 2.0, walls = null) {
   const { width, height, data } = imageData;
 
-  if (startX < 0 || startX >= width || startY < 0 || startY >= height) {
+  if (startX < 0 || startX >= width || startY < 0 || startY >= height || walls?.[startY * width + startX]) {
     return [];
   }
 
@@ -31,6 +32,7 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
     // Global replacement mode with smoothing
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
+        if (walls?.[y * width + x]) continue;
         const offset = (y * width + x) * 4;
         const r = data[offset];
         const g = data[offset + 1];
@@ -58,7 +60,7 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
     const [x, y] = queue.shift();
     const idx = y * width + x;
     const currentAlpha = visited[idx];
-    
+
     result.push({ x, y, alpha: currentAlpha });
 
     // Only expand from pixels that are mostly within the core tolerance
@@ -70,9 +72,9 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
 
     for (const [nx, ny] of neighbors) {
       if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-      
+
       const nidx = ny * width + nx;
-      if (visited[nidx] !== -1) continue;
+      if (visited[nidx] !== -1 || walls?.[nidx]) continue;
 
       const offset = nidx * 4;
       const r = data[offset];
@@ -80,7 +82,7 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
       const b = data[offset + 2];
 
       const dist = colorDistance(targetR, targetG, targetB, r, g, b);
-      
+
       if (dist <= tolerance) {
         visited[nidx] = 1.0;
         queue.push([nx, ny]);

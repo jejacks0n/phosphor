@@ -9,6 +9,7 @@ import { EMPTY_BASE, serializeBase, deserializeBase } from './baseRecords.js';
 import { MAX_LAYER_DIM } from './PaintLayer.js';
 
 export const PROJECT_EXTENSION = '.phosphor';
+export const isProjectFile = (name) => name.toLowerCase().endsWith(PROJECT_EXTENSION);
 const MAGIC_HEADER = 'PHOSPHOR';
 
 // Decode image bytes; the object URL only lives until the image has loaded.

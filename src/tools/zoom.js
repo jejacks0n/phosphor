@@ -6,5 +6,4 @@ export default {
   views: ['input'],
   kind: 'navigate',
   section: 'navigate',
-  instant: true,
 };

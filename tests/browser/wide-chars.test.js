@@ -6,6 +6,7 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { terminalGrid } from '../support/terminal.js';
 import { snapCursor } from '@/document/wideChars';
 import eraser from '@/tools/eraser';
+import flip from '@/tools/flip';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { cellIndex } from '@/lib/Cells';
 import { graphemes, cellWidth } from '@/lib/CharWidth';
@@ -112,6 +113,16 @@ test('the eraser on a trail erases its lead too', async () => {
   eraser.end(ctx);
   expect(project.editCellAt(4, 3)).toBeUndefined();
   expect(project.cells[cellIndex(4, 3, COLS)].wide).toBeUndefined();
+});
+
+test('Flip on a trail flips its lead', async () => {
+  const { project, workspace } = await blank();
+  project.typeAt(4, 3, '漢', { fg: '#ff0000', bg: '#0000ff' });
+  project.commitEdit();
+  const ctx = { project, workspace, view: 'output' };
+  flip.begin(ctx, { x: 5, y: 6 });
+  flip.end(ctx);
+  expect(project.cells[cellIndex(4, 3, COLS)]).toMatchObject({ char: '漢', fg: { hex: '#0000ff' }, bg: { hex: '#ff0000' } });
 });
 
 test('the result exports to a .utf8ans a terminal lays out column for column', async () => {

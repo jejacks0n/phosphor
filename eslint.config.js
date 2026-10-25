@@ -16,12 +16,15 @@ export default [
     },
   },
   {
-    // The house style, enforced so it stays one style: 2-space indents, no tabs, semicolons.
+    // The house style, enforced so it stays one style: 2-space indents, no tabs, semicolons, single
+    // quotes, no trailing spaces.
     plugins: { '@stylistic': stylistic },
     rules: {
       '@stylistic/indent': ['error', 2, { SwitchCase: 1 }],
       '@stylistic/no-tabs': 'error',
       '@stylistic/semi': ['error', 'always'],
+      '@stylistic/quotes': ['error', 'single', { avoidEscape: true, allowTemplateLiterals: 'always' }],
+      '@stylistic/no-trailing-spaces': 'error',
     },
   },
   {

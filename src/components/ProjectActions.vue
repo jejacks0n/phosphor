@@ -8,6 +8,7 @@ const { image } = storeToRefs(project);
 const { editorTab, saveDialog } = storeToRefs(useWorkspaceStore());
 
 function confirmNewProject() {
+  project.commitPending(); // text typed a moment ago counts
   if (project.isDirty && !confirm('You have unsaved changes. Are you sure you want to start a new project?')) return;
   project.clearImage();
   editorTab.value = 'input';

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { openApp, store, cellPoint, drag } from './support.js';
 
-const mergeButton = (page) => page.getByRole('button', { name: 'Merge Down: Merges the edit layer into the base layer.' });
+const mergeButton = (page) => page.getByRole('button', { name: 'Merge down: move the edit layer into the base layer.' });
 const dialog = (page) => page.getByRole('dialog', { name: 'Merge down' });
 const hasEdits = (page) => store(page, 'project', (p) => p.hasEdits);
 

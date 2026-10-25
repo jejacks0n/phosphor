@@ -71,7 +71,7 @@ test('.ans: every character that will be replaced is listed, in a list that scro
   const list = dialog(page).getByRole('list', { name: 'Replacements' });
   const shown = (await list.getByRole('listitem').allTextContents()).map((t) => t.replace(/\s+/g, '').replace(/\d+cells?$/, ''));
   expect(shown).toEqual(expected);
-  expect(shown.length).toBeGreaterThanOrEqual(21 + 4); // the 21 typed, and the default set's ▁▂▃▅
+  expect(shown.length).toBe(21); // the 21 typed (the default set is all CP437)
   await expect(list.getByRole('listitem').filter({ hasText: '一' })).toHaveText(/一\s*→\s*\?\s*1 cell$/);
 
   const { scrollHeight, clientHeight } = await list.evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }));

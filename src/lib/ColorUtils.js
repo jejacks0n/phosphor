@@ -4,7 +4,7 @@
 
 const HEX_TABLE = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
 
-// Convert {r,g,b} values to '#RRGGBB' or '#RRGGBBAA'
+// { r, g, b, a? } as '#rrggbb', or '#rrggbbaa' with an alpha under 1
 export function rgb2hex(rgb) {
   const r = HEX_TABLE[Math.max(0, Math.min(255, Math.round(rgb.r)))];
   const g = HEX_TABLE[Math.max(0, Math.min(255, Math.round(rgb.g)))];

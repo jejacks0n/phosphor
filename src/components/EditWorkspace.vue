@@ -2,7 +2,7 @@
 import { watch, onMounted } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { PROJECT_EXTENSION } from '@/document/projectIO';
+import { isProjectFile } from '@/document/projectIO';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 
 import EditTabs from '@/components/EditTabs.vue';
@@ -21,14 +21,10 @@ onMounted(() => project.render());
 watch(() => project.processParams, () => project.render(), { deep: true });
 
 async function handleFileSelected(file) {
-  if (file.name.endsWith(PROJECT_EXTENSION)) {
-    await project.loadProject(file);
-  } else {
-    if (project.image && project.isDirty && !confirm('You have unsaved changes. Are you sure you want to load a new image?')) {
-      return;
-    }
-    await project.setImageFromFile(file);
-  }
+  project.commitPending(); // text typed a moment ago counts
+  if (project.image && project.isDirty && !confirm(`You have unsaved changes. Open ${file.name} anyway?`)) return;
+  if (isProjectFile(file.name)) await project.loadProject(file);
+  else await project.setImageFromFile(file);
   workspace.editorTab = 'output';
 }
 </script>

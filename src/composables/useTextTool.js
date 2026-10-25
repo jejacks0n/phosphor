@@ -20,17 +20,25 @@ export function typeAtCursor(project, workspace, char) {
   workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(cursor, cellWidth(char), 0, project.cols, charRowsOf(project.rows)), 1);
 }
 
-// Text as typing, from the Text tool's cursor (a paste, an input method, the emoji picker): a line
-// break goes to the next row at the column the text started in, and once a row is full the rest of
-// that line is dropped (not piled into its last cell). One undo step, like a run of typing.
+// A paste: typed from the cursor (typeLines), one undo step of its own.
 export function typeText(project, workspace, text) {
+  project.commitPending();
+  typeLines(project, workspace, text);
+  project.commitPending();
+}
+
+// Text as typing, from the Text tool's cursor (an input method, the emoji picker, a paste): a line
+// break goes to the next row at the column the text started in, once a row is full the rest of that
+// line is dropped, and lines with no row left are dropped too.
+function typeLines(project, workspace, text) {
   const start = workspace.textCursor;
   if (!start) return;
   let full = false;
   for (const action of typedText(text)) {
     if (action.type === 'newline') {
-      full = false;
       const { row } = workspace.textCursor;
+      if (row === charRowsOf(project.rows) - 1) break;
+      full = false;
       workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor({ col: start.col, row }, 0, 1, project.cols, charRowsOf(project.rows)), 0);
     } else if (!full) {
       const before = workspace.textCursor.col;
@@ -53,7 +61,9 @@ export function useTextTool(project, workspace, textInput) {
     return isField(el) || (!!el && !isTextInput(el) && !!el.closest('[role="dialog"]'));
   };
 
-  const move = (dc, dr) => {
+  // Moving the cursor ends a run of typing (Backspace's move is part of it).
+  const move = (dc, dr, { typing = false } = {}) => {
+    if (!typing) project.commitPending();
     workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(workspace.textCursor, dc, dr, project.cols, charRowsOf(project.rows)), dc);
   };
 
@@ -76,7 +86,7 @@ export function useTextTool(project, workspace, textInput) {
       case 'end': move(project.cols, 0); break;
       case 'newline': move(-col, 1); break;
       case 'backspace':
-        move(-project.backspaceAt(col, row, workspace.typingAttrs(), { insert }), 0);
+        move(-project.backspaceAt(col, row, workspace.typingAttrs(), { insert }), 0, { typing: true });
         break;
       case 'delete': project.deleteAt(col, row); break;
       case 'toggleInsert': workspace.insertMode = !workspace.insertMode; break;
@@ -114,22 +124,25 @@ export function useTextTool(project, workspace, textInput) {
 
   // An input method commits with compositionend (its in-progress input events are skipped: Safari
   // and Firefox follow compositionend with one more, which would type it twice); everything else
-  // inserted is typed as it arrives. A paste's text is in the field, not the event.
+  // inserted is typed as it arrives: keys and the emoji picker as typing, anything else (a paste, a
+  // drop) as a paste. A paste's text is in the field, not the event.
   const COMPOSING = new Set(['insertCompositionText', 'insertFromComposition']);
   const onInput = (event) => {
     if (event.isComposing || COMPOSING.has(event.inputType)) return;
-    if (event.inputType?.startsWith('insert')) typeText(project, workspace, event.data ?? event.target.value);
+    const type = event.inputType === 'insertText' ? typeLines : typeText;
+    if (event.inputType?.startsWith('insert')) type(project, workspace, event.data ?? event.target.value);
     event.target.value = '';
   };
   const onCompositionEnd = (event) => {
-    if (event.data) typeText(project, workspace, event.data);
+    if (event.data) typeLines(project, workspace, event.data);
     event.target.value = '';
   };
 
   // The textarea has focus while the tool is in use (after the click that placed the cursor has
-  // focused whatever it focuses), and never takes it from a real field.
+  // focused whatever it focuses, and after the color box, the shortcuts list or the save dialog
+  // closes), and never takes it from a real field.
   const inUse = () => workspace.editorTab === 'output' && workspace.activeTool === 'text' && !!workspace.textCursor && !workspace.paletteLayerOpen;
-  watch(() => [inUse(), workspace.textCursor], () => setTimeout(() => {
+  watch(() => [inUse(), workspace.textCursor, workspace.colorBox, workspace.shortcutsOpen, workspace.saveDialog], () => setTimeout(() => {
     const el = textInput?.value;
     if (!el) return;
     if (!inUse()) {

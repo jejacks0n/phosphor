@@ -71,7 +71,7 @@ test('the status bar\'s Smooth button turns anti-aliasing off and on, in both vi
 
 test('the canvas follows the Smooth button: white text on black has gray edges when smooth, none when sharp', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Start with a Blank Canvas Instead' }).click();
+  await page.getByRole('button', { name: 'Or start with a blank canvas' }).click();
   await tab(page, 'ANSI').click();
   await settled(page);
   await editAt(page, 1, 1);

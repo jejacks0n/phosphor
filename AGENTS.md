@@ -51,4 +51,3 @@ npm run build
   in [docs/testing.md](docs/testing.md)).
 - User-facing behavior is described in `docs/` ([layers](docs/layers.md),
   [characters](docs/characters.md)); update it when behavior changes.
-- Never commit `docs/superpowers/` or `.superpowers/` (local planning notes).

@@ -2,13 +2,13 @@
 // layers following it, full renders and partial recomposites, and the cells the views show. Owns
 // _renderQueued and _rendering (a render on its way, which tests wait on) and _layerGrid (the grid
 // the layers were last sized to).
-import PaintLayer, { editScaleFor, resizeTransform } from "@/document/PaintLayer.js";
-import { remapBaseRecords } from "@/document/baseRecords.js";
-import { fitRect } from "@/lib/Canvas.js";
-import { layoutWide } from "@/lib/Cells.js";
-import { MAX_DIMENSION } from "@/store/project/shared.js";
-import { baseParams } from "@/store/settings.js";
-import { markRaw } from "vue";
+import PaintLayer, { editScaleFor, resizeTransform } from '@/document/PaintLayer.js';
+import { remapBaseRecords } from '@/document/baseRecords.js';
+import { fitRect } from '@/lib/Canvas.js';
+import { layoutWide } from '@/lib/Cells.js';
+import { MAX_DIMENSION } from '@/store/project/shared.js';
+import { baseParams } from '@/store/settings.js';
+import { markRaw } from 'vue';
 
 export const renderingActions = {
   updateCols(val) {
@@ -89,10 +89,12 @@ export const renderingActions = {
     this.dropEdits();
   },
 
-  // The grid changed under the history: forget it and the open edit.
+  // The grid changed under the history: forget the open edit and every step but slider moves (they
+  // don't depend on the grid).
   dropEdits() {
     this._stroke = null;
-    this.clearHistory();
+    this.history.retain(entry => entry.settingsOnly);
+    this.historyVersion = this.history.version;
   },
 
   // Where the image fits a cols x rows grid.

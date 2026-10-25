@@ -22,7 +22,7 @@ function onFileSelected(e) {
       </label>
 
       <button class="link" @click="$emit('start-blank')">
-        Start with a Blank Canvas Instead
+        Or start with a blank canvas
       </button>
     </div>
   </article>

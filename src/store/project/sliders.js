@@ -1,8 +1,8 @@
 // The Transforms, Adjustments and Image Filters sliders as undo steps: a drag, a run of key nudges, a
 // color pick, RESET and RESET ALL are one step each. Owns _sliderBefore (the values before a move)
 // and _lastSlider (the step a nudge can extend).
-import { SLIDER_KEYS, NUDGE_MS } from "@/store/project/shared.js";
-import { RESET_GROUPS, groupDefaults } from "@/store/settings.js";
+import { SLIDER_KEYS, NUDGE_MS } from '@/store/project/shared.js';
+import { RESET_GROUPS, groupDefaults } from '@/store/settings.js';
 
 export const sliderActions = {
   // RESET ALL and a group's RESET: one undo step each.
@@ -44,7 +44,7 @@ export const sliderActions = {
     }
     if (SLIDER_KEYS.every(k => before[k] === after[k])) return;
     this.commitPending();
-    const entry = { after, undo: () => this.$patch(before), redo: () => this.$patch(entry.after) };
+    const entry = { settingsOnly: true, after, undo: () => this.$patch(before), redo: () => this.$patch(entry.after) }; // settingsOnly: kept when the grid changes (rendering.js dropEdits)
     this.pushEdit(entry);
     this._lastSlider = nudge ? { key, entry, version: this.history.version, at: Date.now() } : null;
   },

@@ -1,19 +1,21 @@
 // Reading the document without changing it: the colors under a grid pixel (the image, the base, the
 // paint), what's under a cell, edit cells, and rects on the grid.
-import { cellKey, parseKey } from "@/document/editCells.js";
-import { cellIndex, charRowsOf } from "@/lib/Cells.js";
-import { rgb2hex, hex2rgb } from "@/lib/ColorUtils.js";
-import { over } from "@/store/project/shared.js";
+import { cellKey, parseKey } from '@/document/editCells.js';
+import { cellIndex, charRowsOf } from '@/lib/Cells.js';
+import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
+import { over } from '@/store/project/shared.js';
 
 export const readingActions = {
-  // The color under grid pixel (x, y) before adjustments: paint if there is any, else the source.
+  // The color under grid pixel (x, y) before adjustments: paint (over the base, by its alpha) if
+  // there is any, else the base.
   rawColorAt(x, y) {
     if (!this.image) return '#000000';
     this.ensureLayer();
     x = Math.floor(x);
     y = Math.floor(y);
-    const painted = this.paintLayer?.colorAt(x, y);
-    return painted ? rgb2hex(painted) : this.baseColorAt(x, y);
+    const painted = this.paintLayer?.pixelAt(x, y);
+    if (!painted || painted.a >= 1) return painted ? rgb2hex(painted) : this.baseColorAt(x, y);
+    return rgb2hex(over(hex2rgb(this.baseColorAt(x, y)), painted));
   },
 
   // The base layer's color at grid pixel (x, y), as stored (before adjustments): its own pixel
@@ -33,13 +35,14 @@ export const readingActions = {
   // What's under a cell, as stored colors (pre-adjustment), for the eyedropper, flip and merge up.
   // Stored, not as displayed: a picked or merged-up color keeps following the adjustments, as the
   // picture's own colors do (picking a displayed color would apply the adjustments twice).
-  // withPaint: paint (on top) wins per half; otherwise edit-cell attributes, then the source image.
+  // withPaint: paint (on top, by its alpha) over each half; under it edit-cell attributes, then the
+  // source image.
   underlyingAt(col, row, { withPaint = true } = {}) {
     const entry = this.editCellAt(col, row) ?? {};
     const half = (y, attr) => {
-      const painted = withPaint && this.paintLayer?.colorAt(col, y);
-      if (painted) return rgb2hex(painted);
-      return entry[attr] ?? this.baseColorAt(col, y);
+      const under = entry[attr] ?? this.baseColorAt(col, y);
+      const painted = withPaint && this.paintLayer?.pixelAt(col, y);
+      return painted ? rgb2hex(over(hex2rgb(under), painted)) : under;
     };
     const i = cellIndex(col, row, this.cols);
     const shown = withPaint ? this.cells[i] : null;

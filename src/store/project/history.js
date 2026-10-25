@@ -2,7 +2,8 @@
 // patches, edit cells, base records); undo and redo replay them. Owns _stroke, the edit being
 // recorded (a typing run keeps it open across keystrokes: editLayer.js; clearImage and dropEdits
 // drop it when the document or the grid changes under it).
-import { markRaw } from "vue";
+import { markRaw, toRaw } from 'vue';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 
 export const historyActions = {
   // An edit (stroke, fill, cell edit) records from its first change until commitEdit().
@@ -32,9 +33,26 @@ export const historyActions = {
       this.hasPaint = this.paintLayer.hasPaint;
       [this.editCells] = sides[side];
       this.setBaseRecords(sides[side][1]);
+      if (side === 'before' && stroke.cursor) useWorkspaceStore().textCursor = stroke.cursor; // typing undone: the cursor goes back to where it started
       this.render();
     };
     this.pushEdit({ undo: () => apply('before'), redo: () => apply('after') });
+  },
+
+  // Take back the open edit without recording it (a stroke a pinch interrupted): its paint, base
+  // pixels, edit cells and pins go back as they were. A typing run isn't interrupted by a pinch: it stays.
+  cancelEdit() {
+    const stroke = this._stroke;
+    if (!stroke || stroke.typing) return;
+    this._stroke = null;
+    const patch = this.paintLayer?.endStroke();
+    const basePatch = this.baseLayer?.endStroke();
+    if (patch) this.paintLayer.applyPatch(patch, 'before');
+    if (basePatch) this.baseLayer.applyPatch(basePatch, 'before');
+    this.hasPaint = this.paintLayer?.hasPaint ?? false;
+    this.editCells = stroke.editCells;
+    this.setBaseRecords(stroke.baseRecords);
+    this.render();
   },
 
   // Fold an unfinished stroke into history before an edit that replaces the whole layer.
@@ -56,8 +74,15 @@ export const historyActions = {
 
   undo() {
     this.commitPending();
+    const float = this._float?.version === this.history.version ? this._float : null;
     if (!this.history.undo()) return;
     this.historyVersion = this.history.version;
+    // Undoing a move or paste: the selection goes back with the cells (a paste's is dropped).
+    if (float) {
+      this._float = null;
+      const workspace = useWorkspaceStore();
+      if (toRaw(workspace.selection) === toRaw(float.landed)) workspace.selection = float.paste ? null : float.from;
+    }
     this.editVersion++; // undo moves away from what was saved (undoing back to it still counts as dirty)
   },
 

@@ -21,6 +21,3 @@ document.addEventListener('touchend', (event) => {
   lastTouchEnd = now;
 }, false);
 
-app.config.errorHandler = (err) => {
-  console.error(err);
-};

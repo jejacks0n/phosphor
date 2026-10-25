@@ -137,7 +137,6 @@ export default {
   views: ['input', 'output'],
   kind: 'paint',
   altPicks: true,
-  instant: true,
   options: [
     {
       key: 'shapeKind', label: 'Shape', type: 'segmented',
@@ -190,5 +189,10 @@ export default {
     if (start && drag) apply(ctx, drag.to);
     start = null;
     ctx.project.commitEdit();
+  },
+  // A pinch took over the drag: nothing is drawn.
+  cancel({ workspace }) {
+    workspace.shapeDrag = null;
+    start = null;
   },
 };

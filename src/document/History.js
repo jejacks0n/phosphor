@@ -36,6 +36,14 @@ export default class History {
     return true;
   }
 
+  // Drop every entry but those keep(entry) accepts, in order.
+  retain(keep) {
+    const undoable = this.#entries.slice(0, this.#cursor).filter(keep);
+    this.#entries = [...undoable, ...this.#entries.slice(this.#cursor).filter(keep)];
+    this.#cursor = undoable.length;
+    this.version++;
+  }
+
   clear() {
     this.#entries = [];
     this.#cursor = 0;

@@ -28,3 +28,16 @@ test('Undo/redo stack semantics and the tile math used to record paint strokes',
   assert.deepEqual(tilesForRect({ x: -10, y: -10, w: 20, h: 20 }, 400, 840), [{ x: 0, y: 0, w: 64, h: 64 }]);
   assert.deepEqual(tilesForRect(null, 400, 840), []);
 });
+
+test('retain keeps the entries it accepts, in order, on both sides of the cursor', () => {
+  const log = [];
+  const entry = (n, keep) => ({ keep, undo: () => log.push(`u${n}`), redo: () => log.push(`r${n}`) });
+  const h = new History(10);
+  [entry(1, true), entry(2, false), entry(3, true), entry(4, true)].forEach((e) => h.push(e));
+  h.undo(); // 4 is redoable
+  h.retain((e) => e.keep);
+  assert.equal(h.undo(), true); assert.equal(h.undo(), true); assert.equal(h.undo(), false);
+  assert.deepEqual(log, ['u4', 'u3', 'u1']);
+  h.redo(); h.redo(); h.redo();
+  assert.deepEqual(log.slice(3), ['r1', 'r3', 'r4']);
+});

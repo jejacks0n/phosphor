@@ -1,20 +1,20 @@
 import { shallowRef, markRaw } from 'vue';
 import { defineStore } from 'pinia';
-import { EMPTY_BASE } from "@/document/baseRecords.js";
-import Renderer from "@/document/Renderer.js";
-import History from "@/document/History.js";
-import { settingsState, slidersAtDefaults } from "@/store/settings.js";
-import { combineActions } from "@/store/project/combineActions.js";
-import { documentActions } from "@/store/project/document.js";
-import { mergingActions } from "@/store/project/merging.js";
-import { selectionActions } from "@/store/project/selection.js";
-import { editLayerActions } from "@/store/project/editLayer.js";
-import { renderingActions } from "@/store/project/rendering.js";
-import { readingActions } from "@/store/project/reading.js";
-import { baseLayerActions } from "@/store/project/baseLayer.js";
-import { sliderActions } from "@/store/project/sliders.js";
-import { historyActions } from "@/store/project/history.js";
-import { MAX_DIMENSION, PIPELINE_KEYS, settingsJson } from "@/store/project/shared.js";
+import { EMPTY_BASE } from '@/document/baseRecords.js';
+import Renderer from '@/document/Renderer.js';
+import History from '@/document/History.js';
+import { settingsState, slidersAtDefaults } from '@/store/settings.js';
+import { combineActions } from '@/store/project/combineActions.js';
+import { documentActions } from '@/store/project/document.js';
+import { mergingActions } from '@/store/project/merging.js';
+import { selectionActions } from '@/store/project/selection.js';
+import { editLayerActions } from '@/store/project/editLayer.js';
+import { renderingActions } from '@/store/project/rendering.js';
+import { readingActions } from '@/store/project/reading.js';
+import { baseLayerActions } from '@/store/project/baseLayer.js';
+import { sliderActions } from '@/store/project/sliders.js';
+import { historyActions } from '@/store/project/history.js';
+import { MAX_DIMENSION, PIPELINE_KEYS, settingsJson } from '@/store/project/shared.js';
 
 export const useProjectStore = defineStore('project', {
   state: () => ({

@@ -32,6 +32,8 @@ test("The Text tool's keys -> editing actions, cursor clamping, and row shifting
   assert.equal(k('Shift'), null);
   assert.equal(k('Tab'), null);
   assert.equal(k('Escape'), null);
+  assert.equal(k('́'), null);                                            // a lone combining mark: no cell holds it
+  assert.equal(k('́', { altKey: true }), null);
   assert.deepEqual(moveCursor({ col: 79, row: 0 }, 1, 0, 80, 25), { col: 79, row: 0 });
   assert.deepEqual(moveCursor({ col: 0, row: 0 }, -1, -1, 80, 25), { col: 0, row: 0 });
   assert.deepEqual(moveCursor({ col: 5, row: 24 }, 0, 1, 80, 25), { col: 5, row: 24 });

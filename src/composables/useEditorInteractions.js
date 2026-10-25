@@ -1,11 +1,11 @@
 import { ref, unref } from 'vue';
 import { clampZoom } from '@/store/WorkspaceStore';
 
-const TOUCH_DELAY_MS = 150; // Increased to prevent accidental marks during zoom
+const TOUCH_DELAY_MS = 150; // a touch waits this long before drawing, in case a second finger makes it a pinch
 const TOUCH_MOVE_THRESHOLD = 5; // Pixels to move before immediate paint start
 
 
-// options.activeTool: a ref to the active tool object (src/tools); its kind/id/instant decide how pointers behave.
+// options.activeTool: a ref to the active tool object (src/tools); its kind and id decide how pointers behave.
 export function useEditorInteractions(options) {
   const {
     containerRef,
@@ -66,11 +66,10 @@ export function useEditorInteractions(options) {
     if (tool.id === 'zoom' && !disableZoom && !_isMiddleClick) {
       _initialZoom = unref(editZoom);
     }
-    
+
     if (event.pointerId !== undefined && event.currentTarget) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
-    window.addEventListener('pointermove', onMouseMove);
     window.addEventListener('pointerup', commitPaint);
     window.addEventListener('pointercancel', commitPaint);
   }
@@ -87,7 +86,6 @@ export function useEditorInteractions(options) {
     if (event.pointerId !== undefined && event.currentTarget) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
-    window.addEventListener('pointermove', onMouseMove);
     window.addEventListener('pointerup', commitPaint);
     window.addEventListener('pointercancel', commitPaint);
   }
@@ -103,11 +101,10 @@ export function useEditorInteractions(options) {
     if (workspaceStore) workspaceStore.isPainting = true;
 
     _lastPos = pos;
-    
+
     if (event.pointerId !== undefined && event.currentTarget) {
       event.currentTarget.setPointerCapture(event.pointerId);
     }
-    window.addEventListener('pointermove', onMouseMove);
     window.addEventListener('pointerup', commitPaint);
     window.addEventListener('pointercancel', commitPaint);
   }
@@ -134,7 +131,7 @@ export function useEditorInteractions(options) {
   function _getScrollParent() {
     let el = unref(containerRef);
     if (el && el.$el) el = el.$el;
-    
+
     if (el && (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth)) {
       return el;
     }
@@ -162,10 +159,11 @@ export function useEditorInteractions(options) {
     // Ignore touch-based pointer events to let handleTouchStart manage them
     // with the appropriate delay and multi-touch logic.
     if (event.pointerType === 'touch') return;
+    if (event.button === 2) return; // the right button draws nothing
 
-    // Safari fix: if focus is stuck in a dropdown/select, the first click on the 
-    // canvas might be consumed just to clear focus. Proactively blurring 
-    // helps ensure the event is processed immediately. 
+    // Safari fix: if focus is stuck in a dropdown/select, the first click on the
+    // canvas might be consumed just to clear focus. Proactively blurring
+    // helps ensure the event is processed immediately.
     // Both mousedown and pointerdown are mapped to this function: the mousedown a browser sends right
     // after a pointerdown (the same press) is dropped; two pointerdowns are two presses, however quick.
     if (event.type === 'mousedown' && Date.now() - _lastInteractionTime < 50) return;
@@ -262,6 +260,8 @@ export function useEditorInteractions(options) {
     });
   }
 
+  // The viewport's pointermove. A stroke captures the pointer, so its moves come here even off the
+  // viewport, once each.
   function onMouseMove(event) {
     if (event.pointerType === 'touch') return;
 
@@ -308,7 +308,8 @@ export function useEditorInteractions(options) {
     callbacks.onPaintMove(prev, pos);
   }
 
-  function commitPaint() {
+  // Ends the stroke: the tool applies it (its end), or with cancel drops what it can (onPaintCancel).
+  function commitPaint(event, { cancel = false } = {}) {
     if (_touchStartTimer) {
       clearTimeout(_touchStartTimer);
       _touchStartTimer = null;
@@ -325,18 +326,18 @@ export function useEditorInteractions(options) {
     if (workspaceStore) {
       workspaceStore.isMiddleClick = false;
     }
-    window.removeEventListener('pointermove', onMouseMove);
     window.removeEventListener('pointerup', commitPaint);
     window.removeEventListener('pointercancel', commitPaint);
-    callbacks.onPaintEnd();
+    if (cancel) callbacks.onPaintCancel();
+    else callbacks.onPaintEnd();
   }
 
   function handleTouchStart(event) {
     const tool = unref(activeTool);
 
     if (event.touches.length === 1) {
-      // Immediate tools (navigation and single-tap actions)
-      if (tool.instant) {
+      // Navigation starts at once; every other tool waits, so a second finger (a pinch) can arrive first.
+      if (tool.kind === 'navigate') {
         startPaint(event);
         return;
       }
@@ -374,12 +375,12 @@ export function useEditorInteractions(options) {
       // If we were painting with one finger and a second one goes down,
       // cancel the paint to avoid accidental marks during pinch/zoom.
       if (isPainting.value) {
-        commitPaint();
+        commitPaint(null, { cancel: true });
       }
       _lastTouchDistance = _getTouchDistance(event.touches);
       _initialPinchZoom = unref(editZoom);
       _zoomAnchor = null;
-      
+
       if (event.cancelable) event.preventDefault();
     }
   }
@@ -412,7 +413,7 @@ export function useEditorInteractions(options) {
     } else if (event.touches.length >= 2) {
       // If we transitioned to multi-touch while painting, ensure we stop
       if (isPainting.value) {
-        commitPaint();
+        commitPaint(null, { cancel: true });
       }
 
       if (event.touches.length === 2 && _lastTouchDistance !== null && !disableZoom) {
@@ -421,10 +422,10 @@ export function useEditorInteractions(options) {
         const distance = _getTouchDistance(event.touches);
         const ratio = distance / _lastTouchDistance;
         const newZoom = _initialPinchZoom * ratio;
-        
+
         const cappedZoom = clampZoom(newZoom);
         const center = _getTouchCenter(event.touches);
-        
+
         _updatePointerPos(center.x, center.y);
         _zoomToPoint(cappedZoom, center.x, center.y, { follow: true });
       }
@@ -435,6 +436,8 @@ export function useEditorInteractions(options) {
     if (_touchStartTimer) {
       clearTimeout(_touchStartTimer);
       _touchStartTimer = null;
+      // A tap shorter than the delay: its stroke starts (and ends, below) now.
+      if (_pendingTouch && event.touches.length === 0) startPaint(_pendingTouch);
       _pendingTouch = null;
     }
 
@@ -455,8 +458,8 @@ export function useEditorInteractions(options) {
       event.preventDefault();
       const oldZoom = unref(editZoom) || 1;
 
-      const delta = -event.deltaY * 0.01;
-      const newZoom = oldZoom * (1 + delta);
+      // Exponential, so a notch out undoes a notch in (and never reaches zero).
+      const newZoom = oldZoom * Math.exp(-event.deltaY * 0.01);
       _updatePointerPos(event.clientX, event.clientY);
       _zoomToPoint(clampZoom(newZoom), event.clientX, event.clientY);
       return;

@@ -20,13 +20,13 @@ test('dragging a slider is one undo step; keyboard nudges a moment apart are one
   for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
   await expect.poll(() => value(page)).toBe(dragged + 5);
 
-  await page.getByRole('button', { name: 'Undo (Cmd+Z)' }).click();
+  await page.getByRole('button', { name: /^Undo \(/ }).click();
   expect(await value(page)).toBe(dragged);
   await page.keyboard.press('ControlOrMeta+z');
   expect(await value(page)).toBe(100);
   await settled(page);
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(cells);
-  await expect(page.getByRole('button', { name: 'Undo (Cmd+Z)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /^Undo \(/ })).toBeDisabled();
 
   await page.keyboard.press('ControlOrMeta+Shift+z');
   expect(await value(page)).toBe(dragged);
