@@ -126,8 +126,10 @@ export const editLayerActions = {
 
   // Many cell edits at once ([{ col, row, attrs }], e.g. a shape): one Map copy, one paint erase.
   // A character written over half of a wide character turns its other half into a space, as a
-  // terminal does (that space keeps its colors and paint). Part of the current edit; the caller
-  // commits it.
+  // terminal does (that space keeps its colors and paint). clearPaint erases the paint in the cells
+  // so what's written shows; a cell written with no background of its own (BG None) keeps the one
+  // the paint gave it, as it keeps the base's or an edit cell's. Part of the current edit; the
+  // caller commits it.
   writeEditCells(list, { clearPaint = false } = {}) {
     if (!list.length) return;
     this.ensureLayer();
@@ -137,7 +139,8 @@ export const editLayerActions = {
     const pixels = [];
     for (const { col, row, attrs } of list) {
       const key = cellKey(col, row);
-      const entry = mergeEntry(next.get(key), attrs);
+      const keepPaintBg = clearPaint && attrs.bg === undefined && this.paintLayer?.pixelAt(col, 2 * row);
+      const entry = mergeEntry(next.get(key), keepPaintBg ? { ...attrs, bg: this.underlyingAt(col, row).bg } : attrs);
       if (entry) next.set(key, entry);
       else next.delete(key);
       pixels.push({ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 });

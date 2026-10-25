@@ -1,7 +1,7 @@
 // The Shapes tool's paint: a filled shape is its outline in FG and its inside in BG, and where it
 // covers a pixel fully nothing under it shows through, anti-aliased or not.
 import { test, expect } from 'vitest';
-import { createTestApp, loadImage } from '../support/app.js';
+import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ellipseCoverage } from '@/lib/Brushes';
 import { hex2rgb } from '@/lib/ColorUtils';
 
@@ -112,4 +112,37 @@ test('paint of one color builds up to opacity as before: dabs add up, and low fl
   };
   expect(alphas(0.25, 4)).toEqual([64, 128, 192, 255]); // the soft Brush's default flow
   expect(alphas(0.05, 25).at(-1)).toBe(255);
+});
+
+// A box (or typing) with no background of its own keeps the background that's there: the base's, an
+// edit cell's, or the paint's (which it erases, so the line shows), the same before and after a merge.
+async function paintedThenBoxed({ merge }) {
+  const { project, draw } = await scene({ shapeAntialias: false });
+  const pixels = [];
+  for (let y = 6; y < 18; y++) for (let x = 2; x < 20; x++) pixels.push({ x, y, alpha: 1 });
+  project.paintStroke(pixels, '#00aa00');
+  project.commitEdit();
+  if (merge) {
+    project.mergeDown();
+    await settle(project);
+  }
+  draw('output', { x: 4, y: 8 }, { x: 16, y: 13 }, { shapeKind: 'rect', shapeDrawWith: 'single', editBgNone: true, editFgColor: '#ffffff' });
+  project.render();
+  await settle(project);
+  return project;
+}
+const rowOf = (project, row, c0, c1) => project.cells.slice(row * project.cols + c0, row * project.cols + c1 + 1).map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`);
+
+test('a box with no background over paint keeps the paint\'s background, as it does after a merge', async () => {
+  const layered = await paintedThenBoxed({ merge: false }), merged = await paintedThenBoxed({ merge: true });
+  for (const row of [4, 5, 6]) expect(rowOf(layered, row, 4, 16), `row ${row}`).toEqual(rowOf(merged, row, 4, 16));
+  expect(layered.cells[4 * layered.cols + 8].bg.hex).toBe('#00aa00'); // the top edge, over the paint
+});
+
+test('typing with no background over paint keeps the paint\'s background', async () => {
+  const { project } = await scene({});
+  project.paintStroke([{ x: 6, y: 10, alpha: 1 }, { x: 6, y: 11, alpha: 1 }], '#00aa00');
+  project.commitEdit();
+  project.typeAt(6, 5, 'A', { fg: '#ffffff' });
+  expect(project.cells[5 * project.cols + 6]).toMatchObject({ char: 'A', fg: { hex: '#ffffff' }, bg: { hex: '#00aa00' } });
 });

@@ -71,7 +71,9 @@ The edit layer is everything you draw: typed text (Edit Mode), shapes, pasted ce
 Paint covers half-cells, so it shows through a cell's character: paint on the top half colors the
 cell's background, paint on the bottom half its foreground. A cell whose character is solid or
 empty (a space, █, ▀ or ▄) has nothing to show through, so under paint it becomes a ▄ half-block
-instead.
+instead. Typing or drawing cells (a line box, a Character or Full block shape) over paint replaces
+the paint in those cells, so what you wrote shows; with the background set to None, each cell keeps
+the background color the paint gave it, as it keeps the picture's or an earlier cell's.
 
 Color adjustments apply to the edit layer too: moving Brightness or Hue changes your edits along
 with the picture. The color palette (CGA, VGA, a color count) applies to everything, so an
