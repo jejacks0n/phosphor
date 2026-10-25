@@ -172,7 +172,8 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
 - **Color Picker**'s **FG** and **BG** toggles choose what a pick sets; both lit sets both.
 - **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
   selection's size and place, and the Color Picker its last pick and where each color came from.
-  On the right it shows the held-key shortcuts for the tool.
+  On the right it shows the held-key shortcuts for the tool. When the view is too narrow for all of
+  it, the bar scrolls sideways, like the toolbar's options row.
 
 ### Tool keys
 

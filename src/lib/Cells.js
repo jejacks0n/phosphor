@@ -80,7 +80,7 @@ export function buildCells(pixels, cols, rows, { charset, charMode, renderStyle,
     for (let col = 0; col < cols; col++) {
       const top = pixels[2 * row * cols + col];
       const bottom = pixels[(2 * row + 1) * cols + col] || top;
-      const char = charMode === 'brightness' ? brightnessChar(top, bottom, chars) : chars[cellRandom(h, col, row) % chars.length];
+      const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset) : chars[cellRandom(h, col, row) % chars.length];
       cells[cellIndex(col, row, cols)] = buildCell(top, bottom, char, renderStyle);
     }
   }
