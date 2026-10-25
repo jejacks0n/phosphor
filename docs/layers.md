@@ -143,6 +143,10 @@ if you've copied text anywhere else since, that text, typed in at the Edit Mode 
 selection, or the top-left of the view). The **Paste** button always pastes the block you copied in
 Phosphor, whatever's on your system clipboard.
 
+**Stamp** (**S**, or **C** as in Moebius) leaves a copy of the selection where it is and floats the
+block on from there, so you can drag or nudge it away and stamp again. Each stamp is its own undo
+step. With a selection, **E** deletes it too, and **Enter** sets the block down, like Escape.
+
 In Edit Mode, dragging across cells switches to the Select tool and selects them, the way dragging
 selects text in a text editor; a plain click still just places the cursor.
 
@@ -167,6 +171,15 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
 - **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
   selection's size and place, and the Color Picker its last pick and where each color came from.
   On the right it shows the held-key shortcuts for the tool.
+
+### Tool keys
+
+A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the same tool: **P**
+Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Color Picker, **H** Hand,
+**Z** Zoom, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
+(Zoom is the pixel view's; Edit Mode, Flip and Select the ANSI view's). Each tool's button shows its key.
+In Edit Mode letters type, so press **Escape** to put the cursor away first; with a selection, E,
+S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.
 
 ### Held keys
 

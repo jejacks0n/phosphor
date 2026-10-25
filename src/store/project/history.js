@@ -74,14 +74,15 @@ export const historyActions = {
 
   undo() {
     this.commitPending();
-    const float = this._float?.version === this.history.version ? this._float : null;
+    const float = this._float?.recorded && this._float.version === this.history.version ? this._float : null;
     if (!this.history.undo()) return;
     this.historyVersion = this.history.version;
-    // Undoing a move or paste: the selection goes back with the cells (a paste's is dropped).
+    // Undoing a move or paste: the selection goes back with the cells (a paste's is dropped; a stamp's
+    // goes back to the copy it left).
     if (float) {
       this._float = null;
       const workspace = useWorkspaceStore();
-      if (toRaw(workspace.selection) === toRaw(float.landed)) workspace.selection = float.paste ? null : float.from;
+      if (toRaw(workspace.selection) === toRaw(float.landed)) workspace.selection = float.paste && !float.stamped ? null : float.from;
     }
     this.editVersion++; // undo moves away from what was saved (undoing back to it still counts as dirty)
   },

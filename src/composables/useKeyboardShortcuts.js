@@ -1,5 +1,5 @@
 import { onMounted, onBeforeUnmount, watch } from 'vue';
-import { getTool } from '@/tools';
+import { getTool, offeredTools } from '@/tools';
 import { clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
 import { copySelection } from '@/composables/clipboard';
@@ -88,10 +88,12 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
+  // Typing in Edit Mode: the Text tool with its cursor placed, in the ANSI view.
+  const _typing = () => workspaceStore.activeTool === 'text' && !!workspaceStore.textCursor && workspaceStore.editorTab === 'output';
+
   // The shortcuts list: ?, or Alt+? while typing in Edit Mode (where ? types). Not in a field.
   const _handleHelp = (e) => {
-    const typing = workspaceStore.activeTool === 'text' && !!workspaceStore.textCursor && workspaceStore.editorTab === 'output';
-    if (!helpKey(e, { typing }) || isField(e.target) || workspaceStore.paletteLayerOpen) return false;
+    if (!helpKey(e, { typing: _typing() }) || isField(e.target) || workspaceStore.paletteLayerOpen) return false;
     e.preventDefault();
     workspaceStore.shortcutsOpen = true;
     return true;
@@ -106,8 +108,10 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
   // The ANSI view's selection keys: Cmd/Ctrl+C, X, V (on the chosen layers; a paste goes to the
   // selection, else the Text tool's cursor, else the top-left of the view, and becomes the
-  // selection), Cmd/Ctrl+A (select all), and Escape. With the Select tool: Delete/Backspace, and the
-  // arrow keys nudge the contents a cell. Fields, the palette layer and the Text tool keep their keys.
+  // selection), Cmd/Ctrl+A (select all), and Escape (in Edit Mode it puts the cursor away, so letters
+  // choose tools again). With the Select tool and a selection, Moebius's block keys: Delete,
+  // Backspace or E erase it, C or S stamp it (a copy stays, the block floats on), Enter sets it down;
+  // and the arrow keys nudge it a cell. Fields, the palette layer and the Text tool keep their keys.
   const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
   const _handleSelectionKeys = (e) => {
     // Something else already took the key (the palette layer, a popover).
@@ -121,8 +125,12 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const selecting = workspaceStore.activeTool === 'select' && sel;
     const command = e.metaKey || e.ctrlKey;
     if (!command) {
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
       if (e.key === 'Escape' && sel) workspaceStore.selection = null;
-      else if (selecting && (e.key === 'Delete' || e.key === 'Backspace')) projectStore.deleteSelection(sel, layers);
+      else if (e.key === 'Escape' && _typing()) workspaceStore.textCursor = null;
+      else if (selecting && (e.key === 'Delete' || e.key === 'Backspace' || key === 'e')) projectStore.deleteSelection(sel, layers);
+      else if (selecting && (key === 'c' || key === 's') && !e.repeat) workspaceStore.selection = projectStore.stampSelection(sel, layers) ?? sel;
+      else if (selecting && e.key === 'Enter') workspaceStore.selection = null;
       else if (selecting && ARROWS[e.key]) {
         // A nudge stops at the grid's edge rather than pushing contents off it.
         const { dc, dr } = clampOffset(sel, ...ARROWS[e.key], projectStore.cols, charRowsOf(projectStore.rows));
@@ -150,6 +158,21 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       projectStore.deleteSelection(sel, layers);
     } else return false;
     e.preventDefault();
+    return true;
+  };
+
+  // Tool keys (each tool's keys: P Pencil, B Brush, G Paint Bucket, T or K Edit Mode...): a plain
+  // letter chooses the tool, when the view offers it. Not while typing (Edit Mode with its cursor, a
+  // field), mid-drag, with a tool held by a key, or with the color box or palette layer open.
+  const _handleToolKeys = (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat || !/^[a-z]$/i.test(e.key)) return false;
+    if (isField(e.target) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
+    if (workspaceStore.isPainting || workspaceStore.heldTool || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
+    const key = e.key.toUpperCase();
+    const tool = offeredTools(workspaceStore.editorTab, projectStore).find(t => t.keys?.includes(key));
+    if (!tool) return false;
+    e.preventDefault();
+    workspaceStore.setActiveTool(tool.id);
     return true;
   };
 
@@ -190,6 +213,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_handleToolSwap(e)) return;
     if (_handleSwapColors(e)) return;
     if (_handleSelectionKeys(e)) return;
+    if (_handleToolKeys(e)) return;
   };
 
   const _handleGlobalKeyUp = (e) => {

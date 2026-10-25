@@ -133,6 +133,7 @@ function apply({ project, workspace, view }, end) {
 export default {
   id: 'shapes',
   title: 'Shapes',
+  keys: ['U'],
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M112 64H336A48 48 0 0 1 384 112V168.1A224 224 0 0 0 328 177.3V120H120V328H177.3A224 224 0 0 0 168.1 384H112A48 48 0 0 1 64 336V112A48 48 0 0 1 112 64ZM208 392A184 184 0 1 0 576 392A184 184 0 1 0 208 392Z"/></svg>`,
   views: ['input', 'output'],
   kind: 'paint',
