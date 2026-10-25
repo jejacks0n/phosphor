@@ -65,9 +65,9 @@ const hint = computed(() => {
       <template v-else v-for="([key, does], i) in hint" :key="key">{{ i ? ' · ' : '' }}<kbd>{{ key }}</kbd> {{ does }}</template>
     </span>
     <button
-        title="ANSI view renderer (trial): canvas or DOM"
+        :title="`Switch the ANSI view to its ${workspace.ansiRenderer === 'dom' ? 'canvas' : 'DOM'} renderer (trial)`"
         @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
-    >{{ workspace.ansiRenderer === 'dom' ? 'DOM' : 'Canvas' }}</button>
+    >{{ workspace.ansiRenderer === 'dom' ? 'Canvas' : 'DOM' }}</button>
     <button
         v-if="tool === 'text'"
         :title="workspace.insertMode ? 'Insert: typing pushes the row right (Insert key)' : 'Overwrite: typing replaces the cell (Insert key)'"
