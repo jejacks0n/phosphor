@@ -146,3 +146,26 @@ test('typing with no background over paint keeps the paint\'s background', async
   project.typeAt(6, 5, 'A', { fg: '#ffffff' });
   expect(project.cells[5 * project.cols + 6]).toMatchObject({ char: 'A', fg: { hex: '#ffffff' }, bg: { hex: '#00aa00' } });
 });
+
+// Connect joins a box to the lines it can see: a line hidden under paint (drawn in its own
+// background color) isn't one.
+async function boxes({ paintOver }) {
+  const { project, draw } = await scene({ shapeAntialias: false });
+  const box = { shapeKind: 'rect', shapeDrawWith: 'single', shapeConnect: true, editBgNone: true, editFgColor: '#ffffff' };
+  draw('output', { x: 4, y: 6 }, { x: 20, y: 24 }, box); // cells 4..20, rows 3..12
+  if (paintOver) {
+    const pixels = [];
+    for (let y = 2; y < 30; y++) for (let x = 2; x < 26; x++) pixels.push({ x, y, alpha: 1 });
+    project.paintStroke(pixels, '#00aa00');
+    project.commitEdit();
+  }
+  draw('output', { x: 10, y: 12 }, { x: 30, y: 18 }, box); // cells 10..30, rows 6..9: its top edge crosses col 20
+  return project;
+}
+const charAt = (project, col, row) => project.cells[row * project.cols + col].char;
+
+test('Connect joins a box to a line it can see, and not to one hidden under paint', async () => {
+  expect(charAt(await boxes({ paintOver: false }), 20, 6)).toBe('┼');
+  const hidden = await boxes({ paintOver: true });
+  expect([charAt(hidden, 20, 6), charAt(hidden, 20, 9)]).toEqual(['─', '─']);
+});

@@ -8,7 +8,7 @@
 // Fill option, and leaves the cells' backgrounds as they were.
 import { rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/editCells';
-import { charRowsOf, cellsOfPixels } from '@/lib/Cells';
+import { charRowsOf, cellsOfPixels, showsChar } from '@/lib/Cells';
 import { joinBox, inwardArms } from '@/lib/BoxJoin';
 import { hex2rgb } from '@/lib/ColorUtils';
 
@@ -125,9 +125,12 @@ function apply({ project, workspace, view }, end) {
       cells.push(...shapeOf(true).filter(c => charOf(c.cover) && !shaded.has(cellKey(c))).map(({ col, row }) => ({ col, row, attrs: { char: ' ', bg } })));
     }
   } else {
-    // Connect joins the frame to the line characters it crosses or meets. A fill erases the inside,
-    // so lines crossing a filled box's frame end there.
-    const shown = (col, row) => (inGrid({ col, row }) ? project.cells[row * project.cols + col]?.char : undefined);
+    // Connect joins the frame to the line characters it crosses or meets that show (showsChar: not
+    // one hidden under paint). A fill erases the inside, so lines crossing a filled box's frame end there.
+    const shown = (col, row) => {
+      const cell = inGrid({ col, row }) ? project.cells[row * project.cols + col] : null;
+      return cell && showsChar(cell) ? cell.char : undefined;
+    };
     const erased = (col, row) => fill && col > rect.c0 && col < rect.c1 && row > rect.r0 && row < rect.r1;
     const STEPS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
     const join = (col, row, char) => {

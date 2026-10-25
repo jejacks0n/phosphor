@@ -163,6 +163,11 @@ export function composeCell(under, entry, renderStyle, effective) {
   };
 }
 
+// Whether a cell's character shows at all: one drawn in its own background color (a line under
+// paint of one color) shows nothing, so Connect doesn't join to it and the Paint Bucket doesn't stop
+// at it.
+export const showsChar = (cell) => cell.fg.hex !== cell.bg.hex;
+
 // Characters that are solid or empty in each half (space, █, ▀, ▄) have no texture to show paint
 // through: under paint they become a real half-block instead.
 export const isSolidGlyph = (char) => coverageOf(char).every(c => c === 0 || c === 1);
