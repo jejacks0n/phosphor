@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
+import { DISPLAY_FONTS } from '@/lib/displayFonts';
+import { familyOf } from '@/lib/userFonts';
 
 const RECENT_COLORS = 12;
 
@@ -18,6 +20,11 @@ export const useWorkspaceStore = defineStore('workspace', {
     editBgNone: true,
     recentColors: useLocalStorage('phosphor.recentColors', []),
     ansiRenderer: useLocalStorage('phosphor.ansiRenderer', 'canvas'), // the ANSI view's renderer (trial): 'canvas' | 'dom'
+    displayFont: useLocalStorage('phosphor.displayFont', 'jetbrains'), // the font the art is drawn in: an id in displayFonts.js, or a loaded font's
+    displayFontSizes: useLocalStorage('phosphor.displayFontSizes', {}), // { font id: px } for the fonts you've resized
+    userFonts: null,         // the fonts you've loaded ([{ id, name, lineHeight }], userFonts.js), once read from this browser (App.vue)
+    displayFontLoaded: null, // displayFontSpec, once it's loaded and measured in (App.vue)
+    smoothText: useLocalStorage('phosphor.smoothText', true), // the art's text anti-aliased (both views), or sharp
     activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
     isShiftPressed: false,
     pointerOverEditor: false, // the pointer is over the canvas (Space pans even with a button focused)
@@ -78,6 +85,15 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     editMode: (state) => state.editorTab !== 'sauce',
     pickSwapped: (state) => state.heldTool?.by === 'alt', // the picker is only held by Alt from a drawing tool
+    // The font the art is drawn in, at its size (a font displayFonts.js can set). A loaded font
+    // starts at 16px; an unknown one (a loaded font since removed) is the default.
+    displayFontSpec(state) {
+      const loaded = state.userFonts?.find((f) => f.id === state.displayFont);
+      const font = loaded
+        ? { id: loaded.id, name: loaded.name, family: familyOf(loaded.id), size: 16, lineHeight: loaded.lineHeight }
+        : DISPLAY_FONTS.find((f) => f.id === state.displayFont) ?? DISPLAY_FONTS[0];
+      return { ...font, size: state.displayFontSizes[font.id] ?? font.size };
+    },
   },
   actions: {
     // Select rect (the whole grid: project.gridRect()) with the Select tool.

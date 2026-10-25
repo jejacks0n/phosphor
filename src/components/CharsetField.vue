@@ -29,7 +29,6 @@ function pick(event) {
     <input
         :id="id"
         type="text"
-        class="mono"
         :value="modelValue"
         placeholder="characters"
         autocomplete="off"
@@ -49,8 +48,14 @@ div.charset-field {
   position: relative;
 }
 
+/* The characters in the font the art is drawn in (displayFonts.js), as they'll be drawn; at its size,
+   to 16px at most so they fit the field (a pixel font stays sharp at 16, or 32 halved). */
 input {
   padding-right: 34px;
+  font-family: var(--display-font-family);
+  font-size: min(var(--display-font-size), 16px);
+  -webkit-font-smoothing: var(--display-font-smoothing, antialiased);
+  -moz-osx-font-smoothing: var(--display-moz-font-smoothing, grayscale);
 }
 
 /* Over the ▾, invisible: a click or tap opens the system menu. */

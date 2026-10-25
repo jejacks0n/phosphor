@@ -8,6 +8,7 @@ import ProjectFooter from '@/components/ProjectFooter.vue';
 import HelpInfo from '@/components/HelpInfo.vue';
 import RangeField from '@/components/RangeField.vue';
 import CharsetField from '@/components/CharsetField.vue';
+import FontField from '@/components/FontField.vue';
 import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
 
 const store = useProjectStore();
@@ -88,6 +89,8 @@ const charsetName = computed(() => {
           <button @click="store.randomizeSeed" title="Randomize Seed">🎲</button>
         </div>
       </div>
+
+      <FontField/>
 
       <div class="field">
         <div class="label-group"><label for="quantize">Color Palette</label><HelpInfo :text="help('quantize')" /></div>

@@ -1,10 +1,15 @@
 /**
- * The ANSI view's cells drawn on a <canvas> with WebGL2, aliased like the DOM view's text: every
- * device pixel is exactly its cell's fg or bg, or a color glyph's (an emoji's) own color. One
+ * The ANSI view's cells drawn on a <canvas> with WebGL2, text anti-aliased (smooth: a glyph's edges
+ * blend its cell's fg into its bg, and nothing else) or sharp (every pixel exactly fg or bg); a color
+ * glyph (an emoji) is its own colors, and blocks and shades are always exactly fg or bg. One
  * full-screen pass reads each pixel's cell from two cols x rows data textures (fg rgb + glyph index
  * low byte, bg rgb + high byte) and its ink from an atlas of glyphs (see #rasterize), so a whole
- * 30k-cell grid redraws in a few milliseconds and every draw is a full redraw. (fillText anti-aliases; Path2D masks, a CPU blend and per-cell
- * tinting were all far slower.)
+ * 30k-cell grid redraws in a few milliseconds and every draw is a full redraw. (fillText anti-aliases;
+ * Path2D masks, a CPU blend and per-cell tinting were all far slower.)
+ *
+ * Block elements (█▀▄▌▐ and the quadrants) and the shades (░▒▓) aren't the font's: they're drawn
+ * exactly, as most terminals draw them, so they never seam; the shades as CP437's dot patterns, a
+ * dot a sixteenth of the cell high (the VGA's own pixel in its 8x16 cell), across the whole grid.
  *
  * Cells snap to whole device pixels at a backing scale capped to stay under the browsers' canvas
  * limits; metrics is the cell size in CSS px that the editor's overlays measure with.
@@ -14,7 +19,7 @@
  * over their characters and backgrounds. Its shape is cut into a glyph per column it covers; two more
  * data textures give each covered cell the slice that lands there and the character's color.
  */
-import { DISPLAY_FONT, DISPLAY_FONT_CSS } from './GlyphCoverage.js';
+import { DISPLAY_FONT, displayFontCss, drawGlyph } from './displayFonts.js';
 import { drawnColumns, layoutSpills } from './DrawnWidth.js';
 
 // Safari refuses 2D canvases of 16,777,216 pixels or more, and WebGL drawing buffers past the
@@ -44,6 +49,19 @@ const BLOCKS = new Map([
   ['▘', 1], ['▝', 2], ['▖', 4], ['▗', 8], ['▚', 9], ['▞', 6],
   ['▙', 13], ['▟', 14], ['▛', 7], ['▜', 11],
 ]);
+
+// The shades, drawn by the shader rather than the font (see FRAGMENT's over): a font's own shade
+// glyphs are dot patterns drawn for its own height, which a cell cuts off (a seam at every row) and
+// whose dots don't fall on whole pixels. Their atlas texels hold only this level (alpha 16, 32, 48).
+const SHADES = new Map([['░', 1], ['▒', 2], ['▓', 3]]);
+
+// The columns a character draws over: blocks and shades are drawn here, in their own cell, however
+// wide the font draws them.
+const columnsOf = (char) => (BLOCKS.has(char) || SHADES.has(char) ? 1 : drawnColumns(char));
+
+// A shade's dot in device px: a sixteenth of the cell's height, as the VGA's 8x16 cell has 16 rows of
+// pixels, in whole pixels so every dot is the same.
+const shadeDot = (ch) => Math.max(1, Math.round(ch / 16));
 
 // A block character's mask (cw x ch, 0 or 255), or null for any other character.
 export function blockMask(char, cw, ch) {
@@ -104,12 +122,26 @@ uniform sampler2D uFg, uBg, uAtlas, uOv, uOvHi;
 uniform ivec2 uCell;        // cw, ch in device px
 uniform int uHeight;        // canvas height in device px
 uniform int uAtlasCols;     // glyphs per atlas row
+uniform int uDot;           // a shade's dot in device px (shadeDot)
 out vec4 color;
-// An atlas texel over what's under it: ink in the character's color (alpha 1), a color glyph's own
-// color (alpha .5), or nothing (0).
-vec3 over(vec4 t, vec3 ink, vec3 under) { return t.a > .75 ? ink : t.a > .25 ? t.rgb : under; }
+ivec2 p;                    // this pixel, top-left origin
+// An atlas texel over what's under it: ink in the character's color as much as its red says (alpha
+// 1: the glyph's coverage there, anti-aliased), a color glyph's own color (alpha .5), a shade (alpha
+// 16/255, 32/255 or 48/255: ░▒▓), or nothing (0).
+vec3 over(vec4 t, vec3 ink, vec3 under) {
+  int shade = t.a < .25 ? int(t.a * 255. + .5) / 16 : 0;
+  if (shade > 0) {
+    // CP437's shades in dots across the whole grid, so neighboring cells' dots line up: ░ a quarter
+    // of the dots, ▒ a checkerboard, ▓ the inverse of ░.
+    ivec2 d = p / uDot;
+    bool quarter = d.y % 2 == 1 ? d.x % 4 == 0 : d.x % 4 == 2;
+    bool on = shade == 1 ? quarter : shade == 2 ? (d.x + d.y) % 2 == 0 : !quarter;
+    return on ? ink : under;
+  }
+  return t.a > .75 ? mix(under, ink, t.r) : t.a > .25 ? t.rgb : under;
+}
 void main() {
-  ivec2 p = ivec2(int(gl_FragCoord.x), uHeight - 1 - int(gl_FragCoord.y)); // top-left origin
+  p = ivec2(int(gl_FragCoord.x), uHeight - 1 - int(gl_FragCoord.y));
   ivec2 c = p / uCell;
   vec4 f = texelFetch(uFg, c, 0), b = texelFetch(uBg, c, 0);
   int g = int(f.a * 255. + .5) + 256 * int(b.a * 255. + .5);
@@ -144,7 +176,7 @@ export default class CellCanvas {
   #atlas = new Uint8Array(0);
   #atlasRows = 0;
   #atlasDirty = true;
-  #scratch = null;      // glyph rasterizing
+  #smooth = true;       // text anti-aliased (WorkspaceStore.smoothText)
 
   #onLost = (event) => event.preventDefault(); // so the context can be restored
   #onRestore = () => {
@@ -165,6 +197,17 @@ export default class CellCanvas {
   get metrics() {
     const g = this.#geom;
     return g ? { cellWidth: g.cw / g.scale, lineHeight: g.ch / g.scale } : null;
+  }
+
+  // Whether text is anti-aliased; changing it draws every glyph again.
+  get smooth() {
+    return this.#smooth;
+  }
+
+  set smooth(on) {
+    if (on === this.#smooth) return;
+    this.#smooth = on;
+    this.#dropAtlas();
   }
 
   // Size the canvas for cols x rows cells at the display's dpr; true when anything changed.
@@ -202,7 +245,7 @@ export default class CellCanvas {
     if (!g || gl.isContextLost() || cells.length !== g.cols * g.rows) return;
     if (!this.#glyphs.size) this.#glyphOf({ char: ' ' }); // glyph 0: what a missing cell draws
     packCells(cells, g.cols * g.rows, (cell) => this.#glyphOf(cell), this.#fg, this.#bg);
-    const spills = layoutSpills(cells, g.cols, (cell) => drawnColumns(cell.char));
+    const spills = layoutSpills(cells, g.cols, (cell) => columnsOf(cell.char));
     packSpills(cells, spills, g.cols * g.rows, (cell, k) => this.#slicesOf(cell.char)[k], this.#ov, this.#ovHi);
 
     const [fgTexture, bgTexture, atlasTexture, ovTexture, ovHiTexture] = this.#textures;
@@ -221,6 +264,7 @@ export default class CellCanvas {
     }
 
     gl.uniform2i(this.#uniforms.cell, g.cw, g.ch);
+    gl.uniform1i(this.#uniforms.dot, shadeDot(g.ch));
     gl.uniform1i(this.#uniforms.height, this.canvas.height);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -267,7 +311,7 @@ export default class CellCanvas {
     gl.uniform1i(at('uOv'), 3);
     gl.uniform1i(at('uOvHi'), 4);
     gl.uniform1i(at('uAtlasCols'), ATLAS_COLS);
-    this.#uniforms = { cell: at('uCell'), height: at('uHeight') };
+    this.#uniforms = { cell: at('uCell'), height: at('uHeight'), dot: at('uDot') };
     this.#allocated = false;
   }
 
@@ -284,11 +328,12 @@ export default class CellCanvas {
   // cut into a glyph per column (#slicesOf); a cell shows its own column's, a wide character's trail
   // the second.
   #glyphOf({ char, wide }) {
-    if (wide || drawnColumns(char) > 1) return this.#slicesOf(char)[wide === 'trail' ? 1 : 0];
+    if (wide || columnsOf(char) > 1) return this.#slicesOf(char)[wide === 'trail' ? 1 : 0];
     const index = this.#glyphs.get(char);
     if (index !== undefined) return index;
     const { cw, ch } = this.#geom;
-    const block = blockMask(char, cw, ch);
+    const block = blockMask(char, cw, ch), shade = SHADES.get(char);
+    if (shade) return this.#store(char, shadeTexels(shade, cw, ch));
     return this.#store(char, block ? inkTexels(block) : this.#rasterize(char, 1));
   }
 
@@ -296,7 +341,7 @@ export default class CellCanvas {
   #slicesOf(char) {
     let indexes = this.#slices.get(char);
     if (indexes) return indexes;
-    const { cw, ch } = this.#geom, span = Math.max(drawnColumns(char), 1);
+    const { cw, ch } = this.#geom, span = Math.max(columnsOf(char), 1);
     const whole = this.#rasterize(char, span);
     indexes = Array.from({ length: span }, (_, k) => {
       const texels = new Uint8Array(cw * ch * 4), row = span * cw * 4;
@@ -325,46 +370,45 @@ export default class CellCanvas {
     return index;
   }
 
-  // A character in the display font across cells cells (1, or 2 for a wide one), as GlyphCoverage
-  // rasterizes it: centered in the line, squeezed into its cells when wider, inked where alpha > 127.
-  // Its atlas texels: ink (alpha 255, drawn in the cell's fg), or for a color glyph (an emoji: drawn
-  // in its own colors, whatever fillStyle says) its color with alpha 128.
+  // A character in the display font across cells cells (1, or 2 for a wide one), anti-aliased or
+  // sharp (displayFonts.drawGlyph). Its atlas texels: ink (alpha 255, its coverage in red: how much
+  // of the cell's fg is blended in), or for a color glyph (an emoji: drawn in its own colors,
+  // whatever the fill says) its color with alpha 128 where it's over half covered.
   #rasterize(char, cells) {
     const { ch, scale } = this.#geom, cw = this.#geom.cw * cells;
-    this.#scratch ??= document.createElement('canvas');
-    if (this.#scratch.width !== cw || this.#scratch.height !== ch) {
-      this.#scratch.width = cw;
-      this.#scratch.height = ch;
-    }
-    const ctx = this.#scratch.getContext('2d', { willReadFrequently: true });
-    ctx.clearRect(0, 0, cw, ch);
-    ctx.font = `${DISPLAY_FONT.size * scale}px ${DISPLAY_FONT.family}`;
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#f00';
-    ctx.fillText(char, 0, ch / 2, cw);
-    const { data } = ctx.getImageData(0, 0, cw, ch);
+    const data = drawGlyph(char, cw, ch, scale, '#f00', this.#smooth);
     let color = false; // any inked pixel that isn't the fillStyle's red
     for (let i = 0; i < data.length && !color; i += 4) color = data[i + 3] > 127 && (data[i] < 224 || data[i + 1] > 31 || data[i + 2] > 31);
     const texels = new Uint8Array(data.length);
     for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] <= 127) continue;
-      if (color) texels.set([data[i], data[i + 1], data[i + 2], 128], i);
-      else texels[i + 3] = 255;
+      if (color) {
+        if (data[i + 3] > 127) texels.set([data[i], data[i + 1], data[i + 2], 128], i);
+      } else if (data[i + 3]) {
+        texels[i] = data[i + 3];
+        texels[i + 3] = 255;
+      }
     }
     return texels;
   }
 }
 
-// A mask's (0 or 255) atlas texels: ink in the cell's fg where it's set.
+// A shade's atlas texels: its level (1 ░, 2 ▒, 3 ▓) in every one, which the shader draws.
+function shadeTexels(level, cw, ch) {
+  const texels = new Uint8Array(cw * ch * 4);
+  for (let i = 3; i < texels.length; i += 4) texels[i] = level * 16;
+  return texels;
+}
+
+// A mask's (0 or 255) atlas texels: ink, fully the cell's fg, where it's set.
 function inkTexels(mask) {
   const texels = new Uint8Array(mask.length * 4);
-  for (let i = 0; i < mask.length; i++) texels[i * 4 + 3] = mask[i];
+  for (let i = 0; i < mask.length; i++) texels[i * 4] = texels[i * 4 + 3] = mask[i];
   return texels;
 }
 
 // The display font's character width in CSS px.
 function measureAdvance() {
   const ctx = document.createElement('canvas').getContext('2d');
-  ctx.font = DISPLAY_FONT_CSS;
+  ctx.font = displayFontCss();
   return ctx.measureText('M').width;
 }

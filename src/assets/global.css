@@ -1,5 +1,9 @@
 :root {
   --logo: url('/logo.png');
+  /* The ANSI view's font: displayFonts.js sets these to the chosen one. */
+  --display-font-family: "JetBrains Mono", monospace;
+  --display-font-size: 17px;
+  --display-line-height: 1.2;
   --white: #fff;
   --black: #000;
 
@@ -511,22 +515,22 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
 }
 
 /* A character drawn as the ANSI view draws it (AnsiEditor's <pre>): same font, size and line height,
-   no anti-aliasing. As wide as it draws, from one column to two, so a two-column emoji or a symbol a
-   fallback font draws wider shows whole; anything wider (﷽) is clipped at two. Clipped to the line
-   too, since JetBrains Mono's box-drawing and block glyphs are taller than its line box (in the
-   view, neighboring rows cover the overflow). */
+   smooth or sharp as the Smooth setting says. As wide as it draws, from one column to two, so a
+   two-column emoji or a symbol a fallback font draws wider shows whole; anything wider (﷽) is
+   clipped at two. Clipped to the line too, since JetBrains Mono's box-drawing and block glyphs are
+   taller than its line box (in the view, neighboring rows cover the overflow). */
 .glyph-cell {
   display: inline-block;
   min-width: 1ch;
   max-width: 2ch;
-  height: 1.2em;
+  height: 1lh;
   overflow: hidden;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 17px;
-  line-height: 1.2;
+  font-family: var(--display-font-family);
+  font-size: var(--display-font-size);
+  line-height: var(--display-line-height);
   text-align: center;
   vertical-align: middle;
   white-space: pre;
-  -webkit-font-smoothing: none;
-  -moz-osx-font-smoothing: unset;
+  -webkit-font-smoothing: var(--display-font-smoothing, antialiased);
+  -moz-osx-font-smoothing: var(--display-moz-font-smoothing, grayscale);
 }

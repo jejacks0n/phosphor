@@ -69,6 +69,12 @@ const hint = computed(() => {
         @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
     >{{ workspace.ansiRenderer === 'dom' ? 'Canvas' : 'DOM' }}</button>
     <button
+        :class="{ on: workspace.smoothText }"
+        :aria-pressed="workspace.smoothText"
+        :title="workspace.smoothText ? 'Smooth text (anti-aliased): on' : 'Smooth text (anti-aliased): off, every pixel the cell\'s colors'"
+        @click="workspace.smoothText = !workspace.smoothText"
+    >Smooth</button>
+    <button
         v-if="tool === 'text'"
         :title="workspace.insertMode ? 'Insert: typing pushes the row right (Insert key)' : 'Overwrite: typing replaces the cell (Insert key)'"
         @click="workspace.insertMode = !workspace.insertMode"
@@ -131,5 +137,11 @@ button {
   color: var(--text-dim);
   font: inherit;
   cursor: pointer;
+}
+
+/* A setting that's on (Smooth). */
+button.on {
+  background: var(--accent);
+  color: var(--white);
 }
 </style>

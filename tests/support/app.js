@@ -5,19 +5,20 @@ import { setActivePinia, createPinia } from 'pinia';
 import '@/assets/fonts.css';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { setGlyphRasterizer, rasterizeCoverage, DISPLAY_FONT_CSS } from '@/lib/GlyphCoverage';
+import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
+import { setDisplayFont } from '@/lib/displayFonts';
 import { halfColors } from '@/lib/Cells';
 
 let stopWatching = null;
 
-// Fresh stores and settings (localStorage cleared, a fixed character seed), the display font loaded
-// and glyph coverage measured in it, as App.vue does; settings changes re-render, as EditWorkspace.vue
+// Fresh stores and settings (localStorage cleared, a fixed character seed), the default display font
+// loaded and glyph coverage measured in it, as App.vue does; settings changes re-render, as EditWorkspace.vue
 // does.
 export async function createTestApp() {
   stopWatching?.();
   localStorage.clear();
   setActivePinia(createPinia());
-  await document.fonts.load(DISPLAY_FONT_CSS);
+  await setDisplayFont('jetbrains');
   setGlyphRasterizer(rasterizeCoverage);
   const project = useProjectStore(), workspace = useWorkspaceStore();
   project.seed = 'phosphor-tests'; // the default is a random slug: random characters would differ every run

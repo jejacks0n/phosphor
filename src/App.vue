@@ -3,7 +3,9 @@ import { watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { setGlyphRasterizer, rasterizeCoverage, DISPLAY_FONT_CSS } from '@/lib/GlyphCoverage';
+import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
+import { setDisplayFont } from '@/lib/displayFonts';
+import { loadFonts } from '@/lib/userFonts';
 import { charRowsOf } from '@/lib/Cells';
 
 import EditWorkspace from '@/components/EditWorkspace.vue';
@@ -41,15 +43,34 @@ watch(() => [project.cols, project.rows], () => {
   }
 });
 
-onMounted(() => {
-  window.addEventListener('beforeunload', onBeforeUnload);
-  // Glyph coverage is measured in the ANSI view's font, which loads lazily; either view can be
-  // shown first, so install the rasterizer here once that font is ready, then re-render.
-  document.fonts.load(DISPLAY_FONT_CSS).then(() => {
+// The fonts you've loaded, from this browser. Until they're read, no font is set (the one chosen may
+// be one of them).
+loadFonts().then((fonts) => { workspace.userFonts = fonts; }, () => { workspace.userFonts = []; });
+
+// Glyph coverage is measured in the font the art is drawn in, which loads lazily; either view can be
+// shown first, so install the rasterizer here once that font is ready (again when it or its size
+// changes: that drops what was measured before), then re-render.
+let fontChange = 0;
+watch(() => workspace.userFonts && JSON.stringify(workspace.displayFontSpec), (spec) => {
+  if (!spec) return;
+  const font = JSON.parse(spec), change = ++fontChange;
+  setDisplayFont(font).then(() => {
+    if (change !== fontChange) return; // changed again meanwhile
     setGlyphRasterizer(rasterizeCoverage);
+    workspace.displayFontLoaded = font;
     if (project.image) project.render();
   });
-});
+}, { immediate: true });
+
+// Smooth (anti-aliased) or sharp text, for the art's text styled in CSS (the DOM view, glyph cells,
+// the Characters field); the canvas view follows the setting itself (AnsiEditor).
+watch(() => workspace.smoothText, (smooth) => {
+  const style = document.documentElement.style;
+  style.setProperty('--display-font-smoothing', smooth ? 'antialiased' : 'none');
+  style.setProperty('--display-moz-font-smoothing', smooth ? 'grayscale' : 'unset');
+}, { immediate: true });
+
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload));
 onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload));
 </script>
 

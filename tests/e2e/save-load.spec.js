@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, store, settled, editAt, saveAs } from './support.js';
+import { openApp, store, settled, editAt, saveAs, imageInput } from './support.js';
 
 test('save a project and load it back through the file input', async ({ page }) => {
   await openApp(page);
@@ -14,9 +14,9 @@ test('save a project and load it back through the file input', async ({ page }) 
 
   page.on('dialog', (d) => d.accept());
   await page.getByRole('button', { name: 'Start New Project' }).click();
-  await expect(page.locator('input[type=file]')).toBeAttached();
+  await expect(imageInput(page)).toBeAttached();
   expect(await store(page, 'project', (p) => p.image)).toBe(null);
-  await page.locator('input[type=file]').setInputFiles({ name: 'gradient.phosphor', mimeType: 'application/octet-stream', buffer: await (await import('node:fs/promises')).readFile(path) });
+  await imageInput(page).setInputFiles({ name: 'gradient.phosphor', mimeType: 'application/octet-stream', buffer: await (await import('node:fs/promises')).readFile(path) });
   await settled(page);
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells.map((c) => c.char + c.fg.hex + c.bg.hex)))).toBe(before);
 });
