@@ -112,15 +112,15 @@ void main() {
   int g = int(f.a * 255. + .5) + 256 * int(b.a * 255. + .5);
   ivec2 l = p - c * uCell;
   float ink = texelFetch(uAtlas, ivec2((g % uAtlasCols) * uCell.x + l.x, (g / uAtlasCols) * uCell.y + l.y), 0).r;
-  // A spill: part of an overflowing character to the left, drawn over this cell's background, under
-  // its own character (a terminal draws left to right).
+  // A spill: part of an overflowing character to the left, drawn on top of this cell (its character
+  // and background), as a terminal draws it.
   vec4 o = texelFetch(uOv, c, 0), oh = texelFetch(uOvHi, c, 0);
   float spill = 0.;
   if (oh.g > .5) {
     int s = int(o.a * 255. + .5) + 256 * int(oh.r * 255. + .5);
     spill = texelFetch(uAtlas, ivec2((s % uAtlasCols) * uCell.x + l.x, (s / uAtlasCols) * uCell.y + l.y), 0).r;
   }
-  color = vec4(ink > .5 ? f.rgb : spill > .5 ? o.rgb : b.rgb, 1.);
+  color = vec4(spill > .5 ? o.rgb : ink > .5 ? f.rgb : b.rgb, 1.);
 }`;
 
 export default class CellCanvas {

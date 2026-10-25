@@ -87,11 +87,23 @@ test('a character drawing wider than its column covers the cells after it, as a 
   let spilled = 0;
   for (let c = 1; c < cols; c++) {
     const seen = colorsIn(c);
-    for (const color of seen) expect([RED, WHITE, BLUE]).toContain(color); // over the cell's own colors, nothing blended
+    for (const color of seen) expect([RED, WHITE, BLUE]).toContain(color); // on top of the cell's own colors, nothing blended
     if (seen.has(RED)) spilled = c;
   }
   expect(spilled).toBeGreaterThanOrEqual(span - 2);                         // it reaches across its whole width
   expect(colorsIn(span + 1).has(RED)).toBe(false);                          // and no further
   for (let c = 0; c < cols; c++) expect(colorsIn(c, 1).has(RED)).toBe(false); // nor into the next row
   expect(colorsIn(1).has(BLACK)).toBe(false);                               // the spill doesn't bring its own background
+});
+
+test('an overflowing character draws on top of the characters it covers', async () => {
+  await createTestApp();
+  const { drawnColumns } = await import('@/lib/DrawnWidth');
+  const span = drawnColumns('﷽');
+  // Solid blocks after it: drawn under the overflow, so its color shows inside them.
+  const row = [cell('﷽', '#ff0000', '#000000'), ...Array.from({ length: span }, () => cell('█', '#ffffff', '#0000ff'))];
+  const { cw, ch, at } = drawAndRead(span + 1, 1, row);
+  let red = 0;
+  for (let y = 0; y < ch; y++) for (let x = cw; x < (span + 1) * cw; x++) if (at(x, y).join() === '255,0,0') red++;
+  expect(red).toBeGreaterThan(0);
 });
