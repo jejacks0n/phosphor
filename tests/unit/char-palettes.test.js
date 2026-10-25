@@ -15,7 +15,9 @@ test("Character palettes: the built-in sets, glyph lists, fork naming, what a ce
   assert.equal(new Set(BUILTIN_PALETTES.map(p => p.name)).size, 9);
   assert.equal(BUILTIN_PALETTES[2].glyphs.join(''), '╔╗╚╝═║╦╩╠╣╬·');
   assert.ok(Object.isFrozen(BUILTIN_PALETTES[0].glyphs));
-  assert.equal(UNICODE_BLOCKS.length, 12);
+  assert.equal(UNICODE_BLOCKS.length, 11);
+  // Symbols for Legacy Computing aren't offered: no common font draws them (on a Mac, they're all boxes).
+  assert.ok(UNICODE_BLOCKS.every(([, first, last]) => last < 0x1FB00 || first > 0x1FBFF));
   assert.deepEqual(UNICODE_BLOCKS[0], ['Box drawing', 0x2500, 0x257F]);
   assert.deepEqual(normalizeGlyphs('🬀ab'), ['🬀', 'a', 'b', '', '', '', '', '', '', '', '', '']);
   assert.equal(normalizeGlyphs('abcdefghijklmnop').length, 12);

@@ -32,7 +32,6 @@ export const BUILTIN_PALETTES = Object.freeze([
 export const UNICODE_BLOCKS = Object.freeze([
   ['Box drawing', 0x2500, 0x257F],
   ['Blocks', 0x2580, 0x259F],
-  ['Legacy computing', 0x1FB00, 0x1FBCA],
   ['Shapes', 0x25A0, 0x25FF],
   ['Braille', 0x2800, 0x28FF],
   ['Arrows', 0x2190, 0x21FF],
