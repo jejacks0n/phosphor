@@ -63,7 +63,8 @@ test('a wide character is drawn across its two cells', async () => {
   const cells = layoutWide([cell('漢', '#ffffff', '#000000'), cell(' ', '#ffffff', '#000000'), cell(' ', '#ffffff', '#000000')], 3);
   expect(cells[0].wide).toBe('lead');
   const { cw, ch, at } = drawAndRead(3, 1, cells);
-  const inkIn = (c0) => { let n = 0; for (let y = 0; y < ch; y++) for (let x = c0 * cw; x < (c0 + 1) * cw; x++) if (at(x, y)[0] === 255) n++; return n; };
+  // Any ink (on black): smooth text can draw thin strokes without one fully covered pixel (Linux does).
+  const inkIn = (c0) => { let n = 0; for (let y = 0; y < ch; y++) for (let x = c0 * cw; x < (c0 + 1) * cw; x++) if (at(x, y)[0] > 0) n++; return n; };
   expect(inkIn(0)).toBeGreaterThan(0);
   expect(inkIn(1)).toBeGreaterThan(0); // the trail draws the character's right half
   expect(inkIn(2)).toBe(0);
