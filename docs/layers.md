@@ -152,7 +152,8 @@ block on from there, so you can drag or nudge it away and stamp again. Each stam
 step. With a selection, **E** deletes it too, and **Enter** sets the block down, like Escape.
 
 In Edit Mode, dragging across cells switches to the Select tool and selects them, the way dragging
-selects text in a text editor; a plain click still just places the cursor.
+selects text in a text editor; a plain click still just places the cursor. With a pen (the Apple
+Pencil), a tap can wobble a few pixels, even across a cell's edge, and still only place the cursor.
 
 Choosing another tool drops the selection.
 

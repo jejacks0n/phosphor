@@ -3,6 +3,9 @@ import { clampZoom } from '@/store/WorkspaceStore';
 
 const TOUCH_DELAY_MS = 150; // a touch waits this long before drawing, in case a second finger makes it a pinch
 const TOUCH_MOVE_THRESHOLD = 5; // Pixels to move before immediate paint start
+// A pen's tap wobbles: its moves count once it's this many pixels from where it touched down, so a
+// tap that crosses a cell edge still places the Edit Mode cursor instead of selecting two cells.
+const PEN_SLOP = 6;
 // A drag with a tool that asks for it (autoScroll: Select) scrolls the view when it nears an edge:
 // from EDGE_PX inside it, faster the further in or past, up to EDGE_MAX_SPEED px a frame.
 const EDGE_PX = 24;
@@ -11,6 +14,10 @@ const edgeSpeed = (p, lo, hi) => {
   const into = p < lo + EDGE_PX ? p - (lo + EDGE_PX) : p > hi - EDGE_PX ? p - (hi - EDGE_PX) : 0;
   return Math.sign(into) * Math.min(EDGE_MAX_SPEED, Math.ceil(Math.abs(into) / 2));
 };
+// iPad Safari sends an Apple Pencil's touches (touchType 'stylus') alongside its pen pointer events.
+// The pointer events are its stroke; its touches would start it a second time (a Select drag would
+// then grab the cell or two it had just selected and move them).
+const isStylus = (event) => Array.prototype.some.call(event.changedTouches ?? [], (t) => t.touchType === 'stylus');
 
 
 // options.activeTool: a ref to the active tool object (src/tools); its kind and id decide how pointers behave.
@@ -46,6 +53,7 @@ export function useEditorInteractions(options) {
   let _touchStartTimer = null;
   let _pendingTouch = null;
   let _edgeFrame = null; // the next edge-scroll step, while a drag is at an edge
+  let _penDown = null;   // { clientX, clientY } where a pen stroke began, until it moves past PEN_SLOP
 
   function _getTouchDistance(touches) {
     const dx = touches[0].clientX - touches[1].clientX;
@@ -110,6 +118,7 @@ export function useEditorInteractions(options) {
     if (workspaceStore) workspaceStore.isPainting = true;
 
     _lastPos = pos;
+    _penDown = event.pointerType === 'pen' ? _getPointerPos(event) : null;
 
     if (event.pointerId !== undefined && event.currentTarget) {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -312,6 +321,10 @@ export function useEditorInteractions(options) {
       return;
     }
 
+    if (_penDown) {
+      if (Math.hypot(clientX - _penDown.clientX, clientY - _penDown.clientY) < PEN_SLOP) return;
+      _penDown = null; // a drag: it goes on from where it began
+    }
     const prev = _lastPos || pos;
     _lastPos = pos;
     callbacks.onPaintMove(prev, pos);
@@ -354,6 +367,7 @@ export function useEditorInteractions(options) {
 
     _lastPos = null;
     _lastMousePos = null;
+    _penDown = null;
     _isMiddleClick = false;
     if (workspaceStore) {
       workspaceStore.isMiddleClick = false;
@@ -365,6 +379,7 @@ export function useEditorInteractions(options) {
   }
 
   function handleTouchStart(event) {
+    if (isStylus(event)) return;
     const tool = unref(activeTool);
 
     if (event.touches.length === 1) {
@@ -418,6 +433,7 @@ export function useEditorInteractions(options) {
   }
 
   function handleTouchMove(event) {
+    if (isStylus(event)) return;
     if (event.touches.length === 1) {
       if (_touchStartTimer && _pendingTouch) {
         // If finger moved significantly, start painting immediately
@@ -465,6 +481,7 @@ export function useEditorInteractions(options) {
   }
 
   function handleTouchEnd(event) {
+    if (isStylus(event)) return;
     if (_touchStartTimer) {
       clearTimeout(_touchStartTimer);
       _touchStartTimer = null;
@@ -479,7 +496,8 @@ export function useEditorInteractions(options) {
     _lastTouchDistance = null;
   }
 
-  function handleTouchCancel() {
+  function handleTouchCancel(event) {
+    if (isStylus(event)) return;
     commitPaint();
   }
 
