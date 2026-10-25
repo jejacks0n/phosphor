@@ -70,7 +70,7 @@ test('a 200×300 grid at dpr 2 stays under the backing cap', async () => {
 });
 
 // ﷽ from a test font (tests/fixtures/fonts/wide.ttf) joined to the display font's family: a solid
-// bar exactly 8 columns wide, so these don't depend on the system's fallback fonts (Linux's draws ﷽
+// bar 7.5 columns wide, drawing over 8, so these don't depend on the system's fallback fonts (Linux's draws ﷽
 // about two columns wide, macOS's about eleven).
 const WIDE = 8;
 async function useWideFont() {

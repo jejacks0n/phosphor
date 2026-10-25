@@ -1,11 +1,13 @@
-# Writes wide.ttf: one glyph, ﷽ (U+FDFD) as a solid bar exactly 8 columns of JetBrains Mono wide
-# (its advance is 600 of 1000 units), so a test of overflowing characters doesn't depend on the
-# system's fallback fonts. Needs fontTools: python3 -m pip install fonttools
+# Writes wide.ttf: one glyph, ﷽ (U+FDFD) as a solid bar 7.5 columns of JetBrains Mono wide (its
+# advance is 600 of 1000 units), so a test of overflowing characters doesn't depend on the system's
+# fallback fonts. It draws over 8 columns; the half column to spare absorbs Linux rounding advances to
+# whole pixels (exactly 8 would measure 8.16 there, and span 9). Needs fontTools:
+# python3 -m pip install fonttools
 from pathlib import Path
 from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 
-WIDTH = 8 * 600
+WIDTH = 4500  # 7.5 × 600
 
 def bar(width):
     pen = TTGlyphPen(None)
