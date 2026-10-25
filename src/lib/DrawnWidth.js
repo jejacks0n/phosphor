@@ -8,7 +8,7 @@
  * so they approximate a terminal's own fonts rather than match them exactly.
  */
 import { cellWidth } from './CharWidth.js';
-import { DISPLAY_FONT_CSS } from './GlyphCoverage.js';
+import { displayFontCss } from './displayFonts.js';
 
 // The columns a width (in cells) draws over: its own, unless it's noticeably wider (more than a fifth
 // of a column over: a hair's overhang, like ŀ's, doesn't count).
@@ -16,7 +16,7 @@ export function spanOf(width, columns) {
   return width > columns + 0.2 ? Math.ceil(width - 0.05) : columns;
 }
 
-let ctx = null, cellPx = 0;
+let ctx = null, cellPx = 0, measuredIn = '';
 const widths = new Map();
 // Measured again once fonts finish loading (a fallback font, or the display font itself).
 globalThis.document?.fonts?.addEventListener('loadingdone', () => {
@@ -26,10 +26,15 @@ globalThis.document?.fonts?.addEventListener('loadingdone', () => {
 
 // A character's drawn width, in cells of the display font.
 export function drawnWidth(char) {
+  if (measuredIn !== displayFontCss()) { // the display font changed
+    widths.clear();
+    cellPx = 0;
+    measuredIn = displayFontCss();
+  }
   let width = widths.get(char);
   if (width === undefined) {
     if (!ctx) ctx = document.createElement('canvas').getContext('2d');
-    ctx.font = DISPLAY_FONT_CSS;
+    ctx.font = measuredIn;
     cellPx ||= ctx.measureText('M').width;
     width = ctx.measureText(char).width / cellPx;
     widths.set(char, width);

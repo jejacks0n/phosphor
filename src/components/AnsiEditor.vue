@@ -32,6 +32,7 @@ const ensureCellCanvas = () => {
   cellCanvas?.destroy();
   try {
     cellCanvas = new CellCanvas(canvasRef.value, { onRestored: queueRender });
+    cellCanvas.smooth = workspaceStore.smoothText;
   } catch (error) {
     console.warn('The ANSI view\'s canvas renderer is unavailable; using the DOM view.', error);
     cellCanvas = null;
@@ -171,6 +172,20 @@ watch(useDom, (dom) => {
   nextTick(queueRender);
 });
 
+// Smooth or sharp text: the canvas's glyphs are drawn again.
+watch(() => workspaceStore.smoothText, (smooth) => {
+  if (!cellCanvas) return;
+  cellCanvas.smooth = smooth;
+  queueRender();
+});
+
+// A new display font, now loaded: the canvas's glyphs and the cell size are measured again.
+watch(() => workspaceStore.displayFontLoaded, () => {
+  cellCanvas?.invalidate();
+  metrics.value = null;
+  queueRender();
+});
+
 // The first whole cell on screen (top-left), where a paste goes with no selection or text cursor.
 let originFrame = 0;
 let viewportEl = null;
@@ -281,7 +296,7 @@ div.ansi-editor {
   resize: none;
   overflow: hidden;
   pointer-events: none;
-  font: 17px 'JetBrains Mono', monospace;
+  font: var(--display-font-size) var(--display-font-family);
 }
 
 .text-cursor {
@@ -306,12 +321,12 @@ div.ansi-editor {
 }
 
 .display {
-  /* GlyphCoverage.DISPLAY_FONT must match this font, size and line-height */
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 17px;
-  line-height: 1.2;
-  -webkit-font-smoothing: none;
-  -moz-osx-font-smoothing: unset;
+  /* the current display font (displayFonts.js), which everything measures in */
+  font-family: var(--display-font-family);
+  font-size: var(--display-font-size);
+  line-height: var(--display-line-height);
+  -webkit-font-smoothing: var(--display-font-smoothing, antialiased);
+  -moz-osx-font-smoothing: var(--display-moz-font-smoothing, grayscale);
   background: var(--surface-dark);
   border: 2px dashed var(--border-light);
   display: block;

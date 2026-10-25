@@ -22,6 +22,8 @@ Inputs the tests read, and (under `reference/`) the outputs they must reproduce.
 | `../../examples/*.phosphor` | real projects from earlier versions | committed by hand |
 | `fonts/wide.ttf` | ﷽ as a bar 7.5 columns wide (drawing over 8), for the overflow tests in any system's fonts | `python3 tests/fixtures/fonts/make-fonts.py` (needs fontTools) |
 | `fonts/color.ttf` | 😀 as a two-color glyph (red, then green), for the canvas's color glyphs (emoji) in any system's fonts | `python3 tests/fixtures/fonts/make-fonts.py` |
+| `fonts/tall.ttf` | a monospaced font taller than its em (ascent 1.1, descent 0.1), its `_` filling the descent: where the canvas puts the baseline, and a font you load | `python3 tests/fixtures/fonts/make-fonts.py` |
+| `fonts/proportional.ttf` | the monospace check's ten characters at different widths: a font you load that's refused | `python3 tests/fixtures/fonts/make-fonts.py` |
 
 The current `.phosphor` format is covered by the save-then-load tests (`tests/browser/projects.test.js`).
 

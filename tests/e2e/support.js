@@ -4,10 +4,13 @@ import { fileURLToPath } from 'node:url';
 
 export const fixture = (path) => fileURLToPath(new URL(`../fixtures/${path}`, import.meta.url));
 
+// The start screen's file input (images and projects), not the Font field's.
+export const imageInput = (page) => page.locator('input[type=file][accept^="image/"]');
+
 // The app with an image loaded, on the ANSI tab.
 export async function openApp(page, image = 'images/gradient.png') {
   await page.goto('/');
-  await page.locator('input[type=file]').setInputFiles(fixture(image));
+  await imageInput(page).setInputFiles(fixture(image));
   await tab(page, 'ANSI').click();
   await settled(page);
 }

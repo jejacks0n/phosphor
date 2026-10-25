@@ -47,6 +47,36 @@ holds, just as a terminal draws it.
 The converter only uses one-column characters: anything two columns wide in your **Characters**
 set is skipped, so the cells it fills never overlap.
 
+## The font
+
+**Font**, in the side panel's Setup, sets the font the art is drawn in, in both views, and its size.
+Phosphor has four:
+
+- **JetBrains Mono**: the default.
+- **IBM VGA**: the VGA font of old PC screens, with Unscii for the characters it lacks.
+- **Unscii**: an 8-bit-style font with wide coverage, including Symbols for Legacy Computing.
+- **Unifont**: GNU Unifont, which covers almost everything in its own plain style.
+
+The last three are 8×16 pixel fonts that share one cell, so box drawing and blocks line up whichever
+of them draws a character. In the canvas view, the block elements (`█ ▀ ▄ ▌ ▐` and the quadrants)
+and the shades (`░ ▒ ▓`) aren't the font's: Phosphor draws them itself, as most terminals do, so
+they fill their cells exactly and the shades' dots line up from cell to cell, in any font (a dot is
+a sixteenth of the cell's height, the VGA's own pixel). Everything else is the font's: smoothed
+(anti-aliased), or pixel-sharp with **Smooth** in the ANSI view's status bar turned off, in both
+views. Pixel fonts look sharpest at their own size or a whole multiple of it (16 or 32). Wide characters (Chinese, Japanese, Korean) and emoji come from your system's fonts.
+
+**Load custom**, beside the field's label, adds a font from your computer: TrueType, OpenType or
+WOFF. It has to be monospaced, every character the same width as in a terminal; Phosphor checks ten
+characters (`il.' MWm@0`) and says so when they differ. A loaded font starts at 16px, keeps its own
+height (so a full block fills its cell), and stays in this browser until you remove it (**Remove**,
+shown while it's the font in use). It isn't uploaded anywhere.
+
+The font changes how the art looks in Phosphor. It also changes how the characters you draw look
+in the Pixel tab, and in the image when you merge them into it: each cell blends its colors by how
+much of it its character covers, measured in the font you see. It doesn't change how an image
+converts, or what's saved or exported; a terminal or viewer draws the file in its own font. The
+font and size are kept in this browser, not in the project.
+
 ## Typing any script
 
 With the Text tool, you can type with your system's input method (Japanese, Chinese, Korean...),

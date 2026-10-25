@@ -44,6 +44,7 @@ defineEmits(['close']);
           <li><a href="https://ertdfgcvb.xyz" target="_blank">ertdfgcvb</a> (Andreas Gysin) for the inspiration for Phosphor with the (awesome) <a href="https://play.ertdfgcvb.xyz" target="_blank">play.core</a> library</li>
           <li>Blocktronics and MeaTLoTioN for your work on Moebius</li>
           <li>lordscarlet (Doug Moore) for creating <a href="https://16colo.rs" target="_blank">https://16colo.rs</a></li>
+          <li>The fonts: <a href="https://int10h.org/oldschool-pc-fonts/" target="_blank">IBM VGA 8x16</a> from VileR's Ultimate Oldschool PC Font Pack (<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a>), <a href="https://github.com/JetBrains/JetBrainsMono" target="_blank">JetBrains Mono</a> by The JetBrains Mono Project Authors (<a href="https://openfontlicense.org" target="_blank">SIL OFL 1.1</a>), <a href="http://viznut.fi/unscii/" target="_blank">Unscii</a> by viznut (public domain), and <a href="https://unifoundry.com/unifont/" target="_blank">GNU Unifont</a> by Roman Czyborra, Paul Hardy and others (<a href="https://openfontlicense.org" target="_blank">SIL OFL 1.1</a>)</li>
           <li>And the many authors, maintainers, and ANSI artists who have inspired me over the years -- too many to name</li>
         </ul>
         <p>Thank you for the inspiration and for helping to create such a vibrant community around this unique art form.</p>
