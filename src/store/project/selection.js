@@ -54,15 +54,25 @@ export const selectionActions = {
 
   // Returns the pasted rect (clipped), or null when it's all off the grid.
   // A paste starts a float (floatSelection): moving it right after re-pastes it, so what it first
-  // landed on comes back.
+  // landed on comes back. recorded: whether it was an undo step (a paste that changes nothing isn't).
   pasteSelection(block, col, row) {
     const paste = (c, r) => {
       const rect = this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
       if (rect) this.selectionEdit([rect], () => this.pasteAt(block, c, r));
       return rect;
     };
+    const version = this.history.version;
     const landed = paste(col, row);
-    this._float = landed && { paste: true, redo: (dc, dr) => paste(col + dc, row + dr), from: landed, layers: null, dc: 0, dr: 0, landed, version: this.history.version };
+    this._float = landed && { paste: true, redo: (dc, dr) => paste(col + dc, row + dr), from: landed, layers: null, dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version };
+    return landed;
+  },
+
+  // Stamp (Moebius's S while moving, and C on a selection): a copy of what's selected stays where it
+  // is, and the block floats on from there as a paste of it, so moving it leaves the copy behind.
+  stampSelection(rect, layers) {
+    this.commitPending();
+    const landed = this.pasteSelection(this.copySelection(rect, layers), rect.c0, rect.r0);
+    if (this._float) this._float.stamped = true;
     return landed;
   },
 
@@ -80,13 +90,14 @@ export const selectionActions = {
       && (!run.layers || (run.layers.base === layers.base && run.layers.edit === layers.edit));
     const current = sameRun ? run : { redo: (c, r) => this.moveSelection(rect, layers, c, r), from: rect, layers: { ...layers }, dc: 0, dr: 0 };
     const offset = { dc: current.dc + dc, dr: current.dr + dr };
-    if (sameRun) this.undo();
+    if (sameRun && run.recorded) this.undo();
     if (!current.paste && !offset.dc && !offset.dr) { // back where the move started: nothing moved, nothing recorded
       this._float = null;
       return current.from;
     }
+    const version = this.history.version;
     const landed = current.redo(offset.dc, offset.dr);
-    this._float = landed && { ...current, ...offset, landed, version: this.history.version };
+    this._float = landed && { ...current, ...offset, landed, version: this.history.version, recorded: this.history.version !== version };
     return landed;
   },
 

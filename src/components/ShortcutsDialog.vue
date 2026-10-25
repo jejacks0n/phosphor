@@ -19,6 +19,22 @@ const GROUPS = [
     ],
   },
   {
+    title: 'Tools',
+    rows: [
+      [['P'], 'Pencil'],
+      [['B'], 'Brush'],
+      [['E'], 'Eraser (with a selection: erase it)'],
+      [['G'], 'Paint Bucket'],
+      [['U'], 'Shapes'],
+      [['I'], 'Color Picker'],
+      [['H'], 'Hand'],
+      [['Z'], 'Zoom (PIXEL view)'],
+      [['T', 'K'], 'Edit Mode (Esc puts the cursor away, so letters choose tools again)'],
+      [['F'], 'Flip (ANSI view)'],
+      [['M'], 'Select (ANSI view)'],
+    ],
+  },
+  {
     title: 'Drawing',
     rows: [
       [[`hold ${k('alt')}`], 'Pick a color (Pencil, Brush, Paint Bucket, Shapes)'],
@@ -56,8 +72,9 @@ const GROUPS = [
       [[k('mod', 'A')], 'Select all'],
       [[k('mod', 'C'), k('mod', 'X'), k('mod', 'V')], 'Copy, cut, paste'],
       [['← ↑ → ↓'], 'Nudge the selection'],
-      [['Delete', 'Backspace'], 'Delete what\'s selected'],
-      [['Esc'], 'Deselect'],
+      [['Delete', 'Backspace', 'E'], 'Delete what\'s selected'],
+      [['S', 'C'], 'Stamp: leave a copy here and move the block on'],
+      [['Esc', 'Enter'], 'Deselect, setting the block down'],
     ],
   },
   {

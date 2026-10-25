@@ -1,6 +1,7 @@
 /**
  * Editing tools. A tool is a plain object:
  *   id, title, icon (SVG markup), views ('input' = PIXEL, 'output' = ANSI), kind ('paint' | 'pick' | 'navigate'),
+ *   keys       the letters that choose it (useKeyboardShortcuts; shown on its button)
  *   altPicks?  holding Alt switches to the picker (Alt+Shift: picking the background)
  *   available? (project) => boolean: offered in the toolbar only when true (e.g. flip needs the ANSI art style)
  *   section?   toolbar group ('navigate', 'cell'); a divider separates groups
@@ -31,3 +32,11 @@ const NONE = { id: 'none', kind: 'none', views: [] };
 export function getTool(id) {
   return BY_ID.get(id) ?? NONE;
 }
+
+// The tools offered in a view ('input' or 'output'), as the toolbar shows them.
+export function offeredTools(view, project) {
+  return TOOLS.filter(tool => tool.views.includes(view) && (!tool.available || tool.available(project)));
+}
+
+// A tool's name with its keys, for its button's tooltip: 'Pencil (1px) · P'.
+export const toolTitle = (tool) => (tool.keys ? `${tool.title} · ${tool.keys.join(' or ')}` : tool.title);

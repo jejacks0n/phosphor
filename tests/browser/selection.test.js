@@ -148,3 +148,21 @@ test('moving a wide character one column right leaves nothing behind where it wa
   expect(cell(project, 5, 3).char).toBe('漢');
   expect(cell(project, 4, 3).char).toBe(before); // the converter's own character, not a space
 });
+
+test('stamp leaves a copy and floats the block on; undo takes back only the last move, and the selection goes back to the copy', async () => {
+  const { project, workspace } = await scene();
+  const EDIT = { base: false, edit: true };
+  project.typeAt(5, 5, 'A', ATTRS);
+  project.commitEdit();
+  workspace.selectAll({ c0: 5, r0: 5, c1: 5, r1: 5 });
+  workspace.selection = project.stampSelection(workspace.selection, EDIT);
+  workspace.selection = project.floatSelection(workspace.selection, EDIT, 3, 0);
+  workspace.selection = project.stampSelection(workspace.selection, EDIT);
+  workspace.selection = project.floatSelection(workspace.selection, EDIT, 2, 0);
+  expect([5, 8, 10].map((c) => cell(project, c, 5).char).join('')).toBe('AAA');
+  project.undo();
+  await settle(project);
+  expect([5, 8].map((c) => cell(project, c, 5).char).join('')).toBe('AA');
+  expect(cell(project, 10, 5).char).not.toBe('A');
+  expect(workspace.selection).toEqual({ c0: 8, r0: 5, c1: 8, r1: 5 });
+});
