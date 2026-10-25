@@ -169,3 +169,14 @@ test('flipping a base cell under CGA with brightness swaps its two shown colors'
   const flipped = project.cells[cellIndex(col, row, project.cols)];
   expect([flipped.fg.hex, flipped.bg.hex]).toEqual([bg.hex, fg.hex]);
 });
+
+test('a moved block of an image smaller than the grid keeps its colors', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 80, rows: 80 }); // processed at its own 64 x 64
+  expect(workingScale(project.image, project.processParams)).toBe(null);
+  const rect = { c0: 2, r0: 3, c1: 4, r1: 4 };
+  const before = hexes(colorsIn(project, rect));
+  project.floatSelection(rect, { base: true, edit: true }, 6, 0);
+  project.render(); await settle(project);
+  expect(hexes(colorsIn(project, rect, 6))).toEqual(before);
+});

@@ -16,7 +16,7 @@
  * it goes. (Sharpen is the exception: the shader sharpens after the adjustments, from neighbors
  * that aren't adjusted, so a sharpened block can differ a little.)
  */
-import { processImage, processedImage, adjustedPixels, applyQuantization, getPaletteColors } from '../lib/ImageProcessor.js';
+import { processImage, processedImage, adjustedPixels, applyQuantization, getPaletteColors, workingScale } from '../lib/ImageProcessor.js';
 import { applyTransforms } from '../lib/PixelTransforms.js';
 import { nearestColor } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
@@ -66,7 +66,10 @@ export default class Renderer {
     }
     const scale = this.baseLayer?.scale;
     if (baseParams && scale && (this.#processed?.image !== image || this.#processed.key !== sourceKey || this.#processed.scale !== scale)) {
-      this.#processed = { image, key: sourceKey, scale, canvas: await this.#processedInGrid(image, baseParams, scale) };
+      // An image smaller than the grid is processed at its own size and scaled up: there are no
+      // whole processed pixels per grid pixel, and the stored colors (#source) are what shows.
+      const canvas = workingScale(image, params) ? await this.#processedInGrid(image, baseParams, scale) : this.#sourceCanvas();
+      this.#processed = { image, key: sourceKey, scale, canvas };
     }
 
     const output = document.createElement('canvas');
@@ -82,6 +85,15 @@ export default class Renderer {
   // black around it, as the pipeline fills the letterbox. What a block of the base copies.
   get processed() {
     return this.#processed && { canvas: this.#processed.canvas, scale: this.#processed.scale };
+  }
+
+  #sourceCanvas() {
+    const { data } = this.#source;
+    const canvas = document.createElement('canvas');
+    canvas.width = data.width;
+    canvas.height = data.height;
+    ctx2d(canvas).putImageData(data, 0, 0);
+    return canvas;
   }
 
   async #processedInGrid(image, baseParams, scale) {

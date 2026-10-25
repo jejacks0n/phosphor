@@ -17,13 +17,15 @@ The color transforms, adjustments and effects in the sidebar (Brightness, Contra
 Colorize, Edges, Flatten, Sharpen…) change the picture before it's converted.
 
 You can edit the base like pixels in an image editor. Erasing, flipping, moving, pasting and
-merging down change the base's own pixels, two per cell, laid over the converted image. They're
-exact: never resampled, blurred or put through the effects, so a moved block keeps its hard edges
-and an erased cell stays black (or the palette's darkest color, with a color-count palette
-made from a picture that has no black). The effects keep working on the parts of the image you haven't
-edited; content you move takes the look it had where it came from. Color adjustments and the
-color palette still apply to everything. Your original image is never changed, unless you
-bake (below).
+merging down change the base's own pixels, laid over the converted image. They're exact: never
+resampled, blurred or put through the effects, so a moved block keeps its hard edges and an erased
+cell stays black (or the palette's darkest color, with a color-count palette made from a picture
+that has no black). The effects keep working on the parts of the image you haven't edited; content
+you move takes the look it had where it came from. A moved, pasted or flipped part of the picture
+keeps every pixel the converter made from it, so it shows the same colors where it lands, with the
+color adjustments and the color palette (CGA and VGA too) applying to it as they do to the rest of
+the picture. With Sharpen on it can differ a little, since sharpening looks at the pixels around it.
+Your original image is never changed, unless you bake (below).
 
 The base layer also remembers **pinned characters**: cells whose character the converter keeps
 instead of picking one, so rolling the seed or changing the character set doesn't change them.
