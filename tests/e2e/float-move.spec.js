@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, store, cellPoint, drag, settled } from './support.js';
+import { openApp, store, cellPoint, drag, settled, editAt, chars } from './support.js';
 
 // Moving a selection with the mouse floats it until it's deselected: letting go and dragging again
 // doesn't stamp it where it paused.
@@ -38,4 +38,24 @@ test('Escape leaves it where it is: a new drag of the same cells starts a new mo
   await page.keyboard.press('ControlOrMeta+z'); // undoes only the new move
   await settled(page);
   expect(await row(page, 3)).toEqual(stamped);
+});
+
+test('the block follows the pointer while it is dragged, and the drag is one undo step', async ({ page }) => {
+  await openApp(page);
+  await editAt(page, 4, 4);
+  await page.keyboard.type('AB');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('m');
+  await drag(page, await cellPoint(page, 4, 4), await cellPoint(page, 5, 4));
+  const from = await cellPoint(page, 4, 4), mid = await cellPoint(page, 4, 7), to = await cellPoint(page, 9, 7);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(mid.x, mid.y, { steps: 4 });
+  await expect.poll(() => chars(page, 7, 4, 5)).toBe('AB'); // still dragging
+  await page.mouse.move(to.x, to.y, { steps: 4 });
+  await expect.poll(() => chars(page, 7, 9, 10)).toBe('AB');
+  expect(await chars(page, 7, 4, 5)).not.toBe('AB');
+  await page.mouse.up();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => chars(page, 4, 4, 5)).toBe('AB');
 });

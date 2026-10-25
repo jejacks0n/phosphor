@@ -3,6 +3,14 @@ import { clampZoom } from '@/store/WorkspaceStore';
 
 const TOUCH_DELAY_MS = 150; // a touch waits this long before drawing, in case a second finger makes it a pinch
 const TOUCH_MOVE_THRESHOLD = 5; // Pixels to move before immediate paint start
+// A drag with a tool that asks for it (autoScroll: Select) scrolls the view when it nears an edge:
+// from EDGE_PX inside it, faster the further in or past, up to EDGE_MAX_SPEED px a frame.
+const EDGE_PX = 24;
+const EDGE_MAX_SPEED = 40;
+const edgeSpeed = (p, lo, hi) => {
+  const into = p < lo + EDGE_PX ? p - (lo + EDGE_PX) : p > hi - EDGE_PX ? p - (hi - EDGE_PX) : 0;
+  return Math.sign(into) * Math.min(EDGE_MAX_SPEED, Math.ceil(Math.abs(into) / 2));
+};
 
 
 // options.activeTool: a ref to the active tool object (src/tools); its kind and id decide how pointers behave.
@@ -37,6 +45,7 @@ export function useEditorInteractions(options) {
   let _isMiddleClick = false;
   let _touchStartTimer = null;
   let _pendingTouch = null;
+  let _edgeFrame = null; // the next edge-scroll step, while a drag is at an edge
 
   function _getTouchDistance(touches) {
     const dx = touches[0].clientX - touches[1].clientX;
@@ -306,6 +315,27 @@ export function useEditorInteractions(options) {
     const prev = _lastPos || pos;
     _lastPos = pos;
     callbacks.onPaintMove(prev, pos);
+    if (tool.autoScroll && !_edgeFrame) _edgeFrame = requestAnimationFrame(_edgeScroll);
+  }
+
+  // A frame of scrolling at the edge, and the tool told where the pointer now is over the content.
+  // It stops when the pointer leaves the edge, the view can't scroll further, or the drag ends.
+  function _edgeScroll() {
+    _edgeFrame = null;
+    const scrollEl = _getScrollParent();
+    if (!isPainting.value || !scrollEl || _lastClientX === null) return;
+    const r = scrollEl.getBoundingClientRect();
+    const { scrollLeft, scrollTop } = scrollEl;
+    scrollEl.scrollLeft += edgeSpeed(_lastClientX, r.left, r.right);
+    scrollEl.scrollTop += edgeSpeed(_lastClientY, r.top, r.bottom);
+    if (scrollEl.scrollLeft === scrollLeft && scrollEl.scrollTop === scrollTop) return;
+    _refreshMousePos();
+    const pos = callbacks.pixelCoordsAt({ clientX: _lastClientX, clientY: _lastClientY });
+    if (pos) {
+      callbacks.onPaintMove(_lastPos || pos, pos);
+      _lastPos = pos;
+    }
+    _edgeFrame = requestAnimationFrame(_edgeScroll);
   }
 
   // Ends the stroke: the tool applies it (its end), or with cancel drops what it can (onPaintCancel).
@@ -319,6 +349,8 @@ export function useEditorInteractions(options) {
     if (!isPainting.value) return;
     isPainting.value = false;
     if (workspaceStore) workspaceStore.isPainting = false;
+    cancelAnimationFrame(_edgeFrame);
+    _edgeFrame = null;
 
     _lastPos = null;
     _lastMousePos = null;

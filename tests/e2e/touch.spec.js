@@ -78,3 +78,41 @@ test('PIXEL view: a pinch-zoom with the Paint Bucket zooms and fills nothing', a
   expect(await store(page, 'workspace', (w) => w.editZoom)).toBeGreaterThan(5);
   expect(await store(page, 'project', (p) => p.hasEdits)).toBe(false);
 });
+
+// A phone's browser leaves a tapped button in :hover until something else is touched; on a device
+// that can't hover, hover has no look, so nothing stays highlighted.
+test('a tapped button doesn\'t stay highlighted (no hover look on a touch screen)', async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'hover', value: 'none' }, { name: 'pointer', value: 'coarse' }] });
+  await openApp(page);
+  await page.keyboard.press('m');
+  await store(page, 'workspace', (w) => w.selectAll({ c0: 4, r0: 4, c1: 6, r1: 5 }));
+  const stamp = page.getByRole('button', { name: 'Stamp' });
+  const look = () => stamp.evaluate((b) => { const s = getComputedStyle(b); return [s.transform, s.backgroundColor, s.boxShadow].join(' | '); });
+  await page.waitForTimeout(300); // past the buttons' transitions
+  const before = await look();
+  await stamp.hover(); // what the tap leaves behind
+  await page.waitForTimeout(300);
+  expect(await stamp.evaluate((b) => b.matches(':hover'))).toBe(true);
+  expect(await look()).toBe(before);
+});
+
+test('a button shows it\'s being pressed while a finger (or the mouse) is down on it', async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'hover', value: 'none' }, { name: 'pointer', value: 'coarse' }] });
+  await openApp(page);
+  await page.keyboard.press('m');
+  await store(page, 'workspace', (w) => w.selectAll({ c0: 4, r0: 4, c1: 6, r1: 5 }));
+  const stamp = page.getByRole('button', { name: 'Stamp' });
+  const look = () => stamp.evaluate((b) => { const s = getComputedStyle(b); return [s.transform, s.filter].join(' | '); });
+  await page.waitForTimeout(300);
+  const idle = await look();
+  const box = await stamp.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(150);
+  expect(await look()).not.toBe(idle);
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  expect(await look()).toBe(idle);
+});

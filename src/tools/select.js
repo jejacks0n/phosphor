@@ -1,10 +1,11 @@
 // Selects a rectangle of cells (ANSI view). Dragging inside the selection moves its contents on
-// the chosen layers (workspace.selectLayers); dragging its border moves just the outline; dragging
-// elsewhere draws a new one, and a click outside clears it. The actions are on the options row.
+// the chosen layers (workspace.selectLayers), the block following the pointer cell by cell (a float:
+// the whole drag is one undo step); dragging its border moves just the outline; dragging elsewhere
+// draws a new one, and a click outside clears it. The actions are on the options row.
 import { normalizeRect, selectionHit, clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
 
-let drag = null; // { mode: 'select' | 'move' | 'outline', start: { col, row } }
+let drag = null; // { mode: 'select' | 'move' | 'outline', start: { col, row }, rect?, moved?: { dc, dr } }
 
 // The cell under a position, clamped to the grid (drags may leave it).
 const cellOf = (project, pos) => ({
@@ -22,15 +23,18 @@ export default {
   views: ['output'],
   kind: 'paint',
   section: 'cell',
+  autoScroll: true,
   begin({ project, workspace }, pos) {
     const cell = cellOf(project, pos);
     const hit = hitOf(workspace, pos);
     if (hit === 'outside') {
       drag = { mode: 'select', start: cell };
       workspace.selection = null;
-    } else {
-      drag = { mode: hit === 'border' ? 'outline' : 'move', start: cell };
+    } else if (hit === 'border') {
+      drag = { mode: 'outline', start: cell };
       workspace.selectionOffset = { dc: 0, dr: 0 };
+    } else {
+      drag = { mode: 'move', start: cell, rect: workspace.selection, moved: { dc: 0, dr: 0 } };
     }
     return true;
   },
@@ -40,20 +44,29 @@ export default {
     const cell = cellOf(project, to);
     const dc = cell.col - drag.start.col, dr = cell.row - drag.start.row;
     if (drag.mode === 'move') {
-      workspace.selectionOffset = { dc, dr };
+      // The block keeps a cell on the grid (a float pushed off it entirely would be lost).
+      const { rect, moved } = drag;
+      const offset = {
+        dc: Math.max(-rect.c1, Math.min(project.cols - 1 - rect.c0, dc)),
+        dr: Math.max(-rect.r1, Math.min(charRowsOf(project.rows) - 1 - rect.r0, dr)),
+      };
+      if (offset.dc === moved.dc && offset.dr === moved.dr) return;
+      const landed = project.floatSelection(workspace.selection, workspace.selectLayers, offset.dc - moved.dc, offset.dr - moved.dr);
+      if (landed) {
+        workspace.selection = landed;
+        drag.moved = offset;
+      }
     } else if (drag.mode === 'outline') {
       workspace.selectionOffset = clampOffset(workspace.selection, dc, dr, project.cols, charRowsOf(project.rows)); // the outline stays on the grid
     } else if (dc || dr || workspace.selection) {
       workspace.selection = normalizeRect(drag.start, cell);
     }
   },
-  end({ project, workspace }) {
+  end({ workspace }) {
     const sel = workspace.selection;
     const { dc, dr } = workspace.selectionOffset ?? { dc: 0, dr: 0 };
     if (!sel) {
       // cleared mid-drag: nothing to move
-    } else if (drag?.mode === 'move' && (dc || dr)) {
-      workspace.selection = project.floatSelection(sel, workspace.selectLayers, dc, dr); // floats until deselected
     } else if (drag?.mode === 'outline' && (dc || dr)) {
       workspace.selection = { c0: sel.c0 + dc, r0: sel.r0 + dr, c1: sel.c1 + dc, r1: sel.r1 + dr };
     }
