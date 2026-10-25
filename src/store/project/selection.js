@@ -6,14 +6,14 @@
 // (edit cells and paint, stored apart but one thing to the user), and Base is the base's colors and
 // pins (the converter's own characters belong to their cells and stay). Each layer moves, copies
 // and pastes as itself. Block = { w, h, cells?: (Entry | null)[], paint?: canvas, base?: { pixels:
-// canvas (a grid pixel each), pins: (char | null)[] } }. Rects are clipped to the grid.
+// canvas (at scale, basePixelsOf), scale, colors: canvas (its stored colors, a grid pixel each), pins:
+// (char | null)[] } }. Rects are clipped to the grid.
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellKey, withoutCells, rectCells, pasteBlock, mergeEntry } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
-import { over } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toRaw } from 'vue';
 
@@ -26,23 +26,50 @@ export const selectionActions = {
       block.cells = cells.map(({ col, row }) => this.editCellAt(col, row) ?? null);
       if (this.paintLayer) block.paint = this.paintLayer.copyCells(rect);
     }
-    if (base) block.base = { pixels: this.basePixelsOf(rect), pins: cells.map(({ col, row }) => this.baseRecords.pins.get(cellKey(col, row)) ?? null) };
+    if (base) {
+      block.base = {
+        pixels: this.basePixelsOf(rect), scale: this.baseLayer.scale, colors: this.baseColorsOf(rect),
+        pins: cells.map(({ col, row }) => this.baseRecords.pins.get(cellKey(col, row)) ?? null),
+      };
+    }
     return block;
   },
 
-  // The base's stored colors over a cell rect, on a canvas a grid pixel per pixel.
+  // The base over a cell rect at the base layer's scale: the processed picture (the Renderer's,
+  // every pixel the converter made, before the color adjustments and the palette) with the base's
+  // own pixels over it. Moved or pasted, it looks as it did here.
   basePixelsOf({ c0, r0, c1, r1 }) {
+    const k = this.baseLayer.scale;
+    const x = c0 * k, y = 2 * r0 * k, w = (c1 - c0 + 1) * k, h = 2 * (r1 - r0 + 1) * k;
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    const ctx = ctx2d(out);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, w, h);
+    ctx.imageSmoothingEnabled = false;
+    const processed = this.renderer.processed;
+    if (processed) { // at its own scale (the same, unless the grid changed and it's not rendered yet)
+      const ps = processed.scale / k;
+      ctx.drawImage(processed.canvas, x * ps, y * ps, w * ps, h * ps, 0, 0, w, h);
+    }
+    ctx.drawImage(this.baseLayer.canvas, x, y, w, h, 0, 0, w, h);
+    return out;
+  },
+
+  // The base's stored colors over a cell rect, a grid pixel per pixel: what a block pastes as into a
+  // base layer at another scale (another document, or after a rescale), where its pixels would be
+  // resampled and could snap to other colors.
+  baseColorsOf({ c0, r0, c1, r1 }) {
     const w = c1 - c0 + 1, h = 2 * (r1 - r0 + 1);
-    const own = ctx2d(this.baseLayer.canvas).getImageData(c0, 2 * r0, w, h).data;
     const out = document.createElement('canvas');
     out.width = w;
     out.height = h;
     const ctx = ctx2d(out), pixels = ctx.createImageData(w, h);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        const o = (y * w + x) * 4;
-        const { r, g, b } = over(hex2rgb(this.imageColorAt(c0 + x, 2 * r0 + y)), { r: own[o], g: own[o + 1], b: own[o + 2], a: own[o + 3] / 255 });
-        pixels.data.set([r, g, b, 255], o);
+        const { r, g, b } = hex2rgb(this.baseColorAt(c0 + x, 2 * r0 + y));
+        pixels.data.set([r, g, b, 255], (y * w + x) * 4);
       }
     }
     ctx.putImageData(pixels, 0, 0);
@@ -158,7 +185,7 @@ export const selectionActions = {
   pasteBase({ w, h, base }, col, row) {
     const rect = this.clipRect({ c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 });
     if (!rect) return;
-    this.baseLayer.pasteCells(base.pixels, col, row, w, h, rect);
+    this.baseLayer.pasteCells(base.scale === this.baseLayer.scale ? base.pixels : base.colors, col, row, w, h, rect);
     const pins = base.pins.map((char, i) => ({ col: col + (i % w), row: row + Math.floor(i / w), char }))
       .filter(({ col: c, row: r }) => c >= rect.c0 && c <= rect.c1 && r >= rect.r0 && r <= rect.r1);
     this.setBaseRecords(withPins(withoutPins(this.baseRecords, pins.filter(p => !p.char)), pins.filter(p => p.char)));

@@ -49,6 +49,7 @@ const newCanvas = (w, h) => {
 
 export default class PaintLayer {
   #stroke = null; // { tiles: Map<'x,y', { x, y, w, h, before }>, hadPaint, erased } while recording
+  version = 0;    // goes up with every change to the pixels (what's drawn from them can be cached)
 
   // smooth: a grid resize resamples smoothly (paint) or keeps hard pixel edges (the base layer's pixels).
   constructor({ cols, rows, scale, smooth = true }) {
@@ -95,6 +96,7 @@ export default class PaintLayer {
     }
     if (!rects.length) return null;
     this.hasPaint = true;
+    this.version++;
 
     const bounds = unionRect(rects);
     this.#record(bounds);
@@ -135,6 +137,7 @@ export default class PaintLayer {
     const bounds = unionRect(rects);
     if (!this.#anyPaint(bounds)) return null;
     this.#record(bounds, { erasing: true });
+    this.version++;
     const ctx = ctx2d(this.canvas);
     for (const { x, y, w, h } of rects) ctx.clearRect(x, y, w, h);
     return bounds;
@@ -165,6 +168,7 @@ export default class PaintLayer {
     const target = this.#layerRect({ c0: Math.max(col, clip.c0), r0: Math.max(row, clip.r0), c1: Math.min(col + w - 1, clip.c1), r1: Math.min(row + h - 1, clip.r1) });
     if (!target) return;
     this.#record(target, { erasing: true });
+    this.version++;
     const ctx = ctx2d(this.canvas);
     ctx.clearRect(target.x, target.y, target.w, target.h);
     ctx.save();
@@ -182,6 +186,7 @@ export default class PaintLayer {
     const target = this.#layerRect(rect);
     if (!target || !this.hasPaint || !this.#anyPaint(target)) return;
     this.#record(target, { erasing: true });
+    this.version++;
     ctx2d(this.canvas).clearRect(target.x, target.y, target.w, target.h);
   }
 
@@ -221,13 +226,15 @@ export default class PaintLayer {
     const kept = scale === this.scale;
     Object.assign(this, { cols, rows, scale, canvas: next });
     this.#stroke = null;
+    this.version++;
     return kept;
   }
 
-  // Remap paint to a new grid size so it stays on the same part of the image.
-  resize(cols, rows, oldFit, newFit) {
+  // Remap paint to a new grid size so it stays on the same part of the image, at `scale` layer pixels
+  // per grid pixel (the base layer follows the pipeline's processing scale).
+  resize(cols, rows, oldFit, newFit, scale = this.scale) {
     // Keep the scale unless the bigger grid would exceed MAX_LAYER_DIM (an infinitely large source hits only the cap)
-    const scale = Math.min(this.scale, editScaleFor(Infinity, Infinity, cols, rows));
+    scale = Math.min(scale, editScaleFor(Infinity, Infinity, cols, rows));
     const { offsetX, offsetY, scaleX, scaleY } = resizeTransform(oldFit, newFit);
     const next = newCanvas(cols * scale, rows * scale);
     const ctx = ctx2d(next);
@@ -242,6 +249,7 @@ export default class PaintLayer {
     );
     Object.assign(this, { cols, rows, scale, canvas: next });
     this.#stroke = null; // recorded tiles describe the old canvas
+    this.version++;
   }
 
   // Another layer drawn over this one, a grid pixel at a time as the Renderer shows it (Merge down).
@@ -258,6 +266,7 @@ export default class PaintLayer {
     ctx.drawImage(layer.canvas, 0, 0, layer.cols * this.scale, layer.rows * this.scale);
     ctx.restore();
     this.hasPaint ||= layer.hasPaint;
+    this.version++;
   }
 
   // Whether any paint lies inside a cell rect, sampled a grid pixel at a time as the Renderer draws
@@ -279,6 +288,7 @@ export default class PaintLayer {
   clearCells(rect) {
     if (!this.hasPaint) return;
     ctx2d(this.canvas).clearRect(...this.#rectPixels(rect));
+    this.version++;
     this.recheckPaint();
   }
 
@@ -291,6 +301,7 @@ export default class PaintLayer {
   clear() {
     ctx2d(this.canvas).clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.hasPaint = false;
+    this.version++;
   }
 
   // paint: a saved paint PNG; image: { width, height } of the source image; fit: where it sits in the
@@ -301,6 +312,7 @@ export default class PaintLayer {
     ctx.imageSmoothingEnabled = this.smooth;
     ctx.drawImage(paint, 0, 0, paint.width, paint.height, x, y, w, h);
     this.hasPaint = true;
+    this.version++;
   }
 
   toBlob() {
@@ -331,6 +343,7 @@ export default class PaintLayer {
     const ctx = ctx2d(this.canvas);
     for (const tile of patch.tiles) ctx.putImageData(tile[side], tile.x, tile.y);
     this.hasPaint = side === 'before' ? patch.hadPaint : patch.hasPaint;
+    this.version++;
   }
 
   // Full copies, for edits that replace the whole layer (merge, clear).
@@ -346,6 +359,7 @@ export default class PaintLayer {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     if (snapshot) ctx.drawImage(snapshot.canvas, 0, 0);
     this.hasPaint = !!snapshot && snapshot.hasPaint;
+    this.version++;
   }
 
   // After erasing: whether any paint is left, sampled a grid pixel at a time as the Renderer

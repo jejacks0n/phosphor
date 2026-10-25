@@ -75,6 +75,7 @@ export const documentActions = {
     this.$patch({
       fit: null,
       paintScale: null,
+      baseScale: null, // a loaded file's comes in the patch
       imageIsWorkingCopy: false,
       ...patch,
       image: shallowRef(image),
@@ -112,6 +113,7 @@ export const documentActions = {
       renderedCells: [],
       paintLayer: null,
       baseLayer: null,
+      baseScale: null,
       editCells: new Map(),
       hasPaint: false,
     });
@@ -142,7 +144,7 @@ export const documentActions = {
     this.rename(filename);
     this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
-    const settings = { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, this[key]])), paintScale: this.paintLayer?.scale ?? null };
+    const settings = { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, this[key]])), paintScale: this.paintLayer?.scale ?? null, baseScale: this.baseLayer?.scale ?? null };
     const blob = await writeProject({
       settings,
       imageBuffer: this.imageBuffer,
@@ -179,7 +181,10 @@ export const documentActions = {
       }
       if (basePixels) {
         this.ensureLayer();
-        this.baseLayer.extend(basePixels.width, basePixels.height);
+        // Saved at its scale (settings.baseScale, which the layer was made at). Older files: a pixel
+        // per grid pixel, drawn up to the layer's scale.
+        const k = settings.baseScale ?? 1;
+        this.baseLayer.extend(Math.round(basePixels.width / k), Math.round(basePixels.height / k));
         this.baseLayer.load(basePixels);
       }
       // Both layers reach as far as either was saved (they're extended together from here on).

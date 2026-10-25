@@ -8,6 +8,7 @@ import WebGLProcessor from './WebGLProcessor.js';
 import quantizeColors from './Quantizer.js';
 
 let glProcessor;
+let glBase; // the base layer's own, so the pipeline's processor keeps the picture uploaded
 const customPalettes = {};
 
 export function getPaletteColors(params, canvasForCount = null) {
@@ -45,12 +46,7 @@ export function applyQuantization(canvas, qColors) {
 // Where the image goes in the grid, the size it's processed at (m processed pixels per grid pixel,
 // or the native-size branch: m < 1) and the shader's parameters. scale: a fixed m instead.
 function prepare(image, params, scale = null) {
-  const {
-    cols, rows,
-    invert, brightness, contrast, saturation,
-    sharpen, flatten, edges, edgeColor, edgeThickness,
-    quantize
-  } = params;
+  const { cols, rows } = params;
 
   const sw = image.naturalWidth || image.width;
   const sh = image.naturalHeight || image.height;
@@ -59,10 +55,15 @@ function prepare(image, params, scale = null) {
   // Process at a whole multiple m of the grid fit so every cell is exactly m x m processed pixels;
   // a fractional ratio lets cells straddle pixels and blurs merged paint into its neighbors.
   // m comes from the grid (not the fit), so an image that fills the grid gets the same m as its fit.
+  // While the base layer exists, m is its scale (params.workScale): its pixels are processed pixels,
+  // and a canvas resize keeps both. Not a scale of 1: that base was made for an image smaller than
+  // the grid (processed at its own size, no whole pixels to keep), and holding a working-size copy
+  // of it (Into the image) to 1 would shrink the picture to the grid.
   const maxDim = 400;
   // Where the image sits in the grid: params.fit when it's fixed (a canvas resize), else fitted.
   const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows);
-  const m = scale ?? Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
+  const natural = Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
+  const m = scale ?? (params.workScale > 1 && natural >= 1 ? params.workScale : natural);
   let pw = dw * m;
   let ph = dh * m;
   if (m < 1) {
@@ -72,9 +73,15 @@ function prepare(image, params, scale = null) {
     ph = Math.floor(sh * s);
   }
 
+  return { dx, dy, dw, dh, m, pw, ph, glParams: shaderParams(params) };
+}
+
+// The shader's parameters for the pipeline params.
+function shaderParams(params) {
+  const { invert, brightness, contrast, saturation, sharpen, flatten, edges, edgeColor, edgeThickness, quantize } = params;
   const ec = hex2rgb(edgeColor);
   const cz = hex2rgb(params.colorize || '#ff00ff');
-  const glParams = {
+  return {
     hue: parseFloat(params.hue),
     brightness: parseFloat(brightness),
     contrast: parseFloat(contrast),
@@ -90,7 +97,25 @@ function prepare(image, params, scale = null) {
     palette: (quantize === 'cga' || quantize === 'vga') ? PALETTES[quantize] : null,
     passes: Math.max(1, Math.floor(parseFloat(flatten) / 2))
   };
-  return { dx, dy, dw, dh, m, pw, ph, glParams };
+}
+
+// A canvas's pixels through the shader's color adjustments and CGA/VGA snap, and nothing else (no
+// effects, nothing resampled): the base layer, drawn the way the pipeline draws the picture. The
+// snap has to be the shader's own, which can pick another color than an exact nearest-color search
+// would. Alpha is the canvas's.
+export function adjustedPixels(canvas, params) {
+  const { width: w, height: h } = canvas;
+  if (!glBase) glBase = new WebGLProcessor();
+  glBase.process(canvas, { ...shaderParams(params), sharpen: 0, flatten: 0, edges: 0, passes: 1 }, w, h);
+  const out = document.createElement('canvas');
+  out.width = w;
+  out.height = h;
+  const ctx = ctx2d(out);
+  ctx.drawImage(glBase.canvas, 0, 0);
+  const pixels = ctx.getImageData(0, 0, w, h).data;
+  const own = ctx2d(canvas).getImageData(0, 0, w, h).data;
+  for (let i = 3; i < pixels.length; i += 4) pixels[i] = own[i];
+  return pixels;
 }
 
 // Processed pixels per grid pixel, or null when a source smaller than the grid is processed at its

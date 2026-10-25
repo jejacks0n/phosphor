@@ -4,7 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp } from '../support/app.js';
 
 const ACTIONS = [
-  'applyEditCells', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'basePixelsOf', 'beginEdit',
+  'applyEditCells', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit',
   'cancelEdit', 'cellHasPaint', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect',
   'commitEdit', 'commitPending', 'commitSliders', 'completeAt', 'composite', 'copySelection',
   'deleteAt', 'deleteIn', 'deleteSelection', 'dropEdits', 'editCell', 'editCellAt', 'ensureLayer',
@@ -12,7 +12,7 @@ const ACTIONS = [
   'flipPaint', 'floatSelection', 'gridRect', 'hasEditsIn', 'imageColorAt', 'keepMigratedLook',
   'loadProject', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeUp',
   'moveSelection', 'newDocument', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
-  'pasteSelection', 'pushEdit', 'randomizeSeed', 'rawColorAt', 'redo', 'refreshCells', 'rename',
+  'pasteSelection', 'processingScale', 'pushEdit', 'randomizeSeed', 'rawColorAt', 'redo', 'refreshCells', 'rename',
   'render', 'replaceImage', 'resetGroup', 'resetSliders', 'saveProject', 'selectionEdit',
   'setBaseRecords', 'setBlankCanvas', 'setCells', 'setImageFromFile', 'setSlider', 'shiftCells',
   'sliderValues', 'stampSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'updateCols', 'updateRows', 'writeAt',

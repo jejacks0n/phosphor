@@ -72,6 +72,20 @@ describe('save, then load', () => {
     expect(snapshot(project)).toEqual(before);
   });
 
+  test('a moved block of the base comes back the same (the base is saved at its scale)', async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 30, rows: 30 }); // 3 pixels per grid pixel
+    Object.assign(project, { quantize: 'cga', brightness: 150 });
+    await settle(project);
+    project.floatSelection({ c0: 2, r0: 2, c1: 11, r1: 11 }, { base: true, edit: false }, 15, 0);
+    project.render(); await settle(project);
+    expect(project.baseLayer.scale).toBe(3);
+    const before = snapshot(project);
+    await project.loadProject(await save(project));
+    await settle(project);
+    expect(snapshot(project)).toEqual(before);
+  });
+
   test('after a Bake: the baked image comes back', async () => {
     const { project } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });

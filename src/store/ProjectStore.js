@@ -26,7 +26,8 @@ export const useProjectStore = defineStore('project', {
     hasPaint: false,
     renderer: markRaw(new Renderer()),
     paintLayer: null, // PaintLayer (markRaw); hasPaint mirrors paintLayer.hasPaint for reactivity
-    baseLayer: null,  // the base layer's own pixels: a PaintLayer at grid resolution (markRaw), over the image
+    baseLayer: null,  // the base layer's own pixels: a PaintLayer at the processing scale (markRaw), over the image
+    baseScale: null,  // the base layer's scale (the pipeline processes at it), or a loaded file's until the layer exists
     fit: null,        // where the image sits in the grid ({ dx, dy, dw, dh }); fixed while the edit layer has content
     paintScale: null, // the paint layer's scale from a loaded file (its saved paint is at that scale)
     editCells: shallowRef(new Map()), // the edit cells (see document/editCells.js)
@@ -83,6 +84,7 @@ export const useProjectStore = defineStore('project', {
       charMode: state.renderStyle === 'ansi' ? 'random' : 'brightness',
       image: state.image,
       fit: state.fit,
+      workScale: state.baseScale,
     }),
   },
 

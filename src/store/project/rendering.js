@@ -6,6 +6,7 @@ import PaintLayer, { editScaleFor, resizeTransform } from '@/document/PaintLayer
 import { remapBaseRecords } from '@/document/baseRecords.js';
 import { fitRect } from '@/lib/Canvas.js';
 import { layoutWide } from '@/lib/Cells.js';
+import { workingScale } from '@/lib/ImageProcessor.js';
 import { MAX_DIMENSION } from '@/store/project/shared.js';
 import { baseParams } from '@/store/settings.js';
 import { markRaw } from 'vue';
@@ -57,7 +58,8 @@ export const renderingActions = {
   // the edit layer, a grid change is a canvas resize: the image and every layer stay where they
   // are, and the grid gains or loses cells at the right and bottom (what's past the edge is kept,
   // for when it grows back). Otherwise it rescales: the image refits the grid, and the base's own
-  // pixels (grid pixels, scale 1, hard-edged) and pins move with it.
+  // pixels (hard-edged) and pins move with it. The base layer is at the pipeline's processing scale
+  // (the new grid's, on a rescale), and the pipeline keeps that scale while it exists.
   ensureLayer() {
     if (!this.image) return;
     const { cols, rows } = this;
@@ -66,8 +68,9 @@ export const renderingActions = {
       const sh = this.image.naturalHeight || this.image.height;
       this.fit ??= this.fitFor(cols, rows);
       this.paintLayer = markRaw(new PaintLayer({ cols, rows, scale: this.paintScale ?? editScaleFor(sw, sh, cols, rows) }));
-      this.baseLayer = markRaw(new PaintLayer({ cols, rows, scale: 1, smooth: false }));
+      this.baseLayer = markRaw(new PaintLayer({ cols, rows, scale: this.baseScale ?? this.processingScale(), smooth: false }));
       this.renderer.baseLayer = this.baseLayer;
+      this.baseScale = this.baseLayer.scale;
       this._layerGrid = { cols, rows };
       return;
     }
@@ -77,13 +80,15 @@ export const renderingActions = {
     if (this.hasEdits) {
       const kept = this.paintLayer.extend(cols, rows);
       this.baseLayer.extend(cols, rows);
+      this.baseScale = this.baseLayer.scale;
       if (!kept) this.dropEdits(); // the paint had to be resampled, so recorded strokes no longer fit
       return;
     }
     // Recorded edits are in the old layers' pixel coordinates; they can't be replayed onto remapped ones.
     const oldFit = this.fit, newFit = this.fitFor(cols, rows);
     this.paintLayer.resize(cols, rows, oldFit, newFit);
-    this.baseLayer.resize(cols, rows, oldFit, newFit);
+    this.baseLayer.resize(cols, rows, oldFit, newFit, this.processingScale({ fit: newFit }));
+    this.baseScale = this.baseLayer.scale;
     this.setBaseRecords(remapBaseRecords(this.baseRecords, resizeTransform(oldFit, newFit), cols, rows));
     this.fit = newFit;
     this.dropEdits();
@@ -95,6 +100,12 @@ export const renderingActions = {
     this._stroke = null;
     this.history.retain(entry => entry.settingsOnly);
     this.historyVersion = this.history.version;
+  },
+
+  // The pipeline's own processing scale for the grid (not the base layer's), or 1 when the image is
+  // smaller than the grid (processed at its native size).
+  processingScale(params = {}) {
+    return workingScale(this.image, { ...this.processParams, ...params, workScale: null }) ?? 1;
   },
 
   // Where the image fits a cols x rows grid.
