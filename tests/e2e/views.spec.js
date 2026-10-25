@@ -5,8 +5,9 @@ test('Canvas and DOM views: the DOM view\'s text is the cells\' characters', asy
   await openApp(page);
   await editAt(page, 1, 1);
   await page.keyboard.insertText('漢字 ok');
-  await page.getByRole('button', { name: 'Canvas', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'DOM', exact: true })).toBeVisible();
+  // The button names the view it switches to.
+  await page.getByRole('button', { name: 'DOM', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Canvas', exact: true })).toBeVisible();
   await expect(page.locator('.ansi-editor pre.display')).toBeVisible();
   await expect(page.locator('.ansi-editor canvas.display')).toHaveCount(0);
 
@@ -14,7 +15,7 @@ test('Canvas and DOM views: the DOM view\'s text is the cells\' characters', asy
   await expect.poll(() => page.locator('.ansi-editor pre.display > span').allTextContents()).toEqual(expected);
   expect(expected[1].slice(1, 6)).toBe('漢字 ok'); // col 0 is the picture's
 
-  await page.getByRole('button', { name: 'DOM', exact: true }).click();
+  await page.getByRole('button', { name: 'Canvas', exact: true }).click();
   await expect(page.locator('.ansi-editor canvas.display')).toBeVisible();
 });
 
@@ -24,7 +25,7 @@ test('the DOM view keeps every character in its column, as a terminal does, even
   await page.keyboard.insertText('a﷽bcdef漢g');   // ﷽ gets one column and draws about eleven; 漢 two
   await page.keyboard.press('Enter');
   await page.keyboard.insertText('  a.bcdef..g'); // the same columns, plain
-  await page.getByRole('button', { name: 'Canvas', exact: true }).click();
+  await page.getByRole('button', { name: 'DOM', exact: true }).click();
   await expect(page.locator('.ansi-editor pre.display')).toBeVisible();
   // Each letter's left edge, row by row: the same column, the same place.
   const xs = await page.evaluate(() => {

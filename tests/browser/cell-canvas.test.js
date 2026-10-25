@@ -129,3 +129,21 @@ test('an overflowing character draws on top of the characters it covers', async 
     expect(red).toBeGreaterThan(0);
   }
 });
+
+test('a color glyph (an emoji) draws in its own colors, not the cell\'s fg', async () => {
+  await createTestApp();
+  // 😀 from a test font (tests/fixtures/fonts/color.ttf): a red bar in its left column, green in its right.
+  const face = new FontFace('JetBrains Mono', 'url(/tests/fixtures/fonts/color.ttf)', { unicodeRange: 'U+1F600' });
+  document.fonts.add(await face.load());
+  const cells = layoutWide([cell('😀', '#ffffff', '#0000ff'), cell(' ', '#ffffff', '#0000ff'), cell(' ', '#ffffff', '#0000ff')], 3);
+  const { cw, ch, at } = drawAndRead(3, 1, cells);
+  const colorsIn = (c0) => {
+    const seen = new Set();
+    for (let y = 0; y < ch; y++) for (let x = c0 * cw; x < (c0 + 1) * cw; x++) seen.add(at(x, y).join());
+    return [...seen].sort();
+  };
+  const RED = '255,0,0', GREEN = '0,255,0', BLUE = '0,0,255';
+  expect(colorsIn(0)).toEqual([BLUE, RED].sort());   // its colors on the cell's background, nothing blended
+  expect(colorsIn(1)).toEqual([BLUE, GREEN].sort()); // the trail: its right half
+  expect(colorsIn(2)).toEqual([BLUE]);
+});

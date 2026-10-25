@@ -20,7 +20,8 @@ Inputs the tests read, and (under `reference/`) the outputs they must reproduce.
 | `projects/charmode.phosphor` | a stored `charMode` (now derived from the art style) | `npm run fixtures` |
 | `projects/live-main.phosphor` | a project saved by the live site's code (`main`) | `node tests/fixtures/capture-main.mjs` |
 | `../../examples/*.phosphor` | real projects from earlier versions | committed by hand |
-| `fonts/wide.ttf` | ﷽ as a bar 7.5 columns wide (drawing over 8), for the overflow tests in any system's fonts | `python3 tests/fixtures/fonts/make-wide.py` (needs fontTools) |
+| `fonts/wide.ttf` | ﷽ as a bar 7.5 columns wide (drawing over 8), for the overflow tests in any system's fonts | `python3 tests/fixtures/fonts/make-fonts.py` (needs fontTools) |
+| `fonts/color.ttf` | 😀 as a two-color glyph (red, then green), for the canvas's color glyphs (emoji) in any system's fonts | `python3 tests/fixtures/fonts/make-fonts.py` |
 
 The current `.phosphor` format is covered by the save-then-load tests (`tests/browser/projects.test.js`).
 

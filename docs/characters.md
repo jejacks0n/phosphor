@@ -16,7 +16,8 @@ Every character takes one or two columns, by the same Unicode rules terminals us
   How much wider depends on the fonts, so Phosphor measures it in the browser's; a terminal using
   other fonts can draw it a little wider or narrower.
 - **Two columns**: Chinese, Japanese and Korean characters (`漢 か 가`), fullwidth forms (`Ａ`) and
-  emoji (`👍🏽 🇯🇵`).
+  emoji (`👍🏽 🇯🇵`). Emoji draw in their own colors, as a terminal shows them: the cell's
+  foreground color doesn't change them, and its background shows around them.
 
 A character can be more than one code point: `👍🏽`, a flag, or a letter with a combining accent
 is still one character in one cell.
