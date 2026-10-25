@@ -69,12 +69,21 @@ test('a 200×300 grid at dpr 2 stays under the backing cap', async () => {
   view.destroy();
 });
 
+// ﷽ from a test font (tests/fixtures/fonts/wide.ttf) joined to the display font's family: a solid
+// bar exactly 8 columns wide, so these don't depend on the system's fallback fonts (Linux's draws ﷽
+// about two columns wide, macOS's about eleven).
+const WIDE = 8;
+async function useWideFont() {
+  const face = new FontFace('JetBrains Mono', 'url(/tests/fixtures/fonts/wide.ttf)', { unicodeRange: 'U+FDFD' });
+  document.fonts.add(await face.load());
+  const { drawnColumns } = await import('@/lib/DrawnWidth');
+  expect(drawnColumns('﷽')).toBe(WIDE); // one column given, eight drawn
+}
+
 test('a character drawing wider than its column covers the cells after it, as a terminal draws it', async () => {
   await createTestApp();
-  const { drawnColumns } = await import('@/lib/DrawnWidth');
-  const span = drawnColumns('﷽');
-  expect(span).toBeGreaterThan(3); // it draws far wider than its one column
-  const cols = span + 3;
+  await useWideFont();
+  const cols = WIDE + 3;
   const row = [cell('﷽', '#ff0000', '#000000'), ...Array.from({ length: cols - 1 }, (_, i) => cell(i % 2 ? 'x' : ' ', '#ffffff', '#0000ff'))];
   const { cw, ch, at } = drawAndRead(cols, 2, [...row, ...Array.from({ length: cols }, () => cell(' ', '#ffffff', '#0000ff'))]);
   const colorsIn = (c0, r = 0) => {
@@ -83,27 +92,40 @@ test('a character drawing wider than its column covers the cells after it, as a 
     return seen;
   };
   const RED = '255,0,0', WHITE = '255,255,255', BLUE = '0,0,255', BLACK = '0,0,0';
-  expect(colorsIn(0).has(RED)).toBe(true);                                // its own column: the shape's start
-  let spilled = 0;
-  for (let c = 1; c < cols; c++) {
+  expect(colorsIn(0).has(RED)).toBe(true);                                  // its own column: the shape's start
+  for (let c = 1; c < WIDE; c++) {
     const seen = colorsIn(c);
-    for (const color of seen) expect([RED, WHITE, BLUE]).toContain(color); // on top of the cell's own colors, nothing blended
-    if (seen.has(RED)) spilled = c;
+    expect(seen.has(RED)).toBe(true);                                       // its whole width, column by column
+    for (const color of seen) expect([RED, WHITE, BLUE]).toContain(color);  // on top of the cell's own colors, nothing blended
+    expect(seen.has(BLACK)).toBe(false);                                    // the spill doesn't bring its own background
   }
-  expect(spilled).toBeGreaterThanOrEqual(span - 2);                         // it reaches across its whole width
-  expect(colorsIn(span + 1).has(RED)).toBe(false);                          // and no further
+  for (let c = WIDE; c < cols; c++) expect(colorsIn(c).has(RED)).toBe(false); // and no further
   for (let c = 0; c < cols; c++) expect(colorsIn(c, 1).has(RED)).toBe(false); // nor into the next row
-  expect(colorsIn(1).has(BLACK)).toBe(false);                               // the spill doesn't bring its own background
+});
+
+test('an overflowing character stops at the end of its row', async () => {
+  await createTestApp();
+  await useWideFont();
+  const cols = 4; // ﷽ in column 1 would reach column 8: three columns of it fit
+  const row = [cell(' ', '#ffffff', '#0000ff'), cell('﷽', '#ff0000', '#000000'), cell(' ', '#ffffff', '#0000ff'), cell(' ', '#ffffff', '#0000ff')];
+  const { cw, ch, at } = drawAndRead(cols, 2, [...row, ...Array.from({ length: cols }, () => cell(' ', '#ffffff', '#0000ff'))]);
+  const redIn = (c0, r) => {
+    for (let y = r * ch; y < (r + 1) * ch; y++) for (let x = c0 * cw; x < (c0 + 1) * cw; x++) if (at(x, y).join() === '255,0,0') return true;
+    return false;
+  };
+  expect([0, 1, 2, 3].map((c) => redIn(c, 0))).toEqual([false, true, true, true]);
+  expect([0, 1, 2, 3].map((c) => redIn(c, 1))).toEqual([false, false, false, false]); // not wrapped into the next row
 });
 
 test('an overflowing character draws on top of the characters it covers', async () => {
   await createTestApp();
-  const { drawnColumns } = await import('@/lib/DrawnWidth');
-  const span = drawnColumns('﷽');
-  // Solid blocks after it: drawn under the overflow, so its color shows inside them.
-  const row = [cell('﷽', '#ff0000', '#000000'), ...Array.from({ length: span }, () => cell('█', '#ffffff', '#0000ff'))];
-  const { cw, ch, at } = drawAndRead(span + 1, 1, row);
-  let red = 0;
-  for (let y = 0; y < ch; y++) for (let x = cw; x < (span + 1) * cw; x++) if (at(x, y).join() === '255,0,0') red++;
-  expect(red).toBeGreaterThan(0);
+  await useWideFont();
+  // Solid blocks after it: drawn under the overflow, so its color shows inside every one of them.
+  const row = [cell('﷽', '#ff0000', '#000000'), ...Array.from({ length: WIDE - 1 }, () => cell('█', '#ffffff', '#0000ff'))];
+  const { cw, ch, at } = drawAndRead(WIDE, 1, row);
+  for (let c = 1; c < WIDE; c++) {
+    let red = 0;
+    for (let y = 0; y < ch; y++) for (let x = c * cw; x < (c + 1) * cw; x++) if (at(x, y).join() === '255,0,0') red++;
+    expect(red).toBeGreaterThan(0);
+  }
 });
