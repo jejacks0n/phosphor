@@ -83,6 +83,7 @@ const hint = computed(() => {
 </template>
 
 <style scoped>
+/* Scrolls sideways when it doesn't fit, without a scrollbar, like the toolbar's options row. */
 footer.ansi-status {
   display: flex;
   align-items: center;
@@ -92,17 +93,21 @@ footer.ansi-status {
   color: var(--text-muted);
   font: 11px ui-monospace, Menlo, monospace;
   white-space: nowrap;
-  overflow: hidden;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+footer.ansi-status::-webkit-scrollbar {
+  display: none;
+}
+
+footer.ansi-status > * {
+  flex-shrink: 0;
 }
 
 b {
   color: var(--text-dim);
   font-weight: 500;
-}
-
-span.hint {
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 kbd {
