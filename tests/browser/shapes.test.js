@@ -65,3 +65,34 @@ test('a filled anti-aliased Full block ellipse over another shows none of it whe
   }
   expect(ghosts).toEqual([]);
 });
+
+test('a filled anti-aliased ellipse over a smaller one hides its soft edge', async () => {
+  for (const [view, settings] of [['input', {}], ['output', { shapeDrawWith: 'half' }]]) {
+    const { project, draw } = await scene(settings);
+    draw(view, { x: 10, y: 10 }, { x: 20, y: 18 }, FIRST); // inside the next one: its edge is soft paint
+    draw(view, { x: 4, y: 4 }, { x: 30, y: 26 }, SECOND);
+    const filled = ellipseCoverage(4, 4, 30, 26, true), ring = ellipseCoverage(4, 4, 30, 26, false);
+    const ghosts = [];
+    for (let y = 4; y <= 26; y++) {
+      for (let x = 4; x <= 30; x++) {
+        if (filled(x, y) < 1) continue;
+        const { r, g, b } = project.paintLayer.pixelAt(x, y);
+        if (!near([r, g, b], twoTone(SECOND, ring(x, y)))) ghosts.push(`${x},${y}: ${r},${g},${b}`);
+      }
+    }
+    expect(ghosts, view).toEqual([]);
+  }
+});
+
+test('paint laid fully over soft paint replaces it; soft over soft composites', async () => {
+  const { default: PaintLayer } = await import('@/document/PaintLayer');
+  const layer = new PaintLayer({ cols: 2, rows: 2, scale: 1 });
+  layer.paint([{ x: 0, y: 0, r: 255, g: 0, b: 0, alpha: 0.5 }]);
+  layer.paint([{ x: 0, y: 0, r: 0, g: 255, b: 0, alpha: 1 }]);
+  expect(layer.pixelAt(0, 0)).toEqual({ r: 0, g: 255, b: 0, a: 1 });
+  // Half green over half red: a red quarter under three quarters' green, as one layer over another.
+  layer.paint([{ x: 1, y: 0, r: 255, g: 0, b: 0, alpha: 0.5 }]);
+  layer.paint([{ x: 1, y: 0, r: 0, g: 255, b: 0, alpha: 0.5 }]);
+  const p = layer.pixelAt(1, 0);
+  expect([p.r, p.g, p.b, Math.round(p.a * 100)]).toEqual([85, 170, 0, 75]);
+});

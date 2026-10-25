@@ -117,10 +117,13 @@ export default class PaintLayer {
             data[idx + 1] = Math.round(data[idx + 1] + (g - data[idx + 1]) * blend);
             data[idx + 2] = Math.round(data[idx + 2] + (b - data[idx + 2]) * blend);
           } else {
-            data[idx + 3] = Math.min(maxA, existingA + a);
-            data[idx]     = Math.round((data[idx]     * existingA + r * a) / (existingA + a));
-            data[idx + 1] = Math.round((data[idx + 1] * existingA + g * a) / (existingA + a));
-            data[idx + 2] = Math.round((data[idx + 2] * existingA + b * a) / (existingA + a));
+            // Over what's there, as one layer over another: the old paint shows only through what
+            // the new doesn't cover (a shape laid fully over a soft edge hides it).
+            const under = existingA * (255 - a) / 255, total = a + under;
+            data[idx + 3] = Math.min(maxA, Math.round(total));
+            data[idx]     = Math.round((data[idx]     * under + r * a) / total);
+            data[idx + 1] = Math.round((data[idx + 1] * under + g * a) / total);
+            data[idx + 2] = Math.round((data[idx + 2] * under + b * a) / total);
           }
         }
       }
