@@ -510,12 +510,15 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
   }
 }
 
-/* A character drawn exactly as the ANSI view draws one cell (AnsiEditor's <pre>): same font, size and
-   line height, no anti-aliasing, and clipped to the cell, since JetBrains Mono's box-drawing and block
-   glyphs are taller than its line box (in the view, neighboring rows cover the overflow). */
+/* A character drawn as the ANSI view draws it (AnsiEditor's <pre>): same font, size and line height,
+   no anti-aliasing. As wide as it draws, from one column to two, so a two-column emoji or a symbol a
+   fallback font draws wider shows whole; anything wider (﷽) is clipped at two. Clipped to the line
+   too, since JetBrains Mono's box-drawing and block glyphs are taller than its line box (in the
+   view, neighboring rows cover the overflow). */
 .glyph-cell {
   display: inline-block;
-  width: 1ch;
+  min-width: 1ch;
+  max-width: 2ch;
   height: 1.2em;
   overflow: hidden;
   font-family: 'JetBrains Mono', monospace;
