@@ -53,6 +53,12 @@ test('Cell model: one { char, fg, bg } per character cell, built exactly as the 
   assert.ok(grid('漢').every(c => c === '▄'));
   assert.equal(brightnessChar(px(0, 0, 0), px(0, 0, 0), ' 漢#'), ' ');
   assert.equal(brightnessChar(px(255, 255, 255), px(255, 255, 255), ' 漢#'), '#');
+  // A full render (buildCells) picks the same character by brightness as a stroke's update
+  // (brightnessChar), only ever one from the charset: a mid gray is '+', not ',' (undo used to turn
+  // a painted '+' into ',').
+  const gray = px(128, 128, 128);
+  assert.equal(buildCells([gray, gray], 1, 2, { ...opts, charset: ' .+#', charMode: 'brightness' })[0].char, brightnessChar(gray, gray, ' .+#'));
+  assert.equal(brightnessChar(gray, gray, ' .+#'), '+');
   // A wide character takes its cell and the one to its right, the way a terminal lays it out: the
   // covered cell shows the lead's character and colors; one in the last column has no room and
   // shows as a space.
