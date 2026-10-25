@@ -38,7 +38,7 @@ test('PIXEL view: the picker clicked off the canvas leaves the color alone', asy
   await tab(page, 'PIXEL').click();
   await settled(page);
   await page.getByRole('button', { name: 'Color Picker' }).click();
-  const box = await page.locator('article canvas').first().boundingBox();
+  const box = await page.locator('article .display').first().boundingBox();
   const y = box.y + box.height * 0.5;
   await page.mouse.click(box.x + box.width * 0.8, y);
   const picked = await workspace(page, (w) => w.editFgColor);

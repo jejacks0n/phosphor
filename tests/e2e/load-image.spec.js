@@ -7,5 +7,5 @@ test('an image loaded with the file input shows as cells in the ANSI tab', async
   expect(cols).toBe(80);
   expect(count).toBe(80 * 40);
   expect(filename).toBe('gradient');
-  await expect(page.locator('.ansi-editor canvas.display')).toBeVisible();
+  await expect(page.locator('.ansi-editor .display canvas')).toBeVisible();
 });

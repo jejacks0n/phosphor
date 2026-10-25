@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { openApp, store, fixture, tab, editAt, settled } from './support.js';
+import { openApp, store, fixture, tab, editAt, settled, screenPixels } from './support.js';
 
-// The canvas's CSS width: 2px borders on each side of its cells.
-const canvasWidth = (page) => page.locator('.ansi-editor canvas.display').evaluate((c) => c.getBoundingClientRect().width);
+// The grid's CSS width (the canvas view's sizer): 2px borders on each side of its cells.
+const canvasWidth = (page) => page.locator('.ansi-editor div.display').evaluate((c) => c.getBoundingClientRect().width);
 
 // Load a font with the Font field's Load custom button.
 async function loadFont(page, path) {
@@ -78,20 +78,14 @@ test('the canvas follows the Smooth button: white text on black has gray edges w
   await page.keyboard.insertText('Rag@&%3sw');
   await page.keyboard.press('Escape');
   // Gray pixels (neither black nor white) in the typed cells: col 1 on, row 1 (inside its 2px border).
-  const box = await page.locator('.ansi-editor canvas.display').boundingBox();
+  const box = await page.locator('.ansi-editor div.display').boundingBox();
   const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2) }));
   const cw = (box.width - 4) / cols, ch = (box.height - 4) / rows;
   const grays = async () => {
-    const png = (await page.screenshot({ clip: { x: box.x + 2 + cw, y: box.y + 2 + ch, width: cw * 9, height: ch } })).toString('base64');
-    return page.evaluate(async (png) => { // decoded by the browser
-      const image = await createImageBitmap(await (await fetch(`data:image/png;base64,${png}`)).blob());
-      const ctx = new OffscreenCanvas(image.width, image.height).getContext('2d');
-      ctx.drawImage(image, 0, 0);
-      const { data } = ctx.getImageData(0, 0, image.width, image.height);
-      let n = 0;
-      for (let i = 0; i < data.length; i += 4) if (data[i] > 16 && data[i] < 240 && data[i] === data[i + 1]) n++;
-      return n;
-    }, png);
+    const data = await screenPixels(page, { x: box.x + 2 + cw, y: box.y + 2 + ch, width: cw * 9, height: ch });
+    let n = 0;
+    for (let i = 0; i < data.length; i += 4) if (data[i] > 16 && data[i] < 240 && data[i] === data[i + 1]) n++;
+    return n;
   };
   expect(await grays()).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Smooth' }).click();

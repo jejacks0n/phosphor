@@ -14,7 +14,7 @@ import { snapCursor } from '@/document/wideChars';
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
 // decides what a stroke does. coordsAt and zoomable are read once at setup: pass stable values.
 const props = defineProps({
-  display: { type: Object, default: null },                 // the slotted canvas/pre coordinates are measured against
+  display: { type: Object, default: null },                 // the sizer (or the DOM view's pre) that coordinates are measured against
   coordsAt: { type: Function, required: true },             // (event) => { x, y } in fractional grid pixels, or null
   zoomable: { type: Boolean, default: false },              // zoom reads and writes workspaceStore.editZoom
   scrollKey: { type: String, required: true },              // 'input' | 'ansi': where scroll position is remembered

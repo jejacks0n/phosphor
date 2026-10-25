@@ -8,7 +8,7 @@ async function pixelView(page) {
   await openApp(page);
   await tab(page, 'PIXEL').click();
   await settled(page);
-  return page.locator('article canvas').first();
+  return page.locator('article .display').first();
 }
 
 async function ctrlWheel(page, deltaY) {

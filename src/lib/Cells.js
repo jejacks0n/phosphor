@@ -17,9 +17,8 @@ export const cellIndex = (col, row, cols) => row * cols + col;
 export const cellOfPixel = (x, y) => ({ col: x, row: Math.floor(y / 2) });
 
 // The largest grid: MAX_COLS wide, MAX_LINES lines tall (two pixel rows a line), MAX_CELLS in all, so
-// a narrow piece can run long. Past about MAX_LINES the ANSI view's canvas has to draw below the
-// display's resolution (CellCanvas's backingScale), and the budget keeps whole-grid work (a render,
-// a fill, an undo) under a tenth of a second.
+// a narrow piece can run long. The budget keeps whole-grid work (a render, a fill, an undo) under a
+// tenth of a second.
 export const MAX_COLS = 300, MAX_LINES = 1000, MAX_CELLS = 120_000;
 export const gridFits = (cols, rows) => cols <= MAX_COLS && rows <= 2 * MAX_LINES && cols * charRowsOf(rows) <= MAX_CELLS;
 // The most columns there's room for beside rows, and the most rows beside cols.

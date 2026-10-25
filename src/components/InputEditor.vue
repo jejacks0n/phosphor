@@ -1,17 +1,21 @@
 <script setup>
-import { computed, useTemplateRef, watch, onMounted } from 'vue';
+import { computed, useTemplateRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ctx2d } from '@/lib/Canvas';
 import { cellsToPixels, charRowsOf } from '@/lib/Cells';
 import { parseKey } from '@/document/editCells';
+import { viewWindow, viewIn } from '@/lib/viewWindow';
 import EditorViewport from '@/components/EditorViewport.vue';
 
-// The PIXEL view: the composited output canvas scaled up by editZoom.
+// The PIXEL view: the composited output canvas scaled up by editZoom. The canvas covers only the
+// grid pixels in view, plus a margin (viewWindow), inside a sizer the whole grid's size: the sizer
+// is the display everything measures against.
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const viewport = useTemplateRef('viewport');
-const displayRef = useTemplateRef('displayCanvas');
+const sizerRef = useTemplateRef('sizer');
+const canvasRef = useTemplateRef('displayCanvas');
 
 // Edit cells (or all, with "All cells") drawn over the image as their half-cell colors: the
 // ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible.
@@ -42,31 +46,55 @@ const updateOverlay = () => {
   ctx2d(overlay.canvas).putImageData(new ImageData(cellsToPixels(cells, cols, rows, include), cols, rows), 0, 0);
 };
 
-const drawOverlay = (ctx, width, height) => {
+const drawOverlay = (ctx, win, width, height) => {
   const opacity = workspaceStore.ansiOverlay / 100;
   if (!opacity || !projectStore.cells.length) return;
   updateOverlay();
   if (overlay.empty) return;
   const overlayCanvas = overlay.canvas;
   ctx.globalAlpha = opacity;
-  ctx.drawImage(overlayCanvas, 0, 0, width, height);
+  ctx.drawImage(overlayCanvas, win.col, win.row, win.cols, win.rows, 0, 0, width, height);
   ctx.globalAlpha = 1;
 };
 
+// Draws the window of grid pixels around the viewport, against the layout as it is now. Its CSS
+// size is exactly the window's (fractional at a fractional zoom); the backing store is whole pixels.
+let viewportEl = null;
 const redrawDisplay = () => {
-  const dc = displayRef.value;
+  const dc = canvasRef.value, sizer = sizerRef.value;
   const output = projectStore.renderer.outputCanvas;
-  if (!dc || !output) return;
-  dc.width = projectStore.cols * workspaceStore.editZoom;
-  dc.height = projectStore.rows * workspaceStore.editZoom;
+  if (!dc || !sizer || !viewportEl || !output) return;
+  const zoom = workspaceStore.editZoom;
+  const win = viewWindow(viewIn(sizer, viewportEl), { x: zoom, y: zoom }, projectStore.cols, projectStore.rows);
+  const width = win.cols * zoom, height = win.rows * zoom;
+  // Resizing clears the canvas, so only when the window's size changes; otherwise a clear, for an
+  // output with transparent pixels.
   const ctx = ctx2d(dc);
+  if (dc.width !== Math.ceil(width) || dc.height !== Math.ceil(height)) {
+    dc.width = Math.ceil(width);
+    dc.height = Math.ceil(height);
+  } else {
+    ctx.clearRect(0, 0, dc.width, dc.height);
+  }
+  Object.assign(dc.style, { width: `${width}px`, height: `${height}px`, left: `${win.col * zoom}px`, top: `${win.row * zoom}px` });
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(output, 0, 0, dc.width, dc.height);
-  drawOverlay(ctx, dc.width, dc.height);
+  // Drawn to the backing size, not the CSS size: at a fractional zoom the two differ by under a pixel.
+  ctx.drawImage(output, win.col, win.row, win.cols, win.rows, 0, 0, dc.width, dc.height);
+  drawOverlay(ctx, win, dc.width, dc.height);
+};
+
+// One redraw a frame, from whatever asked for it (scrolls, resizes, edits, zoom).
+let redrawFrame = null;
+const queueRedraw = () => {
+  if (redrawFrame) return;
+  redrawFrame = requestAnimationFrame(() => {
+    redrawFrame = null;
+    redrawDisplay();
+  });
 };
 
 const coordsAt = (event) => {
-  const displayEl = displayRef.value;
+  const displayEl = sizerRef.value;
   if (!displayEl) return null;
   const rect = displayEl.getBoundingClientRect();
   const clientX = event.touches ? event.touches[0].clientX : event.clientX;
@@ -88,22 +116,43 @@ const unit = computed(() => ({ x: workspaceStore.editZoom, y: workspaceStore.edi
 const sizeOf = (canvas) => canvas && `${canvas.width}x${canvas.height}`;
 let lastOutputSize = sizeOf(projectStore.renderer.outputCanvas); // a remount keeps the restored scroll
 watch(() => projectStore.cells, () => {
-  redrawDisplay();
+  queueRedraw();
   const size = sizeOf(projectStore.renderer.outputCanvas);
   if (size && size !== lastOutputSize) {
     lastOutputSize = size;
-    requestAnimationFrame(() => viewport.value?.centerContent());
+    requestAnimationFrame(() => {
+      viewport.value?.centerContent();
+      redrawDisplay(); // the window was placed against the scroll from before the centering
+    });
   }
 });
-watch(() => [workspaceStore.editZoom, workspaceStore.ansiOverlay, workspaceStore.ansiOverlayAll], redrawDisplay);
+// Queued, not drawn at once: a zoom lands here before Vue has given the sizer its new size and the
+// padded layout has re-centered, so a window placed now would be placed against the old layout.
+watch(() => [workspaceStore.editZoom, workspaceStore.ansiOverlay, workspaceStore.ansiOverlayAll], queueRedraw);
 
-onMounted(redrawDisplay);
+// A scroll, or a viewport or sizer of a new size, brings other grid pixels into view.
+let resizeObserver = null;
+onMounted(() => {
+  viewportEl = sizerRef.value?.closest('article') ?? null;
+  viewportEl?.addEventListener('scroll', queueRedraw, { passive: true });
+  resizeObserver = new ResizeObserver(queueRedraw);
+  if (viewportEl) resizeObserver.observe(viewportEl);
+  if (sizerRef.value) resizeObserver.observe(sizerRef.value);
+  redrawDisplay();
+  queueRedraw(); // after the viewport's scroll restore, which was queued first
+});
+
+onBeforeUnmount(() => {
+  if (redrawFrame) cancelAnimationFrame(redrawFrame);
+  viewportEl?.removeEventListener('scroll', queueRedraw);
+  resizeObserver?.disconnect();
+});
 </script>
 
 <template>
   <EditorViewport
       ref="viewport"
-      :display="displayRef"
+      :display="sizerRef"
       :coords-at="coordsAt"
       zoomable
       scroll-key="input"
@@ -111,18 +160,25 @@ onMounted(redrawDisplay);
       view="input"
       :unit="unit"
   >
-    <!-- Sized in CSS to exactly cols*zoom: the backing store is whole pixels, but coordinates, the
-         brush preview and the viewport layout all assume the exact (fractional) size. -->
-    <canvas ref="displayCanvas" :style="{ width: `${contentSize.width}px`, height: `${contentSize.height}px` }"/>
+    <!-- Sized to exactly cols*zoom (fractional at a fractional zoom): coordinates, the brush preview
+         and the viewport layout all assume the exact size. -->
+    <div ref="sizer" class="display" :style="{ width: `${contentSize.width}px`, height: `${contentSize.height}px` }">
+      <canvas ref="displayCanvas"/>
+    </div>
     <div v-if="workspaceStore.editZoom >= 16" class="grid-overlay"></div>
   </EditorViewport>
 </template>
 
 <style scoped>
-canvas {
+div.display {
+  position: relative;
+  outline: 2px dashed var(--border-light);
+}
+
+.display canvas {
+  position: absolute;
   display: block;
   image-rendering: pixelated;
-  outline: 2px dashed var(--border-light);
 }
 
 div.grid-overlay {

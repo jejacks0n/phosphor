@@ -238,6 +238,4 @@ Clearing or erasing everything on the edit layer brings rescaling back.
 
 The grid can be up to **300 columns** wide and **1000 lines** tall, with **120,000 cells** in all,
 so narrow art can run long: 80 columns reaches the full 1000 lines, 300 columns stops at 400. A
-picture opens at the current width, or narrower if that's what it takes to fit its shape. A long
-grid is drawn at a lower resolution to stay within what the graphics card can draw at once: past
-about 800 lines at the default font size, the ANSI view looks a little soft.
+picture opens at the current width, or narrower if that's what it takes to fit its shape.
