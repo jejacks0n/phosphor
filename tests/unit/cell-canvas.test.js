@@ -3,7 +3,7 @@
 // exact rectangles, and each cell's colors and 16-bit glyph index pack into the data textures.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { backingScale, cellGeometry, blockMask, packCells, MAX_BACKING_AREA } from '../../src/lib/CellCanvas.js';
+import { backingScale, cellGeometry, blockMask, packCells, packSpills, MAX_BACKING_AREA } from '../../src/lib/CellCanvas.js';
 
 test("The ANSI view's canvas renderer: its backing size stays under the browsers' canvas limits, its cells snap to whole device pixels (an even height, so the halves match), block characters are exact rectangles, and each cell's colors and 16-bit glyph index pack into the data textures", async () => {
   assert.equal(backingScale(800, 600, 2), 2);                                    // small grid: full dpr
@@ -35,4 +35,13 @@ test("The ANSI view's canvas renderer: its backing size stays under the browsers
   packCells([{ char: 'x', fg: { r: 1, g: 2, b: 3 }, bg: { r: 4, g: 5, b: 6 } }, undefined, { char: '漢', wide: 'trail', fg: { r: 7, g: 8, b: 9 }, bg: { r: 0, g: 0, b: 0 } }], 3, glyphOf, fg, bg);
   assert.deepEqual([...fg], [1, 2, 3, 0x34, 0, 0, 0, 0, 7, 8, 9, 0x02]);        // index low byte; a missing cell is zeros
   assert.deepEqual([...bg], [4, 5, 6, 0x12, 0, 0, 0, 0, 0, 0, 0, 0x01]);        // index high byte
+
+  // Spills (a character drawing over the cells after it): its fg rgb + the slice's index low byte, and
+  // the high byte with a 255 'present' flag; cells nothing spills over are zeros.
+  const ov = new Uint8Array(12), ovHi = new Uint8Array(12);
+  const src = { char: '﷽', fg: { r: 9, g: 8, b: 7 }, bg: { r: 0, g: 0, b: 0 } };
+  const sliceOf = (cell, k) => 0x0300 + k;
+  packSpills([src, {}, {}], [null, { from: 0, slice: 1 }, { from: 0, slice: 2 }], 3, sliceOf, ov, ovHi);
+  assert.deepEqual([...ov], [0, 0, 0, 0, 9, 8, 7, 0x01, 9, 8, 7, 0x02]);
+  assert.deepEqual([...ovHi], [0, 0, 0, 0, 0x03, 255, 0, 0, 0x03, 255, 0, 0]);
 });
