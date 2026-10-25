@@ -80,6 +80,15 @@ All tests run automatically on every pull request before code gets published. Re
 
 Phosphor's text rendering started with ideas from [play.core](https://github.com/ertdfgcvb/play.core) by [ertdfgcvb](https://ertdfgcvb.xyz/). Over time, I trimmed and changed that code to fit this app, but their creative work was a big inspiration. Definitely check out their projects if you enjoy creative coding.
 
+Phosphor draws its art with these fonts:
+
+- [IBM VGA 8x16](https://int10h.org/oldschool-pc-fonts/), from VileR's Ultimate Oldschool PC Font Pack, under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+- [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), by The JetBrains Mono Project Authors, under the [SIL Open Font License 1.1](https://openfontlicense.org).
+- [Unscii](http://viznut.fi/unscii/), by viznut, in the public domain.
+- [GNU Unifont](https://unifoundry.com/unifont/), by Roman Czyborra, Paul Hardy and others, under the [SIL Open Font License 1.1](https://openfontlicense.org).
+
+Phosphor uses subsets of Unscii and Unifont, moved within their cells; [src/assets/fonts](src/assets/fonts/README.md) says how they're built.
+
 ## License
 
 Phosphor is free software under the MIT license:
