@@ -31,10 +31,15 @@ test("The CP437 table: every character maps to exactly the byte .ans export has 
     0x2248: 247, 0x2219: 249, 0x00B7: 250, 0x221A: 251, 0x207F: 252, 0x00B2: 253, 0x25A0: 254, 0x00A0: 255
   };
   const mainByte = (char) => { const code = char.charCodeAt(0); return MAIN_MAP[code] || (code <= 127 ? code : 0); };
+  // ...except the glyphs on bytes a viewer acts on (BEL, BS, TAB, LF, CR, EOF, ESC), which main wrote
+  // raw: → ended the art (26 is EOF) and ← began an escape sequence. They're lookalikes now.
+  // The control characters themselves are '?'.
+  const CONTROL_GLYPHS = { '•': 249, '◘': 219, '○': 111, '◙': 219, '♪': 14, '→': 62, '←': 60 };
+  for (const code of [7, 8, 9, 10, 13, 26, 27]) CONTROL_GLYPHS[String.fromCharCode(code)] = 0x3f;
 
   for (let code = 0; code <= 0xffff; code++) {
     const char = String.fromCharCode(code);
-    const expected = mainByte(char) === 0 && code !== 0 ? cp437Byte(cp437Substitute(char)) : mainByte(char);
+    const expected = CONTROL_GLYPHS[char] ?? (mainByte(char) === 0 && code !== 0 ? cp437Byte(cp437Substitute(char)) : mainByte(char));
     assert.equal(AnsiFile.unicodeToCP437(char), expected, `U+${code.toString(16)}`);
   }
   assert.equal(AnsiFile.unicodeToCP437('🬀'), 0x3f);

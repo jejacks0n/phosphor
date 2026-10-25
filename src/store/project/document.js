@@ -1,16 +1,17 @@
 // The document as a whole: a new image or blank canvas, opening and saving .phosphor projects,
 // exporting .ans and .utf8ans, the filename, and what counts as saved.
-import { EMPTY_BASE } from "@/document/baseRecords.js";
-import { parseKey, withCellEdit } from "@/document/editCells.js";
-import { loadImage, readProject, writeProject, downloadBlob, PROJECT_EXTENSION } from "@/document/projectIO.js";
-import { AnsiFile } from "@/lib/AnsiFile.js";
-import { ctx2d } from "@/lib/Canvas.js";
-import { charRowsOf } from "@/lib/Cells.js";
-import { rgb2hex } from "@/lib/ColorUtils.js";
-import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
-import { MAX_DIMENSION, DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJson } from "@/store/project/shared.js";
-import { generateSlug } from "random-word-slugs";
-import { shallowRef } from "vue";
+import { EMPTY_BASE } from '@/document/baseRecords.js';
+import { parseKey, withCellEdit } from '@/document/editCells.js';
+import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
+import { AnsiFile } from '@/lib/AnsiFile.js';
+import { ctx2d } from '@/lib/Canvas.js';
+import { charRowsOf } from '@/lib/Cells.js';
+import { rgb2hex } from '@/lib/ColorUtils.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
+import { settingDefaults } from '@/store/settings.js';
+import { MAX_DIMENSION, DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJson } from '@/store/project/shared.js';
+import { generateSlug } from 'random-word-slugs';
+import { shallowRef } from 'vue';
 
 export const documentActions = {
   randomizeSeed() {
@@ -121,6 +122,7 @@ export const documentActions = {
   // A fresh document: no base records or pixels, no history, and the selection (and the Picker's
   // last pick) dropped.
   newDocument() {
+    this._document = (this._document ?? 0) + 1; // Bake and Merge into the image check they're still in the same one
     this.setBaseRecords(EMPTY_BASE);
     this.renderer.baseLayer = null;
     this._stroke = null;
@@ -154,7 +156,7 @@ export const documentActions = {
   },
 
   async loadProject(file) {
-    if (!file || !file.name.endsWith(PROJECT_EXTENSION)) return;
+    if (!file || !isProjectFile(file.name)) return;
 
     try {
       const { settings, imageBuffer, paintBuffer, baseBuffer, editCells, baseRecords, erasedCells, migrated } = await readProject(file);
@@ -162,7 +164,8 @@ export const documentActions = {
       const paint = paintBuffer && await loadImage(paintBuffer, 'image/png');
       const basePixels = baseBuffer && await loadImage(baseBuffer, 'image/png');
 
-      this.replaceImage(image, imageBuffer, { ...settings, filename: file.name.replace(PROJECT_EXTENSION, '') });
+      // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
+      this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename: file.name.slice(0, -PROJECT_EXTENSION.length) });
       this.editCells = editCells;
       this.setBaseRecords(baseRecords);
       if (paint) {

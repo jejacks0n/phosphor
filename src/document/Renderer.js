@@ -65,25 +65,20 @@ export default class Renderer {
     return this.cellsFromOutput(params);
   }
 
-  // The generated cells from the composited output (no edit cells): quantized to the palette, which
-  // also gives the pixels their palette index (c), which the cells and CGA/VGA export rely on.
+  // The generated cells from the composited output (no edit cells, no pins: each has the converter's
+  // own character, which a pin covers only while it's there): quantized to the palette, which also
+  // gives the pixels their palette index (c), which the cells and CGA/VGA export rely on.
   cellsFromOutput(params) {
     const pixels = new Canvas(this.outputCanvas);
     if (this.palette) applyQuantization(pixels, this.palette);
     else pixels.loadPixels();
 
-    const cells = buildCells(pixels.pixels, params.cols, params.rows, {
+    return buildCells(pixels.pixels, params.cols, params.rows, {
       charset: params.chars,
       charMode: params.charMode || 'random',
       renderStyle: params.renderStyle || 'ansi',
       seed: params.seed,
     });
-    const rows = charRowsOf(params.rows);
-    for (const key of this.baseRecords.pins.keys()) {
-      const { col, row } = parseKey(key);
-      if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#onBase(col, row, cells[cellIndex(col, row, params.cols)]);
-    }
-    return cells;
   }
 
   // Redraw outputCanvas: the pipeline image, then the base layer's pixels and the paint layer, each
@@ -201,10 +196,14 @@ export default class Renderer {
     return { r: d[o], g: d[o + 1], b: d[o + 2], a: 1 };
   }
 
-  // Generated cells with every in-grid edit cell composed in.
+  // Generated cells with the base's pins and every in-grid edit cell composed in.
   composeAll(baseCells, editCells, params) {
     const cells = baseCells.slice();
     const rows = charRowsOf(params.rows);
+    for (const key of this.baseRecords.pins.keys()) {
+      const { col, row } = parseKey(key);
+      if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#onBase(col, row, cells[cellIndex(col, row, params.cols)]);
+    }
     for (const [key, entry] of editCells) {
       const { col, row } = parseKey(key);
       if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#composeOne(col, row, params, entry, baseCells);

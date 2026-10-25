@@ -12,7 +12,7 @@ const customPalettes = {};
 
 export function getPaletteColors(params, canvasForCount = null) {
   const { quantize, palette, colorCount } = params;
-  
+
   switch (quantize) {
     case 'count':
       if (!canvasForCount) return null;

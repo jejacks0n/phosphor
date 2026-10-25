@@ -16,11 +16,9 @@ for (const ext of ['ans', 'utf8ans']) {
     await settled(page);
     const { cols, rows, cells, quantize } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2), cells: p.cells, quantize: p.quantize }));
 
-    // The default characters include ▁▂▃▅, which CP437 lacks: the .ans dialog lists what they become.
+    // The default characters and the typed ones are all CP437: nothing to replace.
     await page.getByRole('button', { name: `Export .${ext}` }).click();
-    const replacements = page.getByRole('dialog').getByRole('list', { name: 'Replacements' });
-    if (ext === 'ans') await expect(replacements.getByRole('listitem').filter({ hasText: '▅' })).toHaveText(/▅\s*→\s*▄\s*\d+ cells?/);
-    else await expect(replacements).toHaveCount(0);
+    await expect(page.getByRole('dialog').getByRole('list', { name: 'Replacements' })).toHaveCount(0);
     await page.keyboard.press('Escape');
     const download = await saveAs(page, `Export .${ext}`);
     expect(download.suggestedFilename()).toBe(`gradient.${ext}`);

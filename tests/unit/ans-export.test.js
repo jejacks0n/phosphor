@@ -22,7 +22,7 @@ test(".ans export never writes NUL for a character CP437 can't encode: it lists 
   assert.ok(utf8.some((_, i) => star.every((b, j) => utf8[i + j] === b))); // ★ in UTF-8
   assert.equal(AnsiFile.unicodeToCP437('★'), 0x3f);
   assert.equal(AnsiFile.unicodeToCP437('╬'), 206);
-  // Block characters CP437 lacks (the default character set has ▁▂▃▅) go out as their closest
+  // Block characters CP437 lacks (the earlier default character set had ▁▂▃▅) go out as their closest
   // CP437 lookalike rather than '?'; they're still listed so the export can say so.
   assert.equal(AnsiFile.unicodeToCP437('▃'), 220);                        // ▄
   assert.equal(AnsiFile.unicodeToCP437('▇'), 219);                        // █

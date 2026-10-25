@@ -38,9 +38,20 @@ export function cp437Byte(char) {
 
 export const isCp437 = (char) => cp437Byte(char) !== null;
 
-// Unicode block characters CP437 lacks, written as the closest CP437 glyph (the default character
-// set uses ▁▂▃▅). Anything else unencodable has no lookalike.
+// Bytes an ANSI viewer acts on instead of drawing (BEL, BS, TAB, LF, CR, EOF, ESC): .ans can't hold
+// the glyphs CP437 puts there (• ◘ ○ ◙ ♪ → ←), so they're written as lookalikes.
+const CONTROLS = new Set([7, 8, 9, 10, 13, 26, 27]);
+
+// The byte .ans export writes for a character, or null when it needs a stand-in.
+export function ansByte(char) {
+  const byte = cp437Byte(char);
+  return byte === null || CONTROLS.has(byte) ? null : byte;
+}
+
+// Unicode block characters CP437 lacks, and the glyphs on control bytes, written as the closest
+// glyph .ans can hold (the earlier default character set used ▁▂▃▅). Anything else has no lookalike.
 const LOOKALIKES = {
+  '•': '∙', '◘': '█', '○': 'o', '◙': '█', '♪': '♫', '→': '>', '←': '<',
   '▁': '_', '▂': '▄', '▃': '▄', '▅': '▄', '▆': '█', '▇': '█', '▉': '█', '▊': '█', '▋': '▌', '▍': '▌',
   '▎': '▌', '▏': '▌', '▔': '▀', '▕': '▐', '▖': '▄', '▗': '▄', '▘': '▀', '▝': '▀', '▙': '▄', '▟': '▄',
   '▛': '▀', '▜': '▀', '▚': '▒', '▞': '▒',
@@ -48,6 +59,6 @@ const LOOKALIKES = {
 
 // What .ans export writes for a character: itself, its lookalike, or '?' when CP437 has neither.
 export function cp437Substitute(char) {
-  if (cp437Byte(char) !== null) return char;
+  if (ansByte(char) !== null) return char;
   return LOOKALIKES[char] ?? '?';
 }

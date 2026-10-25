@@ -15,7 +15,7 @@ export function normalizeGlyphs(input) {
 
 const builtin = (id, name, glyphs) => Object.freeze({ id, name, glyphs: Object.freeze(normalizeGlyphs(glyphs)), builtin: true });
 
-// Everything but Quadrants is plain CP437, so it saves in .ans.
+// Everything but Quadrants is CP437 (• ◘ ○ ◙ ♪ → ← sit on control bytes, so .ans writes lookalikes).
 export const BUILTIN_PALETTES = Object.freeze([
   builtin('shades', 'Shades & blocks', '░▒▓█▀▄▌▐■▬·∙'),
   builtin('single', 'Single lines', '┌┐└┘─│┬┴├┤┼·'),

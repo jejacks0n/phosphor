@@ -98,8 +98,8 @@ const charsetName = computed(() => {
           <option value="none">Full color (24-bit)</option>
           <option value="vga">VGA colors (8-bit)</option>
           <option value="cga">CGA colors (4-bit)</option>
-          <option value="count">Number (24-bit)</option>
-          <option value="palette">Color List (24-bit)</option>
+          <option value="count">Color count (24-bit)</option>
+          <option value="palette">Color list (24-bit)</option>
         </select>
       </div>
 
@@ -112,9 +112,9 @@ const charsetName = computed(() => {
       <div class="field">
         <div class="label-group"><label for="smoothing">Smoothing</label><HelpInfo :text="help('smoothing')" /></div>
         <select id="smoothing" v-model="store.smoothing">
-          <option value="low">low</option>
-          <option value="medium">medium</option>
-          <option value="high">high</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
         </select>
       </div>
     </fieldset>

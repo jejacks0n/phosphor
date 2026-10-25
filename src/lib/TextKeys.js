@@ -18,7 +18,7 @@ const fKey = (key) => {
   const n = m ? Number(m[1]) : 0;
   return n >= 1 && n <= 12 ? n - 1 : -1;
 };
-const single = (key) => [...key].length === 1;
+const single = (key) => [...key].length === 1 && usableChar(key); // not a lone combining mark
 
 // The color box's shortcuts (Moebius's Alt+A, and Alt+F / Alt+B for each slot): the slot, or null.
 // By physical key, so Option's characters (ƒ, å, ∫) don't matter; AltGr (Ctrl+Alt) still types.

@@ -3,7 +3,7 @@
  * Supports standard ANSI SGR, legacy iCE colors via SAUCE, and modern 256-color UTF-8 output.
  */
 import { Sauce } from './Sauce.js';
-import { cp437Byte, cp437Substitute } from './Cp437.js';
+import { ansByte, cp437Substitute } from './Cp437.js';
 
 const utf8Encoder = new TextEncoder();
 
@@ -20,7 +20,7 @@ export class AnsiFile {
   // .ans is CP437: a character it can't encode is written as its closest lookalike, or '?'
   // (exportFile lists them first).
   static unicodeToCP437(char) {
-    return cp437Byte(char) ?? cp437Byte(cp437Substitute(char));
+    return ansByte(char) ?? ansByte(cp437Substitute(char));
   }
 
   // Characters in cells that CP437 can't encode: how often each appears and what's written instead
@@ -29,7 +29,7 @@ export class AnsiFile {
   static unmappable(cells) {
     const found = new Map();
     for (const cell of cells) {
-      if (!cell || cell.wide === 'trail' || cell.fg.hex === cell.bg.hex || cp437Byte(cell.char) !== null) continue;
+      if (!cell || cell.wide === 'trail' || cell.fg.hex === cell.bg.hex || ansByte(cell.char) !== null) continue;
       const entry = found.get(cell.char) ?? { count: 0, as: cp437Substitute(cell.char) };
       entry.count++;
       found.set(cell.char, entry);
@@ -42,7 +42,8 @@ export class AnsiFile {
   }
 
   #asBytes({ utf8 = false, colorMode = 'none', sauce = null } = {}) {
-    const lineFeeds = utf8;
+    // A viewer that ignores SAUCE wraps at 80 columns, so narrower .ans rows end in CR LF too.
+    const lineFeeds = utf8 || this.cols < 80;
     const output = [];
     const addSgr = (...sgr) => output.push(27, 91, ...toBytes(sgr.join(';')), 109);
     const active = { fg: { hex: null }, bg: { hex: null }, blink: false, bold: false };
@@ -96,7 +97,7 @@ export class AnsiFile {
     }
 
     addSgr(0);
-    if (lineFeeds) output.push(13, 10);
+    if (utf8) output.push(13, 10);
 
     return this.#appendSauce(output, sauce);
   }

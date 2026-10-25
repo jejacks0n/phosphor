@@ -82,9 +82,13 @@ font and size are kept in this browser, not in the project.
 With the Text tool, you can type with your system's input method (Japanese, Chinese, Korean...),
 dead keys and accents, and the emoji picker, the same as in any text field.
 
+A run of typing is one undo step: it ends when you pause for a second, move the cursor (a
+click, the arrow keys, Enter, Home, End) or paste.
+
 You can also paste text. It types from the cursor; each new line starts on the next row at the
-column where the paste began; and once a row is full, the rest of that line is dropped.
-Characters a cell can't hold (tabs, invisible ones) are skipped. A paste is one undo step.
+column where the paste began; once a row is full, the rest of that line is dropped, and lines past
+the last row are dropped too. Characters a cell can't hold (tabs, invisible ones, an accent on its
+own) are skipped. A paste is one undo step.
 
 Cmd/Ctrl+V pastes whatever you copied last: a Select-tool block you copied in Phosphor, or text
 you copied anywhere else since (see [Layers](layers.md#the-select-tool)).

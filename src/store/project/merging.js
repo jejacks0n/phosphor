@@ -1,18 +1,20 @@
 // Moving things between the layers and into the image: Merge up (what the base shows becomes edit
 // cells), Merge down exactly or into the image, and Bake (the picture as it looks becomes the image).
-// Owns _baking and _merging (one at a time: a second call while one runs is ignored).
-import { withPins, withoutPins } from "@/document/baseRecords.js";
-import { cellKey, parseKey, rectCells, updateRect, bakeEditCells, bakeEntry, mergeKind } from "@/document/editCells.js";
-import { loadImage } from "@/document/projectIO.js";
-import { ctx2d } from "@/lib/Canvas.js";
-import { cellIndex, charRowsOf, halfColors } from "@/lib/Cells.js";
-import { rgb2hex, hex2rgb } from "@/lib/ColorUtils.js";
-import { processedImage, workingScale } from "@/lib/ImageProcessor.js";
-import { bakedCanvas, getEffectiveColor } from "@/lib/PixelTransforms.js";
-import { useWorkspaceStore } from "@/store/WorkspaceStore.js";
-import { copyOf, over } from "@/store/project/shared.js";
-import { RESET_GROUPS, groupDefaults } from "@/store/settings.js";
-import { shallowRef, toRaw } from "vue";
+// Owns _baking and _merging (one at a time: a second call while one runs is ignored). Both wait on
+// image encoding; anything changed meanwhile (an edit, a slider, an undo, the other one landing)
+// and they start over from what shows then.
+import { withPins, withoutPins } from '@/document/baseRecords.js';
+import { cellKey, parseKey, rectCells, updateRect, bakeEditCells, bakeEntry, mergeKind } from '@/document/editCells.js';
+import { loadImage } from '@/document/projectIO.js';
+import { ctx2d } from '@/lib/Canvas.js';
+import { cellIndex, charRowsOf, halfColors } from '@/lib/Cells.js';
+import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
+import { processedImage, workingScale } from '@/lib/ImageProcessor.js';
+import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
+import { copyOf, over } from '@/store/project/shared.js';
+import { RESET_GROUPS, groupDefaults } from '@/store/settings.js';
+import { shallowRef, toRaw } from 'vue';
 
 export const mergingActions = {
   // Bake: the picture as it shows becomes the image and the Transform, Adjustment and Effect
@@ -27,20 +29,26 @@ export const mergingActions = {
   async bake({ lockPalette = false } = {}) {
     if (!this.canBake || this._baking) return;
     this._baking = true;
+    let again = false;
     try {
       this.ensureLayer();
       this.commitPending();
       const workspace = useWorkspaceStore();
       const params = this.processParams;
+      const doc = this._document, version = this.history.version;
 
       const canvas = await processedImage(this.image, params, { snap: lockPalette });
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
       const image = await loadImage(blob);
       const imageBuffer = await blob.arrayBuffer();
-      // Meanwhile: another image means another document, left alone; a stroke begun is part of
-      // what's baked (closed now, so its undo isn't recorded against the baked layers).
-      if (this.image !== params.image) return;
+      // Meanwhile: another document is left alone; a change to this one (a stroke begun is closed
+      // now, so its undo isn't recorded against the baked layers) means baking what shows now.
+      if (this._document !== doc) return;
       this.commitPending();
+      if (this.image !== params.image || this.history.version !== version) {
+        again = true;
+        return;
+      }
 
       const defaults = Object.assign({}, ...RESET_GROUPS.map(groupDefaults));
       const sliders = (from = this) => Object.fromEntries(Object.keys(defaults).map(key => [key, from[key]]));
@@ -83,6 +91,7 @@ export const mergingActions = {
       });
     } finally {
       this._baking = false;
+      if (again) await this.bake({ lockPalette });
     }
   },
 
@@ -126,10 +135,12 @@ export const mergingActions = {
   async mergeIntoPicture(rect = null) {
     if (!this.image || this._merging) return;
     this._merging = true;
+    let again = false;
     try {
       this.ensureLayer();
       this.commitPending();
       const params = this.processParams;
+      const doc = this._document, version = this.history.version;
       const neutral = { ...params, ...Object.assign({}, ...RESET_GROUPS.map(groupDefaults)) };
       const m = workingScale(this.image, params) ?? Math.max(2, Math.floor(400 / Math.max(this.cols, this.rows)));
       const fitNow = params.fit ?? this.fitFor(this.cols, this.rows);
@@ -138,9 +149,13 @@ export const mergingActions = {
       // render through the pipeline would round them a level here and there.
       const atSize = width === fitNow.dw * m && height === fitNow.dh * m;
       const canvas = atSize ? copyOf(this.image, width, height) : await processedImage(this.image, neutral, { m });
-      // Meanwhile: another image means another document, left alone; a stroke begun is merged too.
-      if (this.image !== params.image) return;
+      // Meanwhile: another document is left alone; a change to this one means merging what shows now.
+      if (this._document !== doc) return;
       this.commitPending();
+      if (this.image !== params.image || this.history.version !== version) {
+        again = true;
+        return;
+      }
 
       const fit = params.fit ?? this.fitFor(this.cols, this.rows);
       const rows = charRowsOf(this.rows);
@@ -202,12 +217,16 @@ export const mergingActions = {
           });
         }
       }
-      const version = this.editVersion;
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
       const image = await loadImage(blob);
       const imageBuffer = await blob.arrayBuffer();
-      // What's merged was read before encoding: an edit since (or one still open) means it's stale.
-      if (this.image !== params.image || this.editVersion !== version || this._stroke) return;
+      // What's merged was read before encoding: a change since (or an edit still open) means it's stale.
+      if (this._document !== doc) return;
+      this.commitPending();
+      if (this.image !== params.image || this.history.version !== version) {
+        again = true;
+        return;
+      }
 
       const before = {
         image: this.image, imageBuffer: this.imageBuffer, workingCopy: this.imageIsWorkingCopy,
@@ -239,6 +258,7 @@ export const mergingActions = {
       this.pushEdit({ undo: () => apply(before), redo: () => apply(after) });
     } finally {
       this._merging = false;
+      if (again) await this.mergeIntoPicture(rect);
     }
   },
 

@@ -7,13 +7,14 @@
 // pins (the converter's own characters belong to their cells and stay). Each layer moves, copies
 // and pastes as itself. Block = { w, h, cells?: (Entry | null)[], paint?: canvas, base?: { pixels:
 // canvas (a grid pixel each), pins: (char | null)[] } }. Rects are clipped to the grid.
-import { withPins, withoutPins } from "@/document/baseRecords.js";
-import { cellKey, withoutCells, rectCells, pasteBlock } from "@/document/editCells.js";
-import { ctx2d } from "@/lib/Canvas.js";
-import { charRowsOf } from "@/lib/Cells.js";
-import { hex2rgb } from "@/lib/ColorUtils.js";
-import { over } from "@/store/project/shared.js";
-import { toRaw } from "vue";
+import { withPins, withoutPins } from '@/document/baseRecords.js';
+import { cellKey, withoutCells, rectCells, pasteBlock, mergeEntry } from '@/document/editCells.js';
+import { overwritesAll } from '@/document/wideChars.js';
+import { ctx2d } from '@/lib/Canvas.js';
+import { charRowsOf } from '@/lib/Cells.js';
+import { hex2rgb } from '@/lib/ColorUtils.js';
+import { over } from '@/store/project/shared.js';
+import { toRaw } from 'vue';
 
 export const selectionActions = {
   copySelection(rect, { base, edit }) {
@@ -73,6 +74,7 @@ export const selectionActions = {
   // selection object itself, so reselecting the same cells starts over), its layers change, or
   // anything else is recorded. Returns where it landed (clipped), or null when it left the grid.
   floatSelection(rect, layers, dc, dr) {
+    this.commitPending(); // text typed onto the block (a paste) is recorded: the next move starts a new run
     const run = this._float;
     const sameRun = run && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
       && (!run.layers || (run.layers.base === layers.base && run.layers.edit === layers.edit));
@@ -97,7 +99,7 @@ export const selectionActions = {
     const landed = this.clipRect({ c0: col, r0: row, c1: rect.c1 + dc, r1: rect.r1 + dr });
     this.selectionEdit(landed ? [rect, landed] : [rect], () => {
       this.deleteIn(rect, layers);
-      this.pasteAt(block, col, row);
+      this.pasteAt(block, col, row, rect);
     });
     return landed;
   },
@@ -111,8 +113,19 @@ export const selectionActions = {
     if (base) this.eraseBase(rectCells(rect));
   },
 
-  pasteAt(block, col, row) {
-    if (block.cells) this.editCells = pasteBlock(this.editCells, { w: block.w, h: block.h, entries: block.cells }, col, row, this.cols, charRowsOf(this.rows));
+  // A character pasted over half of a wide character turns its other half into a space, as typing
+  // does; not in the rect a move just vacated (the cells there still show what was moved).
+  pasteAt(block, col, row, vacated = null) {
+    if (block.cells) {
+      const written = block.cells.flatMap((entry, i) => (entry ? [{ col: col + (i % block.w), row: row + Math.floor(i / block.w), char: entry.char }] : []));
+      const inVacated = ({ col: c, row: r }) => vacated && c >= vacated.c0 && c <= vacated.c1 && r >= vacated.r0 && r <= vacated.r1;
+      const blanks = overwritesAll(this.cells, this.cols, written).filter((cell) => !inVacated(cell));
+      this.editCells = pasteBlock(this.editCells, { w: block.w, h: block.h, entries: block.cells }, col, row, this.cols, charRowsOf(this.rows));
+      if (blanks.length) {
+        this.editCells = new Map(this.editCells);
+        for (const { col: c, row: r } of blanks) this.editCells.set(cellKey(c, r), mergeEntry(this.editCells.get(cellKey(c, r)), { char: ' ' }));
+      }
+    }
     if (block.paint) this.paintLayer.pasteCells(block.paint, col, row, block.w, block.h, this.gridRect());
     if (block.base) this.pasteBase(block, col, row);
   },
@@ -128,14 +141,15 @@ export const selectionActions = {
     this.setBaseRecords(withPins(withoutPins(this.baseRecords, pins.filter(p => !p.char)), pins.filter(p => p.char)));
   },
 
-  // One undo step for a selection operation's changes (cells, paint, base pixels, pins); the cells in rects recompose.
+  // One undo step for a selection operation's changes (cells, paint, base pixels, pins); the cells in
+  // rects recompose, and a column either side (a wide character the edit broke).
   selectionEdit(rects, change) {
     this.ensureLayer();
     this.beginEdit();
     change();
     this.hasPaint = this.paintLayer?.hasPaint ?? false;
     this.composite();
-    const pixels = rects.flatMap(rect => rectCells(rect)).map(({ col, row }) => ({ x: col, y: 2 * row }));
+    const pixels = rects.flatMap(rect => rectCells({ ...rect, c0: Math.max(0, rect.c0 - 1), c1: Math.min(this.cols - 1, rect.c1 + 1) })).map(({ col, row }) => ({ x: col, y: 2 * row }));
     this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
     this.commitEdit();
   },

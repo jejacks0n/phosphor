@@ -11,7 +11,6 @@ export function render(context, buffer) {
   const element = context.settings.element;
   if (!element) return;
 
-  // Initialize or retrieve state from the DOM element itself
   if (!element._playState) {
     element._backBuffer = [];
     element._cols = 0;
@@ -19,19 +18,19 @@ export function render(context, buffer) {
     element._playState = true;
   }
 
-  // Detect resize or first run
+  // A new size (or the first run) starts over
   if (context.rows !== element._rows || context.cols !== element._cols) {
     element._cols = context.cols;
     element._rows = context.rows;
     element._backBuffer = [];
-    element.innerHTML = ''; // Clear for a fresh start
+    element.innerHTML = '';
   }
 
   const cols = element._cols;
   const rows = element._rows;
   const backBuffer = element._backBuffer;
 
-  // Ensure we have enough row containers
+  // A span per row
   while (element.childElementCount < rows) {
     const span = document.createElement('span');
     span.style.display = 'block';
