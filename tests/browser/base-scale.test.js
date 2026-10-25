@@ -1,8 +1,11 @@
 // The base layer at the pipeline's processing scale: m x m pixels per grid pixel, so a moved block
 // of the picture keeps every pixel the converter made from it.
 import { test, expect } from 'vitest';
+import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import PaintLayer from '@/document/PaintLayer';
 import { ctx2d } from '@/lib/Canvas';
+import { cellIndex } from '@/lib/Cells';
+import { workingScale } from '@/lib/ImageProcessor';
 
 const FIT = { dx: 0, dy: 0, dw: 2, dh: 2 };
 const fill = (layer, x, y, hex) => {
@@ -44,4 +47,63 @@ test('resize can change the scale and keeps uniform blocks exact', () => {
   layer.resize(2, 2, FIT, FIT, 3);
   expect(layer.scale).toBe(3);
   expect(layer.averageAt(1, 1)).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+});
+
+// An 800 x 800 picture (hue across, light down, with a fine checker), big enough that the processing
+// scale follows the grid (400 / the grid's longer side) rather than the image's size.
+async function bigImageUrl() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 800;
+  const ctx = ctx2d(canvas);
+  for (let x = 0; x < 800; x += 8) {
+    for (let y = 0; y < 800; y += 8) {
+      ctx.fillStyle = `hsl(${(x / 800) * 360}, ${((x + y) / 8) % 2 ? 90 : 40}%, ${15 + (y / 800) * 70}%)`;
+      ctx.fillRect(x, y, 8, 8);
+    }
+  }
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  return URL.createObjectURL(blob);
+}
+const unpinned = (project) => workingScale(project.image, { ...project.processParams, workScale: null });
+const shownAt = (project, col, row) => cellsKey(project)[cellIndex(col, row, project.cols)];
+
+test('the base layer is at the pipeline\'s processing scale', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, await bigImageUrl(), { cols: 30, rows: 30 });
+  expect(project.baseLayer.scale).toBe(unpinned(project));
+  expect(project.baseLayer.scale).toBeGreaterThan(1);
+});
+
+test('a rescale moves the base to the new grid\'s scale', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, await bigImageUrl(), { cols: 30, rows: 30 });
+  project.floatSelection({ c0: 2, r0: 2, c1: 6, r1: 6 }, { base: true, edit: false }, 3, 0);
+  project.cols = 80; // only the base is edited: a rescale
+  project.render(); await settle(project);
+  expect(project.baseLayer.scale).toBe(unpinned(project));
+  expect(project.baseLayer.scale).toBeGreaterThan(1);
+});
+
+test('a canvas resize keeps the processing scale and the picture', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, await bigImageUrl(), { cols: 30, rows: 30 });
+  project.typeAt(2, 2, 'A', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  project.render(); await settle(project);
+  const scale = project.baseLayer.scale;
+  const before = [];
+  for (let row = 0; row < 15; row++) for (let col = 0; col < 20; col++) before.push(shownAt(project, col, row));
+  project.cols = 45; // there are edits: a canvas resize
+  project.render(); await settle(project);
+  expect(project.baseLayer.scale).toBe(scale);
+  const after = [];
+  for (let row = 0; row < 15; row++) for (let col = 0; col < 20; col++) after.push(shownAt(project, col, row));
+  expect(after).toEqual(before);
+});
+
+test('an image smaller than the grid keeps a scale-1 base', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/tiny.gif', { cols: 80, rows: 80 });
+  expect(project.baseLayer.scale).toBe(1);
+  expect(workingScale(project.image, project.processParams)).toBe(null);
 });

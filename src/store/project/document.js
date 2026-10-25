@@ -75,6 +75,7 @@ export const documentActions = {
     this.$patch({
       fit: null,
       paintScale: null,
+      baseScale: null, // a loaded file's comes in the patch
       imageIsWorkingCopy: false,
       ...patch,
       image: shallowRef(image),
@@ -112,6 +113,7 @@ export const documentActions = {
       renderedCells: [],
       paintLayer: null,
       baseLayer: null,
+      baseScale: null,
       editCells: new Map(),
       hasPaint: false,
     });

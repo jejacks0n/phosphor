@@ -59,10 +59,13 @@ function prepare(image, params, scale = null) {
   // Process at a whole multiple m of the grid fit so every cell is exactly m x m processed pixels;
   // a fractional ratio lets cells straddle pixels and blurs merged paint into its neighbors.
   // m comes from the grid (not the fit), so an image that fills the grid gets the same m as its fit.
+  // While the base layer exists, m is its scale (params.workScale): its pixels are processed pixels,
+  // and a canvas resize keeps both (the native-size branch has no whole pixels to keep).
   const maxDim = 400;
   // Where the image sits in the grid: params.fit when it's fixed (a canvas resize), else fitted.
   const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows);
-  const m = scale ?? Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
+  const natural = Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
+  const m = scale ?? (params.workScale && natural >= 1 ? params.workScale : natural);
   let pw = dw * m;
   let ph = dh * m;
   if (m < 1) {

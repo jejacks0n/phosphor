@@ -12,7 +12,7 @@ const ACTIONS = [
   'flipPaint', 'floatSelection', 'gridRect', 'hasEditsIn', 'imageColorAt', 'keepMigratedLook',
   'loadProject', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeUp',
   'moveSelection', 'newDocument', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
-  'pasteSelection', 'pushEdit', 'randomizeSeed', 'rawColorAt', 'redo', 'refreshCells', 'rename',
+  'pasteSelection', 'processingScale', 'pushEdit', 'randomizeSeed', 'rawColorAt', 'redo', 'refreshCells', 'rename',
   'render', 'replaceImage', 'resetGroup', 'resetSliders', 'saveProject', 'selectionEdit',
   'setBaseRecords', 'setBlankCanvas', 'setCells', 'setImageFromFile', 'setSlider', 'shiftCells',
   'sliderValues', 'stampSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'updateCols', 'updateRows', 'writeAt',
