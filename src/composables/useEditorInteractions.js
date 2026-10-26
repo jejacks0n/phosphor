@@ -7,12 +7,20 @@ const TOUCH_MOVE_THRESHOLD = 5; // Pixels to move before immediate paint start
 // tap that crosses a cell edge still places the Edit Mode cursor instead of selecting two cells.
 const PEN_SLOP = 6;
 // A drag with a tool that asks for it (autoScroll: Select) scrolls the view when it nears an edge:
-// from EDGE_PX inside it, faster the further in or past, up to EDGE_MAX_SPEED px a frame.
+// from EDGE_PX inside it, faster the further in or past, up to EDGE_MAX_SPEED px a 60 Hz frame. Each
+// step covers the time since the last (at most EDGE_MAX_STEP_MS, so a stall doesn't jump), so it's as
+// fast on a slow machine or a 120 Hz display.
 const EDGE_PX = 24;
 const EDGE_MAX_SPEED = 40;
+const EDGE_MAX_STEP_MS = 100;
 const edgeSpeed = (p, lo, hi) => {
   const into = p < lo + EDGE_PX ? p - (lo + EDGE_PX) : p > hi - EDGE_PX ? p - (hi - EDGE_PX) : 0;
   return Math.sign(into) * Math.min(EDGE_MAX_SPEED, Math.ceil(Math.abs(into) / 2));
+};
+// Whole pixels to scroll for a step ms after the last; a quick frame near the edge still moves one.
+export const edgeStep = (p, lo, hi, ms) => {
+  const px = edgeSpeed(p, lo, hi) * Math.min(ms, EDGE_MAX_STEP_MS) * 60 / 1000;
+  return Math.sign(px) * Math.max(1, Math.round(Math.abs(px)));
 };
 // iPad Safari sends an Apple Pencil's touches (touchType 'stylus') alongside its pen pointer events.
 // The pointer events are its stroke; its touches would start it a second time (a Select drag would
@@ -53,6 +61,7 @@ export function useEditorInteractions(options) {
   let _touchStartTimer = null;
   let _pendingTouch = null;
   let _edgeFrame = null; // the next edge-scroll step, while a drag is at an edge
+  let _edgeTime = null;  // when the last edge-scroll step ran, while they run
   let _penDown = null;   // { clientX, clientY } where a pen stroke began, until it moves past PEN_SLOP
 
   function _getTouchDistance(touches) {
@@ -333,14 +342,16 @@ export function useEditorInteractions(options) {
 
   // A frame of scrolling at the edge, and the tool told where the pointer now is over the content.
   // It stops when the pointer leaves the edge, the view can't scroll further, or the drag ends.
-  function _edgeScroll() {
+  function _edgeScroll(now) {
     _edgeFrame = null;
+    const ms = _edgeTime === null ? 1000 / 60 : now - _edgeTime;
+    _edgeTime = null;
     const scrollEl = _getScrollParent();
     if (!isPainting.value || !scrollEl || _lastClientX === null) return;
     const r = scrollEl.getBoundingClientRect();
     const { scrollLeft, scrollTop } = scrollEl;
-    scrollEl.scrollLeft += edgeSpeed(_lastClientX, r.left, r.right);
-    scrollEl.scrollTop += edgeSpeed(_lastClientY, r.top, r.bottom);
+    scrollEl.scrollLeft += edgeStep(_lastClientX, r.left, r.right, ms);
+    scrollEl.scrollTop += edgeStep(_lastClientY, r.top, r.bottom, ms);
     if (scrollEl.scrollLeft === scrollLeft && scrollEl.scrollTop === scrollTop) return;
     _refreshMousePos();
     const pos = callbacks.pixelCoordsAt({ clientX: _lastClientX, clientY: _lastClientY });
@@ -348,6 +359,7 @@ export function useEditorInteractions(options) {
       callbacks.onPaintMove(_lastPos || pos, pos);
       _lastPos = pos;
     }
+    _edgeTime = now;
     _edgeFrame = requestAnimationFrame(_edgeScroll);
   }
 
@@ -364,6 +376,7 @@ export function useEditorInteractions(options) {
     if (workspaceStore) workspaceStore.isPainting = false;
     cancelAnimationFrame(_edgeFrame);
     _edgeFrame = null;
+    _edgeTime = null;
 
     _lastPos = null;
     _lastMousePos = null;
