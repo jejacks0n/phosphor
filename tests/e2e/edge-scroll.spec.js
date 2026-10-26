@@ -18,8 +18,7 @@ test('a block dragged to the bottom edge scrolls the view and keeps moving; the 
   await page.waitForTimeout(600);
   expect(await scrollTop(page)).toBeGreaterThan(0);
   const below = await store(page, 'workspace', (w) => w.selection.r0);
-  await page.waitForTimeout(300);
-  expect(await store(page, 'workspace', (w) => w.selection.r0)).toBeGreaterThan(below); // still going, with the pointer still
+  await expect.poll(() => store(page, 'workspace', (w) => w.selection.r0)).toBeGreaterThan(below); // still going, with the pointer still
   await page.mouse.up();
   const scrolled = await scrollTop(page);
   await page.waitForTimeout(200);
