@@ -525,3 +525,22 @@ test('cancelEdit takes back the open stroke (paint, base pixels and pins) and re
   project.cancelEdit();
   expect(project.editCellAt(5, 5)?.char).toBe('Z');
 });
+
+test('undo keeps steps up to its byte budget: a stroke counts its tiles, a merge its layer copies', async () => {
+  const { project, workspace } = await createTestApp();
+  await drawnDocument(project, workspace);
+  project.paintStroke([{ x: 3, y: 3, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  const stroke = project.history.bytes;
+  expect(stroke).toBeGreaterThan(0);
+  project.mergeDown();
+  const merge = project.history.bytes - stroke;
+  const layer = (l) => l.canvas.width * l.canvas.height * 4;
+  expect(merge).toBeGreaterThanOrEqual(2 * layer(project.baseLayer) + layer(project.paintLayer)); // the base before and after, the paint before
+  project.history.maxBytes = merge; // the merge alone fills it: with one more step, nothing older fits
+  project.paintStroke([{ x: 4, y: 4, alpha: 1 }], '#00ff00');
+  project.commitEdit();
+  let steps = 0;
+  while (project.history.undo()) steps++;
+  expect(steps).toBe(1);
+});

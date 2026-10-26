@@ -11,6 +11,9 @@ let glProcessor;
 let glBase; // the base layer's own, so the pipeline's processor keeps the picture uploaded
 const customPalettes = {};
 
+// The longest side, in pixels, this GPU processes a picture at (16384 on most, 8192 on software WebGL).
+export const gpuMaxSide = () => (glProcessor ??= new WebGLProcessor()).maxSide;
+
 export function getPaletteColors(params, canvasForCount = null) {
   const { quantize, palette, colorCount } = params;
 
@@ -56,12 +59,16 @@ function prepare(image, params, scale = null) {
   // Where the image sits in the grid: params.fit when it's fixed (a canvas resize), else fitted.
   const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows);
   const natural = Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
-  const m = scale ?? (params.workScale > 1 && natural >= 1 ? params.workScale : natural);
+  let m = scale ?? (params.workScale > 1 && natural >= 1 ? params.workScale : natural);
+  // A long grid at m pixels a grid pixel can be more than the GPU draws (the picture would come out
+  // black): m drops to fit, to below 1 if it must, and the picture is processed as large as it can be.
+  const limit = gpuMaxSide(), capped = scale === null && m >= 1 && Math.max(dw, dh) * m > limit;
+  if (capped) m = Math.floor(limit / Math.max(dw, dh));
   let pw = dw * m;
   let ph = dh * m;
   if (m < 1) {
     // Source smaller than the grid: keep it at native size rather than upscaling (blurring) it
-    const s = Math.min(1, maxDim / Math.max(sw, sh));
+    const s = Math.min(1, (capped ? limit : maxDim) / Math.max(sw, sh));
     pw = Math.floor(sw * s);
     ph = Math.floor(sh * s);
   }
@@ -121,7 +128,7 @@ export function workingScale(image, params) {
 export async function processImage(image, params) {
   const { cols, rows, smoothing } = params;
   const { dx, dy, dw, dh, pw, ph, glParams } = prepare(image, params);
-  if (!glProcessor) glProcessor = new WebGLProcessor();
+  glProcessor ??= new WebGLProcessor();
   glProcessor.process(image, glParams, pw, ph);
 
   // Final output stage (downsizing)

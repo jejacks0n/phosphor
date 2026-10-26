@@ -41,3 +41,19 @@ test('retain keeps the entries it accepts, in order, on both sides of the cursor
   h.redo(); h.redo(); h.redo();
   assert.deepEqual(log.slice(3), ['r1', 'r3', 'r4']);
 });
+
+test('past its byte budget, history drops its oldest steps, but never the newest', () => {
+  const log = [];
+  const entry = (n, bytes) => ({ bytes, undo: () => log.push(`u${n}`), redo: () => log.push(`r${n}`) });
+  const h = new History(50, 100);
+  h.push(entry(1, 40)); h.push(entry(2, 40)); h.push(entry(3, 40)); // 120 > 100: entry 1 goes
+  assert.equal(h.bytes, 80);
+  while (h.undo());
+  assert.deepEqual(log, ['u3', 'u2']);
+  h.push(entry(4, 500)); // the redo tail (2, 3) goes; the newest stays, however big
+  assert.equal(h.bytes, 500);
+  assert.equal(h.undo(), true);
+  assert.equal(h.undo(), false);
+  h.push(entry(5)); // a step that holds nothing to speak of
+  assert.equal(h.bytes, 0);
+});

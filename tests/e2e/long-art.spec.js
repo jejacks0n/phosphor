@@ -2,11 +2,12 @@ import { test, expect } from '@playwright/test';
 import { openApp, store, tab, cellPoint, screenPixel } from './support.js';
 
 // The ANSI view draws only the cells in view, plus a margin, so a long piece is drawn sharp to its
-// end. tests/fixtures/images/tall.png opens at 66 x 1980 (990 lines).
+// end. tests/fixtures/images/tall.png opens at 80 x 2400 (1200 lines).
 const scroller = (page) => page.locator('.ansi-editor > article');
 const sizer = (page) => page.locator('.ansi-editor div.display');
 const hex = ([r, g, b]) => `#${[r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('')}`;
 const bgOf = (page, col, row) => store(page, 'project', `(p) => p.cells[${row} * p.cols + ${col}].bg.hex.toLowerCase()`);
+const linesOf = (page) => store(page, 'project', (p) => Math.floor(p.rows / 2));
 const scrollTo = (page, top) => scroller(page).evaluate((el, top) => { el.scrollTop = top === 'end' ? el.scrollHeight : top; }, top);
 
 // Both halves of a cell, with the Pencil.
@@ -28,16 +29,17 @@ test('the ANSI view draws the end of a long piece, and what scrolling brings bac
   await page.keyboard.press('p');
   await paintCell(page, 10, 2);
   await scrollTo(page, 'end');
-  await paintCell(page, 10, 985);
-  await shown(page, 10, 985).toBe(await bgOf(page, 10, 985));
+  const lines = await linesOf(page), last = lines - 5;
+  await paintCell(page, 10, last);
+  await shown(page, 10, last).toBe(await bgOf(page, 10, last));
 
   await scrollTo(page, 0); // no edit: the scroll alone draws what comes back into view
   await shown(page, 10, 2).toBe(await bgOf(page, 10, 2));
 
-  // The canvas covers the view and its margins, not the whole 990 lines.
+  // The canvas covers the view and its margins, not the whole piece.
   const view = await scroller(page).boundingBox();
   const box = await sizer(page).boundingBox();
-  const lineHeight = (box.height - 4) / 990; // inside its 2px borders
+  const lineHeight = (box.height - 4) / lines; // inside its 2px borders
   const canvas = await page.locator('.ansi-editor .display canvas').boundingBox();
   expect(canvas.height).toBeLessThan(view.height + 2 * 160 + 2 * lineHeight);
 });
@@ -52,7 +54,7 @@ test('a font-size change halfway down a long piece keeps the place, and draws it
   // A cell a quarter of the way down the view, painted: it's still in view after the change.
   const view = await scroller(page).boundingBox();
   const box = await sizer(page).boundingBox();
-  const row = Math.floor((view.y + view.height / 4 - box.y - 2) / ((box.height - 4) / 990));
+  const row = Math.floor((view.y + view.height / 4 - box.y - 2) / ((box.height - 4) / await linesOf(page)));
   await paintCell(page, 10, row);
 
   // Every scroll position from here on: the browser resets it to 0 if the sizer ever collapses.
@@ -103,7 +105,7 @@ test('the PIXEL view at 16x draws the end of a long picture with a canvas the si
     el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
   });
 
-  // The canvas covers the view and its margins, not the whole 66 x 1980 at 16x.
+  // The canvas covers the view and its margins, not the whole grid at 16x.
   const canvasArea = () => view.locator('canvas').evaluate((c) => c.width * c.height);
   const { width, height } = await view.evaluate((el) => ({ width: el.clientWidth, height: el.clientHeight }));
   await expect.poll(canvasArea).toBeLessThan((width + 2 * 160 + 32) * (height + 2 * 160 + 32));
@@ -116,7 +118,7 @@ test('the PIXEL view at 16x draws the end of a long picture with a canvas the si
   })).toBe(true);
 
   // A grid pixel near the end, on screen, is the output canvas's pixel. Given longer than the usual
-  // poll: software raster paints the sizer's dashed outline, 31680px long, in about half a second a
+  // poll: software raster paints the sizer's dashed outline, 38400px long, in about half a second a
   // frame, and a screenshot waits for a frame, so with the other tests running beside this one a
   // single screenshot can take over 5s.
   const rows = await store(page, 'project', (p) => p.rows);

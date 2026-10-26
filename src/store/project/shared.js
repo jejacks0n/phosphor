@@ -40,3 +40,21 @@ export function boundsOf(pixels) {
   y1 |= 1;  // and its bottom one
   return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
+
+// Undo keeps steps up to this many bytes of pixels in all (History drops the oldest past it): a merge,
+// a Clear or a Bake on a large grid holds whole copies of the layers.
+export const MAX_HISTORY_BYTES = 256 * 2 ** 20;
+
+// About how many bytes an undo step holds, for that budget: stroke patches ({ tiles }), layer
+// snapshots ({ canvas }), decoded images and encoded image bytes. Missing ones count nothing.
+export function bytesHeld(...held) {
+  let bytes = 0;
+  for (const it of held) {
+    if (!it) continue;
+    if (it.tiles) for (const { before } of it.tiles) bytes += 2 * before.data.length; // before and after
+    else if (it.canvas) bytes += it.canvas.width * it.canvas.height * 4;
+    else if (it.naturalWidth) bytes += it.naturalWidth * it.naturalHeight * 4;
+    else if (it.byteLength !== undefined) bytes += it.byteLength;
+  }
+  return bytes;
+}

@@ -14,6 +14,11 @@ lines). Nothing below changes because of it. Stage 1 is still what makes long gr
 whole-document costs in section 2 are what stand between 120,000 cells and more. The plan for
 stage 1 is `docs/superpowers/plans/2026-10-25-viewport-rendering.md`.
 
+**Then (PR #20):** stage 1 and most of stage 2 landed, and the limits went to 300 columns, 5,000 lines
+and 500,000 cells. Three fixes came with that. The pipeline uploads and processes a picture at no
+more than the GPU draws (a long picture used to come out black). A blank canvas's picture is sized
+within that too. Undo keeps steps up to 256 MB of pixels.
+
 **Measured** means a number from the benchmark on this machine. **Estimate** means judgment.
 Sizes are given as *cols x lines*; `rows` in the code counts pixel rows, two per line
 (`charRowsOf`, `src/lib/Cells.js:15`).

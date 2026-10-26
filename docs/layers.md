@@ -236,6 +236,7 @@ What a new grid size does depends on the edit layer:
 
 Clearing or erasing everything on the edit layer brings rescaling back.
 
-The grid can be up to **300 columns** wide and **1000 lines** tall, with **120,000 cells** in all,
-so narrow art can run long: 80 columns reaches the full 1000 lines, 300 columns stops at 400. A
-picture opens at the current width, or narrower if that's what it takes to fit its shape.
+The grid can be up to **300 columns** wide and **5000 lines** tall, with **500,000 cells** in all,
+so narrow art can run long: 80 and 100 columns reach the full 5000 lines, 160 columns stops at 3125
+and 300 at 1666. A picture opens at the current width, or narrower if that's what it takes to fit
+its shape.

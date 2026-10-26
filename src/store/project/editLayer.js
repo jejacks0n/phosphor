@@ -8,7 +8,7 @@ import { cellIndex, bakedEntry } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, boundsOf } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, boundsOf, bytesHeld } from '@/store/project/shared.js';
 
 export const editLayerActions = {
   paintEditPixels(pixels, opacity = 100) {
@@ -214,6 +214,6 @@ export const editLayerActions = {
       this.render();
     };
     apply(after);
-    this.pushEdit({ undo: () => apply(before), redo: () => apply(after) });
+    this.pushEdit({ undo: () => apply(before), redo: () => apply(after), bytes: bytesHeld(before.paintLayer) });
   },
 };

@@ -12,7 +12,7 @@ import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld } from '@/store/project/shared.js';
 import { RESET_GROUPS, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
 
@@ -88,6 +88,7 @@ export const mergingActions = {
       this.pushEdit({
         undo: () => apply(before, after),
         redo: () => apply(after, before),
+        bytes: bytesHeld(before.paint, before.base, before.image, before.imageBuffer, after.paint, after.base, after.image, after.imageBuffer),
       });
     } finally {
       this._baking = false;
@@ -255,7 +256,8 @@ export const mergingActions = {
         this.render();
       };
       apply(after);
-      this.pushEdit({ undo: () => apply(before), redo: () => apply(after) });
+      const bytes = bytesHeld(before.base, before.paint, before.image, before.imageBuffer, after.base, after.paint, after.image, after.imageBuffer);
+      this.pushEdit({ undo: () => apply(before), redo: () => apply(after), bytes });
     } finally {
       this._merging = false;
       if (again) await this.mergeIntoPicture(rect);
@@ -303,6 +305,6 @@ export const mergingActions = {
       this.render();
     };
     apply(after);
-    this.pushEdit({ undo: () => apply(before), redo: () => apply(after) });
+    this.pushEdit({ undo: () => apply(before), redo: () => apply(after), bytes: bytesHeld(before.base, before.paint, after.base, after.paint) });
   },
 };
