@@ -13,7 +13,8 @@ export const baseLayerActions = {
     const pixels = cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row, hex: BLANK.bg }, { x: col, y: 2 * row + 1, hex: BLANK.bg }]);
     this.writeBase(pixels);
     this.setBaseRecords(withPins(this.baseRecords, cells.map(({ col, row }) => ({ col, row, char: ' ' }))));
-    this.recompose(pixels.filter(({ x, y }) => x < this.cols && y < this.rows)); // with their pins (the cells were rebuilt before them)
+    const { cols, rows } = this;
+    this.recompose(pixels.filter(({ x, y }) => x < cols && y < rows)); // with their pins (the cells were rebuilt before them)
   },
 
   // Erase base pixels (the Pixel view): black, the characters left as they are.
@@ -43,7 +44,8 @@ export const baseLayerActions = {
 
   // Set base pixels ({ x, y, hex } in grid pixels; off-grid ones are skipped) and show them.
   writeBase(pixels) {
-    const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < this.cols && y < this.rows);
+    const { cols, rows } = this; // read once: a store getter per pixel adds up over a fill
+    const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < cols && y < rows);
     if (!inGrid.length) return;
     this.ensureLayer();
     this.beginEdit();

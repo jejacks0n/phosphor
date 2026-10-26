@@ -132,24 +132,37 @@ export default class Renderer {
   // that shows, so the drawing's colors have places in it; true when that changed the palette
   // (every cell may need its colors again, not just those under the change). hold: an edit is open
   // and the Number palette waits for it to end; meanwhile the paint shows in its own colors
-  // (updateCells).
-  composite(paintLayer, params, { hold = false } = {}) {
+  // (updateCells). rect: the grid pixels an edit changed ({ x, y, w, h }), the only ones redrawn
+  // when what's kept from the last composite still fits (not when the Number palette is picked
+  // again: that can change every pixel).
+  composite(paintLayer, params, { hold = false, rect = null } = {}) {
     if (!this.outputCanvas || !this.pipelineCanvas) return false;
 
     const ctx = ctx2d(this.outputCanvas);
     const w = this.outputCanvas.width, h = this.outputCanvas.height;
+    const base = !!this.baseLayer?.hasPaint, fits = (data) => data?.width === w && data.height === h;
+    const partial = !!rect && !(params.quantize === 'count' && !hold) && this.pipelineCanvas.width === w && this.pipelineCanvas.height === h
+      && (base ? fits(this.#baseData) && this.#baseData !== this.#pipelineData : true)
+      && (!paintLayer || fits(this.#paintData)) && (!hold || this.#heldData?.length === w * h * 4);
+    const area = partial ? clipped(rect, w, h) : { x: 0, y: 0, w, h };
+    if (!area.w || !area.h) return false; // nothing on the grid changed
+    const { x, y } = area;
 
     ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(this.pipelineCanvas, 0, 0, w, h);
+    ctx.fillRect(x, y, area.w, area.h);
+    ctx.drawImage(this.pipelineCanvas, x, y, area.w, area.h, x, y, area.w, area.h);
 
-    if (this.baseLayer?.hasPaint) this.#drawBase(ctx, this.baseLayer, params);
-    this.#baseData = this.baseLayer?.hasPaint ? ctx.getImageData(0, 0, w, h) : this.#pipelineData;
+    if (base) this.#drawBase(ctx, this.baseLayer, params, area);
+    if (!base) this.#baseData = this.#pipelineData;
+    else if (partial) putRows(this.#baseData.data, w, ctx.getImageData(x, y, area.w, area.h).data, area);
+    else this.#baseData = ctx.getImageData(0, 0, w, h);
 
-    this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params) : null;
+    this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params, partial ? area : null) : null;
     const changed = !hold && params.quantize === 'count' && this.#recount(params);
-    this.#heldData = hold ? ctx.getImageData(0, 0, w, h).data : null;
-    if (paintLayer) snapToPalette(this.outputCanvas, this.palette);
+    if (!hold) this.#heldData = null;
+    else if (partial) putRows(this.#heldData, w, ctx.getImageData(x, y, area.w, area.h).data, area);
+    else this.#heldData = ctx.getImageData(0, 0, w, h).data;
+    if (paintLayer) snapToPalette(this.outputCanvas, this.palette, area);
     return changed;
   }
 
@@ -172,52 +185,39 @@ export default class Renderer {
   // stored: with the color adjustments neutral (baseParams), the colors the base stands for; a
   // block of one color is that color (an exact pixel stays exact), one that isn't (a moved block of
   // the picture) is snapped, then averaged, as the picture's own stored colors are (#source).
-  // Cached: a stroke recomposites on every move, and the base doesn't change under it.
+  // Cached: a stroke recomposites on every move, and the base doesn't change under it; when it does
+  // (an erase, a move), only the grid pixels over what changed are worked out again.
   #baseGrid(layer, params, stored = false) {
     const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
     const palette = (params.quantize === 'cga' || params.quantize === 'vga') && this.palette?.length ? this.palette : null;
     const key = [w, h, params.smoothing, palette && params.quantize, ...COLOR_KEYS.map(key => params[key])].join();
     const cached = stored ? this.#baseStored : this.#baseDrawn;
-    if (cached?.layer === layer && cached.version === layer.version && cached.key === key) return cached;
+    const same = cached?.layer === layer && cached.key === key;
+    if (same && cached.version === layer.version) return cached;
 
-    const full = document.createElement('canvas');
-    full.width = w * k;
-    full.height = h * k;
-    const fullCtx = ctx2d(full);
-    fullCtx.drawImage(layer.canvas, 0, 0, w * k, h * k, 0, 0, w * k, h * k); // the grid's part (a layer can reach past it)
-    const raw = fullCtx.getImageData(0, 0, w * k, h * k).data;
-    const pixels = new ImageData(new Uint8ClampedArray(raw), w * k, h * k), d = pixels.data;
-    if (transforms(params)) applyTransforms(d, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
-    if (palette) {
-      const snapped = adjustedPixels(full, params);
-      for (let i = 0; i < d.length; i += 4) {
-        if (raw[i + 3] === 255) d.set(snapped.subarray(i, i + 3), i);
-      }
+    // With Low smoothing the grid is the browser's nearest-pixel scaling of the whole layer, which a
+    // part of it doesn't reproduce exactly: that's worked out whole.
+    const changed = same && params.smoothing !== 'low' && layer.changedSince(cached.version);
+    const area = changed ? gridRectOf(changed, k, w, h) : { x: 0, y: 0, w, h };
+    const result = changed ? cached : { layer, key, data: new ImageData(w, h), canvas: null };
+    if (area.w && area.h) {
+      const part = baseGridPart(layer, params, palette, area, stored);
+      putRows(result.data.data, w, part.data, area);
+      if (result.canvas) ctx2d(result.canvas).putImageData(result.data, 0, 0, area.x, area.y, area.w, area.h);
     }
-    let data;
-    if (params.smoothing === 'low') {
-      fullCtx.putImageData(pixels, 0, 0);
-      const nearest = ctx2d(Object.assign(document.createElement('canvas'), { width: w, height: h }));
-      nearest.imageSmoothingEnabled = false;
-      nearest.drawImage(full, 0, 0, w * k, h * k, 0, 0, w, h);
-      data = nearest.getImageData(0, 0, w, h);
-    } else {
-      data = averaged(d, w, h, k, params.smoothing === 'medium' ? 2 : 1);
-    }
-    if (stored) keepUniform(data, raw, w, h, k);
-    const result = { layer, version: layer.version, key, data, canvas: null };
+    result.version = layer.version;
     if (stored) this.#baseStored = result;
     else this.#baseDrawn = result;
     return result;
   }
 
-  #drawBase(ctx, layer, params) {
+  #drawBase(ctx, layer, params, { x, y, w, h }) {
     const drawn = this.#baseGrid(layer, params);
     if (!drawn.canvas) {
       drawn.canvas = Object.assign(document.createElement('canvas'), { width: drawn.data.width, height: drawn.data.height });
       ctx2d(drawn.canvas).putImageData(drawn.data, 0, 0);
     }
-    ctx.drawImage(drawn.canvas, 0, 0);
+    ctx.drawImage(drawn.canvas, x, y, w, h, x, y, w, h);
   }
 
   // The base layer's own color at grid pixel (x, y) as stored (before adjustments; see #baseGrid),
@@ -231,10 +231,10 @@ export default class Renderer {
   }
 
   // Draw a layer at grid resolution (a grid pixel at a time) with the color transforms applied;
-  // returns the transformed pixels.
-  #drawLayer(ctx, layer, params) {
-    const w = this.outputCanvas.width, h = this.outputCanvas.height;
-    const needsTransform = transforms(params);
+  // returns the transformed pixels. area: only those grid pixels (the rest of #paintData stays).
+  #drawLayer(ctx, layer, params, area = null) {
+    const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
+    const { x, y, w: aw, h: ah } = area ?? { x: 0, y: 0, w, h };
 
     // Persistent scratch canvas for downsampling and transforming a layer
     if (!this.#scratch) this.#scratch = document.createElement('canvas');
@@ -244,19 +244,19 @@ export default class Renderer {
     }
 
     const scratchCtx = ctx2d(this.#scratch);
-    scratchCtx.clearRect(0, 0, w, h);
+    scratchCtx.clearRect(x, y, aw, ah);
     scratchCtx.imageSmoothingEnabled = false;
-    scratchCtx.drawImage(layer.canvas, 0, 0, w * layer.scale, h * layer.scale, 0, 0, w, h); // the grid's part (a layer can reach past it)
+    scratchCtx.drawImage(layer.canvas, x * k, y * k, aw * k, ah * k, x, y, aw, ah); // the grid's part (a layer can reach past it)
 
-    if (needsTransform) {
-      const id = scratchCtx.getImageData(0, 0, w, h);
-      applyTransforms(id.data, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
-      scratchCtx.putImageData(id, 0, 0);
+    const pixels = scratchCtx.getImageData(x, y, aw, ah);
+    if (transforms(params)) {
+      applyTransforms(pixels.data, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
+      scratchCtx.putImageData(pixels, x, y);
     }
-
-    const data = scratchCtx.getImageData(0, 0, w, h);
-    ctx.drawImage(this.#scratch, 0, 0);
-    return data;
+    ctx.drawImage(this.#scratch, x, y, aw, ah, x, y, aw, ah);
+    if (!area) return pixels;
+    putRows(this.#paintData.data, w, pixels.data, area);
+    return this.#paintData;
   }
 
   // Rebuild only the cells under the given grid pixels from the (already composited) output canvas.
@@ -407,10 +407,10 @@ export default class Renderer {
 // A canvas's pixels snapped to a palette in place, read and written once as bytes (no object per
 // pixel: this runs over the whole output). Returns its bytes and each pixel's palette entry, or
 // indexes null with no palette.
-function snapToPalette(canvas, palette) {
-  const ctx = ctx2d(canvas), image = ctx.getImageData(0, 0, canvas.width, canvas.height), data = image.data;
+function snapToPalette(canvas, palette, { x, y, w, h } = { x: 0, y: 0, w: canvas.width, h: canvas.height }) {
+  const ctx = ctx2d(canvas), image = ctx.getImageData(x, y, w, h), data = image.data;
   if (!palette?.length) return { data, indexes: null };
-  const indexes = new Uint16Array(canvas.width * canvas.height);
+  const indexes = new Uint16Array(w * h);
   let last = -1, k = 0; // a pixel the color of the one before it (most are) skips the lookup
   for (let i = 0, o = 0; i < indexes.length; i++, o += 4) {
     const rgb = data[o] << 16 | data[o + 1] << 8 | data[o + 2];
@@ -419,8 +419,56 @@ function snapToPalette(canvas, palette) {
     data[o] = palette[k].r; data[o + 1] = palette[k].g; data[o + 2] = palette[k].b;
     data[o + 3] ||= 255; // as Canvas.writePixels writes a see-through pixel
   }
-  ctx.putImageData(image, 0, 0);
+  ctx.putImageData(image, x, y);
   return { data, indexes };
+}
+
+// A rect ({ x, y, w, h }) of rows (RGBA bytes, rect.w wide) put into a width-wide image's bytes.
+function putRows(target, width, rows, { x, y, w, h }) {
+  for (let row = 0; row < h; row++) target.set(rows.subarray(row * w * 4, (row + 1) * w * 4), ((y + row) * width + x) * 4);
+}
+
+// A rect clipped to a w x h grid.
+function clipped(rect, w, h) {
+  const x = Math.max(0, rect.x), y = Math.max(0, rect.y);
+  return { x, y, w: Math.max(0, Math.min(w, rect.x + rect.w) - x), h: Math.max(0, Math.min(h, rect.y + rect.h) - y) };
+}
+
+// The grid pixels (w x h) over a rect of a layer at k pixels per grid pixel.
+function gridRectOf(rect, k, w, h) {
+  const x = Math.floor(rect.x / k), y = Math.floor(rect.y / k);
+  return clipped({ x, y, w: Math.ceil((rect.x + rect.w) / k) - x, h: Math.ceil((rect.y + rect.h) / k) - y }, w, h);
+}
+
+// The base layer at grid resolution over area (#baseGrid has the why of each step).
+function baseGridPart(layer, params, palette, area, stored) {
+  const k = layer.scale, w = area.w, h = area.h;
+  const full = document.createElement('canvas');
+  full.width = w * k;
+  full.height = h * k;
+  const fullCtx = ctx2d(full);
+  fullCtx.drawImage(layer.canvas, area.x * k, area.y * k, w * k, h * k, 0, 0, w * k, h * k);
+  const raw = fullCtx.getImageData(0, 0, w * k, h * k).data;
+  const pixels = new ImageData(new Uint8ClampedArray(raw), w * k, h * k), d = pixels.data;
+  if (transforms(params)) applyTransforms(d, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
+  if (palette) {
+    const snapped = adjustedPixels(full, params);
+    for (let i = 0; i < d.length; i += 4) {
+      if (raw[i + 3] === 255) d.set(snapped.subarray(i, i + 3), i);
+    }
+  }
+  let data;
+  if (params.smoothing === 'low') {
+    fullCtx.putImageData(pixels, 0, 0);
+    const nearest = ctx2d(Object.assign(document.createElement('canvas'), { width: w, height: h }));
+    nearest.imageSmoothingEnabled = false;
+    nearest.drawImage(full, 0, 0, w * k, h * k, 0, 0, w, h);
+    data = nearest.getImageData(0, 0, w, h);
+  } else {
+    data = averaged(d, w, h, k, params.smoothing === 'medium' ? 2 : 1);
+  }
+  if (stored) keepUniform(data, raw, w, h, k);
+  return data;
 }
 
 // The color settings a layer is drawn with.

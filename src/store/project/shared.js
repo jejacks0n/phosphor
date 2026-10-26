@@ -26,3 +26,17 @@ export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - u
 // undo step records. Keyboard nudges on one slider this close together are one step.
 export const SLIDER_KEYS = SETTINGS.filter(s => RESET_GROUPS.includes(s.group)).map(s => s.key);
 export const NUDGE_MS = 1000;
+
+// The rect of grid pixels ({ x, y }[]) as { x, y, w, h }, whole cells (both pixel rows of each).
+export function boundsOf(pixels) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const { x, y } of pixels) {
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
+  y0 &= ~1; // the cell's top pixel row
+  y1 |= 1;  // and its bottom one
+  return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}

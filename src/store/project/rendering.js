@@ -8,6 +8,7 @@ import { fitRect } from '@/lib/Canvas.js';
 import { layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
+import { boundsOf } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
 
 export const renderingActions = {
@@ -120,7 +121,8 @@ export const renderingActions = {
 
   // Rebuild the cells under grid pixels (an edit's) from the output as it is, and their rows' layout.
   recompose(pixels) {
-    const rows = new Set(pixels.map(({ y }) => Math.floor(y / 2)));
+    const rows = new Set();
+    for (const { y } of pixels) rows.add(y >> 1);
     this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells), rows);
   },
 
@@ -128,9 +130,10 @@ export const renderingActions = {
   // palette, every cell's colors can change: the cells are rebuilt from the output (as a full render
   // would, without rerunning the pipeline). While an edit is open (a stroke, a shape) the Number
   // palette holds still and the paint shows in its own colors; commitEdit catches up (rebuild).
-  composite({ rebuild = false } = {}) {
+  // rect: the grid pixels that changed ({ x, y, w, h }), when an edit knows them.
+  composite({ rebuild = false, rect = null } = {}) {
     const hold = !!this._stroke && this.quantize === 'count';
-    if (!this.renderer.composite(this.paintLayer, this.processParams, { hold }) && !rebuild) return;
+    if (!this.renderer.composite(this.paintLayer, this.processParams, { hold, rect }) && !rebuild) return;
     this.activePalette = this.renderer.palette;
     this.renderedCells = this.renderer.cellsFromOutput(this.processParams);
     this.applyEditCells();
@@ -138,7 +141,7 @@ export const renderingActions = {
 
   // After the paint or base pixels changed under `pixels`: recomposite and rebuild just those cells.
   refreshCells(pixels) {
-    this.composite();
+    this.composite({ rect: boundsOf(pixels) });
     this.recompose(pixels);
   },
 
@@ -147,3 +150,4 @@ export const renderingActions = {
     this.setCells(this.renderer.composeAll(this.renderedCells, this.editCells, this.processParams));
   },
 };
+

@@ -9,6 +9,39 @@ const utf8Encoder = new TextEncoder();
 
 const toBytes = (input) => Array.from(input).map((b) => b.charCodeAt(0));
 
+// A character's UTF-8 bytes, worked out once per character (a file is a character per cell).
+const utf8Bytes = new Map();
+const utf8Of = (char) => {
+  let bytes = utf8Bytes.get(char);
+  if (!bytes) utf8Bytes.set(char, bytes = utf8Encoder.encode(char));
+  return bytes;
+};
+
+// The file's bytes as they're written, in a Uint8Array that doubles as it fills: an export can be
+// tens of MB, and an array of numbers would take several times that.
+class Bytes {
+  #buffer = new Uint8Array(1 << 16);
+  length = 0;
+
+  push(...bytes) {
+    this.pushAll(bytes);
+  }
+
+  pushAll(bytes) {
+    if (this.length + bytes.length > this.#buffer.length) {
+      const grown = new Uint8Array(Math.max(this.#buffer.length * 2, this.length + bytes.length));
+      grown.set(this.#buffer.subarray(0, this.length));
+      this.#buffer = grown;
+    }
+    this.#buffer.set(bytes, this.length);
+    this.length += bytes.length;
+  }
+
+  get bytes() {
+    return this.#buffer.subarray(0, this.length);
+  }
+}
+
 
 export class AnsiFile {
   constructor(cols, rows, cells) {
@@ -44,7 +77,7 @@ export class AnsiFile {
   #asBytes({ utf8 = false, colorMode = 'none', sauce = null } = {}) {
     // A viewer that ignores SAUCE wraps at 80 columns, so narrower .ans rows end in CR LF too.
     const lineFeeds = utf8 || this.cols < 80;
-    const output = [];
+    const output = new Bytes();
     const addSgr = (...sgr) => output.push(27, 91, ...toBytes(sgr.join(';')), 109);
     const active = { fg: { hex: null }, bg: { hex: null }, blink: false, bold: false };
 
@@ -89,7 +122,7 @@ export class AnsiFile {
         }
 
         if (utf8) {
-          output.push(...utf8Encoder.encode(char));
+          output.pushAll(utf8Of(char));
         } else {
           output.push(AnsiFile.unicodeToCP437(char));
         }
@@ -99,7 +132,7 @@ export class AnsiFile {
     addSgr(0);
     if (utf8) output.push(13, 10);
 
-    return this.#appendSauce(output, sauce);
+    return this.#appendSauce(output.bytes, sauce);
   }
 
   #addTrueColorBytes(add, fg, bg, active) {

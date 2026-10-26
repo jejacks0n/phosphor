@@ -15,6 +15,7 @@ import { ctx2d } from '@/lib/Canvas.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
+import { boundsOf } from '@/store/project/shared.js';
 import { toRaw } from 'vue';
 
 export const selectionActions = {
@@ -198,8 +199,8 @@ export const selectionActions = {
     this.beginEdit();
     change();
     this.hasPaint = this.paintLayer?.hasPaint ?? false;
-    this.composite();
     const pixels = rects.flatMap(rect => rectCells({ ...rect, c0: Math.max(0, rect.c0 - 1), c1: Math.min(this.cols - 1, rect.c1 + 1) })).map(({ col, row }) => ({ x: col, y: 2 * row }));
+    this.composite({ rect: boundsOf(pixels) }); // whole cells: both pixel rows
     this.recompose(pixels);
     this.commitEdit();
   },
