@@ -27,3 +27,6 @@ pnpm-debug.log*
 .vitest/
 test-results/
 playwright-report/
+
+# The SOCIAL tab's server: kept out of this repo for now (it will be a repo of its own).
+/server/
