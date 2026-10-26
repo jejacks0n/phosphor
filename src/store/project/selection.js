@@ -200,7 +200,7 @@ export const selectionActions = {
     this.hasPaint = this.paintLayer?.hasPaint ?? false;
     this.composite();
     const pixels = rects.flatMap(rect => rectCells({ ...rect, c0: Math.max(0, rect.c0 - 1), c1: Math.min(this.cols - 1, rect.c1 + 1) })).map(({ col, row }) => ({ x: col, y: 2 * row }));
-    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
+    this.recompose(pixels);
     this.commitEdit();
   },
 };

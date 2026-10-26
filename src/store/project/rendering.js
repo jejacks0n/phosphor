@@ -5,7 +5,7 @@
 import PaintLayer, { editScaleFor, resizeTransform } from '@/document/PaintLayer.js';
 import { remapBaseRecords } from '@/document/baseRecords.js';
 import { fitRect } from '@/lib/Canvas.js';
-import { layoutWide, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
+import { layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
 import { markRaw } from 'vue';
@@ -111,9 +111,17 @@ export const renderingActions = {
   },
 
   // New composed cells: laid out with their wide characters as what the views show and export.
-  setCells(composed) {
+  // rows: the only rows that changed (an edit's), which are all that need laying out again.
+  setCells(composed, rows = null) {
+    const partial = rows && this.cells.length === composed.length;
     this.composedCells = composed;
-    this.cells = layoutWide(composed, this.cols);
+    this.cells = partial ? layoutWideRows(composed, this.cols, this.cells, rows) : layoutWide(composed, this.cols);
+  },
+
+  // Rebuild the cells under grid pixels (an edit's) from the output as it is, and their rows' layout.
+  recompose(pixels) {
+    const rows = new Set(pixels.map(({ y }) => Math.floor(y / 2)));
+    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells), rows);
   },
 
   // Recomposite the output after the paint or base pixels changed. When that rebalanced the Number
@@ -131,7 +139,7 @@ export const renderingActions = {
   // After the paint or base pixels changed under `pixels`: recomposite and rebuild just those cells.
   refreshCells(pixels) {
     this.composite();
-    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
+    this.recompose(pixels);
   },
 
   applyEditCells() {

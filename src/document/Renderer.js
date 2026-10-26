@@ -16,12 +16,12 @@
  * it goes. (Sharpen is the exception: the shader sharpens after the adjustments, from neighbors
  * that aren't adjusted, so a sharpened block can differ a little.)
  */
-import { processImage, processedImage, adjustedPixels, applyQuantization, getPaletteColors, workingScale } from '../lib/ImageProcessor.js';
+import { processImage, processedImage, adjustedPixels, getPaletteColors, workingScale } from '../lib/ImageProcessor.js';
 import { applyTransforms } from '../lib/PixelTransforms.js';
-import { nearestColor } from '../lib/ColorUtils.js';
+import { nearestColor, paletteIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
-import { buildCells, buildCell, brightnessChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
+import { buildCellsFromBytes, buildCell, brightnessChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
 import { cellKey, parseKey } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 
@@ -115,17 +115,16 @@ export default class Renderer {
   // The generated cells from the composited output (no edit cells, no pins: each has the converter's
   // own character, which a pin covers only while it's there): quantized to the palette, which also
   // gives the pixels their palette index (c), which the cells and CGA/VGA export rely on.
+  // The output's bytes are read once and snapped in place (no object per pixel: this runs over the
+  // whole grid on every render and slider step).
   cellsFromOutput(params) {
-    const pixels = new Canvas(this.outputCanvas);
-    if (this.palette) applyQuantization(pixels, this.palette);
-    else pixels.loadPixels();
-
-    return buildCells(pixels.pixels, params.cols, params.rows, {
+    const { data, indexes } = snapToPalette(this.outputCanvas, this.palette);
+    return buildCellsFromBytes(data, params.cols, params.rows, {
       charset: params.chars,
       charMode: params.charMode || 'random',
       renderStyle: params.renderStyle || 'ansi',
       seed: params.seed,
-    });
+    }, indexes && { indexes, palette: this.palette });
   }
 
   // Redraw outputCanvas: the pipeline image, then the base layer's pixels and the paint layer, each
@@ -150,7 +149,7 @@ export default class Renderer {
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params) : null;
     const changed = !hold && params.quantize === 'count' && this.#recount(params);
     this.#heldData = hold ? ctx.getImageData(0, 0, w, h).data : null;
-    if (paintLayer && this.palette?.length) applyQuantization(new Canvas(this.outputCanvas), this.palette);
+    if (paintLayer) snapToPalette(this.outputCanvas, this.palette);
     return changed;
   }
 
@@ -263,11 +262,11 @@ export default class Renderer {
   // Rebuild only the cells under the given grid pixels from the (already composited) output canvas.
   // baseCells (the last full render) supplies a cell's character in random mode.
   updateCells(cells, pixels, params, editCells, baseCells) {
-    if (!this.outputCanvas) return cells;
-    const canvas = new Canvas(this.outputCanvas);
+    if (!this.outputCanvas || !pixels.length) return cells;
     const next = cells.slice();
     const { cols, chars: charset, charMode, renderStyle } = params;
     const done = new Set();
+    const pixelAt = this.#outputPixels(pixels);
 
     for (const { x, y } of pixels) {
       const { col, row } = cellOfPixel(x, y);
@@ -281,9 +280,9 @@ export default class Renderer {
         continue;
       }
 
-      let top = canvas.pixels[cellIndex(col, 2 * row, cols)];
+      let top = pixelAt(col, 2 * row);
       if (!top) continue; // output canvas from an older grid size
-      let bottom = canvas.pixels[cellIndex(col, 2 * row + 1, cols)] || top;
+      let bottom = pixelAt(col, 2 * row + 1) || top;
       // Quantize only the touched pixels instead of the entire canvas (held paint keeps its colors)
       if (this.palette) {
         top = this.#held(col, 2 * row, cols) ?? nearestColor(top, this.palette);
@@ -295,6 +294,27 @@ export default class Renderer {
       next[i] = this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
     }
     return next;
+  }
+
+  // The output's pixels under the cells of these grid pixels, read once as one rect (an edit's
+  // area, not the whole grid): (x, y) -> { r, g, b, a }, or undefined off the output.
+  #outputPixels(pixels) {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const { x, y } of pixels) {
+      const row = Math.floor(y / 2);
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+      y0 = Math.min(y0, 2 * row); y1 = Math.max(y1, 2 * row + 1);
+    }
+    const { width, height } = this.outputCanvas;
+    x0 = Math.max(0, x0); y0 = Math.max(0, y0);
+    x1 = Math.min(width - 1, x1); y1 = Math.min(height - 1, y1);
+    if (x0 > x1 || y0 > y1) return () => undefined;
+    const w = x1 - x0 + 1, { data } = ctx2d(this.outputCanvas).getImageData(x0, y0, w, y1 - y0 + 1);
+    return (x, y) => {
+      if (x < x0 || x > x1 || y < y0 || y > y1) return undefined;
+      const o = ((y - y0) * w + (x - x0)) * 4;
+      return { r: data[o], g: data[o + 1], b: data[o + 2], a: data[o + 3] / 255 };
+    };
   }
 
   // A painted grid pixel's color before the palette snap, while a stroke is held; else null.
@@ -382,6 +402,25 @@ export default class Renderer {
       palette: this.palette,
     });
   }
+}
+
+// A canvas's pixels snapped to a palette in place, read and written once as bytes (no object per
+// pixel: this runs over the whole output). Returns its bytes and each pixel's palette entry, or
+// indexes null with no palette.
+function snapToPalette(canvas, palette) {
+  const ctx = ctx2d(canvas), image = ctx.getImageData(0, 0, canvas.width, canvas.height), data = image.data;
+  if (!palette?.length) return { data, indexes: null };
+  const indexes = new Uint16Array(canvas.width * canvas.height);
+  let last = -1, k = 0; // a pixel the color of the one before it (most are) skips the lookup
+  for (let i = 0, o = 0; i < indexes.length; i++, o += 4) {
+    const rgb = data[o] << 16 | data[o + 1] << 8 | data[o + 2];
+    if (rgb !== last) k = paletteIndex(data[o], data[o + 1], data[o + 2], palette), last = rgb;
+    indexes[i] = k;
+    data[o] = palette[k].r; data[o + 1] = palette[k].g; data[o + 2] = palette[k].b;
+    data[o + 3] ||= 255; // as Canvas.writePixels writes a see-through pixel
+  }
+  ctx.putImageData(image, 0, 0);
+  return { data, indexes };
 }
 
 // The color settings a layer is drawn with.

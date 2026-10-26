@@ -2,7 +2,7 @@
 // (export bytes depend on it).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { buildCells, buildCell, brightnessChar, charRowsOf, cellIndex, cellOfPixel, cellAt, layoutWide, selectionText } from '../../src/lib/Cells.js';
+import { buildCells, buildCell, brightnessChar, charRowsOf, cellIndex, cellOfPixel, cellAt, layoutWide, layoutWideRows, selectionText } from '../../src/lib/Cells.js';
 
 test('Cell model: one { char, fg, bg } per character cell, built exactly as the pipeline always has (export bytes depend on it)', async () => {
   const px = (r, g, b, c) => (c === undefined ? { r, g, b } : { r, g, b, c });
@@ -79,4 +79,17 @@ test('Cell model: one { char, fg, bg } per character cell, built exactly as the 
   assert.equal(selectionText(textGrid, 4, { c0: 1, r0: 0, c1: 2, r1: 0 }), '漢');        // lead and trail
   assert.equal(selectionText(textGrid, 4, { c0: 2, r0: 0, c1: 3, r1: 0 }), 'b');         // starting on a trail: nothing for it
   assert.equal(selectionText([], 4, { c0: 0, r0: 0, c1: 1, r1: 0 }), '  ');           // no cells (yet): spaces
+});
+
+test('an edit lays out only its rows again: the other rows keep their layout, and the result is the whole grid\'s', () => {
+  const C = (char) => ({ char, fg: { hex: '#fff' }, bg: { hex: '#000' } });
+  const before = ['a', '漢', 'b', 'c', '字', 'd', 'e', 'f', '░', 'g', 'h', '漢'].map(C); // 3 rows of 4
+  const laid = layoutWide(before, 4);
+  const after = before.slice();
+  after[5] = C('漢'); // row 1 gets a wide character
+  after[8] = C('x');  // row 2 changes too, to nothing wide
+  const relaid = layoutWideRows(after, 4, laid, [1, 2]);
+  assert.deepEqual(relaid.map(c => [c.char, c.wide]), layoutWide(after, 4).map(c => [c.char, c.wide]));
+  assert.equal(relaid[0], laid[0]);                                                          // untouched rows: the same cells
+  assert.equal(relaid[11].char, ' ');                                                         // a wide character in the last column, as before
 });

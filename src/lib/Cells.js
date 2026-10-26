@@ -61,9 +61,11 @@ export function brightnessChar(top, bottom, charset) {
   return glyphs[Math.max(0, Math.min(glyphs.length - 1, Math.round(avgGray * (glyphs.length - 1))))];
 }
 
-export function buildCell(top, bottom, char, renderStyle) {
+// color: makes a Color from a pixel (buildCells passes one that shares a Color between the cells of
+// that color).
+export function buildCell(top, bottom, char, renderStyle, color = colorOf) {
   if (renderStyle !== 'colorAscii' && renderStyle !== 'ascii') {
-    return { char, bg: colorOf(top), fg: colorOf(bottom) };
+    return { char, bg: color(top), fg: color(bottom) };
   }
 
   // ASCII styles: characters on black; the foreground is the pair's average (or white when monochrome)
@@ -89,17 +91,45 @@ const seedHash = (seed) => {
 };
 const cellRandom = (h, col, row) => fmix(h ^ Math.imul(col + 1, 0x9e3779b1) ^ Math.imul(row + 1, 0x85ebca77));
 
-export function buildCells(pixels, cols, rows, { charset, charMode, renderStyle, seed }) {
+export function buildCells(pixels, cols, rows, opts) {
+  return buildCellsWith((i) => pixels[i], cols, rows, opts);
+}
+
+// The same from a cols x rows canvas's RGBA bytes, without an object per pixel. quantized:
+// { indexes, palette } when the bytes are snapped to a palette (indexes: each pixel's entry).
+export function buildCellsFromBytes(data, cols, rows, opts, quantized = null) {
+  const scratch = [{}, {}]; // the top and bottom pixels being read (Colors copy them)
+  return buildCellsWith((i, slot) => {
+    const o = i * 4;
+    if (o >= data.length) return undefined;
+    const p = scratch[slot];
+    p.r = data[o]; p.g = data[o + 1]; p.b = data[o + 2];
+    p.c = quantized ? quantized.palette[quantized.indexes[i]].c : undefined;
+    return p;
+  }, cols, rows, opts);
+}
+
+// pixelAt(index, slot): the pixel at index (slot 0 for a cell's top, 1 its bottom), or undefined.
+// One Color per color, shared by every cell showing it: a grid has far fewer colors than cells,
+// and a Color is never changed in place.
+function buildCellsWith(pixelAt, cols, rows, { charset, charMode, renderStyle, seed }) {
   const chars = glyphsOf(charset);
   const h = seedHash(seed);
   const cells = new Array(cols * charRowsOf(rows));
+  const colors = new Map();
+  const color = (p) => {
+    const key = (p.r << 16 | p.g << 8 | p.b) + (typeof p.c === 'number' ? (p.c + 1) * 16777216 : 0);
+    let found = colors.get(key);
+    if (!found) colors.set(key, found = colorOf(p));
+    return found;
+  };
 
   for (let row = 0; row < charRowsOf(rows); row++) {
     for (let col = 0; col < cols; col++) {
-      const top = pixels[2 * row * cols + col];
-      const bottom = pixels[(2 * row + 1) * cols + col] || top;
+      const top = pixelAt(2 * row * cols + col, 0);
+      const bottom = pixelAt((2 * row + 1) * cols + col, 1) || top;
       const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset) : chars[cellRandom(h, col, row) % chars.length];
-      cells[cellIndex(col, row, cols)] = buildCell(top, bottom, char, renderStyle);
+      cells[cellIndex(col, row, cols)] = buildCell(top, bottom, char, renderStyle, color);
     }
   }
   return cells;
@@ -111,21 +141,35 @@ export function buildCells(pixels, cols, rows, { charset, charMode, renderStyle,
 // one of its own; in the last column it has no room (a terminal would wrap it) and shows as a
 // space. The same array when nothing is wide.
 export function layoutWide(cells, cols) {
-  let out = null;
-  for (let i = 0; i < cells.length; i++) {
-    const cell = cells[i];
-    if (!cell || cellWidth(cell.char) !== 2) continue;
-    out ??= cells.slice();
-    if (i % cols === cols - 1) {
-      out[i] = { ...cell, char: ' ' };
-      continue;
-    }
-    out[i] = { ...cell, wide: 'lead' };
-    out[i + 1] = { ...cell, wide: 'trail' };
-    i++; // covered
-  }
-  return out ?? cells;
+  if (!cells.some(isWide)) return cells;
+  return layoutWideRows(cells, cols, cells, Array.from({ length: Math.ceil(cells.length / cols) }, (_, row) => row));
 }
+
+// The same for some rows only (an edit's): laid is the layout from before only those rows changed,
+// so every other row keeps its own.
+export function layoutWideRows(cells, cols, laid, rows) {
+  const out = laid.slice();
+  for (const row of rows) {
+    const end = Math.min((row + 1) * cols, cells.length);
+    for (let i = row * cols; i < end; i++) out[i] = cells[i];
+    for (let i = row * cols; i < end; i++) {
+      const cell = cells[i];
+      if (!isWide(cell)) continue;
+      if (i === end - 1) {
+        out[i] = { ...cell, char: ' ' };
+        continue;
+      }
+      out[i] = { ...cell, wide: 'lead' };
+      out[i + 1] = { ...cell, wide: 'trail' };
+      i++; // covered
+    }
+  }
+  return out;
+}
+
+// Nothing in one UTF-16 unit below U+1100 (where the wide scripts start) is two columns wide, so
+// most cells skip the width lookup: this runs over every cell of the grid.
+const isWide = (cell) => !!cell && !(cell.char.length === 1 && cell.char.charCodeAt(0) < 0x1100) && cellWidth(cell.char) === 2;
 
 // A cell rect as text (for the system clipboard): the characters as they show, a line per row. A
 // wide character is written once (its trail adds nothing), so the text lines up in a terminal; a

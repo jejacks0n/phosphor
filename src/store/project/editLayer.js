@@ -49,7 +49,7 @@ export const editLayerActions = {
       this.composite();
     }
     this.editCells = withCellEdit(this.editCells, col, row, attrs);
-    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
+    this.recompose(pixels);
   },
 
   // Typing: one undo entry per keystroke. Typed cells sit above paint (the last edit wins). A
@@ -115,7 +115,7 @@ export const editLayerActions = {
     if (next === this.editCells) return;
     this.editCells = next;
     const pixels = Array.from({ length: this.cols }, (_, x) => ({ x, y: 2 * row }));
-    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
+    this.recompose(pixels);
   },
 
   // A whole entry for a cell as the cell layer shows it: its own attributes, the rest frozen from
@@ -154,7 +154,7 @@ export const editLayerActions = {
       pixels.push({ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 });
     }
     this.editCells = next;
-    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
+    this.recompose(pixels);
   },
 
   // Remove edit cells so the image shows through.
@@ -165,7 +165,7 @@ export const editLayerActions = {
     this.beginEdit();
     this.editCells = next;
     const pixels = cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
-    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
+    this.recompose(pixels);
   },
 
   // Flip a cell's colors on the chosen layers. Edit: the paint (as it shows) or the edit cell's

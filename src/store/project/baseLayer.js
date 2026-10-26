@@ -10,8 +10,10 @@ export const baseLayerActions = {
   // Erase the base in these cells: black, with a pinned space.
   eraseBase(cells) {
     if (!cells.length) return;
-    this.writeBase(cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row, hex: BLANK.bg }, { x: col, y: 2 * row + 1, hex: BLANK.bg }]));
+    const pixels = cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row, hex: BLANK.bg }, { x: col, y: 2 * row + 1, hex: BLANK.bg }]);
+    this.writeBase(pixels);
     this.setBaseRecords(withPins(this.baseRecords, cells.map(({ col, row }) => ({ col, row, char: ' ' }))));
+    this.recompose(pixels.filter(({ x, y }) => x < this.cols && y < this.rows)); // with their pins (the cells were rebuilt before them)
   },
 
   // Erase base pixels (the Pixel view): black, the characters left as they are.
