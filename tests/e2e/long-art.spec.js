@@ -18,6 +18,26 @@ async function paintCell(page, col, row) {
   }
 }
 
+// Every painted frame (a task after its frame) until stopRecording: how much of the PIXEL view's
+// viewport its canvas covers, and the scroll.
+const recordFrames = (page) => page.evaluate(() => {
+  window.__frames = [];
+  window.__framesDone = false;
+  const frame = () => setTimeout(() => {
+    const el = document.querySelector('article[tabindex="0"]'), canvas = el?.querySelector('.display canvas');
+    if (canvas) {
+      const rect = canvas.getBoundingClientRect(), top = el.getBoundingClientRect().top + el.clientTop, bottom = top + el.clientHeight;
+      window.__frames.push({ scrollTop: el.scrollTop, covered: Math.max(0, Math.min(rect.bottom, bottom) - Math.max(rect.top, top)), view: el.clientHeight });
+    }
+    if (!window.__framesDone) requestAnimationFrame(frame);
+  });
+  requestAnimationFrame(frame);
+});
+const stopRecording = (page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => {
+  window.__framesDone = true;
+  done(window.__frames);
+}))));
+
 // What the screen shows at a cell's center: a frame after a scroll, the redraw lands.
 const shown = (page, col, row) => expect.poll(async () => {
   const at = await cellPoint(page, col, row);
@@ -145,27 +165,12 @@ test('returning to the PIXEL tab with a remembered scroll never paints a frame w
     return canvas.top <= top && canvas.bottom >= top + el.clientHeight;
   })).toBe(true);
 
-  // Every frame (a task after its frame is painted) from the other tab on: how much of the new
-  // viewport the canvas covers, while the PIXEL view is mounted.
+  // Every frame from the other tab on, while the PIXEL view is mounted.
   await tab(page, 'ANSI').click();
-  await page.evaluate(() => {
-    window.__frames = [];
-    const frame = () => setTimeout(() => {
-      const el = document.querySelector('article[tabindex="0"]'), canvas = el?.querySelector('.display canvas');
-      if (canvas) {
-        const rect = canvas.getBoundingClientRect(), top = el.getBoundingClientRect().top + el.clientTop, bottom = top + el.clientHeight;
-        window.__frames.push({ scrollTop: el.scrollTop, covered: Math.max(0, Math.min(rect.bottom, bottom) - Math.max(rect.top, top)), view: el.clientHeight });
-      }
-      if (!window.__framesDone) requestAnimationFrame(frame);
-    });
-    requestAnimationFrame(frame);
-  });
+  await recordFrames(page);
   await tab(page, 'PIXEL').click();
   await page.waitForFunction(() => window.__frames.some((f) => f.scrollTop > 0)); // the restore landed
-  const frames = await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => {
-    window.__framesDone = true;
-    done(window.__frames);
-  }))));
+  const frames = await stopRecording(page);
   expect(frames.length).toBeGreaterThan(0);
   expect(frames.filter((f) => f.covered < f.view)).toEqual([]);
 });
@@ -207,4 +212,42 @@ test('with All cells on, the PIXEL view\'s overlay follows a stroke and its undo
   await expect.poll(() => screenPixel(page, at.x, at.y)).not.toEqual(painted);
   const undone = await screenPixel(page, at.x, at.y);
   expect(await repainted()).toEqual(undone);
+});
+
+test('a new grid size in the PIXEL view re-centers it, and no frame shows the canvas where the old scroll had it', async ({ page }) => {
+  await openApp(page, 'images/tall.png');
+  await tab(page, 'PIXEL').click();
+  const view = page.locator('article[tabindex="0"]');
+  const viewBox = await view.boundingBox();
+  await page.mouse.move(viewBox.x + viewBox.width / 2, viewBox.y + viewBox.height / 2);
+  await page.keyboard.down('Control');
+  while (await store(page, 'workspace', (w) => w.editZoom) < 16) await page.mouse.wheel(0, -100);
+  await page.keyboard.up('Control');
+  await view.evaluate((el) => { el.scrollTop = el.scrollHeight / 4; }); // well away from where re-centering lands
+  await expect.poll(() => view.evaluate((el) => {
+    const canvas = el.querySelector('canvas').getBoundingClientRect(), top = el.getBoundingClientRect().top + el.clientTop;
+    return canvas.top <= top && canvas.bottom >= top + el.clientHeight;
+  })).toBe(true);
+
+  await recordFrames(page);
+  const before = await view.evaluate((el) => el.scrollTop);
+  await page.getByLabel('Dimensions').fill('40'); // a new size: the output's size changes and the view re-centers
+  await page.waitForFunction((before) => window.__frames.some((f) => Math.abs(f.scrollTop - before) > 100), before);
+  const frames = await stopRecording(page);
+  expect(frames.filter((f) => f.covered < f.view)).toEqual([]);
+});
+
+test('the PIXEL view shows an edit cell where it is after the grid changes size', async ({ page }) => {
+  await openApp(page);
+  await store(page, 'project', (p) => { p.typeAt(5, 5, ' ', { fg: '#ff00ff', bg: '#ff00ff' }); p.commitEdit(); }); // both halves magenta
+  await tab(page, 'PIXEL').click(); // its overlay drawn, then the grid changes under it
+  await settled(page);
+  await page.getByLabel('Dimensions').fill('100'); // a canvas resize: with an edit, the grid gains columns
+  await expect.poll(() => store(page, 'project', (p) => p.cols)).toBe(100);
+  await settled(page);
+  const zoom = await store(page, 'workspace', (w) => w.editZoom);
+  await expect.poll(async () => { // the view re-centers on the new size a frame or two later: measured each time
+    const box = await page.locator('article[tabindex="0"] .display').boundingBox();
+    return screenPixel(page, box.x + 5.5 * zoom, box.y + 10.5 * zoom);
+  }).toEqual([255, 0, 255]); // its top half, grid pixel (5, 10)
 });

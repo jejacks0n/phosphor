@@ -214,6 +214,6 @@ export const editLayerActions = {
       this.render();
     };
     apply(after);
-    this.pushEdit({ undo: () => apply(before), redo: () => apply(after), bytes: bytesHeld(before.paintLayer) });
+    this.pushEdit({ undo: () => apply(before), redo: () => apply(after), bytes: bytesHeld(before.paintLayer, before.editCells) });
   },
 };

@@ -17,7 +17,8 @@ import { tilesForRect } from './History.js';
 
 export const MAX_LAYER_DIM = 4000;
 
-// Integer paint pixels per grid cell: at least the image's own resolution, capped so neither side exceeds MAX_LAYER_DIM.
+// Integer paint pixels per grid cell: at least the image's own resolution, capped so neither side exceeds
+// MAX_LAYER_DIM, but never below 1 (a grid longer than MAX_LAYER_DIM gets a layer that long).
 export function editScaleFor(sw, sh, cols, rows) {
   const wanted = Math.ceil(Math.max(sw / Math.max(1, cols), sh / Math.max(1, rows)));
   return Math.max(1, Math.min(wanted, Math.floor(MAX_LAYER_DIM / Math.max(cols, rows))));

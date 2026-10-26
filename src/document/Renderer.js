@@ -16,7 +16,7 @@
  * it goes. (Sharpen is the exception: the shader sharpens after the adjustments, from neighbors
  * that aren't adjusted, so a sharpened block can differ a little.)
  */
-import { processImage, processedImage, adjustedPixels, getPaletteColors, workingScale } from '../lib/ImageProcessor.js';
+import { processImage, processedImage, adjustedPixels, getPaletteColors, workingScale, fittingScale } from '../lib/ImageProcessor.js';
 import { applyTransforms } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
@@ -72,8 +72,8 @@ export default class Renderer {
     if (baseParams && scale && (this.#processed?.image !== image || this.#processed.key !== sourceKey || this.#processed.scale !== scale)) {
       // An image smaller than the grid is processed at its own size and scaled up: there are no
       // whole processed pixels per grid pixel, and the stored colors (#source) are what shows.
-      const canvas = workingScale(image, params) ? await this.#processedInGrid(image, baseParams, scale) : this.#sourceCanvas();
-      this.#processed = { image, key: sourceKey, scale, canvas };
+      const drawn = workingScale(image, params) ? await this.#processedInGrid(image, baseParams, scale) : { canvas: this.#sourceCanvas(), scale: 1 };
+      this.#processed = { image, key: sourceKey, scale, canvas: drawn.canvas, drawnScale: drawn.scale };
     }
 
     const output = document.createElement('canvas');
@@ -88,7 +88,7 @@ export default class Renderer {
   // The processed picture (see the top) where it sits in the grid, at `scale` pixels per grid pixel;
   // black around it, as the pipeline fills the letterbox. What a block of the base copies.
   get processed() {
-    return this.#processed && { canvas: this.#processed.canvas, scale: this.#processed.scale };
+    return this.#processed && { canvas: this.#processed.canvas, scale: this.#processed.drawnScale };
   }
 
   #sourceCanvas() {
@@ -100,17 +100,21 @@ export default class Renderer {
     return canvas;
   }
 
+  // At the base layer's scale, or lower when the GPU can't process the picture that large (a project
+  // made on a GPU that draws more); { canvas, scale } with the scale it's at.
   async #processedInGrid(image, baseParams, scale) {
-    const picture = await processedImage(image, baseParams, { m: scale });
-    const { dx, dy } = baseParams.fit ?? fitRect(image.naturalWidth || image.width, image.naturalHeight || image.height, baseParams.cols, baseParams.rows);
+    const { dx, dy, dw, dh } = baseParams.fit ?? fitRect(image.naturalWidth || image.width, image.naturalHeight || image.height, baseParams.cols, baseParams.rows);
+    const m = fittingScale(scale, dw, dh);
+    if (m < 1) return { canvas: this.#sourceCanvas(), scale: 1 };
+    const picture = await processedImage(image, baseParams, { m });
     const canvas = document.createElement('canvas');
-    canvas.width = baseParams.cols * scale;
-    canvas.height = baseParams.rows * scale;
+    canvas.width = baseParams.cols * m;
+    canvas.height = baseParams.rows * m;
     const ctx = ctx2d(canvas);
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(picture, dx * scale, dy * scale);
-    return canvas;
+    ctx.drawImage(picture, dx * m, dy * m);
+    return { canvas, scale: m };
   }
 
   // The generated cells from the composited output (no edit cells, no pins: each has the converter's

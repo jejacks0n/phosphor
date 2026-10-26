@@ -50,3 +50,25 @@ test('Ctrl+wheel zoom keeps the grid point under the pointer', async ({ page }) 
   expect(Math.abs(after.x - before.x)).toBeLessThan(0.5);
   expect(Math.abs(after.y - before.y)).toBeLessThan(0.5);
 });
+
+test('at a fractional zoom the PIXEL view fills its canvas to the last pixel, with no see-through sliver at the grid\'s edge', async ({ page }) => {
+  const canvas = await pixelView(page);
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: p.rows }));
+  // Zoom in a notch at a time until the grid isn't a whole number of pixels either way.
+  for (let i = 0; i < 10; i++) {
+    const z = await zoom(page);
+    if ((cols * z) % 1 > 0.1 && (rows * z) % 1 > 0.1) break;
+    await ctrlWheel(page, -100);
+  }
+  const z = await zoom(page);
+  expect((cols * z) % 1).toBeGreaterThan(0.1);
+  // The whole grid is in view, so the canvas's last column and row are the grid's edge.
+  const edgeAlphas = () => page.locator('article .display canvas').evaluate((c) => {
+    const ctx = c.getContext('2d');
+    const column = ctx.getImageData(c.width - 1, 0, 1, c.height).data, row = ctx.getImageData(0, c.height - 1, c.width, 1).data;
+    return Math.min(...[...column, ...row].filter((_, i) => i % 4 === 3));
+  });
+  await expect.poll(edgeAlphas).toBe(255);
+});

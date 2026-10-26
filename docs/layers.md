@@ -101,7 +101,9 @@ yet.)
     Like Bake, the first time makes the picture the working-size copy the preview is made from, so
     growing the grid later works from that, and effects like Edges can shift slightly across the
     picture that first time. With a color-count palette, the palette is worked out again from the
-    merged picture, so some colors can shift.
+    merged picture, so some colors can shift. When the graphics card can't process a picture as
+    long as the grid (most handle the full 5000 lines; some phones stop at 2000 or 4000), it merges
+    exactly instead.
 - **Merge up** (the Select tool's row) does the opposite for the base: what the base layer shows —
   its characters and colors, effects included — becomes edit cells, which the seed, character set
   and effects no longer change. With a selection it merges that area; without one, the whole

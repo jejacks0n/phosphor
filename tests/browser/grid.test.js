@@ -113,3 +113,34 @@ test('a picture as long as the grid, longer than the GPU draws, keeps its colors
   expect(lines).toBe(MAX_LINES);
   for (const row of [0, Math.floor(lines / 2), lines - 1]) expect(project.cells[cellIndex(10, row, project.cols)].bg.hex).toBe('#3366cc');
 });
+
+// A blank canvas at the full line limit: more rows than software WebGL draws (8192), as on a weaker
+// GPU.
+async function longBlank() {
+  const { project } = await createTestApp();
+  project.cols = 80;
+  project.rows = 2 * MAX_LINES;
+  await project.setBlankCanvas();
+  await settle(project);
+  return project;
+}
+
+test('base edits under VGA keep their colors to the last line, longer than the GPU draws', async () => {
+  const project = await longBlank();
+  project.quantize = 'vga';
+  await settle(project);
+  project.beginEdit();
+  project.writeBase([100, 101, 9000, 9001].map((y) => ({ x: 10, y, hex: '#ff0000' })));
+  project.commitEdit();
+  for (const row of [50, 4500]) expect(project.cells[cellIndex(10, row, 80)].bg.hex).toBe('#ff0000');
+});
+
+test('Into the image on a grid longer than the GPU processes keeps the drawing (it merges exactly)', async () => {
+  const project = await longBlank();
+  for (const y of [100, 101, 9000, 9001]) project.paintStroke([{ x: 10, y, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  await project.mergeIntoPicture();
+  await settle(project);
+  for (const row of [50, 4500]) expect(project.cells[cellIndex(10, row, 80)].bg.hex).toBe('#ff0000');
+  expect(project.hasPaint).toBe(false);
+});

@@ -44,7 +44,7 @@ export const historyActions = {
       if (side === 'before' && stroke.cursor) useWorkspaceStore().textCursor = stroke.cursor; // typing undone: the cursor goes back to where it started
       this.refreshChanged([[patch, this.paintLayer], [basePatch, this.baseLayer]], sides.before, sides.after);
     };
-    this.pushEdit({ undo: () => apply('before'), redo: () => apply('after'), bytes: bytesHeld(patch, basePatch) });
+    this.pushEdit({ undo: () => apply('before'), redo: () => apply('after'), bytes: bytesHeld(patch, basePatch, this.editCells !== stroke.editCells && this.editCells) });
   },
 
   // Take back the open edit without recording it (a stroke a pinch interrupted): its paint, base

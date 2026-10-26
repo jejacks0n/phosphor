@@ -30,7 +30,7 @@ const updateOverlay = () => {
 
   // The edit cells, by index (only those in the grid).
   let edited = overlay.edited;
-  if (editCells !== overlay.editCells) {
+  if (editCells !== overlay.editCells || cols !== overlay.cols || rows !== overlay.rows) { // indexes are by the grid's width
     edited = new Set();
     for (const key of editCells.keys()) {
       const { col, row } = parseKey(key);

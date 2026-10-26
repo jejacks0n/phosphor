@@ -46,7 +46,8 @@ export function boundsOf(pixels) {
 export const MAX_HISTORY_BYTES = 256 * 2 ** 20;
 
 // About how many bytes an undo step holds, for that budget: stroke patches ({ tiles }), layer
-// snapshots ({ canvas }), decoded images and encoded image bytes. Missing ones count nothing.
+// snapshots ({ canvas }), decoded images, encoded image bytes, and maps of edit cells (a whole-grid
+// Merge up makes one with an entry a cell). Missing ones count nothing.
 export function bytesHeld(...held) {
   let bytes = 0;
   for (const it of held) {
@@ -55,6 +56,7 @@ export function bytesHeld(...held) {
     else if (it.canvas) bytes += it.canvas.width * it.canvas.height * 4;
     else if (it.naturalWidth) bytes += it.naturalWidth * it.naturalHeight * 4;
     else if (it.byteLength !== undefined) bytes += it.byteLength;
+    else if (it instanceof Map) bytes += it.size * 80; // a key, an entry and the map's own slot, about
   }
   return bytes;
 }

@@ -14,6 +14,10 @@ const customPalettes = {};
 // The longest side, in pixels, this GPU processes a picture at (16384 on most, 8192 on software WebGL).
 export const gpuMaxSide = () => (glProcessor ??= new WebGLProcessor()).maxSide;
 
+// A processing scale m (pixels a grid pixel) lowered so a dw x dh picture at it fits the GPU; 0 when
+// even one pixel a grid pixel doesn't.
+export const fittingScale = (m, dw, dh) => Math.min(m, Math.floor(gpuMaxSide() / Math.max(dw, dh)));
+
 export function getPaletteColors(params, canvasForCount = null) {
   const { quantize, palette, colorCount } = params;
 
@@ -103,16 +107,27 @@ function shaderParams(params) {
 // effects, nothing resampled): the base layer, drawn the way the pipeline draws the picture. The
 // snap has to be the shader's own, which can pick another color than an exact nearest-color search
 // would. Alpha is the canvas's.
+// A canvas taller than the GPU draws goes through in bands (each pixel is its own: nothing reads its
+// neighbors, so a band comes out as the whole would).
 export function adjustedPixels(canvas, params) {
   const { width: w, height: h } = canvas;
-  if (!glBase) glBase = new WebGLProcessor();
-  glBase.process(canvas, { ...shaderParams(params), sharpen: 0, flatten: 0, edges: 0, passes: 1 }, w, h);
-  const out = document.createElement('canvas');
-  out.width = w;
-  out.height = h;
+  glBase ??= new WebGLProcessor();
+  const band = Math.max(1, Math.min(h, glBase.maxSide));
+  const pixels = new Uint8ClampedArray(w * h * 4);
+  const out = Object.assign(document.createElement('canvas'), { width: w, height: band });
   const ctx = ctx2d(out);
-  ctx.drawImage(glBase.canvas, 0, 0);
-  const pixels = ctx.getImageData(0, 0, w, h).data;
+  for (let y = 0; y < h; y += band) {
+    const bh = Math.min(band, h - y);
+    let part = canvas;
+    if (bh !== h) {
+      part = Object.assign(document.createElement('canvas'), { width: w, height: bh });
+      ctx2d(part).drawImage(canvas, 0, y, w, bh, 0, 0, w, bh);
+    }
+    glBase.process(part, { ...shaderParams(params), sharpen: 0, flatten: 0, edges: 0, passes: 1 }, w, bh);
+    ctx.clearRect(0, 0, w, band);
+    ctx.drawImage(glBase.canvas, 0, 0);
+    pixels.set(ctx.getImageData(0, 0, w, bh).data, y * w * 4);
+  }
   const own = ctx2d(canvas).getImageData(0, 0, w, h).data;
   for (let i = 3; i < pixels.length; i += 4) pixels[i] = own[i];
   return pixels;
