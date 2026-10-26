@@ -270,6 +270,7 @@ legend button:hover {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 :deep(span.value-tooltip) {

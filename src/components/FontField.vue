@@ -7,7 +7,7 @@ import HelpInfo from '@/components/HelpInfo.vue';
 
 // The font the art is drawn in, and its size: one of Phosphor's, or a monospaced one you load from
 // your computer (userFonts.js). Kept in this browser, not in the project.
-const HELP = 'The font the art is drawn in, in both views. It also decides how a cell\'s colors blend in the Pixel tab and when you merge into the image. '
+const HELP = 'The font the art is drawn in. '
   + 'Load custom adds a monospaced TrueType, OpenType or WOFF font from your computer. '
   + 'Pixel fonts look sharpest at their own size or a multiple of it (16 or 32 for the 8x16 fonts). '
   + 'The font and size stay in this browser; they aren\'t saved with the project.';
@@ -122,9 +122,9 @@ button.text {
   font: inherit;
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-faint);
+  opacity: 0.8; /* as the RESET buttons beside the section titles */
   cursor: pointer;
 }
 

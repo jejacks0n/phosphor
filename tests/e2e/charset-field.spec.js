@@ -58,3 +58,20 @@ test.describe('on a touch screen', () => {
     await expect(field(page)).toHaveValue('▄');
   });
 });
+
+test('every set\'s name fits whole on the line beside Characters', async ({ page }) => {
+  await openApp(page);
+  for (const style of ['ansi', 'ascii']) {
+    await page.getByRole('combobox', { name: 'Art Style' }).selectOption(style);
+    for (const option of await sets(page).locator('option').allTextContents()) {
+      await sets(page).selectOption({ label: option });
+      await expect(label(page)).toHaveText(option.split(' · ')[0]);
+      const { lines, cut } = await label(page).evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return { lines: new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size, cut: el.scrollWidth > el.clientWidth };
+      });
+      expect({ name: option, lines, cut }).toEqual({ name: option, lines: 1, cut: false });
+    }
+  }
+});

@@ -1,14 +1,15 @@
 // Ready-made character sets for the Characters field (ANSI and the ASCII styles keep separate sets).
 // ANSI picks a set's characters at random per cell; the ASCII styles map brightness along the set,
-// darkest first. The default is all CP437, so an .ans export of it never has to ask; "Default with
-// ▁▂▃▅" is the earlier default, whose low blocks .ans writes as lookalikes.
+// darkest first. The default is all CP437, so an .ans export of it never has to ask; "Default + ▁▂▃▅"
+// is the earlier default, whose low blocks .ans writes as lookalikes. A name has to fit beside the
+// Characters label (about 15 characters).
 import { getSetting } from '../store/settings.js';
 
 const ANSI_DEFAULT = getSetting('chars').default;
 
 export const ANSI_CHARSETS = [
   { name: 'Default', chars: ANSI_DEFAULT },
-  { name: 'Default with ▁▂▃▅', chars: '.*:%░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄' },
+  { name: 'Default + ▁▂▃▅', chars: '.*:%░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄' },
   { name: 'Shades', chars: '░▒▓█' },
   { name: 'Rising blocks', chars: '▁▂▃▄▅▆▇█' },
   { name: 'Half blocks', chars: '▀▄█' },
