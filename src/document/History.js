@@ -1,23 +1,27 @@
 /**
- * Undo/redo as a stack of { undo(), redo() } entries. Entries own whatever they need to replay
- * (paint tiles, char-edit maps, images); this class only orders them.
+ * Undo/redo as a stack of { undo(), redo(), bytes? } entries. Entries own whatever they need to replay
+ * (paint tiles, char-edit maps, images); this class only orders them, and drops the oldest past
+ * limit entries or past maxBytes of what they hold (bytes: an entry's pixels, about).
  */
 export default class History {
   #entries = [];
   #cursor = 0; // entries before the cursor are undoable, entries after it redoable
 
-  constructor(limit = 50) {
+  constructor(limit = 50, maxBytes = Infinity) {
     this.limit = limit;
+    this.maxBytes = maxBytes;
     this.version = 0; // +1 on every change; mirrored into the store so canUndo/canRedo stay reactive
   }
 
   get canUndo() { return this.#cursor > 0; }
+  get bytes() { return this.#entries.reduce((sum, entry) => sum + (entry.bytes ?? 0), 0); }
   get canRedo() { return this.#cursor < this.#entries.length; }
 
   push(entry) {
     this.#entries.length = this.#cursor; // a new edit drops the redo tail
     this.#entries.push(entry);
-    if (this.#entries.length > this.limit) this.#entries.shift();
+    // The newest stays, however big: it's the edit just made.
+    while (this.#entries.length > 1 && (this.#entries.length > this.limit || this.bytes > this.maxBytes)) this.#entries.shift();
     this.#cursor = this.#entries.length;
     this.version++;
   }

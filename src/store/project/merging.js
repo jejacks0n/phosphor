@@ -9,10 +9,10 @@ import { loadImage } from '@/document/projectIO.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf, halfColors } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
-import { processedImage, workingScale } from '@/lib/ImageProcessor.js';
+import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld } from '@/store/project/shared.js';
 import { RESET_GROUPS, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
 
@@ -88,6 +88,7 @@ export const mergingActions = {
       this.pushEdit({
         undo: () => apply(before, after),
         redo: () => apply(after, before),
+        bytes: bytesHeld(before.paint, before.base, before.image, before.imageBuffer, after.paint, after.base, after.image, after.imageBuffer, after.editCells),
       });
     } finally {
       this._baking = false;
@@ -142,8 +143,14 @@ export const mergingActions = {
       const params = this.processParams;
       const doc = this._document, version = this.history.version;
       const neutral = { ...params, ...Object.assign({}, ...RESET_GROUPS.map(groupDefaults)) };
-      const m = workingScale(this.image, params) ?? Math.max(2, Math.floor(400 / Math.max(this.cols, this.rows)));
       const fitNow = params.fit ?? this.fitFor(this.cols, this.rows);
+      const m = fittingScale(workingScale(this.image, params) ?? Math.max(2, Math.floor(400 / Math.max(this.cols, this.rows))), fitNow.dw, fitNow.dh);
+      // A picture too long for the GPU at a pixel a grid pixel can't take the drawing in whole pixels:
+      // it merges exactly instead.
+      if (m < 1) {
+        this.mergeDown(rect);
+        return;
+      }
       const width = this.image.naturalWidth || this.image.width, height = this.image.naturalHeight || this.image.height;
       // Already at its working size (after a Bake or an earlier merge): its own pixels, exactly; a
       // render through the pipeline would round them a level here and there.
@@ -255,7 +262,8 @@ export const mergingActions = {
         this.render();
       };
       apply(after);
-      this.pushEdit({ undo: () => apply(before), redo: () => apply(after) });
+      const bytes = bytesHeld(before.base, before.paint, before.image, before.imageBuffer, after.base, after.paint, after.image, after.imageBuffer, after.editCells);
+      this.pushEdit({ undo: () => apply(before), redo: () => apply(after), bytes });
     } finally {
       this._merging = false;
       if (again) await this.mergeIntoPicture(rect);
@@ -303,6 +311,6 @@ export const mergingActions = {
       this.render();
     };
     apply(after);
-    this.pushEdit({ undo: () => apply(before), redo: () => apply(after) });
+    this.pushEdit({ undo: () => apply(before), redo: () => apply(after), bytes: bytesHeld(before.base, before.paint, after.base, after.paint, after.editCells) });
   },
 };

@@ -101,7 +101,9 @@ yet.)
     Like Bake, the first time makes the picture the working-size copy the preview is made from, so
     growing the grid later works from that, and effects like Edges can shift slightly across the
     picture that first time. With a color-count palette, the palette is worked out again from the
-    merged picture, so some colors can shift.
+    merged picture, so some colors can shift. When the graphics card can't process a picture as
+    long as the grid (most handle the full 5000 lines; some phones stop at 2000 or 4000), it merges
+    exactly instead.
 - **Merge up** (the Select tool's row) does the opposite for the base: what the base layer shows —
   its characters and colors, effects included — becomes edit cells, which the seed, character set
   and effects no longer change. With a selection it merges that area; without one, the whole
@@ -236,8 +238,7 @@ What a new grid size does depends on the edit layer:
 
 Clearing or erasing everything on the edit layer brings rescaling back.
 
-The grid can be up to **300 columns** wide and **1000 lines** tall, with **120,000 cells** in all,
-so narrow art can run long: 80 columns reaches the full 1000 lines, 300 columns stops at 400. A
-picture opens at the current width, or narrower if that's what it takes to fit its shape. A long
-grid is drawn at a lower resolution to stay within what the graphics card can draw at once: past
-about 800 lines at the default font size, the ANSI view looks a little soft.
+The grid can be up to **300 columns** wide and **5000 lines** tall, with **500,000 cells** in all,
+so narrow art can run long: 80 and 100 columns reach the full 5000 lines, 160 columns stops at 3125
+and 300 at 1666. A picture opens at the current width, or narrower if that's what it takes to fit
+its shape.

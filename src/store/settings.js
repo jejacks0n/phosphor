@@ -4,7 +4,7 @@ import { generateSlug } from 'random-word-slugs';
 // Every persisted project setting, declared once. Order within the transform, adjust and effects
 // groups is the ControlPanel's on-screen order. Storage keys must never change: they hold users' settings.
 export const SETTINGS = [
-  { key: 'cols', default: 80, group: 'setup', label: 'Dimensions', help: 'The art\'s width in columns and height in rows (two pixel rows per character row). Before you draw, a new size converts the image again; once the edit layer has something on it, cells are added or removed at the right and bottom instead. Up to 300 columns and 1000 lines, 120,000 cells in all: the narrower the art, the longer it can run.' },
+  { key: 'cols', default: 80, group: 'setup', label: 'Dimensions', help: 'The art\'s width in columns and height in rows (two pixel rows per character row). Before you draw, a new size converts the image again; once the edit layer has something on it, cells are added or removed at the right and bottom instead. Up to 300 columns and 5000 lines, 500,000 cells in all: the narrower the art, the longer it can run.' },
   { key: 'rows', default: 50, group: 'setup' },
   { key: 'aspectLock', default: true, group: 'setup', pipeline: false },
   { key: 'renderStyle', default: 'ansi', group: 'setup', help: 'ANSI colors both the character and its background. Color ASCII puts colored characters on black. Monochrome ASCII is one color.' },

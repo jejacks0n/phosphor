@@ -232,9 +232,25 @@ export default class WebGLProcessor {
     this.program = this.#createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
     this.#initBuffers();
 
+    const gl = this.gl;
+    // The largest picture this GPU takes or draws, a side (16384 on most; 8192 on software WebGL).
+    this.maxSide = Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE), ...gl.getParameter(gl.MAX_VIEWPORT_DIMS));
     this.texture = null;
     this.paletteTexture = null;
     this.lastImage = null;
+  }
+
+  // A picture larger than the GPU takes (it would come out black) goes up scaled down to fit; the
+  // pipeline never processes more than that anyway.
+  #fitting(image) {
+    const w = image.naturalWidth || image.width, h = image.naturalHeight || image.height;
+    const s = this.maxSide / Math.max(w, h);
+    if (s >= 1) return image;
+    const fitted = Object.assign(document.createElement('canvas'), { width: Math.max(1, Math.floor(w * s)), height: Math.max(1, Math.floor(h * s)) });
+    const ctx = fitted.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(image, 0, 0, fitted.width, fitted.height);
+    return fitted;
   }
 
   #createProgram(vsSource, fsSource) {
@@ -316,7 +332,7 @@ export default class WebGLProcessor {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.#fitting(image));
       this.lastImage = image;
     }
 

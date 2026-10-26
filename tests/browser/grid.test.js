@@ -67,18 +67,18 @@ test('random characters stay with their cells when the width changes', async () 
 test('a narrow grid runs to the line limit; a wider one stops at the cell budget', async () => {
   const { project } = await grid(80, 40);
   project.aspectLock = false;
-  project.updateRows(5000);
+  project.updateRows(50_000);
   expect(project.rows).toBe(2 * MAX_LINES);
   expect(project.maxCols).toBe(MAX_CELLS / MAX_LINES);
   project.updateCols(300);
   expect([project.cols, project.rows]).toEqual([MAX_CELLS / MAX_LINES, 2 * MAX_LINES]);
 });
 
-test('a tall picture opens as tall as the limits allow', async () => {
+test('a tall picture opens at the current width, and can grow as large as the limits allow', async () => {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/tall.png'); // 40x1200, at the default 80 columns
-  expect([project.cols, project.rows]).toEqual([66, 1980]);
-  expect([project.maxCols, project.maxRows]).toEqual([66, 1980]); // aspect locked
+  expect([project.cols, project.rows]).toEqual([80, 2400]);
+  expect([project.maxCols, project.maxRows]).toEqual([182, 5460]); // aspect locked: the cell budget binds
 });
 
 test('before there is a picture, the aspect lock has no shape to keep: rows and columns set alone', async () => {
@@ -86,5 +86,61 @@ test('before there is a picture, the aspect lock has no shape to keep: rows and 
   expect(project.aspectLock).toBe(true);
   project.updateRows(2000);
   expect([project.cols, project.rows]).toEqual([80, 2000]);
-  expect(project.maxRows).toBe(2000);
+  expect(project.maxRows).toBe(2 * MAX_LINES);
+});
+
+test('a new blank canvas opens at the full line limit', async () => {
+  const { project } = await createTestApp();
+  project.cols = 80;
+  project.rows = 2 * MAX_LINES; // its picture at 10 pixels a cell would be past what a canvas can be
+  await project.setBlankCanvas();
+  await settle(project);
+  expect(project.cells).toHaveLength(80 * MAX_LINES);
+  expect(new Set(project.cells.map((c) => c.bg.hex))).toEqual(new Set(['#000000']));
+});
+
+test('a picture as long as the grid, longer than the GPU draws, keeps its colors to its last line', async () => {
+  const { project } = await createTestApp();
+  const picture = Object.assign(document.createElement('canvas'), { width: 80, height: 20_000 }); // past 16384 (8192 here, on software WebGL)
+  const ctx = picture.getContext('2d');
+  ctx.fillStyle = '#3366cc';
+  ctx.fillRect(0, 0, 80, 20_000);
+  const blob = await new Promise((resolve) => picture.toBlob(resolve, 'image/png'));
+  await project.setImageFromFile(new File([blob], 'long.png', { type: 'image/png' }));
+  project.render();
+  await settle(project);
+  const lines = project.rows / 2;
+  expect(lines).toBe(MAX_LINES);
+  for (const row of [0, Math.floor(lines / 2), lines - 1]) expect(project.cells[cellIndex(10, row, project.cols)].bg.hex).toBe('#3366cc');
+});
+
+// A blank canvas at the full line limit: more rows than software WebGL draws (8192), as on a weaker
+// GPU.
+async function longBlank() {
+  const { project } = await createTestApp();
+  project.cols = 80;
+  project.rows = 2 * MAX_LINES;
+  await project.setBlankCanvas();
+  await settle(project);
+  return project;
+}
+
+test('base edits under VGA keep their colors to the last line, longer than the GPU draws', async () => {
+  const project = await longBlank();
+  project.quantize = 'vga';
+  await settle(project);
+  project.beginEdit();
+  project.writeBase([100, 101, 9000, 9001].map((y) => ({ x: 10, y, hex: '#ff0000' })));
+  project.commitEdit();
+  for (const row of [50, 4500]) expect(project.cells[cellIndex(10, row, 80)].bg.hex).toBe('#ff0000');
+});
+
+test('Into the image on a grid longer than the GPU processes keeps the drawing (it merges exactly)', async () => {
+  const project = await longBlank();
+  for (const y of [100, 101, 9000, 9001]) project.paintStroke([{ x: 10, y, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  await project.mergeIntoPicture();
+  await settle(project);
+  for (const row of [50, 4500]) expect(project.cells[cellIndex(10, row, 80)].bg.hex).toBe('#ff0000');
+  expect(project.hasPaint).toBe(false);
 });

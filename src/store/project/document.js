@@ -4,6 +4,7 @@ import { EMPTY_BASE } from '@/document/baseRecords.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
+import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
@@ -39,18 +40,22 @@ export const documentActions = {
     this.markSaved();
   },
 
+  // The blank picture is BLANK_CANVAS_SCALE pixels a grid pixel, or fewer for a long grid: no more than
+  // the GPU processes (gpuMaxSide) and Safari draws (16M pixels a canvas).
   async setBlankCanvas() {
+    const cols = this.cols || DEFAULT_COLS, rows = this.rows || DEFAULT_ROWS;
+    const scale = Math.max(1, Math.min(BLANK_CANVAS_SCALE, Math.floor(gpuMaxSide() / Math.max(cols, rows)), Math.floor(Math.sqrt(16_000_000 / (cols * rows)))));
     const canvas = document.createElement('canvas');
-    canvas.width = (this.cols || DEFAULT_COLS) * BLANK_CANVAS_SCALE;
-    canvas.height = (this.rows || DEFAULT_ROWS) * BLANK_CANVAS_SCALE;
+    canvas.width = cols * scale;
+    canvas.height = rows * scale;
     const ctx = ctx2d(canvas);
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     this.replaceImage(await loadImage(blob), await blob.arrayBuffer(), {
-      cols: Math.max(1, this.cols || DEFAULT_COLS),
-      rows: Math.max(1, this.rows || DEFAULT_ROWS),
+      cols: Math.max(1, cols),
+      rows: Math.max(1, rows),
       filename: 'untitled',
       sauceTitle: '',
     });

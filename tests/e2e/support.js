@@ -70,3 +70,21 @@ export async function editAt(page, col, row) {
   await page.getByRole('textbox', { name: 'Type into the canvas' }).waitFor();
   await page.waitForFunction(() => document.activeElement?.dataset?.textInput !== undefined);
 }
+
+// The screen's RGBA bytes over a page rect (the e2e browser runs at deviceScaleFactor 1), decoded
+// by the browser.
+export async function screenPixels(page, clip) {
+  const png = (await page.screenshot({ clip })).toString('base64');
+  return page.evaluate(async (png) => {
+    const image = await createImageBitmap(await (await fetch(`data:image/png;base64,${png}`)).blob());
+    const ctx = new OffscreenCanvas(image.width, image.height).getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    return Array.from(ctx.getImageData(0, 0, image.width, image.height).data);
+  }, png);
+}
+
+// The screen's [r, g, b] at a page point.
+export async function screenPixel(page, x, y) {
+  const [r, g, b] = await screenPixels(page, { x: Math.floor(x), y: Math.floor(y), width: 1, height: 1 });
+  return [r, g, b];
+}

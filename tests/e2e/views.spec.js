@@ -9,14 +9,14 @@ test('Canvas and DOM views: the DOM view\'s text is the cells\' characters', asy
   await page.getByRole('button', { name: 'DOM', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Canvas', exact: true })).toBeVisible();
   await expect(page.locator('.ansi-editor pre.display')).toBeVisible();
-  await expect(page.locator('.ansi-editor canvas.display')).toHaveCount(0);
+  await expect(page.locator('.ansi-editor .display canvas')).toHaveCount(0);
 
   const expected = await store(page, 'project', (p) => Array.from({ length: Math.ceil(p.rows / 2) }, (_, r) => p.cells.slice(r * p.cols, (r + 1) * p.cols).filter((c) => c.wide !== 'trail').map((c) => c.char).join('')));
   await expect.poll(() => page.locator('.ansi-editor pre.display > span').allTextContents()).toEqual(expected);
   expect(expected[1].slice(1, 6)).toBe('漢字 ok'); // col 0 is the picture's
 
   await page.getByRole('button', { name: 'Canvas', exact: true }).click();
-  await expect(page.locator('.ansi-editor canvas.display')).toBeVisible();
+  await expect(page.locator('.ansi-editor .display canvas')).toBeVisible();
 });
 
 test('the DOM view keeps every character in its column, as a terminal does, even ones drawing wider', async ({ page }) => {

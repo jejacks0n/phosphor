@@ -4,10 +4,12 @@
 // the layers were last sized to).
 import PaintLayer, { editScaleFor, resizeTransform } from '@/document/PaintLayer.js';
 import { remapBaseRecords } from '@/document/baseRecords.js';
+import { parseKey } from '@/document/editCells.js';
 import { fitRect } from '@/lib/Canvas.js';
-import { layoutWide, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
+import { layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
+import { boundsOf } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
 
 export const renderingActions = {
@@ -111,18 +113,35 @@ export const renderingActions = {
   },
 
   // New composed cells: laid out with their wide characters as what the views show and export.
-  setCells(composed) {
+  // rows: the only rows that need laying out again (an edit's, or the only ones that can hold a wide
+  // character), and laid: the layout the other rows keep.
+  setCells(composed, rows = null, laid = this.cells) {
+    const partial = rows && laid.length === composed.length;
     this.composedCells = composed;
-    this.cells = layoutWide(composed, this.cols);
+    this.cells = partial ? layoutWideRows(composed, this.cols, laid, rows) : layoutWide(composed, this.cols);
+  },
+
+  // Rebuild the cells under grid pixels (an edit's) from the output as it is, and their rows' layout.
+  recompose(pixels) {
+    const rows = new Set();
+    for (const { y } of pixels) rows.add(y >> 1);
+    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells), rows);
   },
 
   // Recomposite the output after the paint or base pixels changed. When that rebalanced the Number
   // palette, every cell's colors can change: the cells are rebuilt from the output (as a full render
   // would, without rerunning the pipeline). While an edit is open (a stroke, a shape) the Number
-  // palette holds still and the paint shows in its own colors; commitEdit catches up (rebuild).
-  composite({ rebuild = false } = {}) {
+  // palette holds still and the paint shows in its own colors; commitEdit catches up. True when
+  // the palette changed. rect: the grid pixels that changed ({ x, y, w, h }), when an edit knows them.
+  composite({ rect = null } = {}) {
     const hold = !!this._stroke && this.quantize === 'count';
-    if (!this.renderer.composite(this.paintLayer, this.processParams, { hold }) && !rebuild) return;
+    const changed = this.renderer.composite(this.paintLayer, this.processParams, { hold, rect });
+    if (changed) this.rebuildCells();
+    return changed;
+  },
+
+  // Every cell again from the output as it is: a full render's cells, without the pipeline.
+  rebuildCells() {
     this.activePalette = this.renderer.palette;
     this.renderedCells = this.renderer.cellsFromOutput(this.processParams);
     this.applyEditCells();
@@ -130,12 +149,19 @@ export const renderingActions = {
 
   // After the paint or base pixels changed under `pixels`: recomposite and rebuild just those cells.
   refreshCells(pixels) {
-    this.composite();
-    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells));
+    this.composite({ rect: boundsOf(pixels) });
+    this.recompose(pixels);
   },
 
   applyEditCells() {
     if (!this.renderedCells.length) return;
-    this.setCells(this.renderer.composeAll(this.renderedCells, this.editCells, this.processParams));
+    const composed = this.renderer.composeAll(this.renderedCells, this.editCells, this.processParams);
+    // The converter's characters are one column wide (Cells.glyphsOf), so only a row with an edit
+    // cell or a pin can hold a wide one: the rest are laid out as they are.
+    const rows = new Set();
+    for (const key of this.editCells.keys()) rows.add(parseKey(key).row);
+    for (const key of this.baseRecords.pins.keys()) rows.add(parseKey(key).row);
+    this.setCells(composed, rows, composed);
   },
 };
+

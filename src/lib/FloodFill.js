@@ -52,13 +52,13 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
 
   // Iterative BFS for contiguous fill with smoothing
   const visited = new Float32Array(width * height).fill(-1);
-  const queue = [[startX, startY]];
+  const queue = [startY * width + startX]; // pixel indexes, read from `head` on (shift() moves the rest every time)
+  let head = 0;
 
   visited[startY * width + startX] = 1;
 
-  while (queue.length > 0) {
-    const [x, y] = queue.shift();
-    const idx = y * width + x;
+  while (head < queue.length) {
+    const idx = queue[head++], x = idx % width, y = (idx - x) / width;
     const currentAlpha = visited[idx];
 
     result.push({ x, y, alpha: currentAlpha });
@@ -85,11 +85,11 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
 
       if (dist <= tolerance) {
         visited[nidx] = 1.0;
-        queue.push([nx, ny]);
+        queue.push(nidx);
       } else if (dist <= tolerance + falloff) {
         const alpha = 1.0 - (dist - tolerance) / falloff;
         visited[nidx] = alpha;
-        queue.push([nx, ny]);
+        queue.push(nidx);
       }
     }
   }

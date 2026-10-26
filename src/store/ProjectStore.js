@@ -15,7 +15,7 @@ import { readingActions } from '@/store/project/reading.js';
 import { baseLayerActions } from '@/store/project/baseLayer.js';
 import { sliderActions } from '@/store/project/sliders.js';
 import { historyActions } from '@/store/project/history.js';
-import { PIPELINE_KEYS, settingsJson } from '@/store/project/shared.js';
+import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES } from '@/store/project/shared.js';
 
 export const useProjectStore = defineStore('project', {
   state: () => ({
@@ -46,7 +46,7 @@ export const useProjectStore = defineStore('project', {
     savedEditVersion: 0,
 
     // History for undo/redo
-    history: markRaw(new History(50)),
+    history: markRaw(new History(50, MAX_HISTORY_BYTES)),
     historyVersion: 0, // mirrors history.version so canUndo/canRedo stay reactive
   }),
 

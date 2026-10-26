@@ -26,3 +26,37 @@ export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - u
 // undo step records. Keyboard nudges on one slider this close together are one step.
 export const SLIDER_KEYS = SETTINGS.filter(s => RESET_GROUPS.includes(s.group)).map(s => s.key);
 export const NUDGE_MS = 1000;
+
+// The rect of grid pixels ({ x, y }[]) as { x, y, w, h }, whole cells (both pixel rows of each).
+export function boundsOf(pixels) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const { x, y } of pixels) {
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
+  y0 &= ~1; // the cell's top pixel row
+  y1 |= 1;  // and its bottom one
+  return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}
+
+// Undo keeps steps up to this many bytes of pixels in all (History drops the oldest past it): a merge,
+// a Clear or a Bake on a large grid holds whole copies of the layers.
+export const MAX_HISTORY_BYTES = 256 * 2 ** 20;
+
+// About how many bytes an undo step holds, for that budget: stroke patches ({ tiles }), layer
+// snapshots ({ canvas }), decoded images, encoded image bytes, and maps of edit cells (a whole-grid
+// Merge up makes one with an entry a cell). Missing ones count nothing.
+export function bytesHeld(...held) {
+  let bytes = 0;
+  for (const it of held) {
+    if (!it) continue;
+    if (it.tiles) for (const { before } of it.tiles) bytes += 2 * before.data.length; // before and after
+    else if (it.canvas) bytes += it.canvas.width * it.canvas.height * 4;
+    else if (it.naturalWidth) bytes += it.naturalWidth * it.naturalHeight * 4;
+    else if (it.byteLength !== undefined) bytes += it.byteLength;
+    else if (it instanceof Map) bytes += it.size * 80; // a key, an entry and the map's own slot, about
+  }
+  return bytes;
+}

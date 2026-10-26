@@ -3,16 +3,19 @@
  * blend its cell's fg into its bg, and nothing else) or sharp (every pixel exactly fg or bg); a color
  * glyph (an emoji) is its own colors, and blocks and shades are always exactly fg or bg. One
  * full-screen pass reads each pixel's cell from two cols x rows data textures (fg rgb + glyph index
- * low byte, bg rgb + high byte) and its ink from an atlas of glyphs (see #rasterize), so a whole
- * 30k-cell grid redraws in a few milliseconds and every draw is a full redraw. (fillText anti-aliases;
- * Path2D masks, a CPU blend and per-cell tinting were all far slower.)
+ * low byte, bg rgb + high byte) and its ink from an atlas of glyphs (see #rasterize), and every draw
+ * is a full redraw. The canvas covers only the cells in view (the view picks them: draw takes the
+ * whole grid and where its window starts), so a redraw stays a few milliseconds at any grid size.
+ * (fillText anti-aliases; Path2D masks, a CPU blend and per-cell tinting were all far slower.)
  *
  * Block elements (█▀▄▌▐ and the quadrants) and the shades (░▒▓) aren't the font's: they're drawn
  * exactly, as most terminals draw them, so they never seam; the shades as CP437's dot patterns, a
- * dot a sixteenth of the cell high (the VGA's own pixel in its 8x16 cell), across the whole grid.
+ * dot a sixteenth of the cell high (the VGA's own pixel in its 8x16 cell), across the whole grid, wherever
+ * the window is.
  *
  * Cells snap to whole device pixels at a backing scale capped to stay under the browsers' canvas
- * limits; metrics is the cell size in CSS px that the editor's overlays measure with.
+ * limits (which only a huge viewport reaches); metrics is the cell size in CSS px that the editor's
+ * overlays measure with.
  *
  * A character drawing wider than its columns (﷽ gets one and draws about eleven: DrawnWidth) is drawn
  * as a terminal draws it: its cell keeps its column, and its full shape covers the cells after it,
@@ -121,6 +124,7 @@ const FRAGMENT = `#version 300 es
 precision highp float; precision highp int;
 uniform sampler2D uFg, uBg, uAtlas, uOv, uOvHi;
 uniform ivec2 uCell;        // cw, ch in device px
+uniform ivec2 uOrigin;      // the window's top-left in the grid, in device px
 uniform int uHeight;        // canvas height in device px
 uniform int uAtlasCols;     // glyphs per atlas row
 uniform int uDot;           // a shade's dot in device px (shadeDot)
@@ -134,7 +138,7 @@ vec3 over(vec4 t, vec3 ink, vec3 under) {
   if (shade > 0) {
     // CP437's shades in dots across the whole grid, so neighboring cells' dots line up: ░ a quarter
     // of the dots, ▒ a checkerboard, ▓ the inverse of ░.
-    ivec2 d = p / uDot;
+    ivec2 d = (p + uOrigin) / uDot;
     bool quarter = d.y % 2 == 1 ? d.x % 4 == 0 : d.x % 4 == 2;
     bool on = shade == 1 ? quarter : shade == 2 ? (d.x + d.y) % 2 == 0 : !quarter;
     return on ? ink : under;
@@ -212,13 +216,22 @@ export default class CellCanvas {
     this.#dropAtlas();
   }
 
-  // Size the canvas for cols x rows cells at the display's dpr; true when anything changed.
+  // The cell in CSS px at the display's full dpr (no cap), without touching the canvas: what a view
+  // sizes its first window by, before resize has run.
+  cellSize(dpr) {
+    const { cellWidth, lineHeight } = cellGeometry(this.#advance ??= measureAdvance(), dpr);
+    return { cellWidth, lineHeight };
+  }
+
+  // Size the canvas for cols x rows cells (the window of the grid it draws) at the display's dpr;
+  // true when anything changed.
   resize(cols, rows, dpr) {
     if (this.#advance === null) this.#advance = measureAdvance();
     const scale = backingScale(cols * this.#advance, rows * DISPLAY_FONT.size * DISPLAY_FONT.lineHeight, dpr, this.#maxSide);
     const { cw, ch } = cellGeometry(this.#advance, scale, scale < dpr);
     const g = this.#geom;
     if (g && g.cols === cols && g.rows === rows && g.cw === cw && g.ch === ch && g.scale === scale) return false;
+    const sameCell = g && g.cw === cw && g.ch === ch && g.scale === scale; // the window's size moves on every frame of a viewport resize
 
     this.canvas.width = cols * cw;
     this.canvas.height = rows * ch;
@@ -230,7 +243,7 @@ export default class CellCanvas {
     this.#ov = new Uint8Array(cols * rows * 4);
     this.#ovHi = new Uint8Array(cols * rows * 4);
     this.#allocated = false;
-    this.#dropAtlas();
+    if (!sameCell) this.#dropAtlas();
     return true;
   }
 
@@ -240,15 +253,27 @@ export default class CellCanvas {
     this.#dropAtlas();
   }
 
-  // Draw every cell. cells: the grid's, row-major; a cells array of another size (the grid changed
-  // and its render hasn't landed) draws nothing, leaving the canvas as its resize cleared it.
-  draw(cells) {
+  // Draw the canvas's cells from (col, row). cells: the whole grid's, row-major, cols x rows (the
+  // grid's size, the canvas's own by default). Cells of another size, or a window that doesn't fit in
+  // the grid (the grid changed and its render hasn't landed) draw nothing, leaving the canvas as it was.
+  draw(cells, { cols: gridCols = this.#geom?.cols, rows: gridRows = this.#geom?.rows, col = 0, row = 0 } = {}) {
     const gl = this.#gl, g = this.#geom;
-    if (!g || gl.isContextLost() || cells.length !== g.cols * g.rows) return;
+    if (!g || gl.isContextLost() || cells.length !== gridCols * gridRows) return;
+    if (col < 0 || row < 0 || col + g.cols > gridCols || row + g.rows > gridRows) return;
     if (!this.#glyphs.size) this.#glyphOf({ char: ' ' }); // glyph 0: what a missing cell draws
-    packCells(cells, g.cols * g.rows, (cell) => this.#glyphOf(cell), this.#fg, this.#bg);
-    const spills = layoutSpills(cells, g.cols, (cell) => columnsOf(cell.char));
-    packSpills(cells, spills, g.cols * g.rows, (cell, k) => this.#slicesOf(cell.char)[k], this.#ov, this.#ovHi);
+    // The window's whole rows get their spills laid out, so a character left of the window still
+    // spills into it; then the window takes its columns of the cells and the spills.
+    const rowCells = cells.slice(row * gridCols, (row + g.rows) * gridCols);
+    const rowSpills = layoutSpills(rowCells, gridCols, (cell) => columnsOf(cell.char));
+    const count = g.cols * g.rows, windowCells = new Array(count), windowSpills = new Array(count);
+    for (let y = 0; y < g.rows; y++) {
+      for (let x = 0; x < g.cols; x++) {
+        windowCells[y * g.cols + x] = rowCells[y * gridCols + col + x];
+        windowSpills[y * g.cols + x] = rowSpills[y * gridCols + col + x];
+      }
+    }
+    packCells(windowCells, count, (cell) => this.#glyphOf(cell), this.#fg, this.#bg);
+    packSpills(rowCells, windowSpills, count, (cell, k) => this.#slicesOf(cell.char)[k], this.#ov, this.#ovHi);
 
     const [fgTexture, bgTexture, atlasTexture, ovTexture, ovHiTexture] = this.#textures;
     for (const [unit, texture, data] of [[0, fgTexture, this.#fg], [1, bgTexture, this.#bg], [3, ovTexture, this.#ov], [4, ovHiTexture, this.#ovHi]]) {
@@ -266,6 +291,7 @@ export default class CellCanvas {
     }
 
     gl.uniform2i(this.#uniforms.cell, g.cw, g.ch);
+    gl.uniform2i(this.#uniforms.origin, col * g.cw, row * g.ch);
     gl.uniform1i(this.#uniforms.dot, shadeDot(g.ch));
     gl.uniform1i(this.#uniforms.height, this.canvas.height);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
@@ -314,7 +340,7 @@ export default class CellCanvas {
     gl.uniform1i(at('uOv'), 3);
     gl.uniform1i(at('uOvHi'), 4);
     gl.uniform1i(at('uAtlasCols'), ATLAS_COLS);
-    this.#uniforms = { cell: at('uCell'), height: at('uHeight'), dot: at('uDot') };
+    this.#uniforms = { cell: at('uCell'), origin: at('uOrigin'), height: at('uHeight'), dot: at('uDot') };
     this.#allocated = false;
   }
 

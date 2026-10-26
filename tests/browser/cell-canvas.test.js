@@ -197,3 +197,90 @@ test('shades are CP437\'s dot patterns, a dot a sixteenth of the cell high, seam
   }
   await setDisplayFont('jetbrains');
 });
+
+// The canvas's pixels as rows of "r,g,b" strings, read in the same task as the draw.
+function readView(view) {
+  const gl = view.canvas.getContext('webgl2'), { width, height } = view.canvas;
+  const raw = new Uint8Array(width * height * 4);
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, raw);
+  return Array.from({ length: height }, (_, y) => Array.from({ length: width }, (_, x) => {
+    const o = ((height - 1 - y) * width + x) * 4;
+    return `${raw[o]},${raw[o + 1]},${raw[o + 2]}`;
+  }));
+}
+
+// A 24 x 12 grid with a wide character (漢) as lead and trail at (6, 3) and (7, 3), ﷽ at (2, 4),
+// drawing over eight columns, so it spills across the window's left edge, and ░▒▓ in the window's
+// first and last rows. The 10 x 6 window starts at (7, 2): an odd column and row, so a shade's dots
+// (a 4 x 2 pattern) only line up with the whole grid's if the window's origin is added (at dpr 2 a
+// dot is 3 px and a cell 20 x 40, so no offset is a whole number of dots).
+const GRID_COLS = 24, GRID_ROWS = 12, WINDOW = { cols: GRID_COLS, rows: GRID_ROWS, col: 7, row: 2 };
+function windowGrid() {
+  const cells = Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => cell(GLYPHS[i % GLYPHS.length], COLORS[i % COLORS.length], COLORS[(i * 3 + 1) % COLORS.length]));
+  cells[3 * GRID_COLS + 6] = cell('漢', '#ffffff', '#000080');
+  cells[3 * GRID_COLS + 7] = cell(' ', '#ffffff', '#000080');
+  cells[4 * GRID_COLS + 2] = cell('﷽', '#ff0000', '#000000');
+  for (const r of [2, 7]) ['░', '▒', '▓'].forEach((char, k) => { for (let c = 0; c < 3; c++) cells[r * GRID_COLS + 9 + k * 3 + c] = cell(char, '#ffffff', '#000000'); });
+  return layoutWide(cells, GRID_COLS);
+}
+
+test('a window draws exactly the pixels the whole grid draws there', async () => {
+  await createTestApp();
+  await useWideFont();
+  const cells = windowGrid();
+  expect(cells[3 * GRID_COLS + 6].wide).toBe('lead');
+  expect(cells[3 * GRID_COLS + WINDOW.col].wide).toBe('trail'); // the window's left edge
+  for (const dpr of [1, 2]) {
+    const canvas = document.createElement('canvas');
+    const view = new CellCanvas(canvas);
+    view.resize(GRID_COLS, GRID_ROWS, dpr);
+    view.draw(cells);
+    const whole = readView(view), cw = canvas.width / GRID_COLS, ch = canvas.height / GRID_ROWS;
+    view.resize(10, 6, dpr);
+    view.draw(cells, WINDOW);
+    const part = readView(view);
+    expect(part.length).toBe(6 * ch);
+    for (let y = 0; y < part.length; y++) expect(part[y], `dpr ${dpr} row ${y}`).toEqual(whole[WINDOW.row * ch + y].slice(WINDOW.col * cw, (WINDOW.col + 10) * cw));
+    view.destroy();
+  }
+});
+
+test('the canvas is the window\'s size, at full dpr, however long the grid', async () => {
+  await createTestApp();
+  const canvas = document.createElement('canvas');
+  const view = new CellCanvas(canvas);
+  view.resize(80, 40, 2);
+  const cells = Array.from({ length: 80 * 1000 }, (_, i) => cell(GLYPHS[i % GLYPHS.length], COLORS[i % COLORS.length], '#000000'));
+  view.draw(cells, { cols: 80, rows: 1000, col: 0, row: 900 });
+  const gl = canvas.getContext('webgl2'), seen = new Uint8Array(canvas.width * canvas.height * 4);
+  gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, seen);
+  expect(seen.some((v, i) => i % 4 < 3 && v > 0)).toBe(true); // the window drew
+  expect(canvas.height).toBe(40 * view.metrics.lineHeight * 2);
+  expect(canvas.width / (80 * view.metrics.cellWidth)).toBe(2);
+  expect([gl.drawingBufferWidth, gl.drawingBufferHeight]).toEqual([canvas.width, canvas.height]);
+  view.destroy();
+});
+
+test('a window that doesn\'t fit the grid, or cells of another grid, draw nothing', async () => {
+  await createTestApp();
+  const cells = windowGrid();
+  const canvas = document.createElement('canvas');
+  const view = new CellCanvas(canvas);
+  view.resize(10, 6, 1);
+  view.draw(cells, WINDOW);
+  const before = readView(view);
+  expect(new Set(before.flat()).size).toBeGreaterThan(2); // the first draw did draw
+  view.draw(cells, { cols: GRID_COLS, rows: GRID_ROWS, col: 20, row: 0 }); // past the right edge
+  view.draw(cells, { cols: 32, rows: 12, col: 7, row: 2 });                // 288 cells, but a 32 x 12 grid is 384
+  expect(readView(view)).toEqual(before);
+  view.destroy();
+});
+
+test('cellSize is the cell resize gives at full dpr', async () => {
+  await createTestApp();
+  const view = new CellCanvas(document.createElement('canvas'));
+  const size = view.cellSize(2);
+  view.resize(10, 6, 2);
+  expect(size).toEqual(view.metrics);
+  view.destroy();
+});

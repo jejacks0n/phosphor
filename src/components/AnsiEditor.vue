@@ -7,22 +7,33 @@ import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
 import CellCanvas from '@/lib/CellCanvas';
+import { viewWindow, viewIn } from '@/lib/viewWindow';
 import { fitColumns } from '@/lib/DrawnWidth';
 import EditorViewport from '@/components/EditorViewport.vue';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 
 // The ANSI view: cells drawn on a canvas (CellCanvas), or rendered as text in a <pre> (the DOM
 // renderer, kept beside it for the trial: workspace.ansiRenderer); a grid pixel is half a
-// character cell tall.
+// character cell tall. The canvas covers only the cells in view, plus a margin (viewWindow), inside
+// a sizer the whole grid's size: the sizer is the display everything measures against.
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const textInputRef = useTemplateRef('textInput');
 useTextTool(projectStore, workspaceStore, textInputRef);
 const useDom = computed(() => workspaceStore.ansiRenderer === 'dom');
-const preRef = useTemplateRef('pre'), canvasRef = useTemplateRef('canvas');
-const displayRef = computed(() => (useDom.value ? preRef.value : canvasRef.value));
+const preRef = useTemplateRef('pre'), canvasRef = useTemplateRef('canvas'), sizerRef = useTemplateRef('sizer');
+const displayRef = computed(() => (useDom.value ? preRef.value : sizerRef.value));
 
 const metrics = ref(null);
+// The sizer's size comes from the last metrics a render used, which nothing clears: metrics is
+// nulled while a grid, font or renderer change is measured again, and a sizer that followed it
+// would collapse for a layout, and the browser would clamp the scroll to 0.
+const sizedBy = ref(null);
+const sizerStyle = computed(() => {
+  const m = sizedBy.value;
+  if (!m) return { pointerEvents: 'none' };
+  return { pointerEvents: 'none', width: `${projectStore.cols * m.cellWidth}px`, height: `${charRowsOf(projectStore.rows) * m.lineHeight}px` };
+});
 let renderFrame = null;
 let cellCanvas = null;
 
@@ -42,14 +53,14 @@ const ensureCellCanvas = () => {
 };
 
 // Character cell size in CSS px (null until it can be measured): measured from the <pre>'s font,
-// or the canvas renderer's whole-device-pixel cells.
+// or the canvas renderer's whole-device-pixel cells (at the full dpr until a render has sized the
+// canvas for its window, which can cap it).
 const ensureMetrics = () => {
   if (metrics.value) return metrics.value;
   if (useDom.value) {
     if (displayRef.value) metrics.value = calcMetrics(displayRef.value);
   } else if (canvasRef.value && ensureCellCanvas()) {
-    cellCanvas.resize(projectStore.cols, charRowsOf(projectStore.rows), window.devicePixelRatio);
-    metrics.value = cellCanvas.metrics;
+    metrics.value = cellCanvas.cellSize(window.devicePixelRatio);
   }
   return metrics.value;
 };
@@ -62,10 +73,31 @@ const queueRender = () => {
   });
 };
 
+// A new cell size (a font, its size, the dpr) scales the sizer: the view keeps the point at its
+// center where it was in the art, as a zoom would. Read before the sizer takes its new size, and
+// scrolled once it has. Then drawn at once: the render that called this placed its window by the
+// old scroll, and waiting for the scroll's redraw would paint a frame of empty sizer.
+const keepPlace = (was, m) => {
+  const sizer = sizerRef.value, view = viewIn(sizer, viewportEl);
+  const x = (view.x + view.width / 2) * m.cellWidth / was.cellWidth;
+  const y = (view.y + view.height / 2) * m.lineHeight / was.lineHeight;
+  nextTick(() => {
+    if (!viewportEl || sizerRef.value !== sizer) return;
+    const now = viewIn(sizer, viewportEl);
+    viewportEl.scrollLeft += x - (now.x + now.width / 2);
+    viewportEl.scrollTop += y - (now.y + now.height / 2);
+    render(); // the cell size is the sizer's by now, so this doesn't come back here
+  });
+};
+
+// The canvas view draws the window of cells around the viewport, against the layout as it is now:
+// a change that moves or resizes the sizer (a font, the grid, a panel) is drawn again by the resize
+// observer, after its layout. After a remount the scroll is restored a frame late (EditorViewport),
+// so mount queues a second render, drawn after the restore.
 const render = () => {
   if (!projectStore.cells.length || !displayRef.value) return;
 
-  const m = ensureMetrics();
+  let m = ensureMetrics();
   if (!m || m.cellWidth === 0 || m.lineHeight === 0) {
     metrics.value = null;
     queueRender();
@@ -73,10 +105,25 @@ const render = () => {
   }
 
   if (!useDom.value) {
-    if (!ensureCellCanvas()) return;
-    // A resize here means the grid or the dpr changed; the overlays follow through metrics.
-    if (cellCanvas.resize(projectStore.cols, charRowsOf(projectStore.rows), window.devicePixelRatio)) metrics.value = cellCanvas.metrics;
-    cellCanvas.draw(projectStore.cells);
+    if (!ensureCellCanvas() || !viewportEl) return;
+    const cols = projectStore.cols, lines = charRowsOf(projectStore.rows), dpr = window.devicePixelRatio;
+    // The window's size can change the cell (the backing scale is capped by the canvas's area), and
+    // the cell the window's size; cells are whole device px, so it settles in a pass or two. The
+    // overlays follow through metrics.
+    let win;
+    for (let pass = 0; pass < 3; pass++) {
+      win = viewWindow(viewIn(sizerRef.value, viewportEl), { x: m.cellWidth, y: m.lineHeight }, cols, lines);
+      cellCanvas.resize(win.cols, win.rows, dpr);
+      const sized = cellCanvas.metrics;
+      if (sized.cellWidth === m.cellWidth && sized.lineHeight === m.lineHeight) break;
+      m = metrics.value = sized;
+    }
+    const was = sizedBy.value;
+    sizedBy.value = m;
+    if (was && (was.cellWidth !== m.cellWidth || was.lineHeight !== m.lineHeight)) keepPlace(was, m);
+    cellCanvas.draw(projectStore.cells, { cols, rows: lines, col: win.col, row: win.row });
+    canvasRef.value.style.left = `${win.col * m.cellWidth}px`;
+    canvasRef.value.style.top = `${win.row * m.lineHeight}px`;
     return;
   }
 
@@ -193,6 +240,7 @@ watch(() => workspaceStore.displayFontLoaded, () => {
 // The first whole cell on screen (top-left), where a paste goes with no selection or text cursor.
 let originFrame = 0;
 let viewportEl = null;
+let resizeObserver = null;
 const publishOrigin = () => {
   cancelAnimationFrame(originFrame);
   originFrame = requestAnimationFrame(() => {
@@ -209,12 +257,27 @@ const publishOrigin = () => {
 };
 watch([metrics, () => projectStore.cols, () => projectStore.rows], publishOrigin);
 
+// The canvas view draws what's in view, so a scroll, or a viewport or sizer of a new size, draws
+// again. Not the DOM view: its render rebuilds every cell, too much for every scroll frame.
+const drawInView = () => {
+  if (!useDom.value) queueRender();
+};
+watch(sizerRef, (sizer, old) => {
+  if (old) resizeObserver?.unobserve(old);
+  if (sizer) resizeObserver?.observe(sizer);
+});
+
 onMounted(() => {
   viewportEl = displayRef.value?.closest('article') ?? null;
   viewportEl?.addEventListener('scroll', publishOrigin, { passive: true });
+  viewportEl?.addEventListener('scroll', drawInView, { passive: true });
   window.addEventListener('resize', publishOrigin);
+  resizeObserver = new ResizeObserver(drawInView);
+  if (viewportEl) resizeObserver.observe(viewportEl);
+  if (sizerRef.value) resizeObserver.observe(sizerRef.value);
   publishOrigin();
   render(); // same reason as the cells watcher: lay out before the viewport's scroll restore
+  queueRender(); // and again after it, so the restored scroll is drawn
   if (document.fonts) {
     document.fonts.ready.then(() => {
       if (!displayRef.value) return; // unmounted meanwhile
@@ -230,7 +293,9 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(originFrame);
   cellCanvas?.destroy();
   viewportEl?.removeEventListener('scroll', publishOrigin);
+  viewportEl?.removeEventListener('scroll', drawInView);
   window.removeEventListener('resize', publishOrigin);
+  resizeObserver?.disconnect();
 });
 </script>
 
@@ -244,7 +309,7 @@ onBeforeUnmount(() => {
       :unit="unit"
   >
     <pre v-if="useDom" ref="pre" class="display" :style="{ pointerEvents: 'none' }"></pre>
-    <canvas v-else ref="canvas" class="display" :style="{ pointerEvents: 'none' }"></canvas>
+    <div v-else ref="sizer" class="display" :style="sizerStyle"><canvas ref="canvas"></canvas></div>
     <div class="interaction-overlay"></div>
     <template #overlay>
       <div ref="cursor" class="text-cursor" :style="cursorStyle"></div>
@@ -349,8 +414,16 @@ div.ansi-editor {
   white-space: pre;
 }
 
+/* The canvas view's sizer: the whole grid's size, with the canvas at the window in view. An area
+   not drawn yet shows the sizer's dark surface. */
+div.display {
+  position: relative;
+}
+
 /* crisp when the backing scale is capped below the dpr (CellCanvas) */
-canvas.display {
+.display canvas {
+  position: absolute;
+  display: block;
   image-rendering: pixelated;
 }
 

@@ -11,6 +11,13 @@ let glProcessor;
 let glBase; // the base layer's own, so the pipeline's processor keeps the picture uploaded
 const customPalettes = {};
 
+// The longest side, in pixels, this GPU processes a picture at (16384 on most, 8192 on software WebGL).
+export const gpuMaxSide = () => (glProcessor ??= new WebGLProcessor()).maxSide;
+
+// A processing scale m (pixels a grid pixel) lowered so a dw x dh picture at it fits the GPU; 0 when
+// even one pixel a grid pixel doesn't.
+export const fittingScale = (m, dw, dh) => Math.min(m, Math.floor(gpuMaxSide() / Math.max(dw, dh)));
+
 export function getPaletteColors(params, canvasForCount = null) {
   const { quantize, palette, colorCount } = params;
 
@@ -36,13 +43,6 @@ export function getPaletteColors(params, canvasForCount = null) {
   }
 }
 
-export function applyQuantization(canvas, qColors) {
-  if (qColors && qColors.length > 0) {
-    canvas.quantize(qColors);
-    canvas.writePixels();
-  }
-}
-
 // Where the image goes in the grid, the size it's processed at (m processed pixels per grid pixel,
 // or the native-size branch: m < 1) and the shader's parameters. scale: a fixed m instead.
 function prepare(image, params, scale = null) {
@@ -63,12 +63,16 @@ function prepare(image, params, scale = null) {
   // Where the image sits in the grid: params.fit when it's fixed (a canvas resize), else fitted.
   const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows);
   const natural = Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
-  const m = scale ?? (params.workScale > 1 && natural >= 1 ? params.workScale : natural);
+  let m = scale ?? (params.workScale > 1 && natural >= 1 ? params.workScale : natural);
+  // A long grid at m pixels a grid pixel can be more than the GPU draws (the picture would come out
+  // black): m drops to fit, to below 1 if it must, and the picture is processed as large as it can be.
+  const limit = gpuMaxSide(), capped = scale === null && m >= 1 && Math.max(dw, dh) * m > limit;
+  if (capped) m = Math.floor(limit / Math.max(dw, dh));
   let pw = dw * m;
   let ph = dh * m;
   if (m < 1) {
     // Source smaller than the grid: keep it at native size rather than upscaling (blurring) it
-    const s = Math.min(1, maxDim / Math.max(sw, sh));
+    const s = Math.min(1, (capped ? limit : maxDim) / Math.max(sw, sh));
     pw = Math.floor(sw * s);
     ph = Math.floor(sh * s);
   }
@@ -103,16 +107,27 @@ function shaderParams(params) {
 // effects, nothing resampled): the base layer, drawn the way the pipeline draws the picture. The
 // snap has to be the shader's own, which can pick another color than an exact nearest-color search
 // would. Alpha is the canvas's.
+// A canvas taller than the GPU draws goes through in bands (each pixel is its own: nothing reads its
+// neighbors, so a band comes out as the whole would).
 export function adjustedPixels(canvas, params) {
   const { width: w, height: h } = canvas;
-  if (!glBase) glBase = new WebGLProcessor();
-  glBase.process(canvas, { ...shaderParams(params), sharpen: 0, flatten: 0, edges: 0, passes: 1 }, w, h);
-  const out = document.createElement('canvas');
-  out.width = w;
-  out.height = h;
+  glBase ??= new WebGLProcessor();
+  const band = Math.max(1, Math.min(h, glBase.maxSide));
+  const pixels = new Uint8ClampedArray(w * h * 4);
+  const out = Object.assign(document.createElement('canvas'), { width: w, height: band });
   const ctx = ctx2d(out);
-  ctx.drawImage(glBase.canvas, 0, 0);
-  const pixels = ctx.getImageData(0, 0, w, h).data;
+  for (let y = 0; y < h; y += band) {
+    const bh = Math.min(band, h - y);
+    let part = canvas;
+    if (bh !== h) {
+      part = Object.assign(document.createElement('canvas'), { width: w, height: bh });
+      ctx2d(part).drawImage(canvas, 0, y, w, bh, 0, 0, w, bh);
+    }
+    glBase.process(part, { ...shaderParams(params), sharpen: 0, flatten: 0, edges: 0, passes: 1 }, w, bh);
+    ctx.clearRect(0, 0, w, band);
+    ctx.drawImage(glBase.canvas, 0, 0);
+    pixels.set(ctx.getImageData(0, 0, w, bh).data, y * w * 4);
+  }
   const own = ctx2d(canvas).getImageData(0, 0, w, h).data;
   for (let i = 3; i < pixels.length; i += 4) pixels[i] = own[i];
   return pixels;
@@ -128,7 +143,7 @@ export function workingScale(image, params) {
 export async function processImage(image, params) {
   const { cols, rows, smoothing } = params;
   const { dx, dy, dw, dh, pw, ph, glParams } = prepare(image, params);
-  if (!glProcessor) glProcessor = new WebGLProcessor();
+  glProcessor ??= new WebGLProcessor();
   glProcessor.process(image, glParams, pw, ph);
 
   // Final output stage (downsizing)
@@ -138,7 +153,6 @@ export async function processImage(image, params) {
   canvas.ctx.imageSmoothingQuality = smoothing;
   // Fit by the image's natural aspect (the store's fit), not pw x ph
   canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
-  canvas.loadPixels();
 
   // Quantization happens after paint is composited (Renderer), not here. The Number palette is picked
   // there too, from the composited picture (Renderer.composite), so it isn't worked out here.
