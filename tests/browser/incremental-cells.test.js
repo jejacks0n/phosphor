@@ -16,7 +16,7 @@ function fullRebuild(project) {
 }
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
 
-for (const quantize of ['none', 'vga']) {
+for (const quantize of ['none', 'vga', 'count']) {
   test(`brush, typing, wide characters and base edits come out as a full rebuild would (${quantize})`, async () => {
     const { project } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });

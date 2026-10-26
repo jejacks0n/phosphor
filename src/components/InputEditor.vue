@@ -3,7 +3,7 @@ import { computed, useTemplateRef, watch, onMounted, onBeforeUnmount } from 'vue
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ctx2d } from '@/lib/Canvas';
-import { cellsToPixels, charRowsOf } from '@/lib/Cells';
+import { charRowsOf, putCellPixels } from '@/lib/Cells';
 import { parseKey } from '@/document/editCells';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
 import EditorViewport from '@/components/EditorViewport.vue';
@@ -19,31 +19,50 @@ const canvasRef = useTemplateRef('displayCanvas');
 
 // Edit cells (or all, with "All cells") drawn over the image as their half-cell colors: the
 // ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible.
-// The bitmap is rebuilt only when the cells or what's included change, not on zoom or opacity.
-const overlay = { canvas: null, cells: null, editCells: null, all: null, empty: true };
+// One bitmap the grid's size, not redrawn on zoom or opacity; when the cells change, only those that
+// did are painted again (an edit keeps every other cell the same object), so a stroke costs its own
+// cells, not the grid's. A new grid size, or All cells switched, paints it all.
+const overlay = { canvas: null, image: null, cells: null, editCells: null, edited: new Set(), all: null, cols: 0, rows: 0, empty: true };
 const updateOverlay = () => {
   const { cols, rows, cells, editCells } = projectStore;
   const all = workspaceStore.ansiOverlayAll;
   if (overlay.cells === cells && overlay.editCells === editCells && overlay.all === all) return;
-  Object.assign(overlay, { cells, editCells, all });
 
-  let include = () => true;
-  if (!all) {
-    const edited = new Set();
+  // The edit cells, by index (only those in the grid).
+  let edited = overlay.edited;
+  if (editCells !== overlay.editCells) {
+    edited = new Set();
     for (const key of editCells.keys()) {
       const { col, row } = parseKey(key);
       if (col < cols && row < charRowsOf(rows)) edited.add(row * cols + col);
     }
-    include = (i) => edited.has(i);
-    overlay.empty = !edited.size;
-  } else {
-    overlay.empty = !cells.length;
   }
-  if (overlay.empty) return;
-  if (!overlay.canvas) overlay.canvas = document.createElement('canvas');
-  overlay.canvas.width = cols;
-  overlay.canvas.height = rows;
-  ctx2d(overlay.canvas).putImageData(new ImageData(cellsToPixels(cells, cols, rows, include), cols, rows), 0, 0);
+  const shown = (i) => (all || edited.has(i) ? cells[i] ?? null : null);
+  const whole = !overlay.image || overlay.cols !== cols || overlay.rows !== rows || overlay.all !== all || overlay.cells?.length !== cells.length;
+  if (whole) {
+    overlay.canvas ??= document.createElement('canvas');
+    overlay.canvas.width = cols;
+    overlay.canvas.height = rows;
+    overlay.image = new ImageData(cols, rows);
+    for (let i = 0; i < cells.length; i++) if (shown(i)) putCellPixels(overlay.image.data, cols, i, cells[i]);
+    ctx2d(overlay.canvas).putImageData(overlay.image, 0, 0);
+  } else {
+    // Cells that are new objects, and cells that became or stopped being edit cells.
+    const changed = [];
+    if (cells !== overlay.cells) for (let i = 0; i < cells.length; i++) if (cells[i] !== overlay.cells[i]) changed.push(i);
+    if (!all && edited !== overlay.edited) {
+      for (const i of edited) if (!overlay.edited.has(i)) changed.push(i);
+      for (const i of overlay.edited) if (!edited.has(i)) changed.push(i);
+    }
+    let x0 = Infinity, x1 = -1, y0 = Infinity, y1 = -1;
+    for (const i of changed) {
+      putCellPixels(overlay.image.data, cols, i, shown(i));
+      const col = i % cols, row = (i - col) / cols;
+      x0 = Math.min(x0, col); x1 = Math.max(x1, col); y0 = Math.min(y0, 2 * row); y1 = Math.max(y1, 2 * row + 1);
+    }
+    if (changed.length) ctx2d(overlay.canvas).putImageData(overlay.image, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+  }
+  Object.assign(overlay, { cells, editCells, edited, all, cols, rows, empty: all ? !cells.length : !edited.size });
 };
 
 const drawOverlay = (ctx, win, width, height) => {
@@ -60,6 +79,11 @@ const drawOverlay = (ctx, win, width, height) => {
 // Draws the window of grid pixels around the viewport, against the layout as it is now. Its CSS
 // size is exactly the window's (fractional at a fractional zoom); the backing store is whole pixels.
 let viewportEl = null;
+let drawnWindow = null; // the window the canvas holds, from the last redraw
+
+// The canvas over its window at a zoom: CSS px.
+const place = (dc, win, zoom) => Object.assign(dc.style, { width: `${win.cols * zoom}px`, height: `${win.rows * zoom}px`, left: `${win.col * zoom}px`, top: `${win.row * zoom}px` });
+
 const redrawDisplay = () => {
   const dc = canvasRef.value, sizer = sizerRef.value;
   const output = projectStore.renderer.outputCanvas;
@@ -76,7 +100,8 @@ const redrawDisplay = () => {
   } else {
     ctx.clearRect(0, 0, dc.width, dc.height);
   }
-  Object.assign(dc.style, { width: `${width}px`, height: `${height}px`, left: `${win.col * zoom}px`, top: `${win.row * zoom}px` });
+  place(dc, win, zoom);
+  drawnWindow = win;
   ctx.imageSmoothingEnabled = false;
   // Drawn to the backing size, not the CSS size: at a fractional zoom the two differ by under a pixel.
   ctx.drawImage(output, win.col, win.row, win.cols, win.rows, 0, 0, dc.width, dc.height);
@@ -127,8 +152,15 @@ watch(() => projectStore.cells, () => {
   }
 });
 // Queued, not drawn at once: a zoom lands here before Vue has given the sizer its new size and the
-// padded layout has re-centered, so a window placed now would be placed against the old layout.
-watch(() => [workspaceStore.editZoom, workspaceStore.ansiOverlay, workspaceStore.ansiOverlayAll], queueRedraw);
+// padded layout has re-centered, so a window placed now would be placed against the old layout. But
+// the canvas already drawn is scaled to the new zoom at once, as the sizer is: a frame painted before
+// the redraw (a pinch on a phone can land late in a frame) shows it where it belongs, a little soft,
+// rather than out of line with everything around it (a flicker on every step of a fast zoom).
+watch(() => workspaceStore.editZoom, (zoom) => {
+  if (drawnWindow && canvasRef.value) place(canvasRef.value, drawnWindow, zoom);
+  queueRedraw();
+});
+watch(() => [workspaceStore.ansiOverlay, workspaceStore.ansiOverlayAll], queueRedraw);
 
 // A scroll, or a viewport or sizer of a new size, brings other grid pixels into view.
 let resizeObserver = null;

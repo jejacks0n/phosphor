@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, store, tab, cellPoint, screenPixel } from './support.js';
+import { openApp, store, tab, cellPoint, screenPixel, settled } from './support.js';
 
 // The ANSI view draws only the cells in view, plus a margin, so a long piece is drawn sharp to its
 // end. tests/fixtures/images/tall.png opens at 80 x 2400 (1200 lines).
@@ -168,4 +168,43 @@ test('returning to the PIXEL tab with a remembered scroll never paints a frame w
   }))));
   expect(frames.length).toBeGreaterThan(0);
   expect(frames.filter((f) => f.covered < f.view)).toEqual([]);
+});
+
+test('a zoom step scales the PIXEL view\'s canvas at once, before its redraw, so no frame shows it out of line', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'PIXEL').click();
+  await settled(page);
+  const zoom = await store(page, 'workspace', (w) => w.editZoom);
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(done))))); // the mount's own redraws done
+  // A frame's first callback (queued before the zoom, so before the view's redraw): how the canvas
+  // stands then, as a frame painted before the redraw would show it.
+  const ratio = await page.evaluate((zoom) => new Promise((done) => {
+    const canvas = document.querySelector('article[tabindex="0"] .display canvas');
+    requestAnimationFrame(() => done(canvas.getBoundingClientRect().width / canvas.width));
+    document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('workspace').setEditZoom(zoom * 1.6);
+  }), zoom);
+  expect(ratio).toBeCloseTo(1.6, 1); // the backing is still the old zoom's; its CSS size is the new one's
+});
+
+test('with All cells on, the PIXEL view\'s overlay follows a stroke and its undo, as a whole repaint of it shows', async ({ page }) => {
+  await openApp(page, 'images/tall.png');
+  await tab(page, 'PIXEL').click();
+  await store(page, 'workspace', (w) => { w.ansiOverlayAll = true; w.ansiOverlay = 100; });
+  const view = await page.locator('article[tabindex="0"]').boundingBox();
+  const at = { x: Math.floor(view.x + view.width / 2) + 0.5, y: Math.floor(view.y + view.height / 2) + 0.5 }; // a grid pixel mid-view
+  await page.keyboard.press('p');
+  await page.mouse.click(at.x, at.y);
+  // The same pixel after the overlay is painted whole (All cells off and on again).
+  const repainted = async () => {
+    await store(page, 'workspace', (w) => { w.ansiOverlayAll = false; });
+    await store(page, 'workspace', (w) => { w.ansiOverlayAll = true; });
+    return screenPixel(page, at.x, at.y);
+  };
+  const painted = await screenPixel(page, at.x, at.y);
+  await expect.poll(() => screenPixel(page, at.x, at.y)).toEqual(painted);
+  expect(await repainted()).toEqual(painted);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => screenPixel(page, at.x, at.y)).not.toEqual(painted);
+  const undone = await screenPixel(page, at.x, at.y);
+  expect(await repainted()).toEqual(undone);
 });

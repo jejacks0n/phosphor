@@ -255,19 +255,25 @@ export function coverCell(cell, paintTop, paintBottom, { renderStyle, palette })
 // RGBA buffer cols x rows (alpha 255 for included cells, 0 elsewhere and on an odd last pixel row).
 export function cellsToPixels(cells, cols, rows, include) {
   const data = new Uint8ClampedArray(cols * rows * 4);
-  const cellRows = charRowsOf(rows);
-  for (let row = 0; row < cellRows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const i = cellIndex(col, row, cols);
-      if (!cells[i] || !include(i)) continue;
-      const [top, bottom] = halfColors(cells[i]);
-      for (const [half, { r, g, b }] of [[0, top], [1, bottom]]) {
-        const o = ((2 * row + half) * cols + col) * 4;
-        data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 255;
-      }
-    }
+  for (let i = 0; i < cols * charRowsOf(rows); i++) {
+    if (cells[i] && include(i)) putCellPixels(data, cols, i, cells[i]);
   }
   return data;
+}
+
+// One cell's two half-colors into such a buffer (cols wide), or nothing there (cell null).
+export function putCellPixels(data, cols, i, cell) {
+  const col = i % cols, row = (i - col) / cols;
+  const halves = cell && halfColors(cell);
+  for (const half of [0, 1]) {
+    const o = ((2 * row + half) * cols + col) * 4;
+    if (!halves) {
+      data.fill(0, o, o + 4);
+      continue;
+    }
+    const { r, g, b } = halves[half];
+    data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 255;
+  }
 }
 
 // The entry that freezes a base cell as an edit cell (merge up, copy, move), from its underlying colors

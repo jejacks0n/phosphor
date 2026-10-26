@@ -25,7 +25,13 @@ export const historyActions = {
     const patch = this.paintLayer?.endStroke();
     const basePatch = this.baseLayer?.endStroke();
     this.hasPaint = this.paintLayer?.hasPaint ?? false; // an erase may have left none
-    if (stroke && this.quantize === 'count') this.composite({ rebuild: true }); // the Number palette and the stroke's colors catch up
+    // The Number palette, held still through the stroke, is picked again: when that changed it, every
+    // cell was rebuilt; when not, only the stroke's cells (shown in its own colors) need catching up.
+    if (stroke && this.quantize === 'count' && !this.composite()) {
+      const pixels = changedPixels(this.cols, this.rows, [[patch, this.paintLayer], [basePatch, this.baseLayer]], [[stroke.editCells, this.editCells], [stroke.baseRecords.pins, this.baseRecords.pins]]);
+      if (pixels) this.recompose(pixels);
+      else this.rebuildCells();
+    }
     if (!stroke || (!patch && !basePatch && stroke.editCells === this.editCells && stroke.baseRecords === this.baseRecords)) return;
 
     const sides = { before: [stroke.editCells, stroke.baseRecords], after: [this.editCells, this.baseRecords] };
