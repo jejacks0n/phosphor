@@ -117,11 +117,14 @@ function buildCellsWith(pixelAt, cols, rows, { charset, charMode, renderStyle, s
   const h = seedHash(seed);
   const cells = new Array(cols * charRowsOf(rows));
   const colors = new Map();
+  let lastKey = -1, last = null; // a pixel the color of the one before it (most are) skips the lookup
   const color = (p) => {
     const key = (p.r << 16 | p.g << 8 | p.b) + (typeof p.c === 'number' ? (p.c + 1) * 16777216 : 0);
+    if (key === lastKey) return last;
     let found = colors.get(key);
     if (!found) colors.set(key, found = colorOf(p));
-    return found;
+    lastKey = key;
+    return last = found;
   };
 
   for (let row = 0; row < charRowsOf(rows); row++) {

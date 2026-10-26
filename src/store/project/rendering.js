@@ -4,6 +4,7 @@
 // the layers were last sized to).
 import PaintLayer, { editScaleFor, resizeTransform } from '@/document/PaintLayer.js';
 import { remapBaseRecords } from '@/document/baseRecords.js';
+import { parseKey } from '@/document/editCells.js';
 import { fitRect } from '@/lib/Canvas.js';
 import { layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
@@ -112,11 +113,12 @@ export const renderingActions = {
   },
 
   // New composed cells: laid out with their wide characters as what the views show and export.
-  // rows: the only rows that changed (an edit's), which are all that need laying out again.
-  setCells(composed, rows = null) {
-    const partial = rows && this.cells.length === composed.length;
+  // rows: the only rows that need laying out again (an edit's, or the only ones that can hold a wide
+  // character), and laid: the layout the other rows keep.
+  setCells(composed, rows = null, laid = this.cells) {
+    const partial = rows && laid.length === composed.length;
     this.composedCells = composed;
-    this.cells = partial ? layoutWideRows(composed, this.cols, this.cells, rows) : layoutWide(composed, this.cols);
+    this.cells = partial ? layoutWideRows(composed, this.cols, laid, rows) : layoutWide(composed, this.cols);
   },
 
   // Rebuild the cells under grid pixels (an edit's) from the output as it is, and their rows' layout.
@@ -147,7 +149,13 @@ export const renderingActions = {
 
   applyEditCells() {
     if (!this.renderedCells.length) return;
-    this.setCells(this.renderer.composeAll(this.renderedCells, this.editCells, this.processParams));
+    const composed = this.renderer.composeAll(this.renderedCells, this.editCells, this.processParams);
+    // The converter's characters are one column wide (Cells.glyphsOf), so only a row with an edit
+    // cell or a pin can hold a wide one: the rest are laid out as they are.
+    const rows = new Set();
+    for (const key of this.editCells.keys()) rows.add(parseKey(key).row);
+    for (const key of this.baseRecords.pins.keys()) rows.add(parseKey(key).row);
+    this.setCells(composed, rows, composed);
   },
 };
 

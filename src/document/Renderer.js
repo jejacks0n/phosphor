@@ -36,6 +36,7 @@ export default class Renderer {
   #baseData = null;     // the pipeline with the base layer's pixels over it, from the last composite(): what edit cells sit on
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
   #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
+  #snapped = null;      // the whole output's bytes and palette entries, from the composite that just snapped it
   #effective = new Map(); // stored color -> displayed Color, until the next render
   #source = null;       // { key, data }: the image through the pipeline with color adjustments neutral (stored colors)
   #processed = null;    // { image, key, scale, canvas }: the processed picture in the grid at the base layer's scale (processed)
@@ -46,7 +47,7 @@ export default class Renderer {
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.pipelineCanvas = this.outputCanvas = this.palette = null;
-    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = null;
+    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = null;
     this.#effective = new Map();
   }
 
@@ -118,7 +119,7 @@ export default class Renderer {
   // The output's bytes are read once and snapped in place (no object per pixel: this runs over the
   // whole grid on every render and slider step).
   cellsFromOutput(params) {
-    const { data, indexes } = snapToPalette(this.outputCanvas, this.palette);
+    const { data, indexes } = this.#snapped ?? snapToPalette(this.outputCanvas, this.palette);
     return buildCellsFromBytes(data, params.cols, params.rows, {
       charset: params.chars,
       charMode: params.charMode || 'random',
@@ -162,7 +163,8 @@ export default class Renderer {
     if (!hold) this.#heldData = null;
     else if (partial) putRows(this.#heldData, w, ctx.getImageData(x, y, area.w, area.h).data, area);
     else this.#heldData = ctx.getImageData(0, 0, w, h).data;
-    if (paintLayer) snapToPalette(this.outputCanvas, this.palette, area);
+    this.#snapped = paintLayer && this.palette?.length ? snapToPalette(this.outputCanvas, this.palette, area) : null;
+    if (partial) this.#snapped = null; // only the area's
     return changed;
   }
 

@@ -1,27 +1,11 @@
 /**
- * A wrapper for a canvas element providing high-quality downscaling and pixel management.
+ * A wrapper for a canvas element providing high-quality downscaling.
  */
-import { toGray, paletteIndex } from './ColorUtils.js';
 
 // 2D context with the settings every canvas in the app uses: CPU-backed for getImageData,
 // explicit sRGB so Safari doesn't hand back Display P3 values.
 export function ctx2d(canvas) {
   return canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
-}
-
-function paletteQuantize(arrayIn, arrayOut, palette) {
-  arrayOut = arrayOut || [];
-  const palLen = palette ? palette.length : 0;
-  if (palLen === 0) return arrayOut;
-
-  for (let i = 0; i < arrayIn.length; i++) {
-    const a = arrayIn[i];
-    const nearest = palette[paletteIndex(a.r, a.g, a.b, palette)];
-    if (!arrayOut[i]) arrayOut[i] = { r: 0, g: 0, b: 0, a: 1, v: 0 };
-    const out = arrayOut[i];
-    out.r = nearest.r; out.g = nearest.g; out.b = nearest.b; out.c = nearest.c; out.hex = nearest.hex; out.v = a.v;
-  }
-  return arrayOut;
 }
 
 // Letterbox sw x sh into tw x th. Shared by the pipeline and the store so they agree exactly.
@@ -43,38 +27,22 @@ export function fitRect(sw, sh, tw, th) {
 
 export default class Canvas {
   constructor(sourceCanvas) {
-    this.canvas = sourceCanvas || document.createElement('canvas');
-    if (!sourceCanvas) {
-      this.canvas.width = 1;
-      this.canvas.height = 1;
-    }
+    this.canvas = sourceCanvas || Object.assign(document.createElement('canvas'), { width: 1, height: 1 });
     this.ctx = ctx2d(this.canvas);
-    if (!sourceCanvas) {
-      this.ctx.putImageData(this.ctx.createImageData(1, 1), 0, 0);
-    }
-
-    this.pixels = [];
-    this.loadPixels();
   }
 
   get width() { return this.canvas.width; }
   get height() { return this.canvas.height; }
 
   resize(dWidth, dHeight) {
-    const w = Math.max(1, Math.floor(dWidth) || 1);
-    const h = Math.max(1, Math.floor(dHeight) || 1);
-    this.canvas.width = w;
-    this.canvas.height = h;
-    this.pixels.length = 0;
-    // Initialize pixels array to correct size with black
-    for (let i = 0; i < w * h; i++) {
-      this.pixels[i] = { r: 0, g: 0, b: 0, a: 1, v: 0 };
-    }
+    this.canvas.width = Math.max(1, Math.floor(dWidth) || 1);
+    this.canvas.height = Math.max(1, Math.floor(dHeight) || 1);
     return this;
   }
 
   // Draws and downscales using a manual box filter into the current canvas size
-  // dx, dy, dw, dh define the area to draw INTO.
+  // dx, dy, dw, dh define the area to draw INTO. Black (opaque) around it. Written straight to the
+  // canvas's bytes: this runs over the whole grid on every render.
   drawManual(source, dx, dy, dw, dh, quality) {
     const tw = this.canvas.width;
     const th = this.canvas.height;
@@ -87,7 +55,6 @@ export default class Canvas {
       this.ctx.fillStyle = 'black';
       this.ctx.fillRect(0, 0, tw, th);
       this.ctx.drawImage(source, 0, 0, sw, sh, dx, dy, dw, dh);
-      this.loadPixels();
       return this;
     }
 
@@ -108,16 +75,12 @@ export default class Canvas {
     }
 
     // For 'medium' and 'high', we do manual box averaging
-    const pixels = this.pixels;
+    const image = this.ctx.createImageData(tw, th), out = image.data;
+    for (let i = 3; i < out.length; i += 4) out[i] = 255; // black
     const xRatio = sw / dw;
     const yRatio = sh / dh;
 
     let step = (quality === 'medium') ? 2 : 1;
-
-    // Fill with black first
-    for (let i = 0; i < pixels.length; i++) {
-      pixels[i] = { r: 0, g: 0, b: 0, a: 1, v: 0 };
-    }
 
     for (let y = 0; y < dh; y++) {
       const targetY = y + dy;
@@ -152,66 +115,19 @@ export default class Canvas {
           count = 1;
         }
 
-        const oIdx = targetY * tw + targetX;
-        const p = pixels[oIdx];
-        p.r = Math.round(r / count);
-        p.g = Math.round(g / count);
-        p.b = Math.round(b / count);
-        p.a = (a / count) / 255.0;
-        p.v = toGray(p.r, p.g, p.b);
+        const o = (targetY * tw + targetX) * 4;
+        out[o] = Math.round(r / count);
+        out[o + 1] = Math.round(g / count);
+        out[o + 2] = Math.round(b / count);
+        out[o + 3] = (((a / count) / 255.0) || 1.0) * 255; // an empty block is written opaque
       }
     }
 
-    this.writePixels();
-    return this;
-  }
-
-  quantize(palette) {
-    paletteQuantize(this.pixels, this.pixels, palette);
+    this.ctx.putImageData(image, 0, 0);
     return this;
   }
 
   getImageData() {
     return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data;
-  }
-
-  writePixels() {
-    const w = this.canvas.width;
-    const h = this.canvas.height;
-    const imageData = this.ctx.createImageData(w, h);
-    const data = imageData.data;
-    for (let i = 0; i < this.pixels.length; i++) {
-      const p = this.pixels[i];
-      const i4 = i * 4;
-      data[i4] = p.r; data[i4 + 1] = p.g; data[i4 + 2] = p.b; data[i4 + 3] = (p.a || 1.0) * 255;
-    }
-    this.ctx.putImageData(imageData, 0, 0);
-    return this;
-  }
-
-  loadPixels() {
-    const w = this.canvas.width;
-    const h = this.canvas.height;
-    const data = this.ctx.getImageData(0, 0, w, h).data;
-
-    // Pre-allocate or truncate pixels array to match dimensions
-    const targetLen = w * h;
-    if (this.pixels.length !== targetLen) {
-      this.pixels.length = targetLen;
-    }
-
-    for (let i = 0; i < data.length; i += 4) {
-      const idx = i / 4;
-      const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3] / 255.0;
-
-      // Reuse object if it exists to avoid GC pressure
-      if (!this.pixels[idx]) {
-        this.pixels[idx] = { r, g, b, a, v: toGray(r, g, b) };
-      } else {
-        const p = this.pixels[idx];
-        p.r = r; p.g = g; p.b = b; p.a = a; p.v = toGray(r, g, b);
-      }
-    }
-    return this;
   }
 }

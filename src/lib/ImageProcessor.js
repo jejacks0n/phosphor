@@ -36,13 +36,6 @@ export function getPaletteColors(params, canvasForCount = null) {
   }
 }
 
-export function applyQuantization(canvas, qColors) {
-  if (qColors && qColors.length > 0) {
-    canvas.quantize(qColors);
-    canvas.writePixels();
-  }
-}
-
 // Where the image goes in the grid, the size it's processed at (m processed pixels per grid pixel,
 // or the native-size branch: m < 1) and the shader's parameters. scale: a fixed m instead.
 function prepare(image, params, scale = null) {
@@ -138,7 +131,6 @@ export async function processImage(image, params) {
   canvas.ctx.imageSmoothingQuality = smoothing;
   // Fit by the image's natural aspect (the store's fit), not pw x ph
   canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
-  canvas.loadPixels();
 
   // Quantization happens after paint is composited (Renderer), not here. The Number palette is picked
   // there too, from the composited picture (Renderer.composite), so it isn't worked out here.
