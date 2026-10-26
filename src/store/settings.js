@@ -4,13 +4,13 @@ import { generateSlug } from 'random-word-slugs';
 // Every persisted project setting, declared once. Order within the transform, adjust and effects
 // groups is the ControlPanel's on-screen order. Storage keys must never change: they hold users' settings.
 export const SETTINGS = [
-  { key: 'cols', default: 80, group: 'setup', label: 'Dimensions', help: 'The art\'s width in columns and height in rows (two pixel rows per character row). Before you draw, a new size converts the image again; once the edit layer has something on it, cells are added or removed at the right and bottom instead. Up to 300 columns and 5000 lines, 500,000 cells in all: the narrower the art, the longer it can run.' },
+  { key: 'cols', default: 80, group: 'setup', label: 'Dimensions', help: 'The art\'s width in columns and height in rows (two pixel rows per character row).' },
   { key: 'rows', default: 50, group: 'setup' },
   { key: 'aspectLock', default: true, group: 'setup', pipeline: false },
   { key: 'renderStyle', default: 'ansi', group: 'setup', help: 'ANSI colors both the character and its background. Color ASCII puts colored characters on black. Monochrome ASCII is one color.' },
-  { key: 'chars', default: '.*:%░░▒▒▓▓▄■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, help: 'The characters the converter picks from, at random for ANSI and by brightness for ASCII. Repeat a character to get more of it. Two-column characters (like 漢) are skipped: converted cells are one column wide.' },
+  { key: 'chars', default: '.*:%░░▒▒▓▓▄■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, help: 'The characters the converter picks from, at random for ANSI and by brightness for ASCII. Repeat a character to get more of it.' },
   { key: 'charsAscii', default: ' .:*%#@', group: 'setup', pipeline: false },
-  { key: 'seed', default: () => generateSlug(2), group: 'setup', help: 'Decides which character goes in each cell. The same seed gives the same result; the dice picks a new one.' },
+  { key: 'seed', default: () => generateSlug(2), group: 'setup', help: 'Decides which character goes in each cell. The same seed gives the same result. Rolling the dice generates a new one.' },
   { key: 'quantize', default: 'none', group: 'setup', help: 'Full color keeps every color. VGA and CGA snap to those palettes. Color count picks that many colors from your picture, and Color list uses only the colors you type.' },
   { key: 'colorCount', default: 16, group: 'setup', label: 'Color Count', min: 2, max: 255 },
   { key: 'palette', default: '#FFFFFF #AA5601 #000000', group: 'setup' },
