@@ -168,14 +168,18 @@ test('no rooms: the lobby says so', async ({ page }) => {
   await expect(lobby(page).getByText('0 live')).toBeVisible();
 });
 
-test('a refused pass makes the rooms unavailable', async ({ page }) => {
+test('a refused pass is tried once more with a fresh one; refused again, the rooms are unavailable and the clock is named', async ({ page }) => {
   const server = await fakeServer(page, { rooms: ROOMS });
   await showLobby(page, server);
   await expect(lobby(page).getByRole('article')).toHaveCount(4);
+  server.lobby.refusing = true;
   server.lobby.send({ type: 'refused', code: 'bad-pass' });
   await expect(lobby(page).getByText('Rooms are unavailable right now')).toBeVisible();
   await expect(lobby(page).getByText('The editor works as usual.')).toBeVisible();
+  await expect(lobby(page).getByText('If your computer\'s clock is wrong, fix it and reload.')).toBeVisible();
   await expect(lobby(page).getByRole('article')).toHaveCount(0);
+  expect(server.lobby.received.filter((m) => m.type === 'hello')).toHaveLength(2);
+  expect(server.sent('POST', '/api/pass')).toHaveLength(2);
 });
 
 test('a server that can\'t be reached: unavailable, not loading forever', async ({ page }) => {
@@ -183,6 +187,7 @@ test('a server that can\'t be reached: unavailable, not loading forever', async 
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
   await expect(lobby(page).getByText('Rooms are unavailable right now')).toBeVisible();
+  await expect(lobby(page).getByText('If your computer\'s clock is wrong', { exact: false })).toHaveCount(0); // not refused
   await expect(lobby(page).getByText('Reconnecting…')).toHaveCount(0);
 });
 

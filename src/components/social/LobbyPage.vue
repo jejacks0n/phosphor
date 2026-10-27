@@ -41,6 +41,7 @@ const toggleSignal = (signal) => social.setSignal(social.signal === signal ? nul
       <div v-if="view === 'unavailable'" class="state">
         <h3>Rooms are unavailable right now</h3>
         <p>The editor works as usual.</p>
+        <p v-if="social.lobbyStatus === 'refused'">If your computer's clock is wrong, fix it and reload.</p>
       </div>
       <div v-else-if="view === 'loading'" class="rooms" aria-busy="true">
         <div v-for="i in 4" :key="i" class="skeleton-card">

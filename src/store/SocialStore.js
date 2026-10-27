@@ -50,6 +50,7 @@ export const useSocialStore = defineStore('social', {
     _pacer: null,        // Pacer for the signal (markRaw)
     _renewTimer: null,
     _passRun: 0,         // bumped when the pass is dropped, so a pass asked for before is ignored
+    _refusedOnce: false, // the lobby refused a pass since it was last live: the next refusal stands
   }),
 
   getters: {
@@ -387,9 +388,19 @@ export const useSocialStore = defineStore('social', {
       if (!this._pacer.timer) this.signal = signal;
     },
 
+    // A refused pass is tried once more with a fresh one; refused again, the lobby is unavailable (and
+    // says the computer's clock may be why: proofs are timed).
     lobbyStatusChanged(status) {
+      if (status === 'refused' && !this._refusedOnce) {
+        this._refusedOnce = true;
+        this.reconnect();
+        return;
+      }
       this.lobbyStatus = status;
-      if (status === 'live') this._pacer.reset();   // a new socket's signal starts over (its state follows)
+      if (status === 'live') {
+        this._refusedOnce = false;
+        this._pacer.reset();   // a new socket's signal starts over (its state follows)
+      }
       if (status === 'refused') this.lobby = emptyLobby();
     },
 

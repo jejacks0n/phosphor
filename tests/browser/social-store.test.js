@@ -561,7 +561,7 @@ test('A member\'s second tab shows the signal the account has, from its own entr
   expect(socket.signals()).toEqual([null]);
 });
 
-test('A guest\'s setSignal does nothing; a refused pass empties the lobby', async () => {
+test('A guest\'s setSignal does nothing', async () => {
   fakeServer();
   await social.start(at(''));
   social.showLobby();
@@ -570,10 +570,35 @@ test('A guest\'s setSignal does nothing; a refused pass empties the lobby', asyn
   social.setSignal('chat');
   expect(social.signal).toBe(null);
   expect(socket.signals()).toEqual([]);
+});
 
-  socket.receive({ type: 'refused', code: 'bad-pass' });
+test('A refused pass is tried once more with a fresh one; refused again, the lobby is emptied and stays refused', async () => {
+  const server = fakeServer();
+  await social.start(at(''));
+  social.showLobby();
+  await goLive(await lastSocket(1), { rooms: [room('r1')], people: [] });
+  const refuse = async (socket) => {
+    socket.accept();
+    await vi.waitFor(() => expect(socket.sent[0]?.type).toBe('hello'));
+    socket.receive({ type: 'refused', code: 'bad-pass' });
+  };
+
+  sockets[0].receive({ type: 'refused', code: 'bad-pass' });
+  expect(social.lobbyStatus).toBe('connecting');
+  await refuse(await lastSocket(2));
+  expect(server.sent('POST', '/api/pass')).toHaveLength(2);
+  expect(sockets[1].sent[0].pass).toBe(social.pass);
   expect(social.lobbyStatus).toBe('refused');
   expect(social.rooms).toEqual([]);
+  await new Promise((resolve) => setTimeout(resolve, 1200));   // past the first backoff
+  expect(sockets).toHaveLength(2);
+
+  // Live again (signing in reconnects): a refusal gets its one more try again.
+  await social.signIn('ansi-fan', 'right-password');
+  await goLive(await lastSocket(3));
+  sockets[2].receive({ type: 'refused', code: 'bad-pass' });
+  expect(social.lobbyStatus).toBe('connecting');
+  await lastSocket(4);
 });
 
 test('unlink finds the account for the provider; SESSION_EXPIRED goes to sign-in with its notice', async () => {
