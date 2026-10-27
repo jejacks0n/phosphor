@@ -16,10 +16,10 @@ const pencil = {
     {
       key: 'pencilDrawWith', label: 'Draw with', type: 'dropdown', views: ['output'],
       choices: [
+        { value: 'normal', label: 'Normal mode', glyph: '' }, // paint over each cell's own character, which shows through
         { value: 'single', label: 'Single', glyph: '┌─' },
         { value: 'double', label: 'Double', glyph: '╔═' },
         { value: 'half', label: 'Half-block', glyph: '▀▄' },
-        { value: 'normal', label: 'Normal', glyph: '' }, // paint over each cell's own character, which shows through
       ],
     },
     {

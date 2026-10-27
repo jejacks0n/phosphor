@@ -64,7 +64,7 @@ test("Block characters: the Brush offers it and the Pencil's Draw with has Half-
   await expect(box).toBeVisible();
   await expect(box).not.toBeChecked(); // off by default
   await page.getByRole('button', { name: 'Pencil (1px)' }).click();
-  await page.getByRole('button', { name: 'Normal' }).click(); // the default
+  await page.getByRole('button', { name: 'Normal mode' }).click(); // the default
   await page.getByRole('button', { name: 'Half-block' }).click();
   const at = await cellPoint(page, 7, 4, 0);
   await page.mouse.click(at.x, at.y);

@@ -81,7 +81,7 @@ The Pencil and Brush paint over each cell's own character, which shows through. 
 **Block characters** on (in the ANSI view; off by default), or the Pencil drawing with
 **Half-block**, each cell they paint becomes a ▄ instead, and the paint colors its two halves, so
 you draw clean half-blocks. The half you don't paint keeps its color. (The Pencil's **Draw with**
-is **Normal** by default: the paint over each cell's character.)
+is **Normal mode** by default: the paint over each cell's character.)
 
 The Pencil's **Single** and **Double** (ANSI view) draw box-drawing lines as you drag from cell to
 cell: each cell gets the piece its path needs (─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼), so the line turns corners and

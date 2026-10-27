@@ -81,7 +81,7 @@ test('C stamps too, as in Moebius: the copy stays and the block floats on', asyn
 test("the Pencil's Single draws lines of box characters: drag across, then down, and it turns the corner", async ({ page }) => {
   await openApp(page);
   await page.keyboard.press('p');
-  await page.getByRole('button', { name: 'Normal' }).click();
+  await page.getByRole('button', { name: 'Normal mode' }).click();
   await page.getByRole('button', { name: 'Single' }).click();
   await expect(page.getByRole('checkbox', { name: 'Connect' })).toBeChecked();
   const a = await cellPoint(page, 4, 3), b = await cellPoint(page, 12, 3), c = await cellPoint(page, 12, 7);
