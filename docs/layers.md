@@ -77,6 +77,10 @@ instead. Typing or drawing cells (a line box, a Character or Full block shape) o
 the paint in those cells, so what you wrote shows; with the background set to None, each cell keeps
 the background color the paint gave it, as it keeps the picture's or an earlier cell's.
 
+**Opacity** is how much one stroke lays at most: going back over the same spot within a stroke
+doesn't add more, but strokes stack, so two strokes at 50% make the paint solid. Within a stroke,
+**Flow** is how quickly it builds up to that.
+
 Color adjustments apply to the edit layer too: moving Brightness or Hue changes your edits along
 with the picture. The color palette (CGA, VGA, a color count) applies to everything, so an
 `.ans` export always fits it. With **Color count**, the colors are picked from everything you see (the
