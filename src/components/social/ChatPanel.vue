@@ -78,7 +78,7 @@ function askIfAtTop() {
       </p>
       <div ref="list" class="list" role="log" aria-label="Messages" @scroll.passive="askIfAtTop">
         <p v-if="room.chatMore" class="more">↑ Scroll up for earlier messages</p>
-        <p v-if="room.role === 'watch' && room.joinedAt === null && ['live', 'waiting'].includes(room.status)" class="joined">You joined</p>
+        <p v-if="room.role === 'watch' && room.joinedAt === null && room.status === 'live'" class="joined">You joined</p>
         <template v-for="m in room.chat" :key="m.id">
           <div class="message" :class="{ note: m.deleted || hidden(m) }">
             <p v-if="m.deleted">Message deleted by the host</p>

@@ -178,6 +178,14 @@ test('60 messages before a second watcher joins: the last 50, "You joined", and 
   await expect(messages(late).nth(10)).toContainText('m11');
 });
 
+test('joining a room with no messages: "You joined" is there once live, with nothing above it', async ({ page: host, context }) => {
+  const { watcher } = await inRoom(host, context, { me: wren });
+  expect(await store(watcher, 'room', (r) => r.status)).toBe('live');
+  await expect(log(watcher).getByText('You joined')).toBeVisible();
+  await expect(messages(watcher)).toHaveCount(0);
+  await expect(log(watcher).getByText('↑ Scroll up for earlier messages')).toHaveCount(0);
+});
+
 test('a new message keeps the place when scrolled up, and follows when at the bottom', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { me: wren });
   const gap = () => log(watcher).evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight);
