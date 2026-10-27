@@ -16,6 +16,11 @@ const brush = {
   shiftLines: true, // Shift-click: a straight line from where the last stroke ended
   preview: { shape: 'circle', size: (workspace) => workspace.editBrushSize },
   options: [
+    { key: 'editBrushSize', label: 'Size', title: 'Brush size', min: 1, max: 20, step: 0.1, decimals: 1 },
+    { key: 'editBrushOpacity', label: 'Opacity', title: 'Brush opacity', min: 1, max: 100, unit: '%' },
+    { key: 'editBrushFlow', label: 'Flow', title: 'Brush flow', min: 1, max: 100, unit: '%' },
+    { key: 'editBrushHardness', label: 'Hardness', title: 'Brush hardness', min: 0, max: 100, unit: '%' },
+    { key: 'editBrushStack', label: 'Stack opacity', title: 'Each stroke lays up to the opacity on top of what\'s there: two strokes at 50% make it solid', type: 'checkbox' },
     {
       key: 'brushDrawWith', label: 'Draw with', type: 'dropdown', views: ['output'],
       choices: [
@@ -23,11 +28,6 @@ const brush = {
         { value: 'half', label: 'Half-block', glyph: '▀▄' },  // each cell painted becomes a ▄ the paint colors
       ],
     },
-    { key: 'editBrushSize', label: 'Size', title: 'Brush size', min: 1, max: 20, step: 0.1, decimals: 1 },
-    { key: 'editBrushOpacity', label: 'Opacity', title: 'Brush opacity', min: 1, max: 100, unit: '%' },
-    { key: 'editBrushFlow', label: 'Flow', title: 'Brush flow', min: 1, max: 100, unit: '%' },
-    { key: 'editBrushHardness', label: 'Hardness', title: 'Brush hardness', min: 0, max: 100, unit: '%' },
-    { key: 'editBrushStack', label: 'Stack opacity', title: 'Each stroke lays up to the opacity on top of what\'s there: two strokes at 50% make it solid', type: 'checkbox' },
   ],
   begin(ctx, pos, event) {
     brush.move(ctx, (event?.shiftKey && ctx.workspace.strokeEnd) || pos, pos);
