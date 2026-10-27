@@ -61,6 +61,13 @@ test('without a fake server, nothing reaches localhost:8787', async ({ page }) =
   await expect.poll(() => store(page, 'social', (s) => s.lobbyStatus)).toBe('reconnecting');
 });
 
+test('a second page in the context is cut off from localhost:8787 too', async ({ context }) => {
+  const other = await context.newPage();
+  const failed = other.waitForEvent('requestfailed', (r) => r.url() === 'http://localhost:8787/api/me');
+  await other.goto('/');
+  expect((await failed).failure().errorText).toBe('net::ERR_FAILED');
+});
+
 test('the tablist\'s arrow keys reach SOCIAL', async ({ page }) => {
   await fakeServer(page);
   await page.goto('/');

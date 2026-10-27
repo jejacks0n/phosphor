@@ -5,13 +5,14 @@ import { test as base } from '@playwright/test';
 
 export { expect } from '@playwright/test';
 
-// Every spec's test: the SOCIAL server (localhost:8787, the API and the lobby's socket) is cut off
-// unless the spec installs fakeServer (social-support.js), whose routes, added later, come first.
+// Every spec's test: the SOCIAL server (localhost:8787, the API and the lobby's socket) is cut off for
+// every page in the context unless the spec installs fakeServer (social-support.js), whose page routes
+// come before the context's.
 export const test = base.extend({
-  page: async ({ page }, use) => {
-    await page.route('http://localhost:8787/**', (route) => route.abort());
-    await page.routeWebSocket('ws://localhost:8787/**', (ws) => ws.close());
-    await use(page);
+  context: async ({ context }, use) => {
+    await context.route('http://localhost:8787/**', (route) => route.abort());
+    await context.routeWebSocket('ws://localhost:8787/**', (ws) => ws.close());
+    await use(context);
   },
 });
 
