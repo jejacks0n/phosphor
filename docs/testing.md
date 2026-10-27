@@ -110,7 +110,8 @@ data channel between the two pages:
   `playwright.config.js`).
 - Chromium keeps only the last `--disable-features` it's given, and Playwright passes its own. So
   `launchWithout` in `tests/support/chromiumArgs.js` reads Playwright's list from a browser it
-  launches while the config loads, and passes Playwright's features and ours as one list.
+  launches while the config loads (once a run: Playwright's workers read the answer from the
+  environment), and passes Playwright's features and ours as one list.
 
 The browser-layer room tests (`tests/browser/social-peer.test.js` and the other `social-*` ones that
 connect peers) use `iceServers: []` and the same launch options, from `vitest.config.js`.
