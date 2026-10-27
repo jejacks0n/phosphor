@@ -2,9 +2,9 @@
 const day = (ms) => new Date(ms).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
 
 const USERNAME = {
-  length: 'Usernames are 3 to 20 characters',
-  characters: 'Use only letters, numbers and underscores',
-  reserved: 'That name is reserved',
+  length: 'Usernames are 3 to 24 characters',
+  characters: 'Use only lowercase letters, numbers, underscores and hyphens',
+  reserved: "That name is reserved: names can't be three words joined by hyphens, or admin, phosphor, guest, host or system",
 };
 
 const WORDS = {
@@ -20,7 +20,7 @@ const WORDS = {
   THROTTLED: 'Too many tries. Wait a moment and try again',
   TURNSTILE_FAILED: "We couldn't check that you're a person. Try again",
   PASSWORD_BREACHED: 'That password has appeared in a data breach. Choose another',
-  PASSWORD_TOO_SHORT: 'Use at least 10 characters',
+  PASSWORD_TOO_SHORT: 'Passwords need at least 10 characters',
   EMAIL_NOT_VERIFIED: 'Verify your email first. Check your inbox for the link',
   VERIFY_EMAIL: 'Check your inbox to verify your email',
   USE_RENAME: 'Use Change username to rename your account',

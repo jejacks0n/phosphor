@@ -65,12 +65,14 @@ test('messageFor has plain words for every code the server sends, and a fallback
   assert.equal(fallback, 'Something went wrong. Try again.');
   for (const code of codes) assert.notEqual(messageFor(code), fallback, code);
   assert.equal(messageFor('NETWORK'), "Couldn't reach Phosphor's server. Check your connection.");
-  assert.equal(messageFor('USERNAME', { problem: 'reserved' }), 'That name is reserved');
-  assert.notEqual(messageFor('USERNAME', { problem: 'length' }), messageFor('USERNAME', { problem: 'characters' }));
+  assert.equal(messageFor('USERNAME', { problem: 'length' }), 'Usernames are 3 to 24 characters');
+  assert.equal(messageFor('USERNAME', { problem: 'characters' }), 'Use only lowercase letters, numbers, underscores and hyphens');
+  assert.equal(messageFor('USERNAME', { problem: 'reserved' }),
+    "That name is reserved: names can't be three words joined by hyphens, or admin, phosphor, guest, host or system");
   assert.equal(messageFor('USERNAME_IS_ALREADY_TAKEN'), messageFor('TAKEN'));
   assert.equal(messageFor('INVALID_USERNAME_OR_PASSWORD'), "That email or username and password don't match");
   assert.equal(messageFor('USER_ALREADY_EXISTS'), 'An account already uses that email');
-  assert.equal(messageFor('PASSWORD_TOO_SHORT'), 'Use at least 10 characters');
+  assert.equal(messageFor('PASSWORD_TOO_SHORT'), 'Passwords need at least 10 characters');
   const until = new Date(2026, 10, 3).getTime();
   const day = new Date(until).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
   assert.equal(messageFor('TOO_SOON', { until }), `You can change your username again on ${day}`);
