@@ -38,11 +38,14 @@ const stopRecording = (page) => page.evaluate(() => new Promise((done) => reques
   done(window.__frames);
 }))));
 
-// What the screen shows at a cell's center: a frame after a scroll, the redraw lands.
+// What the screen shows at a cell's center: a frame after a scroll, the redraw lands. Each look is a
+// screenshot, which takes seconds when the machine is busy (one run's looks took 1.5 s alone and up to
+// 8 s with a dozen browsers at it, the first already showing the right color), so the wait is for a
+// look to come back, and the poll's timeout has to fit one.
 const shown = (page, col, row) => expect.poll(async () => {
   const at = await cellPoint(page, col, row);
   return hex(await screenPixel(page, at.x, at.y));
-});
+}, { timeout: 15_000 });
 
 test('the ANSI view draws the end of a long piece, and what scrolling brings back', async ({ page }) => {
   await openApp(page, 'images/tall.png');
