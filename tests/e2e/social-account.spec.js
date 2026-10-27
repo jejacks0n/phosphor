@@ -163,6 +163,22 @@ test('Account is not shown when nobody is signed in: the lobby is', async ({ pag
   expect(errors).toEqual([]);
 });
 
+// The red buttons are white text on red, the app's danger style: never red on red.
+test('Delete account and Delete for good can be read: their text is not the color of their background', async ({ page }) => {
+  await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  const colors = (button) => button.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return [style.color, style.backgroundColor];
+  });
+  const open = account.getByRole('button', { name: 'Delete account' });
+  const [text, background] = await colors(open);
+  expect(text).not.toBe(background);
+  await open.click();
+  const [forGoodText, forGoodBackground] = await colors(account.getByRole('button', { name: 'Delete for good' }));
+  expect(forGoodText).not.toBe(forGoodBackground);
+});
+
 test('the delete panel says what is lost, takes focus, and Cancel clears the password and gives focus back', async ({ page }) => {
   await fakeServer(page, { me: member() });
   const account = await openAccount(page);

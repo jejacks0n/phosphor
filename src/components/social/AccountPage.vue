@@ -331,6 +331,5 @@ ul.codes {
 }
 button.danger {
   align-self: flex-start;
-  color: var(--danger);
 }
 </style>
