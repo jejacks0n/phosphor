@@ -72,6 +72,19 @@ export function brushPixels(from, to, { size, flow, hardness }, cols, rows) {
   return pixels;
 }
 
+// The cells from `from` to `to`, one step across or down at a time (never diagonally), keeping near
+// the straight line between them; `from` itself isn't included. For lines of box characters.
+export function cellSteps(from, to) {
+  const dc = to.col - from.col, dr = to.row - from.row;
+  const steps = [];
+  let { col, row } = from, across = 0, down = 0;
+  for (let i = 0; i < Math.abs(dc) + Math.abs(dr); i++) {
+    if (!dr || (across + 0.5) / Math.abs(dc) < (down + 0.5) / Math.abs(dr)) { col += Math.sign(dc); across++; } else { row += Math.sign(dr); down++; }
+    steps.push({ col, row });
+  }
+  return steps;
+}
+
 // --- Shapes. from/to are grid positions in any order; results are whole pixels clipped to the grid.
 
 const bounds = (from, to) => ({

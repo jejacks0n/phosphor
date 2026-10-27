@@ -21,6 +21,15 @@ for (const [h, v, chars] of SETS) {
 
 export const armsOf = (char) => ARMS.get(char) ?? null;
 
+// The piece with these arms, or null for none. A lone arm (a line's end) runs on straight through the
+// cell; each axis takes its heavier arm's weight.
+export function pieceOf(arms) {
+  const [up, right, down, left] = arms.map((w, d) => w || (arms.filter(Boolean).length === 1 ? arms[(d + 2) % 4] : 0));
+  const v = Math.max(up, down), h = Math.max(right, left);
+  if (!v && !h) return null;
+  return PIECES.get(`${[up, right, down, left].map(w => (w ? 1 : 0)).join('')}:${h || 1}:${v || 1}`) ?? null;
+}
+
 // The piece for `char` laid over `under` (the character already in the cell), with `inward` the
 // arms pointing into the cell from its neighbors. `closed` directions take no arm but the new
 // piece's (a filled box's inside), so a line crossing there ends at the frame instead. Each axis

@@ -8,7 +8,7 @@ const tool = (page) => store(page, 'workspace', (w) => w.activeTool);
 
 test('letters choose the tools the view offers, and the buttons say which', async ({ page }) => {
   await openApp(page);
-  for (const [key, id] of [['p', 'pencil'], ['b', 'brush'], ['e', 'eraser'], ['g', 'bucket'], ['u', 'shapes'], ['i', 'picker'], ['h', 'hand'], ['f', 'flip'], ['m', 'select'], ['t', 'text'], ['h', 'hand'], ['k', 'text']]) {
+  for (const [key, id] of [['p', 'pencil'], ['b', 'brush'], ['e', 'eraser'], ['g', 'bucket'], ['u', 'shapes'], ['i', 'picker'], ['h', 'hand'], ['l', 'lines'], ['f', 'flip'], ['m', 'select'], ['t', 'text'], ['h', 'hand'], ['k', 'text']]) {
     await page.keyboard.press(key);
     expect(await tool(page), key).toBe(id);
   }
@@ -76,4 +76,23 @@ test('C stamps too, as in Moebius: the copy stays and the block floats on', asyn
   await page.keyboard.press('ArrowDown');
   await expect.poll(() => chars(page, 6, 5, 5)).toBe('A');
   expect(await chars(page, 5, 5, 5)).toBe('A');
+});
+
+test('L draws lines of box characters: drag across, then down, and it turns the corner', async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('l');
+  expect(await tool(page)).toBe('lines');
+  await expect(page.getByRole('checkbox', { name: 'Connect' })).toBeChecked();
+  const a = await cellPoint(page, 4, 3), b = await cellPoint(page, 12, 3), c = await cellPoint(page, 12, 7);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 6 });
+  await page.mouse.move(c.x, c.y, { steps: 6 });
+  await page.mouse.up();
+  expect(await chars(page, 3, 4, 12)).toBe('────────┐');
+  expect(await chars(page, 7, 12, 12)).toBe('│');
+  await tab(page, 'PIXEL').click();
+  await settled(page);
+  await page.keyboard.press('l'); // the ANSI view's tool
+  expect(await tool(page)).not.toBe('lines');
 });

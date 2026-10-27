@@ -30,6 +30,7 @@ const GROUPS = [
       [['H'], 'Hand'],
       [['Z'], 'Zoom (PIXEL view)'],
       [['T', 'K'], 'Edit Mode (Esc puts the cursor away, so letters choose tools again)'],
+      [['L'], 'Lines: draw box-drawing lines (ANSI view)'],
       [['F'], 'Flip (ANSI view)'],
       [['M'], 'Select (ANSI view)'],
     ],
@@ -37,7 +38,7 @@ const GROUPS = [
   {
     title: 'Drawing',
     rows: [
-      [[`hold ${k('alt')}`], 'Pick a color (Pencil, Brush, Paint Bucket, Shapes)'],
+      [[`hold ${k('alt')}`], 'Pick a color (Pencil, Brush, Paint Bucket, Shapes, Lines)'],
       [[`hold ${k('alt', 'shift')}`], 'Pick the background color'],
       [['hold Space'], 'Pan, with any tool (or drag with the middle button)'],
     ],
