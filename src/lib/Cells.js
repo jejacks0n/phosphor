@@ -55,10 +55,17 @@ function glyphsOf(charset) {
   return lastGlyphs;
 }
 
-export function brightnessChar(top, bottom, charset) {
+// How heavy a pixel's character is, 0 to 1, in the ASCII styles: by brightness in Monochrome (white
+// heaviest, pure red fairly light), and in Color ASCII by intensity, its strongest channel, so any
+// pure color is as heavy as white.
+const weightOf = (p, charMode) => (charMode === 'intensity' ? Math.max(p.r, p.g, p.b) / 255 : rgb2gray(p));
+
+// The character for a cell's two pixels by their weight (charMode 'brightness' or 'intensity'),
+// lightest first in the set.
+export function weightedChar(top, bottom, charset, charMode) {
   const glyphs = glyphsOf(charset);
-  const avgGray = (rgb2gray(top) + rgb2gray(bottom)) / 2;
-  return glyphs[Math.max(0, Math.min(glyphs.length - 1, Math.round(avgGray * (glyphs.length - 1))))];
+  const weight = (weightOf(top, charMode) + weightOf(bottom, charMode)) / 2;
+  return glyphs[Math.max(0, Math.min(glyphs.length - 1, Math.round(weight * (glyphs.length - 1))))];
 }
 
 // color: makes a Color from a pixel (buildCells passes one that shares a Color between the cells of
@@ -131,7 +138,7 @@ function buildCellsWith(pixelAt, cols, rows, { charset, charMode, renderStyle, s
     for (let col = 0; col < cols; col++) {
       const top = pixelAt(2 * row * cols + col, 0);
       const bottom = pixelAt((2 * row + 1) * cols + col, 1) || top;
-      const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset) : chars[cellRandom(h, col, row) % chars.length];
+      const char = charMode === 'random' ? chars[cellRandom(h, col, row) % chars.length] : weightedChar(top, bottom, charset, charMode);
       cells[cellIndex(col, row, cols)] = buildCell(top, bottom, char, renderStyle, color);
     }
   }

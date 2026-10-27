@@ -21,7 +21,7 @@ import { applyTransforms } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
-import { buildCellsFromBytes, buildCell, brightnessChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
+import { buildCellsFromBytes, buildCell, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
 import { cellKey, parseKey } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 
@@ -296,7 +296,7 @@ export default class Renderer {
       }
 
       // Random mode keeps the cell's rendered character
-      const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset) : (baseCells[i] ?? next[i]).char;
+      const char = charMode === 'random' ? (baseCells[i] ?? next[i]).char : weightedChar(top, bottom, charset, charMode);
       next[i] = this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
     }
     return next;
@@ -386,7 +386,7 @@ export default class Renderer {
       return this.palette ? nearestColor(p, this.palette) : p;
     };
     const top = pixelAt(2 * row), bottom = pixelAt(2 * row + 1);
-    const char = charMode === 'brightness' ? brightnessChar(top, bottom, charset || '▄') : baseCells[cellIndex(col, row, cols)]?.char ?? ' ';
+    const char = charMode === 'random' ? baseCells[cellIndex(col, row, cols)]?.char ?? ' ' : weightedChar(top, bottom, charset || '▄', charMode);
     return this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
   }
 

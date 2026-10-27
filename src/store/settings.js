@@ -7,7 +7,7 @@ export const SETTINGS = [
   { key: 'cols', default: 80, group: 'setup', label: 'Dimensions', help: 'The art\'s width in columns and height in rows (two pixel rows per character row).' },
   { key: 'rows', default: 50, group: 'setup' },
   { key: 'aspectLock', default: true, group: 'setup', pipeline: false },
-  { key: 'renderStyle', default: 'ansi', group: 'setup', help: 'ANSI colors both the character and its background. Color ASCII puts colored characters on black. Monochrome ASCII is one color.' },
+  { key: 'renderStyle', default: 'ansi', group: 'setup', help: 'ANSI colors both the character and its background. Color ASCII puts colored characters on black, heavier the more intense the color. Monochrome ASCII is one color, heavier the brighter.' },
   { key: 'chars', default: '.*:%░░▒▒▓▓▄■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, help: 'The characters the converter picks from, at random for ANSI and by brightness for ASCII. Repeat a character to get more of it.' },
   { key: 'charsAscii', default: ' .:*%#@', group: 'setup', pipeline: false },
   { key: 'seed', default: () => generateSlug(2), group: 'setup', help: 'Decides which character goes in each cell. The same seed gives the same result. Rolling the dice generates a new one.' },
