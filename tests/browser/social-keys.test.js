@@ -4,15 +4,12 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ed25519Supported, loadKey, forgetKey, sign, proof } from '@/social/keys';
 import { decodePass, requestPass, renewAt, passKey, verifyPass } from '@/social/pass';
 import { toBase64url, fromBase64url } from '@/social/base64url';
+import { ownSocialDatabase } from '../support/socialDatabase.js';
 
-const deleteDatabase = () => new Promise((resolve, reject) => {
-  const req = indexedDB.deleteDatabase('phosphor-social');
-  req.onsuccess = resolve;
-  req.onerror = () => reject(req.error);
-  req.onblocked = () => reject(new Error('phosphor-social is still open'));
-});
+let deleteDatabase;
 
 beforeEach(async () => {
+  deleteDatabase = ownSocialDatabase('keys');
   forgetKey();
   await deleteDatabase();
 });

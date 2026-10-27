@@ -6,15 +6,11 @@ import { setActivePinia, createPinia } from 'pinia';
 import { useSocialStore } from '@/store/SocialStore';
 import { forgetKey, loadKey } from '@/social/keys';
 import { toBase64url, fromBase64url } from '@/social/base64url';
+import { ownSocialDatabase } from '../support/socialDatabase.js';
 import { messageFor } from '@/social/messages';
 import { desktopQuery } from '@/social/config';
 
-const deleteDatabase = () => new Promise((resolve, reject) => {
-  const req = indexedDB.deleteDatabase('phosphor-social');
-  req.onsuccess = resolve;
-  req.onerror = () => reject(req.error);
-  req.onblocked = () => reject(new Error('phosphor-social is still open'));
-});
+let deleteDatabase;
 
 const verify = async (publicKey, message, signature) => {
   const key = await crypto.subtle.importKey('raw', fromBase64url(publicKey), { name: 'Ed25519' }, false, ['verify']);
@@ -113,6 +109,7 @@ const at = (query) => new URL(`${window.location.origin}${window.location.pathna
 
 let social;
 beforeEach(async () => {
+  deleteDatabase = ownSocialDatabase('store');
   forgetKey();
   await deleteDatabase();
   localStorage.clear();
