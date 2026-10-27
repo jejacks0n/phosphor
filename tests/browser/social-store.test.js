@@ -283,6 +283,71 @@ test('signIn picks the username or email endpoint; a wrong password, or a suspen
   expect(social.page).toBe('lobby');
 });
 
+// A sign-in to an account with two-factor on: no session yet, only the challenge, until a code is verified.
+function twoFactorServer() {
+  const server = fakeServer();
+  server.route('POST /api/auth/sign-in/email', () => [200, { twoFactorRedirect: true, twoFactorMethods: ['totp'] }]);
+  server.route('POST /api/auth/two-factor/verify-totp', () => ((server.session = member({ twoFactorEnabled: true })), [200, { token: 't' }]));
+  server.route('POST /api/auth/two-factor/verify-backup-code', () => ((server.session = member({ twoFactorEnabled: true })), [200, { token: 't' }]));
+  return server;
+}
+
+test('A sign-in that answers twoFactorRedirect goes to the Two-factor page, signed in as no one yet', async () => {
+  const server = twoFactorServer();
+  await social.start(at(''));
+  await social.showLobby();
+  const asked = server.sent('GET', '/api/me').length;
+  const connected = sockets.length;
+  expect(await social.signIn('fan@example.com', 'right-password')).toBe(true);
+  expect(social.page).toBe('two-factor');
+  expect(social.me).toBe(null);
+  expect(social.notice).toBe(null);
+  expect(server.sent('GET', '/api/me')).toHaveLength(asked);
+  expect(sockets).toHaveLength(connected);   // no reconnect
+});
+
+test('verifyTwoFactor sends the code without spaces, and with trustDevice; then you are signed in', async () => {
+  const server = twoFactorServer();
+  await social.start(at(''));
+  await social.showLobby();
+  await social.signIn('fan@example.com', 'right-password');
+  expect(await social.verifyTwoFactor('123 456', { trustDevice: true })).toBe(true);
+  expect(server.sent('POST', '/api/auth/two-factor/verify-totp').map((r) => r.body)).toEqual([{ code: '123456', trustDevice: true }]);
+  expect(social.signedIn).toBe(true);
+  expect(social.page).toBe('lobby');
+
+  social.page = 'two-factor';
+  expect(await social.verifyTwoFactor(' abcde- fghij\t', { backup: true })).toBe(true);
+  expect(server.sent('POST', '/api/auth/two-factor/verify-backup-code').map((r) => r.body)).toEqual([{ code: 'abcde-fghij', trustDevice: false }]);
+
+  server.route('POST /api/auth/two-factor/verify-totp', () => [401, { code: 'INVALID_CODE' }]);
+  social.page = 'two-factor';
+  expect(await social.verifyTwoFactor('000000')).toBe(false);
+  expect(social.notice).toBe("That code isn't right");
+  expect(social.page).toBe('two-factor');
+});
+
+test('An expired challenge (INVALID_TWO_FACTOR_COOKIE) goes back to Sign in with its words', async () => {
+  const server = twoFactorServer();
+  server.route('POST /api/auth/two-factor/verify-totp', () => [401, { code: 'INVALID_TWO_FACTOR_COOKIE' }]);
+  await social.start(at(''));
+  await social.showLobby();
+  await social.signIn('fan@example.com', 'right-password');
+  expect(await social.verifyTwoFactor('123456')).toBe(false);
+  expect(social.page).toBe('sign-in');
+  expect(social.notice).toBe('That took too long. Sign in again');
+  expect(social.me).toBe(null);
+});
+
+test('?social=two-factor opens the Two-factor page and leaves the URL', async () => {
+  fakeServer();
+  const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
+  await social.start(at('?social=two-factor&room=abc'));
+  await social.showLobby();
+  expect(social.page).toBe('two-factor');
+  expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?room=abc`);
+});
+
 test('busy lasts the whole sign-in, sign-up or provider sign-in (until you\'re known, or gone), so neither form is sent twice', async () => {
   const server = fakeServer();
   await social.start(at(''));

@@ -212,3 +212,82 @@ test('the emailed link (/?reset=tok) sets a new password and lands on Sign in wi
   await expect(notice(page)).toContainText('Your password is changed. Sign in with it');
   expect(server.sent('POST', '/api/auth/reset-password').map((r) => r.body)).toEqual([{ newPassword: 'a brand new password', token: 'tok' }]);
 });
+
+const twoFactorForm = async (page) => {
+  const form = await openSignIn(page);
+  await form.getByLabel('Email or username').fill('fan@example.com');
+  await form.getByLabel('Password').fill('correct horse battery');
+  await form.getByRole('button', { name: 'Sign in', exact: true }).click();
+  return shown(page, 'two-factor');
+};
+
+test('two-factor at sign-in: a wrong code says so under the form, the right one with Trust this computer signs you in', async ({ page }) => {
+  const server = await fakeServer(page, { twoFactor: true });
+  const form = await twoFactorForm(page);
+  await expect(form.getByRole('heading', { name: 'Two-factor code' })).toBeVisible();
+  const code = form.getByLabel('Code from your authenticator app');
+  await expect(code).toBeFocused();
+  await expect(code).toHaveAttribute('autocomplete', 'one-time-code');
+  await expect(code).toHaveAttribute('inputmode', 'numeric');
+  await code.fill('000000');
+  await form.getByRole('button', { name: 'Verify' }).click();
+  await expect(form.getByRole('alert')).toHaveText("That code isn't right");
+  await expect(notice(page)).toHaveCount(0);
+  await expect(code).toHaveValue('');
+
+  await code.fill('123 456');
+  await form.getByRole('checkbox', { name: 'Trust this computer for 30 days' }).check();
+  await form.getByRole('button', { name: 'Verify' }).click();
+  await expect(shown(page, 'lobby').locator('.you')).toContainText('ansi-fan');
+  expect(server.sent('POST', '/api/auth/two-factor/verify-totp').map((r) => r.body)).toEqual([
+    { code: '000000', trustDevice: false }, { code: '123456', trustDevice: true },
+  ]);
+  expect(server.trustDevice).toBe(true);
+});
+
+test('two-factor: a backup code works instead', async ({ page }) => {
+  const server = await fakeServer(page, { twoFactor: true });
+  const form = await twoFactorForm(page);
+  await form.getByLabel('Code from your authenticator app').fill('123');
+  await form.getByRole('button', { name: 'Use a backup code instead' }).click();
+  const code = form.getByLabel('Backup code');
+  await expect(code).toHaveValue('');
+  await code.fill('wrong-code');
+  await form.getByRole('button', { name: 'Verify' }).click();
+  await expect(form.getByRole('alert')).toHaveText('That backup code isn\'t right, or it was already used');
+  await form.getByRole('button', { name: 'Use your authenticator app' }).click();
+  await expect(form.getByRole('alert')).toHaveCount(0);
+  await form.getByRole('button', { name: 'Use a backup code instead' }).click();
+  await code.fill('abcde-fghij');
+  await form.getByRole('button', { name: 'Verify' }).click();
+  await expect(shown(page, 'lobby').locator('.you')).toContainText('ansi-fan');
+  expect(server.sent('POST', '/api/auth/two-factor/verify-backup-code').map((r) => r.body.code)).toEqual(['wrong-code', 'abcde-fghij']);
+});
+
+test('two-factor: coming back from Discord to ?social=two-factor asks for the code', async ({ page }) => {
+  const server = await fakeServer(page, { twoFactor: true });
+  await open(page, '/?social=two-factor');
+  const form = shown(page, 'two-factor');
+  await expect(form).toBeVisible();
+  expect(new URL(page.url()).search).toBe('');
+  await form.getByLabel('Code from your authenticator app').fill('123456');
+  await form.getByRole('button', { name: 'Verify' }).click();
+  await expect(shown(page, 'lobby').locator('.you')).toContainText('ansi-fan');
+  expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(1);
+});
+
+test('two-factor: Cancel goes back to Sign in', async ({ page }) => {
+  await fakeServer(page, { twoFactor: true });
+  const form = await twoFactorForm(page);
+  await form.getByRole('button', { name: '‹ Cancel' }).click();
+  await expect(shown(page, 'sign-in')).toBeVisible();
+});
+
+test('two-factor: an expired challenge goes back to Sign in with its words at the top', async ({ page }) => {
+  await fakeServer(page, { twoFactor: true, 'POST /api/auth/two-factor/verify-totp': () => [401, { code: 'INVALID_TWO_FACTOR_COOKIE' }] });
+  const form = await twoFactorForm(page);
+  await form.getByLabel('Code from your authenticator app').fill('123456');
+  await form.getByRole('button', { name: 'Verify' }).click();
+  await expect(shown(page, 'sign-in')).toBeVisible();
+  await expect(notice(page)).toContainText('That took too long. Sign in again');
+});

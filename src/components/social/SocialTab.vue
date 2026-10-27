@@ -8,11 +8,13 @@ import ForgotPasswordPage from './ForgotPasswordPage.vue';
 import ResetPasswordPage from './ResetPasswordPage.vue';
 import OnboardingPage from './OnboardingPage.vue';
 import AccountPage from './AccountPage.vue';
+import TwoFactorPage from './TwoFactorPage.vue';
 
 const social = useSocialStore();
 const PAGES = {
   lobby: LobbyPage, 'sign-in': SignInPage, create: CreateAccountPage, forgot: ForgotPasswordPage,
   reset: ResetPasswordPage, onboarding: OnboardingPage, account: AccountPage,
+  'two-factor': TwoFactorPage,
 };
 onMounted(() => social.showLobby());
 

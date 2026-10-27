@@ -12,21 +12,23 @@ export const member = (fields = {}) => ({
   providers: ['credential'], twoFactorEnabled: false, usernameChangeableAt: null, ...fields,
 });
 
-// fakeServer(page, { me, rooms, people, blocked, signal, 'POST /api/...': (body) => [status, reply] }). `me`
-// null is signed out (a guest's pass). The lobby's state lists `people` and you (from the hello's pass, as
+// fakeServer(page, { me, rooms, people, blocked, signal, twoFactor, 'POST /api/...': (body) => [status, reply] }).
+// `me` null is signed out (a guest's pass). With `twoFactor`, an email or username sign-in answers the
+// challenge, and only verify-totp ('123456') or verify-backup-code ('abcde-fghij') signs in, as a member with
+// two-factor on; server.trustDevice is what the last good one was sent. The lobby's state lists `people` and you (from the hello's pass, as
 // the real server does), with `signal` as the account's signal; a signal sent sets it. Routes answer [status, body]; server.route(key, answer) changes one
 // later. server.requests has every API call ({ method, path, body }); server.lobby.received every
 // message the app sent on the lobby socket; server.lobby.send(msg) pushes one, drop() closes it (both
 // throw until the app has connected: the SOCIAL tab shown, and again after a drop). With
 // server.lobby.refusing set, a hello is answered refused.
-export async function fakeServer(page, { me = null, rooms = [], people = [], blocked = [], signal = null, ...overrides } = {}) {
+export async function fakeServer(page, { me = null, rooms = [], people = [], blocked = [], signal = null, twoFactor = false, ...overrides } = {}) {
   let socket = null;
   const connected = () => {
     if (!socket) throw new Error('The lobby is not connected: show the SOCIAL tab and wait for its hello first');
     return socket;
   };
   const server = {
-    me, rooms, people, blocked, signal, requests: [],
+    me, rooms, people, blocked, signal, trustDevice: null, requests: [],
     lobby: {
       received: [],
       refusing: false,
@@ -38,6 +40,17 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
     },
     route: (key, answer) => { routes[key] = answer; },
     sent: (method, path) => server.requests.filter((r) => r.method === method && r.path === path),
+  };
+  const signIn = () => {
+    if (twoFactor) return [200, { twoFactorRedirect: true, twoFactorMethods: ['totp'] }];
+    server.me = member();
+    return [200, { redirect: false }];
+  };
+  const verifyCode = (right, wrong) => ({ code, trustDevice }) => {
+    if (code !== right) return [401, { code: wrong }];
+    server.me = member({ twoFactorEnabled: true });
+    server.trustDevice = trustDevice;
+    return [200, { token: 't' }];
   };
   const routes = {
     'GET /api/me': () => (server.me ? [200, server.me] : [401, { code: 'SIGNED_OUT' }]),
@@ -67,9 +80,11 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
       return [200, { status: true }];
     },
     'POST /api/auth/delete-user': () => { server.me = null; return [200, { success: true }]; },
-    // Signing in or up makes you the member; Discord and GitHub send you off to the provider.
-    'POST /api/auth/sign-in/email': () => { server.me = member(); return [200, { redirect: false }]; },
-    'POST /api/auth/sign-in/username': () => { server.me = member(); return [200, { redirect: false }]; },
+    // Signing in or up makes you the member (or, with two-factor, asks for the code); Discord and GitHub send you off to the provider.
+    'POST /api/auth/sign-in/email': signIn,
+    'POST /api/auth/sign-in/username': signIn,
+    'POST /api/auth/two-factor/verify-totp': verifyCode('123456', 'INVALID_CODE'),
+    'POST /api/auth/two-factor/verify-backup-code': verifyCode('abcde-fghij', 'INVALID_BACKUP_CODE'),
     'POST /api/auth/sign-up/email': ({ username, email }) => {
       server.me = member({ username, name: username, email, emailVerified: false });
       return [200, { token: null }];

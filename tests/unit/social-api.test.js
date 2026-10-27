@@ -65,7 +65,8 @@ test('messageFor has plain words for every code the server sends, and a fallback
   const codes = ['TERMS_REQUIRED', 'USERNAME', 'TAKEN', 'TOO_SOON', 'ONBOARDING_REQUIRED', 'NEEDS_ONBOARDING', 'SUSPENDED',
     'THROTTLED', 'TURNSTILE_FAILED', 'PASSWORD_BREACHED', 'EMAIL_NOT_VERIFIED', 'USE_RENAME', 'SESSION_EXPIRED', 'VERIFY_EMAIL',
     'NETWORK', 'INVALID_EMAIL_OR_PASSWORD', 'INVALID_USERNAME_OR_PASSWORD', 'USER_ALREADY_EXISTS',
-    'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 'USERNAME_IS_ALREADY_TAKEN', 'PASSWORD_TOO_SHORT', 'INVALID_TOKEN', 'TOKEN_EXPIRED'];
+    'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 'USERNAME_IS_ALREADY_TAKEN', 'PASSWORD_TOO_SHORT', 'INVALID_TOKEN', 'TOKEN_EXPIRED',
+    'INVALID_CODE', 'INVALID_BACKUP_CODE', 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE', 'ACCOUNT_TEMPORARILY_LOCKED', 'INVALID_TWO_FACTOR_COOKIE'];
   const fallback = messageFor('NO_SUCH_CODE');
   assert.equal(fallback, 'Something went wrong. Try again.');
   for (const code of codes) assert.notEqual(messageFor(code), fallback, code);
@@ -80,6 +81,11 @@ test('messageFor has plain words for every code the server sends, and a fallback
   assert.equal(messageFor('PASSWORD_TOO_SHORT'), 'Passwords need at least 10 characters');
   assert.equal(messageFor('INVALID_TOKEN'), 'That link has expired or was already used. Ask for a new one.');
   assert.equal(messageFor('TOKEN_EXPIRED'), messageFor('INVALID_TOKEN'));
+  assert.equal(messageFor('INVALID_CODE'), "That code isn't right");
+  assert.equal(messageFor('INVALID_BACKUP_CODE'), "That backup code isn't right, or it was already used");
+  assert.equal(messageFor('TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE'), 'Too many wrong codes. Wait a few minutes, then sign in again');
+  assert.equal(messageFor('ACCOUNT_TEMPORARILY_LOCKED'), messageFor('TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE'));
+  assert.equal(messageFor('INVALID_TWO_FACTOR_COOKIE'), 'That took too long. Sign in again');
   const until = new Date(2026, 10, 3).getTime();
   const day = new Date(until).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
   assert.equal(messageFor('TOO_SOON', { until }), `You can change your username again on ${day}`);

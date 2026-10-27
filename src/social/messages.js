@@ -33,6 +33,11 @@ const WORDS = {
   INVALID_EMAIL_OR_PASSWORD: "That email or username and password don't match",
   INVALID_PASSWORD: "That password doesn't match",
   INVALID_USERNAME_OR_PASSWORD: "That email or username and password don't match",
+  INVALID_CODE: "That code isn't right",
+  INVALID_BACKUP_CODE: "That backup code isn't right, or it was already used",
+  TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE: 'Too many wrong codes. Wait a few minutes, then sign in again',
+  ACCOUNT_TEMPORARILY_LOCKED: 'Too many wrong codes. Wait a few minutes, then sign in again',
+  INVALID_TWO_FACTOR_COOKIE: 'That took too long. Sign in again',
   USER_ALREADY_EXISTS: 'An account already uses that email',
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'An account already uses that email',
 };

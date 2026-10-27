@@ -112,6 +112,7 @@ export const useSocialStore = defineStore('social', {
       if (params.get('verified') === '1') this.notice = error ? messageFor(error) : 'Your email is confirmed';
       if (params.get('reset')) Object.assign(this, { resetToken: params.get('reset'), page: 'reset' });
       if (params.get('social') === 'linked') this.page = 'account';
+      if (params.get('social') === 'two-factor') this.page = 'two-factor';
       if (params.get('social') === 'error') {
         this.notice = error === 'EMAIL_NOT_VERIFIED' ? 'Confirm your email with Discord or GitHub first' : messageFor(error);
       }
@@ -158,12 +159,26 @@ export const useSocialStore = defineStore('social', {
     },
 
     // Signing in or up stays busy until you're known, so the form can't be sent a second time meanwhile.
+    // With two-factor on, the answer is only the challenge: the code comes next, and you're no one until then.
     signIn(login, password) {
       return this.whileBusy(async () => {
         const byEmail = login.includes('@');
-        const { ok } = await this.request(byEmail ? '/api/auth/sign-in/email' : '/api/auth/sign-in/username', {
+        const { ok, data } = await this.request(byEmail ? '/api/auth/sign-in/email' : '/api/auth/sign-in/username', {
           method: 'POST', body: byEmail ? { email: login, password } : { username: login, password },
         });
+        if (ok && data?.twoFactorRedirect) this.page = 'two-factor';
+        else if (ok) await this.becameSomeoneElse();
+        return ok;
+      });
+    },
+
+    // The code from the authenticator app (or a backup code), spaces and all: a challenge that expired starts over.
+    verifyTwoFactor(code, { backup = false, trustDevice = false } = {}) {
+      return this.whileBusy(async () => {
+        const { ok, code: failure } = await this.request(`/api/auth/two-factor/${backup ? 'verify-backup-code' : 'verify-totp'}`, {
+          method: 'POST', body: { code: code.replace(/\s/g, ''), trustDevice },
+        });
+        if (failure === 'INVALID_TWO_FACTOR_COOKIE') this.page = 'sign-in';
         if (ok) await this.becameSomeoneElse();
         return ok;
       });
