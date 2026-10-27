@@ -184,6 +184,36 @@ export const useSocialStore = defineStore('social', {
       });
     },
 
+    // Turning two-factor on, off, or making new backup codes: an account with a password gives it, one without needs
+    // a recent sign-in. Two-factor stays off until startTwoFactor's secret is confirmed with a code from the app.
+    async twoFactor(action, password, body = {}) {
+      const res = await this.request(`/api/auth/two-factor/${action}`, { method: 'POST', body: password ? { password, ...body } : body });
+      this.staleSession(res.code);
+      return res;
+    },
+
+    async startTwoFactor(password) {
+      const { ok, data } = await this.twoFactor('enable', password);
+      return ok ? data : null;
+    },
+
+    async confirmTwoFactor(code) {
+      const { ok } = await this.twoFactor('verify-totp', undefined, { code: code.replace(/\s/g, '') });
+      if (ok) await this.refreshMe();
+      return ok;
+    },
+
+    async turnOffTwoFactor(password) {
+      const { ok } = await this.twoFactor('disable', password);
+      if (ok) await this.refreshMe();
+      return ok;
+    },
+
+    async newBackupCodes(password) {
+      const { ok, data } = await this.twoFactor('generate-backup-codes', password);
+      return ok ? data.backupCodes : null;
+    },
+
     signUp({ username, email, password, termsAccepted, turnstileToken }) {
       return this.whileBusy(async () => {
         const { ok } = await this.request('/api/auth/sign-up/email', {

@@ -731,6 +731,66 @@ test('unlink finds the account for the provider; SESSION_EXPIRED goes to sign-in
   expect(server.sent('POST', '/api/auth/unlink-account')).toHaveLength(2);
 });
 
+test('startTwoFactor sends the password only when given, and SESSION_NOT_FRESH goes to Sign in with the notice', async () => {
+  const server = fakeServer();
+  server.session = member();
+  const setup = { totpURI: 'otpauth://totp/Phosphor:ansi-fan?secret=JBSWY3DPEHPK3PXP&issuer=Phosphor', backupCodes: ['a-1', 'b-2'] };
+  server.route('POST /api/auth/two-factor/enable', () => [200, setup]);
+  await social.start(at(''));
+  await social.showLobby();
+  social.page = 'account';
+  expect(await social.startTwoFactor('right-password')).toEqual(setup);
+  expect(await social.startTwoFactor()).toEqual(setup);
+  expect(server.sent('POST', '/api/auth/two-factor/enable').map((r) => r.body)).toEqual([{ password: 'right-password' }, {}]);
+
+  server.route('POST /api/auth/two-factor/enable', () => [403, { code: 'SESSION_NOT_FRESH' }]);
+  expect(await social.startTwoFactor()).toBe(null);
+  expect(social.page).toBe('sign-in');
+  expect(social.notice).toBe('Sign in again to change how you sign in');
+});
+
+test('confirmTwoFactor strips spaces and refreshes me', async () => {
+  const server = fakeServer();
+  server.session = member();
+  server.route('POST /api/auth/two-factor/verify-totp', () => ((server.session = member({ twoFactorEnabled: true })), [200, { token: 't' }]));
+  await social.start(at(''));
+  await social.showLobby();
+  social.page = 'account';
+  expect(await social.confirmTwoFactor(' 123 456\t')).toBe(true);
+  expect(server.sent('POST', '/api/auth/two-factor/verify-totp').map((r) => r.body)).toEqual([{ code: '123456' }]);
+  expect(social.me.twoFactorEnabled).toBe(true);
+  expect(social.page).toBe('account');
+
+  server.route('POST /api/auth/two-factor/verify-totp', () => [401, { code: 'INVALID_CODE' }]);
+  expect(await social.confirmTwoFactor('000000')).toBe(false);
+  expect(social.notice).toBe("That code isn't right");
+});
+
+test('turnOffTwoFactor and newBackupCodes send the password only when given, and a stale sign-in goes to Sign in', async () => {
+  const server = fakeServer();
+  server.session = member({ twoFactorEnabled: true });
+  server.route('POST /api/auth/two-factor/disable', () => ((server.session = member()), [200, { status: true }]));
+  server.route('POST /api/auth/two-factor/generate-backup-codes', () => [200, { backupCodes: ['c-3', 'd-4'] }]);
+  await social.start(at(''));
+  await social.showLobby();
+  social.page = 'account';
+  expect(await social.newBackupCodes('right-password')).toEqual(['c-3', 'd-4']);
+  expect(await social.newBackupCodes()).toEqual(['c-3', 'd-4']);
+  expect(server.sent('POST', '/api/auth/two-factor/generate-backup-codes').map((r) => r.body)).toEqual([{ password: 'right-password' }, {}]);
+  expect(await social.turnOffTwoFactor('right-password')).toBe(true);
+  expect(server.sent('POST', '/api/auth/two-factor/disable')[0].body).toEqual({ password: 'right-password' });
+  expect(social.me.twoFactorEnabled).toBe(false);
+
+  server.route('POST /api/auth/two-factor/disable', () => [403, { code: 'SESSION_NOT_FRESH' }]);
+  server.route('POST /api/auth/two-factor/generate-backup-codes', () => [403, { code: 'SESSION_NOT_FRESH' }]);
+  expect(await social.newBackupCodes()).toBe(null);
+  expect(social.page).toBe('sign-in');
+  social.page = 'account';
+  expect(await social.turnOffTwoFactor()).toBe(false);
+  expect(server.sent('POST', '/api/auth/two-factor/disable')[1].body).toEqual({});
+  expect(social.page).toBe('sign-in');
+});
+
 test('Deleting without a password after a stale sign-in goes to sign-in with the same notice', async () => {
   const server = fakeServer();
   server.session = member({ providers: ['discord'] });
