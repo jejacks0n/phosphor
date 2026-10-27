@@ -12,6 +12,9 @@ import { isSolidGlyph } from '../lib/Cells.js';
 
 const ATTRS = ['char', 'fg', 'bg'];
 
+// A ▄ with no colors of its own: Half-block wrote it to show the paint over its cell.
+export const isPaintBlock = (entry) => entry?.char === '▄' && entry.fg === undefined && entry.bg === undefined;
+
 export const cellKey = (col, row) => `${col},${row}`;
 
 export function parseKey(key) {

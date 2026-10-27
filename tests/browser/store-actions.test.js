@@ -15,7 +15,7 @@ const ACTIONS = [
   'pasteSelection', 'processingScale', 'pushEdit', 'randomizeSeed', 'rawColorAt', 'rebuildCells', 'recompose', 'redo', 'refreshCells', 'refreshChanged', 'rename',
   'render', 'replaceImage', 'resetGroup', 'resetSliders', 'saveProject', 'selectionEdit',
   'setBaseRecords', 'setBlankCanvas', 'setCells', 'setImageFromFile', 'setSlider', 'shiftCells',
-  'sliderValues', 'stampSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'updateCols', 'updateRows', 'writeAt',
+  'sliderValues', 'stampSelection', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'updateCols', 'updateRows', 'writeAt',
   'writeBase', 'writeEditCells',
 ];
 
