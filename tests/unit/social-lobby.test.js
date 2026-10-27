@@ -75,10 +75,21 @@ test('Join: open, full, members only for a guest, full wins over members only, a
   assert.deepEqual(joinState(room('r', { count: 3, max: 8, allowGuests: false }), { signedIn: true }), { enabled: true, label: 'Join 3/8', reason: null });
 });
 
-// A pacer on a fake clock: setTimer remembers its callbacks for the test to run.
+// A pacer on a fake clock: setTimer remembers its callbacks for the test to run, clearTimer marks one
+// cleared. Its sendFn says it sent unless `clock.live` is false (a connection that isn't live).
 function pacedClock() {
-  const clock = { t: 0, sent: [], timers: [] };
-  clock.pacer = new Pacer(2000, (value) => clock.sent.push(value), () => clock.t, (fn, ms) => clock.timers.push({ fn, at: clock.t + ms }));
+  const clock = { t: 0, sent: [], tried: [], timers: [], live: true };
+  const send = (value) => {
+    clock.tried.push(value);
+    if (clock.live) clock.sent.push(value);
+    return clock.live;
+  };
+  const setTimer = (fn, ms) => {
+    const timer = { fn, at: clock.t + ms, cleared: false };
+    clock.timers.push(timer);
+    return timer;
+  };
+  clock.pacer = new Pacer(2000, send, () => clock.t, setTimer, (timer) => { timer.cleared = true; });
   return clock;
 }
 
@@ -119,4 +130,28 @@ test('Pacing: a value equal to the last one sent is skipped, at once or when the
   clock.t = 7000;
   clock.timers.at(-1).fn();
   assert.deepEqual(clock.sent, ['chat', 'feedback']);
+});
+
+test('Pacing: a value the connection didn\'t send isn\'t counted as sent, so the same value goes the next time', () => {
+  const clock = pacedClock();
+  clock.live = false;   // reconnecting
+  clock.pacer.push('chat');
+  assert.deepEqual(clock.tried, ['chat']);
+  assert.deepEqual(clock.sent, []);
+  clock.live = true;
+  clock.pacer.push('chat');
+  assert.deepEqual(clock.sent, ['chat']);
+});
+
+test('Pacing: reset() clears the waiting value and forgets the last sent, so the same value goes again at once', () => {
+  const clock = pacedClock();
+  clock.pacer.push('chat');
+  clock.t = 100;
+  clock.pacer.push('feedback');
+  assert.equal(clock.timers.length, 1);
+  clock.pacer.reset();   // the socket dropped; the server's signal for the new one is null
+  assert.equal(clock.timers[0].cleared, true);
+  clock.t = 200;
+  clock.pacer.push('chat');   // the store pushes the current signal again once live
+  assert.deepEqual(clock.sent, ['chat', 'chat']);
 });

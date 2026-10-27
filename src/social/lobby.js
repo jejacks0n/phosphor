@@ -54,10 +54,12 @@ export function joinState(room, { signedIn }) {
 }
 
 // Sends at most one value per interval: a change goes at once if the interval has passed, else the
-// latest waits for it. A value equal to the last one sent isn't sent again.
+// latest waits for it. A value equal to the last one sent isn't sent again; a value sendFn didn't send
+// (it returns false: the connection isn't live) doesn't count as sent.
 export class Pacer {
-  constructor(intervalMs, sendFn, now = Date.now, setTimer = setTimeout) {
-    Object.assign(this, { intervalMs, sendFn, now, setTimer, latest: undefined, sent: undefined, sentAt: -Infinity, timer: null });
+  constructor(intervalMs, sendFn, now = () => Date.now(), setTimer = (fn, ms) => setTimeout(fn, ms), clearTimer = (id) => clearTimeout(id)) {
+    Object.assign(this, { intervalMs, sendFn, now, setTimer, clearTimer, timer: null });
+    this.reset();
   }
 
   push(value) {
@@ -70,8 +72,13 @@ export class Pacer {
 
   flush() {
     if (this.latest === this.sent) return;
-    Object.assign(this, { sent: this.latest, sentAt: this.now() });
-    this.sendFn(this.latest);
+    if (this.sendFn(this.latest)) Object.assign(this, { sent: this.latest, sentAt: this.now() });
+  }
+
+  // Drops what's waiting and forgets what was sent: for a new socket, whose signal starts over.
+  reset() {
+    if (this.timer) this.clearTimer(this.timer);
+    Object.assign(this, { latest: undefined, sent: undefined, sentAt: -Infinity, timer: null });
   }
 }
 
@@ -88,7 +95,9 @@ export class LobbyConnection {
     this.run = 0;   // bumped by open() and close(), so a retry waiting from before either is dropped
   }
 
+  // Opening again (a new pass) closes the old socket first, so its hello'd visitor leaves the lobby.
   open() {
+    this.detach()?.close();
     this.run++;
     this.retryMs = FIRST_RETRY_MS;
     this.setStatus('connecting');
@@ -97,16 +106,24 @@ export class LobbyConnection {
 
   // Closes the socket and stops retrying; anything the old socket says after is ignored.
   close() {
-    const socket = this.socket;
+    const socket = this.detach();
     this.run++;
-    this.socket = null;
     this.setStatus('closed');
     socket?.close();
   }
 
-  // Sent only while live (a signal before the state would go before the hello's answer).
+  // The socket, no longer current: whatever it says or does after is ignored.
+  detach() {
+    const socket = this.socket;
+    this.socket = null;
+    return socket;
+  }
+
+  // Sent only while live (a signal before the state would go before the hello's answer); true if sent.
   send(msg) {
-    if (this.status === 'live') this.socket.send(JSON.stringify(msg));
+    if (this.status !== 'live') return false;
+    this.socket.send(JSON.stringify(msg));
+    return true;
   }
 
   setStatus(status) {
@@ -116,7 +133,13 @@ export class LobbyConnection {
   }
 
   connect() {
-    const socket = new this.WebSocketImpl(this.url);
+    let socket;
+    try {
+      socket = new this.WebSocketImpl(this.url);
+    } catch {
+      this.retry();   // a socket that can't be made is retried like a drop
+      return;
+    }
     this.socket = socket;
     const current = () => socket === this.socket;
     socket.onopen = async () => {
@@ -138,7 +161,7 @@ export class LobbyConnection {
       }
       if (typeof msg?.type !== 'string') return;
       if (msg.type === 'refused') {
-        this.socket = null;
+        this.detach();
         this.setStatus('refused');
         socket.close();
         return;

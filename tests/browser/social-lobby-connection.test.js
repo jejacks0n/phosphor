@@ -2,7 +2,7 @@
 // (a fresh hello, a fresh state), stops on a refused pass or close(). A fake WebSocket class stands in
 // for the server; the keys are real, so the proof verifies with WebCrypto.
 import { test, expect, vi } from 'vitest';
-import { LobbyConnection, emptyLobby, applyLobbyMessage } from '@/social/lobby';
+import { LobbyConnection, Pacer, emptyLobby, applyLobbyMessage } from '@/social/lobby';
 import { loadKey } from '@/social/keys';
 import { fromBase64url } from '@/social/base64url';
 
@@ -26,8 +26,13 @@ async function connect() {
   const messages = [];
   const passes = ['pass-1', 'pass-2', 'pass-3', 'pass-4'];
   let lobby = emptyLobby();
+  let failures = 0;
   class FakeSocket {
     constructor(url) {
+      if (failures > 0) {
+        failures--;
+        throw new DOMException('The network is down', 'SyntaxError');
+      }
       Object.assign(this, { url, sent: [], closed: false });
       sockets.push(this);
     }
@@ -50,7 +55,8 @@ async function connect() {
     WebSocketImpl: FakeSocket,
     wait: (ms) => new Promise((done) => waits.push({ ms, done })),
   });
-  return { conn, key, sockets, waits, statuses, messages, getPass, lobby: () => lobby };
+  const failNextSocket = () => { failures++; };
+  return { conn, key, sockets, waits, statuses, messages, getPass, failNextSocket, lobby: () => lobby };
 }
 
 // The socket's hello, once the pass and the proof are in.
@@ -76,7 +82,7 @@ test('On open it says hello with the pass and a proof over lobby:<ts>; a state m
   expect(statuses).toEqual(['connecting', 'live']);
   expect([...lobby().rooms.keys()]).toEqual(['r1']);
 
-  conn.send({ type: 'signal', signal: 'chat' });
+  expect(conn.send({ type: 'signal', signal: 'chat' })).toBe(true);
   expect(sockets[0].sent[1]).toEqual({ type: 'signal', signal: 'chat' });
   conn.close();
 });
@@ -184,6 +190,68 @@ test('close() while live closes the socket and ignores what comes after; send() 
   expect(waits).toHaveLength(0);
   sockets[0].receive({ type: 'room', room: room('late') });
   expect(messages).toHaveLength(1);
-  conn.send({ type: 'signal', signal: 'chat' });
+  expect(conn.send({ type: 'signal', signal: 'chat' })).toBe(false);
   expect(sockets[0].sent).toHaveLength(1);
+});
+
+test('send() says false and sends nothing until live, and while reconnecting', async () => {
+  const { conn, sockets } = await connect();
+  conn.open();
+  sockets[0].accept();
+  await helloOn(sockets[0]);
+  expect(conn.send({ type: 'signal', signal: 'chat' })).toBe(false);
+  sockets[0].receive({ type: 'state', rooms: [], people: [] });
+  sockets[0].close();
+  expect(conn.send({ type: 'signal', signal: 'chat' })).toBe(false);
+  expect(sockets[0].sent).toHaveLength(1);
+  conn.close();
+});
+
+test('open() again closes the old socket first: only the new one says hello', async () => {
+  const { conn, sockets, waits, statuses } = await connect();
+  conn.open();
+  sockets[0].accept();
+  conn.open();   // its hello still in flight
+  expect(sockets[0].closed).toBe(true);
+  sockets[1].accept();
+  await helloOn(sockets[1]);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(sockets[0].sent).toHaveLength(0);
+
+  sockets[1].receive({ type: 'state', rooms: [], people: [] });
+  conn.open();   // live, as when a guest signs in
+  expect(sockets[1].closed).toBe(true);
+  expect(sockets).toHaveLength(3);
+  expect(statuses).toEqual(['connecting', 'live', 'connecting']);
+  expect(waits).toHaveLength(0);
+  conn.close();
+});
+
+test('A socket that can\'t be made is retried like a drop', async () => {
+  const { conn, sockets, waits, statuses, failNextSocket } = await connect();
+  conn.open();
+  sockets[0].close();
+  failNextSocket();
+  waits[0].done();
+  await vi.waitFor(() => expect(waits.map((w) => w.ms)).toEqual([1000, 2000]));
+  expect(sockets).toHaveLength(1);
+  expect(statuses.at(-1)).toBe('reconnecting');
+  waits[1].done();
+  await vi.waitFor(() => expect(sockets).toHaveLength(2));
+  conn.close();
+});
+
+test('A Pacer on the browser\'s own clock and timers sends the latest after the interval; reset() clears what waits', async () => {
+  const sent = [];
+  const pacer = new Pacer(50, (value) => sent.push(value) > 0);
+  pacer.push('chat');
+  pacer.push('feedback');
+  pacer.push('heads-down');
+  expect(sent).toEqual(['chat']);
+  await vi.waitFor(() => expect(sent).toEqual(['chat', 'heads-down']));
+
+  pacer.push('feedback');
+  pacer.reset();
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  expect(sent).toEqual(['chat', 'heads-down']);
 });
