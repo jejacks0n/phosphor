@@ -91,7 +91,7 @@ function watcher(r, peer) {
 const lastArt = (log) => log.arts.at(-1);
 const lastList = (r) => r.watchers.at(-1) ?? [];
 
-test('each watcher gets the room, then art deep-equal to the host\'s, then the view', async () => {
+test('each watcher gets the room, the latest messages, then art deep-equal to the host\'s, then the view', async () => {
   const sends = watchSends();
   const r = await room();
   for (const peer of ['p1', 'p2']) {
@@ -103,7 +103,7 @@ test('each watcher gets the room, then art deep-equal to the host\'s, then the v
     expect(log.views).toEqual([{ col: 1, row: 2, cols: 3, rows: 4 }]);
   }
   for (const channel of new Set(sends.sent().map((m) => m.channel))) {
-    expect(sends.sent().filter((m) => m.channel === channel).map((m) => m.t)).toEqual(['room', 'snapshot', 'view']);
+    expect(sends.sent().filter((m) => m.channel === channel).map((m) => m.t)).toEqual(['room', 'history', 'snapshot', 'view']);
   }
   expect(lastList(r)).toEqual([
     { peer: 'p1', sub: 'u_p1', name: 'p1', guest: false, following: true, connected: true },
@@ -309,7 +309,7 @@ test('a channel over 8 MB buffered is skipped, and at bufferedamountlow gets one
   expect(r.log.p1.arts.length).toBe(2);
 });
 
-test('a watcher\'s message that isn\'t following, or is over 1 KB, is ignored', async () => {
+test('a watcher\'s message that isn\'t one it sends, or is over 2 KB, is ignored', async () => {
   const r = await room(['p1']);
   await expect.poll(() => r.log.p1.states.at(-1), PATIENT).toBe('live');
   const send = vi.spyOn(RTCDataChannel.prototype, 'send');
@@ -317,7 +317,7 @@ test('a watcher\'s message that isn\'t following, or is over 1 KB, is ignored', 
   const channel = send.mock.contexts[0];   // the watcher's own
   await wait(100);
   const before = r.watchers.length;
-  channel.send(JSON.stringify({ t: 'following', on: false, pad: 'x'.repeat(1024) }));
+  channel.send(JSON.stringify({ t: 'following', on: false, pad: 'x'.repeat(2048) }));
   channel.send(JSON.stringify({ t: 'other', on: false }));
   channel.send('not json');
   await wait(100);

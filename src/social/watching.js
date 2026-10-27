@@ -3,8 +3,13 @@
 // doesn't fit (a snapshot too big or of the wrong size, a color or cell that isn't there, a room or view
 // that isn't as the host's side sends it) is ignored, and however fast it sends, the art goes to onArt
 // at most once a frame. States go to onState: 'connecting', 'live', then 'failed' if it never opened or
-// 'lost' if it closed after.
+// 'lost' if it closed after. Chat comes the same way, and goes to onChat only as its sender sent it: a
+// verified member's pass the server signed, and their signature over the message for this room, so a
+// host can't put words in anyone's mouth.
 import { openPeer } from './peer.js';
+import { verifyPass } from './pass.js';
+import { verifySignature } from './keys.js';
+import { ID, PAGE, chatText, signedText } from './chat.js';
 import { CHUNK_BYTES, MOST_SNAPSHOT_CHUNKS, decodeCells, unpackSnapshot } from './wire.js';
 
 const MOST_NAME = 60;       // a room's name
@@ -13,10 +18,11 @@ const MOST_WELCOME = 200;
 // A string, cut to most characters; null for anything else.
 const text = (value, most) => (typeof value === 'string' ? value.slice(0, most) : null);
 const place = (n) => Number.isInteger(n) && n >= 0;
+const isId = (id) => typeof id === 'string' && ID.test(id);
 
 export class Watch {
-  constructor({ send, config, connectWithinMs, onRoom, onArt, onView, onState }) {
-    Object.assign(this, { send, config, connectWithinMs, onRoom, onArt, onView, onState });
+  constructor({ send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = () => {} }) {
+    Object.assign(this, { send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat });
     this.conn = null;
     this.channel = null;
     this.following = true;
@@ -32,7 +38,28 @@ export class Watch {
 
   setFollowing(on) {
     this.following = on;
-    if (this.channel?.readyState === 'open') this.channel.send(JSON.stringify({ t: 'following', on }));
+    this.post({ t: 'following', on });
+  }
+
+  // The watcher's own message, already signed. It shows when the host sends it back to everyone.
+  say({ id, ts, text, sig }) {
+    return this.post({ t: 'chat', id, ts, text, sig });
+  }
+
+  // The page before the oldest message the watcher has.
+  earlier(before) {
+    return this.post({ t: 'earlier', before });
+  }
+
+  // A message to the host; false when there's no open channel to send it on.
+  post(msg) {
+    if (this.channel?.readyState !== 'open') return false;
+    try {
+      this.channel.send(JSON.stringify(msg));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   close() {
@@ -48,6 +75,8 @@ export class Watch {
     this.art = null;          // changes count only after this connection's first snapshot
     this.gathering = null;    // { want, chunks }: a snapshot's chunks as they come
     this.heard = Promise.resolve();   // messages are handled one at a time, in order
+    this.passes = new Map();   // pass -> its claims (null for a bad one), checked once a connection
+    this.histories = 0;
     const conn = this.conn = openPeer({
       initiator: false, config: this.config, connectWithinMs: this.connectWithinMs,
       sendSignal: (data) => this.send({ type: 'signal-to', to: 'host', data }),
@@ -90,6 +119,61 @@ export class Watch {
       const want = msg.chunks;
       this.gathering = Number.isInteger(want) && want >= 1 && want <= MOST_SNAPSHOT_CHUNKS ? { want, chunks: [] } : null;
     } else if (msg.t === 'cells' && this.art) this.change(msg);
+    else if (msg.t === 'chat') await this.chat(msg);
+    else if (msg.t === 'history') await this.history(msg);
+    else if (msg.t === 'deleted' && isId(msg.id)) this.onChat({ type: 'deleted', id: msg.id });
+    else if (msg.t === 'chat-no' && isId(msg.id) && msg.reason === 'too-fast') this.onChat({ type: 'refused', id: msg.id, reason: msg.reason });
+  }
+
+  async chat(msg) {
+    const conn = this.conn;
+    const checked = await this.checked(msg);
+    if (checked && this.conn === conn) this.onChat({ type: 'chat', ...checked });
+  }
+
+  // A page of messages, oldest first: those that check out, and those deleted; the rest are left out.
+  // The first on a connection is the latest page, and any after answer earlier().
+  async history({ messages, more }) {
+    if (!Array.isArray(messages) || messages.length > PAGE || typeof more !== 'boolean') return;
+    const conn = this.conn;
+    const shown = [];
+    for (const m of messages) {
+      if (m?.deleted === true) {
+        if (isId(m.id) && Number.isFinite(m.ts)) shown.push({ id: m.id, ts: m.ts, deleted: true });
+      } else {
+        const checked = await this.checked(m);
+        if (checked) shown.push(checked);
+      }
+    }
+    if (this.conn !== conn) return;
+    this.onChat({ type: 'history', messages: shown, more, earlier: this.histories++ > 0 });
+  }
+
+  // { entry, claims } for a message its sender sent: a verified member's pass, text as the composer
+  // sends it, and their signature over it for this room. Null for anything else.
+  async checked(m) {
+    const { pass, id, ts, text, sig } = m ?? {};
+    if (typeof pass !== 'string' || !isId(id) || !Number.isFinite(ts) || chatText(text) !== text || typeof sig !== 'string') return null;
+    const claims = await this.claimsOf(pass);
+    if (!claims || claims.guest || claims.verified !== true) return null;
+    if (!await verifySignature(claims.key, signedText(this.roomId, { id, ts, text }), sig)) return null;
+    return { entry: { pass, id, ts, text, sig }, claims };
+  }
+
+  // A pass's claims if the server signed it. Its expiry isn't held against it: a message keeps the pass
+  // it was sent with, and a pass lasts an hour while a room's chat lasts as long as the room. No key to
+  // check with is asked for again next time.
+  async claimsOf(pass) {
+    if (!this.passes.has(pass)) {
+      let key;
+      try {
+        key = await this.passKey();
+      } catch {
+        return null;
+      }
+      this.passes.set(pass, await verifyPass(pass, key, 0));
+    }
+    return this.passes.get(pass);
   }
 
   // Who hosts it is the Room's word (joined), never the host's.

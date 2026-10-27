@@ -1,15 +1,22 @@
 // The host's side of a room: a connection to each watcher (peer.js), made only for a pass the server
 // signed, and what each watcher is sent over its channel (wire.js has the messages): the room, a
 // snapshot, then the changes as the art changes, and the part the host is looking at. The Room's socket
-// carries the signals and hears when a watcher's connection ends (send).
+// carries the signals and hears when a watcher's connection ends (send). Chat goes through the host
+// too (chat.js has its pieces): a watcher's message goes on to everyone only if it's theirs to send,
+// signed by the key in their pass, and the host keeps the last of them for anyone who joins later.
 import { openPeer } from './peer.js';
 import { verifyPass } from './pass.js';
+import { verifySignature } from './keys.js';
+import { Allowance, ChatLog, ID, chatText, signedText } from './chat.js';
 import { CHUNK_BYTES, changedCells, encodeCells, packSnapshot } from './wire.js';
 
 const BACKED_UP_BYTES = 8 * 1024 * 1024;   // a channel further behind than this is sent no art until it drains
 const DRAINED_BYTES = 1024 * 1024;           // to this, and then gets one fresh snapshot
-const MOST_HEARD_BYTES = 1024;               // a watcher's message longer than this is ignored
+const MOST_HEARD_BYTES = 2048;               // a watcher's message longer than this is ignored
+const MOST_SKEW_MS = 120_000;                // a chat message's time, from the host's clock
+const EARLIER_EVERY_MS = 500;                // a watcher's asks for earlier messages, at most
 
+const isId = (id) => typeof id === 'string' && ID.test(id);
 const sameView = (a, b) => a.col === b.col && a.row === b.row && a.cols === b.cols && a.rows === b.rows;
 
 // The indexes that changed from one art to the next; null when a snapshot should go instead (nothing to
@@ -28,10 +35,12 @@ function cellsMessage(art, at) {
 }
 
 export class Host {
-  constructor({ send, passKey, config, connectWithinMs, onWatchers = () => {} }) {
-    Object.assign(this, { send, passKey, config, connectWithinMs, onWatchers });
-    // peer -> { peer, claims, following, conn, channel, has (the art it has), packing, behind }
+  constructor({ send, passKey, config, connectWithinMs, roomId, onWatchers = () => {}, onChat = () => {} }) {
+    Object.assign(this, { send, passKey, config, connectWithinMs, roomId, onWatchers, onChat });
+    // peer -> { peer, pass, claims, following, conn, channel, has (the art it has), packing, behind,
+    // allowance, heard (its chat, checked one at a time), askedAt (its last ask for earlier messages) }
     this.watchers = new Map();
+    this.log = new ChatLog();
     this.room = null;
     this.art = null;
     this.view = null;
@@ -43,7 +52,10 @@ export class Host {
   // a connection, and once it opens, the room.
   async peer(peer, pass) {
     this.drop(peer);
-    const w = { peer, claims: null, following: true, conn: null, channel: null, has: null, packing: false, behind: false };
+    const w = {
+      peer, pass, claims: null, following: true, conn: null, channel: null, has: null, packing: false, behind: false,
+      allowance: new Allowance(), heard: Promise.resolve(), askedAt: -Infinity,
+    };
     this.watchers.set(peer, w);
     let claims = null;
     try {
@@ -121,6 +133,30 @@ export class Host {
     for (const w of this.open()) this.sendTo(w, { t: 'view', ...view });
   }
 
+  // A message for everyone, the sender too (their echo): the host's own, already signed, or a
+  // watcher's that checked out. Kept, unless its id is already.
+  say({ pass, id, ts, text, sig }) {
+    const entry = { pass, id, ts, text, sig };
+    if (!this.log.add(entry)) return false;
+    this.onChat({ type: 'chat', entry });
+    for (const w of this.open()) this.sendTo(w, { t: 'chat', ...entry });
+    return true;
+  }
+
+  // The host's Delete: the message stays in the log as deleted, and every watcher hears.
+  deleteMessage(id) {
+    if (!this.log.delete(id)) return false;
+    this.onChat({ type: 'deleted', id });
+    for (const w of this.open()) this.sendTo(w, { t: 'deleted', id });
+    return true;
+  }
+
+  // The host's Remove: the Room puts the watcher out, and its connection closes here.
+  remove(peer) {
+    this.send({ type: 'remove', peer });
+    this.peerGone(peer);
+  }
+
   close() {
     for (const peer of [...this.watchers.keys()]) this.drop(peer);
   }
@@ -144,7 +180,7 @@ export class Host {
     return [...this.watchers.values()].filter((w) => w.channel?.readyState === 'open');
   }
 
-  // The room, then the art, then the view.
+  // The room, then the latest messages, then the art, then the view.
   async opened(w, channel) {
     w.channel = channel;
     channel.bufferedAmountLowThreshold = DRAINED_BYTES;
@@ -157,6 +193,7 @@ export class Host {
     channel.onmessage = ({ data }) => this.heard(w, data);
     this.changed();
     if (this.room) this.sendTo(w, { t: 'room', ...this.room });
+    this.sendTo(w, { t: 'history', ...this.log.page() });
     await this.update(w);
     if (this.view && this.watchers.get(w.peer) === w && channel.readyState === 'open') this.sendTo(w, { t: 'view', ...this.view });
   }
@@ -165,9 +202,36 @@ export class Host {
     if (typeof data !== 'string' || data.length > MOST_HEARD_BYTES) return;
     let msg;
     try { msg = JSON.parse(data); } catch { return; }
-    if (msg?.t !== 'following' || typeof msg.on !== 'boolean' || msg.on === w.following) return;
-    w.following = msg.on;
+    if (msg?.t === 'following') this.follow(w, msg.on);
+    else if (msg?.t === 'chat') w.heard = w.heard.then(() => this.chat(w, msg)).catch(() => {});
+    else if (msg?.t === 'earlier') this.earlier(w, msg.before);
+  }
+
+  follow(w, on) {
+    if (typeof on !== 'boolean' || on === w.following) return;
+    w.following = on;
     this.changed();
+  }
+
+  // A watcher's message goes on only from a verified member, with text as the composer sends it, a
+  // time near the host's, a new id and their own signature over it for this room; anything else is
+  // dropped without a word. Past their allowance, they're told it was too fast.
+  async chat(w, { id, ts, text, sig }) {
+    const claims = w.claims;
+    if (!claims || claims.guest || claims.verified !== true || !isId(id) || !Number.isFinite(ts)
+      || Math.abs(ts - Date.now()) > MOST_SKEW_MS || chatText(text) !== text || typeof sig !== 'string') return;
+    if (!await verifySignature(claims.key, signedText(this.roomId, { id, ts, text }), sig)) return;
+    if (this.watchers.get(w.peer) !== w || this.log.has(id)) return;
+    if (!w.allowance.take()) this.sendTo(w, { t: 'chat-no', id, reason: 'too-fast' });
+    else this.say({ pass: w.pass, id, ts, text, sig });
+  }
+
+  // The page before a watcher's oldest message: at most one every EARLIER_EVERY_MS, sooner is ignored.
+  earlier(w, before) {
+    const now = Date.now();
+    if (!isId(before) || now - w.askedAt < EARLIER_EVERY_MS) return;
+    w.askedAt = now;
+    this.sendTo(w, { t: 'history', ...this.log.page(before) });
   }
 
   sendTo(w, msg) {
