@@ -64,12 +64,14 @@ export class Host {
     this.changed();
   }
 
-  // The host's socket (re)connected and the Room listed who's inside: those already here keep their
-  // connections, new ones are met, and anyone not listed is closed.
+  // The host's socket (re)connected and the Room listed who's inside: those connected keep their
+  // connections, anyone not listed is closed, and the rest are met, again for a connection still being
+  // made (its signals may have been lost while the socket was down).
   async hosting(peers) {
     const listed = new Set(peers.map((p) => p.peer));
     for (const peer of [...this.watchers.keys()]) if (!listed.has(peer)) this.peerGone(peer);
-    await Promise.all(peers.filter((p) => !this.watchers.has(p.peer)).map((p) => this.peer(p.peer, p.pass)));
+    const meeting = (w) => !w || (w.conn && !w.channel);
+    await Promise.all(peers.filter((p) => meeting(this.watchers.get(p.peer))).map((p) => this.peer(p.peer, p.pass)));
   }
 
   peerGone(peer) {
@@ -177,7 +179,8 @@ export class Host {
     return true;
   }
 
-  // Brings a watcher to the current art: the changes since what it has, or else the shared snapshot.
+  // Brings a watcher to the current art: the changes since what it has, or else the shared snapshot. A
+  // snapshot that fails to pack isn't kept, and the watcher waits for the next art.
   async update(w) {
     if (!this.art || w.packing || w.behind) return;
     const at = changesFrom(w.has, this.art);
@@ -187,9 +190,17 @@ export class Host {
     }
     const art = this.art;
     if (this.packed?.art !== art) this.packed = { art, chunks: packSnapshot(art) };
+    const packed = this.packed;
+    let chunks;
     w.packing = true;
-    const chunks = await this.packed.chunks;
-    w.packing = false;
+    try {
+      chunks = await packed.chunks;
+    } catch {
+      if (this.packed === packed) this.packed = null;
+      return;
+    } finally {
+      w.packing = false;
+    }
     if (this.watchers.get(w.peer) !== w || w.channel.readyState !== 'open') return;
     if (this.sendArt(w, chunks, art) && art !== this.art) this.update(w);   // it changed while packing
   }

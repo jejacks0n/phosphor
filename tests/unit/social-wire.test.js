@@ -2,7 +2,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
-  CHUNK_BYTES, encodeCells, decodeCells, changedCells, fontOnWire, fontFor, packSnapshot, unpackSnapshot,
+  CHUNK_BYTES, MOST_SNAPSHOT_BYTES, encodeCells, decodeCells, changedCells, fontOnWire, fontFor, packSnapshot, unpackSnapshot,
 } from '../../src/social/wire.js';
 import { hex2rgb } from '../../src/lib/ColorUtils.js';
 import { DISPLAY_FONTS } from '../../src/lib/displayFonts.js';
@@ -30,6 +30,36 @@ test('decoded cells share one Color per table entry, and a color not in the tabl
   for (const bad of [2, -1, 0.5, '0', 'length', undefined]) {
     assert.throws(() => decodeCells({ colors: ['#ffffff', '#000000'], cells: [['a', 0, bad]] }));
   }
+});
+
+test('a cell from a stranger needs a string char, a wide of 1 or 2 if any, and colors that are hexes', () => {
+  const colors = ['#ffffff', '#000000'];
+  for (const char of [1, null, ['a'], { toString: () => 'a' }]) assert.throws(() => decodeCells({ colors, cells: [[char, 0, 1]] }));
+  for (const wide of [0, 3, 'constructor', '1', true]) assert.throws(() => decodeCells({ colors, cells: [['a', 0, 1, wide]] }));
+  for (const hex of [1, '#fff', 'red', { hex: '#ffffff' }, '#ffffff;x']) assert.throws(() => decodeCells({ colors: [hex], cells: [['a', 0, 0]] }));
+  assert.equal(decodeCells({ colors, cells: [['a', 0, 1, 2]] })[0].wide, 'trail');
+});
+
+const gzip = async (text) => [new Uint8Array(await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer())];
+const snapshotOf = (cols, lines, more = {}) => JSON.stringify({
+  cols, lines, font: null, colors: ['#000000'], cells: Array.from({ length: cols * lines }, () => ['a', 0, 0]), ...more,
+});
+
+test('a snapshot outside the app\'s grid limits is refused before its cells are made', async () => {
+  for (const [cols, lines] of [[0, 1], [1, 0], [301, 1], [1, 5001], [300, 1667], [1.5, 2], ['2', 2]]) {
+    await assert.rejects(unpackSnapshot(await gzip(JSON.stringify({ cols, lines, font: null, colors: [], cells: [] }))), `${cols} x ${lines}`);
+  }
+  assert.equal((await unpackSnapshot(await gzip(snapshotOf(300, 2)))).cells.length, 600);
+});
+
+test('a snapshot that inflates past MOST_SNAPSHOT_BYTES is refused without reading the rest', async () => {
+  const bomb = await gzip(snapshotOf(1, 1, { pad: ' '.repeat(MOST_SNAPSHOT_BYTES) }));
+  assert.ok(bomb.reduce((n, c) => n + c.length, 0) < CHUNK_BYTES);
+  await assert.rejects(unpackSnapshot(bomb), /too big/);
+});
+
+test('a font from a stranger that isn\'t an object is the default, not a throw', () => {
+  for (const onWire of [5, 'vga', true, [], undefined]) assert.deepEqual(fontFor(onWire), { ...DISPLAY_FONTS[0] });
 });
 
 test('changedCells finds the indexes that differ', () => {

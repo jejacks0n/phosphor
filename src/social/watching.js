@@ -1,9 +1,17 @@
 // The watcher's side of a room: the connection the host offers (peer.js), and the art put back together
 // from what comes over its channel (wire.js has the messages). The host is a stranger, so anything that
-// doesn't fit (a snapshot of the wrong size, a color or cell that isn't there) is ignored. States go to
-// onState: 'connecting', 'live', then 'failed' if it never opened or 'lost' if it closed after.
+// doesn't fit (a snapshot too big or of the wrong size, a color or cell that isn't there, a room or view
+// that isn't as the host's side sends it) is ignored. States go to onState: 'connecting', 'live', then
+// 'failed' if it never opened or 'lost' if it closed after.
 import { openPeer } from './peer.js';
-import { decodeCells, unpackSnapshot } from './wire.js';
+import { CHUNK_BYTES, MOST_SNAPSHOT_CHUNKS, decodeCells, unpackSnapshot } from './wire.js';
+
+const MOST_NAME = 60;       // a room's name (the host's name is shorter still)
+const MOST_WELCOME = 200;
+
+// A string, cut to most characters; null for anything else.
+const text = (value, most) => (typeof value === 'string' ? value.slice(0, most) : null);
+const place = (n) => Number.isInteger(n) && n >= 0;
 
 export class Watch {
   constructor({ send, config, connectWithinMs, onRoom, onArt, onView, onState }) {
@@ -60,20 +68,33 @@ export class Watch {
     if (typeof data !== 'string') {
       const snapshot = this.gathering;
       if (!snapshot) return;
+      if (data.byteLength > CHUNK_BYTES) {   // the whole snapshot goes
+        this.gathering = null;
+        return;
+      }
       snapshot.chunks.push(data);
       if (snapshot.chunks.length < snapshot.want) return;
       this.gathering = null;
-      const art = await unpackSnapshot(snapshot.chunks);
-      if (!Number.isInteger(art.cols) || !Number.isInteger(art.lines) || art.cells.length !== art.cols * art.lines) return;
-      this.art = art;
-      this.onArt(art);
+      this.art = await unpackSnapshot(snapshot.chunks);
+      this.onArt(this.art);
       return;
     }
     const msg = JSON.parse(data);
-    if (msg.t === 'room') this.onRoom({ name: msg.name, welcome: msg.welcome, host: msg.host });
-    else if (msg.t === 'view') this.onView({ col: msg.col, row: msg.row, cols: msg.cols, rows: msg.rows });
-    else if (msg.t === 'snapshot' && msg.chunks > 0) this.gathering = { want: msg.chunks, chunks: [] };
-    else if (msg.t === 'cells' && this.art) this.change(msg);
+    if (msg.t === 'room') this.room(msg);
+    else if (msg.t === 'view') this.view(msg);
+    else if (msg.t === 'snapshot') {
+      const want = msg.chunks;
+      this.gathering = Number.isInteger(want) && want >= 1 && want <= MOST_SNAPSHOT_CHUNKS ? { want, chunks: [] } : null;
+    } else if (msg.t === 'cells' && this.art) this.change(msg);
+  }
+
+  room(msg) {
+    const room = { name: text(msg.name, MOST_NAME), welcome: text(msg.welcome, MOST_WELCOME), host: text(msg.host, MOST_NAME) };
+    if (room.name !== null && room.welcome !== null && room.host !== null) this.onRoom(room);
+  }
+
+  view({ col, row, cols, rows }) {
+    if ([col, row, cols, rows].every(place)) this.onView({ col, row, cols, rows });
   }
 
   // The changed cells into a copy of the art (the art already given isn't changed).

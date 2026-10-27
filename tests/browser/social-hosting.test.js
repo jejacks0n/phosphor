@@ -5,7 +5,7 @@ import { test, expect, afterEach, vi } from 'vitest';
 import { Host } from '@/social/hosting';
 import { Watch } from '@/social/watching';
 import { openPeer } from '@/social/peer';
-import { packSnapshot } from '@/social/wire';
+import { packSnapshot, CHUNK_BYTES, MOST_SNAPSHOT_BYTES, MOST_SNAPSHOT_CHUNKS } from '@/social/wire';
 import { toBase64url } from '@/social/base64url';
 import { hex2rgb } from '@/lib/ColorUtils';
 
@@ -51,13 +51,15 @@ function watchSends() {
 }
 
 // A host and its watchers joined through the relay. `room.toHost` are the host's messages to the Room
-// other than signals; `room.offers[peer]` counts the offers that went to each watcher.
-async function room(peers = ['p1', 'p2']) {
-  const r = { toHost: [], offers: {}, watchers: [], log: {} };
+// other than signals; `room.offers[peer]` counts the offers that went to each watcher; signals for a
+// peer in `room.lost` go nowhere (the host's socket is down).
+async function room(peers = ['p1', 'p2'], { lost = [], first = art() } = {}) {
+  const r = { toHost: [], offers: {}, watchers: [], log: {}, lost: new Set(lost) };
   r.host = new Host({
     config, passKey: async () => keyB64,
     send: async (msg) => {
       if (msg.type !== 'signal-to') return r.toHost.push(msg);
+      if (r.lost.has(msg.to)) return;
       if (msg.data.sdp?.type === 'offer') r.offers[msg.to] = (r.offers[msg.to] ?? 0) + 1;
       await later();
       r.log[msg.to]?.watch.signalFrom('host', msg.data);
@@ -67,7 +69,7 @@ async function room(peers = ['p1', 'p2']) {
   toClose.push(r.host);
   for (const peer of peers) r.log[peer] = watcher(r, peer);
   r.host.setRoom({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan' });
-  r.host.setArt(art());
+  r.host.setArt(first);
   r.host.setView({ col: 1, row: 2, cols: 3, rows: 4 });
   for (const peer of peers) await r.host.peer(peer, await passFor(`u_${peer}`, peer));
   return r;
@@ -201,6 +203,38 @@ test('hosting with the same watchers keeps their connections; one not listed is 
   expect(lastList(r).map((w) => w.peer)).toEqual(['p1', 'p3']);
 });
 
+// Review focus 1: a watcher whose offer or answer was lost while the host's socket was down is met again.
+test('hosting meets again a listed watcher whose connection is still being made', async () => {
+  const r = await room(['p1', 'p2'], { lost: ['p2'] });
+  await expect.poll(() => r.log.p1.arts.length, PATIENT).toBe(1);
+  expect(r.log.p2.states).toEqual([]);
+  r.lost.clear();
+  await r.host.hosting([{ peer: 'p1', pass: await passFor('u_p1', 'p1') }, { peer: 'p2', pass: await passFor('u_p2', 'p2') }]);
+  await expect.poll(() => lastArt(r.log.p2), PATIENT).toEqual(art());
+  expect(r.offers).toEqual({ p1: 1, p2: 1 });
+  expect(r.log.p1.states).toEqual(['connecting', 'live']);
+  expect(r.toHost).toEqual([]);   // the first try at p2 closed quietly
+});
+
+test('a snapshot that fails to pack is no unhandled rejection, and the next art still goes', async () => {
+  const rejections = [];
+  const note = (e) => { rejections.push(e.reason); e.preventDefault(); };
+  window.addEventListener('unhandledrejection', note);
+  try {
+    const broken = changed(art(), []);
+    broken.cells[0] = { ...broken.cells[0], char: 1n };   // JSON can't take it
+    const r = await room(['p1'], { first: broken });
+    await expect.poll(() => r.log.p1.states.at(-1), PATIENT).toBe('live');
+    await wait(200);
+    expect(r.log.p1.arts).toEqual([]);
+    r.host.setArt(art());
+    await expect.poll(() => lastArt(r.log.p1), PATIENT).toEqual(art());
+  } finally {
+    window.removeEventListener('unhandledrejection', note);
+  }
+  expect(rejections).toEqual([]);
+});
+
 // Review focus 2: a watcher that can't keep up isn't sent more until it drains, then gets one snapshot.
 test('a channel over 8 MB buffered is skipped, and at bufferedamountlow gets one fresh snapshot', async () => {
   const sends = watchSends();
@@ -245,13 +279,14 @@ test('a watcher\'s message that isn\'t following, or is over 1 KB, is ignored', 
 });
 
 // The watcher doesn't trust the host: a test host sends it what a broken or hostile one might.
-test('a watcher ignores a snapshot of the wrong size or with unknown colors, and cells out of range', async () => {
-  const log = { arts: [], states: [] };
+async function hostileHost() {
+  const log = { arts: [], states: [], rooms: [], views: [] };
   let host;
   const watch = new Watch({
     config,
     send: async (msg) => { await later(); host.signal(msg.data); },
-    onRoom() {}, onView() {},
+    onRoom: (room) => log.rooms.push(room),
+    onView: (view) => log.views.push(view),
     onArt: (a) => log.arts.push(a),
     onState: (state) => log.states.push(state),
   });
@@ -263,9 +298,14 @@ test('a watcher ignores a snapshot of the wrong size or with unknown colors, and
   const channel = await opened;
   const json = (msg) => channel.send(JSON.stringify(msg));
   const snapshot = (chunks) => { json({ t: 'snapshot', chunks: chunks.length }); for (const c of chunks) channel.send(c); };
-  const gzip = async (value) => [new Uint8Array(await new Response(new Blob([JSON.stringify(value)]).stream()
-    .pipeThrough(new CompressionStream('gzip'))).arrayBuffer())];
+  return { log, channel, json, snapshot };
+}
+const gzip = async (value) => new Uint8Array(await new Response(new Blob([JSON.stringify(value)]).stream()
+  .pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+const noise = (bytes) => toBase64url(crypto.getRandomValues(new Uint8Array(bytes)));   // doesn't compress
 
+test('a watcher ignores a snapshot of the wrong size or with unknown colors, and cells out of range', async () => {
+  const { log, json, snapshot } = await hostileHost();
   json({ t: 'cells', at: [0], colors: ['#ffffff'], cells: [['x', 0, 0]] });   // before any snapshot
   const good = art();
   snapshot(await packSnapshot(good));
@@ -273,7 +313,7 @@ test('a watcher ignores a snapshot of the wrong size or with unknown colors, and
   expect(log.arts[0]).toEqual(good);
 
   snapshot(await packSnapshot({ ...good, cells: good.cells.slice(1) }));
-  snapshot(await gzip({ cols: 1, lines: 1, font: null, colors: ['#000000'], cells: [['a', 0, 3]] }));
+  snapshot([await gzip({ cols: 1, lines: 1, font: null, colors: ['#000000'], cells: [['a', 0, 3]] })]);
   json({ t: 'cells', at: [COLS * LINES], colors: ['#ffffff'], cells: [['x', 0, 0]] });
   json({ t: 'cells', at: [-1], colors: ['#ffffff'], cells: [['x', 0, 0]] });
   json({ t: 'cells', at: [0], colors: ['#ffffff'], cells: [['x', 0, 1]] });
@@ -286,4 +326,39 @@ test('a watcher ignores a snapshot of the wrong size or with unknown colors, and
   expect(log.arts[0]).toEqual(good);   // a copy changed, not the art already given
   await wait(100);
   expect(log.arts.length).toBe(2);
+});
+
+test('a watcher ignores a grid past the app\'s limits, a snapshot that inflates too far, too many or too big chunks', async () => {
+  const { log, json, snapshot } = await hostileHost();
+  const tiny = { cols: 1, lines: 1, font: null, colors: ['#000000'], cells: [['a', 0, 0]] };
+  snapshot([await gzip({ ...tiny, cols: 301, cells: Array(301).fill(['a', 0, 0]) })]);
+  snapshot([await gzip({ ...tiny, pad: ' '.repeat(MOST_SNAPSHOT_BYTES) })]);
+  const big = await gzip({ ...tiny, pad: noise(CHUNK_BYTES) });
+  expect(big.length).toBeGreaterThan(CHUNK_BYTES);
+  snapshot([big]);
+  const split = async (pieces) => {   // a good snapshot, cut into this many pieces
+    const bytes = await gzip({ ...tiny, pad: noise(MOST_SNAPSHOT_CHUNKS * 2) });
+    const size = Math.ceil(bytes.length / pieces);
+    return Array.from({ length: pieces }, (_, i) => bytes.subarray(i * size, (i + 1) * size));
+  };
+  snapshot(await split(MOST_SNAPSHOT_CHUNKS + 1));
+  json({ t: 'cells', at: [0], colors: ['#ffffff'], cells: [['x', 0, 0]] });
+  await wait(300);
+  expect(log.arts).toEqual([]);
+  snapshot(await split(MOST_SNAPSHOT_CHUNKS));
+  await expect.poll(() => log.arts.length, PATIENT).toBe(1);
+  expect(log.arts[0].cells).toEqual([{ char: 'a', fg: color('#000000'), bg: color('#000000') }]);
+}, 30_000);
+
+test('a watcher ignores a room or a view that doesn\'t fit, and cuts a long name and welcome', async () => {
+  const { log, json } = await hostileHost();
+  json({ t: 'room', name: 5, welcome: 'Hi', host: 'ansi-fan' });
+  json({ t: 'room', name: 'Night', welcome: { a: 1 }, host: 'ansi-fan' });
+  json({ t: 'room', name: 'Night', welcome: 'Hi', host: null });
+  for (const bad of [{ col: -1 }, { col: 1.5 }, { col: '1' }, { rows: null }, { cols: [8] }]) json({ t: 'view', col: 0, row: 0, cols: 8, rows: 2, ...bad });
+  json({ t: 'room', name: 'n'.repeat(100), welcome: 'w'.repeat(300), host: 'ansi-fan' });
+  json({ t: 'view', col: 0, row: 3, cols: 8, rows: 2 });
+  await expect.poll(() => log.views.length, PATIENT).toBe(1);
+  expect(log.rooms).toEqual([{ name: 'n'.repeat(60), welcome: 'w'.repeat(200), host: 'ansi-fan' }]);
+  expect(log.views).toEqual([{ col: 0, row: 3, cols: 8, rows: 2 }]);
 });

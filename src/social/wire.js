@@ -15,11 +15,17 @@
  */
 import { hex2rgb } from '../lib/ColorUtils.js';
 import { DISPLAY_FONTS } from '../lib/displayFonts.js';
+import { MAX_COLS, MAX_LINES, MAX_CELLS } from '../lib/Cells.js';
 
 export const CHUNK_BYTES = 65536;
+// The most a snapshot may be, for a watcher that doesn't trust its host. The biggest document at its
+// worst (500,000 cells, every color different, wide characters) is 20 MB of JSON, 4.5 MB gzipped.
+export const MOST_SNAPSHOT_BYTES = 32 * 1024 * 1024;   // unzipped
+export const MOST_SNAPSHOT_CHUNKS = (16 * 1024 * 1024) / CHUNK_BYTES;   // zipped: 256
 
 const WIDE = { lead: 1, trail: 2 };
 const WIDE_NAMES = [undefined, 'lead', 'trail'];
+const HEX = /^#[0-9a-f]{6}$/i;
 
 // The host's displayFontSpec as sent: null for a font loaded from the host's computer.
 export const fontOnWire = (spec) => DISPLAY_FONTS.some((f) => f.id === spec.id) ? { id: spec.id, size: spec.size } : null;
@@ -49,16 +55,25 @@ export function encodeCells(cells) {
 }
 
 // One Color per entry in the table, shared by the cells of that color as the renderer's are (a Color is
-// never changed in place). Throws on a color index that isn't in the table.
+// never changed in place). They come from a stranger, so anything that isn't as encodeCells makes it (a
+// color that isn't a hex, an index that isn't in the table, a char that isn't a string, a wide half that
+// isn't 1 or 2) throws.
 export function decodeCells({ colors, cells }) {
-  const palette = colors.map((hex) => ({ ...hex2rgb(hex), hex }));
+  const palette = colors.map((hex) => {
+    if (typeof hex !== 'string' || !HEX.test(hex)) throw new Error('Not a color');
+    return { ...hex2rgb(hex), hex };
+  });
   const colorAt = (i) => {
     if (!(Number.isInteger(i) && i >= 0 && i < palette.length)) throw new Error('No such color');
     return palette[i];
   };
   return cells.map(([char, fg, bg, wide]) => {
+    if (typeof char !== 'string') throw new Error('Not a character');
     const cell = { char, fg: colorAt(fg), bg: colorAt(bg) };
-    if (wide) cell.wide = WIDE_NAMES[wide];
+    if (wide !== undefined) {
+      if (wide !== 1 && wide !== 2) throw new Error('Not a wide half');
+      cell.wide = WIDE_NAMES[wide];
+    }
     return cell;
   });
 }
@@ -91,8 +106,25 @@ export async function packSnapshot({ cols, lines, font, cells }) {
   return chunks;
 }
 
+// A grid the app could have made: within its limits, and the cells to fill it.
+const fits = (cols, lines, cells) => Number.isInteger(cols) && Number.isInteger(lines) && cols >= 1 && lines >= 1
+  && cols <= MAX_COLS && lines <= MAX_LINES && cols * lines <= MAX_CELLS && Array.isArray(cells) && cells.length === cols * lines;
+
+// The document again. Throws for anything a host's packSnapshot wouldn't make: unzipped past
+// MOST_SNAPSHOT_BYTES (it stops reading there), or a grid that doesn't fit, before any cell is made.
 export async function unpackSnapshot(chunks) {
-  const text = await new Response(new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip'))).text();
-  const { cols, lines, font, colors, cells } = JSON.parse(text);
+  const reader = new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
+  const parts = [];
+  let size = 0;
+  for (let read = await reader.read(); !read.done; read = await reader.read()) {
+    size += read.value.length;
+    if (size > MOST_SNAPSHOT_BYTES) {
+      reader.cancel();
+      throw new Error('Snapshot too big');
+    }
+    parts.push(read.value);
+  }
+  const { cols, lines, font, colors, cells } = JSON.parse(await new Blob(parts).text());
+  if (!fits(cols, lines, cells)) throw new Error('Snapshot doesn\'t fit the grid');
   return { cols, lines, font, cells: decodeCells({ colors, cells }) };
 }
