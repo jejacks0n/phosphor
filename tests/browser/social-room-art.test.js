@@ -71,3 +71,9 @@ test('only a key that scrolls is looking around: not Tab, and not a modifier on 
   for (const key of scrolling) scroll.dispatchEvent(new KeyboardEvent('keydown', { key }));
   expect(seen.lookArounds).toBe(scrolling.length);
 });
+
+test('the art is a region named for screen readers', async () => {
+  await createTestApp();
+  const { scroll } = mount();
+  expect([scroll.getAttribute('role'), scroll.getAttribute('aria-label')]).toEqual(['region', 'The room\'s art']);
+});

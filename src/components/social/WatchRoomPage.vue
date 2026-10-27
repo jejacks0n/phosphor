@@ -40,7 +40,7 @@ const lookAround = () => { if (room.following) room.setFollowing(false); };
       <h2 ref="heading" tabindex="-1">{{ name ?? said }}</h2>
       <span v-if="host" class="host">hosted by {{ host }}</span>
       <div class="buttons">
-        <button v-if="room.art" @click="room.setFollowing(!room.following)">{{ room.following ? 'Following' : `Follow ${host}` }}</button>
+        <button v-if="room.art" :aria-pressed="room.following" @click="room.setFollowing(!room.following)">{{ room.following ? 'Following' : `Follow ${host}` }}</button>
         <button @click="room.leave()">Leave</button>
       </div>
     </header>

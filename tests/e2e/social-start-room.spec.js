@@ -86,6 +86,7 @@ test('going live with a public room: the POST, the host\'s page with its link, t
 test('a room name of only spaces isn\'t sent', async ({ page }) => {
   const { server } = await startPage(page);
   const name = page.getByRole('textbox', { name: 'Room name' });
+  await expect(name).toHaveAttribute('title', 'Use at least one character that isn\'t a space');   // the browser shows it with "match the format"
   await name.fill('   ');
   await page.getByRole('button', { name: 'Go live' }).click();
   await expect(name).toBeFocused();   // the browser's own "match the format"

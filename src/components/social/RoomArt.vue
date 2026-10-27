@@ -137,6 +137,7 @@ onBeforeUnmount(() => {
       ref="scroll"
       class="room-art"
       tabindex="0"
+      role="region"
       aria-label="The room's art"
       @wheel.passive="lookAround"
       @keydown="keyDown"

@@ -44,7 +44,7 @@ const goLive = () => room.startRoom({
 
     <aside class="side">
       <form @submit.prevent="goLive">
-        <label>Room name <input v-model="name" maxlength="60" pattern=".*\S.*" required></label>
+        <label>Room name <input v-model="name" maxlength="60" pattern=".*\S.*" title="Use at least one character that isn't a space" required></label>
         <label>Welcome message <textarea v-model="welcome" maxlength="200" rows="3" :aria-describedby="`${id}-count`"></textarea></label>
         <p :id="`${id}-count`" class="help count">{{ welcome.length }}/200</p>
         <fieldset>

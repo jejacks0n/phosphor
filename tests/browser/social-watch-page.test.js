@@ -64,3 +64,14 @@ test('the art is dimmed while waiting for the host, not while live', async () =>
   await nextTick();
   expect(getComputedStyle(area).opacity).toBe('0.5');
 });
+
+test('Following is a toggle: aria-pressed says whether it\'s on', async () => {
+  const white = { hex: '#ffffff', r: 255, g: 255, b: 255 };
+  const art = { cols: 1, lines: 1, font: null, cells: [{ char: 'A', fg: white, bg: white }] };
+  const { room } = await mount({ status: 'live', room: { name: 'neon harbor', welcome: '', host: 'ansi-fan' }, art });
+  const toggle = () => [...host.querySelectorAll('button')].find((b) => b.textContent.startsWith('Follow'));
+  expect([toggle().textContent, toggle().getAttribute('aria-pressed')]).toEqual(['Following', 'true']);
+  room.following = false;
+  await nextTick();
+  expect([toggle().textContent, toggle().getAttribute('aria-pressed')]).toEqual(['Follow ansi-fan', 'false']);
+});
