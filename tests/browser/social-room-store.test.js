@@ -422,7 +422,9 @@ const thumbnails = (socket) => socket.sent.filter((m) => m.type === 'thumbnail')
 test('A public room sends one thumbnail soon after going live, then one only after a change once 3 minutes have passed', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   const socket = await goLive();
-  await vi.advanceTimersByTimeAsync(10_000);
+  await vi.advanceTimersByTimeAsync(2500);         // soon is about 3 seconds
+  expect(thumbnails(socket)).toEqual([]);
+  await vi.advanceTimersByTimeAsync(1500);
   expect(thumbnails(socket)).toEqual([{ type: 'thumbnail', webp: 'AAAA' }]);
   expect(thumbnailOf).toHaveBeenLastCalledWith(
     expect.objectContaining({ cols: 8, lines: 4, cells: project.cells, font: expect.objectContaining({ id: 'jetbrains', size: 17 }) }),
@@ -480,4 +482,40 @@ test('Ending a public room before its first thumbnail sends none', async () => {
   room.leave();
   await vi.advanceTimersByTimeAsync(10 * 60_000);
   expect(thumbnails(socket)).toEqual([]);
+});
+
+test('A picture that finishes encoding after the room ended sends nothing', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  let finish;
+  vi.mocked(thumbnailOf).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  const socket = await goLive();
+  await vi.advanceTimersByTimeAsync(4000);
+  expect(thumbnailOf).toHaveBeenCalledTimes(1);
+  room.leave();
+  finish('AAAA');
+  await vi.advanceTimersByTimeAsync(10 * 60_000);
+  expect(thumbnails(socket)).toEqual([]);
+  expect(thumbnailOf).toHaveBeenCalledTimes(1);   // and no retry was scheduled
+});
+
+test('A picture that fails to make is a picture the browser couldn\'t make: nothing is sent and the room carries on', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.mocked(thumbnailOf).mockRejectedValueOnce(new Error('no encoder'));
+  const unhandled = vi.fn();
+  addEventListener('unhandledrejection', unhandled);
+  const socket = await goLive();
+  await vi.advanceTimersByTimeAsync(4000);
+  expect(thumbnailOf).toHaveBeenCalledTimes(1);
+  expect(warn).toHaveBeenCalled();
+  expect(thumbnails(socket)).toEqual([]);
+  await vi.advanceTimersByTimeAsync(10);
+  removeEventListener('unhandledrejection', unhandled);
+  expect(unhandled).not.toHaveBeenCalled();
+
+  project.editCell(2, 1, { char: '#' });           // the next change tries again, 3 minutes on
+  project.commitEdit();
+  await vi.advanceTimersByTimeAsync(3 * 60_000 + 1000);
+  expect(thumbnails(socket)).toHaveLength(1);
+  expect(room.status).toBe('live');
 });

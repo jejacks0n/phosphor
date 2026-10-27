@@ -94,7 +94,12 @@ export const useRoomStore = defineStore('room', {
         pictureAt = Date.now();
         const art = artNow(), connection = this._connection;
         if (art.cells.length !== art.cols * art.lines) return changed();
-        const webp = await thumbnailOf({ ...art, font: fontFor(art.font) }, { ...workspace.ansiViewOrigin, ...workspace.ansiViewSize });
+        let webp = null;
+        try {
+          webp = await thumbnailOf({ ...art, font: fontFor(art.font) }, { ...workspace.ansiViewOrigin, ...workspace.ansiViewSize });
+        } catch (error) {
+          console.warn('The room\'s lobby picture failed.', error);   // as if the browser couldn't make one
+        }
         if (webp && connection === this._connection && !connection.send({ type: 'thumbnail', webp })) changed();   // not while reconnecting
       };
       const changed = () => {
