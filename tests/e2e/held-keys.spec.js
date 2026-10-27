@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, editAt, chars } from './support.js';
 
 // Held keys: Alt (Option) swaps a drawing tool for the color picker, Alt+Shift picks the background,

@@ -1,6 +1,19 @@
 // The e2e flows' helpers: open the app with an image loaded through its file input, and read the
 // stores (for assertions only; actions go through the UI).
 import { fileURLToPath } from 'node:url';
+import { test as base } from '@playwright/test';
+
+export { expect } from '@playwright/test';
+
+// Every spec's test: the SOCIAL server (localhost:8787, the API and the lobby's socket) is cut off
+// unless the spec installs fakeServer (social-support.js), whose routes, added later, come first.
+export const test = base.extend({
+  page: async ({ page }, use) => {
+    await page.route('http://localhost:8787/**', (route) => route.abort());
+    await page.routeWebSocket('ws://localhost:8787/**', (ws) => ws.close());
+    await use(page);
+  },
+});
 
 export const fixture = (path) => fileURLToPath(new URL(`../fixtures/${path}`, import.meta.url));
 

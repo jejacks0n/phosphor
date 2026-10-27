@@ -1,18 +1,64 @@
 // The SOCIAL tab: a fourth editor tab, desktop only, where the editor's shortcuts are off.
-import { test, expect } from '@playwright/test';
-import { openApp, tab, store, cellPoint, drag, imageInput } from './support.js';
+import { test, expect, openApp, tab, store, cellPoint, drag, imageInput } from './support.js';
 import { fakeServer } from './social-support.js';
 
-test('the SOCIAL tab is there before any image, and opens the lobby', async ({ page }) => {
+test('the SOCIAL tab is there before any image; the lobby connects when it\'s first shown', async ({ page }) => {
   const server = await fakeServer(page);
   await page.goto('/');
   await expect(tab(page, 'SOCIAL')).toBeEnabled();
+  await expect.poll(() => store(page, 'social', (s) => s.supported)).toBe(true); // start() is done
+  expect(server.sent('GET', '/api/me')).toHaveLength(1);
+  expect(server.sent('POST', '/api/pass')).toHaveLength(0); // no lobby yet
+  expect(await store(page, 'social', (s) => s.lobbyStatus)).toBe(null);
+
   await tab(page, 'SOCIAL').click();
   await expect(tab(page, 'SOCIAL')).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.social-tab [data-page="lobby"]')).toBeVisible();
   await expect(imageInput(page)).toHaveCount(0); // no start screen
   await expect.poll(() => server.lobby.received.map((m) => m.type)).toEqual(['hello']);
   expect(await store(page, 'social', (s) => s.lobbyStatus)).toBe('live');
+
+  await tab(page, 'PIXEL').click(); // and it stays connected
+  await tab(page, 'SOCIAL').click();
+  expect(server.lobby.received.map((m) => m.type)).toEqual(['hello']);
+});
+
+test('a link back from the server (?reset=, ?verified=1, ?social=) opens the SOCIAL tab, on desktops', async ({ page }) => {
+  await fakeServer(page);
+  await page.goto('/?reset=tok');
+  await expect(tab(page, 'SOCIAL')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.social-tab [data-page="reset"]')).toBeVisible();
+  expect(new URL(page.url()).search).toBe('');
+
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.goto('/?verified=1');
+  await expect(tab(page, 'PIXEL')).toHaveAttribute('aria-selected', 'true');
+  expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('input');
+});
+
+test('a file dropped on the SOCIAL tab is ignored, not opened by the browser', async ({ page }) => {
+  await fakeServer(page);
+  await page.goto('/');
+  await tab(page, 'SOCIAL').click();
+  const prevented = await page.locator('.social-tab').evaluate((el) => ['dragover', 'drop'].map((type) => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(new File(['x'], 'art.png', { type: 'image/png' }));
+    const event = new DragEvent(type, { dataTransfer, bubbles: true, cancelable: true });
+    el.dispatchEvent(event);
+    return event.defaultPrevented;
+  }));
+  expect(prevented).toEqual([true, true]);
+  expect(await store(page, 'project', (p) => p.image)).toBe(null);
+});
+
+// The e2e default (support.js): with no fakeServer, the SOCIAL server's requests are aborted rather
+// than sent to whatever answers on localhost:8787.
+test('without a fake server, nothing reaches localhost:8787', async ({ page }) => {
+  const failed = page.waitForEvent('requestfailed', (r) => r.url() === 'http://localhost:8787/api/me');
+  await page.goto('/');
+  expect((await failed).failure().errorText).toBe('net::ERR_FAILED'); // aborted, not ERR_CONNECTION_REFUSED
+  await tab(page, 'SOCIAL').click();
+  await expect.poll(() => store(page, 'social', (s) => s.lobbyStatus)).toBe('reconnecting');
 });
 
 test('the tablist\'s arrow keys reach SOCIAL', async ({ page }) => {
@@ -42,7 +88,7 @@ test('narrow screens have no SOCIAL tab; narrowing while on it lands on PIXEL', 
 });
 
 // Review focus 5: typing in a SOCIAL field (a username, a password) never reaches the art behind the tab.
-test('on the SOCIAL tab, letters, Space and Ctrl+Z leave the art and its tools alone', async ({ page }) => {
+test('on the SOCIAL tab, letters, X, Space and Ctrl+Z leave the art and its tools alone', async ({ page }) => {
   await fakeServer(page);
   await openApp(page);
   await page.getByRole('button', { name: 'Pencil (1px)' }).click();
@@ -63,6 +109,10 @@ test('on the SOCIAL tab, letters, Space and Ctrl+Z leave the art and its tools a
 
   await field.blur(); // out of the field too
   await page.keyboard.press('b');
+  const colors = (w) => [w.editFgColor, w.editBgColor];
+  const before = await store(page, 'workspace', colors);
+  await page.keyboard.press('x');
+  expect(await store(page, 'workspace', colors)).toEqual(before); // no swap
   await page.keyboard.down('Space');
   expect(await store(page, 'workspace', (w) => w.heldTool)).toBe(null); // no pan
   await page.keyboard.up('Space');

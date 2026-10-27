@@ -15,15 +15,23 @@ export const member = (fields = {}) => ({
 // fakeServer(page, { me, rooms, people, 'POST /api/...': (body) => [status, reply] }). `me` null is
 // signed out (a guest's pass). Routes answer [status, body]; server.route(key, answer) changes one
 // later. server.requests has every API call ({ method, path, body }); server.lobby.received every
-// message the app sent on the lobby socket; server.lobby.send(msg) pushes one, drop() closes it.
+// message the app sent on the lobby socket; server.lobby.send(msg) pushes one, drop() closes it (both
+// throw until the app has connected: the SOCIAL tab shown, and again after a drop).
 export async function fakeServer(page, { me = null, rooms = [], people = [], ...overrides } = {}) {
   let socket = null;
+  const connected = () => {
+    if (!socket) throw new Error('The lobby is not connected: show the SOCIAL tab and wait for its hello first');
+    return socket;
+  };
   const server = {
     me, rooms, people, requests: [],
     lobby: {
       received: [],
-      send: (msg) => socket.send(JSON.stringify(msg)),
-      drop: () => socket.close(),
+      send: (msg) => connected().send(JSON.stringify(msg)),
+      drop: () => {
+        connected().close();
+        socket = null;
+      },
     },
     route: (key, answer) => { routes[key] = answer; },
     sent: (method, path) => server.requests.filter((r) => r.method === method && r.path === path),

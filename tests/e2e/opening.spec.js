@@ -1,5 +1,5 @@
 // Opening files over open work, upper-case project names, and two tabs open at once.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { readFile } from 'node:fs/promises';
 import { openApp, store, settled, editAt, fixture, imageInput } from './support.js';
 

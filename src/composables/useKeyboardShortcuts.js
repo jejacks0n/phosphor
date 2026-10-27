@@ -69,7 +69,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return false;
   };
 
-  // X swaps the color pair, unless something is taking text (a field, or the Text tool).
+  // X swaps the color pair while the art is showing, unless something is taking text (a field, or the
+  // Text tool).
   // Colors, Moebius-style: Alt+F (or Alt+A) opens the color box on the foreground, Alt+B on the
   // background (from a drawing tool too: the held eyedropper gives way), and Shift+Cmd/Ctrl+X swaps
   // the two. Not in a real field (they type there); in Edit Mode they work while typing.
@@ -102,7 +103,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
   const _handleSwapColors = (e) => {
     if (e.key.toLowerCase() !== 'x' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
-    if (isField(e.target) || workspaceStore.activeTool === 'text') return false; // in Edit Mode, X types
+    if (isField(e.target) || !workspaceStore.editMode || workspaceStore.activeTool === 'text') return false; // in Edit Mode, X types
     workspaceStore.swapColors();
     return true;
   };

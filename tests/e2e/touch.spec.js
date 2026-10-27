@@ -1,6 +1,6 @@
 // Touch: one finger draws with the active tool, after a short delay so a pinch can begin first; two
 // fingers pinch-zoom and leave no mark.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, tab, settled } from './support.js';
 
 test.use({ hasTouch: true });

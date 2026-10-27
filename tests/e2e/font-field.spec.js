@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, fixture, tab, editAt, settled, screenPixels } from './support.js';
 
 // The grid's CSS width (the canvas view's sizer): 2px borders on each side of its cells.

@@ -62,10 +62,13 @@ test('a wide character takes two columns; the last column refuses it', async () 
 
 Playwright against `npm run build` served by `vite preview`. Act through the UI only (roles, labels,
 the mouse and keyboard); read the stores with `store(page, 'project', (p) => ...)` to check the result.
+Take `test` and `expect` from `./support.js` (lint insists): its `test` cuts the page off from the
+SOCIAL server, so no spec reaches the network; a SOCIAL spec fakes it with `fakeServer` from
+`./social-support.js`.
 From `tests/e2e/edit-drag-select.spec.js`:
 
 ```js
-import { openApp, store, cellPoint, drag } from './support.js';
+import { test, expect, openApp, store, cellPoint, drag } from './support.js';
 
 test('a drag in Edit Mode becomes a Select selection', async ({ page }) => {
   await openApp(page);

@@ -1,7 +1,7 @@
 // The Apple Pencil: iPad Safari sends a pen's pointer events and, alongside them, touch events whose
 // touches are styluses (touchType 'stylus'). The pen is the pointer; its touches must not start the
 // stroke a second time. A tap that wobbles a little still places the Edit Mode cursor.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint } from './support.js';
 
 test.use({ hasTouch: true });

@@ -1,5 +1,5 @@
 // Ctrl+wheel (and a trackpad pinch, which arrives as one) zooms the PIXEL view around the pointer.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, tab, settled } from './support.js';
 
 const zoom = (page) => store(page, 'workspace', (w) => w.editZoom);

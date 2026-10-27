@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia';
 import { markRaw, shallowRef } from 'vue';
 import { api } from '@/social/api';
-import { apiOrigin, wsOrigin, appOrigin } from '@/social/config';
+import { apiOrigin, wsOrigin, appOrigin, desktopQuery } from '@/social/config';
 import { messageFor } from '@/social/messages';
 import { ed25519Supported, loadKey } from '@/social/keys';
 import { requestPass, renewAt } from '@/social/pass';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection, Pacer } from '@/social/lobby';
 
 const SIGNAL_EVERY_MS = 2000;
@@ -24,7 +25,8 @@ const withToken = (turnstileToken) => (turnstileToken ? { 'x-turnstile-token': t
 
 // The SOCIAL tab: you (/api/me), your pass, the lobby and the page shown, and every account action
 // against the server. One lobby connection at a time; a new pass (signing in or out, a rename) means a
-// new connection, while a renewed pass waits for the next hello and leaves the live one alone.
+// new connection, while a renewed pass waits for the next hello and leaves the live one alone. The lobby
+// connects the first time the tab is shown (showLobby), so a visitor who never opens it isn't in it.
 export const useSocialStore = defineStore('social', {
   state: () => ({
     supported: null,     // null until checked: false when this browser can't do Ed25519 or IndexedDB
@@ -41,6 +43,7 @@ export const useSocialStore = defineStore('social', {
     busy: false,
     joining: null,       // the room openRoom was asked for (the rooms plan fills this in)
     started: false,
+    lobbyWanted: false,  // the SOCIAL tab has been shown
     _key: null,          // the browser's key (markRaw)
     _connection: null,   // LobbyConnection (markRaw)
     _pacer: null,        // Pacer for the signal (markRaw)
@@ -63,13 +66,21 @@ export const useSocialStore = defineStore('social', {
       if (this.started) return;
       this.started = true;
       this.readReturn(location);
-      this.supported = await ed25519Supported() && await loadKey().then(
+      const supported = await ed25519Supported() && await loadKey().then(
         (key) => { this._key = markRaw(key); return true; },
         () => false,   // no IndexedDB (a private window in some browsers): the same plain message
       );
-      if (!this.supported) return;
-      await this.refreshMe();
-      if (this.me?.needsOnboarding) this.page = 'onboarding';
+      if (supported) {
+        await this.refreshMe();
+        if (this.me?.needsOnboarding) this.page = 'onboarding';
+      }
+      this.supported = supported;   // set once you're known, so a lobby asked for meanwhile connects now
+      this.connectLobby();
+    },
+
+    // The SOCIAL tab is showing: the lobby connects (once start() is done), and stays connected.
+    showLobby() {
+      this.lobbyWanted = true;
       this.connectLobby();
     },
 
@@ -85,6 +96,7 @@ export const useSocialStore = defineStore('social', {
         this.notice = error === 'EMAIL_NOT_VERIFIED' ? 'Confirm your email with Discord or GitHub first' : messageFor(error);
       }
       if (!RETURN_PARAMS.some((name) => params.has(name))) return;
+      if (matchMedia(desktopQuery).matches) useWorkspaceStore().editorTab = 'social';   // back to where you were
       [...RETURN_PARAMS, 'error'].forEach((name) => params.delete(name));
       history.replaceState(history.state, '', url.pathname + url.search + url.hash);
     },
@@ -304,7 +316,7 @@ export const useSocialStore = defineStore('social', {
     },
 
     connectLobby() {
-      if (!this.supported || this._connection) return;
+      if (!this.supported || !this.lobbyWanted || this._connection) return;
       this._pacer ??= markRaw(new Pacer(SIGNAL_EVERY_MS, (signal) => this._connection?.send({ type: 'signal', signal }) ?? false));
       this._connection = markRaw(new LobbyConnection({
         url: wsOrigin(apiOrigin()) + '/api/lobby',

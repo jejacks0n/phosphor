@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, tab, cellPoint, screenPixel, settled } from './support.js';
 
 // The ANSI view draws only the cells in view, plus a margin, so a long piece is drawn sharp to its

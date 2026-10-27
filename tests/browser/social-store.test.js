@@ -132,7 +132,10 @@ test('start with no session gets a guest pass and says hello with it; the state 
   expect(social.me).toBe(null);
   expect(social.signedIn).toBe(false);
   expect(social.page).toBe('lobby');
+  expect(sockets).toHaveLength(0);   // no lobby until the SOCIAL tab is shown
+  expect(server.sent('POST', '/api/pass')).toHaveLength(0);
 
+  social.showLobby();
   const socket = await lastSocket(1);
   expect(socket.url).toMatch(/^ws:\/\/.+\/api\/lobby$/);
   const hello = await goLive(socket, { rooms: [room('quiet'), room('busy', 5)], people: [] });
@@ -145,7 +148,19 @@ test('start with no session gets a guest pass and says hello with it; the state 
   expect(social.rooms.map((r) => r.id)).toEqual(['busy', 'quiet']);
 
   await social.start(at(''));   // once
+  social.showLobby();
   expect(sockets).toHaveLength(1);
+});
+
+test('The lobby asked for while start() is still finding out who you are connects once it has', async () => {
+  const server = fakeServer();
+  const starting = social.start(at(''));
+  social.showLobby();
+  expect(sockets).toHaveLength(0);
+  await starting;
+  expect(server.sent('GET', '/api/me')).toHaveLength(1);
+  await goLive(await lastSocket(1));
+  expect(social.lobbyStatus).toBe('live');
 });
 
 test('A browser without Ed25519, or without IndexedDB, is unsupported, and nothing is asked of the server', async () => {
@@ -161,6 +176,7 @@ test('?verified=1 says the email is confirmed and leaves the URL without it, kee
   fakeServer();
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
   await social.start(at('?room=abc&verified=1'));
+  social.showLobby();
   expect(social.notice).toBe('Your email is confirmed');
   expect(replaceState).toHaveBeenCalledTimes(1);
   expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?room=abc`);
@@ -171,6 +187,7 @@ test('?reset=<token> opens the reset page; resetPassword sends the token and lan
   server.route('POST /api/auth/reset-password', () => [200, { status: true }]);
   vi.spyOn(history, 'replaceState').mockImplementation(() => {});
   await social.start(at('?reset=abc'));
+  social.showLobby();
   expect(social.page).toBe('reset');
   expect(social.resetToken).toBe('abc');
 
@@ -186,6 +203,7 @@ test('An OAuth return: ?social=error with EMAIL_NOT_VERIFIED says so in words', 
   fakeServer();
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
   await social.start(at('?social=error&error=EMAIL_NOT_VERIFIED'));
+  social.showLobby();
   expect(social.notice).toBe('Confirm your email with Discord or GitHub first');
   expect(replaceState.mock.calls[0][2]).toBe(window.location.pathname);
 });
@@ -198,6 +216,7 @@ test('A Discord-made account without a username opens onboarding and stays out o
     return [200, server.session];
   });
   await social.start(at('?social=signed-in'));
+  social.showLobby();
   expect(social.page).toBe('onboarding');
   expect(social.signedIn).toBe(false);
   (await lastSocket(1)).accept();
@@ -215,6 +234,7 @@ test('A Discord-made account without a username opens onboarding and stays out o
 test('signIn picks the username or email endpoint; a wrong password, or a suspended account, shows the server\'s words', async () => {
   const server = fakeServer();
   await social.start(at(''));
+  social.showLobby();
   server.route('POST /api/auth/sign-in/email', () => [403, { code: 'BANNED_USER', message: 'You have been banned from this application' }]);
   expect(await social.signIn('banned@example.com', 'right-password')).toBe(false);
   expect(social.notice).toBe('This account is suspended');
@@ -236,6 +256,7 @@ test('signIn picks the username or email endpoint; a wrong password, or a suspen
 test('Review focus 4: signing in with the lobby open reconnects with a member pass; signing out reconnects as a guest', async () => {
   const server = fakeServer();
   await social.start(at(''));
+  social.showLobby();
   const guestSocket = await lastSocket(1);
   await goLive(guestSocket, { rooms: [room('r1')], people: [] });
   expect(social.isGuest).toBe(true);
@@ -266,6 +287,7 @@ test('Review focus 3: at renewAt a guest renews with its previous pass and a pro
   const key = await loadKey();
   server.passTtlMs = 5 * 60_000 + 300;   // renewAt is 5 minutes before expiry: 300 ms from now
   await social.start(at(''));
+  social.showLobby();
   const socket = await lastSocket(1);
   await goLive(socket);
   const first = social.pass;
@@ -293,6 +315,7 @@ test('A member\'s renewal names no previous pass', async () => {
   server.session = member();
   server.passTtlMs = 5 * 60_000 + 300;
   await social.start(at(''));
+  social.showLobby();
   await goLive(await lastSocket(1));
   server.passTtlMs = 3_600_000;
   await vi.waitFor(() => expect(server.sent('POST', '/api/pass')).toHaveLength(2));
@@ -303,6 +326,7 @@ test('A guest pass still on its way when you sign in is dropped, not used', asyn
   const server = fakeServer();
   let release;
   await social.start(at(''));
+  social.showLobby();
   const held = new Promise((resolve) => { release = resolve; });
   const passRoute = server.routeOf('POST /api/pass');
   server.route('POST /api/pass', async (body) => {
@@ -327,6 +351,7 @@ test('After a disconnect, connecting again re-arms the renewal of the pass it st
   const server = fakeServer();
   server.passTtlMs = 5 * 60_000 + 600;
   await social.start(at(''));
+  social.showLobby();
   await goLive(await lastSocket(1));
   server.passTtlMs = 3_600_000;
   social.disconnectLobby();
@@ -341,6 +366,7 @@ test('A renewal that comes back after a disconnect is ignored and arms no timer'
   const server = fakeServer();
   server.passTtlMs = 5 * 60_000 + 300;
   await social.start(at(''));
+  social.showLobby();
   await goLive(await lastSocket(1));
   const first = social.pass;
   let release;
@@ -363,6 +389,7 @@ test('A renewal that fails for a passing reason is tried again 30 s later', asyn
   const server = fakeServer();
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   await social.start(at(''));
+  social.showLobby();
   await goLive(await lastSocket(1));
   const first = social.pass;
   const passRoute = server.routeOf('POST /api/pass');
@@ -385,6 +412,7 @@ test('A member whose renewal comes back as a guest pass (the session ended) is s
   server.session = member();
   server.passTtlMs = 5 * 60_000 + 300;
   await social.start(at(''));
+  social.showLobby();
   await goLive(await lastSocket(1));
   social.setSignal('chat');
   server.passTtlMs = 3_600_000;
@@ -401,6 +429,7 @@ test('SUSPENDED shows its notice, with the date or for good, and the lobby doesn
   const until = Date.UTC(2027, 0, 15, 12);
   server.suspended = { until };
   await social.start(at(''));
+  social.showLobby();
   expect(social.notice).toBe(messageFor('SUSPENDED', { until }));
   expect(social.notice).toMatch(/^This account is suspended until /);
   expect(social.me).toBe(null);
@@ -418,6 +447,7 @@ test('setSignal is for members: it shows at once, and is sent at most once per 2
   const server = fakeServer();
   server.session = member();
   await social.start(at(''));
+  social.showLobby();
   const socket = await lastSocket(1);
   await goLive(socket);
 
@@ -449,6 +479,7 @@ test('setSignal is for members: it shows at once, and is sent at most once per 2
 test('A guest\'s setSignal does nothing; a refused pass empties the lobby', async () => {
   fakeServer();
   await social.start(at(''));
+  social.showLobby();
   const socket = await lastSocket(1);
   await goLive(socket, { rooms: [room('r1')], people: [] });
   social.setSignal('chat');
@@ -469,6 +500,7 @@ test('unlink finds the account for the provider; SESSION_EXPIRED goes to sign-in
   ]]);
   server.route('POST /api/auth/unlink-account', () => [403, { code: 'SESSION_EXPIRED' }]);
   await social.start(at(''));
+  social.showLobby();
   social.page = 'account';
   expect(await social.unlink('discord')).toBe(false);
   expect(server.sent('POST', '/api/auth/unlink-account')[0].body).toEqual({ accountId: 'acc_2' });
@@ -495,6 +527,7 @@ test('Deleting without a password after a stale sign-in goes to sign-in with the
   server.session = member({ providers: ['discord'] });
   server.route('POST /api/auth/delete-user', () => [400, { code: 'SESSION_EXPIRED' }]);
   await social.start(at(''));
+  social.showLobby();
   social.page = 'account';
   expect(await social.deleteAccount()).toBe(false);
   expect(server.sent('POST', '/api/auth/delete-user')[0].body).toEqual({});
@@ -517,6 +550,7 @@ test('The account actions send the server\'s shapes', async () => {
   server.route('DELETE /api/blocks/other%20one', () => [200, {}]);
   server.route('POST /api/auth/delete-user', () => ((server.session = null), [200, { success: true }]));
   await social.start(at(''));
+  social.showLobby();
   await goLive(await lastSocket(1));
 
   await social.signInWith('discord', { assign });

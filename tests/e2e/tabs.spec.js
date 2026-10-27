@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, tab, store, cellPoint, drag } from './support.js';
 
 test('the editor tabs are a tablist: Tab reaches the selected one, arrows move and select', async ({ page }) => {

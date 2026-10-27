@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { readFile } from 'node:fs/promises';
 import { execSync } from 'node:child_process';
 import { openApp, store, settled, fixture, cellPoint } from './support.js';

@@ -1,7 +1,7 @@
 // Tool keys: a letter chooses a tool (Photoshop's letters, Moebius's where it has the same tool), not
 // while typing; with a selection, Moebius's block keys act on it: E erases, S or C stamps, Enter
 // sets it down. Each tool's button shows its key.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, drag, editAt, chars, tab, settled } from './support.js';
 
 const tool = (page) => store(page, 'workspace', (w) => w.activeTool);

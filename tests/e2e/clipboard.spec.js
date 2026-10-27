@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, drag, chars, editAt } from './support.js';
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, chars, editAt } from './support.js';
 
 test('typing, Enter, Backspace, a paste and an input-method composition', async ({ page }) => {

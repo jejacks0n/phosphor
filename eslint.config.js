@@ -40,4 +40,11 @@ export default [
       globals: { ...globals.node, ...globals.browser, __UPDATE_REFERENCES__: 'readonly' },
     },
   },
+  {
+    // The e2e specs take test from support.js, which cuts off the SOCIAL server unless a spec fakes it.
+    files: ['tests/e2e/**/*.spec.js'],
+    rules: {
+      'no-restricted-imports': ['error', { paths: [{ name: '@playwright/test', message: 'Import test and expect from ./support.js.' }] }],
+    },
+  },
 ];

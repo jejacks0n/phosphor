@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { readFile } from 'node:fs/promises';
 import { openApp, store, settled, editAt, saveAs } from './support.js';
 import { AnsiFile } from '../../src/lib/AnsiFile.js';

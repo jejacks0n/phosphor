@@ -1,5 +1,5 @@
 // Undo and redo from the keyboard: Shift makes the key 'Z', which redo must still see.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, drag } from './support.js';
 
 for (const keys of ['Control+Shift+KeyZ', 'Meta+Shift+KeyZ']) {

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, editAt, chars } from './support.js';
 
 const list = (page) => page.getByRole('dialog', { name: 'Keyboard shortcuts' });

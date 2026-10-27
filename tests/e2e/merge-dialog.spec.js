@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, drag } from './support.js';
 
 const mergeButton = (page) => page.getByRole('button', { name: 'Merge down: move the edit layer into the base layer.' });

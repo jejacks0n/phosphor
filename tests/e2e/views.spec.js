@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, editAt } from './support.js';
 
 test('Canvas and DOM views: the DOM view\'s text is the cells\' characters', async ({ page }) => {
