@@ -14,7 +14,8 @@ for desktop browsers: on phones and other narrow screens the tab isn't shown.
 ## The lobby
 
 The SOCIAL tab opens on the lobby: a gallery of the **public rooms** that are live right now. Each
-room shows a small live picture of what its host is looking at, its name, the host's username, how
+room shows a small picture of what its host is looking at (the host's browser makes it soon after
+going live, then again every few minutes when the art or the view has changed), its name, the host's username, how
 long it's been live, the host's **signal**, and a **Join** button with how many are in the room
 and how many it holds (*Join 4/12*). Private rooms are never listed.
 

@@ -6,6 +6,8 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { thumbnailOf } from '@/social/thumbnail';
 import { forgetKey, loadKey } from '@/social/keys';
 import { toBase64url } from '@/social/base64url';
 import { hex2rgb } from '@/lib/ColorUtils';
@@ -16,6 +18,8 @@ import { openPeer } from '@/social/peer';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
 import { verify, claimsOf, member, fakeServer, sockets, useFakeSockets, lastSocket, at } from '../support/socialServer.js';
+
+vi.mock('@/social/thumbnail', () => ({ thumbnailOf: vi.fn(async () => 'AAAA') }));   // drawn and encoded in social-thumbnail.test.js
 
 const ID = 'abcdefghij';
 const PATIENT = { timeout: 5000 };   // connecting and packing a snapshot take longer on a busy machine
@@ -57,6 +61,8 @@ beforeEach(async () => {
   toClose = [];
 });
 afterEach(() => {
+  vi.useRealTimers();
+  vi.mocked(thumbnailOf).mockClear();
   room.leave();
   social.disconnectLobby();
   for (const side of toClose.splice(0)) side.close();
@@ -407,4 +413,71 @@ test('Signing out while hosting sends end first', async () => {
   expect(socket.closed).toBe(true);
   expect(room.role).toBe(null);
   expect(claimsOf(pass).guest).toBe(false);
+});
+
+// The lobby's picture of a public room: once soon after going live, then at most every 3 minutes and
+// only after the art or the view changed.
+const thumbnails = (socket) => socket.sent.filter((m) => m.type === 'thumbnail');
+
+test('A public room sends one thumbnail soon after going live, then one only after a change once 3 minutes have passed', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const socket = await goLive();
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(thumbnails(socket)).toEqual([{ type: 'thumbnail', webp: 'AAAA' }]);
+  expect(thumbnailOf).toHaveBeenLastCalledWith(
+    expect.objectContaining({ cols: 8, lines: 4, cells: project.cells, font: expect.objectContaining({ id: 'jetbrains', size: 17 }) }),
+    expect.objectContaining({ col: 0, row: 0 }),
+  );
+
+  await vi.advanceTimersByTimeAsync(2 * 60_000);   // nothing changed
+  expect(thumbnails(socket)).toHaveLength(1);
+
+  project.editCell(2, 1, { char: '#' });
+  project.commitEdit();
+  await vi.advanceTimersByTimeAsync(30_000);       // changed, but 3 minutes after the last one aren't up
+  expect(thumbnails(socket)).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(2 * 60_000);
+  expect(thumbnails(socket)).toHaveLength(2);
+
+  await vi.advanceTimersByTimeAsync(10 * 60_000);  // nothing changed since
+  expect(thumbnails(socket)).toHaveLength(2);
+  project.editCell(3, 1, { char: '#' });
+  project.commitEdit();
+  await vi.advanceTimersByTimeAsync(1000);         // 3 minutes are up: it goes at once
+  expect(thumbnails(socket)).toHaveLength(3);
+});
+
+test('A change of the host\'s view alone sends a thumbnail once 3 minutes have passed since the last', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const socket = await goLive();
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(thumbnails(socket)).toHaveLength(1);
+
+  useWorkspaceStore().ansiViewOrigin = { col: 3, row: 1 };
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(thumbnails(socket)).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(2 * 60_000);
+  expect(thumbnails(socket)).toHaveLength(2);
+  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ col: 3, row: 1 }));
+});
+
+test('A private room sends none, and ending a room stops the timer', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  await social.boot();
+  await startPublic({ isPublic: false, password: 'sesame' });
+  const socket = await lastSocket(1);
+  socket.accept();
+  await vi.waitFor(() => expect(socket.sent[0]?.type).toBe('host'));
+  socket.receive({ type: 'hosting', room: info({ public: false }), peers: [] });
+  await vi.advanceTimersByTimeAsync(10 * 60_000);
+  expect(thumbnails(socket)).toEqual([]);
+  expect(thumbnailOf).not.toHaveBeenCalled();
+});
+
+test('Ending a public room before its first thumbnail sends none', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const socket = await goLive();
+  room.leave();
+  await vi.advanceTimersByTimeAsync(10 * 60_000);
+  expect(thumbnails(socket)).toEqual([]);
 });

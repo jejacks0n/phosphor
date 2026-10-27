@@ -7,7 +7,8 @@ import { refusalWords } from '@/social/messages';
 import { passKey } from '@/social/pass';
 import { Host } from '@/social/hosting';
 import { Watch } from '@/social/watching';
-import { fontOnWire } from '@/social/wire';
+import { fontOnWire, fontFor } from '@/social/wire';
+import { thumbnailOf } from '@/social/thumbnail';
 import { charRowsOf } from '@/lib/Cells';
 import { useSocialStore } from '@/store/SocialStore';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -15,6 +16,8 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 const SEND_EVERY_MS = 100;       // the art, as it changes (a stroke shows as it's drawn)
 const VIEW_EVERY_MS = 250;       // the part of the art the host is looking at
+const THUMBNAIL_FIRST_MS = 3000;      // the lobby's picture of a public room, soon after it goes live
+const THUMBNAIL_EVERY_MS = 180_000;   // then at most this often (the server's own floor is 20 s), and only after a change
 const SETTINGS_EVERY_MS = 1250;  // the server's 1 s, with slack: it measures when settings arrive
 const ROOM_ID = /^[a-z2-7]{10}$/;
 
@@ -74,15 +77,28 @@ export const useRoomStore = defineStore('room', {
 
     // The host's art to the Host as it changes, at most every SEND_EVERY_MS, and its view at most every
     // VIEW_EVERY_MS. Every change makes new cells (setCells), which the Host compares cell by cell
-    // against what it sent. While a slider moves, nothing goes: its end goes as one change.
+    // against what it sent. While a slider moves, nothing goes: its end goes as one change. A public
+    // room's lobby picture goes once soon after it's live, then after a change, 3 minutes apart at least.
     share() {
       const project = useProjectStore(), workspace = useWorkspaceStore();
-      let timer = null;
+      let timer = null, pictureTimer = null, pictureAt = null;
+      const artNow = () => ({ cells: project.cells, cols: project.cols, lines: charRowsOf(project.rows), font: fontOnWire(workspace.displayFontSpec) });
       const flush = () => {
         timer = null;
         if (project._sliderBefore) return schedule();
-        const art = { cells: project.cells, cols: project.cols, lines: charRowsOf(project.rows), font: fontOnWire(workspace.displayFontSpec) };
+        const art = artNow();
         if (art.cells.length === art.cols * art.lines) this._host?.setArt(art);   // not a new size before its render
+      };
+      const picture = async () => {
+        pictureTimer = null;
+        pictureAt = Date.now();
+        const art = artNow(), connection = this._connection;
+        if (art.cells.length !== art.cols * art.lines) return changed();
+        const webp = await thumbnailOf({ ...art, font: fontFor(art.font) }, { ...workspace.ansiViewOrigin, ...workspace.ansiViewSize });
+        if (webp && connection === this._connection && !connection.send({ type: 'thumbnail', webp })) changed();   // not while reconnecting
+      };
+      const changed = () => {
+        if (this.room.public && pictureAt !== null) pictureTimer ??= setTimeout(picture, Math.max(0, pictureAt + THUMBNAIL_EVERY_MS - Date.now()));
       };
       const schedule = () => { timer ??= setTimeout(flush, SEND_EVERY_MS); };
       const view = new Pacer(VIEW_EVERY_MS, (v) => {
@@ -92,9 +108,12 @@ export const useRoomStore = defineStore('room', {
       const pagehide = () => this._connection?.send({ type: 'end' });   // watchers hear at once, not in a minute
       addEventListener('pagehide', pagehide);
       this._stops = [
-        watch([() => project.cells, () => project.cols, () => project.rows, () => workspace.displayFontSpec], schedule),
-        watch(() => ({ ...workspace.ansiViewOrigin, ...workspace.ansiViewSize }), (v) => view.push(v), { immediate: true }),
-        () => { clearTimeout(timer); view.reset(); removeEventListener('pagehide', pagehide); },
+        watch([() => project.cells, () => project.cols, () => project.rows, () => workspace.displayFontSpec], () => { schedule(); changed(); }),
+        watch(() => ({ ...workspace.ansiViewOrigin, ...workspace.ansiViewSize }), (v) => { view.push(v); changed(); }, { immediate: true }),
+        watch(() => this.status, (status) => {
+          if (status === 'live' && this.room.public && pictureAt === null) pictureTimer ??= setTimeout(picture, THUMBNAIL_FIRST_MS);
+        }),
+        () => { clearTimeout(timer); clearTimeout(pictureTimer); view.reset(); removeEventListener('pagehide', pagehide); },
       ];
       flush();
     },
