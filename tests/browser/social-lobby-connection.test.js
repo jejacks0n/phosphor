@@ -370,3 +370,18 @@ test('A message in endOn reaches onMessage, then ends it as closed without a ret
   expect(statuses.at(-1)).toBe('refused');
   expect(waits).toHaveLength(0);
 });
+
+test('A handler that throws on a message in endOn still leaves it ended, with the socket closed', async () => {
+  const { conn, sockets, waits, statuses } = await connect({
+    ...roomOptions,
+    onMessage: (msg) => { if (msg.type === 'ended') throw new Error('the handler broke'); },
+  });
+  conn.open();
+  sockets[0].accept();
+  await helloOn(sockets[0]);
+  sockets[0].receive({ type: 'joined' });
+  expect(() => sockets[0].receive({ type: 'ended' })).toThrow('the handler broke');
+  expect(statuses).toEqual(['connecting', 'live', 'closed']);
+  expect(sockets[0].closed).toBe(true);
+  expect(waits).toHaveLength(0);
+});

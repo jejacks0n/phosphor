@@ -217,9 +217,12 @@ export class LobbyConnection {
       if (typeof msg?.type !== 'string') return;
       if (this.endOn.includes(msg.type)) {
         this.detach();
-        this.onMessage?.(msg);
-        this.setStatus(msg.type === 'refused' ? 'refused' : 'closed');
-        socket.close();
+        try {
+          this.onMessage?.(msg);
+        } finally {   // ended even when the handler throws
+          this.setStatus(msg.type === 'refused' ? 'refused' : 'closed');
+          socket.close();
+        }
         return;
       }
       if (this.liveOn.includes(msg.type)) {
