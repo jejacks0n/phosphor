@@ -88,6 +88,10 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
     },
     'GET /api/auth/list-accounts': () => [200, (server.me?.providers ?? []).map((providerId, i) => ({ id: `a_${i}`, providerId }))],
     'GET /api/blocks': () => [200, { blocked: server.blocked }],
+    'POST /api/blocks': ({ username }) => {
+      server.blocked = [{ id: 'u_' + username, username, since: Date.now() }, ...server.blocked];
+      return [200, {}];
+    },
     'DELETE /api/blocks/:username': (body, path) => {
       const name = decodeURIComponent(path.split('/').pop());
       server.blocked = server.blocked.filter((b) => b.username !== name);

@@ -98,7 +98,7 @@ test('Send a reset link opens Forgot your password with your email filled in, an
 });
 
 test('Unblock removes the row; with nobody blocked it says so', async ({ page }) => {
-  const server = await fakeServer(page, { me: member(), blocked: [{ username: 'noisy-nick', since: 1 }, { username: 'rude-ray', since: 2 }] });
+  const server = await fakeServer(page, { me: member(), blocked: [{ id: 'u_noisy-nick', username: 'noisy-nick', since: 1 }, { id: 'u_rude-ray', username: 'rude-ray', since: 2 }] });
   const account = await openAccount(page);
   await expect(account.getByText('noisy-nick')).toBeVisible();
   await account.getByRole('button', { name: 'Unblock noisy-nick' }).click();

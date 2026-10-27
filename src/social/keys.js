@@ -1,7 +1,7 @@
 // The browser's own Ed25519 key: one pair per browser, kept in IndexedDB. Its private half can't be
 // exported, so it never leaves the browser; passes name the public half, and every time a pass is
 // presented a fresh signature (a proof) shows it's this browser presenting it.
-import { toBase64url } from './base64url.js';
+import { toBase64url, fromBase64url } from './base64url.js';
 
 const ED25519 = { name: 'Ed25519' };
 
@@ -80,6 +80,17 @@ export function forgetKey() {
 export async function sign(privateKey, message) {
   const signature = await crypto.subtle.sign('Ed25519', privateKey, new TextEncoder().encode(message));
   return toBase64url(new Uint8Array(signature));
+}
+
+// Whether sigB64 is an Ed25519 signature over the message's UTF-8 bytes by the raw public key keyB64 (what sign
+// makes). False, never a throw, for anything malformed.
+export async function verifySignature(keyB64, message, sigB64) {
+  try {
+    const key = await crypto.subtle.importKey('raw', fromBase64url(keyB64), ED25519, false, ['verify']);
+    return await crypto.subtle.verify('Ed25519', key, fromBase64url(sigB64), new TextEncoder().encode(message));
+  } catch {
+    return false;
+  }
 }
 
 // A proof to go with a pass: proof(key, (ts) => `lobby:${ts}`). The server takes it within 60 s of ts.

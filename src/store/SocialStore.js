@@ -43,7 +43,7 @@ export const useSocialStore = defineStore('social', {
     lobby: shallowRef(emptyLobby()),
     lobbyStatus: null,   // the connection's: 'connecting' | 'live' | 'reconnecting' | 'refused' | 'closed'
     signal: null,        // 'feedback' | 'chat' | 'heads-down' | null (members only)
-    blocked: [],         // [{ username, since }]
+    blocked: [],         // [{ id, username, since }]
     notice: null,        // one line at the top of the tab
     busy: false,
     started: false,

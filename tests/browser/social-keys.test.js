@@ -1,7 +1,7 @@
 // The browser's own Ed25519 key (kept in IndexedDB), the proofs it signs, and asking the server for a
 // pass. Real WebCrypto and IndexedDB; fetch is stubbed.
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ed25519Supported, loadKey, forgetKey, sign, proof } from '@/social/keys';
+import { ed25519Supported, loadKey, forgetKey, sign, proof, verifySignature } from '@/social/keys';
 import { decodePass, requestPass, renewAt, passKey, verifyPass } from '@/social/pass';
 import { toBase64url, fromBase64url } from '@/social/base64url';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
@@ -180,4 +180,17 @@ test('passKey asks the server once and gives the same key after', async () => {
   expect(await passKey()).toBe('a2V5');
   expect(sent).toHaveLength(1);
   expect(sent[0].url).toMatch(/\/api\/pass-key$/);
+});
+
+test('verifySignature accepts what sign made and nothing else', async () => {
+  const { privateKey, publicKey } = await loadKey();
+  const sig = await sign(privateKey, 'chat:r:id:1:hello');
+  expect(await verifySignature(publicKey, 'chat:r:id:1:hello', sig)).toBe(true);
+  expect(await verifySignature(publicKey, 'chat:r:id:1:hullo', sig)).toBe(false);
+  const other = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']);
+  const otherKey = toBase64url(new Uint8Array(await crypto.subtle.exportKey('raw', other.publicKey)));
+  expect(await verifySignature(otherKey, 'chat:r:id:1:hello', sig)).toBe(false);
+  expect(await verifySignature('!!', 'chat:r:id:1:hello', sig)).toBe(false);
+  expect(await verifySignature(publicKey, 'chat:r:id:1:hello', '')).toBe(false);
+  expect(await verifySignature(publicKey, 'chat:r:id:1:hello', '!!')).toBe(false);
 });
