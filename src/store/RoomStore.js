@@ -205,15 +205,21 @@ export const useRoomStore = defineStore('room', {
     // The Room's messages (the server's API).
     heard(msg) {
       switch (msg.type) {
-        case 'hosting':
+        case 'hosting': {
+          const chosen = this.room;
           this._refusedOnce = false;
-          this.room = { ...msg.room, welcome: this.room.welcome };
-          if (!this._host.room) this._host.setRoom({ name: msg.room.name, welcome: this.room.welcome, host: msg.room.hostName });
+          this.room = { ...msg.room, welcome: chosen.welcome };
+          if (!this._host.room) this._host.setRoom({ name: msg.room.name, welcome: chosen.welcome, host: msg.room.hostName });
           this._host.hosting(msg.peers);
+          this.changeSettings(chosen);   // a change made while the socket was down goes now
           break;
-        case 'settings-now':
-          this.room = { ...msg.room, welcome: this.room.welcome };
+        }
+        case 'settings-now': {
+          // The Room's word on the room, but a change still waiting to go stays shown (it would only flicker back).
+          const waiting = this._settings.timer ? { allowGuests: this.room.allowGuests, max: this.room.max } : {};
+          this.room = { ...msg.room, welcome: this.room.welcome, ...waiting };
           break;
+        }
         case 'peer':
           this._host?.peer(msg.peer, msg.pass);
           break;

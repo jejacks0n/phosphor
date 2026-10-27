@@ -204,6 +204,43 @@ test('Two changeSettings within a second send one settings, then the latest; set
   expect(room.room).toEqual({ ...info({ allowGuests: false, max: 6 }), welcome: 'Hello' });
 });
 
+test('A paced-out settings: the room shows the Room\'s values, and choosing the refused ones again sends them', async () => {
+  const socket = await goLive();
+  const settings = () => socket.sent.filter((m) => m.type === 'settings');
+  room.changeSettings({ welcome: 'Hi', allowGuests: true, max: 6 });
+  socket.receive({ type: 'settings-now', room: info({ max: 12 }) });
+  expect(room.room.max).toBe(12);
+  room.changeSettings({ welcome: 'Hi', allowGuests: true, max: 6 });
+  await vi.waitFor(() => expect(settings()).toHaveLength(2), { timeout: 2000 });
+  expect(settings()[1]).toEqual({ type: 'settings', allowGuests: true, max: 6 });
+  expect(room.room.max).toBe(6);
+});
+
+test('A settings-now while a newer change waits keeps that change shown, and it goes', async () => {
+  const socket = await goLive();
+  const settings = () => socket.sent.filter((m) => m.type === 'settings');
+  room.changeSettings({ welcome: 'Hi', allowGuests: true, max: 6 });
+  room.changeSettings({ welcome: 'Hi', allowGuests: false, max: 8 });   // waits for the interval
+  socket.receive({ type: 'settings-now', room: info({ max: 12 }) });
+  expect(room.room).toMatchObject({ allowGuests: false, max: 8 });
+  await vi.waitFor(() => expect(settings()).toHaveLength(2), { timeout: 2000 });
+  expect(settings()[1]).toEqual({ type: 'settings', allowGuests: false, max: 8 });
+  expect(room.room).toMatchObject({ allowGuests: false, max: 8 });
+});
+
+test('A settings change made while the socket is down goes once hosting is back', async () => {
+  const socket = await goLive();
+  socket.close();
+  expect(room.status).toBe('reconnecting');
+  room.changeSettings({ welcome: 'Hi', allowGuests: true, max: 6 });   // nowhere to send it
+  const again = await lastSocket(2);
+  again.accept();
+  await vi.waitFor(() => expect(again.sent[0]?.type).toBe('host'));
+  again.receive({ type: 'hosting', room: info(), peers: [] });
+  await vi.waitFor(() => expect(again.sent.filter((m) => m.type === 'settings')).toEqual([{ type: 'settings', allowGuests: true, max: 6 }]), { timeout: 2000 });
+  expect(room.room.max).toBe(6);
+});
+
 test('A new welcome goes to watchers over their channels, never to the server', async () => {
   const socket = await goLive();
   const log = await watcherOn(socket);

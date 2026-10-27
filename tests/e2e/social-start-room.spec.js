@@ -158,6 +158,39 @@ test('Room settings follow the room when the Room says how it is', async ({ page
   await expect(host.getByRole('checkbox', { name: 'Allow guests' })).not.toBeChecked();
 });
 
+test('what\'s typed in Room settings survives the socket dropping and hosting again', async ({ page }) => {
+  const { room } = await goLive(page);
+  const host = shown(page, 'host-room');
+  await host.getByText('Room settings').click();
+  await host.getByRole('textbox', { name: 'Welcome message' }).fill('back in 5');
+  await host.getByRole('spinbutton', { name: 'Most watchers' }).fill('3');
+  room.drop('host');
+  await expect.poll(() => room.from('host').filter((m) => m.type === 'host').length).toBe(2);
+  await expect.poll(() => store(page, 'room', (r) => r.status)).toBe('live');
+  await expect(host.getByRole('textbox', { name: 'Welcome message' })).toHaveValue('back in 5');
+  await expect(host.getByRole('spinbutton', { name: 'Most watchers' })).toHaveValue('3');
+});
+
+// Settings sooner than a second after the last are answered with the room as it is (the app's own
+// pacing never does that, so the first goes straight through the store's socket here).
+test('a paced-out save shows the Room\'s values, and saving them again sends them', async ({ page }) => {
+  const { room } = await goLive(page);
+  const host = shown(page, 'host-room');
+  await host.getByText('Room settings').click();
+  await store(page, 'room', (r) => r._connection.send({ type: 'settings', allowGuests: true, max: 6 }));
+  const most = host.getByRole('spinbutton', { name: 'Most watchers' });
+  await most.fill('8');
+  await host.getByRole('button', { name: 'Save' }).click();
+  await expect(most).toHaveValue('6');   // the Room's word
+  expect(room.setup.max).toBe(6);
+  expect(await store(page, 'room', (r) => r.room.max)).toBe(6);
+
+  await most.fill('8');
+  await host.getByRole('button', { name: 'Save' }).click();
+  await expect.poll(() => room.setup.max).toBe(8);
+  expect(await store(page, 'room', (r) => r.room.max)).toBe(8);
+});
+
 test('the host\'s socket drops: Reconnecting… until it says host again', async ({ page }) => {
   const { room } = await goLive(page);
   room.drop('host');

@@ -25,11 +25,12 @@ async function copyLink() {
 }
 onBeforeUnmount(() => clearTimeout(copiedTimer));
 
-// Room settings follow the room as it is (the Room's word on it included).
+// Room settings follow the room as it is (the Room's word on it included): each field only when its
+// value changes, so a room given again as it was (hosting after a reconnect) leaves what's typed.
 const welcome = ref(''), allowGuests = ref(true), max = ref(12);
-watch(() => room.room && [room.room.welcome, room.room.allowGuests, room.room.max], (now) => {
-  if (now) [welcome.value, allowGuests.value, max.value] = now;
-}, { immediate: true });
+watch(() => room.room?.welcome, (v) => { if (v !== undefined) welcome.value = v; }, { immediate: true });
+watch(() => room.room?.allowGuests, (v) => { if (v !== undefined) allowGuests.value = v; }, { immediate: true });
+watch(() => room.room?.max, (v) => { if (v !== undefined) max.value = v; }, { immediate: true });
 const countId = useId();
 const save = () => room.changeSettings({ welcome: welcome.value, allowGuests: allowGuests.value, max: max.value });
 </script>
