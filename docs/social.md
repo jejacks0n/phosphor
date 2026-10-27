@@ -86,6 +86,14 @@ you out everywhere else.
 - **Two-factor**: once it's on, every sign-in asks for a code from your authenticator app, Discord
   and GitHub included. **Trust this computer for 30 days** skips the code on that computer. A backup
   code stands in for the phone (**Use a backup code instead**), once each.
+  - **Turn on** asks for your password (an account without one needs a sign-in in the last 5
+    minutes), then shows a QR code to scan with an authenticator app, and the key to type in
+    instead. It's on once you enter the app's 6-digit code; **Cancel** before that leaves it off,
+    and **Turn on** starts again with a new key.
+  - Then you get 10 **backup codes**, shown this once: save them somewhere safe. **New backup
+    codes** (it asks for your password) replaces them, and **Turn off** (the same) ends two-factor.
+  - If you lose the phone and the backup codes, there is no way back in from the app: an admin
+    turns two-factor off for the account.
 - **Blocked**: everyone you've blocked, with **Unblock**.
 - **Delete account**: asks for your password, then (**Delete for good**) removes your account, your
   username and your blocks. An account with no password needs you to have signed in with Discord or

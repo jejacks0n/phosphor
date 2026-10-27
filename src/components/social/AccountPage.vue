@@ -1,11 +1,12 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
+import { renderSVG } from 'uqr';
 import { useSocialStore } from '@/store/SocialStore';
 import { nameColor, usernameProblem } from '@/social/names';
 import { messageFor } from '@/social/messages';
 import UsernameField from './UsernameField.vue';
 
-// Your username, the ways to sign in, who you blocked, and deleting the account. Errors of a form
+// Your username, the ways to sign in, two-factor, who you blocked, and deleting the account. Errors of a form
 // show under it; the others are the notice at the top of the tab.
 const social = useSocialStore();
 const me = computed(() => social.me);
@@ -25,6 +26,17 @@ const password = ref('');
 const deleting = ref(false);
 const deleteError = ref(null);
 
+// Two-factor is one of three asks (turn on, turn off, new backup codes), each wanting the password; turning on then
+// shows the secret to scan, and the backup codes. Both live here only, so they're gone once you leave the page.
+const TWO_FACTOR_ASKS = { on: 'Continue', off: 'Turn off two-factor', codes: 'Make new codes' };
+const ask = ref(null);
+const twoFactorPassword = ref('');
+const twoFactorError = ref(null);
+const setup = ref(null);
+const setupCode = ref('');
+const backupCodes = ref(null);
+const twoFactorSection = useTemplateRef('twoFactorSection');
+
 onMounted(() => social.loadBlocked());
 
 // A panel opening takes focus (its first field, or Cancel when it has none) and closing gives it back
@@ -40,6 +52,11 @@ const focusIn = async (form) => {
 const focusOn = async (button) => {
   await nextTick();
   button.value?.focus();
+};
+
+const focusAsk = async (name) => {
+  await nextTick();
+  twoFactorSection.value.querySelector(`[data-ask="${name}"]`)?.focus();
 };
 
 const failed = (error) => { [error.value, social.notice] = [social.notice, null]; };
@@ -66,6 +83,54 @@ function cancelDelete() {
   password.value = '';
   deleteError.value = null;
   focusOn(deleteButton);
+}
+
+function startAsk(name) {
+  twoFactorError.value = null;
+  ask.value = name;
+  focusIn(twoFactorSection);
+}
+
+function endTwoFactor(name) {
+  ask.value = setup.value = backupCodes.value = null;
+  twoFactorPassword.value = setupCode.value = '';
+  twoFactorError.value = null;
+  focusAsk(name);
+}
+
+async function submitAsk() {
+  twoFactorError.value = null;
+  const password = hasPassword.value ? twoFactorPassword.value : undefined;
+  if (ask.value === 'on') {
+    const started = await social.startTwoFactor(password);
+    if (started) {
+      setup.value = { backupCodes: started.backupCodes, key: new URL(started.totpURI).searchParams.get('secret'), qr: renderSVG(started.totpURI) };
+      ask.value = null;
+      twoFactorPassword.value = '';
+      return focusIn(twoFactorSection);
+    }
+  } else if (ask.value === 'off') {
+    if (await social.turnOffTwoFactor(password)) return endTwoFactor('on');
+  } else {
+    backupCodes.value = await social.newBackupCodes(password);
+    if (backupCodes.value) {
+      ask.value = null;
+      twoFactorPassword.value = '';
+      return focusIn(twoFactorSection);
+    }
+  }
+  twoFactorPassword.value = '';
+  if (social.page === 'account') failed(twoFactorError);   // else it sent you to sign in, with its own words
+}
+
+async function confirmSetup() {
+  twoFactorError.value = null;
+  if (await social.confirmTwoFactor(setupCode.value)) {
+    backupCodes.value = setup.value.backupCodes;
+    setup.value = null;
+    setupCode.value = '';
+    focusIn(twoFactorSection);
+  } else failed(twoFactorError);
 }
 
 async function rename() {
@@ -124,6 +189,48 @@ async function deleteAccount() {
         </template>
       </div>
       <p v-if="lastWay && canDisconnect" id="last-way" class="help">You need at least one way to sign in</p>
+    </section>
+
+    <section ref="twoFactorSection" aria-labelledby="account-two-factor">
+      <h3 id="account-two-factor">Two-factor</h3>
+      <template v-if="backupCodes">
+        <p class="help">Save these backup codes somewhere safe. Each one works once, if you lose your phone. You won't see them again.</p>
+        <ul class="codes">
+          <li v-for="code in backupCodes" :key="code">{{ code }}</li>
+        </ul>
+        <div class="actions">
+          <button class="primary" type="button" @click="endTwoFactor('codes')">Done</button>
+        </div>
+      </template>
+      <form v-else-if="setup" @submit.prevent="confirmSetup">
+        <p class="help">Scan this with your authenticator app, or enter the key:</p>
+        <div class="qr" v-html="setup.qr"></div>
+        <code class="key">{{ setup.key }}</code>
+        <label>Code from the app <input v-model="setupCode" inputmode="numeric" autocomplete="one-time-code" required></label>
+        <div class="actions">
+          <button class="primary" type="submit" :disabled="social.busy">Turn on</button>
+          <button type="button" @click="endTwoFactor('on')">Cancel</button>
+        </div>
+        <p v-if="twoFactorError" class="error" role="alert">{{ twoFactorError }}</p>
+      </form>
+      <form v-else-if="ask" @submit.prevent="submitAsk">
+        <label v-if="hasPassword">Password <input v-model="twoFactorPassword" type="password" autocomplete="current-password" required></label>
+        <p v-else class="help">Needs a sign-in in the last 5 minutes</p>
+        <div class="actions">
+          <button class="primary" type="submit" :disabled="social.busy">{{ TWO_FACTOR_ASKS[ask] }}</button>
+          <button type="button" @click="endTwoFactor(ask)">Cancel</button>
+        </div>
+        <p v-if="twoFactorError" class="error" role="alert">{{ twoFactorError }}</p>
+      </form>
+      <div v-else-if="me.twoFactorEnabled" class="row">
+        <span class="what">On. Signing in asks for a code.</span>
+        <button data-ask="codes" @click="startAsk('codes')">New backup codes</button>
+        <button data-ask="off" @click="startAsk('off')">Turn off</button>
+      </div>
+      <template v-else>
+        <p class="help">Ask for a code from an authenticator app whenever you sign in.</p>
+        <button data-ask="on" class="primary" @click="startAsk('on')">Turn on</button>
+      </template>
     </section>
 
     <section aria-labelledby="account-blocked">
@@ -208,6 +315,19 @@ span.swatch {
 }
 p.help {
   margin: 0;
+}
+div.qr {
+  width: 160px;
+  background: #fff;
+}
+code.key, ul.codes {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+}
+ul.codes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 button.danger {
   align-self: flex-start;

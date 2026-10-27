@@ -1,4 +1,4 @@
-// The Account page: your username, the ways to sign in, who you blocked, and deleting the account.
+// The Account page: your username, the ways to sign in, two-factor, who you blocked, and deleting the account.
 import { test, expect, tab, store } from './support.js';
 import { fakeServer, member } from './social-support.js';
 
@@ -191,4 +191,115 @@ test('"You need at least one way" shows only beside a Disconnect button', async 
   const account = await openAccount(page);
   await expect(account.getByRole('button', { name: 'Send a reset link' })).toBeVisible();
   await expect(account.getByText('You need at least one way to sign in')).toHaveCount(0);
+});
+
+const twoFactor = (account) => account.locator('section[aria-labelledby="account-two-factor"]');
+
+test('Two-factor: turning it on asks for your password, shows a QR code and the key, takes a code, then shows the backup codes once', async ({ page }) => {
+  const server = await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  const section = twoFactor(account);
+  await expect(section.getByText('Ask for a code from an authenticator app whenever you sign in.')).toBeVisible();
+  await section.getByRole('button', { name: 'Turn on' }).click();
+  await section.getByLabel('Password').fill('correct horse battery');
+  await section.getByRole('button', { name: 'Continue' }).click();
+  expect(server.sent('POST', '/api/auth/two-factor/enable')[0].body).toEqual({ password: 'correct horse battery' });
+
+  await expect(section.getByText('Scan this with your authenticator app, or enter the key:')).toBeVisible();
+  await expect(section.locator('svg')).toBeVisible();
+  await expect(section.locator('code')).toHaveText('JBSWY3DPEHPK3PXP');
+  await section.getByLabel('Code from the app').fill('000000');
+  await section.getByRole('button', { name: 'Turn on' }).click();
+  await expect(section.getByRole('alert')).toHaveText("That code isn't right");
+  await section.getByLabel('Code from the app').fill('123 456');
+  await section.getByRole('button', { name: 'Turn on' }).click();
+  expect(server.sent('POST', '/api/auth/two-factor/verify-totp').map((r) => r.body)).toEqual([{ code: '000000' }, { code: '123456' }]);
+
+  await expect(section.getByText('Save these backup codes somewhere safe. Each one works once, if you lose your phone. You won\'t see them again.')).toBeVisible();
+  await expect(section.locator('li')).toHaveCount(10);
+  await expect(section.locator('li').first()).toHaveText('first-code0');
+  await section.getByRole('button', { name: 'Done' }).click();
+  await expect(section.getByText('On. Signing in asks for a code.')).toBeVisible();
+  await expect(section.locator('li')).toHaveCount(0);
+
+  await account.getByRole('button', { name: '‹ Back to the lobby' }).click();
+  await shown(page, 'lobby').getByRole('button', { name: 'Account' }).click();
+  await expect(section.getByText('On. Signing in asks for a code.')).toBeVisible();
+  await expect(section.locator('li')).toHaveCount(0);
+});
+
+test('Two-factor: Cancel during setup leaves it off, and Turn on starts again', async ({ page }) => {
+  const server = await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  const section = twoFactor(account);
+  await section.getByRole('button', { name: 'Turn on' }).click();
+  await section.getByLabel('Password').fill('correct horse battery');
+  await section.getByRole('button', { name: 'Continue' }).click();
+  await expect(section.locator('svg')).toBeVisible();
+  await section.getByRole('button', { name: 'Cancel' }).click();
+  await expect(section.locator('svg')).toHaveCount(0);
+  await expect(section.getByText('Ask for a code from an authenticator app whenever you sign in.')).toBeVisible();
+  expect(server.me.twoFactorEnabled).toBe(false);
+
+  await section.getByRole('button', { name: 'Turn on' }).click();
+  await expect(section.getByLabel('Password')).toHaveValue('');   // not kept from before
+  await section.getByLabel('Password').fill('correct horse battery');
+  await section.getByRole('button', { name: 'Continue' }).click();
+  await expect(section.locator('svg')).toBeVisible();
+  expect(server.sent('POST', '/api/auth/two-factor/enable')).toHaveLength(2);
+});
+
+test('Two-factor: a Discord-only account turns it on without a password field', async ({ page }) => {
+  const server = await fakeServer(page, { me: member({ providers: ['discord'] }) });
+  const account = await openAccount(page);
+  const section = twoFactor(account);
+  await section.getByRole('button', { name: 'Turn on' }).click();
+  await expect(section.getByLabel('Password')).toHaveCount(0);
+  await expect(section.getByText('Needs a sign-in in the last 5 minutes')).toBeVisible();
+  await section.getByRole('button', { name: 'Continue' }).click();
+  await expect(section.locator('svg')).toBeVisible();
+  expect(server.sent('POST', '/api/auth/two-factor/enable')[0].body).toEqual({});
+});
+
+test('Two-factor: an old sign-in on a Discord-only account goes to Sign in with the notice', async ({ page }) => {
+  await fakeServer(page, {
+    me: member({ providers: ['discord'] }),
+    'POST /api/auth/two-factor/enable': () => [403, { code: 'SESSION_NOT_FRESH' }],
+  });
+  const account = await openAccount(page);
+  await twoFactor(account).getByRole('button', { name: 'Turn on' }).click();
+  await twoFactor(account).getByRole('button', { name: 'Continue' }).click();
+  await expect(shown(page, 'sign-in')).toBeVisible();
+  await expect(social(page).getByRole('status')).toContainText('Sign in again to change how you sign in');
+});
+
+test('Two-factor: Turn off and New backup codes ask for the password', async ({ page }) => {
+  const server = await fakeServer(page, {
+    me: member({ twoFactorEnabled: true }),
+    'POST /api/auth/two-factor/disable': ({ password }) => {
+      if (password !== 'correct horse battery') return [400, { code: 'INVALID_PASSWORD' }];
+      server.me = { ...server.me, twoFactorEnabled: false };
+      return [200, { status: true }];
+    },
+  });
+  const account = await openAccount(page);
+  const section = twoFactor(account);
+  await expect(section.getByText('On. Signing in asks for a code.')).toBeVisible();
+
+  await section.getByRole('button', { name: 'New backup codes' }).click();
+  await section.getByLabel('Password').fill('correct horse battery');
+  await section.getByRole('button', { name: 'Make new codes' }).click();
+  expect(server.sent('POST', '/api/auth/two-factor/generate-backup-codes')[0].body).toEqual({ password: 'correct horse battery' });
+  await expect(section.locator('li')).toHaveCount(10);
+  await expect(section.locator('li').first()).toHaveText('fresh-code0');
+  await section.getByRole('button', { name: 'Done' }).click();
+
+  await section.getByRole('button', { name: 'Turn off' }).click();
+  await section.getByLabel('Password').fill('wrong');
+  await section.getByRole('button', { name: 'Turn off two-factor' }).click();
+  await expect(section.getByRole('alert')).toHaveText("That password doesn't match");
+  await section.getByLabel('Password').fill('correct horse battery');
+  await section.getByRole('button', { name: 'Turn off two-factor' }).click();
+  await expect(section.getByText('Ask for a code from an authenticator app whenever you sign in.')).toBeVisible();
+  expect(server.sent('POST', '/api/auth/two-factor/disable').map((r) => r.body)).toEqual([{ password: 'wrong' }, { password: 'correct horse battery' }]);
 });
