@@ -38,8 +38,10 @@ npm run build
 - `src/document/`: the document's data (layers, cells, history, files); `src/lib/`: the libraries
   (cells, colors, the image pipeline, exports); `src/tools/`: one file per tool.
 - The SOCIAL tab: `src/social/` (the network and crypto modules: API calls, the lobby socket, keys
-  and passes, Turnstile, names, the server's error words), `src/store/SocialStore.js` (who you are,
-  your pass, the lobby) and `src/components/social/` (one component per page). Its tests are the
+  and passes, Turnstile, names, the server's error words; for rooms `wire.js` (messages between
+  browsers), `peer.js` (WebRTC), `hosting.js`, `watching.js` and `thumbnail.js` (the lobby picture)),
+  `src/store/SocialStore.js` (who you are, your pass, the lobby), `src/store/RoomStore.js` (the room
+  you host or watch) and `src/components/social/` (one component per page). Its tests are the
   `social-*` files in `tests/unit`, `tests/browser` and `tests/e2e`; the end-to-end fake server is
   `tests/e2e/social-support.js` ([docs/testing.md](docs/testing.md)). `server/` is a separate repo,
   ignored here.

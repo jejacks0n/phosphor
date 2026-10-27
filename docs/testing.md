@@ -94,6 +94,23 @@ The SOCIAL tab talks to a server that these tests never reach. Each layer stands
   to `localhost:8787` and closes every socket, so a spec that forgot to fake the server fails
   instead of reaching a real one.
 
+### Rooms end to end
+
+A room spec runs two pages (a host and a watcher, in one browser context) that share one
+`fakeRoom({ password, allowGuests, max, full })` from `tests/e2e/social-support.js`. Each page's
+`fakeServer` gets it as `room`; the fake answers the room sockets as the Room does and passes the
+host's messages to the watchers, so the specs click through starting, joining, following and ending
+without a real server. The connection between the two pages is a real WebRTC one:
+
+- The e2e build is made with `VITE_SOCIAL_STUN=none` (in `playwright.config.js`), so no STUN server
+  is asked for and nothing leaves the machine.
+- Chromium hides local addresses behind mDNS names, which two pages on one machine can't resolve to
+  each other, so the browsers launch with `WebRtcHideLocalIpsWithMdns` off (both `vitest.config.js` and
+  `playwright.config.js`).
+- Chromium keeps only the last `--disable-features` it's given, and Playwright passes its own. So
+  `launchWithout` in `tests/support/chromiumArgs.js` reads Playwright's list from a browser it
+  launches while the config loads, and passes Playwright's features and ours as one list.
+
 ### Room connections on macOS
 
 The room tests (`tests/browser/social-peer.test.js`) connect two WebRTC peers inside Chromium, which

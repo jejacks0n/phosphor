@@ -5,9 +5,9 @@
 > **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, the lobby
 > with its Join counts and reasons, signals and who's here, starting and hosting a room, and
 > watching one. **Comes next:** chat, removing or blocking from a room, and reporting. **Chat**
-> through **Blocking and reporting** describe what's coming, as do the welcome message's place in the
-> chat (for now, watchers see it under the room's name), the chat beside your work under
-> **Watching**, and Remove and Block under **Hosting**.
+> through **Blocking and reporting** describe what's coming, as do the chat beside your work under
+> **Watching**, and Remove and Block under **Hosting**. Until the chat is there, watchers see the
+> welcome message under the room's name.
 
 Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others
 watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
@@ -107,19 +107,20 @@ you out everywhere else.
 **Start a room** needs some art open in Phosphor: it's the art you share. The page shows what
 watchers will see (your art in ANSI as it is now), and asks for:
 
-- **Room name**.
+- **Room name**: up to 60 characters.
 - **Welcome message**: a few lines (up to 200 characters) on what you're working on and what you'd
-  like from people, pinned at the top of the chat for everyone who joins. You can edit it while
-  you're live.
+  like from people. Watchers see it under the room's name, and once there's a chat it's pinned at the
+  top of it. You can edit it while you're live.
 - **Who can join**: *Anyone, in the lobby* (a public room) or *Only with the link* (a private
   room, which also asks for a **password**).
 - **Allow guests**: whether people who haven't signed in can watch. Guests can only watch, so you
   can't remove one; turn this off if you'd rather have members only.
-- **Most watchers**: each watcher uses some of your upload speed. 12 suits most home
-  connections.
+- **Most watchers**: from 1 to 24 (12 to begin with). Each watcher uses some of your upload speed,
+  and 12 suits most home connections.
 
 **Go live** shares the art you have open; **Cancel** goes back to the lobby. You keep drawing in
-the ANSI tab as usual, and watchers see each change as you make it.
+the ANSI tab as usual, and watchers see each change as you make it, with a pink box for where your
+view is. Open other art while you're live and watchers see that instead.
 
 While you're live, **Room settings** changes the welcome message, Allow guests and Most watchers.
 Whether the room is public or private, and its password, stay as they were set.
@@ -127,8 +128,9 @@ Whether the room is public or private, and its password, stay as they were set.
 ## Hosting
 
 While you host, the SOCIAL tab shows your room instead of the lobby: its name, how many are
-watching, a link to copy, and who's watching. Send the link to anyone you want in a private room,
-along with its password. The SOCIAL tab carries a dot while you're in a room, hosting or watching.
+watching, its link (**Copy link**), who's watching, **Room settings** and **End room**. Send the
+link to anyone you want in a private room, along with its password. The SOCIAL tab carries a dot
+while you're in a room, hosting or watching.
 
 Each watcher shows whether they're following you or looking around on their own. Point at a
 member who's watching for:
@@ -138,20 +140,27 @@ member who's watching for:
   They aren't told; your rooms simply aren't there for them, and a link to one says "This room
   isn't available".
 
-**End room** ends it for everyone. Closing or reloading the tab ends it too, so Phosphor asks
-first; signing out while you host ends the room as well.
+**End room** ends it for everyone, and tells watchers at once. Closing or reloading the tab ends it
+too, so Phosphor asks first; signing out while you host ends the room as well.
+
+Watchers connect straight to your browser, so the room is as fast as your connection. If your
+connection to the room drops for a moment, the page says **Reconnecting…**; a change to Room
+settings made meanwhile goes once you're back.
 
 ## Watching
 
-**Join** opens the room right in the SOCIAL tab, in place of the lobby. You're in one room at a
-time; **Leave** brings the lobby back. A link to a private room asks for its password first.
+**Join** on a room's card, or a link to it, opens the room right in the SOCIAL tab, in place of the
+lobby. You're in one room at a time; **Leave** brings the lobby back. A private room asks for its
+password first.
 
-The art is view only. A pink box shows where the host is looking. With **Following** on, your view
+The room's name, its host and the welcome message are at the top. The art is view only, in the
+host's font. A pink box shows where the host is looking. With **Following** on, your view
 follows theirs; scroll away to look around on your own, and the button becomes **Follow** with the
-host's name, to bring you back.
+host's name, to bring you back. While the host is reconnecting, the art dims.
 
 You can go back to your own art in PIXEL or ANSI while you watch: the room keeps running in the
-SOCIAL tab, and the chat stays open beside your work. Watching never changes your own art.
+SOCIAL tab, and, once there's a chat, it stays open beside your work. Watching never changes your
+own art.
 
 When the host ends the room, it ends for you too. The art goes with it: Phosphor doesn't keep a
 copy.
@@ -182,11 +191,13 @@ room is drawing: on its card in the lobby or at the top of the room. Nobody is t
   rooms that are already running carry on. If the lobby turned this browser away twice, it adds
   **If your computer's clock is wrong, fix it and reload.**
 - **Reconnecting…**: the lobby lost its connection for a moment (a new server version, Wi-Fi). The
-  rooms stay, dimmed, until it's back with the current ones.
+  rooms stay, dimmed, until it's back with the current ones. On your own room's page it means the
+  same for the room's connection.
 - **This browser can't sign you in to SOCIAL yet**: it lacks the signing SOCIAL uses (older Safari,
   for one). The rest of Phosphor works as usual.
-- **Couldn't reach this host**: rooms connect your browser straight to the host's, and some
-  networks (offices and schools, often) block that.
+- **Couldn't reach this host**: rooms connect your browser straight to the host's (there's no relay
+  server), and some networks (offices and schools, often) block that. Try another network.
+- **This room needs a password** / **Wrong password**: a private room asks before you join.
 - **Room is full**: the host's watcher limit is reached.
 - **The host ended the room** / **The host removed you**: back to the lobby.
 - **Confirm your email to start a room**: in the lobby, with **Resend**.
