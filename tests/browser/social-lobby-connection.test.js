@@ -16,14 +16,16 @@ const room = (id) => ({
   liveSince: 1000, thumbnail: null, blockedInside: false,
 });
 
-// A connection on fake sockets and a fake wait: `sockets` are the sockets it made, in order; `waits`
-// the backoff waits it asked for, each resolved by the test with `waits[i].done()`.
+// A connection on fake sockets, a fake wait and fake timers: `sockets` are the sockets it made, in order;
+// `waits` the backoff waits it asked for, each resolved by the test with `waits[i].done()`; `timers` the
+// heartbeat's timers, run by the test with `fire(timers, ms)`.
 async function connect() {
   const key = await loadKey();
   const sockets = [];
   const waits = [];
   const statuses = [];
   const messages = [];
+  const timers = [];
   const passes = ['pass-1', 'pass-2', 'pass-3', 'pass-4'];
   let lobby = emptyLobby();
   let failures = 0;
@@ -36,7 +38,7 @@ async function connect() {
       Object.assign(this, { url, sent: [], closed: false });
       sockets.push(this);
     }
-    send(text) { this.sent.push(JSON.parse(text)); }
+    send(text) { this.sent.push(text === 'ping' ? text : JSON.parse(text)); }
     close() {
       if (this.closed) return;
       this.closed = true;
@@ -54,10 +56,24 @@ async function connect() {
     onStatus: (status) => statuses.push(status),
     WebSocketImpl: FakeSocket,
     wait: (ms) => new Promise((done) => waits.push({ ms, done })),
+    setTimer: (fn, ms) => {
+      const timer = { fn, ms, cleared: false };
+      timers.push(timer);
+      return timer;
+    },
+    clearTimer: (timer) => { if (timer) timer.cleared = true; },
   });
   const failNextSocket = () => { failures++; };
-  return { conn, key, sockets, waits, statuses, messages, getPass, failNextSocket, lobby: () => lobby };
+  return { conn, key, sockets, waits, statuses, messages, timers, getPass, failNextSocket, lobby: () => lobby };
 }
+
+// The heartbeat timers still waiting, by length; fire() runs the one waiting for ms.
+const pending = (timers) => timers.filter((t) => !t.cleared && !t.fired).map((t) => t.ms);
+const fire = (timers, ms) => {
+  const timer = timers.find((t) => !t.cleared && !t.fired && t.ms === ms);
+  timer.fired = true;
+  timer.fn();
+};
 
 // The socket's hello, once the pass and the proof are in.
 const helloOn = async (socket) => {
@@ -239,6 +255,51 @@ test('A socket that can\'t be made is retried like a drop', async () => {
   waits[1].done();
   await vi.waitFor(() => expect(sockets).toHaveLength(2));
   conn.close();
+});
+
+test('Live, it pings every 30 s and a pong keeps it; no pong within 10 s is a drop, retried', async () => {
+  const { conn, sockets, waits, statuses, messages, timers } = await connect();
+  conn.open();
+  sockets[0].accept();
+  await helloOn(sockets[0]);
+  sockets[0].receive({ type: 'state', rooms: [], people: [] });
+  expect(pending(timers)).toEqual([30_000]);
+  fire(timers, 30_000);
+  expect(sockets[0].sent.at(-1)).toBe('ping');
+  expect(pending(timers)).toEqual([10_000]);
+  sockets[0].receive('pong');   // plain text, not JSON
+  expect(pending(timers)).toEqual([30_000]);
+  expect(messages.map((m) => m.type)).toEqual(['state']);
+
+  fire(timers, 30_000);
+  fire(timers, 10_000);   // no pong: a socket that's gone without a close
+  expect(sockets[0].closed).toBe(true);
+  expect(statuses).toEqual(['connecting', 'live', 'reconnecting']);
+  expect(waits.map((w) => w.ms)).toEqual([1000]);
+  expect(pending(timers)).toEqual([]);
+  waits[0].done();
+  await vi.waitFor(() => expect(sockets).toHaveLength(2));
+  conn.close();
+});
+
+test('No state within 10 s of the hello is a drop, retried; close() leaves no heartbeat waiting', async () => {
+  const { conn, sockets, waits, statuses, timers } = await connect();
+  conn.open();
+  sockets[0].accept();
+  await helloOn(sockets[0]);
+  expect(pending(timers)).toEqual([10_000]);
+  fire(timers, 10_000);
+  expect(sockets[0].closed).toBe(true);
+  expect(statuses).toEqual(['connecting', 'reconnecting']);
+  expect(waits.map((w) => w.ms)).toEqual([1000]);
+
+  waits[0].done();
+  await vi.waitFor(() => expect(sockets).toHaveLength(2));
+  sockets[1].accept();
+  await helloOn(sockets[1]);
+  sockets[1].receive({ type: 'state', rooms: [], people: [] });
+  conn.close();
+  expect(pending(timers)).toEqual([]);
 });
 
 test('A Pacer on the browser\'s own clock and timers sends the latest after the interval; reset() clears what waits', async () => {

@@ -104,6 +104,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
   await page.routeWebSocket(`${API.replace(/^http/, 'ws')}/api/lobby`, (ws) => {
     socket = ws;
     ws.onMessage((message) => {
+      if (message === 'ping') return ws.send('pong');   // the server's automatic answer
       const msg = JSON.parse(message);
       server.lobby.received.push(msg);
       if (msg.type === 'signal') server.signal = msg.signal;

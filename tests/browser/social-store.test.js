@@ -78,14 +78,17 @@ class FakeSocket {
     Object.assign(this, { url, sent: [], closed: false });
     sockets.push(this);
   }
-  send(text) { this.sent.push(JSON.parse(text)); }
+  send(text) {
+    if (text === 'ping') this.receive('pong');   // as the server's automatic answer does
+    else this.sent.push(JSON.parse(text));
+  }
   close() {
     if (this.closed) return;
     this.closed = true;
     this.onclose?.({ code: 1000 });
   }
   accept() { this.onopen?.({}); }
-  receive(msg) { this.onmessage?.({ data: JSON.stringify(msg) }); }
+  receive(msg) { this.onmessage?.({ data: msg === 'pong' ? msg : JSON.stringify(msg) }); }
   signals() { return this.sent.filter((m) => m.type === 'signal').map((m) => m.signal); }
 }
 

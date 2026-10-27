@@ -4,6 +4,9 @@ import { proof } from './keys.js';
 
 const FIRST_RETRY_MS = 1000;
 const LAST_RETRY_MS = 30_000;
+const STATE_WITHIN_MS = 10_000;   // of the hello
+const PING_EVERY_MS = 30_000;
+const PONG_WITHIN_MS = 10_000;
 
 export function emptyLobby() {
   return { rooms: new Map(), people: new Map() };
@@ -99,13 +102,20 @@ export class Pacer {
 
 // The lobby's websocket. Every socket starts with a hello (a pass from getPass, asked each time so a
 // renewed one is used, and a proof over lobby:<ts>); the server's state makes it live. A drop retries
-// after 1 s, doubling to 30 s, until a state comes; a refused pass stops it. Status goes to onStatus:
+// after 1 s, doubling to 30 s, until a state comes; a refused pass stops it. A socket can go without a
+// close (a laptop asleep, a dead Wi-Fi), so a quiet one counts as a drop: no state within 10 s of the
+// hello, or no "pong" within 10 s of the "ping" sent every 30 s while live. Status goes to onStatus:
 // 'connecting', 'live', 'reconnecting', 'refused' or 'closed'.
 export class LobbyConnection {
-  constructor({ url, getPass, onMessage, onStatus, WebSocketImpl = WebSocket, wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) }) {
-    Object.assign(this, { url, getPass, onMessage, onStatus, WebSocketImpl, wait });
+  constructor({
+    url, getPass, onMessage, onStatus, WebSocketImpl = WebSocket,
+    wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    setTimer = (fn, ms) => setTimeout(fn, ms), clearTimer = (id) => clearTimeout(id),
+  }) {
+    Object.assign(this, { url, getPass, onMessage, onStatus, WebSocketImpl, wait, setTimer, clearTimer });
     this.status = null;
     this.socket = null;
+    this.timer = null;   // the current socket's heartbeat: waiting for its state, its next ping, or its pong
     this.retryMs = FIRST_RETRY_MS;
     this.run = 0;   // bumped by open() and close(), so a retry waiting from before either is dropped
   }
@@ -127,11 +137,18 @@ export class LobbyConnection {
     socket?.close();
   }
 
-  // The socket, no longer current: whatever it says or does after is ignored.
+  // The socket, no longer current: whatever it says or does after is ignored, and its heartbeat stops.
   detach() {
     const socket = this.socket;
     this.socket = null;
+    this.after(null);
     return socket;
+  }
+
+  // The heartbeat's one timer: fn in ms, in place of whatever was waiting (nothing, for null).
+  after(ms, fn) {
+    if (this.timer) this.clearTimer(this.timer);
+    this.timer = fn ? this.setTimer(fn, ms) : null;
   }
 
   // Sent only while live (a signal before the state would go before the hello's answer); true if sent.
@@ -157,17 +174,36 @@ export class LobbyConnection {
     }
     this.socket = socket;
     const current = () => socket === this.socket;
+    // Closed without waiting for the close (on a dead network it can take minutes), and retried.
+    const quiet = () => {
+      if (!current()) return;
+      this.detach();
+      socket.close();
+      this.retry();
+    };
+    // The deadline goes first: a pong can come back before send() returns.
+    const ping = () => {
+      if (!current()) return;
+      this.after(PONG_WITHIN_MS, quiet);
+      socket.send('ping');
+    };
     socket.onopen = async () => {
       try {
         const { pass, privateKey } = await this.getPass();
         const signed = await proof(privateKey, (ts) => `lobby:${ts}`);
-        if (current()) socket.send(JSON.stringify({ type: 'hello', pass, ...signed }));
+        if (!current()) return;
+        socket.send(JSON.stringify({ type: 'hello', pass, ...signed }));
+        this.after(STATE_WITHIN_MS, quiet);
       } catch {
         if (current()) socket.close();   // no pass to give: retry as after a drop
       }
     };
     socket.onmessage = (event) => {
       if (!current()) return;
+      if (event.data === 'pong') {   // the server's answer to a ping: plain text, not JSON
+        this.after(PING_EVERY_MS, ping);
+        return;
+      }
       let msg;
       try {
         msg = JSON.parse(event.data);
@@ -183,6 +219,7 @@ export class LobbyConnection {
       }
       if (msg.type === 'state') {
         this.retryMs = FIRST_RETRY_MS;
+        this.after(PING_EVERY_MS, ping);
         this.setStatus('live');
       }
       this.onMessage?.(msg);
@@ -193,7 +230,7 @@ export class LobbyConnection {
   }
 
   async retry() {
-    this.socket = null;
+    this.detach();
     this.setStatus('reconnecting');
     const run = this.run;
     const waitMs = this.retryMs;
