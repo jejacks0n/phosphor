@@ -54,6 +54,7 @@ export const useSocialStore = defineStore('social', {
     _renewTimer: null,
     _passRun: 0,         // bumped when the pass is dropped, so a pass asked for before is ignored
     _refusedOnce: false, // the lobby refused a pass since it was last live: the next refusal stands
+    _choseSinceState: false, // a signal was chosen since the last state (it may have gone into a dead socket)
   }),
 
   getters: {
@@ -76,9 +77,11 @@ export const useSocialStore = defineStore('social', {
       if (this.readReturn(location)) await this.boot();
     },
 
-    // The SOCIAL tab is showing: once you're known, the lobby connects, and stays connected.
+    // The SOCIAL tab is showing: once you're known, the lobby connects, and stays connected. A link back
+    // left in the URL by a narrow window, since widened, is read now.
     async showLobby() {
       this.lobbyWanted = true;
+      this.readReturn(window.location);
       await this.boot();
       this.connectLobby();
     },
@@ -295,6 +298,7 @@ export const useSocialStore = defineStore('social', {
     setSignal(signal) {
       if (!this.signedIn) return;
       this.signal = signal;
+      this._choseSinceState = true;
       this._pacer?.push(signal);
     },
 
@@ -385,13 +389,15 @@ export const useSocialStore = defineStore('social', {
       // Your own person: the server's answer to a signal that came too soon, or another tab's change.
       if (msg.type === 'person' && msg.person.sub === sub) this.heardSignal(msg.person.signal);
       if (msg.type === 'state') {
-        // The account's signal, set in another tab; with none, yours goes again (a new socket starts at none).
+        // The account's signal, set in another tab, unless you chose since the last state (the server may
+        // only have kept the old socket's); otherwise, or with none, yours goes again.
         const theirs = msg.people.find((p) => p.sub === sub)?.signal ?? null;
-        if (theirs) this.heardSignal(theirs);
+        if (theirs && !this._choseSinceState) this.heardSignal(theirs);
         else {
-          this._pacer.confirm(null);
-          if (this.signal) this._pacer.push(this.signal);
+          this._pacer.confirm(theirs);
+          this._pacer.push(this.signal);
         }
+        this._choseSinceState = false;
       }
     },
 

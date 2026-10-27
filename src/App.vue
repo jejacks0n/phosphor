@@ -21,7 +21,8 @@ const workspace = useWorkspaceStore();
 const { image } = storeToRefs(project);
 const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen } = storeToRefs(workspace);
 
-// SOCIAL: you, your pass and the lobby, from the start (a server that can't be reached leaves the editor be).
+// SOCIAL: a link back from the server is read at load; the rest waits for the tab (a server that can't
+// be reached leaves the editor be).
 useSocialStore().start();
 
 // Leaving with unsaved changes asks first.

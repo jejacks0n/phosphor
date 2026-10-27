@@ -581,6 +581,20 @@ test('A member\'s second tab shows the signal the account has, from its own entr
   expect(socket.signals()).toEqual([null]);
 });
 
+test('A signal chosen into a socket that died is sent again on the next, not swapped for the old one the server kept', async () => {
+  const server = fakeServer();
+  server.session = member();
+  await social.start(at(''));
+  await social.showLobby();
+  const socket = await lastSocket(1);
+  await goLive(socket, { rooms: [], people: [mine('feedback')] });
+  social.setSignal('chat');   // counted as sent, into a socket whose network is gone
+  socket.close();
+  await goLive(await lastSocket(2), { rooms: [], people: [mine('feedback')] });   // the old visitor's
+  expect(social.signal).toBe('chat');
+  expect(sockets[1].signals()).toEqual(['chat']);
+});
+
 test('A guest\'s setSignal does nothing', async () => {
   fakeServer();
   await social.start(at(''));

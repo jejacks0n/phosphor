@@ -46,6 +46,12 @@ test('a link back opened on a narrow screen is left alone, and nothing SOCIAL ru
   expect(new URL(page.url()).search).toBe('?verified=1&error=TOKEN_EXPIRED');
   expect(await store(page, 'social', (s) => [s.notice, s.supported])).toEqual([null, null]);
   expect(server.requests).toEqual([]);
+
+  // Widened, the link is read when the tab is first shown.
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await tab(page, 'SOCIAL').click();
+  await expect(page.locator('.social-tab')).toContainText('That link has expired or was already used');
+  expect(new URL(page.url()).search).toBe('');
 });
 
 test('a file dropped on the SOCIAL tab is ignored, not opened by the browser', async ({ page }) => {
