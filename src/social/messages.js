@@ -29,6 +29,7 @@ const WORDS = {
   USE_RENAME: 'Use Change username to rename your account',
   SESSION_EXPIRED: 'Your session ended. Sign in again',
   INVALID_EMAIL_OR_PASSWORD: "That email or username and password don't match",
+  INVALID_PASSWORD: "That password doesn't match",
   INVALID_USERNAME_OR_PASSWORD: "That email or username and password don't match",
   USER_ALREADY_EXISTS: 'An account already uses that email',
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'An account already uses that email',

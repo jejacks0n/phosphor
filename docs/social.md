@@ -70,8 +70,8 @@ you out everywhere else.
 
 - **Username**, which you can change once every 30 days. Your color in the lobby and chat comes
   from your username.
-- **Ways to sign in**: email and password, Discord and GitHub; connect or disconnect each, keeping
-  at least one.
+- **Ways to sign in**: email and password (with **Send a reset link** to change the password),
+  Discord and GitHub; connect or disconnect each, keeping at least one.
 - **Two-factor**: a code from an authenticator app at sign-in, if you turn it on.
 - **Blocked**: everyone you've blocked, with **Unblock**.
 - **Delete account**: asks for your password (or Discord or GitHub again), then removes your

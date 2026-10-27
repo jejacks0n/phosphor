@@ -7,11 +7,12 @@ import CreateAccountPage from './CreateAccountPage.vue';
 import ForgotPasswordPage from './ForgotPasswordPage.vue';
 import ResetPasswordPage from './ResetPasswordPage.vue';
 import OnboardingPage from './OnboardingPage.vue';
+import AccountPage from './AccountPage.vue';
 
 const social = useSocialStore();
 const PAGES = {
   lobby: LobbyPage, 'sign-in': SignInPage, create: CreateAccountPage, forgot: ForgotPasswordPage,
-  reset: ResetPasswordPage, onboarding: OnboardingPage,
+  reset: ResetPasswordPage, onboarding: OnboardingPage, account: AccountPage,
 };
 onMounted(() => social.showLobby());
 </script>
@@ -26,7 +27,7 @@ onMounted(() => social.showLobby());
       </p>
       <div class="page" :data-page="social.page">
         <component :is="PAGES[social.page]" v-if="PAGES[social.page]" />
-      </div> <!-- the Account page comes next -->
+      </div>
     </template>
   </article>
 </template>

@@ -12,19 +12,19 @@ export const member = (fields = {}) => ({
   providers: ['credential'], twoFactorEnabled: false, usernameChangeableAt: null, ...fields,
 });
 
-// fakeServer(page, { me, rooms, people, 'POST /api/...': (body) => [status, reply] }). `me` null is
+// fakeServer(page, { me, rooms, people, blocked, 'POST /api/...': (body) => [status, reply] }). `me` null is
 // signed out (a guest's pass). Routes answer [status, body]; server.route(key, answer) changes one
 // later. server.requests has every API call ({ method, path, body }); server.lobby.received every
 // message the app sent on the lobby socket; server.lobby.send(msg) pushes one, drop() closes it (both
 // throw until the app has connected: the SOCIAL tab shown, and again after a drop).
-export async function fakeServer(page, { me = null, rooms = [], people = [], ...overrides } = {}) {
+export async function fakeServer(page, { me = null, rooms = [], people = [], blocked = [], ...overrides } = {}) {
   let socket = null;
   const connected = () => {
     if (!socket) throw new Error('The lobby is not connected: show the SOCIAL tab and wait for its hello first');
     return socket;
   };
   const server = {
-    me, rooms, people, requests: [],
+    me, rooms, people, blocked, requests: [],
     lobby: {
       received: [],
       send: (msg) => connected().send(JSON.stringify(msg)),
@@ -46,7 +46,24 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], ...
       return [200, { pass: makePass(claims), claims }];
     },
     'GET /api/auth/list-accounts': () => [200, (server.me?.providers ?? []).map((providerId, i) => ({ id: `a_${i}`, providerId }))],
-    'GET /api/blocks': () => [200, { blocked: [] }],
+    'GET /api/blocks': () => [200, { blocked: server.blocked }],
+    'DELETE /api/blocks/:username': (body, path) => {
+      const name = decodeURIComponent(path.split('/').pop());
+      server.blocked = server.blocked.filter((b) => b.username !== name);
+      return [200, { ok: true }];
+    },
+    'PATCH /api/me/username': ({ username }) => {
+      server.me = { ...server.me, username, name: username };
+      return [200, server.me];
+    },
+    // Linking sends you to the provider; unlinking takes the account's id from list-accounts (a_<index>).
+    'POST /api/auth/link-social': ({ provider }) => [200, { url: `https://${provider}.example/link`, redirect: true }],
+    'POST /api/auth/unlink-account': ({ accountId }) => {
+      const gone = server.me.providers[Number(accountId.slice(2))];
+      server.me = { ...server.me, providers: server.me.providers.filter((p) => p !== gone) };
+      return [200, { status: true }];
+    },
+    'POST /api/auth/delete-user': () => { server.me = null; return [200, { success: true }]; },
     // Signing in or up makes you the member; Discord and GitHub send you off to the provider.
     'POST /api/auth/sign-in/email': () => { server.me = member(); return [200, { redirect: false }]; },
     'POST /api/auth/sign-in/username': () => { server.me = member(); return [200, { redirect: false }]; },
@@ -76,8 +93,9 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], ...
     const { pathname } = new URL(request.url());
     const body = request.postData() ? request.postDataJSON() : undefined;
     server.requests.push({ method: request.method(), path: pathname, body });
-    const answer = routes[`${request.method()} ${pathname}`];
-    const [status, reply] = answer ? await answer(body) : [404, { code: 'NOT_FOUND' }];
+    const key = `${request.method()} ${pathname}`;
+    const answer = routes[key] ?? routes[key.replace(/\/[^/]+$/, '/:username')];   // DELETE /api/blocks/<name>
+    const [status, reply] = answer ? await answer(body, pathname) : [404, { code: 'NOT_FOUND' }];
     return route.fulfill({ status, headers: cors, contentType: 'application/json', body: JSON.stringify(reply) });
   });
 

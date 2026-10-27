@@ -1,0 +1,181 @@
+<script setup>
+import { computed, onMounted, ref } from 'vue';
+import { useSocialStore } from '@/store/SocialStore';
+import { nameColor, usernameProblem } from '@/social/names';
+import { messageFor } from '@/social/messages';
+import UsernameField from './UsernameField.vue';
+
+// Your username, the ways to sign in, who you blocked, and deleting the account. Errors of a form
+// show under it; the others are the notice at the top of the tab.
+const social = useSocialStore();
+const me = computed(() => social.me);
+const PROVIDERS = [['discord', 'Discord'], ['github', 'GitHub']];
+const lastWay = computed(() => me.value.providers.length === 1);
+const hasPassword = computed(() => me.value.providers.includes('credential'));
+const tooSoon = computed(() => {
+  const until = me.value.usernameChangeableAt;
+  return until && new Date(until) > Date.now() ? messageFor('TOO_SOON', { until }) : null;
+});
+
+const renaming = ref(false);
+const username = ref('');
+const renameError = ref(null);
+const password = ref('');
+const deleting = ref(false);
+const deleteError = ref(null);
+
+onMounted(() => social.loadBlocked());
+
+const failed = (error) => { [error.value, social.notice] = [social.notice, null]; };
+
+function startRename() {
+  renameError.value = null;
+  username.value = me.value.username;
+  renaming.value = true;
+}
+
+async function rename() {
+  renameError.value = null;
+  if (await social.rename(username.value)) renaming.value = false;
+  else failed(renameError);
+}
+
+async function deleteAccount() {
+  deleteError.value = null;
+  if (await social.deleteAccount(hasPassword.value ? password.value : undefined)) return;
+  password.value = '';
+  if (social.page === 'account') failed(deleteError);   // else it sent you to sign in, with its own words
+}
+</script>
+
+<template>
+  <div class="form-page account">
+    <button class="link back" @click="social.page = 'lobby'">‹ Back to the lobby</button>
+    <h2>Account</h2>
+
+    <section aria-labelledby="account-username">
+      <h3 id="account-username">Username</h3>
+      <form v-if="renaming" @submit.prevent="usernameProblem(username) || rename()">
+        <UsernameField v-model="username" help="Once every 30 days. Your color comes from your username." />
+        <div class="actions">
+          <button class="primary" type="submit" :disabled="social.busy || !!usernameProblem(username)">Save</button>
+          <button type="button" @click="renaming = false">Cancel</button>
+        </div>
+        <p v-if="renameError" class="error" role="alert">{{ renameError }}</p>
+      </form>
+      <template v-else>
+        <div class="row">
+          <span class="swatch" :style="{ background: nameColor(me.username) }"></span>
+          <span class="username">{{ me.username }}</span>
+          <button :disabled="!!tooSoon" aria-describedby="rename-help" @click="startRename">Change</button>
+        </div>
+        <p id="rename-help" class="help">{{ tooSoon ?? 'Once every 30 days. Your color comes from your username.' }}</p>
+      </template>
+    </section>
+
+    <section aria-labelledby="account-ways">
+      <h3 id="account-ways">Ways to sign in</h3>
+      <div v-if="hasPassword" class="row">
+        <span class="what">Email and password <span class="detail">{{ me.email }}</span></span>
+        <button :disabled="social.busy" @click="social.requestReset(me.email, null)">Send a reset link</button>
+      </div>
+      <div v-for="[id, label] in PROVIDERS" :key="id" class="row">
+        <template v-if="me.providers.includes(id)">
+          <span class="what">{{ label }} <span class="detail">Connected</span></span>
+          <button :disabled="social.busy || lastWay" :aria-describedby="lastWay ? 'last-way' : undefined" @click="social.unlink(id)">Disconnect</button>
+        </template>
+        <template v-else>
+          <span class="what">{{ label }} <span class="detail">Not connected</span></span>
+          <button :disabled="social.busy" @click="social.linkWith(id)">Connect</button>
+        </template>
+      </div>
+      <p v-if="lastWay" id="last-way" class="help">You need at least one way to sign in</p>
+    </section>
+
+    <section aria-labelledby="account-blocked">
+      <h3 id="account-blocked">Blocked</h3>
+      <p v-if="!social.blocked.length" class="help">Nobody blocked</p>
+      <div v-for="person in social.blocked" :key="person.username" class="row">
+        <span class="username">{{ person.username }}</span>
+        <button :disabled="social.busy" :aria-label="`Unblock ${person.username}`" @click="social.unblock(person.username)">Unblock</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="account-delete">
+      <h3 id="account-delete">Delete account</h3>
+      <button v-if="!deleting" class="danger" @click="deleting = true">Delete account</button>
+      <form v-else @submit.prevent="deleteAccount">
+        <label v-if="hasPassword">Password <input v-model="password" type="password" autocomplete="current-password" required></label>
+        <p v-else class="help">Deleting needs a sign-in in the last 5 minutes</p>
+        <div class="actions">
+          <button class="danger" type="submit" :disabled="social.busy">Delete for good</button>
+          <button type="button" @click="deleting = false; deleteError = null">Cancel</button>
+        </div>
+        <p v-if="deleteError" class="error" role="alert">{{ deleteError }}</p>
+      </form>
+    </section>
+  </div>
+</template>
+
+<style scoped>
+div.account {
+  max-width: 440px;
+}
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+div.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+div.row > button {
+  margin-left: auto;
+}
+div.actions {
+  display: flex;
+  gap: 8px;
+}
+span.what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--text);
+}
+span.detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+span.username {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+}
+span.swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+p.help {
+  margin: 0;
+}
+button.danger {
+  align-self: flex-start;
+  color: var(--danger);
+}
+</style>
