@@ -50,9 +50,14 @@ export class Watch {
     return this.post({ t: 'earlier', before });
   }
 
+  // Whether a message can go to the host now.
+  get ready() {
+    return this.channel?.readyState === 'open';
+  }
+
   // A message to the host; false when there's no open channel to send it on.
   post(msg) {
-    if (this.channel?.readyState !== 'open') return false;
+    if (!this.ready) return false;
     try {
       this.channel.send(JSON.stringify(msg));
       return true;

@@ -41,6 +41,7 @@ export class Host {
     // allowance, heard (its chat, checked one at a time), checking (how many wait), askedAt (its last ask
     // for earlier messages) }
     this.watchers = new Map();
+    this.removed = new Set();   // peers the host removed: not met again, and told to the Room until it stops listing them
     this.log = new ChatLog();
     this.room = null;
     this.art = null;
@@ -52,6 +53,7 @@ export class Host {
   // connection the browser won't make, is sent back as left, and nothing else happens; a good one gets
   // a connection, and once it opens, the room.
   async peer(peer, pass) {
+    if (this.removed.has(peer)) return;
     this.drop(peer);
     const w = {
       peer, pass, claims: null, following: true, conn: null, channel: null, has: null, packing: false, behind: false,
@@ -93,8 +95,12 @@ export class Host {
   async hosting(peers) {
     const listed = new Set(peers.map((p) => p.peer));
     for (const peer of [...this.watchers.keys()]) if (!listed.has(peer)) this.peerGone(peer);
+    for (const peer of this.removed) {   // its remove may have been lost with the socket
+      if (listed.has(peer)) this.send({ type: 'remove', peer });
+      else this.removed.delete(peer);
+    }
     const meeting = (w) => !w || (w.conn && !w.channel);
-    await Promise.all(peers.filter((p) => meeting(this.watchers.get(p.peer))).map((p) => this.peer(p.peer, p.pass)));
+    await Promise.all(peers.filter((p) => !this.removed.has(p.peer)).filter((p) => meeting(this.watchers.get(p.peer))).map((p) => this.peer(p.peer, p.pass)));
   }
 
   peerGone(peer) {
@@ -154,6 +160,7 @@ export class Host {
 
   // The host's Remove: the Room puts the watcher out, and its connection closes here.
   remove(peer) {
+    this.removed.add(peer);
     this.send({ type: 'remove', peer });
     this.peerGone(peer);
   }

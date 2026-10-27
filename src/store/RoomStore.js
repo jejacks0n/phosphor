@@ -172,6 +172,10 @@ export const useRoomStore = defineStore('room', {
         onState: (state) => this.watchState(state),
       }));
       this.connect({ type: 'join', ...(password === undefined ? {} : { password }) }, { liveOn: ['joined'], endOn: ['refused', 'removed', 'ended', 'replaced'] });
+      // The host judges the pass this watcher joined with: confirming your email mid-room joins again, with the new one.
+      this._stops.push(watch(() => social.claims?.verified, (now, was) => {
+        if (was === false && now === true) this.join(this.id, { password: this._password });
+      }));
     },
 
     // The room you're watching, to go back into after signing in: its id and password, or null.
@@ -237,7 +241,7 @@ export const useRoomStore = defineStore('room', {
     // A host's shows at once (Host calls chatHeard with it); a watcher's shows when the host sends it back.
     async say(text) {
       const social = useSocialStore(), side = this._host ?? this._watch, body = chatText(text);
-      if (!side || !body || !this.canChat) return false;
+      if (!side || !body || !this.canChat || (this.role === 'watch' && !side.ready)) return false;   // nothing spent on a message that can't go
       this._allowance ??= markRaw(new Allowance());
       if (!this._allowance.take()) {
         this.chatRefused = 'too-fast';
@@ -294,6 +298,10 @@ export const useRoomStore = defineStore('room', {
       } else if (event.type === 'history') {
         const rows = event.messages.map((m) => (m.deleted ? { id: m.id, ts: m.ts, text: '', sub: null, name: null, host: false, mine: false, deleted: true } : this.chatRow(m.entry, m.claims)))
           .filter((r, at, all) => all.findIndex((o) => o.id === r.id) === at);   // an id twice in a page is shown once
+        for (const r of rows) {   // a deletion made while this watcher was away
+          const shown = r.deleted && this.chat.find((m) => m.id === r.id);
+          if (shown) Object.assign(shown, { deleted: true, text: '' });
+        }
         const fresh = rows.filter((r) => !this.chat.some((m) => m.id === r.id));
         if (event.earlier && this._asking) {
           this.chatMore = event.more;

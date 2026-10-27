@@ -724,6 +724,7 @@ test('A watcher\'s say signs and sends over the channel, and shows only on its e
   const socket = await watching();
   const sent = vi.fn(() => true);
   room._watch.say = sent;
+  room._watch.channel = { readyState: 'open' };
   expect(await room.say(' hello ')).toBe(true);
   const { id, ts, text, sig } = sent.mock.calls[0][0];
   expect(text).toBe('hello');
@@ -736,9 +737,14 @@ test('A watcher\'s say signs and sends over the channel, and shows only on its e
   expect(socket.closed).toBe(false);
 });
 
-test('A watcher\'s say returns false when the channel isn\'t open', async () => {
+test('A watcher\'s say returns false when the channel isn\'t open, and spends none of the allowance', async () => {
   await watching();
-  expect(await room.say('hi')).toBe(false);
+  for (const text of ['a', 'b', 'c', 'd']) expect(await room.say(text)).toBe(false);
+  expect(room.chatRefused).toBe(null);
+  room._watch.channel = { readyState: 'open' };
+  room._watch.say = vi.fn(() => true);
+  for (const text of ['a', 'b', 'c']) expect(await room.say(text)).toBe(true);   // all three still there
+  expect(room.chatRefused).toBe(null);
 });
 
 test('A watcher\'s first history sets the chat, more and where it joined; a host message is the host\'s, mine is mine', async () => {
@@ -805,6 +811,32 @@ test('A watcher\'s deleted marks the message deleted and drops its text; an unkn
   room._watch.onChat({ type: 'deleted', id: chatId(2) });
   room._watch.onChat({ type: 'deleted', id: chatId(8) });
   expect(room.chat.map((m) => [m.deleted, m.text])).toEqual([[false, 'm1'], [true, '']]);
+});
+
+test('A deletion made while the watcher was reconnecting comes with the new history and blanks the message shown', async () => {
+  await watching();
+  room._watch.onChat({ type: 'history', messages: [said(1), said(2)], more: false, earlier: false });
+  room.watchState('lost');
+  room._watch.onChat({ type: 'history', messages: [said(1), { id: chatId(2), ts: 1002, deleted: true }, said(3)], more: false, earlier: true });
+  expect(room.chat.map((m) => [m.id, m.deleted, m.text])).toEqual([[chatId(1), false, 'm1'], [chatId(2), true, ''], [chatId(3), false, 'm3']]);
+});
+
+test('A member who confirms their email while watching joins the room again, with the same password, so the host gets the new pass', async () => {
+  await social.boot();
+  const first = await joining(1, { password: 'pw' });
+  first.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  social.claims = { ...social.claims, verified: false };   // as the pass the room was joined with
+  await later();
+  expect(sockets).toHaveLength(1);
+  social.claims = { ...social.claims, verified: true };    // the next pass: confirmed
+  const second = await lastSocket(2);
+  second.accept();
+  await vi.waitFor(() => expect(second.sent[0]).toMatchObject({ type: 'join', password: 'pw' }));
+  expect(room.id).toBe(ID);
+  social.claims = { ...social.claims, verified: false };
+  await later();
+  social.claims = { ...social.claims, verified: true };
+  await lastSocket(3);   // one more for each time it turns true again
 });
 
 test('5,001 messages keep the last 5,000 and leave nothing more to ask for', async () => {

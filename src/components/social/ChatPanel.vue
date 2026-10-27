@@ -21,7 +21,8 @@ const list = useTemplateRef('list');
 const blocked = computed(() => new Set(social.blocked.map((b) => b.id)));
 const shownAnyway = reactive(new Set());   // blocked messages opened with Show
 const hidden = (m) => !m.mine && blocked.value.has(m.sub) && !shownAnyway.has(m.id);
-const time = (ts) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const clock = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });   // made once: building one per row is slow
+const time = (ts) => clock.format(ts);
 
 onMounted(() => {
   list.value.scrollTop = list.value.scrollHeight;
@@ -79,7 +80,8 @@ function askIfAtTop() {
       <div ref="list" class="list" role="log" aria-label="Messages" @scroll.passive="askIfAtTop">
         <p v-if="room.chatMore" class="more">↑ Scroll up for earlier messages</p>
         <p v-if="room.role === 'watch' && room.joinedAt === null && room.status === 'live'" class="joined">You joined</p>
-        <template v-for="m in room.chat" :key="m.id">
+        <!-- A row is drawn again only when what it shows changes, not on every new message. -->
+        <div v-for="m in room.chat" :key="m.id" v-memo="[m.deleted, hidden(m), room.role === 'host', m.id === room.joinedAt]">
           <div class="message" :class="{ note: m.deleted || hidden(m) }">
             <p v-if="m.deleted">Message deleted by the host</p>
             <p v-else-if="hidden(m)">
@@ -94,10 +96,10 @@ function askIfAtTop() {
               </p>
               <p class="text">{{ m.text }}</p>
             </template>
-            <button v-if="room.role === 'host' && !m.deleted" class="link delete" @click="room.deleteMessage(m.id)">Delete</button>
+            <button v-if="room.role === 'host' && !m.deleted" class="link delete" :aria-label="`Delete message from ${m.name}`" @click="room.deleteMessage(m.id)">Delete</button>
           </div>
           <p v-if="m.id === room.joinedAt" class="joined">You joined</p>
-        </template>
+        </div>
       </div>
       <ChatFoot />
     </div>

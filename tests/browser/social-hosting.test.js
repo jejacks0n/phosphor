@@ -264,6 +264,20 @@ test('hosting meets again a listed watcher whose connection is still being made'
   expect(r.toHost).toEqual([]);   // the first try at p2 closed quietly
 });
 
+// The host's socket was reconnecting when it removed a watcher: the Room never heard, and lists it again.
+test('a removed watcher is not met again when the Room lists it, and remove goes again', async () => {
+  const r = await room(['p1']);
+  await expect.poll(() => r.log.p1.states.at(-1), PATIENT).toBe('live');
+  const pass = await passFor('u_p1', 'p1');
+  r.host.remove('p1');
+  r.toHost.length = 0;
+  await r.host.hosting([{ peer: 'p1', pass }]);
+  await r.host.peer('p1', pass);
+  expect(r.toHost).toEqual([{ type: 'remove', peer: 'p1' }]);
+  expect(r.offers).toEqual({ p1: 1 });
+  expect(lastList(r)).toEqual([]);
+});
+
 test('a snapshot that fails to pack is no unhandled rejection, and the next art still goes', async () => {
   const rejections = [];
   const note = (e) => { rejections.push(e.reason); e.preventDefault(); };
