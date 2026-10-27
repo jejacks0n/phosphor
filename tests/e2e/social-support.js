@@ -250,7 +250,7 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
       const peer = `p_${++peers}`;
       watchers.set(peer, { sub: claims.sub, guest: claims.guest, pass: msg.pass });
       sockets.set(peer, ws);
-      reply(ws, { type: 'joined', peer, hostName: room.setup.hostName });
+      reply(ws, { type: 'joined', peer, hostName: room.setup.hostName, hostSub: room.setup.hostSub });
       send('host', { type: 'peer', peer, pass: msg.pass });
       return peer;
     }

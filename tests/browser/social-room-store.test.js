@@ -352,7 +352,7 @@ test('full gives "Room is full", and ended "The host ended the room"; both clear
 
   social.page = 'account';
   const socket = await joining(2);
-  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   socket.receive({ type: 'ended' });
   expect(social.notice).toBe('The host ended the room');
   expect([room.role, room.room, social.page]).toEqual([null, null, 'lobby']);
@@ -362,7 +362,7 @@ test('full gives "Room is full", and ended "The host ended the room"; both clear
 test('removed gives "The host removed you"', async () => {
   await social.boot();
   const socket = await joining(1);
-  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   socket.receive({ type: 'removed' });
   expect(social.notice).toBe('The host removed you');
   expect(room.role).toBe(null);
@@ -372,7 +372,7 @@ test('replaced (the same account watching in another tab) puts this one back in 
   await social.boot();
   social.page = 'account';
   const socket = await joining(1);
-  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   socket.receive({ type: 'replaced' });
   expect(social.notice).toBe('You\'re watching this room in another tab');
   expect([room.role, social.page]).toEqual([null, 'lobby']);
@@ -399,17 +399,17 @@ async function rawHost(socket, { answered = true } = {}) {
 test('"hosted by" is the Room\'s word: a room from the channel naming another host doesn\'t change it', async () => {
   await social.boot();
   const socket = await joining(1);
-  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   const channel = await rawHost(socket);
   channel.send(JSON.stringify({ t: 'room', name: 'Night shift', welcome: 'Hi', host: 'impostor' }));
   await expect.poll(() => room.room?.name, PATIENT).toBe('Night shift');
-  expect(room.room).toEqual({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan' });
+  expect(room.room).toEqual({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan', hostSub: 'u_9' });
 });
 
 test('the Room closing the socket while the host\'s connection is being made is final: failed, and no join again', async () => {
   await social.boot();
   const socket = await joining(1);
-  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   await rawHost(socket, { answered: false });
   await vi.waitFor(() => expect(room.status).toBe('connecting'));
   socket.close();   // the host gave up on reaching us first, and the Room put us out
@@ -444,9 +444,9 @@ test('Review focus 3: joined waits for the host\'s offer; an offer whose answer 
   await social.boot();
   room._connectWithinMs = 500;
   const socket = await joining(1);
-  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   expect(room.status).toBe('waiting');
-  expect(room.room).toEqual({ name: '', welcome: '', host: 'ansi-fan' });
+  expect(room.room).toEqual({ name: '', welcome: '', host: 'ansi-fan', hostSub: 'u_9' });
   await wait(300);
   expect(room.status).toBe('waiting');
 
@@ -465,7 +465,7 @@ test('Review focus 3: joined waits for the host\'s offer; an offer whose answer 
 test('A watcher\'s room, art and the host\'s view come from the channel; leave clears them and goes to the lobby', async () => {
   await social.boot();
   const socket = await joining(1);
-  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   // The host's side, its signals joined to the watcher's socket as the Room would.
   const lists = [];
   const host = new Host({
@@ -486,7 +486,7 @@ test('A watcher\'s room, art and the host\'s view come from the channel; leave c
   await host.peer('p1', await passFor('g_1', 'quiet-amber-fox-1', true));
   await expect.poll(() => room.hostView, PATIENT).toEqual({ col: 1, row: 0, cols: 1, rows: 1 });
   expect(room.status).toBe('live');
-  expect(room.room).toEqual({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan' });
+  expect(room.room).toEqual({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan', hostSub: 'u_9' });
   expect(room.art).toEqual(art);
 
   room.setFollowing(false);
@@ -643,7 +643,7 @@ const mark = (n) => ({ id: chatId(n), ts: 1000 + n, text: `m${n}`, sub: 'u_2', n
 async function watching() {
   await social.boot();
   const socket = await joining(1);
-  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   return socket;
 }
 
@@ -749,15 +749,22 @@ test('A watcher\'s say returns false when the channel isn\'t open, and spends no
 
 test('A watcher\'s first history sets the chat, more and where it joined; a host message is the host\'s, mine is mine', async () => {
   await watching();
-  const own = said(3, { sub: 'u_1', name: 'ansi-fan' });   // the watcher's own, here also the host's name
-  room._watch.onChat({ type: 'history', messages: [said(1, { name: 'ansi-fan' }), said(2), { id: chatId(9), ts: 1009, deleted: true }, own], more: true, earlier: false });
+  const own = said(3, { sub: 'u_1', name: 'ansi-fan' });   // the watcher's own, here also the host's name: not the host's
+  room._watch.onChat({ type: 'history', messages: [said(1, { sub: 'u_9', name: 'ansi-fan' }), said(2), { id: chatId(9), ts: 1009, deleted: true }, own], more: true, earlier: false });
   expect(room.chat.map((m) => [m.id, m.host, m.mine, m.deleted, m.text])).toEqual([
     [chatId(1), true, false, false, 'm1'], [chatId(2), false, false, false, 'm2'],
-    [chatId(9), false, false, true, ''], [chatId(3), true, true, false, 'm3'],
+    [chatId(9), false, false, true, ''], [chatId(3), false, true, false, 'm3'],
   ]);
   expect(room.chat[1]).toEqual(mark(2));
   expect(room.chatMore).toBe(true);
   expect(room.joinedAt).toBe(chatId(3));
+});
+
+test('The host\'s tag follows its account, not its name: a host who renamed keeps it, a namesake does not get it', async () => {
+  await watching();   // the host is u_9, joined as ansi-fan
+  room._watch.onChat({ type: 'history', messages: [said(1, { sub: 'u_9', name: 'renamed' })], more: false, earlier: false });
+  room._watch.onChat({ type: 'chat', ...said(2, { sub: 'u_5', name: 'ansi-fan' }) });
+  expect(room.chat.map((m) => [m.name, m.host])).toEqual([['renamed', true], ['ansi-fan', false]]);
 });
 
 test('earlier() asks for the page before the oldest, once while waiting, and the answer goes in front', async () => {
@@ -797,6 +804,25 @@ test('A fresh history after a reconnect adds only the messages not there yet, an
   expect(room._watch.earlier).toHaveBeenCalledTimes(2);
 });
 
+test('A reconnect keeps the host\'s order even when the senders\' clocks disagree', async () => {
+  await watching();
+  const at = (n, ts) => { const m = said(n); m.entry.ts = ts; return m; };
+  room._watch.onChat({ type: 'history', messages: [at(1, 5000), at(2, 4000)], more: false, earlier: false });
+  room.watchState('lost');
+  room._watch.onChat({ type: 'history', messages: [at(1, 5000), at(2, 4000), at(3, 1000), at(4, 9000), at(5, 2000)], more: false, earlier: false });
+  expect(room.chat.map((m) => m.id)).toEqual([1, 2, 3, 4, 5].map(chatId));
+});
+
+test('A gap longer than a page replaces the list with the page, and more is the page\'s', async () => {
+  await watching();
+  room._watch.onChat({ type: 'history', messages: [said(1), said(2)], more: false, earlier: false });
+  room.watchState('lost');
+  room._watch.onChat({ type: 'history', messages: [said(8), said(9)], more: true, earlier: false });
+  expect(room.chat.map((m) => m.id)).toEqual([8, 9].map(chatId));
+  expect(room.chatMore).toBe(true);
+  expect(room.joinedAt).toBe(null);   // it was in the list that went
+});
+
 test('A chat entry whose id is already shown is ignored', async () => {
   await watching();
   room._watch.onChat({ type: 'chat', ...said(1) });
@@ -824,7 +850,7 @@ test('A deletion made while the watcher was reconnecting comes with the new hist
 test('A member who confirms their email while watching joins the room again, with the same password, so the host gets the new pass', async () => {
   await social.boot();
   const first = await joining(1, { password: 'pw' });
-  first.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  first.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   social.claims = { ...social.claims, verified: false };   // as the pass the room was joined with
   await later();
   expect(sockets).toHaveLength(1);

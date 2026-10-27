@@ -31,7 +31,7 @@ export const useRoomStore = defineStore('room', {
     role: null,          // null | 'host' | 'watch'
     id: null,
     link: null,          // the host's link to the room
-    room: null,          // a host's: the Room's room and your welcome; a watcher's: { name, welcome, host } (joined's host)
+    room: null,          // a host's: the Room's room and your welcome; a watcher's: { name, welcome, host, hostSub } (joined's host and its account)
     // a host's: 'connecting' | 'live' | 'reconnecting'; a watcher's: 'joining' | 'password' | 'waiting' |
     // 'connecting' | 'live' | 'failed'
     status: null,
@@ -309,18 +309,29 @@ export const useRoomStore = defineStore('room', {
         } else if (!this.chat.length) {
           Object.assign(this, { chatMore: event.more, joinedAt: rows.at(-1)?.id ?? null });
           this.keep(rows);
-        } else if (fresh.length) {
-          this.keep([...this.chat, ...fresh].sort((a, b) => a.ts - b.ts));   // stable: same-time messages keep their order
+        } else if (rows.length) {
+          // A page the connection gives again. The host's order is the truth (never the senders' clocks): a page
+          // that shares an id with the list is contiguous with it, so what comes after its last shared entry
+          // was missed while away. One that shares none follows a gap longer than a page: it replaces the
+          // list, and scrolling up asks the host for the rest.
+          const shared = rows.findLastIndex((r) => this.chat.some((m) => m.id === r.id));
+          if (shared >= 0) {
+            this.keep([...this.chat, ...rows.slice(shared + 1)]);
+          } else {
+            if (!rows.some((r) => r.id === this.joinedAt)) this.joinedAt = null;
+            this.chatMore = event.more;
+            this.keep(rows);
+          }
         }
         this.stopAsking();
       }
     },
 
     // A message as the list shows it. A host's own claims come from its pass (the host checked every
-    // watcher's pass when it joined); the host's mark is its own messages, or for a watcher the room's host.
+    // watcher's pass when it joined); the host's mark is its own messages, or for a watcher the room's host (by account, so a rename keeps it).
     chatRow({ id, ts, text, pass }, claims = decodePass(pass)) {
       const mine = claims.sub === useSocialStore().claims?.sub;
-      return { id, ts, text, sub: claims.sub, name: claims.name, host: this.role === 'host' ? mine : claims.name === this.room?.host, mine, deleted: false };
+      return { id, ts, text, sub: claims.sub, name: claims.name, host: this.role === 'host' ? mine : claims.sub === this.room?.hostSub, mine, deleted: false };
     },
 
     // The list holds the last MOST_KEPT at most, like the host's log, and goes no further back: once it's
@@ -360,7 +371,7 @@ export const useRoomStore = defineStore('room', {
         case 'joined':
           this._refusedOnce = false;
           this.status = 'waiting';
-          this.room = { name: '', welcome: '', ...this.room, host: msg.hostName };
+          this.room = { name: '', welcome: '', ...this.room, host: msg.hostName, hostSub: msg.hostSub };
           break;
         case 'refused':
           this.refused(msg.reason);

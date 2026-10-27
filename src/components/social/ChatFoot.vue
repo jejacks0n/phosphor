@@ -8,7 +8,8 @@ import { MOST_CHARS } from '@/social/chat';
 // The foot of the chat panel: one bordered box with the message in it and a round send arrow at its
 // bottom-right (gray with nothing to send, purple with text). Enter sends, Shift+Enter is a new line,
 // and the box grows to 5 lines, then scrolls. A guest is asked to sign in, and a member who hasn't
-// confirmed their email to do that; neither can send.
+// confirmed their email to do that; neither can send. While the pass is being swapped (who you are isn't
+// known) it holds a blank line's space, so the panel doesn't jump and "Confirm your email" doesn't flash.
 const room = useRoomStore(), social = useSocialStore(), workspace = useWorkspaceStore();
 
 const text = ref('');
@@ -69,7 +70,8 @@ function signIn() {
       </div>
       <p class="refused" role="status">{{ refused }}</p>
     </form>
-    <button v-else-if="social.isGuest" class="sign-in" @click="signIn">Sign in to chat</button>
+    <p v-else-if="!social.claims" class="confirm" aria-hidden="true">&nbsp;</p>
+    <button v-else-if="social.claims.guest" class="sign-in" @click="signIn">Sign in to chat</button>
     <p v-else class="confirm">Confirm your email to chat</p>
   </footer>
 </template>
