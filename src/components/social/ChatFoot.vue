@@ -33,8 +33,9 @@ let sending = false;
 async function send() {
   if (sending || !hasText.value) return;
   sending = true;
+  const sent = text.value;
   try {
-    if (await room.say(text.value)) {
+    if (await room.say(sent) && text.value === sent) {   // what was typed meanwhile stays
       text.value = '';
       await nextTick();
       grow();
@@ -103,7 +104,7 @@ div.box textarea:focus {
   flex: 1;
   min-width: 0;
   height: auto;
-  max-height: 90px;   /* 5 lines */
+  max-height: calc(5 * 18px + 8px);   /* 5 lines (the line-height below) and the padding */
   margin: 0;
   padding: 4px 0;
   border: 0;

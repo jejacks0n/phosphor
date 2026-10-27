@@ -81,16 +81,14 @@ test('Shift+Enter makes a new line and the box grows to 5 lines, then scrolls; 3
   await watcher.keyboard.type('b');
   await expect(box(watcher)).toHaveValue('a\nb');
   expect(await messages(watcher).count()).toBe(0);   // Shift+Enter sends nothing
-  const two = await height();
-  expect(two).toBeGreaterThan(one);
+  await expect.poll(height).toBeGreaterThan(one);
+  const two = await height(), line = two - one;
 
   for (let i = 0; i < 8; i++) {
     await watcher.keyboard.press('Shift+Enter');
     await watcher.keyboard.type('x');
   }
-  const most = await height();
-  expect(most).toBeGreaterThan(two);
-  expect(most).toBeLessThan(one * 7);   // 5 lines, not 10
+  await expect.poll(height).toBe(one + 4 * line);   // exactly 5 lines, not 10
   expect(await box(watcher).evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
 
   await box(watcher).fill('');
@@ -101,9 +99,10 @@ test('Shift+Enter makes a new line and the box grows to 5 lines, then scrolls; 3
 test('four Enters within a second: "Slow down a little", and three messages arrive', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { me: wren });
   await watcher.clock.setFixedTime(Date.now());   // no second passes between them
-  await say(watcher, 'one');
-  await say(watcher, 'two');
-  await say(watcher, 'three');
+  for (const word of ['one', 'two', 'three']) {
+    await say(watcher, word);
+    await expect(box(watcher)).toHaveValue('');   // taken, before the next
+  }
   await expect(messages(watcher)).toHaveCount(3);
   await expect(panel(watcher).getByText('Slow down a little')).toHaveCount(0);
   await say(watcher, 'four');
@@ -167,16 +166,15 @@ test('60 messages before a second watcher joins: the last 50, "You joined", and 
   await expect(messages(late).last()).toContainText('m60');
   await expect(log(late).getByText('↑ Scroll up for earlier messages')).toBeVisible();
   await expect(log(late).getByText('You joined')).toBeVisible();
-  expect(await log(late).evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThan(8);   // at the bottom
+  await expect.poll(() => log(late).evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThan(8);   // at the bottom
 
   await log(late).evaluate((el) => { el.scrollTop = 0; });
   await expect(messages(late)).toHaveCount(60);
   await expect(messages(late).first()).toContainText('m1');
   await expect(log(late).getByText('↑ Scroll up for earlier messages')).toHaveCount(0);
   // the place held: m11, which was at the top, is still where the eye was
-  const top = (await log(late).boundingBox()).y;
-  const at = (await messages(late).nth(10).boundingBox()).y;
-  expect(at - top).toBeLessThan(60);
+  const fromTop = async () => (await messages(late).nth(10).boundingBox()).y - (await log(late).boundingBox()).y;
+  await expect.poll(async () => Math.abs(await fromTop())).toBeLessThan(60);
   await expect(messages(late).nth(10)).toContainText('m11');
 });
 
@@ -204,6 +202,7 @@ test('a message from someone you blocked is folded, and Show shows that one', as
   await other.goto('/');
   await joinFromCard(other);
   await say(other, 'secret sauce');
+  await expect(messages(host)).toHaveCount(1);   // the host has it before the next goes
   await say(host, 'fine words');
 
   await expect(messages(host).first()).toContainText('secret sauce');

@@ -182,7 +182,8 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
 // peer's place: that one hears replaced, and the host peer-gone. Signals are relayed between the host
 // and its watchers; the host hears of each watcher (peer, peer-gone). Settings change the room as the
 // Room's checks allow, at most once a second per host socket: a sooner one is answered `settings-now`.
-// A host's remove takes the watcher out and sends it removed (the host hears no peer-gone). End sends ended to everyone. Sockets are closed where the Room closes them: after refused (1008),
+// A host's remove takes the watcher out and sends it removed (the host hears no peer-gone).
+// End sends ended to everyone. Sockets are closed where the Room closes them: after refused (1008),
 // ended, removed or replaced (1000), and a watcher's once the host hears it's gone. room.received has every message as { from: 'host' |
 // <peer> | null, msg }, room.from(who) the messages of one; room.send(who, msg) pushes one, room.info()
 // is the room as the host is told it, and room.drop(who) closes a socket.

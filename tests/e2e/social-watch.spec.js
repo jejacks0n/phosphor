@@ -203,10 +203,10 @@ test('a watcher\'s own unsaved art is as it was after joining, watching and leav
 
   await tab(watcher, 'ANSI').click();
   await settled(watcher);
-  expect(await pixels()).toEqual(shownBefore);
+  await expect.poll(pixels).toEqual(shownBefore);   // the canvas draws after the tab shows
   await tab(watcher, 'PIXEL').click();
   await settled(watcher);
-  expect(await pixelViewPixel()).toEqual(pixelBefore);
+  await expect.poll(pixelViewPixel).toEqual(pixelBefore);
   expect(await own()).toEqual(before);
   expect(await store(watcher, 'room', (r) => r.status)).toBe('live');   // still watching
 
