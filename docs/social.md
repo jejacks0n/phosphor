@@ -4,7 +4,7 @@
 >
 > **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, the lobby
 > with its Join counts and reasons, signals and who's here, starting and hosting a room, and
-> watching one. **Comes next:** chat, removing or blocking from a room, and reporting. **Chat**
+> watching one. **Comes next:** chat, and reporting. **Chat**
 > through **Blocking and reporting** describe what's coming, as do the chat beside your work under
 > **Watching**, and Remove and Block under **Hosting**. Until the chat is there, watchers see the
 > welcome message under the room's name.
@@ -135,10 +135,10 @@ settings** and **End room**. Send the link to anyone you want in a private room,
 password. The SOCIAL tab carries a dot while you're in a room, hosting or watching.
 
 Each watcher shows whether they're following you or looking around on their own (or still
-connecting). Point at a member who's watching for:
+connecting). A member's row has a **⋯** button (guests have none) with:
 
-- **Remove**: they leave the room now, and can't come back until the room ends.
-- **Block**: they can't join any room you host again, and your rooms no longer show in their lobby.
+- **Remove for this session**: they leave the room now, and can't come back until the room ends.
+- **Block from my rooms**: asks first (**Block** or **Cancel**), then they can't join any room you host again, and your rooms no longer show in their lobby.
   They aren't told; your rooms simply aren't there for them, and a link to one says "This room
   isn't available".
 

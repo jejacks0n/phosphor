@@ -314,9 +314,10 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
 export const shown = (page, name) => page.locator(`.social-tab [data-page="${name}"]`);
 const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });
 
-// The host live with a room made through Start a room, with `image` open and the form filled as asked.
+// The host live with a room made through Start a room, with `image` open and the form filled as asked;
+// the host's fake server comes back.
 export async function goLive(host, room, { image = 'images/gradient.png', welcome = '', password = null, allowGuests = true } = {}) {
-  await fakeServer(host, { me: member(), room });
+  const server = await fakeServer(host, { me: member(), room });
   await openApp(host, image);
   await tab(host, 'SOCIAL').click();
   await host.getByRole('button', { name: 'Start a room' }).click();
@@ -329,6 +330,7 @@ export async function goLive(host, room, { image = 'images/gradient.png', welcom
   if (!allowGuests) await host.getByRole('checkbox', { name: 'Allow guests' }).uncheck();
   await host.getByRole('button', { name: 'Go live' }).click();
   await expect.poll(() => store(host, 'room', (r) => r.status)).toBe('live');
+  return server;
 }
 
 // The watcher's page, its lobby listing the room (as the server would once it's live), `blocked` the

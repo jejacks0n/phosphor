@@ -1,7 +1,7 @@
 // The chat panel at the right of the whole app while you're in a room: the host's page and members' pages
 // in one fake Room, talking through the real peers. The welcome pinned, sending (Enter, Shift+Enter, 300
 // characters, one a second), who can send, folding to the rail, earlier messages on scrolling up, someone
-// you blocked folded, and the host's Delete.
+// you blocked folded, and the host's Delete, Remove and Block.
 import { test, expect, tab, store } from './support.js';
 import { fakeRoom, goLive, watcherPage, joinFromCard, member, shown, ROOM_ID } from './social-support.js';
 
@@ -22,11 +22,11 @@ async function say(page, text) {
 // The host live (welcome pinned), and a watcher who has joined as `me` (a guest if none).
 async function inRoom(host, context, { welcome = '', me = null, blocked = [] } = {}) {
   const room = fakeRoom();
-  await goLive(host, room, { welcome });
+  const server = await goLive(host, room, { welcome });
   const watcher = await watcherPage(context, room, { me, blocked });
   await watcher.goto('/');
   await joinFromCard(watcher);
-  return { room, watcher };
+  return { room, watcher, server };
 }
 
 test('the panel is beside every tab for the host and the watcher, with the welcome pinned', async ({ page: host, context }) => {
@@ -293,4 +293,83 @@ test('the host\'s Delete shows on hover and leaves "Message deleted by the host"
     await expect(messages(page).first()).toContainText('Message deleted by the host');
     await expect(messages(page).first()).not.toContainText('oops');
   }
+});
+
+test('a watcher who joins after the host\'s Delete sees "Message deleted by the host" too', async ({ page: host, context }) => {
+  const { room, watcher } = await inRoom(host, context, { me: wren });
+  await say(watcher, 'oops');
+  await expect(messages(host)).toHaveCount(1);
+  await messages(host).first().hover();
+  await messages(host).first().getByRole('button', { name: 'Delete' }).click();
+  await expect(messages(watcher).first()).toContainText('Message deleted by the host');
+
+  const late = await watcherPage(context, room, { me: member({ id: 'u_4', username: 'late_comer', name: 'late_comer' }) });
+  await late.goto('/');
+  await joinFromCard(late);
+  await expect(messages(late)).toHaveCount(1);
+  await expect(messages(late).first()).toContainText('Message deleted by the host');
+  await expect(messages(late).first()).not.toContainText('oops');
+});
+
+const watching = (host) => shown(host, 'host-room').getByRole('list', { name: 'Watching' }).getByRole('listitem');
+const more = (host, name = 'pixel_wren') => watching(host).getByRole('button', { name: `More for ${name}` });
+const blockDialog = (host) => host.getByRole('dialog', { name: 'Block pixel_wren?' });
+
+test('Remove for this session: the watcher is in the lobby with "The host removed you" and the host\'s list is empty', async ({ page: host, context }) => {
+  const { watcher } = await inRoom(host, context, { me: wren });
+  await expect(watching(host)).toHaveCount(1);
+  await more(host).click();
+  await host.getByRole('button', { name: 'Remove for this session' }).click();
+  await expect(watching(host)).toHaveCount(0);
+  await expect(shown(watcher, 'lobby')).toBeVisible();
+  await expect(watcher.getByText('The host removed you')).toBeVisible();
+  expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
+});
+
+test('Block from my rooms asks first, then blocks and removes', async ({ page: host, context }) => {
+  const { watcher, server } = await inRoom(host, context, { me: wren });
+  await more(host).click();
+  await expect(host.getByRole('button', { name: 'Block from my rooms' })).toBeVisible();
+  await host.getByRole('button', { name: 'Block from my rooms' }).click();
+
+  const dialog = blockDialog(host);
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('They can\'t join any room you host, and they leave this one now. Unblock them from Account.')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  expect(server.sent('POST', '/api/blocks')).toHaveLength(0);   // nothing yet
+
+  await dialog.getByRole('button', { name: 'Block', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(() => server.sent('POST', '/api/blocks')).toHaveLength(1);
+  expect(server.sent('POST', '/api/blocks')[0].body).toEqual({ username: 'pixel_wren' });
+  await expect(watching(host)).toHaveCount(0);
+  await expect(watcher.getByText('The host removed you')).toBeVisible();
+});
+
+test('Cancel and Escape on the Block box leave everything as it was, with focus back on the \u22ef button', async ({ page: host, context }) => {
+  const { watcher, server } = await inRoom(host, context, { me: wren });
+  for (const dismiss of [
+    () => blockDialog(host).getByRole('button', { name: 'Cancel' }).click(),
+    () => host.keyboard.press('Escape'),
+  ]) {
+    await more(host).click();
+    await host.getByRole('button', { name: 'Block from my rooms' }).click();
+    await expect(blockDialog(host)).toBeVisible();
+    await dismiss();
+    await expect(blockDialog(host)).toHaveCount(0);
+    await expect(more(host)).toBeFocused();
+    await expect(watching(host)).toHaveCount(1);
+    await expect(shown(watcher, 'watch-room')).toBeVisible();
+  }
+  expect(server.sent('POST', '/api/blocks')).toHaveLength(0);
+});
+
+test('a guest\'s row has no \u22ef; a member\'s has one', async ({ page: host, context }) => {
+  const { room } = await inRoom(host, context, { me: wren });
+  const guest = await watcherPage(context, room);
+  await guest.goto('/');
+  await joinFromCard(guest);
+  await expect(watching(host)).toHaveCount(2);
+  await expect(more(host)).toHaveCount(1);
+  await expect(watching(host).filter({ hasText: 'guest' }).getByRole('button')).toHaveCount(0);
 });

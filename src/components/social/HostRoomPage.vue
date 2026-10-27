@@ -7,6 +7,8 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { charRowsOf } from '@/lib/Cells';
 import { fontOnWire } from '@/social/wire';
 import { nameColor } from '@/social/names';
+import DropdownMenu from '@/components/DropdownMenu.vue';
+import ModalDialog from '@/components/ModalDialog.vue';
 import RoomArt from './RoomArt.vue';
 
 // The room you host: its link, your art as watchers see it, who's watching (a watcher counts once
@@ -48,6 +50,22 @@ watch(() => room.room?.welcome, (v) => { if (v !== undefined) welcome.value = v;
 watch(() => room.room?.allowGuests, (v) => { if (v !== undefined) allowGuests.value = v; }, { immediate: true });
 watch(() => room.room?.max, (v) => { if (v !== undefined) max.value = v; }, { immediate: true });
 const countId = useId();
+
+// A member's ⋯ menu: Remove for this session, or Block from my rooms, which asks first. Cancel (or Escape)
+// puts focus back on the ⋯ button the menu came from.
+const blocking = ref(null);   // { watcher, trigger }
+const askToBlock = (watcher, event) => {
+  blocking.value = { watcher, trigger: event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger') };
+};
+const cancelBlock = () => {
+  blocking.value.trigger.focus();
+  blocking.value = null;
+};
+const confirmBlock = async () => {
+  const { watcher } = blocking.value;
+  blocking.value = null;
+  await room.block(watcher);
+};
 const save = () => {
   room.changeSettings({ welcome: welcome.value, allowGuests: allowGuests.value, max: max.value });
   say('Saved');
@@ -80,6 +98,11 @@ const save = () => {
           <span class="name">{{ watcher.name }}</span>
           <span v-if="watcher.guest" class="tag">guest</span>
           <span class="what">{{ !watcher.connected ? 'connecting…' : watcher.following ? 'following' : 'looking around' }}</span>
+          <DropdownMenu v-if="!watcher.guest" :label="`More for ${watcher.name}`">
+            <template #trigger><span aria-hidden="true">⋯</span></template>
+            <button @click="room.remove(watcher.peer)">Remove for this session</button>
+            <button @click="askToBlock(watcher, $event)">Block from my rooms</button>
+          </DropdownMenu>
         </li>
       </ul>
 
@@ -96,6 +119,14 @@ const save = () => {
 
       <button class="end danger" @click="room.endRoom()">End room</button>
     </aside>
+
+    <ModalDialog v-if="blocking" :title="`Block ${blocking.watcher.name}?`"
+        sub="They can't join any room you host, and they leave this one now. Unblock them from Account." @cancel="cancelBlock">
+      <div class="actions">
+        <button class="danger" @click="confirmBlock">Block</button>
+        <button autofocus @click="cancelBlock">Cancel</button>
+      </div>
+    </ModalDialog>
   </div>
 </template>
 
@@ -258,5 +289,10 @@ p.count {
 }
 button.end {
   margin-top: auto;
+}
+div.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>
