@@ -121,7 +121,7 @@ test('a reserved or guest-shaped username is flagged as you type, and never sent
     await expect(create).toBeDisabled();
   }
   await username.fill('pixel.wren');
-  await expect(form.getByText('Use only lowercase letters, numbers, underscores and hyphens')).toBeVisible();
+  await expect(form.getByText('Use only letters, numbers, underscores and hyphens')).toBeVisible();
   await username.fill('pixel-wren');
   await expect(form.getByText('That name is reserved', { exact: false })).toHaveCount(0);
   await expect(create).toBeEnabled();

@@ -253,6 +253,41 @@ test('signIn picks the username or email endpoint; a wrong password, or a suspen
   expect(social.page).toBe('lobby');
 });
 
+test('busy lasts the whole sign-in, sign-up or provider sign-in (until you\'re known, or gone), so neither form is sent twice', async () => {
+  const server = fakeServer();
+  await social.start(at(''));
+  server.route('POST /api/auth/sign-up/email', () => ((server.session = member({ emailVerified: false })), [200, { token: null }]));
+  server.route('POST /api/auth/sign-in/social', ({ provider }) => (provider === 'discord'
+    ? [200, { url: 'https://discord.example/authorize', redirect: true }] : [500, { code: 'OOPS' }]));
+  const me = server.routeOf('GET /api/me');
+  let answerMe = null;
+  server.route('GET /api/me', () => new Promise((resolve) => { answerMe = () => resolve(me()); }));
+
+  const actions = [
+    () => social.signIn('fan@example.com', 'right-password'),
+    () => social.signUp({ username: 'pixel_wren', email: 'wren@example.com', password: 'a long password', termsAccepted: true }),
+  ];
+  for (const act of actions) {
+    const done = act();
+    await vi.waitFor(() => expect(answerMe).toBeTypeOf('function'));   // signed in; asking who you are
+    expect(social.busy).toBe(true);
+    answerMe();
+    answerMe = null;
+    expect(await done).toBe(true);
+    expect(social.busy).toBe(false);
+  }
+  expect(social.notice).toBe('Check your email to confirm your address');
+
+  const location = { assign: vi.fn() };
+  await social.signInWith('discord', location);
+  expect(location.assign).toHaveBeenCalledWith('https://discord.example/authorize');
+  expect(social.busy).toBe(true);   // on the way to Discord
+  window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));   // back from it (the page kept)
+  expect(social.busy).toBe(false);
+  await social.signInWith('github', location);   // refused: nowhere to go
+  expect(social.busy).toBe(false);
+});
+
 test('Review focus 4: signing in with the lobby open reconnects with a member pass; signing out reconnects as a guest', async () => {
   const server = fakeServer();
   await social.start(at(''));

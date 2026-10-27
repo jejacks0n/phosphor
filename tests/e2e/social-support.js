@@ -8,7 +8,7 @@ export const makePass = (claims) => Buffer.from(JSON.stringify(claims)).toString
 
 // /api/me's body for a signed-in member.
 export const member = (fields = {}) => ({
-  id: 'u_1', username: 'ansi-fan', email: 'fan@example.com', emailVerified: true, needsOnboarding: false,
+  id: 'u_1', username: 'ansi-fan', name: 'ansi-fan', email: 'fan@example.com', emailVerified: true, needsOnboarding: false,
   providers: ['credential'], twoFactorEnabled: false, usernameChangeableAt: null, ...fields,
 });
 
@@ -51,14 +51,14 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], ...
     'POST /api/auth/sign-in/email': () => { server.me = member(); return [200, { redirect: false }]; },
     'POST /api/auth/sign-in/username': () => { server.me = member(); return [200, { redirect: false }]; },
     'POST /api/auth/sign-up/email': ({ username, email }) => {
-      server.me = member({ username, email, emailVerified: false });
+      server.me = member({ username, name: username, email, emailVerified: false });
       return [200, { token: null }];
     },
     'POST /api/auth/sign-in/social': ({ provider }) => [200, { url: `https://${provider}.example/authorize`, redirect: true }],
     'POST /api/auth/request-password-reset': () => [200, { status: true }],
     'POST /api/auth/reset-password': () => { server.me = null; return [200, { status: true }]; },
     'POST /api/me/onboarding': ({ username }) => {
-      server.me = { ...server.me, username, needsOnboarding: false };
+      server.me = { ...server.me, username, name: username, needsOnboarding: false };
       return [200, server.me];
     },
     ...overrides,

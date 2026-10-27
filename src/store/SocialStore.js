@@ -101,13 +101,21 @@ export const useSocialStore = defineStore('social', {
       history.replaceState(history.state, '', url.pathname + url.search + url.hash);
     },
 
-    // One request: busy meanwhile, and its error as the notice.
+    // One request: busy meanwhile (unless it's part of a longer action that is), and its error as the notice.
     async request(path, opts) {
-      this.busy = true;
-      try {
+      return this.whileBusy(async () => {
         const res = await api(path, opts);
         if (!res.ok) this.notice = messageFor(res.code, res.data ?? {});
         return res;
+      });
+    },
+
+    // Busy until work is done; work run while already busy leaves it to the action that started it.
+    async whileBusy(work) {
+      if (this.busy) return work();
+      this.busy = true;
+      try {
+        return await work();
       } finally {
         this.busy = false;
       }
@@ -128,33 +136,45 @@ export const useSocialStore = defineStore('social', {
       this.reconnect();
     },
 
-    async signIn(login, password) {
-      const byEmail = login.includes('@');
-      const { ok } = await this.request(byEmail ? '/api/auth/sign-in/email' : '/api/auth/sign-in/username', {
-        method: 'POST', body: byEmail ? { email: login, password } : { username: login, password },
+    // Signing in or up stays busy until you're known, so the form can't be sent a second time meanwhile.
+    signIn(login, password) {
+      return this.whileBusy(async () => {
+        const byEmail = login.includes('@');
+        const { ok } = await this.request(byEmail ? '/api/auth/sign-in/email' : '/api/auth/sign-in/username', {
+          method: 'POST', body: byEmail ? { email: login, password } : { username: login, password },
+        });
+        if (ok) await this.becameSomeoneElse();
+        return ok;
       });
-      if (ok) await this.becameSomeoneElse();
-      return ok;
     },
 
-    async signUp({ username, email, password, termsAccepted, turnstileToken }) {
-      const { ok } = await this.request('/api/auth/sign-up/email', {
-        method: 'POST',
-        body: { username, name: username, email, password, termsAccepted, callbackURL: appOrigin() + '/?verified=1' },
-        headers: withToken(turnstileToken),
+    signUp({ username, email, password, termsAccepted, turnstileToken }) {
+      return this.whileBusy(async () => {
+        const { ok } = await this.request('/api/auth/sign-up/email', {
+          method: 'POST',
+          body: { username, name: username, email, password, termsAccepted, callbackURL: appOrigin() + '/?verified=1' },
+          headers: withToken(turnstileToken),
+        });
+        if (!ok) return false;
+        this.notice = CONFIRMED;
+        await this.becameSomeoneElse();
+        return true;
       });
-      if (!ok) return false;
-      this.notice = CONFIRMED;
-      await this.becameSomeoneElse();
-      return true;
     },
 
+    // Off to Discord or GitHub: busy until the page goes, or comes back from the back/forward cache.
     async signInWith(provider, location = window.location) {
+      this.busy = true;
       const { ok, data } = await this.request('/api/auth/sign-in/social', {
         method: 'POST',
         body: { provider, callbackURL: appOrigin() + '/?social=signed-in', errorCallbackURL: appOrigin() + '/?social=error' },
       });
-      if (ok && data?.url) location.assign(data.url);
+      if (!ok || !data?.url) {
+        this.busy = false;
+        return;
+      }
+      addEventListener('pageshow', () => { this.busy = false; }, { once: true });
+      location.assign(data.url);
     },
 
     async finishOnboarding(username) {

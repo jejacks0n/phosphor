@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { usernameProblem } from '@/social/names';
 import { mountTurnstile } from '@/social/turnstile';
@@ -17,6 +17,7 @@ const ready = computed(() => terms.value && !usernameProblem(username.value) && 
 const widget = ref(null);
 let token = () => null;
 onMounted(() => mountTurnstile(widget.value, 'signup').then((get) => { token = get; }, () => {}));
+onBeforeUnmount(() => token.remove?.());
 
 async function create() {
   error.value = null;

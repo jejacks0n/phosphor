@@ -66,7 +66,7 @@ test('messageFor has plain words for every code the server sends, and a fallback
   for (const code of codes) assert.notEqual(messageFor(code), fallback, code);
   assert.equal(messageFor('NETWORK'), "Couldn't reach Phosphor's server. Check your connection.");
   assert.equal(messageFor('USERNAME', { problem: 'length' }), 'Usernames are 3 to 24 characters');
-  assert.equal(messageFor('USERNAME', { problem: 'characters' }), 'Use only lowercase letters, numbers, underscores and hyphens');
+  assert.equal(messageFor('USERNAME', { problem: 'characters' }), 'Use only letters, numbers, underscores and hyphens');
   assert.equal(messageFor('USERNAME', { problem: 'reserved' }),
     "That name is reserved: names can't be three words joined by hyphens, or admin, phosphor, guest, host or system");
   assert.equal(messageFor('USERNAME_IS_ALREADY_TAKEN'), messageFor('TAKEN'));

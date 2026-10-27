@@ -3,7 +3,7 @@ const day = (ms) => new Date(ms).toLocaleDateString(undefined, { month: 'long', 
 
 const USERNAME = {
   length: 'Usernames are 3 to 24 characters',
-  characters: 'Use only lowercase letters, numbers, underscores and hyphens',
+  characters: 'Use only letters, numbers, underscores and hyphens',
   reserved: "That name is reserved: names can't be three words joined by hyphens, or admin, phosphor, guest, host or system",
 };
 

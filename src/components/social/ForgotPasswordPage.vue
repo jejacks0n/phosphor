@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { mountTurnstile } from '@/social/turnstile';
 
@@ -10,6 +10,7 @@ const error = ref(null);
 const widget = ref(null);
 let token = () => null;
 onMounted(() => mountTurnstile(widget.value, 'forgot').then((get) => { token = get; }, () => {}));
+onBeforeUnmount(() => token.remove?.());
 
 // The same notice whether or not the email has an account.
 async function send() {
