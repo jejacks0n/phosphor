@@ -132,6 +132,78 @@ export function halfBlockCells(pixels, halfRows) {
   return [...masks.values()].map((c) => ({ ...c, char: QUADRANTS[c.mask] }));
 }
 
+// Half steps (Vertical half blocks): whole blocks, a cell wide and a row tall, each placed to the
+// nearest half cell across, so a block that falls between two columns is the right half of one cell
+// and the left half of the next (▐▌), and a steep line or a round edge steps by half a cell. Shapes
+// are measured in cells across and rows down (a Half-block row is half a cell), from the centers of
+// their end cells; the pixels are on a grid of half cells, two across each cell (halfBlockCells
+// makes them characters).
+function halfGrid(cols, rows) {
+  const pixels = new Map();
+  const add = (h, row) => { if (inGrid(h, row, 2 * cols, rows)) pixels.set(`${h},${row}`, { x: h, y: row, alpha: 1 }); };
+  return {
+    add,
+    block: (left, row) => { add(left, row); add(left + 1, row); }, // a whole block from half cell `left`
+    pixels: () => [...pixels.values()],
+  };
+}
+const centerOf = (p) => ({ x: Math.floor(p.x) + 0.5, y: Math.floor(p.y) + 0.5 });
+const roundOut = (v) => Math.sign(v) * Math.round(Math.abs(v)); // halves away from 0, alike both sides
+
+// A line: steep, a block a row at the line's place across that row's middle; shallow, across a half
+// cell at a time, each on the row the line is in there.
+export function halfStepLine(from, to, cols, rows) {
+  const a = centerOf(from), b = centerOf(to), dx = b.x - a.x, dy = b.y - a.y;
+  const grid = halfGrid(cols, rows);
+  if (Math.abs(dy) >= Math.abs(dx)) {
+    const r0 = Math.floor(a.y), r1 = Math.floor(b.y), step = Math.sign(r1 - r0) || 1;
+    for (let row = r0; ; row += step) {
+      const x = dy ? a.x + (dx * (row + 0.5 - a.y)) / dy : a.x;
+      grid.block(Math.round(2 * x - 1), row);
+      if (row === r1) break;
+    }
+  } else {
+    const h0 = 2 * Math.floor(Math.min(a.x, b.x)), h1 = 2 * Math.floor(Math.max(a.x, b.x)) + 1;
+    for (let h = h0; h <= h1; h++) grid.add(h, Math.floor(a.y + (dy * ((h + 0.5) / 2 - a.x)) / dx));
+  }
+  return grid.pixels();
+}
+
+// An ellipse in the box from `from`'s cell to `to`'s: where its outline is steep (its sides), a block
+// a row at each side; where it's flat (its top and bottom), a half cell at a time on the row it's in.
+// Filled: the inside's half cells too.
+export function halfStepEllipse(from, to, filled, cols, rows) {
+  const c0 = Math.floor(Math.min(from.x, to.x)), c1 = Math.floor(Math.max(from.x, to.x));
+  const r0 = Math.floor(Math.min(from.y, to.y)), r1 = Math.floor(Math.max(from.y, to.y));
+  if (c0 === c1 || r0 === r1) return halfStepLine({ x: c0, y: r0 }, { x: c1, y: r1 }, cols, rows);
+  const cx = (c0 + c1 + 1) / 2, cy = (r0 + r1 + 1) / 2, rx = (c1 - c0) / 2, ry = (r1 - r0) / 2;
+  const grid = halfGrid(cols, rows);
+  const mid = 2 * cx - 1; // the half cell a block centered on the ellipse starts at
+  for (let row = r0; row <= r1; row++) {
+    const v = (row + 0.5 - cy) / ry, s = Math.sqrt(Math.max(0, 1 - v * v));
+    if (rx * Math.abs(v) > ry * s) continue; // flatter than a cell a row: the half cells' pass has it
+    const reach = roundOut(2 * rx * s);
+    grid.block(mid - reach, row);
+    grid.block(mid + reach, row);
+  }
+  for (let h = 2 * c0; h <= 2 * c1 + 1; h++) {
+    const u = ((h + 0.5) / 2 - cx) / rx;
+    if (Math.abs(u) >= 1) continue;
+    const s = Math.sqrt(1 - u * u);
+    if (ry * Math.abs(u) >= rx * s) continue; // steeper: the rows' pass has it
+    grid.add(h, Math.floor(cy - ry * s));
+    grid.add(h, Math.floor(cy + ry * s));
+  }
+  if (filled) {
+    for (let row = r0; row <= r1; row++) {
+      for (let h = 2 * c0; h <= 2 * c1 + 1; h++) {
+        if ((((h + 0.5) / 2 - cx) / rx) ** 2 + ((row + 0.5 - cy) / ry) ** 2 < 1) grid.add(h, row);
+      }
+    }
+  }
+  return grid.pixels();
+}
+
 export function rectPixels(from, to, filled, cols, rows) {
   const { x0, y0, x1, y1 } = bounds(from, to);
   const pixels = [];

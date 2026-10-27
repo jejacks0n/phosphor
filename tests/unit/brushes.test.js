@@ -1,7 +1,7 @@
 // Brush pixel generation shared by both editors (grid pixels, clipped to the grid).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { interpolate, pencilPixels, squarePixels, brushPixels, linePixels, lineCoverage, halfBlockCells, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
+import { interpolate, pencilPixels, squarePixels, brushPixels, linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
 
 test('Brush pixel generation shared by both editors (grid pixels, clipped to the grid)', async () => {
   assert.deepEqual(interpolate({ x: 0, y: 0 }, { x: 1, y: 0 }), [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 1, y: 0 }]);
@@ -109,4 +109,38 @@ test('Half-cell pixels make block characters: across, ▌ ▐ █; across and do
   assert.deepEqual(chars(q([0, 0], [0, 1]), true), { '0,0': '▌' });
   assert.deepEqual(chars(q([0, 0], [1, 0], [0, 1]), true), { '0,0': '▛' });
   assert.deepEqual(chars(q([2, 2], [3, 2], [2, 3], [3, 3]), true), { '1,1': '█' });
+});
+
+test('Half steps: whole blocks placed to the nearest half cell, so one between two columns is ▐▌', () => {
+  const grid = (pixels, halfRows = false) => {
+    const cells = Object.fromEntries(halfBlockCells(pixels, halfRows).map(({ col, row, char }) => [`${col},${row}`, char]));
+    const rows = [];
+    for (let row = 0; row <= Math.max(...Object.keys(cells).map((k) => +k.split(',')[1])); row++) {
+      let line = '';
+      for (let col = 0; col <= Math.max(...Object.keys(cells).map((k) => +k.split(',')[0])); col++) line += cells[`${col},${row}`] ?? ' ';
+      rows.push(line.trimEnd());
+    }
+    return rows;
+  };
+  // A steep line: a block a row, each to the nearest half cell (x in cells, y in rows).
+  assert.deepEqual(grid(halfStepLine({ x: 0.5, y: 0.5 }, { x: 1.5, y: 2.5 }, 10, 10)), ['█', '▐▌', ' █']);
+  // A shallow one: it runs across, stepping down a row at half a cell.
+  assert.deepEqual(grid(halfStepLine({ x: 0.5, y: 0.5 }, { x: 4.5, y: 1.5 }, 10, 10)), ['██▌', '  ▐██']);
+  // Upright or across: whole cells.
+  assert.deepEqual(grid(halfStepLine({ x: 2.5, y: 0.5 }, { x: 2.5, y: 2.5 }, 10, 10)), ['  █', '  █', '  █']);
+  // Half-height blocks (Half-block's rows are half a cell): the quadrants.
+  assert.deepEqual(grid(halfStepLine({ x: 0.5, y: 0.5 }, { x: 1.5, y: 3.5 }, 10, 10), true), ['▜▖', '▝▙']);
+
+  // An ellipse: its sides step by half a cell, its top and bottom run across; it's mirror-symmetric.
+  const circle = grid(halfStepEllipse({ x: 0.5, y: 0.5 }, { x: 16.5, y: 13.5 }, false, 30, 30));
+  const mirror = { '▌': '▐', '▐': '▌' };
+  for (const line of circle) {
+    const row = line.padEnd(17, ' ');
+    assert.equal([...row].reverse().map((c) => mirror[c] ?? c).join(''), row, `not symmetric:\n${circle.join('\n')}`);
+  }
+  assert.ok(circle.some((line) => line.includes('▐▌')), circle.join('\n'));
+  assert.ok(circle.every((line) => !line.includes('██████████████████')));
+  // Filled: the inside too.
+  const disc = halfStepEllipse({ x: 0.5, y: 0.5 }, { x: 16.5, y: 13.5 }, true, 30, 30);
+  assert.ok(disc.length > halfStepEllipse({ x: 0.5, y: 0.5 }, { x: 16.5, y: 13.5 }, false, 30, 30).length * 3);
 });

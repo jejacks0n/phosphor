@@ -7,7 +7,7 @@
 // Block shapes paint over the cells, each keeping its own character; Block characters (off by
 // default) makes them real ▄/█ cells instead. Character mode is the character in FG, with its own
 // Fill option, and leaves the cells' backgrounds as they were.
-import { linePixels, lineCoverage, halfBlockCells, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
+import { linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/editCells';
 import { charRowsOf, cellsOfPixels, showsChar } from '@/lib/Cells';
 import { joinBox, inwardArms } from '@/lib/BoxJoin';
@@ -68,24 +68,18 @@ const twoTone = (all, outline, fg, bg) => {
   });
 };
 
-// A line or ellipse in block characters on a grid of half cells: the outline's halves (or quadrants)
-// in FG, the rest of each cell as it was. Filled, the inside is BG: cells wholly inside are BG spaces,
-// and an outline cell takes BG behind it where the rest of it is inside.
+// A line or ellipse in whole blocks placed to the nearest half cell across (Vertical half blocks:
+// halfStepLine, halfStepEllipse), as block characters: the outline in FG, the rest of each cell as
+// it was. Filled, the inside is BG: cells wholly inside are BG spaces, and an outline cell takes BG
+// behind it where the rest of it is inside.
 function halfCells(project, workspace, end, fill) {
   const halfRows = drawnWith(workspace) === 'half';
-  const cols = 2 * project.cols, rows = halfRows ? project.rows : charRowsOf(project.rows);
-  const sub = (p) => ({ x: Math.floor(2 * p.x), y: Math.floor(halfRows ? p.y : p.y / 2) });
-  let outline, all;
-  if (workspace.shapeKind === 'line') {
-    outline = all = linePixels(sub(start), sub(end), cols, rows);
-  } else {
-    // The ellipse's box: the pixels (or cells) the drag covers, each split in two across.
-    const a = sub(start), b = sub(end);
-    const from = { x: 2 * Math.floor(Math.min(a.x, b.x) / 2), y: Math.min(a.y, b.y) };
-    const to = { x: 2 * Math.floor(Math.max(a.x, b.x) / 2) + 1, y: Math.max(a.y, b.y) };
-    outline = ellipsePixels(from, to, false, cols, rows);
-    all = fill ? ellipsePixels(from, to, true, cols, rows) : outline;
-  }
+  const rows = halfRows ? project.rows : charRowsOf(project.rows);
+  const at = (p) => ({ x: p.x, y: halfRows ? p.y : p.y / 2 }); // cells across, rows down
+  const shape = (filled) => (workspace.shapeKind === 'line'
+    ? halfStepLine(at(start), at(end), project.cols, rows)
+    : halfStepEllipse(at(start), at(end), filled, project.cols, rows));
+  const outline = shape(false), all = fill ? shape(true) : outline;
   const ring = new Set(outline.map(({ x, y }) => `${x},${y}`));
   const inside = new Map(halfBlockCells(all.filter(({ x, y }) => !ring.has(`${x},${y}`)), halfRows).map((c) => [`${c.col},${c.row}`, c.mask]));
   const fg = workspace.editFgColor, bg = workspace.editBgColor;
@@ -125,8 +119,7 @@ function apply({ project, workspace, view }, end) {
     return;
   }
 
-  // Vertical half blocks: block characters on a grid of half cells, two across each cell (and two
-  // down in Half-block: quadrants).
+  // Vertical half blocks: whole blocks placed to the nearest half cell across, as block characters.
   if (usesHalves(workspace)) {
     project.writeEditCells(halfCells(project, workspace, end, fill), { clearPaint: true });
     return;
@@ -255,7 +248,7 @@ export default {
     },
     {
       key: 'shapeVerticalHalves', label: 'Vertical half blocks', type: 'checkbox', views: ['output'], when: blockShape,
-      title: 'Use ▌ and ▐ too, for half a cell across (in Half-block, the quadrants ▖▗▘▝)',
+      title: 'Place blocks to the nearest half cell across: a block between two columns is drawn ▐▌ (in Half-block, ▝▘ and ▗▖)',
     },
     {
       key: 'shapeBlockChars', label: 'Block characters', type: 'checkbox', views: ['output'], when: (ws) => drawsBlocks(ws) && !usesHalves(ws),

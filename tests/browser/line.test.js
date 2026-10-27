@@ -86,13 +86,12 @@ test('Anti-aliased, a line shares its edge between pixels in the Pixel view, and
   expect(drawn.some((c) => '░▒▓'.includes(c))).toBe(true);
 });
 
-test('Vertical half blocks: a Full block line or ellipse uses ▌ and ▐ where it covers half a cell across', async () => {
+test('Vertical half blocks: a Full block line places each block to the nearest half cell, ▐▌ between two columns', async () => {
   const { draw, charAt } = await scene({ shapeDrawWith: 'full', shapeVerticalHalves: true });
-  draw('output', { x: 10.2, y: 4.5 }, { x: 13.8, y: 30.5 }); // steep: half-columns 20..27 over rows 2..15
-  const cells = [];
-  for (let row = 2; row <= 15; row++) for (let col = 9; col <= 14; col++) if ('▌▐█'.includes(charAt(col, row))) cells.push(charAt(col, row));
-  expect(cells.length).toBeGreaterThan(13);
-  expect(cells.some((c) => c === '▌' || c === '▐')).toBe(true);
+  draw('output', { x: 10.5, y: 4.5 }, { x: 11.5, y: 8.5 }); // cells (10,2) to (11,4)
+  expect(charAt(10, 2)).toBe('█');
+  expect([charAt(10, 3), charAt(11, 3)]).toEqual(['▐', '▌']);
+  expect(charAt(11, 4)).toBe('█');
 
   const ellipse = await scene({ shapeKind: 'ellipse', shapeDrawWith: 'full', shapeVerticalHalves: true, editBgNone: true });
   ellipse.draw('output', { x: 4.5, y: 4.5 }, { x: 20.5, y: 30.5 });
@@ -100,13 +99,14 @@ test('Vertical half blocks: a Full block line or ellipse uses ▌ and ▐ where 
   for (let row = 2; row <= 15; row++) for (let col = 4; col <= 20; col++) ring.push(ellipse.charAt(col, row));
   expect(ring).toContain('▌');
   expect(ring).toContain('▐');
+  expect(ring).toContain('█');
 });
 
-test('Vertical half blocks in Half-block: quadrants, two across and two down in each cell', async () => {
+test('Vertical half blocks in Half-block: half-height blocks to the nearest half cell, as quadrants', async () => {
   const { draw, charAt } = await scene({ shapeDrawWith: 'half', shapeVerticalHalves: true });
-  draw('output', { x: 10.2, y: 4.5 }, { x: 10.2, y: 20.5 }); // the left half of column 10, pixel rows 4..20
-  for (let row = 2; row <= 9; row++) expect(charAt(10, row)).toBe('▌');
-  expect(charAt(10, 10)).toBe('▘'); // pixel row 20 is the top of cell row 10
+  draw('output', { x: 10.5, y: 4.5 }, { x: 11.5, y: 7.5 }); // cell 10, pixel row 4 to cell 11, pixel row 7
+  expect([charAt(10, 2), charAt(11, 2)]).toEqual(['▜', '▖']);
+  expect([charAt(10, 3), charAt(11, 3)]).toEqual(['▝', '▙']);
 });
 
 test('Anti-aliased and Vertical half blocks are offered for lines and ellipses in Half-block and Full block', async () => {
