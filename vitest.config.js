@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 // (SwiftShader) on every machine, so a conversion gives the same cells locally and in CI. Adding
 // WebKit later: another entry in the browser project's instances.
 const SOFTWARE_WEBGL = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
+// Two connections in one machine (the room tests) reach each other by their addresses, not mDNS names.
+const NO_MDNS = '--disable-features=WebRtcHideLocalIpsWithMdns';
 
 // An update run in CI would write references and pass whatever they say.
 if (process.env.CI && process.env.UPDATE_REFERENCES === '1') throw new Error('Refusing to update reference files in CI');
@@ -39,7 +41,7 @@ export default defineConfig({
           browser: {
             enabled: true,
             headless: true,
-            provider: playwright({ launchOptions: { args: SOFTWARE_WEBGL } }),
+            provider: playwright({ launchOptions: { args: [...SOFTWARE_WEBGL, NO_MDNS] } }),
             instances: [{ browser: 'chromium' }],
           },
         },

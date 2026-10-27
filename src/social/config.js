@@ -11,3 +11,10 @@ export const appOrigin = (location = globalThis.location) => location.origin;
 
 // The SOCIAL tab is desktop only; the app's mobile breakpoint is max-width: 768px.
 export const desktopQuery = '(min-width: 769px)';
+
+// The ICE servers for a room's connections: Cloudflare's STUN, no TURN. VITE_SOCIAL_STUN replaces the
+// URL; "none" means no servers (the end-to-end build, where nothing may reach the network).
+export function rtcConfig(env = import.meta.env) {
+  const stun = env?.VITE_SOCIAL_STUN || 'stun:stun.cloudflare.com:3478';
+  return { iceServers: stun === 'none' ? [] : [{ urls: stun }] };
+}

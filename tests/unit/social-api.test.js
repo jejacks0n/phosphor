@@ -2,7 +2,7 @@
 // words for the server's error codes. No network: fetch is stubbed.
 import { test, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
-import { apiOrigin, wsOrigin, appOrigin, desktopQuery } from '../../src/social/config.js';
+import { apiOrigin, wsOrigin, appOrigin, desktopQuery, rtcConfig } from '../../src/social/config.js';
 import { toBase64url, fromBase64url } from '../../src/social/base64url.js';
 import { api } from '../../src/social/api.js';
 import { messageFor } from '../../src/social/messages.js';
@@ -19,6 +19,12 @@ test('The API origin is VITE_SOCIAL_API, else the local server on localhost, els
   assert.equal(wsOrigin('http://localhost:8787'), 'ws://localhost:8787');
   assert.equal(appOrigin({ origin: 'http://localhost:5173' }), 'http://localhost:5173');
   assert.equal(desktopQuery, '(min-width: 769px)');
+});
+
+test('The ICE servers are Cloudflare\'s STUN, VITE_SOCIAL_STUN replaces it, and "none" means no servers', () => {
+  assert.deepEqual(rtcConfig({}), { iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }] });
+  assert.deepEqual(rtcConfig({ VITE_SOCIAL_STUN: 'none' }), { iceServers: [] });
+  assert.deepEqual(rtcConfig({ VITE_SOCIAL_STUN: 'stun:x' }), { iceServers: [{ urls: 'stun:x' }] });
 });
 
 test('base64url round trips without padding and refuses anything else', () => {

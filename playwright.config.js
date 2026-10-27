@@ -14,10 +14,10 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } } },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-features=WebRtcHideLocalIpsWithMdns'] } } },
   ],
   webServer: {
-    command: 'npm run build && npx vite preview --port 4180 --strictPort',
+    command: 'VITE_SOCIAL_STUN=none npm run build && npx vite preview --port 4180 --strictPort',
     url: 'http://localhost:4180',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
