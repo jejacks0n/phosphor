@@ -58,7 +58,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     strokeEnd: null,         // where the last Pencil or Brush stroke ended (a grid position): Shift-click draws a line from there
     shapeDrag: null,         // { from, to } grid positions while a shape is being dragged
     editZoom:  5,
-    editorTab: 'input',
+    editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'sauce' or 'social'
     isPainting: false,
     isCtrlPressed: false,
     isMiddleClick: false,
@@ -97,7 +97,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     activeTool(state) {
       return state.editorTab === 'input' ? state.inputActiveTool : state.outputActiveTool;
     },
-    editMode: (state) => state.editorTab !== 'sauce',
+    editMode: (state) => state.editorTab === 'input' || state.editorTab === 'output', // the art is showing
     pickSwapped: (state) => state.heldTool?.by === 'alt', // the picker is only held by Alt from a drawing tool
     // The font the art is drawn in, at its size (a font displayFonts.js can set). A loaded font
     // starts at 16px; an unknown one (a loaded font since removed) is the default.

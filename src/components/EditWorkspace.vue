@@ -12,6 +12,7 @@ import DropZone from '@/components/DropZone.vue';
 import AnsiEditor from '@/components/AnsiEditor.vue';
 import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
+import SocialTab from '@/components/social/SocialTab.vue';
 
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -36,16 +37,19 @@ async function handleFileSelected(file) {
       @click="workspace.settingsOpen && workspace.toggleSettings()"
   >
     <EditTabs v-model="workspace.editorTab"/>
-    <EditToolbar v-if="project.image && workspace.editMode"/>
-    <DropZone @file-dropped="handleFileSelected">
-      <div class="edit-viewport viewport" :class="{ editing: workspace.editMode }" v-if="project.image">
-        <InputEditor v-if="workspace.editorTab === 'input'"/>
-        <AnsiEditor v-if="workspace.editorTab === 'output'"/>
-        <SauceEditor v-if="workspace.editorTab === 'sauce'"/>
-      </div>
+    <SocialTab v-if="workspace.editorTab === 'social'"/>
+    <template v-else>
+      <EditToolbar v-if="project.image && workspace.editMode"/>
+      <DropZone @file-dropped="handleFileSelected">
+        <div class="edit-viewport viewport" :class="{ editing: workspace.editMode }" v-if="project.image">
+          <InputEditor v-if="workspace.editorTab === 'input'"/>
+          <AnsiEditor v-if="workspace.editorTab === 'output'"/>
+          <SauceEditor v-if="workspace.editorTab === 'sauce'"/>
+        </div>
 
-      <ZeroState v-else @file-selected="handleFileSelected" @start-blank="project.setBlankCanvas"/>
-    </DropZone>
+        <ZeroState v-else @file-selected="handleFileSelected" @start-blank="project.setBlankCanvas"/>
+      </DropZone>
+    </template>
   </section>
 </template>
 

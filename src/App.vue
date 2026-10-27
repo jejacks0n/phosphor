@@ -3,6 +3,7 @@ import { watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useSocialStore } from '@/store/SocialStore';
 import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
 import { setDisplayFont } from '@/lib/displayFonts';
 import { loadFonts } from '@/lib/userFonts';
@@ -19,6 +20,9 @@ const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const { image } = storeToRefs(project);
 const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen } = storeToRefs(workspace);
+
+// SOCIAL: you, your pass and the lobby, from the start (a server that can't be reached leaves the editor be).
+useSocialStore().start();
 
 // Leaving with unsaved changes asks first.
 function onBeforeUnload(e) {

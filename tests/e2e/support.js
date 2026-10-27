@@ -24,7 +24,7 @@ export async function saveAs(page, button, { name } = {}) {
   return download;
 }
 
-// An editor tab: PIXEL, ANSI or SAUCE.
+// An editor tab: PIXEL, ANSI, SAUCE or SOCIAL.
 export const tab = (page, label) => page.getByRole('tab', { name: label, exact: true });
 
 // A store's state, or an expression over it: store(page, 'project', (p) => p.cells.length).

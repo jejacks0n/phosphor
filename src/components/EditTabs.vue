@@ -1,6 +1,8 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, computed, watch, watchEffect, nextTick, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import { storeToRefs } from 'pinia';
+import { useMediaQuery } from '@vueuse/core';
+import { desktopQuery } from '@/social/config';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
@@ -17,11 +19,19 @@ const toggleSettings = () => workspace.toggleSettings();
 const tabList = useTemplateRef('tabList');
 const indicatorStyle = ref({ transform: 'translateX(0px)', width: '0px', opacity: 0 });
 
+const isDesktop = useMediaQuery(desktopQuery);
+
 const tabs = computed(() => [
   { id: 'input', label: 'PIXEL', disabled: false },
   { id: 'output', label: renderStyle.value === 'ansi' ? 'ANSI' : 'ASCII', disabled: !image.value },
   { id: 'sauce', label: 'SAUCE', disabled: !image.value },
+  ...(isDesktop.value ? [{ id: 'social', label: 'SOCIAL', disabled: false }] : []),
 ]);
+
+// SOCIAL is desktop only: a window narrowed while on it goes to PIXEL.
+watchEffect(() => {
+  if (!isDesktop.value && props.modelValue === 'social') emit('update:modelValue', 'input');
+});
 
 // The tabs pattern: Left/Right (wrapping), Home and End move to a tab and select it, skipping
 // disabled ones. The keys stop here, so they don't also nudge a selection or move the text cursor.
