@@ -122,6 +122,15 @@ test('candidates that come before the description are held until it is set, then
   expect(calls.at(-1)).toEqual(['addIceCandidate', 'after']);
 });
 
+test('at most 50 candidates are held before the remote description; the rest are dropped', async () => {
+  const { calls } = recordingConnection();
+  const peer = openPeer({ initiator: false, config, sendSignal() {}, onOpen() {}, onClose() {} });
+  open.push(peer);
+  for (let i = 0; i < 60; i++) await peer.signal({ candidate: { candidate: `c${i}` } });
+  await peer.signal({ sdp: { type: 'offer', sdp: 'x' } });
+  expect(calls.filter((c) => c[0] === 'addIceCandidate').map((c) => c[1])).toEqual(Array.from({ length: 50 }, (_, i) => `c${i}`));
+});
+
 test('only one channel called room is taken, and only by the watcher; any other is closed', async () => {
   const opens = [];
   const taken = (initiator) => {

@@ -4,7 +4,7 @@
 // carries the signals and hears when a watcher's connection ends (send).
 import { openPeer } from './peer.js';
 import { verifyPass } from './pass.js';
-import { changedCells, encodeCells, packSnapshot } from './wire.js';
+import { CHUNK_BYTES, changedCells, encodeCells, packSnapshot } from './wire.js';
 
 const BACKED_UP_BYTES = 8 * 1024 * 1024;   // a channel further behind than this is sent no art until it drains
 const DRAINED_BYTES = 1024 * 1024;           // to this, and then gets one fresh snapshot
@@ -20,7 +20,12 @@ function changesFrom(prev, next) {
   return changedCells(prev.cells, next.cells);
 }
 
-const cellsMessage = (art, at) => JSON.stringify({ t: 'cells', at, ...encodeCells(at.map((i) => art.cells[i])) });
+// The changed cells as one message; null when it's past CHUNK_BYTES (a channel takes 256 KB at most),
+// and a snapshot goes instead.
+function cellsMessage(art, at) {
+  const message = JSON.stringify({ t: 'cells', at, ...encodeCells(at.map((i) => art.cells[i])) });
+  return new TextEncoder().encode(message).length > CHUNK_BYTES ? null : message;
+}
 
 export class Host {
   constructor({ send, passKey, config, connectWithinMs, onWatchers = () => {} }) {
@@ -33,8 +38,9 @@ export class Host {
     this.packed = null;   // { art, chunks }: one snapshot for every watcher, packed again only for new art
   }
 
-  // A watcher the Room let in. A pass that doesn't check out (or no key to check it with) is sent back
-  // as left, and nothing else happens; a good one gets a connection, and once it opens, the room.
+  // A watcher the Room let in. A pass that doesn't check out (or no key to check it with), or a
+  // connection the browser won't make, is sent back as left, and nothing else happens; a good one gets
+  // a connection, and once it opens, the room.
   async peer(peer, pass) {
     this.drop(peer);
     const w = { peer, claims: null, following: true, conn: null, channel: null, has: null, packing: false, behind: false };
@@ -44,23 +50,27 @@ export class Host {
       claims = await verifyPass(pass, await this.passKey());
     } catch { /* no key, so no way to trust the pass */ }
     if (this.watchers.get(peer) !== w) return;   // gone, or met again, meanwhile
-    if (!claims) {
+    w.claims = claims;
+    try {
+      if (claims) {
+        w.conn = openPeer({
+          initiator: true, config: this.config, connectWithinMs: this.connectWithinMs,
+          sendSignal: (data) => this.send({ type: 'signal-to', to: peer, data }),
+          onOpen: (channel) => this.opened(w, channel),
+          onClose: () => {
+            if (this.watchers.get(peer) !== w) return;   // closed here on purpose
+            this.watchers.delete(peer);
+            this.send({ type: 'left', peer });
+            this.changed();
+          },
+        });
+      }
+    } catch { /* the browser won't make one (too many already): as if the pass hadn't checked out */ }
+    if (!w.conn) {
       this.watchers.delete(peer);
       this.send({ type: 'left', peer });
       return;
     }
-    w.claims = claims;
-    w.conn = openPeer({
-      initiator: true, config: this.config, connectWithinMs: this.connectWithinMs,
-      sendSignal: (data) => this.send({ type: 'signal-to', to: peer, data }),
-      onOpen: (channel) => this.opened(w, channel),
-      onClose: () => {
-        if (this.watchers.get(peer) !== w) return;   // closed here on purpose
-        this.watchers.delete(peer);
-        this.send({ type: 'left', peer });
-        this.changed();
-      },
-    });
     this.changed();
   }
 
@@ -88,7 +98,8 @@ export class Host {
   }
 
   // Watchers up to date get the changed cells (one message for them all), or a snapshot when too much
-  // changed; anyone behind is brought up to this art when their snapshot goes.
+  // changed or the cells won't fit one message; anyone behind is brought up to this art when their
+  // snapshot goes.
   setArt({ cells, cols, lines, font }) {
     const prev = this.art;
     const next = { cells, cols, lines, font };
@@ -97,8 +108,9 @@ export class Host {
     this.art = next;
     const changes = at && cellsMessage(next, at);
     for (const w of this.open()) {
-      if (changes && w.has === prev && !w.behind) this.sendArt(w, changes, next);
-      else this.update(w);
+      if (w.has !== prev || w.behind) this.update(w);
+      else if (changes) this.sendArt(w, changes, next);
+      else this.update(w, null);   // too much changed, or too big as cells: the snapshot
     }
   }
 
@@ -159,7 +171,19 @@ export class Host {
   }
 
   sendTo(w, msg) {
-    w.channel.send(JSON.stringify(msg));
+    this.put(w, JSON.stringify(msg));
+  }
+
+  // One message down a watcher's channel. A channel that refuses it (closing, or a message too big)
+  // ends that watcher's connection, and the Room hears it left. True when sent.
+  put(w, data) {
+    try {
+      w.channel.send(data);
+      return true;
+    } catch {
+      w.conn.close();
+      return false;
+    }
   }
 
   // Art to a watcher, unless its channel is backed up: then it's marked, and sent nothing more until
@@ -169,23 +193,21 @@ export class Host {
       w.behind = true;
       return false;
     }
-    if (Array.isArray(message)) {
-      w.channel.send(JSON.stringify({ t: 'snapshot', chunks: message.length }));
-      for (const chunk of message) w.channel.send(chunk);
-    } else {
-      w.channel.send(message);
-    }
-    w.has = art;
-    return true;
+    const sent = Array.isArray(message)
+      ? this.put(w, JSON.stringify({ t: 'snapshot', chunks: message.length })) && message.every((chunk) => this.put(w, chunk))
+      : this.put(w, message);
+    if (sent) w.has = art;
+    return sent;
   }
 
-  // Brings a watcher to the current art: the changes since what it has, or else the shared snapshot. A
-  // snapshot that fails to pack isn't kept, and the watcher waits for the next art.
-  async update(w) {
-    if (!this.art || w.packing || w.behind) return;
-    const at = changesFrom(w.has, this.art);
-    if (at) {
-      if (at.length) this.sendArt(w, cellsMessage(this.art, at), this.art);
+  // Brings a watcher to the current art: the changes since what it has (`at`, null for none that will
+  // do), or else the shared snapshot. A snapshot that fails to pack isn't kept, and the watcher waits
+  // for the next art.
+  async update(w, at = this.art && changesFrom(w.has, this.art)) {
+    if (!this.art || w.packing || w.behind || at?.length === 0) return;
+    const changes = at && cellsMessage(this.art, at);
+    if (changes) {
+      this.sendArt(w, changes, this.art);
       return;
     }
     const art = this.art;

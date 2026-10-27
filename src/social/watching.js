@@ -1,8 +1,9 @@
 // The watcher's side of a room: the connection the host offers (peer.js), and the art put back together
 // from what comes over its channel (wire.js has the messages). The host is a stranger, so anything that
 // doesn't fit (a snapshot too big or of the wrong size, a color or cell that isn't there, a room or view
-// that isn't as the host's side sends it) is ignored. States go to onState: 'connecting', 'live', then
-// 'failed' if it never opened or 'lost' if it closed after.
+// that isn't as the host's side sends it) is ignored, and however fast it sends, the art goes to onArt
+// at most once a frame. States go to onState: 'connecting', 'live', then 'failed' if it never opened or
+// 'lost' if it closed after.
 import { openPeer } from './peer.js';
 import { CHUNK_BYTES, MOST_SNAPSHOT_CHUNKS, decodeCells, unpackSnapshot } from './wire.js';
 
@@ -19,6 +20,7 @@ export class Watch {
     this.conn = null;
     this.channel = null;
     this.following = true;
+    this.frame = null;   // the next frame's onArt, once asked for
   }
 
   // An offer starts a fresh connection, dropping any before; the rest goes to the current one.
@@ -36,6 +38,8 @@ export class Watch {
   close() {
     const conn = this.conn;
     this.conn = this.channel = null;
+    cancelAnimationFrame(this.frame);
+    this.frame = null;
     conn?.close();
   }
 
@@ -76,7 +80,7 @@ export class Watch {
       if (snapshot.chunks.length < snapshot.want) return;
       this.gathering = null;
       this.art = await unpackSnapshot(snapshot.chunks);
-      this.onArt(this.art);
+      this.show();
       return;
     }
     const msg = JSON.parse(data);
@@ -97,14 +101,22 @@ export class Watch {
     if ([col, row, cols, rows].every(place)) this.onView({ col, row, cols, rows });
   }
 
-  // The changed cells into a copy of the art (the art already given isn't changed).
+  // The changed cells into the art, a copy of it once it's been given (the art given is never changed).
   change({ at, colors, cells }) {
     const changed = decodeCells({ colors, cells });
     const count = this.art.cells.length;
     if (!Array.isArray(at) || at.length !== changed.length || !at.every((i) => Number.isInteger(i) && i >= 0 && i < count)) return;
-    const next = this.art.cells.slice();
-    at.forEach((i, k) => { next[i] = changed[k]; });
-    this.art = { ...this.art, cells: next };
-    this.onArt(this.art);
+    if (this.given === this.art) this.art = { ...this.art, cells: this.art.cells.slice() };
+    at.forEach((i, k) => { this.art.cells[i] = changed[k]; });
+    this.show();
+  }
+
+  // The art to onArt at the next frame: every message before it goes as one.
+  show() {
+    this.frame ??= requestAnimationFrame(() => {
+      this.frame = null;
+      this.given = this.art;
+      this.onArt(this.art);
+    });
   }
 }

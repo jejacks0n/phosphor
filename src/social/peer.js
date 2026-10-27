@@ -1,5 +1,7 @@
 import { rtcConfig } from './config.js';
 
+const MOST_HELD = 50;   // a stranger's candidates kept before its description: more is only memory
+
 // One WebRTC connection and its data channel, a room's host to one watcher. The host (the initiator)
 // makes the channel "room" and the offer; the watcher takes the channel from ondatachannel. The
 // signals (the descriptions and ICE candidates) travel by the caller: sendSignal sends ours, signal()
@@ -11,7 +13,7 @@ export function openPeer({ initiator, sendSignal, onOpen, onClose, config = rtcC
   let opened = false;
   let done = false;
   let remoteSet = false;
-  let held = [];   // candidates that came before the remote description
+  let held = [];   // candidates that came before the remote description, MOST_HELD at most
   let channelTaken = initiator;   // the host makes its channel; the watcher takes the first one called room
 
   const finish = () => {
@@ -63,7 +65,8 @@ export function openPeer({ initiator, sendSignal, onOpen, onClose, config = rtcC
           for (const candidate of held.splice(0)) await addCandidate(candidate);
           if (data.sdp.type === 'offer') await sendDescription();
         } else if (data.candidate) {
-          if (remoteSet) await addCandidate(data.candidate); else held.push(data.candidate);
+          if (remoteSet) await addCandidate(data.candidate);
+          else if (held.length < MOST_HELD) held.push(data.candidate);
         }
       } catch {
         finish();

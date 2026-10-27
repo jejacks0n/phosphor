@@ -18,6 +18,7 @@ const toClose = [];
 afterEach(() => {
   for (const side of toClose.splice(0)) side.close();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const keys = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
@@ -134,6 +135,53 @@ test('one changed cell goes as one cells message per watcher; half the grid chan
   const [first, second] = sends.chunks();   // one packed snapshot for both
   expect(sends.chunks().length).toBe(2);
   expect(first).toBe(second);
+});
+
+// Chromium's channel takes a message of 256 KB at most, and throws for a bigger one.
+test('a change too big for one message (under a quarter of the grid, over 256 KB as cells) goes as a snapshot', async () => {
+  const sends = watchSends();
+  const blank = {
+    cols: 300, lines: 200, font: { id: 'vga', size: 20 },
+    cells: Array.from({ length: 300 * 200 }, () => ({ char: ' ', fg: color('#ffffff'), bg: color('#000000') })),
+  };
+  const r = await room(['p1', 'p2'], { first: blank });
+  for (const peer of ['p1', 'p2']) await expect.poll(() => r.log[peer].arts.length, PATIENT).toBe(1);
+  sends.clear();
+
+  const cells = blank.cells.slice();
+  for (let i = 0; i < 14_000; i++) cells[i] = { char: '#', fg: color(`#${i.toString(16).padStart(6, '0')}`), bg: color('#000000') };
+  const next = { ...blank, cells };
+  r.host.setArt(next);
+  for (const peer of ['p1', 'p2']) await expect.poll(() => lastArt(r.log[peer]), PATIENT).toEqual(next);
+  expect(sends.sent().map((m) => m.t)).toEqual(['snapshot', 'snapshot']);
+  expect(sends.chunks().every((chunk) => chunk.byteLength <= CHUNK_BYTES)).toBe(true);
+});
+
+test('a channel that refuses a send closes that watcher\'s connection only, and the Room hears it left', async () => {
+  const r = await room();
+  for (const peer of ['p1', 'p2']) await expect.poll(() => r.log[peer].arts.length, PATIENT).toBe(1);
+  const send = RTCDataChannel.prototype.send;
+  let refusing = null;
+  vi.spyOn(RTCDataChannel.prototype, 'send').mockImplementation(function (data) {
+    refusing ??= this;   // p1's, the first sent to
+    if (this === refusing) throw new TypeError('Too big');
+    return send.call(this, data);
+  });
+  const one = changed(art(), [5]);
+  r.host.setArt(one);
+  await expect.poll(() => lastArt(r.log.p2), PATIENT).toEqual(one);
+  await expect.poll(() => r.log.p1.states.at(-1), PATIENT).toBe('lost');
+  expect(r.toHost).toEqual([{ type: 'left', peer: 'p1' }]);
+  expect(lastList(r).map((w) => w.peer)).toEqual(['p2']);
+});
+
+test('a connection that can\'t be made (openPeer throws) gets left sent for it, and no watcher stays', async () => {
+  const r = await room([]);
+  vi.stubGlobal('RTCPeerConnection', class { constructor() { throw new Error('Too many connections'); } });
+  await r.host.peer('p1', await passFor('u_p1', 'p1'));
+  expect(r.toHost).toEqual([{ type: 'left', peer: 'p1' }]);
+  expect(r.host.watchers.size).toBe(0);
+  expect(r.watchers.flat().some((w) => w.peer === 'p1')).toBe(false);
 });
 
 test('a view reaches the watchers, and the same view again sends nothing', async () => {
@@ -326,6 +374,39 @@ test('a watcher ignores a snapshot of the wrong size or with unknown colors, and
   expect(log.arts[0]).toEqual(good);   // a copy changed, not the art already given
   await wait(100);
   expect(log.arts.length).toBe(2);
+});
+
+// A host can send cells as fast as it likes: the watcher puts them into one copy, and hands it on at
+// most once a frame (a fresh one each time: the art already given is never changed).
+test('many cells messages in one frame make one onArt, and the art already given isn\'t changed', async () => {
+  const frames = new Map();
+  let made = 0;
+  vi.stubGlobal('requestAnimationFrame', (fn) => { frames.set(++made, fn); return made; });
+  vi.stubGlobal('cancelAnimationFrame', (id) => frames.delete(id));
+  const draw = () => {
+    const due = [...frames.values()];
+    frames.clear();
+    for (const fn of due) fn();
+  };
+  const { log, json, snapshot } = await hostileHost();
+  const good = art();
+  snapshot(await packSnapshot(good));
+  await expect.poll(() => { draw(); return log.arts.length; }, PATIENT).toBe(1);
+
+  for (let i = 0; i < 20; i++) json({ t: 'cells', at: [i], colors: ['#ffffff', '#000000'], cells: [['x', 0, 1]] });
+  await wait(200);
+  expect(log.arts.length).toBe(1);
+  draw();
+  expect(log.arts.length).toBe(2);
+  expect(log.arts[1].cells.slice(0, 20).map((c) => c.char).join('')).toBe('x'.repeat(20));
+  expect(log.arts[0]).toEqual(good);
+
+  json({ t: 'cells', at: [25], colors: ['#ffffff', '#000000'], cells: [['y', 0, 1]] });
+  await wait(100);
+  draw();
+  expect(log.arts.length).toBe(3);
+  expect(log.arts[2].cells[25].char).toBe('y');
+  expect(log.arts[1].cells[25].char).toBe(good.cells[25].char);
 });
 
 test('a watcher ignores a grid past the app\'s limits, a snapshot that inflates too far, too many or too big chunks', async () => {
