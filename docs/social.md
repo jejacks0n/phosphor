@@ -128,12 +128,12 @@ Whether the room is public or private, and its password, stay as they were set.
 ## Hosting
 
 While you host, the SOCIAL tab shows your room instead of the lobby: its name, how many are
-watching, its link (**Copy link**), who's watching, **Room settings** and **End room**. Send the
-link to anyone you want in a private room, along with its password. The SOCIAL tab carries a dot
-while you're in a room, hosting or watching.
+watching (counted once they're connected), its link (**Copy link**), who's watching, **Room
+settings** and **End room**. Send the link to anyone you want in a private room, along with its
+password. The SOCIAL tab carries a dot while you're in a room, hosting or watching.
 
-Each watcher shows whether they're following you or looking around on their own. Point at a
-member who's watching for:
+Each watcher shows whether they're following you or looking around on their own (or still
+connecting). Point at a member who's watching for:
 
 - **Remove**: they leave the room now, and can't come back until the room ends.
 - **Block**: they can't join any room you host again, and your rooms no longer show in their lobby.
@@ -143,8 +143,9 @@ member who's watching for:
 **End room** ends it for everyone, and tells watchers at once. Closing or reloading the tab ends it
 too, so Phosphor asks first; signing out while you host ends the room as well.
 
-Watchers connect straight to your browser, so the room is as fast as your connection. If your
-connection to the room drops for a moment, the page says **Reconnecting…**; a change to Room
+Watchers connect straight to your browser, so the room is as fast as your connection. A direct
+connection shows each side's IP address to the other (a VPN hides yours). If your connection to the
+room drops for a moment, the page says **Reconnecting…**; a change to Room
 settings made meanwhile goes once you're back.
 
 ## Watching
@@ -156,7 +157,11 @@ password first.
 The room's name, its host and the welcome message are at the top. The art is view only, in the
 host's font. A pink box shows where the host is looking. With **Following** on, your view
 follows theirs; scroll away to look around on your own, and the button becomes **Follow** with the
-host's name, to bring you back. While the host is reconnecting, the art dims and the page says **Waiting for the host…**.
+host's name, to bring you back. If the connection to the host is lost, the art dims and the page says
+**Waiting for the host…** until it's back.
+
+Your browser connects straight to the host's, which shows each of you the other's IP address (a VPN
+hides yours).
 
 You can go back to your own art in PIXEL or ANSI while you watch: the room keeps running in the
 SOCIAL tab, and, once there's a chat, it stays open beside your work. Watching never changes your
@@ -200,6 +205,10 @@ room is drawing: on its card in the lobby or at the top of the room. Nobody is t
 - **This room needs a password** / **Wrong password**: a private room asks before you join.
 - **Room is full**: the host's watcher limit is reached.
 - **The host ended the room** / **The host removed you**: back to the lobby.
+- **You're watching this room in another tab**: you joined the same room again, from another tab or
+  computer; the newer one watches, and this one goes back to the lobby.
+- **Couldn't copy the link**: the browser didn't let Phosphor copy the room's link. Select it and copy
+  it yourself.
 - **Confirm your email to start a room**: in the lobby, with **Resend**.
 - **You're muted until 9:40 pm**: in place of the message box.
 - **This account is suspended**: at sign-in, with until when, if it isn't for good.
