@@ -5,7 +5,8 @@
 > **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, and the lobby
 > with its Join counts and reasons, signals and who's here. **Comes next:** starting a room,
 > hosting, watching, chat, blocking from a room, and reporting. Two-factor sign-in comes later too:
-> it isn't on the Account page yet. From **Starting a room** down, the page describes what's coming.
+> it isn't on the Account page yet. **Starting a room** through **Blocking and reporting** describe
+> what's coming.
 
 Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others
 watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
@@ -24,7 +25,7 @@ When you can't join a room, its Join button is grayed out and says why beside it
 - **Signed-in users only**: the room doesn't allow guests, and you haven't signed in.
 
 Filters above the gallery (**All**, **Wants feedback**, **Open to chat**) narrow it to rooms whose
-host wants feedback or is open to chat.
+host wants feedback or is open to chat. When none match, it says **No rooms match this filter**.
 
 If someone you've blocked is in a room, its card says **Someone you blocked is here**.
 
@@ -68,7 +69,8 @@ or start a room. The lobby says **Confirm your email to start a room**, with **R
 link again.
 
 Discord and GitHub make an account the first time you use them; you then pick a username (it
-starts from the name on that account) and agree to the same terms.
+starts from the name on that account) and agree to the same terms, or **Cancel and sign out** to
+go back to the lobby as a guest.
 
 **Forgot your password?** emails you a link that opens Phosphor to set a new one. Setting it signs
 you out everywhere else.
@@ -79,8 +81,9 @@ you out everywhere else.
 
 - **Username**, which you can change once every 30 days. Your color in the lobby and chat comes
   from your username.
-- **Ways to sign in**: email and password (with **Send a reset link** to change the password),
-  Discord and GitHub; connect or disconnect each, keeping at least one.
+- **Ways to sign in**: email and password (**Send a reset link** opens **Forgot your password?**
+  with your email filled in, to change the password), Discord and GitHub; connect or disconnect
+  each, keeping at least one.
 - **Two-factor** (coming later): a code from an authenticator app at sign-in, if you turn it on.
 - **Blocked**: everyone you've blocked, with **Unblock**.
 - **Delete account**: asks for your password, then (**Delete for good**) removes your account, your
@@ -164,7 +167,8 @@ room is drawing: on its card in the lobby or at the top of the room. Nobody is t
 
 - **No public rooms right now**: start one, and you'll be the first thing people see here.
 - **Rooms are unavailable right now**: the lobby can't be reached. The editor works as usual, and
-  rooms that are already running carry on.
+  rooms that are already running carry on. If the lobby turned this browser away twice, it adds
+  **If your computer's clock is wrong, fix it and reload.**
 - **Reconnecting…**: the lobby lost its connection for a moment (a new server version, Wi-Fi). The
   rooms stay, dimmed, until it's back with the current ones.
 - **This browser can't sign you in to SOCIAL yet**: it lacks the signing SOCIAL uses (older Safari,
@@ -180,6 +184,7 @@ room is drawing: on its card in the lobby or at the top of the room. Nobody is t
 
 ## Not in this version
 
-- Phones: the SOCIAL tab is desktop only.
+- Phones: the SOCIAL tab is desktop only. A link from one of Phosphor's emails opened on a phone
+  does nothing there; open it on a computer.
 - Drawing together: only the host draws.
 - Keeping a copy of someone else's art.
