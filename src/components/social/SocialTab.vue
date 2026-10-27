@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import LobbyPage from './LobbyPage.vue';
 import SignInPage from './SignInPage.vue';
@@ -15,6 +15,13 @@ const PAGES = {
   reset: ResetPasswordPage, onboarding: OnboardingPage, account: AccountPage,
 };
 onMounted(() => social.showLobby());
+
+// Account is only for someone signed in: until /api/me has answered nothing shows (a link back from
+// connecting a provider asks for Account first), and once it has, someone signed out gets the lobby.
+const shownPage = computed(() => {
+  if (social.page !== 'account' || social.signedIn) return social.page;
+  return social.supported === null ? null : 'lobby';
+});
 </script>
 
 <template>
@@ -25,8 +32,8 @@ onMounted(() => social.showLobby());
         <span>{{ social.notice }}</span>
         <button class="link" aria-label="Dismiss" @click="social.notice = null">✕</button>
       </p>
-      <div class="page" :data-page="social.page">
-        <component :is="PAGES[social.page]" v-if="PAGES[social.page]" />
+      <div class="page" :data-page="shownPage">
+        <component :is="PAGES[shownPage]" v-if="PAGES[shownPage]" />
       </div>
     </template>
   </article>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { nameColor, usernameProblem } from '@/social/names';
 import { messageFor } from '@/social/messages';
@@ -11,6 +11,7 @@ const social = useSocialStore();
 const me = computed(() => social.me);
 const PROVIDERS = [['discord', 'Discord'], ['github', 'GitHub']];
 const lastWay = computed(() => me.value.providers.length === 1);
+const canDisconnect = computed(() => PROVIDERS.some(([id]) => me.value.providers.includes(id)));
 const hasPassword = computed(() => me.value.providers.includes('credential'));
 const tooSoon = computed(() => {
   const until = me.value.usernameChangeableAt;
@@ -26,17 +27,50 @@ const deleteError = ref(null);
 
 onMounted(() => social.loadBlocked());
 
+// A panel opening takes focus (its first field, or Cancel when it has none) and closing gives it back
+// to the button that opened it.
+const changeButton = useTemplateRef('changeButton');
+const deleteButton = useTemplateRef('deleteButton');
+const renameForm = useTemplateRef('renameForm');
+const deleteForm = useTemplateRef('deleteForm');
+const focusIn = async (form) => {
+  await nextTick();
+  (form.value.querySelector('input') ?? form.value.querySelector('button[type=button]')).focus();
+};
+const focusOn = async (button) => {
+  await nextTick();
+  button.value?.focus();
+};
+
 const failed = (error) => { [error.value, social.notice] = [social.notice, null]; };
 
 function startRename() {
   renameError.value = null;
   username.value = me.value.username;
   renaming.value = true;
+  focusIn(renameForm);
+}
+
+function cancelRename() {
+  renaming.value = false;
+  focusOn(changeButton);
+}
+
+function startDelete() {
+  deleting.value = true;
+  focusIn(deleteForm);
+}
+
+function cancelDelete() {
+  deleting.value = false;
+  password.value = '';
+  deleteError.value = null;
+  focusOn(deleteButton);
 }
 
 async function rename() {
   renameError.value = null;
-  if (await social.rename(username.value)) renaming.value = false;
+  if (await social.rename(username.value)) cancelRename();
   else failed(renameError);
 }
 
@@ -55,11 +89,11 @@ async function deleteAccount() {
 
     <section aria-labelledby="account-username">
       <h3 id="account-username">Username</h3>
-      <form v-if="renaming" @submit.prevent="usernameProblem(username) || rename()">
+      <form v-if="renaming" ref="renameForm" @submit.prevent="usernameProblem(username) || rename()">
         <UsernameField v-model="username" help="Once every 30 days. Your color comes from your username." />
         <div class="actions">
           <button class="primary" type="submit" :disabled="social.busy || !!usernameProblem(username)">Save</button>
-          <button type="button" @click="renaming = false">Cancel</button>
+          <button type="button" @click="cancelRename">Cancel</button>
         </div>
         <p v-if="renameError" class="error" role="alert">{{ renameError }}</p>
       </form>
@@ -67,7 +101,7 @@ async function deleteAccount() {
         <div class="row">
           <span class="swatch" :style="{ background: nameColor(me.username) }"></span>
           <span class="username">{{ me.username }}</span>
-          <button :disabled="!!tooSoon" aria-describedby="rename-help" @click="startRename">Change</button>
+          <button ref="changeButton" :disabled="!!tooSoon" aria-describedby="rename-help" @click="startRename">Change</button>
         </div>
         <p id="rename-help" class="help">{{ tooSoon ?? 'Once every 30 days. Your color comes from your username.' }}</p>
       </template>
@@ -82,14 +116,14 @@ async function deleteAccount() {
       <div v-for="[id, label] in PROVIDERS" :key="id" class="row">
         <template v-if="me.providers.includes(id)">
           <span class="what">{{ label }} <span class="detail">Connected</span></span>
-          <button :disabled="social.busy || lastWay" :aria-describedby="lastWay ? 'last-way' : undefined" @click="social.unlink(id)">Disconnect</button>
+          <button :disabled="social.busy || lastWay" :aria-label="`Disconnect ${label}`" :aria-describedby="lastWay ? 'last-way' : undefined" @click="social.unlink(id)">Disconnect</button>
         </template>
         <template v-else>
           <span class="what">{{ label }} <span class="detail">Not connected</span></span>
-          <button :disabled="social.busy" @click="social.linkWith(id)">Connect</button>
+          <button :disabled="social.busy" :aria-label="`Connect ${label}`" @click="social.linkWith(id)">Connect</button>
         </template>
       </div>
-      <p v-if="lastWay" id="last-way" class="help">You need at least one way to sign in</p>
+      <p v-if="lastWay && canDisconnect" id="last-way" class="help">You need at least one way to sign in</p>
     </section>
 
     <section aria-labelledby="account-blocked">
@@ -103,13 +137,14 @@ async function deleteAccount() {
 
     <section aria-labelledby="account-delete">
       <h3 id="account-delete">Delete account</h3>
-      <button v-if="!deleting" class="danger" @click="deleting = true">Delete account</button>
-      <form v-else @submit.prevent="deleteAccount">
+      <button v-if="!deleting" ref="deleteButton" class="danger" @click="startDelete">Delete account</button>
+      <form v-else ref="deleteForm" @submit.prevent="deleteAccount">
+        <p class="help">This removes your account, your username and your blocks. It can't be undone.</p>
         <label v-if="hasPassword">Password <input v-model="password" type="password" autocomplete="current-password" required></label>
         <p v-else class="help">Deleting needs a sign-in in the last 5 minutes</p>
         <div class="actions">
           <button class="danger" type="submit" :disabled="social.busy">Delete for good</button>
-          <button type="button" @click="deleting = false; deleteError = null">Cancel</button>
+          <button type="button" @click="cancelDelete">Cancel</button>
         </div>
         <p v-if="deleteError" class="error" role="alert">{{ deleteError }}</p>
       </form>

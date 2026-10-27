@@ -5,6 +5,10 @@ import { fakeServer, member } from './social-support.js';
 const social = (page) => page.locator('.social-tab');
 const shown = (page, name) => social(page).locator(`[data-page="${name}"]`);
 
+// A date as the app words it, formatted in the browser so the test follows its locale and time zone.
+const day = (page, ms) => page.evaluate((t) => new Date(t).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }), ms);
+const LATER = Date.UTC(2031, 10, 15, 12);
+
 async function openAccount(page) {
   await page.goto('/');
   if (await store(page, 'workspace', (w) => w.editorTab) !== 'social') await tab(page, 'SOCIAL').click();
@@ -29,21 +33,21 @@ test('rename: Change opens a field, Save sends it, and the lobby shows the new n
 test('a rename too soon shows when you can change it again', async ({ page }) => {
   await fakeServer(page, {
     me: member(),
-    'PATCH /api/me/username': () => [429, { code: 'TOO_SOON', until: Date.UTC(2031, 10, 15, 12) }],
+    'PATCH /api/me/username': () => [429, { code: 'TOO_SOON', until: LATER }],
   });
   const account = await openAccount(page);
   await account.getByRole('button', { name: 'Change', exact: true }).click();
   await account.getByRole('textbox', { name: 'Username' }).fill('pixel-pal');
   await account.getByRole('button', { name: 'Save' }).click();
-  await expect(account.getByRole('alert')).toHaveText('You can change your username again on November 15');
+  await expect(account.getByRole('alert')).toHaveText(`You can change your username again on ${await day(page, LATER)}`);
 });
 
 test('while the 30 days run, Change is disabled and says when it opens', async ({ page }) => {
-  await fakeServer(page, { me: member({ usernameChangeableAt: Date.UTC(2031, 10, 15, 12) }) });
+  await fakeServer(page, { me: member({ usernameChangeableAt: LATER }) });
   const account = await openAccount(page);
   const change = account.getByRole('button', { name: 'Change', exact: true });
   await expect(change).toBeDisabled();
-  await expect(change).toHaveAccessibleDescription('You can change your username again on November 15');
+  await expect(change).toHaveAccessibleDescription(`You can change your username again on ${await day(page, LATER)}`);
 });
 
 test('ways to sign in: Connect goes to the provider; the only way in cannot be disconnected', async ({ page }) => {
@@ -51,10 +55,10 @@ test('ways to sign in: Connect goes to the provider; the only way in cannot be d
   await page.route('https://github.example/**', (route) => route.fulfill({ contentType: 'text/html', body: 'GitHub' }));
   const account = await openAccount(page);
   await expect(account.getByText('Not connected')).toHaveCount(1);
-  const disconnect = account.getByRole('button', { name: 'Disconnect' });
+  const disconnect = account.getByRole('button', { name: 'Disconnect Discord' });
   await expect(disconnect).toBeDisabled();
   await expect(disconnect).toHaveAccessibleDescription('You need at least one way to sign in');
-  await account.getByRole('button', { name: 'Connect', exact: true }).click();
+  await account.getByRole('button', { name: 'Connect GitHub' }).click();
   await page.waitForURL('https://github.example/link');
   expect(server.sent('POST', '/api/auth/link-social')[0].body.provider).toBe('github');
 });
@@ -62,8 +66,8 @@ test('ways to sign in: Connect goes to the provider; the only way in cannot be d
 test('Disconnect unlinks the provider and the row says not connected', async ({ page }) => {
   const server = await fakeServer(page, { me: member({ providers: ['credential', 'discord'] }) });
   const account = await openAccount(page);
-  await account.getByRole('button', { name: 'Disconnect' }).click();
-  await expect(account.getByRole('button', { name: 'Disconnect' })).toHaveCount(0);
+  await account.getByRole('button', { name: 'Disconnect Discord' }).click();
+  await expect(account.getByRole('button', { name: 'Disconnect Discord' })).toHaveCount(0);
   await expect(account.getByText('Not connected')).toHaveCount(2);
   expect(server.sent('POST', '/api/auth/unlink-account')[0].body).toEqual({ accountId: 'a_1' });
 });
@@ -74,7 +78,7 @@ test('a disconnect that needs a recent sign-in sends you to Sign in with its wor
     'POST /api/auth/unlink-account': () => [401, { code: 'SESSION_EXPIRED' }],
   });
   const account = await openAccount(page);
-  await account.getByRole('button', { name: 'Disconnect' }).click();
+  await account.getByRole('button', { name: 'Disconnect Discord' }).click();
   await expect(shown(page, 'sign-in')).toBeVisible();
   await expect(social(page).getByRole('status')).toContainText('Sign in again to change how you sign in');
 });
@@ -133,4 +137,53 @@ test('an account without a password says deleting needs a recent sign-in', async
   await account.getByRole('button', { name: 'Delete for good' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
   expect(server.sent('POST', '/api/auth/delete-user')[0].body).toEqual({});
+});
+
+test('coming back from connecting a provider opens Account without a crash while you are loading', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await fakeServer(page, { me: member({ providers: ['credential', 'discord'] }) });
+  await page.goto('/?social=linked');
+  await expect(shown(page, 'account')).toBeVisible();
+  await expect(shown(page, 'account').getByRole('button', { name: 'Disconnect Discord' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('Account is not shown when nobody is signed in: the lobby is', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await fakeServer(page);
+  await page.goto('/?social=linked');
+  await expect(shown(page, 'lobby')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('the delete panel says what is lost, takes focus, and Cancel clears the password and gives focus back', async ({ page }) => {
+  await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  const open = account.getByRole('button', { name: 'Delete account' });
+  await open.click();
+  await expect(account.getByText('This removes your account, your username and your blocks. It can\'t be undone.')).toBeVisible();
+  await expect(account.getByLabel('Password')).toBeFocused();
+  await account.getByLabel('Password').fill('secret one');
+  await account.getByRole('button', { name: 'Cancel' }).click();
+  await expect(open).toBeFocused();
+  await open.click();
+  await expect(account.getByLabel('Password')).toHaveValue('');
+});
+
+test('opening the rename field focuses it; Cancel gives focus back to Change', async ({ page }) => {
+  await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  await account.getByRole('button', { name: 'Change', exact: true }).click();
+  await expect(account.getByRole('textbox', { name: 'Username' })).toBeFocused();
+  await account.getByRole('button', { name: 'Cancel' }).click();
+  await expect(account.getByRole('button', { name: 'Change', exact: true })).toBeFocused();
+});
+
+test('"You need at least one way" shows only beside a Disconnect button', async ({ page }) => {
+  await fakeServer(page, { me: member({ providers: ['credential'] }) });
+  const account = await openAccount(page);
+  await expect(account.getByRole('button', { name: 'Send a reset link' })).toBeVisible();
+  await expect(account.getByText('You need at least one way to sign in')).toHaveCount(0);
 });
