@@ -339,6 +339,55 @@ test('An expired challenge (INVALID_TWO_FACTOR_COOKIE) goes back to Sign in with
   expect(social.me).toBe(null);
 });
 
+test.each(['TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE', 'ACCOUNT_TEMPORARILY_LOCKED'])('Too many wrong codes (%s) goes back to Sign in with its words', async (failure) => {
+  const server = twoFactorServer();
+  server.route('POST /api/auth/two-factor/verify-totp', () => [401, { code: failure }]);
+  await social.start(at(''));
+  await social.showLobby();
+  await social.signIn('fan@example.com', 'right-password');
+  expect(await social.verifyTwoFactor('123456')).toBe(false);
+  expect(social.page).toBe('sign-in');
+  expect(social.notice).toBe('Too many wrong codes. Wait a few minutes, then sign in again');
+});
+
+test('A challenged sign-in while signed in ends that sign-in: no one, on the Two-factor page, the lobby reconnected as a guest', async () => {
+  const server = fakeServer();
+  server.session = member();
+  await social.start(at(''));
+  await social.showLobby();
+  const memberSocket = await lastSocket(1);
+  await goLive(memberSocket, { rooms: [], people: [] });
+  expect(social.signedIn).toBe(true);
+
+  server.route('POST /api/auth/sign-in/email', () => ((server.session = null), [200, { twoFactorRedirect: true, twoFactorMethods: ['totp'] }]));
+  expect(await social.signIn('other@example.com', 'right-password')).toBe(true);
+  expect(social.page).toBe('two-factor');
+  expect(social.me).toBe(null);
+  expect(memberSocket.closed).toBe(true);
+  const guestHello = await goLive(await lastSocket(2));
+  expect(claimsOf(guestHello.pass)).toMatchObject({ guest: true });
+});
+
+test('A blank code (only whitespace) is not sent, to confirm two-factor or to sign in', async () => {
+  const server = twoFactorServer();
+  await social.start(at(''));
+  await social.showLobby();
+  await social.signIn('fan@example.com', 'right-password');
+  expect(await social.verifyTwoFactor(' \t ')).toBe(false);
+  expect(await social.verifyTwoFactor('  ', { backup: true })).toBe(false);
+  expect(await social.confirmTwoFactor(' ')).toBe(false);
+  expect(server.requests.filter((r) => r.path.includes('/two-factor/'))).toEqual([]);
+});
+
+test('?social=two-factor&verified=1 opens the Two-factor page with the email confirmed', async () => {
+  fakeServer();
+  vi.spyOn(history, 'replaceState').mockImplementation(() => {});
+  await social.start(at('?social=two-factor&verified=1'));
+  await social.showLobby();
+  expect(social.page).toBe('two-factor');
+  expect(social.notice).toBe('Your email is confirmed');
+});
+
 test('?social=two-factor opens the Two-factor page and leaves the URL', async () => {
   fakeServer();
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});

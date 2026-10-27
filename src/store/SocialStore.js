@@ -22,6 +22,7 @@ const ERROR_PARAMS = ['error', 'error_description'];
 // The server asks for a recent sign-in before unlinking: SESSION_NOT_FRESH from unlink-account,
 // SESSION_EXPIRED from delete-user.
 const STALE_SESSION = new Set(['SESSION_EXPIRED', 'SESSION_NOT_FRESH']);
+const NEW_CHALLENGE = new Set(['INVALID_TWO_FACTOR_COOKIE', 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE', 'ACCOUNT_TEMPORARILY_LOCKED']);   // the code can't be tried again: sign in again
 
 const withToken = (turnstileToken) => (turnstileToken ? { 'x-turnstile-token': turnstileToken } : undefined);
 
@@ -159,26 +160,31 @@ export const useSocialStore = defineStore('social', {
     },
 
     // Signing in or up stays busy until you're known, so the form can't be sent a second time meanwhile.
-    // With two-factor on, the answer is only the challenge: the code comes next, and you're no one until then.
+    // With two-factor on, the answer is only the challenge: the code comes next, and you're no one until then
+    // (the server has ended a session you had).
     signIn(login, password) {
       return this.whileBusy(async () => {
         const byEmail = login.includes('@');
         const { ok, data } = await this.request(byEmail ? '/api/auth/sign-in/email' : '/api/auth/sign-in/username', {
           method: 'POST', body: byEmail ? { email: login, password } : { username: login, password },
         });
-        if (ok && data?.twoFactorRedirect) this.page = 'two-factor';
-        else if (ok) await this.becameSomeoneElse();
+        if (ok && data?.twoFactorRedirect) {
+          if (this.me) await this.becameSomeoneElse({ signedOut: true });
+          this.page = 'two-factor';
+        } else if (ok) await this.becameSomeoneElse();
         return ok;
       });
     },
 
-    // The code from the authenticator app (or a backup code), spaces and all: a challenge that expired starts over.
+    // The code from the authenticator app (or a backup code), spaces and all: a challenge that expired, or that
+    // had too many wrong codes, starts over. Nothing is sent for a code that's only spaces.
     verifyTwoFactor(code, { backup = false, trustDevice = false } = {}) {
+      if (!code.trim()) return false;
       return this.whileBusy(async () => {
         const { ok, code: failure } = await this.request(`/api/auth/two-factor/${backup ? 'verify-backup-code' : 'verify-totp'}`, {
           method: 'POST', body: { code: code.replace(/\s/g, ''), trustDevice },
         });
-        if (failure === 'INVALID_TWO_FACTOR_COOKIE') this.page = 'sign-in';
+        if (NEW_CHALLENGE.has(failure)) this.page = 'sign-in';
         if (ok) await this.becameSomeoneElse();
         return ok;
       });
@@ -198,6 +204,7 @@ export const useSocialStore = defineStore('social', {
     },
 
     async confirmTwoFactor(code) {
+      if (!code.trim()) return false;
       const { ok } = await this.twoFactor('verify-totp', undefined, { code: code.replace(/\s/g, '') });
       if (ok) await this.refreshMe();
       return ok;
