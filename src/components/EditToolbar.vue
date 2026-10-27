@@ -374,8 +374,12 @@ div.toolbar-row {
   padding: 4px 10px;
 }
 
-/* The options row scrolls sideways when it doesn't fit, without a scrollbar. */
+/* The options row scrolls sideways when it doesn't fit, without a scrollbar. It's as tall as a row of
+   sliders whatever the tool's options are, so they line up from tool to tool and the view below
+   doesn't move. */
 div.secondary-row {
+  min-height: 32px;
+  box-sizing: border-box;
   padding: 0 10px 4px;
   gap: 12px;
   overflow-x: auto;
