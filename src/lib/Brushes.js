@@ -45,56 +45,27 @@ export function squarePixels(from, to, size, cols, rows) {
   return [...pixels.values()];
 }
 
-// Where the soft brush stamps along a move from `from` to `to`: every half pixel, so the stamps
-// overlap smoothly. carried: how far the stroke has gone since its last stamp (0 just after the dab
-// where it began); returns the stamps and what to carry into the next move, so a slow drag of many
-// small moves stamps where one long move would (it used to stamp both ends of every move).
-const STAMP_SPACING = 0.5;
-export function brushStamps(from, to, carried) {
-  const dx = to.x - from.x, dy = to.y - from.y, length = Math.hypot(dx, dy);
-  const points = [];
-  let at = STAMP_SPACING - carried;
-  for (; at <= length; at += STAMP_SPACING) points.push({ x: from.x + (dx * at) / length, y: from.y + (dy * at) / length });
-  return { points, carried: length - (at - STAMP_SPACING) };
-}
-
-// The paint one pass of stamps lays where the stroke's center crosses a pixel, for stamps of flow 1:
-// how many stamps overlap there, weighted by their falloff. It grows with the size (a size-20 brush
-// stacks about 40 stamps on a pixel), so the Brush divides each stamp's flow by it; at least 1, so a
-// stamp in a stroke is never stronger than a dab.
-const passWeights = new Map();
-export function passWeight(size, hardness) {
-  const key = `${size},${hardness}`;
-  if (!passWeights.has(key)) {
-    const radius = size / 2, step = 1 / 64;
-    let sum = 0;
-    for (let t = -radius; t <= radius; t += step) sum += falloff(Math.abs(t), radius, hardness) * step;
-    passWeights.set(key, Math.max(1, sum / STAMP_SPACING));
-  }
-  return passWeights.get(key);
-}
-
-// A stamp's strength at dist from its center: a solid core out to radius * hardness, then a falloff;
-// tiny brushes fall off linearly.
-function falloff(dist, radius, hardness) {
-  if (dist > radius) return 0;
-  return radius > 0.5
-    ? (dist <= radius * hardness ? 1 : Math.pow(1 - (dist - radius * hardness) / (radius * (1 - hardness)), 1.5))
-    : Math.max(0, 1 - dist / radius);
-}
-
-// Soft round brush stamped at points. flow and hardness are 0..1. Overlapping stamps are kept (they
-// build up paint).
-export function brushPixels(points, { size, flow, hardness }, cols, rows) {
+// Soft round brush. flow and hardness are 0..1. Overlapping stamps are kept (they build up paint).
+export function brushPixels(from, to, { size, flow, hardness }, cols, rows) {
   const radius = size / 2;
   const pixels = [];
-  for (const { x, y } of points) {
+  for (const { x, y } of interpolate(from, to)) {
     for (let iy = Math.floor(y - radius); iy < Math.ceil(y + radius); iy++) {
       for (let ix = Math.floor(x - radius); ix < Math.ceil(x + radius); ix++) {
         if (!inGrid(ix, iy, cols, rows)) continue;
-        const reach = falloff(Math.hypot(ix + 0.5 - x, iy + 0.5 - y), radius, hardness);
-        if (reach <= 0 || (radius > 0.5 && reach < 0.001)) continue;
-        pixels.push({ x: ix, y: iy, alpha: reach * flow });
+
+        const dx = ix + 0.5 - x, dy = iy + 0.5 - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > radius) continue;
+
+        // Solid core out to radius * hardness, then a falloff; tiny brushes fall off linearly.
+        let alpha = radius > 0.5
+          ? (dist <= radius * hardness ? 1 : Math.pow(1 - (dist - radius * hardness) / (radius * (1 - hardness)), 1.5))
+          : Math.max(0, 1 - dist / radius);
+        alpha *= flow;
+
+        if (alpha <= 0 || (radius > 0.5 && alpha < 0.001)) continue;
+        pixels.push({ x: ix, y: iy, alpha });
       }
     }
   }

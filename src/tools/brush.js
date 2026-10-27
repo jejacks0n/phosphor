@@ -1,25 +1,18 @@
-import { brushStamps, brushPixels, passWeight } from '@/lib/Brushes';
+import { brushPixels } from '@/lib/Brushes';
 
-// Flow is how much paint a dab lays, and a stroke in one pass, at any size: the slider squared, so its
-// low end builds up gently (10% lays 1%, 50% a quarter, 100% covers).
-const strength = (workspace) => (workspace.editBrushFlow / 100) ** 2;
-const shape = (workspace) => ({ size: workspace.editBrushSize, hardness: workspace.editBrushHardness / 100 });
-// A pass's stamps add up to about 1% short of passWeight (it's measured between them): aim 3% over,
-// so 100% covers solid.
-const PASS_FIT = 0.97;
-let carried = 0; // how far the stroke has gone since its last stamp (brushStamps)
-let laid = null;  // the stroke's paint so far at each pixel (x + y * 65536), unrounded
-let dab = null;   // where the stroke began, until it moves
-
-// Paint the stamps' pixels as the stroke's paint reaches each whole step of the layer's alpha byte: a
-// big brush's stamps each lay a sliver (a size-20 brush at 10% about a two-thousandth), which the layer
-// would round to nothing one at a time.
+// A stroke lays the brush's shape at Flow: each pixel takes the most any of the stroke's stamps gives
+// it, not their sum. The sum grew with the size (a pixel takes about four stamps per pixel of width:
+// at size 20, 3% was opaque in one pass) and softened a hard brush. Strokes build up on each other.
+// The layer keeps alpha as a byte, so a stroke's paint is kept unrounded and painted as it rises a
+// whole step.
+let laid = null; // the stroke's paint so far at each pixel (x + y * 65536)
 function lay(project, pixels) {
   const steps = [];
   for (const { x, y, alpha } of pixels) {
-    const key = x + y * 65536, before = laid.get(key) ?? 0, after = before + alpha;
-    laid.set(key, after);
-    const bytes = Math.round(Math.min(1, after) * 255) - Math.round(Math.min(1, before) * 255);
+    const key = x + y * 65536, before = laid.get(key) ?? 0;
+    if (alpha <= before) continue;
+    laid.set(key, alpha);
+    const bytes = Math.round(alpha * 255) - Math.round(before * 255);
     if (bytes > 0) steps.push({ x, y, alpha: bytes / 255 });
   }
   project.paintStroke(steps);
@@ -40,25 +33,16 @@ const brush = {
     { key: 'editBrushFlow', label: 'Flow', title: 'Brush flow', min: 1, max: 100, unit: '%' },
     { key: 'editBrushHardness', label: 'Hardness', title: 'Brush hardness', min: 0, max: 100, unit: '%' },
   ],
-  begin({ project, workspace }, pos) {
-    // Half a dab where it starts: a stroke's own stamps lay about half at its end, so it starts as
-    // strong as it goes on; a click (no move) gets the other half when it ends.
-    carried = 0;
+  begin(ctx, pos) {
     laid = new Map();
-    dab = pos;
-    lay(project, brushPixels([pos], { ...shape(workspace), flow: strength(workspace) / 2 }, project.cols, project.rows));
+    brush.move(ctx, pos, pos);
     return true;
   },
   move({ project, workspace }, from, to) {
-    dab = null;
-    const stamps = brushStamps(from, to, carried), { size, hardness } = shape(workspace);
-    carried = stamps.carried;
-    const flow = strength(workspace) / (passWeight(size, hardness) * PASS_FIT); // the pass's stamps lay `strength` together
-    lay(project, brushPixels(stamps.points, { size, hardness, flow }, project.cols, project.rows));
+    const options = { size: workspace.editBrushSize, flow: workspace.editBrushFlow / 100, hardness: workspace.editBrushHardness / 100 };
+    lay(project, brushPixels(from, to, options, project.cols, project.rows));
   },
-  end({ project, workspace }) {
-    if (dab) lay(project, brushPixels([dab], { ...shape(workspace), flow: strength(workspace) / 2 }, project.cols, project.rows));
-    dab = null;
+  end({ project }) {
     project.commitEdit();
   },
 };
