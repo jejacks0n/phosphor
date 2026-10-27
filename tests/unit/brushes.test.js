@@ -1,7 +1,7 @@
 // Brush pixel generation shared by both editors (grid pixels, clipped to the grid).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { interpolate, pencilPixels, squarePixels, brushPixels, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
+import { interpolate, pencilPixels, squarePixels, brushStamps, brushPixels, passWeight, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
 
 test('Brush pixel generation shared by both editors (grid pixels, clipped to the grid)', async () => {
   assert.deepEqual(interpolate({ x: 0, y: 0 }, { x: 1, y: 0 }), [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 1, y: 0 }]);
@@ -23,13 +23,13 @@ test('Brush pixel generation shared by both editors (grid pixels, clipped to the
   assert.deepEqual(sq(4, 6, 2).sort(), [[3, 5], [3, 6], [4, 5], [4, 6]]);
   assert.equal(sq(4.5, 6.5, 3).length, 9);
 
-  const soft = brushPixels({ x: 5.5, y: 5.5 }, { x: 5.5, y: 5.5 }, { size: 1, flow: 1, hardness: 0.5 }, 10, 10);
+  const soft = brushPixels([{ x: 5.5, y: 5.5 }], { size: 1, flow: 1, hardness: 0.5 }, 10, 10);
   assert.deepEqual(soft, [{ x: 5, y: 5, alpha: 1 }]);
   // brushes of size <= 1 fall off linearly (the old PIXEL-view curve would give 0.354 here)
-  assert.deepEqual(brushPixels({ x: 5.75, y: 5.5 }, { x: 5.75, y: 5.5 }, { size: 1, flow: 1, hardness: 0 }, 10, 10), [{ x: 5, y: 5, alpha: 0.5 }]);
-  const hard = brushPixels({ x: 5, y: 5 }, { x: 5, y: 5 }, { size: 4, flow: 0.5, hardness: 1 }, 10, 10);
+  assert.deepEqual(brushPixels([{ x: 5.75, y: 5.5 }], { size: 1, flow: 1, hardness: 0 }, 10, 10), [{ x: 5, y: 5, alpha: 0.5 }]);
+  const hard = brushPixels([{ x: 5, y: 5 }], { size: 4, flow: 0.5, hardness: 1 }, 10, 10);
   assert.ok(hard.length > 0 && hard.every(p => p.alpha === 0.5));
-  const feathered = brushPixels({ x: 5, y: 5 }, { x: 5, y: 5 }, { size: 6, flow: 1, hardness: 0 }, 10, 10);
+  const feathered = brushPixels([{ x: 5, y: 5 }], { size: 6, flow: 1, hardness: 0 }, 10, 10);
   assert.ok(feathered.some(p => p.alpha < 1) && feathered.every(p => p.alpha > 0 && p.alpha <= 1));
   // Shapes: inputs are floored and normalized (drag any direction); results clip to the grid.
   assert.equal(rectPixels({ x: 3, y: 3 }, { x: 0, y: 0 }, false, 10, 10).length, 12);   // 4x4 outline
@@ -67,4 +67,41 @@ test('Brush pixel generation shared by both editors (grid pixels, clipped to the
   // stopwatch: a timing threshold fails on a busy machine.
   const huge = (aa) => ellipsePixels({ x: -1e6, y: -1e6 }, { x: 1e6, y: 1e6 }, false, 300, 300, aa);
   for (const aa of [false, true]) assert.ok(huge(aa).every(p => p.x >= 0 && p.y >= 0 && p.x < 300 && p.y < 300));
+});
+
+// One pass of stamps along y = 30.5 at flow / passWeight: the paint laid on the pixel in its middle.
+function onePass(size, hardness) {
+  const options = { size, hardness, flow: 1 / passWeight(size, hardness) };
+  let laid = 0, carried = 0;
+  for (let x = 5; x < 55; x++) {
+    const stamps = brushStamps({ x, y: 30.5 }, { x: x + 1, y: 30.5 }, carried);
+    carried = stamps.carried;
+    for (const p of brushPixels(stamps.points, options, 60, 60)) if (p.x === 30 && p.y === 30) laid += p.alpha;
+  }
+  return laid;
+}
+
+test('The soft Brush stamps every half pixel along a stroke however the pointer moves, and passWeight is what one pass of them lays, at any size', () => {
+  assert.deepEqual(brushStamps({ x: 0, y: 0 }, { x: 2, y: 0 }, 0).points.map((p) => p.x), [0.5, 1, 1.5, 2]);
+  assert.deepEqual(brushStamps({ x: 0, y: 0 }, { x: 0.25, y: 0 }, 0.125), { points: [], carried: 0.375 }); // short of the next stamp: carried on
+
+  // Many small moves stamp where one long move does (a slow drag used to stamp both ends of every move).
+  const xs = (points) => points.map((p) => Math.round(p.x * 1e6) / 1e6);
+  const one = xs(brushStamps({ x: 0, y: 0 }, { x: 10, y: 0 }, 0).points);
+  const many = [];
+  let carried = 0;
+  for (let x = 0; x < 10; x += 0.2) {
+    const stamps = brushStamps({ x, y: 0 }, { x: x + 0.2, y: 0 }, carried);
+    carried = stamps.carried;
+    many.push(...xs(stamps.points));
+  }
+  assert.deepEqual(many, one);
+
+  // A pass at flow 1 / passWeight lays about 1 at its center, at every size and hardness.
+  for (const size of [2.5, 5, 10, 20]) for (const hardness of [0, 0.5, 1]) {
+    const laid = onePass(size, hardness);
+    assert.ok(laid > 0.9 && laid < 1.1, `size ${size} hardness ${hardness}: ${laid}`);
+  }
+  assert.ok(passWeight(20, 0.5) > passWeight(5, 0.5) * 3);  // bigger brushes stack more stamps on a pixel
+  assert.equal(passWeight(1, 0.5), 1);                       // never below a dab
 });
