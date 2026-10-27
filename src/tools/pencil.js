@@ -1,4 +1,5 @@
 import { pencilPixels } from '@/lib/Brushes';
+import { BLOCK_CHARS } from '@/tools/brush';
 
 const pencil = {
   id: 'pencil',
@@ -8,13 +9,14 @@ const pencil = {
   views: ['input', 'output'],
   kind: 'paint',
   altPicks: true,
+  options: [BLOCK_CHARS],
   // no preview: the crosshair cursor is enough for 1px
   begin(ctx, pos) {
     pencil.move(ctx, pos, pos);
     return true;
   },
-  move({ project }, from, to) {
-    project.paintStroke(pencilPixels(from, to, project.cols, project.rows));
+  move({ project, workspace, view }, from, to) {
+    project.paintStroke(pencilPixels(from, to, project.cols, project.rows), undefined, { blockChars: view === 'output' && workspace.editBlockChars });
   },
   end({ project }) {
     project.commitEdit();

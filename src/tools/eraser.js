@@ -6,6 +6,8 @@ import { withLeads } from '@/document/wideChars';
 // Edit: paint and edit cells. Base: the base layer, black with a pinned space in the ANSI view
 // (eraseBase), black pixels in the Pixel view (eraseBasePixels). Every chosen layer is erased at once.
 
+const isPaintBlock = (entry) => entry?.char === '▄' && entry.fg === undefined && entry.bg === undefined;
+
 const eraser = {
   id: 'eraser',
   title: 'Eraser',
@@ -32,8 +34,13 @@ const eraser = {
     const pixels = view === 'output' ? cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]) : square;
     const { base, edit } = workspace.eraseLayers;
     if (edit) {
+      // A ▄ with no colors of its own (Block characters: it was there to show the paint) whose last
+      // paint this erases goes too, so the cell's own character comes back. The ANSI view clears
+      // the edit cells it erases anyway.
+      const blocks = view === 'input' ? cells.filter(({ col, row }) => isPaintBlock(project.editCellAt(col, row)) && project.cellHasPaint(col, row)) : [];
       project.eraseEditPixels(pixels);
       if (view === 'output') project.clearEditCells(cells);
+      else project.clearEditCells(blocks.filter(({ col, row }) => !project.cellHasPaint(col, row)));
     }
     if (base) view === 'output' ? project.eraseBase(cells) : project.eraseBasePixels(square);
   },

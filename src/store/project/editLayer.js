@@ -4,7 +4,7 @@
 import { cellKey, withCellEdit, mergeEntry, withoutCells, shiftRow } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { cellIndex, bakedEntry } from '@/lib/Cells.js';
+import { cellIndex, bakedEntry, cellsOfPixels } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -22,12 +22,18 @@ export const editLayerActions = {
   },
 
   // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground color) at the brush opacity,
-  // stacking or not (Stack opacity).
-  paintStroke(pixels, color) {
+  // stacking or not (Stack opacity). blockChars (the Pencil's and Brush's Block characters, ANSI view)
+  // makes each cell painted a ▄ first, which the paint colors half by half, instead of showing through
+  // the cell's own character.
+  paintStroke(pixels, color, { blockChars = false } = {}) {
     const workspace = useWorkspaceStore();
     const { r, g, b } = hex2rgb(color ?? workspace.editFgColor);
     const { cols, rows } = this; // read once: a store getter per pixel adds up over a fill
     const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < cols && y < rows);
+    if (blockChars) {
+      const cells = cellsOfPixels(inGrid, cols, rows).filter(({ col, row }) => this.editCellAt(col, row)?.char !== '▄');
+      this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄' } })));
+    }
     this.paintEditPixels(inGrid.map(p => ({ ...p, r, g, b })), workspace.editBrushOpacity, workspace.editBrushStack);
   },
 
