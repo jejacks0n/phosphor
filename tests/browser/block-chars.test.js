@@ -1,4 +1,4 @@
-// Block characters for the Pencil and Brush (ANSI view): each cell they paint becomes a real ▄ (the
+// The Brush's Block characters and the Pencil's Half-block (ANSI view): each cell they paint becomes a real ▄ (the
 // paint colors its halves) instead of the paint showing through the cell's own character. Erasing
 // that paint in the Pixel view gives the cell its generated character back.
 import { test, expect } from 'vitest';
@@ -11,7 +11,7 @@ import eraser from '@/tools/eraser';
 async function scene(settings = {}) {
   const { project, workspace } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
-  Object.assign(workspace, { editFgColor: '#ff0000', editBlockChars: true, editBrushSize: 3, eraseLayers: { base: false, edit: true } }, settings);
+  Object.assign(workspace, { editFgColor: '#ff0000', editBlockChars: true, pencilDrawWith: 'half', editBrushSize: 3, eraseLayers: { base: false, edit: true } }, settings);
   const use = (tool, view, points) => {
     const ctx = { project, workspace, view };
     tool.begin(ctx, points[0], {});
@@ -22,7 +22,7 @@ async function scene(settings = {}) {
   return { project, workspace, use, charAt };
 }
 
-test('with Block characters, the Pencil and Brush make each cell they paint a ▄; without, the cell keeps its character', async () => {
+test('with Half-block and Block characters, the Pencil and Brush make each cell they paint a ▄; without, the cell keeps its character', async () => {
   const { use, charAt } = await scene();
   const before = charAt(10, 5);
   use(pencil, 'output', [{ x: 10.5, y: 10.5 }]);
@@ -30,7 +30,7 @@ test('with Block characters, the Pencil and Brush make each cell they paint a �
   use(brush, 'output', [{ x: 20.5, y: 10.5 }, { x: 24.5, y: 10.5 }]);
   for (let col = 20; col <= 24; col++) expect(charAt(col, 5)).toBe('▄');
 
-  const off = await scene({ editBlockChars: false });
+  const off = await scene({ editBlockChars: false, pencilDrawWith: 'normal' });
   off.use(pencil, 'output', [{ x: 10.5, y: 10.5 }]);
   expect(off.charAt(10, 5)).toBe(before);
 });
@@ -50,7 +50,7 @@ test('erasing that paint in the Pixel view brings the cell\'s own character back
 });
 
 test('a ▄ typed in Edit Mode (it has its own colors) stays when the paint over it is erased', async () => {
-  const { project, use, charAt, workspace } = await scene({ editBlockChars: false });
+  const { project, use, charAt, workspace } = await scene({ editBlockChars: false, pencilDrawWith: 'normal' });
   project.typeAt(15, 5, '▄', { fg: '#ffffff' });
   project.commitEdit();
   use(pencil, 'input', [{ x: 15.5, y: 10.5 }]);

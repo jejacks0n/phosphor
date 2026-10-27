@@ -77,10 +77,17 @@ instead. Typing or drawing cells (a line box, a Character or Full block shape) o
 the paint in those cells, so what you wrote shows; with the background set to None, each cell keeps
 the background color the paint gave it, as it keeps the picture's or an earlier cell's.
 
-The Pencil and Brush paint over each cell's own character, which shows through. With **Block
-characters** on (in the ANSI view; off by default), each cell they paint becomes a ▄ instead, and
-the paint colors its two halves, so you draw clean half-blocks. The half you don't paint keeps its
-color.
+The Pencil and Brush paint over each cell's own character, which shows through. With the Brush's
+**Block characters** on (in the ANSI view; off by default), or the Pencil drawing with
+**Half-block**, each cell they paint becomes a ▄ instead, and the paint colors its two halves, so
+you draw clean half-blocks. The half you don't paint keeps its color. (The Pencil's **Draw with**
+is **Normal** by default: the paint over each cell's character.)
+
+The Pencil's **Single** and **Double** (ANSI view) draw box-drawing lines as you drag from cell to
+cell: each cell gets the piece its path needs (─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼), so the line turns corners and
+joins itself where it crosses back, in the foreground color (and the background color, unless it's
+None). A diagonal drag becomes a staircase. With **Connect** on it joins the lines it crosses (┼)
+or ends on (┬), and the ones that point into it; off, it draws over them.
 
 **Opacity** is how much one stroke lays at most: going back over the same spot within a stroke
 doesn't add more, but with **Stack opacity** on (the default) strokes stack, so two strokes at 50%
@@ -200,11 +207,6 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   are quadrants (▝▘, ▗▖). They're always block characters: the parts of a cell the shape doesn't
   cover show the cell's background color, and a filled shape's inside is the background color
   you've picked.
-- **Lines** (ANSI view) draws box-drawing lines as you drag from cell to cell: each cell gets the
-  piece its path needs (─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼), so the line turns corners and joins itself where it
-  crosses back, in **Single** or **Double** lines, in the foreground color (and the background
-  color, unless it's None). With **Connect** on it joins the lines it crosses (┼) or ends on (┬), and
-  the ones that point into it; off, it draws over them.
 - **Paint Bucket** fills what you see, in the foreground color. Text and lines you've drawn (any
   edit cell whose character isn't a space, █, ▀ or ▄) are walls: a fill stops at them and never
   covers them, so it stays inside a box and leaves your text readable. A line hidden under paint
@@ -219,8 +221,8 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
 
 A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the same tool: **P**
 Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Color Picker, **H** Hand,
-**Z** Zoom, **T** or **K** Edit Mode, **L** Lines, **F** Flip and **M** Select, in the views that have the
-tool (Zoom is the pixel view's; Edit Mode, Lines, Flip and Select the ANSI view's). Each tool's button shows its key.
+**Z** Zoom, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
+(Zoom is the pixel view's; Edit Mode, Flip and Select the ANSI view's). Each tool's button shows its key.
 In Edit Mode letters type, so press **Escape** to put the cursor away first; with a selection, E,
 S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.
 
@@ -228,8 +230,8 @@ S, C and Enter act on it (see the Select tool). The letters do nothing in text f
 
 These work in both the ANSI and the pixel view, for as long as you hold the key:
 
-- **Alt** (Option on a Mac), with the Pencil, Brush, Paint Bucket, Shapes or Lines: the Color
-  Picker. A click picks the foreground color; add **Shift** to pick the background color instead.
+- **Alt** (Option on a Mac), with the Pencil, Brush, Paint Bucket or Shapes: the Color Picker. A
+  click picks the foreground color; add **Shift** to pick the background color instead.
 - **Shift**, with the Pencil or Brush: a click draws a straight line from where your last stroke
   ended (with either of them, in either view) to where you click, and keeps going if you drag.
 - **Space**, with any tool: the Hand, to drag the view around (the middle mouse button does too).

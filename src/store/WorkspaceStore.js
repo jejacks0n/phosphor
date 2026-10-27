@@ -41,8 +41,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     selectLayers: { base: true, edit: true }, // what the Select tool acts on: the base layer and/or the edit layer
-    lineStyle: 'single',     // Lines tool: 'single' | 'double'
-    lineConnect: true,       // Lines tool: join the lines it crosses or lands on
+    pencilDrawWith: 'normal', // Pencil, ANSI view: 'single' | 'double' (box lines) | 'half' (▄ half-blocks) | 'normal' (paint)
+    pencilConnect: true,     // Pencil's Single and Double: join the lines it crosses or lands on
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse' | 'line'
     shapeCharFill: false,    // Character mode: fill the inside with the character too (other modes fill with BG)
     shapeDrawWith: 'double', // ANSI view: 'single' | 'double' | 'half' | 'full' | 'char'
@@ -75,7 +75,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     eraseLayers: { base: false, edit: true }, // what the eraser erases: the base layer and/or the edit layer
     flipLayers: { base: false, edit: true },  // what Flip FG/BG flips: the base layer and/or the edit layer
     editBrushOpacity:  100,
-    editBlockChars: false, // Pencil and Brush, ANSI view: each cell painted becomes a ▄ the paint colors (Block characters)
+    editBlockChars: false, // Brush, ANSI view: each cell painted becomes a ▄ the paint colors (Block characters)
     editBrushStack: true, // Stack opacity: each stroke lays up to the opacity on top of what's there (PaintLayer.paint)
     editBrushFlow:  50, // a stamp flow of 0.25 (brush.js squares it)
     editBrushHardness:  50,

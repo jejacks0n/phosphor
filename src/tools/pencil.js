@@ -1,5 +1,8 @@
 import { pencilPixels } from '@/lib/Brushes';
-import { BLOCK_CHARS } from '@/tools/brush';
+import lines from '@/tools/lines';
+
+// Single and Double draw box-drawing lines from cell to cell (lines.js); they're the ANSI view's.
+const drawsLines = ({ view, workspace }) => view === 'output' && ['single', 'double'].includes(workspace.pencilDrawWith);
 
 const pencil = {
   id: 'pencil',
@@ -9,18 +12,38 @@ const pencil = {
   views: ['input', 'output'],
   kind: 'paint',
   altPicks: true,
-  options: [BLOCK_CHARS],
+  options: [
+    {
+      key: 'pencilDrawWith', label: 'Draw with', type: 'dropdown', views: ['output'],
+      choices: [
+        { value: 'single', label: 'Single', glyph: '┌─' },
+        { value: 'double', label: 'Double', glyph: '╔═' },
+        { value: 'half', label: 'Half-block', glyph: '▀▄' },
+        { value: 'normal', label: 'Normal', glyph: '' }, // paint over each cell's own character, which shows through
+      ],
+    },
+    {
+      key: 'pencilConnect', label: 'Connect', type: 'checkbox', views: ['output'],
+      when: (ws) => ['single', 'double'].includes(ws.pencilDrawWith),
+      title: 'Join the lines it crosses or lands on',
+    },
+  ],
   shiftLines: true, // Shift-click: a straight line from where the last stroke ended
   // no preview: the crosshair cursor is enough for 1px
   begin(ctx, pos, event) {
-    pencil.move(ctx, (event?.shiftKey && ctx.workspace.strokeEnd) || pos, pos);
+    const from = (event?.shiftKey && ctx.workspace.strokeEnd) || pos;
+    if (drawsLines(ctx)) lines.begin(ctx, from);
+    pencil.move(ctx, from, pos);
     return true;
   },
-  move({ project, workspace, view }, from, to) {
-    project.paintStroke(pencilPixels(from, to, project.cols, project.rows), undefined, { blockChars: view === 'output' && workspace.editBlockChars });
+  move(ctx, from, to) {
+    const { project, workspace, view } = ctx;
+    if (drawsLines(ctx)) lines.move(ctx, from, to);
+    else project.paintStroke(pencilPixels(from, to, project.cols, project.rows), undefined, { blockChars: view === 'output' && workspace.pencilDrawWith === 'half' });
     workspace.strokeEnd = to;
   },
   end({ project }) {
+    lines.end();
     project.commitEdit();
   },
 };
