@@ -108,7 +108,7 @@ along with its password. The SOCIAL tab carries a dot while you're in a room, ho
 Each watcher shows whether they're following you or looking around on their own. Point at a
 member who's watching for:
 
-- **Remove**: they leave the room now. They can come back later.
+- **Remove**: they leave the room now, and can't come back until the room ends.
 - **Block**: they can't join any room you host again, and your rooms no longer show in their lobby.
   They aren't told; your rooms simply aren't there for them, and a link to one says "This room
   isn't available".
