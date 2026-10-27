@@ -1,12 +1,13 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
-import { cleanUsername, usernameProblem } from '@/social/names';
+import { suggestedUsername, usernameProblem } from '@/social/names';
 import UsernameField from './UsernameField.vue';
 
 // After a first Discord or GitHub sign-in: a username (starting from the name on that account) and the terms.
+// Leaving signs you out: half signed in, there's nothing to go back to.
 const social = useSocialStore();
-const username = ref(cleanUsername(social.me?.username || social.me?.name));
+const username = ref(suggestedUsername(social.me?.username || social.me?.name));
 const terms = ref(false);
 const error = ref(null);
 const ready = computed(() => terms.value && !usernameProblem(username.value) && !social.busy);
@@ -19,7 +20,7 @@ async function finish() {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">‹ Back to the lobby</button>
+    <button class="link back" :disabled="social.busy" @click="social.signOut()">Cancel and sign out</button>
     <h2>Pick your username</h2>
     <form @submit.prevent="ready && finish()">
       <UsernameField v-model="username" help="How everyone sees you. Letters, numbers, - and _." />

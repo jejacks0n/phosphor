@@ -168,6 +168,18 @@ test('after a first Discord sign-in, pick a username (from the provider\'s name)
   expect(server.sent('POST', '/api/me/onboarding').map((r) => r.body)).toEqual([{ username: 'wren', termsAccepted: true }]);
 });
 
+test('onboarding offers no way back half signed in: Cancel and sign out lands on the lobby as a guest', async ({ page }) => {
+  const server = await fakeServer(page, { me: member({ username: null, name: 'Quiet Amber Fox', needsOnboarding: true, providers: ['github'] }) });
+  await open(page, '/?social=signed-in');
+  const form = shown(page, 'onboarding');
+  await expect(form.getByLabel('Username')).toHaveValue('quiet'); // the provider's name is guest-shaped
+  await expect(form.getByRole('button', { name: /Back to the lobby/ })).toHaveCount(0);
+  await form.getByRole('button', { name: 'Cancel and sign out' }).click();
+  await expect(shown(page, 'lobby')).toBeVisible();
+  await expect(shown(page, 'lobby').locator('.you .tag')).toHaveText('guest');
+  expect(server.sent('POST', '/api/auth/sign-out')).toHaveLength(1);
+});
+
 test('a forgotten password: the same notice whatever the email', async ({ page }) => {
   const server = await fakeServer(page);
   const form = await openSignIn(page);

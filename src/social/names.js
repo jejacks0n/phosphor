@@ -24,3 +24,11 @@ export function usernameProblem(name) {
 
 // A Discord or GitHub name as a first try at a username: lowercase, spaces to hyphens, the rest dropped.
 export const cleanUsername = (name) => (name ?? '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 24);
+
+// The username onboarding starts from: the cleaned name if it would do, else its first word, else nothing
+// (a guest-shaped or reserved name is never offered).
+export function suggestedUsername(name) {
+  const cleaned = cleanUsername(name);
+  const first = cleaned.split('-')[0];
+  return [cleaned, first].find((n) => !usernameProblem(n)) ?? '';
+}

@@ -1,7 +1,7 @@
 // A name's swatch color: the same name always gets the same CGA color, and names spread over them.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { nameColor, NAME_COLORS, usernameProblem, cleanUsername } from '../../src/social/names.js';
+import { nameColor, NAME_COLORS, usernameProblem, cleanUsername, suggestedUsername } from '../../src/social/names.js';
 import { CGA_COLORS_STR } from '../../src/lib/ColorUtils.js';
 
 test('A name\'s color is stable, one of the CGA colors (not black), and names spread over them', () => {
@@ -33,4 +33,15 @@ test('a provider\'s name cleaned to a username: lowercase, spaces to hyphens, th
   assert.equal(cleanUsername('Zoë (she/her)'), 'zo-sheher');
   assert.equal(cleanUsername('x'.repeat(30)), 'x'.repeat(24));
   assert.equal(cleanUsername(null), '');
+});
+
+test('the onboarding suggestion is the cleaned name when it would do, else its first word, else nothing', () => {
+  assert.equal(suggestedUsername('Pixel Wren!'), 'pixel-wren');
+  assert.equal(suggestedUsername('Quiet Amber Fox'), 'quiet');   // guest-shaped
+  assert.equal(suggestedUsername('quiet-amber-fox'), 'quiet');
+  assert.equal(suggestedUsername('Wren Q'), 'wren-q');
+  assert.equal(suggestedUsername('Admin'), '');   // reserved, and so is its first word
+  assert.equal(suggestedUsername('Al'), '');   // too short
+  assert.equal(suggestedUsername('Al Bo Cy'), '');
+  assert.equal(suggestedUsername(null), '');
 });
