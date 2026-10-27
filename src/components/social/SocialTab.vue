@@ -12,21 +12,23 @@ import AccountPage from './AccountPage.vue';
 import TwoFactorPage from './TwoFactorPage.vue';
 import StartRoomPage from './StartRoomPage.vue';
 import HostRoomPage from './HostRoomPage.vue';
+import WatchRoomPage from './WatchRoomPage.vue';
 
 const social = useSocialStore();
 const room = useRoomStore();
 const PAGES = {
   lobby: LobbyPage, 'sign-in': SignInPage, create: CreateAccountPage, forgot: ForgotPasswordPage,
   reset: ResetPasswordPage, onboarding: OnboardingPage, account: AccountPage,
-  'two-factor': TwoFactorPage, 'start-room': StartRoomPage, 'host-room': HostRoomPage,
+  'two-factor': TwoFactorPage, 'start-room': StartRoomPage, 'host-room': HostRoomPage, 'watch-room': WatchRoomPage,
 };
 onMounted(() => social.showLobby());
 
-// The room you host, while you do. Account is only for someone signed in: until /api/me has answered
+// The room you host or watch, while you do. Account is only for someone signed in: until /api/me has answered
 // nothing shows (a link back from connecting a provider asks for Account first), and once it has,
 // someone signed out gets the lobby.
 const shownPage = computed(() => {
   if (room.role === 'host') return 'host-room';
+  if (room.role === 'watch') return 'watch-room';
   if (social.page !== 'account' || social.signedIn) return social.page;
   return social.supported === null ? null : 'lobby';
 });

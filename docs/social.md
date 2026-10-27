@@ -3,10 +3,11 @@
 > **Partly built.** This page describes how Phosphor's social side is meant to work.
 >
 > **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, the lobby
-> with its Join counts and reasons, signals and who's here, and starting and hosting a room.
-> **Comes next:** watching, chat, removing or blocking from a room, and reporting. **Watching**
+> with its Join counts and reasons, signals and who's here, starting and hosting a room, and
+> watching one. **Comes next:** chat, removing or blocking from a room, and reporting. **Chat**
 > through **Blocking and reporting** describe what's coming, as do the welcome message's place in the
-> chat and Remove and Block under **Hosting**.
+> chat (for now, watchers see it under the room's name), the chat beside your work under
+> **Watching**, and Remove and Block under **Hosting**.
 
 Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others
 watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
@@ -143,7 +144,7 @@ first; signing out while you host ends the room as well.
 ## Watching
 
 **Join** opens the room right in the SOCIAL tab, in place of the lobby. You're in one room at a
-time; **Leave** brings the lobby back.
+time; **Leave** brings the lobby back. A link to a private room asks for its password first.
 
 The art is view only. A pink box shows where the host is looking. With **Following** on, your view
 follows theirs; scroll away to look around on your own, and the button becomes **Follow** with the

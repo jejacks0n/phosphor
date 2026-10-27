@@ -61,3 +61,13 @@ test('each new view of the host\'s is centered while following, and not once loo
   await nextTick();
   expect(scroll.scrollLeft + scroll.clientWidth / 2).toBe(15 * 8);
 });
+
+test('only a key that scrolls is looking around: not Tab, and not a modifier on its own', async () => {
+  await createTestApp();
+  const { scroll, seen } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 } });
+  for (const key of ['Tab', 'Shift', 'Control', 'Alt', 'Meta', 'a']) scroll.dispatchEvent(new KeyboardEvent('keydown', { key }));
+  expect(seen.lookArounds).toBe(0);
+  const scrolling = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', ' '];
+  for (const key of scrolling) scroll.dispatchEvent(new KeyboardEvent('keydown', { key }));
+  expect(seen.lookArounds).toBe(scrolling.length);
+});

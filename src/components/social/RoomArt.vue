@@ -111,6 +111,8 @@ watch(fontKey, (key) => {
 }, { immediate: true });
 
 const lookAround = () => emit('look-around');
+const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
+const keyDown = (event) => { if (SCROLL_KEYS.has(event.key)) lookAround(); };
 
 onMounted(() => {
   scrollRef.value?.addEventListener('scroll', queueRender, { passive: true });
@@ -137,7 +139,7 @@ onBeforeUnmount(() => {
       tabindex="0"
       aria-label="The room's art"
       @wheel.passive="lookAround"
-      @keydown="lookAround"
+      @keydown="keyDown"
       @pointerdown="lookAround"
   >
     <div ref="sizer" class="sizer" :style="sizerStyle">
