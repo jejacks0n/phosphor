@@ -15,7 +15,8 @@ export async function ed25519Supported() {
   }
 }
 
-// One IndexedDB request as a promise, the database closed after, so it can be deleted (tests, a reset).
+// One IndexedDB request as a promise, answered once its transaction has committed and the database is
+// closed, so what it wrote is stored and the database can be deleted (tests, a reset).
 // A request that throws as it's made (DataCloneError, a quota) rejects too, rather than never settling.
 function withStore(mode, use) {
   return new Promise((resolve, reject) => {
@@ -26,12 +27,15 @@ function withStore(mode, use) {
       const db = open.result;
       const fail = (error) => { db.close(); reject(error); };
       let req;
+      let tx;
       try {
-        req = use(db.transaction('keys', mode).objectStore('keys'));
+        tx = db.transaction('keys', mode);
+        req = use(tx.objectStore('keys'));
       } catch (error) {
         return fail(error);
       }
-      req.onsuccess = () => { db.close(); resolve(req.result); };
+      tx.oncomplete = () => { db.close(); resolve(req.result); };
+      tx.onabort = () => fail(tx.error);
       req.onerror = (event) => { event.preventDefault(); fail(req.error); };
     };
   });

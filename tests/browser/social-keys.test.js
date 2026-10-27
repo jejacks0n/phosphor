@@ -57,6 +57,22 @@ test('The key is made once, its private half not extractable, and comes back the
   expect(generateKey).toHaveBeenCalledTimes(1);
 });
 
+test('loadKey answers only once its transactions have committed and its connections are closed', async () => {
+  const transaction = IDBDatabase.prototype.transaction;
+  const open = [];   // each transaction's connection, until the transaction is complete
+  vi.spyOn(IDBDatabase.prototype, 'transaction').mockImplementation(function (...args) {
+    const tx = transaction.apply(this, args);
+    open.push(tx);
+    tx.addEventListener('complete', () => open.splice(open.indexOf(tx), 1));
+    return tx;
+  });
+  await loadKey();   // reads, then writes the new key
+  expect(open).toEqual([]);   // answering on a request's success leaves the commit (and the close) pending
+  forgetKey();
+  await loadKey();   // reads the stored key
+  expect(open).toEqual([]);
+});
+
 test('Concurrent first calls share one key', async () => {
   const generateKey = vi.spyOn(crypto.subtle, 'generateKey');
   const [a, b] = await Promise.all([loadKey(), loadKey()]);
