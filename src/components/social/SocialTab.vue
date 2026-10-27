@@ -2,8 +2,17 @@
 import { onMounted } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import LobbyPage from './LobbyPage.vue';
+import SignInPage from './SignInPage.vue';
+import CreateAccountPage from './CreateAccountPage.vue';
+import ForgotPasswordPage from './ForgotPasswordPage.vue';
+import ResetPasswordPage from './ResetPasswordPage.vue';
+import OnboardingPage from './OnboardingPage.vue';
 
 const social = useSocialStore();
+const PAGES = {
+  lobby: LobbyPage, 'sign-in': SignInPage, create: CreateAccountPage, forgot: ForgotPasswordPage,
+  reset: ResetPasswordPage, onboarding: OnboardingPage,
+};
 onMounted(() => social.showLobby());
 </script>
 
@@ -16,8 +25,8 @@ onMounted(() => social.showLobby());
         <button class="link" aria-label="Dismiss" @click="social.notice = null">✕</button>
       </p>
       <div class="page" :data-page="social.page">
-        <LobbyPage v-if="social.page === 'lobby'" />
-      </div> <!-- the other pages (sign in, account) come next -->
+        <component :is="PAGES[social.page]" v-if="PAGES[social.page]" />
+      </div> <!-- the Account page comes next -->
     </template>
   </article>
 </template>
@@ -55,5 +64,82 @@ p.unsupported {
 div.page {
   flex: 1;
   min-height: 0;
+}
+</style>
+
+<!-- The sign-in and account forms' look, shared by their pages (unscoped: it reaches into them). -->
+<style>
+article.social-tab div.form-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 340px;
+  margin: 0 auto;
+  padding: 16px 16px 32px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+article.social-tab div.form-page button.back {
+  align-self: flex-start;
+  margin-left: -8px;
+}
+article.social-tab div.form-page h2 {
+  margin: 8px 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+article.social-tab div.form-page div.providers,
+article.social-tab div.form-page form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+article.social-tab div.form-page p.or {
+  margin: 0;
+  text-align: center;
+  color: var(--text-faint);
+}
+article.social-tab div.form-page label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-weight: 500;
+}
+article.social-tab div.form-page label.terms {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+article.social-tab div.form-page label.terms input {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+article.social-tab div.form-page a {
+  color: var(--accent);
+}
+article.social-tab div.form-page p.help,
+article.social-tab div.form-page p.error {
+  margin: -4px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+article.social-tab div.form-page p.error {
+  color: var(--danger);
+}
+article.social-tab div.form-page form p.error[role=alert] {
+  margin: 0;
+  font-size: 12px;
+}
+article.social-tab div.form-page div.turnstile:empty {
+  display: none;
+}
+article.social-tab div.form-page button.link.inline {
+  padding: 0;
+  font-size: inherit;
+  letter-spacing: normal;
+  color: var(--accent);
 }
 </style>

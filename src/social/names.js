@@ -10,3 +10,17 @@ export function nameColor(name) {
   for (let i = 0; i < name.length; i++) hash = Math.imul(hash ^ name.charCodeAt(i), 0x01000193);
   return NAME_COLORS[(hash >>> 0) % NAME_COLORS.length];
 }
+
+// A username's problem, as the server checks it (length, then characters, then reserved): 'length',
+// 'characters', 'reserved' (admin and the like, or three hyphen-joined words: a guest's nickname), or null.
+const RESERVED = new Set(['admin', 'phosphor', 'guest', 'host', 'system']);
+
+export function usernameProblem(name) {
+  if (name.length < 3 || name.length > 24) return 'length';
+  if (!/^[a-z0-9_-]+$/i.test(name)) return 'characters';
+  if (RESERVED.has(name.toLowerCase()) || /^[a-z]+-[a-z]+-[a-z]+$/i.test(name)) return 'reserved';
+  return null;
+}
+
+// A Discord or GitHub name as a first try at a username: lowercase, spaces to hyphens, the rest dropped.
+export const cleanUsername = (name) => (name ?? '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 24);
