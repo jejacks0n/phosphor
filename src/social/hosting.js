@@ -7,7 +7,7 @@
 import { openPeer } from './peer.js';
 import { verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
-import { Allowance, ChatLog, ID, chatText, signedText } from './chat.js';
+import { Allowance, ChatLog, chatText, isId, signedText } from './chat.js';
 import { CHUNK_BYTES, changedCells, encodeCells, packSnapshot } from './wire.js';
 
 const BACKED_UP_BYTES = 8 * 1024 * 1024;   // a channel further behind than this is sent no art until it drains
@@ -15,8 +15,8 @@ const DRAINED_BYTES = 1024 * 1024;           // to this, and then gets one fresh
 const MOST_HEARD_BYTES = 2048;               // a watcher's message longer than this is ignored
 const MOST_SKEW_MS = 120_000;                // a chat message's time, from the host's clock
 const EARLIER_EVERY_MS = 500;                // a watcher's asks for earlier messages, at most
+const MOST_CHECKING = 4;                     // a watcher's chat waiting to be checked; more is ignored
 
-const isId = (id) => typeof id === 'string' && ID.test(id);
 const sameView = (a, b) => a.col === b.col && a.row === b.row && a.cols === b.cols && a.rows === b.rows;
 
 // The indexes that changed from one art to the next; null when a snapshot should go instead (nothing to
@@ -38,7 +38,8 @@ export class Host {
   constructor({ send, passKey, config, connectWithinMs, roomId, onWatchers = () => {}, onChat = () => {} }) {
     Object.assign(this, { send, passKey, config, connectWithinMs, roomId, onWatchers, onChat });
     // peer -> { peer, pass, claims, following, conn, channel, has (the art it has), packing, behind,
-    // allowance, heard (its chat, checked one at a time), askedAt (its last ask for earlier messages) }
+    // allowance, heard (its chat, checked one at a time), checking (how many wait), askedAt (its last ask
+    // for earlier messages) }
     this.watchers = new Map();
     this.log = new ChatLog();
     this.room = null;
@@ -54,7 +55,7 @@ export class Host {
     this.drop(peer);
     const w = {
       peer, pass, claims: null, following: true, conn: null, channel: null, has: null, packing: false, behind: false,
-      allowance: new Allowance(), heard: Promise.resolve(), askedAt: -Infinity,
+      allowance: new Allowance(), heard: Promise.resolve(), checking: 0, askedAt: -Infinity,
     };
     this.watchers.set(peer, w);
     let claims = null;
@@ -203,7 +204,7 @@ export class Host {
     let msg;
     try { msg = JSON.parse(data); } catch { return; }
     if (msg?.t === 'following') this.follow(w, msg.on);
-    else if (msg?.t === 'chat') w.heard = w.heard.then(() => this.chat(w, msg)).catch(() => {});
+    else if (msg?.t === 'chat') this.check(w, msg);
     else if (msg?.t === 'earlier') this.earlier(w, msg.before);
   }
 
@@ -211,6 +212,14 @@ export class Host {
     if (typeof on !== 'boolean' || on === w.following) return;
     w.following = on;
     this.changed();
+  }
+
+  // A watcher's chat in line to be checked. Bad messages don't spend the allowance, so it's the line
+  // that's capped: past MOST_CHECKING waiting, one is ignored, and junk can't keep the host verifying.
+  check(w, msg) {
+    if (w.checking >= MOST_CHECKING) return;
+    w.checking++;
+    w.heard = w.heard.then(() => this.chat(w, msg)).catch(() => {}).finally(() => { w.checking--; });
   }
 
   // A watcher's message goes on only from a verified member, with text as the composer sends it, a

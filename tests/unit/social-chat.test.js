@@ -1,7 +1,7 @@
 // Chat's pieces: the text rule, the kept log and its pages, the one-a-second allowance.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { MOST_CHARS, MOST_KEPT, PAGE, ID, chatText, newId, signedText, ChatLog, Allowance } from '../../src/social/chat.js';
+import { MOST_CHARS, MOST_KEPT, PAGE, ID, isId, chatText, newId, signedText, ChatLog, Allowance } from '../../src/social/chat.js';
 import { CHUNK_BYTES } from '../../src/social/wire.js';
 
 const entries = (n, text = 'hi', pass = 'p') => Array.from({ length: n }, (_, i) => ({ id: `m${i}`, ts: i, text, pass, sig: 's' }));
@@ -25,6 +25,11 @@ test('chatText trims, and refuses what is not a string, is empty or is over 300'
 test('ids are 16 URL-safe characters and do not repeat', () => {
   assert.match(newId(), ID);
   assert.equal(new Set(Array.from({ length: 1000 }, newId)).size, 1000);
+});
+
+test('isId takes only a string that is an id', () => {
+  assert.equal(isId(newId()), true);
+  for (const bad of ['short', ['AAAAAAAAAAAAAAAA'], 'AAAAAAAAAAAAAAA=', null, 1]) assert.equal(isId(bad), false);
 });
 
 test('signedText is what the signature covers', () => {

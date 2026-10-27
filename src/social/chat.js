@@ -11,6 +11,7 @@ export const MOST_KEPT = 5000;
 export const PAGE = 50;
 
 export const ID = /^[A-Za-z0-9_-]{16}$/;
+export const isId = (id) => typeof id === 'string' && ID.test(id);
 
 // The message as it will be sent: trimmed. Null for anything that isn't text, is empty or is too long.
 export function chatText(raw) {

@@ -9,7 +9,7 @@
 import { openPeer } from './peer.js';
 import { verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
-import { ID, PAGE, chatText, signedText } from './chat.js';
+import { PAGE, chatText, isId, signedText } from './chat.js';
 import { CHUNK_BYTES, MOST_SNAPSHOT_CHUNKS, decodeCells, unpackSnapshot } from './wire.js';
 
 const MOST_NAME = 60;       // a room's name
@@ -18,7 +18,6 @@ const MOST_WELCOME = 200;
 // A string, cut to most characters; null for anything else.
 const text = (value, most) => (typeof value === 'string' ? value.slice(0, most) : null);
 const place = (n) => Number.isInteger(n) && n >= 0;
-const isId = (id) => typeof id === 'string' && ID.test(id);
 
 export class Watch {
   constructor({ send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = () => {} }) {
@@ -75,7 +74,7 @@ export class Watch {
     this.art = null;          // changes count only after this connection's first snapshot
     this.gathering = null;    // { want, chunks }: a snapshot's chunks as they come
     this.heard = Promise.resolve();   // messages are handled one at a time, in order
-    this.passes = new Map();   // pass -> its claims (null for a bad one), checked once a connection
+    this.passes = new Map();   // pass -> its claims: good ones only, checked once a connection
     this.histories = 0;
     const conn = this.conn = openPeer({
       initiator: false, config: this.config, connectWithinMs: this.connectWithinMs,
@@ -161,19 +160,18 @@ export class Watch {
   }
 
   // A pass's claims if the server signed it. Its expiry isn't held against it: a message keeps the pass
-  // it was sent with, and a pass lasts an hour while a room's chat lasts as long as the room. No key to
-  // check with is asked for again next time.
+  // it was sent with, and a pass lasts an hour while a room's chat lasts as long as the room. Only a good
+  // pass is kept, so a host sending junk can't make the list grow; a bad one is checked each time.
   async claimsOf(pass) {
-    if (!this.passes.has(pass)) {
-      let key;
-      try {
-        key = await this.passKey();
-      } catch {
-        return null;
-      }
-      this.passes.set(pass, await verifyPass(pass, key, 0));
+    let claims = this.passes.get(pass);
+    if (claims) return claims;
+    try {
+      claims = await verifyPass(pass, await this.passKey(), 0);
+    } catch {
+      return null;   // no key to check with
     }
-    return this.passes.get(pass);
+    if (claims) this.passes.set(pass, claims);
+    return claims;
   }
 
   // Who hosts it is the Room's word (joined), never the host's.

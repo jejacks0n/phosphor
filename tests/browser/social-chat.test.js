@@ -2,7 +2,7 @@
 // small relay for the Room's socket, passes signed by a test server key), but every person has a real
 // browser key, named in their pass, that their messages are signed with. The host is checked by its
 // watchers as much as they are by it.
-import { test, expect, afterEach } from 'vitest';
+import { test, expect, afterEach, vi } from 'vitest';
 import { Host } from '@/social/hosting';
 import { Watch } from '@/social/watching';
 import { openPeer } from '@/social/peer';
@@ -19,20 +19,22 @@ const PATIENT = { timeout: 5000 };
 const toClose = [];
 afterEach(() => {
   for (const side of toClose.splice(0)) side.close();
+  vi.restoreAllMocks();
 });
 
 const server = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
 const serverKey = toBase64url(new Uint8Array(await crypto.subtle.exportKey('raw', server.publicKey)));
 const passKey = async () => serverKey;
 
-// Someone with a browser key and a pass for it: { pass, claims, privateKey }.
-async function person(sub, { guest = false, verified = !guest, exp = Date.now() / 1000 + 3600 } = {}) {
-  const pair = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
+// Someone with a browser key and a pass for it: { pass, claims, privateKey }. `signer` signs the pass
+// (the server, unless it's made up), and `pair` is their browser key.
+async function person(sub, { guest = false, verified = !guest, exp = Date.now() / 1000 + 3600, signer = server, pair } = {}) {
+  pair ??= await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
   const key = toBase64url(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)));
   const claims = { sub, name: sub, guest, verified, key, exp };
   const body = toBase64url(new TextEncoder().encode(JSON.stringify(claims)));
-  const signature = new Uint8Array(await crypto.subtle.sign('Ed25519', server.privateKey, new TextEncoder().encode(body)));
-  return { pass: `${body}.${toBase64url(signature)}`, claims, privateKey: pair.privateKey };
+  const signature = new Uint8Array(await crypto.subtle.sign('Ed25519', signer.privateKey, new TextEncoder().encode(body)));
+  return { pass: `${body}.${toBase64url(signature)}`, claims, privateKey: pair.privateKey, pair };
 }
 
 // A message as its sender's browser makes it: { id, ts, text, sig }.
@@ -214,6 +216,26 @@ test('a message the host deletes goes for every watcher, and is deleted in a lat
   expect(histories(r.log.p3)[0].messages).toEqual([{ id: gone.id, ts: gone.ts, deleted: true }]);
 });
 
+// A member sending junk can't keep the host checking signatures: past a few waiting, it's ignored.
+test('a burst of 50 badly signed messages from one watcher gets only a few signature checks, and a good one after still goes', async () => {
+  const p1 = await person('u_p1');
+  const r = await room({ p1, p2: await person('u_p2') });
+  await opened(r, ['p1', 'p2']);
+  const real = crypto.subtle.verify.bind(crypto.subtle);
+  const verify = vi.spyOn(crypto.subtle, 'verify').mockImplementation(async (...args) => {   // slower than the junk comes
+    await wait(50);
+    return real(...args);
+  });
+  const junk = { ...await message(p1, 'junk'), text: 'changed' };
+  for (let i = 0; i < 50; i++) r.log.p1.watch.say({ ...junk, id: newId() });
+  await wait(100);
+  await expect.poll(() => r.host.watchers.get('p1').checking, PATIENT).toBe(0);   // every one it took is checked
+  expect(verify.mock.calls.length).toBeLessThanOrEqual(8);
+  expect(r.chat).toEqual([]);
+  r.log.p1.watch.say(await message(p1, 'good'));
+  await expect.poll(() => said(r.log.p2), PATIENT).toEqual(['good']);
+});
+
 test('remove asks the Room to put the watcher out, and closes its connection', async () => {
   const r = await room({ p1: await person('u_p1'), p2: await person('u_p2') });
   await opened(r, ['p1', 'p2']);
@@ -247,6 +269,42 @@ async function hostileHost() {
   const channel = await ready;
   return { log, json: (msg) => channel.send(JSON.stringify(msg)) };
 }
+
+// What the host might relay without checking: each watcher checks for itself.
+test('a watcher drops a pass the host made up, a guest\'s or unconfirmed member\'s, 301 characters and untrimmed text', async () => {
+  const { log, json } = await hostileHost();
+  const p1 = await person('u_p1');
+  const me = await person('u_host');
+  const fakeServer = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
+  const madeUp = await person('u_p1', { signer: fakeServer, pair: me.pair });   // p1's name, the host's key
+  const guest = await person('g_1', { guest: true });
+  const unconfirmed = await person('u_p4', { verified: false });
+  const relay = async (from, text) => json({ t: 'chat', pass: from.pass, ...await message(from, text) });
+  await relay(madeUp, 'made up');
+  await relay(guest, 'guest');
+  await relay(unconfirmed, 'unconfirmed');
+  await relay(p1, 'x'.repeat(301));
+  await relay(p1, ' hi');
+  await relay(p1, 'last');
+  await expect.poll(() => log.chat.length, PATIENT).toBe(1);
+  expect(log.chat.map((e) => e.entry.text)).toEqual(['last']);
+  await wait(100);
+  expect(log.chat.length).toBe(1);
+});
+
+// A pass is checked once a connection when it's good, and again each time when it isn't (nothing kept
+// for junk).
+test('a watcher checks a good pass once, and a bad one each time it comes', async () => {
+  const { log, json } = await hostileHost();
+  const p1 = await person('u_p1');
+  const fakeServer = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
+  const madeUp = await person('u_p1', { signer: fakeServer, pair: p1.pair });
+  const verify = vi.spyOn(crypto.subtle, 'verify');
+  for (let i = 0; i < 3; i++) json({ t: 'chat', pass: madeUp.pass, ...await message(p1, `bad ${i}`) });
+  for (let i = 0; i < 3; i++) json({ t: 'chat', pass: p1.pass, ...await message(p1, `good ${i}`) });
+  await expect.poll(() => log.chat.length, PATIENT).toBe(3);
+  expect(verify.mock.calls.length).toBe(3 + 1 + 3);   // the bad pass 3 times; the good pass once, and its 3 messages
+});
 
 test('a history with a forged entry shows the rest; deleted, refused and chat that don\'t fit are ignored', async () => {
   const { log, json } = await hostileHost();

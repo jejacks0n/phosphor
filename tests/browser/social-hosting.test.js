@@ -1,6 +1,6 @@
 // A room's two sides in one page: a Host and its Watches, real WebRTC (no STUN), a small relay standing
 // in for the Room's socket, and passes signed by a test key. RTCDataChannel's send is watched, so the
-// tests can count what the host sends; a watcher only ever sends 'following'.
+// tests can count what the host sends; the watchers here send only 'following' (chat is social-chat.test.js).
 import { test, expect, afterEach, vi } from 'vitest';
 import { Host } from '@/social/hosting';
 import { Watch } from '@/social/watching';
