@@ -83,11 +83,16 @@ test('a disconnect that needs a recent sign-in sends you to Sign in with its wor
   await expect(social(page).getByRole('status')).toContainText('Sign in again to change how you sign in');
 });
 
-test('Send a reset link asks for one for your email', async ({ page }) => {
+// The Forgot page has the Turnstile check the server asks for when it has a site key.
+test('Send a reset link opens Forgot your password with your email filled in, and sends from there', async ({ page }) => {
   const server = await fakeServer(page, { me: member() });
   const account = await openAccount(page);
   await expect(account.getByText('fan@example.com')).toBeVisible();
   await account.getByRole('button', { name: 'Send a reset link' }).click();
+  const forgot = shown(page, 'forgot');
+  await expect(forgot.getByLabel('Email')).toHaveValue('fan@example.com');
+  expect(server.sent('POST', '/api/auth/request-password-reset')).toHaveLength(0);
+  await forgot.getByRole('button', { name: 'Send link' }).click();
   await expect(social(page).getByRole('status')).toContainText('If that email has an account, a link is on its way');
   expect(server.sent('POST', '/api/auth/request-password-reset')[0].body).toEqual({ email: 'fan@example.com' });
 });

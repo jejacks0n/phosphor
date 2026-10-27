@@ -111,7 +111,7 @@ async function deleteAccount() {
       <h3 id="account-ways">Ways to sign in</h3>
       <div v-if="hasPassword" class="row">
         <span class="what">Email and password <span class="detail">{{ me.email }}</span></span>
-        <button :disabled="social.busy" @click="social.requestReset(me.email, null)">Send a reset link</button>
+        <button @click="social.page = 'forgot'">Send a reset link</button>
       </div>
       <div v-for="[id, label] in PROVIDERS" :key="id" class="row">
         <template v-if="me.providers.includes(id)">
