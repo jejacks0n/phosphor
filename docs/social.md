@@ -156,7 +156,7 @@ password first.
 The room's name, its host and the welcome message are at the top. The art is view only, in the
 host's font. A pink box shows where the host is looking. With **Following** on, your view
 follows theirs; scroll away to look around on your own, and the button becomes **Follow** with the
-host's name, to bring you back. While the host is reconnecting, the art dims.
+host's name, to bring you back. While the host is reconnecting, the art dims and the page says **Waiting for the host…**.
 
 You can go back to your own art in PIXEL or ANSI while you watch: the room keeps running in the
 SOCIAL tab, and, once there's a chat, it stays open beside your work. Watching never changes your

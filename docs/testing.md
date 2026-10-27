@@ -98,9 +98,10 @@ The SOCIAL tab talks to a server that these tests never reach. Each layer stands
 
 A room spec runs two pages (a host and a watcher, in one browser context) that share one
 `fakeRoom({ password, allowGuests, max, full })` from `tests/e2e/social-support.js`. Each page's
-`fakeServer` gets it as `room`; the fake answers the room sockets as the Room does and passes the
-host's messages to the watchers, so the specs click through starting, joining, following and ending
-without a real server. The connection between the two pages is a real WebRTC one:
+`fakeServer` gets it as `room`; the fake answers the room sockets as the Room does, relaying the
+signals between host and watchers, so the specs click through starting, joining, following and ending
+without a real server. Everything else (the art, the view, the welcome message) goes over a real WebRTC
+data channel between the two pages:
 
 - The e2e build is made with `VITE_SOCIAL_STUN=none` (in `playwright.config.js`), so no STUN server
   is asked for and nothing leaves the machine.
@@ -110,6 +111,9 @@ without a real server. The connection between the two pages is a real WebRTC one
 - Chromium keeps only the last `--disable-features` it's given, and Playwright passes its own. So
   `launchWithout` in `tests/support/chromiumArgs.js` reads Playwright's list from a browser it
   launches while the config loads, and passes Playwright's features and ours as one list.
+
+The browser-layer room tests (`tests/browser/social-peer.test.js` and the other `social-*` ones that
+connect peers) use `iceServers: []` and the same launch options, from `vitest.config.js`.
 
 ### Room connections on macOS
 
