@@ -174,8 +174,10 @@ test('?reset=<token> opens the reset page; resetPassword sends the token and lan
   expect(social.page).toBe('reset');
   expect(social.resetToken).toBe('abc');
 
+  const asked = server.sent('GET', '/api/me').length;
   await social.resetPassword('a-new-long-password');
   expect(server.sent('POST', '/api/auth/reset-password')[0].body).toEqual({ newPassword: 'a-new-long-password', token: 'abc' });
+  expect(server.sent('GET', '/api/me')).toHaveLength(asked + 1);   // a reset ends every session
   expect(social.page).toBe('sign-in');
   expect(social.notice).toBe('Your password is changed. Sign in with it');
 });
@@ -210,9 +212,13 @@ test('A Discord-made account without a username opens onboarding and stays out o
   expect(claimsOf(hello.pass)).toMatchObject({ name: 'ansi-fan', guest: false });
 });
 
-test('signIn picks the username or email endpoint; a wrong password shows the server\'s words', async () => {
+test('signIn picks the username or email endpoint; a wrong password, or a suspended account, shows the server\'s words', async () => {
   const server = fakeServer();
   await social.start(at(''));
+  server.route('POST /api/auth/sign-in/email', () => [403, { code: 'BANNED_USER', message: 'You have been banned from this application' }]);
+  expect(await social.signIn('banned@example.com', 'right-password')).toBe(false);
+  expect(social.notice).toBe('This account is suspended');
+  server.route('POST /api/auth/sign-in/email', () => ((server.session = member()), [200, { token: 't' }]));
   expect(await social.signIn('ansi-fan', 'wrong')).toBe(false);
   expect(social.notice).toBe(messageFor('INVALID_USERNAME_OR_PASSWORD'));
   expect(await social.signIn('ansi-fan', 'right-password')).toBe(true);
@@ -221,7 +227,7 @@ test('signIn picks the username or email endpoint; a wrong password shows the se
     { username: 'ansi-fan', password: 'wrong' }, { username: 'ansi-fan', password: 'right-password' },
   ]);
   expect(server.sent('POST', '/api/auth/sign-in/email').map((r) => r.body)).toEqual([
-    { email: 'fan@example.com', password: 'right-password' },
+    { email: 'banned@example.com', password: 'right-password' }, { email: 'fan@example.com', password: 'right-password' },
   ]);
   expect(social.signedIn).toBe(true);
   expect(social.page).toBe('lobby');
@@ -317,6 +323,79 @@ test('A guest pass still on its way when you sign in is dropped, not used', asyn
   expect(social.pass).toBe(hello.pass);
 });
 
+test('After a disconnect, connecting again re-arms the renewal of the pass it still holds', async () => {
+  const server = fakeServer();
+  server.passTtlMs = 5 * 60_000 + 600;
+  await social.start(at(''));
+  await goLive(await lastSocket(1));
+  server.passTtlMs = 3_600_000;
+  social.disconnectLobby();
+  social.connectLobby();
+  await goLive(await lastSocket(2));
+  expect(server.sent('POST', '/api/pass')).toHaveLength(1);   // the held pass is used
+  await vi.waitFor(() => expect(server.sent('POST', '/api/pass')).toHaveLength(2), { timeout: 3000 });
+  expect(server.sent('POST', '/api/pass')[1].body.previous).toBeTruthy();
+});
+
+test('A renewal that comes back after a disconnect is ignored and arms no timer', async () => {
+  const server = fakeServer();
+  server.passTtlMs = 5 * 60_000 + 300;
+  await social.start(at(''));
+  await goLive(await lastSocket(1));
+  const first = social.pass;
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  const passRoute = server.routeOf('POST /api/pass');
+  server.route('POST /api/pass', async (body) => {
+    const answer = passRoute(body);
+    await held;
+    return answer;
+  });
+  await vi.waitFor(() => expect(server.sent('POST', '/api/pass')).toHaveLength(2));
+  social.disconnectLobby();
+  release();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(social.pass).toBe(first);
+  expect(social._renewTimer).toBe(null);
+});
+
+test('A renewal that fails for a passing reason is tried again 30 s later', async () => {
+  const server = fakeServer();
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  await social.start(at(''));
+  await goLive(await lastSocket(1));
+  const first = social.pass;
+  const passRoute = server.routeOf('POST /api/pass');
+  server.route('POST /api/pass', () => [429, { code: 'THROTTLED' }]);
+
+  await vi.advanceTimersByTimeAsync(55 * 60_000);   // renewAt: 5 minutes before the hour is up
+  await vi.waitFor(() => expect(server.sent('POST', '/api/pass')).toHaveLength(2));
+  server.route('POST /api/pass', passRoute);
+  await vi.advanceTimersByTimeAsync(29_000);
+  expect(server.sent('POST', '/api/pass')).toHaveLength(2);
+  await vi.advanceTimersByTimeAsync(1000);
+  await vi.waitFor(() => expect(server.sent('POST', '/api/pass')).toHaveLength(3));
+  await vi.waitFor(() => expect(social.pass).not.toBe(first));
+  expect(server.sent('POST', '/api/pass')[2].body.previous).toBe(first);
+  expect(social.lobbyStatus).toBe('live');
+});
+
+test('A member whose renewal comes back as a guest pass (the session ended) is signed out', async () => {
+  const server = fakeServer();
+  server.session = member();
+  server.passTtlMs = 5 * 60_000 + 300;
+  await social.start(at(''));
+  await goLive(await lastSocket(1));
+  social.setSignal('chat');
+  server.passTtlMs = 3_600_000;
+  server.session = null;
+  await vi.waitFor(() => expect(social.me).toBe(null));
+  expect(social.signal).toBe(null);
+  const hello = await goLive(await lastSocket(2));
+  expect(claimsOf(hello.pass).guest).toBe(true);
+  expect(social.isGuest).toBe(true);
+});
+
 test('SUSPENDED shows its notice, with the date or for good, and the lobby doesn\'t keep asking for a pass', async () => {
   const server = fakeServer();
   const until = Date.UTC(2027, 0, 15, 12);
@@ -404,6 +483,24 @@ test('unlink finds the account for the provider; SESSION_EXPIRED goes to sign-in
   expect(await social.unlink('discord')).toBe(true);
   expect(social.me.providers).toEqual(['credential']);
   expect(social.page).toBe('account');
+
+  social.notice = null;
+  expect(await social.unlink('github')).toBe(false);
+  expect(social.notice).toBe("That way to sign in isn't connected");
+  expect(server.sent('POST', '/api/auth/unlink-account')).toHaveLength(2);
+});
+
+test('Deleting without a password after a stale sign-in goes to sign-in with the same notice', async () => {
+  const server = fakeServer();
+  server.session = member({ providers: ['discord'] });
+  server.route('POST /api/auth/delete-user', () => [400, { code: 'SESSION_EXPIRED' }]);
+  await social.start(at(''));
+  social.page = 'account';
+  expect(await social.deleteAccount()).toBe(false);
+  expect(server.sent('POST', '/api/auth/delete-user')[0].body).toEqual({});
+  expect(social.page).toBe('sign-in');
+  expect(social.notice).toBe('Sign in again to change how you sign in');
+  expect(social.me).not.toBe(null);
 });
 
 test('The account actions send the server\'s shapes', async () => {

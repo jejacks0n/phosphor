@@ -8,6 +8,7 @@ import { requestPass, renewAt } from '@/social/pass';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection, Pacer } from '@/social/lobby';
 
 const SIGNAL_EVERY_MS = 2000;
+const RENEW_RETRY_MS = 30_000;   // after a renewal that failed for a passing reason (NETWORK, THROTTLED)
 const CONFIRMED = 'Check your email to confirm your address';
 const RELINK = 'Sign in again to change how you sign in';
 
@@ -173,6 +174,7 @@ export const useSocialStore = defineStore('social', {
       });
       if (!ok) return false;
       Object.assign(this, { resetToken: null, page: 'sign-in', notice: 'Your password is changed. Sign in with it' });
+      await this.refreshMe();   // a reset ends every session
       return true;
     },
 
@@ -216,15 +218,24 @@ export const useSocialStore = defineStore('social', {
       const accounts = await this.request('/api/auth/list-accounts');
       if (!accounts.ok) return false;
       const account = Array.isArray(accounts.data) && accounts.data.find((a) => a.providerId === providerId);
-      if (!account) return false;
+      if (!account) {
+        this.notice = messageFor('ACCOUNT_NOT_FOUND');
+        return false;
+      }
       const { ok, code } = await this.request('/api/auth/unlink-account', { method: 'POST', body: { accountId: account.id } });
-      if (STALE_SESSION.has(code)) Object.assign(this, { notice: RELINK, page: 'sign-in' });
+      this.staleSession(code);
       if (ok) await this.refreshMe();
       return ok;
     },
 
+    // Unlinking, or deleting without a password, needs a sign-in in the last 5 minutes.
+    staleSession(code) {
+      if (STALE_SESSION.has(code)) Object.assign(this, { notice: RELINK, page: 'sign-in' });
+    },
+
     async deleteAccount(password) {
-      const { ok } = await this.request('/api/auth/delete-user', { method: 'POST', body: password ? { password } : {} });
+      const { ok, code } = await this.request('/api/auth/delete-user', { method: 'POST', body: password ? { password } : {} });
+      this.staleSession(code);
       if (!ok) return false;
       this.notice = 'Your account is deleted';
       await this.becameSomeoneElse({ signedOut: true });
@@ -237,10 +248,12 @@ export const useSocialStore = defineStore('social', {
       this._pacer?.push(signal);
     },
 
-    // The pass for the next hello: the one held, unless there's none or it's due for renewal.
+    // The pass for the next hello: the one held, unless there's none or it's due for renewal. A held
+    // pass whose renewal timer was cleared (a disconnect) gets it back.
     async getPass() {
       const now = Date.now();
       if (!this.pass || renewAt(this.claims, now) <= now) await this.renewPass();
+      else if (!this._renewTimer) this.renewIn(renewAt(this.claims, now) - now);
       if (!this.pass) throw new Error('No pass');
       return { pass: this.pass, privateKey: this._key.privateKey };
     },
@@ -252,22 +265,41 @@ export const useSocialStore = defineStore('social', {
       const result = await requestPass(this._key, this.claims?.guest ? this.pass : undefined);
       if (run !== this._passRun) return;
       if (result.error) return this.passRefused(result);
+      // A member's session ended (expired, revoked): the server answered with a guest's pass.
+      if (this.claims && !this.claims.guest && result.claims.guest) return this.becameSomeoneElse({ signedOut: true });
       Object.assign(this, { pass: result.pass, claims: result.claims });
-      clearTimeout(this._renewTimer);
-      this._renewTimer = setTimeout(() => this.renewPass(), renewAt(result.claims) - Date.now());
+      this.renewIn(renewAt(result.claims) - Date.now());
     },
 
-    // A pass that won't come by retrying stops the lobby; the others (THROTTLED, NETWORK) retry with it.
+    renewIn(ms) {
+      clearTimeout(this._renewTimer);
+      this._renewTimer = setTimeout(() => {
+        this._renewTimer = null;
+        this.renewPass();
+      }, ms);
+    },
+
+    // A pass that won't come by retrying stops the lobby. The others (THROTTLED, NETWORK) are tried again:
+    // a hello by the connection's retry, a renewal (the held pass still good) 30 s later.
     passRefused({ error, until }) {
       if (error === 'NEEDS_ONBOARDING') this.page = 'onboarding';
       else if (error === 'SUSPENDED') Object.assign(this, { me: null, notice: messageFor(error, { until }) });
-      else return;
+      else {
+        if (this.pass) this.renewIn(RENEW_RETRY_MS);
+        return;
+      }
       this._connection?.close();
     },
 
     dropPass() {
+      this.stopRenewing();
+      Object.assign(this, { pass: null, claims: null });
+    },
+
+    // No renewal timer, and a renewal on its way is ignored when it comes back.
+    stopRenewing() {
       clearTimeout(this._renewTimer);
-      Object.assign(this, { pass: null, claims: null, _renewTimer: null });
+      this._renewTimer = null;
       this._passRun++;
     },
 
@@ -293,8 +325,8 @@ export const useSocialStore = defineStore('social', {
     disconnectLobby() {
       this._connection?.close();
       this._pacer?.reset();
-      clearTimeout(this._renewTimer);
-      Object.assign(this, { _connection: null, _renewTimer: null });
+      this.stopRenewing();
+      this._connection = null;
     },
 
     lobbyMessage(msg) {

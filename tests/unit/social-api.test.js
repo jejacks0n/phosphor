@@ -78,4 +78,7 @@ test('messageFor has plain words for every code the server sends, and a fallback
   assert.equal(messageFor('TOO_SOON', { until }), `You can change your username again on ${day}`);
   assert.equal(messageFor('SUSPENDED'), 'This account is suspended for good');
   assert.equal(messageFor('SUSPENDED', { until }), `This account is suspended until ${day}`);
+  assert.equal(messageFor('BANNED_USER'), 'This account is suspended');   // the server's, signing in
+  assert.equal(messageFor('ACCOUNT_NOT_FOUND'), "That way to sign in isn't connected");
+  assert.equal(messageFor('FAILED_TO_UNLINK_LAST_ACCOUNT'), 'You need at least one way to sign in');
 });

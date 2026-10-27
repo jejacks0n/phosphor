@@ -17,6 +17,9 @@ const WORDS = {
   ONBOARDING_REQUIRED: 'Pick a username to finish setting up your account',
   NEEDS_ONBOARDING: 'Pick a username to finish setting up your account',
   SUSPENDED: ({ until }) => until ? `This account is suspended until ${day(until)}` : 'This account is suspended for good',
+  BANNED_USER: 'This account is suspended',   // the server's, when a suspended account signs in
+  ACCOUNT_NOT_FOUND: "That way to sign in isn't connected",
+  FAILED_TO_UNLINK_LAST_ACCOUNT: 'You need at least one way to sign in',
   THROTTLED: 'Too many tries. Wait a moment and try again',
   TURNSTILE_FAILED: "We couldn't check that you're a person. Try again",
   PASSWORD_BREACHED: 'That password has appeared in a data breach. Choose another',
