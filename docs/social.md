@@ -3,11 +3,10 @@
 > **Partly built.** This page describes how Phosphor's social side is meant to work.
 >
 > **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, the lobby
-> with its Join counts and reasons, signals and who's here, starting and hosting a room, and
-> watching one. **Comes next:** chat, and reporting. **Chat**
-> through **Blocking and reporting** describe what's coming, as do the chat beside your work under
-> **Watching**. Removing and blocking from a room work today (under **Hosting**). Until the chat is there, watchers see the
-> welcome message under the room's name.
+> with its Join counts and reasons, signals and who's here, starting and hosting a room, watching
+> one, and the chat in a room, with the host's Delete, Remove and Block. **Comes next:** reporting
+> and moderation. **Blocking and reporting** below describes what's coming for reports; blocking
+> works today.
 
 Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others
 watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
@@ -111,8 +110,8 @@ watchers will see (your art in ANSI as it is now), and asks for:
 
 - **Room name**: up to 60 characters.
 - **Welcome message**: a few lines (up to 200 characters) on what you're working on and what you'd
-  like from people. Watchers see it under the room's name, and once there's a chat it's pinned at the
-  top of it. You can edit it while you're live.
+  like from people. Watchers see it under the room's name, and it's pinned at the
+  top of the chat. You can edit it while you're live.
 - **Who can join**: *Anyone, in the lobby* (a public room) or *Only with the link* (a private
   room, which also asks for a **password**).
 - **Allow guests**: whether people who haven't signed in can watch. Guests can only watch, so you
@@ -140,7 +139,10 @@ connecting). A member's row has a **⋯** button (guests have none) with:
 - **Remove for this session**: they leave the room now, and can't come back until the room ends.
 - **Block from my rooms**: asks first (**Block** or **Cancel**), then they can't join any room you host again, and your rooms no longer show in their lobby.
   They aren't told; your rooms simply aren't there for them, and a link to one says "This room
-  isn't available".
+  isn't available". Unblock them from Account.
+
+In the chat, a **Delete** on any message takes it out for everyone, and leaves **Message deleted by
+the host** in its place.
 
 **End room** ends it for everyone, and tells watchers at once. Closing or reloading the tab ends it
 too, so Phosphor asks first; signing out while you host ends the room as well.
@@ -166,7 +168,7 @@ Your browser connects straight to the host's, which shows each of you the other'
 hides yours).
 
 You can go back to your own art in PIXEL or ANSI while you watch: the room keeps running in the
-SOCIAL tab, and, once there's a chat, it stays open beside your work. Watching never changes your
+SOCIAL tab, and the chat stays open beside your work. Watching never changes your
 own art.
 
 When the host ends the room, it ends for you too. The art goes with it: Phosphor doesn't keep a
@@ -178,14 +180,27 @@ When you're in a room, hosting or watching, a chat panel sits on the right of th
 with the host's welcome message pinned at the top. It stays open as you move between tabs, so you can work on your own piece and keep talking. **»**
 collapses it to a thin rail that counts new messages; **«** opens it again.
 
-Guests can read the chat; signing in (with your email confirmed) lets you write in it. Chat goes from browser to browser
-through the host, like the art, and nobody keeps it: when the room ends, so does its chat.
+Everyone in the room reads the chat. Members with a confirmed email write in it; a guest sees
+**Sign in to chat** and an unconfirmed member sees **Confirm your email to chat**. A message is up
+to 300 characters, and you can send about one a second (three at once, then one a second). Earlier
+messages load as you scroll up (**↑ Scroll up for earlier messages**), and **You joined** marks
+where you came in.
+
+Chat goes from browser to browser through the host, like the art, and never through Phosphor's
+server. The host's browser keeps the last 5,000 messages for as long as the room lasts, and a
+watcher's list goes back no further than that. When the room ends, so does its chat.
+
+As the host you can **Delete** a message for everyone. To **Remove for this session** or **Block from
+my rooms** the person who wrote one, use their **⋯** in the list of who's watching (see **Hosting**).
+
+A guest who signs in from the chat comes back into the room as themselves (a private room asks for
+its password again).
 
 ### Blocking and reporting
 
 If someone you've blocked is in a room you're about to join, its card in the lobby tells you quietly
 (**Someone you blocked is here**), and you decide whether to go in. Your block doesn't keep them out of other people's rooms. Inside the room,
-their messages show as **Message from someone you blocked**, with **Show** if you want to read it.
+their messages fold to a single line, **Message from someone you blocked**, with **Show** if you want to read it.
 Nobody else sees any difference, and they aren't told.
 
 Signed in, you can **Report** any message or person in a room, and **Report room** for what a
