@@ -2,6 +2,7 @@
 // (page.routeWebSocket) and a room's (fakeRoom), with every request and message recorded. The preview
 // build runs on localhost, so the app talks to http://localhost:8787.
 import { generateKeyPairSync, sign } from 'node:crypto';
+import { expect, openApp, tab, store } from './support.js';
 
 const API = 'http://localhost:8787';
 export const ROOM_ID = 'abcdefghij';
@@ -181,7 +182,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
 // peer's place: that one hears replaced, and the host peer-gone. Signals are relayed between the host
 // and its watchers; the host hears of each watcher (peer, peer-gone). Settings change the room as the
 // Room's checks allow, at most once a second per host socket: a sooner one is answered `settings-now`.
-// End sends ended to everyone. Sockets are closed where the Room closes them: after refused (1008),
+// A host's remove takes the watcher out and sends it removed (the host hears no peer-gone). End sends ended to everyone. Sockets are closed where the Room closes them: after refused (1008),
 // ended, removed or replaced (1000), and a watcher's once the host hears it's gone. room.received has every message as { from: 'host' |
 // <peer> | null, msg }, room.from(who) the messages of one; room.send(who, msg) pushes one, room.info()
 // is the room as the host is told it, and room.drop(who) closes a socket.
@@ -255,6 +256,9 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     if (msg.type === 'signal-to' && who === 'host') send(msg.to, { type: 'signal-from', from: 'host', data: msg.data });
     else if (msg.type === 'signal-to' && who) send('host', { type: 'signal-from', from: who, data: msg.data });
     else if (msg.type === 'left' && who === 'host') gone(msg.peer);
+    else if (msg.type === 'remove' && who === 'host') {   // the watcher is told and put out; the host isn't told it's gone
+      if (watchers.delete(msg.peer)) send(msg.peer, { type: 'removed' });
+    }
     else if (msg.type === 'settings' && who === 'host') settings(msg);
     else if (msg.type === 'end' && who === 'host') {
       ended = true;
@@ -302,4 +306,46 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     }),
   };
   return room;
+}
+
+// The flows two pages share: a page's SOCIAL page by its data-page, the host live through Start a room, a
+// watcher's page and joining from the lobby's card.
+export const shown = (page, name) => page.locator(`.social-tab [data-page="${name}"]`);
+const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });
+
+// The host live with a room made through Start a room, with `image` open and the form filled as asked.
+export async function goLive(host, room, { image = 'images/gradient.png', welcome = '', password = null, allowGuests = true } = {}) {
+  await fakeServer(host, { me: member(), room });
+  await openApp(host, image);
+  await tab(host, 'SOCIAL').click();
+  await host.getByRole('button', { name: 'Start a room' }).click();
+  await host.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
+  await host.getByRole('textbox', { name: 'Welcome message' }).fill(welcome);
+  if (password !== null) {
+    await host.getByRole('radio', { name: 'Only with the link' }).check();
+    await host.getByRole('textbox', { name: 'Password' }).fill(password);
+  }
+  if (!allowGuests) await host.getByRole('checkbox', { name: 'Allow guests' }).uncheck();
+  await host.getByRole('button', { name: 'Go live' }).click();
+  await expect.poll(() => store(host, 'room', (r) => r.status)).toBe('live');
+}
+
+// The watcher's page, its lobby listing the room (as the server would once it's live), `blocked` the
+// people it has blocked.
+export async function watcherPage(context, room, { me = null, blocked = [] } = {}) {
+  const watcher = await context.newPage();
+  const rooms = [{
+    id: ROOM_ID, name: 'neon harbor', host: 'ansi-fan', count: 0, max: 12, allowGuests: true, signal: null,
+    liveSince: Date.now(), thumbnail: null, blockedInside: false,
+  }];
+  await fakeServer(watcher, { me, room, rooms, blocked });
+  return watcher;
+}
+
+// Joined from the lobby card, with the host's art.
+export async function joinFromCard(watcher) {
+  await tab(watcher, 'SOCIAL').click();
+  await card(watcher).getByRole('button', { name: /^Join/ }).click();
+  await expect.poll(() => store(watcher, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
+  await expect.poll(() => store(watcher, 'room', (r) => !!r.art)).toBe(true);
 }

@@ -3,49 +3,11 @@
 // live with the host's view, Following, Leave, the host ending the room, refusals, and the watcher's
 // own art left as it was.
 import { test, expect, openApp, tab, store, editAt, cellPoint, screenPixel, settled } from './support.js';
-import { fakeServer, fakeRoom, member, ROOM_ID } from './social-support.js';
+import { fakeRoom, member, ROOM_ID, shown, goLive, watcherPage, joinFromCard } from './social-support.js';
 
-const shown = (page, name) => page.locator(`.social-tab [data-page="${name}"]`);
 const watching = (page) => shown(page, 'watch-room');
-const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });
 const hostCells = (host) => store(host, 'project', (p) => p.cells.map((c) => [c.char, c.fg.hex, c.bg.hex]));
 const watcherCells = (watcher) => store(watcher, 'room', (r) => r.art?.cells.map((c) => [c.char, c.fg.hex, c.bg.hex]) ?? null);
-
-// The host live with a room made through Start a room, with `image` open and the form filled as asked.
-async function goLive(host, room, { image = 'images/gradient.png', welcome = '', password = null, allowGuests = true } = {}) {
-  await fakeServer(host, { me: member(), room });
-  await openApp(host, image);
-  await tab(host, 'SOCIAL').click();
-  await host.getByRole('button', { name: 'Start a room' }).click();
-  await host.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
-  await host.getByRole('textbox', { name: 'Welcome message' }).fill(welcome);
-  if (password !== null) {
-    await host.getByRole('radio', { name: 'Only with the link' }).check();
-    await host.getByRole('textbox', { name: 'Password' }).fill(password);
-  }
-  if (!allowGuests) await host.getByRole('checkbox', { name: 'Allow guests' }).uncheck();
-  await host.getByRole('button', { name: 'Go live' }).click();
-  await expect.poll(() => store(host, 'room', (r) => r.status)).toBe('live');
-}
-
-// The watcher's page, its lobby listing the room (as the server would once it's live).
-async function watcherPage(context, room, { me = null } = {}) {
-  const watcher = await context.newPage();
-  const rooms = [{
-    id: ROOM_ID, name: 'neon harbor', host: 'ansi-fan', count: 0, max: 12, allowGuests: true, signal: null,
-    liveSince: Date.now(), thumbnail: null, blockedInside: false,
-  }];
-  await fakeServer(watcher, { me, room, rooms });
-  return watcher;
-}
-
-// Joined from the lobby card, with the host's art.
-async function joinFromCard(watcher) {
-  await tab(watcher, 'SOCIAL').click();
-  await card(watcher).getByRole('button', { name: /^Join/ }).click();
-  await expect.poll(() => store(watcher, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
-  await expect.poll(() => store(watcher, 'room', (r) => !!r.art)).toBe(true);
-}
 
 test('Join from a lobby card: the room\'s name, its welcome, and the host\'s art, changes and all', async ({ page: host, context }) => {
   const room = fakeRoom();
@@ -213,13 +175,18 @@ test('a watcher\'s own unsaved art is as it was after joining, watching and leav
   }));
   const before = await own();
   expect(before.dirty).toBe(true);
-  const plain = await cellPoint(watcher, 20, 6);
-  const pixels = async () => [await screenPixel(watcher, painted.x, painted.y), await screenPixel(watcher, plain.x, plain.y)];
+  // (the chat panel narrows the view while in the room, so the cells are found again each time)
+  const pixels = async () => {
+    const [on, off] = [await cellPoint(watcher, 5, 3, 0), await cellPoint(watcher, 20, 6)];
+    return [await screenPixel(watcher, on.x, on.y), await screenPixel(watcher, off.x, off.y)];
+  };
   const shownBefore = await pixels();
   await tab(watcher, 'PIXEL').click();
   await settled(watcher);
-  const pixelView = await watcher.locator('article[tabindex="0"] .display canvas').boundingBox();
-  const pixelViewPixel = () => screenPixel(watcher, pixelView.x + pixelView.width / 2, pixelView.y + pixelView.height / 2);
+  const pixelViewPixel = async () => {   // the middle of the picture, wherever the view puts it
+    const view = await watcher.locator('article[tabindex="0"] .display canvas').boundingBox();
+    return screenPixel(watcher, view.x + view.width / 2, view.y + view.height / 2);
+  };
   const pixelBefore = await pixelViewPixel();
 
   await joinFromCard(watcher);

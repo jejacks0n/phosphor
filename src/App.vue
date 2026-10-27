@@ -11,6 +11,7 @@ import { loadFonts } from '@/lib/userFonts';
 import { charRowsOf } from '@/lib/Cells';
 
 import EditWorkspace from '@/components/EditWorkspace.vue';
+import ChatPanel from '@/components/social/ChatPanel.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
 import SaveDialog from '@/components/SaveDialog.vue';
@@ -99,6 +100,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
   <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick }]">
     <ControlPanel/>
     <EditWorkspace/>
+    <ChatPanel v-if="room.inRoom"/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
     <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>
     <ShortcutsDialog v-if="shortcutsOpen" @close="shortcutsOpen = false"/>
