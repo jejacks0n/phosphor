@@ -1,5 +1,6 @@
-// Opacity is how much one stroke (an edit, beginEdit to commitEdit) lays at most; strokes stack, so
-// two at 50% make the paint opaque.
+// With Stack opacity on (the default), Opacity is how much one stroke (an edit, beginEdit to
+// commitEdit) lays at most, and strokes stack, so two at 50% make the paint opaque. Off, Opacity is a
+// ceiling on the paint, as it was.
 import { test, expect } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
 
@@ -58,4 +59,14 @@ test('over opaque paint a stroke still recolors as it always did: its dabs keep 
   expect(a).toBe(255);
   expect(r).toBeGreaterThan(240); // twelve quarter dabs: nearly all red
   expect(b).toBeLessThan(15);
+});
+
+test('with Stack opacity off, Opacity is a ceiling: two strokes at 50% stay at 50%', async () => {
+  const { project, workspace } = await canvas();
+  workspace.editBrushStack = false;
+  project.paintStroke(square, '#ff0000');
+  project.commitEdit();
+  project.paintStroke(square, '#00ff00');
+  project.commitEdit();
+  expect(at(project)).toEqual([0, 255, 0, 128]); // the second stroke recolors, under the same ceiling
 });
