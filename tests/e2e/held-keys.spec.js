@@ -106,3 +106,22 @@ test('with a button focused and the pointer over the canvas, Space pans and does
   await page.keyboard.press('Space');
   await expect(lock).not.toHaveAttribute('aria-pressed', pressed);
 });
+
+test('Shift-click with the Pencil draws a straight line from the last point; Pencil and Brush say so', async ({ page }) => {
+  await openApp(page);
+  for (const tool of ['Pencil (1px)', 'Brush (soft)']) {
+    await page.getByRole('button', { name: tool }).click();
+    await expect(hint(page)).toContainText('straight line');
+  }
+  await page.getByRole('button', { name: 'Shapes' }).click();
+  await expect(hint(page)).not.toContainText('straight line');
+
+  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  const a = await cellPoint(page, 5, 4, 0), b = await cellPoint(page, 25, 4, 0);
+  await page.mouse.click(a.x, a.y);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(b.x, b.y);
+  await page.keyboard.up('Shift');
+  const painted = await store(page, 'project', (p) => Array.from({ length: 21 }, (_, i) => !!p.paintLayer.pixelAt(5 + i, 8)));
+  expect(painted).toEqual(Array(21).fill(true));
+});

@@ -33,7 +33,8 @@ const hint = computed(() => {
   const held = workspace.heldTool?.by;
   if (held === 'space') return 'Panning';
   if (held === 'alt') return workspace.isShiftPressed ? 'Picking the background color' : `Picking the foreground color · add ${KEYS.shift} for the background`;
-  if (getTool(tool.value)?.altPicks) return [[KEYS.alt, 'pick color'], [KEYS.altShift, 'pick background'], ['Space', 'pan']];
+  const current = getTool(tool.value);
+  if (current?.altPicks) return [[KEYS.alt, 'pick color'], [KEYS.altShift, 'pick background'], ...(current.shiftLines ? [[KEYS.shift, 'straight line']] : []), ['Space', 'pan']];
   if (tool.value !== 'text' && tool.value !== 'hand') return [['Space', 'pan']];
   return null;
 });
