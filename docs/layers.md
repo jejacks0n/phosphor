@@ -11,7 +11,9 @@ The base layer is your image. When you load a picture (or start with a blank can
 1. It shrinks the picture to the grid, two colors per cell: one for the top half and one for the
    bottom half.
 2. It picks a character for each cell from your **Characters** set — at random from the
-   **Character seed** (the dice re-rolls it), or by brightness in the ASCII styles.
+   **Character seed** (the dice re-rolls it), or by weight in the ASCII styles: Monochrome ASCII
+   by brightness, and Color ASCII by intensity (a cell's strongest color), so pure red, green or blue
+   gets as heavy a character as white.
 
 The color transforms, adjustments and effects in the sidebar (Brightness, Contrast, Hue Rotation,
 Colorize, Edges, Flatten, Sharpen…) change the picture before it's converted.

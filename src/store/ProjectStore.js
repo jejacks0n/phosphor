@@ -76,7 +76,7 @@ export const useProjectStore = defineStore('project', {
     processParams: (state) => ({
       ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),
       chars: state.renderStyle === 'ansi' ? state.chars : state.charsAscii,
-      charMode: state.renderStyle === 'ansi' ? 'random' : 'brightness',
+      charMode: { ansi: 'random', colorAscii: 'intensity' }[state.renderStyle] ?? 'brightness', // how a cell's character is picked (Cells.js)
       image: state.image,
       fit: state.fit,
       workScale: state.baseScale,
