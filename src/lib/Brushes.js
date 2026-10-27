@@ -79,6 +79,131 @@ const bounds = (from, to) => ({
   x1: Math.floor(Math.max(from.x, to.x)), y1: Math.floor(Math.max(from.y, to.y)),
 });
 
+// A straight line from `from` to `to` (Bresenham's): one pixel per step along its longer side, so
+// it's one pixel thick with no corner doubled, from end to end.
+export function linePixels(from, to, cols, rows) {
+  let x = Math.floor(from.x), y = Math.floor(from.y);
+  const x1 = Math.floor(to.x), y1 = Math.floor(to.y);
+  const dx = Math.abs(x1 - x), dy = -Math.abs(y1 - y), sx = x < x1 ? 1 : -1, sy = y < y1 ? 1 : -1;
+  const pixels = [];
+  for (let err = dx + dy; ;) {
+    if (inGrid(x, y, cols, rows)) pixels.push({ x, y, alpha: 1 });
+    if (x === x1 && y === y1) return pixels;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x += sx; }
+    if (e2 <= dx) { err += dx; y += sy; }
+  }
+}
+
+// The same line anti-aliased (Xiaolin Wu's): each step along the longer side is shared between the
+// two pixels the line passes between, by how near it runs to each; the ends are whole pixels.
+export function lineCoverage(from, to, cols, rows) {
+  let [x0, y0, x1, y1] = [from.x, from.y, to.x, to.y].map(Math.floor);
+  const steep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
+  if (steep) [x0, y0, x1, y1] = [y0, x0, y1, x1];
+  if (x0 > x1) [x0, y0, x1, y1] = [x1, y1, x0, y0];
+  const slope = x1 === x0 ? 0 : (y1 - y0) / (x1 - x0);
+  const pixels = [];
+  const plot = (a, b, alpha) => {
+    const [x, y] = steep ? [b, a] : [a, b];
+    if (alpha > 0 && inGrid(x, y, cols, rows)) pixels.push({ x, y, alpha });
+  };
+  for (let a = x0; a <= x1; a++) {
+    const b = y0 + slope * (a - x0), low = Math.floor(b), share = b - low;
+    plot(a, low, 1 - share);
+    plot(a, low + 1, share);
+  }
+  return pixels;
+}
+
+// Block characters by the quadrants they fill: top-left 1, top-right 2, bottom-left 4, bottom-right 8.
+const QUADRANTS = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█';
+
+// Cells from pixels on a grid of half cells, two across each cell and, with halfRows, two down: each
+// cell's block character is the halves (▌ ▐ █) or quadrants its pixels fill. mask: those quadrants.
+export function halfBlockCells(pixels, halfRows) {
+  const masks = new Map();
+  for (const { x, y } of pixels) {
+    const col = x >> 1, row = halfRows ? y >> 1 : y;
+    const bit = halfRows ? 1 << ((x & 1) + 2 * (y & 1)) : (x & 1 ? 10 : 5);
+    const key = `${col},${row}`;
+    masks.set(key, { col, row, mask: (masks.get(key)?.mask ?? 0) | bit });
+  }
+  return [...masks.values()].map((c) => ({ ...c, char: QUADRANTS[c.mask] }));
+}
+
+// Half steps (Vertical half blocks): whole blocks, a cell wide and a row tall, each placed to the
+// nearest half cell across, so a block that falls between two columns is the right half of one cell
+// and the left half of the next (▐▌), and a steep line or a round edge steps by half a cell. Shapes
+// are measured in cells across and rows down (a Half-block row is half a cell), from the centers of
+// their end cells; the pixels are on a grid of half cells, two across each cell (halfBlockCells
+// makes them characters).
+function halfGrid(cols, rows) {
+  const pixels = new Map();
+  const add = (h, row) => { if (inGrid(h, row, 2 * cols, rows)) pixels.set(`${h},${row}`, { x: h, y: row, alpha: 1 }); };
+  return {
+    add,
+    block: (left, row) => { add(left, row); add(left + 1, row); }, // a whole block from half cell `left`
+    pixels: () => [...pixels.values()],
+  };
+}
+const centerOf = (p) => ({ x: Math.floor(p.x) + 0.5, y: Math.floor(p.y) + 0.5 });
+const roundOut = (v) => Math.sign(v) * Math.round(Math.abs(v)); // halves away from 0, alike both sides
+
+// A line: steep, a block a row at the line's place across that row's middle; shallow, across a half
+// cell at a time, each on the row the line is in there.
+export function halfStepLine(from, to, cols, rows) {
+  const a = centerOf(from), b = centerOf(to), dx = b.x - a.x, dy = b.y - a.y;
+  const grid = halfGrid(cols, rows);
+  if (Math.abs(dy) >= Math.abs(dx)) {
+    const r0 = Math.floor(a.y), r1 = Math.floor(b.y), step = Math.sign(r1 - r0) || 1;
+    for (let row = r0; ; row += step) {
+      const x = dy ? a.x + (dx * (row + 0.5 - a.y)) / dy : a.x;
+      grid.block(Math.round(2 * x - 1), row);
+      if (row === r1) break;
+    }
+  } else {
+    const h0 = 2 * Math.floor(Math.min(a.x, b.x)), h1 = 2 * Math.floor(Math.max(a.x, b.x)) + 1;
+    for (let h = h0; h <= h1; h++) grid.add(h, Math.floor(a.y + (dy * ((h + 0.5) / 2 - a.x)) / dx));
+  }
+  return grid.pixels();
+}
+
+// An ellipse in the box from `from`'s cell to `to`'s: where its outline is steep (its sides), a block
+// a row at each side; where it's flat (its top and bottom), a half cell at a time on the row it's in.
+// Filled: the inside's half cells too.
+export function halfStepEllipse(from, to, filled, cols, rows) {
+  const c0 = Math.floor(Math.min(from.x, to.x)), c1 = Math.floor(Math.max(from.x, to.x));
+  const r0 = Math.floor(Math.min(from.y, to.y)), r1 = Math.floor(Math.max(from.y, to.y));
+  if (c0 === c1 || r0 === r1) return halfStepLine({ x: c0, y: r0 }, { x: c1, y: r1 }, cols, rows);
+  const cx = (c0 + c1 + 1) / 2, cy = (r0 + r1 + 1) / 2, rx = (c1 - c0) / 2, ry = (r1 - r0) / 2;
+  const grid = halfGrid(cols, rows);
+  const mid = 2 * cx - 1; // the half cell a block centered on the ellipse starts at
+  for (let row = r0; row <= r1; row++) {
+    const v = (row + 0.5 - cy) / ry, s = Math.sqrt(Math.max(0, 1 - v * v));
+    if (rx * Math.abs(v) > ry * s) continue; // flatter than a cell a row: the half cells' pass has it
+    const reach = roundOut(2 * rx * s);
+    grid.block(mid - reach, row);
+    grid.block(mid + reach, row);
+  }
+  for (let h = 2 * c0; h <= 2 * c1 + 1; h++) {
+    const u = ((h + 0.5) / 2 - cx) / rx;
+    if (Math.abs(u) >= 1) continue;
+    const s = Math.sqrt(1 - u * u);
+    if (ry * Math.abs(u) >= rx * s) continue; // steeper: the rows' pass has it
+    grid.add(h, Math.floor(cy - ry * s));
+    grid.add(h, Math.floor(cy + ry * s));
+  }
+  if (filled) {
+    for (let row = r0; row <= r1; row++) {
+      for (let h = 2 * c0; h <= 2 * c1 + 1; h++) {
+        if ((((h + 0.5) / 2 - cx) / rx) ** 2 + ((row + 0.5 - cy) / ry) ** 2 < 1) grid.add(h, row);
+      }
+    }
+  }
+  return grid.pixels();
+}
+
 export function rectPixels(from, to, filled, cols, rows) {
   const { x0, y0, x1, y1 } = bounds(from, to);
   const pixels = [];

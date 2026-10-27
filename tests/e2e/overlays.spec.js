@@ -1,7 +1,7 @@
 // The ANSI view's overlays sit on the cells they mark, inside the display's border: the cell
 // highlight, the text cursor, the selection and the Shapes outline.
 import { test, expect } from '@playwright/test';
-import { openApp, store, cellPoint, drag } from './support.js';
+import { openApp, store, cellPoint, drag, chars } from './support.js';
 
 // A cell's top-left on the page, measured from inside the display's border.
 async function cellCorner(page, col, row) {
@@ -42,4 +42,23 @@ test('the selection and the Shapes outline sit on their cells', async ({ page })
   await page.mouse.move(to.x, to.y, { steps: 4 });
   await expectAt(page, '.shape-drag', 10, 4);
   await page.mouse.up();
+});
+
+test('a Line drag shows a line from its first cell, snapped across for box lines, and draws it on release', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Shapes' }).click();
+  await page.getByRole('button', { name: 'Line', exact: true }).click();
+  const from = await cellPoint(page, 5, 10), to = await cellPoint(page, 20, 12);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 4 });
+  const line = await page.locator('.ansi-editor .shape-drag').boundingBox();
+  const [corner, next] = [await cellCorner(page, 5, 10), await cellCorner(page, 6, 11)];
+  expect(Math.abs(line.x - (corner.x + next.x) / 2)).toBeLessThan(0.5); // starts at the first cell's center
+  expect(Math.abs(line.y - (corner.y + next.y) / 2)).toBeLessThan(0.5);
+  expect(line.height).toBeLessThan(2);                 // across: closer to across than down (Double box line)
+  expect(line.width).toBeGreaterThan(to.x - from.x - 2);
+  await page.mouse.up();
+  await expect(page.locator('.ansi-editor .shape-drag')).toHaveCount(0);
+  expect(await chars(page, 10, 5, 20)).toBe('═'.repeat(16));
 });

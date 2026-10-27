@@ -181,6 +181,18 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   character in the foreground color, the cells' backgrounds are left alone, and **Fill** fills the
   inside with the character too. A Single or Double box with **Connect** on joins its frame to the
   lines it crosses or meets, the ones you can see: a line hidden under paint isn't joined.
+  **Line** draws a straight line from where you start dragging to where you let go, in the
+  foreground color: one pixel thick in the Pixel view (half-blocks in the ANSI view), or whole cells
+  in Full block or Character. Single and Double lines run straight across or down, whichever your
+  drag is closer to, and join the lines they cross with Connect. **Anti-aliased** lines and ellipses
+  share their edges between pixels, or shade cells ░▒▓ in Full block.
+- Lines and ellipses in Half-block or Full block can use **Vertical half blocks**: each block is
+  placed to the nearest half cell across, so one that falls between two columns is drawn as the
+  right half of one cell and the left half of the next (▐▌), and a steep line or a round edge steps
+  by half a cell instead of a whole one. In Half-block the blocks are half a cell tall, so the halves
+  are quadrants (▝▘, ▗▖). They're always block characters: the parts of a cell the shape doesn't
+  cover show the cell's background color, and a filled shape's inside is the background color
+  you've picked.
 - **Paint Bucket** fills what you see, in the foreground color. Text and lines you've drawn (any
   edit cell whose character isn't a space, █, ▀ or ▄) are walls: a fill stops at them and never
   covers them, so it stays inside a box and leaves your text readable. A line hidden under paint

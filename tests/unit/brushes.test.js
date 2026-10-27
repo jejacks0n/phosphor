@@ -1,7 +1,7 @@
 // Brush pixel generation shared by both editors (grid pixels, clipped to the grid).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { interpolate, pencilPixels, squarePixels, brushPixels, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
+import { interpolate, pencilPixels, squarePixels, brushPixels, linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
 
 test('Brush pixel generation shared by both editors (grid pixels, clipped to the grid)', async () => {
   assert.deepEqual(interpolate({ x: 0, y: 0 }, { x: 1, y: 0 }), [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 1, y: 0 }]);
@@ -67,4 +67,80 @@ test('Brush pixel generation shared by both editors (grid pixels, clipped to the
   // stopwatch: a timing threshold fails on a busy machine.
   const huge = (aa) => ellipsePixels({ x: -1e6, y: -1e6 }, { x: 1e6, y: 1e6 }, false, 300, 300, aa);
   for (const aa of [false, true]) assert.ok(huge(aa).every(p => p.x >= 0 && p.y >= 0 && p.x < 300 && p.y < 300));
+});
+
+test('A straight line is one pixel per step along its longer side, from end to end, with no corners doubled', () => {
+  const xy = (pixels) => pixels.map((p) => [p.x, p.y]);
+  assert.deepEqual(xy(linePixels({ x: 1.5, y: 2.5 }, { x: 5.5, y: 2.5 }, 10, 10)), [[1, 2], [2, 2], [3, 2], [4, 2], [5, 2]]);
+  assert.deepEqual(xy(linePixels({ x: 3, y: 7 }, { x: 3, y: 4 }, 10, 10)), [[3, 7], [3, 6], [3, 5], [3, 4]]); // any direction
+  assert.deepEqual(xy(linePixels({ x: 0, y: 0 }, { x: 3, y: 3 }, 10, 10)), [[0, 0], [1, 1], [2, 2], [3, 3]]);
+  const shallow = linePixels({ x: 0, y: 0 }, { x: 8, y: 3 }, 20, 20);
+  assert.equal(shallow.length, 9);                                         // one per column
+  assert.deepEqual(new Set(shallow.map((p) => p.x)).size, 9);
+  assert.ok(shallow.every((p, i) => i === 0 || p.y - shallow[i - 1].y <= 1)); // no gaps
+  assert.ok(shallow.every((p) => p.alpha === 1));
+  assert.deepEqual(xy(linePixels({ x: 3, y: 3 }, { x: 3, y: 3 }, 10, 10)), [[3, 3]]);   // a click: one pixel
+  assert.deepEqual(xy(linePixels({ x: -2, y: 1 }, { x: 2, y: 1 }, 10, 10)), [[0, 1], [1, 1], [2, 1]]); // clipped
+});
+
+test('An anti-aliased line shares each step between the two pixels it passes between; its ends are whole', () => {
+  const line = lineCoverage({ x: 0, y: 0 }, { x: 8, y: 3 }, 20, 20);
+  const at = (x, y) => line.find((p) => p.x === x && p.y === y)?.alpha ?? 0;
+  assert.equal(at(0, 0), 1);
+  assert.equal(at(8, 3), 1);
+  for (let x = 0; x <= 8; x++) {
+    const column = line.filter((p) => p.x === x).reduce((sum, p) => sum + p.alpha, 0);
+    assert.ok(Math.abs(column - 1) < 1e-9, `column ${x}: ${column}`);
+  }
+  assert.ok(line.some((p) => p.alpha > 0 && p.alpha < 1));
+  assert.ok(lineCoverage({ x: 0, y: 0 }, { x: 4, y: 4 }, 10, 10).every((p) => p.alpha === 1)); // 45°: whole pixels
+  const steep = lineCoverage({ x: 2, y: 0 }, { x: 4, y: 9 }, 10, 10);                          // steep: shared across
+  for (let y = 0; y <= 9; y++) assert.ok(Math.abs(steep.filter((p) => p.y === y).reduce((sum, p) => sum + p.alpha, 0) - 1) < 1e-9);
+});
+
+test('Half-cell pixels make block characters: across, ▌ ▐ █; across and down, the quadrants', () => {
+  const chars = (pixels, halfRows) => Object.fromEntries(halfBlockCells(pixels, halfRows).map(({ col, row, char }) => [`${col},${row}`, char]));
+  // Two half-columns per cell; rows are cells.
+  assert.deepEqual(chars([{ x: 4, y: 1 }, { x: 7, y: 1 }, { x: 8, y: 2 }, { x: 9, y: 2 }], false), { '2,1': '▌', '3,1': '▐', '4,2': '█' });
+  // Two half-columns and two half-rows per cell.
+  const q = (...xy) => xy.map(([x, y]) => ({ x, y }));
+  assert.deepEqual(chars(q([0, 0]), true), { '0,0': '▘' });
+  assert.deepEqual(chars(q([1, 0], [0, 1]), true), { '0,0': '▞' });
+  assert.deepEqual(chars(q([0, 0], [0, 1]), true), { '0,0': '▌' });
+  assert.deepEqual(chars(q([0, 0], [1, 0], [0, 1]), true), { '0,0': '▛' });
+  assert.deepEqual(chars(q([2, 2], [3, 2], [2, 3], [3, 3]), true), { '1,1': '█' });
+});
+
+test('Half steps: whole blocks placed to the nearest half cell, so one between two columns is ▐▌', () => {
+  const grid = (pixels, halfRows = false) => {
+    const cells = Object.fromEntries(halfBlockCells(pixels, halfRows).map(({ col, row, char }) => [`${col},${row}`, char]));
+    const rows = [];
+    for (let row = 0; row <= Math.max(...Object.keys(cells).map((k) => +k.split(',')[1])); row++) {
+      let line = '';
+      for (let col = 0; col <= Math.max(...Object.keys(cells).map((k) => +k.split(',')[0])); col++) line += cells[`${col},${row}`] ?? ' ';
+      rows.push(line.trimEnd());
+    }
+    return rows;
+  };
+  // A steep line: a block a row, each to the nearest half cell (x in cells, y in rows).
+  assert.deepEqual(grid(halfStepLine({ x: 0.5, y: 0.5 }, { x: 1.5, y: 2.5 }, 10, 10)), ['█', '▐▌', ' █']);
+  // A shallow one: it runs across, stepping down a row at half a cell.
+  assert.deepEqual(grid(halfStepLine({ x: 0.5, y: 0.5 }, { x: 4.5, y: 1.5 }, 10, 10)), ['██▌', '  ▐██']);
+  // Upright or across: whole cells.
+  assert.deepEqual(grid(halfStepLine({ x: 2.5, y: 0.5 }, { x: 2.5, y: 2.5 }, 10, 10)), ['  █', '  █', '  █']);
+  // Half-height blocks (Half-block's rows are half a cell): the quadrants.
+  assert.deepEqual(grid(halfStepLine({ x: 0.5, y: 0.5 }, { x: 1.5, y: 3.5 }, 10, 10), true), ['▜▖', '▝▙']);
+
+  // An ellipse: its sides step by half a cell, its top and bottom run across; it's mirror-symmetric.
+  const circle = grid(halfStepEllipse({ x: 0.5, y: 0.5 }, { x: 16.5, y: 13.5 }, false, 30, 30));
+  const mirror = { '▌': '▐', '▐': '▌' };
+  for (const line of circle) {
+    const row = line.padEnd(17, ' ');
+    assert.equal([...row].reverse().map((c) => mirror[c] ?? c).join(''), row, `not symmetric:\n${circle.join('\n')}`);
+  }
+  assert.ok(circle.some((line) => line.includes('▐▌')), circle.join('\n'));
+  assert.ok(circle.every((line) => !line.includes('██████████████████')));
+  // Filled: the inside too.
+  const disc = halfStepEllipse({ x: 0.5, y: 0.5 }, { x: 16.5, y: 13.5 }, true, 30, 30);
+  assert.ok(disc.length > halfStepEllipse({ x: 0.5, y: 0.5 }, { x: 16.5, y: 13.5 }, false, 30, 30).length * 3);
 });
