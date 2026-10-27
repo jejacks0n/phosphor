@@ -150,10 +150,13 @@ test('a ?room= link to a private room asks for the password: a wrong one says so
   await page.getByRole('button', { name: 'Join', exact: true }).click();
   await expect(page.getByText('Wrong password')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'This room needs a password' })).toBeVisible();
+  const field = page.getByLabel('Password');
+  await expect(field).toBeFocused();   // not lost with the Join button the try took away
+  expect(await field.evaluate((input) => [input.selectionStart, input.selectionEnd])).toEqual([0, 'swordfish'.length]);
 
-  await page.getByLabel('Password').fill('hunter22');
+  await field.fill('hunter22');
   await page.getByRole('button', { name: 'Join', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'neon harbor' })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('heading', { name: 'neon harbor' })).toBeFocused({ timeout: 20_000 });
   await expect.poll(() => watcherCells(watcher)).toEqual(await hostCells(host));
 });
 
@@ -194,6 +197,11 @@ test('a watcher\'s own unsaved art is as it was after joining, watching and leav
   const plain = await cellPoint(watcher, 20, 6);
   const pixels = async () => [await screenPixel(watcher, painted.x, painted.y), await screenPixel(watcher, plain.x, plain.y)];
   const shownBefore = await pixels();
+  await tab(watcher, 'PIXEL').click();
+  await settled(watcher);
+  const pixelView = await watcher.locator('article[tabindex="0"] .display canvas').boundingBox();
+  const pixelViewPixel = () => screenPixel(watcher, pixelView.x + pixelView.width / 2, pixelView.y + pixelView.height / 2);
+  const pixelBefore = await pixelViewPixel();
 
   await joinFromCard(watcher);
   await tab(host, 'ANSI').click();
@@ -201,10 +209,18 @@ test('a watcher\'s own unsaved art is as it was after joining, watching and leav
   await host.keyboard.type('Q');
   await expect.poll(() => watcherCells(watcher)).toEqual(await hostCells(host));
   expect(await watcherCells(watcher)).not.toEqual(before.cells);
+  const art = await watching(watcher).getByLabel('The room\'s art').boundingBox();
+  await watcher.mouse.move(art.x + art.width / 2, art.y + art.height / 2);
+  await watcher.mouse.wheel(0, 200);   // looking around, then following again
+  await watching(watcher).getByRole('button', { name: 'Follow ansi-fan' }).click();
+  await expect(watching(watcher).getByRole('button', { name: 'Following' })).toBeVisible();
 
   await tab(watcher, 'ANSI').click();
   await settled(watcher);
   expect(await pixels()).toEqual(shownBefore);
+  await tab(watcher, 'PIXEL').click();
+  await settled(watcher);
+  expect(await pixelViewPixel()).toEqual(pixelBefore);
   expect(await own()).toEqual(before);
   expect(await store(watcher, 'room', (r) => r.status)).toBe('live');   // still watching
 
