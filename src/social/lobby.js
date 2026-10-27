@@ -53,6 +53,15 @@ export function joinState(room, { signedIn }) {
   return { enabled: !reason, label: `Join ${room.count}/${room.max}`, reason };
 }
 
+// A signal as the lobby says it.
+export const signalWords = { feedback: 'Wants feedback', chat: 'Open to chat', 'heads-down': 'Heads down' };
+
+// How long a room has been live: "live 42 min", then "live 1 hr 15 min".
+export function liveFor(liveSince, now = Date.now()) {
+  const min = Math.max(0, Math.floor((now - liveSince) / 60_000));
+  return min < 60 ? `live ${min} min` : `live ${Math.floor(min / 60)} hr ${min % 60} min`;
+}
+
 // Sends at most one value per interval: a change goes at once if the interval has passed, else the
 // latest waits for it. A value equal to the last one sent isn't sent again; a value sendFn didn't send
 // (it returns false: the connection isn't live) doesn't count as sent.

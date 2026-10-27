@@ -2,7 +2,7 @@
 // listed in, the Join button's states, and the pacer that keeps signal changes to one every 2 s.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, joinState, Pacer } from '../../src/social/lobby.js';
+import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, joinState, liveFor, signalWords, Pacer } from '../../src/social/lobby.js';
 
 const room = (id, more) => ({
   id, name: `Room ${id}`, host: 'ansi-fan', count: 1, max: 12, allowGuests: true, signal: null,
@@ -92,6 +92,19 @@ function pacedClock() {
   clock.pacer = new Pacer(2000, send, () => clock.t, setTimer, (timer) => { timer.cleared = true; });
   return clock;
 }
+
+test('Live for: minutes under an hour, then hours and minutes', () => {
+  const now = 10_000_000;
+  assert.equal(liveFor(now - 30_000, now), 'live 0 min');
+  assert.equal(liveFor(now - 42 * 60_000 - 59_000, now), 'live 42 min');
+  assert.equal(liveFor(now - 60 * 60_000, now), 'live 1 hr 0 min');
+  assert.equal(liveFor(now - 75 * 60_000, now), 'live 1 hr 15 min');
+  assert.equal(liveFor(now + 5000, now), 'live 0 min');   // a clock a little ahead of the server's
+});
+
+test('Signals in words', () => {
+  assert.deepEqual(signalWords, { feedback: 'Wants feedback', chat: 'Open to chat', 'heads-down': 'Heads down' });
+});
 
 test('Pacing: the first value goes at once; quick changes after it become one send of the last, when the interval passes', () => {
   const clock = pacedClock();

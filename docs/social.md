@@ -155,6 +155,10 @@ room is drawing: on its card in the lobby or at the top of the room. Nobody is t
 - **No public rooms right now**: start one, and you'll be the first thing people see.
 - **Rooms are unavailable right now**: the lobby can't be reached. The editor works as usual, and
   rooms that are already running carry on.
+- **Reconnecting…**: the lobby lost its connection for a moment (a new server version, Wi-Fi). The
+  rooms stay, dimmed, until it's back with the current ones.
+- **This browser can't sign you in to SOCIAL yet**: it lacks the signing SOCIAL uses (older Safari,
+  for one). The rest of Phosphor works as usual.
 - **Couldn't reach this host**: rooms connect your browser straight to the host's, and some
   networks (offices and schools, often) block that.
 - **Room is full**: the host's watcher limit is reached.
