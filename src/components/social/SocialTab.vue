@@ -21,14 +21,15 @@ const PAGES = {
   reset: ResetPasswordPage, onboarding: OnboardingPage, account: AccountPage,
   'two-factor': TwoFactorPage, 'start-room': StartRoomPage, 'host-room': HostRoomPage, 'watch-room': WatchRoomPage,
 };
+const SIGN_IN_PAGES = new Set(['sign-in', 'create', 'forgot', 'two-factor']);
 onMounted(() => social.showLobby());
 
-// The room you host or watch, while you do. Account is only for someone signed in: until /api/me has answered
+// The room you host or watch, while you do (a guest watching still gets the sign-in pages, to sign in to chat). Account is only for someone signed in: until /api/me has answered
 // nothing shows (a link back from connecting a provider asks for Account first), and once it has,
 // someone signed out gets the lobby.
 const shownPage = computed(() => {
   if (room.role === 'host') return 'host-room';
-  if (room.role === 'watch') return 'watch-room';
+  if (room.role === 'watch' && !SIGN_IN_PAGES.has(social.page)) return 'watch-room';
   if (social.page !== 'account' || social.signedIn) return social.page;
   return social.supported === null ? null : 'lobby';
 });

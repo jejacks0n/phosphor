@@ -1,8 +1,10 @@
 <script setup>
 import { ref } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
+import { useRoomStore } from '@/store/RoomStore';
 
 const social = useSocialStore();
+const room = useRoomStore();
 const login = ref('');
 const password = ref('');
 const error = ref(null);   // the last try's, in words: under the form rather than at the top of the tab
@@ -26,7 +28,7 @@ async function signInWith(provider) {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">‹ Back to the lobby</button>
+    <button class="link back" @click="social.page = 'lobby'">‹ Back to the {{ room.role === 'watch' ? 'room' : 'lobby' }}</button>
     <h2>Sign in</h2>
     <div class="providers">
       <button :disabled="social.busy" @click="signInWith('discord')">Continue with Discord</button>

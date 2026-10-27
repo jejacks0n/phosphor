@@ -52,7 +52,9 @@ Signed in, you're a **member**; otherwise you're a **guest**.
 You can browse the lobby and watch without an account, in any room that allows guests. Phosphor
 gives you a random nickname, such as `quiet-amber-fox`, shown with a **guest** tag so nobody
 mistakes it for a member. A room for signed-in users only shows its Join button grayed out until
-you sign in. In a room, a guest's chat panel shows **Sign in to chat** in place of the message box.
+you sign in. In a room, a guest's chat panel shows **Sign in to chat** in place of the message box. It opens the sign-in page over the room (**Back to the room** returns), and
+once you're signed in, by password, Discord, GitHub or a two-factor code, you're back in the same room as
+yourself. A private room asks for its password again: Phosphor never keeps it.
 
 ## Signing in and creating an account
 

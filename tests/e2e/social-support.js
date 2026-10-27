@@ -29,7 +29,7 @@ const codes = (word) => Array.from({ length: 10 }, (_, i) => `${word}-code${i}`)
 // fakeServer(page, { me, rooms, people, blocked, signal, twoFactor, room, 'POST /api/...': (body) => [status, reply] }).
 // `me` null is signed out (a guest's pass). With `twoFactor`, an email or username sign-in answers the
 // challenge, and only verify-totp ('123456') or verify-backup-code ('abcde-fghij') signs in, as a member with
-// two-factor on; server.trustDevice is what the last good one was sent. Signed in, verify-totp ('123456') confirms two-factor
+// two-factor on (a sign-in is the default member, or with `signsInAs` fields as given: another person than the host); server.trustDevice is what the last good one was sent. Signed in, verify-totp ('123456') confirms two-factor
 // instead, and enable, disable and generate-backup-codes answer 10 codes, and enable a secret (`JBSWY3DPEHPK3PXP`, then `...PXQ` and so on: a new one each time). The lobby's state lists `people` and you (from the hello's pass, as
 // the real server does), with `signal` as the account's signal; a signal sent sets it. Routes answer [status, body]; server.route(key, answer) changes one
 // later. server.requests has every API call ({ method, path, body }); server.lobby.received every
@@ -37,7 +37,7 @@ const codes = (word) => Array.from({ length: 10 }, (_, i) => `${word}-code${i}`)
 // throw until the app has connected: the SOCIAL tab shown, and again after a drop). With
 // server.lobby.refusing set, a hello is answered refused. POST /api/rooms makes room ROOM_ID; given a
 // fakeRoom as `room`, the page's room sockets go to it, and the room is the one the POST describes.
-export async function fakeServer(page, { me = null, rooms = [], people = [], blocked = [], signal = null, twoFactor = false, room, ...overrides } = {}) {
+export async function fakeServer(page, { me = null, rooms = [], people = [], blocked = [], signal = null, twoFactor = false, room, signsInAs = {}, ...overrides } = {}) {
   let socket = null;
   const connected = () => {
     if (!socket) throw new Error('The lobby is not connected: show the SOCIAL tab and wait for its hello first');
@@ -60,7 +60,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
   let enabled = 0;   // how many secrets enable has made
   const signIn = () => {
     if (twoFactor) return [200, { twoFactorRedirect: true, twoFactorMethods: ['totp'] }];
-    server.me = member();
+    server.me = member(signsInAs);
     return [200, { redirect: false }];
   };
   const verifyCode = (right, wrong) => ({ code, trustDevice }) => {
@@ -69,7 +69,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
       server.me = { ...server.me, twoFactorEnabled: true };
       return [200, { token: 't' }];
     }
-    server.me = member({ twoFactorEnabled: true });
+    server.me = member({ ...signsInAs, twoFactorEnabled: true });
     server.trustDevice = trustDevice;
     return [200, { token: 't' }];
   };
@@ -333,13 +333,13 @@ export async function goLive(host, room, { image = 'images/gradient.png', welcom
 
 // The watcher's page, its lobby listing the room (as the server would once it's live), `blocked` the
 // people it has blocked.
-export async function watcherPage(context, room, { me = null, blocked = [] } = {}) {
+export async function watcherPage(context, room, { me = null, blocked = [], ...serverOptions } = {}) {
   const watcher = await context.newPage();
   const rooms = [{
     id: ROOM_ID, name: 'neon harbor', host: 'ansi-fan', count: 0, max: 12, allowGuests: true, signal: null,
     liveSince: Date.now(), thumbnail: null, blockedInside: false,
   }];
-  await fakeServer(watcher, { me, room, rooms, blocked });
+  await fakeServer(watcher, { me, room, rooms, blocked, ...serverOptions });
   return watcher;
 }
 

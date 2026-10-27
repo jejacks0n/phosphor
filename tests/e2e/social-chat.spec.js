@@ -3,7 +3,7 @@
 // characters, one a second), who can send, folding to the rail, earlier messages on scrolling up, someone
 // you blocked folded, and the host's Delete.
 import { test, expect, tab, store } from './support.js';
-import { fakeRoom, goLive, watcherPage, joinFromCard, member } from './social-support.js';
+import { fakeRoom, goLive, watcherPage, joinFromCard, member, shown, ROOM_ID } from './social-support.js';
 
 const wren = member({ id: 'u_2', username: 'pixel_wren', name: 'pixel_wren' });
 const reaper = member({ id: 'u_3', username: 'grim_reaper', name: 'grim_reaper' });
@@ -112,12 +112,69 @@ test('four Enters within a second: "Slow down a little", and three messages arri
   await expect(messages(host)).not.toContainText(['four']);
 });
 
-test('a guest is asked to sign in, and the button opens the sign-in page', async ({ page: host, context }) => {
-  const { watcher } = await inRoom(host, context);
+// A guest in the room who chose "Sign in to chat"; signing in makes them `wren`.
+async function guestToSignIn(host, context, serverOptions = {}) {
+  const room = fakeRoom();
+  await goLive(host, room);
+  const watcher = await watcherPage(context, room, { signsInAs: wren, ...serverOptions });
+  await watcher.goto('/');
+  await joinFromCard(watcher);
   await expect(box(watcher)).toHaveCount(0);
   await panel(watcher).getByRole('button', { name: 'Sign in to chat' }).click();
+  await expect(shown(watcher, 'sign-in')).toBeVisible();
+  return watcher;
+}
+
+async function signInWithPassword(watcher) {
+  const form = shown(watcher, 'sign-in');
+  await form.getByLabel('Email or username').fill('pixel_wren');
+  await form.getByLabel('Password').fill('correct horse battery');
+  await form.getByRole('button', { name: 'Sign in', exact: true }).click();
+}
+
+// Back in the room as wren: its page, the host's list with the name and no guest tag, the composer.
+async function backAsWren(host, watcher) {
+  await expect(shown(watcher, 'watch-room')).toBeVisible();
+  await expect(box(watcher)).toBeVisible();
+  const row = shown(host, 'host-room').getByRole('list', { name: 'Watching' }).getByRole('listitem');
+  await expect(row).toHaveText([/pixel_wren\s*following/]);
+  await expect(row.getByText('guest')).toHaveCount(0);
+  await say(watcher, 'it is me');
+  await expect(messages(host).first()).toContainText('pixel_wren');
+}
+
+test('a guest is asked to sign in: the sign-in page shows over the room, "Back to the room" returns to it', async ({ page: host, context }) => {
+  const watcher = await guestToSignIn(host, context);
   expect(await store(watcher, 'workspace', (w) => w.editorTab)).toBe('social');
-  expect(await store(watcher, 'social', (s) => s.page)).toBe('sign-in');
+  await expect(shown(watcher, 'sign-in').getByRole('button', { name: '‹ Back to the room' })).toBeVisible();
+  await shown(watcher, 'sign-in').getByRole('button', { name: '‹ Back to the room' }).click();
+  await expect(shown(watcher, 'watch-room')).toBeVisible();
+  expect(await store(watcher, 'room', (r) => r.role)).toBe('watch');
+});
+
+test('a guest who signs in with a password is back in the same room as themselves', async ({ page: host, context }) => {
+  const watcher = await guestToSignIn(host, context);
+  await signInWithPassword(watcher);
+  await backAsWren(host, watcher);
+});
+
+test('a guest who signs in through two-factor is back in the same room as themselves', async ({ page: host, context }) => {
+  const watcher = await guestToSignIn(host, context, { twoFactor: true });
+  await signInWithPassword(watcher);
+  const form = shown(watcher, 'two-factor');
+  await form.getByLabel('Code from your authenticator app').fill('123456');
+  await form.getByRole('button', { name: 'Verify' }).click();
+  await backAsWren(host, watcher);
+});
+
+test('coming back from Discord (?social=signed-in) with the room kept, a guest-turned-member is in the room as themselves', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  const watcher = await watcherPage(context, room, { me: wren });
+  await watcher.addInitScript((id) => sessionStorage.setItem('phosphor-rejoin', id), ROOM_ID);
+  await watcher.goto('/?social=signed-in');
+  await backAsWren(host, watcher);
+  expect(await watcher.evaluate(() => sessionStorage.getItem('phosphor-rejoin'))).toBe(null);
 });
 
 test('a member who hasn\'t confirmed their email is asked to', async ({ page: host, context }) => {

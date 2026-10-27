@@ -3,6 +3,7 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useSocialStore } from '@/store/SocialStore';
+import { useRoomStore } from '@/store/RoomStore';
 import { forgetKey, loadKey } from '@/social/keys';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
 import { verify, claimsOf, member, fakeServer, sockets, useFakeSockets, goLive, lastSocket, at } from '../support/socialServer.js';
@@ -22,6 +23,7 @@ beforeEach(async () => {
   forgetKey();
   await deleteDatabase();
   localStorage.clear();
+  sessionStorage.clear();
   useFakeSockets();
   vi.stubGlobal('matchMedia', (query) => ({ matches: query === desktopQuery }));   // a desktop: links back are read
   setActivePinia(createPinia());
@@ -825,4 +827,85 @@ test('The account actions send the server\'s shapes', async () => {
   expect(social.notice).toBe('Your account is deleted');
   const hello = await goLive(await lastSocket(4));
   expect(claimsOf(hello.pass).guest).toBe(true);
+});
+
+// join, spied on and not run, but as far as it counts: you're watching.
+const joinSpy = (rooms) => vi.spyOn(rooms, 'join').mockImplementation((id) => { rooms.role = 'watch'; rooms.id = id; });
+
+// A guest watching a room (the room store's state set as a join leaves it), its join spied on.
+function watching(password) {
+  const rooms = useRoomStore();
+  Object.assign(rooms, { role: 'watch', id: 'abcdefghij', _password: password });
+  return { rooms, join: joinSpy(rooms) };
+}
+
+test('A guest watching a room who signs in joins it again with the same password; a member signing out while watching does not', async () => {
+  const server = fakeServer();
+  await social.start(at(''));
+  await social.showLobby();
+  const { join } = watching('hush');
+  server.route('POST /api/auth/sign-in/email', () => ((server.session = member()), [200, { token: 't' }]));
+  expect(await social.signIn('fan@example.com', 'right-password')).toBe(true);
+  expect(join).toHaveBeenCalledOnce();
+  expect(join).toHaveBeenCalledWith('abcdefghij', { password: 'hush' });
+
+  join.mockClear();
+  watching(undefined);
+  await social.becameSomeoneElse({ signedOut: true });
+  expect(join).not.toHaveBeenCalled();
+});
+
+test('Signing in with Discord from a room keeps its id (never a password) for the way back; not watching, nothing is kept', async () => {
+  const server = fakeServer();
+  server.route('POST /api/auth/sign-in/social', () => [200, { url: 'https://discord.example/authorize', redirect: true }]);
+  await social.start(at(''));
+  await social.showLobby();
+  const location = { assign: vi.fn() };
+  watching('hush');
+  await social.signInWith('discord', location);
+  expect(sessionStorage.getItem('phosphor-rejoin')).toBe('abcdefghij');
+  expect(JSON.stringify({ ...sessionStorage })).not.toContain('hush');
+
+  useRoomStore().close();
+  await social.signInWith('github', location);
+  expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
+});
+
+test('An OAuth return: ?social=signed-in makes the kept room the one to join, ?social=error forgets it, ?social=two-factor keeps it', async () => {
+  fakeServer();
+  sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
+  social.readReturn(at('?social=signed-in'));
+  expect(social._roomLink).toBe('abcdefghij');
+  expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
+
+  social._roomLink = null;
+  sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
+  social.readReturn(at('?social=two-factor'));
+  expect(social._roomLink).toBe(null);
+  expect(sessionStorage.getItem('phosphor-rejoin')).toBe('abcdefghij');
+
+  social.readReturn(at('?social=error&error=EMAIL_NOT_VERIFIED'));
+  expect(social._roomLink).toBe(null);
+  expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
+});
+
+test('A two-factor code that signs you in joins the room kept before Discord, once; one already rejoined is not joined twice', async () => {
+  const server = twoFactorServer();
+  await social.start(at(''));
+  await social.showLobby();
+  const rooms = useRoomStore();
+  const join = joinSpy(rooms);
+  sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
+  expect(await social.verifyTwoFactor('000000')).toBe(true);
+  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij');
+  expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
+
+  join.mockClear();
+  rooms.close();
+  watching('hush');
+  sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
+  await social.verifyTwoFactor('123456');
+  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij', { password: 'hush' });
+  expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
+  expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(2);
 });

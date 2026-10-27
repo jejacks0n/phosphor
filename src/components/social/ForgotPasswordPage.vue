@@ -1,9 +1,11 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
+import { useRoomStore } from '@/store/RoomStore';
 import { mountTurnstile } from '@/social/turnstile';
 
 const social = useSocialStore();
+const room = useRoomStore();
 const email = ref(social.me?.email ?? '');   // from Account's Send a reset link, yours
 const error = ref(null);
 
@@ -21,7 +23,7 @@ async function send() {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">‹ Back to the lobby</button>
+    <button class="link back" @click="social.page = 'lobby'">‹ Back to the {{ room.role === 'watch' ? 'room' : 'lobby' }}</button>
     <h2>Forgot your password?</h2>
     <p class="help">We'll email you a link to set a new one.</p>
     <form @submit.prevent="send">

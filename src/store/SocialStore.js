@@ -25,6 +25,23 @@ const ERROR_PARAMS = ['error', 'error_description'];
 const STALE_SESSION = new Set(['SESSION_EXPIRED', 'SESSION_NOT_FRESH']);
 const NEW_CHALLENGE = new Set(['INVALID_TWO_FACTOR_COOKIE', 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE', 'ACCOUNT_TEMPORARILY_LOCKED']);   // the code can't be tried again: sign in again
 
+// The room you were watching when you left the page to sign in: its id only (never its password), in
+// sessionStorage, so it's only for this tab and this visit.
+const REJOIN = 'phosphor-rejoin';
+const keepRoom = (id) => {
+  try {
+    if (id) sessionStorage.setItem(REJOIN, id);
+    else sessionStorage.removeItem(REJOIN);
+  } catch { /* no storage: you come back to the lobby */ }
+};
+const keptRoom = () => {
+  try {
+    return sessionStorage.getItem(REJOIN);
+  } catch {
+    return null;
+  }
+};
+
 const withToken = (turnstileToken) => (turnstileToken ? { 'x-turnstile-token': turnstileToken } : undefined);
 
 // The SOCIAL tab: you (/api/me), your pass, the lobby and the page shown, and every account action
@@ -124,8 +141,10 @@ export const useSocialStore = defineStore('social', {
       if (params.get('verified') === '1') this.notice = error ? messageFor(error) : 'Your email is confirmed';
       if (params.get('reset')) Object.assign(this, { resetToken: params.get('reset'), page: 'reset' });
       if (params.get('social') === 'linked') this.page = 'account';
-      if (params.get('social') === 'two-factor') this.page = 'two-factor';
+      if (params.get('social') === 'two-factor') this.page = 'two-factor';   // (the room stays kept until the code)
+      if (params.get('social') === 'signed-in') this._roomLink = keptRoom();
       if (params.has('room')) this._roomLink = params.get('room');
+      if (['signed-in', 'error'].includes(params.get('social'))) keepRoom(null);
       if (params.get('social') === 'error') {
         this.notice = error === 'EMAIL_NOT_VERIFIED' ? 'Confirm your email with Discord or GitHub first' : messageFor(error);
       }
@@ -164,13 +183,17 @@ export const useSocialStore = defineStore('social', {
     },
 
     // You're someone else now (signed in, or out): a room you host is ended, or one you watch left, then a
-    // new pass and a new lobby connection.
+    // new pass and a new lobby connection. Signing in (not out) while watching goes back into the same room,
+    // with the same password, as the new you.
     async becameSomeoneElse({ signedOut = false } = {}) {
-      useRoomStore().close();
+      const rooms = useRoomStore();
+      const back = !signedOut && rooms.role === 'watch' ? { id: rooms.id, password: rooms._password } : null;
+      rooms.close();
       if (signedOut) this.me = null;
       else await this.refreshMe();
       Object.assign(this, { signal: null, blocked: [], page: this.me?.needsOnboarding ? 'onboarding' : 'lobby' });
       this.reconnect();
+      if (back) rooms.join(back.id, { password: back.password });
     },
 
     // Signing in or up stays busy until you're known, so the form can't be sent a second time meanwhile.
@@ -199,7 +222,13 @@ export const useSocialStore = defineStore('social', {
           method: 'POST', body: { code: code.replace(/\s/g, ''), trustDevice },
         });
         if (NEW_CHALLENGE.has(failure)) this.page = 'sign-in';
-        if (ok) await this.becameSomeoneElse();
+        if (ok) {
+          await this.becameSomeoneElse();
+          // Back from Discord or GitHub and then the code: the room kept before leaving, unless it's already rejoined.
+          const id = keptRoom();
+          keepRoom(null);
+          if (id && !useRoomStore().role) useRoomStore().join(id);
+        }
         return ok;
       });
     },
@@ -260,6 +289,8 @@ export const useSocialStore = defineStore('social', {
         this.busy = false;
         return;
       }
+      const rooms = useRoomStore();
+      keepRoom(rooms.role === 'watch' ? rooms.id : null);   // so signing in takes you back to it
       addEventListener('pageshow', () => { this.busy = false; }, { once: true });
       location.assign(data.url);
     },
