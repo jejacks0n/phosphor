@@ -23,6 +23,15 @@ test('cells survive encoding with each color listed once, and wide halves are ke
   assert.deepEqual(decodeCells(JSON.parse(JSON.stringify(wire))), cells);
 });
 
+test('decoded cells share one Color per table entry, and a color not in the table is refused', () => {
+  const [a, b] = decodeCells({ colors: ['#ffffff', '#000000'], cells: [['a', 0, 1], ['b', 0, 1]] });
+  assert.equal(a.fg, b.fg);
+  assert.equal(a.bg, b.bg);
+  for (const bad of [2, -1, 0.5, '0', 'length', undefined]) {
+    assert.throws(() => decodeCells({ colors: ['#ffffff', '#000000'], cells: [['a', 0, bad]] }));
+  }
+});
+
 test('changedCells finds the indexes that differ', () => {
   const prev = Array.from({ length: 40 }, (_, i) => cell(String.fromCharCode(65 + (i % 26)), '#ffffff', '#000000'));
   const copy = () => prev.map((c) => ({ ...c }));

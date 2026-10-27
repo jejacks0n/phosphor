@@ -48,10 +48,16 @@ export function encodeCells(cells) {
   };
 }
 
+// One Color per entry in the table, shared by the cells of that color as the renderer's are (a Color is
+// never changed in place). Throws on a color index that isn't in the table.
 export function decodeCells({ colors, cells }) {
   const palette = colors.map((hex) => ({ ...hex2rgb(hex), hex }));
+  const colorAt = (i) => {
+    if (!(Number.isInteger(i) && i >= 0 && i < palette.length)) throw new Error('No such color');
+    return palette[i];
+  };
   return cells.map(([char, fg, bg, wide]) => {
-    const cell = { char, fg: { ...palette[fg] }, bg: { ...palette[bg] } };
+    const cell = { char, fg: colorAt(fg), bg: colorAt(bg) };
     if (wide) cell.wide = WIDE_NAMES[wide];
     return cell;
   });
