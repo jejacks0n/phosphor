@@ -54,7 +54,11 @@ const toggleSignal = (signal) => social.setSignal(social.signal === signal ? nul
         <h3>No public rooms right now</h3>
         <p>Start one and you'll be the first thing people see here.</p>
       </div>
-      <div v-else class="rooms" :class="{ stale: reconnecting }">
+      <div v-else-if="!shown.length" class="state">
+        <h3>No rooms match this filter</h3>
+      </div>
+      <!-- stale while reconnecting: dimmed, and their Join buttons out of reach -->
+      <div v-else class="rooms" :class="{ stale: reconnecting }" :inert="reconnecting">
         <RoomCard v-for="room in shown" :key="room.id" :room="room" :signed-in="social.signedIn" />
       </div>
     </section>

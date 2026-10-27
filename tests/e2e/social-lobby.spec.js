@@ -143,6 +143,11 @@ test('the filter chips show only the rooms with that signal', async ({ page }) =
 
   await filters.getByRole('button', { name: 'All' }).click();
   await expect(lobby(page).getByRole('article')).toHaveCount(4);
+
+  server.lobby.send({ type: 'room-gone', id: 'harbor' });
+  await filters.getByRole('button', { name: 'Wants feedback' }).click();
+  await expect(lobby(page).getByRole('article')).toHaveCount(0);
+  await expect(lobby(page).getByText('No rooms match this filter')).toBeVisible();
 });
 
 test('a room the server adds appears, one it removes disappears; people come and go', async ({ page }) => {
@@ -216,11 +221,13 @@ test('a dropped socket shows Reconnecting… over the dimmed rooms, then recover
   await expect(lobby(page).getByText('Reconnecting…')).toBeVisible();
   await expect(lobby(page).getByRole('article')).toHaveCount(2); // still there, dimmed
   await expect(lobby(page).locator('.rooms.stale')).toBeVisible();
+  await expect(lobby(page).locator('.rooms')).toHaveAttribute('inert'); // and their Join buttons out of reach
 
   await expect(lobby(page).getByText('Reconnecting…')).toHaveCount(0, { timeout: 5000 }); // retried after 1 s
   await expect(lobby(page).getByRole('article')).toHaveCount(1);
   await expect(card(page, 'after the drop')).toBeVisible();
   await expect(lobby(page).locator('.rooms.stale')).toHaveCount(0);
+  await expect(lobby(page).locator('.rooms')).not.toHaveAttribute('inert');
 });
 
 test('the notice is one line at the top of the tab, and can be dismissed', async ({ page }) => {
