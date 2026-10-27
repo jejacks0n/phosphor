@@ -4,9 +4,8 @@
 >
 > **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, and the lobby
 > with its Join counts and reasons, signals and who's here. **Comes next:** starting a room,
-> hosting, watching, chat, blocking from a room, and reporting. Two-factor sign-in comes later too:
-> it isn't on the Account page yet. **Starting a room** through **Blocking and reporting** describe
-> what's coming.
+> hosting, watching, chat, blocking from a room, and reporting. **Starting a room** through
+> **Blocking and reporting** describe what's coming.
 
 Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others
 watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
@@ -84,7 +83,9 @@ you out everywhere else.
 - **Ways to sign in**: email and password (**Send a reset link** opens **Forgot your password?**
   with your email filled in, to change the password), Discord and GitHub; connect or disconnect
   each, keeping at least one.
-- **Two-factor** (coming later): a code from an authenticator app at sign-in, if you turn it on.
+- **Two-factor**: once it's on, every sign-in asks for a code from your authenticator app, Discord
+  and GitHub included. **Trust this computer for 30 days** skips the code on that computer. A backup
+  code stands in for the phone (**Use a backup code instead**), once each.
 - **Blocked**: everyone you've blocked, with **Unblock**.
 - **Delete account**: asks for your password, then (**Delete for good**) removes your account, your
   username and your blocks. An account with no password needs you to have signed in with Discord or
