@@ -1,6 +1,11 @@
 # Social
 
-> **Planned, not built yet.** This page describes how Phosphor's social side is meant to work.
+> **Partly built.** This page describes how Phosphor's social side is meant to work.
+>
+> **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, and the lobby
+> with its Join counts and reasons, signals and who's here. **Comes next:** starting a room,
+> hosting, watching, chat, blocking from a room, and reporting. Two-factor sign-in comes later too:
+> it isn't on the Account page yet. From **Starting a room** down, the page describes what's coming.
 
 Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others
 watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
@@ -18,14 +23,17 @@ When you can't join a room, its Join button is grayed out and says why beside it
 - **Room is full**: it's at the host's watcher limit.
 - **Signed-in users only**: the room doesn't allow guests, and you haven't signed in.
 
-A filter above the gallery narrows it to rooms whose host wants feedback or is open to chat.
+Filters above the gallery (**All**, **Wants feedback**, **Open to chat**) narrow it to rooms whose
+host wants feedback or is open to chat.
+
+If someone you've blocked is in a room, its card says **Someone you blocked is here**.
 
 Beside the gallery, signed in:
 
 - **You**: your username, with **Account** and **Sign out**.
 - **Your signal**: Wants feedback, Open to chat or Heads down. It shows beside your name in the
   lobby and on your room while you host.
-- **Start a room**.
+- **Start a room**. (It's grayed out for now: rooms come next.)
 - **In the lobby**: who else is here, with their signals (guests show as guests).
 
 Not signed in, the same column shows your guest nickname, **Sign in**, and **Create one** for a new
@@ -45,8 +53,8 @@ you sign in. In a room, a guest's chat panel shows **Sign in to chat** in place 
 
 ## Signing in and creating an account
 
-**Sign in** offers **Continue with Discord**, **Continue with GitHub**, or your email and password,
-with **Forgot your password?** below.
+**Sign in** offers **Continue with Discord**, **Continue with GitHub**, or your email or username
+and password, with **Forgot your password?** below.
 
 **Create an account** asks for:
 
@@ -56,7 +64,8 @@ with **Forgot your password?** below.
 - that you're **13 or older** and agree to the **Terms** and **Privacy Policy**.
 
 Phosphor then emails you a link to confirm your address. Until you do, you can watch but not chat
-or start a room, and the lobby offers to send the link again.
+or start a room. The lobby says **Confirm your email to start a room**, with **Resend** to send the
+link again.
 
 Discord and GitHub make an account the first time you use them; you then pick a username (it
 starts from the name on that account) and agree to the same terms.
@@ -72,10 +81,11 @@ you out everywhere else.
   from your username.
 - **Ways to sign in**: email and password (with **Send a reset link** to change the password),
   Discord and GitHub; connect or disconnect each, keeping at least one.
-- **Two-factor**: a code from an authenticator app at sign-in, if you turn it on.
+- **Two-factor** (coming later): a code from an authenticator app at sign-in, if you turn it on.
 - **Blocked**: everyone you've blocked, with **Unblock**.
-- **Delete account**: asks for your password (or Discord or GitHub again), then removes your
-  account, your username and your blocks.
+- **Delete account**: asks for your password, then (**Delete for good**) removes your account, your
+  username and your blocks. An account with no password needs you to have signed in with Discord or
+  GitHub in the last 5 minutes.
 
 ## Starting a room
 
@@ -142,8 +152,8 @@ through the host, like the art, and nobody keeps it: when the room ends, so does
 
 ### Blocking and reporting
 
-If someone you've blocked is in a room you're about to join, the lobby tells you quietly, and you
-decide whether to go in. Your block doesn't keep them out of other people's rooms. Inside the room,
+If someone you've blocked is in a room you're about to join, its card in the lobby tells you quietly
+(**Someone you blocked is here**), and you decide whether to go in. Your block doesn't keep them out of other people's rooms. Inside the room,
 their messages show as **Message from someone you blocked**, with **Show** if you want to read it.
 Nobody else sees any difference, and they aren't told.
 
@@ -152,7 +162,7 @@ room is drawing: on its card in the lobby or at the top of the room. Nobody is t
 
 ## When something goes wrong
 
-- **No public rooms right now**: start one, and you'll be the first thing people see.
+- **No public rooms right now**: start one, and you'll be the first thing people see here.
 - **Rooms are unavailable right now**: the lobby can't be reached. The editor works as usual, and
   rooms that are already running carry on.
 - **Reconnecting…**: the lobby lost its connection for a moment (a new server version, Wi-Fi). The
@@ -163,9 +173,10 @@ room is drawing: on its card in the lobby or at the top of the room. Nobody is t
   networks (offices and schools, often) block that.
 - **Room is full**: the host's watcher limit is reached.
 - **The host ended the room** / **The host removed you**: back to the lobby.
-- **Confirm your email to chat and start rooms**: with **Send the link again**.
+- **Confirm your email to start a room**: in the lobby, with **Resend**.
 - **You're muted until 9:40 pm**: in place of the message box.
 - **This account is suspended**: at sign-in, with until when, if it isn't for good.
+- **Couldn't reach Phosphor's server**: signing in or creating an account couldn't connect.
 
 ## Not in this version
 

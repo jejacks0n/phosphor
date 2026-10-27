@@ -6,8 +6,8 @@ How Phosphor works, for people drawing with it.
   (everything you draw): merging up and down, erasing, and what the Select tool acts on.
 - [Characters](characters.md) — what a cell can hold, one- and two-column characters (Chinese,
   Japanese, Korean, emoji), typing any script, pasting text, and saving as .utf8ans or .ans.
-- [Social](social.md) — planned: the SOCIAL tab, watching someone draw or hosting a room, chat,
-  accounts and guests, blocking and reporting.
+- [Social](social.md) — the SOCIAL tab: accounts, guests and the lobby work today; watching someone
+  draw, hosting a room, chat, blocking and reporting are still to come.
 
 For people changing Phosphor:
 

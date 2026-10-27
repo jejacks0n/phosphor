@@ -78,6 +78,22 @@ test('a drag in Edit Mode becomes a Select selection', async ({ page }) => {
 });
 ```
 
+## Testing SOCIAL without its server
+
+The SOCIAL tab talks to a server that these tests never reach. Each layer stands in for it differently:
+
+- **Unit** (`tests/unit/social-*.test.js`): the pure modules in `src/social/` (the API helper,
+  lobby state, names, messages). No network.
+- **Browser** (`tests/browser/social-*.test.js`): `SocialStore` and the key and Turnstile modules in
+  Chromium, with `fetch` stubbed by `vi.stubGlobal` (a small fake API that records each request) and a
+  fake `WebSocket` class the test answers for the server. WebCrypto and IndexedDB are the real ones.
+- **End-to-end** (`tests/e2e/social-*.spec.js`): `fakeServer(page, { me, rooms, ... })` from
+  `tests/e2e/social-support.js` answers the API through `page.route` and the lobby socket through
+  `page.routeWebSocket`, records every request and message, and lets a spec push lobby messages or
+  drop the connection. Without it, the default `test` in `tests/e2e/support.js` aborts every request
+  to `localhost:8787` and closes every socket, so a spec that forgot to fake the server fails
+  instead of reaching a real one.
+
 ## Running one test
 
 ```bash
