@@ -5,6 +5,7 @@ import { test, expect } from 'vitest';
 import { createTestApp } from '../support/app.js';
 import CellCanvas, { MAX_BACKING_AREA } from '@/lib/CellCanvas';
 import { layoutWide } from '@/lib/Cells';
+import { fontFor } from '@/social/wire';
 
 const rgb = (hex) => ({ hex, r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
 const cell = (char, fg, bg) => ({ char, fg: rgb(fg), bg: rgb(bg) });
@@ -283,4 +284,14 @@ test('cellSize is the cell resize gives at full dpr', async () => {
   view.resize(10, 6, 2);
   expect(size).toEqual(view.metrics);
   view.destroy();
+});
+
+test('a canvas with a font of its own measures in it, not in the display font', async () => {
+  await createTestApp(); // the display font: JetBrains Mono
+  const own = new CellCanvas(document.createElement('canvas'), { font: fontFor({ id: 'vga', size: 16 }) });
+  const global = new CellCanvas(document.createElement('canvas'));
+  expect(own.cellSize(1).lineHeight).toBe(16);
+  expect(global.cellSize(1).lineHeight).toBe(20);
+  own.destroy();
+  global.destroy();
 });

@@ -14,7 +14,7 @@
  * until its first snapshot.
  */
 import { hex2rgb } from '../lib/ColorUtils.js';
-import { DISPLAY_FONTS } from '../lib/displayFonts.js';
+import { DISPLAY_FONTS, MIN_FONT_SIZE, MAX_FONT_SIZE } from '../lib/displayFonts.js';
 import { MAX_COLS, MAX_LINES, MAX_CELLS } from '../lib/Cells.js';
 
 export const CHUNK_BYTES = 65536;
@@ -30,10 +30,13 @@ const HEX = /^#[0-9a-f]{6}$/i;
 // The host's displayFontSpec as sent: null for a font loaded from the host's computer.
 export const fontOnWire = (spec) => DISPLAY_FONTS.some((f) => f.id === spec.id) ? { id: spec.id, size: spec.size } : null;
 
-// The font a watcher draws in: that one at the sent size, or Phosphor's default for null or an unknown id.
+// The font a watcher draws in: that one at the sent size (held to the sizes FontField allows; its own
+// size for one that isn't a number), or Phosphor's default for null or an unknown id.
 export function fontFor(onWire) {
   const font = DISPLAY_FONTS.find((f) => f.id === onWire?.id);
-  return font ? { ...font, size: onWire.size } : { ...DISPLAY_FONTS[0] };
+  if (!font) return { ...DISPLAY_FONTS[0] };
+  const size = Number.isFinite(onWire.size) ? Math.min(Math.max(Math.round(onWire.size), MIN_FONT_SIZE), MAX_FONT_SIZE) : font.size;
+  return { ...font, size };
 }
 
 // Cells as [char, fg, bg] (a fourth item for a wide half), the colors as indexes into a table.

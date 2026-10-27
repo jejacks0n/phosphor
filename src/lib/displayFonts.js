@@ -15,22 +15,25 @@ export const DISPLAY_FONTS = Object.freeze([
   { id: 'unifont', name: 'Unifont', family: '"Phosphor Unifont", monospace', size: 16, lineHeight: 1 },
 ].map(Object.freeze));
 
+// The sizes FontField allows, in CSS px (and a host's font is held to: wire.fontFor).
+export const MIN_FONT_SIZE = 6, MAX_FONT_SIZE = 64;
+
 // The current font: { id, name, family, size (CSS px), lineHeight }. Read it when it's used; it
 // changes in place.
 export const DISPLAY_FONT = { ...DISPLAY_FONTS[0] };
 
-// The current font as a canvas/CSS font shorthand.
-export const displayFontCss = () => `${DISPLAY_FONT.size}px ${DISPLAY_FONT.family}`;
+// The current font (or another) as a canvas/CSS font shorthand.
+export const displayFontCss = (font = DISPLAY_FONT) => `${font.size}px ${font.family}`;
 
 let scratch = null;
 
-// A character in the current font in a width x height px box (scale: px per CSS px): on the
-// baseline CSS gives a line that tall (the font's ascent below its top, less half the leading, to
-// the whole pixel), squeezed into the box when wider. Its RGBA bytes: anti-aliased (canvas text
+// A character in the current font (or another) in a width x height px box (scale: px per CSS px):
+// on the baseline CSS gives a line that tall (the font's ascent below its top, less half the
+// leading, to the whole pixel), squeezed into the box when wider. Its RGBA bytes: anti-aliased (canvas text
 // always is) when smooth, as the canvas view draws it; otherwise a pixel over half covered is
 // fully the fill's and the rest clear, as glyph coverage counts it. A color glyph (an emoji) keeps
 // its own colors.
-export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth = false) {
+export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth = false, font = DISPLAY_FONT) {
   scratch ??= document.createElement('canvas');
   if (scratch.width !== width || scratch.height !== height) {
     scratch.width = width;
@@ -38,7 +41,7 @@ export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth 
   }
   const ctx = scratch.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, width, height);
-  ctx.font = `${DISPLAY_FONT.size * scale}px ${DISPLAY_FONT.family}`;
+  ctx.font = `${font.size * scale}px ${font.family}`;
   ctx.fillStyle = fill;
   const { fontBoundingBoxAscent: ascent, fontBoundingBoxDescent: descent } = ctx.measureText('M');
   ctx.fillText(char, 0, Math.round((height - ascent - descent) / 2 + ascent), width);
@@ -57,6 +60,11 @@ export async function setDisplayFont(font) {
   style.setProperty('--display-font-family', DISPLAY_FONT.family);
   style.setProperty('--display-font-size', `${DISPLAY_FONT.size}px`);
   style.setProperty('--display-line-height', String(DISPLAY_FONT.lineHeight));
-  const families = DISPLAY_FONT.family.split(',').map((name) => name.trim().replace(/^"|"$/g, ''));
+  await loadFontFaces(DISPLAY_FONT);
+}
+
+// Resolves once every face of every font in a font's stack has loaded (or failed to).
+export async function loadFontFaces(font) {
+  const families = font.family.split(',').map((name) => name.trim().replace(/^"|"$/g, ''));
   await Promise.all([...document.fonts].filter((face) => families.includes(face.family.replace(/^"|"$/g, ''))).map((face) => face.load().catch(() => {})));
 }

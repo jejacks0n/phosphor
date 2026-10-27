@@ -62,6 +62,12 @@ test('a font from a stranger that isn\'t an object is the default, not a throw',
   for (const onWire of [5, 'vga', true, [], undefined]) assert.deepEqual(fontFor(onWire), { ...DISPLAY_FONTS[0] });
 });
 
+test('a size from a stranger is held to the font field\'s range, and a size that isn\'t a number is the font\'s own', () => {
+  const size = (sent) => fontFor({ id: 'vga', size: sent }).size;
+  assert.deepEqual([size(1e300), size(-5), size(0), size(6), size(64), size(20.4)], [64, 6, 6, 6, 64, 20]);
+  for (const sent of [NaN, Infinity, '16px', null, undefined, {}]) assert.equal(size(sent), 16);
+});
+
 test('changedCells finds the indexes that differ', () => {
   const prev = Array.from({ length: 40 }, (_, i) => cell(String.fromCharCode(65 + (i % 26)), '#ffffff', '#000000'));
   const copy = () => prev.map((c) => ({ ...c }));

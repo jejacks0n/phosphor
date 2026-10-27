@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, useTemplateRef } from 'vue';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { DISPLAY_FONTS } from '@/lib/displayFonts';
+import { DISPLAY_FONTS, MIN_FONT_SIZE as MIN_SIZE, MAX_FONT_SIZE as MAX_SIZE } from '@/lib/displayFonts';
 import { addFont, removeFont } from '@/lib/userFonts';
 import HelpInfo from '@/components/HelpInfo.vue';
 
@@ -11,7 +11,6 @@ const HELP = 'The font the art is drawn in. '
   + 'Load custom adds a monospaced TrueType, OpenType or WOFF font from your computer. '
   + 'Pixel fonts look sharpest at their own size or a multiple of it (16 or 32 for the 8x16 fonts). '
   + 'The font and size stay in this browser; they aren\'t saved with the project.';
-const MIN_SIZE = 6, MAX_SIZE = 64;
 
 const workspace = useWorkspaceStore();
 const current = computed(() => workspace.displayFontSpec);
