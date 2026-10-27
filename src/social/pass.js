@@ -28,3 +28,33 @@ export async function requestPass({ privateKey, publicKey }, previous) {
 export function renewAt(claims, now = Date.now()) {
   return Math.max(now, claims.exp * 1000 - RENEW_EARLY_MS);
 }
+
+let passKeyRequest = null;
+
+// The server's raw Ed25519 public key (base64url) that its passes are signed with: asked once per page,
+// and again after a failed ask. Throws when the server can't be reached.
+export function passKey() {
+  passKeyRequest ??= api('/api/pass-key').then(({ ok, data }) => {
+    if (!ok || typeof data?.key !== 'string') throw new Error('No pass key');
+    return data.key;
+  }).catch((error) => {
+    passKeyRequest = null;
+    throw error;
+  });
+  return passKeyRequest;
+}
+
+// The claims of a pass signed by the server's key (keyB64, from passKey) and not yet expired, or null for
+// anything else, malformed passes included. Hosts use this on a watcher's pass.
+export async function verifyPass(pass, keyB64, now = Date.now()) {
+  try {
+    const [body, signature, ...rest] = pass.split('.');
+    if (!signature || rest.length) return null;
+    const key = await crypto.subtle.importKey('raw', fromBase64url(keyB64), { name: 'Ed25519' }, false, ['verify']);
+    if (!await crypto.subtle.verify('Ed25519', key, fromBase64url(signature), new TextEncoder().encode(body))) return null;
+    const claims = decodePass(pass);
+    return claims.exp * 1000 > now ? claims : null;
+  } catch {
+    return null;
+  }
+}

@@ -19,7 +19,7 @@ const room = (id) => ({
 // A connection on fake sockets, a fake wait and fake timers: `sockets` are the sockets it made, in order;
 // `waits` the backoff waits it asked for, each resolved by the test with `waits[i].done()`; `timers` the
 // heartbeat's timers, run by the test with `fire(timers, ms)`.
-async function connect() {
+async function connect(options = {}) {
   const key = await loadKey();
   const sockets = [];
   const waits = [];
@@ -62,6 +62,7 @@ async function connect() {
       return timer;
     },
     clearTimer: (timer) => { if (timer) timer.cleared = true; },
+    ...options,
   });
   const failNextSocket = () => { failures++; };
   return { conn, key, sockets, waits, statuses, messages, timers, getPass, failNextSocket, lobby: () => lobby };
@@ -315,4 +316,57 @@ test('A Pacer on the browser\'s own clock and timers sends the latest after the 
   pacer.reset();
   await new Promise((resolve) => setTimeout(resolve, 120));
   expect(sent).toEqual(['chat', 'heads-down']);
+});
+
+// A room's socket: its own greeting, what makes it live and what ends it.
+const roomOptions = { greet: async (pass) => ({ type: 'join', pass, peer: 'p1' }), liveOn: ['joined'], endOn: ['refused', 'removed', 'ended'] };
+
+test('With greet and liveOn it sends its own greeting on open and goes live on joined, not on state', async () => {
+  const { conn, sockets, statuses, timers } = await connect(roomOptions);
+  conn.open();
+  sockets[0].accept();
+  expect(await helloOn(sockets[0])).toEqual({ type: 'join', pass: 'pass-1', peer: 'p1' });
+  sockets[0].receive({ type: 'state', rooms: [], people: [] });
+  expect(statuses).toEqual(['connecting']);
+  expect(pending(timers)).toEqual([10_000]);   // still waiting for joined
+  sockets[0].receive({ type: 'joined' });
+  expect(statuses).toEqual(['connecting', 'live']);
+  expect(pending(timers)).toEqual([30_000]);
+  conn.close();
+});
+
+test('No joined within 10 s of the greeting is a drop, retried; a drop retries with a fresh greeting', async () => {
+  const { conn, sockets, waits, statuses, timers } = await connect(roomOptions);
+  conn.open();
+  sockets[0].accept();
+  await helloOn(sockets[0]);
+  fire(timers, 10_000);
+  expect(statuses).toEqual(['connecting', 'reconnecting']);
+  waits[0].done();
+  await vi.waitFor(() => expect(sockets).toHaveLength(2));
+  sockets[1].accept();
+  expect((await helloOn(sockets[1])).pass).toBe('pass-2');
+  conn.close();
+});
+
+test('A message in endOn reaches onMessage, then ends it as closed without a retry; a refused ends as refused', async () => {
+  const { conn, sockets, waits, statuses, messages } = await connect(roomOptions);
+  conn.open();
+  sockets[0].accept();
+  await helloOn(sockets[0]);
+  sockets[0].receive({ type: 'joined' });
+  sockets[0].receive({ type: 'ended' });
+  expect(messages.map((m) => m.type)).toEqual(['joined', 'ended']);
+  expect(statuses).toEqual(['connecting', 'live', 'closed']);
+  expect(sockets[0].closed).toBe(true);
+  expect(waits).toHaveLength(0);
+  expect(sockets).toHaveLength(1);
+
+  conn.open();
+  sockets[1].accept();
+  await helloOn(sockets[1]);
+  sockets[1].receive({ type: 'refused', code: 'full' });
+  expect(messages.at(-1)).toEqual({ type: 'refused', code: 'full' });
+  expect(statuses.at(-1)).toBe('refused');
+  expect(waits).toHaveLength(0);
 });
