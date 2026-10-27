@@ -1,7 +1,7 @@
 // Brush pixel generation shared by both editors (grid pixels, clipped to the grid).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { interpolate, pencilPixels, squarePixels, brushPixels, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
+import { interpolate, pencilPixels, squarePixels, brushPixels, linePixels, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
 
 test('Brush pixel generation shared by both editors (grid pixels, clipped to the grid)', async () => {
   assert.deepEqual(interpolate({ x: 0, y: 0 }, { x: 1, y: 0 }), [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 1, y: 0 }]);
@@ -67,4 +67,18 @@ test('Brush pixel generation shared by both editors (grid pixels, clipped to the
   // stopwatch: a timing threshold fails on a busy machine.
   const huge = (aa) => ellipsePixels({ x: -1e6, y: -1e6 }, { x: 1e6, y: 1e6 }, false, 300, 300, aa);
   for (const aa of [false, true]) assert.ok(huge(aa).every(p => p.x >= 0 && p.y >= 0 && p.x < 300 && p.y < 300));
+});
+
+test('A straight line is one pixel per step along its longer side, from end to end, with no corners doubled', () => {
+  const xy = (pixels) => pixels.map((p) => [p.x, p.y]);
+  assert.deepEqual(xy(linePixels({ x: 1.5, y: 2.5 }, { x: 5.5, y: 2.5 }, 10, 10)), [[1, 2], [2, 2], [3, 2], [4, 2], [5, 2]]);
+  assert.deepEqual(xy(linePixels({ x: 3, y: 7 }, { x: 3, y: 4 }, 10, 10)), [[3, 7], [3, 6], [3, 5], [3, 4]]); // any direction
+  assert.deepEqual(xy(linePixels({ x: 0, y: 0 }, { x: 3, y: 3 }, 10, 10)), [[0, 0], [1, 1], [2, 2], [3, 3]]);
+  const shallow = linePixels({ x: 0, y: 0 }, { x: 8, y: 3 }, 20, 20);
+  assert.equal(shallow.length, 9);                                         // one per column
+  assert.deepEqual(new Set(shallow.map((p) => p.x)).size, 9);
+  assert.ok(shallow.every((p, i) => i === 0 || p.y - shallow[i - 1].y <= 1)); // no gaps
+  assert.ok(shallow.every((p) => p.alpha === 1));
+  assert.deepEqual(xy(linePixels({ x: 3, y: 3 }, { x: 3, y: 3 }, 10, 10)), [[3, 3]]);   // a click: one pixel
+  assert.deepEqual(xy(linePixels({ x: -2, y: 1 }, { x: 2, y: 1 }, 10, 10)), [[0, 1], [1, 1], [2, 1]]); // clipped
 });

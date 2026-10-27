@@ -79,6 +79,22 @@ const bounds = (from, to) => ({
   x1: Math.floor(Math.max(from.x, to.x)), y1: Math.floor(Math.max(from.y, to.y)),
 });
 
+// A straight line from `from` to `to` (Bresenham's): one pixel per step along its longer side, so
+// it's one pixel thick with no corner doubled, from end to end.
+export function linePixels(from, to, cols, rows) {
+  let x = Math.floor(from.x), y = Math.floor(from.y);
+  const x1 = Math.floor(to.x), y1 = Math.floor(to.y);
+  const dx = Math.abs(x1 - x), dy = -Math.abs(y1 - y), sx = x < x1 ? 1 : -1, sy = y < y1 ? 1 : -1;
+  const pixels = [];
+  for (let err = dx + dy; ;) {
+    if (inGrid(x, y, cols, rows)) pixels.push({ x, y, alpha: 1 });
+    if (x === x1 && y === y1) return pixels;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x += sx; }
+    if (e2 <= dx) { err += dx; y += sy; }
+  }
+}
+
 export function rectPixels(from, to, filled, cols, rows) {
   const { x0, y0, x1, y1 } = bounds(from, to);
   const pixels = [];

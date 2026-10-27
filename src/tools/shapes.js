@@ -1,12 +1,13 @@
-// Rectangles and ellipses: the outline in the foreground color, the inside in the background color
-// (BG None: no fill). The pixel view paints them; the ANSI view draws rectangles as single/double line
-// boxes (Connect joins them to the lines they cross), shapes in full blocks or the active character as
-// cells, and anything else (line-drawn ellipses, or "Half-block") as paint at grid resolution, which
-// is half-block drawing. Anti-aliased ellipses paint edge pixels by coverage, or shade cells ░▒▓█.
+// Rectangles, ellipses and lines: the outline in the foreground color, the inside in the background
+// color (BG None: no fill; a line has none). The pixel view paints them; the ANSI view draws
+// rectangles and lines as single/double box lines (Connect joins them to the lines they cross; a line
+// runs straight across or down, whichever the drag is closer to), shapes in full blocks or the active
+// character as cells, and anything else (line-drawn ellipses, or "Half-block") as paint at grid
+// resolution, which is half-block drawing. Anti-aliased ellipses paint edge pixels by coverage, or shade cells ░▒▓█.
 // Block shapes paint over the cells, each keeping its own character; Block characters (off by
 // default) makes them real ▄/█ cells instead. Character mode is the character in FG, with its own
 // Fill option, and leaves the cells' backgrounds as they were.
-import { rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
+import { linePixels, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/editCells';
 import { charRowsOf, cellsOfPixels, showsChar } from '@/lib/Cells';
 import { joinBox, inwardArms } from '@/lib/BoxJoin';
@@ -23,7 +24,15 @@ const SHADES = [[7 / 8, '█'], [5 / 8, '▓'], [3 / 8, '▒'], [1 / 8, '░']];
 
 // Whether the ANSI view draws this shape as cells (rather than paint).
 export const drawsCells = ({ shapeKind, shapeDrawWith }) =>
-  shapeDrawWith === 'full' || shapeDrawWith === 'char' || (shapeKind === 'rect' && shapeDrawWith !== 'half');
+  shapeDrawWith === 'full' || shapeDrawWith === 'char' || (shapeKind !== 'ellipse' && shapeDrawWith !== 'half');
+
+// Whether this is a line of box characters, which only run straight across or down.
+const boxLine = ({ shapeKind, shapeDrawWith }, view) =>
+  view === 'output' && shapeKind === 'line' && (shapeDrawWith === 'single' || shapeDrawWith === 'double');
+
+// Where a drag to `to` ends: a box line runs across from `from` (on its row) or down (in its column),
+// whichever the drag is closer to, counted in cells (a cell is two grid pixels tall).
+const lineEnd = (from, to) => (Math.abs(to.x - from.x) >= Math.abs(to.y - from.y) / 2 ? { x: to.x, y: from.y } : { x: from.x, y: to.y });
 
 // Whether the ANSI view draws this shape in blocks (half or full), so Block characters applies.
 const drawsBlocks = ({ shapeKind, shapeDrawWith }) =>
@@ -56,12 +65,13 @@ function apply({ project, workspace, view }, end) {
   const antialias = workspace.shapeAntialias && kind === 'ellipse' && drawWith !== 'char';
   const charMode = view === 'output' && drawWith === 'char';
   // Filled when there's a background to fill with; Character mode fills with its character instead.
-  const fill = charMode ? workspace.shapeCharFill : !workspace.editBgNone;
+  // A line has no inside.
+  const fill = kind === 'line' ? false : charMode ? workspace.shapeCharFill : !workspace.editBgNone;
   const fg = workspace.editFgColor, bg = workspace.editBgColor;
   // Pixels for a paint shape: the whole shape, or just its outline.
-  const pixelsOf = (filled) => (kind === 'ellipse'
-    ? ellipsePixels(start, end, filled, project.cols, project.rows, antialias)
-    : rectPixels(start, end, filled, project.cols, project.rows));
+  const pixelsOf = (filled) => (kind === 'line' ? linePixels(start, end, project.cols, project.rows)
+    : kind === 'ellipse' ? ellipsePixels(start, end, filled, project.cols, project.rows, antialias)
+      : rectPixels(start, end, filled, project.cols, project.rows));
   // Paint: the outline in FG and, filled, the inside in BG (one stroke, one undo step).
   const paintShape = () => {
     const outline = pixelsOf(false);
@@ -93,6 +103,10 @@ function apply({ project, workspace, view }, end) {
     }
     if (kind === 'ellipse') {
       return ellipsePixels({ x: rect.c0, y: rect.r0 }, { x: rect.c1, y: rect.r1 }, filled, project.cols, rows).map(({ x, y }) => ({ col: x, row: y, cover: 1 }));
+    }
+    if (kind === 'line') { // from the start's cell to the end's
+      const cellOf = (p) => ({ x: Math.floor(p.x), y: Math.floor(p.y / 2) });
+      return linePixels(cellOf(start), cellOf(end), project.cols, rows).map(({ x, y }) => ({ col: x, row: y, cover: 1 }));
     }
     return rectCells(rect).filter(inGrid).filter(c => filled || isEdge(c)).map(c => ({ ...c, cover: 1 }));
   };
@@ -161,14 +175,15 @@ export default {
       choices: [
         { value: 'rect', label: 'Rectangle', icon: '<svg viewBox="0 0 16 16"><path d="M1 3h14v10H1zM3 5v6h10V5z"/></svg>' },
         { value: 'ellipse', label: 'Ellipse', icon: '<svg viewBox="0 0 16 16"><path d="M8 2.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 1 1 0-11zM8 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/></svg>' },
+        { value: 'line', label: 'Line', icon: '<svg viewBox="0 0 16 16"><path d="M1.3 13.3L13.3 1.3l1.4 1.4L2.7 14.7z"/></svg>' },
       ],
     },
     {
       key: 'shapeDrawWith', label: 'Draw with', type: 'dropdown', views: ['output'],
       choices: [
-        // Line boxes are rectangles only; an ellipse set to them draws (and shows) half-blocks.
-        { value: 'single', label: 'Single', glyph: '┌─', when: (ws) => ws.shapeKind === 'rect', instead: 'half' },
-        { value: 'double', label: 'Double', glyph: '╔═', when: (ws) => ws.shapeKind === 'rect', instead: 'half' },
+        // Box lines are for rectangles and lines; an ellipse set to them draws (and shows) half-blocks.
+        { value: 'single', label: 'Single', glyph: '┌─', when: (ws) => ws.shapeKind !== 'ellipse', instead: 'half' },
+        { value: 'double', label: 'Double', glyph: '╔═', when: (ws) => ws.shapeKind !== 'ellipse', instead: 'half' },
         { value: 'half', label: 'Half-block', glyph: '▀▄' },
         { value: 'full', label: 'Full block', glyph: '██' },
         // Offered unless the active character is a block the other choices already draw.
@@ -176,13 +191,13 @@ export default {
       ],
     },
     {
-      key: 'shapeCharFill', label: 'Fill', type: 'checkbox', views: ['output'], when: (ws) => ws.shapeDrawWith === 'char',
+      key: 'shapeCharFill', label: 'Fill', type: 'checkbox', views: ['output'], when: (ws) => ws.shapeDrawWith === 'char' && ws.shapeKind !== 'line',
       title: 'Fill the inside with the character too',
     },
     {
       key: 'shapeConnect', label: 'Connect', type: 'checkbox', views: ['output'],
-      when: (ws) => ws.shapeKind === 'rect' && (ws.shapeDrawWith === 'single' || ws.shapeDrawWith === 'double'),
-      title: 'Join the frame to the line characters it crosses or meets',
+      when: (ws) => ws.shapeKind !== 'ellipse' && (ws.shapeDrawWith === 'single' || ws.shapeDrawWith === 'double'),
+      title: 'Join the frame or line to the line characters it crosses or meets',
     },
     {
       key: 'shapeAntialias', label: 'Anti-aliased', type: 'checkbox',
@@ -198,8 +213,8 @@ export default {
     workspace.shapeDrag = { from: pos, to: pos };
     return true;
   },
-  move({ workspace }, from, to) {
-    if (start) workspace.shapeDrag = { from: start, to };
+  move({ workspace, view }, from, to) {
+    if (start) workspace.shapeDrag = { from: start, to: boxLine(workspace, view) ? lineEnd(start, to) : to };
   },
   end(ctx) {
     const drag = ctx.workspace.shapeDrag;

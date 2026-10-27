@@ -148,7 +148,7 @@ const previewStyle = computed(() => {
   };
 });
 
-// The Shapes tool's drag outline (grid positions -> CSS px), drawn while dragging: the rect, or its ellipse.
+// The Shapes tool's drag outline (grid positions -> CSS px), drawn while dragging: the rect, its ellipse, or the line.
 // In the ANSI view a line/character rectangle snaps to whole cells, so its outline does too; it sits
 // inside the display's border, like the cursor and cell highlights.
 const shapeDragStyle = computed(() => {
@@ -164,6 +164,18 @@ const shapeDragStyle = computed(() => {
   }
   const display = unref(props.display);
   const dx = display?.clientLeft ?? 0, dy = display?.clientTop ?? 0;
+  if (workspaceStore.shapeKind === 'line') {
+    // A dashed line between the centers of its end pixels (cells, when it's drawn in cells).
+    const center = (p) => (cellShape
+      ? { x: (Math.floor(p.x) + 0.5) * unit.x, y: (Math.floor(p.y / 2) * 2 + 1) * unit.y }
+      : { x: (Math.floor(p.x) + 0.5) * unit.x, y: (Math.floor(p.y) + 0.5) * unit.y });
+    const a = center(drag.from), b = center(drag.to);
+    return {
+      left: `${a.x + dx}px`, top: `${a.y + dy}px`, width: `${Math.hypot(b.x - a.x, b.y - a.y)}px`, height: '0',
+      border: 'none', borderTop: '1px dashed var(--white)', transformOrigin: '0 0',
+      transform: `rotate(${Math.atan2(b.y - a.y, b.x - a.x)}rad)`,
+    };
+  }
   return {
     left: `${x0 * unit.x + dx}px`, top: `${y0 * unit.y + dy}px`, width: `${(x1 - x0) * unit.x}px`, height: `${(y1 - y0) * unit.y}px`,
     borderRadius: workspaceStore.shapeKind === 'ellipse' ? '50%' : '0',

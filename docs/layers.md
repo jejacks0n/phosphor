@@ -181,6 +181,10 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   character in the foreground color, the cells' backgrounds are left alone, and **Fill** fills the
   inside with the character too. A Single or Double box with **Connect** on joins its frame to the
   lines it crosses or meets, the ones you can see: a line hidden under paint isn't joined.
+  **Line** draws a straight line from where you start dragging to where you let go, in the
+  foreground color: one pixel thick in the Pixel view (half-blocks in the ANSI view), or whole cells
+  in Full block or Character. Single and Double lines run straight across or down, whichever your
+  drag is closer to, and join the lines they cross with Connect.
 - **Paint Bucket** fills what you see, in the foreground color. Text and lines you've drawn (any
   edit cell whose character isn't a space, █, ▀ or ▄) are walls: a fill stops at them and never
   covers them, so it stays inside a box and leaves your text readable. A line hidden under paint

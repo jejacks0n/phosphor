@@ -41,7 +41,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     selectLayers: { base: true, edit: true }, // what the Select tool acts on: the base layer and/or the edit layer
-    shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse'
+    shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse' | 'line'
     shapeCharFill: false,    // Character mode: fill the inside with the character too (other modes fill with BG)
     shapeDrawWith: 'double', // ANSI view: 'single' | 'double' | 'half' | 'full' | 'char'
     shapeConnect: true,      // line boxes join the box characters they cross or meet
