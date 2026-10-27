@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, store, cellPoint, drag } from './support.js';
+import { openApp, store, cellPoint, drag, chars, tab } from './support.js';
 
 const row = (page, r) => store(page, 'project', `(p) => p.cells.slice(${r} * p.cols, ${r} * p.cols + 20).map((c) => c.fg.hex + c.bg.hex)`);
 
@@ -55,4 +55,21 @@ test('DOM view: a Pencil click paints the cell under the pointer, at the far rig
   await page.mouse.click(box.x + inner.l + (col + 0.5) * inner.w / cols, box.y + inner.t + (row + 0.75) * inner.h / rows);
   const painted = await store(page, 'project', `(p) => [${col - 1}, ${col}, ${col + 1}].map((c) => p.cellHasPaint(c, ${row}))`);
   expect(painted).toEqual([false, true, false]);
+});
+
+test('Block characters: the Pencil and Brush offer it in the ANSI view, and a cell painted with it becomes a ▄', async ({ page }) => {
+  await openApp(page);
+  const box = page.getByRole('checkbox', { name: 'Block characters' });
+  for (const tool of ['Pencil (1px)', 'Brush (soft)']) {
+    await page.getByRole('button', { name: tool }).click();
+    await expect(box).toBeVisible();
+    await expect(box).not.toBeChecked(); // off by default
+  }
+  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await box.check();
+  const at = await cellPoint(page, 7, 4, 0);
+  await page.mouse.click(at.x, at.y);
+  expect(await chars(page, 4, 7, 7)).toBe('▄');
+  await tab(page, 'PIXEL').click();
+  await expect(box).toHaveCount(0); // the Pixel view has no characters
 });

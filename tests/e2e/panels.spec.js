@@ -86,3 +86,22 @@ test('Start New Project asks when there are changes, then clears the document', 
   expect(await store(page, 'project', (p) => p.image)).toBe(null);
   await expect(page.getByRole('tab', { name: 'PIXEL' })).toHaveAttribute('aria-selected', 'true');
 });
+
+test('the tool options row is the same height for every tool, its options on one line', async ({ page }) => {
+  await openApp(page);
+  const row = page.locator('.toolbar-row.secondary-row');
+  const measure = () => row.evaluate((el) => {
+    const r = el.getBoundingClientRect(), first = el.querySelector('.tool-setting-group > *').getBoundingClientRect();
+    return { height: Math.round(r.height), middle: Math.round(first.top + first.height / 2 - r.top) };
+  });
+  const seen = {};
+  for (const tool of ['Pencil (1px)', 'Brush (soft)', 'Paint Bucket (fill)', 'Shapes', 'Flip FG/BG Colors', 'Eraser']) {
+    await page.getByRole('button', { name: tool }).click();
+    seen[tool] = await measure();
+  }
+  const [first] = Object.values(seen);
+  for (const [tool, got] of Object.entries(seen)) {
+    expect(got.height, tool).toBe(first.height);
+    expect(Math.abs(got.middle - first.middle), tool).toBeLessThanOrEqual(1);
+  }
+});

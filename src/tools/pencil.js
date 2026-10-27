@@ -1,4 +1,5 @@
 import { pencilPixels } from '@/lib/Brushes';
+import { BLOCK_CHARS } from '@/tools/brush';
 
 const pencil = {
   id: 'pencil',
@@ -8,14 +9,15 @@ const pencil = {
   views: ['input', 'output'],
   kind: 'paint',
   altPicks: true,
+  options: [BLOCK_CHARS],
   shiftLines: true, // Shift-click: a straight line from where the last stroke ended
   // no preview: the crosshair cursor is enough for 1px
   begin(ctx, pos, event) {
     pencil.move(ctx, (event?.shiftKey && ctx.workspace.strokeEnd) || pos, pos);
     return true;
   },
-  move({ project, workspace }, from, to) {
-    project.paintStroke(pencilPixels(from, to, project.cols, project.rows));
+  move({ project, workspace, view }, from, to) {
+    project.paintStroke(pencilPixels(from, to, project.cols, project.rows), undefined, { blockChars: view === 'output' && workspace.editBlockChars });
     workspace.strokeEnd = to;
   },
   end({ project }) {
