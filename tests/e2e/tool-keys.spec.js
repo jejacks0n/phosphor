@@ -77,3 +77,19 @@ test('C stamps too, as in Moebius: the copy stays and the block floats on', asyn
   await expect.poll(() => chars(page, 6, 5, 5)).toBe('A');
   expect(await chars(page, 5, 5, 5)).toBe('A');
 });
+
+test("the Pencil's Single draws lines of box characters: drag across, then down, and it turns the corner", async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('p');
+  await page.getByRole('button', { name: 'Normal mode' }).click();
+  await page.getByRole('button', { name: 'Single' }).click();
+  await expect(page.getByRole('checkbox', { name: 'Connect' })).toBeChecked();
+  const a = await cellPoint(page, 4, 3), b = await cellPoint(page, 12, 3), c = await cellPoint(page, 12, 7);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 6 });
+  await page.mouse.move(c.x, c.y, { steps: 6 });
+  await page.mouse.up();
+  expect(await chars(page, 3, 4, 12)).toBe('────────┐');
+  expect(await chars(page, 7, 12, 12)).toBe('│');
+});

@@ -5,12 +5,6 @@ import { brushPixels } from '@/lib/Brushes';
 // paint layer's smallest step (1/255), which would round to nothing.
 const stampFlow = (percent) => Math.max(1 / 255, (percent / 100) ** 2);
 
-// Block characters (Pencil and Brush, ANSI view): each cell painted becomes a ▄ the paint colors.
-export const BLOCK_CHARS = {
-  key: 'editBlockChars', label: 'Block characters', type: 'checkbox', views: ['output'],
-  title: "Draw with real ▄ characters; off, the paint shows through each cell's own character",
-};
-
 const brush = {
   id: 'brush',
   title: 'Brush (soft)',
@@ -27,7 +21,13 @@ const brush = {
     { key: 'editBrushFlow', label: 'Flow', title: 'Brush flow', min: 1, max: 100, unit: '%' },
     { key: 'editBrushHardness', label: 'Hardness', title: 'Brush hardness', min: 0, max: 100, unit: '%' },
     { key: 'editBrushStack', label: 'Stack opacity', title: 'Each stroke lays up to the opacity on top of what\'s there: two strokes at 50% make it solid', type: 'checkbox' },
-    BLOCK_CHARS,
+    {
+      key: 'brushDrawWith', label: 'Draw with', type: 'dropdown', views: ['output'],
+      choices: [
+        { value: 'normal', label: 'Normal mode', glyph: '' }, // paint over each cell's own character, which shows through
+        { value: 'half', label: 'Half-block', glyph: '▀▄' },  // each cell painted becomes a ▄ the paint colors
+      ],
+    },
   ],
   begin(ctx, pos, event) {
     brush.move(ctx, (event?.shiftKey && ctx.workspace.strokeEnd) || pos, pos);
@@ -35,7 +35,7 @@ const brush = {
   },
   move({ project, workspace, view }, from, to) {
     const options = { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100 };
-    project.paintStroke(brushPixels(from, to, options, project.cols, project.rows), undefined, { blockChars: view === 'output' && workspace.editBlockChars });
+    project.paintStroke(brushPixels(from, to, options, project.cols, project.rows), undefined, { blockChars: view === 'output' && workspace.brushDrawWith === 'half' });
     workspace.strokeEnd = to;
   },
   end({ project }) {

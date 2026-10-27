@@ -34,7 +34,7 @@ const eraser = {
     const pixels = view === 'output' ? cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]) : square;
     const { base, edit } = workspace.eraseLayers;
     if (edit) {
-      // A ▄ with no colors of its own (Block characters: it was there to show the paint) whose last
+      // A ▄ with no colors of its own (Half-block: it was there to show the paint) whose last
       // paint this erases goes too, so the cell's own character comes back. The ANSI view clears
       // the edit cells it erases anyway.
       const blocks = view === 'input' ? cells.filter(({ col, row }) => isPaintBlock(project.editCellAt(col, row)) && project.cellHasPaint(col, row)) : [];
