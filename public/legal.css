@@ -1,0 +1,39 @@
+/* The Terms and Privacy Policy pages: plain reading, in the editor's colors. */
+body {
+  margin: 0;
+  background: #0c0c0c;
+  color: #c8c8c8;
+  font: 16px/1.6 system-ui, sans-serif;
+}
+
+main {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+h1, h2 {
+  color: #fff;
+  line-height: 1.25;
+}
+
+h2 {
+  margin-top: 2.25rem;
+  font-size: 1.15rem;
+}
+
+a {
+  color: #55ffff;
+}
+
+p.home a {
+  text-decoration: none;
+}
+
+p.updated {
+  color: #888;
+}
+
+li {
+  margin: 0.4rem 0;
+}

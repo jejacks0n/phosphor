@@ -26,7 +26,7 @@ async function finish() {
       <UsernameField v-model="username" help="How everyone sees you. Letters, numbers, - and _." />
       <label class="terms">
         <input v-model="terms" type="checkbox">
-        <span>I'm 13 or older and agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a></span>
+        <span>I'm 13 or older and agree to the <a href="/terms.html" target="_blank">Terms</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a></span>
       </label>
       <button class="primary" type="submit" :disabled="!ready">Continue</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
