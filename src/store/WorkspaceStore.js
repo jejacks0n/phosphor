@@ -48,6 +48,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     shapeBlockChars: false,  // ANSI blocks: real ▄/█ characters, or paint over the cells' own
     shapeAntialias: false,   // ellipses and lines: edge pixels by coverage, or ░▒▓█ cells
     shapeVerticalHalves: false, // ANSI blocks: ▌▐ too (Half-block: quadrants), for lines and ellipses
+    strokeEnd: null,         // where the last Pencil or Brush stroke ended (a grid position): Shift-click draws a line from there
     shapeDrag: null,         // { from, to } grid positions while a shape is being dragged
     editZoom:  5,
     editorTab: 'input',

@@ -58,3 +58,13 @@ test('a ▄ typed in Edit Mode (it has its own colors) stays when the paint over
   use(eraser, 'input', [{ x: 15.5, y: 10.5 }]);
   expect(charAt(15, 5)).toBe('▄');
 });
+
+test('a Shift-click line with Block characters makes each cell along it a ▄', async () => {
+  const { project, workspace, charAt } = await scene();
+  const ctx = { project, workspace, view: 'output' };
+  pencil.begin(ctx, { x: 5.5, y: 20.5 }, {});
+  pencil.end(ctx);
+  pencil.begin(ctx, { x: 25.5, y: 20.5 }, { shiftKey: true });
+  pencil.end(ctx);
+  for (let col = 5; col <= 25; col++) expect(charAt(col, 10), `col ${col}`).toBe('▄');
+});

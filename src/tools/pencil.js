@@ -10,13 +10,15 @@ const pencil = {
   kind: 'paint',
   altPicks: true,
   options: [BLOCK_CHARS],
+  shiftLines: true, // Shift-click: a straight line from where the last stroke ended
   // no preview: the crosshair cursor is enough for 1px
-  begin(ctx, pos) {
-    pencil.move(ctx, pos, pos);
+  begin(ctx, pos, event) {
+    pencil.move(ctx, (event?.shiftKey && ctx.workspace.strokeEnd) || pos, pos);
     return true;
   },
   move({ project, workspace, view }, from, to) {
     project.paintStroke(pencilPixels(from, to, project.cols, project.rows), undefined, { blockChars: view === 'output' && workspace.editBlockChars });
+    workspace.strokeEnd = to;
   },
   end({ project }) {
     project.commitEdit();

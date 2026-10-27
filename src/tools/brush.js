@@ -19,6 +19,7 @@ const brush = {
   views: ['input', 'output'],
   kind: 'paint',
   altPicks: true,
+  shiftLines: true, // Shift-click: a straight line from where the last stroke ended
   preview: { shape: 'circle', size: (workspace) => workspace.editBrushSize },
   options: [
     { key: 'editBrushSize', label: 'Size', title: 'Brush size', min: 1, max: 20, step: 0.1, decimals: 1 },
@@ -28,13 +29,14 @@ const brush = {
     { key: 'editBrushStack', label: 'Stack opacity', title: 'Each stroke lays up to the opacity on top of what\'s there: two strokes at 50% make it solid', type: 'checkbox' },
     BLOCK_CHARS,
   ],
-  begin(ctx, pos) {
-    brush.move(ctx, pos, pos);
+  begin(ctx, pos, event) {
+    brush.move(ctx, (event?.shiftKey && ctx.workspace.strokeEnd) || pos, pos);
     return true;
   },
   move({ project, workspace, view }, from, to) {
     const options = { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100 };
     project.paintStroke(brushPixels(from, to, options, project.cols, project.rows), undefined, { blockChars: view === 'output' && workspace.editBlockChars });
+    workspace.strokeEnd = to;
   },
   end({ project }) {
     project.commitEdit();

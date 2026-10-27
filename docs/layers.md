@@ -225,6 +225,8 @@ These work in both the ANSI and the pixel view, for as long as you hold the key:
 
 - **Alt** (Option on a Mac), with the Pencil, Brush, Paint Bucket or Shapes: the Color Picker. A
   click picks the foreground color; add **Shift** to pick the background color instead.
+- **Shift**, with the Pencil or Brush: a click draws a straight line from where your last stroke
+  ended (with either of them, in either view) to where you click, and keeps going if you drag.
 - **Space**, with any tool: the Hand, to drag the view around (the middle mouse button does too).
   Space still types in Edit Mode and in text fields.
 
