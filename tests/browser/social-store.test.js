@@ -909,3 +909,53 @@ test('A two-factor code that signs you in joins the room kept before Discord, on
   expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
   expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(2);
 });
+
+test('A room id left from a trip that never finished is good for no later sign-in: a plain page load forgets it', async () => {
+  fakeServer();
+  sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
+  await social.start(at(''));
+  await social.showLobby();
+  expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
+  expect(social._roomLink).toBe(null);
+});
+
+test('A room id left from an abandoned code page is forgotten by a password sign-in, so the code that follows joins nothing', async () => {
+  twoFactorServer();
+  await social.start(at(''));
+  await social.showLobby();
+  const join = joinSpy(useRoomStore());
+  sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
+  await social.signIn('fan@example.com', 'right-password');
+  expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
+  expect(await social.verifyTwoFactor('123456')).toBe(true);
+  expect(join).not.toHaveBeenCalled();
+});
+
+test('A two-factor return keeps the room id through the page load, for the code', async () => {
+  twoFactorServer();
+  sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
+  await social.start(at('?social=two-factor'));
+  await social.showLobby();
+  expect(sessionStorage.getItem('phosphor-rejoin')).toBe('abcdefghij');
+});
+
+test('Back from Discord needing a username: no room is joined until onboarding is done, then the same room is', async () => {
+  const server = fakeServer();
+  server.session = member({ username: null, needsOnboarding: true, providers: ['discord'] });
+  server.route('POST /api/me/onboarding', (body) => ((server.session = member({ username: body.username })), [200, server.session]));
+  const join = joinSpy(useRoomStore());
+  sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
+  await social.start(at('?social=signed-in'));
+  await social.showLobby();
+  expect(social.page).toBe('onboarding');
+  expect(join).not.toHaveBeenCalled();
+
+  await social.finishOnboarding('ansi-fan');
+  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij');
+});
+
+test('The back link says "room" while watching and "lobby" otherwise', () => {
+  expect(social.backTo).toBe('lobby');
+  watching();
+  expect(social.backTo).toBe('room');
+});

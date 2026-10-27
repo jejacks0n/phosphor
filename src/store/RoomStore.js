@@ -174,6 +174,11 @@ export const useRoomStore = defineStore('room', {
       this.connect({ type: 'join', ...(password === undefined ? {} : { password }) }, { liveOn: ['joined'], endOn: ['refused', 'removed', 'ended', 'replaced'] });
     },
 
+    // The room you're watching, to go back into after signing in: its id and password, or null.
+    rejoinInfo() {
+      return this.role === 'watch' ? { id: this.id, password: this._password } : null;
+    },
+
     setFollowing(on) {
       this.following = on;
       this._watch?.setFollowing(on);

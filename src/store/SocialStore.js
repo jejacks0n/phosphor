@@ -26,7 +26,8 @@ const STALE_SESSION = new Set(['SESSION_EXPIRED', 'SESSION_NOT_FRESH']);
 const NEW_CHALLENGE = new Set(['INVALID_TWO_FACTOR_COOKIE', 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE', 'ACCOUNT_TEMPORARILY_LOCKED']);   // the code can't be tried again: sign in again
 
 // The room you were watching when you left the page to sign in: its id only (never its password), in
-// sessionStorage, so it's only for this tab and this visit.
+// sessionStorage, good for that one trip back: a page load other than a two-factor return, or a sign-in on
+// the page, forgets it.
 const REJOIN = 'phosphor-rejoin';
 const keepRoom = (id) => {
   try {
@@ -83,6 +84,8 @@ export const useSocialStore = defineStore('social', {
     people: (state) => sortedPeople(state.lobby, state.claims?.sub)
       .map((p) => (p.sub === state.claims?.sub && !p.guest ? { ...p, signal: state.signal } : p)),
     myName: (state) => state.claims?.name ?? null,
+    // The word for the sign-in pages' back link.
+    backTo: () => (useRoomStore().role === 'watch' ? 'room' : 'lobby'),
     isGuest() {
       return this.claims?.guest ?? !this.signedIn;
     },
@@ -93,7 +96,10 @@ export const useSocialStore = defineStore('social', {
     async start(location = window.location) {
       if (this.started) return;
       this.started = true;
-      if (!this.readReturn(location)) return;
+      const toCode = new URL(location.href).searchParams.get('social') === 'two-factor';
+      const returned = this.readReturn(location);
+      if (!toCode) keepRoom(null);   // (readReturn has taken it for a signed-in return)
+      if (!returned) return;
       await this.boot();
       this.joinLink();
     },
@@ -108,8 +114,9 @@ export const useSocialStore = defineStore('social', {
       this.connectLobby();
     },
 
-    // The room a ?room= link named, once.
+    // The room a ?room= link named, once, when you're done with onboarding (finishOnboarding comes back to it).
     joinLink() {
+      if (this.me?.needsOnboarding) return;
       const id = this._roomLink;
       this._roomLink = null;
       if (id !== null && this.supported) useRoomStore().join(id);
@@ -187,7 +194,8 @@ export const useSocialStore = defineStore('social', {
     // with the same password, as the new you.
     async becameSomeoneElse({ signedOut = false } = {}) {
       const rooms = useRoomStore();
-      const back = !signedOut && rooms.role === 'watch' ? { id: rooms.id, password: rooms._password } : null;
+      const back = signedOut ? null : rooms.rejoinInfo();
+      keepRoom(null);
       rooms.close();
       if (signedOut) this.me = null;
       else await this.refreshMe();
@@ -200,6 +208,7 @@ export const useSocialStore = defineStore('social', {
     // With two-factor on, the answer is only the challenge: the code comes next, and you're no one until then
     // (the server has ended a session you had).
     signIn(login, password) {
+      keepRoom(null);   // a sign-in here is not the trip back
       return this.whileBusy(async () => {
         const byEmail = login.includes('@');
         const { ok, data } = await this.request(byEmail ? '/api/auth/sign-in/email' : '/api/auth/sign-in/username', {
@@ -223,10 +232,9 @@ export const useSocialStore = defineStore('social', {
         });
         if (NEW_CHALLENGE.has(failure)) this.page = 'sign-in';
         if (ok) {
-          await this.becameSomeoneElse();
           // Back from Discord or GitHub and then the code: the room kept before leaving, unless it's already rejoined.
           const id = keptRoom();
-          keepRoom(null);
+          await this.becameSomeoneElse();
           if (id && !useRoomStore().role) useRoomStore().join(id);
         }
         return ok;
@@ -301,6 +309,7 @@ export const useSocialStore = defineStore('social', {
       this.me = data;
       this.page = 'lobby';
       this.reconnect();
+      this.joinLink();
       return true;
     },
 

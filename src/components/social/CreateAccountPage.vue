@@ -1,13 +1,11 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
-import { useRoomStore } from '@/store/RoomStore';
 import { usernameProblem } from '@/social/names';
 import { mountTurnstile } from '@/social/turnstile';
 import UsernameField from './UsernameField.vue';
 
 const social = useSocialStore();
-const room = useRoomStore();
 const username = ref('');
 const email = ref('');
 const password = ref('');
@@ -32,7 +30,7 @@ async function create() {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">‹ Back to the {{ room.role === 'watch' ? 'room' : 'lobby' }}</button>
+    <button class="link back" @click="social.page = 'lobby'">‹ Back to the {{ social.backTo }}</button>
     <h2>Create an account</h2>
     <form @submit.prevent="ready && create()">
       <UsernameField v-model="username" help="How everyone sees you. Letters, numbers, - and _." />

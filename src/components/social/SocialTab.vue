@@ -21,7 +21,7 @@ const PAGES = {
   reset: ResetPasswordPage, onboarding: OnboardingPage, account: AccountPage,
   'two-factor': TwoFactorPage, 'start-room': StartRoomPage, 'host-room': HostRoomPage, 'watch-room': WatchRoomPage,
 };
-const SIGN_IN_PAGES = new Set(['sign-in', 'create', 'forgot', 'two-factor']);
+const SIGN_IN_PAGES = new Set(['sign-in', 'create', 'forgot', 'two-factor', 'onboarding']);
 onMounted(() => social.showLobby());
 
 // The room you host or watch, while you do (a guest watching still gets the sign-in pages, to sign in to chat). Account is only for someone signed in: until /api/me has answered
