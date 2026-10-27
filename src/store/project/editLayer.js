@@ -22,7 +22,7 @@ export const editLayerActions = {
   },
 
   // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground color) at the brush opacity,
-  // stacking or not (Stack opacity). blockChars (the Pencil's and Brush's Block characters, ANSI view)
+  // stacking or not (Stack opacity). blockChars (the Pencil's and Brush's Half-block, ANSI view)
   // makes each cell painted a ▄ first, which the paint colors half by half, instead of showing through
   // the cell's own character.
   paintStroke(pixels, color, { blockChars = false } = {}) {

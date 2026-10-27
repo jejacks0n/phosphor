@@ -77,11 +77,10 @@ instead. Typing or drawing cells (a line box, a Character or Full block shape) o
 the paint in those cells, so what you wrote shows; with the background set to None, each cell keeps
 the background color the paint gave it, as it keeps the picture's or an earlier cell's.
 
-The Pencil and Brush paint over each cell's own character, which shows through. With the Brush's
-**Block characters** on (in the ANSI view; off by default), or the Pencil drawing with
-**Half-block**, each cell they paint becomes a ▄ instead, and the paint colors its two halves, so
-you draw clean half-blocks. The half you don't paint keeps its color. (The Pencil's **Draw with**
-is **Normal mode** by default: the paint over each cell's character.)
+The Pencil and Brush paint over each cell's own character, which shows through: **Normal mode**,
+the default in their **Draw with** (ANSI view). With **Half-block** each cell they paint becomes a ▄
+instead, and the paint colors its two halves, so you draw clean half-blocks. The half you don't
+paint keeps its color.
 
 The Pencil's **Single** and **Double** (ANSI view) draw box-drawing lines as you drag from cell to
 cell: each cell gets the piece its path needs (─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼), so the line turns corners and
@@ -140,7 +139,7 @@ The eraser's **Erase** toggles choose what it erases: **Base**, **Edit**, or bot
 
 Size 1 erases exactly what's under the pointer: one character in the ANSI view, one pixel in
 the Pixel view. In the Pixel view the eraser removes paint (Edit) and turns base pixels black
-(Base), leaving the characters as they are, except a ▄ that Block characters made to show paint
+(Base), leaving the characters as they are, except a ▄ that Half-block made to show paint
 (one with no colors of its own): when its cell's last paint is erased, the cell gets its own
 character back.
 
