@@ -16,7 +16,7 @@ const WORDS = {
   TOO_SOON: ({ until }) => until ? `You can change your username again on ${day(until)}` : 'You changed your username recently. Try again later',
   ONBOARDING_REQUIRED: 'Pick a username to finish setting up your account',
   NEEDS_ONBOARDING: 'Pick a username to finish setting up your account',
-  SUSPENDED: ({ until }) => until ? `This account is suspended until ${day(until)}` : 'This account is suspended',
+  SUSPENDED: ({ until }) => until ? `This account is suspended until ${day(until)}` : 'This account is suspended for good',
   THROTTLED: 'Too many tries. Wait a moment and try again',
   TURNSTILE_FAILED: "We couldn't check that you're a person. Try again",
   PASSWORD_BREACHED: 'That password has appeared in a data breach. Choose another',

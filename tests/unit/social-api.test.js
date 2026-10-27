@@ -76,6 +76,6 @@ test('messageFor has plain words for every code the server sends, and a fallback
   const until = new Date(2026, 10, 3).getTime();
   const day = new Date(until).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
   assert.equal(messageFor('TOO_SOON', { until }), `You can change your username again on ${day}`);
-  assert.equal(messageFor('SUSPENDED'), 'This account is suspended');
+  assert.equal(messageFor('SUSPENDED'), 'This account is suspended for good');
   assert.equal(messageFor('SUSPENDED', { until }), `This account is suspended until ${day}`);
 });
