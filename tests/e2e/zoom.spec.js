@@ -8,6 +8,9 @@ async function pixelView(page) {
   await openApp(page);
   await tab(page, 'PIXEL').click();
   await settled(page);
+  // The view centers itself a frame after it mounts and then records its scroll: until it has, the
+  // canvas is not where it will be, and a pointer placed on it may be off the view.
+  await page.waitForFunction(() => document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('workspace').inputScrollX !== null);
   return page.locator('article .display').first();
 }
 
@@ -44,11 +47,12 @@ test('Ctrl+wheel zoom keeps the grid point under the pointer', async ({ page }) 
   await page.keyboard.down('Control');
   for (let i = 0; i < 5; i++) await page.mouse.wheel(0, -10);
   await page.keyboard.up('Control');
-  await page.waitForTimeout(200);
-  const after = await gridAt();
   expect(await zoom(page)).toBeGreaterThan(5);
-  expect(Math.abs(after.x - before.x)).toBeLessThan(0.5);
-  expect(Math.abs(after.y - before.y)).toBeLessThan(0.5);
+  // The scroll that puts the point back under the pointer lands a frame after the zoom.
+  await expect.poll(async () => {
+    const after = await gridAt();
+    return Math.max(Math.abs(after.x - before.x), Math.abs(after.y - before.y));
+  }).toBeLessThan(0.5);
 });
 
 test('at a fractional zoom the PIXEL view fills its canvas to the last pixel, with no see-through sliver at the grid\'s edge', async ({ page }) => {
