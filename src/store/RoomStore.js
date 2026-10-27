@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia';
 import { markRaw, shallowRef, watch } from 'vue';
 import { apiOrigin, wsOrigin } from '@/social/config';
-import { proof } from '@/social/keys';
+import { proof, sign } from '@/social/keys';
+import { Allowance, MOST_KEPT, chatText, newId, signedText } from '@/social/chat';
 import { LobbyConnection, Pacer } from '@/social/lobby';
 import { refusalWords } from '@/social/messages';
-import { passKey } from '@/social/pass';
+import { decodePass, passKey } from '@/social/pass';
 import { Host } from '@/social/hosting';
 import { Watch } from '@/social/watching';
 import { fontOnWire, fontFor } from '@/social/wire';
@@ -38,9 +39,15 @@ export const useRoomStore = defineStore('room', {
     art: shallowRef(null),   // a watcher's: { cells, cols, lines, font }
     hostView: null,      // a watcher's: { col, row, cols, rows }
     following: true,
+    chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted }], oldest first, at most MOST_KEPT
+    chatMore: false,     // older messages remain (the host's, or dropped from this list)
+    joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
+    chatRefused: null,   // 'too-fast' until the next message goes
     _connection: null,   // the room's LobbyConnection (markRaw)
     _host: null,         // Host (markRaw)
     _watch: null,        // Watch (markRaw)
+    _allowance: null,    // the composer's Allowance (markRaw)
+    _asking: false,      // a watcher's earlier() is waiting for its answer
     _settings: null,     // Pacer for the host's settings (markRaw)
     _stops: [],          // what close() undoes: the host's watches, timers and pagehide listener
     _password: undefined, // the password the join sent
@@ -50,6 +57,11 @@ export const useRoomStore = defineStore('room', {
 
   getters: {
     inRoom: (state) => !!state.role,
+    // Only a confirmed member sends; guests and unconfirmed members read.
+    canChat() {
+      const claims = useSocialStore().claims;
+      return !!claims && !claims.guest && claims.verified;
+    },
   },
 
   actions: {
@@ -66,8 +78,9 @@ export const useRoomStore = defineStore('room', {
       });
       this._host = markRaw(new Host({
         send: (msg) => this._connection?.send(msg),
-        passKey, connectWithinMs: this._connectWithinMs,
+        passKey, connectWithinMs: this._connectWithinMs, roomId: this.id,
         onWatchers: (list) => { this.watchers = list; },
+        onChat: (event) => this.chatHeard(event),
       }));
       this._settings = markRaw(new Pacer(SETTINGS_EVERY_MS, (msg) => this._connection?.send(msg) ?? false));
       this.share();
@@ -146,9 +159,11 @@ export const useRoomStore = defineStore('room', {
       }
       this.close();
       Object.assign(this, { role: 'watch', id, status: 'joining', _password: password });
+      if (social.signedIn) social.loadBlocked();   // whose messages to hide
       this._watch = markRaw(new Watch({
         send: (msg) => this._connection?.send(msg),
-        connectWithinMs: this._connectWithinMs,
+        connectWithinMs: this._connectWithinMs, roomId: id, passKey,
+        onChat: (event) => this.chatHeard(event),
         onRoom: ({ name, welcome }) => { this.room = { ...this.room, name, welcome }; },   // the host is joined's
         onArt: (art) => { this.art = art; },
         onView: (view) => { this.hostView = view; },
@@ -180,7 +195,8 @@ export const useRoomStore = defineStore('room', {
       for (const stop of this._stops) stop();
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, watchers: [], art: null,
-        hostView: null, following: true, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
+        hostView: null, following: true, chat: [], chatMore: false, joinedAt: null, chatRefused: null,
+        _allowance: null, _asking: false, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,
       });
     },
@@ -207,6 +223,87 @@ export const useRoomStore = defineStore('room', {
         },
       }));
       connection.open();
+    },
+
+    // Your message: the text as the composer sends it, within your allowance, signed with this browser's key.
+    // A host's shows at once (Host calls chatHeard with it); a watcher's shows when the host sends it back.
+    async say(text) {
+      const social = useSocialStore(), side = this._host ?? this._watch, body = chatText(text);
+      if (!side || !body || !this.canChat) return false;
+      this._allowance ??= markRaw(new Allowance());
+      if (!this._allowance.take()) {
+        this.chatRefused = 'too-fast';
+        return false;
+      }
+      this.chatRefused = null;
+      const message = { id: newId(), ts: Date.now(), text: body };
+      const sig = await sign(social._key.privateKey, signedText(this.id, message));
+      if (side !== (this._host ?? this._watch)) return false;   // the room closed meanwhile
+      return side.say(this.role === 'host' ? { pass: social.pass, ...message, sig } : { ...message, sig });
+    },
+
+    // The host's Delete: the message stays, as deleted, for everyone.
+    deleteMessage(id) {
+      return this._host?.deleteMessage(id) ?? false;
+    },
+
+    // A watcher asks for the page before its oldest message; one question at a time.
+    earlier() {
+      if (this.role !== 'watch' || !this.chatMore || this._asking || !this.chat.length) return false;
+      return this._asking = this._watch.earlier(this.chat[0].id);
+    },
+
+    // The host's Remove: the watcher is put out of the room.
+    remove(peer) {
+      this._host?.remove(peer);
+    },
+
+    // The host's Block: the account can't join any room of yours, and this one is put out.
+    async block(watcher) {
+      if (!await useSocialStore().block(watcher.name)) return false;
+      this.remove(watcher.peer);
+      return true;
+    },
+
+    // What Host and Watch hand over about chat: a message, a page of them, a deletion or a refusal.
+    chatHeard(event) {
+      if (event.type === 'refused') {
+        this.chatRefused = event.reason;
+      } else if (event.type === 'deleted') {
+        const shown = this.chat.find((m) => m.id === event.id);
+        if (shown) Object.assign(shown, { deleted: true, text: '' });
+      } else if (event.type === 'chat') {
+        if (!this.chat.some((m) => m.id === event.entry.id)) this.keep([...this.chat, this.chatRow(event.entry, event.claims)]);
+      } else if (event.type === 'history') {
+        const rows = event.messages.map((m) => (m.deleted ? { id: m.id, ts: m.ts, text: '', sub: null, name: null, host: false, mine: false, deleted: true } : this.chatRow(m.entry, m.claims)));
+        const fresh = rows.filter((r) => !this.chat.some((m) => m.id === r.id));
+        if (event.earlier && this._asking) {
+          this.chatMore = event.more;
+          this.keep([...fresh, ...this.chat]);
+        } else if (!this.chat.length) {
+          Object.assign(this, { chatMore: event.more, joinedAt: rows.at(-1)?.id ?? null });
+          this.keep(rows);
+        } else if (fresh.length) {
+          this.keep([...this.chat, ...fresh].sort((a, b) => a.ts - b.ts));   // stable: same-time messages keep their order
+        }
+        this._asking = false;
+      }
+    },
+
+    // A message as the list shows it. A host's own claims come from its pass (the host checked every
+    // watcher's pass when it joined); the host's mark is its own messages, or for a watcher the room's host.
+    chatRow({ id, ts, text, pass }, claims = decodePass(pass)) {
+      const mine = claims.sub === useSocialStore().claims?.sub;
+      return { id, ts, text, sub: claims.sub, name: claims.name, host: this.role === 'host' ? mine : claims.name === this.room?.host, mine, deleted: false };
+    },
+
+    // The list is kept to the last MOST_KEPT; older ones dropped from it are still the host's to give.
+    keep(list) {
+      if (list.length > MOST_KEPT) {
+        list = list.slice(-MOST_KEPT);
+        this.chatMore = true;
+      }
+      this.chat = list;
     },
 
     // The Room's messages (the server's API).
@@ -281,6 +378,7 @@ export const useRoomStore = defineStore('room', {
         this._connection = null;
         connection?.close();
       }
+      this._asking = false;   // an answer over a lost connection isn't coming
       this.status = state === 'lost' ? 'waiting' : state;
     },
   },

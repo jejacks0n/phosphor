@@ -14,7 +14,9 @@ import { hex2rgb } from '@/lib/ColorUtils';
 import { desktopQuery, rtcConfig } from '@/social/config';
 import { Watch } from '@/social/watching';
 import { Host } from '@/social/hosting';
+import { MOST_KEPT, signedText } from '@/social/chat';
 import { openPeer } from '@/social/peer';
+import { passKey } from '@/social/pass';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
 import { verify, claimsOf, member, fakeServer, sockets, useFakeSockets, lastSocket, at } from '../support/socialServer.js';
@@ -627,4 +629,239 @@ test('A picture that fails to make is a picture the browser couldn\'t make: noth
   await vi.advanceTimersByTimeAsync(3 * 60_000 + 1000);
   expect(thumbnails(socket)).toHaveLength(1);
   expect(room.status).toBe('live');
+});
+
+// The room's chat: a host's own messages and the watchers', through Host and Watch (their own tests are
+// social-hosting and social-watching). A watcher's store is fed what its Watch would hand it.
+const chatId = (n) => String(n).padStart(16, '0');
+const said = (n, fields = {}) => ({
+  entry: { pass: 'p', id: chatId(n), ts: 1000 + n, text: `m${n}`, sig: 's' },
+  claims: { sub: 'u_2', name: 'someone', guest: false, verified: true, key: 'k', exp: 0, ...fields },
+});
+const mark = (n) => ({ id: chatId(n), ts: 1000 + n, text: `m${n}`, sub: 'u_2', name: 'someone', host: false, mine: false, deleted: false });
+
+async function watching() {
+  await social.boot();
+  const socket = await joining(1);
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  return socket;
+}
+
+test('A host\'s say trims, shows at once as the host\'s own, and sends one chat signed over the room', async () => {
+  const socket = await goLive();
+  await watcherOn(socket);
+  const sent = channelSends();
+  expect(await room.say('  hi ')).toBe(true);
+  expect(room.chat).toEqual([{ id: expect.any(String), ts: expect.any(Number), text: 'hi', sub: 'u_1', name: 'ansi-fan', host: true, mine: true, deleted: false }]);
+  const chats = sent().filter((m) => m.t === 'chat');
+  expect(chats).toHaveLength(1);
+  const { id, ts, sig } = chats[0];
+  expect(chats[0]).toMatchObject({ pass: social.pass, text: 'hi' });
+  expect(await verify((await loadKey()).publicKey, `chat:${ID}:${id}:${ts}:hi`, sig)).toBe(true);
+  expect(room.chat[0]).toMatchObject({ id, ts });
+});
+
+test('Both sides are given the room\'s id to sign over, and a watcher the pass key', async () => {
+  await goLive();
+  expect(room._host.roomId).toBe(ID);
+  room.leave();
+  await social.boot();
+  await joining(2);
+  expect(room._watch.roomId).toBe(ID);
+  expect(room._watch.passKey).toBe(passKey);
+});
+
+test('An empty or too long message sends nothing', async () => {
+  const socket = await goLive();
+  await watcherOn(socket);
+  const sent = channelSends();
+  expect(await room.say('  ')).toBe(false);
+  expect(await room.say('x'.repeat(301))).toBe(false);
+  expect(room.chat).toEqual([]);
+  expect(room.chatRefused).toBe(null);
+  expect(sent().filter((m) => m.t === 'chat')).toEqual([]);
+});
+
+test('A guest or an unconfirmed member can\'t chat: canChat is false and say sends nothing', async () => {
+  await goLive();
+  expect(room.canChat).toBe(true);
+  social.claims = { ...social.claims, guest: true, verified: false };
+  expect(room.canChat).toBe(false);
+  social.claims = { ...social.claims, guest: false, verified: false };
+  expect(room.canChat).toBe(false);
+  expect(await room.say('hi')).toBe(false);
+  expect(room.chat).toEqual([]);
+  social.claims = null;
+  expect(room.canChat).toBe(false);
+});
+
+test('A 4th message in a second is too fast; after a second the next good one clears the word', async () => {
+  await goLive();
+  vi.useFakeTimers({ toFake: ['Date'] });
+  expect(await room.say('a')).toBe(true);
+  expect(await room.say('b')).toBe(true);
+  expect(await room.say('c')).toBe(true);
+  expect(await room.say('d')).toBe(false);
+  expect(room.chatRefused).toBe('too-fast');
+  expect(room.chat.map((m) => m.text)).toEqual(['a', 'b', 'c']);
+  vi.setSystemTime(Date.now() + 1000);
+  expect(await room.say('d')).toBe(true);
+  expect(room.chatRefused).toBe(null);
+});
+
+test('A host\'s Delete marks the message deleted, drops its text and tells the watchers', async () => {
+  const socket = await goLive();
+  await watcherOn(socket);
+  await room.say('oops');
+  const sent = channelSends();
+  const { id } = room.chat[0];
+  expect(room.deleteMessage(id)).toBe(true);
+  expect(room.chat[0]).toMatchObject({ id, deleted: true, text: '' });
+  expect(sent().filter((m) => m.t === 'deleted')).toEqual([{ t: 'deleted', id }]);
+});
+
+test('A watcher\'s say signs and sends over the channel, and shows only on its echo; the host\'s refusal is shown', async () => {
+  const socket = await watching();
+  const sent = vi.fn(() => true);
+  room._watch.say = sent;
+  expect(await room.say(' hello ')).toBe(true);
+  const { id, ts, text, sig } = sent.mock.calls[0][0];
+  expect(text).toBe('hello');
+  expect(await verify((await loadKey()).publicKey, signedText(ID, { id, ts, text }), sig)).toBe(true);
+  expect(room.chat).toEqual([]);
+  room._watch.onChat({ type: 'refused', id, reason: 'too-fast' });
+  expect(room.chatRefused).toBe('too-fast');
+  expect(await room.say('again')).toBe(true);
+  expect(room.chatRefused).toBe(null);
+  expect(socket.closed).toBe(false);
+});
+
+test('A watcher\'s say returns false when the channel isn\'t open', async () => {
+  await watching();
+  expect(await room.say('hi')).toBe(false);
+});
+
+test('A watcher\'s first history sets the chat, more and where it joined; a host message is the host\'s, mine is mine', async () => {
+  await watching();
+  const own = said(3, { sub: 'u_1', name: 'ansi-fan' });   // the watcher's own, here also the host's name
+  room._watch.onChat({ type: 'history', messages: [said(1, { name: 'ansi-fan' }), said(2), { id: chatId(9), ts: 1009, deleted: true }, own], more: true, earlier: false });
+  expect(room.chat.map((m) => [m.id, m.host, m.mine, m.deleted, m.text])).toEqual([
+    [chatId(1), true, false, false, 'm1'], [chatId(2), false, false, false, 'm2'],
+    [chatId(9), false, false, true, ''], [chatId(3), true, true, false, 'm3'],
+  ]);
+  expect(room.chat[1]).toEqual(mark(2));
+  expect(room.chatMore).toBe(true);
+  expect(room.joinedAt).toBe(chatId(3));
+});
+
+test('earlier() asks for the page before the oldest, once while waiting, and the answer goes in front', async () => {
+  await watching();
+  room._watch.earlier = vi.fn(() => true);
+  expect(room.earlier()).toBe(false);   // nothing more yet
+  room._watch.onChat({ type: 'history', messages: [said(5), said(6)], more: true, earlier: false });
+  expect(room.earlier()).toBe(true);
+  expect(room.earlier()).toBe(false);
+  expect(room._watch.earlier).toHaveBeenCalledTimes(1);
+  expect(room._watch.earlier).toHaveBeenCalledWith(chatId(5));
+  room._watch.onChat({ type: 'history', messages: [said(3), said(4)], more: false, earlier: true });
+  expect(room.chat.map((m) => m.id)).toEqual([3, 4, 5, 6].map(chatId));
+  expect(room.chatMore).toBe(false);
+  expect(room.joinedAt).toBe(chatId(6));
+  expect(room.earlier()).toBe(false);   // no more
+});
+
+test('An earlier-marked history nobody asked for is merged, not trusted: only new ids, more and joinedAt kept', async () => {
+  await watching();
+  room._watch.onChat({ type: 'history', messages: [said(5), said(6)], more: true, earlier: false });
+  room._watch.onChat({ type: 'history', messages: [said(5), said(6), said(7)], more: false, earlier: true });
+  expect(room.chat.map((m) => m.id)).toEqual([5, 6, 7].map(chatId));
+  expect(room.chatMore).toBe(true);
+  expect(room.joinedAt).toBe(chatId(6));
+});
+
+test('A fresh history after a reconnect adds only the messages not there yet, and a new asking can start', async () => {
+  await watching();
+  room._watch.earlier = vi.fn(() => true);
+  room._watch.onChat({ type: 'history', messages: [said(5), said(6)], more: true, earlier: false });
+  room.earlier();   // never answered: the connection dropped
+  room.watchState('lost');
+  room._watch.onChat({ type: 'history', messages: [said(6), said(7)], more: false, earlier: true });
+  expect(room.chat.map((m) => m.id)).toEqual([5, 6, 7].map(chatId));
+  expect(room.earlier()).toBe(true);
+  expect(room._watch.earlier).toHaveBeenCalledTimes(2);
+});
+
+test('A chat entry whose id is already shown is ignored', async () => {
+  await watching();
+  room._watch.onChat({ type: 'chat', ...said(1) });
+  room._watch.onChat({ type: 'chat', ...said(1) });
+  room._watch.onChat({ type: 'chat', ...said(2) });
+  expect(room.chat.map((m) => m.id)).toEqual([1, 2].map(chatId));
+});
+
+test('A watcher\'s deleted marks the message deleted and drops its text; an unknown id is ignored', async () => {
+  await watching();
+  room._watch.onChat({ type: 'history', messages: [said(1), said(2)], more: false, earlier: false });
+  room._watch.onChat({ type: 'deleted', id: chatId(2) });
+  room._watch.onChat({ type: 'deleted', id: chatId(8) });
+  expect(room.chat.map((m) => [m.deleted, m.text])).toEqual([[false, 'm1'], [true, '']]);
+});
+
+test('5,001 messages keep 5,000 and set chatMore', async () => {
+  await watching();
+  for (let n = 1; n <= MOST_KEPT + 1; n++) room._watch.onChat({ type: 'chat', ...said(n) });
+  expect(room.chat).toHaveLength(MOST_KEPT);
+  expect(room.chat[0].id).toBe(chatId(2));
+  expect(room.chatMore).toBe(true);
+});
+
+test('block POSTs the name, then removes the watcher; a failed POST removes no one', async () => {
+  const socket = await goLive();
+  await watcherOn(socket);
+  await expect.poll(() => room.watchers.length).toBe(1);
+  const [watcher] = room.watchers;
+  server.route('POST /api/blocks', () => [404, { code: 'NO_SUCH_USER' }]);
+  expect(await room.block(watcher)).toBe(false);
+  expect(socket.sent.filter((m) => m.type === 'remove')).toEqual([]);
+  expect(room.watchers).toHaveLength(1);
+
+  server.route('POST /api/blocks', () => [200, {}]);
+  expect(await room.block(watcher)).toBe(true);
+  expect(server.sent('POST', '/api/blocks').at(-1).body).toEqual({ username: 'p1' });
+  expect(socket.sent.filter((m) => m.type === 'remove')).toEqual([{ type: 'remove', peer: 'p1' }]);
+  expect(room.watchers).toEqual([]);
+});
+
+test('remove sends the Room\'s remove and drops the watcher', async () => {
+  const socket = await goLive();
+  await watcherOn(socket);
+  room.remove('p1');
+  expect(socket.sent.at(-1)).toEqual({ type: 'remove', peer: 'p1' });
+  await expect.poll(() => room.watchers).toEqual([]);
+});
+
+test('Joining as a member loads the blocked list with its ids; a guest asks for nothing', async () => {
+  server.route('GET /api/blocks', () => [200, { blocked: [{ id: 'u_9', username: 'troll', since: 1 }] }]);
+  await social.boot();
+  room.join(ID);
+  await vi.waitFor(() => expect(social.blocked).toEqual([{ id: 'u_9', username: 'troll', since: 1 }]));
+  room.leave();
+
+  server.session = null;
+  await social.signOut();
+  const before = server.sent('GET', '/api/blocks').length;
+  room.join(ID);
+  await wait(50);
+  expect(server.sent('GET', '/api/blocks')).toHaveLength(before);
+});
+
+test('Leaving clears the chat, and the next room starts with a full allowance', async () => {
+  await goLive();
+  vi.useFakeTimers({ toFake: ['Date'] });
+  for (const t of ['a', 'b', 'c']) await room.say(t);
+  expect(await room.say('d')).toBe(false);
+  room.leave();
+  expect([room.chat, room.chatMore, room.joinedAt, room.chatRefused]).toEqual([[], false, null, null]);
+  expect(await startPublic()).toBe(true);
+  expect(await room.say('e')).toBe(true);
 });

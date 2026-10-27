@@ -318,6 +318,12 @@ export const useSocialStore = defineStore('social', {
       if (ok) this.blocked = data.blocked;
     },
 
+    // Block someone from your rooms (the host's Block): true if the server took it.
+    async block(username) {
+      const { ok } = await this.request('/api/blocks', { method: 'POST', body: { username } });
+      return ok;
+    },
+
     async unblock(username) {
       const { ok } = await this.request(`/api/blocks/${encodeURIComponent(username)}`, { method: 'DELETE' });
       if (ok) this.blocked = this.blocked.filter((b) => b.username !== username);

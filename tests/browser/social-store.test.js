@@ -769,7 +769,7 @@ test('The account actions send the server\'s shapes', async () => {
   server.route('POST /api/auth/request-password-reset', () => [200, { status: true }]);
   server.route('POST /api/auth/send-verification-email', () => [200, { status: true }]);
   server.route('PATCH /api/me/username', (body) => ((server.session = member({ username: body.username })), [200, server.session]));
-  server.route('GET /api/blocks', () => [200, { blocked: [{ username: 'troll', since: 1 }, { username: 'other one', since: 2 }] }]);
+  server.route('GET /api/blocks', () => [200, { blocked: [{ id: 'u_9', username: 'troll', since: 1 }, { id: 'u_8', username: 'other one', since: 2 }] }]);
   server.route('DELETE /api/blocks/other%20one', () => [200, {}]);
   server.route('POST /api/auth/delete-user', () => ((server.session = null), [200, { success: true }]));
   await social.start(at(''));
