@@ -72,7 +72,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     flipLayers: { base: false, edit: true },  // what Flip FG/BG flips: the base layer and/or the edit layer
     editBrushOpacity:  100,
     editBrushStack: true, // Stack opacity: each stroke lays up to the opacity on top of what's there (PaintLayer.paint)
-    editBrushFlow:  25,
+    editBrushFlow:  50, // a stamp flow of 0.25 (brush.js squares it)
     editBrushHardness:  50,
 
     // Fill Settings

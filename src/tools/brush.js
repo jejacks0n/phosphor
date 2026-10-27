@@ -1,5 +1,10 @@
 import { brushPixels } from '@/lib/Brushes';
 
+// A stamp's flow from the Flow slider (1-100): squared, so the low end builds up gently (a stroke's
+// stamps overlap and add up: 10% used to lay 70% in one pass at size 5), and never under the
+// paint layer's smallest step (1/255), which would round to nothing.
+const stampFlow = (percent) => Math.max(1 / 255, (percent / 100) ** 2);
+
 const brush = {
   id: 'brush',
   title: 'Brush (soft)',
@@ -21,7 +26,7 @@ const brush = {
     return true;
   },
   move({ project, workspace }, from, to) {
-    const options = { size: workspace.editBrushSize, flow: workspace.editBrushFlow / 100, hardness: workspace.editBrushHardness / 100 };
+    const options = { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100 };
     project.paintStroke(brushPixels(from, to, options, project.cols, project.rows));
   },
   end({ project }) {
