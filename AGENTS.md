@@ -44,11 +44,18 @@ npm run build
   `src/store/SocialStore.js` (who you are, your pass, the lobby), `src/store/RoomStore.js` (the room
   you host or watch) and `src/components/social/` (one component per page; the chat is `ChatPanel.vue` and `ChatFoot.vue`). Its tests are the
   `social-*` files in `tests/unit`, `tests/browser` and `tests/e2e`; the end-to-end fake server is
-  `tests/e2e/social-support.js` ([docs/testing.md](docs/testing.md)). `server/` is a separate repo,
-  ignored here.
+  `tests/e2e/social-support.js` ([docs/testing.md](docs/testing.md)).
+- `server/`: a git submodule, the SOCIAL server's own repo. Work on it in place, but commit and push
+  inside `server/` (its commits go to its repo, never this one); then commit the new `server`
+  pointer here on its own. A fresh checkout gets it with
+  `git -c protocol.file.allow=always submodule update --init` (its remote is a local path).
 
 ## Rules
 
+- **Never describe how the server is built, anywhere in this repo.** Not in code, comments, tests,
+  docs or commit messages: no names of its files, modules, classes, libraries, hosting, storage or
+  layout. This repo talks about the server only as its API: paths, messages, fields and error codes.
+  Whatever the server's internals are, they're documented in `server/` and nowhere else.
 - **Every change comes with a test in the right layer**: pure logic in `tests/unit`, the store,
   canvas or WebGL in `tests/browser`, real UI interactions in `tests/e2e`. A bug fix starts with a
   test that fails. [docs/testing.md](docs/testing.md) says which layer and how.
