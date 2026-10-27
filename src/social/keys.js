@@ -16,6 +16,7 @@ export async function ed25519Supported() {
 }
 
 // One IndexedDB request as a promise, the database closed after, so it can be deleted (tests, a reset).
+// A request that throws as it's made (DataCloneError, a quota) rejects too, rather than never settling.
 function withStore(mode, use) {
   return new Promise((resolve, reject) => {
     const open = indexedDB.open('phosphor-social', 1);
@@ -23,9 +24,15 @@ function withStore(mode, use) {
     open.onerror = () => reject(open.error);
     open.onsuccess = () => {
       const db = open.result;
-      const req = use(db.transaction('keys', mode).objectStore('keys'));
+      const fail = (error) => { db.close(); reject(error); };
+      let req;
+      try {
+        req = use(db.transaction('keys', mode).objectStore('keys'));
+      } catch (error) {
+        return fail(error);
+      }
       req.onsuccess = () => { db.close(); resolve(req.result); };
-      req.onerror = (event) => { event.preventDefault(); db.close(); reject(req.error); };
+      req.onerror = (event) => { event.preventDefault(); fail(req.error); };
     };
   });
 }
@@ -39,9 +46,12 @@ async function readOrMakeKey() {
   try {
     await withStore('readwrite', (keys) => keys.add(made, 'device'));
     return made;
-  } catch {
-    // Another tab stored its key first: use that one, so the browser has just the one.
-    return withStore('readonly', (keys) => keys.get('device'));
+  } catch (error) {
+    // Another tab stored its key first: use that one, so the browser has just the one. Any other
+    // failure (a quota, a browser that won't store keys) is loadKey's failure.
+    const theirs = await withStore('readonly', (keys) => keys.get('device'));
+    if (!theirs) throw error;
+    return theirs;
   }
 }
 

@@ -64,6 +64,28 @@ test('Concurrent first calls share one key', async () => {
   expect(generateKey).toHaveBeenCalledTimes(1);
 });
 
+test('A key that can\'t be stored makes loadKey fail, not resolve empty; the next loadKey tries again', async () => {
+  vi.spyOn(IDBObjectStore.prototype, 'add').mockImplementationOnce(() => {
+    throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+  });
+  await expect(loadKey()).rejects.toThrow('quota');
+  const key = await loadKey();
+  expect(fromBase64url(key.publicKey)).toHaveLength(32);
+  forgetKey();
+  expect((await loadKey()).publicKey).toBe(key.publicKey);   // the retry's key was stored
+});
+
+test('When another tab stored its key first, loadKey uses that one', async () => {
+  const pair = await crypto.subtle.generateKey({ name: 'Ed25519' }, false, ['sign', 'verify']);
+  const theirs = { privateKey: pair.privateKey, publicKey: 'theirs' };
+  const add = IDBObjectStore.prototype.add;
+  vi.spyOn(IDBObjectStore.prototype, 'add').mockImplementation(function (value, key) {
+    this.put(theirs, key);   // lands between this tab's read and its add
+    return add.call(this, value, key);
+  });
+  expect((await loadKey()).publicKey).toBe('theirs');
+});
+
 test('A signature verifies with the public key; a proof signs its message with its timestamp', async () => {
   const { privateKey, publicKey } = await loadKey();
   const signature = await sign(privateKey, 'hello ✓');
@@ -108,6 +130,7 @@ test('requestPass returns the server\'s error code, with until for a suspension,
 
 test('decodePass reads the claims; renewAt is 5 minutes before expiry, never in the past', () => {
   expect(decodePass(fakePass)).toEqual(claims);
+  expect(() => decodePass('!')).toThrow();
   const now = 1_700_000_000_000;
   expect(renewAt({ exp: now / 1000 + 3600 }, now)).toBe(now + 55 * 60_000);
   expect(renewAt({ exp: now / 1000 + 60 }, now)).toBe(now);

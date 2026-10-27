@@ -6,7 +6,8 @@ import { proof } from './keys.js';
 
 const RENEW_EARLY_MS = 5 * 60_000;
 
-// { sub, name, guest, verified, key, exp } (exp in epoch seconds). Read only, not verified.
+// { sub, name, guest, verified, key, exp } (exp in epoch seconds). Read only, not verified; throws on
+// a malformed pass.
 export function decodePass(pass) {
   return JSON.parse(new TextDecoder().decode(fromBase64url(pass.split('.')[0])));
 }
