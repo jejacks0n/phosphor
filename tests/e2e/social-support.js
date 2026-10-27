@@ -171,61 +171,99 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
 
 // A Room (as the server's API describes it), one for every page attached to it, so a host's page and its watchers'
 // meet in it: fakeRoom({ password, allowGuests, max, full }). The host's `host` is answered `hosting`
-// (and makes it the host's room), a `join` `joined`, or its refusal: wrong-password for a private room
-// (one with a password), signed-in-only for a guest when allowGuests is false, full at max watchers or
-// with `full`. Signals are relayed between the host and its watchers; the host hears of each watcher
-// (peer, peer-gone); settings change the room; end sends ended to everyone. room.received has every
-// message as { from: 'host' | <peer> | null, msg }, room.from(who) the messages of one; room.drop(who)
-// closes that socket.
+// (and makes it the host's room; an earlier host socket is closed), a `join` `joined`, or its refusal:
+// wrong-password for a private room (one with a password), signed-in-only for a guest when allowGuests
+// is false, full at max watchers or with `full`. Signals are relayed between the host and its watchers;
+// the host hears of each watcher (peer, peer-gone). Settings change the room as the Room's checks allow,
+// at most once a second per host socket: a sooner one is answered `settings-now`. End sends ended to
+// everyone. Sockets are closed where the Room closes them: after refused (1008), ended or removed (1000),
+// and a watcher's once the host hears it's gone. room.received has every message as { from: 'host' |
+// <peer> | null, msg }, room.from(who) the messages of one; room.send(who, msg) pushes one, room.info()
+// is the room as the host is told it, and room.drop(who) closes a socket.
+const SETTINGS_EVERY_MS = 1000;
+const SIGNALS = ['feedback', 'chat', 'heads-down', null];
+const FINAL = { refused: 1008, removed: 1000, ended: 1000 };   // messages after which the socket is closed
+
 export function fakeRoom({ password = null, allowGuests = true, max = 12, full = false } = {}) {
   const sockets = new Map();    // 'host' or a peer id -> its socket
   const watchers = new Map();   // peer -> { sub, guest, pass }
-  let peers = 0, ended = false;
-  const send = (to, msg) => sockets.get(to)?.send(JSON.stringify(msg));
+  let peers = 0, ended = false, settingsAt = null;   // settingsAt: the host socket's last settings taken
+  const close = (ws, code, reason) => {
+    for (const [who, s] of sockets) if (s === ws) sockets.delete(who);
+    ws.close({ code, reason });
+  };
+  const reply = (ws, msg) => {
+    ws.send(JSON.stringify(msg));
+    if (Object.hasOwn(FINAL, msg.type)) close(ws, FINAL[msg.type], msg.type);
+  };
+  const send = (to, msg) => {
+    const ws = sockets.get(to);
+    if (ws) reply(ws, msg);
+  };
   const info = () => ({ ...room.setup, password: undefined, count: watchers.size });   // undefined isn't sent
   const gone = (peer) => {
-    if (watchers.delete(peer)) send('host', { type: 'peer-gone', peer });
+    if (!watchers.delete(peer)) return;
+    send('host', { type: 'peer-gone', peer });
+    const ws = sockets.get(peer);
+    if (ws) close(ws, 1000, 'gone');
+  };
+  const settings = (msg) => {
+    if (settingsAt !== null && Date.now() - settingsAt < SETTINGS_EVERY_MS) return send('host', { type: 'settings-now', room: info() });
+    settingsAt = Date.now();
+    if (typeof msg.allowGuests === 'boolean') room.setup.allowGuests = msg.allowGuests;
+    if (Number.isInteger(msg.max) && msg.max >= 1 && msg.max <= 24) room.setup.max = msg.max;
+    if (SIGNALS.includes(msg.signal)) room.setup.signal = msg.signal;
   };
 
+  // A message from a socket that is `who` so far: what it is after it.
   const heard = (ws, who, msg) => {
-    if (msg.type === 'host') {
+    if (msg.type === 'host' && !who) {
       const claims = claimsOf(msg.pass);
-      if (ended || (room.setup.hostSub && claims.sub !== room.setup.hostSub)) return [null, { type: 'refused', reason: ended ? 'unavailable' : 'bad-pass' }];
+      if (ended || (room.setup.hostSub && claims.sub !== room.setup.hostSub)) return reply(ws, { type: 'refused', reason: ended ? 'unavailable' : 'bad-pass' });
       Object.assign(room.setup, { hostSub: claims.sub, hostName: claims.name });
+      const older = sockets.get('host');
+      if (older) close(older, 1000, 'replaced');
       sockets.set('host', ws);
-      return ['host', { type: 'hosting', room: info(), peers: [...watchers].map(([peer, w]) => ({ peer, pass: w.pass })) }];
+      settingsAt = null;
+      reply(ws, { type: 'hosting', room: info(), peers: [...watchers].map(([peer, w]) => ({ peer, pass: w.pass })) });
+      return 'host';
     }
-    if (msg.type === 'join') {
+    if (msg.type === 'join' && !who) {
       const claims = claimsOf(msg.pass);
       const reason = ended ? 'unavailable'
         : claims.guest && !room.setup.allowGuests ? 'signed-in-only'
           : room.setup.password !== null && msg.password !== room.setup.password ? 'wrong-password'
             : full || watchers.size >= room.setup.max ? 'full' : null;
-      if (reason) return [null, { type: 'refused', reason }];
+      if (reason) return reply(ws, { type: 'refused', reason });
       const peer = `p_${++peers}`;
       watchers.set(peer, { sub: claims.sub, guest: claims.guest, pass: msg.pass });
       sockets.set(peer, ws);
+      reply(ws, { type: 'joined', peer, hostName: room.setup.hostName });
       send('host', { type: 'peer', peer, pass: msg.pass });
-      return [peer, { type: 'joined', peer, hostName: room.setup.hostName }];
+      return peer;
     }
     if (msg.type === 'signal-to' && who === 'host') send(msg.to, { type: 'signal-from', from: 'host', data: msg.data });
     else if (msg.type === 'signal-to' && who) send('host', { type: 'signal-from', from: who, data: msg.data });
     else if (msg.type === 'left' && who === 'host') gone(msg.peer);
-    else if (msg.type === 'settings' && who === 'host') {
-      if (typeof msg.allowGuests === 'boolean') room.setup.allowGuests = msg.allowGuests;
-      if (Number.isInteger(msg.max)) room.setup.max = msg.max;
-    } else if (msg.type === 'end' && who === 'host') {
+    else if (msg.type === 'settings' && who === 'host') settings(msg);
+    else if (msg.type === 'end' && who === 'host') {
       ended = true;
-      for (const to of ['host', ...watchers.keys()]) send(to, { type: 'ended' });
+      const everyone = ['host', ...watchers.keys()];
       watchers.clear();
+      for (const to of everyone) send(to, { type: 'ended' });
     }
-    return [who, null];
+    return who;
   };
 
   const room = {
     setup: { id: ROOM_ID, name: 'a room', hostSub: null, hostName: null, public: password === null, password, allowGuests, max, signal: null, liveSince: Date.now() },
     received: [],
     from: (who) => room.received.filter((r) => r.from === who).map((r) => r.msg),
+    info,
+    send: (who, msg) => {
+      if (!sockets.has(who)) throw new Error(`No socket for ${who} in the room`);
+      send(who, msg);
+    },
     // POST /api/rooms: the room as the host described it.
     made: ({ name, public: isPublic, allowGuests, max, signal, password }) => {
       Object.assign(room.setup, { name, public: isPublic, allowGuests, max, signal, password: password ?? null, liveSince: Date.now() });
@@ -233,8 +271,7 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     drop: (who) => {
       const ws = sockets.get(who);
       if (!ws) throw new Error(`No socket for ${who} in the room`);
-      sockets.delete(who);
-      ws.close();
+      close(ws);
       if (who !== 'host') gone(who);
     },
     attach: (page) => page.routeWebSocket(`${API.replace(/^http/, 'ws')}/api/rooms/*/ws`, (ws) => {
@@ -242,10 +279,9 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
       ws.onMessage((message) => {
         if (message === 'ping') return ws.send('pong');   // the Room's automatic answer
         const msg = JSON.parse(message);
-        const [now, answer] = heard(ws, who, msg);
-        room.received.push({ from: now ?? who, msg });
-        who = now;
-        if (answer) ws.send(JSON.stringify(answer));
+        const before = who;
+        who = heard(ws, who, msg);
+        room.received.push({ from: who ?? before, msg });
       });
       ws.onClose((code, reason) => {
         ws.close({ code, reason });   // with a handler, the closing is ours to finish

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, useId } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -22,6 +22,7 @@ const isPublic = ref(true);
 const password = ref('');
 const allowGuests = ref(true);
 const max = ref(12);
+const id = useId();
 
 const goLive = () => room.startRoom({
   name: name.value.trim(), welcome: welcome.value, isPublic: isPublic.value, password: password.value,
@@ -43,19 +44,19 @@ const goLive = () => room.startRoom({
 
     <aside class="side">
       <form @submit.prevent="goLive">
-        <label>Room name <input v-model="name" maxlength="60" required></label>
-        <label>Welcome message <textarea v-model="welcome" maxlength="200" rows="3"></textarea></label>
-        <p class="help count">{{ welcome.length }}/200</p>
+        <label>Room name <input v-model="name" maxlength="60" pattern=".*\S.*" required></label>
+        <label>Welcome message <textarea v-model="welcome" maxlength="200" rows="3" :aria-describedby="`${id}-count`"></textarea></label>
+        <p :id="`${id}-count`" class="help count">{{ welcome.length }}/200</p>
         <fieldset>
           <legend>Who can join</legend>
           <label class="choice"><input v-model="isPublic" type="radio" name="who" :value="true"> Anyone, in the lobby</label>
           <label class="choice"><input v-model="isPublic" type="radio" name="who" :value="false"> Only with the link</label>
         </fieldset>
         <label v-if="!isPublic">Password <input v-model="password" type="text" autocomplete="off" required></label>
-        <label class="choice"><input v-model="allowGuests" type="checkbox"> Allow guests</label>
-        <p class="help">Guests can only watch, so you can't remove one; turn this off if you'd rather have members only.</p>
-        <label>Most watchers <input v-model.number="max" type="number" min="1" max="24" required></label>
-        <p class="help">Each watcher uses some of your upload speed. 12 suits most home connections.</p>
+        <label class="choice"><input v-model="allowGuests" type="checkbox" :aria-describedby="`${id}-guests`"> Allow guests</label>
+        <p :id="`${id}-guests`" class="help">Guests can only watch, so you can't remove one; turn this off if you'd rather have members only.</p>
+        <label>Most watchers <input v-model.number="max" type="number" min="1" max="24" required :aria-describedby="`${id}-max`"></label>
+        <p :id="`${id}-max`" class="help">Each watcher uses some of your upload speed. 12 suits most home connections.</p>
         <div class="buttons">
           <button class="primary" type="submit" :disabled="social.busy || !art">Go live</button>
           <button type="button" @click="social.page = 'lobby'">Cancel</button>

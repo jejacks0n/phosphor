@@ -52,6 +52,9 @@ test('going live with a public room: the POST, the host\'s page with its link, t
   await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toBeChecked();
   await expect(page.getByRole('spinbutton', { name: 'Most watchers' })).toHaveValue('12');
   await expect(page.getByRole('textbox', { name: 'Password' })).toHaveCount(0);
+  await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toHaveAccessibleDescription(/^Guests can only watch/);
+  await expect(page.getByRole('spinbutton', { name: 'Most watchers' })).toHaveAccessibleDescription(/^Each watcher uses some/);
+  await expect(page.getByRole('textbox', { name: 'Welcome message' })).toHaveAccessibleDescription('0/200');
   await expect(dot(page)).toHaveCount(0);
 
   await page.getByRole('textbox', { name: 'Room name' }).fill('  neon harbor  ');
@@ -60,12 +63,12 @@ test('going live with a public room: the POST, the host\'s page with its link, t
   await page.getByRole('button', { name: 'Go live' }).click();
 
   const host = shown(page, 'host-room');
-  await expect(host.getByRole('heading', { name: 'neon harbor' })).toBeVisible();
+  await expect(host.getByRole('heading', { name: 'neon harbor' })).toBeFocused();   // not lost to the page's body
   await expect(host.getByText('0 watching')).toBeVisible();
   await expect(host.getByText(LINK)).toBeVisible();
   await expect(host.getByText('Send the link and the password to anyone you want in.')).toHaveCount(0);
   expect(server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'neon harbor', public: true, allowGuests: true, max: 12, signal: null }]);
-  await expect.poll(() => room.from('host')[0]?.type).toBe('host');
+  await expect.poll(() => room.received[0]).toMatchObject({ from: 'host', msg: { type: 'host' } });
   await expect.poll(() => store(page, 'room', (r) => r.status)).toBe('live');
 
   await expect(dot(page)).toBeVisible();
@@ -76,7 +79,18 @@ test('going live with a public room: the POST, the host\'s page with its link, t
   await copy.click();
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(LINK);
   await expect(host.getByRole('button', { name: 'Copied' })).toBeVisible();
+  await expect(host.getByRole('status')).toHaveText('Copied');   // said, too
   await expect(copy).toBeVisible({ timeout: 4000 });   // back after 2 s
+});
+
+test('a room name of only spaces isn\'t sent', async ({ page }) => {
+  const { server } = await startPage(page);
+  const name = page.getByRole('textbox', { name: 'Room name' });
+  await name.fill('   ');
+  await page.getByRole('button', { name: 'Go live' }).click();
+  await expect(name).toBeFocused();   // the browser's own "match the format"
+  expect(await name.evaluate((input) => input.validity.valid)).toBe(false);
+  expect(server.sent('POST', '/api/rooms')).toEqual([]);
 });
 
 test('a private room needs a password before Go live, and its page says to send both', async ({ page }) => {
@@ -107,9 +121,41 @@ test('Room settings send the guests and most watchers; End room sends end, and t
 
   await host.getByRole('button', { name: 'End room' }).click();
   await expect.poll(() => room.from('host').map((m) => m.type)).toContain('end');
-  await expect(shown(page, 'lobby')).toBeVisible();
+  await expect(shown(page, 'lobby').getByRole('heading', { name: 'Public rooms', exact: true })).toBeFocused();
   await expect(dot(page)).toHaveCount(0);
   expect(await store(page, 'room', (r) => r.role)).toBe(null);
+});
+
+// The Room takes settings at most once a second (a sooner one is answered with the room as it is);
+// the app waits 1.25 s after the last it sent, so a quick second Save still lands.
+test('two quick saves leave the room with the latest settings', async ({ page }) => {
+  const { room } = await goLive(page);
+  const host = shown(page, 'host-room');
+  await host.getByText('Room settings').click();
+  const most = host.getByRole('spinbutton', { name: 'Most watchers' });
+  await most.fill('6');
+  await host.getByRole('button', { name: 'Save' }).click();
+  await most.fill('8');
+  await host.getByRole('checkbox', { name: 'Allow guests' }).uncheck();
+  await host.getByRole('button', { name: 'Save' }).click();
+  await expect.poll(() => room.from('host').filter((m) => m.type === 'settings')).toEqual([
+    { type: 'settings', allowGuests: true, max: 6 },
+    { type: 'settings', allowGuests: false, max: 8 },
+  ]);
+  expect([room.setup.allowGuests, room.setup.max]).toEqual([false, 8]);
+  await page.waitForTimeout(300);   // a settings-now would be back by now
+  expect(await store(page, 'room', (r) => [r.room.allowGuests, r.room.max])).toEqual([false, 8]);
+});
+
+test('Room settings follow the room when the Room says how it is', async ({ page }) => {
+  const { room } = await goLive(page);
+  const host = shown(page, 'host-room');
+  await host.getByText('Room settings').click();
+  const most = host.getByRole('spinbutton', { name: 'Most watchers' });
+  await expect(most).toHaveValue('12');
+  room.send('host', { type: 'settings-now', room: { ...room.info(), max: 20, allowGuests: false } });
+  await expect(most).toHaveValue('20');
+  await expect(host.getByRole('checkbox', { name: 'Allow guests' })).not.toBeChecked();
 });
 
 test('the host\'s socket drops: Reconnecting… until it says host again', async ({ page }) => {

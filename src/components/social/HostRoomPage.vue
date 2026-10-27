@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, useId, onBeforeUnmount } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -25,10 +25,12 @@ async function copyLink() {
 }
 onBeforeUnmount(() => clearTimeout(copiedTimer));
 
-// Room settings start from the room as it is.
-const welcome = ref(room.room.welcome);
-const allowGuests = ref(room.room.allowGuests);
-const max = ref(room.room.max);
+// Room settings follow the room as it is (the Room's word on it included).
+const welcome = ref(''), allowGuests = ref(true), max = ref(12);
+watch(() => room.room && [room.room.welcome, room.room.allowGuests, room.room.max], (now) => {
+  if (now) [welcome.value, allowGuests.value, max.value] = now;
+}, { immediate: true });
+const countId = useId();
 const save = () => room.changeSettings({ welcome: welcome.value, allowGuests: allowGuests.value, max: max.value });
 </script>
 
@@ -43,6 +45,7 @@ const save = () => room.changeSettings({ welcome: welcome.value, allowGuests: al
       <div class="link-row">
         <span class="link-text">{{ room.link }}</span>
         <button @click="copyLink">{{ copied ? 'Copied' : 'Copy link' }}</button>
+        <span class="said" role="status" aria-live="polite">{{ copied ? 'Copied' : '' }}</span>
       </div>
       <p v-if="!room.room.public" class="help">Send the link and the password to anyone you want in.</p>
       <div class="preview">
@@ -64,8 +67,8 @@ const save = () => room.changeSettings({ welcome: welcome.value, allowGuests: al
       <details>
         <summary>Room settings</summary>
         <form @submit.prevent="save">
-          <label>Welcome message <textarea v-model="welcome" maxlength="200" rows="3"></textarea></label>
-          <p class="help count">{{ welcome.length }}/200</p>
+          <label>Welcome message <textarea v-model="welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
+          <p :id="countId" class="help count">{{ welcome.length }}/200</p>
           <label class="choice"><input v-model="allowGuests" type="checkbox"> Allow guests</label>
           <label>Most watchers <input v-model.number="max" type="number" min="1" max="24" required></label>
           <button type="submit">Save</button>
@@ -130,6 +133,14 @@ span.link-text {
   font-family: 'JetBrains Mono', monospace;
   color: var(--text);
   user-select: all;
+}
+span.said {   /* for screen readers only: the button says it too */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 div.preview {
   flex: 1;

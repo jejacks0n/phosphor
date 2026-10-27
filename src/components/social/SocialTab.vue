@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue';
+import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import LobbyPage from './LobbyPage.vue';
@@ -30,6 +30,17 @@ const shownPage = computed(() => {
   if (social.page !== 'account' || social.signedIn) return social.page;
   return social.supported === null ? null : 'lobby';
 });
+
+// A new page takes focus at its heading (not left on the body when the button that opened it goes),
+// unless it put focus in itself on mounting.
+const pageRef = useTemplateRef('page');
+watch(shownPage, async () => {
+  await nextTick();
+  const page = pageRef.value, heading = page?.querySelector('h2');
+  if (!heading || page.contains(document.activeElement)) return;
+  heading.tabIndex = -1;
+  heading.focus();
+});
 </script>
 
 <template>
@@ -40,7 +51,7 @@ const shownPage = computed(() => {
         <span>{{ social.notice }}</span>
         <button class="link" aria-label="Dismiss" @click="social.notice = null">✕</button>
       </p>
-      <div class="page" :data-page="shownPage">
+      <div ref="page" class="page" :data-page="shownPage">
         <component :is="PAGES[shownPage]" v-if="PAGES[shownPage]" />
       </div>
     </template>
@@ -80,6 +91,9 @@ p.unsupported {
 div.page {
   flex: 1;
   min-height: 0;
+}
+div.page :deep(h2:focus) {
+  outline: none;
 }
 </style>
 
