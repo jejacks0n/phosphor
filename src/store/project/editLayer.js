@@ -11,23 +11,24 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { TYPING_PAUSE_MS, boundsOf, bytesHeld } from '@/store/project/shared.js';
 
 export const editLayerActions = {
-  paintEditPixels(pixels, opacity = 100) {
+  paintEditPixels(pixels, opacity = 100, stack = false) {
     if (!pixels.length || !this.renderer.outputCanvas) return;
     this.ensureLayer();
     this.beginEdit();
-    this.paintLayer.paint(pixels, opacity);
+    this.paintLayer.paint(pixels, opacity, stack);
     this.hasPaint = this.paintLayer.hasPaint;
 
     this.refreshCells(pixels);
   },
 
-  // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground color) at the brush opacity.
+  // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground color) at the brush opacity,
+  // stacking or not (Stack opacity).
   paintStroke(pixels, color) {
     const workspace = useWorkspaceStore();
     const { r, g, b } = hex2rgb(color ?? workspace.editFgColor);
     const { cols, rows } = this; // read once: a store getter per pixel adds up over a fill
     const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < cols && y < rows);
-    this.paintEditPixels(inGrid.map(p => ({ ...p, r, g, b })), workspace.editBrushOpacity);
+    this.paintEditPixels(inGrid.map(p => ({ ...p, r, g, b })), workspace.editBrushOpacity, workspace.editBrushStack);
   },
 
   eraseEditPixels(pixels) {

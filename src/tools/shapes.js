@@ -65,7 +65,7 @@ function apply({ project, workspace, view }, end) {
   // Paint: the outline in FG and, filled, the inside in BG (one stroke, one undo step).
   const paintShape = () => {
     const outline = pixelsOf(false);
-    if (fill) project.paintEditPixels(twoTone(pixelsOf(true), outline, fg, bg), workspace.editBrushOpacity);
+    if (fill) project.paintEditPixels(twoTone(pixelsOf(true), outline, fg, bg), workspace.editBrushOpacity, workspace.editBrushStack);
     else project.paintStroke(outline, fg);
   };
   if (view === 'input') {
@@ -104,7 +104,7 @@ function apply({ project, workspace, view }, end) {
   // through their characters.
   if (drawWith === 'full' && !blockChars) {
     const both = (list) => list.flatMap(({ col, row, cover }) => [{ x: col, y: 2 * row, alpha: cover }, { x: col, y: 2 * row + 1, alpha: cover }]);
-    if (fill) project.paintEditPixels(twoTone(both(shapeOf(true)), both(outline), fg, bg), workspace.editBrushOpacity);
+    if (fill) project.paintEditPixels(twoTone(both(shapeOf(true)), both(outline), fg, bg), workspace.editBrushOpacity, workspace.editBrushStack);
     else project.paintStroke(both(outline), fg);
     return;
   }

@@ -89,8 +89,10 @@ export default class PaintLayer {
     return counts;
   }
 
-  // pixels: { x, y, r, g, b, alpha }[] in grid pixels. Paint builds up to `opacity`, then blends.
-  paint(pixels, opacity = 100) {
+  // pixels: { x, y, r, g, b, alpha }[] in grid pixels. Paint builds up to `opacity`, then blends. With
+  // stack, `opacity` is what one stroke (beginStroke to endStroke; outside one, this call) lays at
+  // most, on top of what's there: strokes stack, so two at 50% make it opaque.
+  paint(pixels, opacity = 100, stack = false) {
     const rects = [];
     for (const { x, y, r, g, b, alpha } of pixels) {
       const rect = this.#cellRect(x, y);
@@ -106,27 +108,32 @@ export default class PaintLayer {
     const imageData = ctx.getImageData(bounds.x, bounds.y, bounds.w, bounds.h);
     const data = imageData.data;
     const maxA = Math.round((opacity / 100) * 255);
+    const ceiling = stack ? 255 : maxA;
+    const laid = this.#stroke?.laid ?? new Map(); // with stack: the alpha this stroke has added to each cell rect
 
     for (const { x: cx, y: cy, w: cw, h: ch, r, g, b, a } of rects) {
       if (a === 0) continue;
+      const key = cx + cy * 65536, added = laid.get(key) ?? 0;
+      const adds = stack ? Math.min(a, maxA - added) : a, weight = stack ? adds : a; // the new color's share
+      if (stack && adds > 0) laid.set(key, added + adds);
       for (let py = cy; py < cy + ch; py++) {
         for (let px = cx; px < cx + cw; px++) {
           const idx = ((py - bounds.y) * bounds.w + (px - bounds.x)) * 4;
           const existingA = data[idx + 3];
-          if (existingA >= maxA) {
+          if (adds <= 0 || existingA >= ceiling) {
+            // The paint is as opaque as it gets, or the stroke has laid its opacity: the color blends in.
             const blend = Math.min(1, a / 255);
             data[idx]     = Math.round(data[idx]     + (r - data[idx])     * blend);
             data[idx + 1] = Math.round(data[idx + 1] + (g - data[idx + 1]) * blend);
             data[idx + 2] = Math.round(data[idx + 2] + (b - data[idx + 2]) * blend);
           } else {
-            // The alpha adds up (a stroke's dabs build up to `opacity`); the color is the new over
-            // the old, which shows only through what the new doesn't cover (a shape laid fully over
-            // a soft edge hides it).
-            const under = existingA * (255 - a) / 255;
-            data[idx + 3] = Math.min(maxA, existingA + a);
-            data[idx]     = Math.round((data[idx]     * under + r * a) / (a + under));
-            data[idx + 1] = Math.round((data[idx + 1] * under + g * a) / (a + under));
-            data[idx + 2] = Math.round((data[idx + 2] * under + b * a) / (a + under));
+            // The alpha adds up; the color is the new over the old, which shows only through what the
+            // new doesn't cover (a shape laid fully over a soft edge hides it).
+            const under = existingA * (255 - weight) / 255;
+            data[idx + 3] = Math.min(ceiling, existingA + adds);
+            data[idx]     = Math.round((data[idx]     * under + r * weight) / (weight + under));
+            data[idx + 1] = Math.round((data[idx + 1] * under + g * weight) / (weight + under));
+            data[idx + 2] = Math.round((data[idx + 2] * under + b * weight) / (weight + under));
           }
         }
       }
@@ -352,7 +359,7 @@ export default class PaintLayer {
   }
 
   beginStroke() {
-    this.#stroke = { tiles: new Map(), hadPaint: this.hasPaint, erased: false };
+    this.#stroke = { tiles: new Map(), hadPaint: this.hasPaint, erased: false, laid: new Map() };
   }
 
   // Finish recording; null when the stroke changed nothing. A stroke that erased may have left no
