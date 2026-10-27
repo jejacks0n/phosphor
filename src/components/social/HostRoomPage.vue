@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, useId, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, useId, useTemplateRef, onBeforeUnmount } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -52,13 +52,14 @@ watch(() => room.room?.max, (v) => { if (v !== undefined) max.value = v; }, { im
 const countId = useId();
 
 // A member's ⋯ menu: Remove for this session, or Block from my rooms, which asks first. Cancel (or Escape)
-// puts focus back on the ⋯ button the menu came from.
+// puts focus back on the ⋯ button the menu came from, or on the Watching heading when that member has left.
 const blocking = ref(null);   // { watcher, trigger }
 const askToBlock = (watcher, event) => {
   blocking.value = { watcher, trigger: event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger') };
 };
+const heading = useTemplateRef('heading');
 const cancelBlock = () => {
-  blocking.value.trigger.focus();
+  (blocking.value.trigger.isConnected ? blocking.value.trigger : heading.value).focus();
   blocking.value = null;
 };
 const confirmBlock = async () => {
@@ -91,7 +92,7 @@ const save = () => {
     </section>
 
     <aside class="side">
-      <h3 class="watching">Watching</h3>
+      <h3 ref="heading" class="watching" tabindex="-1">Watching</h3>
       <ul aria-label="Watching">
         <li v-for="watcher in room.watchers" :key="watcher.peer">
           <span class="swatch" :style="{ background: nameColor(watcher.name) }"></span>

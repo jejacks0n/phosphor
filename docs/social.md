@@ -6,7 +6,7 @@
 > with its Join counts and reasons, signals and who's here, starting and hosting a room, and
 > watching one. **Comes next:** chat, and reporting. **Chat**
 > through **Blocking and reporting** describe what's coming, as do the chat beside your work under
-> **Watching**, and Remove and Block under **Hosting**. Until the chat is there, watchers see the
+> **Watching**. Removing and blocking from a room work today (under **Hosting**). Until the chat is there, watchers see the
 > welcome message under the room's name.
 
 Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others

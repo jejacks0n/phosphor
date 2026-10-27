@@ -316,7 +316,7 @@ const more = (host, name = 'pixel_wren') => watching(host).getByRole('button', {
 const blockDialog = (host) => host.getByRole('dialog', { name: 'Block pixel_wren?' });
 
 test('Remove for this session: the watcher is in the lobby with "The host removed you" and the host\'s list is empty', async ({ page: host, context }) => {
-  const { watcher } = await inRoom(host, context, { me: wren });
+  const { watcher, server } = await inRoom(host, context, { me: wren });
   await expect(watching(host)).toHaveCount(1);
   await more(host).click();
   await host.getByRole('button', { name: 'Remove for this session' }).click();
@@ -324,6 +324,7 @@ test('Remove for this session: the watcher is in the lobby with "The host remove
   await expect(shown(watcher, 'lobby')).toBeVisible();
   await expect(watcher.getByText('The host removed you')).toBeVisible();
   expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
+  expect(server.sent('POST', '/api/blocks')).toHaveLength(0);   // removing is not blocking
 });
 
 test('Block from my rooms asks first, then blocks and removes', async ({ page: host, context }) => {
@@ -371,5 +372,53 @@ test('a guest\'s row has no \u22ef; a member\'s has one', async ({ page: host, c
   await joinFromCard(guest);
   await expect(watching(host)).toHaveCount(2);
   await expect(more(host)).toHaveCount(1);
-  await expect(watching(host).filter({ hasText: 'guest' }).getByRole('button')).toHaveCount(0);
+  await expect(watching(host).filter({ has: host.locator('span.tag') }).getByRole('button')).toHaveCount(0);
+});
+
+test('a failed block leaves the watcher in the list and shows the notice', async ({ page: host, context }) => {
+  const { watcher, server } = await inRoom(host, context, { me: wren });
+  server.route('POST /api/blocks', () => [500, { code: 'SERVER_ERROR' }]);
+  await more(host).click();
+  await host.getByRole('button', { name: 'Block from my rooms' }).click();
+  await blockDialog(host).getByRole('button', { name: 'Block', exact: true }).click();
+  await expect.poll(() => server.sent('POST', '/api/blocks')).toHaveLength(1);
+  await expect(host.getByRole('status').filter({ hasText: 'Something went wrong. Try again.' })).toBeVisible();
+  await expect(watching(host)).toHaveCount(1);
+  await expect(shown(watcher, 'watch-room')).toBeVisible();
+});
+
+// The watcher is in the room and the host's Block box is open on them; then they leave.
+async function leaveWhileAsked(host, watcher) {
+  await more(host).click();
+  await host.getByRole('button', { name: 'Block from my rooms' }).click();
+  await expect(blockDialog(host)).toBeVisible();
+  await watcher.getByRole('button', { name: 'Leave' }).click();
+  await expect(watching(host)).toHaveCount(0);
+  await expect(blockDialog(host)).toBeVisible();   // still asking
+}
+
+test('the watcher leaves while the Block box is open: Cancel and Escape put focus on the Watching heading', async ({ page: host, context }) => {
+  const { watcher, server } = await inRoom(host, context, { me: wren });
+  for (const dismiss of [
+    () => blockDialog(host).getByRole('button', { name: 'Cancel' }).click(),
+    () => host.keyboard.press('Escape'),
+  ]) {
+    if (await watching(host).count() === 0) {   // second time round: back in the room
+      await joinFromCard(watcher);
+    }
+    await leaveWhileAsked(host, watcher);
+    await dismiss();
+    await expect(blockDialog(host)).toHaveCount(0);
+    await expect(host.getByRole('heading', { name: 'Watching' })).toBeFocused();
+  }
+  expect(server.sent('POST', '/api/blocks')).toHaveLength(0);
+});
+
+test('the watcher leaves while the Block box is open: Block still blocks the account', async ({ page: host, context }) => {
+  const { watcher, server } = await inRoom(host, context, { me: wren });
+  await leaveWhileAsked(host, watcher);
+  await blockDialog(host).getByRole('button', { name: 'Block', exact: true }).click();
+  await expect.poll(() => server.sent('POST', '/api/blocks')).toHaveLength(1);
+  expect(server.sent('POST', '/api/blocks')[0].body).toEqual({ username: 'pixel_wren' });
+  await expect(blockDialog(host)).toHaveCount(0);
 });
