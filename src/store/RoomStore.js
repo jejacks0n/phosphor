@@ -29,7 +29,7 @@ export const useRoomStore = defineStore('room', {
     role: null,          // null | 'host' | 'watch'
     id: null,
     link: null,          // the host's link to the room
-    room: null,          // a host's: the Room's room and your welcome; a watcher's: { name, welcome, host }
+    room: null,          // a host's: the Room's room and your welcome; a watcher's: { name, welcome, host } (joined's host)
     // a host's: 'connecting' | 'live' | 'reconnecting'; a watcher's: 'joining' | 'password' | 'waiting' |
     // 'connecting' | 'live' | 'failed'
     status: null,
@@ -149,12 +149,12 @@ export const useRoomStore = defineStore('room', {
       this._watch = markRaw(new Watch({
         send: (msg) => this._connection?.send(msg),
         connectWithinMs: this._connectWithinMs,
-        onRoom: (room) => { this.room = room; },
+        onRoom: ({ name, welcome }) => { this.room = { ...this.room, name, welcome }; },   // the host is joined's
         onArt: (art) => { this.art = art; },
         onView: (view) => { this.hostView = view; },
         onState: (state) => this.watchState(state),
       }));
-      this.connect({ type: 'join', ...(password === undefined ? {} : { password }) }, { liveOn: ['joined'], endOn: ['refused', 'removed', 'ended'] });
+      this.connect({ type: 'join', ...(password === undefined ? {} : { password }) }, { liveOn: ['joined'], endOn: ['refused', 'removed', 'ended', 'replaced'] });
     },
 
     setFollowing(on) {
@@ -196,7 +196,14 @@ export const useRoomStore = defineStore('room', {
         liveOn, endOn,
         onMessage: (msg) => { if (connection === this._connection) this.heard(msg); },
         onStatus: (status) => {
-          if (connection === this._connection && this.role === 'host' && status !== 'refused' && status !== 'closed') this.status = status;
+          if (connection !== this._connection) return;
+          if (this.role === 'host' && status !== 'refused' && status !== 'closed') this.status = status;
+          // The Room put a watcher out while its connection to the host was being made: the host gave up
+          // on reaching it first, so joining again would only fail the same way.
+          else if (this.role === 'watch' && status === 'reconnecting' && this.status === 'connecting') {
+            this._watch.close();
+            this.watchState('failed');
+          }
         },
       }));
       connection.open();
@@ -209,7 +216,7 @@ export const useRoomStore = defineStore('room', {
           const chosen = this.room;
           this._refusedOnce = false;
           this.room = { ...msg.room, welcome: chosen.welcome };
-          if (!this._host.room) this._host.setRoom({ name: msg.room.name, welcome: chosen.welcome, host: msg.room.hostName });
+          if (!this._host.room) this._host.setRoom({ name: msg.room.name, welcome: chosen.welcome });
           this._host.hosting(msg.peers);
           this.changeSettings(chosen);   // a change made while the socket was down goes now
           break;
@@ -239,6 +246,7 @@ export const useRoomStore = defineStore('room', {
           break;
         case 'ended':
         case 'removed':
+        case 'replaced':
           this.over(this.role === 'watch' ? refusalWords(msg.type) : null);
           break;
       }

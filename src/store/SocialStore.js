@@ -399,8 +399,9 @@ export const useSocialStore = defineStore('social', {
       }, ms);
     },
 
-    // A pass that won't come by retrying stops the lobby. The others (THROTTLED, NETWORK) are tried again:
-    // a hello by the connection's retry, a renewal (the held pass still good) 30 s later.
+    // A pass that won't come by retrying stops the lobby, and the room you're in. The others (THROTTLED,
+    // NETWORK) are tried again: a hello by the connection's retry, a renewal (the held pass still good)
+    // 30 s later.
     passRefused({ error, until }) {
       if (error === 'NEEDS_ONBOARDING') this.page = 'onboarding';
       else if (error === 'SUSPENDED') Object.assign(this, { me: null, notice: messageFor(error, { until }) });
@@ -409,6 +410,7 @@ export const useSocialStore = defineStore('social', {
         return;
       }
       this._connection?.close();
+      useRoomStore().close();   // a room's socket can't go on without one either; the page stays as set here
     },
 
     dropPass() {

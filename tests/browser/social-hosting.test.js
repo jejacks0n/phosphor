@@ -69,7 +69,7 @@ async function room(peers = ['p1', 'p2'], { lost = [], first = art() } = {}) {
   });
   toClose.push(r.host);
   for (const peer of peers) r.log[peer] = watcher(r, peer);
-  r.host.setRoom({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan' });
+  r.host.setRoom({ name: 'Night shift', welcome: 'Hi' });
   r.host.setArt(first);
   r.host.setView({ col: 1, row: 2, cols: 3, rows: 4 });
   for (const peer of peers) await r.host.peer(peer, await passFor(`u_${peer}`, peer));
@@ -98,7 +98,7 @@ test('each watcher gets the room, then art deep-equal to the host\'s, then the v
     const log = r.log[peer];
     await expect.poll(() => log.views.length, PATIENT).toBe(1);
     expect(log.states).toEqual(['connecting', 'live']);
-    expect(log.rooms).toEqual([{ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan' }]);
+    expect(log.rooms).toEqual([{ name: 'Night shift', welcome: 'Hi' }]);
     expect(log.arts).toEqual([art()]);
     expect(log.views).toEqual([{ col: 1, row: 2, cols: 3, rows: 4 }]);
   }
@@ -435,11 +435,10 @@ test('a watcher ignores a room or a view that doesn\'t fit, and cuts a long name
   const { log, json } = await hostileHost();
   json({ t: 'room', name: 5, welcome: 'Hi', host: 'ansi-fan' });
   json({ t: 'room', name: 'Night', welcome: { a: 1 }, host: 'ansi-fan' });
-  json({ t: 'room', name: 'Night', welcome: 'Hi', host: null });
   for (const bad of [{ col: -1 }, { col: 1.5 }, { col: '1' }, { rows: null }, { cols: [8] }]) json({ t: 'view', col: 0, row: 0, cols: 8, rows: 2, ...bad });
   json({ t: 'room', name: 'n'.repeat(100), welcome: 'w'.repeat(300), host: 'ansi-fan' });
   json({ t: 'view', col: 0, row: 3, cols: 8, rows: 2 });
   await expect.poll(() => log.views.length, PATIENT).toBe(1);
-  expect(log.rooms).toEqual([{ name: 'n'.repeat(60), welcome: 'w'.repeat(200), host: 'ansi-fan' }]);
+  expect(log.rooms).toEqual([{ name: 'n'.repeat(60), welcome: 'w'.repeat(200) }]);   // the host's name in it isn't taken
   expect(log.views).toEqual([{ col: 0, row: 3, cols: 8, rows: 2 }]);
 });

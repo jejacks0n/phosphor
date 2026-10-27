@@ -239,8 +239,8 @@ export class LobbyConnection {
 
   async retry() {
     this.detach();
+    const run = this.run;   // before onStatus hears, which may close it
     this.setStatus('reconnecting');
-    const run = this.run;
     const waitMs = this.retryMs;
     this.retryMs = Math.min(waitMs * 2, LAST_RETRY_MS);
     await this.wait(waitMs);

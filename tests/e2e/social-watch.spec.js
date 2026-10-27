@@ -160,6 +160,25 @@ test('a ?room= link to a private room asks for the password: a wrong one says so
   await expect.poll(() => watcherCells(watcher)).toEqual(await hostCells(host));
 });
 
+test('the same member watching in a second tab: the first goes back to the lobby, saying why, and the second watches', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  const me = member({ id: 'u_2', username: 'tin-lantern-owl', name: 'tin-lantern-owl' });
+  const first = await watcherPage(context, room, { me });
+  await first.goto(`/?room=${ROOM_ID}`);
+  await expect.poll(() => store(first, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
+
+  const second = await watcherPage(context, room, { me });
+  await second.goto(`/?room=${ROOM_ID}`);
+  await expect(first.getByText('You\'re watching this room in another tab')).toBeVisible();
+  await expect(shown(first, 'lobby')).toBeVisible();
+  await expect.poll(() => store(second, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
+  await expect(shown(host, 'host-room').getByText('1 watching')).toBeVisible();
+  await first.waitForTimeout(1500);   // past a retry, if there were one
+  expect(await store(first, 'room', (r) => r.role)).toBe(null);
+  expect(room.from('p_1').filter((m) => m.type === 'join')).toHaveLength(1);
+});
+
 test('a members-only room refuses a guest with "Signed-in users only"', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room, { allowGuests: false });

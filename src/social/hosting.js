@@ -92,8 +92,8 @@ export class Host {
     this.watchers.get(from)?.conn?.signal(data);
   }
 
-  setRoom({ name, welcome, host }) {
-    this.room = { name, welcome, host };
+  setRoom({ name, welcome }) {
+    this.room = { name, welcome };
     for (const w of this.open()) this.sendTo(w, { t: 'room', ...this.room });
   }
 

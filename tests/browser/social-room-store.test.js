@@ -160,7 +160,7 @@ test('INVALID for the name says so in words and stays off the air', async () => 
 test('A watcher gets the room and the host\'s cells; one painted cell reaches it within 300 ms, as cells', async () => {
   const socket = await goLive();
   const log = await watcherOn(socket);
-  expect(log.rooms).toEqual([{ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan' }]);
+  expect(log.rooms).toEqual([{ name: 'Night shift', welcome: 'Hi' }]);
   expect(log.arts[0]).toMatchObject({ cols: 8, lines: 4, font: { id: 'jetbrains', size: 17 } });
   expect(shown(log.arts[0].cells)).toEqual(shown(project.cells));
   await expect.poll(() => room.watchers).toEqual([{ peer: 'p1', sub: 'u_p1', name: 'p1', guest: false, following: true, connected: true }]);
@@ -366,6 +366,78 @@ test('removed gives "The host removed you"', async () => {
   expect(room.role).toBe(null);
 });
 
+test('replaced (the same account watching in another tab) puts this one back in the lobby, saying so, and it doesn\'t join again', async () => {
+  await social.boot();
+  social.page = 'account';
+  const socket = await joining(1);
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  socket.receive({ type: 'replaced' });
+  expect(social.notice).toBe('You\'re watching this room in another tab');
+  expect([room.role, social.page]).toEqual([null, 'lobby']);
+  expect(socket.closed).toBe(true);
+  await wait(1200);   // past the first retry
+  expect(sockets).toHaveLength(1);
+});
+
+// A raw host peer for a joined watcher, its signals through the watcher's socket as the Room relays them.
+async function rawHost(socket, { answered = true } = {}) {
+  let host;
+  socket.heard = (msg) => { if (answered && msg.type === 'signal-to') later().then(() => host.signal(msg.data)); };
+  return new Promise((resolve) => {
+    host = openPeer({
+      initiator: true, config: { iceServers: [] }, connectWithinMs: 5000,
+      sendSignal: async (data) => { await later(); socket.receive({ type: 'signal-from', from: 'host', data }); },
+      onOpen: resolve, onClose() {},
+    });
+    toClose.push(host);
+    if (!answered) resolve(null);
+  });
+}
+
+test('"hosted by" is the Room\'s word: a room from the channel naming another host doesn\'t change it', async () => {
+  await social.boot();
+  const socket = await joining(1);
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  const channel = await rawHost(socket);
+  channel.send(JSON.stringify({ t: 'room', name: 'Night shift', welcome: 'Hi', host: 'impostor' }));
+  await expect.poll(() => room.room?.name, PATIENT).toBe('Night shift');
+  expect(room.room).toEqual({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan' });
+});
+
+test('the Room closing the socket while the host\'s connection is being made is final: failed, and no join again', async () => {
+  await social.boot();
+  const socket = await joining(1);
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan' });
+  await rawHost(socket, { answered: false });
+  await vi.waitFor(() => expect(room.status).toBe('connecting'));
+  socket.close();   // the host gave up on reaching us first, and the Room put us out
+  expect(room.status).toBe('failed');
+  expect(room.role).toBe('watch');
+  await wait(1200);   // past the first retry
+  expect(sockets).toHaveLength(1);
+  expect(room.status).toBe('failed');
+});
+
+test('a pass that won\'t come ends a room being joined: onboarding stays on its page, suspended says so', async () => {
+  server.session = member({ needsOnboarding: true });
+  await social.boot();
+  room.join(ID);
+  (await lastSocket(1)).accept();
+  await vi.waitFor(() => expect(room.role).toBe(null));
+  expect(social.page).toBe('onboarding');
+
+  server.session = member();
+  server.suspended = { until: null };
+  social.page = 'lobby';
+  room.join(ID);
+  (await lastSocket(2)).accept();
+  await vi.waitFor(() => expect(room.role).toBe(null));
+  expect(social.notice).toBe('This account is suspended for good');
+  await wait(1200);   // past the first retry
+  expect(sockets).toHaveLength(2);
+  expect(sockets.every((s) => s.sent.length === 0)).toBe(true);
+});
+
 test('Review focus 3: joined waits for the host\'s offer; an offer whose answer never arrives gives failed, and the role stays', async () => {
   await social.boot();
   room._connectWithinMs = 500;
@@ -406,7 +478,7 @@ test('A watcher\'s room, art and the host\'s view come from the channel; leave c
     if (msg.type === 'signal-to') later().then(() => host.signalFrom('p1', msg.data));
   };
   const art = { cols: 2, lines: 1, font: null, cells: [cell('a'), cell('b')] };
-  host.setRoom({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan' });
+  host.setRoom({ name: 'Night shift', welcome: 'Hi' });
   host.setArt(art);
   host.setView({ col: 1, row: 0, cols: 1, rows: 1 });
   await host.peer('p1', await passFor('g_1', 'quiet-amber-fox-1', true));

@@ -7,7 +7,7 @@
 import { openPeer } from './peer.js';
 import { CHUNK_BYTES, MOST_SNAPSHOT_CHUNKS, decodeCells, unpackSnapshot } from './wire.js';
 
-const MOST_NAME = 60;       // a room's name (the host's name is shorter still)
+const MOST_NAME = 60;       // a room's name
 const MOST_WELCOME = 200;
 
 // A string, cut to most characters; null for anything else.
@@ -92,9 +92,10 @@ export class Watch {
     } else if (msg.t === 'cells' && this.art) this.change(msg);
   }
 
+  // Who hosts it is the Room's word (joined), never the host's.
   room(msg) {
-    const room = { name: text(msg.name, MOST_NAME), welcome: text(msg.welcome, MOST_WELCOME), host: text(msg.host, MOST_NAME) };
-    if (room.name !== null && room.welcome !== null && room.host !== null) this.onRoom(room);
+    const room = { name: text(msg.name, MOST_NAME), welcome: text(msg.welcome, MOST_WELCOME) };
+    if (room.name !== null && room.welcome !== null) this.onRoom(room);
   }
 
   view({ col, row, cols, rows }) {

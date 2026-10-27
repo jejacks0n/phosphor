@@ -173,16 +173,17 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
 // meet in it: fakeRoom({ password, allowGuests, max, full }). The host's `host` is answered `hosting`
 // (and makes it the host's room; an earlier host socket is closed), a `join` `joined`, or its refusal:
 // wrong-password for a private room (one with a password), signed-in-only for a guest when allowGuests
-// is false, full at max watchers or with `full`. Signals are relayed between the host and its watchers;
-// the host hears of each watcher (peer, peer-gone). Settings change the room as the Room's checks allow,
-// at most once a second per host socket: a sooner one is answered `settings-now`. End sends ended to
-// everyone. Sockets are closed where the Room closes them: after refused (1008), ended or removed (1000),
-// and a watcher's once the host hears it's gone. room.received has every message as { from: 'host' |
+// is false, full at max watchers or with `full`. A join by an account already inside takes the older
+// peer's place: that one hears replaced, and the host peer-gone. Signals are relayed between the host
+// and its watchers; the host hears of each watcher (peer, peer-gone). Settings change the room as the
+// Room's checks allow, at most once a second per host socket: a sooner one is answered `settings-now`.
+// End sends ended to everyone. Sockets are closed where the Room closes them: after refused (1008),
+// ended, removed or replaced (1000), and a watcher's once the host hears it's gone. room.received has every message as { from: 'host' |
 // <peer> | null, msg }, room.from(who) the messages of one; room.send(who, msg) pushes one, room.info()
 // is the room as the host is told it, and room.drop(who) closes a socket.
 const SETTINGS_EVERY_MS = 1000;
 const SIGNALS = ['feedback', 'chat', 'heads-down', null];
-const FINAL = { refused: 1008, removed: 1000, ended: 1000 };   // messages after which the socket is closed
+const FINAL = { refused: 1008, removed: 1000, ended: 1000, replaced: 1000 };   // messages after which the socket is closed
 
 export function fakeRoom({ password = null, allowGuests = true, max = 12, full = false } = {}) {
   const sockets = new Map();    // 'host' or a peer id -> its socket
@@ -230,11 +231,16 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     }
     if (msg.type === 'join' && !who) {
       const claims = claimsOf(msg.pass);
+      const older = [...watchers].filter(([, w]) => w.sub === claims.sub).map(([peer]) => peer);
       const reason = ended ? 'unavailable'
         : claims.guest && !room.setup.allowGuests ? 'signed-in-only'
           : room.setup.password !== null && msg.password !== room.setup.password ? 'wrong-password'
-            : full || watchers.size >= room.setup.max ? 'full' : null;
+            : full || watchers.size - older.length >= room.setup.max ? 'full' : null;
       if (reason) return reply(ws, { type: 'refused', reason });
+      for (const peer of older) {
+        send(peer, { type: 'replaced' });
+        gone(peer);
+      }
       const peer = `p_${++peers}`;
       watchers.set(peer, { sub: claims.sub, guest: claims.guest, pass: msg.pass });
       sockets.set(peer, ws);

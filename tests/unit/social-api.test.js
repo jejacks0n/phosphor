@@ -115,5 +115,6 @@ test('refusalWords says why a room turned you away or put you out', () => {
   assert.equal(refusalWords('throttled'), messageFor('THROTTLED'));
   assert.equal(refusalWords('ended'), 'The host ended the room');
   assert.equal(refusalWords('removed'), 'The host removed you');
+  assert.equal(refusalWords('replaced'), "You're watching this room in another tab");
   assert.equal(refusalWords('constructor'), "This room isn't available");
 });

@@ -55,8 +55,9 @@ export function messageFor(code, detail = {}) {
   return (typeof word === 'function' ? word(detail) : word) ?? 'Something went wrong. Try again.';
 }
 
-// Why a room's socket was turned away or put out, in plain words: a refusal's reason, or ended or
-// removed. A pass refused even when fresh (bad-pass) reads as a room that isn't there.
+// Why a room's socket was turned away or put out, in plain words: a refusal's reason, or ended,
+// removed or replaced (the same account joined from another tab). A pass refused even when fresh
+// (bad-pass) reads as a room that isn't there.
 const ROOM_WORDS = {
   unavailable: "This room isn't available",
   'bad-pass': "This room isn't available",
@@ -66,6 +67,7 @@ const ROOM_WORDS = {
   throttled: WORDS.THROTTLED,
   ended: 'The host ended the room',
   removed: 'The host removed you',
+  replaced: "You're watching this room in another tab",
 };
 
 export const refusalWords = (reason) => (Object.hasOwn(ROOM_WORDS, reason) ? ROOM_WORDS[reason] : ROOM_WORDS.unavailable);
