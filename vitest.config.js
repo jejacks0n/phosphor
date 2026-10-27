@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue';
 import { playwright } from '@vitest/browser-playwright';
 import { buildInfo } from './vite.config.js';
 import { fileURLToPath } from 'node:url';
+import { launchWithout } from './tests/support/chromiumArgs.js';
 
 // The test layers (docs/testing.md): unit tests in Node for pure logic, and browser tests in Chromium
 // for the store and everything that needs a real canvas or WebGL. Chromium runs on software WebGL
@@ -10,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 // WebKit later: another entry in the browser project's instances.
 const SOFTWARE_WEBGL = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
 // Two connections in one machine (the room tests) reach each other by their addresses, not mDNS names.
-const NO_MDNS = '--disable-features=WebRtcHideLocalIpsWithMdns';
+const launchOptions = await launchWithout(['WebRtcHideLocalIpsWithMdns'], SOFTWARE_WEBGL);
 
 // An update run in CI would write references and pass whatever they say.
 if (process.env.CI && process.env.UPDATE_REFERENCES === '1') throw new Error('Refusing to update reference files in CI');
@@ -41,7 +42,7 @@ export default defineConfig({
           browser: {
             enabled: true,
             headless: true,
-            provider: playwright({ launchOptions: { args: [...SOFTWARE_WEBGL, NO_MDNS] } }),
+            provider: playwright({ launchOptions }),
             instances: [{ browser: 'chromium' }],
           },
         },

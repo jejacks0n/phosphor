@@ -94,6 +94,23 @@ The SOCIAL tab talks to a server that these tests never reach. Each layer stands
   to `localhost:8787` and closes every socket, so a spec that forgot to fake the server fails
   instead of reaching a real one.
 
+### Room connections on macOS
+
+The room tests (`tests/browser/social-peer.test.js`) connect two WebRTC peers inside Chromium, which
+needs the machine to let that Chromium receive UDP. With the macOS firewall on (stealth mode
+especially), Playwright's ad-hoc-signed browser has its incoming packets dropped: the first
+connection may work and the next ones time out. Allow it once, for the headless shell the tests
+launch (`~/Library/Caches/ms-playwright/chromium_headless_shell-<version>/...`, the
+`chrome-headless-shell` binary inside):
+
+```bash
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add <path to chrome-headless-shell>
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp <path to chrome-headless-shell>
+```
+
+Redo it after a Playwright browser update, which installs a new binary at a new path. Linux and CI
+need nothing.
+
 ## Running one test
 
 ```bash

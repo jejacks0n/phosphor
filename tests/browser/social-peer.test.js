@@ -1,13 +1,18 @@
 // One WebRTC connection: two peers in this page, each one's signals handed straight to the other.
 // No STUN server (config.iceServers is empty); the host candidates reach across because the browser
-// runs without mDNS (vitest.config.js).
-import { test, expect, afterEach } from 'vitest';
+// runs without mDNS (vitest.config.js). The tests that don't need a real connection use a recording
+// RTCPeerConnection instead.
+import { test, expect, afterEach, vi } from 'vitest';
 import { openPeer } from '@/social/peer';
 
 const open = [];
-afterEach(() => { for (const p of open.splice(0)) p.close(); });
+afterEach(() => {
+  for (const p of open.splice(0)) p.close();
+  vi.unstubAllGlobals();
+});
 
 const later = () => new Promise((resolve) => setTimeout(resolve, 0));
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const config = { iceServers: [] };
 
 // A host and a watcher wired together; the log has each one's open channel and closings.
@@ -32,10 +37,28 @@ function pair({ deliverAnswer = true, connectWithinMs } = {}) {
   return { host, watcher, log, opened };
 }
 
-// One connection does both jobs: a machine that drops a page's later WebRTC packets (some Macs, after the
-// first connection) would fail a second one for no reason of ours.
-test('both channels open, text and binary messages cross, and close() on one side closes the other, once', async () => {
-  const { host, log, opened } = pair();
+// An RTCPeerConnection that does nothing but record what it is asked, and takes a moment over
+// setRemoteDescription as the real one does.
+function recordingConnection() {
+  const calls = [];
+  const made = [];
+  class Recorder {
+    constructor() { made.push(this); }
+    createDataChannel(label) { return fakeChannel(label); }
+    async setLocalDescription() { calls.push('setLocalDescription'); this.localDescription = { toJSON: () => ({ type: 'offer', sdp: 'x' }) }; }
+    async setRemoteDescription(sdp) { await wait(20); calls.push(['setRemoteDescription', sdp.type]); }
+    async addIceCandidate(candidate) { calls.push(['addIceCandidate', candidate.candidate]); }
+    close() { calls.push('close'); }
+  }
+  vi.stubGlobal('RTCPeerConnection', Recorder);
+  return { calls, made };
+}
+function fakeChannel(label, readyState = 'connecting') {
+  return { label, readyState, close: vi.fn(function () { this.readyState = 'closed'; }) };
+}
+
+test('both channels open, and a text and a binary message cross each way', async () => {
+  const { opened } = pair();
   const [h, w] = await Promise.all([opened.host, opened.watcher]);
   expect(h.label).toBe('room');
   expect(w.label).toBe('room');
@@ -52,21 +75,96 @@ test('both channels open, text and binary messages cross, and close() on one sid
   const back = new Promise((resolve) => { h.onmessage = (e) => resolve(e.data); });
   w.send('hi');
   expect(await back).toBe('hi');
+});
 
+test('close() on one side brings onClose({ failed: false }) once on the other, and once on itself', async () => {
+  const { host, log, opened } = pair();
+  await Promise.all([opened.host, opened.watcher]);
   host.close();
   await expect.poll(() => log.watcher.closed.length).toBe(1);
   expect(log.watcher.closed).toEqual([{ failed: false }]);
   expect(log.host.closed).toEqual([{ failed: false }]);
   host.close();
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await wait(100);
   expect(log.host.closed.length).toBe(1);
   expect(log.watcher.closed.length).toBe(1);
 });
 
-test('an answer that never arrives fails the initiator once, within connectWithinMs', async () => {
+test('an answer that never arrives fails the initiator once, after waiting out connectWithinMs', async () => {
+  const started = performance.now();
   const { log } = pair({ deliverAnswer: false, connectWithinMs: 300 });
   await expect.poll(() => log.host.closed.length, { timeout: 2000 }).toBe(1);
+  expect(performance.now() - started).toBeGreaterThanOrEqual(250);
   expect(log.host.closed).toEqual([{ failed: true }]);
-  await new Promise((resolve) => setTimeout(resolve, 400));
+  await wait(400);
   expect(log.host.closed.length).toBe(1);
+});
+
+test('close() right after openPeer gives one { failed: true } and nothing when the time runs out', async () => {
+  const closed = [];
+  const peer = openPeer({ initiator: true, config, connectWithinMs: 200, sendSignal() {}, onOpen() {}, onClose: (info) => closed.push(info) });
+  peer.close();
+  await wait(400);
+  expect(closed).toEqual([{ failed: true }]);
+});
+
+test('candidates that come before the description are held until it is set, then applied', async () => {
+  const { calls } = recordingConnection();
+  const peer = openPeer({ initiator: false, config, sendSignal() {}, onOpen() {}, onClose() {} });
+  open.push(peer);
+  const early = peer.signal({ candidate: { candidate: 'early' } });
+  const description = peer.signal({ sdp: { type: 'offer', sdp: 'x' } });
+  const during = peer.signal({ candidate: { candidate: 'during' } });   // while the description is being set
+  await Promise.all([early, description, during]);
+  const order = calls.filter((c) => Array.isArray(c));
+  expect(order).toEqual([['setRemoteDescription', 'offer'], ['addIceCandidate', 'early'], ['addIceCandidate', 'during']]);
+  await peer.signal({ candidate: { candidate: 'after' } });
+  expect(calls.at(-1)).toEqual(['addIceCandidate', 'after']);
+});
+
+test('only one channel called room is taken, and only by the watcher; any other is closed', async () => {
+  const opens = [];
+  const taken = (initiator) => {
+    const { made } = recordingConnection();
+    const peer = openPeer({ initiator, config, sendSignal() {}, onOpen: (c) => opens.push(c), onClose() {} });
+    open.push(peer);
+    return made.at(-1);
+  };
+  const open_ = (pc, channel) => { pc.ondatachannel({ channel }); channel.onopen?.(); };
+
+  const watcher = taken(false);
+  const stray = fakeChannel('other');
+  open_(watcher, stray);
+  expect(stray.close).toHaveBeenCalled();
+  expect(opens).toEqual([]);
+  const room = fakeChannel('room');
+  open_(watcher, room);
+  expect(opens).toEqual([room]);
+  const second = fakeChannel('room');
+  open_(watcher, second);
+  expect(second.close).toHaveBeenCalled();
+  expect(room.close).not.toHaveBeenCalled();
+  expect(opens).toEqual([room]);
+
+  opens.length = 0;
+  const host = taken(true);   // the host makes its own channel; a channel handed to it is a stranger
+  const offered = fakeChannel('room');
+  open_(host, offered);
+  expect(offered.close).toHaveBeenCalled();
+  expect(opens.filter((c) => c === offered)).toEqual([]);
+});
+
+test('a sendSignal that rejects is no unhandled rejection', async () => {
+  recordingConnection();
+  const seen = [];
+  const note = (e) => { seen.push(e.reason); e.preventDefault(); };
+  window.addEventListener('unhandledrejection', note);
+  try {
+    const peer = openPeer({ initiator: true, config, sendSignal: () => Promise.reject(new Error('socket gone')), onOpen() {}, onClose() {} });
+    open.push(peer);
+    await wait(100);
+  } finally {
+    window.removeEventListener('unhandledrejection', note);
+  }
+  expect(seen).toEqual([]);
 });

@@ -12,6 +12,7 @@ export function openPeer({ initiator, sendSignal, onOpen, onClose, config = rtcC
   let done = false;
   let remoteSet = false;
   let held = [];   // candidates that came before the remote description
+  let channelTaken = initiator;   // the host makes its channel; the watcher takes the first one called room
 
   const finish = () => {
     if (done) return;
@@ -28,15 +29,23 @@ export function openPeer({ initiator, sendSignal, onOpen, onClose, config = rtcC
     const opening = () => { opened = true; clearTimeout(timer); onOpen(channel); };
     if (channel.readyState === 'open') opening(); else channel.onopen = opening;
   };
+  // A signal that can't be sent just leaves the connection to time out, which says so plainly.
+  const send = (data) => {
+    try { Promise.resolve(sendSignal(data)).catch(() => {}); } catch { /* the same */ }
+  };
   const addCandidate = (candidate) => pc.addIceCandidate(candidate).catch(() => {});   // one bad candidate isn't the end
 
-  pc.onicecandidate = (e) => { if (e.candidate && !done) sendSignal({ candidate: e.candidate.toJSON() }); };
+  pc.onicecandidate = (e) => { if (e.candidate && !done) send({ candidate: e.candidate.toJSON() }); };
   pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') finish(); };
-  pc.ondatachannel = (e) => take(e.channel);
+  pc.ondatachannel = (e) => {
+    if (channelTaken || e.channel.label !== 'room') return e.channel.close();   // one channel only, whoever opens another
+    channelTaken = true;
+    take(e.channel);
+  };
 
   const sendDescription = async () => {
     await pc.setLocalDescription();
-    if (!done) sendSignal({ sdp: pc.localDescription.toJSON() });
+    if (!done) send({ sdp: pc.localDescription.toJSON() });
   };
 
   if (initiator) {
