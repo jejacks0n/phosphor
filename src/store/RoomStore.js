@@ -20,6 +20,7 @@ const VIEW_EVERY_MS = 250;       // the part of the art the host is looking at
 const THUMBNAIL_FIRST_MS = 3000;      // the lobby's picture of a public room, soon after it goes live
 const THUMBNAIL_EVERY_MS = 180_000;   // then at most this often (the server's own floor is 20 s), and only after a change
 const SETTINGS_EVERY_MS = 1250;  // the server's 1 s, with slack: it measures when settings arrive
+const ASK_FOR_MS = 3000;        // how long an earlier() waits for its page (the host may drop it unanswered)
 const ROOM_ID = /^[a-z2-7]{10}$/;
 
 // The room you host or watch: its socket (a LobbyConnection with the room's greeting), and the host's
@@ -40,7 +41,7 @@ export const useRoomStore = defineStore('room', {
     hostView: null,      // a watcher's: { col, row, cols, rows }
     following: true,
     chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted }], oldest first, at most MOST_KEPT
-    chatMore: false,     // older messages remain (the host's, or dropped from this list)
+    chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
     _connection: null,   // the room's LobbyConnection (markRaw)
@@ -48,6 +49,7 @@ export const useRoomStore = defineStore('room', {
     _watch: null,        // Watch (markRaw)
     _allowance: null,    // the composer's Allowance (markRaw)
     _asking: false,      // a watcher's earlier() is waiting for its answer
+    _askTimer: null,     // gives up on that answer after ASK_FOR_MS
     _settings: null,     // Pacer for the host's settings (markRaw)
     _stops: [],          // what close() undoes: the host's watches, timers and pagehide listener
     _password: undefined, // the password the join sent
@@ -189,6 +191,7 @@ export const useRoomStore = defineStore('room', {
       const connection = this._connection;
       this._connection = null;
       connection?.close();
+      this.stopAsking();
       this._host?.close();
       this._watch?.close();
       this._settings?.reset();
@@ -196,7 +199,7 @@ export const useRoomStore = defineStore('room', {
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, watchers: [], art: null,
         hostView: null, following: true, chat: [], chatMore: false, joinedAt: null, chatRefused: null,
-        _allowance: null, _asking: false, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
+        _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,
       });
     },
@@ -250,17 +253,26 @@ export const useRoomStore = defineStore('room', {
     // A watcher asks for the page before its oldest message; one question at a time.
     earlier() {
       if (this.role !== 'watch' || !this.chatMore || this._asking || !this.chat.length) return false;
-      return this._asking = this._watch.earlier(this.chat[0].id);
+      if (!this._watch.earlier(this.chat[0].id)) return false;
+      this._asking = true;
+      this._askTimer = setTimeout(() => this.stopAsking(), ASK_FOR_MS);
+      return true;
+    },
+
+    stopAsking() {
+      clearTimeout(this._askTimer);
+      this._askTimer = null;
+      this._asking = false;
     },
 
     // The host's Remove: the watcher is put out of the room.
     remove(peer) {
-      this._host?.remove(peer);
+      if (this.role === 'host') this._host.remove(peer);
     },
 
     // The host's Block: the account can't join any room of yours, and this one is put out.
     async block(watcher) {
-      if (!await useSocialStore().block(watcher.name)) return false;
+      if (this.role !== 'host' || !await useSocialStore().block(watcher.name)) return false;
       this.remove(watcher.peer);
       return true;
     },
@@ -275,18 +287,19 @@ export const useRoomStore = defineStore('room', {
       } else if (event.type === 'chat') {
         if (!this.chat.some((m) => m.id === event.entry.id)) this.keep([...this.chat, this.chatRow(event.entry, event.claims)]);
       } else if (event.type === 'history') {
-        const rows = event.messages.map((m) => (m.deleted ? { id: m.id, ts: m.ts, text: '', sub: null, name: null, host: false, mine: false, deleted: true } : this.chatRow(m.entry, m.claims)));
+        const rows = event.messages.map((m) => (m.deleted ? { id: m.id, ts: m.ts, text: '', sub: null, name: null, host: false, mine: false, deleted: true } : this.chatRow(m.entry, m.claims)))
+          .filter((r, at, all) => all.findIndex((o) => o.id === r.id) === at);   // an id twice in a page is shown once
         const fresh = rows.filter((r) => !this.chat.some((m) => m.id === r.id));
         if (event.earlier && this._asking) {
           this.chatMore = event.more;
-          this.keep([...fresh, ...this.chat]);
+          this.keep([...fresh.slice(Math.max(0, fresh.length + this.chat.length - MOST_KEPT)), ...this.chat]);   // as much as fits, the nearest
         } else if (!this.chat.length) {
           Object.assign(this, { chatMore: event.more, joinedAt: rows.at(-1)?.id ?? null });
           this.keep(rows);
         } else if (fresh.length) {
           this.keep([...this.chat, ...fresh].sort((a, b) => a.ts - b.ts));   // stable: same-time messages keep their order
         }
-        this._asking = false;
+        this.stopAsking();
       }
     },
 
@@ -297,13 +310,11 @@ export const useRoomStore = defineStore('room', {
       return { id, ts, text, sub: claims.sub, name: claims.name, host: this.role === 'host' ? mine : claims.name === this.room?.host, mine, deleted: false };
     },
 
-    // The list is kept to the last MOST_KEPT; older ones dropped from it are still the host's to give.
+    // The list holds the last MOST_KEPT at most, like the host's log, and goes no further back: once it's
+    // full there is nothing more to ask for.
     keep(list) {
-      if (list.length > MOST_KEPT) {
-        list = list.slice(-MOST_KEPT);
-        this.chatMore = true;
-      }
-      this.chat = list;
+      if (list.length >= MOST_KEPT) this.chatMore = false;
+      this.chat = list.slice(-MOST_KEPT);
     },
 
     // The Room's messages (the server's API).
@@ -378,7 +389,7 @@ export const useRoomStore = defineStore('room', {
         this._connection = null;
         connection?.close();
       }
-      this._asking = false;   // an answer over a lost connection isn't coming
+      this.stopAsking();   // an answer over a lost connection isn't coming
       this.status = state === 'lost' ? 'waiting' : state;
     },
   },

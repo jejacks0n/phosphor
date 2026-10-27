@@ -807,12 +807,59 @@ test('A watcher\'s deleted marks the message deleted and drops its text; an unkn
   expect(room.chat.map((m) => [m.deleted, m.text])).toEqual([[false, 'm1'], [true, '']]);
 });
 
-test('5,001 messages keep 5,000 and set chatMore', async () => {
+test('5,001 messages keep the last 5,000 and leave nothing more to ask for', async () => {
   await watching();
-  for (let n = 1; n <= MOST_KEPT + 1; n++) room._watch.onChat({ type: 'chat', ...said(n) });
+  room._watch.onChat({ type: 'history', messages: [said(0)], more: true, earlier: false });
+  for (let n = 1; n <= MOST_KEPT; n++) room._watch.onChat({ type: 'chat', ...said(n) });
   expect(room.chat).toHaveLength(MOST_KEPT);
-  expect(room.chat[0].id).toBe(chatId(2));
+  expect(room.chat[0].id).toBe(chatId(1));
+  expect(room.chatMore).toBe(false);
+  room._watch.earlier = vi.fn(() => true);
+  expect(room.earlier()).toBe(false);
+  expect(room._watch.earlier).not.toHaveBeenCalled();
+});
+
+test('An earlier page that would overfill the list adds only what fits, nearest first, and the list is then full', async () => {
+  await watching();
+  const first = Array.from({ length: MOST_KEPT - 10 }, (_, n) => said(100 + n));
+  room._watch.onChat({ type: 'history', messages: first, more: true, earlier: false });
   expect(room.chatMore).toBe(true);
+  room._watch.earlier = vi.fn(() => true);
+  expect(room.earlier()).toBe(true);
+  room._watch.onChat({ type: 'history', messages: Array.from({ length: 50 }, (_, n) => said(n)), more: true, earlier: true });
+  expect(room.chat).toHaveLength(MOST_KEPT);
+  expect(room.chat[0].id).toBe(chatId(40));
+  expect(room.chat.at(-1).id).toBe(chatId(100 + MOST_KEPT - 11));
+  expect(room.chatMore).toBe(false);
+  expect(room.earlier()).toBe(false);
+});
+
+test('An earlier() nobody answers can be asked again after a wait', async () => {
+  await watching();
+  room._watch.earlier = vi.fn(() => true);
+  room._watch.onChat({ type: 'history', messages: [said(5)], more: true, earlier: false });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  expect(room.earlier()).toBe(true);
+  await vi.advanceTimersByTimeAsync(2900);
+  expect(room.earlier()).toBe(false);
+  await vi.advanceTimersByTimeAsync(200);
+  expect(room.earlier()).toBe(true);
+  expect(room._watch.earlier).toHaveBeenCalledTimes(2);
+  room.leave();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test('An id repeated within a history page is shown once', async () => {
+  await watching();
+  room._watch.onChat({ type: 'history', messages: [said(1), said(1), said(2)], more: false, earlier: false });
+  expect(room.chat.map((m) => m.id)).toEqual([1, 2].map(chatId));
+});
+
+test('A watcher can\'t remove or block', async () => {
+  await watching();
+  expect(await room.block({ name: 'someone', peer: 'p9' })).toBe(false);
+  expect(server.sent('POST', '/api/blocks')).toEqual([]);
+  room.remove('p9');   // nothing to send it with: no throw
 });
 
 test('block POSTs the name, then removes the watcher; a failed POST removes no one', async () => {
