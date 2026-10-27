@@ -182,6 +182,13 @@ test('?verified=1 says the email is confirmed and leaves the URL without it, kee
   expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?room=abc`);
 });
 
+test('?verified=1 with an error (a used or expired link) says so in words', async () => {
+  fakeServer();
+  vi.spyOn(history, 'replaceState').mockImplementation(() => {});
+  await social.start(at('?verified=1&error=TOKEN_EXPIRED'));
+  expect(social.notice).toBe('That link has expired or was already used. Ask for a new one.');
+});
+
 test('?reset=<token> opens the reset page; resetPassword sends the token and lands on sign-in', async () => {
   const server = fakeServer();
   server.route('POST /api/auth/reset-password', () => [200, { status: true }]);
@@ -199,13 +206,13 @@ test('?reset=<token> opens the reset page; resetPassword sends the token and lan
   expect(social.notice).toBe('Your password is changed. Sign in with it');
 });
 
-test('An OAuth return: ?social=error with EMAIL_NOT_VERIFIED says so in words', async () => {
+test('An OAuth return: ?social=error with EMAIL_NOT_VERIFIED says so in words, and its error params leave the URL', async () => {
   fakeServer();
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
-  await social.start(at('?social=error&error=EMAIL_NOT_VERIFIED'));
+  await social.start(at('?social=error&error=EMAIL_NOT_VERIFIED&error_description=Email%20not%20verified&room=abc'));
   social.showLobby();
   expect(social.notice).toBe('Confirm your email with Discord or GitHub first');
-  expect(replaceState.mock.calls[0][2]).toBe(window.location.pathname);
+  expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?room=abc`);
 });
 
 test('A Discord-made account without a username opens onboarding and stays out of the lobby until it picks one', async () => {

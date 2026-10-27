@@ -28,6 +28,8 @@ const WORDS = {
   VERIFY_EMAIL: 'Check your inbox to verify your email',
   USE_RENAME: 'Use Change username to rename your account',
   SESSION_EXPIRED: 'Your session ended. Sign in again',
+  INVALID_TOKEN: 'That link has expired or was already used. Ask for a new one.',   // an emailed link's
+  TOKEN_EXPIRED: 'That link has expired or was already used. Ask for a new one.',
   INVALID_EMAIL_OR_PASSWORD: "That email or username and password don't match",
   INVALID_PASSWORD: "That password doesn't match",
   INVALID_USERNAME_OR_PASSWORD: "That email or username and password don't match",

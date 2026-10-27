@@ -13,9 +13,10 @@ const RENEW_RETRY_MS = 30_000;   // after a renewal that failed for a passing re
 const CONFIRMED = 'Check your email to confirm your address';
 const RELINK = 'Sign in again to change how you sign in';
 
-// The query params the server sends people back with (an error comes with verified or social); start()
-// reads them and takes them off the URL.
+// The query params the server sends people back with (an error, and an error_description, come
+// with verified or social); start() reads them and takes them off the URL.
 const RETURN_PARAMS = ['verified', 'reset', 'social'];
+const ERROR_PARAMS = ['error', 'error_description'];
 
 // The server asks for a recent sign-in before unlinking: SESSION_NOT_FRESH from unlink-account,
 // SESSION_EXPIRED from delete-user.
@@ -97,7 +98,7 @@ export const useSocialStore = defineStore('social', {
       }
       if (!RETURN_PARAMS.some((name) => params.has(name))) return;
       if (matchMedia(desktopQuery).matches) useWorkspaceStore().editorTab = 'social';   // back to where you were
-      [...RETURN_PARAMS, 'error'].forEach((name) => params.delete(name));
+      [...RETURN_PARAMS, ...ERROR_PARAMS].forEach((name) => params.delete(name));
       history.replaceState(history.state, '', url.pathname + url.search + url.hash);
     },
 

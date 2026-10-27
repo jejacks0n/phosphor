@@ -52,6 +52,11 @@ test('api sends JSON with cookies and returns { ok, status, data, code }; a fail
   globalThis.fetch = async () => new Response('not json', { status: 502 });   // a proxy's error page
   assert.deepEqual(await api('/rooms'), { ok: false, status: 502, data: null, code: null });
 
+  globalThis.fetch = async () => new Response('{"message":"Too many requests"}', { status: 429 });   // the sign-in routes' own limit
+  assert.equal((await api('/api/auth/sign-in/email')).code, 'THROTTLED');
+  globalThis.fetch = async () => new Response('{"code":"TOO_SOON"}', { status: 429 });
+  assert.equal((await api('/api/me/username')).code, 'TOO_SOON');
+
   globalThis.fetch = async () => { throw new TypeError('Failed to fetch'); };
   assert.deepEqual(await api('/rooms'), { ok: false, status: 0, data: null, code: 'NETWORK' });
 });
@@ -60,7 +65,7 @@ test('messageFor has plain words for every code the server sends, and a fallback
   const codes = ['TERMS_REQUIRED', 'USERNAME', 'TAKEN', 'TOO_SOON', 'ONBOARDING_REQUIRED', 'NEEDS_ONBOARDING', 'SUSPENDED',
     'THROTTLED', 'TURNSTILE_FAILED', 'PASSWORD_BREACHED', 'EMAIL_NOT_VERIFIED', 'USE_RENAME', 'SESSION_EXPIRED', 'VERIFY_EMAIL',
     'NETWORK', 'INVALID_EMAIL_OR_PASSWORD', 'INVALID_USERNAME_OR_PASSWORD', 'USER_ALREADY_EXISTS',
-    'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 'USERNAME_IS_ALREADY_TAKEN', 'PASSWORD_TOO_SHORT'];
+    'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 'USERNAME_IS_ALREADY_TAKEN', 'PASSWORD_TOO_SHORT', 'INVALID_TOKEN', 'TOKEN_EXPIRED'];
   const fallback = messageFor('NO_SUCH_CODE');
   assert.equal(fallback, 'Something went wrong. Try again.');
   for (const code of codes) assert.notEqual(messageFor(code), fallback, code);
@@ -73,6 +78,8 @@ test('messageFor has plain words for every code the server sends, and a fallback
   assert.equal(messageFor('INVALID_USERNAME_OR_PASSWORD'), "That email or username and password don't match");
   assert.equal(messageFor('USER_ALREADY_EXISTS'), 'An account already uses that email');
   assert.equal(messageFor('PASSWORD_TOO_SHORT'), 'Passwords need at least 10 characters');
+  assert.equal(messageFor('INVALID_TOKEN'), 'That link has expired or was already used. Ask for a new one.');
+  assert.equal(messageFor('TOKEN_EXPIRED'), messageFor('INVALID_TOKEN'));
   const until = new Date(2026, 10, 3).getTime();
   const day = new Date(until).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
   assert.equal(messageFor('TOO_SOON', { until }), `You can change your username again on ${day}`);
