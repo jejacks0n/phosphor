@@ -1,7 +1,7 @@
 // Brush pixel generation shared by both editors (grid pixels, clipped to the grid).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { interpolate, pencilPixels, squarePixels, brushPixels, linePixels, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
+import { interpolate, pencilPixels, squarePixels, brushPixels, linePixels, lineCoverage, halfBlockCells, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
 
 test('Brush pixel generation shared by both editors (grid pixels, clipped to the grid)', async () => {
   assert.deepEqual(interpolate({ x: 0, y: 0 }, { x: 1, y: 0 }), [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 1, y: 0 }]);
@@ -81,4 +81,32 @@ test('A straight line is one pixel per step along its longer side, from end to e
   assert.ok(shallow.every((p) => p.alpha === 1));
   assert.deepEqual(xy(linePixels({ x: 3, y: 3 }, { x: 3, y: 3 }, 10, 10)), [[3, 3]]);   // a click: one pixel
   assert.deepEqual(xy(linePixels({ x: -2, y: 1 }, { x: 2, y: 1 }, 10, 10)), [[0, 1], [1, 1], [2, 1]]); // clipped
+});
+
+test('An anti-aliased line shares each step between the two pixels it passes between; its ends are whole', () => {
+  const line = lineCoverage({ x: 0, y: 0 }, { x: 8, y: 3 }, 20, 20);
+  const at = (x, y) => line.find((p) => p.x === x && p.y === y)?.alpha ?? 0;
+  assert.equal(at(0, 0), 1);
+  assert.equal(at(8, 3), 1);
+  for (let x = 0; x <= 8; x++) {
+    const column = line.filter((p) => p.x === x).reduce((sum, p) => sum + p.alpha, 0);
+    assert.ok(Math.abs(column - 1) < 1e-9, `column ${x}: ${column}`);
+  }
+  assert.ok(line.some((p) => p.alpha > 0 && p.alpha < 1));
+  assert.ok(lineCoverage({ x: 0, y: 0 }, { x: 4, y: 4 }, 10, 10).every((p) => p.alpha === 1)); // 45°: whole pixels
+  const steep = lineCoverage({ x: 2, y: 0 }, { x: 4, y: 9 }, 10, 10);                          // steep: shared across
+  for (let y = 0; y <= 9; y++) assert.ok(Math.abs(steep.filter((p) => p.y === y).reduce((sum, p) => sum + p.alpha, 0) - 1) < 1e-9);
+});
+
+test('Half-cell pixels make block characters: across, ▌ ▐ █; across and down, the quadrants', () => {
+  const chars = (pixels, halfRows) => Object.fromEntries(halfBlockCells(pixels, halfRows).map(({ col, row, char }) => [`${col},${row}`, char]));
+  // Two half-columns per cell; rows are cells.
+  assert.deepEqual(chars([{ x: 4, y: 1 }, { x: 7, y: 1 }, { x: 8, y: 2 }, { x: 9, y: 2 }], false), { '2,1': '▌', '3,1': '▐', '4,2': '█' });
+  // Two half-columns and two half-rows per cell.
+  const q = (...xy) => xy.map(([x, y]) => ({ x, y }));
+  assert.deepEqual(chars(q([0, 0]), true), { '0,0': '▘' });
+  assert.deepEqual(chars(q([1, 0], [0, 1]), true), { '0,0': '▞' });
+  assert.deepEqual(chars(q([0, 0], [0, 1]), true), { '0,0': '▌' });
+  assert.deepEqual(chars(q([0, 0], [1, 0], [0, 1]), true), { '0,0': '▛' });
+  assert.deepEqual(chars(q([2, 2], [3, 2], [2, 3], [3, 3]), true), { '1,1': '█' });
 });

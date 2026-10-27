@@ -46,7 +46,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     shapeDrawWith: 'double', // ANSI view: 'single' | 'double' | 'half' | 'full' | 'char'
     shapeConnect: true,      // line boxes join the box characters they cross or meet
     shapeBlockChars: false,  // ANSI blocks: real ▄/█ characters, or paint over the cells' own
-    shapeAntialias: false,   // ellipses: edge pixels by coverage, or ░▒▓█ cells
+    shapeAntialias: false,   // ellipses and lines: edge pixels by coverage, or ░▒▓█ cells
+    shapeVerticalHalves: false, // ANSI blocks: ▌▐ too (Half-block: quadrants), for lines and ellipses
     shapeDrag: null,         // { from, to } grid positions while a shape is being dragged
     editZoom:  5,
     editorTab: 'input',

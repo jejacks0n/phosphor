@@ -95,6 +95,43 @@ export function linePixels(from, to, cols, rows) {
   }
 }
 
+// The same line anti-aliased (Xiaolin Wu's): each step along the longer side is shared between the
+// two pixels the line passes between, by how near it runs to each; the ends are whole pixels.
+export function lineCoverage(from, to, cols, rows) {
+  let [x0, y0, x1, y1] = [from.x, from.y, to.x, to.y].map(Math.floor);
+  const steep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
+  if (steep) [x0, y0, x1, y1] = [y0, x0, y1, x1];
+  if (x0 > x1) [x0, y0, x1, y1] = [x1, y1, x0, y0];
+  const slope = x1 === x0 ? 0 : (y1 - y0) / (x1 - x0);
+  const pixels = [];
+  const plot = (a, b, alpha) => {
+    const [x, y] = steep ? [b, a] : [a, b];
+    if (alpha > 0 && inGrid(x, y, cols, rows)) pixels.push({ x, y, alpha });
+  };
+  for (let a = x0; a <= x1; a++) {
+    const b = y0 + slope * (a - x0), low = Math.floor(b), share = b - low;
+    plot(a, low, 1 - share);
+    plot(a, low + 1, share);
+  }
+  return pixels;
+}
+
+// Block characters by the quadrants they fill: top-left 1, top-right 2, bottom-left 4, bottom-right 8.
+const QUADRANTS = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█';
+
+// Cells from pixels on a grid of half cells, two across each cell and, with halfRows, two down: each
+// cell's block character is the halves (▌ ▐ █) or quadrants its pixels fill. mask: those quadrants.
+export function halfBlockCells(pixels, halfRows) {
+  const masks = new Map();
+  for (const { x, y } of pixels) {
+    const col = x >> 1, row = halfRows ? y >> 1 : y;
+    const bit = halfRows ? 1 << ((x & 1) + 2 * (y & 1)) : (x & 1 ? 10 : 5);
+    const key = `${col},${row}`;
+    masks.set(key, { col, row, mask: (masks.get(key)?.mask ?? 0) | bit });
+  }
+  return [...masks.values()].map((c) => ({ ...c, char: QUADRANTS[c.mask] }));
+}
+
 export function rectPixels(from, to, filled, cols, rows) {
   const { x0, y0, x1, y1 } = bounds(from, to);
   const pixels = [];

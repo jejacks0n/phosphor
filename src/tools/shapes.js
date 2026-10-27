@@ -7,7 +7,7 @@
 // Block shapes paint over the cells, each keeping its own character; Block characters (off by
 // default) makes them real ▄/█ cells instead. Character mode is the character in FG, with its own
 // Fill option, and leaves the cells' backgrounds as they were.
-import { linePixels, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
+import { linePixels, lineCoverage, halfBlockCells, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/editCells';
 import { charRowsOf, cellsOfPixels, showsChar } from '@/lib/Cells';
 import { joinBox, inwardArms } from '@/lib/BoxJoin';
@@ -33,6 +33,14 @@ const boxLine = ({ shapeKind, shapeDrawWith }, view) =>
 // Where a drag to `to` ends: a box line runs across from `from` (on its row) or down (in its column),
 // whichever the drag is closer to, counted in cells (a cell is two grid pixels tall).
 const lineEnd = (from, to) => (Math.abs(to.x - from.x) >= Math.abs(to.y - from.y) / 2 ? { x: to.x, y: from.y } : { x: from.x, y: to.y });
+
+// What the ANSI view draws with: an ellipse set to box lines draws half-blocks.
+const drawnWith = ({ shapeKind, shapeDrawWith }) => (shapeKind === 'ellipse' && (shapeDrawWith === 'single' || shapeDrawWith === 'double') ? 'half' : shapeDrawWith);
+
+// Whether a line or ellipse is drawn in the ANSI view's blocks (Half-block or Full block), where it
+// can use ▌ and ▐ too (Vertical half blocks), and is.
+const blockShape = (ws) => ws.shapeKind !== 'rect' && (drawnWith(ws) === 'half' || drawnWith(ws) === 'full');
+const usesHalves = (ws) => blockShape(ws) && !!ws.shapeVerticalHalves;
 
 // Whether the ANSI view draws this shape in blocks (half or full), so Block characters applies.
 const drawsBlocks = ({ shapeKind, shapeDrawWith }) =>
@@ -60,16 +68,50 @@ const twoTone = (all, outline, fg, bg) => {
   });
 };
 
+// A line or ellipse in block characters on a grid of half cells: the outline's halves (or quadrants)
+// in FG, the rest of each cell as it was. Filled, the inside is BG: cells wholly inside are BG spaces,
+// and an outline cell takes BG behind it where the rest of it is inside.
+function halfCells(project, workspace, end, fill) {
+  const halfRows = drawnWith(workspace) === 'half';
+  const cols = 2 * project.cols, rows = halfRows ? project.rows : charRowsOf(project.rows);
+  const sub = (p) => ({ x: Math.floor(2 * p.x), y: Math.floor(halfRows ? p.y : p.y / 2) });
+  let outline, all;
+  if (workspace.shapeKind === 'line') {
+    outline = all = linePixels(sub(start), sub(end), cols, rows);
+  } else {
+    // The ellipse's box: the pixels (or cells) the drag covers, each split in two across.
+    const a = sub(start), b = sub(end);
+    const from = { x: 2 * Math.floor(Math.min(a.x, b.x) / 2), y: Math.min(a.y, b.y) };
+    const to = { x: 2 * Math.floor(Math.max(a.x, b.x) / 2) + 1, y: Math.max(a.y, b.y) };
+    outline = ellipsePixels(from, to, false, cols, rows);
+    all = fill ? ellipsePixels(from, to, true, cols, rows) : outline;
+  }
+  const ring = new Set(outline.map(({ x, y }) => `${x},${y}`));
+  const inside = new Map(halfBlockCells(all.filter(({ x, y }) => !ring.has(`${x},${y}`)), halfRows).map((c) => [`${c.col},${c.row}`, c.mask]));
+  const fg = workspace.editFgColor, bg = workspace.editBgColor;
+  const cells = halfBlockCells(outline, halfRows).map(({ col, row, char, mask }) => {
+    const filled = (inside.get(`${col},${row}`) ?? 0) & ~mask;
+    inside.delete(`${col},${row}`);
+    return { col, row, attrs: { char, fg, ...(filled ? { bg } : {}) } };
+  });
+  for (const [key] of inside) {
+    const [col, row] = key.split(',').map(Number);
+    cells.push({ col, row, attrs: { char: ' ', bg } });
+  }
+  return cells;
+}
+
 function apply({ project, workspace, view }, end) {
   const { shapeKind: kind, shapeDrawWith: drawWith, shapeBlockChars: blockChars } = workspace;
-  const antialias = workspace.shapeAntialias && kind === 'ellipse' && drawWith !== 'char';
+  // Anti-aliased in the Pixel view, and in the ANSI view's blocks (Vertical half blocks has no shades).
+  const antialias = workspace.shapeAntialias && kind !== 'rect' && (view === 'input' || (kind === 'ellipse' ? drawWith !== 'char' : blockShape(workspace)) && !usesHalves(workspace));
   const charMode = view === 'output' && drawWith === 'char';
   // Filled when there's a background to fill with; Character mode fills with its character instead.
   // A line has no inside.
   const fill = kind === 'line' ? false : charMode ? workspace.shapeCharFill : !workspace.editBgNone;
   const fg = workspace.editFgColor, bg = workspace.editBgColor;
   // Pixels for a paint shape: the whole shape, or just its outline.
-  const pixelsOf = (filled) => (kind === 'line' ? linePixels(start, end, project.cols, project.rows)
+  const pixelsOf = (filled) => (kind === 'line' ? (antialias ? lineCoverage : linePixels)(start, end, project.cols, project.rows)
     : kind === 'ellipse' ? ellipsePixels(start, end, filled, project.cols, project.rows, antialias)
       : rectPixels(start, end, filled, project.cols, project.rows));
   // Paint: the outline in FG and, filled, the inside in BG (one stroke, one undo step).
@@ -80,6 +122,13 @@ function apply({ project, workspace, view }, end) {
   };
   if (view === 'input') {
     paintShape();
+    return;
+  }
+
+  // Vertical half blocks: block characters on a grid of half cells, two across each cell (and two
+  // down in Half-block: quadrants).
+  if (usesHalves(workspace)) {
+    project.writeEditCells(halfCells(project, workspace, end, fill), { clearPaint: true });
     return;
   }
 
@@ -106,7 +155,7 @@ function apply({ project, workspace, view }, end) {
     }
     if (kind === 'line') { // from the start's cell to the end's
       const cellOf = (p) => ({ x: Math.floor(p.x), y: Math.floor(p.y / 2) });
-      return linePixels(cellOf(start), cellOf(end), project.cols, rows).map(({ x, y }) => ({ col: x, row: y, cover: 1 }));
+      return (antialias ? lineCoverage : linePixels)(cellOf(start), cellOf(end), project.cols, rows).map(({ x, y, alpha }) => ({ col: x, row: y, cover: alpha }));
     }
     return rectCells(rect).filter(inGrid).filter(c => filled || isEdge(c)).map(c => ({ ...c, cover: 1 }));
   };
@@ -201,10 +250,15 @@ export default {
     },
     {
       key: 'shapeAntialias', label: 'Anti-aliased', type: 'checkbox',
-      when: (ws) => ws.shapeKind === 'ellipse' && (ws.editorTab === 'input' || ws.shapeDrawWith !== 'char'),
+      when: (ws) => ws.shapeKind !== 'rect' && (ws.editorTab === 'input'
+        || ((ws.shapeKind === 'ellipse' ? ws.shapeDrawWith !== 'char' : blockShape(ws)) && !usesHalves(ws))),
     },
     {
-      key: 'shapeBlockChars', label: 'Block characters', type: 'checkbox', views: ['output'], when: drawsBlocks,
+      key: 'shapeVerticalHalves', label: 'Vertical half blocks', type: 'checkbox', views: ['output'], when: blockShape,
+      title: 'Use ▌ and ▐ too, for half a cell across (in Half-block, the quadrants ▖▗▘▝)',
+    },
+    {
+      key: 'shapeBlockChars', label: 'Block characters', type: 'checkbox', views: ['output'], when: (ws) => drawsBlocks(ws) && !usesHalves(ws),
       title: "Draw with real block characters; off, the paint shows through each cell's own character",
     },
   ],
