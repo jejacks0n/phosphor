@@ -255,10 +255,15 @@ const publishOrigin = () => {
     if (!pre || !m || !viewportEl) return;
     const p = pre.getBoundingClientRect(), v = viewportEl.getBoundingClientRect();
     const clamp = (n, max) => Math.max(0, Math.min(max, n));
+    const x = v.left - p.left - pre.clientLeft, y = v.top - p.top - pre.clientTop;
+    const lines = charRowsOf(projectStore.rows);
     // A cell hidden by under a pixel still counts as on screen.
-    workspaceStore.ansiViewOrigin = {
-      col: clamp(Math.ceil((v.left - p.left - pre.clientLeft - 1) / m.cellWidth), projectStore.cols - 1),
-      row: clamp(Math.ceil((v.top - p.top - pre.clientTop - 1) / m.lineHeight), charRowsOf(projectStore.rows) - 1),
+    const col = clamp(Math.ceil((x - 1) / m.cellWidth), projectStore.cols - 1);
+    const row = clamp(Math.ceil((y - 1) / m.lineHeight), lines - 1);
+    workspaceStore.ansiViewOrigin = { col, row };
+    workspaceStore.ansiViewSize = {
+      cols: clamp(Math.floor((x + viewportEl.clientWidth + 1) / m.cellWidth) - col, projectStore.cols - col),
+      rows: clamp(Math.floor((y + viewportEl.clientHeight + 1) / m.lineHeight) - row, lines - row),
     };
   });
 };

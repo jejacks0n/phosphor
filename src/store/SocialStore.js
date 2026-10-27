@@ -6,6 +6,7 @@ import { messageFor } from '@/social/messages';
 import { ed25519Supported, loadKey } from '@/social/keys';
 import { requestPass, renewAt } from '@/social/pass';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useRoomStore } from '@/store/RoomStore';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection, Pacer } from '@/social/lobby';
 
 const SIGNAL_EVERY_MS = 2250;   // the server's 2 s, with slack: it measures when a signal arrives
@@ -14,9 +15,9 @@ const CONFIRMED = 'Check your email to confirm your address';
 const RELINK = 'Sign in again to change how you sign in';
 
 // The query params the server sends people back with (an error, and an error_description, come
-// with verified or social); start() reads them and takes them off the URL, on a desktop (elsewhere there's
-// no SOCIAL tab, so the link is left to be opened on a computer).
-const RETURN_PARAMS = ['verified', 'reset', 'social'];
+// with verified or social), and a room's link; start() reads them and takes them off the URL, on a desktop
+// (elsewhere there's no SOCIAL tab, so the link is left to be opened on a computer).
+const RETURN_PARAMS = ['verified', 'reset', 'social', 'room'];
 const ERROR_PARAMS = ['error', 'error_description'];
 
 // The server asks for a recent sign-in before unlinking: SESSION_NOT_FRESH from unlink-account,
@@ -45,10 +46,10 @@ export const useSocialStore = defineStore('social', {
     blocked: [],         // [{ username, since }]
     notice: null,        // one line at the top of the tab
     busy: false,
-    joining: null,       // the room openRoom was asked for (the rooms plan fills this in)
     started: false,
     lobbyWanted: false,  // the SOCIAL tab has been shown
     _boot: null,         // boot()'s promise, once asked for
+    _roomLink: null,     // a ?room= link's id, joined once you're known
     _key: null,          // the browser's key (markRaw)
     _connection: null,   // LobbyConnection (markRaw)
     _pacer: null,        // Pacer for the signal (markRaw)
@@ -75,7 +76,9 @@ export const useSocialStore = defineStore('social', {
     async start(location = window.location) {
       if (this.started) return;
       this.started = true;
-      if (this.readReturn(location)) await this.boot();
+      if (!this.readReturn(location)) return;
+      await this.boot();
+      this.joinLink();
     },
 
     // The SOCIAL tab is showing: once you're known, the lobby connects, and stays connected. A link back
@@ -84,7 +87,15 @@ export const useSocialStore = defineStore('social', {
       this.lobbyWanted = true;
       this.readReturn(window.location);
       await this.boot();
+      this.joinLink();
       this.connectLobby();
+    },
+
+    // The room a ?room= link named, once.
+    joinLink() {
+      const id = this._roomLink;
+      this._roomLink = null;
+      if (id !== null && this.supported) useRoomStore().join(id);
     },
 
     // This browser's key, then who you are; once, however often it's asked for.
@@ -114,6 +125,7 @@ export const useSocialStore = defineStore('social', {
       if (params.get('reset')) Object.assign(this, { resetToken: params.get('reset'), page: 'reset' });
       if (params.get('social') === 'linked') this.page = 'account';
       if (params.get('social') === 'two-factor') this.page = 'two-factor';
+      if (params.has('room')) this._roomLink = params.get('room');
       if (params.get('social') === 'error') {
         this.notice = error === 'EMAIL_NOT_VERIFIED' ? 'Confirm your email with Discord or GitHub first' : messageFor(error);
       }
@@ -151,8 +163,10 @@ export const useSocialStore = defineStore('social', {
       if (code === 'SUSPENDED') this.notice = messageFor(code, data);
     },
 
-    // You're someone else now (signed in, or out): a new pass and a new lobby connection.
+    // You're someone else now (signed in, or out): a room you host is ended, or one you watch left, then a
+    // new pass and a new lobby connection.
     async becameSomeoneElse({ signedOut = false } = {}) {
+      useRoomStore().close();
       if (signedOut) this.me = null;
       else await this.refreshMe();
       Object.assign(this, { signal: null, blocked: [], page: this.me?.needsOnboarding ? 'onboarding' : 'lobby' });
@@ -474,10 +488,6 @@ export const useSocialStore = defineStore('social', {
         this._pacer.reset();   // a new socket's signal starts over (its state follows)
       }
       if (status === 'refused') this.lobby = emptyLobby();
-    },
-
-    openRoom(id) {
-      this.joining = id;
     },
   },
 });

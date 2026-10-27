@@ -1,7 +1,7 @@
 <script setup>
 import { computed, useId } from 'vue';
 import { useNow } from '@vueuse/core';
-import { useSocialStore } from '@/store/SocialStore';
+import { useRoomStore } from '@/store/RoomStore';
 import { joinState, liveFor, signalWords } from '@/social/lobby';
 
 const props = defineProps({
@@ -9,7 +9,7 @@ const props = defineProps({
   signedIn: { type: Boolean, required: true },
 });
 
-const social = useSocialStore();
+const roomStore = useRoomStore();
 const now = useNow({ interval: 60_000 });   // "live 42 min" moves on while the lobby is shown
 const join = computed(() => joinState(props.room, { signedIn: props.signedIn }));
 const meta = computed(() => {
@@ -31,7 +31,7 @@ const reasonId = useId();
       <div v-if="room.blockedInside" class="blocked">Someone you blocked is here</div>
       <div class="foot">
         <span v-if="join.reason" :id="reasonId" class="reason">{{ join.reason }}</span>
-        <button class="join" :disabled="!join.enabled" :aria-describedby="join.reason ? reasonId : undefined" @click="social.openRoom(room.id)">{{ join.label }}</button>
+        <button class="join" :disabled="!join.enabled" :aria-describedby="join.reason ? reasonId : undefined" @click="roomStore.join(room.id)">{{ join.label }}</button>
       </div>
     </div>
   </article>

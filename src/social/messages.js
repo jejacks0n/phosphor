@@ -7,6 +7,13 @@ const USERNAME = {
   reserved: "That name is reserved: names can't be three words joined by hyphens, or admin, phosphor, guest, host or system",
 };
 
+// A room the server wouldn't make: the field it refused (the others only an app bug sends).
+const INVALID = {
+  name: 'Room names are 1 to 60 characters',
+  password: 'A private room needs a password',
+  max: 'Most watchers is 1 to 24',
+};
+
 const WORDS = {
   NETWORK: "Couldn't reach Phosphor's server. Check your connection.",
   TERMS_REQUIRED: 'Agree to the terms to continue',
@@ -20,6 +27,7 @@ const WORDS = {
   BANNED_USER: 'This account is suspended',   // the server's, when a suspended account signs in
   ACCOUNT_NOT_FOUND: "That way to sign in isn't connected",
   FAILED_TO_UNLINK_LAST_ACCOUNT: 'You need at least one way to sign in',
+  INVALID: ({ field }) => INVALID[field],
   THROTTLED: 'Too many tries. Wait a moment and try again',
   TURNSTILE_FAILED: "We couldn't check that you're a person. Try again",
   PASSWORD_BREACHED: 'That password has appeared in a data breach. Choose another',
@@ -46,3 +54,18 @@ export function messageFor(code, detail = {}) {
   const word = WORDS[code];
   return (typeof word === 'function' ? word(detail) : word) ?? 'Something went wrong. Try again.';
 }
+
+// Why a room's socket was turned away or put out, in plain words: a refusal's reason, or ended or
+// removed. A pass refused even when fresh (bad-pass) reads as a room that isn't there.
+const ROOM_WORDS = {
+  unavailable: "This room isn't available",
+  'bad-pass': "This room isn't available",
+  'signed-in-only': 'Signed-in users only',
+  'wrong-password': 'Wrong password',
+  full: 'Room is full',
+  throttled: WORDS.THROTTLED,
+  ended: 'The host ended the room',
+  removed: 'The host removed you',
+};
+
+export const refusalWords = (reason) => (Object.hasOwn(ROOM_WORDS, reason) ? ROOM_WORDS[reason] : ROOM_WORDS.unavailable);

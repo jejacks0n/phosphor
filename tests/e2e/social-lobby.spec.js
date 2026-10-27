@@ -66,8 +66,8 @@ test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Joi
   await expect(lobby(page).getByText('In the lobby 3')).toBeVisible();
   await expect(here.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest/, /dusty-neon-heron\s*Open to chat/, /soft-copper-gnat\s*guest/]);
 
-  await join.click();
-  expect(await store(page, 'social', (s) => s.joining)).toBe('harbor');
+  await join.click();   // the room store joins it (this fake id isn't a room id, so it's refused at once)
+  await expect(page.getByText('This room isn\'t available')).toBeVisible();
 
   await side(page).getByRole('button', { name: 'Sign in', exact: true }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('sign-in');

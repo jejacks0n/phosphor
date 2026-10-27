@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useSocialStore } from '@/store/SocialStore';
+import { useRoomStore } from '@/store/RoomStore';
 import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
 import { setDisplayFont } from '@/lib/displayFonts';
 import { loadFonts } from '@/lib/userFonts';
@@ -18,6 +19,7 @@ import AppToast from '@/components/AppToast.vue';
 
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
+const room = useRoomStore();
 const { image } = storeToRefs(project);
 const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen } = storeToRefs(workspace);
 
@@ -25,10 +27,10 @@ const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, sa
 // be reached leaves the editor be).
 useSocialStore().start();
 
-// Leaving with unsaved changes asks first.
+// Leaving with unsaved changes, or a room you host, asks first.
 function onBeforeUnload(e) {
   project.commitPending(); // text typed a moment ago counts
-  if (project.image && project.isDirty) {
+  if ((project.image && project.isDirty) || room.role === 'host') {
     e.preventDefault();
     e.returnValue = '';
   }

@@ -44,6 +44,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
+    ansiViewSize: { cols: 0, rows: 0 }, // how many whole cells from there are on screen (AnsiEditor)
     pixelViewOrigin: { col: 0, row: 0 }, // the same in the PIXEL view (InputEditor), where a paste lands with no selection
     selectLayers: { base: true, edit: true }, // what the Select tool acts on, and the Magic Wand's Delete: the base layer and/or the edit layer
     pencilDrawWith: 'normal', // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks)

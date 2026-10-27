@@ -46,3 +46,25 @@ test('the DOM view keeps every character in its column, as a terminal does, even
   });
   for (const [withWide, plain] of xs) expect(Math.abs(withWide - plain)).toBeLessThan(0.5);
 });
+
+test('the ANSI view publishes the whole cells on screen: the first, and how many across and down', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 600 });   // the art runs past the view both ways
+  await openApp(page);
+  await page.evaluate(() => document.querySelector('.ansi-editor .display').closest('article').scrollTo(37, 53));
+  // Counted cell by cell: a cell is on screen when no more than a pixel of it is hidden.
+  const onScreen = await page.evaluate(([cols, lines]) => {
+    const display = document.querySelector('.ansi-editor .display');
+    const view = display.closest('article');
+    const d = display.getBoundingClientRect(), v = view.getBoundingClientRect();
+    const left = d.left + display.clientLeft, top = d.top + display.clientTop;   // inside the display's border
+    const w = display.clientWidth / cols, h = display.clientHeight / lines;
+    const whole = (count, size, start, from, to) => Array.from({ length: count }, (_, i) => i)
+      .filter((i) => start + i * size >= from - 1 && start + (i + 1) * size <= to + 1);
+    const across = whole(cols, w, left, v.left, v.left + view.clientWidth);
+    const down = whole(lines, h, top, v.top, v.top + view.clientHeight);
+    return { origin: { col: across[0], row: down[0] }, size: { cols: across.length, rows: down.length } };
+  }, await store(page, 'project', (p) => [p.cols, Math.floor(p.rows / 2)]));
+  expect(onScreen.origin.col).toBeGreaterThan(0);
+  expect(onScreen.size.cols).toBeLessThan(await store(page, 'project', (p) => p.cols));
+  await expect.poll(() => store(page, 'workspace', (w) => ({ origin: w.ansiViewOrigin, size: w.ansiViewSize }))).toEqual(onScreen);
+});

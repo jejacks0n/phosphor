@@ -38,7 +38,7 @@ test('A plain page load runs nothing SOCIAL: no key, no IndexedDB, no request; s
   const server = fakeServer();
   const opened = vi.spyOn(indexedDB, 'open');
   const generated = vi.spyOn(crypto.subtle, 'generateKey');
-  await social.start(at('?room=abc'));
+  await social.start(at('?keep=abc'));
   expect(social.supported).toBe(null);
   expect(opened).not.toHaveBeenCalled();
   expect(generated).not.toHaveBeenCalled();
@@ -103,11 +103,11 @@ test('A browser without Ed25519, or without IndexedDB, is unsupported, and nothi
 test('?verified=1 says the email is confirmed and leaves the URL without it, keeping other params', async () => {
   fakeServer();
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
-  await social.start(at('?room=abc&verified=1'));
+  await social.start(at('?keep=abc&verified=1'));
   await social.showLobby();
   expect(social.notice).toBe('Your email is confirmed');
   expect(replaceState).toHaveBeenCalledTimes(1);
-  expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?room=abc`);
+  expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?keep=abc`);
 });
 
 test('?verified=1 with an error (a used or expired link) says so in words', async () => {
@@ -137,10 +137,10 @@ test('?reset=<token> opens the reset page; resetPassword sends the token and lan
 test('An OAuth return: ?social=error with EMAIL_NOT_VERIFIED says so in words, and its error params leave the URL', async () => {
   fakeServer();
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
-  await social.start(at('?social=error&error=EMAIL_NOT_VERIFIED&error_description=Email%20not%20verified&room=abc'));
+  await social.start(at('?social=error&error=EMAIL_NOT_VERIFIED&error_description=Email%20not%20verified&keep=abc'));
   await social.showLobby();
   expect(social.notice).toBe('Confirm your email with Discord or GitHub first');
-  expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?room=abc`);
+  expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?keep=abc`);
 });
 
 test('A Discord-made account without a username opens onboarding and stays out of the lobby until it picks one', async () => {
@@ -296,10 +296,10 @@ test('?social=two-factor&verified=1 opens the Two-factor page with the email con
 test('?social=two-factor opens the Two-factor page and leaves the URL', async () => {
   fakeServer();
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
-  await social.start(at('?social=two-factor&room=abc'));
+  await social.start(at('?social=two-factor&keep=abc'));
   await social.showLobby();
   expect(social.page).toBe('two-factor');
-  expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?room=abc`);
+  expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?keep=abc`);
 });
 
 test('busy lasts the whole sign-in, sign-up or provider sign-in (until you\'re known, or gone), so neither form is sent twice', async () => {
@@ -825,7 +825,4 @@ test('The account actions send the server\'s shapes', async () => {
   expect(social.notice).toBe('Your account is deleted');
   const hello = await goLive(await lastSocket(4));
   expect(claimsOf(hello.pass).guest).toBe(true);
-
-  social.openRoom('r1');
-  expect(social.joining).toBe('r1');
 });

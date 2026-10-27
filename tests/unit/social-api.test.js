@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { apiOrigin, wsOrigin, appOrigin, desktopQuery, rtcConfig } from '../../src/social/config.js';
 import { toBase64url, fromBase64url } from '../../src/social/base64url.js';
 import { api } from '../../src/social/api.js';
-import { messageFor } from '../../src/social/messages.js';
+import { messageFor, refusalWords } from '../../src/social/messages.js';
 
 const realFetch = globalThis.fetch;
 globalThis.location = { hostname: 'localhost', origin: 'http://localhost:5173' };   // Node has no page
@@ -98,6 +98,22 @@ test('messageFor has plain words for every code the server sends, and a fallback
   assert.equal(messageFor('SUSPENDED'), 'This account is suspended for good');
   assert.equal(messageFor('SUSPENDED', { until }), `This account is suspended until ${day}`);
   assert.equal(messageFor('BANNED_USER'), 'This account is suspended');   // the server's, signing in
+  assert.equal(messageFor('INVALID', { field: 'name' }), 'Room names are 1 to 60 characters');
+  assert.equal(messageFor('INVALID', { field: 'password' }), 'A private room needs a password');
+  assert.equal(messageFor('INVALID', { field: 'max' }), 'Most watchers is 1 to 24');
+  assert.equal(messageFor('INVALID', { field: 'signal' }), fallback);
   assert.equal(messageFor('ACCOUNT_NOT_FOUND'), "That way to sign in isn't connected");
   assert.equal(messageFor('FAILED_TO_UNLINK_LAST_ACCOUNT'), 'You need at least one way to sign in');
+});
+
+test('refusalWords says why a room turned you away or put you out', () => {
+  assert.equal(refusalWords('unavailable'), "This room isn't available");
+  assert.equal(refusalWords('bad-pass'), "This room isn't available");
+  assert.equal(refusalWords('signed-in-only'), 'Signed-in users only');
+  assert.equal(refusalWords('wrong-password'), 'Wrong password');
+  assert.equal(refusalWords('full'), 'Room is full');
+  assert.equal(refusalWords('throttled'), messageFor('THROTTLED'));
+  assert.equal(refusalWords('ended'), 'The host ended the room');
+  assert.equal(refusalWords('removed'), 'The host removed you');
+  assert.equal(refusalWords('constructor'), "This room isn't available");
 });
