@@ -1,22 +1,9 @@
 import { brushPixels } from '@/lib/Brushes';
 
-// A stroke lays the brush's shape at Flow: each pixel takes the most any of the stroke's stamps gives
-// it, not their sum. The sum grew with the size (a pixel takes about four stamps per pixel of width:
-// at size 20, 3% was opaque in one pass) and softened a hard brush. Strokes build up on each other.
-// The layer keeps alpha as a byte, so a stroke's paint is kept unrounded and painted as it rises a
-// whole step.
-let laid = null; // the stroke's paint so far at each pixel (x + y * 65536)
-function lay(project, pixels) {
-  const steps = [];
-  for (const { x, y, alpha } of pixels) {
-    const key = x + y * 65536, before = laid.get(key) ?? 0;
-    if (alpha <= before) continue;
-    laid.set(key, alpha);
-    const bytes = Math.round(alpha * 255) - Math.round(before * 255);
-    if (bytes > 0) steps.push({ x, y, alpha: bytes / 255 });
-  }
-  project.paintStroke(steps);
-}
+// A stamp's flow from the Flow slider (1-100): squared, so the low end builds up gently (a stroke's
+// stamps overlap and add up: 10% used to lay 70% in one pass at size 5), and never under the
+// paint layer's smallest step (1/255), which would round to nothing.
+const stampFlow = (percent) => Math.max(1 / 255, (percent / 100) ** 2);
 
 const brush = {
   id: 'brush',
@@ -34,13 +21,12 @@ const brush = {
     { key: 'editBrushHardness', label: 'Hardness', title: 'Brush hardness', min: 0, max: 100, unit: '%' },
   ],
   begin(ctx, pos) {
-    laid = new Map();
     brush.move(ctx, pos, pos);
     return true;
   },
   move({ project, workspace }, from, to) {
-    const options = { size: workspace.editBrushSize, flow: workspace.editBrushFlow / 100, hardness: workspace.editBrushHardness / 100 };
-    lay(project, brushPixels(from, to, options, project.cols, project.rows));
+    const options = { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100 };
+    project.paintStroke(brushPixels(from, to, options, project.cols, project.rows));
   },
   end({ project }) {
     project.commitEdit();

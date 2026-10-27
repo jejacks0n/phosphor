@@ -71,7 +71,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     eraseLayers: { base: false, edit: true }, // what the eraser erases: the base layer and/or the edit layer
     flipLayers: { base: false, edit: true },  // what Flip FG/BG flips: the base layer and/or the edit layer
     editBrushOpacity:  100,
-    editBrushFlow:  70,
+    editBrushFlow:  50, // a stamp flow of 0.25 (brush.js squares it)
     editBrushHardness:  50,
 
     // Fill Settings
