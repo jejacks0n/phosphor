@@ -77,7 +77,7 @@ test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Joi
   expect(await store(page, 'social', (s) => s.page)).toBe('create');
 });
 
-test('a member can join a members-only room, picks a signal (sent once, shown chosen), and can\'t start a room yet', async ({ page }) => {
+test('a member can join a members-only room, picks a signal (sent once, shown chosen), and can start a room', async ({ page }) => {
   const server = await fakeServer(page, { me: member(), rooms: ROOMS });
   await showLobby(page, server);
 
@@ -88,9 +88,7 @@ test('a member can join a members-only room, picks a signal (sent once, shown ch
   await expect(you(page).getByText('guest', { exact: true })).toHaveCount(0);
   await expect(side(page).getByRole('button', { name: 'Account' })).toBeVisible();
   await expect(side(page).getByRole('button', { name: 'Sign out' })).toBeVisible();
-  const start = side(page).getByRole('button', { name: 'Start a room' });
-  await expect(start).toBeDisabled();
-  await expect(start).toHaveAttribute('title', 'Coming soon');
+  await expect(side(page).getByRole('button', { name: 'Start a room' })).toBeEnabled();
 
   const signals = side(page).getByRole('group', { name: 'Your signal' });
   const chat = signals.getByRole('button', { name: 'Open to chat' });
@@ -103,6 +101,9 @@ test('a member can join a members-only room, picks a signal (sent once, shown ch
 
   await side(page).getByRole('button', { name: 'Account' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('account');
+  await page.getByRole('button', { name: '‹ Back to the lobby' }).click();
+  await side(page).getByRole('button', { name: 'Start a room' }).click();
+  expect(await store(page, 'social', (s) => s.page)).toBe('start-room');
 });
 
 test('a member\'s second tab shows the signal the account already has', async ({ page }) => {

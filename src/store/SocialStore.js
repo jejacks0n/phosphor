@@ -36,7 +36,7 @@ export const useSocialStore = defineStore('social', {
   state: () => ({
     supported: null,     // null until checked: false when this browser can't do Ed25519 or IndexedDB
     me: null,            // /api/me's body; null signed out
-    page: 'lobby',       // 'lobby' | 'sign-in' | 'create' | 'forgot' | 'reset' | 'onboarding' | 'account'
+    page: 'lobby',       // 'lobby' | 'sign-in' | 'create' | 'forgot' | 'reset' | 'onboarding' | 'account' | 'two-factor' | 'start-room'
     resetToken: null,
     pass: null,
     claims: null,        // the pass's claims: { sub, name, guest, verified, key, exp }

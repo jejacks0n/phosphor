@@ -5,6 +5,7 @@ import { useMediaQuery } from '@vueuse/core';
 import { desktopQuery } from '@/social/config';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useRoomStore } from '@/store/RoomStore';
 
 const props = defineProps({
   modelValue: { type: String, required: true },
@@ -13,6 +14,7 @@ const emit = defineEmits(['update:modelValue']);
 
 const { image, renderStyle } = storeToRefs(useProjectStore());
 const workspace = useWorkspaceStore();
+const room = useRoomStore();
 const { settingsOpen } = storeToRefs(workspace);
 const toggleSettings = () => workspace.toggleSettings();
 
@@ -97,6 +99,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
           @click="$emit('update:modelValue', tab.id)"
       >
         {{ tab.label }}
+        <span v-if="tab.id === 'social' && room.inRoom" class="dot" aria-hidden="true"></span>
       </button>
       <div class="indicator" :style="indicatorStyle" aria-hidden="true"></div>
     </div>
@@ -186,6 +189,16 @@ button.tab {
   border-bottom: 1px solid transparent;
   background: var(--surface-0);
   color: var(--text-muted);
+}
+
+span.dot {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 button.tab::after {

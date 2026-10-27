@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
+import { useRoomStore } from '@/store/RoomStore';
 import LobbyPage from './LobbyPage.vue';
 import SignInPage from './SignInPage.vue';
 import CreateAccountPage from './CreateAccountPage.vue';
@@ -9,18 +10,23 @@ import ResetPasswordPage from './ResetPasswordPage.vue';
 import OnboardingPage from './OnboardingPage.vue';
 import AccountPage from './AccountPage.vue';
 import TwoFactorPage from './TwoFactorPage.vue';
+import StartRoomPage from './StartRoomPage.vue';
+import HostRoomPage from './HostRoomPage.vue';
 
 const social = useSocialStore();
+const room = useRoomStore();
 const PAGES = {
   lobby: LobbyPage, 'sign-in': SignInPage, create: CreateAccountPage, forgot: ForgotPasswordPage,
   reset: ResetPasswordPage, onboarding: OnboardingPage, account: AccountPage,
-  'two-factor': TwoFactorPage,
+  'two-factor': TwoFactorPage, 'start-room': StartRoomPage, 'host-room': HostRoomPage,
 };
 onMounted(() => social.showLobby());
 
-// Account is only for someone signed in: until /api/me has answered nothing shows (a link back from
-// connecting a provider asks for Account first), and once it has, someone signed out gets the lobby.
+// The room you host, while you do. Account is only for someone signed in: until /api/me has answered
+// nothing shows (a link back from connecting a provider asks for Account first), and once it has,
+// someone signed out gets the lobby.
 const shownPage = computed(() => {
+  if (room.role === 'host') return 'host-room';
   if (social.page !== 'account' || social.signedIn) return social.page;
   return social.supported === null ? null : 'lobby';
 });

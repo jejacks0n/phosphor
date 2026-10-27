@@ -86,8 +86,7 @@ const toggleSignal = (signal) => social.setSignal(social.signal === signal ? nul
           Confirm your email to start a room
           <button class="link inline" :disabled="social.busy" @click="social.resendConfirmation()">Resend</button>
         </div>
-        <!-- the rooms plan wires it; a disabled button takes no hover, so its wrapper shows the title -->
-        <div v-else class="start" title="Coming soon"><button class="primary" disabled title="Coming soon">Start a room</button></div>
+        <button v-else class="primary start" @click="social.page = 'start-room'">Start a room</button>
       </template>
       <template v-else>
         <button class="primary start" @click="social.page = 'sign-in'">Sign in</button>
@@ -279,11 +278,9 @@ div.links {
   margin: 4px 0 0 18px;
 }
 
-.start {
-  margin-top: 16px;
-}
-.start, .start button {
+button.start {
   width: 100%;
+  margin-top: 16px;
 }
 
 div.confirm {
