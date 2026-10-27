@@ -14,7 +14,8 @@ const CONFIRMED = 'Check your email to confirm your address';
 const RELINK = 'Sign in again to change how you sign in';
 
 // The query params the server sends people back with (an error, and an error_description, come
-// with verified or social); start() reads them and takes them off the URL.
+// with verified or social); start() reads them and takes them off the URL, on a desktop (elsewhere there's
+// no SOCIAL tab, so the link is left to be opened on a computer).
 const RETURN_PARAMS = ['verified', 'reset', 'social'];
 const ERROR_PARAMS = ['error', 'error_description'];
 
@@ -26,8 +27,9 @@ const withToken = (turnstileToken) => (turnstileToken ? { 'x-turnstile-token': t
 
 // The SOCIAL tab: you (/api/me), your pass, the lobby and the page shown, and every account action
 // against the server. One lobby connection at a time; a new pass (signing in or out, a rename) means a
-// new connection, while a renewed pass waits for the next hello and leaves the live one alone. The lobby
-// connects the first time the tab is shown (showLobby), so a visitor who never opens it isn't in it.
+// new connection, while a renewed pass waits for the next hello and leaves the live one alone. Nothing
+// runs (no key, no request) until the tab is first shown (showLobby) or a link back from the server
+// opens it, so a visitor who never uses SOCIAL costs nothing and isn't in the lobby.
 export const useSocialStore = defineStore('social', {
   state: () => ({
     supported: null,     // null until checked: false when this browser can't do Ed25519 or IndexedDB
@@ -45,6 +47,7 @@ export const useSocialStore = defineStore('social', {
     joining: null,       // the room openRoom was asked for (the rooms plan fills this in)
     started: false,
     lobbyWanted: false,  // the SOCIAL tab has been shown
+    _boot: null,         // boot()'s promise, once asked for
     _key: null,          // the browser's key (markRaw)
     _connection: null,   // LobbyConnection (markRaw)
     _pacer: null,        // Pacer for the signal (markRaw)
@@ -66,30 +69,40 @@ export const useSocialStore = defineStore('social', {
   },
 
   actions: {
+    // At page load: a link back from the server is read, and starts SOCIAL; nothing else does.
     async start(location = window.location) {
       if (this.started) return;
       this.started = true;
-      this.readReturn(location);
-      const supported = await ed25519Supported() && await loadKey().then(
-        (key) => { this._key = markRaw(key); return true; },
-        () => false,   // no IndexedDB (a private window in some browsers): the same plain message
-      );
-      if (supported) {
-        await this.refreshMe();
-        if (this.me?.needsOnboarding) this.page = 'onboarding';
-      }
-      this.supported = supported;   // set once you're known, so a lobby asked for meanwhile connects now
+      if (this.readReturn(location)) await this.boot();
+    },
+
+    // The SOCIAL tab is showing: once you're known, the lobby connects, and stays connected.
+    async showLobby() {
+      this.lobbyWanted = true;
+      await this.boot();
       this.connectLobby();
     },
 
-    // The SOCIAL tab is showing: the lobby connects (once start() is done), and stays connected.
-    showLobby() {
-      this.lobbyWanted = true;
-      this.connectLobby();
+    // This browser's key, then who you are; once, however often it's asked for.
+    boot() {
+      this._boot ??= (async () => {
+        const supported = await ed25519Supported() && await loadKey().then(
+          (key) => { this._key = markRaw(key); return true; },
+          () => false,   // no IndexedDB (a private window in some browsers): the same plain message
+        );
+        if (supported) {
+          await this.refreshMe();
+          if (this.me?.needsOnboarding) this.page = 'onboarding';
+        }
+        this.supported = supported;
+      })();
+      return this._boot;
     },
 
     // The params an email link or an OAuth return brought, read and then taken off the URL (others stay).
+    // True if there were any, on a desktop.
     readReturn(location) {
+      if (!matchMedia(desktopQuery).matches) return false;
       const url = new URL(location.href);
       const params = url.searchParams;
       const error = params.get('error');
@@ -99,10 +112,11 @@ export const useSocialStore = defineStore('social', {
       if (params.get('social') === 'error') {
         this.notice = error === 'EMAIL_NOT_VERIFIED' ? 'Confirm your email with Discord or GitHub first' : messageFor(error);
       }
-      if (!RETURN_PARAMS.some((name) => params.has(name))) return;
-      if (matchMedia(desktopQuery).matches) useWorkspaceStore().editorTab = 'social';   // back to where you were
+      if (!RETURN_PARAMS.some((name) => params.has(name))) return false;
+      useWorkspaceStore().editorTab = 'social';   // back to where you were
       [...RETURN_PARAMS, ...ERROR_PARAMS].forEach((name) => params.delete(name));
       history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+      return true;
     },
 
     // One request: busy meanwhile (unless it's part of a longer action that is), and its error as the notice.

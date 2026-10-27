@@ -2,14 +2,16 @@
 import { test, expect, openApp, tab, store, cellPoint, drag, imageInput } from './support.js';
 import { fakeServer } from './social-support.js';
 
-test('the SOCIAL tab is there before any image; the lobby connects when it\'s first shown', async ({ page }) => {
+const databases = (page) => page.evaluate(async () => (await indexedDB.databases()).map((d) => d.name));
+
+test('the SOCIAL tab is there before any image; nothing SOCIAL runs until it\'s first shown, then the lobby connects', async ({ page }) => {
   const server = await fakeServer(page);
   await page.goto('/');
   await expect(tab(page, 'SOCIAL')).toBeEnabled();
-  await expect.poll(() => store(page, 'social', (s) => s.supported)).toBe(true); // start() is done
-  expect(server.sent('GET', '/api/me')).toHaveLength(1);
-  expect(server.sent('POST', '/api/pass')).toHaveLength(0); // no lobby yet
-  expect(await store(page, 'social', (s) => s.lobbyStatus)).toBe(null);
+  await page.waitForLoadState('networkidle');
+  expect(await store(page, 'social', (s) => [s.started, s.supported, s.lobbyStatus])).toEqual([true, null, null]);
+  expect(server.requests).toEqual([]); // not even /api/me
+  expect(await databases(page)).not.toContain('phosphor-social'); // no key made
 
   await tab(page, 'SOCIAL').click();
   await expect(tab(page, 'SOCIAL')).toHaveAttribute('aria-selected', 'true');
@@ -17,6 +19,8 @@ test('the SOCIAL tab is there before any image; the lobby connects when it\'s fi
   await expect(imageInput(page)).toHaveCount(0); // no start screen
   await expect.poll(() => server.lobby.received.map((m) => m.type)).toEqual(['hello']);
   expect(await store(page, 'social', (s) => s.lobbyStatus)).toBe('live');
+  expect(server.sent('GET', '/api/me')).toHaveLength(1);
+  expect(await databases(page)).toContain('phosphor-social');
 
   await tab(page, 'PIXEL').click(); // and it stays connected
   await tab(page, 'SOCIAL').click();
@@ -29,11 +33,19 @@ test('a link back from the server (?reset=, ?verified=1, ?social=) opens the SOC
   await expect(tab(page, 'SOCIAL')).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.social-tab [data-page="reset"]')).toBeVisible();
   expect(new URL(page.url()).search).toBe('');
+});
 
+// The SOCIAL tab isn't there, so the link is left as it came: it still works opened on a computer.
+test('a link back opened on a narrow screen is left alone, and nothing SOCIAL runs', async ({ page }) => {
+  const server = await fakeServer(page);
   await page.setViewportSize({ width: 700, height: 900 });
-  await page.goto('/?verified=1');
+  await page.goto('/?verified=1&error=TOKEN_EXPIRED');
   await expect(tab(page, 'PIXEL')).toHaveAttribute('aria-selected', 'true');
+  await page.waitForLoadState('networkidle');
   expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('input');
+  expect(new URL(page.url()).search).toBe('?verified=1&error=TOKEN_EXPIRED');
+  expect(await store(page, 'social', (s) => [s.notice, s.supported])).toEqual([null, null]);
+  expect(server.requests).toEqual([]);
 });
 
 test('a file dropped on the SOCIAL tab is ignored, not opened by the browser', async ({ page }) => {
@@ -56,8 +68,8 @@ test('a file dropped on the SOCIAL tab is ignored, not opened by the browser', a
 test('without a fake server, nothing reaches localhost:8787', async ({ page }) => {
   const failed = page.waitForEvent('requestfailed', (r) => r.url() === 'http://localhost:8787/api/me');
   await page.goto('/');
-  expect((await failed).failure().errorText).toBe('net::ERR_FAILED'); // aborted, not ERR_CONNECTION_REFUSED
   await tab(page, 'SOCIAL').click();
+  expect((await failed).failure().errorText).toBe('net::ERR_FAILED'); // aborted, not ERR_CONNECTION_REFUSED
   await expect.poll(() => store(page, 'social', (s) => s.lobbyStatus)).toBe('reconnecting');
 });
 
@@ -65,6 +77,7 @@ test('a second page in the context is cut off from localhost:8787 too', async ({
   const other = await context.newPage();
   const failed = other.waitForEvent('requestfailed', (r) => r.url() === 'http://localhost:8787/api/me');
   await other.goto('/');
+  await tab(other, 'SOCIAL').click();
   expect((await failed).failure().errorText).toBe('net::ERR_FAILED');
 });
 
