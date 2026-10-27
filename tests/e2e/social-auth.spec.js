@@ -291,3 +291,21 @@ test('two-factor: an expired challenge goes back to Sign in with its words at th
   await expect(shown(page, 'sign-in')).toBeVisible();
   await expect(notice(page)).toContainText('That took too long. Sign in again');
 });
+
+test('two-factor: too many wrong codes goes back to Sign in with its words at the top', async ({ page }) => {
+  await fakeServer(page, { twoFactor: true, 'POST /api/auth/two-factor/verify-totp': () => [401, { code: 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE' }] });
+  const form = await twoFactorForm(page);
+  await form.getByLabel('Code from your authenticator app').fill('123456');
+  await form.getByRole('button', { name: 'Verify' }).click();
+  await expect(shown(page, 'sign-in')).toBeVisible();
+  await expect(notice(page)).toContainText('Too many wrong codes. Wait a few minutes, then sign in again');
+});
+
+test('two-factor: a code of only spaces is not sent', async ({ page }) => {
+  const server = await fakeServer(page, { twoFactor: true });
+  const form = await twoFactorForm(page);
+  await form.getByLabel('Code from your authenticator app').fill('   ');
+  await form.getByRole('button', { name: 'Verify' }).click();
+  await expect(form.getByLabel('Code from your authenticator app')).toHaveValue('');
+  expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(0);
+});

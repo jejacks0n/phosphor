@@ -206,8 +206,11 @@ test('Two-factor: turning it on asks for your password, shows a QR code and the 
   expect(server.sent('POST', '/api/auth/two-factor/enable')[0].body).toEqual({ password: 'correct horse battery' });
 
   await expect(section.getByText('Scan this with your authenticator app, or enter the key:')).toBeVisible();
-  await expect(section.locator('svg')).toBeVisible();
+  await expect(section.getByRole('img', { name: 'QR code' })).toBeVisible();
   await expect(section.locator('code')).toHaveText('JBSWY3DPEHPK3PXP');
+  await section.getByLabel('Code from the app').fill('   ');
+  await section.getByRole('button', { name: 'Turn on' }).click();
+  expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(0);
   await section.getByLabel('Code from the app').fill('000000');
   await section.getByRole('button', { name: 'Turn on' }).click();
   await expect(section.getByRole('alert')).toHaveText("That code isn't right");
@@ -239,14 +242,16 @@ test('Two-factor: Cancel during setup leaves it off, and Turn on starts again', 
   await section.getByRole('button', { name: 'Cancel' }).click();
   await expect(section.locator('svg')).toHaveCount(0);
   await expect(section.getByText('Ask for a code from an authenticator app whenever you sign in.')).toBeVisible();
-  expect(server.me.twoFactorEnabled).toBe(false);
+  expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(0);
 
   await section.getByRole('button', { name: 'Turn on' }).click();
   await expect(section.getByLabel('Password')).toHaveValue('');   // not kept from before
   await section.getByLabel('Password').fill('correct horse battery');
   await section.getByRole('button', { name: 'Continue' }).click();
   await expect(section.locator('svg')).toBeVisible();
+  await expect(section.locator('code')).toHaveText('JBSWY3DPEHPK3PXQ');   // a new key, not the first one again
   expect(server.sent('POST', '/api/auth/two-factor/enable')).toHaveLength(2);
+  expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(0);
 });
 
 test('Two-factor: a Discord-only account turns it on without a password field', async ({ page }) => {

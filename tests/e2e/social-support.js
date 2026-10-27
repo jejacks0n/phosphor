@@ -12,14 +12,14 @@ export const member = (fields = {}) => ({
   providers: ['credential'], twoFactorEnabled: false, usernameChangeableAt: null, ...fields,
 });
 
-const TOTP_URI = 'otpauth://totp/Phosphor:ansi-fan?secret=JBSWY3DPEHPK3PXP&issuer=Phosphor';
+const totpURI = (n) => `otpauth://totp/Phosphor:ansi-fan?secret=JBSWY3DPEHPK3PX${'PQRSTUVW'[n]}&issuer=Phosphor`;
 const codes = (word) => Array.from({ length: 10 }, (_, i) => `${word}-code${i}`);
 
 // fakeServer(page, { me, rooms, people, blocked, signal, twoFactor, 'POST /api/...': (body) => [status, reply] }).
 // `me` null is signed out (a guest's pass). With `twoFactor`, an email or username sign-in answers the
 // challenge, and only verify-totp ('123456') or verify-backup-code ('abcde-fghij') signs in, as a member with
 // two-factor on; server.trustDevice is what the last good one was sent. Signed in, verify-totp ('123456') confirms two-factor
-// instead, and enable, disable and generate-backup-codes answer the secret `JBSWY3DPEHPK3PXP` and 10 codes. The lobby's state lists `people` and you (from the hello's pass, as
+// instead, and enable, disable and generate-backup-codes answer 10 codes, and enable a secret (`JBSWY3DPEHPK3PXP`, then `...PXQ` and so on: a new one each time). The lobby's state lists `people` and you (from the hello's pass, as
 // the real server does), with `signal` as the account's signal; a signal sent sets it. Routes answer [status, body]; server.route(key, answer) changes one
 // later. server.requests has every API call ({ method, path, body }); server.lobby.received every
 // message the app sent on the lobby socket; server.lobby.send(msg) pushes one, drop() closes it (both
@@ -45,6 +45,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
     route: (key, answer) => { routes[key] = answer; },
     sent: (method, path) => server.requests.filter((r) => r.method === method && r.path === path),
   };
+  let enabled = 0;   // how many secrets enable has made
   const signIn = () => {
     if (twoFactor) return [200, { twoFactorRedirect: true, twoFactorMethods: ['totp'] }];
     server.me = member();
@@ -94,7 +95,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
     'POST /api/auth/two-factor/verify-totp': verifyCode('123456', 'INVALID_CODE'),
     'POST /api/auth/two-factor/verify-backup-code': verifyCode('abcde-fghij', 'INVALID_BACKUP_CODE'),
     // Turning it on: enable answers the secret and 10 codes, and '123456' confirms it; disable clears it.
-    'POST /api/auth/two-factor/enable': () => [200, { totpURI: TOTP_URI, backupCodes: codes('first') }],
+    'POST /api/auth/two-factor/enable': () => [200, { totpURI: totpURI(enabled++), backupCodes: codes('first') }],
     'POST /api/auth/two-factor/disable': () => {
       server.me = { ...server.me, twoFactorEnabled: false };
       return [200, { status: true }];

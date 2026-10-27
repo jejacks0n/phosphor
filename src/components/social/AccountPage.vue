@@ -204,7 +204,7 @@ async function deleteAccount() {
       </template>
       <form v-else-if="setup" @submit.prevent="confirmSetup">
         <p class="help">Scan this with your authenticator app, or enter the key:</p>
-        <div class="qr" v-html="setup.qr"></div>
+        <div class="qr" role="img" aria-label="QR code" v-html="setup.qr"></div>
         <code class="key">{{ setup.key }}</code>
         <label>Code from the app <input v-model="setupCode" inputmode="numeric" autocomplete="one-time-code" required></label>
         <div class="actions">
