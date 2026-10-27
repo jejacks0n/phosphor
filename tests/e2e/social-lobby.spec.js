@@ -63,8 +63,8 @@ test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Joi
   await expect(side(page).getByRole('button', { name: 'Start a room' })).toHaveCount(0);
 
   const here = lobby(page).getByRole('list', { name: 'In the lobby' });
-  await expect(lobby(page).getByText('In the lobby 2')).toBeVisible();
-  await expect(here.getByRole('listitem')).toHaveText([/dusty-neon-heron\s*Open to chat/, /soft-copper-gnat\s*guest/]);
+  await expect(lobby(page).getByText('In the lobby 3')).toBeVisible();
+  await expect(here.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest/, /dusty-neon-heron\s*Open to chat/, /soft-copper-gnat\s*guest/]);
 
   await join.click();
   expect(await store(page, 'social', (s) => s.joining)).toBe('harbor');
@@ -98,10 +98,20 @@ test('a member can join a members-only room, picks a signal (sent once, shown ch
   await chat.click();
   await expect(chat).toHaveAttribute('aria-pressed', 'true');
   await expect(signals.getByRole('button', { name: 'Wants feedback' })).toHaveAttribute('aria-pressed', 'false');
+  await expect(lobby(page).getByRole('list', { name: 'In the lobby' }).getByRole('listitem').first()).toHaveText(/ansi-fan\s*Open to chat/);
   await expect.poll(() => server.lobby.received.filter((m) => m.type === 'signal')).toEqual([{ type: 'signal', signal: 'chat' }]);
 
   await side(page).getByRole('button', { name: 'Account' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('account');
+});
+
+test('a member\'s second tab shows the signal the account already has', async ({ page }) => {
+  const server = await fakeServer(page, { me: member(), signal: 'feedback' });
+  await showLobby(page, server);
+  const signals = side(page).getByRole('group', { name: 'Your signal' });
+  await expect(signals.getByRole('button', { name: 'Wants feedback' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(lobby(page).getByRole('list', { name: 'In the lobby' }).getByRole('listitem')).toHaveText([/ansi-fan\s*Wants feedback/]);
+  expect(server.lobby.received.filter((m) => m.type === 'signal')).toEqual([]);
 });
 
 test('a member whose email isn\'t confirmed is asked to confirm it to start a room, and can resend', async ({ page }) => {
@@ -147,7 +157,7 @@ test('a room the server adds appears, one it removes disappears; people come and
   await expect(card(page, 'cyberdeck sunset')).toBeVisible();
 
   server.lobby.send({ type: 'person-gone', sub: 'u_2' });
-  await expect(lobby(page).getByText('In the lobby 1')).toBeVisible();
+  await expect(lobby(page).getByText('In the lobby 2')).toBeVisible(); // you and the guest
 });
 
 test('no rooms: the lobby says so', async ({ page }) => {

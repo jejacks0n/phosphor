@@ -12,19 +12,20 @@ export const member = (fields = {}) => ({
   providers: ['credential'], twoFactorEnabled: false, usernameChangeableAt: null, ...fields,
 });
 
-// fakeServer(page, { me, rooms, people, blocked, 'POST /api/...': (body) => [status, reply] }). `me` null is
-// signed out (a guest's pass). Routes answer [status, body]; server.route(key, answer) changes one
+// fakeServer(page, { me, rooms, people, blocked, signal, 'POST /api/...': (body) => [status, reply] }). `me`
+// null is signed out (a guest's pass). The lobby's state lists `people` and you (from the hello's pass, as
+// the real server does), with `signal` as the account's signal; a signal sent sets it. Routes answer [status, body]; server.route(key, answer) changes one
 // later. server.requests has every API call ({ method, path, body }); server.lobby.received every
 // message the app sent on the lobby socket; server.lobby.send(msg) pushes one, drop() closes it (both
 // throw until the app has connected: the SOCIAL tab shown, and again after a drop).
-export async function fakeServer(page, { me = null, rooms = [], people = [], blocked = [], ...overrides } = {}) {
+export async function fakeServer(page, { me = null, rooms = [], people = [], blocked = [], signal = null, ...overrides } = {}) {
   let socket = null;
   const connected = () => {
     if (!socket) throw new Error('The lobby is not connected: show the SOCIAL tab and wait for its hello first');
     return socket;
   };
   const server = {
-    me, rooms, people, blocked, requests: [],
+    me, rooms, people, blocked, signal, requests: [],
     lobby: {
       received: [],
       send: (msg) => connected().send(JSON.stringify(msg)),
@@ -105,7 +106,11 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
     ws.onMessage((message) => {
       const msg = JSON.parse(message);
       server.lobby.received.push(msg);
-      if (msg.type === 'hello') ws.send(JSON.stringify({ type: 'state', rooms: server.rooms, people: server.people }));
+      if (msg.type === 'signal') server.signal = msg.signal;
+      if (msg.type !== 'hello') return;
+      const { sub, name, guest } = JSON.parse(Buffer.from(msg.pass.split('.')[0], 'base64url'));
+      const you = sub ? [{ sub, name, guest, signal: guest ? null : server.signal }] : [];
+      ws.send(JSON.stringify({ type: 'state', rooms: server.rooms, people: [...you, ...server.people] }));
     });
   });
 

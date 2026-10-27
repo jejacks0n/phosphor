@@ -8,7 +8,7 @@ import { requestPass, renewAt } from '@/social/pass';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection, Pacer } from '@/social/lobby';
 
-const SIGNAL_EVERY_MS = 2000;
+const SIGNAL_EVERY_MS = 2250;   // the server's 2 s, with slack: it measures when a signal arrives
 const RENEW_RETRY_MS = 30_000;   // after a renewal that failed for a passing reason (NETWORK, THROTTLED)
 const CONFIRMED = 'Check your email to confirm your address';
 const RELINK = 'Sign in again to change how you sign in';
@@ -55,7 +55,9 @@ export const useSocialStore = defineStore('social', {
   getters: {
     signedIn: (state) => !!state.me && !state.me.needsOnboarding,
     rooms: (state) => sortedRooms(state.lobby),
-    people: (state) => sortedPeople(state.lobby, state.claims?.sub),
+    // Your own row shows your signal as you set it: the server tells everyone else, not you.
+    people: (state) => sortedPeople(state.lobby, state.claims?.sub)
+      .map((p) => (p.sub === state.claims?.sub && !p.guest ? { ...p, signal: state.signal } : p)),
     myName: (state) => state.claims?.name ?? null,
     isGuest() {
       return this.claims?.guest ?? !this.signedIn;
@@ -364,17 +366,30 @@ export const useSocialStore = defineStore('social', {
 
     lobbyMessage(msg) {
       this.lobby = applyLobbyMessage(this.lobby, msg);
-      // The server's answer to a signal sent; one still waiting to go would only flicker back.
-      if (msg.type === 'person' && msg.person.sub === this.claims?.sub && !this._pacer?.timer) this.signal = msg.person.signal;
+      const sub = this.claims?.sub;
+      // Your own person: the server's answer to a signal that came too soon, or another tab's change.
+      if (msg.type === 'person' && msg.person.sub === sub) this.heardSignal(msg.person.signal);
+      if (msg.type === 'state') {
+        // The account's signal, set in another tab; with none, yours goes again (a new socket starts at none).
+        const theirs = msg.people.find((p) => p.sub === sub)?.signal ?? null;
+        if (theirs) this.heardSignal(theirs);
+        else {
+          this._pacer.confirm(null);
+          if (this.signal) this._pacer.push(this.signal);
+        }
+      }
+    },
+
+    // The account's signal as the server has it: what the pacer last sent, and shown, unless a change is
+    // still waiting to go (it would only flicker back).
+    heardSignal(signal) {
+      this._pacer.confirm(signal);
+      if (!this._pacer.timer) this.signal = signal;
     },
 
     lobbyStatusChanged(status) {
       this.lobbyStatus = status;
-      if (status === 'live') {
-        // A new socket's signal starts over: send the current one again.
-        this._pacer.reset();
-        if (this.signal) this._pacer.push(this.signal);
-      }
+      if (status === 'live') this._pacer.reset();   // a new socket's signal starts over (its state follows)
       if (status === 'refused') this.lobby = emptyLobby();
     },
 

@@ -485,21 +485,25 @@ test('SUSPENDED shows its notice, with the date or for good, and the lobby doesn
   expect(social.notice).toBe('This account is suspended for good');
 });
 
-test('setSignal is for members: it shows at once, and is sent at most once per 2 s with the latest value', async () => {
+const mine = (signal) => ({ sub: 'u_1', name: 'ansi-fan', guest: false, signal });
+const myRow = () => social.people.find((p) => p.sub === 'u_1');
+
+test('setSignal is for members: it shows at once, in your row too, and is sent at most once per 2.25 s with the latest value', async () => {
   const server = fakeServer();
   server.session = member();
   await social.start(at(''));
   social.showLobby();
   const socket = await lastSocket(1);
-  await goLive(socket);
+  await goLive(socket, { rooms: [], people: [mine(null)] });
 
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   social.setSignal('chat');
   social.setSignal('feedback');
   social.setSignal('heads-down');
   expect(social.signal).toBe('heads-down');
+  expect(myRow().signal).toBe('heads-down');   // the server tells everyone else, not you
   expect(socket.signals()).toEqual(['chat']);
-  vi.advanceTimersByTime(1999);
+  vi.advanceTimersByTime(2249);
   expect(socket.signals()).toEqual(['chat']);
   vi.advanceTimersByTime(1);
   expect(socket.signals()).toEqual(['chat', 'heads-down']);
@@ -508,14 +512,50 @@ test('setSignal is for members: it shows at once, and is sent at most once per 2
   // The server's answer for your own sub is your signal; another person's isn't.
   socket.receive({ type: 'person', person: { sub: 'u_2', name: 'other', guest: false, signal: 'chat' } });
   expect(social.signal).toBe('heads-down');
-  socket.receive({ type: 'person', person: { sub: 'u_1', name: 'ansi-fan', guest: false, signal: 'feedback' } });
+  socket.receive({ type: 'person', person: mine('feedback') });
   expect(social.signal).toBe('feedback');
+  expect(myRow().signal).toBe('feedback');
   expect(social.people.map((p) => p.sub)).toEqual(['u_1', 'u_2']);
 
   // A new socket starts over: the current signal goes again once it's live.
   socket.close();
   await goLive(await lastSocket(2));
   expect(sockets[1].signals()).toEqual(['feedback']);
+});
+
+test('A signal the server refused (it came too soon) is answered with the one it has; choosing the refused one again sends it', async () => {
+  const server = fakeServer();
+  server.session = member();
+  await social.start(at(''));
+  social.showLobby();
+  const socket = await lastSocket(1);
+  await goLive(socket, { rooms: [], people: [mine(null)] });
+
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  social.setSignal('chat');
+  vi.advanceTimersByTime(2250);
+  social.setSignal('feedback');
+  expect(socket.signals()).toEqual(['chat', 'feedback']);
+  socket.receive({ type: 'person', person: mine('chat') });   // the server still has chat
+  expect(social.signal).toBe('chat');
+  expect(myRow().signal).toBe('chat');
+  vi.advanceTimersByTime(2250);
+  social.setSignal('feedback');
+  expect(socket.signals()).toEqual(['chat', 'feedback', 'feedback']);
+});
+
+test('A member\'s second tab shows the signal the account has, from its own entry in the state, and doesn\'t send it back', async () => {
+  const server = fakeServer();
+  server.session = member();
+  await social.start(at(''));
+  social.showLobby();
+  const socket = await lastSocket(1);
+  await goLive(socket, { rooms: [], people: [mine('chat')] });
+  expect(social.signal).toBe('chat');
+  expect(myRow().signal).toBe('chat');
+  expect(socket.signals()).toEqual([]);
+  social.setSignal(null);
+  expect(socket.signals()).toEqual([null]);
 });
 
 test('A guest\'s setSignal does nothing; a refused pass empties the lobby', async () => {

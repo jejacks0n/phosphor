@@ -168,3 +168,18 @@ test('Pacing: reset() clears the waiting value and forgets the last sent, so the
   clock.pacer.push('chat');   // the store pushes the current signal again once live
   assert.deepEqual(clock.sent, ['chat', 'chat']);
 });
+
+test('Pacing: confirm() takes the server\'s word for the value it has, so choosing the one it refused sends it again', () => {
+  const clock = pacedClock();
+  clock.pacer.push('chat');
+  clock.t = 2000;
+  clock.pacer.push('feedback');   // came a little early for the server: it answers with chat, still its value
+  clock.pacer.confirm('chat');
+  clock.t = 4000;
+  clock.pacer.push('feedback');
+  assert.deepEqual(clock.sent, ['chat', 'feedback', 'feedback']);
+  clock.pacer.confirm('feedback');
+  clock.t = 6000;
+  clock.pacer.push('feedback');   // what the server has: nothing to send
+  assert.deepEqual(clock.sent, ['chat', 'feedback', 'feedback']);
+});

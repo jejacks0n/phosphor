@@ -84,6 +84,12 @@ export class Pacer {
     if (this.sendFn(this.latest)) Object.assign(this, { sent: this.latest, sentAt: this.now() });
   }
 
+  // The server's word on the value it has (it may have refused the last one sent, for coming too soon):
+  // counted as the last sent, so choosing the refused one again sends it.
+  confirm(value) {
+    this.sent = value;
+  }
+
   // Drops what's waiting and forgets what was sent: for a new socket, whose signal starts over.
   reset() {
     if (this.timer) this.clearTimer(this.timer);
