@@ -351,13 +351,10 @@ div.ansi-editor {
   box-sizing: border-box;
   pointer-events: none;
   z-index: 1001;
-  border: 1px dashed white;
-  box-shadow: 0 0 0 1px black;
-  animation: marquee-march 1s steps(1) infinite;
-}
-
-@keyframes marquee-march {
-  50% { border-color: black; box-shadow: 0 0 0 1px white; }
+  /* The Magic Wand's line: white dashes over black, one pixel, inside the box. */
+  border: 1px solid black;
+  outline: 1px dashed white;
+  outline-offset: -1px;
 }
 
 .text-input {
