@@ -112,9 +112,9 @@ test('evidenceFor a message is it and the five messages before it, oldest first,
   assert.deepEqual(evidenceFor([row(1), row(2)], { sub: 'u_2', messageId: 'm1' }), kept(1));
 });
 
-test('evidenceFor an id that is not a message is null', () => {
-  const rows = [{ ...row(0), presence: 'joined' }, row(1), row(2, null, { deleted: true })];
-  for (const messageId of ['m0', 'm2', 'nope']) assert.equal(evidenceFor(rows, { sub: 'u_2', messageId }), null);
+test('evidenceFor an id that is not a message of the person reported is null', () => {
+  const rows = [{ ...row(0), presence: 'joined' }, row(1), row(2, null, { deleted: true }), row(3, 'u_3')];
+  for (const messageId of ['m0', 'm2', 'm3', 'nope']) assert.equal(evidenceFor(rows, { sub: 'u_2', messageId }), null);
 });
 
 test('evidenceFor a person is their last five messages, or none', () => {

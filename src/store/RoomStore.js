@@ -48,7 +48,7 @@ export const useRoomStore = defineStore('room', {
     hostView: null,      // a watcher's: { col, row, cols, rows, zoom }
     following: true,
     artZoom: 1,          // a watcher's: the zoom the art is drawn at, the host's while following
-    chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, presence? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
+    chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
@@ -315,8 +315,9 @@ export const useRoomStore = defineStore('room', {
     // A report of `sub`, for a message (messageId) or from the people list, with the messages as they came.
     // False, sending nothing, if you can't report, it's yourself, the reason isn't one or there's no socket.
     report({ sub, messageId = null, reason }) {
+      if (!this.canReport || sub === useSocialStore().claims?.sub || !REASONS.some((r) => r.id === reason)) return false;
       const messages = evidenceFor(this.chat, { sub, messageId });
-      if (!this.canReport || sub === useSocialStore().claims?.sub || !REASONS.some((r) => r.id === reason) || !messages) return false;
+      if (!messages) return false;
       return this._connection?.send({ type: 'report', sub, reason, messages, ...(messageId ? { message: messageId } : {}) }) ?? false;
     },
 
