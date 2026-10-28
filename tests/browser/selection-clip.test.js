@@ -8,6 +8,8 @@ import eraser from '@/tools/eraser';
 import shapes from '@/tools/shapes';
 import flip from '@/tools/flip';
 import bucket from '@/tools/bucket';
+import select from '@/tools/select';
+import { markRaw } from 'vue';
 
 const SEL = { c0: 5, r0: 5, c1: 9, r1: 7 };
 
@@ -128,4 +130,33 @@ test('the Bucket fills only inside the selection, and a click outside fills noth
   bucket.begin(ctx, { x: 20.5, y: 12.5 }, { stopPropagation() {} });
   expect(project.history.version).toBe(version);
   expect(project.rawColorAt(20, 12)).toBe('#00ff00');
+});
+
+test('a wand selection keeps the Brush to its cells, and a new rectangle replaces it', async () => {
+  const { project, workspace, use, painted } = await scene();
+  const mask = new Uint8Array(project.cols * Math.ceil(project.rows / 2));
+  mask[6 * project.cols + 5] = mask[6 * project.cols + 7] = 1; // cells 5 and 7 of row 6, not 6
+  workspace.wand = markRaw({ view: 'output', width: project.cols, height: Math.ceil(project.rows / 2), mask });
+  workspace.setActiveTool('brush');
+  expect(workspace.wand).not.toBe(null);
+  use(brush, ROW6);
+  expect(painted(6)).toEqual([5, 7]);
+  workspace.setActiveTool('select');
+  use(select, [{ x: 20.5, y: 20.5 }, { x: 24.5, y: 24.5 }]);
+  expect(workspace.wand).toBe(null);
+});
+
+test('a wand selection in the pixel view keeps the Pencil and Eraser to its pixels', async () => {
+  const { project, workspace } = await scene();
+  workspace.editorTab = 'input';
+  const mask = new Uint8Array(project.cols * project.rows);
+  mask[12 * project.cols + 5] = mask[12 * project.cols + 7] = 1;
+  workspace.wand = markRaw({ view: 'input', width: project.cols, height: project.rows, mask });
+  const ctx = { project, workspace, view: 'input' };
+  const stroke = (tool) => { tool.begin(ctx, { x: 2.5, y: 12.5 }, {}); tool.move(ctx, { x: 2.5, y: 12.5 }, { x: 14.5, y: 12.5 }); tool.end(ctx); };
+  stroke(pencil);
+  expect([4, 5, 6, 7, 8].map((x) => project.rawColorAt(x, 12) === '#ff0000')).toEqual([false, true, false, true, false]);
+  Object.assign(workspace, { editEraserSize: 1, eraseLayers: { base: true, edit: true } });
+  stroke(eraser);
+  expect([4, 5, 6, 7, 8].map((x) => project.baseColorAt(x, 12) === '#000000')).toEqual([false, true, false, true, false]);
 });

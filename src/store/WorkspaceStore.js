@@ -35,6 +35,10 @@ export const useWorkspaceStore = defineStore('workspace', {
     paletteLayerOpen: false, // the character palette layer has the keyboard
     ansiOverlay: 100,        // % opacity of the edit cells drawn over the pixel view
     ansiOverlayAll: false,   // draw every cell over the pixel view, not just the edit cells
+    wand: null,              // the Magic Wand's selection: { view, width, height, mask (markRaw'd, a byte per unit: cells or grid pixels) }
+    wandMatch: { fg: true, bg: false, char: true }, // ANSI view: what a cell must share with the one clicked
+    wandContiguous: true,    // only what touches the unit clicked
+    wandTolerance: 10,       // how far a color may be from the clicked one's and still match (0-100)
     selection: null,         // { c0, r0, c1, r1 }: the Select tool's cells (inclusive)
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
@@ -105,6 +109,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     // Select rect (the whole grid: project.gridRect()) with the Select tool.
     selectAll(rect) {
       this.selection = rect;
+      this.wand = null;
       this.setActiveTool('select');
     },
     // The selection stays as you change tools: the painting tools change only what's inside it.

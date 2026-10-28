@@ -30,6 +30,7 @@ export default {
     if (hit === 'outside') {
       drag = { mode: 'select', start: cell };
       workspace.selection = null;
+      workspace.wand = null; // a rectangle replaces the Magic Wand's selection
     } else if (hit === 'border') {
       drag = { mode: 'outline', start: cell };
       workspace.selectionOffset = { dc: 0, dr: 0 };

@@ -26,12 +26,12 @@ const eraser = {
   },
   move({ project, workspace, view }, from, to) {
     if (!project.renderer.outputCanvas) return;
-    const square = squarePixels(from, to, workspace.editEraserSize, project.cols, project.rows);
+    // A selection keeps it to the cells or pixels inside.
+    const clip = selectionClip(workspace, view);
+    const square = squarePixels(from, to, workspace.editEraserSize, project.cols, project.rows).filter(({ x, y }) => !clip || clip.pixel(x, y));
     // The ANSI view erases whole cells (size 1 is one character, and a wide character's trail takes
     // its lead with it); the pixel view, exact pixels.
     const under = cellsOfPixels(square, project.cols, project.rows);
-    // A selection in the ANSI view keeps it to the cells inside.
-    const clip = selectionClip(workspace, view);
     const cells = view === 'output' ? withLeads(project.cells, project.cols, under).filter(({ col, row }) => !clip || clip.cell(col, row)) : under;
     const pixels = view === 'output' ? cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]) : square;
     const { base, edit } = workspace.eraseLayers;

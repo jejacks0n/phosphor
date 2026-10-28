@@ -124,7 +124,7 @@ export const documentActions = {
     this._stroke = null;
     this.clearHistory();
     const workspace = useWorkspaceStore();
-    workspace.selection = workspace.selectionOffset = workspace.lastPick = null;
+    workspace.selection = workspace.selectionOffset = workspace.lastPick = workspace.wand = null;
   },
 
   // Save and export take the name typed in the save dialog (fileStem: without the extension); it

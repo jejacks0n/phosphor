@@ -29,11 +29,15 @@ function onBeforeUnload(e) {
   }
 }
 
+// The Magic Wand's selection belongs to the view it was made in: switching views drops it.
+watch(() => workspace.editorTab, () => { workspace.wand = null; });
+
 // When the grid changes (in either view), the Text cursor stays on the grid and the selection (and
 // the Picker's last pick), which may no longer fit, are dropped. A new document drops them too
 // (ProjectStore.newDocument).
 watch(() => [project.cols, project.rows], () => {
   workspace.selection = null;
+  workspace.wand = null;
   workspace.lastPick = null;
   const cursor = workspace.textCursor;
   if (cursor) {
