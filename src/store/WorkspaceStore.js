@@ -107,9 +107,13 @@ export const useWorkspaceStore = defineStore('workspace', {
     // zoom is its pixels per column against the font's cell width.
     sharedView(state) {
       if (state.viewTab === 'output') return { ...state.ansiViewOrigin, ...state.ansiViewSize, zoom: state.ansiZoom };
+      return { ...state.inputView, zoom: Math.min(1, state.editZoom / this.displayAdvance) };
+    },
+    // The display font's character width in CSS px, measured once per font.
+    displayAdvance(state) {
       void this.displayFontSpec;   // a font change measures again
       void state.displayFontLoaded;   // and again once it's loaded
-      return { ...state.inputView, zoom: Math.min(1, state.editZoom / measureAdvance(DISPLAY_FONT)) };
+      return measureAdvance(DISPLAY_FONT);
     },
     pickSwapped: (state) => state.heldTool?.by === 'alt', // the picker is only held by Alt from a drawing tool
     // The font the art is drawn in, at its size (a font displayFonts.js can set). A loaded font

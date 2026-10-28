@@ -15,7 +15,7 @@ import { desktopQuery, rtcConfig } from '@/social/config';
 import { Watch } from '@/social/watching';
 import { Host } from '@/social/hosting';
 import { measureAdvance } from '@/lib/CellCanvas';
-import { DISPLAY_FONT } from '@/lib/displayFonts';
+import { DISPLAY_FONT, setDisplayFont } from '@/lib/displayFonts';
 import { MOST_KEPT, signedText } from '@/social/chat';
 import { openPeer } from '@/social/peer';
 import { passKey } from '@/social/pass';
@@ -600,6 +600,28 @@ test('on PIXEL the host sends the cells in view and the PIXEL zoom against the f
   await vi.advanceTimersByTimeAsync(1000);
   expect(setView).toHaveBeenCalledTimes(sent);
   expect(workspace.sharedView).toEqual({ col: 3, row: 1, cols: 10, rows: 5, zoom: 0.5 });
+});
+
+test('on PIXEL new cells in view don\'t measure the font again; a new font size sends a new zoom', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const setView = vi.spyOn(Host.prototype, 'setView');
+  const workspace = useWorkspaceStore();
+  Object.assign(workspace, { editorTab: 'input', viewTab: 'input', editZoom: 4, inputView: { col: 2, row: 1, cols: 6, rows: 3 } });
+  await goLive();
+  const was = measureAdvance(DISPLAY_FONT);
+  const createElement = vi.spyOn(document, 'createElement');   // a measure makes a canvas
+  workspace.inputView = { col: 3, row: 1, cols: 6, rows: 3 };
+  await vi.advanceTimersByTimeAsync(300);
+  expect(createElement.mock.calls.filter(([tag]) => tag === 'canvas')).toEqual([]);
+  createElement.mockRestore();
+  expect(setView).toHaveBeenLastCalledWith({ col: 3, row: 1, cols: 6, rows: 3, zoom: 4 / was });
+
+  // The font at twice its size, once it has loaded (as App.vue does): the cell is twice as wide.
+  workspace.displayFontSizes = { jetbrains: 2 * DISPLAY_FONT.size };
+  await setDisplayFont(workspace.displayFontSpec);
+  workspace.displayFontLoaded = workspace.displayFontSpec;
+  await vi.advanceTimersByTimeAsync(300);
+  expect(setView.mock.lastCall[0].zoom).toBeCloseTo(4 / (2 * was), 2);
 });
 
 test('going live on SOCIAL sends the last art tab\'s view at once', async () => {

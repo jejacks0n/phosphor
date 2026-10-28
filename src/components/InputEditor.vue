@@ -95,8 +95,10 @@ const redrawDisplay = () => {
   const output = projectStore.renderer.outputCanvas;
   if (!dc || !sizer || !viewportEl || !output) return;
   const zoom = workspaceStore.editZoom, view = viewIn(sizer, viewportEl);
-  // A grid pixel is a column wide and half a line tall: the whole cells in view are what a room's watchers are shown.
-  workspaceStore.inputView = wholeCellsIn(view, { cellWidth: zoom, lineHeight: 2 * zoom }, projectStore.cols, charRowsOf(projectStore.rows));
+  // A grid pixel is a column wide and half a line tall: the whole cells in view are what a room's
+  // watchers are shown. Set only when they changed, so a redraw doesn't send the view again.
+  const cells = wholeCellsIn(view, { cellWidth: zoom, lineHeight: 2 * zoom }, projectStore.cols, charRowsOf(projectStore.rows));
+  if (Object.keys(cells).some((k) => cells[k] !== workspaceStore.inputView[k])) workspaceStore.inputView = cells;
   const win = viewWindow(view, { x: zoom, y: zoom }, projectStore.cols, projectStore.rows);
   const width = win.cols * zoom, height = win.rows * zoom;
   // Resizing clears the canvas, so only when the window's size changes; otherwise a clear, for an

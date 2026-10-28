@@ -76,3 +76,18 @@ test('at a fractional zoom the PIXEL view fills its canvas to the last pixel, wi
   });
   await expect.poll(edgeAlphas).toBe(255);
 });
+
+test('a redraw with the same cells in view keeps inputView as it was (a room\'s view isn\'t worked out again)', async ({ page }) => {
+  await pixelView(page);
+  await expect.poll(() => store(page, 'workspace', (w) => w.inputView.cols)).toBeGreaterThan(0);
+  const same = await page.evaluate(async () => {
+    const workspace = document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('workspace');
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    const view = workspace.inputView;
+    workspace.ansiOverlay = 50;   // redraws, nothing moved
+    await frame();
+    await frame();
+    return workspace.inputView === view;
+  });
+  expect(same).toBe(true);
+});
