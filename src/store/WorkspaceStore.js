@@ -88,6 +88,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     editFillTolerance:  10,
     editFillContiguous:  true,
     editFillFeather: 2,
+    bucketFillWith: 'normal', // ANSI view: 'normal' (the color you see) | 'cells' (whole cells, by Match and Set)
+    bucketMatch: { fg: true, bg: true, char: true }, // Cells: what a cell must share with the one clicked
+    bucketSet: { fg: true, bg: false, char: false }, // Cells: what the fill sets (your FG, BG, character)
   }),
   getters: {
     activeTool(state) {

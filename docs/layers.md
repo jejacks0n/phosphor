@@ -241,7 +241,13 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   edit cell whose character isn't a space, █, ▀ or ▄) are walls: a fill stops at them and never
   covers them, so it stays inside a box and leaves your text readable. A line hidden under paint
   isn't a wall, since you can't see it. With a selection, the fill stays inside it, and a click
-  outside it fills nothing.
+  outside it fills nothing. In the ANSI view its **Fill** dropdown also offers **Cells**: whole
+  cells instead of the color you see. **Match** chooses what a cell must share with the one you
+  click (its **FG**, **BG** and/or character, **Char**; all three to start, so cells that look the
+  same), with the colors within the **Tolerance**, and **Set** what the fill gives the cells: your
+  foreground color (to start), background color and/or character, as edit cells. **Contiguous**
+  works as in Normal mode; there's no Feathering. Cells fills text and lines too, since it's
+  matching cells rather than flowing around them.
 - **Color Picker**'s **FG** and **BG** toggles choose what a pick sets; both lit sets both.
 - **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
   selection's size and place, and the Color Picker its last pick and where each color came from.
