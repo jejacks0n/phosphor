@@ -27,11 +27,13 @@ const serverKey = toBase64url(new Uint8Array(await crypto.subtle.exportKey('raw'
 const passKey = async () => serverKey;
 
 // Someone with a browser key and a pass for it: { pass, claims, privateKey }. `signer` signs the pass
-// (the server, unless it's made up), and `pair` is their browser key.
-async function person(sub, { guest = false, verified = !guest, exp = Date.now() / 1000 + 3600, signer = server, pair } = {}) {
+// (the server, unless it's made up), `pair` is their browser key, and `mutedUntil` (epoch ms) is in their
+// pass while a mute lasts.
+async function person(sub, { guest = false, verified = !guest, exp = Date.now() / 1000 + 3600, signer = server, pair, mutedUntil } = {}) {
   pair ??= await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
   const key = toBase64url(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)));
   const claims = { sub, name: sub, guest, verified, key, exp };
+  if (mutedUntil) claims.mutedUntil = mutedUntil;
   const body = toBase64url(new TextEncoder().encode(JSON.stringify(claims)));
   const signature = new Uint8Array(await crypto.subtle.sign('Ed25519', signer.privateKey, new TextEncoder().encode(body)));
   return { pass: `${body}.${toBase64url(signature)}`, claims, privateKey: pair.privateKey, pair };
@@ -236,6 +238,36 @@ test('a burst of 50 badly signed messages from one watcher gets only a few signa
   await expect.poll(() => said(r.log.p2), PATIENT).toEqual(['good']);
 });
 
+// Moderation: a muted pass's chat is dropped by the host without a word.
+test('a message from a pass muted until later is dropped with no chat-no, an expired mute\'s goes', async () => {
+  const p1 = await person('u_p1', { mutedUntil: Date.now() + 3600_000 });
+  const p2 = await person('u_p2', { mutedUntil: Date.now() - 60_000 });
+  const r = await room({ p1, p2, p3: await person('u_p3') });
+  await opened(r, ['p1', 'p2', 'p3']);
+  r.log.p1.watch.say(await message(p1, 'muted'));
+  r.log.p2.watch.say(await message(p2, 'lapsed'));
+  await expect.poll(() => said(r.log.p3), PATIENT).toEqual(['lapsed']);
+  await wait(100);
+  expect(said(r.log.p1)).toEqual(['lapsed']);
+  expect(of(r.log.p1, 'refused')).toEqual([]);
+  expect(of(r, 'chat').map((e) => e.entry.text)).toEqual(['lapsed']);
+});
+
+test('host.mute drops a joined watcher\'s next message until the mute is past', async () => {
+  const p1 = await person('u_p1');
+  const r = await room({ p1, p2: await person('u_p2') });
+  await opened(r, ['p1', 'p2']);
+  r.host.mute('u_p1', Date.now() + 60_000);
+  r.log.p1.watch.say(await message(p1, 'muted'));
+  await wait(200);   // heard, and dropped, before the mute is lifted
+  r.host.mute('u_p1', Date.now() - 1);
+  r.log.p1.watch.say(await message(p1, 'free'));
+  await expect.poll(() => said(r.log.p2), PATIENT).toEqual(['free']);
+  await wait(100);
+  expect(said(r.log.p2)).toEqual(['free']);
+  expect(of(r.log.p1, 'refused')).toEqual([]);
+});
+
 test('remove asks the Room to put the watcher out, and closes its connection', async () => {
   const r = await room({ p1: await person('u_p1'), p2: await person('u_p2') });
   await opened(r, ['p1', 'p2']);
@@ -330,6 +362,27 @@ test('a watcher drops a pass the host made up, a guest\'s or unconfirmed member\
   expect(log.chat.map((e) => e.entry.text)).toEqual(['last']);
   await wait(100);
   expect(log.chat.length).toBe(1);
+});
+
+// A host muted when it said something can't have it shown: its pass says so, and the Room's word is the
+// pass's.
+test('a watcher drops a host\'s message sent before its pass\'s mutedUntil, live and in history, and keeps one after it and presence', async () => {
+  const { log, json } = await hostileHost();
+  const ts = Date.now();
+  const me = await person('u_host', { mutedUntil: ts + 1000 });
+  const during = { pass: me.pass, ...await message(me, 'during', { ts }) };
+  const after = { pass: me.pass, ...await message(me, 'after', { ts: ts + 2000 }) };
+  const came = { pass: me.pass, id: newId(), ts, presence: 'joined' };
+  json({ t: 'chat', ...during });
+  json({ t: 'history', more: false, messages: [during, after, came] });
+  json({ t: 'presence', ...came, id: newId() });
+  json({ t: 'chat', ...after });
+  await expect.poll(() => log.chat.length, PATIENT).toBe(3);
+  expect(log.chat.map((e) => e.type)).toEqual(['history', 'presence', 'chat']);
+  expect(log.chat[0].messages.map((m) => m.entry.text ?? m.entry.presence)).toEqual(['after', 'joined']);
+  expect(log.chat[2].entry).toEqual(after);
+  await wait(100);
+  expect(log.chat.length).toBe(3);
 });
 
 // A pass is checked once a connection when it's good, and again each time when it isn't (nothing kept

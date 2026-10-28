@@ -43,6 +43,7 @@ export class Host {
     // for earlier messages), here (counted among those in the room) }
     this.watchers = new Map();
     this.here = new Map();   // sub -> their open connections: one person in two tabs comes and goes once
+    this.mutes = new Map();   // sub -> until (epoch ms): mutes the Room told of since a pass was made
     this.removed = new Set();   // peers the host removed: not met again, and told to the Room until it stops listing them
     this.log = new ChatLog();
     this.room = null;
@@ -184,6 +185,11 @@ export class Host {
     return true;
   }
 
+  // A mute the Room reported: that person's chat is dropped until it's past, whatever their pass says.
+  mute(sub, until) {
+    this.mutes.set(sub, until);
+  }
+
   // The host's Remove: the Room puts the watcher out, and its connection closes here.
   remove(peer) {
     this.removed.add(peer);
@@ -259,12 +265,14 @@ export class Host {
   }
 
   // A watcher's message goes on only from a verified member, with text as the composer sends it, a
-  // time near the host's, a new id and their own signature over it for this room; anything else is
-  // dropped without a word. Past their allowance, they're told it was too fast.
+  // time near the host's, a new id and their own signature over it for this room; anything else, and
+  // anything from someone muted (by their pass, or by mute()), is dropped without a word. Past their
+  // allowance, they're told it was too fast.
   async chat(w, { id, ts, text, sig }) {
     const claims = w.claims;
     if (!claims || claims.guest || claims.verified !== true || !isId(id) || !Number.isFinite(ts)
       || Math.abs(ts - Date.now()) > MOST_SKEW_MS || chatText(text) !== text || typeof sig !== 'string') return;
+    if (Math.max(claims.mutedUntil ?? 0, this.mutes.get(claims.sub) ?? 0) > Date.now()) return;
     if (!await verifySignature(claims.key, signedText(this.roomId, { id, ts, text }), sig)) return;
     if (this.watchers.get(w.peer) !== w || this.log.has(id)) return;
     if (!w.allowance.take()) this.sendTo(w, { t: 'chat-no', id, reason: 'too-fast' });
