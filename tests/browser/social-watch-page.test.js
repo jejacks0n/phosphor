@@ -1,6 +1,7 @@
 // The watch page (WatchRoomPage.vue) with the room store in each status: the heading says how joining
 // is going until the room's name comes, a status region that's always there says it too (for screen
-// readers, shown only once the heading is the name), and old art is dimmed while waiting for the host.
+// readers, shown only once the heading is the name, which is then for screen readers only: the chat panel
+// shows it), and old art is dimmed while waiting for the host.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -47,7 +48,7 @@ test('the heading and the status region say how joining is going, and the region
   Object.assign(room, { status: 'waiting', room: { name: 'neon harbor', welcome: '', host: 'ansi-fan' } });
   await nextTick();
   expect([heading.textContent, region.textContent]).toEqual(['neon harbor', 'Waiting for the host…']);
-  expect(shown(region)).toBe(true);
+  expect([shown(heading), shown(region)]).toEqual([false, true]);
   room.status = 'live';
   await nextTick();
   expect(region.textContent).toBe('');
@@ -63,15 +64,4 @@ test('the art is dimmed while waiting for the host, not while live', async () =>
   room.status = 'waiting';
   await nextTick();
   expect(getComputedStyle(area).opacity).toBe('0.5');
-});
-
-test('Following is a toggle: aria-pressed says whether it\'s on', async () => {
-  const white = { hex: '#ffffff', r: 255, g: 255, b: 255 };
-  const art = { cols: 1, lines: 1, font: null, cells: [{ char: 'A', fg: white, bg: white }] };
-  const { room } = await mount({ status: 'live', room: { name: 'neon harbor', welcome: '', host: 'ansi-fan' }, art });
-  const toggle = () => [...host.querySelectorAll('button')].find((b) => b.textContent.startsWith('Follow'));
-  expect([toggle().textContent, toggle().getAttribute('aria-pressed')]).toEqual(['Following', 'true']);
-  room.following = false;
-  await nextTick();
-  expect([toggle().textContent, toggle().getAttribute('aria-pressed')]).toEqual(['Follow ansi-fan', 'false']);
 });

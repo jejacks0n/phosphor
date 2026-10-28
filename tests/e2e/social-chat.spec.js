@@ -35,13 +35,17 @@ test('the panel is beside every tab for the host and the watcher, with the welco
   for (const [page, tabs] of [[host, ['SOCIAL', 'ANSI', 'PIXEL']], [watcher, ['SOCIAL', 'PIXEL']]]) {
     for (const name of tabs) {
       await tab(page, name).click();
-      await expect(panel(page).getByRole('heading', { name: 'Chat', level: 2 })).toBeVisible();
-      await expect(panel(page).getByText('neon harbor')).toBeVisible();
+      await expect(panel(page).getByRole('heading', { name: 'neon harbor', level: 2 })).toBeVisible();
       await expect(panel(page).getByText('Pinned, from the host')).toBeVisible();
       await expect(panel(page).getByText('be kind, draw big')).toBeVisible();
       expect((await panel(page).boundingBox()).width).toBe(280);
     }
   }
+  // Who hosts it, Follow and Leave are the watcher's; the host has their own page.
+  await expect(panel(watcher).getByText('hosted by ansi-fan')).toBeVisible();
+  await expect(panel(watcher).getByRole('button', { name: 'Leave' })).toBeVisible();
+  await expect(panel(host).getByText('hosted by ansi-fan')).toHaveCount(0);
+  await expect(panel(host).getByRole('button', { name: 'Leave' })).toHaveCount(0);
 });
 
 test('no panel outside a room', async ({ page: host, context }) => {
@@ -199,7 +203,7 @@ test('» folds the panel to a rail that counts what came since, « opens it agai
 
   await panel(watcher).getByRole('button', { name: 'Fold the chat' }).click();
   await expect(panel(watcher).getByRole('button', { name: 'Open the chat' })).toBeFocused();
-  await expect(panel(watcher).getByRole('heading', { name: 'Chat' })).toHaveCount(0);
+  await expect(panel(watcher).getByRole('heading', { name: 'neon harbor' })).toHaveCount(0);
   expect((await panel(watcher).boundingBox()).width).toBe(28);
   await expect(panel(watcher).getByText('1', { exact: true })).toHaveCount(0);
 

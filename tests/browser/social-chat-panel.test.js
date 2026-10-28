@@ -1,5 +1,6 @@
 // The chat panel (ChatPanel.vue) with the room store as a room leaves it: a new message draws its own row
-// only, a deletion draws that row again, and the host's Delete buttons say whose message they are for.
+// only, a deletion draws that row again, the host's Delete buttons say whose message they are for, and the
+// watcher's Following is a toggle.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -61,4 +62,16 @@ test('the host\'s Delete buttons each name the sender', async () => {
   const buttons = [...host.querySelectorAll('button.delete')];
   expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual(['Delete message from name-0', 'Delete message from name-1']);
   expect(buttons.map((b) => b.textContent)).toEqual(['Delete', 'Delete']);
+});
+
+test('Following is a toggle: aria-pressed says whether it\'s on', async () => {
+  const white = { hex: '#ffffff', r: 255, g: 255, b: 255 };
+  const room = await mount('watch', 0);
+  Object.assign(room, { room: { name: 'neon harbor', welcome: '', host: 'ansi-fan' }, art: { cols: 1, lines: 1, font: null, cells: [{ char: 'A', fg: white, bg: white }] } });
+  await nextTick();
+  const toggle = () => [...host.querySelectorAll('button')].find((b) => b.textContent.startsWith('Follow'));
+  expect([toggle().textContent, toggle().getAttribute('aria-pressed')]).toEqual(['Following', 'true']);
+  room.following = false;
+  await nextTick();
+  expect([toggle().textContent, toggle().getAttribute('aria-pressed')]).toEqual(['Follow ansi-fan', 'false']);
 });

@@ -6,6 +6,7 @@ import { test, expect, openApp, tab, store, editAt, cellPoint, screenPixel, sett
 import { fakeRoom, member, ROOM_ID, shown, goLive, watcherPage, joinFromCard } from './social-support.js';
 
 const watching = (page) => shown(page, 'watch-room');
+const chat = (page) => page.getByRole('complementary', { name: 'Chat' });   // its top has the room's name, the host, Follow and Leave
 const hostCells = (host) => store(host, 'project', (p) => p.cells.map((c) => [c.char, c.fg.hex, c.bg.hex]));
 const watcherCells = (watcher) => store(watcher, 'room', (r) => r.art?.cells.map((c) => [c.char, c.fg.hex, c.bg.hex]) ?? null);
 
@@ -16,10 +17,14 @@ test('Join from a lobby card: the room\'s name, its welcome, and the host\'s art
   await watcher.goto('/');
   await joinFromCard(watcher);
 
+  await expect(chat(watcher).getByRole('heading', { name: 'neon harbor' })).toBeVisible();
+  await expect(chat(watcher).getByText('hosted by ansi-fan')).toBeVisible();
+  await expect(chat(watcher).getByText('hi all')).toBeVisible();
+  // The SOCIAL tab doesn't say them again: the art is all it shows (its heading is for screen readers).
   const page = watching(watcher);
-  await expect(page.getByRole('heading', { name: 'neon harbor' })).toBeVisible();
-  await expect(page.getByText('hosted by ansi-fan')).toBeVisible();
-  await expect(page.getByText('hi all')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'neon harbor' })).toHaveCSS('position', 'absolute');
+  await expect(page.getByText('hosted by ansi-fan')).toHaveCount(0);
+  await expect(page.getByText('hi all')).toHaveCount(0);
   await expect(page.getByLabel('The room\'s art')).toBeVisible();
   await expect.poll(() => watcherCells(watcher)).toEqual(await hostCells(host));
 
@@ -54,20 +59,20 @@ test('the host sees the watcher following; a wheel is looking around, and Follow
   await joinFromCard(watcher);
   const list = shown(host, 'host-room').getByRole('list', { name: 'Watching' });
   await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*following/]);
-  await expect(watching(watcher).getByRole('button', { name: 'Following' })).toBeVisible();
+  await expect(chat(watcher).getByRole('button', { name: 'Following' })).toBeVisible();
   await expect.poll(async () => (await scrolls(watcher)).at > 0 && await centered(watcher)).toBe(true);
 
   const art = watching(watcher).getByLabel('The room\'s art');
   const box = await art.boundingBox();
   await watcher.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await watcher.mouse.wheel(0, 2000);
-  const follow = watching(watcher).getByRole('button', { name: 'Follow ansi-fan' });
+  const follow = chat(watcher).getByRole('button', { name: 'Follow ansi-fan' });
   await expect(follow).toBeVisible();
   await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*looking around/]);
   await expect.poll(() => centered(watcher)).toBe(false);
 
   await follow.click();
-  await expect(watching(watcher).getByRole('button', { name: 'Following' })).toBeVisible();
+  await expect(chat(watcher).getByRole('button', { name: 'Following' })).toBeVisible();
   await expect.poll(() => centered(watcher)).toBe(true);
   await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*following/]);
 });
@@ -80,7 +85,7 @@ test('Leave returns the watcher to the lobby, and the host\'s count goes to 0', 
   await joinFromCard(watcher);
   await expect(shown(host, 'host-room').getByText('1 watching')).toBeVisible();
 
-  await watching(watcher).getByRole('button', { name: 'Leave' }).click();
+  await chat(watcher).getByRole('button', { name: 'Leave' }).click();
   await expect(shown(watcher, 'lobby').getByRole('heading', { name: 'Public rooms', exact: true })).toBeFocused();
   expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
   await expect(shown(host, 'host-room').getByText('0 watching')).toBeVisible();
@@ -198,8 +203,8 @@ test('a watcher\'s own unsaved art is as it was after joining, watching and leav
   const art = await watching(watcher).getByLabel('The room\'s art').boundingBox();
   await watcher.mouse.move(art.x + art.width / 2, art.y + art.height / 2);
   await watcher.mouse.wheel(0, 200);   // looking around, then following again
-  await watching(watcher).getByRole('button', { name: 'Follow ansi-fan' }).click();
-  await expect(watching(watcher).getByRole('button', { name: 'Following' })).toBeVisible();
+  await chat(watcher).getByRole('button', { name: 'Follow ansi-fan' }).click();
+  await expect(chat(watcher).getByRole('button', { name: 'Following' })).toBeVisible();
 
   await tab(watcher, 'ANSI').click();
   await settled(watcher);
@@ -211,7 +216,7 @@ test('a watcher\'s own unsaved art is as it was after joining, watching and leav
   expect(await store(watcher, 'room', (r) => r.status)).toBe('live');   // still watching
 
   await tab(watcher, 'SOCIAL').click();
-  await watching(watcher).getByRole('button', { name: 'Leave' }).click();
+  await chat(watcher).getByRole('button', { name: 'Leave' }).click();
   await expect(shown(watcher, 'lobby')).toBeVisible();
   expect(await own()).toEqual(before);
 });

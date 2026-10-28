@@ -6,7 +6,7 @@ import { nameColor } from '@/social/names';
 import ChatFoot from './ChatFoot.vue';
 
 // The chat of the room you host or watch, at the right of the whole app (every tab, while you're in
-// one): the room's name, the host's welcome pinned, the messages, and the box to write in. » folds it
+// one): the room's name (and, watching, who hosts it with Follow and Leave), the host's welcome pinned, the messages, and the box to write in. » folds it
 // to a thin rail that counts what came since. The list keeps its place: a new message scrolls it only
 // when it was already at the bottom, and earlier ones (asked for on reaching the top) go in above
 // without moving what you were reading. Someone you blocked is folded to one line (Show opens just
@@ -18,6 +18,7 @@ const since = ref(0);    // messages since the fold
 const panel = useTemplateRef('panel');
 const list = useTemplateRef('list');
 
+const host = computed(() => room.room?.host || null);
 const blocked = computed(() => new Set(social.blocked.map((b) => b.id)));
 const shownAnyway = reactive(new Set());   // blocked messages opened with Show
 const hidden = (m) => !m.mine && blocked.value.has(m.sub) && !shownAnyway.has(m.id);
@@ -67,9 +68,15 @@ function askIfAtTop() {
     </div>
     <div v-show="!folded" class="body">
       <header>
-        <div>
-          <h2>Chat</h2>
-          <p class="room">{{ room.room?.name }}</p>
+        <div class="room">
+          <h2 v-if="room.room?.name">{{ room.room.name }}</h2>
+          <template v-if="room.role === 'watch'">
+            <p v-if="host" class="host">hosted by {{ host }}</p>
+            <div class="buttons">
+              <button v-if="room.art" :aria-pressed="room.following" @click="room.setFollowing(!room.following)">{{ room.following ? 'Following' : `Follow ${host}` }}</button>
+              <button @click="room.leave()">Leave</button>
+            </div>
+          </template>
         </div>
         <button class="fold link" aria-label="Fold the chat" @click="fold(true)">»</button>
       </header>
@@ -160,16 +167,30 @@ header {
   padding: 10px 6px 8px 12px;
   border-bottom: 1px solid var(--border);
 }
+div.room {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
 h2 {
   margin: 0;
+  overflow-wrap: anywhere;
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
 }
-p.room {
-  margin: 2px 0 0;
+p.host {
+  margin: 0;
   overflow-wrap: anywhere;
+  font-family: 'JetBrains Mono', monospace;
   color: var(--text-muted);
+}
+div.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
 }
 button.fold {
   padding: 4px 6px;

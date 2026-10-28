@@ -3,10 +3,11 @@ import { ref, computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
 import RoomArt from './RoomArt.vue';
 
-// The room you watch: its name, who hosts it and their welcome, the host's art with the part they're
-// looking at (followed until you look around), Leave. Until the room's name comes from the host, the
-// heading says how joining is going, and a status region always there says it for screen readers (only
-// seen once the heading is the name). A private room asks for its password here.
+// The room you watch: the host's art with the part they're looking at (followed until you look around).
+// Its name, who hosts it, their welcome, Follow and Leave are at the top of the chat panel. Until the
+// room's name comes from the host, the heading says how joining is going; once it's the name it's for
+// screen readers only (the panel shows it). A status region always there says how joining is going for
+// screen readers. A private room asks for its password here.
 const room = useRoomStore();
 
 const STATUS = {
@@ -15,7 +16,6 @@ const STATUS = {
 };
 const said = computed(() => STATUS[room.status] ?? null);
 const name = computed(() => room.room?.name || null);
-const host = computed(() => room.room?.host || null);
 
 // A try takes the form (and the focused Join) away: focus waits on the heading, and goes back to the
 // password, selected, if it was wrong.
@@ -36,15 +36,7 @@ const lookAround = () => { if (room.following) room.setFollowing(false); };
 
 <template>
   <div class="watch-room">
-    <header>
-      <h2 ref="heading" tabindex="-1">{{ name ?? said }}</h2>
-      <span v-if="host" class="host">hosted by {{ host }}</span>
-      <div class="buttons">
-        <button v-if="room.art" :aria-pressed="room.following" @click="room.setFollowing(!room.following)">{{ room.following ? 'Following' : `Follow ${host}` }}</button>
-        <button @click="room.leave()">Leave</button>
-      </div>
-    </header>
-    <p v-if="room.room?.welcome" class="welcome">{{ room.room.welcome }}</p>
+    <h2 ref="heading" tabindex="-1" :class="{ unseen: name }">{{ name ?? said }}</h2>
     <p class="status" :class="{ unseen: !name || !said }" role="status">{{ said }}</p>
     <form v-if="room.status === 'password'" @submit.prevent="join">
       <label>Password <input ref="passwordInput" v-model="password" type="password" autocomplete="off" required></label>
@@ -70,11 +62,6 @@ div.watch-room {
   color: var(--text-dim);
 }
 
-header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
 h2 {
   margin: 0;
   min-width: 0;
@@ -85,21 +72,11 @@ h2 {
   font-weight: 600;
   color: var(--text);
 }
-span.host {
-  color: var(--text-muted);
-  white-space: nowrap;
-  font-family: 'JetBrains Mono', monospace;
-}
-div.buttons {
-  display: flex;
-  gap: 8px;
-  margin-left: auto;
-}
-p.welcome, p.status {
+p.status {
   margin: 0;
   color: var(--text-muted);
 }
-p.status.unseen {   /* nothing to say, or the heading says it: for screen readers only */
+.unseen {   /* for screen readers only */
   position: absolute;
   width: 1px;
   height: 1px;
@@ -107,11 +84,6 @@ p.status.unseen {   /* nothing to say, or the heading says it: for screen reader
   clip-path: inset(50%);
   white-space: nowrap;
 }
-p.welcome {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
 form {
   display: flex;
   flex-direction: column;

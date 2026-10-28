@@ -111,8 +111,7 @@ watchers will see (your art in ANSI as it is now), and asks for:
 
 - **Room name**: up to 60 characters.
 - **Welcome message**: a few lines (up to 200 characters) on what you're working on and what you'd
-  like from people. Watchers see it under the room's name, and it's pinned at the
-  top of the chat. You can edit it while you're live.
+  like from people. Watchers see it pinned at the top of the chat. You can edit it while you're live.
 - **Who can join**: *Anyone, in the lobby* (a public room) or *Only with the link* (a private
   room, which also asks for a **password**).
 - **Allow guests**: whether people who haven't signed in can watch. Guests can only watch, so you
@@ -159,7 +158,8 @@ settings made meanwhile goes once you're back.
 lobby. You're in one room at a time; **Leave** brings the lobby back. A private room asks for its
 password first.
 
-The room's name, its host and the welcome message are at the top. The art is view only, in the
+The room's name, its host, **Following** and **Leave** are at the top of the chat panel, with the
+welcome message pinned under them; the SOCIAL tab shows just the art. The art is view only, in the
 host's font. A pink box shows where the host is looking. With **Following** on, your view
 follows theirs; scroll away to look around on your own, and the button becomes **Follow** with the
 host's name, to bring you back. If the connection to the host is lost, the art dims and the page says
