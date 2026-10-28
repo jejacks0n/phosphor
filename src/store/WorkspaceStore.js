@@ -2,10 +2,9 @@ import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
 import { DISPLAY_FONTS } from '@/lib/displayFonts';
 import { familyOf } from '@/lib/userFonts';
+import { clampZoom, clampAnsiZoom } from '@/lib/zoom';
 
 const RECENT_COLORS = 12;
-
-export const clampZoom = (z) => Math.max(1, Math.min(16, z));
 
 export const useWorkspaceStore = defineStore('workspace', {
   state: () => ({
@@ -59,6 +58,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     strokeEnd: null,         // where the last Pencil or Brush stroke ended (a grid position): Shift-click draws a line from there
     shapeDrag: null,         // { from, to } grid positions while a shape is being dragged
     editZoom:  5,
+    ansiZoom:  1,            // the ANSI view's zoom: 25% to 100% of its cell size
     editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'sauce' or 'social'
     isPainting: false,
     isCtrlPressed: false,
@@ -188,6 +188,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     setEditZoom(z) {
       this.editZoom = clampZoom(z);
+    },
+    setAnsiZoom(z) {
+      this.ansiZoom = clampAnsiZoom(z);
     },
     toggleSettings() {
       this.settingsOpen = !this.settingsOpen;

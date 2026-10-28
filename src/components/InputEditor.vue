@@ -8,6 +8,7 @@ import { parseKey } from '@/document/editCells';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
+import { clampZoom } from '@/lib/zoom';
 import EditorViewport from '@/components/EditorViewport.vue';
 
 // The PIXEL view: the composited output canvas scaled up by editZoom. The canvas covers only the
@@ -20,6 +21,7 @@ const wand = computed(() => workspaceStore.wand && wandIn(workspaceStore.wand, '
 const viewport = useTemplateRef('viewport');
 const sizerRef = useTemplateRef('sizer');
 const canvasRef = useTemplateRef('displayCanvas');
+const zoom = { get: () => workspaceStore.editZoom, set: workspaceStore.setEditZoom, clamp: clampZoom };
 
 // Edit cells (or all, with "All cells") drawn over the image as their half-cell colors: the
 // ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible.
@@ -216,7 +218,7 @@ onBeforeUnmount(() => {
       ref="viewport"
       :display="sizerRef"
       :coords-at="coordsAt"
-      zoomable
+      :zoom="zoom"
       scroll-key="input"
       :content-size="contentSize"
       view="input"

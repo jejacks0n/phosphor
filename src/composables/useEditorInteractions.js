@@ -1,5 +1,4 @@
 import { ref, unref } from 'vue';
-import { clampZoom } from '@/store/WorkspaceStore';
 
 const TOUCH_DELAY_MS = 150; // a touch waits this long before drawing, in case a second finger makes it a pinch
 const TOUCH_MOVE_THRESHOLD = 5; // Pixels to move before immediate paint start
@@ -35,6 +34,7 @@ export function useEditorInteractions(options) {
     displayRef,
     activeTool,
     editZoom,
+    clampZoom,
     callbacks,
     workspaceStore,
     disableZoom = false

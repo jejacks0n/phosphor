@@ -12,11 +12,11 @@ import { snapCursor } from '@/document/wideChars';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
-// decides what a stroke does. coordsAt and zoomable are read once at setup: pass stable values.
+// decides what a stroke does. coordsAt and zoom are read once at setup: pass stable values.
 const props = defineProps({
   display: { type: Object, default: null },                 // the sizer (or the DOM view's pre) that coordinates are measured against
   coordsAt: { type: Function, required: true },             // (event) => { x, y } in fractional grid pixels, or null
-  zoomable: { type: Boolean, default: false },              // zoom reads and writes workspaceStore.editZoom
+  zoom: { type: Object, default: null },                    // { get, set, clamp } for the view's zoom; null: not zoomable
   scrollKey: { type: String, required: true },              // 'input' | 'ansi': where scroll position is remembered
   contentSize: { type: Object, default: null },             // { width, height } -> padded layout that keeps its center on resize
   view: { type: String, required: true },                   // 'input' (PIXEL) | 'output' (ANSI), passed to tools
@@ -45,10 +45,11 @@ const {
   containerRef: rootRef,
   displayRef: computed(() => props.display),
   activeTool: tool,
-  // The store, not a prop: several zoom events can land in one frame, before a prop would update.
-  editZoom: computed(() => workspaceStore.editZoom),
+  // The store's value, not a prop: several zoom events can land in one frame, before a prop would update.
+  editZoom: computed(() => props.zoom?.get()),
+  clampZoom: props.zoom?.clamp,
   workspaceStore,
-  disableZoom: !props.zoomable,
+  disableZoom: !props.zoom,
   callbacks: {
     pixelCoordsAt: props.coordsAt,
     onPaintStart: (event, pos) => (tool.value.begin ? tool.value.begin(toolCtx(), pos, event) !== false : false),
@@ -60,7 +61,7 @@ const {
       (tool.value.cancel ?? tool.value.end)?.(toolCtx());
     },
     onColorPick: pickAt,
-    onZoomChange: (zoom) => workspaceStore.setEditZoom(zoom),
+    onZoomChange: props.zoom?.set,
   },
 });
 
