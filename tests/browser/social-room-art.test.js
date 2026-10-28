@@ -2,10 +2,11 @@
 // the center while following, and a wheel, a key or a press (never its own scroll) is looking around.
 // The host's box and its tag (the Follow button) are in the host's name color, and the tag stays in
 // sight, pointing to the box, when the box is scrolled out of view.
-import { test, expect, afterEach } from 'vitest';
+import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, reactive, nextTick } from 'vue';
 import { createTestApp } from '../support/app.js';
 import RoomArt from '@/components/social/RoomArt.vue';
+import CellCanvas from '@/lib/CellCanvas';
 import { nameColor } from '@/social/names';
 
 const COLS = 100, LINES = 50;
@@ -14,6 +15,7 @@ const art = { cols: COLS, lines: LINES, font: { id: 'vga', size: 16 }, cells: Ar
 
 let app = null, host = null;
 afterEach(() => {
+  vi.restoreAllMocks();
   app?.unmount();
   host?.remove();
 });
@@ -75,6 +77,19 @@ test('at a zoom of 0.5 the cells and the box are half size, and the box is cente
   expect([box.style.left, box.style.top, box.style.height]).toEqual(['160px', '160px', '32px']);
   expect(scroll.querySelector('.sizer').style.width).toBe('400px');
   expect([scroll.scrollLeft + scroll.clientWidth / 2, scroll.scrollTop + scroll.clientHeight / 2]).toEqual([45 * 4, 22 * 8]);
+});
+
+test('a new zoom sizes its first window by the new zoom\'s cells, not the old one\'s', async () => {
+  await createTestApp();
+  const { state, box } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 } });
+  await expect.poll(() => box.style.width).toBe('80px');
+  await frames();
+  const resize = vi.spyOn(CellCanvas.prototype, 'resize');
+  state.zoom = 0.5;
+  await expect.poll(() => box.style.width).toBe('40px');
+  await frames();
+  const windows = resize.mock.calls.map(([cols, rows]) => `${cols}x${rows}`);
+  expect(new Set(windows).size).toBe(1);   // the window at 0.5 from the first pass
 });
 
 test('only a key that scrolls is looking around: not Tab, and not a modifier on its own', async () => {

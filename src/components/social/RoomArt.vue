@@ -17,7 +17,7 @@ import { nameColor, nameInk } from '@/social/names';
 // to the grid here, and the font's size by fontFor.
 const props = defineProps({
   art: { type: Object, default: null },        // { cells, cols, lines, font (as sent: wire.fontOnWire) }
-  hostView: { type: Object, default: null },   // { col, row, cols, rows } (its zoom is the zoom prop)
+  hostView: { type: Object, default: null },   // { col, row, cols, rows } (the zoom to draw at comes in the zoom prop)
   following: { type: Boolean, default: false },
   host: { type: String, default: null },       // the host's name, for the tag and its color
   zoom: { type: Number, default: 1 },          // the cell's size against the font's (the host's, never above 1)
@@ -30,6 +30,7 @@ const fontKey = computed(() => `${font.value.id}:${font.value.size}`); // a new 
 const unavailable = ref(false);
 const metrics = ref(null); // the cell in CSS px the last draw used, which the sizer and the box follow
 let cellCanvas = null, renderFrame = null, resizeObserver = null;
+let sizedZoom = null;   // the zoom the canvas was last sized at
 
 const view = computed(() => {
   const v = props.hostView, art = props.art;
@@ -105,7 +106,8 @@ const render = () => {
   const art = props.art, el = scrollRef.value;
   if (!art || !el || !canvasRef.value || !ensureCellCanvas()) return;
   const dpr = window.devicePixelRatio;
-  let m = cellCanvas.metrics ?? cellCanvas.cellSize(dpr, props.zoom), win;
+  let m = (sizedZoom === props.zoom && cellCanvas.metrics) || cellCanvas.cellSize(dpr, props.zoom), win;
+  sizedZoom = props.zoom;
   for (let pass = 0; pass < 3; pass++) {
     win = viewWindow(viewIn(sizerRef.value, el), { x: m.cellWidth, y: m.lineHeight }, art.cols, art.lines);
     cellCanvas.resize(win.cols, win.rows, dpr, props.zoom);
