@@ -23,9 +23,10 @@ import zoom from './zoom';
 import flip from './flip';
 import text from './text';
 import select from './select';
+import wand from './wand';
 import shapes from './shapes';
 
-export const TOOLS = [pencil, brush, eraser, bucket, shapes, picker, hand, zoom, text, flip, select];
+export const TOOLS = [pencil, brush, eraser, bucket, shapes, picker, wand, hand, zoom, text, flip, select];
 
 const BY_ID = new Map(TOOLS.map(tool => [tool.id, tool]));
 const NONE = { id: 'none', kind: 'none', views: [] };

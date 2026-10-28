@@ -8,6 +8,7 @@ import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
 import CellCanvas from '@/lib/CellCanvas';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
+import WandOverlay from '@/components/WandOverlay.vue';
 import { fitColumns } from '@/lib/DrawnWidth';
 import EditorViewport from '@/components/EditorViewport.vue';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
@@ -160,6 +161,9 @@ const coordsAt = (event) => {
 
 // CSS px per grid pixel (a grid pixel is half a character cell tall), for tool previews.
 const unit = computed(() => (metrics.value ? { x: metrics.value.cellWidth, y: metrics.value.lineHeight / 2 } : null));
+
+// CSS px per cell, for the Magic Wand's overlay.
+const cellUnit = computed(() => (metrics.value ? { x: metrics.value.cellWidth, y: metrics.value.lineHeight } : null));
 
 // A cell's top-left in the overlays, inside the display's border where the cells start.
 const cellOrigin = (m, col, row) => ({
@@ -323,6 +327,7 @@ onBeforeUnmount(() => {
           spellcheck="false"
           aria-label="Type into the canvas"
       ></textarea>
+      <WandOverlay v-if="workspaceStore.wand?.view === 'output'" :wand="workspaceStore.wand" :unit="cellUnit" :display="displayRef"/>
       <template v-if="selectionBox">
         <div class="marquee" :style="selectionBox.marquee"></div>
       </template>

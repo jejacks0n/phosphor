@@ -85,6 +85,12 @@ const shownChoice = (option) => {
   return list.includes(current) ? current : list.find(c => c.value === current?.instead) ?? current;
 };
 
+// A selection the tools keep to, in this view: the Magic Wand's, or the Select tool's rectangle (the
+// ANSI view's). Every tool but Select (which has its own) offers Deselect while there is one.
+const wandHere = computed(() => workspace.wand?.view === workspace.editorTab);
+const kept = computed(() => wandHere.value || (!!workspace.selection && workspace.editorTab === 'output'));
+const deselect = () => { workspace.selection = null; workspace.wand = null; };
+
 // The pixel view's preview of the ANSI layer: edit cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'Overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
 // At 1100px and narrower the overlay controls fold into a dropdown named for the art style (like the
@@ -294,7 +300,7 @@ const selectionHasEdits = computed(() => {
       </div>
     </div>
 
-    <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select' || (workspace.selection && workspace.editorTab === 'output')">
+    <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select' || kept">
       <PaletteStrip v-if="activeTool.palette"/>
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">
         <span class="option-label">Layers</span>
@@ -359,9 +365,10 @@ const selectionHasEdits = computed(() => {
           <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
         </template>
       </div>
-      <div v-if="workspace.selection && workspace.editorTab === 'output' && activeTool.id !== 'select'" class="tool-setting-group">
+      <div v-if="kept && activeTool.id !== 'select'" class="tool-setting-group">
         <div class="divider"/>
-        <button class="text" title="Deselect: the tools paint everywhere again (Esc)" aria-keyshortcuts="Escape" @click="workspace.selection = null">Deselect</button>
+        <button v-if="wandHere && activeTool.id === 'wand'" class="text" title="Take away what's drawn in the selection (Delete)" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand)">Delete</button>
+        <button class="text" title="Deselect: the tools paint everywhere again (Esc)" aria-keyshortcuts="Escape" @click="deselect">Deselect</button>
       </div>
     </div>
   </article>

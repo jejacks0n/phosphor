@@ -7,7 +7,7 @@ const ACTIONS = [
   'applyEditCells', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit',
   'cancelEdit', 'cellHasPaint', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect',
   'commitEdit', 'commitPending', 'commitSliders', 'completeAt', 'composite', 'copySelection',
-  'deleteAt', 'deleteIn', 'deleteSelection', 'dropEdits', 'editCell', 'editCellAt', 'ensureLayer',
+  'deleteAt', 'deleteIn', 'deleteInWand', 'deleteSelection', 'dropEdits', 'editCell', 'editCellAt', 'ensureLayer',
   'eraseBase', 'eraseBasePixels', 'eraseEditPixels', 'exportFile', 'fitFor', 'flipBase', 'flipCell',
   'flipPaint', 'floatSelection', 'gridRect', 'hasEditsIn', 'imageColorAt', 'keepMigratedLook',
   'loadProject', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeUp',

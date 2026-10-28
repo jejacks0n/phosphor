@@ -19,6 +19,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { boundsOf } from '@/store/project/shared.js';
 import { turnChar } from '@/lib/TurnChars.js';
 import { toRaw } from 'vue';
+import { unitsOf } from '@/lib/MagicWand.js';
 
 export const selectionActions = {
   copySelection(rect, { base, edit }) {
@@ -177,6 +178,20 @@ export const selectionActions = {
       dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version,
     };
     return landed;
+  },
+
+  // Delete in the Magic Wand's selection (workspace.wand): the edit layer goes from its cells (or
+  // pixels), as the Eraser's Edit does. One undo step.
+  deleteInWand(wand) {
+    const units = unitsOf(wand.mask, wand.width);
+    if (wand.view === 'output') {
+      const cells = units.map(({ x, y }) => ({ col: x, row: y }));
+      this.eraseEditPixels(cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
+      this.clearEditCells(cells);
+    } else {
+      this.eraseEditPixels(units);
+    }
+    this.commitEdit();
   },
 
   // Lift, clear the source, drop dc/dr away (copied first, so an overlapping move keeps everything).

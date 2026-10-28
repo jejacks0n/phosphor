@@ -192,6 +192,26 @@ The selection stays as you change tools, and the painting tools (Pencil, Brush, 
 Bucket, Shapes, Flip FG/BG) change only what's inside it; typing in Edit Mode isn't limited. Every
 tool's options row ends with **Deselect** while there's a selection, and Escape drops it too.
 
+## The Magic Wand
+
+The **Magic Wand** (**W**, in both views) selects what matches the cell or pixel you click. In the
+ANSI view, **Match** chooses what a cell must share with the one you click: its **FG**, **BG** and/or
+character (**Char**); FG and Char to start. In the pixel view it's the pixel's color: the picture and
+paint, not the ANSI layer drawn over them. **Tolerance** (0–100, 10 to start) is how far a color may
+be from the one you clicked and still match; characters match exactly. With **Contiguous** on it
+selects only what touches the click (sharing a side, as the Paint Bucket fills); off, every match.
+**Shift**-click adds to the selection. In the ANSI view, a Select rectangle you made first keeps the
+wand inside it, and the wand's selection takes its place.
+
+The selection shows as a tint on every selected cell and a dashed line around it, so a scattered
+selection (every other cell) shows as a pattern. Like the rectangle, it stays as you change tools,
+and the painting tools change only what's in it: the Paint Bucket inside it recolors just the
+selected cells or pixels. It belongs to the view you made it in: switching views drops it, and so do
+**Escape**, **Deselect**, a new rectangle, a grid change and a new document.
+
+**Delete** on the wand's options row (or the Delete or Backspace key, except while typing in Edit
+Mode) takes away what's drawn in the selection: the edit cells and paint, in one undo step.
+
 ## Flip FG/BG
 
 Flip's **Flip** toggles (**Base**, **Edit**) choose what it flips. **Edit** (the default) swaps an
@@ -232,7 +252,7 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
 
 A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the same tool: **P**
 Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Color Picker, **H** Hand,
-**Z** Zoom, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
+**Z** Zoom, **W** Magic Wand, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
 (Zoom is the pixel view's; Edit Mode, Flip and Select the ANSI view's). Each tool's button shows its key.
 In Edit Mode letters type, so press **Escape** to put the cursor away first; with the Select tool
 and a selection, E, S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.

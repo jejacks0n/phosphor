@@ -6,6 +6,7 @@ import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf, putCellPixels } from '@/lib/Cells';
 import { parseKey } from '@/document/editCells';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
+import WandOverlay from '@/components/WandOverlay.vue';
 import EditorViewport from '@/components/EditorViewport.vue';
 
 // The PIXEL view: the composited output canvas scaled up by editZoom. The canvas covers only the
@@ -198,6 +199,9 @@ onBeforeUnmount(() => {
       <canvas ref="displayCanvas"/>
     </div>
     <div v-if="workspaceStore.editZoom >= 16" class="grid-overlay"></div>
+    <template #overlay>
+      <WandOverlay v-if="workspaceStore.wand?.view === 'input'" :wand="workspaceStore.wand" :unit="unit" :display="sizerRef"/>
+    </template>
   </EditorViewport>
 </template>
 

@@ -165,6 +165,18 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // Tool keys (each tool's keys: P Pencil, B Brush, G Paint Bucket, T or K Edit Mode...): a plain
   // letter chooses the tool, when the view offers it. Not while typing (Edit Mode with its cursor, a
   // field), mid-drag, with a tool held by a key, or with the color box or palette layer open.
+  // The Magic Wand's selection: Escape drops it; Delete or Backspace takes away what's drawn in it
+  // (not in Edit Mode, where they edit the text).
+  const _handleWandKeys = (e) => {
+    const wand = workspaceStore.wand;
+    if (!wand || e.defaultPrevented || isField(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
+    if (e.key === 'Escape') workspaceStore.wand = null;
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand);
+    else return false;
+    e.preventDefault();
+    return true;
+  };
+
   const _handleToolKeys = (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat || !/^[a-z]$/i.test(e.key)) return false;
     if (isField(e.target) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
@@ -213,6 +225,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_handleColorKeys(e)) return;
     if (_handleToolSwap(e)) return;
     if (_handleSwapColors(e)) return;
+    if (_handleWandKeys(e)) return;
     if (_handleSelectionKeys(e)) return;
     if (_handleToolKeys(e)) return;
   };
