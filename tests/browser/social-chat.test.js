@@ -88,7 +88,9 @@ test('a verified member\'s message reaches the host and every watcher with their
   const p1 = await person('u_p1');
   const r = await room({ p1, p2: await person('u_p2') });
   await opened(r, ['p1', 'p2']);
-  expect(histories(r.log.p1)[0]).toEqual({ type: 'history', messages: [], more: false, earlier: false });
+  // Which watcher's channel opens first varies, so p2's joined line may already be in p1's history.
+  expect(histories(r.log.p1)[0]).toMatchObject({ type: 'history', more: false, earlier: false });
+  expect(histories(r.log.p1)[0].messages.filter((m) => !m.entry?.presence)).toEqual([]);
 
   const hi = await message(p1, 'hi');
   expect(r.log.p1.watch.say(hi)).toBe(true);
