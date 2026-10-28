@@ -4,11 +4,12 @@ import { useRoomStore } from '@/store/RoomStore';
 import { nameColor } from '@/social/names';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
+import ReportDialog from './ReportDialog.vue';
 
 // Who is here, under the host's chat header: "N here" (those connected), folded or open for as long as
 // the room lasts. The list is every watcher, one still connecting too. A member's ⋯ menu: Remove for this
-// session, or Block from my rooms, which asks first. Cancel (or Escape) puts focus back on the ⋯ button
-// the menu came from, or on the "N here" button when that member has left.
+// session, Block from my rooms, which asks first, and Report (when you may report). Cancel (or Escape) puts
+// focus back on the ⋯ button the menu came from, or on the "N here" button when that member has left.
 const room = useRoomStore();
 
 const blocking = ref(null);   // { watcher, trigger }
@@ -19,6 +20,10 @@ const toggle = useTemplateRef('toggle');
 const cancelBlock = () => {
   (blocking.value.trigger.isConnected ? blocking.value.trigger : toggle.value).focus();
   blocking.value = null;
+};
+const reporting = ref(null);   // { name, sub, trigger }
+const askToReport = (watcher, event) => {
+  reporting.value = { name: watcher.name, sub: watcher.sub, trigger: event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger') };
 };
 const confirmBlock = async () => {
   const { watcher } = blocking.value;
@@ -41,6 +46,7 @@ const confirmBlock = async () => {
           <template #trigger><span aria-hidden="true">⋯</span></template>
           <button @click="room.remove(watcher.peer)">Remove for this session</button>
           <button @click="askToBlock(watcher, $event)">Block from my rooms</button>
+          <button v-if="room.canReport" @click="askToReport(watcher, $event)">Report</button>
         </DropdownMenu>
       </li>
     </ul>
@@ -52,6 +58,7 @@ const confirmBlock = async () => {
         <button autofocus @click="cancelBlock">Cancel</button>
       </div>
     </ModalDialog>
+    <ReportDialog v-if="reporting" :key="reporting.sub" v-bind="reporting" @done="reporting = null" />
   </section>
 </template>
 

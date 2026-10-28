@@ -7,6 +7,7 @@ import { clock } from '@/social/chat';
 import ChatFoot from './ChatFoot.vue';
 import RoomMenu from './RoomMenu.vue';
 import RoomPeople from './RoomPeople.vue';
+import ReportDialog from './ReportDialog.vue';
 
 // The chat of the room you host or watch, at the right of the whole app (every tab, while you're in
 // one): the room's name (and, watching, who hosts it and Leave; hosting, the room menu and who is here), the
@@ -15,7 +16,8 @@ import RoomPeople from './RoomPeople.vue';
 // when it was already at the bottom, and earlier ones (asked for on reaching the top) go in above
 // without moving what you were reading. Someone you blocked is folded to one line (Show opens just
 // that message). Who came and went, with no message between, is one line ("tin-owl joined, wren
-// left"); your own comings and goings aren't shown, as "You joined" marks where you came in.
+// left"); your own comings and goings aren't shown, as "You joined" marks where you came in. A confirmed
+// member can Report someone else's message (it shows on hover or focus, as the host's Delete does).
 const room = useRoomStore(), social = useSocialStore();
 
 const folded = ref(false);
@@ -29,6 +31,8 @@ const blocked = computed(() => new Set(social.blocked.map((b) => b.id)));
 const shownAnyway = reactive(new Set());   // blocked messages opened with Show
 const hidden = (m) => !m.mine && blocked.value.has(m.sub) && !shownAnyway.has(m.id);
 const time = (ts) => clock.format(ts);
+const reportable = (m) => room.canReport && !m.mine && !m.deleted && !hidden(m);
+const reporting = ref(null);   // { name, sub, messageId, trigger }
 
 onMounted(() => {
   list.value.scrollTop = list.value.scrollHeight;
@@ -116,11 +120,11 @@ function askIfAtTop() {
         </span>
         {{ room.room.welcome }}
       </p>
-      <div ref="list" class="list" role="log" aria-label="Messages" @scroll.passive="askIfAtTop">
+      <div ref="list" class="list" role="log" aria-label="Messages" tabindex="-1" @scroll.passive="askIfAtTop">
         <p v-if="room.chatMore" class="more">↑ Scroll up for earlier messages</p>
         <p v-if="room.role === 'watch' && room.joinedAt === null && room.status === 'live'" class="joined">You joined</p>
         <!-- A row is drawn again only when what it shows changes, not on every new message. -->
-        <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.length] : [m.deleted, hidden(m), room.role === 'host']">
+        <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.length] : [m.deleted, hidden(m), room.role === 'host', room.canReport]">
           <p v-if="m.joined" class="joined">You joined</p>
           <p v-else-if="m.people" class="presence">
             <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<b :style="{ color: nameColor(p.name) }">{{ p.name }}</b> {{ p.presence }}</template></span>
@@ -139,11 +143,16 @@ function askIfAtTop() {
               </p>
               <p class="text">{{ m.text }}</p>
             </template>
-            <button v-if="room.role === 'host' && !m.deleted" class="link delete" :aria-label="`Delete message from ${m.name}`" @click="room.deleteMessage(m.id)">Delete</button>
+            <span class="actions">
+              <button v-if="reportable(m)" class="link report" :aria-label="`Report message from ${m.name}`"
+                  @click="reporting = { name: m.name, sub: m.sub, messageId: m.id, trigger: $event.currentTarget }">Report</button>
+              <button v-if="room.role === 'host' && !m.deleted" class="link delete" :aria-label="`Delete message from ${m.name}`" @click="room.deleteMessage(m.id)">Delete</button>
+            </span>
           </div>
         </div>
       </div>
       <ChatFoot />
+      <ReportDialog v-if="reporting" :key="reporting.messageId" v-bind="reporting" @done="reporting = null" />
     </div>
   </aside>
 </template>
@@ -339,15 +348,16 @@ div.message button.link {
   padding: 0 4px;
   font-style: normal;
 }
-div.message button.delete {
+div.message span.actions {
   position: absolute;
   top: 2px;
   right: 0;
+  display: flex;
   opacity: 0;
   background: var(--surface-1);
 }
-div.message:hover button.delete,
-div.message:focus-within button.delete {
+div.message:hover span.actions,
+div.message:focus-within span.actions {
   opacity: 1;
 }
 </style>

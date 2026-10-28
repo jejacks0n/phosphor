@@ -1,11 +1,12 @@
 // The chat panel (ChatPanel.vue) with the room store as a room leaves it: a new message draws its own row
 // only, a deletion draws that row again, the host's Delete buttons say whose message they are for, and the
-// host's "N here" counts those connected and lists everyone.
+// host's "N here" counts those connected and lists everyone; Report shows only where a confirmed member may report.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
+import { useSocialStore } from '@/store/SocialStore';
 import ChatPanel from '@/components/social/ChatPanel.vue';
 
 let app = null, host = null, formatted = 0;
@@ -161,4 +162,67 @@ test('End room asks first: Cancel keeps the room, End room ends it', async () =>
   await nextTick();
   expect(end).toHaveBeenCalledOnce();
   expect(document.querySelector('[role=dialog]')).toBe(null);
+});
+
+// Report, on a message: for a confirmed member, on other people's messages that show.
+const reports = () => [...host.querySelectorAll('button.report')].map((b) => b.getAttribute('aria-label'));
+const claims = (fields) => ({ sub: 'u_me', name: 'me', guest: false, verified: true, key: 'k', exp: 0, ...fields });
+
+test('Report shows on other people\'s messages for a confirmed member; not on your own, a deleted one, a presence line or a folded blocked one', async () => {
+  const room = await mount('watch', 0);
+  const social = useSocialStore();
+  social.claims = claims({});
+  social.blocked = [{ id: 'u_4', username: 'name-4', since: 1 }];
+  room.chat = [row(0), row(1, { mine: true, sub: 'u_me' }), row(2, { deleted: true, text: '' }), row(3, { text: '', presence: 'joined' }), row(4), row(5)];
+  await nextTick();
+  expect(reports()).toEqual(['Report message from name-0', 'Report message from name-5']);
+  expect(host.querySelector('button.report').textContent).toBe('Report');
+
+  [...host.querySelectorAll('.message button')].find((b) => b.textContent === 'Show').click();
+  await nextTick();
+  expect(reports()).toEqual(['Report message from name-0', 'Report message from name-4', 'Report message from name-5']);
+});
+
+test('no Report for a guest or a member who hasn\'t confirmed their email', async () => {
+  await mount('watch', 2);
+  const social = useSocialStore();
+  for (const fields of [{ guest: true, verified: false }, { verified: false }]) {
+    social.claims = claims(fields);
+    await nextTick();
+    expect(reports()).toEqual([]);
+  }
+  social.claims = claims({});   // the rows are drawn again when that changes
+  await nextTick();
+  expect(reports()).toHaveLength(2);
+});
+
+test('the report dialog: a report that can\'t go leaves it as it is; with its Report gone, focus goes to "N here" (a host) or the messages (a watcher)', async () => {
+  const dialogButton = (name) => [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === name);
+  for (const [role, back] of [['host', 'button.here'], ['watch', '[role=log]']]) {
+    const room = await mount(role, 1);
+    useSocialStore().claims = claims({});
+    await nextTick();
+    const report = vi.spyOn(room, 'report').mockReturnValue(false);
+    host.querySelector('button.report').click();
+    await nextTick();
+    expect(document.querySelector('[role=dialog] h3').textContent).toBe('Report name-0?');
+    expect(dialogButton('Report').disabled).toBe(true);
+    document.querySelector('[role=dialog] input[value=other]').click();
+    await nextTick();
+    dialogButton('Report').click();
+    await nextTick();
+    expect(report).toHaveBeenCalledWith({ sub: 'u_0', messageId: room.chat[0].id, reason: 'other' });
+    expect(document.querySelector('[role=dialog]')).not.toBe(null);   // still asking, as it was
+    expect(document.body.textContent).not.toContain('Reported.');
+
+    Object.assign(room.chat[0], { deleted: true, text: '' });   // its Report goes
+    await nextTick();
+    dialogButton('Cancel').click();
+    await nextTick();
+    expect(document.querySelector('[role=dialog]')).toBe(null);
+    expect(document.activeElement).toBe(host.querySelector(back));
+    app.unmount();
+    host.remove();
+    app = null;
+  }
 });

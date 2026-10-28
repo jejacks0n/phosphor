@@ -26,25 +26,26 @@ export const member = (fields = {}) => ({
 const totpURI = (n) => `otpauth://totp/Phosphor:ansi-fan?secret=JBSWY3DPEHPK3PX${'PQRSTUVW'[n]}&issuer=Phosphor`;
 const codes = (word) => Array.from({ length: 10 }, (_, i) => `${word}-code${i}`);
 
-// fakeServer(page, { me, rooms, people, blocked, signal, twoFactor, room, 'POST /api/...': (body) => [status, reply] }).
+// fakeServer(page, { me, rooms, people, blocked, signal, twoFactor, mutedUntil, room, 'POST /api/...': (body) => [status, reply] }).
 // `me` null is signed out (a guest's pass). With `twoFactor`, an email or username sign-in answers the
 // challenge, and only verify-totp ('123456') or verify-backup-code ('abcde-fghij') signs in, as a member with
 // two-factor on (a sign-in is the default member, or with `signsInAs` fields as given: another person than the host); server.trustDevice is what the last good one was sent. Signed in, verify-totp ('123456') confirms two-factor
 // instead, and enable, disable and generate-backup-codes answer 10 codes, and enable a secret (`JBSWY3DPEHPK3PXP`, then `...PXQ` and so on: a new one each time). The lobby's state lists `people` and you (from the hello's pass, as
-// the real server does), with `signal` as the account's signal; a signal sent sets it. Routes answer [status, body]; server.route(key, answer) changes one
+// the real server does), with `signal` as the account's signal; a signal sent sets it. A member's pass carries
+// server.mutedUntil (epoch ms) while it's set. Routes answer [status, body]; server.route(key, answer) changes one
 // later. server.requests has every API call ({ method, path, body }); server.lobby.received every
 // message the app sent on the lobby socket; server.lobby.send(msg) pushes one, drop() closes it (both
 // throw until the app has connected: the SOCIAL tab shown, and again after a drop). With
 // server.lobby.refusing set, a hello is answered refused. POST /api/rooms makes room ROOM_ID; given a
 // fakeRoom as `room`, the page's room sockets go to it, and the room is the one the POST describes.
-export async function fakeServer(page, { me = null, rooms = [], people = [], blocked = [], signal = null, twoFactor = false, room, signsInAs = {}, ...overrides } = {}) {
+export async function fakeServer(page, { me = null, rooms = [], people = [], blocked = [], signal = null, twoFactor = false, mutedUntil = null, room, signsInAs = {}, ...overrides } = {}) {
   let socket = null;
   const connected = () => {
     if (!socket) throw new Error('The lobby is not connected: show the SOCIAL tab and wait for its hello first');
     return socket;
   };
   const server = {
-    me, rooms, people, blocked, signal, trustDevice: null, requests: [],
+    me, rooms, people, blocked, signal, mutedUntil, trustDevice: null, requests: [],
     lobby: {
       received: [],
       refusing: false,
@@ -83,7 +84,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
     'POST /api/pass': (body) => {
       const exp = Math.floor(Date.now() / 1000) + 3600;
       const claims = server.me
-        ? { sub: server.me.id, name: server.me.username, guest: false, verified: server.me.emailVerified, key: body.key, exp }
+        ? { sub: server.me.id, name: server.me.username, guest: false, verified: server.me.emailVerified, key: body.key, exp, ...(server.mutedUntil ? { mutedUntil: server.mutedUntil } : {}) }
         : { sub: 'g_1', name: 'quiet-amber-fox', guest: true, verified: false, key: body.key, exp };
       return [200, { pass: makePass(claims), claims }];
     },
@@ -182,11 +183,13 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
 // peer's place: that one hears replaced, and the host peer-gone. Signals are relayed between the host
 // and its watchers; the host hears of each watcher (peer, peer-gone). Settings change the room as the
 // Room's checks allow, at most once a second per host socket: a sooner one is answered `settings-now`.
-// A host's remove takes the watcher out and sends it removed (the host hears no peer-gone).
+// A host's remove takes the watcher out and sends it removed (the host hears no peer-gone). A report is
+// taken silently, as the Room takes it: it's in room.received, and nothing answers it.
 // End sends ended to everyone. Sockets are closed where the Room closes them: after refused (1008),
 // ended, removed or replaced (1000), and a watcher's once the host hears it's gone. room.received has every message as { from: 'host' |
 // <peer> | null, msg }, room.from(who) the messages of one; room.send(who, msg) pushes one, room.info()
-// is the room as the host is told it, and room.drop(who) closes a socket.
+// is the room as the host is told it, room.drop(who) closes a socket, and room.mute(sub, until) sends
+// muted to the host and to each socket whose watcher is that account, as the Room does on a mute.
 const SETTINGS_EVERY_MS = 1000;
 const SIGNALS = ['feedback', 'chat', 'heads-down', null];
 const FINAL = { refused: 1008, removed: 1000, ended: 1000, replaced: 1000 };   // messages after which the socket is closed
@@ -282,6 +285,10 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     // POST /api/rooms: the room as the host described it.
     made: ({ name, public: isPublic, allowGuests, max, signal, password }) => {
       Object.assign(room.setup, { name, public: isPublic, allowGuests, max, signal, password: password ?? null, liveSince: Date.now() });
+    },
+    mute: (sub, until) => {
+      const to = ['host', ...[...watchers].filter(([, w]) => w.sub === sub).map(([peer]) => peer)];
+      for (const who of to) send(who, { type: 'muted', sub, until });
     },
     drop: (who) => {
       const ws = sockets.get(who);
