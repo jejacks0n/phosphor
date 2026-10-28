@@ -1,7 +1,7 @@
 import { onMounted, onBeforeUnmount, watch } from 'vue';
 import { textKeyAction, moveCursor, typedText } from '@/lib/TextKeys';
 import { charRowsOf } from '@/lib/Cells';
-import { hex2rgb, paletteIndex } from '@/lib/ColorUtils';
+import { effectiveColor, paletteChoices } from '@/lib/PixelTransforms';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { toast } from '@/composables/useToast';
 import { cellWidth } from '@/lib/CharWidth';
@@ -67,13 +67,14 @@ export function useTextTool(project, workspace, textInput) {
     workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(workspace.textCursor, dc, dr, project.cols, charRowsOf(project.rows)), dc);
   };
 
-  // Alt+Up/Down: the slot's color steps through the active palette (nothing to step in 24-bit).
+  // Alt+Up/Down: the slot's color steps through the active palette (nothing to step in 24-bit), from
+  // the palette color it displays as, to the next one's swatch color (as the color picker offers it).
   const stepColor = (slot, delta) => {
     const palette = project.activePalette;
     if (!palette || !palette.length) return;
-    const { r, g, b } = hex2rgb(slot === 'fg' ? workspace.editFgColor : workspace.editBgColor);
-    const next = palette[(paletteIndex(r, g, b, palette) + delta + palette.length) % palette.length];
-    workspace.setColor(slot, next.hex.toLowerCase());
+    const { c } = effectiveColor(slot === 'fg' ? workspace.editFgColor : workspace.editBgColor, project, palette);
+    const next = paletteChoices(project, palette)[(c + delta + palette.length) % palette.length];
+    workspace.setColor(slot, next.toLowerCase());
   };
 
   const apply = (action) => {
