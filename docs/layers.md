@@ -269,6 +269,9 @@ Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Color
 In Edit Mode letters type, so press **Escape** to put the cursor away first; with the Select tool
 and a selection, E, S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.
 
+Each view remembers its own tool, except that Select and the Magic Wand go with you: leave the
+pixel or ANSI view with either of them chosen and the other view takes it too.
+
 ### Held keys
 
 These work in both the ANSI and the pixel view, for as long as you hold the key:

@@ -32,6 +32,18 @@ function onBeforeUnload(e) {
 // The Magic Wand's selection belongs to the view it was made in: switching views drops it.
 watch(() => workspace.editorTab, () => { workspace.wand = null; });
 
+// Select and the Magic Wand go with you: leave the PIXEL or ANSI tab (by way of SAUCE or not) with
+// either in hand, and the other one takes it. Every other tool stays with its own tab.
+let lastEditTab = workspace.editorTab;
+watch(() => workspace.editorTab, (tab) => {
+  if (tab !== 'input' && tab !== 'output') return;
+  const left = lastEditTab;
+  lastEditTab = tab;
+  if (left === tab) return;
+  const tool = left === 'input' ? workspace.inputActiveTool : workspace.outputActiveTool;
+  if (tool === 'select' || tool === 'wand') workspace[tab === 'input' ? 'inputActiveTool' : 'outputActiveTool'] = tool;
+});
+
 // When the grid changes (in either view), the Text cursor stays on the grid and the selection (and
 // the Picker's last pick), which may no longer fit, are dropped. A new document drops them too
 // (ProjectStore.newDocument).
