@@ -23,6 +23,11 @@ const SETTINGS_EVERY_MS = 1250;  // the server's 1 s, with slack: it measures wh
 const ASK_FOR_MS = 3000;        // how long an earlier() waits for its page (the host may drop it unanswered)
 const ROOM_ID = /^[a-z2-7]{10}$/;
 
+// What's typed in Start a room and Room settings, kept here so it stays while you're on another tab (the
+// SOCIAL tab isn't there then). Room settings also keeps what the room last said for each field (seen).
+const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12 });
+const newSettingsDraft = () => ({ open: false, welcome: '', allowGuests: true, max: 12, seen: {} });
+
 // The room you host or watch: its socket (a LobbyConnection with the room's greeting), and the host's
 // side (Host: your art to every watcher) or the watcher's (Watch: the host's art, never your own
 // project). One room at a time; signing in or out closes it (SocialStore.becameSomeoneElse).
@@ -44,6 +49,8 @@ export const useRoomStore = defineStore('room', {
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
+    startDraft: newStartDraft(),         // Start a room's form; empty again once a room is made
+    settingsDraft: newSettingsDraft(),   // a host's Room settings form
     _connection: null,   // the room's LobbyConnection (markRaw)
     _host: null,         // Host (markRaw)
     _watch: null,        // Watch (markRaw)
@@ -75,6 +82,7 @@ export const useRoomStore = defineStore('room', {
       if (!ok) return false;
       this.close();
       Object.assign(this, {
+        startDraft: newStartDraft(), settingsDraft: newSettingsDraft(),
         role: 'host', id: data.id, link: data.link, status: 'connecting',
         room: { name, welcome: welcome ?? '', public: isPublic, allowGuests, max, count: 0 },
       });

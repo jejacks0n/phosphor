@@ -44,11 +44,15 @@ async function copyLink() {
 }
 
 // Room settings follow the room as it is (the Room's word on it included): each field only when its
-// value changes, so a room given again as it was (hosting after a reconnect) leaves what's typed.
-const welcome = ref(''), allowGuests = ref(true), max = ref(12);
-watch(() => room.room?.welcome, (v) => { if (v !== undefined) welcome.value = v; }, { immediate: true });
-watch(() => room.room?.allowGuests, (v) => { if (v !== undefined) allowGuests.value = v; }, { immediate: true });
-watch(() => room.room?.max, (v) => { if (v !== undefined) max.value = v; }, { immediate: true });
+// value changes, so a room given again as it was (hosting after a reconnect) leaves what's typed. The
+// form is kept in the store, with what the room last said, so it stays while you're on another tab and
+// a change made meanwhile shows when you're back.
+const draft = room.settingsDraft;
+for (const key of ['welcome', 'allowGuests', 'max']) {
+  watch(() => room.room?.[key], (v) => {
+    if (v !== undefined && v !== draft.seen[key]) draft[key] = draft.seen[key] = v;
+  }, { immediate: true });
+}
 const countId = useId();
 
 // A member's ⋯ menu: Remove for this session, or Block from my rooms, which asks first. Cancel (or Escape)
@@ -68,7 +72,7 @@ const confirmBlock = async () => {
   await room.block(watcher);
 };
 const save = () => {
-  room.changeSettings({ welcome: welcome.value, allowGuests: allowGuests.value, max: max.value });
+  room.changeSettings({ welcome: draft.welcome, allowGuests: draft.allowGuests, max: draft.max });
   say('Saved');
 };
 </script>
@@ -107,13 +111,13 @@ const save = () => {
         </li>
       </ul>
 
-      <details>
+      <details :open="draft.open" @toggle="draft.open = $event.target.open">
         <summary>Room settings</summary>
         <form @submit.prevent="save">
-          <label>Welcome message <textarea v-model="welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
-          <p :id="countId" class="help count">{{ welcome.length }}/200</p>
-          <label class="choice"><input v-model="allowGuests" type="checkbox"> Allow guests</label>
-          <label>Most watchers <input v-model.number="max" type="number" min="1" max="24" required></label>
+          <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
+          <p :id="countId" class="help count">{{ draft.welcome.length }}/200</p>
+          <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> Allow guests</label>
+          <label>Most watchers <input v-model.number="draft.max" type="number" min="1" max="24" required></label>
           <button type="submit">{{ done === 'Saved' ? 'Saved' : 'Save' }}</button>
         </form>
       </details>

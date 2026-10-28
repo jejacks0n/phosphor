@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, useId } from 'vue';
+import { computed, useId } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -16,18 +16,10 @@ const art = computed(() => (project.image && project.cells.length
   ? { cells: project.cells, cols: project.cols, lines: charRowsOf(project.rows), font: fontOnWire(workspace.displayFontSpec) }
   : null));
 
-const name = ref('');
-const welcome = ref('');
-const isPublic = ref(true);
-const password = ref('');
-const allowGuests = ref(true);
-const max = ref(12);
+const draft = room.startDraft;   // kept in the store while you're on another tab
 const id = useId();
 
-const goLive = () => room.startRoom({
-  name: name.value.trim(), welcome: welcome.value, isPublic: isPublic.value, password: password.value,
-  allowGuests: allowGuests.value, max: max.value,
-});
+const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
 </script>
 
 <template>
@@ -44,18 +36,18 @@ const goLive = () => room.startRoom({
 
     <aside class="side">
       <form @submit.prevent="goLive">
-        <label>Room name <input v-model="name" maxlength="60" pattern=".*\S.*" title="Use at least one character that isn't a space" required></label>
-        <label>Welcome message <textarea v-model="welcome" maxlength="200" rows="3" :aria-describedby="`${id}-count`"></textarea></label>
-        <p :id="`${id}-count`" class="help count">{{ welcome.length }}/200</p>
+        <label>Room name <input v-model="draft.name" maxlength="60" pattern=".*\S.*" title="Use at least one character that isn't a space" required></label>
+        <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="`${id}-count`"></textarea></label>
+        <p :id="`${id}-count`" class="help count">{{ draft.welcome.length }}/200</p>
         <fieldset>
           <legend>Who can join</legend>
-          <label class="choice"><input v-model="isPublic" type="radio" name="who" :value="true"> Anyone, in the lobby</label>
-          <label class="choice"><input v-model="isPublic" type="radio" name="who" :value="false"> Only with the link</label>
+          <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="true"> Anyone, in the lobby</label>
+          <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="false"> Only with the link</label>
         </fieldset>
-        <label v-if="!isPublic">Password <input v-model="password" type="text" autocomplete="off" required></label>
-        <label class="choice"><input v-model="allowGuests" type="checkbox" :aria-describedby="`${id}-guests`"> Allow guests</label>
+        <label v-if="!draft.isPublic">Password <input v-model="draft.password" type="text" autocomplete="off" required></label>
+        <label class="choice"><input v-model="draft.allowGuests" type="checkbox" :aria-describedby="`${id}-guests`"> Allow guests</label>
         <p :id="`${id}-guests`" class="help">Guests can only watch, so you can't remove one; turn this off if you'd rather have members only.</p>
-        <label>Most watchers <input v-model.number="max" type="number" min="1" max="24" required :aria-describedby="`${id}-max`"></label>
+        <label>Most watchers <input v-model.number="draft.max" type="number" min="1" max="24" required :aria-describedby="`${id}-max`"></label>
         <p :id="`${id}-max`" class="help">Each watcher uses some of your upload speed. 12 suits most home connections.</p>
         <div class="buttons">
           <button class="primary" type="submit" :disabled="social.busy || !art">Go live</button>
