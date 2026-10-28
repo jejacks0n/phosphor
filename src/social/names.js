@@ -11,6 +11,13 @@ export function nameColor(name) {
   return NAME_COLORS[(hash >>> 0) % NAME_COLORS.length];
 }
 
+// The words to put on a name's color: black on the light colors, white on the dark ones (by how bright
+// the color looks to the eye).
+export function nameInk(color) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
+  return 0.299 * r + 0.587 * g + 0.114 * b > 140 ? '#000000' : '#ffffff';
+}
+
 // A username's problem, as the server checks it (length, then characters, then reserved): 'length',
 // 'characters', 'reserved' (admin and the like, or three hyphen-joined words: a guest's nickname), or null.
 const RESERVED = new Set(['admin', 'phosphor', 'guest', 'host', 'system']);

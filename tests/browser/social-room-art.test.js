@@ -1,9 +1,12 @@
 // A room's art (RoomArt.vue): the host's view held to the grid however big its numbers, scrolled to
 // the center while following, and a wheel, a key or a press (never its own scroll) is looking around.
+// The host's box and its tag (the Follow button) are in the host's name color, and the tag stays in
+// sight, pointing to the box, when the box is scrolled out of view.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, h, reactive, nextTick } from 'vue';
 import { createTestApp } from '../support/app.js';
 import RoomArt from '@/components/social/RoomArt.vue';
+import { nameColor } from '@/social/names';
 
 const COLS = 100, LINES = 50;
 const black = { hex: '#000000', r: 0, g: 0, b: 0 }, white = { hex: '#ffffff', r: 255, g: 255, b: 255 };
@@ -17,13 +20,13 @@ afterEach(() => {
 
 // RoomArt in a 200 x 100 px box; its look-arounds counted.
 function mount(props) {
-  const state = reactive({ art, hostView: null, following: true, ...props }), seen = { lookArounds: 0 };
+  const state = reactive({ art, hostView: null, following: true, host: 'ansi-fan', ...props }), seen = { lookArounds: 0, follows: 0 };
   host = document.createElement('div');
   host.style.cssText = 'width: 200px; height: 100px';
   document.body.append(host);
-  app = createApp({ render: () => h(RoomArt, { ...state, onLookAround: () => seen.lookArounds++ }) });
+  app = createApp({ render: () => h(RoomArt, { ...state, onLookAround: () => seen.lookArounds++, onFollow: () => seen.follows++ }) });
   app.mount(host);
-  return { state, seen, scroll: host.querySelector('.room-art'), box: host.querySelector('.host-view') };
+  return { state, seen, scroll: host.querySelector('.room-art'), box: host.querySelector('.host-view'), tag: () => host.querySelector('.host-tag') };
 }
 
 const frames = async (n = 3) => {
@@ -76,4 +79,54 @@ test('the art is a region named for screen readers', async () => {
   await createTestApp();
   const { scroll } = mount();
   expect([scroll.getAttribute('role'), scroll.getAttribute('aria-label')]).toEqual(['region', 'The room\'s art']);
+});
+
+const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+
+test('the box and its tag are in the host\'s color, with a shadow so they show on any art', async () => {
+  await createTestApp();
+  const { box, tag } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 }, host: 'wren' });   // a tag that fits the 200 px
+  await expect.poll(() => box.style.width).toBe('80px');
+  await frames();
+  const color = rgb(nameColor('wren'));
+  expect(getComputedStyle(box).outlineColor).toBe(color);
+  expect(getComputedStyle(box).boxShadow).not.toBe('none');
+  expect(getComputedStyle(tag()).backgroundColor).toBe(color);   // following: filled
+  expect(getComputedStyle(tag()).boxShadow).not.toBe('none');
+  expect(tag().textContent).toContain('wren');
+  // at the box's upper left
+  const [b, t] = [box.getBoundingClientRect(), tag().getBoundingClientRect()];
+  expect([t.left, t.top]).toEqual([b.left, b.top]);
+});
+
+test('the tag is the Follow button: pressed while following, and pressing it while looking around follows (not looking around)', async () => {
+  await createTestApp();
+  const { state, tag, seen } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 } });
+  await expect.poll(() => tag()?.getAttribute('aria-pressed')).toBe('true');
+  expect(tag().getAttribute('aria-label')).toBe('Follow ansi-fan');
+  state.following = false;
+  await nextTick();
+  expect(tag().getAttribute('aria-pressed')).toBe('false');
+  expect(tag().textContent).toContain('Follow');
+  tag().dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  tag().click();
+  expect([seen.follows, seen.lookArounds]).toEqual([1, 0]);
+});
+
+test('scrolled away from the box, the tag stays in sight at the edge nearest it, with an arrow toward it', async () => {
+  await createTestApp();
+  const { state, scroll, tag } = mount({ hostView: { col: 80, row: 40, cols: 10, rows: 4 }, following: false });
+  await expect.poll(() => tag() !== null).toBe(true);
+  scroll.scrollLeft = 0;
+  scroll.scrollTop = 0;
+  await frames();
+  const [s, t] = [scroll.getBoundingClientRect(), tag().getBoundingClientRect()];
+  expect(t.left).toBeGreaterThanOrEqual(s.left);
+  expect(t.top).toBeGreaterThanOrEqual(s.top);
+  expect(t.right).toBeLessThanOrEqual(s.left + scroll.clientWidth);
+  expect(t.bottom).toBeLessThanOrEqual(s.top + scroll.clientHeight);
+  expect(tag().textContent).toContain('\u2198');   // down and to the right
+  state.hostView = { col: 0, row: 40, cols: 10, rows: 4 };
+  await frames();
+  expect(tag().textContent).toContain('\u2193');   // straight down
 });

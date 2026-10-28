@@ -6,7 +6,7 @@ import { nameColor } from '@/social/names';
 import ChatFoot from './ChatFoot.vue';
 
 // The chat of the room you host or watch, at the right of the whole app (every tab, while you're in
-// one): the room's name (and, watching, who hosts it with Follow and Leave), the host's welcome pinned, the messages, and the box to write in. » folds it
+// one): the room's name (and, watching, who hosts it and Leave), the host's welcome pinned, the messages, and the box to write in. » folds it
 // to a thin rail that counts what came since. The list keeps its place: a new message scrolls it only
 // when it was already at the bottom, and earlier ones (asked for on reaching the top) go in above
 // without moving what you were reading. Someone you blocked is folded to one line (Show opens just
@@ -73,7 +73,6 @@ function askIfAtTop() {
           <template v-if="room.role === 'watch'">
             <p v-if="host" class="host">hosted by {{ host }}</p>
             <div class="buttons">
-              <button v-if="room.art" :aria-pressed="room.following" @click="room.setFollowing(!room.following)">{{ room.following ? 'Following' : `Follow ${host}` }}</button>
               <button @click="room.leave()">Leave</button>
             </div>
           </template>

@@ -156,11 +156,12 @@ settings made meanwhile goes once you're back.
 lobby. You're in one room at a time; **Leave** brings the lobby back. A private room with a
 password asks for it first.
 
-The room's name, its host, **Following** and **Leave** are at the top of the chat panel, with the
-welcome message pinned under them; the SOCIAL tab shows just the art. The art is view only, in the
-host's font. A pink box shows where the host is looking. With **Following** on, your view
-follows theirs; scroll away to look around on your own, and the button becomes **Follow** with the
-host's name, to bring you back. If the connection to the host is lost, the art dims and the page says
+The room's name, its host and **Leave** are at the top of the chat panel, with the welcome message
+pinned under them; the SOCIAL tab shows just the art. The art is view only, in the host's font. A box
+in the host's name color shows where they're looking, with a tag in its corner: the host's name and
+*following* while your view follows theirs. Scroll away to look around on your own, and the tag
+becomes a **Follow** button to bring you back; scroll the box out of sight and the tag waits at the
+edge of the art, with an arrow pointing to it. If the connection to the host is lost, the art dims and the page says
 **Waiting for the host…** until it's back.
 
 Your browser connects straight to the host's, which shows each of you the other's IP address (a VPN

@@ -4,21 +4,25 @@ import CellCanvas from '@/lib/CellCanvas';
 import { loadFontFaces } from '@/lib/displayFonts';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
 import { fontFor } from '@/social/wire';
+import { nameColor, nameInk } from '@/social/names';
 
 // A room's art, drawn in the host's font as the ANSI view's canvas draws it (AnsiEditor's render,
 // without the DOM view): a CellCanvas over the window of cells in view, inside a sizer the whole
-// grid's size. A box marks the part the host is looking at; while following, each new view of the
+// grid's size. A box in the host's name color marks the part they're looking at, and the tag in its
+// upper left is the Follow button (pressed while following); scrolled away from the box, the tag stays
+// in sight at the edge nearest it, with an arrow toward it. While following, each new view of the
 // host's is scrolled to the center. A wheel, a key or a press in it is looking around (a scroll it
-// made itself isn't). The host's numbers are a stranger's: the view is held to the grid here, and
-// the font's size by fontFor.
+// made itself isn't; the tag is no part of it). The host's numbers are a stranger's: the view is held
+// to the grid here, and the font's size by fontFor.
 const props = defineProps({
   art: { type: Object, default: null },        // { cells, cols, lines, font (as sent: wire.fontOnWire) }
   hostView: { type: Object, default: null },   // { col, row, cols, rows }
   following: { type: Boolean, default: false },
+  host: { type: String, default: null },       // the host's name, for the tag and its color
 });
-const emit = defineEmits(['look-around']);
+const emit = defineEmits(['look-around', 'follow']);
 
-const scrollRef = useTemplateRef('scroll'), sizerRef = useTemplateRef('sizer'), canvasRef = useTemplateRef('canvas');
+const scrollRef = useTemplateRef('scroll'), sizerRef = useTemplateRef('sizer'), canvasRef = useTemplateRef('canvas'), tagRef = useTemplateRef('tag');
 const font = computed(() => fontFor(props.art?.font));
 const fontKey = computed(() => `${font.value.id}:${font.value.size}`); // a new font gets a new canvas
 const unavailable = ref(false);
@@ -47,6 +51,28 @@ const boxStyle = computed(() => {
     height: `${v.rows * m.lineHeight}px`,
   };
 });
+
+const colors = computed(() => (props.host ? { '--host': nameColor(props.host), '--host-ink': nameInk(nameColor(props.host)) } : {}));
+
+// The tag: at the box's upper left, held inside what's in view; with an arrow when the box is out of it.
+const tagAt = ref(null);   // { left, top, arrow }
+const ARROWS = { '↑←': '↖', '↑→': '↗', '↓←': '↙', '↓→': '↘' };
+const clamp = (n, low, high) => Math.max(low, Math.min(n, high));
+const placeTag = () => {
+  const v = view.value, m = metrics.value, el = scrollRef.value, tag = tagRef.value;
+  if (!v || !m || !el || !tag) return;
+  const x = v.col * m.cellWidth, y = v.row * m.lineHeight, right = x + v.cols * m.cellWidth, bottom = y + v.rows * m.lineHeight;
+  const [x0, y0, x1, y1] = [el.scrollLeft, el.scrollTop, el.scrollLeft + el.clientWidth, el.scrollTop + el.clientHeight];
+  const up = bottom <= y0 ? '↑' : y >= y1 ? '↓' : '', across = right <= x0 ? '←' : x >= x1 ? '→' : '';
+  const arrow = ARROWS[up + across] ?? (up || across), gap = arrow ? 6 : 0;
+  if (arrow !== tagAt.value?.arrow) queueRender();   // the arrow changes the tag's width: placed again once it's drawn
+  tagAt.value = {
+    left: clamp(x, x0 + gap, x1 - tag.offsetWidth - gap),
+    top: clamp(y, y0 + gap, y1 - tag.offsetHeight - gap),
+    arrow,
+  };
+};
+const tagStyle = computed(() => (tagAt.value ? { left: `${tagAt.value.left}px`, top: `${tagAt.value.top}px` } : { visibility: 'hidden' }));
 
 const queueRender = () => {
   renderFrame ??= requestAnimationFrame(() => {
@@ -88,6 +114,7 @@ const render = () => {
   cellCanvas.draw(art.cells, { cols: art.cols, rows: art.lines, col: win.col, row: win.row });
   canvasRef.value.style.left = `${win.col * m.cellWidth}px`;
   canvasRef.value.style.top = `${win.row * m.lineHeight}px`;
+  placeTag();
 };
 
 // Following: the host's view in the middle (the browser keeps the scroll inside the art).
@@ -100,6 +127,7 @@ const center = () => {
 watch([view, () => props.following, metrics], center, { flush: 'post' });
 
 watch(() => props.art, queueRender, { flush: 'post' });
+watch([view, () => props.following, () => props.host], queueRender, { flush: 'post' });   // the tag's place and size
 
 // The host's font, once its faces have loaded: the glyphs drawn before it had are drawn again.
 watch(fontKey, (key) => {
@@ -136,6 +164,7 @@ onBeforeUnmount(() => {
       v-else
       ref="scroll"
       class="room-art"
+      :style="colors"
       tabindex="0"
       role="region"
       aria-label="The room's art"
@@ -146,6 +175,23 @@ onBeforeUnmount(() => {
     <div ref="sizer" class="sizer" :style="sizerStyle">
       <canvas ref="canvas" :key="fontKey"></canvas>
       <div class="host-view" :style="boxStyle"></div>
+      <button
+          v-if="host && view && metrics"
+          ref="tag"
+          class="host-tag"
+          :class="{ following }"
+          :style="tagStyle"
+          :aria-label="`Follow ${host}`"
+          :aria-pressed="following"
+          @pointerdown.stop
+          @keydown.stop
+          @click="emit('follow')"
+      >
+        <span v-if="tagAt?.arrow" aria-hidden="true">{{ tagAt.arrow }}</span>
+        <span class="name">{{ host }}</span>
+        <span v-if="following" class="state">· following</span>
+        <span v-else class="follow">Follow ›</span>
+      </button>
     </div>
   </div>
 </template>
@@ -171,7 +217,50 @@ canvas {
   position: absolute;
   box-sizing: border-box;
   pointer-events: none;
-  outline: 2px solid #ff55ff;
+  outline: 2px solid var(--host, #ff55ff);
   outline-offset: -2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.6);   /* so it shows on any art */
+}
+
+/* The host's tag, the Follow button: filled while following, a dark tag with a Follow pill when not. */
+button.host-tag,
+button.host-tag:hover,
+button.host-tag:active {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: auto;
+  padding: 2px 6px;
+  border: 1px solid var(--host);
+  border-radius: 0 0 4px 0;
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffffff;   /* the color itself is the border and the pill: a dark one is hard to read on black */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 16px;
+  white-space: nowrap;
+  transform: none;
+  filter: none;
+}
+button.host-tag.following {
+  background: var(--host);
+  color: var(--host-ink);
+  cursor: default;
+}
+button.host-tag span.follow {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--host);
+  color: var(--host-ink);
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+}
+button.host-tag:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 </style>

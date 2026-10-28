@@ -1,7 +1,7 @@
 // A name's swatch color: the same name always gets the same CGA color, and names spread over them.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { nameColor, NAME_COLORS, usernameProblem, cleanUsername, suggestedUsername } from '../../src/social/names.js';
+import { nameColor, nameInk, NAME_COLORS, usernameProblem, cleanUsername, suggestedUsername } from '../../src/social/names.js';
 import { CGA_COLORS_STR } from '../../src/lib/ColorUtils.js';
 
 test('A name\'s color is stable, one of the CGA colors (not black), and names spread over them', () => {
@@ -13,6 +13,12 @@ test('A name\'s color is stable, one of the CGA colors (not black), and names sp
   assert.ok(names.every((n) => NAME_COLORS.includes(nameColor(n))));
   assert.equal(new Set(names.map(nameColor)).size, NAME_COLORS.length);   // every color gets used
   assert.notEqual(nameColor('ansi-fan'), nameColor('ansi-fan2'));
+});
+
+test('the words on a name\'s color are black on the light ones and white on the dark ones', () => {
+  for (const light of ['#ffff55', '#55ffff', '#55ff55', '#ffffff', '#aaaaaa', '#ff55ff']) assert.equal(nameInk(light), '#000000', light);
+  for (const dark of ['#0000aa', '#aa0000', '#0000AA', '#555555', '#aa00aa']) assert.equal(nameInk(dark), '#ffffff', dark);
+  assert.ok(NAME_COLORS.every((c) => ['#000000', '#ffffff'].includes(nameInk(c))));
 });
 
 // The server's own rule, case by case: length, then characters, then reserved.

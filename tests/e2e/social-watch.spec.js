@@ -6,7 +6,8 @@ import { test, expect, openApp, tab, store, editAt, cellPoint, screenPixel, sett
 import { fakeRoom, member, ROOM_ID, shown, goLive, watcherPage, joinFromCard } from './social-support.js';
 
 const watching = (page) => shown(page, 'watch-room');
-const chat = (page) => page.getByRole('complementary', { name: 'Chat' });   // its top has the room's name, the host, Follow and Leave
+const chat = (page) => page.getByRole('complementary', { name: 'Chat' });   // its top has the room's name, the host and Leave
+const followTag = (page) => watching(page).getByRole('button', { name: 'Follow ansi-fan' });   // the tag on the host's box
 const hostCells = (host) => store(host, 'project', (p) => p.cells.map((c) => [c.char, c.fg.hex, c.bg.hex]));
 const watcherCells = (watcher) => store(watcher, 'room', (r) => r.art?.cells.map((c) => [c.char, c.fg.hex, c.bg.hex]) ?? null);
 
@@ -59,20 +60,22 @@ test('the host sees the watcher following; a wheel is looking around, and Follow
   await joinFromCard(watcher);
   const list = shown(host, 'host-room').getByRole('list', { name: 'Watching' });
   await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*following/]);
-  await expect(chat(watcher).getByRole('button', { name: 'Following' })).toBeVisible();
+  await expect(followTag(watcher)).toHaveAttribute('aria-pressed', 'true');
+  await expect(chat(watcher).getByRole('button', { name: /^Follow/ })).toHaveCount(0);   // the tag is the only Follow
   await expect.poll(async () => (await scrolls(watcher)).at > 0 && await centered(watcher)).toBe(true);
 
   const art = watching(watcher).getByLabel('The room\'s art');
   const box = await art.boundingBox();
   await watcher.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await watcher.mouse.wheel(0, 2000);
-  const follow = chat(watcher).getByRole('button', { name: 'Follow ansi-fan' });
-  await expect(follow).toBeVisible();
+  const follow = followTag(watcher);
+  await expect(follow).toHaveAttribute('aria-pressed', 'false');
+  await expect(follow).toBeInViewport();   // the box is scrolled away, the tag isn't
   await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*looking around/]);
   await expect.poll(() => centered(watcher)).toBe(false);
 
   await follow.click();
-  await expect(chat(watcher).getByRole('button', { name: 'Following' })).toBeVisible();
+  await expect(follow).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => centered(watcher)).toBe(true);
   await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*following/]);
 });
@@ -203,8 +206,8 @@ test('a watcher\'s own unsaved art is as it was after joining, watching and leav
   const art = await watching(watcher).getByLabel('The room\'s art').boundingBox();
   await watcher.mouse.move(art.x + art.width / 2, art.y + art.height / 2);
   await watcher.mouse.wheel(0, 200);   // looking around, then following again
-  await chat(watcher).getByRole('button', { name: 'Follow ansi-fan' }).click();
-  await expect(chat(watcher).getByRole('button', { name: 'Following' })).toBeVisible();
+  await followTag(watcher).click();
+  await expect(followTag(watcher)).toHaveAttribute('aria-pressed', 'true');
 
   await tab(watcher, 'ANSI').click();
   await settled(watcher);
