@@ -1,4 +1,5 @@
 import { brushPixels } from '@/lib/Brushes';
+import { selectionClip } from '@/lib/selectionClip';
 
 // A stamp's flow from the Flow slider (1-100): squared, so the low end builds up gently (a stroke's
 // stamps overlap and add up: 10% used to lay 70% in one pass at size 5), and never under the
@@ -35,7 +36,9 @@ const brush = {
   },
   move({ project, workspace, view }, from, to) {
     const options = { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100 };
-    project.paintStroke(brushPixels(from, to, options, project.cols, project.rows), undefined, { blockChars: view === 'output' && workspace.brushDrawWith === 'half' });
+    const clip = selectionClip(workspace, view);
+    const pixels = brushPixels(from, to, options, project.cols, project.rows);
+    project.paintStroke(clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels, undefined, { blockChars: view === 'output' && workspace.brushDrawWith === 'half' });
     workspace.strokeEnd = to;
   },
   end({ project }) {

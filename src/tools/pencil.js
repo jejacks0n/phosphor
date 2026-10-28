@@ -1,5 +1,6 @@
 import { pencilPixels } from '@/lib/Brushes';
 import lines from '@/tools/lines';
+import { selectionClip } from '@/lib/selectionClip';
 
 // Single and Double draw box-drawing lines from cell to cell (lines.js); they're the ANSI view's.
 const drawsLines = ({ view, workspace }) => view === 'output' && ['single', 'double'].includes(workspace.pencilDrawWith);
@@ -39,7 +40,11 @@ const pencil = {
   move(ctx, from, to) {
     const { project, workspace, view } = ctx;
     if (drawsLines(ctx)) lines.move(ctx, from, to);
-    else project.paintStroke(pencilPixels(from, to, project.cols, project.rows), undefined, { blockChars: view === 'output' && workspace.pencilDrawWith === 'half' });
+    else {
+      const clip = selectionClip(workspace, view);
+      const pixels = pencilPixels(from, to, project.cols, project.rows);
+      project.paintStroke(clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels, undefined, { blockChars: view === 'output' && workspace.pencilDrawWith === 'half' });
+    }
     workspace.strokeEnd = to;
   },
   end({ project }) {
