@@ -2,12 +2,15 @@ import { floodFill } from '@/lib/FloodFill';
 import { ctx2d } from '@/lib/Canvas';
 import { parseKey } from '@/document/editCells';
 import { cellIndex, isSolidGlyph, showsChar } from '@/lib/Cells';
+import { selectionClip } from '@/lib/selectionClip';
 
 // Grid pixels the fill stops at: edit cells showing a character with something to see through (text,
 // box lines), so a fill stays inside a drawn box and never covers typed text. A line hidden under
-// paint (showsChar) isn't one: the fill covers what you see.
-function wallsOf(project) {
+// paint (showsChar) isn't one: the fill covers what you see. With a selection (clip), every pixel
+// outside it is a wall too.
+function wallsOf(project, clip) {
   const walls = new Uint8Array(project.cols * project.rows);
+  if (clip) for (let i = 0; i < walls.length; i++) walls[i] = clip.pixel(i % project.cols, Math.floor(i / project.cols)) ? 0 : 1;
   for (const key of project.editCells.keys()) {
     const { col, row } = parseKey(key);
     const cell = project.cells[cellIndex(col, row, project.cols)];
@@ -33,12 +36,14 @@ export default {
     { key: 'editFillFeather', label: 'Feathering', title: 'Fill feathering', min: 0, max: 100 },
   ],
   // One click fills; there's no stroke to continue.
-  begin({ project, workspace }, pos, event) {
+  begin({ project, workspace, view }, pos, event) {
     const output = project.renderer.outputCanvas;
     if (!output) return false;
     event.stopPropagation();
+    const clip = selectionClip(workspace, view);
+    if (clip && !clip.pixel(Math.floor(pos.x), Math.floor(pos.y))) return false; // outside the selection: nothing to fill
     const imageData = ctx2d(output).getImageData(0, 0, project.cols, project.rows);
-    const pixels = floodFill(imageData, Math.floor(pos.x), Math.floor(pos.y), workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, wallsOf(project));
+    const pixels = floodFill(imageData, Math.floor(pos.x), Math.floor(pos.y), workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, wallsOf(project, clip));
     project.paintStroke(pixels);
     project.commitEdit();
     return false;

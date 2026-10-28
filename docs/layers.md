@@ -220,7 +220,8 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
 - **Paint Bucket** fills what you see, in the foreground color. Text and lines you've drawn (any
   edit cell whose character isn't a space, █, ▀ or ▄) are walls: a fill stops at them and never
   covers them, so it stays inside a box and leaves your text readable. A line hidden under paint
-  isn't a wall, since you can't see it.
+  isn't a wall, since you can't see it. With a selection, the fill stays inside it, and a click
+  outside it fills nothing.
 - **Color Picker**'s **FG** and **BG** toggles choose what a pick sets; both lit sets both.
 - **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
   selection's size and place, and the Color Picker its last pick and where each color came from.

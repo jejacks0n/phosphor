@@ -1,12 +1,13 @@
 // A selection stays while you use other tools, and the painting tools change only what's inside it.
 import { test, expect } from 'vitest';
-import { createTestApp, loadImage } from '../support/app.js';
+import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
 import pencil from '@/tools/pencil';
 import brush from '@/tools/brush';
 import eraser from '@/tools/eraser';
 import shapes from '@/tools/shapes';
 import flip from '@/tools/flip';
+import bucket from '@/tools/bucket';
 
 const SEL = { c0: 5, r0: 5, c1: 9, r1: 7 };
 
@@ -110,4 +111,21 @@ test("the Pencil's box lines stay inside the selection, joins included", async (
   expect(INSIDE.map((col) => charAt(col, 6)).join('')).toBe('─────');
   expect(charAt(10, 6)).toBe('│');
   expect(charAt(11, 6)).not.toBe('─');
+});
+
+test('the Bucket fills only inside the selection, and a click outside fills nothing', async () => {
+  const { project, workspace } = await scene();
+  // One solid band across the grid, cell rows 5 to 7: the region runs past the selection on both sides.
+  project.paintStroke(Array.from({ length: 6 * 40 }, (_, i) => ({ x: i % 40, y: 10 + Math.floor(i / 40), alpha: 1 })), '#00ff00');
+  project.commitEdit();
+  await settle(project);
+  workspace.selection = { ...SEL };
+  const ctx = { project, workspace, view: 'output' };
+  bucket.begin(ctx, { x: 7.5, y: 12.5 }, { stopPropagation() {} });
+  expect([3, 5, 7, 9, 12].map((x) => project.rawColorAt(x, 12))).toEqual(['#00ff00', '#ff0000', '#ff0000', '#ff0000', '#00ff00']);
+  await settle(project);
+  const version = project.history.version;
+  bucket.begin(ctx, { x: 20.5, y: 12.5 }, { stopPropagation() {} });
+  expect(project.history.version).toBe(version);
+  expect(project.rawColorAt(20, 12)).toBe('#00ff00');
 });
