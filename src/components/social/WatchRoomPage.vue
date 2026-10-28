@@ -45,7 +45,7 @@ const lookAround = () => { if (room.following) room.setFollowing(false); };
       <button class="primary" type="submit">Join</button>
     </form>
     <div v-if="room.art" class="art" :class="{ stale: room.status === 'waiting' }">
-      <RoomArt :art="room.art" :host-view="room.hostView" :following="room.following" :host="room.room?.host || null" @look-around="lookAround" @follow="room.setFollowing(true)" />
+      <RoomArt :art="room.art" :host-view="room.hostView" :following="room.following" :zoom="room.artZoom" :host="room.room?.host || null" @look-around="lookAround" @follow="room.setFollowing(true)" />
     </div>
   </div>
 </template>

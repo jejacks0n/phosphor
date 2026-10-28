@@ -20,7 +20,7 @@ afterEach(() => {
 
 // RoomArt in a 200 x 100 px box; its look-arounds counted.
 function mount(props) {
-  const state = reactive({ art, hostView: null, following: true, host: 'ansi-fan', ...props }), seen = { lookArounds: 0, follows: 0 };
+  const state = reactive({ art, hostView: null, following: true, host: 'ansi-fan', zoom: 1, ...props }), seen = { lookArounds: 0, follows: 0 };
   host = document.createElement('div');
   host.style.cssText = 'width: 200px; height: 100px';
   document.body.append(host);
@@ -63,6 +63,18 @@ test('each new view of the host\'s is centered while following, and not once loo
   state.hostView = { col: 80, row: 40, cols: 10, rows: 4 };
   await nextTick();
   expect(scroll.scrollLeft + scroll.clientWidth / 2).toBe(15 * 8);
+});
+
+test('at a zoom of 0.5 the cells and the box are half size, and the box is centered', async () => {
+  await createTestApp();
+  const { state, scroll, box } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 } });
+  await expect.poll(() => box.style.width).toBe('80px');   // 8 px cells until the zoom is
+  state.zoom = 0.5;
+  await expect.poll(() => box.style.width).toBe('40px');
+  await frames();
+  expect([box.style.left, box.style.top, box.style.height]).toEqual(['160px', '160px', '32px']);
+  expect(scroll.querySelector('.sizer').style.width).toBe('400px');
+  expect([scroll.scrollLeft + scroll.clientWidth / 2, scroll.scrollTop + scroll.clientHeight / 2]).toEqual([45 * 4, 22 * 8]);
 });
 
 test('only a key that scrolls is looking around: not Tab, and not a modifier on its own', async () => {

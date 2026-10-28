@@ -80,6 +80,29 @@ test('the host sees the watcher following; a wheel is looking around, and Follow
   await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*following/]);
 });
 
+test('the host zooms ANSI out to 50%: a following watcher\'s cells are half as wide', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room, { image: 'images/tall.png' });
+  await tab(host, 'ANSI').click();
+  await settled(host);
+  await store(host, 'workspace', (w) => { w.ansiZoom = 1; });
+  await tab(host, 'SOCIAL').click();
+
+  const watcher = await watcherPage(context, room);
+  await watcher.goto('/');
+  await joinFromCard(watcher);
+  await expect(followTag(watcher)).toHaveAttribute('aria-pressed', 'true');
+  // The width of a cell in the watcher's box: its width over the columns the host's view holds.
+  const cellWidth = async () => (await watcher.locator('.host-view').boundingBox()).width / await store(watcher, 'room', (r) => r.hostView.cols);
+  await expect.poll(cellWidth).toBeGreaterThan(0);
+  const whole = await cellWidth();
+
+  await tab(host, 'ANSI').click();
+  await store(host, 'workspace', (w) => { w.ansiZoom = 0.5; });
+  await expect.poll(() => store(watcher, 'room', (r) => r.hostView.zoom)).toBe(0.5);
+  await expect.poll(async () => (await cellWidth()) / whole).toBeCloseTo(0.5, 1);
+});
+
 test('Leave returns the watcher to the lobby, and the host\'s count goes to 0', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room);

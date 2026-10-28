@@ -44,8 +44,9 @@ export const useRoomStore = defineStore('room', {
     hasPassword: false,  // a host's: the room was made with a password (it can't change)
     watchers: [],        // a host's: [{ peer, sub, name, guest, following, connected }]
     art: shallowRef(null),   // a watcher's: { cells, cols, lines, font }
-    hostView: null,      // a watcher's: { col, row, cols, rows }
+    hostView: null,      // a watcher's: { col, row, cols, rows, zoom }
     following: true,
+    artZoom: 1,          // a watcher's: the zoom the art is drawn at, the host's while following
     chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted }], oldest first, at most MOST_KEPT
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
@@ -178,7 +179,10 @@ export const useRoomStore = defineStore('room', {
         onChat: (event) => this.chatHeard(event),
         onRoom: ({ name, welcome }) => { this.room = { ...this.room, name, welcome }; },   // the host is joined's
         onArt: (art) => { this.art = art; },
-        onView: (view) => { this.hostView = view; },
+        onView: (view) => {
+          this.hostView = view;
+          if (this.following) this.artZoom = view.zoom;
+        },
         onState: (state) => this.watchState(state),
       }));
       this.connect({ type: 'join', ...(password === undefined ? {} : { password }) }, { liveOn: ['joined'], endOn: ['refused', 'removed', 'ended', 'replaced'] });
@@ -195,6 +199,7 @@ export const useRoomStore = defineStore('room', {
 
     setFollowing(on) {
       this.following = on;
+      if (on) this.artZoom = this.hostView?.zoom ?? 1;
       this._watch?.setFollowing(on);
     },
 
@@ -217,7 +222,7 @@ export const useRoomStore = defineStore('room', {
       for (const stop of this._stops) stop();
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, following: true, chat: [], chatMore: false, joinedAt: null, chatRefused: null,
+        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null,
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,
       });

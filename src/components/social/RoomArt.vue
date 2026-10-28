@@ -17,9 +17,10 @@ import { nameColor, nameInk } from '@/social/names';
 // to the grid here, and the font's size by fontFor.
 const props = defineProps({
   art: { type: Object, default: null },        // { cells, cols, lines, font (as sent: wire.fontOnWire) }
-  hostView: { type: Object, default: null },   // { col, row, cols, rows }
+  hostView: { type: Object, default: null },   // { col, row, cols, rows } (its zoom is the zoom prop)
   following: { type: Boolean, default: false },
   host: { type: String, default: null },       // the host's name, for the tag and its color
+  zoom: { type: Number, default: 1 },          // the cell's size against the font's (the host's, never above 1)
 });
 const emit = defineEmits(['look-around', 'follow']);
 
@@ -104,10 +105,10 @@ const render = () => {
   const art = props.art, el = scrollRef.value;
   if (!art || !el || !canvasRef.value || !ensureCellCanvas()) return;
   const dpr = window.devicePixelRatio;
-  let m = cellCanvas.metrics ?? cellCanvas.cellSize(dpr), win;
+  let m = cellCanvas.metrics ?? cellCanvas.cellSize(dpr, props.zoom), win;
   for (let pass = 0; pass < 3; pass++) {
     win = viewWindow(viewIn(sizerRef.value, el), { x: m.cellWidth, y: m.lineHeight }, art.cols, art.lines);
-    cellCanvas.resize(win.cols, win.rows, dpr);
+    cellCanvas.resize(win.cols, win.rows, dpr, props.zoom);
     const sized = cellCanvas.metrics;
     if (sized.cellWidth === m.cellWidth && sized.lineHeight === m.lineHeight) break;
     m = sized;
@@ -128,7 +129,7 @@ const center = () => {
 };
 watch([view, () => props.following, metrics], center, { flush: 'post' });
 
-watch(() => props.art, queueRender, { flush: 'post' });
+watch([() => props.art, () => props.zoom], queueRender, { flush: 'post' });
 watch([view, () => props.following, () => props.host], queueRender, { flush: 'post' });   // the tag's place and size
 
 // The host's font, once its faces have loaded: the glyphs drawn before it had are drawn again.

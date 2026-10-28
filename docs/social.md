@@ -159,7 +159,9 @@ password asks for it first.
 The room's name, its host and **Leave** are at the top of the chat panel, with the welcome message
 pinned under them; the SOCIAL tab shows just the art. The art is view only, in the host's font. A box
 in the host's name color shows where they're looking, with a tag in its corner: the host's name and
-*following* while your view follows theirs. Scroll away to look around on your own, and the tag
+*following* while your view follows theirs. The box is their whole view, and while you follow, the
+art is drawn at their zoom (never above 100%: a PIXEL host who zooms in is shown at 100%, with a
+smaller box). Scroll away to look around on your own and you keep the zoom you had, and the tag
 becomes a **Follow** button to bring you back; scroll the box out of sight and the tag waits at the
 edge of the art, with an arrow pointing to it. If the connection to the host is lost, the art dims and the page says
 **Waiting for the host…** until it's back.

@@ -997,3 +997,35 @@ test('Leaving clears the chat, and the next room starts with a full allowance', 
   expect(await startPublic()).toBe(true);
   expect(await room.say('e')).toBe(true);
 });
+
+test('artZoom follows the host\'s zoom while following, stays put while looking around, and Follow takes the host\'s again', async () => {
+  await social.boot();
+  const socket = await joining(1);
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
+  const host = new Host({
+    config: { iceServers: [] }, passKey: async () => keyB64, onWatchers: () => {},
+    send: async (msg) => {
+      await later();
+      if (msg.type === 'signal-to') socket.receive({ type: 'signal-from', from: 'host', data: msg.data });
+    },
+  });
+  toClose.push(host);
+  socket.heard = (msg) => {
+    if (msg.type === 'signal-to') later().then(() => host.signalFrom('p1', msg.data));
+  };
+  expect(room.artZoom).toBe(1);
+  host.setRoom({ name: 'Night shift', welcome: 'Hi' });
+  host.setArt({ cols: 2, lines: 1, font: null, cells: [cell('a'), cell('b')] });
+  host.setView({ col: 0, row: 0, cols: 2, rows: 1, zoom: 0.5 });
+  await host.peer('p1', await passFor('g_1', 'quiet-amber-fox-1', true));
+  await expect.poll(() => room.artZoom, PATIENT).toBe(0.5);
+
+  host.setView({ col: 0, row: 0, cols: 2, rows: 1, zoom: 0.25 });
+  await expect.poll(() => room.artZoom, PATIENT).toBe(0.25);
+  room.setFollowing(false);
+  host.setView({ col: 0, row: 0, cols: 2, rows: 1, zoom: 0.75 });
+  await expect.poll(() => room.hostView.zoom, PATIENT).toBe(0.75);
+  expect(room.artZoom).toBe(0.25);
+  room.setFollowing(true);
+  expect(room.artZoom).toBe(0.75);
+});
