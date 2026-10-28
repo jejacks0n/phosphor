@@ -3,7 +3,7 @@
 // live with the host's view, Following, Leave, the host ending the room, refusals, and the watcher's
 // own art left as it was.
 import { test, expect, openApp, tab, store, editAt, cellPoint, screenPixel, settled } from './support.js';
-import { fakeRoom, member, ROOM_ID, shown, goLive, watcherPage, joinFromCard } from './social-support.js';
+import { fakeRoom, member, ROOM_ID, shown, tile, goLive, watcherPage, joinFromCard } from './social-support.js';
 
 const watching = (page) => shown(page, 'watch-room');
 const chat = (page) => page.getByRole('complementary', { name: 'Chat' });   // its top has the room's name, the host and Leave
@@ -110,12 +110,12 @@ test('Leave returns the watcher to the lobby, and the host\'s count goes to 0', 
   const watcher = await watcherPage(context, room);
   await watcher.goto('/');
   await joinFromCard(watcher);
-  await expect(shown(host, 'host-room').getByText('1 watching')).toBeVisible();
+  await expect(tile(shown(host, 'host-room'), 'Here now')).toHaveText('1');
 
   await chat(watcher).getByRole('button', { name: 'Leave' }).click();
   await expect(shown(watcher, 'lobby').getByRole('heading', { name: 'Public rooms', exact: true })).toBeFocused();
   expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
-  await expect(shown(host, 'host-room').getByText('0 watching')).toBeVisible();
+  await expect(tile(shown(host, 'host-room'), 'Here now')).toHaveText('0');
 });
 
 test('End room on the host puts the watcher back in the lobby with "The host ended the room"', async ({ page: host, context }) => {
@@ -126,6 +126,7 @@ test('End room on the host puts the watcher back in the lobby with "The host end
   await joinFromCard(watcher);
 
   await shown(host, 'host-room').getByRole('button', { name: 'End room' }).click();
+  await host.getByRole('dialog', { name: 'End the room?' }).getByRole('button', { name: 'End room' }).click();
   await expect(watcher.getByText('The host ended the room')).toBeVisible();
   await expect(shown(watcher, 'lobby')).toBeVisible();
   expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
@@ -167,7 +168,7 @@ test('the same member watching in a second tab: the first goes back to the lobby
   await expect(first.getByText('You\'re watching this room in another tab')).toBeVisible();
   await expect(shown(first, 'lobby')).toBeVisible();
   await expect.poll(() => store(second, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
-  await expect(shown(host, 'host-room').getByText('1 watching')).toBeVisible();
+  await expect(tile(shown(host, 'host-room'), 'Here now')).toHaveText('1');
   await first.waitForTimeout(1500);   // past a retry, if there were one
   expect(await store(first, 'room', (r) => r.role)).toBe(null);
   expect(room.from('p_1').filter((m) => m.type === 'join')).toHaveLength(1);

@@ -127,10 +127,24 @@ Whether the room is public or private, and its password, stay as they were set.
 
 ## Hosting
 
-While you host, the SOCIAL tab shows your room instead of the lobby: its name, how many are
-watching (counted once they're connected), its link (**Copy link**), **Room settings** and **End
-room**. Send the link to anyone you want in a private room, along with its password. The SOCIAL tab
-carries a dot while you're in a room, hosting or watching.
+While you host, the SOCIAL tab shows your room instead of the lobby, as its dashboard. At the top are
+its name, **Live for** (how long since the room went live, as H:MM:SS; a reconnect doesn't restart it),
+**Copy link** and **End room**, which asks first (**End room** or **Cancel**). Send the link to anyone you
+want in a private room, along with its password. Under them, five numbers for this room only, counted by
+your browser and gone with the room:
+
+- **Here now**: those connected.
+- **Most at once**: the most that were here together.
+- **Came by**: different people who joined (a person in two tabs, or joining twice, counts once).
+- **Messages**: said in the room, yours included. Joins and leaves aren't counted, and deleted messages still are.
+- **Removed**: people you removed or blocked, each once.
+
+**Room settings** are the welcome message, **Allow guests** and **Most watchers**, with **Save**. Under
+them, as plain facts, **Set when the room started**: **Listed in the lobby** or **Only with the link**,
+and whether a password is set. Those can't change while the room is live. What you've typed in the form
+stays when you go to another tab, and when the welcome is changed from the chat panel meanwhile, a
+welcome you're half way through typing here stays as it is. The SOCIAL tab carries a dot while you're in
+a room, hosting or watching.
 
 You run the room from the chat panel, beside every tab. Under its header, **N here** (those
 connected, folded to begin with) opens the list of who is in the room, and stays as you left it while

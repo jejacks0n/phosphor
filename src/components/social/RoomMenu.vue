@@ -1,7 +1,6 @@
 <script setup>
 import { ref, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
-import { useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
@@ -43,12 +42,7 @@ function cancelWelcome() {
 }
 
 async function copyLink() {
-  try {
-    await navigator.clipboard.writeText(room.link);
-  } catch {
-    useSocialStore().notice = 'Couldn\'t copy the link';
-    return;
-  }
+  if (!await room.copyLink()) return;
   copied.value = 'Copied';
   clearTimeout(copiedTimer);
   copiedTimer = setTimeout(() => { copied.value = ''; }, 2000);

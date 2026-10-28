@@ -312,6 +312,8 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
 // The flows two pages share: a page's SOCIAL page by its data-page, the host live through Start a room, a
 // watcher's page and joining from the lobby's card.
 export const shown = (page, name) => page.locator(`.social-tab [data-page="${name}"]`);
+// A number on the host's page, by its label ("Here now"): the locator of its value.
+export const tile = (host, label) => host.locator('dl.numbers > div').filter({ hasText: label }).locator('dd');
 const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });
 
 // The host live with a room made through Start a room, with `image` open and the form filled as asked;

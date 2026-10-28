@@ -27,7 +27,7 @@ const ROOM_ID = /^[a-z2-7]{10}$/;
 // What's typed in Start a room and Room settings, kept here so it stays while you're on another tab (the
 // SOCIAL tab isn't there then). Room settings also keeps what the room last said for each field (seen).
 const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12 });
-const newSettingsDraft = () => ({ open: false, welcome: '', allowGuests: true, max: 12, seen: {} });
+const newSettingsDraft = () => ({ welcome: '', allowGuests: true, max: 12, seen: {} });
 
 // The room you host or watch: its socket (a LobbyConnection with the room's greeting), and the host's
 // side (Host: your art to every watcher) or the watcher's (Watch: the host's art, never your own
@@ -169,6 +169,17 @@ export const useRoomStore = defineStore('room', {
       if (welcome !== room.welcome && this._host.room) this._host.setRoom({ ...this._host.room, welcome: welcome ?? '' });
       if (allowGuests !== room.allowGuests || max !== room.max) this._settings.push({ type: 'settings', allowGuests, max });
       this.room = { ...room, welcome: welcome ?? '', allowGuests, max };
+    },
+
+    // Puts the host's link on the clipboard; false (and a notice) when the browser won't.
+    async copyLink() {
+      try {
+        await navigator.clipboard.writeText(this.link);
+        return true;
+      } catch {
+        useSocialStore().notice = 'Couldn\'t copy the link';
+        return false;
+      }
     },
 
     // End room: the Room hears end (close does it for a host), and watchers are put out.

@@ -2,7 +2,7 @@
 // (its link, Room settings, End room, a dropped socket), the SOCIAL tab's dot, and the browser asking
 // before a hosting tab closes.
 import { test, expect, openApp, tab, store } from './support.js';
-import { fakeServer, fakeRoom, member, ROOM_ID } from './social-support.js';
+import { fakeServer, fakeRoom, member, tile, ROOM_ID } from './social-support.js';
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
@@ -64,7 +64,8 @@ test('going live with a public room: the POST, the host\'s page with its link, t
 
   const host = shown(page, 'host-room');
   await expect(host.getByRole('heading', { name: 'neon harbor' })).toBeFocused();   // not lost to the page's body
-  await expect(host.getByText('0 watching')).toBeVisible();
+  await expect(host.getByText('Live for 0:00:0')).toBeVisible();
+  await expect(tile(host, 'Here now')).toHaveText('0');
   await expect(host.getByText(LINK)).toBeVisible();
   await expect(host.getByText('Send the link and the password to anyone you want in.')).toHaveCount(0);
   expect(server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'neon harbor', public: true, allowGuests: true, max: 12, signal: null }]);
@@ -126,7 +127,6 @@ test('the welcome box is as tall as its message, on Start a room and in Room set
   await page.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
   await page.getByRole('button', { name: 'Go live' }).click();
   const host = shown(page, 'host-room');
-  await host.getByText('Room settings').click();
   const settings = host.getByRole('textbox', { name: 'Welcome message' });
   await expect(settings).toHaveValue(WELCOME);
   expect(await whole(settings)).toBe(true);
@@ -161,6 +161,7 @@ test('what\'s typed in Start a room stays while you\'re on another tab, and is g
   await page.getByRole('button', { name: 'Go live' }).click();
   await expect.poll(() => store(page, 'room', (r) => r.status)).toBe('live');
   await page.getByRole('button', { name: 'End room' }).click();
+  await page.getByRole('dialog', { name: 'End the room?' }).getByRole('button', { name: 'End room' }).click();
   await page.getByRole('button', { name: 'Start a room' }).click();
   await expect(start.getByRole('textbox', { name: 'Room name' })).toHaveValue('');
   await expect(start.getByRole('checkbox', { name: 'Allow guests' })).toBeChecked();
@@ -169,7 +170,6 @@ test('what\'s typed in Start a room stays while you\'re on another tab, and is g
 test('Room settings stay open, with what\'s typed, while you\'re on another tab', async ({ page }) => {
   await goLive(page);
   const host = shown(page, 'host-room');
-  await host.getByText('Room settings').click();
   await host.getByRole('textbox', { name: 'Welcome message' }).fill('back in 5');
   await host.getByRole('spinbutton', { name: 'Most watchers' }).fill('3');
   await tab(page, 'PIXEL').click();
@@ -181,7 +181,6 @@ test('Room settings stay open, with what\'s typed, while you\'re on another tab'
 test('a change the Room makes while you\'re on another tab shows when you\'re back; what you typed in other fields stays', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
-  await host.getByText('Room settings').click();
   await host.getByRole('textbox', { name: 'Welcome message' }).fill('back in 5');
   await tab(page, 'PIXEL').click();
   room.send('host', { type: 'settings-now', room: { ...room.info(), max: 20 } });
@@ -194,17 +193,42 @@ test('a change the Room makes while you\'re on another tab shows when you\'re ba
 test('Room settings send the guests and most watchers; End room sends end, and the lobby and the dot come back', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
-  await host.getByText('Room settings').click();
   await host.getByRole('spinbutton', { name: 'Most watchers' }).fill('6');
   await host.getByRole('button', { name: 'Save' }).click();
   await expect.poll(() => room.from('host').filter((m) => m.type === 'settings')).toEqual([{ type: 'settings', allowGuests: true, max: 6 }]);
   expect(await store(page, 'room', (r) => r.room.max)).toBe(6);
 
   await host.getByRole('button', { name: 'End room' }).click();
+  await page.getByRole('dialog', { name: 'End the room?' }).getByRole('button', { name: 'End room' }).click();
   await expect.poll(() => room.from('host').map((m) => m.type)).toContain('end');
   await expect(shown(page, 'lobby').getByRole('heading', { name: 'Public rooms', exact: true })).toBeFocused();
   await expect(dot(page)).toHaveCount(0);
   expect(await store(page, 'room', (r) => r.role)).toBe(null);
+});
+
+test('End room on the page asks first: Cancel keeps the room and brings focus back', async ({ page }) => {
+  await goLive(page);
+  const host = shown(page, 'host-room');
+  await host.getByRole('button', { name: 'End room' }).click();
+  const ask = page.getByRole('dialog', { name: 'End the room?' });
+  await expect(ask.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect(ask).toHaveCount(0);
+  await expect(host.getByRole('button', { name: 'End room' })).toBeFocused();
+  expect(await store(page, 'room', (r) => r.role)).toBe('host');
+});
+
+test('the welcome edited from the chat panel leaves a half-typed welcome here', async ({ page }) => {
+  await goLive(page);
+  const host = shown(page, 'host-room');
+  const welcome = host.getByRole('textbox', { name: 'Welcome message' });
+  await welcome.fill('half typed');
+  await page.getByRole('button', { name: 'Room', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit welcome' }).click();
+  await page.getByRole('dialog', { name: 'Edit welcome' }).getByRole('textbox').fill('from the panel');
+  await page.getByRole('dialog', { name: 'Edit welcome' }).getByRole('button', { name: 'Save' }).click();
+  await expect.poll(() => store(page, 'room', (r) => r.room.welcome)).toBe('from the panel');
+  await expect(welcome).toHaveValue('half typed');
 });
 
 // The Room takes settings at most once a second (a sooner one is answered with the room as it is);
@@ -212,7 +236,6 @@ test('Room settings send the guests and most watchers; End room sends end, and t
 test('two quick saves leave the room with the latest settings', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
-  await host.getByText('Room settings').click();
   const most = host.getByRole('spinbutton', { name: 'Most watchers' });
   await most.fill('6');
   await host.getByRole('button', { name: 'Save' }).click();
@@ -231,7 +254,6 @@ test('two quick saves leave the room with the latest settings', async ({ page })
 test('Room settings follow the room when the Room says how it is', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
-  await host.getByText('Room settings').click();
   const most = host.getByRole('spinbutton', { name: 'Most watchers' });
   await expect(most).toHaveValue('12');
   room.send('host', { type: 'settings-now', room: { ...room.info(), max: 20, allowGuests: false } });
@@ -242,7 +264,6 @@ test('Room settings follow the room when the Room says how it is', async ({ page
 test('what\'s typed in Room settings survives the socket dropping and hosting again', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
-  await host.getByText('Room settings').click();
   await host.getByRole('textbox', { name: 'Welcome message' }).fill('back in 5');
   await host.getByRole('spinbutton', { name: 'Most watchers' }).fill('3');
   room.drop('host');
@@ -257,7 +278,6 @@ test('what\'s typed in Room settings survives the socket dropping and hosting ag
 test('a paced-out save shows the Room\'s values, and saving them again sends them', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
-  await host.getByText('Room settings').click();
   await store(page, 'room', (r) => r._connection.send({ type: 'settings', allowGuests: true, max: 6 }));
   const most = host.getByRole('spinbutton', { name: 'Most watchers' });
   await most.fill('8');
@@ -278,7 +298,7 @@ test('the host\'s socket drops: Reconnecting… until it says host again', async
   await expect(shown(page, 'host-room').getByText('Reconnecting…')).toBeVisible();
   await expect.poll(() => room.from('host').filter((m) => m.type === 'host').length).toBe(2);
   await expect(shown(page, 'host-room').getByText('Reconnecting…')).toHaveCount(0);
-  await expect(shown(page, 'host-room').getByText('0 watching')).toBeVisible();
+  await expect(tile(shown(page, 'host-room'), 'Here now')).toHaveText('0');
 });
 
 // Review focus 4: the art isn't changed, so it's the room that asks; once closed, the Room hears end.
