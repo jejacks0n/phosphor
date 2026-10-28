@@ -12,6 +12,7 @@ import { rectCells } from '@/document/editCells';
 import { charRowsOf, cellsOfPixels, showsChar } from '@/lib/Cells';
 import { joinBox, inwardArms } from '@/lib/BoxJoin';
 import { hex2rgb } from '@/lib/ColorUtils';
+import { selectionClip } from '@/lib/selectionClip';
 
 let start = null; // the drag's first grid position
 
@@ -104,6 +105,9 @@ function apply({ project, workspace, view }, end) {
   // A line has no inside.
   const fill = kind === 'line' ? false : charMode ? workspace.shapeCharFill : !workspace.editBgNone;
   const fg = workspace.editFgColor, bg = workspace.editBgColor;
+  // A selection in the ANSI view keeps every write to the pixels or cells inside it.
+  const clip = selectionClip(workspace, view);
+  const kept = (list) => (clip ? list.filter((p) => ('col' in p ? clip.cell(p.col, p.row) : clip.pixel(p.x, p.y))) : list);
   // Pixels for a paint shape: the whole shape, or just its outline.
   const pixelsOf = (filled) => (kind === 'line' ? (antialias ? lineCoverage : linePixels)(start, end, project.cols, project.rows)
     : kind === 'ellipse' ? ellipsePixels(start, end, filled, project.cols, project.rows, antialias)
@@ -111,8 +115,8 @@ function apply({ project, workspace, view }, end) {
   // Paint: the outline in FG and, filled, the inside in BG (one stroke, one undo step).
   const paintShape = () => {
     const outline = pixelsOf(false);
-    if (fill) project.paintEditPixels(twoTone(pixelsOf(true), outline, fg, bg), workspace.editBrushOpacity, workspace.editBrushStack);
-    else project.paintStroke(outline, fg);
+    if (fill) project.paintEditPixels(kept(twoTone(pixelsOf(true), outline, fg, bg)), workspace.editBrushOpacity, workspace.editBrushStack);
+    else project.paintStroke(kept(outline), fg);
   };
   if (view === 'input') {
     paintShape();
@@ -121,14 +125,14 @@ function apply({ project, workspace, view }, end) {
 
   // Vertical half blocks: whole blocks placed to the nearest half cell across, as block characters.
   if (usesHalves(workspace)) {
-    project.writeEditCells(halfCells(project, workspace, end, fill), { clearPaint: true });
+    project.writeEditCells(kept(halfCells(project, workspace, end, fill)), { clearPaint: true });
     return;
   }
 
   // Half-block: paint at grid resolution. Block characters makes each touched cell a ▄, so the
   // paint colors its halves; without it the paint shows through the cell's own character.
   if (!drawsCells(workspace)) {
-    if (blockChars) project.writeEditCells(cellsOfPixels(pixelsOf(fill), project.cols, project.rows).map(c => ({ ...c, attrs: { char: '▄' } })));
+    if (blockChars) project.writeEditCells(kept(cellsOfPixels(pixelsOf(fill), project.cols, project.rows).map(c => ({ ...c, attrs: { char: '▄' } }))));
     paintShape();
     return;
   }
@@ -160,8 +164,8 @@ function apply({ project, workspace, view }, end) {
   // through their characters.
   if (drawWith === 'full' && !blockChars) {
     const both = (list) => list.flatMap(({ col, row, cover }) => [{ x: col, y: 2 * row, alpha: cover }, { x: col, y: 2 * row + 1, alpha: cover }]);
-    if (fill) project.paintEditPixels(twoTone(both(shapeOf(true)), both(outline), fg, bg), workspace.editBrushOpacity, workspace.editBrushStack);
-    else project.paintStroke(both(outline), fg);
+    if (fill) project.paintEditPixels(kept(twoTone(both(shapeOf(true)), both(outline), fg, bg)), workspace.editBrushOpacity, workspace.editBrushStack);
+    else project.paintStroke(kept(both(outline)), fg);
     return;
   }
 
@@ -200,7 +204,7 @@ function apply({ project, workspace, view }, end) {
       cells.push(...interior.map(c => ({ ...c, attrs: { char: ' ', bg } })));
     }
   }
-  project.writeEditCells(cells, { clearPaint: true });
+  project.writeEditCells(kept(cells), { clearPaint: true });
 }
 
 export default {

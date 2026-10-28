@@ -5,6 +5,8 @@ import { cellIndex } from '@/lib/Cells';
 import pencil from '@/tools/pencil';
 import brush from '@/tools/brush';
 import eraser from '@/tools/eraser';
+import shapes from '@/tools/shapes';
+import flip from '@/tools/flip';
 
 const SEL = { c0: 5, r0: 5, c1: 9, r1: 7 };
 
@@ -23,7 +25,16 @@ async function scene() {
   // The columns of a cell row that have paint, in c0..c1.
   const painted = (row, c0 = 0, c1 = 39) => Array.from({ length: c1 - c0 + 1 }, (_, i) => c0 + i).filter((col) => project.cellHasPaint(col, row));
   const charAt = (col, row) => project.cells[cellIndex(col, row, project.cols)].char;
-  return { project, workspace, use, painted, charAt };
+  // The cells outside SEL the edit layer has (cells or paint): none, when the tools keep to it.
+  const outside = () => {
+    const found = [];
+    for (let row = 0; row < 20; row++) for (let col = 0; col < 40; col++) {
+      const inSel = col >= SEL.c0 && col <= SEL.c1 && row >= SEL.r0 && row <= SEL.r1;
+      if (!inSel && (project.editCellAt(col, row) || project.cellHasPaint(col, row))) found.push(`${col},${row}`);
+    }
+    return found;
+  };
+  return { project, workspace, use, painted, charAt, outside };
 }
 
 const ROW6 = [{ x: 2.5, y: 12.5 }, { x: 14.5, y: 12.5 }]; // across cell row 6, cols 2 to 14
@@ -68,4 +79,35 @@ test('the Eraser erases only inside the selection, on both layers', async () => 
   use(eraser, ROW6);
   expect(painted(6, 2, 14)).toEqual([2, 3, 4, 10, 11, 12, 13, 14]);
   expect([3, 5, 9, 11].map((col) => project.baseColorAt(col, 12) === '#000000')).toEqual([false, true, true, false]);
+});
+
+test('Shapes draw only inside the selection', async () => {
+  const { project, workspace, use, painted, outside } = await scene();
+  workspace.selection = { ...SEL };
+  Object.assign(workspace, { shapeKind: 'rect', shapeDrawWith: 'single', editBgNone: true });
+  use(shapes, [{ x: 3.5, y: 8.5 }, { x: 7.5, y: 12.5 }]); // a frame from cell (3, 4) to (7, 6), across the selection's edge
+  expect(outside()).toEqual([]);
+  expect(project.editCellAt(7, 6)?.char).toBe('┘');
+  Object.assign(workspace, { shapeKind: 'ellipse', shapeDrawWith: 'half', editBgNone: false });
+  use(shapes, [{ x: 3.5, y: 8.5 }, { x: 11.5, y: 16.5 }]);
+  expect(outside()).toEqual([]);
+  expect(painted(6)).toEqual(INSIDE);
+});
+
+test('Flip FG/BG flips only inside the selection', async () => {
+  const { workspace, use, painted } = await scene();
+  workspace.selection = { ...SEL };
+  use(flip, Array.from({ length: 13 }, (_, i) => ({ x: 2.5 + i, y: 12.5 }))); // flips the cell under each move; one with no edit cell flips as paint
+  expect(painted(6, 2, 14)).toEqual(INSIDE);
+});
+
+test("the Pencil's box lines stay inside the selection, joins included", async () => {
+  const { workspace, use, charAt } = await scene();
+  Object.assign(workspace, { pencilDrawWith: 'single', pencilConnect: true });
+  use(pencil, [{ x: 10.5, y: 6.5 }, { x: 10.5, y: 18.5 }]); // down column 10, rows 3 to 9
+  workspace.selection = { ...SEL };
+  use(pencil, [{ x: 5.5, y: 12.5 }, { x: 12.5, y: 12.5 }]);
+  expect(INSIDE.map((col) => charAt(col, 6)).join('')).toBe('─────');
+  expect(charAt(10, 6)).toBe('│');
+  expect(charAt(11, 6)).not.toBe('─');
 });

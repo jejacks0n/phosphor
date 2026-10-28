@@ -2,6 +2,7 @@
 // background), on the layers chosen with its [Base] [Edit] toggles (workspace.flipLayers).
 import { cellAt } from '@/lib/Cells';
 import { snapCursor } from '@/document/wideChars';
+import { selectionClip } from '@/lib/selectionClip';
 
 let flipped = new Set(); // cells flipped in the current stroke, so dragging back over one doesn't undo it
 
@@ -9,6 +10,7 @@ const flipAt = (project, workspace, pos) => {
   const at = cellAt(pos.x, pos.y, project.cols, project.rows);
   if (!at) return;
   const cell = snapCursor(project.cells, project.cols, at, 0); // a wide character's trail flips its lead
+  if (selectionClip(workspace, 'output')?.cell(cell.col, cell.row) === false) return;
   const key = `${cell.col},${cell.row}`;
   if (flipped.has(key)) return;
   flipped.add(key);
