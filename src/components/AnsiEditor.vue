@@ -327,7 +327,7 @@ onBeforeUnmount(() => {
           spellcheck="false"
           aria-label="Type into the canvas"
       ></textarea>
-      <WandOverlay v-if="workspaceStore.wand?.view === 'output'" :wand="workspaceStore.wand" :unit="cellUnit" :display="displayRef"/>
+      <WandOverlay v-if="workspaceStore.wand?.view === 'output'" :wand="workspaceStore.wand" :unit="cellUnit" :display="displayRef" :tint="workspaceStore.activeTool === 'wand'"/>
       <template v-if="selectionBox">
         <div class="marquee" :style="selectionBox.marquee"></div>
       </template>

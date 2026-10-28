@@ -227,7 +227,7 @@ onBeforeUnmount(() => {
     </div>
     <div v-if="workspaceStore.editZoom >= 16" class="grid-overlay"></div>
     <template #overlay>
-      <WandOverlay v-if="workspaceStore.wand?.view === 'input'" :wand="workspaceStore.wand" :unit="unit" :display="sizerRef"/>
+      <WandOverlay v-if="workspaceStore.wand?.view === 'input'" :wand="workspaceStore.wand" :unit="unit" :display="sizerRef" :tint="workspaceStore.activeTool === 'wand'"/>
     </template>
   </EditorViewport>
 </template>

@@ -1,6 +1,6 @@
 <script setup>
-// The Magic Wand's selection over a view: a tint on every selected unit and a dashed line where a
-// selected unit meets one that isn't. Drawn only for the units in view (viewWindow), on a canvas over
+// The Magic Wand's selection over a view: a dashed line where a selected unit meets one that isn't,
+// and while the wand is the tool, a tint on every selected unit. Drawn only for the units in view (viewWindow), on a canvas over
 // them, again when the view scrolls or resizes. It's there only while there's a selection in its view.
 import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
@@ -10,6 +10,7 @@ const props = defineProps({
   wand: { type: Object, default: null },    // workspace.wand, in this view
   unit: { type: Object, default: null },    // CSS px per unit: { x, y }
   display: { type: Object, default: null }, // the element the units start in
+  tint: { type: Boolean, default: false },   // tint the selected units (the wand is the tool)
 });
 const canvasRef = useTemplateRef('canvas');
 let frame = 0, viewport = null;
@@ -41,7 +42,7 @@ function draw() {
     for (let x = win.col; x < win.col + win.cols; x++) {
       if (!on(x, y)) continue;
       const left = (x - win.col) * unit.x, top = (y - win.row) * unit.y, right = left + unit.x, bottom = top + unit.y;
-      ctx.fillRect(left, top, unit.x, unit.y);
+      if (props.tint) ctx.fillRect(left, top, unit.x, unit.y);
       if (!on(x, y - 1)) { edges.moveTo(left, top + 0.5); edges.lineTo(right, top + 0.5); }
       if (!on(x, y + 1)) { edges.moveTo(left, bottom - 0.5); edges.lineTo(right, bottom - 0.5); }
       if (!on(x - 1, y)) { edges.moveTo(left + 0.5, top); edges.lineTo(left + 0.5, bottom); }
@@ -57,7 +58,7 @@ function draw() {
 }
 const queue = () => { frame ||= requestAnimationFrame(draw); };
 
-watch(() => [props.wand, props.unit, props.display], queue);
+watch(() => [props.wand, props.unit, props.display, props.tint], queue);
 let observer = null;
 onMounted(() => {
   viewport = props.display?.closest('article') ?? null;

@@ -208,8 +208,9 @@ selects only what touches the click (sharing a side, as the Paint Bucket fills);
 **Shift**-click adds to the selection. A Select rectangle you made first keeps the wand inside it,
 and the wand's selection takes its place.
 
-The selection shows as a tint on every selected cell and a dashed line around it, so a scattered
-selection (every other cell) shows as a pattern. Like the rectangle, it stays as you change tools,
+The selection shows as a dashed line around it and, while the Magic Wand is the tool, a tint on
+every selected cell, so a scattered selection (every other cell) shows as a pattern. Like the
+rectangle, it stays as you change tools (the line stays, the tint goes, so you see what you draw),
 and the painting tools change only what's in it: the Paint Bucket inside it recolors just the
 selected cells or pixels. It belongs to the view you made it in: switching views drops it, and so do
 **Escape**, **Deselect**, a new rectangle, a grid change and a new document.

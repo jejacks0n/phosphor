@@ -51,3 +51,26 @@ test('with a wand selection, the Select tool offers Deselect too', async ({ page
   await page.getByRole('button', { name: 'Deselect' }).click();
   expect(await store(page, 'workspace', (w) => w.wand)).toBe(null);
 });
+
+// The overlay's pixels tinted (bluish); its dashed outline is black and white.
+const tinted = (page) => page.locator('[data-wand-overlay]').evaluate((canvas) => {
+  const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+  let n = 0;
+  for (let i = 0; i < data.length; i += 4) if (data[i + 3] && data[i + 2] > data[i] + 40) n++;
+  return n;
+});
+
+test('the selection is tinted only while the Magic Wand is the tool; the outline stays on every tool', async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('w');
+  const at = await cellPoint(page, 4, 4);
+  await page.mouse.click(at.x, at.y);
+  await expect.poll(() => tinted(page)).toBeGreaterThan(0);
+
+  await page.keyboard.press('b');
+  await expect.poll(() => tinted(page)).toBe(0);
+  await expect(page.locator('[data-wand-overlay]')).toBeVisible();
+
+  await page.keyboard.press('w');
+  await expect.poll(() => tinted(page)).toBeGreaterThan(0);
+});
