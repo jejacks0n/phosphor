@@ -219,7 +219,7 @@ input.mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
-input[type=checkbox] {
+input[type=checkbox], input[type=radio] {
   appearance: none;
   -webkit-appearance: none;
   width: 16px;
@@ -236,11 +236,11 @@ input[type=checkbox] {
   vertical-align: middle;
   padding: 7px;
 }
-input[type=checkbox]:hover {
+input[type=checkbox]:hover, input[type=radio]:hover {
   background: var(--surface-3);
   border-color: var(--accent);
 }
-input[type=checkbox]:checked {
+input[type=checkbox]:checked, input[type=radio]:checked {
   background: var(--accent-hot);
   border-color: var(--accent-hot);
 }
@@ -255,11 +255,25 @@ input[type=checkbox]:checked::after {
   border-width: 0 2px 2px 0;
   transform: translate(-50%, -60%) rotate(45deg);
 }
-input[type=checkbox]:focus {
+input[type=radio] {
+  border-radius: 50%;
+}
+input[type=radio]:checked::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--white);
+  transform: translate(-50%, -50%);
+}
+input[type=checkbox]:focus, input[type=radio]:focus {
   outline: none;
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
-input[type=checkbox]:disabled {
+input[type=checkbox]:disabled, input[type=radio]:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   filter: grayscale(1);
@@ -465,7 +479,7 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
     width: 23px;
   }
 
-  input[type=checkbox] {
+  input[type=checkbox], input[type=radio] {
     padding: 9px;
   }
 

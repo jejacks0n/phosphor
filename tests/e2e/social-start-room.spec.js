@@ -127,6 +127,20 @@ test('the welcome box is as tall as its message, on Start a room and in Room set
   expect(await whole(settings)).toBe(true);
 });
 
+test('the radio buttons look like the checkboxes: drawn by the app, round, and the same color when on', async ({ page }) => {
+  await startPage(page);
+  const start = shown(page, 'start-room');
+  const style = (el) => el.evaluate((input) => {
+    const s = getComputedStyle(input);
+    return { appearance: s.appearance, width: s.width, radius: s.borderRadius, background: s.backgroundColor };
+  });
+  const radio = start.getByRole('radio', { name: 'Anyone, in the lobby' });
+  const checkbox = start.getByRole('checkbox', { name: 'Allow guests' });
+  // (both are on, and their colors fade in: compared once they've settled)
+  await expect.poll(async () => [await style(radio), { ...await style(checkbox), radius: '50%' }])
+    .toEqual([{ appearance: 'none', width: '16px', radius: '50%', background: 'rgb(232, 2, 252)' }, { appearance: 'none', width: '16px', radius: '50%', background: 'rgb(232, 2, 252)' }]);
+});
+
 test('what\'s typed in Start a room stays while you\'re on another tab, and is gone once the room is made', async ({ page }) => {
   await startPage(page);
   const start = shown(page, 'start-room');
