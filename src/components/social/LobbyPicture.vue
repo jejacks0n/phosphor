@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, useTemplateRef, onMounted, onBeforeUnmount, useId } from 'vue';
+import { ref, computed, watch, nextTick, useTemplateRef, onBeforeUnmount, useId } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -12,12 +12,12 @@ import RoomArt from './RoomArt.vue';
 
 // What the lobby card shows of the art, as a small frame of the art's full width: about FRAME px wide
 // (cells are whole device pixels, so the art comes out near it) and as tall as the card's lines, 2:1
-// give or take a line. While the room follows the host's view the frame is RoomArt centered on the lobby window, as the
-// thumbnail is made from it; the host's own wheel, key or press in it scrolls it, which pins the window
-// to the line it is scrolled to. A scroll the frame makes by itself never pins (only one that comes
-// just after a look-around, or while already pinned, is the host's).
+// give or take a line. While the room follows the host's view the frame is RoomArt centered on the
+// lobby window, as the thumbnail is made from it. A scroll that lands half a line or more from where
+// following puts the frame is the host's (the wheel, a key, a drag, momentum), and pins the window to
+// the line it landed on; a scroll that lands there is RoomArt's own and never pins. Once pinned, any
+// scroll moves the pin.
 const FRAME = 300;
-const HOST_SCROLL_MS = 300;   // how soon after a look-around a scroll is the host's
 const room = useRoomStore(), project = useProjectStore(), workspace = useWorkspaceStore();
 const headingId = useId();
 
@@ -56,22 +56,31 @@ const lineHeightOf = (el) => el.firstElementChild.getBoundingClientRect().height
 // The frame's scrollbar takes room from the art: the frame is that much wider, so the art fits across.
 const bar = ref(0);
 
-let hostUntil = 0, sizerObserver = null;
-const lookAround = () => { hostUntil = performance.now() + HOST_SCROLL_MS; };
-const scrolled = (event) => {
-  const el = event.target, now = performance.now();
-  if (!pinned.value && now > hostUntil) return;   // RoomArt centering on the view
-  hostUntil = now + HOST_SCROLL_MS;               // a drag or a key held keeps going
-  room.pinLobby(Math.round(el.scrollTop / lineHeightOf(el)));
+// The top line the frame is scrolled to while following: the window's middle centered, as RoomArt does
+// it, held to the art the way the browser holds scrollTop.
+const followedTop = (el, lineHeight) => {
+  const { row, rows } = hostView.value, most = el.scrollHeight - el.clientHeight;
+  return Math.max(0, Math.min((row + rows / 2) * lineHeight - el.clientHeight / 2, most)) / lineHeight;
 };
-// The art's size changed: the frame follows it, and a pinned window is held to its line.
-const settle = () => {
+const scrolled = (event) => {
+  const el = event.target, lineHeight = lineHeightOf(el);
+  if (!lineHeight) return;
+  if (!pinned.value && Math.abs(el.scrollTop / lineHeight - followedTop(el, lineHeight)) < 0.5) return;
+  room.pinLobby(Math.round(el.scrollTop / lineHeight));
+};
+
+// The art's size changed: the frame follows it (once it has, the window is put back at the top of it),
+// and a pinned window is held to its line.
+let sizerObserver = null;
+const settle = async () => {
   const el = scroller();
   if (!el) return;
   const { width, height } = el.firstElementChild.getBoundingClientRect();
   if (!height) return;   // not drawn yet
   sized.value = { width, lineHeight: height / art.value.lines };
+  await nextTick();   // the frame's new size
   if (pinned.value) el.scrollTop = room.lobbyPin * lineHeightOf(el);
+  else el.scrollTop = followedTop(el, lineHeightOf(el)) * lineHeightOf(el);
 };
 
 const follow = () => {
@@ -79,13 +88,16 @@ const follow = () => {
   scroller()?.focus();   // the button is gone
 };
 
-onMounted(() => {
-  const el = scroller();
-  if (!el) return;
+// The art's sizer is watched once the art is there (it can come after the frame does).
+const artRef = useTemplateRef('roomArt');
+watch(artRef, (instance) => {
+  sizerObserver?.disconnect();
+  const el = instance?.$el;
+  if (!el?.classList?.contains('room-art')) return;   // no art, or no WebGL2
   bar.value = el.offsetWidth - el.clientWidth;
   sizerObserver = new ResizeObserver(settle);
   sizerObserver.observe(el.firstElementChild);
-});
+}, { flush: 'post' });
 onBeforeUnmount(() => sizerObserver?.disconnect());
 </script>
 
@@ -94,7 +106,7 @@ onBeforeUnmount(() => sizerObserver?.disconnect());
     <h3 :id="headingId">Lobby picture</h3>
     <p class="state">{{ pinned ? 'Pinned' : 'Follows your view' }}</p>
     <div ref="frame" class="frame" :style="frameStyle" @scroll.capture="scrolled">
-      <RoomArt v-if="art" :art="art" :host-view="hostView" :following="!pinned" :zoom="zoom" :boxed="false" @look-around="lookAround" />
+      <RoomArt v-if="art" ref="roomArt" :art="art" :host-view="hostView" :following="!pinned" :zoom="zoom" :boxed="false" />
     </div>
     <button v-if="pinned" @click="follow">Follow my view</button>
   </section>

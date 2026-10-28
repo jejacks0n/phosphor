@@ -37,13 +37,14 @@ test('a listed room\'s lobby picture follows the host\'s view; scrolling it pins
   await expect.poll(async () => (await place(page)).middle).not.toBe(before.middle);
   await expect.poll(() => frame(page).evaluate((el) => el.scrollTop)).toBeGreaterThan(0);   // the frame went there by itself
   expect(await pin(page)).toBe(null);   // a scroll made by code isn't the host's
-  // The frame's middle line is the view's middle line.
+  // The frame's top line is the window's row: the view's middle line less half the window, held to the art.
   await expect.poll(async () => {
-    const { top, middle } = await frame(page).evaluate((el) => {
+    const { top, rows, lines } = await frame(page).evaluate((el) => {
       const lh = el.firstElementChild.getBoundingClientRect().height / 1200;
-      return { top: el.scrollTop / lh, middle: (el.scrollTop + el.clientHeight / 2) / lh };
+      return { top: el.scrollTop / lh, rows: el.clientHeight / lh, lines: 1200 };
     });
-    return Math.abs(middle - (await place(page)).middle) <= 1 && top > 0;
+    const row = Math.max(0, Math.min(Math.round((await place(page)).middle - rows / 2), lines - rows));
+    return top > 0 && Math.abs(top - row) < 0.5;
   }).toBe(true);
 
   const box = await frame(page).boundingBox();
@@ -55,14 +56,23 @@ test('a listed room\'s lobby picture follows the host\'s view; scrolling it pins
   await expect(picture(page).getByRole('button', { name: 'Follow my view' })).toBeVisible();
 
   await scrollAnsi(page, 0.8);
-  await page.waitForTimeout(500);
-  expect(await pin(page)).toBe(pinned);
+  await expect.poll(() => store(page, 'workspace', (w) => w.sharedView.row)).toBeGreaterThan(900);   // the view has moved
+  await expect.poll(async () => { await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))); return pin(page); }).toBe(pinned);
   await expect(picture(page).getByText('Pinned')).toBeVisible();
 
   await picture(page).getByRole('button', { name: 'Follow my view' }).click();
   await expect(picture(page).getByText('Follows your view')).toBeVisible();
   await expect(picture(page).getByRole('button', { name: 'Follow my view' })).toHaveCount(0);
   expect(await pin(page)).toBe(null);
+});
+
+test('a key in the frame is the host\'s scroll and pins it', async ({ page }) => {
+  await goLive(page, fakeRoom(), { image: 'images/tall.png' });
+  await expect(picture(page).getByText('Follows your view')).toBeVisible();
+  await frame(page).focus();
+  await page.keyboard.press('PageDown');
+  await expect(picture(page).getByText('Pinned')).toBeVisible();
+  expect(await pin(page)).toBeGreaterThan(0);
 });
 
 test('a pinned lobby picture is still at its line when you come back to the tab', async ({ page }) => {
