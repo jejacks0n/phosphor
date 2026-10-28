@@ -19,6 +19,7 @@ import { DISPLAY_FONT, setDisplayFont } from '@/lib/displayFonts';
 import { MOST_KEPT, signedText } from '@/social/chat';
 import { openPeer } from '@/social/peer';
 import { passKey } from '@/social/pass';
+import { newSession, removedCount } from '@/social/session';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
 import { verify, claimsOf, member, fakeServer, sockets, useFakeSockets, lastSocket, at } from '../support/socialServer.js';
@@ -1028,6 +1029,43 @@ test('block POSTs the name, then removes the watcher; a failed POST removes no o
   expect(server.sent('POST', '/api/blocks').at(-1).body).toEqual({ username: 'p1' });
   expect(socket.sent.filter((m) => m.type === 'remove')).toEqual([{ type: 'remove', peer: 'p1' }]);
   expect(room.watchers).toEqual([]);
+});
+
+test('A host\'s session: who came and went, messages, removed and the most at once, and a new room starts fresh', async () => {
+  const socket = await goLive();
+  expect(room.session).toEqual({ ...newSession(), liveSince: expect.any(Number) });
+  const since = room.session.liveSince;
+  await watcherOn(socket);
+  await expect.poll(() => room.hereNow).toBe(1);
+  const pass = await passFor('u_p9', 'tin-owl');
+  const entry = (id, presence, ts) => ({ type: 'presence', entry: { pass, id: `p${id}`, ts, presence } });
+  room._host.onChat(entry(1, 'joined', 1000));
+  room._host.onChat(entry(2, 'left', 61_000));
+  room._host.onChat(entry(3, 'joined', 100_000));
+  room._host.onChat({ type: 'chat', entry: { pass, id: 'm1', ts: 101_000, text: 'hi' } });
+  room._host.onChat({ type: 'chat', entry: { pass: social.pass, id: 'm2', ts: 102_000, text: 'hello' } });
+  expect(room.session.messages).toBe(2);
+  expect(room.session.people.find((p) => p.sub === 'u_p9')).toEqual({ sub: 'u_p9', name: 'tin-owl', guest: false, since: 100_000, total: 60_000, left: null, removed: null, said: 1 });
+  expect(room.session.most).toBe(1);
+
+  room.remove('p1');
+  expect(room.session.people.find((p) => p.sub === 'u_p1').removed).toEqual(expect.any(Number));
+  room.remove('p1');   // once
+  expect(removedCount(room.session)).toBe(1);
+
+  socket.close();
+  expect(room.status).toBe('reconnecting');
+  const again = await lastSocket(2);
+  again.accept();
+  await vi.waitFor(() => expect(again.sent[0]?.type).toBe('host'));
+  again.receive({ type: 'hosting', room: info(), peers: [] });
+  await vi.waitFor(() => expect(room.status).toBe('live'));
+  expect(room.session.liveSince).toBe(since);
+
+  room.leave();
+  expect(room.session).toEqual(newSession());
+  await startPublic();
+  expect(room.session).toEqual(newSession());
 });
 
 test('remove sends the Room\'s remove and drops the watcher', async () => {

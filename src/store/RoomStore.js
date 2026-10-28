@@ -10,6 +10,7 @@ import { Host } from '@/social/hosting';
 import { Watch } from '@/social/watching';
 import { fontOnWire, fontFor } from '@/social/wire';
 import { thumbnailOf } from '@/social/thumbnail';
+import { newSession, sessionJoined, sessionLeft, sessionRemoved, sessionSaid, sessionSaw } from '@/social/session';
 import { charRowsOf } from '@/lib/Cells';
 import { useSocialStore } from '@/store/SocialStore';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -51,6 +52,7 @@ export const useRoomStore = defineStore('room', {
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
+    session: newSession(),   // a host's: what this browser counted since the room started (social/session.js)
     startDraft: newStartDraft(),         // Start a room's form; empty again once a room is made
     settingsDraft: newSettingsDraft(),   // a host's Room settings form
     _connection: null,   // the room's LobbyConnection (markRaw)
@@ -68,6 +70,7 @@ export const useRoomStore = defineStore('room', {
 
   getters: {
     inRoom: (state) => !!state.role,
+    hereNow: (state) => state.watchers.filter((w) => w.connected).length,   // a host's: watchers connected now
     // Only a confirmed member sends; guests and unconfirmed members read.
     canChat() {
       const claims = useSocialStore().claims;
@@ -141,7 +144,9 @@ export const useRoomStore = defineStore('room', {
         watch([() => project.cells, () => project.cols, () => project.rows, () => workspace.displayFontSpec], () => { schedule(); changed(); }),
         watch(() => workspace.sharedView, (v) => { if (v) view.push(v); }, { immediate: true }),
         watch(() => ({ ...workspace.ansiViewOrigin, ...workspace.ansiViewSize }), changed, { immediate: true }),
+        watch(() => this.hereNow, (here) => sessionSaw(this.session, here), { immediate: true }),
         watch(() => this.status, (status) => {
+          if (status === 'live') this.session.liveSince ??= Date.now();   // a reconnect keeps it
           if (status === 'live' && this.room.public && pictureAt === null) pictureTimer ??= setTimeout(picture, THUMBNAIL_FIRST_MS);
         }),
         () => { clearTimeout(timer); clearTimeout(pictureTimer); view.reset(); removeEventListener('pagehide', pagehide); },
@@ -222,7 +227,7 @@ export const useRoomStore = defineStore('room', {
       for (const stop of this._stops) stop();
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null,
+        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,
       });
@@ -291,7 +296,10 @@ export const useRoomStore = defineStore('room', {
 
     // The host's Remove: the watcher is put out of the room.
     remove(peer) {
-      if (this.role === 'host') this._host.remove(peer);
+      if (this.role !== 'host') return;
+      const watcher = this.watchers.find((w) => w.peer === peer);
+      if (watcher) sessionRemoved(this.session, watcher.sub, Date.now());
+      this._host.remove(peer);
     },
 
     // The host's Block: the account can't join any room of yours, and this one is put out.
@@ -309,7 +317,10 @@ export const useRoomStore = defineStore('room', {
         const shown = this.chat.find((m) => m.id === event.id);
         if (shown) Object.assign(shown, { deleted: true, text: '' });
       } else if (event.type === 'chat' || event.type === 'presence') {
-        if (!this.chat.some((m) => m.id === event.entry.id)) this.keep([...this.chat, this.chatRow(event.entry, event.claims)]);
+        if (!this.chat.some((m) => m.id === event.entry.id)) {
+          this.keep([...this.chat, this.chatRow(event.entry, event.claims)]);
+          if (this.role === 'host') this.counted(event);
+        }
       } else if (event.type === 'history') {
         const rows = event.messages.map((m) => (m.deleted ? { id: m.id, ts: m.ts, text: '', sub: null, name: null, host: false, mine: false, deleted: true } : this.chatRow(m.entry, m.claims)))
           .filter((r, at, all) => all.findIndex((o) => o.id === r.id) === at);   // an id twice in a page is shown once
@@ -340,6 +351,14 @@ export const useRoomStore = defineStore('room', {
         }
         this.stopAsking();
       }
+    },
+
+    // A host's session counts a message, or a person coming or going (the entry's pass has who).
+    counted({ type, entry }) {
+      const claims = decodePass(entry.pass);
+      if (type === 'chat') sessionSaid(this.session, claims.sub);
+      else if (entry.presence === 'joined') sessionJoined(this.session, claims, entry.ts);
+      else sessionLeft(this.session, claims.sub, entry.ts);
     },
 
     // A message as the list shows it. A host's own claims come from its pass (the host checked every
