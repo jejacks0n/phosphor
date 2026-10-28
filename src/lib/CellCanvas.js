@@ -173,7 +173,7 @@ export default class CellCanvas {
   #onRestored = null;
   #font = null;         // the font it draws in, or null for the display font (read when used)
   #advance = null;      // the font's character width in CSS px, measured by resize
-  #geom = null;         // { cols, rows, cw, ch, scale, zoom }
+  #geom = null;         // { cols, rows, cw, ch, scale, css }
   #fg = null;
   #bg = null;
   #ov = null;
@@ -206,7 +206,7 @@ export default class CellCanvas {
   // The cell size in CSS px, or null before the first resize.
   get metrics() {
     const g = this.#geom;
-    return g ? { cellWidth: g.cw / (g.scale / g.zoom), lineHeight: g.ch / (g.scale / g.zoom) } : null;
+    return g ? { cellWidth: g.cw / g.css, lineHeight: g.ch / g.css } : null;
   }
 
   // Whether text is anti-aliased; changing it draws every glyph again.
@@ -234,16 +234,18 @@ export default class CellCanvas {
     const font = this.#fontNow;
     if (this.#advance === null) this.#advance = measureAdvance(font);
     const scale = backingScale(cols * this.#advance, rows * font.size * font.lineHeight, dpr * zoom, this.#maxSide);
-    const { cw, ch } = cellGeometry(this.#advance, scale, scale < dpr * zoom, font);
+    const capped = scale < dpr * zoom;
+    const { cw, ch } = cellGeometry(this.#advance, scale, capped, font);
+    const css = capped ? scale / zoom : dpr; // device px per CSS px (dpr itself, exactly, when not capped: cellSize divides by it)
     const g = this.#geom;
-    if (g && g.cols === cols && g.rows === rows && g.cw === cw && g.ch === ch && g.scale === scale && g.zoom === zoom) return false;
+    if (g && g.cols === cols && g.rows === rows && g.cw === cw && g.ch === ch && g.scale === scale && g.css === css) return false;
     const sameCell = g && g.cw === cw && g.ch === ch && g.scale === scale; // the window's size moves on every frame of a viewport resize
 
     this.canvas.width = cols * cw;
     this.canvas.height = rows * ch;
-    this.canvas.style.width = `${cols * cw / (scale / zoom)}px`;
-    this.canvas.style.height = `${rows * ch / (scale / zoom)}px`;
-    this.#geom = { cols, rows, cw, ch, scale, zoom };
+    this.canvas.style.width = `${cols * cw / css}px`;
+    this.canvas.style.height = `${rows * ch / css}px`;
+    this.#geom = { cols, rows, cw, ch, scale, css };
     this.#fg = new Uint8Array(cols * rows * 4);
     this.#bg = new Uint8Array(cols * rows * 4);
     this.#ov = new Uint8Array(cols * rows * 4);

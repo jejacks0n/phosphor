@@ -256,8 +256,23 @@ test('at a zoom, the cell is the zoomed size: glyphs drawn at dpr x zoom, in CSS
   expect(c.metrics).toEqual(c.cellSize(2, 0.5));
   expect(parseFloat(c.canvas.style.width)).toBe(10 * c.metrics.cellWidth);
   expect(parseFloat(c.canvas.style.height)).toBe(4 * c.metrics.lineHeight);
+  const half = c.canvas.width;
+  expect(half).toBe(new CellCanvas(document.createElement('canvas')).cellSize(1).cellWidth * 10); // glyphs drawn at 1 device px per font px
+  c.resize(10, 4, 2);
+  expect(half).toBe(c.canvas.width / 2); // the zoom reaches the backing store
+  c.resize(10, 4, 2, 0.5);
   expect(c.resize(10, 4, 2, 0.5)).toBe(false);
   expect(c.resize(10, 4, 2, 1)).toBe(true); // the same size at another zoom is a change
+  c.destroy();
+});
+
+test('at any dpr and zoom, metrics is exactly cellSize (float drift would break comparing them)', async () => {
+  await createTestApp();
+  const c = new CellCanvas(document.createElement('canvas'));
+  for (const [dpr, zoom] of [[3, 0.3], [1.5, 0.7408], [2, 0.5], [1, 1], [1.25, 0.6]]) {
+    c.resize(10, 4, dpr, zoom);
+    expect(c.metrics, `dpr ${dpr} zoom ${zoom}`).toEqual(c.cellSize(dpr, zoom));
+  }
   c.destroy();
 });
 
