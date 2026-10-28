@@ -175,3 +175,13 @@ test('the tag is part of the box: it moves with it in the same frame, and holds 
   expect([t.left, t.top]).toEqual([s.left, s.top]);
   expect(tag().textContent).not.toMatch(/[\u2190-\u2199]/);   // no arrow: the box is right here
 });
+
+test('boxed false draws no host\'s box or tag, and still scrolls to the view while following', async () => {
+  await createTestApp();
+  const { scroll, seen } = mount({ hostView: { col: 40, row: 40, cols: 10, rows: 4 }, boxed: false });
+  await frames();
+  expect(host.querySelector('.host-view')).toBeNull();
+  expect(host.querySelector('.host-tag')).toBeNull();
+  await expect.poll(() => scroll.scrollTop).toBeGreaterThan(0);
+  expect(seen.lookArounds).toBe(0);
+});

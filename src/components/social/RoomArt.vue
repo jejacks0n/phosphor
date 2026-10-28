@@ -21,6 +21,7 @@ const props = defineProps({
   following: { type: Boolean, default: false },
   host: { type: String, default: null },       // the host's name, for the tag and its color
   zoom: { type: Number, default: 1 },          // the cell's size against the font's (the host's, never above 1)
+  boxed: { type: Boolean, default: true },     // the host's box and tag (false: just the art, scrolled to the view)
 });
 const emit = defineEmits(['look-around', 'follow']);
 
@@ -179,7 +180,7 @@ onBeforeUnmount(() => {
   >
     <div ref="sizer" class="sizer" :style="sizerStyle">
       <canvas ref="canvas" :key="fontKey"></canvas>
-      <div class="host-view" :style="boxStyle">
+      <div v-if="boxed" class="host-view" :style="boxStyle">
         <button
             v-if="host"
             ref="tag"

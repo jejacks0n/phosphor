@@ -3,6 +3,7 @@ import { ref, computed, watch, useId, onBeforeUnmount, nextTick, useTemplateRef 
 import { useRoomStore } from '@/store/RoomStore';
 import { removedCount } from '@/social/session';
 import EndRoomDialog from './EndRoomDialog.vue';
+import LobbyPicture from './LobbyPicture.vue';
 
 // The room you host, as a dashboard: its name and how long it's been live, Copy link and End room (which
 // asks first), the session's five numbers, its settings with the facts that can't change. One status
@@ -95,7 +96,7 @@ const save = () => {
     </dl>
 
     <div class="columns">
-      <!-- Later: the lobby picture goes here, for a listed room only, and takes `now`. -->
+      <LobbyPicture v-if="room.room.public" />
       <section class="settings">
         <h3>Room settings</h3>
         <form @submit.prevent="save">
