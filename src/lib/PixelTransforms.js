@@ -125,3 +125,30 @@ export function effectiveColor(hex, params, palette = null) {
 export function getEffectiveColor(hex, params, palette = null) {
   return effectiveColor(hex, params, palette).hex;
 }
+
+// The color picker's swatches: for each palette color, a stored color that displays as it under the
+// color adjustments, so every palette color can be painted with. The palette color itself when it
+// displays as itself (always, with the adjustments neutral); else the color nearest it, from a
+// grid of colors, that does; else (the adjustments can't make it) the palette color itself.
+// ponytail: an 8-step grid (33³ colors); a finer one if a narrow adjustment ever misses a color.
+export function paletteChoices(params, palette) {
+  const key = (hex) => hex.toLowerCase();
+  const choices = palette.map(p => (effectiveColor(p.hex, params, palette).hex === key(p.hex) ? p.hex : null));
+  if (choices.every(Boolean)) return choices;
+
+  const levels = Array.from({ length: 33 }, (_, i) => Math.min(255, i * 8));
+  const data = new Uint8ClampedArray(levels.length ** 3 * 4);
+  let o = 0;
+  for (const r of levels) for (const g of levels) for (const b of levels) data.set([r, g, b, 255], (o++) * 4);
+  const grid = data.slice();
+  applyTransforms(data, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
+
+  const best = new Map(); // palette hex -> { hex, d }: the grid color nearest it that displays as it
+  for (let i = 0; i < data.length; i += 4) {
+    const shown = key(nearestColor({ r: data[i], g: data[i + 1], b: data[i + 2] }, palette).hex);
+    const target = hex2rgb(shown);
+    const d = (grid[i] - target.r) ** 2 + (grid[i + 1] - target.g) ** 2 + (grid[i + 2] - target.b) ** 2;
+    if (!(best.get(shown)?.d <= d)) best.set(shown, { hex: rgb2hex({ r: grid[i], g: grid[i + 1], b: grid[i + 2] }), d });
+  }
+  return choices.map((hex, i) => hex ?? best.get(key(palette[i].hex))?.hex ?? palette[i].hex);
+}

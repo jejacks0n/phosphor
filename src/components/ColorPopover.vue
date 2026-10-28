@@ -2,15 +2,16 @@
 import { computed, onMounted, onBeforeUnmount, ref, useTemplateRef } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { getEffectiveColor } from '@/lib/PixelTransforms';
+import { getEffectiveColor, paletteChoices } from '@/lib/PixelTransforms';
 import { swatchSections, drawingColors } from '@/lib/ColorUtils';
 import { nearestInDirection } from '@/lib/spatialFocus';
 import { shortcut } from '@/lib/keyLabels';
 
 // The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
-// 24-bit. Swatches show how a color displays (adjusted, snapped) and store the color itself, so
-// you get exactly the look you clicked.
+// 24-bit. A palette swatch stores a color that displays as its palette color under the color
+// adjustments (paletteChoices), so every palette color can be painted with; other swatches show
+// how their color displays (adjusted, snapped) and store the color itself.
 const props = defineProps({
   slotName: { type: String, required: true }, // 'fg' | 'bg'
 });
@@ -26,7 +27,12 @@ const isNone = computed(() => (props.slotName === 'fg' ? ansiView.value && works
 // None means "leave what's underneath": a typing choice, so the foreground offers it only in the ANSI view.
 const offersNone = computed(() => props.slotName === 'bg' || ansiView.value);
 
-const sections = computed(() => swatchSections(project.quantize, project.activePalette));
+// The palette as the colors its swatches store.
+const sections = computed(() => {
+  const palette = project.activePalette ?? [];
+  const choices = paletteChoices(project, palette);
+  return swatchSections(project.quantize, palette.map((p, i) => ({ ...p, hex: choices[i] })));
+});
 // Colors edit cells use, and (folded away until asked for) the other colors in the paint.
 // Paint is read when the popover opens: the layer isn't reactive, and doesn't change while this is open.
 const inUse = computed(() => drawingColors(project.editCells));

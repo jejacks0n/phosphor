@@ -106,7 +106,7 @@ const charsetName = computed(() => {
       <RangeField v-if="store.quantize === 'count'" :setting="getSetting('colorCount')" v-model="store.colorCount"/>
       <div v-else-if="store.quantize === 'palette'" class="field">
         <label for="palette">Palette Colors</label>
-        <input type="text" id="palette" v-model.lazy="store.palette" placeholder="#FFFFFFF #000000">
+        <input type="text" id="palette" v-model.lazy="store.palette" placeholder="#FFFFFF #000000">
       </div>
 
       <div class="field">

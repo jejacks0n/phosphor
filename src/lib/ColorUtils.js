@@ -27,6 +27,18 @@ export function hex2rgb(hex) {
   return { r: p(m[1]), g: p(m[2]), b: p(m[3]) };
 }
 
+// The Color list as typed, as palette colors: hex colors (#RRGGBB or #RGB, the # optional) split by
+// spaces, commas or semicolons, each as '#RRGGBB' in the case it was typed. What isn't a color is left out.
+export function parseColorList(str) {
+  return str.split(/[\s,;]+/)
+    .map(s => /^#?([a-f\d]{6}|[a-f\d]{3})$/i.exec(s)?.[1])
+    .filter(Boolean)
+    .map((hex, c) => {
+      hex = '#' + (hex.length === 3 ? hex.replace(/./g, '$&$&') : hex);
+      return { ...hex2rgb(hex), c, hex };
+    });
+}
+
 // Convert r,g,b values to gray value [0-1]
 export function toGray(r, g, b) {
   return Math.round(r * 0.2126 + g * 0.7152 + b * 0.0722) / 255.0;

@@ -2,7 +2,7 @@
  * Orchestrates the image processing pipeline:
  */
 
-import { rgb2hex, hex2rgb, PALETTES } from './ColorUtils.js';
+import { rgb2hex, hex2rgb, parseColorList, PALETTES } from './ColorUtils.js';
 import Canvas, { fitRect, ctx2d } from './Canvas.js';
 import WebGLProcessor from './WebGLProcessor.js';
 import quantizeColors from './Quantizer.js';
@@ -31,10 +31,7 @@ export function getPaletteColors(params, canvasForCount = null) {
     case 'palette':
       if (!customPalettes.cache || customPalettes.str !== palette) {
         customPalettes.str = palette;
-        customPalettes.cache = palette.split(' ').filter(Boolean).map((hex, i) => {
-          const c = hex2rgb(hex);
-          return { r: c.r, g: c.g, b: c.b, c: i, hex };
-        });
+        customPalettes.cache = parseColorList(palette);
       }
       return customPalettes.cache;
     case 'cga': return PALETTES.cga;
