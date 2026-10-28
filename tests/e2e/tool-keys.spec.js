@@ -18,7 +18,7 @@ test('letters choose the tools the view offers, and the buttons say which', asyn
   await tab(page, 'PIXEL').click();
   await settled(page);
   await page.keyboard.press('z');
-  expect(await tool(page)).toBe('zoom'); // the PIXEL view's
+  expect(await tool(page)).toBe('zoom'); // on PIXEL as on ANSI
   await page.keyboard.press('p');
   expect(await tool(page)).toBe('pencil');
   await page.keyboard.press('t'); // Edit Mode is the ANSI view's

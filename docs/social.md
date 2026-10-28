@@ -117,9 +117,10 @@ watchers will see (your art in ANSI as it is now), and asks for:
 - **Most watchers**: from 1 to 24 (12 to begin with). Each watcher uses some of your upload speed,
   and 12 suits most home connections.
 
-**Go live** shares the art you have open; **Cancel** goes back to the lobby. You keep drawing in
-the ANSI tab as usual, and watchers see each change as you make it, with a pink box for where your
-view is. Open other art while you're live and watchers see that instead.
+**Go live** shares the art you have open; **Cancel** goes back to the lobby. You keep drawing as
+usual, and watchers see each change as you make it, with a box in your name color for where your
+view is: the view of whichever of PIXEL or ANSI you're on, at your zoom. SAUCE and SOCIAL keep the
+last one. Open other art while you're live and watchers see that instead.
 
 While you're live, **Room settings** changes the welcome message, Allow guests and Most watchers.
 Whether the room is public or private, and its password, stay as they were set.

@@ -29,7 +29,7 @@ const GROUPS = [
       [['I'], 'Color Picker'],
       [['W'], 'Magic Wand: select by color or character'],
       [['H'], 'Hand'],
-      [['Z'], 'Zoom (PIXEL view)'],
+      [['Z'], 'Zoom'],
       [['T', 'K'], 'Edit Mode (Esc puts the cursor away, so letters choose tools again)'],
       [['F'], 'Flip (ANSI view)'],
       [['M'], 'Select (ANSI view)'],
