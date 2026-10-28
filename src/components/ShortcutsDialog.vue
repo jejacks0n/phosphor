@@ -23,7 +23,7 @@ const GROUPS = [
     rows: [
       [['P'], 'Pencil'],
       [['B'], 'Brush'],
-      [['E'], 'Eraser (with a selection: erase it)'],
+      [['E'], 'Eraser (with Select and a selection: erase it)'],
       [['G'], 'Paint Bucket'],
       [['U'], 'Shapes'],
       [['I'], 'Color Picker'],

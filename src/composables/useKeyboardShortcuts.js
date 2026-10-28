@@ -144,9 +144,10 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (key === 'v') {
       // Left to the browser: its paste event carries the system clipboard's text (_handlePaste
       // decides what to paste). A browser that sends no paste event here pastes Phosphor's own block.
-      // The Text cursor only counts in Edit Mode (it lingers, unseen, after switching tools).
+      // The Text cursor only counts in Edit Mode (it lingers, unseen, after switching tools), and there
+      // it wins over a selection kept from another tool.
       const cursor = workspaceStore.activeTool === 'text' ? workspaceStore.textCursor : null;
-      const at = sel ? { col: sel.c0, row: sel.r0 } : cursor ?? workspaceStore.ansiViewOrigin;
+      const at = cursor ?? (sel ? { col: sel.c0, row: sel.r0 } : workspaceStore.ansiViewOrigin);
       clearTimeout(_pendingPaste?.timer);
       _pendingPaste = { at, timer: setTimeout(() => { _pendingPaste = null; _pasteBlock(at); }, 50) };
       return true;

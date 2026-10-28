@@ -167,8 +167,8 @@ scrolls the view, faster the further you go.
 **Copy and Cut** also put the selection's characters on your system clipboard as plain text, a line
 per row, so you can paste them into a terminal, a chat or a text editor. **Paste** (Cmd/Ctrl+V)
 pastes whatever you copied last: the block you copied in Phosphor, with its colors and layers; or,
-if you've copied text anywhere else since, that text, typed in at the Edit Mode cursor (or at the
-selection, or the top-left of the view). The **Paste** button always pastes the block you copied in
+if you've copied text anywhere else since, that text, typed in. Either lands at the Edit Mode
+cursor in Edit Mode, or else at the selection, or the top-left of the view. The **Paste** button always pastes the block you copied in
 Phosphor, whatever's on your system clipboard.
 
 **Stamp** (**S**, or **C** as in Moebius) leaves a copy of the selection where it is and floats the
@@ -234,8 +234,8 @@ A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the s
 Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Color Picker, **H** Hand,
 **Z** Zoom, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
 (Zoom is the pixel view's; Edit Mode, Flip and Select the ANSI view's). Each tool's button shows its key.
-In Edit Mode letters type, so press **Escape** to put the cursor away first; with a selection, E,
-S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.
+In Edit Mode letters type, so press **Escape** to put the cursor away first; with the Select tool
+and a selection, E, S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.
 
 ### Held keys
 
