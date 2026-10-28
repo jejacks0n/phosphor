@@ -211,6 +211,34 @@ export const selectionActions = {
     this.commitEdit();
   },
 
+  // Recolor what's selected (made: the wand's selection or a Select rect), on the layers lit, one
+  // undo step. In the ANSI view, colors { fg?, bg? } go to every cell: on Base, bg to its top pixel
+  // and fg to its bottom one (the ASCII styles show the pair's average, so fg to both); on Edit, as
+  // edit cells, their characters kept. In the pixel view, colors.fg goes to every pixel: the picture
+  // on Base, paint on Edit.
+  recolorSelection(made, view, { base, edit }, { fg, bg }) {
+    let units;
+    if (made.mask) {
+      const wand = wandIn(made, view, this.rows);
+      units = unitsOf(wand.mask, wand.width);
+    } else {
+      const cells = rectCells(made);
+      units = view === 'output' ? cells.map(({ col, row }) => ({ x: col, y: row })) : cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
+    }
+    if (view === 'output') {
+      if (edit) this.writeEditCells(units.map(({ x, y }) => ({ col: x, row: y, attrs: { ...(fg ? { fg } : {}), ...(bg ? { bg } : {}) } })), { clearPaint: true });
+      if (base) {
+        const ascii = this.renderStyle === 'ascii' || this.renderStyle === 'colorAscii';
+        const top = ascii ? fg : bg;
+        this.writeBase(units.flatMap(({ x, y }) => [top && { x, y: 2 * y, hex: top }, fg && { x, y: 2 * y + 1, hex: fg }].filter(Boolean)));
+      }
+    } else if (fg) {
+      if (base) this.writeBase(units.map(({ x, y }) => ({ x, y, hex: fg })));
+      if (edit) this.paintEditPixels(units.map(({ x, y }) => ({ x, y, ...hex2rgb(fg), alpha: 1 })));
+    }
+    this.commitEdit();
+  },
+
   // Lift, clear the source, drop dc/dr away (copied first, so an overlapping move keeps everything).
   // Returns where it landed (clipped), or null when it left the grid.
   moveSelection(rect, layers, dc, dr) {

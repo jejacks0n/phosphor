@@ -90,6 +90,10 @@ const shownChoice = (option) => {
 const wandHere = computed(() => !!workspace.wand && ['input', 'output'].includes(workspace.editorTab));
 const kept = computed(() => wandHere.value || (!!workspace.selection && ['input', 'output'].includes(workspace.editorTab)));
 const deselect = () => project.changeSelection((w) => { w.selection = null; w.wand = null; });
+// What Set FG, Set BG and Fill recolor: the active tool's own selection.
+const recolored = computed(() => (workspace.activeTool === 'wand' ? wandHere.value && workspace.wand : workspace.activeTool === 'select' && workspace.selection));
+const recolor = (colors) => project.recolorSelection(recolored.value, workspace.editorTab, workspace.selectLayers, colors);
+const asciiStyle = computed(() => ['ascii', 'colorAscii'].includes(project.renderStyle));
 
 // The pixel view's preview of the ANSI layer: edit cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'Overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
@@ -370,6 +374,14 @@ const selectionHasCharacters = computed(() => {
           </DropdownMenu>
           <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
         </template>
+      </div>
+      <div v-if="recolored" class="tool-setting-group">
+        <div class="divider"/>
+        <template v-if="workspace.editorTab === 'output'">
+          <button class="text" :title="workspace.editFgNone ? 'Set FG: your foreground color is None; choose one first' : 'Set FG: every cell selected takes your foreground color, on the layers lit'" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor })">Set FG</button>
+          <button v-if="!asciiStyle" class="text" :title="workspace.editBgNone ? 'Set BG: your background color is None; choose one first' : 'Set BG: every cell selected takes your background color, on the layers lit'" :disabled="workspace.editBgNone" @click="recolor({ bg: workspace.editBgColor })">Set BG</button>
+        </template>
+        <button v-else class="text" :title="workspace.editFgNone ? 'Fill: your foreground color is None; choose one first' : 'Fill: every pixel selected takes your foreground color, on the layers lit'" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor })">Fill</button>
       </div>
       <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>

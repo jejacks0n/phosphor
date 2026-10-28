@@ -232,6 +232,19 @@ cells and paint, **Base** the picture, which turns black, as the Eraser's Base d
 the ANSI view, just the selected pixels in the pixel view). The Layers are the Select tool's own
 setting, so they're lit the same on both tools.
 
+### Recoloring a selection
+
+With the Magic Wand's selection (the wand being the tool) or a Select rectangle (Select being the
+tool), the options row has **Set FG** and **Set BG** in the ANSI view: every selected cell takes
+your foreground or background color, on the **Layers** lit, in one undo step. On **Base** it's the
+picture's own colors: a cell's background is its top pixel and its foreground its bottom one, so
+Set BG recolors the top pixels and Set FG the bottom ones. Its characters stay as they are. On
+**Edit** the cells take the color as edit cells, keeping their characters. The ASCII styles show
+each character on black in its two pixels' average, so there's no Set BG, and Set FG on Base
+recolors both pixels. In the pixel view it's **Fill**: every selected pixel takes your foreground
+color, the picture's pixel on Base and paint on Edit. A color set to None can't be set; choose one
+first.
+
 ### Selections and undo
 
 Making, changing or dropping a selection is an undo step too: a wand click, a new rectangle, moving
