@@ -180,14 +180,23 @@ Phosphor, whatever's on your system clipboard.
 block on from there, so you can drag or nudge it away and stamp again. Each stamp is its own undo
 step. With a selection, **E** deletes it too, and **Enter** sets the block down, like Escape.
 
-**Flip horizontally** (a mirror), **Flip vertically** and **Rotate 90°** clockwise turn the
-selection in place, on the chosen layers. The characters turn with it: box lines (┌ → ┐, ╒ → ╖),
-half-blocks and quadrants (▀ → ▄, ▌ → ▐), arrows and triangles (→ ←, ▲ ▼), and brackets and
-slashes (( ), < >, / \). Letters, digits and shades stay as they are. A rotated block is as many
-cells wide as it was tall, from the same top-left corner (moved back onto the canvas if it would
-run off it), so it looks stretched: a cell is twice as tall as it's wide. The turned block floats
-like a moved one: drag or nudge it on and whatever it covered comes back, and the turns and moves
-together are one undo step.
+**Flip horizontally** (a mirror) and **Flip vertically** turn the selection in place, on the
+chosen layers. The characters turn with it: box lines (┌ → ┐, ╒ → ╕), half-blocks and quadrants
+(▀ → ▄, ▌ → ▐), arrows and triangles (→ ←, ▲ ▼), and brackets and slashes (( ), < >, / \).
+Letters, digits and shades stay as they are.
+
+**Rotate 90°** clockwise turns the picture: the paint and the base's pixels, by their real shape, so
+a square stays a square (two cells side by side, a cell being twice as tall as it's wide, turn into
+two cells side by side). The converter picks the base's characters again from the turned pixels,
+and a Half-block's ▄ goes with its paint. Characters can't turn that way (a cell would land across
+half of two), so Rotate is off while the selection has any on the chosen layers: typed or drawn
+characters on the edit layer, or characters pinned on the base by merging down. A block an odd
+number of cells wide turns into a row and a half; the half row left over keeps what was under it.
+The rotated block starts at the same top-left corner (moved back onto the canvas if it would run
+off it).
+
+A flipped or rotated block floats like a moved one: drag or nudge it on and whatever it covered
+comes back, and the turns and moves together are one undo step.
 
 In Edit Mode, dragging across cells switches to the Select tool and selects them, the way dragging
 selects text in a text editor; a plain click still just places the cursor. With a pen (the Apple

@@ -9,7 +9,7 @@ const ACTIONS = [
   'commitEdit', 'commitPending', 'commitSliders', 'completeAt', 'composite', 'copySelection',
   'deleteAt', 'deleteIn', 'deleteInWand', 'deleteSelection', 'dropEdits', 'editCell', 'editCellAt', 'ensureLayer',
   'eraseBase', 'eraseBasePixels', 'eraseEditPixels', 'exportFile', 'fitFor', 'flipBase', 'flipCell',
-  'flipPaint', 'floatSelection', 'gridRect', 'hasEditsIn', 'imageColorAt', 'keepMigratedLook',
+  'flipPaint', 'floatSelection', 'gridRect', 'hasCharacters', 'hasEditsIn', 'imageColorAt', 'keepMigratedLook',
   'loadProject', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeUp',
   'moveSelection', 'newDocument', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
   'pasteSelection', 'processingScale', 'pushEdit', 'randomizeSeed', 'rawColorAt', 'rebuildCells', 'recompose', 'redo', 'refreshCells', 'refreshChanged', 'rename',

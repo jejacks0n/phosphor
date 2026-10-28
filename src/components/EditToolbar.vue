@@ -72,7 +72,7 @@ const pasteSelection = () => {
 const stampSelection = () => {
   workspace.selection = project.stampSelection(workspace.selection, workspace.selectLayers) ?? workspace.selection;
 };
-// Flip across ('h') or down ('v'), or turn a quarter clockwise ('cw'): the selection follows the block.
+// Flip across ('h') or down ('v'), or rotate 90° clockwise ('cw'): the selection follows the block.
 const turnSelection = (op) => {
   workspace.selection = project.turnSelection(workspace.selection, workspace.selectLayers, op) ?? workspace.selection;
 };
@@ -153,6 +153,12 @@ function chooseBake(id) {
 const selectionHasEdits = computed(() => {
   void project.editCells; void project.hasPaint; void project.historyVersion; // re-check after edits
   return !!workspace.selection && project.hasEditsIn(workspace.selection);
+});
+
+// Rotate turns only pixels: not while the selection has characters on its layers.
+const selectionHasCharacters = computed(() => {
+  void project.editCells; void project.baseRecords; void project.historyVersion; // re-check after edits
+  return !!workspace.selection && project.hasCharacters(workspace.selection, workspace.selectLayers);
 });
 </script>
 
@@ -314,7 +320,7 @@ const selectionHasEdits = computed(() => {
           <button title="Stamp: leave a copy here and move the block on (S or C)" aria-label="Stamp" aria-keyshortcuts="S C" @click="stampSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 64H368A48 48 0 0 1 416 112V176C416 224 384 256 384 304H480A64 64 0 0 1 544 368V432H96V368A64 64 0 0 1 160 304H256C256 256 224 224 224 176V112A48 48 0 0 1 272 64ZM96 480H544V544H96Z"/></svg></button>
           <button title="Flip horizontally (mirror)" aria-label="Flip horizontally" @click="turnSelection('h')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 128V512H64Z"/><path fill-rule="evenodd" d="M368 128L576 512H368ZM416 320V464H494Z"/><path d="M304 64H336V576H304Z"/></svg></button>
           <button title="Flip vertically" aria-label="Flip vertically" @click="turnSelection('v')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M128 272H512L128 64Z"/><path fill-rule="evenodd" d="M128 368H512L128 576ZM320 416H176V494Z"/><path d="M64 304H576V336H64Z"/></svg></button>
-          <button title="Rotate 90° clockwise" aria-label="Rotate 90° clockwise" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
+          <button :title="selectionHasCharacters ? 'Rotate turns only pixels, and the selection has characters' : 'Rotate 90° clockwise'" aria-label="Rotate 90° clockwise" :disabled="selectionHasCharacters" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
           <div class="divider"/>
           <button class="text" title="Merge up: what the base layer shows here becomes edit cells" @click="project.mergeUp(workspace.selection)">Merge up</button>
           <button class="text" title="Merge down: what's drawn here goes into the base layer" :disabled="!selectionHasEdits" @click="openMerge(workspace.selection)">Merge down</button>

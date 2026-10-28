@@ -144,13 +144,15 @@ export const selectionActions = {
     return landed;
   },
 
-  // Flip what's selected (op 'h', 'v') or turn it a quarter clockwise ('cw'), on the chosen layers:
-  // its cells move, their characters turn with them (TurnChars), and its paint and base turn too. A
-  // turned block is h x w cells from the same top-left corner, moved back onto the grid where it
-  // would run off it. It floats, as a move does (floatSelection): turned while it floats, it's the
-  // same run, so what it covers comes back when it moves on, and the run is one undo step. Returns
-  // where it landed (clipped).
+  // Flip what's selected (op 'h', 'v') or rotate it 90° clockwise ('cw'), on the chosen layers. A
+  // flip moves its cells, their characters turning with them (TurnChars), and its paint and base flip
+  // too. Rotate turns only pixels, by the picture's shape (rotateBlock), and does nothing while the
+  // selection has characters (hasCharacters); the turned block starts at the same top-left corner,
+  // moved back onto the grid where it would run off it. It floats, as a move does (floatSelection):
+  // turned while it floats, it's the same run, so what it covers comes back when it moves on, and the
+  // run is one undo step. Returns where it landed (clipped).
   turnSelection(rect, layers, op) {
+    if (op === 'cw' && this.hasCharacters(rect, layers)) return rect;
     this.commitPending();
     const run = this._float;
     const sameRun = run && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
@@ -178,6 +180,15 @@ export const selectionActions = {
       dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version,
     };
     return landed;
+  },
+
+  // Whether what's in rect, on the chosen layers, has characters Rotate can't turn: anything on the
+  // edit layer but a Half-block's ▄, or a pin on the base but ▄ (both only show their cell's pixels).
+  hasCharacters(rect, { base, edit }) {
+    return rectCells(rect).some(({ col, row }) => {
+      const key = cellKey(col, row), entry = edit && this.editCells.get(key), pin = base && this.baseRecords.pins.get(key);
+      return (entry && !isPaintBlock(entry)) || (pin && pin !== '▄');
+    });
   },
 
   // Delete in the Magic Wand's selection (workspace.wand), in `view` (the ANSI view's cells or the
@@ -224,6 +235,7 @@ export const selectionActions = {
   // A character pasted over half of a wide character turns its other half into a space, as typing
   // does; not in the rect a move just vacated (the cells there still show what was moved).
   pasteAt(block, col, row, vacated = null) {
+    if (block.px % 2) block = withHalfRowUnder(this, block, col, row);
     if (block.cells) {
       const written = block.cells.flatMap((entry, i) => (entry ? [{ col: col + (i % block.w), row: row + Math.floor(i / block.w), char: entry.char }] : []));
       const inVacated = ({ col: c, row: r }) => vacated && c >= vacated.c0 && c <= vacated.c1 && r >= vacated.r0 && r <= vacated.r1;
@@ -280,12 +292,14 @@ export const selectionActions = {
   },
 };
 
-// A copied block (copySelection) flipped or turned (turnSelection's op): every cell's entry and pin
+// A copied block (copySelection) flipped (turnSelection's op 'h' or 'v'): every cell's entry and pin
 // from the cell that lands there, their characters turned, and the paint and base pictures with them.
+// Rotated ('cw'): rotateBlock.
 function turnBlock(block, op) {
+  if (op === 'cw') return rotateBlock(block);
   const { w, h } = block;
-  const out = op === 'cw' ? { w: h, h: w } : { w, h };
-  const source = (x, y) => (op === 'h' ? [w - 1 - x, y] : op === 'v' ? [x, h - 1 - y] : [y, h - 1 - x]);
+  const out = { w, h, px: block.px };
+  const source = (x, y) => (op === 'h' ? [w - 1 - x, y] : [x, h - 1 - y]);
   const turned = (list, turn) => {
     const cells = Array.from({ length: out.w * out.h }, (_, i) => {
       const [x, y] = source(i % out.w, Math.floor(i / out.w));
@@ -309,16 +323,79 @@ function turnBlock(block, op) {
   return out;
 }
 
-// A block's picture flipped or turned; turned, it's stretched to fit the turned cells (a cell is twice
-// as tall as it's wide, and keeps its shape).
+// A block's picture flipped ('h', 'v') or rotated 90° clockwise ('cw'), pixel for pixel.
 function turnCanvas(canvas, op) {
   const out = document.createElement('canvas');
-  [out.width, out.height] = op === 'cw' ? [canvas.height / 2, canvas.width * 2] : [canvas.width, canvas.height];
+  [out.width, out.height] = op === 'cw' ? [canvas.height, canvas.width] : [canvas.width, canvas.height];
   const ctx = ctx2d(out);
   ctx.imageSmoothingEnabled = false;
   if (op === 'h') ctx.setTransform(-1, 0, 0, 1, out.width, 0);
   if (op === 'v') ctx.setTransform(1, 0, 0, -1, 0, out.height);
   if (op === 'cw') ctx.setTransform(0, 1, -1, 0, out.width, 0);
-  ctx.drawImage(canvas, 0, 0, op === 'cw' ? out.height : out.width, op === 'cw' ? out.width : out.height);
+  ctx.drawImage(canvas, 0, 0);
+  return out;
+}
+
+// A block rotated 90° clockwise by its picture's shape: W x P grid pixels (a cell is one wide and two
+// tall; P is 2h, or one less for a block rotated from an odd width) turn into P x W, so the block is P
+// cells across and W pixel rows down. When W is odd its last row's bottom half isn't the block's
+// (px marks it; pasteAt fills it from what's under). Only pixels turn (no characters: hasCharacters);
+// a Half-block's ▄ (an edit cell or a pin) goes to each cell showing a pixel from one of its cells,
+// an edit cell's only where that cell has paint (it's there to show it).
+function rotateBlock(block) {
+  const W = block.w, P = block.px ?? 2 * block.h;
+  const out = { w: P, h: Math.ceil(W / 2), px: W };
+  // Turned pixel (X, Y) is source pixel (Y, P - 1 - X): a turned cell's pixels come from one source column.
+  const from = (list) => Array.from({ length: out.w * out.h }, (_, i) => {
+    const col = i % out.w, row = Math.floor(i / out.w), y = P - 1 - col;
+    return [2 * row, 2 * row + 1].filter((x) => x < W).map((x) => list[Math.floor(y / 2) * W + x]).find(Boolean) ?? null;
+  });
+  if (block.paint) out.paint = turnCanvas(block.paint, 'cw');
+  if (block.cells) {
+    const painted = out.paint && paintedCells(out.paint, out.w, out.h);
+    out.cells = from(block.cells).map((entry, i) => (entry && painted?.[i] ? entry : null));
+  }
+  if (block.base) {
+    const { pixels, scale, colors, pins } = block.base;
+    out.base = { pixels: turnCanvas(pixels, 'cw'), scale, colors: turnCanvas(colors, 'cw'), pins: from(pins) };
+  }
+  return out;
+}
+
+// Which of a block picture's w x h cells have any paint.
+function paintedCells(canvas, w, h) {
+  const k = canvas.width / w, out = new Array(w * h).fill(false);
+  const { data } = ctx2d(canvas).getImageData(0, 0, canvas.width, canvas.height);
+  for (let i = 3; i < data.length; i += 4) {
+    if (!data[i]) continue;
+    const p = (i - 3) / 4, x = p % canvas.width, y = (p - x) / canvas.width;
+    out[Math.floor(y / (2 * k)) * w + Math.floor(x / k)] = true;
+  }
+  return out;
+}
+
+// A rotated block an odd number of pixel rows tall (rotateBlock), whole cells for pasting at (col,
+// row): the bottom half of its last row takes what's there now (pixels, edit cells, pins), so
+// pasting keeps it as it was.
+function withHalfRowUnder(project, block, col, row) {
+  const r = row + block.h - 1, last = { c0: col, r0: r, c1: col + block.w - 1, r1: r };
+  const fill = (canvas, under) => {
+    const k = canvas.width / block.w, out = document.createElement('canvas');
+    out.width = canvas.width;
+    out.height = canvas.height + k;
+    const ctx = ctx2d(out);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(under, 0, under.height / 2, under.width, under.height / 2, 0, canvas.height, out.width, k);
+    ctx.drawImage(canvas, 0, 0);
+    return out;
+  };
+  const keep = (list, at) => list.map((v, i) => v ?? (Math.floor(i / block.w) === block.h - 1 ? at(cellKey(col + (i % block.w), r)) ?? null : null));
+  const out = { ...block, px: 2 * block.h };
+  if (block.cells) out.cells = keep(block.cells, (key) => project.editCells.get(key));
+  if (block.paint) out.paint = fill(block.paint, project.paintLayer.copyCells(last));
+  if (block.base) {
+    const { pixels, colors, pins } = block.base;
+    out.base = { ...block.base, pixels: fill(pixels, project.basePixelsOf(last)), colors: fill(colors, project.baseColorsOf(last)), pins: keep(pins, (key) => project.baseRecords.pins.get(key)) };
+  }
   return out;
 }
