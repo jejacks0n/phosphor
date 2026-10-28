@@ -137,3 +137,21 @@ test('a mute heard from the room mid-room: the host drops that watcher\'s chat f
   await host.waitForTimeout(500);   // time for a message that wasn't dropped to arrive
   for (const page of [host, watcher]) await expect(panel(page).getByRole('log')).not.toContainText('after');
 });
+
+test('a muted watcher is told until when in place of the box, without a reload; the host still chats', async ({ page: host, context }) => {
+  const { room, watcher } = await inRoom(host, context);
+  await say(watcher, 'before');
+  await expect(messages(host)).toHaveCount(1);
+  await expect(box(watcher)).toBeVisible();
+
+  const until = Date.now() + 3_600_000;
+  watcher.server.mutedUntil = until;
+  room.mute('u_2', until);
+  const foot = panel(watcher).getByRole('status').filter({ hasText: "You're muted until" });
+  await expect(foot).toHaveText(/^You're muted until [^.]+\.$/);
+  await expect(box(watcher)).toHaveCount(0);
+
+  await expect(box(host)).toBeVisible();
+  await say(host, 'still here');
+  await expect(messages(watcher)).toHaveCount(2);
+});

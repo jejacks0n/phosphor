@@ -350,7 +350,7 @@ export async function watcherPage(context, room, { me = null, blocked = [], ...s
     id: ROOM_ID, name: 'neon harbor', host: 'ansi-fan', count: 0, max: 12, allowGuests: true, signal: null,
     liveSince: Date.now(), thumbnail: null, blockedInside: false,
   }];
-  await fakeServer(watcher, { me, room, rooms, blocked, ...serverOptions });
+  watcher.server = await fakeServer(watcher, { me, room, rooms, blocked, ...serverOptions });   // to change what it says later
   return watcher;
 }
 
