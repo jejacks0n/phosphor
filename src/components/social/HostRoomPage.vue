@@ -1,19 +1,16 @@
 <script setup>
-import { ref, computed, watch, useId, useTemplateRef, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, useId, onBeforeUnmount } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { charRowsOf } from '@/lib/Cells';
 import { fontOnWire } from '@/social/wire';
-import { nameColor } from '@/social/names';
-import DropdownMenu from '@/components/DropdownMenu.vue';
-import ModalDialog from '@/components/ModalDialog.vue';
 import RoomArt from './RoomArt.vue';
 
-// The room you host: its link, your art as watchers see it, who's watching (a watcher counts once
-// connected), its settings, End room. One status region, always there, says Reconnecting… (seen) and
-// Copied or Saved (which their buttons show).
+// The room you host: its link, your art as watchers see it, how many are watching (a watcher counts once
+// connected; who they are is in the chat panel), its settings, End room. One status region, always there,
+// says Reconnecting… (seen) and Copied or Saved (which their buttons show).
 const room = useRoomStore(), project = useProjectStore(), workspace = useWorkspaceStore();
 
 const art = computed(() => (project.cells.length
@@ -55,22 +52,6 @@ for (const key of ['welcome', 'allowGuests', 'max']) {
 }
 const countId = useId();
 
-// A member's ⋯ menu: Remove for this session, or Block from my rooms, which asks first. Cancel (or Escape)
-// puts focus back on the ⋯ button the menu came from, or on the Watching heading when that member has left.
-const blocking = ref(null);   // { watcher, trigger }
-const askToBlock = (watcher, event) => {
-  blocking.value = { watcher, trigger: event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger') };
-};
-const heading = useTemplateRef('heading');
-const cancelBlock = () => {
-  (blocking.value.trigger.isConnected ? blocking.value.trigger : heading.value).focus();
-  blocking.value = null;
-};
-const confirmBlock = async () => {
-  const { watcher } = blocking.value;
-  blocking.value = null;
-  await room.block(watcher);
-};
 const save = () => {
   room.changeSettings({ welcome: draft.welcome, allowGuests: draft.allowGuests, max: draft.max });
   say('Saved');
@@ -96,21 +77,6 @@ const save = () => {
     </section>
 
     <aside class="side">
-      <h3 ref="heading" class="watching" tabindex="-1">Watching</h3>
-      <ul aria-label="Watching">
-        <li v-for="watcher in room.watchers" :key="watcher.peer">
-          <span class="swatch" :style="{ background: nameColor(watcher.name) }"></span>
-          <span class="name">{{ watcher.name }}</span>
-          <span v-if="watcher.guest" class="tag">guest</span>
-          <span class="what">{{ !watcher.connected ? 'connecting…' : watcher.following ? 'following' : 'looking around' }}</span>
-          <DropdownMenu v-if="!watcher.guest" :label="`More for ${watcher.name}`">
-            <template #trigger><span aria-hidden="true">⋯</span></template>
-            <button @click="room.remove(watcher.peer)">Remove for this session</button>
-            <button @click="askToBlock(watcher, $event)">Block from my rooms</button>
-          </DropdownMenu>
-        </li>
-      </ul>
-
       <details :open="draft.open" @toggle="draft.open = $event.target.open">
         <summary>Room settings</summary>
         <form @submit.prevent="save">
@@ -124,14 +90,6 @@ const save = () => {
 
       <button class="end danger" @click="room.endRoom()">End room</button>
     </aside>
-
-    <ModalDialog v-if="blocking" :title="`Block ${blocking.watcher.name}?`"
-        sub="They can't join any room you host, and they leave this one now. Unblock them from Account." @cancel="cancelBlock">
-      <div class="actions">
-        <button class="danger" @click="confirmBlock">Block</button>
-        <button autofocus @click="cancelBlock">Cancel</button>
-      </div>
-    </ModalDialog>
   </div>
 </template>
 
@@ -216,52 +174,6 @@ aside.side {
   border-left: 1px solid var(--border);
   background: var(--surface-0);
 }
-h3.watching {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: normal;
-  text-transform: none;
-  color: var(--text-dim);
-}
-ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 0;
-}
-span.swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-span.name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--text);
-}
-span.tag {
-  padding: 1px 6px;
-  border-radius: 10px;
-  font-size: 10px;
-  color: var(--text-muted);
-  border: 1px solid var(--border-light);
-}
-span.what {
-  color: var(--text-faint);
-  white-space: nowrap;
-}
-
 summary {
   cursor: pointer;
   font-weight: 500;
@@ -297,10 +209,5 @@ p.count {
 }
 button.end {
   margin-top: auto;
-}
-div.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 </style>

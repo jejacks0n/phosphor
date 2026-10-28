@@ -1,9 +1,11 @@
 // The chat panel at the right of the whole app while you're in a room: the host's page and members' pages
 // in one fake Room, talking through the real peers. The welcome pinned, sending (Enter, Shift+Enter, 300
 // characters, one a second), who can send, folding to the rail, earlier messages on scrolling up, someone
-// you blocked folded, and the host's Delete, Remove and Block.
+// you blocked folded, and the host's Delete, Edit welcome and room menu, and who is here with Remove and Block.
 import { test, expect, tab, store } from './support.js';
 import { fakeRoom, goLive, watcherPage, joinFromCard, member, shown, ROOM_ID } from './social-support.js';
+
+test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
 const wren = member({ id: 'u_2', username: 'pixel_wren', name: 'pixel_wren' });
 const reaper = member({ id: 'u_3', username: 'grim_reaper', name: 'grim_reaper' });
@@ -17,6 +19,13 @@ const box = (page) => panel(page).getByRole('textbox', { name: 'Message' });
 async function say(page, text) {
   await box(page).fill(text);
   await box(page).press('Enter');
+}
+
+// Who is here, in the host's panel: the "N here" button opens the list (it stays as it was while the room lasts).
+const here = (host) => panel(host).getByRole('button', { name: /^\d+ here$/ });
+const watching = (host) => panel(host).getByRole('list', { name: 'Who is here' }).getByRole('listitem');
+async function openPeople(host) {
+  if (await here(host).getAttribute('aria-expanded') === 'false') await here(host).click();
 }
 
 // The host live (welcome pinned), and a watcher who has joined as `me` (a guest if none).
@@ -149,7 +158,8 @@ async function signInWithPassword(watcher) {
 async function backAsWren(host, watcher) {
   await expect(shown(watcher, 'watch-room')).toBeVisible();
   await expect(box(watcher)).toBeVisible();
-  const row = shown(host, 'host-room').getByRole('list', { name: 'Watching' }).getByRole('listitem');
+  await openPeople(host);
+  const row = watching(host);
   await expect(row).toHaveText([/pixel_wren\s*following/]);
   await expect(row.getByText('guest')).toHaveCount(0);
   await say(watcher, 'it is me');
@@ -345,12 +355,12 @@ test('a watcher who joins after the host\'s Delete sees "Message deleted by the 
   await expect(messages(late).first()).not.toContainText('oops');
 });
 
-const watching = (host) => shown(host, 'host-room').getByRole('list', { name: 'Watching' }).getByRole('listitem');
 const more = (host, name = 'pixel_wren') => watching(host).getByRole('button', { name: `More for ${name}` });
 const blockDialog = (host) => host.getByRole('dialog', { name: 'Block pixel_wren?' });
 
 test('Remove for this session: the watcher is in the lobby with "The host removed you" and the host\'s list is empty', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
+  await openPeople(host);
   await expect(watching(host)).toHaveCount(1);
   await more(host).click();
   await host.getByRole('button', { name: 'Remove for this session' }).click();
@@ -363,6 +373,7 @@ test('Remove for this session: the watcher is in the lobby with "The host remove
 
 test('Block from my rooms asks first, then blocks and removes', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
+  await openPeople(host);
   await more(host).click();
   await expect(host.getByRole('button', { name: 'Block from my rooms' })).toBeVisible();
   await host.getByRole('button', { name: 'Block from my rooms' }).click();
@@ -383,6 +394,7 @@ test('Block from my rooms asks first, then blocks and removes', async ({ page: h
 
 test('Cancel and Escape on the Block box leave everything as it was, with focus back on the \u22ef button', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
+  await openPeople(host);
   for (const dismiss of [
     () => blockDialog(host).getByRole('button', { name: 'Cancel' }).click(),
     () => host.keyboard.press('Escape'),
@@ -404,6 +416,7 @@ test('a guest\'s row has no \u22ef; a member\'s has one', async ({ page: host, c
   const guest = await watcherPage(context, room);
   await guest.goto('/');
   await joinFromCard(guest);
+  await openPeople(host);
   await expect(watching(host)).toHaveCount(2);
   await expect(more(host)).toHaveCount(1);
   await expect(watching(host).filter({ has: host.locator('span.tag') }).getByRole('button')).toHaveCount(0);
@@ -412,6 +425,7 @@ test('a guest\'s row has no \u22ef; a member\'s has one', async ({ page: host, c
 test('a failed block leaves the watcher in the list and shows the notice', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
   server.route('POST /api/blocks', () => [500, { code: 'SERVER_ERROR' }]);
+  await openPeople(host);
   await more(host).click();
   await host.getByRole('button', { name: 'Block from my rooms' }).click();
   await blockDialog(host).getByRole('button', { name: 'Block', exact: true }).click();
@@ -423,6 +437,7 @@ test('a failed block leaves the watcher in the list and shows the notice', async
 
 // The watcher is in the room and the host's Block box is open on them; then they leave.
 async function leaveWhileAsked(host, watcher) {
+  await openPeople(host);
   await more(host).click();
   await host.getByRole('button', { name: 'Block from my rooms' }).click();
   await expect(blockDialog(host)).toBeVisible();
@@ -431,19 +446,20 @@ async function leaveWhileAsked(host, watcher) {
   await expect(blockDialog(host)).toBeVisible();   // still asking
 }
 
-test('the watcher leaves while the Block box is open: Cancel and Escape put focus on the Watching heading', async ({ page: host, context }) => {
+test('the watcher leaves while the Block box is open: Cancel and Escape put focus on the "N here" button', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
   for (const dismiss of [
     () => blockDialog(host).getByRole('button', { name: 'Cancel' }).click(),
     () => host.keyboard.press('Escape'),
   ]) {
+    await openPeople(host);
     if (await watching(host).count() === 0) {   // second time round: back in the room
       await joinFromCard(watcher);
     }
     await leaveWhileAsked(host, watcher);
     await dismiss();
     await expect(blockDialog(host)).toHaveCount(0);
-    await expect(host.getByRole('heading', { name: 'Watching' })).toBeFocused();
+    await expect(here(host)).toBeFocused();
   }
   expect(server.sent('POST', '/api/blocks')).toHaveLength(0);
 });
@@ -455,4 +471,109 @@ test('the watcher leaves while the Block box is open: Block still blocks the acc
   await expect.poll(() => server.sent('POST', '/api/blocks')).toHaveLength(1);
   expect(server.sent('POST', '/api/blocks')[0].body).toEqual({ username: 'pixel_wren' });
   await expect(blockDialog(host)).toHaveCount(0);
+});
+
+test('the host\'s panel says who is here, folded; opened it lists each with guest, following or looking around, and a member\'s ⋯', async ({ page: host, context }) => {
+  const { room, watcher } = await inRoom(host, context, { me: wren });
+  await expect(here(host)).toHaveText('1 here ▾');
+  await expect(here(host)).toHaveAttribute('aria-expanded', 'false');
+  await expect(panel(host).getByRole('list', { name: 'Who is here' })).toHaveCount(0);
+
+  const guest = await watcherPage(context, room);
+  await guest.goto('/');
+  await joinFromCard(guest);
+  await expect(here(host)).toHaveText('2 here ▾');
+  await here(host).click();
+  await expect(here(host)).toHaveAttribute('aria-expanded', 'true');
+  await expect(watching(host)).toHaveText([/pixel_wren\s*following/, /quiet-amber-fox\s*guest\s*following/]);
+  await expect(more(host)).toHaveCount(1);
+  await expect(watching(host).locator('.swatch')).toHaveCount(0);   // no dots or avatars
+
+  // Folded or open is kept as it was while the room lasts, across tabs.
+  await tab(host, 'ANSI').click();
+  await expect(here(host)).toHaveAttribute('aria-expanded', 'true');
+  await here(host).click();
+  await expect(here(host)).toHaveAttribute('aria-expanded', 'false');
+  await expect(watching(host)).toHaveCount(0);
+  await watcher.getByRole('button', { name: 'Leave' }).click();
+  await expect(here(host)).toHaveText('1 here ▾');
+});
+
+test('the room menu: Copy link, Edit welcome saves the pinned welcome for everyone, Settings and stats opens the SOCIAL tab, End room asks first', async ({ page: host, context }) => {
+  const { watcher } = await inRoom(host, context, { me: wren });
+  const menu = panel(host).getByRole('button', { name: 'Room', exact: true });
+  const item = (name) => host.locator('.dropdown-content').getByRole('button', { name, exact: true });
+  await tab(host, 'ANSI').click();
+  await menu.click();
+  await expect(host.locator('.dropdown-content button')).toHaveText(['Copy link', 'Edit welcome', 'Settings and stats', 'End room']);
+
+  await item('Copy link').click();
+  await expect.poll(() => host.evaluate(() => navigator.clipboard.readText())).toContain(`?room=${ROOM_ID}`);
+
+  await menu.click();
+  await item('Edit welcome').click();
+  const edit = host.getByRole('dialog', { name: 'Edit welcome' });
+  await expect(edit.getByLabel('Welcome message')).toBeFocused();
+  await edit.getByLabel('Welcome message').fill('draw something loud');
+  await edit.getByRole('button', { name: 'Cancel' }).click();
+  await expect(edit).toHaveCount(0);
+  await expect(menu).toBeFocused();
+  await expect(panel(watcher).getByText('draw something loud')).toHaveCount(0);   // Cancel changed nothing
+
+  await menu.click();
+  await item('Edit welcome').click();
+  await edit.getByLabel('Welcome message').fill('draw something loud');
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(edit).toHaveCount(0);
+  await expect(panel(host).getByText('draw something loud')).toBeVisible();
+  await expect(panel(watcher).getByText('draw something loud')).toBeVisible();
+
+  await menu.click();
+  await item('Settings and stats').click();
+  expect(await store(host, 'workspace', (w) => w.editorTab)).toBe('social');
+  await expect(shown(host, 'host-room')).toBeVisible();
+
+  // End room asks first: Cancel (or Escape) leaves it live; End room ends it.
+  await menu.click();
+  await item('End room').click();
+  const ask = host.getByRole('dialog', { name: 'End the room?' });
+  await expect(ask.getByText('Everyone watching leaves, and the chat is gone.')).toBeVisible();
+  await expect(ask.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect(ask).toHaveCount(0);
+  await expect(menu).toBeFocused();
+  await menu.click();
+  await item('End room').click();
+  await host.keyboard.press('Escape');
+  await expect(ask).toHaveCount(0);
+  expect(await store(host, 'room', (r) => r.role)).toBe('host');
+  await expect(shown(watcher, 'watch-room')).toBeVisible();
+
+  await menu.click();
+  await item('End room').click();
+  await ask.getByRole('button', { name: 'End room' }).click();
+  expect(await store(host, 'room', (r) => r.role)).toBe(null);
+  await expect(shown(watcher, 'lobby')).toBeVisible();
+  await expect(watcher.getByText('The host ended the room')).toBeVisible();
+});
+
+test('the pinned welcome\'s Edit opens the same dialog', async ({ page: host, context }) => {
+  await inRoom(host, context, { welcome: 'be kind, draw big', me: wren });
+  const edit = host.getByRole('dialog', { name: 'Edit welcome' });
+  await panel(host).getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(edit.getByLabel('Welcome message')).toHaveValue('be kind, draw big');
+  await edit.getByLabel('Welcome message').fill('');
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(edit).toHaveCount(0);
+  await expect(panel(host).getByText('Pinned, from the host')).toHaveCount(0);   // an empty welcome isn't pinned
+  await expect(panel(host).getByRole('button', { name: 'Room', exact: true })).toBeFocused();   // the link went, so the menu has focus
+});
+
+test('a watcher\'s panel has no room menu, no people list and no Edit', async ({ page: host, context }) => {
+  const { watcher } = await inRoom(host, context, { welcome: 'be kind, draw big', me: wren });
+  await expect(panel(watcher).getByText('be kind, draw big')).toBeVisible();
+  await expect(panel(watcher).getByRole('button', { name: 'Room', exact: true })).toHaveCount(0);
+  await expect(panel(watcher).getByRole('button', { name: /here$/ })).toHaveCount(0);
+  await expect(panel(watcher).getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
+  await expect(panel(host).getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
 });

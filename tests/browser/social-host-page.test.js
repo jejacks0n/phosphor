@@ -1,5 +1,5 @@
-// The host's page (HostRoomPage.vue) with the room store as hosting leaves it: how many are watching
-// and how each is, Copy link, Room settings' Save, and one status region that's always there.
+// The host's page (HostRoomPage.vue) with the room store as hosting leaves it: how many are watching,
+// Copy link, Room settings' Save, and one status region that's always there.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -33,10 +33,10 @@ async function mount(state) {
 const button = (name) => [...host.querySelectorAll('button')].find((b) => b.textContent === name);
 const watcher = (peer, name, fields) => ({ peer, sub: `u_${peer}`, name, guest: false, following: true, connected: true, ...fields });
 
-test('only connected watchers count as watching; one still connecting says so', async () => {
+test('only connected watchers count as watching; who they are is in the chat panel, not here', async () => {
   await mount({ watchers: [watcher('p1', 'tin-lantern-owl'), watcher('p2', 'quiet-amber-fox', { connected: false })] });
   expect(host.querySelector('.count').textContent).toBe('1 watching');
-  expect([...host.querySelectorAll('li .what')].map((el) => el.textContent)).toEqual(['following', 'connecting…']);
+  expect(host.querySelector('li')).toBe(null);
 });
 
 test('Copy link that the browser refuses says it couldn\'t copy', async () => {

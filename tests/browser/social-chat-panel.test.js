@@ -1,5 +1,6 @@
 // The chat panel (ChatPanel.vue) with the room store as a room leaves it: a new message draws its own row
-// only, a deletion draws that row again, and the host's Delete buttons say whose message they are for.
+// only, a deletion draws that row again, the host's Delete buttons say whose message they are for, and the
+// host's "N here" counts those connected and lists everyone.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -91,4 +92,73 @@ test('the host has no Delete for who came and went', async () => {
   room.chat = [...room.chat, row(1, { text: '', presence: 'joined' })];
   await nextTick();
   expect(host.querySelectorAll('button.delete')).toHaveLength(1);
+});
+
+const watcher = (peer, name, fields) => ({ peer, sub: `u_${peer}`, name, guest: false, following: true, connected: true, ...fields });
+
+test('only connected watchers count in N here; one still connecting is listed, saying so', async () => {
+  const room = await mount('host', 0);
+  room.watchers = [watcher('p1', 'tin-lantern-owl'), watcher('p2', 'quiet-amber-fox', { connected: false }), watcher('p3', 'wren', { guest: true, following: false })];
+  await nextTick();
+  const toggle = host.querySelector('button.here');
+  expect(toggle.textContent.replace(/\s+/g, ' ').trim()).toBe('2 here ▾');
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');   // folded to begin with
+  expect(host.querySelector('.people ul')).toBe(null);
+
+  toggle.click();
+  await nextTick();
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  const rows = [...host.querySelectorAll('.people li')];
+  expect(rows.map((li) => li.querySelector('.name').textContent)).toEqual(['tin-lantern-owl', 'quiet-amber-fox', 'wren']);
+  expect(rows.map((li) => li.querySelector('.what').textContent)).toEqual(['following', 'connecting…', 'looking around']);
+  expect(rows.map((li) => !!li.querySelector('.tag'))).toEqual([false, false, true]);
+  expect(rows.map((li) => !!li.querySelector('button'))).toEqual([true, true, false]);   // a guest has no ⋯
+  expect(rows[0].querySelector('.name').style.color).not.toBe('');
+  expect(host.querySelector('.swatch')).toBe(null);   // no dots or avatars
+
+  room.close();   // the fold is remembered while the room lasts, not after
+  expect(room.peopleOpen).toBe(false);
+});
+
+test('a watcher\'s panel has no people list and no room menu; the host\'s has both', async () => {
+  await mount('watch', 0);
+  expect(host.querySelector('.people')).toBe(null);
+  expect(host.querySelector('.room-menu')).toBe(null);
+  app.unmount();
+  host.remove();
+  await mount('host', 0);
+  expect(host.querySelector('.people')).not.toBe(null);
+  expect(host.querySelector('.room-menu')).not.toBe(null);
+});
+
+test('End room asks first: Cancel keeps the room, End room ends it', async () => {
+  const room = await mount('host', 0);
+  const end = vi.spyOn(room, 'endRoom').mockImplementation(() => {});
+  const inMenu = (name) => [...host.querySelectorAll('.dropdown-content button')].find((b) => b.textContent === name);
+  const menuItem = async (name) => {
+    // Opened again if the page closed it meanwhile (a resize does); polled, so the click comes a while after the menu is drawn
+    // (Vue skips a click made in the same millisecond).
+    await vi.waitFor(() => {
+      if (!host.querySelector('.dropdown-content')) host.querySelector('.room-menu .dropdown-trigger').click();
+      expect(inMenu(name)).toBeTruthy();
+    });
+    inMenu(name).click();
+    await nextTick();
+  };
+  const dialogButton = (name) => [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === name);
+
+  await menuItem('End room');
+  expect(document.querySelector('[role=dialog] h3').textContent).toBe('End the room?');
+  expect(document.querySelector('[role=dialog] .sub').textContent).toBe('Everyone watching leaves, and the chat is gone.');
+  expect(document.activeElement).toBe(dialogButton('Cancel'));
+  dialogButton('Cancel').click();
+  await nextTick();
+  expect(document.querySelector('[role=dialog]')).toBe(null);
+  expect(end).not.toHaveBeenCalled();
+
+  await menuItem('End room');
+  dialogButton('End room').click();
+  await nextTick();
+  expect(end).toHaveBeenCalledOnce();
+  expect(document.querySelector('[role=dialog]')).toBe(null);
 });

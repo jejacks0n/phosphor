@@ -4,9 +4,12 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { nameColor } from '@/social/names';
 import ChatFoot from './ChatFoot.vue';
+import RoomMenu from './RoomMenu.vue';
+import RoomPeople from './RoomPeople.vue';
 
 // The chat of the room you host or watch, at the right of the whole app (every tab, while you're in
-// one): the room's name (and, watching, who hosts it and Leave), the host's welcome pinned, the messages, and the box to write in. » folds it
+// one): the room's name (and, watching, who hosts it and Leave; hosting, the room menu and who is here), the
+// host's welcome pinned (with the host's Edit), the messages, and the box to write in. » folds it
 // to a thin rail that counts what came since. The list keeps its place: a new message scrolls it only
 // when it was already at the bottom, and earlier ones (asked for on reaching the top) go in above
 // without moving what you were reading. Someone you blocked is folded to one line (Show opens just
@@ -18,6 +21,7 @@ const folded = ref(false);
 const since = ref(0);    // messages since the fold
 const panel = useTemplateRef('panel');
 const list = useTemplateRef('list');
+const menu = useTemplateRef('menu');
 
 const host = computed(() => room.room?.host || null);
 const blocked = computed(() => new Set(social.blocked.map((b) => b.id)));
@@ -99,10 +103,17 @@ function askIfAtTop() {
             </div>
           </template>
         </div>
-        <button class="fold link" aria-label="Fold the chat" @click="fold(true)">»</button>
+        <div class="tools">
+          <RoomMenu v-if="room.role === 'host'" ref="menu" />
+          <button class="fold link" aria-label="Fold the chat" @click="fold(true)">»</button>
+        </div>
       </header>
+      <RoomPeople v-if="room.role === 'host'" />
       <p v-if="room.room?.welcome" class="pinned">
-        <span>Pinned, from the host</span>
+        <span>
+          Pinned, from the host
+          <button v-if="room.role === 'host'" class="link edit" @click="menu.editWelcome($event.currentTarget)">Edit</button>
+        </span>
         {{ room.room.welcome }}
       </p>
       <div ref="list" class="list" role="log" aria-label="Messages" @scroll.passive="askIfAtTop">
@@ -216,6 +227,11 @@ div.buttons {
   gap: 6px;
   margin-top: 6px;
 }
+div.tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 button.fold {
   padding: 4px 6px;
   font-size: 14px;
@@ -230,12 +246,20 @@ p.pinned {
   overflow-wrap: anywhere;
 }
 p.pinned span {
-  display: block;
+  display: flex;
+  justify-content: space-between;
   margin-bottom: 2px;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-faint);
+}
+
+p.pinned button.edit {
+  padding: 0 4px;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 div.list {

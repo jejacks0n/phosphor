@@ -128,17 +128,24 @@ Whether the room is public or private, and its password, stay as they were set.
 ## Hosting
 
 While you host, the SOCIAL tab shows your room instead of the lobby: its name, how many are
-watching (counted once they're connected), its link (**Copy link**), who's watching, **Room
-settings** and **End room**. Send the link to anyone you want in a private room, along with its
-password. The SOCIAL tab carries a dot while you're in a room, hosting or watching.
+watching (counted once they're connected), its link (**Copy link**), **Room settings** and **End
+room**. Send the link to anyone you want in a private room, along with its password. The SOCIAL tab
+carries a dot while you're in a room, hosting or watching.
 
-Each watcher shows whether they're following you or looking around on their own (or still
-connecting). A member's row has a **⋯** button (guests have none) with:
+You run the room from the chat panel, beside every tab. Under its header, **N here** (those
+connected, folded to begin with) opens the list of who is in the room, and stays as you left it while
+the room lasts. Each watcher shows their name in their color, **guest** for a guest, and whether
+they're following you or looking around on their own (or still connecting). A member's row has a
+**⋯** button (guests have none) with:
 
 - **Remove for this session**: they leave the room now, and can't come back until the room ends.
 - **Block from my rooms**: asks first (**Block** or **Cancel**), then they can't join any room you host again, and your rooms no longer show in their lobby.
   They aren't told; your rooms simply aren't there for them, and a link to one says "This room
   isn't available". Unblock them from Account.
+
+The **⋯** in the panel's header is the room menu: **Copy link**, **Edit welcome** (a box to change
+the pinned welcome, which watchers see at once), **Settings and stats** (the SOCIAL tab) and **End
+room**, which asks first.
 
 In the chat, a **Delete** on any message takes it out for everyone, and leaves **Message deleted by
 the host** in its place.
@@ -195,8 +202,9 @@ Chat goes from browser to browser through the host, like the art, and never thro
 server. The host's browser keeps the last 5,000 messages for as long as the room lasts, and a
 watcher's list goes back no further than that. When the room ends, so does its chat.
 
-As the host you can **Delete** a message for everyone. To **Remove for this session** or **Block from
-my rooms** the person who wrote one, use their **⋯** in the list of who's watching (see **Hosting**).
+As the host you can **Delete** a message for everyone, and **Edit** the pinned welcome (the same box as
+the room menu's **Edit welcome**). To **Remove for this session** or **Block from my rooms** the person
+who wrote one, use their **⋯** in the **N here** list (see **Hosting**).
 
 A guest who signs in from the chat comes back into the room as themselves (a private room asks for
 its password again).

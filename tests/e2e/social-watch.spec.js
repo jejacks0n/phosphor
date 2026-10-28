@@ -58,7 +58,8 @@ test('the host sees the watcher following; a wheel is looking around, and Follow
   const watcher = await watcherPage(context, room);
   await watcher.goto('/');
   await joinFromCard(watcher);
-  const list = shown(host, 'host-room').getByRole('list', { name: 'Watching' });
+  await chat(host).getByRole('button', { name: /^\d+ here$/ }).click();
+  const list = chat(host).getByRole('list', { name: 'Who is here' });
   await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*following/]);
   await expect(followTag(watcher)).toHaveAttribute('aria-pressed', 'true');
   await expect(chat(watcher).getByRole('button', { name: /^Follow/ })).toHaveCount(0);   // the tag is the only Follow

@@ -52,6 +52,7 @@ export const useRoomStore = defineStore('room', {
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
+    peopleOpen: false,   // a host's: the chat panel's "N here" list is open
     lobbyPin: null,      // a host's: the top line the lobby picture is pinned to; null while it follows the view
     session: newSession(),   // a host's: what this browser counted since the room started (social/session.js)
     startDraft: newStartDraft(),         // Start a room's form; empty again once a room is made
@@ -242,7 +243,7 @@ export const useRoomStore = defineStore('room', {
       for (const stop of this._stops) stop();
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, lobbyPin: null, session: newSession(),
+        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, peopleOpen: false, lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,
       });
