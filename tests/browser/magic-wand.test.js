@@ -138,3 +138,45 @@ test('Delete or Backspace deletes in the wand selection, but Backspace in Edit M
   expect(read(3, 2, 3)).toBe('B');
   expect(read(2, 2, 2)).not.toBe('a');
 });
+
+test('a wand click outside the rectangle keeps the rectangle and selects nothing', async () => {
+  const { workspace, type, click } = await scene();
+  type(2, 2, ['aBa']);
+  workspace.selection = { c0: 0, r0: 0, c1: 3, r1: 3 };
+  click(12, 3);
+  expect(workspace.selection).toEqual({ c0: 0, r0: 0, c1: 3, r1: 3 });
+  expect(workspace.wand).toBe(null);
+});
+
+test('Delete and Backspace leave the wand selection alone with the palette layer open or mid-stroke', async () => {
+  const { project, workspace, type, click, read } = await scene();
+  app = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
+  app.mount(document.createElement('div'));
+  type(2, 2, ['aBa']);
+  workspace.wandContiguous = false;
+  click(2, 2);
+  workspace.outputActiveTool = 'pencil';
+  workspace.paletteLayerOpen = true;
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', cancelable: true }));
+  workspace.paletteLayerOpen = false;
+  workspace.isPainting = true;
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', cancelable: true }));
+  workspace.isPainting = false;
+  await settle(project);
+  expect(read(2, 2, 4)).toBe('aBa');
+});
+
+test("Delete in the pixel view takes away a Half-block's ▄ with its paint, as the Eraser does", async () => {
+  const { project, workspace, click } = await scene();
+  project.paintStroke([{ x: 6, y: 6, alpha: 1 }, { x: 6, y: 7, alpha: 1 }], '#ff00ff', { blockChars: true });
+  project.commitEdit();
+  await settle(project);
+  expect(project.editCellAt(6, 3)?.char).toBe('▄');
+  workspace.editorTab = 'input';
+  workspace.wandContiguous = false;
+  click(6, 6, {}, 'input');
+  project.deleteInWand(workspace.wand);
+  await settle(project);
+  expect(project.cellHasPaint(6, 3)).toBe(false);
+  expect(project.editCellAt(6, 3)).toBe(undefined);
+});

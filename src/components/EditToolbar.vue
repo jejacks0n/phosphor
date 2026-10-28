@@ -365,7 +365,7 @@ const selectionHasEdits = computed(() => {
           <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
         </template>
       </div>
-      <div v-if="kept && activeTool.id !== 'select'" class="tool-setting-group">
+      <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>
         <button v-if="wandHere && activeTool.id === 'wand'" class="text" title="Take away what's drawn in the selection (Delete)" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand)">Delete</button>
         <button class="text" title="Deselect: the tools paint everywhere again (Esc)" aria-keyshortcuts="Escape" @click="deselect">Deselect</button>

@@ -41,3 +41,13 @@ test('switching views drops the wand selection', async ({ page }) => {
   await page.getByRole('tab', { name: 'PIXEL' }).click();
   expect(await store(page, 'workspace', (w) => w.wand)).toBe(null);
 });
+
+test('with a wand selection, the Select tool offers Deselect too', async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('w');
+  const at = await cellPoint(page, 4, 4);
+  await page.mouse.click(at.x, at.y);
+  await page.keyboard.press('m');
+  await page.getByRole('button', { name: 'Deselect' }).click();
+  expect(await store(page, 'workspace', (w) => w.wand)).toBe(null);
+});

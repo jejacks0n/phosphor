@@ -12,7 +12,7 @@ import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellKey, withoutCells, rectCells, pasteBlock, mergeEntry, isPaintBlock } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { charRowsOf } from '@/lib/Cells.js';
+import { cellsOfPixels, charRowsOf } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -181,7 +181,8 @@ export const selectionActions = {
   },
 
   // Delete in the Magic Wand's selection (workspace.wand): the edit layer goes from its cells (or
-  // pixels), as the Eraser's Edit does. One undo step.
+  // pixels), as the Eraser's Edit does: in the pixel view, a ▄ there only to show paint (Half-block)
+  // goes with the last of its paint. One undo step.
   deleteInWand(wand) {
     const units = unitsOf(wand.mask, wand.width);
     if (wand.view === 'output') {
@@ -189,7 +190,9 @@ export const selectionActions = {
       this.eraseEditPixels(cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
       this.clearEditCells(cells);
     } else {
+      const blocks = cellsOfPixels(units, this.cols, this.rows).filter(({ col, row }) => isPaintBlock(this.editCellAt(col, row)) && this.cellHasPaint(col, row));
       this.eraseEditPixels(units);
+      this.clearEditCells(blocks.filter(({ col, row }) => !this.cellHasPaint(col, row)));
     }
     this.commitEdit();
   },

@@ -63,6 +63,7 @@ export default {
       return x >= within.c0 && x <= within.c1 && y >= within.r0 && y <= within.r1;
     });
     const seed = start.y * m.width + start.x;
+    if (allowed && !allowed(seed)) return false; // outside the rectangle: the rectangle stays
     const mask = selectMatching({ width: m.width, height: m.height, start, same: m.same(seed), contiguous: workspace.wandContiguous, allowed });
     if (adding) for (let i = 0; i < mask.length; i++) mask[i] |= adding.mask[i];
     workspace.selection = null;
