@@ -1,7 +1,7 @@
 // Chat's pieces: the text rule, the kept log and its pages, the one-a-second allowance.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { MOST_CHARS, MOST_KEPT, PAGE, ID, isId, chatText, newId, signedText, ChatLog, Allowance } from '../../src/social/chat.js';
+import { MOST_CHARS, MOST_KEPT, PAGE, REASONS, CONTEXT, ID, clock, dayAndTime, evidenceFor, mutedWords, isId, chatText, newId, signedText, ChatLog, Allowance } from '../../src/social/chat.js';
 import { CHUNK_BYTES } from '../../src/social/wire.js';
 
 const entries = (n, text = 'hi', pass = 'p') => Array.from({ length: n }, (_, i) => ({ id: `m${i}`, ts: i, text, pass, sig: 's' }));
@@ -90,4 +90,43 @@ test('an allowance gives 3 at once, then one a second', () => {
   assert.deepEqual([a.take(0), a.take(0), a.take(0), a.take(0), a.take(999)], [true, true, true, false, false]);
   assert.equal(a.take(1000), true);
   assert.equal(a.take(1000), false);
+});
+
+test('the report reasons are these, in this order', () => {
+  assert.deepEqual(REASONS, [
+    { id: 'spam', label: 'Spam or flooding' },
+    { id: 'harassment', label: 'Harassment or hate' },
+    { id: 'sexual', label: 'Sexual or violent' },
+    { id: 'other', label: 'Something else' },
+  ]);
+  assert.equal(CONTEXT, 5);
+});
+
+const row = (n, sub = 'u_2', fields = {}) => ({ id: `m${n}`, ts: n, text: `t${n}`, pass: 'p', sig: 's', sub, name: 'x', host: false, mine: false, deleted: false, ...fields });
+const kept = (...ns) => ns.map((n) => ({ pass: 'p', id: `m${n}`, ts: n, text: `t${n}`, sig: 's' }));
+
+test('evidenceFor a message is it and the five messages before it, oldest first, with only the signed fields', () => {
+  const rows = [{ ...row(0), presence: 'joined' }, ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => row(n, n % 2 ? 'u_3' : 'u_2')), row(9, null, { deleted: true, text: '', pass: null, sig: null }), row(10)];
+  assert.deepEqual(evidenceFor(rows, { sub: 'u_2', messageId: 'm10' }), kept(4, 5, 6, 7, 8, 10));
+  assert.deepEqual(evidenceFor([row(1), row(2), row(3)], { sub: 'u_2', messageId: 'm3' }), kept(1, 2, 3));
+  assert.deepEqual(evidenceFor([row(1), row(2)], { sub: 'u_2', messageId: 'm1' }), kept(1));
+});
+
+test('evidenceFor an id that is not a message is null', () => {
+  const rows = [{ ...row(0), presence: 'joined' }, row(1), row(2, null, { deleted: true })];
+  for (const messageId of ['m0', 'm2', 'nope']) assert.equal(evidenceFor(rows, { sub: 'u_2', messageId }), null);
+});
+
+test('evidenceFor a person is their last five messages, or none', () => {
+  const rows = [1, 2, 3, 4, 5, 6, 7].map((n) => row(n, n === 4 ? 'u_3' : 'u_2'));
+  assert.deepEqual(evidenceFor(rows, { sub: 'u_2' }), kept(2, 3, 5, 6, 7));
+  assert.deepEqual(evidenceFor(rows, { sub: 'u_9' }), []);
+});
+
+test('mutedWords gives the time for a mute ending today and the date and time for a later one', () => {
+  const now = new Date(2026, 9, 28, 9, 0).getTime();
+  const soon = new Date(2026, 9, 28, 10, 0).getTime(), far = now + 30 * 86_400_000;
+  assert.equal(mutedWords(soon, now), `You're muted until ${clock.format(soon)}.`);
+  assert.equal(mutedWords(far, now), `You're muted until ${dayAndTime.format(far)}.`);
+  assert.notEqual(clock.format(far), dayAndTime.format(far));
 });

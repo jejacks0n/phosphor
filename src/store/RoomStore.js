@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { markRaw, shallowRef, watch } from 'vue';
 import { apiOrigin, wsOrigin } from '@/social/config';
 import { proof, sign } from '@/social/keys';
-import { Allowance, MOST_KEPT, chatText, newId, signedText } from '@/social/chat';
+import { Allowance, MOST_KEPT, REASONS, chatText, evidenceFor, newId, signedText } from '@/social/chat';
 import { LobbyConnection, Pacer } from '@/social/lobby';
 import { refusalWords } from '@/social/messages';
 import { decodePass, passKey } from '@/social/pass';
@@ -78,6 +78,12 @@ export const useRoomStore = defineStore('room', {
       const claims = useSocialStore().claims;
       return !!claims && !claims.guest && claims.verified;
     },
+    // Reporting is for the same people (a guest can't chat, so can't be reported).
+    canReport() {
+      return this.canChat;
+    },
+    // When your mute ends (epoch ms), while your pass says you're muted.
+    mutedUntil: () => useSocialStore().claims?.mutedUntil ?? null,
     // Where the lobby picture looks: the cell it's pinned to, else the middle of the shared view.
     lobbyPlace() {
       if (this.lobbyPin !== null) return { ...this.lobbyPin };
@@ -288,7 +294,7 @@ export const useRoomStore = defineStore('room', {
     // A host's shows at once (Host calls chatHeard with it); a watcher's shows when the host sends it back.
     async say(text) {
       const social = useSocialStore(), side = this._host ?? this._watch, body = chatText(text);
-      if (!side || !body || !this.canChat || (this.role === 'watch' && !side.ready)) return false;   // nothing spent on a message that can't go
+      if (!side || !body || !this.canChat || this.mutedUntil > Date.now() || (this.role === 'watch' && !side.ready)) return false;   // nothing spent on a message that can't go
       this._allowance ??= markRaw(new Allowance());
       if (!this._allowance.take()) {
         this.chatRefused = 'too-fast';
@@ -304,6 +310,14 @@ export const useRoomStore = defineStore('room', {
     // The host's Delete: the message stays, as deleted, for everyone.
     deleteMessage(id) {
       return this._host?.deleteMessage(id) ?? false;
+    },
+
+    // A report of `sub`, for a message (messageId) or from the people list, with the messages as they came.
+    // False, sending nothing, if you can't report, it's yourself, the reason isn't one or there's no socket.
+    report({ sub, messageId = null, reason }) {
+      const messages = evidenceFor(this.chat, { sub, messageId });
+      if (!this.canReport || sub === useSocialStore().claims?.sub || !REASONS.some((r) => r.id === reason) || !messages) return false;
+      return this._connection?.send({ type: 'report', sub, reason, messages, ...(messageId ? { message: messageId } : {}) }) ?? false;
     },
 
     // A watcher asks for the page before its oldest message; one question at a time.
@@ -343,18 +357,18 @@ export const useRoomStore = defineStore('room', {
         this.chatRefused = event.reason;
       } else if (event.type === 'deleted') {
         const shown = this.chat.find((m) => m.id === event.id);
-        if (shown) Object.assign(shown, { deleted: true, text: '' });
+        if (shown) Object.assign(shown, { deleted: true, text: '', pass: null, sig: null });
       } else if (event.type === 'chat' || event.type === 'presence') {
         if (!this.chat.some((m) => m.id === event.entry.id)) {
           this.keep([...this.chat, this.chatRow(event.entry, event.claims)]);
           if (this.role === 'host') this.counted(event);
         }
       } else if (event.type === 'history') {
-        const rows = event.messages.map((m) => (m.deleted ? { id: m.id, ts: m.ts, text: '', sub: null, name: null, host: false, mine: false, deleted: true } : this.chatRow(m.entry, m.claims)))
+        const rows = event.messages.map((m) => (m.deleted ? { id: m.id, ts: m.ts, text: '', pass: null, sig: null, sub: null, name: null, host: false, mine: false, deleted: true } : this.chatRow(m.entry, m.claims)))
           .filter((r, at, all) => all.findIndex((o) => o.id === r.id) === at);   // an id twice in a page is shown once
         for (const r of rows) {   // a deletion made while this watcher was away
           const shown = r.deleted && this.chat.find((m) => m.id === r.id);
-          if (shown) Object.assign(shown, { deleted: true, text: '' });
+          if (shown) Object.assign(shown, { deleted: true, text: '', pass: null, sig: null });
         }
         const fresh = rows.filter((r) => !this.chat.some((m) => m.id === r.id));
         if (event.earlier && this._asking) {
@@ -391,10 +405,10 @@ export const useRoomStore = defineStore('room', {
 
     // A message as the list shows it. A host's own claims come from its pass (the host checked every
     // watcher's pass when it joined); the host's mark is its own messages, or for a watcher the room's host (by account, so a rename keeps it).
-    chatRow({ id, ts, text = '', pass, presence }, claims = decodePass(pass)) {
+    chatRow({ id, ts, text = '', pass, sig, presence }, claims = decodePass(pass)) {
       const mine = claims.sub === useSocialStore().claims?.sub;
       const row = { id, ts, text, sub: claims.sub, name: claims.name, host: this.role === 'host' ? mine : claims.sub === this.room?.hostSub, mine, deleted: false };
-      return presence ? { ...row, presence } : row;
+      return presence ? { ...row, presence } : { ...row, pass, sig };   // a report carries the message as it was signed
     },
 
     // The list holds the last MOST_KEPT at most, like the host's log, and goes no further back: once it's
@@ -438,6 +452,11 @@ export const useRoomStore = defineStore('room', {
           break;
         case 'refused':
           this.refused(msg.reason);
+          break;
+        case 'muted':   // a mute decided mid-room: yours gets a pass that says so, a host drops theirs
+          if (typeof msg.sub !== 'string' || !Number.isFinite(msg.until)) break;
+          if (msg.sub === useSocialStore().claims?.sub) useSocialStore().renewPass();
+          else this._host?.mute(msg.sub, msg.until);
           break;
         case 'ended':
         case 'removed':

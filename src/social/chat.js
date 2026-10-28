@@ -12,6 +12,8 @@ export const PAGE = 50;
 
 export const clock = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });   // made once: building one per row is slow
 
+export const dayAndTime = new Intl.DateTimeFormat([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
 export const ID = /^[A-Za-z0-9_-]{16}$/;
 export const isId = (id) => typeof id === 'string' && ID.test(id);
 
@@ -64,6 +66,32 @@ export class ChatLog {
     while (start < end - 1 && size() > CHUNK_BYTES) start++;
     return { messages: this.list.slice(start, end), more: start > 0 };
   }
+}
+
+// Why a person is reported, in the order the dialog lists them; the ids are what the Room takes.
+export const REASONS = [
+  { id: 'spam', label: 'Spam or flooding' },
+  { id: 'harassment', label: 'Harassment or hate' },
+  { id: 'sexual', label: 'Sexual or violent' },
+  { id: 'other', label: 'Something else' },
+];
+export const CONTEXT = 5;   // the messages a report carries besides the one reported
+
+// What a report carries, from the list's rows (oldest first) as each was sent: the reported message and the
+// CONTEXT before it (anyone's), or without a messageId the person's last CONTEXT messages. Presence lines and
+// deleted messages are skipped. Null for an id that isn't a message in the rows.
+export function evidenceFor(rows, { sub, messageId = null }) {
+  const messages = rows.filter((r) => !r.presence && !r.deleted);
+  const kept = ({ pass, id, ts, text, sig }) => ({ pass, id, ts, text, sig });
+  if (messageId === null) return messages.filter((r) => r.sub === sub).slice(-CONTEXT).map(kept);
+  const at = messages.findIndex((r) => r.id === messageId);
+  return at < 0 ? null : messages.slice(Math.max(0, at - CONTEXT), at + 1).map(kept);
+}
+
+// What a muted person is told: the time if it ends today, else the date too.
+export function mutedWords(until, now = Date.now()) {
+  const today = new Date(until).toDateString() === new Date(now).toDateString();
+  return `You're muted until ${(today ? clock : dayAndTime).format(until)}.`;
 }
 
 // A bucket of `most`, refilled one every `everyMs`: take() says whether there's one to spend. The level is

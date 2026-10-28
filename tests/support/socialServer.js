@@ -19,7 +19,7 @@ export const member = (fields = {}) => ({
 // The server's side: `session` is who the cookie says you are; passes are minted for it (a guest renewing
 // with a previous pass keeps its id and name). Routes answer [status, body].
 export function fakeServer() {
-  const server = { session: null, suspended: null, passTtlMs: 3_600_000, guests: 0, requests: [] };
+  const server = { session: null, suspended: null, passTtlMs: 3_600_000, mutedUntil: null, guests: 0, requests: [] };
   const routes = {
     'GET /api/me': () => (server.suspended ? [403, { code: 'SUSPENDED', until: server.suspended.until }]
       : server.session ? [200, server.session] : [401, { code: 'SIGNED_OUT' }]),
@@ -30,7 +30,7 @@ export function fakeServer() {
       const exp = (Date.now() + server.passTtlMs) / 1000;
       const kept = body.previous ? claimsOf(body.previous) : null;
       const claims = server.session
-        ? { sub: server.session.id, name: server.session.username, guest: false, verified: true, key: body.key, exp }
+        ? { sub: server.session.id, name: server.session.username, guest: false, verified: true, key: body.key, exp, ...(server.mutedUntil ? { mutedUntil: server.mutedUntil } : {}) }
         : { sub: kept?.sub ?? `g_${++server.guests}`, name: kept?.name ?? `quiet-amber-fox-${server.guests}`, guest: true, verified: false, key: body.key, exp };
       return [200, { pass: makePass(claims), claims }];
     },

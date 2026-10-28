@@ -757,7 +757,7 @@ const said = (n, fields = {}) => ({
   entry: { pass: 'p', id: chatId(n), ts: 1000 + n, text: `m${n}`, sig: 's' },
   claims: { sub: 'u_2', name: 'someone', guest: false, verified: true, key: 'k', exp: 0, ...fields },
 });
-const mark = (n) => ({ id: chatId(n), ts: 1000 + n, text: `m${n}`, sub: 'u_2', name: 'someone', host: false, mine: false, deleted: false });
+const mark = (n) => ({ id: chatId(n), ts: 1000 + n, text: `m${n}`, pass: 'p', sig: 's', sub: 'u_2', name: 'someone', host: false, mine: false, deleted: false });
 
 async function watching() {
   await social.boot();
@@ -772,7 +772,7 @@ test('A host\'s say trims, shows at once as the host\'s own, and sends one chat 
   const sent = channelSends();
   expect(await room.say('  hi ')).toBe(true);
   const said = () => room.chat.filter((m) => !m.presence);   // the watcher's joining is a row too
-  expect(said()).toEqual([{ id: expect.any(String), ts: expect.any(Number), text: 'hi', sub: 'u_1', name: 'ansi-fan', host: true, mine: true, deleted: false }]);
+  expect(said()).toEqual([{ id: expect.any(String), ts: expect.any(Number), text: 'hi', pass: social.pass, sig: expect.any(String), sub: 'u_1', name: 'ansi-fan', host: true, mine: true, deleted: false }]);
   const chats = sent().filter((m) => m.t === 'chat');
   expect(chats).toHaveLength(1);
   const { id, ts, sig } = chats[0];
@@ -1180,4 +1180,76 @@ test('artZoom follows the host\'s zoom while following, stays put while looking 
   expect(room.artZoom).toBe(0.25);
   room.setFollowing(true);
   expect(room.artZoom).toBe(0.75);
+});
+
+// Reporting: what a report sends, and a mute heard from the room.
+const reports = (socket) => socket.sent.filter((m) => m.type === 'report');
+const evidence = (...ns) => ns.map((n) => ({ pass: 'p', id: chatId(n), ts: 1000 + n, text: `m${n}`, sig: 's' }));
+
+test('Chat rows keep the pass and signature, and a deleted clears them', async () => {
+  await watching();
+  room._watch.onChat({ type: 'history', messages: [said(1), said(2)], more: false, earlier: false });
+  expect(room.chat[0]).toMatchObject({ pass: 'p', sig: 's' });
+  room._watch.onChat({ type: 'deleted', id: chatId(1) });
+  expect(room.chat[0]).toMatchObject({ deleted: true, text: '', pass: null, sig: null });
+  room._watch.onChat({ type: 'history', messages: [{ id: chatId(2), ts: 1002, deleted: true }], more: false, earlier: false });
+  expect(room.chat[1]).toMatchObject({ deleted: true, pass: null, sig: null });
+});
+
+test('A report of a message sends one report with its id and the messages before it', async () => {
+  const socket = await watching();
+  room._watch.onChat({ type: 'history', messages: [1, 2, 3].map((n) => said(n)), more: false, earlier: false });
+  expect(room.canReport).toBe(true);
+  expect(room.report({ sub: 'u_2', messageId: chatId(3), reason: 'harassment' })).toBe(true);
+  expect(reports(socket)).toEqual([{ type: 'report', sub: 'u_2', reason: 'harassment', message: chatId(3), messages: evidence(1, 2, 3) }]);
+});
+
+test('A report from the people list sends the person\'s last messages and no message id', async () => {
+  const socket = await watching();
+  room._watch.onChat({ type: 'history', messages: [said(1), said(2, { sub: 'u_3' }), said(3)], more: false, earlier: false });
+  expect(room.report({ sub: 'u_2', reason: 'spam' })).toBe(true);
+  expect(reports(socket)).toEqual([{ type: 'report', sub: 'u_2', reason: 'spam', messages: evidence(1, 3) }]);
+});
+
+test('A report that can\'t be made returns false and sends nothing', async () => {
+  const socket = await watching();
+  room._watch.onChat({ type: 'history', messages: [said(1), said(2, { sub: 'u_1' })], more: false, earlier: false });
+  expect(room.report({ sub: 'u_1', messageId: chatId(2), reason: 'spam' })).toBe(false);   // yourself
+  expect(room.report({ sub: 'u_2', messageId: chatId(1), reason: 'rude' })).toBe(false);   // not a reason
+  expect(room.report({ sub: 'u_2', messageId: chatId(7), reason: 'spam' })).toBe(false);   // not a message here
+  social.claims = { ...social.claims, verified: false };
+  expect(room.report({ sub: 'u_2', messageId: chatId(1), reason: 'spam' })).toBe(false);   // can't report
+  social.claims = { ...social.claims, verified: true };
+  room._connection.close();
+  expect(room.report({ sub: 'u_2', messageId: chatId(1), reason: 'spam' })).toBe(false);   // no socket
+  expect(reports(socket)).toEqual([]);
+});
+
+test('A mute for your own sub gets a new pass that carries it', async () => {
+  const socket = await goLive();
+  expect(room.mutedUntil).toBe(null);
+  server.mutedUntil = Date.now() + 3_600_000;
+  const passes = server.sent('POST', '/api/pass').length;
+  socket.receive({ type: 'muted', sub: 'u_1', until: server.mutedUntil });
+  await vi.waitFor(() => expect(server.sent('POST', '/api/pass')).toHaveLength(passes + 1));
+  await vi.waitFor(() => expect(room.mutedUntil).toBe(server.mutedUntil));
+});
+
+test('A host drops a mute for a watcher\'s sub into its Host; anything malformed is ignored', async () => {
+  const socket = await goLive();
+  const mute = vi.spyOn(room._host, 'mute');
+  socket.receive({ type: 'muted', sub: 'u_p1', until: 5000 });
+  socket.receive({ type: 'muted', sub: 7, until: 5000 });
+  socket.receive({ type: 'muted', sub: 'u_p1', until: 'soon' });
+  expect(mute.mock.calls).toEqual([['u_p1', 5000]]);
+});
+
+test('While your pass says you\'re muted, say sends nothing', async () => {
+  await goLive();
+  expect(await room.say('hi')).toBe(true);
+  social.claims = { ...social.claims, mutedUntil: Date.now() + 60_000 };
+  expect(await room.say('again')).toBe(false);
+  expect(room.chat.map((m) => m.text)).toEqual(['hi']);
+  social.claims = { ...social.claims, mutedUntil: Date.now() - 1 };
+  expect(await room.say('later')).toBe(true);
 });
