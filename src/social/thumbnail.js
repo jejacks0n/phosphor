@@ -6,7 +6,8 @@ const clamp = (n, low, high) => Math.min(Math.max(n, low), high);
 
 // The lobby's picture of a room: the cells around the center of the host's view (about 2:1, like the
 // card, and held to the grid), drawn off screen in the host's font and encoded as WebP, as raw base64.
-// null when this browser can't do it (no WebGL2, no WebP encoder) or the picture won't fit the limit.
+// A browser that can't make WebP (Safari makes a PNG instead) gives a JPEG. null when this browser
+// can't do it (no WebGL2, no encoder for either) or the picture won't fit the limit.
 export async function thumbnailOf({ cells, cols, lines, font }, view, { width = 320 } = {}) {
   await loadFontFaces(font);
   let canvas;
@@ -23,13 +24,15 @@ export async function thumbnailOf({ cells, cols, lines, font }, view, { width = 
     const row = clamp(Math.round(view.row + view.rows / 2 - high / 2) || 0, 0, lines - high);
     canvas.resize(wide, high, width / (wide * cellWidth));
     // toBlob takes the drawing buffer as it is when it's called: it must come straight after the draw.
-    const encode = (quality) => {
+    const encode = (type, quality) => {
       canvas.draw(cells, { cols, rows: lines, col, row });
-      return new Promise((resolve) => canvas.canvas.toBlob(resolve, 'image/webp', quality));
+      return new Promise((resolve) => canvas.canvas.toBlob(resolve, type, quality));
     };
+    let type = 'image/webp';
     for (const quality of [0.8, 0.5]) {
-      const blob = await encode(quality);
-      if (blob?.type !== 'image/webp') return null;
+      let blob = await encode(type, quality);
+      if (blob?.type !== type && type === 'image/webp') blob = await encode(type = 'image/jpeg', quality);
+      if (blob?.type !== type) return null;
       const webp = await base64Of(blob);
       if (webp.length <= MAX_CHARS) return webp;
     }

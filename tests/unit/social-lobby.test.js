@@ -1,8 +1,8 @@
 // The lobby's pure parts: the reducer for the server's lobby messages, the order rooms and people are
-// listed in, the Join button's states, and the pacer that keeps signal changes to one every 2 s.
+// listed in, the Join button's states, a card's picture as an image, and the pacer that keeps signal changes to one every 2 s.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, joinState, liveFor, signalWords, Pacer } from '../../src/social/lobby.js';
+import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, joinState, liveFor, signalWords, pictureUrl, Pacer } from '../../src/social/lobby.js';
 
 const room = (id, more) => ({
   id, name: `Room ${id}`, host: 'ansi-fan', count: 1, max: 12, allowGuests: true, signal: null,
@@ -104,6 +104,11 @@ test('Live for: minutes under an hour, then hours and minutes', () => {
 
 test('Signals in words', () => {
   assert.deepEqual(signalWords, { feedback: 'Wants feedback', chat: 'Open to chat', 'heads-down': 'Heads down' });
+});
+
+test('A card\'s picture is a JPEG when it is one (from a browser that can\'t make WebP), else WebP', () => {
+  assert.equal(pictureUrl('/9j/4AAQ'), 'data:image/jpeg;base64,/9j/4AAQ');
+  assert.equal(pictureUrl('UklGRiQA'), 'data:image/webp;base64,UklGRiQA');
 });
 
 test('Pacing: the first value goes at once; quick changes after it become one send of the last, when the interval passes', () => {

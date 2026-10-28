@@ -1,7 +1,9 @@
-// The lobby's picture of a room: the host's view drawn off screen and encoded as WebP, as raw base64.
+// The lobby's picture of a room: the host's view drawn off screen and encoded as WebP (JPEG where the
+// browser can't make WebP), as raw base64.
 import { test, expect, vi, afterEach } from 'vitest';
 import { thumbnailOf } from '@/social/thumbnail';
 import { fontFor } from '@/social/wire';
+import { pictureUrl } from '@/social/lobby';
 import CellCanvas from '@/lib/CellCanvas';
 
 const COLS = 300, LINES = 1666;
@@ -23,7 +25,7 @@ afterEach(() => vi.restoreAllMocks());
 
 // The thumbnail's pixels, as the browser decodes it.
 async function pixelsOf(webp) {
-  const image = await createImageBitmap(await (await fetch(`data:image/webp;base64,${webp}`)).blob());
+  const image = await createImageBitmap(await (await fetch(pictureUrl(webp))).blob());
   const canvas = document.createElement('canvas');
   canvas.width = image.width;
   canvas.height = image.height;
@@ -81,7 +83,19 @@ test('a larger picture that is over the limit at 0.8 is tried again at 0.5; stil
   expect(qualities).toEqual([0.8, 0.5]);
 });
 
-test('a browser that can\'t encode WebP gives null', async () => {
+test('a browser that can\'t encode WebP (Safari makes a PNG instead) gives a JPEG of the same cells', async () => {
+  const toBlob = HTMLCanvasElement.prototype.toBlob;
+  vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (done, type, quality) {
+    toBlob.call(this, done, type === 'image/webp' ? 'image/png' : type, quality);
+  });
+  const jpeg = await thumbnailOf(gridOf(750, 850), VIEW);
+  expect(jpeg).toMatch(BASE64);
+  expect(pictureUrl(jpeg)).toMatch(/^data:image\/jpeg;/);
+  expect(jpeg.length).toBeLessThanOrEqual(49_152);
+  expect(whiteShare(await pixelsOf(jpeg))).toBeGreaterThan(0.95);
+});
+
+test('a browser that can encode neither WebP nor JPEG gives null', async () => {
   const toBlob = HTMLCanvasElement.prototype.toBlob;
   vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (done, type, quality) {
     toBlob.call(this, done, 'image/png', quality);

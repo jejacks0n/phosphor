@@ -25,9 +25,6 @@ When you can't join a room, its Join button is grayed out and says why beside it
 - **Room is full**: it's at the host's watcher limit.
 - **Signed-in users only**: the room doesn't allow guests, and you haven't signed in.
 
-Filters above the gallery (**All**, **Wants feedback**, **Open to chat**) narrow it to rooms whose
-host wants feedback or is open to chat. When none match, it says **No rooms match this filter**.
-
 If someone you've blocked is in a room, its card says **Someone you blocked is here**.
 
 Beside the gallery, signed in:

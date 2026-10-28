@@ -2,7 +2,7 @@
 import { computed, useId } from 'vue';
 import { useNow } from '@vueuse/core';
 import { useRoomStore } from '@/store/RoomStore';
-import { joinState, liveFor, signalWords } from '@/social/lobby';
+import { joinState, liveFor, pictureUrl, signalWords } from '@/social/lobby';
 
 const props = defineProps({
   room: { type: Object, required: true },
@@ -22,7 +22,7 @@ const reasonId = useId();
 <template>
   <article class="room-card">
     <div class="thumb">
-      <img v-if="room.thumbnail" :src="`data:image/webp;base64,${room.thumbnail}`" alt="">
+      <img v-if="room.thumbnail" :src="pictureUrl(room.thumbnail)" alt="">
     </div>
     <div class="info">
       <div class="name" :title="room.name">{{ room.name }}</div>
