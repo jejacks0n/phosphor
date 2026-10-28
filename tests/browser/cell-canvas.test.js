@@ -269,7 +269,9 @@ test('at a zoom, the cell is the zoomed size: glyphs drawn at dpr x zoom, in CSS
 test('at any dpr and zoom, metrics is exactly cellSize (float drift would break comparing them)', async () => {
   await createTestApp();
   const c = new CellCanvas(document.createElement('canvas'));
-  for (const [dpr, zoom] of [[3, 0.3], [1.5, 0.7408], [2, 0.5], [1, 1], [1.25, 0.6]]) {
+  const cases = [[3, 0.3], [1.5, 0.7408], [2, 0.5], [1, 1], [1.25, 0.6]];
+  for (const dpr of [1.25, 1.5, 2, 3]) for (let zoom = 0.25; zoom <= 1; zoom += 0.0137) cases.push([dpr, zoom]); // some of these drift
+  for (const [dpr, zoom] of cases) {
     c.resize(10, 4, dpr, zoom);
     expect(c.metrics, `dpr ${dpr} zoom ${zoom}`).toEqual(c.cellSize(dpr, zoom));
   }
