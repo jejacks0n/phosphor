@@ -173,7 +173,7 @@ export default class CellCanvas {
   #onRestored = null;
   #font = null;         // the font it draws in, or null for the display font (read when used)
   #advance = null;      // the font's character width in CSS px, measured by resize
-  #geom = null;         // { cols, rows, cw, ch, scale }
+  #geom = null;         // { cols, rows, cw, ch, scale, zoom }
   #fg = null;
   #bg = null;
   #ov = null;
@@ -206,7 +206,7 @@ export default class CellCanvas {
   // The cell size in CSS px, or null before the first resize.
   get metrics() {
     const g = this.#geom;
-    return g ? { cellWidth: g.cw / g.scale, lineHeight: g.ch / g.scale } : null;
+    return g ? { cellWidth: g.cw / (g.scale / g.zoom), lineHeight: g.ch / (g.scale / g.zoom) } : null;
   }
 
   // Whether text is anti-aliased; changing it draws every glyph again.
@@ -220,29 +220,30 @@ export default class CellCanvas {
     this.#dropAtlas();
   }
 
-  // The cell in CSS px at the display's full dpr (no cap), without touching the canvas: what a view
+  // The cell in CSS px at the display's full dpr (no cap) and a zoom (1 or less: glyphs are drawn at
+  // dpr x zoom, and the cell is that many pixels in CSS px), without touching the canvas: what a view
   // sizes its first window by, before resize has run.
-  cellSize(dpr) {
-    const { cellWidth, lineHeight } = cellGeometry(this.#advance ??= measureAdvance(this.#fontNow), dpr, false, this.#fontNow);
-    return { cellWidth, lineHeight };
+  cellSize(dpr, zoom = 1) {
+    const { cw, ch } = cellGeometry(this.#advance ??= measureAdvance(this.#fontNow), dpr * zoom, false, this.#fontNow);
+    return { cellWidth: cw / dpr, lineHeight: ch / dpr };
   }
 
-  // Size the canvas for cols x rows cells (the window of the grid it draws) at the display's dpr;
-  // true when anything changed.
-  resize(cols, rows, dpr) {
+  // Size the canvas for cols x rows cells (the window of the grid it draws) at the display's dpr and a
+  // zoom; true when anything changed.
+  resize(cols, rows, dpr, zoom = 1) {
     const font = this.#fontNow;
     if (this.#advance === null) this.#advance = measureAdvance(font);
-    const scale = backingScale(cols * this.#advance, rows * font.size * font.lineHeight, dpr, this.#maxSide);
-    const { cw, ch } = cellGeometry(this.#advance, scale, scale < dpr, font);
+    const scale = backingScale(cols * this.#advance, rows * font.size * font.lineHeight, dpr * zoom, this.#maxSide);
+    const { cw, ch } = cellGeometry(this.#advance, scale, scale < dpr * zoom, font);
     const g = this.#geom;
-    if (g && g.cols === cols && g.rows === rows && g.cw === cw && g.ch === ch && g.scale === scale) return false;
+    if (g && g.cols === cols && g.rows === rows && g.cw === cw && g.ch === ch && g.scale === scale && g.zoom === zoom) return false;
     const sameCell = g && g.cw === cw && g.ch === ch && g.scale === scale; // the window's size moves on every frame of a viewport resize
 
     this.canvas.width = cols * cw;
     this.canvas.height = rows * ch;
-    this.canvas.style.width = `${cols * cw / scale}px`;
-    this.canvas.style.height = `${rows * ch / scale}px`;
-    this.#geom = { cols, rows, cw, ch, scale };
+    this.canvas.style.width = `${cols * cw / (scale / zoom)}px`;
+    this.canvas.style.height = `${rows * ch / (scale / zoom)}px`;
+    this.#geom = { cols, rows, cw, ch, scale, zoom };
     this.#fg = new Uint8Array(cols * rows * 4);
     this.#bg = new Uint8Array(cols * rows * 4);
     this.#ov = new Uint8Array(cols * rows * 4);
@@ -445,7 +446,7 @@ function inkTexels(mask) {
 }
 
 // A font's character width in CSS px.
-function measureAdvance(font) {
+export function measureAdvance(font) {
   const ctx = document.createElement('canvas').getContext('2d');
   ctx.font = displayFontCss(font);
   return ctx.measureText('M').width;
