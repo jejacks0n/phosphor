@@ -1,6 +1,6 @@
-// The lobby picture on the host's page: a listed room's small frame of the art at its full width. It
-// follows the host's view (the ANSI or PIXEL view last shown) until the host scrolls it, which pins it;
-// Follow my view lets go. A link-only room has no lobby card, so no picture.
+// The lobby picture on the host's page: a listed room's small frame of the art, up to 80 columns of
+// it. It follows the host's view (the ANSI or PIXEL view last shown); scrolling it only looks, until
+// "Use this exact position" pins the cells it shows. A link-only room has no lobby card, so no picture.
 import { test, expect, tab, store } from './support.js';
 import { fakeRoom, shown, goLive } from './social-support.js';
 
@@ -18,83 +18,76 @@ async function scrollAnsi(page, at) {
   await tab(page, 'SOCIAL').click();
 }
 
-test('a listed room\'s lobby picture follows the host\'s view; scrolling it pins it, and Follow my view lets go', async ({ page }) => {
+const exact = (page) => picture(page).getByRole('checkbox', { name: 'Use this exact position' });
+// The frame's top line, in the art's lines.
+const topLine = (page, lines) => frame(page).evaluate((el, lines) => el.scrollTop / (el.firstElementChild.getBoundingClientRect().height / lines), lines);
+
+test('a listed room\'s lobby picture follows the host\'s view; scrolling it only looks, and the checkbox pins what it shows', async ({ page }) => {
   await goLive(page, fakeRoom(), { image: 'images/tall.png' });   // 1,200 lines: the frame scrolls
   await expect(picture(page).getByRole('heading', { name: 'Lobby picture' })).toBeVisible();
-  await expect(picture(page).getByText('Follows your view')).toBeVisible();
-  await expect(picture(page).getByRole('button', { name: 'Follow my view' })).toHaveCount(0);
-  // About 300 px of the art's full width (no scrolling across), about twice as wide as tall.
+  await expect(exact(page)).not.toBeChecked();
+  // About 300 px of the art, about twice as wide as tall.
   const { width, height } = await frame(page).boundingBox();
   expect(width).toBeGreaterThan(280);
   expect(width).toBeLessThan(330);
   expect(width / height).toBeGreaterThan(1.8);
   expect(width / height).toBeLessThan(2.2);
-  expect(await frame(page).evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
   expect(await pin(page)).toBe(null);
 
   const before = await place(page);
   await scrollAnsi(page, 0.2);
-  await expect.poll(async () => (await place(page)).middle).not.toBe(before.middle);
-  await expect.poll(() => frame(page).evaluate((el) => el.scrollTop)).toBeGreaterThan(0);   // the frame went there by itself
-  expect(await pin(page)).toBe(null);   // a scroll made by code isn't the host's
-  // The frame's top line is the window's row: the view's middle line less half the window, held to the art.
+  await expect.poll(async () => (await place(page)).middleRow).not.toBe(before.middleRow);
+  // The frame went there by itself: its top line is the window's.
   await expect.poll(async () => {
-    const { top, rows, lines } = await frame(page).evaluate((el) => {
-      const lh = el.firstElementChild.getBoundingClientRect().height / 1200;
-      return { top: el.scrollTop / lh, rows: el.clientHeight / lh, lines: 1200 };
-    });
-    const row = Math.max(0, Math.min(Math.round((await place(page)).middle - rows / 2), lines - rows));
-    return top > 0 && Math.abs(top - row) < 0.5;
+    const { middleRow } = await place(page), rows = await frame(page).evaluate((el) => el.clientHeight / (el.firstElementChild.getBoundingClientRect().height / 1200));
+    const row = Math.max(0, Math.min(Math.round(middleRow - rows / 2), 1200 - rows));
+    return Math.abs(await topLine(page, 1200) - row) < 0.5;
   }).toBe(true);
 
+  // Scrolling it looks, and pins nothing.
+  const followed = await topLine(page, 1200);
   const box = await frame(page).boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.wheel(0, 300);
-  await expect(picture(page).getByText('Pinned')).toBeVisible();
-  const pinned = await pin(page);
-  expect(pinned).toEqual(expect.any(Number));
-  await expect(picture(page).getByRole('button', { name: 'Follow my view' })).toBeVisible();
+  await expect.poll(() => topLine(page, 1200)).toBeGreaterThan(followed + 1);
+  expect(await pin(page)).toBe(null);
 
+  // Checked: the card shows what the frame does, whatever the view does.
+  const shown = Math.round(await topLine(page, 1200));
+  await exact(page).check();
+  expect(await pin(page)).toEqual({ col: 0, row: shown });
+  expect(await place(page)).toEqual({ col: 0, row: shown });
   await scrollAnsi(page, 0.8);
   await expect.poll(() => store(page, 'workspace', (w) => w.sharedView.row)).toBeGreaterThan(900);   // the view has moved
-  await expect.poll(async () => { await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))); return pin(page); }).toBe(pinned);
-  await expect(picture(page).getByText('Pinned')).toBeVisible();
+  await expect(exact(page)).toBeChecked();
+  expect(await pin(page)).toEqual({ col: 0, row: shown });
 
-  await picture(page).getByRole('button', { name: 'Follow my view' }).click();
-  await expect(picture(page).getByText('Follows your view')).toBeVisible();
-  await expect(picture(page).getByRole('button', { name: 'Follow my view' })).toHaveCount(0);
-  expect(await pin(page)).toBe(null);
-});
-
-test('a key in the frame is the host\'s scroll and pins it', async ({ page }) => {
-  await goLive(page, fakeRoom(), { image: 'images/tall.png' });
-  await expect(picture(page).getByText('Follows your view')).toBeVisible();
+  // Scrolling it now moves the pin; unchecked, it follows the view again.
   await frame(page).focus();
   await page.keyboard.press('PageDown');
-  await expect(picture(page).getByText('Pinned')).toBeVisible();
-  expect(await pin(page)).toBeGreaterThan(0);
+  await expect.poll(async () => (await pin(page)).row).toBeGreaterThan(shown);
+  await exact(page).uncheck();
+  expect(await pin(page)).toBe(null);
+  await expect.poll(() => topLine(page, 1200)).toBeGreaterThan(900);
 });
 
 test('a pinned lobby picture is still at its line when you come back to the tab', async ({ page }) => {
   await goLive(page, fakeRoom(), { image: 'images/tall.png' });
-  const box = await frame(page).boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.wheel(0, 600);
-  await expect(picture(page).getByText('Pinned')).toBeVisible();
+  await frame(page).evaluate((el) => { el.scrollTop = el.scrollHeight / 2; });
+  await exact(page).check();
   const pinned = await pin(page);
-  const lines = await store(page, 'project', (p) => Math.floor(p.rows / 2));
-  const lineHeight = () => frame(page).evaluate((el) => el.firstElementChild.getBoundingClientRect().height).then((h) => h / lines);
+  expect(pinned.row).toBeGreaterThan(0);
 
   await tab(page, 'ANSI').click();
   await tab(page, 'SOCIAL').click();
-  await expect(picture(page).getByText('Pinned')).toBeVisible();
-  await expect.poll(async () => Math.round(await frame(page).evaluate((el) => el.scrollTop) / await lineHeight())).toBe(pinned);
-  expect(await pin(page)).toBe(pinned);
+  await expect(exact(page)).toBeChecked();
+  await expect.poll(async () => Math.round(await topLine(page, 1200))).toBe(pinned.row);
+  expect(await pin(page)).toEqual(pinned);
 });
 
 test('a link-only room has no lobby picture', async ({ page }) => {
   await goLive(page, fakeRoom({ password: 'hunter22' }), { password: 'hunter22' });
   await expect(shown(page, 'host-room').getByRole('heading', { name: 'Room settings' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Lobby picture' })).toHaveCount(0);
-  await expect(page.getByText('Follows your view')).toHaveCount(0);
+  await expect(page.getByRole('checkbox', { name: 'Use this exact position' })).toHaveCount(0);
 });

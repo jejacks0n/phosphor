@@ -15,8 +15,8 @@ for desktop browsers: on phones and other narrow screens the tab isn't shown.
 ## The lobby
 
 The SOCIAL tab opens on the lobby: a gallery of the **public rooms** that are live right now. Each
-room shows a small picture of the art, always its full width, around the part its host is looking at
-(or the part the host pinned; see **Lobby picture** under Hosting). The host's browser makes it soon after
+room shows a small picture of the art, up to 80 columns of it, around the part its host is looking at
+(or the part the host chose; see **Lobby picture** under Hosting). The host's browser makes it soon after
 going live, then again every few minutes when the art or that part has changed. A card also shows
 its name, the host's username, how long it's been live, the host's **signal**, and a **Join** button with how many are in the room
 and how many it holds (*Join 4/12*). Private rooms are never listed.
@@ -141,11 +141,12 @@ your browser and gone with the room:
 - **Removed**: people you removed or blocked, each once.
 
 A listed room also shows the **Lobby picture**: a small frame of what its lobby card shows of your
-art, always the art's full width, about twice as wide as it is tall. It says **Follows your view** to
-begin with: the frame's middle line is the middle of the view in the ANSI or PIXEL tab you looked at
-last. Scroll the frame (the wheel, the keys or its scrollbar) and it says **Pinned**: the card shows
-that part of the art whatever you do, until **Follow my view** puts it back. The pin lasts as long as
-the room. A room that's only with the link has no lobby card, so no picture.
+art, about twice as wide as it is tall and never more than 80 columns across, with the rest of the art
+scrolling inside it. To begin with it follows your view: its middle is the middle of the view in the
+ANSI or PIXEL tab you looked at last. Scroll it (up and down, and across for wide art) to look around,
+and check **Use this exact position** to have the card show just what the frame shows, whatever you do.
+Scrolling it while it's checked moves it; unchecking it follows your view again. The choice lasts as
+long as the room. A room that's only with the link has no lobby card, so no picture.
 
 **Room settings** are the welcome message, **Allow guests** and **Most watchers**, with **Save**. Under
 them, as plain facts, **Set when the room started**: **Listed in the lobby** or **Only with the link**,

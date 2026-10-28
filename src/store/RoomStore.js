@@ -53,7 +53,7 @@ export const useRoomStore = defineStore('room', {
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
     peopleOpen: false,   // a host's: the chat panel's "N here" list is open
-    lobbyPin: null,      // a host's: the top line the lobby picture is pinned to; null while it follows the view
+    lobbyPin: null,      // a host's: the top-left cell { col, row } the lobby picture uses; null while it follows the view
     session: newSession(),   // a host's: what this browser counted since the room started (social/session.js)
     startDraft: newStartDraft(),         // Start a room's form; empty again once a room is made
     settingsDraft: newSettingsDraft(),   // a host's Room settings form
@@ -78,11 +78,11 @@ export const useRoomStore = defineStore('room', {
       const claims = useSocialStore().claims;
       return !!claims && !claims.guest && claims.verified;
     },
-    // Where the lobby picture looks: a pinned top line, else the middle line of the shared view.
+    // Where the lobby picture looks: the cell it's pinned to, else the middle of the shared view.
     lobbyPlace() {
-      if (this.lobbyPin !== null) return { row: this.lobbyPin };
+      if (this.lobbyPin !== null) return { ...this.lobbyPin };
       const v = useWorkspaceStore().sharedView;
-      return { middle: v ? v.row + v.rows / 2 : 0 };
+      return v ? { middleCol: v.col + v.cols / 2, middleRow: v.row + v.rows / 2 } : { middleCol: 0, middleRow: 0 };
     },
   },
 
@@ -227,9 +227,9 @@ export const useRoomStore = defineStore('room', {
       this._watch?.setFollowing(on);
     },
 
-    // The lobby picture from this top line, or following the view's middle again.
-    pinLobby(row) {
-      this.lobbyPin = row;
+    // The lobby picture from this top-left cell ({ col, row }), or following the view's middle again.
+    pinLobby(cell) {
+      this.lobbyPin = cell;
     },
     followLobby() {
       this.lobbyPin = null;

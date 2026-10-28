@@ -1,5 +1,5 @@
-// The lobby's picture of a room: the art's full width around the host's view or a pinned line, encoded
-// as WebP (JPEG where the browser can't make WebP), as raw base64.
+// The lobby's picture of a room: the art's width up to 80 columns around the host's view or from a
+// pinned cell, encoded as WebP (JPEG where the browser can't make WebP), as raw base64.
 import { test, expect, vi, afterEach } from 'vitest';
 import { thumbnailOf, lobbyWindow } from '@/social/thumbnail';
 import { fontFor } from '@/social/wire';
@@ -10,13 +10,14 @@ const COLS = 300, LINES = 1666;
 const black = { hex: '#000000', r: 0, g: 0, b: 0 }, white = { hex: '#ffffff', r: 255, g: 255, b: 255 };
 const font = fontFor({ id: 'vga', size: 16 });
 
-// The whole grid black, but for white blocks in the lines from `from` up to `to`: so a window that
-// isn't over those lines draws nothing, and a thumbnail shows white only where it should.
-const gridOf = (from, to) => ({
+// The whole grid black, but for white blocks in the lines from `from` up to `to` (and the columns from
+// `left` up to `right`): so a window that isn't over them draws nothing, and a thumbnail shows white
+// only where it should.
+const gridOf = (from, to, left = 0, right = COLS) => ({
   cols: COLS, lines: LINES, font,
   cells: Array.from({ length: COLS * LINES }, (_, i) => {
-    const line = Math.floor(i / COLS);
-    return { char: line >= from && line < to ? '█' : ' ', fg: white, bg: black };
+    const line = Math.floor(i / COLS), col = i % COLS;
+    return { char: line >= from && line < to && col >= left && col < right ? '█' : ' ', fg: white, bg: black };
   }),
 });
 const blank = gridOf(0, 0);
@@ -39,40 +40,44 @@ const whiteShare = ({ data }) => {
   return white / (data.length / 4);
 };
 const BASE64 = /^[A-Za-z0-9+/]+=*$/;
-const MIDDLE = { middle: 800 };
+const MIDDLE = { middleCol: 150, middleRow: 800 };
 
-test('the window is the art\'s full width at 2:1, around the middle line it\'s given', async () => {
-  const webp = await thumbnailOf(gridOf(750, 850), MIDDLE);
+test('the window is 80 columns of wide art at 2:1, around the middle it\'s given', async () => {
+  const webp = await thumbnailOf(gridOf(750, 850, 100, 200), MIDDLE);
   expect(webp).toMatch(BASE64);
   expect(webp.length).toBeLessThanOrEqual(49_152);
   const image = await pixelsOf(webp);
   expect(Math.abs(image.width - 320)).toBeLessThan(40);
-  expect(image.width / image.height).toBeGreaterThan(1.6);   // 300 columns are a pixel each, so the cells' whole pixels bend 2:1 a little
+  expect(image.width / image.height).toBeGreaterThan(1.7);
   expect(image.width / image.height).toBeLessThan(2.3);
   expect(whiteShare(image)).toBeGreaterThan(0.95);   // the lines around the middle are all in the window
 
   // Differs from a blank grid's, and a middle elsewhere sees none of those lines.
   expect(webp).not.toBe(await thumbnailOf(blank, MIDDLE));
-  expect(whiteShare(await pixelsOf(await thumbnailOf(gridOf(750, 850), { middle: 100 })))).toBe(0);
+  expect(whiteShare(await pixelsOf(await thumbnailOf(gridOf(750, 850), { middleCol: 150, middleRow: 100 })))).toBe(0);
+  expect(whiteShare(await pixelsOf(await thumbnailOf(gridOf(750, 850, 100, 200), { middleCol: 20, middleRow: 800 })))).toBe(0);
 });
 
-test('a pinned row is the window\'s top; one past the end is held to the last lines', async () => {
-  const last = await thumbnailOf(gridOf(LINES - 100, LINES), { row: 1e9 });
+test('a pinned cell is the window\'s corner; one past the end is held to the last lines and columns', async () => {
+  const last = await thumbnailOf(gridOf(LINES - 100, LINES, COLS - 80), { col: 1e9, row: 1e9 });
   expect(last).toMatch(BASE64);
   expect(whiteShare(await pixelsOf(last))).toBeGreaterThan(0.95);
-  const first = await thumbnailOf(gridOf(0, 100), { row: 0 });
+  const first = await thumbnailOf(gridOf(0, 100, 0, 80), { col: 0, row: 0 });
   expect(first).toMatch(BASE64);
   expect(whiteShare(await pixelsOf(first))).toBeGreaterThan(0.95);
 });
 
-test('lobbyWindow: 2:1 of the art\'s width in lines, centered on a middle or from a pinned row, held to the grid', () => {
+test('lobbyWindow: up to 80 columns, 2:1 in lines, centered on a middle or from a pinned cell, held to the grid', () => {
   const cell = { cellWidth: 8, lineHeight: 16 };
-  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { middle: 500 })).toEqual({ row: 490, rows: 20 });
-  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { row: 995 })).toEqual({ row: 980, rows: 20 });
-  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { row: 7 })).toEqual({ row: 7, rows: 20 });
-  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { middle: NaN }).row).toBe(0);
-  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { middle: 0 }).row).toBe(0);
-  expect(lobbyWindow({ cols: 80, lines: 5 }, cell, { middle: 2 })).toEqual({ row: 0, rows: 5 });
+  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { middleCol: 40, middleRow: 500 })).toEqual({ col: 0, cols: 80, row: 490, rows: 20 });
+  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { col: 0, row: 995 })).toEqual({ col: 0, cols: 80, row: 980, rows: 20 });
+  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { col: 0, row: 7 })).toEqual({ col: 0, cols: 80, row: 7, rows: 20 });
+  expect(lobbyWindow({ cols: 40, lines: 1000 }, cell, { middleCol: 30, middleRow: 500 })).toEqual({ col: 0, cols: 40, row: 495, rows: 10 });
+  expect(lobbyWindow({ cols: 300, lines: 1000 }, cell, { middleCol: 150, middleRow: 500 })).toEqual({ col: 110, cols: 80, row: 490, rows: 20 });
+  expect(lobbyWindow({ cols: 300, lines: 1000 }, cell, { col: 290, row: 0 })).toEqual({ col: 220, cols: 80, row: 0, rows: 20 });
+  expect(lobbyWindow({ cols: 300, lines: 1000 }, cell, { middleCol: NaN, middleRow: NaN })).toMatchObject({ col: 0, row: 0 });
+  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { middleCol: 0, middleRow: 0 }).row).toBe(0);
+  expect(lobbyWindow({ cols: 80, lines: 5 }, cell, { middleCol: 40, middleRow: 2 })).toEqual({ col: 0, cols: 80, row: 0, rows: 5 });
 });
 
 test('a grid shorter than the window is the whole of it', async () => {

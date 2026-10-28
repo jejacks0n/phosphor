@@ -10,13 +10,11 @@ import { fontFor, fontOnWire } from '@/social/wire';
 import { lobbyWindow } from '@/social/thumbnail';
 import RoomArt from './RoomArt.vue';
 
-// What the lobby card shows of the art, as a small frame of the art's full width: about FRAME px wide
-// (cells are whole device pixels, so the art comes out near it) and as tall as the card's lines, 2:1
-// give or take a line. While the room follows the host's view the frame is RoomArt centered on the
-// lobby window, as the thumbnail is made from it. A scroll that lands half a line or more from where
-// following puts the frame is the host's (the wheel, a key, a drag, momentum), and pins the window to
-// the line it landed on; a scroll that lands there is RoomArt's own and never pins. Once pinned, any
-// scroll moves the pin.
+// What the lobby card shows of the art: a small frame, about FRAME px wide (cells are whole device
+// pixels, so it comes out near it), the size of the lobby window, with the art scrolling inside it.
+// Unchecked, the window follows the host's view and the frame is RoomArt centered on it; the frame can
+// be scrolled to look, and "Use this exact position" pins the window to the cells the frame shows.
+// While pinned, scrolling the frame moves the pin.
 const FRAME = 300;
 const room = useRoomStore(), project = useProjectStore(), workspace = useWorkspaceStore();
 const headingId = useId();
@@ -34,74 +32,68 @@ watch(() => `${font.value.id}:${font.value.size}`, (key) => {
 }, { immediate: true });
 const advance = computed(() => (void loaded.value, measureAdvance(font.value)));
 
-// The window rows come from the cell the thumbnail measures (8 device px to the CSS px), so the frame
-// shows what the card does: only the cell's aspect matters, and zoom keeps it.
+// The window comes from the cell the thumbnail measures (8 device px to the CSS px), so the frame shows
+// what the card does: only the cell's aspect matters, and zoom keeps it.
 const hostView = computed(() => {
   if (!art.value) return null;
   const { cellWidth, lineHeight } = cellGeometry(advance.value, 8, false, font.value);
-  return { col: 0, cols: art.value.cols, ...lobbyWindow(art.value, { cellWidth, lineHeight }, room.lobbyPlace) };
+  return lobbyWindow(art.value, { cellWidth, lineHeight }, room.lobbyPlace);
 });
-const zoom = computed(() => (art.value ? FRAME / (art.value.cols * advance.value) : 1));
-const sized = ref(null);   // the art as RoomArt drew it: { width, lineHeight } in CSS px
+const zoom = computed(() => (hostView.value ? FRAME / (hostView.value.cols * advance.value) : 1));
+const cell = ref(null);    // the cell as RoomArt drew it: { width, height } in CSS px
+const bars = ref({ x: 0, y: 0 });   // the frame's scrollbars take room from the art: the frame is that much bigger
 const frameStyle = computed(() => {
-  const rows = hostView.value?.rows ?? 1;
-  return { width: `${(sized.value?.width ?? FRAME) + bar.value}px`, height: `${rows * (sized.value?.lineHeight ?? FRAME / 2 / rows)}px` };
+  const v = hostView.value, c = cell.value;
+  if (!v || !c) return { width: `${FRAME}px`, height: `${FRAME / 2}px` };
+  return { width: `${v.cols * c.width + bars.value.y}px`, height: `${v.rows * c.height + bars.value.x}px` };
 });
 const pinned = computed(() => room.lobbyPin !== null);
 
 const frameRef = useTemplateRef('frame');
 const scroller = () => frameRef.value?.querySelector('.room-art');
-const lineHeightOf = (el) => el.firstElementChild.getBoundingClientRect().height / art.value.lines;
-
-// The frame's scrollbar takes room from the art: the frame is that much wider, so the art fits across.
-const bar = ref(0);
-
-// The top line the frame is scrolled to while following: the window's middle centered, as RoomArt does
-// it, held to the art the way the browser holds scrollTop.
-const followedTop = (el, lineHeight) => {
-  const { row, rows } = hostView.value, most = el.scrollHeight - el.clientHeight;
-  return Math.max(0, Math.min((row + rows / 2) * lineHeight - el.clientHeight / 2, most)) / lineHeight;
+const cellOf = (el) => {
+  const { width, height } = el.firstElementChild.getBoundingClientRect();
+  return { width: width / art.value.cols, height: height / art.value.lines };
 };
-// The size `settle` last put the frame at. A scroll that comes with another size is the browser holding
-// scrollTop to a smaller art, not the host's; `settle` puts the line back.
-let settled = null;
+const shownCell = (el) => {
+  const c = cellOf(el);
+  return { col: Math.round(el.scrollLeft / c.width), row: Math.round(el.scrollTop / c.height) };
+};
+
+// RoomArt resizes the art in an animation frame, and `settle` puts the window back in that frame's
+// resize observers, before the browser's scroll event for it: a pin isn't moved by a resize.
 const scrolled = (event) => {
-  const el = event.target, lineHeight = lineHeightOf(el);
-  if (!lineHeight) return;
-  if (settled && (el.scrollHeight !== settled.scrollHeight || el.clientHeight !== settled.clientHeight)) return;
-  if (!pinned.value && Math.abs(el.scrollTop / lineHeight - followedTop(el, lineHeight)) < 0.5) return;
-  room.pinLobby(Math.round(el.scrollTop / lineHeight));
+  const el = event.target;
+  if (!pinned.value || !cellOf(el).height) return;
+  room.pinLobby(shownCell(el));
+};
+const pin = (event) => {
+  if (!event.target.checked) return void room.followLobby();
+  const el = scroller();
+  if (el) room.pinLobby(shownCell(el));
 };
 
-// The art's size changed: the frame follows it (once it has, the window is put back at the top of it),
-// and a pinned window is held to its line.
+// The art's size changed: the frame follows it, then shows the window again (the frame is the window's
+// size, so the window's corner is the scroll).
 let sizerObserver = null;
 const settle = async () => {
   const el = scroller();
-  if (!el) return;
-  const { width, height } = el.firstElementChild.getBoundingClientRect();
-  if (!height) return;   // not drawn yet
-  sized.value = { width, lineHeight: height / art.value.lines };
+  if (!el || !cellOf(el).height) return;   // not drawn yet
+  cell.value = cellOf(el);
+  bars.value = { x: el.offsetHeight - el.clientHeight, y: el.offsetWidth - el.clientWidth };
   await nextTick();   // the frame's new size
-  if (!art.value || !hostView.value) return;
-  settled = { scrollHeight: el.scrollHeight, clientHeight: el.clientHeight };
-  if (pinned.value) el.scrollTop = room.lobbyPin * lineHeightOf(el);
-  else el.scrollTop = followedTop(el, lineHeightOf(el)) * lineHeightOf(el);
-};
-
-const follow = () => {
-  room.followLobby();
-  scroller()?.focus();   // the button is gone
+  const v = hostView.value;
+  if (!art.value || !v) return;
+  el.scrollLeft = v.col * cell.value.width;
+  el.scrollTop = v.row * cell.value.height;
 };
 
 // The art's sizer is watched once the art is there (it can come after the frame does).
 const artRef = useTemplateRef('roomArt');
 watch(artRef, (instance) => {
   sizerObserver?.disconnect();
-  settled = null;
   const el = instance?.$el;
   if (!el?.classList?.contains('room-art')) return;   // no art, or no WebGL2
-  bar.value = el.offsetWidth - el.clientWidth;
   sizerObserver = new ResizeObserver(settle);
   sizerObserver.observe(el.firstElementChild);
 }, { flush: 'post' });
@@ -111,11 +103,10 @@ onBeforeUnmount(() => sizerObserver?.disconnect());
 <template>
   <section class="lobby-picture" :aria-labelledby="headingId">
     <h3 :id="headingId">Lobby picture</h3>
-    <p class="state">{{ pinned ? 'Pinned' : 'Follows your view' }}</p>
     <div ref="frame" class="frame" :style="frameStyle" @scroll.capture="scrolled">
       <RoomArt v-if="art" ref="roomArt" :art="art" :host-view="hostView" :following="!pinned" :zoom="zoom" :boxed="false" />
     </div>
-    <button v-if="pinned" @click="follow">Follow my view</button>
+    <label class="choice"><input type="checkbox" :checked="pinned" @change="pin"> Use this exact position</label>
   </section>
 </template>
 
@@ -136,14 +127,15 @@ h3 {
   font-weight: 500;
   color: var(--text);
 }
-p.state {
-  margin: 0;
-  color: var(--text-muted);
+label.choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 div.frame {
   outline: 1px solid var(--border);
 }
 div.frame :deep(.room-art) {
-  scrollbar-gutter: stable;   /* the scrollbar's room is always there, so the bar's width is known */
+  overflow: scroll;   /* both bars always, so their room is known and doesn't come and go with the art */
 }
 </style>

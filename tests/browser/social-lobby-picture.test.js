@@ -1,6 +1,6 @@
-// The lobby picture (LobbyPicture.vue) on the host's page: a scroll the frame makes by itself while
-// following the view never pins; one that lands somewhere else is the host's and pins the window to the
-// line it landed on, and from then on every scroll moves the pin.
+// The lobby picture (LobbyPicture.vue) on the host's page: unchecked, the frame follows the view and
+// scrolling it only looks; "Use this exact position" pins the cells the frame shows, and from then on
+// every scroll moves the pin. Wide art scrolls across too: the window is never wider than 80 columns.
 import { test, expect, afterEach } from 'vitest';
 import { createApp } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -18,10 +18,10 @@ const frames = async (n = 4) => {
   for (let i = 0; i < n; i++) await new Promise((resolve) => requestAnimationFrame(resolve));
 };
 
-// The picture over 300 lines of art, the room listed and the ANSI view at `row`.
-async function mount(row) {
+// The picture over 300 lines of art `cols` wide, the room listed and the ANSI view at `row`.
+async function mount(row, cols = 40) {
   const { project, workspace } = await createTestApp();
-  await loadImage(project, '/tests/fixtures/images/tall.png', { cols: 40, rows: 600 });
+  await loadImage(project, '/tests/fixtures/images/tall.png', { cols, rows: 600 });
   const room = useRoomStore();
   Object.assign(room, { role: 'host', status: 'live', room: { name: 'neon harbor', public: true } });
   Object.assign(workspace, { viewTab: 'output', ansiViewOrigin: { col: 0, row }, ansiViewSize: { cols: 40, rows: 30 }, ansiViewZoom: 1 });
@@ -32,43 +32,62 @@ async function mount(row) {
   const el = host.querySelector('.room-art');
   await expect.poll(() => el.scrollTop).toBeGreaterThan(0);
   await frames();
-  return { room, workspace, el };
+  const sizer = el.firstElementChild.getBoundingClientRect();
+  const exact = host.querySelector('input[type=checkbox]');
+  return { project, room, workspace, el, exact, cell: { width: sizer.width / cols, height: sizer.height / 300 } };
 }
 
-test('scrolls made by code while following never pin: not the first centering, not the next view', async () => {
-  const { room, workspace, el } = await mount(200);
+test('unchecked, the frame follows the view, and scrolling it only looks', async () => {
+  const { room, workspace, el, exact } = await mount(200);
+  expect(exact.checked).toBe(false);
+  el.scrollTop -= 60;   // as a key or the wheel does
+  await frames();
   expect(room.lobbyPin).toBe(null);
-  const first = el.scrollTop;
+  const looked = el.scrollTop;
   workspace.ansiViewOrigin = { col: 0, row: 100 };
-  await expect.poll(() => el.scrollTop).toBeLessThan(first);
+  await expect.poll(() => el.scrollTop).toBeLessThan(looked);
   await frames();
   expect(room.lobbyPin).toBe(null);
 });
 
-test('a scroll of the host\'s pins the line it landed on, and then every scroll moves the pin', async () => {
-  const { room, workspace, el } = await mount(200);
-  const lineHeight = el.firstElementChild.getBoundingClientRect().height / 300;
-  el.scrollTop += 40;   // as a key or the wheel does
-  await expect.poll(() => room.lobbyPin).toBe(Math.round(el.scrollTop / lineHeight));
-  const pinned = room.lobbyPin;
+test('"Use this exact position" pins the cells the frame shows; scrolling moves the pin, and unchecking follows again', async () => {
+  const { room, workspace, el, exact, cell } = await mount(200);
+  el.scrollTop = 120 * cell.height;
+  await frames();
+  exact.click();
+  expect(room.lobbyPin).toEqual({ col: 0, row: 120 });
   workspace.ansiViewOrigin = { col: 0, row: 20 };   // the view moves: the pin doesn't
   await frames();
-  expect(room.lobbyPin).toBe(pinned);
-  el.scrollTop += 3 * lineHeight;   // a slow drag: a few lines
-  await expect.poll(() => room.lobbyPin).toBe(pinned + 3);
-  room.followLobby();
-  await expect.poll(() => el.scrollTop).not.toBe((pinned + 3) * lineHeight);
+  expect(room.lobbyPin).toEqual({ col: 0, row: 120 });
+  el.scrollTop += 3 * cell.height;
+  await expect.poll(() => room.lobbyPin).toEqual({ col: 0, row: 123 });
+  exact.click();
   expect(room.lobbyPin).toBe(null);
+  await expect.poll(() => Math.round(el.scrollTop / cell.height)).toBeLessThan(40);   // back around row 20
 });
 
-test('a pin is not rewritten when the art shrinks and the browser clamps the frame\'s scroll', async () => {
-  const { room, el } = await mount(200);
-  const sizer = el.firstElementChild, lineHeight = sizer.getBoundingClientRect().height / 300;
-  el.scrollTop = 200 * lineHeight;
-  await expect.poll(() => room.lobbyPin).toBe(200);
-  sizer.style.height = `${150 * lineHeight}px`;   // half the line height
-  expect(el.scrollTop).toBeLessThan(200 * lineHeight);   // the layout just clamped it
-  el.dispatchEvent(new Event('scroll'));   // the clamp's scroll event, before the frame has settled
+test('wide art: the window is 80 columns, the frame scrolls across, and the pin keeps the column', async () => {
+  const { room, workspace, el, exact, cell } = await mount(200, 200);
+  expect(Math.round(el.clientWidth / cell.width)).toBe(80);
+  expect(el.scrollWidth).toBeGreaterThan(el.clientWidth);
+  workspace.ansiViewOrigin = { col: 120, row: 200 };   // the view's middle is column 140
+  await expect.poll(() => Math.round(el.scrollLeft / cell.width)).toBe(100);
+  el.scrollLeft = 30 * cell.width;
   await frames();
-  expect(room.lobbyPin).toBe(200);
+  exact.click();
+  expect(room.lobbyPin.col).toBe(30);
+});
+
+test('a pin is not rewritten when the art gets wider and the cells smaller under it', async () => {
+  const { project, room, el, exact, cell } = await mount(200);
+  el.scrollTop = 200 * cell.height;
+  await frames();
+  exact.click();
+  expect(room.lobbyPin).toEqual({ col: 0, row: 200 });
+  await loadImage(project, '/tests/fixtures/images/tall.png', { cols: 80, rows: 600 });   // twice the columns: half the cell
+  await expect.poll(() => el.firstElementChild.getBoundingClientRect().height).toBeLessThan(300 * cell.height * 0.6);
+  await frames();
+  expect(room.lobbyPin).toEqual({ col: 0, row: 200 });
+  const now = el.firstElementChild.getBoundingClientRect().height / 300;
+  expect(Math.round(el.scrollTop / now)).toBe(200);
 });

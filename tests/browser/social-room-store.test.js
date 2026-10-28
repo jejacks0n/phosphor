@@ -542,7 +542,7 @@ test('A public room sends one thumbnail soon after going live, then one only aft
   expect(thumbnails(socket)).toEqual([{ type: 'thumbnail', webp: 'AAAA' }]);
   expect(thumbnailOf).toHaveBeenLastCalledWith(
     expect.objectContaining({ cols: 8, lines: 4, cells: project.cells, font: expect.objectContaining({ id: 'jetbrains', size: 17 }) }),
-    { middle: expect.any(Number) },
+    { middleCol: expect.any(Number), middleRow: expect.any(Number) },
   );
 
   await vi.advanceTimersByTimeAsync(2 * 60_000);   // nothing changed
@@ -576,25 +576,25 @@ test('A change of the host\'s view alone sends a thumbnail once 3 minutes have p
   expect(thumbnails(socket)).toHaveLength(1);
   await vi.advanceTimersByTimeAsync(2 * 60_000);
   expect(thumbnails(socket)).toHaveLength(2);
-  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { middle: 3 });
+  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { middleCol: 8, middleRow: 3 });
 });
 
-test('The lobby picture follows the shared view\'s middle until pinned; pinning or following again is a change, and a new room follows', async () => {
+test('The lobby picture follows the shared view\'s middle until pinned to a cell; pinning or following again is a change, and a new room follows', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   const workspace = useWorkspaceStore();
   Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiViewOrigin: { col: 0, row: 10 }, ansiViewSize: { cols: 10, rows: 6 } });
   const socket = await goLive();
   await vi.advanceTimersByTimeAsync(10_000);
   expect(thumbnails(socket)).toHaveLength(1);
-  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { middle: 13 });
+  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { middleCol: 5, middleRow: 13 });
 
-  room.pinLobby(12);
-  expect(room.lobbyPin).toBe(12);
+  room.pinLobby({ col: 2, row: 12 });
+  expect(room.lobbyPin).toEqual({ col: 2, row: 12 });
   await vi.advanceTimersByTimeAsync(60_000);
   expect(thumbnails(socket)).toHaveLength(1);
   await vi.advanceTimersByTimeAsync(2 * 60_000);
   expect(thumbnails(socket)).toHaveLength(2);
-  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { row: 12 });
+  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { col: 2, row: 12 });
 
   workspace.ansiViewOrigin = { col: 0, row: 40 };   // pinned: the view moving is not a change
   await vi.advanceTimersByTimeAsync(10 * 60_000);
@@ -603,12 +603,12 @@ test('The lobby picture follows the shared view\'s middle until pinned; pinning 
   room.followLobby();
   await vi.advanceTimersByTimeAsync(3 * 60_000 + 1000);
   expect(thumbnails(socket)).toHaveLength(3);
-  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { middle: 43 });
+  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { middleCol: 5, middleRow: 43 });
 
-  room.pinLobby(5);
+  room.pinLobby({ col: 0, row: 5 });
   room.leave();
   expect(room.lobbyPin).toBe(null);
-  room.pinLobby(5);
+  room.pinLobby({ col: 0, row: 5 });
   expect(await startPublic()).toBe(true);   // a new room starts over
   expect(room.lobbyPin).toBe(null);
 });
