@@ -56,7 +56,9 @@ async function fold(to) {
 watch(() => room.chat.at(-1)?.id, () => { if (folded.value && !room.chat.at(-1)?.presence) since.value++; });
 
 // The list as drawn: messages, runs of who came and went ({ id, people }), and "You joined" after the
-// last of a watcher's first history (a run ends there, so what came after is below it).
+// last of a watcher's first history (a run ends there, so what came after is below it). A run names each
+// person once, where they first came in it, by how they ended up: joined, left, came and went, came back.
+const did = ({ first, last }) => (first === last ? first : first === 'joined' ? 'came and went' : 'came back');
 const rows = computed(() => {
   const out = [];
   let run = null;
@@ -65,8 +67,10 @@ const rows = computed(() => {
       out.push(m);
       run = null;
     } else if (!m.mine) {
-      if (run) run.people.push(m);
-      else out.push(run = { id: m.id, people: [m] });
+      if (!run) out.push(run = { id: m.id, people: [] });
+      const seen = run.people.find((p) => p.sub === m.sub);
+      if (seen) seen.last = m.presence;
+      else run.people.push({ id: m.id, sub: m.sub, name: m.name, first: m.presence, last: m.presence });
     }
     if (m.id === room.joinedAt) {
       out.push({ id: 'you-joined', joined: true });
@@ -130,10 +134,10 @@ function askIfAtTop() {
         <p v-if="room.chatMore" class="more">↑ Scroll up for earlier messages</p>
         <p v-if="room.role === 'watch' && room.joinedAt === null && room.status === 'live'" class="joined">You joined</p>
         <!-- A row is drawn again only when what it shows changes, not on every new message. -->
-        <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.length] : [m.deleted, hidden(m), room.role === 'host', reportable(m)]">
+        <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.map(did).join()] : [m.deleted, hidden(m), room.role === 'host', reportable(m)]">
           <p v-if="m.joined" class="joined">You joined</p>
           <p v-else-if="m.people" class="presence">
-            <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<b :style="{ color: nameColor(p.name) }">{{ p.name }}</b> {{ p.presence }}</template></span>
+            <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<b :style="{ color: nameColor(p.name) }">{{ p.name }}</b> {{ did(p) }}</template></span>
           </p>
           <div v-else class="message" :class="{ note: m.deleted || hidden(m) }">
             <p v-if="m.deleted">Message deleted by the host</p>

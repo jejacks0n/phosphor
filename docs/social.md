@@ -229,7 +229,9 @@ to 300 characters, and you can send about one a second (three at once, then one 
 messages load as you scroll up (**↑ Scroll up for earlier messages**), and **You joined** marks
 where you came in. Who joins and leaves shows between the messages, each name in its color, and
 comings and goings with nothing said between them share one line (**tin-owl joined, wren left,
-pixel_fox joined**). Your own aren't shown, and they don't count as new messages on the rail.
+pixel_fox joined**). Someone who comes and goes more than once in a line is named once, by how it
+ended: **joined**, **left**, **came and went** or **came back**. Your own aren't shown, and they
+don't count as new messages on the rail.
 
 Chat goes from browser to browser through the host, like the art, and never through Phosphor's
 server. The host's browser keeps the last 5,000 messages for as long as the room lasts, and a

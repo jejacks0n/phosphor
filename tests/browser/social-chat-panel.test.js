@@ -90,6 +90,20 @@ test('who came and went with nothing between is one line, each name in its color
   expect(host.querySelector('span.count').textContent).toBe('1');
 });
 
+test('someone who comes and goes more than once in a line is named once, by how it ended up', async () => {
+  const room = await mount('host', 0);
+  const of = (n, sub, presence) => row(n, { text: '', presence, sub: `u_${sub}`, name: `name-${sub}` });
+  room.chat = [of(0, 1, 'joined'), of(1, 2, 'joined'), of(2, 1, 'left'), of(3, 1, 'joined'), of(4, 3, 'joined'), of(5, 3, 'left'),
+    of(6, 4, 'left'), of(7, 4, 'joined'), of(8, 5, 'left'), of(9, 5, 'joined'), of(10, 5, 'left'), row(11)];
+  await nextTick();
+  expect(read()).toEqual(['name-1 joined, name-2 joined, name-3 came and went, name-4 came back, name-5 left', 'm11']);
+
+  // A later event for someone already in the line changes their words, not the line's length.
+  room.chat = [...room.chat.slice(0, 2), of(12, 2, 'left')];
+  await nextTick();
+  expect(read()).toEqual(['name-1 joined, name-2 came and went']);
+});
+
 test('the host has no Delete for who came and went', async () => {
   const room = await mount('host', 1);
   room.chat = [...room.chat, row(1, { text: '', presence: 'joined' })];

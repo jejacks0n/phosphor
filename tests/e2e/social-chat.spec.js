@@ -240,13 +240,13 @@ test('who joins and leaves is in the chat, one line while nothing is said betwee
   await expect(presence(late)).toHaveText(['pixel_wren joined']);   // from before, in its history
   await expect(presence(watcher)).toHaveText(['grim_reaper joined']);
   await late.getByRole('button', { name: 'Leave' }).click();
-  await expect(presence(watcher)).toHaveText(['grim_reaper joined, grim_reaper left']);
-  await expect(presence(host)).toHaveText(['pixel_wren joined, grim_reaper joined, grim_reaper left']);
+  await expect(presence(watcher)).toHaveText(['grim_reaper came and went']);
+  await expect(presence(host)).toHaveText(['pixel_wren joined, grim_reaper came and went']);
 
   await say(host, 'still here?');
   await expect(messages(watcher)).toHaveCount(1);
   await watcher.getByRole('button', { name: 'Leave' }).click();
-  await expect(presence(host)).toHaveText(['pixel_wren joined, grim_reaper joined, grim_reaper left', 'pixel_wren left']);
+  await expect(presence(host)).toHaveText(['pixel_wren joined, grim_reaper came and went', 'pixel_wren left']);
 });
 
 test('60 messages before a second watcher joins: the last 50, "You joined", and the other 10 on scrolling to the top', async ({ page: host, context }) => {
