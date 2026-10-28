@@ -47,7 +47,7 @@ export const useRoomStore = defineStore('room', {
     hostView: null,      // a watcher's: { col, row, cols, rows, zoom }
     following: true,
     artZoom: 1,          // a watcher's: the zoom the art is drawn at, the host's while following
-    chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted }], oldest first, at most MOST_KEPT
+    chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, presence? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
@@ -301,14 +301,14 @@ export const useRoomStore = defineStore('room', {
       return true;
     },
 
-    // What Host and Watch hand over about chat: a message, a page of them, a deletion or a refusal.
+    // What Host and Watch hand over about chat: a message or who came or went, a page of them, a deletion or a refusal.
     chatHeard(event) {
       if (event.type === 'refused') {
         this.chatRefused = event.reason;
       } else if (event.type === 'deleted') {
         const shown = this.chat.find((m) => m.id === event.id);
         if (shown) Object.assign(shown, { deleted: true, text: '' });
-      } else if (event.type === 'chat') {
+      } else if (event.type === 'chat' || event.type === 'presence') {
         if (!this.chat.some((m) => m.id === event.entry.id)) this.keep([...this.chat, this.chatRow(event.entry, event.claims)]);
       } else if (event.type === 'history') {
         const rows = event.messages.map((m) => (m.deleted ? { id: m.id, ts: m.ts, text: '', sub: null, name: null, host: false, mine: false, deleted: true } : this.chatRow(m.entry, m.claims)))
@@ -344,9 +344,10 @@ export const useRoomStore = defineStore('room', {
 
     // A message as the list shows it. A host's own claims come from its pass (the host checked every
     // watcher's pass when it joined); the host's mark is its own messages, or for a watcher the room's host (by account, so a rename keeps it).
-    chatRow({ id, ts, text, pass }, claims = decodePass(pass)) {
+    chatRow({ id, ts, text = '', pass, presence }, claims = decodePass(pass)) {
       const mine = claims.sub === useSocialStore().claims?.sub;
-      return { id, ts, text, sub: claims.sub, name: claims.name, host: this.role === 'host' ? mine : claims.sub === this.room?.hostSub, mine, deleted: false };
+      const row = { id, ts, text, sub: claims.sub, name: claims.name, host: this.role === 'host' ? mine : claims.sub === this.room?.hostSub, mine, deleted: false };
+      return presence ? { ...row, presence } : row;
     },
 
     // The list holds the last MOST_KEPT at most, like the host's log, and goes no further back: once it's

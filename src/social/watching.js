@@ -124,7 +124,7 @@ export class Watch {
       const want = msg.chunks;
       this.gathering = Number.isInteger(want) && want >= 1 && want <= MOST_SNAPSHOT_CHUNKS ? { want, chunks: [] } : null;
     } else if (msg.t === 'cells' && this.art) this.change(msg);
-    else if (msg.t === 'chat') await this.chat(msg);
+    else if (msg.t === 'chat' || msg.t === 'presence') await this.chat(msg);
     else if (msg.t === 'history') await this.history(msg);
     else if (msg.t === 'deleted' && isId(msg.id)) this.onChat({ type: 'deleted', id: msg.id });
     else if (msg.t === 'chat-no' && isId(msg.id) && msg.reason === 'too-fast') this.onChat({ type: 'refused', id: msg.id, reason: msg.reason });
@@ -133,7 +133,7 @@ export class Watch {
   async chat(msg) {
     const conn = this.conn;
     const checked = await this.checked(msg);
-    if (checked && this.conn === conn) this.onChat({ type: 'chat', ...checked });
+    if (checked && this.conn === conn) this.onChat({ type: checked.entry.presence ? 'presence' : 'chat', ...checked });
   }
 
   // A page of messages, oldest first: those that check out, and those deleted; the rest are left out.
@@ -155,10 +155,16 @@ export class Watch {
   }
 
   // { entry, claims } for a message its sender sent: a verified member's pass, text as the composer
-  // sends it, and their signature over it for this room. Null for anything else.
+  // sends it, and their signature over it for this room. Who came or went is the host's word, but named
+  // by a pass the server signed (a guest's too). Null for anything else.
   async checked(m) {
-    const { pass, id, ts, text, sig } = m ?? {};
-    if (typeof pass !== 'string' || !isId(id) || !Number.isFinite(ts) || chatText(text) !== text || typeof sig !== 'string') return null;
+    const { pass, id, ts, text, sig, presence } = m ?? {};
+    if (typeof pass !== 'string' || !isId(id) || !Number.isFinite(ts)) return null;
+    if (presence === 'joined' || presence === 'left') {
+      const claims = await this.claimsOf(pass);
+      return claims && { entry: { pass, id, ts, presence }, claims };
+    }
+    if (chatText(text) !== text || typeof sig !== 'string') return null;
     const claims = await this.claimsOf(pass);
     if (!claims || claims.guest || claims.verified !== true) return null;
     if (!await verifySignature(claims.key, signedText(this.roomId, { id, ts, text }), sig)) return null;

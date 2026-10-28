@@ -218,6 +218,27 @@ test('» folds the panel to a rail that counts what came since, « opens it agai
   await expect(panel(watcher).getByText('1', { exact: true })).toHaveCount(0);   // counted from this fold
 });
 
+test('who joins and leaves is in the chat, one line while nothing is said between; your own isn\'t', async ({ page: host, context }) => {
+  const { room, watcher } = await inRoom(host, context, { me: wren });
+  const presence = (page) => log(page).locator('.presence');
+  await expect(presence(host)).toHaveText(['pixel_wren joined']);
+  await expect(presence(watcher)).toHaveCount(0);   // "You joined" says it
+
+  const late = await watcherPage(context, room, { me: reaper });
+  await late.goto('/');
+  await joinFromCard(late);
+  await expect(presence(late)).toHaveText(['pixel_wren joined']);   // from before, in its history
+  await expect(presence(watcher)).toHaveText(['grim_reaper joined']);
+  await late.getByRole('button', { name: 'Leave' }).click();
+  await expect(presence(watcher)).toHaveText(['grim_reaper joined, grim_reaper left']);
+  await expect(presence(host)).toHaveText(['pixel_wren joined, grim_reaper joined, grim_reaper left']);
+
+  await say(host, 'still here?');
+  await expect(messages(watcher)).toHaveCount(1);
+  await watcher.getByRole('button', { name: 'Leave' }).click();
+  await expect(presence(host)).toHaveText(['pixel_wren joined, grim_reaper joined, grim_reaper left', 'pixel_wren left']);
+});
+
 test('60 messages before a second watcher joins: the last 50, "You joined", and the other 10 on scrolling to the top', async ({ page: host, context }) => {
   const { room } = await inRoom(host, context, { me: wren });
   const start = Date.now();

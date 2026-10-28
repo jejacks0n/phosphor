@@ -3,11 +3,12 @@
 // snapshot, then the changes as the art changes, and the part the host is looking at. The Room's socket
 // carries the signals and hears when a watcher's connection ends (send). Chat goes through the host
 // too (chat.js has its pieces): a watcher's message goes on to everyone only if it's theirs to send,
-// signed by the key in their pass, and the host keeps the last of them for anyone who joins later.
+// signed by the key in their pass, and the host keeps the last of them for anyone who joins later,
+// with who came and went among them.
 import { openPeer } from './peer.js';
 import { verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
-import { Allowance, ChatLog, chatText, isId, signedText } from './chat.js';
+import { Allowance, ChatLog, chatText, isId, newId, signedText } from './chat.js';
 import { CHUNK_BYTES, changedCells, encodeCells, packSnapshot } from './wire.js';
 
 const BACKED_UP_BYTES = 8 * 1024 * 1024;   // a channel further behind than this is sent no art until it drains
@@ -39,8 +40,9 @@ export class Host {
     Object.assign(this, { send, passKey, config, connectWithinMs, roomId, onWatchers, onChat });
     // peer -> { peer, pass, claims, following, conn, channel, has (the art it has), packing, behind,
     // allowance, heard (its chat, checked one at a time), checking (how many wait), askedAt (its last ask
-    // for earlier messages) }
+    // for earlier messages), here (counted among those in the room) }
     this.watchers = new Map();
+    this.here = new Map();   // sub -> their open connections: one person in two tabs comes and goes once
     this.removed = new Set();   // peers the host removed: not met again, and told to the Room until it stops listing them
     this.log = new ChatLog();
     this.room = null;
@@ -75,6 +77,7 @@ export class Host {
           onClose: () => {
             if (this.watchers.get(peer) !== w) return;   // closed here on purpose
             this.watchers.delete(peer);
+            this.went(w);
             this.send({ type: 'left', peer });
             this.changed();
           },
@@ -143,10 +146,33 @@ export class Host {
   // A message for everyone, the sender too (their echo): the host's own, already signed, or a
   // watcher's that checked out. Kept, unless its id is already.
   say({ pass, id, ts, text, sig }) {
-    const entry = { pass, id, ts, text, sig };
+    return this.post('chat', { pass, id, ts, text, sig });
+  }
+
+  // Who came and went, for everyone and kept like a message: a person's first open connection is their
+  // joining, and their last one closing their leaving. Their pass names them.
+  arrived(w) {
+    if (this.watchers.get(w.peer) !== w) return;
+    w.here = true;
+    const n = this.here.get(w.claims.sub) ?? 0;
+    this.here.set(w.claims.sub, n + 1);
+    if (!n) this.post('presence', { pass: w.pass, id: newId(), ts: Date.now(), presence: 'joined' });
+  }
+
+  went(w) {
+    if (!w.here) return;
+    w.here = false;
+    const n = this.here.get(w.claims.sub);
+    if (!n) return;   // the room is closing
+    if (n > 1) return void this.here.set(w.claims.sub, n - 1);
+    this.here.delete(w.claims.sub);
+    this.post('presence', { pass: w.pass, id: newId(), ts: Date.now(), presence: 'left' });
+  }
+
+  post(type, entry) {
     if (!this.log.add(entry)) return false;
-    this.onChat({ type: 'chat', entry });
-    for (const w of this.open()) this.sendTo(w, { t: 'chat', ...entry });
+    this.onChat({ type, entry });
+    for (const w of this.open()) this.sendTo(w, { t: type, ...entry });
     return true;
   }
 
@@ -166,6 +192,7 @@ export class Host {
   }
 
   close() {
+    this.here.clear();
     for (const peer of [...this.watchers.keys()]) this.drop(peer);
   }
 
@@ -174,6 +201,7 @@ export class Host {
     const w = this.watchers.get(peer);
     if (!w) return false;
     this.watchers.delete(peer);
+    this.went(w);
     w.conn?.close();
     return true;
   }
@@ -202,6 +230,7 @@ export class Host {
     this.changed();
     if (this.room) this.sendTo(w, { t: 'room', ...this.room });
     this.sendTo(w, { t: 'history', ...this.log.page() });
+    this.arrived(w);
     await this.update(w);
     if (this.view && this.watchers.get(w.peer) === w && channel.readyState === 'open') this.sendTo(w, { t: 'view', ...this.view });
   }

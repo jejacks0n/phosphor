@@ -734,13 +734,14 @@ test('A host\'s say trims, shows at once as the host\'s own, and sends one chat 
   await watcherOn(socket);
   const sent = channelSends();
   expect(await room.say('  hi ')).toBe(true);
-  expect(room.chat).toEqual([{ id: expect.any(String), ts: expect.any(Number), text: 'hi', sub: 'u_1', name: 'ansi-fan', host: true, mine: true, deleted: false }]);
+  const said = () => room.chat.filter((m) => !m.presence);   // the watcher's joining is a row too
+  expect(said()).toEqual([{ id: expect.any(String), ts: expect.any(Number), text: 'hi', sub: 'u_1', name: 'ansi-fan', host: true, mine: true, deleted: false }]);
   const chats = sent().filter((m) => m.t === 'chat');
   expect(chats).toHaveLength(1);
   const { id, ts, sig } = chats[0];
   expect(chats[0]).toMatchObject({ pass: social.pass, text: 'hi' });
   expect(await verify((await loadKey()).publicKey, `chat:${ID}:${id}:${ts}:hi`, sig)).toBe(true);
-  expect(room.chat[0]).toMatchObject({ id, ts });
+  expect(said()[0]).toMatchObject({ id, ts });
 });
 
 test('Both sides are given the room\'s id to sign over, and a watcher the pass key', async () => {
@@ -759,7 +760,7 @@ test('An empty or too long message sends nothing', async () => {
   const sent = channelSends();
   expect(await room.say('  ')).toBe(false);
   expect(await room.say('x'.repeat(301))).toBe(false);
-  expect(room.chat).toEqual([]);
+  expect(room.chat.filter((m) => !m.presence)).toEqual([]);   // the watcher's joining is a row
   expect(room.chatRefused).toBe(null);
   expect(sent().filter((m) => m.t === 'chat')).toEqual([]);
 });
@@ -840,6 +841,16 @@ test('A watcher\'s first history sets the chat, more and where it joined; a host
   expect(room.chat[1]).toEqual(mark(2));
   expect(room.chatMore).toBe(true);
   expect(room.joinedAt).toBe(chatId(3));
+});
+
+test('Who came and went is a row of the chat, live and in a history, named by their pass and marked as theirs', async () => {
+  await watching();
+  const came = (n, presence, fields) => ({ entry: { pass: 'p', id: chatId(n), ts: 1000 + n, presence }, claims: said(n, fields).claims });
+  room._watch.onChat({ type: 'history', messages: [came(1, 'joined', { name: 'tin-owl' }), said(2)], more: false, earlier: false });
+  room._watch.onChat({ type: 'presence', ...came(3, 'joined', { sub: 'u_1', name: 'ansi-fan' }) });
+  expect(room.chat.map((m) => [m.name, m.presence ?? null, m.mine, m.text])).toEqual([
+    ['tin-owl', 'joined', false, ''], ['someone', null, false, 'm2'], ['ansi-fan', 'joined', true, ''],
+  ]);
 });
 
 test('The host\'s tag follows its account, not its name: a host who renamed keeps it, a namesake does not get it', async () => {

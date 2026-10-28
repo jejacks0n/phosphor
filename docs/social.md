@@ -187,7 +187,9 @@ Everyone in the room reads the chat. Members with a confirmed email write in it;
 **Sign in to chat** and an unconfirmed member sees **Confirm your email to chat**. A message is up
 to 300 characters, and you can send about one a second (three at once, then one a second). Earlier
 messages load as you scroll up (**↑ Scroll up for earlier messages**), and **You joined** marks
-where you came in.
+where you came in. Who joins and leaves shows between the messages, each name in its color, and
+comings and goings with nothing said between them share one line (**tin-owl joined, wren left,
+pixel_fox joined**). Your own aren't shown, and they don't count as new messages on the rail.
 
 Chat goes from browser to browser through the host, like the art, and never through Phosphor's
 server. The host's browser keeps the last 5,000 messages for as long as the room lasts, and a

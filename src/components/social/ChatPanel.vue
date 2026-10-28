@@ -10,7 +10,8 @@ import ChatFoot from './ChatFoot.vue';
 // to a thin rail that counts what came since. The list keeps its place: a new message scrolls it only
 // when it was already at the bottom, and earlier ones (asked for on reaching the top) go in above
 // without moving what you were reading. Someone you blocked is folded to one line (Show opens just
-// that message).
+// that message). Who came and went, with no message between, is one line ("tin-owl joined, wren
+// left"); your own comings and goings aren't shown, as "You joined" marks where you came in.
 const room = useRoomStore(), social = useSocialStore();
 
 const folded = ref(false);
@@ -38,7 +39,28 @@ async function fold(to) {
   next?.focus();
   if (!to) list.value.scrollTop = list.value.scrollHeight;
 }
-watch(() => room.chat.at(-1)?.id, () => { if (folded.value) since.value++; });
+watch(() => room.chat.at(-1)?.id, () => { if (folded.value && !room.chat.at(-1)?.presence) since.value++; });
+
+// The list as drawn: messages, runs of who came and went ({ id, people }), and "You joined" after the
+// last of a watcher's first history (a run ends there, so what came after is below it).
+const rows = computed(() => {
+  const out = [];
+  let run = null;
+  for (const m of room.chat) {
+    if (!m.presence) {
+      out.push(m);
+      run = null;
+    } else if (!m.mine) {
+      if (run) run.people.push(m);
+      else out.push(run = { id: m.id, people: [m] });
+    }
+    if (m.id === room.joinedAt) {
+      out.push({ id: 'you-joined', joined: true });
+      run = null;
+    }
+  }
+  return out;
+});
 
 // The list's place (the list is shown when not folded; messages come and go meanwhile).
 const atBottom = (el) => el.scrollHeight - el.scrollTop - el.clientHeight < 8;
@@ -87,8 +109,12 @@ function askIfAtTop() {
         <p v-if="room.chatMore" class="more">↑ Scroll up for earlier messages</p>
         <p v-if="room.role === 'watch' && room.joinedAt === null && room.status === 'live'" class="joined">You joined</p>
         <!-- A row is drawn again only when what it shows changes, not on every new message. -->
-        <div v-for="m in room.chat" :key="m.id" v-memo="[m.deleted, hidden(m), room.role === 'host', m.id === room.joinedAt]">
-          <div class="message" :class="{ note: m.deleted || hidden(m) }">
+        <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.length] : [m.deleted, hidden(m), room.role === 'host']">
+          <p v-if="m.joined" class="joined">You joined</p>
+          <p v-else-if="m.people" class="presence">
+            <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<b :style="{ color: nameColor(p.name) }">{{ p.name }}</b> {{ p.presence }}</template></span>
+          </p>
+          <div v-else class="message" :class="{ note: m.deleted || hidden(m) }">
             <p v-if="m.deleted">Message deleted by the host</p>
             <p v-else-if="hidden(m)">
               Message from someone you blocked
@@ -104,7 +130,6 @@ function askIfAtTop() {
             </template>
             <button v-if="room.role === 'host' && !m.deleted" class="link delete" :aria-label="`Delete message from ${m.name}`" @click="room.deleteMessage(m.id)">Delete</button>
           </div>
-          <p v-if="m.id === room.joinedAt" class="joined">You joined</p>
         </div>
       </div>
       <ChatFoot />
@@ -220,18 +245,25 @@ div.list {
   padding: 8px 12px;
   overflow-anchor: none;   /* the list holds its own place (above) */
 }
-p.more, p.joined {
+p.more, p.joined, p.presence {
   margin: 6px 0;
   font-size: 11px;
   text-align: center;
   color: var(--text-faint);
 }
-p.joined {
+p.joined, p.presence {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-p.joined::before, p.joined::after {
+p.presence span {
+  overflow-wrap: anywhere;
+}
+p.presence b {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+p.joined::before, p.joined::after, p.presence::before, p.presence::after {
   content: '';
   flex: 1;
   height: 1px;

@@ -92,7 +92,7 @@ test('a verified member\'s message reaches the host and every watcher with their
   expect(r.log.p1.watch.say(hi)).toBe(true);
   const entry = { pass: p1.pass, ...hi };
   for (const peer of ['p1', 'p2']) await expect.poll(() => of(r.log[peer], 'chat'), PATIENT).toEqual([{ type: 'chat', entry, claims: p1.claims }]);
-  expect(r.chat).toEqual([{ type: 'chat', entry }]);
+  expect(of(r, 'chat')).toEqual([{ type: 'chat', entry }]);
   await wait(100);
   expect(of(r.log.p1, 'chat').length).toBe(1);
 });
@@ -116,7 +116,7 @@ test('a guest, an unconfirmed member, a bad or other room\'s signature, a used i
   say(await message(p1, 'last'));
   for (const peer of ['p1', 'p2', 'guest', 'unconfirmed']) await expect.poll(() => said(r.log[peer]), PATIENT).toEqual(['first', 'last']);
   await wait(100);
-  expect(r.chat.map((e) => e.entry.text)).toEqual(['first', 'last']);
+  expect(of(r, 'chat').map((e) => e.entry.text)).toEqual(['first', 'last']);
   expect(of(r.log.p1, 'refused')).toEqual([]);
 });
 
@@ -148,7 +148,7 @@ test('a message the host signed with its own key under p1\'s pass, or p1\'s re-s
   const mine = { pass: me.pass, ...await message(me, 'mine') };
   r.host.say(mine);
   for (const peer of ['p1', 'p2']) await expect.poll(() => of(r.log[peer], 'chat'), PATIENT).toEqual([{ type: 'chat', entry: mine, claims: me.claims }]);
-  expect(r.chat.map((e) => e.entry.text)).toEqual(['forged', 'replayed', 'mine']);   // the host believes itself
+  expect(of(r, 'chat').map((e) => e.entry.text)).toEqual(['forged', 'replayed', 'mine']);   // the host believes itself
 });
 
 // A pass lasts an hour, a room's chat as long as the room: a message keeps the pass it was sent with.
@@ -213,7 +213,7 @@ test('a message the host deletes goes for every watcher, and is deleted in a lat
   r.people.p3 = await person('u_p3');
   await join(r, 'p3');
   await opened(r, ['p3']);
-  expect(histories(r.log.p3)[0].messages).toEqual([{ id: gone.id, ts: gone.ts, deleted: true }]);
+  expect(histories(r.log.p3)[0].messages.filter((m) => !m.entry?.presence)).toEqual([{ id: gone.id, ts: gone.ts, deleted: true }]);
 });
 
 // A member sending junk can't keep the host checking signatures: past a few waiting, it's ignored.
@@ -231,7 +231,7 @@ test('a burst of 50 badly signed messages from one watcher gets only a few signa
   await wait(100);
   await expect.poll(() => r.host.watchers.get('p1').checking, PATIENT).toBe(0);   // every one it took is checked
   expect(verify.mock.calls.length).toBeLessThanOrEqual(8);
-  expect(r.chat).toEqual([]);
+  expect(of(r, 'chat')).toEqual([]);
   r.log.p1.watch.say(await message(p1, 'good'));
   await expect.poll(() => said(r.log.p2), PATIENT).toEqual(['good']);
 });
@@ -243,6 +243,46 @@ test('remove asks the Room to put the watcher out, and closes its connection', a
   expect(r.toHost).toEqual([{ type: 'remove', peer: 'p1' }]);
   expect(r.watchers.at(-1).map((w) => w.peer)).toEqual(['p2']);
   await expect.poll(() => r.log.p1.states.at(-1), PATIENT).toBe('lost');
+});
+
+// Who comes and goes: the host's word, kept with the messages, but the name is the person's pass.
+const came = (log) => of(log, 'presence').map((e) => `${e.claims.name} ${e.entry.presence}`);
+const cameKept = (messages) => messages.filter((m) => m.entry.presence).map((m) => `${m.claims.name} ${m.entry.presence}`);
+const cameAll = (log) => [...cameKept(histories(log)[0]?.messages ?? []), ...came(log)];   // before it opened, and since
+
+test('who joins and leaves goes to the host and every watcher, and is in the history of anyone joining later', async () => {
+  const r = await room({ p1: await person('u_p1') });
+  await opened(r, ['p1']);
+  r.people.p2 = await person('u_p2');
+  await join(r, 'p2');
+  await opened(r, ['p2']);
+  await expect.poll(() => came(r.log.p1), PATIENT).toEqual(['u_p1 joined', 'u_p2 joined']);   // its own too
+  r.host.remove('p2');
+  await expect.poll(() => came(r.log.p1), PATIENT).toEqual(['u_p1 joined', 'u_p2 joined', 'u_p2 left']);
+  expect(r.chat.map((e) => `${e.entry.presence} ${e.entry.pass === r.people.p1.pass ? 'p1' : 'p2'}`)).toEqual(['joined p1', 'joined p2', 'left p2']);
+  expect(r.chat.every((e) => e.type === 'presence')).toBe(true);
+
+  r.people.p3 = await person('u_p3');
+  await join(r, 'p3');
+  await opened(r, ['p3']);
+  expect(cameKept(histories(r.log.p3)[0].messages)).toEqual(['u_p1 joined', 'u_p2 joined', 'u_p2 left']);
+  await expect.poll(() => came(r.log.p3), PATIENT).toEqual(['u_p3 joined']);   // after its history
+});
+
+test('one person in two tabs joins once and leaves when the last goes; a room closing says no one left', async () => {
+  const p1 = await person('u_p1');
+  const r = await room({ a: p1, b: p1, p2: await person('u_p2') });
+  await opened(r, ['a', 'b', 'p2']);
+  const p1Came = () => cameAll(r.log.p2).filter((c) => c.startsWith('u_p1'));
+  await expect.poll(p1Came, PATIENT).toEqual(['u_p1 joined']);
+  r.host.remove('a');
+  await wait(200);
+  expect(p1Came()).toEqual(['u_p1 joined']);
+  r.host.remove('b');
+  await expect.poll(p1Came, PATIENT).toEqual(['u_p1 joined', 'u_p1 left']);
+  const before = r.chat.length;
+  r.host.close();
+  expect(r.chat.length).toBe(before);
 });
 
 test('say and earlier are false without an open channel', async () => {
@@ -304,6 +344,25 @@ test('a watcher checks a good pass once, and a bad one each time it comes', asyn
   for (let i = 0; i < 3; i++) json({ t: 'chat', pass: p1.pass, ...await message(p1, `good ${i}`) });
   await expect.poll(() => log.chat.length, PATIENT).toBe(3);
   expect(verify.mock.calls.length).toBe(3 + 1 + 3);   // the bad pass 3 times; the good pass once, and its 3 messages
+});
+
+test('a watcher takes who came and went only with a pass the server signed, and named by it', async () => {
+  const { log, json } = await hostileHost();
+  const p1 = await person('u_p1');
+  const guest = await person('g_1', { guest: true });
+  const fakeServer = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
+  const madeUp = await person('u_p9', { signer: fakeServer });
+  const at = (from, presence, id = newId()) => ({ pass: from.pass, id, ts: Date.now(), presence });
+  json({ t: 'presence', ...at(madeUp, 'joined') });
+  json({ t: 'presence', ...at(p1, 'waved') });
+  json({ t: 'presence', ...at(p1, 'joined', 'short') });
+  json({ t: 'history', more: false, messages: [at(madeUp, 'left'), at(p1, 'joined')] });
+  json({ t: 'presence', ...at(guest, 'joined') });
+  json({ t: 'presence', ...at(p1, 'left') });
+  await expect.poll(() => log.chat.length, PATIENT).toBe(3);
+  expect(cameKept(log.chat[0].messages)).toEqual(['u_p1 joined']);
+  expect(came(log)).toEqual(['g_1 joined', 'u_p1 left']);
+  expect(Object.keys(log.chat[2].entry).sort()).toEqual(['id', 'pass', 'presence', 'ts']);
 });
 
 test('a history with a forged entry shows the rest; deleted, refused and chat that don\'t fit are ignored', async () => {

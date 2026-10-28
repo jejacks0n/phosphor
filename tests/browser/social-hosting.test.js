@@ -103,7 +103,7 @@ test('each watcher gets the room, the latest messages, then art deep-equal to th
     expect(log.views).toEqual([{ col: 1, row: 2, cols: 3, rows: 4, zoom: 1 }]);
   }
   for (const channel of new Set(sends.sent().map((m) => m.channel))) {
-    expect(sends.sent().filter((m) => m.channel === channel).map((m) => m.t)).toEqual(['room', 'history', 'snapshot', 'view']);
+    expect(sends.sent().filter((m) => m.channel === channel && m.t !== 'presence').map((m) => m.t)).toEqual(['room', 'history', 'snapshot', 'view']);   // who came goes as they come
   }
   expect(lastList(r)).toEqual([
     { peer: 'p1', sub: 'u_p1', name: 'p1', guest: false, following: true, connected: true },
