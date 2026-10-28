@@ -90,13 +90,7 @@ export class Pacer {
     if (this.sendFn(this.latest)) Object.assign(this, { sent: this.latest, sentAt: this.now() });
   }
 
-  // The server's word on the value it has (it may have refused the last one sent, for coming too soon):
-  // counted as the last sent, so choosing the refused one again sends it.
-  confirm(value) {
-    this.sent = value;
-  }
-
-  // Drops what's waiting and forgets what was sent: for a new socket, whose signal starts over.
+  // Drops what's waiting and forgets what was sent: for a new socket, which starts over.
   reset() {
     if (this.timer) this.clearTimer(this.timer);
     Object.assign(this, { latest: undefined, sent: undefined, sentAt: -Infinity, timer: null });
@@ -158,7 +152,7 @@ export class LobbyConnection {
     this.timer = fn ? this.setTimer(fn, ms) : null;
   }
 
-  // Sent only while live (a signal before the state would go before the hello's answer); true if sent.
+  // Sent only while live (a message before the state would go before the hello's answer); true if sent.
   send(msg) {
     if (this.status !== 'live') return false;
     this.socket.send(JSON.stringify(msg));

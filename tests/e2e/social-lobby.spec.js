@@ -1,4 +1,4 @@
-// The lobby page: the live public rooms with their Join buttons, you and your signal, who's here, and
+// The lobby page: the live public rooms with their Join buttons and filter, you, who's here, and
 // the lobby's states (connecting, reconnecting, empty, unavailable, an unsupported browser).
 import { test, expect, tab, store } from './support.js';
 import { fakeServer, member } from './social-support.js';
@@ -59,12 +59,12 @@ test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Joi
   await expect(you(page)).toContainText('quiet-amber-fox');
   await expect(you(page).getByText('guest', { exact: true })).toBeVisible();
   await expect(side(page).getByText('Sign in to chat and start rooms.')).toBeVisible();
-  await expect(side(page).getByRole('group', { name: 'Your signal' })).toHaveCount(0); // members only
   await expect(side(page).getByRole('button', { name: 'Start a room' })).toHaveCount(0);
 
   const here = lobby(page).getByRole('list', { name: 'In the lobby' });
   await expect(lobby(page).getByText('In the lobby 3')).toBeVisible();
-  await expect(here.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest/, /dusty-neon-heron\s*Open to chat/, /soft-copper-gnat\s*guest/]);
+  // a person's signal isn't shown (the server still sends one): a member's row is just the name
+  await expect(here.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest/, /^\s*dusty-neon-heron\s*$/, /soft-copper-gnat\s*guest/]);
 
   await join.click();   // the room store joins it (this fake id isn't a room id, so it's refused at once)
   await expect(page.getByText('This room isn\'t available')).toBeVisible();
@@ -77,7 +77,7 @@ test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Joi
   expect(await store(page, 'social', (s) => s.page)).toBe('create');
 });
 
-test('a member can join a members-only room, picks a signal (sent once, shown chosen), and can start a room', async ({ page }) => {
+test('a member can join a members-only room and can start a room, and has no signal of their own', async ({ page }) => {
   const server = await fakeServer(page, { me: member(), rooms: ROOMS });
   await showLobby(page, server);
 
@@ -90,29 +90,15 @@ test('a member can join a members-only room, picks a signal (sent once, shown ch
   await expect(side(page).getByRole('button', { name: 'Sign out' })).toBeVisible();
   await expect(side(page).getByRole('button', { name: 'Start a room' })).toBeEnabled();
 
-  const signals = side(page).getByRole('group', { name: 'Your signal' });
-  const chat = signals.getByRole('button', { name: 'Open to chat' });
-  await expect(chat).toHaveAttribute('aria-pressed', 'false');
-  await chat.click();
-  await expect(chat).toHaveAttribute('aria-pressed', 'true');
-  await expect(signals.getByRole('button', { name: 'Wants feedback' })).toHaveAttribute('aria-pressed', 'false');
-  await expect(lobby(page).getByRole('list', { name: 'In the lobby' }).getByRole('listitem').first()).toHaveText(/ansi-fan\s*Open to chat/);
-  await expect.poll(() => server.lobby.received.filter((m) => m.type === 'signal')).toEqual([{ type: 'signal', signal: 'chat' }]);
+  await expect(lobby(page).getByText('Your signal')).toHaveCount(0);   // a room's signal is chosen in Start a room
+  await expect(side(page).getByRole('button', { name: 'Open to chat' })).toHaveCount(0);
+  await expect(lobby(page).getByRole('list', { name: 'In the lobby' }).getByRole('listitem').first()).toHaveText(/^\s*ansi-fan\s*$/);
 
   await side(page).getByRole('button', { name: 'Account' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('account');
   await page.getByRole('button', { name: '‹ Back to the lobby' }).click();
   await side(page).getByRole('button', { name: 'Start a room' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('start-room');
-});
-
-test('a member\'s second tab shows the signal the account already has', async ({ page }) => {
-  const server = await fakeServer(page, { me: member(), signal: 'feedback' });
-  await showLobby(page, server);
-  const signals = side(page).getByRole('group', { name: 'Your signal' });
-  await expect(signals.getByRole('button', { name: 'Wants feedback' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(lobby(page).getByRole('list', { name: 'In the lobby' }).getByRole('listitem')).toHaveText([/ansi-fan\s*Wants feedback/]);
-  expect(server.lobby.received.filter((m) => m.type === 'signal')).toEqual([]);
 });
 
 test('a member whose email isn\'t confirmed is asked to confirm it to start a room, and can resend', async ({ page }) => {
@@ -127,11 +113,28 @@ test('a member whose email isn\'t confirmed is asked to confirm it to start a ro
   await expect.poll(() => server.sent('POST', '/api/auth/send-verification-email')).toHaveLength(1);
 });
 
-test('the gallery shows every room, with no filters above it', async ({ page }) => {
+test('the filter chips show only the rooms with that signal', async ({ page }) => {
   const server = await fakeServer(page, { rooms: ROOMS });
   await showLobby(page, server);
+  const filters = lobby(page).getByRole('group', { name: 'Filter rooms' });
+  await expect(filters.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
+
+  await filters.getByRole('button', { name: 'Wants feedback' }).click();
+  await expect(lobby(page).getByRole('article')).toHaveCount(1);
+  await expect(card(page, 'neon harbor')).toBeVisible();
+  await expect(filters.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
+
+  await filters.getByRole('button', { name: 'Open to chat' }).click();
+  await expect(lobby(page).getByRole('article')).toHaveCount(1);
+  await expect(card(page, 'first time')).toBeVisible();
+
+  await filters.getByRole('button', { name: 'All' }).click();
   await expect(lobby(page).getByRole('article')).toHaveCount(4);
-  await expect(lobby(page).getByRole('group', { name: 'Filter rooms' })).toHaveCount(0);
+
+  server.lobby.send({ type: 'room-gone', id: 'harbor' });
+  await filters.getByRole('button', { name: 'Wants feedback' }).click();
+  await expect(lobby(page).getByRole('article')).toHaveCount(0);
+  await expect(lobby(page).getByText('No rooms match this filter')).toBeVisible();
 });
 
 test('a room the server adds appears, one it removes disappears; people come and go', async ({ page }) => {

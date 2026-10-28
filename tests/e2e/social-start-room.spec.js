@@ -55,6 +55,10 @@ test('going live with a public room: the POST, the host\'s page with its link, t
   await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toHaveAccessibleDescription(/^Guests can only watch/);
   await expect(page.getByRole('spinbutton', { name: 'Most watchers' })).toHaveAccessibleDescription(/^Each watcher uses some/);
   await expect(page.getByRole('textbox', { name: 'Welcome message' })).toHaveAccessibleDescription('0/200');
+  const signal = page.getByRole('group', { name: 'Signal' });
+  await expect(signal.locator('label')).toHaveText(['None', 'Wants feedback', 'Open to chat', 'Heads down']);
+  await expect(signal.getByRole('radio', { name: 'None' })).toBeChecked();
+  await expect(signal).toHaveAccessibleDescription('Shown on your room\'s card in the lobby.');
   await expect(dot(page)).toHaveCount(0);
 
   await page.getByRole('textbox', { name: 'Room name' }).fill('  neon harbor  ');
@@ -84,6 +88,14 @@ test('going live with a public room: the POST, the host\'s page with its link, t
   await expect(copy).toBeVisible({ timeout: 4000 });   // back after 2 s
 });
 
+test('choosing Open to chat sends signal chat with the room', async ({ page }) => {
+  const { server } = await startPage(page);
+  await page.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
+  await page.getByRole('group', { name: 'Signal' }).getByRole('radio', { name: 'Open to chat' }).check();
+  await page.getByRole('button', { name: 'Go live' }).click();
+  await expect.poll(() => server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'neon harbor', public: true, allowGuests: true, max: 12, signal: 'chat' }]);
+});
+
 test('a room name of only spaces isn\'t sent', async ({ page }) => {
   const { server } = await startPage(page);
   const name = page.getByRole('textbox', { name: 'Room name' });
@@ -98,7 +110,9 @@ test('a room name of only spaces isn\'t sent', async ({ page }) => {
 test('a private room\'s password is optional: without one its link alone reaches it, and its page says to send the link', async ({ page }) => {
   const { room, server } = await startPage(page);
   await page.getByRole('textbox', { name: 'Room name' }).fill('just us');
+  await page.getByRole('radio', { name: 'Open to chat' }).check();   // chosen while public, then not sent
   await page.getByRole('radio', { name: 'Only with the link' }).check();
+  await expect(page.getByRole('group', { name: 'Signal' })).toHaveCount(0);   // only lobby cards show a signal
   await expect(page.getByRole('textbox', { name: 'Password (optional)' })).not.toHaveAttribute('required');
   await page.getByRole('button', { name: 'Go live' }).click();
   await expect(page.getByText('Send the link to anyone you want in.')).toBeVisible();

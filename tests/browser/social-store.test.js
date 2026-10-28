@@ -354,7 +354,6 @@ test('Review focus 4: signing in with the lobby open reconnects with a member pa
   expect(server.sent('POST', '/api/pass')[1].body.previous).toBeUndefined();   // a member pass names no guest
   expect(social.isGuest).toBe(false);
   expect(social.myName).toBe('ansi-fan');
-  social.setSignal('chat');
 
   await social.signOut();
   expect(server.sent('POST', '/api/auth/sign-out')).toHaveLength(1);
@@ -364,8 +363,6 @@ test('Review focus 4: signing in with the lobby open reconnects with a member pa
   expect(server.sent('POST', '/api/pass')[2].body.previous).toBeUndefined();   // a member's pass isn't a guest's previous
   expect(social.me).toBe(null);
   expect(social.isGuest).toBe(true);
-  expect(social.signal).toBe(null);
-  expect(sockets[2].signals()).toEqual([]);
 });
 
 test('Review focus 3: at renewAt a guest renews with its previous pass and a proof, keeps its nickname, and the lobby stays open', async () => {
@@ -500,11 +497,9 @@ test('A member whose renewal comes back as a guest pass (the session ended) is s
   await social.start(at(''));
   await social.showLobby();
   await goLive(await lastSocket(1));
-  social.setSignal('chat');
   server.passTtlMs = 3_600_000;
   server.session = null;
   await vi.waitFor(() => expect(social.me).toBe(null));
-  expect(social.signal).toBe(null);
   const hello = await goLive(await lastSocket(2));
   expect(claimsOf(hello.pass).guest).toBe(true);
   expect(social.isGuest).toBe(true);
@@ -527,104 +522,6 @@ test('SUSPENDED shows its notice, with the date or for good, and the lobby doesn
   server.suspended = { until: null };
   await social.refreshMe();
   expect(social.notice).toBe('This account is suspended for good');
-});
-
-const mine = (signal) => ({ sub: 'u_1', name: 'ansi-fan', guest: false, signal });
-const myRow = () => social.people.find((p) => p.sub === 'u_1');
-
-test('setSignal is for members: it shows at once, in your row too, and is sent at most once per 2.25 s with the latest value', async () => {
-  const server = fakeServer();
-  server.session = member();
-  await social.start(at(''));
-  await social.showLobby();
-  const socket = await lastSocket(1);
-  await goLive(socket, { rooms: [], people: [mine(null)] });
-
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-  social.setSignal('chat');
-  social.setSignal('feedback');
-  social.setSignal('heads-down');
-  expect(social.signal).toBe('heads-down');
-  expect(myRow().signal).toBe('heads-down');   // the server tells everyone else, not you
-  expect(socket.signals()).toEqual(['chat']);
-  vi.advanceTimersByTime(2249);
-  expect(socket.signals()).toEqual(['chat']);
-  vi.advanceTimersByTime(1);
-  expect(socket.signals()).toEqual(['chat', 'heads-down']);
-  vi.useRealTimers();
-
-  // The server's answer for your own sub is your signal; another person's isn't.
-  socket.receive({ type: 'person', person: { sub: 'u_2', name: 'other', guest: false, signal: 'chat' } });
-  expect(social.signal).toBe('heads-down');
-  socket.receive({ type: 'person', person: mine('feedback') });
-  expect(social.signal).toBe('feedback');
-  expect(myRow().signal).toBe('feedback');
-  expect(social.people.map((p) => p.sub)).toEqual(['u_1', 'u_2']);
-
-  // A new socket starts over: the current signal goes again once it's live.
-  socket.close();
-  await goLive(await lastSocket(2));
-  expect(sockets[1].signals()).toEqual(['feedback']);
-});
-
-test('A signal the server refused (it came too soon) is answered with the one it has; choosing the refused one again sends it', async () => {
-  const server = fakeServer();
-  server.session = member();
-  await social.start(at(''));
-  await social.showLobby();
-  const socket = await lastSocket(1);
-  await goLive(socket, { rooms: [], people: [mine(null)] });
-
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-  social.setSignal('chat');
-  vi.advanceTimersByTime(2250);
-  social.setSignal('feedback');
-  expect(socket.signals()).toEqual(['chat', 'feedback']);
-  socket.receive({ type: 'person', person: mine('chat') });   // the server still has chat
-  expect(social.signal).toBe('chat');
-  expect(myRow().signal).toBe('chat');
-  vi.advanceTimersByTime(2250);
-  social.setSignal('feedback');
-  expect(socket.signals()).toEqual(['chat', 'feedback', 'feedback']);
-});
-
-test('A member\'s second tab shows the signal the account has, from its own entry in the state, and doesn\'t send it back', async () => {
-  const server = fakeServer();
-  server.session = member();
-  await social.start(at(''));
-  await social.showLobby();
-  const socket = await lastSocket(1);
-  await goLive(socket, { rooms: [], people: [mine('chat')] });
-  expect(social.signal).toBe('chat');
-  expect(myRow().signal).toBe('chat');
-  expect(socket.signals()).toEqual([]);
-  social.setSignal(null);
-  expect(socket.signals()).toEqual([null]);
-});
-
-test('A signal chosen into a socket that died is sent again on the next, not swapped for the old one the server kept', async () => {
-  const server = fakeServer();
-  server.session = member();
-  await social.start(at(''));
-  await social.showLobby();
-  const socket = await lastSocket(1);
-  await goLive(socket, { rooms: [], people: [mine('feedback')] });
-  social.setSignal('chat');   // counted as sent, into a socket whose network is gone
-  socket.close();
-  await goLive(await lastSocket(2), { rooms: [], people: [mine('feedback')] });   // the old visitor's
-  expect(social.signal).toBe('chat');
-  expect(sockets[1].signals()).toEqual(['chat']);
-});
-
-test('A guest\'s setSignal does nothing', async () => {
-  fakeServer();
-  await social.start(at(''));
-  await social.showLobby();
-  const socket = await lastSocket(1);
-  await goLive(socket, { rooms: [room('r1')], people: [] });
-  social.setSignal('chat');
-  expect(social.signal).toBe(null);
-  expect(socket.signals()).toEqual([]);
 });
 
 test('A refused pass is tried once more with a fresh one; refused again, the lobby is emptied and stays refused', async () => {

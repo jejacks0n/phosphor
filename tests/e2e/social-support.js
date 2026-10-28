@@ -26,26 +26,26 @@ export const member = (fields = {}) => ({
 const totpURI = (n) => `otpauth://totp/Phosphor:ansi-fan?secret=JBSWY3DPEHPK3PX${'PQRSTUVW'[n]}&issuer=Phosphor`;
 const codes = (word) => Array.from({ length: 10 }, (_, i) => `${word}-code${i}`);
 
-// fakeServer(page, { me, rooms, people, blocked, signal, twoFactor, mutedUntil, room, 'POST /api/...': (body) => [status, reply] }).
+// fakeServer(page, { me, rooms, people, blocked, twoFactor, mutedUntil, room, 'POST /api/...': (body) => [status, reply] }).
 // `me` null is signed out (a guest's pass). With `twoFactor`, an email or username sign-in answers the
 // challenge, and only verify-totp ('123456') or verify-backup-code ('abcde-fghij') signs in, as a member with
 // two-factor on (a sign-in is the default member, or with `signsInAs` fields as given: another person than the host); server.trustDevice is what the last good one was sent. Signed in, verify-totp ('123456') confirms two-factor
 // instead, and enable, disable and generate-backup-codes answer 10 codes, and enable a secret (`JBSWY3DPEHPK3PXP`, then `...PXQ` and so on: a new one each time). The lobby's state lists `people` and you (from the hello's pass, as
-// the real server does), with `signal` as the account's signal; a signal sent sets it. A member's pass carries
+// the real server does). A member's pass carries
 // server.mutedUntil (epoch ms) while it's set. Routes answer [status, body]; server.route(key, answer) changes one
 // later. server.requests has every API call ({ method, path, body }); server.lobby.received every
 // message the app sent on the lobby socket; server.lobby.send(msg) pushes one, drop() closes it (both
 // throw until the app has connected: the SOCIAL tab shown, and again after a drop). With
 // server.lobby.refusing set, a hello is answered refused. POST /api/rooms makes room ROOM_ID; given a
 // fakeRoom as `room`, the page's room sockets go to it, and the room is the one the POST describes.
-export async function fakeServer(page, { me = null, rooms = [], people = [], blocked = [], signal = null, twoFactor = false, mutedUntil = null, room, signsInAs = {}, ...overrides } = {}) {
+export async function fakeServer(page, { me = null, rooms = [], people = [], blocked = [], twoFactor = false, mutedUntil = null, room, signsInAs = {}, ...overrides } = {}) {
   let socket = null;
   const connected = () => {
     if (!socket) throw new Error('The lobby is not connected: show the SOCIAL tab and wait for its hello first');
     return socket;
   };
   const server = {
-    me, rooms, people, blocked, signal, mutedUntil, trustDevice: null, requests: [],
+    me, rooms, people, blocked, mutedUntil, trustDevice: null, requests: [],
     lobby: {
       received: [],
       refusing: false,
@@ -162,11 +162,10 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
       if (message === 'ping') return ws.send('pong');   // the server's automatic answer
       const msg = JSON.parse(message);
       server.lobby.received.push(msg);
-      if (msg.type === 'signal') server.signal = msg.signal;
       if (msg.type !== 'hello') return;
       if (server.lobby.refusing) return ws.send(JSON.stringify({ type: 'refused', code: 'bad-pass' }));
       const { sub, name, guest } = claimsOf(msg.pass);
-      const you = sub ? [{ sub, name, guest, signal: guest ? null : server.signal }] : [];
+      const you = sub ? [{ sub, name, guest, signal: null }] : [];
       ws.send(JSON.stringify({ type: 'state', rooms: server.rooms, people: [...you, ...server.people] }));
     });
   });

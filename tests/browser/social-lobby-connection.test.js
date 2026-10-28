@@ -99,8 +99,8 @@ test('On open it says hello with the pass and a proof over lobby:<ts>; a state m
   expect(statuses).toEqual(['connecting', 'live']);
   expect([...lobby().rooms.keys()]).toEqual(['r1']);
 
-  expect(conn.send({ type: 'signal', signal: 'chat' })).toBe(true);
-  expect(sockets[0].sent[1]).toEqual({ type: 'signal', signal: 'chat' });
+  expect(conn.send({ type: 'settings', allowGuests: false, max: 4 })).toBe(true);
+  expect(sockets[0].sent[1]).toEqual({ type: 'settings', allowGuests: false, max: 4 });
   conn.close();
 });
 
@@ -207,7 +207,7 @@ test('close() while live closes the socket and ignores what comes after; send() 
   expect(waits).toHaveLength(0);
   sockets[0].receive({ type: 'room', room: room('late') });
   expect(messages).toHaveLength(1);
-  expect(conn.send({ type: 'signal', signal: 'chat' })).toBe(false);
+  expect(conn.send({ type: 'settings', allowGuests: false, max: 4 })).toBe(false);
   expect(sockets[0].sent).toHaveLength(1);
 });
 
@@ -216,10 +216,10 @@ test('send() says false and sends nothing until live, and while reconnecting', a
   conn.open();
   sockets[0].accept();
   await helloOn(sockets[0]);
-  expect(conn.send({ type: 'signal', signal: 'chat' })).toBe(false);
+  expect(conn.send({ type: 'settings', allowGuests: false, max: 4 })).toBe(false);
   sockets[0].receive({ type: 'state', rooms: [], people: [] });
   sockets[0].close();
-  expect(conn.send({ type: 'signal', signal: 'chat' })).toBe(false);
+  expect(conn.send({ type: 'settings', allowGuests: false, max: 4 })).toBe(false);
   expect(sockets[0].sent).toHaveLength(1);
   conn.close();
 });

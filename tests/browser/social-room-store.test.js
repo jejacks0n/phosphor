@@ -124,17 +124,17 @@ function channelSends() {
   return () => send.mock.calls.flatMap(([data]) => (typeof data === 'string' ? [JSON.parse(data)] : []));
 }
 
-test('startRoom POSTs the room with your signal and no password; a private one sends its password', async () => {
+test('startRoom POSTs the room with the draft\'s signal and no password; a private one sends its password and no signal', async () => {
   await social.boot();
-  social.signal = 'chat';
-  expect(await startPublic()).toBe(true);
+  expect(room.startDraft.signal).toBe(null);
+  expect(await startPublic({ signal: 'chat' })).toBe(true);
   expect(server.sent('POST', '/api/rooms')[0].body).toEqual({ name: 'Night shift', public: true, allowGuests: true, max: 12, signal: 'chat' });
   expect(room.role).toBe('host');
   expect(room.link).toBe(`http://localhost/?room=${ID}`);
   room.leave();
 
-  expect(await room.startRoom({ name: 'Back room', welcome: '', isPublic: false, password: 'sesame', allowGuests: false, max: 3 })).toBe(true);
-  expect(server.sent('POST', '/api/rooms')[1].body).toEqual({ name: 'Back room', public: false, password: 'sesame', allowGuests: false, max: 3, signal: 'chat' });
+  expect(await room.startRoom({ name: 'Back room', welcome: '', isPublic: false, password: 'sesame', allowGuests: false, max: 3, signal: 'chat' })).toBe(true);
+  expect(server.sent('POST', '/api/rooms')[1].body).toEqual({ name: 'Back room', public: false, password: 'sesame', allowGuests: false, max: 3, signal: null });
 });
 
 test('The room\'s socket presents the host\'s pass with a proof over room:<id>:<ts>; hosting makes it live', async () => {

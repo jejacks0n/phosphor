@@ -3,7 +3,7 @@
 > **Partly built.** This page describes how Phosphor's social side is meant to work.
 >
 > **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, the lobby
-> with its Join counts and reasons, signals and who's here, starting and hosting a room, watching
+> with its Join counts and reasons, its filter and who's here, starting and hosting a room, watching
 > one, and the chat in a room, with the host's Delete, Remove and Block, and reporting people.
 > **Comes next:** reporting a room and Phosphor's admin page. **Blocking and reporting** below says
 > which parts work today.
@@ -18,7 +18,7 @@ The SOCIAL tab opens on the lobby: a gallery of the **public rooms** that are li
 room shows a small picture of the art, up to 80 columns of it, around the part its host is looking at
 (or the part the host chose; see **Lobby picture** under Hosting). The host's browser makes it soon after
 going live, then again every few minutes when the art or that part has changed. A card also shows
-its name, the host's username, how long it's been live, the host's **signal**, and a **Join** button with how many are in the room
+its name, the host's username, how long it's been live, the room's **signal** (if its host chose one), and a **Join** button with how many are in the room
 and how many it holds (*Join 4/12*). Private rooms are never listed.
 
 When you can't join a room, its Join button is grayed out and says why beside it:
@@ -26,18 +26,19 @@ When you can't join a room, its Join button is grayed out and says why beside it
 - **Room is full**: it's at the host's watcher limit.
 - **Signed-in users only**: the room doesn't allow guests, and you haven't signed in.
 
+Filters above the gallery (**All**, **Wants feedback**, **Open to chat**) narrow it to rooms whose
+host wants feedback or is open to chat. When none match, it says **No rooms match this filter**.
+
 If someone you've blocked is in a room, its card says **Someone you blocked is here**.
 
 Beside the gallery, signed in:
 
 - **You**: your username, with **Account** and **Sign out**.
-- **Your signal**: Wants feedback, Open to chat or Heads down. It shows beside your name in the
-  lobby and on your room while you host.
 - **Start a room**.
-- **In the lobby**: who else is here, with their signals (guests show as guests).
+- **In the lobby**: who else is here (guests show as guests).
 
 Not signed in, the same column shows your guest nickname, **Sign in**, and **Create one** for a new
-account, in place of your signal and Start a room.
+account, in place of Start a room.
 
 Sign in, Create an account, Account and Start a room each open in the SOCIAL tab in place of the
 lobby, with **Back to the lobby** at the top.
@@ -113,6 +114,9 @@ watchers will see (your art in ANSI as it is now), and asks for:
 - **Who can join**: *Anyone, in the lobby* (a public room) or *Only with the link* (a private
   room, kept out of the lobby). A private room can also have a **password**, if you want people to
   need both; without one, the link alone lets them in.
+- **Signal**, for a public room: *None*, *Wants feedback*, *Open to chat* or *Heads down*. It's
+  shown on your room's card in the lobby, and the lobby's filters use it. A private room has no card,
+  so it has no signal.
 - **Allow guests**: whether people who haven't signed in can watch. Guests can only watch, so you
   can't remove one; turn this off if you'd rather have members only.
 - **Most watchers**: from 1 to 24 (12 to begin with). Each watcher uses some of your upload speed,
@@ -124,7 +128,7 @@ view is: the view of whichever of PIXEL or ANSI you're on, at your zoom. SAUCE a
 last one. Open other art while you're live and watchers see that instead.
 
 While you're live, **Room settings** changes the welcome message, Allow guests and Most watchers.
-Whether the room is public or private, and its password, stay as they were set.
+Whether the room is public or private, its password and its signal stay as they were set.
 
 ## Hosting
 

@@ -1,5 +1,5 @@
 // The lobby's pure parts: the reducer for the server's lobby messages, the order rooms and people are
-// listed in, the Join button's states, a card's picture as an image, and the pacer that keeps signal changes to one every 2 s.
+// listed in, the Join button's states, a card's picture as an image, and the pacer that keeps changes to one per interval.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, joinState, liveFor, signalWords, pictureUrl, Pacer } from '../../src/social/lobby.js';
@@ -167,24 +167,9 @@ test('Pacing: reset() clears the waiting value and forgets the last sent, so the
   clock.t = 100;
   clock.pacer.push('feedback');
   assert.equal(clock.timers.length, 1);
-  clock.pacer.reset();   // the socket dropped; the server's signal for the new one is null
+  clock.pacer.reset();   // the socket dropped; the new one starts over
   assert.equal(clock.timers[0].cleared, true);
   clock.t = 200;
-  clock.pacer.push('chat');   // the store pushes the current signal again once live
+  clock.pacer.push('chat');   // the store pushes the current value again once live
   assert.deepEqual(clock.sent, ['chat', 'chat']);
-});
-
-test('Pacing: confirm() takes the server\'s word for the value it has, so choosing the one it refused sends it again', () => {
-  const clock = pacedClock();
-  clock.pacer.push('chat');
-  clock.t = 2000;
-  clock.pacer.push('feedback');   // came a little early for the server: it answers with chat, still its value
-  clock.pacer.confirm('chat');
-  clock.t = 4000;
-  clock.pacer.push('feedback');
-  assert.deepEqual(clock.sent, ['chat', 'feedback', 'feedback']);
-  clock.pacer.confirm('feedback');
-  clock.t = 6000;
-  clock.pacer.push('feedback');   // what the server has: nothing to send
-  assert.deepEqual(clock.sent, ['chat', 'feedback', 'feedback']);
 });

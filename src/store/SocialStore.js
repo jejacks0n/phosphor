@@ -7,9 +7,8 @@ import { ed25519Supported, loadKey } from '@/social/keys';
 import { requestPass, renewAt } from '@/social/pass';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
-import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection, Pacer } from '@/social/lobby';
+import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection } from '@/social/lobby';
 
-const SIGNAL_EVERY_MS = 2250;   // the server's 2 s, with slack: it measures when a signal arrives
 const RENEW_RETRY_MS = 30_000;   // after a renewal that failed for a passing reason (NETWORK, THROTTLED)
 const CONFIRMED = 'Check your email to confirm your address';
 const RELINK = 'Sign in again to change how you sign in';
@@ -60,7 +59,6 @@ export const useSocialStore = defineStore('social', {
     claims: null,        // the pass's claims: { sub, name, guest, verified, key, exp }
     lobby: shallowRef(emptyLobby()),
     lobbyStatus: null,   // the connection's: 'connecting' | 'live' | 'reconnecting' | 'refused' | 'closed'
-    signal: null,        // 'feedback' | 'chat' | 'heads-down' | null (members only)
     blocked: [],         // [{ id, username, since }]
     notice: null,        // one line at the top of the tab
     busy: false,
@@ -70,19 +68,15 @@ export const useSocialStore = defineStore('social', {
     _roomLink: null,     // a ?room= link's id, joined once you're known
     _key: null,          // the browser's key (markRaw)
     _connection: null,   // LobbyConnection (markRaw)
-    _pacer: null,        // Pacer for the signal (markRaw)
     _renewTimer: null,
     _passRun: 0,         // bumped when the pass is dropped, so a pass asked for before is ignored
     _refusedOnce: false, // the lobby refused a pass since it was last live: the next refusal stands
-    _choseSinceState: false, // a signal was chosen since the last state (it may have gone into a dead socket)
   }),
 
   getters: {
     signedIn: (state) => !!state.me && !state.me.needsOnboarding,
     rooms: (state) => sortedRooms(state.lobby),
-    // Your own row shows your signal as you set it: the server tells everyone else, not you.
-    people: (state) => sortedPeople(state.lobby, state.claims?.sub)
-      .map((p) => (p.sub === state.claims?.sub && !p.guest ? { ...p, signal: state.signal } : p)),
+    people: (state) => sortedPeople(state.lobby, state.claims?.sub),
     myName: (state) => state.claims?.name ?? null,
     // The word for the sign-in pages' back link.
     backTo: () => (useRoomStore().role === 'watch' ? 'room' : 'lobby'),
@@ -199,7 +193,7 @@ export const useSocialStore = defineStore('social', {
       rooms.close();
       if (signedOut) this.me = null;
       else await this.refreshMe();
-      Object.assign(this, { signal: null, blocked: [], page: this.me?.needsOnboarding ? 'onboarding' : 'lobby' });
+      Object.assign(this, { blocked: [], page: this.me?.needsOnboarding ? 'onboarding' : 'lobby' });
       this.reconnect();
       if (back) rooms.join(back.id, { password: back.password });
     },
@@ -407,13 +401,6 @@ export const useSocialStore = defineStore('social', {
       return true;
     },
 
-    setSignal(signal) {
-      if (!this.signedIn) return;
-      this.signal = signal;
-      this._choseSinceState = true;
-      this._pacer?.push(signal);
-    },
-
     // The pass for the next hello: the one held, unless there's none or it's due for renewal. A held
     // pass whose renewal timer was cleared (a disconnect) gets it back.
     async getPass() {
@@ -473,7 +460,6 @@ export const useSocialStore = defineStore('social', {
 
     connectLobby() {
       if (!this.supported || !this.lobbyWanted || this._connection) return;
-      this._pacer ??= markRaw(new Pacer(SIGNAL_EVERY_MS, (signal) => this._connection?.send({ type: 'signal', signal }) ?? false));
       this._connection = markRaw(new LobbyConnection({
         url: wsOrigin(apiOrigin()) + '/api/lobby',
         getPass: () => this.getPass(),
@@ -492,34 +478,12 @@ export const useSocialStore = defineStore('social', {
 
     disconnectLobby() {
       this._connection?.close();
-      this._pacer?.reset();
       this.stopRenewing();
       this._connection = null;
     },
 
     lobbyMessage(msg) {
       this.lobby = applyLobbyMessage(this.lobby, msg);
-      const sub = this.claims?.sub;
-      // Your own person: the server's answer to a signal that came too soon, or another tab's change.
-      if (msg.type === 'person' && msg.person.sub === sub) this.heardSignal(msg.person.signal);
-      if (msg.type === 'state') {
-        // The account's signal, set in another tab, unless you chose since the last state (the server may
-        // only have kept the old socket's); otherwise, or with none, yours goes again.
-        const theirs = msg.people.find((p) => p.sub === sub)?.signal ?? null;
-        if (theirs && !this._choseSinceState) this.heardSignal(theirs);
-        else {
-          this._pacer.confirm(theirs);
-          this._pacer.push(this.signal);
-        }
-        this._choseSinceState = false;
-      }
-    },
-
-    // The account's signal as the server has it: what the pacer last sent, and shown, unless a change is
-    // still waiting to go (it would only flicker back).
-    heardSignal(signal) {
-      this._pacer.confirm(signal);
-      if (!this._pacer.timer) this.signal = signal;
     },
 
     // A refused pass is tried once more with a fresh one; refused again, the lobby is unavailable (and
@@ -531,10 +495,7 @@ export const useSocialStore = defineStore('social', {
         return;
       }
       this.lobbyStatus = status;
-      if (status === 'live') {
-        this._refusedOnce = false;
-        this._pacer.reset();   // a new socket's signal starts over (its state follows)
-      }
+      if (status === 'live') this._refusedOnce = false;
       if (status === 'refused') this.lobby = emptyLobby();
     },
   },

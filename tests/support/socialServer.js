@@ -76,7 +76,6 @@ class FakeSocket {
   }
   accept() { this.onopen?.({}); }
   receive(msg) { this.onmessage?.({ data: msg === 'pong' ? msg : JSON.stringify(msg) }); }
-  signals() { return this.sent.filter((m) => m.type === 'signal').map((m) => m.signal); }
 }
 
 export function useFakeSockets() {

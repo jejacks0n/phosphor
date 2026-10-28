@@ -1,11 +1,14 @@
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
-import { signalWords } from '@/social/lobby';
 import { nameColor } from '@/social/names';
 import RoomCard from './RoomCard.vue';
 
 const social = useSocialStore();
+
+const FILTERS = [['All', null], ['Wants feedback', 'feedback'], ['Open to chat', 'chat']];
+const filter = ref(null);
+const shown = computed(() => (filter.value ? social.rooms.filter((r) => r.signal === filter.value) : social.rooms));
 
 // What the rooms area shows. A lobby that drops after a state keeps its rooms (dimmed) while it
 // reconnects; one that never got a state (it holds no one, not even you) has nothing to keep.
@@ -19,7 +22,6 @@ const view = computed(() => {
 const reconnecting = computed(() => social.lobbyStatus === 'reconnecting' && view.value !== 'unavailable');
 
 const name = computed(() => social.myName ?? social.me?.username);
-const toggleSignal = (signal) => social.setSignal(social.signal === signal ? null : signal);
 </script>
 
 <template>
@@ -28,6 +30,9 @@ const toggleSignal = (signal) => social.setSignal(social.signal === signal ? nul
       <header>
         <h2>Public rooms</h2>
         <span class="count">{{ social.rooms.length }} live</span>
+        <div class="chips" role="group" aria-label="Filter rooms">
+          <button v-for="[label, value] in FILTERS" :key="label" class="chip" :aria-pressed="filter === value" @click="filter = value">{{ label }}</button>
+        </div>
       </header>
       <p v-if="reconnecting" class="status" role="status">Reconnecting…</p>
 
@@ -47,9 +52,12 @@ const toggleSignal = (signal) => social.setSignal(social.signal === signal ? nul
         <h3>No public rooms right now</h3>
         <p>Start one and you'll be the first thing people see here.</p>
       </div>
+      <div v-else-if="!shown.length" class="state">
+        <h3>No rooms match this filter</h3>
+      </div>
       <!-- stale while reconnecting: dimmed, and their Join buttons out of reach -->
       <div v-else class="rooms" :class="{ stale: reconnecting }" :inert="reconnecting">
-        <RoomCard v-for="room in social.rooms" :key="room.id" :room="room" :signed-in="social.signedIn" />
+        <RoomCard v-for="room in shown" :key="room.id" :room="room" :signed-in="social.signedIn" />
       </div>
     </section>
 
@@ -68,10 +76,6 @@ const toggleSignal = (signal) => social.setSignal(social.signal === signal ? nul
       </div>
 
       <template v-if="social.signedIn">
-        <div class="label" id="your-signal">Your signal</div>
-        <div class="chips" role="group" aria-labelledby="your-signal">
-          <button v-for="(words, value) in signalWords" :key="value" class="chip" :aria-pressed="social.signal === value" @click="toggleSignal(value)">{{ words }}</button>
-        </div>
         <div v-if="social.me?.emailVerified === false" class="confirm">
           Confirm your email to start a room
           <button class="link inline" :disabled="social.busy" @click="social.resendConfirmation()">Resend</button>
@@ -90,7 +94,7 @@ const toggleSignal = (signal) => social.setSignal(social.signal === signal ? nul
         <li v-for="person in social.people" :key="person.sub">
           <span class="swatch small" :style="{ background: nameColor(person.name) }"></span>
           <span class="name">{{ person.name }}</span>
-          <span class="what">{{ person.guest ? 'guest' : signalWords[person.signal] }}</span>
+          <span v-if="person.guest" class="what">guest</span>
         </li>
       </ul>
     </aside>
@@ -125,6 +129,10 @@ header h2 {
   font-weight: 600;
   color: var(--text);
 }
+header .chips {
+  margin-left: auto;
+}
+
 span.count {
   color: var(--text-muted);
   font-weight: 400;
@@ -221,11 +229,8 @@ aside.side {
 }
 
 div.label {
-  margin: 14px 0 6px;
+  margin-bottom: 6px;
   font-weight: 500;
-}
-div.you div.label {
-  margin-top: 0;
 }
 
 div.who {

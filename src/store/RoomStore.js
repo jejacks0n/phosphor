@@ -26,7 +26,7 @@ const ROOM_ID = /^[a-z2-7]{10}$/;
 
 // What's typed in Start a room and Room settings, kept here so it stays while you're on another tab (the
 // SOCIAL tab isn't there then). Room settings also keeps what the room last said for each field (seen).
-const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12 });
+const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12, signal: null });
 const newSettingsDraft = () => ({ welcome: '', allowGuests: true, max: 12, seen: {} });
 
 // The room you host or watch: its socket (a LobbyConnection with the room's greeting), and the host's
@@ -95,9 +95,10 @@ export const useRoomStore = defineStore('room', {
 
   actions: {
     // A new room, live with your art: false (the server's words as the notice) if it wasn't made.
-    async startRoom({ name, welcome, isPublic, password, allowGuests, max }) {
+    // Only a public room sends its signal: the signal shows on its lobby card, and a link-only room has none.
+    async startRoom({ name, welcome, isPublic, password, allowGuests, max, signal = null }) {
       const social = useSocialStore();
-      const body = { name, public: isPublic, allowGuests, max, signal: social.signal, ...(!isPublic && password ? { password } : {}) };   // a private room's password is optional
+      const body = { name, public: isPublic, allowGuests, max, signal: isPublic ? signal : null, ...(!isPublic && password ? { password } : {}) };   // a private room's password is optional
       const { ok, data } = await social.request('/api/rooms', { method: 'POST', body });
       if (!ok) return false;
       this.close();

@@ -6,6 +6,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { charRowsOf } from '@/lib/Cells';
 import { fontOnWire } from '@/social/wire';
+import { signalWords } from '@/social/lobby';
 import RoomArt from './RoomArt.vue';
 
 // A new room: your art as watchers will see it, and the room's settings. Going live makes it (its
@@ -44,6 +45,12 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
           <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="true"> Anyone, in the lobby</label>
           <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="false"> Only with the link</label>
         </fieldset>
+        <fieldset v-if="draft.isPublic" :aria-describedby="`${id}-signal`">
+          <legend>Signal</legend>
+          <label class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="null"> None</label>
+          <label v-for="(words, value) in signalWords" :key="value" class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="value"> {{ words }}</label>
+        </fieldset>
+        <p v-if="draft.isPublic" :id="`${id}-signal`" class="help">Shown on your room's card in the lobby.</p>
         <label v-if="!draft.isPublic">Password (optional) <input v-model="draft.password" type="text" autocomplete="off" :aria-describedby="`${id}-password`"></label>
         <p v-if="!draft.isPublic" :id="`${id}-password`" class="help">The link alone lets people in. Add a password if you want them to need both.</p>
         <label class="choice"><input v-model="draft.allowGuests" type="checkbox" :aria-describedby="`${id}-guests`"> Allow guests</label>
