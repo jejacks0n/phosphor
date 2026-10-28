@@ -42,7 +42,7 @@ npm run build
   browsers), `peer.js` (WebRTC), `hosting.js`, `watching.js`, `thumbnail.js` (the lobby picture) and
   `chat.js` (the text rule, the kept log and its pages, the allowance)),
   `src/store/SocialStore.js` (who you are, your pass, the lobby), `src/store/RoomStore.js` (the room
-  you host or watch) and `src/components/social/` (one component per page; the chat is `ChatPanel.vue` and `ChatFoot.vue`). Its tests are the
+  you host or watch) and `src/components/social/` (one component per page; the chat is `ChatPanel.vue`, `ChatFoot.vue` and `ReportDialog.vue`). Its tests are the
   `social-*` files in `tests/unit`, `tests/browser` and `tests/e2e`; the end-to-end fake server is
   `tests/e2e/social-support.js` ([docs/testing.md](docs/testing.md)).
 - `server/`: a git submodule, the SOCIAL server's own repo. Work on it in place, but commit and push

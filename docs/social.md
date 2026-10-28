@@ -4,9 +4,9 @@
 >
 > **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, the lobby
 > with its Join counts and reasons, signals and who's here, starting and hosting a room, watching
-> one, and the chat in a room, with the host's Delete, Remove and Block. **Comes next:** reporting
-> and moderation. **Blocking and reporting** below describes what's coming for reports; blocking
-> works today.
+> one, and the chat in a room, with the host's Delete, Remove and Block, and reporting people.
+> **Comes next:** reporting a room and Phosphor's admin page. **Blocking and reporting** below says
+> which parts work today.
 
 Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others
 watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
@@ -245,8 +245,25 @@ If someone you've blocked is in a room you're about to join, its card in the lob
 their messages fold to a single line, **Message from someone you blocked**, with **Show** if you want to read it.
 Nobody else sees any difference, and they aren't told.
 
-Signed in, you can **Report** any message or person in a room, and **Report room** for what a
-room is drawing: on its card in the lobby or at the top of the room. Nobody is told who reported them.
+If you're signed in with a confirmed email, you can **Report** a person. On someone else's message,
+**Report** shows when you hover it or tab to it. As the host, the same **Report** is in the **⋯**
+beside a person in the **N here** list. You can't report yourself, a guest (they can't chat), or a
+message that's been deleted.
+
+Either way, a box asks **Report <name>?** and **What's wrong?**: **Spam or flooding**, **Harassment or
+hate**, **Sexual or violent**, or **Something else**. Pick one and press **Report**, or **Cancel**
+to send nothing. The box says who'll look: Phosphor's admin sees the message and the few before it,
+and nobody is told who reported them. For a message, what's sent is that message and up to five
+before it, as they arrived, each signed by whoever wrote it. For a person from **N here**, it's their
+last few messages, which may be none. Phosphor's server sees chat only in a report. Afterward you
+see **Reported. Thank you.** for a few seconds, and nothing more: you aren't
+told what became of it. If the report can't be sent, the box stays as it is and you can try again.
+
+Someone may be muted: their messages stop reaching rooms for a while, and they see **You're muted
+until...** (below).
+
+**Report room**, for what a room is drawing, is still to come: on its card in the lobby or at the top
+of the room.
 
 ## When something goes wrong
 
@@ -270,6 +287,9 @@ room is drawing: on its card in the lobby or at the top of the room. Nobody is t
   it yourself.
 - **Confirm your email to start a room**: in the lobby, with **Resend**.
 - **You're muted until 9:40 pm**: in place of the message box.
+  A mute that ends another day shows the date too (**until Nov 27, 9:40 pm**). Nobody in
+  the room hears your messages until it ends, and you can still watch. When it ends, the box comes
+  back with what you'd typed.
 - **This account is suspended**: at sign-in, with until when, if it isn't for good.
 - **Couldn't reach Phosphor's server**: signing in or creating an account couldn't connect.
 
