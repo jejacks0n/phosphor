@@ -17,7 +17,7 @@ const MOST_SKEW_MS = 120_000;                // a chat message's time, from the 
 const EARLIER_EVERY_MS = 500;                // a watcher's asks for earlier messages, at most
 const MOST_CHECKING = 4;                     // a watcher's chat waiting to be checked; more is ignored
 
-const sameView = (a, b) => a.col === b.col && a.row === b.row && a.cols === b.cols && a.rows === b.rows;
+const sameView = (a, b) => a.col === b.col && a.row === b.row && a.cols === b.cols && a.rows === b.rows && a.zoom === b.zoom;
 
 // The indexes that changed from one art to the next; null when a snapshot should go instead (nothing to
 // change from, another size or font, or too much changed).
@@ -133,8 +133,8 @@ export class Host {
     }
   }
 
-  setView({ col, row, cols, rows }) {
-    const view = { col, row, cols, rows };
+  setView({ col, row, cols, rows, zoom = 1 }) {
+    const view = { col, row, cols, rows, zoom };
     if (this.view && sameView(this.view, view)) return;
     this.view = view;
     for (const w of this.open()) this.sendTo(w, { t: 'view', ...view });

@@ -138,7 +138,8 @@ export const useRoomStore = defineStore('room', {
       addEventListener('pagehide', pagehide);
       this._stops = [
         watch([() => project.cells, () => project.cols, () => project.rows, () => workspace.displayFontSpec], () => { schedule(); changed(); }),
-        watch(() => ({ ...workspace.ansiViewOrigin, ...workspace.ansiViewSize }), (v) => { view.push(v); changed(); }, { immediate: true }),
+        watch(() => workspace.sharedView, (v) => { if (v) view.push(v); }, { immediate: true }),
+        watch(() => ({ ...workspace.ansiViewOrigin, ...workspace.ansiViewSize }), changed, { immediate: true }),
         watch(() => this.status, (status) => {
           if (status === 'live' && this.room.public && pictureAt === null) pictureTimer ??= setTimeout(picture, THUMBNAIL_FIRST_MS);
         }),

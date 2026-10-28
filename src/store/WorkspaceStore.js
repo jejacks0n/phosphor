@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
-import { DISPLAY_FONTS } from '@/lib/displayFonts';
+import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
 import { familyOf } from '@/lib/userFonts';
 import { clampZoom, clampAnsiZoom } from '@/lib/zoom';
+import { measureAdvance } from '@/lib/CellCanvas';
 
 const RECENT_COLORS = 12;
 
@@ -44,6 +45,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     ansiViewSize: { cols: 0, rows: 0 }, // how many whole cells from there are on screen (AnsiEditor)
+    inputView: { col: 0, row: 0, cols: 0, rows: 0 }, // the whole cells on screen in the PIXEL view (InputEditor)
     pixelViewOrigin: { col: 0, row: 0 }, // the same in the PIXEL view (InputEditor), where a paste lands with no selection
     selectLayers: { base: true, edit: true }, // what the Select tool acts on, and the Magic Wand's Delete: the base layer and/or the edit layer
     pencilDrawWith: 'normal', // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks)
@@ -99,6 +101,16 @@ export const useWorkspaceStore = defineStore('workspace', {
       return state.editorTab === 'input' ? state.inputActiveTool : state.outputActiveTool;
     },
     editMode: (state) => state.editorTab === 'input' || state.editorTab === 'output', // the art is showing
+    // The view the room's host is looking at, for watchers: whole cells and the zoom to draw them at
+    // (a fraction of the font's cell); null on a tab that isn't the art. PIXEL's zoom is its pixels
+    // per column against the font's cell width.
+    sharedView(state) {
+      if (state.editorTab === 'output') return { ...state.ansiViewOrigin, ...state.ansiViewSize, zoom: state.ansiZoom };
+      if (state.editorTab !== 'input') return null;
+      void this.displayFontSpec;   // a font change measures again
+      void state.displayFontLoaded;   // and again once it's loaded
+      return { ...state.inputView, zoom: Math.min(1, state.editZoom / measureAdvance(DISPLAY_FONT)) };
+    },
     pickSwapped: (state) => state.heldTool?.by === 'alt', // the picker is only held by Alt from a drawing tool
     // The font the art is drawn in, at its size (a font displayFonts.js can set). A loaded font
     // starts at 16px; an unknown one (a loaded font since removed) is the default.

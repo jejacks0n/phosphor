@@ -14,6 +14,8 @@ import { hex2rgb } from '@/lib/ColorUtils';
 import { desktopQuery, rtcConfig } from '@/social/config';
 import { Watch } from '@/social/watching';
 import { Host } from '@/social/hosting';
+import { measureAdvance } from '@/lib/CellCanvas';
+import { DISPLAY_FONT } from '@/lib/displayFonts';
 import { MOST_KEPT, signedText } from '@/social/chat';
 import { openPeer } from '@/social/peer';
 import { passKey } from '@/social/pass';
@@ -484,7 +486,7 @@ test('A watcher\'s room, art and the host\'s view come from the channel; leave c
   host.setArt(art);
   host.setView({ col: 1, row: 0, cols: 1, rows: 1 });
   await host.peer('p1', await passFor('g_1', 'quiet-amber-fox-1', true));
-  await expect.poll(() => room.hostView, PATIENT).toEqual({ col: 1, row: 0, cols: 1, rows: 1 });
+  await expect.poll(() => room.hostView, PATIENT).toEqual({ col: 1, row: 0, cols: 1, rows: 1, zoom: 1 });
   expect(room.status).toBe('live');
   expect(room.room).toEqual({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan', hostSub: 'u_9' });
   expect(room.art).toEqual(art);
@@ -572,6 +574,31 @@ test('A change of the host\'s view alone sends a thumbnail once 3 minutes have p
   await vi.advanceTimersByTimeAsync(2 * 60_000);
   expect(thumbnails(socket)).toHaveLength(2);
   expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ col: 3, row: 1 }));
+});
+
+test('on PIXEL the host sends the cells in view and the PIXEL zoom against the font\'s cell; on ANSI its view and ansiZoom; on SAUCE nothing new', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const setView = vi.spyOn(Host.prototype, 'setView');
+  const workspace = useWorkspaceStore();
+  Object.assign(workspace, { editorTab: 'input', editZoom: 4, inputView: { col: 2, row: 1, cols: 6, rows: 3 } });
+  await goLive();
+  const zoom = 4 / measureAdvance(DISPLAY_FONT);
+  expect(zoom).toBeLessThan(1);
+  expect(setView).toHaveBeenLastCalledWith({ col: 2, row: 1, cols: 6, rows: 3, zoom });
+
+  workspace.editZoom = 16;   // wider than the font's cell: no more than 100%
+  await vi.advanceTimersByTimeAsync(300);
+  expect(setView).toHaveBeenLastCalledWith({ col: 2, row: 1, cols: 6, rows: 3, zoom: Math.min(1, 16 / measureAdvance(DISPLAY_FONT)) });
+
+  Object.assign(workspace, { editorTab: 'output', ansiZoom: 0.5, ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
+  await vi.advanceTimersByTimeAsync(300);
+  expect(setView).toHaveBeenLastCalledWith({ col: 3, row: 1, cols: 10, rows: 5, zoom: 0.5 });
+
+  const sent = setView.mock.calls.length;
+  workspace.editorTab = 'sauce';
+  Object.assign(workspace, { editZoom: 2, ansiZoom: 0.25, ansiViewOrigin: { col: 0, row: 0 } });
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(setView).toHaveBeenCalledTimes(sent);
 });
 
 test('A private room sends none, and ending a room stops the timer', async () => {

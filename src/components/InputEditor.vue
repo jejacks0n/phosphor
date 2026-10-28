@@ -5,7 +5,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf, putCellPixels } from '@/lib/Cells';
 import { parseKey } from '@/document/editCells';
-import { viewWindow, viewIn } from '@/lib/viewWindow';
+import { viewWindow, viewIn, wholeCellsIn } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
 import { clampZoom } from '@/lib/zoom';
@@ -94,8 +94,10 @@ const redrawDisplay = () => {
   const dc = canvasRef.value, sizer = sizerRef.value;
   const output = projectStore.renderer.outputCanvas;
   if (!dc || !sizer || !viewportEl || !output) return;
-  const zoom = workspaceStore.editZoom;
-  const win = viewWindow(viewIn(sizer, viewportEl), { x: zoom, y: zoom }, projectStore.cols, projectStore.rows);
+  const zoom = workspaceStore.editZoom, view = viewIn(sizer, viewportEl);
+  // A grid pixel is a column wide and half a line tall: the whole cells in view are what a room's watchers are shown.
+  workspaceStore.inputView = wholeCellsIn(view, { cellWidth: zoom, lineHeight: 2 * zoom }, projectStore.cols, charRowsOf(projectStore.rows));
+  const win = viewWindow(view, { x: zoom, y: zoom }, projectStore.cols, projectStore.rows);
   const width = win.cols * zoom, height = win.rows * zoom;
   // Resizing clears the canvas, so only when the window's size changes; otherwise a clear, for an
   // output with transparent pixels.

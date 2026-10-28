@@ -1,5 +1,5 @@
 import { test, expect } from './support.js';
-import { openApp, store, editAt } from './support.js';
+import { openApp, store, editAt, tab } from './support.js';
 
 test('Canvas and DOM views: the DOM view\'s text is the cells\' characters', async ({ page }) => {
   await openApp(page);
@@ -67,4 +67,30 @@ test('the ANSI view publishes the whole cells on screen: the first, and how many
   expect(onScreen.origin.col).toBeGreaterThan(0);
   expect(onScreen.size.cols).toBeLessThan(await store(page, 'project', (p) => p.cols));
   await expect.poll(() => store(page, 'workspace', (w) => ({ origin: w.ansiViewOrigin, size: w.ansiViewSize }))).toEqual(onScreen);
+});
+
+test('the PIXEL view publishes the whole cells on screen: a grid pixel is a column wide and half a line tall', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 500 });
+  await openApp(page);
+  await tab(page, 'PIXEL').click();
+  await store(page, 'workspace', (w) => { w.setEditZoom(16); });
+  await expect.poll(() => page.evaluate(() => {
+    const display = document.querySelector('.display');
+    return display.clientWidth - display.closest('article').clientWidth;   // the art runs past the view both ways
+  })).toBeGreaterThan(150);
+  await page.evaluate(() => document.querySelector('.display').closest('article').scrollTo(1e4, 1e4));
+  const onScreen = await page.evaluate(([cols, lines, zoom]) => {
+    const display = document.querySelector('.display');
+    const view = display.closest('article');
+    const d = display.getBoundingClientRect(), v = view.getBoundingClientRect();
+    const left = d.left + display.clientLeft, top = d.top + display.clientTop;
+    const whole = (count, size, start, from, to) => Array.from({ length: count }, (_, i) => i)
+      .filter((i) => start + i * size >= from - 1 && start + (i + 1) * size <= to + 1);
+    const across = whole(cols, zoom, left, v.left, v.left + view.clientWidth);
+    const down = whole(lines, 2 * zoom, top, v.top, v.top + view.clientHeight);
+    return { col: across[0], row: down[0], cols: across.length, rows: down.length };
+  }, await store(page, 'project', (p) => [p.cols, Math.floor(p.rows / 2), 16]));
+  expect(onScreen.col).toBeGreaterThan(0);
+  expect(onScreen.row).toBeGreaterThan(0);
+  await expect.poll(() => store(page, 'workspace', (w) => w.inputView)).toEqual(onScreen);
 });

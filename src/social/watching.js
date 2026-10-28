@@ -11,6 +11,7 @@ import { verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
 import { PAGE, chatText, isId, signedText } from './chat.js';
 import { CHUNK_BYTES, MOST_SNAPSHOT_CHUNKS, decodeCells, unpackSnapshot } from './wire.js';
+import { clampAnsiZoom } from '../lib/zoom.js';
 
 const MOST_NAME = 60;       // a room's name
 const MOST_WELCOME = 200;
@@ -185,8 +186,8 @@ export class Watch {
     if (room.name !== null && room.welcome !== null) this.onRoom(room);
   }
 
-  view({ col, row, cols, rows }) {
-    if ([col, row, cols, rows].every(place)) this.onView({ col, row, cols, rows });
+  view({ col, row, cols, rows, zoom }) {
+    if ([col, row, cols, rows].every(place)) this.onView({ col, row, cols, rows, zoom: typeof zoom === 'number' && zoom > 0 ? clampAnsiZoom(zoom) : 1 });
   }
 
   // The changed cells into the art, a copy of it once it's been given (the art given is never changed).

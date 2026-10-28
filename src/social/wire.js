@@ -6,7 +6,8 @@
  *   { t: 'room', name, welcome }                the room, first thing (who hosts it is the Room's word)
  *   { t: 'snapshot', chunks: n }                then n binary messages: packSnapshot's chunks
  *   { t: 'cells', at: [index], colors, cells }  changed cells, encodeCells' form, cells[i] at at[i]
- *   { t: 'view', col, row, cols, rows }         the part of the art the host is looking at
+ *   { t: 'view', col, row, cols, rows, zoom }   the part of the art the host is looking at, and its zoom: a
+ *                                               fraction of the font's cell, 0.25 to 1
  * Watcher to host:
  *   { t: 'following', on }
  *

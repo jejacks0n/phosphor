@@ -100,7 +100,7 @@ test('each watcher gets the room, the latest messages, then art deep-equal to th
     expect(log.states).toEqual(['connecting', 'live']);
     expect(log.rooms).toEqual([{ name: 'Night shift', welcome: 'Hi' }]);
     expect(log.arts).toEqual([art()]);
-    expect(log.views).toEqual([{ col: 1, row: 2, cols: 3, rows: 4 }]);
+    expect(log.views).toEqual([{ col: 1, row: 2, cols: 3, rows: 4, zoom: 1 }]);
   }
   for (const channel of new Set(sends.sent().map((m) => m.channel))) {
     expect(sends.sent().filter((m) => m.channel === channel).map((m) => m.t)).toEqual(['room', 'history', 'snapshot', 'view']);
@@ -192,10 +192,29 @@ test('a view reaches the watchers, and the same view again sends nothing', async
   r.host.setView({ col: 1, row: 2, cols: 3, rows: 4 });
   r.host.setView({ col: 0, row: 1, cols: 8, rows: 2 });
   r.host.setView({ col: 0, row: 1, cols: 8, rows: 2 });
-  for (const peer of ['p1', 'p2']) await expect.poll(() => r.log[peer].views.at(-1), PATIENT).toEqual({ col: 0, row: 1, cols: 8, rows: 2 });
+  for (const peer of ['p1', 'p2']) await expect.poll(() => r.log[peer].views.at(-1), PATIENT).toEqual({ col: 0, row: 1, cols: 8, rows: 2, zoom: 1 });
   await wait(100);
   expect(sends.sent().map((m) => m.t)).toEqual(['view', 'view']);
   expect(r.log.p1.views.length).toBe(2);
+});
+
+test('a view carries its zoom; the same view at another zoom is sent', async () => {
+  const r = await room(['p1']);
+  await expect.poll(() => r.log.p1.views.length, PATIENT).toBe(1);
+  r.host.setView({ col: 1, row: 2, cols: 3, rows: 4, zoom: 0.5 });
+  await expect.poll(() => r.log.p1.views.at(-1), PATIENT).toEqual({ col: 1, row: 2, cols: 3, rows: 4, zoom: 0.5 });
+  r.host.setView({ col: 1, row: 2, cols: 3, rows: 4, zoom: 0.5 });
+  r.host.setView({ col: 1, row: 2, cols: 3, rows: 4, zoom: 0.25 });
+  await expect.poll(() => r.log.p1.views.at(-1), PATIENT).toEqual({ col: 1, row: 2, cols: 3, rows: 4, zoom: 0.25 });
+  expect(r.log.p1.views.length).toBe(3);
+});
+
+test('a watcher takes a zoom in (0, 1], and 1 or 0.25 for anything else', async () => {
+  const { log, json } = await hostileHost();
+  const zooms = [undefined, 'x', 0, -1, 2, 0.1, 0.5];
+  for (const [i, zoom] of zooms.entries()) json({ t: 'view', col: i, row: 0, cols: 8, rows: 2, zoom });
+  await expect.poll(() => log.views.length, PATIENT).toBe(zooms.length);
+  expect(log.views.map((v) => v.zoom)).toEqual([1, 1, 1, 1, 1, 0.25, 0.5]);
 });
 
 test('a watcher that stops following shows following: false', async () => {
@@ -454,5 +473,5 @@ test('a watcher ignores a room or a view that doesn\'t fit, and cuts a long name
   json({ t: 'view', col: 0, row: 3, cols: 8, rows: 2 });
   await expect.poll(() => log.views.length, PATIENT).toBe(1);
   expect(log.rooms).toEqual([{ name: 'n'.repeat(60), welcome: 'w'.repeat(200) }]);   // the host's name in it isn't taken
-  expect(log.views).toEqual([{ col: 0, row: 3, cols: 8, rows: 2 }]);
+  expect(log.views).toEqual([{ col: 0, row: 3, cols: 8, rows: 2, zoom: 1 }]);
 });
