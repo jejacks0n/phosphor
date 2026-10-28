@@ -1,4 +1,5 @@
 import { ref, unref } from 'vue';
+import { dragZoom } from '@/lib/zoom';
 
 const TOUCH_DELAY_MS = 150; // a touch waits this long before drawing, in case a second finger makes it a pinch
 const TOUCH_MOVE_THRESHOLD = 5; // Pixels to move before immediate paint start
@@ -325,10 +326,7 @@ export function useEditorInteractions(options) {
         _lastMousePos = { clientX, clientY };
         _refreshMousePos();
       } else if (!disableZoom) {
-        const dx = clientX - _lastMousePos.clientX;
-        const sensitivity = 0.01;
-        const newZoom = _initialZoom + (dx * sensitivity);
-        _zoomToPoint(clampZoom(newZoom), _lastMousePos.clientX, _lastMousePos.clientY);
+        _zoomToPoint(dragZoom(_initialZoom, clientX - _lastMousePos.clientX, clampZoom), _lastMousePos.clientX, _lastMousePos.clientY);
       }
       return;
     }

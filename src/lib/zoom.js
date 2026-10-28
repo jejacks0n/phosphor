@@ -4,3 +4,7 @@ export const ANSI_ZOOM_MAX = 1;
 
 export const clampZoom = (z) => Math.max(1, Math.min(16, z));
 export const clampAnsiZoom = (z) => Math.max(ANSI_ZOOM_MIN, Math.min(ANSI_ZOOM_MAX, z));
+
+// The Zoom tool's drag, dx px from where it began: a view's whole range is 1500 px either way (PIXEL's
+// is a hundredth a pixel).
+export const dragZoom = (from, dx, clamp) => clamp(from + dx * ((clamp(Infinity) - clamp(-Infinity)) / 1500));

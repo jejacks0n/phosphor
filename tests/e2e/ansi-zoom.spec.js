@@ -186,10 +186,11 @@ test('Z picks Zoom on the ANSI view; a drag zooms', async ({ page }) => {
   await openApp(page);
   await page.keyboard.press('z');
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('zoom');
-  const from = await cellPoint(page, 30, 5);
+  const view = await scroller(page).boundingBox();
+  const from = { x: view.x + view.width - 20, y: view.y + view.height / 2 };
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
-  await page.mouse.move(from.x - 50, from.y, { steps: 5 }); // left: out, a hundredth a pixel
+  await page.mouse.move(from.x - 600, from.y, { steps: 5 }); // left: out, the whole range in 1500 px, as on PIXEL
   await page.mouse.up();
-  expect(await zoom(page)).toBeCloseTo(0.5, 1);
+  expect(await zoom(page)).toBeCloseTo(0.7, 6);
 });
