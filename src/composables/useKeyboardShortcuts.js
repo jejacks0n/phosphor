@@ -116,7 +116,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _handleSelectionKeys = (e) => {
     // Something else already took the key (the palette layer, a popover).
     if (e.defaultPrevented || workspaceStore.paletteLayerOpen) return false;
-    if (workspaceStore.editorTab !== 'output' || e.altKey || e.shiftKey) return false;
+    if (!['input', 'output'].includes(workspaceStore.editorTab) || e.altKey || e.shiftKey) return false; // the art views
     if (workspaceStore.isPainting) return false; // mid-drag: the drag's end decides
     // The Text tool's textarea isn't a field: Cmd/Ctrl+V there still pastes a Select block (and only
     // pastes text, through the textarea, when there's no block).
@@ -147,7 +147,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       // The Text cursor only counts in Edit Mode (it lingers, unseen, after switching tools), and there
       // it wins over a selection kept from another tool.
       const cursor = workspaceStore.activeTool === 'text' ? workspaceStore.textCursor : null;
-      const at = cursor ?? (sel ? { col: sel.c0, row: sel.r0 } : workspaceStore.ansiViewOrigin);
+      const origin = workspaceStore.editorTab === 'input' ? workspaceStore.pixelViewOrigin : workspaceStore.ansiViewOrigin;
+      const at = cursor ?? (sel ? { col: sel.c0, row: sel.r0 } : origin);
       clearTimeout(_pendingPaste?.timer);
       _pendingPaste = { at, timer: setTimeout(() => { _pendingPaste = null; _pasteBlock(at); }, 50) };
       return true;

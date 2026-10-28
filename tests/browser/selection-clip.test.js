@@ -160,3 +160,14 @@ test('a wand selection in the pixel view keeps the Pencil and Eraser to its pixe
   stroke(eraser);
   expect([4, 5, 6, 7, 8].map((x) => project.baseColorAt(x, 12) === '#000000')).toEqual([false, true, false, true, false]);
 });
+
+test("a rectangle limits the pixel view's tools too", async () => {
+  const { project, workspace } = await scene();
+  workspace.editorTab = 'input';
+  workspace.selection = { ...SEL };
+  const ctx = { project, workspace, view: 'input' };
+  pencil.begin(ctx, { x: 2.5, y: 12.5 }, {});
+  pencil.move(ctx, { x: 2.5, y: 12.5 }, { x: 14.5, y: 12.5 });
+  pencil.end(ctx);
+  expect([4, 5, 9, 10].map((x) => project.rawColorAt(x, 12) === '#ff0000')).toEqual([false, true, true, false]);
+});

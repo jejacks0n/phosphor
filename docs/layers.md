@@ -145,6 +145,11 @@ character back.
 
 ## The Select tool
 
+The Select tool (**M**) selects a rectangle of whole cells, in either view. In the pixel view a cell
+is a pixel wide and two tall, so the rectangle's top and bottom keep to every second pixel row there;
+it's the same selection in both views, and it stays when you switch. Everything below works the
+same in both.
+
 The Select tool's **Layers** toggles (**Base**, **Edit**) choose what Copy, Cut, Delete, moving and
 nudging act on:
 
@@ -189,7 +194,7 @@ selects text in a text editor; a plain click still just places the cursor. With 
 Pencil), a tap can wobble a few pixels, even across a cell's edge, and still only place the cursor.
 
 The selection stays as you change tools, and the painting tools (Pencil, Brush, Eraser, Paint
-Bucket, Shapes, Flip FG/BG) change only what's inside it; typing in Edit Mode isn't limited. Every
+Bucket, Shapes, Flip FG/BG), in either view, change only what's inside it; typing in Edit Mode isn't limited. Every
 tool's options row ends with **Deselect** while there's a selection, and Escape drops it too.
 
 ## The Magic Wand
@@ -200,8 +205,8 @@ character (**Char**); FG and Char to start. In the pixel view it's the pixel's c
 paint, not the ANSI layer drawn over them. **Tolerance** (0–100, 10 to start) is how far a color may
 be from the one you clicked and still match; characters match exactly. With **Contiguous** on it
 selects only what touches the click (sharing a side, as the Paint Bucket fills); off, every match.
-**Shift**-click adds to the selection. In the ANSI view, a Select rectangle you made first keeps the
-wand inside it, and the wand's selection takes its place.
+**Shift**-click adds to the selection. A Select rectangle you made first keeps the wand inside it,
+and the wand's selection takes its place.
 
 The selection shows as a tint on every selected cell and a dashed line around it, so a scattered
 selection (every other cell) shows as a pattern. Like the rectangle, it stays as you change tools,
@@ -259,7 +264,7 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
 A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the same tool: **P**
 Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Color Picker, **H** Hand,
 **Z** Zoom, **W** Magic Wand, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
-(Zoom is the pixel view's; Edit Mode, Flip and Select the ANSI view's). Each tool's button shows its key.
+(Zoom is the pixel view's; Edit Mode and Flip the ANSI view's). Each tool's button shows its key.
 In Edit Mode letters type, so press **Escape** to put the cursor away first; with the Select tool
 and a selection, E, S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.
 

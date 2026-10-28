@@ -180,3 +180,15 @@ test("Delete in the pixel view takes away a Half-block's ▄ with its paint, as 
   expect(project.cellHasPaint(6, 3)).toBe(false);
   expect(project.editCellAt(6, 3)).toBe(undefined);
 });
+
+test('in the pixel view a Select rectangle keeps the wand inside it too', async () => {
+  const { project, workspace, click } = await scene();
+  workspace.editorTab = 'input';
+  project.paintStroke([{ x: 3, y: 3, alpha: 1 }, { x: 9, y: 9, alpha: 1 }], '#ff00ff');
+  project.commitEdit();
+  await settle(project);
+  Object.assign(workspace, { wandContiguous: false, selection: { c0: 0, r0: 0, c1: 5, r1: 2 } }); // cells: grid pixels 0-5 across, 0-5 down
+  click(3, 3, {}, 'input');
+  expect(workspace.selection).toBe(null);
+  expect([workspace.wand.mask[3 * 20 + 3], workspace.wand.mask[9 * 20 + 9]]).toEqual([1, 0]);
+});

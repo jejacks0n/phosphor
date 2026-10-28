@@ -51,6 +51,13 @@ export async function cellPoint(page, col, row, half) {
   return { x: box.x + (col + 0.5) * w, y: box.y + (row + (half === undefined ? 0.5 : half * 0.5 + 0.25)) * h };
 }
 
+// The page position of a grid pixel's center in the PIXEL view.
+export async function pixelPoint(page, x, y) {
+  const box = await page.locator('.pixel-display').boundingBox();
+  const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: p.rows }));
+  return { x: box.x + (x + 0.5) * (box.width / cols), y: box.y + (y + 0.5) * (box.height / rows) };
+}
+
 export async function drag(page, from, to) {
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();

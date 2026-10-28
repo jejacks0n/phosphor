@@ -14,9 +14,15 @@ test('a rectangle in the ANSI view lets the tools change its cells and their two
   expect([clip.pixel(3, 1), clip.pixel(3, 6)]).toEqual([false, false]);
 });
 
-test('with no selection, or in the pixel view, nothing limits the tools', () => {
+test('with no selection, nothing limits the tools', () => {
   expect(selectionClip(workspace(null), 'output')).toBe(null);
-  expect(selectionClip(workspace({ c0: 2, r0: 1, c1: 4, r1: 2 }), 'input')).toBe(null);
+  expect(selectionClip(workspace(null), 'input')).toBe(null);
+});
+
+test('a rectangle limits the pixel view too: its cells, two grid pixels each', () => {
+  const clip = selectionClip(workspace({ c0: 2, r0: 1, c1: 4, r1: 2 }), 'input');
+  expect([clip.pixel(3, 2), clip.pixel(3, 5), clip.cell(4, 2)]).toEqual([true, true, true]);
+  expect([clip.pixel(3, 1), clip.pixel(5, 3)]).toEqual([false, false]);
 });
 
 test('a wand selection in the ANSI view is a cell mask: a cell and its two grid pixels', () => {

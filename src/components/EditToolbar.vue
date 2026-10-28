@@ -85,10 +85,10 @@ const shownChoice = (option) => {
   return list.includes(current) ? current : list.find(c => c.value === current?.instead) ?? current;
 };
 
-// A selection the tools keep to, in this view: the Magic Wand's, or the Select tool's rectangle (the
-// ANSI view's). Every tool but Select (which has its own) offers Deselect while there is one.
+// A selection the tools keep to, in this view: the Magic Wand's, or the Select tool's rectangle (both
+// views'). Every tool but Select (which has its own) offers Deselect while there is one.
 const wandHere = computed(() => workspace.wand?.view === workspace.editorTab);
-const kept = computed(() => wandHere.value || (!!workspace.selection && workspace.editorTab === 'output'));
+const kept = computed(() => wandHere.value || (!!workspace.selection && ['input', 'output'].includes(workspace.editorTab)));
 const deselect = () => { workspace.selection = null; workspace.wand = null; };
 
 // The pixel view's preview of the ANSI layer: edit cells drawn over the image at pixel scale.

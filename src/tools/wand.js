@@ -1,8 +1,8 @@
 // The Magic Wand (both views): a click selects what matches the unit clicked, a cell in the ANSI view
 // (its FG, BG and/or character: workspace.wandMatch) or a grid pixel in the pixel view (its color),
 // connected to it (Contiguous) or anywhere; Shift-click adds to the selection. Colors match within the
-// Tolerance, characters exactly. In the ANSI view a Select rectangle, when there is one, keeps the wand
-// inside it, and the wand's selection takes its place. The selection (workspace.wand) belongs to the
+// Tolerance, characters exactly. A Select rectangle, when there is one, keeps the wand inside it (in
+// the pixel view, its cells' pixels), and the wand's selection takes its place. The selection (workspace.wand) belongs to the
 // view it was made in, and the painting tools keep to it (selectionClip).
 import { markRaw } from 'vue';
 import { selectMatching } from '@/lib/MagicWand';
@@ -57,10 +57,10 @@ export default {
     if (start.x < 0 || start.y < 0 || start.x >= m.width || start.y >= m.height) return false;
     const adding = event?.shiftKey && workspace.wand?.view === view ? workspace.wand : null;
     // The rectangle it searches inside: the Select tool's, or the one the selection Shift adds to began in.
-    const within = view === 'output' ? (workspace.selection ?? adding?.within ?? null) : null;
+    const within = workspace.selection ?? adding?.within ?? null;
     const allowed = within && ((i) => {
-      const x = i % m.width, y = (i - x) / m.width;
-      return x >= within.c0 && x <= within.c1 && y >= within.r0 && y <= within.r1;
+      const x = i % m.width, y = (i - x) / m.width, row = view === 'input' ? Math.floor(y / 2) : y;
+      return x >= within.c0 && x <= within.c1 && row >= within.r0 && row <= within.r1;
     });
     const seed = start.y * m.width + start.x;
     if (allowed && !allowed(seed)) return false; // outside the rectangle: the rectangle stays
