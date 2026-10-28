@@ -17,7 +17,8 @@ import ReportDialog from './ReportDialog.vue';
 // without moving what you were reading. Someone you blocked is folded to one line (Show opens just
 // that message). Who came and went, with no message between, is one line ("tin-owl joined, wren
 // left"); your own comings and goings aren't shown, as "You joined" marks where you came in. A confirmed
-// member can Report someone else's message (it shows on hover or focus, as the host's Delete does).
+// member can Report someone else's message (it shows on hover or focus, as the host's Delete does), until
+// they've reported that person in this room.
 const room = useRoomStore(), social = useSocialStore();
 
 const folded = ref(false);
@@ -31,7 +32,7 @@ const blocked = computed(() => new Set(social.blocked.map((b) => b.id)));
 const shownAnyway = reactive(new Set());   // blocked messages opened with Show
 const hidden = (m) => !m.mine && blocked.value.has(m.sub) && !shownAnyway.has(m.id);
 const time = (ts) => clock.format(ts);
-const reportable = (m) => room.canReport && !m.mine && !m.deleted && !hidden(m);
+const reportable = (m) => room.canReport && !m.mine && !m.deleted && !hidden(m) && !room.reported.includes(m.sub);
 const reporting = ref(null);   // { name, sub, messageId, trigger }
 const opened = ref(0);         // each Report opens a new dialog, even on the same message
 const askToReport = (m, event) => {
@@ -129,7 +130,7 @@ function askIfAtTop() {
         <p v-if="room.chatMore" class="more">↑ Scroll up for earlier messages</p>
         <p v-if="room.role === 'watch' && room.joinedAt === null && room.status === 'live'" class="joined">You joined</p>
         <!-- A row is drawn again only when what it shows changes, not on every new message. -->
-        <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.length] : [m.deleted, hidden(m), room.role === 'host', room.canReport]">
+        <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.length] : [m.deleted, hidden(m), room.role === 'host', reportable(m)]">
           <p v-if="m.joined" class="joined">You joined</p>
           <p v-else-if="m.people" class="presence">
             <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<b :style="{ color: nameColor(p.name) }">{{ p.name }}</b> {{ p.presence }}</template></span>

@@ -1225,6 +1225,19 @@ test('A report that can\'t be made returns false and sends nothing', async () =>
   expect(reports(socket)).toEqual([]);
 });
 
+test('Who you reported is kept for the room: not a report that couldn\'t go, no second report of them, and nobody once you leave', async () => {
+  const socket = await watching();
+  room._watch.onChat({ type: 'history', messages: [said(1), said(2, { sub: 'u_3' })], more: false, earlier: false });
+  expect(room.report({ sub: 'u_2', messageId: chatId(1), reason: 'rude' })).toBe(false);
+  expect(room.reported).toEqual([]);
+  expect(room.report({ sub: 'u_2', messageId: chatId(1), reason: 'spam' })).toBe(true);
+  expect(room.reported).toEqual(['u_2']);
+  expect(room.report({ sub: 'u_2', reason: 'other' })).toBe(false);   // once is enough
+  expect(reports(socket)).toHaveLength(1);
+  room.leave();
+  expect(room.reported).toEqual([]);
+});
+
 test('A mute for your own sub gets a new pass that carries it', async () => {
   const socket = await goLive();
   expect(room.mutedUntil).toBe(null);

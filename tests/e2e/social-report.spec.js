@@ -109,6 +109,52 @@ test('the host reports a watcher from N here ⋯: no message, and their last mes
   expect(report.messages.map((m) => m.text)).toEqual(['buy now', 'buy now!!']);
 });
 
+test('once you\'ve reported someone, Report is gone for them for the rest of the room, on their messages and in N here ⋯; other people keep theirs', async ({ page: host, context }) => {
+  const { room, watcher } = await inRoom(host, context);
+  const owl = await watcherPage(context, room, { me: member({ id: 'u_3', username: 'tin_owl', name: 'tin_owl' }) });
+  await owl.goto('/');
+  await joinFromCard(owl);
+  await say(host, 'one');
+  await expect(messages(owl)).toHaveCount(1);
+  await say(owl, 'two');
+  await expect(messages(watcher)).toHaveCount(2);
+  await say(host, 'three');
+  await say(watcher, 'four');
+  for (const page of [host, watcher]) await expect(messages(page)).toHaveCount(4);
+  const reportFrom = (page, name) => panel(page).getByRole('button', { name: `Report message from ${name}` });
+
+  // The watcher reports the host's message: no Report on any of the host's, still one on tin_owl's.
+  await expect(reportFrom(watcher, 'ansi-fan')).toHaveCount(2);
+  await messages(watcher).first().hover();
+  await reportFrom(watcher, 'ansi-fan').first().click();
+  await dialog(watcher, 'ansi-fan').getByRole('radio', { name: 'Spam or flooding' }).check();
+  await dialog(watcher, 'ansi-fan').getByRole('button', { name: 'Report', exact: true }).click();
+  await expect(reported(watcher)).toBeVisible();
+  await expect(reportFrom(watcher, 'ansi-fan')).toHaveCount(0);
+  await expect(reportFrom(watcher, 'tin_owl')).toHaveCount(1);
+  await expect(panel(watcher).getByRole('log')).toBeFocused();
+
+  // The host reports tin_owl from N here ⋯: gone from that ⋯ and tin_owl's message, still there for pixel_wren.
+  await panel(host).getByRole('button', { name: /^\d+ here$/ }).click();
+  const more = (name) => panel(host).getByRole('list', { name: 'Who is here' }).getByRole('button', { name: `More for ${name}` });
+  await more('tin_owl').click();
+  await host.getByRole('button', { name: 'Report', exact: true }).click();
+  await dialog(host, 'tin_owl').getByRole('radio', { name: 'Spam or flooding' }).check();
+  await dialog(host, 'tin_owl').getByRole('button', { name: 'Report', exact: true }).click();
+  await expect(reported(host)).toBeVisible();
+  await expect(reportFrom(host, 'tin_owl')).toHaveCount(0);
+  await expect(reportFrom(host, 'pixel_wren')).toHaveCount(1);
+  await more('tin_owl').click();
+  await expect(host.getByRole('button', { name: 'Block from my rooms' })).toBeVisible();
+  await expect(host.getByRole('button', { name: 'Report', exact: true })).toHaveCount(0);
+  await host.keyboard.press('Escape');
+  await more('pixel_wren').click();
+  await expect(host.getByRole('button', { name: 'Report', exact: true })).toBeVisible();
+
+  expect(sentReports(room, 'p_1')).toHaveLength(1);
+  expect(sentReports(room, 'host')).toHaveLength(1);
+});
+
 test('a guest and a member who hasn\'t confirmed their email see no Report; nor does the host on their own messages', async ({ page: host, context }) => {
   const { room, watcher: guest } = await inRoom(host, context, { me: null });
   const unconfirmed = await watcherPage(context, room, { me: member({ id: 'u_3', username: 'tin_owl', name: 'tin_owl', emailVerified: false }) });

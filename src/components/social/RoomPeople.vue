@@ -8,7 +8,7 @@ import ReportDialog from './ReportDialog.vue';
 
 // Who is here, under the host's chat header: "N here" (those connected), folded or open for as long as
 // the room lasts. The list is every watcher, one still connecting too. A member's ⋯ menu: Remove for this
-// session, Block from my rooms, which asks first, and Report (when you may report). Cancel (or Escape) puts
+// session, Block from my rooms, which asks first, and Report (when you may report, and haven't reported them in this room). Cancel (or Escape) puts
 // focus back on the ⋯ button the menu came from, or on the "N here" button when that member has left.
 const room = useRoomStore();
 
@@ -49,7 +49,7 @@ const confirmBlock = async () => {
           <template #trigger><span aria-hidden="true">⋯</span></template>
           <button @click="room.remove(watcher.peer)">Remove for this session</button>
           <button @click="askToBlock(watcher, $event)">Block from my rooms</button>
-          <button v-if="room.canReport" @click="askToReport(watcher, $event)">Report</button>
+          <button v-if="room.canReport && !room.reported.includes(watcher.sub)" @click="askToReport(watcher, $event)">Report</button>
         </DropdownMenu>
       </li>
     </ul>

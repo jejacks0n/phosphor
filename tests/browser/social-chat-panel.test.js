@@ -229,6 +229,25 @@ test('the report dialog: a report that can\'t go leaves it as it is; with its Re
   }
 });
 
+test('once a report of someone goes, Report is gone from their messages and stays on other people\'s; focus goes to the messages', async () => {
+  const room = await mount('watch', 0);
+  useSocialStore().claims = claims({});
+  room._connection = { send: () => true, close() {} };   // the room's socket, taking the report
+  room.chat = [row(0), row(1), row(2, { sub: 'u_0', name: 'name-0' })];
+  await nextTick();
+  expect(reports()).toEqual(['Report message from name-0', 'Report message from name-1', 'Report message from name-0']);
+  host.querySelector('button.report').click();
+  await nextTick();
+  document.querySelector('[role=dialog] input[value=spam]').click();
+  await nextTick();
+  [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === 'Report').click();
+  await nextTick();
+  await nextTick();
+  expect(room.reported).toEqual(['u_0']);
+  expect(reports()).toEqual(['Report message from name-1']);
+  expect(document.activeElement).toBe(host.querySelector('[role=log]'));
+});
+
 test('the report dialog, sent: "Reported" in the status line that was there from the start, then done after 4 s; unmounted sooner, its timer goes with it', async () => {
   await createTestApp();
   const room = useRoomStore();

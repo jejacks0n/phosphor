@@ -52,6 +52,7 @@ export const useRoomStore = defineStore('room', {
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
+    reported: [],        // the subs you reported in this room (Report is gone for them until the room ends)
     peopleOpen: false,   // a host's: the chat panel's "N here" list is open
     lobbyPin: null,      // a host's: the top-left cell { col, row } the lobby picture uses; null while it follows the view
     session: newSession(),   // a host's: what this browser counted since the room started (social/session.js)
@@ -260,7 +261,7 @@ export const useRoomStore = defineStore('room', {
       for (const stop of this._stops) stop();
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, peopleOpen: false, lobbyPin: null, session: newSession(),
+        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,
       });
@@ -313,12 +314,15 @@ export const useRoomStore = defineStore('room', {
     },
 
     // A report of `sub`, for a message (messageId) or from the people list, with the messages as they came.
-    // False, sending nothing, if you can't report, it's yourself, the reason isn't one or there's no socket.
+    // False, sending nothing, if you can't report, it's yourself, you reported them already in this room, the reason
+    // isn't one or there's no socket.
     report({ sub, messageId = null, reason }) {
-      if (!this.canReport || sub === useSocialStore().claims?.sub || !REASONS.some((r) => r.id === reason)) return false;
+      if (!this.canReport || sub === useSocialStore().claims?.sub || this.reported.includes(sub) || !REASONS.some((r) => r.id === reason)) return false;
       const messages = evidenceFor(this.chat, { sub, messageId });
       if (!messages) return false;
-      return this._connection?.send({ type: 'report', sub, reason, messages, ...(messageId ? { message: messageId } : {}) }) ?? false;
+      if (!this._connection?.send({ type: 'report', sub, reason, messages, ...(messageId ? { message: messageId } : {}) })) return false;
+      this.reported.push(sub);
+      return true;
     },
 
     // A watcher asks for the page before its oldest message; one question at a time.

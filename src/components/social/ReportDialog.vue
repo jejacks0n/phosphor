@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onUnmounted } from 'vue';
+import { ref, nextTick, onUnmounted } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
 import { REASONS } from '@/social/chat';
 import ModalDialog from '@/components/ModalDialog.vue';
@@ -7,8 +7,8 @@ import ModalDialog from '@/components/ModalDialog.vue';
 // Report a person, for a message (messageId) or from the host's N here: one reason, required. Sent, the
 // dialog gives way to "Reported" for a few seconds (in a status line that's there from the start, so it's
 // read out); one that can't be sent leaves the dialog as it is.
-// Cancel, Escape and the backdrop send nothing. Focus goes back to `trigger`, or (that gone) to the
-// "N here" button or the messages.
+// Cancel, Escape and the backdrop send nothing. Focus goes back to `trigger`, or (that gone, as a message's
+// Report is once you've reported them) to the "N here" button or the messages.
 const props = defineProps({
   name: { type: String, required: true },
   sub: { type: String, required: true },
@@ -33,7 +33,7 @@ function report() {
   if (sent.value) return;
   if (!room.report({ sub: props.sub, messageId: props.messageId, reason: reason.value })) return;
   sent.value = true;
-  focusBack();
+  nextTick(focusBack);   // once the Report it came from is gone (you reported them)
   timer = setTimeout(() => emit('done'), SHOWN_MS);
 }
 </script>
