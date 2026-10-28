@@ -542,7 +542,7 @@ test('A public room sends one thumbnail soon after going live, then one only aft
   expect(thumbnails(socket)).toEqual([{ type: 'thumbnail', webp: 'AAAA' }]);
   expect(thumbnailOf).toHaveBeenLastCalledWith(
     expect.objectContaining({ cols: 8, lines: 4, cells: project.cells, font: expect.objectContaining({ id: 'jetbrains', size: 17 }) }),
-    expect.objectContaining({ col: 0, row: 0 }),
+    { middle: expect.any(Number) },
   );
 
   await vi.advanceTimersByTimeAsync(2 * 60_000);   // nothing changed
@@ -565,16 +565,52 @@ test('A public room sends one thumbnail soon after going live, then one only aft
 
 test('A change of the host\'s view alone sends a thumbnail once 3 minutes have passed since the last', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const workspace = useWorkspaceStore();
+  Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiViewOrigin: { col: 0, row: 0 }, ansiViewSize: { cols: 10, rows: 4 } });
   const socket = await goLive();
   await vi.advanceTimersByTimeAsync(10_000);
   expect(thumbnails(socket)).toHaveLength(1);
 
-  useWorkspaceStore().ansiViewOrigin = { col: 3, row: 1 };
+  workspace.ansiViewOrigin = { col: 3, row: 1 };
   await vi.advanceTimersByTimeAsync(60_000);
   expect(thumbnails(socket)).toHaveLength(1);
   await vi.advanceTimersByTimeAsync(2 * 60_000);
   expect(thumbnails(socket)).toHaveLength(2);
-  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ col: 3, row: 1 }));
+  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { middle: 3 });
+});
+
+test('The lobby picture follows the shared view\'s middle until pinned; pinning or following again is a change, and a new room follows', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const workspace = useWorkspaceStore();
+  Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiViewOrigin: { col: 0, row: 10 }, ansiViewSize: { cols: 10, rows: 6 } });
+  const socket = await goLive();
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(thumbnails(socket)).toHaveLength(1);
+  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { middle: 13 });
+
+  room.pinLobby(12);
+  expect(room.lobbyPin).toBe(12);
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(thumbnails(socket)).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(2 * 60_000);
+  expect(thumbnails(socket)).toHaveLength(2);
+  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { row: 12 });
+
+  workspace.ansiViewOrigin = { col: 0, row: 40 };   // pinned: the view moving is not a change
+  await vi.advanceTimersByTimeAsync(10 * 60_000);
+  expect(thumbnails(socket)).toHaveLength(2);
+
+  room.followLobby();
+  await vi.advanceTimersByTimeAsync(3 * 60_000 + 1000);
+  expect(thumbnails(socket)).toHaveLength(3);
+  expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { middle: 43 });
+
+  room.pinLobby(5);
+  room.leave();
+  expect(room.lobbyPin).toBe(null);
+  room.pinLobby(5);
+  expect(await startPublic()).toBe(true);   // a new room starts over
+  expect(room.lobbyPin).toBe(null);
 });
 
 test('on PIXEL the host sends the cells in view and the PIXEL zoom against the font\'s cell; on ANSI its view and zoom; SAUCE keeps the last one', async () => {

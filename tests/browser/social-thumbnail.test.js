@@ -1,7 +1,7 @@
-// The lobby's picture of a room: the host's view drawn off screen and encoded as WebP (JPEG where the
-// browser can't make WebP), as raw base64.
+// The lobby's picture of a room: the art's full width around the host's view or a pinned line, encoded
+// as WebP (JPEG where the browser can't make WebP), as raw base64.
 import { test, expect, vi, afterEach } from 'vitest';
-import { thumbnailOf } from '@/social/thumbnail';
+import { thumbnailOf, lobbyWindow } from '@/social/thumbnail';
 import { fontFor } from '@/social/wire';
 import { pictureUrl } from '@/social/lobby';
 import CellCanvas from '@/lib/CellCanvas';
@@ -39,37 +39,46 @@ const whiteShare = ({ data }) => {
   return white / (data.length / 4);
 };
 const BASE64 = /^[A-Za-z0-9+/]+=*$/;
-const VIEW = { col: 100, row: 800, cols: 80, rows: 25 };
+const MIDDLE = { middle: 800 };
 
-test('the biggest grid gives raw base64 within the limit, an image about 320 px wide and 2:1, of the cells around the view\'s center', async () => {
-  const webp = await thumbnailOf(gridOf(750, 850), VIEW);
+test('the window is the art\'s full width at 2:1, around the middle line it\'s given', async () => {
+  const webp = await thumbnailOf(gridOf(750, 850), MIDDLE);
   expect(webp).toMatch(BASE64);
   expect(webp.length).toBeLessThanOrEqual(49_152);
   const image = await pixelsOf(webp);
   expect(Math.abs(image.width - 320)).toBeLessThan(40);
-  expect(image.width / image.height).toBeGreaterThan(1.7);
+  expect(image.width / image.height).toBeGreaterThan(1.6);   // 300 columns are a pixel each, so the cells' whole pixels bend 2:1 a little
   expect(image.width / image.height).toBeLessThan(2.3);
-  expect(whiteShare(image)).toBeGreaterThan(0.95);   // the lines around the view's center are all in the window
+  expect(whiteShare(image)).toBeGreaterThan(0.95);   // the lines around the middle are all in the window
 
-  // Differs from a blank grid's, and a view elsewhere sees none of those lines.
-  expect(webp).not.toBe(await thumbnailOf(blank, VIEW));
-  expect(whiteShare(await pixelsOf(await thumbnailOf(gridOf(750, 850), { ...VIEW, row: 100 })))).toBe(0);
+  // Differs from a blank grid's, and a middle elsewhere sees none of those lines.
+  expect(webp).not.toBe(await thumbnailOf(blank, MIDDLE));
+  expect(whiteShare(await pixelsOf(await thumbnailOf(gridOf(750, 850), { middle: 100 })))).toBe(0);
 });
 
-test('a view past the grid, or not measured yet, is held to the grid: the window is the last cells, or the first', async () => {
-  const last = await thumbnailOf(gridOf(LINES - 100, LINES), { col: 1e9, row: 1e9, cols: 80, rows: 25 });
+test('a pinned row is the window\'s top; one past the end is held to the last lines', async () => {
+  const last = await thumbnailOf(gridOf(LINES - 100, LINES), { row: 1e9 });
   expect(last).toMatch(BASE64);
   expect(whiteShare(await pixelsOf(last))).toBeGreaterThan(0.95);
-  const first = await thumbnailOf(gridOf(0, 100), { col: 0, row: 0, cols: 0, rows: 0 });
+  const first = await thumbnailOf(gridOf(0, 100), { row: 0 });
   expect(first).toMatch(BASE64);
   expect(whiteShare(await pixelsOf(first))).toBeGreaterThan(0.95);
 });
 
-test('a window wider than the grid is the whole of it', async () => {
+test('lobbyWindow: 2:1 of the art\'s width in lines, centered on a middle or from a pinned row, held to the grid', () => {
+  const cell = { cellWidth: 8, lineHeight: 16 };
+  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { middle: 500 })).toEqual({ row: 490, rows: 20 });
+  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { row: 995 })).toEqual({ row: 980, rows: 20 });
+  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { row: 7 })).toEqual({ row: 7, rows: 20 });
+  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { middle: NaN }).row).toBe(0);
+  expect(lobbyWindow({ cols: 80, lines: 1000 }, cell, { middle: 0 }).row).toBe(0);
+  expect(lobbyWindow({ cols: 80, lines: 5 }, cell, { middle: 2 })).toEqual({ row: 0, rows: 5 });
+});
+
+test('a grid shorter than the window is the whole of it', async () => {
   const small = { ...gridOf(0, 0), cols: 20, lines: 10 };
   small.cells = Array.from({ length: 200 }, () => ({ char: '█', fg: white, bg: black }));
-  const image = await pixelsOf(await thumbnailOf(small, { col: 0, row: 0, cols: 80, rows: 25 }));
-  expect(whiteShare(image)).toBeGreaterThan(0.95);
+  expect(whiteShare(await pixelsOf(await thumbnailOf(small, MIDDLE)))).toBeGreaterThan(0.95);
 });
 
 test('a larger picture that is over the limit at 0.8 is tried again at 0.5; still over, it gives null', async () => {
@@ -79,7 +88,7 @@ test('a larger picture that is over the limit at 0.8 is tried again at 0.5; stil
     qualities.push(quality);
     toBlob.call(this, (blob) => done(new Blob([new Uint8Array(40_000)], { type: blob.type })), type, quality);
   });
-  expect(await thumbnailOf(blank, VIEW)).toBe(null);
+  expect(await thumbnailOf(blank, MIDDLE)).toBe(null);
   expect(qualities).toEqual([0.8, 0.5]);
 });
 
@@ -88,7 +97,7 @@ test('a browser that can\'t encode WebP (Safari makes a PNG instead) gives a JPE
   vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (done, type, quality) {
     toBlob.call(this, done, type === 'image/webp' ? 'image/png' : type, quality);
   });
-  const jpeg = await thumbnailOf(gridOf(750, 850), VIEW);
+  const jpeg = await thumbnailOf(gridOf(750, 850), MIDDLE);
   expect(jpeg).toMatch(BASE64);
   expect(pictureUrl(jpeg)).toMatch(/^data:image\/jpeg;/);
   expect(jpeg.length).toBeLessThanOrEqual(49_152);
@@ -100,7 +109,7 @@ test('a browser that can encode neither WebP nor JPEG gives null', async () => {
   vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (done, type, quality) {
     toBlob.call(this, done, 'image/png', quality);
   });
-  expect(await thumbnailOf(blank, VIEW)).toBe(null);
+  expect(await thumbnailOf(blank, MIDDLE)).toBe(null);
 });
 
 test('no WebGL2 gives null, without a context to release', async () => {
@@ -109,25 +118,25 @@ test('no WebGL2 gives null, without a context to release', async () => {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (type, ...rest) {
     return type === 'webgl2' ? null : getContext.call(this, type, ...rest);
   });
-  expect(await thumbnailOf(blank, VIEW)).toBe(null);
+  expect(await thumbnailOf(blank, MIDDLE)).toBe(null);
   expect(destroy).not.toHaveBeenCalled();
 });
 
 test('the canvas\'s WebGL context is released whether the picture is made, can\'t be encoded, or is too big', async () => {
   const destroy = vi.spyOn(CellCanvas.prototype, 'destroy');
-  expect(await thumbnailOf(blank, VIEW)).toMatch(BASE64);
+  expect(await thumbnailOf(blank, MIDDLE)).toMatch(BASE64);
   expect(destroy).toHaveBeenCalledTimes(1);
 
   const toBlob = HTMLCanvasElement.prototype.toBlob;
   const mock = vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (done, type, quality) {
     toBlob.call(this, done, 'image/png', quality);
   });
-  expect(await thumbnailOf(blank, VIEW)).toBe(null);
+  expect(await thumbnailOf(blank, MIDDLE)).toBe(null);
   expect(destroy).toHaveBeenCalledTimes(2);
 
   mock.mockImplementation(function (done, type, quality) {
     toBlob.call(this, (blob) => done(new Blob([new Uint8Array(40_000)], { type: blob.type })), type, quality);
   });
-  expect(await thumbnailOf(blank, VIEW)).toBe(null);
+  expect(await thumbnailOf(blank, MIDDLE)).toBe(null);
   expect(destroy).toHaveBeenCalledTimes(3);
 });

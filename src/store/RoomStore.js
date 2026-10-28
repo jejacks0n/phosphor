@@ -52,6 +52,7 @@ export const useRoomStore = defineStore('room', {
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
+    lobbyPin: null,      // a host's: the top line the lobby picture is pinned to; null while it follows the view
     session: newSession(),   // a host's: what this browser counted since the room started (social/session.js)
     startDraft: newStartDraft(),         // Start a room's form; empty again once a room is made
     settingsDraft: newSettingsDraft(),   // a host's Room settings form
@@ -75,6 +76,12 @@ export const useRoomStore = defineStore('room', {
     canChat() {
       const claims = useSocialStore().claims;
       return !!claims && !claims.guest && claims.verified;
+    },
+    // Where the lobby picture looks: a pinned top line, else the middle line of the shared view.
+    lobbyPlace() {
+      if (this.lobbyPin !== null) return { row: this.lobbyPin };
+      const v = useWorkspaceStore().sharedView;
+      return { middle: v ? v.row + v.rows / 2 : 0 };
     },
   },
 
@@ -124,7 +131,7 @@ export const useRoomStore = defineStore('room', {
         if (art.cells.length !== art.cols * art.lines) return changed();
         let webp = null;
         try {
-          webp = await thumbnailOf({ ...art, font: fontFor(art.font) }, { ...workspace.ansiViewOrigin, ...workspace.ansiViewSize });
+          webp = await thumbnailOf({ ...art, font: fontFor(art.font) }, this.lobbyPlace);
         } catch (error) {
           console.warn('The room\'s lobby picture failed.', error);   // as if the browser couldn't make one
         }
@@ -143,7 +150,7 @@ export const useRoomStore = defineStore('room', {
       this._stops = [
         watch([() => project.cells, () => project.cols, () => project.rows, () => workspace.displayFontSpec], () => { schedule(); changed(); }),
         watch(() => workspace.sharedView, (v) => { if (v) view.push(v); }, { immediate: true }),
-        watch(() => ({ ...workspace.ansiViewOrigin, ...workspace.ansiViewSize }), changed, { immediate: true }),
+        watch(() => JSON.stringify(this.lobbyPlace), changed, { immediate: true }),
         watch(() => this.hereNow, (here) => sessionSaw(this.session, here), { immediate: true }),
         watch(() => this.status, (status) => {
           if (status === 'live') this.session.liveSince ??= Date.now();   // a reconnect keeps it
@@ -208,6 +215,14 @@ export const useRoomStore = defineStore('room', {
       this._watch?.setFollowing(on);
     },
 
+    // The lobby picture from this top line, or following the view's middle again.
+    pinLobby(row) {
+      this.lobbyPin = row;
+    },
+    followLobby() {
+      this.lobbyPin = null;
+    },
+
     // Out of the room, back to the lobby.
     leave() {
       this.close();
@@ -227,7 +242,7 @@ export const useRoomStore = defineStore('room', {
       for (const stop of this._stops) stop();
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, session: newSession(),
+        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,
       });
