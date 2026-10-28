@@ -199,6 +199,7 @@ watch(() => [workspaceStore.ansiOverlay, workspaceStore.ansiOverlayAll], queueRe
 // A scroll, or a viewport or sizer of a new size, brings other grid pixels into view.
 let resizeObserver = null;
 onMounted(() => {
+  workspaceStore.viewTab = 'input'; // the view a room's watchers are shown
   viewportEl = sizerRef.value?.closest('article') ?? null;
   viewportEl?.addEventListener('scroll', queueRedraw, { passive: true });
   resizeObserver = new ResizeObserver(queueRedraw);

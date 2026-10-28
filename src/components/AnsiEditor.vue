@@ -295,6 +295,7 @@ watch(sizerRef, (sizer, old) => {
 });
 
 onMounted(() => {
+  workspaceStore.viewTab = 'output'; // the view a room's watchers are shown
   viewportEl = displayRef.value?.closest('article') ?? null;
   viewportEl?.addEventListener('scroll', publishOrigin, { passive: true });
   viewportEl?.addEventListener('scroll', drawInView, { passive: true });

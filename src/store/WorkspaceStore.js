@@ -62,6 +62,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     editZoom:  5,
     ansiZoom:  1,            // the ANSI view's zoom: 25% to 100% of its cell size
     editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'sauce' or 'social'
+    viewTab: 'output',       // the art tab last shown, 'input' or 'output' (its view mounts and sets it)
     isPainting: false,
     isCtrlPressed: false,
     isMiddleClick: false,
@@ -102,11 +103,10 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     editMode: (state) => state.editorTab === 'input' || state.editorTab === 'output', // the art is showing
     // The view the room's host is looking at, for watchers: whole cells and the zoom to draw them at
-    // (a fraction of the font's cell); null on a tab that isn't the art. PIXEL's zoom is its pixels
-    // per column against the font's cell width.
+    // (a fraction of the font's cell), of the art tab last shown (SAUCE and SOCIAL keep it). PIXEL's
+    // zoom is its pixels per column against the font's cell width.
     sharedView(state) {
-      if (state.editorTab === 'output') return { ...state.ansiViewOrigin, ...state.ansiViewSize, zoom: state.ansiZoom };
-      if (state.editorTab !== 'input') return null;
+      if (state.viewTab === 'output') return { ...state.ansiViewOrigin, ...state.ansiViewSize, zoom: state.ansiZoom };
       void this.displayFontSpec;   // a font change measures again
       void state.displayFontLoaded;   // and again once it's loaded
       return { ...state.inputView, zoom: Math.min(1, state.editZoom / measureAdvance(DISPLAY_FONT)) };

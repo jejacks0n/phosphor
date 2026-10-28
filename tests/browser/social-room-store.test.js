@@ -576,11 +576,11 @@ test('A change of the host\'s view alone sends a thumbnail once 3 minutes have p
   expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ col: 3, row: 1 }));
 });
 
-test('on PIXEL the host sends the cells in view and the PIXEL zoom against the font\'s cell; on ANSI its view and ansiZoom; on SAUCE nothing new', async () => {
+test('on PIXEL the host sends the cells in view and the PIXEL zoom against the font\'s cell; on ANSI its view and ansiZoom; SAUCE keeps the last one', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   const setView = vi.spyOn(Host.prototype, 'setView');
   const workspace = useWorkspaceStore();
-  Object.assign(workspace, { editorTab: 'input', editZoom: 4, inputView: { col: 2, row: 1, cols: 6, rows: 3 } });
+  Object.assign(workspace, { editorTab: 'input', viewTab: 'input', editZoom: 4, inputView: { col: 2, row: 1, cols: 6, rows: 3 } });
   await goLive();
   const zoom = 4 / measureAdvance(DISPLAY_FONT);
   expect(zoom).toBeLessThan(1);
@@ -590,15 +590,24 @@ test('on PIXEL the host sends the cells in view and the PIXEL zoom against the f
   await vi.advanceTimersByTimeAsync(300);
   expect(setView).toHaveBeenLastCalledWith({ col: 2, row: 1, cols: 6, rows: 3, zoom: Math.min(1, 16 / measureAdvance(DISPLAY_FONT)) });
 
-  Object.assign(workspace, { editorTab: 'output', ansiZoom: 0.5, ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
+  Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiZoom: 0.5, ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
   await vi.advanceTimersByTimeAsync(300);
   expect(setView).toHaveBeenLastCalledWith({ col: 3, row: 1, cols: 10, rows: 5, zoom: 0.5 });
 
   const sent = setView.mock.calls.length;
-  workspace.editorTab = 'sauce';
-  Object.assign(workspace, { editZoom: 2, ansiZoom: 0.25, ansiViewOrigin: { col: 0, row: 0 } });
+  workspace.editorTab = 'sauce';   // the ANSI view stays the view
+  workspace.editZoom = 2;
   await vi.advanceTimersByTimeAsync(1000);
   expect(setView).toHaveBeenCalledTimes(sent);
+  expect(workspace.sharedView).toEqual({ col: 3, row: 1, cols: 10, rows: 5, zoom: 0.5 });
+});
+
+test('going live on SOCIAL sends the last art tab\'s view at once', async () => {
+  const setView = vi.spyOn(Host.prototype, 'setView');
+  const workspace = useWorkspaceStore();
+  Object.assign(workspace, { editorTab: 'social', ansiZoom: 0.5, ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
+  await goLive();
+  expect(setView).toHaveBeenLastCalledWith({ col: 3, row: 1, cols: 10, rows: 5, zoom: 0.5 });
 });
 
 test('A private room sends none, and ending a room stops the timer', async () => {
