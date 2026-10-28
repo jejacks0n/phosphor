@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -38,6 +38,14 @@ const hint = computed(() => {
   if (tool.value !== 'text' && tool.value !== 'hand') return [['Space', 'pan']];
   return null;
 });
+
+// The zoom as shown; going back to 100% takes the button away, so the focus goes to the one beside it.
+const percent = computed(() => Math.round(workspace.ansiZoom * 100));
+const renderer = useTemplateRef('renderer');
+const backTo100 = () => {
+  workspace.setAnsiZoom(1);
+  renderer.value?.focus();
+};
 </script>
 
 <template>
@@ -66,11 +74,13 @@ const hint = computed(() => {
       <template v-else v-for="([key, does], i) in hint" :key="key">{{ i ? ' · ' : '' }}<kbd>{{ key }}</kbd> {{ does }}</template>
     </span>
     <button
-        v-if="workspace.ansiZoom < 1"
+        v-if="percent < 100"
         title="Zoomed out: back to 100%"
-        @click="workspace.setAnsiZoom(1)"
-    >{{ Math.round(workspace.ansiZoom * 100) }}%</button>
+        :aria-label="`Zoom ${percent}%: back to 100%`"
+        @click="backTo100"
+    >{{ percent }}%</button>
     <button
+        ref="renderer"
         :title="`Switch the ANSI view to its ${workspace.ansiRenderer === 'dom' ? 'canvas' : 'DOM'} renderer (trial)`"
         @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
     >{{ workspace.ansiRenderer === 'dom' ? 'Canvas' : 'DOM' }}</button>

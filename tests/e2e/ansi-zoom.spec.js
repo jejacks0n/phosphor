@@ -143,16 +143,25 @@ test('a font-size change at 50% keeps the place and stays at 50%', async ({ page
   await expect.poll(async () => Math.abs(await middleLine(page) - line)).toBeLessThan(1);
 });
 
-test('the status bar shows 50%, and pressing it goes back to 100%', async ({ page }) => {
+test('the status bar shows 50%, and pressing it goes back to 100%, leaving the focus beside it', async ({ page }) => {
   await openApp(page, 'images/tall.png');
-  await expect(page.getByRole('button', { name: /^\d+%$/ })).toHaveCount(0); // at 100%, nothing to go back from
+  const zoomButton = page.locator('.ansi-status button', { hasText: /%$/ });
+  await expect(zoomButton).toHaveCount(0); // at 100%, nothing to go back from
+  await store(page, 'workspace', (w) => w.setAnsiZoom(0.996)); // shown as 100%: still nothing
+  await frames(page);
+  await expect(zoomButton).toHaveCount(0);
+  await store(page, 'workspace', (w) => w.setAnsiZoom(1));
   await halfZoom(page);
   await scroller(page).evaluate((el) => { el.scrollTop = el.scrollHeight / 2; });
   await frames(page);
   const line = await middleLine(page);
-  await page.getByRole('button', { name: '50%', exact: true }).click();
+  const button = page.getByRole('button', { name: 'Zoom 50%: back to 100%', exact: true });
+  await expect(button).toHaveText('50%');
+  await button.focus();
+  await page.keyboard.press('Enter');
   expect(await zoom(page)).toBe(1);
-  await expect(page.getByRole('button', { name: /^\d+%$/ })).toHaveCount(0);
+  await expect(zoomButton).toHaveCount(0);
+  await expect(page.locator('.ansi-status button').first()).toBeFocused(); // not lost with the button
   await expect.poll(async () => Math.abs(await middleLine(page) - line)).toBeLessThan(1); // the view keeps its middle
 });
 
