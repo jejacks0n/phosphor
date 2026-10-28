@@ -39,6 +39,7 @@ export default {
   kind: 'paint',
   section: 'select',
   options: [
+    { key: 'selectLayers', label: 'Layers', type: 'layers' }, // the Select tool's: what Delete takes away
     {
       key: 'wandMatch', label: 'Match', type: 'toggles', views: ['output'],
       options: [

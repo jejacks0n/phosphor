@@ -45,7 +45,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     pixelViewOrigin: { col: 0, row: 0 }, // the same in the PIXEL view (InputEditor), where a paste lands with no selection
-    selectLayers: { base: true, edit: true }, // what the Select tool acts on: the base layer and/or the edit layer
+    selectLayers: { base: true, edit: true }, // what the Select tool acts on, and the Magic Wand's Delete: the base layer and/or the edit layer
     pencilDrawWith: 'normal', // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks)
     pencilConnect: true,     // Pencil's Single and Double: join the lines it crosses or lands on
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse' | 'line'

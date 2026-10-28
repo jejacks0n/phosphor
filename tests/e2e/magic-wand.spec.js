@@ -95,3 +95,18 @@ test('undo takes back a wand click to the selection before it, and an Escape too
   await page.keyboard.press('ControlOrMeta+z');
   expect(await store(page, 'workspace', (w) => [...w.wand.mask].join(''))).toBe(first);
 });
+
+test("the wand's Layers choose what Delete takes away: with Base lit, the picture goes black", async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('w');
+  const base = (col, row) => store(page, 'project', `(p) => [p.baseColorAt(${col}, ${2 * row}), p.baseColorAt(${col}, ${2 * row + 1})]`);
+  const at = await cellPoint(page, 4, 4);
+  await page.mouse.click(at.x, at.y);
+  const layers = page.getByRole('group', { name: 'Layers' });
+  await layers.getByRole('button', { name: 'Base' }).click(); // off: Edit only
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  expect(await base(4, 4)).not.toEqual(['#000000', '#000000']);
+  await layers.getByRole('button', { name: 'Base' }).click(); // on again
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  expect(await base(4, 4)).toEqual(['#000000', '#000000']);
+});

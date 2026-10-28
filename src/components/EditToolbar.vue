@@ -373,7 +373,7 @@ const selectionHasCharacters = computed(() => {
       </div>
       <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>
-        <button v-if="wandHere && activeTool.id === 'wand'" class="text" title="Take away what's drawn in the selection (Delete)" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab)">Delete</button>
+        <button v-if="wandHere && activeTool.id === 'wand'" class="text" title="Take away what's in the selection, on the layers lit (Delete)" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.selectLayers)">Delete</button>
         <button class="text" title="Deselect: the tools paint everywhere again (Esc)" aria-keyshortcuts="Escape" @click="deselect">Deselect</button>
       </div>
     </div>

@@ -227,7 +227,10 @@ selected in the ANSI view. **Escape**, **Deselect**, a new rectangle, a grid cha
 document drop it.
 
 **Delete** on the wand's options row (or the Delete or Backspace key, except while typing in Edit
-Mode) takes away what's drawn in the selection: the edit cells and paint, in one undo step.
+Mode) takes away what's in the selection on the **Layers** lit, in one undo step: **Edit** the edit
+cells and paint, **Base** the picture, which turns black, as the Eraser's Base does (whole cells in
+the ANSI view, just the selected pixels in the pixel view). The Layers are the Select tool's own
+setting, so they're lit the same on both tools.
 
 ### Selections and undo
 

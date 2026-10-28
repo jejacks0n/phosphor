@@ -192,20 +192,22 @@ export const selectionActions = {
   },
 
   // Delete in the Magic Wand's selection (workspace.wand), in `view` (the ANSI view's cells or the
-  // pixel view's grid pixels): the edit layer goes from them, as the Eraser's Edit does: in the pixel
-  // view, a ▄ there only to show paint (Half-block) goes with the last of its paint. One undo step.
-  deleteInWand(made, view = made.view) {
+  // pixel view's grid pixels), on the layers lit, as the Eraser does: Edit takes the drawing away (in
+  // the pixel view, a ▄ there only to show paint (Half-block) goes with the last of its paint); Base
+  // turns the picture black (in the ANSI view whole cells, with a pinned space). One undo step.
+  deleteInWand(made, view = made.view, { base, edit } = { base: false, edit: true }) {
     const wand = wandIn(made, view, this.rows);
     const units = unitsOf(wand.mask, wand.width);
-    if (view === 'output') {
-      const cells = units.map(({ x, y }) => ({ col: x, row: y }));
+    const cells = view === 'output' ? units.map(({ x, y }) => ({ col: x, row: y })) : null;
+    if (edit && cells) {
       this.eraseEditPixels(cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
       this.clearEditCells(cells);
-    } else {
+    } else if (edit) {
       const blocks = cellsOfPixels(units, this.cols, this.rows).filter(({ col, row }) => isPaintBlock(this.editCellAt(col, row)) && this.cellHasPaint(col, row));
       this.eraseEditPixels(units);
       this.clearEditCells(blocks.filter(({ col, row }) => !this.cellHasPaint(col, row)));
     }
+    if (base) cells ? this.eraseBase(cells) : this.eraseBasePixels(units);
     this.commitEdit();
   },
 

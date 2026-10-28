@@ -170,7 +170,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (!wand || e.defaultPrevented || isField(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
     if (workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false; // the palette has the keys; mid-drag, the drag's end decides
     if (e.key === 'Escape') projectStore.changeSelection((w) => { w.wand = null; });
-    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab);
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.selectLayers);
     else return false;
     e.preventDefault();
     return true;

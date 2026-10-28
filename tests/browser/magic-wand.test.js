@@ -210,3 +210,26 @@ test('a selection made in the ANSI view works in the pixel view: Delete takes bo
   expect(workspace.wand.view).toBe('input');
   expect([at(2, 4), at(2, 5), at(3, 4), at(3, 5)]).toEqual([1, 1, 1, 0]);
 });
+
+test('Delete takes away what is on the layers lit: Edit the drawing, Base the picture (black), in either view', async () => {
+  const { project, workspace, type, click } = await scene();
+  type(2, 2, ['a']);
+  const base = [project.baseColorAt(2, 4), project.baseColorAt(2, 5)];
+  click(2, 2);
+  project.deleteInWand(workspace.wand, 'output', { base: false, edit: true });
+  expect(project.editCellAt(2, 2)).toBe(undefined);
+  expect([project.baseColorAt(2, 4), project.baseColorAt(2, 5)]).toEqual(base);
+  project.undo();
+  project.deleteInWand(workspace.wand, 'output', { base: true, edit: false });
+  expect(project.editCellAt(2, 2)?.char).toBe('a');
+  expect([project.baseColorAt(2, 4), project.baseColorAt(2, 5)]).toEqual(['#000000', '#000000']);
+
+  workspace.editorTab = 'input';
+  click(9, 9, {}, 'input');
+  const at = (x, y) => workspace.wand.mask[y * workspace.wand.width + x];
+  const out = [[9, 8], [9, 10], [8, 9], [10, 9]].find(([x, y]) => !at(x, y)); // a pixel beside it the wand left out
+  const kept = project.baseColorAt(...out);
+  project.deleteInWand(workspace.wand, 'input', { base: true, edit: false });
+  expect(project.baseColorAt(9, 9)).toBe('#000000');
+  expect(project.baseColorAt(...out)).toBe(kept);
+});
