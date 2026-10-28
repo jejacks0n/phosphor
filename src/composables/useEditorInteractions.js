@@ -51,6 +51,12 @@ export function useEditorInteractions(options) {
   // Internal state
   let _lastPos = null;
   let _lastMousePos = null;
+  // A Hand (or middle-button) drag: where it began, the pointer and the scroll then, and the scroll it
+  // last set. Each step sets the scroll from the start, not by adding the step's move to the scroll:
+  // the browser rounds a scroll position (to whole or half pixels), and that rounding added up over a
+  // drag's many small steps, so the picture didn't follow the pointer (a trackpad's tiny sideways
+  // moves on a straight up-and-down drag walked it across).
+  let _pan = null; // { el, clientX, clientY, left, top, setLeft, setTop }
   let _lastClientX = null;
   let _lastClientY = null;
   let _pendingZoomScroll = null;
@@ -89,6 +95,7 @@ export function useEditorInteractions(options) {
     if (workspaceStore) workspaceStore.isPainting = true;
 
     _lastMousePos = _getPointerPos(event);
+    _pan = null;
     if (tool.id === 'zoom' && !disableZoom && !_isMiddleClick) {
       _initialZoom = unref(editZoom);
     }
@@ -303,13 +310,16 @@ export function useEditorInteractions(options) {
 
     if (_isMiddleClick || tool.kind === 'navigate') {
       if (_isMiddleClick || tool.id === 'hand') {
-        const dx = _lastMousePos.clientX - clientX;
-        const dy = _lastMousePos.clientY - clientY;
-
         const scrollEl = _getScrollParent();
         if (scrollEl) {
-          scrollEl.scrollLeft += dx;
-          scrollEl.scrollTop += dy;
+          // Something else moved the view (a zoom, a resize): go on from where it is now.
+          if (_pan?.el !== scrollEl || scrollEl.scrollLeft !== _pan.setLeft || scrollEl.scrollTop !== _pan.setTop) {
+            _pan = { el: scrollEl, clientX: _lastMousePos.clientX, clientY: _lastMousePos.clientY, left: scrollEl.scrollLeft, top: scrollEl.scrollTop };
+          }
+          scrollEl.scrollLeft = _pan.left + _pan.clientX - clientX;
+          scrollEl.scrollTop = _pan.top + _pan.clientY - clientY;
+          _pan.setLeft = scrollEl.scrollLeft;
+          _pan.setTop = scrollEl.scrollTop;
         }
 
         _lastMousePos = { clientX, clientY };
