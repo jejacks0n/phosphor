@@ -295,13 +295,18 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   selection's size and place, and the Color Picker its last pick and where each color came from.
   On the right it shows the held-key shortcuts for the tool. When the view is too narrow for all of
   it, the bar scrolls sideways, like the toolbar's options row.
+- **Zoom**: the ANSI view zooms out, down to 25% of its cells' size (100% is the font at its size),
+  with Ctrl+wheel (a trackpad pinch), a pinch on a touch screen, or the Zoom tool (**Z**): drag left
+  to zoom out, right to zoom back in. Zoomed out, the status bar shows the zoom; press it to go back
+  to 100%. The zoom stays when you go to the pixel view and back, and a new font or font size keeps
+  it.
 
 ### Tool keys
 
 A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the same tool: **P**
 Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Color Picker, **H** Hand,
 **Z** Zoom, **W** Magic Wand, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
-(Zoom is the pixel view's; Edit Mode and Flip the ANSI view's). Each tool's button shows its key.
+(Edit Mode and Flip are the ANSI view's). Each tool's button shows its key.
 In Edit Mode letters type, so press **Escape** to put the cursor away first; with the Select tool
 and a selection, E, S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.
 

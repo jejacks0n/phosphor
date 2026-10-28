@@ -7,9 +7,10 @@ import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
 import CellCanvas from '@/lib/CellCanvas';
-import { viewWindow, viewIn } from '@/lib/viewWindow';
+import { viewWindow, viewIn, wholeCellsIn } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
+import { clampAnsiZoom } from '@/lib/zoom';
 import { fitColumns } from '@/lib/DrawnWidth';
 import EditorViewport from '@/components/EditorViewport.vue';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
@@ -17,7 +18,8 @@ import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 // The ANSI view: cells drawn on a canvas (CellCanvas), or rendered as text in a <pre> (the DOM
 // renderer, kept beside it for the trial: workspace.ansiRenderer); a grid pixel is half a
 // character cell tall. The canvas covers only the cells in view, plus a margin (viewWindow), inside
-// a sizer the whole grid's size: the sizer is the display everything measures against.
+// a sizer the whole grid's size: the sizer is the display everything measures against. It zooms out
+// (workspace.ansiZoom): the canvas draws its glyphs at the zoom, the <pre> its font.
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 // The Magic Wand's selection, made in either view, in this view's units.
@@ -56,15 +58,15 @@ const ensureCellCanvas = () => {
   return cellCanvas;
 };
 
-// Character cell size in CSS px (null until it can be measured): measured from the <pre>'s font,
-// or the canvas renderer's whole-device-pixel cells (at the full dpr until a render has sized the
-// canvas for its window, which can cap it).
+// Character cell size in CSS px at the zoom (null until it can be measured): measured from the
+// <pre>'s font, or the canvas renderer's whole-device-pixel cells (at the full dpr until a render
+// has sized the canvas for its window, which can cap it).
 const ensureMetrics = () => {
   if (metrics.value) return metrics.value;
   if (useDom.value) {
     if (displayRef.value) metrics.value = calcMetrics(displayRef.value);
   } else if (canvasRef.value && ensureCellCanvas()) {
-    metrics.value = cellCanvas.cellSize(window.devicePixelRatio);
+    metrics.value = cellCanvas.cellSize(window.devicePixelRatio, workspaceStore.ansiZoom);
   }
   return metrics.value;
 };
@@ -77,22 +79,44 @@ const queueRender = () => {
   });
 };
 
-// A new cell size (a font, its size, the dpr) scales the sizer: the view keeps the point at its
-// center where it was in the art, as a zoom would. Read before the sizer takes its new size, and
-// scrolled once it has. Then drawn at once: the render that called this placed its window by the
-// old scroll, and waiting for the scroll's redraw would paint a frame of empty sizer.
-const keepPlace = (was, m) => {
-  const sizer = sizerRef.value, view = viewIn(sizer, viewportEl);
-  const x = (view.x + view.width / 2) * m.cellWidth / was.cellWidth;
-  const y = (view.y + view.height / 2) * m.lineHeight / was.lineHeight;
+// A new cell size (a font, its size, the dpr) scales the display: the view keeps the point at its
+// center where it was in the art. Read before the display takes its new size, and scrolled once it
+// has. Then the canvas is drawn at once: the render that called this placed its window by the old
+// scroll, and waiting for the scroll's redraw would paint a frame of empty sizer.
+const keepPlace = (was) => {
+  const display = displayRef.value, view = viewIn(display, viewportEl);
+  const col = (view.x + view.width / 2) / was.cellWidth, line = (view.y + view.height / 2) / was.lineHeight;
   nextTick(() => {
-    if (!viewportEl || sizerRef.value !== sizer) return;
-    const now = viewIn(sizer, viewportEl);
-    viewportEl.scrollLeft += x - (now.x + now.width / 2);
-    viewportEl.scrollTop += y - (now.y + now.height / 2);
-    render(); // the cell size is the sizer's by now, so this doesn't come back here
+    const m = ensureMetrics();
+    if (!viewportEl || displayRef.value !== display || !m) return;
+    const now = viewIn(display, viewportEl);
+    viewportEl.scrollLeft += col * m.cellWidth - (now.x + now.width / 2);
+    viewportEl.scrollTop += line * m.lineHeight - (now.y + now.height / 2);
+    if (!useDom.value) render(); // the cell size is the sizer's by now, so this doesn't come back here
   });
 };
+
+// The zoom, from a gesture (Ctrl+wheel, a pinch, the Zoom tool) or the status bar. The new cell
+// size is the sizer's at once, before the gesture's next frame puts the point under the pointer
+// back, and the canvas is drawn after that. A gesture places the view itself; any other zoom keeps
+// the view's middle. The zoom isn't a new cell size to the render: it changes the sizer first.
+let zoomGesture = false;
+const zoom = {
+  get: () => workspaceStore.ansiZoom,
+  set: (z) => {
+    zoomGesture = true;
+    workspaceStore.setAnsiZoom(z);
+    nextTick(() => { zoomGesture = false; }); // after the watcher below, which a change queues
+  },
+  clamp: clampAnsiZoom,
+};
+watch(() => workspaceStore.ansiZoom, (z) => {
+  const was = metrics.value ?? sizedBy.value;
+  metrics.value = null;
+  if (!useDom.value && cellCanvas) metrics.value = sizedBy.value = cellCanvas.cellSize(window.devicePixelRatio, z);
+  if (!zoomGesture && was && viewportEl && displayRef.value) keepPlace(was);
+  drawInView();
+});
 
 // The canvas view draws the window of cells around the viewport, against the layout as it is now:
 // a change that moves or resizes the sizer (a font, the grid, a panel) is drawn again by the resize
@@ -117,14 +141,14 @@ const render = () => {
     let win;
     for (let pass = 0; pass < 3; pass++) {
       win = viewWindow(viewIn(sizerRef.value, viewportEl), { x: m.cellWidth, y: m.lineHeight }, cols, lines);
-      cellCanvas.resize(win.cols, win.rows, dpr);
+      cellCanvas.resize(win.cols, win.rows, dpr, workspaceStore.ansiZoom);
       const sized = cellCanvas.metrics;
       if (sized.cellWidth === m.cellWidth && sized.lineHeight === m.lineHeight) break;
       m = metrics.value = sized;
     }
     const was = sizedBy.value;
     sizedBy.value = m;
-    if (was && (was.cellWidth !== m.cellWidth || was.lineHeight !== m.lineHeight)) keepPlace(was, m);
+    if (was && (was.cellWidth !== m.cellWidth || was.lineHeight !== m.lineHeight)) keepPlace(was);
     cellCanvas.draw(projectStore.cells, { cols, rows: lines, col: win.col, row: win.row });
     canvasRef.value.style.left = `${win.col * m.cellWidth}px`;
     canvasRef.value.style.top = `${win.row * m.lineHeight}px`;
@@ -251,20 +275,11 @@ let resizeObserver = null;
 const publishOrigin = () => {
   cancelAnimationFrame(originFrame);
   originFrame = requestAnimationFrame(() => {
-    const pre = displayRef.value, m = ensureMetrics();
-    if (!pre || !m || !viewportEl) return;
-    const p = pre.getBoundingClientRect(), v = viewportEl.getBoundingClientRect();
-    const clamp = (n, max) => Math.max(0, Math.min(max, n));
-    const x = v.left - p.left - pre.clientLeft, y = v.top - p.top - pre.clientTop;
-    const lines = charRowsOf(projectStore.rows);
-    // A cell hidden by under a pixel still counts as on screen.
-    const col = clamp(Math.ceil((x - 1) / m.cellWidth), projectStore.cols - 1);
-    const row = clamp(Math.ceil((y - 1) / m.lineHeight), lines - 1);
+    const display = displayRef.value, m = ensureMetrics();
+    if (!display || !m || !viewportEl) return;
+    const { col, row, cols, rows } = wholeCellsIn(viewIn(display, viewportEl), m, projectStore.cols, charRowsOf(projectStore.rows));
     workspaceStore.ansiViewOrigin = { col, row };
-    workspaceStore.ansiViewSize = {
-      cols: clamp(Math.floor((x + viewportEl.clientWidth + 1) / m.cellWidth) - col, projectStore.cols - col),
-      rows: clamp(Math.floor((y + viewportEl.clientHeight + 1) / m.lineHeight) - row, lines - row),
-    };
+    workspaceStore.ansiViewSize = { cols, rows };
   });
 };
 watch([metrics, () => projectStore.cols, () => projectStore.rows], publishOrigin);
@@ -312,10 +327,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="ansi-editor">
+  <div class="ansi-editor" :style="{ '--ansi-zoom': workspaceStore.ansiZoom }">
   <EditorViewport
       :display="displayRef"
       :coords-at="coordsAt"
+      :zoom="zoom"
       scroll-key="ansi"
       view="output"
       :unit="unit"
@@ -375,7 +391,7 @@ div.ansi-editor {
   resize: none;
   overflow: hidden;
   pointer-events: none;
-  font: var(--display-font-size) var(--display-font-family);
+  font: calc(var(--display-font-size) * var(--ansi-zoom)) var(--display-font-family);
 }
 
 .text-cursor {
@@ -400,9 +416,10 @@ div.ansi-editor {
 }
 
 .display {
-  /* the current display font (displayFonts.js), which everything measures in */
+  /* the current display font (displayFonts.js) at the zoom, which everything measures in (the line
+     height is a multiple of it) */
   font-family: var(--display-font-family);
-  font-size: var(--display-font-size);
+  font-size: calc(var(--display-font-size) * var(--ansi-zoom));
   line-height: var(--display-line-height);
   -webkit-font-smoothing: var(--display-font-smoothing, antialiased);
   -moz-osx-font-smoothing: var(--display-moz-font-smoothing, grayscale);

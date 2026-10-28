@@ -11,7 +11,7 @@ import { shortcut } from '@/lib/keyLabels';
 // edit layer or the base) and the overwrite/insert toggle; Select, the selection's size and place; the
 // Color Picker, its last pick and where each color came from. On the right, with a mouse or trackpad,
 // the held-key shortcuts for the tool (they work in the pixel view too; this is where they're taught),
-// or what a held key is doing.
+// or what a held key is doing. Zoomed out, the zoom, which goes back to 100%.
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const tool = computed(() => workspace.activeTool);
@@ -65,6 +65,11 @@ const hint = computed(() => {
       <template v-if="typeof hint === 'string'">{{ hint }}</template>
       <template v-else v-for="([key, does], i) in hint" :key="key">{{ i ? ' · ' : '' }}<kbd>{{ key }}</kbd> {{ does }}</template>
     </span>
+    <button
+        v-if="workspace.ansiZoom < 1"
+        title="Zoomed out: back to 100%"
+        @click="workspace.setAnsiZoom(1)"
+    >{{ Math.round(workspace.ansiZoom * 100) }}%</button>
     <button
         :title="`Switch the ANSI view to its ${workspace.ansiRenderer === 'dom' ? 'canvas' : 'DOM'} renderer (trial)`"
         @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
