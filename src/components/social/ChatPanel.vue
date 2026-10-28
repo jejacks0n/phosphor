@@ -3,6 +3,7 @@ import { ref, reactive, computed, nextTick, onMounted, useTemplateRef, watch } f
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { nameColor } from '@/social/names';
+import { clock } from '@/social/chat';
 import ChatFoot from './ChatFoot.vue';
 import RoomMenu from './RoomMenu.vue';
 import RoomPeople from './RoomPeople.vue';
@@ -27,7 +28,6 @@ const host = computed(() => room.room?.host || null);
 const blocked = computed(() => new Set(social.blocked.map((b) => b.id)));
 const shownAnyway = reactive(new Set());   // blocked messages opened with Show
 const hidden = (m) => !m.mine && blocked.value.has(m.sub) && !shownAnyway.has(m.id);
-const clock = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });   // made once: building one per row is slow
 const time = (ts) => clock.format(ts);
 
 onMounted(() => {

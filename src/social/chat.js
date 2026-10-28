@@ -10,6 +10,8 @@ export const MOST_CHARS = 300;
 export const MOST_KEPT = 5000;
 export const PAGE = 50;
 
+export const clock = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });   // made once: building one per row is slow
+
 export const ID = /^[A-Za-z0-9_-]{16}$/;
 export const isId = (id) => typeof id === 'string' && ID.test(id);
 

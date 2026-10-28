@@ -1,6 +1,6 @@
 // The host's page (HostRoomPage.vue) with the room store as hosting leaves it: how long it's been live,
 // the session's five numbers, Copy link, Room settings and their facts, End room (which asks first),
-// and one status region that's always there.
+// who came by, and one status region that's always there.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -161,4 +161,74 @@ test('one status region, always there, says Reconnecting…, Copied and Saved', 
   await nextTick();
   expect(button('Saved')).toBeTruthy();
   expect(region.textContent).toBe('Saved');
+});
+
+const at = (h, m) => new Date(2026, 9, 27, h, m).getTime();
+const NOW = at(10, 0);
+const rows = () => [...host.querySelectorAll('.came-by li')];
+
+test('who came by: a row each, newest last, with time in the room, here, left or removed, and messages', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(NOW);
+  await mount({
+    session: {
+      liveSince: at(8, 0), most: 3, messages: 9,
+      people: [
+        person('u_a', { name: 'tin-lantern-owl', since: NOW - 98 * 60_000, said: 4 }),
+        person('u_b', { name: 'quiet-amber-fox', total: 54 * 60_000, left: at(8, 55), said: 1 }),
+        person('u_c', { name: 'loud-teal-wren', total: 20 * 60_000, left: at(9, 30), removed: at(9, 10), said: 0 }),
+        person('u_d', { name: 'guest-visitor', guest: true, since: NOW - 30_000, said: 2 }),
+      ],
+    },
+  });
+  const text = rows().map((li) => li.textContent.replace(/\s+/g, ' ').trim());
+  expect(text).toHaveLength(4);
+  expect(text[0]).toContain('tin-lantern-owl');
+  expect(text[0]).toContain('1h 38m');
+  expect(text[0]).toContain('here');
+  expect(text[0]).toContain('4 messages');
+  expect(text[0]).not.toContain('guest');
+  expect(text[1]).toContain('quiet-amber-fox');
+  expect(text[1]).toContain('54m');
+  expect(text[1]).toContain('left 8:55');
+  expect(text[1]).toContain('1 message');
+  expect(text[1]).not.toContain('1 messages');
+  expect(text[2]).toContain('removed 9:10');   // removed wins over left
+  expect(text[2]).not.toContain('left');
+  expect(text[3]).toContain('guest-visitor');
+  expect(text[3]).toContain('guest');
+  expect(text[3]).toContain('under a minute');
+  expect(rows()[0].querySelector('.name').style.color).not.toBe('');
+});
+
+test('who came by: the time in the room moves with the page\'s clock', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(NOW);
+  await mount({ session: { liveSince: at(8, 0), most: 1, messages: 0, people: [person('u_a', { since: NOW - 59 * 60_000 })] } });
+  expect(rows()[0].textContent).toContain('59m');
+  Date.now.mockReturnValue(NOW + 60_000);
+  await vi.waitFor(() => expect(rows()[0].textContent).toContain('1h 0m'), { timeout: 2500 });
+});
+
+test('who came by: nothing until someone has', async () => {
+  await mount();
+  expect(host.querySelector('.came-by')).toBe(null);
+});
+
+test('past ten, "and N more" opens the rest in place', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(NOW);
+  const people = Array.from({ length: 13 }, (_, i) => person(`u_${i}`, { name: `visitor-${i}`, since: NOW }));
+  await mount({ session: { liveSince: NOW, most: 13, messages: 0, people } });
+  expect(rows()).toHaveLength(10);
+  expect(button('and 3 more')).toBeTruthy();
+  button('and 3 more').click();
+  await nextTick();
+  expect(rows()).toHaveLength(13);
+  expect(rows()[12].textContent).toContain('visitor-12');
+  expect(button('and 3 more')).toBeUndefined();
+});
+
+test('ten people show no "and N more"', async () => {
+  const people = Array.from({ length: 10 }, (_, i) => person(`u_${i}`, { since: Date.now() }));
+  await mount({ session: { liveSince: Date.now(), most: 10, messages: 0, people } });
+  expect(rows()).toHaveLength(10);
+  expect(host.querySelector('.came-by button')).toBe(null);
 });

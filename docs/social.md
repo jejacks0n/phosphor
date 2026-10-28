@@ -153,6 +153,12 @@ stays when you go to another tab, and when the welcome is changed from the chat 
 welcome you're half way through typing here stays as it is. The SOCIAL tab carries a dot while you're in
 a room, hosting or watching.
 
+Under all of it, **Who came by** lists everyone who visited this session, a row each, newest last, once
+someone has. A row has their name in their color (**guest** for a guest), their time in the room (**under
+a minute**, **54m**, **1h 38m**; it counts up while they're here, and a person who comes back has the
+times added), then **here**, **left 8:55** or **removed 9:10** (removed wins if they were removed and then
+left), and how many messages they said. Ten rows show; **and N more** opens the rest in place.
+
 You run the room from the chat panel, beside every tab. Under its header, **N here** (those
 connected, folded to begin with) opens the list of who is in the room, and stays as you left it while
 the room lasts. Each watcher shows their name in their color, **guest** for a guest, and whether

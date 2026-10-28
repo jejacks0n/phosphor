@@ -4,9 +4,10 @@ import { useRoomStore } from '@/store/RoomStore';
 import { removedCount } from '@/social/session';
 import EndRoomDialog from './EndRoomDialog.vue';
 import LobbyPicture from './LobbyPicture.vue';
+import CameBy from './CameBy.vue';
 
 // The room you host, as a dashboard: its name and how long it's been live, Copy link and End room (which
-// asks first), the session's five numbers, its settings with the facts that can't change. One status
+// asks first), the session's five numbers, its settings with the facts that can't change, and who came by. One status
 // region, always there, says Reconnecting… (seen) and Copied or Saved (which their buttons show).
 const room = useRoomStore();
 
@@ -113,7 +114,7 @@ const save = () => {
         </div>
       </section>
     </div>
-    <!-- Later: who came by goes here, a full row under the columns, and takes `now`. -->
+    <CameBy v-if="room.session.people.length" :people="room.session.people" :now="now" />
 
     <EndRoomDialog v-if="ending" @end="room.endRoom()" @cancel="cancelEnd" />
   </div>
