@@ -105,7 +105,7 @@ export const selectionActions = {
     };
     const version = this.history.version;
     const landed = paste(col, row);
-    this._float = landed && { paste: true, redo: (dc, dr) => paste(col + dc, row + dr), from: landed, layers: null, dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version };
+    this._float = landed && { paste: true, block, redo: (dc, dr) => paste(col + dc, row + dr), from: landed, layers: null, dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version };
     return landed;
   },
 
@@ -133,7 +133,7 @@ export const selectionActions = {
     const current = sameRun ? run : { redo: (c, r) => this.moveSelection(rect, layers, c, r), from: rect, layers: { ...layers }, dc: 0, dr: 0 };
     const offset = { dc: current.dc + dc, dr: current.dr + dr };
     if (sameRun && run.recorded) this.undo();
-    if (!current.paste && !offset.dc && !offset.dr) { // back where the move started: nothing moved, nothing recorded
+    if (!current.paste && !current.turned && !offset.dc && !offset.dr) { // back where the move started: nothing moved, nothing recorded
       this._float = null;
       return current.from;
     }
@@ -146,17 +146,36 @@ export const selectionActions = {
   // Flip what's selected (op 'h', 'v') or turn it a quarter clockwise ('cw'), on the chosen layers:
   // its cells move, their characters turn with them (TurnChars), and its paint and base turn too. A
   // turned block is h x w cells from the same top-left corner, moved back onto the grid where it
-  // would run off it. One undo step. Returns where it landed (clipped).
+  // would run off it. It floats, as a move does (floatSelection): turned while it floats, it's the
+  // same run, so what it covers comes back when it moves on, and the run is one undo step. Returns
+  // where it landed (clipped).
   turnSelection(rect, layers, op) {
     this.commitPending();
-    const block = turnBlock(this.copySelection(rect, layers), op);
+    const run = this._float;
+    const sameRun = run && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
+      && (!run.layers || (run.layers.base === layers.base && run.layers.edit === layers.edit));
+    if (sameRun && run.recorded) this.undo();
+    // Lifted from (cleared each time it lands; none for a paste), and the block as it floats.
+    const lifted = sameRun ? (run.paste ? null : run.from) : rect;
+    const liftedLayers = sameRun ? run.layers : { ...layers };
+    const block = turnBlock(sameRun && run.block ? run.block : this.copySelection(lifted, liftedLayers), op);
     const col = Math.max(0, Math.min(rect.c0, this.cols - block.w));
     const row = Math.max(0, Math.min(rect.r0, charRowsOf(this.rows) - block.h));
-    const landed = this.clipRect({ c0: col, r0: row, c1: col + block.w - 1, r1: row + block.h - 1 });
-    this.selectionEdit([rect, landed], () => {
-      this.deleteIn(rect, layers);
-      this.pasteAt(block, col, row, rect);
-    });
+    const place = (dc, dr) => {
+      const c = col + dc, r = row + dr;
+      const landed = this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
+      this.selectionEdit([lifted, landed].filter(Boolean), () => {
+        if (lifted) this.deleteIn(lifted, liftedLayers);
+        this.pasteAt(block, c, r, lifted);
+      });
+      return landed;
+    };
+    const version = this.history.version;
+    const landed = place(0, 0);
+    this._float = landed && {
+      paste: !lifted, turned: true, block, redo: place, from: lifted ?? landed, layers: lifted ? liftedLayers : null,
+      dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version,
+    };
     return landed;
   },
 

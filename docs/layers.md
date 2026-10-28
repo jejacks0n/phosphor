@@ -176,11 +176,13 @@ block on from there, so you can drag or nudge it away and stamp again. Each stam
 step. With a selection, **E** deletes it too, and **Enter** sets the block down, like Escape.
 
 **Flip horizontally** (a mirror), **Flip vertically** and **Rotate 90°** clockwise turn the
-selection in place, on the chosen layers, as one undo step. The characters turn with it: box lines
-(┌ → ┐, ╒ → ╖), half-blocks and quadrants (▀ → ▄, ▌ → ▐), arrows and triangles (→ ←, ▲ ▼), and
-brackets and slashes (( ), < >, / \). Letters, digits and shades stay as they are. A rotated
-block is as many cells wide as it was tall, from the same top-left corner (moved back onto the
-canvas if it would run off it), so it looks stretched: a cell is twice as tall as it's wide.
+selection in place, on the chosen layers. The characters turn with it: box lines (┌ → ┐, ╒ → ╖),
+half-blocks and quadrants (▀ → ▄, ▌ → ▐), arrows and triangles (→ ←, ▲ ▼), and brackets and
+slashes (( ), < >, / \). Letters, digits and shades stay as they are. A rotated block is as many
+cells wide as it was tall, from the same top-left corner (moved back onto the canvas if it would
+run off it), so it looks stretched: a cell is twice as tall as it's wide. The turned block floats
+like a moved one: drag or nudge it on and whatever it covered comes back, and the turns and moves
+together are one undo step.
 
 In Edit Mode, dragging across cells switches to the Select tool and selects them, the way dragging
 selects text in a text editor; a plain click still just places the cursor. With a pen (the Apple

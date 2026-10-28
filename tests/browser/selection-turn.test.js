@@ -70,3 +70,57 @@ test('a wide character flipped across still covers its own two cells', async () 
   expect(project.cells[cellIndex(3, 2, project.cols)].wide).toBe('trail');
   expect(read(4, 2, 4, 2)).toEqual(['A']);
 });
+
+// A turn floats like a move: what the block covers comes back when it moves on, and the run is one
+// undo step.
+test('a block moved over the picture and flipped gives back what it covered when it moves on', async () => {
+  const { project, type, read } = await scene();
+  type(2, 2, ['AB']);
+  type(10, 2, ['xyz']);
+  const base = [10, 11, 12].map((c) => project.baseColorAt(c, 4));
+  let rect = project.floatSelection({ c0: 2, r0: 2, c1: 3, r1: 2 }, BOTH, 8, 0); // onto x y
+  rect = project.turnSelection(rect, BOTH, 'h');
+  await settle(project);
+  expect(read(10, 2, 12, 2)).toEqual(['BAz']);
+  project.floatSelection(rect, BOTH, 0, 3);
+  await settle(project);
+  expect(read(10, 2, 12, 2)).toEqual(['xyz']);
+  expect([10, 11, 12].map((c) => project.baseColorAt(c, 4))).toEqual(base);
+  expect(read(10, 5, 11, 5)).toEqual(['BA']);
+  project.undo(); await settle(project);
+  expect(read(2, 2, 3, 2)).toEqual(['AB']);
+  expect(read(10, 2, 12, 2)).toEqual(['xyz']);
+});
+
+test('a block rotated over its neighbors gives them back when it moves on', async () => {
+  const { project, type, read } = await scene();
+  type(2, 2, ['ABC']);
+  type(2, 3, ['xyz']);
+  const base = project.baseColorAt(2, 6);
+  let rect = project.turnSelection({ c0: 2, r0: 2, c1: 4, r1: 2 }, BOTH, 'cw'); // down over x
+  expect(read(2, 2, 2, 4)).toEqual(['A', 'B', 'C']);
+  project.floatSelection(rect, BOTH, 10, 0);
+  await settle(project);
+  expect(read(2, 3, 4, 3)).toEqual(['xyz']);
+  expect(project.baseColorAt(2, 6)).toBe(base);
+  expect(read(12, 2, 12, 4)).toEqual(['A', 'B', 'C']);
+});
+
+test('a pasted block turned and moved on gives back what it covered; Delete on a turned float takes the block away', async () => {
+  const { project, type, read } = await scene();
+  type(2, 2, ['AB']);
+  type(10, 2, ['xyz']);
+  let rect = project.pasteSelection(project.copySelection({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT), 10, 2);
+  rect = project.turnSelection(rect, EDIT, 'h');
+  await settle(project);
+  expect(read(10, 2, 12, 2)).toEqual(['BAz']);
+  project.floatSelection(rect, EDIT, 0, 2);
+  await settle(project);
+  expect(read(10, 2, 12, 2)).toEqual(['xyz']);
+  expect(read(10, 4, 11, 4)).toEqual(['BA']);
+
+  rect = project.turnSelection({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT, 'h'); // the original, in place
+  project.deleteSelection(rect, EDIT);
+  await settle(project);
+  expect(read(2, 2, 3, 2)).not.toContain('A');
+});
