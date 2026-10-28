@@ -88,7 +88,7 @@ export function evidenceFor(rows, { sub, messageId = null }) {
   return at < 0 ? null : messages.slice(Math.max(0, at - CONTEXT), at + 1).map(kept);
 }
 
-// What a muted person is told: the time if it ends today, else the date too.
+// What a muted person is told: until when (the time if it ends today, else the date too), and nothing of why or how.
 export function mutedWords(until, now = Date.now()) {
   const today = new Date(until).toDateString() === new Date(now).toDateString();
   return `You're muted until ${(today ? clock : dayAndTime).format(until)}.`;

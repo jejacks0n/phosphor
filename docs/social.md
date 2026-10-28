@@ -256,8 +256,8 @@ to send nothing. The box says who'll look: Phosphor's admin sees the message and
 and nobody is told who reported them. For a message, what's sent is that message and up to five
 before it, as they arrived, each signed by whoever wrote it. For a person from **N here**, it's their
 last few messages, which may be none. Phosphor's server sees chat only in a report. Afterward you
-see **Reported. Thank you.** for a few seconds, and nothing more: you aren't
-told what became of it. If the report can't be sent, the box stays as it is and you can try again.
+see **Reported. Thank you.** for a few seconds, and nothing more: you aren't told what became of
+it. If the report can't be sent, the box stays as it is and you can try again.
 Once you've reported someone, **Report** goes away for them (on their messages and in **N here**) for
 the rest of that room.
 
@@ -288,10 +288,9 @@ of the room.
 - **Couldn't copy the link**: the browser didn't let Phosphor copy the room's link. Select it and copy
   it yourself.
 - **Confirm your email to start a room**: in the lobby, with **Resend**.
-- **You're muted until 9:40 pm**: in place of the message box.
-  A mute that ends another day shows the date too (**until Nov 27, 9:40 pm**). Nobody in
-  the room hears your messages until it ends, and you can still watch. When it ends, the box comes
-  back with what you'd typed.
+- **You're muted until 9:40 pm.**: in place of the message box. A mute that ends another day shows
+  the date too (**until Nov 27, 9:40 pm.**). Nobody hears your messages until it ends, and you can
+  still watch. When it ends, the box comes back with what you'd typed.
 - **This account is suspended**: at sign-in, with until when, if it isn't for good.
 - **Couldn't reach Phosphor's server**: signing in or creating an account couldn't connect.
 
