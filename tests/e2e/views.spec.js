@@ -94,3 +94,17 @@ test('the PIXEL view publishes the whole cells on screen: a grid pixel is a colu
   expect(onScreen.row).toBeGreaterThan(0);
   await expect.poll(() => store(page, 'workspace', (w) => w.inputView)).toEqual({ ...onScreen, zoom: 16 });   // and the zoom they're at
 });
+
+test('the art tab last shown is the view a room is sent: SAUCE and SOCIAL keep it', async ({ page }) => {
+  await openApp(page);
+  const viewTab = () => store(page, 'workspace', (w) => w.viewTab);
+  expect(await viewTab()).toBe('output');
+  await tab(page, 'PIXEL').click();
+  await expect.poll(viewTab).toBe('input');
+  for (const other of ['SAUCE', 'SOCIAL']) {
+    await tab(page, other).click();
+    expect(await viewTab()).toBe('input');
+  }
+  await tab(page, 'ANSI').click();
+  await expect.poll(viewTab).toBe('output');
+});
