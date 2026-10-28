@@ -111,6 +111,22 @@ test('a private room needs a password before Go live, and its page says to send 
   expect(room.setup.password).toBe('hunter22');
 });
 
+test('the welcome box is as tall as its message, on Start a room and in Room settings', async ({ page }) => {
+  const WELCOME = 'be kind, draw big. this is a longer welcome that wraps over several lines, so the box has to grow to show all of it at once!';
+  const whole = (box) => box.evaluate((el) => el.scrollHeight <= el.clientHeight);
+  await startPage(page);
+  const start = shown(page, 'start-room').getByRole('textbox', { name: 'Welcome message' });
+  await start.fill(WELCOME);
+  expect(await whole(start)).toBe(true);
+  await page.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
+  await page.getByRole('button', { name: 'Go live' }).click();
+  const host = shown(page, 'host-room');
+  await host.getByText('Room settings').click();
+  const settings = host.getByRole('textbox', { name: 'Welcome message' });
+  await expect(settings).toHaveValue(WELCOME);
+  expect(await whole(settings)).toBe(true);
+});
+
 test('Room settings send the guests and most watchers; End room sends end, and the lobby and the dot come back', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');

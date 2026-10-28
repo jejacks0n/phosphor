@@ -78,14 +78,13 @@ function signIn() {
 
 <style scoped>
 footer {
-  padding: 10px 12px 12px;
+  padding: 5px;
   border-top: 1px solid var(--border);
 }
 
 form {
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
 div.box {
   display: flex;
@@ -143,6 +142,9 @@ p.refused {
   margin: 0;
   font-size: 11px;
   color: var(--text-muted);
+}
+p.refused:not(:empty) {
+  margin-top: 4px;
 }
 button.sign-in {
   width: 100%;

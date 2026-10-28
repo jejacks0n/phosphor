@@ -153,6 +153,9 @@ legend {
   font-weight: 500;
 }
 textarea {
+  height: auto;
+  min-height: calc(3lh + 18px);   /* 3 lines, the padding and the border; it grows to fit the message */
+  field-sizing: content;
   resize: vertical;
 }
 p.help {
