@@ -12,9 +12,10 @@ import ReportDialog from './ReportDialog.vue';
 // focus back on the ⋯ button the menu came from, or on the "N here" button when that member has left.
 const room = useRoomStore();
 
+const menuTrigger = (event) => event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger');   // the ⋯ a menu item is under
 const blocking = ref(null);   // { watcher, trigger }
 const askToBlock = (watcher, event) => {
-  blocking.value = { watcher, trigger: event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger') };
+  blocking.value = { watcher, trigger: menuTrigger(event) };
 };
 const toggle = useTemplateRef('toggle');
 const cancelBlock = () => {
@@ -22,8 +23,10 @@ const cancelBlock = () => {
   blocking.value = null;
 };
 const reporting = ref(null);   // { name, sub, trigger }
+const opened = ref(0);         // each Report opens a new dialog, even for the same person
 const askToReport = (watcher, event) => {
-  reporting.value = { name: watcher.name, sub: watcher.sub, trigger: event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger') };
+  reporting.value = { name: watcher.name, sub: watcher.sub, trigger: menuTrigger(event) };
+  opened.value++;
 };
 const confirmBlock = async () => {
   const { watcher } = blocking.value;
@@ -58,7 +61,7 @@ const confirmBlock = async () => {
         <button autofocus @click="cancelBlock">Cancel</button>
       </div>
     </ModalDialog>
-    <ReportDialog v-if="reporting" :key="reporting.sub" v-bind="reporting" @done="reporting = null" />
+    <ReportDialog v-if="reporting" :key="opened" v-bind="reporting" @done="reporting = null" />
   </section>
 </template>
 

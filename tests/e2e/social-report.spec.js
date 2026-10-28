@@ -134,4 +134,6 @@ test('a mute heard from the room mid-room: the host drops that watcher\'s chat f
   await expect(messages(host)).toHaveCount(2);
   await expect(messages(host).nth(1)).toContainText('still here');
   await expect(messages(watcher).nth(1)).toContainText('still here');
+  await host.waitForTimeout(500);   // time for a message that wasn't dropped to arrive
+  for (const page of [host, watcher]) await expect(panel(page).getByRole('log')).not.toContainText('after');
 });

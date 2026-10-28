@@ -5,7 +5,8 @@ import { REASONS } from '@/social/chat';
 import ModalDialog from '@/components/ModalDialog.vue';
 
 // Report a person, for a message (messageId) or from the host's N here: one reason, required. Sent, the
-// dialog gives way to "Reported" for a few seconds; one that can't be sent leaves the dialog as it is.
+// dialog gives way to "Reported" for a few seconds (in a status line that's there from the start, so it's
+// read out); one that can't be sent leaves the dialog as it is.
 // Cancel, Escape and the backdrop send nothing. Focus goes back to `trigger`, or (that gone) to the
 // "N here" button or the messages.
 const props = defineProps({
@@ -29,6 +30,7 @@ const cancel = () => {
   emit('done');
 };
 function report() {
+  if (sent.value) return;
   if (!room.report({ sub: props.sub, messageId: props.messageId, reason: reason.value })) return;
   sent.value = true;
   focusBack();
@@ -37,10 +39,10 @@ function report() {
 </script>
 
 <template>
-  <Teleport v-if="sent" to="body">
-    <p class="reported" role="status">Reported. Thank you.</p>
+  <Teleport to="body">
+    <p class="reported" role="status">{{ sent ? 'Reported. Thank you.' : '' }}</p>
   </Teleport>
-  <ModalDialog v-else :title="`Report ${name}?`"
+  <ModalDialog v-if="!sent" :title="`Report ${name}?`"
       sub="Phosphor's admin sees this message and the few before it. Nobody is told who reported them." @cancel="cancel">
     <fieldset>
       <legend>What's wrong?</legend>
@@ -92,5 +94,12 @@ p.reported {
   color: var(--text);
   font-size: 13px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+p.reported:empty {   /* waiting for its words: there for screen readers, not seen */
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 </style>

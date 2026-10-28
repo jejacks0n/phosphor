@@ -33,6 +33,11 @@ const hidden = (m) => !m.mine && blocked.value.has(m.sub) && !shownAnyway.has(m.
 const time = (ts) => clock.format(ts);
 const reportable = (m) => room.canReport && !m.mine && !m.deleted && !hidden(m);
 const reporting = ref(null);   // { name, sub, messageId, trigger }
+const opened = ref(0);         // each Report opens a new dialog, even on the same message
+const askToReport = (m, event) => {
+  reporting.value = { name: m.name, sub: m.sub, messageId: m.id, trigger: event.currentTarget };
+  opened.value++;
+};
 
 onMounted(() => {
   list.value.scrollTop = list.value.scrollHeight;
@@ -144,15 +149,14 @@ function askIfAtTop() {
               <p class="text">{{ m.text }}</p>
             </template>
             <span class="actions">
-              <button v-if="reportable(m)" class="link report" :aria-label="`Report message from ${m.name}`"
-                  @click="reporting = { name: m.name, sub: m.sub, messageId: m.id, trigger: $event.currentTarget }">Report</button>
+              <button v-if="reportable(m)" class="link report" :aria-label="`Report message from ${m.name}`" @click="askToReport(m, $event)">Report</button>
               <button v-if="room.role === 'host' && !m.deleted" class="link delete" :aria-label="`Delete message from ${m.name}`" @click="room.deleteMessage(m.id)">Delete</button>
             </span>
           </div>
         </div>
       </div>
       <ChatFoot />
-      <ReportDialog v-if="reporting" :key="reporting.messageId" v-bind="reporting" @done="reporting = null" />
+      <ReportDialog v-if="reporting" :key="opened" v-bind="reporting" @done="reporting = null" />
     </div>
   </aside>
 </template>

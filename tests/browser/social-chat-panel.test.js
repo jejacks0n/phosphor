@@ -8,6 +8,7 @@ import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import ChatPanel from '@/components/social/ChatPanel.vue';
+import ReportDialog from '@/components/social/ReportDialog.vue';
 
 let app = null, host = null, formatted = 0;
 const formatGetter = Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'format');
@@ -16,6 +17,7 @@ afterEach(() => {
   host?.remove();
   Object.defineProperty(Intl.DateTimeFormat.prototype, 'format', formatGetter);
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 const row = (n, fields = {}) => ({ id: String(n).padStart(16, '0'), ts: 1_700_000_000_000 + n * 60_000, text: `m${n}`, sub: `u_${n}`, name: `name-${n}`, host: false, mine: false, deleted: false, ...fields });
@@ -225,4 +227,69 @@ test('the report dialog: a report that can\'t go leaves it as it is; with its Re
     host.remove();
     app = null;
   }
+});
+
+test('the report dialog, sent: "Reported" in the status line that was there from the start, then done after 4 s; unmounted sooner, its timer goes with it', async () => {
+  await createTestApp();
+  const room = useRoomStore();
+  useSocialStore().claims = claims({});
+  vi.spyOn(room, 'report').mockReturnValue(true);
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const done = vi.fn();
+  const props = { name: 'wren', sub: 'u_2', onDone: done };   // (a variable: the lint takes `name` in createApp's second argument for a component's)
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp(ReportDialog, props).use(getActivePinia());
+  app.mount(host);
+  await nextTick();
+  const status = document.querySelector('p.reported[role=status]');
+  expect(status.textContent).toBe('');   // in the page before anything is said
+
+  document.querySelector('[role=dialog] input[value=spam]').click();
+  await nextTick();
+  [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === 'Report').click();
+  await nextTick();
+  expect(room.report).toHaveBeenCalledWith({ sub: 'u_2', messageId: null, reason: 'spam' });
+  expect(document.querySelector('[role=dialog]')).toBe(null);
+  expect(document.querySelector('p.reported[role=status]')).toBe(status);   // the same live region, now with words
+  expect(status.textContent).toBe('Reported. Thank you.');
+  vi.advanceTimersByTime(3999);
+  expect(done).not.toHaveBeenCalled();
+  vi.advanceTimersByTime(1);
+  expect(done).toHaveBeenCalledOnce();
+
+  app.unmount();   // again, unmounted while "Reported" shows
+  host.remove();
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp(ReportDialog, props).use(getActivePinia());
+  app.mount(host);
+  await nextTick();
+  document.querySelector('[role=dialog] input[value=spam]').click();
+  await nextTick();
+  [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === 'Report').click();
+  await nextTick();
+  expect(vi.getTimerCount()).toBe(1);
+  app.unmount();
+  app = null;
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test('Report again on the same message while "Reported" shows opens the dialog again', async () => {
+  const room = await mount('watch', 1);
+  useSocialStore().claims = claims({});
+  await nextTick();
+  vi.spyOn(room, 'report').mockReturnValue(true);
+  for (let i = 0; i < 2; i++) {
+    host.querySelector('button.report').click();
+    await nextTick();
+    expect(document.querySelector('[role=dialog] h3').textContent).toBe('Report name-0?');
+    document.querySelector('[role=dialog] input[value=other]').click();
+    await nextTick();
+    [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === 'Report').click();
+    await nextTick();
+    expect(document.querySelector('[role=dialog]')).toBe(null);
+    expect(document.querySelector('p.reported').textContent).toBe('Reported. Thank you.');
+  }
+  expect(room.report).toHaveBeenCalledTimes(2);
 });
