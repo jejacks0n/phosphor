@@ -59,8 +59,10 @@ npm run build
 - **Every change comes with a test in the right layer**: pure logic in `tests/unit`, the store,
   canvas or WebGL in `tests/browser`, real UI interactions in `tests/e2e`. A bug fix starts with a
   test that fails. [docs/testing.md](docs/testing.md) says which layer and how.
-- **Never show users the moderation rules.** How reports lead to a mute appears nowhere a user or
-  this repo's reader can see: not in UI copy, `docs/`, comments, tests or commit messages. A reporter sees only "Reported. Thank
+- **Moderation can be described, never how it decides.** Docs and UI may say that reports exist,
+  what a report sends, that people can be muted or suspended and what they see then. Nothing in UI
+  copy, `docs/`, comments, tests or commit messages says how reports lead to a mute (how many, how
+  fast, whose count, how long), since people would game it. A reporter sees only "Reported. Thank
   you."; a muted person only until when. The rules are the server's, documented in `server/`.
 - **Reference files are claims.** Never run `npm run test:update` to make a failing test pass
   without reading `git diff tests/fixtures/reference` and knowing why every change is right.
