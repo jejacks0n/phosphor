@@ -9,13 +9,15 @@
 // canvas (at scale, basePixelsOf), scale, colors: canvas (its stored colors, a grid pixel each), pins:
 // (char | null)[] } }. Rects are clipped to the grid.
 import { withPins, withoutPins } from '@/document/baseRecords.js';
-import { cellKey, withoutCells, rectCells, pasteBlock, mergeEntry } from '@/document/editCells.js';
+import { cellKey, withoutCells, rectCells, pasteBlock, mergeEntry, isPaintBlock } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { charRowsOf } from '@/lib/Cells.js';
+import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { boundsOf } from '@/store/project/shared.js';
+import { turnChar } from '@/lib/TurnChars.js';
 import { toRaw } from 'vue';
 
 export const selectionActions = {
@@ -103,7 +105,7 @@ export const selectionActions = {
     };
     const version = this.history.version;
     const landed = paste(col, row);
-    this._float = landed && { paste: true, redo: (dc, dr) => paste(col + dc, row + dr), from: landed, layers: null, dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version };
+    this._float = landed && { paste: true, block, redo: (dc, dr) => paste(col + dc, row + dr), from: landed, layers: null, dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version };
     return landed;
   },
 
@@ -131,13 +133,49 @@ export const selectionActions = {
     const current = sameRun ? run : { redo: (c, r) => this.moveSelection(rect, layers, c, r), from: rect, layers: { ...layers }, dc: 0, dr: 0 };
     const offset = { dc: current.dc + dc, dr: current.dr + dr };
     if (sameRun && run.recorded) this.undo();
-    if (!current.paste && !offset.dc && !offset.dr) { // back where the move started: nothing moved, nothing recorded
+    if (!current.paste && !current.turned && !offset.dc && !offset.dr) { // back where the move started: nothing moved, nothing recorded
       this._float = null;
       return current.from;
     }
     const version = this.history.version;
     const landed = current.redo(offset.dc, offset.dr);
     this._float = landed && { ...current, ...offset, landed, version: this.history.version, recorded: this.history.version !== version };
+    return landed;
+  },
+
+  // Flip what's selected (op 'h', 'v') or turn it a quarter clockwise ('cw'), on the chosen layers:
+  // its cells move, their characters turn with them (TurnChars), and its paint and base turn too. A
+  // turned block is h x w cells from the same top-left corner, moved back onto the grid where it
+  // would run off it. It floats, as a move does (floatSelection): turned while it floats, it's the
+  // same run, so what it covers comes back when it moves on, and the run is one undo step. Returns
+  // where it landed (clipped).
+  turnSelection(rect, layers, op) {
+    this.commitPending();
+    const run = this._float;
+    const sameRun = run && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
+      && (!run.layers || (run.layers.base === layers.base && run.layers.edit === layers.edit));
+    if (sameRun && run.recorded) this.undo();
+    // Lifted from (cleared each time it lands; none for a paste), and the block as it floats.
+    const lifted = sameRun ? (run.paste ? null : run.from) : rect;
+    const liftedLayers = sameRun ? run.layers : { ...layers };
+    const block = turnBlock(sameRun && run.block ? run.block : this.copySelection(lifted, liftedLayers), op);
+    const col = Math.max(0, Math.min(rect.c0, this.cols - block.w));
+    const row = Math.max(0, Math.min(rect.r0, charRowsOf(this.rows) - block.h));
+    const place = (dc, dr) => {
+      const c = col + dc, r = row + dr;
+      const landed = this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
+      this.selectionEdit([lifted, landed].filter(Boolean), () => {
+        if (lifted) this.deleteIn(lifted, liftedLayers);
+        this.pasteAt(block, c, r, lifted);
+      });
+      return landed;
+    };
+    const version = this.history.version;
+    const landed = place(0, 0);
+    this._float = landed && {
+      paste: !lifted, turned: true, block, redo: place, from: lifted ?? landed, layers: lifted ? liftedLayers : null,
+      dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version,
+    };
     return landed;
   },
 
@@ -205,3 +243,46 @@ export const selectionActions = {
     this.commitEdit();
   },
 };
+
+// A copied block (copySelection) flipped or turned (turnSelection's op): every cell's entry and pin
+// from the cell that lands there, their characters turned, and the paint and base pictures with them.
+function turnBlock(block, op) {
+  const { w, h } = block;
+  const out = op === 'cw' ? { w: h, h: w } : { w, h };
+  const source = (x, y) => (op === 'h' ? [w - 1 - x, y] : op === 'v' ? [x, h - 1 - y] : [y, h - 1 - x]);
+  const turned = (list, turn) => {
+    const cells = Array.from({ length: out.w * out.h }, (_, i) => {
+      const [x, y] = source(i % out.w, Math.floor(i / out.w));
+      return turn(list[y * w + x]);
+    });
+    // Flipped across, a wide character lands on the cell it covered (its trail): it moves back one.
+    if (op === 'h') {
+      for (let i = 0; i < cells.length; i++) {
+        const char = typeof cells[i] === 'string' ? cells[i] : cells[i]?.char;
+        if (i % out.w && char && cellWidth(char) === 2) [cells[i - 1], cells[i]] = [cells[i], cells[i - 1]];
+      }
+    }
+    return cells;
+  };
+  if (block.cells) out.cells = turned(block.cells, (e) => (e?.char && !isPaintBlock(e) ? { ...e, char: turnChar(e.char, op) } : e));
+  if (block.paint) out.paint = turnCanvas(block.paint, op);
+  if (block.base) {
+    const { pixels, scale, colors, pins } = block.base;
+    out.base = { pixels: turnCanvas(pixels, op), scale, colors: turnCanvas(colors, op), pins: turned(pins, (char) => char && turnChar(char, op)) };
+  }
+  return out;
+}
+
+// A block's picture flipped or turned; turned, it's stretched to fit the turned cells (a cell is twice
+// as tall as it's wide, and keeps its shape).
+function turnCanvas(canvas, op) {
+  const out = document.createElement('canvas');
+  [out.width, out.height] = op === 'cw' ? [canvas.height / 2, canvas.width * 2] : [canvas.width, canvas.height];
+  const ctx = ctx2d(out);
+  ctx.imageSmoothingEnabled = false;
+  if (op === 'h') ctx.setTransform(-1, 0, 0, 1, out.width, 0);
+  if (op === 'v') ctx.setTransform(1, 0, 0, -1, 0, out.height);
+  if (op === 'cw') ctx.setTransform(0, 1, -1, 0, out.width, 0);
+  ctx.drawImage(canvas, 0, 0, op === 'cw' ? out.height : out.width, op === 'cw' ? out.width : out.height);
+  return out;
+}

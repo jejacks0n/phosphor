@@ -130,7 +130,7 @@ export function lineCoverage(from, to, cols, rows) {
 }
 
 // Block characters by the quadrants they fill: top-left 1, top-right 2, bottom-left 4, bottom-right 8.
-const QUADRANTS = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█';
+export const QUADRANTS = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█';
 
 // Cells from pixels on a grid of half cells, two across each cell and, with halfRows, two down: each
 // cell's block character is the halves (▌ ▐ █) or quadrants its pixels fill. mask: those quadrants.

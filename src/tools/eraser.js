@@ -1,12 +1,11 @@
 import { squarePixels } from '@/lib/Brushes';
 import { cellsOfPixels } from '@/lib/Cells';
 import { withLeads } from '@/document/wideChars';
+import { isPaintBlock } from '@/document/editCells';
 
 // The eraser erases the layers chosen with its [Base] [Edit] toggles (workspace.eraseLayers).
 // Edit: paint and edit cells. Base: the base layer, black with a pinned space in the ANSI view
 // (eraseBase), black pixels in the Pixel view (eraseBasePixels). Every chosen layer is erased at once.
-
-const isPaintBlock = (entry) => entry?.char === '▄' && entry.fg === undefined && entry.bg === undefined;
 
 const eraser = {
   id: 'eraser',

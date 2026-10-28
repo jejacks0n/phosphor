@@ -72,6 +72,10 @@ const pasteSelection = () => {
 const stampSelection = () => {
   workspace.selection = project.stampSelection(workspace.selection, workspace.selectLayers) ?? workspace.selection;
 };
+// Flip across ('h') or down ('v'), or turn a quarter clockwise ('cw'): the selection follows the block.
+const turnSelection = (op) => {
+  workspace.selection = project.turnSelection(workspace.selection, workspace.selectLayers, op) ?? workspace.selection;
+};
 
 // A dropdown's choices on offer right now, and the one it shows: the setting's own choice, or when
 // that isn't on offer, the choice the tool draws instead.
@@ -302,6 +306,9 @@ const selectionHasEdits = computed(() => {
           <button title="Paste what you copied in Phosphor, at the selection" aria-label="Paste what you copied in Phosphor, at the selection" :disabled="!workspace.clipboard" @click="pasteSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M160 96H208V176H432V96H480A64 64 0 0 1 544 160V528A64 64 0 0 1 480 592H160A64 64 0 0 1 96 528V160A64 64 0 0 1 160 96ZM160 224V528H480V224Z"/><path d="M256 48H384A32 32 0 0 1 416 80V144H224V80A32 32 0 0 1 256 48Z"/></svg></button>
           <button title="Delete (Delete or E)" aria-label="Delete" aria-keyshortcuts="Delete E" @click="project.deleteSelection(workspace.selection, workspace.selectLayers)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
           <button title="Stamp: leave a copy here and move the block on (S or C)" aria-label="Stamp" aria-keyshortcuts="S C" @click="stampSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 64H368A48 48 0 0 1 416 112V176C416 224 384 256 384 304H480A64 64 0 0 1 544 368V432H96V368A64 64 0 0 1 160 304H256C256 256 224 224 224 176V112A48 48 0 0 1 272 64ZM96 480H544V544H96Z"/></svg></button>
+          <button title="Flip horizontally (mirror)" aria-label="Flip horizontally" @click="turnSelection('h')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 128V512H64Z"/><path fill-rule="evenodd" d="M368 128L576 512H368ZM416 320V464H494Z"/><path d="M304 64H336V576H304Z"/></svg></button>
+          <button title="Flip vertically" aria-label="Flip vertically" @click="turnSelection('v')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M128 272H512L128 64Z"/><path fill-rule="evenodd" d="M128 368H512L128 576ZM320 416H176V494Z"/><path d="M64 304H576V336H64Z"/></svg></button>
+          <button title="Rotate 90° clockwise" aria-label="Rotate 90° clockwise" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
           <div class="divider"/>
           <button class="text" title="Merge up: what the base layer shows here becomes edit cells" @click="project.mergeUp(workspace.selection)">Merge up</button>
           <button class="text" title="Merge down: what's drawn here goes into the base layer" :disabled="!selectionHasEdits" @click="openMerge(workspace.selection)">Merge down</button>
