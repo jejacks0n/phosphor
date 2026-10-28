@@ -220,6 +220,15 @@ document drop it.
 **Delete** on the wand's options row (or the Delete or Backspace key, except while typing in Edit
 Mode) takes away what's drawn in the selection: the edit cells and paint, in one undo step.
 
+### Selections and undo
+
+Making, changing or dropping a selection is an undo step too: a wand click, a new rectangle, moving
+the rectangle's outline, **Select all**, **Escape** and **Deselect**. Undo brings back the selection
+you had before, so a stray wand click is one undo away. These steps don't count as changes to the
+document (nothing new to save). A move or paste is still one step with its selection: undoing it
+puts the selection back where the block came from. A grid change drops the selection steps, as it
+drops the drawing ones.
+
 ## Flip FG/BG
 
 Flip's **Flip** toggles (**Base**, **Edit**) choose what it flips. **Edit** (the default) swaps an

@@ -26,18 +26,21 @@ export default class History {
     this.version++;
   }
 
+  // Each returns the entry it undid or redid, or false when there's none.
   undo() {
     if (!this.canUndo) return false;
-    this.#entries[--this.#cursor].undo();
+    const entry = this.#entries[--this.#cursor];
+    entry.undo();
     this.version++;
-    return true;
+    return entry;
   }
 
   redo() {
     if (!this.canRedo) return false;
-    this.#entries[this.#cursor++].redo();
+    const entry = this.#entries[this.#cursor++];
+    entry.redo();
     this.version++;
-    return true;
+    return entry;
   }
 
   // Drop every entry but those keep(entry) accepts, in order.

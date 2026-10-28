@@ -249,6 +249,23 @@ export const selectionActions = {
     this.setBaseRecords(withPins(withoutPins(this.baseRecords, pins.filter(p => !p.char)), pins.filter(p => p.char)));
   },
 
+  // A selection made, changed or dropped (the Select tool's rectangle, the Magic Wand's, Deselect):
+  // change(workspace) sets workspace.selection and/or .wand, and it's one undo step that isn't a
+  // change to the document (nothing when the selection stays as it was). before: the selection to go
+  // back to, when it changed already (a drag). A move or paste it ends is kept with it (undo).
+  changeSelection(change, before = null) {
+    const workspace = useWorkspaceStore();
+    this.commitPending();
+    before ??= { selection: workspace.selection, wand: workspace.wand };
+    const float = this._float?.version === this.history.version ? this._float : null;
+    change?.(workspace);
+    const after = { selection: workspace.selection, wand: workspace.wand };
+    if (toRaw(after.selection) === toRaw(before.selection) && toRaw(after.wand) === toRaw(before.wand)) return;
+    const apply = (side) => Object.assign(workspace, side);
+    this.history.push({ undo: () => apply(before), redo: () => apply(after), selectionOnly: true, float, bytes: after.wand?.mask.length ?? 0 });
+    this.historyVersion = this.history.version;
+  },
+
   // One undo step for a selection operation's changes (cells, paint, base pixels, pins); the cells in
   // rects recompose, and a column either side (a wide character the edit broke).
   selectionEdit(rects, change) {

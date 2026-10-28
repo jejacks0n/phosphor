@@ -67,8 +67,10 @@ export default {
     if (allowed && !allowed(seed)) return false; // outside the rectangle: the rectangle stays
     const mask = selectMatching({ width: m.width, height: m.height, start, same: m.same(seed), contiguous: workspace.wandContiguous, allowed });
     if (adding) for (let i = 0; i < mask.length; i++) mask[i] |= adding.mask[i];
-    workspace.selection = null;
-    workspace.wand = markRaw({ view, width: m.width, height: m.height, mask, within });
+    project.changeSelection((w) => {
+      w.selection = null;
+      w.wand = markRaw({ view, width: m.width, height: m.height, mask, within });
+    });
     return false;
   },
 };

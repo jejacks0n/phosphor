@@ -126,11 +126,11 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const command = e.metaKey || e.ctrlKey;
     if (!command) {
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      if (e.key === 'Escape' && sel) workspaceStore.selection = null;
+      if (e.key === 'Escape' && sel) projectStore.changeSelection((w) => { w.selection = null; });
       else if (e.key === 'Escape' && _typing()) workspaceStore.textCursor = null;
       else if (selecting && (e.key === 'Delete' || e.key === 'Backspace' || key === 'e')) projectStore.deleteSelection(sel, layers);
       else if (selecting && (key === 'c' || key === 's') && !e.repeat) workspaceStore.selection = projectStore.stampSelection(sel, layers) ?? sel;
-      else if (selecting && e.key === 'Enter') workspaceStore.selection = null;
+      else if (selecting && e.key === 'Enter') projectStore.changeSelection((w) => { w.selection = null; });
       else if (selecting && ARROWS[e.key]) {
         // A nudge stops at the grid's edge rather than pushing contents off it.
         const { dc, dr } = clampOffset(sel, ...ARROWS[e.key], projectStore.cols, charRowsOf(projectStore.rows));
@@ -153,7 +153,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       _pendingPaste = { at, timer: setTimeout(() => { _pendingPaste = null; _pasteBlock(at); }, 50) };
       return true;
     }
-    if (key === 'a') workspaceStore.selectAll(projectStore.gridRect());
+    if (key === 'a') projectStore.changeSelection((w) => w.selectAll(projectStore.gridRect()));
     else if (key === 'c' && sel) copySelection(projectStore, workspaceStore, sel, layers);
     else if (key === 'x' && sel) {
       copySelection(projectStore, workspaceStore, sel, layers);
@@ -169,7 +169,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const wand = workspaceStore.wand;
     if (!wand || e.defaultPrevented || isField(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
     if (workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false; // the palette has the keys; mid-drag, the drag's end decides
-    if (e.key === 'Escape') workspaceStore.wand = null;
+    if (e.key === 'Escape') projectStore.changeSelection((w) => { w.wand = null; });
     else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab);
     else return false;
     e.preventDefault();

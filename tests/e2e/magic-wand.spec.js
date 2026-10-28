@@ -79,3 +79,19 @@ test('the selection is tinted only while the Magic Wand is the tool; the outline
   await page.keyboard.press('w');
   await expect.poll(() => tinted(page)).toBeGreaterThan(0);
 });
+
+test('undo takes back a wand click to the selection before it, and an Escape too', async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('w');
+  const a = await cellPoint(page, 4, 4), b = await cellPoint(page, 20, 10);
+  await page.mouse.click(a.x, a.y);
+  const first = await store(page, 'workspace', (w) => [...w.wand.mask].join(''));
+  await page.mouse.click(b.x, b.y);
+  expect(await store(page, 'workspace', (w) => [...w.wand.mask].join(''))).not.toBe(first);
+  await page.keyboard.press('ControlOrMeta+z');
+  expect(await store(page, 'workspace', (w) => [...w.wand.mask].join(''))).toBe(first);
+  await page.keyboard.press('Escape');
+  expect(await store(page, 'workspace', (w) => w.wand)).toBe(null);
+  await page.keyboard.press('ControlOrMeta+z');
+  expect(await store(page, 'workspace', (w) => [...w.wand.mask].join(''))).toBe(first);
+});

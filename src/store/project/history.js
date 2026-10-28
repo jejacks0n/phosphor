@@ -93,8 +93,15 @@ export const historyActions = {
   undo() {
     this.commitPending();
     const float = this._float?.recorded && this._float.version === this.history.version ? this._float : null;
-    if (!this.history.undo()) return;
+    const entry = this.history.undo();
+    if (!entry) return;
     this.historyVersion = this.history.version;
+    // A selection step (changeSelection) isn't a change to the document. Undoing the one that ended a
+    // move or paste picks that up again, so undoing it next puts its selection back too.
+    if (entry.selectionOnly) {
+      if (entry.float) this._float = { ...entry.float, version: this.history.version };
+      return;
+    }
     // Undoing a move or paste: the selection goes back with the cells (a paste's is dropped; a stamp's
     // goes back to the copy it left).
     if (float) {
@@ -107,9 +114,10 @@ export const historyActions = {
 
   redo() {
     this.commitPending();
-    if (!this.history.redo()) return;
+    const entry = this.history.redo();
+    if (!entry) return;
     this.historyVersion = this.history.version;
-    this.editVersion++;
+    if (!entry.selectionOnly) this.editVersion++;
   },
 };
 

@@ -25,15 +25,16 @@ export default {
   kind: 'paint',
   section: 'select',
   autoScroll: true,
-  begin({ project, workspace }, pos) {
+  // before: the selection to undo back to, when the caller changed it already (Edit Mode's drag).
+  begin({ project, workspace }, pos, event, before = { selection: workspace.selection, wand: workspace.wand }) {
     const cell = cellOf(project, pos);
     const hit = hitOf(workspace, pos);
     if (hit === 'outside') {
-      drag = { mode: 'select', start: cell };
+      drag = { mode: 'select', start: cell, before };
       workspace.selection = null;
       workspace.wand = null; // a rectangle replaces the Magic Wand's selection
     } else if (hit === 'border') {
-      drag = { mode: 'outline', start: cell };
+      drag = { mode: 'outline', start: cell, before };
       workspace.selectionOffset = { dc: 0, dr: 0 };
     } else {
       drag = { mode: 'move', start: cell, rect: workspace.selection, moved: { dc: 0, dr: 0 } };
@@ -64,7 +65,7 @@ export default {
       workspace.selection = normalizeRect(drag.start, cell);
     }
   },
-  end({ workspace }) {
+  end({ project, workspace }) {
     const sel = workspace.selection;
     const { dc, dr } = workspace.selectionOffset ?? { dc: 0, dr: 0 };
     if (!sel) {
@@ -73,6 +74,7 @@ export default {
       workspace.selection = { c0: sel.c0 + dc, r0: sel.r0 + dr, c1: sel.c1 + dc, r1: sel.r1 + dr };
     }
     workspace.selectionOffset = null;
+    if (drag?.before) project.changeSelection(null, drag.before); // a new rectangle, or the outline moved: an undo step
     drag = null;
   },
   // The border moves the outline, the inside the contents; elsewhere a crosshair draws a new one.

@@ -89,7 +89,7 @@ const shownChoice = (option) => {
 // views). Every tool but Select (which has its own) offers Deselect while there is one.
 const wandHere = computed(() => !!workspace.wand && ['input', 'output'].includes(workspace.editorTab));
 const kept = computed(() => wandHere.value || (!!workspace.selection && ['input', 'output'].includes(workspace.editorTab)));
-const deselect = () => { workspace.selection = null; workspace.wand = null; };
+const deselect = () => project.changeSelection((w) => { w.selection = null; w.wand = null; });
 
 // The pixel view's preview of the ANSI layer: edit cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'Overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
@@ -318,11 +318,11 @@ const selectionHasEdits = computed(() => {
           <div class="divider"/>
           <button class="text" title="Merge up: what the base layer shows here becomes edit cells" @click="project.mergeUp(workspace.selection)">Merge up</button>
           <button class="text" title="Merge down: what's drawn here goes into the base layer" :disabled="!selectionHasEdits" @click="openMerge(workspace.selection)">Merge down</button>
-          <button class="text" title="Deselect: set the block down (Esc or Enter)" aria-keyshortcuts="Escape Enter" @click="workspace.selection = null">Deselect</button>
+          <button class="text" title="Deselect: set the block down (Esc or Enter)" aria-keyshortcuts="Escape Enter" @click="deselect">Deselect</button>
         </template>
         <template v-else>
           <span class="hint">Drag to select cells, or:</span>
-          <button class="text" :title="`Select the whole canvas (${shortcut('mod', 'A')})`" @click="workspace.selectAll(project.gridRect())">Select all</button>
+          <button class="text" :title="`Select the whole canvas (${shortcut('mod', 'A')})`" @click="project.changeSelection((w) => w.selectAll(project.gridRect()))">Select all</button>
           <button class="text" title="Merge up: what the base layer shows becomes edit cells, over the whole canvas" @click="project.mergeUp(null)">Merge up</button>
           <button class="text" title="Merge down: the whole edit layer into the base layer" :disabled="!project.hasEdits" @click="openMerge()">Merge down</button>
         </template>
