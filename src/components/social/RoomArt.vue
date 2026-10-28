@@ -9,8 +9,9 @@ import { nameColor, nameInk } from '@/social/names';
 // A room's art, drawn in the host's font as the ANSI view's canvas draws it (AnsiEditor's render,
 // without the DOM view): a CellCanvas over the window of cells in view, inside a sizer the whole
 // grid's size. A box in the host's name color marks the part they're looking at, and the tag in its
-// upper left is the Follow button (pressed while following); scrolled away from the box, the tag stays
-// in sight at the edge nearest it, with an arrow toward it. While following, each new view of the
+// upper left is the Follow button (pressed while following). The tag is the box's own child, held to
+// the part of the box in view by CSS (sticky), so it moves with the box in the same frame; only once
+// the box is out of view is it placed here, at the edge nearest the box, with an arrow toward it. While following, each new view of the
 // host's is scrolled to the center. A wheel, a key or a press in it is looking around (a scroll it
 // made itself isn't; the tag is no part of it). The host's numbers are a stranger's: the view is held
 // to the grid here, and the font's size by fontFor.
@@ -54,8 +55,9 @@ const boxStyle = computed(() => {
 
 const colors = computed(() => (props.host ? { '--host': nameColor(props.host), '--host-ink': nameInk(nameColor(props.host)) } : {}));
 
-// The tag: at the box's upper left, held inside what's in view; with an arrow when the box is out of it.
-const tagAt = ref(null);   // { left, top, arrow }
+// The tag once the box is out of view: at the edge of the view nearest the box (6 px in), as an offset
+// from the box's corner, with an arrow toward it. null while any of the box is in view (CSS holds it).
+const away = ref(null);   // { left, top, arrow }
 const ARROWS = { '↑←': '↖', '↑→': '↗', '↓←': '↙', '↓→': '↘' };
 const clamp = (n, low, high) => Math.max(low, Math.min(n, high));
 const placeTag = () => {
@@ -64,15 +66,15 @@ const placeTag = () => {
   const x = v.col * m.cellWidth, y = v.row * m.lineHeight, right = x + v.cols * m.cellWidth, bottom = y + v.rows * m.lineHeight;
   const [x0, y0, x1, y1] = [el.scrollLeft, el.scrollTop, el.scrollLeft + el.clientWidth, el.scrollTop + el.clientHeight];
   const up = bottom <= y0 ? '↑' : y >= y1 ? '↓' : '', across = right <= x0 ? '←' : x >= x1 ? '→' : '';
-  const arrow = ARROWS[up + across] ?? (up || across), gap = arrow ? 6 : 0;
-  if (arrow !== tagAt.value?.arrow) queueRender();   // the arrow changes the tag's width: placed again once it's drawn
-  tagAt.value = {
-    left: clamp(x, x0 + gap, x1 - tag.offsetWidth - gap),
-    top: clamp(y, y0 + gap, y1 - tag.offsetHeight - gap),
+  const arrow = ARROWS[up + across] ?? (up || across);
+  if (arrow !== (away.value?.arrow ?? '')) queueRender();   // the arrow changes the tag's width: placed again once it's drawn
+  away.value = arrow ? {
+    left: clamp(x, x0 + 6, x1 - tag.offsetWidth - 6) - x,
+    top: clamp(y, y0 + 6, y1 - tag.offsetHeight - 6) - y,
     arrow,
-  };
+  } : null;
 };
-const tagStyle = computed(() => (tagAt.value ? { left: `${tagAt.value.left}px`, top: `${tagAt.value.top}px` } : { visibility: 'hidden' }));
+const tagStyle = computed(() => (away.value ? { left: `${away.value.left}px`, top: `${away.value.top}px` } : {}));
 
 const queueRender = () => {
   renderFrame ??= requestAnimationFrame(() => {
@@ -174,24 +176,25 @@ onBeforeUnmount(() => {
   >
     <div ref="sizer" class="sizer" :style="sizerStyle">
       <canvas ref="canvas" :key="fontKey"></canvas>
-      <div class="host-view" :style="boxStyle"></div>
-      <button
-          v-if="host && view && metrics"
-          ref="tag"
-          class="host-tag"
-          :class="{ following }"
-          :style="tagStyle"
-          :aria-label="`Follow ${host}`"
-          :aria-pressed="following"
-          @pointerdown.stop
-          @keydown.stop
-          @click="emit('follow')"
-      >
-        <span v-if="tagAt?.arrow" aria-hidden="true">{{ tagAt.arrow }}</span>
-        <span class="name">{{ host }}</span>
-        <span v-if="following" class="state">· following</span>
-        <span v-else class="follow">Follow ›</span>
-      </button>
+      <div class="host-view" :style="boxStyle">
+        <button
+            v-if="host"
+            ref="tag"
+            class="host-tag"
+            :class="{ following, away: away }"
+            :style="tagStyle"
+            :aria-label="`Follow ${host}`"
+            :aria-pressed="following"
+            @pointerdown.stop
+            @keydown.stop
+            @click="emit('follow')"
+        >
+          <span v-if="away" aria-hidden="true">{{ away.arrow }}</span>
+          <span class="name">{{ host }}</span>
+          <span v-if="following" class="state">· following</span>
+          <span v-else class="follow">Follow ›</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -206,6 +209,7 @@ onBeforeUnmount(() => {
 
 .sizer {
   position: relative;
+  overflow: clip;   /* the tag of a box at the grid's edge doesn't make the art scroll past it */
 }
 
 canvas {
@@ -222,13 +226,18 @@ canvas {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.6);   /* so it shows on any art */
 }
 
-/* The host's tag, the Follow button: filled while following, a dark tag with a Follow pill when not. */
+/* The host's tag, the Follow button: filled while following, a dark tag with a Follow pill when not.
+   Sticky in the box: it holds to the part of the box in view. Away, it's placed from the box's corner. */
 button.host-tag,
 button.host-tag:hover,
 button.host-tag:active {
-  position: absolute;
+  position: sticky;
+  top: 0;
+  left: 0;
   z-index: 1;
   display: flex;
+  width: max-content;
+  pointer-events: auto;
   align-items: center;
   gap: 6px;
   height: auto;
@@ -245,6 +254,10 @@ button.host-tag:active {
   white-space: nowrap;
   transform: none;
   filter: none;
+}
+button.host-tag.away {
+  position: absolute;
+  border-radius: 4px;
 }
 button.host-tag.following {
   background: var(--host);

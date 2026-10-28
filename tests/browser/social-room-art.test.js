@@ -130,3 +130,21 @@ test('scrolled away from the box, the tag stays in sight at the edge nearest it,
   await frames();
   expect(tag().textContent).toContain('\u2193');   // straight down
 });
+
+test('the tag is part of the box: it moves with it in the same frame, and holds to the corner in view when the box is bigger than the view', async () => {
+  await createTestApp();
+  const { state, box, tag, scroll } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 }, host: 'wren' });
+  await expect.poll(() => box.style.width).toBe('80px');
+  await frames();
+  state.hostView = { col: 10, row: 30, cols: 10, rows: 4 };
+  await nextTick();   // no frame between: the box and its tag move together
+  let [b, t] = [box.getBoundingClientRect(), tag().getBoundingClientRect()];
+  expect([t.left, t.top]).toEqual([b.left, b.top]);
+
+  state.hostView = { col: 10, row: 10, cols: 60, rows: 30 };   // 480 x 480 px, in a 200 x 100 view
+  await nextTick();
+  const s = scroll.getBoundingClientRect();
+  t = tag().getBoundingClientRect();
+  expect([t.left, t.top]).toEqual([s.left, s.top]);
+  expect(tag().textContent).not.toMatch(/[\u2190-\u2199]/);   // no arrow: the box is right here
+});
