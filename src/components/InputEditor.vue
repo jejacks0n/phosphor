@@ -6,6 +6,7 @@ import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf, putCellPixels } from '@/lib/Cells';
 import { parseKey } from '@/document/editCells';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
+import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
 import EditorViewport from '@/components/EditorViewport.vue';
 
@@ -14,6 +15,8 @@ import EditorViewport from '@/components/EditorViewport.vue';
 // is the display everything measures against.
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
+// The Magic Wand's selection, made in either view, in this view's units.
+const wand = computed(() => workspaceStore.wand && wandIn(workspaceStore.wand, 'input', projectStore.rows));
 const viewport = useTemplateRef('viewport');
 const sizerRef = useTemplateRef('sizer');
 const canvasRef = useTemplateRef('displayCanvas');
@@ -227,7 +230,7 @@ onBeforeUnmount(() => {
     </div>
     <div v-if="workspaceStore.editZoom >= 16" class="grid-overlay"></div>
     <template #overlay>
-      <WandOverlay v-if="workspaceStore.wand?.view === 'input'" :wand="workspaceStore.wand" :unit="unit" :display="sizerRef" :tint="workspaceStore.activeTool === 'wand'"/>
+      <WandOverlay v-if="wand" :wand="wand" :unit="unit" :display="sizerRef" :tint="workspaceStore.activeTool === 'wand'"/>
     </template>
   </EditorViewport>
 </template>

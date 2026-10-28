@@ -1,6 +1,6 @@
 // The Magic Wand's matching: connected units sharing a side, or all matches, among the units allowed.
 import { test, expect } from 'vitest';
-import { selectMatching, unitsOf } from '@/lib/MagicWand';
+import { selectMatching, unitsOf, wandIn } from '@/lib/MagicWand';
 
 // A grid from strings: a unit matches when it's the same letter as the clicked one.
 const grid = (rows) => ({ width: rows[0].length, height: rows.length, at: (i) => rows[Math.floor(i / rows[0].length)][i % rows[0].length] });
@@ -36,4 +36,15 @@ test('units allowed() rejects are neither selected nor crossed, and a start it r
 test('unitsOf lists the selected units', () => {
   const mask = Uint8Array.from([0, 1, 0, 1, 0, 0]);
   expect(unitsOf(mask, 3)).toEqual([{ x: 1, y: 0 }, { x: 0, y: 1 }]);
+});
+
+test('wandIn shows a selection in the other view: a cell is both its pixels, a pixel selects its cell', () => {
+  // 2 columns, 5 grid pixel rows: 2 cell rows; the last pixel row is in no cell.
+  const cells = { view: 'output', width: 2, height: 2, mask: Uint8Array.from([1, 0, 0, 1]) };
+  expect(wandIn(cells, 'output', 5)).toBe(cells);
+  expect(wandIn(cells, 'input', 5)).toMatchObject({ view: 'input', width: 2, height: 5 });
+  expect([...wandIn(cells, 'input', 5).mask]).toEqual([1, 0, 1, 0, 0, 1, 0, 1, 0, 0]);
+  const pixels = { view: 'input', width: 2, height: 5, mask: Uint8Array.from([0, 0, 0, 1, 1, 0, 0, 0, 1, 1]) };
+  expect(wandIn(pixels, 'output', 5)).toMatchObject({ view: 'output', width: 2, height: 2 });
+  expect([...wandIn(pixels, 'output', 5).mask]).toEqual([0, 1, 1, 0]);
 });

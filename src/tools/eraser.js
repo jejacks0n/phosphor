@@ -27,7 +27,7 @@ const eraser = {
   move({ project, workspace, view }, from, to) {
     if (!project.renderer.outputCanvas) return;
     // A selection keeps it to the cells or pixels inside.
-    const clip = selectionClip(workspace, view);
+    const clip = selectionClip(workspace);
     const square = squarePixels(from, to, workspace.editEraserSize, project.cols, project.rows).filter(({ x, y }) => !clip || clip.pixel(x, y));
     // The ANSI view erases whole cells (size 1 is one character, and a wide character's trail takes
     // its lead with it); the pixel view, exact pixels.

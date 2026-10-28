@@ -192,3 +192,21 @@ test('in the pixel view a Select rectangle keeps the wand inside it too', async 
   expect(workspace.selection).toBe(null);
   expect([workspace.wand.mask[3 * 20 + 3], workspace.wand.mask[9 * 20 + 9]]).toEqual([1, 0]);
 });
+
+test('a selection made in the ANSI view works in the pixel view: Delete takes both pixels of its cells; Shift-click adds pixels', async () => {
+  const { project, workspace, type, click } = await scene();
+  type(2, 2, ['a']);
+  click(2, 2); // the cell: grid pixels (2, 4) and (2, 5)
+  project.paintStroke([{ x: 2, y: 4, alpha: 1 }, { x: 2, y: 5, alpha: 1 }, { x: 3, y: 4, alpha: 1 }], '#ff00ff');
+  project.commitEdit();
+  await settle(project);
+  workspace.editorTab = 'input';
+  project.deleteInWand(workspace.wand, 'input');
+  await settle(project);
+  expect([project.rawColorAt(2, 4), project.rawColorAt(2, 5), project.rawColorAt(3, 4)].map((c) => c === '#ff00ff')).toEqual([false, false, true]);
+
+  click(3, 4, { shiftKey: true }, 'input');
+  const at = (x, y) => workspace.wand.mask[y * workspace.wand.width + x];
+  expect(workspace.wand.view).toBe('input');
+  expect([at(2, 4), at(2, 5), at(3, 4), at(3, 5)]).toEqual([1, 1, 1, 0]);
+});

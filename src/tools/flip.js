@@ -10,7 +10,7 @@ const flipAt = (project, workspace, pos) => {
   const at = cellAt(pos.x, pos.y, project.cols, project.rows);
   if (!at) return;
   const cell = snapCursor(project.cells, project.cols, at, 0); // a wide character's trail flips its lead
-  if (selectionClip(workspace, 'output')?.cell(cell.col, cell.row) === false) return;
+  if (selectionClip(workspace)?.cell(cell.col, cell.row) === false) return;
   const key = `${cell.col},${cell.row}`;
   if (flipped.has(key)) return;
   flipped.add(key);

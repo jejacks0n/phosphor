@@ -106,7 +106,7 @@ function apply({ project, workspace, view }, end) {
   const fill = kind === 'line' ? false : charMode ? workspace.shapeCharFill : !workspace.editBgNone;
   const fg = workspace.editFgColor, bg = workspace.editBgColor;
   // A selection in the ANSI view keeps every write to the pixels or cells inside it.
-  const clip = selectionClip(workspace, view);
+  const clip = selectionClip(workspace);
   const kept = (list) => (clip ? list.filter((p) => ('col' in p ? clip.cell(p.col, p.row) : clip.pixel(p.x, p.y))) : list);
   // Pixels for a paint shape: the whole shape, or just its outline.
   const pixelsOf = (filled) => (kind === 'line' ? (antialias ? lineCoverage : linePixels)(start, end, project.cols, project.rows)

@@ -1,12 +1,12 @@
 // Whether a tool may change a cell or grid pixel: null when nothing limits it, else { cell(col, row),
-// pixel(x, y) }. The Magic Wand's selection (a byte per unit: cells in the ANSI view, grid pixels in
-// the pixel view) limits the tools of the view it was made in; the Select tool's rectangle (whole
-// cells), both views'. A grid pixel is half a cell tall.
-export function selectionClip(workspace, view) {
+// pixel(x, y) }. The Magic Wand's selection (a byte per unit: cells if made in the ANSI view, grid
+// pixels if made in the pixel view) and the Select tool's rectangle (whole cells) limit both views'
+// tools. A grid pixel is half a cell tall: a cell is in a pixel selection when either half is.
+export function selectionClip(workspace) {
   const wand = workspace.wand;
-  if (wand?.view === view) {
+  if (wand) {
     const at = (x, y) => x >= 0 && y >= 0 && x < wand.width && y < wand.height && wand.mask[y * wand.width + x] === 1;
-    if (view === 'output') return { cell: at, pixel: (x, y) => at(x, Math.floor(y / 2)) };
+    if (wand.view === 'output') return { cell: at, pixel: (x, y) => at(x, Math.floor(y / 2)) };
     return { pixel: at, cell: (col, row) => at(col, 2 * row) || at(col, 2 * row + 1) };
   }
   const sel = workspace.selection;

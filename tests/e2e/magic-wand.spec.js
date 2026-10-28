@@ -32,14 +32,19 @@ test('W selects every cell with the character clicked; the Bucket then fills onl
   expect(await screenPixel(page, out.x, out.y)).not.toEqual(MAGENTA);
 });
 
-test('switching views drops the wand selection', async ({ page }) => {
+test('the wand selection stays when you switch views, and shows in the other one', async ({ page }) => {
   await openApp(page);
   await page.keyboard.press('w');
   const at = await cellPoint(page, 4, 4);
   await page.mouse.click(at.x, at.y);
-  expect(await wandCount(page)).toBeGreaterThan(0);
+  const count = await wandCount(page);
+  expect(count).toBeGreaterThan(0);
   await page.getByRole('tab', { name: 'PIXEL' }).click();
-  expect(await store(page, 'workspace', (w) => w.wand)).toBe(null);
+  expect(await wandCount(page)).toBe(count);
+  await expect(page.locator('[data-wand-overlay]')).toBeVisible();
+  await expect.poll(() => tinted(page)).toBeGreaterThan(0);
+  await page.getByRole('tab', { name: 'ANSI' }).click();
+  expect(await wandCount(page)).toBe(count);
 });
 
 test('with a wand selection, the Select tool offers Deselect too', async ({ page }) => {

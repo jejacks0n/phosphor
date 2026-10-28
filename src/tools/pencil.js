@@ -41,7 +41,7 @@ const pencil = {
     const { project, workspace, view } = ctx;
     if (drawsLines(ctx)) lines.move(ctx, from, to);
     else {
-      const clip = selectionClip(workspace, view);
+      const clip = selectionClip(workspace);
       const pixels = pencilPixels(from, to, project.cols, project.rows);
       project.paintStroke(clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels, undefined, { blockChars: view === 'output' && workspace.pencilDrawWith === 'half' });
     }

@@ -36,7 +36,7 @@ const armsAt = (project, { col, row }) => armsOf(shownAt(project, col, row)) ?? 
 // Write the stroke's pieces in these cells, in the colors you're typing with.
 function draw(project, workspace, cells) {
   const attrs = workspace.typingAttrs();
-  const clip = selectionClip(workspace, 'output');
+  const clip = selectionClip(workspace);
   const written = [];
   for (const { col, row } of cells) {
     // The stroke's arms here, and with Connect the piece that was under it and the arms pointing in

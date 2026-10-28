@@ -1,7 +1,7 @@
 <script setup>
 // The Magic Wand's selection over a view: a dashed line where a selected unit meets one that isn't,
 // and while the wand is the tool, a tint on every selected unit. Drawn only for the units in view (viewWindow), on a canvas over
-// them, again when the view scrolls or resizes. It's there only while there's a selection in its view.
+// them, again when the view scrolls or resizes. It's there only while there's a selection.
 import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
 import { ctx2d } from '@/lib/Canvas';

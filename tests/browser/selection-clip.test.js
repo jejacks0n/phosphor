@@ -161,6 +161,17 @@ test('a wand selection in the pixel view keeps the Pencil and Eraser to its pixe
   expect([4, 5, 6, 7, 8].map((x) => project.baseColorAt(x, 12) === '#000000')).toEqual([false, true, false, true, false]);
 });
 
+test("a wand selection made in the ANSI view limits the pixel view's tools: both pixels of its cells", async () => {
+  const { project, workspace } = await scene();
+  const mask = new Uint8Array(project.cols * Math.ceil(project.rows / 2));
+  mask[6 * project.cols + 5] = 1;
+  workspace.wand = markRaw({ view: 'output', width: project.cols, height: Math.ceil(project.rows / 2), mask });
+  workspace.editorTab = 'input';
+  const ctx = { project, workspace, view: 'input' };
+  for (const y of [12.5, 13.5]) { pencil.begin(ctx, { x: 2.5, y }, {}); pencil.move(ctx, { x: 2.5, y }, { x: 14.5, y }); pencil.end(ctx); }
+  expect([4, 5, 6].map((x) => [12, 13].map((y) => project.rawColorAt(x, y) === '#ff0000'))).toEqual([[false, false], [true, true], [false, false]]);
+});
+
 test("a rectangle limits the pixel view's tools too", async () => {
   const { project, workspace } = await scene();
   workspace.editorTab = 'input';

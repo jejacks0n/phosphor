@@ -212,8 +212,10 @@ The selection shows as a dashed line around it and, while the Magic Wand is the 
 every selected cell, so a scattered selection (every other cell) shows as a pattern. Like the
 rectangle, it stays as you change tools (the line stays, the tint goes, so you see what you draw),
 and the painting tools change only what's in it: the Paint Bucket inside it recolors just the
-selected cells or pixels. It belongs to the view you made it in: switching views drops it, and so do
-**Escape**, **Deselect**, a new rectangle, a grid change and a new document.
+selected cells or pixels. Like the rectangle, it goes with you between the views: a cell selected in
+the ANSI view is both its pixels in the pixel view, and a cell with either of its pixels selected is
+selected in the ANSI view. **Escape**, **Deselect**, a new rectangle, a grid change and a new
+document drop it.
 
 **Delete** on the wand's options row (or the Delete or Backspace key, except while typing in Edit
 Mode) takes away what's drawn in the selection: the edit cells and paint, in one undo step.

@@ -33,7 +33,7 @@ function fillCells(project, workspace, view, pos) {
   const cells = project.cells, seed = cells[start.y * width + start.x], { fg, bg, char } = workspace.bucketMatch;
   const near = (a, b) => colorDistance(a.r, a.g, a.b, b.r, b.g, b.b) <= workspace.editFillTolerance;
   const same = (i) => (!fg || near(seed.fg, cells[i].fg)) && (!bg || near(seed.bg, cells[i].bg)) && (!char || seed.char === cells[i].char);
-  const clip = selectionClip(workspace, view);
+  const clip = selectionClip(workspace);
   const allowed = clip && ((i) => clip.cell(i % width, Math.floor(i / width)));
   const mask = selectMatching({ width, height, start, same, contiguous: workspace.editFillContiguous, allowed });
   const set = workspace.bucketSet, colors = workspace.typingAttrs();
@@ -80,7 +80,7 @@ export default {
       fillCells(project, workspace, view, pos);
       return false;
     }
-    const clip = selectionClip(workspace, view);
+    const clip = selectionClip(workspace);
     if (clip && !clip.pixel(Math.floor(pos.x), Math.floor(pos.y))) return false; // outside the selection: nothing to fill
     const imageData = ctx2d(output).getImageData(0, 0, project.cols, project.rows);
     const pixels = floodFill(imageData, Math.floor(pos.x), Math.floor(pos.y), workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, wallsOf(project, clip));

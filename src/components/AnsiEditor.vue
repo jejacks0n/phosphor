@@ -8,6 +8,7 @@ import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
 import CellCanvas from '@/lib/CellCanvas';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
+import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
 import { fitColumns } from '@/lib/DrawnWidth';
 import EditorViewport from '@/components/EditorViewport.vue';
@@ -19,6 +20,8 @@ import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 // a sizer the whole grid's size: the sizer is the display everything measures against.
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
+// The Magic Wand's selection, made in either view, in this view's units.
+const wand = computed(() => workspaceStore.wand && wandIn(workspaceStore.wand, 'output', projectStore.rows));
 const textInputRef = useTemplateRef('textInput');
 useTextTool(projectStore, workspaceStore, textInputRef);
 const useDom = computed(() => workspaceStore.ansiRenderer === 'dom');
@@ -327,7 +330,7 @@ onBeforeUnmount(() => {
           spellcheck="false"
           aria-label="Type into the canvas"
       ></textarea>
-      <WandOverlay v-if="workspaceStore.wand?.view === 'output'" :wand="workspaceStore.wand" :unit="cellUnit" :display="displayRef" :tint="workspaceStore.activeTool === 'wand'"/>
+      <WandOverlay v-if="wand" :wand="wand" :unit="cellUnit" :display="displayRef" :tint="workspaceStore.activeTool === 'wand'"/>
       <template v-if="selectionBox">
         <div class="marquee" :style="selectionBox.marquee"></div>
       </template>

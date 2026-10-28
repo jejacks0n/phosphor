@@ -85,9 +85,9 @@ const shownChoice = (option) => {
   return list.includes(current) ? current : list.find(c => c.value === current?.instead) ?? current;
 };
 
-// A selection the tools keep to, in this view: the Magic Wand's, or the Select tool's rectangle (both
-// views'). Every tool but Select (which has its own) offers Deselect while there is one.
-const wandHere = computed(() => workspace.wand?.view === workspace.editorTab);
+// A selection the tools keep to: the Magic Wand's or the Select tool's rectangle (either, in both
+// views). Every tool but Select (which has its own) offers Deselect while there is one.
+const wandHere = computed(() => !!workspace.wand && ['input', 'output'].includes(workspace.editorTab));
 const kept = computed(() => wandHere.value || (!!workspace.selection && ['input', 'output'].includes(workspace.editorTab)));
 const deselect = () => { workspace.selection = null; workspace.wand = null; };
 
@@ -367,7 +367,7 @@ const selectionHasEdits = computed(() => {
       </div>
       <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>
-        <button v-if="wandHere && activeTool.id === 'wand'" class="text" title="Take away what's drawn in the selection (Delete)" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand)">Delete</button>
+        <button v-if="wandHere && activeTool.id === 'wand'" class="text" title="Take away what's drawn in the selection (Delete)" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab)">Delete</button>
         <button class="text" title="Deselect: the tools paint everywhere again (Esc)" aria-keyshortcuts="Escape" @click="deselect">Deselect</button>
       </div>
     </div>

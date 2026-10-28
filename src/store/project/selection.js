@@ -19,7 +19,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { boundsOf } from '@/store/project/shared.js';
 import { turnChar } from '@/lib/TurnChars.js';
 import { toRaw } from 'vue';
-import { unitsOf } from '@/lib/MagicWand.js';
+import { unitsOf, wandIn } from '@/lib/MagicWand.js';
 
 export const selectionActions = {
   copySelection(rect, { base, edit }) {
@@ -180,12 +180,13 @@ export const selectionActions = {
     return landed;
   },
 
-  // Delete in the Magic Wand's selection (workspace.wand): the edit layer goes from its cells (or
-  // pixels), as the Eraser's Edit does: in the pixel view, a ▄ there only to show paint (Half-block)
-  // goes with the last of its paint. One undo step.
-  deleteInWand(wand) {
+  // Delete in the Magic Wand's selection (workspace.wand), in `view` (the ANSI view's cells or the
+  // pixel view's grid pixels): the edit layer goes from them, as the Eraser's Edit does: in the pixel
+  // view, a ▄ there only to show paint (Half-block) goes with the last of its paint. One undo step.
+  deleteInWand(made, view = made.view) {
+    const wand = wandIn(made, view, this.rows);
     const units = unitsOf(wand.mask, wand.width);
-    if (wand.view === 'output') {
+    if (view === 'output') {
       const cells = units.map(({ x, y }) => ({ col: x, row: y }));
       this.eraseEditPixels(cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
       this.clearEditCells(cells);

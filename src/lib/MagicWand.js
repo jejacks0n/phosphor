@@ -1,3 +1,5 @@
+import { charRowsOf } from '@/lib/Cells';
+
 // The Magic Wand's selection on a grid of units (cells in the ANSI view, grid pixels in the pixel
 // view): the units that match the one clicked (`same(i)`), the connected ones (sharing a side, as the
 // Paint Bucket fills) or, not contiguous, all of them; only units `allowed(i)` accepts, when given
@@ -32,4 +34,25 @@ export function unitsOf(mask, width) {
   const units = [];
   for (let i = 0; i < mask.length; i++) if (mask[i]) units.push({ x: i % width, y: Math.floor(i / width) });
   return units;
+}
+
+// The selection as the other view sees it (`rows`: the grid's pixel rows): a cell selected in the
+// ANSI view is both its grid pixels; a cell with either of its pixels selected is selected there.
+export function wandIn(wand, view, rows) {
+  if (wand.view === view) return wand;
+  const { width, mask } = wand;
+  if (view === 'input') {
+    const out = new Uint8Array(width * rows);
+    for (let i = 0; i < out.length; i++) {
+      const x = i % width, row = Math.floor(i / width / 2);
+      if (row < wand.height) out[i] = mask[row * width + x];
+    }
+    return { ...wand, view, height: rows, mask: out };
+  }
+  const height = charRowsOf(rows), out = new Uint8Array(width * height);
+  for (let i = 0; i < out.length; i++) {
+    const x = i % width, y = 2 * Math.floor(i / width);
+    out[i] = mask[y * width + x] | mask[(y + 1) * width + x];
+  }
+  return { ...wand, view, height, mask: out };
 }
