@@ -37,6 +37,7 @@ export default {
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M496 64L512 112L560 128L512 144L496 192L480 144L432 128L480 112ZM272 80L284 116L320 128L284 140L272 176L260 140L224 128L260 116ZM528 304L540 340L576 352L540 364L528 400L516 364L480 352L516 340ZM400 192L448 240L144 544C130.7 557.3 109.3 557.3 96 544C82.7 530.7 82.7 509.3 96 496ZM376 216L320 272L368 320L424 264Z"/></svg>`,
   views: ['input', 'output'],
   kind: 'paint',
+  section: 'select',
   options: [
     {
       key: 'wandMatch', label: 'Match', type: 'toggles', views: ['output'],
