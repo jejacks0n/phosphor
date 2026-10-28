@@ -280,6 +280,7 @@ const publishOrigin = () => {
     const { col, row, cols, rows } = wholeCellsIn(viewIn(display, viewportEl), m, projectStore.cols, charRowsOf(projectStore.rows));
     workspaceStore.ansiViewOrigin = { col, row };
     workspaceStore.ansiViewSize = { cols, rows };
+    workspaceStore.ansiViewZoom = workspaceStore.ansiZoom;   // the zoom these cells are at, for a room's watchers
   });
 };
 watch([metrics, () => projectStore.cols, () => projectStore.rows], publishOrigin);

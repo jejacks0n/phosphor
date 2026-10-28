@@ -92,5 +92,5 @@ test('the PIXEL view publishes the whole cells on screen: a grid pixel is a colu
   }, await store(page, 'project', (p) => [p.cols, Math.floor(p.rows / 2), 16]));
   expect(onScreen.col).toBeGreaterThan(0);
   expect(onScreen.row).toBeGreaterThan(0);
-  await expect.poll(() => store(page, 'workspace', (w) => w.inputView)).toEqual(onScreen);
+  await expect.poll(() => store(page, 'workspace', (w) => w.inputView)).toEqual({ ...onScreen, zoom: 16 });   // and the zoom they're at
 });

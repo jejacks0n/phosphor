@@ -45,7 +45,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     ansiViewSize: { cols: 0, rows: 0 }, // how many whole cells from there are on screen (AnsiEditor)
-    inputView: { col: 0, row: 0, cols: 0, rows: 0 }, // the whole cells on screen in the PIXEL view (InputEditor)
+    ansiViewZoom: 1,         // the ansiZoom those cells were measured at (AnsiEditor)
+    inputView: { col: 0, row: 0, cols: 0, rows: 0, zoom: 5 }, // the whole cells on screen in the PIXEL view, and the editZoom they were measured at (InputEditor)
     pixelViewOrigin: { col: 0, row: 0 }, // the same in the PIXEL view (InputEditor), where a paste lands with no selection
     selectLayers: { base: true, edit: true }, // what the Select tool acts on, and the Magic Wand's Delete: the base layer and/or the edit layer
     pencilDrawWith: 'normal', // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks)
@@ -104,10 +105,11 @@ export const useWorkspaceStore = defineStore('workspace', {
     editMode: (state) => state.editorTab === 'input' || state.editorTab === 'output', // the art is showing
     // The view the room's host is looking at, for watchers: whole cells and the zoom to draw them at
     // (a fraction of the font's cell), of the art tab last shown (SAUCE and SOCIAL keep it). PIXEL's
-    // zoom is its pixels per column against the font's cell width.
+    // zoom is its pixels per column against the font's cell width. Each zoom is the one its cells were
+    // measured at, never the live one: a new zoom goes with its cells.
     sharedView(state) {
-      if (state.viewTab === 'output') return { ...state.ansiViewOrigin, ...state.ansiViewSize, zoom: state.ansiZoom };
-      return { ...state.inputView, zoom: Math.min(1, state.editZoom / this.displayAdvance) };
+      if (state.viewTab === 'output') return { ...state.ansiViewOrigin, ...state.ansiViewSize, zoom: state.ansiViewZoom };
+      return { ...state.inputView, zoom: Math.min(1, state.inputView.zoom / this.displayAdvance) };
     },
     // The display font's character width in CSS px, measured once per font.
     displayAdvance(state) {

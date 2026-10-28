@@ -576,27 +576,27 @@ test('A change of the host\'s view alone sends a thumbnail once 3 minutes have p
   expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ col: 3, row: 1 }));
 });
 
-test('on PIXEL the host sends the cells in view and the PIXEL zoom against the font\'s cell; on ANSI its view and ansiZoom; SAUCE keeps the last one', async () => {
+test('on PIXEL the host sends the cells in view and the PIXEL zoom against the font\'s cell; on ANSI its view and zoom; SAUCE keeps the last one', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   const setView = vi.spyOn(Host.prototype, 'setView');
   const workspace = useWorkspaceStore();
-  Object.assign(workspace, { editorTab: 'input', viewTab: 'input', editZoom: 4, inputView: { col: 2, row: 1, cols: 6, rows: 3 } });
+  Object.assign(workspace, { editorTab: 'input', viewTab: 'input', inputView: { col: 2, row: 1, cols: 6, rows: 3, zoom: 4 } });
   await goLive();
   const zoom = 4 / measureAdvance(DISPLAY_FONT);
   expect(zoom).toBeLessThan(1);
   expect(setView).toHaveBeenLastCalledWith({ col: 2, row: 1, cols: 6, rows: 3, zoom });
 
-  workspace.editZoom = 16;   // wider than the font's cell: no more than 100%
+  workspace.inputView = { col: 2, row: 1, cols: 6, rows: 3, zoom: 16 };   // wider than the font's cell: no more than 100%
   await vi.advanceTimersByTimeAsync(300);
   expect(setView).toHaveBeenLastCalledWith({ col: 2, row: 1, cols: 6, rows: 3, zoom: Math.min(1, 16 / measureAdvance(DISPLAY_FONT)) });
 
-  Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiZoom: 0.5, ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
+  Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiViewZoom: 0.5, ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
   await vi.advanceTimersByTimeAsync(300);
   expect(setView).toHaveBeenLastCalledWith({ col: 3, row: 1, cols: 10, rows: 5, zoom: 0.5 });
 
   const sent = setView.mock.calls.length;
   workspace.editorTab = 'sauce';   // the ANSI view stays the view
-  workspace.editZoom = 2;
+  Object.assign(workspace, { editZoom: 2, ansiZoom: 0.25 });
   await vi.advanceTimersByTimeAsync(1000);
   expect(setView).toHaveBeenCalledTimes(sent);
   expect(workspace.sharedView).toEqual({ col: 3, row: 1, cols: 10, rows: 5, zoom: 0.5 });
@@ -606,11 +606,11 @@ test('on PIXEL new cells in view don\'t measure the font again; a new font size 
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   const setView = vi.spyOn(Host.prototype, 'setView');
   const workspace = useWorkspaceStore();
-  Object.assign(workspace, { editorTab: 'input', viewTab: 'input', editZoom: 4, inputView: { col: 2, row: 1, cols: 6, rows: 3 } });
+  Object.assign(workspace, { editorTab: 'input', viewTab: 'input', inputView: { col: 2, row: 1, cols: 6, rows: 3, zoom: 4 } });
   await goLive();
   const was = measureAdvance(DISPLAY_FONT);
   const createElement = vi.spyOn(document, 'createElement');   // a measure makes a canvas
-  workspace.inputView = { col: 3, row: 1, cols: 6, rows: 3 };
+  workspace.inputView = { col: 3, row: 1, cols: 6, rows: 3, zoom: 4 };
   await vi.advanceTimersByTimeAsync(300);
   expect(createElement.mock.calls.filter(([tag]) => tag === 'canvas')).toEqual([]);
   createElement.mockRestore();
@@ -624,10 +624,34 @@ test('on PIXEL new cells in view don\'t measure the font again; a new font size 
   expect(setView.mock.lastCall[0].zoom).toBeCloseTo(4 / (2 * was), 2);
 });
 
+test('a zoom goes with the cells measured at it: a new zoom alone sends nothing, and never with the old cells', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const setView = vi.spyOn(Host.prototype, 'setView');
+  const workspace = useWorkspaceStore();
+  Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
+  await goLive();
+  expect(setView).toHaveBeenLastCalledWith({ col: 3, row: 1, cols: 10, rows: 5, zoom: 1 });
+  workspace.setAnsiZoom(0.5);   // a frame before AnsiEditor has the cells at 50%
+  await vi.advanceTimersByTimeAsync(300);
+  Object.assign(workspace, { ansiViewOrigin: { col: 0, row: 0 }, ansiViewSize: { cols: 20, rows: 10 }, ansiViewZoom: 0.5 });
+  await vi.advanceTimersByTimeAsync(300);
+  expect(setView.mock.calls.map(([v]) => v)).toEqual([{ col: 3, row: 1, cols: 10, rows: 5, zoom: 1 }, { col: 0, row: 0, cols: 20, rows: 10, zoom: 0.5 }]);
+
+  setView.mockClear();
+  Object.assign(workspace, { editorTab: 'input', viewTab: 'input', inputView: { col: 2, row: 1, cols: 6, rows: 3, zoom: 4 } });
+  await vi.advanceTimersByTimeAsync(300);
+  workspace.setEditZoom(8);   // a frame before InputEditor has the cells at 8
+  await vi.advanceTimersByTimeAsync(300);
+  workspace.inputView = { col: 1, row: 0, cols: 3, rows: 1, zoom: 8 };
+  await vi.advanceTimersByTimeAsync(300);
+  const advance = measureAdvance(DISPLAY_FONT);
+  expect(setView.mock.calls.map(([v]) => v)).toEqual([{ col: 2, row: 1, cols: 6, rows: 3, zoom: 4 / advance }, { col: 1, row: 0, cols: 3, rows: 1, zoom: 8 / advance }]);
+});
+
 test('going live on SOCIAL sends the last art tab\'s view at once', async () => {
   const setView = vi.spyOn(Host.prototype, 'setView');
   const workspace = useWorkspaceStore();
-  Object.assign(workspace, { editorTab: 'social', ansiZoom: 0.5, ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
+  Object.assign(workspace, { editorTab: 'social', ansiViewZoom: 0.5, ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
   await goLive();
   expect(setView).toHaveBeenLastCalledWith({ col: 3, row: 1, cols: 10, rows: 5, zoom: 0.5 });
 });
