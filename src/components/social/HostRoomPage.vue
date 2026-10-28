@@ -89,7 +89,7 @@ const save = () => {
         <span class="link-text">{{ room.link }}</span>
         <button @click="copyLink">{{ done === 'Copied' ? 'Copied' : 'Copy link' }}</button>
       </div>
-      <p v-if="!room.room.public" class="help">Send the link and the password to anyone you want in.</p>
+      <p v-if="!room.room.public" class="help">{{ room.hasPassword ? 'Send the link and the password to anyone you want in.' : 'Send the link to anyone you want in.' }}</p>
       <div class="preview">
         <RoomArt v-if="art" :art="art" />
       </div>

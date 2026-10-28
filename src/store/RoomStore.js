@@ -41,6 +41,7 @@ export const useRoomStore = defineStore('room', {
     // 'connecting' | 'live' | 'failed'
     status: null,
     passwordWrong: false,
+    hasPassword: false,  // a host's: the room was made with a password (it can't change)
     watchers: [],        // a host's: [{ peer, sub, name, guest, following, connected }]
     art: shallowRef(null),   // a watcher's: { cells, cols, lines, font }
     hostView: null,      // a watcher's: { col, row, cols, rows }
@@ -77,12 +78,12 @@ export const useRoomStore = defineStore('room', {
     // A new room, live with your art: false (the server's words as the notice) if it wasn't made.
     async startRoom({ name, welcome, isPublic, password, allowGuests, max }) {
       const social = useSocialStore();
-      const body = { name, public: isPublic, allowGuests, max, signal: social.signal, ...(isPublic ? {} : { password }) };
+      const body = { name, public: isPublic, allowGuests, max, signal: social.signal, ...(!isPublic && password ? { password } : {}) };   // a private room's password is optional
       const { ok, data } = await social.request('/api/rooms', { method: 'POST', body });
       if (!ok) return false;
       this.close();
       Object.assign(this, {
-        startDraft: newStartDraft(), settingsDraft: newSettingsDraft(),
+        startDraft: newStartDraft(), settingsDraft: newSettingsDraft(), hasPassword: !isPublic && !!password,
         role: 'host', id: data.id, link: data.link, status: 'connecting',
         room: { name, welcome: welcome ?? '', public: isPublic, allowGuests, max, count: 0 },
       });
@@ -214,7 +215,7 @@ export const useRoomStore = defineStore('room', {
       this._settings?.reset();
       for (const stop of this._stops) stop();
       Object.assign(this, {
-        role: null, id: null, link: null, room: null, status: null, passwordWrong: false, watchers: [], art: null,
+        role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
         hostView: null, following: true, chat: [], chatMore: false, joinedAt: null, chatRefused: null,
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,

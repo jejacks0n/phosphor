@@ -110,7 +110,8 @@ watchers will see (your art in ANSI as it is now), and asks for:
 - **Welcome message**: a few lines (up to 200 characters) on what you're working on and what you'd
   like from people. Watchers see it pinned at the top of the chat. You can edit it while you're live.
 - **Who can join**: *Anyone, in the lobby* (a public room) or *Only with the link* (a private
-  room, which also asks for a **password**).
+  room, kept out of the lobby). A private room can also have a **password**, if you want people to
+  need both; without one, the link alone lets them in.
 - **Allow guests**: whether people who haven't signed in can watch. Guests can only watch, so you
   can't remove one; turn this off if you'd rather have members only.
 - **Most watchers**: from 1 to 24 (12 to begin with). Each watcher uses some of your upload speed,
@@ -152,8 +153,8 @@ settings made meanwhile goes once you're back.
 ## Watching
 
 **Join** on a room's card, or a link to it, opens the room right in the SOCIAL tab, in place of the
-lobby. You're in one room at a time; **Leave** brings the lobby back. A private room asks for its
-password first.
+lobby. You're in one room at a time; **Leave** brings the lobby back. A private room with a
+password asks for it first.
 
 The room's name, its host, **Following** and **Leave** are at the top of the chat panel, with the
 welcome message pinned under them; the SOCIAL tab shows just the art. The art is view only, in the
@@ -217,7 +218,7 @@ room is drawing: on its card in the lobby or at the top of the room. Nobody is t
   for one). The rest of Phosphor works as usual.
 - **Couldn't reach this host**: rooms connect your browser straight to the host's (there's no relay
   server), and some networks (offices and schools, often) block that. Try another network.
-- **This room needs a password** / **Wrong password**: a private room asks before you join.
+- **This room needs a password** / **Wrong password**: a private room with a password asks before you join.
 - **Room is full**: the host's watcher limit is reached.
 - **The host ended the room** / **The host removed you**: back to the lobby.
 - **You're watching this room in another tab**: you joined the same room again, from another tab or

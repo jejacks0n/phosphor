@@ -44,7 +44,8 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
           <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="true"> Anyone, in the lobby</label>
           <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="false"> Only with the link</label>
         </fieldset>
-        <label v-if="!draft.isPublic">Password <input v-model="draft.password" type="text" autocomplete="off" required></label>
+        <label v-if="!draft.isPublic">Password (optional) <input v-model="draft.password" type="text" autocomplete="off" :aria-describedby="`${id}-password`"></label>
+        <p v-if="!draft.isPublic" :id="`${id}-password`" class="help">The link alone lets people in. Add a password if you want them to need both.</p>
         <label class="choice"><input v-model="draft.allowGuests" type="checkbox" :aria-describedby="`${id}-guests`"> Allow guests</label>
         <p :id="`${id}-guests`" class="help">Guests can only watch, so you can't remove one; turn this off if you'd rather have members only.</p>
         <label>Most watchers <input v-model.number="draft.max" type="number" min="1" max="24" required :aria-describedby="`${id}-max`"></label>

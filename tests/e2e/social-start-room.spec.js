@@ -94,17 +94,22 @@ test('a room name of only spaces isn\'t sent', async ({ page }) => {
   expect(server.sent('POST', '/api/rooms')).toEqual([]);
 });
 
-test('a private room needs a password before Go live, and its page says to send both', async ({ page }) => {
+test('a private room\'s password is optional: without one its link alone reaches it, and its page says to send the link', async ({ page }) => {
   const { room, server } = await startPage(page);
   await page.getByRole('textbox', { name: 'Room name' }).fill('just us');
   await page.getByRole('radio', { name: 'Only with the link' }).check();
-  const password = page.getByRole('textbox', { name: 'Password' });
-  await expect(password).toHaveAttribute('required', '');
+  await expect(page.getByRole('textbox', { name: 'Password (optional)' })).not.toHaveAttribute('required');
   await page.getByRole('button', { name: 'Go live' }).click();
-  await expect(password).toBeFocused();   // the browser's own "fill this in"
-  expect(server.sent('POST', '/api/rooms')).toEqual([]);
+  await expect(page.getByText('Send the link to anyone you want in.')).toBeVisible();
+  expect(server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'just us', public: false, allowGuests: true, max: 12, signal: null }]);
+  expect([room.setup.public, room.setup.password]).toEqual([false, null]);
+});
 
-  await password.fill('hunter22');
+test('a private room with a password sends it, and its page says to send both', async ({ page }) => {
+  const { room, server } = await startPage(page);
+  await page.getByRole('textbox', { name: 'Room name' }).fill('just us');
+  await page.getByRole('radio', { name: 'Only with the link' }).check();
+  await page.getByRole('textbox', { name: 'Password (optional)' }).fill('hunter22');
   await page.getByRole('button', { name: 'Go live' }).click();
   await expect(page.getByText('Send the link and the password to anyone you want in.')).toBeVisible();
   expect(server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'just us', public: false, allowGuests: true, max: 12, signal: null, password: 'hunter22' }]);
