@@ -107,12 +107,8 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.selection = rect;
       this.setActiveTool('select');
     },
-    // Choosing any tool but Select in the ANSI view (where the selection lives) clears the selection.
+    // The selection stays as you change tools: the painting tools change only what's inside it.
     setActiveTool(tool) {
-      if (tool !== 'select' && this.editorTab === 'output') {
-        this.selection = null;
-        this.selectionOffset = null;
-      }
       this.heldTool = null; // a tool chosen while another is held stays chosen
       if (this.editorTab === 'input') this.inputActiveTool = tool;
       else this.outputActiveTool = tool;

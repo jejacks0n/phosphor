@@ -294,7 +294,7 @@ const selectionHasEdits = computed(() => {
       </div>
     </div>
 
-    <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select'">
+    <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select' || (workspace.selection && workspace.editorTab === 'output')">
       <PaletteStrip v-if="activeTool.palette"/>
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">
         <span class="option-label">Layers</span>
@@ -358,6 +358,10 @@ const selectionHasEdits = computed(() => {
           </DropdownMenu>
           <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
         </template>
+      </div>
+      <div v-if="workspace.selection && workspace.editorTab === 'output' && activeTool.id !== 'select'" class="tool-setting-group">
+        <div class="divider"/>
+        <button class="text" title="Deselect: the tools paint everywhere again (Esc)" aria-keyshortcuts="Escape" @click="workspace.selection = null">Deselect</button>
       </div>
     </div>
   </article>

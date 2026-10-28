@@ -188,7 +188,9 @@ In Edit Mode, dragging across cells switches to the Select tool and selects them
 selects text in a text editor; a plain click still just places the cursor. With a pen (the Apple
 Pencil), a tap can wobble a few pixels, even across a cell's edge, and still only place the cursor.
 
-Choosing another tool drops the selection.
+The selection stays as you change tools, and the painting tools (Pencil, Brush, Eraser, Paint
+Bucket, Shapes, Flip FG/BG) change only what's inside it; typing in Edit Mode isn't limited. Every
+tool's options row ends with **Deselect** while there's a selection, and Escape drops it too.
 
 ## Flip FG/BG
 
