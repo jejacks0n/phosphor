@@ -332,6 +332,7 @@ export const useRoomStore = defineStore('room', {
     // The host's Block: the account can't join any room of yours, and this one is put out.
     async block(watcher) {
       if (this.role !== 'host' || !await useSocialStore().block(watcher.name)) return false;
+      sessionRemoved(this.session, watcher.sub, Date.now());   // counted even if they've left meanwhile
       this.remove(watcher.peer);
       return true;
     },

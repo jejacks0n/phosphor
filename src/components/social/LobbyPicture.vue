@@ -62,9 +62,13 @@ const followedTop = (el, lineHeight) => {
   const { row, rows } = hostView.value, most = el.scrollHeight - el.clientHeight;
   return Math.max(0, Math.min((row + rows / 2) * lineHeight - el.clientHeight / 2, most)) / lineHeight;
 };
+// The size `settle` last put the frame at. A scroll that comes with another size is the browser holding
+// scrollTop to a smaller art, not the host's; `settle` puts the line back.
+let settled = null;
 const scrolled = (event) => {
   const el = event.target, lineHeight = lineHeightOf(el);
   if (!lineHeight) return;
+  if (settled && (el.scrollHeight !== settled.scrollHeight || el.clientHeight !== settled.clientHeight)) return;
   if (!pinned.value && Math.abs(el.scrollTop / lineHeight - followedTop(el, lineHeight)) < 0.5) return;
   room.pinLobby(Math.round(el.scrollTop / lineHeight));
 };
@@ -79,6 +83,8 @@ const settle = async () => {
   if (!height) return;   // not drawn yet
   sized.value = { width, lineHeight: height / art.value.lines };
   await nextTick();   // the frame's new size
+  if (!art.value || !hostView.value) return;
+  settled = { scrollHeight: el.scrollHeight, clientHeight: el.clientHeight };
   if (pinned.value) el.scrollTop = room.lobbyPin * lineHeightOf(el);
   else el.scrollTop = followedTop(el, lineHeightOf(el)) * lineHeightOf(el);
 };
@@ -92,6 +98,7 @@ const follow = () => {
 const artRef = useTemplateRef('roomArt');
 watch(artRef, (instance) => {
   sizerObserver?.disconnect();
+  settled = null;
   const el = instance?.$el;
   if (!el?.classList?.contains('room-art')) return;   // no art, or no WebGL2
   bar.value = el.offsetWidth - el.clientWidth;

@@ -48,7 +48,6 @@ test('scrolls made by code while following never pin: not the first centering, n
 test('a scroll of the host\'s pins the line it landed on, and then every scroll moves the pin', async () => {
   const { room, workspace, el } = await mount(200);
   const lineHeight = el.firstElementChild.getBoundingClientRect().height / 300;
-  await new Promise((done) => setTimeout(done, 400));   // no look-around just before: it's the landing that says
   el.scrollTop += 40;   // as a key or the wheel does
   await expect.poll(() => room.lobbyPin).toBe(Math.round(el.scrollTop / lineHeight));
   const pinned = room.lobbyPin;
@@ -60,4 +59,16 @@ test('a scroll of the host\'s pins the line it landed on, and then every scroll 
   room.followLobby();
   await expect.poll(() => el.scrollTop).not.toBe((pinned + 3) * lineHeight);
   expect(room.lobbyPin).toBe(null);
+});
+
+test('a pin is not rewritten when the art shrinks and the browser clamps the frame\'s scroll', async () => {
+  const { room, el } = await mount(200);
+  const sizer = el.firstElementChild, lineHeight = sizer.getBoundingClientRect().height / 300;
+  el.scrollTop = 200 * lineHeight;
+  await expect.poll(() => room.lobbyPin).toBe(200);
+  sizer.style.height = `${150 * lineHeight}px`;   // half the line height
+  expect(el.scrollTop).toBeLessThan(200 * lineHeight);   // the layout just clamped it
+  el.dispatchEvent(new Event('scroll'));   // the clamp's scroll event, before the frame has settled
+  await frames();
+  expect(room.lobbyPin).toBe(200);
 });

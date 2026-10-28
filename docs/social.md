@@ -15,9 +15,10 @@ for desktop browsers: on phones and other narrow screens the tab isn't shown.
 ## The lobby
 
 The SOCIAL tab opens on the lobby: a gallery of the **public rooms** that are live right now. Each
-room shows a small picture of what its host is looking at (the host's browser makes it soon after
-going live, then again every few minutes when the art or the view has changed), its name, the host's username, how
-long it's been live, the host's **signal**, and a **Join** button with how many are in the room
+room shows a small picture of the art, always its full width, around the part its host is looking at
+(or the part the host pinned; see **Lobby picture** under Hosting). The host's browser makes it soon after
+going live, then again every few minutes when the art or that part has changed. A card also shows
+its name, the host's username, how long it's been live, the host's **signal**, and a **Join** button with how many are in the room
 and how many it holds (*Join 4/12*). Private rooms are never listed.
 
 When you can't join a room, its Join button is grayed out and says why beside it:
@@ -149,8 +150,8 @@ the room. A room that's only with the link has no lobby card, so no picture.
 **Room settings** are the welcome message, **Allow guests** and **Most watchers**, with **Save**. Under
 them, as plain facts, **Set when the room started**: **Listed in the lobby** or **Only with the link**,
 and whether a password is set. Those can't change while the room is live. What you've typed in the form
-stays when you go to another tab, and when the welcome is changed from the chat panel meanwhile, a
-welcome you're half way through typing here stays as it is. The SOCIAL tab carries a dot while you're in
+stays when you go to another tab, and when a setting is changed from the chat panel meanwhile, a field
+you're half way through typing in here stays as it is (the others show the new value). The SOCIAL tab carries a dot while you're in
 a room, hosting or watching.
 
 Under all of it, **Who came by** lists everyone who visited this session, a row each, newest last, once

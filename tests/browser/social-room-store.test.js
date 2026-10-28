@@ -1067,6 +1067,18 @@ test('block POSTs the name, then removes the watcher; a failed POST removes no o
   expect(room.watchers).toEqual([]);
 });
 
+test('block counts someone who left while the confirm was open', async () => {
+  const socket = await goLive();
+  await watcherOn(socket);
+  await expect.poll(() => room.watchers.length).toBe(1);
+  const [watcher] = room.watchers;
+  server.route('POST /api/blocks', () => [200, {}]);
+  room.watchers = [];   // gone before the answer
+  expect(await room.block({ ...watcher })).toBe(true);
+  expect(room.session.people.find((p) => p.sub === watcher.sub).removed).toEqual(expect.any(Number));
+  expect(removedCount(room.session)).toBe(1);
+});
+
 test('A host\'s session: who came and went, messages, removed and the most at once, and a new room starts fresh', async () => {
   const socket = await goLive();
   expect(room.session).toEqual({ ...newSession(), liveSince: expect.any(Number) });

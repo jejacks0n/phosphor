@@ -14,6 +14,7 @@ afterEach(() => {
   app?.unmount();
   host?.remove();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 async function mount(state) {
@@ -55,7 +56,6 @@ test('Live for counts up from going live, as H:MM:SS', async () => {
   app.mount(host);
   await vi.advanceTimersByTimeAsync(1000);
   expect(host.querySelector('header').textContent).toContain('Live for 1:02:04');
-  vi.useRealTimers();
 });
 
 test('no Live for until the room is live', async () => {
@@ -90,6 +90,7 @@ test('a listed room says so', async () => {
   await mount();
   expect(host.textContent).toContain('Listed in the lobby');
   expect(host.textContent).not.toContain('Password set');
+  expect(host.textContent).not.toContain('No password');
 });
 
 test('End room asks first: Cancel keeps the room, End room ends it', async () => {

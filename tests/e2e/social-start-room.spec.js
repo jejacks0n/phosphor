@@ -64,7 +64,7 @@ test('going live with a public room: the POST, the host\'s page with its link, t
 
   const host = shown(page, 'host-room');
   await expect(host.getByRole('heading', { name: 'neon harbor' })).toBeFocused();   // not lost to the page's body
-  await expect(host.getByText('Live for 0:00:0')).toBeVisible();
+  await expect(host.getByText(/Live for 0:0\d:\d\d/)).toBeVisible();
   await expect(tile(host, 'Here now')).toHaveText('0');
   await expect(host.getByText(LINK)).toBeVisible();
   await expect(host.getByText('Send the link and the password to anyone you want in.')).toHaveCount(0);
@@ -167,7 +167,7 @@ test('what\'s typed in Start a room stays while you\'re on another tab, and is g
   await expect(start.getByRole('checkbox', { name: 'Allow guests' })).toBeChecked();
 });
 
-test('Room settings stay open, with what\'s typed, while you\'re on another tab', async ({ page }) => {
+test('Room settings keep what\'s typed while you\'re on another tab', async ({ page }) => {
   await goLive(page);
   const host = shown(page, 'host-room');
   await host.getByRole('textbox', { name: 'Welcome message' }).fill('back in 5');

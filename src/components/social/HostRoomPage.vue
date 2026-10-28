@@ -110,7 +110,7 @@ const save = () => {
         <div class="facts">
           <p class="help">Set when the room started</p>
           <p>{{ room.room.public ? 'Listed in the lobby' : 'Only with the link' }}</p>
-          <p>{{ room.hasPassword ? 'Password set' : 'No password' }}</p>
+          <p v-if="room.hasPassword">Password set</p>
         </div>
       </section>
     </div>
