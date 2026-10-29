@@ -64,7 +64,6 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
 
       <div class="buttons">
         <button class="primary" type="submit" :disabled="social.busy || !hasArt">Go live</button>
-        <button type="button" @click="social.page = 'lobby'">Cancel</button>
       </div>
     </form>
   </div>
@@ -158,10 +157,10 @@ p.help {
 p.count {
   text-align: right;
 }
-div.buttons {
+div.buttons {   /* the rule across the form; Go live as wide as the first column (all of it, when stacked) */
   grid-column: 1 / -1;
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: subgrid;
   padding-top: 16px;
   border-top: 1px solid var(--border-subtle);
 }

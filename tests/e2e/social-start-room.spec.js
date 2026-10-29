@@ -40,7 +40,8 @@ test('Start a room with no art open says to open some, and Go live is disabled',
   await page.getByRole('textbox', { name: 'Room name' }).fill('nothing yet');
   await expect(page.getByRole('button', { name: 'Go live' })).toBeDisabled();
 
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('button', { name: 'Cancel' })).toHaveCount(0);   // the way back is Back to the lobby
+  await page.getByRole('button', { name: '‹ Back to the lobby' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
   expect(server.sent('POST', '/api/rooms')).toEqual([]);
 });
@@ -62,11 +63,16 @@ test('Setup room: the room beside its lobby card when there\'s room, stacked whe
   let [field, box] = [await name.boundingBox(), await card.boundingBox()];
   expect(box.x).toBeGreaterThan(field.x + field.width);   // beside
   expect(Math.abs(box.y - field.y)).toBeLessThan(40);
+  const wide = await setup.getByRole('button', { name: 'Go live' }).boundingBox();   // as wide as the first column
+  expect(Math.abs(wide.x - field.x)).toBeLessThan(1);
+  expect(Math.abs(wide.width - field.width)).toBeLessThan(1);
 
   await page.setViewportSize({ width: 1000, height: 1000 });
   await expect.poll(async () => (await card.boundingBox()).y).toBeGreaterThan((await name.boundingBox()).y + 100);   // below
   [field, box] = [await name.boundingBox(), await card.boundingBox()];
   expect(Math.abs(box.x - field.x)).toBeLessThan(1);
+  const live = await setup.getByRole('button', { name: 'Go live' }).boundingBox();   // one column: as wide as it
+  expect(Math.abs(live.width - field.width)).toBeLessThan(1);
 
   await page.setViewportSize({ width: 1400, height: 900 });
   await setup.getByRole('radio', { name: 'Only with the link' }).check();

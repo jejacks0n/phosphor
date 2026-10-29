@@ -132,7 +132,7 @@ picture**, the part of the art its card will show, as the host's page does while
 **Lobby picture** under Hosting); a position you pin there is kept when you go live. With room to
 spare it sits beside the rest of the form; in a narrower window, below it.
 
-**Go live** shares the art you have open; **Cancel** goes back to the lobby. You keep drawing as
+**Go live** shares the art you have open; **Back to the lobby** leaves without starting it. You keep drawing as
 usual, and watchers see each change as you make it, with a box in your name color for where your
 view is: the view of whichever of PIXEL or ANSI you're on, at your zoom. SAUCE and SOCIAL keep the
 last one. Open other art while you're live and watchers see that instead.
