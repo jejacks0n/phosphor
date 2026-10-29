@@ -2,7 +2,7 @@
 import { ref, reactive, computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
-import { nameColor } from '@/social/names';
+import NameSwatch from './NameSwatch.vue';
 import { clock } from '@/social/chat';
 import ChatFoot from './ChatFoot.vue';
 import RoomMenu from './RoomMenu.vue';
@@ -137,7 +137,7 @@ function askIfAtTop() {
         <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.map(did).join()] : [m.deleted, hidden(m), room.role === 'host', reportable(m)]">
           <p v-if="m.joined" class="joined">You joined</p>
           <p v-else-if="m.people" class="presence">
-            <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<b :style="{ color: nameColor(p.name) }">{{ p.name }}</b> {{ did(p) }}</template></span>
+            <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<b><NameSwatch :name="p.name" />{{ p.name }}</b> {{ did(p) }}</template></span>
           </p>
           <div v-else class="message" :class="{ note: m.deleted || hidden(m) }">
             <p v-if="m.deleted">Message deleted by the host</p>
@@ -147,7 +147,7 @@ function askIfAtTop() {
             </p>
             <template v-else>
               <p class="who">
-                <span class="name" :style="{ color: nameColor(m.name) }">{{ m.name }}{{ m.mine ? ' (you)' : '' }}</span>
+                <span class="name"><NameSwatch :name="m.name" />{{ m.name }}{{ m.mine ? ' (you)' : '' }}</span>
                 <span v-if="m.host" class="tag">host</span>
                 <time>{{ time(m.ts) }}</time>
               </p>
@@ -304,6 +304,7 @@ p.presence span {
 p.presence b {
   font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
+  color: var(--text);
 }
 p.joined::before, p.joined::after, p.presence::before, p.presence::after {
   content: '';
@@ -335,6 +336,7 @@ span.name {
   white-space: nowrap;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
+  color: var(--text);
 }
 span.tag {
   padding: 0 6px;

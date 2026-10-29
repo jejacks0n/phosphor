@@ -7,6 +7,7 @@ import { getActivePinia } from 'pinia';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
+import { nameColor } from '@/social/names';
 import ChatPanel from '@/components/social/ChatPanel.vue';
 import ReportDialog from '@/components/social/ReportDialog.vue';
 
@@ -33,6 +34,10 @@ async function mount(role, count) {
   await nextTick();
   return room;
 }
+
+// A name is in the text color, with its own color as the square before it (a color can be hard to read on a theme).
+const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+const swatched = (el, name) => !el.style.color && el.firstElementChild?.matches('.swatch') && el.firstElementChild.style.backgroundColor === rgb(nameColor(name));
 
 // Counts the times a time is formatted, which is once for each row drawn.
 function countFormats() {
@@ -71,14 +76,15 @@ test('the host\'s Delete buttons each name the sender', async () => {
 const read = () => [...host.querySelectorAll('.list .presence, .list .joined, .list .message')]
   .map((el) => (el.matches('.message') ? el.querySelector('.text').textContent : el.textContent.replace(/\s+/g, ' ').trim()));
 
-test('who came and went with nothing between is one line, each name in its color; your own isn\'t shown, and "You joined" ends a line', async () => {
+test('who came and went with nothing between is one line, each name with its color as a square; your own isn\'t shown, and "You joined" ends a line', async () => {
   const room = await mount('watch', 0);
   const came = (n, presence, fields) => row(n, { text: '', presence, ...fields });
   room.chat = [came(0, 'joined'), came(1, 'left'), came(2, 'joined', { mine: true }), came(3, 'joined'), row(4), came(5, 'left'), came(6, 'joined')];
   room.joinedAt = row(5).id;
   await nextTick();
   expect(read()).toEqual(['name-0 joined, name-1 left, name-3 joined', 'm4', 'name-5 left', 'You joined', 'name-6 joined']);
-  expect(host.querySelector('.presence b').style.color).not.toBe('');
+  expect(swatched(host.querySelector('.presence b'), 'name-0')).toBe(true);
+  expect(swatched(host.querySelector('.message .name'), 'name-4')).toBe(true);
 
   // Folded, comings and goings aren't counted as new messages.
   host.querySelector('button.fold').click();
@@ -130,8 +136,7 @@ test('only connected watchers count in N here; one still connecting is listed, s
   expect(rows.map((li) => li.querySelector('.what').textContent)).toEqual(['following', 'connecting…', 'looking around']);
   expect(rows.map((li) => !!li.querySelector('.tag'))).toEqual([false, false, true]);
   expect(rows.map((li) => !!li.querySelector('button'))).toEqual([true, true, false]);   // a guest has no ⋯
-  expect(rows[0].querySelector('.name').style.color).not.toBe('');
-  expect(host.querySelector('.swatch')).toBe(null);   // no dots or avatars
+  expect(swatched(rows[0].querySelector('.name'), 'tin-lantern-owl')).toBe(true);
 
   room.close();   // the fold is remembered while the room lasts, not after
   expect(room.peopleOpen).toBe(false);

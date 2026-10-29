@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { nameColor } from '@/social/names';
+import NameSwatch from './NameSwatch.vue';
 import { timeIn } from '@/social/session';
 import { clock } from '@/social/chat';
 
@@ -30,7 +30,7 @@ const messages = (n) => `${n} ${n === 1 ? 'message' : 'messages'}`;
     <h3>Who came by</h3>
     <ul>
       <li v-for="person in shown" :key="person.sub">
-        <span class="name" :style="{ color: nameColor(person.name) }">{{ person.name }}</span>
+        <span class="name"><NameSwatch :name="person.name" />{{ person.name }}</span>
         <span class="guest">{{ person.guest ? 'guest' : '' }}</span>
         <span class="time">{{ inRoom(person) }}</span>
         <span>{{ where(person) }}</span>
@@ -75,6 +75,7 @@ span.name {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+  color: var(--text);
 }
 span.said {
   text-align: right;

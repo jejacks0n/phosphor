@@ -170,14 +170,14 @@ you're half way through typing in here stays as it is (the others show the new v
 a room, hosting or watching.
 
 Under all of it, **Who came by** lists everyone who visited this session, a row each, newest last, once
-someone has. A row has their name in their color (**guest** for a guest), their time in the room (**under
+someone has. A row has their name with their color as a small square before it (**guest** for a guest), their time in the room (**under
 a minute**, **54m**, **1h 38m**; it counts up while they're here, and a person who comes back has the
 times added), then **here**, **left 8:55** or **removed 9:10** (removed wins if they were removed and then
 left), and how many messages they said. Ten rows show; **and N more** opens the rest in place.
 
 You run the room from the chat panel, beside every tab. Under its header, **N here** (those
 connected, folded to begin with) opens the list of who is in the room, and stays as you left it while
-the room lasts. Each watcher shows their name in their color, **guest** for a guest, and whether
+the room lasts. Each watcher shows their name with their color as a small square before it, **guest** for a guest, and whether
 they're following you or looking around on their own (or still connecting). A member's row has a
 **⋯** button (guests have none) with:
 
@@ -237,7 +237,7 @@ Everyone in the room reads the chat. Members with a confirmed email write in it;
 **Sign in to chat** and an unconfirmed member sees **Confirm your email to chat**. A message is up
 to 300 characters, and you can send about one a second (three at once, then one a second). Earlier
 messages load as you scroll up (**↑ Scroll up for earlier messages**), and **You joined** marks
-where you came in. Who joins and leaves shows between the messages, each name in its color, and
+where you came in. Who joins and leaves shows between the messages, each name with its color as a small square, and
 comings and goings with nothing said between them share one line (**tin-owl joined, wren left,
 pixel_fox joined**). Someone who comes and goes more than once in a line is named once, by how it
 ended: **joined**, **left**, **came and went** or **came back**. Your own aren't shown, and they

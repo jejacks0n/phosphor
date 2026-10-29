@@ -1,7 +1,7 @@
 <script setup>
 import { ref, useTemplateRef } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
-import { nameColor } from '@/social/names';
+import NameSwatch from './NameSwatch.vue';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ReportDialog from './ReportDialog.vue';
@@ -42,7 +42,7 @@ const confirmBlock = async () => {
     </button>
     <ul v-if="room.peopleOpen" aria-label="Who is here">
       <li v-for="watcher in room.watchers" :key="watcher.peer">
-        <span class="name" :style="{ color: nameColor(watcher.name) }">{{ watcher.name }}</span>
+        <span class="name"><NameSwatch :name="watcher.name" />{{ watcher.name }}</span>
         <span v-if="watcher.guest" class="tag">guest</span>
         <span class="what">{{ !watcher.connected ? 'connecting…' : watcher.following ? 'following' : 'looking around' }}</span>
         <DropdownMenu v-if="!watcher.guest" :label="`More for ${watcher.name}`">
@@ -94,6 +94,7 @@ span.name {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
 }
 span.tag {
   padding: 0 6px;
