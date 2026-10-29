@@ -55,7 +55,7 @@ export const useRoomStore = defineStore('room', {
     chatRefused: null,   // 'too-fast' until the next message goes
     reported: [],        // the subs you reported in this room (Report is gone for them until the room ends)
     peopleOpen: false,   // a host's: the chat panel's "N here" list is open
-    lobbyPin: null,      // a host's: the top-left cell { col, row } the lobby picture uses; null while it follows the view
+    lobbyPin: null,      // a host's (picked in Setup room, or while live): the top-left cell { col, row } the lobby picture uses; null while it follows the view
     session: newSession(),   // a host's: what this browser counted since the room started (social/session.js)
     startDraft: newStartDraft(),         // Start a room's form; empty again once a room is made
     settingsDraft: newSettingsDraft(),   // a host's Room settings form
@@ -102,9 +102,10 @@ export const useRoomStore = defineStore('room', {
       const body = { name, public: isPublic, allowGuests, max, signal: isPublic ? signal : null, ...(!isPublic && password ? { password } : {}) };   // a private room's password is optional
       const { ok, data } = await social.request('/api/rooms', { method: 'POST', body });
       if (!ok) return false;
+      const lobbyPin = isPublic ? this.lobbyPin : null;   // picked in Setup room, kept through close()
       this.close();
       Object.assign(this, {
-        startDraft: newStartDraft(), settingsDraft: newSettingsDraft(), hasPassword: !isPublic && !!password,
+        startDraft: newStartDraft(), settingsDraft: newSettingsDraft(), hasPassword: !isPublic && !!password, lobbyPin,
         role: 'host', id: data.id, link: data.link, status: 'connecting',
         room: { name, welcome: welcome ?? '', public: isPublic, allowGuests, max, count: 0 },
       });

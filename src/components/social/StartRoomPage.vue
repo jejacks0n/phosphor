@@ -3,19 +3,15 @@ import { computed, watch, useId } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore, MAX_WATCHERS } from '@/store/RoomStore';
 import { useProjectStore } from '@/store/ProjectStore';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { charRowsOf } from '@/lib/Cells';
-import { fontOnWire } from '@/social/wire';
 import { signalWords } from '@/social/lobby';
-import RoomArt from './RoomArt.vue';
+import LobbyPicture from './LobbyPicture.vue';
 
-// A new room: your art as watchers will see it, and the room's settings. Going live makes it (its
-// errors are the notice at the top of the tab), and the tab shows the room you host from then on.
-const social = useSocialStore(), room = useRoomStore(), project = useProjectStore(), workspace = useWorkspaceStore();
+// Setup room, in the lobby in place of the public rooms: the room's settings and, for a room listed in the
+// lobby, its lobby picture. Going live makes it (its errors are the notice at the top of the tab), and the
+// tab shows the room you host from then on.
+const social = useSocialStore(), room = useRoomStore(), project = useProjectStore();
 
-const art = computed(() => (project.image && project.cells.length
-  ? { cells: project.cells, cols: project.cols, lines: charRowsOf(project.rows), font: fontOnWire(workspace.displayFontSpec) }
-  : null));
+const hasArt = computed(() => !!project.image && project.cells.length > 0);
 
 const draft = room.startDraft;   // kept in the store while you're on another tab
 watch(() => draft.max, (max) => { if (max > MAX_WATCHERS) draft.max = MAX_WATCHERS; });
@@ -26,17 +22,9 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
 
 <template>
   <div class="start-room">
-    <section class="main">
-      <button class="link back" @click="social.page = 'lobby'">‹ Back to the lobby</button>
-      <h2>Start a room</h2>
-      <div class="label">What watchers will see</div>
-      <div class="preview">
-        <RoomArt v-if="art" :art="art" />
-        <p v-else class="no-art">Open some art in PIXEL or ANSI to share it</p>
-      </div>
-    </section>
-
-    <aside class="side">
+    <button class="link back" @click="social.page = 'lobby'">‹ Back to the lobby</button>
+    <h2>Setup room</h2>
+    <div class="columns">
       <form @submit.prevent="goLive">
         <label>Room name <input v-model="draft.name" maxlength="60" pattern=".*\S.*" title="Use at least one character that isn't a space" required></label>
         <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="`${id}-count`"></textarea></label>
@@ -59,70 +47,48 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
         <label>Max watchers <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required :aria-describedby="`${id}-max`"></label>
         <p :id="`${id}-max`" class="help">Each watcher uses some of your upload speed. 12 suits most home connections.</p>
         <div class="buttons">
-          <button class="primary" type="submit" :disabled="social.busy || !art">Go live</button>
+          <button class="primary" type="submit" :disabled="social.busy || !hasArt">Go live</button>
           <button type="button" @click="social.page = 'lobby'">Cancel</button>
         </div>
       </form>
-    </aside>
+      <p v-if="!hasArt" class="no-art">Open some art in PIXEL or ANSI to share it</p>
+      <LobbyPicture v-else-if="draft.isPublic" />
+    </div>
   </div>
 </template>
 
 <style scoped>
 div.start-room {
   display: flex;
-  height: 100%;
-  min-height: 0;
-  font-size: 12px;
-  color: var(--text-dim);
-}
-
-section.main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
   flex-direction: column;
-  padding: 16px;
+  align-items: flex-start;
 }
 button.back {
-  align-self: flex-start;
   margin-left: -8px;
 }
 h2 {
-  margin: 8px 0 12px;
+  margin: 8px 0 16px;
   font-size: 16px;
   font-weight: 600;
   color: var(--text);
 }
-div.label {
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-div.preview {
-  flex: 1;
-  min-height: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
+div.columns {   /* the form, and the picture beside it (below it, when there's no room) */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
 }
 p.no-art {
   margin: 0;
-  padding: 32px 16px;
   font-size: 14px;
   color: var(--text-muted);
 }
 
-aside.side {
-  width: 280px;
-  flex-shrink: 0;
-  padding: 14px;
-  overflow: auto;
-  border-left: 1px solid var(--border);
-  background: var(--surface-0);
-}
 form {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 300px;
 }
 label {
   display: flex;

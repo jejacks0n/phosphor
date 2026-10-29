@@ -34,8 +34,9 @@ test('Start a room with no art open says to open some, and Go live is disabled',
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
   await page.getByRole('button', { name: 'Start a room' }).click();
-  await expect(shown(page, 'start-room').getByRole('heading', { name: 'Start a room' })).toBeVisible();
+  await expect(shown(page, 'start-room').getByRole('heading', { name: 'Setup room' })).toBeVisible();
   await expect(page.getByText('Open some art in PIXEL or ANSI to share it')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Lobby picture' })).toHaveCount(0);   // nothing to picture
   await page.getByRole('textbox', { name: 'Room name' }).fill('nothing yet');
   await expect(page.getByRole('button', { name: 'Go live' })).toBeDisabled();
 
@@ -46,8 +47,14 @@ test('Start a room with no art open says to open some, and Go live is disabled',
 
 test('going live with a public room: the POST, the host\'s page with its link, the tab\'s dot, Copy link', async ({ page }) => {
   const { room, server } = await startPage(page);
-  await expect(page.getByText('What watchers will see')).toBeVisible();
-  await expect(page.getByLabel('The room\'s art')).toBeVisible();
+  // The setup takes the Public rooms section; the lobby's column stays beside it.
+  const setup = shown(page, 'start-room');
+  await expect(setup.getByRole('heading', { name: 'Setup room' })).toBeFocused();
+  await expect(setup.getByRole('heading', { name: 'Public rooms' })).toHaveCount(0);
+  await expect(setup.getByRole('complementary').getByRole('heading', { name: /In the lobby/ })).toBeVisible();
+  const section = await setup.locator('section.main').boundingBox(), column = await setup.getByRole('complementary').boundingBox();
+  expect(section.x + section.width).toBeCloseTo(column.x, 0);
+  await expect(setup.getByRole('region', { name: 'Lobby picture' }).getByLabel('The room\'s art')).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Anyone, in the lobby' })).toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toBeChecked();
   await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('12');

@@ -1,8 +1,8 @@
 // The lobby picture on the host's page: a listed room's small frame of the art, up to 80 columns of
 // it. It follows the host's view (the ANSI or PIXEL view last shown); scrolling it only looks, until
 // "Use this exact position" pins the cells it shows. A link-only room has no lobby card, so no picture.
-import { test, expect, tab, store } from './support.js';
-import { fakeRoom, shown, goLive } from './social-support.js';
+import { test, expect, tab, store, openApp } from './support.js';
+import { fakeServer, fakeRoom, member, shown, goLive } from './social-support.js';
 
 const picture = (page) => page.getByRole('region', { name: 'Lobby picture' });
 const frame = (page) => picture(page).getByLabel('The room\'s art');
@@ -82,6 +82,29 @@ test('a pinned lobby picture is still at its line when you come back to the tab'
   await tab(page, 'SOCIAL').click();
   await expect(exact(page)).toBeChecked();
   await expect.poll(async () => Math.round(await topLine(page, 1200))).toBe(pinned.row);
+  expect(await pin(page)).toEqual(pinned);
+});
+
+test('the lobby picture is picked in Setup room too, for a listed room only, and going live keeps the pin', async ({ page }) => {
+  const server = await fakeServer(page, { me: member(), room: fakeRoom() });
+  await openApp(page, 'images/tall.png');
+  await tab(page, 'SOCIAL').click();
+  await page.getByRole('button', { name: 'Start a room' }).click();
+  const setup = shown(page, 'start-room');
+  await expect(picture(page)).toBeVisible();
+  await setup.getByRole('radio', { name: 'Only with the link' }).check();
+  await expect(picture(page)).toHaveCount(0);   // no lobby card, so no picture
+  await setup.getByRole('radio', { name: 'Anyone, in the lobby' }).check();
+
+  await frame(page).evaluate((el) => { el.scrollTop = el.scrollHeight / 3; });
+  await exact(page).check();
+  await expect.poll(() => pin(page)).not.toBe(null);
+  const pinned = await pin(page);
+  await setup.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
+  await setup.getByRole('button', { name: 'Go live' }).click();
+  await expect.poll(() => store(page, 'room', (r) => r.status)).toBe('live');
+  expect(server.sent('POST', '/api/rooms')).toHaveLength(1);
+  await expect(exact(page)).toBeChecked();
   expect(await pin(page)).toEqual(pinned);
 });
 

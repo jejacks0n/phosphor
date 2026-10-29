@@ -108,8 +108,8 @@ you out everywhere else. Signed out, it has a **Sign in** link back.
 
 ## Starting a room
 
-**Start a room** needs some art open in Phosphor: it's the art you share. The page shows what
-watchers will see (your art in ANSI as it is now), and asks for:
+**Start a room** needs some art open in Phosphor: it's the art you share. It opens **Setup room**
+in the lobby, in place of the public rooms (the column beside stays), and asks for:
 
 - **Room name**: up to 60 characters.
 - **Welcome message**: a few lines (up to 200 characters) on what you're working on and what you'd
@@ -124,6 +124,10 @@ watchers will see (your art in ANSI as it is now), and asks for:
   can't remove one; turn this off if you'd rather have members only.
 - **Max watchers**: from 1 to 30 (12 to begin with; a higher number goes back to 30). Each watcher uses some of your upload speed,
   and 12 suits most home connections.
+
+For a room in the lobby, Setup room also shows its **Lobby picture**, the part of the art its card
+will show, as the host's page does while you're live (see **Lobby picture** under Hosting); a position
+you pin there is kept when you go live.
 
 **Go live** shares the art you have open; **Cancel** goes back to the lobby. You keep drawing as
 usual, and watchers see each change as you make it, with a box in your name color for where your

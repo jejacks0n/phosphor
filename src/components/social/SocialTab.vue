@@ -10,7 +10,6 @@ import ResetPasswordPage from './ResetPasswordPage.vue';
 import OnboardingPage from './OnboardingPage.vue';
 import AccountPage from './AccountPage.vue';
 import TwoFactorPage from './TwoFactorPage.vue';
-import StartRoomPage from './StartRoomPage.vue';
 import HostRoomPage from './HostRoomPage.vue';
 import WatchRoomPage from './WatchRoomPage.vue';
 
@@ -19,7 +18,7 @@ const room = useRoomStore();
 const PAGES = {
   lobby: LobbyPage, 'sign-in': SignInPage, create: CreateAccountPage, forgot: ForgotPasswordPage,
   reset: ResetPasswordPage, onboarding: OnboardingPage, account: AccountPage,
-  'two-factor': TwoFactorPage, 'start-room': StartRoomPage, 'host-room': HostRoomPage, 'watch-room': WatchRoomPage,
+  'two-factor': TwoFactorPage, 'start-room': LobbyPage, 'host-room': HostRoomPage, 'watch-room': WatchRoomPage,
 };
 const SIGN_IN_PAGES = new Set(['sign-in', 'create', 'forgot', 'two-factor', 'onboarding']);
 onMounted(() => social.showLobby());

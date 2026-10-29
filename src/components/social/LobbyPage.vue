@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { nameColor } from '@/social/names';
 import RoomCard from './RoomCard.vue';
+import StartRoomPage from './StartRoomPage.vue';
 
 const social = useSocialStore();
 
@@ -28,7 +29,11 @@ const known = computed(() => social.supported !== null);
 
 <template>
   <div class="lobby">
-    <section class="main">
+    <!-- Setup room takes the public rooms' place; the column beside stays. -->
+    <section v-if="social.page === 'start-room'" class="main">
+      <StartRoomPage />
+    </section>
+    <section v-else class="main">
       <header>
         <h2>Public rooms</h2>
         <span class="count">{{ social.rooms.length }} live</span>
