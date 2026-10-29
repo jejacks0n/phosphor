@@ -11,7 +11,7 @@ const USERNAME = {
 const INVALID = {
   name: 'Room names are 1 to 60 characters',
   password: 'A private room needs a password',
-  max: 'Most watchers is 1 to 24',
+  max: 'Max watchers is 1 to 30',
 };
 
 const WORDS = {

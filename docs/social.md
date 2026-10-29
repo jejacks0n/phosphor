@@ -119,7 +119,7 @@ watchers will see (your art in ANSI as it is now), and asks for:
   so it has no signal.
 - **Allow guests**: whether people who haven't signed in can watch. Guests can only watch, so you
   can't remove one; turn this off if you'd rather have members only.
-- **Most watchers**: from 1 to 24 (12 to begin with). Each watcher uses some of your upload speed,
+- **Max watchers**: from 1 to 30 (12 to begin with). Each watcher uses some of your upload speed,
   and 12 suits most home connections.
 
 **Go live** shares the art you have open; **Cancel** goes back to the lobby. You keep drawing as
@@ -127,7 +127,7 @@ usual, and watchers see each change as you make it, with a box in your name colo
 view is: the view of whichever of PIXEL or ANSI you're on, at your zoom. SAUCE and SOCIAL keep the
 last one. Open other art while you're live and watchers see that instead.
 
-While you're live, **Room settings** changes the welcome message, Allow guests and Most watchers.
+While you're live, **Room settings** changes the welcome message, Allow guests and Max watchers.
 Whether the room is public or private, its password and its signal stay as they were set.
 
 ## Hosting
@@ -152,7 +152,7 @@ and check **Use this exact position** to have the card show just what the frame 
 Scrolling it while it's checked moves it; unchecking it follows your view again. The choice lasts as
 long as the room. A room that's only with the link has no lobby card, so no picture.
 
-**Room settings** are the welcome message, **Allow guests** and **Most watchers**, with **Save**. Under
+**Room settings** are the welcome message, **Allow guests** and **Max watchers**, with **Save**. Under
 them, as plain facts, **Set when the room started**: **Listed in the lobby** or **Only with the link**,
 and whether a password is set. Those can't change while the room is live. What you've typed in the form
 stays when you go to another tab, and when a setting is changed from the chat panel meanwhile, a field

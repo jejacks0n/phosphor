@@ -77,7 +77,7 @@ test('the five numbers are the session\'s', async () => {
   ]);
 });
 
-test('settings are the welcome, guests and most watchers; listed or link only and the password are facts', async () => {
+test('settings are the welcome, guests and max watchers; listed or link only and the password are facts', async () => {
   await mount({ hasPassword: true, room: { name: 'just us', welcome: 'hi', public: false, allowGuests: true, max: 12, count: 0 } });
   expect([...host.querySelectorAll('input, textarea')].map((el) => el.type)).toEqual(['textarea', 'checkbox', 'number']);
   expect(host.textContent).toContain('Set when the room started');

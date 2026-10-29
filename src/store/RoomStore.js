@@ -170,7 +170,7 @@ export const useRoomStore = defineStore('room', {
       flush();
     },
 
-    // The welcome goes to watchers (never the server); guests and the most watchers go to the Room.
+    // The welcome goes to watchers (never the server); guests and the max watchers go to the Room.
     changeSettings({ welcome, allowGuests, max }) {
       if (this.role !== 'host') return;
       const room = this.room;

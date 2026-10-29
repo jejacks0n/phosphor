@@ -104,7 +104,7 @@ const save = () => {
           <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
           <p :id="countId" class="help count">{{ draft.welcome.length }}/200</p>
           <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> Allow guests</label>
-          <label>Most watchers <input v-model.number="draft.max" type="number" min="1" max="24" required></label>
+          <label>Max watchers <input v-model.number="draft.max" type="number" min="1" max="30" required></label>
           <button type="submit">{{ done === 'Saved' ? 'Saved' : 'Save' }}</button>
         </form>
         <div class="facts">

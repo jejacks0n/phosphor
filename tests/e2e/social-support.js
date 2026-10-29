@@ -220,7 +220,7 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     if (settingsAt !== null && Date.now() - settingsAt < SETTINGS_EVERY_MS) return send('host', { type: 'settings-now', room: info() });
     settingsAt = Date.now();
     if (typeof msg.allowGuests === 'boolean') room.setup.allowGuests = msg.allowGuests;
-    if (Number.isInteger(msg.max) && msg.max >= 1 && msg.max <= 24) room.setup.max = msg.max;
+    if (Number.isInteger(msg.max) && msg.max >= 1 && msg.max <= 30) room.setup.max = msg.max;
     if (SIGNALS.includes(msg.signal)) room.setup.signal = msg.signal;
   };
 

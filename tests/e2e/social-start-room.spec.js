@@ -50,10 +50,12 @@ test('going live with a public room: the POST, the host\'s page with its link, t
   await expect(page.getByLabel('The room\'s art')).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Anyone, in the lobby' })).toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toBeChecked();
-  await expect(page.getByRole('spinbutton', { name: 'Most watchers' })).toHaveValue('12');
+  await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('12');
+  await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveAttribute('max', '30');
+  await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveAttribute('max', '30');
   await expect(page.getByRole('textbox', { name: 'Password' })).toHaveCount(0);
   await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toHaveAccessibleDescription(/^Guests can only watch/);
-  await expect(page.getByRole('spinbutton', { name: 'Most watchers' })).toHaveAccessibleDescription(/^Each watcher uses some/);
+  await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveAccessibleDescription(/^Each watcher uses some/);
   await expect(page.getByRole('textbox', { name: 'Welcome message' })).toHaveAccessibleDescription('0/200');
   const signal = page.getByRole('group', { name: 'Signal' });
   await expect(signal.locator('label')).toHaveText(['None', 'Wants feedback', 'Open to chat', 'Heads down']);
@@ -185,11 +187,11 @@ test('Room settings keep what\'s typed while you\'re on another tab', async ({ p
   await goLive(page);
   const host = shown(page, 'host-room');
   await host.getByRole('textbox', { name: 'Welcome message' }).fill('back in 5');
-  await host.getByRole('spinbutton', { name: 'Most watchers' }).fill('3');
+  await host.getByRole('spinbutton', { name: 'Max watchers' }).fill('3');
   await tab(page, 'PIXEL').click();
   await tab(page, 'SOCIAL').click();
   await expect(host.getByRole('textbox', { name: 'Welcome message' })).toHaveValue('back in 5');
-  await expect(host.getByRole('spinbutton', { name: 'Most watchers' })).toHaveValue('3');
+  await expect(host.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('3');
 });
 
 test('a change the Room makes while you\'re on another tab shows when you\'re back; what you typed in other fields stays', async ({ page }) => {
@@ -200,14 +202,14 @@ test('a change the Room makes while you\'re on another tab shows when you\'re ba
   room.send('host', { type: 'settings-now', room: { ...room.info(), max: 20 } });
   await expect.poll(() => store(page, 'room', (r) => r.room.max)).toBe(20);
   await tab(page, 'SOCIAL').click();
-  await expect(host.getByRole('spinbutton', { name: 'Most watchers' })).toHaveValue('20');
+  await expect(host.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('20');
   await expect(host.getByRole('textbox', { name: 'Welcome message' })).toHaveValue('back in 5');
 });
 
-test('Room settings send the guests and most watchers; End room sends end, and the lobby and the dot come back', async ({ page }) => {
+test('Room settings send the guests and max watchers; End room sends end, and the lobby and the dot come back', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
-  await host.getByRole('spinbutton', { name: 'Most watchers' }).fill('6');
+  await host.getByRole('spinbutton', { name: 'Max watchers' }).fill('6');
   await host.getByRole('button', { name: 'Save' }).click();
   await expect.poll(() => room.from('host').filter((m) => m.type === 'settings')).toEqual([{ type: 'settings', allowGuests: true, max: 6 }]);
   expect(await store(page, 'room', (r) => r.room.max)).toBe(6);
@@ -250,7 +252,7 @@ test('the welcome edited from the chat panel leaves a half-typed welcome here', 
 test('two quick saves leave the room with the latest settings', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
-  const most = host.getByRole('spinbutton', { name: 'Most watchers' });
+  const most = host.getByRole('spinbutton', { name: 'Max watchers' });
   await most.fill('6');
   await host.getByRole('button', { name: 'Save' }).click();
   await most.fill('8');
@@ -268,7 +270,7 @@ test('two quick saves leave the room with the latest settings', async ({ page })
 test('Room settings follow the room when the Room says how it is', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
-  const most = host.getByRole('spinbutton', { name: 'Most watchers' });
+  const most = host.getByRole('spinbutton', { name: 'Max watchers' });
   await expect(most).toHaveValue('12');
   room.send('host', { type: 'settings-now', room: { ...room.info(), max: 20, allowGuests: false } });
   await expect(most).toHaveValue('20');
@@ -279,12 +281,12 @@ test('what\'s typed in Room settings survives the socket dropping and hosting ag
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
   await host.getByRole('textbox', { name: 'Welcome message' }).fill('back in 5');
-  await host.getByRole('spinbutton', { name: 'Most watchers' }).fill('3');
+  await host.getByRole('spinbutton', { name: 'Max watchers' }).fill('3');
   room.drop('host');
   await expect.poll(() => room.from('host').filter((m) => m.type === 'host').length).toBe(2);
   await expect.poll(() => store(page, 'room', (r) => r.status)).toBe('live');
   await expect(host.getByRole('textbox', { name: 'Welcome message' })).toHaveValue('back in 5');
-  await expect(host.getByRole('spinbutton', { name: 'Most watchers' })).toHaveValue('3');
+  await expect(host.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('3');
 });
 
 // Settings sooner than a second after the last are answered with the room as it is (the app's own
@@ -293,7 +295,7 @@ test('a paced-out save shows the Room\'s values, and saving them again sends the
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
   await store(page, 'room', (r) => r._connection.send({ type: 'settings', allowGuests: true, max: 6 }));
-  const most = host.getByRole('spinbutton', { name: 'Most watchers' });
+  const most = host.getByRole('spinbutton', { name: 'Max watchers' });
   await most.fill('8');
   await host.getByRole('button', { name: 'Save' }).click();
   await expect(most).toHaveValue('6');   // the Room's word

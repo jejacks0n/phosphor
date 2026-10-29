@@ -100,7 +100,7 @@ test('messageFor has plain words for every code the server sends, and a fallback
   assert.equal(messageFor('BANNED_USER'), 'This account is suspended');   // the server's, signing in
   assert.equal(messageFor('INVALID', { field: 'name' }), 'Room names are 1 to 60 characters');
   assert.equal(messageFor('INVALID', { field: 'password' }), 'A private room needs a password');
-  assert.equal(messageFor('INVALID', { field: 'max' }), 'Most watchers is 1 to 24');
+  assert.equal(messageFor('INVALID', { field: 'max' }), 'Max watchers is 1 to 30');
   assert.equal(messageFor('INVALID', { field: 'signal' }), fallback);
   assert.equal(messageFor('ACCOUNT_NOT_FOUND'), "That way to sign in isn't connected");
   assert.equal(messageFor('FAILED_TO_UNLINK_LAST_ACCOUNT'), 'You need at least one way to sign in');
