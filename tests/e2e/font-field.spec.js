@@ -54,6 +54,18 @@ test('a monospaced font from your computer is used and kept; a proportional one 
   await expect(page.getByLabel('Font', { exact: true }).locator('option', { hasText: 'tall' })).toHaveCount(0);
 });
 
+// Each toggle's tooltip says what's on now and what a click does (the renderer's button is named for the other one).
+test('the status bar\'s DOM/Canvas and Smooth tooltips say what\'s on and what a click does', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByRole('button', { name: 'DOM', exact: true })).toHaveAttribute('title', 'The ANSI view is drawn on a canvas. Click to draw it as page text (DOM, a trial).');
+  await page.getByRole('button', { name: 'DOM', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Canvas', exact: true })).toHaveAttribute('title', 'The ANSI view is drawn as page text (DOM, a trial). Click to draw it on a canvas.');
+  const smooth = page.getByRole('button', { name: 'Smooth' });
+  await expect(smooth).toHaveAttribute('title', 'Smooth text is on: letters have soft edges. Click for crisp pixels in each cell\'s two colors.');
+  await smooth.click();
+  await expect(smooth).toHaveAttribute('title', 'Smooth text is off: crisp pixels in each cell\'s two colors. Click for soft edges.');
+});
+
 test('the status bar\'s Smooth button turns anti-aliasing off and on, in both views, and keeps it', async ({ page }) => {
   await openApp(page);
   const smooth = page.getByRole('button', { name: 'Smooth' });

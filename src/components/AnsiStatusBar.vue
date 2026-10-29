@@ -81,13 +81,13 @@ const backTo100 = () => {
     >{{ percent }}%</button>
     <button
         ref="renderer"
-        :title="`Switch the ANSI view to its ${workspace.ansiRenderer === 'dom' ? 'canvas' : 'DOM'} renderer (trial)`"
+        :title="workspace.ansiRenderer === 'dom' ? 'The ANSI view is drawn as page text (DOM, a trial). Click to draw it on a canvas.' : 'The ANSI view is drawn on a canvas. Click to draw it as page text (DOM, a trial).'"
         @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
     >{{ workspace.ansiRenderer === 'dom' ? 'Canvas' : 'DOM' }}</button>
     <button
         :class="{ on: workspace.smoothText }"
         :aria-pressed="workspace.smoothText"
-        :title="workspace.smoothText ? 'Smooth text (anti-aliased): on' : 'Smooth text (anti-aliased): off, every pixel the cell\'s colors'"
+        :title="workspace.smoothText ? 'Smooth text is on: letters have soft edges. Click for crisp pixels in each cell\'s two colors.' : 'Smooth text is off: crisp pixels in each cell\'s two colors. Click for soft edges.'"
         @click="workspace.smoothText = !workspace.smoothText"
     >Smooth</button>
     <button
