@@ -243,7 +243,7 @@ h2 {
   color: var(--text);
 }
 p.host {
-  margin: 0;
+  margin: 5px 0 0;
   overflow-wrap: anywhere;
   font-family: 'JetBrains Mono', monospace;
   color: var(--text-muted);
