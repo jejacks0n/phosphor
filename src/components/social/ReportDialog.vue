@@ -9,7 +9,7 @@ import ModalDialog from '@/components/ModalDialog.vue';
 // inside it (beside Exit) or from its lobby card: one reason, required. Sent, the
 // dialog gives way to "Reported" for a few seconds (in a status line that's there from the start, so it's
 // read out); one that can't be sent leaves the dialog as it is.
-// Cancel, Escape and the backdrop send nothing. Focus goes back to `trigger`, or (that gone, as a message's
+// Cancel, Escape and the backdrop send nothing; while a room report makes its picture, they wait. Focus goes back to `trigger`, or (that gone, as a message's
 // Report is once you've reported them) to `back`, else the "N here" button or the messages.
 const props = defineProps({
   name: { type: String, default: null },
@@ -30,11 +30,13 @@ const says = computed(() => (!props.room ? 'Phosphor\'s admin sees this message 
 
 const reason = ref(null);
 const sent = ref(false);
-let sending = false, timer = null;
+const sending = ref(false);
+let timer = null;
 onUnmounted(() => clearTimeout(timer));
 
 const focusBack = () => (props.trigger?.isConnected ? props.trigger : props.back ?? document.querySelector('.chat button.here, .chat [role=log]'))?.focus();
 const cancel = () => {
+  if (sending.value) return;
   focusBack();
   emit('done');
 };
@@ -48,12 +50,12 @@ function reported(ok) {
   timer = setTimeout(() => emit('done'), SHOWN_MS);
 }
 function report() {
-  if (sent.value || sending) return;
+  if (sent.value || sending.value) return;
   const result = send();
   if (!(result instanceof Promise)) return reported(result);
-  sending = true;   // reportRoom from inside waits for its picture
+  sending.value = true;   // reportRoom from inside waits for its picture
   result.then((ok) => {
-    sending = false;
+    sending.value = false;
     reported(ok);
   });
 }
@@ -69,8 +71,8 @@ function report() {
       <label v-for="r in REASONS" :key="r.id"><input v-model="reason" type="radio" name="report-reason" :value="r.id"> {{ r.label }}</label>
     </fieldset>
     <div class="actions">
-      <button class="danger" :disabled="!reason" @click="report">Report</button>
-      <button @click="cancel">Cancel</button>
+      <button class="danger" :disabled="!reason || sending" @click="report">Report</button>
+      <button :disabled="sending" @click="cancel">Cancel</button>
     </div>
   </ModalDialog>
 </template>

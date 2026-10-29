@@ -408,3 +408,26 @@ test('Report room asks "Report this room?" with the inside sub, and Report sends
   expect(reportRoom).toHaveBeenCalledWith('sexual');
   expect(document.querySelector('[role=dialog]')).toBe(null);
 });
+
+test('while Report room makes its picture, the dialog\'s buttons are off and Cancel, Escape and the backdrop wait', async () => {
+  const room = await mount('watch', 0);
+  useSocialStore().claims = claims({});
+  await nextTick();
+  let finish;
+  vi.spyOn(room, 'reportRoom').mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+  reportRoomButton().click();
+  await nextTick();
+  const dialog = document.querySelector('[role=dialog]');
+  dialog.querySelector('input[value=spam]').click();
+  await nextTick();
+  const button = (label) => [...dialog.querySelectorAll('button')].find((b) => b.textContent === label);
+  button('Report').click();
+  await nextTick();
+  expect([button('Report').disabled, button('Cancel').disabled]).toEqual([true, true]);
+  dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  document.querySelector('.modal-backdrop').click();
+  await nextTick();
+  expect(document.querySelector('[role=dialog]')).toBe(dialog);
+  finish(true);
+  await vi.waitFor(() => expect(document.querySelector('p.reported').textContent).toBe('Reported. Thank you.'));
+});
