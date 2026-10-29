@@ -122,6 +122,11 @@ test('the box and its tag are in the host\'s color, with a shadow so they show o
   expect(getComputedStyle(tag()).boxShadow).not.toBe('none');
   expect(tag().textContent).toContain('wren');
   expect(tag().querySelector('.cell').dataset.glyph).toBe(nameGlyph('wren'));   // the host's cell before the name, as everywhere
+  const cell = tag().querySelector('.cell').getBoundingClientRect();
+  const range = document.createRange();   // the name's own letters
+  range.selectNodeContents([...tag().querySelector('.name').childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim()));
+  const text = range.getBoundingClientRect();
+  expect(Math.abs((cell.top + cell.bottom) / 2 - (text.top + text.bottom) / 2)).toBeLessThan(1);   // level with the name
   // at the box's upper left
   const [b, t] = [box.getBoundingClientRect(), tag().getBoundingClientRect()];
   expect([t.left, t.top]).toEqual([b.left, b.top]);

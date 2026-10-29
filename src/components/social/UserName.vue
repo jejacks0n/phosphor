@@ -25,7 +25,7 @@ span.cell {
   margin-right: 6px;
   border-radius: 2px;
   overflow: hidden;
-  vertical-align: -2px;
+  vertical-align: middle;   /* centered on the lowercase letters, at any size of text around it */
   box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 25%, transparent);   /* a white or a black cell shows on either theme */
   font: 400 16px/14px 'IBM VGA 8x16', monospace;   /* the font's own size, so it's sharp (the cell clips its blank top and bottom rows) */
   letter-spacing: 0;
