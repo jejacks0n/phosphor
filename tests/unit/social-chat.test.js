@@ -126,7 +126,7 @@ test('evidenceFor a person is their last five messages, or none', () => {
 test('mutedWords gives the time for a mute ending today and the date and time for a later one', () => {
   const now = new Date(2026, 9, 28, 9, 0).getTime();
   const soon = new Date(2026, 9, 28, 10, 0).getTime(), far = now + 30 * 86_400_000;
-  assert.equal(mutedWords(soon, now), `You're muted until ${clock.format(soon)}.`);
-  assert.equal(mutedWords(far, now), `You're muted until ${dayAndTime.format(far)}.`);
+  assert.equal(mutedWords(soon, now), `You're silenced until ${clock.format(soon)}.`);
+  assert.equal(mutedWords(far, now), `You're silenced until ${dayAndTime.format(far)}.`);
   assert.notEqual(clock.format(far), dayAndTime.format(far));
 });

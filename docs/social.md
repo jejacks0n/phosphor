@@ -189,9 +189,9 @@ they're following you or looking around on their own (or still connecting). A me
 
 - **Kick – for this session**: they leave the room now, and can't come back until the room ends.
 - **Mute – for everyone but you**: their messages stop reaching anyone else. They aren't told: they still see what they
-  send, and you see it too, marked "Silenced: only you and they see this" (you can still report it).
-  They're tagged **silenced** in the list until you **Unmute** them or the room ends; what they
-  said while silenced stays hidden from the others.
+  send, and you see it too, marked "Muted: only you and they see this" (you can still report it).
+  They're tagged **muted** in the list until you **Unmute** them or the room ends; what they
+  said while muted stays hidden from the others.
 - **Block – from all future rooms**: asks first (**Block** or **Cancel**), then they can't join any room you host again, and your rooms no longer show in their lobby.
   They aren't told; your rooms simply aren't there for them, and a link to one says "This room
   isn't available". Unblock them from Account.
@@ -288,7 +288,7 @@ it. If the report can't be sent, the box stays as it is and you can try again.
 Once you've reported someone, **Report** goes away for them (on their messages and in **N here**) in
 that room, even if you leave and join it again (this browser remembers it for a day).
 
-Someone may be muted: their messages stop reaching rooms for a while, and they see **You're muted
+Someone may be silenced: their messages stop reaching rooms for a while, and they see **You're silenced
 until...** (below).
 
 You can report a room, too, for what it's drawing: **Report** sits under **Exit** at the top
@@ -319,7 +319,7 @@ Thank you.**, and **Report room** goes away for that room (this browser remember
 - **Couldn't copy the link**: the browser didn't let Phosphor copy the room's link. Select it and copy
   it yourself.
 - **Confirm your email to start a room**: in the lobby, with **Resend**.
-- **You're muted until 9:40 pm.**: in place of the message box. A mute that ends another day shows
+- **You're silenced until 9:40 pm.**: in place of the message box. If it ends another day, it shows
   the date too (**until Nov 27, 9:40 pm.**). Nobody hears your messages until it ends, and you can
   still watch. When it ends, the box comes back with what you'd typed.
 - **This account is suspended**: at sign-in, with until when, if it isn't for good.

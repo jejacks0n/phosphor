@@ -173,7 +173,7 @@ test('a guest\'s ⋯ appears once guests are off, with only Kick, which kicks th
   expect(removed).toHaveBeenCalledWith('g1');
 });
 
-test('a member\'s ⋯ has Mute, then Unmute; they\'re tagged silenced, and their messages say only you and they see them', async () => {
+test('a member\'s ⋯ has Mute, then Unmute; they\'re tagged muted, and their messages say only you and they see them', async () => {
   const room = await mount('host', 0);
   room.watchers = [watcher('p1', 'tin-lantern-owl')];
   room.peopleOpen = true;
@@ -192,13 +192,13 @@ test('a member\'s ⋯ has Mute, then Unmute; they\'re tagged silenced, and their
 
   room.silenced = ['u_p1'];
   await nextTick();
-  expect(li().querySelector('.tag').textContent).toBe('silenced');
+  expect(li().querySelector('.tag').textContent).toBe('muted');
   await open();
   expect(item('Mute – for everyone but you')).toBe(undefined);
   item('Unmute').click();
   expect(silence).toHaveBeenLastCalledWith('u_p1', false);
   const marks = [...host.querySelectorAll('.list .message')].map((m) => m.querySelector('.silenced')?.textContent ?? null);
-  expect(marks).toEqual(['Silenced: only you and they see this', null]);
+  expect(marks).toEqual(['Muted: only you and they see this', null]);
 });
 
 test('a watcher\'s panel has no people list and no room menu; the host\'s has both', async () => {

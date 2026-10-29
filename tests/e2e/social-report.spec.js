@@ -193,8 +193,8 @@ test('a muted watcher is told until when in place of the box, without a reload; 
   const until = Date.now() + 3_600_000;
   watcher.server.mutedUntil = until;
   room.mute('u_2', until);
-  const foot = panel(watcher).getByRole('status').filter({ hasText: "You're muted until" });
-  await expect(foot).toHaveText(/^You're muted until [^.]+\.$/);
+  const foot = panel(watcher).getByRole('status').filter({ hasText: "You're silenced until" });
+  await expect(foot).toHaveText(/^You're silenced until [^.]+\.$/);
   await expect(box(watcher)).toHaveCount(0);
 
   await expect(box(host)).toBeVisible();

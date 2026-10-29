@@ -92,7 +92,7 @@ export function evidenceFor(rows, { sub, messageId = null }) {
 // What a muted person is told: until when (the time if it ends today, else the date too), and nothing of why or how.
 export function mutedWords(until, now = Date.now()) {
   const today = new Date(until).toDateString() === new Date(now).toDateString();
-  return `You're muted until ${(today ? clock : dayAndTime).format(until)}.`;
+  return `You're silenced until ${(today ? clock : dayAndTime).format(until)}.`;
 }
 
 // A bucket of `most`, refilled one every `everyMs`: take() says whether there's one to spend. The level is

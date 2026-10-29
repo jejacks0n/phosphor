@@ -164,7 +164,7 @@ function askIfAtTop() {
                 </span>
               </p>
               <p class="text">{{ m.text }}</p>
-              <p v-if="m.silenced" class="silenced">Silenced: only you and they see this</p>
+              <p v-if="m.silenced" class="silenced">Muted: only you and they see this</p>
             </template>
           </div>
         </div>

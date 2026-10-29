@@ -400,12 +400,12 @@ test('a server that won\'t make the room until the email is verified says so', a
   expect(await store(page, 'room', (r) => r.role)).toBe(null);
 });
 
-test('while your pass says you\'re muted, Start a room is disabled and says until when', async ({ page }) => {
+test('while your pass says you\'re silenced, Start a room is disabled and says until when', async ({ page }) => {
   await fakeServer(page, { me: member(), mutedUntil: Date.now() + 3_600_000 });
   await openApp(page);
   await tab(page, 'SOCIAL').click();
   await expect(page.getByRole('button', { name: 'Start a room' })).toBeDisabled();
-  await expect(shown(page, 'lobby').getByText('You\'re muted until')).toBeVisible();
+  await expect(shown(page, 'lobby').getByText('You\'re silenced until')).toBeVisible();
 });
 
 test('a MUTED refusal shows the server\'s words and no room starts', async ({ page }) => {
