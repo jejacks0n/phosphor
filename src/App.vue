@@ -1,5 +1,6 @@
 <script setup>
-import { watch, onMounted, onBeforeUnmount } from 'vue';
+import { watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
+import { useMediaQuery } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -23,6 +24,12 @@ const workspace = useWorkspaceStore();
 const room = useRoomStore();
 const { image } = storeToRefs(project);
 const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen } = storeToRefs(workspace);
+
+// The theme on <html>, for global.css: the one picked, or with System the computer's (and it follows a change).
+const prefersLight = useMediaQuery('(prefers-color-scheme: light)');
+watchEffect(() => {
+  document.documentElement.dataset.theme = workspace.theme === 'system' ? (prefersLight.value ? 'light' : 'dark') : workspace.theme;
+});
 
 // SOCIAL: a link back from the server is read at load; the rest waits for the tab (a server that can't
 // be reached leaves the editor be).

@@ -15,7 +15,8 @@ const emit = defineEmits(['update:modelValue']);
 const { image, renderStyle } = storeToRefs(useProjectStore());
 const workspace = useWorkspaceStore();
 const room = useRoomStore();
-const { settingsOpen } = storeToRefs(workspace);
+const { settingsOpen, theme } = storeToRefs(workspace);
+const THEMES = [['dark', 'Dark'], ['light', 'Light'], ['system', 'System']];
 const toggleSettings = () => workspace.toggleSettings();
 
 const tabList = useTemplateRef('tabList');
@@ -102,6 +103,12 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
         <span v-if="tab.id === 'social' && room.inRoom" class="dot" aria-hidden="true"></span>
       </button>
       <div class="indicator" :style="indicatorStyle" aria-hidden="true"></div>
+    </div>
+    <!-- Radios: one Tab stop, and the arrow keys move the choice. -->
+    <div class="themes" role="radiogroup" aria-label="Theme">
+      <label v-for="[id, label] in THEMES" :key="id" :class="{ on: theme === id }">
+        <input v-model="theme" type="radio" name="theme" :value="id">{{ label }}
+      </label>
     </div>
   </nav>
 </template>
@@ -255,6 +262,43 @@ div.indicator {
   box-shadow: 0 0 3px var(--accent), 0 0 20px var(--accent);
 }
 
+div.themes {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+div.themes label {
+  position: relative;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+div.themes label:hover {
+  color: var(--text);
+}
+div.themes label.on {
+  background: var(--surface-2);
+  color: var(--text);
+}
+div.themes label:has(:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+div.themes input { /* unseen, over its label: the label's look, the radio's behavior */
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 @media (max-width: 768px) {
   nav.workspace-tabs {
     border-color: var(--accent);
@@ -267,6 +311,10 @@ div.indicator {
 
   button.menu-btn {
     display: flex;
+  }
+
+  div.themes { /* no room beside the tabs: the computer's theme */
+    display: none;
   }
 }
 </style>

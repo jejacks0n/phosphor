@@ -489,50 +489,49 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
   }
 }
 
-/* Light colored theme (only available via system level request)
+/* Light colored theme (html[data-theme], set from the tab bar's picker or the computer's)
  ----------------------------------------------------------------------------*/
-@media (prefers-color-scheme: light) {
-  :root {
-    --logo: url('/logo-light.png');
+:root[data-theme="light"] {
+  --logo: url('/logo-light.png');
 
-    /* Background */
-    --background: #d6d6d6;
+  /* Background */
+  --background: #d6d6d6;
 
-    /* Surfaces */
-    --surface-dark: #fff;
-    --surface-0: #f0f0f0;
-    --surface-1: #e8e8e8;
-    --surface-2: #dedede;
-    --surface-3: #d4d4d4;
-    --surface-4: #c8c8c8;
-    --surface-light: #000;
+  /* Surfaces */
+  --surface-dark: #fff;
+  --surface-0: #f0f0f0;
+  --surface-1: #e8e8e8;
+  --surface-2: #dedede;
+  --surface-3: #d4d4d4;
+  --surface-4: #c8c8c8;
+  --surface-light: #000;
 
-    /* Borders */
-    --border: #c8c8c8;
-    --border-dark: #bbbbbb;
-    --border-subtle: #dedede;
-    --border-light: #aaaaaa;
+  /* Borders */
+  --border: #c8c8c8;
+  --border-dark: #bbbbbb;
+  --border-subtle: #dedede;
+  --border-light: #aaaaaa;
 
-    /* Text */
-    --text: #111;
-    --text-dim: #333;
-    --text-muted: #666;
-    --text-faint: #999;
-    --text-inverted: #fff;
-  }
+  /* Text */
+  --text: #111;
+  --text-dim: #333;
+  --text-muted: #666;
+  --text-faint: #999;
+  --text-inverted: #fff;
+}
 
-  input[type="number"]::-webkit-inner-spin-button,
-  input[type="number"]::-webkit-outer-spin-button {
-    filter: none !important;
-  }
+/* :where() keeps these as specific as they were, so a component's own button styles still win. */
+:where([data-theme="light"]) input[type="number"]::-webkit-inner-spin-button,
+:where([data-theme="light"]) input[type="number"]::-webkit-outer-spin-button {
+  filter: none !important;
+}
 
-  button:not(.primary) {
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  }
-  @media (hover: hover) {
-    button:not(.primary):hover {
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
+:where([data-theme="light"]) button:not(.primary) {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+@media (hover: hover) {
+  :where([data-theme="light"]) button:not(.primary):hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
 }
 
