@@ -30,7 +30,7 @@ function onKeyDown(event) {
         <hr/>
 
         <p>
-          Phosphor began in 2019 as a small experiment to build tooling for a concept I called "ANSI Nouveau." At the time, I was obsessed with the idea of recreating the mid-90s BBS experience I grew up with, but through a modern, high-fidelity lens. Like many passion projects, it eventually got sidetracked and shelved.
+          Phosphor began in 2019 as a small experiment to build tooling for a concept I called "ANSI Nouveau." At the time, I was interested in the idea of recreating the mid-90s BBS experience I grew up with, but through a modern, high-fidelity lens. Like many passion projects, it eventually got sidetracked and shelved and life gets in the way.
         </p>
 
         <p>
@@ -38,11 +38,11 @@ function onKeyDown(event) {
         </p>
 
         <p>
-          Today Phosphor does two things. It turns an image into ANSI or ASCII art that you can tune until it looks right, and it lets you draw and type over that, cell by cell, then save it as .ans or .utf8ans. Finish the piece here, or take the file into another editor for the last pass -- whether you're after "Pure ANSI" for the purists or the full-color, UTF-8 "ANSI Nouveau" style that started all this.
+          While Phosphor started as an image to ANSI tool, today it attempts to do two things. It can turn an image into ANSI or ASCII, allowing you to tune it to your liking, and then lets you draw and type over that, cell by cell, and export it as .ans or .utf8ans. Finish the piece here, or take the file into another editor for the last pass -- whether you're after "Pure ANSI" for the purists or the full-color, UTF-8 "ANSI Nouveau" modern style that was my initial inspiration for the project.
         </p>
 
         <p>
-          It's early. Expect bugs, and expect it to be rough on phones and tablets. Feedback, bug reports and ideas are welcome: open an issue on <a href="https://github.com/jejacks0n/phosphor" target="_blank">GitHub</a>, or fork the repo and take it in your own direction.
+          It's still early versions. Expect bugs, and expect it to be rough on phones and tablets, though it is largely supported on iPad with Apple Pencil via my testing. Feedback, bug reports and ideas are welcome: open an issue on <a href="https://github.com/jejacks0n/phosphor" target="_blank">GitHub</a>, or fork the repo and take it in your own direction.
         </p>
 
         <p>Credits and special thanks:</p>
