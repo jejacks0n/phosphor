@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from 'vue';
-import { useSocialStore } from '@/store/SocialStore';
+import { computed, ref } from 'vue';
+import { useSocialStore, PROVIDERS } from '@/store/SocialStore';
 
 const social = useSocialStore();
+const shown = computed(() => PROVIDERS.filter(([id]) => social.providers.includes(id)));
 const login = ref('');
 const password = ref('');
 const error = ref(null);   // the last try's, in words: under the form rather than at the top of the tab
@@ -28,11 +29,12 @@ async function signInWith(provider) {
   <div class="form-page">
     <button class="link back" @click="social.page = 'lobby'">‹ Back to the {{ social.backTo }}</button>
     <h2>Sign in</h2>
-    <div class="providers">
-      <button :disabled="social.busy" @click="signInWith('discord')">Continue with Discord</button>
-      <button :disabled="social.busy" @click="signInWith('github')">Continue with GitHub</button>
-    </div>
-    <p class="or">or</p>
+    <template v-if="shown.length">
+      <div class="providers">
+        <button v-for="[id, label] in shown" :key="id" :disabled="social.busy" @click="signInWith(id)">Continue with {{ label }}</button>
+      </div>
+      <p class="or">or</p>
+    </template>
     <form @submit.prevent="signIn">
       <label>Email or username <input v-model="login" autocomplete="username" spellcheck="false" required></label>
       <label>Password <input v-model="password" type="password" autocomplete="current-password" required></label>

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
 import { renderSVG } from 'uqr';
-import { useSocialStore } from '@/store/SocialStore';
+import { useSocialStore, PROVIDERS } from '@/store/SocialStore';
 import { nameColor, usernameProblem } from '@/social/names';
 import { messageFor } from '@/social/messages';
 import UsernameField from './UsernameField.vue';
@@ -10,7 +10,8 @@ import UsernameField from './UsernameField.vue';
 // show under it; the others are the notice at the top of the tab.
 const social = useSocialStore();
 const me = computed(() => social.me);
-const PROVIDERS = [['discord', 'Discord'], ['github', 'GitHub']];
+// The ones set up on the server, and any you have connected (so it can still be disconnected).
+const ways = computed(() => PROVIDERS.filter(([id]) => social.providers.includes(id) || me.value.providers.includes(id)));
 const lastWay = computed(() => me.value.providers.length === 1);
 const canDisconnect = computed(() => PROVIDERS.some(([id]) => me.value.providers.includes(id)));
 const hasPassword = computed(() => me.value.providers.includes('credential'));
@@ -178,7 +179,7 @@ async function deleteAccount() {
         <span class="what">Email and password <span class="detail">{{ me.email }}</span></span>
         <button @click="social.page = 'forgot'">Send a reset link</button>
       </div>
-      <div v-for="[id, label] in PROVIDERS" :key="id" class="row">
+      <div v-for="[id, label] in ways" :key="id" class="row">
         <template v-if="me.providers.includes(id)">
           <span class="what">{{ label }} <span class="detail">Connected</span></span>
           <button :disabled="social.busy || lastWay" :aria-label="`Disconnect ${label}`" :aria-describedby="lastWay ? 'last-way' : undefined" @click="social.unlink(id)">Disconnect</button>

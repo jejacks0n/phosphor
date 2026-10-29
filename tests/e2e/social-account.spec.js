@@ -63,6 +63,13 @@ test('ways to sign in: Connect goes to the provider; the only way in cannot be d
   expect(server.sent('POST', '/api/auth/link-social')[0].body.provider).toBe('github');
 });
 
+test('ways to sign in list only providers set up on the server, or ones you already have connected', async ({ page }) => {
+  await fakeServer(page, { me: member({ providers: ['credential', 'discord'] }), 'GET /api/providers': () => [200, { providers: [] }] });
+  const account = await openAccount(page);
+  await expect(account.getByRole('button', { name: 'Disconnect Discord' })).toBeVisible();
+  await expect(account.getByRole('button', { name: 'Connect GitHub' })).toHaveCount(0);
+});
+
 test('Disconnect unlinks the provider and the row says not connected', async ({ page }) => {
   const server = await fakeServer(page, { me: member({ providers: ['credential', 'discord'] }) });
   const account = await openAccount(page);
@@ -84,16 +91,17 @@ test('a disconnect that needs a recent sign-in sends you to Sign in with its wor
 });
 
 // The Forgot page has the Turnstile check the server asks for when it has a site key.
-test('Send a reset link opens Forgot your password with your email filled in, and sends from there', async ({ page }) => {
+test('Send a reset link opens Forgot your password with your email filled in, and sends from there, to your address', async ({ page }) => {
   const server = await fakeServer(page, { me: member() });
   const account = await openAccount(page);
   await expect(account.getByText('fan@example.com')).toBeVisible();
   await account.getByRole('button', { name: 'Send a reset link' }).click();
   const forgot = shown(page, 'forgot');
   await expect(forgot.getByLabel('Email')).toHaveValue('fan@example.com');
+  await expect(forgot.getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(0);   // you're signed in
   expect(server.sent('POST', '/api/auth/request-password-reset')).toHaveLength(0);
   await forgot.getByRole('button', { name: 'Send link' }).click();
-  await expect(social(page).getByRole('status')).toContainText('If that email has an account, a link is on its way');
+  await expect(social(page).getByRole('status')).toContainText('A link is on its way to fan@example.com');
   expect(server.sent('POST', '/api/auth/request-password-reset')[0].body).toEqual({ email: 'fan@example.com' });
 });
 

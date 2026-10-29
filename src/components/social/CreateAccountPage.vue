@@ -36,7 +36,7 @@ async function create() {
       <UsernameField v-model="username" help="How everyone sees you. Letters, numbers, - and _." />
       <label>Email <input v-model="email" type="email" autocomplete="email" required></label>
       <label>Password <input v-model="password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="create-password-help"></label>
-      <p id="create-password-help" class="help">At least 10 characters, not a known leaked one.</p>
+      <p id="create-password-help" class="help">At least 10 characters, not a known leaked password.</p>
       <div ref="widget" class="turnstile"></div>
       <label class="terms">
         <input v-model="terms" type="checkbox">

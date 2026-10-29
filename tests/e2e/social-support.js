@@ -77,6 +77,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
   const routes = {
     'GET /api/me': () => (server.me ? [200, server.me] : [401, { code: 'SIGNED_OUT' }]),
     'GET /api/pass-key': () => [200, { key: passKey }],
+    'GET /api/providers': () => [200, { providers: ['discord', 'github'] }],
     'POST /api/rooms': (body, path, request) => {
       room?.made(body);
       return [200, { id: ROOM_ID, link: `${request.headers().origin}/?room=${ROOM_ID}` }];

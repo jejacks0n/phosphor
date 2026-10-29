@@ -18,7 +18,7 @@ async function set() {
     <h2>Set a new password</h2>
     <form @submit.prevent="set">
       <label>New password <input v-model="password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="reset-password-help"></label>
-      <p id="reset-password-help" class="help">At least 10 characters, not a known leaked one. Setting it signs you out everywhere else.</p>
+      <p id="reset-password-help" class="help">At least 10 characters, not a known leaked password. Setting it signs you out everywhere else.</p>
       <button class="primary" type="submit" :disabled="social.busy">Set password</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>

@@ -701,7 +701,9 @@ test('The account actions send the server\'s shapes', async () => {
   const reset = server.sent('POST', '/api/auth/request-password-reset')[0];
   expect(reset.body).toEqual({ email: 'fan@example.com' });
   expect(reset.headers['x-turnstile-token']).toBe('tt2');
-  expect(social.notice).toBe('If that email has an account, a link is on its way');
+  expect(social.notice).toBe('A link is on its way to fan@example.com');   // your own address
+  await social.requestReset('someone@example.com');
+  expect(social.notice).toBe('If that email has an account, a link is on its way');   // anyone else's
 
   await social.linkWith('github', { assign });
   expect(server.sent('POST', '/api/auth/link-social')[0].body).toMatchObject({ provider: 'github' });

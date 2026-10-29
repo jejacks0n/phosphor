@@ -30,5 +30,6 @@ async function send() {
       <button class="primary" type="submit" :disabled="social.busy">Send link</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
+    <p v-if="!social.me" class="help">Remembered it? <button class="link inline" @click="social.page = 'sign-in'">Sign in</button></p>
   </div>
 </template>

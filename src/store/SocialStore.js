@@ -42,6 +42,9 @@ const keptRoom = () => {
   }
 };
 
+// The sign-in providers the app knows, in the order shown; the server says which are set up (GET /api/providers).
+export const PROVIDERS = [['discord', 'Discord'], ['github', 'GitHub']];
+
 const withToken = (turnstileToken) => (turnstileToken ? { 'x-turnstile-token': turnstileToken } : undefined);
 
 // The SOCIAL tab: you (/api/me), your pass, the lobby and the page shown, and every account action
@@ -60,6 +63,7 @@ export const useSocialStore = defineStore('social', {
     lobby: shallowRef(emptyLobby()),
     lobbyStatus: null,   // the connection's: 'connecting' | 'live' | 'reconnecting' | 'refused' | 'closed'
     blocked: [],         // [{ id, username, since }]
+    providers: [],       // the provider ids the server has set up: only those get a button
     notice: null,        // one line at the top of the tab
     busy: false,
     started: false,
@@ -124,7 +128,7 @@ export const useSocialStore = defineStore('social', {
           () => false,   // no IndexedDB (a private window in some browsers): the same plain message
         );
         if (supported) {
-          await this.refreshMe();
+          await Promise.all([this.refreshMe(), this.loadProviders()]);
           if (this.me?.needsOnboarding) this.page = 'onboarding';
         }
         this.supported = supported;
@@ -174,6 +178,11 @@ export const useSocialStore = defineStore('social', {
       } finally {
         this.busy = false;
       }
+    },
+
+    async loadProviders() {
+      const { ok, data } = await api('/api/providers');
+      if (ok) this.providers = data.providers;
     },
 
     async refreshMe() {
@@ -317,7 +326,9 @@ export const useSocialStore = defineStore('social', {
       const { ok } = await this.request('/api/auth/request-password-reset', {
         method: 'POST', body: { email }, headers: withToken(turnstileToken),
       });
-      if (ok) this.notice = 'If that email has an account, a link is on its way';
+      // Your own address you know has an account; any other gets the same words whether or not it has one.
+      const yours = email.toLowerCase() === this.me?.email?.toLowerCase();
+      if (ok) this.notice = yours ? `A link is on its way to ${email}` : 'If that email has an account, a link is on its way';
       return ok;
     },
 

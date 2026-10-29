@@ -58,12 +58,13 @@ password or two-factor sign-in here, Phosphor still has it in memory for the tri
 ## Signing in and creating an account
 
 **Sign in** offers **Continue with Discord**, **Continue with GitHub**, or your email or username
-and password, with **Forgot your password?** below.
+and password, with **Forgot your password?** below. Discord and GitHub show only where the server
+has them set up; with neither, the page is just the email or username and password.
 
 **Create an account** asks for:
 
 - a **username**: how everyone sees you, unique, letters, numbers, `-` and `_`;
-- your **email**, and a **password** of at least 10 characters that isn't a known leaked one;
+- your **email**, and a **password** of at least 10 characters that isn't a known leaked password;
 - a quick check that you're not a script (Cloudflare Turnstile);
 - that you're **13 or older** and agree to the **Terms** and **Privacy Policy**.
 
@@ -76,7 +77,7 @@ starts from the name on that account) and agree to the same terms, or **Cancel a
 go back to the lobby as a guest.
 
 **Forgot your password?** emails you a link that opens Phosphor to set a new one. Setting it signs
-you out everywhere else.
+you out everywhere else. Signed out, it has a **Sign in** link back.
 
 ## Your account
 
@@ -85,8 +86,10 @@ you out everywhere else.
 - **Username**, which you can change once every 30 days. Your color in the lobby and chat comes
   from your username.
 - **Ways to sign in**: email and password (**Send a reset link** opens **Forgot your password?**
-  with your email filled in, to change the password), Discord and GitHub; connect or disconnect
-  each, keeping at least one.
+  with your email filled in, to change the password; it says the link is on its way to your
+  address), Discord and GitHub; connect or disconnect each, keeping at least one. Discord and GitHub
+  are listed only where the server has them set up (or you already have one connected, so it can be
+  disconnected).
 - **Two-factor**: once it's on, every sign-in asks for a code from your authenticator app, Discord
   and GitHub included. **Trust this computer for 30 days** skips the code on that computer. A backup
   code stands in for the phone (**Use a backup code instead**), once each.

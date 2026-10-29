@@ -24,6 +24,7 @@ export function fakeServer() {
     'GET /api/me': () => (server.suspended ? [403, { code: 'SUSPENDED', until: server.suspended.until }]
       : server.session ? [200, server.session] : [401, { code: 'SIGNED_OUT' }]),
     'GET /api/blocks': () => [200, { blocked: [] }],
+    'GET /api/providers': () => [200, { providers: ['discord', 'github'] }],
     'POST /api/pass': (body) => {
       if (server.suspended) return [403, { code: 'SUSPENDED', until: server.suspended.until }];
       if (server.session?.needsOnboarding) return [409, { code: 'NEEDS_ONBOARDING' }];

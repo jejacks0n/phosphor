@@ -67,6 +67,28 @@ test('Continue with Discord goes to the URL the server returns', async ({ page }
   expect(server.sent('POST', '/api/auth/sign-in/social')[0].body.provider).toBe('discord');
 });
 
+test('only the providers the server has set up get a button; with none, no "or" either', async ({ page }) => {
+  let providers = ['github'];
+  await fakeServer(page, { 'GET /api/providers': () => [200, { providers }] });
+  let form = await openSignIn(page);
+  await expect(form.getByRole('button', { name: 'Continue with GitHub' })).toBeVisible();
+  await expect(form.getByRole('button', { name: 'Continue with Discord' })).toHaveCount(0);
+  await expect(form.getByText('or', { exact: true })).toBeVisible();
+
+  providers = [];
+  form = await openSignIn(page);
+  await expect(form.getByRole('button', { name: /^Continue with/ })).toHaveCount(0);
+  await expect(form.getByText('or', { exact: true })).toHaveCount(0);
+});
+
+test('the forgot-password page links back to signing in', async ({ page }) => {
+  await fakeServer(page);
+  const form = await openSignIn(page);
+  await form.getByRole('button', { name: 'Forgot your password?' }).click();
+  await shown(page, 'forgot').getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(shown(page, 'sign-in')).toBeVisible();
+});
+
 test('the sign-in page links to creating an account, a forgotten password and the lobby', async ({ page }) => {
   await fakeServer(page);
   const form = await openSignIn(page);
@@ -91,7 +113,7 @@ test('create an account: disabled until the terms are agreed to; success is the 
   const server = await fakeServer(page);
   const form = await openCreate(page);
   await expect(form.getByText('How everyone sees you. Letters, numbers, - and _.')).toBeVisible();
-  await expect(form.getByText('At least 10 characters, not a known leaked one.')).toBeVisible();
+  await expect(form.getByText('At least 10 characters, not a known leaked password.')).toBeVisible();
   await expect(form.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms.html');
   await expect(form.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy.html');
   await form.getByLabel('Username').fill('pixel_wren');
