@@ -141,8 +141,9 @@ usual, and watchers see each change as you make it, with a box in your name colo
 view is: the view of whichever of PIXEL or ANSI you're on, at your zoom. SAUCE and SOCIAL keep the
 last one. Open other art while you're live and watchers see that instead.
 
-While you're live, **Room settings** changes the welcome message, Allow guests and Max watchers.
-Whether the room is public or private, its password and its signal stay as they were set.
+While you're live, **Room settings** changes the welcome message, Allow guests, Max watchers and,
+for a room in the lobby, its signal. Whether the room is public or private, and its password, stay
+as they were set.
 
 ## Hosting
 

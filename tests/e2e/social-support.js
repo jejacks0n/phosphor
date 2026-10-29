@@ -166,7 +166,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
       if (msg.type !== 'hello') return;
       if (server.lobby.refusing) return ws.send(JSON.stringify({ type: 'refused', code: 'bad-pass' }));
       const { sub, name, guest } = claimsOf(msg.pass);
-      const you = sub ? [{ sub, name, guest, signal: null }] : [];
+      const you = sub ? [{ sub, name, guest }] : [];
       ws.send(JSON.stringify({ type: 'state', rooms: server.rooms, people: [...you, ...server.people] }));
     });
   });

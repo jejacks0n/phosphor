@@ -47,7 +47,7 @@ const keepReport = (room, by, sub) => {
 };
 
 const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12, signal: null });
-const newSettingsDraft = () => ({ welcome: '', allowGuests: true, max: 12, seen: {} });
+const newSettingsDraft = () => ({ welcome: '', allowGuests: true, max: 12, signal: null, seen: {} });
 
 // The room you host or watch: its socket (a LobbyConnection with the room's greeting), and the host's
 // side (Host: your art to every watcher) or the watcher's (Watch: the host's art, never your own
@@ -127,7 +127,7 @@ export const useRoomStore = defineStore('room', {
       Object.assign(this, {
         startDraft: newStartDraft(), settingsDraft: newSettingsDraft(), hasPassword: !isPublic && !!password, lobbyPin,
         role: 'host', id: data.id, link: data.link, status: 'connecting',
-        room: { name, welcome: welcome ?? '', public: isPublic, allowGuests, max, count: 0 },
+        room: { name, welcome: welcome ?? '', public: isPublic, allowGuests, max, signal: isPublic ? signal : null, count: 0 },
       });
       this._host = markRaw(new Host({
         send: (msg) => this._connection?.send(msg),
@@ -192,13 +192,13 @@ export const useRoomStore = defineStore('room', {
       flush();
     },
 
-    // The welcome goes to watchers (never the server); guests and the max watchers go to the Room.
-    changeSettings({ welcome, allowGuests, max }) {
+    // The welcome goes to watchers (never the server); guests, the max watchers and the signal go to the Room.
+    changeSettings({ welcome, allowGuests, max, signal = this.room.signal ?? null }) {
       if (this.role !== 'host') return;
       const room = this.room;
       if (welcome !== room.welcome && this._host.room) this._host.setRoom({ ...this._host.room, welcome: welcome ?? '' });
-      if (allowGuests !== room.allowGuests || max !== room.max) this._settings.push({ type: 'settings', allowGuests, max });
-      this.room = { ...room, welcome: welcome ?? '', allowGuests, max };
+      if (allowGuests !== room.allowGuests || max !== room.max || signal !== (room.signal ?? null)) this._settings.push({ type: 'settings', allowGuests, max, signal });
+      this.room = { ...room, welcome: welcome ?? '', allowGuests, max, signal };
     },
 
     // Puts the host's link on the clipboard; false (and a notice) when the browser won't.
@@ -469,7 +469,7 @@ export const useRoomStore = defineStore('room', {
         }
         case 'settings-now': {
           // The Room's word on the room, but a change still waiting to go stays shown (it would only flicker back).
-          const waiting = this._settings.timer ? { allowGuests: this.room.allowGuests, max: this.room.max } : {};
+          const waiting = this._settings.timer ? { allowGuests: this.room.allowGuests, max: this.room.max, signal: this.room.signal } : {};
           this.room = { ...msg.room, welcome: this.room.welcome, ...waiting };
           break;
         }

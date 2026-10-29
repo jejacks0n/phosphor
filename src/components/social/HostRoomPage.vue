@@ -2,6 +2,7 @@
 import { ref, computed, watch, useId, onBeforeUnmount, nextTick, useTemplateRef } from 'vue';
 import { useRoomStore, MAX_WATCHERS } from '@/store/RoomStore';
 import { removedCount } from '@/social/session';
+import { signalWords } from '@/social/lobby';
 import EndRoomDialog from './EndRoomDialog.vue';
 import LobbyPicture from './LobbyPicture.vue';
 import CameBy from './CameBy.vue';
@@ -61,7 +62,7 @@ const cancelEnd = async () => {
 // you're back.
 const draft = room.settingsDraft;
 watch(() => draft.max, (max) => { if (max > MAX_WATCHERS) draft.max = MAX_WATCHERS; });
-for (const key of ['welcome', 'allowGuests', 'max']) {
+for (const key of ['welcome', 'allowGuests', 'max', 'signal']) {
   watch(() => room.room?.[key], (v) => {
     if (v === undefined || v === draft.seen[key]) return;
     if (draft.seen[key] === undefined || draft[key] === draft.seen[key]) draft[key] = v;
@@ -77,7 +78,7 @@ const kickLabel = computed(() => (guests.value.length === 1 ? 'Kick the guest he
   : `Kick the ${guests.value.length} guests here too`));
 
 const save = () => {
-  room.changeSettings({ welcome: draft.welcome, allowGuests: draft.allowGuests, max: draft.max });
+  room.changeSettings({ welcome: draft.welcome, allowGuests: draft.allowGuests, max: draft.max, signal: draft.signal });
   if (!draft.allowGuests && kickGuests.value) for (const guest of guests.value) room.remove(guest.peer);
   kickGuests.value = false;
   say('Saved');
@@ -117,6 +118,11 @@ const save = () => {
             <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> Allow guests</label>
             <label v-if="!draft.allowGuests && guests.length" class="choice kick"><input v-model="kickGuests" type="checkbox"> {{ kickLabel }}</label>
             <label>Max watchers <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required></label>
+            <fieldset v-if="room.room.public">
+              <legend>Signal</legend>
+              <label class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="null"> None</label>
+              <label v-for="(words, value) in signalWords" :key="value" class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="value"> {{ words }}</label>
+            </fieldset>
             <button type="submit">{{ done === 'Saved' ? 'Saved' : 'Save' }}</button>
           </form>
           <div class="facts">
@@ -262,6 +268,19 @@ textarea {
   min-height: calc(3lh + 18px);   /* 3 lines, the padding and the border; it grows to fit the message */
   field-sizing: content;
   resize: vertical;
+}
+fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+legend {   /* as the labels */
+  margin-bottom: 5px;
+  padding: 0;
+  font-weight: 500;
 }
 label.kick {   /* under Allow guests, as part of it */
   margin-top: -4px;

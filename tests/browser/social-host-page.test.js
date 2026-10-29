@@ -89,6 +89,18 @@ test('settings are the welcome, guests and max watchers; listed or link only and
   expect(host.textContent).not.toContain('Listed in the lobby');
 });
 
+test('a listed room\'s signal can be changed: the room\'s is chosen to begin with, and Save sends the new one', async () => {
+  const { room } = await mount({ room: { name: 'neon harbor', welcome: '', public: true, allowGuests: true, max: 12, count: 0, signal: 'feedback' } });
+  const changed = vi.spyOn(room, 'changeSettings').mockImplementation(() => {});
+  const radio = (text) => [...host.querySelectorAll('fieldset label')].find((l) => l.textContent.trim() === text).querySelector('input');
+  expect(host.querySelector('fieldset legend').textContent).toBe('Signal');
+  expect(radio('Wants feedback').checked).toBe(true);
+  radio('Open to chat').click();
+  await nextTick();
+  host.querySelector('form button[type=submit]').click();
+  expect(changed).toHaveBeenLastCalledWith({ welcome: '', allowGuests: true, max: 12, signal: 'chat' });
+});
+
 test('turning off Allow guests offers to kick the guests here too, unticked; saved ticked, each is removed', async () => {
   const { room } = await mount({ watchers: [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true }), watcher('g2', 'fox', { guest: true, connected: false })] });
   const changed = vi.spyOn(room, 'changeSettings').mockImplementation(() => {});
@@ -111,7 +123,7 @@ test('turning off Allow guests offers to kick the guests here too, unticked; sav
   // Saved unticked: guests off, nobody removed.
   host.querySelector('form button[type=submit]').click();
   await nextTick();
-  expect(changed).toHaveBeenLastCalledWith({ welcome: '', allowGuests: false, max: 12 });
+  expect(changed).toHaveBeenLastCalledWith({ welcome: '', allowGuests: false, max: 12, signal: null });
   expect(removed).not.toHaveBeenCalled();
 
   // Saved ticked: each guest is removed, the members stay, and the box is unticked again.

@@ -201,13 +201,26 @@ test('Two changeSettings within a second send one settings, then the latest; set
   const settings = () => socket.sent.filter((m) => m.type === 'settings');
   room.changeSettings({ welcome: 'Hello', allowGuests: false, max: 6 });
   room.changeSettings({ welcome: 'Hello', allowGuests: false, max: 4 });
-  expect(settings()).toEqual([{ type: 'settings', allowGuests: false, max: 6 }]);
+  expect(settings()).toEqual([{ type: 'settings', allowGuests: false, max: 6, signal: null }]);
   expect(room.room).toMatchObject({ welcome: 'Hello', allowGuests: false, max: 4 });
   await vi.waitFor(() => expect(settings()).toHaveLength(2), { timeout: 2000 });
-  expect(settings()[1]).toEqual({ type: 'settings', allowGuests: false, max: 4 });
+  expect(settings()[1]).toEqual({ type: 'settings', allowGuests: false, max: 4, signal: null });
 
   socket.receive({ type: 'settings-now', room: info({ allowGuests: false, max: 6 }) });
   expect(room.room).toEqual({ ...info({ allowGuests: false, max: 6 }), welcome: 'Hello' });
+});
+
+test('A new signal goes with the rest of the settings; settings-now\'s signal shows, and a waiting one stays', async () => {
+  const socket = await goLive();
+  const settings = () => socket.sent.filter((m) => m.type === 'settings');
+  room.changeSettings({ welcome: '', allowGuests: true, max: 12, signal: 'chat' });
+  expect(settings()).toEqual([{ type: 'settings', allowGuests: true, max: 12, signal: 'chat' }]);
+  expect(room.room.signal).toBe('chat');
+  socket.receive({ type: 'settings-now', room: info({ signal: 'feedback' }) });
+  expect(room.room.signal).toBe('feedback');
+  room.changeSettings({ welcome: '', allowGuests: true, max: 12, signal: 'heads-down' });   // waits for the interval
+  socket.receive({ type: 'settings-now', room: info({ signal: 'feedback' }) });
+  expect(room.room.signal).toBe('heads-down');
 });
 
 test('A paced-out settings: the room shows the Room\'s values, and choosing the refused ones again sends them', async () => {
@@ -218,7 +231,7 @@ test('A paced-out settings: the room shows the Room\'s values, and choosing the 
   expect(room.room.max).toBe(12);
   room.changeSettings({ welcome: 'Hi', allowGuests: true, max: 6 });
   await vi.waitFor(() => expect(settings()).toHaveLength(2), { timeout: 2000 });
-  expect(settings()[1]).toEqual({ type: 'settings', allowGuests: true, max: 6 });
+  expect(settings()[1]).toEqual({ type: 'settings', allowGuests: true, max: 6, signal: null });
   expect(room.room.max).toBe(6);
 });
 
@@ -230,7 +243,7 @@ test('A settings-now while a newer change waits keeps that change shown, and it 
   socket.receive({ type: 'settings-now', room: info({ max: 12 }) });
   expect(room.room).toMatchObject({ allowGuests: false, max: 8 });
   await vi.waitFor(() => expect(settings()).toHaveLength(2), { timeout: 2000 });
-  expect(settings()[1]).toEqual({ type: 'settings', allowGuests: false, max: 8 });
+  expect(settings()[1]).toEqual({ type: 'settings', allowGuests: false, max: 8, signal: null });
   expect(room.room).toMatchObject({ allowGuests: false, max: 8 });
 });
 
@@ -243,7 +256,7 @@ test('A settings change made while the socket is down goes once hosting is back'
   again.accept();
   await vi.waitFor(() => expect(again.sent[0]?.type).toBe('host'));
   again.receive({ type: 'hosting', room: info(), peers: [] });
-  await vi.waitFor(() => expect(again.sent.filter((m) => m.type === 'settings')).toEqual([{ type: 'settings', allowGuests: true, max: 6 }]), { timeout: 2000 });
+  await vi.waitFor(() => expect(again.sent.filter((m) => m.type === 'settings')).toEqual([{ type: 'settings', allowGuests: true, max: 6, signal: null }]), { timeout: 2000 });
   expect(room.room.max).toBe(6);
 });
 
