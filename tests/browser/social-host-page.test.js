@@ -89,22 +89,22 @@ test('settings are the welcome, guests and max watchers; listed or link only and
   expect(host.textContent).not.toContain('Listed in the lobby');
 });
 
-test('turning off Allow guests offers to put out the guests here too, unticked; saved ticked, each is removed', async () => {
+test('turning off Allow guests offers to kick the guests here too, unticked; saved ticked, each is removed', async () => {
   const { room } = await mount({ watchers: [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true }), watcher('g2', 'fox', { guest: true, connected: false })] });
   const changed = vi.spyOn(room, 'changeSettings').mockImplementation(() => {});
   const removed = vi.spyOn(room, 'remove').mockImplementation(() => {});
   const label = (text) => [...host.querySelectorAll('label')].find((l) => l.textContent.trim() === text);
   const box = label('Allow guests').querySelector('input');
-  const putOut = () => label('Put out the 2 guests here too')?.querySelector('input')
-    ?? label('Put out the guest here too')?.querySelector('input') ?? null;
-  expect(putOut()).toBe(null);
+  const kick = () => label('Kick the 2 guests here too')?.querySelector('input')
+    ?? label('Kick the guest here too')?.querySelector('input') ?? null;
+  expect(kick()).toBe(null);
 
   box.click();
   await nextTick();
-  expect(putOut().checked).toBe(false);   // turning guests off alone puts nobody out
+  expect(kick().checked).toBe(false);   // turning guests off alone kicks nobody
   room.watchers = [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true })];
   await nextTick();
-  expect(label('Put out the guest here too')).toBeTruthy();
+  expect(label('Kick the guest here too')).toBeTruthy();
   room.watchers = [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true }), watcher('g2', 'fox', { guest: true })];
   await nextTick();
 
@@ -115,17 +115,17 @@ test('turning off Allow guests offers to put out the guests here too, unticked; 
   expect(removed).not.toHaveBeenCalled();
 
   // Saved ticked: each guest is removed, the members stay, and the box is unticked again.
-  putOut().click();
+  kick().click();
   await nextTick();
   host.querySelector('form button[type=submit]').click();
   await nextTick();
   expect(removed.mock.calls).toEqual([['g1'], ['g2']]);
-  expect(putOut().checked).toBe(false);
+  expect(kick().checked).toBe(false);
 
   // Allowed again, there's nothing to choose.
   box.click();
   await nextTick();
-  expect(putOut()).toBe(null);
+  expect(kick()).toBe(null);
 });
 
 test('a listed room says so', async () => {

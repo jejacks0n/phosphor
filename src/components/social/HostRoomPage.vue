@@ -72,14 +72,14 @@ const countId = useId();
 // With guests off, no new guest gets in; the ones here stay unless the host chooses to put them out too (or one at a
 // time, from the chat panel).
 const guests = computed(() => room.watchers.filter((w) => w.guest));
-const putOutGuests = ref(false);
-const putOutLabel = computed(() => (guests.value.length === 1 ? 'Put out the guest here too'
-  : `Put out the ${guests.value.length} guests here too`));
+const kickGuests = ref(false);
+const kickLabel = computed(() => (guests.value.length === 1 ? 'Kick the guest here too'
+  : `Kick the ${guests.value.length} guests here too`));
 
 const save = () => {
   room.changeSettings({ welcome: draft.welcome, allowGuests: draft.allowGuests, max: draft.max });
-  if (!draft.allowGuests && putOutGuests.value) for (const guest of guests.value) room.remove(guest.peer);
-  putOutGuests.value = false;
+  if (!draft.allowGuests && kickGuests.value) for (const guest of guests.value) room.remove(guest.peer);
+  kickGuests.value = false;
   say('Saved');
 };
 </script>
@@ -115,7 +115,7 @@ const save = () => {
             <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
             <p :id="countId" class="help count">{{ draft.welcome.length }}/200</p>
             <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> Allow guests</label>
-            <label v-if="!draft.allowGuests && guests.length" class="choice put-out"><input v-model="putOutGuests" type="checkbox"> {{ putOutLabel }}</label>
+            <label v-if="!draft.allowGuests && guests.length" class="choice kick"><input v-model="kickGuests" type="checkbox"> {{ kickLabel }}</label>
             <label>Max watchers <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required></label>
             <button type="submit">{{ done === 'Saved' ? 'Saved' : 'Save' }}</button>
           </form>
@@ -263,7 +263,7 @@ textarea {
   field-sizing: content;
   resize: vertical;
 }
-label.put-out {   /* under Allow guests, as part of it */
+label.kick {   /* under Allow guests, as part of it */
   margin-top: -4px;
   padding-left: 21px;
 }

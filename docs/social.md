@@ -125,7 +125,7 @@ in the lobby, in place of the public rooms (the column beside stays), and asks f
   so it has no signal.
 - **Allow guests**: whether people who haven't signed in can watch. Guests can only watch. Turned
   off while you're live, no new guest gets in and a guest who leaves can't come back; the guests
-  already in the room stay unless you also tick **Put out the guests here too**. While guests are
+  already in the room stay unless you also tick **Kick the guests here too**. While guests are
   off, a guest's ⋯ in the chat panel has **Remove for this session** (while they're on, a removed
   guest would just come back as a new one, so there's no Remove).
 - **Max watchers**: from 1 to 30 (12 to begin with; a higher number goes back to 30). Each watcher uses some of your upload speed,
@@ -167,7 +167,7 @@ Scrolling it while it's checked moves it; unchecking it follows your view again.
 long as the room. A room that's only with the link has no lobby card, so no picture.
 
 **Room settings** are the welcome message, **Allow guests** and **Max watchers**, with **Save**.
-With Allow guests unticked and guests in the room, **Put out the 2 guests here too** (or "the guest")
+With Allow guests unticked and guests in the room, **Kick the 2 guests here too** (or "the guest")
 shows under it, unticked; saved ticked, each guest is removed. Under
 them, as plain facts, **Set when the room started**: **Listed in the lobby** or **Only with the link**,
 and whether a password is set. Those can't change while the room is live. What you've typed in the form
