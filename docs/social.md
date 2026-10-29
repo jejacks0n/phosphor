@@ -26,7 +26,8 @@ When you can't join a room, its Join button is grayed out and says why beside it
 - **Room is full**: it's at the host's watcher limit.
 - **Signed-in users only**: the room doesn't allow guests, and you haven't signed in.
 
-Filters above the gallery (**All**, **Wants feedback**, **Open to chat**) narrow it to rooms whose
+Signed in (with your email confirmed), **Start a room** sits across from the **Public rooms**
+title. Below them, past a rule, filters (**All**, **Wants feedback**, **Open to chat**) narrow it to rooms whose
 host wants feedback or is open to chat. When none match, it says **No rooms match this filter**.
 
 If someone you've blocked is in a room, its card says **Someone you blocked is here**.
@@ -34,11 +35,10 @@ If someone you've blocked is in a room, its card says **Someone you blocked is h
 Beside the gallery, signed in:
 
 - **You**: your username, with **Edit account** and **Sign out**.
-- **Start a room**.
 - **In the lobby**: who else is here (guests show as guests).
 
 Not signed in, the same column shows your guest nickname, **Sign in**, and **Create one** for a new
-account, in place of Start a room.
+account (and there's no Start a room).
 
 Sign in, Create an account, Account and Start a room each open in the SOCIAL tab in place of the
 lobby, with **Back to the lobby** at the top.

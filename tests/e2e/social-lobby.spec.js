@@ -59,7 +59,7 @@ test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Joi
   await expect(you(page)).toContainText('quiet-amber-fox');
   await expect(you(page).getByText('guest', { exact: true })).toBeVisible();
   await expect(side(page).getByText('Sign in to chat and start rooms.')).toBeVisible();
-  await expect(side(page).getByRole('button', { name: 'Start a room' })).toHaveCount(0);
+  await expect(lobby(page).getByRole('button', { name: 'Start a room' })).toHaveCount(0);
 
   const here = lobby(page).getByRole('list', { name: 'In the lobby' });
   await expect(lobby(page).getByText('In the lobby 3')).toBeVisible();
@@ -90,7 +90,19 @@ test('a member can join a members-only room and can start a room, and has no sig
     await expect(side(page).getByRole('button', { name })).toBeVisible();
     await expect(side(page).getByRole('button', { name })).not.toHaveClass(/\blink\b/);
   }
-  await expect(side(page).getByRole('button', { name: 'Start a room' })).toBeEnabled();
+  // Start a room sits across from the Public rooms title, right-aligned; the filter is below them, past a rule.
+  const start = lobby(page).getByRole('button', { name: 'Start a room' });
+  await expect(start).toBeEnabled();
+  await expect(side(page).getByRole('button', { name: 'Start a room' })).toHaveCount(0);
+  const title = await lobby(page).getByRole('heading', { name: 'Public rooms' }).boundingBox();
+  const button = await start.boundingBox();
+  const main = await lobby(page).locator('section.main').boundingBox();
+  const rule = await lobby(page).locator('section.main hr').boundingBox();
+  const filter = await lobby(page).getByRole('group', { name: 'Filter rooms' }).boundingBox();
+  expect(Math.abs((button.y + button.height / 2) - (title.y + title.height / 2))).toBeLessThan(2);
+  expect(main.x + main.width - (button.x + button.width)).toBeLessThan(20);   // at the right
+  expect(rule.y).toBeGreaterThan(button.y + button.height);
+  expect(filter.y).toBeGreaterThan(rule.y);
 
   await expect(lobby(page).getByText('Your signal')).toHaveCount(0);   // a room's signal is chosen in Start a room
   await expect(side(page).getByRole('button', { name: 'Open to chat' })).toHaveCount(0);
@@ -99,7 +111,7 @@ test('a member can join a members-only room and can start a room, and has no sig
   await side(page).getByRole('button', { name: 'Edit account' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('account');
   await page.getByRole('button', { name: '‹ Back to the lobby' }).click();
-  await side(page).getByRole('button', { name: 'Start a room' }).click();
+  await lobby(page).getByRole('button', { name: 'Start a room' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('start-room');
 });
 
@@ -110,7 +122,7 @@ test('a member whose email isn\'t confirmed is asked to confirm it to start a ro
   });
   await showLobby(page, server);
   await expect(side(page).getByText('Confirm your email to start a room')).toBeVisible();
-  await expect(side(page).getByRole('button', { name: 'Start a room' })).toHaveCount(0);
+  await expect(lobby(page).getByRole('button', { name: 'Start a room' })).toHaveCount(0);
   await side(page).getByRole('button', { name: 'Resend' }).click();
   await expect.poll(() => server.sent('POST', '/api/auth/send-verification-email')).toHaveLength(1);
 });

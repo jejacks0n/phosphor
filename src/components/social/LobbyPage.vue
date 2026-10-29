@@ -30,10 +30,12 @@ const name = computed(() => social.myName ?? social.me?.username);
       <header>
         <h2>Public rooms</h2>
         <span class="count">{{ social.rooms.length }} live</span>
-        <div class="chips" role="group" aria-label="Filter rooms">
-          <button v-for="[label, value] in FILTERS" :key="label" class="chip" :aria-pressed="filter === value" @click="filter = value">{{ label }}</button>
-        </div>
+        <button v-if="social.signedIn && social.me?.emailVerified !== false" class="primary start" @click="social.page = 'start-room'">Start a room</button>
       </header>
+      <hr>
+      <div class="chips" role="group" aria-label="Filter rooms">
+        <button v-for="[label, value] in FILTERS" :key="label" class="chip" :aria-pressed="filter === value" @click="filter = value">{{ label }}</button>
+      </div>
       <p v-if="reconnecting" class="status" role="status">Reconnecting…</p>
 
       <div v-if="view === 'unavailable'" class="state">
@@ -80,10 +82,9 @@ const name = computed(() => social.myName ?? social.me?.username);
           Confirm your email to start a room
           <button class="link inline" :disabled="social.busy" @click="social.resendConfirmation()">Resend</button>
         </div>
-        <button v-else class="primary start" @click="social.page = 'start-room'">Start a room</button>
       </template>
       <template v-else>
-        <button class="primary start" @click="social.page = 'sign-in'">Sign in</button>
+        <button class="primary sign-in" @click="social.page = 'sign-in'">Sign in</button>
         <p class="help">No account? <button class="link inline" @click="social.page = 'create'">Create one</button></p>
         <p class="help">Sign in to chat and start rooms.</p>
       </template>
@@ -119,9 +120,9 @@ section.main {
 
 header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  min-height: 30px;
 }
 header h2 {
   margin: 0;
@@ -129,8 +130,13 @@ header h2 {
   font-weight: 600;
   color: var(--text);
 }
-header .chips {
+header button.start {
   margin-left: auto;
+  padding: 7px 14px;
+}
+
+section.main > div.chips {
+  margin-bottom: 12px;
 }
 
 span.count {
@@ -273,7 +279,7 @@ div.links button {
   flex: 1;
 }
 
-button.start {
+button.sign-in {
   width: 100%;
   margin-top: 16px;
 }
