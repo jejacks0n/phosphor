@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
-import { useMediaQuery, useResizeObserver } from '@vueuse/core';
+import { useElementSize, useMediaQuery, useResizeObserver } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getTool, offeredTools, toolTitle } from '@/tools';
@@ -97,9 +97,16 @@ const asciiStyle = computed(() => ['ascii', 'colorAscii'].includes(project.rende
 
 // The pixel view's preview of the ANSI layer: edit cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'Overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
-// At 1100px and narrower the overlay controls fold into a dropdown named for the art style (like the
-// Actions dropdown), which opens them in a small floating toolbar under it.
-const overlayFolded = useMediaQuery('(max-width: 1100px)');
+// The toolbar folds by its own width (the window's, less the side panel, and the chat column while it's open).
+// 830px and narrower, the overlay controls fold into a dropdown named for the art style (like the Actions
+// dropdown), which opens them in a small floating toolbar under it. 630px and narrower, undo/redo, merge and
+// clear fold into the Actions dropdown, as they do in a phone's layout (the side panel a drawer) at any width.
+const toolbar = useTemplateRef('toolbar');
+const { width: toolbarWidth } = useElementSize(toolbar);
+const phoneLayout = useMediaQuery('(max-width: 768px)');
+const narrowerThan = (px) => toolbarWidth.value > 0 && toolbarWidth.value <= px;   // 0: not measured yet
+const overlayFolded = computed(() => narrowerThan(830));
+const actionsFolded = computed(() => phoneLayout.value || narrowerThan(630));
 const STYLE_NAMES = { ansi: 'ANSI', colorAscii: 'Color ASCII', ascii: 'ASCII' };
 const styleName = computed(() => STYLE_NAMES[project.renderStyle] ?? 'ANSI');
 // Unfolded, the slider names the layer itself ("ANSI Overlay"); folded, the dropdown's button does.
@@ -185,7 +192,7 @@ const selectionHasCharacters = computed(() => {
       @choose="chooseBake"
       @cancel="baking = null"
   />
-  <article class="edit-toolbar">
+  <article ref="toolbar" class="edit-toolbar" :class="{ 'actions-folded': actionsFolded }">
     <div class="toolbar-row primary-row">
       <div class="color-group">
         <ColorPair/>
@@ -676,20 +683,17 @@ div.mobile-only {
   display: none;
 }
 
-/* At 900px and narrower, undo/redo, merge and clear fold into the Actions dropdown. */
-@media (max-width: 900px) {
-  div.desktop-only {
-    display: none;
-  }
+/* Folded (actionsFolded), undo/redo, merge and clear are in the Actions dropdown. */
+article.actions-folded div.desktop-only {
+  display: none;
+}
+article.actions-folded div.mobile-only {
+  display: block;
 
-  div.mobile-only {
-    display: block;
-
-    svg {
-      display: initial;
-      position: relative;
-      top: 0.2em;
-    }
+  svg {
+    display: initial;
+    position: relative;
+    top: 0.2em;
   }
 }
 </style>
