@@ -62,8 +62,10 @@ npm run build
 - **Moderation can be described, never how it decides.** Docs and UI may say that reports exist,
   what a report sends, that people can be muted or suspended and what they see then. Nothing in UI
   copy, `docs/`, comments, tests or commit messages says how reports lead to a mute (how many, how
-  fast, whose count, how long), since people would game it. A reporter sees only "Reported. Thank
-  you."; a muted person only until when. The rules are the server's, documented in `server/`.
+  fast, whose count, how long), since people would game it. Nor that anything happens on its own
+  because of reports or a mute (a room leaving the lobby, say), nor what the admin can do. A
+  reporter sees only "Reported. Thank you."; a muted person only until when. The rules are the
+  server's, documented in `server/`.
 - **Reference files are claims.** Never run `npm run test:update` to make a failing test pass
   without reading `git diff tests/fixtures/reference` and knowing why every change is right.
 - **A failing test blocks the deploy.** Don't skip or loosen a test to get past it; fix the cause,

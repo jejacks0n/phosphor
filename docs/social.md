@@ -5,8 +5,6 @@
 > **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, the lobby
 > with its Join counts and reasons, its filter and who's here, starting and hosting a room, watching
 > one, and the chat in a room, with the host's Delete, Remove and Block, and reporting people and rooms.
-> **Comes next:** Phosphor's admin page. **Blocking and reporting** below says
-> which parts work today.
 
 Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others
 watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
@@ -299,7 +297,6 @@ It's for the same people (signed in, email confirmed). A box asks **Report this 
 **What's wrong?**, with the same four reasons. What's sent is the room's last lobby pictures, and
 from inside the room, a picture of what you see now; the box says so. Afterward you see **Reported.
 Thank you.**, and **Report room** goes away for that room (this browser remembers it for a day).
-A reported room may be taken out of the lobby.
 
 ## When something goes wrong
 
