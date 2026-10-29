@@ -69,14 +69,17 @@ for (const key of ['welcome', 'allowGuests', 'max']) {
   }, { immediate: true });
 }
 const countId = useId();
-// Turning guests off puts out the guests inside once it's saved, so the box says so while there are any.
-const guestsOutId = useId();
-const guestsHere = computed(() => room.watchers.filter((w) => w.guest).length);
-const guestsOut = computed(() => (room.room?.allowGuests && !draft.allowGuests && guestsHere.value
-  ? `Saving puts out ${guestsHere.value === 1 ? 'the guest' : `the ${guestsHere.value} guests`} here.` : null));
+// With guests off, no new guest gets in; the ones here stay unless the host chooses to put them out too (or one at a
+// time, from the chat panel).
+const guests = computed(() => room.watchers.filter((w) => w.guest));
+const putOutGuests = ref(false);
+const putOutLabel = computed(() => (guests.value.length === 1 ? 'Put out the guest here too'
+  : `Put out the ${guests.value.length} guests here too`));
 
 const save = () => {
   room.changeSettings({ welcome: draft.welcome, allowGuests: draft.allowGuests, max: draft.max });
+  if (!draft.allowGuests && putOutGuests.value) for (const guest of guests.value) room.remove(guest.peer);
+  putOutGuests.value = false;
   say('Saved');
 };
 </script>
@@ -111,8 +114,8 @@ const save = () => {
           <form @submit.prevent="save">
             <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
             <p :id="countId" class="help count">{{ draft.welcome.length }}/200</p>
-            <label class="choice"><input v-model="draft.allowGuests" type="checkbox" :aria-describedby="guestsOut ? guestsOutId : undefined"> Allow guests</label>
-            <p v-if="guestsOut" :id="guestsOutId" class="help guests-out">{{ guestsOut }}</p>
+            <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> Allow guests</label>
+            <label v-if="!draft.allowGuests && guests.length" class="choice put-out"><input v-model="putOutGuests" type="checkbox"> {{ putOutLabel }}</label>
             <label>Max watchers <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required></label>
             <button type="submit">{{ done === 'Saved' ? 'Saved' : 'Save' }}</button>
           </form>
@@ -260,9 +263,9 @@ textarea {
   field-sizing: content;
   resize: vertical;
 }
-p.guests-out {
+label.put-out {   /* under Allow guests, as part of it */
   margin-top: -4px;
-  font-size: 11px;
+  padding-left: 21px;
 }
 p.count {
   margin-top: -4px;

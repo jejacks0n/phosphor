@@ -142,11 +142,34 @@ test('only connected watchers count in N here; one still connecting is listed, s
   expect(rows.map((li) => li.querySelector('.name').textContent)).toEqual(['tin-lantern-owl', 'quiet-amber-fox', 'wren']);
   expect(rows.map((li) => li.querySelector('.what').textContent)).toEqual(['following', 'connecting…', 'looking around']);
   expect(rows.map((li) => !!li.querySelector('.tag'))).toEqual([false, false, true]);
-  expect(rows.map((li) => !!li.querySelector('button'))).toEqual([true, true, false]);   // a guest has no ⋯
+  expect(rows.map((li) => !!li.querySelector('button'))).toEqual([true, true, false]);   // a guest has no ⋯ while guests are allowed
   expect(swatched(rows[0].querySelector('.name'), 'tin-lantern-owl')).toBe(true);
 
   room.close();   // the fold is remembered while the room lasts, not after
   expect(room.peopleOpen).toBe(false);
+});
+
+test('a guest\'s ⋯ appears once guests are off, with only Remove; Remove puts them out', async () => {
+  const room = await mount('host', 0);
+  room.room = { ...room.room, allowGuests: true };
+  room.watchers = [watcher('p1', 'tin-lantern-owl'), watcher('g1', 'wren', { guest: true })];
+  room.peopleOpen = true;
+  const removed = vi.spyOn(room, 'remove').mockImplementation(() => {});
+  await nextTick();
+  const guestRow = () => [...host.querySelectorAll('.people li')][1];
+  expect(guestRow().querySelector('button')).toBe(null);   // they'd only come back as a new guest
+
+  room.room = { ...room.room, allowGuests: false };
+  await nextTick();
+  const trigger = guestRow().querySelector('button.dropdown-trigger');
+  expect(trigger.title).toBe('More for wren');
+  trigger.click();
+  await nextTick();
+  const items = [...guestRow().querySelectorAll('.dropdown-content button')]
+    .filter((b) => b !== trigger).map((b) => b.textContent.trim());
+  expect(items).toEqual(['Remove for this session']);
+  [...guestRow().querySelectorAll('button')].find((b) => b.textContent.trim() === 'Remove for this session').click();
+  expect(removed).toHaveBeenCalledWith('g1');
 });
 
 test('a watcher\'s panel has no people list and no room menu; the host\'s has both', async () => {

@@ -44,7 +44,7 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
           <p :id="`${id}-password`" class="help">The link alone lets people in. Add a password if you want them to need both.</p>
         </template>
         <label class="choice"><input v-model="draft.allowGuests" type="checkbox" :aria-describedby="`${id}-guests`"> Allow guests</label>
-        <p :id="`${id}-guests`" class="help">Guests can only watch, so you can't remove one; turn this off if you'd rather have members only.</p>
+        <p :id="`${id}-guests`" class="help">Guests can only watch. Turn this off if you'd rather have members only, now or once you're live.</p>
         <label>Max watchers <input v-model.number="draft.max" class="short" type="number" min="1" :max="MAX_WATCHERS" required :aria-describedby="`${id}-max`"></label>
         <p :id="`${id}-max`" class="help">Each watcher uses some of your upload speed. 12 suits most home connections.</p>
       </div>

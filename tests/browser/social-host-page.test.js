@@ -89,25 +89,43 @@ test('settings are the welcome, guests and max watchers; listed or link only and
   expect(host.textContent).not.toContain('Listed in the lobby');
 });
 
-test('turning off Allow guests says Save puts out the guests here, only while there are some', async () => {
+test('turning off Allow guests offers to put out the guests here too, unticked; saved ticked, each is removed', async () => {
   const { room } = await mount({ watchers: [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true }), watcher('g2', 'fox', { guest: true, connected: false })] });
-  const box = [...host.querySelectorAll('label')].find((l) => l.textContent.trim() === 'Allow guests').querySelector('input');
-  const note = () => host.querySelector('.guests-out')?.textContent ?? null;
-  expect(note()).toBe(null);
+  const changed = vi.spyOn(room, 'changeSettings').mockImplementation(() => {});
+  const removed = vi.spyOn(room, 'remove').mockImplementation(() => {});
+  const label = (text) => [...host.querySelectorAll('label')].find((l) => l.textContent.trim() === text);
+  const box = label('Allow guests').querySelector('input');
+  const putOut = () => label('Put out the 2 guests here too')?.querySelector('input')
+    ?? label('Put out the guest here too')?.querySelector('input') ?? null;
+  expect(putOut()).toBe(null);
+
   box.click();
   await nextTick();
-  expect(note()).toBe('Saving puts out the 2 guests here.');
-  expect(box.getAttribute('aria-describedby')).toBe(host.querySelector('.guests-out').id);
+  expect(putOut().checked).toBe(false);   // turning guests off alone puts nobody out
   room.watchers = [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true })];
   await nextTick();
-  expect(note()).toBe('Saving puts out the guest here.');
-  room.watchers = [watcher('p1', 'bob')];
+  expect(label('Put out the guest here too')).toBeTruthy();
+  room.watchers = [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true }), watcher('g2', 'fox', { guest: true })];
   await nextTick();
-  expect(note()).toBe(null);
-  room.watchers = [watcher('g1', 'wren', { guest: true })];
+
+  // Saved unticked: guests off, nobody removed.
+  host.querySelector('form button[type=submit]').click();
+  await nextTick();
+  expect(changed).toHaveBeenLastCalledWith({ welcome: '', allowGuests: false, max: 12 });
+  expect(removed).not.toHaveBeenCalled();
+
+  // Saved ticked: each guest is removed, the members stay, and the box is unticked again.
+  putOut().click();
+  await nextTick();
+  host.querySelector('form button[type=submit]').click();
+  await nextTick();
+  expect(removed.mock.calls).toEqual([['g1'], ['g2']]);
+  expect(putOut().checked).toBe(false);
+
+  // Allowed again, there's nothing to choose.
   box.click();
   await nextTick();
-  expect(note()).toBe(null);   // allowed again
+  expect(putOut()).toBe(null);
 });
 
 test('a listed room says so', async () => {

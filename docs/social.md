@@ -123,10 +123,11 @@ in the lobby, in place of the public rooms (the column beside stays), and asks f
 - **Signal**, for a public room: *None*, *Wants feedback*, *Open to chat* or *Heads down*. It's
   shown on your room's card in the lobby, and the lobby's filters use it. A private room has no card,
   so it has no signal.
-- **Allow guests**: whether people who haven't signed in can watch. Guests can only watch, and you
-  can't remove one (they'd just come back as a new guest); turn this off if you'd rather have
-  members only. Turned off while you're live, it puts out every guest in the room once you save, and
-  they're told the room is for signed-in users only.
+- **Allow guests**: whether people who haven't signed in can watch. Guests can only watch. Turned
+  off while you're live, no new guest gets in and a guest who leaves can't come back; the guests
+  already in the room stay unless you also tick **Put out the guests here too**. While guests are
+  off, a guest's ⋯ in the chat panel has **Remove for this session** (while they're on, a removed
+  guest would just come back as a new one, so there's no Remove).
 - **Max watchers**: from 1 to 30 (12 to begin with; a higher number goes back to 30). Each watcher uses some of your upload speed,
   and 12 suits most home connections.
 
@@ -166,8 +167,8 @@ Scrolling it while it's checked moves it; unchecking it follows your view again.
 long as the room. A room that's only with the link has no lobby card, so no picture.
 
 **Room settings** are the welcome message, **Allow guests** and **Max watchers**, with **Save**.
-Unchecking Allow guests while guests are in the room says under it "Saving puts out the 2 guests
-here." (or "the guest"). Under
+With Allow guests unticked and guests in the room, **Put out the 2 guests here too** (or "the guest")
+shows under it, unticked; saved ticked, each guest is removed. Under
 them, as plain facts, **Set when the room started**: **Listed in the lobby** or **Only with the link**,
 and whether a password is set. Those can't change while the room is live. What you've typed in the form
 stays when you go to another tab, and when a setting is changed from the chat panel meanwhile, a field
