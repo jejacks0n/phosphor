@@ -18,14 +18,16 @@ const frames = async (n = 4) => {
   for (let i = 0; i < n; i++) await new Promise((resolve) => requestAnimationFrame(resolve));
 };
 
-// The picture over 300 lines of art `cols` wide, the room listed and the ANSI view at `row`.
-async function mount(row, cols = 40) {
+// The picture over 300 lines of art `cols` wide, the room listed and the ANSI view at `row`, in a space
+// `width` px wide.
+async function mount(row, cols = 40, width = 400) {
   const { project, workspace } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/tall.png', { cols, rows: 600 });
   const room = useRoomStore();
   Object.assign(room, { role: 'host', status: 'live', room: { name: 'neon harbor', public: true } });
   Object.assign(workspace, { viewTab: 'output', ansiViewOrigin: { col: 0, row }, ansiViewSize: { cols: 40, rows: 30 }, ansiViewZoom: 1 });
   host = document.createElement('div');
+  host.style.width = `${width}px`;
   document.body.append(host);
   app = createApp(LobbyPicture).use(getActivePinia());
   app.mount(host);
@@ -90,4 +92,27 @@ test('a pin is not rewritten when the art gets wider and the cells smaller under
   expect(room.lobbyPin).toEqual({ col: 0, row: 200 });
   const now = el.firstElementChild.getBoundingClientRect().height / 300;
   expect(Math.round(el.scrollTop / now)).toBe(200);
+});
+
+// The frame's room: the picture's width inside its padding.
+const room = () => {
+  const section = host.querySelector('section.lobby-picture'), style = getComputedStyle(section);
+  return section.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+};
+
+// Cells are whole device pixels, so the frame can come up to a device pixel a column short of its room.
+test('the frame fills the width it\'s given, never past it, and follows when that changes', async () => {
+  await mount(200, 40, 600);
+  const frame = host.querySelector('.frame');
+  const fills = async () => {
+    await frames();
+    const { width } = frame.getBoundingClientRect();
+    expect(width).toBeLessThanOrEqual(room() + 0.5);
+    expect(width).toBeGreaterThan(room() - 40 / devicePixelRatio - 1);
+  };
+  await expect.poll(() => frame.getBoundingClientRect().width).toBeGreaterThan(500);
+  await fills();
+  host.style.width = '260px';
+  await expect.poll(() => frame.getBoundingClientRect().width).toBeLessThan(240);
+  await fills();
 });

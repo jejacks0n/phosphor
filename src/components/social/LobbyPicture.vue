@@ -10,12 +10,12 @@ import { fontFor, fontOnWire } from '@/social/wire';
 import { lobbyWindow } from '@/social/thumbnail';
 import RoomArt from './RoomArt.vue';
 
-// What the lobby card shows of the art: a small frame, about FRAME px wide (cells are whole device
-// pixels, so it comes out near it), the size of the lobby window, with the art scrolling inside it.
+// What the lobby card shows of the art: a frame as wide as the picture has room for (cells are whole
+// device pixels, so it comes out up to a cell less), the shape of the lobby window, with the art scrolling inside it.
 // Unchecked, the window follows the host's view and the frame is RoomArt centered on it; the frame can
 // be scrolled to look, and "Use this exact position" pins the window to the cells the frame shows.
 // While pinned, scrolling the frame moves the pin.
-const FRAME = 300;
+const FRAME = 300;   // until the picture's room is measured
 const room = useRoomStore(), project = useProjectStore(), workspace = useWorkspaceStore();
 const headingId = useId();
 
@@ -39,9 +39,17 @@ const hostView = computed(() => {
   const { cellWidth, lineHeight } = cellGeometry(advance.value, 8, false, font.value);
   return lobbyWindow(art.value, { cellWidth, lineHeight }, room.lobbyPlace);
 });
-const zoom = computed(() => (hostView.value ? FRAME / (hostView.value.cols * advance.value) : 1));
 const cell = ref(null);    // the cell as RoomArt drew it: { width, height } in CSS px
 const bars = ref({ x: 0, y: 0 });   // the frame's scrollbars take room from the art: the frame is that much bigger
+const space = ref(FRAME);   // the picture's width inside its padding, in CSS px
+// The cell the art's width fits in a whole number of device pixels, so RoomArt's rounding never makes the
+// frame wider than its room.
+const zoom = computed(() => {
+  if (!hostView.value) return 1;
+  const dpr = window.devicePixelRatio || 1;
+  const cw = Math.max(1, Math.floor((space.value - bars.value.y) * dpr / hostView.value.cols));
+  return cw / (advance.value * dpr);
+});
 const frameStyle = computed(() => {
   const v = hostView.value, c = cell.value;
   if (!v || !c) return { width: `${FRAME}px`, height: `${FRAME / 2}px` };
@@ -88,6 +96,10 @@ const settle = async () => {
   el.scrollTop = v.row * cell.value.height;
 };
 
+const pictureRef = useTemplateRef('picture');
+const spaceObserver = new ResizeObserver(([entry]) => { space.value = entry.contentRect.width; });
+watch(pictureRef, (el) => { spaceObserver.disconnect(); if (el) spaceObserver.observe(el); }, { flush: 'post' });
+
 // The art's sizer is watched once the art is there (it can come after the frame does).
 const artRef = useTemplateRef('roomArt');
 watch(artRef, (instance) => {
@@ -97,11 +109,14 @@ watch(artRef, (instance) => {
   sizerObserver = new ResizeObserver(settle);
   sizerObserver.observe(el.firstElementChild);
 }, { flush: 'post' });
-onBeforeUnmount(() => sizerObserver?.disconnect());
+onBeforeUnmount(() => {
+  sizerObserver?.disconnect();
+  spaceObserver.disconnect();
+});
 </script>
 
 <template>
-  <section class="lobby-picture" :aria-labelledby="headingId">
+  <section ref="picture" class="lobby-picture" :aria-labelledby="headingId">
     <h3 :id="headingId">Lobby picture</h3>
     <div ref="frame" class="frame" :style="frameStyle" @scroll.capture="scrolled">
       <RoomArt v-if="art" ref="roomArt" :art="art" :host-view="hostView" :following="!pinned" :zoom="zoom" :boxed="false" />
