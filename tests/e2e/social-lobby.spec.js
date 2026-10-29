@@ -77,6 +77,21 @@ test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Joi
   expect(await store(page, 'social', (s) => s.page)).toBe('create');
 });
 
+test('while it\'s asking who you are, the side shows no Sign in and no guest tag, then you', async ({ page }) => {
+  let answer;
+  const me = new Promise((resolve) => { answer = resolve; });
+  await fakeServer(page, { 'GET /api/me': () => me });
+  await page.goto('/');
+  await tab(page, 'SOCIAL').click();
+  await expect(you(page)).toBeVisible();
+  await page.waitForTimeout(300);   // the moment the flash showed in
+  await expect(side(page).getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(0);
+  await expect(you(page).getByText('guest', { exact: true })).toHaveCount(0);
+  answer([200, member()]);
+  await expect(side(page).getByRole('button', { name: 'Edit account' })).toBeVisible();
+  await expect(side(page).getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(0);
+});
+
 test('a member can join a members-only room and can start a room, and has no signal of their own', async ({ page }) => {
   const server = await fakeServer(page, { me: member(), rooms: ROOMS });
   await showLobby(page, server);

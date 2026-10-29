@@ -22,6 +22,8 @@ const view = computed(() => {
 const reconnecting = computed(() => social.lobbyStatus === 'reconnecting' && view.value !== 'unavailable');
 
 const name = computed(() => social.myName ?? social.me?.username);
+// Who you are is known once /api/me has answered: until then, neither you nor a guest (no Sign in to flash).
+const known = computed(() => social.supported !== null);
 </script>
 
 <template>
@@ -66,7 +68,7 @@ const name = computed(() => social.myName ?? social.me?.username);
     <aside class="side">
       <div class="you">
         <div class="label">You</div>
-        <div class="who">
+        <div v-if="known" class="who">
           <span v-if="name" class="swatch" :style="{ background: nameColor(name) }"></span>
           <span class="name">{{ name }}</span>
           <span v-if="!social.signedIn" class="tag">guest</span>
@@ -77,13 +79,13 @@ const name = computed(() => social.myName ?? social.me?.username);
         </div>
       </div>
 
-      <template v-if="social.signedIn">
+      <template v-if="known && social.signedIn">
         <div v-if="social.me?.emailVerified === false" class="confirm">
           Confirm your email to start a room
           <button class="link inline" :disabled="social.busy" @click="social.resendConfirmation()">Resend</button>
         </div>
       </template>
-      <template v-else>
+      <template v-else-if="known">
         <button class="primary sign-in" @click="social.page = 'sign-in'">Sign in</button>
         <p class="help">No account? <button class="link inline" @click="social.page = 'create'">Create one</button></p>
         <p class="help">Sign in to chat and start rooms.</p>
