@@ -253,12 +253,12 @@ test('a change the Room makes while you\'re on another tab shows when you\'re ba
   await expect(host.getByRole('textbox', { name: 'Welcome message' })).toHaveValue('back in 5');
 });
 
-test('Room settings send the guests and max watchers; End room sends end, and the lobby and the dot come back', async ({ page }) => {
+test('Room settings send the guests, max watchers and signal; End room sends end, and the lobby and the dot come back', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
   await host.getByRole('spinbutton', { name: 'Max watchers' }).fill('6');
   await host.getByRole('button', { name: 'Save' }).click();
-  await expect.poll(() => room.from('host').filter((m) => m.type === 'settings')).toEqual([{ type: 'settings', allowGuests: true, max: 6 }]);
+  await expect.poll(() => room.from('host').filter((m) => m.type === 'settings')).toEqual([{ type: 'settings', allowGuests: true, max: 6, signal: null }]);
   expect(await store(page, 'room', (r) => r.room.max)).toBe(6);
 
   await host.getByRole('button', { name: 'End room' }).click();
@@ -306,8 +306,8 @@ test('two quick saves leave the room with the latest settings', async ({ page })
   await host.getByRole('checkbox', { name: 'Allow guests' }).uncheck();
   await host.getByRole('button', { name: 'Save' }).click();
   await expect.poll(() => room.from('host').filter((m) => m.type === 'settings')).toEqual([
-    { type: 'settings', allowGuests: true, max: 6 },
-    { type: 'settings', allowGuests: false, max: 8 },
+    { type: 'settings', allowGuests: true, max: 6, signal: null },
+    { type: 'settings', allowGuests: false, max: 8, signal: null },
   ]);
   expect([room.setup.allowGuests, room.setup.max]).toEqual([false, 8]);
   await page.waitForTimeout(300);   // a settings-now would be back by now
