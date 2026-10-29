@@ -25,8 +25,8 @@ When you can't join a room, its Join button is grayed out and says why beside it
 - **Signed-in users only**: the room doesn't allow guests, and you haven't signed in.
 
 Signed in (with your email confirmed), **Start a room** sits across from the **Public rooms**
-title. Below them, past a rule, filters (**All**, **Wants feedback**, **Open to chat**) narrow it to rooms whose
-host wants feedback or is open to chat. When none match, it says **No rooms match this filter**.
+title. Below them, past a rule, filters (**All**, **Wants feedback**, **Open to chat**, **Heads down**) narrow it
+to rooms whose host wants feedback, is open to chat or is heads down. When none match, it says **No rooms match this filter**.
 
 If someone you've blocked is in a room, its card says **Someone you blocked is here**.
 

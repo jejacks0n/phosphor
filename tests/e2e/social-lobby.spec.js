@@ -13,7 +13,7 @@ const ROOMS = [
   room('harbor', { name: 'neon harbor at dusk', count: 4, signal: 'feedback', liveSince: Date.now() - 42 * MIN, thumbnail: 'UklGRg==' }),
   room('shading', { name: 'first time trying shading', host: 'tin-lantern-owl', count: 2, signal: 'chat' }),
   room('full', { name: 'acid logo for my bbs', count: 7, max: 7, liveSince: Date.now() - 75 * MIN }),
-  room('members', { name: 'members only', count: 3, max: 8, allowGuests: false, blockedInside: true }),
+  room('members', { name: 'members only', count: 3, max: 8, allowGuests: false, blockedInside: true, signal: 'heads-down' }),
 ];
 const PEOPLE = [
   { sub: 'u_2', name: 'dusty-neon-heron', guest: false, signal: 'chat' },
@@ -160,6 +160,10 @@ test('the filter chips show only the rooms with that signal', async ({ page }) =
   await filters.getByRole('button', { name: 'Open to chat' }).click();
   await expect(lobby(page).getByRole('article')).toHaveCount(1);
   await expect(card(page, 'first time')).toBeVisible();
+
+  await filters.getByRole('button', { name: 'Heads down' }).click();
+  await expect(lobby(page).getByRole('article')).toHaveCount(1);
+  await expect(card(page, 'members only')).toBeVisible();
 
   await filters.getByRole('button', { name: 'All' }).click();
   await expect(lobby(page).getByRole('article')).toHaveCount(4);

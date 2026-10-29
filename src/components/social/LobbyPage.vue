@@ -2,13 +2,14 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { mutedWords } from '@/social/chat';
+import { signalWords } from '@/social/lobby';
 import UserName from './UserName.vue';
 import RoomCard from './RoomCard.vue';
 import StartRoomPage from './StartRoomPage.vue';
 
 const social = useSocialStore();
 
-const FILTERS = [['All', null], ['Wants feedback', 'feedback'], ['Open to chat', 'chat']];
+const FILTERS = [['All', null], ...Object.entries(signalWords).map(([value, words]) => [words, value])];
 const filter = ref(null);
 const shown = computed(() => (filter.value ? social.rooms.filter((r) => r.signal === filter.value) : social.rooms));
 
