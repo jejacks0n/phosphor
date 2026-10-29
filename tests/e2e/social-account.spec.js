@@ -12,7 +12,7 @@ const LATER = Date.UTC(2031, 10, 15, 12);
 async function openAccount(page) {
   await page.goto('/');
   if (await store(page, 'workspace', (w) => w.editorTab) !== 'social') await tab(page, 'SOCIAL').click();
-  await shown(page, 'lobby').getByRole('button', { name: 'Account' }).click();
+  await shown(page, 'lobby').getByRole('button', { name: 'Edit account' }).click();
   return shown(page, 'account');
 }
 
@@ -250,7 +250,7 @@ test('Two-factor: turning it on asks for your password, shows a QR code and the 
   await expect(section.locator('li')).toHaveCount(0);
 
   await account.getByRole('button', { name: '‹ Back to the lobby' }).click();
-  await shown(page, 'lobby').getByRole('button', { name: 'Account' }).click();
+  await shown(page, 'lobby').getByRole('button', { name: 'Edit account' }).click();
   await expect(section.getByText('On. Signing in asks for a code.')).toBeVisible();
   await expect(section.locator('li')).toHaveCount(0);
 });

@@ -86,15 +86,17 @@ test('a member can join a members-only room and can start a room, and has no sig
 
   await expect(you(page)).toContainText('ansi-fan');
   await expect(you(page).getByText('guest', { exact: true })).toHaveCount(0);
-  await expect(side(page).getByRole('button', { name: 'Account' })).toBeVisible();
-  await expect(side(page).getByRole('button', { name: 'Sign out' })).toBeVisible();
+  for (const name of ['Edit account', 'Sign out']) {   // buttons, not links
+    await expect(side(page).getByRole('button', { name })).toBeVisible();
+    await expect(side(page).getByRole('button', { name })).not.toHaveClass(/\blink\b/);
+  }
   await expect(side(page).getByRole('button', { name: 'Start a room' })).toBeEnabled();
 
   await expect(lobby(page).getByText('Your signal')).toHaveCount(0);   // a room's signal is chosen in Start a room
   await expect(side(page).getByRole('button', { name: 'Open to chat' })).toHaveCount(0);
   await expect(lobby(page).getByRole('list', { name: 'In the lobby' }).getByRole('listitem').first()).toHaveText(/^\s*ansi-fan\s*$/);
 
-  await side(page).getByRole('button', { name: 'Account' }).click();
+  await side(page).getByRole('button', { name: 'Edit account' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('account');
   await page.getByRole('button', { name: '‹ Back to the lobby' }).click();
   await side(page).getByRole('button', { name: 'Start a room' }).click();

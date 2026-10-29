@@ -70,8 +70,8 @@ const name = computed(() => social.myName ?? social.me?.username);
           <span v-if="!social.signedIn" class="tag">guest</span>
         </div>
         <div v-if="social.signedIn" class="links">
-          <button class="link" @click="social.page = 'account'">Account</button>
-          <button class="link" @click="social.signOut()">Sign out</button>
+          <button @click="social.page = 'account'">Edit account</button>
+          <button @click="social.signOut()">Sign out</button>
         </div>
       </div>
 
@@ -266,7 +266,11 @@ span.tag {
 
 div.links {
   display: flex;
-  margin: 4px 0 0 18px;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+div.links button {
+  flex: 1;
 }
 
 button.start {

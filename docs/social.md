@@ -33,7 +33,7 @@ If someone you've blocked is in a room, its card says **Someone you blocked is h
 
 Beside the gallery, signed in:
 
-- **You**: your username, with **Account** and **Sign out**.
+- **You**: your username, with **Edit account** and **Sign out**.
 - **Start a room**.
 - **In the lobby**: who else is here (guests show as guests).
 
@@ -81,7 +81,7 @@ you out everywhere else. Signed out, it has a **Sign in** link back.
 
 ## Your account
 
-**Account** shows:
+**Edit account** opens the Account page:
 
 - **Username**, which you can change once every 30 days. Your color in the lobby and chat comes
   from your username.
