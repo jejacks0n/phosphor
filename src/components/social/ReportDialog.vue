@@ -24,9 +24,9 @@ const roomStore = useRoomStore(), social = useSocialStore();
 const SHOWN_MS = 4000;
 
 const title = computed(() => (props.room ? 'Report this room?' : `Report ${props.name}?`));
-const says = computed(() => (!props.room ? 'Phosphor\'s admin sees this message and the few before it.'
-  : props.room.from === 'inside' ? 'Phosphor\'s admin sees the room\'s last lobby pictures and a picture of what you see now.'
-    : 'Phosphor\'s admin sees the room\'s last lobby pictures.'));
+const says = computed(() => (!props.room ? 'Phosphor\'s moderators see this message and the few before it.'
+  : props.room.from === 'inside' ? 'Phosphor\'s moderators see the room\'s last lobby pictures and a picture of what you see now.'
+    : 'Phosphor\'s moderators see the room\'s last lobby pictures.'));
 
 const reason = ref(null);
 const sent = ref(false);

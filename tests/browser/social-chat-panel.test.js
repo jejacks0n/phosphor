@@ -401,7 +401,7 @@ test('Report room asks "Report this room?" with the inside sub, and Report sends
   await nextTick();
   const dialog = document.querySelector('[role=dialog]');
   expect(dialog.querySelector('h3').textContent).toBe('Report this room?');
-  expect(dialog.querySelector('p.sub').textContent).toBe('Phosphor\'s admin sees the room\'s last lobby pictures and a picture of what you see now.');
+  expect(dialog.querySelector('p.sub').textContent).toBe('Phosphor\'s moderators see the room\'s last lobby pictures and a picture of what you see now.');
   dialog.querySelector('input[value=sexual]').click();
   await nextTick();
   [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Report').click();

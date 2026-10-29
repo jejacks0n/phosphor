@@ -13,7 +13,7 @@ const box = (page) => panel(page).getByRole('textbox', { name: 'Message' });
 const reportsIn = (page) => panel(page).getByRole('button', { name: /^Report/ });
 const dialog = (page, name) => page.getByRole('dialog', { name: `Report ${name}?` });
 const reported = (page) => page.getByRole('status').filter({ hasText: 'Reported. Thank you.' });
-const SUB = 'Phosphor\'s admin sees this message and the few before it.';
+const SUB = 'Phosphor\'s moderators see this message and the few before it.';
 
 async function say(page, text) {
   await box(page).fill(text);
@@ -218,7 +218,7 @@ test('a member reports the room from under Exit: the fake hears report-room with
   await asked.getByRole('button', { name: 'Cancel' }).click();   // nothing sent; focus back on Report room
   await expect(reportRoom).toBeFocused();
   await reportRoom.click();
-  await expect(asked.getByText('Phosphor\'s admin sees the room\'s last lobby pictures and a picture of what you see now.', { exact: true })).toBeVisible();
+  await expect(asked.getByText('Phosphor\'s moderators see the room\'s last lobby pictures and a picture of what you see now.', { exact: true })).toBeVisible();
   await expect(asked.getByRole('button', { name: 'Report', exact: true })).toBeDisabled();
   await asked.getByRole('radio', { name: 'Sexual or violent' }).check();
   await asked.getByRole('button', { name: 'Report', exact: true }).click();
@@ -248,7 +248,7 @@ test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears repo
   await more(watcher).click();
   await watcher.getByRole('button', { name: 'Report room' }).click();
   const asked = roomDialog(watcher);
-  await expect(asked.getByText('Phosphor\'s admin sees the room\'s last lobby pictures.', { exact: true })).toBeVisible();
+  await expect(asked.getByText('Phosphor\'s moderators see the room\'s last lobby pictures.', { exact: true })).toBeVisible();
   await asked.getByRole('radio', { name: 'Spam or flooding' }).check();
   await asked.getByRole('button', { name: 'Report', exact: true }).click();
 
