@@ -14,7 +14,7 @@ import UserName from './UserName.vue';
 // the part of the box in view by CSS (sticky), so it moves with the box in the same frame; only once
 // the box is out of view is it placed here, at the edge nearest the box, with an arrow toward it. While following, each new view of the
 // host's is scrolled to the center. A wheel, a key or a press in it is looking around (a scroll it
-// made itself isn't; the tag is no part of it). The host's numbers are a stranger's: the view is held
+// made itself isn't; the tag is no part of it). Each draw tells the cell in the middle of the view (looking-at). The host's numbers are a stranger's: the view is held
 // to the grid here, and the font's size by fontFor.
 const props = defineProps({
   art: { type: Object, default: null },        // { cells, cols, lines, font (as sent: wire.fontOnWire) }
@@ -24,7 +24,7 @@ const props = defineProps({
   zoom: { type: Number, default: 1 },          // the cell's size against the font's (the host's, never above 1)
   boxed: { type: Boolean, default: true },     // the host's box and tag (false: just the art, scrolled to the view)
 });
-const emit = defineEmits(['look-around', 'follow']);
+const emit = defineEmits(['look-around', 'follow', 'looking-at']);
 
 const scrollRef = useTemplateRef('scroll'), sizerRef = useTemplateRef('sizer'), canvasRef = useTemplateRef('canvas'), tagRef = useTemplateRef('tag');
 const font = computed(() => fontFor(props.art?.font));
@@ -121,6 +121,7 @@ const render = () => {
   cellCanvas.draw(art.cells, { cols: art.cols, rows: art.lines, col: win.col, row: win.row });
   canvasRef.value.style.left = `${win.col * m.cellWidth}px`;
   canvasRef.value.style.top = `${win.row * m.lineHeight}px`;
+  emit('looking-at', { middleCol: (el.scrollLeft + el.clientWidth / 2) / m.cellWidth, middleRow: (el.scrollTop + el.clientHeight / 2) / m.lineHeight });
   placeTag();
 };
 

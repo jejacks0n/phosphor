@@ -45,6 +45,14 @@ const keepReport = (room, by, sub) => {
     localStorage.setItem(REPORTED, JSON.stringify([...keptReports(), { room, by, sub, at: Date.now() }]));
   } catch { /* no storage: a rejoin offers Report again */ }
 };
+// The room itself, reported (from inside it or from the lobby), is kept the same way, as this sub.
+const ROOM_REPORT = '*room';
+export const hasReportedRoom = (room) => reportedIn(room, useSocialStore().claims?.sub).includes(ROOM_REPORT);
+export const keepRoomReport = (room) => keepReport(room, useSocialStore().claims?.sub, ROOM_REPORT);
+const REPORT_PICTURE = { width: 480, most: 96 * 1024 };   // the Room's limit on a room report's picture, as base64 characters
+
+// The cell in the middle of a view ({ col, row, cols, rows }), or the top left without one.
+const middleOf = (v) => (v ? { middleCol: v.col + v.cols / 2, middleRow: v.row + v.rows / 2 } : { middleCol: 0, middleRow: 0 });
 
 const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12, signal: null });
 const newSettingsDraft = () => ({ welcome: '', allowGuests: true, max: 12, signal: null, seen: {} });
@@ -66,13 +74,14 @@ export const useRoomStore = defineStore('room', {
     watchers: [],        // a host's: [{ peer, sub, name, guest, following, connected }]
     art: shallowRef(null),   // a watcher's: { cells, cols, lines, font }
     hostView: null,      // a watcher's: { col, row, cols, rows, zoom }
+    lookingAt: null,     // a watcher's: the cell in the middle of the art in view { middleCol, middleRow } (RoomArt's looking-at)
     following: true,
     artZoom: 1,          // a watcher's: the zoom the art is drawn at, the host's while following
     chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence?, silenced? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
-    reported: [],        // the subs you reported in this room (Report is gone for them there, rejoining too)
+    reported: [],        // the subs you reported in this room (Report is gone for them there, rejoining too), and ROOM_REPORT once you reported the room
     peopleOpen: false,   // a host's: the chat panel's "N here" list is open
     silenced: [],        // a host's: the subs it silenced in this room (their messages reach only them, and the host)
     lobbyPin: null,      // a host's (picked in Setup room, or while live): the top-left cell { col, row } the lobby picture uses; null while it follows the view
@@ -109,8 +118,7 @@ export const useRoomStore = defineStore('room', {
     // Where the lobby picture looks: the cell it's pinned to, else the middle of the shared view.
     lobbyPlace() {
       if (this.lobbyPin !== null) return { ...this.lobbyPin };
-      const v = useWorkspaceStore().sharedView;
-      return v ? { middleCol: v.col + v.cols / 2, middleRow: v.row + v.rows / 2 } : { middleCol: 0, middleRow: 0 };
+      return middleOf(useWorkspaceStore().sharedView);
     },
   },
 
@@ -284,7 +292,7 @@ export const useRoomStore = defineStore('room', {
       for (const stop of this._stops) stop();
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, silenced: [], lobbyPin: null, session: newSession(),
+        hostView: null, lookingAt: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, silenced: [], lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,
       });
@@ -346,6 +354,28 @@ export const useRoomStore = defineStore('room', {
       if (!this._connection?.send({ type: 'report', sub, reason, messages, ...(messageId ? { message: messageId } : {}) })) return false;
       this.reported.push(sub);
       keepReport(this.id, useSocialStore().claims.sub, sub);
+      return true;
+    },
+
+    // A watcher's report of the room itself, with a picture of what they see now: the host's view while following,
+    // else their own. False, sending nothing, if you can't report, you're the host, you reported this room already
+    // or the reason isn't one; also when the socket isn't open, and then it isn't kept as reported.
+    async reportRoom(reason) {
+      if (this.role !== 'watch' || !this.canReport || this.reported.includes(ROOM_REPORT) || !REASONS.some((r) => r.id === reason)) return false;
+      this.reported.push(ROOM_REPORT);   // a second Report while the picture is made sends nothing
+      const connection = this._connection, art = this.art;
+      let picture = null;
+      try {
+        if (art) picture = await thumbnailOf({ ...art, font: fontFor(art.font) }, (!this.following && this.lookingAt) || middleOf(this.hostView), REPORT_PICTURE);
+      } catch (error) {
+        console.warn('The room report\'s picture failed.', error);   // it goes without one
+      }
+      if (connection !== this._connection) return false;   // the room closed meanwhile
+      if (!connection?.send({ type: 'report-room', reason, ...(picture ? { picture } : {}) })) {
+        this.reported = this.reported.filter((s) => s !== ROOM_REPORT);
+        return false;
+      }
+      keepRoomReport(this.id);
       return true;
     },
 

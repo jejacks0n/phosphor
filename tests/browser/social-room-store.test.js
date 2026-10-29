@@ -5,7 +5,7 @@
 // the server's.
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useSocialStore } from '@/store/SocialStore';
-import { useRoomStore } from '@/store/RoomStore';
+import { useRoomStore, hasReportedRoom } from '@/store/RoomStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { thumbnailOf } from '@/social/thumbnail';
 import { forgetKey, loadKey } from '@/social/keys';
@@ -17,6 +17,7 @@ import { Host } from '@/social/hosting';
 import { measureAdvance } from '@/lib/CellCanvas';
 import { DISPLAY_FONT, setDisplayFont } from '@/lib/displayFonts';
 import { MOST_KEPT, signedText } from '@/social/chat';
+import { fontFor } from '@/social/wire';
 import { openPeer } from '@/social/peer';
 import { passKey } from '@/social/pass';
 import { newSession, removedCount } from '@/social/session';
@@ -1292,6 +1293,67 @@ test('Who you reported is kept for the room: not a report that couldn\'t go, no 
   social.claims = { ...social.claims, sub: 'u_5' };   // another account in this browser: nobody yet
   room.join(ID);
   expect(room.reported).toEqual([]);
+});
+
+// Reporting the room itself, from inside: the reason and a picture of what the watcher sees.
+const roomReports = (socket) => socket.sent.filter((m) => m.type === 'report-room');
+const smallArt = { cols: 2, lines: 1, font: { id: 'vga', size: 16 }, cells: [cell('a'), cell('b')] };
+const REPORT_PICTURE = { width: 480, most: 96 * 1024 };
+
+test('a watcher\'s reportRoom sends the reason and a base64 picture of what they see, once; then Report room is gone for this room', async () => {
+  const socket = await watching();
+  Object.assign(room, { art: smallArt, hostView: { col: 10, row: 4, cols: 20, rows: 10, zoom: 1 } });
+  expect(hasReportedRoom(ID)).toBe(false);
+  // Following: centered on the host's view. Asked twice at once, it goes once.
+  expect(await Promise.all([room.reportRoom('sexual'), room.reportRoom('sexual')])).toEqual([true, false]);
+  expect(roomReports(socket)).toEqual([{ type: 'report-room', reason: 'sexual', picture: 'AAAA' }]);
+  expect(thumbnailOf).toHaveBeenCalledTimes(1);
+  expect(thumbnailOf).toHaveBeenCalledWith({ ...smallArt, font: fontFor(smallArt.font) }, { middleCol: 20, middleRow: 9 }, REPORT_PICTURE);
+  expect(room.reported).toContain('*room');
+  expect(hasReportedRoom(ID)).toBe(true);
+  expect(await room.reportRoom('spam')).toBe(false);
+
+  room.leave();   // the same room again (a reload too): still reported
+  const again = await joining(2);
+  again.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
+  expect(room.reported).toContain('*room');
+  expect(await room.reportRoom('spam')).toBe(false);
+  expect(roomReports(again)).toEqual([]);
+  social.claims = { ...social.claims, sub: 'u_5' };   // another account in this browser hasn't
+  expect(hasReportedRoom(ID)).toBe(false);
+});
+
+test('looking around, the room report\'s picture is centered on what the watcher sees; no picture, it goes without one', async () => {
+  const socket = await watching();
+  Object.assign(room, { art: smallArt, hostView: { col: 10, row: 4, cols: 20, rows: 10, zoom: 1 } });
+  room.setFollowing(false);
+  room.lookingAt = { middleCol: 70, middleRow: 33 };
+  vi.mocked(thumbnailOf).mockResolvedValueOnce(null);
+  expect(await room.reportRoom('other')).toBe(true);
+  expect(thumbnailOf).toHaveBeenCalledWith(expect.anything(), { middleCol: 70, middleRow: 33 }, REPORT_PICTURE);
+  expect(roomReports(socket)).toEqual([{ type: 'report-room', reason: 'other' }]);
+});
+
+test('the host, a guest or an unconfirmed member can\'t reportRoom', async () => {
+  const hostSocket = await goLive();
+  expect(await room.reportRoom('spam')).toBe(false);   // the host
+  expect(roomReports(hostSocket)).toEqual([]);
+  room.leave();
+
+  const socket = await joining(2);
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
+  room.art = smallArt;
+  expect(await room.reportRoom('rude')).toBe(false);   // not a reason
+  social.claims = { ...social.claims, guest: true, verified: false };
+  expect(await room.reportRoom('spam')).toBe(false);   // a guest
+  social.claims = { ...social.claims, guest: false, verified: false };
+  expect(await room.reportRoom('spam')).toBe(false);   // unconfirmed
+  social.claims = { ...social.claims, verified: true };
+  room._connection.close();
+  expect(await room.reportRoom('spam')).toBe(false);   // no socket: and not kept as reported
+  expect(roomReports(socket)).toEqual([]);
+  expect(room.reported).not.toContain('*room');
+  expect(hasReportedRoom(ID)).toBe(false);
 });
 
 test('A mute for your own sub gets a new pass that carries it', async () => {

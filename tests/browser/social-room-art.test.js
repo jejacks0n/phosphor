@@ -22,11 +22,11 @@ afterEach(() => {
 
 // RoomArt in a 200 x 100 px box; its look-arounds counted.
 function mount(props) {
-  const state = reactive({ art, hostView: null, following: true, host: 'ansi-fan', zoom: 1, ...props }), seen = { lookArounds: 0, follows: 0 };
+  const state = reactive({ art, hostView: null, following: true, host: 'ansi-fan', zoom: 1, ...props }), seen = { lookArounds: 0, follows: 0, lookingAt: null };
   host = document.createElement('div');
   host.style.cssText = 'width: 200px; height: 100px';
   document.body.append(host);
-  app = createApp({ render: () => h(RoomArt, { ...state, onLookAround: () => seen.lookArounds++, onFollow: () => seen.follows++ }) });
+  app = createApp({ render: () => h(RoomArt, { ...state, onLookAround: () => seen.lookArounds++, onFollow: () => seen.follows++, onLookingAt: (middle) => { seen.lookingAt = middle; } }) });
   app.mount(host);
   return { state, seen, scroll: host.querySelector('.room-art'), box: host.querySelector('.host-view'), tag: () => host.querySelector('.host-tag') };
 }
@@ -65,6 +65,17 @@ test('each new view of the host\'s is centered while following, and not once loo
   state.hostView = { col: 80, row: 40, cols: 10, rows: 4 };
   await nextTick();
   expect(scroll.scrollLeft + scroll.clientWidth / 2).toBe(15 * 8);
+});
+
+test('the middle of what\'s in view, in cells, is told as it changes (a room report\'s picture is centered there)', async () => {
+  await createTestApp();
+  const { scroll, box, seen } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 } });
+  await expect.poll(() => box.style.width).toBe('80px');
+  await frames();
+  expect(seen.lookingAt).toEqual({ middleCol: 45, middleRow: 22 });   // centered on the host's view
+  scroll.scrollLeft = 0;
+  scroll.scrollTop = 0;
+  await expect.poll(() => seen.lookingAt).toEqual({ middleCol: 100 / 8, middleRow: 50 / 16 });   // the 200 x 100 px box's middle
 });
 
 test('at a zoom of 0.5 the cells and the box are half size, and the box is centered', async () => {

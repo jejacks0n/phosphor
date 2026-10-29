@@ -3,7 +3,7 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useSocialStore } from '@/store/SocialStore';
-import { useRoomStore } from '@/store/RoomStore';
+import { useRoomStore, hasReportedRoom } from '@/store/RoomStore';
 import { forgetKey, loadKey } from '@/social/keys';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
 import { verify, claimsOf, member, fakeServer, sockets, useFakeSockets, goLive, lastSocket, at } from '../support/socialServer.js';
@@ -188,6 +188,32 @@ test('signIn picks the username or email endpoint; a wrong password, or a suspen
   ]);
   expect(social.signedIn).toBe(true);
   expect(social.page).toBe('lobby');
+});
+
+test('reportRoom sends report-room on the lobby socket and remembers it', async () => {
+  const server = fakeServer();
+  server.session = member();
+  await social.start(at(''));
+  await social.showLobby();
+  const socket = await lastSocket(1);
+  expect(social.reportRoom('quiet', 'spam')).toBe(false);   // the lobby isn't open yet
+  await goLive(socket, { rooms: [room('quiet')], people: [] });
+  const reports = () => socket.sent.filter((m) => m.type === 'report-room');
+
+  expect(social.reportRoom('quiet', 'rude')).toBe(false);   // not a reason
+  social.claims = { ...social.claims, guest: true, verified: false };
+  expect(social.reportRoom('quiet', 'spam')).toBe(false);   // a guest
+  social.claims = { ...social.claims, guest: false, verified: false };
+  expect(social.reportRoom('quiet', 'spam')).toBe(false);   // unconfirmed
+  social.claims = { ...social.claims, verified: true };
+  expect(reports()).toEqual([]);
+  expect(hasReportedRoom('quiet')).toBe(false);
+
+  expect(social.reportRoom('quiet', 'spam')).toBe(true);
+  expect(reports()).toEqual([{ type: 'report-room', id: 'quiet', reason: 'spam' }]);
+  expect(hasReportedRoom('quiet')).toBe(true);
+  expect(social.reportRoom('quiet', 'other')).toBe(false);   // once is enough
+  expect(reports()).toHaveLength(1);
 });
 
 // A sign-in to an account with two-factor on: no session yet, only the challenge, until a code is verified.

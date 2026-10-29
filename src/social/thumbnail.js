@@ -19,8 +19,8 @@ export function lobbyWindow({ cols, lines }, { cellWidth, lineHeight }, place) {
 // The lobby's picture of a room: the cells of lobbyWindow, drawn off screen
 // in the host's font and encoded as WebP, as raw base64. A browser that can't make WebP (Safari makes
 // a PNG instead) gives a JPEG. null when this browser can't do it (no WebGL2, no encoder for either) or
-// the picture won't fit the limit.
-export async function thumbnailOf({ cells, cols, lines, font }, place, { width = 320 } = {}) {
+// the picture won't fit in `most` characters (the lobby's limit unless given: a room report's is larger).
+export async function thumbnailOf({ cells, cols, lines, font }, place, { width = 320, most = MAX_CHARS } = {}) {
   await loadFontFaces(font);
   let canvas;
   try {
@@ -43,7 +43,7 @@ export async function thumbnailOf({ cells, cols, lines, font }, place, { width =
       if (blob?.type !== type && type === 'image/webp') blob = await encode(type = 'image/jpeg', quality);
       if (blob?.type !== type) return null;
       const webp = await base64Of(blob);
-      if (webp.length <= MAX_CHARS) return webp;
+      if (webp.length <= most) return webp;
     }
     return null;
   } finally {

@@ -97,6 +97,16 @@ test('a larger picture that is over the limit at 0.8 is tried again at 0.5; stil
   expect(qualities).toEqual([0.8, 0.5]);
 });
 
+test('a larger limit (a room report\'s picture) takes a picture the lobby\'s limit wouldn\'t', async () => {
+  const toBlob = HTMLCanvasElement.prototype.toBlob;
+  vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (done, type, quality) {
+    toBlob.call(this, (blob) => done(new Blob([new Uint8Array(40_000)], { type: blob.type })), type, quality);
+  });
+  const picture = await thumbnailOf(blank, MIDDLE, { width: 480, most: 96 * 1024 });
+  expect(picture).toMatch(BASE64);
+  expect(picture.length).toBe(53_336);   // 40,000 bytes as base64
+});
+
 test('a browser that can\'t encode WebP (Safari makes a PNG instead) gives a JPEG of the same cells', async () => {
   const toBlob = HTMLCanvasElement.prototype.toBlob;
   vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (done, type, quality) {

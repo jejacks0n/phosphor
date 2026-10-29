@@ -65,3 +65,10 @@ test('the art is dimmed while waiting for the host, not while live', async () =>
   await nextTick();
   expect(getComputedStyle(area).opacity).toBe('0.5');
 });
+
+test('the middle of the art in view is the store\'s lookingAt (a room report\'s picture is centered there)', async () => {
+  const white = { hex: '#ffffff', r: 255, g: 255, b: 255 };
+  const art = { cols: 2, lines: 1, font: { id: 'vga', size: 16 }, cells: [{ char: 'A', fg: white, bg: white }, { char: 'B', fg: white, bg: white }] };
+  const { room } = await mount({ status: 'live', room: { name: 'neon harbor', welcome: '', host: 'ansi-fan' }, art, hostView: { col: 0, row: 0, cols: 2, rows: 1 } });
+  await expect.poll(() => room.lookingAt).toMatchObject({ middleCol: expect.any(Number), middleRow: expect.any(Number) });
+});

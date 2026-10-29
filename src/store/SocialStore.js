@@ -6,7 +6,8 @@ import { messageFor } from '@/social/messages';
 import { ed25519Supported, loadKey } from '@/social/keys';
 import { requestPass, renewAt } from '@/social/pass';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { useRoomStore } from '@/store/RoomStore';
+import { useRoomStore, hasReportedRoom, keepRoomReport } from '@/store/RoomStore';
+import { REASONS } from '@/social/chat';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection } from '@/social/lobby';
 
 const RENEW_RETRY_MS = 30_000;   // after a renewal that failed for a passing reason (NETWORK, THROTTLED)
@@ -515,6 +516,15 @@ export const useSocialStore = defineStore('social', {
 
     lobbyMessage(msg) {
       this.lobby = applyLobbyMessage(this.lobby, msg);
+    },
+
+    // A report of a room from the lobby. False, sending nothing, if you can't report (a guest or an unconfirmed
+    // member), the reason isn't one, you reported the room already or the lobby isn't open.
+    reportRoom(id, reason) {
+      if (!useRoomStore().canReport || !REASONS.some((r) => r.id === reason) || hasReportedRoom(id)) return false;
+      if (!this._connection?.send({ type: 'report-room', id, reason })) return false;
+      keepRoomReport(id);
+      return true;
     },
 
     // A refused pass is tried once more with a fresh one; refused again, the lobby is unavailable (and

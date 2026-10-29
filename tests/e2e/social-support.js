@@ -34,7 +34,7 @@ const codes = (word) => Array.from({ length: 10 }, (_, i) => `${word}-code${i}`)
 // the real server does). A member's pass carries
 // server.mutedUntil (epoch ms) while it's set. Routes answer [status, body]; server.route(key, answer) changes one
 // later. server.requests has every API call ({ method, path, body }); server.lobby.received every
-// message the app sent on the lobby socket; server.lobby.send(msg) pushes one, drop() closes it (both
+// message the app sent on the lobby socket (a report-room too: nothing answers it); server.lobby.send(msg) pushes one, drop() closes it (both
 // throw until the app has connected: the SOCIAL tab shown, and again after a drop). With
 // server.lobby.refusing set, a hello is answered refused. POST /api/rooms makes room ROOM_ID; given a
 // fakeRoom as `room`, the page's room sockets go to it, and the room is the one the POST describes.
@@ -183,8 +183,9 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
 // peer's place: that one hears replaced, and the host peer-gone. Signals are relayed between the host
 // and its watchers; the host hears of each watcher (peer, peer-gone). Settings change the room as the
 // Room's checks allow, at most once a second per host socket: a sooner one is answered `settings-now`.
-// A host's remove takes the watcher out and sends it removed (the host hears no peer-gone). A report is
-// taken silently, as the Room takes it: it's in room.received, and nothing answers it.
+// A host's remove takes the watcher out and sends it removed (the host hears no peer-gone). A report (of a
+// person, or report-room of the room) is taken silently, as the Room takes it: it's in room.received, and
+// nothing answers it.
 // End sends ended to everyone. Sockets are closed where the Room closes them: after refused (1008),
 // ended, removed or replaced (1000), and a watcher's once the host hears it's gone. room.received has every message as { from: 'host' |
 // <peer> | null, msg }, room.from(who) the messages of one; room.send(who, msg) pushes one, room.info()
