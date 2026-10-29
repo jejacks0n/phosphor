@@ -364,3 +364,47 @@ test('Report again on the same message while "Reported" shows opens the dialog a
   }
   expect(room.report).toHaveBeenCalledTimes(2);
 });
+
+// Report room: a confirmed watcher's, beside Exit, until they've reported the room.
+const reportRoomButton = () => [...host.querySelectorAll('header button')].find((b) => b.textContent === 'Report room');
+
+test('a confirmed watcher has Report room beside Exit; the host, a guest and an unconfirmed member don\'t', async () => {
+  const room = await mount('watch', 0);
+  const social = useSocialStore();
+  social.claims = claims({});
+  await nextTick();
+  expect(reportRoomButton()).toBeTruthy();
+  expect(reportRoomButton().nextElementSibling).toBe(host.querySelector('button.exit'));
+  for (const fields of [{ guest: true, verified: false }, { verified: false }]) {
+    social.claims = claims(fields);
+    await nextTick();
+    expect(reportRoomButton()).toBeUndefined();
+  }
+  social.claims = claims({});
+  room.reported = ['*room'];   // reported already
+  await nextTick();
+  expect(reportRoomButton()).toBeUndefined();
+  room.reported = [];
+  room.role = 'host';
+  await nextTick();
+  expect(reportRoomButton()).toBeUndefined();
+});
+
+test('Report room asks "Report this room?" with the inside sub, and Report sends reportRoom with the reason', async () => {
+  const room = await mount('watch', 0);
+  useSocialStore().claims = claims({});
+  await nextTick();
+  const reportRoom = vi.spyOn(room, 'reportRoom').mockResolvedValue(true);
+  const trigger = reportRoomButton();
+  trigger.click();
+  await nextTick();
+  const dialog = document.querySelector('[role=dialog]');
+  expect(dialog.querySelector('h3').textContent).toBe('Report this room?');
+  expect(dialog.querySelector('p.sub').textContent).toBe('Phosphor\'s admin sees the room\'s last lobby pictures and a picture of what you see now.');
+  dialog.querySelector('input[value=sexual]').click();
+  await nextTick();
+  [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Report').click();
+  await vi.waitFor(() => expect(document.querySelector('p.reported').textContent).toBe('Reported. Thank you.'));
+  expect(reportRoom).toHaveBeenCalledWith('sexual');
+  expect(document.querySelector('[role=dialog]')).toBe(null);
+});

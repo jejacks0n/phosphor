@@ -48,7 +48,13 @@ const keepReport = (room, by, sub) => {
 // The room itself, reported (from inside it or from the lobby), is kept the same way, as this sub.
 const ROOM_REPORT = '*room';
 export const hasReportedRoom = (room) => reportedIn(room, useSocialStore().claims?.sub).includes(ROOM_REPORT);
-export const keepRoomReport = (room) => keepReport(room, useSocialStore().claims?.sub, ROOM_REPORT);
+export const keepRoomReport = (room) => {
+  const social = useSocialStore();
+  keepReport(room, social.claims?.sub, ROOM_REPORT);
+  social.roomReports.push({ room, by: social.claims?.sub });
+};
+// Every room reported in this browser and by which account ({ room, by }), for the lobby's cards.
+export const keptRoomReports = () => keptReports().filter((r) => r.sub === ROOM_REPORT).map(({ room, by }) => ({ room, by }));
 const REPORT_PICTURE = { width: 480, most: 96 * 1024 };   // the Room's limit on a room report's picture, as base64 characters
 
 // The cell in the middle of a view ({ col, row, cols, rows }), or the top left without one.
@@ -113,6 +119,8 @@ export const useRoomStore = defineStore('room', {
     canReport() {
       return this.canChat;
     },
+    // A watcher reported this room (Report room is gone).
+    roomReported: (state) => state.reported.includes(ROOM_REPORT),
     // When your mute ends (epoch ms), while your pass says you're muted.
     mutedUntil: () => useSocialStore().claims?.mutedUntil ?? null,
     // Where the lobby picture looks: the cell it's pinned to, else the middle of the shared view.

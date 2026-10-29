@@ -1304,23 +1304,28 @@ test('a watcher\'s reportRoom sends the reason and a base64 picture of what they
   const socket = await watching();
   Object.assign(room, { art: smallArt, hostView: { col: 10, row: 4, cols: 20, rows: 10, zoom: 1 } });
   expect(hasReportedRoom(ID)).toBe(false);
+  expect(room.roomReported).toBe(false);
   // Following: centered on the host's view. Asked twice at once, it goes once.
   expect(await Promise.all([room.reportRoom('sexual'), room.reportRoom('sexual')])).toEqual([true, false]);
   expect(roomReports(socket)).toEqual([{ type: 'report-room', reason: 'sexual', picture: 'AAAA' }]);
   expect(thumbnailOf).toHaveBeenCalledTimes(1);
   expect(thumbnailOf).toHaveBeenCalledWith({ ...smallArt, font: fontFor(smallArt.font) }, { middleCol: 20, middleRow: 9 }, REPORT_PICTURE);
   expect(room.reported).toContain('*room');
+  expect(room.roomReported).toBe(true);
   expect(hasReportedRoom(ID)).toBe(true);
+  expect(social.reportedRooms).toEqual([ID]);   // the lobby's card has no Report room for it either
   expect(await room.reportRoom('spam')).toBe(false);
 
   room.leave();   // the same room again (a reload too): still reported
   const again = await joining(2);
   again.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   expect(room.reported).toContain('*room');
+  expect(room.roomReported).toBe(true);
   expect(await room.reportRoom('spam')).toBe(false);
   expect(roomReports(again)).toEqual([]);
   social.claims = { ...social.claims, sub: 'u_5' };   // another account in this browser hasn't
   expect(hasReportedRoom(ID)).toBe(false);
+  expect(social.reportedRooms).toEqual([]);
 });
 
 test('looking around, the room report\'s picture is centered on what the watcher sees; no picture, it goes without one', async () => {
@@ -1353,7 +1358,9 @@ test('the host, a guest or an unconfirmed member can\'t reportRoom', async () =>
   expect(await room.reportRoom('spam')).toBe(false);   // no socket: and not kept as reported
   expect(roomReports(socket)).toEqual([]);
   expect(room.reported).not.toContain('*room');
+  expect(room.roomReported).toBe(false);
   expect(hasReportedRoom(ID)).toBe(false);
+  expect(social.reportedRooms).toEqual([]);
 });
 
 test('A mute for your own sub gets a new pass that carries it', async () => {

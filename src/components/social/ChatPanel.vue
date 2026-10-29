@@ -18,7 +18,7 @@ import ReportDialog from './ReportDialog.vue';
 // that message). Who came and went, with no message between, is one line ("tin-owl joined, wren
 // left"); your own comings and goings aren't shown, as "You joined" marks where you came in. A confirmed
 // member can Report someone else's message (it shows on hover or focus, as the host's Delete does), until
-// they've reported that person in this room.
+// they've reported that person in this room; and Report room, beside Exit, until they've reported the room.
 const room = useRoomStore(), social = useSocialStore();
 
 const folded = ref(false);
@@ -37,6 +37,10 @@ const reporting = ref(null);   // { name, sub, messageId, trigger }
 const opened = ref(0);         // each Report opens a new dialog, even on the same message
 const askToReport = (m, event) => {
   reporting.value = { name: m.name, sub: m.sub, messageId: m.id, trigger: event.currentTarget };
+  opened.value++;
+};
+const askToReportRoom = (event) => {
+  reporting.value = { room: { id: room.id, from: 'inside' }, trigger: event.currentTarget };
   opened.value++;
 };
 
@@ -114,7 +118,10 @@ function askIfAtTop() {
         </div>
         <div class="tools">
           <RoomMenu v-if="room.role === 'host'" ref="menu" />
-          <button v-else-if="room.role === 'watch'" class="exit" @click="room.leave()">Exit</button>
+          <template v-else-if="room.role === 'watch'">
+            <button v-if="room.canReport && !room.roomReported" class="link report-room" @click="askToReportRoom">Report room</button>
+            <button class="exit" @click="room.leave()">Exit</button>
+          </template>
           <button class="fold link" aria-label="Fold the chat" @click="fold(true)">»</button>
         </div>
       </header>
@@ -250,6 +257,15 @@ button.exit {   /* as the host's ⋯ in its place */
   border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
+}
+button.report-room {
+  padding: 4px 6px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+button.report-room:hover {
+  color: var(--text);
 }
 button.fold {
   padding: 4px 6px;

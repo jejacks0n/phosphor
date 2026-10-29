@@ -1,40 +1,61 @@
 <script setup>
-import { ref, nextTick, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onUnmounted } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
+import { useSocialStore } from '@/store/SocialStore';
 import { REASONS } from '@/social/chat';
 import ModalDialog from '@/components/ModalDialog.vue';
 
-// Report a person, for a message (messageId) or from the host's N here: one reason, required. Sent, the
+// Report a person, for a message (messageId) or from the host's N here, or with `room` the room itself, from
+// inside it (beside Exit) or from its lobby card: one reason, required. Sent, the
 // dialog gives way to "Reported" for a few seconds (in a status line that's there from the start, so it's
 // read out); one that can't be sent leaves the dialog as it is.
 // Cancel, Escape and the backdrop send nothing. Focus goes back to `trigger`, or (that gone, as a message's
-// Report is once you've reported them) to the "N here" button or the messages.
+// Report is once you've reported them) to `back`, else the "N here" button or the messages.
 const props = defineProps({
-  name: { type: String, required: true },
-  sub: { type: String, required: true },
+  name: { type: String, default: null },
+  sub: { type: String, default: null },
   messageId: { type: String, default: null },
+  room: { type: Object, default: null },   // { id, from: 'inside' | 'lobby' }: a report of the room
   trigger: { default: null },   // the element that opened it
+  back: { default: null },      // where focus goes when the trigger has gone
 });
 const emit = defineEmits(['done']);
-const room = useRoomStore();
+const roomStore = useRoomStore(), social = useSocialStore();
 const SHOWN_MS = 4000;
+
+const title = computed(() => (props.room ? 'Report this room?' : `Report ${props.name}?`));
+const says = computed(() => (!props.room ? 'Phosphor\'s admin sees this message and the few before it.'
+  : props.room.from === 'inside' ? 'Phosphor\'s admin sees the room\'s last lobby pictures and a picture of what you see now.'
+    : 'Phosphor\'s admin sees the room\'s last lobby pictures.'));
 
 const reason = ref(null);
 const sent = ref(false);
-let timer = null;
+let sending = false, timer = null;
 onUnmounted(() => clearTimeout(timer));
 
-const focusBack = () => (props.trigger?.isConnected ? props.trigger : document.querySelector('.chat button.here, .chat [role=log]'))?.focus();
+const focusBack = () => (props.trigger?.isConnected ? props.trigger : props.back ?? document.querySelector('.chat button.here, .chat [role=log]'))?.focus();
 const cancel = () => {
   focusBack();
   emit('done');
 };
-function report() {
-  if (sent.value) return;
-  if (!room.report({ sub: props.sub, messageId: props.messageId, reason: reason.value })) return;
+const send = () => (!props.room ? roomStore.report({ sub: props.sub, messageId: props.messageId, reason: reason.value })
+  : props.room.from === 'inside' ? roomStore.reportRoom(reason.value)
+    : social.reportRoom(props.room.id, reason.value));
+function reported(ok) {
+  if (!ok) return;
   sent.value = true;
   nextTick(focusBack);   // once the Report it came from is gone (you reported them)
   timer = setTimeout(() => emit('done'), SHOWN_MS);
+}
+function report() {
+  if (sent.value || sending) return;
+  const result = send();
+  if (!(result instanceof Promise)) return reported(result);
+  sending = true;   // reportRoom from inside waits for its picture
+  result.then((ok) => {
+    sending = false;
+    reported(ok);
+  });
 }
 </script>
 
@@ -42,8 +63,7 @@ function report() {
   <Teleport to="body">
     <p class="reported" role="status">{{ sent ? 'Reported. Thank you.' : '' }}</p>
   </Teleport>
-  <ModalDialog v-if="!sent" :title="`Report ${name}?`"
-      sub="Phosphor's admin sees this message and the few before it." @cancel="cancel">
+  <ModalDialog v-if="!sent" :title="title" :sub="says" @cancel="cancel">
     <fieldset>
       <legend>What's wrong?</legend>
       <label v-for="r in REASONS" :key="r.id"><input v-model="reason" type="radio" name="report-reason" :value="r.id"> {{ r.label }}</label>

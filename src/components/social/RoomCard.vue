@@ -1,8 +1,11 @@
 <script setup>
-import { computed, useId } from 'vue';
+import { computed, ref, useId, useTemplateRef } from 'vue';
 import { useNow } from '@vueuse/core';
 import { useRoomStore } from '@/store/RoomStore';
+import { useSocialStore } from '@/store/SocialStore';
 import { joinState, liveFor, pictureUrl, signalWords } from '@/social/lobby';
+import DropdownMenu from '@/components/DropdownMenu.vue';
+import ReportDialog from './ReportDialog.vue';
 import UserName from './UserName.vue';
 
 const props = defineProps({
@@ -10,7 +13,7 @@ const props = defineProps({
   signedIn: { type: Boolean, required: true },
 });
 
-const roomStore = useRoomStore();
+const roomStore = useRoomStore(), social = useSocialStore();
 const now = useNow({ interval: 60_000 });   // "live 42 min" moves on while the lobby is shown
 const join = computed(() => joinState(props.room, { signedIn: props.signedIn }));
 const meta = computed(() => {
@@ -18,6 +21,14 @@ const meta = computed(() => {
   return liveFor(props.room.liveSince, now.value.getTime()) + (signal ? `, ${signal.toLowerCase()}` : '');
 });
 const reasonId = useId();
+
+// The ⋯ with Report room: for a confirmed member, not on their own room, until they've reported it.
+const reportable = computed(() => roomStore.canReport && props.room.host !== social.myName && !social.reportedRooms.includes(props.room.id));
+const reporting = ref(null);   // { room, trigger, back }
+const joinButton = useTemplateRef('join');
+const askToReport = (event) => {
+  reporting.value = { room: { id: props.room.id, from: 'lobby' }, trigger: event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger'), back: joinButton.value };
+};
 </script>
 
 <template>
@@ -31,10 +42,15 @@ const reasonId = useId();
       <div class="meta">{{ meta }}</div>
       <div v-if="room.blockedInside" class="blocked">Someone you blocked is here</div>
       <div class="foot">
+        <DropdownMenu v-if="reportable" class="more" :label="`More for ${room.name}`" align="left">
+          <template #trigger><span aria-hidden="true">⋯</span></template>
+          <button @click="askToReport">Report room</button>
+        </DropdownMenu>
         <span v-if="join.reason" :id="reasonId" class="reason">{{ join.reason }}</span>
-        <button class="join" :disabled="!join.enabled" :aria-describedby="join.reason ? reasonId : undefined" @click="roomStore.join(room.id)">{{ join.label }}</button>
+        <button ref="join" class="join" :disabled="!join.enabled" :aria-describedby="join.reason ? reasonId : undefined" @click="roomStore.join(room.id)">{{ join.label }}</button>
       </div>
     </div>
+    <ReportDialog v-if="reporting" v-bind="reporting" @done="reporting = null" />
   </article>
 </template>
 
@@ -109,6 +125,10 @@ div.foot {
   gap: 8px;
   margin-top: auto;
   padding-top: 8px;
+}
+
+article.more {
+  margin-right: auto;
 }
 
 span.reason {

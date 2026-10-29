@@ -6,7 +6,7 @@ import { messageFor } from '@/social/messages';
 import { ed25519Supported, loadKey } from '@/social/keys';
 import { requestPass, renewAt } from '@/social/pass';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { useRoomStore, hasReportedRoom, keepRoomReport } from '@/store/RoomStore';
+import { useRoomStore, hasReportedRoom, keepRoomReport, keptRoomReports } from '@/store/RoomStore';
 import { REASONS } from '@/social/chat';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection } from '@/social/lobby';
 
@@ -81,6 +81,7 @@ export const useSocialStore = defineStore('social', {
     lobby: shallowRef(emptyLobby()),
     lobbyStatus: null,   // the connection's: 'connecting' | 'live' | 'reconnecting' | 'refused' | 'closed'
     blocked: [],         // [{ id, username, since }]
+    roomReports: keptRoomReports(),   // the rooms reported in this browser, by account: [{ room, by }] (reportedRooms is yours)
     providers: [],       // the provider ids the server has set up: only those get a button
     notice: null,        // one line at the top of the tab
     busy: false,
@@ -100,6 +101,8 @@ export const useSocialStore = defineStore('social', {
     rooms: (state) => sortedRooms(state.lobby),
     people: (state) => sortedPeople(state.lobby, state.claims?.sub),
     myName: (state) => state.claims?.name ?? null,
+    // The ids of the rooms you reported (their cards have no Report room).
+    reportedRooms: (state) => (state.claims ? state.roomReports.filter((r) => r.by === state.claims.sub).map((r) => r.room) : []),
     // The word for the sign-in pages' back link.
     backTo: () => (useRoomStore().role === 'watch' ? 'room' : 'lobby'),
     isGuest() {

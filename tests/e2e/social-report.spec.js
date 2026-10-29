@@ -1,9 +1,9 @@
 // Reporting people: Report on a message (for a confirmed member, on other people's messages) and in the
-// host's N here ⋯, through one dialog with a reason. The report goes to the Room on the reporter's own
+// host's N here ⋯, through one dialog with a reason; and reporting a room, beside Exit or on its lobby card's ⋯. The report goes to the Room on the reporter's own
 // socket, with the messages as they came, signed by their senders; nothing answers it. A mute the Room
 // tells of mid-room makes the host drop that person's chat.
-import { test, expect, store } from './support.js';
-import { fakeRoom, goLive, watcherPage, joinFromCard, member } from './social-support.js';
+import { test, expect, store, tab } from './support.js';
+import { fakeRoom, goLive, watcherPage, joinFromCard, member, shown, ROOM_ID } from './social-support.js';
 
 const wren = member({ id: 'u_2', username: 'pixel_wren', name: 'pixel_wren' });
 
@@ -200,4 +200,58 @@ test('a muted watcher is told until when in place of the box, without a reload; 
   await expect(box(host)).toBeVisible();
   await say(host, 'still here');
   await expect(messages(watcher)).toHaveCount(2);
+});
+
+// Reporting the room itself.
+const roomDialog = (page) => page.getByRole('dialog', { name: 'Report this room?' });
+
+test('a member reports the room from beside Exit: the fake hears report-room with a reason and a picture, and "Reported. Thank you." shows', async ({ page: host, context }) => {
+  const { room, watcher } = await inRoom(host, context);
+  const reportRoom = panel(watcher).getByRole('button', { name: 'Report room' });
+  await reportRoom.click();
+  const asked = roomDialog(watcher);
+  await asked.getByRole('button', { name: 'Cancel' }).click();   // nothing sent; focus back on Report room
+  await expect(reportRoom).toBeFocused();
+  await reportRoom.click();
+  await expect(asked.getByText('Phosphor\'s admin sees the room\'s last lobby pictures and a picture of what you see now.', { exact: true })).toBeVisible();
+  await expect(asked.getByRole('button', { name: 'Report', exact: true })).toBeDisabled();
+  await asked.getByRole('radio', { name: 'Sexual or violent' }).check();
+  await asked.getByRole('button', { name: 'Report', exact: true }).click();
+
+  await expect(reported(watcher)).toBeVisible();
+  await expect.poll(() => room.from('p_1').filter((m) => m.type === 'report-room')).toHaveLength(1);
+  const [report] = room.from('p_1').filter((m) => m.type === 'report-room');
+  expect(report).toMatchObject({ type: 'report-room', reason: 'sexual', picture: expect.stringMatching(/^[A-Za-z0-9+/]+=*$/) });
+  await expect(reportRoom).toHaveCount(0);
+  await expect(panel(watcher).getByRole('button', { name: 'Exit' })).toBeVisible();
+});
+
+test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears report-room; the card has no Report room after, and a guest\'s card has no ⋯', async ({ context }) => {
+  const room = fakeRoom();
+  const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });
+  const more = (page) => card(page).getByRole('button', { name: 'More for neon harbor' });
+
+  const watcher = await watcherPage(context, room, { me: wren });
+  await watcher.goto('/');
+  await tab(watcher, 'SOCIAL').click();
+  await more(watcher).click();
+  await watcher.getByRole('button', { name: 'Report room' }).click();
+  const asked = roomDialog(watcher);
+  await expect(asked.getByText('Phosphor\'s admin sees the room\'s last lobby pictures.', { exact: true })).toBeVisible();
+  await asked.getByRole('radio', { name: 'Spam or flooding' }).check();
+  await asked.getByRole('button', { name: 'Report', exact: true }).click();
+
+  await expect(reported(watcher)).toBeVisible();
+  await expect.poll(() => watcher.server.lobby.received.filter((m) => m.type === 'report-room')).toEqual([{ type: 'report-room', id: ROOM_ID, reason: 'spam' }]);
+  await expect(more(watcher)).toHaveCount(0);   // its only item gone
+  await expect(card(watcher).getByRole('button', { name: /^Join/ })).toBeFocused();   // the ⋯ gone, focus goes to Join
+
+  // A guest, an unconfirmed member and the room's own host (by name) have no ⋯ on it.
+  for (const me of [null, member({ id: 'u_3', username: 'tin_owl', name: 'tin_owl', emailVerified: false }), member()]) {
+    const page = await watcherPage(context, room, { me });
+    await page.goto('/');
+    await tab(page, 'SOCIAL').click();
+    await expect(card(page).getByRole('button', { name: /^Join/ })).toBeVisible();
+    await expect(more(page)).toHaveCount(0);
+  }
 });

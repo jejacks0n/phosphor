@@ -209,11 +209,31 @@ test('reportRoom sends report-room on the lobby socket and remembers it', async 
   expect(reports()).toEqual([]);
   expect(hasReportedRoom('quiet')).toBe(false);
 
+  expect(social.reportedRooms).toEqual([]);
+
   expect(social.reportRoom('quiet', 'spam')).toBe(true);
   expect(reports()).toEqual([{ type: 'report-room', id: 'quiet', reason: 'spam' }]);
   expect(hasReportedRoom('quiet')).toBe(true);
+  expect(social.reportedRooms).toEqual(['quiet']);
   expect(social.reportRoom('quiet', 'other')).toBe(false);   // once is enough
   expect(reports()).toHaveLength(1);
+});
+
+test('reportedRooms: the rooms this account reported, kept in this browser for a day; another account\'s aren\'t its', async () => {
+  const now = Date.now();
+  localStorage.setItem('phosphor-reported', JSON.stringify([
+    { room: 'quiet', by: 'u_1', sub: '*room', at: now },
+    { room: 'loud', by: 'u_1', sub: 'u_7', at: now },               // a person reported in it, not the room
+    { room: 'other', by: 'u_2', sub: '*room', at: now },            // another account's
+    { room: 'stale', by: 'u_1', sub: '*room', at: now - 86_400_000 },   // a day old
+  ]));
+  setActivePinia(createPinia());
+  social = useSocialStore();
+  expect(social.reportedRooms).toEqual([]);   // nobody yet
+  social.claims = { sub: 'u_1', name: 'ansi-fan', guest: false, verified: true };
+  expect(social.reportedRooms).toEqual(['quiet']);
+  social.claims = { ...social.claims, sub: 'u_2' };
+  expect(social.reportedRooms).toEqual(['other']);
 });
 
 // A sign-in to an account with two-factor on: no session yet, only the challenge, until a code is verified.
