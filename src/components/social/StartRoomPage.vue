@@ -12,6 +12,7 @@ import LobbyPicture from './LobbyPicture.vue';
 const social = useSocialStore(), room = useRoomStore(), project = useProjectStore();
 
 const hasArt = computed(() => !!project.image && project.cells.length > 0);
+const noArt = 'Open some art in PIXEL or ANSI to share it first.';
 
 const draft = room.startDraft;   // kept in the store while you're on another tab
 watch(() => draft.max, (max) => { if (max > MAX_WATCHERS) draft.max = MAX_WATCHERS; });
@@ -24,7 +25,6 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
   <div class="start-room">
     <button class="link back" @click="social.page = 'lobby'">‹ Back to the lobby</button>
     <h2>Setup room</h2>
-    <p v-if="!hasArt" class="no-art">Open some art in PIXEL or ANSI to share it</p>
     <!-- Two groups, side by side when there's room and stacked when there isn't: the room and who can join it,
          then its lobby card (for a room in the lobby). -->
     <form @submit.prevent="goLive">
@@ -60,7 +60,9 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
         </fieldset>
         <p :id="`${id}-signal`" class="help">Shown on your room's card in the lobby.</p>
         <LobbyPicture v-if="hasArt" />
+        <p v-else class="no-art">{{ noArt }}</p>
       </section>
+      <p v-else-if="!hasArt" class="no-art">{{ noArt }}</p>
 
       <div class="buttons">
         <button class="primary" type="submit" :disabled="social.busy || !hasArt">Go live</button>
@@ -79,10 +81,15 @@ button.back {
 h2 {
   margin: 8px 0 16px;
 }
-p.no-art {
-  margin: -8px 0 16px;
+p.no-art {   /* in place of the lobby picture: nothing to share yet */
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  border-left-width: 3px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--warning);
 }
 
 /* A column is at least the lobby picture's width (or the whole width, when that's less); an empty second

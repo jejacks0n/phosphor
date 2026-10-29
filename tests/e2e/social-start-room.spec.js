@@ -36,8 +36,13 @@ test('Start a room with no art open says to open some, and Go live is disabled',
   await tab(page, 'SOCIAL').click();
   await page.getByRole('button', { name: 'Start a room' }).click();
   await expect(shown(page, 'start-room').getByRole('heading', { name: 'Setup room' })).toBeVisible();
-  await expect(page.getByText('Open some art in PIXEL or ANSI to share it')).toBeVisible();
+  // A warning in place of the lobby picture, and in the same column for a room only the link reaches.
+  const warning = 'Open some art in PIXEL or ANSI to share it first.';
+  await expect(page.getByRole('region', { name: 'Lobby card' }).getByText(warning)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Lobby picture' })).toHaveCount(0);   // nothing to picture
+  await page.getByRole('radio', { name: 'Only with the link' }).check();
+  await expect(page.getByText(warning)).toBeVisible();
+  await page.getByRole('radio', { name: 'Anyone, in the lobby' }).check();
   await page.getByRole('textbox', { name: 'Room name' }).fill('nothing yet');
   await expect(page.getByRole('button', { name: 'Go live' })).toBeDisabled();
 
