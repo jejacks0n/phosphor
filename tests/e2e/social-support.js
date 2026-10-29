@@ -260,7 +260,7 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     if (msg.type === 'signal-to' && who === 'host') send(msg.to, { type: 'signal-from', from: 'host', data: msg.data });
     else if (msg.type === 'signal-to' && who) send('host', { type: 'signal-from', from: who, data: msg.data });
     else if (msg.type === 'left' && who === 'host') gone(msg.peer);
-    else if (msg.type === 'remove' && who === 'host') {   // the watcher is told and put out; the host isn't told it's gone
+    else if (msg.type === 'remove' && who === 'host') {   // the watcher is told and kicked; the host isn't told it's gone
       if (watchers.delete(msg.peer)) send(msg.peer, { type: 'removed' });
     }
     else if (msg.type === 'settings' && who === 'host') settings(msg);

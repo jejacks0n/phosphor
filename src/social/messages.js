@@ -55,7 +55,7 @@ export function messageFor(code, detail = {}) {
   return (typeof word === 'function' ? word(detail) : word) ?? 'Something went wrong. Try again.';
 }
 
-// Why a room's socket was turned away or put out, in plain words: a refusal's reason, or ended,
+// Why a room's socket was turned away or kicked, in plain words: a refusal's reason, or ended,
 // removed or replaced (the same account joined from another tab). A pass refused even when fresh
 // (bad-pass) reads as a room that isn't there.
 const ROOM_WORDS = {

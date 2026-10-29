@@ -149,7 +149,7 @@ test('only connected watchers count in N here; one still connecting is listed, s
   expect(room.peopleOpen).toBe(false);
 });
 
-test('a guest\'s ⋯ appears once guests are off, with only Remove; Remove puts them out', async () => {
+test('a guest\'s ⋯ appears once guests are off, with only Remove; Remove kicks them', async () => {
   const room = await mount('host', 0);
   room.room = { ...room.room, allowGuests: true };
   room.watchers = [watcher('p1', 'tin-lantern-owl'), watcher('g1', 'wren', { guest: true })];

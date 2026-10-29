@@ -106,7 +106,7 @@ test('messageFor has plain words for every code the server sends, and a fallback
   assert.equal(messageFor('FAILED_TO_UNLINK_LAST_ACCOUNT'), 'You need at least one way to sign in');
 });
 
-test('refusalWords says why a room turned you away or put you out', () => {
+test('refusalWords says why a room turned you away or kicked you', () => {
   assert.equal(refusalWords('unavailable'), "This room isn't available");
   assert.equal(refusalWords('bad-pass'), "This room isn't available");
   assert.equal(refusalWords('signed-in-only'), 'Signed-in users only');

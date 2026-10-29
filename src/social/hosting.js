@@ -190,7 +190,7 @@ export class Host {
     this.mutes.set(sub, until);
   }
 
-  // The host's Remove: the Room puts the watcher out, and its connection closes here.
+  // The host's Remove: the Room kicks the watcher, and its connection closes here.
   remove(peer) {
     this.removed.add(peer);
     this.send({ type: 'remove', peer });

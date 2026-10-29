@@ -211,7 +211,7 @@ export const useRoomStore = defineStore('room', {
       }
     },
 
-    // End room: the Room hears end (close does it for a host), and watchers are put out.
+    // End room: the Room hears end (close does it for a host), and watchers are kicked.
     endRoom() {
       this.leave();
     },
@@ -302,7 +302,7 @@ export const useRoomStore = defineStore('room', {
         onStatus: (status) => {
           if (connection !== this._connection) return;
           if (this.role === 'host' && status !== 'refused' && status !== 'closed') this.status = status;
-          // The Room put a watcher out while its connection to the host was being made: the host gave up
+          // The Room kicked a watcher while its connection to the host was being made: the host gave up
           // on reaching it first, so joining again would only fail the same way.
           else if (this.role === 'watch' && status === 'reconnecting' && this.status === 'connecting') {
             this._watch.close();
@@ -363,7 +363,7 @@ export const useRoomStore = defineStore('room', {
       this._asking = false;
     },
 
-    // The host's Remove: the watcher is put out of the room.
+    // The host's Remove: the watcher is kicked from the room.
     remove(peer) {
       if (this.role !== 'host') return;
       const watcher = this.watchers.find((w) => w.peer === peer);
@@ -371,7 +371,7 @@ export const useRoomStore = defineStore('room', {
       this._host.remove(peer);
     },
 
-    // The host's Block: the account can't join any room of yours, and this one is put out.
+    // The host's Block: the account can't join any room of yours, and they're kicked from this one.
     async block(watcher) {
       if (this.role !== 'host' || !await useSocialStore().block(watcher.name)) return false;
       sessionRemoved(this.session, watcher.sub, Date.now());   // counted even if they've left meanwhile

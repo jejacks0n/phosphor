@@ -69,7 +69,7 @@ for (const key of ['welcome', 'allowGuests', 'max']) {
   }, { immediate: true });
 }
 const countId = useId();
-// With guests off, no new guest gets in; the ones here stay unless the host chooses to put them out too (or one at a
+// With guests off, no new guest gets in; the ones here stay unless the host chooses to kick them too (or one at a
 // time, from the chat panel).
 const guests = computed(() => room.watchers.filter((w) => w.guest));
 const kickGuests = ref(false);

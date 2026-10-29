@@ -416,7 +416,7 @@ test('the Room closing the socket while the host\'s connection is being made is 
   socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   await rawHost(socket, { answered: false });
   await vi.waitFor(() => expect(room.status).toBe('connecting'));
-  socket.close();   // the host gave up on reaching us first, and the Room put us out
+  socket.close();   // the host gave up on reaching us first, and the Room kicked us
   expect(room.status).toBe('failed');
   expect(room.role).toBe('watch');
   await wait(1200);   // past the first retry

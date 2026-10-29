@@ -270,7 +270,7 @@ test('host.mute drops a joined watcher\'s next message until the mute is past', 
   expect(of(r.log.p1, 'refused')).toEqual([]);
 });
 
-test('remove asks the Room to put the watcher out, and closes its connection', async () => {
+test('remove asks the Room to kick the watcher, and closes its connection', async () => {
   const r = await room({ p1: await person('u_p1'), p2: await person('u_p2') });
   await opened(r, ['p1', 'p2']);
   r.host.remove('p1');
