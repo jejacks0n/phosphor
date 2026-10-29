@@ -1,4 +1,5 @@
-// The theme picker at the right of the tab bar: Dark, Light, or System (the default, which follows the computer).
+// The theme picker at the right of the tab bar: Dark, Light, or System (the default, which follows the computer),
+// shown as a moon, a sun and a computer display.
 import { test, expect } from './support.js';
 
 const picker = (page) => page.getByRole('radiogroup', { name: 'Theme' });
@@ -28,6 +29,16 @@ test('System follows the computer, until Dark or Light is picked; the pick is ke
   await picker(page).getByRole('radio', { name: 'Dark' }).click();
   expect(await theme(page)).toBe('dark');
   expect(await background(page)).toBe('rgb(26, 26, 26)');
+});
+
+test('each choice is an icon, named for screen readers and on hover', async ({ page }) => {
+  await page.goto('/');
+  for (const name of ['Dark', 'Light', 'System']) {
+    const choice = picker(page).locator('label', { has: page.getByRole('radio', { name }) });
+    await expect(choice).toHaveAttribute('title', name);
+    await expect(choice).toHaveText('');
+    expect(await choice.locator('svg').boundingBox()).toMatchObject({ width: 15, height: 15 });
+  }
 });
 
 test('the picker is one stop for Tab, and the arrow keys move the choice', async ({ page }) => {
