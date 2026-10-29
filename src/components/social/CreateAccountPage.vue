@@ -32,6 +32,7 @@ async function create() {
   <div class="form-page">
     <button class="link back" @click="social.page = 'lobby'">‹ Back to the {{ social.backTo }}</button>
     <h2>Create an account</h2>
+    <p class="intro">An account lets you chat and start rooms, under a username that's yours.</p>
     <form @submit.prevent="ready && create()">
       <UsernameField v-model="username" help="How everyone sees you. Letters, numbers, - and _." />
       <label>Email <input v-model="email" type="email" autocomplete="email" required></label>
@@ -45,6 +46,7 @@ async function create() {
       <button class="primary" type="submit" :disabled="!ready">Create account</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
-    <p class="help">Have an account? <button class="link inline" @click="social.page = 'sign-in'">Sign in</button></p>
+    <hr>
+    <p class="foot">Have an account? <button class="link inline" @click="social.page = 'sign-in'">Sign in</button></p>
   </div>
 </template>

@@ -191,8 +191,11 @@ dl.numbers div {
   border-radius: 6px;
   background: var(--surface-0);
 }
-dt {
-  color: var(--text-muted);
+dt {   /* as SAUCE's labels */
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 dd {
   margin: 2px 0 0;

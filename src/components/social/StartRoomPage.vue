@@ -79,9 +79,6 @@ button.back {
 }
 h2 {
   margin: 8px 0 16px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
 }
 p.no-art {
   margin: -8px 0 16px;
@@ -134,10 +131,13 @@ fieldset {
   padding: 0;
   border: none;
 }
-legend {
-  margin-bottom: 6px;
+legend {   /* as the labels */
+  margin-bottom: 8px;
   padding: 0;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 div.choices {   /* a row of choices, wrapping as needed */
   display: flex;

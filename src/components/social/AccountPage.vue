@@ -261,9 +261,6 @@ async function deleteAccount() {
 </template>
 
 <style scoped>
-div.account {
-  max-width: 440px;
-}
 section {
   display: flex;
   flex-direction: column;

@@ -152,3 +152,34 @@ test('on the SOCIAL tab, letters, X, Space and Ctrl+Z leave the art and its tool
   await page.keyboard.press('ControlOrMeta+s'); // save still opens
   await expect(page.getByRole('dialog')).toBeVisible();
 });
+
+// The SOCIAL forms are drawn as the SAUCE tab is: its title, its labels, its width, and in the middle of the tab.
+test('the SOCIAL forms look like the SAUCE tab: the same title, labels and column, in the middle', async ({ page }) => {
+  await fakeServer(page);
+  await openApp(page);
+  const look = (locator, props) => locator.evaluate((el, props) => {
+    const style = getComputedStyle(el);
+    return Object.fromEntries(props.map((p) => [p, style[p]]));
+  }, props);
+  const TITLE = ['fontSize', 'fontWeight', 'textTransform', 'letterSpacing', 'color'];
+  const LABEL = ['fontSize', 'fontWeight', 'textTransform', 'color'];
+  await tab(page, 'SAUCE').click();
+  const sauce = page.locator('.sauce-editor');
+  const title = await look(sauce.locator('h3'), TITLE);
+  const label = await look(sauce.locator('label').first(), LABEL);
+  const column = (await sauce.locator('.editor-container').boundingBox()).width;
+
+  await tab(page, 'SOCIAL').click();
+  await page.locator('.social-tab [data-page="lobby"]').getByRole('button', { name: 'Sign in', exact: true }).click();
+  const form = page.locator('.social-tab [data-page="sign-in"] .form-page');
+  expect(await look(form.getByRole('heading', { name: 'Sign in' }), TITLE)).toEqual(title);
+  expect(await look(form.locator('label').filter({ hasText: 'Password' }), LABEL)).toEqual(label);
+  const box = await form.boundingBox(), tabArea = await page.locator('.social-tab').boundingBox();
+  expect(box.width).toBeCloseTo(column, 0);
+  expect(Math.abs((box.x + box.width / 2) - (tabArea.x + tabArea.width / 2))).toBeLessThan(2);   // across
+  const content = await form.evaluate((el) => {
+    const first = el.firstElementChild.getBoundingClientRect(), last = el.lastElementChild.getBoundingClientRect();
+    return { top: first.top, bottom: last.bottom };
+  });
+  expect(Math.abs((content.top - tabArea.y) - (tabArea.y + tabArea.height - content.bottom))).toBeLessThan(30);   // and down
+});

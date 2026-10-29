@@ -22,6 +22,7 @@ async function finish() {
   <div class="form-page">
     <button class="link back" :disabled="social.busy" @click="social.signOut()">Cancel and sign out</button>
     <h2>Pick your username</h2>
+    <p class="intro">One more step before you're in. You can change it once every 30 days.</p>
     <form @submit.prevent="ready && finish()">
       <UsernameField v-model="username" help="How everyone sees you. Letters, numbers, - and _." />
       <label class="terms">

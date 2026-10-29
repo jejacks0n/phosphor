@@ -29,6 +29,7 @@ async function signInWith(provider) {
   <div class="form-page">
     <button class="link back" @click="social.page = 'lobby'">‹ Back to the {{ social.backTo }}</button>
     <h2>Sign in</h2>
+    <p class="intro">Sign in to chat and start rooms.</p>
     <template v-if="shown.length">
       <div class="providers">
         <button v-for="[id, label] in shown" :key="id" :disabled="social.busy" @click="signInWith(id)">Continue with {{ label }}</button>
@@ -41,7 +42,8 @@ async function signInWith(provider) {
       <button class="primary" type="submit" :disabled="social.busy">Sign in</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
-    <p class="help"><button class="link inline" @click="social.page = 'forgot'">Forgot your password?</button></p>
-    <p class="help">No account? <button class="link inline" @click="social.page = 'create'">Create one</button></p>
+    <hr>
+    <p class="foot"><button class="link inline" @click="social.page = 'forgot'">Forgot your password?</button></p>
+    <p class="foot">No account? <button class="link inline" @click="social.page = 'create'">Create one</button></p>
   </div>
 </template>

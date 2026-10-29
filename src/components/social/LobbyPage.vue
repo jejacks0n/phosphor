@@ -133,9 +133,6 @@ header {
 }
 header h2 {
   margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
 }
 header button.start {
   margin-left: auto;
@@ -243,9 +240,14 @@ aside.side {
   background: var(--surface-0);
 }
 
-div.label {
-  margin-bottom: 6px;
-  font-weight: 500;
+div.label,
+h3.here {   /* as SAUCE's labels */
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 
 div.who {
@@ -311,14 +313,6 @@ button.link.inline {
   color: var(--accent);
 }
 
-h3.here {
-  margin-bottom: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: normal;
-  text-transform: none;
-  color: var(--text-dim);
-}
 
 ul {
   margin: 0;

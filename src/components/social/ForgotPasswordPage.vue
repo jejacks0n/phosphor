@@ -23,13 +23,16 @@ async function send() {
   <div class="form-page">
     <button class="link back" @click="social.page = 'lobby'">‹ Back to the {{ social.backTo }}</button>
     <h2>Forgot your password?</h2>
-    <p class="help">We'll email you a link to set a new one.</p>
+    <p class="intro">We'll email you a link to set a new one.</p>
     <form @submit.prevent="send">
       <label>Email <input v-model="email" type="email" autocomplete="email" required></label>
       <div ref="widget" class="turnstile"></div>
       <button class="primary" type="submit" :disabled="social.busy">Send link</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
-    <p v-if="!social.me" class="help">Remembered it? <button class="link inline" @click="social.page = 'sign-in'">Sign in</button></p>
+    <template v-if="!social.me">
+      <hr>
+      <p class="foot">Remembered it? <button class="link inline" @click="social.page = 'sign-in'">Sign in</button></p>
+    </template>
   </div>
 </template>

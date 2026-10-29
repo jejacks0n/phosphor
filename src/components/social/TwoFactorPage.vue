@@ -30,6 +30,7 @@ function toggle() {
   <div class="form-page">
     <button class="link back" @click="social.page = 'sign-in'">‹ Cancel</button>
     <h2>Two-factor code</h2>
+    <p class="intro">This account asks for a code each time you sign in.</p>
     <form @submit.prevent="verify">
       <label>{{ backup ? 'Backup code' : 'Code from your authenticator app' }}
         <input ref="input" v-model="code" autocomplete="one-time-code" :inputmode="backup ? undefined : 'numeric'" spellcheck="false" required>
@@ -41,7 +42,8 @@ function toggle() {
       <button class="primary" type="submit" :disabled="social.busy">Verify</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
-    <p class="help">
+    <hr>
+    <p class="foot">
       <button class="link inline" @click="toggle">{{ backup ? 'Use your authenticator app' : 'Use a backup code instead' }}</button>
     </p>
   </div>
