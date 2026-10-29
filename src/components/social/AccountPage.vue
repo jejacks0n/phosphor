@@ -228,10 +228,10 @@ async function deleteAccount() {
         <button data-ask="codes" @click="startAsk('codes')">New backup codes</button>
         <button data-ask="off" @click="startAsk('off')">Turn off</button>
       </div>
-      <template v-else>
-        <p class="help">Ask for a code from an authenticator app whenever you sign in.</p>
-        <button data-ask="on" class="primary" @click="startAsk('on')">Turn on</button>
-      </template>
+      <div v-else class="row">
+        <span class="what">Ask for a code from an authenticator app whenever you sign in.</span>
+        <button data-ask="on" @click="startAsk('on')">Turn on</button>
+      </div>
     </section>
 
     <section aria-labelledby="account-blocked">
