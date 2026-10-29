@@ -4,7 +4,7 @@ import { useRoomStore } from '@/store/RoomStore';
 import RoomArt from './RoomArt.vue';
 
 // The room you watch: the host's art with the part they're looking at (followed until you look around;
-// the tag on the host's box follows again). Its name, who hosts it, their welcome and Leave are at the
+// the tag on the host's box follows again). Its name, who hosts it, their welcome and Exit are at the
 // top of the chat panel. Until the
 // room's name comes from the host, the heading says how joining is going; once it's the name it's for
 // screen readers only (the panel shows it). A status region always there says how joining is going for

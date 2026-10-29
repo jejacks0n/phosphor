@@ -50,16 +50,25 @@ test('the panel is beside every tab for the host and the watcher, with the welco
       expect((await panel(page).boundingBox()).width).toBe(280);
     }
   }
-  // Who hosts it, Follow and Leave are the watcher's; the host has their own page.
+  // Who hosts it, Follow and Exit are the watcher's; the host has their own page. Exit is at the right of
+  // the header, beside the fold button (where the host's ⋯ is).
   await expect(panel(watcher).getByText('hosted by ansi-fan')).toBeVisible();
-  await expect(panel(watcher).getByRole('button', { name: 'Leave' })).toBeVisible();
+  const exit = await panel(watcher).getByRole('button', { name: 'Exit' }).boundingBox();
+  const fold = await panel(watcher).getByRole('button', { name: 'Fold the chat' }).boundingBox();
+  const name = await panel(watcher).getByRole('heading', { name: 'neon harbor' }).boundingBox();
+  expect(exit.x + exit.width).toBeLessThanOrEqual(fold.x);
+  expect(fold.x - (exit.x + exit.width)).toBeLessThan(8);
+  expect(Math.abs((exit.y + exit.height / 2) - (fold.y + fold.height / 2))).toBeLessThan(1);
+  expect(exit.y).toBeLessThan(name.y + name.height);   // on the name's line, not under it
+  const menu = await panel(host).getByRole('button', { name: 'Room', exact: true }).boundingBox();
+  expect(exit.height).toBe(menu.height);   // the size of the host's ⋯ in its place
   await expect(panel(host).getByText('hosted by ansi-fan')).toHaveCount(0);
-  await expect(panel(host).getByRole('button', { name: 'Leave' })).toHaveCount(0);
+  await expect(panel(host).getByRole('button', { name: 'Exit' })).toHaveCount(0);
 });
 
 test('no panel outside a room', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { me: wren });
-  await watcher.getByRole('button', { name: 'Leave' }).click();
+  await watcher.getByRole('button', { name: 'Exit' }).click();
   await expect(panel(watcher)).toHaveCount(0);
 });
 
@@ -239,13 +248,13 @@ test('who joins and leaves is in the chat, one line while nothing is said betwee
   await joinFromCard(late);
   await expect(presence(late)).toHaveText(['pixel_wren joined']);   // from before, in its history
   await expect(presence(watcher)).toHaveText(['grim_reaper joined']);
-  await late.getByRole('button', { name: 'Leave' }).click();
+  await late.getByRole('button', { name: 'Exit' }).click();
   await expect(presence(watcher)).toHaveText(['grim_reaper came and went']);
   await expect(presence(host)).toHaveText(['pixel_wren joined, grim_reaper came and went']);
 
   await say(host, 'still here?');
   await expect(messages(watcher)).toHaveCount(1);
-  await watcher.getByRole('button', { name: 'Leave' }).click();
+  await watcher.getByRole('button', { name: 'Exit' }).click();
   await expect(presence(host)).toHaveText(['pixel_wren joined, grim_reaper came and went', 'pixel_wren left']);
 });
 
@@ -441,7 +450,7 @@ async function leaveWhileAsked(host, watcher) {
   await more(host).click();
   await host.getByRole('button', { name: 'Block from my rooms' }).click();
   await expect(blockDialog(host)).toBeVisible();
-  await watcher.getByRole('button', { name: 'Leave' }).click();
+  await watcher.getByRole('button', { name: 'Exit' }).click();
   await expect(watching(host)).toHaveCount(0);
   await expect(blockDialog(host)).toBeVisible();   // still asking
 }
@@ -495,7 +504,7 @@ test('the host\'s panel says who is here, folded; opened it lists each with gues
   await here(host).click();
   await expect(here(host)).toHaveAttribute('aria-expanded', 'false');
   await expect(watching(host)).toHaveCount(0);
-  await watcher.getByRole('button', { name: 'Leave' }).click();
+  await watcher.getByRole('button', { name: 'Exit' }).click();
   await expect(here(host)).toHaveText('1 here ▾');
 });
 

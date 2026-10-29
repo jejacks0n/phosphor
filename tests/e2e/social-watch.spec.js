@@ -112,7 +112,7 @@ test('Leave returns the watcher to the lobby, and the host\'s count goes to 0', 
   await joinFromCard(watcher);
   await expect(tile(shown(host, 'host-room'), 'Here now')).toHaveText('1');
 
-  await chat(watcher).getByRole('button', { name: 'Leave' }).click();
+  await chat(watcher).getByRole('button', { name: 'Exit' }).click();
   await expect(shown(watcher, 'lobby').getByRole('heading', { name: 'Public rooms', exact: true })).toBeFocused();
   expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
   await expect(tile(shown(host, 'host-room'), 'Here now')).toHaveText('0');
@@ -244,7 +244,7 @@ test('a watcher\'s own unsaved art is as it was after joining, watching and leav
   expect(await store(watcher, 'room', (r) => r.status)).toBe('live');   // still watching
 
   await tab(watcher, 'SOCIAL').click();
-  await chat(watcher).getByRole('button', { name: 'Leave' }).click();
+  await chat(watcher).getByRole('button', { name: 'Exit' }).click();
   await expect(shown(watcher, 'lobby')).toBeVisible();
   expect(await own()).toEqual(before);
 });

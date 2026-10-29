@@ -206,10 +206,11 @@ settings made meanwhile goes once you're back.
 ## Watching
 
 **Join** on a room's card, or a link to it, opens the room right in the SOCIAL tab, in place of the
-lobby. You're in one room at a time; **Leave** brings the lobby back. A private room with a
+lobby. You're in one room at a time; **Exit**, at the top right of the chat panel, brings the lobby
+back. A private room with a
 password asks for it first.
 
-The room's name, its host and **Leave** are at the top of the chat panel, with the welcome message
+The room's name, its host and **Exit** are at the top of the chat panel, with the welcome message
 pinned under them; the SOCIAL tab shows just the art. The art is view only, in the host's font. A box
 in the host's name color shows where they're looking, with a tag in its corner: the host's cell and name, and
 *following* while your view follows theirs. The box is their whole view, and while you follow, the

@@ -10,7 +10,7 @@ import RoomPeople from './RoomPeople.vue';
 import ReportDialog from './ReportDialog.vue';
 
 // The chat of the room you host or watch, at the right of the whole app (every tab, while you're in
-// one): the room's name (and, watching, who hosts it and Leave; hosting, the room menu and who is here), the
+// one): the room's name (and, watching, who hosts it, and Exit; hosting, the room menu and who is here), the
 // host's welcome pinned (with the host's Edit), the messages, and the box to write in. » folds it
 // to a thin rail that counts what came since. The list keeps its place: a new message scrolls it only
 // when it was already at the bottom, and earlier ones (asked for on reaching the top) go in above
@@ -110,15 +110,11 @@ function askIfAtTop() {
       <header>
         <div class="room">
           <h2 v-if="room.room?.name">{{ room.room.name }}</h2>
-          <template v-if="room.role === 'watch'">
-            <p v-if="host" class="host">hosted by <UserName class="person" :name="host" /></p>
-            <div class="buttons">
-              <button @click="room.leave()">Leave</button>
-            </div>
-          </template>
+          <p v-if="room.role === 'watch' && host" class="host">hosted by <UserName class="person" :name="host" /></p>
         </div>
         <div class="tools">
           <RoomMenu v-if="room.role === 'host'" ref="menu" />
+          <button v-else-if="room.role === 'watch'" class="exit" @click="room.leave()">Exit</button>
           <button class="fold link" aria-label="Fold the chat" @click="fold(true)">»</button>
         </div>
       </header>
@@ -239,16 +235,17 @@ p.host {
   font-family: 'JetBrains Mono', monospace;
   color: var(--text-muted);
 }
-div.buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-}
 div.tools {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+button.exit {   /* as the host's ⋯ in its place */
+  height: 26px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
 }
 button.fold {
   padding: 4px 6px;
