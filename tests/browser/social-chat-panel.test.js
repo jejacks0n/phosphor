@@ -177,8 +177,8 @@ test('a member\'s ⋯ has Mute, then Unmute; they\'re tagged muted, and their me
   const room = await mount('host', 0);
   room.watchers = [watcher('p1', 'tin-lantern-owl')];
   room.peopleOpen = true;
-  room.chat = [row(1, { sub: 'u_p1', silenced: true }), row(2, { sub: 'u_p1' })];
-  const silence = vi.spyOn(room, 'silence').mockImplementation(() => {});
+  room.chat = [row(1, { sub: 'u_p1', muted: true }), row(2, { sub: 'u_p1' })];
+  const mute = vi.spyOn(room, 'mute').mockImplementation(() => {});
   await nextTick();
   const li = () => host.querySelector('.people li');
   const item = (text) => [...li().querySelectorAll('.dropdown-content button')].find((b) => b.textContent.trim() === text);
@@ -187,17 +187,17 @@ test('a member\'s ⋯ has Mute, then Unmute; they\'re tagged muted, and their me
   await open();
   expect(item('Mute – for everyone but you').title).toBe('Their messages stop reaching anyone else. They aren\'t told.');
   item('Mute – for everyone but you').click();
-  expect(silence).toHaveBeenCalledWith('u_p1', true);
+  expect(mute).toHaveBeenCalledWith('u_p1', true);
   expect(li().querySelector('.tag')).toBe(null);
 
-  room.silenced = ['u_p1'];
+  room.muted = ['u_p1'];
   await nextTick();
   expect(li().querySelector('.tag').textContent).toBe('muted');
   await open();
   expect(item('Mute – for everyone but you')).toBe(undefined);
   item('Unmute').click();
-  expect(silence).toHaveBeenLastCalledWith('u_p1', false);
-  const marks = [...host.querySelectorAll('.list .message')].map((m) => m.querySelector('.silenced')?.textContent ?? null);
+  expect(mute).toHaveBeenLastCalledWith('u_p1', false);
+  const marks = [...host.querySelectorAll('.list .message')].map((m) => m.querySelector('.muted')?.textContent ?? null);
   expect(marks).toEqual(['Muted: only you and they see this', null]);
 });
 

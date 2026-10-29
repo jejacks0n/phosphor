@@ -6,7 +6,7 @@ import { getActivePinia } from 'pinia';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
-import { mutedWords, dayAndTime } from '@/social/chat';
+import { silencedWords, dayAndTime } from '@/social/chat';
 import ChatFoot from '@/components/social/ChatFoot.vue';
 
 let app = null, host = null;
@@ -57,22 +57,22 @@ test('the foot offers the box, sign-in or the email, by who you are, and nothing
   expect(foot()).toBe('');
 });
 
-test('a muted person sees until when in place of the box, with the date for a mute that ends another day', async () => {
+test('a silenced person sees until when in place of the box, with the date for a silence that ends another day', async () => {
   const social = await mount();
   const hour = Date.now() + 3_600_000, month = Date.now() + 30 * 86_400_000;
-  social.claims = claims({ mutedUntil: hour });
+  social.claims = claims({ silencedUntil: hour });
   await nextTick();
   expect(host.querySelector('textarea')).toBe(null);
-  expect(foot()).toBe(mutedWords(hour));
-  expect(host.querySelector('p.muted').getAttribute('role')).toBe('status');
+  expect(foot()).toBe(silencedWords(hour));
+  expect(host.querySelector('p.silenced').getAttribute('role')).toBe('status');
 
-  social.claims = claims({ mutedUntil: month });
+  social.claims = claims({ silencedUntil: month });
   await nextTick();
-  expect(foot()).toBe(mutedWords(month));
+  expect(foot()).toBe(silencedWords(month));
   expect(foot()).toContain(dayAndTime.format(month));
 });
 
-test('when the mute ends the box is back within a minute, with what was typed', async () => {
+test('when the silence ends the box is back within a minute, with what was typed', async () => {
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
   const social = await mount();
   social.claims = claims({});
@@ -80,12 +80,12 @@ test('when the mute ends the box is back within a minute, with what was typed', 
   const typed = host.querySelector('textarea');
   typed.value = 'half a thought';
   typed.dispatchEvent(new Event('input'));
-  social.claims = claims({ mutedUntil: Date.now() + 30_000 });
+  social.claims = claims({ silencedUntil: Date.now() + 30_000 });
   await nextTick();
   expect(host.querySelector('textarea')).toBe(null);
 
   vi.advanceTimersByTime(60_000);
   await nextTick();
   expect(host.querySelector('textarea').value).toBe('half a thought');
-  expect(host.querySelector('p.muted')).toBe(null);
+  expect(host.querySelector('p.silenced')).toBe(null);
 });

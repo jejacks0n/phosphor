@@ -26,7 +26,7 @@ const ROOM_ID = /^[a-z2-7]{10}$/;
 
 // What's typed in Start a room and Room settings, kept here so it stays while you're on another tab (the
 // SOCIAL tab isn't there then). Room settings also keeps what the room last said for each field (seen).
-export const MAX_WATCHERS = 30;   // the Room's own limit; a higher number typed in comes back to it
+export const MAX_WATCHERS = 30;   // the server's own limit; a higher number typed in comes back to it
 // Who you reported, in which room and as which account, in localStorage: leaving a room and joining it again
 // (or a reload) doesn't offer Report for them there again. Kept a day.
 // ponytail: a room that runs longer than a day offers it again; key by the room's end if that matters.
@@ -55,7 +55,7 @@ export const keepRoomReport = (room) => {
 };
 // Every room reported in this browser and by which account ({ room, by }), for the lobby's cards.
 export const keptRoomReports = () => keptReports().filter((r) => r.sub === ROOM_REPORT).map(({ room, by }) => ({ room, by }));
-const REPORT_PICTURE = { width: 480, most: 96 * 1024 };   // the Room's limit on a room report's picture, as base64 characters
+const REPORT_PICTURE = { width: 480, most: 96 * 1024 };   // the server's limit on a room report's picture, as base64 characters
 
 // The cell in the middle of a view ({ col, row, cols, rows }), or the top left without one.
 const middleOf = (v) => (v ? { middleCol: v.col + v.cols / 2, middleRow: v.row + v.rows / 2 } : { middleCol: 0, middleRow: 0 });
@@ -71,7 +71,7 @@ export const useRoomStore = defineStore('room', {
     role: null,          // null | 'host' | 'watch'
     id: null,
     link: null,          // the host's link to the room
-    room: null,          // a host's: the Room's room and your welcome; a watcher's: { name, welcome, host, hostSub } (joined's host and its account)
+    room: null,          // a host's: the server's room and your welcome; a watcher's: { name, welcome, host, hostSub } (joined's host and its account)
     // a host's: 'connecting' | 'live' | 'reconnecting'; a watcher's: 'joining' | 'password' | 'waiting' |
     // 'connecting' | 'live' | 'failed'
     status: null,
@@ -83,13 +83,13 @@ export const useRoomStore = defineStore('room', {
     lookingAt: null,     // a watcher's: the cell in the middle of the art in view { middleCol, middleRow } (RoomArt's looking-at)
     following: true,
     artZoom: 1,          // a watcher's: the zoom the art is drawn at, the host's while following
-    chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence?, silenced? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
+    chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence?, muted? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
     reported: [],        // the subs you reported in this room (Report is gone for them there, rejoining too), and ROOM_REPORT once you reported the room
     peopleOpen: false,   // a host's: the chat panel's "N here" list is open
-    silenced: [],        // a host's: the subs it silenced in this room (their messages reach only them, and the host)
+    muted: [],           // a host's: the subs it muted in this room (their messages reach only them, and the host)
     lobbyPin: null,      // a host's (picked in Setup room, or while live): the top-left cell { col, row } the lobby picture uses; null while it follows the view
     session: newSession(),   // a host's: what this browser counted since the room started (social/session.js)
     startDraft: newStartDraft(),         // Start a room's form; empty again once a room is made
@@ -121,8 +121,8 @@ export const useRoomStore = defineStore('room', {
     },
     // A watcher reported this room (Report room is gone).
     roomReported: (state) => state.reported.includes(ROOM_REPORT),
-    // When your mute ends (epoch ms), while your pass says you're muted.
-    mutedUntil: () => useSocialStore().claims?.mutedUntil ?? null,
+    // When your silence ends (epoch ms), while your pass says you're silenced.
+    silencedUntil: () => useSocialStore().claims?.silencedUntil ?? null,
     // Where the lobby picture looks: the cell it's pinned to, else the middle of the shared view.
     lobbyPlace() {
       if (this.lobbyPin !== null) return { ...this.lobbyPin };
@@ -208,7 +208,7 @@ export const useRoomStore = defineStore('room', {
       flush();
     },
 
-    // The welcome goes to watchers (never the server); guests, the max watchers and the signal go to the Room.
+    // The welcome goes to watchers (never the server); guests, the max watchers and the signal go to the server.
     changeSettings({ welcome, allowGuests, max, signal = this.room.signal ?? null }) {
       if (this.role !== 'host') return;
       const room = this.room;
@@ -228,7 +228,7 @@ export const useRoomStore = defineStore('room', {
       }
     },
 
-    // End room: the Room hears end (close does it for a host), and watchers are kicked.
+    // End room: the server hears end (close does it for a host), and watchers are kicked.
     endRoom() {
       this.leave();
     },
@@ -300,7 +300,7 @@ export const useRoomStore = defineStore('room', {
       for (const stop of this._stops) stop();
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, lookingAt: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, silenced: [], lobbyPin: null, session: newSession(),
+        hostView: null, lookingAt: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,
       });
@@ -319,7 +319,7 @@ export const useRoomStore = defineStore('room', {
         onStatus: (status) => {
           if (connection !== this._connection) return;
           if (this.role === 'host' && status !== 'refused' && status !== 'closed') this.status = status;
-          // The Room kicked a watcher while its connection to the host was being made: the host gave up
+          // The server kicked a watcher while its connection to the host was being made: the host gave up
           // on reaching it first, so joining again would only fail the same way.
           else if (this.role === 'watch' && status === 'reconnecting' && this.status === 'connecting') {
             this._watch.close();
@@ -334,7 +334,7 @@ export const useRoomStore = defineStore('room', {
     // A host's shows at once (Host calls chatHeard with it); a watcher's shows when the host sends it back.
     async say(text) {
       const social = useSocialStore(), side = this._host ?? this._watch, body = chatText(text);
-      if (!side || !body || !this.canChat || this.mutedUntil > Date.now() || (this.role === 'watch' && !side.ready)) return false;   // nothing spent on a message that can't go
+      if (!side || !body || !this.canChat || this.silencedUntil > Date.now() || (this.role === 'watch' && !side.ready)) return false;   // nothing spent on a message that can't go
       this._allowance ??= markRaw(new Allowance());
       if (!this._allowance.take()) {
         this.chatRefused = 'too-fast';
@@ -410,11 +410,11 @@ export const useRoomStore = defineStore('room', {
       this._host.remove(peer);
     },
 
-    // The host's Silence, for this room: what they say from now on reaches only them and the host. They aren't told.
-    silence(sub, on) {
-      if (this.role !== 'host' || on === this.silenced.includes(sub)) return;
-      this.silenced = on ? [...this.silenced, sub] : this.silenced.filter((s) => s !== sub);
-      this._host.silence(sub, on);
+    // The host's Mute, for this room: what they say from now on reaches only them and the host. They aren't told.
+    mute(sub, on) {
+      if (this.role !== 'host' || on === this.muted.includes(sub)) return;
+      this.muted = on ? [...this.muted, sub] : this.muted.filter((s) => s !== sub);
+      this._host.mute(sub, on);
     },
 
     // The host's Block: the account can't join any room of yours, and they're kicked from this one.
@@ -435,7 +435,7 @@ export const useRoomStore = defineStore('room', {
       } else if (event.type === 'chat' || event.type === 'presence') {
         if (!this.chat.some((m) => m.id === event.entry.id)) {
           const row = this.chatRow(event.entry, event.claims);
-          this.keep([...this.chat, event.silenced ? { ...row, silenced: true } : row]);
+          this.keep([...this.chat, event.muted ? { ...row, muted: true } : row]);
           if (this.role === 'host') this.counted(event);
         }
       } else if (event.type === 'history') {
@@ -493,7 +493,7 @@ export const useRoomStore = defineStore('room', {
       this.chat = list.slice(-MOST_KEPT);
     },
 
-    // The Room's messages (the server's API).
+    // The server's messages (the server's API).
     heard(msg) {
       switch (msg.type) {
         case 'hosting': {
@@ -506,7 +506,7 @@ export const useRoomStore = defineStore('room', {
           break;
         }
         case 'settings-now': {
-          // The Room's word on the room, but a change still waiting to go stays shown (it would only flicker back).
+          // The server's word on the room, but a change still waiting to go stays shown (it would only flicker back).
           const waiting = this._settings.timer ? { allowGuests: this.room.allowGuests, max: this.room.max, signal: this.room.signal } : {};
           this.room = { ...msg.room, welcome: this.room.welcome, ...waiting };
           break;
@@ -528,10 +528,10 @@ export const useRoomStore = defineStore('room', {
         case 'refused':
           this.refused(msg.reason);
           break;
-        case 'muted':   // a mute decided mid-room: yours gets a pass that says so, a host drops theirs
+        case 'silenced':   // yours: a new pass that says so; a host drops that watcher's chat
           if (typeof msg.sub !== 'string' || !Number.isFinite(msg.until)) break;
           if (msg.sub === useSocialStore().claims?.sub) useSocialStore().renewPass();
-          else this._host?.mute(msg.sub, msg.until);
+          else this._host?.silence(msg.sub, msg.until);
           break;
         case 'ended':
         case 'removed':

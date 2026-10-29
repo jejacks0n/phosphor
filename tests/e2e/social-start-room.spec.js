@@ -3,7 +3,7 @@
 // before a hosting tab closes.
 import { test, expect, openApp, tab, store } from './support.js';
 import { fakeServer, fakeRoom, member, tile, ROOM_ID } from './social-support.js';
-import { mutedWords } from '../../src/social/chat.js';
+import { silencedWords } from '../../src/social/chat.js';
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
@@ -247,7 +247,7 @@ test('Room settings keep what\'s typed while you\'re on another tab', async ({ p
   await expect(host.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('30');
 });
 
-test('a change the Room makes while you\'re on another tab shows when you\'re back; what you typed in other fields stays', async ({ page }) => {
+test('a change the server makes while you\'re on another tab shows when you\'re back; what you typed in other fields stays', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
   await host.getByRole('textbox', { name: 'Welcome message' }).fill('back in 5');
@@ -300,7 +300,7 @@ test('the welcome edited from the chat panel leaves a half-typed welcome here', 
   await expect(welcome).toHaveValue('half typed');
 });
 
-// The Room takes settings at most once a second (a sooner one is answered with the room as it is);
+// The server takes settings at most once a second (a sooner one is answered with the room as it is);
 // the app waits 1.25 s after the last it sent, so a quick second Save still lands.
 test('two quick saves leave the room with the latest settings', async ({ page }) => {
   const { room } = await goLive(page);
@@ -320,7 +320,7 @@ test('two quick saves leave the room with the latest settings', async ({ page })
   expect(await store(page, 'room', (r) => [r.room.allowGuests, r.room.max])).toEqual([false, 8]);
 });
 
-test('Room settings follow the room when the Room says how it is', async ({ page }) => {
+test('Room settings follow the room when the server says how it is', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
   const most = host.getByRole('spinbutton', { name: 'Max watchers' });
@@ -344,14 +344,14 @@ test('what\'s typed in Room settings survives the socket dropping and hosting ag
 
 // Settings sooner than a second after the last are answered with the room as it is (the app's own
 // pacing never does that, so the first goes straight through the store's socket here).
-test('a paced-out save shows the Room\'s values, and saving them again sends them', async ({ page }) => {
+test('a paced-out save shows the server\'s values, and saving them again sends them', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
   await store(page, 'room', (r) => r._connection.send({ type: 'settings', allowGuests: true, max: 6 }));
   const most = host.getByRole('spinbutton', { name: 'Max watchers' });
   await most.fill('8');
   await host.getByRole('button', { name: 'Save' }).click();
-  await expect(most).toHaveValue('6');   // the Room's word
+  await expect(most).toHaveValue('6');   // the server's word
   expect(room.setup.max).toBe(6);
   expect(await store(page, 'room', (r) => r.room.max)).toBe(6);
 
@@ -370,8 +370,8 @@ test('the host\'s socket drops: Reconnecting… until it says host again', async
   await expect(tile(shown(page, 'host-room'), 'Here now')).toHaveText('0');
 });
 
-// Review focus 4: the art isn't changed, so it's the room that asks; once closed, the Room hears end.
-test('closing the tab while hosting asks first; closed, the Room hears end', async ({ page }) => {
+// Review focus 4: the art isn't changed, so it's the room that asks; once closed, the server hears end.
+test('closing the tab while hosting asks first; closed, the server hears end', async ({ page }) => {
   const { room } = await goLive(page);
   expect(await store(page, 'project', (p) => p.isDirty)).toBe(false);
   const dialogs = [];
@@ -401,19 +401,19 @@ test('a server that won\'t make the room until the email is verified says so', a
 });
 
 test('while your pass says you\'re silenced, Start a room is disabled and says until when', async ({ page }) => {
-  await fakeServer(page, { me: member(), mutedUntil: Date.now() + 3_600_000 });
+  await fakeServer(page, { me: member(), silencedUntil: Date.now() + 3_600_000 });
   await openApp(page);
   await tab(page, 'SOCIAL').click();
   await expect(page.getByRole('button', { name: 'Start a room' })).toBeDisabled();
   await expect(shown(page, 'lobby').getByText('You\'re silenced until')).toBeVisible();
 });
 
-test('a MUTED refusal shows the server\'s words and no room starts', async ({ page }) => {
+test('a SILENCED refusal shows the server\'s words and no room starts', async ({ page }) => {
   const until = Date.now() + 3_600_000;
-  const { server } = await startPage(page, { 'POST /api/rooms': () => [403, { code: 'MUTED', until }] });
+  const { server } = await startPage(page, { 'POST /api/rooms': () => [403, { code: 'SILENCED', until }] });
   await page.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
   await page.getByRole('button', { name: 'Go live' }).click();
-  await expect(page.locator('.social-tab .notice')).toContainText(mutedWords(until));
+  await expect(page.locator('.social-tab .notice')).toContainText(silencedWords(until));
   await expect(shown(page, 'start-room').getByRole('heading', { name: 'Setup room' })).toBeVisible();
   expect(await store(page, 'room', (r) => r.role)).toBe(null);
   expect(server.sent('POST', '/api/rooms')).toHaveLength(1);

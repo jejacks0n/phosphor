@@ -1,4 +1,4 @@
-// The lobby: the rooms and people the server's Lobby reports, kept by a reducer over its messages
+// The lobby: the rooms and people the server reports, kept by a reducer over its messages
 // (the server's API), and the websocket that says hello with a pass and reconnects.
 import { proof } from './keys.js';
 

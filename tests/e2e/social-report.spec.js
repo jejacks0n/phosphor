@@ -1,7 +1,7 @@
 // Reporting people: Report on a message (for a confirmed member, on other people's messages) and in the
-// host's N here ⋯, through one dialog with a reason; and reporting a room, beside Exit or on its lobby card's ⋯. The report goes to the Room on the reporter's own
-// socket, with the messages as they came, signed by their senders; nothing answers it. A mute the Room
-// tells of mid-room makes the host drop that person's chat.
+// host's N here ⋯, through one dialog with a reason; and reporting a room, under Exit or on its lobby card's ⋯.
+// The report goes to the server on the reporter's own socket, with the messages as they came, signed by
+// their senders; nothing answers it. A 'silenced' from the server makes the host drop that person's chat.
 import { test, expect, store, tab } from './support.js';
 import { fakeRoom, goLive, watcherPage, joinFromCard, member, shown, ROOM_ID } from './social-support.js';
 
@@ -168,12 +168,12 @@ test('a guest and a member who hasn\'t confirmed their email see no Report; nor 
   }
 });
 
-test('a mute heard from the room mid-room: the host drops that watcher\'s chat from then on', async ({ page: host, context }) => {
+test('a silence heard from the room mid-room: the host drops that watcher\'s chat from then on', async ({ page: host, context }) => {
   const { room, watcher } = await inRoom(host, context);
   await say(watcher, 'before');
   await expect(messages(host)).toHaveCount(1);
-  room.mute('u_2', Date.now() + 3_600_000);
-  await expect.poll(() => store(host, 'room', (r) => r._host.mutes.has('u_2'))).toBe(true);   // heard before the next message
+  room.silence('u_2', Date.now() + 3_600_000);
+  await expect.poll(() => store(host, 'room', (r) => r._host.silences.has('u_2'))).toBe(true);   // heard before the next message
   await say(watcher, 'after');
   await say(host, 'still here');
   await expect(messages(watcher)).toHaveCount(2);
@@ -184,15 +184,15 @@ test('a mute heard from the room mid-room: the host drops that watcher\'s chat f
   for (const page of [host, watcher]) await expect(panel(page).getByRole('log')).not.toContainText('after');
 });
 
-test('a muted watcher is told until when in place of the box, without a reload; the host still chats', async ({ page: host, context }) => {
+test('a silenced watcher is told until when in place of the box, without a reload; the host still chats', async ({ page: host, context }) => {
   const { room, watcher } = await inRoom(host, context);
   await say(watcher, 'before');
   await expect(messages(host)).toHaveCount(1);
   await expect(box(watcher)).toBeVisible();
 
   const until = Date.now() + 3_600_000;
-  watcher.server.mutedUntil = until;
-  room.mute('u_2', until);
+  watcher.server.silencedUntil = until;
+  room.silence('u_2', until);
   const foot = panel(watcher).getByRole('status').filter({ hasText: "You're silenced until" });
   await expect(foot).toHaveText(/^You're silenced until [^.]+\.$/);
   await expect(box(watcher)).toHaveCount(0);

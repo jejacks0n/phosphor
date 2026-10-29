@@ -54,7 +54,7 @@ const cancelEnd = async () => {
   endButton.value.focus();
 };
 
-// Room settings follow the room as it is (the Room's word on it included): each field only when its
+// Room settings follow the room as it is (the server's word on it included): each field only when its
 // value changes, so a room given again as it was (hosting after a reconnect) leaves what's typed. A field
 // the user has typed in keeps their typing when the room's value changes underneath (the welcome edited
 // from the chat panel); one they haven't touched follows it. The form is kept in the store, with what the

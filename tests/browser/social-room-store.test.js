@@ -1,5 +1,5 @@
 // The room store: going live and sharing the art as it changes, joining, refusals, leaving and ending,
-// against the fake server (tests/support/socialServer.js). The Room's socket is a fake the test answers;
+// against the fake server (tests/support/socialServer.js). The server's socket is a fake the test answers;
 // the other side of a room is a real Watch (or a raw peer) made here, over real WebRTC without STUN,
 // its signals relayed through the fake socket. Watchers' passes are signed by a test key, served as
 // the server's.
@@ -41,7 +41,7 @@ async function passFor(sub, name, guest = false) {
   return `${body}.${toBase64url(signature)}`;
 }
 
-// The room as the Room tells its host.
+// The room as the server tells its host.
 const info = (fields = {}) => ({
   id: ID, name: 'Night shift', hostSub: 'u_1', hostName: 'ansi-fan', public: true, allowGuests: true, max: 12,
   signal: null, liveSince: 1000, count: 0, ...fields,
@@ -98,7 +98,7 @@ function relay(socket, peer, watch) {
   };
 }
 
-// A Watch the Room let in as `peer`: its signals go back through the newest socket.
+// A Watch the server let in as `peer`: its signals go back through the newest socket.
 async function watcherOn(socket, peer = 'p1') {
   const log = { rooms: [], arts: [], states: [] };
   log.watch = new Watch({
@@ -224,7 +224,7 @@ test('A new signal goes with the rest of the settings; settings-now\'s signal sh
   expect(room.room.signal).toBe('heads-down');
 });
 
-test('A paced-out settings: the room shows the Room\'s values, and choosing the refused ones again sends them', async () => {
+test('A paced-out settings: the room shows the server\'s values, and choosing the refused ones again sends them', async () => {
   const socket = await goLive();
   const settings = () => socket.sent.filter((m) => m.type === 'settings');
   room.changeSettings({ welcome: 'Hi', allowGuests: true, max: 6 });
@@ -399,7 +399,7 @@ test('replaced (the same account watching in another tab) puts this one back in 
   expect(sockets).toHaveLength(1);
 });
 
-// A raw host peer for a joined watcher, its signals through the watcher's socket as the Room relays them.
+// A raw host peer for a joined watcher, its signals through the watcher's socket as the server relays them.
 async function rawHost(socket, { answered = true } = {}) {
   let host;
   socket.heard = (msg) => { if (answered && msg.type === 'signal-to') later().then(() => host.signal(msg.data)); };
@@ -414,7 +414,7 @@ async function rawHost(socket, { answered = true } = {}) {
   });
 }
 
-test('"hosted by" is the Room\'s word: a room from the channel naming another host doesn\'t change it', async () => {
+test('"hosted by" is the server\'s word: a room from the channel naming another host doesn\'t change it', async () => {
   await social.boot();
   const socket = await joining(1);
   socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
@@ -424,13 +424,13 @@ test('"hosted by" is the Room\'s word: a room from the channel naming another ho
   expect(room.room).toEqual({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan', hostSub: 'u_9' });
 });
 
-test('the Room closing the socket while the host\'s connection is being made is final: failed, and no join again', async () => {
+test('the server closing the socket while the host\'s connection is being made is final: failed, and no join again', async () => {
   await social.boot();
   const socket = await joining(1);
   socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
   await rawHost(socket, { answered: false });
   await vi.waitFor(() => expect(room.status).toBe('connecting'));
-  socket.close();   // the host gave up on reaching us first, and the Room kicked us
+  socket.close();   // the host gave up on reaching us first, and the server kicked us
   expect(room.status).toBe('failed');
   expect(room.role).toBe('watch');
   await wait(1200);   // past the first retry
@@ -484,7 +484,7 @@ test('A watcher\'s room, art and the host\'s view come from the channel; leave c
   await social.boot();
   const socket = await joining(1);
   socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
-  // The host's side, its signals joined to the watcher's socket as the Room would.
+  // The host's side, its signals joined to the watcher's socket as the server would.
   const lists = [];
   const host = new Host({
     config: { iceServers: [] }, passKey: async () => keyB64, onWatchers: (list) => lists.push(list),
@@ -1131,7 +1131,7 @@ test('A host\'s session: who came and went, messages, removed and the most at on
   expect(room.session).toEqual(newSession());
 });
 
-test('remove sends the Room\'s remove and drops the watcher', async () => {
+test('remove sends the server\'s remove and drops the watcher', async () => {
   const socket = await goLive();
   await watcherOn(socket);
   room.remove('p1');
@@ -1139,31 +1139,31 @@ test('remove sends the Room\'s remove and drops the watcher', async () => {
   await expect.poll(() => room.watchers).toEqual([]);
 });
 
-test('silence tells the host and lists the person until unsilenced or the room ends; their messages come marked', async () => {
+test('mute tells the host and lists the person until unmuted or the room ends; their messages come marked', async () => {
   const socket = await goLive();
   await watcherOn(socket);
-  const told = vi.spyOn(room._host, 'silence');
-  room.silence('u_p1', true);
+  const told = vi.spyOn(room._host, 'mute');
+  room.mute('u_p1', true);
   expect(told).toHaveBeenCalledWith('u_p1', true);
-  expect(room.silenced).toEqual(['u_p1']);
-  room.silence('u_p1', true);   // once
-  expect(room.silenced).toEqual(['u_p1']);
+  expect(room.muted).toEqual(['u_p1']);
+  room.mute('u_p1', true);   // once
+  expect(room.muted).toEqual(['u_p1']);
   const pass = await passFor('u_p1', 'p1');
-  room._host.onChat({ type: 'chat', entry: { pass, id: 'm1', ts: 1000, text: 'hush' }, silenced: true });
+  room._host.onChat({ type: 'chat', entry: { pass, id: 'm1', ts: 1000, text: 'hush' }, muted: true });
   room._host.onChat({ type: 'chat', entry: { pass, id: 'm2', ts: 2000, text: 'loud' } });
-  expect(room.chat.filter((m) => m.text).map((m) => !!m.silenced)).toEqual([true, false]);
-  room.silence('u_p1', false);
+  expect(room.chat.filter((m) => m.text).map((m) => !!m.muted)).toEqual([true, false]);
+  room.mute('u_p1', false);
   expect(told).toHaveBeenLastCalledWith('u_p1', false);
-  expect(room.silenced).toEqual([]);
-  room.silence('u_p1', true);
+  expect(room.muted).toEqual([]);
+  room.mute('u_p1', true);
   room.leave();
-  expect(room.silenced).toEqual([]);
+  expect(room.muted).toEqual([]);
 });
 
-test('A watcher can\'t silence', async () => {
+test('A watcher can\'t mute', async () => {
   await watching();
-  room.silence('u_p9', true);
-  expect(room.silenced).toEqual([]);
+  room.mute('u_p9', true);
+  expect(room.muted).toEqual([]);
 });
 
 test('Joining as a member loads the blocked list with its ids; a guest asks for nothing', async () => {
@@ -1224,7 +1224,7 @@ test('artZoom follows the host\'s zoom while following, stays put while looking 
   expect(room.artZoom).toBe(0.75);
 });
 
-// Reporting: what a report sends, and a mute heard from the room.
+// Reporting: what a report sends, and a silence heard from the room.
 const reports = (socket) => socket.sent.filter((m) => m.type === 'report');
 const evidence = (...ns) => ns.map((n) => ({ pass: 'p', id: chatId(n), ts: 1000 + n, text: `m${n}`, sig: 's' }));
 
@@ -1363,31 +1363,31 @@ test('the host, a guest or an unconfirmed member can\'t reportRoom', async () =>
   expect(social.reportedRooms).toEqual([]);
 });
 
-test('A mute for your own sub gets a new pass that carries it', async () => {
+test('A silence for your own sub gets a new pass that carries it', async () => {
   const socket = await goLive();
-  expect(room.mutedUntil).toBe(null);
-  server.mutedUntil = Date.now() + 3_600_000;
+  expect(room.silencedUntil).toBe(null);
+  server.silencedUntil = Date.now() + 3_600_000;
   const passes = server.sent('POST', '/api/pass').length;
-  socket.receive({ type: 'muted', sub: 'u_1', until: server.mutedUntil });
+  socket.receive({ type: 'silenced', sub: 'u_1', until: server.silencedUntil });
   await vi.waitFor(() => expect(server.sent('POST', '/api/pass')).toHaveLength(passes + 1));
-  await vi.waitFor(() => expect(room.mutedUntil).toBe(server.mutedUntil));
+  await vi.waitFor(() => expect(room.silencedUntil).toBe(server.silencedUntil));
 });
 
-test('A host drops a mute for a watcher\'s sub into its Host; anything malformed is ignored', async () => {
+test('A host drops a silence for a watcher\'s sub into its Host; anything malformed is ignored', async () => {
   const socket = await goLive();
-  const mute = vi.spyOn(room._host, 'mute');
-  socket.receive({ type: 'muted', sub: 'u_p1', until: 5000 });
-  socket.receive({ type: 'muted', sub: 7, until: 5000 });
-  socket.receive({ type: 'muted', sub: 'u_p1', until: 'soon' });
-  expect(mute.mock.calls).toEqual([['u_p1', 5000]]);
+  const silence = vi.spyOn(room._host, 'silence');
+  socket.receive({ type: 'silenced', sub: 'u_p1', until: 5000 });
+  socket.receive({ type: 'silenced', sub: 7, until: 5000 });
+  socket.receive({ type: 'silenced', sub: 'u_p1', until: 'soon' });
+  expect(silence.mock.calls).toEqual([['u_p1', 5000]]);
 });
 
-test('While your pass says you\'re muted, say sends nothing', async () => {
+test('While your pass says you\'re silenced, say sends nothing', async () => {
   await goLive();
   expect(await room.say('hi')).toBe(true);
-  social.claims = { ...social.claims, mutedUntil: Date.now() + 60_000 };
+  social.claims = { ...social.claims, silencedUntil: Date.now() + 60_000 };
   expect(await room.say('again')).toBe(false);
   expect(room.chat.map((m) => m.text)).toEqual(['hi']);
-  social.claims = { ...social.claims, mutedUntil: Date.now() - 1 };
+  social.claims = { ...social.claims, silencedUntil: Date.now() - 1 };
   expect(await room.say('later')).toBe(true);
 });

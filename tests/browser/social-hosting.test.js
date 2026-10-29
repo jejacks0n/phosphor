@@ -1,5 +1,5 @@
 // A room's two sides in one page: a Host and its Watches, real WebRTC (no STUN), a small relay standing
-// in for the Room's socket, and passes signed by a test key. RTCDataChannel's send is watched, so the
+// in for the server's socket, and passes signed by a test key. RTCDataChannel's send is watched, so the
 // tests can count what the host sends; the watchers here send only 'following' (chat is social-chat.test.js).
 import { test, expect, afterEach, vi } from 'vitest';
 import { Host } from '@/social/hosting';
@@ -51,7 +51,7 @@ function watchSends() {
   return { sent, chunks, clear: () => send.mockClear() };
 }
 
-// A host and its watchers joined through the relay. `room.toHost` are the host's messages to the Room
+// A host and its watchers joined through the relay. `room.toHost` are the host's messages to the server
 // other than signals; `room.offers[peer]` counts the offers that went to each watcher; signals for a
 // peer in `room.lost` go nowhere (the host's socket is down).
 async function room(peers = ['p1', 'p2'], { lost = [], first = art() } = {}) {
@@ -157,7 +157,7 @@ test('a change too big for one message (under a quarter of the grid, over 256 KB
   expect(sends.chunks().every((chunk) => chunk.byteLength <= CHUNK_BYTES)).toBe(true);
 });
 
-test('a channel that refuses a send closes that watcher\'s connection only, and the Room hears it left', async () => {
+test('a channel that refuses a send closes that watcher\'s connection only, and the server hears it left', async () => {
   const r = await room();
   for (const peer of ['p1', 'p2']) await expect.poll(() => r.log[peer].arts.length, PATIENT).toBe(1);
   const send = RTCDataChannel.prototype.send;
@@ -248,7 +248,7 @@ test('peerGone closes that watcher\'s connection, and its state becomes lost', a
   expect(lastList(r).map((w) => w.peer)).toEqual(['p2']);
 });
 
-// Review focus 1: the host's socket came back and the Room lists who's inside.
+// Review focus 1: the host's socket came back and the server lists who's inside.
 test('hosting with the same watchers keeps their connections; one not listed is closed, one new is met', async () => {
   const sends = watchSends();
   const r = await room();
@@ -283,8 +283,8 @@ test('hosting meets again a listed watcher whose connection is still being made'
   expect(r.toHost).toEqual([]);   // the first try at p2 closed quietly
 });
 
-// The host's socket was reconnecting when it removed a watcher: the Room never heard, and lists it again.
-test('a removed watcher is not met again when the Room lists it, and remove goes again', async () => {
+// The host's socket was reconnecting when it removed a watcher: the server never heard, and lists it again.
+test('a removed watcher is not met again when the server lists it, and remove goes again', async () => {
   const r = await room(['p1']);
   await expect.poll(() => r.log.p1.states.at(-1), PATIENT).toBe('live');
   const pass = await passFor('u_p1', 'p1');

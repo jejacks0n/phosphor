@@ -107,7 +107,7 @@ section.group {
   gap: 10px;
   min-width: 0;
 }
-h3 {   /* as the Lobby picture's heading below it */
+h3 {   /* as the server picture's heading below it */
   margin: 0;
   font-size: 12px;
   font-weight: 500;

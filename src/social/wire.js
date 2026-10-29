@@ -3,7 +3,7 @@
  * watcher, labeled "room", ordered and reliable). Messages are JSON text, except a snapshot's chunks.
  *
  * Host to watcher:
- *   { t: 'room', name, welcome }                the room, first thing (who hosts it is the Room's word)
+ *   { t: 'room', name, welcome }                the room, first thing (who hosts it is the server's word)
  *   { t: 'snapshot', chunks: n }                then n binary messages: packSnapshot's chunks
  *   { t: 'cells', at: [index], colors, cells }  changed cells, encodeCells' form, cells[i] at at[i]
  *   { t: 'view', col, row, cols, rows, zoom }   the part of the art the host is looking at, and its zoom: a

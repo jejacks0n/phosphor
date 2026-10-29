@@ -1,7 +1,7 @@
 import CellCanvas from '@/lib/CellCanvas';
 import { loadFontFaces } from '@/lib/displayFonts';
 
-const MAX_CHARS = 49_152;   // the Room's limit on a thumbnail, as base64 characters
+const MAX_CHARS = 49_152;   // the server's limit on a thumbnail, as base64 characters
 const clamp = (n, low, high) => Math.min(Math.max(n, low), high);
 
 const MOST_COLS = 80;   // the lobby's picture is never wider than this many columns

@@ -157,7 +157,7 @@ export class Watch {
   // { entry, claims } for a message its sender sent: a verified member's pass, text as the composer
   // sends it, and their signature over it for this room. Who came or went is the host's word, but named
   // by a pass the server signed (a guest's too). Null for anything else, and for a
-  // message sent while its pass's mutedUntil was still ahead.
+  // message sent while its pass's silencedUntil was still ahead.
   async checked(m) {
     const { pass, id, ts, text, sig, presence } = m ?? {};
     if (typeof pass !== 'string' || !isId(id) || !Number.isFinite(ts)) return null;
@@ -167,7 +167,7 @@ export class Watch {
     }
     if (chatText(text) !== text || typeof sig !== 'string') return null;
     const claims = await this.claimsOf(pass);
-    if (!claims || claims.guest || claims.verified !== true || claims.mutedUntil > ts) return null;   // muted when it was sent
+    if (!claims || claims.guest || claims.verified !== true || claims.silencedUntil > ts) return null;   // silenced when it was sent
     if (!await verifySignature(claims.key, signedText(this.roomId, { id, ts, text }), sig)) return null;
     return { entry: { pass, id, ts, text, sig }, claims };
   }
@@ -187,7 +187,7 @@ export class Watch {
     return claims;
   }
 
-  // Who hosts it is the Room's word (joined), never the host's.
+  // Who hosts it is the server's word (joined), never the host's.
   room(msg) {
     const room = { name: text(msg.name, MOST_NAME), welcome: text(msg.welcome, MOST_WELCOME) };
     if (room.name !== null && room.welcome !== null) this.onRoom(room);

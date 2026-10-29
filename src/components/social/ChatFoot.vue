@@ -3,26 +3,26 @@ import { ref, computed, watch, nextTick, useTemplateRef, onMounted, onBeforeUnmo
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { MOST_CHARS, mutedWords } from '@/social/chat';
+import { MOST_CHARS, silencedWords } from '@/social/chat';
 
 // The foot of the chat panel: one bordered box with the message in it and a round send arrow at its
 // bottom-right (gray with nothing to send, purple with text). Enter sends, Shift+Enter is a new line,
 // and the box grows to 5 lines, then scrolls. A guest is asked to sign in, and a member who hasn't
 // confirmed their email to do that; neither can send. While the pass is being swapped (who you are isn't
 // known) it holds a blank line's space, so the panel doesn't jump and "Confirm your email" doesn't flash.
-// A muted person gets a notice of until when in place of the box, and the box back (its text kept) when the
-// mute ends: a minute-by-minute clock, as a mute can be longer than a timeout can wait.
+// A silenced person gets a notice of until when in place of the box, and the box back (its text kept) when the
+// silence ends: a minute-by-minute clock, as a silence can be longer than a timeout can wait.
 const room = useRoomStore(), social = useSocialStore(), workspace = useWorkspaceStore();
 
 const text = ref('');
 const field = useTemplateRef('field');
 const hasText = computed(() => text.value.trim() !== '');
 const now = ref(Date.now());
-const muted = computed(() => room.canChat && room.mutedUntil > now.value);
+const silenced = computed(() => room.canChat && room.silencedUntil > now.value);
 let tick = null;
 onMounted(() => { tick = setInterval(() => { now.value = Date.now(); }, 60_000); });
 onBeforeUnmount(() => clearInterval(tick));
-watch(muted, async () => {   // the box is back: as tall as its text
+watch(silenced, async () => {   // the box is back: as tall as its text
   await nextTick();
   grow();
 });
@@ -72,7 +72,7 @@ function signIn() {
 
 <template>
   <footer>
-    <p v-if="muted" class="muted" role="status">{{ mutedWords(room.mutedUntil, now) }}</p>
+    <p v-if="silenced" class="silenced" role="status">{{ silencedWords(room.silencedUntil, now) }}</p>
     <form v-else-if="room.canChat" @submit.prevent="send">
       <div class="box">
         <textarea ref="field" v-model="text" aria-label="Message" :maxlength="MOST_CHARS" rows="1" @input="typed" @keydown="onKeyDown"></textarea>
@@ -161,7 +161,7 @@ button.sign-in {
   width: 100%;
 }
 p.confirm,
-p.muted {
+p.silenced {
   margin: 0;
   font-size: 12px;
   text-align: center;

@@ -98,7 +98,7 @@ The SOCIAL tab talks to a server that these tests never reach. Each layer stands
 
 A room spec runs two pages (a host and a watcher, in one browser context) that share one
 `fakeRoom({ password, allowGuests, max, full })` from `tests/e2e/social-support.js`. Each page's
-`fakeServer` gets it as `room`; the fake answers the room sockets as the Room does, relaying the
+`fakeServer` gets it as `room`; the fake answers the room sockets as the server does, relaying the
 signals between host and watchers, so the specs click through starting, joining, following and ending
 without a real server. Everything else (the art, the view, the welcome message) goes over a real WebRTC
 data channel between the two pages:

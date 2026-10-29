@@ -1,6 +1,6 @@
 // The host's side of a room: a connection to each watcher (peer.js), made only for a pass the server
 // signed, and what each watcher is sent over its channel (wire.js has the messages): the room, a
-// snapshot, then the changes as the art changes, and the part the host is looking at. The Room's socket
+// snapshot, then the changes as the art changes, and the part the host is looking at. The server's socket
 // carries the signals and hears when a watcher's connection ends (send). Chat goes through the host
 // too (chat.js has its pieces): a watcher's message goes on to everyone only if it's theirs to send,
 // signed by the key in their pass, and the host keeps the last of them for anyone who joins later,
@@ -44,10 +44,10 @@ export class Host {
     // for earlier messages), here (counted among those in the room) }
     this.watchers = new Map();
     this.here = new Map();   // sub -> their open connections: one person in two tabs comes and goes once
-    this.mutes = new Map();   // sub -> until (epoch ms): mutes the Room told of since a pass was made
-    this.removed = new Set();   // peers the host removed: not met again, and told to the Room until it stops listing them
-    this.silenced = new Set();   // subs whose messages go to no one but them (and the host); they aren't told
-    this.only = new Map();   // id -> sub: a message sent while they were silenced, shown to them alone
+    this.silences = new Map();   // sub -> until (epoch ms), from 'silenced' since a pass was made
+    this.removed = new Set();   // peers the host removed: not met again, and told to the server until it stops listing them
+    this.muted = new Set();   // subs whose messages go to no one but them (and the host); they aren't told
+    this.only = new Map();   // id -> sub: a message sent while they were muted, shown to them alone
     this.log = new ChatLog();
     this.room = null;
     this.art = null;
@@ -55,7 +55,7 @@ export class Host {
     this.packed = null;   // { art, chunks }: one snapshot for every watcher, packed again only for new art
   }
 
-  // A watcher the Room let in. A pass that doesn't check out (or no key to check it with), or a
+  // A watcher the server let in. A pass that doesn't check out (or no key to check it with), or a
   // connection the browser won't make, is sent back as left, and nothing else happens; a good one gets
   // a connection, and once it opens, the room.
   async peer(peer, pass) {
@@ -96,7 +96,7 @@ export class Host {
     this.changed();
   }
 
-  // The host's socket (re)connected and the Room listed who's inside: those connected keep their
+  // The host's socket (re)connected and the server listed who's inside: those connected keep their
   // connections, anyone not listed is closed, and the rest are met, again for a connection still being
   // made (its signals may have been lost while the socket was down).
   async hosting(peers) {
@@ -173,11 +173,11 @@ export class Host {
     this.post('presence', { pass: w.pass, id: newId(), ts: Date.now(), presence: 'left' });
   }
 
-  // `only`: the sub of a silenced sender, who alone is sent it (the host's is marked).
+  // `only`: the sub of a muted sender, who alone is sent it (the host's is marked).
   post(type, entry, only = null) {
     if (!this.log.add(entry)) return false;
     if (only) this.only.set(entry.id, only);
-    this.onChat(only ? { type, entry, silenced: true } : { type, entry });
+    this.onChat(only ? { type, entry, muted: true } : { type, entry });
     for (const w of this.open()) if (this.shown(entry.id, w)) this.sendTo(w, { t: type, ...entry });
     return true;
   }
@@ -195,18 +195,18 @@ export class Host {
     return true;
   }
 
-  // The host's Silence, for this session: what they say from now on reaches only them, and the host.
-  silence(sub, on) {
-    if (on) this.silenced.add(sub);
-    else this.silenced.delete(sub);
+  // The host's Mute, for this session: what they say from now on reaches only them, and the host.
+  mute(sub, on) {
+    if (on) this.muted.add(sub);
+    else this.muted.delete(sub);
   }
 
-  // A mute the Room reported: that person's chat is dropped until it's past, whatever their pass says.
-  mute(sub, until) {
-    this.mutes.set(sub, until);
+  // That person's chat is dropped until `until`, whatever their pass says.
+  silence(sub, until) {
+    this.silences.set(sub, until);
   }
 
-  // The host's Remove: the Room kicks the watcher, and its connection closes here.
+  // The host's Remove: the server kicks the watcher, and its connection closes here.
   remove(peer) {
     this.removed.add(peer);
     this.send({ type: 'remove', peer });
@@ -219,7 +219,7 @@ export class Host {
     for (const peer of [...this.watchers.keys()]) this.drop(peer);
   }
 
-  // Closes a watcher's connection without telling the Room (it knows already, or is the one closing).
+  // Closes a watcher's connection without telling the server (it knows already, or is the one closing).
   drop(peer) {
     const w = this.watchers.get(peer);
     if (!w) return false;
@@ -283,17 +283,17 @@ export class Host {
 
   // A watcher's message goes on only from a verified member, with text as the composer sends it, a
   // time near the host's, a new id and their own signature over it for this room; anything else, and
-  // anything from someone muted (by their pass, or by mute()), is dropped without a word. Past their
+  // anything from someone silenced (by their pass, or by silence()), is dropped without a word. Past their
   // allowance, they're told it was too fast.
   async chat(w, { id, ts, text, sig }) {
     const claims = w.claims;
     if (!claims || claims.guest || claims.verified !== true || !isId(id) || !Number.isFinite(ts)
       || Math.abs(ts - Date.now()) > MOST_SKEW_MS || chatText(text) !== text || typeof sig !== 'string') return;
-    if (Math.max(claims.mutedUntil ?? 0, this.mutes.get(claims.sub) ?? 0) > Date.now()) return;
+    if (Math.max(claims.silencedUntil ?? 0, this.silences.get(claims.sub) ?? 0) > Date.now()) return;
     if (!await verifySignature(claims.key, signedText(this.roomId, { id, ts, text }), sig)) return;
     if (this.watchers.get(w.peer) !== w || this.log.has(id)) return;
     if (!w.allowance.take()) this.sendTo(w, { t: 'chat-no', id, reason: 'too-fast' });
-    else this.post('chat', { pass: w.pass, id, ts, text, sig }, this.silenced.has(claims.sub) ? claims.sub : null);
+    else this.post('chat', { pass: w.pass, id, ts, text, sig }, this.muted.has(claims.sub) ? claims.sub : null);
   }
 
   // The page before a watcher's oldest message: at most one every EARLIER_EVERY_MS, sooner is ignored.
@@ -309,7 +309,7 @@ export class Host {
   }
 
   // One message down a watcher's channel. A channel that refuses it (closing, or a message too big)
-  // ends that watcher's connection, and the Room hears it left. True when sent.
+  // ends that watcher's connection, and the server hears it left. True when sent.
   put(w, data) {
     try {
       w.channel.send(data);

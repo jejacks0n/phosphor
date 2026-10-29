@@ -1,5 +1,5 @@
 // Chat over a room's channels: a Host and its Watches as in social-hosting.test.js (real WebRTC, a
-// small relay for the Room's socket, passes signed by a test server key), but every person has a real
+// small relay for the server's socket, passes signed by a test server key), but every person has a real
 // browser key, named in their pass, that their messages are signed with. The host is checked by its
 // watchers as much as they are by it.
 import { test, expect, afterEach, vi } from 'vitest';
@@ -27,13 +27,13 @@ const serverKey = toBase64url(new Uint8Array(await crypto.subtle.exportKey('raw'
 const passKey = async () => serverKey;
 
 // Someone with a browser key and a pass for it: { pass, claims, privateKey }. `signer` signs the pass
-// (the server, unless it's made up), `pair` is their browser key, and `mutedUntil` (epoch ms) is in their
-// pass while a mute lasts.
-async function person(sub, { guest = false, verified = !guest, exp = Date.now() / 1000 + 3600, signer = server, pair, mutedUntil } = {}) {
+// (the server, unless it's made up), `pair` is their browser key, and `silencedUntil` (epoch ms) is in their
+// pass while a silence lasts.
+async function person(sub, { guest = false, verified = !guest, exp = Date.now() / 1000 + 3600, signer = server, pair, silencedUntil } = {}) {
   pair ??= await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
   const key = toBase64url(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)));
   const claims = { sub, name: sub, guest, verified, key, exp };
-  if (mutedUntil) claims.mutedUntil = mutedUntil;
+  if (silencedUntil) claims.silencedUntil = silencedUntil;
   const body = toBase64url(new TextEncoder().encode(JSON.stringify(claims)));
   const signature = new Uint8Array(await crypto.subtle.sign('Ed25519', signer.privateKey, new TextEncoder().encode(body)));
   return { pass: `${body}.${toBase64url(signature)}`, claims, privateKey: pair.privateKey, pair };
@@ -240,13 +240,13 @@ test('a burst of 50 badly signed messages from one watcher gets only a few signa
   await expect.poll(() => said(r.log.p2), PATIENT).toEqual(['good']);
 });
 
-// Moderation: a muted pass's chat is dropped by the host without a word.
-test('a message from a pass muted until later is dropped with no chat-no, an expired mute\'s goes', async () => {
-  const p1 = await person('u_p1', { mutedUntil: Date.now() + 3600_000 });
-  const p2 = await person('u_p2', { mutedUntil: Date.now() - 60_000 });
+// A silenced pass's chat is dropped by the host without a word.
+test('a message from a pass silenced until later is dropped with no chat-no, an expired silence\'s goes', async () => {
+  const p1 = await person('u_p1', { silencedUntil: Date.now() + 3600_000 });
+  const p2 = await person('u_p2', { silencedUntil: Date.now() - 60_000 });
   const r = await room({ p1, p2, p3: await person('u_p3') });
   await opened(r, ['p1', 'p2', 'p3']);
-  r.log.p1.watch.say(await message(p1, 'muted'));
+  r.log.p1.watch.say(await message(p1, 'silenced'));
   r.log.p2.watch.say(await message(p2, 'lapsed'));
   await expect.poll(() => said(r.log.p3), PATIENT).toEqual(['lapsed']);
   await wait(100);
@@ -255,14 +255,14 @@ test('a message from a pass muted until later is dropped with no chat-no, an exp
   expect(of(r, 'chat').map((e) => e.entry.text)).toEqual(['lapsed']);
 });
 
-test('host.mute drops a joined watcher\'s next message until the mute is past', async () => {
+test('host.silence drops a joined watcher\'s next message until the silence is past', async () => {
   const p1 = await person('u_p1');
   const r = await room({ p1, p2: await person('u_p2') });
   await opened(r, ['p1', 'p2']);
-  r.host.mute('u_p1', Date.now() + 60_000);
-  r.log.p1.watch.say(await message(p1, 'muted'));
-  await wait(200);   // heard, and dropped, before the mute is lifted
-  r.host.mute('u_p1', Date.now() - 1);
+  r.host.silence('u_p1', Date.now() + 60_000);
+  r.log.p1.watch.say(await message(p1, 'silenced'));
+  await wait(200);   // heard, and dropped, before the silence is lifted
+  r.host.silence('u_p1', Date.now() - 1);
   r.log.p1.watch.say(await message(p1, 'free'));
   await expect.poll(() => said(r.log.p2), PATIENT).toEqual(['free']);
   await wait(100);
@@ -270,15 +270,15 @@ test('host.mute drops a joined watcher\'s next message until the mute is past', 
   expect(of(r.log.p1, 'refused')).toEqual([]);
 });
 
-test('a silenced person\'s messages reach only them and the host (marked), in history too; unsilenced, their next reaches everyone', async () => {
+test('a muted person\'s messages reach only them and the host (marked), in history too; unmuted, their next reaches everyone', async () => {
   const p1 = await person('u_p1');
   const r = await room({ p1, p2: await person('u_p2') });
   await opened(r, ['p1', 'p2']);
-  r.host.silence('u_p1', true);
+  r.host.mute('u_p1', true);
   const hush = await message(p1, 'hush');
   r.log.p1.watch.say(hush);
   await expect.poll(() => said(r.log.p1), PATIENT).toEqual(['hush']);
-  expect(of(r, 'chat')).toEqual([{ type: 'chat', entry: { pass: p1.pass, ...hush }, silenced: true }]);
+  expect(of(r, 'chat')).toEqual([{ type: 'chat', entry: { pass: p1.pass, ...hush }, muted: true }]);
 
   r.people.p3 = await person('u_p3');
   r.people.p4 = p1;   // p1 again, in another tab
@@ -289,14 +289,14 @@ test('a silenced person\'s messages reach only them and the host (marked), in hi
   expect(texts('p3')).toEqual([]);
   expect(texts('p4')).toEqual(['hush']);
 
-  r.host.silence('u_p1', false);
+  r.host.mute('u_p1', false);
   r.log.p1.watch.say(await message(p1, 'loud'));
   await expect.poll(() => said(r.log.p2), PATIENT).toEqual(['loud']);
   expect(said(r.log.p3)).toEqual(['loud']);
-  expect(of(r, 'chat').at(-1).silenced).toBeUndefined();
+  expect(of(r, 'chat').at(-1).muted).toBeUndefined();
 });
 
-test('remove asks the Room to kick the watcher, and closes its connection', async () => {
+test('remove asks the server to kick the watcher, and closes its connection', async () => {
   const r = await room({ p1: await person('u_p1'), p2: await person('u_p2') });
   await opened(r, ['p1', 'p2']);
   r.host.remove('p1');
@@ -392,12 +392,12 @@ test('a watcher drops a pass the host made up, a guest\'s or unconfirmed member\
   expect(log.chat.length).toBe(1);
 });
 
-// A host muted when it said something can't have it shown: its pass says so, and the Room's word is the
+// A host silenced when it said something can't have it shown: its pass says so, and the server's word is the
 // pass's.
-test('a watcher drops a host\'s message sent before its pass\'s mutedUntil, live and in history, and keeps one after it and presence', async () => {
+test('a watcher drops a host\'s message sent before its pass\'s silencedUntil, live and in history, and keeps one after it and presence', async () => {
   const { log, json } = await hostileHost();
   const ts = Date.now();
-  const me = await person('u_host', { mutedUntil: ts + 1000 });
+  const me = await person('u_host', { silencedUntil: ts + 1000 });
   const during = { pass: me.pass, ...await message(me, 'during', { ts }) };
   const after = { pass: me.pass, ...await message(me, 'after', { ts: ts + 2000 }) };
   const came = { pass: me.pass, id: newId(), ts, presence: 'joined' };

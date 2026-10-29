@@ -1,7 +1,7 @@
 // Chat's pieces: the text rule, the kept log and its pages, the one-a-second allowance.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { MOST_CHARS, MOST_KEPT, PAGE, REASONS, CONTEXT, ID, clock, dayAndTime, evidenceFor, mutedWords, isId, chatText, newId, signedText, ChatLog, Allowance } from '../../src/social/chat.js';
+import { MOST_CHARS, MOST_KEPT, PAGE, REASONS, CONTEXT, ID, clock, dayAndTime, evidenceFor, silencedWords, isId, chatText, newId, signedText, ChatLog, Allowance } from '../../src/social/chat.js';
 import { CHUNK_BYTES } from '../../src/social/wire.js';
 
 const entries = (n, text = 'hi', pass = 'p') => Array.from({ length: n }, (_, i) => ({ id: `m${i}`, ts: i, text, pass, sig: 's' }));
@@ -123,10 +123,10 @@ test('evidenceFor a person is their last five messages, or none', () => {
   assert.deepEqual(evidenceFor(rows, { sub: 'u_9' }), []);
 });
 
-test('mutedWords gives the time for a mute ending today and the date and time for a later one', () => {
+test('silencedWords gives the time for a silence ending today and the date and time for a later one', () => {
   const now = new Date(2026, 9, 28, 9, 0).getTime();
   const soon = new Date(2026, 9, 28, 10, 0).getTime(), far = now + 30 * 86_400_000;
-  assert.equal(mutedWords(soon, now), `You're silenced until ${clock.format(soon)}.`);
-  assert.equal(mutedWords(far, now), `You're silenced until ${dayAndTime.format(far)}.`);
+  assert.equal(silencedWords(soon, now), `You're silenced until ${clock.format(soon)}.`);
+  assert.equal(silencedWords(far, now), `You're silenced until ${dayAndTime.format(far)}.`);
   assert.notEqual(clock.format(far), dayAndTime.format(far));
 });

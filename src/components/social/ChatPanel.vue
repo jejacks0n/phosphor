@@ -164,7 +164,7 @@ function askIfAtTop() {
                 </span>
               </p>
               <p class="text">{{ m.text }}</p>
-              <p v-if="m.silenced" class="silenced">Muted: only you and they see this</p>
+              <p v-if="m.muted" class="muted">Muted: only you and they see this</p>
             </template>
           </div>
         </div>
@@ -388,7 +388,7 @@ p.text {
   overflow-wrap: anywhere;
   color: var(--text);
 }
-p.silenced {
+p.muted {
   font-size: 10px;
   font-style: italic;
   color: var(--text-faint);
