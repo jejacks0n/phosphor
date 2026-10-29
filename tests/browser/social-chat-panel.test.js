@@ -149,7 +149,7 @@ test('only connected watchers count in N here; one still connecting is listed, s
   expect(room.peopleOpen).toBe(false);
 });
 
-test('a guest\'s ⋯ appears once guests are off, with only Remove; Remove kicks them', async () => {
+test('a guest\'s ⋯ appears once guests are off, with only Kick, which kicks them', async () => {
   const room = await mount('host', 0);
   room.room = { ...room.room, allowGuests: true };
   room.watchers = [watcher('p1', 'tin-lantern-owl'), watcher('g1', 'wren', { guest: true })];
@@ -167,8 +167,8 @@ test('a guest\'s ⋯ appears once guests are off, with only Remove; Remove kicks
   await nextTick();
   const items = [...guestRow().querySelectorAll('.dropdown-content button')]
     .filter((b) => b !== trigger).map((b) => b.textContent.trim());
-  expect(items).toEqual(['Remove for this session']);
-  [...guestRow().querySelectorAll('button')].find((b) => b.textContent.trim() === 'Remove for this session').click();
+  expect(items).toEqual(['Kick']);
+  [...guestRow().querySelectorAll('button')].find((b) => b.textContent.trim() === 'Kick').click();
   expect(removed).toHaveBeenCalledWith('g1');
 });
 

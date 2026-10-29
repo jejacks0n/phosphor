@@ -48,7 +48,7 @@ const confirmBlock = async () => {
         <span class="what">{{ !watcher.connected ? 'connecting…' : watcher.following ? 'following' : 'looking around' }}</span>
         <DropdownMenu v-if="watcher.guest && room.room?.allowGuests === false" :label="`More for ${watcher.name}`">
           <template #trigger><span aria-hidden="true">⋯</span></template>
-          <button @click="room.remove(watcher.peer)">Remove for this session</button>
+          <button @click="room.remove(watcher.peer)">Kick</button>
         </DropdownMenu>
         <DropdownMenu v-else-if="!watcher.guest" :label="`More for ${watcher.name}`">
           <template #trigger><span aria-hidden="true">⋯</span></template>

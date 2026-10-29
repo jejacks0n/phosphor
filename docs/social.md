@@ -126,8 +126,8 @@ in the lobby, in place of the public rooms (the column beside stays), and asks f
 - **Allow guests**: whether people who haven't signed in can watch. Guests can only watch. Turned
   off while you're live, no new guest gets in and a guest who leaves can't come back; the guests
   already in the room stay unless you also tick **Kick the guests here too**. While guests are
-  off, a guest's ⋯ in the chat panel has **Remove for this session** (while they're on, a removed
-  guest would just come back as a new one, so there's no Remove).
+  off, a guest's ⋯ in the chat panel has **Kick** (while they're on, a kicked guest would just
+  come back as a new one, so there's no Kick).
 - **Max watchers**: from 1 to 30 (12 to begin with; a higher number goes back to 30). Each watcher uses some of your upload speed,
   and 12 suits most home connections.
 
