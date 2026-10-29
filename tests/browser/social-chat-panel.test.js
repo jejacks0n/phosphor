@@ -124,13 +124,20 @@ test('only connected watchers count in N here; one still connecting is listed, s
   room.watchers = [watcher('p1', 'tin-lantern-owl'), watcher('p2', 'quiet-amber-fox', { connected: false }), watcher('p3', 'wren', { guest: true, following: false })];
   await nextTick();
   const toggle = host.querySelector('button.here');
-  expect(toggle.textContent.replace(/\s+/g, ' ').trim()).toBe('2 here ▾');
+  expect(toggle.textContent.replace(/\s+/g, ' ').trim()).toBe('2 here');
   expect(toggle.getAttribute('aria-expanded')).toBe('false');   // folded to begin with
   expect(host.querySelector('.people ul')).toBe(null);
+  // A chevron at the button's right edge, pointing down while folded and up once open.
+  const chevron = toggle.querySelector('svg.chevron');
+  const right = () => toggle.getBoundingClientRect().right - chevron.getBoundingClientRect().right;
+  expect(right()).toBeGreaterThan(8);
+  expect(right()).toBeLessThan(16);
+  expect(getComputedStyle(chevron).transform).toBe('none');
 
   toggle.click();
   await nextTick();
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  await expect.poll(() => getComputedStyle(chevron).transform).toBe('matrix(-1, 0, 0, -1, 0, 0)');
   const rows = [...host.querySelectorAll('.people li')];
   expect(rows.map((li) => li.querySelector('.name').textContent)).toEqual(['tin-lantern-owl', 'quiet-amber-fox', 'wren']);
   expect(rows.map((li) => li.querySelector('.what').textContent)).toEqual(['following', 'connecting…', 'looking around']);

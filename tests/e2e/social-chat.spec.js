@@ -507,14 +507,14 @@ test('the watcher leaves while the Block box is open: Block still blocks the acc
 
 test('the host\'s panel says who is here, folded; opened it lists each with guest, following or looking around, and a member\'s ⋯', async ({ page: host, context }) => {
   const { room, watcher } = await inRoom(host, context, { me: wren });
-  await expect(here(host)).toHaveText('1 here ▾');
+  await expect(here(host)).toHaveText('1 here');
   await expect(here(host)).toHaveAttribute('aria-expanded', 'false');
   await expect(panel(host).getByRole('list', { name: 'Who is here' })).toHaveCount(0);
 
   const guest = await watcherPage(context, room);
   await guest.goto('/');
   await joinFromCard(guest);
-  await expect(here(host)).toHaveText('2 here ▾');
+  await expect(here(host)).toHaveText('2 here');
   await here(host).click();
   await expect(here(host)).toHaveAttribute('aria-expanded', 'true');
   await expect(watching(host)).toHaveText([/pixel_wren\s*following/, /quiet-amber-fox\s*guest\s*following/]);
@@ -528,7 +528,7 @@ test('the host\'s panel says who is here, folded; opened it lists each with gues
   await expect(here(host)).toHaveAttribute('aria-expanded', 'false');
   await expect(watching(host)).toHaveCount(0);
   await watcher.getByRole('button', { name: 'Exit' }).click();
-  await expect(here(host)).toHaveText('1 here ▾');
+  await expect(here(host)).toHaveText('1 here');
 });
 
 test('the room menu: Copy link, Edit welcome saves the pinned welcome for everyone, Settings and stats opens the SOCIAL tab; no End room (that\'s on the SOCIAL tab)', async ({ page: host, context }) => {

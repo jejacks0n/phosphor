@@ -38,7 +38,8 @@ const confirmBlock = async () => {
 <template>
   <section class="people">
     <button ref="toggle" class="link here" :aria-expanded="room.peopleOpen" @click="room.peopleOpen = !room.peopleOpen">
-      {{ room.hereNow }} here <span aria-hidden="true">{{ room.peopleOpen ? '▴' : '▾' }}</span>
+      {{ room.hereNow }} here
+      <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
     </button>
     <ul v-if="room.peopleOpen" aria-label="Who is here">
       <li v-for="watcher in room.watchers" :key="watcher.peer">
@@ -70,9 +71,27 @@ section.people {
   border-bottom: 1px solid var(--border);
 }
 button.here {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 6px 12px;
   width: 100%;
   text-align: left;
+}
+svg.chevron {   /* as the charset field's: down while folded, up once open */
+  flex: none;
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+  transition: transform 0.15s ease;
+}
+button.here[aria-expanded='true'] svg.chevron {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  svg.chevron {
+    transition: none;
+  }
 }
 ul {
   max-height: 160px;
