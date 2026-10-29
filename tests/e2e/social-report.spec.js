@@ -234,6 +234,12 @@ test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears repo
   const watcher = await watcherPage(context, room, { me: wren });
   await watcher.goto('/');
   await tab(watcher, 'SOCIAL').click();
+  // The ⋯ sits in the picture's top right corner, see-through.
+  const thumb = await card(watcher).locator('.thumb').boundingBox(), dots = await more(watcher).boundingBox();
+  expect(dots.x + dots.width).toBeGreaterThan(thumb.x + thumb.width - 12);
+  expect(dots.y).toBeLessThan(thumb.y + 12);
+  expect(dots.y + dots.height).toBeLessThan(thumb.y + thumb.height);
+  expect(await more(watcher).evaluate((el) => getComputedStyle(el).backgroundColor)).toMatch(/^rgba\(.*, 0\.\d+\)$/);
   await more(watcher).click();
   await watcher.getByRole('button', { name: 'Report room' }).click();
   const asked = roomDialog(watcher);

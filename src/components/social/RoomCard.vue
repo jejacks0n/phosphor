@@ -35,6 +35,10 @@ const askToReport = (event) => {
   <article class="room-card">
     <div class="thumb">
       <img v-if="room.thumbnail" :src="pictureUrl(room.thumbnail)" alt="">
+      <DropdownMenu v-if="reportable" class="more" :label="`More for ${room.name}`">
+        <template #trigger><span aria-hidden="true">⋯</span></template>
+        <button @click="askToReport">Report room</button>
+      </DropdownMenu>
     </div>
     <div class="info">
       <div class="name" :title="room.name">{{ room.name }}</div>
@@ -42,10 +46,6 @@ const askToReport = (event) => {
       <div class="meta">{{ meta }}</div>
       <div v-if="room.blockedInside" class="blocked">Someone you blocked is here</div>
       <div class="foot">
-        <DropdownMenu v-if="reportable" class="more" :label="`More for ${room.name}`" align="left">
-          <template #trigger><span aria-hidden="true">⋯</span></template>
-          <button @click="askToReport">Report room</button>
-        </DropdownMenu>
         <span v-if="join.reason" :id="reasonId" class="reason">{{ join.reason }}</span>
         <button ref="join" class="join" :disabled="!join.enabled" :aria-describedby="join.reason ? reasonId : undefined" @click="roomStore.join(room.id)">{{ join.label }}</button>
       </div>
@@ -69,6 +69,7 @@ article.room-card:hover {
 }
 
 div.thumb {
+  position: relative;
   aspect-ratio: 2 / 1;
   background: var(--black);
 }
@@ -127,8 +128,20 @@ div.foot {
   padding-top: 8px;
 }
 
-article.more {
-  margin-right: auto;
+article.more {   /* the ⋯, over the picture's top right corner, see-through until pointed at */
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+article.more :deep(.dropdown-trigger) {
+  border-color: transparent;
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--white);
+  opacity: 0.75;
+}
+article.more :deep(.dropdown-trigger:hover),
+article.more :deep(.dropdown-trigger:focus-visible) {
+  opacity: 1;
 }
 
 span.reason {
