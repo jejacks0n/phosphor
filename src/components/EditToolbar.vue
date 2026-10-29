@@ -98,14 +98,14 @@ const asciiStyle = computed(() => ['ascii', 'colorAscii'].includes(project.rende
 // The pixel view's preview of the ANSI layer: edit cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'Overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
 // The toolbar folds by its own width (the window's, less the side panel, and the chat column while it's open).
-// 830px and narrower, the overlay controls fold into a dropdown named for the art style (like the Actions
+// 1030px and narrower, the overlay controls fold into a dropdown named for the art style (like the Actions
 // dropdown), which opens them in a small floating toolbar under it. 630px and narrower, undo/redo, merge and
 // clear fold into the Actions dropdown, as they do in a phone's layout (the side panel a drawer) at any width.
 const toolbar = useTemplateRef('toolbar');
 const { width: toolbarWidth } = useElementSize(toolbar);
 const phoneLayout = useMediaQuery('(max-width: 768px)');
 const narrowerThan = (px) => toolbarWidth.value > 0 && toolbarWidth.value <= px;   // 0: not measured yet
-const overlayFolded = computed(() => narrowerThan(830));
+const overlayFolded = computed(() => narrowerThan(1030));
 const actionsFolded = computed(() => phoneLayout.value || narrowerThan(630));
 const STYLE_NAMES = { ansi: 'ANSI', colorAscii: 'Color ASCII', ascii: 'ASCII' };
 const styleName = computed(() => STYLE_NAMES[project.renderStyle] ?? 'ANSI');

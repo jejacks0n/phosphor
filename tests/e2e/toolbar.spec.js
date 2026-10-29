@@ -25,6 +25,10 @@ test('the toolbar folds by its own width, so the chat column folds it sooner', a
   await expect(overlay()).toBeVisible();   // the toolbar is wide: everything's out
   await expect(folded()).toHaveCount(0);
   await expect(actions()).toBeHidden();
+  await page.setViewportSize({ width: 1290, height: 900 });   // a toolbar of 1020px: the overlay folds
+  await expect(folded()).toBeVisible();
+  await page.setViewportSize({ width: 1328, height: 900 });
+  await expect(overlay()).toBeVisible();
 
   await goLive(page, fakeRoom());   // hosting: the chat column takes 280px from the editor
   await expect(page.locator('aside.chat')).toBeVisible();
