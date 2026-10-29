@@ -13,7 +13,7 @@ const box = (page) => panel(page).getByRole('textbox', { name: 'Message' });
 const reportsIn = (page) => panel(page).getByRole('button', { name: /^Report/ });
 const dialog = (page, name) => page.getByRole('dialog', { name: `Report ${name}?` });
 const reported = (page) => page.getByRole('status').filter({ hasText: 'Reported. Thank you.' });
-const SUB = 'Phosphor\'s admin sees this message and the few before it. Nobody is told who reported them.';
+const SUB = 'Phosphor\'s admin sees this message and the few before it.';
 
 async function say(page, text) {
   await box(page).fill(text);
@@ -45,7 +45,7 @@ test('a member reports the host\'s message: the reason is asked for, the report 
   await message.getByRole('button', { name: 'Report message from ansi-fan' }).click();
   const asked = dialog(watcher, 'ansi-fan');
   await expect(asked).toBeVisible();
-  await expect(asked.getByText(SUB)).toBeVisible();
+  await expect(asked.getByText(SUB, { exact: true })).toBeVisible();
   await expect(asked.getByRole('group', { name: 'What\'s wrong?' }).getByRole('radio')).toHaveCount(4);
   await expect(asked.getByRole('radio', { checked: true })).toHaveCount(0);   // no default
   await expect(asked.getByRole('button', { name: 'Report', exact: true })).toBeDisabled();
@@ -97,7 +97,7 @@ test('the host reports a watcher from N here ⋯: no message, and their last mes
   await panel(host).getByRole('list', { name: 'Who is here' }).getByRole('button', { name: 'More for pixel_wren' }).click();
   await host.getByRole('button', { name: 'Report', exact: true }).click();
   const asked = dialog(host, 'pixel_wren');
-  await expect(asked.getByText(SUB)).toBeVisible();
+  await expect(asked.getByText(SUB, { exact: true })).toBeVisible();
   await asked.getByRole('radio', { name: 'Spam or flooding' }).check();
   await asked.getByRole('button', { name: 'Report', exact: true }).click();
 

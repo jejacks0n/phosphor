@@ -43,7 +43,7 @@ function report() {
     <p class="reported" role="status">{{ sent ? 'Reported. Thank you.' : '' }}</p>
   </Teleport>
   <ModalDialog v-if="!sent" :title="`Report ${name}?`"
-      sub="Phosphor's admin sees this message and the few before it. Nobody is told who reported them." @cancel="cancel">
+      sub="Phosphor's admin sees this message and the few before it." @cancel="cancel">
     <fieldset>
       <legend>What's wrong?</legend>
       <label v-for="r in REASONS" :key="r.id"><input v-model="reason" type="radio" name="report-reason" :value="r.id"> {{ r.label }}</label>

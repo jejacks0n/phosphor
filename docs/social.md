@@ -271,8 +271,8 @@ message that's been deleted.
 
 Either way, a box asks **Report <name>?** and **What's wrong?**: **Spam or flooding**, **Harassment or
 hate**, **Sexual or violent**, or **Something else**. Pick one and press **Report**, or **Cancel**
-to send nothing. The box says who'll look: Phosphor's admin sees the message and the few before it,
-and nobody is told who reported them. For a message, what's sent is that message and up to five
+to send nothing. The box says who'll look: Phosphor's admin sees the message and the few before it.
+For a message, what's sent is that message and up to five
 before it, as they arrived, each signed by whoever wrote it. For a person from **N here**, it's their
 last few messages, which may be none. Phosphor's server sees chat only in a report. Afterward you
 see **Reported. Thank you.** for a few seconds, and nothing more: you aren't told what became of
