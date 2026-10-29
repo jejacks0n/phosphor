@@ -181,9 +181,9 @@ aside.chat {
   width: 280px;
   min-height: 0;
   box-sizing: border-box;
+  margin-left: 2px;
   border-radius: 5px;
   background: var(--surface-1);
-  border: 1px solid var(--border);
   font-size: 12px;
   color: var(--text-dim);
 }

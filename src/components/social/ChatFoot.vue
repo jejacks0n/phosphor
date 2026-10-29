@@ -91,7 +91,6 @@ function signIn() {
 <style scoped>
 footer {
   padding: 5px;
-  border-top: 1px solid var(--border);
 }
 
 form {
