@@ -30,7 +30,7 @@ const name = computed(() => social.myName ?? social.me?.username);
       <header>
         <h2>Public rooms</h2>
         <span class="count">{{ social.rooms.length }} live</span>
-        <button v-if="social.signedIn && social.me?.emailVerified !== false" class="primary start" @click="social.page = 'start-room'">Start a room</button>
+        <button v-if="social.signedIn && social.me?.emailVerified !== false" class="start" @click="social.page = 'start-room'">Start a room</button>
       </header>
       <hr>
       <div class="chips" role="group" aria-label="Filter rooms">
@@ -132,7 +132,9 @@ header h2 {
 }
 header button.start {
   margin-left: auto;
-  padding: 7px 14px;
+}
+section.main > hr { /* the space below Start a room as above and beside it: the section's 16px */
+  margin-top: 16px;
 }
 
 section.main > div.chips {

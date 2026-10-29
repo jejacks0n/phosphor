@@ -100,8 +100,11 @@ test('a member can join a members-only room and can start a room, and has no sig
   const rule = await lobby(page).locator('section.main hr').boundingBox();
   const filter = await lobby(page).getByRole('group', { name: 'Filter rooms' }).boundingBox();
   expect(Math.abs((button.y + button.height / 2) - (title.y + title.height / 2))).toBeLessThan(2);
-  expect(main.x + main.width - (button.x + button.width)).toBeLessThan(20);   // at the right
-  expect(rule.y).toBeGreaterThan(button.y + button.height);
+  await expect(start).not.toHaveClass(/\bprimary\b/);   // the secondary style
+  // The same space above it, to its right, and below it to the rule.
+  const above = button.y - main.y, right = main.x + main.width - (button.x + button.width), below = rule.y - (button.y + button.height);
+  expect(Math.abs(above - right)).toBeLessThan(1);
+  expect(Math.abs(below - right)).toBeLessThan(1);
   expect(filter.y).toBeGreaterThan(rule.y);
 
   await expect(lobby(page).getByText('Your signal')).toHaveCount(0);   // a room's signal is chosen in Start a room
