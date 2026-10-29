@@ -28,7 +28,8 @@ const messages = (n) => `${n} ${n === 1 ? 'message' : 'messages'}`;
 <template>
   <section class="came-by">
     <h3>Who came by</h3>
-    <ul>
+    <p v-if="!people.length" class="empty">Nobody has stopped by yet.</p>
+    <ul v-else>
       <li v-for="person in shown" :key="person.sub">
         <UserName class="name" :name="person.name" />
         <span class="guest">{{ person.guest ? 'guest' : '' }}</span>
@@ -76,6 +77,10 @@ span.name {
   white-space: nowrap;
   font-weight: 500;
   color: var(--text);
+}
+p.empty {
+  margin: 10px 0 0;
+  color: var(--text-muted);
 }
 span.said {
   text-align: right;

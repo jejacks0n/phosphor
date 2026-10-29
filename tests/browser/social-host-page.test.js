@@ -214,9 +214,26 @@ test('who came by: the time in the room moves with the page\'s clock', async () 
   await vi.waitFor(() => expect(rows()[0].textContent).toContain('1h 0m'), { timeout: 2500 });
 });
 
-test('who came by: nothing until someone has', async () => {
+test('who came by is always there: before anyone has, it says nobody has stopped by yet', async () => {
+  const { room } = await mount();
+  expect(host.querySelector('.came-by').textContent).toContain('Nobody has stopped by yet.');
+  expect(rows()).toEqual([]);
+  room.session.people.push(person('u_a', { since: NOW }));
+  await nextTick();
+  expect(rows()).toHaveLength(1);
+  expect(host.querySelector('.came-by').textContent).not.toContain('Nobody');
+});
+
+test('the lobby picture with room settings under it on the left, who came by on the right, at least as tall as they are', async () => {
   await mount();
-  expect(host.querySelector('.came-by')).toBe(null);
+  host.style.width = '800px';
+  await nextTick();
+  const [picture, settings, cameBy] = ['.lobby-picture', '.settings', '.came-by'].map((s) => host.querySelector(s).getBoundingClientRect());
+  expect(settings.left).toBe(picture.left);
+  expect(settings.top).toBeGreaterThan(picture.bottom);
+  expect(cameBy.left).toBeGreaterThan(Math.max(picture.right, settings.right));
+  expect(cameBy.top).toBe(picture.top);
+  expect(cameBy.bottom).toBe(settings.bottom);   // stretched to the left column: it grows past it, never shrinks under it
 });
 
 test('past ten, "and N more" opens the rest in place', async () => {

@@ -97,25 +97,28 @@ const save = () => {
       </div>
     </dl>
 
+    <!-- The lobby picture with the settings under it, and who came by beside them, as tall as they are or taller. -->
     <div class="columns">
-      <LobbyPicture v-if="room.room.public" />
-      <section class="settings">
-        <h3>Room settings</h3>
-        <form @submit.prevent="save">
-          <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
-          <p :id="countId" class="help count">{{ draft.welcome.length }}/200</p>
-          <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> Allow guests</label>
-          <label>Max watchers <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required></label>
-          <button type="submit">{{ done === 'Saved' ? 'Saved' : 'Save' }}</button>
-        </form>
-        <div class="facts">
-          <p class="help">Set when the room started</p>
-          <p>{{ room.room.public ? 'Listed in the lobby' : 'Only with the link' }}</p>
-          <p v-if="room.hasPassword">Password set</p>
-        </div>
-      </section>
+      <div class="column">
+        <LobbyPicture v-if="room.room.public" />
+        <section class="settings">
+          <h3>Room settings</h3>
+          <form @submit.prevent="save">
+            <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
+            <p :id="countId" class="help count">{{ draft.welcome.length }}/200</p>
+            <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> Allow guests</label>
+            <label>Max watchers <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required></label>
+            <button type="submit">{{ done === 'Saved' ? 'Saved' : 'Save' }}</button>
+          </form>
+          <div class="facts">
+            <p class="help">Set when the room started</p>
+            <p>{{ room.room.public ? 'Listed in the lobby' : 'Only with the link' }}</p>
+            <p v-if="room.hasPassword">Password set</p>
+          </div>
+        </section>
+      </div>
+      <CameBy :people="room.session.people" :now="now" />
     </div>
-    <CameBy v-if="room.session.people.length" :people="room.session.people" :now="now" />
 
     <EndRoomDialog v-if="ending" @end="room.endRoom()" @cancel="cancelEnd" />
   </div>
@@ -205,11 +208,15 @@ dd {
   color: var(--text);
 }
 
-div.columns {
+div.columns {   /* two columns, or one under the other when there isn't room */
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 12px;
-  align-items: start;
+}
+div.column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 section.settings {
   padding: 14px;

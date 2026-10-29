@@ -170,8 +170,9 @@ stays when you go to another tab, and when a setting is changed from the chat pa
 you're half way through typing in here stays as it is (the others show the new value). The SOCIAL tab carries a dot while you're in
 a room, hosting or watching.
 
-Under all of it, **Who came by** lists everyone who visited this session, a row each, newest last, once
-someone has. A row has their name after its cell (**guest** for a guest), their time in the room (**under
+The lobby picture and the settings under it are one column; beside them (or under them, when the tab is
+narrow), **Who came by** is at least as tall as they are, and lists everyone who visited this session, a
+row each, newest last (**Nobody has stopped by yet.** until someone has). A row has their name after its cell (**guest** for a guest), their time in the room (**under
 a minute**, **54m**, **1h 38m**; it counts up while they're here, and a person who comes back has the
 times added), then **here**, **left 8:55** or **removed 9:10** (removed wins if they were removed and then
 left), and how many messages they said. Ten rows show; **and N more** opens the rest in place.
