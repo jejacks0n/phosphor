@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import NameSwatch from './NameSwatch.vue';
+import UserName from './UserName.vue';
 import { timeIn } from '@/social/session';
 import { clock } from '@/social/chat';
 
@@ -30,7 +30,7 @@ const messages = (n) => `${n} ${n === 1 ? 'message' : 'messages'}`;
     <h3>Who came by</h3>
     <ul>
       <li v-for="person in shown" :key="person.sub">
-        <span class="name"><NameSwatch :name="person.name" />{{ person.name }}</span>
+        <UserName class="name" :name="person.name" />
         <span class="guest">{{ person.guest ? 'guest' : '' }}</span>
         <span class="time">{{ inRoom(person) }}</span>
         <span>{{ where(person) }}</span>

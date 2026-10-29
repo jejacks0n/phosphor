@@ -83,7 +83,7 @@ test('who came and went with nothing between is one line, each name with its col
   room.joinedAt = row(5).id;
   await nextTick();
   expect(read()).toEqual(['name-0 joined, name-1 left, name-3 joined', 'm4', 'name-5 left', 'You joined', 'name-6 joined']);
-  expect(swatched(host.querySelector('.presence b'), 'name-0')).toBe(true);
+  expect(swatched(host.querySelector('.presence .person'), 'name-0')).toBe(true);
   expect(swatched(host.querySelector('.message .name'), 'name-4')).toBe(true);
 
   // Folded, comings and goings aren't counted as new messages.

@@ -85,8 +85,9 @@ you out everywhere else. Signed out, it has a **Sign in** link back.
 
 **Edit account** opens the Account page:
 
-- **Username**, which you can change once every 30 days. Your color in the lobby and chat comes
-  from your username.
+- **Username**, which you can change once every 30 days. Your color comes from your username:
+  wherever a name shows (the lobby, room cards, chat, a room's lists, Account), it's a small square of
+  that color before the name.
 - **Ways to sign in**: email and password (**Send a reset link** opens **Forgot your password?**
   with your email filled in, to change the password; it says the link is on its way to your
   address), Discord and GitHub; connect or disconnect each, keeping at least one. Discord and GitHub

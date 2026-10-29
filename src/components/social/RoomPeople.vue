@@ -1,7 +1,7 @@
 <script setup>
 import { ref, useTemplateRef } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
-import NameSwatch from './NameSwatch.vue';
+import UserName from './UserName.vue';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ReportDialog from './ReportDialog.vue';
@@ -42,7 +42,7 @@ const confirmBlock = async () => {
     </button>
     <ul v-if="room.peopleOpen" aria-label="Who is here">
       <li v-for="watcher in room.watchers" :key="watcher.peer">
-        <span class="name"><NameSwatch :name="watcher.name" />{{ watcher.name }}</span>
+        <UserName class="name" :name="watcher.name" />
         <span v-if="watcher.guest" class="tag">guest</span>
         <span class="what">{{ !watcher.connected ? 'connecting…' : watcher.following ? 'following' : 'looking around' }}</span>
         <DropdownMenu v-if="!watcher.guest" :label="`More for ${watcher.name}`">

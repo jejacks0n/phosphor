@@ -2,9 +2,10 @@
 import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
 import { renderSVG } from 'uqr';
 import { useSocialStore, PROVIDERS } from '@/store/SocialStore';
-import { nameColor, usernameProblem } from '@/social/names';
+import { usernameProblem } from '@/social/names';
 import { messageFor } from '@/social/messages';
 import UsernameField from './UsernameField.vue';
+import UserName from './UserName.vue';
 
 // Your username, the ways to sign in, two-factor, who you blocked, and deleting the account. Errors of a form
 // show under it; the others are the notice at the top of the tab.
@@ -165,8 +166,7 @@ async function deleteAccount() {
       </form>
       <template v-else>
         <div class="row">
-          <span class="swatch" :style="{ background: nameColor(me.username) }"></span>
-          <span class="username">{{ me.username }}</span>
+          <UserName class="username" :name="me.username" />
           <button ref="changeButton" :disabled="!!tooSoon" aria-describedby="rename-help" @click="startRename">Change</button>
         </div>
         <p id="rename-help" class="help">{{ tooSoon ?? 'Once every 30 days. Your color comes from your username.' }}</p>
@@ -238,7 +238,7 @@ async function deleteAccount() {
       <h3 id="account-blocked">Blocked</h3>
       <p v-if="!social.blocked.length" class="help">Nobody blocked</p>
       <div v-for="person in social.blocked" :key="person.username" class="row">
-        <span class="username">{{ person.username }}</span>
+        <UserName class="username" :name="person.username" />
         <button :disabled="social.busy" :aria-label="`Unblock ${person.username}`" @click="social.unblock(person.username)">Unblock</button>
       </div>
     </section>
@@ -304,12 +304,6 @@ span.username {
   text-overflow: ellipsis;
   font-family: 'JetBrains Mono', monospace;
   color: var(--text);
-}
-span.swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  flex-shrink: 0;
 }
 p.help {
   margin: 0;

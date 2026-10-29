@@ -2,7 +2,7 @@
 import { ref, reactive, computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
-import NameSwatch from './NameSwatch.vue';
+import UserName from './UserName.vue';
 import { clock } from '@/social/chat';
 import ChatFoot from './ChatFoot.vue';
 import RoomMenu from './RoomMenu.vue';
@@ -111,7 +111,7 @@ function askIfAtTop() {
         <div class="room">
           <h2 v-if="room.room?.name">{{ room.room.name }}</h2>
           <template v-if="room.role === 'watch'">
-            <p v-if="host" class="host">hosted by {{ host }}</p>
+            <p v-if="host" class="host">hosted by <UserName class="person" :name="host" /></p>
             <div class="buttons">
               <button @click="room.leave()">Leave</button>
             </div>
@@ -137,7 +137,7 @@ function askIfAtTop() {
         <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.map(did).join()] : [m.deleted, hidden(m), room.role === 'host', reportable(m)]">
           <p v-if="m.joined" class="joined">You joined</p>
           <p v-else-if="m.people" class="presence">
-            <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<b><NameSwatch :name="p.name" />{{ p.name }}</b> {{ did(p) }}</template></span>
+            <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<UserName class="person" :name="p.name" /> {{ did(p) }}</template></span>
           </p>
           <div v-else class="message" :class="{ note: m.deleted || hidden(m) }">
             <p v-if="m.deleted">Message deleted by the host</p>
@@ -147,7 +147,7 @@ function askIfAtTop() {
             </p>
             <template v-else>
               <p class="who">
-                <span class="name"><NameSwatch :name="m.name" />{{ m.name }}{{ m.mine ? ' (you)' : '' }}</span>
+                <UserName class="name" :name="m.name">{{ m.mine ? ' (you)' : '' }}</UserName>
                 <span v-if="m.host" class="tag">host</span>
                 <time>{{ time(m.ts) }}</time>
               </p>
@@ -301,7 +301,7 @@ p.joined, p.presence {
 p.presence span {
   overflow-wrap: anywhere;
 }
-p.presence b {
+span.person {   /* a name in a line of words */
   font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
   color: var(--text);

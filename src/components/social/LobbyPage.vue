@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
-import { nameColor } from '@/social/names';
+import UserName from './UserName.vue';
 import RoomCard from './RoomCard.vue';
 import StartRoomPage from './StartRoomPage.vue';
 
@@ -74,8 +74,7 @@ const known = computed(() => social.supported !== null);
       <div class="you">
         <div class="label">You</div>
         <div v-if="known" class="who">
-          <span v-if="name" class="swatch" :style="{ background: nameColor(name) }"></span>
-          <span class="name">{{ name }}</span>
+          <UserName v-if="name" class="name" :name="name" />
           <span v-if="!social.signedIn" class="tag">guest</span>
         </div>
         <div v-if="social.signedIn" class="links">
@@ -100,8 +99,7 @@ const known = computed(() => social.supported !== null);
       <h3 class="here">In the lobby <span class="count">{{ social.people.length }}</span></h3>
       <ul aria-label="In the lobby">
         <li v-for="person in social.people" :key="person.sub">
-          <span class="swatch small" :style="{ background: nameColor(person.name) }"></span>
-          <span class="name">{{ person.name }}</span>
+          <UserName class="name" :name="person.name" />
           <span v-if="person.guest" class="what">guest</span>
         </li>
       </ul>
@@ -254,16 +252,6 @@ div.who {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-span.swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-span.swatch.small {
-  width: 14px;
-  height: 14px;
 }
 span.name {
   min-width: 0;

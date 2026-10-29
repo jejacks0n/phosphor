@@ -3,6 +3,7 @@ import { computed, useId } from 'vue';
 import { useNow } from '@vueuse/core';
 import { useRoomStore } from '@/store/RoomStore';
 import { joinState, liveFor, pictureUrl, signalWords } from '@/social/lobby';
+import UserName from './UserName.vue';
 
 const props = defineProps({
   room: { type: Object, required: true },
@@ -26,7 +27,7 @@ const reasonId = useId();
     </div>
     <div class="info">
       <div class="name" :title="room.name">{{ room.name }}</div>
-      <div class="host">{{ room.host }}</div>
+      <UserName class="host" :name="room.host" />
       <div class="meta">{{ meta }}</div>
       <div v-if="room.blockedInside" class="blocked">Someone you blocked is here</div>
       <div class="foot">
@@ -81,12 +82,14 @@ div.name {
   text-overflow: ellipsis;
 }
 
-div.host {
+span.host {
+  display: block;
   margin-top: 4px;
   font-family: 'JetBrains Mono', monospace;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text);
 }
 
 div.meta {
