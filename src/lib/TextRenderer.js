@@ -97,10 +97,10 @@ export function render(context, buffer) {
 }
 
 // A cell's character as HTML text (rows are written with innerHTML, and characters can be typed or
-// come from a project file).
+// come from a project file). One character is looked up; anything longer is escaped throughout.
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
 export function escapeChar(char) {
-  return ESCAPES[char] ?? char;
+  return char.length === 1 ? ESCAPES[char] ?? char : char.replace(/[&<>]/g, (ch) => ESCAPES[ch]);
 }
 
 function isSameCell(cellA, cellB) {

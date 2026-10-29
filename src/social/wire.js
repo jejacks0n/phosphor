@@ -17,6 +17,7 @@
 import { hex2rgb } from '../lib/ColorUtils.js';
 import { DISPLAY_FONTS, MIN_FONT_SIZE, MAX_FONT_SIZE } from '../lib/displayFonts.js';
 import { MAX_COLS, MAX_LINES, MAX_CELLS } from '../lib/Cells.js';
+import { usableChar } from '../lib/CharWidth.js';
 
 export const CHUNK_BYTES = 65536;
 // The most a snapshot may be, for a watcher that doesn't trust its host. The biggest document at its
@@ -73,7 +74,8 @@ export function decodeCells({ colors, cells }) {
   };
   return cells.map(([char, fg, bg, wide]) => {
     if (typeof char !== 'string') throw new Error('Not a character');
-    const cell = { char, fg: colorAt(fg), bg: colorAt(bg) };
+    // More than one character a cell can hold shows as a space, not the whole art refused.
+    const cell = { char: usableChar(char) ? char : ' ', fg: colorAt(fg), bg: colorAt(bg) };
     if (wide !== undefined) {
       if (wide !== 1 && wide !== 2) throw new Error('Not a wide half');
       cell.wide = WIDE_NAMES[wide];

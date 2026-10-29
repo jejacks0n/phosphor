@@ -13,12 +13,12 @@ const cell = (char, fg, bg, wide) => ({ char, fg: color(fg), bg: color(bg), ...(
 test('cells survive encoding with each color listed once, and wide halves are kept', () => {
   const cells = [
     cell('a', '#ffffff', '#000000'), cell('b', '#ffffff', '#aa0000'),
-    cell('宽', '#00aa00', '#000000', 'lead'), cell('', '#00aa00', '#000000', 'trail'),
+    cell('宽', '#00aa00', '#000000', 'lead'), cell('宽', '#00aa00', '#000000', 'trail'),   // layoutWide's halves share the char
   ];
   const wire = encodeCells(cells);
   assert.deepEqual(wire.colors, ['#ffffff', '#000000', '#aa0000', '#00aa00']);
   assert.deepEqual(wire.cells[2], ['宽', 3, 1, 1]);
-  assert.deepEqual(wire.cells[3], ['', 3, 1, 2]);
+  assert.deepEqual(wire.cells[3], ['宽', 3, 1, 2]);
   assert.equal(wire.cells[0].length, 3);
   assert.deepEqual(decodeCells(JSON.parse(JSON.stringify(wire))), cells);
 });
@@ -38,6 +38,9 @@ test('a cell from a stranger needs a string char, a wide of 1 or 2 if any, and c
   for (const wide of [0, 3, 'constructor', '1', true]) assert.throws(() => decodeCells({ colors, cells: [['a', 0, 1, wide]] }));
   for (const hex of [1, '#fff', 'red', { hex: '#ffffff' }, '#ffffff;x']) assert.throws(() => decodeCells({ colors: [hex], cells: [['a', 0, 0]] }));
   assert.equal(decodeCells({ colors, cells: [['a', 0, 1, 2]] })[0].wide, 'trail');
+  // A char that isn't one character a cell can hold is a space: markup, two characters, nothing, a control.
+  const chars = decodeCells({ colors, cells: ['<b>x</b>', 'ab', '', '\u0000', '漢', '👍🏽'].map((c) => [c, 0, 1]) }).map((c) => c.char);
+  assert.deepEqual(chars, [' ', ' ', ' ', ' ', '漢', '👍🏽']);
 });
 
 const gzip = async (text) => [new Uint8Array(await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer())];

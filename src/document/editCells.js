@@ -73,10 +73,12 @@ export function deserializeEditCells(pairs) {
   return map;
 }
 
-// Older projects stored char edits keyed by cell index at the file's column count.
+// Older projects stored char edits keyed by cell index at the file's column count. As untrusted as
+// the newer form: only a whole index and one character a cell can hold load.
 export function migrateCharEdits(pairs, cols) {
   if (!cols) return new Map();
-  return new Map(pairs.map(([index, char]) => [cellKey(index % cols, Math.floor(index / cols)), Object.freeze({ char })]));
+  const usable = (Array.isArray(pairs) ? pairs : []).filter((pair) => Array.isArray(pair) && Number.isInteger(pair[0]) && pair[0] >= 0 && usableChar(pair[1]));
+  return new Map(usable.map(([index, char]) => [cellKey(index % cols, Math.floor(index / cols)), Object.freeze({ char })]));
 }
 
 // Insert/delete within one row. delta +1: entries at col >= fromCol move right, and any pushed to
