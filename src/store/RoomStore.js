@@ -68,12 +68,13 @@ export const useRoomStore = defineStore('room', {
     hostView: null,      // a watcher's: { col, row, cols, rows, zoom }
     following: true,
     artZoom: 1,          // a watcher's: the zoom the art is drawn at, the host's while following
-    chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
+    chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence?, silenced? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
     reported: [],        // the subs you reported in this room (Report is gone for them there, rejoining too)
     peopleOpen: false,   // a host's: the chat panel's "N here" list is open
+    silenced: [],        // a host's: the subs it silenced in this room (their messages reach only them, and the host)
     lobbyPin: null,      // a host's (picked in Setup room, or while live): the top-left cell { col, row } the lobby picture uses; null while it follows the view
     session: newSession(),   // a host's: what this browser counted since the room started (social/session.js)
     startDraft: newStartDraft(),         // Start a room's form; empty again once a room is made
@@ -283,7 +284,7 @@ export const useRoomStore = defineStore('room', {
       for (const stop of this._stops) stop();
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, lobbyPin: null, session: newSession(),
+        hostView: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, silenced: [], lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,
       });
@@ -371,6 +372,13 @@ export const useRoomStore = defineStore('room', {
       this._host.remove(peer);
     },
 
+    // The host's Silence, for this room: what they say from now on reaches only them and the host. They aren't told.
+    silence(sub, on) {
+      if (this.role !== 'host' || on === this.silenced.includes(sub)) return;
+      this.silenced = on ? [...this.silenced, sub] : this.silenced.filter((s) => s !== sub);
+      this._host.silence(sub, on);
+    },
+
     // The host's Block: the account can't join any room of yours, and they're kicked from this one.
     async block(watcher) {
       if (this.role !== 'host' || !await useSocialStore().block(watcher.name)) return false;
@@ -388,7 +396,8 @@ export const useRoomStore = defineStore('room', {
         if (shown) Object.assign(shown, { deleted: true, text: '', pass: null, sig: null });
       } else if (event.type === 'chat' || event.type === 'presence') {
         if (!this.chat.some((m) => m.id === event.entry.id)) {
-          this.keep([...this.chat, this.chatRow(event.entry, event.claims)]);
+          const row = this.chatRow(event.entry, event.claims);
+          this.keep([...this.chat, event.silenced ? { ...row, silenced: true } : row]);
           if (this.role === 'host') this.counted(event);
         }
       } else if (event.type === 'history') {

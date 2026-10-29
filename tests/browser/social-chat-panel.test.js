@@ -172,6 +172,34 @@ test('a guest\'s ⋯ appears once guests are off, with only Kick, which kicks th
   expect(removed).toHaveBeenCalledWith('g1');
 });
 
+test('a member\'s ⋯ has Silence, then Unsilence; they\'re tagged silenced, and their messages say only you and they see them', async () => {
+  const room = await mount('host', 0);
+  room.watchers = [watcher('p1', 'tin-lantern-owl')];
+  room.peopleOpen = true;
+  room.chat = [row(1, { sub: 'u_p1', silenced: true }), row(2, { sub: 'u_p1' })];
+  const silence = vi.spyOn(room, 'silence').mockImplementation(() => {});
+  await nextTick();
+  const li = () => host.querySelector('.people li');
+  const item = (text) => [...li().querySelectorAll('.dropdown-content button')].find((b) => b.textContent.trim() === text);
+  // Vue skips a click in the same millisecond as the menu opened (a person is never that fast).
+  const open = async () => { li().querySelector('button.dropdown-trigger').click(); await nextTick(); await new Promise((r) => setTimeout(r, 2)); };
+  await open();
+  expect(item('Silence').title).toBe('Their messages stop reaching anyone else. They aren\'t told.');
+  item('Silence').click();
+  expect(silence).toHaveBeenCalledWith('u_p1', true);
+  expect(li().querySelector('.tag')).toBe(null);
+
+  room.silenced = ['u_p1'];
+  await nextTick();
+  expect(li().querySelector('.tag').textContent).toBe('silenced');
+  await open();
+  expect(item('Silence')).toBe(undefined);
+  item('Unsilence').click();
+  expect(silence).toHaveBeenLastCalledWith('u_p1', false);
+  const marks = [...host.querySelectorAll('.list .message')].map((m) => m.querySelector('.silenced')?.textContent ?? null);
+  expect(marks).toEqual(['Silenced: only you and they see this', null]);
+});
+
 test('a watcher\'s panel has no people list and no room menu; the host\'s has both', async () => {
   await mount('watch', 0);
   expect(host.querySelector('.people')).toBe(null);

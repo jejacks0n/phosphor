@@ -46,6 +46,8 @@ export class Host {
     this.here = new Map();   // sub -> their open connections: one person in two tabs comes and goes once
     this.mutes = new Map();   // sub -> until (epoch ms): mutes the Room told of since a pass was made
     this.removed = new Set();   // peers the host removed: not met again, and told to the Room until it stops listing them
+    this.silenced = new Set();   // subs whose messages go to no one but them (and the host); they aren't told
+    this.only = new Map();   // id -> sub: a message sent while they were silenced, shown to them alone
     this.log = new ChatLog();
     this.room = null;
     this.art = null;
@@ -171,11 +173,18 @@ export class Host {
     this.post('presence', { pass: w.pass, id: newId(), ts: Date.now(), presence: 'left' });
   }
 
-  post(type, entry) {
+  // `only`: the sub of a silenced sender, who alone is sent it (the host's is marked).
+  post(type, entry, only = null) {
     if (!this.log.add(entry)) return false;
-    this.onChat({ type, entry });
-    for (const w of this.open()) this.sendTo(w, { t: type, ...entry });
+    if (only) this.only.set(entry.id, only);
+    this.onChat(only ? { type, entry, silenced: true } : { type, entry });
+    for (const w of this.open()) if (this.shown(entry.id, w)) this.sendTo(w, { t: type, ...entry });
     return true;
+  }
+
+  shown(id, w) {
+    const only = this.only.get(id);
+    return !only || only === w.claims.sub;
   }
 
   // The host's Delete: the message stays in the log as deleted, and every watcher hears.
@@ -184,6 +193,12 @@ export class Host {
     this.onChat({ type: 'deleted', id });
     for (const w of this.open()) this.sendTo(w, { t: 'deleted', id });
     return true;
+  }
+
+  // The host's Silence, for this session: what they say from now on reaches only them, and the host.
+  silence(sub, on) {
+    if (on) this.silenced.add(sub);
+    else this.silenced.delete(sub);
   }
 
   // A mute the Room reported: that person's chat is dropped until it's past, whatever their pass says.
@@ -237,7 +252,7 @@ export class Host {
     channel.onmessage = ({ data }) => this.heard(w, data);
     this.changed();
     if (this.room) this.sendTo(w, { t: 'room', ...this.room });
-    this.sendTo(w, { t: 'history', ...this.log.page() });
+    this.sendTo(w, { t: 'history', ...this.log.page(undefined, (m) => this.shown(m.id, w)) });
     this.arrived(w);
     await this.update(w);
     if (this.view && this.watchers.get(w.peer) === w && channel.readyState === 'open') this.sendTo(w, { t: 'view', ...this.view });
@@ -278,7 +293,7 @@ export class Host {
     if (!await verifySignature(claims.key, signedText(this.roomId, { id, ts, text }), sig)) return;
     if (this.watchers.get(w.peer) !== w || this.log.has(id)) return;
     if (!w.allowance.take()) this.sendTo(w, { t: 'chat-no', id, reason: 'too-fast' });
-    else this.say({ pass: w.pass, id, ts, text, sig });
+    else this.post('chat', { pass: w.pass, id, ts, text, sig }, this.silenced.has(claims.sub) ? claims.sub : null);
   }
 
   // The page before a watcher's oldest message: at most one every EARLIER_EVERY_MS, sooner is ignored.
@@ -286,7 +301,7 @@ export class Host {
     const now = Date.now();
     if (!isId(before) || now - w.askedAt < EARLIER_EVERY_MS) return;
     w.askedAt = now;
-    this.sendTo(w, { t: 'history', ...this.log.page(before) });
+    this.sendTo(w, { t: 'history', ...this.log.page(before, (m) => this.shown(m.id, w)) });
   }
 
   sendTo(w, msg) {

@@ -56,15 +56,16 @@ export class ChatLog {
     return this.ids.has(id);
   }
 
-  // The latest page, or the one before the message `before`. `more` says older ones remain.
-  page(before, most = PAGE) {
-    const end = before === undefined ? this.list.length : this.list.findIndex((m) => m.id === before);
+  // The latest page, or the one before the message `before`, of the messages `keep` passes. `more` says older ones remain.
+  page(before, keep = () => true, most = PAGE) {
+    const list = this.list.filter(keep);
+    const end = before === undefined ? list.length : list.findIndex((m) => m.id === before);
     if (end < 0) return { messages: [], more: false };
     let start = Math.max(0, end - most);
     // Few long messages can still be over a chunk: drop the oldest until the reply fits.
-    const size = () => new TextEncoder().encode(JSON.stringify({ t: 'history', messages: this.list.slice(start, end), more: true })).length;
+    const size = () => new TextEncoder().encode(JSON.stringify({ t: 'history', messages: list.slice(start, end), more: true })).length;
     while (start < end - 1 && size() > CHUNK_BYTES) start++;
-    return { messages: this.list.slice(start, end), more: start > 0 };
+    return { messages: list.slice(start, end), more: start > 0 };
   }
 }
 

@@ -45,6 +45,7 @@ const confirmBlock = async () => {
       <li v-for="watcher in room.watchers" :key="watcher.peer">
         <UserName class="name" :name="watcher.name" />
         <span v-if="watcher.guest" class="tag">guest</span>
+        <span v-else-if="room.silenced.includes(watcher.sub)" class="tag">silenced</span>
         <span class="what">{{ !watcher.connected ? 'connecting…' : watcher.following ? 'following' : 'looking around' }}</span>
         <DropdownMenu v-if="watcher.guest && room.room?.allowGuests === false" :label="`More for ${watcher.name}`">
           <template #trigger><span aria-hidden="true">⋯</span></template>
@@ -53,6 +54,8 @@ const confirmBlock = async () => {
         <DropdownMenu v-else-if="!watcher.guest" :label="`More for ${watcher.name}`">
           <template #trigger><span aria-hidden="true">⋯</span></template>
           <button @click="room.remove(watcher.peer)">Remove for this session</button>
+          <button v-if="room.silenced.includes(watcher.sub)" @click="room.silence(watcher.sub, false)">Unsilence</button>
+          <button v-else title="Their messages stop reaching anyone else. They aren't told." @click="room.silence(watcher.sub, true)">Silence</button>
           <button @click="askToBlock(watcher, $event)">Block from my rooms</button>
           <button v-if="room.canReport && !room.reported.includes(watcher.sub)" @click="askToReport(watcher, $event)">Report</button>
         </DropdownMenu>

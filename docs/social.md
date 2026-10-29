@@ -189,6 +189,10 @@ they're following you or looking around on their own (or still connecting). A me
 **⋯** button (guests have none) with:
 
 - **Remove for this session**: they leave the room now, and can't come back until the room ends.
+- **Silence**: their messages stop reaching anyone else. They aren't told: they still see what they
+  send, and you see it too, marked "Silenced: only you and they see this" (you can still report it).
+  They're tagged **silenced** in the list until you **Unsilence** them or the room ends; what they
+  said while silenced stays hidden from the others.
 - **Block from my rooms**: asks first (**Block** or **Cancel**), then they can't join any room you host again, and your rooms no longer show in their lobby.
   They aren't told; your rooms simply aren't there for them, and a link to one says "This room
   isn't available". Unblock them from Account.
@@ -256,8 +260,8 @@ server. The host's browser keeps the last 5,000 messages for as long as the room
 watcher's list goes back no further than that. When the room ends, so does its chat.
 
 As the host you can **Delete** a message for everyone, and **Edit** the pinned welcome (the same box as
-the room menu's **Edit welcome**). To **Remove for this session** or **Block from my rooms** the person
-who wrote one, use their **⋯** in the **N here** list (see **Hosting**).
+the room menu's **Edit welcome**). To **Remove for this session**, **Silence** or **Block from my rooms**
+the person who wrote one, use their **⋯** in the **N here** list (see **Hosting**).
 
 A guest who signs in from the chat comes back into the room as themselves (a private room asks for
 its password again).

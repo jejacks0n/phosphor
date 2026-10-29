@@ -270,6 +270,32 @@ test('host.mute drops a joined watcher\'s next message until the mute is past', 
   expect(of(r.log.p1, 'refused')).toEqual([]);
 });
 
+test('a silenced person\'s messages reach only them and the host (marked), in history too; unsilenced, their next reaches everyone', async () => {
+  const p1 = await person('u_p1');
+  const r = await room({ p1, p2: await person('u_p2') });
+  await opened(r, ['p1', 'p2']);
+  r.host.silence('u_p1', true);
+  const hush = await message(p1, 'hush');
+  r.log.p1.watch.say(hush);
+  await expect.poll(() => said(r.log.p1), PATIENT).toEqual(['hush']);
+  expect(of(r, 'chat')).toEqual([{ type: 'chat', entry: { pass: p1.pass, ...hush }, silenced: true }]);
+
+  r.people.p3 = await person('u_p3');
+  r.people.p4 = p1;   // p1 again, in another tab
+  await join(r, 'p3');
+  await join(r, 'p4');
+  await opened(r, ['p3', 'p4']);
+  const texts = (peer) => histories(r.log[peer])[0].messages.filter((m) => !m.entry.presence).map((m) => m.entry.text);
+  expect(texts('p3')).toEqual([]);
+  expect(texts('p4')).toEqual(['hush']);
+
+  r.host.silence('u_p1', false);
+  r.log.p1.watch.say(await message(p1, 'loud'));
+  await expect.poll(() => said(r.log.p2), PATIENT).toEqual(['loud']);
+  expect(said(r.log.p3)).toEqual(['loud']);
+  expect(of(r, 'chat').at(-1).silenced).toBeUndefined();
+});
+
 test('remove asks the Room to kick the watcher, and closes its connection', async () => {
   const r = await room({ p1: await person('u_p1'), p2: await person('u_p2') });
   await opened(r, ['p1', 'p2']);

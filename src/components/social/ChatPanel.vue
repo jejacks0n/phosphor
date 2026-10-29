@@ -155,6 +155,7 @@ function askIfAtTop() {
                 </span>
               </p>
               <p class="text">{{ m.text }}</p>
+              <p v-if="m.silenced" class="silenced">Silenced: only you and they see this</p>
             </template>
           </div>
         </div>
@@ -362,6 +363,11 @@ p.text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: var(--text);
+}
+p.silenced {
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-faint);
 }
 div.message button.link {
   padding: 0 4px;

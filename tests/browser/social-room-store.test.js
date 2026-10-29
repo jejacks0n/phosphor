@@ -1125,6 +1125,33 @@ test('remove sends the Room\'s remove and drops the watcher', async () => {
   await expect.poll(() => room.watchers).toEqual([]);
 });
 
+test('silence tells the host and lists the person until unsilenced or the room ends; their messages come marked', async () => {
+  const socket = await goLive();
+  await watcherOn(socket);
+  const told = vi.spyOn(room._host, 'silence');
+  room.silence('u_p1', true);
+  expect(told).toHaveBeenCalledWith('u_p1', true);
+  expect(room.silenced).toEqual(['u_p1']);
+  room.silence('u_p1', true);   // once
+  expect(room.silenced).toEqual(['u_p1']);
+  const pass = await passFor('u_p1', 'p1');
+  room._host.onChat({ type: 'chat', entry: { pass, id: 'm1', ts: 1000, text: 'hush' }, silenced: true });
+  room._host.onChat({ type: 'chat', entry: { pass, id: 'm2', ts: 2000, text: 'loud' } });
+  expect(room.chat.filter((m) => m.text).map((m) => !!m.silenced)).toEqual([true, false]);
+  room.silence('u_p1', false);
+  expect(told).toHaveBeenLastCalledWith('u_p1', false);
+  expect(room.silenced).toEqual([]);
+  room.silence('u_p1', true);
+  room.leave();
+  expect(room.silenced).toEqual([]);
+});
+
+test('A watcher can\'t silence', async () => {
+  await watching();
+  room.silence('u_p9', true);
+  expect(room.silenced).toEqual([]);
+});
+
 test('Joining as a member loads the blocked list with its ids; a guest asks for nothing', async () => {
   server.route('GET /api/blocks', () => [200, { blocked: [{ id: 'u_9', username: 'troll', since: 1 }] }]);
   await social.boot();
