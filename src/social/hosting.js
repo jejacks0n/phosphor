@@ -17,6 +17,7 @@ const MOST_HEARD_BYTES = 2048;               // a watcher's message longer than 
 const MOST_SKEW_MS = 120_000;                // a chat message's time, from the host's clock
 const EARLIER_EVERY_MS = 500;                // a watcher's asks for earlier messages, at most
 const MOST_CHECKING = 4;                     // a watcher's chat waiting to be checked; more is ignored
+const FOLLOWING_EVERY_MS = 250;              // who's here is redrawn for following toggles at most this often
 
 const sameView = (a, b) => a.col === b.col && a.row === b.row && a.cols === b.cols && a.rows === b.rows && a.zoom === b.zoom;
 
@@ -198,6 +199,7 @@ export class Host {
   }
 
   close() {
+    clearTimeout(this.redrawing);
     this.here.clear();
     for (const peer of [...this.watchers.keys()]) this.drop(peer);
   }
@@ -253,7 +255,7 @@ export class Host {
   follow(w, on) {
     if (typeof on !== 'boolean' || on === w.following) return;
     w.following = on;
-    this.changed();
+    this.redrawing ??= setTimeout(() => { this.redrawing = null; this.changed(); }, FOLLOWING_EVERY_MS);
   }
 
   // A watcher's chat in line to be checked. Bad messages don't spend the allowance, so it's the line

@@ -359,6 +359,21 @@ test('a watcher\'s message that isn\'t one it sends, or is over 2 KB, is ignored
   await expect.poll(() => lastList(r)[0].following, PATIENT).toBe(false);
 });
 
+test('a burst of following toggles redraws who\'s here a few times, not once per toggle, and ends right', async () => {
+  const r = await room(['p1']);
+  await expect.poll(() => r.log.p1.states.at(-1), PATIENT).toBe('live');
+  const send = vi.spyOn(RTCDataChannel.prototype, 'send');
+  r.log.p1.watch.setFollowing(true);
+  const channel = send.mock.contexts[0];   // the watcher's own
+  await wait(100);
+  const before = r.watchers.length;
+  for (let i = 0; i < 200; i++) channel.send(JSON.stringify({ t: 'following', on: i % 2 === 0 }));
+  await expect.poll(() => lastList(r)[0].following, PATIENT).toBe(false);
+  await wait(500);
+  expect(r.watchers.length - before).toBeLessThan(5);
+  expect(lastList(r)[0].following).toBe(false);
+});
+
 // The watcher doesn't trust the host: a test host sends it what a broken or hostile one might.
 async function hostileHost() {
   const log = { arts: [], states: [], rooms: [], views: [] };

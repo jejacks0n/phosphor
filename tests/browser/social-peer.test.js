@@ -44,7 +44,7 @@ function recordingConnection() {
   const made = [];
   class Recorder {
     constructor() { made.push(this); }
-    createDataChannel(label) { return fakeChannel(label); }
+    createDataChannel(label) { this.channel = fakeChannel(label); return this.channel; }
     async setLocalDescription() { calls.push('setLocalDescription'); this.localDescription = { toJSON: () => ({ type: 'offer', sdp: 'x' }) }; }
     async setRemoteDescription(sdp) { await wait(20); calls.push(['setRemoteDescription', sdp.type]); }
     async addIceCandidate(candidate) { calls.push(['addIceCandidate', candidate.candidate]); }
@@ -129,6 +129,26 @@ test('at most 50 candidates are held before the remote description; the rest are
   for (let i = 0; i < 60; i++) await peer.signal({ candidate: { candidate: `c${i}` } });
   await peer.signal({ sdp: { type: 'offer', sdp: 'x' } });
   expect(calls.filter((c) => c[0] === 'addIceCandidate').map((c) => c[1])).toEqual(Array.from({ length: 50 }, (_, i) => `c${i}`));
+});
+
+test('one description and at most 50 candidates in all are taken; once the channel is open, nothing more is', async () => {
+  const { calls, made } = recordingConnection();
+  const peer = openPeer({ initiator: true, config, sendSignal() {}, onOpen() {}, onClose() {} });
+  open.push(peer);
+  await peer.signal({ sdp: { type: 'answer', sdp: 'x' } });
+  await peer.signal({ sdp: { type: 'answer', sdp: 'again' } });
+  for (let i = 0; i < 60; i++) await peer.signal({ candidate: { candidate: `c${i}` } });
+  expect(calls.filter((c) => c[0] === 'setRemoteDescription')).toHaveLength(1);
+  expect(calls.filter((c) => c[0] === 'addIceCandidate')).toHaveLength(50);
+
+  const fresh = openPeer({ initiator: true, config, sendSignal() {}, onOpen() {}, onClose() {} });
+  open.push(fresh);
+  await fresh.signal({ sdp: { type: 'answer', sdp: 'x' } });
+  made.at(-1).channel.onopen();
+  const before = calls.length;
+  await fresh.signal({ candidate: { candidate: 'late' } });
+  await fresh.signal({ sdp: { type: 'answer', sdp: 'late' } });
+  expect(calls.slice(before)).toEqual([]);
 });
 
 test('only one channel called room is taken, and only by the watcher; any other is closed', async () => {

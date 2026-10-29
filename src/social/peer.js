@@ -1,6 +1,6 @@
 import { rtcConfig } from './config.js';
 
-const MOST_HELD = 50;   // a stranger's candidates kept before its description: more is only memory
+const MOST_CANDIDATES = 50;   // a stranger's candidates taken in all (held or applied): more is only work
 
 // One WebRTC connection and its data channel, a room's host to one watcher. The host (the initiator)
 // makes the channel "room" and the offer; the watcher takes the channel from ondatachannel. The
@@ -13,7 +13,9 @@ export function openPeer({ initiator, sendSignal, onOpen, onClose, config = rtcC
   let opened = false;
   let done = false;
   let remoteSet = false;
-  let held = [];   // candidates that came before the remote description, MOST_HELD at most
+  let described = false;   // a remote description has come (it's set once it's remoteSet)
+  let held = [];   // candidates that came before the remote description
+  let candidates = 0;   // taken so far, MOST_CANDIDATES at most
   let channelTaken = initiator;   // the host makes its channel; the watcher takes the first one called room
 
   const finish = () => {
@@ -56,17 +58,21 @@ export function openPeer({ initiator, sendSignal, onOpen, onClose, config = rtcC
   }
 
   return {
+    // One description, and MOST_CANDIDATES; once the channel is open, nothing more (a connection is made once).
     async signal(data) {
-      if (done) return;
+      if (done || opened) return;
       try {
         if (data.sdp) {
+          if (described) return;
+          described = true;
           await pc.setRemoteDescription(data.sdp);
           remoteSet = true;
           for (const candidate of held.splice(0)) await addCandidate(candidate);
           if (data.sdp.type === 'offer') await sendDescription();
-        } else if (data.candidate) {
+        } else if (data.candidate && candidates < MOST_CANDIDATES) {
+          candidates++;
           if (remoteSet) await addCandidate(data.candidate);
-          else if (held.length < MOST_HELD) held.push(data.candidate);
+          else held.push(data.candidate);
         }
       } catch {
         finish();
