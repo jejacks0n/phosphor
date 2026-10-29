@@ -8,6 +8,8 @@ import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
 import CellCanvas from '@/lib/CellCanvas';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
+import { wandIn } from '@/lib/MagicWand';
+import WandOverlay from '@/components/WandOverlay.vue';
 import { fitColumns } from '@/lib/DrawnWidth';
 import EditorViewport from '@/components/EditorViewport.vue';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
@@ -18,6 +20,8 @@ import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 // a sizer the whole grid's size: the sizer is the display everything measures against.
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
+// The Magic Wand's selection, made in either view, in this view's units.
+const wand = computed(() => workspaceStore.wand && wandIn(workspaceStore.wand, 'output', projectStore.rows));
 const textInputRef = useTemplateRef('textInput');
 useTextTool(projectStore, workspaceStore, textInputRef);
 const useDom = computed(() => workspaceStore.ansiRenderer === 'dom');
@@ -160,6 +164,9 @@ const coordsAt = (event) => {
 
 // CSS px per grid pixel (a grid pixel is half a character cell tall), for tool previews.
 const unit = computed(() => (metrics.value ? { x: metrics.value.cellWidth, y: metrics.value.lineHeight / 2 } : null));
+
+// CSS px per cell, for the Magic Wand's overlay.
+const cellUnit = computed(() => (metrics.value ? { x: metrics.value.cellWidth, y: metrics.value.lineHeight } : null));
 
 // A cell's top-left in the overlays, inside the display's border where the cells start.
 const cellOrigin = (m, col, row) => ({
@@ -323,6 +330,7 @@ onBeforeUnmount(() => {
           spellcheck="false"
           aria-label="Type into the canvas"
       ></textarea>
+      <WandOverlay v-if="wand" :wand="wand" :unit="cellUnit" :display="displayRef" :tint="workspaceStore.activeTool === 'wand'"/>
       <template v-if="selectionBox">
         <div class="marquee" :style="selectionBox.marquee"></div>
       </template>
@@ -346,13 +354,10 @@ div.ansi-editor {
   box-sizing: border-box;
   pointer-events: none;
   z-index: 1001;
-  border: 1px dashed white;
-  box-shadow: 0 0 0 1px black;
-  animation: marquee-march 1s steps(1) infinite;
-}
-
-@keyframes marquee-march {
-  50% { border-color: black; box-shadow: 0 0 0 1px white; }
+  /* The Magic Wand's line: white dashes over black, one pixel, inside the box. */
+  border: 1px solid black;
+  outline: 1px dashed white;
+  outline-offset: -1px;
 }
 
 .text-input {

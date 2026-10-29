@@ -35,12 +35,17 @@ export const useWorkspaceStore = defineStore('workspace', {
     paletteLayerOpen: false, // the character palette layer has the keyboard
     ansiOverlay: 100,        // % opacity of the edit cells drawn over the pixel view
     ansiOverlayAll: false,   // draw every cell over the pixel view, not just the edit cells
+    wand: null,              // the Magic Wand's selection: { view, width, height, mask (markRaw'd, a byte per unit: cells or grid pixels) }
+    wandMatch: { fg: true, bg: false, char: true }, // ANSI view: what a cell must share with the one clicked
+    wandContiguous: true,    // only what touches the unit clicked
+    wandTolerance: 10,       // how far a color may be from the clicked one's and still match (0-100)
     selection: null,         // { c0, r0, c1, r1 }: the Select tool's cells (inclusive)
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
-    selectLayers: { base: true, edit: true }, // what the Select tool acts on: the base layer and/or the edit layer
+    pixelViewOrigin: { col: 0, row: 0 }, // the same in the PIXEL view (InputEditor), where a paste lands with no selection
+    selectLayers: { base: true, edit: true }, // what the Select tool acts on, and the Magic Wand's Delete: the base layer and/or the edit layer
     pencilDrawWith: 'normal', // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks)
     pencilConnect: true,     // Pencil's Single and Double: join the lines it crosses or lands on
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse' | 'line'
@@ -84,6 +89,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     editFillTolerance:  10,
     editFillContiguous:  true,
     editFillFeather: 2,
+    bucketFillWith: 'normal', // ANSI view: 'normal' (the color you see) | 'cells' (whole cells, by Match and Set)
+    bucketMatch: { fg: true, bg: true, char: true }, // Cells: what a cell must share with the one clicked
+    bucketSet: { fg: true, bg: false, char: false }, // Cells: what the fill sets (your FG, BG, character)
   }),
   getters: {
     activeTool(state) {
@@ -105,14 +113,11 @@ export const useWorkspaceStore = defineStore('workspace', {
     // Select rect (the whole grid: project.gridRect()) with the Select tool.
     selectAll(rect) {
       this.selection = rect;
+      this.wand = null;
       this.setActiveTool('select');
     },
-    // Choosing any tool but Select in the ANSI view (where the selection lives) clears the selection.
+    // The selection stays as you change tools: the painting tools change only what's inside it.
     setActiveTool(tool) {
-      if (tool !== 'select' && this.editorTab === 'output') {
-        this.selection = null;
-        this.selectionOffset = null;
-      }
       this.heldTool = null; // a tool chosen while another is held stays chosen
       if (this.editorTab === 'input') this.inputActiveTool = tool;
       else this.outputActiveTool = tool;

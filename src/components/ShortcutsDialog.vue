@@ -23,10 +23,11 @@ const GROUPS = [
     rows: [
       [['P'], 'Pencil'],
       [['B'], 'Brush'],
-      [['E'], 'Eraser (with a selection: erase it)'],
+      [['E'], 'Eraser (with Select and a selection: erase it)'],
       [['G'], 'Paint Bucket'],
       [['U'], 'Shapes'],
       [['I'], 'Color Picker'],
+      [['W'], 'Magic Wand: select by color or character'],
       [['H'], 'Hand'],
       [['Z'], 'Zoom (PIXEL view)'],
       [['T', 'K'], 'Edit Mode (Esc puts the cursor away, so letters choose tools again)'],

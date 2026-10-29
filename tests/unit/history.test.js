@@ -9,10 +9,11 @@ test('Undo/redo stack semantics and the tile math used to record paint strokes',
   const h = new History(2);
   assert.equal(h.canUndo, false);
   assert.equal(h.undo(), false);
-  h.push(entry(1)); h.push(entry(2)); h.push(entry(3)); // limit 2 evicts entry 1
-  assert.equal(h.undo(), true); assert.equal(h.undo(), true); assert.equal(h.undo(), false);
+  const [e2, e3] = [entry(2), entry(3)];
+  h.push(entry(1)); h.push(e2); h.push(e3); // limit 2 evicts entry 1
+  assert.equal(h.undo(), e3); assert.equal(h.undo(), e2); assert.equal(h.undo(), false); // each returns the entry it undid
   assert.deepEqual(log, ['u3', 'u2']);
-  assert.equal(h.redo(), true); assert.equal(log.at(-1), 'r2');
+  assert.equal(h.redo(), e2); assert.equal(log.at(-1), 'r2');
   h.push(entry(4)); // drops the redo tail (3)
   assert.equal(h.canRedo, false);
   const v = h.version; h.clear();
@@ -36,7 +37,7 @@ test('retain keeps the entries it accepts, in order, on both sides of the cursor
   [entry(1, true), entry(2, false), entry(3, true), entry(4, true)].forEach((e) => h.push(e));
   h.undo(); // 4 is redoable
   h.retain((e) => e.keep);
-  assert.equal(h.undo(), true); assert.equal(h.undo(), true); assert.equal(h.undo(), false);
+  assert.ok(h.undo()); assert.ok(h.undo()); assert.equal(h.undo(), false);
   assert.deepEqual(log, ['u4', 'u3', 'u1']);
   h.redo(); h.redo(); h.redo();
   assert.deepEqual(log.slice(3), ['r1', 'r3', 'r4']);
@@ -52,7 +53,7 @@ test('past its byte budget, history drops its oldest steps, but never the newest
   assert.deepEqual(log, ['u3', 'u2']);
   h.push(entry(4, 500)); // the redo tail (2, 3) goes; the newest stays, however big
   assert.equal(h.bytes, 500);
-  assert.equal(h.undo(), true);
+  assert.ok(h.undo());
   assert.equal(h.undo(), false);
   h.push(entry(5)); // a step that holds nothing to speak of
   assert.equal(h.bytes, 0);

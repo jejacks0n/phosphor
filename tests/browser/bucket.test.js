@@ -71,3 +71,44 @@ test('a box hidden under paint of one color isn\'t a wall: the fill covers what 
   await settle(project);
   expect(project.paintLayer.colorAt(14, 14)).toEqual({ r: 255, g: 0, b: 0 }); // inside the hidden box
 });
+
+// Cells: the fill finds the cells that match the one clicked (Match) and sets what Set lights.
+const RED = { fg: '#ff0000', bg: '#000000' }, BLUE = { fg: '#0000ff', bg: '#000000' };
+const row = (project, r, c0, c1) => Array.from({ length: c1 - c0 + 1 }, (_, k) => project.cells[cellIndex(c0 + k, r, project.cols)].char).join('');
+
+test('Cells fills the matching cells it touches with what Set lights', async () => {
+  const { project, workspace } = await blank();
+  const ctx = { project, workspace, view: 'output' };
+  [...'aab'].forEach((ch, k) => project.typeAt(2 + k, 2, ch, RED));
+  project.typeAt(2, 3, 'a', BLUE);
+  project.commitEdit();
+  await settle(project);
+  Object.assign(workspace, { bucketFillWith: 'cells', bucketMatch: { fg: true, bg: false, char: true }, bucketSet: { fg: false, bg: false, char: true }, activeChar: '#' });
+  bucket.begin(ctx, { x: 2.5, y: 4.5 }, ev);
+  await settle(project);
+  expect(row(project, 2, 2, 4)).toBe('##b');
+  expect(row(project, 3, 2, 2)).toBe('a');
+
+  Object.assign(workspace, { editFillContiguous: false, bucketMatch: { fg: false, bg: false, char: true }, bucketSet: { fg: true, bg: false, char: false }, editFgColor: '#00ff00', editFgNone: false });
+  bucket.begin(ctx, { x: 4.5, y: 4.5 }, ev); // the b: every b, anywhere
+  project.typeAt(10, 10, 'b', RED);
+  project.commitEdit();
+  bucket.begin(ctx, { x: 2.5, y: 6.5 }, ev); // the blue a: every a
+  await settle(project);
+  expect(row(project, 3, 2, 2)).toBe('a');
+  expect(project.cells[cellIndex(2, 3, project.cols)].fg.hex).toBe('#00ff00');
+  expect(project.cells[cellIndex(4, 2, project.cols)].fg.hex).toBe('#00ff00');
+  expect(project.cells[cellIndex(10, 10, project.cols)].fg.hex).toBe('#ff0000'); // typed after that fill
+});
+
+test('Cells stays inside the selection', async () => {
+  const { project, workspace } = await blank();
+  const ctx = { project, workspace, view: 'output' };
+  [...'aaaa'].forEach((ch, k) => project.typeAt(k, 2, ch, RED));
+  project.commitEdit();
+  await settle(project);
+  Object.assign(workspace, { bucketFillWith: 'cells', bucketSet: { fg: false, bg: false, char: true }, activeChar: '#', selection: { c0: 0, r0: 2, c1: 1, r1: 2 } });
+  bucket.begin(ctx, { x: 0.5, y: 4.5 }, ev);
+  await settle(project);
+  expect(row(project, 2, 0, 3)).toBe('##aa');
+});

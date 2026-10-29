@@ -1,5 +1,5 @@
-// Flip and rotate a selection: its cells move, their characters turn with them (box pieces, blocks,
-// arrows), and its paint and base turn too, as one undo step.
+// Flip and rotate a selection. A flip moves its cells, their characters turning with them (box pieces,
+// blocks, arrows), and its paint and base flip too; Rotate turns its pixels. Each is one undo step.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
@@ -16,7 +16,9 @@ async function scene() {
   };
   const read = (c0, r0, c1, r1) => Array.from({ length: r1 - r0 + 1 }, (_, r) =>
     Array.from({ length: c1 - c0 + 1 }, (_, c) => project.cells[cellIndex(c0 + c, r0 + r, project.cols)].char).join(''));
-  return { project, workspace, type, read };
+  // The paint at a grid pixel, or null where there's none.
+  const paint = (x, y) => (project.paintLayer?.pixelAt(x, y)?.a ? project.rawColorAt(x, y) : null);
+  return { project, workspace, type, read, paint };
 }
 
 test('flipping across and down turns box pieces, half-blocks and arrows with the cells', async () => {
@@ -28,21 +30,64 @@ test('flipping across and down turns box pieces, half-blocks and arrows with the
   expect(read(2, 2, 5, 3)).toEqual(['↓▐─┐', '←▄─┘']);
 });
 
-test('a quarter turn makes a w x h block h x w from the same corner, and is one undo step', async () => {
-  const { project, type, read } = await scene();
-  type(2, 2, ['┌──┐', '└──┘']);
-  const before = read(2, 2, 5, 5);
-  expect(project.turnSelection({ c0: 2, r0: 2, c1: 5, r1: 3 }, EDIT, 'cw')).toEqual({ c0: 2, r0: 2, c1: 3, r1: 5 });
-  expect(read(2, 2, 3, 5)).toEqual(['┌┐', '││', '││', '└┘']);
+// Rotate turns the picture by its shape (a cell is two grid pixels, one wide and two tall), so
+// square stays square. Pixels: the paint, the base's pixels and colors, and the Half-block's ▄.
+test('Rotate turns the pixels: a 2 x 1-cell square stays 2 x 1, and it is one undo step', async () => {
+  const { project, paint } = await scene();
+  project.paintStroke([{ x: 2, y: 4, alpha: 1 }], '#ff0000');
+  project.paintStroke([{ x: 3, y: 4, alpha: 1 }], '#00ff00');
+  project.paintStroke([{ x: 2, y: 5, alpha: 1 }], '#0000ff');
+  project.paintStroke([{ x: 3, y: 5, alpha: 1 }], '#ffffff');
+  project.commitEdit();
+  expect(project.turnSelection({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT, 'cw')).toEqual({ c0: 2, r0: 2, c1: 3, r1: 2 });
+  // red green / blue white turned clockwise: blue red / white green
+  expect([paint(2, 4), paint(3, 4), paint(2, 5), paint(3, 5)]).toEqual(['#0000ff', '#ff0000', '#ffffff', '#00ff00']);
   project.undo(); await settle(project);
-  expect(read(2, 2, 5, 5)).toEqual(before);
+  expect([paint(2, 4), paint(3, 4), paint(2, 5), paint(3, 5)]).toEqual(['#ff0000', '#00ff00', '#0000ff', '#ffffff']);
+});
+
+test("a Half-block's ▄ goes with its paint when it rotates, and only to cells the paint lands in", async () => {
+  const { project, read, paint } = await scene();
+  project.paintStroke([{ x: 2, y: 4, alpha: 1 }], '#ff0000', { blockChars: true }); // the top half of cell (2, 2)
+  project.commitEdit();
+  expect(read(2, 2, 3, 2)).toEqual(['▄' + read(3, 2, 3, 2)[0]]);
+  project.turnSelection({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT, 'cw'); // the pixel turns to the top right
+  expect(paint(3, 4)).toBe('#ff0000');
+  expect([project.editCellAt(2, 2), project.editCellAt(3, 2)?.char]).toEqual([undefined, '▄']);
+});
+
+test('a block an odd number of cells wide turns into whole cells: the half row to spare keeps what was under it', async () => {
+  const { project, paint } = await scene();
+  project.paintStroke([2, 3, 4].flatMap((x) => [{ x, y: 4, alpha: 1 }, { x, y: 5, alpha: 1 }]), '#ff0000'); // cells 2-4 of row 2
+  project.paintStroke([{ x: 2, y: 7, alpha: 1 }, { x: 3, y: 7, alpha: 1 }], '#ff00ff'); // the bottom half of row 3
+  project.commitEdit();
+  // 3 x 2 pixels turn into 2 x 3: two cells across, a row and a half down
+  expect(project.turnSelection({ c0: 2, r0: 2, c1: 4, r1: 2 }, EDIT, 'cw')).toEqual({ c0: 2, r0: 2, c1: 3, r1: 3 });
+  expect([4, 5, 6].map((y) => [paint(2, y), paint(3, y)])).toEqual([['#ff0000', '#ff0000'], ['#ff0000', '#ff0000'], ['#ff0000', '#ff0000']]);
+  expect([paint(2, 7), paint(3, 7)]).toEqual(['#ff00ff', '#ff00ff']);
+  expect([paint(4, 4), paint(4, 5)]).toEqual([null, null]); // where it was, and isn't now
 });
 
 test('a turned block that would run off the grid moves back onto it', async () => {
+  const { project, paint } = await scene();
+  project.paintStroke([{ x: 29, y: 26, alpha: 1 }], '#ff0000');
+  project.paintStroke([{ x: 29, y: 27, alpha: 1 }], '#0000ff');
+  project.commitEdit();
+  expect(project.turnSelection({ c0: 29, r0: 13, c1: 29, r1: 13 }, EDIT, 'cw')).toEqual({ c0: 28, r0: 13, c1: 29, r1: 13 });
+  expect([paint(28, 26), paint(29, 26)]).toEqual(['#0000ff', '#ff0000']);
+});
+
+test('Rotate is off while the selection holds characters, on the layers chosen; a Half-block ▄ is pixels', async () => {
   const { project, type, read } = await scene();
-  type(27, 13, ['ABC']);
-  expect(project.turnSelection({ c0: 27, r0: 13, c1: 29, r1: 13 }, EDIT, 'cw')).toEqual({ c0: 27, r0: 12, c1: 27, r1: 14 });
-  expect(read(27, 12, 27, 14)).toEqual(['A', 'B', 'C']);
+  type(2, 2, ['AB']);
+  expect(project.hasCharacters({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT)).toBe(true);
+  expect(project.hasCharacters({ c0: 2, r0: 2, c1: 3, r1: 2 }, { base: true, edit: false })).toBe(false);
+  expect(project.turnSelection({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT, 'cw')).toEqual({ c0: 2, r0: 2, c1: 3, r1: 2 });
+  expect(read(2, 2, 3, 2)).toEqual(['AB']);
+  project.paintStroke([{ x: 6, y: 4, alpha: 1 }], '#ff0000', { blockChars: true });
+  project.commitEdit();
+  expect(read(6, 2, 6, 2)).toEqual(['▄']);
+  expect(project.hasCharacters({ c0: 6, r0: 2, c1: 7, r1: 2 }, BOTH)).toBe(false);
 });
 
 test('the paint and the base flip with the cells; a Half-block ▄ keeps showing its paint', async () => {
@@ -93,17 +138,18 @@ test('a block moved over the picture and flipped gives back what it covered when
 });
 
 test('a block rotated over its neighbors gives them back when it moves on', async () => {
-  const { project, type, read } = await scene();
-  type(2, 2, ['ABC']);
-  type(2, 3, ['xyz']);
+  const { project, paint } = await scene();
+  project.paintStroke([2, 3, 4].flatMap((x) => [{ x, y: 4, alpha: 1 }, { x, y: 5, alpha: 1 }]), '#ff0000');
+  project.paintStroke([2, 3].flatMap((x) => [{ x, y: 6, alpha: 1 }, { x, y: 7, alpha: 1 }]), '#00ff00'); // cells 2-3 of row 3
+  project.commitEdit();
   const base = project.baseColorAt(2, 6);
-  let rect = project.turnSelection({ c0: 2, r0: 2, c1: 4, r1: 2 }, BOTH, 'cw'); // down over x
-  expect(read(2, 2, 2, 4)).toEqual(['A', 'B', 'C']);
+  const rect = project.turnSelection({ c0: 2, r0: 2, c1: 4, r1: 2 }, BOTH, 'cw'); // down over the green
+  expect([paint(2, 6), paint(2, 7)]).toEqual(['#ff0000', '#00ff00']);
   project.floatSelection(rect, BOTH, 10, 0);
   await settle(project);
-  expect(read(2, 3, 4, 3)).toEqual(['xyz']);
+  expect([paint(2, 6), paint(2, 7), paint(3, 6)]).toEqual(['#00ff00', '#00ff00', '#00ff00']);
   expect(project.baseColorAt(2, 6)).toBe(base);
-  expect(read(12, 2, 12, 4)).toEqual(['A', 'B', 'C']);
+  expect([4, 5, 6].map((y) => paint(12, y))).toEqual(['#ff0000', '#ff0000', '#ff0000']);
 });
 
 test('a pasted block turned and moved on gives back what it covered; Delete on a turned float takes the block away', async () => {

@@ -116,7 +116,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _handleSelectionKeys = (e) => {
     // Something else already took the key (the palette layer, a popover).
     if (e.defaultPrevented || workspaceStore.paletteLayerOpen) return false;
-    if (workspaceStore.editorTab !== 'output' || e.altKey || e.shiftKey) return false;
+    if (!['input', 'output'].includes(workspaceStore.editorTab) || e.altKey || e.shiftKey) return false; // the art views
     if (workspaceStore.isPainting) return false; // mid-drag: the drag's end decides
     // The Text tool's textarea isn't a field: Cmd/Ctrl+V there still pastes a Select block (and only
     // pastes text, through the textarea, when there's no block).
@@ -126,11 +126,11 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const command = e.metaKey || e.ctrlKey;
     if (!command) {
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      if (e.key === 'Escape' && sel) workspaceStore.selection = null;
+      if (e.key === 'Escape' && sel) projectStore.changeSelection((w) => { w.selection = null; });
       else if (e.key === 'Escape' && _typing()) workspaceStore.textCursor = null;
       else if (selecting && (e.key === 'Delete' || e.key === 'Backspace' || key === 'e')) projectStore.deleteSelection(sel, layers);
       else if (selecting && (key === 'c' || key === 's') && !e.repeat) workspaceStore.selection = projectStore.stampSelection(sel, layers) ?? sel;
-      else if (selecting && e.key === 'Enter') workspaceStore.selection = null;
+      else if (selecting && e.key === 'Enter') projectStore.changeSelection((w) => { w.selection = null; });
       else if (selecting && ARROWS[e.key]) {
         // A nudge stops at the grid's edge rather than pushing contents off it.
         const { dc, dr } = clampOffset(sel, ...ARROWS[e.key], projectStore.cols, charRowsOf(projectStore.rows));
@@ -144,19 +144,34 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (key === 'v') {
       // Left to the browser: its paste event carries the system clipboard's text (_handlePaste
       // decides what to paste). A browser that sends no paste event here pastes Phosphor's own block.
-      // The Text cursor only counts in Edit Mode (it lingers, unseen, after switching tools).
+      // The Text cursor only counts in Edit Mode (it lingers, unseen, after switching tools), and there
+      // it wins over a selection kept from another tool.
       const cursor = workspaceStore.activeTool === 'text' ? workspaceStore.textCursor : null;
-      const at = sel ? { col: sel.c0, row: sel.r0 } : cursor ?? workspaceStore.ansiViewOrigin;
+      const origin = workspaceStore.editorTab === 'input' ? workspaceStore.pixelViewOrigin : workspaceStore.ansiViewOrigin;
+      const at = cursor ?? (sel ? { col: sel.c0, row: sel.r0 } : origin);
       clearTimeout(_pendingPaste?.timer);
       _pendingPaste = { at, timer: setTimeout(() => { _pendingPaste = null; _pasteBlock(at); }, 50) };
       return true;
     }
-    if (key === 'a') workspaceStore.selectAll(projectStore.gridRect());
+    if (key === 'a') projectStore.changeSelection((w) => w.selectAll(projectStore.gridRect()));
     else if (key === 'c' && sel) copySelection(projectStore, workspaceStore, sel, layers);
     else if (key === 'x' && sel) {
       copySelection(projectStore, workspaceStore, sel, layers);
       projectStore.deleteSelection(sel, layers);
     } else return false;
+    e.preventDefault();
+    return true;
+  };
+
+  // The Magic Wand's selection: Escape drops it; Delete or Backspace takes away what's drawn in it
+  // (not in Edit Mode, where they edit the text).
+  const _handleWandKeys = (e) => {
+    const wand = workspaceStore.wand;
+    if (!wand || e.defaultPrevented || isField(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
+    if (workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false; // the palette has the keys; mid-drag, the drag's end decides
+    if (e.key === 'Escape') projectStore.changeSelection((w) => { w.wand = null; });
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.selectLayers);
+    else return false;
     e.preventDefault();
     return true;
   };
@@ -212,6 +227,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_handleColorKeys(e)) return;
     if (_handleToolSwap(e)) return;
     if (_handleSwapColors(e)) return;
+    if (_handleWandKeys(e)) return;
     if (_handleSelectionKeys(e)) return;
     if (_handleToolKeys(e)) return;
   };

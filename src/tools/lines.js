@@ -6,6 +6,7 @@
 import { cellSteps } from '@/lib/Brushes';
 import { armsOf, inwardArms, pieceOf } from '@/lib/BoxJoin';
 import { charRowsOf, showsChar } from '@/lib/Cells';
+import { selectionClip } from '@/lib/selectionClip';
 
 const STEPS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // up, right, down, left: the order of a piece's arms
 const keyOf = ({ col, row }) => `${col},${row}`;
@@ -35,6 +36,7 @@ const armsAt = (project, { col, row }) => armsOf(shownAt(project, col, row)) ?? 
 // Write the stroke's pieces in these cells, in the colors you're typing with.
 function draw(project, workspace, cells) {
   const attrs = workspace.typingAttrs();
+  const clip = selectionClip(workspace);
   const written = [];
   for (const { col, row } of cells) {
     // The stroke's arms here, and with Connect the piece that was under it and the arms pointing in
@@ -49,7 +51,7 @@ function draw(project, workspace, cells) {
       arms = own.map((w, d) => w || ((under[d] || inward[d]) && ((d % 2 ? h : v) || under[d] || inward[d])));
     }
     const char = pieceOf(arms);
-    if (char) written.push({ col, row, attrs: { char, ...attrs } });
+    if (char && (!clip || clip.cell(col, row))) written.push({ col, row, attrs: { char, ...attrs } });
     if (col === stroke.at.col && row === stroke.at.row) stroke.end = { char, arms };
   }
   project.writeEditCells(written, { clearPaint: true });

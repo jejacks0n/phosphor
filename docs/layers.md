@@ -145,6 +145,11 @@ character back.
 
 ## The Select tool
 
+The Select tool (**M**) selects a rectangle of whole cells, in either view. In the pixel view a cell
+is a pixel wide and two tall, so the rectangle's top and bottom keep to every second pixel row there;
+it's the same selection in both views, and it stays when you switch. Everything below works the
+same in both.
+
 The Select tool's **Layers** toggles (**Base**, **Edit**) choose what Copy, Cut, Delete, moving and
 nudging act on:
 
@@ -167,28 +172,87 @@ scrolls the view, faster the further you go.
 **Copy and Cut** also put the selection's characters on your system clipboard as plain text, a line
 per row, so you can paste them into a terminal, a chat or a text editor. **Paste** (Cmd/Ctrl+V)
 pastes whatever you copied last: the block you copied in Phosphor, with its colors and layers; or,
-if you've copied text anywhere else since, that text, typed in at the Edit Mode cursor (or at the
-selection, or the top-left of the view). The **Paste** button always pastes the block you copied in
+if you've copied text anywhere else since, that text, typed in. Either lands at the Edit Mode
+cursor in Edit Mode, or else at the selection, or the top-left of the view. The **Paste** button always pastes the block you copied in
 Phosphor, whatever's on your system clipboard.
 
 **Stamp** (**S**, or **C** as in Moebius) leaves a copy of the selection where it is and floats the
 block on from there, so you can drag or nudge it away and stamp again. Each stamp is its own undo
 step. With a selection, **E** deletes it too, and **Enter** sets the block down, like Escape.
 
-**Flip horizontally** (a mirror), **Flip vertically** and **Rotate 90°** clockwise turn the
-selection in place, on the chosen layers. The characters turn with it: box lines (┌ → ┐, ╒ → ╖),
-half-blocks and quadrants (▀ → ▄, ▌ → ▐), arrows and triangles (→ ←, ▲ ▼), and brackets and
-slashes (( ), < >, / \). Letters, digits and shades stay as they are. A rotated block is as many
-cells wide as it was tall, from the same top-left corner (moved back onto the canvas if it would
-run off it), so it looks stretched: a cell is twice as tall as it's wide. The turned block floats
-like a moved one: drag or nudge it on and whatever it covered comes back, and the turns and moves
-together are one undo step.
+**Flip horizontally** (a mirror) and **Flip vertically** turn the selection in place, on the
+chosen layers. The characters turn with it: box lines (┌ → ┐, ╒ → ╕), half-blocks and quadrants
+(▀ → ▄, ▌ → ▐), arrows and triangles (→ ←, ▲ ▼), and brackets and slashes (( ), < >, / \).
+Letters, digits and shades stay as they are.
+
+**Rotate 90°** clockwise turns the picture: the paint and the base's pixels, by their real shape, so
+a square stays a square (two cells side by side, a cell being twice as tall as it's wide, turn into
+two cells side by side). The converter picks the base's characters again from the turned pixels,
+and a Half-block's ▄ goes with its paint. Characters can't turn that way (a cell would land across
+half of two), so Rotate is off while the selection has any on the chosen layers: typed or drawn
+characters on the edit layer, or characters pinned on the base by merging down. A block an odd
+number of cells wide turns into a row and a half; the half row left over keeps what was under it.
+The rotated block starts at the same top-left corner (moved back onto the canvas if it would run
+off it).
+
+A flipped or rotated block floats like a moved one: drag or nudge it on and whatever it covered
+comes back, and the turns and moves together are one undo step.
 
 In Edit Mode, dragging across cells switches to the Select tool and selects them, the way dragging
 selects text in a text editor; a plain click still just places the cursor. With a pen (the Apple
 Pencil), a tap can wobble a few pixels, even across a cell's edge, and still only place the cursor.
 
-Choosing another tool drops the selection.
+The selection stays as you change tools, and the painting tools (Pencil, Brush, Eraser, Paint
+Bucket, Shapes, Flip FG/BG), in either view, change only what's inside it; typing in Edit Mode isn't limited. Every
+tool's options row ends with **Deselect** while there's a selection, and Escape drops it too.
+
+## The Magic Wand
+
+The **Magic Wand** (**W**, in both views) selects what matches the cell or pixel you click. In the
+ANSI view, **Match** chooses what a cell must share with the one you click: its **FG**, **BG** and/or
+character (**Char**); FG and Char to start. In the pixel view it's the pixel's color: the picture and
+paint, not the ANSI layer drawn over them. **Tolerance** (0–100, 10 to start) is how far a color may
+be from the one you clicked and still match; characters match exactly. With **Contiguous** on it
+selects only what touches the click (sharing a side, as the Paint Bucket fills); off, every match.
+**Shift**-click adds to the selection. A Select rectangle you made first keeps the wand inside it,
+and the wand's selection takes its place.
+
+The selection shows as a dashed line around it and, while the Magic Wand is the tool, a tint on
+every selected cell, so a scattered selection (every other cell) shows as a pattern. Like the
+rectangle, it stays as you change tools (the line stays, the tint goes, so you see what you draw),
+and the painting tools change only what's in it: the Paint Bucket inside it recolors just the
+selected cells or pixels. Like the rectangle, it goes with you between the views: a cell selected in
+the ANSI view is both its pixels in the pixel view, and a cell with either of its pixels selected is
+selected in the ANSI view. **Escape**, **Deselect**, a new rectangle, a grid change and a new
+document drop it.
+
+**Delete** on the wand's options row (or the Delete or Backspace key, except while typing in Edit
+Mode) takes away what's in the selection on the **Layers** lit, in one undo step: **Edit** the edit
+cells and paint, **Base** the picture, which turns black, as the Eraser's Base does (whole cells in
+the ANSI view, just the selected pixels in the pixel view). The Layers are the Select tool's own
+setting, so they're lit the same on both tools.
+
+### Recoloring a selection
+
+With the Magic Wand's selection (the wand being the tool) or a Select rectangle (Select being the
+tool), the options row has **Set FG** and **Set BG** in the ANSI view: every selected cell takes
+your foreground or background color, on the **Layers** lit, in one undo step. On **Base** it's the
+picture's own colors: a cell's background is its top pixel and its foreground its bottom one, so
+Set BG recolors the top pixels and Set FG the bottom ones. Its characters stay as they are. On
+**Edit** the cells take the color as edit cells, keeping their characters. The ASCII styles show
+each character on black in its two pixels' average, so there's no Set BG, and Set FG on Base
+recolors both pixels. In the pixel view it's **Fill**: every selected pixel takes your foreground
+color, the picture's pixel on Base and paint on Edit. A color set to None can't be set; choose one
+first.
+
+### Selections and undo
+
+Making, changing or dropping a selection is an undo step too: a wand click, a new rectangle, moving
+the rectangle's outline, **Select all**, **Escape** and **Deselect**. Undo brings back the selection
+you had before, so a stray wand click is one undo away. These steps don't count as changes to the
+document (nothing new to save). A move or paste is still one step with its selection: undoing it
+puts the selection back where the block came from. A grid change drops the selection steps, as it
+drops the drawing ones.
 
 ## Flip FG/BG
 
@@ -218,7 +282,14 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
 - **Paint Bucket** fills what you see, in the foreground color. Text and lines you've drawn (any
   edit cell whose character isn't a space, █, ▀ or ▄) are walls: a fill stops at them and never
   covers them, so it stays inside a box and leaves your text readable. A line hidden under paint
-  isn't a wall, since you can't see it.
+  isn't a wall, since you can't see it. With a selection, the fill stays inside it, and a click
+  outside it fills nothing. In the ANSI view its **Fill** dropdown also offers **Cells**: whole
+  cells instead of the color you see. **Match** chooses what a cell must share with the one you
+  click (its **FG**, **BG** and/or character, **Char**; all three to start, so cells that look the
+  same), with the colors within the **Tolerance**, and **Set** what the fill gives the cells: your
+  foreground color (to start), background color and/or character, as edit cells. **Contiguous**
+  works as in Normal mode; there's no Feathering. Cells fills text and lines too, since it's
+  matching cells rather than flowing around them.
 - **Color Picker**'s **FG** and **BG** toggles choose what a pick sets; both lit sets both.
 - **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
   selection's size and place, and the Color Picker its last pick and where each color came from.
@@ -229,10 +300,13 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
 
 A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the same tool: **P**
 Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Color Picker, **H** Hand,
-**Z** Zoom, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
-(Zoom is the pixel view's; Edit Mode, Flip and Select the ANSI view's). Each tool's button shows its key.
-In Edit Mode letters type, so press **Escape** to put the cursor away first; with a selection, E,
-S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.
+**Z** Zoom, **W** Magic Wand, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
+(Zoom is the pixel view's; Edit Mode and Flip the ANSI view's). Each tool's button shows its key.
+In Edit Mode letters type, so press **Escape** to put the cursor away first; with the Select tool
+and a selection, E, S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.
+
+Each view remembers its own tool, except that Select and the Magic Wand go with you: leave the
+pixel or ANSI view with either of them chosen and the other view takes it too.
 
 ### Held keys
 

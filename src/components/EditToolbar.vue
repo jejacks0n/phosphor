@@ -72,7 +72,7 @@ const pasteSelection = () => {
 const stampSelection = () => {
   workspace.selection = project.stampSelection(workspace.selection, workspace.selectLayers) ?? workspace.selection;
 };
-// Flip across ('h') or down ('v'), or turn a quarter clockwise ('cw'): the selection follows the block.
+// Flip across ('h') or down ('v'), or rotate 90° clockwise ('cw'): the selection follows the block.
 const turnSelection = (op) => {
   workspace.selection = project.turnSelection(workspace.selection, workspace.selectLayers, op) ?? workspace.selection;
 };
@@ -84,6 +84,16 @@ const shownChoice = (option) => {
   const current = option.choices.find(c => c.value === workspace[option.key]), list = offered(option);
   return list.includes(current) ? current : list.find(c => c.value === current?.instead) ?? current;
 };
+
+// A selection the tools keep to: the Magic Wand's or the Select tool's rectangle (either, in both
+// views). Every tool but Select (which has its own) offers Deselect while there is one.
+const wandHere = computed(() => !!workspace.wand && ['input', 'output'].includes(workspace.editorTab));
+const kept = computed(() => wandHere.value || (!!workspace.selection && ['input', 'output'].includes(workspace.editorTab)));
+const deselect = () => project.changeSelection((w) => { w.selection = null; w.wand = null; });
+// What Set FG, Set BG and Fill recolor: the active tool's own selection.
+const recolored = computed(() => (workspace.activeTool === 'wand' ? wandHere.value && workspace.wand : workspace.activeTool === 'select' && workspace.selection));
+const recolor = (colors) => project.recolorSelection(recolored.value, workspace.editorTab, workspace.selectLayers, colors);
+const asciiStyle = computed(() => ['ascii', 'colorAscii'].includes(project.renderStyle));
 
 // The pixel view's preview of the ANSI layer: edit cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'Overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
@@ -147,6 +157,12 @@ function chooseBake(id) {
 const selectionHasEdits = computed(() => {
   void project.editCells; void project.hasPaint; void project.historyVersion; // re-check after edits
   return !!workspace.selection && project.hasEditsIn(workspace.selection);
+});
+
+// Rotate turns only pixels: not while the selection has characters on its layers.
+const selectionHasCharacters = computed(() => {
+  void project.editCells; void project.baseRecords; void project.historyVersion; // re-check after edits
+  return !!workspace.selection && project.hasCharacters(workspace.selection, workspace.selectLayers);
 });
 </script>
 
@@ -294,7 +310,7 @@ const selectionHasEdits = computed(() => {
       </div>
     </div>
 
-    <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select'">
+    <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select' || kept">
       <PaletteStrip v-if="activeTool.palette"/>
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">
         <span class="option-label">Layers</span>
@@ -308,15 +324,15 @@ const selectionHasEdits = computed(() => {
           <button title="Stamp: leave a copy here and move the block on (S or C)" aria-label="Stamp" aria-keyshortcuts="S C" @click="stampSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 64H368A48 48 0 0 1 416 112V176C416 224 384 256 384 304H480A64 64 0 0 1 544 368V432H96V368A64 64 0 0 1 160 304H256C256 256 224 224 224 176V112A48 48 0 0 1 272 64ZM96 480H544V544H96Z"/></svg></button>
           <button title="Flip horizontally (mirror)" aria-label="Flip horizontally" @click="turnSelection('h')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 128V512H64Z"/><path fill-rule="evenodd" d="M368 128L576 512H368ZM416 320V464H494Z"/><path d="M304 64H336V576H304Z"/></svg></button>
           <button title="Flip vertically" aria-label="Flip vertically" @click="turnSelection('v')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M128 272H512L128 64Z"/><path fill-rule="evenodd" d="M128 368H512L128 576ZM320 416H176V494Z"/><path d="M64 304H576V336H64Z"/></svg></button>
-          <button title="Rotate 90° clockwise" aria-label="Rotate 90° clockwise" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
+          <button :title="selectionHasCharacters ? 'Rotate turns only pixels, and the selection has characters' : 'Rotate 90° clockwise'" aria-label="Rotate 90° clockwise" :disabled="selectionHasCharacters" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
           <div class="divider"/>
           <button class="text" title="Merge up: what the base layer shows here becomes edit cells" @click="project.mergeUp(workspace.selection)">Merge up</button>
           <button class="text" title="Merge down: what's drawn here goes into the base layer" :disabled="!selectionHasEdits" @click="openMerge(workspace.selection)">Merge down</button>
-          <button class="text" title="Deselect: set the block down (Esc or Enter)" aria-keyshortcuts="Escape Enter" @click="workspace.selection = null">Deselect</button>
+          <button class="text" title="Deselect: set the block down (Esc or Enter)" aria-keyshortcuts="Escape Enter" @click="deselect">Deselect</button>
         </template>
         <template v-else>
           <span class="hint">Drag to select cells, or:</span>
-          <button class="text" :title="`Select the whole canvas (${shortcut('mod', 'A')})`" @click="workspace.selectAll(project.gridRect())">Select all</button>
+          <button class="text" :title="`Select the whole canvas (${shortcut('mod', 'A')})`" @click="project.changeSelection((w) => w.selectAll(project.gridRect()))">Select all</button>
           <button class="text" title="Merge up: what the base layer shows becomes edit cells, over the whole canvas" @click="project.mergeUp(null)">Merge up</button>
           <button class="text" title="Merge down: the whole edit layer into the base layer" :disabled="!project.hasEdits" @click="openMerge()">Merge down</button>
         </template>
@@ -358,6 +374,19 @@ const selectionHasEdits = computed(() => {
           </DropdownMenu>
           <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
         </template>
+      </div>
+      <div v-if="recolored" class="tool-setting-group">
+        <div class="divider"/>
+        <template v-if="workspace.editorTab === 'output'">
+          <button class="text" :title="workspace.editFgNone ? 'Set FG: your foreground color is None; choose one first' : 'Set FG: every cell selected takes your foreground color, on the layers lit'" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor })">Set FG</button>
+          <button v-if="!asciiStyle" class="text" :title="workspace.editBgNone ? 'Set BG: your background color is None; choose one first' : 'Set BG: every cell selected takes your background color, on the layers lit'" :disabled="workspace.editBgNone" @click="recolor({ bg: workspace.editBgColor })">Set BG</button>
+        </template>
+        <button v-else class="text" :title="workspace.editFgNone ? 'Fill: your foreground color is None; choose one first' : 'Fill: every pixel selected takes your foreground color, on the layers lit'" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor })">Fill</button>
+      </div>
+      <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
+        <div class="divider"/>
+        <button v-if="wandHere && activeTool.id === 'wand'" class="text" title="Take away what's in the selection, on the layers lit (Delete)" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.selectLayers)">Delete</button>
+        <button class="text" title="Deselect: the tools paint everywhere again (Esc)" aria-keyshortcuts="Escape" @click="deselect">Deselect</button>
       </div>
     </div>
   </article>

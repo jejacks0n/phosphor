@@ -1,13 +1,17 @@
-import { floodFill } from '@/lib/FloodFill';
+import { floodFill, colorDistance } from '@/lib/FloodFill';
+import { selectMatching, unitsOf } from '@/lib/MagicWand';
 import { ctx2d } from '@/lib/Canvas';
 import { parseKey } from '@/document/editCells';
-import { cellIndex, isSolidGlyph, showsChar } from '@/lib/Cells';
+import { cellIndex, charRowsOf, isSolidGlyph, showsChar } from '@/lib/Cells';
+import { selectionClip } from '@/lib/selectionClip';
 
 // Grid pixels the fill stops at: edit cells showing a character with something to see through (text,
 // box lines), so a fill stays inside a drawn box and never covers typed text. A line hidden under
-// paint (showsChar) isn't one: the fill covers what you see.
-function wallsOf(project) {
+// paint (showsChar) isn't one: the fill covers what you see. With a selection (clip), every pixel
+// outside it is a wall too.
+function wallsOf(project, clip) {
   const walls = new Uint8Array(project.cols * project.rows);
+  if (clip) for (let i = 0; i < walls.length; i++) walls[i] = clip.pixel(i % project.cols, Math.floor(i / project.cols)) ? 0 : 1;
   for (const key of project.editCells.keys()) {
     const { col, row } = parseKey(key);
     const cell = project.cells[cellIndex(col, row, project.cols)];
@@ -18,6 +22,32 @@ function wallsOf(project) {
   }
   return walls;
 }
+
+// Fill → Cells (ANSI view): the cells matching the one clicked (what bucketMatch lights: colors within
+// the Tolerance, the character exactly), connected to it or anywhere, inside the selection, get what
+// bucketSet lights: your FG and BG (None keeps the cell's) and character, as edit cells over the paint.
+function fillCells(project, workspace, view, pos) {
+  const width = project.cols, height = charRowsOf(project.rows);
+  const start = { x: Math.floor(pos.x), y: Math.floor(pos.y / 2) };
+  if (start.x < 0 || start.y < 0 || start.x >= width || start.y >= height) return;
+  const cells = project.cells, seed = cells[start.y * width + start.x], { fg, bg, char } = workspace.bucketMatch;
+  const near = (a, b) => colorDistance(a.r, a.g, a.b, b.r, b.g, b.b) <= workspace.editFillTolerance;
+  const same = (i) => (!fg || near(seed.fg, cells[i].fg)) && (!bg || near(seed.bg, cells[i].bg)) && (!char || seed.char === cells[i].char);
+  const clip = selectionClip(workspace);
+  const allowed = clip && ((i) => clip.cell(i % width, Math.floor(i / width)));
+  const mask = selectMatching({ width, height, start, same, contiguous: workspace.editFillContiguous, allowed });
+  const set = workspace.bucketSet, colors = workspace.typingAttrs();
+  const attrs = { ...(set.fg ? { fg: colors.fg } : {}), ...(set.bg ? { bg: colors.bg } : {}), ...(set.char ? { char: workspace.activeChar } : {}) };
+  project.writeEditCells(unitsOf(mask, width).map(({ x, y }) => ({ col: x, row: y, attrs })), { clearPaint: true });
+  project.commitEdit();
+}
+
+const cellOptions = { views: ['output'], when: (ws) => ws.bucketFillWith === 'cells' };
+const PARTS = (what) => [
+  { key: 'fg', label: 'FG', title: `${what} foreground color` },
+  { key: 'bg', label: 'BG', title: `${what} background color` },
+  { key: 'char', label: 'Char', title: `${what} character` },
+];
 
 export default {
   id: 'bucket',
@@ -30,15 +60,30 @@ export default {
   options: [
     { key: 'editFillTolerance', label: 'Tolerance', title: 'Fill tolerance', min: 0, max: 100 },
     { key: 'editFillContiguous', label: 'Contiguous', type: 'checkbox' },
-    { key: 'editFillFeather', label: 'Feathering', title: 'Fill feathering', min: 0, max: 100 },
+    { key: 'editFillFeather', label: 'Feathering', title: 'Fill feathering', min: 0, max: 100, when: (ws) => ws.editorTab === 'input' || ws.bucketFillWith !== 'cells' },
+    { key: 'bucketMatch', label: 'Match', type: 'toggles', options: PARTS('Cells with the same'), ...cellOptions },
+    { key: 'bucketSet', label: 'Set', type: 'toggles', options: PARTS('Set the cells to your'), ...cellOptions },
+    {
+      key: 'bucketFillWith', label: 'Fill', type: 'dropdown', views: ['output'],
+      choices: [
+        { value: 'normal', label: 'Normal mode', glyph: '' }, // the color you see, at grid resolution
+        { value: 'cells', label: 'Cells', glyph: '▒▓' },      // whole cells: their colors and characters
+      ],
+    },
   ],
   // One click fills; there's no stroke to continue.
-  begin({ project, workspace }, pos, event) {
+  begin({ project, workspace, view }, pos, event) {
     const output = project.renderer.outputCanvas;
     if (!output) return false;
     event.stopPropagation();
+    if (view === 'output' && workspace.bucketFillWith === 'cells') {
+      fillCells(project, workspace, view, pos);
+      return false;
+    }
+    const clip = selectionClip(workspace);
+    if (clip && !clip.pixel(Math.floor(pos.x), Math.floor(pos.y))) return false; // outside the selection: nothing to fill
     const imageData = ctx2d(output).getImageData(0, 0, project.cols, project.rows);
-    const pixels = floodFill(imageData, Math.floor(pos.x), Math.floor(pos.y), workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, wallsOf(project));
+    const pixels = floodFill(imageData, Math.floor(pos.x), Math.floor(pos.y), workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, wallsOf(project, clip));
     project.paintStroke(pixels);
     project.commitEdit();
     return false;

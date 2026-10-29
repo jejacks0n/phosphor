@@ -5,14 +5,14 @@ import { createTestApp } from '../support/app.js';
 
 const ACTIONS = [
   'applyEditCells', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit',
-  'cancelEdit', 'cellHasPaint', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect',
+  'cancelEdit', 'cellHasPaint', 'changeSelection', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect',
   'commitEdit', 'commitPending', 'commitSliders', 'completeAt', 'composite', 'copySelection',
-  'deleteAt', 'deleteIn', 'deleteSelection', 'dropEdits', 'editCell', 'editCellAt', 'ensureLayer',
+  'deleteAt', 'deleteIn', 'deleteInWand', 'deleteSelection', 'dropEdits', 'editCell', 'editCellAt', 'ensureLayer',
   'eraseBase', 'eraseBasePixels', 'eraseEditPixels', 'exportFile', 'fitFor', 'flipBase', 'flipCell',
-  'flipPaint', 'floatSelection', 'gridRect', 'hasEditsIn', 'imageColorAt', 'keepMigratedLook',
+  'flipPaint', 'floatSelection', 'gridRect', 'hasCharacters', 'hasEditsIn', 'imageColorAt', 'keepMigratedLook',
   'loadProject', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeUp',
   'moveSelection', 'newDocument', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
-  'pasteSelection', 'processingScale', 'pushEdit', 'randomizeSeed', 'rawColorAt', 'rebuildCells', 'recompose', 'redo', 'refreshCells', 'refreshChanged', 'rename',
+  'pasteSelection', 'processingScale', 'pushEdit', 'randomizeSeed', 'rawColorAt', 'rebuildCells', 'recolorSelection', 'recompose', 'redo', 'refreshCells', 'refreshChanged', 'rename',
   'render', 'replaceImage', 'resetGroup', 'resetSliders', 'saveProject', 'selectionEdit',
   'setBaseRecords', 'setBlankCanvas', 'setCells', 'setImageFromFile', 'setSlider', 'shiftCells',
   'sliderValues', 'stampSelection', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'updateCols', 'updateRows', 'writeAt',

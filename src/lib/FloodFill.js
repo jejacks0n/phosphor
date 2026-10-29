@@ -4,7 +4,7 @@
  * optional): pixels the fill neither paints nor crosses.
  */
 
-function colorDistance(r1, g1, b1, r2, g2, b2) {
+export function colorDistance(r1, g1, b1, r2, g2, b2) {
   // Euclidean distance in RGB space
   const dr = r1 - r2;
   const dg = g1 - g2;

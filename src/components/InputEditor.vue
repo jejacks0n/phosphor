@@ -6,6 +6,8 @@ import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf, putCellPixels } from '@/lib/Cells';
 import { parseKey } from '@/document/editCells';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
+import { wandIn } from '@/lib/MagicWand';
+import WandOverlay from '@/components/WandOverlay.vue';
 import EditorViewport from '@/components/EditorViewport.vue';
 
 // The PIXEL view: the composited output canvas scaled up by editZoom. The canvas covers only the
@@ -13,6 +15,8 @@ import EditorViewport from '@/components/EditorViewport.vue';
 // is the display everything measures against.
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
+// The Magic Wand's selection, made in either view, in this view's units.
+const wand = computed(() => workspaceStore.wand && wandIn(workspaceStore.wand, 'input', projectStore.rows));
 const viewport = useTemplateRef('viewport');
 const sizerRef = useTemplateRef('sizer');
 const canvasRef = useTemplateRef('displayCanvas');
@@ -115,6 +119,7 @@ const queueRedraw = () => {
   redrawFrame = requestAnimationFrame(() => {
     redrawFrame = null;
     redrawDisplay();
+    publishOrigin();
   });
 };
 
@@ -135,6 +140,31 @@ const contentSize = computed(() => ({
   height: projectStore.rows * workspaceStore.editZoom,
 }));
 const unit = computed(() => ({ x: workspaceStore.editZoom, y: workspaceStore.editZoom }));
+
+// The Select tool's rectangle: marching ants around its cells (a grid pixel wide, two tall), offset
+// while its outline is dragged.
+const marquee = computed(() => {
+  const sel = workspaceStore.selection, z = workspaceStore.editZoom;
+  if (!sel) return null;
+  const { dc, dr } = workspaceStore.selectionOffset ?? { dc: 0, dr: 0 };
+  return {
+    left: `${(sel.c0 + dc) * z}px`, top: `${2 * (sel.r0 + dr) * z}px`,
+    width: `${(sel.c1 - sel.c0 + 1) * z}px`, height: `${2 * (sel.r1 - sel.r0 + 1) * z}px`,
+  };
+});
+
+// The top-left whole cell on screen, where a paste lands with no selection (as ansiViewOrigin is the
+// ANSI view's).
+const publishOrigin = () => {
+  const sizer = sizerRef.value, view = sizer?.closest('article');
+  if (!sizer || !view) return;
+  const p = sizer.getBoundingClientRect(), v = view.getBoundingClientRect(), z = workspaceStore.editZoom;
+  const clamp = (n, max) => Math.max(0, Math.min(max, n));
+  workspaceStore.pixelViewOrigin = {
+    col: clamp(Math.ceil((v.left - p.left) / z), projectStore.cols - 1),
+    row: clamp(Math.ceil((v.top - p.top) / (2 * z)), charRowsOf(projectStore.rows) - 1),
+  };
+};
 
 // Every render and every paint replaces cells; re-center when the output size changes
 // (including when the first render arrives).
@@ -194,10 +224,14 @@ onBeforeUnmount(() => {
   >
     <!-- Sized to exactly cols*zoom (fractional at a fractional zoom): coordinates, the brush preview
          and the viewport layout all assume the exact size. -->
-    <div ref="sizer" class="display" :style="{ width: `${contentSize.width}px`, height: `${contentSize.height}px` }">
+    <div ref="sizer" class="display pixel-display" :style="{ width: `${contentSize.width}px`, height: `${contentSize.height}px` }">
       <canvas ref="displayCanvas"/>
+      <div v-if="marquee" class="pixel-marquee" :style="marquee"></div>
     </div>
     <div v-if="workspaceStore.editZoom >= 16" class="grid-overlay"></div>
+    <template #overlay>
+      <WandOverlay v-if="wand" :wand="wand" :unit="unit" :display="sizerRef" :tint="workspaceStore.activeTool === 'wand'"/>
+    </template>
   </EditorViewport>
 </template>
 
@@ -211,6 +245,17 @@ div.display {
   position: absolute;
   display: block;
   image-rendering: pixelated;
+}
+
+.pixel-marquee {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 1;
+  /* The Magic Wand's line: white dashes over black, one pixel, inside the box. */
+  border: 1px solid black;
+  outline: 1px dashed white;
+  outline-offset: -1px;
 }
 
 div.grid-overlay {
