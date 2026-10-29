@@ -24,7 +24,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     displayFontSizes: useLocalStorage('phosphor.displayFontSizes', {}), // { font id: px } for the fonts you've resized
     userFonts: null,         // the fonts you've loaded ([{ id, name, lineHeight }], userFonts.js), once read from this browser (App.vue)
     displayFontLoaded: null, // displayFontSpec, once it's loaded and measured in (App.vue)
-    theme: useLocalStorage('phosphor.theme', 'system'), // the app's colors: 'dark' | 'light' | 'system' (the computer's; index.html sets it before the first paint)
+    theme: useLocalStorage('phosphor.theme', 'dark'), // the app's colors: 'dark' | 'light' | 'system' (the computer's; index.html sets it before the first paint)
     smoothText: useLocalStorage('phosphor.smoothText', true), // the art's text anti-aliased (both views), or sharp
     activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
     isShiftPressed: false,

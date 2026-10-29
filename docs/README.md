@@ -9,9 +9,10 @@ How Phosphor works, for people drawing with it.
 - [Social](social.md) — the SOCIAL tab: accounts, guests and the lobby work today; watching someone
   draw, hosting a room, chat, blocking and reporting are still to come.
 
-The colors: the picker at the right of the tab bar (a moon, a sun and a computer display) chooses **Dark**, **Light** or **System**
-(the default, which follows your computer's setting, and changes when it does). Your choice is kept
-in this browser. A narrow window has no room for it there, so it follows the computer.
+The colors: the picker at the right of the tab bar (a moon, a sun and a computer display) chooses
+**Dark** (the default), **Light** or **System** (which follows your computer's setting, and changes
+when it does). Your choice is kept in this browser. A narrow window has no room for it there, so it
+stays on your last choice (Dark to begin with).
 
 For people changing Phosphor:
 

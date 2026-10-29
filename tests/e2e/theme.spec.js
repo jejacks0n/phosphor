@@ -1,4 +1,4 @@
-// The theme picker at the right of the tab bar: Dark, Light, or System (the default, which follows the computer),
+// The theme picker at the right of the tab bar: Dark (the default), Light, or System (which follows the computer),
 // shown as a moon, a sun and a computer display.
 import { test, expect } from './support.js';
 
@@ -6,15 +6,18 @@ const picker = (page) => page.getByRole('radiogroup', { name: 'Theme' });
 const theme = (page) => page.locator('html').getAttribute('data-theme');
 const background = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 
-test('System follows the computer, until Dark or Light is picked; the pick is kept', async ({ page }) => {
+test('Dark to begin with, even on a light computer; System follows the computer; the pick is kept', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/');
-  await expect(picker(page).getByRole('radio', { name: 'System' })).toBeChecked();
+  await expect(picker(page).getByRole('radio', { name: 'Dark' })).toBeChecked();
+  expect(await theme(page)).toBe('dark');
+  expect(await background(page)).toBe('rgb(26, 26, 26)');
+
+  await picker(page).getByRole('radio', { name: 'System' }).click();
   expect(await theme(page)).toBe('light');
   expect(await background(page)).toBe('rgb(240, 240, 240)');
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect.poll(() => theme(page)).toBe('dark');
-  expect(await background(page)).toBe('rgb(26, 26, 26)');
 
   await picker(page).getByRole('radio', { name: 'Light' }).click();
   await expect(picker(page).getByRole('radio', { name: 'Light' })).toBeChecked();
@@ -44,7 +47,7 @@ test('each choice is an icon, named for screen readers and on hover', async ({ p
 test('the picker is one stop for Tab, and the arrow keys move the choice', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/');
-  await picker(page).getByRole('radio', { name: 'System' }).focus();
+  await picker(page).getByRole('radio', { name: 'System' }).click();
   await page.keyboard.press('ArrowLeft');
   await expect(picker(page).getByRole('radio', { name: 'Light' })).toBeChecked();
   await expect(picker(page).getByRole('radio', { name: 'Light' })).toBeFocused();

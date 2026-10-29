@@ -325,7 +325,7 @@ div.themes input { /* unseen, over its label: the label's look, the radio's beha
     display: flex;
   }
 
-  div.themes { /* no room beside the tabs: the computer's theme */
+  div.themes { /* no room beside the tabs: the last choice stands */
     display: none;
   }
 }
