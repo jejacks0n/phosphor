@@ -118,11 +118,11 @@ test('the host has no Delete for who came and went', async () => {
   expect(host.querySelectorAll('button.delete')).toHaveLength(1);
 });
 
-const watcher = (peer, name, fields) => ({ peer, sub: `u_${peer}`, name, guest: false, following: true, connected: true, ...fields });
+const watcher = (peer, name, fields) => ({ peer, sub: `u_${peer}`, name, guest: false, tracking: true, connected: true, ...fields });
 
 test('only connected watchers count in N here; one still connecting is listed, saying so', async () => {
   const room = await mount('host', 0);
-  room.watchers = [watcher('p1', 'tin-lantern-owl'), watcher('p2', 'quiet-amber-fox', { connected: false }), watcher('p3', 'wren', { guest: true, following: false })];
+  room.watchers = [watcher('p1', 'tin-lantern-owl'), watcher('p2', 'quiet-amber-fox', { connected: false }), watcher('p3', 'wren', { guest: true, tracking: false })];
   await nextTick();
   const toggle = host.querySelector('button.here');
   expect(toggle.textContent.replace(/\s+/g, ' ').trim()).toBe('2 here');
@@ -141,7 +141,7 @@ test('only connected watchers count in N here; one still connecting is listed, s
   await expect.poll(() => getComputedStyle(chevron).transform).toBe('matrix(-1, 0, 0, -1, 0, 0)');
   const rows = [...host.querySelectorAll('.people li')];
   expect(rows.map((li) => li.querySelector('.name').textContent)).toEqual(['tin-lantern-owl', 'quiet-amber-fox', 'wren']);
-  expect(rows.map((li) => li.querySelector('.what').textContent)).toEqual(['following', 'connecting…', 'looking around']);
+  expect(rows.map((li) => li.querySelector('.what').textContent)).toEqual(['tracking', 'connecting…', 'looking around']);
   expect(rows.map((li) => !!li.querySelector('.tag'))).toEqual([false, false, true]);
   expect(rows.map((li) => !!li.querySelector('button'))).toEqual([true, true, false]);   // a guest has no ⋯ while guests are allowed
   expect(swatched(rows[0].querySelector('.name'), 'tin-lantern-owl')).toBe(true);

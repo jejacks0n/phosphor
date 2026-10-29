@@ -25,7 +25,7 @@ export class Watch {
     Object.assign(this, { send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat });
     this.conn = null;
     this.channel = null;
-    this.following = true;
+    this.tracking = true;
     this.frame = null;   // the next frame's onArt, once asked for
   }
 
@@ -36,9 +36,9 @@ export class Watch {
     this.conn?.signal(data);
   }
 
-  setFollowing(on) {
-    this.following = on;
-    this.post({ t: 'following', on });
+  setTracking(on) {
+    this.tracking = on;
+    this.post({ t: 'tracking', on });
   }
 
   // The watcher's own message, already signed. It shows when the host sends it back to everyone.
@@ -91,7 +91,7 @@ export class Watch {
           this.heard = this.heard.then(() => this.conn === conn && this.handle(data)).catch(() => {});   // junk is ignored
         };
         this.onState('live');
-        if (!this.following) this.setFollowing(false);
+        if (!this.tracking) this.setTracking(false);
       },
       onClose: ({ failed }) => {
         if (this.conn !== conn) return;   // closed here

@@ -170,7 +170,7 @@ test('A watcher gets the room and the host\'s cells; one painted cell reaches it
   expect(log.rooms).toEqual([{ name: 'Night shift', welcome: 'Hi' }]);
   expect(log.arts[0]).toMatchObject({ cols: 8, lines: 4, font: { id: 'jetbrains', size: 17 } });
   expect(shown(log.arts[0].cells)).toEqual(shown(project.cells));
-  await expect.poll(() => room.watchers).toEqual([{ peer: 'p1', sub: 'u_p1', name: 'p1', guest: false, following: true, connected: true }]);
+  await expect.poll(() => room.watchers).toEqual([{ peer: 'p1', sub: 'u_p1', name: 'p1', guest: false, tracking: true, connected: true }]);
 
   const sent = channelSends();
   project.editCell(2, 1, { char: '#' });
@@ -507,13 +507,13 @@ test('A watcher\'s room, art and the host\'s view come from the channel; leave c
   expect(room.room).toEqual({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan', hostSub: 'u_9' });
   expect(room.art).toEqual(art);
 
-  room.setFollowing(false);
-  expect(room.following).toBe(false);
-  await expect.poll(() => lists.at(-1)?.[0].following, PATIENT).toBe(false);
+  room.setTracking(false);
+  expect(room.tracking).toBe(false);
+  await expect.poll(() => lists.at(-1)?.[0].tracking, PATIENT).toBe(false);
   social.page = 'account';
   room.leave();
   expect(socket.closed).toBe(true);
-  expect([room.role, room.room, room.art, room.hostView, room.following, social.page]).toEqual([null, null, null, null, true, 'lobby']);
+  expect([room.role, room.room, room.art, room.hostView, room.tracking, social.page]).toEqual([null, null, null, null, true, 'lobby']);
   await expect.poll(() => lists.at(-1), PATIENT).toEqual([]);
 });
 
@@ -594,7 +594,7 @@ test('A change of the host\'s view alone sends a thumbnail once 3 minutes have p
   expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { middleCol: 8, middleRow: 3 });
 });
 
-test('The lobby picture follows the shared view\'s middle until pinned to a cell; pinning or following again is a change, and a pin picked before going live carries into the room', async () => {
+test('The lobby picture follows the shared view\'s middle until pinned to a cell; pinning or tracking again is a change, and a pin picked before going live carries into the room', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   const workspace = useWorkspaceStore();
   Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiViewOrigin: { col: 0, row: 10 }, ansiViewSize: { cols: 10, rows: 6 } });
@@ -1192,7 +1192,7 @@ test('Leaving clears the chat, and the next room starts with a full allowance', 
   expect(await room.say('e')).toBe(true);
 });
 
-test('artZoom follows the host\'s zoom while following, stays put while looking around, and Follow takes the host\'s again', async () => {
+test('artZoom follows the host\'s zoom while tracking, stays put while looking around, and Track takes the host\'s again', async () => {
   await social.boot();
   const socket = await joining(1);
   socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
@@ -1216,11 +1216,11 @@ test('artZoom follows the host\'s zoom while following, stays put while looking 
 
   host.setView({ col: 0, row: 0, cols: 2, rows: 1, zoom: 0.25 });
   await expect.poll(() => room.artZoom, PATIENT).toBe(0.25);
-  room.setFollowing(false);
+  room.setTracking(false);
   host.setView({ col: 0, row: 0, cols: 2, rows: 1, zoom: 0.75 });
   await expect.poll(() => room.hostView.zoom, PATIENT).toBe(0.75);
   expect(room.artZoom).toBe(0.25);
-  room.setFollowing(true);
+  room.setTracking(true);
   expect(room.artZoom).toBe(0.75);
 });
 
@@ -1305,7 +1305,7 @@ test('a watcher\'s reportRoom sends the reason and a base64 picture of what they
   Object.assign(room, { art: smallArt, hostView: { col: 10, row: 4, cols: 20, rows: 10, zoom: 1 } });
   expect(hasReportedRoom(ID)).toBe(false);
   expect(room.roomReported).toBe(false);
-  // Following: centered on the host's view. Asked twice at once, it goes once.
+  // Tracking: centered on the host's view. Asked twice at once, it goes once.
   expect(await Promise.all([room.reportRoom('sexual'), room.reportRoom('sexual')])).toEqual([true, false]);
   expect(roomReports(socket)).toEqual([{ type: 'report-room', reason: 'sexual', picture: 'AAAA' }]);
   expect(thumbnailOf).toHaveBeenCalledTimes(1);
@@ -1331,7 +1331,7 @@ test('a watcher\'s reportRoom sends the reason and a base64 picture of what they
 test('looking around, the room report\'s picture is centered on what the watcher sees; no picture, it goes without one', async () => {
   const socket = await watching();
   Object.assign(room, { art: smallArt, hostView: { col: 10, row: 4, cols: 20, rows: 10, zoom: 1 } });
-  room.setFollowing(false);
+  room.setTracking(false);
   room.lookingAt = { middleCol: 70, middleRow: 33 };
   vi.mocked(thumbnailOf).mockResolvedValueOnce(null);
   expect(await room.reportRoom('other')).toBe(true);

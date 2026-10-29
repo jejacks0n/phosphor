@@ -77,12 +77,12 @@ export const useRoomStore = defineStore('room', {
     status: null,
     passwordWrong: false,
     hasPassword: false,  // a host's: the room was made with a password (it can't change)
-    watchers: [],        // a host's: [{ peer, sub, name, guest, following, connected }]
+    watchers: [],        // a host's: [{ peer, sub, name, guest, tracking, connected }]
     art: shallowRef(null),   // a watcher's: { cells, cols, lines, font }
     hostView: null,      // a watcher's: { col, row, cols, rows, zoom }
     lookingAt: null,     // a watcher's: the cell in the middle of the art in view { middleCol, middleRow } (RoomArt's looking-at)
-    following: true,
-    artZoom: 1,          // a watcher's: the zoom the art is drawn at, the host's while following
+    tracking: true,
+    artZoom: 1,          // a watcher's: the zoom the art is drawn at, the host's while tracking
     chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence?, muted? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
@@ -251,7 +251,7 @@ export const useRoomStore = defineStore('room', {
         onArt: (art) => { this.art = art; },
         onView: (view) => {
           this.hostView = view;
-          if (this.following) this.artZoom = view.zoom;
+          if (this.tracking) this.artZoom = view.zoom;
         },
         onState: (state) => this.watchState(state),
       }));
@@ -267,13 +267,13 @@ export const useRoomStore = defineStore('room', {
       return this.role === 'watch' ? { id: this.id, password: this._password } : null;
     },
 
-    setFollowing(on) {
-      this.following = on;
+    setTracking(on) {
+      this.tracking = on;
       if (on) this.artZoom = this.hostView?.zoom ?? 1;
-      this._watch?.setFollowing(on);
+      this._watch?.setTracking(on);
     },
 
-    // The lobby picture from this top-left cell ({ col, row }), or following the view's middle again.
+    // The lobby picture from this top-left cell ({ col, row }), or tracking the view's middle again.
     pinLobby(cell) {
       this.lobbyPin = cell;
     },
@@ -300,7 +300,7 @@ export const useRoomStore = defineStore('room', {
       for (const stop of this._stops) stop();
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, lookingAt: null, following: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),
+        hostView: null, lookingAt: null, tracking: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false,
       });
@@ -365,7 +365,7 @@ export const useRoomStore = defineStore('room', {
       return true;
     },
 
-    // A watcher's report of the room itself, with a picture of what they see now: the host's view while following,
+    // A watcher's report of the room itself, with a picture of what they see now: the host's view while tracking,
     // else their own. False, sending nothing, if you can't report, you're the host, you reported this room already
     // or the reason isn't one; also when the socket isn't open, and then it isn't kept as reported.
     async reportRoom(reason) {
@@ -374,7 +374,7 @@ export const useRoomStore = defineStore('room', {
       const connection = this._connection, art = this.art;
       let picture = null;
       try {
-        if (art) picture = await thumbnailOf({ ...art, font: fontFor(art.font) }, (!this.following && this.lookingAt) || middleOf(this.hostView), REPORT_PICTURE);
+        if (art) picture = await thumbnailOf({ ...art, font: fontFor(art.font) }, (!this.tracking && this.lookingAt) || middleOf(this.hostView), REPORT_PICTURE);
       } catch (error) {
         console.warn('The room report\'s picture failed.', error);   // it goes without one
       }

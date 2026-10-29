@@ -3,8 +3,8 @@ import { ref, computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
 import RoomArt from './RoomArt.vue';
 
-// The room you watch: the host's art with the part they're looking at (followed until you look around;
-// the tag on the host's box follows again). Its name, who hosts it, their welcome and Exit are at the
+// The room you watch: the host's art with the part they're looking at (tracked until you look around;
+// the tag on the host's box tracks again). Its name, who hosts it, their welcome and Exit are at the
 // top of the chat panel. Until the
 // room's name comes from the host, the heading says how joining is going; once it's the name it's for
 // screen readers only (the panel shows it). A status region always there says how joining is going for
@@ -32,7 +32,7 @@ watch(() => room.status === 'password' && room.passwordWrong, async (wrong) => {
   passwordRef.value?.focus();
   passwordRef.value?.select();
 });
-const lookAround = () => { if (room.following) room.setFollowing(false); };
+const lookAround = () => { if (room.tracking) room.setTracking(false); };
 </script>
 
 <template>
@@ -45,7 +45,7 @@ const lookAround = () => { if (room.following) room.setFollowing(false); };
       <button class="primary" type="submit">Join</button>
     </form>
     <div v-if="room.art" class="art" :class="{ stale: room.status === 'waiting' }">
-      <RoomArt :art="room.art" :host-view="room.hostView" :following="room.following" :zoom="room.artZoom" :host="room.room?.host || null" @look-around="lookAround" @follow="room.setFollowing(true)" @looking-at="room.lookingAt = $event" />
+      <RoomArt :art="room.art" :host-view="room.hostView" :tracking="room.tracking" :zoom="room.artZoom" :host="room.room?.host || null" @look-around="lookAround" @track="room.setTracking(true)" @looking-at="room.lookingAt = $event" />
     </div>
   </div>
 </template>

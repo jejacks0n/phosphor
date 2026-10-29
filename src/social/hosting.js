@@ -17,7 +17,7 @@ const MOST_HEARD_BYTES = 2048;               // a watcher's message longer than 
 const MOST_SKEW_MS = 120_000;                // a chat message's time, from the host's clock
 const EARLIER_EVERY_MS = 500;                // a watcher's asks for earlier messages, at most
 const MOST_CHECKING = 4;                     // a watcher's chat waiting to be checked; more is ignored
-const FOLLOWING_EVERY_MS = 250;              // who's here is redrawn for following toggles at most this often
+const TRACKING_EVERY_MS = 250;              // who's here is redrawn for tracking toggles at most this often
 
 const sameView = (a, b) => a.col === b.col && a.row === b.row && a.cols === b.cols && a.rows === b.rows && a.zoom === b.zoom;
 
@@ -39,7 +39,7 @@ function cellsMessage(art, at) {
 export class Host {
   constructor({ send, passKey, config, connectWithinMs, roomId, onWatchers = () => {}, onChat = () => {} }) {
     Object.assign(this, { send, passKey, config, connectWithinMs, roomId, onWatchers, onChat });
-    // peer -> { peer, pass, claims, following, conn, channel, has (the art it has), packing, behind,
+    // peer -> { peer, pass, claims, tracking, conn, channel, has (the art it has), packing, behind,
     // allowance, heard (its chat, checked one at a time), checking (how many wait), askedAt (its last ask
     // for earlier messages), here (counted among those in the room) }
     this.watchers = new Map();
@@ -62,7 +62,7 @@ export class Host {
     if (this.removed.has(peer)) return;
     this.drop(peer);
     const w = {
-      peer, pass, claims: null, following: true, conn: null, channel: null, has: null, packing: false, behind: false,
+      peer, pass, claims: null, tracking: true, conn: null, channel: null, has: null, packing: false, behind: false,
       allowance: new Allowance(), heard: Promise.resolve(), checking: 0, askedAt: -Infinity,
     };
     this.watchers.set(peer, w);
@@ -231,7 +231,7 @@ export class Host {
 
   changed() {
     this.onWatchers([...this.watchers.values()].filter((w) => w.claims).map((w) => ({
-      peer: w.peer, sub: w.claims.sub, name: w.claims.name, guest: w.claims.guest, following: w.following, connected: !!w.channel,
+      peer: w.peer, sub: w.claims.sub, name: w.claims.name, guest: w.claims.guest, tracking: w.tracking, connected: !!w.channel,
     })));
   }
 
@@ -262,15 +262,15 @@ export class Host {
     if (typeof data !== 'string' || data.length > MOST_HEARD_BYTES) return;
     let msg;
     try { msg = JSON.parse(data); } catch { return; }
-    if (msg?.t === 'following') this.follow(w, msg.on);
+    if (msg?.t === 'tracking') this.track(w, msg.on);
     else if (msg?.t === 'chat') this.check(w, msg);
     else if (msg?.t === 'earlier') this.earlier(w, msg.before);
   }
 
-  follow(w, on) {
-    if (typeof on !== 'boolean' || on === w.following) return;
-    w.following = on;
-    this.redrawing ??= setTimeout(() => { this.redrawing = null; this.changed(); }, FOLLOWING_EVERY_MS);
+  track(w, on) {
+    if (typeof on !== 'boolean' || on === w.tracking) return;
+    w.tracking = on;
+    this.redrawing ??= setTimeout(() => { this.redrawing = null; this.changed(); }, TRACKING_EVERY_MS);
   }
 
   // A watcher's chat in line to be checked. Bad messages don't spend the allowance, so it's the line

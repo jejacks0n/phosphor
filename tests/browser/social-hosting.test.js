@@ -1,6 +1,6 @@
 // A room's two sides in one page: a Host and its Watches, real WebRTC (no STUN), a small relay standing
 // in for the server's socket, and passes signed by a test key. RTCDataChannel's send is watched, so the
-// tests can count what the host sends; the watchers here send only 'following' (chat is social-chat.test.js).
+// tests can count what the host sends; the watchers here send only 'tracking' (chat is social-chat.test.js).
 import { test, expect, afterEach, vi } from 'vitest';
 import { Host } from '@/social/hosting';
 import { Watch } from '@/social/watching';
@@ -46,7 +46,7 @@ const changed = (from, indexes, char = '#') => {
 function watchSends() {
   const send = vi.spyOn(RTCDataChannel.prototype, 'send');
   const sent = () => send.mock.calls.flatMap(([data], i) => (typeof data === 'string'
-    ? [{ ...JSON.parse(data), channel: send.mock.contexts[i] }] : [])).filter((m) => m.t !== 'following');
+    ? [{ ...JSON.parse(data), channel: send.mock.contexts[i] }] : [])).filter((m) => m.t !== 'tracking');
   const chunks = () => send.mock.calls.flatMap(([data]) => (typeof data === 'string' ? [] : [data]));
   return { sent, chunks, clear: () => send.mockClear() };
 }
@@ -106,8 +106,8 @@ test('each watcher gets the room, the latest messages, then art deep-equal to th
     expect(sends.sent().filter((m) => m.channel === channel && m.t !== 'presence').map((m) => m.t)).toEqual(['room', 'history', 'snapshot', 'view']);   // who came goes as they come
   }
   expect(lastList(r)).toEqual([
-    { peer: 'p1', sub: 'u_p1', name: 'p1', guest: false, following: true, connected: true },
-    { peer: 'p2', sub: 'u_p2', name: 'p2', guest: false, following: true, connected: true },
+    { peer: 'p1', sub: 'u_p1', name: 'p1', guest: false, tracking: true, connected: true },
+    { peer: 'p2', sub: 'u_p2', name: 'p2', guest: false, tracking: true, connected: true },
   ]);
 });
 
@@ -217,12 +217,12 @@ test('a watcher takes a zoom in (0, 1], and 1 or 0.25 for anything else', async 
   expect(log.views.map((v) => v.zoom)).toEqual([1, 1, 1, 1, 1, 0.25, 0.5]);
 });
 
-test('a watcher that stops following shows following: false', async () => {
+test('a watcher that stops tracking shows tracking: false', async () => {
   const r = await room();
   await expect.poll(() => r.log.p2.states.at(-1), PATIENT).toBe('live');
-  r.log.p2.watch.setFollowing(false);
-  await expect.poll(() => lastList(r).find((w) => w.peer === 'p2')?.following, PATIENT).toBe(false);
-  expect(lastList(r).find((w) => w.peer === 'p1').following).toBe(true);
+  r.log.p2.watch.setTracking(false);
+  await expect.poll(() => lastList(r).find((w) => w.peer === 'p2')?.tracking, PATIENT).toBe(false);
+  expect(lastList(r).find((w) => w.peer === 'p1').tracking).toBe(true);
 });
 
 test('a tampered pass, or no pass key, gets left sent for it and no connection', async () => {
@@ -346,32 +346,32 @@ test('a watcher\'s message that isn\'t one it sends, or is over 2 KB, is ignored
   const r = await room(['p1']);
   await expect.poll(() => r.log.p1.states.at(-1), PATIENT).toBe('live');
   const send = vi.spyOn(RTCDataChannel.prototype, 'send');
-  r.log.p1.watch.setFollowing(true);
+  r.log.p1.watch.setTracking(true);
   const channel = send.mock.contexts[0];   // the watcher's own
   await wait(100);
   const before = r.watchers.length;
-  channel.send(JSON.stringify({ t: 'following', on: false, pad: 'x'.repeat(2048) }));
+  channel.send(JSON.stringify({ t: 'tracking', on: false, pad: 'x'.repeat(2048) }));
   channel.send(JSON.stringify({ t: 'other', on: false }));
   channel.send('not json');
   await wait(100);
   expect(r.watchers.length).toBe(before);
-  channel.send(JSON.stringify({ t: 'following', on: false }));
-  await expect.poll(() => lastList(r)[0].following, PATIENT).toBe(false);
+  channel.send(JSON.stringify({ t: 'tracking', on: false }));
+  await expect.poll(() => lastList(r)[0].tracking, PATIENT).toBe(false);
 });
 
-test('a burst of following toggles redraws who\'s here a few times, not once per toggle, and ends right', async () => {
+test('a burst of tracking toggles redraws who\'s here a few times, not once per toggle, and ends right', async () => {
   const r = await room(['p1']);
   await expect.poll(() => r.log.p1.states.at(-1), PATIENT).toBe('live');
   const send = vi.spyOn(RTCDataChannel.prototype, 'send');
-  r.log.p1.watch.setFollowing(true);
+  r.log.p1.watch.setTracking(true);
   const channel = send.mock.contexts[0];   // the watcher's own
   await wait(100);
   const before = r.watchers.length;
-  for (let i = 0; i < 200; i++) channel.send(JSON.stringify({ t: 'following', on: i % 2 === 0 }));
-  await expect.poll(() => lastList(r)[0].following, PATIENT).toBe(false);
+  for (let i = 0; i < 200; i++) channel.send(JSON.stringify({ t: 'tracking', on: i % 2 === 0 }));
+  await expect.poll(() => lastList(r)[0].tracking, PATIENT).toBe(false);
   await wait(500);
   expect(r.watchers.length - before).toBeLessThan(5);
-  expect(lastList(r)[0].following).toBe(false);
+  expect(lastList(r)[0].tracking).toBe(false);
 });
 
 // The watcher doesn't trust the host: a test host sends it what a broken or hostile one might.

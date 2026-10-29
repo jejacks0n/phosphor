@@ -119,7 +119,7 @@ onBeforeUnmount(() => {
   <section ref="picture" class="lobby-picture" :aria-labelledby="headingId">
     <h3 :id="headingId">Lobby picture</h3>
     <div ref="frame" class="frame" :style="frameStyle" @scroll.capture="scrolled">
-      <RoomArt v-if="art" ref="roomArt" :art="art" :host-view="hostView" :following="!pinned" :zoom="zoom" :boxed="false" />
+      <RoomArt v-if="art" ref="roomArt" :art="art" :host-view="hostView" :tracking="!pinned" :zoom="zoom" :boxed="false" />
     </div>
     <label class="choice"><input type="checkbox" :checked="pinned" @change="pin"> Use this exact position</label>
   </section>

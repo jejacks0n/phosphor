@@ -184,7 +184,7 @@ left), and how many messages they said. Ten rows show; **and N more** opens the 
 You run the room from the chat panel, beside every tab. Under its header, **N here** (those
 connected, folded to begin with) opens the list of who is in the room, and stays as you left it while
 the room lasts. Each watcher shows their name after its cell, **guest** for a guest, and whether
-they're following you or looking around on their own (or still connecting). A member's row has a
+they're tracking you or looking around on their own (or still connecting). A member's row has a
 **⋯** button (guests have none) with:
 
 - **Kick – for this session**: they leave the room now, and can't come back until the room ends.
@@ -221,10 +221,10 @@ password asks for it first.
 The room's name, its host and **Exit** are at the top of the chat panel, with the welcome message
 pinned under them; the SOCIAL tab shows just the art. The art is view only, in the host's font. A box
 in the host's name color shows where they're looking, with a tag in its corner: the host's cell and name, and
-*following* while your view follows theirs. The box is their whole view, and while you follow, the
+*tracking* while your view tracks theirs. The box is their whole view, and while you track, the
 art is drawn at their zoom (never above 100%: a PIXEL host who zooms in is shown at 100%, with a
 smaller box). Scroll away to look around on your own and you keep the zoom you had, and the tag
-becomes a **Follow** button to bring you back; scroll the box out of sight and the tag waits at the
+becomes a **Track** button to bring you back; scroll the box out of sight and the tag waits at the
 edge of the art, with an arrow pointing to it. If the connection to the host is lost, the art dims and the page says
 **Waiting for the host…** until it's back.
 

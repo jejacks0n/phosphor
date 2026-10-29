@@ -36,7 +36,7 @@ async function mount(state) {
 }
 
 const button = (name) => [...host.querySelectorAll('button')].find((b) => b.textContent === name);
-const watcher = (peer, name, fields) => ({ peer, sub: `u_${peer}`, name, guest: false, following: true, connected: true, ...fields });
+const watcher = (peer, name, fields) => ({ peer, sub: `u_${peer}`, name, guest: false, tracking: true, connected: true, ...fields });
 
 const tile = (label) => {
   const dt = [...host.querySelectorAll('dt')].find((el) => el.textContent === label);

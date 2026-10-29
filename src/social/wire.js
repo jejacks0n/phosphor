@@ -9,7 +9,7 @@
  *   { t: 'view', col, row, cols, rows, zoom }   the part of the art the host is looking at, and its zoom: a
  *                                               fraction of the font's cell, 0.25 to 1
  * Watcher to host:
- *   { t: 'following', on }
+ *   { t: 'tracking', on }
  *
  * There are no edit numbers: the channel keeps changes in order, and a watcher ignores 'cells'
  * until its first snapshot.

@@ -1,6 +1,6 @@
 // A room's art (RoomArt.vue): the host's view held to the grid however big its numbers, scrolled to
-// the center while following, and a wheel, a key or a press (never its own scroll) is looking around.
-// The host's box and its tag (the Follow button) are in the host's name color, and the tag stays in
+// the center while tracking, and a wheel, a key or a press (never its own scroll) is looking around.
+// The host's box and its tag (the Track button) are in the host's name color, and the tag stays in
 // sight, pointing to the box, when the box is scrolled out of view.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, reactive, nextTick } from 'vue';
@@ -22,11 +22,11 @@ afterEach(() => {
 
 // RoomArt in a 200 x 100 px box; its look-arounds counted.
 function mount(props) {
-  const state = reactive({ art, hostView: null, following: true, host: 'ansi-fan', zoom: 1, ...props }), seen = { lookArounds: 0, follows: 0, lookingAt: null };
+  const state = reactive({ art, hostView: null, tracking: true, host: 'ansi-fan', zoom: 1, ...props }), seen = { lookArounds: 0, tracks: 0, lookingAt: null };
   host = document.createElement('div');
   host.style.cssText = 'width: 200px; height: 100px';
   document.body.append(host);
-  app = createApp({ render: () => h(RoomArt, { ...state, onLookAround: () => seen.lookArounds++, onFollow: () => seen.follows++, onLookingAt: (middle) => { seen.lookingAt = middle; } }) });
+  app = createApp({ render: () => h(RoomArt, { ...state, onLookAround: () => seen.lookArounds++, onTrack: () => seen.tracks++, onLookingAt: (middle) => { seen.lookingAt = middle; } }) });
   app.mount(host);
   return { state, seen, scroll: host.querySelector('.room-art'), box: host.querySelector('.host-view'), tag: () => host.querySelector('.host-tag') };
 }
@@ -35,7 +35,7 @@ const frames = async (n = 3) => {
   for (let i = 0; i < n; i++) await new Promise((resolve) => requestAnimationFrame(resolve));
 };
 
-test('a host\'s view past the grid is held to its last cell, and following scrolls there without looking around', async () => {
+test('a host\'s view past the grid is held to its last cell, and tracking scrolls there without looking around', async () => {
   await createTestApp();
   const { scroll, box, seen } = mount({ hostView: { col: 1e300, row: Number.MAX_SAFE_INTEGER, cols: 1e300, rows: 1e300 } });
   // The VGA font at 16 px, once it has loaded (measured in a fallback until then): 8 x 16 cells. The
@@ -48,7 +48,7 @@ test('a host\'s view past the grid is held to its last cell, and following scrol
   expect(seen.lookArounds).toBe(0);
 });
 
-test('each new view of the host\'s is centered while following, and not once looking around', async () => {
+test('each new view of the host\'s is centered while tracking, and not once looking around', async () => {
   await createTestApp();
   const { state, scroll, box, seen } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 } });
   await expect.poll(() => box.style.width).toBe('80px'); // in the VGA font, loaded
@@ -61,7 +61,7 @@ test('each new view of the host\'s is centered while following, and not once loo
 
   for (const event of [new WheelEvent('wheel', { deltaY: 40 }), new KeyboardEvent('keydown', { key: 'ArrowDown' }), new PointerEvent('pointerdown')]) scroll.dispatchEvent(event);
   expect(seen.lookArounds).toBe(3);
-  state.following = false;
+  state.tracking = false;
   state.hostView = { col: 80, row: 40, cols: 10, rows: 4 };
   await nextTick();
   expect(scroll.scrollLeft + scroll.clientWidth / 2).toBe(15 * 8);
@@ -129,7 +129,7 @@ test('the box and its tag are in the host\'s color, with a shadow so they show o
   const color = rgb(nameColor('wren'));
   expect(getComputedStyle(box).outlineColor).toBe(color);
   expect(getComputedStyle(box).boxShadow).not.toBe('none');
-  expect(getComputedStyle(tag()).backgroundColor).toBe(color);   // following: filled
+  expect(getComputedStyle(tag()).backgroundColor).toBe(color);   // tracking: filled
   expect(getComputedStyle(tag()).boxShadow).not.toBe('none');
   expect(tag().textContent).toContain('wren');
   expect(tag().querySelector('.cell').dataset.glyph).toBe(nameGlyph('wren'));   // the host's cell before the name, as everywhere
@@ -143,23 +143,23 @@ test('the box and its tag are in the host\'s color, with a shadow so they show o
   expect([t.left, t.top]).toEqual([b.left, b.top]);
 });
 
-test('the tag is the Follow button: pressed while following, and pressing it while looking around follows (not looking around)', async () => {
+test('the tag is the Track button: pressed while tracking, and pressing it while looking around tracks (not looking around)', async () => {
   await createTestApp();
   const { state, tag, seen } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 } });
   await expect.poll(() => tag()?.getAttribute('aria-pressed')).toBe('true');
-  expect(tag().getAttribute('aria-label')).toBe('Follow ansi-fan');
-  state.following = false;
+  expect(tag().getAttribute('aria-label')).toBe('Track ansi-fan');
+  state.tracking = false;
   await nextTick();
   expect(tag().getAttribute('aria-pressed')).toBe('false');
-  expect(tag().textContent).toContain('Follow');
+  expect(tag().textContent).toContain('Track');
   tag().dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
   tag().click();
-  expect([seen.follows, seen.lookArounds]).toEqual([1, 0]);
+  expect([seen.tracks, seen.lookArounds]).toEqual([1, 0]);
 });
 
 test('scrolled away from the box, the tag stays in sight at the edge nearest it, with an arrow toward it', async () => {
   await createTestApp();
-  const { state, scroll, tag } = mount({ hostView: { col: 80, row: 40, cols: 10, rows: 4 }, following: false });
+  const { state, scroll, tag } = mount({ hostView: { col: 80, row: 40, cols: 10, rows: 4 }, tracking: false });
   await expect.poll(() => tag() !== null).toBe(true);
   scroll.scrollLeft = 0;
   scroll.scrollTop = 0;
@@ -193,7 +193,7 @@ test('the tag is part of the box: it moves with it in the same frame, and holds 
   expect(tag().textContent).not.toMatch(/[\u2190-\u2199]/);   // no arrow: the box is right here
 });
 
-test('boxed false draws no host\'s box or tag, and still scrolls to the view while following', async () => {
+test('boxed false draws no host\'s box or tag, and still scrolls to the view while tracking', async () => {
   await createTestApp();
   const { scroll, seen } = mount({ hostView: { col: 40, row: 40, cols: 10, rows: 4 }, boxed: false });
   await frames();

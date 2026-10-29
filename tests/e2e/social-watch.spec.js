@@ -1,13 +1,13 @@
 // Watching a room: two pages in one fake Room, the host (signed in, art open, live through the UI) and
 // a watcher (a guest unless said otherwise). Joining from a lobby card or a ?room= link, the host's art
-// live with the host's view, Following, Leave, the host ending the room, refusals, and the watcher's
+// live with the host's view, Tracking, Leave, the host ending the room, refusals, and the watcher's
 // own art left as it was.
 import { test, expect, openApp, tab, store, editAt, cellPoint, screenPixel, settled } from './support.js';
 import { fakeRoom, member, ROOM_ID, shown, tile, goLive, watcherPage, joinFromCard } from './social-support.js';
 
 const watching = (page) => shown(page, 'watch-room');
 const chat = (page) => page.getByRole('complementary', { name: 'Chat' });   // its top has the room's name, the host and Leave
-const followTag = (page) => watching(page).getByRole('button', { name: 'Follow ansi-fan' });   // the tag on the host's box
+const trackTag = (page) => watching(page).getByRole('button', { name: 'Track ansi-fan' });   // the tag on the host's box
 const hostCells = (host) => store(host, 'project', (p) => p.cells.map((c) => [c.char, c.fg.hex, c.bg.hex]));
 const watcherCells = (watcher) => store(watcher, 'room', (r) => r.art?.cells.map((c) => [c.char, c.fg.hex, c.bg.hex]) ?? null);
 
@@ -46,7 +46,7 @@ const scrolls = (watcher) => watcher.locator('.room-art').evaluate((el) => {
 });
 const centered = async (watcher) => (await scrolls(watcher)).off <= 1;
 
-test('the host sees the watcher following; a wheel is looking around, and Follow brings the host\'s view back to the center', async ({ page: host, context }) => {
+test('the host sees the watcher tracking; a wheel is looking around, and Track brings the host\'s view back to the center', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room, { image: 'images/tall.png' });   // 1,200 lines: the watcher's art scrolls
   await tab(host, 'ANSI').click();
@@ -60,28 +60,28 @@ test('the host sees the watcher following; a wheel is looking around, and Follow
   await joinFromCard(watcher);
   await chat(host).getByRole('button', { name: /^\d+ here$/ }).click();
   const list = chat(host).getByRole('list', { name: 'Who is here' });
-  await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*following/]);
-  await expect(followTag(watcher)).toHaveAttribute('aria-pressed', 'true');
-  await expect(chat(watcher).getByRole('button', { name: /^Follow/ })).toHaveCount(0);   // the tag is the only Follow
+  await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*tracking/]);
+  await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'true');
+  await expect(chat(watcher).getByRole('button', { name: /^Track/ })).toHaveCount(0);   // the tag is the only Track
   await expect.poll(async () => (await scrolls(watcher)).at > 0 && await centered(watcher)).toBe(true);
 
   const art = watching(watcher).getByLabel('The room\'s art');
   const box = await art.boundingBox();
   await watcher.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await watcher.mouse.wheel(0, 2000);
-  const follow = followTag(watcher);
-  await expect(follow).toHaveAttribute('aria-pressed', 'false');
-  await expect(follow).toBeInViewport();   // the box is scrolled away, the tag isn't
+  const track = trackTag(watcher);
+  await expect(track).toHaveAttribute('aria-pressed', 'false');
+  await expect(track).toBeInViewport();   // the box is scrolled away, the tag isn't
   await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*looking around/]);
   await expect.poll(() => centered(watcher)).toBe(false);
 
-  await follow.click();
-  await expect(follow).toHaveAttribute('aria-pressed', 'true');
+  await track.click();
+  await expect(track).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => centered(watcher)).toBe(true);
-  await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*following/]);
+  await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*tracking/]);
 });
 
-test('the host zooms ANSI out to 50%: a following watcher\'s cells are half as wide', async ({ page: host, context }) => {
+test('the host zooms ANSI out to 50%: a tracking watcher\'s cells are half as wide', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room, { image: 'images/tall.png' });
   await tab(host, 'ANSI').click();
@@ -92,7 +92,7 @@ test('the host zooms ANSI out to 50%: a following watcher\'s cells are half as w
   const watcher = await watcherPage(context, room);
   await watcher.goto('/');
   await joinFromCard(watcher);
-  await expect(followTag(watcher)).toHaveAttribute('aria-pressed', 'true');
+  await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'true');
   // The width of a cell in the watcher's box: its width over the columns the host's view holds.
   const cellWidth = async () => (await watcher.locator('.host-view').boundingBox()).width / await store(watcher, 'room', (r) => r.hostView.cols);
   await expect.poll(cellWidth).toBeGreaterThan(0);
@@ -230,9 +230,9 @@ test('a watcher\'s own unsaved art is as it was after joining, watching and leav
   expect(await watcherCells(watcher)).not.toEqual(before.cells);
   const art = await watching(watcher).getByLabel('The room\'s art').boundingBox();
   await watcher.mouse.move(art.x + art.width / 2, art.y + art.height / 2);
-  await watcher.mouse.wheel(0, 200);   // looking around, then following again
-  await followTag(watcher).click();
-  await expect(followTag(watcher)).toHaveAttribute('aria-pressed', 'true');
+  await watcher.mouse.wheel(0, 200);   // looking around, then tracking again
+  await trackTag(watcher).click();
+  await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'true');
 
   await tab(watcher, 'ANSI').click();
   await settled(watcher);

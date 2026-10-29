@@ -50,7 +50,7 @@ test('the panel is beside every tab for the host and the watcher, with the welco
       expect((await panel(page).boundingBox()).width).toBe(280);
     }
   }
-  // Who hosts it, Follow and Exit are the watcher's; the host has their own page. Exit is at the right of
+  // Who hosts it, Track and Exit are the watcher's; the host has their own page. Exit is at the right of
   // the header, beside the fold button (where the host's ⋯ is).
   await expect(panel(watcher).getByText('hosted by ansi-fan')).toBeVisible();
   const exit = await panel(watcher).getByRole('button', { name: 'Exit' }).boundingBox();
@@ -178,7 +178,7 @@ async function backAsWren(host, watcher) {
   await expect(box(watcher)).toBeVisible();
   await openPeople(host);
   const row = watching(host);
-  await expect(row).toHaveText([/pixel_wren\s*following/]);
+  await expect(row).toHaveText([/pixel_wren\s*tracking/]);
   await expect(row.getByText('guest')).toHaveCount(0);
   await say(watcher, 'it is me');
   await expect(messages(host).first()).toContainText('pixel_wren');
@@ -514,7 +514,7 @@ test('the watcher leaves while the Block box is open: Block still blocks the acc
   await expect(blockDialog(host)).toHaveCount(0);
 });
 
-test('the host\'s panel says who is here, folded; opened it lists each with guest, following or looking around, and a member\'s ⋯', async ({ page: host, context }) => {
+test('the host\'s panel says who is here, folded; opened it lists each with guest, tracking or looking around, and a member\'s ⋯', async ({ page: host, context }) => {
   const { room, watcher } = await inRoom(host, context, { me: wren });
   await expect(here(host)).toHaveText('1 here');
   await expect(here(host)).toHaveAttribute('aria-expanded', 'false');
@@ -526,7 +526,7 @@ test('the host\'s panel says who is here, folded; opened it lists each with gues
   await expect(here(host)).toHaveText('2 here');
   await here(host).click();
   await expect(here(host)).toHaveAttribute('aria-expanded', 'true');
-  await expect(watching(host)).toHaveText([/pixel_wren\s*following/, /quiet-amber-fox\s*guest\s*following/]);
+  await expect(watching(host)).toHaveText([/pixel_wren\s*tracking/, /quiet-amber-fox\s*guest\s*tracking/]);
   await expect(more(host)).toHaveCount(1);
   await expect(watching(host).locator('.cell')).toHaveCount(2);   // each name in the text color, after its cell
 

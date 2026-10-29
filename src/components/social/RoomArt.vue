@@ -10,21 +10,21 @@ import UserName from './UserName.vue';
 // A room's art, drawn in the host's font as the ANSI view's canvas draws it (AnsiEditor's render,
 // without the DOM view): a CellCanvas over the window of cells in view, inside a sizer the whole
 // grid's size. A box in the host's name color marks the part they're looking at, and the tag in its
-// upper left is the Follow button (pressed while following). The tag is the box's own child, held to
+// upper left is the Track button (pressed while tracking). The tag is the box's own child, held to
 // the part of the box in view by CSS (sticky), so it moves with the box in the same frame; only once
-// the box is out of view is it placed here, at the edge nearest the box, with an arrow toward it. While following, each new view of the
+// the box is out of view is it placed here, at the edge nearest the box, with an arrow toward it. While tracking, each new view of the
 // host's is scrolled to the center. A wheel, a key or a press in it is looking around (a scroll it
 // made itself isn't; the tag is no part of it). Each draw tells the cell in the middle of the view (looking-at). The host's numbers are a stranger's: the view is held
 // to the grid here, and the font's size by fontFor.
 const props = defineProps({
   art: { type: Object, default: null },        // { cells, cols, lines, font (as sent: wire.fontOnWire) }
   hostView: { type: Object, default: null },   // { col, row, cols, rows } (the zoom to draw at comes in the zoom prop)
-  following: { type: Boolean, default: false },
+  tracking: { type: Boolean, default: false },
   host: { type: String, default: null },       // the host's name, for the tag and its color
   zoom: { type: Number, default: 1 },          // the cell's size against the font's (the host's, never above 1)
   boxed: { type: Boolean, default: true },     // the host's box and tag (false: just the art, scrolled to the view)
 });
-const emit = defineEmits(['look-around', 'follow', 'looking-at']);
+const emit = defineEmits(['look-around', 'track', 'looking-at']);
 
 const scrollRef = useTemplateRef('scroll'), sizerRef = useTemplateRef('sizer'), canvasRef = useTemplateRef('canvas'), tagRef = useTemplateRef('tag');
 const font = computed(() => fontFor(props.art?.font));
@@ -125,17 +125,17 @@ const render = () => {
   placeTag();
 };
 
-// Following: the host's view in the middle (the browser keeps the scroll inside the art).
+// Tracking: the host's view in the middle (the browser keeps the scroll inside the art).
 const center = () => {
   const v = view.value, m = metrics.value, el = scrollRef.value;
-  if (!props.following || !v || !m || !el) return;
+  if (!props.tracking || !v || !m || !el) return;
   el.scrollLeft = (v.col + v.cols / 2) * m.cellWidth - el.clientWidth / 2;
   el.scrollTop = (v.row + v.rows / 2) * m.lineHeight - el.clientHeight / 2;
 };
-watch([view, () => props.following, metrics], center, { flush: 'post' });
+watch([view, () => props.tracking, metrics], center, { flush: 'post' });
 
 watch([() => props.art, () => props.zoom], queueRender, { flush: 'post' });
-watch([view, () => props.following, () => props.host], queueRender, { flush: 'post' });   // the tag's place and size
+watch([view, () => props.tracking, () => props.host], queueRender, { flush: 'post' });   // the tag's place and size
 
 // The host's font, once its faces have loaded: the glyphs drawn before it had are drawn again.
 watch(fontKey, (key) => {
@@ -187,18 +187,18 @@ onBeforeUnmount(() => {
             v-if="host"
             ref="tag"
             class="host-tag"
-            :class="{ following, away: away }"
+            :class="{ tracking, away: away }"
             :style="tagStyle"
-            :aria-label="`Follow ${host}`"
-            :aria-pressed="following"
+            :aria-label="`Track ${host}`"
+            :aria-pressed="tracking"
             @pointerdown.stop
             @keydown.stop
-            @click="emit('follow')"
+            @click="emit('track')"
         >
           <span v-if="away" aria-hidden="true">{{ away.arrow }}</span>
           <UserName class="name" :name="host" />
-          <span v-if="following" class="state">· following</span>
-          <span v-else class="follow">Follow ›</span>
+          <span v-if="tracking" class="state">· tracking</span>
+          <span v-else class="track">Track ›</span>
         </button>
       </div>
     </div>
@@ -232,7 +232,7 @@ canvas {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.6);   /* so it shows on any art */
 }
 
-/* The host's tag, the Follow button: filled while following, a dark tag with a Follow pill when not.
+/* The host's tag, the Track button: filled while tracking, a dark tag with a Track pill when not.
    Sticky in the box: it holds to the part of the box in view. Away, it's placed from the box's corner. */
 button.host-tag,
 button.host-tag:hover,
@@ -265,12 +265,12 @@ button.host-tag.away {
   position: absolute;
   border-radius: 4px;
 }
-button.host-tag.following {
+button.host-tag.tracking {
   background: var(--host);
   color: var(--host-ink);
   cursor: default;
 }
-button.host-tag span.follow {
+button.host-tag span.track {
   padding: 0 6px;
   border-radius: 8px;
   background: var(--host);
