@@ -225,6 +225,7 @@ test('Two-factor: turning it on asks for your password, shows a QR code and the 
   const section = twoFactor(account);
   await expect(section.getByText('Ask for a code from an authenticator app whenever you sign in.')).toBeVisible();
   await expect(section.getByRole('button', { name: 'Turn on' })).not.toHaveClass(/\bprimary\b/);   // a row's button, like the others
+  expect((await section.getByRole('button', { name: 'Turn on' }).boundingBox()).height).toBeLessThan(40);   // one line, never wrapped
   await section.getByRole('button', { name: 'Turn on' }).click();
   await section.getByLabel('Password').fill('correct horse battery');
   await section.getByRole('button', { name: 'Continue' }).click();

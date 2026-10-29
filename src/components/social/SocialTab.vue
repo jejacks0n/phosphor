@@ -102,6 +102,11 @@ div.page :deep(h2:focus) {
 
 <!-- The sign-in and account forms' look, shared by their pages (unscoped: it reaches into them). -->
 <style>
+/* A button's words stay on one line; whatever is beside it wraps instead. */
+article.social-tab button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 article.social-tab div.form-page {
   display: flex;
   flex-direction: column;
