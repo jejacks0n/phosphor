@@ -69,6 +69,11 @@ for (const key of ['welcome', 'allowGuests', 'max']) {
   }, { immediate: true });
 }
 const countId = useId();
+// Turning guests off puts out the guests inside once it's saved, so the box says so while there are any.
+const guestsOutId = useId();
+const guestsHere = computed(() => room.watchers.filter((w) => w.guest).length);
+const guestsOut = computed(() => (room.room?.allowGuests && !draft.allowGuests && guestsHere.value
+  ? `Saving puts out ${guestsHere.value === 1 ? 'the guest' : `the ${guestsHere.value} guests`} here.` : null));
 
 const save = () => {
   room.changeSettings({ welcome: draft.welcome, allowGuests: draft.allowGuests, max: draft.max });
@@ -106,7 +111,8 @@ const save = () => {
           <form @submit.prevent="save">
             <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
             <p :id="countId" class="help count">{{ draft.welcome.length }}/200</p>
-            <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> Allow guests</label>
+            <label class="choice"><input v-model="draft.allowGuests" type="checkbox" :aria-describedby="guestsOut ? guestsOutId : undefined"> Allow guests</label>
+            <p v-if="guestsOut" :id="guestsOutId" class="help guests-out">{{ guestsOut }}</p>
             <label>Max watchers <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required></label>
             <button type="submit">{{ done === 'Saved' ? 'Saved' : 'Save' }}</button>
           </form>
@@ -253,6 +259,10 @@ textarea {
   min-height: calc(3lh + 18px);   /* 3 lines, the padding and the border; it grows to fit the message */
   field-sizing: content;
   resize: vertical;
+}
+p.guests-out {
+  margin-top: -4px;
+  font-size: 11px;
 }
 p.count {
   margin-top: -4px;

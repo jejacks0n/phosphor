@@ -123,8 +123,10 @@ in the lobby, in place of the public rooms (the column beside stays), and asks f
 - **Signal**, for a public room: *None*, *Wants feedback*, *Open to chat* or *Heads down*. It's
   shown on your room's card in the lobby, and the lobby's filters use it. A private room has no card,
   so it has no signal.
-- **Allow guests**: whether people who haven't signed in can watch. Guests can only watch, so you
-  can't remove one; turn this off if you'd rather have members only.
+- **Allow guests**: whether people who haven't signed in can watch. Guests can only watch, and you
+  can't remove one (they'd just come back as a new guest); turn this off if you'd rather have
+  members only. Turned off while you're live, it puts out every guest in the room once you save, and
+  they're told the room is for signed-in users only.
 - **Max watchers**: from 1 to 30 (12 to begin with; a higher number goes back to 30). Each watcher uses some of your upload speed,
   and 12 suits most home connections.
 
@@ -163,7 +165,9 @@ and check **Use this exact position** to have the card show just what the frame 
 Scrolling it while it's checked moves it; unchecking it follows your view again. The choice lasts as
 long as the room. A room that's only with the link has no lobby card, so no picture.
 
-**Room settings** are the welcome message, **Allow guests** and **Max watchers**, with **Save**. Under
+**Room settings** are the welcome message, **Allow guests** and **Max watchers**, with **Save**.
+Unchecking Allow guests while guests are in the room says under it "Saving puts out the 2 guests
+here." (or "the guest"). Under
 them, as plain facts, **Set when the room started**: **Listed in the lobby** or **Only with the link**,
 and whether a password is set. Those can't change while the room is live. What you've typed in the form
 stays when you go to another tab, and when a setting is changed from the chat panel meanwhile, a field

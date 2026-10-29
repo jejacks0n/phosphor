@@ -89,6 +89,27 @@ test('settings are the welcome, guests and max watchers; listed or link only and
   expect(host.textContent).not.toContain('Listed in the lobby');
 });
 
+test('turning off Allow guests says Save puts out the guests here, only while there are some', async () => {
+  const { room } = await mount({ watchers: [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true }), watcher('g2', 'fox', { guest: true, connected: false })] });
+  const box = [...host.querySelectorAll('label')].find((l) => l.textContent.trim() === 'Allow guests').querySelector('input');
+  const note = () => host.querySelector('.guests-out')?.textContent ?? null;
+  expect(note()).toBe(null);
+  box.click();
+  await nextTick();
+  expect(note()).toBe('Saving puts out the 2 guests here.');
+  expect(box.getAttribute('aria-describedby')).toBe(host.querySelector('.guests-out').id);
+  room.watchers = [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true })];
+  await nextTick();
+  expect(note()).toBe('Saving puts out the guest here.');
+  room.watchers = [watcher('p1', 'bob')];
+  await nextTick();
+  expect(note()).toBe(null);
+  room.watchers = [watcher('g1', 'wren', { guest: true })];
+  box.click();
+  await nextTick();
+  expect(note()).toBe(null);   // allowed again
+});
+
 test('a listed room says so', async () => {
   await mount();
   expect(host.textContent).toContain('Listed in the lobby');
