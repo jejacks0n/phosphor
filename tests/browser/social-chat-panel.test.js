@@ -153,36 +153,11 @@ test('a watcher\'s panel has no people list and no room menu; the host\'s has bo
   expect(host.querySelector('.room-menu')).not.toBe(null);
 });
 
-test('End room asks first: Cancel keeps the room, End room ends it', async () => {
-  const room = await mount('host', 0);
-  const end = vi.spyOn(room, 'endRoom').mockImplementation(() => {});
-  const inMenu = (name) => [...host.querySelectorAll('.dropdown-content button')].find((b) => b.textContent === name);
-  const menuItem = async (name) => {
-    // Opened again if the page closed it meanwhile (a resize does); polled, so the click comes a while after the menu is drawn
-    // (Vue skips a click made in the same millisecond).
-    await vi.waitFor(() => {
-      if (!host.querySelector('.dropdown-content')) host.querySelector('.room-menu .dropdown-trigger').click();
-      expect(inMenu(name)).toBeTruthy();
-    });
-    inMenu(name).click();
-    await nextTick();
-  };
-  const dialogButton = (name) => [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === name);
-
-  await menuItem('End room');
-  expect(document.querySelector('[role=dialog] h3').textContent).toBe('End the room?');
-  expect(document.querySelector('[role=dialog] .sub').textContent).toBe('Everyone watching leaves, and the chat is gone.');
-  expect(document.activeElement).toBe(dialogButton('Cancel'));
-  dialogButton('Cancel').click();
-  await nextTick();
-  expect(document.querySelector('[role=dialog]')).toBe(null);
-  expect(end).not.toHaveBeenCalled();
-
-  await menuItem('End room');
-  dialogButton('End room').click();
-  await nextTick();
-  expect(end).toHaveBeenCalledOnce();
-  expect(document.querySelector('[role=dialog]')).toBe(null);
+test('the room menu has no End room: that\'s on the SOCIAL tab', async () => {
+  await mount('host', 0);
+  host.querySelector('.room-menu .dropdown-trigger').click();
+  await vi.waitFor(() => expect(host.querySelector('.dropdown-content')).not.toBe(null));
+  expect([...host.querySelectorAll('.dropdown-content button')].map((b) => b.textContent)).toEqual(['Copy link', 'Edit welcome', 'Settings and stats']);
 });
 
 // Report, on a message: for a confirmed member, on other people's messages that show.

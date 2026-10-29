@@ -4,17 +4,15 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
-import EndRoomDialog from './EndRoomDialog.vue';
 
-// The host's room menu in the chat panel's header: Copy link, Edit welcome, Settings and stats (the
-// SOCIAL tab) and End room, which asks first. Edit welcome is also the pinned welcome's Edit (the panel
+// The host's room menu in the chat panel's header: Copy link, Edit welcome and Settings and stats (the
+// SOCIAL tab, which has End room). Edit welcome is also the pinned welcome's Edit (the panel
 // calls editWelcome with its link); Save is the settings change that sends only the welcome. Cancel
 // (or Escape) puts focus back where the box came from, or on the menu's button if that has gone.
 const room = useRoomStore(), workspace = useWorkspaceStore();
 
 const root = useTemplateRef('root');
 const welcome = ref(null);   // the text while the Edit welcome box is open
-const ending = ref(false);
 const copied = ref('');
 let opener = null, copiedTimer = null;
 onBeforeUnmount(() => clearTimeout(copiedTimer));
@@ -47,16 +45,6 @@ async function copyLink() {
   clearTimeout(copiedTimer);
   copiedTimer = setTimeout(() => { copied.value = ''; }, 2000);
 }
-
-const endRoom = () => {
-  ending.value = false;
-  room.endRoom();
-};
-const cancelEnd = () => {
-  ending.value = false;
-  opener = null;
-  backToOpener();
-};
 </script>
 
 <template>
@@ -67,7 +55,6 @@ const cancelEnd = () => {
       <button @click="copyLink">Copy link</button>
       <button @click="editWelcome()">Edit welcome</button>
       <button @click="workspace.editorTab = 'social'">Settings and stats</button>
-      <button class="danger" @click="ending = true">End room</button>
     </DropdownMenu>
 
     <ModalDialog v-if="welcome !== null" title="Edit welcome" @cancel="cancelWelcome">
@@ -79,7 +66,6 @@ const cancelEnd = () => {
         </div>
       </form>
     </ModalDialog>
-    <EndRoomDialog v-if="ending" @end="endRoom" @cancel="cancelEnd" />
   </div>
 </template>
 

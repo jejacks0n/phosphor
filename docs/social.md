@@ -189,8 +189,8 @@ they're following you or looking around on their own (or still connecting). A me
   isn't available". Unblock them from Account.
 
 The **⋯** in the panel's header is the room menu: **Copy link**, **Edit welcome** (a box to change
-the pinned welcome, which watchers see at once), **Settings and stats** (the SOCIAL tab) and **End
-room**, which asks first.
+the pinned welcome, which watchers see at once), and **Settings and stats** (the SOCIAL tab, where
+**End room** is).
 
 In the chat, a **Delete** on any message takes it out for everyone, and leaves **Message deleted by
 the host** in its place.

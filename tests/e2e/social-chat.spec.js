@@ -499,13 +499,13 @@ test('the host\'s panel says who is here, folded; opened it lists each with gues
   await expect(here(host)).toHaveText('1 here ▾');
 });
 
-test('the room menu: Copy link, Edit welcome saves the pinned welcome for everyone, Settings and stats opens the SOCIAL tab, End room asks first', async ({ page: host, context }) => {
+test('the room menu: Copy link, Edit welcome saves the pinned welcome for everyone, Settings and stats opens the SOCIAL tab; no End room (that\'s on the SOCIAL tab)', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { me: wren });
   const menu = panel(host).getByRole('button', { name: 'Room', exact: true });
   const item = (name) => host.locator('.dropdown-content').getByRole('button', { name, exact: true });
   await tab(host, 'ANSI').click();
   await menu.click();
-  await expect(host.locator('.dropdown-content button')).toHaveText(['Copy link', 'Edit welcome', 'Settings and stats', 'End room']);
+  await expect(host.locator('.dropdown-content button')).toHaveText(['Copy link', 'Edit welcome', 'Settings and stats']);
 
   await item('Copy link').click();
   await expect.poll(() => host.evaluate(() => navigator.clipboard.readText())).toContain(`?room=${ROOM_ID}`);
@@ -532,29 +532,6 @@ test('the room menu: Copy link, Edit welcome saves the pinned welcome for everyo
   await item('Settings and stats').click();
   expect(await store(host, 'workspace', (w) => w.editorTab)).toBe('social');
   await expect(shown(host, 'host-room')).toBeVisible();
-
-  // End room asks first: Cancel (or Escape) leaves it live; End room ends it.
-  await menu.click();
-  await item('End room').click();
-  const ask = host.getByRole('dialog', { name: 'End the room?' });
-  await expect(ask.getByText('Everyone watching leaves, and the chat is gone.')).toBeVisible();
-  await expect(ask.getByRole('button', { name: 'Cancel' })).toBeFocused();
-  await ask.getByRole('button', { name: 'Cancel' }).click();
-  await expect(ask).toHaveCount(0);
-  await expect(menu).toBeFocused();
-  await menu.click();
-  await item('End room').click();
-  await host.keyboard.press('Escape');
-  await expect(ask).toHaveCount(0);
-  expect(await store(host, 'room', (r) => r.role)).toBe('host');
-  await expect(shown(watcher, 'watch-room')).toBeVisible();
-
-  await menu.click();
-  await item('End room').click();
-  await ask.getByRole('button', { name: 'End room' }).click();
-  expect(await store(host, 'room', (r) => r.role)).toBe(null);
-  await expect(shown(watcher, 'lobby')).toBeVisible();
-  await expect(watcher.getByText('The host ended the room')).toBeVisible();
 });
 
 test('the pinned welcome\'s Edit opens the same dialog', async ({ page: host, context }) => {
