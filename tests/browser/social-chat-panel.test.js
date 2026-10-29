@@ -366,16 +366,16 @@ test('Report again on the same message while "Reported" shows opens the dialog a
   expect(room.report).toHaveBeenCalledTimes(2);
 });
 
-// Report room: a confirmed watcher's, beside Exit, until they've reported the room.
+// Report room: a confirmed watcher's, under Exit, until they've reported the room.
 const reportRoomButton = () => [...host.querySelectorAll('header button')].find((b) => b.textContent === 'Report room');
 
-test('a confirmed watcher has Report room beside Exit; the host, a guest and an unconfirmed member don\'t', async () => {
+test('a confirmed watcher has Report room under Exit; the host, a guest and an unconfirmed member don\'t', async () => {
   const room = await mount('watch', 0);
   const social = useSocialStore();
   social.claims = claims({});
   await nextTick();
   expect(reportRoomButton()).toBeTruthy();
-  expect(reportRoomButton().nextElementSibling).toBe(host.querySelector('button.exit'));
+  expect(reportRoomButton().previousElementSibling).toBe(host.querySelector('button.exit'));
   for (const fields of [{ guest: true, verified: false }, { verified: false }]) {
     social.claims = claims(fields);
     await nextTick();

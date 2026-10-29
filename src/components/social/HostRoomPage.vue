@@ -25,8 +25,8 @@ const liveFor = computed(() => {
 
 const numbers = computed(() => [
   ['Here now', room.hereNow],
-  ['Most at once', room.session.most],
-  ['Came by', room.session.people.length],
+  ['Max', room.session.most],
+  ['Total', room.session.people.length],
   ['Messages', room.session.messages],
   ['Removed', removedCount(room.session)],
 ]);

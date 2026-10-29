@@ -152,8 +152,8 @@ want in a private room, along with its password. Under them, five numbers for th
 your browser and gone with the room:
 
 - **Here now**: those connected.
-- **Most at once**: the most that were here together.
-- **Came by**: different people who joined (a person in two tabs, or joining twice, counts once).
+- **Max**: the most that were here together.
+- **Total**: different people who joined (a person in two tabs, or joining twice, counts once).
 - **Messages**: said in the room, yours included. Joins and leaves aren't counted, and deleted messages still are.
 - **Removed**: people you removed or blocked, each once.
 
@@ -291,7 +291,7 @@ that room, even if you leave and join it again (this browser remembers it for a 
 Someone may be muted: their messages stop reaching rooms for a while, and they see **You're muted
 until...** (below).
 
-You can report a room, too, for what it's drawing: **Report room** sits beside **Exit** at the top
+You can report a room, too, for what it's drawing: **Report room** sits under **Exit** at the top
 of a room you're watching, and in the **⋯** on a room's card in the lobby (not on your own room's).
 It's for the same people (signed in, email confirmed). A box asks **Report this room?** and
 **What's wrong?**, with the same four reasons. What's sent is the room's last lobby pictures, and

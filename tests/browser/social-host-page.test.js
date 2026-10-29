@@ -74,9 +74,9 @@ test('the five numbers are the session\'s', async () => {
       people: [person('u_p1'), person('u_p2'), person('u_p3', { removed: 1 })],
     },
   });
-  const numbers = ['Here now', 'Most at once', 'Came by', 'Messages', 'Removed'];
+  const numbers = ['Here now', 'Max', 'Total', 'Messages', 'Removed'];
   expect(numbers.map((label) => [label, tile(label)])).toEqual([
-    ['Here now', '2'], ['Most at once', '5'], ['Came by', '3'], ['Messages', '7'], ['Removed', '1'],
+    ['Here now', '2'], ['Max', '5'], ['Total', '3'], ['Messages', '7'], ['Removed', '1'],
   ]);
 });
 

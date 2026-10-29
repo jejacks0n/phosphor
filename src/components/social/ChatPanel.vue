@@ -18,7 +18,7 @@ import ReportDialog from './ReportDialog.vue';
 // that message). Who came and went, with no message between, is one line ("tin-owl joined, wren
 // left"); your own comings and goings aren't shown, as "You joined" marks where you came in. A confirmed
 // member can Report someone else's message (it shows on hover or focus, as the host's Delete does), until
-// they've reported that person in this room; and Report room, beside Exit, until they've reported the room.
+// they've reported that person in this room; and Report room, under Exit, until they've reported the room.
 const room = useRoomStore(), social = useSocialStore();
 
 const folded = ref(false);
@@ -119,8 +119,10 @@ function askIfAtTop() {
         <div class="tools">
           <RoomMenu v-if="room.role === 'host'" ref="menu" />
           <template v-else-if="room.role === 'watch'">
-            <button v-if="room.canReport && !room.roomReported" class="link report-room" @click="askToReportRoom">Report room</button>
-            <button class="exit" @click="room.leave()">Exit</button>
+            <div class="leave">
+              <button class="exit" @click="room.leave()">Exit</button>
+              <button v-if="room.canReport && !room.roomReported" class="link report-room" @click="askToReportRoom">Report room</button>
+            </div>
           </template>
           <button class="fold link" aria-label="Fold the chat" @click="fold(true)">»</button>
         </div>
@@ -248,8 +250,14 @@ p.host {
 }
 div.tools {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
+}
+div.leave {   /* Exit, and Report room under it */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
 }
 button.exit {   /* as the host's ⋯ in its place */
   height: 26px;
@@ -259,8 +267,8 @@ button.exit {   /* as the host's ⋯ in its place */
   font-weight: 600;
 }
 button.report-room {
-  padding: 4px 6px;
-  font-size: 11px;
+  padding: 0;
+  font-size: 10px;
   font-weight: 400;
   color: var(--text-faint);
 }

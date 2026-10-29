@@ -205,9 +205,14 @@ test('a muted watcher is told until when in place of the box, without a reload; 
 // Reporting the room itself.
 const roomDialog = (page) => page.getByRole('dialog', { name: 'Report this room?' });
 
-test('a member reports the room from beside Exit: the fake hears report-room with a reason and a picture, and "Reported. Thank you." shows', async ({ page: host, context }) => {
+test('a member reports the room from under Exit: the fake hears report-room with a reason and a picture, and "Reported. Thank you." shows', async ({ page: host, context }) => {
   const { room, watcher } = await inRoom(host, context);
   const reportRoom = panel(watcher).getByRole('button', { name: 'Report room' });
+  // Under Exit, its right edge with Exit's, in smaller words.
+  const exit = await panel(watcher).getByRole('button', { name: 'Exit' }).boundingBox(), under = await reportRoom.boundingBox();
+  expect(under.y).toBeGreaterThanOrEqual(exit.y + exit.height);
+  expect(Math.abs(under.x + under.width - exit.x - exit.width)).toBeLessThan(2);
+  expect(parseFloat(await reportRoom.evaluate((el) => getComputedStyle(el).fontSize))).toBeLessThan(11);
   await reportRoom.click();
   const asked = roomDialog(watcher);
   await asked.getByRole('button', { name: 'Cancel' }).click();   // nothing sent; focus back on Report room
