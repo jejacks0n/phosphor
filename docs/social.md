@@ -291,7 +291,7 @@ that room, even if you leave and join it again (this browser remembers it for a 
 Someone may be muted: their messages stop reaching rooms for a while, and they see **You're muted
 until...** (below).
 
-You can report a room, too, for what it's drawing: **Report room** sits under **Exit** at the top
+You can report a room, too, for what it's drawing: **Report** sits under **Exit** at the top
 of a room you're watching, and in the **⋯** on a room's card in the lobby (not on your own room's).
 It's for the same people (signed in, email confirmed). A box asks **Report this room?** and
 **What's wrong?**, with the same four reasons. What's sent is the room's last lobby pictures, and

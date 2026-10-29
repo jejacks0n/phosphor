@@ -367,7 +367,7 @@ test('Report again on the same message while "Reported" shows opens the dialog a
 });
 
 // Report room: a confirmed watcher's, under Exit, until they've reported the room.
-const reportRoomButton = () => [...host.querySelectorAll('header button')].find((b) => b.textContent === 'Report room');
+const reportRoomButton = () => [...host.querySelectorAll('header button')].find((b) => b.textContent === 'Report' && b.getAttribute('aria-label') === 'Report room');
 
 test('a confirmed watcher has Report room under Exit; the host, a guest and an unconfirmed member don\'t', async () => {
   const room = await mount('watch', 0);

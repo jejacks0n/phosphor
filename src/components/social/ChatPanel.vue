@@ -121,7 +121,7 @@ function askIfAtTop() {
           <template v-else-if="room.role === 'watch'">
             <div class="leave">
               <button class="exit" @click="room.leave()">Exit</button>
-              <button v-if="room.canReport && !room.roomReported" class="link report-room" @click="askToReportRoom">Report room</button>
+              <button v-if="room.canReport && !room.roomReported" class="link report-room" aria-label="Report room" @click="askToReportRoom">Report</button>
             </div>
           </template>
           <button class="fold link" aria-label="Fold the chat" @click="fold(true)">»</button>
