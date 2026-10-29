@@ -126,6 +126,7 @@ div.host-room {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-sizing: border-box;   /* the tab's height with its padding, so only this scrolls, not the tab */
   height: 100%;
   min-height: 0;
   padding: 16px;

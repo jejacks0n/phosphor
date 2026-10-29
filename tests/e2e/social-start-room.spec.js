@@ -45,6 +45,13 @@ test('Start a room with no art open says to open some, and Go live is disabled',
   expect(server.sent('POST', '/api/rooms')).toEqual([]);
 });
 
+test('the host\'s page fits the tab: the tab doesn\'t scroll, only the page does when it needs to', async ({ page }) => {
+  await goLive(page);
+  await expect(shown(page, 'host-room').getByRole('heading', { name: 'Room settings' })).toBeVisible();
+  const tabArea = page.locator('.social-tab');
+  expect(await tabArea.evaluate((el) => el.scrollHeight - el.clientHeight)).toBe(0);
+});
+
 test('Setup room: the room beside its lobby card when there\'s room, stacked when there isn\'t; link-only has no card', async ({ page }) => {
   await startPage(page);
   const setup = shown(page, 'start-room');
