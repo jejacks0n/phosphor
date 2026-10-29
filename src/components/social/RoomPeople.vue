@@ -53,10 +53,10 @@ const confirmBlock = async () => {
         </DropdownMenu>
         <DropdownMenu v-else-if="!watcher.guest" :label="`More for ${watcher.name}`">
           <template #trigger><span aria-hidden="true">⋯</span></template>
-          <button @click="room.remove(watcher.peer)">Remove for this session</button>
-          <button v-if="room.silenced.includes(watcher.sub)" @click="room.silence(watcher.sub, false)">Unsilence</button>
-          <button v-else title="Their messages stop reaching anyone else. They aren't told." @click="room.silence(watcher.sub, true)">Silence</button>
-          <button @click="askToBlock(watcher, $event)">Block from my rooms</button>
+          <button @click="room.remove(watcher.peer)">Kick – for this session</button>
+          <button v-if="room.silenced.includes(watcher.sub)" @click="room.silence(watcher.sub, false)">Unmute</button>
+          <button v-else title="Their messages stop reaching anyone else. They aren't told." @click="room.silence(watcher.sub, true)">Mute – for everyone but you</button>
+          <button @click="askToBlock(watcher, $event)">Block – from all future rooms</button>
           <button v-if="room.canReport && !room.reported.includes(watcher.sub)" @click="askToReport(watcher, $event)">Report</button>
         </DropdownMenu>
       </li>

@@ -145,7 +145,7 @@ test('once you\'ve reported someone, Report is gone for them for the rest of the
   await expect(reportFrom(host, 'tin_owl')).toHaveCount(0);
   await expect(reportFrom(host, 'pixel_wren')).toHaveCount(1);
   await more('tin_owl').click();
-  await expect(host.getByRole('button', { name: 'Block from my rooms' })).toBeVisible();
+  await expect(host.getByRole('button', { name: 'Block – from all future rooms' })).toBeVisible();
   await expect(host.getByRole('button', { name: 'Report', exact: true })).toHaveCount(0);
   await host.keyboard.press('Escape');
   await more('pixel_wren').click();

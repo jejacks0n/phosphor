@@ -399,12 +399,12 @@ test('a watcher who joins after the host\'s Delete sees "Message deleted by the 
 const more = (host, name = 'pixel_wren') => watching(host).getByRole('button', { name: `More for ${name}` });
 const blockDialog = (host) => host.getByRole('dialog', { name: 'Block pixel_wren?' });
 
-test('Remove for this session: the watcher is in the lobby with "The host removed you" and the host\'s list is empty', async ({ page: host, context }) => {
+test('Kick – for this session: the watcher is in the lobby with "The host removed you" and the host\'s list is empty', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
   await openPeople(host);
   await expect(watching(host)).toHaveCount(1);
   await more(host).click();
-  await host.getByRole('button', { name: 'Remove for this session' }).click();
+  await host.getByRole('button', { name: 'Kick – for this session' }).click();
   await expect(watching(host)).toHaveCount(0);
   await expect(shown(watcher, 'lobby')).toBeVisible();
   await expect(watcher.getByText('The host removed you')).toBeVisible();
@@ -412,12 +412,12 @@ test('Remove for this session: the watcher is in the lobby with "The host remove
   expect(server.sent('POST', '/api/blocks')).toHaveLength(0);   // removing is not blocking
 });
 
-test('Block from my rooms asks first, then blocks and removes', async ({ page: host, context }) => {
+test('Block – from all future rooms asks first, then blocks and removes', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
   await openPeople(host);
   await more(host).click();
-  await expect(host.getByRole('button', { name: 'Block from my rooms' })).toBeVisible();
-  await host.getByRole('button', { name: 'Block from my rooms' }).click();
+  await expect(host.getByRole('button', { name: 'Block – from all future rooms' })).toBeVisible();
+  await host.getByRole('button', { name: 'Block – from all future rooms' }).click();
 
   const dialog = blockDialog(host);
   await expect(dialog).toBeVisible();
@@ -441,7 +441,7 @@ test('Cancel and Escape on the Block box leave everything as it was, with focus 
     () => host.keyboard.press('Escape'),
   ]) {
     await more(host).click();
-    await host.getByRole('button', { name: 'Block from my rooms' }).click();
+    await host.getByRole('button', { name: 'Block – from all future rooms' }).click();
     await expect(blockDialog(host)).toBeVisible();
     await dismiss();
     await expect(blockDialog(host)).toHaveCount(0);
@@ -468,7 +468,7 @@ test('a failed block leaves the watcher in the list and shows the notice', async
   server.route('POST /api/blocks', () => [500, { code: 'SERVER_ERROR' }]);
   await openPeople(host);
   await more(host).click();
-  await host.getByRole('button', { name: 'Block from my rooms' }).click();
+  await host.getByRole('button', { name: 'Block – from all future rooms' }).click();
   await blockDialog(host).getByRole('button', { name: 'Block', exact: true }).click();
   await expect.poll(() => server.sent('POST', '/api/blocks')).toHaveLength(1);
   await expect(host.getByRole('status').filter({ hasText: 'Something went wrong. Try again.' })).toBeVisible();
@@ -480,7 +480,7 @@ test('a failed block leaves the watcher in the list and shows the notice', async
 async function leaveWhileAsked(host, watcher) {
   await openPeople(host);
   await more(host).click();
-  await host.getByRole('button', { name: 'Block from my rooms' }).click();
+  await host.getByRole('button', { name: 'Block – from all future rooms' }).click();
   await expect(blockDialog(host)).toBeVisible();
   await watcher.getByRole('button', { name: 'Exit' }).click();
   await expect(watching(host)).toHaveCount(0);

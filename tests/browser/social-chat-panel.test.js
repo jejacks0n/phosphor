@@ -173,7 +173,7 @@ test('a guest\'s ⋯ appears once guests are off, with only Kick, which kicks th
   expect(removed).toHaveBeenCalledWith('g1');
 });
 
-test('a member\'s ⋯ has Silence, then Unsilence; they\'re tagged silenced, and their messages say only you and they see them', async () => {
+test('a member\'s ⋯ has Mute, then Unmute; they\'re tagged silenced, and their messages say only you and they see them', async () => {
   const room = await mount('host', 0);
   room.watchers = [watcher('p1', 'tin-lantern-owl')];
   room.peopleOpen = true;
@@ -185,8 +185,8 @@ test('a member\'s ⋯ has Silence, then Unsilence; they\'re tagged silenced, and
   // Vue skips a click in the same millisecond as the menu opened (a person is never that fast).
   const open = async () => { li().querySelector('button.dropdown-trigger').click(); await nextTick(); await new Promise((r) => setTimeout(r, 2)); };
   await open();
-  expect(item('Silence').title).toBe('Their messages stop reaching anyone else. They aren\'t told.');
-  item('Silence').click();
+  expect(item('Mute – for everyone but you').title).toBe('Their messages stop reaching anyone else. They aren\'t told.');
+  item('Mute – for everyone but you').click();
   expect(silence).toHaveBeenCalledWith('u_p1', true);
   expect(li().querySelector('.tag')).toBe(null);
 
@@ -194,8 +194,8 @@ test('a member\'s ⋯ has Silence, then Unsilence; they\'re tagged silenced, and
   await nextTick();
   expect(li().querySelector('.tag').textContent).toBe('silenced');
   await open();
-  expect(item('Silence')).toBe(undefined);
-  item('Unsilence').click();
+  expect(item('Mute – for everyone but you')).toBe(undefined);
+  item('Unmute').click();
   expect(silence).toHaveBeenLastCalledWith('u_p1', false);
   const marks = [...host.querySelectorAll('.list .message')].map((m) => m.querySelector('.silenced')?.textContent ?? null);
   expect(marks).toEqual(['Silenced: only you and they see this', null]);
