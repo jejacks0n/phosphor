@@ -140,7 +140,7 @@ function askIfAtTop() {
         <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.map(did).join()] : [m.deleted, hidden(m), room.role === 'host', reportable(m)]">
           <p v-if="m.joined" class="joined">You joined</p>
           <p v-else-if="m.people" class="presence">
-            <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<UserName class="person" :name="p.name" /> {{ did(p) }}</template></span>
+            <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<span class="person">{{ p.name }}</span> {{ did(p) }}</template></span>
           </p>
           <div v-else class="message" :class="{ note: m.deleted || hidden(m) }">
             <p v-if="m.deleted">Message deleted by the host</p>

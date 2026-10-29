@@ -76,14 +76,15 @@ test('the host\'s Delete buttons each name the sender', async () => {
 const read = () => [...host.querySelectorAll('.list .presence, .list .joined, .list .message')]
   .map((el) => (el.matches('.message') ? el.querySelector('.text').textContent : el.textContent.replace(/\s+/g, ' ').trim()));
 
-test('who came and went with nothing between is one line, each name after its cell; your own isn\'t shown, and "You joined" ends a line', async () => {
+test('who came and went with nothing between is one line, the names without their cells; your own isn\'t shown, and "You joined" ends a line', async () => {
   const room = await mount('watch', 0);
   const came = (n, presence, fields) => row(n, { text: '', presence, ...fields });
   room.chat = [came(0, 'joined'), came(1, 'left'), came(2, 'joined', { mine: true }), came(3, 'joined'), row(4), came(5, 'left'), came(6, 'joined')];
   room.joinedAt = row(5).id;
   await nextTick();
   expect(read()).toEqual(['name-0 joined, name-1 left, name-3 joined', 'm4', 'name-5 left', 'You joined', 'name-6 joined']);
-  expect(swatched(host.querySelector('.presence .person'), 'name-0')).toBe(true);
+  expect(host.querySelector('.presence .person').textContent).toBe('name-0');
+  expect(host.querySelector('.presence .cell')).toBe(null);
   expect(swatched(host.querySelector('.message .name'), 'name-4')).toBe(true);
 
   // Folded, comings and goings aren't counted as new messages.
