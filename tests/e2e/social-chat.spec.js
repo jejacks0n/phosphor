@@ -118,7 +118,7 @@ test('Shift+Enter makes a new line and the box grows to 5 lines, then scrolls; 3
   expect((await box(watcher).inputValue()).length).toBe(300);
 });
 
-test('the box sits close to the panel\'s edges: the foot\'s spacing is a few pixels, not a dozen, and no rule above it or around the panel', async ({ page: host, context }) => {
+test('the box sits close to the panel\'s edges: the foot\'s spacing is a few pixels, not a dozen, no rule above it or around the panel, and Send a button only with something to send', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { me: wren });
   const foot = await panel(watcher).locator('footer').boundingBox();
   const frame = await panel(watcher).locator('footer .box').boundingBox();
@@ -128,6 +128,12 @@ test('the box sits close to the panel\'s edges: the foot\'s spacing is a few pix
   await expect(panel(watcher).locator('footer')).toHaveCSS('border-top-style', 'none');
   await expect(panel(watcher)).toHaveCSS('border-top-style', 'none');   // nor around the panel
   await expect(panel(watcher)).toHaveCSS('margin-left', '2px');
+  // Send has no background until there's something to send.
+  const send = panel(watcher).getByRole('button', { name: 'Send' });
+  await expect(send).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await box(watcher).fill('hi');
+  await expect(send).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(send).toHaveCSS('border-radius', '4px');
 });
 
 test('four Enters within a second: "Slow down a little", and three messages arrive', async ({ page: host, context }) => {

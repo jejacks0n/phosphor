@@ -77,7 +77,7 @@ function signIn() {
       <div class="box">
         <textarea ref="field" v-model="text" aria-label="Message" :maxlength="MOST_CHARS" rows="1" @input="typed" @keydown="onKeyDown"></textarea>
         <button type="submit" class="send" :class="{ ready: hasText }" aria-label="Send">
-          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
       <p class="refused" role="status">{{ refused }}</p>
@@ -90,7 +90,7 @@ function signIn() {
 
 <style scoped>
 footer {
-  padding: 5px;
+  padding: 4px;
 }
 
 form {
@@ -103,7 +103,7 @@ div.box {
   gap: 6px;
   padding: 6px 6px 6px 10px;
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 4px;
   background: var(--surface-0);
 }
 div.box:focus-within {
@@ -137,8 +137,8 @@ div.box button.send:hover {
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 50%;
-  background: var(--surface-4);
+  border-radius: 4px;
+  background: transparent;   /* a button only once there's something to send */
   color: var(--text-muted);
   box-shadow: none;
   transform: none;
