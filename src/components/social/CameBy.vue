@@ -22,22 +22,25 @@ const where = (person) => {
   if (person.removed !== null) return `removed ${clock.format(person.removed)}`;
   return person.since === null ? `left ${clock.format(person.left)}` : 'here';
 };
-const messages = (n) => `${n} ${n === 1 ? 'message' : 'messages'}`;
 </script>
 
 <template>
   <section class="came-by">
     <h3>Who came by</h3>
     <p v-if="!people.length" class="empty">Nobody has stopped by yet.</p>
-    <ul v-else>
-      <li v-for="person in shown" :key="person.sub">
-        <UserName class="name" :name="person.name" />
-        <span class="guest">{{ person.guest ? 'guest' : '' }}</span>
-        <span class="time">{{ inRoom(person) }}</span>
-        <span>{{ where(person) }}</span>
-        <span class="said">{{ messages(person.said) }}</span>
-      </li>
-    </ul>
+    <table v-else>
+      <thead>
+        <tr><th>Name</th><th>Time</th><th>Status</th><th class="said">Messages</th></tr>
+      </thead>
+      <tbody>
+        <tr v-for="person in shown" :key="person.sub">
+          <td><div class="who"><UserName class="name" :name="person.name" /> <span v-if="person.guest" class="guest">guest</span></div></td>
+          <td>{{ inRoom(person) }}</td>
+          <td>{{ where(person) }}</td>
+          <td class="said">{{ person.said }}</td>
+        </tr>
+      </tbody>
+    </table>
     <button v-if="people.length > SHOWN && !all" @click="all = true">and {{ people.length - SHOWN }} more</button>
   </section>
 </template>
@@ -55,34 +58,52 @@ h3 {
   font-weight: 500;
   color: var(--text);
 }
-ul {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 10px 0 0;
-  padding: 0;
-  list-style: none;
-}
-li {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) 3.5em minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-  align-items: baseline;
-  color: var(--text-muted);
+table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
+th {   /* as SAUCE's labels */
+  padding: 0 0 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+td {
+  padding: 3px 0 3px 12px;
+  color: var(--text-muted);
+}
+th, td {   /* the name takes what's left, and only it is cut short */
+  white-space: nowrap;
+}
+:is(th, td):first-child {
+  width: 100%;
+  max-width: 0;
+  padding-left: 0;
+}
+div.who {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
 span.name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
   font-weight: 500;
   color: var(--text);
+}
+span.guest {
+  flex-shrink: 0;
 }
 p.empty {
   margin: 10px 0 0;
   color: var(--text-muted);
 }
-span.said {
+th.said, td.said {
   text-align: right;
 }
 button {

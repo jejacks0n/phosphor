@@ -8,6 +8,7 @@ import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { nameColor, nameGlyph } from '@/social/names';
+import { clock } from '@/social/chat';
 import HostRoomPage from '@/components/social/HostRoomPage.vue';
 
 const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
@@ -168,9 +169,10 @@ test('one status region, always there, says Reconnecting…, Copied and Saved', 
 
 const at = (h, m) => new Date(2026, 9, 27, h, m).getTime();
 const NOW = at(10, 0);
-const rows = () => [...host.querySelectorAll('.came-by li')];
+const rows = () => [...host.querySelectorAll('.came-by tbody tr')];
+const cells = (tr) => [...tr.cells].map((td) => td.textContent.replace(/\s+/g, ' ').trim());
 
-test('who came by: a row each, newest last, with time in the room, here, left or removed, and messages', async () => {
+test('who came by: a table, a row each, newest last, with time in the room, here, left or removed, and messages', async () => {
   vi.spyOn(Date, 'now').mockReturnValue(NOW);
   await mount({
     session: {
@@ -183,23 +185,13 @@ test('who came by: a row each, newest last, with time in the room, here, left or
       ],
     },
   });
-  const text = rows().map((li) => li.textContent.replace(/\s+/g, ' ').trim());
+  expect([...host.querySelectorAll('.came-by th')].map((th) => th.textContent)).toEqual(['Name', 'Time', 'Status', 'Messages']);
+  const text = rows().map(cells);
   expect(text).toHaveLength(4);
-  expect(text[0]).toContain('tin-lantern-owl');
-  expect(text[0]).toContain('1h 38m');
-  expect(text[0]).toContain('here');
-  expect(text[0]).toContain('4 messages');
-  expect(text[0]).not.toContain('guest');
-  expect(text[1]).toContain('quiet-amber-fox');
-  expect(text[1]).toContain('54m');
-  expect(text[1]).toContain('left 8:55');
-  expect(text[1]).toContain('1 message');
-  expect(text[1]).not.toContain('1 messages');
-  expect(text[2]).toContain('removed 9:10');   // removed wins over left
-  expect(text[2]).not.toContain('left');
-  expect(text[3]).toContain('guest-visitor');
-  expect(text[3]).toContain('guest');
-  expect(text[3]).toContain('under a minute');
+  expect(text[0]).toEqual(['tin-lantern-owl', '1h 38m', 'here', '4']);
+  expect(text[1]).toEqual(['quiet-amber-fox', '54m', `left ${clock.format(at(8, 55))}`, '1']);
+  expect(text[2]).toEqual(['loud-teal-wren', '20m', `removed ${clock.format(at(9, 10))}`, '0']);   // removed wins over left
+  expect(text[3]).toEqual(['guest-visitor guest', 'under a minute', 'here', '2']);
   const name = rows()[0].querySelector('.name');   // in the text color, after its cell
   expect(name.style.color).toBe('');
   expect(name.querySelector('.cell').style.backgroundColor).toBe(rgb(nameColor('tin-lantern-owl')));
@@ -234,6 +226,19 @@ test('the lobby picture with room settings under it on the left, who came by on 
   expect(cameBy.left).toBeGreaterThan(Math.max(picture.right, settings.right));
   expect(cameBy.top).toBe(picture.top);
   expect(cameBy.bottom).toBe(settings.bottom);   // stretched to the left column: it grows past it, never shrinks under it
+});
+
+test('who came by: in a narrow column the times, the status and the count stay on one line; a long name is cut short', async () => {
+  vi.spyOn(Date, 'now').mockReturnValue(NOW);
+  await mount({ session: { liveSince: at(8, 0), most: 1, messages: 0, people: [person('u_a', { name: 'a-very-long-name-for-anybody-at-all', total: 54 * 60_000, left: at(9, 27), said: 12 })] } });
+  host.style.width = '400px';
+  await nextTick();
+  const [name, ...rest] = rows()[0].cells;
+  const line = name.getBoundingClientRect().height;
+  for (const td of rest) expect(td.getBoundingClientRect().height).toBe(line);
+  const label = name.querySelector('.name');
+  expect(label.scrollWidth).toBeGreaterThan(label.clientWidth);   // cut short…
+  expect(getComputedStyle(label).textOverflow).toBe('ellipsis');   // …with an ellipsis
 });
 
 test('past ten, "and N more" opens the rest in place', async () => {
