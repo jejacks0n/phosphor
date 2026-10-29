@@ -125,9 +125,10 @@ in the lobby, in place of the public rooms (the column beside stays), and asks f
 - **Max watchers**: from 1 to 30 (12 to begin with; a higher number goes back to 30). Each watcher uses some of your upload speed,
   and 12 suits most home connections.
 
-For a room in the lobby, Setup room also shows its **Lobby picture**, the part of the art its card
-will show, as the host's page does while you're live (see **Lobby picture** under Hosting); a position
-you pin there is kept when you go live.
+For a room in the lobby, Setup room also has a **Lobby card** group: the **Signal**, and the **Lobby
+picture**, the part of the art its card will show, as the host's page does while you're live (see
+**Lobby picture** under Hosting); a position you pin there is kept when you go live. With room to
+spare it sits beside the rest of the form; in a narrower window, below it.
 
 **Go live** shares the art you have open; **Cancel** goes back to the lobby. You keep drawing as
 usual, and watchers see each change as you make it, with a box in your name color for where your

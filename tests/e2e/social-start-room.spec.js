@@ -45,6 +45,29 @@ test('Start a room with no art open says to open some, and Go live is disabled',
   expect(server.sent('POST', '/api/rooms')).toEqual([]);
 });
 
+test('Setup room: the room beside its lobby card when there\'s room, stacked when there isn\'t; link-only has no card', async ({ page }) => {
+  await startPage(page);
+  const setup = shown(page, 'start-room');
+  const card = setup.getByRole('region', { name: 'Lobby card' });
+  const name = setup.getByRole('textbox', { name: 'Room name' });
+  await expect(card.getByRole('group', { name: 'Signal' })).toBeVisible();
+  await expect(card.getByRole('region', { name: 'Lobby picture' })).toBeVisible();
+  let [field, box] = [await name.boundingBox(), await card.boundingBox()];
+  expect(box.x).toBeGreaterThan(field.x + field.width);   // beside
+  expect(Math.abs(box.y - field.y)).toBeLessThan(40);
+
+  await page.setViewportSize({ width: 1000, height: 1000 });
+  await expect.poll(async () => (await card.boundingBox()).y).toBeGreaterThan((await name.boundingBox()).y + 100);   // below
+  [field, box] = [await name.boundingBox(), await card.boundingBox()];
+  expect(Math.abs(box.x - field.x)).toBeLessThan(1);
+
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await setup.getByRole('radio', { name: 'Only with the link' }).check();
+  await expect(card).toHaveCount(0);
+  const form = await setup.locator('form').boundingBox();
+  expect((await name.boundingBox()).width).toBeLessThan(form.width * 0.6);   // still a column wide, not stretched
+});
+
 test('going live with a public room: the POST, the host\'s page with its link, the tab\'s dot, Copy link', async ({ page }) => {
   const { room, server } = await startPage(page);
   // The setup takes the Public rooms section; the lobby's column stays beside it.
