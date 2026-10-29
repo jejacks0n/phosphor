@@ -49,6 +49,7 @@ const info = (fields = {}) => ({
 let deleteDatabase, server, social, room, project, toClose;
 beforeEach(async () => {
   deleteDatabase = ownSocialDatabase('room-store');
+  localStorage.removeItem('phosphor-reported');
   forgetKey();
   await deleteDatabase();
   useFakeSockets();
@@ -1225,7 +1226,7 @@ test('A report that can\'t be made returns false and sends nothing', async () =>
   expect(reports(socket)).toEqual([]);
 });
 
-test('Who you reported is kept for the room: not a report that couldn\'t go, no second report of them, and nobody once you leave', async () => {
+test('Who you reported is kept for the room: not a report that couldn\'t go, no second report of them, and still them when you join it again', async () => {
   const socket = await watching();
   room._watch.onChat({ type: 'history', messages: [said(1), said(2, { sub: 'u_3' })], more: false, earlier: false });
   expect(room.report({ sub: 'u_2', messageId: chatId(1), reason: 'rude' })).toBe(false);
@@ -1235,6 +1236,21 @@ test('Who you reported is kept for the room: not a report that couldn\'t go, no 
   expect(room.report({ sub: 'u_2', reason: 'other' })).toBe(false);   // once is enough
   expect(reports(socket)).toHaveLength(1);
   room.leave();
+  expect(room.reported).toEqual([]);
+
+  const again = await joining(2);   // the same room again (a reload too): Report is still gone for them
+  again.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
+  room._watch.onChat({ type: 'history', messages: [said(1)], more: false, earlier: false });
+  expect(room.reported).toEqual(['u_2']);
+  expect(room.report({ sub: 'u_2', messageId: chatId(1), reason: 'spam' })).toBe(false);
+  expect(reports(again)).toEqual([]);
+
+  room.leave();
+  room.join('zyxwvutsrq');   // another room: nobody yet
+  expect(room.reported).toEqual([]);
+  room.leave();
+  social.claims = { ...social.claims, sub: 'u_5' };   // another account in this browser: nobody yet
+  room.join(ID);
   expect(room.reported).toEqual([]);
 });
 

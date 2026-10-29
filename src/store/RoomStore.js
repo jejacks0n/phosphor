@@ -27,6 +27,25 @@ const ROOM_ID = /^[a-z2-7]{10}$/;
 // What's typed in Start a room and Room settings, kept here so it stays while you're on another tab (the
 // SOCIAL tab isn't there then). Room settings also keeps what the room last said for each field (seen).
 export const MAX_WATCHERS = 30;   // the Room's own limit; a higher number typed in comes back to it
+// Who you reported, in which room and as which account, in localStorage: leaving a room and joining it again
+// (or a reload) doesn't offer Report for them there again. Kept a day.
+// ponytail: a room that runs longer than a day offers it again; key by the room's end if that matters.
+const REPORTED = 'phosphor-reported', KEEP_REPORTED_MS = 86_400_000;
+const keptReports = () => {
+  try {
+    const all = JSON.parse(localStorage.getItem(REPORTED) ?? '[]');
+    return Array.isArray(all) ? all.filter((r) => Date.now() - r.at < KEEP_REPORTED_MS) : [];
+  } catch {
+    return [];
+  }
+};
+const reportedIn = (room, by) => keptReports().filter((r) => r.room === room && r.by === by).map((r) => r.sub);
+const keepReport = (room, by, sub) => {
+  try {
+    localStorage.setItem(REPORTED, JSON.stringify([...keptReports(), { room, by, sub, at: Date.now() }]));
+  } catch { /* no storage: a rejoin offers Report again */ }
+};
+
 const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12, signal: null });
 const newSettingsDraft = () => ({ welcome: '', allowGuests: true, max: 12, seen: {} });
 
@@ -53,7 +72,7 @@ export const useRoomStore = defineStore('room', {
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
     chatRefused: null,   // 'too-fast' until the next message goes
-    reported: [],        // the subs you reported in this room (Report is gone for them until the room ends)
+    reported: [],        // the subs you reported in this room (Report is gone for them there, rejoining too)
     peopleOpen: false,   // a host's: the chat panel's "N here" list is open
     lobbyPin: null,      // a host's (picked in Setup room, or while live): the top-left cell { col, row } the lobby picture uses; null while it follows the view
     session: newSession(),   // a host's: what this browser counted since the room started (social/session.js)
@@ -205,7 +224,7 @@ export const useRoomStore = defineStore('room', {
         return;
       }
       this.close();
-      Object.assign(this, { role: 'watch', id, status: 'joining', _password: password });
+      Object.assign(this, { role: 'watch', id, status: 'joining', _password: password, reported: reportedIn(id, social.claims?.sub) });
       if (social.signedIn) social.loadBlocked();   // whose messages to hide
       this._watch = markRaw(new Watch({
         send: (msg) => this._connection?.send(msg),
@@ -325,6 +344,7 @@ export const useRoomStore = defineStore('room', {
       if (!messages) return false;
       if (!this._connection?.send({ type: 'report', sub, reason, messages, ...(messageId ? { message: messageId } : {}) })) return false;
       this.reported.push(sub);
+      keepReport(this.id, useSocialStore().claims.sub, sub);
       return true;
     },
 

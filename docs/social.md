@@ -277,8 +277,8 @@ before it, as they arrived, each signed by whoever wrote it. For a person from *
 last few messages, which may be none. Phosphor's server sees chat only in a report. Afterward you
 see **Reported. Thank you.** for a few seconds, and nothing more: you aren't told what became of
 it. If the report can't be sent, the box stays as it is and you can try again.
-Once you've reported someone, **Report** goes away for them (on their messages and in **N here**) for
-the rest of that room.
+Once you've reported someone, **Report** goes away for them (on their messages and in **N here**) in
+that room, even if you leave and join it again (this browser remembers it for a day).
 
 Someone may be muted: their messages stop reaching rooms for a while, and they see **You're muted
 until...** (below).
