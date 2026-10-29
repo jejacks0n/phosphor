@@ -192,8 +192,8 @@ The **⋯** in the panel's header is the room menu: **Copy link**, **Edit welcom
 the pinned welcome, which watchers see at once), and **Settings and stats** (the SOCIAL tab, where
 **End room** is).
 
-In the chat, a **Delete** on any message takes it out for everyone, and leaves **Message deleted by
-the host** in its place.
+In the chat, **Delete** takes the place of a message's time when you point at it or tab to it, and takes the message out for everyone, leaving **Message deleted by the host** in its place (a message
+from someone you blocked shows **Show** first).
 
 **End room** ends it for everyone, and tells watchers at once. Closing or reloading the tab ends it
 too, so Phosphor asks first; signing out while you host ends the room as well.
@@ -265,7 +265,7 @@ their messages fold to a single line, **Message from someone you blocked**, with
 Nobody else sees any difference, and they aren't told.
 
 If you're signed in with a confirmed email, you can **Report** a person. On someone else's message,
-**Report** shows when you hover it or tab to it. As the host, the same **Report** is in the **⋯**
+**Report** shows in place of its time when you point at it or tab to it. As the host, the same **Report** is in the **⋯**
 beside a person in the **N here** list. You can't report yourself, a guest (they can't chat), or a
 message that's been deleted.
 

@@ -348,6 +348,29 @@ test('the host\'s Delete shows on hover and leaves "Message deleted by the host"
   }
 });
 
+test('Report and Delete show on hover in the time\'s place: its size, its line and its right edge, with the time hidden', async ({ page: host, context }) => {
+  const { watcher } = await inRoom(host, context, { me: wren });
+  await say(watcher, 'look at this');
+  const message = messages(host).first();
+  const time = message.locator('time');
+  const actions = message.locator('.actions');
+  const look = (el) => el.evaluate((e) => {
+    const box = e.getBoundingClientRect(), style = getComputedStyle(e);
+    return { right: box.right, bottom: box.bottom, size: style.fontSize, shown: style.visibility === 'visible' && style.opacity === '1' };
+  });
+  await host.mouse.move(0, 0);
+  expect((await look(time)).shown).toBe(true);
+  expect((await look(actions)).shown).toBe(false);
+
+  await message.hover();
+  await expect.poll(async () => (await look(actions)).shown).toBe(true);
+  const [t, a] = [await look(time), await look(actions)];
+  expect(t.shown).toBe(false);   // covered: not under the words
+  expect(a.right).toBeCloseTo(t.right, 0);
+  expect(a.bottom).toBeCloseTo(t.bottom, 0);
+  for (const button of await actions.getByRole('button').all()) expect((await look(button)).size).toBe(t.size);
+});
+
 test('a watcher who joins after the host\'s Delete sees "Message deleted by the host" too', async ({ page: host, context }) => {
   const { room, watcher } = await inRoom(host, context, { me: wren });
   await say(watcher, 'oops');

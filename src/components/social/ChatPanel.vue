@@ -145,14 +145,17 @@ function askIfAtTop() {
               <p class="who">
                 <UserName class="name" :name="m.name">{{ m.mine ? ' (you)' : '' }}</UserName>
                 <span v-if="m.host" class="tag">host</span>
-                <time>{{ time(m.ts) }}</time>
+                <!-- Report and Delete take the time's place while the message is pointed at or has focus. -->
+                <span class="when">
+                  <time>{{ time(m.ts) }}</time>
+                  <span v-if="reportable(m) || room.role === 'host'" class="actions">
+                    <button v-if="reportable(m)" class="link report" :aria-label="`Report message from ${m.name}`" @click="askToReport(m, $event)">Report</button>
+                    <button v-if="room.role === 'host'" class="link delete" :aria-label="`Delete message from ${m.name}`" @click="room.deleteMessage(m.id)">Delete</button>
+                  </span>
+                </span>
               </p>
               <p class="text">{{ m.text }}</p>
             </template>
-            <span class="actions">
-              <button v-if="reportable(m)" class="link report" :aria-label="`Report message from ${m.name}`" @click="askToReport(m, $event)">Report</button>
-              <button v-if="room.role === 'host' && !m.deleted" class="link delete" :aria-label="`Delete message from ${m.name}`" @click="room.deleteMessage(m.id)">Delete</button>
-            </span>
           </div>
         </div>
       </div>
@@ -342,8 +345,16 @@ span.tag {
   color: var(--text-muted);
   border: 1px solid var(--border-light);
 }
-time {
+span.when {   /* the time and the actions in one place, on one baseline, at the right */
+  display: grid;
+  justify-items: end;
+  align-items: baseline;
   margin-left: auto;
+}
+span.when > * {
+  grid-area: 1 / 1;
+}
+time {
   font-size: 10px;
   color: var(--text-faint);
 }
@@ -356,16 +367,28 @@ div.message button.link {
   padding: 0 4px;
   font-style: normal;
 }
-div.message span.actions {
-  position: absolute;
-  top: 2px;
-  right: 0;
+span.actions {   /* as the time; see-through until wanted (not hidden, so Tab still reaches them) */
   display: flex;
+  gap: 8px;
   opacity: 0;
-  background: var(--surface-1);
 }
-div.message:hover span.actions,
-div.message:focus-within span.actions {
+div.message button.link:is(.report, .delete) {
+  padding: 0;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--text-faint);
+}
+div.message button.link.report:hover {
+  color: var(--text);
+}
+div.message button.link.delete:hover {
+  color: var(--danger);
+}
+div.message:is(:hover, :focus-within) span.actions {
   opacity: 1;
+}
+div.message:is(:hover, :focus-within) span.when:has(span.actions) time {
+  visibility: hidden;
 }
 </style>
