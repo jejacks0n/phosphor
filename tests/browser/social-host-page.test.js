@@ -7,7 +7,7 @@ import { getActivePinia } from 'pinia';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
-import { nameColor } from '@/social/names';
+import { nameColor, nameGlyph } from '@/social/names';
 import HostRoomPage from '@/components/social/HostRoomPage.vue';
 
 const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
@@ -200,9 +200,10 @@ test('who came by: a row each, newest last, with time in the room, here, left or
   expect(text[3]).toContain('guest-visitor');
   expect(text[3]).toContain('guest');
   expect(text[3]).toContain('under a minute');
-  const name = rows()[0].querySelector('.name');   // in the text color, its own color the square before it
+  const name = rows()[0].querySelector('.name');   // in the text color, after its cell
   expect(name.style.color).toBe('');
-  expect(name.querySelector('.swatch').style.backgroundColor).toBe(rgb(nameColor('tin-lantern-owl')));
+  expect(name.querySelector('.cell').style.backgroundColor).toBe(rgb(nameColor('tin-lantern-owl')));
+  expect(name.querySelector('.cell').dataset.glyph).toBe(nameGlyph('tin-lantern-owl'));
 });
 
 test('who came by: the time in the room moves with the page\'s clock', async () => {

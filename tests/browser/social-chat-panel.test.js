@@ -7,7 +7,7 @@ import { getActivePinia } from 'pinia';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
-import { nameColor } from '@/social/names';
+import { nameColor, nameGlyph } from '@/social/names';
 import ChatPanel from '@/components/social/ChatPanel.vue';
 import ReportDialog from '@/components/social/ReportDialog.vue';
 
@@ -35,9 +35,9 @@ async function mount(role, count) {
   return room;
 }
 
-// A name is in the text color, with its own color as the square before it (a color can be hard to read on a theme).
+// A name is in the text color, after its cell: its glyph on its color (a color can be hard to read on a theme).
 const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
-const swatched = (el, name) => !el.style.color && el.firstElementChild?.matches('.swatch') && el.firstElementChild.style.backgroundColor === rgb(nameColor(name));
+const swatched = (el, name) => !el.style.color && el.firstElementChild?.matches('.cell') && el.firstElementChild.style.backgroundColor === rgb(nameColor(name)) && el.firstElementChild.dataset.glyph === nameGlyph(name);
 
 // Counts the times a time is formatted, which is once for each row drawn.
 function countFormats() {
@@ -76,7 +76,7 @@ test('the host\'s Delete buttons each name the sender', async () => {
 const read = () => [...host.querySelectorAll('.list .presence, .list .joined, .list .message')]
   .map((el) => (el.matches('.message') ? el.querySelector('.text').textContent : el.textContent.replace(/\s+/g, ' ').trim()));
 
-test('who came and went with nothing between is one line, each name with its color as a square; your own isn\'t shown, and "You joined" ends a line', async () => {
+test('who came and went with nothing between is one line, each name after its cell; your own isn\'t shown, and "You joined" ends a line', async () => {
   const room = await mount('watch', 0);
   const came = (n, presence, fields) => row(n, { text: '', presence, ...fields });
   room.chat = [came(0, 'joined'), came(1, 'left'), came(2, 'joined', { mine: true }), came(3, 'joined'), row(4), came(5, 'left'), came(6, 'joined')];

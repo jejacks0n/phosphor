@@ -487,7 +487,7 @@ test('the host\'s panel says who is here, folded; opened it lists each with gues
   await expect(here(host)).toHaveAttribute('aria-expanded', 'true');
   await expect(watching(host)).toHaveText([/pixel_wren\s*following/, /quiet-amber-fox\s*guest\s*following/]);
   await expect(more(host)).toHaveCount(1);
-  await expect(watching(host).locator('.swatch')).toHaveCount(2);   // each name in the text color, its own color a square before it
+  await expect(watching(host).locator('.cell')).toHaveCount(2);   // each name in the text color, after its cell
 
   // Folded or open is kept as it was while the room lasts, across tabs.
   await tab(host, 'ANSI').click();

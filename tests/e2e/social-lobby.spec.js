@@ -2,7 +2,7 @@
 // the lobby's states (connecting, reconnecting, empty, unavailable, an unsupported browser).
 import { test, expect, tab, store } from './support.js';
 import { fakeServer, member } from './social-support.js';
-import { nameColor } from '../../src/social/names.js';
+import { nameColor, nameGlyph, nameInk } from '../../src/social/names.js';
 
 const MIN = 60_000;
 const room = (id, more) => ({
@@ -271,18 +271,19 @@ test('a browser that can\'t do Ed25519 is told plainly, with nothing else on the
   await expect(page.locator('.social-tab')).toHaveText('This browser can\'t sign you in to SOCIAL yet');
 });
 
-// A person shows the same wherever they do: their name in the text color, after a 10px square of its color.
-test('a name is drawn the same everywhere: the square of its color, then the name in the text color', async ({ page }) => {
+// A person shows the same wherever they do: their name in the text color, after a 14px cell of its glyph on its color.
+test('a name is drawn the same everywhere: its cell (its glyph on its color), then the name in the text color', async ({ page }) => {
   const server = await fakeServer(page, { me: member(), rooms: ROOMS, people: PEOPLE });
   await showLobby(page, server);
   const look = (name) => name.evaluate((el) => {
-    const square = el.querySelector('.swatch'), box = square.getBoundingClientRect();
-    return { name: el.textContent, color: getComputedStyle(el).color, square: [box.width, box.height, getComputedStyle(square).backgroundColor] };
+    const cell = el.querySelector('.cell'), box = cell.getBoundingClientRect(), style = getComputedStyle(cell);
+    const glyph = getComputedStyle(cell, '::before').content;
+    return { name: el.textContent, color: getComputedStyle(el).color, cell: [box.width, box.height, style.backgroundColor, style.color, glyph] };
   });
   const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
   const text = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--text').trim());
   const textColor = rgb(text.length === 4 ? `#${[...text.slice(1)].map((c) => c + c).join('')}` : text);
-  const expected = (name) => ({ name, color: textColor, square: [10, 10, rgb(nameColor(name))] });
+  const expected = (name) => ({ name, color: textColor, cell: [14, 14, rgb(nameColor(name)), rgb(nameInk(nameColor(name))), `"${nameGlyph(name)}" / ""`] });
 
   expect(await look(you(page).locator('.name'))).toEqual(expected('ansi-fan'));
   expect(await look(side(page).getByRole('listitem').filter({ hasText: 'dusty-neon-heron' }).locator('.name'))).toEqual(expected('dusty-neon-heron'));

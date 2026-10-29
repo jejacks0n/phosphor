@@ -1,8 +1,9 @@
 // A name's swatch color: the same name always gets the same CGA color, and names spread over them.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { nameColor, nameInk, NAME_COLORS, usernameProblem, cleanUsername, suggestedUsername } from '../../src/social/names.js';
+import { nameColor, nameGlyph, nameInk, NAME_COLORS, NAME_GLYPHS, usernameProblem, cleanUsername, suggestedUsername } from '../../src/social/names.js';
 import { CGA_COLORS_STR } from '../../src/lib/ColorUtils.js';
+import { isCp437 } from '../../src/lib/Cp437.js';
 
 test('A name\'s color is stable, one of the CGA colors (not black), and names spread over them', () => {
   assert.equal(nameColor('quiet-amber-fox'), nameColor('quiet-amber-fox'));
@@ -13,6 +14,17 @@ test('A name\'s color is stable, one of the CGA colors (not black), and names sp
   assert.ok(names.every((n) => NAME_COLORS.includes(nameColor(n))));
   assert.equal(new Set(names.map(nameColor)).size, NAME_COLORS.length);   // every color gets used
   assert.notEqual(nameColor('ansi-fan'), nameColor('ansi-fan2'));
+});
+
+test('A name\'s glyph is stable, a CP437 symbol that reads as no letter or digit, and doesn\'t follow from its color', () => {
+  assert.equal(nameGlyph('quiet-amber-fox'), nameGlyph('quiet-amber-fox'));
+  assert.equal(NAME_GLYPHS.length, 31);
+  assert.equal(new Set(NAME_GLYPHS).size, NAME_GLYPHS.length);
+  assert.ok(NAME_GLYPHS.every((g) => isCp437(g) && !/[A-Za-z0-9○]/.test(g)), NAME_GLYPHS.join(''));
+  const names = Array.from({ length: 2000 }, (_, i) => `name-${i}`);
+  assert.equal(new Set(names.map(nameGlyph)).size, NAME_GLYPHS.length);   // every glyph gets used
+  const oneColor = names.filter((n) => nameColor(n) === nameColor('name-0'));
+  assert.ok(new Set(oneColor.map(nameGlyph)).size > NAME_GLYPHS.length / 2);   // names of one color have many glyphs
 });
 
 test('the words on a name\'s color are black on the light ones and white on the dark ones', () => {

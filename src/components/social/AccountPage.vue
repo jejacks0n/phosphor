@@ -157,7 +157,7 @@ async function deleteAccount() {
     <section aria-labelledby="account-username">
       <h3 id="account-username">Username</h3>
       <form v-if="renaming" ref="renameForm" @submit.prevent="usernameProblem(username) || rename()">
-        <UsernameField v-model="username" help="Once every 30 days. Your color comes from your username." />
+        <UsernameField v-model="username" help="Once every 30 days. Your color and glyph come from your username." />
         <div class="actions">
           <button class="primary" type="submit" :disabled="social.busy || !!usernameProblem(username)">Save</button>
           <button type="button" @click="cancelRename">Cancel</button>
@@ -169,7 +169,7 @@ async function deleteAccount() {
           <UserName class="username" :name="me.username" />
           <button ref="changeButton" :disabled="!!tooSoon" aria-describedby="rename-help" @click="startRename">Change</button>
         </div>
-        <p id="rename-help" class="help">{{ tooSoon ?? 'Once every 30 days. Your color comes from your username.' }}</p>
+        <p id="rename-help" class="help">{{ tooSoon ?? 'Once every 30 days. Your color and glyph come from your username.' }}</p>
       </template>
     </section>
 

@@ -85,9 +85,9 @@ you out everywhere else. Signed out, it has a **Sign in** link back.
 
 **Edit account** opens the Account page:
 
-- **Username**, which you can change once every 30 days. Your color comes from your username:
-  wherever a name shows (the lobby, room cards, chat, a room's lists, Account), it's a small square of
-  that color before the name.
+- **Username**, which you can change once every 30 days. Your color and glyph come from your username:
+  wherever a name shows (the lobby, room cards, chat, a room's lists, the host's tag on the art,
+  Account), a small cell comes before it, the glyph (a CP437 symbol, such as ♥ or ►) on the color.
 - **Ways to sign in**: email and password (**Send a reset link** opens **Forgot your password?**
   with your email filled in, to change the password; it says the link is on its way to your
   address), Discord and GitHub; connect or disconnect each, keeping at least one. Discord and GitHub
@@ -171,14 +171,14 @@ you're half way through typing in here stays as it is (the others show the new v
 a room, hosting or watching.
 
 Under all of it, **Who came by** lists everyone who visited this session, a row each, newest last, once
-someone has. A row has their name with their color as a small square before it (**guest** for a guest), their time in the room (**under
+someone has. A row has their name after its cell (**guest** for a guest), their time in the room (**under
 a minute**, **54m**, **1h 38m**; it counts up while they're here, and a person who comes back has the
 times added), then **here**, **left 8:55** or **removed 9:10** (removed wins if they were removed and then
 left), and how many messages they said. Ten rows show; **and N more** opens the rest in place.
 
 You run the room from the chat panel, beside every tab. Under its header, **N here** (those
 connected, folded to begin with) opens the list of who is in the room, and stays as you left it while
-the room lasts. Each watcher shows their name with their color as a small square before it, **guest** for a guest, and whether
+the room lasts. Each watcher shows their name after its cell, **guest** for a guest, and whether
 they're following you or looking around on their own (or still connecting). A member's row has a
 **⋯** button (guests have none) with:
 
@@ -210,7 +210,7 @@ password asks for it first.
 
 The room's name, its host and **Leave** are at the top of the chat panel, with the welcome message
 pinned under them; the SOCIAL tab shows just the art. The art is view only, in the host's font. A box
-in the host's name color shows where they're looking, with a tag in its corner: the host's name and
+in the host's name color shows where they're looking, with a tag in its corner: the host's cell and name, and
 *following* while your view follows theirs. The box is their whole view, and while you follow, the
 art is drawn at their zoom (never above 100%: a PIXEL host who zooms in is shown at 100%, with a
 smaller box). Scroll away to look around on your own and you keep the zoom you had, and the tag
@@ -238,7 +238,7 @@ Everyone in the room reads the chat. Members with a confirmed email write in it;
 **Sign in to chat** and an unconfirmed member sees **Confirm your email to chat**. A message is up
 to 300 characters, and you can send about one a second (three at once, then one a second). Earlier
 messages load as you scroll up (**↑ Scroll up for earlier messages**), and **You joined** marks
-where you came in. Who joins and leaves shows between the messages, each name with its color as a small square, and
+where you came in. Who joins and leaves shows between the messages, each name after its cell, and
 comings and goings with nothing said between them share one line (**tin-owl joined, wren left,
 pixel_fox joined**). Someone who comes and goes more than once in a line is named once, by how it
 ended: **joined**, **left**, **came and went** or **came back**. Your own aren't shown, and they

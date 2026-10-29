@@ -7,7 +7,7 @@ import { createApp, h, reactive, nextTick } from 'vue';
 import { createTestApp } from '../support/app.js';
 import RoomArt from '@/components/social/RoomArt.vue';
 import CellCanvas from '@/lib/CellCanvas';
-import { nameColor } from '@/social/names';
+import { nameColor, nameGlyph } from '@/social/names';
 
 const COLS = 100, LINES = 50;
 const black = { hex: '#000000', r: 0, g: 0, b: 0 }, white = { hex: '#ffffff', r: 255, g: 255, b: 255 };
@@ -121,6 +121,7 @@ test('the box and its tag are in the host\'s color, with a shadow so they show o
   expect(getComputedStyle(tag()).backgroundColor).toBe(color);   // following: filled
   expect(getComputedStyle(tag()).boxShadow).not.toBe('none');
   expect(tag().textContent).toContain('wren');
+  expect(tag().querySelector('.cell').dataset.glyph).toBe(nameGlyph('wren'));   // the host's cell before the name, as everywhere
   // at the box's upper left
   const [b, t] = [box.getBoundingClientRect(), tag().getBoundingClientRect()];
   expect([t.left, t.top]).toEqual([b.left, b.top]);

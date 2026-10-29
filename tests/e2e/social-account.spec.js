@@ -19,7 +19,7 @@ async function openAccount(page) {
 test('rename: Change opens a field, Save sends it, and the lobby shows the new name', async ({ page }) => {
   const server = await fakeServer(page, { me: member() });
   const account = await openAccount(page);
-  await expect(account.getByText('Once every 30 days. Your color comes from your username.')).toBeVisible();
+  await expect(account.getByText('Once every 30 days. Your color and glyph come from your username.')).toBeVisible();
   await account.getByRole('button', { name: 'Change', exact: true }).click();
   await account.getByRole('textbox', { name: 'Username' }).fill('pixel-pal');
   await account.getByRole('button', { name: 'Save' }).click();

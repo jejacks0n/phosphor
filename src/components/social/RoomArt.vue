@@ -5,6 +5,7 @@ import { loadFontFaces } from '@/lib/displayFonts';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
 import { fontFor } from '@/social/wire';
 import { nameColor, nameInk } from '@/social/names';
+import UserName from './UserName.vue';
 
 // A room's art, drawn in the host's font as the ANSI view's canvas draws it (AnsiEditor's render,
 // without the DOM view): a CellCanvas over the window of cells in view, inside a sizer the whole
@@ -194,7 +195,7 @@ onBeforeUnmount(() => {
             @click="emit('follow')"
         >
           <span v-if="away" aria-hidden="true">{{ away.arrow }}</span>
-          <span class="name">{{ host }}</span>
+          <UserName class="name" :name="host" />
           <span v-if="following" class="state">· following</span>
           <span v-else class="follow">Follow ›</span>
         </button>
