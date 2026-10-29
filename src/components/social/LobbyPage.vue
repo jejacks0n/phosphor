@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
+import { mutedWords } from '@/social/chat';
 import UserName from './UserName.vue';
 import RoomCard from './RoomCard.vue';
 import StartRoomPage from './StartRoomPage.vue';
@@ -25,6 +26,13 @@ const reconnecting = computed(() => social.lobbyStatus === 'reconnecting' && vie
 const name = computed(() => social.myName ?? social.me?.username);
 // Who you are is known once /api/me has answered: until then, neither you nor a guest (no Sign in to flash).
 const known = computed(() => social.supported !== null);
+
+// Muted, Start a room is off with until when beside it; a ticking now brings it back when that's past.
+const now = ref(Date.now());
+const muted = computed(() => social.claims?.mutedUntil > now.value);
+let tick;
+onMounted(() => { tick = setInterval(() => { now.value = Date.now(); }, 60_000); });
+onBeforeUnmount(() => clearInterval(tick));
 </script>
 
 <template>
@@ -37,7 +45,10 @@ const known = computed(() => social.supported !== null);
       <header>
         <h2>Public rooms</h2>
         <span class="count">{{ social.rooms.length }} live</span>
-        <button v-if="social.signedIn && social.me?.emailVerified !== false" class="start" @click="social.page = 'start-room'">Start a room</button>
+        <template v-if="social.signedIn && social.me?.emailVerified !== false">
+          <p v-if="muted" class="muted">{{ mutedWords(social.claims.mutedUntil, now) }}</p>
+          <button class="start" :disabled="muted" @click="social.page = 'start-room'">Start a room</button>
+        </template>
       </header>
       <hr>
       <div class="chips" role="group" aria-label="Filter rooms">
@@ -134,6 +145,13 @@ header h2 {
 }
 header button.start {
   margin-left: auto;
+}
+header p.muted { /* until when, beside Start a room */
+  margin: 0 0 0 auto;
+  color: var(--text-muted);
+}
+header p.muted + button.start {
+  margin-left: 0;
 }
 section.main > hr { /* the space below Start a room as above and beside it: the section's 16px */
   margin-top: 16px;

@@ -1,3 +1,5 @@
+import { mutedWords } from './chat.js';
+
 // The server's error codes in plain words. `detail` is the rest of the reply (problem, until).
 const day = (ms) => new Date(ms).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
 
@@ -25,6 +27,7 @@ const WORDS = {
   NEEDS_ONBOARDING: 'Pick a username to finish setting up your account',
   SUSPENDED: ({ until }) => until ? `This account is suspended until ${day(until)}` : 'This account is suspended for good',
   BANNED_USER: 'This account is suspended',   // the server's, when a suspended account signs in
+  MUTED: ({ until }) => mutedWords(until),   // the chat box's words
   ACCOUNT_NOT_FOUND: "That way to sign in isn't connected",
   FAILED_TO_UNLINK_LAST_ACCOUNT: 'You need at least one way to sign in',
   INVALID: ({ field }) => INVALID[field],

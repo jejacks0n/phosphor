@@ -3,6 +3,7 @@
 // before a hosting tab closes.
 import { test, expect, openApp, tab, store } from './support.js';
 import { fakeServer, fakeRoom, member, tile, ROOM_ID } from './social-support.js';
+import { mutedWords } from '../../src/social/chat.js';
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
@@ -392,4 +393,23 @@ test('a server that won\'t make the room until the email is verified says so', a
   await expect(page.getByText('Check your inbox to verify your email')).toBeVisible();
   await expect(shown(page, 'start-room')).toBeVisible();
   expect(await store(page, 'room', (r) => r.role)).toBe(null);
+});
+
+test('while your pass says you\'re muted, Start a room is disabled and says until when', async ({ page }) => {
+  await fakeServer(page, { me: member(), mutedUntil: Date.now() + 3_600_000 });
+  await openApp(page);
+  await tab(page, 'SOCIAL').click();
+  await expect(page.getByRole('button', { name: 'Start a room' })).toBeDisabled();
+  await expect(shown(page, 'lobby').getByText('You\'re muted until')).toBeVisible();
+});
+
+test('a MUTED refusal shows the server\'s words and no room starts', async ({ page }) => {
+  const until = Date.now() + 3_600_000;
+  const { server } = await startPage(page, { 'POST /api/rooms': () => [403, { code: 'MUTED', until }] });
+  await page.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
+  await page.getByRole('button', { name: 'Go live' }).click();
+  await expect(page.locator('.social-tab .notice')).toContainText(mutedWords(until));
+  await expect(shown(page, 'start-room').getByRole('heading', { name: 'Setup room' })).toBeVisible();
+  expect(await store(page, 'room', (r) => r.role)).toBe(null);
+  expect(server.sent('POST', '/api/rooms')).toHaveLength(1);
 });

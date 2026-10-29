@@ -6,6 +6,7 @@ import { apiOrigin, wsOrigin, appOrigin, desktopQuery, rtcConfig } from '../../s
 import { toBase64url, fromBase64url } from '../../src/social/base64url.js';
 import { api } from '../../src/social/api.js';
 import { messageFor, refusalWords } from '../../src/social/messages.js';
+import { mutedWords } from '../../src/social/chat.js';
 
 const realFetch = globalThis.fetch;
 globalThis.location = { hostname: 'localhost', origin: 'http://localhost:5173' };   // Node has no page
@@ -72,7 +73,8 @@ test('messageFor has plain words for every code the server sends, and a fallback
     'THROTTLED', 'TURNSTILE_FAILED', 'PASSWORD_BREACHED', 'EMAIL_NOT_VERIFIED', 'USE_RENAME', 'SESSION_EXPIRED', 'VERIFY_EMAIL',
     'NETWORK', 'INVALID_EMAIL_OR_PASSWORD', 'INVALID_USERNAME_OR_PASSWORD', 'USER_ALREADY_EXISTS',
     'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 'USERNAME_IS_ALREADY_TAKEN', 'PASSWORD_TOO_SHORT', 'INVALID_TOKEN', 'TOKEN_EXPIRED',
-    'INVALID_CODE', 'INVALID_BACKUP_CODE', 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE', 'ACCOUNT_TEMPORARILY_LOCKED', 'INVALID_TWO_FACTOR_COOKIE'];
+    'INVALID_CODE', 'INVALID_BACKUP_CODE', 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE', 'ACCOUNT_TEMPORARILY_LOCKED', 'INVALID_TWO_FACTOR_COOKIE',
+    'MUTED'];
   const fallback = messageFor('NO_SUCH_CODE');
   assert.equal(fallback, 'Something went wrong. Try again.');
   for (const code of codes) assert.notEqual(messageFor(code), fallback, code);
@@ -98,6 +100,7 @@ test('messageFor has plain words for every code the server sends, and a fallback
   assert.equal(messageFor('SUSPENDED'), 'This account is suspended for good');
   assert.equal(messageFor('SUSPENDED', { until }), `This account is suspended until ${day}`);
   assert.equal(messageFor('BANNED_USER'), 'This account is suspended');   // the server's, signing in
+  assert.equal(messageFor('MUTED', { until }), mutedWords(until));   // the chat box's words
   assert.equal(messageFor('INVALID', { field: 'name' }), 'Room names are 1 to 60 characters');
   assert.equal(messageFor('INVALID', { field: 'password' }), 'A private room needs a password');
   assert.equal(messageFor('INVALID', { field: 'max' }), 'Max watchers is 1 to 30');
