@@ -1,7 +1,7 @@
 <script setup>
-import { computed, useId } from 'vue';
+import { computed, watch, useId } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
-import { useRoomStore } from '@/store/RoomStore';
+import { useRoomStore, MAX_WATCHERS } from '@/store/RoomStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { charRowsOf } from '@/lib/Cells';
@@ -18,6 +18,7 @@ const art = computed(() => (project.image && project.cells.length
   : null));
 
 const draft = room.startDraft;   // kept in the store while you're on another tab
+watch(() => draft.max, (max) => { if (max > MAX_WATCHERS) draft.max = MAX_WATCHERS; });
 const id = useId();
 
 const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
@@ -55,7 +56,7 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
         <p v-if="!draft.isPublic" :id="`${id}-password`" class="help">The link alone lets people in. Add a password if you want them to need both.</p>
         <label class="choice"><input v-model="draft.allowGuests" type="checkbox" :aria-describedby="`${id}-guests`"> Allow guests</label>
         <p :id="`${id}-guests`" class="help">Guests can only watch, so you can't remove one; turn this off if you'd rather have members only.</p>
-        <label>Max watchers <input v-model.number="draft.max" type="number" min="1" max="30" required :aria-describedby="`${id}-max`"></label>
+        <label>Max watchers <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required :aria-describedby="`${id}-max`"></label>
         <p :id="`${id}-max`" class="help">Each watcher uses some of your upload speed. 12 suits most home connections.</p>
         <div class="buttons">
           <button class="primary" type="submit" :disabled="social.busy || !art">Go live</button>

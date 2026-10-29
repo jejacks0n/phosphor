@@ -52,7 +52,9 @@ test('going live with a public room: the POST, the host\'s page with its link, t
   await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toBeChecked();
   await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('12');
   await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveAttribute('max', '30');
-  await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveAttribute('max', '30');
+  await page.getByRole('spinbutton', { name: 'Max watchers' }).fill('45');   // past the most, it comes back to it
+  await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('30');
+  await page.getByRole('spinbutton', { name: 'Max watchers' }).fill('12');
   await expect(page.getByRole('textbox', { name: 'Password' })).toHaveCount(0);
   await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toHaveAccessibleDescription(/^Guests can only watch/);
   await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveAccessibleDescription(/^Each watcher uses some/);
@@ -192,6 +194,8 @@ test('Room settings keep what\'s typed while you\'re on another tab', async ({ p
   await tab(page, 'SOCIAL').click();
   await expect(host.getByRole('textbox', { name: 'Welcome message' })).toHaveValue('back in 5');
   await expect(host.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('3');
+  await host.getByRole('spinbutton', { name: 'Max watchers' }).fill('99');
+  await expect(host.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('30');
 });
 
 test('a change the Room makes while you\'re on another tab shows when you\'re back; what you typed in other fields stays', async ({ page }) => {

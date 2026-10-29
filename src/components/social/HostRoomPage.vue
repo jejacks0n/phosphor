@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, useId, onBeforeUnmount, nextTick, useTemplateRef } from 'vue';
-import { useRoomStore } from '@/store/RoomStore';
+import { useRoomStore, MAX_WATCHERS } from '@/store/RoomStore';
 import { removedCount } from '@/social/session';
 import EndRoomDialog from './EndRoomDialog.vue';
 import LobbyPicture from './LobbyPicture.vue';
@@ -60,6 +60,7 @@ const cancelEnd = async () => {
 // room last said (seen), so it stays while you're on another tab and a change made meanwhile shows when
 // you're back.
 const draft = room.settingsDraft;
+watch(() => draft.max, (max) => { if (max > MAX_WATCHERS) draft.max = MAX_WATCHERS; });
 for (const key of ['welcome', 'allowGuests', 'max']) {
   watch(() => room.room?.[key], (v) => {
     if (v === undefined || v === draft.seen[key]) return;
@@ -104,7 +105,7 @@ const save = () => {
           <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
           <p :id="countId" class="help count">{{ draft.welcome.length }}/200</p>
           <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> Allow guests</label>
-          <label>Max watchers <input v-model.number="draft.max" type="number" min="1" max="30" required></label>
+          <label>Max watchers <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required></label>
           <button type="submit">{{ done === 'Saved' ? 'Saved' : 'Save' }}</button>
         </form>
         <div class="facts">

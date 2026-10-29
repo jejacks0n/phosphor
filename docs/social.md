@@ -119,7 +119,7 @@ watchers will see (your art in ANSI as it is now), and asks for:
   so it has no signal.
 - **Allow guests**: whether people who haven't signed in can watch. Guests can only watch, so you
   can't remove one; turn this off if you'd rather have members only.
-- **Max watchers**: from 1 to 30 (12 to begin with). Each watcher uses some of your upload speed,
+- **Max watchers**: from 1 to 30 (12 to begin with; a higher number goes back to 30). Each watcher uses some of your upload speed,
   and 12 suits most home connections.
 
 **Go live** shares the art you have open; **Cancel** goes back to the lobby. You keep drawing as

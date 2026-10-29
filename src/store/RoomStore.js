@@ -26,6 +26,7 @@ const ROOM_ID = /^[a-z2-7]{10}$/;
 
 // What's typed in Start a room and Room settings, kept here so it stays while you're on another tab (the
 // SOCIAL tab isn't there then). Room settings also keeps what the room last said for each field (seen).
+export const MAX_WATCHERS = 30;   // the Room's own limit; a higher number typed in comes back to it
 const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12, signal: null });
 const newSettingsDraft = () => ({ welcome: '', allowGuests: true, max: 12, seen: {} });
 
