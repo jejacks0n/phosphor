@@ -339,13 +339,14 @@ test('busy lasts the whole sign-in, sign-up or provider sign-in (until you\'re k
   expect(social.busy).toBe(false);
 });
 
-test('Review focus 4: signing in with the lobby open reconnects with a member pass; signing out reconnects as a guest', async () => {
+test('Review focus 4: signing in with the lobby open reconnects with a member pass; signing out reconnects as the guest you were', async () => {
   const server = fakeServer();
   await social.start(at(''));
   await social.showLobby();
   const guestSocket = await lastSocket(1);
   await goLive(guestSocket, { rooms: [room('r1')], people: [] });
   expect(social.isGuest).toBe(true);
+  const guestPass = social.pass;
 
   await social.signIn('ansi-fan', 'right-password');
   expect(guestSocket.closed).toBe(true);
@@ -360,9 +361,33 @@ test('Review focus 4: signing in with the lobby open reconnects with a member pa
   expect(sockets[1].closed).toBe(true);
   const guestHello = await goLive(await lastSocket(3));
   expect(claimsOf(guestHello.pass)).toMatchObject({ guest: true });
-  expect(server.sent('POST', '/api/pass')[2].body.previous).toBeUndefined();   // a member's pass isn't a guest's previous
+  expect(server.sent('POST', '/api/pass')[2].body.previous).toBe(guestPass);   // the guest you were before, never the member's pass
+  expect(claimsOf(guestHello.pass).name).toBe('quiet-amber-fox-1');
   expect(social.me).toBe(null);
   expect(social.isGuest).toBe(true);
+});
+
+test('A reload comes back as the same guest: the last guest pass is kept in the browser and sent, with a proof, as previous', async () => {
+  const server = fakeServer();
+  const key = await loadKey();
+  await social.start(at(''));
+  await social.showLobby();
+  await goLive(await lastSocket(1));
+  const first = social.pass;
+  expect(social.myName).toBe('quiet-amber-fox-1');
+
+  social.disconnectLobby();   // the page reloads: a new store, the same browser (its key and its storage)
+  forgetKey();
+  setActivePinia(createPinia());
+  social = useSocialStore();
+  await social.start(at(''));
+  await social.showLobby();
+  await goLive(await lastSocket(2));
+  const { body } = server.sent('POST', '/api/pass')[1];
+  expect(body.previous).toBe(first);
+  expect(await verify(key.publicKey, `pass-renew:${body.ts}`, body.proof)).toBe(true);
+  expect(social.myName).toBe('quiet-amber-fox-1');
+  expect(claimsOf(social.pass).sub).toBe(claimsOf(first).sub);
 });
 
 test('Review focus 3: at renewAt a guest renews with its previous pass and a proof, keeps its nickname, and the lobby stays open', async () => {

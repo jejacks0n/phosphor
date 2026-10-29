@@ -45,6 +45,23 @@ const keptRoom = () => {
 // The sign-in providers the app knows, in the order shown; the server says which are set up (GET /api/providers).
 export const PROVIDERS = [['discord', 'Discord'], ['github', 'GitHub']];
 
+// The last guest pass this browser had, in localStorage, so a reload (or signing out) comes back as the same
+// guest: it's sent as the previous pass, with a proof only this browser's key can make, so a copy of it is
+// no use anywhere else. The server keeps a guest for a while after their last pass ends; past that, a new one.
+const GUEST_PASS = 'phosphor-guest-pass';
+const keepGuestPass = (pass) => {
+  try {
+    localStorage.setItem(GUEST_PASS, pass);
+  } catch { /* no storage: a reload is a new guest */ }
+};
+const keptGuestPass = () => {
+  try {
+    return localStorage.getItem(GUEST_PASS) ?? undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 const withToken = (turnstileToken) => (turnstileToken ? { 'x-turnstile-token': turnstileToken } : undefined);
 
 // The SOCIAL tab: you (/api/me), your pass, the lobby and the page shown, and every account action
@@ -422,16 +439,19 @@ export const useSocialStore = defineStore('social', {
       return { pass: this.pass, privateKey: this._key.privateKey };
     },
 
-    // A new pass, as a guest with the last one as previous (the same nickname). Renewed again on a
-    // timer before it expires; a live connection keeps going, and its next hello uses the new one.
+    // A new pass: a guest's with the last one as previous (the same nickname), or with none held yet, the last
+    // guest pass this browser kept; a member asks with none, and a member's pass is never anyone's previous. Renewed again on a timer before
+    // it expires; a live connection keeps going, and its next hello uses the new one.
     async renewPass() {
       const run = this._passRun;
-      const result = await requestPass(this._key, this.claims?.guest ? this.pass : undefined);
+      const previous = this.claims ? (this.claims.guest ? this.pass : undefined) : (this.me ? undefined : keptGuestPass());
+      const result = await requestPass(this._key, previous);
       if (run !== this._passRun) return;
       if (result.error) return this.passRefused(result);
       // A member's session ended (expired, revoked): the server answered with a guest's pass.
       if (this.claims && !this.claims.guest && result.claims.guest) return this.becameSomeoneElse({ signedOut: true });
       Object.assign(this, { pass: result.pass, claims: result.claims });
+      if (result.claims.guest) keepGuestPass(result.pass);
       this.renewIn(renewAt(result.claims) - Date.now());
     },
 
