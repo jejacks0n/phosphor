@@ -579,7 +579,7 @@ test('A change of the host\'s view alone sends a thumbnail once 3 minutes have p
   expect(thumbnailOf).toHaveBeenLastCalledWith(expect.anything(), { middleCol: 8, middleRow: 3 });
 });
 
-test('The lobby picture follows the shared view\'s middle until pinned to a cell; pinning or following again is a change, and a new room follows', async () => {
+test('The lobby picture follows the shared view\'s middle until pinned to a cell; pinning or following again is a change, and a pin picked before going live carries into the room', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   const workspace = useWorkspaceStore();
   Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiViewOrigin: { col: 0, row: 10 }, ansiViewSize: { cols: 10, rows: 6 } });
@@ -608,9 +608,9 @@ test('The lobby picture follows the shared view\'s middle until pinned to a cell
   room.pinLobby({ col: 0, row: 5 });
   room.leave();
   expect(room.lobbyPin).toBe(null);
-  room.pinLobby({ col: 0, row: 5 });
-  expect(await startPublic()).toBe(true);   // a new room starts over
-  expect(room.lobbyPin).toBe(null);
+  room.pinLobby({ col: 0, row: 5 });   // picked in Setup room, before the room is made
+  expect(await startPublic()).toBe(true);   // the new room keeps it
+  expect(room.lobbyPin).toEqual({ col: 0, row: 5 });
 });
 
 test('on PIXEL the host sends the cells in view and the PIXEL zoom against the font\'s cell; on ANSI its view and zoom; SAUCE keeps the last one', async () => {
