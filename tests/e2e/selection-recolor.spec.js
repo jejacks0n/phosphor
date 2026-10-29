@@ -1,7 +1,6 @@
 // Recoloring a selection through the toolbar: Set FG and Set BG in the ANSI view (no Set BG in the
 // ASCII styles), Fill in the pixel view, for the Magic Wand's selection and the Select tool's.
-import { test, expect } from '@playwright/test';
-import { openApp, store, cellPoint, pixelPoint, drag, tab, settled } from './support.js';
+import { test, expect, openApp, store, cellPoint, pixelPoint, drag, tab, settled } from './support.js';
 
 const base = (page, x, y) => store(page, 'project', `(p) => p.baseColorAt(${x}, ${y})`);
 

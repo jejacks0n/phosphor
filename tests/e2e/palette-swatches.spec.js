@@ -1,5 +1,4 @@
-import { test, expect } from '@playwright/test';
-import { openApp, store, editAt, settled } from './support.js';
+import { test, expect, openApp, store, editAt, settled } from './support.js';
 
 // With the color adjustments moved, every palette swatch still shows its palette color, and what you
 // type with it comes out in that color (it used to be run through the adjustments again and land on

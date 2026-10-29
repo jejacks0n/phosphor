@@ -1,7 +1,6 @@
 // The Select tool in the PIXEL view: a rectangle of whole cells (two grid pixels tall each) that
 // moves, copies, cuts and pastes as it does in the ANSI view.
-import { test, expect } from '@playwright/test';
-import { openApp, store, tab, settled, pixelPoint, drag } from './support.js';
+import { test, expect, openApp, store, tab, settled, pixelPoint, drag } from './support.js';
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 

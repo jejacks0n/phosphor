@@ -1,8 +1,7 @@
 // The Select tool's Flip horizontally, Flip vertically and Rotate 90° buttons: a flip turns the
 // block in place and its characters with it; Rotate turns pixels, so it's off while the selection
 // has characters.
-import { test, expect } from '@playwright/test';
-import { openApp, store, cellPoint, drag, editAt, chars } from './support.js';
+import { test, expect, openApp, store, cellPoint, drag, editAt, chars } from './support.js';
 
 test('the flip buttons turn the selection and its characters; Rotate waits for a selection without them', async ({ page }) => {
   await openApp(page);
