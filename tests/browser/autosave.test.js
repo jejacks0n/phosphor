@@ -190,6 +190,58 @@ test('every kind of change is written: the name, a setting, the image', async ()
   expect((await readLatest(project.documentId)).imageBuffer.byteLength).toBe(3);
 });
 
+test('a save with no later edit is written as saved, with no version, and the edit time stays', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  const { editedAt } = (await readLatest(id)).record;
+  expect(await listVersions(id)).toHaveLength(1);
+
+  await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS); // another version would be due, if this were a change
+  await project.saveProject();
+  expect(autosave.current.value).toBe(false);
+  await pass(SAVE_AFTER_MS);
+
+  expect((await readLatest(id)).record).toMatchObject({ savedToFile: true, dirty: false, editedAt });
+  expect(await listVersions(id)).toHaveLength(1);
+  expect(autosave.current.value).toBe(true);
+
+  edit(project, 1); // the next real change moves the time, and is due its version
+  await pass(SAVE_AFTER_MS);
+  expect((await readLatest(id)).record).toMatchObject({ savedToFile: true, dirty: true, editedAt: Date.now() });
+  expect(await listVersions(id)).toHaveLength(2);
+});
+
+test('opening a project file is one write, saved, with no version', async () => {
+  const { project } = await mounted();
+  await project.setBlankCanvas();
+  const blob = await writeProject({ ...await project.projectParts(), imageBuffer: project.imageBuffer });
+  await pass(SAVE_AFTER_MS);
+  vi.mocked(writeLatest).mockClear();
+
+  await project.loadProject(new File([blob], 'mine.phosphor'));
+  await pass(SAVE_AFTER_MS);
+  await pass(SAVE_AFTER_MS * 2);
+  expect(writeLatest).toHaveBeenCalledTimes(1);
+  expect((await readLatest(project.documentId)).record).toMatchObject({ savedToFile: true, dirty: false });
+  expect(await listVersions(project.documentId)).toEqual([]);
+});
+
+test('a real change whose write failed still counts when the next write works', async () => {
+  const { project } = await opened();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.mocked(writeLatest).mockRejectedValueOnce(new Error('not this time'));
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  expect(autosave.current.value).toBe(false);
+
+  await vi.advanceTimersByTimeAsync(5);
+  await autosave.flush();
+  expect((await readLatest(project.documentId)).record.editedAt).toBe(Date.now());
+  expect(await listVersions(project.documentId)).toHaveLength(1);
+});
+
 test('a change makes current false at once, with no tick for a watcher', async () => {
   const { project } = await opened();
   expect(autosave.current.value).toBe(true);

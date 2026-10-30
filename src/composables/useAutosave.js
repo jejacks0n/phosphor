@@ -13,6 +13,8 @@ export function useAutosave() {
   const project = useProjectStore();
   const current = ref(false); // the last write finished and nothing has changed since
   let unwritten = false;
+  let edited = false; // a real change is among what's unwritten, not only what's saved to a file
+  let editedAt = null; // when the document last really changed, for its record
   let quiet = null, deadline = null; // the timers: edits stopped, and edits going on too long
   let running = null, again = false; // the write under way, and that another is due after it
   let openedId = null, lastVersionAt = null; // the document that's had its opening write, and its newest version
@@ -24,7 +26,7 @@ export function useAutosave() {
     quiet = deadline = null;
   };
 
-  function changed() {
+  function schedule() {
     current.value = false;
     unwritten = true;
     clearTimeout(quiet);
@@ -45,7 +47,7 @@ export function useAutosave() {
   async function writeOnce() {
     const id = project.documentId, imageBuffer = toRaw(project.imageBuffer);
     if (!id || !imageBuffer) {
-      unwritten = false;
+      unwritten = edited = false;
       return;
     }
     // Committing a stroke schedules a write, but taking it back doesn't: look again. A typing run is
@@ -56,14 +58,16 @@ export function useAutosave() {
     }
     const doc = project._document;
     const opening = id !== openedId;
+    const real = edited;
     const now = Date.now();
     const keep = new Set([id]); // the open documents
-    unwritten = false;
+    unwritten = edited = false;
+    if (opening || real) editedAt = now;
     try {
       const record = {
         id, imageBuffer,
         filename: project.filename,
-        editedAt: now,
+        editedAt,
         savedToFile: project.savedToFile,
         dirty: project.isDirty || !!project._stroke, // an open typing run isn't counted by isDirty yet
         savedSettings: project.savedSettings,
@@ -77,7 +81,7 @@ export function useAutosave() {
       openedId = id;
       if (opening) {
         await evict(keep);
-      } else if (versionDue({ lastVersionAt, now, changed: true })) {
+      } else if (versionDue({ lastVersionAt, now, changed: real })) {
         await addVersion(id, { reason: 'timed', savedAt: now });
         lastVersionAt = now;
         await evict(keep);
@@ -89,6 +93,7 @@ export function useAutosave() {
       }
     } catch (error) {
       unwritten = true;
+      edited ||= real;
       console.warn('Autosave failed', error);
       if (!warned) toast("Autosave isn't working in this browser. Save to a file to keep your work.");
       warned = true;
@@ -120,7 +125,18 @@ export function useAutosave() {
     () => settingsJson(project),
     () => project.filename,
     () => project.imageBuffer, // merging into the image swaps it
-  ], changed, { flush: 'sync' }); // sync: beforeunload commits a typing run and reads current straight after
+  ], () => {
+    edited = true;
+    schedule();
+  }, { flush: 'sync' }); // sync: beforeunload commits a typing run and reads current straight after
+
+  // A save to a file isn't a change to the art, but the record has to say it happened. Opening a
+  // document marks it saved too, in the same tick, so that's still the one opening write.
+  watch([
+    () => project.savedToFile,
+    () => project.savedEditVersion,
+    () => project.savedSettings,
+  ], schedule, { flush: 'sync' });
 
   useEventListener(document, 'visibilitychange', () => {
     if (document.visibilityState === 'hidden') flush();

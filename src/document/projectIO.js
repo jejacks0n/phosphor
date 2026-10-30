@@ -53,6 +53,8 @@ export async function readProject(file) {
   let offset = 20;
   const { cellEdits, charEditMap, hasPaint, base, baseLength, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
   delete settings.charMode; // older files stored a charMode that's now derived from renderStyle
+  delete settings.documentId; // Untrusted, and autosave's, not the file's: one could overwrite another document's record
+  delete settings.savedToFile;
   // Untrusted: a grid within the limits (Cells.js; left out, the columns are the default, which fits
   // any height), a fit four numbers with a size, and a paint scale a whole number, both small enough
   // to draw (a layer stays within MAX_LAYER_DIM pixels a side).
