@@ -103,8 +103,10 @@ you copied anywhere else since (see [Layers](layers.md#the-select-tool)).
   lines up.
 
 Saving a project and both exports open the same dialog, where you name the file (Cmd/Ctrl+S opens it
-for the project). The name you give becomes the document's name, so the next save starts from it.
-Every browser saves it as a download with that name, Safari included.
+for the project). It offers the document's name with the date and time (`art-20261030-131405`), so
+each save is a new file; type over it for any other name. The name you give becomes the document's
+name, so the next save starts from it, with a new time. Every browser saves it as a download with
+that name, Safari included.
 
 ## When art looks wrong in someone's terminal
 

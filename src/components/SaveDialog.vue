@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { AnsiFile } from '@/lib/AnsiFile';
-import { fileStem } from '@/document/projectIO';
+import { fileStem, timestamped } from '@/document/projectIO';
 
 // Save Project and the two exports: the filename (it renames the document; every browser downloads
 // with it, Safari included), and for .ans the characters CP437 can't hold, with what's written instead.
@@ -20,7 +20,7 @@ const FORMATS = {
 };
 const format = computed(() => FORMATS[props.ext]);
 
-const name = ref(project.filename ?? 'untitled');
+const name = ref(timestamped(project.filename ?? 'untitled'));
 const stem = computed(() => fileStem(name.value, props.ext));
 const replacements = computed(() => (props.ext === 'ans'
   ? [...AnsiFile.unmappable(project.cells)].map(([char, { count, as }]) => ({ char, count, as }))
