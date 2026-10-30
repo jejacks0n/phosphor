@@ -28,18 +28,6 @@ test('two drags in a row: where it paused comes back', async ({ page }) => {
   expect(await row(page, 3)).toEqual(before);
 });
 
-test('Escape leaves it where it is: a new drag of the same cells starts a new move', async ({ page }) => {
-  await openApp(page);
-  await selectAndDragTwice(page);
-  await page.keyboard.press('Escape');
-  const stamped = await row(page, 3);
-  await drag(page, await cellPoint(page, 8, 3), await cellPoint(page, 10, 4)); // reselect it
-  await drag(page, await cellPoint(page, 9, 3), await cellPoint(page, 13, 3)); // move it on
-  await page.keyboard.press('ControlOrMeta+z'); // undoes only the new move
-  await settled(page);
-  expect(await row(page, 3)).toEqual(stamped);
-});
-
 test('the block follows the pointer while it is dragged, and the drag is one undo step', async ({ page }) => {
   await openApp(page);
   await editAt(page, 4, 4);

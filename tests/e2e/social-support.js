@@ -340,7 +340,7 @@ export async function goLive(host, room, { image = 'images/gradient.png', welcom
   }
   if (!allowGuests) await host.getByRole('checkbox', { name: 'Allow guests' }).uncheck();
   await host.getByRole('button', { name: 'Go live' }).click();
-  await expect.poll(() => store(host, 'room', (r) => r.status)).toBe('live');
+  await expect.poll(() => store(host, 'room', (r) => r.status), { intervals: [100] }).toBe('live');
   return server;
 }
 
@@ -360,8 +360,8 @@ export async function watcherPage(context, room, { me = null, blocked = [], ...s
 export async function joinFromCard(watcher) {
   await tab(watcher, 'SOCIAL').click();
   await card(watcher).getByRole('button', { name: /^Join/ }).click();
-  await expect.poll(() => store(watcher, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
-  await expect.poll(() => store(watcher, 'room', (r) => !!r.art)).toBe(true);
+  await expect.poll(() => store(watcher, 'room', (r) => r.status), { timeout: 20_000, intervals: [100] }).toBe('live');
+  await expect.poll(() => store(watcher, 'room', (r) => !!r.art), { intervals: [100] }).toBe(true);
 }
 
 // Opens a room's link, and says yes to joining it.

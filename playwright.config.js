@@ -15,7 +15,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4180',
     viewport: { width: 1400, height: 900 },
-    trace: 'retain-on-failure',
+    trace: { mode: 'retain-on-failure', screenshots: false }, // recording every test's screenshots costs about 15% of the suite's time
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions } },

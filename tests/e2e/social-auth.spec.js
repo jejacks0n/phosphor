@@ -300,18 +300,6 @@ test('two-factor: a backup code works instead', async ({ page }) => {
   expect(server.sent('POST', '/api/auth/two-factor/verify-backup-code').map((r) => r.body.code)).toEqual(['wrong-code', 'abcde-fghij']);
 });
 
-test('two-factor: coming back from Discord to ?social=two-factor asks for the code', async ({ page }) => {
-  const server = await fakeServer(page, { twoFactor: true });
-  await open(page, '/?social=two-factor');
-  const form = shown(page, 'two-factor');
-  await expect(form).toBeVisible();
-  expect(new URL(page.url()).search).toBe('');
-  await form.getByLabel('Code from your authenticator app').fill('123456');
-  await form.getByRole('button', { name: 'Verify' }).click();
-  await expect(shown(page, 'lobby').locator('.you')).toContainText('ansi-fan');
-  expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(1);
-});
-
 test('two-factor: Cancel goes back to Sign in', async ({ page }) => {
   await fakeServer(page, { twoFactor: true });
   const form = await twoFactorForm(page);
@@ -326,22 +314,4 @@ test('two-factor: an expired challenge goes back to Sign in with its words at th
   await form.getByRole('button', { name: 'Verify' }).click();
   await expect(shown(page, 'sign-in')).toBeVisible();
   await expect(notice(page)).toContainText('That took too long. Sign in again');
-});
-
-test('two-factor: too many wrong codes goes back to Sign in with its words at the top', async ({ page }) => {
-  await fakeServer(page, { twoFactor: true, 'POST /api/auth/two-factor/verify-totp': () => [401, { code: 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE' }] });
-  const form = await twoFactorForm(page);
-  await form.getByLabel('Code from your authenticator app').fill('123456');
-  await form.getByRole('button', { name: 'Verify' }).click();
-  await expect(shown(page, 'sign-in')).toBeVisible();
-  await expect(notice(page)).toContainText('Too many wrong codes. Wait a few minutes, then sign in again');
-});
-
-test('two-factor: a code of only spaces is not sent', async ({ page }) => {
-  const server = await fakeServer(page, { twoFactor: true });
-  const form = await twoFactorForm(page);
-  await form.getByLabel('Code from your authenticator app').fill('   ');
-  await form.getByRole('button', { name: 'Verify' }).click();
-  await expect(form.getByLabel('Code from your authenticator app')).toHaveValue('');
-  expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(0);
 });

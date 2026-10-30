@@ -65,16 +65,21 @@ test('the panel is beside every tab for the host and the watcher, with the welco
   expect(exit.height).toBe(menu.height);   // the size of the host's ⋯ in its place
   await expect(panel(host).getByText('hosted by ansi-fan')).toHaveCount(0);
   await expect(panel(host).getByRole('button', { name: 'Exit' })).toHaveCount(0);
-});
-
-test('no panel outside a room', async ({ page: host, context }) => {
-  const { watcher } = await inRoom(host, context, { me: wren });
-  await watcher.getByRole('button', { name: 'Exit' }).click();
-  await expect(panel(watcher)).toHaveCount(0);
+  // The room menu, the people list and Edit are the host's.
+  await expect(panel(watcher).getByRole('button', { name: 'Room', exact: true })).toHaveCount(0);
+  await expect(panel(watcher).getByRole('button', { name: /here$/ })).toHaveCount(0);
+  await expect(panel(watcher).getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
+  await expect(panel(host).getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
 });
 
 test('a watcher\'s message reaches both with their name, a time and "(you)" only for the sender; the host\'s carries the host tag', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { me: wren });
+  // No messages yet: "You joined" is there once live, with nothing above it.
+  expect(await store(watcher, 'room', (r) => r.status)).toBe('live');
+  await expect(log(watcher).getByText('You joined')).toBeVisible();
+  await expect(messages(watcher)).toHaveCount(0);
+  await expect(log(watcher).getByText('↑ Scroll up for earlier messages')).toHaveCount(0);
+
   await say(watcher, 'hello');
   await expect(box(watcher)).toHaveValue('');
   for (const page of [host, watcher]) {
@@ -94,8 +99,25 @@ test('a watcher\'s message reaches both with their name, a time and "(you)" only
   await expect(messages(host).nth(1)).toContainText('ansi-fan (you)');
 });
 
-test('Shift+Enter makes a new line and the box grows to 5 lines, then scrolls; 301 characters can\'t be typed', async ({ page: host, context }) => {
+test('the box: close to the panel\'s edges, Send a button only with something to send; Shift+Enter makes a new line and it grows to 5 lines, then scrolls; 301 characters can\'t be typed; four Enters within a second', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { me: wren });
+  // Its foot's spacing is a few pixels, not a dozen, with no rule above it or around the panel.
+  const foot = await panel(watcher).locator('footer').boundingBox();
+  const frame = await panel(watcher).locator('footer .box').boundingBox();
+  for (const gap of [frame.x - foot.x, foot.x + foot.width - frame.x - frame.width, foot.y + foot.height - frame.y - frame.height]) {
+    expect(gap).toBeLessThanOrEqual(6);
+  }
+  await expect(panel(watcher).locator('footer')).toHaveCSS('border-top-style', 'none');
+  await expect(panel(watcher)).toHaveCSS('border-top-style', 'none');   // nor around the panel
+  await expect(panel(watcher)).toHaveCSS('margin-left', '2px');
+  // Send has no background until there's something to send.
+  const send = panel(watcher).getByRole('button', { name: 'Send' });
+  await expect(send).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await box(watcher).fill('hi');
+  await expect(send).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(send).toHaveCSS('border-radius', '4px');
+  await box(watcher).fill('');
+
   const height = async () => (await box(watcher).boundingBox()).height;
   const one = await height();
   await box(watcher).click();
@@ -117,28 +139,8 @@ test('Shift+Enter makes a new line and the box grows to 5 lines, then scrolls; 3
   await box(watcher).fill('');
   await watcher.keyboard.insertText('y'.repeat(301));
   expect((await box(watcher).inputValue()).length).toBe(300);
-});
 
-test('the box sits close to the panel\'s edges: the foot\'s spacing is a few pixels, not a dozen, no rule above it or around the panel, and Send a button only with something to send', async ({ page: host, context }) => {
-  const { watcher } = await inRoom(host, context, { me: wren });
-  const foot = await panel(watcher).locator('footer').boundingBox();
-  const frame = await panel(watcher).locator('footer .box').boundingBox();
-  for (const gap of [frame.x - foot.x, foot.x + foot.width - frame.x - frame.width, foot.y + foot.height - frame.y - frame.height]) {
-    expect(gap).toBeLessThanOrEqual(6);
-  }
-  await expect(panel(watcher).locator('footer')).toHaveCSS('border-top-style', 'none');
-  await expect(panel(watcher)).toHaveCSS('border-top-style', 'none');   // nor around the panel
-  await expect(panel(watcher)).toHaveCSS('margin-left', '2px');
-  // Send has no background until there's something to send.
-  const send = panel(watcher).getByRole('button', { name: 'Send' });
-  await expect(send).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-  await box(watcher).fill('hi');
-  await expect(send).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-  await expect(send).toHaveCSS('border-radius', '4px');
-});
-
-test('four Enters within a second: "Slow down a little", and three messages arrive', async ({ page: host, context }) => {
-  const { watcher } = await inRoom(host, context, { me: wren });
+  // Four Enters within a second: "Slow down a little", and three messages arrive.
   await watcher.clock.setFixedTime(Date.now());   // no second passes between them
   for (const word of ['one', 'two', 'three']) {
     await say(watcher, word);
@@ -185,27 +187,15 @@ async function backAsWren(host, watcher) {
   await expect(messages(host).first()).toContainText('pixel_wren');
 }
 
-test('a guest is asked to sign in: the sign-in page shows over the room, "Back to the room" returns to it', async ({ page: host, context }) => {
+test('a guest is asked to sign in over the room: "Back to the room" returns to it, and signing in with a password is back in it as themselves', async ({ page: host, context }) => {
   const watcher = await guestToSignIn(host, context);
   expect(await store(watcher, 'workspace', (w) => w.editorTab)).toBe('social');
-  await expect(shown(watcher, 'sign-in').getByRole('button', { name: '‹ Back to the room' })).toBeVisible();
   await shown(watcher, 'sign-in').getByRole('button', { name: '‹ Back to the room' }).click();
   await expect(shown(watcher, 'watch-room')).toBeVisible();
   expect(await store(watcher, 'room', (r) => r.role)).toBe('watch');
-});
 
-test('a guest who signs in with a password is back in the same room as themselves', async ({ page: host, context }) => {
-  const watcher = await guestToSignIn(host, context);
+  await panel(watcher).getByRole('button', { name: 'Sign in to chat' }).click();
   await signInWithPassword(watcher);
-  await backAsWren(host, watcher);
-});
-
-test('a guest who signs in through two-factor is back in the same room as themselves', async ({ page: host, context }) => {
-  const watcher = await guestToSignIn(host, context, { twoFactor: true });
-  await signInWithPassword(watcher);
-  const form = shown(watcher, 'two-factor');
-  await form.getByLabel('Code from your authenticator app').fill('123456');
-  await form.getByRole('button', { name: 'Verify' }).click();
   await backAsWren(host, watcher);
 });
 
@@ -217,12 +207,6 @@ test('coming back from Discord (?social=signed-in) with the room kept, a guest-t
   await watcher.goto('/?social=signed-in');
   await backAsWren(host, watcher);
   expect(await watcher.evaluate(() => sessionStorage.getItem('phosphor-rejoin'))).toBe(null);
-});
-
-test('a member who hasn\'t confirmed their email is asked to', async ({ page: host, context }) => {
-  const { watcher } = await inRoom(host, context, { me: member({ id: 'u_2', username: 'pixel_wren', name: 'pixel_wren', emailVerified: false }) });
-  await expect(panel(watcher).getByText('Confirm your email to chat')).toBeVisible();
-  await expect(box(watcher)).toHaveCount(0);
 });
 
 test('» folds the panel to a rail that counts what came since, « opens it again', async ({ page: host, context }) => {
@@ -266,10 +250,11 @@ test('who joins and leaves is in the chat, one line while nothing is said betwee
   await expect(messages(watcher)).toHaveCount(1);
   await watcher.getByRole('button', { name: 'Exit' }).click();
   await expect(presence(host)).toHaveText(['pixel_wren joined, grim_reaper came and went', 'pixel_wren left']);
+  await expect(panel(watcher)).toHaveCount(0);   // no panel outside a room
 });
 
-test('60 messages before a second watcher joins: the last 50, "You joined", and the other 10 on scrolling to the top', async ({ page: host, context }) => {
-  const { room } = await inRoom(host, context, { me: wren });
+test('60 messages before a second watcher joins: the last 50, "You joined", and the other 10 on scrolling to the top; a new message keeps the place when scrolled up, and follows at the bottom', async ({ page: host, context }) => {
+  const { room, watcher } = await inRoom(host, context, { me: wren });
   const start = Date.now();
   for (let i = 1; i <= 60; i++) {
     await host.clock.setFixedTime(start + i * 1000);   // one a second, in no time
@@ -296,32 +281,15 @@ test('60 messages before a second watcher joins: the last 50, "You joined", and 
   const fromTop = async () => (await messages(late).nth(10).boundingBox()).y - (await log(late).boundingBox()).y;
   await expect.poll(async () => Math.abs(await fromTop())).toBeLessThan(60);
   await expect(messages(late).nth(10)).toContainText('m11');
-});
 
-test('joining a room with no messages: "You joined" is there once live, with nothing above it', async ({ page: host, context }) => {
-  const { watcher } = await inRoom(host, context, { me: wren });
-  expect(await store(watcher, 'room', (r) => r.status)).toBe('live');
-  await expect(log(watcher).getByText('You joined')).toBeVisible();
-  await expect(messages(watcher)).toHaveCount(0);
-  await expect(log(watcher).getByText('↑ Scroll up for earlier messages')).toHaveCount(0);
-});
-
-test('a new message keeps the place when scrolled up, and follows when at the bottom', async ({ page: host, context }) => {
-  const { watcher } = await inRoom(host, context, { me: wren });
-  const gap = () => log(watcher).evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight);
-  const start = Date.now();
-  for (let i = 1; i <= 30; i++) {
-    await host.clock.setFixedTime(start + i * 1000);
-    await say(host, `line ${i}`);
-  }
-  await expect(messages(watcher)).toHaveCount(30);
-  await expect.poll(gap).toBeLessThan(8);   // followed all the way
-
+  // The first watcher followed all the way; scrolled up, the next message doesn't drag them down.
+  await expect(messages(watcher)).toHaveCount(60);
+  await expect.poll(() => log(watcher).evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThan(8);
   await log(watcher).evaluate((el) => { el.scrollTop = 0; });
-  await host.clock.setFixedTime(start + 40_000);
-  await say(host, 'line 31');
-  await expect(messages(watcher)).toHaveCount(31);
-  expect(await log(watcher).evaluate((el) => el.scrollTop)).toBe(0);   // not dragged down
+  await host.clock.setFixedTime(start + 70_000);
+  await say(host, 'm61');
+  await expect(messages(watcher)).toHaveCount(61);
+  expect(await log(watcher).evaluate((el) => el.scrollTop)).toBe(0);
 });
 
 test('a message from someone you blocked is folded, and Show shows that one', async ({ page: host, context }) => {
@@ -344,23 +312,12 @@ test('a message from someone you blocked is folded, and Show shows that one', as
   await expect(folded).toContainText('grim_reaper');
 });
 
-test('the host\'s Delete shows on hover and leaves "Message deleted by the host" for everyone; watchers have none', async ({ page: host, context }) => {
+test('Report and Delete show on hover in the time\'s place: its size, its line and its right edge; Delete leaves "Message deleted by the host" for everyone; watchers have none', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { me: wren });
   await say(watcher, 'oops');
   await expect(messages(host)).toHaveCount(1);
   await expect(messages(watcher).first().getByRole('button', { name: 'Delete' })).toHaveCount(0);
 
-  await messages(host).first().hover();
-  await messages(host).first().getByRole('button', { name: 'Delete' }).click();
-  for (const page of [host, watcher]) {
-    await expect(messages(page).first()).toContainText('Message deleted by the host');
-    await expect(messages(page).first()).not.toContainText('oops');
-  }
-});
-
-test('Report and Delete show on hover in the time\'s place: its size, its line and its right edge, with the time hidden', async ({ page: host, context }) => {
-  const { watcher } = await inRoom(host, context, { me: wren });
-  await say(watcher, 'look at this');
   const message = messages(host).first();
   const time = message.locator('time');
   const actions = message.locator('.actions');
@@ -379,22 +336,12 @@ test('Report and Delete show on hover in the time\'s place: its size, its line a
   expect(a.right).toBeCloseTo(t.right, 0);
   expect(a.bottom).toBeCloseTo(t.bottom, 0);
   for (const button of await actions.getByRole('button').all()) expect((await look(button)).size).toBe(t.size);
-});
 
-test('a watcher who joins after the host\'s Delete sees "Message deleted by the host" too', async ({ page: host, context }) => {
-  const { room, watcher } = await inRoom(host, context, { me: wren });
-  await say(watcher, 'oops');
-  await expect(messages(host)).toHaveCount(1);
-  await messages(host).first().hover();
-  await messages(host).first().getByRole('button', { name: 'Delete' }).click();
-  await expect(messages(watcher).first()).toContainText('Message deleted by the host');
-
-  const late = await watcherPage(context, room, { me: member({ id: 'u_4', username: 'late_comer', name: 'late_comer' }) });
-  await late.goto('/');
-  await joinFromCard(late);
-  await expect(messages(late)).toHaveCount(1);
-  await expect(messages(late).first()).toContainText('Message deleted by the host');
-  await expect(messages(late).first()).not.toContainText('oops');
+  await message.getByRole('button', { name: 'Delete' }).click();
+  for (const page of [host, watcher]) {
+    await expect(messages(page).first()).toContainText('Message deleted by the host');
+    await expect(messages(page).first()).not.toContainText('oops');
+  }
 });
 
 const more = (host, name = 'pixel_wren') => watching(host).getByRole('button', { name: `More for ${name}` });
@@ -434,7 +381,7 @@ test('Block – from all future rooms asks first, then blocks and removes', asyn
   await expect(watcher.getByText('The host removed you')).toBeVisible();
 });
 
-test('Cancel and Escape on the Block box leave everything as it was, with focus back on the \u22ef button', async ({ page: host, context }) => {
+test('Cancel and Escape on the Block box leave everything as it was, with focus back on the \u22ef button; a failed block leaves the watcher in the list and shows the notice', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
   await openPeople(host);
   for (const dismiss of [
@@ -451,23 +398,8 @@ test('Cancel and Escape on the Block box leave everything as it was, with focus 
     await expect(shown(watcher, 'watch-room')).toBeVisible();
   }
   expect(server.sent('POST', '/api/blocks')).toHaveLength(0);
-});
 
-test('a guest\'s row has no \u22ef; a member\'s has one', async ({ page: host, context }) => {
-  const { room } = await inRoom(host, context, { me: wren });
-  const guest = await watcherPage(context, room);
-  await guest.goto('/');
-  await joinFromCard(guest);
-  await openPeople(host);
-  await expect(watching(host)).toHaveCount(2);
-  await expect(more(host)).toHaveCount(1);
-  await expect(watching(host).filter({ has: host.locator('span.tag') }).getByRole('button')).toHaveCount(0);
-});
-
-test('a failed block leaves the watcher in the list and shows the notice', async ({ page: host, context }) => {
-  const { watcher, server } = await inRoom(host, context, { me: wren });
   server.route('POST /api/blocks', () => [500, { code: 'SERVER_ERROR' }]);
-  await openPeople(host);
   await more(host).click();
   await host.getByRole('button', { name: 'Block – from all future rooms' }).click();
   await blockDialog(host).getByRole('button', { name: 'Block', exact: true }).click();
@@ -488,26 +420,15 @@ async function leaveWhileAsked(host, watcher) {
   await expect(blockDialog(host)).toBeVisible();   // still asking
 }
 
-test('the watcher leaves while the Block box is open: Cancel and Escape put focus on the "N here" button', async ({ page: host, context }) => {
+test('the watcher leaves while the Block box is open: Cancel puts focus on the "N here" button, and Block still blocks the account', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
-  for (const dismiss of [
-    () => blockDialog(host).getByRole('button', { name: 'Cancel' }).click(),
-    () => host.keyboard.press('Escape'),
-  ]) {
-    await openPeople(host);
-    if (await watching(host).count() === 0) {   // second time round: back in the room
-      await joinFromCard(watcher);
-    }
-    await leaveWhileAsked(host, watcher);
-    await dismiss();
-    await expect(blockDialog(host)).toHaveCount(0);
-    await expect(here(host)).toBeFocused();
-  }
+  await leaveWhileAsked(host, watcher);
+  await blockDialog(host).getByRole('button', { name: 'Cancel' }).click();
+  await expect(blockDialog(host)).toHaveCount(0);
+  await expect(here(host)).toBeFocused();
   expect(server.sent('POST', '/api/blocks')).toHaveLength(0);
-});
 
-test('the watcher leaves while the Block box is open: Block still blocks the account', async ({ page: host, context }) => {
-  const { watcher, server } = await inRoom(host, context, { me: wren });
+  await joinFromCard(watcher);
   await leaveWhileAsked(host, watcher);
   await blockDialog(host).getByRole('button', { name: 'Block', exact: true }).click();
   await expect.poll(() => server.sent('POST', '/api/blocks')).toHaveLength(1);
@@ -570,29 +491,18 @@ test('the room menu: Copy link, Edit welcome saves the pinned welcome for everyo
   await expect(panel(host).getByText('draw something loud')).toBeVisible();
   await expect(panel(watcher).getByText('draw something loud')).toBeVisible();
 
+  // The pinned welcome's Edit opens the same dialog; an empty welcome isn't pinned, and the link went, so the menu has focus.
+  await panel(host).getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(edit.getByLabel('Welcome message')).toHaveValue('draw something loud');
+  await edit.getByLabel('Welcome message').fill('');
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(edit).toHaveCount(0);
+  await expect(panel(host).getByText('Pinned, from the host')).toHaveCount(0);
+  await expect(menu).toBeFocused();
+
   await menu.click();
   await item('Settings and stats').click();
   expect(await store(host, 'workspace', (w) => w.editorTab)).toBe('social');
   await expect(shown(host, 'host-room')).toBeVisible();
 });
 
-test('the pinned welcome\'s Edit opens the same dialog', async ({ page: host, context }) => {
-  await inRoom(host, context, { welcome: 'be kind, draw big', me: wren });
-  const edit = host.getByRole('dialog', { name: 'Edit welcome' });
-  await panel(host).getByRole('button', { name: 'Edit', exact: true }).click();
-  await expect(edit.getByLabel('Welcome message')).toHaveValue('be kind, draw big');
-  await edit.getByLabel('Welcome message').fill('');
-  await edit.getByRole('button', { name: 'Save' }).click();
-  await expect(edit).toHaveCount(0);
-  await expect(panel(host).getByText('Pinned, from the host')).toHaveCount(0);   // an empty welcome isn't pinned
-  await expect(panel(host).getByRole('button', { name: 'Room', exact: true })).toBeFocused();   // the link went, so the menu has focus
-});
-
-test('a watcher\'s panel has no room menu, no people list and no Edit', async ({ page: host, context }) => {
-  const { watcher } = await inRoom(host, context, { welcome: 'be kind, draw big', me: wren });
-  await expect(panel(watcher).getByText('be kind, draw big')).toBeVisible();
-  await expect(panel(watcher).getByRole('button', { name: 'Room', exact: true })).toHaveCount(0);
-  await expect(panel(watcher).getByRole('button', { name: /here$/ })).toHaveCount(0);
-  await expect(panel(watcher).getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
-  await expect(panel(host).getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
-});

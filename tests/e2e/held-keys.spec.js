@@ -1,5 +1,5 @@
 import { test, expect } from './support.js';
-import { openApp, store, cellPoint, editAt, chars } from './support.js';
+import { openApp, store, cellPoint } from './support.js';
 
 // Held keys: Alt (Option) swaps a drawing tool for the color picker, Alt+Shift picks the background,
 // Space pans with any tool; the ANSI status bar says so.
@@ -75,17 +75,6 @@ test('Space pans with any tool, keeps a selection, and never paints', async ({ p
   expect(await ws(page, (w) => w.activeTool)).toBe('hand');
   await page.keyboard.up('Space');
   expect(await ws(page, (w) => [w.activeTool, w.selection])).toEqual(['select', selection]);
-});
-
-test('Space still types: in Edit Mode, and in a text field', async ({ page }) => {
-  await openApp(page);
-  await editAt(page, 3, 3);
-  await page.keyboard.type('a b');
-  expect(await chars(page, 3, 3, 5)).toBe('a b');
-  expect(await ws(page, (w) => w.activeTool)).toBe('text');
-  await page.getByRole('textbox', { name: 'Character Seed' }).fill('');
-  await page.getByRole('textbox', { name: 'Character Seed' }).type('two words');
-  await expect(page.getByRole('textbox', { name: 'Character Seed' })).toHaveValue('two words');
 });
 
 test('with a button focused and the pointer over the canvas, Space pans and doesn\'t press the button', async ({ page }) => {

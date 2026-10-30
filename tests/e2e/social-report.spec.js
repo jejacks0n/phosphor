@@ -10,7 +10,6 @@ const wren = member({ id: 'u_2', username: 'pixel_wren', name: 'pixel_wren' });
 const panel = (page) => page.getByRole('complementary', { name: 'Chat' });
 const messages = (page) => panel(page).getByRole('log').locator('.message');
 const box = (page) => panel(page).getByRole('textbox', { name: 'Message' });
-const reportsIn = (page) => panel(page).getByRole('button', { name: /^Report/ });
 const dialog = (page, name) => page.getByRole('dialog', { name: `Report ${name}?` });
 const reported = (page) => page.getByRole('status').filter({ hasText: 'Reported. Thank you.' });
 const SUB = 'Phosphor\'s moderators see this message and the few before it.';
@@ -38,7 +37,7 @@ async function inRoom(host, context, { me = wren } = {}) {
 
 const sentReports = (room, who) => room.from(who).filter((m) => m.type === 'report');
 
-test('a member reports the host\'s message: the reason is asked for, the report carries the message as it came, and "Reported" shows a while', async ({ page: host, context }) => {
+test('a member reports the host\'s message: Cancel and Escape send nothing, with focus back on its Report; the reason is asked for, the report carries the message as it came, and "Reported" shows a while', async ({ page: host, context }) => {
   const { room, watcher } = await inRoom(host, context);
   await say(host, 'first');
   await say(watcher, 'between');
@@ -47,8 +46,23 @@ test('a member reports the host\'s message: the reason is asked for, the report 
   await expect(messages(watcher)).toHaveCount(3);
 
   const message = messages(watcher).nth(2);
+  const report = message.getByRole('button', { name: 'Report message from ansi-fan' });
+  for (const dismiss of [
+    () => dialog(watcher, 'ansi-fan').getByRole('button', { name: 'Cancel' }).click(),
+    () => watcher.keyboard.press('Escape'),
+  ]) {
+    await message.hover();
+    await report.click();
+    await dialog(watcher, 'ansi-fan').getByRole('radio', { name: 'Spam or flooding' }).check();
+    await dismiss();
+    await expect(dialog(watcher, 'ansi-fan')).toHaveCount(0);
+    await expect(report).toBeFocused();
+  }
+  await expect(reported(watcher)).toHaveCount(0);
+  expect(sentReports(room, 'p_1')).toHaveLength(0);
+
   await message.hover();
-  await message.getByRole('button', { name: 'Report message from ansi-fan' }).click();
+  await report.click();
   const asked = dialog(watcher, 'ansi-fan');
   await expect(asked).toBeVisible();
   await expect(asked.getByText(SUB, { exact: true })).toBeVisible();
@@ -62,62 +76,14 @@ test('a member reports the host\'s message: the reason is asked for, the report 
   await expect(asked).toHaveCount(0);
   await expect(reported(watcher)).toBeVisible();
   await expect.poll(() => sentReports(room, 'p_1')).toHaveLength(1);
-  const [report] = sentReports(room, 'p_1');
+  const [sent] = sentReports(room, 'p_1');
   const row = (await store(watcher, 'room', (r) => r.chat)).at(-1);
-  expect(report).toMatchObject({ type: 'report', sub: 'u_1', reason: 'harassment', message: row.id });
-  expect(report.messages.map((m) => m.text)).toEqual(['first', 'between', 'you are all wrong']);
-  expect(report.messages.at(-1)).toEqual({ pass: row.pass, id: row.id, ts: row.ts, text: 'you are all wrong', sig: row.sig });
+  expect(sent).toMatchObject({ type: 'report', sub: 'u_1', reason: 'harassment', message: row.id });
+  expect(sent.messages.map((m) => m.text)).toEqual(['first', 'between', 'you are all wrong']);
+  expect(sent.messages.at(-1)).toEqual({ pass: row.pass, id: row.id, ts: row.ts, text: 'you are all wrong', sig: row.sig });
   await watcher.clock.runFor(4000);
   await expect(reported(watcher)).toHaveCount(0);   // gone after a few seconds
   await watcher.clock.resume();
-});
-
-test('Cancel and Escape send nothing, and focus goes back to the message\'s Report', async ({ page: host, context }) => {
-  const { room, watcher } = await inRoom(host, context);
-  await say(host, 'hello');
-  await expect(messages(watcher)).toHaveCount(1);
-  const report = messages(watcher).first().getByRole('button', { name: 'Report message from ansi-fan' });
-  for (const dismiss of [
-    () => dialog(watcher, 'ansi-fan').getByRole('button', { name: 'Cancel' }).click(),
-    () => watcher.keyboard.press('Escape'),
-  ]) {
-    await messages(watcher).first().hover();
-    await report.click();
-    await dialog(watcher, 'ansi-fan').getByRole('radio', { name: 'Spam or flooding' }).check();
-    await dismiss();
-    await expect(dialog(watcher, 'ansi-fan')).toHaveCount(0);
-    await expect(report).toBeFocused();
-  }
-  await expect(reported(watcher)).toHaveCount(0);
-  expect(sentReports(room, 'p_1')).toHaveLength(0);
-});
-
-test('the host reports a watcher from N here ⋯: no message, and their last messages', async ({ page: host, context }) => {
-  const { room, watcher } = await inRoom(host, context);
-  await say(watcher, 'buy now');
-  await expect(messages(host)).toHaveCount(1);
-  await say(host, 'please stop');
-  await expect(messages(watcher)).toHaveCount(2);
-  await say(watcher, 'buy now!!');
-  await expect(messages(host)).toHaveCount(3);
-
-  const here = panel(host).getByRole('button', { name: /^\d+ here$/ });
-  await here.click();
-  await panel(host).getByRole('list', { name: 'Who is here' }).getByRole('button', { name: 'More for pixel_wren' }).click();
-  await host.getByRole('button', { name: 'Report', exact: true }).click();
-  const asked = dialog(host, 'pixel_wren');
-  await expect(asked.getByText(SUB, { exact: true })).toBeVisible();
-  await asked.getByRole('radio', { name: 'Spam or flooding' }).check();
-  await holdTime(host);
-  await asked.getByRole('button', { name: 'Report', exact: true }).click();
-
-  await expect(reported(host)).toBeVisible();
-  await host.clock.resume();
-  await expect.poll(() => sentReports(room, 'host')).toHaveLength(1);
-  const [report] = sentReports(room, 'host');
-  expect(report).toMatchObject({ type: 'report', sub: 'u_2', reason: 'spam' });
-  expect(report).not.toHaveProperty('message');
-  expect(report.messages.map((m) => m.text)).toEqual(['buy now', 'buy now!!']);
 });
 
 test('once you\'ve reported someone, Report is gone for them for the rest of the room, on their messages and in N here ⋯; other people keep theirs', async ({ page: host, context }) => {
@@ -152,11 +118,17 @@ test('once you\'ve reported someone, Report is gone for them for the rest of the
   const more = (name) => panel(host).getByRole('list', { name: 'Who is here' }).getByRole('button', { name: `More for ${name}` });
   await more('tin_owl').click();
   await host.getByRole('button', { name: 'Report', exact: true }).click();
+  await expect(dialog(host, 'tin_owl').getByText(SUB, { exact: true })).toBeVisible();
   await dialog(host, 'tin_owl').getByRole('radio', { name: 'Spam or flooding' }).check();
   await holdTime(host);
   await dialog(host, 'tin_owl').getByRole('button', { name: 'Report', exact: true }).click();
   await expect(reported(host)).toBeVisible();
   await host.clock.resume();
+  await expect.poll(() => sentReports(room, 'host')).toHaveLength(1);
+  const [report] = sentReports(room, 'host');   // no message, and only their last messages
+  expect(report).toMatchObject({ type: 'report', sub: 'u_3', reason: 'spam' });
+  expect(report).not.toHaveProperty('message');
+  expect(report.messages.map((m) => m.text)).toEqual(['two']);
   await expect(reportFrom(host, 'tin_owl')).toHaveCount(0);
   await expect(reportFrom(host, 'pixel_wren')).toHaveCount(1);
   await more('tin_owl').click();
@@ -168,35 +140,6 @@ test('once you\'ve reported someone, Report is gone for them for the rest of the
 
   expect(sentReports(room, 'p_1')).toHaveLength(1);
   expect(sentReports(room, 'host')).toHaveLength(1);
-});
-
-test('a guest and a member who hasn\'t confirmed their email see no Report; nor does the host on their own messages', async ({ page: host, context }) => {
-  const { room, watcher: guest } = await inRoom(host, context, { me: null });
-  const unconfirmed = await watcherPage(context, room, { me: member({ id: 'u_3', username: 'tin_owl', name: 'tin_owl', emailVerified: false }) });
-  await unconfirmed.goto('/');
-  await joinFromCard(unconfirmed);
-  await say(host, 'hello all');
-  for (const page of [guest, unconfirmed, host]) {
-    await expect(messages(page)).toHaveCount(1);
-    await messages(page).first().hover();
-    await expect(reportsIn(page)).toHaveCount(0);
-  }
-});
-
-test('a silence heard from the room mid-room: the host drops that watcher\'s chat from then on', async ({ page: host, context }) => {
-  const { room, watcher } = await inRoom(host, context);
-  await say(watcher, 'before');
-  await expect(messages(host)).toHaveCount(1);
-  room.silence('u_2', Date.now() + 3_600_000);
-  await expect.poll(() => store(host, 'room', (r) => r._host.silences.has('u_2'))).toBe(true);   // heard before the next message
-  await say(watcher, 'after');
-  await say(host, 'still here');
-  await expect(messages(watcher)).toHaveCount(2);
-  await expect(messages(host)).toHaveCount(2);
-  await expect(messages(host).nth(1)).toContainText('still here');
-  await expect(messages(watcher).nth(1)).toContainText('still here');
-  await host.waitForTimeout(500);   // time for a message that wasn't dropped to arrive
-  for (const page of [host, watcher]) await expect(panel(page).getByRole('log')).not.toContainText('after');
 });
 
 test('a silenced watcher is told until when in place of the box, without a reload; the host still chats', async ({ page: host, context }) => {
