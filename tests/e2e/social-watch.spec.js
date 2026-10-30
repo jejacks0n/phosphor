@@ -158,6 +158,14 @@ test('a watcher zooms the art themselves: it stops tracking, and Track goes back
   await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'false');
   await expect.poll(async () => (await width()) / whole).toBeCloseTo(0.5, 1);
 
+  // Dragging across the control selects none of its text.
+  const control = await zoom.boundingBox();
+  await watcher.mouse.move(control.x + control.width - 2, control.y + control.height / 2);
+  await watcher.mouse.down();
+  await watcher.mouse.move(control.x + 2, control.y + control.height / 2, { steps: 5 });
+  await watcher.mouse.up();
+  expect(await watcher.evaluate(() => getSelection().toString())).toBe('');
+
   await watcher.locator('.room-art').hover();
   await watcher.keyboard.down('Control');
   await watcher.mouse.wheel(0, 500);

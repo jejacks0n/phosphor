@@ -116,6 +116,8 @@ form button {
 
 div.art {
   position: relative;
+  user-select: none;
+  -webkit-user-select: none;
   flex: 1;
   min-height: 0;
   border: 1px solid var(--border);
