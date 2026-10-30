@@ -41,6 +41,14 @@ test('usernameProblem matches the server\'s rules', () => {
     ['pixel_wren', null], ['wren-42', null], ['two-words', null], ['a-b-c-d', null],
     ['Quiet-Amber-Fox', 'reserved'], ['GUEST', 'reserved'], ['host', 'reserved'], ['system', 'reserved'],
     ['a-', 'length'], ['a b c d e', 'characters'], ['wren-42-fox', null], ['a'.repeat(24), null], ['', 'length'],
+    // Staff, the service and its makers, placeholders, joined, split, in digits, or with a word before or after.
+    ['sysop', 'reserved'], ['Moderator', 'reserved'], ['no-reply', 'reserved'], ['adm1n', 'reserved'],
+    ['r00t', 'reserved'], ['root99', 'reserved'], ['wren_mod', 'reserved'], ['M0D-wren', 'reserved'],
+    ['the-admin', 'reserved'], ['realadmin', 'reserved'], ['phosphor_wren', 'reserved'], ['IshiFishi', 'reserved'],
+    ['1shif1sh1', 'reserved'], ['euphio-labs', 'reserved'], ['official_wren', 'reserved'], ['everyone', 'reserved'],
+    ['deleted_user', 'reserved'], ['test1', 'reserved'], ['demo', 'reserved'],
+    // Words that only hold one inside them.
+    ['badminton', null], ['modern_wren', null], ['rooted', null], ['wren42', null],
   ];
   for (const [name, problem] of cases) assert.equal(usernameProblem(name), problem, name);
 });

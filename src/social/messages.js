@@ -6,7 +6,7 @@ const day = (ms) => new Date(ms).toLocaleDateString(undefined, { month: 'long', 
 const USERNAME = {
   length: 'Usernames are 3 to 24 characters',
   characters: 'Use only letters, numbers, underscores and hyphens',
-  reserved: "That name is reserved: names can't be three words joined by hyphens, or admin, phosphor, guest, host or system",
+  reserved: "That name is reserved: nothing that reads as staff or Phosphor (admin, mod, support, adm1n, wren_mod), a placeholder (test, user, demo, even test1), or three words joined by hyphens (a guest's nickname)",
 };
 
 // A room the server wouldn't make: the field it refused (the others only an app bug sends).
@@ -20,6 +20,13 @@ const WORDS = {
   NETWORK: "Couldn't reach Phosphor's server. Check your connection.",
   TERMS_REQUIRED: 'Agree to the terms to continue',
   USERNAME: ({ problem }) => USERNAME[problem] ?? 'That username won\'t work',
+  // Sign-up's own refusals of a username: the form has already checked length and characters, so an invalid
+  // one is reserved.
+  INVALID_USERNAME: USERNAME.reserved,
+  USERNAME_TOO_SHORT: USERNAME.length,
+  USERNAME_TOO_LONG: USERNAME.length,
+  INVALID_EMAIL: "That doesn't look like an email address",
+  EMAIL_RESERVED: "That address is at one of Phosphor's own domains. Sign up with Discord or GitHub using it, or with another email",
   TAKEN: 'That username is taken',
   USERNAME_IS_ALREADY_TAKEN: 'That username is taken',
   TOO_SOON: ({ until }) => until ? `You can change your username again on ${day(until)}` : 'You changed your username recently. Try again later',

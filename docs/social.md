@@ -63,10 +63,15 @@ has them set up; with neither, the page is just the email or username and passwo
 
 **Create an account** asks for:
 
-- a **username**: how everyone sees you, unique, letters, numbers, `-` and `_`;
-- your **email**, and a **password** of at least 10 characters that isn't a known leaked password;
+- a **username**: how everyone sees you, unique, 3 to 24 letters, numbers, `-` and `_`. Names that
+  read as staff or Phosphor (`admin`, `mod`, `support`, even as `adm1n` or `wren_mod`), placeholders
+  (`test`, `user`, `demo`, even `test1`) or three words joined by hyphens (a guest's nickname) are
+  reserved, and the field says so as you type;
+- your **email** (not one at Phosphor's own domains; Discord and GitHub may use one they've
+  verified), and a **password** of at least 10 characters that isn't a known leaked password;
 - a quick check that you're not a script (Cloudflare Turnstile);
-- that you're **13 or older** and agree to the **Terms** and **Privacy Policy**.
+- that you're **13 or older** and agree to the **Terms** and **Privacy Policy** (each opens over
+  the app, like About).
 
 Phosphor then emails you a link to confirm your address. Until you do, you can watch but not chat
 or start a room. The lobby says **Confirm your email to start a room**, with **Resend** to send the
@@ -100,8 +105,8 @@ you out everywhere else. Signed out, it has a **Sign in** link back.
     and **Turn on** starts again with a new key.
   - Then you get 10 **backup codes**, shown this once: save them somewhere safe. **New backup
     codes** (it asks for your password) replaces them, and **Turn off** (the same) ends two-factor.
-  - If you lose the phone and the backup codes, there is no way back in from the app: an admin
-    turns two-factor off for the account.
+  - If you lose the phone and the backup codes, there is no way back in from the app: write to
+    hello@phosphor.work for help.
 - **Blocked**: everyone you've blocked, with **Unblock**.
 - **Delete account**: asks for your password, then (**Delete for good**) removes your account, your
   username and your blocks. An account with no password needs you to have signed in with Discord or

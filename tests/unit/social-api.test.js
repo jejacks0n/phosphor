@@ -74,7 +74,7 @@ test('messageFor has plain words for every code the server sends, and a fallback
     'NETWORK', 'INVALID_EMAIL_OR_PASSWORD', 'INVALID_USERNAME_OR_PASSWORD', 'USER_ALREADY_EXISTS',
     'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 'USERNAME_IS_ALREADY_TAKEN', 'PASSWORD_TOO_SHORT', 'INVALID_TOKEN', 'TOKEN_EXPIRED',
     'INVALID_CODE', 'INVALID_BACKUP_CODE', 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE', 'ACCOUNT_TEMPORARILY_LOCKED', 'INVALID_TWO_FACTOR_COOKIE',
-    'SILENCED'];
+    'SILENCED', 'INVALID_USERNAME', 'USERNAME_TOO_SHORT', 'USERNAME_TOO_LONG', 'INVALID_EMAIL', 'EMAIL_RESERVED'];
   const fallback = messageFor('NO_SUCH_CODE');
   assert.equal(fallback, 'Something went wrong. Try again.');
   for (const code of codes) assert.notEqual(messageFor(code), fallback, code);
@@ -82,7 +82,11 @@ test('messageFor has plain words for every code the server sends, and a fallback
   assert.equal(messageFor('USERNAME', { problem: 'length' }), 'Usernames are 3 to 24 characters');
   assert.equal(messageFor('USERNAME', { problem: 'characters' }), 'Use only letters, numbers, underscores and hyphens');
   assert.equal(messageFor('USERNAME', { problem: 'reserved' }),
-    "That name is reserved: names can't be three words joined by hyphens, or admin, phosphor, guest, host or system");
+    "That name is reserved: nothing that reads as staff or Phosphor (admin, mod, support, adm1n, wren_mod), a placeholder (test, user, demo, even test1), or three words joined by hyphens (a guest's nickname)");
+  // Sign-up's own refusals of a username say the same as the username step's.
+  assert.equal(messageFor('INVALID_USERNAME'), messageFor('USERNAME', { problem: 'reserved' }));
+  assert.equal(messageFor('USERNAME_TOO_SHORT'), messageFor('USERNAME', { problem: 'length' }));
+  assert.equal(messageFor('EMAIL_RESERVED'), "That address is at one of Phosphor's own domains. Sign up with Discord or GitHub using it, or with another email");
   assert.equal(messageFor('USERNAME_IS_ALREADY_TAKEN'), messageFor('TAKEN'));
   assert.equal(messageFor('INVALID_USERNAME_OR_PASSWORD'), "That email or username and password don't match");
   assert.equal(messageFor('USER_ALREADY_EXISTS'), 'An account already uses that email');

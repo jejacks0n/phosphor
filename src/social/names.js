@@ -31,13 +31,56 @@ export function nameInk(color) {
 }
 
 // A username's problem, as the server checks it (length, then characters, then reserved): 'length',
-// 'characters', 'reserved' (admin and the like, or three hyphen-joined words: a guest's nickname), or null.
-const RESERVED = new Set(['admin', 'phosphor', 'guest', 'host', 'system']);
+// 'characters', 'reserved', or null. Reserved names are written without their hyphens and underscores
+// (`no-reply` is `noreply`).
+const RESERVED = new Set([
+  // Staff and authority.
+  'admin', 'admins', 'administrator', 'administrators', 'root', 'sysop', 'sysadmin', 'superuser', 'superadmin',
+  'moderator', 'moderators', 'mod', 'mods', 'staff', 'team', 'owner', 'founder', 'ceo', 'operator', 'ops',
+  'official', 'verified', 'security', 'trust', 'safety', 'trustandsafety', 'abuse', 'legal', 'privacy',
+  'compliance', 'support', 'help', 'helpdesk', 'service', 'customerservice', 'billing', 'contact', 'info',
+  'feedback', 'report', 'reports', 'appeals',
+  // The service and the people behind it.
+  'phosphor', 'ishifishi', 'euphio',
+  // Mailboxes and machinery.
+  'postmaster', 'webmaster', 'hostmaster', 'noreply', 'donotreply', 'mailerdaemon', 'daemon', 'mail', 'email',
+  'smtp', 'www', 'api', 'ftp', 'dns', 'cdn', 'server', 'localhost', 'bot', 'robot', 'automod', 'console', 'status',
+  // Phosphor's own words: who's in a room, and who a message goes to.
+  'guest', 'guests', 'host', 'system', 'lobby', 'room', 'rooms', 'everyone', 'here', 'all', 'channel',
+  // Stand-ins a real person could be mistaken for, or that read as a missing or removed account.
+  'null', 'undefined', 'nil', 'none', 'nobody', 'anyone', 'someone', 'unknown', 'anonymous', 'anon', 'deleted',
+  'deleteduser', 'removed', 'banned', 'suspended', 'silenced', 'user', 'username', 'member', 'test', 'demo',
+  'example',
+  // Words the app and its pages use.
+  'login', 'logout', 'signin', 'signout', 'signup', 'register', 'account', 'settings', 'profile', 'auth', 'oauth',
+  'password', 'reset', 'verify', 'dashboard', 'home', 'about', 'terms',
+]);
+// A name that starts or ends with one of these, joined or not, passes for official (`phosphor_wren`, `realadmin`).
+const OFFICIAL = [
+  'admin', 'moderator', 'sysop', 'superuser', 'official', 'staff', 'support', 'phosphor', 'ishifishi', 'euphio',
+  'postmaster', 'webmaster', 'hostmaster', 'noreply', 'trustandsafety',
+];
+// A name with one of these as a word of its own does too (`wren_mod`, `the-admin`).
+const WORDS = new Set(['admin', 'admins', 'mod', 'mods', 'staff', 'sysop', 'root', 'official', 'bot']);
+// Digits standing in for letters, so `adm1n` and `m0d` are read as `admin` and `mod`.
+const LEET = { 0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't', 8: 'b' };
+
+// Read as typed, with its digits as letters, and with its digits dropped (`root99`).
+function isReserved(name) {
+  const lower = name.toLowerCase();
+  return [lower, lower.replace(/\d/g, (d) => LEET[d] ?? d), lower.replace(/\d/g, '')].some((reading) => {
+    const words = reading.split(/[-_\d]+/).filter(Boolean);
+    const joined = words.join('');
+    return RESERVED.has(joined) || words.some((w) => WORDS.has(w))
+      || OFFICIAL.some((w) => joined.startsWith(w) || joined.endsWith(w));
+  });
+}
 
 export function usernameProblem(name) {
   if (name.length < 3 || name.length > 24) return 'length';
   if (!/^[a-z0-9_-]+$/i.test(name)) return 'characters';
-  if (RESERVED.has(name.toLowerCase()) || /^[a-z]+-[a-z]+-[a-z]+$/i.test(name)) return 'reserved';
+  // Three hyphen-joined words is a guest's nickname.
+  if (isReserved(name) || /^[a-z]+-[a-z]+-[a-z]+$/i.test(name)) return 'reserved';
   return null;
 }
 
