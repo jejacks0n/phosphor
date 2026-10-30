@@ -3,6 +3,7 @@ import { ref, computed, useTemplateRef, watch, onMounted, onBeforeUnmount } from
 import CellCanvas from '@/lib/CellCanvas';
 import { loadFontFaces } from '@/lib/displayFonts';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
+import { clampAnsiZoom } from '@/lib/zoom';
 import { fontFor } from '@/social/wire';
 import { nameColor, nameInk } from '@/social/names';
 import UserName from './UserName.vue';
@@ -14,7 +15,8 @@ import UserName from './UserName.vue';
 // the part of the box in view by CSS (sticky), so it moves with the box in the same frame; only once
 // the box is out of view is it placed here, at the edge nearest the box, with an arrow toward it. While tracking, each new view of the
 // host's is scrolled to the center. A wheel, a key or a press in it is looking around (a scroll it
-// made itself isn't; the tag is no part of it). Each draw tells the cell in the middle of the view (looking-at). The host's numbers are a stranger's: the view is held
+// made itself isn't; the tag is no part of it); Ctrl+wheel or a pinch asks for a zoom (zoom) instead, and
+// a zoom while not tracking keeps the same cell under the pointer, or in the middle of the view. Each draw tells the cell in the middle of the view (looking-at). The host's numbers are a stranger's: the view is held
 // to the grid here, and the font's size by fontFor.
 const props = defineProps({
   art: { type: Object, default: null },        // { cells, cols, lines, font (as sent: wire.fontOnWire) }
@@ -24,7 +26,7 @@ const props = defineProps({
   zoom: { type: Number, default: 1 },          // the cell's size against the font's (the host's, never above 1)
   boxed: { type: Boolean, default: true },     // the host's box and tag (false: just the art, scrolled to the view)
 });
-const emit = defineEmits(['look-around', 'track', 'looking-at']);
+const emit = defineEmits(['look-around', 'track', 'looking-at', 'zoom']);
 
 const scrollRef = useTemplateRef('scroll'), sizerRef = useTemplateRef('sizer'), canvasRef = useTemplateRef('canvas'), tagRef = useTemplateRef('tag');
 const font = computed(() => fontFor(props.art?.font));
@@ -33,6 +35,7 @@ const unavailable = ref(false);
 const metrics = ref(null); // the cell in CSS px the last draw used, which the sizer and the box follow
 let cellCanvas = null, renderFrame = null, resizeObserver = null;
 let sizedZoom = null;   // the zoom the canvas was last sized at
+let held = null;        // { col, row, x, y }: the cell to keep at x, y in the view through a zoom
 
 const view = computed(() => {
   const v = props.hostView, art = props.art;
@@ -120,6 +123,7 @@ const render = () => {
     m = sized;
   }
   if (metrics.value?.cellWidth !== m.cellWidth || metrics.value?.lineHeight !== m.lineHeight) metrics.value = m;
+  else held = null;   // a zoom too small to change the cell
   cellCanvas.draw(art.cells, { cols: art.cols, rows: art.lines, col: win.col, row: win.row });
   canvasRef.value.style.left = `${win.col * m.cellWidth}px`;
   canvasRef.value.style.top = `${win.row * m.lineHeight}px`;
@@ -136,6 +140,21 @@ const center = () => {
 };
 watch([view, () => props.tracking, metrics], center, { flush: 'post' });
 
+// Looking around, a zoom holds a cell in place: taken before the art changes size, put back once it has.
+const hold = (x, y) => {
+  const m = metrics.value, seen = viewIn(sizerRef.value, scrollRef.value);
+  if (m) held = { col: (seen.x + x) / m.cellWidth, row: (seen.y + y) / m.lineHeight, x, y };
+};
+watch(() => props.zoom, () => {
+  if (!props.tracking && !held) hold(scrollRef.value.clientWidth / 2, scrollRef.value.clientHeight / 2);
+});
+watch(metrics, (m) => {
+  if (!held) return;
+  scrollRef.value.scrollLeft = held.col * m.cellWidth - held.x;
+  scrollRef.value.scrollTop = held.row * m.lineHeight - held.y;
+  held = null;
+}, { flush: 'post' });
+
 watch([() => props.art, () => props.zoom], queueRender, { flush: 'post' });
 watch([view, () => props.tracking, () => props.host], queueRender, { flush: 'post' });   // the tag's place and size
 
@@ -150,6 +169,15 @@ watch(fontKey, (key) => {
 
 const lookAround = () => emit('look-around');
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
+const wheel = (event) => {
+  if (!event.ctrlKey || !props.boxed) return lookAround();
+  event.preventDefault();   // the page's own zoom, otherwise
+  const zoom = clampAnsiZoom(props.zoom * Math.exp(-event.deltaY * 0.01));   // as the ANSI view's
+  if (zoom === props.zoom) return;
+  const rect = scrollRef.value.getBoundingClientRect();
+  hold(event.clientX - rect.left, event.clientY - rect.top);
+  emit('zoom', zoom);
+};
 const keyDown = (event) => { if (SCROLL_KEYS.has(event.key)) lookAround(); };
 
 onMounted(() => {
@@ -181,7 +209,7 @@ onBeforeUnmount(() => {
       tabindex="0"
       role="region"
       aria-label="The room's art"
-      @wheel.passive="lookAround"
+      @wheel="wheel"
       @keydown="keyDown"
       @pointerdown="lookAround"
   >

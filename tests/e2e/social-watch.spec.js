@@ -133,6 +133,43 @@ test('the host zooms ANSI out to 50%: a tracking watcher\'s cells are half as wi
   await expect.poll(async () => (await cellWidth()) / whole).toBeCloseTo(0.5, 1);
 });
 
+test('a watcher zooms the art themselves: it stops tracking, and Track goes back to the host\'s zoom', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room, { image: 'images/tall.png' });
+  await tab(host, 'ANSI').click();
+  await settled(host);
+  await store(host, 'workspace', (w) => { w.ansiZoom = 1; });
+  await tab(host, 'SOCIAL').click();
+
+  const watcher = await watcherPage(context, room);
+  await watcher.goto('/');
+  await joinFromCard(watcher);
+  await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'true');
+  const zoom = watcher.getByRole('group', { name: 'Zoom' });
+  const width = async () => (await watcher.locator('.room-art .sizer').boundingBox()).width;
+  await expect(zoom).toContainText('100%');
+  await expect.poll(width).toBeGreaterThan(0);
+  const whole = await width();
+  await expect(zoom.getByRole('button', { name: 'Zoom in' })).toBeDisabled();
+
+  await zoom.getByRole('button', { name: 'Zoom out' }).click();
+  await zoom.getByRole('button', { name: 'Zoom out' }).click();
+  await expect(zoom).toContainText('50%');
+  await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(async () => (await width()) / whole).toBeCloseTo(0.5, 1);
+
+  await watcher.locator('.room-art').hover();
+  await watcher.keyboard.down('Control');
+  await watcher.mouse.wheel(0, 500);
+  await watcher.keyboard.up('Control');
+  await expect(zoom).toContainText('25%');
+  await expect(zoom.getByRole('button', { name: 'Zoom out' })).toBeDisabled();
+
+  await trackTag(watcher).click();
+  await expect(zoom).toContainText('100%');
+  await expect.poll(width).toBe(whole);
+});
+
 test('Leave returns the watcher to the lobby, and the host\'s count goes to 0', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room);

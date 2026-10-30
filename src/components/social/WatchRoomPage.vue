@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
+import { ANSI_ZOOM_MAX, ANSI_ZOOM_MIN } from '@/lib/zoom';
 import RoomArt from './RoomArt.vue';
 
 // The room you watch: the host's art with the part they're looking at (tracked until you look around;
@@ -33,6 +34,9 @@ watch(() => room.status === 'password' && room.passwordWrong, async (wrong) => {
   passwordRef.value?.select();
 });
 const lookAround = () => { if (room.tracking) room.setTracking(false); };
+// The zoom's buttons go by quarters, from wherever a pinch left it.
+const zoomOut = () => room.setArtZoom((Math.ceil(room.artZoom * 4) - 1) / 4);
+const zoomIn = () => room.setArtZoom((Math.floor(room.artZoom * 4) + 1) / 4);
 </script>
 
 <template>
@@ -45,7 +49,12 @@ const lookAround = () => { if (room.tracking) room.setTracking(false); };
       <button class="primary" type="submit">Join</button>
     </form>
     <div v-if="room.art" class="art" :class="{ stale: room.status === 'waiting' }">
-      <RoomArt :art="room.art" :host-view="room.hostView" :tracking="room.tracking" :zoom="room.artZoom" :host="room.room?.host || null" @look-around="lookAround" @track="room.setTracking(true)" @looking-at="room.lookingAt = $event" />
+      <RoomArt :art="room.art" :host-view="room.hostView" :tracking="room.tracking" :zoom="room.artZoom" :host="room.room?.host || null" @zoom="room.setArtZoom" @look-around="lookAround" @track="room.setTracking(true)" @looking-at="room.lookingAt = $event" />
+      <div class="zoom" role="group" aria-label="Zoom">
+        <button aria-label="Zoom out" :disabled="room.artZoom <= ANSI_ZOOM_MIN" @click="zoomOut">−</button>
+        <span>{{ Math.round(room.artZoom * 100) }}%</span>
+        <button aria-label="Zoom in" :disabled="room.artZoom >= ANSI_ZOOM_MAX" @click="zoomIn">+</button>
+      </div>
     </div>
   </div>
 </template>
@@ -106,6 +115,7 @@ form button {
 }
 
 div.art {
+  position: relative;
   flex: 1;
   min-height: 0;
   border: 1px solid var(--border);
@@ -114,5 +124,27 @@ div.art {
 }
 div.art.stale {   /* the host's art as it was: nothing new until they're back */
   opacity: 0.5;
+}
+div.zoom {   /* past the art's scrollbars */
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-1);
+  font: 11px ui-monospace, Menlo, monospace;
+}
+div.zoom span {
+  width: 4ch;
+  text-align: center;
+}
+div.zoom button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
 }
 </style>

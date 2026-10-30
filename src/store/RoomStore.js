@@ -12,6 +12,7 @@ import { fontOnWire, fontFor } from '@/social/wire';
 import { thumbnailOf } from '@/social/thumbnail';
 import { newSession, sessionJoined, sessionLeft, sessionRemoved, sessionSaid, sessionSaw } from '@/social/session';
 import { charRowsOf } from '@/lib/Cells';
+import { clampAnsiZoom } from '@/lib/zoom';
 import { useSocialStore } from '@/store/SocialStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -276,6 +277,12 @@ export const useRoomStore = defineStore('room', {
       this.tracking = on;
       if (on) this.artZoom = this.hostView?.zoom ?? 1;
       this._watch?.setTracking(on);
+    },
+
+    // A watcher's own zoom: the art stops following the host's until they track again.
+    setArtZoom(zoom) {
+      if (this.tracking) this.setTracking(false);
+      this.artZoom = clampAnsiZoom(zoom);
     },
 
     // The lobby picture from this top-left cell ({ col, row }), or tracking the view's middle again.
