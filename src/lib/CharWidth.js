@@ -30,9 +30,12 @@ export function cellWidth(cluster) {
   return width;
 }
 
-// What a cell can hold: exactly one character, one or two columns wide.
+// What a cell can hold: exactly one character, one or two columns wide, and no longer than the longest
+// real ones (emoji sequences of up to 16 or so units). Checked first: a cell can come from a stranger,
+// and a string is split into every one of its characters to count them.
+const MOST_CHAR_UNITS = 32;
 export function usableChar(text) {
-  if (typeof text !== 'string' || !text) return false;
+  if (typeof text !== 'string' || !text || text.length > MOST_CHAR_UNITS) return false;
   const clusters = graphemes(text);
   return clusters.length === 1 && cellWidth(clusters[0]) > 0;
 }

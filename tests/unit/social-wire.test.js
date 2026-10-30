@@ -2,7 +2,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
-  CHUNK_BYTES, MOST_SNAPSHOT_BYTES, encodeCells, decodeCells, changedCells, fontOnWire, fontFor, packSnapshot, unpackSnapshot,
+  CHUNK_BYTES, MOST_SNAPSHOT_BYTES, encodeCells, decodeCells, decodeChange, changedCells, fontOnWire, fontFor, packSnapshot, unpackSnapshot,
 } from '../../src/social/wire.js';
 import { hex2rgb } from '../../src/lib/ColorUtils.js';
 import { DISPLAY_FONTS } from '../../src/lib/displayFonts.js';
@@ -41,6 +41,24 @@ test('a cell from a stranger needs a string char, a wide of 1 or 2 if any, and c
   // A char that isn't one character a cell can hold is a space: markup, two characters, nothing, a control.
   const chars = decodeCells({ colors, cells: ['<b>x</b>', 'ab', '', '\u0000', '漢', '👍🏽'].map((c) => [c, 0, 1]) }).map((c) => c.char);
   assert.deepEqual(chars, [' ', ' ', ' ', ' ', '漢', '👍🏽']);
+});
+
+test('a color table can\'t be bigger than its cells can use, or not a list', () => {
+  const colors = ['#000000', '#111111', '#222222'];
+  assert.equal(decodeCells({ colors: colors.slice(0, 2), cells: [['a', 0, 1]] }).length, 1);   // a cell has two colors
+  assert.throws(() => decodeCells({ colors, cells: [['a', 0, 1]] }));
+  assert.throws(() => decodeCells({ colors: 'not a list', cells: [['a', 0, 1]] }));
+  assert.throws(() => decodeCells({ colors: colors.slice(0, 2), cells: 'not a list' }));
+});
+
+test('a change whose places don\'t fit is refused before its colors or cells are made', () => {
+  const change = { at: [1], colors: ['#000000', '#ffffff'], cells: [['a', 0, 1]] };
+  assert.deepEqual(decodeChange(change, 2).at, [1]);
+  assert.equal(decodeChange(change, 2).cells[0].char, 'a');
+  const unmakeable = { colors: ['not a color'], cells: [['a', 0, 0]] };
+  for (const at of [[5], [-1], [0.5], ['0'], [0, 1], 'x', undefined]) assert.equal(decodeChange({ ...unmakeable, at }, 2), null);
+  assert.equal(decodeChange({ ...unmakeable, at: [0], cells: 'x' }, 2), null);
+  assert.throws(() => decodeChange({ ...unmakeable, at: [0] }, 2));   // it fits, so it's made, and isn't a color
 });
 
 const gzip = async (text) => [new Uint8Array(await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer())];
