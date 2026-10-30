@@ -14,6 +14,12 @@ const reportsIn = (page) => panel(page).getByRole('button', { name: /^Report/ })
 const dialog = (page, name) => page.getByRole('dialog', { name: `Report ${name}?` });
 const reported = (page) => page.getByRole('status').filter({ hasText: 'Reported. Thank you.' });
 const SUB = 'Phosphor\'s moderators see this message and the few before it.';
+// "Reported. Thank you." stays a few seconds, and on CI a click can take longer than that: the page's
+// clock is held from just before Report until the checks are done (then page.clock.resume()).
+async function holdTime(page) {
+  await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+}
 
 async function say(page, text) {
   await box(page).fill(text);
@@ -50,6 +56,7 @@ test('a member reports the host\'s message: the reason is asked for, the report 
   await expect(asked.getByRole('radio', { checked: true })).toHaveCount(0);   // no default
   await expect(asked.getByRole('button', { name: 'Report', exact: true })).toBeDisabled();
   await asked.getByRole('radio', { name: 'Harassment or hate' }).check();
+  await holdTime(watcher);
   await asked.getByRole('button', { name: 'Report', exact: true }).click();
 
   await expect(asked).toHaveCount(0);
@@ -60,7 +67,9 @@ test('a member reports the host\'s message: the reason is asked for, the report 
   expect(report).toMatchObject({ type: 'report', sub: 'u_1', reason: 'harassment', message: row.id });
   expect(report.messages.map((m) => m.text)).toEqual(['first', 'between', 'you are all wrong']);
   expect(report.messages.at(-1)).toEqual({ pass: row.pass, id: row.id, ts: row.ts, text: 'you are all wrong', sig: row.sig });
-  await expect(reported(watcher)).toHaveCount(0, { timeout: 6000 });   // gone after a few seconds
+  await watcher.clock.runFor(4000);
+  await expect(reported(watcher)).toHaveCount(0);   // gone after a few seconds
+  await watcher.clock.resume();
 });
 
 test('Cancel and Escape send nothing, and focus goes back to the message\'s Report', async ({ page: host, context }) => {
@@ -99,9 +108,11 @@ test('the host reports a watcher from N here ⋯: no message, and their last mes
   const asked = dialog(host, 'pixel_wren');
   await expect(asked.getByText(SUB, { exact: true })).toBeVisible();
   await asked.getByRole('radio', { name: 'Spam or flooding' }).check();
+  await holdTime(host);
   await asked.getByRole('button', { name: 'Report', exact: true }).click();
 
   await expect(reported(host)).toBeVisible();
+  await host.clock.resume();
   await expect.poll(() => sentReports(room, 'host')).toHaveLength(1);
   const [report] = sentReports(room, 'host');
   expect(report).toMatchObject({ type: 'report', sub: 'u_2', reason: 'spam' });
@@ -128,8 +139,10 @@ test('once you\'ve reported someone, Report is gone for them for the rest of the
   await messages(watcher).first().hover();
   await reportFrom(watcher, 'ansi-fan').first().click();
   await dialog(watcher, 'ansi-fan').getByRole('radio', { name: 'Spam or flooding' }).check();
+  await holdTime(watcher);
   await dialog(watcher, 'ansi-fan').getByRole('button', { name: 'Report', exact: true }).click();
   await expect(reported(watcher)).toBeVisible();
+  await watcher.clock.resume();
   await expect(reportFrom(watcher, 'ansi-fan')).toHaveCount(0);
   await expect(reportFrom(watcher, 'tin_owl')).toHaveCount(1);
   await expect(panel(watcher).getByRole('log')).toBeFocused();
@@ -140,8 +153,10 @@ test('once you\'ve reported someone, Report is gone for them for the rest of the
   await more('tin_owl').click();
   await host.getByRole('button', { name: 'Report', exact: true }).click();
   await dialog(host, 'tin_owl').getByRole('radio', { name: 'Spam or flooding' }).check();
+  await holdTime(host);
   await dialog(host, 'tin_owl').getByRole('button', { name: 'Report', exact: true }).click();
   await expect(reported(host)).toBeVisible();
+  await host.clock.resume();
   await expect(reportFrom(host, 'tin_owl')).toHaveCount(0);
   await expect(reportFrom(host, 'pixel_wren')).toHaveCount(1);
   await more('tin_owl').click();
@@ -221,9 +236,11 @@ test('a member reports the room from under Exit: the fake hears report-room with
   await expect(asked.getByText('Phosphor\'s moderators see the room\'s last lobby pictures and a picture of what you see now.', { exact: true })).toBeVisible();
   await expect(asked.getByRole('button', { name: 'Report', exact: true })).toBeDisabled();
   await asked.getByRole('radio', { name: 'Sexual or violent' }).check();
+  await holdTime(watcher);
   await asked.getByRole('button', { name: 'Report', exact: true }).click();
 
   await expect(reported(watcher)).toBeVisible();
+  await watcher.clock.resume();
   await expect.poll(() => room.from('p_1').filter((m) => m.type === 'report-room')).toHaveLength(1);
   const [report] = room.from('p_1').filter((m) => m.type === 'report-room');
   expect(report).toMatchObject({ type: 'report-room', reason: 'sexual', picture: expect.stringMatching(/^[A-Za-z0-9+/]+=*$/) });
@@ -240,10 +257,13 @@ test('a card that leaves the lobby right after its report doesn\'t take "Reporte
   await card(watcher).getByRole('button', { name: 'More for neon harbor' }).click();
   await watcher.getByRole('button', { name: 'Report room' }).click();
   await roomDialog(watcher).getByRole('radio', { name: 'Spam or flooding' }).check();
+  await holdTime(watcher);
   await roomDialog(watcher).getByRole('button', { name: 'Report', exact: true }).click();
   watcher.server.lobby.send({ type: 'room-gone', id: ROOM_ID });
   await expect(card(watcher)).toHaveCount(0);
   await expect(reported(watcher)).toBeVisible();
+  await watcher.clock.runFor(4000);   // and it goes in its own time
+  await expect(reported(watcher)).toHaveCount(0);
 });
 
 test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears report-room; the card has no Report room after, and a guest\'s card has no ⋯', async ({ context }) => {
@@ -265,9 +285,11 @@ test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears repo
   const asked = roomDialog(watcher);
   await expect(asked.getByText('Phosphor\'s moderators see the room\'s last lobby pictures.', { exact: true })).toBeVisible();
   await asked.getByRole('radio', { name: 'Spam or flooding' }).check();
+  await holdTime(watcher);
   await asked.getByRole('button', { name: 'Report', exact: true }).click();
 
   await expect(reported(watcher)).toBeVisible();
+  await watcher.clock.resume();
   await expect.poll(() => watcher.server.lobby.received.filter((m) => m.type === 'report-room')).toEqual([{ type: 'report-room', id: ROOM_ID, reason: 'spam' }]);
   await expect(more(watcher)).toHaveCount(0);   // its only item gone
   await expect(card(watcher).getByRole('button', { name: /^Join/ })).toBeFocused();   // the ⋯ gone, focus goes to Join
