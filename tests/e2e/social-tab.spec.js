@@ -1,5 +1,5 @@
 // The SOCIAL tab: a fourth editor tab, desktop only, where the editor's shortcuts are off.
-import { test, expect, openApp, tab, store, cellPoint, drag, imageInput } from './support.js';
+import { test, expect, openApp, tab, store, cellPoint, drag, imageInput, settled } from './support.js';
 import { fakeServer } from './social-support.js';
 
 const databases = (page) => page.evaluate(async () => (await indexedDB.databases()).map((d) => d.name));
@@ -122,8 +122,8 @@ test('on the SOCIAL tab, letters, X, Space and Ctrl+Z leave the art and its tool
   await drag(page, await cellPoint(page, 4, 8, 0), await cellPoint(page, 14, 8, 0));
   await page.keyboard.press('ControlOrMeta+z'); // the second stroke, undone here: something to redo
   const snapshot = () => store(page, 'project', (p) => JSON.stringify(p.cells));
-  let cells; // the undo's cells catch up a moment later: wait until they hold still
-  await expect.poll(async () => cells === (cells = await snapshot())).toBe(true);
+  await settled(page); // the undo's render lands a moment later
+  const cells = await snapshot();
 
   await tab(page, 'SOCIAL').click();
   await page.locator('.social-tab').evaluate((el) => el.prepend(Object.assign(document.createElement('input'), { ariaLabel: 'Username' })));
