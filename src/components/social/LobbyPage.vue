@@ -30,7 +30,7 @@ const name = computed(() => social.myName ?? social.me?.username);
 // Who you are is known once /api/me has answered: until then, neither you nor a guest (no Sign in to flash).
 const known = computed(() => social.supported !== null);
 
-// A card's Report room, asked here: the card can leave the lobby (delisted) before "Reported. Thank you." has gone.
+// A card's Report room, asked here: the card can leave the lobby before "Reported. Thank you." has gone.
 const reporting = ref(null);   // ReportDialog's props, from a RoomCard's report
 
 // Silenced, Start a room is off with until when beside it; a ticking now brings it back when that's past.

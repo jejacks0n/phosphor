@@ -23,7 +23,7 @@ const reasonId = useId();
 
 // The ⋯ with Report room: for a confirmed member, not on their own room, until they've reported it.
 const reportable = computed(() => roomStore.canReport && props.room.host !== social.myName && !social.reportedRooms.includes(props.room.id));
-// The lobby shows the dialog, so a card that leaves (delisted) doesn't take "Reported. Thank you." with it.
+// The lobby shows the dialog, so a card that leaves the lobby doesn't take "Reported. Thank you." with it.
 const emit = defineEmits(['report']);   // { room, trigger, back }: ReportDialog's props
 const joinButton = useTemplateRef('join');
 const askToReport = (event) => {
