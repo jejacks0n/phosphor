@@ -136,7 +136,8 @@ export const useRoomStore = defineStore('room', {
     async startRoom({ name, welcome, isPublic, password, allowGuests, max, signal = null }) {
       const social = useSocialStore();
       const body = { name, public: isPublic, allowGuests, max, signal: isPublic ? signal : null, ...(!isPublic && password ? { password } : {}) };   // a private room's password is optional
-      const { ok, data } = await social.request('/api/rooms', { method: 'POST', body });
+      const { ok, data, code } = await social.request('/api/rooms', { method: 'POST', body });
+      if (code === 'SILENCED') social.renewPass();   // a pass that says so, so Start a room is off now
       if (!ok) return false;
       const lobbyPin = isPublic ? this.lobbyPin : null;   // picked in Setup room, kept through close()
       this.close();

@@ -400,21 +400,34 @@ test('a server that won\'t make the room until the email is verified says so', a
   expect(await store(page, 'room', (r) => r.role)).toBe(null);
 });
 
-test('while your pass says you\'re silenced, Start a room is disabled and says until when', async ({ page }) => {
-  await fakeServer(page, { me: member(), silencedUntil: Date.now() + 3_600_000 });
+test('while your pass says you\'re silenced, Start a room is disabled and says until when; it comes back when that\'s past', async ({ page }) => {
+  const start = Date.now();
+  await page.clock.install({ time: start });
+  await fakeServer(page, { me: member(), silencedUntil: start + 120_000 });
   await openApp(page);
   await tab(page, 'SOCIAL').click();
   await expect(page.getByRole('button', { name: 'Start a room' })).toBeDisabled();
-  await expect(shown(page, 'lobby').getByText('You\'re silenced until')).toBeVisible();
+  await expect(shown(page, 'lobby').getByRole('status').filter({ hasText: 'You\'re silenced until' })).toBeVisible();
+  await page.clock.fastForward('03:00');
+  await expect(page.getByRole('button', { name: 'Start a room' })).toBeEnabled();
+  await expect(shown(page, 'lobby').getByText('You\'re silenced until')).toHaveCount(0);
 });
 
 test('a SILENCED refusal shows the server\'s words and no room starts', async ({ page }) => {
   const until = Date.now() + 3_600_000;
-  const { server } = await startPage(page, { 'POST /api/rooms': () => [403, { code: 'SILENCED', until }] });
+  let server;
+  ({ server } = await startPage(page, {
+    'POST /api/rooms': () => {
+      server.silencedUntil = until;   // the server's word on it, which a new pass carries
+      return [403, { code: 'SILENCED', until }];
+    },
+  }));
   await page.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
   await page.getByRole('button', { name: 'Go live' }).click();
   await expect(page.locator('.social-tab .notice')).toContainText(silencedWords(until));
   await expect(shown(page, 'start-room').getByRole('heading', { name: 'Setup room' })).toBeVisible();
   expect(await store(page, 'room', (r) => r.role)).toBe(null);
   expect(server.sent('POST', '/api/rooms')).toHaveLength(1);
+  // A new pass at once, so Start a room is off without waiting for the next renewal.
+  await expect.poll(() => store(page, 'social', (s) => s.claims?.silencedUntil)).toBe(until);
 });

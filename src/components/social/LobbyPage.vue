@@ -47,7 +47,7 @@ onBeforeUnmount(() => clearInterval(tick));
         <h2>Public rooms</h2>
         <span class="count">{{ social.rooms.length }} live</span>
         <template v-if="social.signedIn && social.me?.emailVerified !== false">
-          <p v-if="silenced" class="silenced">{{ silencedWords(social.claims.silencedUntil, now) }}</p>
+          <p v-if="silenced" class="silenced" role="status">{{ silencedWords(social.claims.silencedUntil, now) }}</p>
           <button class="start" :disabled="silenced" @click="social.page = 'start-room'">Start a room</button>
         </template>
       </header>
