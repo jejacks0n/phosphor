@@ -67,6 +67,10 @@ test('hostile fields are dropped, and only those', async () => {
   }
   expect((await read(project({ ...BASE, cellEdits: [], imageIsWorkingCopy: 'yes' }))).settings.imageIsWorkingCopy).toBeUndefined();
   expect((await read(project({ ...BASE, cellEdits: [], imageIsWorkingCopy: true }))).settings.imageIsWorkingCopy).toBe(true);
+  // What autosave knows a document by isn't the file's to say.
+  const { settings } = await read(project({ ...BASE, cellEdits: [], documentId: 'someone-elses', savedToFile: false }));
+  expect(settings).not.toHaveProperty('documentId');
+  expect(settings).not.toHaveProperty('savedToFile');
   const cells = (await read(project({ ...BASE, cellEdits: [['0,0', { char: 'ab' }], ['1,0', { char: 'Z', fg: 'red' }], ['x', { char: 'Q' }], ['2,0', { char: '́' }]] }))).editCells;
   expect(Object.fromEntries(cells)).toEqual({ '1,0': { char: 'Z' } }); // a bad color is dropped, the char kept
 });
