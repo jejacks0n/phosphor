@@ -134,6 +134,12 @@ export function useTextTool(project, workspace, textInput) {
     if (event.inputType?.startsWith('insert')) type(project, workspace, event.data ?? event.target.value);
     event.target.value = '';
   };
+  // Typing's undo is the document's, not the field's. The browser's undo is one list for the whole page, so a
+  // Cmd+Z in another field (the save dialog's name) would otherwise come here once that field has none left,
+  // and take the focus out of it.
+  const onBeforeInput = (event) => {
+    if (event.inputType === 'historyUndo' || event.inputType === 'historyRedo') event.preventDefault();
+  };
   const onCompositionEnd = (event) => {
     if (event.data) typeLines(project, workspace, event.data);
     event.target.value = '';
@@ -171,6 +177,7 @@ export function useTextTool(project, workspace, textInput) {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('pointerup', onPointerUp, true);
+    textInput?.value?.addEventListener('beforeinput', onBeforeInput);
     textInput?.value?.addEventListener('input', onInput);
     textInput?.value?.addEventListener('compositionend', onCompositionEnd);
     textInput?.value?.addEventListener('focusout', onFocusOut);
@@ -179,6 +186,7 @@ export function useTextTool(project, workspace, textInput) {
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('pointerdown', onPointerDown, true);
     window.removeEventListener('pointerup', onPointerUp, true);
+    textInput?.value?.removeEventListener('beforeinput', onBeforeInput);
     textInput?.value?.removeEventListener('input', onInput);
     textInput?.value?.removeEventListener('compositionend', onCompositionEnd);
     textInput?.value?.removeEventListener('focusout', onFocusOut);
