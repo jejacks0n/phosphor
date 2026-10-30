@@ -20,7 +20,8 @@ npm run build
 - `src/store/ProjectStore.js`: the document's state and getters. Its actions are in
   `src/store/project/`, one file per area, joined in `ProjectStore.js` by `combineActions` (which
   refuses a name defined twice):
-  - `document.js`: new image or canvas, open, save, export, the filename
+  - `document.js`: new image or canvas, open, save, export, the filename, opening a project's parts
+    (`openParts`), restoring what autosave kept (`restoreDocument`)
   - `rendering.js`: the grid's size, renders and recomposites, the cells the views show
   - `reading.js`: colors and cells under a point, without changing anything
   - `editLayer.js`: paint, typing, flipping, clearing the edit layer
@@ -35,6 +36,9 @@ npm run build
   other. A new action goes in its area's file; `tests/browser/store-actions.test.js` lists every
   action, so update it with the new name.
 - `src/store/WorkspaceStore.js`: the editor around the document: the tool, colors, selection, views.
+- `src/composables/useAutosave.js`: writes the document to the browser as you work and brings it back,
+  with `src/document/autosaveRules.js` (when, and what goes) and `src/document/autosaveStore.js` (the
+  IndexedDB storage).
 - `src/document/`: the document's data (layers, cells, history, files); `src/lib/`: the libraries
   (cells, colors, the image pipeline, exports); `src/tools/`: one file per tool.
 - The SOCIAL tab: `src/social/` (the network and crypto modules: API calls, the lobby socket, keys

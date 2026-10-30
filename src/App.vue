@@ -38,6 +38,7 @@ watchEffect(() => {
 useSocialStore().start();
 
 const autosave = useAutosave();
+const { ready, recent, openRecent } = autosave;
 
 // Leaving with unsaved changes asks first, unless they're safe in the browser and the art has been
 // saved to a file at least once. A room you host always asks.
@@ -111,7 +112,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 <template>
   <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick }]">
     <ControlPanel/>
-    <EditWorkspace/>
+    <EditWorkspace :ready="ready" :recent="recent" :open-recent="openRecent"/>
     <ChatPanel v-if="room.inRoom"/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
     <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>

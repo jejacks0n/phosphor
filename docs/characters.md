@@ -108,6 +108,11 @@ each save is a new file; type over it for any other name. The name you give beco
 name, so the next save starts from it, with a new time. Every browser saves it as a download with
 that name, Safari included.
 
+Phosphor also keeps your work in this browser as you go. A refresh brings it back, with an empty undo
+history, and a new tab offers your recent work to pick up. Saving to a file is the real backup:
+clearing site data deletes what's kept in the browser, and Safari can also delete it after seven days
+of browser use without a visit.
+
 ## When art looks wrong in someone's terminal
 
 Some characters, including the block elements, are "ambiguous width" in Unicode. Most terminals

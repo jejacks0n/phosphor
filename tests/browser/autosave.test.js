@@ -2,11 +2,13 @@
 // when it can't. Real IndexedDB, with the timers and the clock faked and the store's writes spied on.
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createApp } from 'vue';
-import { createTestApp, loadImage } from '../support/app.js';
+import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { useAutosave } from '@/composables/useAutosave';
+import { useProjectStore } from '@/store/ProjectStore';
 import { toastMessage } from '@/composables/useToast';
-import { writeLatest, addVersion, evict, readLatest, listDocuments, listVersions } from '@/document/autosaveStore';
+import ZeroState from '@/components/ZeroState.vue';
+import { writeLatest, addVersion, evict, readLatest, readVersion, listDocuments, listVersions } from '@/document/autosaveStore';
 import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, VERSION_EVERY_MS, MAX_TOTAL_BYTES } from '@/document/autosaveRules';
 import { readProject, writeProject } from '@/document/projectIO';
 
@@ -15,11 +17,14 @@ vi.mock('@/document/autosaveStore', { spy: true });
 const GRADIENT = '/tests/fixtures/images/gradient.png';
 const ATTRS = { fg: '#ffffff', bg: '#000000' };
 const BROKEN = "Autosave isn't working in this browser. Save to a file to keep your work.";
+const COULD_NOT_OPEN = "Couldn't open that document.";
+const KEPT_ID = 'phosphor-autosave-document';
 let app = null, autosave = null, started = null, deleteDatabase;
 
 beforeEach(async () => {
   deleteDatabase = ownDatabase('phosphor-autosave', 'composable');
   await deleteDatabase();
+  sessionStorage.removeItem(KEPT_ID);
   vi.clearAllMocks();
   toastMessage.value = null;
 });
@@ -48,6 +53,7 @@ async function mounted() {
   started = vi.spyOn(project, 'projectParts'); // a write's first step, the moment it's due
   app = createApp({ setup() { autosave = useAutosave(); return () => null; } });
   app.mount(document.createElement('div'));
+  await vi.waitUntil(() => autosave.ready.value, { timeout: 3000, interval: 5 });
   return { project, workspace };
 }
 
@@ -60,6 +66,37 @@ async function opened() {
   vi.mocked(addVersion).mockClear();
   vi.mocked(evict).mockClear();
   return { project, workspace };
+}
+
+// The page goes away; the tab's sessionStorage and the database stay. mounted() is the page coming back.
+async function leave() {
+  await autosave.flush();
+  app.unmount();
+}
+
+// Another tab with a document open: its lock, held until the answer is called.
+const otherTab = (id) => new Promise((granted) => {
+  navigator.locks.request(`phosphor-autosave:${id}`, () => new Promise((release) => granted(release)));
+});
+
+const heldNames = async () => (await navigator.locks.query()).held.map((lock) => lock.name);
+
+const junkRecord = (id) => writeLatest({
+  id, filename: id, editedAt: 1, savedToFile: false, dirty: false, savedSettings: '',
+  rest: new ArrayBuffer(8), imageBuffer: new Uint8Array([1]).buffer,
+});
+
+// writeLatest waits until the answer is called; resolves once a write is waiting there.
+async function holdWrites() {
+  const { writeLatest: real } = await vi.importActual('@/document/autosaveStore');
+  let release, waiting = 0;
+  const held = new Promise((resolve) => { release = resolve; });
+  vi.mocked(writeLatest).mockImplementation(async (row) => {
+    waiting++;
+    await held;
+    await real(row);
+  });
+  return { release, reached: () => vi.waitUntil(() => waiting === 1, { interval: 5 }) };
 }
 
 const edit = (project, col = 0) => {
@@ -75,16 +112,19 @@ async function writtenChars(id) {
 }
 
 // A row in the store claiming to hold bytes, without the test having to make that many.
-const seedDocument = (id, editedAt, bytes) => new Promise((resolve, reject) => {
-  const open = indexedDB.open('phosphor-autosave', 1);
-  open.onerror = () => reject(open.error);
-  open.onsuccess = () => {
-    const db = open.result;
-    const tx = db.transaction('documents', 'readwrite');
-    tx.objectStore('documents').put({ id, filename: id, editedAt, restSize: bytes, imageHash: `hash-${id}`, imageSize: 0 });
-    tx.oncomplete = () => { db.close(); resolve(); };
-  };
-});
+const seedDocument = async (id, editedAt, bytes) => {
+  await listDocuments(); // the store opens the database first: opened here, it would have no tables
+  await new Promise((resolve, reject) => {
+    const open = indexedDB.open('phosphor-autosave', 1);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result;
+      const tx = db.transaction('documents', 'readwrite');
+      tx.objectStore('documents').put({ id, filename: id, editedAt, restSize: bytes, imageHash: `hash-${id}`, imageSize: 0 });
+      tx.oncomplete = () => { db.close(); resolve(); };
+    };
+  });
+};
 
 test('a new document has an id, and the file calls say whether it has been saved to one', async () => {
   const { project } = await createTestApp();
@@ -491,4 +531,462 @@ test('going hidden writes what is waiting', async () => {
   await autosave.flush();
   expect(writeLatest).toHaveBeenCalledTimes(1);
   expect(autosave.current.value).toBe(true);
+});
+
+test('a version waits while a change is unwritten, for the write with that change in it', async () => {
+  const { project } = await opened();
+  const { release, reached } = await holdWrites();
+
+  edit(project, 0);
+  vi.advanceTimersByTime(SAVE_AFTER_MS);
+  await reached();
+  edit(project, 1); // the first write's bytes could pair the old image with what's here now
+  release();
+  await autosave.flush();
+
+  const versions = await listVersions(project.documentId);
+  expect(versions).toHaveLength(1);
+  const { record } = await readVersion(versions[0].id);
+  const { editCells } = await readProject(new Blob([record.rest]));
+  expect([...editCells.keys()]).toEqual(['0,0', '1,0']);
+});
+
+test('a version due when only a save follows is taken by the write after it', async () => {
+  const { project } = await opened();
+  const { release, reached } = await holdWrites();
+
+  edit(project);
+  vi.advanceTimersByTime(SAVE_AFTER_MS);
+  await reached();
+  project.savedToFile = true; // not a change, but the record has to say it
+  release();
+  await autosave.flush();
+  expect(await listVersions(project.documentId)).toHaveLength(1);
+});
+
+test('an opening write that fails after storing leaves no change to count', async () => {
+  const { project } = await mounted();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.mocked(evict).mockRejectedValueOnce(new Error('not this time'));
+  await project.setBlankCanvas();
+  await pass(SAVE_AFTER_MS);
+  expect(autosave.current.value).toBe(false);
+  const { editedAt } = (await readLatest(project.documentId)).record;
+
+  await vi.advanceTimersByTimeAsync(5);
+  await autosave.flush();
+  expect(autosave.current.value).toBe(true);
+  expect((await readLatest(project.documentId)).record.editedAt).toBe(editedAt);
+  expect(await listVersions(project.documentId)).toEqual([]);
+});
+
+test('evicting spares the documents open in other tabs', async () => {
+  const { project } = await opened();
+  await seedDocument('open-elsewhere', 1, MAX_TOTAL_BYTES + 1);
+  await seedDocument('closed', 2, 10);
+  const release = await otherTab('open-elsewhere');
+  try {
+    edit(project);
+    await pass(SAVE_AFTER_MS);
+    const [keep] = vi.mocked(evict).mock.calls[0];
+    expect(keep).toEqual(new Set([project.documentId, 'open-elsewhere']));
+    expect((await listDocuments()).map((d) => d.id)).toContain('open-elsewhere');
+  } finally {
+    release();
+  }
+});
+
+test('restoreDocument brings back the cells, both layers, the settings and the name, and no undo', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  project.filename = 'mine';
+  project.brightness += 10;
+  edit(project);
+  project.paintEditPixels([{ x: 1, y: 2, r: 255, g: 0, b: 0, alpha: 1 }]);
+  project.commitEdit();
+  project.writeBase([{ x: 3, y: 4, hex: '#00ff00' }]);
+  project.commitEdit();
+  project.render();
+  await settle(project);
+  await autosave.flush();
+  const before = {
+    cells: JSON.stringify(project.cells),
+    edits: [...project.editCells],
+    paint: project.paintLayer.colorAt(1, 2),
+    base: project.baseLayer.colorAt(3, 4),
+    brightness: project.brightness,
+  };
+  expect(before.paint).toEqual({ r: 255, g: 0, b: 0 });
+  expect(before.base).toEqual({ r: 0, g: 255, b: 0 });
+  const saved = await readLatest(id);
+  const { record, imageBuffer } = saved;
+  project.clearImage();
+
+  await project.restoreDocument({ record, imageBuffer }, { documentId: id });
+  await settle(project);
+  expect({
+    cells: JSON.stringify(project.cells),
+    edits: [...project.editCells],
+    paint: project.paintLayer.colorAt(1, 2),
+    base: project.baseLayer.colorAt(3, 4),
+    brightness: project.brightness,
+  }).toEqual(before);
+  expect(project.filename).toBe('mine');
+  expect(project.documentId).toBe(id);
+  expect(project.canUndo).toBe(false);
+});
+
+test('a document that was unsaved stays unsaved after a restore; one that was saved does not', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  expect(project.isDirty).toBe(true);
+
+  await project.restoreDocument(await readLatest(id), { documentId: id });
+  expect(project.isDirty).toBe(true);
+  expect(project.savedToFile).toBe(false);
+
+  await project.saveProject();
+  await pass(SAVE_AFTER_MS);
+  await project.restoreDocument(await readLatest(id), { documentId: id });
+  expect(project.isDirty).toBe(false);
+  expect(project.savedToFile).toBe(true);
+});
+
+test('restoreDocument throws on a record it cannot read, leaving things as they were', async () => {
+  const { project } = await mounted();
+  await junkRecord('junk');
+  await expect(project.restoreDocument(await readLatest('junk'), { documentId: 'junk' })).rejects.toThrow();
+  expect(project.image).toBe(null);
+  expect(project.documentId).toBe(null);
+});
+
+test('the tab keeps its document\'s id and holds its lock for as long as it has it', async () => {
+  const { project } = await mounted();
+  await project.setBlankCanvas();
+  await pass(SAVE_AFTER_MS);
+  const first = project.documentId;
+  expect(sessionStorage.getItem(KEPT_ID)).toBe(first);
+  await vi.waitUntil(async () => (await heldNames()).includes(`phosphor-autosave:${first}`), { interval: 5 });
+
+  await project.setBlankCanvas();
+  await pass(SAVE_AFTER_MS);
+  const second = project.documentId;
+  expect(sessionStorage.getItem(KEPT_ID)).toBe(second);
+  await vi.waitUntil(async () => {
+    const names = await heldNames();
+    return names.includes(`phosphor-autosave:${second}`) && !names.includes(`phosphor-autosave:${first}`);
+  }, { interval: 5 });
+
+  project.clearImage();
+  expect(sessionStorage.getItem(KEPT_ID)).toBe(null);
+  await vi.waitUntil(async () => !(await heldNames()).includes(`phosphor-autosave:${second}`), { interval: 5 });
+  await vi.waitUntil(() => autosave.recent.value.length === 2, { interval: 5 }); // going back to nothing shows the old work
+  expect(autosave.recent.value.every((row) => !row.openElsewhere)).toBe(true);
+});
+
+test('a refresh restores the tab\'s document under its id, on the ANSI tab, its opening write no change', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const { editedAt } = (await readLatest(id)).record;
+  await vi.advanceTimersByTimeAsync(1000);
+  await leave();
+
+  const back = await mounted();
+  expect(back.project.documentId).toBe(id);
+  expect(back.workspace.editorTab).toBe('output');
+  expect(back.project.canUndo).toBe(false);
+  await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS);
+  await autosave.flush();
+  expect(writeLatest).toHaveBeenCalled();
+  expect((await readLatest(id)).record.editedAt).toBe(editedAt);
+  expect(await listVersions(id)).toEqual([]); // a change would be due its first by now
+
+  await back.project.saveProject(); // and it's no change after that, either
+  await pass(SAVE_AFTER_MS);
+  expect((await readLatest(id)).record).toMatchObject({ savedToFile: true, editedAt });
+  expect(await listVersions(id)).toEqual([]);
+
+  edit(back.project);
+  await pass(SAVE_AFTER_MS);
+  expect((await readLatest(id)).record.editedAt).toBe(Date.now());
+  expect(await listVersions(id)).toHaveLength(1);
+});
+
+test('a change right after a restore moves the edit time, even if the first try at writing it fails', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const { editedAt } = (await readLatest(id)).record;
+  await leave();
+  const back = await mounted();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.mocked(writeLatest).mockRejectedValueOnce(new Error('not this time'));
+  await vi.advanceTimersByTimeAsync(5);
+
+  edit(back.project);
+  await pass(SAVE_AFTER_MS);
+  await vi.advanceTimersByTimeAsync(5);
+  await autosave.flush();
+  const moved = (await readLatest(id)).record.editedAt;
+  expect(moved).not.toBe(editedAt);
+  expect(moved).toBeGreaterThan(editedAt);
+});
+
+test('a restore does not pull you off the SOCIAL tab', async () => {
+  const { project } = await opened();
+  await leave();
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const { workspace, project: back } = await createTestApp();
+  workspace.editorTab = 'social'; // back from signing in, say: SocialStore.start() ran first
+  app = createApp({ setup() { autosave = useAutosave(); return () => null; } });
+  app.mount(document.createElement('div'));
+  await vi.waitUntil(() => autosave.ready.value, { timeout: 3000, interval: 5 });
+  expect(back.documentId).toBe(project.documentId);
+  expect(workspace.editorTab).toBe('social');
+});
+
+test('a held lock that is let go within the wait is a reload: the document keeps its id', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  await leave();
+  const name = `phosphor-autosave:${id}`;
+  await vi.waitUntil(async () => !(await heldNames()).includes(name), { interval: 5 });
+  const release = await otherTab(id);
+
+  const coming = mounted();
+  await vi.waitUntil(async () => (await navigator.locks.query()).pending.some((lock) => lock.name === name), { interval: 5 });
+  release();
+  const back = await coming;
+  expect(back.project.documentId).toBe(id);
+});
+
+test('a lock still held after the wait is a duplicated tab: a copy with its own id and no versions', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  const { editedAt } = (await readLatest(id)).record;
+  expect(await listVersions(id)).toHaveLength(1);
+  await leave();
+  await vi.waitUntil(async () => !(await heldNames()).includes(`phosphor-autosave:${id}`), { interval: 5 });
+  const release = await otherTab(id);
+  try {
+    const back = await mounted();
+    const copy = back.project.documentId;
+    expect(copy).toBeTruthy();
+    expect(copy).not.toBe(id);
+    expect(sessionStorage.getItem(KEPT_ID)).toBe(copy);
+    expect([...back.project.editCells.keys()]).toEqual(['0,0']);
+
+    await pass(SAVE_AFTER_MS);
+    expect((await readLatest(copy)).record.editedAt).toBe(editedAt);
+    expect(await listVersions(copy)).toEqual([]);
+    expect(await listVersions(id)).toHaveLength(1);
+  } finally {
+    release();
+  }
+});
+
+test.each([
+  ['no record', () => {}],
+  ['an unreadable record', () => junkRecord('gone')],
+  ['a record whose image is missing', () => seedDocument('gone', 1, 10)],
+])('%s: a warning, the id forgotten, the zero state', async (_, seed) => {
+  await seed();
+  sessionStorage.setItem(KEPT_ID, 'gone');
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const { project, workspace } = await mounted();
+  expect(warn).toHaveBeenCalled();
+  expect(sessionStorage.getItem(KEPT_ID)).toBe(null);
+  expect(project.image).toBe(null);
+  expect(workspace.editorTab).toBe('input');
+  expect(autosave.ready.value).toBe(true);
+  expect(autosave.recent.value.map((row) => row.id)).toEqual((await listDocuments()).map((d) => d.id));
+  expect(await heldNames()).not.toContain('phosphor-autosave:gone');
+});
+
+test('no id: nothing is restored, and recent lists the documents, newest first, marking those open elsewhere', async () => {
+  await seedDocument('older', 1, 10);
+  await seedDocument('newer', 2, 10);
+  const release = await otherTab('newer');
+  try {
+    const { project } = await mounted();
+    expect(project.image).toBe(null);
+    expect(autosave.recent.value).toEqual([
+      { id: 'newer', filename: 'newer', editedAt: 2, openElsewhere: true },
+      { id: 'older', filename: 'older', editedAt: 1, openElsewhere: false },
+    ]);
+  } finally {
+    release();
+  }
+});
+
+test('with the browser storage failing, the app is still ready, whether or not the tab has an id', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.mocked(indexedDB.open).mockImplementation(() => { throw new DOMException('no', 'SecurityError'); });
+  await mounted();
+  expect(autosave.ready.value).toBe(true);
+  expect(autosave.recent.value).toEqual([]);
+  app.unmount();
+
+  sessionStorage.setItem(KEPT_ID, 'gone');
+  await mounted();
+  expect(autosave.ready.value).toBe(true);
+  expect(warn).toHaveBeenCalled();
+});
+
+test('a document already open isn\'t restored over', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  await leave();
+  vi.mocked(readLatest).mockImplementationOnce(async (...args) => {
+    const { readLatest: real } = await vi.importActual('@/document/autosaveStore');
+    const saved = await real(...args);
+    await useProjectStore().setBlankCanvas(); // a dropped file, landing during the read
+    return saved;
+  });
+  const back = await mounted();
+  expect(back.project.documentId).not.toBe(id);
+  expect(back.project.filename).toBe('untitled');
+  expect(back.workspace.editorTab).toBe('input');
+  expect(sessionStorage.getItem(KEPT_ID)).toBe(back.project.documentId);
+});
+
+test('openRecent restores under that id, taking its lock', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const { editedAt } = (await readLatest(id)).record;
+  await leave();
+  sessionStorage.removeItem(KEPT_ID);
+
+  const back = await mounted();
+  expect(back.project.image).toBe(null);
+  expect(autosave.recent.value.map((row) => row.id)).toEqual([id]);
+  await autosave.openRecent(id);
+  expect(back.project.documentId).toBe(id);
+  expect(back.workspace.editorTab).toBe('output');
+  expect(sessionStorage.getItem(KEPT_ID)).toBe(id);
+  expect(await heldNames()).toContain(`phosphor-autosave:${id}`);
+  await pass(SAVE_AFTER_MS);
+  expect((await readLatest(id)).record.editedAt).toBe(editedAt);
+});
+
+test('openRecent on a document Start New Project just left brings it back', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  const { editedAt } = (await readLatest(id)).record;
+  project.clearImage();
+  await vi.waitUntil(() => autosave.recent.value.length === 1, { interval: 5 });
+
+  await autosave.openRecent(id);
+  expect(project.documentId).toBe(id);
+  expect([...project.editCells.keys()]).toEqual(['0,0']);
+  await pass(SAVE_AFTER_MS);
+  expect((await readLatest(id)).record.editedAt).toBe(editedAt);
+});
+
+test('openRecent on a lock that turned out held: a warning, a toast, the list refreshed', async () => {
+  await seedDocument('elsewhere', 1, 10);
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const { project } = await mounted();
+  expect(autosave.recent.value[0].openElsewhere).toBe(false);
+  const release = await otherTab('elsewhere');
+  try {
+    await autosave.openRecent('elsewhere');
+    expect(project.image).toBe(null);
+    expect(warn).toHaveBeenCalled();
+    expect(toastMessage.value).toBe(COULD_NOT_OPEN);
+    expect(autosave.recent.value[0].openElsewhere).toBe(true);
+  } finally {
+    release();
+  }
+});
+
+test('openRecent on a record that fails to restore: a warning, a toast, the lock let go, the list refreshed', async () => {
+  await junkRecord('junk');
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const { project } = await mounted();
+  vi.mocked(listDocuments).mockClear();
+  await autosave.openRecent('junk');
+  expect(project.image).toBe(null);
+  expect(warn).toHaveBeenCalled();
+  expect(toastMessage.value).toBe(COULD_NOT_OPEN);
+  expect(listDocuments).toHaveBeenCalled();
+  expect(sessionStorage.getItem(KEPT_ID)).toBe(null);
+  await vi.waitUntil(async () => !(await heldNames()).includes('phosphor-autosave:junk'), { interval: 5 });
+});
+
+test('a restore that fails partway leaves the zero state, not half a document to write', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const saved = await readLatest(id);
+  await leave();
+  sessionStorage.removeItem(KEPT_ID);
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const back = await mounted();
+  vi.spyOn(back.project, 'render').mockImplementationOnce(() => { throw new Error('partway'); });
+  await autosave.openRecent(id);
+  expect(back.project.image).toBe(null);
+  expect(back.project.documentId).toBe(null);
+  expect(toastMessage.value).toBe(COULD_NOT_OPEN);
+  await pass(SAVE_AFTER_MS);
+  expect((await readLatest(id)).record.editedAt).toBe(saved.record.editedAt);
+});
+
+test('without Web Locks, every lock is available', async () => {
+  Object.defineProperty(navigator, 'locks', { value: undefined, configurable: true });
+  try {
+    const { project } = await opened();
+    const id = project.documentId;
+    edit(project);
+    await pass(SAVE_AFTER_MS);
+    expect(vi.mocked(evict).mock.calls[0][0]).toEqual(new Set([id]));
+    await leave();
+    const back = await mounted();
+    expect(back.project.documentId).toBe(id);
+    back.project.clearImage();
+    await vi.waitUntil(() => autosave.recent.value.length === 1, { interval: 5 });
+    expect(autosave.recent.value[0].openElsewhere).toBe(false);
+  } finally {
+    delete navigator.locks;
+  }
+});
+
+// The start screen on its own, as a component mounted without App has it.
+function startScreen(props) {
+  const element = document.createElement('div');
+  const screen = createApp(ZeroState, props);
+  screen.mount(element);
+  return { element, unmount: () => screen.unmount() };
+}
+
+test('the start screen waits for ready, and shows its drop zone without being told', () => {
+  const waiting = startScreen({ ready: false, recent: [{ id: 'a', filename: 'a', editedAt: 1, openElsewhere: false }] });
+  expect(waiting.element.querySelector('.drop-zone')).toBe(null);
+  expect(waiting.element.querySelector('li')).toBe(null);
+  waiting.unmount();
+
+  const plain = startScreen({});
+  expect(plain.element.querySelector('.drop-zone')).not.toBe(null);
+  expect(plain.element.textContent).not.toContain('Continue where you left off');
+  plain.unmount();
+});
+
+test('the start screen lists at most 5 recent documents; one open elsewhere is disabled', () => {
+  const opened = [];
+  const recent = Array.from({ length: 7 }, (_, i) => ({ id: `d${i}`, filename: `art ${i}`, editedAt: 1, openElsewhere: i === 1 }));
+  const { element, unmount } = startScreen({ recent, openRecent: (id) => opened.push(id) });
+  expect(element.textContent).toContain('Continue where you left off');
+  const rows = element.querySelectorAll('li');
+  expect(rows).toHaveLength(5);
+  expect(rows[0].textContent).toContain('art 0');
+  expect(rows[1].querySelector('button').disabled).toBe(true);
+  expect(rows[1].querySelector('button').textContent.trim()).toBe('Open in another tab');
+  rows[1].querySelector('button').click();
+  rows[0].querySelector('button').click();
+  expect(opened).toEqual(['d0']);
+  unmount();
 });

@@ -14,6 +14,12 @@ import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
 import SocialTab from '@/components/social/SocialTab.vue';
 
+defineProps({
+  ready: { type: Boolean, default: true },
+  recent: { type: Array, default: () => [] },
+  openRecent: Function,
+});
+
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 useKeyboardShortcuts(project, workspace);
@@ -47,7 +53,7 @@ async function handleFileSelected(file) {
           <SauceEditor v-if="workspace.editorTab === 'sauce'"/>
         </div>
 
-        <ZeroState v-else @file-selected="handleFileSelected" @start-blank="project.setBlankCanvas"/>
+        <ZeroState v-else :ready="ready" :recent="recent" :open-recent="openRecent" @file-selected="handleFileSelected" @start-blank="project.setBlankCanvas"/>
       </DropZone>
     </template>
   </section>
