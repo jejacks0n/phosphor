@@ -1235,6 +1235,16 @@ test('artZoom follows the host\'s zoom while tracking, stays put while looking a
   expect(room.artZoom).toBe(0.25);
   room.setTracking(true);
   expect(room.artZoom).toBe(0.75);
+
+  // The watcher's own zoom stops tracking and is held to the range; Track goes back to the host's.
+  room.setArtZoom(0.5);
+  expect([room.tracking, room.artZoom]).toEqual([false, 0.5]);
+  room.setArtZoom(5);
+  expect(room.artZoom).toBe(1);
+  room.setArtZoom(0);
+  expect(room.artZoom).toBe(0.25);
+  room.setTracking(true);
+  expect(room.artZoom).toBe(0.75);
 });
 
 // Reporting: what a report sends, and a silence heard from the room.

@@ -26,7 +26,7 @@ function mount(props) {
   host = document.createElement('div');
   host.style.cssText = 'width: 200px; height: 100px';
   document.body.append(host);
-  app = createApp({ render: () => h(RoomArt, { ...state, onLookAround: () => seen.lookArounds++, onTrack: () => seen.tracks++, onLookingAt: (middle) => { seen.lookingAt = middle; } }) });
+  app = createApp({ render: () => h(RoomArt, { ...state, onLookAround: () => seen.lookArounds++, onTrack: () => seen.tracks++, onZoom: (zoom) => { seen.zoom = zoom; }, onLookingAt: (middle) => { seen.lookingAt = middle; } }) });
   app.mount(host);
   return { state, seen, scroll: host.querySelector('.room-art'), box: host.querySelector('.host-view'), tag: () => host.querySelector('.host-tag') };
 }
@@ -101,6 +101,60 @@ test('a new zoom sizes its first window by the new zoom\'s cells, not the old on
   await frames();
   const windows = resize.mock.calls.map(([cols, rows]) => `${cols}x${rows}`);
   expect(new Set(windows).size).toBe(1);   // the window at 0.5 from the first pass
+});
+
+test('Ctrl+wheel asks for a zoom instead of looking around, and takes the page\'s zoom from the browser', async () => {
+  await createTestApp();
+  const { scroll, box, seen } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 }, zoom: 0.5 });
+  await expect.poll(() => box.style.width).toBe('40px');
+  const wheel = (init) => {
+    const event = new WheelEvent('wheel', { cancelable: true, ...init });
+    scroll.dispatchEvent(event);
+    return event;
+  };
+  expect(wheel({ ctrlKey: true, deltaY: 50 }).defaultPrevented).toBe(true);
+  expect(seen.zoom).toBeCloseTo(0.5 * Math.exp(-0.5));
+  expect(seen.lookArounds).toBe(0);
+
+  wheel({ ctrlKey: true, deltaY: -1000 });
+  expect(seen.zoom).toBe(1);   // held to the range
+  expect(wheel({ deltaY: 100 }).defaultPrevented).toBe(false);
+  expect(seen.lookArounds).toBe(1);
+});
+
+test('Ctrl+wheel at the end of the range does nothing', async () => {
+  await createTestApp();
+  const { scroll, box, seen } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 } });
+  await expect.poll(() => box.style.width).toBe('80px');
+  scroll.dispatchEvent(new WheelEvent('wheel', { cancelable: true, ctrlKey: true, deltaY: -100 }));
+  expect(seen.zoom).toBeUndefined();
+});
+
+test('a zoom while looking around keeps the cell in the middle of the view; a pointer\'s, the cell under it', async () => {
+  await createTestApp();
+  const { state, scroll, box } = mount({ hostView: { col: 0, row: 0, cols: 2, rows: 1 }, tracking: false });
+  await expect.poll(() => box.style.width).toBe('16px');
+  scroll.scrollLeft = 300;
+  scroll.scrollTop = 200;
+  await frames();
+  // 8 x 16 cells in a 200 x 100 view: its middle is at (400, 250), a pointer 20 px in at (320, 210).
+  const middle = () => [(scroll.scrollLeft + 100) / (parseFloat(box.style.width) / 2), (scroll.scrollTop + 50) / parseFloat(box.style.height)];
+  expect(middle()).toEqual([50, 15.625]);
+
+  state.zoom = 0.5;
+  await expect.poll(() => box.style.width).toBe('8px');
+  await frames();
+  expect(middle()).toEqual([50, 15.625]);
+
+  state.zoom = 1;
+  await expect.poll(() => box.style.width).toBe('16px');
+  await frames();
+  const rect = scroll.getBoundingClientRect();
+  scroll.dispatchEvent(new WheelEvent('wheel', { cancelable: true, ctrlKey: true, deltaY: 69.3, clientX: rect.left + 20, clientY: rect.top + 10 }));
+  state.zoom = 0.5;
+  await expect.poll(() => box.style.width).toBe('8px');
+  await frames();
+  expect([(scroll.scrollLeft + 20) / 4, (scroll.scrollTop + 10) / 8]).toEqual([40, 13.125]);
 });
 
 test('only a key that scrolls is looking around: not Tab, and not a modifier on its own', async () => {
