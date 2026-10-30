@@ -14,230 +14,229 @@ const emit = defineEmits(['close', 'open']);
       <p class="updated">Last updated: October 29, 2026.</p>
 
       <p>These terms are an agreement between you and TFC &amp; CO LLC, 1500 N Grant St, Denver, CO 80203
-        ("we", "us"). They cover Phosphor at phosphor.work: the editor, and its SOCIAL tab (the lobby,
-        rooms, chat and accounts). By creating an account, or by using SOCIAL as a guest, you accept them and
+        ("we," "us"). They cover Phosphor at phosphor.work: the editor and its SOCIAL tab (the lobby,
+        rooms, chat, and accounts). By creating an account, or by using SOCIAL as a guest, you accept these terms and
         our <button class="link inline" @click="emit('open', 'privacy')">Privacy Policy</button>.</p>
 
-      <h2>1. Who can use SOCIAL</h2>
-      <p>You must be 13 or older. If you're under the age of majority where you live, a parent or guardian
-        must agree to these terms for you. One account per person, and it's yours alone.</p>
+      <h2>1. Who Can Use SOCIAL</h2>
+      <p>You must be 13 or older. If you are under the age of majority where you live, a parent or legal guardian
+        must agree to these terms on your behalf. Accounts are limited to one per person, and your account is yours alone.</p>
 
-      <h2>2. Phosphor is free</h2>
-      <p>Phosphor costs nothing. Because it's free, we don't promise it will always be available, and we may
-        change or stop SOCIAL, or any part of it, at any time. The editor's source code is open under the MIT
-        License, which governs the code; these terms govern the service we run.</p>
+      <h2>2. Phosphor Is Free</h2>
+      <p>Phosphor costs nothing to use. Because it is free, we do not promise that it will always be available, and we may
+        change, suspend, or discontinue SOCIAL, or any part of it, at any time. The editor's source code is open source under the MIT
+        License, which governs the code; these terms govern the online service we provide.</p>
 
-      <h2>3. Your account</h2>
+      <h2>3. Your Account</h2>
       <ul>
-        <li>Keep your password, two-factor codes and backup codes safe. You're responsible for what's done
-          with your account. If you think someone else has used it, change your password and tell us.</li>
-        <li>Your username mustn't impersonate anyone, mislead people about who you are, or be offensive. We
-          may change or reclaim a username that is.</li>
-        <li>If you sign in with Discord or GitHub, their own terms also apply to your use of them.</li>
+        <li>Keep your password, two-factor codes, and backup codes secure. You are responsible for all activity
+          on your account. If you believe someone else has accessed it, change your password and let us know immediately.</li>
+        <li>Your username must not impersonate anyone, mislead others about your identity, or be offensive. We
+          may change or reclaim any username that violates this rule.</li>
+        <li>If you sign in with Discord or GitHub, their respective terms also apply to your use of those services.</li>
       </ul>
 
-      <h2>4. Your art</h2>
-      <p>What you make in Phosphor is yours. The editor keeps it in your browser, and we never receive it
+      <h2>4. Your Art</h2>
+      <p>What you create in Phosphor is yours. The editor keeps your work in your browser, and we never receive it
         unless you host a room.</p>
-      <p>When you host a public room, you let us show a small picture of your art in the lobby while the room
-        is live, and you let the people you admit watch you draw. When someone reports your room, you let us
-        keep a picture of it to decide on the report. That's all we do with it, and we don't sell it or use it
-        to advertise.</p>
-      <p>Only share art you have the right to share. Watching a room doesn't give you any right to copy the
-        host's art and pass it off as your own.</p>
+      <p>When you host a public room, you grant us permission to display a preview thumbnail of your art in the lobby while the room
+        is live, and you allow the people you admit to watch you draw. When someone reports your room, you allow us to
+        retain a snapshot of the canvas to review and resolve the report. That is all we do with it, and we do not sell your art or use it
+        for advertising.</p>
+      <p>Only share art you have the right to share. Watching a room does not give you any right to copy the
+        host's art or claim it as your own.</p>
 
-      <h2>5. How to behave</h2>
-      <p>Don't use Phosphor to:</p>
+      <h2>5. Acceptable Use</h2>
+      <p>Do not use Phosphor to:</p>
       <ul>
-        <li>harass, threaten, bully or demean anyone, or attack people for who they are;</li>
-        <li>share sexual content in a public room, or anything sexual involving a minor, ever (we report
-          that to the authorities);</li>
-        <li>share gore, or content that's illegal where you or we are;</li>
-        <li>use someone's IP address, which rooms reveal, to find, threaten or attack them or their
-          connection, or share anyone's personal information without their permission;</li>
+        <li>harass, threaten, bully, or demean anyone, or attack people based on their identity;</li>
+        <li>share sexually explicit content in a public room, or any sexual content involving a minor under any circumstances (we report
+          child exploitation to law enforcement immediately);</li>
+        <li>share gore or content that is illegal under applicable local, state, or federal law;</li>
+        <li>use someone's IP address (which rooms reveal) to track, threaten, or attack them or their
+          connection, or share anyone's personal information without their consent (doxxing);</li>
         <li>spam, scam, or post links to malware;</li>
-        <li>impersonate anyone, or infringe their copyright or other rights;</li>
-        <li>get around a block, a removal, a mute, a silence or a suspension, or make extra accounts to do so;</li>
-        <li>make false or bad-faith reports;</li>
-        <li>probe, attack, overload, scrape or automate Phosphor or its server, except through security
-          research done in good faith and reported to us privately.</li>
+        <li>impersonate anyone, or infringe on their copyright or other legal rights;</li>
+        <li>circumvent a block, removal, mute, silence, or suspension, or create additional accounts to do so;</li>
+        <li>submit false or bad-faith reports;</li>
+        <li>probe, attack, overload, scrape, or automate Phosphor or its servers, except through security
+          research conducted in good faith and reported to us privately.</li>
       </ul>
 
-      <h2>6. Blocks and reports</h2>
-      <p>Hosts can remove or block people from their rooms, and anyone signed in can report a person or a
+      <h2>6. Blocks and Reports</h2>
+      <p>Hosts can remove or block people from their rooms, and any signed-in user can report a user or a
         room.</p>
-      <p>We may remove content, silence, suspend or close an account, or end a room, if we believe it broke
-        these terms or the law. Where we can, we'll tell you why. To ask us to look again, write to <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
+      <p>We may remove content, silence, suspend, or terminate an account, or close a room, if we believe it violated
+        these terms or the law. When feasible, we will explain why. To appeal a moderation decision, contact us at <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
 
-      <h2>7. Browser to browser</h2>
-      <p>Rooms connect your browser directly to the host's. Everyone you share a room with can see your IP
-        address, and the host's browser passes on the room's chat. Only join rooms, and admit people, you're
-        comfortable with. Use a VPN if you want to hide your address.</p>
+      <h2>7. Browser-to-Browser Connections</h2>
+      <p>Rooms connect your browser directly to the host's browser. Everyone you share a room with can see your IP
+        address, and the host's browser relays the room's chat. Only join rooms with, and admit people, you are
+        comfortable with. Use a VPN if you want to mask your IP address.</p>
 
       <h2>8. Copyright</h2>
-      <p>If you believe something on Phosphor infringes your copyright, write to <a href="mailto:hello@phosphor.work">hello@phosphor.work</a> with what
-        it is and where, your contact details, and a statement that you own the rights or act for the owner.
-        We close the accounts of people who repeatedly infringe.</p>
+      <p>If you believe content on Phosphor infringes your copyright, email <a href="mailto:hello@phosphor.work">hello@phosphor.work</a> with an
+        identification of the copyrighted work and where it appears, your contact information, and a statement confirming that you own the rights or are authorized to act on the copyright owner's behalf.
+        We terminate the accounts of repeat infringers.</p>
 
-      <h2>9. Ending</h2>
-      <p>You can stop at any time, and delete your account from the Account page. We may suspend or close an
-        account that breaks these terms, or end SOCIAL for everyone.</p>
+      <h2>9. Termination</h2>
+      <p>You can stop using Phosphor at any time and delete your account from the Account page. We may suspend or terminate any
+        account that violates these terms, or discontinue SOCIAL at any time.</p>
 
-      <h2>10. No warranties</h2>
-      <p>To the extent the law allows, Phosphor is provided "as is" and "as available", without warranties of
-        any kind, including merchantability, fitness for a particular purpose and non-infringement. We don't
-        promise it will be uninterrupted, secure or free of errors, or that what other people do on it is
+      <h2>10. Disclaimer of Warranties</h2>
+      <p>To the fullest extent permitted by law, Phosphor is provided "as is" and "as available," without warranties of
+        any kind, express or implied, including warranties of merchantability, fitness for a particular purpose, and non-infringement. We do not
+        guarantee that Phosphor will be uninterrupted, secure, or error-free, or that the conduct of other users will be
         safe.</p>
 
-      <h2>11. Limits on liability</h2>
-      <p>To the extent the law allows, we're not liable for indirect, incidental, special, consequential or
-        punitive damages, or for lost data, art or profits. Our total liability for any claim about Phosphor
-        is limited to US$50. Nothing here limits liability that the law doesn't allow to be limited, or your
-        rights as a consumer that a contract can't take away.</p>
+      <h2>11. Limitation of Liability</h2>
+      <p>To the fullest extent permitted by law, we are not liable for any indirect, incidental, special, consequential, or
+        punitive damages, or for any loss of data, artwork, or profits. Our total liability for any claim relating to Phosphor
+        is limited to $50 USD. Nothing in these terms limits liability that cannot be excluded under applicable law, or any
+        statutory consumer rights that cannot be waived by contract.</p>
 
-      <h2>12. Changes to these terms</h2>
-      <p>The date at the top shows when these terms last changed. For a change that matters, we'll email
-        account holders before it takes effect. Using SOCIAL after that means you accept the change; if you
-        don't, delete your account.</p>
+      <h2>12. Changes to These Terms</h2>
+      <p>The date at the top indicates when these terms were last updated. For material changes, we will notify registered
+        account holders by email before the changes take effect. Continuing to use SOCIAL after that date constitutes your acceptance of the revised
+        terms; if you do not agree, you should delete your account.</p>
 
-      <h2>13. Law</h2>
-      <p>These terms are governed by the laws of the State of Colorado, USA, and disputes go to its courts, except
-        where the law where you live gives you the right to bring them there.</p>
+      <h2>13. Governing Law</h2>
+      <p>These terms are governed by the laws of the State of Colorado, USA, and any legal disputes will be resolved in its courts, except
+        where applicable local law grants you the right to bring an action in your jurisdiction.</p>
 
       <h2>Contact</h2>
-      <p>TFC &amp; CO LLC, 1500 N Grant St, Denver, CO 80203. Questions about these terms: <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
+      <p>TFC &amp; CO LLC, 1500 N Grant St, Denver, CO 80203. For questions regarding these terms, contact <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
     </div>
     <div v-else>
       <h1>Privacy Policy</h1>
       <p class="updated">Last updated: October 29, 2026.</p>
 
-      <p>Phosphor is an ANSI art editor that runs in your browser, at phosphor.work. Its SOCIAL tab is
-        optional: a lobby, rooms where you can watch someone draw, chat, and accounts. This policy says what
-        each part collects, why, who else sees it, and how long it's kept. We apply the GDPR's standards to
-        everyone, wherever they live.</p>
+      <p>Phosphor is an ANSI art editor that runs in your browser at phosphor.work. Its SOCIAL tab is
+        optional, offering a lobby, rooms where you can watch someone draw, chat, and user accounts. This policy explains what
+        information each feature collects, why we collect it, who has access to it, and how long it is retained. We apply GDPR-level privacy
+        standards to all users, regardless of where they live.</p>
 
-      <h2>Who we are</h2>
-      <p>Phosphor is run by TFC &amp; CO LLC, 1500 N Grant St, Denver, CO 80203. Write to us about
+      <h2>Who We Are</h2>
+      <p>Phosphor is operated by TFC &amp; CO LLC, 1500 N Grant St, Denver, CO 80203. Contact us about
         privacy at <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
 
-      <h2>The editor keeps your art in your browser</h2>
-      <p>Images you open, art you draw, your palettes, your fonts and your settings stay in your browser
-        (its local storage and IndexedDB). We never receive them, unless you host a room (below). Clearing
-        this site's data in your browser removes them.</p>
-      <p>We use no analytics, no advertising and no tracking cookies. The app itself is hosted by GitHub
-        Pages, which, like any web host, sees your IP address when your browser loads it.</p>
+      <h2>The Editor Keeps Your Art in Your Browser</h2>
+      <p>Images you open, art you draw, your palettes, fonts, and settings stay entirely in your browser
+        (stored locally in local storage and IndexedDB). We never receive them unless you host a room (explained below). Clearing
+        this site's data in your browser deletes them.</p>
+      <p>We do not use analytics, advertising, or tracking cookies. The app itself is hosted on GitHub
+        Pages, which, like any web host, receives your IP address when your browser loads the site.</p>
 
-      <h2>The SOCIAL tab</h2>
-      <p>Nothing from SOCIAL runs until you open its tab (or follow a link from one of our emails). From
+      <h2>The SOCIAL Tab</h2>
+      <p>Nothing from the SOCIAL tab runs until you open that tab (or follow a link from one of our emails). From
         then on:</p>
       <ul>
-        <li><strong>Your browser's key.</strong> Your browser makes a signing key and keeps it. Only its
-          public half is sent to us, inside the short-lived pass that lets you into the lobby and rooms. It
-          proves your messages come from you.</li>
-        <li><strong>Guests</strong> have no account. You get a random nickname for the visit, and others see
-          it while you're in the lobby or a room.</li>
-        <li><strong>Accounts.</strong> When you create one, we keep your email address, your username, your
-          password (as a one-way hash, never the password itself), when you agreed to these policies, whether
-          you've confirmed your email, when you last changed your username, and the last day you used SOCIAL
+        <li><strong>Your browser's key:</strong> Your browser generates a signing key and stores it locally. Only its
+          public half is sent to us, inside the temporary pass that admits you to the lobby and rooms. This
+          verifies that your messages originate from you.</li>
+        <li><strong>Guests:</strong> Guest users do not have an account. You receive a random nickname for your visit, and others see
+          it while you are in the lobby or in a room.</li>
+        <li><strong>Accounts:</strong> When you create an account, we retain your email address, username, password
+          (as a cryptographic one-way hash, never the plaintext password itself), the timestamp when you agreed to these policies, whether
+          you have verified your email, when you last changed your username, and the date you last accessed SOCIAL
           signed in.</li>
-        <li><strong>Discord and GitHub.</strong> If you sign in with them, they share your account ID, name,
-          email and profile picture with us, and give us access tokens, which we keep with your account and
-          use only to sign you in. Each does this as an independent company under its own privacy
+        <li><strong>Discord and GitHub:</strong> If you sign in through Discord or GitHub, they share your account ID, name,
+          email address, and profile picture with us, and provide access tokens, which we keep with your account and
+          use solely to authenticate your sign-in. Each service operates as an independent company under its own privacy
           policy.</li>
-        <li><strong>Two-factor.</strong> If you turn it on, we keep its secret and your backup codes,
-          encrypted. "Trust this computer" leaves a cookie in your browser for 30 days.</li>
-        <li><strong>Sessions.</strong> Each time you sign in, we record the IP address and browser it came
-          from, until that session ends (when you sign out, or after 7 days).</li>
-        <li><strong>Blocks.</strong> You can block people. Your list is kept until you unblock them or delete
+        <li><strong>Two-factor authentication:</strong> If you enable two-factor authentication, we keep your secret and backup codes,
+          encrypted. Selecting "Trust this computer" leaves an authentication cookie in your browser for 30 days.</li>
+        <li><strong>Sessions:</strong> Each time you sign in, we record the originating IP address and browser user-agent
+          until that session ends (when you sign out, or automatically after 7 days).</li>
+        <li><strong>Blocks:</strong> You can block other users. Your block list is retained until you unblock them or delete
           your account.</li>
-        <li><strong>Cookies.</strong> We set only the cookies that keep you signed in and protect sign-in
-          (the session, a two-factor step in progress, and a trusted computer). None of them track you.</li>
+        <li><strong>Cookies:</strong> We set only essential cookies necessary to keep you signed in and protect the authentication flow
+          (the session, a two-factor step in progress, and a trusted computer flag). None of them track you across websites.</li>
       </ul>
 
-      <h2>What others see</h2>
+      <h2>What Other Users See</h2>
       <ul>
-        <li><strong>In the lobby,</strong> everyone there sees your username or nickname, whether you're a
-          guest, and the signal you choose. A public room's title, its watcher count, and a small picture of
-          the host's art are listed for everyone. Private rooms aren't listed.</li>
-        <li><strong>In a room, your browser connects directly to the host's browser.</strong> Each of you
-          can see the other's IP address, which can show your rough location and your internet provider. If
-          you'd rather hide yours, use a VPN. Everyone in a room sees the host's art as it's drawn.</li>
-        <li><strong>Chat goes from browser to browser through the host.</strong> It never passes through our
-          servers, and we don't store it. Whoever's in the room sees it, and any of them could copy it.</li>
+        <li><strong>In the lobby:</strong> Everyone present in the lobby sees your username or nickname, whether you are a
+          guest, and your chosen status signal. A public room's title, its viewer count, and a preview thumbnail of
+          the host's art are listed for everyone. Private rooms are not listed.</li>
+        <li><strong>In a room, your browser connects directly to the host's browser:</strong> Each participant
+          can see the other's IP address, which can reveal your approximate geographic location and your internet service provider (ISP). If
+          you prefer to keep your IP address private, use a VPN. Everyone in a room sees the host's art in real time as it is drawn.</li>
+        <li><strong>Chat travels directly between browsers through the host:</strong> It never passes through our
+          servers, and we do not store or log it. Anyone in the room can see the chat, and any participant can copy it.</li>
       </ul>
 
       <h2>Reports</h2>
-      <p>You can report a person or a room. A report is kept for 90 days after it's decided. If a
-        moderator has had to take action on your account, we may keep information about it with your account
-        for longer.</p>
+      <p>You can report a user or a room. A report is retained for 90 days after it is resolved. If a
+        moderator took action on your account, we may retain information about the action with your account
+        for a longer period.</p>
 
-      <h2>Keeping SOCIAL safe</h2>
+      <h2>Keeping SOCIAL Safe</h2>
       <ul>
-        <li><strong>Rate limits.</strong> To stop password guessing and spam, we count requests by IP address
-          and by the email or username typed in, for about a minute.</li>
-        <li><strong>Cloudflare Turnstile</strong> checks that a person is creating an account or asking for a
+        <li><strong>Rate limits:</strong> To prevent brute-force attacks and spam, we track request counts by IP address
+          and by the submitted email address or username for approximately one minute.</li>
+        <li><strong>Cloudflare Turnstile</strong> verifies that a real person is creating an account or requesting a
           password reset.</li>
-        <li><strong>Breached passwords.</strong> When you choose a password, we send the first five
-          characters of its SHA-1 hash, never the password, to Have I Been Pwned, and refuse a password that
-          has appeared in a breach.</li>
+        <li><strong>Compromised passwords:</strong> When you choose a password, we send only the first five
+          characters of its SHA-1 hash (never the password itself) to Have I Been Pwned, and we reject any password that
+          has appeared in a known data breach.</li>
       </ul>
 
       <h2>Email</h2>
-      <p>We email you only to confirm your address and to reset your password, through Mailjet. No
-        newsletters and no marketing.</p>
+      <p>We email you only to confirm your email address and to reset your password, sent through Mailjet. We never send
+        newsletters or marketing emails.</p>
 
-      <h2>Why we use it (GDPR Article 6)</h2>
+      <h2>Why We Use Your Data (GDPR Article 6)</h2>
       <ul>
-        <li><strong>To provide SOCIAL</strong> (Art. 6(1)(b)): your account, signing in, the lobby and
+        <li><strong>To provide SOCIAL</strong> (Art. 6(1)(b)): Managing your account, authentication, and providing access to the lobby and
           rooms.</li>
-        <li><strong>Legitimate interests</strong> (Art. 6(1)(f)): keeping SOCIAL secure, stopping abuse, and
-          deciding on reports.</li>
-        <li><strong>Legal obligations</strong> (Art. 6(1)(c)): when the law requires us to keep or hand over
-          something.</li>
+        <li><strong>Legitimate interests</strong> (Art. 6(1)(f)): Keeping SOCIAL secure, preventing abuse, and
+          reviewing and resolving reports.</li>
+        <li><strong>Legal obligations</strong> (Art. 6(1)(c)): Complying with applicable laws when we are required to retain or disclose
+          information.</li>
       </ul>
 
-      <h2>Who else handles it</h2>
-      <p>We don't sell or share personal data, and we don't show ads. These services handle it for us, each
-        only to run Phosphor:</p>
+      <h2>Third-Party Service Providers</h2>
+      <p>We do not sell, rent, or share personal data with third parties for marketing, and we do not display advertisements.
+        The following service providers process data on our behalf, solely to operate Phosphor:</p>
       <ul>
-        <li><strong>Cloudflare:</strong> the SOCIAL server, its database and storage, rate limits and
+        <li><strong>Cloudflare:</strong> Operates the SOCIAL server infrastructure, its database, storage, rate limits, and
           Turnstile.</li>
-        <li><strong>GitHub Pages:</strong> hosting the app.</li>
-        <li><strong>Mailjet:</strong> sending our emails.</li>
-        <li><strong>Have I Been Pwned:</strong> the breached-password check (a five-character hash prefix
-          only).</li>
+        <li><strong>GitHub Pages:</strong> Hosts the web application.</li>
+        <li><strong>Mailjet:</strong> Delivers transactional emails.</li>
+        <li><strong>Have I Been Pwned:</strong> Checks for compromised passwords (using only a five-character hash prefix).</li>
       </ul>
-      <p>Some of them process data outside your country. Where data leaves the EU or the UK, we rely on
-        their data processing terms and the European Commission's standard contractual clauses.</p>
+      <p>Some of these providers process data outside your country. Where data is transferred outside the EU or the UK, we rely on
+        their data processing agreements and the European Commission's standard contractual clauses.</p>
 
-      <h2>How long we keep it</h2>
+      <h2>Data Retention</h2>
       <ul>
-        <li><strong>Your account,</strong> until you delete it. Deleting it from the Account page removes it
-          straight away, with your sessions, linked Discord and GitHub accounts, two-factor and blocks.</li>
-        <li><strong>Sessions:</strong> until they end, at most 7 days.</li>
-        <li><strong>Rate-limit counts:</strong> about a minute.</li>
-        <li><strong>Reports:</strong> 90 days after they're decided. If a moderator has had to take action on
-          your account, some information about it is kept with your account for longer.</li>
-        <li><strong>The lobby and rooms</strong> keep nothing after a room ends or you leave.</li>
+        <li><strong>Your account:</strong> Retained until you delete it. Deleting your account from the Account page removes it
+          immediately, along with your sessions, linked Discord and GitHub accounts, two-factor credentials, and block list.</li>
+        <li><strong>Sessions:</strong> Retained until they end, up to 7 days.</li>
+        <li><strong>Rate-limit counts:</strong> Approximately one minute.</li>
+        <li><strong>Reports:</strong> 90 days after they are resolved. If a moderator took action on
+          your account, records of that action may be retained with your account for longer.</li>
+        <li><strong>The lobby and rooms:</strong> No data is retained after a room ends or after you leave.</li>
       </ul>
 
-      <h2>Your rights</h2>
-      <p>Wherever you live, you can ask for a copy of your data, to correct it, to delete it, to restrict or
-        object to how we use it, or to have it in a portable format. Change your username, or delete your
-        account, from the Account page. For anything else, write to <a href="mailto:hello@phosphor.work">hello@phosphor.work</a> from your account's
-        email address. We answer within 30 days, free. You can also complain to your data protection
+      <h2>Your Rights</h2>
+      <p>Regardless of where you live, you have the right to request a copy of your data, to correct it, to delete it, to restrict or
+        object to how we use it, or to receive it in a portable format. You can update your username or delete your
+        account directly from the Account page. For any other requests, email us at <a href="mailto:hello@phosphor.work">hello@phosphor.work</a> from your account's
+        registered email address. We respond within 30 days, free of charge. You also have the right to file a complaint with your local data protection
         authority.</p>
 
-      <h2>Children</h2>
-      <p>SOCIAL is for people 13 and older. If you believe a child under 13 has an account, write to us and
-        we'll delete it.</p>
+      <h2>Children's Privacy</h2>
+      <p>SOCIAL is intended for users 13 and older. If you believe a child under 13 has created an account, please contact us at <a href="mailto:hello@phosphor.work">hello@phosphor.work</a> and
+        we will promptly delete it.</p>
 
-      <h2>Changes</h2>
-      <p>The date at the top shows when this policy last changed. For a change that matters, we'll email
-        account holders before it takes effect.</p>
+      <h2>Changes to This Policy</h2>
+      <p>The date at the top indicates when this policy was last updated. For material changes, we will email
+        registered account holders before the changes take effect.</p>
 
       <h2>Contact</h2>
-      <p>TFC &amp; CO LLC, 1500 N Grant St, Denver, CO 80203. Privacy: <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
+      <p>TFC &amp; CO LLC, 1500 N Grant St, Denver, CO 80203. For privacy questions, email <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
     </div>
   </ReadingDialog>
 </template>
