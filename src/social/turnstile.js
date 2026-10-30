@@ -21,15 +21,17 @@ function loadScript() {
   return loading;
 }
 
-// Renders the widget into el for an action ('signup', 'forgot', 'verify' or 'signin'), as wide as el, with Turnstile's own
-// render options added (appearance: 'interaction-only' shows it only when it needs the person); resolves to the token getter, whose
+// Renders the widget into el for an action ('signup', 'forgot', 'verify' or 'signin'), as wide as el and in the app's
+// theme (not the computer's), with Turnstile's own render options added (appearance: 'interaction-only' shows it only when it needs the person); resolves to the token getter, whose
 // remove() takes the widget away when the page is left. A token is good for one try, so taking it starts
 // the widget on the next (for a second try after an error). A page left before the script loaded gets none.
 export async function mountTurnstile(el, action, options = {}) {
   if (!turnstileSiteKey) return () => null;
   const turnstile = await loadScript();
   if (!el.isConnected) return () => null;
-  const id = turnstile.render(el, { sitekey: turnstileSiteKey, action, size: 'flexible', ...options });
+  const id = turnstile.render(el, {
+    sitekey: turnstileSiteKey, action, size: 'flexible', theme: document.documentElement.dataset.theme, ...options,
+  });
   const token = () => {
     const response = turnstile.getResponse(id) || null;
     if (response) turnstile.reset(id);
