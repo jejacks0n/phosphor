@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
-import { DISPLAY_FONTS } from '@/lib/displayFonts';
+import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
 import { familyOf } from '@/lib/userFonts';
+import { clampZoom, clampAnsiZoom } from '@/lib/zoom';
+import { measureAdvance } from '@/lib/CellCanvas';
 
 const RECENT_COLORS = 12;
-
-export const clampZoom = (z) => Math.max(1, Math.min(16, z));
 
 export const useWorkspaceStore = defineStore('workspace', {
   state: () => ({
@@ -24,6 +24,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     displayFontSizes: useLocalStorage('phosphor.displayFontSizes', {}), // { font id: px } for the fonts you've resized
     userFonts: null,         // the fonts you've loaded ([{ id, name, lineHeight }], userFonts.js), once read from this browser (App.vue)
     displayFontLoaded: null, // displayFontSpec, once it's loaded and measured in (App.vue)
+    theme: useLocalStorage('phosphor.theme', 'dark'), // the app's colors: 'dark' | 'light' | 'system' (the computer's; index.html sets it before the first paint)
     smoothText: useLocalStorage('phosphor.smoothText', true), // the art's text anti-aliased (both views), or sharp
     activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
     isShiftPressed: false,
@@ -44,6 +45,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
+    ansiViewSize: { cols: 0, rows: 0 }, // how many whole cells from there are on screen (AnsiEditor)
+    ansiViewZoom: 1,         // the ansiZoom those cells were measured at (AnsiEditor)
+    inputView: { col: 0, row: 0, cols: 0, rows: 0, zoom: 5 }, // the whole cells on screen in the PIXEL view, and the editZoom they were measured at (InputEditor)
     pixelViewOrigin: { col: 0, row: 0 }, // the same in the PIXEL view (InputEditor), where a paste lands with no selection
     selectLayers: { base: true, edit: true }, // what the Select tool acts on, and the Magic Wand's Delete: the base layer and/or the edit layer
     pencilDrawWith: 'normal', // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks)
@@ -58,13 +62,16 @@ export const useWorkspaceStore = defineStore('workspace', {
     strokeEnd: null,         // where the last Pencil or Brush stroke ended (a grid position): Shift-click draws a line from there
     shapeDrag: null,         // { from, to } grid positions while a shape is being dragged
     editZoom:  5,
-    editorTab: 'input',
+    ansiZoom:  1,            // the ANSI view's zoom: 25% to 100% of its cell size
+    editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'sauce' or 'social'
+    viewTab: 'output',       // the art tab last shown, 'input' or 'output' (its view mounts and sets it)
     isPainting: false,
     isCtrlPressed: false,
     isMiddleClick: false,
     settingsOpen: false,
     showAboutModal: false,
     shortcutsOpen: false,    // the keyboard shortcuts list (ShortcutsDialog)
+    legalPage: null,         // the Terms or the Privacy Policy while one's open (LegalDialog): 'terms' | 'privacy'
     colorBox: null,          // the color box (ColorPair's popover) while it's open: 'fg' | 'bg'
     saveDialog: null,        // the save dialog's format while it's open: 'phosphor' | 'ans' | 'utf8ans' (SaveDialog)
 
@@ -97,7 +104,21 @@ export const useWorkspaceStore = defineStore('workspace', {
     activeTool(state) {
       return state.editorTab === 'input' ? state.inputActiveTool : state.outputActiveTool;
     },
-    editMode: (state) => state.editorTab !== 'sauce',
+    editMode: (state) => state.editorTab === 'input' || state.editorTab === 'output', // the art is showing
+    // The view the room's host is looking at, for watchers: whole cells and the zoom to draw them at
+    // (a fraction of the font's cell), of the art tab last shown (SAUCE and SOCIAL keep it). PIXEL's
+    // zoom is its pixels per column against the font's cell width. Each zoom is the one its cells were
+    // measured at, never the live one: a new zoom goes with its cells.
+    sharedView(state) {
+      if (state.viewTab === 'output') return { ...state.ansiViewOrigin, ...state.ansiViewSize, zoom: state.ansiViewZoom };
+      return { ...state.inputView, zoom: Math.min(1, state.inputView.zoom / this.displayAdvance) };
+    },
+    // The display font's character width in CSS px, measured once per font.
+    displayAdvance(state) {
+      void this.displayFontSpec;   // a font change measures again
+      void state.displayFontLoaded;   // and again once it's loaded
+      return measureAdvance(DISPLAY_FONT);
+    },
     pickSwapped: (state) => state.heldTool?.by === 'alt', // the picker is only held by Alt from a drawing tool
     // The font the art is drawn in, at its size (a font displayFonts.js can set). A loaded font
     // starts at 16px; an unknown one (a loaded font since removed) is the default.
@@ -187,6 +208,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     setEditZoom(z) {
       this.editZoom = clampZoom(z);
+    },
+    setAnsiZoom(z) {
+      this.ansiZoom = clampAnsiZoom(z);
     },
     toggleSettings() {
       this.settingsOpen = !this.settingsOpen;

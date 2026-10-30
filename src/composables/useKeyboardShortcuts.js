@@ -9,8 +9,9 @@ import { isField } from '@/lib/fields';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
+  // Not on SOCIAL: the art isn't showing, and its fields keep their own undo.
   const _handleUndoRedo = (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { // Shift makes it 'Z'
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && workspaceStore.editorTab !== 'social') { // Shift makes it 'Z'
       e.preventDefault();
       if (e.shiftKey) {
         projectStore.redo();
@@ -41,12 +42,12 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
   watch(() => workspaceStore.isPainting, (painting) => { if (!painting && _releasePending) _release(); });
 
-  // Space pans unless it types (a text field, Edit Mode's typing) or presses a focused control (a
-  // button, a menu) while the pointer isn't over the canvas.
+  // Space pans unless the art isn't showing (SAUCE, SOCIAL), it types (a text field, Edit Mode's
+  // typing) or it presses a focused control (a button, a menu) while the pointer isn't over the canvas.
   const TYPES = 'input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, select, [contenteditable]';
   const PRESSES = 'button, a, [role="tab"], [role="button"], input[type=checkbox], input[type=radio]';
   const _spacePans = (e) => {
-    if (workspaceStore.editorTab === 'sauce' || workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false;
+    if (!workspaceStore.editMode || workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false;
     if (workspaceStore.activeTool === 'text' && workspaceStore.textCursor && workspaceStore.editorTab === 'output') return false; // typing, wherever focus is
     const target = e.target?.closest ? e.target : null;
     if (target?.closest(TYPES)) return false;
@@ -54,7 +55,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
 
   const _handleToolSwap = (e) => {
-    if (e.key === 'Alt' && !e.repeat && !workspaceStore.isPainting && getTool(workspaceStore.activeTool).altPicks) {
+    if (e.key === 'Alt' && !e.repeat && workspaceStore.editMode && !workspaceStore.isPainting && getTool(workspaceStore.activeTool).altPicks) {
       return workspaceStore.holdTool('picker', 'alt');
     }
     if (e.code === 'Space' && workspaceStore.heldTool?.by === 'space') {
@@ -68,7 +69,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return false;
   };
 
-  // X swaps the color pair, unless something is taking text (a field, or the Text tool).
+  // X swaps the color pair while the art is showing, unless something is taking text (a field, or the
+  // Text tool).
   // Colors, Moebius-style: Alt+F (or Alt+A) opens the color box on the foreground, Alt+B on the
   // background (from a drawing tool too: the held eyedropper gives way), and Shift+Cmd/Ctrl+X swaps
   // the two. Not in a real field (they type there); in Edit Mode they work while typing.
@@ -101,7 +103,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
   const _handleSwapColors = (e) => {
     if (e.key.toLowerCase() !== 'x' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
-    if (isField(e.target) || workspaceStore.activeTool === 'text') return false; // in Edit Mode, X types
+    if (isField(e.target) || !workspaceStore.editMode || workspaceStore.activeTool === 'text') return false; // in Edit Mode, X types
     workspaceStore.swapColors();
     return true;
   };

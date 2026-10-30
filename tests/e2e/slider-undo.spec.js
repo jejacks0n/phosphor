@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, settled } from './support.js';
 
 const contrast = (page) => page.getByRole('group', { name: /Adjustments/ }).getByRole('slider').nth(1);

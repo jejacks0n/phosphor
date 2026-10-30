@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store } from './support.js';
 
 test('an image loaded with the file input shows as cells in the ANSI tab', async ({ page }) => {

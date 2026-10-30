@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, editAt, settled, cellPoint, drag } from './support.js';
 import { AnsiFile } from '../../src/lib/AnsiFile.js';
 

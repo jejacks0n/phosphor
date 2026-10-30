@@ -1,29 +1,45 @@
 <script setup>
-import { watch, onMounted, onBeforeUnmount } from 'vue';
+import { watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
+import { useMediaQuery } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useSocialStore } from '@/store/SocialStore';
+import { useRoomStore } from '@/store/RoomStore';
 import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
 import { setDisplayFont } from '@/lib/displayFonts';
 import { loadFonts } from '@/lib/userFonts';
 import { charRowsOf } from '@/lib/Cells';
 
 import EditWorkspace from '@/components/EditWorkspace.vue';
+import ChatPanel from '@/components/social/ChatPanel.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
+import LegalDialog from '@/components/LegalDialog.vue';
 import SaveDialog from '@/components/SaveDialog.vue';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
 import AppToast from '@/components/AppToast.vue';
 
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
+const room = useRoomStore();
 const { image } = storeToRefs(project);
-const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen } = storeToRefs(workspace);
+const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen, legalPage } = storeToRefs(workspace);
 
-// Leaving with unsaved changes asks first.
+// The theme on <html>, for global.css: the one picked, or with System the computer's (and it follows a change).
+const prefersLight = useMediaQuery('(prefers-color-scheme: light)');
+watchEffect(() => {
+  document.documentElement.dataset.theme = workspace.theme === 'system' ? (prefersLight.value ? 'light' : 'dark') : workspace.theme;
+});
+
+// SOCIAL: a link back from the server is read at load; the rest waits for the tab (a server that can't
+// be reached leaves the editor be).
+useSocialStore().start();
+
+// Leaving with unsaved changes, or a room you host, asks first.
 function onBeforeUnload(e) {
   project.commitPending(); // text typed a moment ago counts
-  if (project.image && project.isDirty) {
+  if ((project.image && project.isDirty) || room.role === 'host') {
     e.preventDefault();
     e.returnValue = '';
   }
@@ -92,9 +108,11 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
   <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick }]">
     <ControlPanel/>
     <EditWorkspace/>
+    <ChatPanel v-if="room.inRoom"/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
     <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>
     <ShortcutsDialog v-if="shortcutsOpen" @close="shortcutsOpen = false"/>
+    <LegalDialog v-if="legalPage" :page="legalPage" @open="legalPage = $event" @close="legalPage = null"/>
     <AppToast/>
   </main>
 </template>

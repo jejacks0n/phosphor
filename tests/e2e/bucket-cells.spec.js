@@ -1,6 +1,5 @@
 // The Paint Bucket's Fill → Cells through the real UI: Match and Set, and no Feathering.
-import { test, expect } from '@playwright/test';
-import { openApp, store, editAt, cellPoint, chars } from './support.js';
+import { test, expect, openApp, store, editAt, cellPoint, chars } from './support.js';
 
 test('Fill → Cells sets the character of the matching cells it touches', async ({ page }) => {
   await openApp(page);

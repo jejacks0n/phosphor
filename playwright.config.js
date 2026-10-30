@@ -1,6 +1,10 @@
 // End-to-end flows (tests/e2e): the production build served by vite preview, driven in Chromium with
 // software WebGL (SwiftShader), as the browser tests are, so every machine renders alike.
 import { defineConfig, devices } from '@playwright/test';
+import { launchWithout } from './tests/support/chromiumArgs.js';
+
+// Software WebGL, and no mDNS names for the room tests' connections (see vitest.config.js).
+const launchOptions = await launchWithout(['WebRtcHideLocalIpsWithMdns'], ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']);
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -14,10 +18,10 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] } } },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions } },
   ],
   webServer: {
-    command: 'npm run build && npx vite preview --port 4180 --strictPort',
+    command: 'VITE_SOCIAL_STUN=none npm run build && npx vite preview --port 4180 --strictPort',
     url: 'http://localhost:4180',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

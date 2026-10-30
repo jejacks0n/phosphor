@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, drag, settled, editAt, chars } from './support.js';
 
 // Moving a selection with the mouse floats it until it's deselected: letting go and dragging again

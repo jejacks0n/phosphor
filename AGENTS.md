@@ -37,12 +37,36 @@ npm run build
 - `src/store/WorkspaceStore.js`: the editor around the document: the tool, colors, selection, views.
 - `src/document/`: the document's data (layers, cells, history, files); `src/lib/`: the libraries
   (cells, colors, the image pipeline, exports); `src/tools/`: one file per tool.
+- The SOCIAL tab: `src/social/` (the network and crypto modules: API calls, the lobby socket, keys
+  and passes, Turnstile, names, the server's error words; for rooms `wire.js` (messages between
+  browsers), `peer.js` (WebRTC), `hosting.js`, `watching.js`, `thumbnail.js` (the lobby picture) and
+  `chat.js` (the text rule, the kept log and its pages, the allowance)),
+  `src/store/SocialStore.js` (who you are, your pass, the lobby), `src/store/RoomStore.js` (the room
+  you host or watch) and `src/components/social/` (one component per page; the chat is `ChatPanel.vue`, `ChatFoot.vue` and `ReportDialog.vue`). Its tests are the
+  `social-*` files in `tests/unit`, `tests/browser` and `tests/e2e`; the end-to-end fake server is
+  `tests/e2e/social-support.js` ([docs/testing.md](docs/testing.md)).
+- `server/`: a symlink to the SOCIAL server's own repo (`/server` is gitignored), so both can be
+  worked on side by side. Commit and push inside `server/`; its commits go to its repo, never this
+  one. A fresh checkout makes the link with `ln -s <the server's checkout> server`.
 
 ## Rules
 
+- **Never describe how the server is built, anywhere in this repo.** Not in code, comments, tests,
+  docs or commit messages: no names of its files, modules, classes, libraries, hosting, storage or
+  layout. This repo talks about the server only as its API: paths, messages, fields and error codes.
+  Whatever the server's internals are, they're documented in `server/` and nowhere else. The one
+  exception is the Privacy Policy (in `src/components/LegalDialog.vue`), which names the services
+  that handle people's data, Cloudflare among them, because the law asks it to.
 - **Every change comes with a test in the right layer**: pure logic in `tests/unit`, the store,
   canvas or WebGL in `tests/browser`, real UI interactions in `tests/e2e`. A bug fix starts with a
   test that fails. [docs/testing.md](docs/testing.md) says which layer and how.
+- **Moderation can be described, never how it decides.** Docs and UI may say that reports exist,
+  what a report sends, that people can be silenced or suspended and what they see then. Nothing in UI
+  copy, `docs/`, comments, tests or commit messages says how reports lead to silencing (how many, how
+  fast, whose count, how long), since people would game it. Nor that anything happens on its own
+  because of reports or silencing (a room leaving the lobby, say), nor what the admin can do. A
+  reporter sees only "Reported. Thank you."; a silenced person only until when. The rules are the
+  server's, documented in `server/`.
 - **Reference files are claims.** Never run `npm run test:update` to make a failing test pass
   without reading `git diff tests/fixtures/reference` and knowing why every change is right.
 - **A failing test blocks the deploy.** Don't skip or loosen a test to get past it; fix the cause,

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, drag } from './support.js';
 
 test('a drag in Edit Mode becomes a Select selection', async ({ page }) => {

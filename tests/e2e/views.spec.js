@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { openApp, store, editAt } from './support.js';
+import { test, expect } from './support.js';
+import { openApp, store, editAt, tab } from './support.js';
 
 test('Canvas and DOM views: the DOM view\'s text is the cells\' characters', async ({ page }) => {
   await openApp(page);
@@ -45,4 +45,66 @@ test('the DOM view keeps every character in its column, as a terminal does, even
     return ['b', 'f', 'g'].map((letter) => [leftOf(rows[2], letter), leftOf(rows[3], letter)]);
   });
   for (const [withWide, plain] of xs) expect(Math.abs(withWide - plain)).toBeLessThan(0.5);
+});
+
+test('the ANSI view publishes the whole cells on screen: the first, and how many across and down', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 600 });   // the art runs past the view both ways
+  await openApp(page);
+  await page.evaluate(() => document.querySelector('.ansi-editor .display').closest('article').scrollTo(37, 53));
+  // Counted cell by cell: a cell is on screen when no more than a pixel of it is hidden.
+  const onScreen = await page.evaluate(([cols, lines]) => {
+    const display = document.querySelector('.ansi-editor .display');
+    const view = display.closest('article');
+    const d = display.getBoundingClientRect(), v = view.getBoundingClientRect();
+    const left = d.left + display.clientLeft, top = d.top + display.clientTop;   // inside the display's border
+    const w = display.clientWidth / cols, h = display.clientHeight / lines;
+    const whole = (count, size, start, from, to) => Array.from({ length: count }, (_, i) => i)
+      .filter((i) => start + i * size >= from - 1 && start + (i + 1) * size <= to + 1);
+    const across = whole(cols, w, left, v.left, v.left + view.clientWidth);
+    const down = whole(lines, h, top, v.top, v.top + view.clientHeight);
+    return { origin: { col: across[0], row: down[0] }, size: { cols: across.length, rows: down.length } };
+  }, await store(page, 'project', (p) => [p.cols, Math.floor(p.rows / 2)]));
+  expect(onScreen.origin.col).toBeGreaterThan(0);
+  expect(onScreen.size.cols).toBeLessThan(await store(page, 'project', (p) => p.cols));
+  await expect.poll(() => store(page, 'workspace', (w) => ({ origin: w.ansiViewOrigin, size: w.ansiViewSize }))).toEqual(onScreen);
+});
+
+test('the PIXEL view publishes the whole cells on screen: a grid pixel is a column wide and half a line tall', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 500 });
+  await openApp(page);
+  await tab(page, 'PIXEL').click();
+  await store(page, 'workspace', (w) => { w.setEditZoom(16); });
+  await expect.poll(() => page.evaluate(() => {
+    const display = document.querySelector('.display');
+    return display.clientWidth - display.closest('article').clientWidth;   // the art runs past the view both ways
+  })).toBeGreaterThan(150);
+  await page.evaluate(() => document.querySelector('.display').closest('article').scrollTo(1e4, 1e4));
+  const onScreen = await page.evaluate(([cols, lines, zoom]) => {
+    const display = document.querySelector('.display');
+    const view = display.closest('article');
+    const d = display.getBoundingClientRect(), v = view.getBoundingClientRect();
+    const left = d.left + display.clientLeft, top = d.top + display.clientTop;
+    const whole = (count, size, start, from, to) => Array.from({ length: count }, (_, i) => i)
+      .filter((i) => start + i * size >= from - 1 && start + (i + 1) * size <= to + 1);
+    const across = whole(cols, zoom, left, v.left, v.left + view.clientWidth);
+    const down = whole(lines, 2 * zoom, top, v.top, v.top + view.clientHeight);
+    return { col: across[0], row: down[0], cols: across.length, rows: down.length };
+  }, await store(page, 'project', (p) => [p.cols, Math.floor(p.rows / 2), 16]));
+  expect(onScreen.col).toBeGreaterThan(0);
+  expect(onScreen.row).toBeGreaterThan(0);
+  await expect.poll(() => store(page, 'workspace', (w) => w.inputView)).toEqual({ ...onScreen, zoom: 16 });   // and the zoom they're at
+});
+
+test('the art tab last shown is the view a room is sent: SAUCE and SOCIAL keep it', async ({ page }) => {
+  await openApp(page);
+  const viewTab = () => store(page, 'workspace', (w) => w.viewTab);
+  expect(await viewTab()).toBe('output');
+  await tab(page, 'PIXEL').click();
+  await expect.poll(viewTab).toBe('input');
+  for (const other of ['SAUCE', 'SOCIAL']) {
+    await tab(page, other).click();
+    expect(await viewTab()).toBe('input');
+  }
+  await tab(page, 'ANSI').click();
+  await expect.poll(viewTab).toBe('output');
 });

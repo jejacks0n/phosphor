@@ -1,7 +1,6 @@
 // A selection made with Select stays as you change tools; Deselect (on every tool's options row) or
 // Escape drops it.
-import { test, expect } from '@playwright/test';
-import { openApp, store, cellPoint, pixelPoint, tab, settled, drag, screenPixel, chars, editAt } from './support.js';
+import { test, expect, openApp, store, cellPoint, pixelPoint, tab, settled, drag, screenPixel, chars, editAt } from './support.js';
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 

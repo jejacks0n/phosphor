@@ -62,10 +62,13 @@ test('a wide character takes two columns; the last column refuses it', async () 
 
 Playwright against `npm run build` served by `vite preview`. Act through the UI only (roles, labels,
 the mouse and keyboard); read the stores with `store(page, 'project', (p) => ...)` to check the result.
+Take `test` and `expect` from `./support.js` (lint insists): its `test` cuts the page off from the
+SOCIAL server, so no spec reaches the network; a SOCIAL spec fakes it with `fakeServer` from
+`./social-support.js`.
 From `tests/e2e/edit-drag-select.spec.js`:
 
 ```js
-import { openApp, store, cellPoint, drag } from './support.js';
+import { test, expect, openApp, store, cellPoint, drag } from './support.js';
 
 test('a drag in Edit Mode becomes a Select selection', async ({ page }) => {
   await openApp(page);
@@ -74,6 +77,61 @@ test('a drag in Edit Mode becomes a Select selection', async ({ page }) => {
   expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: 3, r0: 3, c1: 8, r1: 6 });
 });
 ```
+
+## Testing SOCIAL without its server
+
+The SOCIAL tab talks to a server that these tests never reach. Each layer stands in for it differently:
+
+- **Unit** (`tests/unit/social-*.test.js`): the pure modules in `src/social/` (the API helper,
+  lobby state, names, messages). No network.
+- **Browser** (`tests/browser/social-*.test.js`): `SocialStore` and the key and Turnstile modules in
+  Chromium, with `fetch` stubbed by `vi.stubGlobal` (a small fake API that records each request) and a
+  fake `WebSocket` class the test answers for the server. WebCrypto and IndexedDB are the real ones.
+- **End-to-end** (`tests/e2e/social-*.spec.js`): `fakeServer(page, { me, rooms, ... })` from
+  `tests/e2e/social-support.js` answers the API through `page.route` and the lobby socket through
+  `page.routeWebSocket`, records every request and message, and lets a spec push lobby messages or
+  drop the connection. Without it, the default `test` in `tests/e2e/support.js` aborts every request
+  to `localhost:8787` and closes every socket, so a spec that forgot to fake the server fails
+  instead of reaching a real one.
+
+### Rooms end to end
+
+A room spec runs two pages (a host and a watcher, in one browser context) that share one
+`fakeRoom({ password, allowGuests, max, full })` from `tests/e2e/social-support.js`. Each page's
+`fakeServer` gets it as `room`; the fake answers the room sockets as the server does, relaying the
+signals between host and watchers, so the specs click through starting, joining, tracking and ending
+without a real server. Everything else (the art, the view, the welcome message) goes over a real WebRTC
+data channel between the two pages:
+
+- The e2e build is made with `VITE_SOCIAL_STUN=none` (in `playwright.config.js`), so no STUN server
+  is asked for and nothing leaves the machine.
+- Chromium hides local addresses behind mDNS names, which two pages on one machine can't resolve to
+  each other, so the browsers launch with `WebRtcHideLocalIpsWithMdns` off (both `vitest.config.js` and
+  `playwright.config.js`).
+- Chromium keeps only the last `--disable-features` it's given, and Playwright passes its own. So
+  `launchWithout` in `tests/support/chromiumArgs.js` reads Playwright's list from a browser it
+  launches while the config loads (once a run: Playwright's workers read the answer from the
+  environment), and passes Playwright's features and ours as one list.
+
+The browser-layer room tests (`tests/browser/social-peer.test.js` and the other `social-*` ones that
+connect peers) use `iceServers: []` and the same launch options, from `vitest.config.js`.
+
+### Room connections on macOS
+
+The room tests (`tests/browser/social-peer.test.js`) connect two WebRTC peers inside Chromium, which
+needs the machine to let that Chromium receive UDP. With the macOS firewall on (stealth mode
+especially), Playwright's ad-hoc-signed browser has its incoming packets dropped: the first
+connection may work and the next ones time out. Allow it once, for the headless shell the tests
+launch (`~/Library/Caches/ms-playwright/chromium_headless_shell-<version>/...`, the
+`chrome-headless-shell` binary inside):
+
+```bash
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add <path to chrome-headless-shell>
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp <path to chrome-headless-shell>
+```
+
+Redo it after a Playwright browser update, which installs a new binary at a new path. Linux and CI
+need nothing.
 
 ## Running one test
 

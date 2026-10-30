@@ -39,10 +39,10 @@ export function backingScale(cssWidth, cssHeight, dpr, maxSide = Infinity) {
 // A cell in whole device pixels (an even height, so the two halves match, as GlyphCoverage
 // rasterizes) and in CSS px. advance: the font's character width at its CSS size. capped: the scale
 // was lowered to the cap, so sizes round down (rounding up would pass it again).
-export function cellGeometry(advance, scale, capped = false) {
+export function cellGeometry(advance, scale, capped = false, font = DISPLAY_FONT) {
   const round = capped ? Math.floor : Math.round;
   const cw = round(advance * scale);
-  const ch = round(DISPLAY_FONT.size * DISPLAY_FONT.lineHeight * scale / 2) * 2;
+  const ch = round(font.size * font.lineHeight * scale / 2) * 2;
   return { cw, ch, cellWidth: cw / scale, lineHeight: ch / scale };
 }
 
@@ -171,8 +171,9 @@ export default class CellCanvas {
   #textures = null;     // [fg, bg, atlas, ov, ovHi], bound to texture units 0-4
   #allocated = false;   // the data textures have the grid's size
   #onRestored = null;
+  #font = null;         // the font it draws in, or null for the display font (read when used)
   #advance = null;      // the font's character width in CSS px, measured by resize
-  #geom = null;         // { cols, rows, cw, ch, scale }
+  #geom = null;         // { cols, rows, cw, ch, scale, css }
   #fg = null;
   #bg = null;
   #ov = null;
@@ -191,9 +192,12 @@ export default class CellCanvas {
     this.#onRestored?.();
   };
 
-  constructor(canvas, { onRestored } = {}) {
+  // font: a font of its own ({ family, size, lineHeight }: a room's art in the host's), rather than
+  // the display font.
+  constructor(canvas, { onRestored, font = null } = {}) {
     this.canvas = canvas;
     this.#onRestored = onRestored;
+    this.#font = font;
     this.#init();
     canvas.addEventListener('webglcontextlost', this.#onLost);
     canvas.addEventListener('webglcontextrestored', this.#onRestore);
@@ -202,7 +206,7 @@ export default class CellCanvas {
   // The cell size in CSS px, or null before the first resize.
   get metrics() {
     const g = this.#geom;
-    return g ? { cellWidth: g.cw / g.scale, lineHeight: g.ch / g.scale } : null;
+    return g ? { cellWidth: g.cw / g.css, lineHeight: g.ch / g.css } : null;
   }
 
   // Whether text is anti-aliased; changing it draws every glyph again.
@@ -216,28 +220,32 @@ export default class CellCanvas {
     this.#dropAtlas();
   }
 
-  // The cell in CSS px at the display's full dpr (no cap), without touching the canvas: what a view
+  // The cell in CSS px at the display's full dpr (no cap) and a zoom (1 or less: glyphs are drawn at
+  // dpr x zoom, and the cell is that many pixels in CSS px), without touching the canvas: what a view
   // sizes its first window by, before resize has run.
-  cellSize(dpr) {
-    const { cellWidth, lineHeight } = cellGeometry(this.#advance ??= measureAdvance(), dpr);
-    return { cellWidth, lineHeight };
+  cellSize(dpr, zoom = 1) {
+    const { cw, ch } = cellGeometry(this.#advance ??= measureAdvance(this.#fontNow), dpr * zoom, false, this.#fontNow);
+    return { cellWidth: cw / dpr, lineHeight: ch / dpr };
   }
 
-  // Size the canvas for cols x rows cells (the window of the grid it draws) at the display's dpr;
-  // true when anything changed.
-  resize(cols, rows, dpr) {
-    if (this.#advance === null) this.#advance = measureAdvance();
-    const scale = backingScale(cols * this.#advance, rows * DISPLAY_FONT.size * DISPLAY_FONT.lineHeight, dpr, this.#maxSide);
-    const { cw, ch } = cellGeometry(this.#advance, scale, scale < dpr);
+  // Size the canvas for cols x rows cells (the window of the grid it draws) at the display's dpr and a
+  // zoom; true when anything changed.
+  resize(cols, rows, dpr, zoom = 1) {
+    const font = this.#fontNow;
+    if (this.#advance === null) this.#advance = measureAdvance(font);
+    const scale = backingScale(cols * this.#advance, rows * font.size * font.lineHeight, dpr * zoom, this.#maxSide);
+    const capped = scale < dpr * zoom;
+    const { cw, ch } = cellGeometry(this.#advance, scale, capped, font);
+    const css = capped ? scale / zoom : dpr; // device px per CSS px (dpr itself, exactly, when not capped: cellSize divides by it)
     const g = this.#geom;
-    if (g && g.cols === cols && g.rows === rows && g.cw === cw && g.ch === ch && g.scale === scale) return false;
+    if (g && g.cols === cols && g.rows === rows && g.cw === cw && g.ch === ch && g.scale === scale && g.css === css) return false;
     const sameCell = g && g.cw === cw && g.ch === ch && g.scale === scale; // the window's size moves on every frame of a viewport resize
 
     this.canvas.width = cols * cw;
     this.canvas.height = rows * ch;
-    this.canvas.style.width = `${cols * cw / scale}px`;
-    this.canvas.style.height = `${rows * ch / scale}px`;
-    this.#geom = { cols, rows, cw, ch, scale };
+    this.canvas.style.width = `${cols * cw / css}px`;
+    this.canvas.style.height = `${rows * ch / css}px`;
+    this.#geom = { cols, rows, cw, ch, scale, css };
     this.#fg = new Uint8Array(cols * rows * 4);
     this.#bg = new Uint8Array(cols * rows * 4);
     this.#ov = new Uint8Array(cols * rows * 4);
@@ -303,6 +311,10 @@ export default class CellCanvas {
     this.canvas.removeEventListener('webglcontextlost', this.#onLost);
     this.canvas.removeEventListener('webglcontextrestored', this.#onRestore);
     this.#gl?.getExtension('WEBGL_lose_context')?.loseContext();
+  }
+
+  get #fontNow() {
+    return this.#font ?? DISPLAY_FONT;
   }
 
   // The context, program and textures (again after a context loss).
@@ -399,13 +411,13 @@ export default class CellCanvas {
     return index;
   }
 
-  // A character in the display font across cells cells (1, or 2 for a wide one), anti-aliased or
+  // A character in its font across cells cells (1, or 2 for a wide one), anti-aliased or
   // sharp (displayFonts.drawGlyph). Its atlas texels: ink (alpha 255, its coverage in red: how much
   // of the cell's fg is blended in), or for a color glyph (an emoji: drawn in its own colors,
   // whatever the fill says) its color with alpha 128 where it's over half covered.
   #rasterize(char, cells) {
     const { ch, scale } = this.#geom, cw = this.#geom.cw * cells;
-    const data = drawGlyph(char, cw, ch, scale, '#f00', this.#smooth);
+    const data = drawGlyph(char, cw, ch, scale, '#f00', this.#smooth, this.#fontNow);
     let color = false; // any inked pixel that isn't the fillStyle's red
     for (let i = 0; i < data.length && !color; i += 4) color = data[i + 3] > 127 && (data[i] < 224 || data[i + 1] > 31 || data[i + 2] > 31);
     const texels = new Uint8Array(data.length);
@@ -435,9 +447,9 @@ function inkTexels(mask) {
   return texels;
 }
 
-// The display font's character width in CSS px.
-function measureAdvance() {
+// A font's character width in CSS px.
+export function measureAdvance(font) {
   const ctx = document.createElement('canvas').getContext('2d');
-  ctx.font = displayFontCss();
+  ctx.font = displayFontCss(font);
   return ctx.measureText('M').width;
 }

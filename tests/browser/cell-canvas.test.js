@@ -5,6 +5,7 @@ import { test, expect } from 'vitest';
 import { createTestApp } from '../support/app.js';
 import CellCanvas, { MAX_BACKING_AREA } from '@/lib/CellCanvas';
 import { layoutWide } from '@/lib/Cells';
+import { fontFor } from '@/social/wire';
 
 const rgb = (hex) => ({ hex, r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
 const cell = (char, fg, bg) => ({ char, fg: rgb(fg), bg: rgb(bg) });
@@ -245,6 +246,57 @@ test('a window draws exactly the pixels the whole grid draws there', async () =>
   }
 });
 
+test('at a zoom, the cell is the zoomed size: glyphs drawn at dpr x zoom, in CSS px at the zoom', async () => {
+  await createTestApp();
+  const c = new CellCanvas(document.createElement('canvas'));
+  const full = c.cellSize(1);
+  expect(c.cellSize(2, 0.5)).toEqual({ cellWidth: full.cellWidth / 2, lineHeight: full.lineHeight / 2 });
+  expect(c.cellSize(2)).toEqual(c.cellSize(2, 1));
+  c.resize(10, 4, 2, 0.5);
+  expect(c.metrics).toEqual(c.cellSize(2, 0.5));
+  expect(parseFloat(c.canvas.style.width)).toBe(10 * c.metrics.cellWidth);
+  expect(parseFloat(c.canvas.style.height)).toBe(4 * c.metrics.lineHeight);
+  const half = c.canvas.width;
+  expect(half).toBe(new CellCanvas(document.createElement('canvas')).cellSize(1).cellWidth * 10); // glyphs drawn at 1 device px per font px
+  c.resize(10, 4, 2);
+  expect(half).toBe(c.canvas.width / 2); // the zoom reaches the backing store
+  c.resize(10, 4, 2, 0.5);
+  expect(c.resize(10, 4, 2, 0.5)).toBe(false);
+  expect(c.resize(10, 4, 2, 1)).toBe(true); // the same size at another zoom is a change
+  c.destroy();
+});
+
+test('at any dpr and zoom, metrics is exactly cellSize (float drift would break comparing them)', async () => {
+  await createTestApp();
+  const c = new CellCanvas(document.createElement('canvas'));
+  const cases = [[3, 0.3], [1.5, 0.7408], [2, 0.5], [1, 1], [1.25, 0.6]];
+  for (const dpr of [1.25, 1.5, 2, 3]) for (let zoom = 0.25; zoom <= 1; zoom += 0.0137) cases.push([dpr, zoom]); // some of these drift
+  for (const [dpr, zoom] of cases) {
+    c.resize(10, 4, dpr, zoom);
+    expect(c.metrics, `dpr ${dpr} zoom ${zoom}`).toEqual(c.cellSize(dpr, zoom));
+  }
+  c.destroy();
+});
+
+test('a zoomed window draws the pixels the whole grid draws there at the same zoom', async () => {
+  await createTestApp();
+  await useWideFont();
+  const cells = windowGrid();
+  for (const [dpr, zoom] of [[2, 0.5], [2, 0.75], [1, 0.5]]) {
+    const canvas = document.createElement('canvas');
+    const view = new CellCanvas(canvas);
+    view.resize(GRID_COLS, GRID_ROWS, dpr, zoom);
+    view.draw(cells);
+    const whole = readView(view), cw = canvas.width / GRID_COLS, ch = canvas.height / GRID_ROWS;
+    view.resize(10, 6, dpr, zoom);
+    view.draw(cells, WINDOW);
+    const part = readView(view);
+    expect(part.length).toBe(6 * ch);
+    for (let y = 0; y < part.length; y++) expect(part[y], `dpr ${dpr} zoom ${zoom} row ${y}`).toEqual(whole[WINDOW.row * ch + y].slice(WINDOW.col * cw, (WINDOW.col + 10) * cw));
+    view.destroy();
+  }
+});
+
 test('the canvas is the window\'s size, at full dpr, however long the grid', async () => {
   await createTestApp();
   const canvas = document.createElement('canvas');
@@ -283,4 +335,14 @@ test('cellSize is the cell resize gives at full dpr', async () => {
   view.resize(10, 6, 2);
   expect(size).toEqual(view.metrics);
   view.destroy();
+});
+
+test('a canvas with a font of its own measures in it, not in the display font', async () => {
+  await createTestApp(); // the display font: JetBrains Mono
+  const own = new CellCanvas(document.createElement('canvas'), { font: fontFor({ id: 'vga', size: 16 }) });
+  const global = new CellCanvas(document.createElement('canvas'));
+  expect(own.cellSize(1).lineHeight).toBe(16);
+  expect(global.cellSize(1).lineHeight).toBe(20);
+  own.destroy();
+  global.destroy();
 });

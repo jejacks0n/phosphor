@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, editAt, chars } from './support.js';
 
 // Moebius-style color keys: Alt+F / Alt+A open the color box on the foreground, Alt+B on the

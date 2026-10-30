@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, tab, store, cellPoint, drag } from './support.js';
 
 test('the editor tabs are a tablist: Tab reaches the selected one, arrows move and select', async ({ page }) => {
@@ -18,9 +18,13 @@ test('the editor tabs are a tablist: Tab reaches the selected one, arrows move a
   await expect(tab(page, 'SAUCE')).toBeFocused();
   await expect(tab(page, 'SAUCE')).toHaveAttribute('aria-selected', 'true');
   expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('sauce');
+  await page.keyboard.press('ArrowRight');
+  await expect(tab(page, 'SOCIAL')).toBeFocused();
   await page.keyboard.press('ArrowRight'); // wraps
   await expect(tab(page, 'PIXEL')).toBeFocused();
   await page.keyboard.press('End');
+  await expect(tab(page, 'SOCIAL')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowLeft');
   await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
   expect(await store(page, 'workspace', (w) => w.selection)).toEqual(selection); // the arrows stayed with the tabs

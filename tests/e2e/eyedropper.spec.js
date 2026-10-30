@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, drag, tab, settled, editAt } from './support.js';
 
 const workspace = (page, read) => store(page, 'workspace', read);

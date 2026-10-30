@@ -1,5 +1,5 @@
 // Ctrl+wheel (and a trackpad pinch, which arrives as one) zooms the PIXEL view around the pointer.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, tab, settled } from './support.js';
 
 const zoom = (page) => store(page, 'workspace', (w) => w.editZoom);
@@ -8,6 +8,9 @@ async function pixelView(page) {
   await openApp(page);
   await tab(page, 'PIXEL').click();
   await settled(page);
+  // The view centers itself a frame after it mounts and then records its scroll: until it has, the
+  // canvas is not where it will be, and a pointer placed on it may be off the view.
+  await page.waitForFunction(() => document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('workspace').inputScrollX !== null);
   return page.locator('article .display').first();
 }
 
@@ -44,11 +47,12 @@ test('Ctrl+wheel zoom keeps the grid point under the pointer', async ({ page }) 
   await page.keyboard.down('Control');
   for (let i = 0; i < 5; i++) await page.mouse.wheel(0, -10);
   await page.keyboard.up('Control');
-  await page.waitForTimeout(200);
-  const after = await gridAt();
   expect(await zoom(page)).toBeGreaterThan(5);
-  expect(Math.abs(after.x - before.x)).toBeLessThan(0.5);
-  expect(Math.abs(after.y - before.y)).toBeLessThan(0.5);
+  // The scroll that puts the point back under the pointer lands a frame after the zoom.
+  await expect.poll(async () => {
+    const after = await gridAt();
+    return Math.max(Math.abs(after.x - before.x), Math.abs(after.y - before.y));
+  }).toBeLessThan(0.5);
 });
 
 test('at a fractional zoom the PIXEL view fills its canvas to the last pixel, with no see-through sliver at the grid\'s edge', async ({ page }) => {
@@ -71,4 +75,19 @@ test('at a fractional zoom the PIXEL view fills its canvas to the last pixel, wi
     return Math.min(...[...column, ...row].filter((_, i) => i % 4 === 3));
   });
   await expect.poll(edgeAlphas).toBe(255);
+});
+
+test('a redraw with the same cells in view keeps inputView as it was (a room\'s view isn\'t worked out again)', async ({ page }) => {
+  await pixelView(page);
+  await expect.poll(() => store(page, 'workspace', (w) => w.inputView.cols)).toBeGreaterThan(0);
+  const same = await page.evaluate(async () => {
+    const workspace = document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('workspace');
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    const view = workspace.inputView;
+    workspace.ansiOverlay = 50;   // redraws, nothing moved
+    await frame();
+    await frame();
+    return workspace.inputView === view;
+  });
+  expect(same).toBe(true);
 });

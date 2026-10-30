@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, settled } from './support.js';
 
 // The Characters field: type your own, or pick a ready-made set from the ▾, a native select (the

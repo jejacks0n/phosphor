@@ -27,3 +27,7 @@ pnpm-debug.log*
 .vitest/
 test-results/
 playwright-report/
+
+
+# The SOCIAL server: its own repo, symlinked here for working on both side by side
+/server

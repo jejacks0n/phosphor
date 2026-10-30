@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, settled } from './support.js';
 
 const cellsOf = (page) => store(page, 'project', (p) => JSON.stringify(p.cells));

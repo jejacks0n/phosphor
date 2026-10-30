@@ -1,6 +1,6 @@
 // The ANSI view's overlays sit on the cells they mark, inside the display's border: the cell
 // highlight, the text cursor, the selection and the Shapes outline.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, drag, chars } from './support.js';
 
 // A cell's top-left on the page, measured from inside the display's border.

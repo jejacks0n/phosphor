@@ -29,6 +29,10 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   assert.equal(deserializeEditCells(undefined).size, 0);
   assert.deepEqual([...migrateCharEdits([[5, '#'], [12, '@']], 4)], [['1,1', { char: '#' }], ['0,3', { char: '@' }]]);
   assert.equal(migrateCharEdits([[5, '#']], undefined).size, 0);          // no column count: nothing to place
+  // Older files are as untrusted as new ones: one character a cell can hold, at a whole index.
+  const old = [[0, '<img src=x onerror=alert(1)>'], [1, 'ab'], [2, 'A'], [-1, 'B'], ['3', 'C'], [1.5, 'D'], [3, 5], null];
+  assert.deepEqual([...migrateCharEdits(old, 4)], [['2,0', { char: 'A' }]]);
+  assert.equal(migrateCharEdits({ 0: 'A' }, 4).size, 0);
   assert.ok(Object.isFrozen(deserializeEditCells([['0,0', { char: 'x' }]]).get('0,0')));
   // A char is one character a cell can hold: a whole cluster (👍🏽), one or two columns wide; two
   // characters or a lone combining mark are skipped.

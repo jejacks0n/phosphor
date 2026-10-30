@@ -39,3 +39,19 @@ export function viewIn(sizer, viewport) {
     height: viewport.clientHeight,
   };
 }
+
+/**
+ * The whole cells on screen: the first, and how many across and down. `view` as for `viewWindow`,
+ * `cell` the cell in CSS px ({ cellWidth, lineHeight }). A cell hidden by under a pixel still counts.
+ */
+export function wholeCellsIn(view, cell, cols, lines) {
+  const clamp = (n, max) => Math.max(0, Math.min(max, n));
+  const col = clamp(Math.ceil((view.x - 1) / cell.cellWidth), cols - 1);
+  const row = clamp(Math.ceil((view.y - 1) / cell.lineHeight), lines - 1);
+  return {
+    col,
+    row,
+    cols: clamp(Math.floor((view.x + view.width + 1) / cell.cellWidth) - col, cols - col),
+    rows: clamp(Math.floor((view.y + view.height + 1) / cell.lineHeight) - row, lines - row),
+  };
+}

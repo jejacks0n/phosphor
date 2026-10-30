@@ -1,7 +1,6 @@
 // Select and the Magic Wand go with you between the PIXEL and ANSI tabs: leave one with either in
 // hand and the other tab takes it. Every other tool stays with its own tab.
-import { test, expect } from '@playwright/test';
-import { openApp, store, tab, settled } from './support.js';
+import { test, expect, openApp, store, tab, settled } from './support.js';
 
 const tool = (page) => store(page, 'workspace', (w) => w.activeTool);
 async function go(page, name) {

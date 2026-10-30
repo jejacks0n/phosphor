@@ -1,7 +1,7 @@
 // Tool keys: a letter chooses a tool (Photoshop's letters, Moebius's where it has the same tool), not
 // while typing; with a selection, Moebius's block keys act on it: E erases, S or C stamps, Enter
 // sets it down. Each tool's button shows its key.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, drag, editAt, chars, tab, settled } from './support.js';
 
 const tool = (page) => store(page, 'workspace', (w) => w.activeTool);
@@ -18,7 +18,7 @@ test('letters choose the tools the view offers, and the buttons say which', asyn
   await tab(page, 'PIXEL').click();
   await settled(page);
   await page.keyboard.press('z');
-  expect(await tool(page)).toBe('zoom'); // the PIXEL view's
+  expect(await tool(page)).toBe('zoom'); // on PIXEL as on ANSI
   await page.keyboard.press('p');
   expect(await tool(page)).toBe('pencil');
   await page.keyboard.press('t'); // Edit Mode is the ANSI view's

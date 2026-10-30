@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, settled, editAt, saveAs, imageInput } from './support.js';
 
 test('save a project and load it back through the file input', async ({ page }) => {

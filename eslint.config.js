@@ -4,7 +4,7 @@ import globals from 'globals';
 import stylistic from '@stylistic/eslint-plugin';
 
 export default [
-  { ignores: ['dist/**', 'input/**', '.vitest/**', 'test-results/**', 'playwright-report/**'] },
+  { ignores: ['dist/**', 'input/**', 'server/**', '.vitest/**', 'test-results/**', 'playwright-report/**'] },
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],
   {
@@ -38,6 +38,13 @@ export default [
     files: ['tests/**'],
     languageOptions: {
       globals: { ...globals.node, ...globals.browser, __UPDATE_REFERENCES__: 'readonly' },
+    },
+  },
+  {
+    // The e2e specs take test from support.js, which cuts off the SOCIAL server unless a spec fakes it.
+    files: ['tests/e2e/**/*.spec.js'],
+    rules: {
+      'no-restricted-imports': ['error', { paths: [{ name: '@playwright/test', message: 'Import test and expect from ./support.js.' }] }],
     },
   },
 ];

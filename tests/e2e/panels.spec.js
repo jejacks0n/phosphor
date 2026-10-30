@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { readFile } from 'node:fs/promises';
 import { execSync } from 'node:child_process';
 import { openApp, store, settled, fixture, cellPoint } from './support.js';
@@ -19,6 +19,10 @@ test('About opens from the footer, says which build it is, and closes', async ({
   await expect(page.locator('p.build')).toHaveText(new RegExp(`^build ${sha}(-dirty)?$`));
   const meta = await page.locator('meta[name="phosphor-build"]').getAttribute('content');
   expect(meta).toMatch(new RegExp(`^v\\d+\\.\\d+\\.${today} ${sha}(-dirty)?$`));
+  // The icons are credited as their license asks.
+  await expect(page.getByRole('link', { name: 'Font Awesome Free' })).toHaveAttribute('href', 'https://fontawesome.com');
+  await expect(page.getByRole('listitem').filter({ hasText: 'Font Awesome Free' }).getByRole('link', { name: 'CC BY 4.0' }))
+    .toHaveAttribute('href', 'https://creativecommons.org/licenses/by/4.0/');
   await page.getByTitle('Close').click();
   await expect(page.locator('.modal-backdrop')).toBeHidden();
 });

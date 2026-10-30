@@ -1,0 +1,73 @@
+// A name's swatch color: the same name always gets the same CGA color, and names spread over them.
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
+import { nameColor, nameGlyph, nameInk, NAME_COLORS, NAME_GLYPHS, usernameProblem, cleanUsername, suggestedUsername } from '../../src/social/names.js';
+import { CGA_COLORS_STR } from '../../src/lib/ColorUtils.js';
+import { isCp437 } from '../../src/lib/Cp437.js';
+
+test('A name\'s color is stable, one of the CGA colors (not black), and names spread over them', () => {
+  assert.equal(nameColor('quiet-amber-fox'), nameColor('quiet-amber-fox'));
+  const cga = CGA_COLORS_STR.split(' ');
+  assert.ok(!NAME_COLORS.includes('#000000'));
+  assert.ok(NAME_COLORS.every((c) => cga.includes(c)));
+  const names = Array.from({ length: 200 }, (_, i) => `name-${i}`);
+  assert.ok(names.every((n) => NAME_COLORS.includes(nameColor(n))));
+  assert.equal(new Set(names.map(nameColor)).size, NAME_COLORS.length);   // every color gets used
+  assert.notEqual(nameColor('ansi-fan'), nameColor('ansi-fan2'));
+});
+
+test('A name\'s glyph is stable, a CP437 symbol that reads as no letter or digit, and doesn\'t follow from its color', () => {
+  assert.equal(nameGlyph('quiet-amber-fox'), nameGlyph('quiet-amber-fox'));
+  assert.equal(NAME_GLYPHS.length, 31);
+  assert.equal(new Set(NAME_GLYPHS).size, NAME_GLYPHS.length);
+  assert.ok(NAME_GLYPHS.every((g) => isCp437(g) && !/[A-Za-z0-9○]/.test(g)), NAME_GLYPHS.join(''));
+  const names = Array.from({ length: 2000 }, (_, i) => `name-${i}`);
+  assert.equal(new Set(names.map(nameGlyph)).size, NAME_GLYPHS.length);   // every glyph gets used
+  const oneColor = names.filter((n) => nameColor(n) === nameColor('name-0'));
+  assert.ok(new Set(oneColor.map(nameGlyph)).size > NAME_GLYPHS.length / 2);   // names of one color have many glyphs
+});
+
+test('the words on a name\'s color are black on the light ones and white on the dark ones', () => {
+  for (const light of ['#ffff55', '#55ffff', '#55ff55', '#ffffff', '#aaaaaa', '#ff55ff']) assert.equal(nameInk(light), '#000000', light);
+  for (const dark of ['#0000aa', '#aa0000', '#0000AA', '#555555', '#aa00aa']) assert.equal(nameInk(dark), '#ffffff', dark);
+  assert.ok(NAME_COLORS.every((c) => ['#000000', '#ffffff'].includes(nameInk(c))));
+});
+
+// The server's own rule, case by case: length, then characters, then reserved.
+test('usernameProblem matches the server\'s rules', () => {
+  const cases = [
+    ['ab', 'length'], ['a'.repeat(25), 'length'], ['pixel wren', 'characters'], ['pixel.wren', 'characters'],
+    ['quiet-amber-fox', 'reserved'], ['Admin', 'reserved'], ['phosphor', 'reserved'],
+    ['pixel_wren', null], ['wren-42', null], ['two-words', null], ['a-b-c-d', null],
+    ['Quiet-Amber-Fox', 'reserved'], ['GUEST', 'reserved'], ['host', 'reserved'], ['system', 'reserved'],
+    ['a-', 'length'], ['a b c d e', 'characters'], ['wren-42-fox', null], ['a'.repeat(24), null], ['', 'length'],
+    // Staff, the service and its makers, placeholders, joined, split, in digits, or with a word before or after.
+    ['sysop', 'reserved'], ['Moderator', 'reserved'], ['no-reply', 'reserved'], ['adm1n', 'reserved'],
+    ['r00t', 'reserved'], ['root99', 'reserved'], ['wren_mod', 'reserved'], ['M0D-wren', 'reserved'],
+    ['the-admin', 'reserved'], ['realadmin', 'reserved'], ['phosphor_wren', 'reserved'], ['IshiFishi', 'reserved'],
+    ['1shif1sh1', 'reserved'], ['euphio-labs', 'reserved'], ['official_wren', 'reserved'], ['everyone', 'reserved'],
+    ['deleted_user', 'reserved'], ['test1', 'reserved'], ['demo', 'reserved'],
+    // Words that only hold one inside them.
+    ['badminton', null], ['modern_wren', null], ['rooted', null], ['wren42', null],
+  ];
+  for (const [name, problem] of cases) assert.equal(usernameProblem(name), problem, name);
+});
+
+test('a provider\'s name cleaned to a username: lowercase, spaces to hyphens, the rest dropped, 24 at most', () => {
+  assert.equal(cleanUsername('Pixel Wren!'), 'pixel-wren');
+  assert.equal(cleanUsername('  Ansi  Fan_99 '), 'ansi-fan_99');
+  assert.equal(cleanUsername('Zoë (she/her)'), 'zo-sheher');
+  assert.equal(cleanUsername('x'.repeat(30)), 'x'.repeat(24));
+  assert.equal(cleanUsername(null), '');
+});
+
+test('the onboarding suggestion is the cleaned name when it would do, else its first word, else nothing', () => {
+  assert.equal(suggestedUsername('Pixel Wren!'), 'pixel-wren');
+  assert.equal(suggestedUsername('Quiet Amber Fox'), 'quiet');   // guest-shaped
+  assert.equal(suggestedUsername('quiet-amber-fox'), 'quiet');
+  assert.equal(suggestedUsername('Wren Q'), 'wren-q');
+  assert.equal(suggestedUsername('Admin'), '');   // reserved, and so is its first word
+  assert.equal(suggestedUsername('Al'), '');   // too short
+  assert.equal(suggestedUsername('Al Bo Cy'), '');
+  assert.equal(suggestedUsername(null), '');
+});

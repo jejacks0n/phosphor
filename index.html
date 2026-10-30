@@ -20,6 +20,15 @@
     <meta name="twitter:title" content="phosphor [Modern ANSI Editor]">
     <meta name="twitter:description" content="Turn images into ANSI art in your browser, then paint, type and export .ans or .utf8ans.">
     <meta name="twitter:image" content="https://phosphor.work/og-image.png">
+    <script>
+      // The theme before the first paint, as App.vue sets it after: the one picked (dark until one is), or with
+      // System the computer's.
+      try {
+        const theme = localStorage.getItem('phosphor.theme');
+        const light = theme === 'light' || (theme === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
+        document.documentElement.dataset.theme = light ? 'light' : 'dark';
+      } catch { /* no storage: the default, dark */ }
+    </script>
   </head>
   <body>
     <noscript>

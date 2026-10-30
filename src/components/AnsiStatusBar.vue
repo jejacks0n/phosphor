@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -11,7 +11,7 @@ import { shortcut } from '@/lib/keyLabels';
 // edit layer or the base) and the overwrite/insert toggle; Select, the selection's size and place; the
 // Color Picker, its last pick and where each color came from. On the right, with a mouse or trackpad,
 // the held-key shortcuts for the tool (they work in the pixel view too; this is where they're taught),
-// or what a held key is doing.
+// or what a held key is doing. Zoomed out, the zoom, which goes back to 100%.
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const tool = computed(() => workspace.activeTool);
@@ -38,6 +38,14 @@ const hint = computed(() => {
   if (tool.value !== 'text' && tool.value !== 'hand') return [['Space', 'pan']];
   return null;
 });
+
+// The zoom as shown; going back to 100% takes the button away, so the focus goes to the one beside it.
+const percent = computed(() => Math.round(workspace.ansiZoom * 100));
+const renderer = useTemplateRef('renderer');
+const backTo100 = () => {
+  workspace.setAnsiZoom(1);
+  renderer.value?.focus();
+};
 </script>
 
 <template>
@@ -66,13 +74,20 @@ const hint = computed(() => {
       <template v-else v-for="([key, does], i) in hint" :key="key">{{ i ? ' · ' : '' }}<kbd>{{ key }}</kbd> {{ does }}</template>
     </span>
     <button
-        :title="`Switch the ANSI view to its ${workspace.ansiRenderer === 'dom' ? 'canvas' : 'DOM'} renderer (trial)`"
+        v-if="percent < 100"
+        title="Zoomed out: back to 100%"
+        :aria-label="`Zoom ${percent}%: back to 100%`"
+        @click="backTo100"
+    >{{ percent }}%</button>
+    <button
+        ref="renderer"
+        :title="workspace.ansiRenderer === 'dom' ? 'The ANSI view is drawn as page text (DOM, a trial). Click to draw it on a canvas.' : 'The ANSI view is drawn on a canvas. Click to draw it as page text (DOM, a trial).'"
         @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
     >{{ workspace.ansiRenderer === 'dom' ? 'Canvas' : 'DOM' }}</button>
     <button
         :class="{ on: workspace.smoothText }"
         :aria-pressed="workspace.smoothText"
-        :title="workspace.smoothText ? 'Smooth text (anti-aliased): on' : 'Smooth text (anti-aliased): off, every pixel the cell\'s colors'"
+        :title="workspace.smoothText ? 'Smooth text is on: letters have soft edges. Click for crisp pixels in each cell\'s two colors.' : 'Smooth text is off: crisp pixels in each cell\'s two colors. Click for soft edges.'"
         @click="workspace.smoothText = !workspace.smoothText"
     >Smooth</button>
     <button

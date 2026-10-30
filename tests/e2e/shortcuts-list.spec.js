@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, editAt, chars } from './support.js';
 
 const list = (page) => page.getByRole('dialog', { name: 'Keyboard shortcuts' });
@@ -9,6 +9,7 @@ test('? opens the shortcuts list; Escape and Done close it', async ({ page }) =>
   await expect(list(page)).toBeVisible();
   await expect(list(page)).toContainText('Open the color box on the foreground');
   await expect(list(page)).toContainText('Nudge the selection');
+  await expect(list(page).locator('dd', { hasText: /^Zoom/ })).toHaveText('Zoom'); // both views zoom
   await page.keyboard.press('Escape');
   await expect(list(page)).toBeHidden();
   await page.keyboard.press('?');

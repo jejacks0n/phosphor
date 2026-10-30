@@ -5,9 +5,10 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf, putCellPixels } from '@/lib/Cells';
 import { parseKey } from '@/document/editCells';
-import { viewWindow, viewIn } from '@/lib/viewWindow';
+import { viewWindow, viewIn, wholeCellsIn } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
+import { clampZoom } from '@/lib/zoom';
 import EditorViewport from '@/components/EditorViewport.vue';
 
 // The PIXEL view: the composited output canvas scaled up by editZoom. The canvas covers only the
@@ -20,6 +21,7 @@ const wand = computed(() => workspaceStore.wand && wandIn(workspaceStore.wand, '
 const viewport = useTemplateRef('viewport');
 const sizerRef = useTemplateRef('sizer');
 const canvasRef = useTemplateRef('displayCanvas');
+const zoom = { get: () => workspaceStore.editZoom, set: workspaceStore.setEditZoom, clamp: clampZoom };
 
 // Edit cells (or all, with "All cells") drawn over the image as their half-cell colors: the
 // ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible.
@@ -92,8 +94,12 @@ const redrawDisplay = () => {
   const dc = canvasRef.value, sizer = sizerRef.value;
   const output = projectStore.renderer.outputCanvas;
   if (!dc || !sizer || !viewportEl || !output) return;
-  const zoom = workspaceStore.editZoom;
-  const win = viewWindow(viewIn(sizer, viewportEl), { x: zoom, y: zoom }, projectStore.cols, projectStore.rows);
+  const zoom = workspaceStore.editZoom, view = viewIn(sizer, viewportEl);
+  // A grid pixel is a column wide and half a line tall: the whole cells in view, and the zoom they're
+  // at, are what a room's watchers are shown. Set only when they changed, so a redraw doesn't send the view again.
+  const cells = { ...wholeCellsIn(view, { cellWidth: zoom, lineHeight: 2 * zoom }, projectStore.cols, charRowsOf(projectStore.rows)), zoom };
+  if (Object.keys(cells).some((k) => cells[k] !== workspaceStore.inputView[k])) workspaceStore.inputView = cells;
+  const win = viewWindow(view, { x: zoom, y: zoom }, projectStore.cols, projectStore.rows);
   const width = win.cols * zoom, height = win.rows * zoom;
   // Resizing clears the canvas, so only when the window's size changes; otherwise a clear, for an
   // output with transparent pixels.
@@ -195,6 +201,7 @@ watch(() => [workspaceStore.ansiOverlay, workspaceStore.ansiOverlayAll], queueRe
 // A scroll, or a viewport or sizer of a new size, brings other grid pixels into view.
 let resizeObserver = null;
 onMounted(() => {
+  workspaceStore.viewTab = 'input'; // the view a room's watchers are shown
   viewportEl = sizerRef.value?.closest('article') ?? null;
   viewportEl?.addEventListener('scroll', queueRedraw, { passive: true });
   resizeObserver = new ResizeObserver(queueRedraw);
@@ -216,7 +223,7 @@ onBeforeUnmount(() => {
       ref="viewport"
       :display="sizerRef"
       :coords-at="coordsAt"
-      zoomable
+      :zoom="zoom"
       scroll-key="input"
       :content-size="contentSize"
       view="input"

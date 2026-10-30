@@ -1,6 +1,6 @@
 // Dragging a selected block (or a new selection) to the edge of the ANSI view scrolls it, faster the
 // further in or past the edge, and the block keeps moving with the content under the pointer.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support.js';
 import { openApp, store, cellPoint, drag } from './support.js';
 
 const scroller = (page) => page.locator('.ansi-editor > article');

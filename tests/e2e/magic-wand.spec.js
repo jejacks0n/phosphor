@@ -1,7 +1,6 @@
 // The Magic Wand through the real UI: W, a click, the outline over the view; the selection stays for
 // the Paint Bucket, which fills only what's selected; Escape or switching views drops it.
-import { test, expect } from '@playwright/test';
-import { openApp, store, cellPoint, screenPixel } from './support.js';
+import { test, expect, openApp, store, cellPoint, screenPixel } from './support.js';
 
 const MAGENTA = [255, 0, 255];
 const wandCount = (page) => store(page, 'workspace', (w) => w.wand && [...w.wand.mask].filter(Boolean).length);
