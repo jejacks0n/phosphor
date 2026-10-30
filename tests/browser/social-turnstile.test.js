@@ -35,14 +35,17 @@ test('with a site key the script loads once, each widget gets its action, and a 
     setTimeout(() => script.onload());
   });
 
+  document.documentElement.dataset.theme = 'dark';
   const signup = shownDiv();
   const token = await mountTurnstile(signup, 'signup');
+  document.documentElement.dataset.theme = 'light';
   await mountTurnstile(shownDiv(), 'forgot');
+  delete document.documentElement.dataset.theme;
   expect(append).toHaveBeenCalledTimes(1);
   expect(append.mock.calls[0][0].src).toBe('https://challenges.cloudflare.com/turnstile/v0/api.js');
   expect(turnstile.render.mock.calls).toEqual([
-    [signup, expect.objectContaining({ sitekey: 'site-key', action: 'signup', size: 'flexible' })], // as wide as the form
-    [expect.any(HTMLElement), expect.objectContaining({ sitekey: 'site-key', action: 'forgot', size: 'flexible' })],
+    [signup, expect.objectContaining({ sitekey: 'site-key', action: 'signup', size: 'flexible', theme: 'dark' })], // as wide as the form
+    [expect.any(HTMLElement), expect.objectContaining({ sitekey: 'site-key', action: 'forgot', size: 'flexible', theme: 'light' })],
   ]);
 
   expect(token()).toBe('tok');
