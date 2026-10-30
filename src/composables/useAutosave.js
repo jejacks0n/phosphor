@@ -7,7 +7,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { settingsJson } from '@/store/project/shared';
 import { writeProject } from '@/document/projectIO';
-import { writeLatest, addVersion, listVersions, evict, readLatest, listDocuments } from '@/document/autosaveStore';
+import { writeLatest, addVersion, listVersions, evict, readLatest, readVersion, listDocuments } from '@/document/autosaveStore';
 import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, versionDue } from '@/document/autosaveRules';
 import { toast } from '@/composables/useToast';
 
@@ -226,6 +226,37 @@ export function useAutosave() {
     editedAt = saved.record.editedAt;
   }
 
+  // Brings back one of this document's versions, as a change like any other: unsaved, with the next
+  // write moving editedAt and counting toward a version. What was open is kept as a version first, so
+  // picking one can't lose it. Throws, for the dialog to say so; the document is left as it was.
+  async function restoreVersion(versionId) {
+    project.commitPending();
+    await flush();
+    const id = project.documentId;
+    if (!id) throw new Error('No document to restore into');
+    // Before addVersion, which may drop the oldest version, the one being asked for.
+    const saved = await readVersion(versionId);
+    if (!saved) throw new Error(`No version ${versionId}`);
+    const savedAt = Date.now();
+    await addVersion(id, { reason: 'before-restore', savedAt });
+    const kept = (await listVersions(id)).find((v) => v.reason === 'before-restore' && v.savedAt === savedAt);
+    try {
+      await project.restoreDocument(saved, { documentId: id });
+    } catch (error) {
+      // Gone wrong partway: not a half to write over the record. Put back what was open.
+      try {
+        if (!kept) throw error;
+        await project.restoreDocument(await readVersion(kept.id), { documentId: id });
+        edited = false; // putting it back isn't a change
+      } catch {
+        if (project.image) project.clearImage();
+      }
+      throw error;
+    }
+    // It may match no file, whatever the version says.
+    project.savedEditVersion = project.editVersion - 1;
+  }
+
   // A held lock is a duplicated tab (a copy from here on, its own document) once the wait is over.
   async function comeBack(id) {
     try {
@@ -289,5 +320,5 @@ export function useAutosave() {
 
   start();
 
-  return { current, flush, ready, recent, openRecent };
+  return { current, flush, ready, recent, openRecent, restoreVersion };
 }

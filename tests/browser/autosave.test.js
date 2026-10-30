@@ -8,6 +8,7 @@ import { useAutosave } from '@/composables/useAutosave';
 import { useProjectStore } from '@/store/ProjectStore';
 import { toastMessage } from '@/composables/useToast';
 import ZeroState from '@/components/ZeroState.vue';
+import VersionsDialog from '@/components/VersionsDialog.vue';
 import { writeLatest, addVersion, evict, readLatest, readVersion, listDocuments, listVersions } from '@/document/autosaveStore';
 import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, VERSION_EVERY_MS, MAX_TOTAL_BYTES } from '@/document/autosaveRules';
 import { readProject, writeProject } from '@/document/projectIO';
@@ -936,6 +937,94 @@ test('a restore that fails partway leaves the zero state, not half a document to
   expect((await readLatest(id)).record.editedAt).toBe(saved.record.editedAt);
 });
 
+// A document with two versions: the first edit's and, past 5 minutes, the second's. Returns the older.
+async function withVersions(project) {
+  edit(project, 0);
+  await pass(SAVE_AFTER_MS);
+  await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS);
+  edit(project, 1);
+  await pass(SAVE_AFTER_MS);
+  const versions = await listVersions(project.documentId);
+  expect(versions).toHaveLength(2);
+  return versions[1];
+}
+
+test('restoring a version keeps what was open as a version, starts a fresh undo history and counts as unsaved', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const older = await withVersions(project);
+  await project.saveProject();
+  await pass(SAVE_AFTER_MS);
+  expect(project.isDirty).toBe(false);
+
+  await autosave.restoreVersion(older.id);
+  expect(project.documentId).toBe(id);
+  expect([...project.editCells.keys()]).toHaveLength(1);
+  expect(project.canUndo).toBe(false);
+  expect(project.isDirty).toBe(true);
+  const kept = (await listVersions(id)).find((v) => v.reason === 'before-restore');
+  expect(kept).toBeTruthy();
+  expect([...(await readProject(new Blob([(await readVersion(kept.id)).record.rest]))).editCells.keys()]).toHaveLength(2);
+});
+
+test('a restored version\'s write is a change: it moves the edit time and is due a version', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const older = await withVersions(project);
+  await leave(); // a refresh: the document comes back as a restored one, not a changed one
+  const back = await mounted();
+  expect(back.project.documentId).toBe(id);
+  await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS);
+  const before = (await listVersions(id)).length;
+
+  await autosave.restoreVersion(older.id);
+  await pass(SAVE_AFTER_MS);
+  expect((await readLatest(id)).record.editedAt).toBe(Date.now());
+  expect((await listVersions(id)).map((v) => v.reason)).toContain('timed');
+  expect((await listVersions(id)).length).toBe(before + 2); // what was open, and the restored one
+  expect(await writtenChars(id)).toHaveLength(1);
+});
+
+test('a restore that fails partway puts back what was open, and rethrows', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const older = await withVersions(project);
+  const cells = JSON.stringify([...project.editCells]);
+  vi.spyOn(project, 'render').mockImplementationOnce(() => { throw new Error('partway'); });
+
+  await expect(autosave.restoreVersion(older.id)).rejects.toThrow('partway');
+  expect(project.documentId).toBe(id);
+  expect(JSON.stringify([...project.editCells])).toBe(cells);
+  const { editedAt } = (await readLatest(id)).record;
+  await pass(SAVE_AFTER_MS);
+  expect(await writtenChars(id)).toHaveLength(2);
+  expect((await readLatest(id)).record.editedAt).toBe(editedAt);
+});
+
+test('a restore that fails partway and can\'t put back what was open leaves the zero state, not a half to write', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const older = await withVersions(project);
+  const { editedAt } = (await readLatest(id)).record;
+  vi.spyOn(project, 'restoreDocument').mockRejectedValue(new Error('partway')); // and again putting it back
+
+  await expect(autosave.restoreVersion(older.id)).rejects.toThrow('partway');
+  expect(project.image).toBe(null);
+  await pass(SAVE_AFTER_MS);
+  expect((await readLatest(id)).record.editedAt).toBe(editedAt);
+  expect(await writtenChars(id)).toHaveLength(2);
+});
+
+test('restoring a version that is gone rejects and changes nothing', async () => {
+  const { project } = await opened();
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  const cells = JSON.stringify([...project.editCells]);
+  await expect(autosave.restoreVersion(9999)).rejects.toThrow();
+  expect(JSON.stringify([...project.editCells])).toBe(cells);
+  expect((await listVersions(project.documentId)).map((v) => v.reason)).toEqual(['timed']);
+});
+
 test('without Web Locks, every lock is available', async () => {
   Object.defineProperty(navigator, 'locks', { value: undefined, configurable: true });
   try {
@@ -989,4 +1078,26 @@ test('the start screen lists at most 5 recent documents; one open elsewhere is d
   rows[0].querySelector('button').click();
   expect(opened).toEqual(['d0']);
   unmount();
+});
+
+test('the versions dialog says so when a restore fails, and stays open with the document as it was', async () => {
+  const { project } = await opened();
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const closed = vi.fn();
+  const restoreVersion = vi.fn().mockRejectedValue(new Error('partway'));
+  const dialog = createApp(VersionsDialog, { flush: autosave.flush, restoreVersion, onClose: closed });
+  dialog.mount(document.createElement('div'));
+  try {
+    await vi.waitUntil(() => document.querySelector('.modal-dialog li button'), { interval: 5 });
+    document.querySelector('.modal-dialog li button').click();
+    await vi.waitUntil(() => document.querySelector('[role=alert]'), { interval: 5 });
+    expect(document.querySelector('[role=alert]').textContent).toBe("Couldn't restore that version.");
+    expect(restoreVersion).toHaveBeenCalledTimes(1);
+    expect(closed).not.toHaveBeenCalled();
+    expect(document.querySelector('.modal-dialog li button').disabled).toBe(false);
+  } finally {
+    dialog.unmount();
+  }
 });

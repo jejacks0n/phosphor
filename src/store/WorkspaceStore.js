@@ -73,6 +73,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     shortcutsOpen: false,    // the keyboard shortcuts list (ShortcutsDialog)
     legalPage: null,         // the Terms or the Privacy Policy while one's open (LegalDialog): 'terms' | 'privacy'
     colorBox: null,          // the color box (ColorPair's popover) while it's open: 'fg' | 'bg'
+    versionsOpen: false,     // the autosaved versions list (VersionsDialog)
     saveDialog: null,        // the save dialog's format while it's open: 'phosphor' | 'ans' | 'utf8ans' (SaveDialog)
 
     // Scroll state persistence

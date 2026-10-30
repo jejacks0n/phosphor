@@ -109,7 +109,9 @@ name, so the next save starts from it, with a new time. Every browser saves it a
 that name, Safari included.
 
 Phosphor also keeps your work in this browser as you go. A refresh brings it back, with an empty undo
-history, and a new tab offers your recent work to pick up. Saving to a file is the real backup:
+history, and a new tab offers your recent work to pick up. **Versions** lists the snapshots it keeps
+every 5 minutes while you work (the last 20): restore one and what you had is kept in the list as
+"Before restoring". Saving to a file is the real backup:
 clearing site data deletes what's kept in the browser, and Safari can also delete it after seven days
 of browser use without a visit.
 
