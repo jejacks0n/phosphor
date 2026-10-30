@@ -15,6 +15,7 @@ import EditWorkspace from '@/components/EditWorkspace.vue';
 import ChatPanel from '@/components/social/ChatPanel.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
+import LegalDialog from '@/components/LegalDialog.vue';
 import SaveDialog from '@/components/SaveDialog.vue';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
 import AppToast from '@/components/AppToast.vue';
@@ -23,7 +24,7 @@ const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const room = useRoomStore();
 const { image } = storeToRefs(project);
-const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen } = storeToRefs(workspace);
+const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen, legalPage } = storeToRefs(workspace);
 
 // The theme on <html>, for global.css: the one picked, or with System the computer's (and it follows a change).
 const prefersLight = useMediaQuery('(prefers-color-scheme: light)');
@@ -111,6 +112,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
     <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>
     <ShortcutsDialog v-if="shortcutsOpen" @close="shortcutsOpen = false"/>
+    <LegalDialog v-if="legalPage" :page="legalPage" @open="legalPage = $event" @close="legalPage = null"/>
     <AppToast/>
   </main>
 </template>

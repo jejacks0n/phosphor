@@ -55,7 +55,9 @@ npm run build
 - **Never describe how the server is built, anywhere in this repo.** Not in code, comments, tests,
   docs or commit messages: no names of its files, modules, classes, libraries, hosting, storage or
   layout. This repo talks about the server only as its API: paths, messages, fields and error codes.
-  Whatever the server's internals are, they're documented in `server/` and nowhere else.
+  Whatever the server's internals are, they're documented in `server/` and nowhere else. The one
+  exception is the Privacy Policy (in `src/components/LegalDialog.vue`), which names the services
+  that handle people's data, Cloudflare among them, because the law asks it to.
 - **Every change comes with a test in the right layer**: pure logic in `tests/unit`, the store,
   canvas or WebGL in `tests/browser`, real UI interactions in `tests/e2e`. A bug fix starts with a
   test that fails. [docs/testing.md](docs/testing.md) says which layer and how.

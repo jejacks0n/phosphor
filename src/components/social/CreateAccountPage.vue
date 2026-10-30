@@ -1,11 +1,13 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usernameProblem } from '@/social/names';
 import { mountTurnstile } from '@/social/turnstile';
 import UsernameField from './UsernameField.vue';
 
 const social = useSocialStore();
+const workspace = useWorkspaceStore();
 const username = ref('');
 const email = ref('');
 const password = ref('');
@@ -41,7 +43,7 @@ async function create() {
       <div ref="widget" class="turnstile"></div>
       <label class="terms">
         <input v-model="terms" type="checkbox">
-        <span>I'm 13 or older and agree to the <a href="/terms.html" target="_blank">Terms</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a></span>
+        <span>I'm 13 or older and agree to the <button type="button" class="link inline" @click="workspace.legalPage = 'terms'">Terms</button> and <button type="button" class="link inline" @click="workspace.legalPage = 'privacy'">Privacy Policy</button></span>
       </label>
       <button class="primary" type="submit" :disabled="!ready">Create account</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>

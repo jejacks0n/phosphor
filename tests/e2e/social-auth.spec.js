@@ -101,12 +101,28 @@ test('the sign-in page links to creating an account, a forgotten password and th
   await expect(shown(page, 'lobby')).toBeVisible();
 });
 
-test('the Terms and the Privacy Policy the forms link to are pages of their own', async ({ page }) => {
-  for (const [path, heading] of [['/terms.html', 'Terms'], ['/privacy.html', 'Privacy Policy']]) {
-    await page.goto(path);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(heading);
-    await expect(page.getByRole('link', { name: '‹ phosphor' })).toHaveAttribute('href', '/');
+test('the Terms and the Privacy Policy open over the app, like About, and link to each other', async ({ page }) => {
+  await fakeServer(page);
+  const form = await openCreate(page);
+  await form.getByRole('button', { name: 'Terms', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Terms' });
+  await expect(dialog.getByRole('heading', { level: 1 })).toHaveText('Terms');
+  await expect(form.getByRole('checkbox', { name: TERMS })).not.toBeChecked();   // reading them isn't agreeing
+  for (const name of ['Terms', 'Privacy Policy']) {
+    const shown = page.getByRole('dialog', { name });
+    await expect(shown.getByRole('heading', { level: 1 })).toHaveText(name);
+    for (const link of await shown.getByRole('link', { name: 'hello@phosphor.work' }).all()) {
+      await expect(link).toHaveAttribute('href', 'mailto:hello@phosphor.work');
+    }
+    await expect(shown.getByRole('link', { name: 'hello@phosphor.work' }).first()).toBeVisible();
+    await expect(shown).not.toContainText('[[');   // no placeholder left to fill in
+    if (name === 'Terms') await shown.getByRole('button', { name: 'Privacy Policy' }).click();
   }
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await form.getByRole('button', { name: 'Privacy Policy' }).click();
+  await page.getByRole('dialog', { name: 'Privacy Policy' }).getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test('create an account: disabled until the terms are agreed to; success is the lobby, asked to confirm the email', async ({ page }) => {
@@ -114,8 +130,6 @@ test('create an account: disabled until the terms are agreed to; success is the 
   const form = await openCreate(page);
   await expect(form.getByText('How everyone sees you. Letters, numbers, - and _.')).toBeVisible();
   await expect(form.getByText('At least 10 characters, not a known leaked password.')).toBeVisible();
-  await expect(form.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms.html');
-  await expect(form.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy.html');
   await form.getByLabel('Username').fill('pixel_wren');
   await form.getByLabel('Email').fill('wren@example.com');
   await form.getByLabel('Password').fill('a long new password');
