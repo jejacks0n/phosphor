@@ -62,8 +62,9 @@ export function encodeCells(cells) {
 // One Color per entry in the table, shared by the cells of that color as the renderer's are (a Color is
 // never changed in place). They come from a stranger, so anything that isn't as encodeCells makes it (a
 // color that isn't a hex, an index that isn't in the table, a char that isn't a string, a wide half that
-// isn't 1 or 2) throws.
+// isn't 1 or 2, a table bigger than its cells' two colors each can use) throws.
 export function decodeCells({ colors, cells }) {
+  if (!Array.isArray(colors) || !Array.isArray(cells) || colors.length > cells.length * 2) throw new Error('Not a table');
   const palette = colors.map((hex) => {
     if (typeof hex !== 'string' || !HEX.test(hex)) throw new Error('Not a color');
     return { ...hex2rgb(hex), hex };
@@ -82,6 +83,14 @@ export function decodeCells({ colors, cells }) {
     }
     return cell;
   });
+}
+
+// A change's places and its cells, or null, before anything is made, when the places don't fit a grid of
+// `count` cells or aren't one for each cell.
+export function decodeChange({ at, colors, cells }, count) {
+  if (!Array.isArray(at) || !Array.isArray(cells) || at.length !== cells.length) return null;
+  if (!at.every((i) => Number.isInteger(i) && i >= 0 && i < count)) return null;
+  return { at, cells: decodeCells({ colors, cells }) };
 }
 
 // The indexes whose char, colors or wide half differ; null when the lengths differ or more than a

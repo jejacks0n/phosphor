@@ -10,7 +10,7 @@ import { openPeer } from './peer.js';
 import { verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
 import { PAGE, chatText, isId, signedText } from './chat.js';
-import { CHUNK_BYTES, MOST_SNAPSHOT_CHUNKS, decodeCells, unpackSnapshot } from './wire.js';
+import { CHUNK_BYTES, MOST_SNAPSHOT_CHUNKS, decodeChange, unpackSnapshot } from './wire.js';
 import { clampAnsiZoom } from '../lib/zoom.js';
 
 const MOST_NAME = 60;       // a room's name
@@ -198,12 +198,11 @@ export class Watch {
   }
 
   // The changed cells into the art, a copy of it once it's been given (the art given is never changed).
-  change({ at, colors, cells }) {
-    const changed = decodeCells({ colors, cells });
-    const count = this.art.cells.length;
-    if (!Array.isArray(at) || at.length !== changed.length || !at.every((i) => Number.isInteger(i) && i >= 0 && i < count)) return;
+  change(msg) {
+    const changed = decodeChange(msg, this.art.cells.length);
+    if (!changed) return;
     if (this.given === this.art) this.art = { ...this.art, cells: this.art.cells.slice() };
-    at.forEach((i, k) => { this.art.cells[i] = changed[k]; });
+    changed.at.forEach((i, k) => { this.art.cells[i] = changed.cells[k]; });
     this.show();
   }
 
