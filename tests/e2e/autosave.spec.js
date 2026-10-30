@@ -239,6 +239,7 @@ test('a version appears after 5 minutes of changes, and Restore brings it back',
 
 test('restoring keeps what you had as Before restoring', async ({ page }) => {
   const first = await twoVersions(page);
+  await typeMore(page, 3, 7, 'third'); // too soon for a version of its own
   const second = await store(page, 'project', (p) => JSON.stringify(p.cells));
   await versionsButton(page).click();
   await versionRows(page).nth(1).getByRole('button', { name: 'Restore' }).click();
@@ -254,6 +255,24 @@ test('restoring keeps what you had as Before restoring', async ({ page }) => {
   await settled(page);
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(second);
   expect(await chars(page, 5, 3, 8)).toBe('second');
+});
+
+test('restoring and going back leaves the list as it was', async ({ page }) => {
+  await twoVersions(page);
+  await versionsButton(page).click();
+  await versionRows(page).nth(1).getByRole('button', { name: 'Restore' }).click();
+  await expect(versionsDialog(page)).toHaveCount(0);
+  await settled(page);
+
+  await versionsButton(page).click();
+  await expect(versionRows(page)).toHaveCount(2);
+  await versionRows(page).nth(0).getByRole('button', { name: 'Restore' }).click();
+  await expect(versionsDialog(page)).toHaveCount(0);
+  await settled(page);
+
+  await versionsButton(page).click();
+  await expect(versionRows(page)).toHaveCount(2);
+  await expect(versionRows(page).filter({ hasText: 'Before restoring' })).toHaveCount(0);
 });
 
 test('no versions says so, and the button waits for an image', async ({ page }) => {

@@ -54,7 +54,7 @@ async function restore(id) {
 <template>
   <ModalDialog
       title="Versions"
-      sub="Kept in this browser, every 5 minutes while you work. The last 20 stay, and restoring starts a fresh undo history. Clearing this site's data deletes them, so save to a file for a real backup."
+      sub="We keep 20 of the last versions in this browser. We create a backup every 5 minutes while you work. Clearing site data deletes them, so saving to a file is still recommended for a proper backup."
       @cancel="close"
   >
     <ul v-if="versions?.length" aria-label="Versions">

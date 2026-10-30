@@ -2,7 +2,7 @@
 // WebCrypto.
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  hashImage, writeLatest, addVersion, readLatest, readVersion, listDocuments, listVersions, deleteDocument, evict,
+  hashBytes, writeLatest, addVersion, readLatest, readVersion, listDocuments, listVersions, deleteDocument, evict,
 } from '@/document/autosaveStore';
 import { ownDatabase } from '../support/socialDatabase.js';
 
@@ -39,16 +39,17 @@ const save = (id, imageBuffer, extra = {}) => writeLatest({
   rest: bytes(1, 2, 3), imageBuffer, ...extra,
 });
 
-test('hashImage is the SHA-256 hex, the same for the same buffer', async () => {
+test('hashBytes is the SHA-256 hex, the same for the same buffer', async () => {
   const buffer = bytes(97, 98, 99);
-  expect(await hashImage(buffer)).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
-  expect(await hashImage(buffer)).toBe(await hashImage(buffer));
+  expect(await hashBytes(buffer)).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+  expect(await hashBytes(buffer)).toBe(await hashBytes(buffer));
 });
 
 test('an image is stored once, however many documents and versions use it', async () => {
-  await save('a', bytes(9, 9));
+  await save('a', bytes(9, 9), { rest: bytes(1) });
   await save('b', bytes(9, 9));
   await addVersion('a', { reason: 'timed', savedAt: 1 });
+  await save('a', bytes(9, 9), { rest: bytes(2) });
   await addVersion('a', { reason: 'timed', savedAt: 2 });
   await addVersion('b', { reason: 'timed', savedAt: 3 });
   expect(await rows('images')).toBe(1);
@@ -69,6 +70,23 @@ test('a version has the latest state, and the latest state can change after it',
   expect(new Uint8Array(latest.imageBuffer)).toEqual(new Uint8Array([2, 2]));
 });
 
+test('a latest state a version already holds makes no new version, and answers with that one', async () => {
+  const image = bytes(7, 7);
+  await save('a', image, { rest: bytes(1, 2) });
+  const first = await addVersion('a', { reason: 'timed', savedAt: 1 });
+  await save('a', image, { rest: bytes(3, 4) }); // the same size, other bytes
+  const second = await addVersion('a', { reason: 'timed', savedAt: 2 });
+  expect(second).not.toBe(first);
+
+  await save('a', image, { rest: bytes(1, 2) }); // back to the first
+  expect(await addVersion('a', { reason: 'before-restore', savedAt: 3 })).toBe(first);
+  expect((await listVersions('a')).map((v) => v.id)).toEqual([second, first]);
+
+  await save('a', bytes(8, 8), { rest: bytes(1, 2) }); // the same rest, another image
+  expect(await addVersion('a', { reason: 'timed', savedAt: 4 })).not.toBe(first);
+  expect(await listVersions('a')).toHaveLength(3);
+});
+
 test('the bytes are stored as Blobs and read as ArrayBuffers, and a version holds its latest state\'s rest', async () => {
   const image = bytes(7, 7);
   await save('a', image, { rest: bytes(1, 2) });
@@ -80,7 +98,7 @@ test('the bytes are stored as Blobs and read as ArrayBuffers, and a version hold
     expect(stored.restSize).toBe(2);
     expect(stored.imageSize).toBe(2);
   }
-  expect((await row('images', await hashImage(image))).bytes).toBeInstanceOf(Blob);
+  expect((await row('images', await hashBytes(image))).bytes).toBeInstanceOf(Blob);
 
   for (const { record, imageBuffer } of [await readLatest('a'), await readVersion(versionId)]) {
     expect(record.rest).toBeInstanceOf(ArrayBuffer);
@@ -91,15 +109,18 @@ test('the bytes are stored as Blobs and read as ArrayBuffers, and a version hold
 });
 
 test('past 20 versions the oldest go', async () => {
-  await save('a', bytes(1));
-  for (let n = 1; n <= 23; n++) await addVersion('a', { reason: 'timed', savedAt: n });
+  for (let n = 1; n <= 23; n++) {
+    await save('a', bytes(1), { rest: bytes(n) });
+    await addVersion('a', { reason: 'timed', savedAt: n });
+  }
   const versions = await listVersions('a');
   expect(versions.map((v) => v.savedAt)).toEqual(Array.from({ length: 20 }, (_, i) => 23 - i));
 });
 
 test('versions saved in the same millisecond list the later one first', async () => {
-  await save('a', bytes(1));
+  await save('a', bytes(1), { rest: bytes(1) });
   await addVersion('a', { reason: 'timed', savedAt: 7 });
+  await save('a', bytes(1), { rest: bytes(2) });
   await addVersion('a', { reason: 'before-restore', savedAt: 7 });
   expect((await listVersions('a')).map((v) => v.reason)).toEqual(['before-restore', 'timed']);
 });
@@ -114,7 +135,10 @@ test('an image goes when the last thing using it does', async () => {
   await addVersion('a', { reason: 'timed', savedAt: 0 });
   await save('a', bytes(2));
   expect(await rows('images')).toBe(2); // the version still holds the first
-  for (let n = 1; n <= 20; n++) await addVersion('a', { reason: 'timed', savedAt: n });
+  for (let n = 1; n <= 20; n++) {
+    await save('a', bytes(2), { rest: bytes(n) });
+    await addVersion('a', { reason: 'timed', savedAt: n });
+  }
   expect(await rows('images')).toBe(1); // the first aged out
   await deleteDocument('a');
   expect(await rows('images')).toBe(0);

@@ -130,7 +130,13 @@ export function useAutosave() {
         dirty: project.isDirty || !!project._stroke, // an open typing run isn't counted by isDirty yet
         savedSettings: project.savedSettings,
       };
-      const rest = await writeProject({ ...await project.projectParts(), imageBuffer: new ArrayBuffer(0) });
+      const parts = await project.projectParts();
+      // Empty layers don't come back from a restore, so they'd make the same art read as different.
+      if (!project.hasPaint && !parts.baseBlob) {
+        parts.paintBlob = null;
+        parts.settings = { ...parts.settings, paintScale: null, baseScale: null };
+      }
+      const rest = await writeProject({ ...parts, imageBuffer: new ArrayBuffer(0) });
       record.rest = await rest.arrayBuffer();
       if (project._document !== doc) return; // parts of two documents; the swap scheduled its own write
 
@@ -145,7 +151,7 @@ export function useAutosave() {
         edited ||= real && project._document === doc; // not if another document's come back since
       } else if (versionDue({ lastVersionAt, now, changed: real })) {
         await addVersion(id, { reason: 'timed', savedAt: now });
-        lastVersionAt = now;
+        lastVersionAt = (await listVersions(id))[0]?.savedAt ?? null; // not now: this state may already have had its version
         await evict(await keeping(id));
       }
       current.value = !unwritten;

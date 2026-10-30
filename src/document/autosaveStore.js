@@ -56,7 +56,7 @@ const ask = (request) => new Promise((resolve, reject) => {
 const hashes = new WeakMap();
 
 // SHA-256 hex of the bytes, remembered per buffer. Pass the raw buffer, not a reactive proxy.
-export async function hashImage(buffer) {
+export async function hashBytes(buffer) {
   if (!hashes.has(buffer)) {
     const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', buffer));
     hashes.set(buffer, Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join(''));
@@ -84,10 +84,11 @@ async function removeDocument(tx, id) {
 }
 
 export async function writeLatest({ id, filename, editedAt, savedToFile, dirty, savedSettings, rest, imageBuffer }) {
-  const imageHash = await hashImage(imageBuffer); // before the transaction: it dies across an await on crypto
+  // Before the transaction: it dies across an await on crypto.
+  const imageHash = await hashBytes(imageBuffer), restHash = await hashBytes(rest);
   const row = {
     id, filename, editedAt, savedToFile, dirty, savedSettings,
-    rest: new Blob([rest]), restSize: rest.byteLength, imageHash, imageSize: imageBuffer.byteLength,
+    rest: new Blob([rest]), restSize: rest.byteLength, restHash, imageHash, imageSize: imageBuffer.byteLength,
   };
   await run(STORES, 'readwrite', async (tx) => {
     const before = await ask(tx.objectStore('documents').get(id));
@@ -100,11 +101,15 @@ export async function writeLatest({ id, filename, editedAt, savedToFile, dirty, 
 }
 
 // Copies the document's latest state into a new version, then drops the versions past KEEP_VERSIONS.
-// Returns the new version's id. A document with no latest state has nothing to copy.
+// Returns the new version's id, or the id of one that already holds this state. A document with no
+// latest state has nothing to copy.
 export function addVersion(documentId, { reason, savedAt }) {
   return run(STORES, 'readwrite', async (tx) => {
     const latest = await ask(tx.objectStore('documents').get(documentId));
     if (!latest) return;
+    const before = await ask(tx.objectStore('versions').index('documentId').getAll(documentId));
+    const existing = before.find((v) => v.restHash === latest.restHash && v.imageHash === latest.imageHash);
+    if (existing) return existing.id;
     const version = { ...latest, documentId, savedAt, reason };
     delete version.id; // the version gets its own
     const versionId = await ask(tx.objectStore('versions').add(version));
