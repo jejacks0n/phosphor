@@ -1,6 +1,6 @@
 // Writing the document to the browser as you work (useAutosave): when it writes, what, and what happens
 // when it can't. Real IndexedDB, with the timers and the clock faked and the store's writes spied on.
-import { test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownDatabase } from '../support/socialDatabase.js';
@@ -1251,10 +1251,86 @@ async function withVersions(project) {
   return versions[1];
 }
 
+// Going back and forth between versions: nothing new to keep, whatever the document holds.
+describe.each([
+  ['typed cells', () => {}],
+  ['soft paint', (project) => {
+    project.paintEditPixels([{ x: 1, y: 2, r: 200, g: 100, b: 50 }, { x: 2, y: 3, r: 13, g: 77, b: 201 }], 37);
+    project.commitEdit();
+  }],
+  ['the base layer\'s pixels', (project) => {
+    project.paintEditPixels([{ x: 4, y: 4, r: 1, g: 2, b: 3 }], 100);
+    project.commitEdit();
+    project.mergeDown();
+  }],
+])('with %s', (_, draw) => {
+  test('restoring a version and going back makes no duplicates', async () => {
+    const { project } = await opened();
+    const id = project.documentId;
+    draw(project);
+    const older = await withVersions(project);
+    const newest = (await listVersions(id))[0];
+    const count = (await listVersions(id)).length;
+
+    for (const versionId of [older.id, newest.id, older.id]) {
+      await autosave.restoreVersion(versionId);
+      await pass(SAVE_AFTER_MS);
+      await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS); // a timed version is due, if the art were new
+      await autosave.flush();
+    }
+    expect(await listVersions(id)).toHaveLength(count);
+  });
+});
+
+test('an edit made after a restore is a new version, and undoing back to one is not', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const older = await withVersions(project);
+  await autosave.restoreVersion(older.id);
+  await pass(SAVE_AFTER_MS);
+  await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS);
+  edit(project, 5);
+  await pass(SAVE_AFTER_MS);
+  expect(await listVersions(id)).toHaveLength(3);
+
+  await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS);
+  project.undo();
+  await pass(SAVE_AFTER_MS);
+  expect(await listVersions(id)).toHaveLength(3);
+});
+
+test('a version that already existed doesn\'t put off the next one', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const older = await withVersions(project);
+  await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS);
+  await autosave.restoreVersion(older.id);
+  await pass(SAVE_AFTER_MS); // a version is due, and this state already has one
+  expect(await listVersions(id)).toHaveLength(2);
+
+  edit(project, 5);
+  await pass(SAVE_AFTER_MS);
+  expect(await listVersions(id)).toHaveLength(3);
+});
+
+test('what was open stays a Before restoring version when it isn\'t one yet', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const older = await withVersions(project);
+  edit(project, 7);
+  await pass(SAVE_AFTER_MS);
+  await autosave.restoreVersion(older.id);
+  await autosave.flush();
+  const versions = await listVersions(id);
+  expect(versions).toHaveLength(3);
+  expect(versions[0].reason).toBe('before-restore');
+});
+
 test('restoring a version keeps what was open as a version, starts a fresh undo history and counts as unsaved', async () => {
   const { project } = await opened();
   const id = project.documentId;
   const older = await withVersions(project);
+  edit(project, 2); // not in any version yet
   await project.saveProject();
   await pass(SAVE_AFTER_MS);
   expect(project.isDirty).toBe(false);
@@ -1266,10 +1342,10 @@ test('restoring a version keeps what was open as a version, starts a fresh undo 
   expect(project.isDirty).toBe(true);
   const kept = (await listVersions(id)).find((v) => v.reason === 'before-restore');
   expect(kept).toBeTruthy();
-  expect([...(await readProject(new Blob([(await readVersion(kept.id)).record.rest]))).editCells.keys()]).toHaveLength(2);
+  expect([...(await readProject(new Blob([(await readVersion(kept.id)).record.rest]))).editCells.keys()]).toHaveLength(3);
 });
 
-test('a restored version\'s write is a change: it moves the edit time and is due a version', async () => {
+test('a restored version\'s write is a change: it moves the edit time, and the version it would make already exists', async () => {
   const { project } = await opened();
   const id = project.documentId;
   const older = await withVersions(project);
@@ -1282,8 +1358,7 @@ test('a restored version\'s write is a change: it moves the edit time and is due
   await autosave.restoreVersion(older.id);
   await pass(SAVE_AFTER_MS);
   expect((await readLatest(id)).record.editedAt).toBe(Date.now());
-  expect((await listVersions(id)).map((v) => v.reason)).toContain('timed');
-  expect((await listVersions(id)).length).toBe(before + 2); // what was open, and the restored one
+  expect((await listVersions(id)).length).toBe(before); // what was open and the restored one are both there
   expect(await writtenChars(id)).toHaveLength(1);
 });
 
