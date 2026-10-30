@@ -351,7 +351,8 @@ export default class PaintLayer {
   }
 
   toBlob() {
-    return new Promise(resolve => this.canvas.toBlob(resolve, 'image/png'));
+    // A canvas can hand back null (out of memory, say): that's a failure, not a layer with no paint.
+    return new Promise((resolve, reject) => this.canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Could not encode the layer'))), 'image/png'));
   }
 
   get recording() {

@@ -146,10 +146,10 @@ export function useTextTool(project, workspace, textInput) {
   };
 
   // The textarea has focus while the tool is in use (after the click that placed the cursor has
-  // focused whatever it focuses, and after the color box, the shortcuts list or the save dialog
-  // closes), and never takes it from a real field.
+  // focused whatever it focuses, and after the color box, the shortcuts list, the save dialog or
+  // Versions closes), and never takes it from a real field.
   const inUse = () => workspace.editorTab === 'output' && workspace.activeTool === 'text' && !!workspace.textCursor && !workspace.paletteLayerOpen;
-  watch(() => [inUse(), workspace.textCursor, workspace.colorBox, workspace.shortcutsOpen, workspace.saveDialog], () => setTimeout(() => {
+  watch(() => [inUse(), workspace.textCursor, workspace.colorBox, workspace.shortcutsOpen, workspace.saveDialog, workspace.versionsOpen], () => setTimeout(() => {
     const el = textInput?.value;
     if (!el) return;
     if (!inUse()) {

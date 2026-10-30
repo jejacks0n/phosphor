@@ -57,7 +57,6 @@ export function useAutosave() {
   let quiet = null, deadline = null; // the timers: edits stopped, and edits going on too long
   let running = null, again = false; // the write under way, and that another is due after it
   let openedId = null, lastVersionAt = null; // the document that's had its opening write, and its newest version
-  let restoredId = null; // the document restored last: its opening write isn't a change
   let held = null, leftId = null, lockTurn = 0; // the lock this tab has, the id it last let go of, and the latest ask
   let openingRecent = false;
   let persistAsked = false, warned = false;
@@ -78,13 +77,29 @@ export function useAutosave() {
 
   const keeping = async (id) => new Set([id, ...await openDocuments()]);
 
+  // Removes the least recently edited document that isn't open; whether there was one. Nothing, when
+  // this record is larger than the browser would ever hold: removing work wouldn't make it fit.
+  async function makeRoom(record, id) {
+    const { quota } = await navigator.storage?.estimate?.() ?? {};
+    if (record.rest.byteLength + record.imageBuffer.byteLength > quota) return false;
+    const total = (await listDocuments()).reduce((sum, { bytes }) => sum + bytes, 0);
+    return (await evict(await keeping(id), total - 1)).length > 0;
+  }
+
+  // The browser's storage being full costs as little of the other work as it takes.
   async function put(record, id) {
+    let removed = false;
     try {
-      await writeLatest(record);
-    } catch (error) {
-      if (error.name !== 'QuotaExceededError') throw error;
-      await evict(await keeping(id), 0);
-      await writeLatest(record);
+      for (;;) {
+        try {
+          return await writeLatest(record);
+        } catch (error) {
+          if (error.name !== 'QuotaExceededError' || !await makeRoom(record, id)) throw error;
+          removed = true;
+        }
+      }
+    } finally {
+      if (removed) toast("This browser's storage was full, so the oldest work kept here was removed.");
     }
   }
 
@@ -105,7 +120,7 @@ export function useAutosave() {
     const real = edited;
     const now = Date.now();
     unwritten = edited = false;
-    if (real || (opening && id !== restoredId)) editedAt = now;
+    if (real) editedAt = now; // a new document's id counts as a change; a restored one's opening write doesn't
     try {
       const record = {
         id, imageBuffer,
@@ -214,15 +229,9 @@ export function useAutosave() {
   }
 
   async function restore(saved, documentId) {
-    try {
-      await project.restoreDocument(saved, { documentId });
-    } catch (error) {
-      if (project.image) project.clearImage(); // gone wrong partway: not a half to write over the record
-      throw error;
-    }
+    await project.restoreDocument(saved, { documentId });
     // Its watchers have fired by now. None of that was a change.
     edited = false;
-    restoredId = project.documentId;
     editedAt = saved.record.editedAt;
   }
 
@@ -239,20 +248,17 @@ export function useAutosave() {
     // Before addVersion, which may drop the oldest version, the one being asked for.
     const saved = await readVersion(versionId);
     if (!saved) throw new Error(`No version ${versionId}`);
-    const savedAt = Date.now();
-    await addVersion(id, { reason: 'before-restore', savedAt });
-    const kept = (await listVersions(id)).find((v) => v.reason === 'before-restore' && v.savedAt === savedAt);
+    const kept = await addVersion(id, { reason: 'before-restore', savedAt: Date.now() });
     if (!kept) throw new Error('What is open could not be kept');
     try {
       await project.restoreDocument(saved, { documentId: id });
     } catch (error) {
-      // Gone wrong partway: not a half to write over the record. Put back what was open.
+      if (project.image) throw error; // nothing was swapped: what's open is as it was
+      // Gone wrong partway, which left no document. Put back what was open.
       try {
-        await project.restoreDocument(await readVersion(kept.id), { documentId: id });
+        await project.restoreDocument(await readVersion(kept), { documentId: id });
         edited = false; // putting it back isn't a change
-      } catch {
-        if (project.image) project.clearImage();
-      }
+      } catch { /* the zero state, then, with what was open kept as a version */ }
       throw error;
     }
     // It may match no file, whatever the version says.

@@ -9,6 +9,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { toastMessage } from '@/composables/useToast';
 import ZeroState from '@/components/ZeroState.vue';
 import VersionsDialog from '@/components/VersionsDialog.vue';
+import SaveDialog from '@/components/SaveDialog.vue';
 import { writeLatest, addVersion, evict, readLatest, readVersion, listDocuments, listVersions } from '@/document/autosaveStore';
 import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, VERSION_EVERY_MS, MAX_TOTAL_BYTES } from '@/document/autosaveRules';
 import { readProject, writeProject } from '@/document/projectIO';
@@ -19,6 +20,7 @@ const GRADIENT = '/tests/fixtures/images/gradient.png';
 const ATTRS = { fg: '#ffffff', bg: '#000000' };
 const BROKEN = "Autosave isn't working in this browser. Save to a file to keep your work.";
 const COULD_NOT_OPEN = "Couldn't open that document.";
+const STORAGE_FULL = "This browser's storage was full, so the oldest work kept here was removed.";
 const KEPT_ID = 'phosphor-autosave-document';
 let app = null, autosave = null, started = null, deleteDatabase;
 
@@ -111,6 +113,20 @@ async function writtenChars(id) {
   const { editCells } = await readProject(new Blob([record.rest]));
   return [...editCells].map(([key, cell]) => `${key}:${cell.char}`);
 }
+
+// Puts junk where a stored row's rest goes.
+const overwriteRest = (id, rest) => new Promise((resolve, reject) => {
+  const open = indexedDB.open('phosphor-autosave', 1);
+  open.onerror = () => reject(open.error);
+  open.onsuccess = () => {
+    const db = open.result;
+    const tx = db.transaction('documents', 'readwrite');
+    const documents = tx.objectStore('documents');
+    const get = documents.get(id);
+    get.onsuccess = () => documents.put({ ...get.result, rest });
+    tx.oncomplete = () => { db.close(); resolve(); };
+  };
+});
 
 // A row in the store claiming to hold bytes, without the test having to make that many.
 const seedDocument = async (id, editedAt, bytes) => {
@@ -488,29 +504,111 @@ test('a new version over the cap evicts the least recently edited other document
   expect((await listDocuments()).map((d) => d.id).sort()).toEqual([project.documentId, 'newer'].sort());
 });
 
-test('full storage evicts, then retries once', async () => {
+const FULL = () => new DOMException('full', 'QuotaExceededError');
+
+test('full storage removes the oldest other documents one at a time, until the write fits, and says so', async () => {
   const { project } = await opened();
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-  await seedDocument('other', 1, 10);
-  vi.mocked(writeLatest).mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+  await seedDocument('oldest', 1, 10);
+  await seedDocument('older', 2, 10);
+  await seedDocument('newest', 3, 10);
+  vi.mocked(writeLatest).mockRejectedValueOnce(FULL()).mockRejectedValueOnce(FULL());
 
-  edit(project, 0);
+  edit(project);
   await pass(SAVE_AFTER_MS);
-  expect(evict).toHaveBeenCalledWith(new Set([project.documentId]), 0);
-  expect(writeLatest).toHaveBeenCalledTimes(2);
-  expect((await listDocuments()).map((d) => d.id)).toEqual([project.documentId]);
+  expect(writeLatest).toHaveBeenCalledTimes(3);
+  expect((await listDocuments()).map((d) => d.id).sort()).toEqual([project.documentId, 'newest'].sort());
   expect(await writtenChars(project.documentId)).toEqual(['0,0:a']);
   expect(autosave.current.value).toBe(true);
-  expect(toastMessage.value).toBe(null);
+  expect(toastMessage.value).toBe(STORAGE_FULL);
   expect(warn).not.toHaveBeenCalled();
+});
 
-  vi.mocked(writeLatest).mockClear();
-  vi.mocked(writeLatest).mockRejectedValue(new DOMException('full', 'QuotaExceededError'));
-  edit(project, 1);
+test('full storage with no estimate to go by still removes what it can', async () => {
+  const { project } = await opened();
+  await seedDocument('other', 1, 10);
+  vi.spyOn(navigator, 'storage', 'get').mockReturnValue(undefined);
+  vi.mocked(writeLatest).mockRejectedValueOnce(FULL());
+
+  edit(project);
   await pass(SAVE_AFTER_MS);
-  expect(writeLatest).toHaveBeenCalledTimes(2); // one retry, not more
+  expect((await listDocuments()).map((d) => d.id)).toEqual([project.documentId]);
+  expect(autosave.current.value).toBe(true);
+});
+
+test('full storage with nothing left to remove fails like any write, sparing what is open', async () => {
+  const { project } = await opened();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  await seedDocument('closed', 1, 10);
+  await seedDocument('open-elsewhere', 2, 10);
+  const release = await otherTab('open-elsewhere');
+  vi.mocked(writeLatest).mockRejectedValue(FULL());
+  try {
+    edit(project);
+    await pass(SAVE_AFTER_MS);
+  } finally {
+    release();
+  }
+  expect(writeLatest).toHaveBeenCalledTimes(2);
+  expect((await listDocuments()).map((d) => d.id).sort()).toEqual([project.documentId, 'open-elsewhere'].sort());
   expect(toastMessage.value).toBe(BROKEN);
   expect(autosave.current.value).toBe(false);
+});
+
+test('a record larger than the browser\'s whole quota removes nothing', async () => {
+  const { project } = await opened();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  await seedDocument('other', 1, 10);
+  vi.spyOn(navigator.storage, 'estimate').mockResolvedValue({ quota: 1, usage: 0 });
+  vi.mocked(writeLatest).mockRejectedValue(FULL());
+
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  expect(evict).not.toHaveBeenCalled();
+  expect(writeLatest).toHaveBeenCalledTimes(1);
+  expect((await listDocuments()).map((d) => d.id)).toContain('other');
+  expect(toastMessage.value).toBe(BROKEN);
+  expect(autosave.current.value).toBe(false);
+});
+
+// Paint on the layer, and a canvas that hands back null for it, as a browser out of memory does.
+function paintThatWontEncode(project) {
+  project.paintEditPixels([{ x: 1, y: 2, r: 255, g: 0, b: 0, alpha: 1 }]);
+  project.commitEdit();
+  return vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) => done(null));
+}
+
+test('paint the canvas can\'t encode fails the write, rather than storing no paint', async () => {
+  const { project } = await opened();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  paintThatWontEncode(project);
+  await pass(SAVE_AFTER_MS);
+  expect(writeLatest).not.toHaveBeenCalled();
+  expect(toastMessage.value).toBe(BROKEN);
+  expect(autosave.current.value).toBe(false);
+});
+
+test('a save that fails says so in the dialog, stays open and doesn\'t count as saved; trying again works', async () => {
+  const { project } = await opened();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const encoding = paintThatWontEncode(project);
+  const closed = vi.fn();
+  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: closed });
+  dialog.mount(document.createElement('div'));
+  try {
+    document.querySelector('.modal-dialog form').requestSubmit();
+    await vi.waitUntil(() => document.querySelector('.modal-dialog [role=alert]'), { interval: 5 });
+    expect(document.querySelector('.modal-dialog [role=alert]').textContent).toBe("Couldn't save the file.");
+    expect(closed).not.toHaveBeenCalled();
+    expect(project.savedToFile).toBe(false);
+
+    encoding.mockRestore();
+    document.querySelector('.modal-dialog form').requestSubmit();
+    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    expect(project.savedToFile).toBe(true);
+  } finally {
+    dialog.unmount();
+  }
 });
 
 test('the browser is asked once to keep the storage, after the first write', async () => {
@@ -578,6 +676,20 @@ test('an opening write that fails after storing leaves no change to count', asyn
   await autosave.flush();
   expect(autosave.current.value).toBe(true);
   expect((await readLatest(project.documentId)).record.editedAt).toBe(editedAt);
+  expect(await listVersions(project.documentId)).toEqual([]);
+});
+
+test('an opening write that fails to store keeps its first edit time when it is retried', async () => {
+  const { project } = await mounted();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.mocked(writeLatest).mockRejectedValueOnce(new Error('not this time'));
+  await project.setBlankCanvas();
+  const first = Date.now();
+  await pass(SAVE_AFTER_MS);
+  expect(autosave.current.value).toBe(false);
+  await vi.advanceTimersByTimeAsync(5000);
+  await autosave.flush();
+  expect((await readLatest(project.documentId)).record.editedAt).toBe(first + SAVE_AFTER_MS);
   expect(await listVersions(project.documentId)).toEqual([]);
 });
 
@@ -793,6 +905,10 @@ test.each([
   ['no record', () => {}],
   ['an unreadable record', () => junkRecord('gone')],
   ['a record whose image is missing', () => seedDocument('gone', 1, 10)],
+  ['a record whose rest is not a Blob', async () => {
+    await junkRecord('gone');
+    await overwriteRest('gone', 'junk');
+  }],
 ])('%s: a warning, the id forgotten, the zero state', async (_, seed) => {
   await seed();
   sessionStorage.setItem(KEPT_ID, 'gone');
@@ -920,6 +1036,20 @@ test('openRecent on a record that fails to restore: a warning, a toast, the lock
   await vi.waitUntil(async () => !(await heldNames()).includes('phosphor-autosave:junk'), { interval: 5 });
 });
 
+test('a record that fails to restore leaves alone a file opened while it was being read', async () => {
+  await junkRecord('junk');
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const { project } = await mounted();
+  const restoreDocument = project.restoreDocument;
+  vi.spyOn(project, 'restoreDocument').mockImplementationOnce(async (...args) => {
+    await project.setBlankCanvas();
+    return restoreDocument(...args);
+  });
+  await autosave.openRecent('junk');
+  expect(project.image).not.toBe(null);
+  expect(project.filename).toBe('untitled');
+});
+
 test('a restore that fails partway leaves the zero state, not half a document to write', async () => {
   const { project } = await opened();
   const id = project.documentId;
@@ -995,10 +1125,30 @@ test('a restore that fails partway puts back what was open, and rethrows', async
   await expect(autosave.restoreVersion(older.id)).rejects.toThrow('partway');
   expect(project.documentId).toBe(id);
   expect(JSON.stringify([...project.editCells])).toBe(cells);
+  expect(sessionStorage.getItem(KEPT_ID)).toBe(id);
+  await vi.waitUntil(async () => (await heldNames()).includes(`phosphor-autosave:${id}`), { interval: 5 });
   const { editedAt } = (await readLatest(id)).record;
   await pass(SAVE_AFTER_MS);
   expect(await writtenChars(id)).toHaveLength(2);
   expect((await readLatest(id)).record.editedAt).toBe(editedAt);
+});
+
+test('a corrupt version leaves the document, its undo history and its selection as they were', async () => {
+  const { project, workspace } = await opened();
+  await withVersions(project);
+  await junkRecord('junk');
+  await addVersion('junk', { reason: 'timed', savedAt: 1 });
+  const [corrupt] = await listVersions('junk');
+  const selection = { col: 0, row: 0, cols: 1, rows: 1 };
+  workspace.selection = selection;
+  const document = project._document, cells = JSON.stringify([...project.editCells]);
+  expect(project.canUndo).toBe(true);
+
+  await expect(autosave.restoreVersion(corrupt.id)).rejects.toThrow();
+  expect(project._document).toBe(document);
+  expect(JSON.stringify([...project.editCells])).toBe(cells);
+  expect(project.canUndo).toBe(true);
+  expect(workspace.selection).toEqual(selection);
 });
 
 test('a restore that fails partway and can\'t put back what was open leaves the zero state, not a half to write', async () => {
@@ -1006,7 +1156,9 @@ test('a restore that fails partway and can\'t put back what was open leaves the 
   const id = project.documentId;
   const older = await withVersions(project);
   const { editedAt } = (await readLatest(id)).record;
-  vi.spyOn(project, 'restoreDocument').mockRejectedValue(new Error('partway')); // and again putting it back
+  vi.spyOn(project, 'render').mockImplementationOnce(() => { throw new Error('partway'); });
+  const restoreDocument = project.restoreDocument;
+  vi.spyOn(project, 'restoreDocument').mockImplementationOnce(restoreDocument).mockRejectedValueOnce(new Error('again'));
 
   await expect(autosave.restoreVersion(older.id)).rejects.toThrow('partway');
   expect(project.image).toBe(null);
@@ -1129,5 +1281,68 @@ test('the versions dialog says so when a restore fails, and stays open with the 
     expect(document.querySelector('.modal-dialog li button').disabled).toBe(false);
   } finally {
     dialog.unmount();
+  }
+});
+
+// The versions dialog over a document with a version; its Close button and a Restore button.
+async function versionsDialog(props) {
+  const { project } = await opened();
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const dialog = createApp(VersionsDialog, { flush: autosave.flush, restoreVersion: vi.fn(), ...props });
+  dialog.mount(document.createElement('div'));
+  await vi.waitUntil(() => document.querySelector('.modal-dialog [role=alert], .modal-dialog li button'), { interval: 5 });
+  return {
+    close: document.querySelector('.modal-dialog button.cancel'),
+    restore: document.querySelector('.modal-dialog li button'),
+    unmount: () => dialog.unmount(),
+  };
+}
+
+test('the versions dialog can\'t be closed while a restore is under way', async () => {
+  let finish;
+  const closed = vi.fn();
+  const restoreVersion = () => new Promise((resolve) => { finish = resolve; });
+  const { close, restore, unmount } = await versionsDialog({ restoreVersion, onClose: closed });
+  try {
+    restore.click();
+    await vi.waitUntil(() => restore.disabled, { interval: 5 });
+    close.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    close.click();
+    document.querySelector('.modal-backdrop').click();
+    expect(closed).not.toHaveBeenCalled();
+
+    finish();
+    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    expect(closed).toHaveBeenCalledTimes(1);
+  } finally {
+    unmount();
+  }
+});
+
+test('after a failed restore, focus is on Close and the dialog closes again', async () => {
+  const closed = vi.fn();
+  const { close, restore, unmount } = await versionsDialog({ restoreVersion: () => Promise.reject(new Error('partway')), onClose: closed });
+  try {
+    restore.focus();
+    restore.click();
+    await vi.waitUntil(() => document.querySelector('[role=alert]'), { interval: 5 });
+    expect(document.activeElement).toBe(close);
+    close.click();
+    expect(closed).toHaveBeenCalledTimes(1);
+  } finally {
+    unmount();
+  }
+});
+
+test('versions that can\'t be read say so, not that there are none', async () => {
+  const flush = async () => { vi.mocked(listVersions).mockRejectedValueOnce(new Error('no database')); };
+  const { unmount } = await versionsDialog({ flush });
+  try {
+    expect(document.querySelector('[role=alert]').textContent).toBe("Couldn't read the versions.");
+    expect(document.querySelector('.modal-dialog').textContent).not.toContain('No versions yet');
+  } finally {
+    unmount();
   }
 });

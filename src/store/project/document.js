@@ -189,6 +189,7 @@ export const documentActions = {
   },
 
   // A project's parts (readProject) as the open document. Without a documentId it gets a new one.
+  // If it throws, either nothing has changed or no document is open.
   async openParts({ settings, imageBuffer, paintBuffer, baseBuffer, editCells, baseRecords, erasedCells, migrated }, { filename, documentId }) {
     const image = await loadImage(imageBuffer);
     const paint = paintBuffer && await loadImage(paintBuffer, 'image/png');
@@ -196,41 +197,46 @@ export const documentActions = {
 
     // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
     this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }) });
-    this.editCells = editCells;
-    this.setBaseRecords(baseRecords);
-    if (paint) {
-      this.ensureLayer();
-      // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
-      // files: paint at the image's size or the grid's.
-      if (settings.paintScale) this.paintLayer.extend(Math.round(paint.width / this.paintLayer.scale), Math.round(paint.height / this.paintLayer.scale));
-      this.paintLayer.load(paint, settings.paintScale ? null : { width: image.naturalWidth, height: image.naturalHeight }, this.fit);
-      this.hasPaint = this.paintLayer.hasPaint;
-      if (migrated) this.keepMigratedLook();
+    try {
+      this.editCells = editCells;
+      this.setBaseRecords(baseRecords);
+      if (paint) {
+        this.ensureLayer();
+        // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
+        // files: paint at the image's size or the grid's.
+        if (settings.paintScale) this.paintLayer.extend(Math.round(paint.width / this.paintLayer.scale), Math.round(paint.height / this.paintLayer.scale));
+        this.paintLayer.load(paint, settings.paintScale ? null : { width: image.naturalWidth, height: image.naturalHeight }, this.fit);
+        this.hasPaint = this.paintLayer.hasPaint;
+        if (migrated) this.keepMigratedLook();
+      }
+      if (basePixels) {
+        this.ensureLayer();
+        // Saved at its scale (settings.baseScale, which the layer was made at). Older files: a pixel
+        // per grid pixel, drawn up to the layer's scale.
+        const k = settings.baseScale ?? 1;
+        this.baseLayer.extend(Math.round(basePixels.width / k), Math.round(basePixels.height / k));
+        this.baseLayer.load(basePixels);
+      }
+      // Both layers reach as far as either was saved (they're extended together from here on).
+      if (this.paintLayer) {
+        const cols = Math.max(this.paintLayer.cols, this.baseLayer.cols), rows = Math.max(this.paintLayer.rows, this.baseLayer.rows);
+        this.paintLayer.extend(cols, rows);
+        this.baseLayer.extend(cols, rows);
+      }
+      // Files from before the base had its own pixels kept erased cells as a record: erase them
+      // now (as part of loading, not an edit).
+      const onGrid = erasedCells.filter(({ col, row }) => col < this.cols && row < charRowsOf(this.rows));
+      if (onGrid.length) {
+        this.eraseBase(onGrid);
+        this.commitEdit();
+        this.clearHistory();
+      }
+      this.render();
+      this.markSaved();
+    } catch (error) {
+      this.clearImage(); // the old document is gone by now: not half of this one to draw on or write
+      throw error;
     }
-    if (basePixels) {
-      this.ensureLayer();
-      // Saved at its scale (settings.baseScale, which the layer was made at). Older files: a pixel
-      // per grid pixel, drawn up to the layer's scale.
-      const k = settings.baseScale ?? 1;
-      this.baseLayer.extend(Math.round(basePixels.width / k), Math.round(basePixels.height / k));
-      this.baseLayer.load(basePixels);
-    }
-    // Both layers reach as far as either was saved (they're extended together from here on).
-    if (this.paintLayer) {
-      const cols = Math.max(this.paintLayer.cols, this.baseLayer.cols), rows = Math.max(this.paintLayer.rows, this.baseLayer.rows);
-      this.paintLayer.extend(cols, rows);
-      this.baseLayer.extend(cols, rows);
-    }
-    // Files from before the base had its own pixels kept erased cells as a record: erase them
-    // now (as part of loading, not an edit).
-    const onGrid = erasedCells.filter(({ col, row }) => col < this.cols && row < charRowsOf(this.rows));
-    if (onGrid.length) {
-      this.eraseBase(onGrid);
-      this.commitEdit();
-      this.clearHistory();
-    }
-    this.render();
-    this.markSaved();
   },
 
   // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first.
