@@ -66,6 +66,28 @@ test('after the save dialog is canceled with Escape, the text input has focus an
   await expect.poll(() => typingFocused(page)).toBe(true);
 });
 
+test('Cmd+Z in the save dialog after typing stays in the dialog: its field undoes its own typing and no more, and Escape still closes it', async ({ page }) => {
+  await openApp(page);
+  await editAt(page, 2, 2);
+  await page.keyboard.type('a');
+  await page.keyboard.press('ControlOrMeta+s');
+  const name = page.getByRole('dialog').getByLabel('File name');
+  await expect(name).toBeFocused();
+  const offered = await name.inputValue();
+
+  await page.keyboard.type('mine');
+  await expect(name).toHaveValue('mine');
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(name).toHaveValue(offered);
+  await page.keyboard.press('ControlOrMeta+z');   // nothing of its own left: the typing on the canvas isn't its to undo
+  await expect(name).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await page.keyboard.type(' b');
+  await expect.poll(() => chars(page, 2, 2, 4)).toBe('a b');
+});
+
 test('after Tab moves focus off the text input, Space still types (pointer over the canvas)', async ({ page }) => {
   await openApp(page);
   await editAt(page, 2, 2);
