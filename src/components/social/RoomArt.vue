@@ -68,7 +68,8 @@ const placeTag = () => {
   const v = view.value, m = metrics.value, el = scrollRef.value, tag = tagRef.value;
   if (!v || !m || !el || !tag) return;
   const x = v.col * m.cellWidth, y = v.row * m.lineHeight, right = x + v.cols * m.cellWidth, bottom = y + v.rows * m.lineHeight;
-  const [x0, y0, x1, y1] = [el.scrollLeft, el.scrollTop, el.scrollLeft + el.clientWidth, el.scrollTop + el.clientHeight];
+  const seen = viewIn(sizerRef.value, el);   // from the art's corner: art smaller than the view starts past the view's
+  const [x0, y0, x1, y1] = [seen.x, seen.y, seen.x + seen.width, seen.y + seen.height];
   const up = bottom <= y0 ? '↑' : y >= y1 ? '↓' : '', across = right <= x0 ? '←' : x >= x1 ? '→' : '';
   const arrow = ARROWS[up + across] ?? (up || across);
   if (arrow !== (away.value?.arrow ?? '')) queueRender();   // the arrow changes the tag's width: placed again once it's drawn
@@ -108,10 +109,11 @@ const render = () => {
   const art = props.art, el = scrollRef.value;
   if (!art || !el || !canvasRef.value || !ensureCellCanvas()) return;
   const dpr = window.devicePixelRatio;
-  let m = (sizedZoom === props.zoom && cellCanvas.metrics) || cellCanvas.cellSize(dpr, props.zoom), win;
+  let m = (sizedZoom === props.zoom && cellCanvas.metrics) || cellCanvas.cellSize(dpr, props.zoom), win, seen;
   sizedZoom = props.zoom;
   for (let pass = 0; pass < 3; pass++) {
-    win = viewWindow(viewIn(sizerRef.value, el), { x: m.cellWidth, y: m.lineHeight }, art.cols, art.lines);
+    seen = viewIn(sizerRef.value, el);
+    win = viewWindow(seen, { x: m.cellWidth, y: m.lineHeight }, art.cols, art.lines);
     cellCanvas.resize(win.cols, win.rows, dpr, props.zoom);
     const sized = cellCanvas.metrics;
     if (sized.cellWidth === m.cellWidth && sized.lineHeight === m.lineHeight) break;
@@ -121,7 +123,7 @@ const render = () => {
   cellCanvas.draw(art.cells, { cols: art.cols, rows: art.lines, col: win.col, row: win.row });
   canvasRef.value.style.left = `${win.col * m.cellWidth}px`;
   canvasRef.value.style.top = `${win.row * m.lineHeight}px`;
-  emit('looking-at', { middleCol: (el.scrollLeft + el.clientWidth / 2) / m.cellWidth, middleRow: (el.scrollTop + el.clientHeight / 2) / m.lineHeight });
+  emit('looking-at', { middleCol: (seen.x + seen.width / 2) / m.cellWidth, middleRow: (seen.y + seen.height / 2) / m.lineHeight });
   placeTag();
 };
 
@@ -211,6 +213,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .room-art {
   position: relative;
+  display: flex;
   height: 100%;
   overflow: auto;
   background: var(--surface-dark);
@@ -218,6 +221,8 @@ onBeforeUnmount(() => {
 
 .sizer {
   position: relative;
+  flex: none;
+  margin: auto;   /* in the middle when it fits; unlike centering the flex box, its corner stays reachable when it doesn't */
   overflow: clip;   /* the tag of a box at the grid's edge doesn't make the art scroll past it */
 }
 
