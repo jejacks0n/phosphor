@@ -1399,6 +1399,31 @@ test('A silence for your own sub gets a new pass that carries it', async () => {
   await vi.waitFor(() => expect(room.silencedUntil).toBe(server.silencedUntil));
 });
 
+test('A watcher silenced elsewhere (in another room, or by a moderator) is told in this room, and gets a new pass that carries it', async () => {
+  const socket = await watching();
+  expect(room.silencedUntil).toBe(null);
+  server.silencedUntil = Date.now() + 3_600_000;
+  const passes = server.sent('POST', '/api/pass').length;
+  socket.receive({ type: 'silenced', sub: social.claims.sub, until: server.silencedUntil });
+  await vi.waitFor(() => expect(server.sent('POST', '/api/pass')).toHaveLength(passes + 1));
+  await vi.waitFor(() => expect(room.silencedUntil).toBe(server.silencedUntil));
+});
+
+test('A host keeps the silences it was told through a reconnect, and takes the ones sent again after hosting', async () => {
+  const socket = await goLive();
+  const host = room._host;
+  socket.receive({ type: 'silenced', sub: 'u_p1', until: 5000 });
+  socket.close();
+  const again = await lastSocket(2);
+  again.accept();
+  await vi.waitFor(() => expect(again.sent[0]?.type).toBe('host'));
+  again.receive({ type: 'hosting', room: info(), peers: [] });
+  // Decided while the host was away: the server sends it again once the host is back.
+  again.receive({ type: 'silenced', sub: 'u_p2', until: 6000 });
+  expect(room._host).toBe(host);
+  expect([...host.silences]).toEqual([['u_p1', 5000], ['u_p2', 6000]]);
+});
+
 test('A host drops a silence for a watcher\'s sub into its Host; anything malformed is ignored', async () => {
   const socket = await goLive();
   const silence = vi.spyOn(room._host, 'silence');

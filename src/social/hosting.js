@@ -44,7 +44,7 @@ export class Host {
     // for earlier messages), here (counted among those in the room) }
     this.watchers = new Map();
     this.here = new Map();   // sub -> their open connections: one person in two tabs comes and goes once
-    this.silences = new Map();   // sub -> until (epoch ms), from 'silenced' since a pass was made
+    this.silences = new Map();   // sub -> until (epoch ms), from 'silenced' since a pass was made (kept through a reconnect)
     this.removed = new Set();   // peers the host removed: not met again, and told to the server until it stops listing them
     this.muted = new Set();   // subs whose messages go to no one but them (and the host); they aren't told
     this.only = new Map();   // id -> sub: a message sent while they were muted, shown to them alone

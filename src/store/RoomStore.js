@@ -534,7 +534,9 @@ export const useRoomStore = defineStore('room', {
         case 'refused':
           this.refused(msg.reason);
           break;
-        case 'silenced':   // yours: a new pass that says so; a host drops that watcher's chat
+        // Yours (decided in this room or elsewhere): a new pass that says so. A host drops that watcher's chat; the
+        // silences decided while it was away come again after hosting.
+        case 'silenced':
           if (typeof msg.sub !== 'string' || !Number.isFinite(msg.until)) break;
           if (msg.sub === useSocialStore().claims?.sub) useSocialStore().renewPass();
           else this._host?.silence(msg.sub, msg.until);
