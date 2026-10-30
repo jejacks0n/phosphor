@@ -58,6 +58,7 @@ test('the panel is beside every tab for the host and the watcher, with the welco
   const name = await panel(watcher).getByRole('heading', { name: 'neon harbor' }).boundingBox();
   expect(exit.x + exit.width).toBeLessThanOrEqual(fold.x);
   expect(fold.x - (exit.x + exit.width)).toBeLessThan(8);
+  expect(fold.height).toBe(exit.height);   // whatever the fonts, so they share a middle
   expect(Math.abs((exit.y + exit.height / 2) - (fold.y + fold.height / 2))).toBeLessThan(1);
   expect(exit.y).toBeLessThan(name.y + name.height);   // on the name's line, not under it
   const menu = await panel(host).getByRole('button', { name: 'Room', exact: true }).boundingBox();

@@ -275,7 +275,8 @@ button.report-room {
 button.report-room:hover {
   color: var(--text);
 }
-button.fold {
+button.fold {   /* Exit's or the ⋯'s height whatever the fonts, so they share a middle */
+  height: 26px;
   padding: 4px 6px;
   font-size: 14px;
 }
