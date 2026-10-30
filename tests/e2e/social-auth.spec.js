@@ -3,7 +3,7 @@
 import { test, expect, tab, store } from './support.js';
 import { fakeServer, member } from './social-support.js';
 
-const social = (page) => page.locator('.social-tab');
+const social = (page) => page.locator('.people-tab');
 const shown = (page, name) => social(page).locator(`[data-page="${name}"]`);
 const notice = (page) => social(page).getByRole('status');
 const TERMS = 'I\'m 13 or older and agree to the Terms and Privacy Policy';

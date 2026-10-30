@@ -15,7 +15,7 @@ test('the SOCIAL tab is there before any image; nothing SOCIAL runs until it\'s 
 
   await tab(page, 'SOCIAL').click();
   await expect(tab(page, 'SOCIAL')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('.social-tab [data-page="lobby"]')).toBeVisible();
+  await expect(page.locator('.people-tab [data-page="lobby"]')).toBeVisible();
   await expect(imageInput(page)).toHaveCount(0); // no start screen
   await expect.poll(() => server.lobby.received.map((m) => m.type)).toEqual(['hello']);
   expect(await store(page, 'social', (s) => s.lobbyStatus)).toBe('live');
@@ -31,7 +31,7 @@ test('a link back from the server (?reset=, ?verified=1, ?social=) opens the SOC
   await fakeServer(page);
   await page.goto('/?reset=tok');
   await expect(tab(page, 'SOCIAL')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('.social-tab [data-page="reset"]')).toBeVisible();
+  await expect(page.locator('.people-tab [data-page="reset"]')).toBeVisible();
   expect(new URL(page.url()).search).toBe('');
 });
 
@@ -50,15 +50,26 @@ test('a link back opened on a narrow screen is left alone, and nothing SOCIAL ru
   // Widened, the link is read when the tab is first shown.
   await page.setViewportSize({ width: 1400, height: 900 });
   await tab(page, 'SOCIAL').click();
-  await expect(page.locator('.social-tab')).toContainText('That link has expired or was already used');
+  await expect(page.locator('.people-tab')).toContainText('That link has expired or was already used');
   expect(new URL(page.url()).search).toBe('');
+});
+
+// Content blockers hide anything whose class or id says "social", as they do share buttons; the page loads, and is blank.
+test('a content blocker that hides social widgets leaves the SOCIAL tab showing', async ({ page }) => {
+  await fakeServer(page);
+  await page.goto('/');
+  await page.addStyleTag({ content: '[class*="social" i], [id*="social" i] { display: none !important; }' });
+  await tab(page, 'SOCIAL').click();
+  await expect(page.getByRole('heading', { name: 'Public rooms' })).toBeVisible();
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 });
 
 test('a file dropped on the SOCIAL tab is ignored, not opened by the browser', async ({ page }) => {
   await fakeServer(page);
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
-  const prevented = await page.locator('.social-tab').evaluate((el) => ['dragover', 'drop'].map((type) => {
+  const prevented = await page.locator('.people-tab').evaluate((el) => ['dragover', 'drop'].map((type) => {
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(new File(['x'], 'art.png', { type: 'image/png' }));
     const event = new DragEvent(type, { dataTransfer, bubbles: true, cancelable: true });
@@ -126,7 +137,7 @@ test('on the SOCIAL tab, letters, X, Space and Ctrl+Z leave the art and its tool
   const cells = await snapshot();
 
   await tab(page, 'SOCIAL').click();
-  await page.locator('.social-tab').evaluate((el) => el.prepend(Object.assign(document.createElement('input'), { ariaLabel: 'Username' })));
+  await page.locator('.people-tab').evaluate((el) => el.prepend(Object.assign(document.createElement('input'), { ariaLabel: 'Username' })));
   const field = page.getByRole('textbox', { name: 'Username' });
   await field.click();
   await page.keyboard.type('b g');
@@ -170,11 +181,11 @@ test('the SOCIAL forms look like the SAUCE tab: the same title, labels and colum
   const column = (await sauce.locator('.editor-container').boundingBox()).width;
 
   await tab(page, 'SOCIAL').click();
-  await page.locator('.social-tab [data-page="lobby"]').getByRole('button', { name: 'Sign in', exact: true }).click();
-  const form = page.locator('.social-tab [data-page="sign-in"] .form-page');
+  await page.locator('.people-tab [data-page="lobby"]').getByRole('button', { name: 'Sign in', exact: true }).click();
+  const form = page.locator('.people-tab [data-page="sign-in"] .form-page');
   expect(await look(form.getByRole('heading', { name: 'Sign in' }), TITLE)).toEqual(title);
   expect(await look(form.locator('label').filter({ hasText: 'Password' }), LABEL)).toEqual(label);
-  const box = await form.boundingBox(), tabArea = await page.locator('.social-tab').boundingBox();
+  const box = await form.boundingBox(), tabArea = await page.locator('.people-tab').boundingBox();
   expect(box.width).toBeCloseTo(column, 0);
   expect(Math.abs((box.x + box.width / 2) - (tabArea.x + tabArea.width / 2))).toBeLessThan(2);   // across
   const content = await form.evaluate((el) => {

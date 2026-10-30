@@ -8,7 +8,7 @@
 
 Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others
 watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
-for desktop browsers: on phones and other narrow screens the tab isn't shown.
+for wide screens: a phone held sideways can be wide enough, and narrower screens don't show the tab.
 
 ## The lobby
 
@@ -339,7 +339,7 @@ Thank you.**, and **Report room** goes away for that room (this browser remember
 
 ## Not in this version
 
-- Phones: the SOCIAL tab is desktop only. A link from one of Phosphor's emails opened on a phone
-  does nothing there; open it on a computer.
+- Narrow screens: the SOCIAL tab needs a wide one. A link from one of Phosphor's emails opened on a
+  narrow screen does nothing there; open it on a computer, or with the screen wider.
 - Drawing together: only the host draws.
 - Keeping a copy of someone else's art.

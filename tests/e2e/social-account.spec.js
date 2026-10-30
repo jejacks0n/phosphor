@@ -2,7 +2,7 @@
 import { test, expect, tab, store } from './support.js';
 import { fakeServer, member } from './social-support.js';
 
-const social = (page) => page.locator('.social-tab');
+const social = (page) => page.locator('.people-tab');
 const shown = (page, name) => social(page).locator(`[data-page="${name}"]`);
 
 // A date as the app words it, formatted in the browser so the test follows its locale and time zone.
