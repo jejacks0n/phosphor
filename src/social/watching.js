@@ -13,6 +13,8 @@ import { PAGE, chatText, isId, signedText } from './chat.js';
 import { CHUNK_BYTES, MOST_SNAPSHOT_CHUNKS, decodeChange, unpackSnapshot } from './wire.js';
 import { clampAnsiZoom } from '../lib/zoom.js';
 
+const MOST_HEARD_CHARS = 256 * 1024;   // a host's text message: what a channel carries
+const MOST_WAITING = 1024;  // messages waiting to be handled: a whole snapshot's chunks and plenty more
 const MOST_NAME = 60;       // a room's name
 const MOST_WELCOME = 200;
 
@@ -80,6 +82,7 @@ export class Watch {
     this.art = null;          // changes count only after this connection's first snapshot
     this.gathering = null;    // { want, chunks }: a snapshot's chunks as they come
     this.heard = Promise.resolve();   // messages are handled one at a time, in order
+    this.waiting = 0;                 // how many of them are still to be handled
     this.passes = new Map();   // pass -> its claims: good ones only, checked once a connection
     this.histories = 0;
     const conn = this.conn = openPeer({
@@ -87,9 +90,7 @@ export class Watch {
       sendSignal: (data) => this.send({ type: 'signal-to', to: 'host', data }),
       onOpen: (channel) => {
         this.channel = channel;
-        channel.onmessage = ({ data }) => {
-          this.heard = this.heard.then(() => this.conn === conn && this.handle(data)).catch(() => {});   // junk is ignored
-        };
+        channel.onmessage = ({ data }) => this.hear(data, conn);
         this.onState('live');
         if (!this.tracking) this.setTracking(false);
       },
@@ -128,6 +129,20 @@ export class Watch {
     else if (msg.t === 'history') await this.history(msg);
     else if (msg.t === 'deleted' && isId(msg.id)) this.onChat({ type: 'deleted', id: msg.id });
     else if (msg.t === 'chat-no' && isId(msg.id) && msg.reason === 'too-fast') this.onChat({ type: 'refused', id: msg.id, reason: msg.reason });
+  }
+
+  // A message off the channel, queued unless it's past what a channel carries (not every browser holds a
+  // stranger to that). A host sending faster than the queue empties is cut off: the queue is memory it fills.
+  hear(data, conn) {
+    if (typeof data === 'string' && data.length > MOST_HEARD_CHARS) return;
+    if (this.waiting >= MOST_WAITING) {
+      this.close();
+      this.onState('lost');
+      return;
+    }
+    this.waiting++;
+    this.heard = this.heard.then(() => this.conn === conn && this.handle(data)).catch(() => {})   // junk is ignored
+      .finally(() => { if (this.conn === conn) this.waiting--; });
   }
 
   async chat(msg) {

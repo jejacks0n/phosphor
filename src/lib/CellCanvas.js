@@ -29,6 +29,7 @@ import { drawnColumns, layoutSpills } from './DrawnWidth.js';
 // largest side (16384 px on most, 8192 on software WebGL) is quietly cut short.
 export const MAX_BACKING_AREA = 16_000_000;
 const ATLAS_COLS = 64; // glyphs per atlas row
+const MOST_GLYPH_INDEX = 65536; // the cell textures keep a glyph's index in two bytes
 
 // Device pixels per CSS pixel: the display's, or less when a grid that big would pass the area cap
 // or have a side longer than maxSide.
@@ -268,6 +269,7 @@ export default class CellCanvas {
     const gl = this.#gl, g = this.#geom;
     if (!g || gl.isContextLost() || cells.length !== gridCols * gridRows) return;
     if (col < 0 || row < 0 || col + g.cols > gridCols || row + g.rows > gridRows) return;
+    if (this.#glyphs.size >= this.#mostGlyphs()) this.#dropAtlas(); // full: start over with what's in view
     if (!this.#glyphs.size) this.#glyphOf({ char: ' ' }); // glyph 0: what a missing cell draws
     // The window's whole rows get their spills laid out, so a character left of the window still
     // spills into it; then the window takes its columns of the cells and the spills.
@@ -356,6 +358,13 @@ export default class CellCanvas {
     this.#allocated = false;
   }
 
+  // As many glyphs as the atlas can hold: a grid can have any number of characters (a room's come from a
+  // stranger). What's past it draws as glyph 0, blank, until the next draw starts the atlas over.
+  #mostGlyphs() {
+    const rows = Math.floor(this.#gl.getParameter(this.#gl.MAX_TEXTURE_SIZE) / this.#geom.ch);
+    return Math.min(MOST_GLYPH_INDEX, ATLAS_COLS * rows);
+  }
+
   #dropAtlas() {
     this.#glyphs.clear();
     this.#slices.clear();
@@ -372,6 +381,7 @@ export default class CellCanvas {
     if (wide || columnsOf(char) > 1) return this.#slicesOf(char)[wide === 'trail' ? 1 : 0];
     const index = this.#glyphs.get(char);
     if (index !== undefined) return index;
+    if (this.#glyphs.size >= this.#mostGlyphs()) return 0;
     const { cw, ch } = this.#geom;
     const block = blockMask(char, cw, ch), shade = SHADES.get(char);
     if (shade) return this.#store(char, shadeTexels(shade, cw, ch));
@@ -383,6 +393,7 @@ export default class CellCanvas {
     let indexes = this.#slices.get(char);
     if (indexes) return indexes;
     const { cw, ch } = this.#geom, span = Math.max(columnsOf(char), 1);
+    if (this.#glyphs.size + span > this.#mostGlyphs()) return new Array(span).fill(0);
     const whole = this.#rasterize(char, span);
     indexes = Array.from({ length: span }, (_, k) => {
       const texels = new Uint8Array(cw * ch * 4), row = span * cw * 4;
@@ -400,9 +411,11 @@ export default class CellCanvas {
     this.#glyphs.set(key, index);
     const row = Math.floor(index / ATLAS_COLS), width = ATLAS_COLS * cw * 4;
     if (row >= this.#atlasRows) {
-      const grown = new Uint8Array(width * (row + 1) * ch);
-      grown.set(this.#atlas);
-      this.#atlas = grown;
+      if (width * (row + 1) * ch > this.#atlas.length) { // doubles, so a grid of many characters isn't copied row by row
+        const grown = new Uint8Array(Math.max(this.#atlas.length * 2, width * (row + 1) * ch));
+        grown.set(this.#atlas);
+        this.#atlas = grown;
+      }
       this.#atlasRows = row + 1;
     }
     const x0 = (index % ATLAS_COLS) * cw * 4;
