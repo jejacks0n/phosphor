@@ -1,7 +1,15 @@
 <script setup>
 import { PROJECT_EXTENSION } from '@/document/projectIO';
 
+defineProps({
+  ready: { type: Boolean, default: true }, // nothing until it's known there's nothing to restore, so this doesn't flash
+  recent: { type: Array, default: () => [] },
+  openRecent: Function,
+});
 const emit = defineEmits(['file-dropped', 'file-selected', 'start-blank']);
+
+const MAX_RECENT = 5;
+const editedTime = (ms) => new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 function onFileSelected(e) {
   const file = e.target.files[0];
@@ -11,7 +19,7 @@ function onFileSelected(e) {
 
 <template>
   <article class="zero-state">
-    <div class="drop-zone">
+    <div v-if="ready" class="drop-zone">
       <div class="logo"></div>
       <span class="icon">⬆</span>
       <p>Drop an image or {{ PROJECT_EXTENSION }} file here to start</p>
@@ -25,6 +33,19 @@ function onFileSelected(e) {
         Or start with a blank canvas
       </button>
     </div>
+
+    <section v-if="ready && recent.length" class="recent">
+      <h2 id="recent-heading">Continue where you left off</h2>
+      <ul aria-labelledby="recent-heading">
+        <li v-for="row in recent.slice(0, MAX_RECENT)" :key="row.id">
+          <span class="name" :title="row.filename">{{ row.filename }}</span>
+          <time :datetime="new Date(row.editedAt).toISOString()">{{ editedTime(row.editedAt) }}</time>
+          <button :disabled="row.openElsewhere" :aria-label="`${row.openElsewhere ? 'Open in another tab' : 'Open'}: ${row.filename}`" @click="openRecent(row.id)">
+            {{ row.openElsewhere ? 'Open in another tab' : 'Open' }}
+          </button>
+        </li>
+      </ul>
+    </section>
   </article>
 </template>
 
@@ -33,9 +54,11 @@ article.zero-state {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: safe center; /* the list can make it taller than a short window: scrolls from the top */
   align-items: center;
   width: 100%;
+  min-height: 0;
+  overflow-y: auto;
   padding: 20px;
   gap: 40px;
   box-sizing: border-box;
@@ -106,6 +129,44 @@ label:hover {
 
 span.mobile {
   display: none;
+}
+
+section.recent {
+  width: 100%;
+  max-width: 480px;
+}
+
+section.recent h2 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+section.recent ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+section.recent li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+section.recent span.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text);
 }
 
 @media (max-width: 768px) {

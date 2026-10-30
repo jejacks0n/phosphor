@@ -1,23 +1,65 @@
 // Writes the document to the browser as you work (document/autosaveStore.js), going by the rules in
-// document/autosaveRules.js. A safety net: saving to a file is unchanged.
+// document/autosaveRules.js, and brings it back: a refresh restores the tab's document, a new tab offers
+// recent ones. A safety net: saving to a file is unchanged.
 import { ref, toRaw, watch, onBeforeUnmount } from 'vue';
 import { useEventListener } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { settingsJson } from '@/store/project/shared';
 import { writeProject } from '@/document/projectIO';
-import { writeLatest, addVersion, listVersions, evict } from '@/document/autosaveStore';
+import { writeLatest, addVersion, listVersions, evict, readLatest, listDocuments } from '@/document/autosaveStore';
 import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, versionDue } from '@/document/autosaveRules';
 import { toast } from '@/composables/useToast';
 
+const KEPT_DOCUMENT = 'phosphor-autosave-document'; // in sessionStorage: this tab's document
+const LOCK_PREFIX = 'phosphor-autosave:'; // a Web Lock per open document: the tab holding it has it open
+const RELOAD_WAIT_MS = 500; // a reload can get here before the old page has let go of the lock
+
+const keepDocument = (id) => {
+  try {
+    if (id) sessionStorage.setItem(KEPT_DOCUMENT, id);
+    else sessionStorage.removeItem(KEPT_DOCUMENT);
+  } catch { /* no storage: a refresh comes back to the zero state */ }
+};
+const keptDocument = () => {
+  try {
+    return sessionStorage.getItem(KEPT_DOCUMENT);
+  } catch {
+    return null;
+  }
+};
+
+// Takes a document's lock; answers with the function that lets it go, or null if another tab has it (or
+// still does when the options' signal gives up). Without Web Locks, every lock is available.
+const takeLock = (id, options) => new Promise((resolve) => {
+  if (!navigator.locks) return resolve(() => {});
+  navigator.locks.request(LOCK_PREFIX + id, options, (lock) => {
+    if (!lock) return resolve(null);
+    return new Promise((release) => resolve(release));
+  }).catch(() => resolve(null));
+});
+
+// The ids of the documents open in any tab, this one's too.
+async function openDocuments() {
+  const { held = [] } = await navigator.locks?.query() ?? {};
+  return held.map((lock) => lock.name).filter((name) => name.startsWith(LOCK_PREFIX)).map((name) => name.slice(LOCK_PREFIX.length));
+}
+
 export function useAutosave() {
   const project = useProjectStore();
+  const workspace = useWorkspaceStore();
   const current = ref(false); // the last write finished and nothing has changed since
+  const ready = ref(false); // whether there's anything to restore has been settled
+  const recent = ref([]); // what the zero state offers
   let unwritten = false;
   let edited = false; // a real change is among what's unwritten, not only what's saved to a file
   let editedAt = null; // when the document last really changed, for its record
   let quiet = null, deadline = null; // the timers: edits stopped, and edits going on too long
   let running = null, again = false; // the write under way, and that another is due after it
   let openedId = null, lastVersionAt = null; // the document that's had its opening write, and its newest version
+  let restoredId = null; // the document restored last: its opening write isn't a change
+  let held = null, leftId = null, lockTurn = 0; // the lock this tab has, the id it last let go of, and the latest ask
+  let openingRecent = false;
   let persistAsked = false, warned = false;
 
   const clearTimers = () => {
@@ -34,12 +76,14 @@ export function useAutosave() {
     deadline ??= setTimeout(write, SAVE_AT_LEAST_EVERY_MS);
   }
 
-  async function put(record, keep) {
+  const keeping = async (id) => new Set([id, ...await openDocuments()]);
+
+  async function put(record, id) {
     try {
       await writeLatest(record);
     } catch (error) {
       if (error.name !== 'QuotaExceededError') throw error;
-      await evict(keep, 0);
+      await evict(await keeping(id), 0);
       await writeLatest(record);
     }
   }
@@ -60,9 +104,8 @@ export function useAutosave() {
     const opening = id !== openedId;
     const real = edited;
     const now = Date.now();
-    const keep = new Set([id]); // the open documents
     unwritten = edited = false;
-    if (opening || real) editedAt = now;
+    if (real || (opening && id !== restoredId)) editedAt = now;
     try {
       const record = {
         id, imageBuffer,
@@ -77,14 +120,18 @@ export function useAutosave() {
       if (project._document !== doc) return; // parts of two documents; the swap scheduled its own write
 
       if (opening) lastVersionAt = (await listVersions(id))[0]?.savedAt ?? null;
-      await put(record, keep);
+      await put(record, id);
       openedId = id;
       if (opening) {
-        await evict(keep);
+        await evict(await keeping(id));
+      } else if (unwritten) {
+        // A change landed during this write, whose image and edits may not match (Merge into the image):
+        // the version is for the next write, even if what's waiting is only a save.
+        edited ||= real;
       } else if (versionDue({ lastVersionAt, now, changed: real })) {
         await addVersion(id, { reason: 'timed', savedAt: now });
         lastVersionAt = now;
-        await evict(keep);
+        await evict(await keeping(id));
       }
       current.value = !unwritten;
       if (!persistAsked) {
@@ -93,7 +140,7 @@ export function useAutosave() {
       }
     } catch (error) {
       unwritten = true;
-      edited ||= real;
+      edited ||= real && !opening; // opening isn't a change; if it wasn't stored, the next write is the opening again
       console.warn('Autosave failed', error);
       if (!warned) toast("Autosave isn't working in this browser. Save to a file to keep your work.");
       warned = true;
@@ -138,10 +185,109 @@ export function useAutosave() {
     () => project.savedSettings,
   ], schedule, { flush: 'sync' });
 
+  // Lets go of the lock this tab has and, with an id, takes that one in its place; whether it got it.
+  async function holdLock(id, options = { ifAvailable: true }) {
+    const turn = ++lockTurn;
+    if (held) {
+      held.release();
+      leftId = held.id;
+      held = null;
+    }
+    if (!id) return false;
+    const release = await takeLock(id, options);
+    if (turn !== lockTurn) { // the document changed while it waited
+      release?.();
+      return false;
+    }
+    if (release) held = { id, release };
+    return !!release;
+  }
+
+  async function loadRecent() {
+    try {
+      const [documents, open] = await Promise.all([listDocuments(), openDocuments()]);
+      // Letting go of a lock takes a moment to show: the one just let go of isn't open elsewhere.
+      recent.value = documents.map(({ id, filename, editedAt }) => ({ id, filename, editedAt, openElsewhere: id !== leftId && open.includes(id) }));
+    } catch (error) {
+      console.warn('Autosave could not list documents', error);
+    }
+  }
+
+  async function restore(saved, documentId) {
+    try {
+      await project.restoreDocument(saved, { documentId });
+    } catch (error) {
+      if (project.image) project.clearImage(); // gone wrong partway: not a half to write over the record
+      throw error;
+    }
+    // Its watchers have fired by now. None of that was a change.
+    edited = false;
+    restoredId = project.documentId;
+    editedAt = saved.record.editedAt;
+  }
+
+  // A held lock is a duplicated tab (a copy from here on, its own document) once the wait is over.
+  async function comeBack(id) {
+    try {
+      const free = await holdLock(id, { signal: AbortSignal.timeout(RELOAD_WAIT_MS) });
+      const saved = await readLatest(id);
+      if (project.image) return false; // something else is open already
+      if (!saved) throw new Error(`No record for ${id}`);
+      await restore(saved, free ? id : undefined);
+      return true;
+    } catch (error) {
+      console.warn('Autosave could not restore the document', error);
+      if (!project.image) {
+        holdLock(null);
+        keepDocument(null);
+      }
+      return false;
+    }
+  }
+
+  async function start() {
+    const id = keptDocument();
+    const restored = id && await comeBack(id);
+    if (restored && workspace.editorTab === 'input') workspace.editorTab = 'output'; // not if a return from signing in took you to SOCIAL
+    if (!restored && !project.image) await loadRecent();
+    ready.value = true;
+  }
+
+  async function openRecent(id) {
+    if (openingRecent) return; // a second click
+    openingRecent = true;
+    try {
+      if (!await holdLock(id)) throw new Error(`${id} is open in another tab`);
+      const saved = await readLatest(id);
+      if (project.image) return; // something else opened meanwhile
+      if (!saved) throw new Error(`No record for ${id}`);
+      await restore(saved, id);
+      workspace.editorTab = 'output';
+    } catch (error) {
+      console.warn('Autosave could not open the document', error);
+      if (!project.image) holdLock(null);
+      toast("Couldn't open that document.");
+      await loadRecent();
+    } finally {
+      openingRecent = false;
+    }
+  }
+
+  watch(() => project.documentId, (id) => {
+    keepDocument(id);
+    if (id !== (held?.id ?? null)) holdLock(id);
+    if (!id) loadRecent();
+  }, { flush: 'sync' });
+
   useEventListener(document, 'visibilitychange', () => {
     if (document.visibilityState === 'hidden') flush();
   });
-  onBeforeUnmount(clearTimers);
+  onBeforeUnmount(() => {
+    clearTimers();
+    holdLock(null);
+  });
 
-  return { current, flush };
+  start();
+
+  return { current, flush, ready, recent, openRecent };
 }
