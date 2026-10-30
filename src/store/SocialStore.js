@@ -178,6 +178,8 @@ export const useSocialStore = defineStore('social', {
       if (params.get('verified') === '1') this.notice = error ? messageFor(error) : 'Your email is confirmed';
       if (params.get('reset')) Object.assign(this, { resetToken: params.get('reset'), page: 'reset' });
       if (params.get('social') === 'linked') this.page = 'account';
+      if (params.get('social') === 'email-changed') this.notice = error ? messageFor(error) : 'Your email is changed';
+      if (params.get('social') === 'email-approved') this.notice = 'Approved. Now open the link sent to your new address';
       if (params.get('social') === 'two-factor') this.page = 'two-factor';   // (the room stays kept until the code)
       if (params.get('social') === 'signed-in') this._roomLink = keptRoom();
       if (params.has('room')) Object.assign(this, { _roomLink: params.get('room'), _roomLinkAsks: true });
@@ -380,6 +382,17 @@ export const useSocialStore = defineStore('social', {
         method: 'POST', body: { email: this.me?.email, callbackURL: appOrigin() + '/?verified=1' }, headers: withToken(turnstileToken),
       });
       if (ok) this.notice = CONFIRMED;
+      return ok;
+    },
+
+    // Nothing changes until the links are opened. A confirmed address approves first; an address another account
+    // uses gets the same words as any other.
+    async changeEmail(newEmail, password, turnstileToken) {
+      const { ok, code } = await this.request('/api/auth/change-email', {
+        method: 'POST', body: { newEmail, password, callbackURL: appOrigin() + '/?social=email-changed' }, headers: withToken(turnstileToken),
+      });
+      this.staleSession(code);
+      if (ok) this.notice = this.me.emailVerified ? `Check ${this.me.email} to approve the change` : `Check ${newEmail} to confirm it`;
       return ok;
     },
 

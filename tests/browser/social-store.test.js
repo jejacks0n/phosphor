@@ -119,6 +119,17 @@ test('?verified=1 with an error (a used or expired link) says so in words', asyn
   expect(social.notice).toBe('That link has expired or was already used. Ask for a new one.');
 });
 
+test('?social=email-approved and ?social=email-changed say where a change of email stands, or why a link failed', async () => {
+  fakeServer();
+  vi.spyOn(history, 'replaceState').mockImplementation(() => {});
+  await social.start(at('?social=email-approved'));
+  expect(social.notice).toBe('Approved. Now open the link sent to your new address');
+  social.readReturn(at('?social=email-changed'));
+  expect(social.notice).toBe('Your email is changed');
+  social.readReturn(at('?social=email-changed&error=SIGN_IN_TO_CONFIRM'));
+  expect(social.notice).toBe('Sign in to that account here, then open the link again');
+});
+
 test('?reset=<token> opens the reset page; resetPassword sends the token and lands on sign-in', async () => {
   const server = fakeServer();
   server.route('POST /api/auth/reset-password', () => [200, { status: true }]);
