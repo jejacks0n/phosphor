@@ -105,6 +105,56 @@ test('Send a reset link opens Forgot your password with your email filled in, an
   expect(server.sent('POST', '/api/auth/request-password-reset')[0].body).toEqual({ email: 'fan@example.com' });
 });
 
+test('Change email asks for the address and password, and says whose mailbox is next', async ({ page }) => {
+  const server = await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  await account.getByRole('button', { name: 'Change email' }).click();
+  const send = account.locator('form').getByRole('button', { name: 'Change email' });
+  await expect(send).toBeDisabled();
+  await expect(account.getByLabel('New email')).toBeFocused();
+  await account.getByLabel('New email').fill(' new@example.com ');
+  await account.getByLabel('Current password').fill('violet-lantern-harbor-42');
+  await send.click();
+  await expect(social(page).getByRole('status')).toContainText('Check fan@example.com to approve the change');
+  expect(server.sent('POST', '/api/auth/change-email')[0].body).toMatchObject({ newEmail: 'new@example.com', password: 'violet-lantern-harbor-42' });
+  await expect(account.getByLabel('New email')).toHaveCount(0);   // done with
+  await expect(account.getByRole('button', { name: 'Change email' })).toBeFocused();
+  await expect(account.getByText('fan@example.com')).toBeVisible();   // not changed yet
+});
+
+test('An unconfirmed address: the new mailbox is next, and a refusal stays in the form', async ({ page }) => {
+  const server = await fakeServer(page, { me: member({ emailVerified: false }) });
+  server.route('POST /api/auth/change-email', () => [429, { code: 'EMAIL_CHANGE_LIMIT' }]);
+  const account = await openAccount(page);
+  await account.getByRole('button', { name: 'Change email' }).click();
+  await account.getByLabel('New email').fill('new@example.com');
+  await account.getByLabel('Current password').fill('violet-lantern-harbor-42');
+  await account.locator('form').getByRole('button', { name: 'Change email' }).click();
+  await expect(account.getByRole('alert')).toContainText('twice a day');
+  await expect(account.getByLabel('New email')).toHaveValue('new@example.com');
+  server.route('POST /api/auth/change-email', () => [200, { status: true }]);
+  await account.locator('form').getByRole('button', { name: 'Change email' }).click();
+  await expect(social(page).getByRole('status')).toContainText('Check new@example.com to confirm it');
+});
+
+test('Cancel closes the email form and clears it', async ({ page }) => {
+  await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  await account.getByRole('button', { name: 'Change email' }).click();
+  await account.getByLabel('New email').fill('new@example.com');
+  await account.getByRole('button', { name: 'Cancel' }).click();
+  await expect(account.getByLabel('New email')).toHaveCount(0);
+  await account.getByRole('button', { name: 'Change email' }).click();
+  await expect(account.getByLabel('New email')).toHaveValue('');
+});
+
+test('An account with no password has no Change email', async ({ page }) => {
+  await fakeServer(page, { me: member({ providers: ['discord'] }) });
+  const account = await openAccount(page);
+  await expect(account.getByRole('button', { name: 'Disconnect Discord' })).toBeVisible();
+  await expect(account.getByRole('button', { name: 'Change email' })).toHaveCount(0);
+});
+
 test('Unblock removes the row; with nobody blocked it says so', async ({ page }) => {
   const server = await fakeServer(page, { me: member(), blocked: [{ id: 'u_noisy-nick', username: 'noisy-nick', since: 1 }, { id: 'u_rude-ray', username: 'rude-ray', since: 2 }] });
   const account = await openAccount(page);

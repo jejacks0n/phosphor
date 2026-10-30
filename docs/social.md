@@ -93,9 +93,13 @@ you out everywhere else. Signed out, it has a **Sign in** link back.
   Account), a small cell comes before it, the glyph (a CP437 symbol, such as ♥ or ►) on the color.
 - **Ways to sign in**: email and password (**Send a reset link** opens **Forgot your password?**
   with your email filled in, to change the password; it says the link is on its way to your
-  address), Discord and GitHub; connect or disconnect each, keeping at least one. Discord and GitHub
+  address; **Change email** asks for the new address and your password), Discord and GitHub; connect or disconnect each, keeping at least one. Discord and GitHub
   are listed only where the server has them set up (or you already have one connected, so it can be
   disconnected).
+- **Changing your email**: your address stays as it is until the new one confirms by a link in its
+  mail. If your current address is confirmed, it has to approve first, by a link of its own. Open
+  each link in a browser signed in to the account, within the hour; only the links from your latest
+  ask work. You can ask twice a day. Accounts with only Discord or GitHub keep the email it gave.
 - **Two-factor**: once it's on, every sign-in asks for a code from your authenticator app, Discord
   and GitHub included. **Trust this computer for 30 days** skips the code on that computer. A backup
   code stands in for the phone (**Use a backup code instead**), once each.

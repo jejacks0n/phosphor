@@ -1,9 +1,10 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { renderSVG } from 'uqr';
 import { useSocialStore, PROVIDERS } from '@/store/SocialStore';
 import { usernameProblem } from '@/social/names';
 import { messageFor } from '@/social/messages';
+import { mountTurnstile } from '@/social/turnstile';
 import UsernameField from './UsernameField.vue';
 import UserName from './UserName.vue';
 
@@ -27,6 +28,12 @@ const renameError = ref(null);
 const password = ref('');
 const deleting = ref(false);
 const deleteError = ref(null);
+const changingEmail = ref(false);
+const newEmail = ref('');
+const emailPassword = ref('');
+const emailError = ref(null);
+const emailWidget = useTemplateRef('emailWidget');
+let emailToken = () => null;
 
 // Two-factor is one of three asks (turn on, turn off, new backup codes), each wanting the password; turning on then
 // shows the secret to scan, and the backup codes. Both live here only, so they're gone once you leave the page.
@@ -44,6 +51,8 @@ onMounted(() => social.loadBlocked());
 // A panel opening takes focus (its first field, or Cancel when it has none) and closing gives it back
 // to the button that opened it.
 const changeButton = useTemplateRef('changeButton');
+const changeEmailButton = useTemplateRef('changeEmailButton');
+const emailForm = useTemplateRef('emailForm');
 const deleteButton = useTemplateRef('deleteButton');
 const renameForm = useTemplateRef('renameForm');
 const deleteForm = useTemplateRef('deleteForm');
@@ -74,6 +83,31 @@ function cancelRename() {
   renaming.value = false;
   focusOn(changeButton);
 }
+
+// The form's Turnstile check lives as long as the form does.
+function startEmail() {
+  emailError.value = null;
+  changingEmail.value = true;
+  focusIn(emailForm);
+  nextTick(() => mountTurnstile(emailWidget.value, 'email').then((get) => { emailToken = get; }, () => {}));
+}
+
+function endEmail() {
+  emailToken.remove?.();
+  emailToken = () => null;
+  changingEmail.value = false;
+  newEmail.value = emailPassword.value = '';
+  emailError.value = null;
+  focusOn(changeEmailButton);
+}
+
+async function submitEmail() {
+  emailError.value = null;
+  if (await social.changeEmail(newEmail.value.trim(), emailPassword.value, emailToken())) endEmail();
+  else failed(emailError);
+}
+
+onBeforeUnmount(() => emailToken.remove?.());
 
 function startDelete() {
   deleting.value = true;
@@ -177,8 +211,22 @@ async function deleteAccount() {
       <h3 id="account-ways">Ways to sign in</h3>
       <div v-if="hasPassword" class="row">
         <span class="what">Email and password <span class="detail">{{ me.email }}</span></span>
-        <button @click="social.page = 'forgot'">Send a reset link</button>
+        <span class="buttons">
+          <button ref="changeEmailButton" :disabled="changingEmail" @click="startEmail">Change email</button>
+          <button @click="social.page = 'forgot'">Send a reset link</button>
+        </span>
       </div>
+      <form v-if="changingEmail" ref="emailForm" @submit.prevent="submitEmail">
+        <label>New email <input v-model="newEmail" type="email" autocomplete="email" maxlength="254" required></label>
+        <label>Current password <input v-model="emailPassword" type="password" autocomplete="current-password" required></label>
+        <p class="help">{{ me.emailVerified ? `Nothing changes until ${me.email} approves, then the new address confirms.` : 'Nothing changes until the new address confirms.' }} Each link works for an hour, in this browser. Twice a day.</p>
+        <div ref="emailWidget" class="turnstile"></div>
+        <div class="actions">
+          <button class="primary" type="submit" :disabled="social.busy || !newEmail.trim() || !emailPassword">Change email</button>
+          <button type="button" @click="endEmail">Cancel</button>
+        </div>
+        <p v-if="emailError" class="error" role="alert">{{ emailError }}</p>
+      </form>
       <div v-for="[id, label] in ways" :key="id" class="row">
         <template v-if="me.providers.includes(id)">
           <span class="what">{{ label }} <span class="detail">Connected</span></span>
@@ -279,8 +327,14 @@ div.row {
   align-items: center;
   gap: 8px;
 }
-div.row > button {
+div.row > button,
+div.row > span.buttons {
   margin-left: auto;
+}
+span.buttons {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
 }
 div.actions {
   display: flex;
