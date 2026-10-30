@@ -113,6 +113,51 @@ test('only a key that scrolls is looking around: not Tab, and not a modifier on 
   expect(seen.lookArounds).toBe(scrolling.length);
 });
 
+const smallArt = (cols, lines) => ({ ...art, cols, lines, cells: art.cells.slice(0, cols * lines) });
+const middleOf = (el) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+
+test('art smaller than the view sits in its middle, and the middle in cells is the art\'s', async () => {
+  await createTestApp();
+  const { scroll, seen } = mount({ art: smallArt(10, 3), hostView: { col: 0, row: 0, cols: 10, rows: 3 } });
+  await expect.poll(() => host.querySelector('.sizer').style.width).toBe('80px');
+  await frames();
+  const [artX, artY] = middleOf(host.querySelector('.sizer')), [viewX, viewY] = middleOf(scroll);
+  expect(Math.abs(artX - viewX)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(artY - viewY)).toBeLessThanOrEqual(0.5);
+  expect([scroll.scrollLeft, scroll.scrollTop]).toEqual([0, 0]);
+  await expect.poll(() => seen.lookingAt).toEqual({ middleCol: 5, middleRow: 1.5 });
+});
+
+test('art narrow and tall centers across and scrolls down from its first line; scrolled from the box, the tag stays in view', async () => {
+  await createTestApp();
+  const { scroll, tag, state } = mount({ art: smallArt(10, 50), hostView: { col: 0, row: 0, cols: 10, rows: 3 } });
+  await expect.poll(() => host.querySelector('.sizer').style.width).toBe('80px');
+  await frames();
+  const sizer = host.querySelector('.sizer');
+  expect(sizer.getBoundingClientRect().left - scroll.getBoundingClientRect().left).toBe(60);
+  expect(scroll.scrollTop).toBe(0);   // the first line can be seen
+  state.tracking = false;
+  scroll.scrollTop = 400;
+  await expect.poll(() => tag().textContent).toContain('↑');
+  await frames();
+  const [view, placed] = [scroll.getBoundingClientRect(), tag().getBoundingClientRect()];
+  expect(placed.left).toBeGreaterThanOrEqual(view.left);   // inside the view, measured from where the art starts
+  expect(placed.right).toBeLessThanOrEqual(view.left + scroll.clientWidth);
+});
+
+test('art bigger than the view starts at its corner: nothing past it to the left or above', async () => {
+  await createTestApp();
+  const { scroll, state } = mount({ hostView: { col: 0, row: 0, cols: 10, rows: 3 } });
+  await expect.poll(() => host.querySelector('.sizer').style.width).toBe('800px');
+  await frames();
+  state.tracking = false;
+  scroll.scrollLeft = scroll.scrollTop = 0;
+  await frames();
+  const sizer = host.querySelector('.sizer').getBoundingClientRect(), view = scroll.getBoundingClientRect();
+  expect([sizer.left, sizer.top]).toEqual([view.left, view.top]);
+  expect(scroll.scrollWidth).toBe(800);
+});
+
 test('the art is a region named for screen readers', async () => {
   await createTestApp();
   const { scroll } = mount();

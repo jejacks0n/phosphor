@@ -229,7 +229,8 @@ back. A private room with a
 password asks for it first.
 
 The room's name, its host and **Exit** are at the top of the chat panel, with the welcome message
-pinned under them; the SOCIAL tab shows just the art. The art is view only, in the host's font. A box
+pinned under them; the SOCIAL tab shows just the art, in the middle of the page when it's smaller
+than the page. The art is view only, in the host's font. A box
 in the host's name color shows where they're looking, with a tag in its corner: the host's cell and name, and
 *tracking* while your view tracks theirs. The box is their whole view, and while you track, the
 art is drawn at their zoom (never above 100%: a PIXEL host who zooms in is shown at 100%, with a
