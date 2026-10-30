@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick, useTemplateRef, onBeforeUnmount, useId } from 'vue';
+import { ref, computed, watch, useTemplateRef, onBeforeUnmount, useId } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -81,17 +81,20 @@ const pin = (event) => {
   if (el) room.pinLobby(shownCell(el));
 };
 
-// The art's size changed: the frame follows it, then shows the window again (the frame is the window's
-// size, so the window's corner is the scroll).
-let sizerObserver = null;
-const settle = async () => {
+// RoomArt has a new cell: the frame takes its size with the art's, before layout (from inside a resize
+// observer, the elements around the art would miss their notifications).
+const cellDrawn = ({ cellWidth, lineHeight }) => {
   const el = scroller();
-  if (!el || !cellOf(el).height) return;   // not drawn yet
-  cell.value = cellOf(el);
+  cell.value = { width: cellWidth, height: lineHeight };
   bars.value = { x: el.offsetHeight - el.clientHeight, y: el.offsetWidth - el.clientWidth };
-  await nextTick();   // the frame's new size
-  const v = hostView.value;
-  if (!art.value || !v) return;
+};
+
+// The art's size changed: the frame shows the window again (the frame is the window's size, so the
+// window's corner is the scroll).
+let sizerObserver = null;
+const settle = () => {
+  const el = scroller(), v = hostView.value;
+  if (!el || !cell.value || !art.value || !v) return;   // not drawn yet
   el.scrollLeft = v.col * cell.value.width;
   el.scrollTop = v.row * cell.value.height;
 };
@@ -119,7 +122,7 @@ onBeforeUnmount(() => {
   <section ref="picture" class="lobby-picture" :aria-labelledby="headingId">
     <h3 :id="headingId">Lobby picture</h3>
     <div ref="frame" class="frame" :style="frameStyle" @scroll.capture="scrolled">
-      <RoomArt v-if="art" ref="roomArt" :art="art" :host-view="hostView" :tracking="!pinned" :zoom="zoom" :boxed="false" />
+      <RoomArt v-if="art" ref="roomArt" :art="art" :host-view="hostView" :tracking="!pinned" :zoom="zoom" :boxed="false" @cell="cellDrawn" />
     </div>
     <label class="choice"><input type="checkbox" :checked="pinned" @change="pin"> Use this exact position</label>
   </section>

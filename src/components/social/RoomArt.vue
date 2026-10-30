@@ -26,7 +26,7 @@ const props = defineProps({
   zoom: { type: Number, default: 1 },          // the cell's size against the font's (the host's, never above 1)
   boxed: { type: Boolean, default: true },     // the host's box and tag (false: just the art, scrolled to the view)
 });
-const emit = defineEmits(['look-around', 'track', 'looking-at', 'zoom']);
+const emit = defineEmits(['look-around', 'track', 'looking-at', 'zoom', 'cell']);
 
 const scrollRef = useTemplateRef('scroll'), sizerRef = useTemplateRef('sizer'), canvasRef = useTemplateRef('canvas'), tagRef = useTemplateRef('tag');
 const font = computed(() => fontFor(props.art?.font));
@@ -139,6 +139,7 @@ const center = () => {
   el.scrollTop = (v.row + v.rows / 2) * m.lineHeight - el.clientHeight / 2;
 };
 watch([view, () => props.tracking, metrics], center, { flush: 'post' });
+watch(metrics, (m) => emit('cell', m), { flush: 'post' });   // in the sizer's own flush, before the browser lays it out
 
 // Looking around, a zoom holds a cell in place: taken before the art changes size, put back once it has.
 const hold = (x, y) => {

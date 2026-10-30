@@ -94,6 +94,23 @@ test('a pin is not rewritten when the art gets wider and the cells smaller under
   expect(Math.round(el.scrollTop / now)).toBe(200);
 });
 
+// The frame takes the art's size before the browser's resize observers run: changed from inside one, the
+// elements around the art miss their notifications and the browser reports it as an error.
+test('the frame follows the art without leaving a resize observer undelivered', async () => {
+  const errors = [], note = (event) => errors.push(event.message);
+  addEventListener('error', note);
+  try {
+    const { project, el, cell } = await mount(200, 40, 600);
+    host.style.width = '260px';
+    await expect.poll(() => el.firstElementChild.getBoundingClientRect().height).toBeLessThan(300 * cell.height);
+    await loadImage(project, '/tests/fixtures/images/tall.png', { cols: 80, rows: 600 });
+    await frames();
+    expect(errors).toEqual([]);
+  } finally {
+    removeEventListener('error', note);
+  }
+});
+
 // The frame's room: the picture's width inside its padding.
 const room = () => {
   const section = host.querySelector('section.lobby-picture'), style = getComputedStyle(section);
