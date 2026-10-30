@@ -45,10 +45,9 @@ npm run build
   you host or watch) and `src/components/social/` (one component per page; the chat is `ChatPanel.vue`, `ChatFoot.vue` and `ReportDialog.vue`). Its tests are the
   `social-*` files in `tests/unit`, `tests/browser` and `tests/e2e`; the end-to-end fake server is
   `tests/e2e/social-support.js` ([docs/testing.md](docs/testing.md)).
-- `server/`: a git submodule, the SOCIAL server's own repo. Work on it in place, but commit and push
-  inside `server/` (its commits go to its repo, never this one); then commit the new `server`
-  pointer here on its own. A fresh checkout gets it with
-  `git -c protocol.file.allow=always submodule update --init` (its remote is a local path).
+- `server/`: a symlink to the SOCIAL server's own repo (`/server` is gitignored), so both can be
+  worked on side by side. Commit and push inside `server/`; its commits go to its repo, never this
+  one. A fresh checkout makes the link with `ln -s <the server's checkout> server`.
 
 ## Rules
 
