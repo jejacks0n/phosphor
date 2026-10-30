@@ -231,12 +231,13 @@ export const useSocialStore = defineStore('social', {
     // Signing in or up stays busy until you're known, so the form can't be sent a second time meanwhile.
     // With two-factor on, the answer is only the challenge: the code comes next, and you're no one until then
     // (the server has ended a session you had).
-    signIn(login, password) {
+    signIn(login, password, turnstileToken) {
       keepRoom(null);   // a sign-in here is not the trip back
       return this.whileBusy(async () => {
         const byEmail = login.includes('@');
         const { ok, data } = await this.request(byEmail ? '/api/auth/sign-in/email' : '/api/auth/sign-in/username', {
           method: 'POST', body: byEmail ? { email: login, password } : { username: login, password },
+          headers: withToken(turnstileToken),   // needed only once the account has had too many tries
         });
         if (ok && data?.twoFactorRedirect) {
           if (this.me) await this.becameSomeoneElse({ signedOut: true });
@@ -363,9 +364,9 @@ export const useSocialStore = defineStore('social', {
       return true;
     },
 
-    async resendConfirmation() {
+    async resendConfirmation(turnstileToken) {
       const { ok } = await this.request('/api/auth/send-verification-email', {
-        method: 'POST', body: { email: this.me?.email, callbackURL: appOrigin() + '/?verified=1' },
+        method: 'POST', body: { email: this.me?.email, callbackURL: appOrigin() + '/?verified=1' }, headers: withToken(turnstileToken),
       });
       if (ok) this.notice = CONFIRMED;
       return ok;

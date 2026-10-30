@@ -175,8 +175,8 @@ const emit = defineEmits(['close', 'open']);
       <ul>
         <li><strong>Rate limits:</strong> To prevent brute-force attacks and spam, we track request counts by IP address
           and by the submitted email address or username for approximately one minute.</li>
-        <li><strong>Cloudflare Turnstile</strong> verifies that a real person is creating an account or requesting a
-          password reset.</li>
+        <li><strong>Cloudflare Turnstile</strong> verifies that a real person is creating an account, requesting a
+          password reset or another confirmation email, or signing in to an account that has had too many attempts.</li>
         <li><strong>Compromised passwords:</strong> When you choose a password, we send only the first five
           characters of its SHA-1 hash (never the password itself) to Have I Been Pwned, and we reject any password that
           has appeared in a known data breach.</li>

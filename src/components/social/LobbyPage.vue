@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { silencedWords } from '@/social/chat';
 import { signalWords } from '@/social/lobby';
+import ConfirmEmail from './ConfirmEmail.vue';
 import UserName from './UserName.vue';
 import RoomCard from './RoomCard.vue';
 import ReportDialog from './ReportDialog.vue';
@@ -100,10 +101,7 @@ onBeforeUnmount(() => clearInterval(tick));
       </div>
 
       <template v-if="known && social.signedIn">
-        <div v-if="social.me?.emailVerified === false" class="confirm">
-          Confirm your email to start a room
-          <button class="link inline" :disabled="social.busy" @click="social.resendConfirmation()">Resend</button>
-        </div>
+        <ConfirmEmail v-if="social.me?.emailVerified === false" class="confirm" />
       </template>
       <template v-else-if="known">
         <button class="primary sign-in" @click="social.page = 'sign-in'">Sign in</button>

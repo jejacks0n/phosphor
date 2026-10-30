@@ -179,7 +179,8 @@ test('signIn picks the username or email endpoint; a wrong password, or a suspen
   expect(await social.signIn('ansi-fan', 'wrong')).toBe(false);
   expect(social.notice).toBe(messageFor('INVALID_USERNAME_OR_PASSWORD'));
   expect(await social.signIn('ansi-fan', 'right-password')).toBe(true);
-  expect(await social.signIn('fan@example.com', 'right-password')).toBe(true);
+  expect(await social.signIn('fan@example.com', 'right-password', 'ts')).toBe(true);
+  expect(server.sent('POST', '/api/auth/sign-in/email').map((r) => r.headers['x-turnstile-token'])).toEqual([undefined, 'ts']);
   expect(server.sent('POST', '/api/auth/sign-in/username').map((r) => r.body)).toEqual([
     { username: 'ansi-fan', password: 'wrong' }, { username: 'ansi-fan', password: 'right-password' },
   ]);
@@ -765,8 +766,10 @@ test('The account actions send the server\'s shapes', async () => {
   expect(social.signedIn).toBe(true);
   expect(claimsOf((await goLive(await lastSocket(2))).pass).guest).toBe(false);
 
-  await social.resendConfirmation();
-  expect(server.sent('POST', '/api/auth/send-verification-email')[0].body).toEqual({ email: 'fan@example.com', callbackURL: `${origin}/?verified=1` });
+  await social.resendConfirmation('tt3');
+  const resend = server.sent('POST', '/api/auth/send-verification-email')[0];
+  expect(resend.body).toEqual({ email: 'fan@example.com', callbackURL: `${origin}/?verified=1` });
+  expect(resend.headers['x-turnstile-token']).toBe('tt3');
 
   await social.requestReset('fan@example.com', 'tt2');
   const reset = server.sent('POST', '/api/auth/request-password-reset')[0];
