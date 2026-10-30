@@ -8,7 +8,7 @@ import { silencedWords } from '../../src/social/chat.js';
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
 const LINK = `http://localhost:4180/?room=${ROOM_ID}`;
-const shown = (page, name) => page.locator(`.social-tab [data-page="${name}"]`);
+const shown = (page, name) => page.locator(`.people-tab [data-page="${name}"]`);
 const dot = (page) => tab(page, 'SOCIAL').locator('.dot');
 
 // Signed in, with art open, on Start a room.
@@ -142,7 +142,7 @@ test('going live with a public room: a name of only spaces isn\'t sent; the POST
   await expect.poll(() => store(page, 'room', (r) => r.status)).toBe('live');
 
   await expect(host.getByRole('heading', { name: 'Room settings' })).toBeVisible();
-  expect(await page.locator('.social-tab').evaluate((el) => el.scrollHeight - el.clientHeight)).toBe(0);   // only the page scrolls, when it needs to
+  expect(await page.locator('.people-tab').evaluate((el) => el.scrollHeight - el.clientHeight)).toBe(0);   // only the page scrolls, when it needs to
 
   await expect(dot(page)).toBeVisible();
   await expect(dot(page)).toHaveAttribute('aria-hidden', 'true');
@@ -359,7 +359,7 @@ test('a SILENCED refusal shows the server\'s words and no room starts', async ({
   }));
   await page.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
   await page.getByRole('button', { name: 'Go live' }).click();
-  await expect(page.locator('.social-tab .notice')).toContainText(silencedWords(until));
+  await expect(page.locator('.people-tab .notice')).toContainText(silencedWords(until));
   await expect(shown(page, 'start-room').getByRole('heading', { name: 'Setup room' })).toBeVisible();
   expect(await store(page, 'room', (r) => r.role)).toBe(null);
   expect(server.sent('POST', '/api/rooms')).toHaveLength(1);

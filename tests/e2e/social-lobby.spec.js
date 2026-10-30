@@ -20,7 +20,7 @@ const PEOPLE = [
   { sub: 'g_9', name: 'soft-copper-gnat', guest: true, signal: null },
 ];
 
-const lobby = (page) => page.locator('.social-tab [data-page="lobby"]');
+const lobby = (page) => page.locator('.people-tab [data-page="lobby"]');
 const card = (page, name) => lobby(page).getByRole('article').filter({ hasText: name });
 const side = (page) => lobby(page).getByRole('complementary');
 const you = (page) => side(page).locator('.you');
@@ -257,7 +257,7 @@ test('a dropped socket shows Reconnecting… over the dimmed rooms, then recover
 test('the notice is one line at the top of the tab, and can be dismissed', async ({ page }) => {
   await fakeServer(page);
   await page.goto('/?verified=1');
-  const notice = page.locator('.social-tab').getByRole('status');
+  const notice = page.locator('.people-tab').getByRole('status');
   await expect(notice).toContainText('Your email is confirmed');
   await notice.getByRole('button', { name: 'Dismiss' }).click();
   await expect(notice).toHaveCount(0);
@@ -272,7 +272,7 @@ test('a browser that can\'t do Ed25519 is told plainly, with nothing else on the
   });
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
-  await expect(page.locator('.social-tab')).toHaveText('This browser can\'t sign you in to SOCIAL yet');
+  await expect(page.locator('.people-tab')).toHaveText('This browser can\'t sign you in to SOCIAL yet');
 });
 
 // A person shows the same wherever they do: their name in the text color, after a 14px cell of its glyph on its color.
@@ -293,5 +293,5 @@ test('a name is drawn the same everywhere: its cell (its glyph on its color), th
   expect(await look(side(page).getByRole('listitem').filter({ hasText: 'dusty-neon-heron' }).locator('.name'))).toEqual(expected('dusty-neon-heron'));
   expect(await look(card(page, 'first time trying shading').locator('.host'))).toEqual(expected('tin-lantern-owl'));
   await side(page).getByRole('button', { name: 'Edit account' }).click();
-  expect(await look(page.locator('.social-tab .username'))).toEqual(expected('ansi-fan'));
+  expect(await look(page.locator('.people-tab .username'))).toEqual(expected('ansi-fan'));
 });
