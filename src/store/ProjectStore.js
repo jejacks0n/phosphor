@@ -21,6 +21,8 @@ export const useProjectStore = defineStore('project', {
   state: () => ({
     image: shallowRef(null),
     imageBuffer: null, // the image's encoded bytes, saved into .phosphor files
+    documentId: null, // who the document is to autosave (useAutosave)
+    savedToFile: false, // saved to, or opened from, a .phosphor file at least once (an export can't reopen as a project)
     imageIsWorkingCopy: false, // the image is a working-size copy (after a Bake or an Into-the-picture merge), not the one loaded
     ...settingsState(),
 
