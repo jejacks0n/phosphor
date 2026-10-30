@@ -152,7 +152,10 @@ const keyDown = (event) => { if (SCROLL_KEYS.has(event.key)) lookAround(); };
 
 onMounted(() => {
   scrollRef.value?.addEventListener('scroll', queueRender, { passive: true });
-  resizeObserver = new ResizeObserver(queueRender);
+  resizeObserver = new ResizeObserver(() => {
+    center();   // a view of a new size has a new middle
+    queueRender();
+  });
   if (scrollRef.value) resizeObserver.observe(scrollRef.value);
   if (sizerRef.value) resizeObserver.observe(sizerRef.value);
   render();
