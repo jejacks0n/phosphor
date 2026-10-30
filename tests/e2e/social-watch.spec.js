@@ -81,6 +81,35 @@ test('the host sees the watcher tracking; a wheel is looking around, and Track b
   await expect(list.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest\s*tracking/]);
 });
 
+test('a tracking watcher\'s art stays centered when their own view changes size; looking around, it stays put', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  const watcher = await watcherPage(context, room);
+  await watcher.setViewportSize({ width: 830, height: 500 });   // the art's 80 columns don't fit across
+  await watcher.goto('/');
+  await joinFromCard(watcher);
+  const offCenter = () => watcher.locator('.room-art').evaluate((el) => {
+    const box = el.querySelector('.host-view');
+    return Math.abs(el.scrollLeft - (box.offsetLeft + box.offsetWidth / 2 - el.clientWidth / 2));
+  });
+  await expect.poll(offCenter).toBeLessThanOrEqual(1);
+
+  await chat(watcher).getByRole('button', { name: 'Fold the chat' }).click();
+  await expect.poll(offCenter).toBeLessThanOrEqual(1);
+  await watcher.setViewportSize({ width: 950, height: 500 });
+  await expect.poll(offCenter).toBeLessThanOrEqual(1);
+
+  const art = watching(watcher).getByLabel('The room\'s art');
+  await art.hover();
+  await watcher.mouse.wheel(40, 0);
+  await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(offCenter).toBeGreaterThan(1);
+  const at = await art.evaluate((el) => el.scrollLeft), width = await art.evaluate((el) => el.clientWidth);
+  await watcher.setViewportSize({ width: 900, height: 500 });
+  await expect.poll(() => art.evaluate((el) => el.clientWidth)).toBeLessThan(width);
+  expect(await art.evaluate((el) => el.scrollLeft)).toBe(at);
+});
+
 test('the host zooms ANSI out to 50%: a tracking watcher\'s cells are half as wide', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room, { image: 'images/tall.png' });
