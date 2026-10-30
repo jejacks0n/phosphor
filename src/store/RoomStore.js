@@ -121,6 +121,10 @@ export const useRoomStore = defineStore('room', {
     },
     // A watcher reported this room (Report room is gone).
     roomReported: (state) => state.reported.includes(ROOM_REPORT),
+    // Report room, for a watcher who can report, until they have; never in your own room (watched from a second tab).
+    canReportRoom() {
+      return this.role === 'watch' && this.canReport && !this.roomReported && this.room?.hostSub !== useSocialStore().claims?.sub;
+    },
     // When your silence ends (epoch ms), while your pass says you're silenced.
     silencedUntil: () => useSocialStore().claims?.silencedUntil ?? null,
     // Where the lobby picture looks: the cell it's pinned to, else the middle of the shared view.
@@ -367,21 +371,22 @@ export const useRoomStore = defineStore('room', {
     },
 
     // A watcher's report of the room itself, with a picture of what they see now: the host's view while tracking,
-    // else their own. False, sending nothing, if you can't report, you're the host, you reported this room already
-    // or the reason isn't one; also when the socket isn't open, and then it isn't kept as reported.
+    // else their own. False, sending nothing, if you can't report the room (canReportRoom) or the reason isn't one;
+    // also when the socket isn't open or the connection ends while the picture is made, and then it isn't kept as
+    // reported.
     async reportRoom(reason) {
-      if (this.role !== 'watch' || !this.canReport || this.reported.includes(ROOM_REPORT) || !REASONS.some((r) => r.id === reason)) return false;
+      if (!this.canReportRoom || !REASONS.some((r) => r.id === reason)) return false;
       this.reported.push(ROOM_REPORT);   // a second Report while the picture is made sends nothing
-      const connection = this._connection, art = this.art;
+      const connection = this._connection, art = this.art, id = this.id;
       let picture = null;
       try {
         if (art) picture = await thumbnailOf({ ...art, font: fontFor(art.font) }, (!this.tracking && this.lookingAt) || middleOf(this.hostView), REPORT_PICTURE);
       } catch (error) {
         console.warn('The room report\'s picture failed.', error);   // it goes without one
       }
-      if (connection !== this._connection) return false;   // the room closed meanwhile
-      if (!connection?.send({ type: 'report-room', reason, ...(picture ? { picture } : {}) })) {
-        this.reported = this.reported.filter((s) => s !== ROOM_REPORT);
+      // The connection ended meanwhile (the room closed, or the one to the host failed) or won't send.
+      if (connection !== this._connection || !connection?.send({ type: 'report-room', reason, ...(picture ? { picture } : {}) })) {
+        if (this.id === id) this.reported = this.reported.filter((s) => s !== ROOM_REPORT);
         return false;
       }
       keepRoomReport(this.id);

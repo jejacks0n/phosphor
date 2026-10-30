@@ -231,6 +231,21 @@ test('a member reports the room from under Exit: the fake hears report-room with
   await expect(panel(watcher).getByRole('button', { name: 'Exit' })).toBeVisible();
 });
 
+test('a card that leaves the lobby right after its report doesn\'t take "Reported. Thank you." with it', async ({ context }) => {
+  const room = fakeRoom();
+  const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });
+  const watcher = await watcherPage(context, room, { me: wren });
+  await watcher.goto('/');
+  await tab(watcher, 'SOCIAL').click();
+  await card(watcher).getByRole('button', { name: 'More for neon harbor' }).click();
+  await watcher.getByRole('button', { name: 'Report room' }).click();
+  await roomDialog(watcher).getByRole('radio', { name: 'Spam or flooding' }).check();
+  await roomDialog(watcher).getByRole('button', { name: 'Report', exact: true }).click();
+  watcher.server.lobby.send({ type: 'room-gone', id: ROOM_ID });
+  await expect(card(watcher)).toHaveCount(0);
+  await expect(reported(watcher)).toBeVisible();
+});
+
 test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears report-room; the card has no Report room after, and a guest\'s card has no ⋯', async ({ context }) => {
   const room = fakeRoom();
   const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });

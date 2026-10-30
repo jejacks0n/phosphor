@@ -386,6 +386,10 @@ test('a confirmed watcher has Report room under Exit; the host, a guest and an u
   await nextTick();
   expect(reportRoomButton()).toBeUndefined();
   room.reported = [];
+  room.room = { ...room.room, hostSub: 'u_me' };   // your own room, watched from a second tab
+  await nextTick();
+  expect(reportRoomButton()).toBeUndefined();
+  room.room = { ...room.room, hostSub: 'u_9' };
   room.role = 'host';
   await nextTick();
   expect(reportRoomButton()).toBeUndefined();
@@ -424,7 +428,8 @@ test('while Report room makes its picture, the dialog\'s buttons are off and Can
   const button = (label) => [...dialog.querySelectorAll('button')].find((b) => b.textContent === label);
   button('Report').click();
   await nextTick();
-  expect([button('Report').disabled, button('Cancel').disabled]).toEqual([true, true]);
+  expect(button('Report')).toBeUndefined();   // it says it's busy
+  expect([button('Reporting…').disabled, button('Cancel').disabled]).toEqual([true, true]);
   dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   document.querySelector('.modal-backdrop').click();
   await nextTick();

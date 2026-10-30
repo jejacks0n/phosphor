@@ -5,6 +5,7 @@ import { silencedWords } from '@/social/chat';
 import { signalWords } from '@/social/lobby';
 import UserName from './UserName.vue';
 import RoomCard from './RoomCard.vue';
+import ReportDialog from './ReportDialog.vue';
 import StartRoomPage from './StartRoomPage.vue';
 
 const social = useSocialStore();
@@ -27,6 +28,9 @@ const reconnecting = computed(() => social.lobbyStatus === 'reconnecting' && vie
 const name = computed(() => social.myName ?? social.me?.username);
 // Who you are is known once /api/me has answered: until then, neither you nor a guest (no Sign in to flash).
 const known = computed(() => social.supported !== null);
+
+// A card's Report room, asked here: the card can leave the lobby (delisted) before "Reported. Thank you." has gone.
+const reporting = ref(null);   // ReportDialog's props, from a RoomCard's report
 
 // Silenced, Start a room is off with until when beside it; a ticking now brings it back when that's past.
 const now = ref(Date.now());
@@ -78,7 +82,7 @@ onBeforeUnmount(() => clearInterval(tick));
       </div>
       <!-- stale while reconnecting: dimmed, and their Join buttons out of reach -->
       <div v-else class="rooms" :class="{ stale: reconnecting }" :inert="reconnecting">
-        <RoomCard v-for="room in shown" :key="room.id" :room="room" :signed-in="social.signedIn" />
+        <RoomCard v-for="room in shown" :key="room.id" :room="room" :signed-in="social.signedIn" @report="reporting = $event" />
       </div>
     </section>
 
@@ -116,6 +120,7 @@ onBeforeUnmount(() => clearInterval(tick));
         </li>
       </ul>
     </aside>
+    <ReportDialog v-if="reporting" v-bind="reporting" @done="reporting = null" />
   </div>
 </template>
 

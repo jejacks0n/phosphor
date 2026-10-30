@@ -71,7 +71,7 @@ function report() {
       <label v-for="r in REASONS" :key="r.id"><input v-model="reason" type="radio" name="report-reason" :value="r.id"> {{ r.label }}</label>
     </fieldset>
     <div class="actions">
-      <button class="danger" :disabled="!reason || sending" @click="report">Report</button>
+      <button class="danger" :disabled="!reason || sending" @click="report">{{ sending ? 'Reporting…' : 'Report' }}</button>
       <button :disabled="sending" @click="cancel">Cancel</button>
     </div>
   </ModalDialog>

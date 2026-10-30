@@ -1339,6 +1339,32 @@ test('looking around, the room report\'s picture is centered on what the watcher
   expect(roomReports(socket)).toEqual([{ type: 'report-room', reason: 'other' }]);
 });
 
+test('watching your own room from a second tab, you can\'t report it', async () => {
+  await social.boot();
+  const socket = await joining(1);
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: social.claims.sub });
+  room.art = smallArt;
+  expect(room.canReportRoom).toBe(false);
+  expect(await room.reportRoom('spam')).toBe(false);
+  expect(roomReports(socket)).toEqual([]);
+});
+
+test('the connection to the host failing while the report\'s picture is made sends nothing and leaves Report room there', async () => {
+  const socket = await watching();
+  room.art = smallArt;
+  let made;
+  vi.mocked(thumbnailOf).mockReturnValueOnce(new Promise((resolve) => { made = resolve; }));
+  expect(room.canReportRoom).toBe(true);
+  const reporting = room.reportRoom('spam');
+  await vi.waitFor(() => expect(made).toBeTypeOf('function'));
+  room.watchState('failed');
+  made('AAAA');
+  expect(await reporting).toBe(false);
+  expect(roomReports(socket)).toEqual([]);
+  expect(room.roomReported).toBe(false);
+  expect(hasReportedRoom(ID)).toBe(false);
+});
+
 test('the host, a guest or an unconfirmed member can\'t reportRoom', async () => {
   const hostSocket = await goLive();
   expect(await room.reportRoom('spam')).toBe(false);   // the host

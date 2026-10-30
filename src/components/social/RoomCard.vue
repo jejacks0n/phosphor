@@ -1,11 +1,10 @@
 <script setup>
-import { computed, ref, useId, useTemplateRef } from 'vue';
+import { computed, useId, useTemplateRef } from 'vue';
 import { useNow } from '@vueuse/core';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { joinState, liveFor, pictureUrl, signalWords } from '@/social/lobby';
 import DropdownMenu from '@/components/DropdownMenu.vue';
-import ReportDialog from './ReportDialog.vue';
 import UserName from './UserName.vue';
 
 const props = defineProps({
@@ -24,10 +23,11 @@ const reasonId = useId();
 
 // The ⋯ with Report room: for a confirmed member, not on their own room, until they've reported it.
 const reportable = computed(() => roomStore.canReport && props.room.host !== social.myName && !social.reportedRooms.includes(props.room.id));
-const reporting = ref(null);   // { room, trigger, back }
+// The lobby shows the dialog, so a card that leaves (delisted) doesn't take "Reported. Thank you." with it.
+const emit = defineEmits(['report']);   // { room, trigger, back }: ReportDialog's props
 const joinButton = useTemplateRef('join');
 const askToReport = (event) => {
-  reporting.value = { room: { id: props.room.id, from: 'lobby' }, trigger: event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger'), back: joinButton.value };
+  emit('report', { room: { id: props.room.id, from: 'lobby' }, trigger: event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger'), back: joinButton.value });
 };
 </script>
 
@@ -50,7 +50,6 @@ const askToReport = (event) => {
         <button ref="join" class="join" :disabled="!join.enabled" :aria-describedby="join.reason ? reasonId : undefined" @click="roomStore.join(room.id)">{{ join.label }}</button>
       </div>
     </div>
-    <ReportDialog v-if="reporting" v-bind="reporting" @done="reporting = null" />
   </article>
 </template>
 
