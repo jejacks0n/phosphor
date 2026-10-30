@@ -25,7 +25,7 @@ test('letters choose the tools the view offers, and the buttons say which', asyn
   expect(await tool(page)).toBe('pencil');
 });
 
-test('in Edit Mode letters type; Escape puts the cursor away and they choose tools again; a text field keeps them', async ({ page }) => {
+test('in Edit Mode letters type; Escape puts the cursor away and they choose tools again; a text field keeps its keys: letters, Alt+F, ? and Space', async ({ page }) => {
   await openApp(page);
   await editAt(page, 2, 2);
   await page.keyboard.type('pb');
@@ -41,9 +41,17 @@ test('in Edit Mode letters type; Escape puts the cursor away and they choose too
   await seed.press('b');
   await expect(seed).toHaveValue('b');
   expect(await tool(page)).toBe('pencil');
+  await seed.press('Alt+f');
+  await expect(page.getByRole('dialog', { name: 'Color picker' })).toBeHidden();
+  await seed.press('?');
+  await expect(seed).toHaveValue(/^b.*\?$/);
+  await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeHidden();
+  await seed.fill('');
+  await seed.type('two words'); // the pointer still over the canvas
+  await expect(seed).toHaveValue('two words');
 });
 
-test('with a selection: S stamps and the block moves on, E erases, Enter sets it down', async ({ page }) => {
+test('with a selection: S stamps and the block moves on, E erases, Enter sets it down; C stamps too, as in Moebius: the copy stays and the block floats on', async ({ page }) => {
   await openApp(page);
   await editAt(page, 5, 5);
   await page.keyboard.type('A');
@@ -63,14 +71,7 @@ test('with a selection: S stamps and the block moves on, E erases, Enter sets it
 
   await page.keyboard.press('Enter');
   expect(await store(page, 'workspace', (w) => w.selection)).toBe(null);
-});
 
-test('C stamps too, as in Moebius: the copy stays and the block floats on', async ({ page }) => {
-  await openApp(page);
-  await editAt(page, 5, 5);
-  await page.keyboard.type('A');
-  await page.keyboard.press('Escape');
-  await page.keyboard.press('m');
   await drag(page, await cellPoint(page, 5, 5), await cellPoint(page, 6, 5));
   await page.keyboard.press('c');
   await page.keyboard.press('ArrowDown');

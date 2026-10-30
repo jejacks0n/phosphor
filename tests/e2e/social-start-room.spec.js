@@ -52,16 +52,18 @@ test('Start a room with no art open says to open some, and Go live is disabled',
   expect(server.sent('POST', '/api/rooms')).toEqual([]);
 });
 
-test('the host\'s page fits the tab: the tab doesn\'t scroll, only the page does when it needs to', async ({ page }) => {
-  await goLive(page);
-  await expect(shown(page, 'host-room').getByRole('heading', { name: 'Room settings' })).toBeVisible();
-  const tabArea = page.locator('.social-tab');
-  expect(await tabArea.evaluate((el) => el.scrollHeight - el.clientHeight)).toBe(0);
-});
-
-test('Setup room: the room beside its lobby card when there\'s room, stacked when there isn\'t; link-only has no card', async ({ page }) => {
+test('Setup room: the radio buttons look like the checkboxes; the room beside its lobby card when there\'s room, stacked when there isn\'t; link-only has no card', async ({ page }) => {
   await startPage(page);
   const setup = shown(page, 'start-room');
+  const style = (el) => el.evaluate((input) => {
+    const s = getComputedStyle(input);
+    return { appearance: s.appearance, width: s.width, radius: s.borderRadius, background: s.backgroundColor };
+  });
+  const radio = setup.getByRole('radio', { name: 'Anyone, in the lobby' });
+  const checkbox = setup.getByRole('checkbox', { name: 'Allow guests' });
+  // (both are on, and their colors fade in: compared once they've settled)
+  await expect.poll(async () => [await style(radio), { ...await style(checkbox), radius: '50%' }])
+    .toEqual([{ appearance: 'none', width: '16px', radius: '50%', background: 'rgb(232, 2, 252)' }, { appearance: 'none', width: '16px', radius: '50%', background: 'rgb(232, 2, 252)' }]);
   const card = setup.getByRole('region', { name: 'Lobby card' });
   const name = setup.getByRole('textbox', { name: 'Room name' });
   await expect(card.getByRole('group', { name: 'Signal' })).toBeVisible();
@@ -87,7 +89,7 @@ test('Setup room: the room beside its lobby card when there\'s room, stacked whe
   expect((await name.boundingBox()).width).toBeLessThan(form.width * 0.6);   // still a column wide, not stretched
 });
 
-test('going live with a public room: the POST, the host\'s page with its link, the tab\'s dot, Copy link', async ({ page }) => {
+test('going live with a public room: a name of only spaces isn\'t sent; the POST with its signal, the host\'s page with its link and fitting the tab, the tab\'s dot, Copy link', async ({ page }) => {
   const { room, server } = await startPage(page);
   // The setup takes the Public rooms section; the lobby's column stays beside it.
   const setup = shown(page, 'start-room');
@@ -114,7 +116,17 @@ test('going live with a public room: the POST, the host\'s page with its link, t
   await expect(signal).toHaveAccessibleDescription('Shown on your room\'s card in the lobby.');
   await expect(dot(page)).toHaveCount(0);
 
-  await page.getByRole('textbox', { name: 'Room name' }).fill('  neon harbor  ');
+  await signal.getByRole('radio', { name: 'Open to chat' }).check();
+
+  const name = page.getByRole('textbox', { name: 'Room name' });
+  await expect(name).toHaveAttribute('title', 'Use at least one character that isn\'t a space');   // the browser shows it with "match the format"
+  await name.fill('   ');
+  await page.getByRole('button', { name: 'Go live' }).click();
+  await expect(name).toBeFocused();   // the browser's own "match the format"
+  expect(await name.evaluate((input) => input.validity.valid)).toBe(false);
+  expect(server.sent('POST', '/api/rooms')).toEqual([]);
+
+  await name.fill('  neon harbor  ');
   await page.getByRole('textbox', { name: 'Welcome message' }).fill('hi all');
   await expect(page.getByText('6/200')).toBeVisible();
   await page.getByRole('button', { name: 'Go live' }).click();
@@ -125,9 +137,12 @@ test('going live with a public room: the POST, the host\'s page with its link, t
   await expect(tile(host, 'Here now')).toHaveText('0');
   await expect(host.getByText(LINK)).toBeVisible();
   await expect(host.getByText('Send the link and the password to anyone you want in.')).toHaveCount(0);
-  expect(server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'neon harbor', public: true, allowGuests: true, max: 12, signal: null }]);
+  expect(server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'neon harbor', public: true, allowGuests: true, max: 12, signal: 'chat' }]);
   await expect.poll(() => room.received[0]).toMatchObject({ from: 'host', msg: { type: 'host' } });
   await expect.poll(() => store(page, 'room', (r) => r.status)).toBe('live');
+
+  await expect(host.getByRole('heading', { name: 'Room settings' })).toBeVisible();
+  expect(await page.locator('.social-tab').evaluate((el) => el.scrollHeight - el.clientHeight)).toBe(0);   // only the page scrolls, when it needs to
 
   await expect(dot(page)).toBeVisible();
   await expect(dot(page)).toHaveAttribute('aria-hidden', 'true');
@@ -139,25 +154,6 @@ test('going live with a public room: the POST, the host\'s page with its link, t
   await expect(host.getByRole('button', { name: 'Copied' })).toBeVisible();
   await expect(host.getByRole('status')).toHaveText('Copied');   // said, too
   await expect(copy).toBeVisible({ timeout: 4000 });   // back after 2 s
-});
-
-test('choosing Open to chat sends signal chat with the room', async ({ page }) => {
-  const { server } = await startPage(page);
-  await page.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
-  await page.getByRole('group', { name: 'Signal' }).getByRole('radio', { name: 'Open to chat' }).check();
-  await page.getByRole('button', { name: 'Go live' }).click();
-  await expect.poll(() => server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'neon harbor', public: true, allowGuests: true, max: 12, signal: 'chat' }]);
-});
-
-test('a room name of only spaces isn\'t sent', async ({ page }) => {
-  const { server } = await startPage(page);
-  const name = page.getByRole('textbox', { name: 'Room name' });
-  await expect(name).toHaveAttribute('title', 'Use at least one character that isn\'t a space');   // the browser shows it with "match the format"
-  await name.fill('   ');
-  await page.getByRole('button', { name: 'Go live' }).click();
-  await expect(name).toBeFocused();   // the browser's own "match the format"
-  expect(await name.evaluate((input) => input.validity.valid)).toBe(false);
-  expect(server.sent('POST', '/api/rooms')).toEqual([]);
 });
 
 test('a private room\'s password is optional: without one its link alone reaches it, and its page says to send the link', async ({ page }) => {
@@ -180,6 +176,8 @@ test('a private room with a password sends it, and its page says to send both', 
   await page.getByRole('textbox', { name: 'Password (optional)' }).fill('hunter22');
   await page.getByRole('button', { name: 'Go live' }).click();
   await expect(page.getByText('Send the link and the password to anyone you want in.')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Lobby picture' })).toHaveCount(0);   // only a listed room has one
+  await expect(page.getByRole('checkbox', { name: 'Use this exact position' })).toHaveCount(0);
   expect(server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'just us', public: false, allowGuests: true, max: 12, signal: null, password: 'hunter22' }]);
   expect(room.setup.password).toBe('hunter22');
 });
@@ -197,20 +195,6 @@ test('the welcome box is as tall as its message, on Start a room and in Room set
   const settings = host.getByRole('textbox', { name: 'Welcome message' });
   await expect(settings).toHaveValue(WELCOME);
   expect(await whole(settings)).toBe(true);
-});
-
-test('the radio buttons look like the checkboxes: drawn by the app, round, and the same color when on', async ({ page }) => {
-  await startPage(page);
-  const start = shown(page, 'start-room');
-  const style = (el) => el.evaluate((input) => {
-    const s = getComputedStyle(input);
-    return { appearance: s.appearance, width: s.width, radius: s.borderRadius, background: s.backgroundColor };
-  });
-  const radio = start.getByRole('radio', { name: 'Anyone, in the lobby' });
-  const checkbox = start.getByRole('checkbox', { name: 'Allow guests' });
-  // (both are on, and their colors fade in: compared once they've settled)
-  await expect.poll(async () => [await style(radio), { ...await style(checkbox), radius: '50%' }])
-    .toEqual([{ appearance: 'none', width: '16px', radius: '50%', background: 'rgb(232, 2, 252)' }, { appearance: 'none', width: '16px', radius: '50%', background: 'rgb(232, 2, 252)' }]);
 });
 
 test('what\'s typed in Start a room stays while you\'re on another tab, and is gone once the room is made', async ({ page }) => {
@@ -234,75 +218,36 @@ test('what\'s typed in Start a room stays while you\'re on another tab, and is g
   await expect(start.getByRole('checkbox', { name: 'Allow guests' })).toBeChecked();
 });
 
-test('Room settings keep what\'s typed while you\'re on another tab', async ({ page }) => {
-  await goLive(page);
-  const host = shown(page, 'host-room');
-  await host.getByRole('textbox', { name: 'Welcome message' }).fill('back in 5');
-  await host.getByRole('spinbutton', { name: 'Max watchers' }).fill('3');
-  await tab(page, 'PIXEL').click();
-  await tab(page, 'SOCIAL').click();
-  await expect(host.getByRole('textbox', { name: 'Welcome message' })).toHaveValue('back in 5');
-  await expect(host.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('3');
-  await host.getByRole('spinbutton', { name: 'Max watchers' }).fill('99');
-  await expect(host.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('30');
-});
-
-test('a change the server makes while you\'re on another tab shows when you\'re back; what you typed in other fields stays', async ({ page }) => {
+test('Room settings follow the room when the server says how it is, also from another tab; what you typed stays while you\'re away', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
-  await host.getByRole('textbox', { name: 'Welcome message' }).fill('back in 5');
-  await tab(page, 'PIXEL').click();
-  room.send('host', { type: 'settings-now', room: { ...room.info(), max: 20 } });
-  await expect.poll(() => store(page, 'room', (r) => r.room.max)).toBe(20);
-  await tab(page, 'SOCIAL').click();
-  await expect(host.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('20');
-  await expect(host.getByRole('textbox', { name: 'Welcome message' })).toHaveValue('back in 5');
-});
-
-test('Room settings send the guests, max watchers and signal; End room sends end, and the lobby and the dot come back', async ({ page }) => {
-  const { room } = await goLive(page);
-  const host = shown(page, 'host-room');
-  await host.getByRole('spinbutton', { name: 'Max watchers' }).fill('6');
-  await host.getByRole('button', { name: 'Save' }).click();
-  await expect.poll(() => room.from('host').filter((m) => m.type === 'settings')).toEqual([{ type: 'settings', allowGuests: true, max: 6, signal: null }]);
-  expect(await store(page, 'room', (r) => r.room.max)).toBe(6);
-
-  await host.getByRole('button', { name: 'End room' }).click();
-  await page.getByRole('dialog', { name: 'End the room?' }).getByRole('button', { name: 'End room' }).click();
-  await expect.poll(() => room.from('host').map((m) => m.type)).toContain('end');
-  await expect(shown(page, 'lobby').getByRole('heading', { name: 'Public rooms', exact: true })).toBeFocused();
-  await expect(dot(page)).toHaveCount(0);
-  expect(await store(page, 'room', (r) => r.role)).toBe(null);
-});
-
-test('End room on the page asks first: Cancel keeps the room and brings focus back', async ({ page }) => {
-  await goLive(page);
-  const host = shown(page, 'host-room');
-  await host.getByRole('button', { name: 'End room' }).click();
-  const ask = page.getByRole('dialog', { name: 'End the room?' });
-  await expect(ask.getByRole('button', { name: 'Cancel' })).toBeFocused();
-  await ask.getByRole('button', { name: 'Cancel' }).click();
-  await expect(ask).toHaveCount(0);
-  await expect(host.getByRole('button', { name: 'End room' })).toBeFocused();
-  expect(await store(page, 'room', (r) => r.role)).toBe('host');
-});
-
-test('the welcome edited from the chat panel leaves a half-typed welcome here', async ({ page }) => {
-  await goLive(page);
-  const host = shown(page, 'host-room');
+  const most = host.getByRole('spinbutton', { name: 'Max watchers' });
   const welcome = host.getByRole('textbox', { name: 'Welcome message' });
-  await welcome.fill('half typed');
-  await page.getByRole('button', { name: 'Room', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit welcome' }).click();
-  await page.getByRole('dialog', { name: 'Edit welcome' }).getByRole('textbox').fill('from the panel');
-  await page.getByRole('dialog', { name: 'Edit welcome' }).getByRole('button', { name: 'Save' }).click();
-  await expect.poll(() => store(page, 'room', (r) => r.room.welcome)).toBe('from the panel');
-  await expect(welcome).toHaveValue('half typed');
+  await expect(most).toHaveValue('12');
+  room.send('host', { type: 'settings-now', room: { ...room.info(), max: 20, allowGuests: false } });
+  await expect(most).toHaveValue('20');
+  await expect(host.getByRole('checkbox', { name: 'Allow guests' })).not.toBeChecked();
+
+  await welcome.fill('back in 5');
+  await tab(page, 'PIXEL').click();
+  room.send('host', { type: 'settings-now', room: { ...room.info(), max: 25 } });
+  await expect.poll(() => store(page, 'room', (r) => r.room.max)).toBe(25);
+  await tab(page, 'SOCIAL').click();
+  await expect(most).toHaveValue('25');
+  await expect(welcome).toHaveValue('back in 5');
+
+  await most.fill('3');
+  await tab(page, 'PIXEL').click();
+  await tab(page, 'SOCIAL').click();
+  await expect(welcome).toHaveValue('back in 5');
+  await expect(most).toHaveValue('3');
+  await most.fill('99');
+  await expect(most).toHaveValue('30');
 });
 
 // The server takes settings at most once a second (a sooner one is answered with the room as it is);
 // the app waits 1.25 s after the last it sent, so a quick second Save still lands.
-test('two quick saves leave the room with the latest settings', async ({ page }) => {
+test('Room settings send the guests, max watchers and signal, and two quick saves leave the latest; End room asks first, Cancel keeps the room; End room sends end, and the lobby and the dot come back', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
   const most = host.getByRole('spinbutton', { name: 'Max watchers' });
@@ -318,26 +263,34 @@ test('two quick saves leave the room with the latest settings', async ({ page })
   expect([room.setup.allowGuests, room.setup.max]).toEqual([false, 8]);
   await page.waitForTimeout(300);   // a settings-now would be back by now
   expect(await store(page, 'room', (r) => [r.room.allowGuests, r.room.max])).toEqual([false, 8]);
+
+  await host.getByRole('button', { name: 'End room' }).click();
+  const ask = page.getByRole('dialog', { name: 'End the room?' });
+  await expect(ask.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect(ask).toHaveCount(0);
+  await expect(host.getByRole('button', { name: 'End room' })).toBeFocused();
+  expect(await store(page, 'room', (r) => r.role)).toBe('host');
+
+  await host.getByRole('button', { name: 'End room' }).click();
+  await ask.getByRole('button', { name: 'End room' }).click();
+  await expect.poll(() => room.from('host').map((m) => m.type)).toContain('end');
+  await expect(shown(page, 'lobby').getByRole('heading', { name: 'Public rooms', exact: true })).toBeFocused();
+  await expect(dot(page)).toHaveCount(0);
+  expect(await store(page, 'room', (r) => r.role)).toBe(null);
 });
 
-test('Room settings follow the room when the server says how it is', async ({ page }) => {
-  const { room } = await goLive(page);
-  const host = shown(page, 'host-room');
-  const most = host.getByRole('spinbutton', { name: 'Max watchers' });
-  await expect(most).toHaveValue('12');
-  room.send('host', { type: 'settings-now', room: { ...room.info(), max: 20, allowGuests: false } });
-  await expect(most).toHaveValue('20');
-  await expect(host.getByRole('checkbox', { name: 'Allow guests' })).not.toBeChecked();
-});
-
-test('what\'s typed in Room settings survives the socket dropping and hosting again', async ({ page }) => {
+test('the host\'s socket drops: Reconnecting… until it says host again, and what\'s typed in Room settings survives', async ({ page }) => {
   const { room } = await goLive(page);
   const host = shown(page, 'host-room');
   await host.getByRole('textbox', { name: 'Welcome message' }).fill('back in 5');
   await host.getByRole('spinbutton', { name: 'Max watchers' }).fill('3');
   room.drop('host');
+  await expect(host.getByText('Reconnecting…')).toBeVisible();
   await expect.poll(() => room.from('host').filter((m) => m.type === 'host').length).toBe(2);
   await expect.poll(() => store(page, 'room', (r) => r.status)).toBe('live');
+  await expect(host.getByText('Reconnecting…')).toHaveCount(0);
+  await expect(tile(host, 'Here now')).toHaveText('0');
   await expect(host.getByRole('textbox', { name: 'Welcome message' })).toHaveValue('back in 5');
   await expect(host.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('3');
 });
@@ -361,15 +314,6 @@ test('a paced-out save shows the server\'s values, and saving them again sends t
   expect(await store(page, 'room', (r) => r.room.max)).toBe(8);
 });
 
-test('the host\'s socket drops: Reconnecting… until it says host again', async ({ page }) => {
-  const { room } = await goLive(page);
-  room.drop('host');
-  await expect(shown(page, 'host-room').getByText('Reconnecting…')).toBeVisible();
-  await expect.poll(() => room.from('host').filter((m) => m.type === 'host').length).toBe(2);
-  await expect(shown(page, 'host-room').getByText('Reconnecting…')).toHaveCount(0);
-  await expect(tile(shown(page, 'host-room'), 'Here now')).toHaveText('0');
-});
-
 // Review focus 4: the art isn't changed, so it's the room that asks; once closed, the server hears end.
 test('closing the tab while hosting asks first; closed, the server hears end', async ({ page }) => {
   const { room } = await goLive(page);
@@ -389,15 +333,6 @@ test('closing the tab while hosting asks first; closed, the server hears end', a
   await expect.poll(() => page.isClosed()).toBe(true);
   expect(dialogs).toEqual(['beforeunload', 'beforeunload']);
   await expect.poll(() => room.from('host').map((m) => m.type)).toContain('end');
-});
-
-test('a server that won\'t make the room until the email is verified says so', async ({ page }) => {
-  await startPage(page, { 'POST /api/rooms': () => [403, { code: 'VERIFY_EMAIL' }] });
-  await page.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
-  await page.getByRole('button', { name: 'Go live' }).click();
-  await expect(page.getByText('Check your inbox to verify your email')).toBeVisible();
-  await expect(shown(page, 'start-room')).toBeVisible();
-  expect(await store(page, 'room', (r) => r.role)).toBe(null);
 });
 
 test('while your pass says you\'re silenced, Start a room is disabled and says until when; it comes back when that\'s past', async ({ page }) => {

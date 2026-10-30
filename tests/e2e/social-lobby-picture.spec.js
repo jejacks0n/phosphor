@@ -108,9 +108,3 @@ test('the lobby picture is picked in Setup room too, for a listed room only, and
   expect(await pin(page)).toEqual(pinned);
 });
 
-test('a link-only room has no lobby picture', async ({ page }) => {
-  await goLive(page, fakeRoom({ password: 'hunter22' }), { password: 'hunter22' });
-  await expect(shown(page, 'host-room').getByRole('heading', { name: 'Room settings' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Lobby picture' })).toHaveCount(0);
-  await expect(page.getByRole('checkbox', { name: 'Use this exact position' })).toHaveCount(0);
-});

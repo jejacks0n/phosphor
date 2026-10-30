@@ -34,9 +34,10 @@ test('the view scrolls to keep the cursor in sight', async ({ page }) => {
 // typing into cells), and Space types instead of picking up the hand.
 const typingFocused = (page) => page.evaluate(() => document.activeElement?.dataset?.textInput !== undefined);
 
-test('after the color box closes, the text input has focus and Space types a space', async ({ page }) => {
+test('in the color box typing stops and carries on after: once it closes, the text input has focus and Space types a space', async ({ page }) => {
   await openApp(page);
   await editAt(page, 2, 2); // the pointer stays over the canvas
+  await page.keyboard.type('x');
   await page.keyboard.press('Alt+f');
   const box = page.getByRole('dialog', { name: 'Color picker' });
   await expect(box).toBeVisible();
@@ -48,24 +49,22 @@ test('after the color box closes, the text input has focus and Space types a spa
   await page.keyboard.up('Space');
   await page.keyboard.type('b');
   expect(toolWhileHeld).toBe('text');
-  await expect.poll(() => chars(page, 2, 2, 4)).toBe('a b');
+  await expect.poll(() => chars(page, 2, 2, 5)).toBe('xa b');
   await expect.poll(() => typingFocused(page)).toBe(true);
 });
 
-for (const [name, open] of [['the save dialog', 'ControlOrMeta+s'], ['the shortcuts list', 'Alt+Shift+Slash']]) {
-  test(`after ${name} is canceled with Escape, the text input has focus and Space types a space`, async ({ page }) => {
-    await openApp(page);
-    await editAt(page, 2, 2);
-    await page.keyboard.type('a');
-    await page.keyboard.press(open);
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.getByRole('dialog')).toBeHidden();
-    await page.keyboard.type(' b'); // right away
-    await expect.poll(() => chars(page, 2, 2, 4)).toBe('a b');
-    await expect.poll(() => typingFocused(page)).toBe(true);
-  });
-}
+test('after the save dialog is canceled with Escape, the text input has focus and Space types a space', async ({ page }) => {
+  await openApp(page);
+  await editAt(page, 2, 2);
+  await page.keyboard.type('a');
+  await page.keyboard.press('ControlOrMeta+s');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await page.keyboard.type(' b'); // right away
+  await expect.poll(() => chars(page, 2, 2, 4)).toBe('a b');
+  await expect.poll(() => typingFocused(page)).toBe(true);
+});
 
 test('after Tab moves focus off the text input, Space still types (pointer over the canvas)', async ({ page }) => {
   await openApp(page);

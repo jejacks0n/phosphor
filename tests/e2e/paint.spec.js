@@ -4,10 +4,13 @@ import { openApp, store, cellPoint, drag, chars, tab } from './support.js';
 const row = (page, r) => store(page, 'project', `(p) => p.cells.slice(${r} * p.cols, ${r} * p.cols + 20).map((c) => c.fg.hex + c.bg.hex)`);
 
 for (const tool of ['Pencil (1px)', 'Brush (soft)']) {
-  test(`${tool} strokes change the cells under them`, async ({ page }) => {
+  test(`${tool}: a right-click paints nothing, and strokes change the cells under them`, async ({ page }) => {
     await openApp(page);
     const before = await row(page, 5);
     await page.getByRole('button', { name: tool }).click();
+    const at = await cellPoint(page, 4, 4);
+    await page.mouse.click(at.x, at.y, { button: 'right' });
+    expect(await store(page, 'project', (p) => p.hasEdits)).toBe(false);
     await drag(page, await cellPoint(page, 4, 5, 0), await cellPoint(page, 14, 5, 0));
     const after = await row(page, 5);
     const changed = after.map((v, i) => v !== before[i]);
@@ -32,14 +35,6 @@ test('each pointer move of a stroke paints once', async ({ page }) => {
   await page.mouse.move(b.x, b.y, { steps: 10 });
   await page.mouse.up();
   expect(await page.evaluate(() => window.strokes)).toBe(11); // the press, then the 10 moves
-});
-
-test('a right-click paints nothing', async ({ page }) => {
-  await openApp(page);
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
-  const at = await cellPoint(page, 4, 4);
-  await page.mouse.click(at.x, at.y, { button: 'right' });
-  expect(await store(page, 'project', (p) => p.hasEdits)).toBe(false);
 });
 
 test('DOM view: a Pencil click paints the cell under the pointer, at the far right too', async ({ page }) => {

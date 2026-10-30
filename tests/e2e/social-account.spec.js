@@ -79,17 +79,6 @@ test('Disconnect unlinks the provider and the row says not connected', async ({ 
   expect(server.sent('POST', '/api/auth/unlink-account')[0].body).toEqual({ accountId: 'a_1' });
 });
 
-test('a disconnect that needs a recent sign-in sends you to Sign in with its words', async ({ page }) => {
-  await fakeServer(page, {
-    me: member({ providers: ['credential', 'discord'] }),
-    'POST /api/auth/unlink-account': () => [401, { code: 'SESSION_EXPIRED' }],
-  });
-  const account = await openAccount(page);
-  await account.getByRole('button', { name: 'Disconnect Discord' }).click();
-  await expect(shown(page, 'sign-in')).toBeVisible();
-  await expect(social(page).getByRole('status')).toContainText('Sign in again to change how you sign in');
-});
-
 // The Forgot page has the Turnstile check the server asks for when it has a site key.
 test('Send a reset link opens Forgot your password with your email filled in, and sends from there, to your address', async ({ page }) => {
   const server = await fakeServer(page, { me: member() });

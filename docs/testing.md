@@ -7,7 +7,7 @@ fails, the site isn't deployed.
 npm test               # everything: lint, unit, browser, end-to-end
 npm run test:unit      # pure logic, in Node (a second or two)
 npm run test:browser   # the store, canvas and WebGL, in Chromium (a few seconds)
-npm run test:e2e       # real clicks and keys against a production build (under a minute)
+npm run test:e2e       # real clicks and keys against a production build (about 10 minutes in CI)
 npm run test:update    # rewrite the reference files (read the diff before committing)
 ```
 

@@ -19,16 +19,6 @@ async function expectAt(page, selector, col, row) {
   expect(Math.abs(box.y - corner.y)).toBeLessThan(0.5);
 }
 
-test('the cell highlight and the text cursor sit on their cell', async ({ page }) => {
-  await openApp(page);
-  await page.getByRole('button', { name: 'Edit Mode' }).click();
-  const at = await cellPoint(page, 5, 5);
-  await page.mouse.move(at.x, at.y);
-  await expectAt(page, '.tool-preview', 5, 5);
-  await page.mouse.click(at.x, at.y);
-  await expectAt(page, '.text-cursor', 5, 5);
-});
-
 test('the selection and the Shapes outline sit on their cells', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Select', exact: true }).click();

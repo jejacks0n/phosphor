@@ -31,26 +31,26 @@ test('W selects every cell with the character clicked; the Bucket then fills onl
   expect(await screenPixel(page, out.x, out.y)).not.toEqual(MAGENTA);
 });
 
-test('the wand selection stays when you switch views, and shows in the other one', async ({ page }) => {
+test('the selection is tinted only while the Magic Wand is the tool, the outline stays on every tool; it stays when you switch views, and shows in the other one; the Select tool offers Deselect too', async ({ page }) => {
   await openApp(page);
   await page.keyboard.press('w');
   const at = await cellPoint(page, 4, 4);
   await page.mouse.click(at.x, at.y);
   const count = await wandCount(page);
   expect(count).toBeGreaterThan(0);
+  await expect.poll(() => tinted(page)).toBeGreaterThan(0);
+  await page.keyboard.press('b');
+  await expect.poll(() => tinted(page)).toBe(0);
+  await expect(page.locator('[data-wand-overlay]')).toBeVisible();
+  await page.keyboard.press('w');
+  await expect.poll(() => tinted(page)).toBeGreaterThan(0);
+
   await page.getByRole('tab', { name: 'PIXEL' }).click();
   expect(await wandCount(page)).toBe(count);
   await expect(page.locator('[data-wand-overlay]')).toBeVisible();
   await expect.poll(() => tinted(page)).toBeGreaterThan(0);
   await page.getByRole('tab', { name: 'ANSI' }).click();
   expect(await wandCount(page)).toBe(count);
-});
-
-test('with a wand selection, the Select tool offers Deselect too', async ({ page }) => {
-  await openApp(page);
-  await page.keyboard.press('w');
-  const at = await cellPoint(page, 4, 4);
-  await page.mouse.click(at.x, at.y);
   await page.keyboard.press('m');
   await page.getByRole('button', { name: 'Deselect' }).click();
   expect(await store(page, 'workspace', (w) => w.wand)).toBe(null);
@@ -62,21 +62,6 @@ const tinted = (page) => page.locator('[data-wand-overlay]').evaluate((canvas) =
   let n = 0;
   for (let i = 0; i < data.length; i += 4) if (data[i + 3] && data[i + 2] > data[i] + 40) n++;
   return n;
-});
-
-test('the selection is tinted only while the Magic Wand is the tool; the outline stays on every tool', async ({ page }) => {
-  await openApp(page);
-  await page.keyboard.press('w');
-  const at = await cellPoint(page, 4, 4);
-  await page.mouse.click(at.x, at.y);
-  await expect.poll(() => tinted(page)).toBeGreaterThan(0);
-
-  await page.keyboard.press('b');
-  await expect.poll(() => tinted(page)).toBe(0);
-  await expect(page.locator('[data-wand-overlay]')).toBeVisible();
-
-  await page.keyboard.press('w');
-  await expect.poll(() => tinted(page)).toBeGreaterThan(0);
 });
 
 test('undo takes back a wand click to the selection before it, and an Escape too', async ({ page }) => {
