@@ -27,22 +27,27 @@ test('a block dragged to the bottom edge scrolls the view and keeps moving; the 
   await expect.poll(() => store(page, 'workspace', (w) => w.selection)).toEqual({ c0: 2, r0: 2, c1: 4, r1: 3 });
 });
 
+// A drag's first step covers one 60 Hz frame, near the edge or far past it, so the two compare however
+// slowly the frames come (on CI's software WebGL a scroll's frame can take longer than the whole drag).
+// That later steps cover the time since the last is edge-scroll.test.js's.
 test('further past the edge scrolls faster', async ({ page }) => {
   await openApp(page, 'images/tall.png');
   await page.keyboard.press('m');
   const view = await scroller(page).boundingBox();
   const at = await cellPoint(page, 3, 5);
-  const scrolledFor = async (y) => {
+  await scroller(page).evaluate((el) => { window.scrolls = []; el.addEventListener('scroll', () => window.scrolls.push(el.scrollTop)); });
+  const firstStep = async (y) => {
     await scroller(page).evaluate((el) => { el.scrollTop = el.scrollHeight / 2; });
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => { window.scrolls = []; done(); }))); // its scroll event, gone by
     const start = await scrollTop(page);
     await page.mouse.move(at.x, view.y + view.height / 2);
     await page.mouse.down(); // a new selection, dragged up to the top edge
     await page.mouse.move(at.x, y, { steps: 4 });
-    await page.waitForTimeout(400);
+    await expect.poll(() => page.evaluate(() => window.scrolls.length)).toBeGreaterThan(0);
     await page.mouse.up();
-    return start - await scrollTop(page);
+    return start - await page.evaluate(() => window.scrolls[0]);
   };
-  const near = await scrolledFor(view.y + 20), far = await scrolledFor(view.y - 60);
+  const near = await firstStep(view.y + 20), far = await firstStep(view.y - 60);
   expect(near).toBeGreaterThan(0);
   expect(far).toBeGreaterThan(near * 3);
 });
