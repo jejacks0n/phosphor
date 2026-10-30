@@ -517,18 +517,31 @@ test('A watcher\'s room, art and the host\'s view come from the channel; leave c
   await expect.poll(() => lists.at(-1), PATIENT).toEqual([]);
 });
 
-test('?room=<id> on a desktop opens SOCIAL and joins once you\'re known, taking the link off the URL', async () => {
+test('?room=<id> on a desktop opens SOCIAL and asks once you\'re known, joining only on yes, taking the link off the URL', async () => {
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
   const { useWorkspaceStore } = await import('@/store/WorkspaceStore');
   await social.start(at(`?room=${ID}&keep=1`));
   expect(useWorkspaceStore().editorTab).toBe('social');
   expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?keep=1`);
+  expect(social.roomInvite).toBe(ID);
+  expect(room.role).toBe(null);
+  expect(sockets.filter((s) => s.url.includes('/api/rooms/'))).toHaveLength(0);
+  social.answerRoomInvite(true);
+  expect(social.roomInvite).toBe(null);
   const socket = await lastSocket(1);
   expect(server.requests.findIndex((r) => r.path === '/api/me')).toBeGreaterThanOrEqual(0);
   expect(socket.url).toMatch(new RegExp(`/api/rooms/${ID}/ws$`));
   expect(room.role).toBe('watch');
   await social.showLobby();
   expect(sockets.filter((s) => s.url.includes('/api/rooms/'))).toHaveLength(1);   // once
+});
+
+test('saying no to a ?room= link joins nothing', async () => {
+  vi.spyOn(history, 'replaceState').mockImplementation(() => {});
+  await social.start(at(`?room=${ID}`));
+  social.answerRoomInvite(false);
+  expect([social.roomInvite, room.role]).toEqual([null, null]);
+  expect(sockets.filter((s) => s.url.includes('/api/rooms/'))).toHaveLength(0);
 });
 
 test('Signing out while hosting sends end first', async () => {

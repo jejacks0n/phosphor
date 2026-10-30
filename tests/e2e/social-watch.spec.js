@@ -3,7 +3,7 @@
 // live with the host's view, Tracking, Leave, the host ending the room, refusals, and the watcher's
 // own art left as it was.
 import { test, expect, openApp, tab, store, editAt, cellPoint, screenPixel, settled } from './support.js';
-import { fakeRoom, member, ROOM_ID, shown, tile, goLive, watcherPage, joinFromCard } from './social-support.js';
+import { fakeRoom, member, ROOM_ID, shown, tile, goLive, watcherPage, joinFromCard, followLink } from './social-support.js';
 
 const watching = (page) => shown(page, 'watch-room');
 const chat = (page) => page.getByRole('complementary', { name: 'Chat' });   // its top has the room's name, the host and Leave
@@ -136,7 +136,7 @@ test('a ?room= link to a private room asks for the password: a wrong one says so
   const room = fakeRoom();
   await goLive(host, room, { password: 'hunter22' });
   const watcher = await watcherPage(context, room);
-  await watcher.goto(`/?room=${ROOM_ID}`);
+  await followLink(watcher);
 
   const page = watching(watcher);
   await expect(page.getByRole('heading', { name: 'This room needs a password' })).toBeFocused();
@@ -160,11 +160,11 @@ test('the same member watching in a second tab: the first goes back to the lobby
   await goLive(host, room);
   const me = member({ id: 'u_2', username: 'tin-lantern-owl', name: 'tin-lantern-owl' });
   const first = await watcherPage(context, room, { me });
-  await first.goto(`/?room=${ROOM_ID}`);
+  await followLink(first);
   await expect.poll(() => store(first, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
 
   const second = await watcherPage(context, room, { me });
-  await second.goto(`/?room=${ROOM_ID}`);
+  await followLink(second);
   await expect(first.getByText('You\'re watching this room in another tab')).toBeVisible();
   await expect(shown(first, 'lobby')).toBeVisible();
   await expect.poll(() => store(second, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
@@ -178,7 +178,7 @@ test('a members-only room refuses a guest with "Signed-in users only"', async ({
   const room = fakeRoom();
   await goLive(host, room, { allowGuests: false });
   const watcher = await watcherPage(context, room);
-  await watcher.goto(`/?room=${ROOM_ID}`);
+  await followLink(watcher);
   await expect(watcher.getByText('Signed-in users only')).toBeVisible();
   await expect(shown(watcher, 'lobby')).toBeVisible();
   expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
@@ -188,7 +188,7 @@ test('a full room says "Room is full"', async ({ page: host, context }) => {
   const room = fakeRoom({ full: true });
   await goLive(host, room);
   const watcher = await watcherPage(context, room, { me: member({ id: 'u_2', username: 'tin-lantern-owl', name: 'tin-lantern-owl' }) });
-  await watcher.goto(`/?room=${ROOM_ID}`);
+  await followLink(watcher);
   await expect(watcher.getByText('Room is full')).toBeVisible();
   await expect(shown(watcher, 'lobby')).toBeVisible();
 });
@@ -247,4 +247,23 @@ test('a watcher\'s own unsaved art is as it was after joining, watching and leav
   await chat(watcher).getByRole('button', { name: 'Exit' }).click();
   await expect(shown(watcher, 'lobby')).toBeVisible();
   expect(await own()).toEqual(before);
+});
+
+test('a ?room= link asks first: nothing reaches the room until you say Join, and Not now or Escape leaves you in the lobby', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  const watcher = await watcherPage(context, room);
+  const asked = watcher.getByRole('dialog', { name: 'Join this room?' });
+  for (const decline of [() => asked.getByRole('button', { name: 'Not now' }).click(), () => watcher.keyboard.press('Escape')]) {
+    await watcher.goto(`/?room=${ROOM_ID}`);
+    await expect(asked.getByText('the host can see your IP address')).toBeVisible();
+    expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
+    await decline();
+    await expect(asked).toHaveCount(0);
+    await expect(shown(watcher, 'lobby')).toBeVisible();
+    expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
+  }
+  await watcher.goto(`/?room=${ROOM_ID}`);
+  await asked.getByRole('button', { name: 'Join', exact: true }).click();
+  await expect.poll(() => store(watcher, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
 });

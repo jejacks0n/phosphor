@@ -362,3 +362,9 @@ export async function joinFromCard(watcher) {
   await expect.poll(() => store(watcher, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
   await expect.poll(() => store(watcher, 'room', (r) => !!r.art)).toBe(true);
 }
+
+// Opens a room's link, and says yes to joining it.
+export async function followLink(page) {
+  await page.goto(`/?room=${ROOM_ID}`);
+  await page.getByRole('dialog', { name: 'Join this room?' }).getByRole('button', { name: 'Join', exact: true }).click();
+}
