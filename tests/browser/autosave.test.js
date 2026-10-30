@@ -1015,6 +1015,36 @@ test('a restore that fails partway and can\'t put back what was open leaves the 
   expect(await writtenChars(id)).toHaveLength(2);
 });
 
+test('a restore while writes are failing rejects before changing anything, since what is open could not be kept', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  const older = await withVersions(project);
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.mocked(writeLatest).mockRejectedValue(new Error('quota'));
+  edit(project, 2);
+  await pass(SAVE_AFTER_MS);
+  expect(autosave.current.value).toBe(false);
+  const cells = JSON.stringify([...project.editCells]);
+  const restoring = vi.spyOn(project, 'restoreDocument');
+
+  await expect(autosave.restoreVersion(older.id)).rejects.toThrow();
+  expect(restoring).not.toHaveBeenCalled();
+  expect(JSON.stringify([...project.editCells])).toBe(cells);
+  expect((await listVersions(id)).map((v) => v.reason)).toEqual(['timed', 'timed']);
+});
+
+test('a restore whose before-restore version was not kept rejects before changing anything', async () => {
+  const { project } = await opened();
+  const older = await withVersions(project);
+  const cells = JSON.stringify([...project.editCells]);
+  const restoring = vi.spyOn(project, 'restoreDocument');
+  vi.mocked(addVersion).mockResolvedValueOnce(undefined);
+
+  await expect(autosave.restoreVersion(older.id)).rejects.toThrow();
+  expect(restoring).not.toHaveBeenCalled();
+  expect(JSON.stringify([...project.editCells])).toBe(cells);
+});
+
 test('restoring a version that is gone rejects and changes nothing', async () => {
   const { project } = await opened();
   edit(project);
