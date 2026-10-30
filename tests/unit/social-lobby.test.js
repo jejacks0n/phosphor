@@ -2,7 +2,7 @@
 // listed in, the Join button's states, a card's picture as an image, and the pacer that keeps changes to one per interval.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, joinState, liveFor, signalWords, pictureUrl, Pacer } from '../../src/social/lobby.js';
+import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, joinState, liveFor, signalWords, signalWord, pictureUrl, Pacer } from '../../src/social/lobby.js';
 
 const room = (id, more) => ({
   id, name: `Room ${id}`, host: 'ansi-fan', count: 1, max: 12, allowGuests: true, signal: null,
@@ -172,4 +172,9 @@ test('Pacing: reset() clears the waiting value and forgets the last sent, so the
   clock.t = 200;
   clock.pacer.push('chat');   // the store pushes the current value again once live
   assert.deepEqual(clock.sent, ['chat', 'chat']);
+});
+
+test('a signal the app doesn\'t know has no words, whatever it\'s called', () => {
+  assert.equal(signalWord('chat'), 'Open to chat');
+  for (const signal of [null, undefined, 'constructor', '__proto__', 'nope']) assert.equal(signalWord(signal), null);
 });

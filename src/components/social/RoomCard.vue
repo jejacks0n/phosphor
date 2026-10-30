@@ -3,7 +3,7 @@ import { computed, useId, useTemplateRef } from 'vue';
 import { useNow } from '@vueuse/core';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
-import { joinState, liveFor, pictureUrl, signalWords } from '@/social/lobby';
+import { joinState, liveFor, pictureUrl, signalWord } from '@/social/lobby';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import UserName from './UserName.vue';
 
@@ -16,7 +16,7 @@ const roomStore = useRoomStore(), social = useSocialStore();
 const now = useNow({ interval: 60_000 });   // "live 42 min" moves on while the lobby is shown
 const join = computed(() => joinState(props.room, { signedIn: props.signedIn }));
 const meta = computed(() => {
-  const signal = signalWords[props.room.signal];
+  const signal = signalWord(props.room.signal);
   return liveFor(props.room.liveSince, now.value.getTime()) + (signal ? `, ${signal.toLowerCase()}` : '');
 });
 const reasonId = useId();
