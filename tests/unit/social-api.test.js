@@ -78,6 +78,9 @@ test('messageFor has plain words for every code the server sends, and a fallback
   const fallback = messageFor('NO_SUCH_CODE');
   assert.equal(fallback, 'Something went wrong. Try again.');
   for (const code of codes) assert.notEqual(messageFor(code), fallback, code);
+  for (const code of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) assert.equal(messageFor(code), fallback, code);
+  assert.equal(messageFor('USERNAME', { problem: 'constructor' }), "That username won't work");
+  assert.equal(messageFor('INVALID', { field: 'constructor' }), fallback);
   assert.equal(messageFor('NETWORK'), "Couldn't reach Phosphor's server. Check your connection.");
   assert.equal(messageFor('USERNAME', { problem: 'length' }), 'Usernames are 3 to 24 characters');
   assert.equal(messageFor('USERNAME', { problem: 'characters' }), 'Use only letters, numbers, underscores and hyphens');

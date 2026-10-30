@@ -21,6 +21,11 @@
     <meta name="twitter:description" content="Turn images into ANSI art in your browser, then paint, type and export .ans or .utf8ans.">
     <meta name="twitter:image" content="https://phosphor.work/og-image.png">
     <script>
+      // Framed by another site, whose page could sit over this one and take its clicks, nothing shows. (Only a
+      // header could refuse the frame itself, and the host can't send one.)
+      if (window.top !== window.self) document.documentElement.style.display = 'none';
+    </script>
+    <script>
       // The theme before the first paint, as App.vue sets it after: the one picked (dark until one is), or with
       // System the computer's.
       try {

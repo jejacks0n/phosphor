@@ -58,6 +58,7 @@ export function joinState(room, { signedIn }) {
 
 // A signal as the lobby says it.
 export const signalWords = { feedback: 'Wants feedback', chat: 'Open to chat', 'heads-down': 'Heads down' };
+export const signalWord = (signal) => (Object.hasOwn(signalWords, signal ?? '') ? signalWords[signal] : null);
 
 // A card's picture as an image: a JPEG (from a browser that can't make WebP) starts /9j/, else it's WebP.
 export const pictureUrl = (base64) => `data:image/${base64.startsWith('/9j/') ? 'jpeg' : 'webp'};base64,${base64}`;

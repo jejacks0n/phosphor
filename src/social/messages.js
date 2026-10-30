@@ -3,6 +3,9 @@ import { silencedWords } from './chat.js';
 // The server's error codes in plain words. `detail` is the rest of the reply (problem, until).
 const day = (ms) => new Date(ms).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
 
+// A code can come from a link's URL, so `constructor` isn't a word.
+const own = (words, key) => (Object.hasOwn(words, key) ? words[key] : undefined);
+
 const USERNAME = {
   length: 'Usernames are 3 to 24 characters',
   characters: 'Use only letters, numbers, underscores and hyphens',
@@ -19,7 +22,7 @@ const INVALID = {
 const WORDS = {
   NETWORK: "Couldn't reach Phosphor's server. Check your connection.",
   TERMS_REQUIRED: 'Agree to the terms to continue',
-  USERNAME: ({ problem }) => USERNAME[problem] ?? 'That username won\'t work',
+  USERNAME: ({ problem }) => own(USERNAME, problem) ?? 'That username won\'t work',
   // Sign-up's own refusals of a username: the form has already checked length and characters, so an invalid
   // one is reserved.
   INVALID_USERNAME: USERNAME.reserved,
@@ -37,7 +40,7 @@ const WORDS = {
   SILENCED: ({ until }) => silencedWords(until),   // the chat box's words
   ACCOUNT_NOT_FOUND: "That way to sign in isn't connected",
   FAILED_TO_UNLINK_LAST_ACCOUNT: 'You need at least one way to sign in',
-  INVALID: ({ field }) => INVALID[field],
+  INVALID: ({ field }) => own(INVALID, field),
   THROTTLED: 'Too many tries. Wait a moment and try again',
   TURNSTILE_FAILED: "We couldn't check that you're a person. Try again",
   PASSWORD_BREACHED: 'That password has appeared in a data breach. Choose another',
@@ -61,7 +64,7 @@ const WORDS = {
 };
 
 export function messageFor(code, detail = {}) {
-  const word = WORDS[code];
+  const word = own(WORDS, code);
   return (typeof word === 'function' ? word(detail) : word) ?? 'Something went wrong. Try again.';
 }
 

@@ -88,7 +88,9 @@ export const useSocialStore = defineStore('social', {
     started: false,
     lobbyWanted: false,  // the SOCIAL tab has been shown
     _boot: null,         // boot()'s promise, once asked for
-    _roomLink: null,     // a ?room= link's id, joined once you're known
+    _roomLink: null,     // the room to go to once you're known: a ?room= link's (it asks first) or the one you signed in from
+    _roomLinkAsks: false,
+    roomInvite: null,    // a ?room= link's room, while it asks whether to join
     _key: null,          // the browser's key (markRaw)
     _connection: null,   // LobbyConnection (markRaw)
     _renewTimer: null,
@@ -138,7 +140,16 @@ export const useSocialStore = defineStore('social', {
       if (this.me?.needsOnboarding) return;
       const id = this._roomLink;
       this._roomLink = null;
-      if (id !== null && this.supported) useRoomStore().join(id);
+      if (id === null || !this.supported) return;
+      if (this._roomLinkAsks) this.roomInvite = id;
+      else useRoomStore().join(id);
+    },
+
+    // A link can come from anyone, and joining shows the host your IP address: it's your yes that joins.
+    answerRoomInvite(yes) {
+      const id = this.roomInvite;
+      this.roomInvite = null;
+      if (yes && id !== null) useRoomStore().join(id);
     },
 
     // This browser's key, then who you are; once, however often it's asked for.
@@ -169,7 +180,7 @@ export const useSocialStore = defineStore('social', {
       if (params.get('social') === 'linked') this.page = 'account';
       if (params.get('social') === 'two-factor') this.page = 'two-factor';   // (the room stays kept until the code)
       if (params.get('social') === 'signed-in') this._roomLink = keptRoom();
-      if (params.has('room')) this._roomLink = params.get('room');
+      if (params.has('room')) Object.assign(this, { _roomLink: params.get('room'), _roomLinkAsks: true });
       if (['signed-in', 'error'].includes(params.get('social'))) keepRoom(null);
       if (params.get('social') === 'error') {
         this.notice = error === 'EMAIL_NOT_VERIFIED' ? 'Confirm your email with Discord or GitHub first' : messageFor(error);

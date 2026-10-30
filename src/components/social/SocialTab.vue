@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
+import ModalDialog from '@/components/ModalDialog.vue';
 import LobbyPage from './LobbyPage.vue';
 import SignInPage from './SignInPage.vue';
 import CreateAccountPage from './CreateAccountPage.vue';
@@ -56,11 +57,23 @@ watch(shownPage, async () => {
       <div ref="page" class="page" :data-page="shownPage">
         <component :is="PAGES[shownPage]" v-if="PAGES[shownPage]" />
       </div>
+      <ModalDialog v-if="social.roomInvite" title="Join this room?" sub="You followed a link to it. Joining connects your browser directly to the host's, so the host can see your IP address." @cancel="social.answerRoomInvite(false)">
+        <div class="actions">
+          <button @click="social.answerRoomInvite(true)">Join</button>
+          <button @click="social.answerRoomInvite(false)">Not now</button>
+        </div>
+      </ModalDialog>
     </template>
   </article>
 </template>
 
 <style scoped>
+div.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 article.social-tab {
   flex: 1;
   display: flex;

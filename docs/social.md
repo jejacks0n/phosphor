@@ -153,7 +153,8 @@ as they were set.
 While you host, the SOCIAL tab shows your room instead of the lobby, as its dashboard. At the top are
 its name, **Live for** (how long since the room went live, as H:MM:SS; a reconnect doesn't restart it),
 **Copy link** and **End room**, which asks first (**End room** or **Cancel**). Send the link to anyone you
-want in a private room, along with its password. Under them, five numbers for this room only, counted by
+want in a private room, along with its password. Following a link asks **Join this room?** first
+(**Join** or **Not now**), since joining shows the host your IP address. Under them, five numbers for this room only, counted by
 your browser and gone with the room:
 
 - **Here now**: those connected.

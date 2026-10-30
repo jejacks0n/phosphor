@@ -109,7 +109,7 @@ const emit = defineEmits(['close', 'open']);
     </div>
     <div v-else>
       <h1>Privacy Policy</h1>
-      <p class="updated">Last updated: October 29, 2026.</p>
+      <p class="updated">Last updated: October 30, 2026.</p>
 
       <p>Phosphor is an ANSI art editor that runs in your browser at phosphor.work. Its SOCIAL tab is
         optional, offering a lobby, rooms where you can watch someone draw, chat, and user accounts. This policy explains what
@@ -133,7 +133,10 @@ const emit = defineEmits(['close', 'open']);
       <ul>
         <li><strong>Your browser's key:</strong> Your browser generates a signing key and stores it locally. Only its
           public half is sent to us, inside the temporary pass that admits you to the lobby and rooms. This
-          verifies that your messages originate from you.</li>
+          verifies that your messages originate from you. So that they can check that too, everyone in a room receives
+          the pass of each person who chats, joins, or leaves there. A pass shows your user ID, your name, whether you are a guest or have verified your email, that public key, and,
+          if you have been silenced, until when. Your browser uses the same key for every account and guest visit on it, so anyone who receives your passes can tell they
+          came from the same browser, in that room or another.</li>
         <li><strong>Guests:</strong> Guest users do not have an account. You receive a random nickname for your visit, and others see
           it while you are in the lobby or in a room.</li>
         <li><strong>Accounts:</strong> When you create an account, we retain your email address, username, password
