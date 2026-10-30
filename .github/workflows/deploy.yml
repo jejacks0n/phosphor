@@ -59,7 +59,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
+      # The published build shows Turnstile on the forms the server checks it on, so a build without the key would
+      # turn every sign-up away: it fails instead. Only here: the tests' builds stay without it, so nothing in them
+      # reaches Cloudflare.
+      - run: |
+          test -n "$VITE_TURNSTILE_SITE_KEY" || { echo "::error::The TURNSTILE_SITE_KEY secret isn't set"; exit 1; }
+          npm run build
+        env:
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
