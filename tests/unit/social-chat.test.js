@@ -33,7 +33,7 @@ test('isId takes only a string that is an id', () => {
 });
 
 test('signedText is what the signature covers', () => {
-  assert.equal(signedText('room1', { id: 'abc', ts: 5, text: 'a:b' }), 'chat:room1:abc:5:a:b');
+  assert.equal(signedText('room1', 'u_1', { id: 'abc', ts: 5, text: 'a:b' }), 'chat:room1:u_1:abc:5:a:b');
 });
 
 test('a log keeps the last few and forgets the rest', () => {

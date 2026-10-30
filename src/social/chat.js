@@ -26,8 +26,9 @@ export function chatText(raw) {
 
 export const newId = () => toBase64url(crypto.getRandomValues(new Uint8Array(12)));
 
-// What a message's signature covers.
-export const signedText = (roomId, { id, ts, text }) => `chat:${roomId}:${id}:${ts}:${text}`;
+// What a message's signature covers. The sender's account is in it: a browser keeps one key for every account
+// signed in on it, so without it a message could be passed off with another account's pass from that browser.
+export const signedText = (roomId, sub, { id, ts, text }) => `chat:${roomId}:${sub}:${id}:${ts}:${text}`;
 
 // The last `most` messages, oldest first, found by id. A deleted one stays as { id, ts, deleted: true }.
 export class ChatLog {

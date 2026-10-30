@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 // What a build is, baked into it (__BUILD__ in the app; a <meta name="phosphor-build"> in index.html):
 // the version, package.json's major.minor with the day it was built (UTC) as the third number
@@ -23,6 +24,28 @@ export function buildInfo() {
   return { version: `${major}.${minor}.${day}`, sha: sha + dirty };
 }
 
+// The built page's Content-Security-Policy, as a <meta> (GitHub Pages can't send headers): scripts only from here,
+// Turnstile, and the page's own inline ones by hash; connections only to the SOCIAL server (both the one built in
+// and the local one, as config.js picks by hostname) and Turnstile. Styles stay open to inline ones: the icons are
+// SVG markup with style attributes. Not in development, where Vite's own client needs more.
+const TURNSTILE = 'https://challenges.cloudflare.com';
+export function contentSecurityPolicy(html, api) {
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+    .map(([, code]) => `'sha256-${createHash('sha256').update(code).digest('base64')}'`);
+  const servers = [...new Set([api, 'http://localhost:8787'])].flatMap((origin) => [origin, origin.replace(/^http/, 'ws')]);
+  return [
+    "default-src 'self'",
+    `script-src 'self' ${TURNSTILE} ${inline.join(' ')}`,
+    `connect-src 'self' ${servers.join(' ')} ${TURNSTILE}`,
+    `frame-src ${TURNSTILE}`,
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "style-src 'self' 'unsafe-inline'",
+    "object-src 'none'",
+    "base-uri 'self'",
+  ].join('; ');
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const build = buildInfo();
@@ -34,6 +57,18 @@ export default defineConfig(({ mode }) => {
       {
         name: 'phosphor-build',
         transformIndexHtml: () => [{ tag: 'meta', attrs: { name: 'phosphor-build', content: `v${build.version} ${build.sha}` }, injectTo: 'head' }],
+      },
+      {
+        name: 'phosphor-csp',
+        apply: 'build',
+        transformIndexHtml: {
+          order: 'post',
+          handler: (html) => [{
+            tag: 'meta',
+            attrs: { 'http-equiv': 'Content-Security-Policy', content: contentSecurityPolicy(html, env.VITE_SOCIAL_API || 'https://api.phosphor.work') },
+            injectTo: 'head-prepend',
+          }],
+        },
       },
     ],
     define: {

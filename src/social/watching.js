@@ -168,7 +168,7 @@ export class Watch {
     if (chatText(text) !== text || typeof sig !== 'string') return null;
     const claims = await this.claimsOf(pass);
     if (!claims || claims.guest || claims.verified !== true || claims.silencedUntil > ts) return null;   // silenced when it was sent
-    if (!await verifySignature(claims.key, signedText(this.roomId, { id, ts, text }), sig)) return null;
+    if (!await verifySignature(claims.key, signedText(this.roomId, claims.sub, { id, ts, text }), sig)) return null;
     return { entry: { pass, id, ts, text, sig }, claims };
   }
 

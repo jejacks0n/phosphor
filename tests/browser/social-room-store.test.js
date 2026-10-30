@@ -792,7 +792,7 @@ test('A host\'s say trims, shows at once as the host\'s own, and sends one chat 
   expect(chats).toHaveLength(1);
   const { id, ts, sig } = chats[0];
   expect(chats[0]).toMatchObject({ pass: social.pass, text: 'hi' });
-  expect(await verify((await loadKey()).publicKey, `chat:${ID}:${id}:${ts}:hi`, sig)).toBe(true);
+  expect(await verify((await loadKey()).publicKey, `chat:${ID}:u_1:${id}:${ts}:hi`, sig)).toBe(true);
   expect(said()[0]).toMatchObject({ id, ts });
 });
 
@@ -863,7 +863,7 @@ test('A watcher\'s say signs and sends over the channel, and shows only on its e
   expect(await room.say(' hello ')).toBe(true);
   const { id, ts, text, sig } = sent.mock.calls[0][0];
   expect(text).toBe('hello');
-  expect(await verify((await loadKey()).publicKey, signedText(ID, { id, ts, text }), sig)).toBe(true);
+  expect(await verify((await loadKey()).publicKey, signedText(ID, 'u_1', { id, ts, text }), sig)).toBe(true);
   expect(room.chat).toEqual([]);
   room._watch.onChat({ type: 'refused', id, reason: 'too-fast' });
   expect(room.chatRefused).toBe('too-fast');

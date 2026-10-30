@@ -41,7 +41,7 @@ async function person(sub, { guest = false, verified = !guest, exp = Date.now() 
 
 // A message as its sender's browser makes it: { id, ts, text, sig }.
 async function message(from, text, { id = newId(), ts = Date.now(), roomId = ROOM } = {}) {
-  return { id, ts, text, sig: await sign(from.privateKey, signedText(roomId, { id, ts, text })) };
+  return { id, ts, text, sig: await sign(from.privateKey, signedText(roomId, from.claims.sub, { id, ts, text })) };
 }
 
 // A host and its watchers joined through the relay. `r.chat` is what the host's onChat got; each
@@ -142,17 +142,19 @@ test('the 4th message in a second is refused as too-fast, to its sender only, an
 });
 
 // Review focus 1: the host can't put words in a watcher's mouth.
-test('a message the host signed with its own key under p1\'s pass, or p1\'s re-signed for another room, is dropped by every watcher', async () => {
+test('a message the host signed with its own key under p1\'s pass, p1\'s re-signed for another room, or p1\'s under another account\'s pass from p1\'s browser, is dropped by every watcher', async () => {
   const me = await person('u_host');
   const p1 = await person('u_p1');
   const r = await room({ p1, p2: await person('u_p2') });
   await opened(r, ['p1', 'p2']);
   r.host.say({ pass: p1.pass, ...await message(me, 'forged') });
   r.host.say({ pass: p1.pass, ...await message(p1, 'replayed', { roomId: 'other' }) });
+  // One browser key for every account signed in on that browser: the signature names whose message it is.
+  r.host.say({ pass: (await person('u_other', { pair: p1.pair })).pass, ...await message(p1, 'same browser') });
   const mine = { pass: me.pass, ...await message(me, 'mine') };
   r.host.say(mine);
   for (const peer of ['p1', 'p2']) await expect.poll(() => of(r.log[peer], 'chat'), PATIENT).toEqual([{ type: 'chat', entry: mine, claims: me.claims }]);
-  expect(of(r, 'chat').map((e) => e.entry.text)).toEqual(['forged', 'replayed', 'mine']);   // the host believes itself
+  expect(of(r, 'chat').map((e) => e.entry.text)).toEqual(['forged', 'replayed', 'same browser', 'mine']);   // the host believes itself
 });
 
 // A pass lasts an hour, a room's chat as long as the room: a message keeps the pass it was sent with.

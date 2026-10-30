@@ -347,7 +347,7 @@ export const useRoomStore = defineStore('room', {
       }
       this.chatRefused = null;
       const message = { id: newId(), ts: Date.now(), text: body };
-      const sig = await sign(social._key.privateKey, signedText(this.id, message));
+      const sig = await sign(social._key.privateKey, signedText(this.id, social.claims.sub, message));
       if (side !== (this._host ?? this._watch)) return false;   // the room closed meanwhile
       return side.say(this.role === 'host' ? { pass: social.pass, ...message, sig } : { ...message, sig });
     },

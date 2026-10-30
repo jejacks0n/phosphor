@@ -8,11 +8,18 @@ export { expect } from '@playwright/test';
 // Every spec's test: the SOCIAL server (localhost:8787, the API and the lobby's socket) is cut off for
 // every page in the context unless the spec installs fakeServer (social-support.js), whose page routes
 // come before the context's.
+// And anything the built page's Content-Security-Policy refuses fails the test, even if the flow went on without it.
 export const test = base.extend({
   context: async ({ context }, use) => {
     await context.route('http://localhost:8787/**', (route) => route.abort());
     await context.routeWebSocket('ws://localhost:8787/**', (ws) => ws.close());
     await use(context);
+  },
+  page: async ({ page }, use) => {
+    const refused = [];
+    page.on('console', (m) => { if (m.text().includes('Content Security Policy')) refused.push(m.text()); });
+    await use(page);
+    base.expect(refused).toEqual([]);
   },
 });
 
@@ -97,7 +104,9 @@ export async function editAt(page, col, row) {
 export async function screenPixels(page, clip) {
   const png = (await page.screenshot({ clip })).toString('base64');
   return page.evaluate(async (png) => {
-    const image = await createImageBitmap(await (await fetch(`data:image/png;base64,${png}`)).blob());
+    // Not fetch() of a data: URL, which the page's Content-Security-Policy refuses.
+    const bytes = Uint8Array.from(atob(png), (c) => c.charCodeAt(0));
+    const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
     const ctx = new OffscreenCanvas(image.width, image.height).getContext('2d');
     ctx.drawImage(image, 0, 0);
     return Array.from(ctx.getImageData(0, 0, image.width, image.height).data);

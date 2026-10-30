@@ -290,7 +290,7 @@ export class Host {
     if (!claims || claims.guest || claims.verified !== true || !isId(id) || !Number.isFinite(ts)
       || Math.abs(ts - Date.now()) > MOST_SKEW_MS || chatText(text) !== text || typeof sig !== 'string') return;
     if (Math.max(claims.silencedUntil ?? 0, this.silences.get(claims.sub) ?? 0) > Date.now()) return;
-    if (!await verifySignature(claims.key, signedText(this.roomId, { id, ts, text }), sig)) return;
+    if (!await verifySignature(claims.key, signedText(this.roomId, claims.sub, { id, ts, text }), sig)) return;
     if (this.watchers.get(w.peer) !== w || this.log.has(id)) return;
     if (!w.allowance.take()) this.sendTo(w, { t: 'chat-no', id, reason: 'too-fast' });
     else this.post('chat', { pass: w.pass, id, ts, text, sig }, this.muted.has(claims.sub) ? claims.sub : null);
