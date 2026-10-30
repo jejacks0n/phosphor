@@ -1,4 +1,4 @@
-import { test, expect, openApp, editAt, saveAs, settled, store, chars, imageInput } from './support.js';
+import { test, expect, openApp, editAt, saveAs, settled, store, chars, imageInput, tab, cellPoint, fixture } from './support.js';
 
 // Whether leaving would ask right now: beforeunload's answer, without leaving.
 const leavingAsks = (page) => page.evaluate(() => {
@@ -182,4 +182,103 @@ test('Start New Project keeps the old work in the list, and a refresh stays at t
   expect(await store(page, 'project', (p) => p.image)).toBe(null);
   await expect(recentList(page)).toContainText('gradient');
   await expect(button).toBeEnabled();
+});
+
+const versionsButton = (page) => page.getByRole('button', { name: 'Versions', exact: true });
+const versionsDialog = (page) => page.getByRole('dialog', { name: 'Versions' });
+const versionRows = (page) => versionsDialog(page).getByRole('listitem');
+
+// How many versions of the open document the browser holds.
+async function versionCount(page) {
+  const id = await store(page, 'project', (p) => p.documentId);
+  return page.evaluate((id) => new Promise((resolve, reject) => {
+    const open = indexedDB.open('phosphor-autosave', 1);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result;
+      const count = db.transaction('versions').objectStore('versions').index('documentId').count(id);
+      count.onsuccess = () => { db.close(); resolve(count.result); };
+    };
+  }), id);
+}
+
+// Types more at a cell of a document already in Edit Mode, and waits for it to be written.
+async function typeMore(page, col, row, text) {
+  const { editedAt } = await record(page);
+  const at = await cellPoint(page, col, row);
+  await page.mouse.click(at.x, at.y);
+  await page.keyboard.insertText(text);
+  await expect.poll(async () => (await record(page)).editedAt).not.toBe(editedAt);
+}
+
+// A document with a version after the first edit, and a second one made past 5 minutes later.
+// Returns the cells as they were at the first.
+async function twoVersions(page) {
+  await page.clock.install();
+  await openApp(page);
+  await typeAndWrite(page, 3, 3, 'first');
+  await settled(page);
+  const first = await store(page, 'project', (p) => JSON.stringify(p.cells));
+  await expect.poll(() => versionCount(page)).toBe(1);
+  await page.clock.fastForward('06:00');
+  await typeMore(page, 3, 5, 'second');
+  await expect.poll(() => versionCount(page)).toBe(2);
+  return first;
+}
+
+test('a version appears after 5 minutes of changes, and Restore brings it back', async ({ page }) => {
+  const first = await twoVersions(page);
+  await versionsButton(page).click();
+  await expect(versionRows(page)).toHaveCount(2);
+  await versionRows(page).nth(1).getByRole('button', { name: 'Restore' }).click();
+  await expect(versionsDialog(page)).toHaveCount(0);
+  await settled(page);
+  expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(first);
+  await expect(undoButton(page)).toBeDisabled();
+});
+
+test('restoring keeps what you had as Before restoring', async ({ page }) => {
+  const first = await twoVersions(page);
+  const second = await store(page, 'project', (p) => JSON.stringify(p.cells));
+  await versionsButton(page).click();
+  await versionRows(page).nth(1).getByRole('button', { name: 'Restore' }).click();
+  await expect(versionsDialog(page)).toHaveCount(0);
+  await settled(page);
+  expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(first);
+
+  await versionsButton(page).click();
+  const kept = versionRows(page).filter({ hasText: 'Before restoring' });
+  await expect(kept).toHaveCount(1);
+  await kept.getByRole('button', { name: 'Restore' }).click();
+  await expect(versionsDialog(page)).toHaveCount(0);
+  await settled(page);
+  expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(second);
+  expect(await chars(page, 5, 3, 8)).toBe('second');
+});
+
+test('no versions says so, and the button waits for an image', async ({ page }) => {
+  await page.goto('/');
+  await expect(imageInput(page)).toBeAttached();
+  await expect(versionsButton(page)).toBeDisabled();
+
+  await imageInput(page).setInputFiles(fixture('images/gradient.png'));
+  await tab(page, 'ANSI').click();
+  await settled(page);
+  await versionsButton(page).click();
+  await expect(versionsDialog(page)).toContainText('No versions yet');
+  await expect(versionRows(page)).toHaveCount(0);
+});
+
+test('the dialog focuses, and Escape closes it without changing anything', async ({ page }) => {
+  const first = await twoVersions(page);
+  const second = await store(page, 'project', (p) => JSON.stringify(p.cells));
+  expect(second).not.toBe(first);
+  await versionsButton(page).click();
+  await expect(versionRows(page)).toHaveCount(2);
+  await expect(versionsDialog(page).locator(':focus')).toHaveCount(1);
+
+  await page.keyboard.press('Escape');
+  await expect(versionsDialog(page)).toHaveCount(0);
+  expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(second);
+  expect(await versionCount(page)).toBe(2);
 });
