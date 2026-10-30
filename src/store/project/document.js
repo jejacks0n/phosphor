@@ -14,6 +14,10 @@ import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJso
 import { generateSlug } from 'random-word-slugs';
 import { shallowRef } from 'vue';
 
+// randomUUID is only there on secure contexts; a plain-http LAN address has getRandomValues.
+const newDocumentId = () => crypto.randomUUID?.()
+  ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+
 export const documentActions = {
   randomizeSeed() {
     this.seed = generateSlug(2);
@@ -36,6 +40,7 @@ export const documentActions = {
       ...lockedGrid(this.cols, ratio),
       filename: file.name.replace(/\.[^/.]+$/, ''),
       sauceTitle: '',
+      savedToFile: false,
     });
     this.markSaved();
   },
@@ -58,6 +63,7 @@ export const documentActions = {
       rows: Math.max(1, rows),
       filename: 'untitled',
       sauceTitle: '',
+      savedToFile: false,
     });
     this.markSaved(); // nothing to lose until something is drawn
   },
@@ -67,6 +73,7 @@ export const documentActions = {
     this.renderer.reset();
     this.activePalette = [];
     this.$patch({
+      documentId: newDocumentId(),
       fit: null,
       paintScale: null,
       baseScale: null, // a loaded file's comes in the patch
@@ -100,6 +107,8 @@ export const documentActions = {
     this.$patch({
       image: null,
       imageBuffer: null,
+      documentId: null,
+      savedToFile: false,
       fit: null,
       filename: null,
       cells: [],
@@ -138,17 +147,21 @@ export const documentActions = {
     this.rename(filename);
     this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
-    const settings = { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, this[key]])), paintScale: this.paintLayer?.scale ?? null, baseScale: this.baseLayer?.scale ?? null };
-    const blob = await writeProject({
-      settings,
-      imageBuffer: this.imageBuffer,
+    const blob = await writeProject({ imageBuffer: this.imageBuffer, ...await this.projectParts() });
+    downloadBlob(blob, `${this.filename}${PROJECT_EXTENSION}`);
+    this.markSaved();
+    this.savedToFile = true;
+  },
+
+  // What a .phosphor file holds besides the image.
+  async projectParts() {
+    return {
+      settings: { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, this[key]])), paintScale: this.paintLayer?.scale ?? null, baseScale: this.baseLayer?.scale ?? null },
       paintBlob: this.paintLayer ? await this.paintLayer.toBlob() : null,
       baseBlob: this.baseLayer?.hasPaint ? await this.baseLayer.toBlob() : null,
       editCells: this.editCells,
       baseRecords: this.baseRecords,
-    });
-    downloadBlob(blob, `${this.filename}${PROJECT_EXTENSION}`);
-    this.markSaved();
+    };
   },
 
   async loadProject(file) {
@@ -161,7 +174,7 @@ export const documentActions = {
       const basePixels = baseBuffer && await loadImage(baseBuffer, 'image/png');
 
       // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
-      this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename: file.name.slice(0, -PROJECT_EXTENSION.length) });
+      this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename: file.name.slice(0, -PROJECT_EXTENSION.length), savedToFile: true });
       this.editCells = editCells;
       this.setBaseRecords(baseRecords);
       if (paint) {

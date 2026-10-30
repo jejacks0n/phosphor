@@ -1,16 +1,13 @@
 // Autosave's IndexedDB store: images kept once, versions kept to 20, and eviction. Real IndexedDB and
 // WebCrypto.
-import { test, expect, beforeEach } from 'vitest';
+import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   hashImage, writeLatest, addVersion, readLatest, readVersion, listDocuments, listVersions, deleteDocument, evict,
 } from '@/document/autosaveStore';
+import { ownDatabase } from '../support/socialDatabase.js';
 
-beforeEach(() => new Promise((resolve, reject) => {
-  const req = indexedDB.deleteDatabase('phosphor-autosave');
-  req.onsuccess = resolve;
-  req.onerror = () => reject(req.error);
-  req.onblocked = () => reject(new Error('phosphor-autosave is still open'));
-}));
+beforeEach(() => ownDatabase('phosphor-autosave', 'store')());
+afterEach(() => { vi.restoreAllMocks(); });
 
 // How many rows a store holds.
 const rows = (store) => new Promise((resolve, reject) => {

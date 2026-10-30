@@ -2,6 +2,7 @@
 import { watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
+import { useAutosave } from '@/composables/useAutosave';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useSocialStore } from '@/store/SocialStore';
@@ -36,10 +37,13 @@ watchEffect(() => {
 // be reached leaves the editor be).
 useSocialStore().start();
 
-// Leaving with unsaved changes, or a room you host, asks first.
+const autosave = useAutosave();
+
+// Leaving with unsaved changes asks first, unless they're safe in the browser and the art has been
+// saved to a file at least once. A room you host always asks.
 function onBeforeUnload(e) {
   project.commitPending(); // text typed a moment ago counts
-  if ((project.image && project.isDirty) || room.role === 'host') {
+  if ((project.image && project.isDirty && !(project.savedToFile && autosave.current.value)) || room.role === 'host') {
     e.preventDefault();
     e.returnValue = '';
   }
