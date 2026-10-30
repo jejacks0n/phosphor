@@ -28,8 +28,11 @@ export const fixture = (path) => fileURLToPath(new URL(`../fixtures/${path}`, im
 // The start screen's file input (images and projects), not the Font field's.
 export const imageInput = (page) => page.locator('input[type=file][accept^="image/"]');
 
-// The app with an image loaded, on the ANSI tab.
+// The app with an image loaded, on the ANSI tab. A page that has the app open is reopened as a new tab
+// would be: a tab's document comes back on a reload, so the tab forgets it first (a page still at
+// about:blank has no storage to forget).
 export async function openApp(page, image = 'images/gradient.png') {
+  if (page.url() !== 'about:blank') await page.evaluate(() => sessionStorage.removeItem('phosphor-autosave-document'));
   await page.goto('/');
   await imageInput(page).setInputFiles(fixture(image));
   await tab(page, 'ANSI').click();
