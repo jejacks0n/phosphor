@@ -2,7 +2,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { readProject, writeProject, fileStem, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
+import { readProject, writeProject, fileStem, timestamped, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
 import { EMPTY_BASE, withPins } from '../../src/document/baseRecords.js';
 import { MAX_COLS, maxRowsBeside } from '../../src/lib/Cells.js';
 
@@ -83,4 +83,12 @@ test('A typed filename: trimmed, its extension (if typed) dropped, slashes made 
   assert.equal(fileStem('a/b\\c', 'ans'), 'a-b-c');
   assert.equal(fileStem('   ', 'ans'), '');
   assert.equal(fileStem('.ans', 'ans'), '');
+});
+
+test('the name offered has the local time, in place of any it had', () => {
+  const at = new Date(2026, 0, 2, 3, 4, 5);
+  assert.equal(timestamped('art', at), 'art-20260102-030405');
+  assert.equal(timestamped('art-20251231-235959', at), 'art-20260102-030405');
+  assert.equal(timestamped('art-2', at), 'art-2-20260102-030405');   // only a whole time goes
+  assert.equal(timestamped('v1.2', at), 'v1.2-20260102-030405');
 });

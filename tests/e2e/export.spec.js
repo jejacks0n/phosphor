@@ -21,7 +21,7 @@ for (const ext of ['ans', 'utf8ans']) {
     await expect(page.getByRole('dialog').getByRole('list', { name: 'Replacements' })).toHaveCount(0);
     await page.keyboard.press('Escape');
     const download = await saveAs(page, `Export .${ext}`);
-    expect(download.suggestedFilename()).toBe(`gradient.${ext}`);
+    expect(download.suggestedFilename()).toMatch(new RegExp(`^gradient-\\d{8}-\\d{6}\\.${ext}$`));
     const bytes = new Uint8Array(await readFile(await download.path()));
     const expected = new Uint8Array(await new AnsiFile(cols, rows, cells).toBlob({ utf8: ext === 'utf8ans', colorMode: quantize }).arrayBuffer());
     expect(Buffer.from(art(bytes)).equals(Buffer.from(art(expected)))).toBe(true);

@@ -10,8 +10,8 @@ test('Cmd+S opens it with the name ready to type over; a new name renames the do
   await page.keyboard.press('ControlOrMeta+s');
   await expect(dialog(page)).toHaveAccessibleName('Save project');
   await expect(nameField(page)).toBeFocused();
-  await expect(nameField(page)).toHaveValue('gradient');
-  expect(await nameField(page).evaluate((el) => [el.selectionStart, el.selectionEnd])).toEqual([0, 8]);
+  await expect(nameField(page)).toHaveValue(/^gradient-\d{8}-\d{6}$/);
+  expect(await nameField(page).evaluate((el) => [el.selectionStart, el.selectionEnd])).toEqual([0, 24]);
 
   await page.keyboard.type('my art.phosphor'); // a typed extension isn't doubled
   const [download] = await Promise.all([page.waitForEvent('download'), page.keyboard.press('Enter')]);
@@ -20,7 +20,18 @@ test('Cmd+S opens it with the name ready to type over; a new name renames the do
   expect(await store(page, 'project', (p) => p.filename)).toBe('my art');
 
   await page.getByRole('button', { name: 'Export .utf8ans' }).click();
-  await expect(nameField(page)).toHaveValue('my art');
+  await expect(nameField(page)).toHaveValue(/^my art-\d{8}-\d{6}$/);
+});
+
+test('the name in the dialog is the name of the file, and the next save offers a new time, not a second one', async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('ControlOrMeta+s');
+  const offered = await nameField(page).inputValue();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.keyboard.press('Enter')]);
+  expect(download.suggestedFilename()).toBe(`${offered}.phosphor`);
+  await expect(dialog(page)).toBeHidden();
+  await page.keyboard.press('ControlOrMeta+s');
+  await expect(nameField(page)).toHaveValue(/^gradient-\d{8}-\d{6}$/);
 });
 
 test('Escape, Cancel and the backdrop close it without saving; an empty name can\'t be saved', async ({ page }) => {

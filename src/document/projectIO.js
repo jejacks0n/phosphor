@@ -88,6 +88,16 @@ export function fileStem(input, ext) {
   return (name.toLowerCase().endsWith(suffix.toLowerCase()) ? name.slice(0, -suffix.length) : name).trim();
 }
 
+// The name the save dialog offers: the document's, with the time. A browser numbers a download whose name
+// is taken, sometimes after the extension (art.phosphor-2), and that file won't open; a new time is a new
+// name. A time from an earlier save is replaced, so they don't pile up.
+export function timestamped(stem, now = new Date()) {
+  const two = (n) => String(n).padStart(2, '0');
+  const date = `${now.getFullYear()}${two(now.getMonth() + 1)}${two(now.getDate())}`;
+  const time = `${two(now.getHours())}${two(now.getMinutes())}${two(now.getSeconds())}`;
+  return `${stem.replace(/-\d{8}-\d{6}$/, '')}-${date}-${time}`;
+}
+
 // Every save and export is a download, named as typed in the save dialog (Safari has no save
 // picker; every browser honors a download's name).
 export function downloadBlob(blob, filename) {
