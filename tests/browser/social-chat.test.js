@@ -467,3 +467,35 @@ test('a history with a forged entry shows the rest; deleted, refused and chat th
   await wait(100);
   expect(log.chat.length).toBe(2);
 });
+
+function watchWithNoChannel() {
+  const log = { rooms: [], states: [], closed: 0 };
+  const watch = new Watch({ send() {}, config: {}, connectWithinMs: 1000, roomId: 'r', passKey: null, onRoom: (room) => log.rooms.push(room), onArt() {}, onView() {}, onState: (state) => log.states.push(state) });
+  const conn = { close: () => { log.closed++; } };
+  watch.conn = conn;
+  watch.heard = Promise.resolve();
+  watch.waiting = 0;
+  return { watch, conn, log };
+}
+
+test('a host\'s text past what a channel carries isn\'t read, whatever the browser let through', async () => {
+  const { watch, conn, log } = watchWithNoChannel();
+  const room = { t: 'room', name: 'neon', welcome: '', pad: '' };
+  watch.hear(JSON.stringify(room), conn);
+  watch.hear(JSON.stringify({ ...room, name: 'huge', pad: 'x'.repeat(256 * 1024) }), conn);
+  await watch.heard;
+  expect(log.rooms.map((r) => r.name)).toEqual(['neon']);
+});
+
+test('a host sending faster than its messages can be handled loses the connection, and the watcher is told', async () => {
+  const { watch, conn, log } = watchWithNoChannel();
+  for (let i = 0; i < 1024; i++) watch.hear('not json', conn);
+  expect(log.closed).toBe(0);
+  await watch.heard;                     // handled: the backlog is gone
+  for (let i = 0; i < 1024; i++) watch.hear('not json', conn);
+  expect(log.closed).toBe(0);
+  watch.hear('not json', conn);          // one past it
+  expect(log.closed).toBe(1);
+  expect(log.states).toEqual(['lost']);
+  expect(watch.conn).toBe(null);
+});

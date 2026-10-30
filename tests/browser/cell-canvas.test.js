@@ -346,3 +346,32 @@ test('a canvas with a font of its own measures in it, not in the display font', 
   own.destroy();
   global.destroy();
 });
+
+test('a full atlas draws what doesn\'t fit as blank, however many characters a grid has, and the next draw starts it over', async () => {
+  await createTestApp();
+  const { ch } = drawAndRead(1, 1, [cell('A', '#ffffff', '#000000')]);
+  const real = WebGL2RenderingContext.prototype.getParameter;
+  WebGL2RenderingContext.prototype.getParameter = function getParameter(name) {
+    return name === this.MAX_TEXTURE_SIZE ? ch * 2 : real.call(this, name);   // two rows of 64 glyphs
+  };
+  try {
+    const canvas = document.createElement('canvas');
+    const view = new CellCanvas(canvas);
+    const inked = (cols, rows, x, y) => {
+      const gl = canvas.getContext('webgl2'), { width, height } = canvas;
+      const [w, h] = [width / cols, height / rows], raw = new Uint8Array(w * h * 4);
+      gl.readPixels(x * w, height - (y + 1) * h, w, h, gl.RGBA, gl.UNSIGNED_BYTE, raw);
+      return raw.some((v, i) => i % 4 === 0 && v > 0);
+    };
+    const many = Array.from({ length: 200 }, (_, i) => cell(String.fromCodePoint(0x410 + i), '#ffffff', '#000000'));
+    view.resize(20, 10, 1);
+    view.draw(many);
+    expect(inked(20, 10, 1, 0)).toBe(true);    // in the atlas
+    expect(inked(20, 10, 19, 9)).toBe(false);  // past it
+    view.draw(many.map(() => cell('A', '#ffffff', '#000000')));
+    expect(inked(20, 10, 19, 9)).toBe(true);   // the atlas started over for what's in view
+    view.destroy();
+  } finally {
+    WebGL2RenderingContext.prototype.getParameter = real;
+  }
+});
