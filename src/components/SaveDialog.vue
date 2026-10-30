@@ -14,9 +14,9 @@ const emit = defineEmits(['close']);
 const project = useProjectStore();
 
 const FORMATS = {
-  phosphor: { title: 'Save project', sub: 'Everything, to open again in Phosphor: the image, both layers and the settings.', action: 'Save' },
-  ans: { title: 'Export .ans', sub: 'Classic ANSI art: CP437 characters with ANSI colors, for art viewers and BBS-era tools.', action: 'Export' },
-  utf8ans: { title: 'Export .utf8ans', sub: 'ANSI art as UTF-8 text with ANSI colors, for modern terminals. Every character is kept.', action: 'Export' },
+  phosphor: { title: 'Save project', sub: 'Everything, to open again in Phosphor: the image, both layers and the settings.', action: 'Save', busy: 'Saving…' },
+  ans: { title: 'Export .ans', sub: 'Classic ANSI art: CP437 characters with ANSI colors, for art viewers and BBS-era tools.', action: 'Export', busy: 'Exporting…' },
+  utf8ans: { title: 'Export .utf8ans', sub: 'ANSI art as UTF-8 text with ANSI colors, for modern terminals. Every character is kept.', action: 'Export', busy: 'Exporting…' },
 };
 const format = computed(() => FORMATS[props.ext]);
 
@@ -77,8 +77,8 @@ function cancel() {
       <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
 
       <div class="actions">
-        <button type="button" class="cancel" @click="cancel">Cancel</button>
-        <button type="submit" class="primary" :disabled="!stem">{{ format.action }}</button>
+        <button type="button" class="cancel" :aria-disabled="saving" @click="cancel">Cancel</button>
+        <button type="submit" class="primary" :disabled="!stem">{{ saving ? format.busy : format.action }}</button>
       </div>
     </form>
   </ModalDialog>
@@ -188,6 +188,11 @@ button.cancel {
   box-shadow: none;
   color: var(--text-muted);
   font: inherit;
+}
+
+button.cancel[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
 }
 
 button.primary {

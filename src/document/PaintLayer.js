@@ -11,7 +11,7 @@
  * pixels are saved; endStroke() returns those tiles with their new pixels as an undoable patch.
  * LayerPatch = { tiles: { x, y, before: ImageData, after: ImageData }[], hadPaint, hasPaint }
  */
-import { ctx2d } from '../lib/Canvas.js';
+import { ctx2d, canvasPng } from '../lib/Canvas.js';
 import { rgb2hex } from '../lib/ColorUtils.js';
 import { tilesForRect } from './History.js';
 
@@ -351,8 +351,7 @@ export default class PaintLayer {
   }
 
   toBlob() {
-    // A canvas can hand back null (out of memory, say): that's a failure, not a layer with no paint.
-    return new Promise((resolve, reject) => this.canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Could not encode the layer'))), 'image/png'));
+    return canvasPng(this.canvas);
   }
 
   get recording() {

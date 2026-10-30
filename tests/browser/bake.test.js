@@ -3,7 +3,7 @@
 // cells to the neighboring palette color (the baked image is rounded to 8 bits, the shader snapped
 // at full precision; with many sliders on a gradient that's ~13% of cells), so that test pins only
 // what's guaranteed; locking to the palette bakes it in, and nothing moves.
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { drawnDocument, outputKey } from '../support/scenes.js';
 
@@ -14,6 +14,28 @@ const SLIDERS = { brightness: 140, contrast: 160, saturation: 130, hue: 40, colo
 const COLOR_SLIDERS = { brightness: 140, contrast: 160, saturation: 130, hue: 40, colorizeStrength: 30 };
 
 describe('nothing on the canvas changes', () => {
+  test('a picture that can\'t be encoded says so and bakes nothing', async () => {
+    const { project, workspace } = await createTestApp();
+    await drawnDocument(project, workspace);
+    Object.assign(project, SLIDERS);
+    await settle(project);
+    const cells = cellsKey(project), image = project.image;
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const encoding = vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) => done(null));
+    try {
+      await project.bake();
+      expect(alert).toHaveBeenCalledWith("Couldn't bake the image.");
+    } finally {
+      encoding.mockRestore();
+      alert.mockRestore();
+      error.mockRestore();
+    }
+    expect(project.image).toBe(image);
+    expect(project.brightness).toBe(SLIDERS.brightness);
+    expect(cellsKey(project)).toEqual(cells);
+  });
+
   for (const quantize of ['none', 'count', 'palette']) {
     test(`color palette: ${quantize}`, async () => {
       const { project, workspace } = await createTestApp();
