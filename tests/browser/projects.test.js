@@ -122,4 +122,18 @@ describe('a broken file', () => {
       expect(snapshot(project)).toEqual(before);
     });
   }
+
+  test('one that fails partway through opening is reported and leaves no half a document', async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+    const file = new File([await save(project)], 'mine.phosphor');
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(project, 'render').mockImplementationOnce(() => { throw new Error('partway'); });
+    await project.loadProject(file);
+    expect(alert).toHaveBeenCalled();
+    expect(project.image).toBe(null);
+    expect(project.documentId).toBe(null);
+    expect(project.savedToFile).toBe(false);
+  });
 });

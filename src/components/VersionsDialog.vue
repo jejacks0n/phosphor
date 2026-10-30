@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, useTemplateRef } from 'vue';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { listVersions } from '@/document/autosaveStore';
@@ -16,6 +16,7 @@ const project = useProjectStore();
 const versions = ref(null); // null until they're read, so "No versions yet" doesn't flash
 const problem = ref('');
 const restoring = ref(false);
+const closeButton = useTemplateRef('closeButton');
 
 const when = (ms) => new Date(ms).toLocaleString();
 const size = (bytes) => (bytes < 2 ** 20 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 2 ** 20).toFixed(1)} MB`);
@@ -26,9 +27,14 @@ onMounted(async () => {
     versions.value = await listVersions(project.documentId);
   } catch (error) {
     console.warn('Autosave could not list versions', error);
-    versions.value = [];
+    problem.value = "Couldn't read the versions.";
   }
 });
+
+// Not while a restore is under way: anything drawn meanwhile would be lost when it lands.
+function close() {
+  if (!restoring.value) emit('close');
+}
 
 async function restore(id) {
   restoring.value = true;
@@ -40,6 +46,7 @@ async function restore(id) {
     console.warn('Autosave could not restore the version', error);
     problem.value = "Couldn't restore that version.";
     restoring.value = false;
+    closeButton.value.focus(); // the Restore button had it, and lost it on being disabled
   }
 }
 </script>
@@ -48,7 +55,7 @@ async function restore(id) {
   <ModalDialog
       title="Versions"
       sub="Kept in this browser, every 5 minutes while you work. The last 20 stay, and restoring starts a fresh undo history. Clearing this site's data deletes them, so save to a file for a real backup."
-      @cancel="emit('close')"
+      @cancel="close"
   >
     <ul v-if="versions?.length" aria-label="Versions">
       <li v-for="version in versions" :key="version.id">
@@ -63,7 +70,7 @@ async function restore(id) {
     <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
 
     <div class="actions">
-      <button type="button" class="cancel" @click="emit('close')">Close</button>
+      <button ref="closeButton" type="button" class="cancel" @click="close">Close</button>
     </div>
   </ModalDialog>
 </template>

@@ -2,8 +2,10 @@
  * Autosave's storage, in IndexedDB. Each document has a latest state and up to KEEP_VERSIONS older
  * versions; the images are stored apart, once each however many of them use one.
  *
- * `rest` is the .phosphor bytes with an empty image. The rows also carry the sizes of their `rest` and
- * image (restSize, imageSize), so sizes are counted without reading image bytes.
+ * `rest` is the .phosphor bytes with an empty image. It and the images are stored as Blobs, which load
+ * lazily, so reading a row doesn't read its bytes and a version shares its latest state's. Callers pass
+ * and get ArrayBuffers. The rows also carry the sizes of their `rest` and image (restSize, imageSize),
+ * so sizes are counted without reading bytes.
  */
 import { versionsToDrop, documentsToEvict, MAX_TOTAL_BYTES } from './autosaveRules.js';
 
@@ -85,12 +87,12 @@ export async function writeLatest({ id, filename, editedAt, savedToFile, dirty, 
   const imageHash = await hashImage(imageBuffer); // before the transaction: it dies across an await on crypto
   const row = {
     id, filename, editedAt, savedToFile, dirty, savedSettings,
-    rest, restSize: rest.byteLength, imageHash, imageSize: imageBuffer.byteLength,
+    rest: new Blob([rest]), restSize: rest.byteLength, imageHash, imageSize: imageBuffer.byteLength,
   };
   await run(STORES, 'readwrite', async (tx) => {
     const before = await ask(tx.objectStore('documents').get(id));
     if ((await ask(tx.objectStore('images').getKey(imageHash))) === undefined) {
-      tx.objectStore('images').put({ hash: imageHash, bytes: imageBuffer, size: imageBuffer.byteLength });
+      tx.objectStore('images').put({ hash: imageHash, bytes: new Blob([imageBuffer]), size: imageBuffer.byteLength });
     }
     tx.objectStore('documents').put(row);
     if (before && before.imageHash !== imageHash) await freeImages(tx, [before.imageHash]);
@@ -98,34 +100,39 @@ export async function writeLatest({ id, filename, editedAt, savedToFile, dirty, 
 }
 
 // Copies the document's latest state into a new version, then drops the versions past KEEP_VERSIONS.
-// A document with no latest state has nothing to copy.
-export async function addVersion(documentId, { reason, savedAt }) {
-  await run(STORES, 'readwrite', async (tx) => {
+// Returns the new version's id. A document with no latest state has nothing to copy.
+export function addVersion(documentId, { reason, savedAt }) {
+  return run(STORES, 'readwrite', async (tx) => {
     const latest = await ask(tx.objectStore('documents').get(documentId));
     if (!latest) return;
     const version = { ...latest, documentId, savedAt, reason };
     delete version.id; // the version gets its own
-    tx.objectStore('versions').add(version);
+    const versionId = await ask(tx.objectStore('versions').add(version));
     const versions = await ask(tx.objectStore('versions').index('documentId').getAll(documentId));
     const dropped = versionsToDrop(versions);
     for (const versionId of dropped) tx.objectStore('versions').delete(versionId);
     const gone = new Set(dropped);
     await freeImages(tx, versions.filter((v) => gone.has(v.id)).map((v) => v.imageHash));
+    return versionId;
   });
 }
 
-// { record, imageBuffer } for a stored row, or null.
-const withImage = async (tx, record) => {
-  if (!record) return null;
-  const image = await ask(tx.objectStore('images').get(record.imageHash));
-  return { record, imageBuffer: image.bytes };
-};
+// { record, imageBuffer } for a stored row, or null, with its bytes read once the transaction has
+// finished: it dies across an await on a Blob. A rest or image that isn't a Blob rejects here.
+async function readRow(store, key) {
+  const found = await run(STORES, 'readonly', async (tx) => {
+    const record = await ask(tx.objectStore(store).get(key));
+    return record && { record, image: await ask(tx.objectStore('images').get(record.imageHash)) };
+  });
+  if (!found) return null;
+  const { record, image } = found;
+  const [rest, imageBuffer] = await Promise.all([record.rest.arrayBuffer(), image.bytes.arrayBuffer()]);
+  return { record: { ...record, rest }, imageBuffer };
+}
 
-export const readLatest = (id) =>
-  run(STORES, 'readonly', async (tx) => withImage(tx, await ask(tx.objectStore('documents').get(id))));
+export const readLatest = (id) => readRow('documents', id);
 
-export const readVersion = (versionId) =>
-  run(STORES, 'readonly', async (tx) => withImage(tx, await ask(tx.objectStore('versions').get(versionId))));
+export const readVersion = (versionId) => readRow('versions', versionId);
 
 // A document's bytes: its latest rest, its versions' rest, and each distinct image once.
 function documentSizes(documents, versions) {

@@ -9,6 +9,17 @@ import { ownDatabase } from '../support/socialDatabase.js';
 beforeEach(() => ownDatabase('phosphor-autosave', 'store')());
 afterEach(() => { vi.restoreAllMocks(); });
 
+// A stored row as it is, with the database's own Blobs.
+const row = (store, key) => new Promise((resolve, reject) => {
+  const open = indexedDB.open('phosphor-autosave', 1);
+  open.onerror = () => reject(open.error);
+  open.onsuccess = () => {
+    const db = open.result;
+    const get = db.transaction(store).objectStore(store).get(key);
+    get.onsuccess = () => { db.close(); resolve(get.result); };
+  };
+});
+
 // How many rows a store holds.
 const rows = (store) => new Promise((resolve, reject) => {
   const open = indexedDB.open('phosphor-autosave', 1);
@@ -56,6 +67,27 @@ test('a version has the latest state, and the latest state can change after it',
   const latest = await readLatest('a');
   expect(new Uint8Array(latest.record.rest)).toEqual(new Uint8Array([2]));
   expect(new Uint8Array(latest.imageBuffer)).toEqual(new Uint8Array([2, 2]));
+});
+
+test('the bytes are stored as Blobs and read as ArrayBuffers, and a version shares its latest state\'s rest', async () => {
+  const image = bytes(7, 7);
+  await save('a', image, { rest: bytes(1, 2) });
+  const versionId = await addVersion('a', { reason: 'timed', savedAt: 1 });
+  expect((await listVersions('a'))[0].id).toBe(versionId);
+
+  for (const stored of [await row('documents', 'a'), await row('versions', versionId)]) {
+    expect(stored.rest).toBeInstanceOf(Blob);
+    expect(stored.restSize).toBe(2);
+    expect(stored.imageSize).toBe(2);
+  }
+  expect((await row('images', await hashImage(image))).bytes).toBeInstanceOf(Blob);
+
+  for (const { record, imageBuffer } of [await readLatest('a'), await readVersion(versionId)]) {
+    expect(record.rest).toBeInstanceOf(ArrayBuffer);
+    expect(new Uint8Array(record.rest)).toEqual(new Uint8Array([1, 2]));
+    expect(imageBuffer).toBeInstanceOf(ArrayBuffer);
+    expect(new Uint8Array(imageBuffer)).toEqual(new Uint8Array([7, 7]));
+  }
 });
 
 test('past 20 versions the oldest go', async () => {
@@ -118,6 +150,14 @@ test('evict removes the oldest documents and their images, and spares those kept
   expect(await rows('images')).toBe(0);
 });
 
+test('evicting a document leaves an image a surviving document also uses', async () => {
+  await save('old', bytes(9, 9), { editedAt: 1 });
+  await save('new', bytes(9, 9), { editedAt: 2 });
+  expect(await evict(new Set(['new']), 0)).toEqual(['old']);
+  expect(await rows('images')).toBe(1);
+  expect(new Uint8Array((await readLatest('new')).imageBuffer)).toEqual(new Uint8Array([9, 9]));
+});
+
 test('a document that was never saved reads as null', async () => {
   expect(await readLatest('nope')).toBeNull();
   expect(await readVersion(99)).toBeNull();
@@ -127,7 +167,7 @@ test('a document that was never saved reads as null', async () => {
 
 test('a write the database refuses rejects, and leaves what was stored alone', async () => {
   await save('a', bytes(1));
-  await expect(save('a', bytes(2), { rest: () => {} })).rejects.toThrow();
+  await expect(save('a', bytes(2), { savedSettings: () => {} })).rejects.toThrow();
   expect(new Uint8Array((await readLatest('a')).imageBuffer)).toEqual(new Uint8Array([1]));
   expect(await rows('images')).toBe(1);
 });

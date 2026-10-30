@@ -21,21 +21,36 @@ const FORMATS = {
 const format = computed(() => FORMATS[props.ext]);
 
 const name = ref(timestamped(project.filename ?? 'untitled'));
+const saving = ref(false);
+const problem = ref('');
 const stem = computed(() => fileStem(name.value, props.ext));
 const replacements = computed(() => (props.ext === 'ans'
   ? [...AnsiFile.unmappable(project.cells)].map(([char, { count, as }]) => ({ char, count, as }))
   : []));
 
 async function save() {
-  if (!stem.value) return;
-  emit('close');
-  if (props.ext === 'phosphor') await project.saveProject(stem.value);
-  else await project.exportFile(props.ext, { filename: stem.value });
+  if (!stem.value || saving.value) return;
+  saving.value = true;
+  problem.value = '';
+  try {
+    if (props.ext === 'phosphor') await project.saveProject(stem.value);
+    else await project.exportFile(props.ext, { filename: stem.value });
+    emit('close');
+  } catch (error) {
+    console.warn('Could not save the file', error);
+    problem.value = "Couldn't save the file.";
+    saving.value = false;
+  }
+}
+
+// Not while a save is under way: if it fails, this is where that's said.
+function cancel() {
+  if (!saving.value) emit('close');
 }
 </script>
 
 <template>
-  <ModalDialog :title="format.title" :sub="format.sub" @cancel="emit('close')">
+  <ModalDialog :title="format.title" :sub="format.sub" @cancel="cancel">
     <form @submit.prevent="save">
       <label for="save-filename">File name</label>
       <div class="name">
@@ -59,8 +74,10 @@ async function save() {
         <p class="hint">Export as .utf8ans to keep them.</p>
       </template>
 
+      <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
+
       <div class="actions">
-        <button type="button" class="cancel" @click="emit('close')">Cancel</button>
+        <button type="button" class="cancel" @click="cancel">Cancel</button>
         <button type="submit" class="primary" :disabled="!stem">{{ format.action }}</button>
       </div>
     </form>
@@ -149,6 +166,12 @@ p.hint {
   margin: 6px 0 0;
   font-size: 12px;
   color: var(--text-muted);
+}
+
+p.problem {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--danger);
 }
 
 div.actions {

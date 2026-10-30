@@ -67,6 +67,19 @@ for (const [name, open] of [['the save dialog', 'ControlOrMeta+s'], ['the shortc
   });
 }
 
+test('after Versions is canceled with Escape, the text input has focus and Space types a space', async ({ page }) => {
+  await openApp(page);
+  await editAt(page, 2, 2);
+  await page.keyboard.type('a');
+  await page.getByRole('button', { name: 'Versions', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Versions' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Versions' })).toBeHidden();
+  await expect.poll(() => typingFocused(page)).toBe(true);
+  await page.keyboard.type(' b');
+  await expect.poll(() => chars(page, 2, 2, 4)).toBe('a b');
+});
+
 test('after Tab moves focus off the text input, Space still types (pointer over the canvas)', async ({ page }) => {
   await openApp(page);
   await editAt(page, 2, 2);
