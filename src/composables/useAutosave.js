@@ -8,7 +8,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { settingsJson } from '@/store/project/shared';
 import { writeProject } from '@/document/projectIO';
 import { writeLatest, addVersion, listVersions, evict, readLatest, readVersion, listDocuments } from '@/document/autosaveStore';
-import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, versionDue } from '@/document/autosaveRules';
+import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, READY_WAIT_MS, versionDue } from '@/document/autosaveRules';
 import { toast } from '@/composables/useToast';
 
 const KEPT_DOCUMENT = 'phosphor-autosave-document'; // in sessionStorage: this tab's document
@@ -60,6 +60,7 @@ export function useAutosave() {
   let held = null, leftId = null, lockTurn = 0; // the lock this tab has, the id it last let go of, and the latest ask
   let openingRecent = false;
   let persistAsked = false, warned = false;
+  let removedWork = false; // the write under way made room by removing other documents
 
   const clearTimers = () => {
     clearTimeout(quiet);
@@ -88,18 +89,17 @@ export function useAutosave() {
 
   // The browser's storage being full costs as little of the other work as it takes.
   async function put(record, id) {
-    let removed = false;
-    try {
-      for (;;) {
-        try {
-          return await writeLatest(record);
-        } catch (error) {
-          if (error.name !== 'QuotaExceededError' || !await makeRoom(record, id)) throw error;
-          removed = true;
-        }
+    removedWork = false;
+    for (;;) {
+      try {
+        await writeLatest(record);
+        if (removedWork) toast("This browser's storage was full, so the oldest work kept here was removed.");
+        removedWork = false;
+        return;
+      } catch (error) {
+        if (error.name !== 'QuotaExceededError' || !await makeRoom(record, id)) throw error;
+        removedWork = true;
       }
-    } finally {
-      if (removed) toast("This browser's storage was full, so the oldest work kept here was removed.");
     }
   }
 
@@ -142,7 +142,7 @@ export function useAutosave() {
       } else if (unwritten) {
         // A change landed during this write, whose image and edits may not match (Merge into the image):
         // the version is for the next write, even if what's waiting is only a save.
-        edited ||= real;
+        edited ||= real && project._document === doc; // not if another document's come back since
       } else if (versionDue({ lastVersionAt, now, changed: real })) {
         await addVersion(id, { reason: 'timed', savedAt: now });
         lastVersionAt = now;
@@ -155,9 +155,11 @@ export function useAutosave() {
       }
     } catch (error) {
       unwritten = true;
-      edited ||= real && !opening; // opening isn't a change; if it wasn't stored, the next write is the opening again
+      edited ||= real && !opening && project._document === doc; // opening isn't a change; if it wasn't stored, the next write is the opening again
       console.warn('Autosave failed', error);
-      if (!warned) toast("Autosave isn't working in this browser. Save to a file to keep your work.");
+      if (removedWork) toast("This browser's storage was full, so the oldest work kept here was removed, and this still didn't fit. Save to a file to keep your work.");
+      else if (!warned) toast("Autosave isn't working in this browser. Save to a file to keep your work.");
+      removedWork = false;
       warned = true;
     }
   }
@@ -215,6 +217,7 @@ export function useAutosave() {
       return false;
     }
     if (release) held = { id, release };
+    else if (id === leftId) leftId = null; // not just let go of any more: another tab has it
     return !!release;
   }
 
@@ -304,7 +307,8 @@ export function useAutosave() {
       workspace.editorTab = 'output';
     } catch (error) {
       console.warn('Autosave could not open the document', error);
-      if (!project.image) holdLock(null);
+      if (project.image) return; // something else opened meanwhile, which is what's wrong with this one
+      holdLock(null);
       toast("Couldn't open that document.");
       await loadRecent();
     } finally {
@@ -327,6 +331,7 @@ export function useAutosave() {
   });
 
   start();
+  setTimeout(() => { ready.value = true; }, READY_WAIT_MS); // a late restore still lands, unless something's opened by then
 
   return { current, flush, ready, recent, openRecent, restoreVersion };
 }

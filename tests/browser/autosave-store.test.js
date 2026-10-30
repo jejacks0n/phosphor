@@ -69,7 +69,7 @@ test('a version has the latest state, and the latest state can change after it',
   expect(new Uint8Array(latest.imageBuffer)).toEqual(new Uint8Array([2, 2]));
 });
 
-test('the bytes are stored as Blobs and read as ArrayBuffers, and a version shares its latest state\'s rest', async () => {
+test('the bytes are stored as Blobs and read as ArrayBuffers, and a version holds its latest state\'s rest', async () => {
   const image = bytes(7, 7);
   await save('a', image, { rest: bytes(1, 2) });
   const versionId = await addVersion('a', { reason: 'timed', savedAt: 1 });

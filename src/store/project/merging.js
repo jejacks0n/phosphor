@@ -6,7 +6,7 @@
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellKey, parseKey, rectCells, updateRect, bakeEditCells, bakeEntry, mergeKind } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
-import { ctx2d } from '@/lib/Canvas.js';
+import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf, halfColors } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
@@ -38,7 +38,7 @@ export const mergingActions = {
       const doc = this._document, version = this.history.version;
 
       const canvas = await processedImage(this.image, params, { snap: lockPalette });
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      const blob = await canvasPng(canvas);
       const image = await loadImage(blob);
       const imageBuffer = await blob.arrayBuffer();
       // Meanwhile: another document is left alone; a change to this one (a stroke begun is closed
@@ -90,6 +90,9 @@ export const mergingActions = {
         redo: () => apply(after, before),
         bytes: bytesHeld(before.paint, before.base, before.image, before.imageBuffer, after.paint, after.base, after.image, after.imageBuffer, after.editCells),
       });
+    } catch (e) {
+      console.error('Failed to bake', e);
+      alert("Couldn't bake the image.");
     } finally {
       this._baking = false;
       if (again) await this.bake({ lockPalette });
@@ -224,7 +227,7 @@ export const mergingActions = {
           });
         }
       }
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      const blob = await canvasPng(canvas);
       const image = await loadImage(blob);
       const imageBuffer = await blob.arrayBuffer();
       // What's merged was read before encoding: a change since (or an edit still open) means it's stale.
@@ -264,6 +267,9 @@ export const mergingActions = {
       apply(after);
       const bytes = bytesHeld(before.base, before.paint, before.image, before.imageBuffer, after.base, after.paint, after.image, after.imageBuffer, after.editCells);
       this.pushEdit({ undo: () => apply(before), redo: () => apply(after), bytes });
+    } catch (e) {
+      console.error('Failed to merge into the image', e);
+      alert("Couldn't merge into the image.");
     } finally {
       this._merging = false;
       if (again) await this.mergeIntoPicture(rect);

@@ -1,7 +1,7 @@
 // Writing the document to the browser as you work (useAutosave): when it writes, what, and what happens
 // when it can't. Real IndexedDB, with the timers and the clock faked and the store's writes spied on.
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createApp } from 'vue';
+import { createApp, nextTick } from 'vue';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { useAutosave } from '@/composables/useAutosave';
@@ -11,8 +11,9 @@ import ZeroState from '@/components/ZeroState.vue';
 import VersionsDialog from '@/components/VersionsDialog.vue';
 import SaveDialog from '@/components/SaveDialog.vue';
 import { writeLatest, addVersion, evict, readLatest, readVersion, listDocuments, listVersions } from '@/document/autosaveStore';
-import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, VERSION_EVERY_MS, MAX_TOTAL_BYTES } from '@/document/autosaveRules';
-import { readProject, writeProject } from '@/document/projectIO';
+import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, VERSION_EVERY_MS, MAX_TOTAL_BYTES, READY_WAIT_MS } from '@/document/autosaveRules';
+import { readProject, writeProject, loadImage as decodeImage } from '@/document/projectIO';
+import { AnsiFile } from '@/lib/AnsiFile';
 
 vi.mock('@/document/autosaveStore', { spy: true });
 
@@ -21,6 +22,7 @@ const ATTRS = { fg: '#ffffff', bg: '#000000' };
 const BROKEN = "Autosave isn't working in this browser. Save to a file to keep your work.";
 const COULD_NOT_OPEN = "Couldn't open that document.";
 const STORAGE_FULL = "This browser's storage was full, so the oldest work kept here was removed.";
+const STORAGE_FULL_STILL = "This browser's storage was full, so the oldest work kept here was removed, and this still didn't fit. Save to a file to keep your work.";
 const KEPT_ID = 'phosphor-autosave-document';
 let app = null, autosave = null, started = null, deleteDatabase;
 
@@ -536,7 +538,7 @@ test('full storage with no estimate to go by still removes what it can', async (
   expect(autosave.current.value).toBe(true);
 });
 
-test('full storage with nothing left to remove fails like any write, sparing what is open', async () => {
+test('full storage with nothing left to remove says what was removed, and spares what is open', async () => {
   const { project } = await opened();
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   await seedDocument('closed', 1, 10);
@@ -551,8 +553,24 @@ test('full storage with nothing left to remove fails like any write, sparing wha
   }
   expect(writeLatest).toHaveBeenCalledTimes(2);
   expect((await listDocuments()).map((d) => d.id).sort()).toEqual([project.documentId, 'open-elsewhere'].sort());
-  expect(toastMessage.value).toBe(BROKEN);
+  expect(toastMessage.value).toBe(STORAGE_FULL_STILL);
   expect(autosave.current.value).toBe(false);
+});
+
+test('removing work is said even after the failure toast has had its one showing', async () => {
+  const { project } = await opened();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.mocked(writeLatest).mockRejectedValue(new Error('refused'));
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  expect(toastMessage.value).toBe(BROKEN);
+
+  toastMessage.value = null;
+  await seedDocument('closed', 1, 10);
+  vi.mocked(writeLatest).mockRejectedValue(FULL());
+  edit(project, 1);
+  await pass(SAVE_AFTER_MS);
+  expect(toastMessage.value).toBe(STORAGE_FULL_STILL);
 });
 
 test('a record larger than the browser\'s whole quota removes nothing', async () => {
@@ -606,6 +624,70 @@ test('a save that fails says so in the dialog, stays open and doesn\'t count as 
     document.querySelector('.modal-dialog form').requestSubmit();
     await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
     expect(project.savedToFile).toBe(true);
+  } finally {
+    dialog.unmount();
+  }
+});
+
+test('a blank canvas that can\'t be encoded says so and stays at the start', async () => {
+  const { project } = await mounted();
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) => done(null));
+  await project.setBlankCanvas();
+  expect(alert).toHaveBeenCalledWith("Couldn't start a blank canvas.");
+  expect(project.image).toBe(null);
+});
+
+test('a save that fails leaves the name as it was', async () => {
+  const { project } = await opened();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const named = project.filename;
+  paintThatWontEncode(project);
+  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: () => {} });
+  dialog.mount(document.createElement('div'));
+  try {
+    const input = document.querySelector('.modal-dialog input');
+    input.value = 'renamed';
+    input.dispatchEvent(new Event('input'));
+    document.querySelector('.modal-dialog form').requestSubmit();
+    await vi.waitUntil(() => document.querySelector('.modal-dialog [role=alert]'), { interval: 5 });
+    expect(project.filename).toBe(named);
+  } finally {
+    dialog.unmount();
+  }
+});
+
+test('an export that fails leaves the name as it was', async () => {
+  const { project } = await opened();
+  const named = project.filename;
+  vi.spyOn(AnsiFile.prototype, 'toBlob').mockImplementation(() => { throw new Error('refused'); });
+  await expect(project.exportFile('ans', { filename: 'renamed' })).rejects.toThrow('refused');
+  expect(project.filename).toBe(named);
+});
+
+test('while a save is under way the dialog says so, and Cancel and Escape wait for it', async () => {
+  const { project } = await opened();
+  let finish;
+  const parts = await project.projectParts();
+  started.mockImplementationOnce(() => new Promise((resolve) => { finish = () => resolve(parts); }));
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  const closed = vi.fn();
+  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: closed });
+  dialog.mount(document.createElement('div'));
+  try {
+    const root = document.querySelector('.modal-dialog');
+    root.querySelector('form').requestSubmit();
+    await vi.waitUntil(() => finish, { interval: 5 });
+    await nextTick();
+    expect(root.querySelector('button.primary').textContent).toBe('Saving…');
+    expect(root.querySelector('button.cancel').getAttribute('aria-disabled')).toBe('true');
+    root.querySelector('button.cancel').click();
+    root.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(closed).not.toHaveBeenCalled();
+
+    finish();
+    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
   } finally {
     dialog.unmount();
   }
@@ -1020,6 +1102,96 @@ test('openRecent on a lock that turned out held: a warning, a toast, the list re
   } finally {
     release();
   }
+});
+
+test('a document let go of and then opened in another tab is marked once a click finds that out', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const { project } = await opened();
+  const id = project.documentId;
+  project.clearImage();
+  await vi.waitUntil(() => autosave.recent.value.length === 1, { interval: 5 });
+  const release = await otherTab(id);
+  try {
+    await autosave.openRecent(id);
+    expect(toastMessage.value).toBe(COULD_NOT_OPEN);
+    expect(autosave.recent.value[0].openElsewhere).toBe(true);
+  } finally {
+    release();
+  }
+});
+
+test('a document opening while openRecent waits for its lock gets no failure toast', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  await seedDocument('waiting', 1, 10);
+  const { project } = await mounted();
+  const buffer = await (await fetch(GRADIENT)).arrayBuffer();
+  const image = await decodeImage(buffer, 'image/png');
+
+  const opening = autosave.openRecent('waiting');
+  project.replaceImage(image, buffer, { cols: 20, rows: 20 });
+  await opening;
+  expect(project.image).not.toBe(null);
+  expect(toastMessage.value).toBe(null);
+});
+
+test('a write still running when another document comes back doesn\'t count as that document\'s change', async () => {
+  const { project } = await opened();
+  const first = project.documentId;
+  const { editedAt } = (await listDocuments()).find((d) => d.id === first);
+  project.clearImage();
+  await pass(SAVE_AFTER_MS);
+  await loadImage(project, GRADIENT, { cols: 20, rows: 20 });
+  await pass(SAVE_AFTER_MS);
+  await vi.advanceTimersByTimeAsync(60_000);
+
+  const { release, reached } = await holdWrites();
+  edit(project);
+  await vi.advanceTimersByTimeAsync(SAVE_AFTER_MS);
+  await reached();
+  project.clearImage();
+  await autosave.openRecent(first);
+  vi.mocked(addVersion).mockClear();
+  release();
+  await autosave.flush();
+  await pass(SAVE_AFTER_MS);
+
+  expect(project.documentId).toBe(first);
+  expect((await listDocuments()).find((d) => d.id === first).editedAt).toBe(editedAt);
+  expect(addVersion).not.toHaveBeenCalledWith(first, expect.anything());
+});
+
+test('a database that never answers doesn\'t hold back the start screen', async () => {
+  vi.mocked(listDocuments).mockImplementationOnce(() => new Promise(() => {}));
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  await createTestApp();
+  app = createApp({ setup() { autosave = useAutosave(); return () => null; } });
+  app.mount(document.createElement('div'));
+  await vi.advanceTimersByTimeAsync(READY_WAIT_MS - 1);
+  expect(autosave.ready.value).toBe(false);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(autosave.ready.value).toBe(true);
+});
+
+test('a restore that answers after the wait still brings the document back', async () => {
+  const { project: before } = await opened();
+  const id = before.documentId;
+  await leave();
+
+  const real = vi.mocked(readLatest).getMockImplementation() ?? (await vi.importActual('@/document/autosaveStore')).readLatest;
+  let answer;
+  vi.mocked(readLatest).mockImplementationOnce((...args) => new Promise((resolve) => { answer = () => resolve(real(...args)); }));
+  const { project, workspace } = await createTestApp();
+  app = createApp({ setup() { autosave = useAutosave(); return () => null; } });
+  app.mount(document.createElement('div'));
+  await vi.waitUntil(() => answer, { interval: 5 });
+  await vi.advanceTimersByTimeAsync(READY_WAIT_MS);
+  expect(autosave.ready.value).toBe(true);
+  expect(project.image).toBe(null);
+
+  answer();
+  await vi.waitUntil(() => project.image, { interval: 5 });
+  expect(project.documentId).toBe(id);
+  expect(workspace.editorTab).toBe('output');
 });
 
 test('openRecent on a record that fails to restore: a warning, a toast, the lock let go, the list refreshed', async () => {

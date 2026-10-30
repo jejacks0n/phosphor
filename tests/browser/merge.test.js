@@ -1,7 +1,7 @@
 // Merge down: exactly (crisp, untouched by effects), or into the picture (part of the image, so the
 // effects reach it), for the whole edit layer or a selection (docs/layers.md, Moving things between
 // layers).
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
 
@@ -49,6 +49,26 @@ describe('exactly', () => {
 });
 
 describe('into the picture', () => {
+  test('a picture that can\'t be encoded says so and changes nothing', async () => {
+    const { project, workspace } = await createTestApp();
+    await drawnDocument(project, workspace);
+    const before = halves(project), image = project.image;
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const encoding = vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) => done(null));
+    try {
+      await project.mergeIntoPicture();
+      expect(alert).toHaveBeenCalledWith("Couldn't merge into the image.");
+    } finally {
+      encoding.mockRestore();
+      alert.mockRestore();
+      error.mockRestore();
+    }
+    await settle(project);
+    expect(project.image).toBe(image);
+    expect(halves(project)).toEqual(before);
+  });
+
   test('at neutral: the same look; solid cells pinned ▄, letters kept', async () => {
     const { project, workspace } = await createTestApp();
     await drawnDocument(project, workspace);

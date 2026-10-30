@@ -6,6 +6,7 @@ export const SAVE_AFTER_MS = 1000; // the latest state is written this long afte
 export const SAVE_AT_LEAST_EVERY_MS = 10_000; // ...and at least this often while they continue
 export const VERSION_EVERY_MS = 5 * 60_000;
 export const KEEP_VERSIONS = 20; // per document
+export const READY_WAIT_MS = 5000; // how long the start screen waits on a database that isn't answering
 export const MAX_TOTAL_BYTES = 500 * 2 ** 20; // across documents
 
 // A version is a snapshot to go back to: only for a change, and not more often than every VERSION_EVERY_MS.

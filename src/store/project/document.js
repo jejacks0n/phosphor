@@ -5,7 +5,7 @@ import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
-import { ctx2d } from '@/lib/Canvas.js';
+import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -57,7 +57,14 @@ export const documentActions = {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    let blob;
+    try {
+      blob = await canvasPng(canvas);
+    } catch (e) {
+      console.error('Failed to start a blank canvas', e);
+      alert("Couldn't start a blank canvas.");
+      return;
+    }
     this.replaceImage(await loadImage(blob), await blob.arrayBuffer(), {
       cols: Math.max(1, cols),
       rows: Math.max(1, rows),
@@ -144,10 +151,10 @@ export const documentActions = {
 
   async saveProject(filename = this.filename) {
     if (!this.image || !this.imageBuffer) return;
-    this.rename(filename);
     this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
     const blob = await writeProject({ imageBuffer: this.imageBuffer, ...await this.projectParts() });
+    this.rename(filename); // once there's a file to give the name to
     downloadBlob(blob, `${this.filename}${PROJECT_EXTENSION}`);
     this.markSaved();
     this.savedToFile = true;
@@ -241,8 +248,6 @@ export const documentActions = {
 
   // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first.
   async exportFile(ext, { filename = this.filename, ...opts } = {}) {
-    this.rename(filename);
-
     const comments = [
       `Created with Phosphor`,
       `Params: seed=${this.seed}, smoothing=${this.smoothing}, quantize=${this.quantize}`,
@@ -268,6 +273,7 @@ export const documentActions = {
       utf8: ext === 'utf8ans',
       ...opts,
     });
+    this.rename(filename); // once there's a file to give the name to
     downloadBlob(blob, `${this.filename}.${ext}`);
   },
 

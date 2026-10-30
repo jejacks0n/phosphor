@@ -8,6 +8,11 @@ export function ctx2d(canvas) {
   return canvas.getContext('2d', { willReadFrequently: true, colorSpace: 'srgb' });
 }
 
+// A canvas as PNG. A canvas can hand back null (out of memory, say): that's a failure, not an empty picture.
+export function canvasPng(canvas) {
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Could not encode the canvas'))), 'image/png'));
+}
+
 // Letterbox sw x sh into tw x th. Shared by the pipeline and the store so they agree exactly.
 // Rounds (not floors) dw/dh so a grid-aspect image (e.g. a flattened one) fits as identity.
 export function fitRect(sw, sh, tw, th) {
