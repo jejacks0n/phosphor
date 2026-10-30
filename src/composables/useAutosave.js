@@ -234,18 +234,20 @@ export function useAutosave() {
     await flush();
     const id = project.documentId;
     if (!id) throw new Error('No document to restore into');
+    // The version kept below is a copy of the stored latest state: if writing is failing, it isn't what's open.
+    if (!current.value) throw new Error('The document is not written, so what is open could not be kept');
     // Before addVersion, which may drop the oldest version, the one being asked for.
     const saved = await readVersion(versionId);
     if (!saved) throw new Error(`No version ${versionId}`);
     const savedAt = Date.now();
     await addVersion(id, { reason: 'before-restore', savedAt });
     const kept = (await listVersions(id)).find((v) => v.reason === 'before-restore' && v.savedAt === savedAt);
+    if (!kept) throw new Error('What is open could not be kept');
     try {
       await project.restoreDocument(saved, { documentId: id });
     } catch (error) {
       // Gone wrong partway: not a half to write over the record. Put back what was open.
       try {
-        if (!kept) throw error;
         await project.restoreDocument(await readVersion(kept.id), { documentId: id });
         edited = false; // putting it back isn't a change
       } catch {
