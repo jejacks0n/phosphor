@@ -5,6 +5,7 @@ import { test, expect, tab, store, chars, editAt, cellPoint, settled, saveAs, op
 import { fakeRoom, member, ROOM_ID, goLive, shown, chat, hash, selected, ARTIST, people, rowOf, invitation, mayDraw, fromMenu, invitedPage, artistPage, watcherPage, joinFromCard } from './social-support.js';
 
 const WAITING_WORDS = 'The host is reconnecting. Drawing is paused.';
+const CHANGING_WORDS = 'The host is changing. Drawing is paused.';
 const ONLY_HOST = 'Only the host can do this.';
 const NOT_WHILE = 'Not while others are drawing.';
 const MERGE_WARNING = 'Strokes merged into the image can\'t be undone by anyone.';
@@ -891,6 +892,7 @@ test('a host\'s Make host the server never answers leaves it hosting', async ({ 
   room.ignoringHandOvers = true;
   const { artist } = await together(host, context, room);
   await makeHost(host);
+  await expect(pauseLayer(host)).toContainText(CHANGING_WORDS);   // it's what's happening, to the host as to anyone
   await expect.poll(() => room.from('host').some((m) => m.type === 'hand-over'), { timeout: 20_000 }).toBe(true);
   await expect.poll(() => store(host, 'drawing', (d) => d.paused), { timeout: 10_000 }).toBe(false);
   expect(await roleOf(host)).toBe('host');
@@ -961,9 +963,7 @@ test('a watcher never becomes host, and keeps watching through a handover', asyn
   const person = await watcherPage(context, room, { me: REAPER });
   await person.goto('/');
   await joinFromCard(person);
-  await expect.poll(() => store(person, 'room', (r) => r.following)).toBe('u_1');
-  await person.getByRole('complementary', { name: 'Chat' }).getByRole('button', { name: 'Follow tin_owl' }).click();
-  expect(await store(person, 'room', (r) => r.following)).toBe(ARTIST.id);
+  await expect.poll(() => store(person, 'room', (r) => r.following)).toBe('u_1');   // the old host, until the role moves
   await typeAt(host, 1, 1, 'h');
   await agreed(host, artist);
   host.on('dialog', (dialog) => dialog.accept());
@@ -977,6 +977,78 @@ test('a watcher never becomes host, and keeps watching through a handover', asyn
   await typeAt(artist, 3, 3, 'z');
   await expect.poll(() => store(person, 'room', (r) => r.art?.cells.some((c) => c.char === 'z')), { timeout: 10_000 }).toBe(true);
   await expect(person.getByLabel('The room\'s art')).toBeVisible();
+});
+
+// A room that names someone with no art: the host says they're on the list, and hands it to them.
+const namedWithoutArt = async (host, room, subs, to) => {
+  await store(host, 'room', `(r) => { r._connection.send({ type: 'artists', subs: ${JSON.stringify(subs)} }); r._connection.send({ type: 'hand-over', to: ${JSON.stringify(to)} }); }`);
+};
+const handedOverTo = (room, sub) => room.received.some((r) => r.msg.type === 'hand-over' && r.msg.to === sub);
+
+test('someone named with no art passes the role to an artist who\'s here, and the room goes on', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  const person = await watcherPage(context, room, { me: REAPER });
+  const errors = [];
+  person.on('pageerror', (error) => errors.push(error.message));
+  await person.goto('/');
+  await joinFromCard(person);
+  await expect.poll(() => store(person, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
+  await typeAt(host, 1, 1, 'h');
+  await agreed(host, artist);
+
+  await namedWithoutArt(host, room, [ARTIST.id, REAPER.id], REAPER.id);
+  await isHost(artist).toBe('host');
+  expect(handedOverTo(room, ARTIST.id)).toBe(true);
+  await expect.poll(() => store(person, 'room', (r) => r.room?.hostSub), { timeout: 20_000 }).toBe(ARTIST.id);   // none between sockets
+  expect(await roleOf(person)).toBe('watch');
+  expect(room.received.some((r) => r.msg.type === 'end')).toBe(false);
+  await expect.poll(() => store(person, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
+  await typeAt(artist, 20, 12, 'z');
+  await expect.poll(() => chars(host, 12, 20, 20), { timeout: 20_000 }).toBe('z');
+  expect(errors).toEqual([]);
+});
+
+test('someone named before their document is back waits for it, and with no art and no artist here the room ends', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  const person = await watcherPage(context, room, { me: REAPER });
+  await person.goto('/');
+  await joinFromCard(person);
+  await expect.poll(() => store(person, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
+  await store(person, 'workspace', '(w) => { w.documentAnswered = false; }');
+  room.refusing = 'full';   // the old host isn't getting back in to be handed it
+
+  await namedWithoutArt(host, room, [REAPER.id], REAPER.id);
+  await expect.poll(() => room.received.some((r) => r.msg.type === 'hand-over' && r.msg.to === REAPER.id)).toBe(true);
+  await person.waitForTimeout(300);
+  expect(room.received.some((r) => r.msg.type === 'end')).toBe(false);
+  await store(person, 'workspace', '(w) => { w.documentAnswered = true; }');
+  await expect.poll(() => room.received.some((r) => r.msg.type === 'end'), { timeout: 10_000 }).toBe(true);
+});
+
+test('a host back too late without reloading keeps what it had as its own document, and joins with the room\'s', async ({ page: host, context }) => {
+  const room = fakeRoom({ hostWaitMs: 100 });
+  const { artist } = await together(host, context, room);
+  await typeAt(host, 20, 12, 'm');
+  await typeAt(artist, 30, 12, 'a');
+  await agreed(host, artist);
+  const before = await store(host, 'project', (p) => p.documentId);
+  room.dropHost();
+  await isHost(artist).toBe('host');
+  await isHost(host).toBe('watch');
+  await mayDraw(host).toBe(true);
+  await expect.poll(() => store(host, 'project', (p) => p.documentId), { timeout: 20_000 }).not.toBe(before);
+  const kept = await host.evaluate((id) => new Promise((resolve, reject) => {
+    const open = indexedDB.open('phosphor-autosave', 1);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const get = open.result.transaction('documents').objectStore('documents').get(id);
+      get.onsuccess = () => { open.result.close(); resolve(!!get.result); };
+    };
+  }), before);
+  expect(kept).toBe(true);
+  await agreed(host, artist);
 });
 
 test('signing out as host passes the role, and End room doesn\'t', async ({ page: host, context }) => {

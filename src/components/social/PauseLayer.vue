@@ -1,11 +1,14 @@
 <script setup>
+import { useDrawingStore } from '@/store/DrawingStore';
+
 // Over the drawing area while there's no host to number anything. Tools stay as they are and the keys are
 // refused at the store; a press here goes to the viewport, which starts nothing but scrolling and zooming.
+const drawing = useDrawingStore();
 </script>
 
 <template>
   <div class="pause-layer" role="status">
-    <p>The host is reconnecting. Drawing is paused.</p>
+    <p>{{ drawing.hostChanging ? 'The host is changing. Drawing is paused.' : 'The host is reconnecting. Drawing is paused.' }}</p>
   </div>
 </template>
 
