@@ -4,16 +4,17 @@
 // carries the signals and hears when a watcher's connection ends (send). Chat goes through the host
 // too (chat.js has its pieces): a watcher's message goes on to everyone only if it's theirs to send,
 // signed by the key in their pass, and the host keeps the last of them for anyone who joins later,
-// with who came and went among them.
+// with who came and went among them. A room drawing together goes through here as well: artists' messages
+// reach the callbacks, which the drawing store gives, and what's numbered goes back to them with sendAll.
 import { openPeer } from './peer.js';
 import { decodePass, verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
 import { Allowance, ChatLog, chatText, isId, newId, signedText } from './chat.js';
-import { CHUNK_BYTES, changedCells, encodeCells, packSnapshot } from './wire.js';
+import { CHUNK_BYTES, MOST_ARTIST_BYTES, changedCells, encodeCells, packSnapshot } from './wire.js';
 
 const BACKED_UP_BYTES = 8 * 1024 * 1024;   // a channel further behind than this is sent no art until it drains
 const DRAINED_BYTES = 1024 * 1024;           // to this, and then gets one fresh snapshot
-const MOST_HEARD_BYTES = 2048;               // a watcher's message longer than this is ignored
+const MOST_HEARD_BYTES = 2048;               // a watcher's message longer than this is ignored, and an artist's, but for a change
 const MOST_SKEW_MS = 120_000;                // a chat message's time, from the host's clock
 const EARLIER_EVERY_MS = 500;                // a watcher's asks for earlier messages, at most
 const MOST_CHECKING = 4;                     // a watcher's chat waiting to be checked; more is ignored
@@ -39,11 +40,19 @@ function cellsMessage(art, at) {
 }
 
 export class Host {
-  constructor({ send, passKey, config, connectWithinMs, roomId, returnWithinMs = RETURN_WITHIN_MS, onWatchers = () => {}, onChat = () => {} }) {
-    Object.assign(this, { send, passKey, config, connectWithinMs, roomId, returnWithinMs, onWatchers, onChat });
+  // project(): the document as of now, { n, epoch, chunks (a promise) }. onChange gives back what it numbered,
+  // or nothing when it's refused.
+  constructor({
+    send, passKey, config, connectWithinMs, roomId, returnWithinMs = RETURN_WITHIN_MS, onWatchers = () => {}, onChat = () => {},
+    project = null, onChange = () => null, onUndo = () => {}, onRedo = () => {}, onCursor = () => {}, onHello = () => {}, onAnswer = () => {},
+  }) {
+    Object.assign(this, { send, passKey, config, connectWithinMs, roomId, returnWithinMs, onWatchers, onChat, project, onChange, onUndo, onRedo, onCursor, onHello, onAnswer });
+    this.artists = new Set();   // the subs who may draw
     // peer -> { peer, pass, claims, tracking, conn, channel, has (the art it has), packing, behind,
     // allowance, heard (its chat, checked one at a time), checking (how many wait), askedAt (its last ask
-    // for earlier messages), here (counted among those in the room) }
+    // for earlier messages), here (counted among those in the room), and for an artist drawing (said hello),
+    // took (its changes handled on this connection, refused ones too), projecting and held (a project is on
+    // its way and what's numbered waits behind it), again (another project is owed after that) }
     this.watchers = new Map();
     this.here = new Map();   // sub -> their open connections: one person in two tabs comes and goes once
     this.silences = new Map();   // sub -> until (epoch ms), from 'silenced' since a pass was made (kept through a reconnect)
@@ -94,6 +103,7 @@ export class Host {
     const w = {
       peer, pass, claims: null, tracking: true, conn: null, channel: null, has: null, packing: false, behind: false,
       allowance: new Allowance(), heard: Promise.resolve(), checking: 0, askedAt: -Infinity,
+      drawing: false, took: 0, projecting: false, held: [], again: false,
     };
     this.watchers.set(peer, w);
     let claims = null;
@@ -311,18 +321,122 @@ export class Host {
     this.changed();
     if (this.room) this.sendTo(w, { t: 'room', ...this.room });
     this.sendTo(w, { t: 'history', ...this.log.page(undefined, (m) => this.shown(m.id, w)) });
+    if (this.artists.size) this.sendTo(w, { t: 'artists', subs: [...this.artists] });
     this.arrived(w);
     await this.update(w);
     if (this.view && this.watchers.get(w.peer) === w && channel.readyState === 'open') this.sendTo(w, { t: 'view', ...this.view });
   }
 
+  // Who it's from decides how long it may be, so that's looked at before anything is parsed.
   heard(w, data) {
-    if (typeof data !== 'string' || data.length > MOST_HEARD_BYTES) return;
+    const artist = this.isArtist(w.claims?.sub);
+    if (typeof data !== 'string' || data.length > (artist ? MOST_ARTIST_BYTES : MOST_HEARD_BYTES)) return;
     let msg;
     try { msg = JSON.parse(data); } catch { return; }
+    if (msg?.t !== 'change' && data.length > MOST_HEARD_BYTES) return;
     if (msg?.t === 'tracking') this.track(w, msg.on);
     else if (msg?.t === 'chat') this.check(w, msg);
     else if (msg?.t === 'earlier') this.earlier(w, msg.before);
+    else if (msg?.t === 'accept' || msg?.t === 'decline' || artist) this.drawn(w, msg);
+  }
+
+  // A message about the drawing. Whatever it does, the room goes on, and a change that can't be taken is
+  // refused: its sender has it on screen, so it's sent the project, which puts that right.
+  drawn(w, msg) {
+    const { sub, name } = w.claims;
+    try {
+      if (msg?.t === 'accept' || msg?.t === 'decline') this.onAnswer(sub, msg.t === 'accept');
+      else if (msg?.t === 'change') {
+        w.took++;
+        if (!this.onChange(sub, msg)) this.sendProject(w);
+      } else if (msg?.t === 'undo') this.onUndo(sub, msg);
+      else if (msg?.t === 'redo') this.onRedo(sub, msg);
+      else if (msg?.t === 'cursor') this.onCursor(sub, msg, name);
+      else if (msg?.t === 'artist-hello') {
+        w.drawing = true;
+        this.onHello(w, msg);
+      }
+    } catch (error) {
+      console.warn('A message about the drawing failed.', error);
+      if (msg?.t === 'change') this.sendProject(w);
+    }
+  }
+
+  // Who may draw now, for everyone to hear. Someone taken off stops being sent the drawing, and a change of
+  // theirs still on its way is someone else's message by the time it lands.
+  setArtists(subs) {
+    this.artists = new Set(subs);
+    for (const w of this.watchers.values()) {
+      if (w.claims && !this.artists.has(w.claims.sub)) Object.assign(w, { drawing: false, took: 0, held: [], again: false });
+    }
+    for (const w of this.open()) this.sendTo(w, { t: 'artists', subs: [...subs] });
+  }
+
+  isArtist(sub) {
+    return this.artists.has(sub);
+  }
+
+  // A message to someone by their sub, in every tab they're in; false if they can't be asked to draw.
+  tell(sub, msg) {
+    const tabs = this.open().filter((w) => w.claims.sub === sub);
+    if (!tabs.length || tabs[0].claims.guest) return false;
+    for (const w of tabs) this.sendTo(w, msg);
+    return true;
+  }
+
+  // To every artist who has said hello, none skipped, in order.
+  // ponytail: past what a channel buffers, send throws and the artist is dropped; the backlog comes with the check.
+  sendAll(msg) {
+    const data = JSON.stringify(msg);
+    for (const w of this.open()) if (w.drawing) this.deliver(w, data);
+  }
+
+  sendProjectToAll() {
+    for (const w of this.open()) this.sendProject(w);
+  }
+
+  // What someone missed, from the ledger's tail.
+  sendTail(w, items) {
+    for (const item of items) this.deliver(w, JSON.stringify(item.t ? item : { t: 'numbered', ...item }));
+  }
+
+  deliver(w, data) {
+    if (w.projecting) w.held.push(data);
+    else this.put(w, data);
+  }
+
+  // The whole document as of now, to one artist, then everything numbered since. What it's as of and what it
+  // counts are read before the first wait, and from there what's numbered is held for it. One at a time:
+  // a change refused while one is on its way isn't in it, so another follows.
+  // ponytail: each artist's is packed apart; share by n if several joining at once costs too much.
+  async sendProject(w) {
+    if (!w.drawing) return;
+    if (w.projecting) {
+      w.again = true;
+      return;
+    }
+    w.projecting = true;
+    const took = w.took;
+    try {
+      const { n, epoch, chunks: packing } = this.project();
+      const chunks = await packing;
+      if (this.watchers.get(w.peer) === w && w.drawing) {
+        const bytes = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        this.sendTo(w, { t: 'project-start', n, epoch, bytes, chunks: chunks.length, took });
+        for (const chunk of chunks) this.put(w, chunk);
+      }
+    } catch (error) {
+      console.warn('The art couldn\'t be packed for an artist.', error);
+    }
+    const held = w.held;
+    w.projecting = false;
+    w.held = [];
+    if (this.watchers.get(w.peer) !== w) return;
+    for (const data of held) this.put(w, data);
+    if (w.again) {
+      w.again = false;
+      await this.sendProject(w);
+    }
   }
 
   track(w, on) {

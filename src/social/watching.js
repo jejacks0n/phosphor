@@ -5,26 +5,36 @@
 // at most once a frame. States go to onState: 'connecting', 'live', then 'failed' if it never opened or
 // 'lost' if it closed after (or the host said its page is going). Chat comes the same way, and goes to
 // onChat only as its sender sent it: a verified member's pass the server signed, and their signature over
-// the message for this room, so a host can't put words in anyone's mouth.
+// the message for this room, so a host can't put words in anyone's mouth. For an artist, the drawing comes
+// here too. A project's numbers aren't for anything until it's opened: those that come inside its chunks wait,
+// and any it already holds go.
 import { openPeer } from './peer.js';
 import { verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
 import { PAGE, chatText, isId, signedText } from './chat.js';
-import { CHUNK_BYTES, MOST_SNAPSHOT_CHUNKS, decodeChange, unpackSnapshot } from './wire.js';
+import { CHUNK_BYTES, MOST_PROJECT_BYTES, MOST_SNAPSHOT_CHUNKS, decodeChange, unpackProject, unpackSnapshot } from './wire.js';
 import { clampAnsiZoom } from '../lib/zoom.js';
 
 const MOST_HEARD_CHARS = 256 * 1024;   // a host's text message: what a channel carries
 const MOST_WAITING = 1024;  // messages waiting to be handled: a whole snapshot's chunks and plenty more
 const MOST_NAME = 60;       // a room's name
 const MOST_WELCOME = 200;
+const MOST_PROJECT_CHUNKS = MOST_PROJECT_BYTES / CHUNK_BYTES;   // zipped, it's never more than unzipped
+const NOTHING = () => {};
 
 // A string, cut to most characters; null for anything else.
 const text = (value, most) => (typeof value === 'string' ? value.slice(0, most) : null);
 const place = (n) => Number.isInteger(n) && n >= 0;
 
 export class Watch {
-  constructor({ send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = () => {} }) {
-    Object.assign(this, { send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat });
+  constructor({
+    send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = NOTHING,
+    onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCursors = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING,
+  }) {
+    Object.assign(this, {
+      send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat,
+      onNumbered, onSettings, onBase, onProject, onCheck, onCursors, onInvite, onWithdrawn, onArtists,
+    });
     this.conn = null;
     this.channel = null;
     this.tracking = true;
@@ -51,6 +61,23 @@ export class Watch {
   // The page before the oldest message the watcher has.
   earlier(before) {
     return this.post({ t: 'earlier', before });
+  }
+
+  // An artist's: what's changed, as a change's message (wire.js), undo and redo of a whole stroke, and where they are.
+  sendChange({ stroke, cells, runs }) {
+    return this.post({ t: 'change', stroke, cells, runs });
+  }
+
+  sendUndo(stroke) {
+    return this.post({ t: 'undo', stroke });
+  }
+
+  sendRedo(stroke) {
+    return this.post({ t: 'redo', stroke });
+  }
+
+  sendCursor(at, view) {
+    return this.post({ t: 'cursor', at, view });
   }
 
   // Whether a message can go to the host now.
@@ -81,6 +108,8 @@ export class Watch {
     this.close();
     this.art = null;          // changes count only after this connection's first snapshot
     this.gathering = null;    // { want, chunks }: a snapshot's chunks as they come
+    this.project = null;      // project-start's fields, with its chunks and the numbers held till it's open
+    this.projectN = -1;       // numbers up to this are in the project opened
     this.heard = Promise.resolve();   // messages are handled one at a time, in order
     this.waiting = 0;                 // how many of them are still to be handled
     this.passes = new Map();   // pass -> its claims: good ones only, checked once a connection
@@ -105,6 +134,7 @@ export class Watch {
 
   async handle(data) {
     if (typeof data !== 'string') {
+      if (this.project) return this.projectChunk(data);
       const snapshot = this.gathering;
       if (!snapshot) return;
       if (data.byteLength > CHUNK_BYTES) {   // the whole snapshot goes
@@ -132,6 +162,43 @@ export class Watch {
     else if (msg.t === 'history') await this.history(msg);
     else if (msg.t === 'deleted' && isId(msg.id)) this.onChat({ type: 'deleted', id: msg.id });
     else if (msg.t === 'chat-no' && isId(msg.id) && msg.reason === 'too-fast') this.onChat({ type: 'refused', id: msg.id, reason: msg.reason });
+    else if (msg.t === 'numbered' || msg.t === 'settings' || msg.t === 'base') this.drawn(msg);
+    else if (msg.t === 'project-start') this.projectStart(msg);
+    else if (msg.t === 'check' && place(msg.n) && Number.isInteger(msg.sum)) this.onCheck(msg);
+    else if (msg.t === 'cursors') this.onCursors(Object.fromEntries(Object.entries(msg).filter(([key]) => key !== 't')));
+    else if (msg.t === 'invite') this.onInvite();
+    else if (msg.t === 'withdrawn') this.onWithdrawn();
+    else if (msg.t === 'artists' && Array.isArray(msg.subs) && msg.subs.every((sub) => typeof sub === 'string')) this.onArtists(msg.subs);
+  }
+
+  drawn(msg) {
+    if (!place(msg.n) || msg.n <= this.projectN) return;
+    if (this.project) this.project.held.push(msg);
+    else if (msg.t === 'numbered') this.onNumbered(msg);
+    else if (msg.t === 'settings') this.onSettings(msg);
+    else this.onBase(msg);
+  }
+
+  projectStart({ n, epoch, bytes, chunks, took }) {
+    const fits = place(n) && typeof epoch === 'string' && place(took) && Number.isInteger(chunks) && chunks >= 1 && chunks <= MOST_PROJECT_CHUNKS;
+    this.project = fits ? { n, epoch, bytes, took, want: chunks, chunks: [], held: [] } : null;
+  }
+
+  // The chunks in, it's opened, and only then what waited behind it. A channel's order is what keeps
+  // anything later behind that, since messages are handled one at a time.
+  async projectChunk(data) {
+    const project = this.project, conn = this.conn;
+    if (data.byteLength <= CHUNK_BYTES) project.chunks.push(new Uint8Array(data));
+    else project.want = -1;
+    if (project.want !== -1 && project.chunks.length < project.want) return;
+    this.project = null;
+    const parts = project.want === -1 ? null : await unpackProject(project.chunks, { mostBytes: MOST_PROJECT_BYTES });
+    if (this.conn !== conn) return;
+    if (parts) {
+      this.projectN = project.n;
+      await this.onProject({ n: project.n, epoch: project.epoch, took: project.took, parts });
+    }
+    if (this.conn === conn) for (const msg of project.held) this.drawn(msg);
   }
 
   // A message off the channel, queued unless it's past what a channel carries (not every browser holds a

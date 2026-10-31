@@ -41,8 +41,10 @@
  *   { t: 'base', n, runs, records }             the base layer's own pixels, and its pinned characters
  *   { t: 'project-start', n, epoch, bytes, chunks, took }
  *                                               then `chunks` binary messages: packProject's chunks, the
- *                                               whole document as of n, in a new epoch. `took` is how many of
- *                                               this artist's changes the host has handled up to n
+ *                                               whole document as of n, and the epoch it's in (a new one only
+ *                                               when the document was replaced). `took` is how many of this
+ *                                               artist's changes on this connection the host has handled up
+ *                                               to n, refused ones too
  *   { t: 'check', n, sum }                      the edit layer's sum as of n, to compare
  *   { t: 'cursors', [sub]: { at, view, name } } where everyone is
  *   { t: 'invite' } / { t: 'withdrawn' }        asked to draw; the ask is gone

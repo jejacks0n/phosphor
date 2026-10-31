@@ -593,3 +593,270 @@ test('close() stops the wait: no left line after it', async () => {
   await wait(400);
   expect(presences(r)).toEqual([]);
 });
+
+// Drawing together: what the Host does with an artist's messages. What the store does with them is
+// social-drawing.test.js. Here the callbacks are spies; the watchers post by hand.
+function drawingCalls(r) {
+  const calls = { change: [], undo: [], redo: [], cursor: [], hello: [], answer: [], refused: 0 };
+  r.host.onChange = (sub, msg) => { calls.change.push([sub, msg]); return msg.good !== false; };
+  r.host.onUndo = (sub, msg) => calls.undo.push([sub, msg]);
+  r.host.onRedo = (sub, msg) => calls.redo.push([sub, msg]);
+  r.host.onCursor = (sub, msg) => calls.cursor.push([sub, msg]);
+  r.host.onHello = (w, msg) => calls.hello.push([w.peer, msg]);
+  r.host.onAnswer = (sub, yes) => calls.answer.push([sub, yes]);
+  return calls;
+}
+const seated = async (r, ...peers) => {
+  for (const peer of peers) await expect.poll(() => r.log[peer].watch.ready && r.host.open().some((w) => w.peer === peer), PATIENT).toBe(true);
+};
+const connected = (r, peer) => r.host.open().find((w) => w.peer === peer);
+const CHANGE = { t: 'change', stroke: 's', cells: [], runs: [] };
+const padded = (chars) => ({ ...CHANGE, pad: 'x'.repeat(chars) });
+
+test('a change from a non-artist is ignored and the watcher stays', async () => {
+  const r = await room(['p1']);
+  const calls = drawingCalls(r);
+  await seated(r, 'p1');
+  r.log.p1.watch.post(CHANGE);
+  r.log.p1.watch.post({ t: 'undo', stroke: 's' });
+  r.log.p1.watch.post({ t: 'redo', stroke: 's' });
+  r.log.p1.watch.post({ t: 'cursor', at: null, view: null });
+  r.log.p1.watch.post({ t: 'artist-hello', has: -1, epoch: null });
+  await wait(60);
+  expect([calls.change, calls.undo, calls.redo, calls.cursor, calls.hello].flat()).toEqual([]);
+  expect(connected(r, 'p1').took).toBe(0);
+  expect(r.log.p1.watch.ready).toBe(true);
+  expect(lastList(r)[0].connected).toBe(true);
+});
+
+test('a host-only message from an artist does nothing', async () => {
+  const r = await room(['p1']);
+  const calls = drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  const artThen = r.host.art;
+  for (const t of ['numbered', 'settings', 'base', 'project-start', 'check', 'cursors', 'artists', 'invite', 'withdrawn', 'cells', 'snapshot', 'room', 'view', 'away', 'deleted']) {
+    r.log.p1.watch.post({ t, n: 1, subs: ['u_p1'], cells: [], runs: [], values: {}, chunks: 1 });
+  }
+  await wait(60);
+  expect([calls.change, calls.undo, calls.redo, calls.cursor, calls.hello, calls.answer].flat()).toEqual([]);
+  expect(r.host.art).toBe(artThen);
+  expect(r.host.isArtist('u_p1')).toBe(true);
+  expect(r.log.p1.watch.ready).toBe(true);
+});
+
+test('a change still in flight from someone just put back to watching is ignored', async () => {
+  const r = await room(['p1']);
+  const calls = drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  r.log.p1.watch.sendChange({ stroke: 's', cells: [], runs: [] });
+  r.host.setArtists([]);   // before it's heard
+  await wait(60);
+  expect(calls.change).toEqual([]);
+  expect(r.log.p1.watch.ready).toBe(true);
+});
+
+test('a large change from an artist is heard; the same size from a watcher isn\'t', async () => {
+  const r = await room(['p1', 'p2']);
+  const calls = drawingCalls(r);
+  await seated(r, 'p1', 'p2');
+  r.host.setArtists(['u_p1']);
+  r.log.p1.watch.post(padded(40_000));
+  r.log.p2.watch.post(padded(40_000));
+  await expect.poll(() => calls.change.length, PATIENT).toBe(1);
+  await wait(30);
+  expect(calls.change[0][0]).toBe('u_p1');
+  expect(r.log.p2.watch.ready).toBe(true);
+});
+
+test('only a change may be large: chat and the rest are held to what everyone is', async () => {
+  const r = await room(['p1']);
+  const calls = drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  r.log.p1.watch.post({ t: 'cursor', at: 'x'.repeat(3000) });
+  r.log.p1.watch.post({ t: 'accept', pad: 'x'.repeat(3000) });
+  await wait(60);
+  expect([calls.cursor, calls.answer].flat()).toEqual([]);
+});
+
+test('past an artist\'s limit nothing is heard, and junk from an artist is shrugged off', async () => {
+  const r = await room(['p1']);
+  const calls = drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  connected(r, 'p1').channel.onmessage({ data: JSON.stringify(padded(70_000)) });
+  connected(r, 'p1').channel.onmessage({ data: '{"t":"change"' });
+  connected(r, 'p1').channel.onmessage({ data: 'null' });
+  connected(r, 'p1').channel.onmessage({ data: new ArrayBuffer(8) });
+  await wait(30);
+  expect(calls.change).toEqual([]);
+  expect(r.log.p1.watch.ready).toBe(true);
+});
+
+test('a callback that throws doesn\'t reach the channel, and a change that threw is refused', async () => {
+  const r = await room(['p1']);
+  const calls = drawingCalls(r);
+  await seated(r, 'p1');
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  r.host.setArtists(['u_p1']);
+  r.host.onUndo = () => { throw new Error('no'); };
+  r.host.onChange = () => { throw new Error('no'); };
+  r.host.project = () => ({ n: 1, epoch: 'e', chunks: Promise.resolve([new Uint8Array(1)]) });
+  const w = connected(r, 'p1');
+  w.drawing = true;
+  expect(() => r.host.heard(w, JSON.stringify({ t: 'undo', stroke: 's' }))).not.toThrow();
+  expect(() => r.host.heard(w, JSON.stringify(CHANGE))).not.toThrow();
+  expect(w.took).toBe(1);
+  expect(w.projecting).toBe(true);
+  expect(calls.undo).toEqual([]);
+});
+
+test('accept and decline come from anyone; undo, redo, cursor and hello from artists reach their callbacks', async () => {
+  const r = await room(['p1']);
+  const calls = drawingCalls(r);
+  await seated(r, 'p1');
+  r.log.p1.watch.post({ t: 'accept' });
+  r.log.p1.watch.post({ t: 'decline' });
+  await expect.poll(() => calls.answer, PATIENT).toEqual([['u_p1', true], ['u_p1', false]]);
+  r.host.setArtists(['u_p1']);
+  r.log.p1.watch.sendUndo('a');
+  r.log.p1.watch.sendRedo('b');
+  r.log.p1.watch.sendCursor({ col: 1, row: 2 }, null);
+  r.log.p1.watch.post({ t: 'artist-hello', has: 3, epoch: 'e' });
+  await expect.poll(() => calls.hello.length, PATIENT).toBe(1);
+  expect(calls.undo).toEqual([['u_p1', { t: 'undo', stroke: 'a' }]]);
+  expect(calls.redo).toEqual([['u_p1', { t: 'redo', stroke: 'b' }]]);
+  expect(calls.cursor[0][1]).toMatchObject({ at: { col: 1, row: 2 }, view: null });
+  expect(calls.hello[0]).toEqual(['p1', { t: 'artist-hello', has: 3, epoch: 'e' }]);
+});
+
+test('sendAll reaches artists who said hello, and no one else', async () => {
+  const sends = watchSends();
+  const r = await room(['p1', 'p2', 'p3']);
+  drawingCalls(r);
+  await seated(r, 'p1', 'p2', 'p3');
+  r.host.setArtists(['u_p1', 'u_p2']);
+  connected(r, 'p1').channel.onmessage({ data: JSON.stringify({ t: 'artist-hello', has: -1, epoch: null }) });
+  sends.clear();
+  r.host.sendAll({ t: 'numbered', n: 1 });
+  const got = sends.sent().filter((m) => m.t === 'numbered');
+  expect(got.map((m) => m.channel)).toEqual([connected(r, 'p1').channel]);
+  expect(r.host.isArtist('u_p3')).toBe(false);
+});
+
+test('who may draw goes to everyone in the room, and to anyone who connects later', async () => {
+  const sends = watchSends();
+  const r = await room(['p1']);
+  await seated(r, 'p1');
+  sends.clear();
+  r.host.setArtists(['u_p1']);
+  await expect.poll(() => sends.sent().filter((m) => m.t === 'artists').length).toBe(1);
+  expect(sends.sent().find((m) => m.t === 'artists').subs).toEqual(['u_p1']);
+  r.log.p2 = watcher(r, 'p2');
+  sends.clear();
+  await r.host.peer('p2', await passFor('u_p2', 'p2'));
+  await expect.poll(() => sends.sent().filter((m) => m.t === 'artists').length, PATIENT).toBe(1);
+});
+
+test('a project goes as a start, its chunks, then what was numbered while it was packed, in order', async () => {
+  const sends = watchSends();
+  const r = await room(['p1']);
+  drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  const w = connected(r, 'p1');
+  w.drawing = true;
+  w.took = 3;
+  let release;
+  r.host.project = () => ({ n: 9, epoch: 'e1', chunks: new Promise((resolve) => { release = resolve; }) });
+  sends.clear();
+  const going = r.host.sendProject(w);
+  r.host.sendAll({ t: 'numbered', n: 10 });
+  w.took = 4;   // handled after the project's n
+  r.host.sendAll({ t: 'numbered', n: 11 });
+  expect(sends.sent()).toEqual([]);
+  const chunk = new Uint8Array(CHUNK_BYTES - 1);
+  release([chunk, chunk]);
+  await going;
+  expect(sends.sent().map((m) => m.t)).toEqual(['project-start', 'numbered', 'numbered']);
+  expect(sends.sent()[0]).toMatchObject({ n: 9, epoch: 'e1', chunks: 2, bytes: 2 * chunk.length, took: 3 });
+  expect(sends.chunks().length).toBe(2);
+  expect(sends.sent().slice(1).map((m) => m.n)).toEqual([10, 11]);
+  expect(w.projecting).toBe(false);
+});
+
+test('a refused change counts in took and is answered with a project, one in flight, and one more for any refused meanwhile', async () => {
+  const sends = watchSends();
+  const r = await room(['p1']);
+  drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  const w = connected(r, 'p1');
+  w.drawing = true;
+  const makes = [];
+  r.host.project = () => {
+    let resolve;
+    const chunks = new Promise((done) => { resolve = done; });
+    makes.push(resolve);
+    return { n: makes.length, epoch: 'e', chunks };
+  };
+  sends.clear();
+  const bad = JSON.stringify({ ...CHANGE, good: false });
+  r.host.heard(w, JSON.stringify(CHANGE));
+  r.host.heard(w, bad);
+  r.host.heard(w, bad);
+  expect(w.took).toBe(3);
+  expect(makes.length).toBe(1);
+  makes[0]([new Uint8Array(4)]);
+  await expect.poll(() => makes.length).toBe(2);
+  expect(sends.sent().filter((m) => m.t === 'project-start').map((m) => m.took)).toEqual([2]);
+  makes[1]([new Uint8Array(4)]);
+  await expect.poll(() => sends.sent().filter((m) => m.t === 'project-start').length).toBe(2);
+  expect(sends.sent().filter((m) => m.t === 'project-start').at(-1).took).toBe(3);
+  await later();
+  expect(makes.length).toBe(2);
+});
+
+test('someone put back to watching while their project is packed isn\'t sent it, or what waited', async () => {
+  const sends = watchSends();
+  const r = await room(['p1']);
+  drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  const w = connected(r, 'p1');
+  w.drawing = true;
+  let release;
+  r.host.project = () => ({ n: 1, epoch: 'e', chunks: new Promise((resolve) => { release = resolve; }) });
+  const going = r.host.sendProject(w);
+  r.host.sendAll({ t: 'numbered', n: 2 });
+  r.host.setArtists([]);
+  sends.clear();
+  release([new Uint8Array(4)]);
+  await going;
+  expect(sends.sent().filter((m) => m.t !== 'artists')).toEqual([]);
+  expect(sends.chunks()).toEqual([]);
+  expect(w.took).toBe(0);
+});
+
+test('a project that won\'t pack still lets out what waited, and leaves the room going', async () => {
+  const sends = watchSends();
+  const r = await room(['p1']);
+  drawingCalls(r);
+  await seated(r, 'p1');
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  r.host.setArtists(['u_p1']);
+  const w = connected(r, 'p1');
+  w.drawing = true;
+  let fail;
+  r.host.project = () => ({ n: 1, epoch: 'e', chunks: new Promise((_, reject) => { fail = reject; }) });
+  sends.clear();
+  const going = r.host.sendProject(w);
+  r.host.sendAll({ t: 'numbered', n: 2 });
+  fail(new Error('no'));
+  await going;
+  expect(sends.sent().map((m) => m.t)).toEqual(['numbered']);
+  expect(w.projecting).toBe(false);
+  expect(r.log.p1.watch.ready).toBe(true);
+});

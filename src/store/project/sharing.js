@@ -1,6 +1,7 @@
 // The document shared with a room: an edit goes out as it happens, a change heard is written, and undo
-// asks the host. Owns _sharing ({ send(message), role, me } and, for an artist, its Pending, what that reads
-// and writes through, and what's held), _paused, and _floating (a float's move is being made).
+// asks the host. Owns _sharing ({ send(message), role, me }, what's waiting for its frame, and, for an artist,
+// its Pending, what that reads and writes through, and what's held), _paused, and _floating (a float's move
+// is being made).
 //
 // A stroke goes out in slices: what's changed since the last one, every 100 ms and at commitEdit, under
 // the stroke's id. For a host, and for anyone alone, a slice goes in the ledger; a host also sends what
@@ -12,14 +13,23 @@
 // wait for that: each takes the last back at once. So an artist holds a float's change at home (in Pending,
 // where what it covers is kept and what's heard goes beneath, but not sent) until the next edit or the
 // next commitPending, which placing it is. Others see it land then rather than follow the drag.
+//
+// A change heard copies the map (22 ms at 500k cells) and refreshes, and several artists at ten slices a
+// second would swamp a tab, so what comes in one frame is written together. An artist can just wait: what it
+// hears is already late, and Pending is made for that. A host can't, since its ledger is the order: it numbers
+// and sends an artist's change at once, and its paint goes on the layer then, but the cells wait in heardCells,
+// where the ledger reads them (readCell) and a slice of the host's, numbered after, takes them back.
 import { markRaw } from 'vue';
+import { deserializeBase, serializeBase } from '@/document/baseRecords.js';
 import { cellChanges, pixelRuns, splitChange, pack } from '@/document/changes.js';
 import { TILE } from '@/document/History.js';
+import { MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
-import { MOST_CHANGE_BYTES } from '@/social/wire.js';
-import { ALONE, SAVED_KEYS, runsPatch } from '@/store/project/shared.js';
+import { MOST_CHANGE_BYTES, packProject, readChange } from '@/social/wire.js';
+import { ALONE, SAVED_KEYS, randomId, runsPatch } from '@/store/project/shared.js';
 
 const SLICE_MS = 100;
+const HIDDEN_TAB_MS = 100; // a hidden tab has no frames, and still has to catch up
 const EDIT_ONLY = { base: false, edit: true };
 
 // Refused while paused: everything that changes the drawing. changeSelection isn't here: it's not a change
@@ -83,6 +93,38 @@ function screenOf(project) {
   };
 }
 
+// fn at the next frame or after HIDDEN_TAB_MS, whichever's first; gives back what cancels it.
+function atNextFrame(fn) {
+  const cancel = () => {
+    cancelAnimationFrame(frame);
+    clearTimeout(timer);
+  };
+  const run = () => {
+    cancel();
+    fn();
+  };
+  const frame = requestAnimationFrame(run), timer = setTimeout(run, HIDDEN_TAB_MS);
+  return cancel;
+}
+
+const flushSoon = (project, sharing) => {
+  sharing.cancelFlush ??= atNextFrame(() => {
+    sharing.cancelFlush = null;
+    project.flushHeard();
+  });
+};
+
+// What an artist can make on this document (readChange).
+const boundsOf = ({ cols, rows, paintLayer }) => ({ cols, rows: charRowsOf(rows), layerWidth: paintLayer.canvas.width, layerHeight: paintLayer.canvas.height });
+
+// What a project's settings may set: only what a document saves. A host is a stranger, and these are patched
+// onto the store.
+function settingsFromHost(settings) {
+  const taken = Object.fromEntries([...SAVED_KEYS, 'fit', 'paintScale', 'baseScale', 'imageIsWorkingCopy'].filter((key) => key in settings).map((key) => [key, settings[key]]));
+  if (!(Number.isInteger(taken.baseScale) && taken.baseScale > 0)) delete taken.baseScale;
+  return taken;
+}
+
 // What the open stroke's cells have changed since its last slice.
 function changedCells(stroke, now) {
   if (stroke.noted?.map !== now) return cellChanges(stroke.editCells, now);
@@ -97,13 +139,18 @@ function changedCells(stroke, now) {
 export const sharingActions = {
   // me: the person's id. What's open was drawn alone, and goes in as that. A host keeps its undo, under its
   // own name now; an artist's document is the room's, and what it undid alone means nothing to the host.
-  startSharing({ send, role, me }) {
+  // sendDocument, a host's: send every artist the project.
+  startSharing({ send, role, me, sendDocument }) {
     this.stopSharing();
     this.commitPending();
     this.ensureLayer();
     const sum = this.editLayerSum();
-    const sharing = { send, role, me, held: null, takenBack: null, timer: setInterval(() => this.sendSlice(), SLICE_MS) };
+    const sharing = {
+      send, sendDocument, role, me, held: null, takenBack: null, timer: setInterval(() => this.sendSlice(), SLICE_MS),
+      heard: [], heardCells: new Map(), heardRuns: [], cancelFlush: null,
+    };
     if (role === 'host') {
+      this._ledger.epoch ??= randomId();
       this._ledger.rename(this._by, me);
       this._ledger.startNumbering({ sum });
     } else {
@@ -174,6 +221,7 @@ export const sharingActions = {
         else this.sendParts(stroke.id, parts);
       } else {
         this.sendNumbered(this._ledger.submit(this._by, stroke.id, change));
+        for (const [key] of cells) this._sharing?.heardCells.delete(key); // numbered after what was waiting there
       }
     } finally {
       this._baseline = null;
@@ -229,18 +277,178 @@ export const sharingActions = {
     return result;
   },
 
-  // A change heard. What I've drawn so far goes out first, so an artist's is held in Pending and the open
-  // stroke's baseline is what's been sent. A host's room must call sendSlice before it submits someone's
-  // change, or the ledger reads my unsent paint as what was beneath theirs. Written directly: it isn't an
-  // edit of mine, so it can't end a typing run or a float, or be undone by me. It does count as unsaved.
-  applyNumbered(numbered) {
+  // Changes heard together, in their order, as one write and one refresh. What I've drawn so far goes out
+  // first, so an artist's is held in Pending and the open stroke's baseline is what's been sent. Written
+  // directly: it isn't an edit of mine, so it can't end a typing run or a float, or be undone by me. It does
+  // count as unsaved.
+  applyNumbered(...numbered) {
     this.ensureLayer();
-    if (!this.paintLayer) return;
+    if (!this.paintLayer || !numbered.length) return;
     this.sendSlice();
     const { pending } = this._sharing ?? {};
-    const written = pending ? this.throughPending((p) => p.heard(numbered)).applied : numbered;
-    if (!pending) this.applyChange(written);
-    if (written.cells.length || written.runs.length) this.editVersion++;
+    const written = pending
+      ? this.throughPending((p) => numbered.map((one) => p.heard(one).applied))
+      : numbered;
+    if (!pending) this.applyChange({ cells: written.flatMap(({ cells }) => cells), runs: written.flatMap(({ runs }) => runs) });
+    if (written.some(({ cells, runs }) => cells.length || runs.length)) this.editVersion++;
+  },
+
+  // An artist's message from the host, for the next frame. Off this document (a host is a stranger) it's
+  // ignored; the check notices what that costs.
+  hearDrawing(message) {
+    const sharing = this._sharing;
+    if (!sharing?.pending || !this.paintLayer) return;
+    const fits = message.t === 'settings' ? message.values && typeof message.values === 'object'
+      : readChange(message.t === 'base' ? { stroke: 'base', cells: [], runs: message.runs } : message, boundsOf(message.t === 'base' ? { cols: 0, rows: 0, paintLayer: this.baseLayer } : this));
+    if (!fits) return;
+    sharing.heard.push(message);
+    flushSoon(this, sharing);
+  },
+
+  // What's waited for its frame goes on the screen. With no layer to write on, an artist's stays waiting,
+  // since a number lost is a picture wrong.
+  flushHeard() {
+    const sharing = this._sharing;
+    if (!sharing) return;
+    sharing.cancelFlush?.();
+    sharing.cancelFlush = null;
+    if (sharing.role === 'host') {
+      if (!sharing.heardCells.size && !sharing.heardRuns.length) return;
+      this.sendSlice(); // mine first: where it's written since, it stays (a slice takes those cells back)
+      const cells = [...sharing.heardCells], runs = sharing.heardRuns;
+      sharing.heardCells = new Map();
+      sharing.heardRuns = [];
+      this.applyChange({ cells, runs: [] }, { patches: [[runsPatch(runs), this.paintLayer]] });
+      return;
+    }
+    if (!sharing.heard.length) return;
+    this.ensureLayer();
+    if (!this.paintLayer) return;
+    const heard = sharing.heard;
+    sharing.heard = [];
+    let numbered = [];
+    for (const message of heard) {
+      if (message.t === 'numbered') {
+        numbered.push(message);
+        continue;
+      }
+      this.applyNumbered(...numbered);
+      numbered = [];
+      sharing.pending.n = message.n;
+      sharing.pending.tail.add(message);
+      if (message.t === 'settings') this.applySettings(message.values);
+      else this.applyBase(message.runs, deserializeBase(message.records).records);
+    }
+    this.applyNumbered(...numbered);
+  },
+
+  // Another document: nothing that was waiting belongs on it. A project holds an artist's that it's numbered past.
+  dropHeard() {
+    const sharing = this._sharing;
+    if (!sharing) return;
+    sharing.cancelFlush?.();
+    Object.assign(sharing, { cancelFlush: null, heard: [], heardCells: new Map(), heardRuns: [] });
+  },
+
+  // An artist's change, undo or redo reaching the host, in the order they're heard. Null when it can't be
+  // taken: a change for the room to answer, an undo or redo for it to say nothing about. Otherwise it's numbered and
+  // sent, and it's what was numbered that comes back. My open stroke's slice goes first, or the ledger would
+  // read my unsent paint as what's beneath theirs.
+  takeFromArtist(by, message) {
+    const sharing = this._sharing;
+    if (sharing?.role !== 'host' || !this.paintLayer) return null;
+    const change = message.t === 'change' ? readChange(message, boundsOf(this)) : message;
+    if (!change) return null;
+    this.sendSlice();
+    const numbered = change.t === 'undo' ? this._ledger.undo(by, change.stroke)
+      : change.t === 'redo' ? this._ledger.redo(by, change.stroke)
+        : this._ledger.submit(by, change.stroke, change);
+    if (!numbered) return null;
+    this.paintLayer.writeRuns(numbered.runs);
+    this.hasPaint = this.paintLayer.hasPaint;
+    for (const [key, entry] of numbered.cells) sharing.heardCells.set(key, entry ?? null);
+    for (const run of numbered.runs) sharing.heardRuns.push(run);
+    if (numbered.cells.length || numbered.runs.length) this.editVersion++;
+    flushSoon(this, sharing);
+    this.sendNumbered(numbered);
+    return numbered;
+  },
+
+  // The document for a project message (wire.js), with everything numbered up to n in it and nothing after.
+  projectNow() {
+    this.sendSlice();
+    this.flushHeard();
+    const { n, epoch } = this._ledger, { imageBuffer } = this;
+    const parts = this.projectParts(); // read now, whatever it waits for
+    return { n, epoch, chunks: parts.then((rest) => packProject({ imageBuffer, ...rest })) };
+  },
+
+  // A host's change to the base, numbered and kept like any change: what a stroke's patch did, or undoing it
+  // what it undid, and the pins as they are now. It's split as a change is, each part with the pins.
+  sendBase(patch, side) {
+    if (this._sharing?.role !== 'host') return;
+    const runs = (patch?.tiles ?? []).flatMap(({ x, y, before, after }) => (side === 'after'
+      ? pixelRuns(before.data, after.data, after.width, after.height, x, y)
+      : pixelRuns(after.data, before.data, after.width, after.height, x, y)));
+    const records = serializeBase(this.baseRecords) ?? { pins: [] };
+    for (const part of runs.length ? splitChange({ cells: [], runs }, MOST_CHANGE_BYTES) : [{ runs }]) {
+      const message = { t: 'base', n: this._ledger.note(), runs: part.runs, records };
+      this._ledger.tail.add(message);
+      this._sharing.send(message);
+    }
+  },
+
+  // The picture's been replaced for good (a merge, Bake, Into the image, the grid resized): positions don't
+  // mean what they did, so no one's undo reaches past this, and everyone gets the document in a new epoch.
+  shareWholeDocument() {
+    const { sendDocument } = this._sharing;
+    this.ensureLayer();
+    this.flushHeard();
+    this.clearHistory();
+    this._ledger.reset({ epoch: randomId(), sum: this.editLayerSum() });
+    this._ledger.note();
+    sendDocument?.();
+  },
+
+  // A host's settings to the room, numbered and kept like any change.
+  sendSettings() {
+    const message = { t: 'settings', n: this._ledger.note(), values: Object.fromEntries(SAVED_KEYS.map((key) => [key, this[key]])) };
+    this._ledger.tail.add(message);
+    this._sharing.send(message);
+  },
+
+  // The project an artist was sent, from a stranger: only what could be a document's, kept past the grid as
+  // a host's may be, and false with nothing changed for what isn't. The first is under a new documentId, so
+  // what was open stays in the autosave list, and starts the sharing; one after that is the same document.
+  // Its sum is what the scan says and what was mine and unnumbered goes back on top (in that order, as reapply
+  // reads what's beneath). Numbers it holds are gone with what was waiting; the room's Watch sees to any later.
+  async takeProject(parts, { n, filename, send, me }) {
+    const cells = [...parts.editCells];
+    if (cells.length > MAX_CELLS || !readChange({ stroke: 'project', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES })) return false;
+    try {
+      await this.openFromHost(
+        { ...parts, settings: settingsFromHost(parts.settings), erasedCells: [], migrated: false },
+        { filename, documentId: this._sharing ? this.documentId : undefined },
+      );
+    } catch (error) {
+      console.warn('The room\'s art couldn\'t be opened.', error);
+      if (!this.image) this.stopSharing();
+      return false;
+    }
+    const sharing = this._sharing;
+    if (sharing) {
+      this.ensureLayer();
+      sharing.screen.take();
+      const sum = this.editLayerSum();
+      this.throughPending((pending) => {
+        pending.seedSum(sum);
+        pending.reapply();
+      });
+    } else {
+      this.startSharing({ send, role: 'artist', me });
+    }
+    this._sharing.pending.n = n;
+    return true;
   },
 
   // From the host, so only what a document saves.
