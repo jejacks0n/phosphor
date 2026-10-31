@@ -17,7 +17,7 @@ const STATUS = {
   joining: 'Joining…', connecting: 'Joining…', waiting: 'Waiting for the host…',
   password: 'This room needs a password', failed: 'Couldn\'t reach this host',
 };
-const coming = computed(() => room.art && (room.status === 'waiting' || room.status === 'connecting'));
+const coming = computed(() => !!room.art && (room.status === 'waiting' || room.status === 'connecting'));
 const said = computed(() => (coming.value ? 'The host is reconnecting…' : STATUS[room.status] ?? null));
 const name = computed(() => room.room?.name || null);
 

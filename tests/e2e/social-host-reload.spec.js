@@ -106,12 +106,16 @@ test('the watcher sees The host is reconnecting… during the reload, then the a
 });
 
 test('closing the host\'s page ends the room for the watcher after the wait', async ({ page: host, context }) => {
-  const room = fakeRoom({ hostWaitMs: 500 });
+  const room = fakeRoom({ hostWaitMs: 3000 });
   const watcher = await watching(host, context, room);
+  host.on('dialog', (dialog) => dialog.accept());
 
-  await host.close({ runBeforeUnload: false });
-  // Nothing tells the watcher's connection a closed page is gone, so the first it hears is the server's ended.
-  await expect(watcher.getByText('The host ended the room').first()).toBeVisible();
+  const closing = Date.now();
+  await host.close({ runBeforeUnload: true });
+  await expect.poll(() => host.isClosed()).toBe(true);   // the close returns before the page has gone
+  expect(await store(watcher, 'room', (r) => r.role)).toBe('watch');   // the room outlasts the close
+  await expect(watcher.getByText('The host ended the room').first()).toBeVisible({ timeout: 10_000 });
+  expect(Date.now() - closing).toBeGreaterThanOrEqual(3000);
   await outOfRoom(watcher);
 });
 
