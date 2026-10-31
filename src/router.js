@@ -98,7 +98,7 @@ export function followAddress(router) {
     // Sign in under a two-factor code, and the name page has no way back.
     const spentPage = current.meta.page && arrivalPage(current.meta.page, known()) !== current.meta.page;
     const noStep = ['/social/name', '/social/two-factor'].includes(path);
-    const replace = landing || replaceNext || lost || spentPage || noStep || !current.meta.tab;   // / is never a step
+    const replace = (landing && !room.role) || replaceNext || lost || spentPage || noStep || !current.meta.tab;   // / is never a step
     replaceNext = false;
     ours = true;
     pending = true;   // beforeEach is a few promises off, and a second call before it would navigate again

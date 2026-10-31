@@ -531,6 +531,24 @@ test('signing in while watching goes back into the room, which is not spent', as
   expect(address()).toBe(`/social?room=${ID}`);
 });
 
+test('a Join before autosave has answered is still a step, so Back stays in Phosphor', async () => {
+  useFakeSockets();
+  serverFor(member());
+  await landing('/social');
+  await social.boot();
+  push = vi.spyOn(router, 'push');
+
+  room.join(ID);
+  await settled();
+  expect(address()).toBe(`/social?room=${ID}`);
+  expect(push).toHaveBeenCalledTimes(1);
+
+  router.back();
+  await settled();
+  expect(address()).toBe('/social');
+  expect(room.role).toBe(null);
+});
+
 // [the page, how you stop being able to come back to it, the page you're on then]
 const NO_RETURN = [
   ['sign-in', () => social.signIn('fan@example.com', 'right-password'), 'lobby'],
