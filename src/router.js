@@ -6,7 +6,7 @@ import { PLACES, arrivalPage, pathOf } from '@/lib/addresses';
 import { desktopQuery } from '@/social/config';
 import { useProjectStore } from '@/store/ProjectStore';
 import { hasLeftRoom, useRoomStore } from '@/store/RoomStore';
-import { useSocialStore } from '@/store/SocialStore';
+import { ERROR_PARAMS, RETURN_PARAMS, useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 const Empty = { render: () => null };   // the stores decide what shows
@@ -14,6 +14,10 @@ const Empty = { render: () => null };   // the stores decide what shows
 export function defaultHistory() {
   return import.meta.env.VITE_ADDRESSES === 'path' ? createWebHistory() : createWebHashHistory();
 }
+
+// With path addresses a return from the server shares the query. A computer has read it (readReturn takes it off
+// the URL, which the route doesn't hear), so a step doesn't carry it along; a phone keeps it for a computer.
+const withoutReturn = (query) => Object.fromEntries(Object.entries(query).filter(([name]) => ![...RETURN_PARAMS, ...ERROR_PARAMS].includes(name)));
 
 export function createAddressRouter(history = defaultHistory()) {
   return createRouter({
@@ -87,7 +91,8 @@ export function followAddress(router) {
     if (pending) return;
     const current = router.currentRoute.value, was = current.query.room ?? null, going = room.id ?? social.roomGoingTo;
     const path = pathOf({ tab: workspace.editorTab, page: social.page, role: room.role });
-    const wanted = going ?? (matchMedia(desktopQuery).matches ? null : was);   // a phone has no rooms: a link stays, for a computer
+    const computer = matchMedia(desktopQuery).matches;
+    const wanted = going ?? (computer ? null : was);   // a phone has no rooms: a link stays, for a computer
     if (path === current.path && wanted === was) {
       replaceNext = false;
       return;
@@ -103,7 +108,7 @@ export function followAddress(router) {
     ours = true;
     pending = true;   // beforeEach is a few promises off, and a second call before it would navigate again
     router[replace ? 'replace' : 'push']({
-      path, query: { ...current.query, room: wanted ?? undefined },
+      path, query: { ...(computer ? withoutReturn(current.query) : current.query), room: wanted ?? undefined },
       state: { inRoom: going ? room.role ?? 'watch' : null },   // a phone's kept link is no room of yours
     });
   }

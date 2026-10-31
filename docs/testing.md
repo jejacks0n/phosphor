@@ -65,6 +65,10 @@ the mouse and keyboard); read the stores with `store(page, 'project', (p) => ...
 Take `test` and `expect` from `./support.js` (lint insists): its `test` cuts the page off from the
 SOCIAL server, so no spec reaches the network; a SOCIAL spec fakes it with `fakeServer` from
 `./social-support.js`.
+
+`tests/e2e/path-addresses.spec.js` runs against the other way the app can be built, with path addresses
+(`/social` in place of `/#/social`): its own Playwright project, build and port.
+
 From `tests/e2e/edit-drag-select.spec.js`:
 
 ```js
