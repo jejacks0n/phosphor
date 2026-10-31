@@ -15,6 +15,9 @@ npm run test:update               # rewrite reference files (see below)
 npm run build
 ```
 
+Addresses are hash addresses (`/#/social`) by default. `VITE_ADDRESSES=path npm run build` builds path
+addresses (`/social`) instead, and the host must then serve `index.html` for every path.
+
 ## Where things live
 
 - `src/store/ProjectStore.js`: the document's state and getters. Its actions are in
@@ -39,6 +42,9 @@ npm run build
 - `src/composables/useAutosave.js`: writes the document to the browser as you work and brings it back,
   with `src/document/autosaveRules.js` (when, and what goes) and `src/document/autosaveStore.js` (the
   IndexedDB storage).
+- `src/router.js` and `src/lib/addresses.js`: the address (which tab, SOCIAL page and room) and Back,
+  Forward and reload. The stores are the truth; the router follows them, and `reconcile` is the one
+  place that navigates. `addresses.js` is the table of paths and where an address may land.
 - `src/document/`: the document's data (layers, cells, history, files); `src/lib/`: the libraries
   (cells, colors, the image pipeline, exports); `src/tools/`: one file per tool.
 - The SOCIAL tab: `src/social/` (the network and crypto modules: API calls, the lobby socket, keys
