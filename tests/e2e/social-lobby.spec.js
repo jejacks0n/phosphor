@@ -72,7 +72,7 @@ test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Joi
 
   await side(page).getByRole('button', { name: 'Sign in', exact: true }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('sign-in');
-  await page.reload();
+  await page.goto('/');   // a fresh load, not a reload: that would stay on Sign in
   await tab(page, 'SOCIAL').click();
   await side(page).getByRole('button', { name: 'Create one' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('create');
