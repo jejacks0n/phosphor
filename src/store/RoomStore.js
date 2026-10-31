@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia';
 import { markRaw, shallowRef, watch } from 'vue';
 import { until } from '@vueuse/core';
-import { apiOrigin, wsOrigin } from '@/social/config';
+import { apiOrigin, appOrigin, wsOrigin } from '@/social/config';
+import { forgetRoomLedger, readRoomLedger } from '@/document/autosaveStore';
 import { proof, sign } from '@/social/keys';
 import { Allowance, MOST_KEPT, REASONS, chatText, evidenceFor, newId, signedText } from '@/social/chat';
 import { LobbyConnection, Pacer } from '@/social/lobby';
-import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, refusalWords } from '@/social/messages';
+import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, newHostWords, refusalWords } from '@/social/messages';
 import { decodePass, passKey } from '@/social/pass';
 import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
 import { forgetHostingRecord, keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
@@ -29,7 +30,7 @@ const SETTINGS_EVERY_MS = 1250;  // the server's 1 s, with slack: it measures wh
 const ASK_FOR_MS = 3000;        // how long an earlier() waits for its page (the host may drop it unanswered)
 const KEEP_EVERY_MS = 1000;     // the host's resume record, as the room changes (and at once on pagehide)
 const RESUME_RETRY_MS = 3000;   // a host coming back asks again after this, then twice that, and so on, for a pass or a room that was too busy to answer
-const HOST_SOCKET = { liveOn: ['hosting'], endOn: ['refused', 'ended', 'replaced'] };
+const HOST_SOCKET = { liveOn: ['hosting'], endOn: ['refused', 'ended', 'replaced', 'new-host'] };
 export const ROOM_ID = /^[a-z2-7]{10}$/;
 // The wait before a returning host's next try (tries made so far): 3 s, 6 s, 12 s and on, no longer than
 // what's left of RETURN_WITHIN_MS since it began; 0 once that's gone.
@@ -87,6 +88,9 @@ export const hasLeftRoom = (id) => {
 
 // The cell in the middle of a view ({ col, row, cols, rows }), or the top left without one.
 const middleOf = (v) => (v ? { middleCol: v.col + v.cols / 2, middleRow: v.row + v.rows / 2 } : { middleCol: 0, middleRow: 0 });
+
+// A row as a Host's log keeps it, for someone who takes the room over with the chat they've seen.
+const logEntry = ({ id, ts, deleted, text, pass, sig, presence }) => (deleted ? { id, ts, deleted: true } : presence ? { pass, id, ts, presence } : { pass, id, ts, text, sig });
 
 // A deleted message as the list shows it: nothing says whose it was.
 const deletedRow = ({ id, ts }) => ({ id, ts, text: '', pass: null, sig: null, sub: null, name: null, host: false, mine: false, deleted: true });
@@ -146,6 +150,7 @@ export const useRoomStore = defineStore('room', {
     _resumeBegan: 0,     // when it began, which RETURN_WITHIN_MS counts from
     _throttled: 0,       // the room's refusals as too busy since then: the socket's retry steps on from each
     _keepTimer: null,    // the resume record's next write
+    _tookOver: false,    // named host by the room: the hosting that follows starts the Host off
   }),
 
   getters: {
@@ -300,7 +305,9 @@ export const useRoomStore = defineStore('room', {
       await until(() => !!project.image || workspace.documentAnswered).toBe(true, { timeout: Math.max(0, this._resumeBegan + RETURN_WITHIN_MS - Date.now()) });   // a database that never answers is the room gone
       if (gone()) return;
       if (!project.image) return this.over(ROOM_AWAY_WORDS);
-      useDrawingStore().resumeHosting(record);
+      const kept = await readRoomLedger(record.id).catch(() => null);
+      if (gone()) return;
+      useDrawingStore().resumeHosting(record, kept);
       this.share();
       this.connect({ type: 'host' }, HOST_SOCKET);
     },
@@ -418,13 +425,18 @@ export const useRoomStore = defineStore('room', {
 
     // A room by its id (a lobby card's Join, or a ?room= link), with its password once it asks for one.
     join(id, { password } = {}) {
-      const social = useSocialStore();
       if (!ROOM_ID.test(id)) {
-        social.notice = refusalWords('unavailable');
+        useSocialStore().notice = refusalWords('unavailable');
         return;
       }
       this.close();
       noteLeft(id, false);
+      this.watchRoom(id, { password });
+    },
+
+    // In as a watcher: a Watch, and the socket's join. The chat stays with someone who was already in.
+    watchRoom(id, { password } = {}) {
+      const social = useSocialStore();
       Object.assign(this, { role: 'watch', id, status: 'joining', _password: password, reported: reportedIn(id, social.claims?.sub) });
       if (social.signedIn) social.loadBlocked();   // whose messages to hide
       const drawing = useDrawingStore();
@@ -529,12 +541,14 @@ export const useRoomStore = defineStore('room', {
 
     // Everything stops, and nothing of the room is kept; a room you host is ended first. It's spent, unless
     // Back past the join is why: Forward can undo that.
-    close({ spent = true } = {}) {
+    // passRole: signing out of a room with artists in it. They go on without you, as if the tab had closed.
+    close({ spent = true, passRole = false } = {}) {
       this.answerEnd(true);   // a question still open: there's nothing left to keep, and Back can finish
       if (spent && this.id) noteLeft(this.id, true);
       if (this.role === 'host') {
-        this._connection?.send({ type: 'end' });
+        if (!passRole || !useDrawingStore().artists.length) this._connection?.send({ type: 'end' });
         forgetHostingRecord();
+        forgetRoomLedger(this.id).catch(() => {});
       }
       const connection = this._connection;
       this._connection = null;
@@ -550,7 +564,7 @@ export const useRoomStore = defineStore('room', {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
         hostView: null, lookingAt: null, tracking: true, following: null, showEveryone: false, showBox: true, artistViews: {}, artZoom: 1, artFit: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
-        _refusedOnce: false, _resuming: false, _keepTimer: null,
+        _refusedOnce: false, _resuming: false, _keepTimer: null, _tookOver: false,
       });
     },
 
@@ -561,7 +575,7 @@ export const useRoomStore = defineStore('room', {
       const connection = this._connection = markRaw(new LobbyConnection({
         url: `${wsOrigin(apiOrigin())}/api/rooms/${id}/ws`,
         getPass: () => social.getPass(),
-        greet: async (pass, privateKey) => ({ ...greeting, pass, ...await proof(privateKey, (ts) => `room:${id}:${ts}`) }),
+        greet: async (pass, privateKey) => ({ ...connection.greeting, pass, ...await proof(privateKey, (ts) => `room:${id}:${ts}`) }),
         liveOn, endOn,
         onMessage: (msg) => { if (connection === this._connection) this.heard(msg); },
         onStatus: (status) => {
@@ -575,7 +589,77 @@ export const useRoomStore = defineStore('room', {
           }
         },
       }));
+      connection.greeting = greeting;
       connection.open();
+    },
+
+    // The room named a new host (or `joined` says it did, while this socket was down: no planned then).
+    heardNewHost({ name, sub, planned }) {
+      const me = useSocialStore().claims?.sub, old = this.role === 'host' ? useSocialStore().claims?.name : this.room?.host;
+      const words = old && name && old !== name ? newHostWords({ old, name, planned }) : null;
+      if (sub === me) return this.takeOver({ planned, words });
+      if (this.role === 'host') return this.becomeArtist({ planned, name, sub, words });
+      this.room = { ...this.room, host: name, hostSub: sub };
+      this.chat = this.chat.map((row) => (row.host === (row.sub === sub) ? row : { ...row, host: row.sub === sub }));
+      this.artistViews = {};
+      this.hostView = null;
+      // The artist or old host they followed is out of it, unless they're looking around on their own.
+      this.following = sub;
+      this._watch.follow(null);
+      this._watch.close();
+      this.watchState('lost');
+      useDrawingStore().hostChanged({ planned, words });
+    },
+
+    // Named by the room: this socket is the host's now, and hosting comes next. Someone who isn't drawing has none
+    // of the room's art to carry on with, so the room ends.
+    // ponytail: a reloading artist named before its document is back ends the room too; wait for documentAnswered if that shows up.
+    takeOver({ planned, words }) {
+      const drawing = useDrawingStore(), connection = this._connection;
+      if (!drawing.holdsTheArt()) return void connection?.send({ type: 'end' });
+      for (const stop of this._stops) stop();
+      this.stopAsking();
+      this._watch?.close();
+      const { id, room, _password: password } = this;
+      this.hostRoom({
+        id, link: `${appOrigin()}/?room=${id}`, status: 'reconnecting', hasPassword: password !== undefined,
+        room: { ...room, hostSub: useSocialStore().claims.sub, hostName: useSocialStore().claims.name },
+        watchers: [], art: null, hostView: null, lookingAt: null, tracking: true, following: null, showEveryone: false, showBox: true, artistViews: {},
+        artZoom: 1, artFit: 1, joinedAt: null, muted: [], peopleOpen: false, lobbyPin: null, session: newSession(),
+        _watch: null, _password: undefined, _refusedOnce: false, _resuming: false, _tookOver: true,
+      });
+      drawing.takeOver(this._host, { planned, words });
+      this.chat = this.chat.map((row) => ({ ...row, host: row.mine }));
+      if (connection) Object.assign(connection, { greeting: { type: 'host' }, ...HOST_SOCKET });
+      this.share();
+    },
+
+    // The role moved on, by this host's Make host or while it was away: back in on a new socket, with the document
+    // and chat as they are. Refused (full, or no longer welcome), it's left with them, as anyone leaving is.
+    becomeArtist({ planned, name, sub, words }) {
+      const drawing = useDrawingStore();
+      for (const stop of this._stops) stop();
+      this._connection = null;   // ending itself
+      this._host?.close();
+      this._settings?.reset();
+      forgetHostingRecord();
+      forgetRoomLedger(this.id).catch(() => {});
+      const { id, room } = this;
+      Object.assign(this, {
+        link: null, hasPassword: false, watchers: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(), joinedAt: this.chat.at(-1)?.id ?? null,
+        room: { name: room.name, welcome: room.welcome, host: name, hostSub: sub }, following: sub,
+        _host: null, _settings: null, _stops: [], _keepTimer: null, _resuming: false, _refusedOnce: false,
+      });
+      this.chat = this.chat.map((row) => ({ ...row, host: row.sub === sub }));
+      this.watchRoom(id);
+      drawing.becomeArtist({ planned });
+      drawing.hostChanged({ planned, words });
+    },
+
+    // The answer to last-change?, from someone drawing. Anyone else has nothing to say.
+    answerLastChange() {
+      const n = useDrawingStore().lastChange();
+      if (n !== null) this._connection?.send({ type: 'last-change', n });
     },
 
     // Your message: the text as the composer sends it, within your allowance, signed with this browser's key.
@@ -734,7 +818,7 @@ export const useRoomStore = defineStore('room', {
     chatRow({ id, ts, text = '', pass, sig, presence }, claims = decodePass(pass)) {
       const mine = claims.sub === useSocialStore().claims?.sub;
       const row = { id, ts, text, sub: claims.sub, name: claims.name, host: this.role === 'host' ? mine : claims.sub === this.room?.hostSub, mine, deleted: false };
-      return presence ? { ...row, presence } : { ...row, pass, sig };   // a report carries the message as it was signed
+      return presence ? { ...row, presence, pass } : { ...row, pass, sig };   // a report carries the message as it was signed, and a new host the rest
     },
 
     // The list holds the last MOST_KEPT at most, like the host's log, and goes no further back: once it's
@@ -748,15 +832,28 @@ export const useRoomStore = defineStore('room', {
     heard(msg) {
       switch (msg.type) {
         case 'hosting': {
-          const chosen = this.room;
+          const tookOver = this._tookOver, chosen = tookOver ? { ...msg.room, welcome: this.room.welcome } : this.room;
           this._refusedOnce = false;
           this._resuming = false;
+          this._tookOver = false;
           this.room = { ...msg.room, welcome: chosen.welcome };
+          if (tookOver) this.status = 'live';
           if (!this._host.room) this._host.setRoom({ name: msg.room.name, welcome: chosen.welcome });
+          if (tookOver) this.carryOnFrom(msg.peers);
           this._host.hosting(msg.peers);
+          useDrawingStore().hostingAgain({ tookOver });
           this.changeSettings(chosen);   // a change made while the socket was down goes now
           break;
         }
+        case 'new-host':
+          this.heardNewHost(msg);
+          break;
+        case 'artists-now':
+          useDrawingStore().artistsNow(msg.subs);
+          break;
+        case 'last-change?':
+          this.answerLastChange();
+          break;
         case 'settings-now': {
           // The server's word on the room, but a change still waiting to go stays shown (it would only flicker back).
           const waiting = this._settings.timer ? { allowGuests: this.room.allowGuests, max: this.room.max, signal: this.room.signal } : {};
@@ -773,6 +870,13 @@ export const useRoomStore = defineStore('room', {
           (this._host ?? this._watch)?.signalFrom(msg.from, msg.data);
           break;
         case 'joined':
+          // The room moved on to this person while their socket was down, and this is their way back in: it's theirs.
+          if (msg.hostSub === useSocialStore().claims?.sub && this.room?.hostSub !== msg.hostSub && useDrawingStore().holdsTheArt()) {
+            this.takeOver({ planned: false, words: null });
+            this._connection.open();
+            break;
+          }
+          if (Array.isArray(msg.artists) && !useDrawingStore().mayDraw) useDrawingStore().artists = msg.artists;
           this._refusedOnce = false;
           this.status = 'waiting';
           this.room = { name: '', welcome: '', ...this.room, host: msg.hostName, hostSub: msg.hostSub };
@@ -802,6 +906,7 @@ export const useRoomStore = defineStore('room', {
     // one was sent: a link's first try goes without). Anything else is the end of it.
     refused(reason) {
       const connection = this._connection;
+      if (reason === 'not-host' && this.role === 'host') return this.backAsArtist();
       const wait = reason === 'throttled' && this._resuming ? retryIn(this._throttled++, this._resumeBegan) : null;
       if (wait) {   // too busy to say: the room may well be there
         setTimeout(() => { if (connection === this._connection) connection.open(); }, wait);
@@ -813,6 +918,29 @@ export const useRoomStore = defineStore('room', {
       } else {
         this.over(this._resuming ? ROOM_AWAY_WORDS : refusalWords(reason));
       }
+    },
+
+    // A host back too late: the role has moved on, and what it kept goes. It joins like anyone, and the list says if
+    // it's still an artist. What it had unnumbered went with the old page.
+    backAsArtist() {
+      const id = this.id;
+      this._connection = null;   // it's ending itself: no end to send
+      this.join(id);
+      useDrawingStore().noteFormerHost();
+    },
+
+    // Someone new to hosting: what they've seen of the chat is the log, and who's here is who the room lists, none
+    // of them arriving. Whoever else is yet to connect is someone to wait for, as after a reload.
+    carryOnFrom(peers) {
+      const here = [];
+      for (const { pass } of peers) {
+        try {
+          const claims = decodePass(pass);
+          here.push({ sub: claims.sub, pass });
+          sessionJoined(this.session, claims, Date.now());
+        } catch { /* a pass that can't be read names no one */ }
+      }
+      this._host.restore({ log: this.chat.map(logEntry), only: [], removed: [], muted: [], here });
     },
 
     over(notice) {

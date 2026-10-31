@@ -10,7 +10,7 @@ import { openPeer } from './peer.js';
 import { decodePass, verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
 import { Allowance, ChatLog, chatText, isId, newId, signedText } from './chat.js';
-import { CHUNK_BYTES, MOST_ARTIST_BYTES, changedCells, encodeCells, isSub, packSnapshot, readView } from './wire.js';
+import { CHUNK_BYTES, MOST_ARTIST_BYTES, MOST_PROJECT_BYTES, changedCells, encodeCells, isSub, packSnapshot, readView, unpackProject, unpackValue } from './wire.js';
 
 const BACKED_UP_BYTES = 8 * 1024 * 1024;   // a channel further behind than this is sent no art until it drains
 const DRAINED_BYTES = 1024 * 1024;           // to this, and then gets one fresh snapshot
@@ -23,6 +23,10 @@ const VIEWS_EVERY_MS = 250;                  // an artist's view, or everyone's,
 const TRACKING_EVERY_MS = 250;              // who's here is redrawn for tracking toggles at most this often
 export const KEPT_THROUGH_RELOAD = 1000;     // the newest messages kept() hands over, to be restored after the host's reload
 export const RETURN_WITHIN_MS = 60_000;      // after a reload, those who were here have this long to come back before they're said to have left
+const HAND_OVER_WITHIN_MS = 15_000;          // for the artist chosen to have the ledger and say so
+const SERVER_ANSWERS_WITHIN_MS = 5000;       // for new-host after hand-over: the server says nothing if it won't
+const CATCH_UP_QUIET_MS = 10_000;            // an artist asked to catch-up, going this long without a word, isn't going to
+const MOST_CATCH_UP_CHUNKS = MOST_PROJECT_BYTES / CHUNK_BYTES;
 
 const sameView = (a, b) => a.col === b.col && a.row === b.row && a.cols === b.cols && a.rows === b.rows && a.zoom === b.zoom;
 
@@ -58,7 +62,8 @@ export class Host {
     // took (its changes handled on this connection, refused ones too), queue and queued (what's numbered for it,
     // waiting for its channel, and how much), projecting (a project is on its way, and the queue and any art wait
     // behind it), again (a project is owed, which will hold whatever would have been queued), checked (the last
-    // number it was sent a check for), drained (ends the wait for its channel to drain) }
+    // number it was sent a check for), drained (ends the wait for its channel to drain), handedOver (ends the wait
+    // for its hand-over-ok), catchUp (an answer to catch-up, coming in), askedCatchUp (it was asked once) }
     this.watchers = new Map();
     this.here = new Map();   // sub -> their open connections: one person in two tabs comes and goes once
     this.silences = new Map();   // sub -> until (epoch ms), from 'silenced' since a pass was made (kept through a reconnect)
@@ -73,6 +78,9 @@ export class Host {
     this.view = null;
     this.artistViews = {};   // sub -> view, from the artists' cursors
     this.packed = null;   // { art, chunks }: one snapshot for every watcher, packed again only for new art
+    this.holding = null;   // [[w, msg]]: artists' changes that wait while nothing's being numbered
+    this.handOverWithinMs = HAND_OVER_WITHIN_MS;
+    this.serverAnswersWithinMs = SERVER_ANSWERS_WITHIN_MS;
   }
 
   // What the host keeps through a reload, for restore() to take back: the newest of the log, who was sent
@@ -129,6 +137,8 @@ export class Host {
             if (this.watchers.get(peer) !== w) return;   // closed here on purpose
             this.watchers.delete(peer);
             w.drained?.();
+            w.handedOver?.(false);
+            w.catchUp?.done(null);
             this.went(w);
             this.send({ type: 'left', peer });
             this.changed();
@@ -384,6 +394,8 @@ export class Host {
     this.watchers.delete(peer);
     this.went(w);
     w.drained?.();
+    w.handedOver?.(false);
+    w.catchUp?.done(null);
     w.conn?.close();
     return true;
   }
@@ -433,6 +445,7 @@ export class Host {
 
   // Who it's from decides how long it may be, so that's looked at before anything is parsed.
   heard(w, data) {
+    if (w.catchUp && typeof data !== 'string') return this.catchUpChunk(w, data);
     const artist = this.isArtist(w.claims?.sub);
     if (typeof data !== 'string' || data.length > (artist ? MOST_ARTIST_BYTES : MOST_HEARD_BYTES)) return;
     let msg;
@@ -450,8 +463,11 @@ export class Host {
   // refused: its sender has it on screen, so it's sent the project, which puts that right.
   drawn(w, msg) {
     const { sub, name } = w.claims;
+    if (this.holding && (msg?.t === 'change' || msg?.t === 'undo' || msg?.t === 'redo')) return void this.holding.push([w, msg]);
     try {
-      if (msg?.t === 'accept' || msg?.t === 'decline') this.onAnswer(sub, msg.t === 'accept');
+      if (msg?.t === 'hand-over-ok') w.handedOver?.(true);
+      else if (msg?.t === 'catch-up-start') this.catchUpStart(w, msg);
+      else if (msg?.t === 'accept' || msg?.t === 'decline') this.onAnswer(sub, msg.t === 'accept');
       else if (msg?.t === 'change') {
         w.took++;
         if (!this.onChange(sub, msg)) this.sendProject(w);
@@ -465,6 +481,87 @@ export class Host {
     } catch (error) {
       console.warn('A message about the drawing failed.', error);
       if (msg?.t === 'change') this.sendProject(w);
+    }
+  }
+
+  // Nothing's being numbered for now: artists' changes wait here, in order, until release().
+  hold() {
+    this.holding ??= [];
+  }
+
+  release() {
+    const held = this.holding ?? [];
+    this.holding = null;
+    for (const [w, msg] of held) if (this.watchers.get(w.peer) === w) this.drawn(w, msg);
+  }
+
+  // The chunks to the artist named, behind whatever's already on its way to them, and true once they've said it's
+  // in. False if they're not here to take it, or it's not said within handOverWithinMs.
+  async handOver(sub, chunks) {
+    const w = this.open().find(({ claims, drawing }) => claims.sub === sub && drawing);
+    if (!w) return false;
+    const giveUpAt = Date.now() + this.handOverWithinMs;
+    while (w.projecting || w.again || w.queue.length) {
+      if (Date.now() > giveUpAt || this.watchers.get(w.peer) !== w) return false;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    const answer = new Promise((resolve) => {
+      const timer = setTimeout(() => w.handedOver?.(false), Math.max(0, giveUpAt - Date.now()));
+      w.handedOver = (yes) => {
+        clearTimeout(timer);
+        w.handedOver = null;
+        resolve(yes);
+      };
+    });
+    this.sendTo(w, { t: 'hand-over', chunks: chunks.length, room: this.room });
+    await this.putPaced(w, chunks);
+    return answer;
+  }
+
+  // What an artist ahead of this host holds after has: { n, epoch, kind, tail or parts }, or null for no answer
+  // that can be used. Once per connection, so one who won't say can't hold anything up again.
+  askCatchUp(w, { has, epoch }) {
+    w.askedCatchUp = true;
+    return new Promise((resolve) => {
+      let timer = null;
+      const catchUp = w.catchUp = {
+        chunks: [], want: null,
+        done: (answer) => {
+          clearTimeout(timer);
+          w.catchUp = null;
+          resolve(answer);
+        },
+        wait: () => {
+          clearTimeout(timer);
+          timer = setTimeout(() => catchUp.done(null), CATCH_UP_QUIET_MS);
+        },
+      };
+      catchUp.wait();
+      this.sendTo(w, { t: 'catch-up', has, epoch });
+    });
+  }
+
+  catchUpStart(w, { n, epoch, kind, chunks }) {
+    const { catchUp } = w;
+    if (!catchUp) return;
+    if (!Number.isSafeInteger(n) || n < 0 || typeof epoch !== 'string' || (kind !== 'tail' && kind !== 'project') || !Number.isInteger(chunks) || chunks < 1 || chunks > MOST_CATCH_UP_CHUNKS) return catchUp.done(null);
+    Object.assign(catchUp, { n, epoch, kind, want: chunks });
+    catchUp.wait();
+  }
+
+  async catchUpChunk(w, data) {
+    const { catchUp } = w;
+    if (catchUp.want === null || data.byteLength > CHUNK_BYTES) return catchUp.done(null);
+    catchUp.chunks.push(new Uint8Array(data));
+    catchUp.wait();
+    if (catchUp.chunks.length < catchUp.want) return;
+    const { n, epoch, kind, chunks } = catchUp;
+    if (kind === 'tail') {
+      const tail = await unpackValue(chunks, { mostBytes: MOST_PROJECT_BYTES });
+      catchUp.done(Array.isArray(tail) ? { n, epoch, kind, tail } : null);
+    } else {
+      const parts = await unpackProject(chunks, { mostBytes: MOST_PROJECT_BYTES });
+      catchUp.done(parts ? { n, epoch, kind, parts } : null);
     }
   }
 

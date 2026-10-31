@@ -218,8 +218,9 @@ from someone you blocked shows **Show** first).
 
 **End room** ends it for everyone, including anyone drawing, and tells watchers at once. Reloading the tab comes back to the same
 room as its host, at the same address and the same view, and watchers wait and see it's reconnecting. Closing the tab for
-good ends the room within about a minute. The prompt still asks first; if the room ended while the page was
-away, you're told so and your art stays. Signing out while you host ends the room as well. A chat longer
+good ends the room within about a minute, unless someone is drawing with you: then an artist carries it on
+(see **Drawing together**). The prompt still asks first; if the room ended while the page was
+away, you're told so and your art stays. Signing out while you host works the same way. A chat longer
 than 1000 entries keeps its newest after a reload. A room opened in a copy of the tab moves to the copy,
 and the older tab says so.
 
@@ -267,7 +268,7 @@ SOCIAL tab, and the chat stays open beside your work. Watching never changes you
 own art.
 
 When the host ends the room, it ends for you too. The art goes with it: Phosphor doesn't keep a
-copy.
+copy. If the role passes to an artist (see **Drawing together**), the room carries on and you watch the new host.
 
 ## Drawing together
 
@@ -302,6 +303,27 @@ work. When the host is back, what's waiting is sent and drawing goes on.
 The host can choose **Back to watching** in the person's menu. They keep the art open as an ordinary document
 to save or keep working on, with its undo emptied, and nothing they do there reaches the room. The same happens
 to anyone drawing when the room ends. A reload as an artist comes back as an artist, with the art as it is now.
+If they stop being able to draw for any other reason, the same happens, with no words about it.
+
+### When the host changes
+
+A room outlives its host while anyone's drawing. In an artist's row, while they're connected, the **⋯** menu has
+**Make host**, which asks "Make {name} the host? You'll stay in the room as an artist." Once they've taken the
+art, everyone sees "{old} made {new} the host." and the old host goes on drawing as an artist. Everyone keeps their
+undo. If the new host doesn't answer within about 15 seconds, nothing has changed.
+
+A host who closes their tab or signs out, and doesn't come back in time, hands over the same way without asking:
+an artist takes the room, and everyone sees "{old} left the room. {new} is now the host." and "The host changed,
+so undo starts over. All the drawing is still here." All the drawing stays, and any stroke that hadn't reached the
+old host is sent again to the new one. With no artist left, the room ends. **End room** always ends it for everyone.
+
+The new host keeps the chat so far, the room's name and its welcome, and starts with new stats and no one muted.
+Watchers can't be chosen; they carry on watching, now the new host. A host who comes back after the role has moved is
+an artist, and an artist who drops out and returns is still one, with no new invitation.
+
+A host's reload picks up where it was, whatever autosave had reached: for up to about 5 seconds drawing waits while
+the artists check in, and if one of them has strokes the host doesn't, the host catches up from them first. If they
+can't bridge the gap, undo starts over, with the same words as above. No strokes are lost.
 
 ## The address, Back and Forward
 

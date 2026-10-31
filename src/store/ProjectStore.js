@@ -72,6 +72,7 @@ export const useProjectStore = defineStore('project', {
     _paused: false,
     _takingProject: false, // a host's project is being written: the guard below doesn't apply (document.js)
     _sameDocument: false, // and it's this document brought up to date, so undo and the selection stay
+    _documentN: null, // the ledger's number the open document was autosaved at, as it came back (useAutosave)
   }),
 
   getters: {
@@ -119,5 +120,5 @@ export const useProjectStore = defineStore('project', {
     sliderActions,
     historyActions,
     sharingActions,
-  ), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => store._sharing?.role === 'artist' && !store._takingProject),
+  ), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => !!store._sharing && (store._sharing.role === 'artist' || store._paused) && !store._takingProject),
 });

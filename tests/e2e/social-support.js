@@ -195,15 +195,23 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
 // silenced to the host and to each socket whose watcher is that account, as the server does on a silence.
 // A page closing counts as its sockets closing (a watcher's or the host's). With hostWaitMs, a host socket closing
 // with none left in its place ends the room after that long (it stays otherwise): ended goes to everyone, and a
-// later host is refused unavailable.
+// later host is refused unavailable, unless artists are in the room when the wait ends: then each hears last-change?,
+// the most advanced (or the first let in) after pickWaitMs is named, and everyone hears new-host. A host's artists is
+// answered artists-now, without room.unqualified's subs; room.relist() says it again unasked. A hand-over to an
+// artist in the room names them (nothing happens with room.ignoringHandOvers, or for anyone else). The one named has
+// its socket become the host's: new-host, hosting, artists-now with the old host. The old host's closes on new-host;
+// its host again is refused not-host, and its join skips the password, but room.refusing (a reason) holds for it.
 const SETTINGS_EVERY_MS = 1000;
 const SIGNALS = ['feedback', 'chat', 'heads-down', null];
 const FINAL = { refused: 1008, removed: 1000, ended: 1000, replaced: 1000 };   // messages after which the socket is closed
 
-export function fakeRoom({ password = null, allowGuests = true, max = 12, full = false, hostWaitMs = null } = {}) {
+export function fakeRoom({ password = null, allowGuests = true, max = 12, full = false, hostWaitMs = null, pickWaitMs = 300 } = {}) {
   const sockets = new Map();    // 'host' or a peer id -> its socket
-  const watchers = new Map();   // peer -> { sub, guest, pass }
+  const watchers = new Map();   // peer -> { sub, name, guest, pass }
   let peers = 0, ended = false, settingsAt = null;   // settingsAt: the host socket's last settings taken
+  let artists = [];             // the subs the room holds as artists
+  const former = new Set();     // who the role has moved on from
+  let answers = null;           // peer -> n, while last-change? is out
   const close = (ws, code, reason) => {
     for (const [who, s] of sockets) if (s === ws) sockets.delete(who);
     ws.close({ code, reason });
@@ -231,6 +239,46 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     if (SIGNALS.includes(msg.signal)) room.setup.signal = msg.signal;
   };
 
+  const listed = () => artists.filter((sub) => !room.unqualified.includes(sub) && sub !== room.setup.hostSub);
+  const artistsNow = () => send('host', { type: 'artists-now', subs: listed() });
+
+  // The role moves to this peer, whose socket is the host's from here on.
+  const name = (peer, planned) => {
+    const w = watchers.get(peer), ws = sockets.get(peer), old = room.setup.hostSub;
+    const oldSocket = sockets.get('host');
+    former.add(old);
+    if (!artists.includes(old)) artists.push(old);
+    answers = null;
+    Object.assign(room.setup, { hostSub: w.sub, hostName: w.name });
+    watchers.delete(peer);
+    sockets.delete(peer);
+    const said = { type: 'new-host', name: w.name, sub: w.sub, planned };
+    for (const other of sockets.values()) other.send(JSON.stringify(said));
+    ws.send(JSON.stringify(said));
+    if (oldSocket) close(oldSocket, 1000, 'new-host');
+    sockets.set('host', ws);
+    settingsAt = null;
+    reply(ws, { type: 'hosting', room: info(), peers: [...watchers].map(([other, { pass }]) => ({ peer: other, pass })) });
+    artistsNow();
+  };
+
+  const pick = () => {
+    if (!answers || sockets.has('host')) return;
+    const here = [...watchers].filter(([, w]) => listed().includes(w.sub));
+    if (!here.length) return end();
+    const best = here.reduce((most, [peer]) => ((answers.get(peer) ?? -1) > (answers.get(most) ?? -1) ? peer : most), here[0][0]);
+    name(best, false);
+  };
+
+  // The wait is over: artists are asked, and the rest is pick's. With none, the room ends.
+  const waitOver = () => {
+    const here = [...watchers].filter(([, w]) => listed().includes(w.sub));
+    if (!here.length) return end();
+    answers = new Map();
+    for (const [peer] of here) send(peer, { type: 'last-change?' });
+    setTimeout(pick, pickWaitMs);
+  };
+
   const end = () => {
     ended = true;
     const everyone = ['host', ...watchers.keys()];
@@ -242,32 +290,35 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
   const heard = (ws, who, msg) => {
     if (msg.type === 'host' && !who) {
       const claims = claimsOf(msg.pass);
-      if (ended || (room.setup.hostSub && claims.sub !== room.setup.hostSub)) return reply(ws, { type: 'refused', reason: ended ? 'unavailable' : 'bad-pass' });
+      if (ended || (room.setup.hostSub && claims.sub !== room.setup.hostSub)) return reply(ws, { type: 'refused', reason: ended ? 'unavailable' : former.has(claims.sub) ? 'not-host' : 'bad-pass' });
+      answers = null;
       Object.assign(room.setup, { hostSub: claims.sub, hostName: claims.name });
       const older = sockets.get('host');
       if (older) close(older, 1000, 'replaced');
       sockets.set('host', ws);
       settingsAt = null;
       reply(ws, { type: 'hosting', room: info(), peers: [...watchers].map(([peer, w]) => ({ peer, pass: w.pass })) });
+      if (artists.length) artistsNow();
       return 'host';
     }
     if (msg.type === 'join' && !who) {
       const claims = claimsOf(msg.pass);
       const older = [...watchers].filter(([, w]) => w.sub === claims.sub).map(([peer]) => peer);
       const reason = ended ? 'unavailable'
-        : claims.guest && !room.setup.allowGuests ? 'signed-in-only'
-          : room.setup.password !== null && msg.password !== room.setup.password ? 'wrong-password'
-            : full || watchers.size - older.length >= room.setup.max ? 'full' : null;
+        : room.refusing ?? (claims.guest && !room.setup.allowGuests ? 'signed-in-only'
+          : room.setup.password !== null && msg.password !== room.setup.password && !former.has(claims.sub) ? 'wrong-password'
+            : full || watchers.size - older.length >= room.setup.max ? 'full' : null);
       if (reason) return reply(ws, { type: 'refused', reason });
       for (const peer of older) {
         send(peer, { type: 'replaced' });
         gone(peer);
       }
       const peer = `p_${++peers}`;
-      watchers.set(peer, { sub: claims.sub, guest: claims.guest, pass: msg.pass });
+      watchers.set(peer, { sub: claims.sub, name: claims.name, guest: claims.guest, pass: msg.pass });
       sockets.set(peer, ws);
-      reply(ws, { type: 'joined', peer, hostName: room.setup.hostName, hostSub: room.setup.hostSub });
+      reply(ws, { type: 'joined', peer, hostName: room.setup.hostName, hostSub: room.setup.hostSub, artists: listed() });
       send('host', { type: 'peer', peer, pass: msg.pass });
+      if (answers && listed().includes(claims.sub)) reply(ws, { type: 'last-change?' });
       return peer;
     }
     if (msg.type === 'signal-to' && who === 'host') send(msg.to, { type: 'signal-from', from: 'host', data: msg.data });
@@ -278,12 +329,26 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     }
     else if (msg.type === 'settings' && who === 'host') settings(msg);
     else if (msg.type === 'end' && who === 'host') end();
+    else if (msg.type === 'artists' && who === 'host') {
+      artists = [...msg.subs];
+      artistsNow();
+    } else if (msg.type === 'hand-over' && who === 'host' && !room.ignoringHandOvers) {
+      const to = [...watchers].find(([, w]) => w.sub === msg.to && listed().includes(w.sub));
+      if (to) name(to[0], true);
+    } else if (msg.type === 'last-change' && answers?.has(who) === false) {
+      answers.set(who, msg.n);
+    }
     return who;
   };
 
   const room = {
     setup: { id: ROOM_ID, name: 'a room', hostSub: null, hostName: null, public: password === null, password, allowGuests, max, signal: null, liveSince: Date.now() },
     received: [],
+    hostWaitMs,
+    unqualified: [],
+    ignoringHandOvers: false,
+    refusing: null,
+    relist: artistsNow,
     from: (who) => room.received.filter((r) => r.from === who).map((r) => r.msg),
     info,
     send: (who, msg) => {
@@ -305,19 +370,22 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
       if (who !== 'host') gone(who);
     },
     attach: (page) => page.routeWebSocket(`${API.replace(/^http/, 'ws')}/api/rooms/*/ws`, (ws) => {
-      let who = null;
+      let was = null;
+      const whoNow = () => [...sockets].find(([, s]) => s === ws)?.[0] ?? null;   // being named changes it
       ws.onMessage((message) => {
         if (message === 'ping') return ws.send('pong');   // the server's automatic answer
         const msg = JSON.parse(message);
-        const before = who;
-        who = heard(ws, who, msg);
-        room.received.push({ from: who ?? before, msg });
+        const who = whoNow();
+        const after = heard(ws, who, msg);
+        was = after ?? who ?? was;
+        room.received.push({ from: was, msg });
       });
       const closed = () => {
-        if (sockets.get(who) !== ws) return;
+        const who = whoNow();
+        if (!who) return;
         sockets.delete(who);
         if (who !== 'host') gone(who);
-        else if (hostWaitMs !== null) setTimeout(() => { if (!sockets.has('host')) end(); }, hostWaitMs);
+        else if (room.hostWaitMs !== null) setTimeout(() => { if (!sockets.has('host') && !ended) waitOver(); }, room.hostWaitMs);
       };
       ws.onClose((code, reason) => {
         ws.close({ code, reason });   // with a handler, the closing is ours to finish
