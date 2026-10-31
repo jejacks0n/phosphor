@@ -6,10 +6,11 @@ import UserName from './UserName.vue';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ReportDialog from './ReportDialog.vue';
+import MakeHostDialog from './MakeHostDialog.vue';
 
 // Who is here, under the host's chat header: "N here" (those connected), folded or open for as long as
 // the room lasts. The list is every watcher, one still connecting too. A member's ⋯ menu: Make artist (then
-// Withdraw invitation, or Back to watching), Remove for this
+// Withdraw invitation, or Back to watching and, while connected, Make host, which asks first), Remove for this
 // session, Block from my rooms, which asks first, and Report (when you may report, and haven't reported them in this room). Cancel (or Escape) puts
 // focus back on the ⋯ button the menu came from, or on the "N here" button when that member has left.
 // A watcher's is a list of who to follow, when there's more than the host: Follow on each row (pressed for the one
@@ -31,6 +32,19 @@ const opened = ref(0);         // each Report opens a new dialog, even for the s
 const askToReport = (watcher, event) => {
   reporting.value = { name: watcher.name, sub: watcher.sub, trigger: menuTrigger(event) };
   opened.value++;
+};
+const handing = ref(null);     // { name, sub, trigger }
+const askToMakeHost = (watcher, event) => {
+  handing.value = { name: watcher.name, sub: watcher.sub, trigger: menuTrigger(event) };
+};
+const cancelMakeHost = () => {
+  (handing.value.trigger.isConnected ? handing.value.trigger : toggle.value).focus();
+  handing.value = null;
+};
+const confirmMakeHost = () => {
+  const { sub } = handing.value;
+  handing.value = null;
+  drawing.makeHost(sub);
 };
 const confirmBlock = async () => {
   const { watcher } = blocking.value;
@@ -59,6 +73,7 @@ const confirmBlock = async () => {
         </DropdownMenu>
         <DropdownMenu v-else-if="!watcher.guest" :label="`More for ${watcher.name}`">
           <template #trigger><span aria-hidden="true">⋯</span></template>
+          <button v-if="drawing.artists.includes(watcher.sub) && watcher.connected" @click="askToMakeHost(watcher, $event)">Make host</button>
           <button v-if="drawing.artists.includes(watcher.sub)" @click="drawing.backToWatching(watcher.sub)">Back to watching</button>
           <button v-else-if="drawing.invited.includes(watcher.sub)" @click="drawing.withdraw(watcher.sub)">Withdraw invitation</button>
           <button v-else-if="watcher.connected" @click="drawing.invite(watcher.sub)">Make artist</button>
@@ -79,6 +94,7 @@ const confirmBlock = async () => {
       </div>
     </ModalDialog>
     <ReportDialog v-if="reporting" :key="opened" v-bind="reporting" @done="reporting = null" />
+    <MakeHostDialog v-if="handing" :name="handing.name" @confirm="confirmMakeHost" @cancel="cancelMakeHost" />
   </section>
   <section v-else-if="room.canFollow" class="people follow">
     <ul aria-label="Who to follow">

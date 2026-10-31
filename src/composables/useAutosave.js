@@ -129,6 +129,7 @@ export function useAutosave() {
         savedToFile: project.savedToFile,
         dirty: project.isDirty || !!project._stroke, // an open typing run isn't counted by isDirty yet
         savedSettings: project.savedSettings,
+        ledgerN: project.documentNumber(), // with what's read next: the picture stands at this number
       };
       const parts = await project.projectParts();
       // Empty layers don't come back from a restore, so they'd make the same art read as different.
@@ -142,6 +143,7 @@ export function useAutosave() {
 
       if (opening) lastVersionAt = (await listVersions(id))[0]?.savedAt ?? null;
       await put(record, id);
+      await project.keepLedger(); // never behind the document, so a reload's document can catch up to it
       openedId = id;
       if (opening) {
         await evict(await keeping(id));
@@ -238,7 +240,9 @@ export function useAutosave() {
   }
 
   async function restore(saved, documentId) {
+    project._documentN = saved.record.ledgerN ?? null;
     await project.restoreDocument(saved, { documentId });
+    project._ledger.n = saved.record.ledgerN ?? project._ledger.n; // numbers go on from what's written with it
     // Its watchers have fired by now. None of that was a change.
     edited = false;
     editedAt = saved.record.editedAt;

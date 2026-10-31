@@ -1,7 +1,7 @@
 // A host's reload keeps the room: it comes back at the same address with its art, chat and numbers, the
 // watchers wait and see it, and a room that ended meanwhile says so. Every reload accepts the page-closing prompt.
 import { test, expect, tab, store, chars, editAt, settled } from './support.js';
-import { fakeRoom, fakeServer, member, ROOM_ID, shown, tile, goLive, watching, selected, hash, asked, chat, outOfRoom, live, joins } from './social-support.js';
+import { fakeRoom, fakeServer, member, ROOM_ID, ARTIST, shown, tile, goLive, watching, selected, hash, asked, chat, outOfRoom, live, joins, invitedPage, invitation, mayDraw as mayDrawOf } from './social-support.js';
 
 const AWAY = 'Your room ended while the page was away';
 const ELSEWHERE = 'This room is open in another tab';
@@ -347,3 +347,102 @@ for (const [label, wheel, address] of [['ANSI', 30, 'ansi'], ['PIXEL', 100, 'pix
     expect(Math.abs(after.rows - before.rows)).toBeLessThanOrEqual(1);
   });
 }
+
+// A host's reload in a room that draws together, and a host whose room moved on while it was away.
+const ARTIST_STROKE_WAIT = { timeout: 20_000, intervals: [100] };
+const claimsSub = (pass) => JSON.parse(Buffer.from(pass.split('.')[0], 'base64url')).sub;
+const artistPage = async (context, host, room) => {
+  const page = await invitedPage(context, host, room);
+  await invitation(page).getByRole('button', { name: 'Accept' }).click();
+  await mayDrawOf(page).toBe(true);
+  await settled(page);
+  return page;
+};
+const typeAt = async (page, col, row, text) => {
+  await editAt(page, col, row);
+  await page.keyboard.type(text);
+  await page.keyboard.press('Escape');
+};
+const edits = (page) => store(page, 'project', (p) => JSON.stringify([...p.editCells].sort(([a], [b]) => (a < b ? -1 : 1))));
+
+test('a host reloading while an artist is ahead of autosave loses no strokes', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  const artist = await artistPage(context, host, room);
+  await tab(host, 'ANSI').click();
+  await settled(host);
+  await typeAt(host, 1, 1, 'h');
+  await expect.poll(() => chars(artist, 1, 1, 1)).toBe('h');
+  await host.waitForTimeout(2500);   // the ledger and the document have this much
+
+  // The artist's strokes reach the host, and the host goes before anything writes them down.
+  await typeAt(artist, 20, 12, 'abc');
+  await expect.poll(() => chars(host, 12, 20, 22)).toBe('abc');
+  host.on('dialog', (dialog) => dialog.accept());
+  await host.reload();
+  await live(host);
+
+  await expect.poll(() => chars(host, 12, 20, 22), ARTIST_STROKE_WAIT).toBe('abc');
+  expect(await chars(host, 1, 1, 1)).toBe('h');
+  await expect.poll(() => store(host, 'drawing', (d) => d.paused), ARTIST_STROKE_WAIT).toBe(false);
+  await expect.poll(() => store(artist, 'drawing', (d) => d.paused), ARTIST_STROKE_WAIT).toBe(false);
+  await expect.poll(() => edits(artist)).toBe(await edits(host));
+
+  // The host's undo came through it, and both draw on.
+  expect(await store(host, 'project', (p) => p.canUndo)).toBe(true);
+  await tab(host, 'ANSI').click();
+  await settled(host);
+  await host.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => chars(artist, 1, 1, 1), ARTIST_STROKE_WAIT).not.toBe('h');
+  await typeAt(artist, 3, 3, 'z');
+  await typeAt(host, 4, 4, 'y');
+  await expect.poll(() => edits(artist), ARTIST_STROKE_WAIT).toBe(await edits(host));
+  expect(await store(host, 'drawing', (d) => d.notice)).toBe(null);
+});
+
+test('a host returning after the role moved comes back as an artist with their stale record gone', async ({ page: host, context }) => {
+  const room = fakeRoom({ hostWaitMs: 100 });
+  await goLive(host, room);
+  const artist = await artistPage(context, host, room);
+  await typeAt(artist, 1, 1, 'a');
+  await expect.poll(() => chars(host, 1, 1, 1)).toBe('a');
+  host.on('dialog', (dialog) => dialog.accept());
+  let release = null;
+  const held = new Promise((resolve) => { release = resolve; });
+  await host.route(/\/api\/me$/, async (route) => {
+    await held;
+    await route.fallback().catch(() => {});
+  });
+  await host.reload();
+  await expect.poll(() => store(artist, 'room', (r) => r.role), ARTIST_STROKE_WAIT).toBe('host');
+  await typeAt(artist, 2, 2, 'b');
+  release();
+  await expect.poll(() => room.received.some((r) => r.msg.type === 'join' && !r.msg.password && r.from !== null && r.msg.pass && claimsSub(r.msg.pass) === 'u_1'), ARTIST_STROKE_WAIT).toBe(true);
+  await expect.poll(() => store(host, 'room', (r) => r.role), ARTIST_STROKE_WAIT).toBe('watch');
+  expect(await host.evaluate(() => sessionStorage.getItem('phosphor-hosting'))).toBe(null);
+  await mayDrawOf(host).toBe(true);
+  await expect.poll(() => edits(host), ARTIST_STROKE_WAIT).toBe(await edits(artist));
+  await tab(host, 'ANSI').click();
+  await settled(host);
+  await typeAt(host, 3, 3, 'c');
+  await expect.poll(() => chars(artist, 3, 3, 3), ARTIST_STROKE_WAIT).toBe('c');
+
+  // Its next reload comes back into the room too, as an artist.
+  await host.reload();
+  await mayDrawOf(host).toBe(true);
+  await expect.poll(() => chars(host, 2, 2, 2), ARTIST_STROKE_WAIT).toBe('b');
+});
+
+test('a former host refused on the way back in keeps its art, and says why', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  const artist = await artistPage(context, host, room);
+  await typeAt(artist, 1, 1, 'a');
+  await expect.poll(() => chars(host, 1, 1, 1)).toBe('a');
+  room.refusing = 'full';
+  await store(host, 'drawing', `(d) => d.makeHost('${ARTIST.id}')`);
+  await expect.poll(() => store(artist, 'room', (r) => r.role), ARTIST_STROKE_WAIT).toBe('host');
+  await expect.poll(() => store(host, 'room', (r) => r.role), ARTIST_STROKE_WAIT).toBe(null);
+  expect(await chars(host, 1, 1, 1)).toBe('a');
+  await expect(host.getByRole('status').filter({ hasText: 'Room is full' })).toBeVisible();
+});

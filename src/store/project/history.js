@@ -56,12 +56,18 @@ export const historyActions = {
 
     // The entry mustn't close over stroke or patch: the old map and the tiles are the ledger's to hold now.
     const { cursor, id, sent } = stroke;
+    const drawnAsArtist = this._sharing?.role === 'artist';
     const records = { before: stroke.baseRecords, after: this.baseRecords };
     const also = { patches: [[basePatch, this.baseLayer]], pins: [records.before.pins, records.after.pins] };
     const apply = (side) => {
       if (side === 'before' && cursor) useWorkspaceStore().textCursor = cursor; // typing undone: the cursor goes back to where it started
       if (this._sharing?.role === 'artist') { // the host says what happens; an artist has no base edits to put back
         if (sent) this.askForStroke(side === 'before' ? 'undo' : 'redo', id); // or it changed nothing: nothing to ask
+        return;
+      }
+      if (drawnAsArtist) { // and now the host: the stroke's in the ledger, and its pins are from another time
+        if (side === 'before') this.undoStroke(id);
+        else this.redoStroke(id);
         return;
       }
       if (basePatch) this.baseLayer.applyPatch(basePatch, side);
@@ -77,6 +83,17 @@ export const historyActions = {
       bytes: this._ledger.bytesOf(id) + bytesHeld(basePatch),
     });
     if (basePatch || records.before !== records.after) this.sendBase(basePatch, 'after');
+  },
+
+  // A step for a stroke the ledger came back with, as the host's own: a reload has only its id.
+  pushKeptStroke(id) {
+    this.history.push({
+      undo: () => (this._sharing?.role === 'artist' ? this.askForStroke('undo', id) : this.undoStroke(id)),
+      redo: () => (this._sharing?.role === 'artist' ? this.askForStroke('redo', id) : this.redoStroke(id)),
+      onDrop: () => this._ledger.forget(id),
+      bytes: this._ledger.bytesOf(id),
+    });
+    this.historyVersion = this.history.version;
   },
 
   // Take a stroke back, or put it back on top, and show what that changed. also: applyChange's. Null

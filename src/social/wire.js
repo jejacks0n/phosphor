@@ -36,6 +36,11 @@
  *                                               (-1: none, send the project; also what a check that
  *                                               didn't match asks)
  *   { t: 'accept' } / { t: 'decline' }          the answer to an 'invite'
+ *   { t: 'hand-over-ok' }                       the 'hand-over' is in, and this artist is ready to be named host
+ *   { t: 'catch-up-start', n, epoch, kind, chunks }
+ *                                               the answer to 'catch-up', then `chunks` binary messages: kind
+ *                                               'tail' is packValue's changes after `has`, and kind 'project' is
+ *                                               packProject's agreed document as of n
  * Host to artist:
  *   { t: 'numbered', n, by, stroke, cells, runs }   a change, by the sub who made it
  *   { t: 'settings', n, values }                the document's saved settings, changed
@@ -50,6 +55,11 @@
  *   { t: 'cursors', [sub]: { at, view, name } } where everyone is
  *   { t: 'invite' } / { t: 'withdrawn' }        asked to draw; the ask is gone
  *   { t: 'artists', subs, names }               who may draw now, and the names of those of them who are here ({ sub: name })
+ *   { t: 'hand-over', chunks, room }            then `chunks` binary messages: packValue's ledger (keptForWire), for
+ *                                               the artist the host wants to be next. It means nothing until
+ *                                               the server says new-host. room: { name, welcome }
+ *   { t: 'catch-up', has, epoch }               a host back from a reload, behind this artist: what's after has
+ *   { t: 'undo-reset' }                         the host's stacks started over: everyone's undo goes with them
  * Pausing and resuming are the 'away' message and the channel closing.
  */
 import { hex2rgb } from '../lib/ColorUtils.js';
@@ -258,26 +268,46 @@ export async function packProject(parts) {
   return chunks;
 }
 
-// The parts openParts takes, or null for anything a host's packProject wouldn't make: chunks missing or
-// repeated or not bytes (the gzip's own check catches those), more than mostBytes unzipped (it stops
-// reading there), or not a project.
+// What chunks unzip to, as a Blob. It throws for anything packed chunks wouldn't be: missing or repeated or not
+// bytes (the gzip's own check catches those), or more than mostBytes unzipped (it stops reading there).
+async function unzipped(chunks, mostBytes) {
+  if (!Array.isArray(chunks) || !chunks.length || !chunks.every((c) => c instanceof Uint8Array)) throw new Error('Not chunks');
+  const reader = new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
+  const parts = [];
+  let size = 0;
+  for (let read = await reader.read(); !read.done; read = await reader.read()) {
+    size += read.value.length;
+    if (size > mostBytes) {
+      reader.cancel();
+      throw new Error('Too big');
+    }
+    parts.push(read.value);
+  }
+  return new Blob(parts);
+}
+
+// The parts openParts takes, or null for anything a host's packProject wouldn't make, or that's not a project.
 export async function unpackProject(chunks, { mostBytes }) {
   try {
-    if (!Array.isArray(chunks) || !chunks.length || !chunks.every((c) => c instanceof Uint8Array)) return null;
-    const reader = new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
-    const parts = [];
-    let size = 0;
-    for (let read = await reader.read(); !read.done; read = await reader.read()) {
-      size += read.value.length;
-      if (size > mostBytes) {
-        reader.cancel();
-        return null;
-      }
-      parts.push(read.value);
-    }
-    return await readProject(new Blob(parts));
+    return await readProject(await unzipped(chunks, mostBytes));
   } catch {
     return null;
+  }
+}
+
+// Anything JSON can hold, gzipped and cut as a project is; undefined for what packValue wouldn't have made.
+export async function packValue(value) {
+  const bytes = await bytesOf(new Blob([JSON.stringify(value)]).stream().pipeThrough(new CompressionStream('gzip')));
+  const chunks = [];
+  for (let i = 0; i < bytes.length; i += CHUNK_BYTES) chunks.push(bytes.subarray(i, i + CHUNK_BYTES));
+  return chunks;
+}
+
+export async function unpackValue(chunks, { mostBytes }) {
+  try {
+    return JSON.parse(await (await unzipped(chunks, mostBytes)).text());
+  } catch {
+    return undefined;
   }
 }
 

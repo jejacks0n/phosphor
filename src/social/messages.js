@@ -92,5 +92,9 @@ export const refusalWords = (reason) => (Object.hasOwn(ROOM_WORDS, reason) ? ROO
 // What a host is told when the room it reloaded into is gone.
 export const ROOM_AWAY_WORDS = 'Your room ended while the page was away';
 
+// The room's host changed.
+export const UNDO_RESET_WORDS = 'The host changed, so undo starts over. All the drawing is still here.';
+export const newHostWords = ({ old, name, planned }) => (planned ? `${old} made ${name} the host.` : `${old} left the room. ${name} is now the host.`);
+
 // What a host is told when another tab took its room (a copy of the tab hosts it too, and the older one is closed).
 export const HOST_REPLACED_WORDS = 'This room is open in another tab';

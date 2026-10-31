@@ -246,14 +246,14 @@ export const useSocialStore = defineStore('social', {
       if (code === 'SUSPENDED') this.notice = messageFor(code, data);
     },
 
-    // You're someone else now (signed in, or out): a room you host is ended, or one you watch left, then a
+    // You're someone else now (signed in, or out): a room you host is ended (signing out, passed on to any artists in it), or one you watch left, then a
     // new pass and a new lobby connection. Signing in (not out) while watching goes back into the same room,
     // with the same password, as the new you.
     async becameSomeoneElse({ signedOut = false } = {}) {
       const rooms = useRoomStore();
       const back = signedOut ? null : rooms.rejoinInfo();
       keepRoom(null);
-      rooms.close();
+      rooms.close({ passRole: signedOut });
       if (signedOut) this.me = null;
       else await this.refreshMe();
       Object.assign(this, { blocked: [], _codePending: false, page: this.me?.needsOnboarding ? 'onboarding' : 'lobby' });

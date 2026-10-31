@@ -97,6 +97,12 @@ export class Pending {
 
   // The room ended: everyone keeps the last agreed picture.
   dropAll() {
+    this.lift();
+    this.#changes = [];
+  }
+
+  // The agreed picture on screen, with what's mine still held: reapply puts it back.
+  lift() {
     for (const [key, { agreed }] of this.#cells) this.write(key, agreed);
     for (const { x, y, claims, agreed } of this.#tiles.values()) {
       for (let i = 0; i < claims.length; i++) {
@@ -104,7 +110,6 @@ export class Pending {
       }
     }
     this.#forgetClaims();
-    this.#changes = [];
   }
 
   // Take back the newest change, one that never went out, so no number will ever come for it: what it

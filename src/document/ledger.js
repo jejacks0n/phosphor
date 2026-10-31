@@ -33,6 +33,45 @@ const color = (value) => (value === ERASED ? 0 : value);
 const sameCell = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
 const noStacks = () => ({ cells: new Map(), tiles: new Map(), strokes: new Map(), bytes: 0 });
 
+// A tile's pixels for JSON, mostly nothing: [index, value, index, value...].
+const sparse = (px) => {
+  const pairs = [];
+  for (let i = 0; i < px.length; i++) if (px[i]) pairs.push(i, px[i]);
+  return pairs;
+};
+const filled = (pairs) => {
+  const px = new Uint32Array(TILE * TILE);
+  for (let i = 0; i < pairs.length; i += 2) px[pairs[i]] = pairs[i + 1];
+  return px;
+};
+
+// kept() as JSON can carry it, for a handover. A stroke's array is the same array as its entry's in a tile (an
+// undo goes by that), so arrays go in a table and are named by place.
+export function keptForWire({ n, epoch, limits, sum, stacks, tail }) {
+  const places = new Map();
+  const place = (px) => {
+    if (!places.has(px)) places.set(px, places.size);
+    return places.get(px);
+  };
+  const strokes = [...stacks.strokes.values()].map(({ id, by, undone, bytes, cells, paint }) => ({ id, by, undone, bytes, cells: [...cells], paint: [...paint].map(([name, px]) => [name, place(px)]) }));
+  const cells = [...stacks.cells].map(([key, { base, strokes: on }]) => [key, base, on.map(({ id }) => id)]);
+  const tiles = [...stacks.tiles].map(([name, { x, y, base, entries }]) => [name, x, y, sparse(base), entries.map(({ stroke, px }) => [stroke, place(px)])]);
+  return { n, epoch, limits, sum, tail, bytes: stacks.bytes, strokes, cells, tiles, arrays: [...places.keys()].map(sparse) };
+}
+
+export function keptFromWire({ n, epoch, limits, sum, tail, bytes, strokes, cells, tiles, arrays }) {
+  const pixels = arrays.map(filled);
+  const records = new Map(strokes.map(({ id, by, undone, bytes: held, cells: own, paint }) => [id, { id, by, undone, bytes: held, cells: new Map(own), paint: new Map(paint.map(([name, at]) => [name, pixels[at]])) }]));
+  return {
+    n, epoch, limits, sum, tail,
+    stacks: {
+      bytes, strokes: records,
+      cells: new Map(cells.map(([key, base, on]) => [key, { base, strokes: on.map((id) => records.get(id)) }])),
+      tiles: new Map(tiles.map(([name, x, y, base, entries]) => [name, { x, y, base: filled(base), entries: entries.map(([stroke, at]) => ({ stroke, px: pixels[at] })) }])),
+    },
+  };
+}
+
 export class Ledger {
   // Plain data all the way down, so kept() is just this. Strokes are shared between stacks, which a
   // structured clone keeps.
@@ -206,6 +245,22 @@ export class Ledger {
     stacks.strokes.delete(stroke);
   }
 
+  // Someone else's number for a change, in its place: a host catching up from an artist's tail. The picture must
+  // not have it yet. A number doesn't say what it was, so an undo is held as a change like any other: that stroke's
+  // redo finds nothing to do, and it's still taken back whole by an undo.
+  takeNumbered({ n, by, stroke, cells, runs }) {
+    const record = this.#stacks.strokes.get(stroke);
+    if (record && (record.by !== by || record.undone)) this.forget(stroke);
+    this.n = n - 1;
+    this.submit(by, stroke, { cells, runs });
+    this.n = n;
+  }
+
+  // The strokes of one person that can still be undone, oldest first.
+  strokesBy(by) {
+    return [...this.#stacks.strokes.values()].filter((record) => record.by === by && !record.undone).map((record) => record.id);
+  }
+
   // Shares what the ledger holds, so store or clone it before the next change; a clone is what restore wants.
   kept() {
     return { n: this.n, epoch: this.epoch, limits: this.limits, sum: this.#sum, stacks: this.#stacks, tail: this.tail.items };
@@ -215,6 +270,9 @@ export class Ledger {
     const tail = new Tail();
     for (const numbered of items) tail.add(numbered);
     const ledger = new Ledger({ readCell, readTile, n, epoch, tail, sum, limits, mostBytes });
+    // As frozen as a live ledger's. They're no longer the picture's own objects, which only sameCell ever meets.
+    for (const stack of stacks.cells.values()) Object.freeze(stack.base);
+    for (const record of stacks.strokes.values()) for (const value of record.cells.values()) Object.freeze(value);
     ledger.#stacks = stacks;
     return ledger;
   }

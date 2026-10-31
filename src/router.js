@@ -149,6 +149,10 @@ export function followAddress(router) {
         workspace.editorTab = 'social';
       }
     }),
+    // Host to artist or back, in one room: same address, and it's the new role that a reload's first look should read.
+    watch(() => room.role, (role, was) => {
+      if (role && was && router.options.history.state.inRoom) router.options.history.replace(router.options.history.location, { inRoom: role });
+    }),
     watch(() => [workspace.editorTab, social.page, room.role, room.id, social.roomGoingTo], reconcile),   // default flush: changes in one tick are one step
     watch(() => workspace.documentSettled, () => {
       landing = false;

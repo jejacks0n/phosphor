@@ -6,25 +6,35 @@
  * lazily, so reading a row doesn't read its bytes and a version shares its latest state's. Callers pass
  * and get ArrayBuffers. The rows also carry the sizes of their `rest` and image (restSize, imageSize),
  * so sizes are counted without reading bytes.
+ *
+ * Apart from them, a database of its own keeps a hosted room's ledger through a reload: sessionStorage is too small for it.
  */
 import { versionsToDrop, documentsToEvict, MAX_TOTAL_BYTES } from './autosaveRules.js';
 
 const STORES = ['images', 'documents', 'versions'];
+const KEEP_ROOM_LEDGER_MS = 86_400_000; // a tab that closed never says it's done with its row
+
+// Rooms' ledgers have their own database: they're short-lived, and no document's quota or versions are theirs.
+const UPGRADES = {
+  'phosphor-autosave': (db) => {
+    db.createObjectStore('images', { keyPath: 'hash' });
+    db.createObjectStore('documents', { keyPath: 'id' }).createIndex('imageHash', 'imageHash');
+    const versions = db.createObjectStore('versions', { keyPath: 'id', autoIncrement: true });
+    versions.createIndex('documentId', 'documentId');
+    versions.createIndex('imageHash', 'imageHash');
+  },
+  'phosphor-room-ledgers': (db) => {
+    db.createObjectStore('rooms', { keyPath: 'id' }).createIndex('at', 'at');
+  },
+};
 
 // One transaction as a promise, answered once it has committed and the database is closed, so what it
 // wrote is stored and the database can be deleted (tests). `work` gets the transaction and may await
 // requests (see ask) as it goes; whatever it throws aborts the transaction and rejects.
-function run(stores, mode, work) {
+function run(stores, mode, work, database = 'phosphor-autosave') {
   return new Promise((resolve, reject) => {
-    const open = indexedDB.open('phosphor-autosave', 1);
-    open.onupgradeneeded = () => {
-      const db = open.result;
-      db.createObjectStore('images', { keyPath: 'hash' });
-      db.createObjectStore('documents', { keyPath: 'id' }).createIndex('imageHash', 'imageHash');
-      const versions = db.createObjectStore('versions', { keyPath: 'id', autoIncrement: true });
-      versions.createIndex('documentId', 'documentId');
-      versions.createIndex('imageHash', 'imageHash');
-    };
+    const open = indexedDB.open(database, 1);
+    open.onupgradeneeded = () => UPGRADES[database](open.result);
     open.onerror = () => reject(open.error);
     open.onsuccess = () => {
       const db = open.result;
@@ -83,11 +93,11 @@ async function removeDocument(tx, id) {
   return [document?.imageHash, ...versions.map((v) => v.imageHash)].filter(Boolean);
 }
 
-export async function writeLatest({ id, filename, editedAt, savedToFile, dirty, savedSettings, rest, imageBuffer }) {
+export async function writeLatest({ id, filename, editedAt, savedToFile, dirty, savedSettings, ledgerN, rest, imageBuffer }) {
   // Before the transaction: it dies across an await on crypto.
   const imageHash = await hashBytes(imageBuffer), restHash = await hashBytes(rest);
   const row = {
-    id, filename, editedAt, savedToFile, dirty, savedSettings,
+    id, filename, editedAt, savedToFile, dirty, savedSettings, ledgerN,
     rest: new Blob([rest]), restSize: rest.byteLength, restHash, imageHash, imageSize: imageBuffer.byteLength,
   };
   await run(STORES, 'readwrite', async (tx) => {
@@ -182,3 +192,23 @@ export const evict = (keep, maxBytes = MAX_TOTAL_BYTES) =>
     await freeImages(tx, freed);
     return ids;
   });
+
+// What a hosted room's ledger holds, for its next reload. kept() is called as the row is put, which is when a
+// put clones, so it needn't be cloned first or held still while the database opens.
+export const keepRoomLedger = (id, documentId, kept) =>
+  run(['rooms'], 'readwrite', async (tx) => {
+    const rooms = tx.objectStore('rooms');
+    rooms.put({ id, documentId, kept: kept(), at: Date.now() });
+    const old = rooms.index('at').openKeyCursor(IDBKeyRange.upperBound(Date.now() - KEEP_ROOM_LEDGER_MS));
+    old.onsuccess = () => {
+      if (!old.result) return;
+      rooms.delete(old.result.primaryKey);
+      old.result.continue();
+    };
+  }, 'phosphor-room-ledgers');
+
+export const readRoomLedger = (id) =>
+  run(['rooms'], 'readonly', async (tx) => (await ask(tx.objectStore('rooms').get(id))) ?? null, 'phosphor-room-ledgers');
+
+export const forgetRoomLedger = (id) =>
+  run(['rooms'], 'readwrite', async (tx) => { tx.objectStore('rooms').delete(id); }, 'phosphor-room-ledgers');

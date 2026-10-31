@@ -20,6 +20,7 @@ const MOST_WAITING_DRAWING = 64 * 1024;   // for an artist from project-start: e
 const MOST_NAME = 60;       // a room's name
 const MOST_WELCOME = 200;
 const MOST_PROJECT_CHUNKS = MOST_PROJECT_BYTES / CHUNK_BYTES;   // zipped, it's never more than unzipped
+const BACKED_UP_BYTES = 8 * 1024 * 1024;   // an answer to catch-up waits for a channel further behind than this
 const NOTHING = () => {};
 
 // A string, cut to most characters; null for anything else.
@@ -29,12 +30,12 @@ const place = (n) => Number.isInteger(n) && n >= 0;
 export class Watch {
   constructor({
     send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = NOTHING,
-    onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onViews = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING,
+    onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onViews = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING, onHandOver = NOTHING, onCatchUp = NOTHING, onUndoReset = NOTHING,
     takesProjects = () => false,
   }) {
     Object.assign(this, {
       send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat,
-      onNumbered, onSettings, onBase, onProject, onCheck, onCaughtUp, onCursors, onViews, onInvite, onWithdrawn, onArtists, takesProjects,
+      onNumbered, onSettings, onBase, onProject, onCheck, onCaughtUp, onCursors, onViews, onInvite, onWithdrawn, onArtists, onHandOver, onCatchUp, onUndoReset, takesProjects,
     });
     this.mostWaiting = MOST_WAITING;
     this.conn = null;
@@ -96,6 +97,18 @@ export class Watch {
     return this.post({ t: 'cursor', at, view });
   }
 
+  // An answer to catch-up: its start, then its chunks at the pace the channel takes them. False if the channel went.
+  async sendCatchUp({ n, epoch, kind, chunks }) {
+    const channel = this.channel;
+    if (!this.post({ t: 'catch-up-start', n, epoch, kind, chunks: chunks.length })) return false;
+    for (const chunk of chunks) {
+      while (channel.readyState === 'open' && channel.bufferedAmount > BACKED_UP_BYTES) await new Promise((resolve) => setTimeout(resolve, 20));
+      if (channel.readyState !== 'open') return false;
+      channel.send(chunk);
+    }
+    return true;
+  }
+
   // Whether a message can go to the host now.
   get ready() {
     return this.channel?.readyState === 'open';
@@ -125,6 +138,7 @@ export class Watch {
     this.art = null;          // changes count only after this connection's first snapshot
     this.gathering = null;    // { want, chunks }: a snapshot's chunks as they come
     this.project = null;      // project-start's fields, with its chunks and the numbers held till it's open
+    this.handOver = null;     // hand-over's: how many chunks, and those in so far
     this.projectN = -1;       // numbers up to this are in the project opened
     this.heard = Promise.resolve();   // messages are handled one at a time, in order
     this.waiting = 0;                 // how many of them are still to be handled
@@ -153,6 +167,7 @@ export class Watch {
 
   async handle(data) {
     if (typeof data !== 'string') {
+      if (this.handOver) return this.handOverChunk(data);
       if (this.project) return this.projectChunk(data);
       const snapshot = this.gathering;
       if (!snapshot) return;
@@ -184,6 +199,9 @@ export class Watch {
     else if (msg.t === 'chat-no' && isId(msg.id) && msg.reason === 'too-fast') this.onChat({ type: 'refused', id: msg.id, reason: msg.reason });
     else if (msg.t === 'numbered' || msg.t === 'settings' || msg.t === 'base' || msg.t === 'caught-up' || (msg.t === 'check' && Number.isInteger(msg.sum))) this.drawn(msg);
     else if (msg.t === 'project-start') this.projectStart(msg);
+    else if (msg.t === 'hand-over') this.handOverStart(msg);
+    else if (msg.t === 'catch-up') this.onCatchUp({ has: msg.has, epoch: msg.epoch });
+    else if (msg.t === 'undo-reset') this.onUndoReset();
     else if (msg.t === 'cursors') this.onCursors(Object.fromEntries(Object.entries(msg).filter(([key]) => key !== 't')));
     else if (msg.t === 'invite') this.onInvite();
     else if (msg.t === 'withdrawn') this.onWithdrawn();
@@ -204,6 +222,25 @@ export class Watch {
     const fits = place(n) && typeof epoch === 'string' && place(took) && Number.isInteger(chunks) && chunks >= 1 && chunks <= MOST_PROJECT_CHUNKS;
     this.project = fits ? { n, epoch, bytes, took, want: chunks, chunks: [], held: [] } : null;
     if (fits && this.takesProjects()) this.mostWaiting = MOST_WAITING_DRAWING;
+  }
+
+  // The host means this artist to be next. The ledger's only for someone drawing, and only until new-host.
+  handOverStart({ chunks, room }) {
+    const fits = this.takesProjects() && Number.isInteger(chunks) && chunks >= 1 && chunks <= MOST_PROJECT_CHUNKS;
+    this.handOver = fits ? { want: chunks, chunks: [] } : null;
+    if (fits && room) this.room(room);
+  }
+
+  async handOverChunk(data) {
+    const handOver = this.handOver;
+    if (data.byteLength > CHUNK_BYTES) {
+      this.handOver = null;
+      return;
+    }
+    handOver.chunks.push(new Uint8Array(data));
+    if (handOver.chunks.length < handOver.want) return;
+    this.handOver = null;
+    await this.onHandOver(handOver.chunks);
   }
 
   // The chunks in, it's opened, and only then what waited behind it. A channel's order is what keeps
