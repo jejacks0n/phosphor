@@ -11,8 +11,11 @@ import { over } from '@/store/project/shared.js';
 export const readingActions = {
   // What the ledger reads, the first time it meets a position: the value before what's being submitted.
   // sendSlice submits a slice that's already written, so for that long the answer is what the stroke
-  // had as of its last slice, and only the tiles this slice touched can be asked for.
+  // had as of its last slice, and only the tiles this slice touched can be asked for. An artist's change
+  // waiting for its frame (sharing.js) is already what's there.
   readCell(key) {
+    const heard = this._sharing?.heardCells;
+    if (heard?.has(key)) return heard.get(key);
     return (this._baseline?.cells ?? this.editCells).get(key);
   },
 

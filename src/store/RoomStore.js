@@ -18,6 +18,7 @@ import { clampAnsiZoom } from '@/lib/zoom';
 import { toast } from '@/composables/useToast';
 import { useSocialStore } from '@/store/SocialStore';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useDrawingStore } from '@/store/DrawingStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 const SEND_EVERY_MS = 100;       // the art, as it changes (a stroke shows as it's drawn)
@@ -195,7 +196,9 @@ export const useRoomStore = defineStore('room', {
     // You're this room's host: these fields, and a Host (with what it kept, for a room coming back). What
     // was kept is taken first, so one that can't be taken throws with nothing changed.
     hostRoom(fields, kept = null) {
+      const drawing = useDrawingStore();
       const host = markRaw(new Host({
+        ...drawing.hostCallbacks(),
         send: (msg) => this._connection?.send(msg),
         passKey, connectWithinMs: this._connectWithinMs, roomId: fields.id,
         onWatchers: (list) => {
@@ -208,6 +211,7 @@ export const useRoomStore = defineStore('room', {
         },
       }));
       if (kept) host.restore(kept);
+      drawing.hosted(host, { me: () => useSocialStore().claims?.sub });
       Object.assign(this, { ...fields, role: 'host', _host: host, _settings: markRaw(new Pacer(SETTINGS_EVERY_MS, (msg) => this._connection?.send(msg) ?? false)) });
     },
 
@@ -390,7 +394,9 @@ export const useRoomStore = defineStore('room', {
       noteLeft(id, false);
       Object.assign(this, { role: 'watch', id, status: 'joining', _password: password, reported: reportedIn(id, social.claims?.sub) });
       if (social.signedIn) social.loadBlocked();   // whose messages to hide
+      const drawing = useDrawingStore();
       this._watch = markRaw(new Watch({
+        ...drawing.watchCallbacks(),
         send: (msg) => this._connection?.send(msg),
         connectWithinMs: this._connectWithinMs, roomId: id, passKey,
         onChat: (event) => this.chatHeard(event),
@@ -402,6 +408,7 @@ export const useRoomStore = defineStore('room', {
         },
         onState: (state) => this.watchState(state),
       }));
+      drawing.watching(this._watch, { me: () => social.claims?.sub, roomId: id, roomName: () => this.room?.name });
       this.connect({ type: 'join', ...(password === undefined ? {} : { password }) }, { liveOn: ['joined'], endOn: ['refused', 'removed', 'ended', 'replaced'] });
       // The host judges the pass this watcher joined with: confirming your email mid-room joins again, with the new one.
       this._stops.push(watch(() => social.claims?.verified, (now, was) => {
@@ -458,6 +465,7 @@ export const useRoomStore = defineStore('room', {
       this._connection = null;
       connection?.close();
       this.stopAsking();
+      useDrawingStore().close();
       this._host?.close();
       this._watch?.close();
       this._settings?.reset();
@@ -746,6 +754,7 @@ export const useRoomStore = defineStore('room', {
         connection?.close();
       }
       this.stopAsking();   // an answer over a lost connection isn't coming
+      useDrawingStore().connection(state);
       this.status = state === 'lost' ? 'waiting' : state;
     },
   },

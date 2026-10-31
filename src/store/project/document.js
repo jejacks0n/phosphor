@@ -14,6 +14,59 @@ import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJso
 import { generateSlug } from 'random-word-slugs';
 import { shallowRef } from 'vue';
 
+// A project's pictures, decoded: what can fail before anything has changed.
+const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer }) => ({
+  image: await loadImage(imageBuffer),
+  paint: paintBuffer && await loadImage(paintBuffer, 'image/png'),
+  basePixels: baseBuffer && await loadImage(baseBuffer, 'image/png'),
+});
+
+// A project's parts as the open document, with its pictures decoded. As `this`, the store.
+function showParts({ settings, imageBuffer, editCells, baseRecords, erasedCells, migrated }, { image, paint, basePixels }, { filename, documentId }) {
+  // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
+  this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }) });
+  try {
+    this.editCells = editCells;
+    this.setBaseRecords(baseRecords);
+    if (paint) {
+      this.ensureLayer();
+      // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
+      // files: paint at the image's size or the grid's.
+      if (settings.paintScale) this.paintLayer.extend(Math.round(paint.width / this.paintLayer.scale), Math.round(paint.height / this.paintLayer.scale));
+      this.paintLayer.load(paint, settings.paintScale ? null : { width: image.naturalWidth, height: image.naturalHeight }, this.fit);
+      this.hasPaint = this.paintLayer.hasPaint;
+      if (migrated) this.keepMigratedLook();
+    }
+    if (basePixels) {
+      this.ensureLayer();
+      // Saved at its scale (settings.baseScale, which the layer was made at). Older files: a pixel
+      // per grid pixel, drawn up to the layer's scale.
+      const k = settings.baseScale ?? 1;
+      this.baseLayer.extend(Math.round(basePixels.width / k), Math.round(basePixels.height / k));
+      this.baseLayer.load(basePixels);
+    }
+    // Both layers reach as far as either was saved (they're extended together from here on).
+    if (this.paintLayer) {
+      const cols = Math.max(this.paintLayer.cols, this.baseLayer.cols), rows = Math.max(this.paintLayer.rows, this.baseLayer.rows);
+      this.paintLayer.extend(cols, rows);
+      this.baseLayer.extend(cols, rows);
+    }
+    // Files from before the base had its own pixels kept erased cells as a record: erase them
+    // now (as part of loading, not an edit).
+    const onGrid = erasedCells.filter(({ col, row }) => col < this.cols && row < charRowsOf(this.rows));
+    if (onGrid.length) {
+      this.eraseBase(onGrid);
+      this.commitEdit();
+      this.clearHistory();
+    }
+    this.render();
+    this.markSaved();
+  } catch (error) {
+    this.clearImage(); // the old document is gone by now: not half of this one to draw on or write
+    throw error;
+  }
+}
+
 export const documentActions = {
   randomizeSeed() {
     this.seed = generateSlug(2);
@@ -134,6 +187,7 @@ export const documentActions = {
     this.setBaseRecords(EMPTY_BASE);
     this.renderer.baseLayer = null;
     this._stroke = null;
+    this.dropHeard();
     this.clearHistory();
     const workspace = useWorkspaceStore();
     workspace.selection = workspace.selectionOffset = workspace.lastPick = workspace.wand = null;
@@ -156,15 +210,16 @@ export const documentActions = {
     this.savedToFile = true;
   },
 
-  // What a .phosphor file holds besides the image.
+  // What a .phosphor file holds besides the image, all of it as of the call (a canvas is copied when
+  // toBlob is called), since a room's changes go on while the blobs are made.
   async projectParts() {
-    return {
+    const parts = {
       settings: { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, this[key]])), paintScale: this.paintLayer?.scale ?? null, baseScale: this.baseLayer?.scale ?? null },
-      paintBlob: this.paintLayer ? await this.paintLayer.toBlob() : null,
-      baseBlob: this.baseLayer?.hasPaint ? await this.baseLayer.toBlob() : null,
       editCells: this.editCells,
       baseRecords: this.baseRecords,
     };
+    const paintBlob = this.paintLayer?.toBlob() ?? null, baseBlob = this.baseLayer?.hasPaint ? this.baseLayer.toBlob() : null;
+    return { ...parts, paintBlob: await paintBlob, baseBlob: await baseBlob };
   },
 
   async loadProject(file) {
@@ -193,52 +248,21 @@ export const documentActions = {
 
   // A project's parts (readProject) as the open document. Without a documentId it gets a new one.
   // If it throws, either nothing has changed or no document is open.
-  async openParts({ settings, imageBuffer, paintBuffer, baseBuffer, editCells, baseRecords, erasedCells, migrated }, { filename, documentId }) {
-    const image = await loadImage(imageBuffer);
-    const paint = paintBuffer && await loadImage(paintBuffer, 'image/png');
-    const basePixels = baseBuffer && await loadImage(baseBuffer, 'image/png');
+  async openParts(parts, options) {
+    showParts.call(this, parts, await loadParts(parts), options);
+  },
 
-    // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
-    this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }) });
+  // The same for the project a host sends an artist (takeProject is the only caller), the one way past
+  // HOST_ONLY_ACTIONS, which refuse openParts and what it calls. Open only while it's written, in one go:
+  // nothing a person presses can get in. What's open goes first, as it's on the document being replaced.
+  async openFromHost(parts, options) {
+    const pictures = await loadParts(parts);
+    this.commitPending();
+    this._takingProject = true;
     try {
-      this.editCells = editCells;
-      this.setBaseRecords(baseRecords);
-      if (paint) {
-        this.ensureLayer();
-        // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
-        // files: paint at the image's size or the grid's.
-        if (settings.paintScale) this.paintLayer.extend(Math.round(paint.width / this.paintLayer.scale), Math.round(paint.height / this.paintLayer.scale));
-        this.paintLayer.load(paint, settings.paintScale ? null : { width: image.naturalWidth, height: image.naturalHeight }, this.fit);
-        this.hasPaint = this.paintLayer.hasPaint;
-        if (migrated) this.keepMigratedLook();
-      }
-      if (basePixels) {
-        this.ensureLayer();
-        // Saved at its scale (settings.baseScale, which the layer was made at). Older files: a pixel
-        // per grid pixel, drawn up to the layer's scale.
-        const k = settings.baseScale ?? 1;
-        this.baseLayer.extend(Math.round(basePixels.width / k), Math.round(basePixels.height / k));
-        this.baseLayer.load(basePixels);
-      }
-      // Both layers reach as far as either was saved (they're extended together from here on).
-      if (this.paintLayer) {
-        const cols = Math.max(this.paintLayer.cols, this.baseLayer.cols), rows = Math.max(this.paintLayer.rows, this.baseLayer.rows);
-        this.paintLayer.extend(cols, rows);
-        this.baseLayer.extend(cols, rows);
-      }
-      // Files from before the base had its own pixels kept erased cells as a record: erase them
-      // now (as part of loading, not an edit).
-      const onGrid = erasedCells.filter(({ col, row }) => col < this.cols && row < charRowsOf(this.rows));
-      if (onGrid.length) {
-        this.eraseBase(onGrid);
-        this.commitEdit();
-        this.clearHistory();
-      }
-      this.render();
-      this.markSaved();
-    } catch (error) {
-      this.clearImage(); // the old document is gone by now: not half of this one to draw on or write
-      throw error;
+      showParts.call(this, parts, pictures, options);
+    } finally {
+      this._takingProject = false;
     }
   },
 

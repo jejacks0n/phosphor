@@ -70,6 +70,7 @@ export const useProjectStore = defineStore('project', {
     _by: ALONE, // who the ledger knows this person as
     _sharing: null, // the room this document is shared with (sharing.js)
     _paused: false,
+    _takingProject: false, // a host's project is being written: the guard below doesn't apply (document.js)
   }),
 
   getters: {
@@ -117,5 +118,5 @@ export const useProjectStore = defineStore('project', {
     sliderActions,
     historyActions,
     sharingActions,
-  ), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => store._sharing?.role === 'artist'),
+  ), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => store._sharing?.role === 'artist' && !store._takingProject),
 });

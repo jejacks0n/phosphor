@@ -66,6 +66,7 @@ export const historyActions = {
       }
       if (basePatch) this.baseLayer.applyPatch(basePatch, side);
       this.setBaseRecords(records[side]);
+      if (basePatch || records.before !== records.after) this.sendBase(basePatch, side);
       if (side === 'before') this.undoStroke(id, also);
       else this.redoStroke(id, also);
     };
@@ -75,6 +76,7 @@ export const historyActions = {
       onDrop: () => this._ledger.forget(id), // or while a merge holds its stacks, not found: see pushWholeLayer
       bytes: this._ledger.bytesOf(id) + bytesHeld(basePatch),
     });
+    if (basePatch || records.before !== records.after) this.sendBase(basePatch, 'after');
   },
 
   // Take a stroke back, or put it back on top, and show what that changed. also: applyChange's. Null
@@ -146,6 +148,7 @@ export const historyActions = {
     if (this._stroke) this.commitEdit();
     if (!this._floating) this.sendHeld(); // this is what ends a float someone left where it is
     this.commitSliders(); // a slider move still open
+    this.flushHeard(); // whatever comes next reads the map
   },
 
   pushEdit(entry) {
@@ -158,7 +161,13 @@ export const historyActions = {
   // until it's undone, and those after it until it's redone, so the entry holds whichever side isn't
   // showing. History dropping one of those strokes meanwhile finds nothing to forget, so what it holds
   // stays until the next reset; the picture and undo stay right.
+  // In a room it's final: artists can't follow it being undone (sharing.js).
   pushWholeLayer(undo, redo, bytes) {
+    if (this._sharing?.role === 'host') {
+      this.editVersion++;
+      this.shareWholeDocument();
+      return;
+    }
     let away = this._ledger.takeStacks();
     const swap = () => {
       const showing = this._ledger.takeStacks();
