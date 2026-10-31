@@ -231,6 +231,25 @@ test('A long email stays on one line, cut short with an ellipsis and whole in it
   expect(button.x + button.width).toBeLessThanOrEqual(row.x + row.width);
 });
 
+test('Change email and Change password are open one at a time: opening one closes and clears the other', async ({ page }) => {
+  await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  await account.getByRole('button', { name: 'Change email' }).click();
+  await account.getByLabel('Current password').fill('violet-lantern-harbor-42');
+  await account.getByRole('button', { name: 'Change password' }).click();
+  await expect(account.getByLabel('New email')).toHaveCount(0);
+  await expect(account.getByLabel('Current password')).toHaveCount(1);
+  await expect(account.getByLabel('Current password')).toHaveValue('');
+  await expect(account.getByLabel('Current password')).toBeFocused();
+
+  await account.getByLabel('New password', { exact: true }).fill('copper-meadow-signal-77');
+  await account.getByRole('button', { name: 'Change email' }).click();
+  await expect(account.getByLabel('New password', { exact: true })).toHaveCount(0);
+  await expect(account.getByLabel('New email')).toBeFocused();
+  await account.getByRole('button', { name: 'Change password' }).click();
+  await expect(account.getByLabel('New password', { exact: true })).toHaveValue('');
+});
+
 test('An account with no password has no Change email', async ({ page }) => {
   await fakeServer(page, { me: member({ providers: ['discord'] }) });
   const account = await openAccount(page);

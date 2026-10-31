@@ -93,6 +93,7 @@ function cancelRename() {
 
 // The form's Turnstile check lives as long as the form does.
 function startEmail() {
+  if (changingPassword.value) endPassword();   // one at a time: each asks for the current password
   emailError.value = null;
   changingEmail.value = true;
   focusIn(emailForm);
@@ -117,6 +118,7 @@ async function submitEmail() {
 onBeforeUnmount(() => emailToken.remove?.());
 
 function startPassword() {
+  if (changingEmail.value) endEmail();
   changingPassword.value = true;
   focusIn(passwordForm);
 }
