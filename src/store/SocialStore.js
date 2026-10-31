@@ -88,6 +88,7 @@ export const useSocialStore = defineStore('social', {
     started: false,
     lobbyWanted: false,  // the SOCIAL tab has been shown
     _boot: null,         // boot()'s promise, once asked for
+    _codePending: false, // a two-factor code is waited for (signIn's challenge, or the return from the server): its address is an arrival only then
     _roomLink: null,     // the room to go to once you're known: a ?room= link's (it asks first) or the one you signed in from
     _roomLinkAsks: false,
     roomInvite: null,    // a ?room= link's room, while it asks whether to join
@@ -180,7 +181,7 @@ export const useSocialStore = defineStore('social', {
       if (params.get('social') === 'linked') this.page = 'account';
       if (params.get('social') === 'email-changed') this.notice = error ? messageFor(error) : 'Your email is changed';
       if (params.get('social') === 'email-approved') this.notice = 'Approved. Now open the link sent to your new address';
-      if (params.get('social') === 'two-factor') this.page = 'two-factor';   // (the room stays kept until the code)
+      if (params.get('social') === 'two-factor') Object.assign(this, { page: 'two-factor', _codePending: true });   // (the room stays kept until the code)
       if (params.get('social') === 'signed-in') this._roomLink = keptRoom();
       if (params.has('room')) Object.assign(this, { _roomLink: params.get('room'), _roomLinkAsks: true });
       if (['signed-in', 'error'].includes(params.get('social'))) keepRoom(null);
@@ -236,7 +237,7 @@ export const useSocialStore = defineStore('social', {
       rooms.close();
       if (signedOut) this.me = null;
       else await this.refreshMe();
-      Object.assign(this, { blocked: [], page: this.me?.needsOnboarding ? 'onboarding' : 'lobby' });
+      Object.assign(this, { blocked: [], _codePending: false, page: this.me?.needsOnboarding ? 'onboarding' : 'lobby' });
       this.reconnect();
       if (back) rooms.join(back.id, { password: back.password });
     },
@@ -254,7 +255,7 @@ export const useSocialStore = defineStore('social', {
         });
         if (ok && data?.twoFactorRedirect) {
           if (this.me) await this.becameSomeoneElse({ signedOut: true });
-          this.page = 'two-factor';
+          Object.assign(this, { page: 'two-factor', _codePending: true });
         } else if (ok) await this.becameSomeoneElse();
         return ok;
       });
@@ -268,7 +269,7 @@ export const useSocialStore = defineStore('social', {
         const { ok, code: failure } = await this.request(`/api/auth/two-factor/${backup ? 'verify-backup-code' : 'verify-totp'}`, {
           method: 'POST', body: { code: code.replace(/\s/g, ''), trustDevice },
         });
-        if (NEW_CHALLENGE.has(failure)) this.page = 'sign-in';
+        if (NEW_CHALLENGE.has(failure)) Object.assign(this, { page: 'sign-in', _codePending: false });
         if (ok) {
           // Back from Discord or GitHub and then the code: the room kept before leaving, unless it's already rejoined.
           const id = keptRoom();

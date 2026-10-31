@@ -265,6 +265,7 @@ test('A sign-in that answers twoFactorRedirect goes to the Two-factor page, sign
   const connected = sockets.length;
   expect(await social.signIn('fan@example.com', 'right-password')).toBe(true);
   expect(social.page).toBe('two-factor');
+  expect(social._codePending).toBe(true);
   expect(social.me).toBe(null);
   expect(social.notice).toBe(null);
   expect(server.sent('GET', '/api/me')).toHaveLength(asked);
@@ -280,6 +281,7 @@ test('verifyTwoFactor sends the code without spaces, and with trustDevice; then 
   expect(server.sent('POST', '/api/auth/two-factor/verify-totp').map((r) => r.body)).toEqual([{ code: '123456', trustDevice: true }]);
   expect(social.signedIn).toBe(true);
   expect(social.page).toBe('lobby');
+  expect(social._codePending).toBe(false);
 
   social.page = 'two-factor';
   expect(await social.verifyTwoFactor(' abcde- fghij\t', { backup: true })).toBe(true);
@@ -300,6 +302,7 @@ test('An expired challenge (INVALID_TWO_FACTOR_COOKIE) goes back to Sign in with
   await social.signIn('fan@example.com', 'right-password');
   expect(await social.verifyTwoFactor('123456')).toBe(false);
   expect(social.page).toBe('sign-in');
+  expect(social._codePending).toBe(false);
   expect(social.notice).toBe('That took too long. Sign in again');
   expect(social.me).toBe(null);
 });
@@ -359,6 +362,7 @@ test('?social=two-factor opens the Two-factor page and leaves the URL', async ()
   await social.start(at('?social=two-factor&keep=abc'));
   await social.showLobby();
   expect(social.page).toBe('two-factor');
+  expect(social._codePending).toBe(true);
   expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?keep=abc`);
 });
 

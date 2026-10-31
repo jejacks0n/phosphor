@@ -4,6 +4,9 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createMemoryHistory } from 'vue-router';
 import { createTestApp, loadImage } from '../support/app.js';
 import { useSocialStore } from '@/store/SocialStore';
+import { forgetKey } from '@/social/keys';
+import { ownSocialDatabase } from '../support/socialDatabase.js';
+import { fakeServer, member } from '../support/socialServer.js';
 import { createAddressRouter, followAddress } from '@/router';
 
 const GRADIENT = '/tests/fixtures/images/gradient.png';
@@ -33,9 +36,14 @@ async function landed(address = '/') {
   replace = vi.spyOn(router, 'replace');
 }
 
+// The server, with you signed in as `session` (or no one): SOCIAL pages wait for who you are.
+const serverFor = (session = null) => Object.assign(fakeServer(), { session });
+
 beforeEach(async () => {
   ({ project, workspace } = await createTestApp());
   social = useSocialStore();
+  ownSocialDatabase('address');   // its own copy: the files run side by side
+  forgetKey();
   desktop(true);
 });
 
@@ -93,7 +101,9 @@ test('an address that is already true navigates nowhere', async () => {
 });
 
 test('a SOCIAL page is in the address both ways, and the page stays when you leave the tab', async () => {
+  serverFor(member());
   await landed('/social/account');
+  await expect.poll(() => social.signedIn).toBe(true);
   expect(workspace.editorTab).toBe('social');
   expect(social.page).toBe('account');
 
@@ -223,4 +233,106 @@ test('stop ends the sync', async () => {
   workspace.editorTab = 'sauce';
   await settled();
   expect(path()).toBe('/pixel');
+});
+
+// [address, the page signed out, the page signed in]
+const ARRIVALS = [
+  ['account', 'sign-in', 'account'],
+  ['sign-in', 'sign-in', 'lobby'],
+  ['create', 'create', 'lobby'],
+  ['forgot', 'forgot', 'forgot'],
+  ['two-factor', 'lobby', 'lobby'],
+  ['reset', 'lobby', 'lobby'],
+  ['start', 'lobby', 'start-room'],
+  ['name', 'lobby', 'lobby'],
+];
+
+for (const [address, out, signedIn] of ARRIVALS) {
+  for (const [who, session, shown] of [['signed out', null, out], ['signed in', member(), signedIn]]) {
+    test(`/social/${address} ${who} lands on ${shown}, replacing`, async () => {
+      serverFor(session);
+      await landed();
+      await router.push(`/social/${address}`);
+      await expect.poll(() => path()).toBe(shown === 'lobby' ? '/social' : `/social/${shown === 'start-room' ? 'start' : shown}`);
+      expect(social.page).toBe(shown);
+      expect(workspace.editorTab).toBe('social');
+      expect(push).toHaveBeenCalledTimes(1);   // the one above
+      expect(replace).toHaveBeenCalledTimes(shown === address || (address === 'start' && shown === 'start-room') ? 0 : 1);
+    });
+  }
+}
+
+test('Start a room is out of reach with an email not yet confirmed', async () => {
+  serverFor(member({ emailVerified: false }));
+  await landed();
+  await router.push('/social/start');
+  await expect.poll(() => path()).toBe('/social');
+  expect(social.page).toBe('lobby');
+});
+
+test('an account page reload while signed in stays on Account, not bounced before /api/me answers', async () => {
+  const server = serverFor(member());
+  let answer;
+  const asked = new Promise((resolve) => { answer = resolve; });
+  const me = server.routeOf('GET /api/me');
+  server.route('GET /api/me', async () => (await asked, me()));
+  await landed('/social/account');
+  await settled();
+  expect(social.page).toBe('account');
+  expect(path()).toBe('/social/account');
+
+  answer();
+  await expect.poll(() => social.signedIn).toBe(true);
+  await settled();
+  expect(social.page).toBe('account');
+  expect(path()).toBe('/social/account');
+});
+
+test('a stale session\'s Sign in page isn\'t bounced while signed in', async () => {
+  serverFor(member());
+  await landed('/social/account');
+  await expect.poll(() => social.signedIn).toBe(true);
+
+  social.staleSession('SESSION_NOT_FRESH');
+  await settled();
+  expect(social.page).toBe('sign-in');
+  expect(path()).toBe('/social/sign-in');
+  expect(social.signedIn).toBe(true);
+});
+
+test('a Two-factor page the store showed is not an arrival, and stays', async () => {
+  const server = serverFor();
+  server.route('POST /api/auth/sign-in/email', () => [200, { twoFactorRedirect: true, twoFactorMethods: ['totp'] }]);
+  await landed('/social/sign-in');
+  await expect.poll(() => social.supported).toBe(true);
+  await social.signIn('fan@example.com', 'right-password');
+  await settled();
+  expect(social.page).toBe('two-factor');
+  expect(path()).toBe('/social/two-factor');
+
+  router.back();   // to Sign in, and forward to the code still being asked for
+  await settled();
+  router.forward();
+  await settled();
+  expect(social.page).toBe('two-factor');
+  expect(path()).toBe('/social/two-factor');
+});
+
+test('a two-factor return from the server is read before the router lands, and stays', async () => {
+  serverFor();
+  social.readReturn(new URL(`${window.location.origin}/?social=two-factor`));
+  await landed('/');
+  await settled();
+  expect(social.page).toBe('two-factor');
+  expect(path()).toBe('/social/two-factor');
+});
+
+test('a visitor who never shows SOCIAL costs nothing', async () => {
+  const server = serverFor();
+  const boot = vi.spyOn(social, 'boot');
+  await landed('/pixel');
+  workspace.editorTab = 'sauce';
+  await settled();
+  expect(boot).not.toHaveBeenCalled();
+  expect(server.requests).toEqual([]);
 });
