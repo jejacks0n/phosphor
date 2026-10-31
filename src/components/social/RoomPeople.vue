@@ -80,7 +80,7 @@ const confirmBlock = async () => {
     </ModalDialog>
     <ReportDialog v-if="reporting" :key="opened" v-bind="reporting" @done="reporting = null" />
   </section>
-  <section v-else-if="room.role === 'watch' && !drawing.mayDraw && room.followable.length > 1" class="people follow">
+  <section v-else-if="room.canFollow" class="people follow">
     <ul aria-label="Who to follow">
       <li v-for="person in room.followable" :key="person.sub">
         <UserName class="name" :name="person.name" />

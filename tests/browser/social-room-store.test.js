@@ -2172,3 +2172,44 @@ async function watching2() {
   const again = await joining(2);
   again.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
 }
+
+test('with no list to choose from, Show box is on and Show everyone is off again, whatever was set', async () => {
+  const { posted } = await following();
+  room.setShowBox(false);
+  room.setShowEveryone(true);
+  room._watch.onArtists([], {});   // the last artist is put back to watching
+  await vi.waitFor(() => expect(room.showBox).toBe(true));
+  expect([room.showEveryone, room.canFollow]).toEqual([false, false]);
+  expect(posted.filter((m) => m.t === 'show-everyone').at(-1)).toEqual({ t: 'show-everyone', on: false });
+});
+
+test('a watcher who becomes an artist has no list either: the choices are put back', async () => {
+  await following();
+  room.setShowBox(false);
+  project.startSharing({ send: () => {}, role: 'artist', me: 'u_5' });
+  await vi.waitFor(() => expect(room.showBox).toBe(true));
+  expect(room.canFollow).toBe(false);
+  project.stopSharing();
+});
+
+test('an artist the host no longer names is no one to follow: back to the host', async () => {
+  const { posted } = await following();
+  room.follow('u_2');
+  room._watch.onArtists(['u_2', 'u_3'], { u_3: 'grim_reaper' });   // u_2 has left
+  await vi.waitFor(() => expect(room.following).toBe('u_9'));
+  expect(room.followable.map((p) => p.sub)).toEqual(['u_9', 'u_3']);
+  expect(posted.filter((m) => m.t === 'follow').at(-1)).toEqual({ t: 'follow', sub: null });
+});
+
+test('a host naming a sub like an Object method is not followable, and breaks nothing', async () => {
+  await watching();
+  await room._watch.handle(JSON.stringify({ t: 'artists', subs: ['constructor', '__proto__', 'toString'], names: {} }));
+  expect(room.followable.map((p) => p.sub)).toEqual(['u_9']);
+  expect(room.followable.every((p) => typeof p.name === 'string')).toBe(true);
+  await room._watch.handle(JSON.stringify({ t: 'artists', subs: ['constructor'], names: { constructor: 'ctor' } }));
+  room.follow('constructor');   // named by the host, and with no view: not an Object's
+  expect(room.followedView).toBe(null);
+  room.setShowEveryone(true);
+  await room._watch.handle(JSON.stringify({ t: 'view', col: 1, row: 1, cols: 1, rows: 1, who: 'toString' }));
+  expect(room.otherBoxes.map((b) => b.sub)).toEqual([]);   // the host's box needs a view too
+});
