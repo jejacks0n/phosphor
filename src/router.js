@@ -2,7 +2,7 @@
 // address follows them (reconcile), and they follow it on a landing, Back or Forward (applyPlace).
 import { nextTick, watch } from 'vue';
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router';
-import { PLACES, pathOf } from '@/lib/addresses';
+import { PLACES, arrivalPage, pathOf } from '@/lib/addresses';
 import { desktopQuery } from '@/social/config';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useRoomStore } from '@/store/RoomStore';
@@ -37,7 +37,7 @@ export function followAddress(router) {
     replaceNext = true;
   }
 
-  function applyPlace(to) {
+  async function applyPlace(to) {
     const { tab, page } = to.meta;
     if (!tab) return;
     if (landing) workspace.tabAddressed = true;
@@ -48,6 +48,16 @@ export function followAddress(router) {
       replaceNext = true;
     }
     leaveIfNoImage();
+    if (workspace.editorTab !== 'social' || !page) return;
+    await social.boot();   // who you are decides which pages can be shown
+    if (workspace.editorTab !== 'social' || social.page !== page) return;
+    const { signedIn, me, resetToken, _codePending } = social;
+    const shown = arrivalPage(page, {
+      signedIn, needsOnboarding: me?.needsOnboarding, resetToken, codePending: _codePending, canStart: signedIn && me?.emailVerified !== false,
+    });
+    if (shown === page) return;
+    replaceNext = true;
+    social.page = shown;
   }
 
   // The one place that navigates.

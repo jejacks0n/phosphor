@@ -1,6 +1,6 @@
 // The address, and the browser's Back, Forward and reload.
 import { test, expect, openApp, tab, store, imageInput, fixture } from './support.js';
-import { fakeServer } from './social-support.js';
+import { fakeServer, member, shown } from './social-support.js';
 
 const selected = (page, label) => expect(tab(page, label)).toHaveAttribute('aria-selected', 'true');
 const hash = (page, path) => expect.poll(() => new URL(page.url()).hash).toBe(`#${path}`);
@@ -119,4 +119,35 @@ test('a phone at #/social is on the art tab', async ({ page }) => {
   await selected(page, 'PIXEL');
   await hash(page, '/pixel');
   expect(await stepsSinceLoad(page)).toBe(0);
+});
+
+test('an address for a SOCIAL page you can\'t be on lands on the nearest one, with no extra step', async ({ page }) => {
+  await fakeServer(page);
+  await noteHistoryAtLoad(page);
+  await page.goto('/#/social/account');
+  await selected(page, 'SOCIAL');
+  await expect(shown(page, 'sign-in')).toBeVisible();
+  await hash(page, '/social/sign-in');
+  expect(await stepsSinceLoad(page)).toBe(0);
+});
+
+test('reloading on Account while signed in stays on it', async ({ page }) => {
+  await fakeServer(page, { me: member() });
+  await page.goto('/#/social/account');
+  await expect(shown(page, 'account')).toBeVisible();
+  await page.reload();
+  await expect(shown(page, 'account')).toBeVisible();
+  await hash(page, '/social/account');
+});
+
+test('the reset address holds no token', async ({ page }) => {
+  await fakeServer(page);
+  await page.goto('/?reset=abc');
+  await expect(shown(page, 'reset')).toBeVisible();
+  await hash(page, '/social/reset');
+  expect(page.url()).not.toContain('abc');
+
+  await page.reload();   // the token is gone with it, so the page can't be shown
+  await expect(shown(page, 'lobby')).toBeVisible();
+  await hash(page, '/social');
 });
