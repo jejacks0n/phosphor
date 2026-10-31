@@ -177,7 +177,8 @@ export class LobbyConnection {
     }
     this.socket = socket;
     const current = () => socket === this.socket;
-    // Closed without waiting for the close (on a dead network it can take minutes), and retried.
+    // Closed without waiting for the close (on a dead network it can take minutes, and a server waiting for a
+    // greeting may not answer it at all), and retried.
     const quiet = () => {
       if (!current()) return;
       this.detach();
@@ -207,7 +208,7 @@ export class LobbyConnection {
         socket.send(JSON.stringify(greeting));
         this.after(LIVE_WITHIN_MS, quiet);
       } catch {
-        if (current()) socket.close();   // no pass to give: retry as after a drop
+        quiet();   // no pass to give: retry as after a drop
       }
     };
     socket.onmessage = (event) => {

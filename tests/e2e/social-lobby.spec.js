@@ -295,3 +295,18 @@ test('a name is drawn the same everywhere: its cell (its glyph on its color), th
   await side(page).getByRole('button', { name: 'Edit account' }).click();
   expect(await look(page.locator('.people-tab .username'))).toEqual(expected('ansi-fan'));
 });
+
+test('a pass that can\'t be had says rooms are unavailable, and the lobby comes by itself once one can', async ({ page }) => {
+  const server = await fakeServer(page, { rooms: ROOMS, people: PEOPLE });
+  const noPass = (route) => route.abort();
+  await page.route('**/api/pass', noPass);
+  await page.goto('/');
+  await tab(page, 'SOCIAL').click();
+  await expect(lobby(page).getByRole('heading', { name: 'Rooms are unavailable right now' })).toBeVisible();
+
+  await page.unroute('**/api/pass', noPass);
+  await expect(lobby(page).getByRole('article')).toHaveCount(4, { timeout: 15_000 });
+  await expect(you(page)).toContainText('quiet-amber-fox');
+  await expect(lobby(page).getByRole('heading', { name: 'Rooms are unavailable right now' })).toHaveCount(0);
+  expect(server.lobby.received.map((m) => m.type)).toContain('hello');
+});
