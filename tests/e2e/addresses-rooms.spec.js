@@ -163,8 +163,8 @@ for (const typed of ['garbage', 'a&room=b']) {
     const room = fakeRoom();
     const watcher = await watcherPage(context, room);
     await watcher.goto(`/#/social?room=${typed}`);
-    await asked(watcher).getByRole('button', { name: 'Join', exact: true }).click();
     await expect(watcher.getByText(UNAVAILABLE)).toBeVisible();
+    await expect(asked(watcher)).toHaveCount(0);
     await hash(watcher, '/social');
     expect(room.received).toEqual([]);
   });
