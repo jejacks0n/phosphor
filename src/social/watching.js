@@ -30,12 +30,12 @@ const place = (n) => Number.isInteger(n) && n >= 0;
 export class Watch {
   constructor({
     send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = NOTHING,
-    onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCursors = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING,
+    onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING,
     takesProjects = () => false,
   }) {
     Object.assign(this, {
       send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat,
-      onNumbered, onSettings, onBase, onProject, onCheck, onCursors, onInvite, onWithdrawn, onArtists, takesProjects,
+      onNumbered, onSettings, onBase, onProject, onCheck, onCaughtUp, onCursors, onInvite, onWithdrawn, onArtists, takesProjects,
     });
     this.mostWaiting = MOST_WAITING;
     this.conn = null;
@@ -166,7 +166,7 @@ export class Watch {
     else if (msg.t === 'history') await this.history(msg);
     else if (msg.t === 'deleted' && isId(msg.id)) this.onChat({ type: 'deleted', id: msg.id });
     else if (msg.t === 'chat-no' && isId(msg.id) && msg.reason === 'too-fast') this.onChat({ type: 'refused', id: msg.id, reason: msg.reason });
-    else if (msg.t === 'numbered' || msg.t === 'settings' || msg.t === 'base' || (msg.t === 'check' && Number.isInteger(msg.sum))) this.drawn(msg);
+    else if (msg.t === 'numbered' || msg.t === 'settings' || msg.t === 'base' || msg.t === 'caught-up' || (msg.t === 'check' && Number.isInteger(msg.sum))) this.drawn(msg);
     else if (msg.t === 'project-start') this.projectStart(msg);
     else if (msg.t === 'cursors') this.onCursors(Object.fromEntries(Object.entries(msg).filter(([key]) => key !== 't')));
     else if (msg.t === 'invite') this.onInvite();
@@ -180,6 +180,7 @@ export class Watch {
     else if (msg.t === 'numbered') this.onNumbered(msg);
     else if (msg.t === 'settings') this.onSettings(msg);
     else if (msg.t === 'check') this.onCheck(msg);
+    else if (msg.t === 'caught-up') this.onCaughtUp();
     else this.onBase(msg);
   }
 

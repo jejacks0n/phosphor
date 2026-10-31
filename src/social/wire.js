@@ -278,3 +278,20 @@ export async function unpackProject(chunks, { mostBytes }) {
     return null;
   }
 }
+
+// Where someone is, for the screen: a cell or null (the pointer's off the art), the cells in their view or null,
+// and their name. Null for anything else: what a host relays is a stranger's, and this is drawn on the art.
+const place = (n) => Number.isInteger(n) && n >= 0;
+const MOST_NAME = 60, MOST_CURSORS = 64;
+export function readCursor({ at = null, view = null, name } = {}) {
+  const goodAt = at === null || (place(at?.col) && place(at?.row));
+  const goodView = view === null || ([view?.col, view?.row, view?.cols, view?.rows].every(place) && (view.zoom === undefined || (typeof view.zoom === 'number' && view.zoom > 0)));
+  if (!goodAt || !goodView || typeof name !== 'string' || !name || name.length > MOST_NAME) return null;
+  return { at, view, name };
+}
+
+// A host's cursors message: those that are cursors, by sub.
+export function readCursors(all) {
+  const read = Object.entries(all ?? {}).slice(0, MOST_CURSORS).map(([sub, cursor]) => [sub, cursor && typeof cursor === 'object' ? readCursor(cursor) : null]);
+  return Object.fromEntries(read.filter(([, cursor]) => cursor));
+}

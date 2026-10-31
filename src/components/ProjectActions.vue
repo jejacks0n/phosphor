@@ -2,7 +2,9 @@
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useDrawingStore } from '@/store/DrawingStore';
 
+const drawing = useDrawingStore();
 const project = useProjectStore();
 const { image } = storeToRefs(project);
 const { editorTab, saveDialog, versionsOpen } = storeToRefs(useWorkspaceStore());
@@ -20,9 +22,9 @@ function confirmNewProject() {
     <button @click="saveDialog = 'phosphor'" :disabled="!image" class="primary">Save Project (.phosphor)</button>
     <button @click="saveDialog = 'ans'" :disabled="!image" class="secondary">Export .ans</button>
     <button @click="saveDialog = 'utf8ans'" :disabled="!image" class="secondary">Export .utf8ans</button>
-    <button @click="versionsOpen = true" :disabled="!image" class="secondary">Versions</button>
+    <button @click="versionsOpen = true" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="secondary">Versions</button>
     <hr/>
-    <button @click="confirmNewProject" :disabled="!image" class="danger">Start New Project</button>
+    <button @click="confirmNewProject" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="danger">Start New Project</button>
   </article>
 </template>
 

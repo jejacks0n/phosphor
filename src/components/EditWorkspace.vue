@@ -2,6 +2,8 @@
 import { watch, onMounted } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useDrawingStore } from '@/store/DrawingStore';
+import { toast } from '@/composables/useToast';
 import { isProjectFile } from '@/document/projectIO';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 
@@ -22,12 +24,14 @@ defineProps({
 
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
+const drawing = useDrawingStore();
 useKeyboardShortcuts(project, workspace);
 
 onMounted(() => project.render());
 watch(() => project.processParams, () => project.render(), { deep: true });
 
 async function handleFileSelected(file) {
+  if (drawing.offWithOthers) return toast(drawing.offWithOthers);
   project.commitPending(); // text typed a moment ago counts
   if (project.image && project.isDirty && !confirm(`You have unsaved changes. Open ${file.name} anyway?`)) return;
   if (isProjectFile(file.name)) await project.loadProject(file);

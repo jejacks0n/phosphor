@@ -212,6 +212,19 @@ test('resend gives the unechoed changes in their order', () => {
   assert.equal(me.pending.size, 2);
 });
 
+test('resend starts the count over: the host counts what it gets on this connection afresh', () => {
+  const me = artist('me');
+  const first = cellsOf(['0,0', MINE]), second = cellsOf(['1,0', MINE]);
+  me.draw('s1', first);
+  me.pending.newConnection();   // what was sent is older than this connection now
+  me.draw('s1', second);
+  assert.deepEqual(me.pending.resend(), [{ stroke: 's1', ...first }, { stroke: 's1', ...second }]);
+
+  // Project took 1, so the first is theirs; had resend left the count, it would be taken from the wrong end.
+  me.pending.dropTaken(1);
+  assert.deepEqual(me.pending.waiting, [{ stroke: 's1', ...second }]);
+});
+
 test('the echo of my undo is an ordinary change: held beneath my newer stroke, written elsewhere', () => {
   const me = artist('me', { cells: [['0,0', START], ['1,0', START]] });
   const hosting = host({ cells: [['0,0', START], ['1,0', START]] });

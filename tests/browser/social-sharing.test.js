@@ -1051,3 +1051,54 @@ test('an action added to the edit layer or selection is listed or known to only 
 test('guarded refuses a name that isn\'t an action, which would guard nothing', () => {
   expect(() => guarded({ real() {} }, ['misspelled'], () => true)).toThrow('misspelled');
 });
+
+test('back on a new connection, only what never got a number goes, oldest first', async () => {
+  const { project, sent } = await drawing('artist');
+  project.typeAt(1, 1, 'a');
+  project.commitPending();
+  project.typeAt(2, 1, 'b');
+  project.commitPending();
+  const [first, second] = sent.filter((m) => m.t === 'change');
+  project.applyNumbered(echo(first, 1));
+  project.flushHeard();
+
+  project.newConnection();
+  sent.length = 0;
+  project.resendPending();
+  expect(sent).toEqual([{ t: 'change', stroke: second.stroke, cells: second.cells, runs: second.runs }]);
+  project.applyNumbered(echo(second, 2));
+  project.flushHeard();
+  expect(project._sharing.pending.size).toBe(0);
+});
+
+test('a float still held isn\'t sent by a resend: it goes when it\'s placed', async () => {
+  const { project, sent } = await drawing('artist');
+  project.typeAt(3, 3, 'x');
+  project.commitPending();
+  const typed = sent.at(-1);
+  project.floatSelection({ c0: 3, r0: 3, c1: 3, r1: 3 }, { base: false, edit: true }, 1, 0);
+  expect(project._sharing.held.parts.length).toBeGreaterThan(0);
+  expect(project._sharing.pending.size).toBeGreaterThan(1);
+  sent.length = 0;
+  project.resendPending();
+  expect(sent).toEqual([{ t: 'change', stroke: typed.stroke, cells: typed.cells, runs: typed.runs }]);
+});
+
+test('what\'s waiting is a box for each stroke, in grid pixels', async () => {
+  const { project } = await drawing('artist');
+  project.typeAt(2, 3, 'x');
+  project.commitPending();
+  expect(project.waitingBoxes()).toEqual([{ x0: 2, y0: 6, x1: 3, y1: 8 }]);
+  project.stopSharing();
+  expect(project.waitingBoxes()).toEqual([]);
+});
+
+test('an artist leaving keeps the last agreed picture: what got no number is gone', async () => {
+  const { project } = await drawing('artist');
+  project.typeAt(4, 4, 'x');
+  project.commitPending();
+  expect(char(project, 4, 4)).toBe('x');
+  project.dropWaiting();
+  project.stopSharing();
+  expect(char(project, 4, 4)).toBeUndefined();
+});

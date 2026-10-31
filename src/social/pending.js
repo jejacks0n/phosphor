@@ -131,9 +131,14 @@ export class Pending {
   }
 
   // A host came back: what it may never have numbered, oldest first, each with its stroke.
+  // The host's count starts from these: they're all this connection's now.
   resend() {
+    this.#older = this.#handled = 0;
     return this.#changes.slice();
   }
+
+  // What's held, oldest first, without saying it's being sent.
+  get waiting() { return this.#changes.slice(); }
 
   // A new connection: the host's count starts over, and what's here already isn't in it. Echoes from the tail
   // may yet come for these; none are counted.

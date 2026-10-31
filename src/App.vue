@@ -6,6 +6,7 @@ import { useAutosave } from '@/composables/useAutosave';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
+import { useDrawingStore } from '@/store/DrawingStore';
 import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
 import { setDisplayFont } from '@/lib/displayFonts';
 import { loadFonts } from '@/lib/userFonts';
@@ -36,6 +37,8 @@ watchEffect(() => {
 
 const autosave = useAutosave();
 const { ready, recent, openRecent } = autosave;
+const drawing = useDrawingStore();
+drawing.autosavedBy(autosave.flush);
 
 // Leaving with unsaved changes asks first, unless they're safe in the browser and the art has been
 // saved to a file at least once. A room you host always asks.
@@ -114,7 +117,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     <EndRoomDialog v-if="room.askingEnd" @end="room.answerEnd(true)" @cancel="room.answerEnd(false)"/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
     <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>
-    <VersionsDialog v-if="versionsOpen" :flush="autosave.flush" :restore-version="autosave.restoreVersion" @close="versionsOpen = false"/>
+    <VersionsDialog v-if="versionsOpen && !drawing.offWithOthers" :flush="autosave.flush" :restore-version="autosave.restoreVersion" @close="versionsOpen = false"/>
     <ShortcutsDialog v-if="shortcutsOpen" @close="shortcutsOpen = false"/>
     <LegalDialog v-if="legalPage" :page="legalPage" @open="legalPage = $event" @close="legalPage = null"/>
     <AppToast/>

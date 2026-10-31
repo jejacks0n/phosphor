@@ -1,6 +1,6 @@
 <script setup>
 // Connected toggle buttons over an object of booleans (v-model): any number lit, never none (a
-// click that would turn the last one off does nothing). options: [{ key, label, title }].
+// click that would turn the last one off does nothing). options: [{ key, label, title, disabled? }].
 const value = defineModel({ type: Object, required: true });
 defineProps({
   options: { type: Array, required: true },
@@ -16,11 +16,12 @@ function toggle(key) {
 <template>
   <div class="toggle-group" role="group" :aria-label="label">
     <button
-        v-for="{ key, label: name, title } in options"
+        v-for="{ key, label: name, title, disabled } in options"
         :key="key"
         :class="{ on: value[key] }"
         :aria-pressed="!!value[key]"
         :title="title"
+        :disabled="disabled"
         @click="toggle(key)"
     >{{ name }}</button>
   </div>

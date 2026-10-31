@@ -2,7 +2,7 @@
 // (page.routeWebSocket) and a room's (fakeRoom), with every request and message recorded. The preview
 // build runs on localhost, so the app talks to http://localhost:8787.
 import { generateKeyPairSync, sign } from 'node:crypto';
-import { expect, openApp, tab, store } from './support.js';
+import { expect, openApp, tab, store, settled } from './support.js';
 
 const API = 'http://localhost:8787';
 export const ROOM_ID = 'abcdefghij';
@@ -399,4 +399,37 @@ export async function watching(host, context, room, options) {
   await joinFromCard(watcher);
   await hash(watcher, `/social?room=${ROOM_ID}`);
   return watcher;
+}
+
+// Drawing together: someone in the room who can be asked (a member, not the host), who is here in the host's
+// list and how to pick from their ⋯.
+export const ARTIST = member({ id: 'u_2', username: 'tin_owl', name: 'tin_owl', email: 'owl@example.com' });
+export const people = (host) => chat(host).getByRole('list', { name: 'Who is here' });
+export const rowOf = (host, name = ARTIST.name) => people(host).getByRole('listitem').filter({ hasText: name });
+export const invitation = (page) => chat(page).getByRole('status').filter({ hasText: 'invited you to draw' });
+export const mayDraw = (page) => expect.poll(() => store(page, 'drawing', (d) => d.mayDraw), { timeout: 20_000, intervals: [100] });
+export async function fromMenu(host, action, name = ARTIST.name) {
+  if (!await people(host).isVisible()) await chat(host).getByRole('button', { name: /^\d+ here$/ }).click();
+  await rowOf(host, name).getByRole('button', { name: `More for ${name}` }).click();
+  await rowOf(host, name).getByRole('button', { name: action }).click();
+}
+
+// A member in the room from the lobby's card, asked by the host (Make artist), and not answered yet.
+export async function invitedPage(context, host, room, { me = ARTIST, prepare = async () => {} } = {}) {
+  const page = await watcherPage(context, room, { me });
+  await page.goto('/');
+  await prepare(page);
+  await joinFromCard(page);
+  await fromMenu(host, 'Make artist', me.name);
+  await expect(invitation(page)).toBeVisible();
+  return page;
+}
+
+// That member, having said yes, with the room's art open.
+export async function artistPage(context, host, room, options) {
+  const page = await invitedPage(context, host, room, options);
+  await invitation(page).getByRole('button', { name: 'Accept' }).click();
+  await mayDraw(page).toBe(true);
+  await settled(page);
+  return page;
 }

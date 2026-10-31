@@ -203,6 +203,7 @@ export const useRoomStore = defineStore('room', {
         passKey, connectWithinMs: this._connectWithinMs, roomId: fields.id,
         onWatchers: (list) => {
           this.watchers = list;
+          drawing.peopleHere(list);
           this.keepSoon();
         },
         onChat: (event) => {
@@ -211,7 +212,7 @@ export const useRoomStore = defineStore('room', {
         },
       }));
       if (kept) host.restore(kept);
-      drawing.hosted(host, { me: () => useSocialStore().claims?.sub });
+      drawing.hosted(host, { me: () => useSocialStore().claims?.sub, name: () => useSocialStore().claims?.name });
       Object.assign(this, { ...fields, role: 'host', _host: host, _settings: markRaw(new Pacer(SETTINGS_EVERY_MS, (msg) => this._connection?.send(msg) ?? false)) });
     },
 
@@ -269,6 +270,7 @@ export const useRoomStore = defineStore('room', {
       await until(() => !!project.image || workspace.documentAnswered).toBe(true, { timeout: Math.max(0, this._resumeBegan + RETURN_WITHIN_MS - Date.now()) });   // a database that never answers is the room gone
       if (gone()) return;
       if (!project.image) return this.over(ROOM_AWAY_WORDS);
+      useDrawingStore().resumeHosting(record);
       this.share();
       this.connect({ type: 'host' }, HOST_SOCKET);
     },
@@ -280,7 +282,8 @@ export const useRoomStore = defineStore('room', {
       const { id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted } = this;
       const { viewTab, ansiZoom, editZoom, ansiViewOrigin, ansiViewSize, ansiViewZoom, inputView } = useWorkspaceStore();
       const view = { viewTab, ansiZoom, editZoom, ansiViewOrigin, ansiViewSize, ansiViewZoom, inputView };
-      keepHostingRecord({ sub: useSocialStore().claims?.sub, id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, host: this._host.kept(), view });
+      const { artists, invited } = useDrawingStore();
+      keepHostingRecord({ sub: useSocialStore().claims?.sub, id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, artists, invited, host: this._host.kept(), view });
     },
 
     keepSoon() {
@@ -295,7 +298,7 @@ export const useRoomStore = defineStore('room', {
     // against what it sent. While a slider moves, nothing goes: its end goes as one change. A public
     // room's lobby picture goes once soon after it's live, then after a change, 3 minutes apart at least.
     share() {
-      const project = useProjectStore(), workspace = useWorkspaceStore();
+      const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore();
       let timer = null, pictureTimer = null, pictureAt = null;
       const artNow = () => ({ cells: project.cells, cols: project.cols, lines: charRowsOf(project.rows), font: fontOnWire(workspace.displayFontSpec) });
       const flush = () => {
@@ -336,7 +339,7 @@ export const useRoomStore = defineStore('room', {
         watch(() => JSON.stringify(this.lobbyPlace), changed, { immediate: true }),
         watch(() => this.hereNow, (here) => sessionSaw(this.session, here), { immediate: true }),
         watch(() => project.documentId, () => { workspace.viewToRestore = null; }),   // another document isn't where the old one was scrolled to
-        watch([() => this.room, () => this.lobbyPin, () => this.peopleOpen, () => this.muted, () => workspace.sharedView], () => this.keepSoon()),
+        watch([() => this.room, () => this.lobbyPin, () => this.peopleOpen, () => this.muted, () => drawing.artists, () => drawing.invited, () => workspace.sharedView], () => this.keepSoon()),
         watch(() => this.status, (status) => {
           if (status === 'live') this.session.liveSince ??= Date.now();   // a reconnect keeps it
           if (status === 'live') this.keepSoon();
@@ -465,7 +468,7 @@ export const useRoomStore = defineStore('room', {
       this._connection = null;
       connection?.close();
       this.stopAsking();
-      useDrawingStore().close();
+      useDrawingStore().close({ spent });
       this._host?.close();
       this._watch?.close();
       this._settings?.reset();
@@ -581,6 +584,7 @@ export const useRoomStore = defineStore('room', {
       if (this.role !== 'host') return;
       const watcher = this.watchers.find((w) => w.peer === peer);
       if (watcher) sessionRemoved(this.session, watcher.sub, Date.now());
+      if (watcher) useDrawingStore().backToWatching(watcher.sub);
       this._host.remove(peer);
     },
 
@@ -738,11 +742,11 @@ export const useRoomStore = defineStore('room', {
     },
 
     over(notice) {
-      const social = useSocialStore(), hosting = this.role === 'host';
+      const social = useSocialStore(), hosting = this.role === 'host', drawing = useDrawingStore().mayDraw;
       this._connection = null;   // it's ending itself: no end to send
       this.leave();
       if (notice) social.notice = notice;
-      if (notice && hosting && useWorkspaceStore().editorTab !== 'social') toast(notice);   // the notice is on the tab you're not on
+      if (notice && (hosting || drawing) && useWorkspaceStore().editorTab !== 'social') toast(notice);   // the notice is on the tab you're not on
     },
 
     // The watcher's connection to the host: lost goes back to waiting for its next offer. Failed stays

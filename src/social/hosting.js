@@ -427,9 +427,11 @@ export class Host {
     }
   }
 
-  // What someone missed, from the ledger's tail.
-  sendTail(w, items) {
+  // What someone missed, from the ledger's tail, and that that's all of it (n, the last number): anything of
+  // theirs they've heard no number for by then never got here.
+  sendTail(w, items, n) {
     for (const item of items) this.deliver(w, JSON.stringify(item.t ? item : { t: 'numbered', ...item }));
+    this.deliver(w, JSON.stringify({ t: 'caught-up', n }));
   }
 
   // Straight down the channel, for anyone keeping up. Otherwise it waits in their queue, as a channel past what
