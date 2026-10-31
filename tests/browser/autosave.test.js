@@ -6,7 +6,6 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { useAutosave } from '@/composables/useAutosave';
 import { useProjectStore } from '@/store/ProjectStore';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { toastMessage } from '@/composables/useToast';
 import ZeroState from '@/components/ZeroState.vue';
 import VersionsDialog from '@/components/VersionsDialog.vue';
@@ -955,6 +954,7 @@ test('a restore stays on the tab the address named, and settles the document', a
   expect(back.documentId).toBe(project.documentId);
   expect(workspace.editorTab).toBe('input');
   expect(workspace.documentSettled).toBe(true);
+  expect(workspace.documentAnswered).toBe(true);
 });
 
 test('a held lock that is let go within the wait is a reload: the document keeps its id', async () => {
@@ -1179,14 +1179,15 @@ test('a write still running when another document comes back doesn\'t count as t
 test('a database that never answers doesn\'t hold back the start screen', async () => {
   vi.mocked(listDocuments).mockImplementationOnce(() => new Promise(() => {}));
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-  await createTestApp();
+  const { workspace } = await createTestApp();
   app = createApp({ setup() { autosave = useAutosave(); return () => null; } });
   app.mount(document.createElement('div'));
   await vi.advanceTimersByTimeAsync(READY_WAIT_MS - 1);
   expect(autosave.ready.value).toBe(false);
   await vi.advanceTimersByTimeAsync(1);
   expect(autosave.ready.value).toBe(true);
-  expect(useWorkspaceStore().documentSettled).toBe(true); // or a landing would wait on it forever
+  expect(workspace.documentSettled).toBe(true); // or a landing would wait on it forever
+  expect(workspace.documentAnswered).toBe(false); // the restore is still on its way: a room coming back waits for it
 });
 
 test('a restore that answers after the wait still brings the document back', async () => {

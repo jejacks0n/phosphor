@@ -66,7 +66,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'sauce' or 'social'
     viewTab: 'output',       // the art tab last shown, 'input' or 'output' (its view mounts and sets it)
     tabAddressed: false,     // the landing address named a tab (router.js)
-    documentSettled: false,  // autosave has finished bringing back what it can (useAutosave)
+    documentSettled: false,  // autosave has finished bringing back what it can (useAutosave), or the start screen stopped waiting
+    documentAnswered: false, // autosave's restore has really finished, however long it took (a room coming back waits for this)
     isPainting: false,
     isCtrlPressed: false,
     isMiddleClick: false,

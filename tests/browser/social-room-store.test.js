@@ -13,14 +13,14 @@ import { toBase64url } from '@/social/base64url';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { desktopQuery, rtcConfig } from '@/social/config';
 import { Watch } from '@/social/watching';
-import { Host } from '@/social/hosting';
+import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
 import { measureAdvance } from '@/lib/CellCanvas';
 import { DISPLAY_FONT, setDisplayFont } from '@/lib/displayFonts';
 import { MOST_KEPT, signedText } from '@/social/chat';
 import { fontFor } from '@/social/wire';
 import { openPeer } from '@/social/peer';
 import { passKey } from '@/social/pass';
-import { ROOM_AWAY_WORDS } from '@/social/messages';
+import { ROOM_AWAY_WORDS, refusalWords } from '@/social/messages';
 import { keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
 import { toastMessage } from '@/composables/useToast';
 import { newSession, removedCount } from '@/social/session';
@@ -1558,7 +1558,7 @@ test('resume() sets role, id and status \'reconnecting\' synchronously', async (
 test('resume() with no record, or one that can\'t be read, changes nothing', async () => {
   const good = { sub: 'u_1', id: ID, link: 'l', room: {}, session: newSession(), muted: [], host: { log: [], only: [], removed: [], here: [] } };
   for (const bad of [null, 'not json', '{}', '"text"', JSON.stringify({ ...good, id: 'NOT A ROOM' }), JSON.stringify({ ...good, sub: undefined }), JSON.stringify({ ...good, room: null }),
-    JSON.stringify({ ...good, session: null }), JSON.stringify({ ...good, host: undefined }), JSON.stringify({ ...good, host: { ...good.host, only: [1] } })]) {
+    JSON.stringify({ ...good, session: null })]) {
     if (bad === null) sessionStorage.removeItem(RECORD);
     else sessionStorage.setItem(RECORD, bad);
     expect(() => room.resume()).not.toThrow();
@@ -1566,6 +1566,31 @@ test('resume() with no record, or one that can\'t be read, changes nothing', asy
   }
   await later();
   expect(sockets).toHaveLength(0);
+});
+
+test('a record whose restore throws is forgotten, with nothing half set', async () => {
+  const good = { sub: 'u_1', id: ID, link: 'l', room: {}, session: newSession(), muted: [], host: { log: [], only: [], removed: [], here: [] } };
+  for (const host of [undefined, { ...good.host, only: [1] }]) {
+    sessionStorage.setItem(RECORD, JSON.stringify({ ...good, host }));
+    expect(() => room.resume()).not.toThrow();
+    expect([room.role, room.id, room.status, room.link, room._host, room._settings, room._resuming]).toEqual([null, null, null, null, null, null, false]);
+    expect(sessionStorage.getItem(RECORD)).toBe(null);
+  }
+  expect(sockets).toHaveLength(0);
+});
+
+test('comeBack failing says ROOM_AWAY_WORDS, keeps its warning, and drops the record', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  await goLive();
+  await reload();
+  const record = JSON.parse(sessionStorage.getItem(RECORD));
+  sessionStorage.setItem(RECORD, JSON.stringify({ ...record, host: { ...record.host, log: [{ id: 'bad', ts: 1, text: 'x', pass: 'not a pass', sig: 's' }] } }));
+  room.resume();
+  await expect.poll(() => room.role).toBe(null);
+  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+  expect(warn).toHaveBeenCalledWith('The room couldn\'t come back.', expect.anything());
+  expect(sockets).toHaveLength(1);
 });
 
 test('resume() greets with host once the account is known and the document is there', async () => {
@@ -1651,17 +1676,115 @@ test('ended after a resumed room\'s first hosting, as today, says nothing', asyn
   expect(sessionStorage.getItem(RECORD)).toBe(null);
 });
 
-test('no document once settled drops the record and says ROOM_AWAY_WORDS', async () => {
+test('no document once autosave has answered drops the record and says ROOM_AWAY_WORDS', async () => {
+  await goLive();
+  await reload({ art: false });
+  room.resume();
+  await social.boot();
+  await expect.poll(() => social.claims?.sub).toBe('u_1');
+  useWorkspaceStore().documentAnswered = true;
+  await expect.poll(() => room.role).toBe(null);
+  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+  expect(sockets).toHaveLength(1);
+});
+
+test('a slow restore isn\'t a dead room: settled with no answer yet waits, and the art arriving connects', async () => {
   await goLive();
   await reload({ art: false });
   room.resume();
   await social.boot();
   await expect.poll(() => social.claims?.sub).toBe('u_1');
   useWorkspaceStore().documentSettled = true;
-  await expect.poll(() => room.role).toBe(null);
+  await wait(50);
+  expect([room.role, social.notice, sockets.length]).toEqual(['host', null, 1]);
+  expect(sessionStorage.getItem(RECORD)).not.toBe(null);
+  await openArt();
+  await greeted();
+});
+
+test('End room during the wait for the art leaves it ended: no socket, no record', async () => {
+  await goLive();
+  await reload({ art: false });
+  room.resume();
+  await social.boot();
+  await expect.poll(() => social.claims?.sub).toBe('u_1');
+  room.endRoom();
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+  await openArt();
+  await wait(50);
+  expect(room.role).toBe(null);
+  expect(sockets).toHaveLength(1);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+});
+
+test('a pass that can\'t be had yet isn\'t someone else: it\'s asked for again, and the room comes back', async () => {
+  await goLive();
+  await reload();
+  const me = server.routeOf('GET /api/me'), pass = server.routeOf('POST /api/pass');
+  server.route('GET /api/me', () => [503, { code: 'NETWORK' }]);
+  server.route('POST /api/pass', () => {
+    server.route('POST /api/pass', pass);
+    server.route('GET /api/me', me);
+    return [429, { code: 'THROTTLED' }];
+  });
+  const asked = server.sent('POST', '/api/pass').length;
+  room.resume();
+  await expect.poll(() => server.sent('POST', '/api/pass').length).toBe(asked + 1);
+  await later();
+  expect([room.role, room.status, social.claims]).toEqual(['host', 'reconnecting', null]);
+  expect(social.me).toBe(null);
+  await vi.waitFor(() => expect(sockets).toHaveLength(2), { timeout: 5000 });   // about 3 s on
+  const again = sockets[1];
+  expect(social.me?.id).toBe('u_1');
+  expect(social.notice).toBe(null);
+  expect(keptHostingRecord().id).toBe(ID);
+  again.accept();
+  await vi.waitFor(() => expect(again.sent[0]?.type).toBe('host'));
+});
+
+test('a pass that still can\'t be had once those who were here have stopped waiting says ROOM_AWAY_WORDS', async () => {
+  await goLive();
+  await reload();
+  server.route('POST /api/pass', () => [429, { code: 'THROTTLED' }]);
+  const asked = server.sent('POST', '/api/pass').length;
+  room.resume();
+  await expect.poll(() => server.sent('POST', '/api/pass').length).toBe(asked + 1);
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(Date.now() + RETURN_WITHIN_MS);
+  await vi.waitFor(() => expect(room.role).toBe(null), { timeout: 5000 });
   expect(social.notice).toBe(ROOM_AWAY_WORDS);
   expect(sessionStorage.getItem(RECORD)).toBe(null);
   expect(sockets).toHaveLength(1);
+});
+
+test('a throttled refusal on resume opens the same connection again, and keeps the record', async () => {
+  await goLive();
+  await reload();
+  room.resume();
+  const again = await greeted();
+  again.receive({ type: 'refused', reason: 'throttled' });
+  expect([room.role, social.notice]).toEqual(['host', null]);
+  expect(keptHostingRecord().id).toBe(ID);
+  const third = await vi.waitFor(() => {
+    expect(sockets).toHaveLength(3);
+    return sockets[2];
+  }, { timeout: 5000 });
+  third.accept();
+  await vi.waitFor(() => expect(third.sent[0]?.type).toBe('host'));
+  third.receive({ type: 'hosting', room: info(), peers: [] });
+  expect(room.status).toBe('live');
+});
+
+test('a throttled refusal outside a resume stays the end of it', async () => {
+  const socket = await goLive();
+  socket.close();
+  const again = await lastSocket(2);
+  again.accept();
+  await vi.waitFor(() => expect(again.sent[0]?.type).toBe('host'));
+  again.receive({ type: 'refused', reason: 'throttled' });
+  expect(room.role).toBe(null);
+  expect(social.notice).toBe(refusalWords('throttled'));
 });
 
 test('a failed resume toasts when the tab isn\'t SOCIAL', async () => {
