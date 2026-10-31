@@ -188,13 +188,16 @@ export async function unpackSnapshot(chunks) {
 const isCoord = (n) => Number.isInteger(n) && n >= 0;
 const MOST_STROKE = 40;
 
-// 'col,row' as two whole numbers, one pass over its characters: the col, then the row, or -1 for either
-// when the key isn't two runs of digits around a comma. (A regex would make a match array a position.)
+// 'col,row' as two whole numbers, one pass over its characters, or null when the key isn't what cellKey
+// makes: two runs of digits around a comma, neither with a leading zero (01,0 would be stored but never
+// shown, and clearing 1,0 would never clear it). (A regex would make a match array a position.)
 function placeOf(key) {
-  let col = 0, row = -1, digits = 0;
+  let col = 0, row = -1, digits = 0, zero = false;
   for (let i = 0; i < key.length; i++) {
     const c = key.charCodeAt(i) - 48;
     if (c >= 0 && c <= 9) {
+      if (digits === 1 && zero) return null;
+      if (digits === 0) zero = c === 0;
       if (++digits > 7) return null;
       if (row < 0) col = col * 10 + c; else row = row * 10 + c;
     } else if (c === -4 && row < 0 && digits) {   // the comma
