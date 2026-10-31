@@ -20,7 +20,7 @@ import { MOST_KEPT, signedText } from '@/social/chat';
 import { fontFor } from '@/social/wire';
 import { openPeer } from '@/social/peer';
 import { passKey } from '@/social/pass';
-import { ROOM_AWAY_WORDS, refusalWords } from '@/social/messages';
+import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, refusalWords } from '@/social/messages';
 import { keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
 import { toastMessage } from '@/composables/useToast';
 import { newSession, removedCount } from '@/social/session';
@@ -1637,6 +1637,20 @@ test.each([
   expect(social.notice).toBe(null);
   expect(toastMessage.value).toBe(null);
   expect(sessionStorage.getItem(RECORD)).toBe(null);
+});
+
+test('a host\'s socket closed as replaced: role null, record gone, HOST_REPLACED_WORDS, no end sent', async () => {
+  const socket = await goLive();
+  expect(HOST_REPLACED_WORDS).toBe('This room is open in another tab');
+  window.dispatchEvent(new PageTransitionEvent('pagehide'));
+  expect(sessionStorage.getItem(RECORD)).not.toBe(null);
+  socket.serverClose('replaced');
+  expect(room.role).toBe(null);
+  expect(social.notice).toBe(HOST_REPLACED_WORDS);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+  expect(socket.sent.map((m) => m.type)).not.toContain('end');
+  await wait(1200);   // past the first retry
+  expect(sockets).toHaveLength(1);
 });
 
 test('refused unavailable on resume drops the record, says ROOM_AWAY_WORDS, and the art stays', async () => {

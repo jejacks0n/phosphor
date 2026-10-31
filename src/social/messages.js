@@ -91,3 +91,6 @@ export const refusalWords = (reason) => (Object.hasOwn(ROOM_WORDS, reason) ? ROO
 
 // What a host is told when the room it reloaded into is gone.
 export const ROOM_AWAY_WORDS = 'Your room ended while the page was away';
+
+// What a host is told when another tab took its room (a copy of the tab hosts it too, and the older one is closed).
+export const HOST_REPLACED_WORDS = 'This room is open in another tab';

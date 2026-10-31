@@ -102,7 +102,8 @@ export class Pacer {
 // hello (a pass from getPass, asked each time so a renewed one is used, and a proof over lobby:<ts>);
 // a room gives its own `greet(pass, privateKey)`. A message in `liveOn` (the lobby's state) makes it
 // live. A drop retries after 1 s, doubling to 30 s, until it's live; a message in `endOn` stops it, for
-// good, after it goes to onMessage ('refused' for a refused, 'closed' for any other). A socket can go
+// good, after it goes to onMessage ('refused' for a refused, 'closed' for any other), and so does a close
+// whose reason is in `endOn` (the server says why it closed a socket it sent no message on). A socket can go
 // without a close (a laptop asleep, a dead Wi-Fi), so a quiet one counts as a drop: nothing in `liveOn`
 // within 10 s of the greeting, or no "pong" within 10 s of the "ping" sent every 30 s while live.
 // Status goes to onStatus: 'connecting', 'live', 'reconnecting', 'refused' or 'closed'.
@@ -189,6 +190,15 @@ export class LobbyConnection {
       this.after(PONG_WITHIN_MS, quiet);
       socket.send('ping');
     };
+    const end = (msg) => {
+      this.detach();
+      try {
+        this.onMessage?.(msg);
+      } finally {   // ended even when the handler throws
+        this.setStatus(msg.type === 'refused' ? 'refused' : 'closed');
+        socket.close();
+      }
+    };
     socket.onopen = async () => {
       try {
         const { pass, privateKey } = await this.getPass();
@@ -214,13 +224,7 @@ export class LobbyConnection {
       }
       if (typeof msg?.type !== 'string') return;
       if (this.endOn.includes(msg.type)) {
-        this.detach();
-        try {
-          this.onMessage?.(msg);
-        } finally {   // ended even when the handler throws
-          this.setStatus(msg.type === 'refused' ? 'refused' : 'closed');
-          socket.close();
-        }
+        end(msg);
         return;
       }
       if (this.liveOn.includes(msg.type)) {
@@ -230,8 +234,10 @@ export class LobbyConnection {
       }
       this.onMessage?.(msg);
     };
-    socket.onclose = () => {
-      if (current()) this.retry();
+    socket.onclose = (event) => {
+      if (!current()) return;
+      if (this.endOn.includes(event.reason)) end({ type: event.reason });
+      else this.retry();
     };
   }
 

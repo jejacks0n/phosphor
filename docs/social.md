@@ -218,7 +218,8 @@ from someone you blocked shows **Show** first).
 room as its host, at the same address, and watchers wait and see it's reconnecting. Closing the tab for
 good ends the room within about a minute. The prompt still asks first; if the room ended while the page was
 away, you're told so and your art stays. Signing out while you host ends the room as well. A chat longer
-than 1000 entries keeps its newest after a reload.
+than 1000 entries keeps its newest after a reload. A room opened in a copy of the tab moves to the copy,
+and the older tab says so.
 
 Watchers connect straight to your browser, so the room is as fast as your connection. A direct
 connection shows each side's IP address to the other (a VPN hides yours). If your connection to the

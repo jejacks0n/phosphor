@@ -1,9 +1,10 @@
 // A host's reload keeps the room: it comes back at the same address with its art, chat and numbers, the
 // watchers wait and see it, and a room that ended meanwhile says so. Every reload accepts the page-closing prompt.
 import { test, expect, tab, store, chars, editAt } from './support.js';
-import { fakeRoom, ROOM_ID, shown, tile, goLive, watching, selected, hash, asked, chat, outOfRoom } from './social-support.js';
+import { fakeRoom, fakeServer, member, ROOM_ID, shown, tile, goLive, watching, selected, hash, asked, chat, outOfRoom } from './social-support.js';
 
 const AWAY = 'Your room ended while the page was away';
+const ELSEWHERE = 'This room is open in another tab';
 const NUMBERS = ['Here now', 'Max', 'Total', 'Messages'];
 const joins = (room) => room.received.filter((r) => r.msg.type === 'join').length;
 const hosts = (room) => room.from('host').filter((m) => m.type === 'host').length;
@@ -152,4 +153,36 @@ test('the site\'s plain address in the hosting tab mounts, asks nothing and is s
   await expect.poll(() => new URL(host.url()).hash).toContain(`room=${ROOM_ID}`);
   expect(await store(host, 'room', (r) => [r.role, r.id])).toEqual(['host', ROOM_ID]);
   expect(joins(room)).toBe(0);
+});
+
+test('a duplicated tab takes the room, and the older tab stops', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const watcher = await watching(host, context, room);
+  await tab(host, 'PIXEL').click();
+  await hash(host, `/pixel?room=${ROOM_ID}`);
+  host.on('dialog', (dialog) => dialog.accept());
+  const art = await chars(host, 0, 0, 20);
+  await fakeServer(context, { me: member(), room });   // for the copy, which is there before a page could be given routes
+
+  // window.open copies sessionStorage, and with it the record of the room.
+  const [copy] = await Promise.all([context.waitForEvent('page'), host.evaluate(() => window.open(location.href))]);
+  await copy.waitForFunction(() => document.querySelector('#phosphor')?.__vue_app__);
+  await live(copy);
+  await expect.poll(() => hosts(room)).toBe(2);
+  await expect(host.getByRole('status').filter({ hasText: ELSEWHERE })).toBeVisible();
+  await outOfRoom(host);
+  expect(await chars(host, 0, 0, 20)).toBe(art);
+  expect(await store(copy, 'room', (r) => r.role)).toBe('host');
+
+  await new Promise((resolve) => setTimeout(resolve, 2500));   // longer than a retry
+  expect(hosts(room)).toBe(2);
+  expect(await store(copy, 'room', (r) => r.role)).toBe('host');
+  expect(await store(host, 'room', (r) => r.role)).toBe(null);
+
+  await tab(copy, 'ANSI').click();
+  await editAt(copy, 3, 2);
+  await copy.keyboard.type('Z');
+  const at = await store(copy, 'project', (p) => 2 * p.cols + 3);
+  const cells = (page) => store(page, 'room', (r) => r.art?.cells.map((c) => c.char).join('') ?? null);
+  await expect.poll(async () => (await cells(watcher))?.[at]).toBe('Z');
 });

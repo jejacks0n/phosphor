@@ -5,7 +5,7 @@ import { apiOrigin, wsOrigin } from '@/social/config';
 import { proof, sign } from '@/social/keys';
 import { Allowance, MOST_KEPT, REASONS, chatText, evidenceFor, newId, signedText } from '@/social/chat';
 import { LobbyConnection, Pacer } from '@/social/lobby';
-import { ROOM_AWAY_WORDS, refusalWords } from '@/social/messages';
+import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, refusalWords } from '@/social/messages';
 import { decodePass, passKey } from '@/social/pass';
 import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
 import { forgetHostingRecord, keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
@@ -28,7 +28,7 @@ const SETTINGS_EVERY_MS = 1250;  // the server's 1 s, with slack: it measures wh
 const ASK_FOR_MS = 3000;        // how long an earlier() waits for its page (the host may drop it unanswered)
 const KEEP_EVERY_MS = 1000;     // the host's resume record, as the room changes (and at once on pagehide)
 const RESUME_RETRY_MS = 3000;   // a host coming back asks again this often, for a pass or a room that was too busy to answer
-const HOST_SOCKET = { liveOn: ['hosting'], endOn: ['refused', 'ended'] };
+const HOST_SOCKET = { liveOn: ['hosting'], endOn: ['refused', 'ended', 'replaced'] };
 export const ROOM_ID = /^[a-z2-7]{10}$/;
 
 // What's typed in Start a room and Room settings, kept here so it stays while you're on another tab (the
@@ -684,7 +684,9 @@ export const useRoomStore = defineStore('room', {
         case 'ended':
         case 'removed':
         case 'replaced':
-          this.over(this.role === 'watch' ? refusalWords(msg.type) : this._resuming ? ROOM_AWAY_WORDS : null);
+          if (this.role === 'watch') this.over(refusalWords(msg.type));
+          else if (msg.type === 'replaced') this.over(HOST_REPLACED_WORDS);   // sent as the socket's close, not a message
+          else this.over(this._resuming ? ROOM_AWAY_WORDS : null);
           break;
       }
     },

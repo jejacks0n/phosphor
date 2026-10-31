@@ -75,6 +75,11 @@ class FakeSocket {
     this.closed = true;
     this.onclose?.({ code: 1000 });
   }
+  // The server closing it, with a reason and no message.
+  serverClose(reason) {
+    this.closed = true;
+    this.onclose?.({ code: 1000, reason });
+  }
   accept() { this.onopen?.({}); }
   receive(msg) { this.onmessage?.({ data: msg === 'pong' ? msg : JSON.stringify(msg) }); }
 }
