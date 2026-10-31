@@ -44,6 +44,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   let catchingUp = false;          // a new connection: no drawing until the host has said what it numbered
   let flushAutosave = async () => {};
   let stops = [], cursorTimer = null;
+  let peersOn = new Set();         // a host's: who peopleHere last saw connected
   const myCursor = new Pacer(CURSORS_EVERY_MS, (cursor) => {
     if (!host) return room?.post({ t: 'cursor', ...cursor }) ?? false;
     noteCursor(me(), cursor, myName());
@@ -80,20 +81,30 @@ export const useDrawingStore = defineStore('drawing', () => {
     if (!list.length) stopHostSharing();
   }
 
-  // Someone gone takes their invitation and their cursor with them.
+  // Someone gone takes their invitation and their cursor with them (one the host's still waiting for after a
+  // reload isn't gone yet). Someone invited who's just connected may know nothing of it, so they're told.
   function peopleHere(list) {
-    connected.value = list.filter((w) => w.connected).map((w) => w.sub);
-    invited.value = invited.value.filter((sub) => list.some((w) => w.sub === sub));
+    const on = list.filter((w) => w.connected);
+    connected.value = on.map((w) => w.sub);
+    invited.value = invited.value.filter((sub) => list.some((w) => w.sub === sub) || host?.awaited(sub));
+    for (const { peer, sub } of on) if (!peersOn.has(peer) && invited.value.includes(sub)) host.tell(sub, { t: 'invite' });
+    peersOn = new Set(on.map((w) => w.peer));
     forgetCursors();
   }
 
   function forgetCursors() {
     const stays = ([sub]) => sub === me() || (artists.value.includes(sub) && connected.value.includes(sub));
-    if (!Object.entries(cursors.value).every(stays)) cursors.value = Object.fromEntries(Object.entries(cursors.value).filter(stays));
+    if (Object.entries(cursors.value).every(stays)) return;
+    cursors.value = Object.fromEntries(Object.entries(cursors.value).filter(stays));
+    sendCursorsSoon();
   }
 
   function noteCursor(sub, { at, view }, name) {
     cursors.value = { ...cursors.value, [sub]: { at, view, name } };
+    sendCursorsSoon();
+  }
+
+  function sendCursorsSoon() {
     cursorTimer ??= setTimeout(() => {
       cursorTimer = null;
       host?.sendAll({ t: 'cursors', ...cursors.value });
@@ -148,7 +159,10 @@ export const useDrawingStore = defineStore('drawing', () => {
       },
       onAnswer: (sub, yes) => {
         if (!yes && artists.value.includes(sub)) return backToWatching(sub);   // on the list from before, and asked again on coming back
-        if (!invited.value.includes(sub)) return;
+        if (!invited.value.includes(sub)) {   // no longer asked: they're waiting on an answer
+          if (yes && !artists.value.includes(sub)) host.tell(sub, { t: 'withdrawn' });
+          return;
+        }
         invited.value = invited.value.filter((other) => other !== sub);
         if (yes) setArtists([...artists.value, sub]);
       },
@@ -219,7 +233,7 @@ export const useDrawingStore = defineStore('drawing', () => {
       onInvite: () => { invitation.value = true; },
       onWithdrawn: () => {
         invitation.value = false;
-        awaitingList = false;
+        awaitingList = goToArt = false;
         noteAccepted(false);   // one crossing an accept: the host won't list them on it
       },
       onArtists: heardArtists,
@@ -252,6 +266,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     saidHello = true;
     project.flushHeard();   // the number it says is the last that landed
     room.post({ t: 'artist-hello', has: project._sharing?.pending.n ?? -1, epoch: project._sharing?.epoch ?? null });
+    if (catchingUp) project.waitForAnswer();
   }
 
   // The host has said everything it numbered. What it didn't, it gets now, and then drawing goes on.
@@ -275,7 +290,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   }
 
   function stopDrawing({ keepAccepted = false } = {}) {
-    saidHello = catchingUp = false;
+    saidHello = catchingUp = goToArt = false;
     if (!keepAccepted) noteAccepted(false);
     paused.value = false;
     waiting.value = [];
@@ -306,6 +321,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     if (state !== 'live') awaitingList = false;   // the next list is that connection's, and answers for the accept
     if (state === 'connecting') {
       saidHello = false;
+      invitation.value = false;   // the last connection's: a host who still means it says so on this one
       catchingUp = mayDraw.value;
       project.newConnection();
     } else if (state === 'live') {
@@ -329,6 +345,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     artists.value = [];
     invited.value = [];
     connected.value = [];
+    peersOn = new Set();
     cursors.value = {};
     invitation.value = false;
     notice.value = null;

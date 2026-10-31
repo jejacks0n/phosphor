@@ -175,7 +175,7 @@ export class Watch {
   }
 
   drawn(msg) {
-    if (!place(msg.n) || msg.n <= this.projectN) return;
+    if (!place(msg.n) || (msg.n <= this.projectN && msg.t !== 'caught-up')) return;   // nothing new can be at a project's number
     if (this.project) this.project.held.push(msg);
     else if (msg.t === 'numbered') this.onNumbered(msg);
     else if (msg.t === 'settings') this.onSettings(msg);

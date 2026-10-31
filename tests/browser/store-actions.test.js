@@ -15,7 +15,7 @@ const ACTIONS = [
   'pasteSelection', 'processingScale', 'projectNow', 'projectParts', 'pushEdit', 'pushWholeLayer', 'randomizeSeed', 'rawColorAt', 'readCell', 'readTile', 'rebuildCells', 'recolorSelection', 'recompose', 'redo', 'redoStroke', 'refreshCells', 'refreshChanged', 'rename',
   'render', 'replaceImage', 'resendPending', 'resetGroup', 'resetSliders', 'restoreDocument', 'saveProject', 'selectionEdit', 'sendBase', 'sendHeld', 'sendNumbered', 'sendParts', 'sendSettings', 'sendSlice',
   'setBaseRecords', 'setBlankCanvas', 'setCells', 'setEditCells', 'setImageFromFile', 'setPaused', 'setSlider', 'shareWholeDocument', 'shiftCells',
-  'sliderValues', 'stampSelection', 'startSharing', 'stopSharing', 'takeFromArtist', 'takeProject', 'throughPending', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'undoStroke', 'updateCols', 'updateRows', 'waitingBoxes', 'writeAt',
+  'sliderValues', 'stampSelection', 'startSharing', 'stopSharing', 'takeFromArtist', 'takeProject', 'throughPending', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'undoStroke', 'updateCols', 'updateRows', 'waitForAnswer', 'waitingBoxes', 'writeAt',
   'writeBase', 'writeEditCells',
 ];
 

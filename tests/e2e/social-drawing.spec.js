@@ -38,6 +38,15 @@ const toTopOfArt = async (page) => {
   await settled(page);
 };
 
+// How many pixels are painted on a row of cells.
+const paintedOnRow = (page, row) => store(page, 'project', `(p) => {
+  if (!p.paintLayer) return 0;
+  const scale = p.paintLayer.scale;
+  let count = 0;
+  for (let y = ${row} * 2 * scale; y < (${row} + 1) * 2 * scale; y++) for (let x = 0; x < p.cols * scale; x++) if (p.paintLayer.pixelAt(x, y)) count++;
+  return count;
+}`);
+
 const sameArt = async (a, b) => {
   await expect.poll(() => edits(a), { timeout: 10_000 }).toBe(await edits(b));
 };
@@ -185,7 +194,7 @@ test('each sees the other\'s stroke before it ends', async ({ page: host, contex
     await from.mouse.move(a.x, a.y);
     await from.mouse.down();
     await from.mouse.move(b.x, b.y, { steps: 5 });
-    await expect.poll(async () => (await store(to, 'project', (p) => p.hasPaint || p.editCells.size > 0))).toBe(true);
+    await expect.poll(() => paintedOnRow(to, from === artist ? 5 : 8)).toBeGreaterThan(0);
     expect(await store(from, 'workspace', (w) => w.isPainting)).toBe(true);   // the press is still down
     await from.mouse.up();
   }
@@ -477,7 +486,15 @@ test('paused: a stroke held down ends, shows as waiting, and goes out when the h
   await hostSaysAway(host);
   await expect(pauseLayer(artist)).toContainText(WAITING_WORDS);
   await expect.poll(() => store(artist, 'workspace', (w) => w.isPainting)).toBe(false);   // the press has ended
-  await expect(artist.locator('.waiting')).toHaveCount(1);
+  const waiting = artist.locator('.waiting');
+  await expect(waiting).toHaveCount(1);
+  await expect(waiting).toBeVisible();
+  await expect(waiting).toHaveCSS('outline-style', 'dashed');
+  const mark = await waiting.boundingBox(), from = await cellPoint(artist, 5, 5), to = await cellPoint(artist, 15, 5);
+  expect(mark.width).toBeGreaterThan((to.x - from.x) * 0.8);   // the whole stroke, on the art
+  expect(mark.x).toBeLessThanOrEqual(from.x + 1);
+  expect(mark.y).toBeLessThanOrEqual(from.y);
+  expect(mark.y + mark.height).toBeGreaterThanOrEqual(from.y);
   const c = await cellPoint(artist, 25, 5);
   await artist.mouse.move(c.x, c.y, { steps: 3 });   // moving on draws nothing
   const drawn = await shownCells(artist);
@@ -655,3 +672,71 @@ test('a project saved by an artist opens as an ordinary project, with no names i
   expect(await store(fresh, 'project', (p) => [p._sharing, p.canUndo])).toEqual([null, false]);
   await fresh.context().close();
 });
+
+test('the pause layer follows the view: folding the chat and narrowing the window', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  const release = await hostAway(host);
+  await expect(pauseLayer(artist)).toBeVisible();
+  const view = artist.locator('.ansi-editor > article');
+  const follows = async () => {
+    const size = await view.evaluate((el) => ({ width: el.clientWidth, height: el.clientHeight }));
+    await expect.poll(async () => (await pauseLayer(artist).boundingBox()).width).toBe(size.width);
+    expect((await pauseLayer(artist).boundingBox()).height).toBe(size.height);
+    return size.width;
+  };
+  const opened = await follows();
+
+  await chat(artist).getByRole('button', { name: 'Fold the chat' }).click();
+  await expect.poll(() => view.evaluate((el) => el.clientWidth)).toBeGreaterThan(opened);
+  const wide = await follows();
+
+  await artist.getByRole('button', { name: /Unfold|Open the chat/ }).click();
+  const { height } = artist.viewportSize();
+  await artist.setViewportSize({ width: 1000, height });
+  await expect.poll(() => view.evaluate((el) => el.clientWidth)).toBeLessThan(wide);
+  await follows();
+
+  // Over the chat it isn't: Exit takes a press.
+  const exit = chat(artist).getByRole('button', { name: 'Exit', exact: true });
+  const at = await exit.boundingBox();
+  expect(await artist.evaluate(({ x, y }) => !document.elementFromPoint(x, y).closest('.pause-layer'), { x: at.x + 2, y: at.y + 2 })).toBe(true);
+  release();
+});
+
+test('a host back from a reload still has both invitations, and either can accept', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  const second = member({ id: 'u_3', username: 'grim_reaper', name: 'grim_reaper', email: 'reaper@example.com' });
+  const owl = await invitedPage(context, host, room);
+  const reaper = await invitedPage(context, host, room, { me: second });
+
+  const release = await hostAway(host);
+  release();
+  await expect.poll(() => store(host, 'drawing', (d) => [...d.invited].sort()), { timeout: 20_000 }).toEqual([ARTIST.id, second.id].sort());
+  await expect(invitation(owl)).toBeVisible({ timeout: 20_000 });
+  await expect(invitation(reaper)).toBeVisible({ timeout: 20_000 });
+  await expect.poll(() => store(host, 'drawing', (d) => d.connected.length), { timeout: 20_000 }).toBe(2);
+  expect((await store(host, 'drawing', (d) => [...d.invited])).length).toBe(2);
+
+  await invitation(reaper).getByRole('button', { name: 'Accept' }).click();
+  await mayDraw(reaper).toBe(true);
+  await invitation(owl).getByRole('button', { name: 'Accept' }).click();
+  await mayDraw(owl).toBe(true);
+});
+
+test('someone gone takes their mark off every other artist\'s screen, with no pointer moving', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  const second = await artistPage(context, host, room, { me: member({ id: 'u_3', username: 'grim_reaper', name: 'grim_reaper', email: 'reaper@example.com' }) });
+  await tab(second, 'ANSI').click();
+  const at = await cellPoint(second, 10, 10);
+  await second.mouse.move(at.x, at.y);
+  await second.mouse.move(at.x + 20, at.y + 20);
+  await tab(artist, 'ANSI').click();
+  const mark = artist.locator('.artist-cursor').filter({ hasText: 'grim_reaper' });
+  await expect(mark).toBeVisible();
+  await second.close();
+  await expect(mark).toHaveCount(0, { timeout: 10_000 });
+});
+

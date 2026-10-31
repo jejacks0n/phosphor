@@ -1102,3 +1102,18 @@ test('an artist leaving keeps the last agreed picture: what got no number is gon
   project.stopSharing();
   expect(char(project, 4, 4)).toBeUndefined();
 });
+
+test('leaving lands what the host already numbered first: an echo in the queue keeps its stroke', async () => {
+  const { project, sent } = await drawing('artist');
+  project.typeAt(4, 4, 'x');
+  project.commitPending();
+  project.typeAt(5, 4, 'y');
+  project.commitPending();
+  const [numbered] = changes(sent);
+  project.hearDrawing({ t: 'numbered', ...echo(numbered, 1) });   // heard, and waiting for the next frame
+  project.dropWaiting();
+  project.stopSharing();
+  expect(char(project, 4, 4)).toBe('x');
+  expect(char(project, 5, 4)).toBeUndefined();
+});
+

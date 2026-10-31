@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { useEventListener } from '@vueuse/core';
+import { useEventListener, useResizeObserver } from '@vueuse/core';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { nameColor } from '@/social/names';
 import UserName from './UserName.vue';
@@ -15,7 +15,7 @@ const props = defineProps({
 const drawing = useDrawingStore();
 const moved = ref(0);   // the view scrolled or resized: every place changes
 useEventListener(() => props.root, 'scroll', () => { moved.value++; }, { passive: true });
-useEventListener(window, 'resize', () => { moved.value++; });
+useResizeObserver(() => props.root, () => { moved.value++; });
 
 const EDGE = 6;
 const clamp = (n, most) => Math.max(EDGE, Math.min(n, most - EDGE));

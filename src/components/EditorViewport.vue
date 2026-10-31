@@ -199,9 +199,10 @@ const toolCursor = computed(() => {
 // Sharing: what floats over the drawing area, not scrolled with it, inside this element so that a wheel over it
 // comes here (handleWheel) and a press too. A press held when the drawing pauses ends: its stroke, if there is
 // one, goes in with the rest of what's waiting, before anything is refused.
-const { left: rootLeft, top: rootTop } = useElementBounding(rootRef);
+const { left: rootLeft, top: rootTop, width: rootWidth, height: rootHeight } = useElementBounding(rootRef);
 const overArt = computed(() => {
   const el = rootRef.value;
+  void rootWidth.value, rootHeight.value;   // the client box, short of the scrollbars, isn't reactive: these say when it changes
   return { left: `${rootLeft.value}px`, top: `${rootTop.value}px`, width: `${el?.clientWidth ?? 0}px`, height: `${el?.clientHeight ?? 0}px` };
 });
 watch(() => drawingStore.paused, (paused) => { if (paused) commitPaint(); }, { flush: 'sync' });

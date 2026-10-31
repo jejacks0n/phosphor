@@ -385,11 +385,22 @@ export const sharingActions = {
   resendPending() {
     const sharing = this._sharing;
     if (!sharing?.pending) return;
+    stopAsking(sharing);
     const changes = sharing.pending.resend(), held = sharing.held?.parts.length ?? 0;
     for (const { stroke, cells, runs } of held ? changes.slice(0, -held) : changes) sharing.send({ t: 'change', stroke, cells, runs });
   },
 
-  // Out of the room with what's agreed: what never got a number goes, and the document's left as the host had it.
+  // A hello on a new connection, with drawing paused until it's answered: a host whose project is bad, or who says
+  // nothing, doesn't leave it paused for good. No check will come to prompt this, as none is looked at while paused.
+  waitForAnswer() {
+    const sharing = this._sharing;
+    if (!sharing?.pending) return;
+    clearTimeout(sharing.askAgain);
+    sharing.askAgain = setTimeout(() => askForProject(sharing), ASK_AGAIN_MS);
+  },
+
+  // Out of the room with what's agreed (commitPending lands what's been heard): what never got a number goes, and
+  // the document's left as the host had it.
   dropWaiting() {
     this.commitPending();
     if (this._sharing?.pending?.size) this.throughPending((pending) => pending.dropAll());
