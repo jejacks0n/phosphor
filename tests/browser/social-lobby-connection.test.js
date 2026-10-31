@@ -427,3 +427,17 @@ test('A handler that throws on a message in endOn still leaves it ended, with th
   expect(sockets[0].closed).toBe(true);
   expect(waits).toHaveLength(0);
 });
+
+test('No pass to give retries without waiting on the socket: its close may never finish', async () => {
+  const { conn, sockets, waits, statuses, getPass } = await connect();
+  conn.open();
+  sockets[0].close = function close() { this.closed = true; };   // the far side doesn't answer the close
+  getPass.mockRejectedValueOnce(new Error('No pass'));
+  sockets[0].accept();
+  await vi.waitFor(() => expect(sockets[0].closed).toBe(true));
+  expect(statuses.at(-1)).toBe('reconnecting');
+  expect(waits).toHaveLength(1);
+
+  waits[0].done();
+  await vi.waitFor(() => expect(sockets).toHaveLength(2));
+});
