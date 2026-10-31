@@ -156,10 +156,11 @@ as they were set.
 
 While you host, the SOCIAL tab shows your room instead of the lobby, as its dashboard. At the top are
 its name, **Live for** (how long since the room went live, as H:MM:SS; a reconnect doesn't restart it),
-**Copy link** and **End room**, which asks first (**End room** or **Cancel**; so does Back, see **The address, Back and Forward**). Send the link to anyone you
-want in a private room, along with its password. Following a link asks **Join this room?** first
-(**Join** or **Not now**), since joining shows the host your IP address. Under them, five numbers for this room only, counted by
-your browser and gone with the room:
+**Copy link** and **End room**, which asks first (**End room** or **Cancel**; so does Back, see **The
+address, Back and Forward**). Send the link to anyone you want in a private room, along with its
+password. Following a link asks **Join this room?** first (**Join** or **Not now**), since joining
+shows the host your IP address. Under them, five numbers for this room only, counted by your browser
+and gone with the room:
 
 - **Here now**: those connected.
 - **Max**: the most that were here together.
@@ -214,7 +215,8 @@ In the chat, **Delete** takes the place of a message's time when you point at it
 from someone you blocked shows **Show** first).
 
 **End room** ends it for everyone, and tells watchers at once. Closing or reloading the tab ends it
-too, so Phosphor asks first (after a reload the SOCIAL tab is the lobby); signing out while you host ends the room as well.
+too, so Phosphor asks first (after a reload the SOCIAL tab is the lobby); signing out while you host
+ends the room as well.
 
 Watchers connect straight to your browser, so the room is as fast as your connection. A direct
 connection shows each side's IP address to the other (a VPN hides yours). If your connection to the
@@ -254,20 +256,23 @@ copy.
 ## The address, Back and Forward
 
 The address bar says which tab you're on, and on SOCIAL which page: the lobby, Sign in, Create an
-account, Account, Start a room and the rest. Back and Forward move between them as they would on any
-website, and reloading brings you back to the same one. A room you host or watch is part of the address.
+account, Pick your username, Account, Start a room and the rest. Back and Forward move between them
+as they would on any website, and reloading brings you back to the same one. A room you host or watch
+is part of the address.
 
 - **A page you can't be on** goes to the nearest one you can. Account when you're signed out shows
   Sign in; Sign in and Create an account when you're signed in show the lobby, as do Start a room
-  when you're signed out or your email isn't confirmed, the two-factor code page when no code was asked for, and the
-  new-password page without a link from an email. ANSI and SAUCE with no image open show PIXEL.
-- **Following a link to a room** asks **Join this room?** first, as always.
+  when you're signed out or your email isn't confirmed, the two-factor code page when no code was
+  asked for, and the new-password page without a link from an email. ANSI and SAUCE with no image
+  open show PIXEL.
+- **Following a link to a room** asks **Join this room?** first, as always. A link that can't be a
+  room's says **This room isn't available** without asking.
 - **Watching**: reloading, or Forward onto a page where you were watching, joins the room again
   without asking (a private room asks for its password again). Back past the page where you joined
   leaves the room, and Forward joins it again. A room you left with **Exit**, or that ended, isn't
   joined again by Back, Forward or a reload.
 - **Hosting**: Back past the page where you went live asks **End the room?** (**End room** or
-  **Cancel**). A reload ends the room, and you're in the lobby.
+  **Cancel**). A reload ends the room (after a reload the SOCIAL tab is the lobby).
 
 ## Chat
 
@@ -358,7 +363,7 @@ Thank you.**, and **Report room** goes away for that room (this browser remember
 
 ## Not in this version
 
-- Narrow screens: the SOCIAL tab needs a wide one. A link from one of Phosphor's emails, or to a room, opened on a
-  narrow screen does nothing there; open it on a computer, or with the screen wider.
+- Narrow screens: the SOCIAL tab needs a wide one. A link from one of Phosphor's emails, or to a room,
+  opened on a narrow screen does nothing there; open it on a computer, or with the screen wider.
 - Drawing together: only the host draws.
 - Keeping a copy of someone else's art.
