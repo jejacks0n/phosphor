@@ -640,3 +640,20 @@ test.each([1, 2, 3, 4, 5, 6])('many hands, in any order, end as position-by-posi
     assert.equal(ledger.sum, pic.sum(), `sum at step ${step}`);
   }
 });
+
+test('off numbering, the tail stays empty and the sum still, until startNumbering seeds it', () => {
+  const ledger = new Ledger({ readCell: () => null, readTile: () => new Uint8ClampedArray(TILE * TILE * 4), numbering: false });
+  const cell = { char: 'a' };
+  ledger.submit('me', 's', { cells: [['0,0', cell]], runs: [[1, 1, 2, 0xff0000ff]] });
+  ledger.undo('me', 's');
+  ledger.redo('me', 's');
+  assert.deepEqual(ledger.tail.items, []);
+  assert.equal(ledger.sum, 0);
+  assert.equal(ledger.n, 3);
+
+  ledger.startNumbering({ sum: 7 });
+  assert.equal(ledger.sum, 7);
+  const numbered = ledger.submit('me', 's', { cells: [['0,0', { char: 'b' }]] });
+  assert.deepEqual(ledger.tail.items, [numbered]);
+  assert.equal(ledger.sum, 7 ^ hashCell('0,0', cell) ^ hashCell('0,0', { char: 'b' }));
+});

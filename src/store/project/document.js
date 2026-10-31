@@ -10,13 +10,9 @@ import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults } from '@/store/settings.js';
-import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJson } from '@/store/project/shared.js';
+import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJson, randomId } from '@/store/project/shared.js';
 import { generateSlug } from 'random-word-slugs';
 import { shallowRef } from 'vue';
-
-// randomUUID is only there on secure contexts; a plain-http LAN address has getRandomValues.
-const newDocumentId = () => crypto.randomUUID?.()
-  ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
 
 export const documentActions = {
   randomizeSeed() {
@@ -80,7 +76,7 @@ export const documentActions = {
     this.renderer.reset();
     this.activePalette = [];
     this.$patch({
-      documentId: newDocumentId(),
+      documentId: randomId(),
       fit: null,
       paintScale: null,
       baseScale: null, // a loaded file's comes in the patch

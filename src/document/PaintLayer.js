@@ -9,11 +9,12 @@
  *
  * While a stroke is being recorded, the first time paint/erase touches a 64px tile its prior
  * pixels are saved; endStroke() returns those tiles with their new pixels as an undoable patch.
- * LayerPatch = { tiles: { x, y, before: ImageData, after: ImageData }[], hadPaint, hasPaint }
+ * LayerPatch = { tiles: { x, y, w, h, before: ImageData, after: ImageData }[], hadPaint, hasPaint }
  */
 import { ctx2d, canvasPng } from '../lib/Canvas.js';
 import { rgb2hex } from '../lib/ColorUtils.js';
-import { tilesForRect } from './History.js';
+import { eachPixel } from './changes.js';
+import { TILE, tilesForRect } from './History.js';
 
 export const MAX_LAYER_DIM = 4000;
 
@@ -370,7 +371,7 @@ export default class PaintLayer {
     if (!stroke || !stroke.tiles.size) return null;
     if (stroke.erased) this.recheckPaint();
     const ctx = ctx2d(this.canvas);
-    const tiles = [...stroke.tiles.values()].map(({ x, y, w, h, before }) => ({ x, y, before, after: ctx.getImageData(x, y, w, h) }));
+    const tiles = [...stroke.tiles.values()].map(({ x, y, w, h, before }) => ({ x, y, w, h, before, after: ctx.getImageData(x, y, w, h) }));
     return { tiles, hadPaint: stroke.hadPaint, hasPaint: this.hasPaint };
   }
 
@@ -379,6 +380,43 @@ export default class PaintLayer {
     for (const tile of patch.tiles) ctx.putImageData(tile[side], tile.x, tile.y);
     this.hasPaint = side === 'before' ? patch.hadPaint : patch.hasPaint;
     this.#changed(patch.tiles.length ? unionRect(patch.tiles.map(({ x, y, before }) => ({ x, y, w: before.width, h: before.height }))) : null);
+  }
+
+  // A tile's RGBA pixels: x and y TILE-aligned, always TILE x TILE, transparent past the layer's edge.
+  readTile(x, y) {
+    return ctx2d(this.canvas).getImageData(x, y, TILE, TILE).data;
+  }
+
+  // Set pixels to exact colors (runs: changes.js), without blending, whatever was there. Returns the tiles
+  // written, as a patch has them. Tile by tile, since a soft stroke's runs are mostly a pixel long.
+  writeRuns(runs) {
+    const ctx = ctx2d(this.canvas), { width, height } = this.canvas, images = new Map();
+    let tile = null, erased = false;
+    eachPixel(runs, (x, y, rgba) => {
+      if (x < 0 || y < 0 || x >= width || y >= height) return;
+      const tx = x - x % TILE, ty = y - y % TILE;
+      if (tile?.x !== tx || tile?.y !== ty) {
+        const name = `${tx},${ty}`;
+        tile = images.get(name);
+        if (!tile) {
+          const w = Math.min(TILE, width - tx), h = Math.min(TILE, height - ty);
+          images.set(name, tile = { x: tx, y: ty, w, h, image: ctx.getImageData(tx, ty, w, h) });
+        }
+      }
+      const { data } = tile.image, i = ((y - ty) * tile.w + x - tx) * 4;
+      data[i] = rgba >>> 24;
+      data[i + 1] = (rgba >>> 16) & 0xff;
+      data[i + 2] = (rgba >>> 8) & 0xff;
+      data[i + 3] = rgba & 0xff;
+      if (rgba) this.hasPaint = true;
+      else erased = true;
+    });
+    const tiles = [...images.values()];
+    if (!tiles.length) return { tiles };
+    for (const { x, y, image } of tiles) ctx.putImageData(image, x, y);
+    if (erased) this.recheckPaint();
+    this.#changed(unionRect(tiles));
+    return { tiles };
   }
 
   // Full copies, for edits that replace the whole layer (merge, clear).
@@ -421,6 +459,14 @@ export default class PaintLayer {
       }
     }
   }
+}
+
+// A tile's pixels from a patch (clipped to the layer it was read from) as readTile gives them.
+export function wholeTile({ width, height, data }) {
+  if (width === TILE && height === TILE) return data;
+  const whole = new Uint8ClampedArray(TILE * TILE * 4);
+  for (let y = 0; y < height; y++) whole.set(data.subarray(y * width * 4, (y + 1) * width * 4), y * TILE * 4);
+  return whole;
 }
 
 function unionRect(rects) {

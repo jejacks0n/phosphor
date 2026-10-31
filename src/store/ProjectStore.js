@@ -1,8 +1,9 @@
 import { shallowRef, markRaw } from 'vue';
-import { defineStore } from 'pinia';
+import { defineStore, getActivePinia } from 'pinia';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
+import { Ledger } from '@/document/ledger.js';
 import { MAX_COLS, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { combineActions } from '@/store/project/combineActions.js';
@@ -16,6 +17,16 @@ import { baseLayerActions } from '@/store/project/baseLayer.js';
 import { sliderActions } from '@/store/project/sliders.js';
 import { historyActions } from '@/store/project/history.js';
 import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES } from '@/store/project/shared.js';
+
+// While the state is made there's no store yet, but there is by the time the ledger reads.
+function newLedger() {
+  const pinia = getActivePinia();
+  return markRaw(new Ledger({
+    readCell: (key) => useProjectStore(pinia).readCell(key),
+    readTile: (x, y) => useProjectStore(pinia).readTile(x, y),
+    numbering: false,
+  }));
+}
 
 export const useProjectStore = defineStore('project', {
   state: () => ({
@@ -50,6 +61,10 @@ export const useProjectStore = defineStore('project', {
     // History for undo/redo
     history: markRaw(new History(50, MAX_HISTORY_BYTES)),
     historyVersion: 0, // mirrors history.version so canUndo/canRedo stay reactive
+
+    // Every stroke on the edit layer, position by position; history's entries undo them through it.
+    _ledger: newLedger(),
+    _by: 'me', // who the ledger knows this person as
   }),
 
   getters: {

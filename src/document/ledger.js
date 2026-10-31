@@ -37,8 +37,9 @@ export class Ledger {
   // structured clone keeps.
   #stacks;
   #sum;
+  #numbering; // keeping the tail and the sum, which only someone else ever asks for
 
-  constructor({ readCell, readTile, n = 0, epoch, tail = new Tail(), sum = 0, limits = false }) {
+  constructor({ readCell, readTile, n = 0, epoch, tail = new Tail(), sum = 0, limits = false, numbering = true }) {
     this.readCell = readCell;
     this.readTile = readTile;
     this.n = n; // the last number used
@@ -46,6 +47,13 @@ export class Ledger {
     this.tail = tail;
     this.limits = limits;
     this.#stacks = noStacks();
+    this.#sum = sum;
+    this.#numbering = numbering;
+  }
+
+  // From here on the tail and the sum follow every change: someone drawing alone pays for neither.
+  startNumbering({ sum = this.#sum } = {}) {
+    this.#numbering = true;
     this.#sum = sum;
   }
 
@@ -111,7 +119,7 @@ export class Ledger {
       stack.strokes.push(record);
       if (!sameCell(shown, value)) {
         cells.push([key, value]);
-        this.#sum ^= hashCell(key, shown) ^ hashCell(key, value);
+        this.#sumCell(key, shown, value);
       }
     }
     const runs = [];
@@ -204,8 +212,18 @@ export class Ledger {
 
   #numbered(by, stroke, cells, runs) {
     const numbered = { n: ++this.n, by, stroke, cells, runs };
-    this.tail.add(numbered);
+    if (this.#numbering) this.tail.add(numbered);
     return numbered;
+  }
+
+  #sumCell(key, from, to) {
+    if (this.#numbering) this.#sum ^= hashCell(key, from) ^ hashCell(key, to);
+  }
+
+  #sumPixel(tile, i, from, to) {
+    if (!this.#numbering) return;
+    const x = tile.x + i % TILE, y = tile.y + Math.floor(i / TILE);
+    this.#sum ^= hashPixel(x, y, from) ^ hashPixel(x, y, to);
   }
 
   #cellStack(key) {
@@ -222,7 +240,7 @@ export class Ledger {
   // A stroke has one value per position. Writing again moves it to the top, over whoever drew since.
   #writeCell(record, key, entry) {
     const stack = this.#cellStack(key);
-    this.#sum ^= hashCell(key, this.#shownCell(key, stack)) ^ hashCell(key, entry);
+    this.#sumCell(key, this.#shownCell(key, stack), entry);
     const at = stack.strokes.indexOf(record);
     if (at >= 0) stack.strokes.splice(at, 1);
     else this.#charge(record, CELL_BYTES);
@@ -234,7 +252,7 @@ export class Ledger {
     const shown = this.#shownCell(key, stack);
     if (sameCell(value, shown)) return;
     cells.push([key, shown]);
-    this.#sum ^= hashCell(key, value) ^ hashCell(key, shown);
+    this.#sumCell(key, value, shown);
   }
 
   #tile(x, y) {
@@ -253,8 +271,7 @@ export class Ledger {
   // entries, and a stroke still has one value per pixel, however many entries it has.
   #writePixel(record, tile, i, rgba) {
     const { entries } = tile;
-    const x = tile.x + i % TILE, y = tile.y + Math.floor(i / TILE);
-    this.#sum ^= hashPixel(x, y, shownPixel(tile, i)) ^ hashPixel(x, y, rgba);
+    if (this.#numbering) this.#sumPixel(tile, i, shownPixel(tile, i), rgba);
 
     let target = null, covered = false;
     for (let at = entries.length - 1; at >= 0 && !target; at--) {
@@ -301,7 +318,7 @@ export class Ledger {
 
   #listPixel(runs, tile, i, from, to) {
     const x = tile.x + i % TILE, y = tile.y + Math.floor(i / TILE);
-    this.#sum ^= hashPixel(x, y, from) ^ hashPixel(x, y, to);
+    this.#sumPixel(tile, i, from, to);
     const last = runs.at(-1);
     if (last && last[1] === y && last[0] + last[2] === x && last[3] === to) last[2]++;
     else runs.push([x, y, 1, to]);

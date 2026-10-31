@@ -11,6 +11,7 @@ const utf8Length = (text) => encoder.encode(text).length;
 
 // Entries are frozen and copy-on-write, so a different object is a different entry.
 export function cellChanges(before, after) {
+  if (before === after) return [];
   const changes = [];
   for (const [key, entry] of after) if (before.get(key) !== entry) changes.push([key, entry]);
   for (const key of before.keys()) if (!after.has(key)) changes.push([key, null]);
