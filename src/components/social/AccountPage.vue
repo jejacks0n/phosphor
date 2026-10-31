@@ -34,6 +34,11 @@ const emailPassword = ref('');
 const emailError = ref(null);
 const emailWidget = useTemplateRef('emailWidget');
 let emailToken = () => null;
+const changingPassword = ref(false);
+const currentPassword = ref('');
+const newPassword = ref('');
+const confirmPassword = ref('');
+const passwordError = ref(null);
 
 // Two-factor is one of three asks (turn on, turn off, new backup codes), each wanting the password; turning on then
 // shows the secret to scan, and the backup codes. Both live here only, so they're gone once you leave the page.
@@ -53,6 +58,8 @@ onMounted(() => social.loadBlocked());
 const changeButton = useTemplateRef('changeButton');
 const changeEmailButton = useTemplateRef('changeEmailButton');
 const emailForm = useTemplateRef('emailForm');
+const changePasswordButton = useTemplateRef('changePasswordButton');
+const passwordForm = useTemplateRef('passwordForm');
 const deleteButton = useTemplateRef('deleteButton');
 const renameForm = useTemplateRef('renameForm');
 const deleteForm = useTemplateRef('deleteForm');
@@ -108,6 +115,25 @@ async function submitEmail() {
 }
 
 onBeforeUnmount(() => emailToken.remove?.());
+
+function startPassword() {
+  changingPassword.value = true;
+  focusIn(passwordForm);
+}
+
+function endPassword() {
+  changingPassword.value = false;
+  currentPassword.value = newPassword.value = confirmPassword.value = '';
+  passwordError.value = null;
+  focusOn(changePasswordButton);
+}
+
+async function submitPassword() {
+  passwordError.value = null;
+  if (newPassword.value !== confirmPassword.value) passwordError.value = "Those new passwords don't match";
+  else if (await social.changePassword(currentPassword.value, newPassword.value)) endPassword();
+  else failed(passwordError);
+}
 
 function startDelete() {
   deleting.value = true;
@@ -213,7 +239,7 @@ async function deleteAccount() {
         <span class="what">Email and password <span class="detail">{{ me.email }}</span></span>
         <span class="buttons">
           <button ref="changeEmailButton" :disabled="changingEmail" @click="startEmail">Change email</button>
-          <button @click="social.page = 'forgot'">Send a reset link</button>
+          <button ref="changePasswordButton" :disabled="changingPassword" @click="startPassword">Change password</button>
         </span>
       </div>
       <form v-if="changingEmail" ref="emailForm" @submit.prevent="submitEmail">
@@ -226,6 +252,18 @@ async function deleteAccount() {
           <button type="button" @click="endEmail">Cancel</button>
         </div>
         <p v-if="emailError" class="error" role="alert">{{ emailError }}</p>
+      </form>
+      <form v-if="changingPassword" ref="passwordForm" @submit.prevent="submitPassword">
+        <label>Current password <input v-model="currentPassword" type="password" autocomplete="current-password" required></label>
+        <label>New password <input v-model="newPassword" type="password" autocomplete="new-password" minlength="10" required aria-describedby="new-password-help"></label>
+        <label>Confirm new password <input v-model="confirmPassword" type="password" autocomplete="new-password" required></label>
+        <p id="new-password-help" class="help">At least 10 characters, not a known leaked password. Changing it signs you out everywhere else.</p>
+        <div class="actions">
+          <button class="primary" type="submit" :disabled="social.busy || !currentPassword || !newPassword || !confirmPassword">Change password</button>
+          <button type="button" @click="endPassword">Cancel</button>
+        </div>
+        <p v-if="passwordError" class="error" role="alert">{{ passwordError }}</p>
+        <p class="forgot"><button type="button" class="link" @click="social.page = 'forgot'">Forgot your password?</button></p>
       </form>
       <div v-for="[id, label] in ways" :key="id" class="row">
         <template v-if="me.providers.includes(id)">
@@ -359,8 +397,14 @@ span.username {
   font-family: 'JetBrains Mono', monospace;
   color: var(--text);
 }
-p.help {
+p.help, p.forgot {
   margin: 0;
+}
+p.forgot button.link {
+  padding: 0;
+  font-size: inherit;
+  letter-spacing: normal;
+  color: var(--accent);
 }
 div.qr {
   width: 160px;

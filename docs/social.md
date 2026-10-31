@@ -91,8 +91,9 @@ you out everywhere else. Signed out, it has a **Sign in** link back.
 - **Username**, which you can change once every 30 days. Your color and glyph come from your username:
   wherever a name shows (the lobby, room cards, chat, a room's lists, the host's tag on the art,
   Account), a small cell comes before it, the glyph (a CP437 symbol, such as ♥ or ►) on the color.
-- **Ways to sign in**: email and password (**Send a reset link** opens **Forgot your password?**
-  with your email filled in, to change the password; it says the link is on its way to your
+- **Ways to sign in**: email and password (**Change password** asks for your current password and the
+  new one twice, keeps you signed in here and signs you out everywhere else; its **Forgot your
+  password?** opens that page with your email filled in, and says the link is on its way to your
   address; **Change email** asks for the new address and your password), Discord and GitHub; connect or disconnect each, keeping at least one. Discord and GitHub
   are listed only where the server has them set up (or you already have one connected, so it can be
   disconnected).

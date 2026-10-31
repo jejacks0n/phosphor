@@ -416,6 +416,16 @@ export const useSocialStore = defineStore('social', {
       return ok;
     },
 
+    // This browser stays signed in; every other one is signed out.
+    async changePassword(currentPassword, newPassword) {
+      const { ok, code } = await this.request('/api/auth/change-password', {
+        method: 'POST', body: { currentPassword, newPassword, revokeOtherSessions: true },
+      });
+      this.staleSession(code);
+      if (ok) this.notice = 'Your password is changed';
+      return ok;
+    },
+
     async rename(username) {
       const { ok, data } = await this.request('/api/me/username', { method: 'PATCH', body: { username } });
       if (!ok) return false;

@@ -4,7 +4,7 @@ import { useSocialStore } from '@/store/SocialStore';
 import { mountTurnstile } from '@/social/turnstile';
 
 const social = useSocialStore();
-const email = ref(social.me?.email ?? '');   // from Account's Send a reset link, yours
+const email = ref(social.me?.email ?? '');   // from Account's Forgot your password?, yours
 const error = ref(null);
 
 const widget = ref(null);

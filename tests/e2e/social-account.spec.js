@@ -80,11 +80,12 @@ test('Disconnect unlinks the provider and the row says not connected', async ({ 
 });
 
 // The Forgot page has the Turnstile check the server asks for when it has a site key.
-test('Send a reset link opens Forgot your password with your email filled in, and sends from there, to your address', async ({ page }) => {
+test('Forgot your password? in the password form opens that page with your email filled in, and sends from there, to your address', async ({ page }) => {
   const server = await fakeServer(page, { me: member() });
   const account = await openAccount(page);
   await expect(account.getByText('fan@example.com')).toBeVisible();
-  await account.getByRole('button', { name: 'Send a reset link' }).click();
+  await account.getByRole('button', { name: 'Change password' }).click();
+  await account.getByRole('button', { name: 'Forgot your password?' }).click();
   const forgot = shown(page, 'forgot');
   await expect(forgot.getByLabel('Email')).toHaveValue('fan@example.com');
   await expect(forgot.getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(0);   // you're signed in
@@ -92,6 +93,75 @@ test('Send a reset link opens Forgot your password with your email filled in, an
   await forgot.getByRole('button', { name: 'Send link' }).click();
   await expect(social(page).getByRole('status')).toContainText('A link is on its way to fan@example.com');
   expect(server.sent('POST', '/api/auth/request-password-reset')[0].body).toEqual({ email: 'fan@example.com' });
+});
+
+const fillPassword = async (account, current, next, again = next) => {
+  await account.getByLabel('Current password').fill(current);
+  await account.getByLabel('New password', { exact: true }).fill(next);
+  await account.getByLabel('Confirm new password').fill(again);
+};
+
+test('Change password asks for the current one and the new one twice, and you stay signed in', async ({ page }) => {
+  const server = await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  await account.getByRole('button', { name: 'Change password' }).click();
+  const send = account.locator('form').getByRole('button', { name: 'Change password' });
+  await expect(send).toBeDisabled();
+  await expect(account.getByLabel('Current password')).toBeFocused();
+  await fillPassword(account, 'violet-lantern-harbor-42', 'copper-meadow-signal-77');
+  await send.click();
+  await expect(social(page).getByRole('status')).toContainText('Your password is changed');
+  expect(server.sent('POST', '/api/auth/change-password')[0].body).toEqual({
+    currentPassword: 'violet-lantern-harbor-42', newPassword: 'copper-meadow-signal-77', revokeOtherSessions: true,
+  });
+  await expect(account.getByLabel('Current password')).toHaveCount(0);   // done with
+  await expect(account.getByRole('button', { name: 'Change password' })).toBeFocused();
+  await expect(account.getByText('fan@example.com')).toBeVisible();   // still you, on this page
+});
+
+test('Two new passwords that differ are said in the form, and nothing is sent', async ({ page }) => {
+  const server = await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  await account.getByRole('button', { name: 'Change password' }).click();
+  await fillPassword(account, 'violet-lantern-harbor-42', 'copper-meadow-signal-77', 'copper-meadow-signal-78');
+  await account.locator('form').getByRole('button', { name: 'Change password' }).click();
+  await expect(account.getByRole('alert')).toContainText("Those new passwords don't match");
+  expect(server.sent('POST', '/api/auth/change-password')).toHaveLength(0);
+});
+
+test('A new password under 10 characters is not sent', async ({ page }) => {
+  const server = await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  await account.getByRole('button', { name: 'Change password' }).click();
+  await fillPassword(account, 'violet-lantern-harbor-42', 'too-short');
+  await account.locator('form').getByRole('button', { name: 'Change password' }).click();
+  await expect(account.getByLabel('New password', { exact: true })).toBeFocused();   // the browser's own check
+  expect(server.sent('POST', '/api/auth/change-password')).toHaveLength(0);
+});
+
+test('A wrong current password is said in the form, and what you typed stays', async ({ page }) => {
+  const server = await fakeServer(page, { me: member() });
+  server.route('POST /api/auth/change-password', () => [400, { code: 'INVALID_PASSWORD' }]);
+  const account = await openAccount(page);
+  await account.getByRole('button', { name: 'Change password' }).click();
+  await fillPassword(account, 'not-my-password-at-all', 'copper-meadow-signal-77');
+  await account.locator('form').getByRole('button', { name: 'Change password' }).click();
+  await expect(account.getByRole('alert')).toContainText("That password doesn't match");
+  await expect(account.getByLabel('Current password')).toHaveValue('not-my-password-at-all');
+  await expect(account.getByLabel('Confirm new password')).toHaveValue('copper-meadow-signal-77');
+  await expect(social(page).getByRole('status')).toHaveCount(0);
+});
+
+test('Cancel closes the password form and clears it', async ({ page }) => {
+  await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  await account.getByRole('button', { name: 'Change password' }).click();
+  await account.getByLabel('Current password').fill('violet-lantern-harbor-42');
+  await account.getByRole('button', { name: 'Cancel' }).click();
+  await expect(account.getByLabel('Current password')).toHaveCount(0);
+  await expect(account.getByRole('button', { name: 'Change password' })).toBeFocused();
+  await account.getByRole('button', { name: 'Change password' }).click();
+  await expect(account.getByLabel('Current password')).toHaveValue('');
 });
 
 test('Change email asks for the address and password, and says whose mailbox is next', async ({ page }) => {
@@ -252,7 +322,7 @@ test('opening the rename field focuses it; Cancel gives focus back to Change', a
 test('"You need at least one way" shows only beside a Disconnect button', async ({ page }) => {
   await fakeServer(page, { me: member({ providers: ['credential'] }) });
   const account = await openAccount(page);
-  await expect(account.getByRole('button', { name: 'Send a reset link' })).toBeVisible();
+  await expect(account.getByRole('button', { name: 'Change password' })).toBeVisible();
   await expect(account.getByText('You need at least one way to sign in')).toHaveCount(0);
 });
 

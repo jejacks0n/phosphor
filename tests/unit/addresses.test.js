@@ -18,7 +18,7 @@ test.each([
   ['two-factor', {}, 'lobby'], ['two-factor', { codePending: true }, 'two-factor'],
   ['reset', {}, 'lobby'], ['reset', { resetToken: 't' }, 'reset'],
   ['sign-in', { signedIn: true }, 'lobby'], ['create', { signedIn: true }, 'lobby'], ['sign-in', {}, 'sign-in'],
-  ['forgot', { signedIn: true }, 'forgot'],   // Account's "Send a reset link"
+  ['forgot', { signedIn: true }, 'forgot'],   // Account's "Forgot your password?"
   ['onboarding', {}, 'lobby'], ['onboarding', { needsOnboarding: true }, 'onboarding'],
   ['start-room', {}, 'lobby'], ['start-room', { canStart: true }, 'start-room'],
 ])('%s with %o lands on %s', (page, fields, expected) => expect(arrivalPage(page, { ...known, ...fields })).toBe(expected));
