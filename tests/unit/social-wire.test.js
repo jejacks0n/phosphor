@@ -173,6 +173,15 @@ test.each([
   ['a key that isn\'t a place', { cells: [['a,b', null]] }],
   ['a negative place', { cells: [['-1,0', null]] }],
   ['a place with a fraction', { cells: [['1.5,0', null]] }],
+  ['a col with a leading zero', { cells: [['01,0', null]] }],
+  ['a row with a leading zero', { cells: [['1,00', null]] }],
+  ['a col of zeros', { cells: [['00,0', null]] }],
+  ['a col with many leading zeros', { cells: [['00001,0', null]] }],
+  ['a row of zeros', { cells: [['0,00', null]] }],
+  ['a place in exponent form', { cells: [['1e1,0', null]] }],
+  ['a negative zero', { cells: [['-0,0', null]] }],
+  ['a place with a space', { cells: [[' 1,0', null]] }],
+  ['a place with a third number', { cells: [['1,0,0', null]] }],
   ['a place of three numbers', { cells: [['1,0,2', null]] }],
   ['a key that isn\'t a string', { cells: [[1, null]] }],
   ['a cell that isn\'t a pair', { cells: [['0,0']] }],
@@ -208,6 +217,11 @@ test.each([
   ['no stroke id', { stroke: undefined }],
 ])('readChange refuses %s', (_, bad) => {
   assert.equal(readChange({ ...good(), ...bad }, GRID), null);
+});
+
+test('readChange takes the keys cellKey makes, zero and ten included', () => {
+  const cells = [['0,0', null], ['10,0', null], ['0,3', null], ['9,0', null], ['0,0', { char: 'a' }]];
+  assert.equal(readChange({ ...good(), cells }, { ...GRID, cols: 11 }).cells, cells);
 });
 
 test('readChange refuses what isn\'t an object, without throwing', () => {
