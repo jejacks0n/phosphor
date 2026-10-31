@@ -5,7 +5,6 @@ import { storeToRefs } from 'pinia';
 import { useAutosave } from '@/composables/useAutosave';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
 import { setDisplayFont } from '@/lib/displayFonts';
@@ -33,10 +32,6 @@ const prefersLight = useMediaQuery('(prefers-color-scheme: light)');
 watchEffect(() => {
   document.documentElement.dataset.theme = workspace.theme === 'system' ? (prefersLight.value ? 'light' : 'dark') : workspace.theme;
 });
-
-// SOCIAL: a link back from the server is read at load; the rest waits for the tab (a server that can't
-// be reached leaves the editor be).
-useSocialStore().start();
 
 const autosave = useAutosave();
 const { ready, recent, openRecent } = autosave;

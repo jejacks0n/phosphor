@@ -65,6 +65,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     ansiZoom:  1,            // the ANSI view's zoom: 25% to 100% of its cell size
     editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'sauce' or 'social'
     viewTab: 'output',       // the art tab last shown, 'input' or 'output' (its view mounts and sets it)
+    tabAddressed: false,     // the landing address named a tab (router.js)
+    documentSettled: false,  // autosave has finished bringing back what it can (useAutosave)
     isPainting: false,
     isCtrlPressed: false,
     isMiddleClick: false,

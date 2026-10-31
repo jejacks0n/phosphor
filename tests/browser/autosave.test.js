@@ -6,6 +6,7 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { useAutosave } from '@/composables/useAutosave';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { toastMessage } from '@/composables/useToast';
 import ZeroState from '@/components/ZeroState.vue';
 import VersionsDialog from '@/components/VersionsDialog.vue';
@@ -941,6 +942,21 @@ test('a restore does not pull you off the SOCIAL tab', async () => {
   expect(workspace.editorTab).toBe('social');
 });
 
+test('a restore stays on the tab the address named, and settles the document', async () => {
+  const { project } = await opened();
+  await leave();
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const { workspace, project: back } = await createTestApp();
+  workspace.tabAddressed = true; // the router placed you on PIXEL before this ran
+  app = createApp({ setup() { autosave = useAutosave(); return () => null; } });
+  app.mount(document.createElement('div'));
+  expect(workspace.documentSettled).toBe(false);
+  await vi.waitUntil(() => autosave.ready.value, { timeout: 3000, interval: 5 });
+  expect(back.documentId).toBe(project.documentId);
+  expect(workspace.editorTab).toBe('input');
+  expect(workspace.documentSettled).toBe(true);
+});
+
 test('a held lock that is let go within the wait is a reload: the document keeps its id', async () => {
   const { project } = await opened();
   const id = project.documentId;
@@ -1170,6 +1186,7 @@ test('a database that never answers doesn\'t hold back the start screen', async 
   expect(autosave.ready.value).toBe(false);
   await vi.advanceTimersByTimeAsync(1);
   expect(autosave.ready.value).toBe(true);
+  expect(useWorkspaceStore().documentSettled).toBe(true); // or a landing would wait on it forever
 });
 
 test('a restore that answers after the wait still brings the document back', async () => {

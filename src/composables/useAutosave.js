@@ -296,9 +296,10 @@ export function useAutosave() {
   async function start() {
     const id = keptDocument();
     const restored = id && await comeBack(id);
-    if (restored && workspace.editorTab === 'input') workspace.editorTab = 'output'; // not if a return from signing in took you to SOCIAL
+    if (restored && workspace.editorTab === 'input' && !workspace.tabAddressed) workspace.editorTab = 'output'; // not if a return from signing in took you to SOCIAL, or the address named PIXEL
     if (!restored && !project.image) await loadRecent();
     ready.value = true;
+    workspace.documentSettled = true;
   }
 
   async function openRecent(id) {
@@ -337,7 +338,7 @@ export function useAutosave() {
   });
 
   start();
-  setTimeout(() => { ready.value = true; }, READY_WAIT_MS); // a late restore still lands, unless something's opened by then
+  setTimeout(() => { ready.value = workspace.documentSettled = true; }, READY_WAIT_MS); // a late restore still lands, unless something's opened by then
 
   return { current, flush, ready, recent, openRecent, restoreVersion };
 }
