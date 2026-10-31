@@ -97,7 +97,7 @@ export function followAddress(router) {
     // A page you can no longer arrive at (signed in, say) would bounce a Back that lands on it. So would the
     // Sign in under a two-factor code, and the name page has no way back.
     const spentPage = current.meta.page && arrivalPage(current.meta.page, known()) !== current.meta.page;
-    const noStep = ['/social/name', '/social/two-factor'].includes(path);
+    const noStep = path === '/social/name' || (path === '/social/two-factor' && current.meta.page === 'sign-in');
     const replace = (landing && !room.role) || replaceNext || lost || spentPage || noStep || !current.meta.tab;   // / is never a step
     replaceNext = false;
     ours = true;

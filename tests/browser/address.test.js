@@ -327,6 +327,31 @@ test('a Two-factor page the store showed is not an arrival, and stays', async ()
   expect(path()).toBe('/social/two-factor');
 });
 
+test('going from the Two-factor page to another tab and back is one step each way', async () => {
+  const server = serverFor();
+  server.route('POST /api/auth/sign-in/email', () => [200, { twoFactorRedirect: true, twoFactorMethods: ['totp'] }]);
+  await landed('/social');
+  await expect.poll(() => social.supported).toBe(true);
+  social.page = 'sign-in';
+  await settled();
+  await social.signIn('fan@example.com', 'right-password');
+  await settled();
+  expect(path()).toBe('/social/two-factor');
+  push.mockClear();
+  replace.mockClear();
+
+  workspace.editorTab = 'input';
+  await settled();
+  expect(path()).toBe('/pixel');
+  expect(push).toHaveBeenCalledTimes(1);
+
+  workspace.editorTab = 'social';
+  await settled();
+  expect(path()).toBe('/social/two-factor');
+  expect(push).toHaveBeenCalledTimes(2);
+  expect(replace).not.toHaveBeenCalled();
+});
+
 test('a two-factor return from the server is read before the router lands, and stays', async () => {
   serverFor();
   social.readReturn(new URL(`${window.location.origin}/?social=two-factor`));
