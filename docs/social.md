@@ -223,7 +223,7 @@ and the older tab says so.
 
 Watchers connect straight to your browser, so the room is as fast as your connection. A direct
 connection shows each side's IP address to the other (a VPN hides yours). If your connection to the
-room drops for a moment, the page says **Reconnecting…**; a change to Room
+room drops for a moment, or the room is coming back after a reload, the page says **Reconnecting…**; a change to Room
 settings made meanwhile goes once you're back.
 
 ## Watching
@@ -244,7 +244,8 @@ smaller box). Scroll away to look around on your own and you keep the zoom you h
 becomes a **Track** button to bring you back, at the host's zoom. Zoom the art yourself, from 25% to
 100%, with the **−** and **+** in its corner, Ctrl+wheel or a pinch: that's looking around too. Scroll the box out of sight and the tag waits at the
 edge of the art, with an arrow pointing to it. If the connection to the host is lost, the art dims and the page says
-**Waiting for the host…** until it's back.
+**The host is reconnecting…** until it's back (before the art has come, joining says **Joining…** and
+**Waiting for the host…**).
 
 Your browser connects straight to the host's, which shows each of you the other's IP address (a VPN
 hides yours).

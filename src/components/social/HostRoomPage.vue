@@ -9,7 +9,8 @@ import CameBy from './CameBy.vue';
 
 // The room you host, as a dashboard: its name and how long it's been live, Copy link and End room (which
 // asks first), the session's five numbers, its settings with the facts that can't change, and who came by. One status
-// region, always there, says Reconnecting… (seen) and Copied or Saved (which their buttons show).
+// region, always there, says Reconnecting… (seen; also while connecting a room that has been live: a reload
+// bringing it back) and Copied or Saved (which their buttons show).
 const room = useRoomStore();
 
 // Once a second, for Live for and for what else on this page counts time: `now` is passed down to it.
@@ -40,7 +41,8 @@ const say = (word) => {
   doneTimer = setTimeout(() => { done.value = null; }, 2000);
 };
 onBeforeUnmount(() => clearTimeout(doneTimer));
-const said = computed(() => (room.status === 'reconnecting' ? 'Reconnecting…' : done.value ?? ''));
+const reconnecting = computed(() => room.status === 'reconnecting' || (room.status === 'connecting' && !!room.session.liveSince));
+const said = computed(() => (reconnecting.value ? 'Reconnecting…' : done.value ?? ''));
 
 async function copyLink() {
   if (await room.copyLink()) say('Copied');
@@ -96,7 +98,7 @@ const save = () => {
         <button ref="endButton" class="danger" @click="ending = true">End room</button>
       </span>
     </header>
-    <p class="status" :class="{ unseen: room.status !== 'reconnecting' }" role="status">{{ said }}</p>
+    <p class="status" :class="{ unseen: !reconnecting }" role="status">{{ said }}</p>
     <p class="link"><span class="link-text">{{ room.link }}</span></p>
     <p v-if="!room.room.public" class="help">{{ room.hasPassword ? 'Send the link and the password to anyone you want in.' : 'Send the link to anyone you want in.' }}</p>
 

@@ -218,6 +218,18 @@ test('one status region, always there, says Reconnecting…, Copied and Saved', 
   expect(region.textContent).toBe('Saved');
 });
 
+test('connecting with a liveSince says Reconnecting…, and connecting a new room says nothing', async () => {
+  const { room, region } = await mount({ status: 'connecting' });
+  expect(region.textContent).toBe('');
+  room.session.liveSince = Date.now();
+  await nextTick();
+  expect(region.textContent).toBe('Reconnecting…');
+  expect(region.getBoundingClientRect().width).toBeGreaterThan(1);
+  room.status = 'live';
+  await nextTick();
+  expect(region.textContent).toBe('');
+});
+
 const at = (h, m) => new Date(2026, 9, 27, h, m).getTime();
 const NOW = at(10, 0);
 const rows = () => [...host.querySelectorAll('.came-by tbody tr')];
