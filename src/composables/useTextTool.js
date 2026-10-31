@@ -87,7 +87,7 @@ export function useTextTool(project, workspace, textInput) {
       case 'end': move(project.cols, 0); break;
       case 'newline': move(-col, 1); break;
       case 'backspace':
-        move(-project.backspaceAt(col, row, workspace.typingAttrs(), { insert }), 0, { typing: true });
+        move(-(project.backspaceAt(col, row, workspace.typingAttrs(), { insert }) ?? 0), 0, { typing: true }); // nothing, while paused
         break;
       case 'delete': project.deleteAt(col, row); break;
       case 'toggleInsert': workspace.insertMode = !workspace.insertMode; break;

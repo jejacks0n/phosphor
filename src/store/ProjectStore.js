@@ -6,7 +6,7 @@ import History from '@/document/History.js';
 import { Ledger } from '@/document/ledger.js';
 import { MAX_COLS, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { settingsState, slidersAtDefaults } from '@/store/settings.js';
-import { combineActions } from '@/store/project/combineActions.js';
+import { combineActions, guarded } from '@/store/project/combineActions.js';
 import { documentActions } from '@/store/project/document.js';
 import { mergingActions } from '@/store/project/merging.js';
 import { selectionActions } from '@/store/project/selection.js';
@@ -16,7 +16,9 @@ import { readingActions } from '@/store/project/reading.js';
 import { baseLayerActions } from '@/store/project/baseLayer.js';
 import { sliderActions } from '@/store/project/sliders.js';
 import { historyActions } from '@/store/project/history.js';
-import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES } from '@/store/project/shared.js';
+import { sharingActions, DRAWING_ACTIONS, HOST_ONLY_ACTIONS } from '@/store/project/sharing.js';
+import { MOST_CHANGE_BYTES } from '@/social/wire.js';
+import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES, ALONE } from '@/store/project/shared.js';
 
 // While the state is made there's no store yet, but there is by the time the ledger reads.
 function newLedger() {
@@ -25,6 +27,7 @@ function newLedger() {
     readCell: (key) => useProjectStore(pinia).readCell(key),
     readTile: (x, y) => useProjectStore(pinia).readTile(x, y),
     numbering: false,
+    mostBytes: MOST_CHANGE_BYTES,
   }));
 }
 
@@ -64,7 +67,9 @@ export const useProjectStore = defineStore('project', {
 
     // Every stroke on the edit layer, position by position; history's entries undo them through it.
     _ledger: newLedger(),
-    _by: 'me', // who the ledger knows this person as
+    _by: ALONE, // who the ledger knows this person as
+    _sharing: null, // the room this document is shared with (sharing.js)
+    _paused: false,
   }),
 
   getters: {
@@ -101,7 +106,7 @@ export const useProjectStore = defineStore('project', {
   },
 
   // One file per area in store/project/ (AGENTS.md, "Where things live").
-  actions: combineActions(
+  actions: guarded(guarded(combineActions(
     documentActions,
     renderingActions,
     readingActions,
@@ -111,5 +116,6 @@ export const useProjectStore = defineStore('project', {
     mergingActions,
     sliderActions,
     historyActions,
-  ),
+    sharingActions,
+  ), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => store._sharing?.role === 'artist'),
 });

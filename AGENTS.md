@@ -34,6 +34,7 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   - `merging.js`: Merge up, Merge down, Into the image, Bake
   - `sliders.js`: slider moves as undo steps
   - `history.js`: recording edits, undo and redo
+  - `sharing.js`: the document shared with a room: slices of an edit going out, changes heard, undo asking the host
   - `shared.js`: constants the groups share
 
   Actions call each other through `this` (they're all one store), so the files don't import each

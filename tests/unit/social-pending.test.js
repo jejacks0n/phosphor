@@ -403,3 +403,49 @@ for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
     }
   });
 }
+
+test('retract takes back the newest change, which never went out: what it held shows again', () => {
+  const { pending, own: shown } = artist('me', { cells: [['1,1', START]], pixels: [['0,0', RED]] });
+  const older = cellsOf(['2,2', MINE]);
+  pending.add('s1', older);
+  shown.show(older);
+  const held = { cells: [['1,1', MINE], ['2,2', MORE]], runs: [[0, 0, 2, GREEN]] };
+  pending.add('s2', held);
+  shown.show(held);
+
+  // Heard meanwhile: what's beneath changes, and the screen keeps mine.
+  pending.heard(from('them', 't', 1, { cells: [['1,1', THEIRS]], runs: [[0, 0, 1, BLUE]] }));
+  assert.equal(shown.read('1,1'), MINE);
+  const sum = pending.sum;
+
+  pending.retract();
+  assert.equal(pending.size, 1);
+  assert.equal(shown.read('1,1'), THEIRS);
+  assert.equal(shown.read('2,2'), MINE); // still held by the older one, and that's what shows
+  assert.equal(shown.px(0, 0), BLUE);
+  assert.equal(shown.px(1, 0), 0);
+  assert.equal(pending.sum, sum); // nothing about the agreed picture changed
+
+  // What it held is free again: the next number writes straight through.
+  pending.heard(from('them', 't', 2, { cells: [['1,1', START]], runs: [[1, 0, 1, RED]] }));
+  assert.equal(shown.read('1,1'), START);
+  assert.equal(shown.px(1, 0), RED);
+  pending.heard(from('me', 's1', 3, older));
+  assert.equal(pending.size, 0);
+});
+
+test('retract over an older pending pixel shows the older one', () => {
+  const { pending, own: shown } = artist('me');
+  const older = runsOf([0, 0, 2, RED]);
+  pending.add('s1', older);
+  shown.show(older);
+  const held = runsOf([1, 0, 1, GREEN]);
+  pending.add('s2', held);
+  shown.show(held);
+  pending.retract();
+  assert.equal(shown.px(1, 0), RED);
+  pending.heard(from('me', 's1', 1, older));
+  assert.equal(pending.size, 0);
+  pending.heard(from('them', 't', 2, runsOf([1, 0, 1, BLUE])));
+  assert.equal(shown.px(1, 0), BLUE);
+});
