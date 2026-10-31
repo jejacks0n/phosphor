@@ -55,13 +55,13 @@ export const historyActions = {
     if (!stroke || (!patch && !basePatch && !stroke.wroteCells && stroke.baseRecords === this.baseRecords)) return;
 
     // The entry mustn't close over stroke or patch: the old map and the tiles are the ledger's to hold now.
-    const { cursor, id } = stroke;
+    const { cursor, id, sent } = stroke;
     const records = { before: stroke.baseRecords, after: this.baseRecords };
     const also = { patches: [[basePatch, this.baseLayer]], pins: [records.before.pins, records.after.pins] };
     const apply = (side) => {
       if (side === 'before' && cursor) useWorkspaceStore().textCursor = cursor; // typing undone: the cursor goes back to where it started
       if (this._sharing?.role === 'artist') { // the host says what happens; an artist has no base edits to put back
-        this.askForStroke(side === 'before' ? 'undo' : 'redo', id);
+        if (sent) this.askForStroke(side === 'before' ? 'undo' : 'redo', id); // or it changed nothing: nothing to ask
         return;
       }
       if (basePatch) this.baseLayer.applyPatch(basePatch, side);

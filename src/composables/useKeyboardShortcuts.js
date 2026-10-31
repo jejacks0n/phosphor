@@ -136,7 +136,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       else if (selecting && ARROWS[e.key]) {
         // A nudge stops at the grid's edge rather than pushing contents off it.
         const { dc, dr } = clampOffset(sel, ...ARROWS[e.key], projectStore.cols, charRowsOf(projectStore.rows));
-        if (dc || dr) workspaceStore.selection = projectStore.floatSelection(sel, layers, dc, dr);
+        if (dc || dr) workspaceStore.selection = projectStore.floatSelection(sel, layers, dc, dr) ?? sel;
       }
       else return false;
       e.preventDefault();

@@ -13,10 +13,9 @@ import { snapCursor } from '@/document/wideChars';
 export function typeAtCursor(project, workspace, char) {
   const cursor = workspace.textCursor;
   if (!cursor) return;
-  if (!project.typeAt(cursor.col, cursor.row, char, workspace.typingAttrs(), { insert: workspace.insertMode })) {
-    toast('No room for a two-column character in the last column.');
-    return;
-  }
+  const typed = project.typeAt(cursor.col, cursor.row, char, workspace.typingAttrs(), { insert: workspace.insertMode });
+  if (typed === false) toast('No room for a two-column character in the last column.');
+  if (!typed) return; // false, or nothing at all: refused while paused
   workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(cursor, cellWidth(char), 0, project.cols, charRowsOf(project.rows)), 1);
 }
 

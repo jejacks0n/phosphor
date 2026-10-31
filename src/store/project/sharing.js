@@ -98,6 +98,7 @@ export const sharingActions = {
   // me: the person's id. What's open was drawn alone, and goes in as that. A host keeps its undo, under its
   // own name now; an artist's document is the room's, and what it undid alone means nothing to the host.
   startSharing({ send, role, me }) {
+    this.stopSharing();
     this.commitPending();
     this.ensureLayer();
     const sum = this.editLayerSum();
@@ -151,7 +152,13 @@ export const sharingActions = {
     stroke.editCells = this.editCells;
     stroke.noted = null;
     const runs = tiles.flatMap(({ x, y, before, after }) => pixelRuns(before.data, after.data, after.width, after.height, x, y));
-    if (!cells.length && !runs.length) return; // only base pixels or pins: nothing for the ledger
+    if (!cells.length && !runs.length) { // only base pixels or pins, or a float landing on what's already there
+      if (stroke.hold && this._sharing?.pending && this._sharing.held?.stroke !== stroke.id) {
+        this.sendHeld();
+        this._sharing.held = { stroke: stroke.id, parts: [] }; // nothing's gone out, so its run goes on
+      }
+      return;
+    }
     for (const [key] of cells) stroke.keys.push(key);
     stroke.sent = true;
 
@@ -177,10 +184,10 @@ export const sharingActions = {
     for (const part of parts) this._sharing.send({ t: 'change', stroke, ...part });
   },
 
-  // A float left where it is goes out.
+  // A float left where it is goes out. One with nothing to send stays: its run can still go on.
   sendHeld() {
     const held = this._sharing?.held;
-    if (!held) return;
+    if (!held?.parts.length) return;
     this._sharing.held = null;
     this.sendParts(held.stroke, held.parts);
   },
