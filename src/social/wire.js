@@ -12,16 +12,55 @@
  *                                               treats its connection as lost, and the next offer connects it again
  * Watcher to host:
  *   { t: 'tracking', on }
+ *   { t: 'follow', sub }                        look where this artist is looking (null: stop)
+ *   { t: 'show-everyone', on }                  ask for 'views' of every artist
+ * Host to watcher, besides the above:
+ *   { t: 'view', ..., who }                     whose view this is, when it isn't the host's (a sub)
+ *   { t: 'views', [sub]: view }                 everyone's views, to a watcher who asked
  *
- * There are no edit numbers: the channel keeps changes in order, and a watcher ignores 'cells'
- * until its first snapshot.
+ * There are no edit numbers for watchers: the channel keeps changes in order, and a watcher ignores
+ * 'cells' until its first snapshot.
+ *
+ * Drawing together. Artists send their changes to the host's browser, which numbers every change in one
+ * sequence and sends it back to all of them (to the artist who made it too: that is how they learn its
+ * number). A change is { stroke, cells: [[key, entry|null]], runs: [[x, y, length, rgba]] } (changes.js);
+ * a stroke is one gesture's id. A message is MOST_ARTIST_BYTES at most, so senders split a change at
+ * MOST_CHANGE_BYTES, leaving room for the rest of the message.
+ *
+ * Artist to host:
+ *   { t: 'change', stroke, cells, runs }        paint, type, or any edit to the edit layer
+ *   { t: 'undo', stroke } / { t: 'redo', stroke }   the whole stroke, the artist's own
+ *   { t: 'cursor', at, view }                   where the artist's pointer is, and the part of the art in view
+ *   { t: 'artist-hello', has, epoch }           first thing on a connection: the last number held in that epoch
+ *                                               (-1: none, send the project; also what a check that
+ *                                               didn't match asks)
+ *   { t: 'accept' } / { t: 'decline' }          the answer to an 'invite'
+ * Host to artist:
+ *   { t: 'numbered', n, by, stroke, cells, runs }   a change, by the sub who made it
+ *   { t: 'settings', n, values }                the document's saved settings, changed
+ *   { t: 'base', n, runs, records }             the base layer's own pixels, and its pinned characters
+ *   { t: 'project-start', n, epoch, bytes, chunks, took }
+ *                                               then `chunks` binary messages: packProject's chunks, the
+ *                                               whole document as of n, in a new epoch. `took` is how many of
+ *                                               this artist's changes the host has handled up to n
+ *   { t: 'check', n, sum }                      the edit layer's sum as of n, to compare
+ *   { t: 'cursors', [sub]: { at, view, name } } where everyone is
+ *   { t: 'invite' } / { t: 'withdrawn' }        asked to draw; the ask is gone
+ *   { t: 'artists', subs }                      who may draw now
+ * Pausing and resuming are the 'away' message and the channel closing.
  */
 import { hex2rgb } from '../lib/ColorUtils.js';
 import { DISPLAY_FONTS, MIN_FONT_SIZE, MAX_FONT_SIZE } from '../lib/displayFonts.js';
 import { MAX_COLS, MAX_LINES, MAX_CELLS } from '../lib/Cells.js';
 import { usableChar } from '../lib/CharWidth.js';
+import { writeProject, readProject } from '../document/projectIO.js';
 
 export const CHUNK_BYTES = 65536;
+// An artist's message (and the host's numbered one) is a message like any other.
+export const MOST_ARTIST_BYTES = CHUNK_BYTES;
+export const MOST_CHANGE_BYTES = CHUNK_BYTES - 512;   // what a change may be, with the rest of its message around it
+// The most a project may be unzipped, for an artist that doesn't trust its host.
+export const MOST_PROJECT_BYTES = 256 * 1024 * 1024;
 // The most a snapshot may be, for a watcher that doesn't trust its host. The biggest document at its
 // worst (500,000 cells, every color different, wide characters) is 20 MB of JSON, 4.5 MB gzipped.
 export const MOST_SNAPSHOT_BYTES = 32 * 1024 * 1024;   // unzipped
@@ -144,4 +183,93 @@ export async function unpackSnapshot(chunks) {
   const { cols, lines, font, colors, cells } = JSON.parse(await new Blob(parts).text());
   if (!fits(cols, lines, cells)) throw new Error('Snapshot doesn\'t fit the grid');
   return { cols, lines, font, cells: decodeCells({ colors, cells }) };
+}
+
+const isCoord = (n) => Number.isInteger(n) && n >= 0;
+const MOST_STROKE = 40;
+
+// 'col,row' as two whole numbers, one pass over its characters: the col, then the row, or -1 for either
+// when the key isn't two runs of digits around a comma. (A regex would make a match array a position.)
+function placeOf(key) {
+  let col = 0, row = -1, digits = 0;
+  for (let i = 0; i < key.length; i++) {
+    const c = key.charCodeAt(i) - 48;
+    if (c >= 0 && c <= 9) {
+      if (++digits > 7) return null;
+      if (row < 0) col = col * 10 + c; else row = row * 10 + c;
+    } else if (c === -4 && row < 0 && digits) {   // the comma
+      row = 0;
+      digits = 0;
+    } else return null;
+  }
+  return row >= 0 && digits ? [col, row] : null;
+}
+
+// An entry as Watch's cells are held to: only char, fg and bg, a char a cell can hold, colors that are hexes.
+function goodEntry(entry) {
+  if (typeof entry !== 'object' || Array.isArray(entry)) return false;
+  let any = false;
+  for (const name in entry) {
+    const value = entry[name];
+    if (value === undefined) continue;
+    if (name === 'char' ? !usableChar(value) : !(name === 'fg' || name === 'bg') || typeof value !== 'string' || !HEX.test(value)) return false;
+    any = true;
+  }
+  return any;
+}
+
+// The change in an artist's message, or null (nothing thrown) when anything in it isn't one the app
+// could have made on a grid of cols x rows cells over a paint layer layerWidth x layerHeight: a cell off
+// the grid, one that can't be drawn, a run off the layer, a stroke id that isn't short text. The same
+// arrays come back, so what's sent on as numbered is what was sent.
+export function readChange(msg, { cols, rows, layerWidth, layerHeight }) {
+  if (!msg || typeof msg !== 'object') return null;
+  const { stroke, cells, runs } = msg;
+  if (typeof stroke !== 'string' || !stroke || stroke.length > MOST_STROKE || !Array.isArray(cells) || !Array.isArray(runs)) return null;
+  for (const cell of cells) {
+    if (!Array.isArray(cell) || cell.length !== 2 || typeof cell[0] !== 'string') return null;
+    const at = placeOf(cell[0]);
+    if (!at || at[0] >= cols || at[1] >= rows) return null;
+    if (cell[1] !== null && !(cell[1] && goodEntry(cell[1]))) return null;
+  }
+  for (const run of runs) {
+    if (!Array.isArray(run) || run.length !== 4) return null;
+    const [x, y, length, rgba] = run;
+    if (!isCoord(x) || !isCoord(y) || !Number.isInteger(length) || length < 1 || y >= layerHeight || x + length > layerWidth) return null;
+    if (!Number.isInteger(rgba) || rgba < 0 || rgba > 0xffffffff) return null;
+  }
+  return { stroke, cells, runs };
+}
+
+// The whole document gzipped, cut into pieces of CHUNK_BYTES or less. The parts are projectParts()'
+// (with the imageBuffer, as writeProject has it): the file's own form, so a project that opens from a
+// file opens from this, and the blobs become the buffers openParts takes on the other side.
+export async function packProject(parts) {
+  const bytes = await bytesOf((await writeProject(parts)).stream().pipeThrough(new CompressionStream('gzip')));
+  const chunks = [];
+  for (let i = 0; i < bytes.length; i += CHUNK_BYTES) chunks.push(bytes.subarray(i, i + CHUNK_BYTES));
+  return chunks;
+}
+
+// The parts openParts takes, or null for anything a host's packProject wouldn't make: chunks missing or
+// repeated or not bytes (the gzip's own check catches those), more than mostBytes unzipped (it stops
+// reading there), or not a project.
+export async function unpackProject(chunks, { mostBytes }) {
+  try {
+    if (!Array.isArray(chunks) || !chunks.length || !chunks.every((c) => c instanceof Uint8Array)) return null;
+    const reader = new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
+    const parts = [];
+    let size = 0;
+    for (let read = await reader.read(); !read.done; read = await reader.read()) {
+      size += read.value.length;
+      if (size > mostBytes) {
+        reader.cancel();
+        return null;
+      }
+      parts.push(read.value);
+    }
+    return await readProject(new Blob(parts));
+  } catch {
+    return null;
+  }
 }
