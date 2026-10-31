@@ -1,14 +1,12 @@
 // A host's reload keeps the room: it comes back at the same address with its art, chat and numbers, the
 // watchers wait and see it, and a room that ended meanwhile says so. Every reload accepts the page-closing prompt.
 import { test, expect, tab, store, chars, editAt, settled } from './support.js';
-import { fakeRoom, fakeServer, member, ROOM_ID, shown, tile, goLive, watching, selected, hash, asked, chat, outOfRoom } from './social-support.js';
+import { fakeRoom, fakeServer, member, ROOM_ID, shown, tile, goLive, watching, selected, hash, asked, chat, outOfRoom, live, joins } from './social-support.js';
 
 const AWAY = 'Your room ended while the page was away';
 const ELSEWHERE = 'This room is open in another tab';
 const NUMBERS = ['Here now', 'Max', 'Total', 'Messages'];
-const joins = (room) => room.received.filter((r) => r.msg.type === 'join').length;
 const hosts = (room) => room.from('host').filter((m) => m.type === 'host').length;
-const live = (page) => expect.poll(() => store(page, 'room', (r) => r.status), { timeout: 20_000, intervals: [100] }).toBe('live');
 const messages = (page) => chat(page).getByRole('log').locator('.message');
 const joined = (page) => chat(page).getByRole('log').locator('.presence').filter({ hasText: 'joined' });
 
@@ -93,7 +91,7 @@ test('the watcher sees The host is reconnecting… during the reload, then the a
   const held = new Promise((resolve) => { release = resolve; });
   await host.route(/\/api\/me$/, async (route) => {   // who you are is held, so the host's return is too
     await held;
-    await route.fallback();
+    await route.fallback().catch(() => {});   // the page may have gone on by now
   });
 
   await host.reload();
@@ -208,7 +206,7 @@ test('a duplicated tab takes the room, and the older tab stops', async ({ page: 
   expect(await chars(host, 0, 0, 20)).toBe(art);
   expect(await store(copy, 'room', (r) => r.role)).toBe('host');
 
-  await new Promise((resolve) => setTimeout(resolve, 2500));   // longer than a retry
+  await copy.waitForTimeout(2500);   // longer than a retry
   expect(hosts(room)).toBe(2);
   expect(await store(copy, 'room', (r) => r.role)).toBe('host');
   expect(await store(host, 'room', (r) => r.role)).toBe(null);
