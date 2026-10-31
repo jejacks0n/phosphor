@@ -6,7 +6,7 @@ import { messageFor } from '@/social/messages';
 import { ed25519Supported, loadKey } from '@/social/keys';
 import { requestPass, renewAt } from '@/social/pass';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { useRoomStore, hasReportedRoom, keepRoomReport, keptRoomReports } from '@/store/RoomStore';
+import { ROOM_ID, useRoomStore, hasReportedRoom, keepRoomReport, keptRoomReports } from '@/store/RoomStore';
 import { REASONS } from '@/social/chat';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection } from '@/social/lobby';
 
@@ -144,8 +144,8 @@ export const useSocialStore = defineStore('social', {
       const id = this._roomLink;
       this._roomLink = null;
       if (id === null || !this.supported) return;
-      if (this._roomLinkAsks) this.roomInvite = id;
-      else useRoomStore().join(id);
+      if (this._roomLinkAsks && ROOM_ID.test(id)) this.roomInvite = id;
+      else useRoomStore().join(id);   // (one that can't be a room's goes no further, and says so)
     },
 
     // Your own room again, from an entry of yours (Forward, a reload): no asking.

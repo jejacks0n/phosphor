@@ -23,7 +23,7 @@ const THUMBNAIL_FIRST_MS = 3000;      // the lobby's picture of a public room, s
 const THUMBNAIL_EVERY_MS = 180_000;   // then at most this often (the server's own floor is 20 s), and only after a change
 const SETTINGS_EVERY_MS = 1250;  // the server's 1 s, with slack: it measures when settings arrive
 const ASK_FOR_MS = 3000;        // how long an earlier() waits for its page (the host may drop it unanswered)
-const ROOM_ID = /^[a-z2-7]{10}$/;
+export const ROOM_ID = /^[a-z2-7]{10}$/;
 
 // What's typed in Start a room and Room settings, kept here so it stays while you're on another tab (the
 // SOCIAL tab isn't there then). Room settings also keeps what the room last said for each field (seen).
