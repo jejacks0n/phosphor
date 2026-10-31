@@ -4,6 +4,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { settingsJson } from '@/store/project/shared';
 
 const CURSORS_EVERY_MS = 100;
+export const CHECK_EVERY_MS = 2000;
 
 // The people drawing in the room you're in, and the invitations to: who's an artist, who's asked, and the
 // cursors, kept out of the room store. The drawing itself is the project store's (sharing.js), which this
@@ -22,7 +23,6 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   let host = null, room = null;    // the Host, or the Watch
   let me = () => null, roomId = null, roomName = () => null;
-  let epoch = null;                // an artist's: the project's
   let saidHello = false;
   let awaitingList = false;        // accepted, and the host's list may not have me on it yet
   let stops = [], cursorTimer = null;
@@ -57,6 +57,8 @@ export const useDrawingStore = defineStore('drawing', () => {
   function startHostSharing() {
     project.startSharing({ send: (msg) => host.sendAll(msg), sendDocument: () => host.sendProjectToAll(), role: 'host', me: me() });
     project.dropOldUndo();
+    const checks = setInterval(() => host.sendCheck(project._ledger.n, project._ledger.sum), CHECK_EVERY_MS);
+    stops.push(() => clearInterval(checks));
     let sent = settingsJson(project), grid = `${project.cols},${project.rows}`;
     stops.push(watch(() => [settingsJson(project), project._sliderBefore], () => {   // a slider's end goes as one change
       const now = settingsJson(project), gridNow = `${project.cols},${project.rows}`;
@@ -127,11 +129,10 @@ export const useDrawingStore = defineStore('drawing', () => {
   function watchCallbacks() {
     const heard = (msg) => { if (mayDraw.value) project.hearDrawing(msg); };
     return {
-      onNumbered: heard, onSettings: heard, onBase: heard,
-      onProject: async ({ n, epoch: its, parts }) => {
+      onNumbered: heard, onSettings: heard, onBase: heard, onCheck: heard,
+      onProject: async ({ n, epoch, took, parts }) => {
         if (!artists.value.includes(me()) || !hasAccepted()) return;
-        if (await project.takeProject(parts, { n, filename: roomName(), send: (msg) => room?.post(msg), me: me() })) epoch = its;
-        else notice.value = 'The room\'s art couldn\'t be opened.';
+        if (!await project.takeProject(parts, { n, epoch, took, filename: roomName(), send: (msg) => room?.post(msg), me: me() })) notice.value = 'The room\'s art couldn\'t be opened.';
       },
       onCursors: (all) => { cursors.value = all; },
       onInvite: () => { invitation.value = true; },
@@ -159,13 +160,12 @@ export const useDrawingStore = defineStore('drawing', () => {
     if (mine) awaitingList = false;
     if (mine && hasAccepted() && !saidHello) {
       saidHello = true;
-      room.post({ t: 'artist-hello', has: project._sharing?.pending.n ?? -1, epoch });
+      room.post({ t: 'artist-hello', has: project._sharing?.pending.n ?? -1, epoch: project._sharing?.epoch ?? null });
     } else if (!mine && !awaitingList && hasAccepted()) stopDrawing();
   }
 
   function stopDrawing() {
     saidHello = false;
-    epoch = null;
     noteAccepted(false);
     paused.value = false;
     cursors.value = {};
@@ -187,8 +187,11 @@ export const useDrawingStore = defineStore('drawing', () => {
   // The channel to the host, as Watch says it: gone, an artist waits; a new one, which may come with no word
   // of the last one going, gets the artists message first thing, and they say hello again.
   function connection(state) {
-    if (state === 'connecting') saidHello = false;
-    else if (state === 'live') {
+    if (state !== 'live') awaitingList = false;   // the next list is that connection's, and answers for the accept
+    if (state === 'connecting') {
+      saidHello = false;
+      project.newConnection();
+    } else if (state === 'live') {
       paused.value = false;
       if (mayDraw.value) project.setPaused(false);
     } else if (state === 'lost' || state === 'failed') {

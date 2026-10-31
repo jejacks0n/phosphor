@@ -14,6 +14,7 @@ import { CHUNK_BYTES, MOST_ARTIST_BYTES, changedCells, encodeCells, packSnapshot
 
 const BACKED_UP_BYTES = 8 * 1024 * 1024;   // a channel further behind than this is sent no art until it drains
 const DRAINED_BYTES = 1024 * 1024;           // to this, and then gets one fresh snapshot
+export const MOST_QUEUED_BYTES = 32 * 1024 * 1024;   // waiting for one artist's channel; past this it's discarded and they get the project
 const MOST_HEARD_BYTES = 2048;               // a watcher's message longer than this is ignored, and an artist's, but for a change
 const MOST_SKEW_MS = 120_000;                // a chat message's time, from the host's clock
 const EARLIER_EVERY_MS = 500;                // a watcher's asks for earlier messages, at most
@@ -51,9 +52,10 @@ export class Host {
     // peer -> { peer, pass, claims, tracking, conn, channel, has (the art it has), packing, behind,
     // allowance, heard (its chat, checked one at a time), checking (how many wait), askedAt (its last ask
     // for earlier messages), here (counted among those in the room), and for an artist drawing (said hello),
-    // took (its changes handled on this connection, refused ones too), projecting and held (a project is on
-    // its way and what's numbered and any art wait behind it), again (another project is owed after that),
-    // drained (ends the wait for its channel to drain) }
+    // took (its changes handled on this connection, refused ones too), queue and queued (what's numbered for it,
+    // waiting for its channel, and how much), projecting (a project is on its way, and the queue and any art wait
+    // behind it), again (a project is owed, which will hold whatever would have been queued), checked (the last
+    // number it was sent a check for), drained (ends the wait for its channel to drain) }
     this.watchers = new Map();
     this.here = new Map();   // sub -> their open connections: one person in two tabs comes and goes once
     this.silences = new Map();   // sub -> until (epoch ms), from 'silenced' since a pass was made (kept through a reconnect)
@@ -104,7 +106,7 @@ export class Host {
     const w = {
       peer, pass, claims: null, tracking: true, conn: null, channel: null, has: null, packing: false, behind: false,
       allowance: new Allowance(), heard: Promise.resolve(), checking: 0, askedAt: -Infinity,
-      drawing: false, took: 0, projecting: false, held: [], again: false, drained: null,
+      drawing: false, took: 0, queue: [], queued: 0, projecting: false, again: false, checked: null, drained: null,
     };
     this.watchers.set(peer, w);
     let claims = null;
@@ -316,7 +318,13 @@ export class Host {
     channel.bufferedAmountLowThreshold = DRAINED_BYTES;
     channel.onbufferedamountlow = () => {
       w.drained?.();
-      if (!w.behind || w.projecting) return;
+      if (w.projecting) return;
+      if (w.again) {
+        this.sendProject(w);
+        return;
+      }
+      this.drain(w);
+      if (!w.behind) return;
       w.behind = false;
       w.has = null;
       this.update(w);
@@ -371,7 +379,7 @@ export class Host {
   setArtists(subs) {
     this.artists = new Set(subs);
     for (const w of this.watchers.values()) {
-      if (w.claims && !this.artists.has(w.claims.sub)) Object.assign(w, { drawing: false, took: 0, held: [], again: false });
+      if (w.claims && !this.artists.has(w.claims.sub)) Object.assign(w, { drawing: false, took: 0, queue: [], queued: 0, again: false });
     }
     for (const w of this.open()) this.sendTo(w, { t: 'artists', subs: [...subs] });
   }
@@ -389,17 +397,27 @@ export class Host {
   }
 
   // To every artist who has said hello, none skipped, in order.
-  // ponytail: past what a channel buffers, send throws and the artist is dropped; the backlog comes with the check.
   sendAll(msg) {
     const data = JSON.stringify(msg);
     for (const w of this.open()) if (w.drawing) this.deliver(w, data);
+  }
+
+  // The agreed picture's sum as of n, to each artist who has everything up to n on its way and hasn't been told
+  // about this n. Anyone else would only skip it, and hears of a later one.
+  sendCheck(n, sum) {
+    const data = JSON.stringify({ t: 'check', n, sum });
+    for (const w of this.open()) {
+      if (!w.drawing || w.projecting || w.again || w.queue.length || w.checked === n) continue;
+      w.checked = n;
+      this.put(w, data);
+    }
   }
 
   sendProjectToAll() {
     for (const w of this.open()) this.sendProject(w);
   }
 
-  // Chunks at the pace the channel drains: past what it buffers (16 MB in Chromium) send throws.
+  // Chunks at the pace the channel drains.
   async putPaced(w, chunks) {
     for (const chunk of chunks) {
       if (this.watchers.get(w.peer) !== w || !this.put(w, chunk)) return;
@@ -414,16 +432,37 @@ export class Host {
     for (const item of items) this.deliver(w, JSON.stringify(item.t ? item : { t: 'numbered', ...item }));
   }
 
+  // Straight down the channel, for anyone keeping up. Otherwise it waits in their queue, as a channel past what
+  // it buffers closes (send throws), and past MOST_QUEUED_BYTES the queue goes: the project they're owed instead,
+  // sent once they drain or when the one on its way ends, holds all of it, and all that comes before it's read.
+  // A slow artist costs the host this array and that project, and no one else anything. The size is in
+  // characters, which a multi-byte character undercounts: near enough for a limit.
   deliver(w, data) {
-    if (w.projecting) w.held.push(data);
-    else this.put(w, data);
+    if (w.again) return;
+    if (!w.projecting && !w.queue.length && !(w.channel.bufferedAmount > BACKED_UP_BYTES)) {
+      this.put(w, data);
+      return;
+    }
+    w.queue.push(data);
+    w.queued += data.length;
+    if (w.queued <= MOST_QUEUED_BYTES) return;
+    w.queue = [];
+    w.queued = 0;
+    w.again = true;
+  }
+
+  // Their queue down the channel, as far as it'll take now; bufferedamountlow brings this back for the rest.
+  drain(w) {
+    let sent = 0;
+    while (sent < w.queue.length && !(w.channel.bufferedAmount > BACKED_UP_BYTES) && this.put(w, w.queue[sent])) w.queued -= w.queue[sent++].length;
+    w.queue.splice(0, sent);
   }
 
   // The whole document as of now, to one artist, then everything numbered since. What it's as of and what it
-  // counts are read before the first wait, and from there what's numbered is held for it, and art, since a
-  // snapshot's chunks would land among these. One at a time: a change refused while one is on its way isn't
-  // in it, so another follows. Once started it's finished, whoever they are by then, as their Watch is
-  // taking every chunk as its.
+  // counts are read before the first wait, so what's queued already is in it and goes, and from there what's
+  // numbered waits behind it, and art, since a snapshot's chunks would land among these. One at a time: a change
+  // refused while one is on its way isn't in it, so another follows. Once started it's finished, whoever they
+  // are by then, as their Watch is taking every chunk as its.
   // ponytail: each artist's is packed apart; share by n if several joining at once costs too much.
   async sendProject(w) {
     if (!w.drawing) return;
@@ -431,7 +470,7 @@ export class Host {
       w.again = true;
       return;
     }
-    w.projecting = true;
+    Object.assign(w, { projecting: true, again: false, queue: [], queued: 0 });
     const took = w.took;
     try {
       const { n, epoch, chunks: packing } = this.project();
@@ -444,11 +483,9 @@ export class Host {
     } catch (error) {
       console.warn('The art couldn\'t be packed for an artist.', error);
     }
-    const held = w.held;
     w.projecting = false;
-    w.held = [];
     if (this.watchers.get(w.peer) !== w) return;
-    for (const data of held) this.put(w, data);
+    this.drain(w);
     if (w.behind) {   // art that waited: this brings them up to the art there is now
       w.behind = false;
       w.has = null;

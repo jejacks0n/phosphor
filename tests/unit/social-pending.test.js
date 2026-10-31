@@ -449,3 +449,47 @@ test('retract over an older pending pixel shows the older one', () => {
   pending.heard(from('them', 't', 2, runsOf([1, 0, 1, BLUE])));
   assert.equal(shown.px(1, 0), BLUE);
 });
+
+test('dropTaken drops only what the host has handled and no echo has told of, oldest first', () => {
+  const { pending, own: shown } = artist('me');
+  const one = cellsOf(['1,1', MINE]), two = cellsOf(['2,2', MINE]), three = cellsOf(['3,3', MINE]);
+  for (const [stroke, change] of [['s1', one], ['s2', two], ['s3', three]]) {
+    pending.add(stroke, change);
+    shown.show(change);
+  }
+  pending.heard(from('me', 's1', 1, one));
+  pending.dropTaken(2);   // s1 was echoed, so of the two handled only s2 is left to drop
+  pending.reapply();
+  assert.equal(pending.size, 1);
+  pending.dropTaken(2);   // the same count again: nothing new was handled
+  assert.equal(pending.size, 1);
+  pending.heard(from('me', 's3', 2, three));   // numbered after: its echo comes, and clears it
+  assert.equal(pending.size, 0);
+  pending.heard(from('them', 't', 3, cellsOf(['3,3', THEIRS])));
+  assert.equal(shown.read('3,3'), THEIRS);
+});
+
+test('dropTaken counts changes from this connection on: an older one waits for its own echo', () => {
+  const { pending, own: shown } = artist('me');
+  const old = cellsOf(['1,1', MINE]), mine = cellsOf(['2,2', MINE]), last = cellsOf(['3,3', MINE]);
+  pending.add('old', old);
+  shown.show(old);
+  pending.newConnection();
+  pending.add('mine', mine);
+  shown.show(mine);
+  pending.add('last', last);
+  shown.show(last);
+  pending.heard(from('me', 'old', 1, old));   // from the tail: the new connection's count doesn't include it
+  pending.dropTaken(1);
+  pending.reapply();
+  assert.equal(pending.size, 1);
+  pending.heard(from('me', 'last', 2, last));
+  assert.equal(pending.size, 0);
+});
+
+test('dropTaken from a host saying too many stops at what there is', () => {
+  const { pending } = artist('me');
+  pending.add('s1', cellsOf(['1,1', MINE]));
+  pending.dropTaken(99);
+  assert.equal(pending.size, 0);
+});

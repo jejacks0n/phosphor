@@ -7,7 +7,7 @@
 // onChat only as its sender sent it: a verified member's pass the server signed, and their signature over
 // the message for this room, so a host can't put words in anyone's mouth. For an artist, the drawing comes
 // here too. A project's numbers aren't for anything until it's opened: those that come inside its chunks wait,
-// and any it already holds go.
+// and any it already holds go, and so does a check.
 import { openPeer } from './peer.js';
 import { verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
@@ -17,6 +17,7 @@ import { clampAnsiZoom } from '../lib/zoom.js';
 
 const MOST_HEARD_CHARS = 256 * 1024;   // a host's text message: what a channel carries
 const MOST_WAITING = 1024;  // messages waiting to be handled: a whole snapshot's chunks and plenty more
+const MOST_WAITING_DRAWING = 64 * 1024;   // for someone a project has reached: everything numbered waits here while it opens
 const MOST_NAME = 60;       // a room's name
 const MOST_WELCOME = 200;
 const MOST_PROJECT_CHUNKS = MOST_PROJECT_BYTES / CHUNK_BYTES;   // zipped, it's never more than unzipped
@@ -162,9 +163,8 @@ export class Watch {
     else if (msg.t === 'history') await this.history(msg);
     else if (msg.t === 'deleted' && isId(msg.id)) this.onChat({ type: 'deleted', id: msg.id });
     else if (msg.t === 'chat-no' && isId(msg.id) && msg.reason === 'too-fast') this.onChat({ type: 'refused', id: msg.id, reason: msg.reason });
-    else if (msg.t === 'numbered' || msg.t === 'settings' || msg.t === 'base') this.drawn(msg);
+    else if (msg.t === 'numbered' || msg.t === 'settings' || msg.t === 'base' || (msg.t === 'check' && Number.isInteger(msg.sum))) this.drawn(msg);
     else if (msg.t === 'project-start') this.projectStart(msg);
-    else if (msg.t === 'check' && place(msg.n) && Number.isInteger(msg.sum)) this.onCheck(msg);
     else if (msg.t === 'cursors') this.onCursors(Object.fromEntries(Object.entries(msg).filter(([key]) => key !== 't')));
     else if (msg.t === 'invite') this.onInvite();
     else if (msg.t === 'withdrawn') this.onWithdrawn();
@@ -176,6 +176,7 @@ export class Watch {
     if (this.project) this.project.held.push(msg);
     else if (msg.t === 'numbered') this.onNumbered(msg);
     else if (msg.t === 'settings') this.onSettings(msg);
+    else if (msg.t === 'check') this.onCheck(msg);
     else this.onBase(msg);
   }
 
@@ -205,7 +206,7 @@ export class Watch {
   // stranger to that). A host sending faster than the queue empties is cut off: the queue is memory it fills.
   hear(data, conn) {
     if (typeof data === 'string' && data.length > MOST_HEARD_CHARS) return;
-    if (this.waiting >= MOST_WAITING) {
+    if (this.waiting >= (this.projectN >= 0 ? MOST_WAITING_DRAWING : MOST_WAITING)) {
       this.close();
       this.onState('lost');
       return;
