@@ -115,3 +115,17 @@ test('Tail gives what came after n, or null once n has fallen off the end', () =
   assert.deepEqual(big.since(0).map((x) => x.n), [1]); // the newest stays however big
   assert.equal(new Tail().since(0).length, 0);
 });
+
+test('Tail forgets what came before a gap in n, and never answers has: -1', () => {
+  const tail = new Tail();
+  for (const n of [1, 2, 4, 5]) tail.add({ n }); // 3 was a project, which the tail doesn't hold
+  assert.equal(tail.since(2), null);
+  assert.equal(tail.since(0), null);
+  assert.deepEqual(tail.since(3).map((x) => x.n), [4, 5]);
+  assert.deepEqual(tail.since(4).map((x) => x.n), [5]);
+  const fromZero = new Tail();
+  for (const n of [0, 1, 2]) fromZero.add({ n });
+  assert.equal(fromZero.since(-1), null);
+  assert.deepEqual(fromZero.since(0).map((x) => x.n), [1, 2]);
+  assert.equal(new Tail().since(-1), null);
+});
