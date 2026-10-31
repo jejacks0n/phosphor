@@ -30,12 +30,13 @@ const held = (rgba) => (rgba & 0xff ? rgba : ERASED);
 const color = (value) => (value === ERASED ? 0 : value);
 
 const sameCell = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
-const noStacks = (sum = 0) => ({ cells: new Map(), tiles: new Map(), strokes: new Map(), bytes: 0, sum });
+const noStacks = () => ({ cells: new Map(), tiles: new Map(), strokes: new Map(), bytes: 0 });
 
 export class Ledger {
   // Plain data all the way down, so kept() is just this. Strokes are shared between stacks, which a
   // structured clone keeps.
   #stacks;
+  #sum;
 
   constructor({ readCell, readTile, n = 0, epoch, tail = new Tail(), sum = 0, limits = false }) {
     this.readCell = readCell;
@@ -44,11 +45,16 @@ export class Ledger {
     this.epoch = epoch;
     this.tail = tail;
     this.limits = limits;
-    this.#stacks = noStacks(sum);
+    this.#stacks = noStacks();
+    this.#sum = sum;
   }
 
-  // The check over the agreed picture, with every Numbered returned so far already in it.
-  get sum() { return this.#stacks.sum; }
+  // The check over the agreed picture, with every Numbered returned so far already in it. It only means
+  // anything while sharing: it follows changes from what it was seeded with, and nothing here scans the
+  // picture, so whoever starts sharing or sends a project seeds it.
+  get sum() { return this.#sum; }
+
+  seedSum(sum) { this.#sum = sum; }
 
   // About what a stroke holds, for History's byte limit.
   bytesOf(stroke) { return this.#stacks.strokes.get(stroke)?.bytes ?? 0; }
@@ -58,7 +64,11 @@ export class Ledger {
     const { strokes } = this.#stacks;
     let record = strokes.get(stroke);
     if (record && (record.by !== by || record.undone)) return null;
-    if (!record) strokes.set(stroke, record = { id: stroke, by, undone: false, cells: new Map(), paint: new Map(), bytes: 0 });
+    record ??= { id: stroke, by, undone: false, cells: new Map(), paint: new Map(), bytes: 0 };
+    // Oldest first means written longest ago, so a stroke still being written isn't what a limit takes.
+    // ponytail: one quiet past a limit does go, and its next slice starts over; only what's after that undoes.
+    strokes.delete(stroke);
+    strokes.set(stroke, record);
 
     for (const [key, entry] of cells) this.#writeCell(record, key, entry ?? null);
     let tile = null;
@@ -101,7 +111,7 @@ export class Ledger {
       stack.strokes.push(record);
       if (!sameCell(shown, value)) {
         cells.push([key, value]);
-        this.#stacks.sum ^= hashCell(key, shown) ^ hashCell(key, value);
+        this.#sum ^= hashCell(key, shown) ^ hashCell(key, value);
       }
     }
     const runs = [];
@@ -122,13 +132,15 @@ export class Ledger {
   // A number for a settings, base or project message; those go in the tail through their caller.
   note() { return ++this.n; }
 
-  // A project's effect: the positions don't mean what they did. sum is the check over the new picture.
-  reset({ epoch = this.epoch, sum = 0 } = {}) {
+  // A project's effect: the positions don't mean what they did. sum, if given, is the check over the new picture.
+  reset({ epoch = this.epoch, sum = this.#sum } = {}) {
     this.epoch = epoch;
-    this.#stacks = noStacks(sum);
+    this.#sum = sum;
+    this.#stacks = noStacks();
   }
 
-  // A merge empties the stacks and its entry keeps them, the check included, to put back when it's undone.
+  // A merge empties the stacks and its entry keeps them, to put back when it's undone. Neither touches the
+  // sum: a merge in a room is followed by a project, which seeds it.
   takeStacks() {
     const stacks = this.#stacks;
     this.#stacks = noStacks();
@@ -179,13 +191,13 @@ export class Ledger {
 
   // Shares what the ledger holds, so store or clone it before the next change; a clone is what restore wants.
   kept() {
-    return { n: this.n, epoch: this.epoch, limits: this.limits, stacks: this.#stacks, tail: this.tail.items };
+    return { n: this.n, epoch: this.epoch, limits: this.limits, sum: this.#sum, stacks: this.#stacks, tail: this.tail.items };
   }
 
-  static restore({ n, epoch, limits, stacks, tail: items }, { readCell, readTile }) {
+  static restore({ n, epoch, limits, sum, stacks, tail: items }, { readCell, readTile }) {
     const tail = new Tail();
     for (const numbered of items) tail.add(numbered);
-    const ledger = new Ledger({ readCell, readTile, n, epoch, tail, limits });
+    const ledger = new Ledger({ readCell, readTile, n, epoch, tail, sum, limits });
     ledger.#stacks = stacks;
     return ledger;
   }
@@ -210,7 +222,7 @@ export class Ledger {
   // A stroke has one value per position. Writing again moves it to the top, over whoever drew since.
   #writeCell(record, key, entry) {
     const stack = this.#cellStack(key);
-    this.#stacks.sum ^= hashCell(key, this.#shownCell(key, stack)) ^ hashCell(key, entry);
+    this.#sum ^= hashCell(key, this.#shownCell(key, stack)) ^ hashCell(key, entry);
     const at = stack.strokes.indexOf(record);
     if (at >= 0) stack.strokes.splice(at, 1);
     else this.#charge(record, CELL_BYTES);
@@ -222,7 +234,7 @@ export class Ledger {
     const shown = this.#shownCell(key, stack);
     if (sameCell(value, shown)) return;
     cells.push([key, shown]);
-    this.#stacks.sum ^= hashCell(key, value) ^ hashCell(key, shown);
+    this.#sum ^= hashCell(key, value) ^ hashCell(key, shown);
   }
 
   #tile(x, y) {
@@ -242,7 +254,7 @@ export class Ledger {
   #writePixel(record, tile, i, rgba) {
     const { entries } = tile;
     const x = tile.x + i % TILE, y = tile.y + Math.floor(i / TILE);
-    this.#stacks.sum ^= hashPixel(x, y, shownPixel(tile, i)) ^ hashPixel(x, y, rgba);
+    this.#sum ^= hashPixel(x, y, shownPixel(tile, i)) ^ hashPixel(x, y, rgba);
 
     let target = null, covered = false;
     for (let at = entries.length - 1; at >= 0 && !target; at--) {
@@ -289,7 +301,7 @@ export class Ledger {
 
   #listPixel(runs, tile, i, from, to) {
     const x = tile.x + i % TILE, y = tile.y + Math.floor(i / TILE);
-    this.#stacks.sum ^= hashPixel(x, y, from) ^ hashPixel(x, y, to);
+    this.#sum ^= hashPixel(x, y, from) ^ hashPixel(x, y, to);
     const last = runs.at(-1);
     if (last && last[1] === y && last[0] + last[2] === x && last[3] === to) last[2]++;
     else runs.push([x, y, 1, to]);
