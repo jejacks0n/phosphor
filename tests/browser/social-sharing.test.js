@@ -13,6 +13,10 @@ import { baseLayerActions } from '@/store/project/baseLayer.js';
 import { DRAWING_ACTIONS, HOST_ONLY_ACTIONS } from '@/store/project/sharing.js';
 import { cellIndex } from '@/lib/Cells';
 import { guarded } from '@/store/project/combineActions.js';
+import { createApp } from 'vue';
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
+import { typeAtCursor } from '@/composables/useTextTool.js';
+import { toastMessage } from '@/composables/useToast.js';
 import eraser from '@/tools/eraser';
 import flip from '@/tools/flip';
 import bucket from '@/tools/bucket';
@@ -479,6 +483,127 @@ test('an artist\'s float back where it started leaves nothing to send, and redo 
   expect(changes(sent).length).toBe(1);
 });
 
+// Stamp (and a paste onto what's already there) changes nothing, so nothing goes out, and the run goes on.
+const inks = (project, ...keys) => keys.map((key) => project.editCells.get(key)?.char);
+
+test('an artist\'s Stamp then a move leaves the copy where it was, as it does alone and for a host', async () => {
+  for (const role of [undefined, 'host', 'artist']) {
+    const { project, sent } = await drawing(role);
+    dab(project, 2, 2);
+    project.editCell(1, 1, { char: 'A' });
+    project.commitEdit();
+    sent.length = 0;
+    const rect = { c0: 1, r0: 1, c1: 1, r1: 1 }, layers = { base: false, edit: true };
+    const stamped = project.stampSelection(rect, layers);
+    project.floatSelection(stamped, layers, 2, 0);
+    expect([role, ...inks(project, '1,1', '3,1')]).toEqual([role, 'A', 'A']);
+    if (role === 'artist') {
+      expect(sent.filter(({ t }) => t === 'undo' || t === 'redo')).toEqual([]);
+      project.changeSelection((space) => { space.selection = null; });
+      expect(changes(sent).map(({ cells }) => cells.map(([key]) => key))).toEqual([['3,1']]);
+    }
+    project.stopSharing();
+  }
+});
+
+test('an artist\'s Stamp then Delete takes away the block, not the original', async () => {
+  for (const role of [undefined, 'host', 'artist']) {
+    const { project, sent } = await drawing(role);
+    project.editCell(1, 1, { char: 'A' });
+    project.commitEdit();
+    sent.length = 0;
+    const layers = { base: false, edit: true };
+    const stamped = project.stampSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, layers);
+    project.deleteSelection(stamped, layers);
+    expect([role, ...inks(project, '1,1')]).toEqual([role, 'A']);
+    expect(sent.filter(({ t }) => t === 'undo' || t === 'change')).toEqual([]);
+    project.stopSharing();
+  }
+});
+
+test('an artist\'s paste onto the same content, then a move, leaves what was there', async () => {
+  const { project, sent } = await drawing('artist');
+  project.editCell(1, 1, { char: 'A' });
+  project.commitEdit();
+  sent.length = 0;
+  const layers = { base: false, edit: true };
+  const block = project.copySelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, layers);
+  const pasted = project.pasteSelection(block, 1, 1);
+  project.floatSelection(pasted, layers, 4, 0);
+  expect(inks(project, '1,1', '5,1')).toEqual(['A', 'A']);
+  expect(sent).toEqual([]);
+});
+
+test('Stamp, a save, then a move still leaves the copy: nothing had gone out', async () => {
+  const { project, sent } = await drawing('artist');
+  project.editCell(1, 1, { char: 'A' });
+  project.commitEdit();
+  sent.length = 0;
+  const layers = { base: false, edit: true };
+  const stamped = project.stampSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, layers);
+  project.commitPending();
+  project.floatSelection(stamped, layers, 2, 0);
+  expect(inks(project, '1,1', '3,1')).toEqual(['A', 'A']);
+});
+
+test('a stroke that never went out sends no undo or redo', async () => {
+  const { project, sent } = await drawing('artist');
+  dab(project, 2, 2);
+  project.commitEdit();
+  sent.length = 0;
+  dab(project, 2, 2); // the same again: an undo step alone, with nothing in it
+  project.commitEdit();
+  expect(sent).toEqual([]);
+  expect(project.canUndo).toBe(true);
+  project.undo();
+  project.redo();
+  expect(sent).toEqual([]);
+});
+
+test('startSharing again stops the last one first: one timer, and only the new send', async () => {
+  const { project, sent } = await drawing('host');
+  const clear = vi.spyOn(globalThis, 'clearInterval');
+  const { timer } = project._sharing;
+  const later = [];
+  project.startSharing({ send: (message) => later.push(message), role: 'host', me: 'mine' });
+  expect(clear).toHaveBeenCalledWith(timer);
+  clear.mockRestore();
+  sent.length = 0;
+  dab(project, 2, 2);
+  project.commitEdit();
+  expect(sent).toEqual([]);
+  expect(changes(later).length).toBe(1);
+});
+
+test('keys while paused: an arrow key keeps the selection', async () => {
+  const { project, workspace } = await drawing('artist');
+  project.editCell(5, 5, { char: 'A' });
+  project.commitEdit();
+  workspace.editorTab = 'output';
+  workspace.selectAll({ c0: 5, r0: 5, c1: 5, r1: 5 });
+  const held = workspace.selection;
+  const app = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
+  app.mount(document.createElement('div'));
+  project.setPaused(true);
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', cancelable: true }));
+  app.unmount();
+  expect(workspace.selection).toEqual(held);
+  expect(char(project, 5, 5)).toBe('A');
+});
+
+test('keys while paused: a refused type says nothing and the cursor stays', async () => {
+  const { project, workspace } = await drawing('artist');
+  project.setPaused(true);
+  workspace.textCursor = { col: 39, row: 3 };
+  toastMessage.value = null;
+  typeAtCursor(project, workspace, '漢'); // wouldn't fit, if it were asked
+  expect(workspace.textCursor).toEqual({ col: 39, row: 3 });
+  expect(toastMessage.value).toBe(null);
+  project.setPaused(false);
+  typeAtCursor(project, workspace, '漢');
+  expect(toastMessage.value).toContain('No room');
+});
+
 test('an artist\'s float that has gone out starts a new run, since it can\'t be taken back at once', async () => {
   const { project, sent } = await drawing('artist');
   project.editCell(1, 1, { char: 'A' });
@@ -779,10 +904,12 @@ test('while paused, drawing does nothing and changes heard still land', async ()
   const before = project.editCells;
   dab(project, 3, 3);
   project.editCell(2, 2, { char: 'x' });
-  expect(project.typeAt(4, 4, 'y', INK)).toBeFalsy();
+  expect(project.typeAt(4, 4, 'y', INK)).toBe(undefined); // not false: that's "no room", which callers say out loud
   project.undo();
   project.redo();
-  project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, { base: false, edit: true }, 2, 0);
+  const refused = { c0: 1, r0: 1, c1: 1, r1: 1 };
+  expect(project.floatSelection(refused, { base: false, edit: true }, 2, 0)).toBe(undefined); // callers keep the selection they had
+  expect(project.backspaceAt(2, 1, INK)).toBe(undefined);
   project.clearEditLayer();
   expect(project.editCells).toBe(before);
   expect(painted(project, 3, 3)).toBe(null);
