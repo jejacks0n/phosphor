@@ -4,18 +4,18 @@ import { test, expect } from 'vitest';
 import { createTestApp } from '../support/app.js';
 
 const ACTIONS = [
-  'applyEditCells', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit',
+  'applyChange', 'applyEditCells', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit',
   'cancelEdit', 'cellHasPaint', 'changeSelection', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect',
   'commitEdit', 'commitPending', 'commitSliders', 'completeAt', 'composite', 'copySelection',
-  'deleteAt', 'deleteIn', 'deleteInWand', 'deleteSelection', 'dropEdits', 'editCell', 'editCellAt', 'ensureLayer',
+  'deleteAt', 'deleteIn', 'deleteInWand', 'deleteSelection', 'dropEdits', 'dropOldUndo', 'editCell', 'editCellAt', 'ensureLayer',
   'eraseBase', 'eraseBasePixels', 'eraseEditPixels', 'exportFile', 'fitFor', 'flipBase', 'flipCell',
   'flipPaint', 'floatSelection', 'gridRect', 'hasCharacters', 'hasEditsIn', 'imageColorAt', 'keepMigratedLook',
   'loadProject', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeUp',
   'moveSelection', 'newDocument', 'openParts', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
-  'pasteSelection', 'processingScale', 'projectParts', 'pushEdit', 'randomizeSeed', 'rawColorAt', 'rebuildCells', 'recolorSelection', 'recompose', 'redo', 'refreshCells', 'refreshChanged', 'rename',
+  'pasteSelection', 'processingScale', 'projectParts', 'pushEdit', 'pushWholeLayer', 'randomizeSeed', 'rawColorAt', 'readCell', 'readTile', 'rebuildCells', 'recolorSelection', 'recompose', 'redo', 'redoStroke', 'refreshCells', 'refreshChanged', 'rename',
   'render', 'replaceImage', 'resetGroup', 'resetSliders', 'restoreDocument', 'saveProject', 'selectionEdit',
   'setBaseRecords', 'setBlankCanvas', 'setCells', 'setImageFromFile', 'setSlider', 'shiftCells',
-  'sliderValues', 'stampSelection', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'updateCols', 'updateRows', 'writeAt',
+  'sliderValues', 'stampSelection', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'undoStroke', 'updateCols', 'updateRows', 'writeAt',
   'writeBase', 'writeEditCells',
 ];
 

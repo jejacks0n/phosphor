@@ -19,6 +19,9 @@ export const copyOf = (image, width, height) => {
   ctx2d(canvas).drawImage(image, 0, 0);
   return canvas;
 };
+// randomUUID is only there on secure contexts; a plain-http LAN address has getRandomValues.
+export const randomId = () => crypto.randomUUID?.()
+  ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
 // A color ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
 export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
 

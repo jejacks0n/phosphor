@@ -1,7 +1,8 @@
 /**
- * Undo/redo as a stack of { undo(), redo(), bytes? } entries. Entries own whatever they need to replay
- * (paint tiles, char-edit maps, images); this class only orders them, and drops the oldest past
- * limit entries or past maxBytes of what they hold (bytes: an entry's pixels, about).
+ * Undo/redo as a stack of { undo(), redo(), bytes?, onDrop?() } entries. Entries own whatever they need to
+ * replay (base tiles, images, or a stroke's id in the ledger); this class only orders them, and drops the
+ * oldest past limit entries or past maxBytes of what they hold (bytes: an entry's pixels, about). An entry
+ * dropped for any reason hears it through onDrop.
  */
 export default class History {
   #entries = [];
@@ -18,10 +19,10 @@ export default class History {
   get canRedo() { return this.#cursor < this.#entries.length; }
 
   push(entry) {
-    this.#entries.length = this.#cursor; // a new edit drops the redo tail
+    dropped(this.#entries.splice(this.#cursor)); // a new edit drops the redo tail
     this.#entries.push(entry);
     // The newest stays, however big: it's the edit just made.
-    while (this.#entries.length > 1 && (this.#entries.length > this.limit || this.bytes > this.maxBytes)) this.#entries.shift();
+    while (this.#entries.length > 1 && (this.#entries.length > this.limit || this.bytes > this.maxBytes)) dropped([this.#entries.shift()]);
     this.#cursor = this.#entries.length;
     this.version++;
   }
@@ -45,6 +46,7 @@ export default class History {
 
   // Drop every entry but those keep(entry) accepts, in order.
   retain(keep) {
+    dropped(this.#entries.filter((entry) => !keep(entry)));
     const undoable = this.#entries.slice(0, this.#cursor).filter(keep);
     this.#entries = [...undoable, ...this.#entries.slice(this.#cursor).filter(keep)];
     this.#cursor = undoable.length;
@@ -52,10 +54,26 @@ export default class History {
   }
 
   clear() {
+    dropped(this.#entries);
     this.#entries = [];
     this.#cursor = 0;
     this.version++;
   }
+
+  // Drop the last entry test(entry) accepts and every entry older than it. One waiting to be redone takes
+  // the rest of the redo tail too: those were recorded on top of it.
+  dropThrough(test) {
+    const at = this.#entries.findLastIndex(test);
+    if (at < 0) return;
+    const end = at < this.#cursor ? at + 1 : this.#entries.length;
+    dropped(this.#entries.splice(0, end));
+    this.#cursor = Math.max(0, this.#cursor - end);
+    this.version++;
+  }
+}
+
+function dropped(entries) {
+  for (const entry of entries) entry.onDrop?.();
 }
 
 // Paint strokes are recorded per tile: only tiles a stroke touches are copied.

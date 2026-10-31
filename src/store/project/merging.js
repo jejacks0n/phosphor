@@ -85,11 +85,7 @@ export const mergingActions = {
         this.render();
       };
       apply(after, before);
-      this.pushEdit({
-        undo: () => apply(before, after),
-        redo: () => apply(after, before),
-        bytes: bytesHeld(before.paint, before.base, before.image, before.imageBuffer, after.paint, after.base, after.image, after.imageBuffer, after.editCells),
-      });
+      this.pushWholeLayer(() => apply(before, after), () => apply(after, before), bytesHeld(before.paint, before.base, before.image, before.imageBuffer, after.paint, after.base, after.image, after.imageBuffer, after.editCells));
     } catch (e) {
       console.error('Failed to bake', e);
       alert("Couldn't bake the image.");
@@ -266,7 +262,7 @@ export const mergingActions = {
       };
       apply(after);
       const bytes = bytesHeld(before.base, before.paint, before.image, before.imageBuffer, after.base, after.paint, after.image, after.imageBuffer, after.editCells);
-      this.pushEdit({ undo: () => apply(before), redo: () => apply(after), bytes });
+      this.pushWholeLayer(() => apply(before), () => apply(after), bytes);
     } catch (e) {
       console.error('Failed to merge into the image', e);
       alert("Couldn't merge into the image.");
@@ -317,6 +313,6 @@ export const mergingActions = {
       this.render();
     };
     apply(after);
-    this.pushEdit({ undo: () => apply(before), redo: () => apply(after), bytes: bytesHeld(before.base, before.paint, after.base, after.paint, after.editCells) });
+    this.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(before.base, before.paint, after.base, after.paint, after.editCells));
   },
 };
