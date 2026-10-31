@@ -29,6 +29,7 @@ import { MOST_CHANGE_BYTES, packProject, readChange } from '@/social/wire.js';
 import { ALONE, SAVED_KEYS, randomId, runsPatch } from '@/store/project/shared.js';
 
 const SLICE_MS = 100;
+const LEAST_BASE_RUNS_BYTES = 4096; // of a base message, beside its pins; less and it's the project instead
 const HIDDEN_TAB_MS = 100; // a hidden tab has no frames, and still has to catch up
 const EDIT_ONLY = { base: false, edit: true };
 
@@ -384,14 +385,22 @@ export const sharingActions = {
   },
 
   // A host's change to the base, numbered and kept like any change: what a stroke's patch did, or undoing it
-  // what it undid, and the pins as they are now. It's split as a change is, each part with the pins.
+  // what it undid, and the pins as they are now. It's split as a change is, each part with the pins and
+  // fitting a message. Pins too many to fit one go as the project; its number isn't in the tail, so a reconnect
+  // gets the project too. It doesn't replace the document, so the host's undo and the epoch stay.
   sendBase(patch, side) {
     if (this._sharing?.role !== 'host') return;
     const runs = (patch?.tiles ?? []).flatMap(({ x, y, before, after }) => (side === 'after'
       ? pixelRuns(before.data, after.data, after.width, after.height, x, y)
       : pixelRuns(after.data, before.data, after.width, after.height, x, y)));
     const records = serializeBase(this.baseRecords) ?? { pins: [] };
-    for (const part of runs.length ? splitChange({ cells: [], runs }, MOST_CHANGE_BYTES) : [{ runs }]) {
+    const room = MOST_CHANGE_BYTES - JSON.stringify(records).length;
+    if (room < LEAST_BASE_RUNS_BYTES) {
+      this._ledger.note();
+      this._sharing.sendDocument?.();
+      return;
+    }
+    for (const part of runs.length ? splitChange({ cells: [], runs }, room) : [{ runs }]) {
       const message = { t: 'base', n: this._ledger.note(), runs: part.runs, records };
       this._ledger.tail.add(message);
       this._sharing.send(message);

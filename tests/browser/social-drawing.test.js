@@ -11,6 +11,8 @@ import { toBase64url } from '@/social/base64url';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useRoomStore } from '@/store/RoomStore';
+import { serializeBase, withPins } from '@/document/baseRecords';
+import { CHUNK_BYTES } from '@/social/wire';
 
 const config = { iceServers: [] };
 const later = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -808,4 +810,126 @@ test('a grid resize goes to everyone as the project', async () => {
   await allMatch(room, ann);
   expect(char(ann.project, 1, 1)).toBe('H');
   expect(room.project.canUndo).toBe(false);
+});
+
+// Fix round: what strands someone, and what closes a channel.
+test('a new connection with no lost before it says hello again, and numbers reach the artist', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const old = room.host.open().find((w) => w.peer === 'ann');
+  await room.host.peer('ann', await passFor('ann'));   // the host meets them again: an offer, and Watch connects afresh
+  await expect.poll(() => room.host.open().find((w) => w.peer === 'ann' && w !== old)?.drawing, PATIENT).toBe(true);
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  await expect.poll(() => char(ann.project, 1, 1), PATIENT).toBe('H');
+});
+
+test('an offer that replaces the connection, with no lost before it, has them say hello on the next list', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const post = vi.spyOn(ann.watch, 'post');
+  ann.drawing.connection('connecting');   // what Watch.connect says, and all it says, on a new offer
+  ann.drawing.heardArtists(['ann']);
+  expect(post.mock.calls.filter(([m]) => m.t === 'artist-hello').length).toBe(1);
+});
+
+test('a list without me crossing my accept doesn\'t strand me: when I\'m listed I say hello', async () => {
+  const room = await hosting();
+  const ann = await join(room, 'ann');
+  room.drawing.invite('ann');
+  await expect.poll(() => ann.drawing.invitation, PATIENT).toBe(true);
+  ann.drawing.accept();
+  ann.drawing.heardArtists(['bob']);   // on its way before the host heard the accept
+  await expect.poll(() => ann.drawing.mayDraw, PATIENT).toBe(true);
+  expect(room.drawing.artists).toEqual(['ann']);
+});
+
+test('a withdrawal crossing an accept leaves no yes behind: being listed later opens nothing', async () => {
+  const room = await hosting();
+  const ann = await join(room, 'ann');
+  const own = await createOwnDocument(ann);
+  room.drawing.invite('ann');
+  await expect.poll(() => ann.drawing.invitation, PATIENT).toBe(true);
+  room.drawing.withdraw('ann');
+  ann.drawing.accept();   // before the withdrawal lands
+  await expect.poll(() => sessionStorage.getItem('phosphor-artist:room:ann'), PATIENT).toBe(null);
+  room.project.startSharing({ send: () => {}, role: 'host', me: 'host' });
+  room.host.setArtists(['ann']);
+  await wait(100);
+  expect(ann.project.documentId).toBe(own);
+  expect(ann.drawing.mayDraw).toBe(false);
+});
+
+test('an artist put back to watching while away, leaving the list empty, hears so on reconnecting', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  room.host.drop('ann');
+  room.drawing.backToWatching('ann');
+  expect(room.drawing.artists).toEqual([]);
+  expect(ann.drawing.mayDraw).toBe(true);   // it hasn't heard
+  await room.host.peer('ann', await passFor('ann'));
+  await expect.poll(() => ann.drawing.mayDraw, PATIENT).toBe(false);
+  expect(ann.project._sharing).toBe(null);
+});
+
+test('a watcher hearing an empty list has nothing change', async () => {
+  const room = await hosting();
+  const person = await join(room, 'ann');
+  const own = await createOwnDocument(person);
+  await expect.poll(() => person.watch.ready, PATIENT).toBe(true);
+  const stop = vi.spyOn(person.project, 'stopSharing'), edits = person.project.editVersion;
+  person.drawing.heardArtists([]);
+  expect(stop).not.toHaveBeenCalled();
+  expect(person.project.documentId).toBe(own);
+  expect(person.project.editVersion).toBe(edits);
+  expect(person.drawing.paused).toBe(false);
+  expect(person.drawing.mayDraw).toBe(false);
+});
+
+test('a base edit whose pins don\'t fit a message goes as the project, and the host\'s undo stays', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const sent = vi.spyOn(room.host, 'sendAll'), projects = vi.spyOn(room.host, 'sendProjectToAll');
+  const pins = [];
+  for (let col = 0; col < 40; col++) for (let row = 0; row < 20; row++) pins.push({ col, row, char: 'P' });
+  for (let i = 0; i < 6; i++) room.project.setBaseRecords(withPins(room.project.baseRecords, pins.map((pin) => ({ ...pin, col: pin.col + 40 * i, row: pin.row + 20 * i }))));
+  expect(JSON.stringify(serializeBase(room.project.baseRecords)).length).toBeGreaterThan(CHUNK_BYTES);
+  room.project.writeBase([{ x: 4, y: 4, hex: '#00ff00' }]);
+  room.project.commitEdit();
+  expect(sent.mock.calls.filter(([m]) => m.t === 'base')).toEqual([]);
+  expect(projects).toHaveBeenCalledOnce();
+  await expect.poll(() => ann.project.baseRecords.pins.size, PATIENT).toBe(room.project.baseRecords.pins.size);
+  expect(ann.project.baseLayer.pixelAt(4, 4)).toEqual(room.project.baseLayer.pixelAt(4, 4));
+  expect(room.project.canUndo).toBe(true);
+});
+
+test('a big base edit with pins goes in messages that each fit', async () => {
+  const room = await hosting();
+  await artist(room, 'ann');
+  const sent = vi.spyOn(room.host, 'sendAll'), projects = vi.spyOn(room.host, 'sendProjectToAll');
+  const pins = [];
+  for (let col = 0; col < 40; col++) for (let row = 0; row < 100; row++) pins.push({ col, row, char: 'P' });
+  room.project.setBaseRecords(withPins(room.project.baseRecords, pins));
+  const pixels = [];
+  for (let x = 0; x < 40; x++) for (let y = 0; y < 40; y++) pixels.push({ x, y, hex: (x + y) % 2 ? '#00ff00' : '#ff00ff' });
+  room.project.writeBase(pixels);
+  room.project.commitEdit();
+  const messages = sent.mock.calls.map(([m]) => m).filter((m) => m.t === 'base');
+  expect(projects).not.toHaveBeenCalled();
+  expect(messages.length).toBeGreaterThan(1);
+  for (const message of messages) expect(JSON.stringify(message).length).toBeLessThanOrEqual(CHUNK_BYTES);
+});
+
+test('a hello gets the tail only if it reaches the last number; one taken without a message means the project', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const w = room.host.open().find((other) => other.peer === 'ann');
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  await expect.poll(() => char(ann.project, 1, 1), PATIENT).toBe('H');
+  const has = room.project._ledger.n - 1, epoch = room.project._ledger.epoch;
+  room.project._ledger.note();
+  const projects = vi.spyOn(room.host, 'sendProject');
+  room.host.onHello(w, { has, epoch });
+  expect(projects).toHaveBeenCalledOnce();
 });

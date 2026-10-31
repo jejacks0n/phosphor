@@ -24,6 +24,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   let me = () => null, roomId = null, roomName = () => null;
   let epoch = null;                // an artist's: the project's
   let saidHello = false;
+  let awaitingList = false;        // accepted, and the host's list may not have me on it yet
   let stops = [], cursorTimer = null;
 
   // Having said yes is what lets a host replace your open document, and a reload still has to know it. By sub,
@@ -85,10 +86,12 @@ export const useDrawingStore = defineStore('drawing', () => {
           host?.sendAll({ t: 'cursors', ...cursors.value });
         }, CURSORS_EVERY_MS);
       },
-      // The tail if it reaches back to what they have in this epoch, or else the project.
+      // The tail if it reaches from what they have, in this epoch, to the last number (one taken for a project
+      // of a base edit isn't in it), or else the project.
       onHello: (w, { has, epoch: theirs }) => {
-        const tail = Number.isInteger(has) && theirs === project._ledger.epoch ? project._ledger.tail.since(has) : null;
-        if (tail) host.sendTail(w, tail);
+        const { n, epoch: ours, tail: kept } = project._ledger;
+        const tail = Number.isInteger(has) && theirs === ours ? kept.since(has) : null;
+        if (tail && (has === n || tail.at(-1)?.n === n)) host.sendTail(w, tail);
         else host.sendProject(w);
       },
       onAnswer: (sub, yes) => {
@@ -132,7 +135,11 @@ export const useDrawingStore = defineStore('drawing', () => {
       },
       onCursors: (all) => { cursors.value = all; },
       onInvite: () => { invitation.value = true; },
-      onWithdrawn: () => { invitation.value = false; },
+      onWithdrawn: () => {
+        invitation.value = false;
+        awaitingList = false;
+        noteAccepted(false);   // one crossing an accept: the host won't list them on it
+      },
       onArtists: heardArtists,
     };
   }
@@ -145,14 +152,15 @@ export const useDrawingStore = defineStore('drawing', () => {
   }
 
   // On the list, and having said yes: hello, first thing, and then the project or what's missed. Off it, the
-  // art stays open as an ordinary document.
+  // art stays open as an ordinary document, unless this list simply left the host before my yes reached it.
   function heardArtists(subs) {
     artists.value = subs;
     const mine = subs.includes(me());
+    if (mine) awaitingList = false;
     if (mine && hasAccepted() && !saidHello) {
       saidHello = true;
       room.post({ t: 'artist-hello', has: project._sharing?.pending.n ?? -1, epoch });
-    } else if (!mine && hasAccepted()) stopDrawing();
+    } else if (!mine && !awaitingList && hasAccepted()) stopDrawing();
   }
 
   function stopDrawing() {
@@ -166,6 +174,7 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   function accept() {
     invitation.value = false;
+    awaitingList = true;
     noteAccepted(true);
     room?.post({ t: 'accept' });
   }
@@ -175,10 +184,11 @@ export const useDrawingStore = defineStore('drawing', () => {
     room?.post({ t: 'decline' });
   }
 
-  // The channel to the host, as Watch says it: gone, an artist waits; back, the artists message that comes
-  // first on any connection has them say hello again.
+  // The channel to the host, as Watch says it: gone, an artist waits; a new one, which may come with no word
+  // of the last one going, gets the artists message first thing, and they say hello again.
   function connection(state) {
-    if (state === 'live') {
+    if (state === 'connecting') saidHello = false;
+    else if (state === 'live') {
       paused.value = false;
       if (mayDraw.value) project.setPaused(false);
     } else if (state === 'lost' || state === 'failed') {
@@ -197,6 +207,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     if (host) stopHostSharing();
     else if (room) stopDrawing();
     host = room = null;
+    awaitingList = false;
     artists.value = [];
     invited.value = [];
     invitation.value = false;

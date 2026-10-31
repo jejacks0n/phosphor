@@ -52,7 +52,8 @@ export class Host {
     // allowance, heard (its chat, checked one at a time), checking (how many wait), askedAt (its last ask
     // for earlier messages), here (counted among those in the room), and for an artist drawing (said hello),
     // took (its changes handled on this connection, refused ones too), projecting and held (a project is on
-    // its way and what's numbered waits behind it), again (another project is owed after that) }
+    // its way and what's numbered and any art wait behind it), again (another project is owed after that),
+    // drained (ends the wait for its channel to drain) }
     this.watchers = new Map();
     this.here = new Map();   // sub -> their open connections: one person in two tabs comes and goes once
     this.silences = new Map();   // sub -> until (epoch ms), from 'silenced' since a pass was made (kept through a reconnect)
@@ -103,7 +104,7 @@ export class Host {
     const w = {
       peer, pass, claims: null, tracking: true, conn: null, channel: null, has: null, packing: false, behind: false,
       allowance: new Allowance(), heard: Promise.resolve(), checking: 0, askedAt: -Infinity,
-      drawing: false, took: 0, projecting: false, held: [], again: false,
+      drawing: false, took: 0, projecting: false, held: [], again: false, drained: null,
     };
     this.watchers.set(peer, w);
     let claims = null;
@@ -121,6 +122,7 @@ export class Host {
           onClose: () => {
             if (this.watchers.get(peer) !== w) return;   // closed here on purpose
             this.watchers.delete(peer);
+            w.drained?.();
             this.went(w);
             this.send({ type: 'left', peer });
             this.changed();
@@ -287,6 +289,7 @@ export class Host {
     if (!w) return false;
     this.watchers.delete(peer);
     this.went(w);
+    w.drained?.();
     w.conn?.close();
     return true;
   }
@@ -312,7 +315,8 @@ export class Host {
     w.channel = channel;
     channel.bufferedAmountLowThreshold = DRAINED_BYTES;
     channel.onbufferedamountlow = () => {
-      if (!w.behind) return;
+      w.drained?.();
+      if (!w.behind || w.projecting) return;
       w.behind = false;
       w.has = null;
       this.update(w);
@@ -321,7 +325,7 @@ export class Host {
     this.changed();
     if (this.room) this.sendTo(w, { t: 'room', ...this.room });
     this.sendTo(w, { t: 'history', ...this.log.page(undefined, (m) => this.shown(m.id, w)) });
-    if (this.artists.size) this.sendTo(w, { t: 'artists', subs: [...this.artists] });
+    this.sendTo(w, { t: 'artists', subs: [...this.artists] });   // empty too: someone put back while away hears it here
     this.arrived(w);
     await this.update(w);
     if (this.view && this.watchers.get(w.peer) === w && channel.readyState === 'open') this.sendTo(w, { t: 'view', ...this.view });
@@ -395,6 +399,16 @@ export class Host {
     for (const w of this.open()) this.sendProject(w);
   }
 
+  // Chunks at the pace the channel drains: past what it buffers (16 MB in Chromium) send throws.
+  async putPaced(w, chunks) {
+    for (const chunk of chunks) {
+      if (this.watchers.get(w.peer) !== w || !this.put(w, chunk)) return;
+      if (w.channel.bufferedAmount <= BACKED_UP_BYTES) continue;
+      await new Promise((resolve) => { w.drained = resolve; });
+      w.drained = null;
+    }
+  }
+
   // What someone missed, from the ledger's tail.
   sendTail(w, items) {
     for (const item of items) this.deliver(w, JSON.stringify(item.t ? item : { t: 'numbered', ...item }));
@@ -406,8 +420,10 @@ export class Host {
   }
 
   // The whole document as of now, to one artist, then everything numbered since. What it's as of and what it
-  // counts are read before the first wait, and from there what's numbered is held for it. One at a time:
-  // a change refused while one is on its way isn't in it, so another follows.
+  // counts are read before the first wait, and from there what's numbered is held for it, and art, since a
+  // snapshot's chunks would land among these. One at a time: a change refused while one is on its way isn't
+  // in it, so another follows. Once started it's finished, whoever they are by then, as their Watch is
+  // taking every chunk as its.
   // ponytail: each artist's is packed apart; share by n if several joining at once costs too much.
   async sendProject(w) {
     if (!w.drawing) return;
@@ -423,7 +439,7 @@ export class Host {
       if (this.watchers.get(w.peer) === w && w.drawing) {
         const bytes = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
         this.sendTo(w, { t: 'project-start', n, epoch, bytes, chunks: chunks.length, took });
-        for (const chunk of chunks) this.put(w, chunk);
+        await this.putPaced(w, chunks);
       }
     } catch (error) {
       console.warn('The art couldn\'t be packed for an artist.', error);
@@ -433,6 +449,11 @@ export class Host {
     w.held = [];
     if (this.watchers.get(w.peer) !== w) return;
     for (const data of held) this.put(w, data);
+    if (w.behind) {   // art that waited: this brings them up to the art there is now
+      w.behind = false;
+      w.has = null;
+      this.update(w);
+    }
     if (w.again) {
       w.again = false;
       await this.sendProject(w);
@@ -495,7 +516,7 @@ export class Host {
   // Art to a watcher, unless its channel is backed up: then it's marked, and sent nothing more until
   // it drains. True when sent.
   sendArt(w, message, art) {
-    if (w.channel.bufferedAmount > BACKED_UP_BYTES) {
+    if (w.projecting || w.channel.bufferedAmount > BACKED_UP_BYTES) {
       w.behind = true;
       return false;
     }
