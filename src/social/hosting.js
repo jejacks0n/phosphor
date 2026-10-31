@@ -173,6 +173,12 @@ export class Host {
     const pass = this.returning.get(sub);
     this.returning.delete(sub);
     this.post('presence', { pass, id: newId(), ts: Date.now(), presence: 'left' });
+    this.changed();
+  }
+
+  // After a reload: someone who may yet come back, so not being listed says nothing about them.
+  awaited(sub) {
+    return !this.settled || this.returning.has(sub);
   }
 
   peerGone(peer) {

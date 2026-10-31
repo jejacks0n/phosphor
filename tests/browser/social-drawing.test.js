@@ -1546,3 +1546,133 @@ test('a project sent to someone who hasn\'t said yes doesn\'t let a host fill th
   flood(wes);
   expect(wes.watch.ready).toBe(false);
 });
+
+test('an accept the host no longer holds is answered, and leaves nothing behind on their side', async () => {
+  const room = await hosting();
+  const ann = await join(room, 'ann');
+  room.drawing.invite('ann');
+  await expect.poll(() => ann.drawing.invitation, PATIENT).toBe(true);
+  room.drawing.invited = [];   // gone from the host's list, as it is when their channel drops
+  ann.drawing.accept();
+  const key = 'phosphor-artist:room:ann';
+  expect(sessionStorage.getItem(key)).toBe('1');
+  await expect.poll(() => sessionStorage.getItem(key), PATIENT).toBe(null);
+  expect(ann.drawing.invitation).toBe(false);
+  expect(room.drawing.artists).toEqual([]);
+
+  // Asked again, it all works, and the art comes up in view as a first accept does.
+  room.drawing.invite('ann');
+  await expect.poll(() => ann.drawing.invitation, PATIENT).toBe(true);
+  ann.drawing.accept();
+  await expect.poll(() => ann.drawing.mayDraw, PATIENT).toBe(true);
+});
+
+test('an accept from someone already listed isn\'t answered with a withdrawal', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const tell = vi.spyOn(room.host, 'tell');
+  room.host.onAnswer('ann', true);
+  expect(tell).not.toHaveBeenCalled();
+  expect(ann.drawing.mayDraw).toBe(true);
+});
+
+test('a host back from a reload keeps invitations until those it\'s waiting for have come or won\'t', async () => {
+  const room = await hosting();
+  room.host.onWatchers = room.drawing.peopleHere;
+  room.host.returnWithinMs = 100;
+  const [annPass, bobPass] = [await passFor('ann'), await passFor('bob')];
+  room.host.restore({ log: [], only: [], removed: [], muted: [], here: [{ sub: 'ann', pass: annPass }, { sub: 'bob', pass: bobPass }, { sub: 'cat', pass: await passFor('cat') }] });
+  room.drawing.resumeHosting({ invited: ['ann', 'bob', 'cat'] });
+
+  // The first of them back, before the server has said who's inside.
+  room.drawing.peopleHere([{ peer: 'ann', sub: 'ann', connected: false }]);
+  expect(room.drawing.invited).toEqual(['ann', 'bob', 'cat']);
+
+  // Cat isn't inside: gone. Bob is, and may still come.
+  room.host.settle([{ peer: 'ann', pass: annPass }, { peer: 'bob', pass: bobPass }]);
+  expect(room.drawing.invited).toEqual(['ann', 'bob']);
+  room.drawing.peopleHere([{ peer: 'ann', sub: 'ann', connected: false }]);
+  expect(room.drawing.invited).toEqual(['ann', 'bob']);
+
+  // Bob never connects.
+  await expect.poll(() => room.drawing.invited, PATIENT).toEqual([]);
+});
+
+test('someone gone takes their invitation, and an invitee who connects is told again', async () => {
+  const room = await hosting();
+  room.host.onWatchers = room.drawing.peopleHere;
+  const ann = await join(room, 'ann');
+  room.drawing.invite('ann');
+  await expect.poll(() => ann.drawing.invitation, PATIENT).toBe(true);
+  room.drawing.peopleHere([]);
+  expect(room.drawing.invited).toEqual([]);
+
+  // Restored from before a reload, this person arrives knowing nothing.
+  room.drawing.resumeHosting({ invited: ['bob'] });
+  const bob = await join(room, 'bob');
+  await expect.poll(() => bob.drawing.invitation, PATIENT).toBe(true);
+});
+
+test('a new connection clears the notice: if the host still means it, it says so again', async () => {
+  const room = await hosting();
+  const ann = await join(room, 'ann');
+  room.drawing.invite('ann');
+  await expect.poll(() => ann.drawing.invitation, PATIENT).toBe(true);
+  ann.drawing.connection('connecting');
+  expect(ann.drawing.invitation).toBe(false);
+});
+
+test('catching up with no answer asks for the project again after a long wait, and drawing goes on when it lands', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const asked = asks(ann), timers = askTimers();
+  const hello = vi.spyOn(room.host, 'onHello').mockImplementation(() => {});   // says nothing
+  ann.drawing.connection('connecting');
+  ann.drawing.connection('live');
+  expect(ann.drawing.paused).toBe(true);
+  ann.drawing.heardArtists(['ann']);
+  expect(timers().length).toBe(1);
+  expect(asked()).toEqual([]);
+
+  timers()[0]();
+  expect(asked().length).toBe(1);
+  await expect.poll(() => hello.mock.calls.length, PATIENT).toBeGreaterThan(1);
+  expect(ann.drawing.paused).toBe(true);
+
+  hello.mockRestore();
+  timers().at(-1)();
+  await expect.poll(() => ann.drawing.paused, PATIENT).toBe(false);
+  expect(ann.project._paused).toBe(false);
+  await allMatch(room, ann);
+});
+
+test('a project that can\'t be opened while catching up keeps asking, rather than stopping there', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const asked = asks(ann), timers = askTimers();
+  const take = vi.spyOn(ann.project, 'takeProject').mockResolvedValueOnce(false);
+  vi.spyOn(room.host, 'onHello').mockImplementationOnce((w) => room.host.sendProject(w));
+  ann.drawing.connection('connecting');
+  ann.drawing.connection('live');
+  ann.drawing.heardArtists(['ann']);
+  await expect.poll(() => take.mock.calls.length, PATIENT).toBe(1);
+  await expect.poll(() => ann.drawing.notice, PATIENT).toBe('The room\'s art couldn\'t be opened.');
+  expect(ann.drawing.paused).toBe(true);
+
+  timers().at(-1)();
+  expect(asked().length).toBe(1);
+  await expect.poll(() => ann.drawing.paused, PATIENT).toBe(false);
+});
+
+test('an answer that lands stops the wait', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const timers = askTimers(), stop = vi.spyOn(globalThis, 'clearTimeout');
+  ann.drawing.connection('connecting');
+  ann.drawing.connection('live');
+  ann.drawing.heardArtists(['ann']);
+  const id = timers.lastId();
+  await expect.poll(() => ann.drawing.paused, PATIENT).toBe(false);
+  expect(stop.mock.calls.some(([one]) => one === id)).toBe(true);
+});
+
