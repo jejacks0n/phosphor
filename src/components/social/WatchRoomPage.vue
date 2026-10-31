@@ -51,7 +51,7 @@ const zoomIn = () => room.setArtZoom((Math.floor(room.artZoom * 4) + 1) / 4);
       <button class="primary" type="submit">Join</button>
     </form>
     <div v-if="room.art" class="art" :class="{ stale: coming }">
-      <RoomArt :art="room.art" :host-view="room.hostView" :tracking="room.tracking" :zoom="room.artZoom" :host="room.room?.host || null" @zoom="room.setArtZoom" @look-around="lookAround" @track="room.setTracking(true)" @looking-at="room.lookingAt = $event" />
+      <RoomArt :art="room.art" :host-view="room.hostView" :tracking="room.tracking" :zoom="room.artZoom" :host="room.room?.host || null" @zoom="room.setArtZoom" @fit="room.fitArt" @look-around="lookAround" @track="room.setTracking(true)" @looking-at="room.lookingAt = $event" />
       <div class="zoom" role="group" aria-label="Zoom">
         <button aria-label="Zoom out" :disabled="room.artZoom <= ANSI_ZOOM_MIN" @click="zoomOut">−</button>
         <span>{{ Math.round(room.artZoom * 100) }}%</span>
