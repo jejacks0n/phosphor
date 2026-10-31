@@ -55,6 +55,28 @@ test('the heading and the status region say how joining is going, and the region
   expect(host.querySelector('[role=status]')).toBe(region);   // the same region all along
 });
 
+test('with art, waiting and connecting say The host is reconnecting…; with no art they say Waiting for the host… and Joining… as before', async () => {
+  const white = { hex: '#ffffff', r: 255, g: 255, b: 255 };
+  const art = { cols: 1, lines: 1, font: { id: 'vga', size: 16 }, cells: [{ char: 'A', fg: white, bg: white }] };
+  const named = { name: 'neon harbor', welcome: '', host: 'ansi-fan' };
+  const { room, region } = await mount({ status: 'waiting', room: named, art });
+  expect(region.textContent).toBe('The host is reconnecting…');
+  room.status = 'connecting';
+  await nextTick();
+  expect(region.textContent).toBe('The host is reconnecting…');
+  expect(getComputedStyle(host.querySelector('div.art')).opacity).toBe('0.5');   // dimmed until the host is back
+  room.status = 'live';
+  await nextTick();
+  expect(region.textContent).toBe('');
+
+  room.art = null;
+  for (const [status, words] of [['waiting', 'Waiting for the host…'], ['connecting', 'Joining…']]) {
+    room.status = status;
+    await nextTick();
+    expect(region.textContent).toBe(words);
+  }
+});
+
 test('the art is dimmed while waiting for the host, not while live', async () => {
   const white = { hex: '#ffffff', r: 255, g: 255, b: 255 };
   const art = { cols: 2, lines: 1, font: { id: 'vga', size: 16 }, cells: [{ char: 'A', fg: white, bg: white }, { char: 'B', fg: white, bg: white }] };

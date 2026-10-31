@@ -85,6 +85,36 @@ test('the watcher stays through it: no second join, the art, the edits after, on
   await expect(joined(watcher)).toHaveCount(0);
 });
 
+test('the watcher sees The host is reconnecting… during the reload, then the art', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const watcher = await watching(host, context, room);
+  host.on('dialog', (dialog) => dialog.accept());
+  let release = null;
+  const held = new Promise((resolve) => { release = resolve; });
+  await host.route(/\/api\/me$/, async (route) => {   // who you are is held, so the host's return is too
+    await held;
+    await route.fallback();
+  });
+
+  await host.reload();
+  await expect(watcher.getByRole('status').filter({ hasText: 'The host is reconnecting…' })).toBeVisible();
+  await expect(watcher.getByLabel('The room\'s art')).toBeVisible();   // the art as it was
+  release();
+  await live(host);
+  await expect(watcher.getByRole('status').filter({ hasText: 'The host is reconnecting…' })).toHaveCount(0);
+  await expect.poll(() => store(watcher, 'room', (r) => r.status)).toBe('live');
+});
+
+test('closing the host\'s page ends the room for the watcher after the wait', async ({ page: host, context }) => {
+  const room = fakeRoom({ hostWaitMs: 500 });
+  const watcher = await watching(host, context, room);
+
+  await host.close({ runBeforeUnload: false });
+  // Nothing tells the watcher's connection a closed page is gone, so the first it hears is the server's ended.
+  await expect(watcher.getByText('The host ended the room').first()).toBeVisible();
+  await outOfRoom(watcher);
+});
+
 test('reloading again while reconnecting comes back the same', async ({ page: host }) => {
   const room = fakeRoom();
   await hostingOnPixel(host, room);

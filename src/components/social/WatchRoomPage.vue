@@ -9,14 +9,16 @@ import RoomArt from './RoomArt.vue';
 // top of the chat panel. Until the
 // room's name comes from the host, the heading says how joining is going; once it's the name it's for
 // screen readers only (the panel shows it). A status region always there says how joining is going for
-// screen readers. A private room asks for its password here.
+// screen readers. A private room asks for its password here. With the host's art already on the page,
+// waiting and connecting mean the host is coming back (a reload of theirs), and the art stays, dimmed.
 const room = useRoomStore();
 
 const STATUS = {
   joining: 'Joining…', connecting: 'Joining…', waiting: 'Waiting for the host…',
   password: 'This room needs a password', failed: 'Couldn\'t reach this host',
 };
-const said = computed(() => STATUS[room.status] ?? null);
+const coming = computed(() => room.art && (room.status === 'waiting' || room.status === 'connecting'));
+const said = computed(() => (coming.value ? 'The host is reconnecting…' : STATUS[room.status] ?? null));
 const name = computed(() => room.room?.name || null);
 
 // A try takes the form (and the focused Join) away: focus waits on the heading, and goes back to the
@@ -48,7 +50,7 @@ const zoomIn = () => room.setArtZoom((Math.floor(room.artZoom * 4) + 1) / 4);
       <p v-if="room.passwordWrong" class="error" role="alert">Wrong password</p>
       <button class="primary" type="submit">Join</button>
     </form>
-    <div v-if="room.art" class="art" :class="{ stale: room.status === 'waiting' }">
+    <div v-if="room.art" class="art" :class="{ stale: coming }">
       <RoomArt :art="room.art" :host-view="room.hostView" :tracking="room.tracking" :zoom="room.artZoom" :host="room.room?.host || null" @zoom="room.setArtZoom" @look-around="lookAround" @track="room.setTracking(true)" @looking-at="room.lookingAt = $event" />
       <div class="zoom" role="group" aria-label="Zoom">
         <button aria-label="Zoom out" :disabled="room.artZoom <= ANSI_ZOOM_MIN" @click="zoomOut">−</button>
