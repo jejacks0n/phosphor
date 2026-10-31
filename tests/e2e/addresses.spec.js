@@ -152,6 +152,24 @@ test('the reset address holds no token', async ({ page }) => {
   await hash(page, '/social');
 });
 
+// The returns from the server's links, on a fresh load: the page they open, and an address with none of them.
+for (const [query, me, name, path] of [
+  ['verified=1', null, 'lobby', '/social'],
+  ['social=error', null, 'lobby', '/social'],
+  ['social=signed-in', member(), 'lobby', '/social'],
+  ['social=linked', member(), 'account', '/social/account'],
+]) {
+  test(`a fresh load at ?${query} is on ${path}, with no extra step`, async ({ page }) => {
+    await fakeServer(page, { me });
+    await noteHistoryAtLoad(page);
+    await page.goto(`/?${query}`);
+    await expect(shown(page, name)).toBeVisible();
+    await hash(page, path);
+    expect(new URL(page.url()).search).toBe('');
+    expect(await stepsSinceLoad(page)).toBe(0);
+  });
+}
+
 // Back from where a form took you to the drawing: the lobby you left stays an entry, and it's the only
 // press that shows no change.
 async function backToTheDrawing(page) {
