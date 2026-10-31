@@ -3,7 +3,7 @@
 // cells on screen, which the ANSI view publishes.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { viewWindow, wholeCellsIn } from '../../src/lib/viewWindow.js';
+import { viewWindow, wholeCellsIn, scrollToCell } from '../../src/lib/viewWindow.js';
 
 test('a grid smaller than the view is one window, the whole grid', () => {
   assert.deepEqual(
@@ -55,4 +55,18 @@ test('the whole cells on screen: at half the cell, twice as many', () => {
   const view = { x: 40, y: 60, width: 600, height: 400 };
   assert.deepEqual(wholeCellsIn(view, { cellWidth: 10, lineHeight: 20 }, 300, 500), { col: 4, row: 3, cols: 60, rows: 20 });
   assert.deepEqual(wholeCellsIn(view, { cellWidth: 5, lineHeight: 10 }, 300, 500), { col: 8, row: 6, cols: 120, rows: 40 });
+});
+
+test('scrolling to a cell makes it the first whole cell on screen', () => {
+  const cell = { cellWidth: 10, lineHeight: 20 }, view = { x: 37, y: 500, width: 600, height: 400 };
+  const { left, top } = scrollToCell(view, cell, 12, 7);
+  assert.deepEqual({ left, top }, { left: 83, top: -360 });
+  const there = wholeCellsIn({ ...view, x: view.x + left, y: view.y + top }, cell, 300, 500);
+  assert.deepEqual([there.col, there.row], [12, 7]);
+});
+
+test('scrolling to a first cell already on screen stays put; one scrolled past comes back', () => {
+  const cell = { cellWidth: 10, lineHeight: 20 };
+  assert.deepEqual(scrollToCell({ x: -300, y: -200 }, cell, 0, 0), { left: 0, top: 0 });
+  assert.deepEqual(scrollToCell({ x: 50, y: -200 }, cell, 0, 0), { left: -50, top: 0 });
 });

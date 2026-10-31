@@ -301,7 +301,7 @@ test('a pagehide doesn\'t end the room, and leaves a record', async () => {
   window.dispatchEvent(new PageTransitionEvent('pagehide'));
   expect(socket.sent.map((m) => m.type)).not.toContain('end');
   expect(socket.closed).toBe(false);
-  expect(keptHostingRecord()).toMatchObject({ sub: 'u_1', id: ID, link: room.link, hasPassword: false, peopleOpen: false, muted: [], view: null });
+  expect(keptHostingRecord()).toMatchObject({ sub: 'u_1', id: ID, link: room.link, hasPassword: false, peopleOpen: false, muted: [] });
 });
 
 test('a pagehide tells an open watcher, which goes to lost while the room stays', async () => {
@@ -1564,6 +1564,41 @@ test('resume() sets role, id and status \'reconnecting\' synchronously', async (
   expect([room.role, room.id, room.status]).toEqual(['host', ID, 'reconnecting']);
 });
 
+test.each([
+  ['output', { viewTab: 'output', ansiZoom: 0.5, editZoom: 9, ansiViewOrigin: { col: 3, row: 40 }, ansiViewSize: { cols: 60, rows: 20 }, ansiViewZoom: 0.5, inputView: { col: 1, row: 2, cols: 5, rows: 6, zoom: 9 } }, { col: 3, row: 40 }],
+  ['input', { viewTab: 'input', ansiZoom: 0.75, editZoom: 7, ansiViewOrigin: { col: 8, row: 9 }, ansiViewSize: { cols: 10, rows: 11 }, ansiViewZoom: 0.75, inputView: { col: 12, row: 13, cols: 14, rows: 15, zoom: 7 } }, { col: 12, row: 13 }],
+])('the view round-trips, and sharedView is the host\'s on resume before any editor mounts (%s)', async (tab, view, at) => {
+  await goLive();
+  Object.assign(useWorkspaceStore(), view);
+  const shared = plain(useWorkspaceStore().sharedView);
+  await reload();
+  expect(keptHostingRecord().view).toEqual(view);
+  const workspace = useWorkspaceStore();
+  room.resume();
+  expect(plain(workspace.$state)).toMatchObject(view);
+  expect(plain(workspace.sharedView)).toEqual(shared);
+  expect(workspace.viewToRestore).toEqual({ tab, ...at });
+  await lastSocket(2);
+});
+
+test('the view is kept as it changes, not only when the page goes', async () => {
+  await goLive();
+  useWorkspaceStore().ansiViewOrigin = { col: 2, row: 30 };
+  await expect.poll(() => keptHostingRecord().view?.ansiViewOrigin, { timeout: 3000 }).toEqual({ col: 2, row: 30 });
+});
+
+test('a record kept without a view comes back at the view there is', async () => {
+  await goLive();
+  await reload();
+  sessionStorage.setItem(RECORD, JSON.stringify({ ...JSON.parse(sessionStorage.getItem(RECORD)), view: null }));
+  const { viewTab, ansiViewOrigin } = useWorkspaceStore();
+  room.resume();
+  expect(room.role).toBe('host');
+  expect(useWorkspaceStore().viewToRestore).toBe(null);
+  expect([useWorkspaceStore().viewTab, useWorkspaceStore().ansiViewOrigin]).toEqual([viewTab, ansiViewOrigin]);
+  await lastSocket(2);
+});
+
 test('resume() with no record, or one that can\'t be read, changes nothing', async () => {
   const good = { sub: 'u_1', id: ID, link: 'l', room: {}, session: newSession(), muted: [], host: { log: [], only: [], removed: [], here: [] } };
   for (const bad of [null, 'not json', '{}', '"text"', JSON.stringify({ ...good, id: 'NOT A ROOM' }), JSON.stringify({ ...good, sub: undefined }), JSON.stringify({ ...good, room: null }),
@@ -1579,8 +1614,8 @@ test('resume() with no record, or one that can\'t be read, changes nothing', asy
 
 test('a record whose restore throws is forgotten, with nothing half set', async () => {
   const good = { sub: 'u_1', id: ID, link: 'l', room: {}, session: newSession(), muted: [], host: { log: [], only: [], removed: [], here: [] } };
-  for (const host of [undefined, { ...good.host, only: [1] }]) {
-    sessionStorage.setItem(RECORD, JSON.stringify({ ...good, host }));
+  for (const fields of [{ host: undefined }, { host: { ...good.host, only: [1] } }, { view: {} }]) {
+    sessionStorage.setItem(RECORD, JSON.stringify({ ...good, ...fields }));
     expect(() => room.resume()).not.toThrow();
     expect([room.role, room.id, room.status, room.link, room._host, room._settings, room._resuming]).toEqual([null, null, null, null, null, null, false]);
     expect(sessionStorage.getItem(RECORD)).toBe(null);
