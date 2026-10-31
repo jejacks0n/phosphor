@@ -27,6 +27,8 @@ export class Pending {
   #cells = new Map(); // key -> { claims, agreed }
   #tiles = new Map(); // 'x,y' -> { x, y, held, claims, agreed }: a claim count and the agreed color per pixel
   #sum = 0;
+  #older = 0; // how many of the oldest changes are from before this connection, so its count isn't about them
+  #handled = 0; // of the changes after those: how many are gone, by an echo or dropTaken
 
   constructor({ me, read, write, n = 0, tail = new Tail() }) {
     this.me = me;
@@ -58,7 +60,11 @@ export class Pending {
     this.n = numbered.n;
     this.tail.add(numbered);
     const echo = by === this.me && this.#changes[0]?.stroke === stroke;
-    if (echo) this.#changes.shift(); // one sent change gets one number, in order
+    if (echo) { // one sent change gets one number, in order
+      this.#changes.shift();
+      if (this.#older) this.#older--;
+      else this.#handled++;
+    }
 
     const applied = { cells: [], runs: [] };
     for (const [key, entry] of cells) {
@@ -129,7 +135,24 @@ export class Pending {
     return this.#changes.slice();
   }
 
+  // A new connection: the host's count starts over, and what's here already isn't in it. Echoes from the tail
+  // may yet come for these; none are counted.
+  newConnection() {
+    this.#older = this.#changes.length;
+    this.#handled = 0;
+  }
+
+  // A project's `took`: how many changes this artist sent on this connection the host had handled (numbered, or
+  // refused) by the project's n. Those are in the project or never will be, so no echo is coming for any
+  // this hasn't heard one for: took less #handled of them, the oldest of this connection's. A change numbered
+  // after the project isn't counted and stays, for its echo. Before reapply, which claims what's left.
+  dropTaken(took) {
+    const gone = this.#changes.splice(this.#older, Math.max(0, took - this.#handled));
+    this.#handled += gone.length;
+  }
+
   // After a project, which is on screen and is the agreed picture now: what's beneath is read over again.
+  // Seed the sum first, from the project's picture: this writes what's mine on top of it.
   reapply() {
     this.#forgetClaims();
     for (const change of this.#changes) {

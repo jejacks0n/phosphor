@@ -2,7 +2,7 @@
 // in for the server's socket, and passes signed by a test key. RTCDataChannel's send is watched, so the
 // tests can count what the host sends; the watchers here send only 'tracking' (chat is social-chat.test.js).
 import { test, expect, afterEach, vi } from 'vitest';
-import { Host, KEPT_THROUGH_RELOAD } from '@/social/hosting';
+import { Host, KEPT_THROUGH_RELOAD, MOST_QUEUED_BYTES } from '@/social/hosting';
 import { Watch } from '@/social/watching';
 import { openPeer } from '@/social/peer';
 import { newId } from '@/social/chat';
@@ -990,4 +990,153 @@ test('who may draw goes to someone connecting even when no one may', async () =>
   const r = await room(['p1']);
   await seated(r, 'p1');
   await expect.poll(() => sends.sent().find((m) => m.t === 'artists')?.subs, PATIENT).toEqual([]);
+});
+
+// The queue: what's numbered for an artist waits beyond what the channel buffers, and past the limit a project replaces it.
+const textsOn = (channel) => channel.sent.filter((d) => typeof d === 'string').map((d) => JSON.parse(d));
+const MIB = 1024 * 1024;
+
+async function artistOnFullChannel(r, peer) {
+  await seated(r, peer);
+  const w = connected(r, peer), channel = fullChannel(w.channel);
+  w.channel = channel;
+  w.drawing = true;
+  return { w, channel };
+}
+
+test('past what a channel buffers an artist\'s numbers wait, in order, and go as it drains; another artist isn\'t held up', async () => {
+  const r = await room(['p1', 'p2']);
+  drawingCalls(r);
+  r.host.setArtists(['u_p1', 'u_p2']);
+  const slow = await artistOnFullChannel(r, 'p1'), fast = await artistOnFullChannel(r, 'p2');
+  const close = vi.spyOn(slow.w.conn, 'close');
+  slow.channel.bufferedAmount = 8 * MIB + 1;
+  for (let n = 1; n <= 5; n++) r.host.sendAll({ t: 'numbered', n });
+  expect(textsOn(fast.channel).map((m) => m.n)).toEqual([1, 2, 3, 4, 5]);
+  expect(textsOn(slow.channel)).toEqual([]);
+  expect(slow.w.queue.length).toBe(5);
+  slow.channel.drain();
+  expect(textsOn(slow.channel).map((m) => m.n)).toEqual([1, 2, 3, 4, 5]);
+  expect(slow.w.queue.length).toBe(0);
+  expect(slow.w.queued).toBe(0);
+  r.host.sendAll({ t: 'numbered', n: 6 });
+  expect(textsOn(slow.channel).at(-1).n).toBe(6);   // nothing waiting, so nothing delayed
+  expect(close).not.toHaveBeenCalled();
+});
+
+test('a queue going out never fills the channel', async () => {
+  const r = await room(['p1']);
+  drawingCalls(r);
+  r.host.setArtists(['u_p1']);
+  const { w, channel } = await artistOnFullChannel(r, 'p1');
+  const close = vi.spyOn(w.conn, 'close'), big = 'x'.repeat(60000);
+  const count = Math.floor((30 * MIB) / big.length);
+  for (let n = 1; n <= count; n++) r.host.sendAll({ t: 'numbered', n, big });
+  while (w.queue?.length) channel.drain();
+  expect(close).not.toHaveBeenCalled();
+  expect(channel.most).toBeLessThanOrEqual(CHANNEL_LIMIT);
+  expect(textsOn(channel).map((m) => m.n)).toEqual(Array.from({ length: count }, (_, i) => i + 1));
+});
+
+test('past the queue limit the queue goes, and once they drain they\'re sent one project holding it, with what\'s numbered until then', async () => {
+  const sum = (w) => w.queue.reduce((all, d) => all + d.length, 0);
+  const r = await room(['p1']);
+  drawingCalls(r);
+  r.host.setArtists(['u_p1']);
+  const { w, channel } = await artistOnFullChannel(r, 'p1');
+  channel.bufferedAmount = 8 * MIB + 1;
+  w.took = 4;
+  const big = 'x'.repeat(MIB);
+  let n = 0;
+  while (!w.again && n < 64) r.host.sendAll({ t: 'numbered', n: ++n, big });
+  expect(n).toBeGreaterThan(MOST_QUEUED_BYTES / MIB - 1);
+  expect(w.queue).toEqual([]);
+  expect(w.queued).toBe(0);
+  r.host.sendAll({ t: 'numbered', n: ++n });   // what follows would be in the project, so doesn't queue
+  expect(sum(w)).toBe(0);
+  const project = vi.fn(() => ({ n, epoch: 'e', chunks: Promise.resolve([new Uint8Array(4)]) }));
+  r.host.project = project;
+  expect(project).not.toHaveBeenCalled();
+  w.took = 5;
+  channel.drain();
+  await expect.poll(() => w.projecting).toBe(false);
+  expect(project).toHaveBeenCalledOnce();
+  expect(w.again).toBe(false);
+  const start = textsOn(channel).filter((m) => m.t === 'project-start');
+  expect(start.map((m) => [m.n, m.took])).toEqual([[n, 5]]);
+  expect(textsOn(channel).filter((m) => m.t === 'numbered')).toEqual([]);   // all of it was in the project
+  r.host.sendAll({ t: 'numbered', n: n + 1 });
+  expect(textsOn(channel).at(-1).n).toBe(n + 1);
+});
+
+test('what waits behind a project goes at the pace the channel drains', async () => {
+  const r = await room(['p1']);
+  drawingCalls(r);
+  r.host.setArtists(['u_p1']);
+  const { w, channel } = await artistOnFullChannel(r, 'p1');
+  const close = vi.spyOn(w.conn, 'close'), big = 'x'.repeat(60000);
+  let release;
+  r.host.project = () => ({ n: 0, epoch: 'e', chunks: new Promise((resolve) => { release = resolve; }) });
+  const going = r.host.sendProject(w);
+  const count = Math.floor((20 * MIB) / big.length);
+  for (let n = 1; n <= count; n++) r.host.sendAll({ t: 'numbered', n, big });
+  expect(textsOn(channel).filter((m) => m.t === 'numbered')).toEqual([]);
+  release([new Uint8Array(4)]);
+  await going;
+  expect(w.queue.length).toBeGreaterThan(0);
+  while (w.queue?.length) channel.drain();
+  expect(close).not.toHaveBeenCalled();
+  expect(channel.most).toBeLessThanOrEqual(CHANNEL_LIMIT);
+  expect(textsOn(channel).filter((m) => m.t === 'numbered').map((m) => m.n)).toEqual(Array.from({ length: count }, (_, i) => i + 1));
+});
+
+test('past the limit while a project is on its way, what waited goes and one more project follows, never two at once', async () => {
+  const r = await room(['p1']);
+  drawingCalls(r);
+  r.host.setArtists(['u_p1']);
+  const { w, channel } = await artistOnFullChannel(r, 'p1');
+  const releases = [];
+  r.host.project = () => ({ n: releases.length, epoch: 'e', chunks: new Promise((resolve) => { releases.push(resolve); }) });
+  r.host.sendProject(w);
+  const big = 'x'.repeat(MIB);
+  let n = 0;
+  while (!w.again && n < 64) r.host.sendAll({ t: 'numbered', n: ++n, big });
+  expect(w.queued).toBe(0);
+  channel.bufferedAmount = 9 * MIB;
+  channel.drain();
+  await later();
+  expect(releases.length).toBe(1);   // a drain doesn't start one while one is on its way
+  releases[0]([new Uint8Array(4)]);
+  await expect.poll(() => releases.length).toBe(2);
+  releases[1]([new Uint8Array(4)]);
+  await expect.poll(() => w.projecting).toBe(false);
+  expect(textsOn(channel).filter((m) => m.t === 'project-start').length).toBe(2);
+  expect(textsOn(channel).filter((m) => m.t === 'numbered')).toEqual([]);
+});
+
+test('a check goes to artists up to date, once for a number, and not to anyone behind or being sent a project', async () => {
+  const sends = watchSends();
+  const r = await room(['p1', 'p2', 'p3']);
+  drawingCalls(r);
+  r.host.setArtists(['u_p1', 'u_p2']);
+  const up = await artistOnFullChannel(r, 'p1'), behind = await artistOnFullChannel(r, 'p2');
+  await seated(r, 'p3');   // a watcher
+  sends.clear();
+  behind.channel.bufferedAmount = 8 * MIB + 1;
+  r.host.sendAll({ t: 'numbered', n: 1 });
+  r.host.sendCheck(1, 7);
+  r.host.sendCheck(1, 7);
+  expect(textsOn(up.channel).filter((m) => m.t === 'check')).toEqual([{ t: 'check', n: 1, sum: 7 }]);
+  expect(textsOn(behind.channel)).toEqual([]);
+  behind.channel.drain();
+  r.host.sendCheck(1, 7);   // caught up: it's still owed this one
+  expect(textsOn(behind.channel).map((m) => m.t)).toEqual(['numbered', 'check']);
+  let release;
+  r.host.project = () => ({ n: 1, epoch: 'e', chunks: new Promise((resolve) => { release = resolve; }) });
+  const going = r.host.sendProject(up.w);
+  r.host.sendCheck(2, 8);
+  expect(textsOn(up.channel).filter((m) => m.t === 'check').length).toBe(1);
+  release([new Uint8Array(4)]);
+  await going;
+  expect(sends.sent().filter((m) => m.t === 'check')).toEqual([]);   // no watcher's real channel carried one
 });

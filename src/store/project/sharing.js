@@ -149,6 +149,7 @@ export const sharingActions = {
     const sharing = {
       send, sendDocument, role, me, held: null, takenBack: null, timer: setInterval(() => this.sendSlice(), SLICE_MS),
       heard: [], heardCells: new Map(), heardRuns: [], cancelFlush: null,
+      epoch: null, asked: false, // an artist's: the project's epoch; a project has been asked for and hasn't landed
     };
     if (role === 'host') {
       this._ledger.epoch ??= randomId();
@@ -299,8 +300,9 @@ export const sharingActions = {
   hearDrawing(message) {
     const sharing = this._sharing;
     if (!sharing?.pending || !this.paintLayer) return;
-    const fits = message.t === 'settings' ? message.values && typeof message.values === 'object'
-      : readChange(message.t === 'base' ? { stroke: 'base', cells: [], runs: message.runs } : message, boundsOf(message.t === 'base' ? { cols: 0, rows: 0, paintLayer: this.baseLayer } : this));
+    const fits = message.t === 'check' ? true
+      : message.t === 'settings' ? message.values && typeof message.values === 'object'
+        : readChange(message.t === 'base' ? { stroke: 'base', cells: [], runs: message.runs } : message, boundsOf(message.t === 'base' ? { cols: 0, rows: 0, paintLayer: this.baseLayer } : this));
     if (!fits) return;
     sharing.heard.push(message);
     flushSoon(this, sharing);
@@ -335,12 +337,34 @@ export const sharingActions = {
       }
       this.applyNumbered(...numbered);
       numbered = [];
+      if (message.t === 'check') {
+        this.compareCheck(message);
+        continue;
+      }
       sharing.pending.n = message.n;
       sharing.pending.tail.add(message);
       if (message.t === 'settings') this.applySettings(message.values);
       else this.applyBase(message.runs, deserializeBase(message.records).records);
     }
     this.applyNumbered(...numbered);
+  },
+
+  // A check heard in its place among the numbers, so what came before it has landed and Pending's sum is the
+  // agreed one as of what's been heard. Only at the same number does that say anything, whatever's waiting
+  // behind it. A mismatch asks for the project once, until one lands (or the connection's new).
+  compareCheck({ n, sum }) {
+    const sharing = this._sharing, { pending } = sharing;
+    if (sharing.asked || this._paused || pending.n !== n || pending.sum === sum) return;
+    sharing.asked = true;
+    sharing.send({ t: 'artist-hello', has: -1, epoch: sharing.epoch });
+  },
+
+  // A new connection to the host: an ask on the last one went with it, and the host counts `took` afresh.
+  newConnection() {
+    const sharing = this._sharing;
+    if (!sharing?.pending) return;
+    sharing.asked = false;
+    sharing.pending.newConnection();
   },
 
   // Another document: nothing that was waiting belongs on it. A project holds an artist's that it's numbered past.
@@ -412,6 +436,7 @@ export const sharingActions = {
   shareWholeDocument() {
     const { sendDocument } = this._sharing;
     this.ensureLayer();
+    this.sendSlice(); // an open stroke numbered now: its next slice starts from what the scan below counted
     this.flushHeard();
     this.clearHistory();
     this._ledger.reset({ epoch: randomId(), sum: this.editLayerSum() });
@@ -430,10 +455,13 @@ export const sharingActions = {
   // a host's may be, and false with nothing changed for what isn't. The first is under a new documentId, so
   // what was open stays in the autosave list, and starts the sharing; one after that is the same document.
   // Its sum is what the scan says and what was mine and unnumbered goes back on top (in that order, as reapply
-  // reads what's beneath). Numbers it holds are gone with what was waiting; the room's Watch sees to any later.
-  async takeProject(parts, { n, filename, send, me }) {
+  // reads what's beneath), less what the host had handled by then (took), which it holds or refused. An open
+  // stroke has gone out by then: openFromHost commits it, so no baseline moves past what's unsent. Numbers it
+  // holds are gone with what was waiting; the room's Watch sees to any later.
+  async takeProject(parts, { n, epoch = null, took = 0, filename, send, me }) {
     const cells = [...parts.editCells];
     if (cells.length > MAX_CELLS || !readChange({ stroke: 'project', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES })) return false;
+    if (this._sharing) this._sharing.asked = true; // no check says anything while this opens
     try {
       await this.openFromHost(
         { ...parts, settings: settingsFromHost(parts.settings), erasedCells: [], migrated: false },
@@ -451,11 +479,13 @@ export const sharingActions = {
       const sum = this.editLayerSum();
       this.throughPending((pending) => {
         pending.seedSum(sum);
+        pending.dropTaken(took);
         pending.reapply();
       });
     } else {
       this.startSharing({ send, role: 'artist', me });
     }
+    Object.assign(this._sharing, { epoch, asked: false });
     this._sharing.pending.n = n;
     return true;
   },
