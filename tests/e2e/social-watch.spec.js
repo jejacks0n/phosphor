@@ -126,6 +126,34 @@ test('a tracking watcher\'s art stays centered when their own view changes size;
   expect(await art.evaluate((el) => el.scrollLeft)).toBe(at);
 });
 
+test('a tracking watcher in a short window, on a phone held sideways, sees the art\'s first and last lines when the host goes there', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room, { image: 'images/tall.png' });
+  await tab(host, 'ANSI').click();
+  await settled(host);
+  await store(host, 'workspace', (w) => { w.ansiZoom = 1; });
+  const hostArt = host.locator('.ansi-editor > article');
+  await hostArt.evaluate((el) => { el.scrollTop = el.scrollHeight / 2; });
+  await expect.poll(() => store(host, 'workspace', (w) => w.ansiViewOrigin.row)).toBeGreaterThan(400);
+
+  const watcher = await watcherPage(context, room);
+  await watcher.setViewportSize({ width: 844, height: 390 });
+  await watcher.goto('/');
+  await joinFromCard(watcher);
+  await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'true');
+  const art = watching(watcher).getByLabel('The room\'s art');
+  await expect(art).toBeInViewport({ ratio: 1 });   // nothing of the art's own window is cut off
+  const fromEnds = () => art.evaluate((el) => ({ top: el.scrollTop, bottom: el.scrollHeight - el.clientHeight - el.scrollTop }));
+  const boxTaller = () => art.evaluate((el) => el.querySelector('.host-view').offsetHeight > el.clientHeight);
+  await expect.poll(boxTaller).toBe(true);   // the host's view doesn't fit in the watcher's window
+
+  await hostArt.evaluate((el) => { el.scrollTop = 0; });
+  await expect.poll(async () => (await fromEnds()).top).toBeLessThanOrEqual(1);
+  await hostArt.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  await expect.poll(async () => (await fromEnds()).bottom).toBeLessThanOrEqual(1);
+  await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'true');   // still tracking, not looking around
+});
+
 test('a watcher zooms the art themselves: it stops tracking, and Track goes back to the host\'s zoom', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room, { image: 'images/tall.png' });

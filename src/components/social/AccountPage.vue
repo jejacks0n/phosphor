@@ -236,7 +236,7 @@ async function deleteAccount() {
     <section aria-labelledby="account-ways">
       <h3 id="account-ways">Ways to sign in</h3>
       <div v-if="hasPassword" class="row">
-        <span class="what">Email and password <span class="detail">{{ me.email }}</span></span>
+        <span class="what">Email and password <span class="detail" :title="me.email">{{ me.email }}</span></span>
         <span class="buttons">
           <button ref="changeEmailButton" :disabled="changingEmail" @click="startEmail">Change email</button>
           <button ref="changePasswordButton" :disabled="changingPassword" @click="startPassword">Change password</button>

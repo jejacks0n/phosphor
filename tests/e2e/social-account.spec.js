@@ -207,11 +207,12 @@ test('Cancel closes the email form and clears it', async ({ page }) => {
   await expect(account.getByLabel('New email')).toHaveValue('');
 });
 
-test('A long email stays on one line, cut short with an ellipsis, and leaves the buttons where they fit', async ({ page }) => {
+test('A long email stays on one line, cut short with an ellipsis and whole in its tooltip, and leaves the buttons where they fit', async ({ page }) => {
   const email = 'a-rather-long-address-for-this-row@a-long-domain.example.com';
   await fakeServer(page, { me: member({ email }) });
   const account = await openAccount(page);
   const shownEmail = account.getByText(email);
+  await expect(shownEmail).toHaveAttribute('title', email);   // the whole of it, on hover
   const { lines, cut, ellipsis } = await shownEmail.evaluate((el) => {
     const range = document.createRange();
     range.selectNodeContents(el);
