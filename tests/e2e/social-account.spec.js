@@ -387,7 +387,8 @@ test('Two-factor: turning it on asks for your password, shows a QR code and the 
   await expect(section.getByRole('img', { name: 'QR code' })).toBeVisible();
   await expect(section.locator('code')).toHaveText('JBSWY3DPEHPK3PXP');
   await section.getByLabel('Code from the app').fill('   ');
-  await section.getByRole('button', { name: 'Turn on' }).click();
+  await expect(section.getByRole('button', { name: 'Turn on' })).toBeDisabled();   // a blank code can't be sent
+  await section.getByLabel('Code from the app').press('Enter');
   expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(0);
   await section.getByLabel('Code from the app').fill('000000');
   await section.getByRole('button', { name: 'Turn on' }).click();
@@ -407,6 +408,50 @@ test('Two-factor: turning it on asks for your password, shows a QR code and the 
   await shown(page, 'lobby').getByRole('button', { name: 'Edit account' }).click();
   await expect(section.getByText('On. Signing in asks for a code.')).toBeVisible();
   await expect(section.locator('li')).toHaveCount(0);
+});
+
+test('Every form\'s button is off until what it needs is filled in: Continue, Turn on, Turn off two-factor, Make new codes and Delete for good', async ({ page }) => {
+  await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  const section = twoFactor(account);
+  await section.getByRole('button', { name: 'Turn on' }).click();
+  const send = section.getByRole('button', { name: 'Continue' });
+  await expect(send).toBeDisabled();
+  await section.getByLabel('Password').fill('violet-lantern-harbor-42');
+  await expect(send).toBeEnabled();
+  await send.click();
+  const turnOn = section.locator('form').getByRole('button', { name: 'Turn on' });
+  await expect(turnOn).toBeDisabled();
+  await section.getByLabel('Code from the app').fill('   ');
+  await expect(turnOn).toBeDisabled();
+  await section.getByLabel('Code from the app').fill('123456');
+  await expect(turnOn).toBeEnabled();
+  await turnOn.click();
+  await section.getByRole('button', { name: 'Done' }).click();
+
+  for (const [row, name] of [['New backup codes', 'Make new codes'], ['Turn off', 'Turn off two-factor']]) {
+    await section.getByRole('button', { name: row }).click();
+    const ask = section.locator('form').getByRole('button', { name });
+    await expect(ask).toBeDisabled();
+    await section.getByLabel('Password').fill('violet-lantern-harbor-42');
+    await expect(ask).toBeEnabled();
+    await section.getByRole('button', { name: 'Cancel' }).click();
+  }
+
+  await account.getByRole('button', { name: 'Delete account' }).click();
+  const forGood = account.getByRole('button', { name: 'Delete for good' });
+  await expect(forGood).toBeDisabled();
+  await account.getByLabel('Password').fill('violet-lantern-harbor-42');
+  await expect(forGood).toBeEnabled();
+});
+
+test('With no password to ask for, Continue and Delete for good are on from the start', async ({ page }) => {
+  await fakeServer(page, { me: member({ providers: ['discord'] }) });
+  const account = await openAccount(page);
+  await twoFactor(account).getByRole('button', { name: 'Turn on' }).click();
+  await expect(twoFactor(account).getByRole('button', { name: 'Continue' })).toBeEnabled();
+  await account.getByRole('button', { name: 'Delete account' }).click();
+  await expect(account.getByRole('button', { name: 'Delete for good' })).toBeEnabled();
 });
 
 test('Two-factor: Cancel during setup leaves it off, and Turn on starts again', async ({ page }) => {
