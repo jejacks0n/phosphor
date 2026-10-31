@@ -14,7 +14,7 @@ import { ASK_AGAIN_MS } from '@/store/project/sharing';
 import { useRoomStore } from '@/store/RoomStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { serializeBase, withPins } from '@/document/baseRecords';
-import { CHUNK_BYTES } from '@/social/wire';
+import { CHUNK_BYTES, packValue } from '@/social/wire';
 import { hashCell } from '@/document/changes';
 import { Ledger, keptForWire, keptFromWire } from '@/document/ledger';
 import { forgetRoomLedger, readRoomLedger } from '@/document/autosaveStore';
@@ -1731,6 +1731,7 @@ async function newHostIs(room, chosen, { planned, former = null } = {}) {
   chosen.watch.close();
   chosen.drawing.hosted(next.host, { me: () => chosen.sub });
   chosen.drawing.takeOver(next.host, { planned });
+  chosen.drawing.hostingAgain({ tookOver: true });
   next.host.setRoom({ name: 'Night shift', welcome: '' });
   toStop.push(() => next.host.close());
   for (const person of others) {
@@ -2166,4 +2167,318 @@ test('a host whose kept ledger doesn\'t reach takes the artist\'s agreed picture
   await expect.poll(() => ann.drawing.notice, PATIENT).toContain('undo starts over');
   await allMatch({ project: room.project }, ann);
   expect(char(ann.project, 3, 3)).toBe('w');
+});
+
+// The host's channels outlive its socket, so artists can reach new-host at different numbers.
+const heardOnly = (person, ...messages) => {
+  for (const message of messages) person.project.hearDrawing(message);
+  person.project.flushHeard();
+};
+const cellChange = (n, stroke, cell, char) => ({ t: 'numbered', n, by: 'dan', stroke, cells: [[cell, { char }]], runs: [] });
+
+test('a new host hears who\'s ahead before it numbers anything: artists at different numbers keep every stroke', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob'), cid = await artist(room, 'cid');
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  await allMatch(room, ann, bob, cid);
+  const n = ann.project._sharing.pending.n;
+  for (const person of [ann, bob, cid]) person.drawing.connection('lost');
+  room.host.close();
+  room.people.delete('ann');
+  const one = cellChange(n + 1, 'b1', '5,5', 'B'), two = cellChange(n + 2, 'c1', '6,6', 'C');
+  heardOnly(bob, one);
+  heardOnly(cid, one, two);
+  ann.project._paused = false;
+  ann.project.editCell(7, 7, { char: 'A' });   // no number yet
+  ann.project.commitEdit();
+  ann.project._paused = true;
+
+  const next = await newHostIs(room, ann, { planned: false });
+  await expect.poll(() => ann.project._ledger.n, PATIENT).toBe(n + 3);
+  await allMatch(next, bob, cid);
+  for (const person of [ann, bob, cid]) {
+    expect(char(person.project, 5, 5)).toBe('B');
+    expect(char(person.project, 6, 6)).toBe('C');
+    expect(char(person.project, 7, 7)).toBe('A');
+  }
+});
+
+test('a new host that didn\'t take the old ledger tells artists undo starts over, even on a planned handover', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  bob.project.editCell(2, 2, { char: 'B' });
+  bob.project.commitEdit();
+  await allMatch(room, ann, bob);
+  expect(bob.project.canUndo).toBe(true);
+  room.host.close();
+  room.people.delete('ann');
+
+  await newHostIs(room, ann, { planned: true });   // the ledger never came
+  await expect.poll(() => bob.project.canUndo, PATIENT).toBe(false);
+  expect(bob.drawing.notice).toContain('undo starts over');
+});
+
+test('a host back from a reload with no ledger tells artists undo starts over', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  ann.project.editCell(2, 2, { char: 'A' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  expect(ann.project.canUndo).toBe(true);
+  room.host.close();
+  ann.drawing.connection('lost');
+  const documentN = room.project._ledger.n;
+  room.drawing.close();
+  setActivePinia(room.pinia);
+  room.project._documentN = documentN;
+  const again = new Host({
+    config, passKey, roomId: 'room',
+    send: async (msg) => {
+      if (msg.type !== 'signal-to') return;
+      await later();
+      ann.watch.signalFrom('host', msg.data);
+    },
+    ...room.drawing.hostCallbacks(),
+  });
+  room.drawing.hosted(again, { me: () => 'host' });
+  again.setRoom({ name: 'Night shift', welcome: '' });
+  toStop.push(() => again.close());
+  ann.watch.send = async (msg) => { await later(); again.signalFrom('ann', msg.data); };
+  room.drawing.resumeHosting({ artists: ['ann'], invited: [] }, null);
+  room.drawing.hostingAgain();
+  await again.peer('ann', await passFor('ann'));
+  await expect.poll(() => ann.project.canUndo, PATIENT).toBe(false);
+  expect(ann.drawing.notice).toContain('undo starts over');
+});
+
+test('a hand-over that isn\'t what a ledger could be is refused, whatever part of it is wrong', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  room.project.editCell(1, 1, { char: 'H' });
+  dab(room.project, 5, 5);
+  room.project.commitEdit();
+  dab(room.project, 5, 5);
+  room.project.commitEdit();
+  room.project.undo();
+  dab(room.project, 9, 9);
+  room.project.commitEdit();
+  await allMatch(room, ann);
+  const plain = () => keptForWire(room.project._ledger.kept());
+  const read = async (wire) => ann.project.readHandOver(await packValue(JSON.parse(JSON.stringify(wire))));
+
+  expect(plain().strokes.length).toBeGreaterThan(1);
+  expect(plain().tiles.length).toBeGreaterThan(0);
+  expect(await read(plain())).not.toBe(null);
+  expect(await read({ ...plain(), tail: [null] })).not.toBe(null);   // the sender's tail isn't used at all
+
+  const live = (wire) => wire.strokes.find((stroke) => !stroke.undone && stroke.paint.length);
+  const bad = {
+    'no number': (w) => { w.n = 'x'; },
+    'a negative number': (w) => { w.n = -2; },
+    'no epoch': (w) => { w.epoch = null; },
+    'a sum that isn\'t': (w) => { w.sum = 'x'; },
+    'strokes that aren\'t': (w) => { w.strokes = 'x'; },
+    'a stroke that isn\'t': (w) => { w.strokes.push(null); },
+    'a stroke with no id': (w) => { w.strokes[0].id = 7; },
+    'a stroke with no author': (w) => { w.strokes[0].by = null; },
+    'a stroke\'s bytes': (w) => { w.strokes[0].bytes = -1; },
+    'a stroke\'s bad cell': (w) => { w.strokes.find((stroke) => stroke.cells.length).cells[0] = ['nope', { char: 'x' }]; },
+    'a stroke\'s paint that isn\'t': (w) => { live(w).paint = 'x'; },
+    'a stroke\'s paint in the wrong place': (w) => { live(w).paint[0][0] = '1,1'; },
+    'a stroke\'s paint past the arrays': (w) => { live(w).paint[0][1] = 9999; },
+    'a stroke\'s paint at no array': (w) => { live(w).paint[0][1] = 'length'; },
+    'a live stroke missing from its tile': (w) => { w.tiles = []; },
+    'a live stroke missing from its stack': (w) => { w.cells = []; },
+    'a stack naming no stroke': (w) => { w.cells[0][2] = ['gone']; },
+    'a stack\'s stroke without that cell': (w) => { w.cells[0][0] = '30,30'; },
+    'a bad base cell': (w) => { w.cells[0][1] = { nope: 1 }; },
+    'cells that aren\'t': (w) => { w.cells = 'x'; },
+    'a tile that isn\'t': (w) => { w.tiles[0] = null; },
+    'a tile named apart from its place': (w) => { w.tiles[0][1] += 64; },
+    'a tile past the layer': (w) => { w.tiles[0] = [`${1 << 24},0`, 1 << 24, 0, [], []]; },
+    'a tile\'s base index past its end': (w) => { w.tiles[0][3] = [1e9, 1]; },
+    'a tile\'s base index that isn\'t': (w) => { w.tiles[0][3] = ['__proto__', 1]; },
+    'a tile\'s odd base': (w) => { w.tiles[0][3] = [1]; },
+    'a tile\'s pixel that isn\'t': (w) => { w.tiles[0][3] = [0, -1]; },
+    'a tile\'s pixel too big': (w) => { w.tiles[0][3] = [0, 2 ** 40]; },
+    'an entry naming no stroke': (w) => { w.tiles[0][4][0][0] = 'gone'; },
+    'an entry past the arrays': (w) => { w.tiles[0][4][0][1] = 9999; },
+    'an array\'s pixel index past its end': (w) => { w.arrays[0] = [1e9, 1]; },
+    'an array\'s pixel that isn\'t': (w) => { w.arrays[0] = [0, 'x']; },
+    'arrays that aren\'t': (w) => { w.arrays = 'x'; },
+    'a million arrays': (w) => { w.arrays = Array.from({ length: 1e6 }, () => []); },
+    'a million tiles': (w) => { w.tiles = Array.from({ length: 1e6 }, (_, i) => [`${i * 64},0`, i * 64, 0, [], []]); },
+  };
+  for (const [what, spoil] of Object.entries(bad)) {
+    const wire = plain();
+    spoil(wire);
+    expect(await read(wire), what).toBe(null);
+  }
+  expect(await ann.project.readHandOver([new Uint8Array([1, 2, 3])])).toBe(null);
+});
+
+test('a ledger that can\'t be restored falls back to the sudden path, and the new host is really hosting', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  ann.project.editCell(1, 1, { char: 'A' });
+  ann.project.commitEdit();
+  await allMatch(room, ann, bob);
+  setActivePinia(room.pinia);
+  const asked = room.drawing.makeHost('ann');
+  await expect.poll(() => sentHandOver(room), PATIENT).toBe('ann');
+  const restore = vi.spyOn(Ledger, 'restore').mockImplementation(() => { throw new Error('broken'); });
+  const next = await newHostIs(room, ann, { planned: true });
+  restore.mockRestore();
+  room.host.close();
+  await asked;
+  expect(ann.project._sharing.role).toBe('host');
+  expect(ann.drawing.notice).toContain('undo starts over');
+  ann.project.editCell(3, 3, { char: 'C' });
+  ann.project.commitEdit();
+  await expect.poll(() => char(bob.project, 3, 3), PATIENT).toBe('C');
+  await allMatch(next, bob);
+});
+
+test('a new host keeps its own numbers on: the tail is its own, not the one it was sent', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  await allMatch(room, ann);
+  const own = ann.project._sharing.pending.tail;
+  const kept = keptFromWire(keptForWire(room.project._ledger.kept()));
+  const left = ann.project.leavePending();
+  expect(ann.project.takeLedger({ ...kept, tail: [null] }, left)).toBe(true);
+  expect(ann.project._ledger.tail).toBe(own);
+});
+
+test('someone claiming to be ahead in the middle of a room gets the usual answer, with no pause', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  await allMatch(room, ann);
+  const n = room.project._ledger.n;
+  const asked = vi.spyOn(room.host, 'askCatchUp'), sent = vi.spyOn(room.host, 'sendProject');
+  ann.watch.post({ t: 'artist-hello', has: n + 1000, epoch: room.project._ledger.epoch });
+  await expect.poll(() => sent.mock.calls.length, PATIENT).toBe(1);
+  expect(asked).not.toHaveBeenCalled();
+  expect(room.drawing.paused).toBe(false);
+  expect(room.host.holding ?? null).toBe(null);
+  expect(room.project._ledger.n).toBe(n);
+});
+
+test('a catch-up answer is taken only if it\'s what was asked for, with nothing changed otherwise', async () => {
+  const room = await hostingWithSocket();
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  const { project } = room, { n, epoch } = project._ledger;
+  const item = (at, char = 'x') => ({ n: at, by: 'ann', stroke: `s${at}`, cells: [['2,2', { char }]], runs: [] });
+  const tail = (...items) => ({ n: items.at(-1)?.n ?? n, epoch, kind: 'tail', tail: items });
+  const parts = (await project.projectParts());
+  const bad = {
+    'a number below the claim': [{ ...tail(item(n + 1)), n: n + 1 }, n + 2],
+    'a claim that isn\'t past mine': [tail(item(n + 1)), n],
+    'a gap at the start': [tail(item(n + 2)), n + 2],
+    'a gap in the middle': [tail(item(n + 1), item(n + 3)), n + 3],
+    'a tail short of its number': [{ ...tail(item(n + 1)), n: n + 2 }, n + 2],
+    'another epoch': [{ ...tail(item(n + 1)), epoch: 'other' }, n + 1],
+    'a change with no author': [tail({ ...item(n + 1), by: null }), n + 1],
+    'a change that isn\'t': [tail({ ...item(n + 1), cells: 'x' }), n + 1],
+    'an item that isn\'t': [tail(null), n + 1],
+    'settings that aren\'t': [tail({ t: 'settings', n: n + 1, values: null }), n + 1],
+    'a base with bad runs': [tail({ t: 'base', n: n + 1, runs: 'x', records: { pins: [] } }), n + 1],
+    'a base with no records': [tail({ t: 'base', n: n + 1, runs: [], records: 'x' }), n + 1],
+    'a project below the claim': [{ n: n + 1, epoch, kind: 'project', parts }, n + 2],
+    'a project at my number': [{ n, epoch, kind: 'project', parts }, n],
+    'a project under my number': [{ n: n - 1, epoch, kind: 'project', parts }, n - 1],
+  };
+  const open = vi.spyOn(project, 'openFromHost');
+  for (const [what, [answer, has]] of Object.entries(bad)) {
+    expect(await project.takeCatchUp(answer, has), what).toBe(false);
+    expect(project._ledger.n, what).toBe(n);
+    expect(char(project, 2, 2), what).toBe(undefined);
+  }
+  expect(open).not.toHaveBeenCalled();
+  expect(await project.takeCatchUp(tail(item(n + 1, 'y'), item(n + 2, 'z')), n + 2)).toBe(true);
+  expect(project._ledger.n).toBe(n + 2);
+  expect(char(project, 2, 2)).toBe('z');
+});
+
+test('the list emptying while a returning host gathers leaves it drawing, and strokes from anyone asked later aren\'t held', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  room.project._documentN = room.project._ledger.n;
+  room.drawing.resumeHosting({ artists: ['ann'], invited: [] }, null);
+  expect(room.drawing.paused).toBe(true);
+  expect(room.host.holding).not.toBe(null);
+  room.drawing.backToWatching('ann');
+  expect(room.drawing.paused).toBe(false);
+  expect(room.project._paused).toBe(false);
+  expect(room.host.holding).toBe(null);
+  room.project.editCell(4, 4, { char: 'k' });
+  room.project.commitEdit();
+  expect(char(room.project, 4, 4)).toBe('k');
+  await expect.poll(() => ann.drawing.mayDraw, PATIENT).toBe(false);
+});
+
+test('a new host\'s own waiting strokes stay when the list empties before they\'re numbered', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  await allMatch(room, ann, bob);
+  bob.watch.send = async () => {};   // bob stays quiet
+  bob.watch.close();
+  room.host.close();
+  room.people.delete('ann');
+  ann.drawing.connection('lost');
+  ann.project._paused = false;
+  ann.project.editCell(7, 7, { char: 'A' });
+  ann.project.commitEdit();
+  ann.project._paused = true;
+  const hosting2 = new Host({ config, passKey, roomId: 'room', send: async () => {}, ...ann.drawing.hostCallbacks() });
+  toStop.push(() => hosting2.close());
+  ann.watch.close();
+  ann.drawing.hosted(hosting2, { me: () => 'ann' });
+  ann.drawing.takeOver(hosting2, { planned: false });
+  expect(ann.drawing.paused).toBe(true);
+  ann.drawing.artistsNow([]);
+  expect(ann.drawing.paused).toBe(false);
+  expect(char(ann.project, 7, 7)).toBe('A');
+});
+
+test('a hand-over\'s chunks can\'t be cut in on: what\'s numbered waits behind them', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  await allMatch(room, ann);
+  const put = room.host.putPaced.bind(room.host);
+  let during = null;
+  room.host.putPaced = async (w, chunks) => {
+    during = w.projecting;
+    await put(w, chunks);
+  };
+  const w = room.host.open().find(({ claims }) => claims.sub === 'ann');
+  const answered = room.host.handOver('ann', [new Uint8Array(4)]);
+  await expect.poll(() => during, PATIENT).toBe(true);
+  w.handedOver?.(false);
+  await answered;
+  expect(w.projecting).toBe(false);
+});
+
+test('during any handover the layer says the host is changing, and a host who is away is reconnecting', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  await allMatch(room, ann, bob);
+  bob.drawing.connection('lost');
+  expect(bob.drawing.paused).toBe(true);
+  expect(bob.drawing.hostChanging).toBe(false);
+  bob.drawing.hostChanged({ planned: false });
+  expect(bob.drawing.hostChanging).toBe(true);
+  setActivePinia(room.pinia);
+  room.host.handOverWithinMs = room.host.serverAnswersWithinMs = 50;
+  const asked = room.drawing.makeHost('ann');
+  expect(room.drawing.hostChanging).toBe(true);
+  await asked;
+  expect(room.drawing.hostChanging).toBe(false);
+  expect(room.drawing.paused).toBe(false);
 });

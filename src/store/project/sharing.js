@@ -150,6 +150,16 @@ function artistSharing(project, { send, me, sum, n = 0, tail = new Tail(), epoch
 // What an artist can make on this document (readChange).
 const boundsOf = ({ cols, rows, paintLayer }) => ({ cols, rows: charRowsOf(rows), layerWidth: paintLayer.canvas.width, layerHeight: paintLayer.canvas.height });
 
+// Whether a number's message can be taken as heard, from a host or an artist: a stranger, either way.
+function readsAsHeard(project, message) {
+  if (message?.t === 'settings') return !!message.values && typeof message.values === 'object';
+  if (message?.t === 'base') {
+    return !!readChange({ stroke: 'base', cells: [], runs: message.runs }, boundsOf({ cols: 0, rows: 0, paintLayer: project.baseLayer }))
+      && !!message.records && typeof message.records === 'object';
+  }
+  return !!readChange(message, boundsOf(project));
+}
+
 // What a project's settings may set: only what a document saves. A host is a stranger, and these are patched
 // onto the store.
 function settingsFromHost(settings) {
@@ -276,11 +286,12 @@ export const sharingActions = {
   // The same on the other side, or null for anything that isn't one: an old host is a stranger, and what's in
   // these stacks can reach the picture.
   async readHandOver(chunks) {
-    const plain = await unpackValue(chunks, { mostBytes: MOST_PROJECT_BYTES });
     try {
-      const kept = keptFromWire(plain);
+      const plain = await unpackValue(chunks, { mostBytes: MOST_PROJECT_BYTES });
+      this.ensureLayer();
+      const { layerWidth: width, layerHeight: height } = boundsOf(this);
+      const kept = keptFromWire(plain, { width, height });
       const bounds = { cols: MAX_COLS, rows: MAX_LINES };
-      if (!Number.isSafeInteger(kept.n) || kept.n < 0 || typeof kept.epoch !== 'string' || !Array.isArray(kept.tail)) return null;
       for (const { cells } of kept.stacks.strokes.values()) if (!readChange({ stroke: 'kept', cells: [...cells], runs: [] }, bounds)) return null;
       for (const [key, { base }] of kept.stacks.cells) if (!readChange({ stroke: 'kept', cells: [[key, base]], runs: [] }, bounds)) return null;
       return kept;
@@ -305,16 +316,23 @@ export const sharingActions = {
     return { n: sharing.pending.n, epoch: sharing.epoch, tail: sharing.pending.tail, waiting };
   },
 
-  // The ledger of a new host, before it starts sharing: the old host's (kept), if it's for the number I've heard to,
-  // and undo stays with it. Otherwise the numbering carries on from left (leavePending) and undo starts over. With
-  // no left, this person knows no number at all, and an artist who does is asked (DrawingStore).
+  // The ledger of a new host, before it starts sharing: the old host's (kept), with my own tail, if it's for the number
+  // I've heard to, and undo stays with it: true. Otherwise the numbering carries on from left (leavePending) and undo
+  // starts over: false. With no left, this person knows no number at all, and an artist who does is asked (DrawingStore).
   takeLedger(kept, left) {
-    if (kept && left && kept.n === left.n) {
-      this._ledger = markRaw(Ledger.restore(kept, { readCell: (key) => this.readCell(key), readTile: (x, y) => this.readTile(x, y), mostBytes: MOST_CHANGE_BYTES }));
-      return;
+    if (kept && left && kept.n === left.n && kept.epoch === left.epoch) {
+      try {
+        const ledger = Ledger.restore({ ...kept, tail: [] }, { readCell: (key) => this.readCell(key), readTile: (x, y) => this.readTile(x, y), mostBytes: MOST_CHANGE_BYTES });
+        ledger.tail = left.tail;
+        this._ledger = markRaw(ledger);
+        return true;
+      } catch (error) {
+        console.warn('The old host\'s undo couldn\'t be taken.', error);
+      }
     }
     this.clearHistory();
     Object.assign(this._ledger, { n: left?.n ?? -1, epoch: left?.epoch ?? null, tail: left?.tail ?? new Tail() });
+    return false;
   },
 
   // A new host's own strokes that never got a number are its first changes.
@@ -358,16 +376,18 @@ export const sharingActions = {
     return { n, epoch: sharing.epoch, kind: 'project', chunks: await parts.then((rest) => packProject({ imageBuffer: this.imageBuffer, ...rest })) };
   },
 
-  // A returning host takes that answer. A tail goes in the ledger and on the picture: false if any of it isn't one,
-  // with nothing taken. A project is the agreed document, so the stacks start over. It's only ever for numbers past
-  // mine, since those are all anyone asks for.
-  async takeCatchUp({ n, epoch, kind, tail, parts }) {
+  // A host gathering takes that answer, from whoever claimed to have numbers up to has: false, with nothing taken,
+  // unless it holds that claim and it's past my last number. A tail goes in the ledger and on the picture, and has to
+  // be every number from my next to the one it says. A project is the agreed document, so the stacks start over.
+  async takeCatchUp({ n, epoch, kind, tail, parts }, has) {
+    const ledger = this._ledger;
+    if (!Number.isSafeInteger(has) || !Number.isSafeInteger(n) || has <= ledger.n || n < has) return false;
     if (kind === 'tail') {
-      const bounds = boundsOf(this);
-      const fresh = tail.filter((item) => item.n > this._ledger.n);
-      if (!fresh.every((item) => Number.isSafeInteger(item.n) && (item.t === 'settings' || item.t === 'base' || (typeof item.by === 'string' && readChange(item, bounds))))) return false;
+      this.ensureLayer();
+      const reaches = epoch === ledger.epoch && Array.isArray(tail) && tail.length === n - ledger.n && tail.every((item, i) => item?.n === ledger.n + 1 + i);
+      if (!reaches || !tail.every((item) => readsAsHeard(this, item) && (item.t === 'settings' || item.t === 'base' || typeof item.by === 'string'))) return false;
       this.flushHeard();
-      for (const item of fresh) {
+      for (const item of tail) {
         if (item.t === 'settings' || item.t === 'base') {
           this._ledger.n = item.n;
           this._ledger.tail.add(item);
@@ -375,7 +395,7 @@ export const sharingActions = {
           this._ledger.takeNumbered(item);
         }
       }
-      this.replayOnPicture(fresh);
+      this.replayOnPicture(tail);
       return true;
     }
     const cells = [...parts.editCells];
@@ -527,10 +547,7 @@ export const sharingActions = {
   hearDrawing(message) {
     const sharing = this._sharing;
     if (!sharing?.pending || !this.paintLayer) return;
-    const fits = message.t === 'check' ? true
-      : message.t === 'settings' ? message.values && typeof message.values === 'object'
-        : readChange(message.t === 'base' ? { stroke: 'base', cells: [], runs: message.runs } : message, boundsOf(message.t === 'base' ? { cols: 0, rows: 0, paintLayer: this.baseLayer } : this));
-    if (!fits) return;
+    if (message.t !== 'check' && !readsAsHeard(this, message)) return;
     sharing.heard.push(message);
     flushSoon(this, sharing);
   },

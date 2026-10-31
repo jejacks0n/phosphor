@@ -30,6 +30,8 @@ const SETTINGS_EVERY_MS = 1250;  // the server's 1 s, with slack: it measures wh
 const ASK_FOR_MS = 3000;        // how long an earlier() waits for its page (the host may drop it unanswered)
 const KEEP_EVERY_MS = 1000;     // the host's resume record, as the room changes (and at once on pagehide)
 const RESUME_RETRY_MS = 3000;   // a host coming back asks again after this, then twice that, and so on, for a pass or a room that was too busy to answer
+const DOCUMENT_BACK_WITHIN_MS = 5000;   // named host just after a reload: how long to wait for the art to open
+const HAND_OVER_ANSWERED_WITHIN_MS = 5000;
 const HOST_SOCKET = { liveOn: ['hosting'], endOn: ['refused', 'ended', 'replaced', 'new-host'] };
 export const ROOM_ID = /^[a-z2-7]{10}$/;
 // The wait before a returning host's next try (tries made so far): 3 s, 6 s, 12 s and on, no longer than
@@ -150,6 +152,7 @@ export const useRoomStore = defineStore('room', {
     _resumeBegan: 0,     // when it began, which RETURN_WITHIN_MS counts from
     _throttled: 0,       // the room's refusals as too busy since then: the socket's retry steps on from each
     _keepTimer: null,    // the resume record's next write
+    _named: null,        // named host, and not on with it yet: { planned, words, heard, passing, to, tried, timer } (markRaw)
     _tookOver: false,    // named host by the room: the hosting that follows starts the Host off
   }),
 
@@ -554,6 +557,7 @@ export const useRoomStore = defineStore('room', {
       this._connection = null;
       connection?.close();
       this.stopAsking();
+      clearTimeout(this._named?.timer);
       useDrawingStore().close({ spent });
       this._host?.close();
       this._watch?.close();
@@ -564,7 +568,7 @@ export const useRoomStore = defineStore('room', {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
         hostView: null, lookingAt: null, tracking: true, following: null, showEveryone: false, showBox: true, artistViews: {}, artZoom: 1, artFit: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
-        _refusedOnce: false, _resuming: false, _keepTimer: null, _tookOver: false,
+        _refusedOnce: false, _resuming: false, _keepTimer: null, _tookOver: false, _named: null,
       });
     },
 
@@ -598,6 +602,12 @@ export const useRoomStore = defineStore('room', {
       const me = useSocialStore().claims?.sub, old = this.role === 'host' ? useSocialStore().claims?.name : this.room?.host;
       const words = old && name && old !== name ? newHostWords({ old, name, planned }) : null;
       if (sub === me) return this.takeOver({ planned, words });
+      if (this._named) {   // passed on: this socket is on its way out, and the list says if they're still an artist
+        clearTimeout(this._named.timer);
+        this._named = null;
+        this._connection?.close();
+        return this.backAsArtist();
+      }
       if (this.role === 'host') return this.becomeArtist({ planned, name, sub, words });
       this.room = { ...this.room, host: name, hostSub: sub };
       this.chat = this.chat.map((row) => (row.host === (row.sub === sub) ? row : { ...row, host: row.sub === sub }));
@@ -611,12 +621,49 @@ export const useRoomStore = defineStore('room', {
       useDrawingStore().hostChanged({ planned, words });
     },
 
-    // Named by the room: this socket is the host's now, and hosting comes next. Someone who isn't drawing has none
-    // of the room's art to carry on with, so the room ends.
-    // ponytail: a reloading artist named before its document is back ends the room too; wait for documentAnswered if that shows up.
-    takeOver({ planned, words }) {
+    // Named by the room: this socket is the host's now, and hosting comes next. A document on its way back (a reload)
+    // is waited for, with what the socket says kept. Then, with the room's art, on as host; without it, passOn.
+    async takeOver({ planned, words }) {
+      const project = useProjectStore(), workspace = useWorkspaceStore();
+      if (this._named) return;
+      const named = this._named = markRaw({ planned, words, heard: [], passing: false, to: null, tried: new Set(), timer: null });
+      const back = () => !!project.image || workspace.documentAnswered;
+      if (!back()) await until(back).toBe(true, { timeout: DOCUMENT_BACK_WITHIN_MS });
+      if (this._named !== named) return;
+      if (!useDrawingStore().holdsTheArt()) {
+        named.passing = true;
+        named.timer = setTimeout(() => this.passOn(true), HAND_OVER_ANSWERED_WITHIN_MS);
+        return this.passOn();
+      }
+      this._named = null;
+      this.carryOn(named);
+      for (const msg of named.heard) this.heard(msg);
+    },
+
+    // Named with none of the room's art to carry on with: the role goes to someone listed who's here, since they
+    // may have it. No answer means it didn't happen, so it's the next one's; with no one left, the room ends.
+    passOn(answerLate = false) {
+      const named = this._named;
+      if (!named?.passing) return;
+      const hosting = named.heard.find((msg) => msg.type === 'hosting');
+      const list = named.heard.findLast((msg) => msg.type === 'artists-now')?.subs;
+      if (!answerLate && (named.to || !hosting || !list)) return;
+      clearTimeout(named.timer);
+      const me = useSocialStore().claims?.sub, here = new Set();
+      for (const { pass } of [...hosting?.peers ?? [], ...named.heard.filter((msg) => msg.type === 'peer')]) {
+        try {
+          here.add(decodePass(pass).sub);
+        } catch { /* a pass that can't be read names no one */ }
+      }
+      named.to = (list ?? []).find((sub) => sub !== me && here.has(sub) && !named.tried.has(sub)) ?? null;
+      if (!named.to) return void this._connection?.send({ type: 'end' });
+      named.tried.add(named.to);
+      this._connection?.send({ type: 'hand-over', to: named.to });
+      named.timer = setTimeout(() => this.passOn(true), HAND_OVER_ANSWERED_WITHIN_MS);
+    },
+
+    carryOn({ planned, words }) {
       const drawing = useDrawingStore(), connection = this._connection;
-      if (!drawing.holdsTheArt()) return void connection?.send({ type: 'end' });
       for (const stop of this._stops) stop();
       this.stopAsking();
       this._watch?.close();
@@ -830,8 +877,13 @@ export const useRoomStore = defineStore('room', {
 
     // The server's messages (the server's API).
     heard(msg) {
+      if (this._named && !['new-host', 'ended', 'refused', 'removed', 'replaced'].includes(msg.type)) {
+        this._named.heard.push(msg);
+        return this.passOn();
+      }
       switch (msg.type) {
         case 'hosting': {
+          if (!this._host) return;
           const tookOver = this._tookOver, chosen = tookOver ? { ...msg.room, welcome: this.room.welcome } : this.room;
           this._refusedOnce = false;
           this._resuming = false;

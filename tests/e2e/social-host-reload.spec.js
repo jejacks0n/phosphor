@@ -364,6 +364,15 @@ const typeAt = async (page, col, row, text) => {
   await page.keyboard.press('Escape');
 };
 const edits = (page) => store(page, 'project', (p) => JSON.stringify([...p.editCells].sort(([a], [b]) => (a < b ? -1 : 1))));
+const keptLedgerN = (page) => page.evaluate((id) => new Promise((resolve, reject) => {
+  const open = indexedDB.open('phosphor-room-ledgers', 1);
+  open.onupgradeneeded = () => open.result.createObjectStore('rooms', { keyPath: 'id' }).createIndex('at', 'at');
+  open.onerror = () => reject(open.error);
+  open.onsuccess = () => {
+    const get = open.result.transaction('rooms').objectStore('rooms').get(id);
+    get.onsuccess = () => { open.result.close(); resolve(get.result?.kept.n ?? null); };
+  };
+}), ROOM_ID);
 
 test('a host reloading while an artist is ahead of autosave loses no strokes', async ({ page: host, context }) => {
   const room = fakeRoom();
@@ -373,7 +382,8 @@ test('a host reloading while an artist is ahead of autosave loses no strokes', a
   await settled(host);
   await typeAt(host, 1, 1, 'h');
   await expect.poll(() => chars(artist, 1, 1, 1)).toBe('h');
-  await host.waitForTimeout(2500);   // the ledger and the document have this much
+  const n = await store(host, 'project', (p) => p._ledger.n);
+  await expect.poll(() => keptLedgerN(host), ARTIST_STROKE_WAIT).toBe(n);   // the ledger has this much
 
   // The artist's strokes reach the host, and the host goes before anything writes them down.
   await typeAt(artist, 20, 12, 'abc');

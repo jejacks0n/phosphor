@@ -513,9 +513,27 @@ export class Host {
         resolve(yes);
       };
     });
+    w.projecting = true;   // behind these chunks, as behind a project's
     this.sendTo(w, { t: 'hand-over', chunks: chunks.length, room: this.room });
     await this.putPaced(w, chunks);
+    await this.sentWhole(w);
     return answer;
+  }
+
+  // A project or hand-over has gone: what waited behind it goes now.
+  async sentWhole(w) {
+    w.projecting = false;
+    if (this.watchers.get(w.peer) !== w) return;
+    this.drain(w);
+    if (w.behind) {   // art that waited: this brings them up to the art there is now
+      w.behind = false;
+      w.has = null;
+      this.update(w);
+    }
+    if (w.again) {
+      w.again = false;
+      await this.sendProject(w);
+    }
   }
 
   // What an artist ahead of this host holds after has: { n, epoch, kind, tail or parts }, or null for no answer
@@ -689,18 +707,7 @@ export class Host {
     } catch (error) {
       console.warn('The art couldn\'t be packed for an artist.', error);
     }
-    w.projecting = false;
-    if (this.watchers.get(w.peer) !== w) return;
-    this.drain(w);
-    if (w.behind) {   // art that waited: this brings them up to the art there is now
-      w.behind = false;
-      w.has = null;
-      this.update(w);
-    }
-    if (w.again) {
-      w.again = false;
-      await this.sendProject(w);
-    }
+    await this.sentWhole(w);
   }
 
   track(w, on) {

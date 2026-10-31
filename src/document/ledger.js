@@ -46,8 +46,8 @@ const filled = (pairs) => {
 };
 
 // kept() as JSON can carry it, for a handover. A stroke's array is the same array as its entry's in a tile (an
-// undo goes by that), so arrays go in a table and are named by place.
-export function keptForWire({ n, epoch, limits, sum, stacks, tail }) {
+// undo goes by that), so arrays go in a table and are named by place. No tail: the new host has its own.
+export function keptForWire({ n, epoch, limits, sum, stacks }) {
   const places = new Map();
   const place = (px) => {
     if (!places.has(px)) places.set(px, places.size);
@@ -56,20 +56,68 @@ export function keptForWire({ n, epoch, limits, sum, stacks, tail }) {
   const strokes = [...stacks.strokes.values()].map(({ id, by, undone, bytes, cells, paint }) => ({ id, by, undone, bytes, cells: [...cells], paint: [...paint].map(([name, px]) => [name, place(px)]) }));
   const cells = [...stacks.cells].map(([key, { base, strokes: on }]) => [key, base, on.map(({ id }) => id)]);
   const tiles = [...stacks.tiles].map(([name, { x, y, base, entries }]) => [name, x, y, sparse(base), entries.map(({ stroke, px }) => [stroke, place(px)])]);
-  return { n, epoch, limits, sum, tail, bytes: stacks.bytes, strokes, cells, tiles, arrays: [...places.keys()].map(sparse) };
+  return { n, epoch, limits, sum, bytes: stacks.bytes, strokes, cells, tiles, arrays: [...places.keys()].map(sparse) };
 }
 
-export function keptFromWire({ n, epoch, limits, sum, tail, bytes, strokes, cells, tiles, arrays }) {
+// Each array or tile sent costs a whole tile here, however few bytes it took to say. A ledger at its limit holds about
+// 2000 (MOST_BYTES), and the newest stroke may run past that.
+const MOST_WIRE_TILES = 8192;
+const must = (ok) => { if (!ok) throw new Error('Not a ledger'); };
+const isCount = (n) => Number.isSafeInteger(n) && n >= 0;
+const isPairs = (pairs) => Array.isArray(pairs) && pairs.length % 2 === 0 && pairs.length <= 2 * TILE * TILE
+  && pairs.every((value, i) => (i % 2 ? Number.isInteger(value) && value > 0 && value <= 0xffffffff : Number.isInteger(value) && value >= 0 && value < TILE * TILE));
+
+// keptForWire's other side, from a stranger: it throws for anything a ledger couldn't have said, by what it's made
+// of and by what its parts say of each other, as undo and redo walk from one to the other without looking. What a
+// cell holds is the caller's to read. width, height: the layer, which tiles are inside.
+export function keptFromWire({ n, epoch, limits, sum, bytes, strokes, cells, tiles, arrays }, { width = Infinity, height = Infinity } = {}) {
+  must(isCount(n) && typeof epoch === 'string' && typeof limits === 'boolean' && Number.isInteger(sum) && isCount(bytes));
+  must(Array.isArray(strokes) && Array.isArray(cells) && Array.isArray(tiles) && Array.isArray(arrays));
+  must(arrays.length <= MOST_WIRE_TILES && tiles.length <= MOST_WIRE_TILES && arrays.every(isPairs));
+  const inLayer = (x, y) => isCount(x) && isCount(y) && !(x % TILE) && !(y % TILE) && x < width && y < height;
   const pixels = arrays.map(filled);
-  const records = new Map(strokes.map(({ id, by, undone, bytes: held, cells: own, paint }) => [id, { id, by, undone, bytes: held, cells: new Map(own), paint: new Map(paint.map(([name, at]) => [name, pixels[at]])) }]));
-  return {
-    n, epoch, limits, sum, tail,
-    stacks: {
-      bytes, strokes: records,
-      cells: new Map(cells.map(([key, base, on]) => [key, { base, strokes: on.map((id) => records.get(id)) }])),
-      tiles: new Map(tiles.map(([name, x, y, base, entries]) => [name, { x, y, base: filled(base), entries: entries.map(([stroke, at]) => ({ stroke, px: pixels[at] })) }])),
-    },
+  const pixelsAt = (at) => {
+    must(Number.isInteger(at) && at >= 0 && at < pixels.length);
+    return pixels[at];
   };
+  const records = new Map();
+  for (const { id, by, undone, bytes: held, cells: own, paint } of strokes.map((stroke) => stroke ?? {})) {
+    must(typeof id === 'string' && id && !records.has(id) && typeof by === 'string' && typeof undone === 'boolean' && isCount(held));
+    must(Array.isArray(own) && Array.isArray(paint) && own.every((cell) => Array.isArray(cell) && cell.length === 2 && typeof cell[0] === 'string'));
+    must(paint.every((tile) => Array.isArray(tile) && tile.length === 2 && inLayer(...String(tile[0]).split(',').map(Number)) && /^\d+,\d+$/.test(tile[0])));
+    records.set(id, { id, by, undone, bytes: held, cells: new Map(own), paint: new Map(paint.map(([name, at]) => [name, pixelsAt(at)])) });
+  }
+  const stacks = {
+    bytes, strokes: records,
+    cells: new Map(cells.map((stack) => {
+      must(Array.isArray(stack) && stack.length === 3 && typeof stack[0] === 'string' && Array.isArray(stack[2]));
+      const [key, base, on] = stack;
+      return [key, {
+        base,
+        strokes: on.map((id) => {
+          must(records.get(id)?.cells.has(key) && !records.get(id).undone);
+          return records.get(id);
+        }),
+      }];
+    })),
+    tiles: new Map(tiles.map((tile) => {
+      must(Array.isArray(tile) && tile.length === 5 && inLayer(tile[1], tile[2]) && tile[0] === `${tile[1]},${tile[2]}` && isPairs(tile[3]) && Array.isArray(tile[4]));
+      const [name, x, y, base, entries] = tile;
+      return [name, {
+        x, y, base: filled(base),
+        entries: entries.map((entry) => {
+          must(Array.isArray(entry) && entry.length === 2 && records.get(entry[0])?.paint.has(name) && !records.get(entry[0]).undone);
+          return { stroke: entry[0], px: pixelsAt(entry[1]) };
+        }),
+      }];
+    })),
+  };
+  for (const record of records.values()) {
+    if (record.undone) continue;
+    for (const key of record.cells.keys()) must(stacks.cells.get(key)?.strokes.includes(record));
+    for (const name of record.paint.keys()) must(stacks.tiles.get(name)?.entries.some(({ stroke }) => stroke === record.id));
+  }
+  return { n, epoch, limits, sum, stacks, tail: [] };
 }
 
 export class Ledger {
