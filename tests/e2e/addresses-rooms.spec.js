@@ -283,6 +283,21 @@ test('going live is a step; Back past it from PIXEL asks over PIXEL', async ({ p
   await selected(host, 'PIXEL');
 });
 
+test('Back with End room\'s question already open is one question, and one Cancel answers it', async ({ page: host }) => {
+  await goLive(host, fakeRoom());
+  await hash(host, LIVE);
+  await host.getByRole('button', { name: 'End room' }).click();
+  await expect(endRoom(host)).toHaveCount(1);
+
+  await host.goBack();
+  await expect.poll(() => new URL(host.url()).hash).toBe('#/social/start');   // it's asking for Back now
+  await expect(endRoom(host)).toHaveCount(1);
+  await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
+  await expect(endRoom(host)).toHaveCount(0);
+  await hash(host, LIVE);
+  expect(await status(host)).toBe('live');
+});
+
 test('Cancel: still live, URL unchanged, Back asks again', async ({ page: host }) => {
   const room = fakeRoom();
   await goLive(host, room);
