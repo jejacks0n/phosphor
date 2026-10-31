@@ -343,6 +343,40 @@ test('past 64 MB in all the oldest stroke goes first, and the newest stays howev
   assert.ok(alone.undo('a', 'huge'));
 });
 
+test('a stroke that keeps writing past 50 strokes is never the oldest, and undoes whole', () => {
+  const { ledger, pic, drawCell, undo } = setup(undefined, { limits: true });
+  drawCell('a', 'open', '0,0', X);
+  for (let i = 1; i <= 60; i++) {
+    drawCell('a', `s${i}`, `${i},1`, Y);
+    drawCell('a', 'open', `${i},0`, X);
+  }
+  assert.equal(ledger.undo('a', 's1'), null); // the others went in its place
+  undo('a', 'open');
+  for (let i = 0; i <= 60; i++) assert.equal(pic.cells.has(`${i},0`), false);
+});
+
+test('a stroke that keeps writing past 64 MB is never the oldest, and undoes whole', () => {
+  const { ledger, pic, drawRuns, undo } = setup(undefined, { limits: true });
+  const tiles = (row) => Array.from({ length: 1100 }, (_, i) => [i * TILE, row * TILE, 1, GREEN]); // 35 MB counted
+  drawRuns('a', 'open', [[0, 0, 1, RED]]);
+  drawRuns('b', 'first', tiles(1));
+  drawRuns('a', 'open', [[1, 0, 1, RED]]);
+  drawRuns('b', 'second', tiles(2));
+  assert.equal(ledger.undo('b', 'first'), null);
+  assert.deepEqual(undo('a', 'open').runs, [[0, 0, 2, 0]]);
+  assert.equal(pic.px(0, 0), 0);
+});
+
+test('a stroke quiet past a limit goes like any other, and what it writes after that undoes alone', () => {
+  const { ledger, pic, drawCell, undo } = setup(undefined, { limits: true });
+  drawCell('a', 'quiet', '0,0', X);
+  for (let i = 1; i <= 50; i++) drawCell('a', `s${i}`, `${i},1`, Y);
+  assert.equal(ledger.bytesOf('quiet'), 0);
+  drawCell('a', 'quiet', '1,0', X);
+  assert.deepEqual(undo('a', 'quiet').cells, [['1,0', null]]);
+  assert.equal(pic.cells.get('0,0'), X);
+});
+
 test('the running sum matches a sum over the positions from scratch, after draw, undo and redo', () => {
   const { pic, ledger, drawCell, drawRuns, undo, redo } = setup({ cells: [['0,0', START]], pixels: [['1,1', GRAY]] });
   const agrees = () => assert.equal(ledger.sum, pic.sum());
@@ -357,6 +391,23 @@ test('the running sum matches a sum over the positions from scratch, after draw,
   undo('b', 'bs'); agrees();
   undo('a', 'as'); agrees();
   assert.notEqual(ledger.sum, 0);
+});
+
+test('seeding the sum leaves the stacks alone, and it follows the picture from there', () => {
+  const { pic, ledger, drawCell, drawRuns, undo } = setup({ cells: [['0,0', START]], pixels: [['1,1', GRAY]] }, { sum: 0 });
+  drawCell('a', 'before', '0,0', X);
+  drawRuns('a', 'before', [[1, 1, 1, RED]]);
+  assert.notEqual(ledger.sum, pic.sum());
+
+  ledger.seedSum(pic.sum());
+  assert.equal(ledger.sum, pic.sum());
+  drawCell('b', 'after', '0,0', Y);
+  drawRuns('b', 'after', [[1, 1, 2, GREEN]]);
+  assert.equal(ledger.sum, pic.sum());
+  undo('b', 'after');
+  assert.equal(ledger.sum, pic.sum());
+  assert.deepEqual(undo('a', 'before').cells, [['0,0', START]]); // and what came before still undoes
+  assert.equal(ledger.sum, pic.sum());
 });
 
 test('the sum already holds a change when it\'s returned, before anyone applies it', () => {
@@ -398,6 +449,16 @@ test('kept() and restore() give a ledger that undoes the same', () => {
   assert.equal(back.submit('z', 'next', { cells: [], runs: [] }).n, third.n + 1);
 });
 
+test('restore keeps which stroke was written longest ago', () => {
+  const { pic, ledger, drawCell } = setup(undefined, { limits: true });
+  for (let i = 0; i < 50; i++) drawCell('a', `s${i}`, `${i},0`, X);
+  drawCell('a', 's0', '0,1', X);
+  const back = Ledger.restore(structuredClone(ledger.kept()), { readCell: pic.readCell, readTile: pic.readTile });
+  back.submit('a', 'one more', { cells: [['60,0', X]], runs: [] });
+  assert.equal(back.undo('a', 's1'), null);
+  assert.ok(back.undo('a', 's0'));
+});
+
 test('restore keeps whether the limits are on', () => {
   const { pic, ledger, drawCell } = setup(undefined, { limits: true });
   for (let i = 0; i < 50; i++) drawCell('a', `s${i}`, `${i},0`, X);
@@ -419,6 +480,16 @@ test('reset drops the stacks and keeps counting', () => {
   assert.deepEqual(undo('a', 't').cells, [['0,0', X]]); // what was there at the reset is now what's beneath
 });
 
+test('reset changes the sum only when it\'s given one', () => {
+  const { pic, ledger, drawCell } = setup();
+  drawCell('a', 's', '0,0', X);
+  const sum = pic.sum();
+  ledger.reset();
+  assert.equal(ledger.sum, sum);
+  ledger.reset({ sum: 0 });
+  assert.equal(ledger.sum, 0);
+});
+
 test('takeStacks and putStacks bring undo back as it was', () => {
   const { pic, ledger, drawCell, drawRuns, undo, redo } = setup({ cells: [['0,0', START]] });
   drawCell('a', 'before', '0,0', X);
@@ -430,7 +501,7 @@ test('takeStacks and putStacks bring undo back as it was', () => {
   pic.cells.clear();
   pic.pixels.clear();
   assert.equal(ledger.undo('a', 'before'), null);
-  assert.equal(ledger.sum, 0);
+  assert.equal(ledger.sum, sum); // not the stacks' to change: a merge in a room is followed by a project, which seeds
   drawCell('a', 'after', '1,1', Y);
   undo('a', 'after');
 
