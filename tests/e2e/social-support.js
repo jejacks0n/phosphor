@@ -192,8 +192,9 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
 // <peer> | null, msg }, room.from(who) the messages of one; room.send(who, msg) pushes one, room.info()
 // is the room as the host is told it, room.drop(who) closes a socket, and room.silence(sub, until) sends
 // silenced to the host and to each socket whose watcher is that account, as the server does on a silence.
-// With hostWaitMs, a host socket closing (or its page closing) with none left in its place ends the room after that long (it
-// stays otherwise): ended goes to everyone, and a later host is refused unavailable.
+// A page closing counts as its sockets closing (a watcher's or the host's). With hostWaitMs, a host socket closing
+// with none left in its place ends the room after that long (it stays otherwise): ended goes to everyone, and a
+// later host is refused unavailable.
 const SETTINGS_EVERY_MS = 1000;
 const SIGNALS = ['feedback', 'chat', 'heads-down', null];
 const FINAL = { refused: 1008, removed: 1000, ended: 1000, replaced: 1000 };   // messages after which the socket is closed
