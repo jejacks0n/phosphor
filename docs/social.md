@@ -215,7 +215,7 @@ In the chat, **Delete** takes the place of a message's time when you point at it
 from someone you blocked shows **Show** first).
 
 **End room** ends it for everyone, and tells watchers at once. Reloading the tab comes back to the same
-room as its host, at the same address, and watchers wait and see it's reconnecting. Closing the tab for
+room as its host, at the same address and the same view, and watchers wait and see it's reconnecting. Closing the tab for
 good ends the room within about a minute. The prompt still asks first; if the room ended while the page was
 away, you're told so and your art stays. Signing out while you host ends the room as well. A chat longer
 than 1000 entries keeps its newest after a reload. A room opened in a copy of the tab moves to the copy,

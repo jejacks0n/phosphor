@@ -388,9 +388,9 @@ export const asked = (page) => page.getByRole('dialog', { name: 'Join this room?
 export const chat = (page) => page.getByRole('complementary', { name: 'Chat' });
 export const outOfRoom = (page) => expect.poll(() => store(page, 'room', (r) => r.role)).toBe(null);
 
-// A host live in `room`, and a watcher on it from the lobby's card, on /social?room=.
-export async function watching(host, context, room) {
-  await goLive(host, room);
+// A host live in `room` (with goLive's options), and a watcher on it from the lobby's card, on /social?room=.
+export async function watching(host, context, room, options) {
+  await goLive(host, room, options);
   const watcher = await watcherPage(context, room);
   await watcher.goto('/');
   await joinFromCard(watcher);

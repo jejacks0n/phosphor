@@ -5,7 +5,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf, putCellPixels } from '@/lib/Cells';
 import { parseKey } from '@/document/editCells';
-import { viewWindow, viewIn, wholeCellsIn } from '@/lib/viewWindow';
+import { viewWindow, viewIn, wholeCellsIn, scrollToCell } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
 import { clampZoom } from '@/lib/zoom';
@@ -98,7 +98,8 @@ const redrawDisplay = () => {
   // A grid pixel is a column wide and half a line tall: the whole cells in view, and the zoom they're
   // at, are what a room's watchers are shown. Set only when they changed, so a redraw doesn't send the view again.
   const cells = { ...wholeCellsIn(view, { cellWidth: zoom, lineHeight: 2 * zoom }, projectStore.cols, charRowsOf(projectStore.rows)), zoom };
-  if (Object.keys(cells).some((k) => cells[k] !== workspaceStore.inputView[k])) workspaceStore.inputView = cells;
+  // Not over a room's view that's coming back (restoreView).
+  if (workspaceStore.viewToRestore?.tab !== 'input' && Object.keys(cells).some((k) => cells[k] !== workspaceStore.inputView[k])) workspaceStore.inputView = cells;
   const win = viewWindow(view, { x: zoom, y: zoom }, projectStore.cols, projectStore.rows);
   const width = win.cols * zoom, height = win.rows * zoom;
   // Resizing clears the canvas, so only when the window's size changes; otherwise a clear, for an
@@ -118,12 +119,26 @@ const redrawDisplay = () => {
   drawOverlay(ctx, win, dc.width, dc.height);
 };
 
+// A room's view coming back: scrolled to in a redraw's frame, after the viewport's own placing, once the
+// art is there: its first cells would center the view (below), and the sizer has its size by then.
+const restoreView = () => {
+  const to = workspaceStore.viewToRestore, sizer = sizerRef.value;
+  if (to?.tab !== 'input' || !sizer || !viewportEl || projectStore.cells.length !== projectStore.cols * charRowsOf(projectStore.rows)) return;
+  const zoom = workspaceStore.editZoom;
+  const { left, top } = scrollToCell(viewIn(sizer, viewportEl), { cellWidth: zoom, lineHeight: 2 * zoom }, to.col, to.row);
+  viewportEl.scrollLeft += left;
+  viewportEl.scrollTop += top;
+  viewportEl.dispatchEvent(new Event('scroll'));   // now, not next frame: the viewport's first resize, this frame, keeps the place it last heard
+  workspaceStore.viewToRestore = null;
+};
+
 // One redraw a frame, from whatever asked for it (scrolls, resizes, edits, zoom).
 let redrawFrame = null;
 const queueRedraw = () => {
   if (redrawFrame) return;
   redrawFrame = requestAnimationFrame(() => {
     redrawFrame = null;
+    restoreView();
     redrawDisplay();
     publishOrigin();
   });
@@ -181,6 +196,7 @@ watch(() => projectStore.cells, () => {
   const size = sizeOf(projectStore.renderer.outputCanvas);
   if (size && size !== lastOutputSize) {
     lastOutputSize = size;
+    if (workspaceStore.viewToRestore?.tab === 'input') return;   // that places it, not the centering
     requestAnimationFrame(() => {
       viewport.value?.centerContent();
       redrawDisplay(); // the window was placed against the scroll from before the centering

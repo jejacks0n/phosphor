@@ -211,8 +211,12 @@ export const useRoomStore = defineStore('room', {
     resume() {
       const record = keptHostingRecord();
       if (!ROOM_ID.test(record?.id) || !record.sub || !record.room || !Array.isArray(record.session?.people)) return;
-      const { id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted } = record;
+      const { id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, view } = record;
       try {
+        if (view) {   // here, so watchers are shown it whichever tab this lands on
+          const { col, row } = view.viewTab === 'input' ? view.inputView : view.ansiViewOrigin;
+          Object.assign(useWorkspaceStore(), view, { viewToRestore: { tab: view.viewTab, col, row } });
+        }
         this.hostRoom({ id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, status: 'reconnecting', _resuming: true }, { ...record.host, muted });
       } catch {
         forgetHostingRecord();
@@ -265,7 +269,9 @@ export const useRoomStore = defineStore('room', {
     keepRecord() {
       if (this.role !== 'host') return;
       const { id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted } = this;
-      keepHostingRecord({ sub: useSocialStore().claims?.sub, id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, host: this._host.kept(), view: null });
+      const { viewTab, ansiZoom, editZoom, ansiViewOrigin, ansiViewSize, ansiViewZoom, inputView } = useWorkspaceStore();
+      const view = { viewTab, ansiZoom, editZoom, ansiViewOrigin, ansiViewSize, ansiViewZoom, inputView };
+      keepHostingRecord({ sub: useSocialStore().claims?.sub, id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, host: this._host.kept(), view });
     },
 
     keepSoon() {
@@ -320,7 +326,7 @@ export const useRoomStore = defineStore('room', {
         watch(() => workspace.sharedView, (v) => { if (v) view.push(v); }, { immediate: true }),
         watch(() => JSON.stringify(this.lobbyPlace), changed, { immediate: true }),
         watch(() => this.hereNow, (here) => sessionSaw(this.session, here), { immediate: true }),
-        watch([() => this.room, () => this.lobbyPin, () => this.peopleOpen, () => this.muted], () => this.keepSoon()),
+        watch([() => this.room, () => this.lobbyPin, () => this.peopleOpen, () => this.muted, () => workspace.sharedView], () => this.keepSoon()),
         watch(() => this.status, (status) => {
           if (status === 'live') this.session.liveSince ??= Date.now();   // a reconnect keeps it
           if (status === 'live') this.keepSoon();

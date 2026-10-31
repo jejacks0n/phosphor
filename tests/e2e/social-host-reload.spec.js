@@ -1,6 +1,6 @@
 // A host's reload keeps the room: it comes back at the same address with its art, chat and numbers, the
 // watchers wait and see it, and a room that ended meanwhile says so. Every reload accepts the page-closing prompt.
-import { test, expect, tab, store, chars, editAt } from './support.js';
+import { test, expect, tab, store, chars, editAt, settled } from './support.js';
 import { fakeRoom, fakeServer, member, ROOM_ID, shown, tile, goLive, watching, selected, hash, asked, chat, outOfRoom } from './social-support.js';
 
 const AWAY = 'Your room ended while the page was away';
@@ -219,4 +219,110 @@ test('a duplicated tab takes the room, and the older tab stops', async ({ page: 
   const at = await store(copy, 'project', (p) => 2 * p.cols + 3);
   const cells = (page) => store(page, 'room', (r) => r.art?.cells.map((c) => c.char).join('') ?? null);
   await expect.poll(async () => (await cells(watcher))?.[at]).toBe('Z');
+});
+
+// The tall art, in a window small enough to scroll, with a watcher; the page-closing prompt is accepted.
+async function hostingTallArt(host, context, room) {
+  await host.setViewportSize({ width: 900, height: 500 });
+  const watcher = await watching(host, context, room, { image: 'images/tall.png' });
+  host.on('dialog', (dialog) => dialog.accept());
+  return watcher;
+}
+
+// The open art tab zoomed by a Ctrl+wheel, and scrolled so `col`, `line` is its top-left cell, on the cell's edge: a
+// view part way into a cell comes back at that edge, which can show a column or line more.
+async function zoomAndScroll(host, deltaY, col, line) {
+  const display = host.locator('.display');
+  const box = await host.locator('article:has(.display)').last().boundingBox();
+  await host.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await host.keyboard.down('Control');
+  await host.mouse.wheel(0, deltaY);
+  await host.keyboard.up('Control');
+  await expect.poll(() => store(host, 'workspace', (w) => w.viewTab === 'output' ? w.ansiViewZoom !== 1 : w.inputView.zoom !== 5)).toBe(true);
+  const size = await store(host, 'project', (p) => [p.cols, Math.ceil(p.rows / 2)]);
+  await display.evaluate((el, [cols, lines, col, line]) => {
+    const article = el.closest('article'), s = el.getBoundingClientRect(), v = article.getBoundingClientRect();
+    article.scrollLeft += col * (s.width - 2 * el.clientLeft) / cols - (v.left + article.clientLeft - s.left - el.clientLeft);
+    article.scrollTop += line * (s.height - 2 * el.clientTop) / lines - (v.top + article.clientTop - s.top - el.clientTop);
+  }, [...size, col, line]);
+  await expect.poll(() => store(host, 'workspace', (w) => [w.sharedView.col, w.sharedView.row])).toEqual([col, line]);
+}
+
+const shared = (page) => store(page, 'workspace', (w) => w.sharedView);
+
+// What the watcher's host box is from here on, each change of it.
+const boxesFrom = (watcher) => store(watcher, 'room', (r) => {
+  window.boxes = [];
+  r.$subscribe(() => {
+    const box = JSON.stringify(r.hostView);
+    if (window.boxes.at(-1) !== box) window.boxes.push(box);
+  });
+});
+
+test('a host scrolled and zoomed in ANSI comes back to the same view, and the watcher\'s host box doesn\'t move', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const watcher = await hostingTallArt(host, context, room);
+  await tab(host, 'ANSI').click();
+  await zoomAndScroll(host, 30, 0, 200);
+  const before = await shared(host);
+  expect(before.row).toBeGreaterThan(0);
+  await expect.poll(() => store(watcher, 'room', (r) => r.hostView)).toEqual(before);
+  await boxesFrom(watcher);
+
+  await host.reload();
+  await live(host);
+  await expect.poll(() => hosts(room)).toBe(2);
+  await hash(host, `/ansi?room=${ROOM_ID}`);
+  await expect.poll(() => shared(host)).toEqual(before);
+  await settled(host);
+  expect(await shared(host)).toEqual(before);
+  expect(await store(host, 'workspace', (w) => w.viewToRestore)).toBe(null);
+  await expect.poll(() => store(watcher, 'room', (r) => r.hostView)).toEqual(before);
+  expect((await watcher.evaluate(() => window.boxes)).filter((box) => box !== JSON.stringify(before))).toEqual([]);
+});
+
+test('a host scrolled and zoomed in PIXEL comes back to the same view, and the watcher\'s host box doesn\'t move', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const watcher = await hostingTallArt(host, context, room);
+  await tab(host, 'PIXEL').click();
+  await zoomAndScroll(host, -100, 7, 200);
+  const before = await shared(host);
+  await expect.poll(() => store(watcher, 'room', (r) => r.hostView)).toEqual(before);
+  const zoom = await store(host, 'workspace', (w) => w.editZoom);
+
+  await host.reload();
+  await live(host);
+  await expect.poll(() => hosts(room)).toBe(2);
+  await hash(host, `/pixel?room=${ROOM_ID}`);
+  await selected(host, 'PIXEL');
+  await expect.poll(() => shared(host)).toEqual(before);
+  await settled(host);
+  expect(await shared(host)).toEqual(before);
+  expect(await store(host, 'workspace', (w) => [w.editZoom, w.viewToRestore])).toEqual([zoom, null]);
+  await expect.poll(() => store(watcher, 'room', (r) => r.hostView)).toEqual(before);
+});
+
+test('reloaded on SOCIAL, watchers keep the view; going to ANSI opens at it', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const watcher = await hostingTallArt(host, context, room);
+  await tab(host, 'ANSI').click();
+  await zoomAndScroll(host, 30, 0, 200);
+  const before = await shared(host);
+  await expect.poll(() => store(watcher, 'room', (r) => r.hostView)).toEqual(before);
+  await tab(host, 'SOCIAL').click();
+  await boxesFrom(watcher);
+
+  await host.reload();
+  await live(host);
+  await expect.poll(() => hosts(room)).toBe(2);
+  await selected(host, 'SOCIAL');
+  expect(await shared(host)).toEqual(before);
+  await expect.poll(() => store(watcher, 'room', (r) => r.hostView)).toEqual(before);
+  expect((await watcher.evaluate(() => window.boxes)).filter((box) => box !== JSON.stringify(before))).toEqual([]);
+
+  await tab(host, 'ANSI').click();
+  await expect.poll(() => store(host, 'workspace', (w) => w.viewToRestore)).toBe(null);
+  await settled(host);
+  expect(await shared(host)).toEqual(before);
+  expect(await store(watcher, 'room', (r) => r.hostView)).toEqual(before);
 });

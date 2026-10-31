@@ -41,6 +41,15 @@ export function viewIn(sizer, viewport) {
 }
 
 /**
+ * How far to scroll for `col`, `row` to be the first whole cell on screen, `view` and `cell` as for
+ * `wholeCellsIn`. Nothing, on an axis whose first cell is already on screen with the grid inside the view.
+ */
+export function scrollToCell(view, cell, col, row) {
+  const by = (at, size, from) => (at > 0 || from > 0 ? at * size - from : 0);
+  return { left: by(col, cell.cellWidth, view.x), top: by(row, cell.lineHeight, view.y) };
+}
+
+/**
  * The whole cells on screen: the first, and how many across and down. `view` as for `viewWindow`,
  * `cell` the cell in CSS px ({ cellWidth, lineHeight }). A cell hidden by under a pixel still counts.
  */

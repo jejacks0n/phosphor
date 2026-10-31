@@ -7,7 +7,7 @@ import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
 import CellCanvas from '@/lib/CellCanvas';
-import { viewWindow, viewIn, wholeCellsIn } from '@/lib/viewWindow';
+import { viewWindow, viewIn, wholeCellsIn, scrollToCell } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
 import { clampAnsiZoom } from '@/lib/zoom';
@@ -131,6 +131,7 @@ const render = () => {
     queueRender();
     return;
   }
+  if (workspaceStore.viewToRestore?.tab === 'output') publishOrigin();   // once this has laid out
 
   if (!useDom.value) {
     if (!ensureCellCanvas() || !viewportEl) return;
@@ -268,6 +269,20 @@ watch(() => workspaceStore.displayFontLoaded, () => {
   queueRender();
 });
 
+// A room's view coming back: scrolled to once the art is laid out at its final cell size (the sizer's, or
+// the <pre>'s cells, in the display font). False until then, when nothing's published over the kept view.
+const restoreView = (display, m) => {
+  const to = workspaceStore.viewToRestore;
+  if (to?.tab !== 'output') return true;
+  const sized = useDom.value ? display.childElementCount : sizedBy.value?.cellWidth === m.cellWidth && sizedBy.value.lineHeight === m.lineHeight;
+  if (!sized || !workspaceStore.displayFontLoaded || projectStore.cells.length !== projectStore.cols * charRowsOf(projectStore.rows)) return false;
+  const { left, top } = scrollToCell(viewIn(display, viewportEl), m, to.col, to.row);
+  viewportEl.scrollLeft += left;
+  viewportEl.scrollTop += top;
+  workspaceStore.viewToRestore = null;
+  return true;
+};
+
 // The first whole cell on screen (top-left), where a paste goes with no selection or text cursor.
 let originFrame = 0;
 let viewportEl = null;
@@ -276,7 +291,7 @@ const publishOrigin = () => {
   cancelAnimationFrame(originFrame);
   originFrame = requestAnimationFrame(() => {
     const display = displayRef.value, m = ensureMetrics();
-    if (!display || !m || !viewportEl) return;
+    if (!display || !m || !viewportEl || !restoreView(display, m)) return;
     const { col, row, cols, rows } = wholeCellsIn(viewIn(display, viewportEl), m, projectStore.cols, charRowsOf(projectStore.rows));
     workspaceStore.ansiViewOrigin = { col, row };
     workspaceStore.ansiViewSize = { cols, rows };
