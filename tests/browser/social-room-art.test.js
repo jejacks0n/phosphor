@@ -78,6 +78,35 @@ test('the middle of what\'s in view, in cells, is told as it changes (a room rep
   await expect.poll(() => seen.lookingAt).toEqual({ middleCol: 100 / 8, middleRow: 50 / 16 });   // the 200 x 100 px box's middle
 });
 
+test('a host\'s view bigger than the window while tracking: the host at an end of the art is that end in the window, and between them the window stays inside the box', async () => {
+  await createTestApp();
+  // 480 x 480 px in a 200 x 100 window, over art of 800 x 800 px.
+  const { state, scroll, box, seen } = mount({ hostView: { col: 0, row: 0, cols: 60, rows: 30 } });
+  await expect.poll(() => box.style.width).toBe('480px');
+  await frames();
+  expect([scroll.scrollLeft, scroll.scrollTop]).toEqual([0, 0]);
+
+  state.hostView = { col: 40, row: 20, cols: 60, rows: 30 };
+  await nextTick();
+  expect(scroll.scrollLeft).toBe(scroll.scrollWidth - scroll.clientWidth);
+  expect(scroll.scrollTop).toBe(scroll.scrollHeight - scroll.clientHeight);
+
+  state.hostView = { col: 10, row: 5, cols: 60, rows: 30 };
+  await nextTick();
+  expect([scroll.scrollLeft, scroll.scrollTop]).toEqual([0.25 * 600, 0.25 * 700]);
+  expect(scroll.scrollTop).toBeGreaterThanOrEqual(5 * 16);
+  expect(scroll.scrollTop + scroll.clientHeight).toBeLessThanOrEqual((5 + 30) * 16);
+  expect(seen.lookArounds).toBe(0);
+});
+
+test('a host\'s view of all the art, bigger than the window, has no end to go to: its middle is centered', async () => {
+  await createTestApp();
+  const { scroll, box } = mount({ hostView: { col: 0, row: 0, cols: COLS, rows: LINES } });
+  await expect.poll(() => box.style.width).toBe('800px');
+  await frames();
+  expect([scroll.scrollLeft, scroll.scrollTop]).toEqual([(800 - 200) / 2, (800 - 100) / 2]);
+});
+
 test('at a zoom of 0.5 the cells and the box are half size, and the box is centered', async () => {
   await createTestApp();
   const { state, scroll, box } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 } });
