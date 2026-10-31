@@ -1581,6 +1581,57 @@ test.each([
   await lastSocket(2);
 });
 
+test('the view waits for the font to go to the Host, and goes once it\'s in', async () => {
+  const workspace = useWorkspaceStore();
+  Object.assign(workspace, { viewTab: 'input', displayFontLoaded: null, inputView: { col: 2, row: 1, cols: 6, rows: 3, zoom: 4 } });
+  await goLive();
+  expect(room._host.view).toBe(null);
+  workspace.inputView = { col: 3, row: 1, cols: 6, rows: 3, zoom: 4 };
+  await later();
+  expect(room._host.view).toBe(null);
+  expect(keptHostingRecord().view.inputView.col).toBe(2);   // what's kept doesn't wait: the next write has it
+
+  workspace.displayFontLoaded = workspace.displayFontSpec;
+  await expect.poll(() => room._host.view).toEqual(plain(workspace.sharedView));
+  expect(room._host.view.col).toBe(3);
+  await expect.poll(() => keptHostingRecord().view.inputView.col, { timeout: 3000 }).toBe(3);
+});
+
+test('a host going live with the font in sends the view at once', async () => {
+  Object.assign(useWorkspaceStore(), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
+  await goLive();
+  expect(room._host.view).toMatchObject({ col: 3, row: 1, cols: 10, rows: 5 });
+});
+
+test('closing a resumed room leaves no view to scroll the next art to', async () => {
+  await goLive();
+  Object.assign(useWorkspaceStore(), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 40 } });
+  await reload();
+  room.resume();
+  expect(useWorkspaceStore().viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
+  await lastSocket(2);
+  room.close();
+  expect(useWorkspaceStore().viewToRestore).toBe(null);
+});
+
+test('no art to come back to, or another account: no view to scroll the next art to', async () => {
+  await goLive();
+  Object.assign(useWorkspaceStore(), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 40 } });
+  await reload({ art: false });
+  const record = sessionStorage.getItem(RECORD);
+  room.resume();
+  expect(useWorkspaceStore().viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
+  useWorkspaceStore().documentAnswered = true;
+  await expect.poll(() => room.role).toBe(null);
+  expect(useWorkspaceStore().viewToRestore).toBe(null);
+
+  sessionStorage.setItem(RECORD, JSON.stringify({ ...JSON.parse(record), sub: 'someone-else' }));
+  room.resume();
+  expect(useWorkspaceStore().viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
+  await expect.poll(() => room.role).toBe(null);
+  expect(useWorkspaceStore().viewToRestore).toBe(null);
+});
+
 test('the view is kept as it changes, not only when the page goes', async () => {
   await goLive();
   useWorkspaceStore().ansiViewOrigin = { col: 2, row: 30 };
@@ -1614,9 +1665,13 @@ test('resume() with no record, or one that can\'t be read, changes nothing', asy
 
 test('a record whose restore throws is forgotten, with nothing half set', async () => {
   const good = { sub: 'u_1', id: ID, link: 'l', room: {}, session: newSession(), muted: [], host: { log: [], only: [], removed: [], here: [] } };
-  for (const fields of [{ host: undefined }, { host: { ...good.host, only: [1] } }, { view: {} }]) {
+  const view = { viewTab: 'output', ansiZoom: 0.5, editZoom: 9, ansiViewOrigin: { col: 3, row: 40 }, ansiViewSize: { cols: 60, rows: 20 }, ansiViewZoom: 0.5, inputView: { col: 1, row: 2, cols: 5, rows: 6, zoom: 9 } };
+  const workspace = () => { const { ansiZoom, editZoom, ansiViewOrigin, viewToRestore } = useWorkspaceStore(); return plain({ ansiZoom, editZoom, ansiViewOrigin, viewToRestore }); };
+  const before = workspace();
+  for (const fields of [{ host: undefined }, { host: { ...good.host, only: [1] } }, { view: {} }, { host: { ...good.host, only: [1] }, view }]) {
     sessionStorage.setItem(RECORD, JSON.stringify({ ...good, ...fields }));
     expect(() => room.resume()).not.toThrow();
+    expect(workspace()).toEqual(before);
     expect([room.role, room.id, room.status, room.link, room._host, room._settings, room._resuming]).toEqual([null, null, null, null, null, null, false]);
     expect(sessionStorage.getItem(RECORD)).toBe(null);
   }
