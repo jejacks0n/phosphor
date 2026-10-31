@@ -2,9 +2,10 @@
 // in for the server's socket, and passes signed by a test key. RTCDataChannel's send is watched, so the
 // tests can count what the host sends; the watchers here send only 'tracking' (chat is social-chat.test.js).
 import { test, expect, afterEach, vi } from 'vitest';
-import { Host } from '@/social/hosting';
+import { Host, KEPT_THROUGH_RELOAD } from '@/social/hosting';
 import { Watch } from '@/social/watching';
 import { openPeer } from '@/social/peer';
+import { newId } from '@/social/chat';
 import { packSnapshot, CHUNK_BYTES, MOST_SNAPSHOT_BYTES, MOST_SNAPSHOT_CHUNKS } from '@/social/wire';
 import { toBase64url } from '@/social/base64url';
 import { hex2rgb } from '@/lib/ColorUtils';
@@ -54,7 +55,7 @@ function watchSends() {
 // A host and its watchers joined through the relay. `room.toHost` are the host's messages to the server
 // other than signals; `room.offers[peer]` counts the offers that went to each watcher; signals for a
 // peer in `room.lost` go nowhere (the host's socket is down).
-async function room(peers = ['p1', 'p2'], { lost = [], first = art() } = {}) {
+async function room(peers = ['p1', 'p2'], { lost = [], first = art(), restore, returnWithinMs } = {}) {
   const r = { toHost: [], offers: {}, watchers: [], log: {}, lost: new Set(lost) };
   r.host = new Host({
     config, passKey: async () => keyB64,
@@ -66,8 +67,10 @@ async function room(peers = ['p1', 'p2'], { lost = [], first = art() } = {}) {
       r.log[msg.to]?.watch.signalFrom('host', msg.data);
     },
     onWatchers: (list) => r.watchers.push(list),
+    returnWithinMs,
   });
   toClose.push(r.host);
+  if (restore) r.host.restore(restore);
   for (const peer of peers) r.log[peer] = watcher(r, peer);
   r.host.setRoom({ name: 'Night shift', welcome: 'Hi' });
   r.host.setArt(first);
@@ -489,4 +492,93 @@ test('a watcher ignores a room or a view that doesn\'t fit, and cuts a long name
   await expect.poll(() => log.views.length, PATIENT).toBe(1);
   expect(log.rooms).toEqual([{ name: 'n'.repeat(60), welcome: 'w'.repeat(200) }]);   // the host's name in it isn't taken
   expect(log.views).toEqual([{ col: 0, row: 3, cols: 8, rows: 2, zoom: 1 }]);
+});
+
+// A host taken back after a reload: it restores what was kept, and the server then lists who's inside.
+async function returning(restore, listed, { lost, returnWithinMs } = {}) {
+  const r = await room([], { restore, lost, returnWithinMs });
+  for (const peer of listed) r.log[peer] = watcher(r, peer);
+  await r.host.hosting(await Promise.all(listed.map(async (peer) => ({ peer, pass: await passFor(`u_${peer}`, peer) }))));
+  return r;
+}
+const line = async (sub, presence = 'joined') => ({ pass: await passFor(sub, sub), id: newId(), ts: Date.now(), presence });
+const said = (text, i = 0) => ({ pass: 'p', id: newId(), ts: i, text, sig: 's' });
+const presences = (r) => r.host.log.list.filter((m) => m.presence);
+const historyOf = (sends, r, peer) => sends.sent().filter((m) => m.t === 'history' && m.channel === r.host.watchers.get(peer)?.channel);
+const here = async (...subs) => Promise.all(subs.map(async (sub) => ({ sub, pass: await passFor(sub, sub) })));
+
+test('a restored host\'s log goes to a returning watcher as its history', async () => {
+  const sends = watchSends();
+  const log = [said('one', 1), said('two', 2), await line('u_p2')];
+  const r = await returning({ log, only: [], removed: [], muted: [], here: await here('u_p1') }, ['p1']);
+  await expect.poll(() => r.log.p1.views.length, PATIENT).toBe(1);
+  expect(historyOf(sends, r, 'p1').map((m) => m.messages)).toEqual([log]);
+});
+
+test('a watcher who was here comes back with no joined line', async () => {
+  const log = [said('one', 1), await line('u_p1')];
+  const r = await returning({ log, only: [], removed: [], muted: [], here: await here('u_p1') }, ['p1']);
+  await expect.poll(() => r.log.p1.views.length, PATIENT).toBe(1);
+  expect(r.host.log.list).toEqual(log);
+});
+
+test('someone who was here but isn\'t in hosting\'s peers gets a left line at once, with their kept pass', async () => {
+  const [p1, p2] = await here('u_p1', 'u_p2');
+  const r = await returning({ log: [], only: [], removed: [], muted: [], here: [p1, p2] }, ['p1'], { lost: ['p1'] });
+  expect(presences(r).map(({ pass, presence }) => ({ pass, presence }))).toEqual([{ pass: p2.pass, presence: 'left' }]);
+});
+
+test('someone listed who never connects gets a left line after returnWithinMs, and one who connects first gets none', async () => {
+  const [p1, p2] = await here('u_p1', 'u_p2');
+  const r = await returning({ log: [], only: [], removed: [], muted: [], here: [p1, p2] }, ['p1', 'p2'], { lost: ['p1'], returnWithinMs: 1000 });
+  await expect.poll(() => r.log.p2.views.length, PATIENT).toBe(1);
+  expect(presences(r)).toEqual([]);
+  await expect.poll(() => presences(r).length, PATIENT).toBe(1);
+  expect(presences(r).map(({ pass, presence }) => ({ pass, presence }))).toEqual([{ pass: p1.pass, presence: 'left' }]);
+});
+
+test('a muted message stays shown only to its sender after restore', async () => {
+  const sends = watchSends();
+  const mine = said('muted', 1);
+  const log = [said('before', 0), mine, said('after', 2)];
+  const r = await returning({ log, only: [[mine.id, 'u_p1']], removed: [], muted: ['u_p1'], here: await here('u_p1', 'u_p2') }, ['p1', 'p2']);
+  for (const peer of ['p1', 'p2']) await expect.poll(() => r.log[peer].views.length, PATIENT).toBe(1);
+  expect(historyOf(sends, r, 'p1')[0].messages.map((m) => m.id)).toEqual(log.map((m) => m.id));
+  expect(historyOf(sends, r, 'p2')[0].messages.map((m) => m.id)).toEqual([log[0].id, log[2].id]);
+  expect(r.host.muted).toEqual(new Set(['u_p1']));
+});
+
+test('kept() still lists those awaited, so a second reload gives no joined or left line for them', async () => {
+  const [p1] = await here('u_p1');
+  const first = await returning({ log: [], only: [], removed: [], muted: [], here: [p1] }, ['p1'], { lost: ['p1'] });
+  expect(first.host.kept().here).toEqual([p1]);
+  const second = await returning(first.host.kept(), ['p1']);
+  await expect.poll(() => second.log.p1.views.length, PATIENT).toBe(1);
+  expect(presences(second)).toEqual([]);
+  expect(second.host.kept().here.map((h) => h.sub)).toEqual(['u_p1']);   // now by the pass it came back with
+});
+
+test('kept() holds the newest KEPT_THROUGH_RELOAD entries, and only pairs for those', async () => {
+  const log = Array.from({ length: KEPT_THROUGH_RELOAD + 5 }, (_, i) => said(`m${i}`, i));
+  const only = [[log[0].id, 'u_p1'], [log[4].id, 'u_p1'], [log[5].id, 'u_p2'], [log.at(-1).id, 'u_p3']];
+  const { host } = await room([], { restore: { log, only, removed: [], muted: [], here: [] } });
+  const kept = host.kept();
+  expect(kept.log).toEqual(log.slice(5));
+  expect(kept.only).toEqual(only.slice(2));
+});
+
+test('a removed peer stays unmet after restore', async () => {
+  const r = await returning({ log: [], only: [], removed: ['p1'], muted: [], here: [] }, ['p1', 'p2']);
+  await expect.poll(() => r.log.p2.views.length, PATIENT).toBe(1);
+  expect(r.offers.p1).toBeUndefined();
+  expect(r.host.watchers.has('p1')).toBe(false);
+  expect(r.toHost).toContainEqual({ type: 'remove', peer: 'p1' });
+  expect(r.host.kept().removed).toEqual(['p1']);
+});
+
+test('close() stops the wait: no left line after it', async () => {
+  const r = await returning({ log: [], only: [], removed: [], muted: [], here: await here('u_p1') }, ['p1'], { lost: ['p1'], returnWithinMs: 100 });
+  r.host.close();
+  await wait(400);
+  expect(presences(r)).toEqual([]);
 });

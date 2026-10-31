@@ -6,7 +6,7 @@
 // signed by the key in their pass, and the host keeps the last of them for anyone who joins later,
 // with who came and went among them.
 import { openPeer } from './peer.js';
-import { verifyPass } from './pass.js';
+import { decodePass, verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
 import { Allowance, ChatLog, chatText, isId, newId, signedText } from './chat.js';
 import { CHUNK_BYTES, changedCells, encodeCells, packSnapshot } from './wire.js';
@@ -18,6 +18,8 @@ const MOST_SKEW_MS = 120_000;                // a chat message's time, from the 
 const EARLIER_EVERY_MS = 500;                // a watcher's asks for earlier messages, at most
 const MOST_CHECKING = 4;                     // a watcher's chat waiting to be checked; more is ignored
 const TRACKING_EVERY_MS = 250;              // who's here is redrawn for tracking toggles at most this often
+export const KEPT_THROUGH_RELOAD = 1000;     // the newest messages kept() hands over, to be restored after the host's reload
+export const RETURN_WITHIN_MS = 60_000;      // after a reload, those who were here have this long to come back before they're said to have left
 
 const sameView = (a, b) => a.col === b.col && a.row === b.row && a.cols === b.cols && a.rows === b.rows && a.zoom === b.zoom;
 
@@ -37,8 +39,8 @@ function cellsMessage(art, at) {
 }
 
 export class Host {
-  constructor({ send, passKey, config, connectWithinMs, roomId, onWatchers = () => {}, onChat = () => {} }) {
-    Object.assign(this, { send, passKey, config, connectWithinMs, roomId, onWatchers, onChat });
+  constructor({ send, passKey, config, connectWithinMs, roomId, returnWithinMs = RETURN_WITHIN_MS, onWatchers = () => {}, onChat = () => {} }) {
+    Object.assign(this, { send, passKey, config, connectWithinMs, roomId, returnWithinMs, onWatchers, onChat });
     // peer -> { peer, pass, claims, tracking, conn, channel, has (the art it has), packing, behind,
     // allowance, heard (its chat, checked one at a time), checking (how many wait), askedAt (its last ask
     // for earlier messages), here (counted among those in the room) }
@@ -49,10 +51,38 @@ export class Host {
     this.muted = new Set();   // subs whose messages go to no one but them (and the host); they aren't told
     this.only = new Map();   // id -> sub: a message sent while they were muted, shown to them alone
     this.log = new ChatLog();
+    this.returning = new Map();   // sub -> the pass they had, for those who were here before a reload and haven't come back
+    this.settled = true;   // false from restore() until the first hosting() says who of them is inside
     this.room = null;
     this.art = null;
     this.view = null;
     this.packed = null;   // { art, chunks }: one snapshot for every watcher, packed again only for new art
+  }
+
+  // What the host keeps through a reload, for restore() to take back: the newest of the log, who was sent
+  // what while muted, who's removed, and who is here (a pass each), those still awaited too.
+  kept() {
+    const log = this.log.list.slice(-KEPT_THROUGH_RELOAD);
+    const ids = new Set(log.map((m) => m.id));
+    const here = new Map(this.returning);
+    for (const w of this.watchers.values()) if (w.here) here.set(w.claims.sub, w.pass);
+    return {
+      log,
+      only: [...this.only].filter(([id]) => ids.has(id)),
+      removed: [...this.removed],
+      here: [...here].map(([sub, pass]) => ({ sub, pass })),
+    };
+  }
+
+  // Takes back what kept() handed over (and `muted`, the store's subs), before the first hosting(). Those
+  // who were here aren't said to join when they come back; hosting() says who isn't coming.
+  restore({ log, only, removed, muted, here }) {
+    for (const entry of log) this.log.add(entry);
+    this.only = new Map(only);
+    this.removed = new Set(removed);
+    this.muted = new Set(muted);
+    this.returning = new Map(here.map(({ sub, pass }) => [sub, pass]));
+    this.settled = false;
   }
 
   // A watcher the server let in. A pass that doesn't check out (or no key to check it with), or a
@@ -106,8 +136,29 @@ export class Host {
       if (listed.has(peer)) this.send({ type: 'remove', peer });
       else this.removed.delete(peer);
     }
+    if (!this.settled) this.settle(peers);
     const meeting = (w) => !w || (w.conn && !w.channel);
     await Promise.all(peers.filter((p) => !this.removed.has(p.peer)).filter((p) => meeting(this.watchers.get(p.peer))).map((p) => this.peer(p.peer, p.pass)));
+  }
+
+  // The first listing after restore(): those who were here and aren't inside are said to have left at once,
+  // and the rest have returnWithinMs to connect before they are.
+  settle(peers) {
+    this.settled = true;
+    const inside = new Set();
+    for (const { pass } of peers) {
+      try { inside.add(decodePass(pass).sub); } catch { /* a pass that can't be read names no one */ }
+    }
+    for (const sub of this.returning.keys()) if (!inside.has(sub)) this.leave(sub);
+    if (this.returning.size) {
+      this.returnTimer = setTimeout(() => { for (const sub of [...this.returning.keys()]) this.leave(sub); }, this.returnWithinMs);
+    }
+  }
+
+  leave(sub) {
+    const pass = this.returning.get(sub);
+    this.returning.delete(sub);
+    this.post('presence', { pass, id: newId(), ts: Date.now(), presence: 'left' });
   }
 
   peerGone(peer) {
@@ -160,7 +211,7 @@ export class Host {
     w.here = true;
     const n = this.here.get(w.claims.sub) ?? 0;
     this.here.set(w.claims.sub, n + 1);
-    if (!n) this.post('presence', { pass: w.pass, id: newId(), ts: Date.now(), presence: 'joined' });
+    if (!n && !this.returning.delete(w.claims.sub)) this.post('presence', { pass: w.pass, id: newId(), ts: Date.now(), presence: 'joined' });
   }
 
   went(w) {
@@ -215,6 +266,7 @@ export class Host {
 
   close() {
     clearTimeout(this.redrawing);
+    clearTimeout(this.returnTimer);
     this.here.clear();
     for (const peer of [...this.watchers.keys()]) this.drop(peer);
   }
