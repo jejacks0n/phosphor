@@ -53,6 +53,7 @@ const cancelEnd = async () => {
   await nextTick();
   endButton.value.focus();
 };
+watch(() => room.askingEnd, (asking) => { if (asking) ending.value = false; });   // Back asks the same question: one is enough
 
 // Room settings follow the room as it is (the server's word on it included): each field only when its
 // value changes, so a room given again as it was (hosting after a reconnect) leaves what's typed. A field
