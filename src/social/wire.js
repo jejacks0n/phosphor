@@ -8,6 +8,8 @@
  *   { t: 'cells', at: [index], colors, cells }  changed cells, encodeCells' form, cells[i] at at[i]
  *   { t: 'view', col, row, cols, rows, zoom }   the part of the art the host is looking at, and its zoom: a
  *                                               fraction of the font's cell, 0.25 to 1
+ *   { t: 'away' }                               the host's page is going (a reload, or closing): the watcher
+ *                                               treats its connection as lost, and the next offer connects it again
  * Watcher to host:
  *   { t: 'tracking', on }
  *
