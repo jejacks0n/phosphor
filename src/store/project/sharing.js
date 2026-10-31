@@ -29,6 +29,7 @@ import { MOST_CHANGE_BYTES, packProject, readChange } from '@/social/wire.js';
 import { ALONE, SAVED_KEYS, randomId, runsPatch } from '@/store/project/shared.js';
 
 const SLICE_MS = 100;
+export const ASK_AGAIN_MS = 30_000;
 const LEAST_BASE_RUNS_BYTES = 4096; // of a base message, beside its pins; less and it's the project instead
 const HIDDEN_TAB_MS = 100; // a hidden tab has no frames, and still has to catch up
 const EDIT_ONLY = { base: false, edit: true };
@@ -108,6 +109,20 @@ function atNextFrame(fn) {
   return cancel;
 }
 
+// A project for a check that didn't match. Asked again after a long wait, as a host whose packing failed or
+// whose chunks were bad says nothing, and it sends a number one check: no later check would come to prompt it.
+function askForProject(sharing) {
+  sharing.asked = true;
+  if (!sharing.opening) sharing.send({ t: 'artist-hello', has: -1, epoch: sharing.epoch });
+  clearTimeout(sharing.askAgain);
+  sharing.askAgain = setTimeout(() => askForProject(sharing), ASK_AGAIN_MS);
+}
+
+function stopAsking(sharing) {
+  clearTimeout(sharing.askAgain);
+  sharing.asked = false;
+}
+
 const flushSoon = (project, sharing) => {
   sharing.cancelFlush ??= atNextFrame(() => {
     sharing.cancelFlush = null;
@@ -149,7 +164,9 @@ export const sharingActions = {
     const sharing = {
       send, sendDocument, role, me, held: null, takenBack: null, timer: setInterval(() => this.sendSlice(), SLICE_MS),
       heard: [], heardCells: new Map(), heardRuns: [], cancelFlush: null,
-      epoch: null, asked: false, // an artist's: the project's epoch; a project has been asked for and hasn't landed
+      // An artist's: the project's epoch; a project being opened; one asked for that hasn't landed, and when to
+      // ask again.
+      epoch: null, opening: false, asked: false, askAgain: null,
     };
     if (role === 'host') {
       this._ledger.epoch ??= randomId();
@@ -172,6 +189,7 @@ export const sharingActions = {
     if (!sharing) return;
     this.commitPending();
     clearInterval(sharing.timer);
+    stopAsking(sharing);
     this._sharing = null;
     this._paused = false;
     this._ledger.setLimits(false);
@@ -351,19 +369,20 @@ export const sharingActions = {
 
   // A check heard in its place among the numbers, so what came before it has landed and Pending's sum is the
   // agreed one as of what's been heard. Only at the same number does that say anything, whatever's waiting
-  // behind it. A mismatch asks for the project once, until one lands (or the connection's new).
+  // behind it. A mismatch asks for the project once, until one lands (or the connection's new, or a long wait
+  // passes). The sum follows numbers, so it only sees drift at a position a number has since touched, or a
+  // number that never landed once another follows: anything else stays unseen, by design, as nothing rescans.
   compareCheck({ n, sum }) {
     const sharing = this._sharing, { pending } = sharing;
-    if (sharing.asked || this._paused || pending.n !== n || pending.sum === sum) return;
-    sharing.asked = true;
-    sharing.send({ t: 'artist-hello', has: -1, epoch: sharing.epoch });
+    if (sharing.asked || sharing.opening || this._paused || pending.n !== n || pending.sum === sum) return;
+    askForProject(sharing);
   },
 
   // A new connection to the host: an ask on the last one went with it, and the host counts `took` afresh.
   newConnection() {
     const sharing = this._sharing;
     if (!sharing?.pending) return;
-    sharing.asked = false;
+    stopAsking(sharing);
     sharing.pending.newConnection();
   },
 
@@ -457,20 +476,25 @@ export const sharingActions = {
   // Its sum is what the scan says and what was mine and unnumbered goes back on top (in that order, as reapply
   // reads what's beneath), less what the host had handled by then (took), which it holds or refused. An open
   // stroke has gone out by then: openFromHost commits it, so no baseline moves past what's unsent. Numbers it
-  // holds are gone with what was waiting; the room's Watch sees to any later.
+  // holds are gone with what was waiting; the room's Watch sees to any later. In the epoch I have, it's the same
+  // document brought up to date: History only asks the host by stroke id, and the host still has those strokes,
+  // so undo and the selection stay. A new epoch means the positions don't mean what they did, so both go.
   async takeProject(parts, { n, epoch = null, took = 0, filename, send, me }) {
     const cells = [...parts.editCells];
     if (cells.length > MAX_CELLS || !readChange({ stroke: 'project', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES })) return false;
-    if (this._sharing) this._sharing.asked = true; // no check says anything while this opens
+    const opening = this._sharing;
+    if (opening) opening.opening = true; // no check says anything while this opens
     try {
       await this.openFromHost(
         { ...parts, settings: settingsFromHost(parts.settings), erasedCells: [], migrated: false },
-        { filename, documentId: this._sharing ? this.documentId : undefined },
+        { filename, documentId: opening ? this.documentId : undefined, sameDocument: !!opening && epoch !== null && opening.epoch === epoch },
       );
     } catch (error) {
       console.warn('The room\'s art couldn\'t be opened.', error);
       if (!this.image) this.stopSharing();
       return false;
+    } finally {
+      if (opening) opening.opening = false;
     }
     const sharing = this._sharing;
     if (sharing) {
@@ -485,7 +509,8 @@ export const sharingActions = {
     } else {
       this.startSharing({ send, role: 'artist', me });
     }
-    Object.assign(this._sharing, { epoch, asked: false });
+    stopAsking(this._sharing);
+    this._sharing.epoch = epoch;
     this._sharing.pending.n = n;
     return true;
   },

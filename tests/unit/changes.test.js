@@ -129,3 +129,18 @@ test('Tail forgets what came before a gap in n, and never answers has: -1', () =
   assert.deepEqual(fromZero.since(0).map((x) => x.n), [1, 2]);
   assert.equal(new Tail().since(-1), null);
 });
+
+// Browsers keep a canvas premultiplied, and read the same stored pixel back differently: this pair is one.
+test('hashPixel agrees for two readings of one stored pixel, and tells real differences apart', () => {
+  const chromium = 0x00ff2a06, webkit = 0x00ff2b06;
+  assert.equal(hashPixel(3, 4, chromium), hashPixel(3, 4, webkit));
+  assert.notEqual(hashPixel(3, 4, chromium), hashPixel(3, 4, 0x00ff2a07));
+  assert.notEqual(hashPixel(3, 4, chromium), hashPixel(3, 4, 0x00002a06));
+  assert.notEqual(hashPixel(3, 4, RED), hashPixel(3, 4, 0xff0001ff));   // opaque: every value is its own
+  assert.equal(hashPixel(3, 4, 0x12345600), 0);
+});
+
+test('pixelRuns sees no change between two readings of one stored pixel', () => {
+  assert.deepEqual(pixelRuns([0, 255, 42, 6], [0, 255, 43, 6], 1, 1, 0, 0), []);
+  assert.deepEqual(pixelRuns([0, 255, 42, 6], [0, 255, 42, 7], 1, 1, 0, 0), [[0, 0, 1, 0x00ff2a07]]);
+});

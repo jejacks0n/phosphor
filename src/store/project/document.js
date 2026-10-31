@@ -188,6 +188,7 @@ export const documentActions = {
     this.renderer.baseLayer = null;
     this._stroke = null;
     this.dropHeard();
+    if (this._sameDocument) return; // a host's project bringing this one up to date (openFromHost)
     this.clearHistory();
     const workspace = useWorkspaceStore();
     workspace.selection = workspace.selectionOffset = workspace.lastPick = workspace.wand = null;
@@ -255,14 +256,17 @@ export const documentActions = {
   // The same for the project a host sends an artist (takeProject is the only caller), the one way past
   // HOST_ONLY_ACTIONS, which refuse openParts and what it calls. Open only while it's written, in one go:
   // nothing a person presses can get in. What's open goes first, as it's on the document being replaced.
-  async openFromHost(parts, options) {
+  // sameDocument: undo and the selection stay (takeProject says when).
+  async openFromHost(parts, { sameDocument = false, ...options }) {
     const pictures = await loadParts(parts);
     this.commitPending();
     this._takingProject = true;
+    this._sameDocument = sameDocument;
     try {
       showParts.call(this, parts, pictures, options);
     } finally {
       this._takingProject = false;
+      this._sameDocument = false;
     }
   },
 

@@ -17,7 +17,7 @@ import { clampAnsiZoom } from '../lib/zoom.js';
 
 const MOST_HEARD_CHARS = 256 * 1024;   // a host's text message: what a channel carries
 const MOST_WAITING = 1024;  // messages waiting to be handled: a whole snapshot's chunks and plenty more
-const MOST_WAITING_DRAWING = 64 * 1024;   // for someone a project has reached: everything numbered waits here while it opens
+const MOST_WAITING_DRAWING = 64 * 1024;   // for an artist from project-start: everything numbered waits here while it unpacks and opens
 const MOST_NAME = 60;       // a room's name
 const MOST_WELCOME = 200;
 const MOST_PROJECT_CHUNKS = MOST_PROJECT_BYTES / CHUNK_BYTES;   // zipped, it's never more than unzipped
@@ -31,11 +31,13 @@ export class Watch {
   constructor({
     send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = NOTHING,
     onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCursors = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING,
+    takesProjects = () => false,
   }) {
     Object.assign(this, {
       send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat,
-      onNumbered, onSettings, onBase, onProject, onCheck, onCursors, onInvite, onWithdrawn, onArtists,
+      onNumbered, onSettings, onBase, onProject, onCheck, onCursors, onInvite, onWithdrawn, onArtists, takesProjects,
     });
+    this.mostWaiting = MOST_WAITING;
     this.conn = null;
     this.channel = null;
     this.tracking = true;
@@ -113,6 +115,7 @@ export class Watch {
     this.projectN = -1;       // numbers up to this are in the project opened
     this.heard = Promise.resolve();   // messages are handled one at a time, in order
     this.waiting = 0;                 // how many of them are still to be handled
+    this.mostWaiting = MOST_WAITING;
     this.passes = new Map();   // pass -> its claims: good ones only, checked once a connection
     this.histories = 0;
     const conn = this.conn = openPeer({
@@ -183,6 +186,7 @@ export class Watch {
   projectStart({ n, epoch, bytes, chunks, took }) {
     const fits = place(n) && typeof epoch === 'string' && place(took) && Number.isInteger(chunks) && chunks >= 1 && chunks <= MOST_PROJECT_CHUNKS;
     this.project = fits ? { n, epoch, bytes, took, want: chunks, chunks: [], held: [] } : null;
+    if (fits && this.takesProjects()) this.mostWaiting = MOST_WAITING_DRAWING;
   }
 
   // The chunks in, it's opened, and only then what waited behind it. A channel's order is what keeps
@@ -206,7 +210,7 @@ export class Watch {
   // stranger to that). A host sending faster than the queue empties is cut off: the queue is memory it fills.
   hear(data, conn) {
     if (typeof data === 'string' && data.length > MOST_HEARD_CHARS) return;
-    if (this.waiting >= (this.projectN >= 0 ? MOST_WAITING_DRAWING : MOST_WAITING)) {
+    if (this.waiting >= this.mostWaiting) {
       this.close();
       this.onState('lost');
       return;
