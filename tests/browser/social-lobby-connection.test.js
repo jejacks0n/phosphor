@@ -45,6 +45,10 @@ async function connect(options = {}) {
       this.onclose?.({ code: 1000 });
     }
     // The server's side.
+    serverClose(reason) {
+      this.closed = true;
+      this.onclose?.({ code: 1000, reason });
+    }
     accept() { this.onopen?.({}); }
     receive(msg) { this.onmessage?.({ data: typeof msg === 'string' ? msg : JSON.stringify(msg) }); }
   }
@@ -369,6 +373,44 @@ test('A message in endOn reaches onMessage, then ends it as closed without a ret
   expect(messages.at(-1)).toEqual({ type: 'refused', code: 'full' });
   expect(statuses.at(-1)).toBe('refused');
   expect(waits).toHaveLength(0);
+});
+
+test('a close whose reason is in endOn ends it, with no retry', async () => {
+  const { conn, sockets, waits, statuses, messages } = await connect({ ...roomOptions, endOn: ['refused', 'removed', 'ended', 'replaced'] });
+  conn.open();
+  sockets[0].accept();
+  await helloOn(sockets[0]);
+  sockets[0].receive({ type: 'joined' });
+  sockets[0].serverClose('replaced');
+  expect(messages.map((m) => m.type)).toEqual(['joined', 'replaced']);
+  expect(statuses).toEqual(['connecting', 'live', 'closed']);
+  expect(waits).toHaveLength(0);
+  expect(sockets).toHaveLength(1);
+});
+
+test('a close with any other reason retries', async () => {
+  const { conn, sockets, waits, statuses, messages } = await connect({ ...roomOptions, endOn: ['refused', 'removed', 'ended', 'replaced'] });
+  conn.open();
+  sockets[0].accept();
+  await helloOn(sockets[0]);
+  sockets[0].receive({ type: 'joined' });
+  sockets[0].serverClose('gone');
+  expect(messages.map((m) => m.type)).toEqual(['joined']);
+  expect(statuses).toEqual(['connecting', 'live', 'reconnecting']);
+  waits[0].done();
+  await vi.waitFor(() => expect(sockets).toHaveLength(2));
+  conn.close();
+});
+
+test('a close whose reason isn\'t in endOn retries, even if it names an end the lobby doesn\'t take', async () => {
+  const { conn, sockets, waits, messages } = await connect();   // the lobby's endOn is only refused
+  conn.open();
+  sockets[0].accept();
+  await helloOn(sockets[0]);
+  sockets[0].serverClose('replaced');
+  expect(messages).toEqual([]);
+  expect(waits).toHaveLength(1);
+  conn.close();
 });
 
 test('A handler that throws on a message in endOn still leaves it ended, with the socket closed', async () => {
