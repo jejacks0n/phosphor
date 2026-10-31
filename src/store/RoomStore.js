@@ -123,10 +123,12 @@ export const useRoomStore = defineStore('room', {
     _password: undefined, // the password the join sent
     _refusedOnce: false, // the room refused a pass since it was last live: the next refusal stands
     _connectWithinMs: undefined,   // the peers' (tests make it short)
+    _endAnswer: null,    // answers End the room? while Back past going live waits on it (markRaw)
   }),
 
   getters: {
     inRoom: (state) => !!state.role,
+    askingEnd: (state) => !!state._endAnswer,
     hereNow: (state) => state.watchers.filter((w) => w.connected).length,   // a host's: watchers connected now
     // Only a confirmed member sends; guests and unconfirmed members read.
     canChat() {
@@ -256,6 +258,16 @@ export const useRoomStore = defineStore('room', {
       this.leave();
     },
 
+    // End the room?, for Back past going live (App shows it): true to end it.
+    askToEnd() {
+      return new Promise((resolve) => { this._endAnswer = markRaw(resolve); });
+    },
+    answerEnd(yes) {
+      const answer = this._endAnswer;
+      this._endAnswer = null;
+      answer?.(yes);
+    },
+
     // A room by its id (a lobby card's Join, or a ?room= link), with its password once it asks for one.
     join(id, { password } = {}) {
       const social = useSocialStore();
@@ -320,6 +332,7 @@ export const useRoomStore = defineStore('room', {
     // Everything stops, and nothing of the room is kept; a room you host is ended first. It's spent, unless
     // Back past the join is why: Forward can undo that.
     close({ spent = true } = {}) {
+      this.answerEnd(true);   // a question still open: there's nothing left to keep, and Back can finish
       if (spent && this.id) noteLeft(this.id, true);
       if (this.role === 'host') this._connection?.send({ type: 'end' });
       const connection = this._connection;

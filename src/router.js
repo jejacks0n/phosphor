@@ -101,8 +101,26 @@ export function followAddress(router) {
     });
   }
 
+  // Back past going live asks. Our own navigations carry the room, so this is only Back and Forward. While it
+  // asks the router hears nothing else (a second navigation would cancel this one), and a Back or Forward
+  // pressed then is undone here: the one the question is about is the one the router puts back, or finishes.
+  async function askBeforeLeavingHost(to) {
+    if (room.role !== 'host' || String(to.query.room) === room.id) return true;
+    const at = router.options.history.state.position;
+    const stay = ({ state }) => { if (state && state.position !== at) history.go(at - state.position); };
+    router.listening = false;
+    addEventListener('popstate', stay);
+    const end = await room.askToEnd();
+    removeEventListener('popstate', stay);
+    router.listening = true;
+    if (!end) return false;   // the router puts the address back, without a navigation
+    room.close();
+    return true;
+  }
+
   const stops = [
     router.beforeEach(() => { pending = true; }),
+    router.beforeEach(askBeforeLeavingHost),   // after the one above: pending stays true while it asks
     router.afterEach((to, from, failure) => {
       const own = ours;
       pending = ours = false;   // (not after the navigation's promise: reconcile below may have started the next by then)

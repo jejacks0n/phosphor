@@ -196,3 +196,161 @@ test('a ?room= moved between a phone\'s tabs is no mark of yours: widened and re
   await expect(asked(watcher)).toBeVisible();
   expect(room.received).toEqual([]);
 });
+
+// Hosting: going live is a step, and Back past it asks. The browser has moved already by then, so while
+// it asks the address is where Back was going; a refusal puts it back with no navigation of its own.
+const endRoom = (page) => page.getByRole('dialog', { name: 'End the room?' });
+const entry = (page) => page.evaluate(() => [history.state.position, history.length]);
+const LIVE = `/social?room=${ROOM_ID}`;
+// What the router does from here on: each navigation's address and how it failed (4 is refused by a guard).
+const noteNavigations = (page) => page.evaluate(() => {
+  window.navigated = [];
+  document.querySelector('#phosphor').__vue_app__.config.globalProperties.$router.afterEach((to, from, failure) => window.navigated.push([to.fullPath, failure?.type ?? null]));
+});
+const navigated = (page) => page.evaluate(() => window.navigated);
+
+test('going live is a step; Back past it from PIXEL asks over PIXEL', async ({ page: host }) => {
+  await goLive(host, fakeRoom());
+  await hash(host, LIVE);
+  await tab(host, 'PIXEL').click();
+  await hash(host, `/pixel?room=${ROOM_ID}`);
+
+  await host.goBack();   // from PIXEL to the host's page, past nothing
+  await hash(host, LIVE);
+  await expect(endRoom(host)).toHaveCount(0);
+  await host.goForward();
+  await hash(host, `/pixel?room=${ROOM_ID}`);
+
+  await host.evaluate(() => history.go(-2));
+  await expect(endRoom(host)).toBeVisible();
+  await selected(host, 'PIXEL');
+});
+
+test('Cancel: still live, URL unchanged, Back asks again', async ({ page: host }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  await hash(host, LIVE);
+  const before = await entry(host);
+  await noteNavigations(host);
+
+  await host.goBack();
+  await expect(endRoom(host)).toBeVisible();
+  await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
+  await expect(endRoom(host)).toHaveCount(0);
+  await hash(host, LIVE);
+  await expect.poll(() => entry(host)).toEqual(before);
+  expect(await navigated(host)).toEqual([['/social/start', 4]]);   // refused, and putting it back is no navigation
+  expect(await status(host)).toBe('live');
+  await expect(shown(host, 'host-room')).toBeVisible();
+  expect(room.received.filter((r) => r.msg.type === 'end')).toEqual([]);
+
+  await host.goBack();
+  await expect(endRoom(host)).toBeVisible();
+  await endRoom(host).getByRole('button', { name: 'End room' }).click();
+  await hash(host, '/social/start');
+  await outOfRoom(host);
+  await expect(shown(host, 'start-room')).toBeVisible();
+  await expect.poll(() => room.received.filter((r) => r.msg.type === 'end').length).toBe(1);
+});
+
+test('Back past several entries at once asks once: Cancel puts them all back, End lands where it was going', async ({ page: host }) => {
+  await goLive(host, fakeRoom());
+  await tab(host, 'PIXEL').click();
+  await hash(host, `/pixel?room=${ROOM_ID}`);
+  const before = await entry(host);
+
+  await host.evaluate(() => history.go(-3));   // PIXEL, the host's page, Setup room: the lobby
+  await expect(endRoom(host)).toBeVisible();
+  await hash(host, '/social');
+  await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
+  await hash(host, `/pixel?room=${ROOM_ID}`);
+  await expect.poll(() => entry(host)).toEqual(before);
+  await selected(host, 'PIXEL');
+  expect(await status(host)).toBe('live');
+
+  await host.evaluate(() => history.go(-3));
+  await expect(endRoom(host)).toBeVisible();
+  await endRoom(host).getByRole('button', { name: 'End room' }).click();
+  await outOfRoom(host);
+  await hash(host, '/social');
+  await selected(host, 'SOCIAL');
+  await expect(shown(host, 'lobby')).toBeVisible();
+});
+
+for (const presses of [1, 3]) {
+  test(`${presses} more Back pressed while it asks: one question, and its answer stands`, async ({ page: host }) => {
+    await goLive(host, fakeRoom());
+    await hash(host, LIVE);
+    const before = await entry(host);
+    const pressed = async () => {
+      await host.goBack();
+      await expect(endRoom(host)).toBeVisible();
+      for (let i = 0; i < presses; i++) await host.evaluate(() => history.back());
+      await hash(host, '/social/start');   // those steps are undone
+      await expect(endRoom(host)).toHaveCount(1);
+    };
+
+    await pressed();
+    await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
+    await hash(host, LIVE);
+    await expect.poll(() => entry(host)).toEqual(before);
+    await expect(endRoom(host)).toHaveCount(0);
+    expect(await status(host)).toBe('live');
+
+    await pressed();
+    await endRoom(host).getByRole('button', { name: 'End room' }).click();
+    await outOfRoom(host);
+    await hash(host, '/social/start');
+    await expect(shown(host, 'start-room')).toBeVisible();
+    await expect(endRoom(host)).toHaveCount(0);
+  });
+}
+
+test('an address pasted while live asks too: Cancel puts it back', async ({ page: host }) => {
+  await goLive(host, fakeRoom());
+  await hash(host, LIVE);
+  await host.evaluate(() => { location.hash = '#/pixel'; });
+  await expect(endRoom(host)).toBeVisible();
+  await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
+  await hash(host, LIVE);
+  await selected(host, 'SOCIAL');
+  expect(await status(host)).toBe('live');
+});
+
+test('Forward pressed while it asks changes nothing: Cancel is still the way back', async ({ page: host }) => {
+  await goLive(host, fakeRoom());
+  await hash(host, LIVE);
+  await host.goBack();
+  await expect(endRoom(host)).toBeVisible();
+
+  await host.evaluate(() => history.forward());
+  await hash(host, '/social/start');
+  await expect(endRoom(host)).toBeVisible();
+  await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
+  await hash(host, LIVE);
+  expect(await status(host)).toBe('live');
+});
+
+test('after End, Forward and Back on the room\'s entries don\'t rejoin', async ({ page: host }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  await tab(host, 'PIXEL').click();
+  await hash(host, `/pixel?room=${ROOM_ID}`);
+  await host.evaluate(() => history.go(-2));
+  await endRoom(host).getByRole('button', { name: 'End room' }).click();
+  await hash(host, '/social/start');
+  await outOfRoom(host);
+
+  await host.goForward();
+  await hash(host, '/social');
+  await host.goForward();
+  await hash(host, '/pixel');
+  await selected(host, 'PIXEL');
+  await host.goBack();
+  await hash(host, '/social');
+  await selected(host, 'SOCIAL');
+  await expect(endRoom(host)).toHaveCount(0);
+  await expect(asked(host)).toHaveCount(0);
+  await outOfRoom(host);
+  expect(joins(room)).toBe(0);
+});

@@ -13,6 +13,7 @@ import { charRowsOf } from '@/lib/Cells';
 
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import ChatPanel from '@/components/social/ChatPanel.vue';
+import EndRoomDialog from '@/components/social/EndRoomDialog.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
 import LegalDialog from '@/components/LegalDialog.vue';
@@ -110,6 +111,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     <ControlPanel/>
     <EditWorkspace :ready="ready" :recent="recent" :open-recent="openRecent"/>
     <ChatPanel v-if="room.inRoom"/>
+    <EndRoomDialog v-if="room.askingEnd" @end="room.answerEnd(true)" @cancel="room.answerEnd(false)"/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
     <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>
     <VersionsDialog v-if="versionsOpen" :flush="autosave.flush" :restore-version="autosave.restoreVersion" @close="versionsOpen = false"/>
