@@ -657,3 +657,53 @@ test('off numbering, the tail stays empty and the sum still, until startNumberin
   assert.deepEqual(ledger.tail.items, [numbered]);
   assert.equal(ledger.sum, 7 ^ hashCell('0,0', cell) ^ hashCell('0,0', { char: 'b' }));
 });
+
+test('rename: the same person under another name keeps their strokes', () => {
+  const pic = picture();
+  const ledger = new Ledger({ readCell: pic.readCell, readTile: pic.readTile });
+  ledger.submit('me', 's1', { cells: [['1,1', X]] });
+  ledger.submit('them', 's2', { cells: [['2,2', Y]] });
+  ledger.rename('me', 'sub');
+  assert.equal(ledger.undo('me', 's1'), null);
+  assert.deepEqual(ledger.undo('sub', 's1').cells, [['1,1', null]]);
+  assert.equal(ledger.undo('sub', 's2'), null);
+});
+
+test('stopNumbering: from there on the tail and the sum stand still, and numbers still count', () => {
+  const pic = picture();
+  const ledger = new Ledger({ readCell: pic.readCell, readTile: pic.readTile });
+  ledger.submit('a', 's1', { cells: [['1,1', X]] });
+  const { sum } = ledger;
+  ledger.stopNumbering();
+  const numbered = ledger.submit('a', 's2', { cells: [['2,2', Y]] });
+  assert.equal(numbered.n, 2);
+  assert.equal(ledger.sum, sum);
+  assert.equal(ledger.tail.items.length, 1);
+});
+
+test('a change too big for mostBytes takes several numbers, all in the tail; alone it is one', () => {
+  const pic = picture();
+  const cells = Array.from({ length: 200 }, (_, i) => [`${i},0`, X]);
+  const small = new Ledger({ readCell: pic.readCell, readTile: pic.readTile, mostBytes: 1000 });
+  const whole = small.submit('a', 's1', { cells });
+  assert.ok(whole.parts.length > 1);
+  assert.deepEqual(whole.cells, cells); // the caller writes the whole of it, and sends the parts
+  assert.equal(whole.n, small.n);
+  whole.parts.forEach((part, i) => {
+    assert.equal(part.stroke, 's1');
+    assert.equal(part.n, whole.n - whole.parts.length + 1 + i);
+    assert.ok(JSON.stringify({ cells: part.cells, runs: part.runs }).length <= 1000);
+  });
+  assert.deepEqual(whole.parts.flatMap((part) => part.cells), cells);
+  assert.deepEqual(small.tail.items.map(({ n }) => n), whole.parts.map(({ n }) => n));
+
+  const undone = small.undo('a', 's1');
+  assert.ok(undone.parts.length > 1);
+  assert.equal(small.tail.items.at(-1).n, undone.n);
+
+  const fits = small.submit('a', 's2', { cells: [['9,9', Y]] });
+  assert.equal(fits.parts, undefined);
+
+  const alone = new Ledger({ readCell: pic.readCell, readTile: pic.readTile, mostBytes: 1000, numbering: false });
+  assert.equal(alone.submit('a', 's1', { cells }).parts, undefined);
+});

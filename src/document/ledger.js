@@ -2,7 +2,8 @@
  * Numbers every change to the edit layer and keeps, per position, who drew there in order over what it
  * started with, so undo can take back one person's stroke and leave everyone else's. What it returns is
  * a Numbered, { n, by, stroke, cells, runs }, for the caller to apply and send; nothing here touches the
- * picture, it only reads it. readCell(key) gives a cell's entry, and readTile(x, y) a tile's RGBA pixels:
+ * picture, it only reads it. While numbering, one too big for mostBytes takes a number per piece: it comes
+ * back whole, to apply, with those pieces as parts, to send. readCell(key) gives a cell's entry, and readTile(x, y) a tile's RGBA pixels:
  * x and y TILE-aligned, always TILE x TILE, transparent past the layer's edge. Both are read the first
  * time a position is touched, so they must show the picture with every Numbered so far applied, and
  * without the change being submitted.
@@ -11,7 +12,7 @@
  * Paint: per tile, what it started with and a list of entries, oldest first. An entry is one stroke's
  * pixels in that tile as a typed array, so a stroke costs what its tiles do however its pixels are spread.
  */
-import { hashCell, hashPixel, eachPixel, pack, Tail } from './changes.js';
+import { hashCell, hashPixel, eachPixel, pack, changeBytes, splitChange, Tail } from './changes.js';
 import { TILE } from './History.js';
 
 // In a room; alone, History's limits decide and tell us through forget.
@@ -39,13 +40,14 @@ export class Ledger {
   #sum;
   #numbering; // keeping the tail and the sum, which only someone else ever asks for
 
-  constructor({ readCell, readTile, n = 0, epoch, tail = new Tail(), sum = 0, limits = false, numbering = true }) {
+  constructor({ readCell, readTile, n = 0, epoch, tail = new Tail(), sum = 0, limits = false, numbering = true, mostBytes = Infinity }) {
     this.readCell = readCell;
     this.readTile = readTile;
     this.n = n; // the last number used
     this.epoch = epoch;
     this.tail = tail;
     this.limits = limits;
+    this.mostBytes = mostBytes;
     this.#stacks = noStacks();
     this.#sum = sum;
     this.#numbering = numbering;
@@ -57,12 +59,19 @@ export class Ledger {
     this.#sum = sum;
   }
 
+  stopNumbering() { this.#numbering = false; }
+
   // The check over the agreed picture, with every Numbered returned so far already in it. It only means
   // anything while sharing: it follows changes from what it was seeded with, and nothing here scans the
   // picture, so whoever starts sharing or sends a project seeds it.
   get sum() { return this.#sum; }
 
   seedSum(sum) { this.#sum = sum; }
+
+  // The same person under another name: sharing gives someone drawing alone their id.
+  rename(from, to) {
+    for (const record of this.#stacks.strokes.values()) if (record.by === from) record.by = to;
+  }
 
   // About what a stroke holds, for History's byte limit.
   bytesOf(stroke) { return this.#stacks.strokes.get(stroke)?.bytes ?? 0; }
@@ -202,18 +211,24 @@ export class Ledger {
     return { n: this.n, epoch: this.epoch, limits: this.limits, sum: this.#sum, stacks: this.#stacks, tail: this.tail.items };
   }
 
-  static restore({ n, epoch, limits, sum, stacks, tail: items }, { readCell, readTile }) {
+  static restore({ n, epoch, limits, sum, stacks, tail: items }, { readCell, readTile, mostBytes }) {
     const tail = new Tail();
     for (const numbered of items) tail.add(numbered);
-    const ledger = new Ledger({ readCell, readTile, n, epoch, tail, sum, limits });
+    const ledger = new Ledger({ readCell, readTile, n, epoch, tail, sum, limits, mostBytes });
     ledger.#stacks = stacks;
     return ledger;
   }
 
   #numbered(by, stroke, cells, runs) {
-    const numbered = { n: ++this.n, by, stroke, cells, runs };
-    if (this.#numbering) this.tail.add(numbered);
-    return numbered;
+    if (!this.#numbering) return { n: ++this.n, by, stroke, cells, runs };
+    if (this.mostBytes === Infinity || changeBytes({ cells, runs }) <= this.mostBytes) {
+      const numbered = { n: ++this.n, by, stroke, cells, runs };
+      this.tail.add(numbered);
+      return numbered;
+    }
+    const parts = splitChange({ cells, runs }, this.mostBytes).map((part) => ({ n: ++this.n, by, stroke, ...part }));
+    for (const part of parts) this.tail.add(part);
+    return { n: this.n, by, stroke, cells, runs, parts };
   }
 
   #sumCell(key, from, to) {

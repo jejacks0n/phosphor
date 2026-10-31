@@ -101,6 +101,29 @@ export class Pending {
     this.#changes = [];
   }
 
+  // Take back the newest change, one that never went out, so no number will ever come for it: what it
+  // held shows what's still pending there or, with nothing, what's agreed.
+  retract() {
+    const { cells, runs } = this.#changes.pop();
+    for (const [key] of cells) {
+      const claim = this.#cells.get(key);
+      if (--claim.claims) this.write(key, this.#newestCell(key));
+      else {
+        this.#cells.delete(key);
+        this.write(key, claim.agreed);
+      }
+    }
+    eachPixel(runs, (x, y) => {
+      const tile = this.#tile(x, y), i = indexOf(x, y);
+      if (--tile.claims[i]) {
+        this.write([x, y], this.#newestPixel(x, y));
+        return;
+      }
+      this.write([x, y], tile.agreed[i]);
+      if (!--tile.held) this.#tiles.delete(`${tile.x},${tile.y}`);
+    });
+  }
+
   // A host came back: what it may never have numbered, oldest first, each with its stroke.
   resend() {
     return this.#changes.slice();
@@ -113,6 +136,21 @@ export class Pending {
       this.#claim(change);
       for (const [key, entry] of change.cells) this.write(key, entry);
       eachPixel(change.runs, (x, y, rgba) => this.write([x, y], rgba));
+    }
+  }
+
+  // Only for retract, where a position is held twice, which a stroke's own slices rarely are.
+  #newestCell(key) {
+    for (let at = this.#changes.length - 1; at >= 0; at--) {
+      const found = this.#changes[at].cells.findLast(([other]) => other === key);
+      if (found) return found[1];
+    }
+  }
+
+  #newestPixel(x, y) {
+    for (let at = this.#changes.length - 1; at >= 0; at--) {
+      const found = this.#changes[at].runs.findLast(([rx, ry, length]) => ry === y && x >= rx && x < rx + length);
+      if (found) return found[3];
     }
   }
 

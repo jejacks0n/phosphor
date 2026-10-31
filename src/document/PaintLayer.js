@@ -9,6 +9,9 @@
  *
  * While a stroke is being recorded, the first time paint/erase touches a 64px tile its prior
  * pixels are saved; endStroke() returns those tiles with their new pixels as an undoable patch.
+ * strokeSlice() hands over what's changed so far and saves on from there, so before is then "as of the
+ * last slice"; writeRuns (another's change, written mid-stroke) goes in the saved copy too, so what they
+ * wrote is never part of the stroke.
  * LayerPatch = { tiles: { x, y, w, h, before: ImageData, after: ImageData }[], hadPaint, hasPaint }
  */
 import { ctx2d, canvasPng } from '../lib/Canvas.js';
@@ -50,7 +53,7 @@ const newCanvas = (w, h) => {
 };
 
 export default class PaintLayer {
-  #stroke = null; // { tiles: Map<'x,y', { x, y, w, h, before }>, hadPaint, erased } while recording
+  #stroke = null; // { tiles: Map<'x,y', { x, y, w, h, before }>, touched: Set<'x,y'>, hadPaint, erased } while recording
   version = 0;    // goes up with every change to the pixels (what's drawn from them can be cached)
   #changes = [];  // the latest changes: { version, rect } (layer pixels, null for all of it), for changedSince
 
@@ -360,7 +363,7 @@ export default class PaintLayer {
   }
 
   beginStroke() {
-    this.#stroke = { tiles: new Map(), hadPaint: this.hasPaint, erased: false, laid: new Map() };
+    this.#stroke = { tiles: new Map(), touched: new Set(), hadPaint: this.hasPaint, erased: false, laid: new Map() };
   }
 
   // Finish recording; null when the stroke changed nothing. A stroke that erased may have left no
@@ -371,8 +374,22 @@ export default class PaintLayer {
     if (!stroke || !stroke.tiles.size) return null;
     if (stroke.erased) this.recheckPaint();
     const ctx = ctx2d(this.canvas);
-    const tiles = [...stroke.tiles.values()].map(({ x, y, w, h, before }) => ({ x, y, w, h, before, after: ctx.getImageData(x, y, w, h) }));
+    const tiles = [...stroke.tiles].map(([key, { x, y, w, h, before }]) => ({ x, y, w, h, before, after: stroke.touched.has(key) ? ctx.getImageData(x, y, w, h) : before }));
     return { tiles, hadPaint: stroke.hadPaint, hasPaint: this.hasPaint };
+  }
+
+  // The tiles touched since the last slice ({ x, y, before, after }: ImageData, clipped to the layer).
+  strokeSlice() {
+    const stroke = this.#stroke;
+    if (!stroke?.touched.size) return [];
+    const ctx = ctx2d(this.canvas), slice = [];
+    for (const key of stroke.touched) {
+      const tile = stroke.tiles.get(key), after = ctx.getImageData(tile.x, tile.y, tile.w, tile.h);
+      slice.push({ x: tile.x, y: tile.y, before: tile.before, after });
+      tile.before = after;
+    }
+    stroke.touched.clear();
+    return slice;
   }
 
   applyPatch(patch, side) {
@@ -388,7 +405,8 @@ export default class PaintLayer {
   }
 
   // Set pixels to exact colors (runs: changes.js), without blending, whatever was there. Returns the tiles
-  // written, as a patch has them. Tile by tile, since a soft stroke's runs are mostly a pixel long.
+  // written, as a patch has them. Tile by tile, since a soft stroke's runs are mostly a pixel long. A stroke
+  // being recorded takes them in what it saved: they aren't its own.
   writeRuns(runs) {
     const ctx = ctx2d(this.canvas), { width, height } = this.canvas, images = new Map();
     let tile = null, erased = false;
@@ -400,14 +418,12 @@ export default class PaintLayer {
         tile = images.get(name);
         if (!tile) {
           const w = Math.min(TILE, width - tx), h = Math.min(TILE, height - ty);
-          images.set(name, tile = { x: tx, y: ty, w, h, image: ctx.getImageData(tx, ty, w, h) });
+          images.set(name, tile = { x: tx, y: ty, w, h, image: ctx.getImageData(tx, ty, w, h), saved: this.#stroke?.tiles.get(name)?.before.data });
         }
       }
-      const { data } = tile.image, i = ((y - ty) * tile.w + x - tx) * 4;
-      data[i] = rgba >>> 24;
-      data[i + 1] = (rgba >>> 16) & 0xff;
-      data[i + 2] = (rgba >>> 8) & 0xff;
-      data[i + 3] = rgba & 0xff;
+      const i = ((y - ty) * tile.w + x - tx) * 4;
+      setPixel(tile.image.data, i, rgba);
+      if (tile.saved) setPixel(tile.saved, i, rgba);
       if (rgba) this.hasPaint = true;
       else erased = true;
     });
@@ -415,6 +431,7 @@ export default class PaintLayer {
     if (!tiles.length) return { tiles };
     for (const { x, y, image } of tiles) ctx.putImageData(image, x, y);
     if (erased) this.recheckPaint();
+    if (this.#stroke) this.#stroke.hadPaint = this.hasPaint;
     this.#changed(unionRect(tiles));
     return { tiles };
   }
@@ -454,6 +471,7 @@ export default class PaintLayer {
     const ctx = ctx2d(this.canvas);
     for (const tile of tilesForRect(rect, this.canvas.width, this.canvas.height)) {
       const key = `${tile.x},${tile.y}`;
+      this.#stroke.touched.add(key);
       if (!this.#stroke.tiles.has(key)) {
         this.#stroke.tiles.set(key, { ...tile, before: ctx.getImageData(tile.x, tile.y, tile.w, tile.h) });
       }
@@ -467,6 +485,13 @@ export function wholeTile({ width, height, data }) {
   const whole = new Uint8ClampedArray(TILE * TILE * 4);
   for (let y = 0; y < height; y++) whole.set(data.subarray(y * width * 4, (y + 1) * width * 4), y * TILE * 4);
   return whole;
+}
+
+function setPixel(data, i, rgba) {
+  data[i] = rgba >>> 24;
+  data[i + 1] = (rgba >>> 16) & 0xff;
+  data[i + 2] = (rgba >>> 8) & 0xff;
+  data[i + 3] = rgba & 0xff;
 }
 
 function unionRect(rects) {

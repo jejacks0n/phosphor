@@ -10,3 +10,17 @@ export function combineActions(...groups) {
   }
   return actions;
 }
+
+// Wraps the named actions so they do nothing while refuse(store) is true. Actions call each other through
+// the store, so this holds for a call from another action too.
+export function guarded(actions, names, refuse) {
+  const wrapped = { ...actions };
+  for (const name of names) {
+    const action = actions[name];
+    if (!action) throw new Error(`No store action to guard: ${name}`);
+    wrapped[name] = function (...args) {
+      return refuse(this) ? undefined : action.apply(this, args);
+    };
+  }
+  return wrapped;
+}

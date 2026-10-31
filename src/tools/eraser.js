@@ -34,7 +34,7 @@ const eraser = {
     const under = cellsOfPixels(square, project.cols, project.rows);
     const cells = view === 'output' ? withLeads(project.cells, project.cols, under).filter(({ col, row }) => !clip || clip.cell(col, row)) : under;
     const pixels = view === 'output' ? cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]) : square;
-    const { base, edit } = workspace.eraseLayers;
+    const { base, edit } = project.layersFor(workspace.eraseLayers);
     if (edit) {
       // A ▄ with no colors of its own (Half-block: it was there to show the paint) whose last
       // paint this erases goes too, so the cell's own character comes back. The ANSI view clears

@@ -21,6 +21,18 @@ import { turnChar } from '@/lib/TurnChars.js';
 import { toRaw } from 'vue';
 import { unitsOf, wandIn } from '@/lib/MagicWand.js';
 
+// A float's moves take the last one back at once, which an artist can only do while it hasn't gone out
+// (sharing.js): those are held. floated marks what's in a float's move; canTakeBack says the run can go on.
+const floated = (action) => function (...args) {
+  this._floating = true;
+  try {
+    return action.apply(this, args);
+  } finally {
+    this._floating = false;
+  }
+};
+const canTakeBack = (project, run) => !run.recorded || project._sharing?.role !== 'artist' || !!project._sharing.held;
+
 export const selectionActions = {
   copySelection(rect, { base, edit }) {
     this.ensureLayer();
@@ -84,10 +96,11 @@ export const selectionActions = {
   // paste is undone and, for a move, the place it came from is cleared (one undo step), and the
   // selection goes with the block. Otherwise what's selected is deleted.
   deleteSelection(rect, layers) {
+    layers = this.layersFor(layers);
     const run = this._float;
-    if (run?.recorded && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)) {
+    if (run?.recorded && canTakeBack(this, run) && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)) {
       this._float = null;
-      this.undo();
+      floated(() => this.undo()).call(this);
       if (!run.paste) this.selectionEdit([run.from], () => this.deleteIn(run.from, run.layers));
       useWorkspaceStore().selection = null;
       return;
@@ -98,7 +111,7 @@ export const selectionActions = {
   // Returns the pasted rect (clipped), or null when it's all off the grid.
   // A paste starts a float (floatSelection): moving it right after re-pastes it, so what it first
   // landed on comes back. recorded: whether it was an undo step (a paste that changes nothing isn't).
-  pasteSelection(block, col, row) {
+  pasteSelection: floated(function (block, col, row) {
     const paste = (c, r) => {
       const rect = this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
       if (rect) this.selectionEdit([rect], () => this.pasteAt(block, c, r));
@@ -108,13 +121,13 @@ export const selectionActions = {
     const landed = paste(col, row);
     this._float = landed && { paste: true, block, redo: (dc, dr) => paste(col + dc, row + dr), from: landed, layers: null, dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version };
     return landed;
-  },
+  }),
 
   // Stamp (Moebius's S while moving, and C on a selection): a copy of what's selected stays where it
   // is, and the block floats on from there as a paste of it, so moving it leaves the copy behind.
   stampSelection(rect, layers) {
     this.commitPending();
-    const landed = this.pasteSelection(this.copySelection(rect, layers), rect.c0, rect.r0);
+    const landed = this.pasteSelection(this.copySelection(rect, this.layersFor(layers)), rect.c0, rect.r0);
     if (this._float) this._float.stamped = true;
     return landed;
   },
@@ -126,10 +139,11 @@ export const selectionActions = {
   // is, when the selection is cleared or replaced (Escape, Deselect, a new selection: tied to the
   // selection object itself, so reselecting the same cells starts over), its layers change, or
   // anything else is recorded. Returns where it landed (clipped), or null when it left the grid.
-  floatSelection(rect, layers, dc, dr) {
+  floatSelection: floated(function (rect, layers, dc, dr) {
+    layers = this.layersFor(layers);
     this.commitPending(); // text typed onto the block (a paste) is recorded: the next move starts a new run
     const run = this._float;
-    const sameRun = run && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
+    const sameRun = run && canTakeBack(this, run) && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
       && (!run.layers || (run.layers.base === layers.base && run.layers.edit === layers.edit));
     const current = sameRun ? run : { redo: (c, r) => this.moveSelection(rect, layers, c, r), from: rect, layers: { ...layers }, dc: 0, dr: 0 };
     const offset = { dc: current.dc + dc, dr: current.dr + dr };
@@ -142,7 +156,7 @@ export const selectionActions = {
     const landed = current.redo(offset.dc, offset.dr);
     this._float = landed && { ...current, ...offset, landed, version: this.history.version, recorded: this.history.version !== version };
     return landed;
-  },
+  }),
 
   // Flip what's selected (op 'h', 'v') or rotate it 90° clockwise ('cw'), on the chosen layers. A
   // flip moves its cells, their characters turning with them (TurnChars), and its paint and base flip
@@ -151,11 +165,12 @@ export const selectionActions = {
   // moved back onto the grid where it would run off it. It floats, as a move does (floatSelection):
   // turned while it floats, it's the same run, so what it covers comes back when it moves on, and the
   // run is one undo step. Returns where it landed (clipped).
-  turnSelection(rect, layers, op) {
+  turnSelection: floated(function (rect, layers, op) {
+    layers = this.layersFor(layers);
     if (op === 'cw' && this.hasCharacters(rect, layers)) return rect;
     this.commitPending();
     const run = this._float;
-    const sameRun = run && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
+    const sameRun = run && canTakeBack(this, run) && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
       && (!run.layers || (run.layers.base === layers.base && run.layers.edit === layers.edit));
     if (sameRun && run.recorded) this.undo();
     // Lifted from (cleared each time it lands; none for a paste), and the block as it floats.
@@ -180,7 +195,7 @@ export const selectionActions = {
       dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version,
     };
     return landed;
-  },
+  }),
 
   // Whether what's in rect, on the chosen layers, has characters Rotate can't turn: anything on the
   // edit layer but a Half-block's ▄, or a pin on the base but ▄ (both only show their cell's pixels).
@@ -195,7 +210,8 @@ export const selectionActions = {
   // pixel view's grid pixels), on the layers lit, as the Eraser does: Edit takes the drawing away (in
   // the pixel view, a ▄ there only to show paint (Half-block) goes with the last of its paint); Base
   // turns the picture black (in the ANSI view whole cells, with a pinned space). One undo step.
-  deleteInWand(made, view = made.view, { base, edit } = { base: false, edit: true }) {
+  deleteInWand(made, view = made.view, layers = { base: false, edit: true }) {
+    const { base, edit } = this.layersFor(layers);
     const wand = wandIn(made, view, this.rows);
     const units = unitsOf(wand.mask, wand.width);
     const cells = view === 'output' ? units.map(({ x, y }) => ({ col: x, row: y })) : null;
@@ -216,7 +232,8 @@ export const selectionActions = {
   // and fg to its bottom one (the ASCII styles show the pair's average, so fg to both); on Edit, as
   // edit cells, their characters kept. In the pixel view, colors.fg goes to every pixel: the picture
   // on Base, paint on Edit.
-  recolorSelection(made, view, { base, edit }, { fg, bg }) {
+  recolorSelection(made, view, layers, { fg, bg }) {
+    const { base, edit } = this.layersFor(layers);
     let units;
     if (made.mask) {
       const wand = wandIn(made, view, this.rows);
@@ -243,6 +260,7 @@ export const selectionActions = {
   // Returns where it landed (clipped), or null when it left the grid.
   moveSelection(rect, layers, dc, dr) {
     if (!dc && !dr) return rect;
+    layers = this.layersFor(layers);
     const block = this.copySelection(rect, layers);
     const col = rect.c0 + dc, row = rect.r0 + dr;
     const landed = this.clipRect({ c0: col, r0: row, c1: rect.c1 + dc, r1: rect.r1 + dr });

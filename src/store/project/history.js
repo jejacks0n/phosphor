@@ -1,13 +1,13 @@
 // History: each edit is recorded between beginEdit and commitEdit as one undo step: its paint and edit
-// cells go in the ledger (_ledger, whose positions keep who drew what), its base patch and base records
-// in the entry; undo and redo replay them. Owns _stroke, the edit being recorded (a typing run keeps it
-// open across keystrokes: editLayer.js; clearImage and dropEdits drop it when the document or the grid
-// changes under it), and _baseline, what a stroke being submitted began with (reading.js).
+// cells go in the ledger (_ledger, whose positions keep who drew what), by way of sendSlice (sharing.js),
+// its base patch and base records in the entry; undo and redo replay them. Owns _stroke, the edit being
+// recorded (a typing run keeps it open across keystrokes: editLayer.js; clearImage and dropEdits drop it
+// when the document or the grid changes under it): its editCells is the map as of its last slice, as
+// sendSlice leaves it, and _baseline, what a slice being submitted began with (reading.js).
 import { markRaw, toRaw } from 'vue';
-import { cellChanges, pixelRuns } from '@/document/changes.js';
 import { parseKey } from '@/document/editCells.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { bytesHeld, randomId } from '@/store/project/shared.js';
+import { ALONE, bytesHeld, randomId, runsPatch } from '@/store/project/shared.js';
 
 const NO_CHANGE = { cells: [], runs: [] };
 
@@ -16,15 +16,31 @@ export const historyActions = {
   beginEdit() {
     if (this._stroke?.typing && !this._typingNow) this.commitEdit(); // another edit ends a typing run
     if (this._stroke || !this.paintLayer) return;
-    this._stroke = markRaw({ editCells: this.editCells, baseRecords: this.baseRecords }); // raw, so commitEdit's identity checks see the same objects
+    // Raw, so commitEdit's identity checks see the same objects. keys: the cells it's sent. A stroke begun
+    // for a float's move is held for an artist (sharing.js).
+    this._stroke = markRaw({ id: randomId(), editCells: this.editCells, baseRecords: this.baseRecords, keys: [], hold: !!this._floating });
     this.paintLayer.beginStroke();
     this.baseLayer.beginStroke();
   },
 
-  // End of a user edit: its paint and cells go in the ledger, and one undo entry undoes them with its
-  // base pixel tiles and pin changes, and it counts as unsaved.
+  // A writer that knows which keys it changes sets the map through this, so a slice looks at those alone
+  // (cellChanges takes 20 ms at 500k cells, and a slice is ten times a second). One that just sets editCells
+  // breaks the chain and the slice scans, which is only slower: fine for an edit that commits right away.
+  setEditCells(next, keys) {
+    const stroke = this._stroke;
+    if (stroke) {
+      const noted = this.editCells === stroke.editCells ? new Set() : stroke.noted?.map === this.editCells ? stroke.noted.keys : null;
+      for (const key of keys) noted?.add(key);
+      stroke.noted = noted && { map: next, keys: noted };
+    }
+    this.editCells = next;
+  },
+
+  // End of a user edit: what's left of its paint and cells goes in the ledger (alone, that's all of it), and
+  // one undo entry undoes them with its base pixel tiles and pin changes, and it counts as unsaved.
   commitEdit() {
     const stroke = this._stroke;
+    this.sendSlice();
     this._stroke = null;
     const patch = this.paintLayer?.endStroke();
     const basePatch = this.baseLayer?.endStroke();
@@ -32,32 +48,24 @@ export const historyActions = {
     // The Number palette, held still through the stroke, is picked again: when that changed it, every
     // cell was rebuilt; when not, only the stroke's cells (shown in its own colors) need catching up.
     if (stroke && this.quantize === 'count' && !this.composite()) {
-      const pixels = changedPixels(this.cols, this.rows, [[patch, this.paintLayer], [basePatch, this.baseLayer]], [[stroke.editCells, this.editCells], [stroke.baseRecords.pins, this.baseRecords.pins]]);
+      const pixels = changedPixels(this.cols, this.rows, [[patch, this.paintLayer], [basePatch, this.baseLayer]], [[stroke.baseRecords.pins, this.baseRecords.pins]], stroke.keys);
       if (pixels) this.recompose(pixels);
       else this.rebuildCells();
     }
-    if (!stroke || (!patch && !basePatch && stroke.editCells === this.editCells && stroke.baseRecords === this.baseRecords)) return;
-
-    const id = randomId();
-    const change = {
-      // ponytail: scans the map once a stroke that wrote cells (21 ms at 500k cells, about what each of its writes copying the map costs); record keys as they're written if that shows.
-      cells: cellChanges(stroke.editCells, this.editCells),
-      runs: patch?.tiles.flatMap(({ x, y, w, h, before, after }) => pixelRuns(before.data, after.data, w, h, x, y)) ?? [],
-    };
-    if (change.cells.length || change.runs.length) { // only base pixels or pins: nothing for the ledger
-      this._baseline = markRaw({ cells: stroke.editCells, tiles: new Map(patch?.tiles.map(({ x, y, before }) => [`${x},${y}`, before])) });
-      this._ledger.submit(this._by, id, change);
-      this._baseline = null;
-    }
+    if (!stroke || (!patch && !basePatch && !stroke.wroteCells && stroke.baseRecords === this.baseRecords)) return;
 
     // The entry mustn't close over stroke or patch: the old map and the tiles are the ledger's to hold now.
-    const { cursor } = stroke;
+    const { cursor, id } = stroke;
     const records = { before: stroke.baseRecords, after: this.baseRecords };
     const also = { patches: [[basePatch, this.baseLayer]], pins: [records.before.pins, records.after.pins] };
     const apply = (side) => {
+      if (side === 'before' && cursor) useWorkspaceStore().textCursor = cursor; // typing undone: the cursor goes back to where it started
+      if (this._sharing?.role === 'artist') { // the host says what happens; an artist has no base edits to put back
+        this.askForStroke(side === 'before' ? 'undo' : 'redo', id);
+        return;
+      }
       if (basePatch) this.baseLayer.applyPatch(basePatch, side);
       this.setBaseRecords(records[side]);
-      if (side === 'before' && cursor) useWorkspaceStore().textCursor = cursor; // typing undone: the cursor goes back to where it started
       if (side === 'before') this.undoStroke(id, also);
       else this.redoStroke(id, also);
     };
@@ -74,12 +82,14 @@ export const historyActions = {
   undoStroke(stroke, also) {
     const change = this._ledger.undo(this._by, stroke);
     this.applyChange(change ?? NO_CHANGE, also);
+    this.sendNumbered(change);
     return change;
   },
 
   redoStroke(stroke, also) {
     const change = this._ledger.redo(this._by, stroke);
     this.applyChange(change ?? NO_CHANGE, also);
+    this.sendNumbered(change);
     return change;
   },
 
@@ -93,10 +103,11 @@ export const historyActions = {
         else next.delete(key);
       }
       this.editCells = next;
+      if (this._stroke) this._stroke.editCells = next; // another's, written mid-stroke: not part of it (sharing.js)
     }
-    const written = this.paintLayer.writeRuns(runs);
+    this.paintLayer.writeRuns(runs);
     this.hasPaint = this.paintLayer.hasPaint;
-    this.refreshChanged([[written, this.paintLayer], ...patches], pins.length ? [pins] : [], cells.map(([key]) => key));
+    this.refreshChanged([[runsPatch(runs), this.paintLayer], ...patches], pins.length ? [pins] : [], cells.map(([key]) => key));
   },
 
   // Take back the open edit without recording it (a stroke a pinch interrupted): its paint, base
@@ -104,6 +115,11 @@ export const historyActions = {
   cancelEdit() {
     const stroke = this._stroke;
     if (!stroke || stroke.typing) return;
+    if (stroke.sent) { // some of it has gone out: it comes back the way any stroke does
+      this.commitEdit();
+      this.undo();
+      return;
+    }
     this._stroke = null;
     const patch = this.paintLayer?.endStroke();
     const basePatch = this.baseLayer?.endStroke();
@@ -128,6 +144,7 @@ export const historyActions = {
   // Fold an unfinished stroke into history before an edit that replaces the whole layer.
   commitPending() {
     if (this._stroke) this.commitEdit();
+    if (!this._floating) this.sendHeld(); // this is what ends a float someone left where it is
     this.commitSliders(); // a slider move still open
   },
 
@@ -146,6 +163,7 @@ export const historyActions = {
     const swap = () => {
       const showing = this._ledger.takeStacks();
       this._ledger.putStacks(away);
+      this._ledger.rename(ALONE, this._by); // drawn before sharing started, and held here through that
       away = showing;
     };
     this.pushEdit({ undo: () => { swap(); undo(); }, redo: () => { swap(); redo(); }, wholeLayer: true, bytes });

@@ -22,6 +22,10 @@ export const copyOf = (image, width, height) => {
 // randomUUID is only there on secure contexts; a plain-http LAN address has getRandomValues.
 export const randomId = () => crypto.randomUUID?.()
   ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+// Runs (changes.js) as refreshChanged takes a patch, so a refresh is the pixels they name, not their tiles.
+export const runsPatch = (runs) => ({ tiles: runs.map(([x, y, w]) => ({ x, y, w, h: 1 })) });
+// Who the ledger knows someone drawing alone as.
+export const ALONE = 'me';
 // A color ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
 export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
 

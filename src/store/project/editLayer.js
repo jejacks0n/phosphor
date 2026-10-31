@@ -56,7 +56,7 @@ export const editLayerActions = {
       this.paintLayer.erase(pixels);
       this.composite({ rect: boundsOf(pixels) });
     }
-    this.editCells = withCellEdit(this.editCells, col, row, attrs);
+    this.setEditCells(withCellEdit(this.editCells, col, row, attrs), [cellKey(col, row)]);
     this.recompose(pixels);
   },
 
@@ -121,7 +121,7 @@ export const editLayerActions = {
   shiftCells(row, fromCol, delta) {
     const next = shiftRow(this.editCells, row, fromCol, delta, this.cols);
     if (next === this.editCells) return;
-    this.editCells = next;
+    this.setEditCells(next, Array.from({ length: this.cols }, (_, col) => cellKey(col, row)));
     const pixels = Array.from({ length: this.cols }, (_, x) => ({ x, y: 2 * row }));
     this.recompose(pixels);
   },
@@ -161,7 +161,7 @@ export const editLayerActions = {
       next.set(cellKey(col, row), mergeEntry(next.get(cellKey(col, row)), { char: ' ' }));
       pixels.push({ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 });
     }
-    this.editCells = next;
+    this.setEditCells(next, [...list, ...blanks].map(({ col, row }) => cellKey(col, row)));
     this.recompose(pixels);
   },
 
@@ -171,7 +171,7 @@ export const editLayerActions = {
     if (next === this.editCells) return;
     this.ensureLayer();
     this.beginEdit();
-    this.editCells = next;
+    this.setEditCells(next, cells.map(({ col, row }) => cellKey(col, row)));
     const pixels = cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
     this.recompose(pixels);
   },
@@ -179,8 +179,9 @@ export const editLayerActions = {
   // Flip a cell's colors on the chosen layers. Edit: the paint (as it shows) or the edit cell's
   // own colors; a cell with neither gets the flip as paint, unless the base is flipping it. Base:
   // the base's two halves. The edit side goes first, while the cell still shows unflipped.
-  flipCell(col, row, { base = false, edit = true } = {}) {
+  flipCell(col, row, layers = { base: false, edit: true }) {
     if (!this.cells[cellIndex(col, row, this.cols)]) return;
+    const { base = false, edit = true } = this.layersFor(layers);
     if (edit) {
       if (this.editCellAt(col, row) && !this.cellHasPaint(col, row)) {
         const { fg, bg } = this.underlyingAt(col, row);

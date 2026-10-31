@@ -1,15 +1,17 @@
 // Reading the document without changing it: the colors under a grid pixel (the image, the base, the
 // paint), what's under a cell, edit cells, and rects on the grid.
 import { wholeTile } from '@/document/PaintLayer.js';
+import { hashCell, hashPixel, pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
+import { ctx2d } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { over } from '@/store/project/shared.js';
 
 export const readingActions = {
   // What the ledger reads, the first time it meets a position: the value before what's being submitted.
-  // commitEdit submits a stroke that's already written, so for that long the answer is what the stroke
-  // began with, and only the tiles it touched can be asked for.
+  // sendSlice submits a slice that's already written, so for that long the answer is what the stroke
+  // had as of its last slice, and only the tiles this slice touched can be asked for.
   readCell(key) {
     return (this._baseline?.cells ?? this.editCells).get(key);
   },
@@ -17,6 +19,19 @@ export const readingActions = {
   readTile(x, y) {
     const before = this._baseline?.tiles.get(`${x},${y}`);
     return before ? wholeTile(before) : this.paintLayer.readTile(x, y);
+  },
+
+  // The check over the edit layer as it is (changes.js), the slow way: what a sum is seeded with.
+  editLayerSum() {
+    let sum = 0;
+    for (const [key, entry] of this.editCells) sum ^= hashCell(key, entry);
+    if (!this.paintLayer?.hasPaint) return sum;
+    const { width, height } = this.paintLayer.canvas;
+    const { data } = ctx2d(this.paintLayer.canvas).getImageData(0, 0, width, height);
+    for (let i = 3, at = 0; i < data.length; i += 4, at++) {
+      if (data[i]) sum ^= hashPixel(at % width, Math.floor(at / width), pack(data, i - 3));
+    }
+    return sum;
   },
 
   // The color under grid pixel (x, y) before adjustments: paint (over the base, by its alpha) if
