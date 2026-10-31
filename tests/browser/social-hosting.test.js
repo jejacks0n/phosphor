@@ -1140,3 +1140,150 @@ test('a check goes to artists up to date, once for a number, and not to anyone b
   await going;
   expect(sends.sent().filter((m) => m.t === 'check')).toEqual([]);   // no watcher's real channel carried one
 });
+
+// Following an artist: a watcher is sent the view of the one it follows, or of everyone if it asked.
+const VIEW = { col: 5, row: 6, cols: 7, rows: 8, zoom: 0.5 };
+const HOST_VIEW = { col: 1, row: 2, cols: 3, rows: 4, zoom: 1 };
+// What a Watch is told of views, as [view, who] and ['all', views] in order.
+function hearing(log) {
+  const got = [];
+  log.watch.onView = (view, who) => got.push([view, who]);
+  log.watch.onViews = (all) => got.push(['all', all]);
+  return got;
+}
+const viewsSeated = async (r, ...peers) => {
+  await seated(r, ...peers);
+  for (const peer of peers) await expect.poll(() => r.log[peer].views.length, PATIENT).toBe(1);
+};
+
+test('a watcher following an artist is sent that artist\'s view, at a pace, and not the host\'s until it goes back', async () => {
+  const r = await room(['p1', 'p2', 'p3']);
+  drawingCalls(r);
+  r.host.setArtists(['u_p2']);
+  await viewsSeated(r, 'p1', 'p2', 'p3');
+  const heard = hearing(r.log.p1), bystander = hearing(r.log.p3);
+  r.log.p1.watch.follow('u_p2');
+  r.host.setArtistViews({ u_p2: VIEW });
+  await expect.poll(() => heard, PATIENT).toEqual([[VIEW, 'u_p2']]);
+
+  for (let i = 0; i < 20; i++) r.host.setArtistViews({ u_p2: { ...VIEW, col: i } });
+  await expect.poll(() => heard.at(-1)[0].col, PATIENT).toBe(19);
+  expect(heard.length).toBeLessThan(5);
+  r.host.setView({ col: 9, row: 9, cols: 1, rows: 1 });
+  await expect.poll(() => bystander.length, PATIENT).toBe(1);
+  expect(heard.every(([, who]) => who === 'u_p2')).toBe(true);   // the host's view isn't for one looking at an artist
+  expect(bystander).toEqual([[{ col: 9, row: 9, cols: 1, rows: 1, zoom: 1 }, undefined]]);   // and an artist's isn't for one looking at the host
+
+  r.log.p1.watch.follow(null);
+  await expect.poll(() => heard.at(-1), PATIENT).toEqual([{ col: 9, row: 9, cols: 1, rows: 1, zoom: 1 }, undefined]);
+});
+
+test('Show everyone sends every artist\'s view in one message, and the host\'s, and turning it off stops them', async () => {
+  const r = await room(['p1', 'p2', 'p3']);
+  drawingCalls(r);
+  r.host.setArtists(['u_p2', 'u_p3']);
+  await viewsSeated(r, 'p1', 'p2', 'p3');
+  const heard = hearing(r.log.p1);
+  r.log.p1.watch.follow('u_p2');
+  r.log.p1.watch.showEveryone(true);
+  const others = { u_p2: VIEW, u_p3: { ...VIEW, col: 40 } };
+  r.host.setArtistViews(others);
+  await expect.poll(() => heard.at(-1), PATIENT).toEqual(['all', others]);
+  expect(heard).toContainEqual([HOST_VIEW, undefined]);   // asking for everyone is asking for the host too
+
+  r.log.p1.watch.showEveryone(false);
+  await wait(100);
+  heard.length = 0;
+  r.host.setArtistViews({ u_p2: { ...VIEW, col: 6 }, u_p3: { ...VIEW, col: 41 } });
+  await expect.poll(() => heard, PATIENT).toEqual([[{ ...VIEW, col: 6 }, 'u_p2']]);
+});
+
+test('a follow or show-everyone that is malformed changes nothing, and one naming no artist falls back to the host', async () => {
+  const r = await room(['p1', 'p2']);
+  const calls = drawingCalls(r);
+  r.host.setArtists(['u_p2']);
+  await seated(r, 'p1', 'p2');
+  const w = connected(r, 'p1');
+  const post = (msg) => r.log.p1.watch.post(msg);
+  const settled = () => wait(60);
+  post({ t: 'follow', sub: 'u_p2' });
+  await expect.poll(() => w.following, PATIENT).toBe('u_p2');
+  for (const sub of [7, {}, [], true, undefined]) post({ t: 'follow', sub });
+  await settled();
+  expect(w.following).toBe('u_p2');
+  post({ t: 'follow', sub: 'nobody' });
+  await expect.poll(() => w.following, PATIENT).toBe(null);
+  post({ t: 'follow', sub: 'u_p2' });
+  await expect.poll(() => w.following, PATIENT).toBe('u_p2');
+  post({ t: 'follow', sub: 'u_p1' });   // a watcher, not an artist
+  await expect.poll(() => w.following, PATIENT).toBe(null);
+
+  for (const on of ['yes', 1, null, {}]) post({ t: 'show-everyone', on });
+  await settled();
+  expect(w.everyone).toBe(false);
+  post({ t: 'show-everyone', on: true });
+  await expect.poll(() => w.everyone, PATIENT).toBe(true);
+  post({ t: 'show-everyone', on: false });
+  await expect.poll(() => w.everyone, PATIENT).toBe(false);
+  post({ t: 'follow', sub: 'u_p2', pad: 'x'.repeat(3000) });   // too long for a watcher's message
+  await settled();
+  expect(w.following).toBe(null);
+  expect(calls).toEqual({ change: [], undo: [], redo: [], cursor: [], hello: [], answer: [], refused: 0 });   // not the artist's path
+});
+
+test('an artist put back to watching, or gone, is followed no more', async () => {
+  const r = await room(['p1', 'p2', 'p3']);
+  drawingCalls(r);
+  r.host.setArtists(['u_p2', 'u_p3']);
+  await seated(r, 'p1', 'p2', 'p3');
+  const w = connected(r, 'p1');
+  r.log.p1.watch.follow('u_p2');
+  await expect.poll(() => w.following, PATIENT).toBe('u_p2');
+  r.host.setArtists(['u_p3']);
+  expect(w.following).toBe(null);
+  r.log.p1.watch.follow('u_p3');
+  await expect.poll(() => w.following, PATIENT).toBe('u_p3');
+  r.host.peerGone('p3');
+  expect(w.following).toBe(null);
+});
+
+test('the artists message names those who may draw and are here, and again when one of them arrives', async () => {
+  const r = await room(['p1']);
+  drawingCalls(r);
+  const told = [];
+  await seated(r, 'p1');
+  r.log.p1.watch.onArtists = (subs, names) => told.push([subs, names]);
+  r.host.setArtists(['u_p1', 'u_p2']);
+  await expect.poll(() => told, PATIENT).toEqual([[['u_p1', 'u_p2'], { u_p1: 'p1' }]]);   // u_p2 isn't here
+  r.log.p2 = watcher(r, 'p2');
+  await r.host.peer('p2', await passFor('u_p2', 'p2'));
+  await expect.poll(() => told.at(-1), PATIENT).toEqual([['u_p1', 'u_p2'], { u_p1: 'p1', u_p2: 'p2' }]);
+  expect(told.length).toBe(2);
+});
+
+test('a host\'s views are a stranger\'s: ones that aren\'t views, or are of no one, are dropped', async () => {
+  const views = [], alls = [], artists = [];
+  const watch = new Watch({
+    config, send() {}, onRoom() {}, onArt() {}, onState() {},
+    onView: (view, who) => views.push([view, who]), onViews: (all) => alls.push(all), onArtists: (subs, names) => artists.push([subs, names]),
+  });
+  const hear = (msg) => watch.handle(typeof msg === 'string' ? msg : JSON.stringify(msg));
+  await hear({ t: 'view', ...VIEW });
+  await hear({ t: 'view', ...VIEW, who: 'u_a' });
+  for (const bad of [{ who: 7 }, { who: 'x'.repeat(200) }, { who: null }, { col: -1 }, { rows: 'a' }, { cols: 1.5 }]) await hear({ t: 'view', ...VIEW, ...bad });
+  expect(views).toEqual([[VIEW, undefined], [VIEW, 'u_a']]);
+
+  const many = Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`u_${i}`, VIEW]));
+  await hear({ t: 'views', ...many, junk: 'no', nope: { col: 'x' }, odd: { ...VIEW, zoom: 99 } });
+  expect(alls.length).toBe(1);
+  expect(Object.keys(alls[0]).length).toBeLessThanOrEqual(64);
+  expect(Object.values(alls[0]).every((v) => v.zoom <= 1 && v.col === 5)).toBe(true);
+  await hear(`{"t":"views","__proto__":${JSON.stringify(VIEW)},"u_a":${JSON.stringify(VIEW)}}`);
+  expect(Object.getPrototypeOf(alls[1])).toBe(Object.prototype);
+  expect(alls[1].u_a).toEqual(VIEW);
+
+  await hear({ t: 'artists', subs: ['u_a', 'u_b'], names: { u_a: 'Ann', u_b: 7, u_c: 'Not listed', u_d: '' } });
+  await hear({ t: 'artists', subs: ['u_a'], names: [] });
+  await hear({ t: 'artists', subs: ['u_a'] });
+  expect(artists).toEqual([[['u_a', 'u_b'], { u_a: 'Ann' }], [['u_a'], {}], [['u_a'], {}]]);
+});

@@ -12,6 +12,8 @@ import ReportDialog from './ReportDialog.vue';
 // Withdraw invitation, or Back to watching), Remove for this
 // session, Block from my rooms, which asks first, and Report (when you may report, and haven't reported them in this room). Cancel (or Escape) puts
 // focus back on the ⋯ button the menu came from, or on the "N here" button when that member has left.
+// A watcher's is a list of who to follow, when there's more than the host: Follow on each row (pressed for the one
+// followed), and Show everyone and Show box under it. Nothing shows while the host is the only one to follow.
 const room = useRoomStore(), drawing = useDrawingStore();
 
 const menuTrigger = (event) => event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger');   // the ⋯ a menu item is under
@@ -38,7 +40,7 @@ const confirmBlock = async () => {
 </script>
 
 <template>
-  <section class="people">
+  <section v-if="room.role === 'host'" class="people">
     <button ref="toggle" class="link here" :aria-expanded="room.peopleOpen" @click="room.peopleOpen = !room.peopleOpen">
       {{ room.hereNow }} here
       <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
@@ -77,6 +79,22 @@ const confirmBlock = async () => {
       </div>
     </ModalDialog>
     <ReportDialog v-if="reporting" :key="opened" v-bind="reporting" @done="reporting = null" />
+  </section>
+  <section v-else-if="room.role === 'watch' && !drawing.mayDraw && room.followable.length > 1" class="people follow">
+    <ul aria-label="Who to follow">
+      <li v-for="person in room.followable" :key="person.sub">
+        <UserName class="name" :name="person.name" />
+        <span v-if="person.host" class="tag">host</span>
+        <button
+            class="link follow-person"
+            :aria-label="`Follow ${person.name}`"
+            :aria-pressed="room.following === person.sub"
+            @click="room.follow(person.sub)"
+        >{{ room.following === person.sub ? 'Following' : 'Follow' }}</button>
+      </li>
+    </ul>
+    <label><input type="checkbox" :checked="room.showEveryone" @change="room.setShowEveryone($event.target.checked)"> Show everyone</label>
+    <label><input type="checkbox" :checked="room.showBox" @change="room.setShowBox($event.target.checked)"> Show box</label>
   </section>
 </template>
 
@@ -135,6 +153,18 @@ span.tag {
   font-size: 10px;
   color: var(--text-muted);
   border: 1px solid var(--border-light);
+}
+button.follow-person[aria-pressed='true'] {
+  color: var(--text-muted);
+  cursor: default;
+}
+section.follow label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 span.what {
   font-size: 11px;

@@ -250,6 +250,15 @@ edge of the art, with an arrow pointing to it. If the connection to the host is 
 **The host is reconnecting…** until it's back (before the art has come, joining says **Joining…** and
 **Waiting for the host…**).
 
+Once someone is drawing with the host, the chat panel lists who you can follow: the host and each artist who is
+here, each with a **Follow** button (**Following** for the one you're on). You start on the host, and follow one
+person at a time. Choosing an artist tracks their whole view the way the host's is tracked: the art is drawn at
+their zoom, or smaller to fit all of it in your window, and their box and tag are the ones shown. Only the box
+you follow shows, and the room sends you only that view. **Show everyone** adds everyone else's box and tag (the
+host's too), and **Show box** off hides the box you follow while you keep following. If the artist you follow
+is put back to watching or leaves, you're back on the host. Reloading starts on the host again. With nobody
+drawing, none of this is on the screen. (An artist has **Show others' cursors** instead; see below.)
+
 Your browser connects straight to the host's, which shows each of you the other's IP address (a VPN
 hides yours).
 

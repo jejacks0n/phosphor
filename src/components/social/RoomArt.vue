@@ -17,7 +17,10 @@ import UserName from './UserName.vue';
 // host's is scrolled to the center, and the zoom that fits all of it in the window is told (fit). A wheel, a key or a press in it is looking around (a scroll it
 // made itself isn't; the tag is no part of it); Ctrl+wheel or a pinch asks for a zoom (zoom) instead, and
 // a zoom while not tracking keeps the same cell under the pointer, or in the middle of the view. Each draw tells the cell in the middle of the view (looking-at). The host's numbers are a stranger's: the view is held
-// to the grid here, and the font's size by fontFor.
+// to the grid here, and the font's size by fontFor. A watcher can follow an artist instead: that view, tag and name
+// are the ones tracked, and look the same (hostView, host). Show everyone adds the others' boxes (others), each in
+// its person's color with a tag to read, hidden from screen readers: the people list is where to choose. The tracked
+// box and its tag can be hidden (boxed false, or showBox false) and the view is still centered and fit.
 const props = defineProps({
   art: { type: Object, default: null },        // { cells, cols, lines, font (as sent: wire.fontOnWire) }
   hostView: { type: Object, default: null },   // { col, row, cols, rows } (the zoom to draw at comes in the zoom prop)
@@ -25,6 +28,8 @@ const props = defineProps({
   host: { type: String, default: null },       // the host's name, for the tag and its color
   zoom: { type: Number, default: 1 },          // the cell's size against the font's (the host's, never above 1)
   boxed: { type: Boolean, default: true },     // the host's box and tag (false: just the art, scrolled to the view)
+  showBox: { type: Boolean, default: true },   // the tracked one's box and tag, while boxed (false: still tracked)
+  others: { type: Array, default: () => [] },  // [{ sub, name, view }]: the others' boxes
 });
 const emit = defineEmits(['look-around', 'track', 'looking-at', 'zoom', 'cell', 'fit']);
 
@@ -37,20 +42,21 @@ let cellCanvas = null, renderFrame = null, resizeObserver = null;
 let sizedZoom = null;   // the zoom the canvas was last sized at
 let held = null;        // { col, row, x, y }: the cell to keep at x, y in the view through a zoom
 
-const view = computed(() => {
-  const v = props.hostView, art = props.art;
+const inGrid = (v) => {
+  const art = props.art;
   if (!v || !art) return null;
   const col = Math.min(v.col, art.cols - 1), row = Math.min(v.row, art.lines - 1);
   return { col, row, cols: Math.min(v.cols, art.cols - col), rows: Math.min(v.rows, art.lines - row) };
-});
+};
+const view = computed(() => inGrid(props.hostView));
 
 const sizerStyle = computed(() => {
   const m = metrics.value, art = props.art;
   return m && art ? { width: `${art.cols * m.cellWidth}px`, height: `${art.lines * m.lineHeight}px` } : {};
 });
 
-const boxStyle = computed(() => {
-  const v = view.value, m = metrics.value;
+const boxAt = (v) => {
+  const m = metrics.value;
   if (!v || !m) return { display: 'none' };
   return {
     left: `${v.col * m.cellWidth}px`,
@@ -58,7 +64,9 @@ const boxStyle = computed(() => {
     width: `${v.cols * m.cellWidth}px`,
     height: `${v.rows * m.lineHeight}px`,
   };
-});
+};
+const boxStyle = computed(() => boxAt(view.value));
+const othersBoxes = computed(() => props.others.map(({ sub, name, view: v }) => ({ sub, name, style: { ...boxAt(inGrid(v)), '--host': nameColor(name) } })));
 
 const colors = computed(() => (props.host ? { '--host': nameColor(props.host), '--host-ink': nameInk(nameColor(props.host)) } : {}));
 
@@ -234,7 +242,10 @@ onBeforeUnmount(() => {
   >
     <div ref="sizer" class="sizer" :style="sizerStyle">
       <canvas ref="canvas" :key="fontKey"></canvas>
-      <div v-if="boxed" class="host-view" :style="boxStyle">
+      <div v-for="other in othersBoxes" :key="other.sub" class="other-view" :style="other.style" aria-hidden="true">
+        <span class="other-tag"><UserName class="name" :name="other.name" /></span>
+      </div>
+      <div v-if="boxed && showBox" class="host-view" :style="boxStyle">
         <button
             v-if="host"
             ref="tag"
@@ -282,13 +293,34 @@ canvas {
   display: block;
 }
 
-.host-view {
+.host-view,
+.other-view {
   position: absolute;
   box-sizing: border-box;
   pointer-events: none;
   outline: 2px solid var(--host, #ff55ff);
   outline-offset: -2px;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.6);   /* so it shows on any art */
+}
+
+/* An other's tag: to read, up against its box's corner. */
+.other-tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border: 1px solid var(--host);
+  border-radius: 0 0 4px 0;
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
 }
 
 /* The host's tag, the Track button: filled while tracking, a dark tag with a Track pill when not.

@@ -10,7 +10,7 @@ import { openPeer } from './peer.js';
 import { decodePass, verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
 import { Allowance, ChatLog, chatText, isId, newId, signedText } from './chat.js';
-import { CHUNK_BYTES, MOST_ARTIST_BYTES, changedCells, encodeCells, packSnapshot } from './wire.js';
+import { CHUNK_BYTES, MOST_ARTIST_BYTES, changedCells, encodeCells, isSub, packSnapshot, readView } from './wire.js';
 
 const BACKED_UP_BYTES = 8 * 1024 * 1024;   // a channel further behind than this is sent no art until it drains
 const DRAINED_BYTES = 1024 * 1024;           // to this, and then gets one fresh snapshot
@@ -19,6 +19,7 @@ const MOST_HEARD_BYTES = 2048;               // a watcher's message longer than 
 const MOST_SKEW_MS = 120_000;                // a chat message's time, from the host's clock
 const EARLIER_EVERY_MS = 500;                // a watcher's asks for earlier messages, at most
 const MOST_CHECKING = 4;                     // a watcher's chat waiting to be checked; more is ignored
+const VIEWS_EVERY_MS = 250;                  // an artist's view, or everyone's, to a watcher who follows: at most this often
 const TRACKING_EVERY_MS = 250;              // who's here is redrawn for tracking toggles at most this often
 export const KEPT_THROUGH_RELOAD = 1000;     // the newest messages kept() hands over, to be restored after the host's reload
 export const RETURN_WITHIN_MS = 60_000;      // after a reload, those who were here have this long to come back before they're said to have left
@@ -50,7 +51,9 @@ export class Host {
     Object.assign(this, { send, passKey, config, connectWithinMs, roomId, returnWithinMs, onWatchers, onChat, project, onChange, onUndo, onRedo, onCursor, onHello, onAnswer });
     this.artists = new Set();   // the subs who may draw
     // peer -> { peer, pass, claims, tracking, conn, channel, has (the art it has), packing, behind,
-    // allowance, heard (its chat, checked one at a time), checking (how many wait), askedAt (its last ask
+    // allowance, heard (its chat, checked one at a time), following (the sub of the artist whose view it's sent, or
+    // null for the host's), everyone (it asked for all of them), told (the last artist's view or everyone's it was
+    // sent), checking (how many wait), askedAt (its last ask
     // for earlier messages), here (counted among those in the room), and for an artist drawing (said hello),
     // took (its changes handled on this connection, refused ones too), queue and queued (what's numbered for it,
     // waiting for its channel, and how much), projecting (a project is on its way, and the queue and any art wait
@@ -68,6 +71,7 @@ export class Host {
     this.room = null;
     this.art = null;
     this.view = null;
+    this.artistViews = {};   // sub -> view, from the artists' cursors
     this.packed = null;   // { art, chunks }: one snapshot for every watcher, packed again only for new art
   }
 
@@ -104,7 +108,7 @@ export class Host {
     if (this.removed.has(peer)) return;
     this.drop(peer);
     const w = {
-      peer, pass, claims: null, tracking: true, conn: null, channel: null, has: null, packing: false, behind: false,
+      peer, pass, claims: null, tracking: true, following: null, everyone: false, told: null, conn: null, channel: null, has: null, packing: false, behind: false,
       allowance: new Allowance(), heard: Promise.resolve(), checking: 0, askedAt: -Infinity,
       drawing: false, took: 0, queue: [], queued: 0, projecting: false, again: false, checked: null, drained: null,
     };
@@ -215,7 +219,55 @@ export class Host {
     const view = { col, row, cols, rows, zoom };
     if (this.view && sameView(this.view, view)) return;
     this.view = view;
-    for (const w of this.open()) this.sendTo(w, { t: 'view', ...view });
+    for (const w of this.open()) if (this.seesHost(w)) this.sendTo(w, { t: 'view', ...view });
+  }
+
+  // Only a watcher looking at the host, or at everyone, is sent the host's view.
+  seesHost(w) {
+    return w.following === null || w.everyone;
+  }
+
+  // The artists' views, from their cursors: only those of artists are kept. They go to the watchers who follow an
+  // artist or asked for everyone, at most every VIEWS_EVERY_MS, and only what has changed.
+  setArtistViews(views) {
+    this.artistViews = Object.fromEntries(Object.entries(views).filter(([sub]) => this.artists.has(sub)).map(([sub, view]) => [sub, readView(view)]).filter(([, view]) => view));
+    this.viewsTimer ??= setTimeout(() => {
+      this.viewsTimer = null;
+      for (const w of this.open()) this.sendViews(w);
+    }, VIEWS_EVERY_MS);
+  }
+
+  // What a watcher is sent of the artists: everyone's, or the one it follows, unless it's the same as it was sent.
+  sendViews(w) {
+    let msg = null;
+    if (w.everyone) msg = { t: 'views', ...this.artistViews };
+    else if (w.following !== null && this.artistViews[w.following]) msg = { t: 'view', ...this.artistViews[w.following], who: w.following };
+    const data = msg && JSON.stringify(msg);
+    if (!data || data === w.told) return;
+    w.told = data;
+    this.sendTo(w, msg);
+  }
+
+  // A watcher's ask for the view of an artist (a sub), or of the host (null). A sub that is no artist is the host, and
+  // anything that isn't a sub or null isn't an ask.
+  follow(w, sub) {
+    if (sub !== null && !isSub(sub)) return;
+    w.following = sub !== null && this.artists.has(sub) ? sub : null;
+    w.told = null;
+    this.sendNow(w);
+  }
+
+  showEveryone(w, on) {
+    if (typeof on !== 'boolean' || on === w.everyone) return;
+    w.everyone = on;
+    w.told = null;
+    this.sendNow(w);
+  }
+
+  // What a watcher's new choice shows now: the host's view if it's to see it, and the artists'.
+  sendNow(w) {
+    if (this.view && this.seesHost(w)) this.sendTo(w, { t: 'view', ...this.view });
+    this.sendViews(w);
   }
 
   // A message for everyone, the sender too (their echo): the host's own, already signed, or a
@@ -231,6 +283,7 @@ export class Host {
     w.here = true;
     const n = this.here.get(w.claims.sub) ?? 0;
     this.here.set(w.claims.sub, n + 1);
+    if (!n && this.isArtist(w.claims.sub)) this.sendArtists(w);   // others hear the name of an artist who's come
     if (!n && !this.returning.delete(w.claims.sub)) this.post('presence', { pass: w.pass, id: newId(), ts: Date.now(), presence: 'joined' });
   }
 
@@ -241,6 +294,7 @@ export class Host {
     if (!n) return;   // the room is closing
     if (n > 1) return void this.here.set(w.claims.sub, n - 1);
     this.here.delete(w.claims.sub);
+    for (const other of this.watchers.values()) if (other.following === w.claims.sub) Object.assign(other, { following: null, told: null });   // gone: the watcher hears it in 'left' and goes back to the host
     this.post('presence', { pass: w.pass, id: newId(), ts: Date.now(), presence: 'left' });
   }
 
@@ -287,6 +341,7 @@ export class Host {
   close() {
     clearTimeout(this.redrawing);
     clearTimeout(this.returnTimer);
+    clearTimeout(this.viewsTimer);
     this.here.clear();
     for (const peer of [...this.watchers.keys()]) this.drop(peer);
   }
@@ -339,7 +394,7 @@ export class Host {
     this.changed();
     if (this.room) this.sendTo(w, { t: 'room', ...this.room });
     this.sendTo(w, { t: 'history', ...this.log.page(undefined, (m) => this.shown(m.id, w)) });
-    this.sendTo(w, { t: 'artists', subs: [...this.artists] });   // empty too: someone put back while away hears it here
+    this.sendTo(w, this.artistsMessage());   // empty too: someone put back while away hears it here
     this.arrived(w);
     await this.update(w);
     if (this.view && this.watchers.get(w.peer) === w && channel.readyState === 'open') this.sendTo(w, { t: 'view', ...this.view });
@@ -355,6 +410,8 @@ export class Host {
     if (msg?.t === 'tracking') this.track(w, msg.on);
     else if (msg?.t === 'chat') this.check(w, msg);
     else if (msg?.t === 'earlier') this.earlier(w, msg.before);
+    else if (msg?.t === 'follow') this.follow(w, msg.sub === undefined ? NaN : msg.sub);
+    else if (msg?.t === 'show-everyone') this.showEveryone(w, msg.on);
     else if (msg?.t === 'accept' || msg?.t === 'decline' || artist) this.drawn(w, msg);
   }
 
@@ -387,7 +444,22 @@ export class Host {
     for (const w of this.watchers.values()) {
       if (w.claims && !this.artists.has(w.claims.sub)) Object.assign(w, { drawing: false, took: 0, queue: [], queued: 0, again: false });
     }
-    for (const w of this.open()) this.sendTo(w, { t: 'artists', subs: [...subs] });
+    for (const w of this.watchers.values()) {
+      if (w.following !== null && !this.artists.has(w.following)) Object.assign(w, { following: null, told: null });   // put back to watching: the watcher goes back to the host as well
+    }
+    this.sendArtists();
+  }
+
+  // Who may draw, with the names of those here: a watcher can't ask anyone's name, and one it isn't told it can't show.
+  artistsMessage() {
+    const names = {};
+    for (const w of this.watchers.values()) if (w.channel && w.claims && this.artists.has(w.claims.sub)) names[w.claims.sub] = w.claims.name;
+    return { t: 'artists', subs: [...this.artists], names };
+  }
+
+  sendArtists(except = null) {
+    const msg = this.artistsMessage();
+    for (const w of this.open()) if (w !== except) this.sendTo(w, msg);
   }
 
   isArtist(sub) {

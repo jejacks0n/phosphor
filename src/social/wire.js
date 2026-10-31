@@ -12,11 +12,12 @@
  *                                               treats its connection as lost, and the next offer connects it again
  * Watcher to host:
  *   { t: 'tracking', on }
- *   { t: 'follow', sub }                        look where this artist is looking (null: stop)
- *   { t: 'show-everyone', on }                  ask for 'views' of every artist
+ *   { t: 'follow', sub }                        look where this artist is looking (null: the host). Only the view
+ *                                               of the one followed is sent, unless 'show-everyone' asked for more
+ *   { t: 'show-everyone', on }                  ask for the host's view and 'views' of every artist
  * Host to watcher, besides the above:
  *   { t: 'view', ..., who }                     whose view this is, when it isn't the host's (a sub)
- *   { t: 'views', [sub]: view }                 everyone's views, to a watcher who asked
+ *   { t: 'views', [sub]: view }                 every artist's view, to a watcher who asked
  *
  * There are no edit numbers for watchers: the channel keeps changes in order, and a watcher ignores
  * 'cells' until its first snapshot.
@@ -48,13 +49,14 @@
  *   { t: 'check', n, sum }                      the edit layer's sum as of n, to compare
  *   { t: 'cursors', [sub]: { at, view, name } } where everyone is
  *   { t: 'invite' } / { t: 'withdrawn' }        asked to draw; the ask is gone
- *   { t: 'artists', subs }                      who may draw now
+ *   { t: 'artists', subs, names }               who may draw now, and the names of those of them who are here ({ sub: name })
  * Pausing and resuming are the 'away' message and the channel closing.
  */
 import { hex2rgb } from '../lib/ColorUtils.js';
 import { DISPLAY_FONTS, MIN_FONT_SIZE, MAX_FONT_SIZE } from '../lib/displayFonts.js';
 import { MAX_COLS, MAX_LINES, MAX_CELLS } from '../lib/Cells.js';
 import { usableChar } from '../lib/CharWidth.js';
+import { clampAnsiZoom } from '../lib/zoom.js';
 import { writeProject, readProject } from '../document/projectIO.js';
 
 export const CHUNK_BYTES = 65536;
@@ -290,8 +292,30 @@ export function readCursor({ at = null, view = null, name } = {}) {
   return { at, view, name };
 }
 
+// A view as the watcher draws it, or null for anything that isn't one: a stranger's numbers (a host's, or an
+// artist's by way of the host) are whole cells, and a zoom that isn't one is the font's size.
+export function readView(view) {
+  if (!view || typeof view !== 'object' || ![view.col, view.row, view.cols, view.rows].every(place)) return null;
+  const { col, row, cols, rows, zoom } = view;
+  return { col, row, cols, rows, zoom: typeof zoom === 'number' && zoom > 0 ? clampAnsiZoom(zoom) : 1 };
+}
+
 // A host's cursors message: those that are cursors, by sub.
 export function readCursors(all) {
   const read = Object.entries(all ?? {}).slice(0, MOST_CURSORS).map(([sub, cursor]) => [sub, cursor && typeof cursor === 'object' ? readCursor(cursor) : null]);
   return Object.fromEntries(read.filter(([, cursor]) => cursor));
+}
+
+// A host's views message: those that are views, by sub (a sub is short text).
+const MOST_SUB = 64;
+export const isSub = (sub) => typeof sub === 'string' && sub.length > 0 && sub.length <= MOST_SUB;
+export function readViews(all) {
+  const read = Object.entries(all ?? {}).filter(([sub]) => sub !== 't').slice(0, MOST_CURSORS).map(([sub, view]) => [sub, isSub(sub) ? readView(view) : null]);
+  return Object.fromEntries(read.filter(([, view]) => view));
+}
+
+// The names in an artists message, for those it lists: those that are names, by sub.
+export function readNames(names, subs) {
+  if (!names || typeof names !== 'object' || Array.isArray(names)) return {};
+  return Object.fromEntries(subs.filter((sub) => typeof names[sub] === 'string' && names[sub] && names[sub].length <= MOST_NAME).map((sub) => [sub, names[sub]]));
 }
