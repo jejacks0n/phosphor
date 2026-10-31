@@ -88,3 +88,6 @@ const ROOM_WORDS = {
 };
 
 export const refusalWords = (reason) => (Object.hasOwn(ROOM_WORDS, reason) ? ROOM_WORDS[reason] : ROOM_WORDS.unavailable);
+
+// What a host is told when the room it reloaded into is gone.
+export const ROOM_AWAY_WORDS = 'Your room ended while the page was away';

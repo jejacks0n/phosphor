@@ -6,6 +6,7 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import { createAddressRouter, followAddress } from './router';
 import { useSocialStore } from './store/SocialStore';
+import { useRoomStore } from './store/RoomStore';
 
 const pinia = createPinia();
 
@@ -15,6 +16,7 @@ app.use(pinia);
 // SOCIAL: a link back from the server is read at load; the rest waits for the tab (a server that can't
 // be reached leaves the editor be). Before the router's made, which keeps what the URL has then.
 useSocialStore().start();
+useRoomStore().resume();   // a room this tab hosts: the router must see it on its first look
 
 // The stores are placed from the address before App's setup, and autosave's start reads them.
 const router = createAddressRouter();

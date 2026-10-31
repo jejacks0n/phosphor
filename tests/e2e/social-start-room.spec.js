@@ -314,8 +314,9 @@ test('a paced-out save shows the server\'s values, and saving them again sends t
   expect(await store(page, 'room', (r) => r.room.max)).toBe(8);
 });
 
-// Review focus 4: the art isn't changed, so it's the room that asks; once closed, the server hears end.
-test('closing the tab while hosting asks first; closed, the server hears end', async ({ page }) => {
+// Review focus 4: the art isn't changed, so it's the room that asks; once closed, the server hears no end (a reload
+// closes the page the same way, and the room's own wait ends a room whose host doesn't come back).
+test('closing the tab while hosting asks first; closed, the server hears no end', async ({ page }) => {
   const { room } = await goLive(page);
   expect(await store(page, 'project', (p) => p.isDirty)).toBe(false);
   const dialogs = [];
@@ -332,7 +333,7 @@ test('closing the tab while hosting asks first; closed, the server hears end', a
   await page.close({ runBeforeUnload: true });
   await expect.poll(() => page.isClosed()).toBe(true);
   expect(dialogs).toEqual(['beforeunload', 'beforeunload']);
-  await expect.poll(() => room.from('host').map((m) => m.type)).toContain('end');
+  expect(room.from('host').map((m) => m.type)).not.toContain('end');
 });
 
 test('while your pass says you\'re silenced, Start a room is disabled and says until when; it comes back when that\'s past', async ({ page }) => {

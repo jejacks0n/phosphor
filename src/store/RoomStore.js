@@ -1,18 +1,21 @@
 import { defineStore } from 'pinia';
 import { markRaw, shallowRef, watch } from 'vue';
+import { until } from '@vueuse/core';
 import { apiOrigin, wsOrigin } from '@/social/config';
 import { proof, sign } from '@/social/keys';
 import { Allowance, MOST_KEPT, REASONS, chatText, evidenceFor, newId, signedText } from '@/social/chat';
 import { LobbyConnection, Pacer } from '@/social/lobby';
-import { refusalWords } from '@/social/messages';
+import { ROOM_AWAY_WORDS, refusalWords } from '@/social/messages';
 import { decodePass, passKey } from '@/social/pass';
 import { Host } from '@/social/hosting';
+import { forgetHostingRecord, keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
 import { Watch } from '@/social/watching';
 import { fontOnWire, fontFor } from '@/social/wire';
 import { thumbnailOf } from '@/social/thumbnail';
 import { newSession, sessionJoined, sessionLeft, sessionRemoved, sessionSaid, sessionSaw } from '@/social/session';
 import { charRowsOf } from '@/lib/Cells';
 import { clampAnsiZoom } from '@/lib/zoom';
+import { toast } from '@/composables/useToast';
 import { useSocialStore } from '@/store/SocialStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -23,6 +26,8 @@ const THUMBNAIL_FIRST_MS = 3000;      // the lobby's picture of a public room, s
 const THUMBNAIL_EVERY_MS = 180_000;   // then at most this often (the server's own floor is 20 s), and only after a change
 const SETTINGS_EVERY_MS = 1250;  // the server's 1 s, with slack: it measures when settings arrive
 const ASK_FOR_MS = 3000;        // how long an earlier() waits for its page (the host may drop it unanswered)
+const KEEP_EVERY_MS = 1000;     // the host's resume record, as the room changes (and at once on pagehide)
+const HOST_SOCKET = { liveOn: ['hosting'], endOn: ['refused', 'ended'] };
 export const ROOM_ID = /^[a-z2-7]{10}$/;
 
 // What's typed in Start a room and Room settings, kept here so it stays while you're on another tab (the
@@ -78,6 +83,9 @@ export const hasLeftRoom = (id) => {
 // The cell in the middle of a view ({ col, row, cols, rows }), or the top left without one.
 const middleOf = (v) => (v ? { middleCol: v.col + v.cols / 2, middleRow: v.row + v.rows / 2 } : { middleCol: 0, middleRow: 0 });
 
+// A deleted message as the list shows it: nothing says whose it was.
+const deletedRow = ({ id, ts }) => ({ id, ts, text: '', pass: null, sig: null, sub: null, name: null, host: false, mine: false, deleted: true });
+
 const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12, signal: null });
 const newSettingsDraft = () => ({ welcome: '', allowGuests: true, max: 12, signal: null, seen: {} });
 
@@ -124,6 +132,8 @@ export const useRoomStore = defineStore('room', {
     _refusedOnce: false, // the room refused a pass since it was last live: the next refusal stands
     _connectWithinMs: undefined,   // the peers' (tests make it short)
     _endAnswer: null,    // answers End the room? while Back past going live waits on it (markRaw)
+    _resuming: false,    // a host's: back from a reload, and the room hasn't said hosting yet
+    _keepTimer: null,    // the resume record's next write
   }),
 
   getters: {
@@ -165,21 +175,92 @@ export const useRoomStore = defineStore('room', {
       if (!ok) return false;
       const lobbyPin = isPublic ? this.lobbyPin : null;   // picked in Setup room, kept through close()
       this.close();
-      Object.assign(this, {
+      this.hostRoom({
         startDraft: newStartDraft(), settingsDraft: newSettingsDraft(), hasPassword: !isPublic && !!password, lobbyPin,
-        role: 'host', id: data.id, link: data.link, status: 'connecting',
+        id: data.id, link: data.link, status: 'connecting',
         room: { name, welcome: welcome ?? '', public: isPublic, allowGuests, max, signal: isPublic ? signal : null, count: 0 },
       });
-      this._host = markRaw(new Host({
-        send: (msg) => this._connection?.send(msg),
-        passKey, connectWithinMs: this._connectWithinMs, roomId: this.id,
-        onWatchers: (list) => { this.watchers = list; },
-        onChat: (event) => this.chatHeard(event),
-      }));
-      this._settings = markRaw(new Pacer(SETTINGS_EVERY_MS, (msg) => this._connection?.send(msg) ?? false));
       this.share();
-      this.connect({ type: 'host' }, { liveOn: ['hosting'], endOn: ['refused', 'ended'] });
+      this.connect({ type: 'host' }, HOST_SOCKET);
       return true;
+    },
+
+    // You're this room's host: these fields, and a Host (with what it kept, for a room coming back). What
+    // was kept is taken first, so one that can't be taken throws with nothing changed.
+    hostRoom(fields, kept = null) {
+      const host = markRaw(new Host({
+        send: (msg) => this._connection?.send(msg),
+        passKey, connectWithinMs: this._connectWithinMs, roomId: fields.id,
+        onWatchers: (list) => {
+          this.watchers = list;
+          this.keepSoon();
+        },
+        onChat: (event) => {
+          this.chatHeard(event);
+          this.keepSoon();
+        },
+      }));
+      if (kept) host.restore(kept);
+      Object.assign(this, { ...fields, role: 'host', _host: host, _settings: markRaw(new Pacer(SETTINGS_EVERY_MS, (msg) => this._connection?.send(msg) ?? false)) });
+    },
+
+    // The room this tab was hosting before a reload, from its record: in place at once, for the router's
+    // first look and the Host page; the socket waits for you and the art (comeBack). A record that can't
+    // be read changes nothing.
+    resume() {
+      const record = keptHostingRecord();
+      if (!ROOM_ID.test(record?.id) || !record.sub || !record.room || !Array.isArray(record.session?.people)) return;
+      const { id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted } = record;
+      try {
+        this.hostRoom({ id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, status: 'reconnecting', _resuming: true }, { ...record.host, muted });
+      } catch {
+        return;
+      }
+      this.comeBack(record).catch((error) => {
+        console.warn('The room couldn\'t come back.', error);
+        if (this.id === id) this.close();
+      });
+    },
+
+    // The rest of resume(): only for the account that hosted, and only with the art to show. Its pass is
+    // renewed here if it ran out.
+    // ponytail: End room in that moment has no socket to send end on, so the room's wait ends it instead.
+    async comeBack(record) {
+      const social = useSocialStore(), project = useProjectStore(), workspace = useWorkspaceStore();
+      const gone = () => this.id !== record.id;
+      await social.boot();
+      if (gone()) return;
+      try {
+        await social.getPass();
+      } catch { /* no pass, so no account to match */ }
+      if (gone()) return;
+      if (social.claims?.sub !== record.sub) return this.close();
+      const only = new Set(record.host.only.map(([id]) => id));
+      this.chat = record.host.log.map((entry) => {
+        if (entry.deleted) return deletedRow(entry);
+        const row = this.chatRow(entry);
+        return only.has(entry.id) ? { ...row, muted: true } : row;
+      });
+      await until(() => !!project.image || workspace.documentSettled).toBe(true);
+      if (gone()) return;
+      if (!project.image) return this.over(ROOM_AWAY_WORDS);
+      this.share();
+      this.connect({ type: 'host' }, HOST_SOCKET);
+    },
+
+    // What this tab keeps of the room you host, for resume().
+    // ponytail: host.kept() is the newest KEPT_THROUGH_RELOAD (1000) entries of the chat, to fit sessionStorage; IndexedDB if a whole log should come back.
+    keepRecord() {
+      if (this.role !== 'host') return;
+      const { id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted } = this;
+      keepHostingRecord({ sub: useSocialStore().claims?.sub, id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, host: this._host.kept(), view: null });
+    },
+
+    keepSoon() {
+      this._keepTimer ??= setTimeout(() => {
+        this._keepTimer = null;
+        this.keepRecord();
+      }, KEEP_EVERY_MS);
     },
 
     // The host's art to the Host as it changes, at most every SEND_EVERY_MS, and its view at most every
@@ -217,19 +298,22 @@ export const useRoomStore = defineStore('room', {
         this._host?.setView(v);
         return true;
       });
-      const pagehide = () => this._connection?.send({ type: 'end' });   // watchers hear at once, not in a minute
+      const pagehide = () => this.keepRecord();   // a reload isn't the room's end: what comes back reads this
       addEventListener('pagehide', pagehide);
       this._stops = [
         watch([() => project.cells, () => project.cols, () => project.rows, () => workspace.displayFontSpec], () => { schedule(); changed(); }),
         watch(() => workspace.sharedView, (v) => { if (v) view.push(v); }, { immediate: true }),
         watch(() => JSON.stringify(this.lobbyPlace), changed, { immediate: true }),
         watch(() => this.hereNow, (here) => sessionSaw(this.session, here), { immediate: true }),
+        watch([() => this.room, () => this.lobbyPin, () => this.peopleOpen, () => this.muted], () => this.keepSoon()),
         watch(() => this.status, (status) => {
           if (status === 'live') this.session.liveSince ??= Date.now();   // a reconnect keeps it
+          if (status === 'live') this.keepSoon();
           if (status === 'live' && this.room.public && pictureAt === null) pictureTimer ??= setTimeout(picture, THUMBNAIL_FIRST_MS);
         }),
-        () => { clearTimeout(timer); clearTimeout(pictureTimer); view.reset(); removeEventListener('pagehide', pagehide); },
+        () => { clearTimeout(timer); clearTimeout(pictureTimer); clearTimeout(this._keepTimer); view.reset(); removeEventListener('pagehide', pagehide); },
       ];
+      this.keepRecord();
       flush();
     },
 
@@ -334,7 +418,10 @@ export const useRoomStore = defineStore('room', {
     close({ spent = true } = {}) {
       this.answerEnd(true);   // a question still open: there's nothing left to keep, and Back can finish
       if (spent && this.id) noteLeft(this.id, true);
-      if (this.role === 'host') this._connection?.send({ type: 'end' });
+      if (this.role === 'host') {
+        this._connection?.send({ type: 'end' });
+        forgetHostingRecord();
+      }
       const connection = this._connection;
       this._connection = null;
       connection?.close();
@@ -347,7 +434,7 @@ export const useRoomStore = defineStore('room', {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
         hostView: null, lookingAt: null, tracking: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
-        _refusedOnce: false,
+        _refusedOnce: false, _resuming: false, _keepTimer: null,
       });
     },
 
@@ -485,7 +572,7 @@ export const useRoomStore = defineStore('room', {
           if (this.role === 'host') this.counted(event);
         }
       } else if (event.type === 'history') {
-        const rows = event.messages.map((m) => (m.deleted ? { id: m.id, ts: m.ts, text: '', pass: null, sig: null, sub: null, name: null, host: false, mine: false, deleted: true } : this.chatRow(m.entry, m.claims)))
+        const rows = event.messages.map((m) => (m.deleted ? deletedRow(m) : this.chatRow(m.entry, m.claims)))
           .filter((r, at, all) => all.findIndex((o) => o.id === r.id) === at);   // an id twice in a page is shown once
         for (const r of rows) {   // a deletion made while this watcher was away
           const shown = r.deleted && this.chat.find((m) => m.id === r.id);
@@ -545,6 +632,7 @@ export const useRoomStore = defineStore('room', {
         case 'hosting': {
           const chosen = this.room;
           this._refusedOnce = false;
+          this._resuming = false;
           this.room = { ...msg.room, welcome: chosen.welcome };
           if (!this._host.room) this._host.setRoom({ name: msg.room.name, welcome: chosen.welcome });
           this._host.hosting(msg.peers);
@@ -584,7 +672,7 @@ export const useRoomStore = defineStore('room', {
         case 'ended':
         case 'removed':
         case 'replaced':
-          this.over(this.role === 'watch' ? refusalWords(msg.type) : null);
+          this.over(this.role === 'watch' ? refusalWords(msg.type) : this._resuming ? ROOM_AWAY_WORDS : null);
           break;
       }
     },
@@ -599,15 +687,16 @@ export const useRoomStore = defineStore('room', {
       } else if (reason === 'wrong-password') {
         Object.assign(this, { status: 'password', passwordWrong: this._password !== undefined });
       } else {
-        this.over(refusalWords(reason));
+        this.over(this._resuming ? ROOM_AWAY_WORDS : refusalWords(reason));
       }
     },
 
     over(notice) {
-      const social = useSocialStore();
+      const social = useSocialStore(), hosting = this.role === 'host';
       this._connection = null;   // it's ending itself: no end to send
       this.leave();
       if (notice) social.notice = notice;
+      if (notice && hosting && useWorkspaceStore().editorTab !== 'social') toast(notice);   // the notice is on the tab you're not on
     },
 
     // The watcher's connection to the host: lost goes back to waiting for its next offer. Failed stays
