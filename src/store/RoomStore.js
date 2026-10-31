@@ -7,7 +7,7 @@ import { Allowance, MOST_KEPT, REASONS, chatText, evidenceFor, newId, signedText
 import { LobbyConnection, Pacer } from '@/social/lobby';
 import { ROOM_AWAY_WORDS, refusalWords } from '@/social/messages';
 import { decodePass, passKey } from '@/social/pass';
-import { Host } from '@/social/hosting';
+import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
 import { forgetHostingRecord, keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
 import { Watch } from '@/social/watching';
 import { fontOnWire, fontFor } from '@/social/wire';
@@ -27,6 +27,7 @@ const THUMBNAIL_EVERY_MS = 180_000;   // then at most this often (the server's o
 const SETTINGS_EVERY_MS = 1250;  // the server's 1 s, with slack: it measures when settings arrive
 const ASK_FOR_MS = 3000;        // how long an earlier() waits for its page (the host may drop it unanswered)
 const KEEP_EVERY_MS = 1000;     // the host's resume record, as the room changes (and at once on pagehide)
+const RESUME_RETRY_MS = 3000;   // a host coming back asks again this often, for a pass or a room that was too busy to answer
 const HOST_SOCKET = { liveOn: ['hosting'], endOn: ['refused', 'ended'] };
 export const ROOM_ID = /^[a-z2-7]{10}$/;
 
@@ -206,7 +207,7 @@ export const useRoomStore = defineStore('room', {
 
     // The room this tab was hosting before a reload, from its record: in place at once, for the router's
     // first look and the Host page; the socket waits for you and the art (comeBack). A record that can't
-    // be read changes nothing.
+    // be read changes nothing, and one that can't be restored is forgotten as well.
     resume() {
       const record = keptHostingRecord();
       if (!ROOM_ID.test(record?.id) || !record.sub || !record.room || !Array.isArray(record.session?.people)) return;
@@ -214,34 +215,45 @@ export const useRoomStore = defineStore('room', {
       try {
         this.hostRoom({ id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, status: 'reconnecting', _resuming: true }, { ...record.host, muted });
       } catch {
+        forgetHostingRecord();
         return;
       }
       this.comeBack(record).catch((error) => {
         console.warn('The room couldn\'t come back.', error);
-        if (this.id === id) this.close();
+        if (this.id === id) this.over(ROOM_AWAY_WORDS);
       });
     },
 
     // The rest of resume(): only for the account that hosted, and only with the art to show. Its pass is
-    // renewed here if it ran out.
+    // renewed here if it ran out. A pass that can't be had says nothing about who you are, so it's asked for
+    // again until those who were here would have stopped waiting.
     // ponytail: End room in that moment has no socket to send end on, so the room's wait ends it instead.
     async comeBack(record) {
       const social = useSocialStore(), project = useProjectStore(), workspace = useWorkspaceStore();
-      const gone = () => this.id !== record.id;
+      const gone = () => this.id !== record.id, began = Date.now();
+      const askForPass = () => social.getPass().catch(() => {});
       await social.boot();
       if (gone()) return;
-      try {
-        await social.getPass();
-      } catch { /* no pass, so no account to match */ }
+      await askForPass();
+      const late = !social.claims;
+      while (!gone() && !social.claims) {
+        if (Date.now() - began >= RETURN_WITHIN_MS) return this.over(ROOM_AWAY_WORDS);
+        await new Promise((resolve) => setTimeout(resolve, RESUME_RETRY_MS));
+        if (!gone()) await askForPass();
+      }
       if (gone()) return;
-      if (social.claims?.sub !== record.sub) return this.close();
+      if (social.claims.sub !== record.sub) return this.close();
+      if (late && !social.me) {   // boot's ask failed the same way
+        await social.refreshMe();
+        if (gone()) return;
+      }
       const only = new Set(record.host.only.map(([id]) => id));
       this.chat = record.host.log.map((entry) => {
         if (entry.deleted) return deletedRow(entry);
         const row = this.chatRow(entry);
         return only.has(entry.id) ? { ...row, muted: true } : row;
       });
-      await until(() => !!project.image || workspace.documentSettled).toBe(true);
+      await until(() => !!project.image || workspace.documentAnswered).toBe(true);
       if (gone()) return;
       if (!project.image) return this.over(ROOM_AWAY_WORDS);
       this.share();
@@ -681,7 +693,9 @@ export const useRoomStore = defineStore('room', {
     // one was sent: a link's first try goes without). Anything else is the end of it.
     refused(reason) {
       const connection = this._connection;
-      if (reason === 'bad-pass' && !this._refusedOnce) {
+      if (reason === 'throttled' && this._resuming) {   // too busy to say: the room may well be there
+        setTimeout(() => { if (connection === this._connection) connection.open(); }, RESUME_RETRY_MS);
+      } else if (reason === 'bad-pass' && !this._refusedOnce) {
         this._refusedOnce = true;
         useSocialStore().renewPass().then(() => { if (connection === this._connection) connection.open(); });
       } else if (reason === 'wrong-password') {
