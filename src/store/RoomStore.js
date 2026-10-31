@@ -58,6 +58,23 @@ export const keepRoomReport = (room) => {
 export const keptRoomReports = () => keptReports().filter((r) => r.sub === ROOM_REPORT).map(({ room, by }) => ({ room, by }));
 const REPORT_PICTURE = { width: 480, most: 96 * 1024 };   // the server's limit on a room report's picture, as base64 characters
 
+// The rooms you left for good (Exit, End, removed, ended, another joined), in sessionStorage so a reload
+// knows: Back or Forward onto their entries doesn't join them again. Only your own join forgets one.
+const LEFT_ROOMS = 'phosphor-left-rooms';
+const noteLeft = (id, left) => {
+  try {
+    const others = JSON.parse(sessionStorage.getItem(LEFT_ROOMS) ?? '[]').filter((other) => other !== id);
+    sessionStorage.setItem(LEFT_ROOMS, JSON.stringify(left ? [...others, id] : others));
+  } catch { /* no storage: every room reads as left */ }
+};
+export const hasLeftRoom = (id) => {
+  try {
+    return JSON.parse(sessionStorage.getItem(LEFT_ROOMS) ?? '[]').includes(id);
+  } catch {
+    return true;   // joining shows the host your IP address: not knowing means no
+  }
+};
+
 // The cell in the middle of a view ({ col, row, cols, rows }), or the top left without one.
 const middleOf = (v) => (v ? { middleCol: v.col + v.cols / 2, middleRow: v.row + v.rows / 2 } : { middleCol: 0, middleRow: 0 });
 
@@ -247,6 +264,7 @@ export const useRoomStore = defineStore('room', {
         return;
       }
       this.close();
+      noteLeft(id, false);
       Object.assign(this, { role: 'watch', id, status: 'joining', _password: password, reported: reportedIn(id, social.claims?.sub) });
       if (social.signedIn) social.loadBlocked();   // whose messages to hide
       this._watch = markRaw(new Watch({
@@ -299,8 +317,10 @@ export const useRoomStore = defineStore('room', {
       useSocialStore().page = 'lobby';
     },
 
-    // Everything stops, and nothing of the room is kept; a room you host is ended first.
-    close() {
+    // Everything stops, and nothing of the room is kept; a room you host is ended first. It's spent, unless
+    // Back past the join is why: Forward can undo that.
+    close({ spent = true } = {}) {
+      if (spent && this.id) noteLeft(this.id, true);
       if (this.role === 'host') this._connection?.send({ type: 'end' });
       const connection = this._connection;
       this._connection = null;

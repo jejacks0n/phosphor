@@ -5,7 +5,7 @@ import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router
 import { PLACES, arrivalPage, pathOf } from '@/lib/addresses';
 import { desktopQuery } from '@/social/config';
 import { useProjectStore } from '@/store/ProjectStore';
-import { useRoomStore } from '@/store/RoomStore';
+import { hasLeftRoom, useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
@@ -28,7 +28,7 @@ export function createAddressRouter(history = defaultHistory()) {
 
 export function followAddress(router) {
   const workspace = useWorkspaceStore(), social = useSocialStore(), room = useRoomStore(), project = useProjectStore();
-  let pending = false, ours = false, landing = true, replaceNext = false;
+  let pending = false, ours = false, landing = true, replaceNext = false, joining = false;
 
   // ANSI and SAUCE need an image, and only once autosave has answered do we know there isn't one.
   function leaveIfNoImage() {
@@ -37,12 +37,31 @@ export function followAddress(router) {
     replaceNext = true;
   }
 
+  // The room a place names, on an entry of yours or not. True when it's a link, which asks on SOCIAL.
+  function enterRoomOf(to) {
+    const id = to.query.room == null ? null : String(to.query.room), mark = router.options.history.state.inRoom;
+    const hostGone = mark === 'host' && !(room.role === 'host' && room.id === id);   // a host's reload, or a room since ended
+    const spent = !!id && (hasLeftRoom(id) || hostGone);                             // same place, no room
+    const here = spent ? null : id;
+    joining = joining && here === (room.id ?? social.roomGoingTo);
+    if (room.role === 'watch' && room.id !== here) room.close({ spent: false });   // Back past the join: Forward can undo it
+    if (social.roomGoingTo !== null && social.roomGoingTo !== here) social._roomLink = null;   // gone by before it joined
+    if (!here || room.role) return false;
+    if (mark !== 'watch') {
+      social.followRoomLink(id);
+      return true;
+    }
+    joining = true;
+    social.rejoin(id);
+    return false;
+  }
+
   async function applyPlace(to) {
     const { tab, page } = to.meta;
     if (!tab) return;
     if (landing) workspace.tabAddressed = true;
     if (page) social.page = page;
-    workspace.editorTab = tab;
+    workspace.editorTab = matchMedia(desktopQuery).matches && enterRoomOf(to) ? 'social' : tab;
     if (tab === 'social' && !matchMedia(desktopQuery).matches) {
       workspace.editorTab = 'input';
       replaceNext = true;
@@ -63,23 +82,43 @@ export function followAddress(router) {
   // The one place that navigates.
   function reconcile() {
     if (pending) return;
+    const current = router.currentRoute.value, was = current.query.room ?? null, going = room.id ?? social.roomGoingTo;
     const path = pathOf({ tab: workspace.editorTab, page: social.page, role: room.role });
-    if (path === router.currentRoute.value.path) return;   // later tasks compare the query too
-    const replace = landing || replaceNext || path === '/social/name' || !router.currentRoute.value.meta.tab;   // / is never a step
+    const wanted = going ?? (matchMedia(desktopQuery).matches ? null : was);   // a phone has no rooms: a link stays, for a computer
+    if (path === current.path && wanted === was) {
+      replaceNext = false;
+      return;
+    }
+    // Exit, End, removal, the room ending, a spent entry or a link that asks. (Back past a join never gets here: its address is right.)
+    const lost = was !== null && wanted === null;
+    const replace = landing || replaceNext || lost || path === '/social/name' || !current.meta.tab;   // / is never a step
     replaceNext = false;
     ours = true;
     pending = true;   // beforeEach is a few promises off, and a second call before it would navigate again
-    router[replace ? 'replace' : 'push']({ path, query: router.currentRoute.value.query }).finally(() => { ours = false; });
+    router[replace ? 'replace' : 'push']({
+      path, query: { ...current.query, room: wanted ?? undefined },
+      state: { inRoom: going ? room.role ?? 'watch' : null },   // a phone's kept link is no room of yours
+    });
   }
 
   const stops = [
     router.beforeEach(() => { pending = true; }),
     router.afterEach((to, from, failure) => {
-      pending = false;
-      if (!failure && !ours) applyPlace(to);
+      const own = ours;
+      pending = ours = false;   // (not after the navigation's promise: reconcile below may have started the next by then)
+      if (!failure && !own) applyPlace(to);
       nextTick(reconcile);
     }),
-    watch(() => [workspace.editorTab, social.page, room.role, room.id], reconcile),   // default flush: changes in one tick are one step
+    // A join the address started can need SOCIAL, the only place its password form and refusal words show.
+    watch(() => [room.status, room.role], ([status, role], [, was]) => {
+      if (!joining || status === 'joining') return;
+      joining = false;
+      if (status === 'password' || (was && !role && social.notice)) {
+        workspace.editorTab = 'social';
+        replaceNext = true;
+      }
+    }),
+    watch(() => [workspace.editorTab, social.page, room.role, room.id, social.roomGoingTo], reconcile),   // default flush: changes in one tick are one step
     watch(() => workspace.documentSettled, () => {
       landing = false;
       leaveIfNoImage();

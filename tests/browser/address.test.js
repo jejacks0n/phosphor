@@ -4,19 +4,23 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createMemoryHistory } from 'vue-router';
 import { createTestApp, loadImage } from '../support/app.js';
 import { useSocialStore } from '@/store/SocialStore';
+import { useRoomStore, hasLeftRoom } from '@/store/RoomStore';
 import { forgetKey } from '@/social/keys';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
-import { fakeServer, member } from '../support/socialServer.js';
+import { fakeServer, member, sockets, useFakeSockets } from '../support/socialServer.js';
 import { createAddressRouter, followAddress } from '@/router';
 
 const GRADIENT = '/tests/fixtures/images/gradient.png';
-let project, workspace, social, router, stop, push, replace;
+const ID = 'abcdefghij', OTHER = 'bcdefghijk';
+let project, workspace, social, room, router, stop, push, replace;
 
 // The router's work is promises, so a macrotask sees it through.
 const settled = async () => {
   for (let i = 0; i < 3; i++) await new Promise((resolve) => setTimeout(resolve));
 };
 const path = () => router.currentRoute.value.path;
+const address = () => router.currentRoute.value.fullPath;
+const roomSockets = () => sockets.filter((s) => s.url.includes('/api/rooms/'));
 const desktop = (matches) => vi.stubGlobal('matchMedia', () => ({ matches }));
 
 // A page load at an address, up to where autosave has yet to answer.
@@ -42,6 +46,8 @@ const serverFor = (session = null) => Object.assign(fakeServer(), { session });
 beforeEach(async () => {
   ({ project, workspace } = await createTestApp());
   social = useSocialStore();
+  room = useRoomStore();
+  sessionStorage.removeItem('phosphor-left-rooms');
   ownSocialDatabase('address');   // its own copy: the files run side by side
   forgetKey();
   desktop(true);
@@ -49,6 +55,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   stop?.();
+  room.close({ spent: false });
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -335,4 +342,231 @@ test('a visitor who never shows SOCIAL costs nothing', async () => {
   await settled();
   expect(boot).not.toHaveBeenCalled();
   expect(server.requests).toEqual([]);
+});
+
+// In a room, as a lobby card's Join does. Memory history has one state, the last written, not one per entry, so
+// what the marks decide (a link against your own entry, a reload, a host's) is in tests/e2e/addresses-rooms.spec.js.
+async function inRoomFrom(address, id = ID) {
+  useFakeSockets();
+  serverFor(member());
+  await landed(address);
+  await social.boot();
+  room.join(id);
+  await settled();
+}
+
+test('joining pushes ?room=, and it rides along on every tab', async () => {
+  await inRoomFrom('/social');
+  expect(address()).toBe(`/social?room=${ID}`);
+  expect(push).toHaveBeenCalledTimes(1);
+  expect(replace).not.toHaveBeenCalled();
+
+  workspace.editorTab = 'input';
+  await settled();
+  expect(address()).toBe(`/pixel?room=${ID}`);
+  expect(push).toHaveBeenCalledTimes(2);
+});
+
+test('Back through tabs stays in the room', async () => {
+  await inRoomFrom('/social');
+  workspace.editorTab = 'input';
+  await settled();
+
+  router.back();
+  await settled();
+  expect(workspace.editorTab).toBe('social');
+  expect(address()).toBe(`/social?room=${ID}`);
+  expect(room.id).toBe(ID);
+  expect(roomSockets()).toHaveLength(1);
+  expect(push).toHaveBeenCalledTimes(2);
+});
+
+test('Back past the join leaves the room; Forward joins it again', async () => {
+  await inRoomFrom('/social');
+  const socket = roomSockets()[0];
+
+  router.back();
+  await settled();
+  expect(socket.closed).toBe(true);
+  expect(room.role).toBe(null);
+  expect(address()).toBe('/social');
+  expect(hasLeftRoom(ID)).toBe(false);
+  expect(replace).not.toHaveBeenCalled();
+  expect(push).toHaveBeenCalledTimes(1);
+
+  router.forward();
+  await expect.poll(() => roomSockets().length).toBe(2);
+  expect(social.roomInvite).toBe(null);
+  expect(room.id).toBe(ID);
+  expect(address()).toBe(`/social?room=${ID}`);
+});
+
+test('Exit replaces, dropping ?room=, and the entries before it are spent', async () => {
+  await inRoomFrom('/social');
+  workspace.editorTab = 'input';
+  await settled();
+  room.leave();
+  await settled();
+  expect(address()).toBe('/pixel');
+  expect(push).toHaveBeenCalledTimes(2);
+  expect(replace).toHaveBeenCalledTimes(1);
+  expect(hasLeftRoom(ID)).toBe(true);
+
+  router.back();
+  await settled();
+  expect(address()).toBe('/social');
+  expect(workspace.editorTab).toBe('social');
+  expect(replace).toHaveBeenCalledTimes(2);
+  expect([room.role, social.roomInvite, social._roomLink]).toEqual([null, null, null]);
+  expect(roomSockets()).toHaveLength(1);
+});
+
+for (const reason of ['removed', 'ended']) {
+  test(`being ${reason} replaces the same way`, async () => {
+    await inRoomFrom('/social');
+    workspace.editorTab = 'input';
+    await settled();
+    room.heard({ type: reason });
+    await settled();
+    expect(address()).toBe('/pixel');
+    expect(push).toHaveBeenCalledTimes(2);
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(hasLeftRoom(ID)).toBe(true);
+  });
+}
+
+test('joining another room spends the first', async () => {
+  await inRoomFrom('/social');
+  room.join(OTHER);
+  await settled();
+  expect(address()).toBe(`/social?room=${OTHER}`);
+  expect(push).toHaveBeenCalledTimes(2);
+  expect(hasLeftRoom(ID)).toBe(true);
+
+  router.back();   // onto the first room's entry: no room at all, and the one past it can be undone
+  await settled();
+  expect(address()).toBe('/social');
+  expect(room.role).toBe(null);
+  expect(social.roomInvite).toBe(null);
+  expect(hasLeftRoom(OTHER)).toBe(false);
+  expect(roomSockets()).toHaveLength(2);
+});
+
+test('joining a spent room again un-spends it', async () => {
+  await inRoomFrom('/social');
+  room.leave();
+  await settled();
+  expect(hasLeftRoom(ID)).toBe(true);
+  room.join(ID);
+  await settled();
+  expect(hasLeftRoom(ID)).toBe(false);
+  expect(address()).toBe(`/social?room=${ID}`);
+});
+
+test('signing in while watching goes back into the room, which is not spent', async () => {
+  await inRoomFrom('/social');
+  await social.signIn('fan@example.com', 'right-password');
+  await settled();
+  expect(room.id).toBe(ID);
+  expect(hasLeftRoom(ID)).toBe(false);
+  expect(address()).toBe(`/social?room=${ID}`);
+});
+
+// A /api/me that answers when told to.
+function slowServer() {
+  useFakeSockets();
+  const server = serverFor(member()), me = server.routeOf('GET /api/me');
+  let answer;
+  const asked = new Promise((resolve) => { answer = resolve; });
+  server.route('GET /api/me', async () => (await asked, me()));
+  return answer;
+}
+
+test('a rejoin waiting to know who you are keeps its ?room=, and joins', async () => {
+  const answer = slowServer();
+  await landed('/pixel');
+  const rejoining = social.rejoin(ID);
+  await settled();
+  expect(address()).toBe(`/pixel?room=${ID}`);
+  expect(social.roomGoingTo).toBe(ID);
+
+  answer();
+  await rejoining;
+  await settled();
+  expect(room.id).toBe(ID);
+  expect(address()).toBe(`/pixel?room=${ID}`);
+  expect(social.roomGoingTo).toBe(null);
+  expect(roomSockets()).toHaveLength(1);
+});
+
+test('going elsewhere before a rejoin gets there means no join', async () => {
+  const answer = slowServer();
+  await landed('/pixel');
+  const rejoining = social.rejoin(ID);
+  await settled();
+  expect(address()).toBe(`/pixel?room=${ID}`);
+
+  router.back();
+  await settled();
+  expect(address()).toBe('/pixel');
+  answer();
+  await rejoining;
+  await settled();
+  expect(room.role).toBe(null);
+  expect(address()).toBe('/pixel');
+  expect(roomSockets()).toEqual([]);
+});
+
+test('an unmarked ?room= asks on SOCIAL, and the address it came in on goes', async () => {
+  useFakeSockets();
+  serverFor(member());
+  await landed();
+  await router.push(`/pixel?room=${ID}`);
+  await expect.poll(() => social.roomInvite).toBe(ID);
+  await settled();
+  expect(workspace.editorTab).toBe('social');
+  expect(address()).toBe('/social');
+  expect(push).toHaveBeenCalledTimes(1);   // the one above: this is no step of its own
+  expect(roomSockets()).toEqual([]);
+
+  social.answerRoomInvite(false);
+  router.back();
+  await settled();
+  expect(address()).toBe('/pixel');
+  expect(social.roomInvite).toBe(null);
+});
+
+test('on a phone a ?room= is left alone: no join, no asking, still in the address', async () => {
+  desktop(false);
+  await loadImage(project, GRADIENT);   // before fetch is the fake's
+  useFakeSockets();
+  serverFor(member());
+  await landed(`/pixel?room=${ID}`);
+  expect(address()).toBe(`/pixel?room=${ID}`);
+  workspace.editorTab = 'output';
+  await settled();
+  expect(address()).toBe(`/ansi?room=${ID}`);
+  expect([room.role, social.roomInvite, social._roomLink]).toEqual([null, null, null]);
+  expect(roomSockets()).toEqual([]);
+});
+
+test('other query params stay as the room comes and goes', async () => {
+  useFakeSockets();
+  serverFor(member());
+  await landed('/social?keep=1');
+  await social.boot();
+  room.join(ID);
+  await settled();
+  expect(router.currentRoute.value.query).toEqual({ keep: '1', room: ID });
+  room.leave();
+  await settled();
+  expect(router.currentRoute.value.query).toEqual({ keep: '1' });
+});
+
+test('close with no room notes nothing, and unreadable storage counts every room as left', async () => {
+  room.close();
+  expect(sessionStorage.getItem('phosphor-left-rooms')).toBe(null);
+  expect(hasLeftRoom(ID)).toBe(false);
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('no storage'); });
+  expect(hasLeftRoom(ID)).toBe(true);
 });
