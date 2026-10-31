@@ -297,7 +297,7 @@ async function deleteAccount() {
         <code class="key">{{ setup.key }}</code>
         <label>Code from the app <input v-model="setupCode" inputmode="numeric" autocomplete="one-time-code" required></label>
         <div class="actions">
-          <button class="primary" type="submit" :disabled="social.busy">Turn on</button>
+          <button class="primary" type="submit" :disabled="social.busy || !setupCode.trim()">Turn on</button>
           <button type="button" @click="endTwoFactor('on')">Cancel</button>
         </div>
         <p v-if="twoFactorError" class="error" role="alert">{{ twoFactorError }}</p>
@@ -306,7 +306,7 @@ async function deleteAccount() {
         <label v-if="hasPassword">Password <input v-model="twoFactorPassword" type="password" autocomplete="current-password" required></label>
         <p v-else class="help">Needs a sign-in in the last 5 minutes</p>
         <div class="actions">
-          <button class="primary" type="submit" :disabled="social.busy">{{ TWO_FACTOR_ASKS[ask] }}</button>
+          <button class="primary" type="submit" :disabled="social.busy || (hasPassword && !twoFactorPassword)">{{ TWO_FACTOR_ASKS[ask] }}</button>
           <button type="button" @click="endTwoFactor(ask)">Cancel</button>
         </div>
         <p v-if="twoFactorError" class="error" role="alert">{{ twoFactorError }}</p>
@@ -339,7 +339,7 @@ async function deleteAccount() {
         <label v-if="hasPassword">Password <input v-model="password" type="password" autocomplete="current-password" required></label>
         <p v-else class="help">Deleting needs a sign-in in the last 5 minutes</p>
         <div class="actions">
-          <button class="danger" type="submit" :disabled="social.busy">Delete for good</button>
+          <button class="danger" type="submit" :disabled="social.busy || (hasPassword && !password)">Delete for good</button>
           <button type="button" @click="cancelDelete">Cancel</button>
         </div>
         <p v-if="deleteError" class="error" role="alert">{{ deleteError }}</p>
