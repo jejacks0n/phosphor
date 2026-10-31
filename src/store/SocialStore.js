@@ -106,6 +106,8 @@ export const useSocialStore = defineStore('social', {
     myName: (state) => state.claims?.name ?? null,
     // The ids of the rooms you reported (their cards have no Report room).
     reportedRooms: (state) => (state.claims ? state.roomReports.filter((r) => r.by === state.claims.sub).map((r) => r.room) : []),
+    // The room on its way once you're known, unasked: the address holds it meanwhile.
+    roomGoingTo: (state) => (state._roomLinkAsks ? null : state._roomLink),
     // The word for the sign-in pages' back link.
     backTo: () => (useRoomStore().role === 'watch' ? 'room' : 'lobby'),
     isGuest() {
@@ -144,6 +146,21 @@ export const useSocialStore = defineStore('social', {
       if (id === null || !this.supported) return;
       if (this._roomLinkAsks) this.roomInvite = id;
       else useRoomStore().join(id);
+    },
+
+    // Your own room again, from an entry of yours (Forward, a reload): no asking.
+    async rejoin(id) {
+      Object.assign(this, { _roomLink: id, _roomLinkAsks: false });
+      await this.boot();
+      this.joinLink();
+    },
+
+    // A room's address that nothing here made: it asks, on SOCIAL.
+    async followRoomLink(id) {
+      Object.assign(this, { _roomLink: id, _roomLinkAsks: true });
+      useWorkspaceStore().editorTab = 'social';
+      await this.boot();
+      this.joinLink();
     },
 
     // A link can come from anyone, and joining shows the host your IP address: it's your yes that joins.
