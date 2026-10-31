@@ -132,6 +132,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
     'POST /api/auth/sign-out': () => { server.me = null; return [200, { success: true }]; },
     'POST /api/auth/request-password-reset': () => [200, { status: true }],
     'POST /api/auth/change-email': () => [200, { status: true }],
+    'POST /api/auth/change-password': () => [200, { status: true }],
     'POST /api/auth/reset-password': () => { server.me = null; return [200, { status: true }]; },
     'POST /api/me/onboarding': ({ username }) => {
       server.me = { ...server.me, username, name: username, needsOnboarding: false };
