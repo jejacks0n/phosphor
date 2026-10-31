@@ -228,6 +228,20 @@ test('a landing whose document comes back stays where it named, and changes whil
 });
 
 test('navigating keeps the query', async () => {
+  await landed('/pixel?theirs=1');
+  workspace.editorTab = 'sauce';
+  await settled();
+  expect(router.currentRoute.value.fullPath).toBe('/sauce?theirs=1');
+});
+
+test('on a computer a step leaves a return from the server behind, read already; a phone keeps it for a computer', async () => {
+  await landed('/pixel?verified=1&error=X&theirs=1');
+  workspace.editorTab = 'sauce';
+  await settled();
+  expect(router.currentRoute.value.fullPath).toBe('/sauce?theirs=1');
+
+  stop();
+  desktop(false);
   await landed('/pixel?verified=1');
   workspace.editorTab = 'sauce';
   await settled();

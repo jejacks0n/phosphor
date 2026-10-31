@@ -17,8 +17,8 @@ const RELINK = 'Sign in again to change how you sign in';
 // The query params the server sends people back with (an error, and an error_description, come
 // with verified or social), and a room's link; start() reads them and takes them off the URL, on a desktop
 // (elsewhere there's no SOCIAL tab, so the link is left to be opened on a computer).
-const RETURN_PARAMS = ['verified', 'reset', 'social', 'room'];
-const ERROR_PARAMS = ['error', 'error_description'];
+export const RETURN_PARAMS = ['verified', 'reset', 'social', 'room'];
+export const ERROR_PARAMS = ['error', 'error_description'];
 
 // The server asks for a recent sign-in before unlinking: SESSION_NOT_FRESH from unlink-account,
 // SESSION_EXPIRED from delete-user.
@@ -192,6 +192,8 @@ export const useSocialStore = defineStore('social', {
       if (!matchMedia(desktopQuery).matches) return false;
       const url = new URL(location.href);
       const params = url.searchParams;
+      // With path addresses, the room on an entry of yours is the address's own: the router's to follow, not a link.
+      const returned = history.state?.inRoom ? RETURN_PARAMS.filter((name) => name !== 'room') : RETURN_PARAMS;
       const error = params.get('error');
       if (params.get('verified') === '1') this.notice = error ? messageFor(error) : 'Your email is confirmed';
       if (params.get('reset')) Object.assign(this, { resetToken: params.get('reset'), page: 'reset' });
@@ -200,14 +202,14 @@ export const useSocialStore = defineStore('social', {
       if (params.get('social') === 'email-approved') this.notice = 'Approved. Now open the link sent to your new address';
       if (params.get('social') === 'two-factor') Object.assign(this, { page: 'two-factor', _codePending: true });   // (the room stays kept until the code)
       if (params.get('social') === 'signed-in') this._roomLink = keptRoom();
-      if (params.has('room')) Object.assign(this, { _roomLink: params.get('room'), _roomLinkAsks: true });
+      if (returned.includes('room') && params.has('room')) Object.assign(this, { _roomLink: params.get('room'), _roomLinkAsks: true });
       if (['signed-in', 'error'].includes(params.get('social'))) keepRoom(null);
       if (params.get('social') === 'error') {
         this.notice = error === 'EMAIL_NOT_VERIFIED' ? 'Confirm your email with Discord or GitHub first' : messageFor(error);
       }
-      if (!RETURN_PARAMS.some((name) => params.has(name))) return false;
+      if (!returned.some((name) => params.has(name))) return false;
       useWorkspaceStore().editorTab = 'social';   // back to where you were
-      [...RETURN_PARAMS, ...ERROR_PARAMS].forEach((name) => params.delete(name));
+      [...returned, ...ERROR_PARAMS].forEach((name) => params.delete(name));
       history.replaceState(history.state, '', url.pathname + url.search + url.hash);
       return true;
     },

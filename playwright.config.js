@@ -19,12 +19,22 @@ export default defineConfig({
     trace: { mode: 'retain-on-failure', screenshots: false }, // recording every test's screenshots costs about 15% of the suite's time
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions } },
+    { name: 'chromium', testIgnore: /path-addresses/, use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions } },
+    // The other way the app can be built: its own build, its own port, one spec.
+    { name: 'path-addresses', testMatch: /path-addresses/, use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions, baseURL: 'http://localhost:4181' } },
   ],
-  webServer: {
-    command: 'VITE_SOCIAL_STUN=none npm run build && npx vite preview --port 4180 --strictPort',
-    url: 'http://localhost:4180',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'VITE_SOCIAL_STUN=none npm run build && npx vite preview --port 4180 --strictPort',
+      url: 'http://localhost:4180',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
+      command: 'VITE_ADDRESSES=path VITE_SOCIAL_STUN=none npx vite build --outDir dist-path && npx vite preview --outDir dist-path --port 4181 --strictPort',
+      url: 'http://localhost:4181',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+  ],
 });

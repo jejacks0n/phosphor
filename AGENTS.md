@@ -16,9 +16,8 @@ npm run build
 ```
 
 Addresses are hash addresses (`/#/social`) by default. `VITE_ADDRESSES=path npm run build` builds path
-addresses (`/social`) instead, and the host must then serve `index.html` for every path. Path style
-isn't ready yet: `readReturn` reads the address's own `?room=` as a server link, and when it strips
-one the router carries the stale query along.
+addresses (`/social`) instead, and the host must then serve `index.html` for every path. The
+`path-addresses` end-to-end project tests that build.
 
 ## Where things live
 

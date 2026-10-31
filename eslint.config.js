@@ -4,7 +4,7 @@ import globals from 'globals';
 import stylistic from '@stylistic/eslint-plugin';
 
 export default [
-  { ignores: ['dist/**', 'input/**', 'server/**', '.vitest/**', 'test-results/**', 'playwright-report/**'] },
+  { ignores: ['dist/**', 'dist-path/**', 'input/**', 'server/**', '.vitest/**', 'test-results/**', 'playwright-report/**'] },
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],
   {
