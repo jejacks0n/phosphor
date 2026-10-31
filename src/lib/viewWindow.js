@@ -43,9 +43,13 @@ export function viewIn(sizer, viewport) {
 /**
  * How far to scroll for `col`, `row` to be the first whole cell on screen, `view` and `cell` as for
  * `wholeCellsIn`. Nothing, on an axis whose first cell is already on screen with the grid inside the view.
+ * This lands on the cell's edge, not on the pixel a view was at: from part way into a cell, the same first
+ * cell comes back with a box up to a cell different, and a margin beside the grid's first cell isn't kept.
+ * A cell under 2 px aims for the middle of the offsets `wholeCellsIn` calls that cell, as a scroll lands on a
+ * whole px and its edge could land on the previous cell.
  */
 export function scrollToCell(view, cell, col, row) {
-  const by = (at, size, from) => (at > 0 || from > 0 ? at * size - from : 0);
+  const by = (at, size, from) => (at > 0 || from > 0 ? at * size + Math.max(0, 1 - size / 2) - from : 0);
   return { left: by(col, cell.cellWidth, view.x), top: by(row, cell.lineHeight, view.y) };
 }
 

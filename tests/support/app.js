@@ -21,6 +21,7 @@ export async function createTestApp() {
   await setDisplayFont('jetbrains');
   setGlyphRasterizer(rasterizeCoverage);
   const project = useProjectStore(), workspace = useWorkspaceStore();
+  workspace.displayFontLoaded = workspace.displayFontSpec;
   project.seed = 'phosphor-tests'; // the default is a random slug: random characters would differ every run
   stopWatching = watch(() => project.processParams, () => project.render(), { deep: true });
   return { project, workspace };

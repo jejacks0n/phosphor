@@ -213,11 +213,9 @@ export const useRoomStore = defineStore('room', {
       if (!ROOM_ID.test(record?.id) || !record.sub || !record.room || !Array.isArray(record.session?.people)) return;
       const { id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, view } = record;
       try {
-        if (view) {   // here, so watchers are shown it whichever tab this lands on
-          const { col, row } = view.viewTab === 'input' ? view.inputView : view.ansiViewOrigin;
-          Object.assign(useWorkspaceStore(), view, { viewToRestore: { tab: view.viewTab, col, row } });
-        }
+        const { col, row } = !view ? {} : view.viewTab === 'input' ? view.inputView : view.ansiViewOrigin;
         this.hostRoom({ id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, status: 'reconnecting', _resuming: true }, { ...record.host, muted });
+        if (view) Object.assign(useWorkspaceStore(), view, { viewToRestore: { tab: view.viewTab, col, row } });   // here, so watchers are shown it whichever tab this lands on
       } catch {
         forgetHostingRecord();
         return;
@@ -323,7 +321,7 @@ export const useRoomStore = defineStore('room', {
       addEventListener('pagehide', pagehide);
       this._stops = [
         watch([() => project.cells, () => project.cols, () => project.rows, () => workspace.displayFontSpec], () => { schedule(); changed(); }),
-        watch(() => workspace.sharedView, (v) => { if (v) view.push(v); }, { immediate: true }),
+        watch(() => workspace.displayFontLoaded && workspace.sharedView, (v) => { if (v) view.push(v); }, { immediate: true }),   // PIXEL's zoom is against the font's width: not before it's in
         watch(() => JSON.stringify(this.lobbyPlace), changed, { immediate: true }),
         watch(() => this.hereNow, (here) => sessionSaw(this.session, here), { immediate: true }),
         watch([() => this.room, () => this.lobbyPin, () => this.peopleOpen, () => this.muted, () => workspace.sharedView], () => this.keepSoon()),
@@ -451,6 +449,7 @@ export const useRoomStore = defineStore('room', {
       this._watch?.close();
       this._settings?.reset();
       for (const stop of this._stops) stop();
+      useWorkspaceStore().viewToRestore = null;   // it was this room's: the next art opens as usual
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
         hostView: null, lookingAt: null, tracking: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),

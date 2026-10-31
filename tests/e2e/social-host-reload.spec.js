@@ -230,8 +230,9 @@ async function hostingTallArt(host, context, room) {
 }
 
 // The open art tab zoomed by a Ctrl+wheel, and scrolled so `col`, `line` is its top-left cell, on the cell's edge: a
-// view part way into a cell comes back at that edge, which can show a column or line more.
-async function zoomAndScroll(host, deltaY, col, line) {
+// view part way into a cell comes back at that edge, which can show a column or line more (`into`, of a line
+// past the edge, is that view: its first whole line is the next).
+async function zoomAndScroll(host, deltaY, col, line, into = 0) {
   const display = host.locator('.display');
   const box = await host.locator('article:has(.display)').last().boundingBox();
   await host.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -244,8 +245,8 @@ async function zoomAndScroll(host, deltaY, col, line) {
     const article = el.closest('article'), s = el.getBoundingClientRect(), v = article.getBoundingClientRect();
     article.scrollLeft += col * (s.width - 2 * el.clientLeft) / cols - (v.left + article.clientLeft - s.left - el.clientLeft);
     article.scrollTop += line * (s.height - 2 * el.clientTop) / lines - (v.top + article.clientTop - s.top - el.clientTop);
-  }, [...size, col, line]);
-  await expect.poll(() => store(host, 'workspace', (w) => [w.sharedView.col, w.sharedView.row])).toEqual([col, line]);
+  }, [...size, col, line + into]);
+  await expect.poll(() => store(host, 'workspace', (w) => [w.sharedView.col, w.sharedView.row])).toEqual([col, line + Math.ceil(into)]);
 }
 
 const shared = (page) => store(page, 'workspace', (w) => w.sharedView);
@@ -288,6 +289,7 @@ test('a host scrolled and zoomed in PIXEL comes back to the same view, and the w
   await zoomAndScroll(host, -100, 7, 200);
   const before = await shared(host);
   await expect.poll(() => store(watcher, 'room', (r) => r.hostView)).toEqual(before);
+  await boxesFrom(watcher);
   const zoom = await store(host, 'workspace', (w) => w.editZoom);
 
   await host.reload();
@@ -300,6 +302,7 @@ test('a host scrolled and zoomed in PIXEL comes back to the same view, and the w
   expect(await shared(host)).toEqual(before);
   expect(await store(host, 'workspace', (w) => [w.editZoom, w.viewToRestore])).toEqual([zoom, null]);
   await expect.poll(() => store(watcher, 'room', (r) => r.hostView)).toEqual(before);
+  expect((await watcher.evaluate(() => window.boxes)).filter((box) => box !== JSON.stringify(before))).toEqual([]);
 });
 
 test('reloaded on SOCIAL, watchers keep the view; going to ANSI opens at it', async ({ page: host, context }) => {
@@ -326,3 +329,23 @@ test('reloaded on SOCIAL, watchers keep the view; going to ANSI opens at it', as
   expect(await shared(host)).toEqual(before);
   expect(await store(watcher, 'room', (r) => r.hostView)).toEqual(before);
 });
+
+for (const [label, wheel, address] of [['ANSI', 30, 'ansi'], ['PIXEL', 100, 'pixel']]) {
+  test(`a view part way into a cell in ${label} comes back with the same first cell and a box at most a cell different`, async ({ page: host, context }) => {
+    const room = fakeRoom();
+    await hostingTallArt(host, context, room);
+    await tab(host, label).click();
+    await zoomAndScroll(host, wheel, 0, 200, 0.4);
+    const before = await shared(host);
+
+    await host.reload();
+    await live(host);
+    await hash(host, `/${address}?room=${ROOM_ID}`);
+    await expect.poll(() => store(host, 'workspace', (w) => w.viewToRestore)).toBe(null);
+    await settled(host);
+    const after = await shared(host);
+    expect([after.col, after.row, after.zoom]).toEqual([before.col, before.row, before.zoom]);
+    expect(Math.abs(after.cols - before.cols)).toBeLessThanOrEqual(1);
+    expect(Math.abs(after.rows - before.rows)).toBeLessThanOrEqual(1);
+  });
+}
