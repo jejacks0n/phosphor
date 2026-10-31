@@ -118,8 +118,8 @@ const TAIL_BYTES = 16 * 1024 * 1024;
 
 /**
  * The last TAIL_BYTES of numbered changes, consecutive from the oldest held, so someone who missed a few
- * can be sent just those. An item is { n, bytes? }; bytes defaults to its JSON length. The newest stays
- * however big it is.
+ * can be sent just those (a gap in n starts the tail over). An item is { n, bytes? }; bytes defaults to
+ * its JSON length. The newest stays however big it is.
  */
 export class Tail {
   #items = [];
@@ -132,6 +132,8 @@ export class Tail {
   }
 
   add(numbered) {
+    // A number the tail didn't get (a project, say) leaves a gap: what's older can't be sent as the changes in between.
+    if (this.#head < this.#items.length && numbered.n !== this.#items.at(-1).n + 1) this.#forget();
     const size = numbered.bytes ?? utf8Length(JSON.stringify(numbered));
     this.#items.push(numbered);
     this.#sizes.push(size);
@@ -144,8 +146,18 @@ export class Tail {
     }
   }
 
-  // Everything numbered after n, in order; null when the tail starts after n + 1.
+  #forget() {
+    this.#items = [];
+    this.#sizes = [];
+    this.#head = 0;
+    this.#bytes = 0;
+  }
+
+  // Everything numbered after n, in order; null when the tail starts after n + 1, and for any n below 0
+  // (has: -1 asks for the whole project). An empty tail answers [] for any n: callers rely on the epoch
+  // to catch someone who is behind it.
   since(n) {
+    if (n < 0) return null;
     if (this.#head >= this.#items.length) return [];
     const at = n + 1 - this.#items[this.#head].n;
     return at < 0 ? null : this.#items.slice(this.#head + at);
