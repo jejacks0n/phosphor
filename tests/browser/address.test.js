@@ -779,7 +779,7 @@ test('the room ending while it asks: the question goes and Back finishes', async
   expect(replace).not.toHaveBeenCalled();
 });
 
-test('nothing navigates while it asks: a store changing behind the question waits for the answer', async () => {
+test('a store changing while it asks moves the address only after the answer', async () => {
   await hostingFrom();
   router.back();
   await settled();
