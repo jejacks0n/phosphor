@@ -18,7 +18,7 @@ export function cellChanges(before, after) {
 }
 
 // A transparent pixel is 0 whatever its color channels hold.
-const pack = (px, i) => (px[i + 3] ? ((px[i] << 24) | (px[i + 1] << 16) | (px[i + 2] << 8) | px[i + 3]) >>> 0 : 0);
+export const pack = (px, i) => (px[i + 3] ? ((px[i] << 24) | (px[i + 1] << 16) | (px[i + 2] << 8) | px[i + 3]) >>> 0 : 0);
 
 // The pixels that differ between two width x height RGBA images, as runs at (ox, oy) from the top left.
 export function pixelRuns(before, after, width, height, ox, oy) {
@@ -152,6 +152,8 @@ export class Tail {
     this.#head = 0;
     this.#bytes = 0;
   }
+
+  get items() { return this.#items.slice(this.#head); }
 
   // Everything numbered after n, in order; null when the tail starts after n + 1, and for any n below 0
   // (has: -1 asks for the whole project). An empty tail answers [] for any n: callers rely on the epoch

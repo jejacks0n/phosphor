@@ -1,0 +1,326 @@
+/**
+ * Numbers every change to the edit layer and keeps, per position, who drew there in order over what it
+ * started with, so undo can take back one person's stroke and leave everyone else's. What it returns is
+ * a Numbered, { n, by, stroke, cells, runs }, for the caller to apply and send; nothing here touches the
+ * picture, it only reads it. readCell(key) gives a cell's entry, and readTile(x, y) a tile's RGBA pixels:
+ * x and y TILE-aligned, always TILE x TILE, transparent past the layer's edge. Both are read the first
+ * time a position is touched, so they must show the picture with every Numbered so far applied, and
+ * without the change being submitted.
+ *
+ * Cells: a position's stack is the strokes that wrote it, oldest first, and each stroke holds its values.
+ * Paint: per tile, what it started with and a list of entries, oldest first. An entry is one stroke's
+ * pixels in that tile as a typed array, so a stroke costs what its tiles do however its pixels are spread.
+ */
+import { hashCell, hashPixel, eachPixel, pack, Tail } from './changes.js';
+import { TILE } from './History.js';
+
+// In a room; alone, History's limits decide and tell us through forget.
+const MOST_STROKES = 50;
+const MOST_BYTES = 64 * 1024 * 1024;
+
+// An entry counts as a before and an after, what a tile costs in History. It really holds less: entries
+// in a tile share one start.
+const TILE_BYTES = 2 * TILE * TILE * 4;
+const CELL_BYTES = 128; // about: a key, an entry and a place in a stack
+
+// In an entry 0 means "this stroke didn't write here", so transparent, which is a value, is held as this.
+// It can't be a real color: a pixel without alpha is always packed as 0.
+const ERASED = 0x100;
+const held = (rgba) => (rgba & 0xff ? rgba : ERASED);
+const color = (value) => (value === ERASED ? 0 : value);
+
+const sameCell = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
+const noStacks = (sum = 0) => ({ cells: new Map(), tiles: new Map(), strokes: new Map(), bytes: 0, sum });
+
+export class Ledger {
+  // Plain data all the way down, so kept() is just this. Strokes are shared between stacks, which a
+  // structured clone keeps.
+  #stacks;
+
+  constructor({ readCell, readTile, n = 0, epoch, tail = new Tail(), sum = 0, limits = false }) {
+    this.readCell = readCell;
+    this.readTile = readTile;
+    this.n = n; // the last number used
+    this.epoch = epoch;
+    this.tail = tail;
+    this.limits = limits;
+    this.#stacks = noStacks(sum);
+  }
+
+  // The check over the agreed picture, with every Numbered returned so far already in it.
+  get sum() { return this.#stacks.sum; }
+
+  // About what a stroke holds, for History's byte limit.
+  bytesOf(stroke) { return this.#stacks.strokes.get(stroke)?.bytes ?? 0; }
+
+  // Null when the stroke is someone else's or was undone: what's asked for can't be recorded honestly.
+  submit(by, stroke, { cells = [], runs = [] }) {
+    const { strokes } = this.#stacks;
+    let record = strokes.get(stroke);
+    if (record && (record.by !== by || record.undone)) return null;
+    if (!record) strokes.set(stroke, record = { id: stroke, by, undone: false, cells: new Map(), paint: new Map(), bytes: 0 });
+
+    for (const [key, entry] of cells) this.#writeCell(record, key, entry ?? null);
+    let tile = null;
+    eachPixel(runs, (x, y, rgba) => {
+      const tx = Math.floor(x / TILE) * TILE, ty = Math.floor(y / TILE) * TILE;
+      if (tile?.x !== tx || tile?.y !== ty) tile = this.#tile(tx, ty);
+      this.#writePixel(record, tile, (y - ty) * TILE + (x - tx), rgba);
+    });
+    this.#trim(stroke);
+    return this.#numbered(by, stroke, cells, runs);
+  }
+
+  // Each position it's on top of goes to the next value down; where it's buried it just leaves the stack.
+  // Lists only what visibly changes, so someone's undo can be nothing at all but still takes a number.
+  undo(by, stroke) {
+    const record = this.#stacks.strokes.get(stroke);
+    if (!record || record.by !== by || record.undone) return null;
+    const cells = [];
+    for (const [key, value] of record.cells) {
+      const stack = this.#stacks.cells.get(key);
+      const onTop = stack.strokes.at(-1) === record;
+      stack.strokes.splice(stack.strokes.indexOf(record), 1);
+      if (onTop) this.#revealCell(cells, key, value, stack);
+      if (!stack.strokes.length) this.#stacks.cells.delete(key);
+    }
+    const runs = [];
+    for (const name of record.paint.keys()) this.#undoTile(record, name, runs);
+    record.undone = true;
+    return this.#numbered(by, stroke, cells, runs);
+  }
+
+  // Back on top of each position, as a new change, over whatever was drawn since.
+  redo(by, stroke) {
+    const record = this.#stacks.strokes.get(stroke);
+    if (!record || record.by !== by || !record.undone) return null;
+    const cells = [];
+    for (const [key, value] of record.cells) {
+      const stack = this.#cellStack(key);
+      const shown = this.#shownCell(key, stack);
+      stack.strokes.push(record);
+      if (!sameCell(shown, value)) {
+        cells.push([key, value]);
+        this.#stacks.sum ^= hashCell(key, shown) ^ hashCell(key, value);
+      }
+    }
+    const runs = [];
+    for (const [name, px] of record.paint) {
+      const [x, y] = name.split(',').map(Number);
+      const tile = this.#tile(x, y);
+      for (let i = 0; i < px.length; i++) {
+        if (!px[i]) continue;
+        const shown = shownPixel(tile, i);
+        if (shown !== color(px[i])) this.#listPixel(runs, tile, i, shown, color(px[i]));
+      }
+      tile.entries.push({ stroke: record.id, px });
+    }
+    record.undone = false;
+    return this.#numbered(by, stroke, cells, runs);
+  }
+
+  // A number for a settings, base or project message; those go in the tail through their caller.
+  note() { return ++this.n; }
+
+  // A project's effect: the positions don't mean what they did. sum is the check over the new picture.
+  reset({ epoch = this.epoch, sum = 0 } = {}) {
+    this.epoch = epoch;
+    this.#stacks = noStacks(sum);
+  }
+
+  // A merge empties the stacks and its entry keeps them, the check included, to put back when it's undone.
+  takeStacks() {
+    const stacks = this.#stacks;
+    this.#stacks = noStacks();
+    return stacks;
+  }
+
+  putStacks(stacks) { this.#stacks = stacks; }
+
+  setLimits(on) {
+    this.limits = on;
+    this.#trim();
+  }
+
+  // What it drew becomes part of what's beneath. Anything under it can never show again, so that goes too.
+  forget(stroke) {
+    const stacks = this.#stacks, record = stacks.strokes.get(stroke);
+    if (!record) return;
+    if (!record.undone) {
+      for (const [key, value] of record.cells) {
+        const stack = stacks.cells.get(key);
+        const below = stack.strokes.splice(0, stack.strokes.indexOf(record) + 1);
+        below.pop();
+        for (const other of below) {
+          other.cells.delete(key);
+          other.bytes -= CELL_BYTES;
+          stacks.bytes -= CELL_BYTES;
+        }
+        stack.base = value;
+        if (!stack.strokes.length) stacks.cells.delete(key);
+      }
+      for (const name of record.paint.keys()) {
+        const tile = stacks.tiles.get(name);
+        tile.entries.forEach((entry, at) => {
+          if (entry.stroke !== stroke) return;
+          for (let i = 0; i < entry.px.length; i++) {
+            if (!entry.px[i]) continue;
+            tile.base[i] = color(entry.px[i]);
+            for (let lower = 0; lower < at; lower++) tile.entries[lower].px[i] = 0;
+          }
+        });
+        tile.entries = tile.entries.filter((entry) => entry.stroke !== stroke);
+        if (!tile.entries.length) stacks.tiles.delete(name);
+      }
+    }
+    stacks.bytes -= record.bytes;
+    stacks.strokes.delete(stroke);
+  }
+
+  // Shares what the ledger holds, so store or clone it before the next change; a clone is what restore wants.
+  kept() {
+    return { n: this.n, epoch: this.epoch, limits: this.limits, stacks: this.#stacks, tail: this.tail.items };
+  }
+
+  static restore({ n, epoch, limits, stacks, tail: items }, { readCell, readTile }) {
+    const tail = new Tail();
+    for (const numbered of items) tail.add(numbered);
+    const ledger = new Ledger({ readCell, readTile, n, epoch, tail, limits });
+    ledger.#stacks = stacks;
+    return ledger;
+  }
+
+  #numbered(by, stroke, cells, runs) {
+    const numbered = { n: ++this.n, by, stroke, cells, runs };
+    this.tail.add(numbered);
+    return numbered;
+  }
+
+  #cellStack(key) {
+    const { cells } = this.#stacks;
+    let stack = cells.get(key);
+    if (!stack) cells.set(key, stack = { base: this.readCell(key) ?? null, strokes: [] });
+    return stack;
+  }
+
+  #shownCell(key, stack) {
+    return stack.strokes.length ? stack.strokes.at(-1).cells.get(key) : stack.base;
+  }
+
+  // A stroke has one value per position. Writing again moves it to the top, over whoever drew since.
+  #writeCell(record, key, entry) {
+    const stack = this.#cellStack(key);
+    this.#stacks.sum ^= hashCell(key, this.#shownCell(key, stack)) ^ hashCell(key, entry);
+    const at = stack.strokes.indexOf(record);
+    if (at >= 0) stack.strokes.splice(at, 1);
+    else this.#charge(record, CELL_BYTES);
+    stack.strokes.push(record);
+    record.cells.set(key, entry);
+  }
+
+  #revealCell(cells, key, value, stack) {
+    const shown = this.#shownCell(key, stack);
+    if (sameCell(value, shown)) return;
+    cells.push([key, shown]);
+    this.#stacks.sum ^= hashCell(key, value) ^ hashCell(key, shown);
+  }
+
+  #tile(x, y) {
+    const { tiles } = this.#stacks, name = `${x},${y}`;
+    let tile = tiles.get(name);
+    if (!tile) {
+      const data = this.readTile(x, y), base = new Uint32Array(TILE * TILE);
+      for (let i = 0; i < base.length; i++) base[i] = pack(data, i * 4);
+      tiles.set(name, tile = { x, y, base, entries: [] });
+    }
+    return tile;
+  }
+
+  // A stroke's pixel goes in its newest entry in the tile, unless someone has drawn that pixel since that
+  // entry: then it needs a new entry on top of theirs. So only taking turns on the same pixels costs more
+  // entries, and a stroke still has one value per pixel, however many entries it has.
+  #writePixel(record, tile, i, rgba) {
+    const { entries } = tile;
+    const x = tile.x + i % TILE, y = tile.y + Math.floor(i / TILE);
+    this.#stacks.sum ^= hashPixel(x, y, shownPixel(tile, i)) ^ hashPixel(x, y, rgba);
+
+    let target = null, covered = false;
+    for (let at = entries.length - 1; at >= 0 && !target; at--) {
+      if (entries[at].stroke === record.id) target = entries[at];
+      else if (entries[at].px[i]) covered = true;
+    }
+    if (!target || covered) {
+      target = { stroke: record.id, px: new Uint32Array(TILE * TILE) };
+      entries.push(target);
+      this.#charge(record, TILE_BYTES);
+      const name = `${tile.x},${tile.y}`;
+      if (!record.paint.has(name)) record.paint.set(name, target.px);
+    }
+    for (const entry of entries) if (entry.stroke === record.id && entry !== target) entry.px[i] = 0;
+    target.px[i] = held(rgba);
+  }
+
+  // The stroke's entries in a tile leave it, and become one array again for a redo.
+  #undoTile(record, name, runs) {
+    const tile = this.#stacks.tiles.get(name), own = record.paint.get(name);
+    const { entries } = tile;
+    for (let i = 0; i < own.length; i++) {
+      for (let at = entries.length - 1; at >= 0; at--) {
+        const value = entries[at].px[i];
+        if (!value) continue;
+        if (entries[at].stroke === record.id) { // on top: what's next down shows
+          let under = tile.base[i];
+          for (let lower = at - 1; lower >= 0; lower--) {
+            if (entries[lower].px[i]) { under = color(entries[lower].px[i]); break; }
+          }
+          if (under !== color(value)) this.#listPixel(runs, tile, i, color(value), under);
+        }
+        break;
+      }
+    }
+    for (const entry of entries) {
+      if (entry.stroke !== record.id || entry.px === own) continue;
+      for (let i = 0; i < own.length; i++) if (entry.px[i]) own[i] = entry.px[i];
+      this.#charge(record, -TILE_BYTES);
+    }
+    tile.entries = entries.filter((entry) => entry.stroke !== record.id);
+    if (!tile.entries.length) this.#stacks.tiles.delete(name);
+  }
+
+  #listPixel(runs, tile, i, from, to) {
+    const x = tile.x + i % TILE, y = tile.y + Math.floor(i / TILE);
+    this.#stacks.sum ^= hashPixel(x, y, from) ^ hashPixel(x, y, to);
+    const last = runs.at(-1);
+    if (last && last[1] === y && last[0] + last[2] === x && last[3] === to) last[2]++;
+    else runs.push([x, y, 1, to]);
+  }
+
+  #charge(record, bytes) {
+    record.bytes += bytes;
+    this.#stacks.bytes += bytes;
+  }
+
+  // The newest stays, however big: it's the edit just made.
+  #trim(newest) {
+    if (!this.limits) return;
+    const { strokes } = this.#stacks, counts = new Map();
+    for (const { by } of strokes.values()) counts.set(by, (counts.get(by) ?? 0) + 1);
+    for (const { id, by } of strokes.values()) {
+      if (id === newest || counts.get(by) <= MOST_STROKES) continue;
+      counts.set(by, counts.get(by) - 1);
+      this.forget(id);
+    }
+    for (const { id } of strokes.values()) {
+      if (this.#stacks.bytes <= MOST_BYTES) break;
+      if (id !== newest) this.forget(id);
+    }
+  }
+}
+
+function shownPixel(tile, i) {
+  for (let at = tile.entries.length - 1; at >= 0; at--) {
+    const value = tile.entries[at].px[i];
+    if (value) return color(value);
+  }
+  return tile.base[i];
+}
