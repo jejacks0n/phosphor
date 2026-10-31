@@ -627,3 +627,100 @@ test('close with no room notes nothing, and unreadable storage counts every room
   vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('no storage'); });
   expect(hasLeftRoom(ID)).toBe(true);
 });
+
+// Live in a room you started on Setup room, the step before it.
+async function hostingFrom(address = '/social/start') {
+  useFakeSockets();
+  serverFor(member()).route('POST /api/rooms', () => [200, { id: ID, link: `http://localhost/?room=${ID}` }]);
+  await landed(address);
+  await social.boot();
+  await room.startRoom({ name: 'Night shift', welcome: '', isPublic: true, allowGuests: true, max: 12 });
+  await settled();
+}
+
+test('Back past going live asks, and Cancel keeps the room and the address', async () => {
+  await hostingFrom();
+  expect(address()).toBe(`/social?room=${ID}`);
+  expect(push).toHaveBeenCalledTimes(1);
+
+  router.back();
+  await settled();
+  expect(room.askingEnd).toBe(true);
+  expect(address()).toBe(`/social?room=${ID}`);
+
+  room.answerEnd(false);
+  await settled();
+  expect(room.askingEnd).toBe(false);
+  expect(room.role).toBe('host');
+  expect(address()).toBe(`/social?room=${ID}`);
+  expect(router.options.history.location).toBe(`/social?room=${ID}`);
+  expect(push).toHaveBeenCalledTimes(1);
+
+  router.back();
+  await settled();
+  expect(room.askingEnd).toBe(true);
+});
+
+test('End ends the room and lands on Setup room', async () => {
+  await hostingFrom();
+  const socket = roomSockets()[0];
+  router.back();
+  await settled();
+
+  room.answerEnd(true);
+  await settled();
+  expect(room.askingEnd).toBe(false);
+  expect(room.role).toBe(null);
+  expect(socket.closed).toBe(true);
+  expect(hasLeftRoom(ID)).toBe(true);
+  expect(address()).toBe('/social/start');
+  expect(social.page).toBe('start-room');
+  expect(workspace.editorTab).toBe('social');
+  expect(push).toHaveBeenCalledTimes(1);
+  expect(replace).not.toHaveBeenCalled();
+});
+
+test('Back between tabs while hosting doesn\'t ask', async () => {
+  await hostingFrom();
+  workspace.editorTab = 'input';
+  await settled();
+  expect(address()).toBe(`/pixel?room=${ID}`);
+
+  router.back();
+  await settled();
+  expect(room.askingEnd).toBe(false);
+  expect(room.role).toBe('host');
+  expect(address()).toBe(`/social?room=${ID}`);
+  expect(workspace.editorTab).toBe('social');
+});
+
+test('the room ending while it asks: the question goes and Back finishes', async () => {
+  await hostingFrom();
+  router.back();
+  await settled();
+
+  room.heard({ type: 'ended' });
+  await settled();
+  expect(room.askingEnd).toBe(false);
+  expect(room.role).toBe(null);
+  expect(address()).toBe('/social/start');
+  expect(social.page).toBe('start-room');
+  expect(replace).not.toHaveBeenCalled();
+});
+
+test('nothing navigates while it asks: a store changing behind the question waits for the answer', async () => {
+  await hostingFrom();
+  router.back();
+  await settled();
+
+  workspace.editorTab = 'input';
+  await settled();
+  expect(room.askingEnd).toBe(true);
+  expect(address()).toBe(`/social?room=${ID}`);
+  expect(push).toHaveBeenCalledTimes(1);
+
+  room.answerEnd(false);
+  await settled();
+  expect(address()).toBe(`/pixel?room=${ID}`);
+  expect(room.role).toBe('host');
+});
