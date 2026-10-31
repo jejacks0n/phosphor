@@ -14,10 +14,12 @@ const dialog = (page, name) => page.getByRole('dialog', { name: `Report ${name}?
 const reported = (page) => page.getByRole('status').filter({ hasText: 'Reported. Thank you.' });
 const SUB = 'Phosphor\'s moderators see this message and the few before it.';
 // "Reported. Thank you." stays a few seconds, and on CI a click can take longer than that: the page's
-// clock is held from just before Report until the checks are done (then page.clock.resume()).
+// clock is held from just before Report until the checks are done (then page.clock.resume()). It pauses
+// further ahead than a test can run: the time to pause at has to be still to come when the pause arrives.
 async function holdTime(page) {
-  await page.clock.install();
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  const now = Date.now();
+  await page.clock.install({ time: now });
+  await page.clock.pauseAt(now + 5 * 60_000);
 }
 
 async function say(page, text) {
