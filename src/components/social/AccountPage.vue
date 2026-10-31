@@ -387,6 +387,7 @@ span.what {
 span.detail {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 11px;
   color: var(--text-muted);
 }

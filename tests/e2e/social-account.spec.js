@@ -207,6 +207,29 @@ test('Cancel closes the email form and clears it', async ({ page }) => {
   await expect(account.getByLabel('New email')).toHaveValue('');
 });
 
+test('A long email stays on one line, cut short with an ellipsis, and leaves the buttons where they fit', async ({ page }) => {
+  const email = 'a-rather-long-address-for-this-row@a-long-domain.example.com';
+  await fakeServer(page, { me: member({ email }) });
+  const account = await openAccount(page);
+  const shownEmail = account.getByText(email);
+  const { lines, cut, ellipsis } = await shownEmail.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return {
+      lines: new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size,
+      cut: el.scrollWidth > el.clientWidth,
+      ellipsis: getComputedStyle(el).textOverflow,
+    };
+  });
+  expect({ lines, cut, ellipsis }).toEqual({ lines: 1, cut: true, ellipsis: 'ellipsis' });
+  await expect(account.getByText('Email and password')).toBeVisible();
+  const [row, button] = await Promise.all([
+    shownEmail.locator('xpath=ancestor::div[contains(@class, "row")]').boundingBox(),
+    account.getByRole('button', { name: 'Change password' }).boundingBox(),
+  ]);
+  expect(button.x + button.width).toBeLessThanOrEqual(row.x + row.width);
+});
+
 test('An account with no password has no Change email', async ({ page }) => {
   await fakeServer(page, { me: member({ providers: ['discord'] }) });
   const account = await openAccount(page);
