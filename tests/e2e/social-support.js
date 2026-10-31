@@ -192,11 +192,13 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
 // <peer> | null, msg }, room.from(who) the messages of one; room.send(who, msg) pushes one, room.info()
 // is the room as the host is told it, room.drop(who) closes a socket, and room.silence(sub, until) sends
 // silenced to the host and to each socket whose watcher is that account, as the server does on a silence.
+// With hostWaitMs, a host socket closing with none left in its place ends the room after that long (it
+// stays otherwise): ended goes to everyone, and a later host is refused unavailable.
 const SETTINGS_EVERY_MS = 1000;
 const SIGNALS = ['feedback', 'chat', 'heads-down', null];
 const FINAL = { refused: 1008, removed: 1000, ended: 1000, replaced: 1000 };   // messages after which the socket is closed
 
-export function fakeRoom({ password = null, allowGuests = true, max = 12, full = false } = {}) {
+export function fakeRoom({ password = null, allowGuests = true, max = 12, full = false, hostWaitMs = null } = {}) {
   const sockets = new Map();    // 'host' or a peer id -> its socket
   const watchers = new Map();   // peer -> { sub, guest, pass }
   let peers = 0, ended = false, settingsAt = null;   // settingsAt: the host socket's last settings taken
@@ -225,6 +227,13 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     if (typeof msg.allowGuests === 'boolean') room.setup.allowGuests = msg.allowGuests;
     if (Number.isInteger(msg.max) && msg.max >= 1 && msg.max <= 30) room.setup.max = msg.max;
     if (SIGNALS.includes(msg.signal)) room.setup.signal = msg.signal;
+  };
+
+  const end = () => {
+    ended = true;
+    const everyone = ['host', ...watchers.keys()];
+    watchers.clear();
+    for (const to of everyone) send(to, { type: 'ended' });
   };
 
   // A message from a socket that is `who` so far: what it is after it.
@@ -266,12 +275,7 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
       if (watchers.delete(msg.peer)) send(msg.peer, { type: 'removed' });
     }
     else if (msg.type === 'settings' && who === 'host') settings(msg);
-    else if (msg.type === 'end' && who === 'host') {
-      ended = true;
-      const everyone = ['host', ...watchers.keys()];
-      watchers.clear();
-      for (const to of everyone) send(to, { type: 'ended' });
-    }
+    else if (msg.type === 'end' && who === 'host') end();
     return who;
   };
 
@@ -312,6 +316,7 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
         if (sockets.get(who) !== ws) return;
         sockets.delete(who);
         if (who !== 'host') gone(who);
+        else if (hostWaitMs !== null) setTimeout(() => { if (!sockets.has('host')) end(); }, hostWaitMs);
       });
     }),
   };
@@ -368,4 +373,22 @@ export async function joinFromCard(watcher) {
 export async function followLink(page) {
   await page.goto(`/?room=${ROOM_ID}`);
   await page.getByRole('dialog', { name: 'Join this room?' }).getByRole('button', { name: 'Join', exact: true }).click();
+}
+
+// The address and the page, as the flows read them: a tab selected, the address's hash, the question a link
+// asks, the chat panel, and whether you're in no room.
+export const selected = (page, label) => expect(tab(page, label)).toHaveAttribute('aria-selected', 'true');
+export const hash = (page, path) => expect.poll(() => new URL(page.url()).hash).toBe(`#${path}`);
+export const asked = (page) => page.getByRole('dialog', { name: 'Join this room?' });
+export const chat = (page) => page.getByRole('complementary', { name: 'Chat' });
+export const outOfRoom = (page) => expect.poll(() => store(page, 'room', (r) => r.role)).toBe(null);
+
+// A host live in `room`, and a watcher on it from the lobby's card, on /social?room=.
+export async function watching(host, context, room) {
+  await goLive(host, room);
+  const watcher = await watcherPage(context, room);
+  await watcher.goto('/');
+  await joinFromCard(watcher);
+  await hash(watcher, `/social?room=${ROOM_ID}`);
+  return watcher;
 }

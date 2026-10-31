@@ -1,27 +1,12 @@
 // The room you're watching in the address: Back, Forward and reload, with a real history (its entries'
 // marks are what tell your own room from a link).
 import { test, expect, tab, store, openApp } from './support.js';
-import { fakeRoom, member, ROOM_ID, shown, goLive, watcherPage, joinFromCard, followLink } from './social-support.js';
+import { fakeRoom, member, ROOM_ID, shown, goLive, watcherPage, joinFromCard, followLink, watching, selected, hash, asked, chat, outOfRoom } from './social-support.js';
 
 const UNAVAILABLE = "This room isn't available";
-const selected = (page, label) => expect(tab(page, label)).toHaveAttribute('aria-selected', 'true');
-const hash = (page, path) => expect.poll(() => new URL(page.url()).hash).toBe(`#${path}`);
-const asked = (page) => page.getByRole('dialog', { name: 'Join this room?' });
 const status = (page) => store(page, 'room', (r) => r.status);
 const live = (page) => expect.poll(() => status(page), { timeout: 20_000, intervals: [100] }).toBe('live');
-const chat = (page) => page.getByRole('complementary', { name: 'Chat' });
-const outOfRoom = (page) => expect.poll(() => store(page, 'room', (r) => r.role)).toBe(null);
 const joins = (room) => room.received.filter((r) => r.msg.type === 'join').length;
-
-// A host live in `room`, and a watcher on it from the lobby's card, on /social?room=.
-async function watching(host, context, room) {
-  await goLive(host, room);
-  const watcher = await watcherPage(context, room);
-  await watcher.goto('/');
-  await joinFromCard(watcher);
-  await hash(watcher, `/social?room=${ROOM_ID}`);
-  return watcher;
-}
 
 test('a watcher reloading on PIXEL is back in the room, unasked, still on PIXEL', async ({ page: host, context }) => {
   const room = fakeRoom();
@@ -142,13 +127,14 @@ test('Forward onto a room that ended shows why on SOCIAL, and the entry loses ?r
   await outOfRoom(watcher);
 });
 
-test('a host\'s reload lands where it was without ?room=, and never joins its own ended room', async ({ page: host }) => {
+test('with no record, a host\'s reload lands where it was without ?room= and never joins', async ({ page: host }) => {
   const room = fakeRoom();
   await goLive(host, room);
   await hash(host, `/social?room=${ROOM_ID}`);
   await tab(host, 'PIXEL').click();
   await hash(host, `/pixel?room=${ROOM_ID}`);
   host.on('dialog', (dialog) => dialog.accept());   // the page-closing prompt
+  await host.addInitScript(() => sessionStorage.removeItem('phosphor-hosting'));   // nothing kept to come back to
 
   await host.reload();
   await hash(host, '/pixel');

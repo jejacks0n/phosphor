@@ -214,9 +214,11 @@ the pinned welcome, which watchers see at once), and **Settings and stats** (the
 In the chat, **Delete** takes the place of a message's time when you point at it or tab to it, and takes the message out for everyone, leaving **Message deleted by the host** in its place (a message
 from someone you blocked shows **Show** first).
 
-**End room** ends it for everyone, and tells watchers at once. Closing or reloading the tab ends it
-too, so Phosphor asks first (after a reload the SOCIAL tab is the lobby); signing out while you host
-ends the room as well.
+**End room** ends it for everyone, and tells watchers at once. Reloading the tab comes back to the same
+room as its host, at the same address, and watchers wait and see it's reconnecting. Closing the tab for
+good ends the room within about a minute. The prompt still asks first; if the room ended while the page was
+away, you're told so and your art stays. Signing out while you host ends the room as well. A chat longer
+than 1000 entries keeps its newest after a reload.
 
 Watchers connect straight to your browser, so the room is as fast as your connection. A direct
 connection shows each side's IP address to the other (a VPN hides yours). If your connection to the
@@ -272,7 +274,7 @@ is part of the address.
   leaves the room, and Forward joins it again. A room you left with **Exit**, or that ended, isn't
   joined again by Back, Forward or a reload.
 - **Hosting**: Back past the page where you went live asks **End the room?** (**End room** or
-  **Cancel**). A reload ends the room (after a reload the SOCIAL tab is the lobby).
+  **Cancel**). A reload comes back to the room and the address you were on, with ?room= still in it.
 
 ## Chat
 

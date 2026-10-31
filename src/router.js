@@ -1,7 +1,7 @@
 // The address and the stores, kept in step both ways. The stores are the truth while you work: the
 // address follows them (reconcile), and they follow it on a landing, Back or Forward (applyPlace).
 import { nextTick, watch } from 'vue';
-import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router';
+import { START_LOCATION, createRouter, createWebHashHistory, createWebHistory } from 'vue-router';
 import { PLACES, arrivalPage, pathOf } from '@/lib/addresses';
 import { desktopQuery } from '@/social/config';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -46,7 +46,7 @@ export function followAddress(router) {
   // The room a place names, on an entry of yours or not. True when it's a link, which asks on SOCIAL.
   function enterRoomOf(to) {
     const id = to.query.room == null ? null : String(to.query.room), mark = router.options.history.state.inRoom;
-    const hostGone = mark === 'host' && !(room.role === 'host' && room.id === id);   // a host's reload, or a room since ended
+    const hostGone = mark === 'host' && !(room.role === 'host' && room.id === id);   // a reload that kept no record, or a room since ended
     const spent = !!id && ((mark && hasLeftRoom(id)) || hostGone);                   // same place, no room; a link from outside asks
     const here = spent ? null : id;
     joining = joining && here === (room.id ?? social.roomGoingTo);
@@ -111,8 +111,9 @@ export function followAddress(router) {
   // Back past going live asks. Our own navigations carry the room, so this is only Back and Forward. While it
   // asks the router hears nothing else (a second navigation would cancel this one), and a Back or Forward
   // pressed then is undone here: the one the question is about is the one the router puts back, or finishes.
-  async function askBeforeLeavingHost(to) {
-    if (room.role !== 'host' || String(to.query.room) === room.id) return true;
+  // A landing has nothing to leave, and App isn't mounted to ask: the plain address in a hosting tab stays.
+  async function askBeforeLeavingHost(to, from) {
+    if (from === START_LOCATION || room.role !== 'host' || String(to.query.room) === room.id) return true;
     const at = router.options.history.state.position;
     const stay = ({ state }) => { if (state && state.position !== at) history.go(at - state.position); };
     router.listening = false;
