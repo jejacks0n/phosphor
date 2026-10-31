@@ -1,7 +1,7 @@
 // The room you're watching in the address: Back, Forward and reload, with a real history (its entries'
 // marks are what tell your own room from a link).
 import { test, expect, tab, store, openApp } from './support.js';
-import { fakeRoom, ROOM_ID, shown, goLive, watcherPage, joinFromCard, followLink } from './social-support.js';
+import { fakeRoom, member, ROOM_ID, shown, goLive, watcherPage, joinFromCard, followLink } from './social-support.js';
 
 const UNAVAILABLE = "This room isn't available";
 const selected = (page, label) => expect(tab(page, label)).toHaveAttribute('aria-selected', 'true');
@@ -169,6 +169,29 @@ for (const typed of ['garbage', 'a&room=b']) {
     expect(room.received).toEqual([]);
   });
 }
+
+test('signing in while watching, Back from the room you come back to stays in it', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  const watcher = await watcherPage(context, room, { signsInAs: member({ id: 'u_2', username: 'pixel_wren', name: 'pixel_wren' }) });
+  await watcher.goto('/');
+  await joinFromCard(watcher);
+  await chat(watcher).getByRole('button', { name: 'Sign in to chat' }).click();
+  const form = shown(watcher, 'sign-in');
+  await hash(watcher, `/social/sign-in?room=${ROOM_ID}`);
+  await form.getByLabel('Email or username').fill('pixel_wren');
+  await form.getByLabel('Password').fill('correct horse battery');
+  await form.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect.poll(() => joins(room)).toBe(2);
+  await live(watcher);
+  await hash(watcher, `/social?room=${ROOM_ID}`);
+
+  await watcher.goBack();
+  await hash(watcher, `/social?room=${ROOM_ID}`);
+  expect(await status(watcher)).toBe('live');
+  await expect(shown(watcher, 'watch-room')).toBeVisible();
+  expect(joins(room)).toBe(2);
+});
 
 test('a server ?room= link on a phone still stays in the URL for a computer', async ({ context }) => {
   const room = fakeRoom();
