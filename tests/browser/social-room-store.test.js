@@ -1632,6 +1632,22 @@ test('no art to come back to, or another account: no view to scroll the next art
   expect(useWorkspaceStore().viewToRestore).toBe(null);
 });
 
+test('another document while hosting leaves no view to scroll its art to; the one autosave brings back at load keeps it', async () => {
+  await goLive();
+  Object.assign(useWorkspaceStore(), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 40 } });
+  await reload({ art: false });
+  room.resume();
+  await social.boot();
+  await expect.poll(() => social.claims?.sub).toBe('u_1');
+  await openArt();   // restoring the art gives it an id: that's the same document
+  await greeted();
+  expect(useWorkspaceStore().viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
+
+  project.documentId = 'another-document';
+  await later();
+  expect(useWorkspaceStore().viewToRestore).toBe(null);
+});
+
 test('the view is kept as it changes, not only when the page goes', async () => {
   await goLive();
   useWorkspaceStore().ansiViewOrigin = { col: 2, row: 30 };
@@ -1802,6 +1818,22 @@ test('no document once autosave has answered drops the record and says ROOM_AWAY
   expect(sockets).toHaveLength(1);
 });
 
+test('a document that never gets answered is the room gone, once those who were here have stopped waiting', async () => {
+  await goLive();
+  await reload({ art: false });
+  await social.boot();
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  room.resume();
+  await vi.waitFor(() => expect(social.claims?.sub).toBe('u_1'));
+  await vi.advanceTimersByTimeAsync(RETURN_WITHIN_MS - 5000);
+  expect([room.role, social.notice]).toEqual(['host', null]);
+  await vi.advanceTimersByTimeAsync(6000);
+  expect(room.role).toBe(null);
+  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+  expect(sockets).toHaveLength(1);
+});
+
 test('a slow restore isn\'t a dead room: settled with no answer yet waits, and the art arriving connects', async () => {
   await goLive();
   await reload({ art: false });
@@ -1887,6 +1919,56 @@ test('a throttled refusal on resume opens the same connection again, and keeps t
   await vi.waitFor(() => expect(third.sent[0]?.type).toBe('host'));
   third.receive({ type: 'hosting', room: info(), peers: [] });
   expect(room.status).toBe('live');
+});
+
+test('a pass that can\'t be had is asked for again after 3 s, 6 s, 12 s, and gives up when those who were here have stopped waiting', async () => {
+  await goLive();
+  await reload();
+  server.route('POST /api/pass', () => [429, { code: 'THROTTLED' }]);
+  await social.boot();
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  const asked = () => server.sent('POST', '/api/pass').length;
+  const before = asked();
+  room.resume();
+  await vi.waitFor(() => expect(asked()).toBeGreaterThan(before));
+  const first = asked();
+  for (const [wait, then] of [[2500, 0], [1000, 1], [5000, 1], [1000, 2], [11_000, 2], [1000, 3]]) {   // asked at about 3 s, 9 s and 21 s
+    await vi.advanceTimersByTimeAsync(wait);
+    expect(asked()).toBe(first + then);
+  }
+  await vi.advanceTimersByTimeAsync(RETURN_WITHIN_MS);
+  expect(room.role).toBe(null);
+  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+});
+
+test('throttled refusals on resume are tried again after 3 s, 6 s, 12 s, and the room is given up when those who were here have stopped waiting', async () => {
+  await goLive();
+  await reload();
+  room.resume();
+  await greeted();
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  for (const [step, count] of [[3000, 3], [6000, 4], [12_000, 5]]) {
+    sockets.at(-1).receive({ type: 'refused', reason: 'throttled' });
+    await vi.advanceTimersByTimeAsync(step - 100);
+    expect(sockets).toHaveLength(count - 1);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(sockets).toHaveLength(count);
+  }
+  sockets.at(-1).receive({ type: 'refused', reason: 'throttled' });   // 24 s next, but 21 s are gone and 39 s left
+  await vi.advanceTimersByTimeAsync(23_900);
+  expect(sockets).toHaveLength(5);
+  await vi.advanceTimersByTimeAsync(200);
+  expect(sockets).toHaveLength(6);
+  sockets.at(-1).receive({ type: 'refused', reason: 'throttled' });   // 48 s next, but about 15 s are left
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(sockets).toHaveLength(6);
+  await vi.advanceTimersByTimeAsync(6000);
+  expect(sockets).toHaveLength(7);
+  sockets.at(-1).receive({ type: 'refused', reason: 'throttled' });   // and none left
+  expect(room.role).toBe(null);
+  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
 });
 
 test('a throttled refusal outside a resume stays the end of it', async () => {

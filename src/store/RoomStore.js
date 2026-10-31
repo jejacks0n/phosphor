@@ -27,9 +27,12 @@ const THUMBNAIL_EVERY_MS = 180_000;   // then at most this often (the server's o
 const SETTINGS_EVERY_MS = 1250;  // the server's 1 s, with slack: it measures when settings arrive
 const ASK_FOR_MS = 3000;        // how long an earlier() waits for its page (the host may drop it unanswered)
 const KEEP_EVERY_MS = 1000;     // the host's resume record, as the room changes (and at once on pagehide)
-const RESUME_RETRY_MS = 3000;   // a host coming back asks again this often, for a pass or a room that was too busy to answer
+const RESUME_RETRY_MS = 3000;   // a host coming back asks again after this, then twice that, and so on, for a pass or a room that was too busy to answer
 const HOST_SOCKET = { liveOn: ['hosting'], endOn: ['refused', 'ended', 'replaced'] };
 export const ROOM_ID = /^[a-z2-7]{10}$/;
+// The wait before a returning host's next try (tries made so far): 3 s, 6 s, 12 s and on, no longer than
+// what's left of RETURN_WITHIN_MS since it began; 0 once that's gone.
+const retryIn = (tries, began) => Math.min(RESUME_RETRY_MS * 2 ** tries, Math.max(0, began + RETURN_WITHIN_MS - Date.now()));
 
 // What's typed in Start a room and Room settings, kept here so it stays while you're on another tab (the
 // SOCIAL tab isn't there then). Room settings also keeps what the room last said for each field (seen).
@@ -134,6 +137,8 @@ export const useRoomStore = defineStore('room', {
     _connectWithinMs: undefined,   // the peers' (tests make it short)
     _endAnswer: null,    // answers End the room? while Back past going live waits on it (markRaw)
     _resuming: false,    // a host's: back from a reload, and the room hasn't said hosting yet
+    _resumeBegan: 0,     // when it began, which RETURN_WITHIN_MS counts from
+    _throttled: 0,       // the room's refusals as too busy since then: the socket's retry steps on from each
     _keepTimer: null,    // the resume record's next write
   }),
 
@@ -214,7 +219,7 @@ export const useRoomStore = defineStore('room', {
       const { id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, view } = record;
       try {
         const { col, row } = !view ? {} : view.viewTab === 'input' ? view.inputView : view.ansiViewOrigin;
-        this.hostRoom({ id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, status: 'reconnecting', _resuming: true }, { ...record.host, muted });
+        this.hostRoom({ id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, status: 'reconnecting', _resuming: true, _resumeBegan: Date.now(), _throttled: 0 }, { ...record.host, muted });
         if (view) Object.assign(useWorkspaceStore(), view, { viewToRestore: { tab: view.viewTab, col, row } });   // here, so watchers are shown it whichever tab this lands on
       } catch {
         forgetHostingRecord();
@@ -232,15 +237,16 @@ export const useRoomStore = defineStore('room', {
     // ponytail: End room in that moment has no socket to send end on, so the room's wait ends it instead.
     async comeBack(record) {
       const social = useSocialStore(), project = useProjectStore(), workspace = useWorkspaceStore();
-      const gone = () => this.id !== record.id, began = Date.now();
+      const gone = () => this.id !== record.id;
       const askForPass = () => social.getPass().catch(() => {});
       await social.boot();
       if (gone()) return;
       await askForPass();
       const late = !social.claims;
-      while (!gone() && !social.claims) {
-        if (Date.now() - began >= RETURN_WITHIN_MS) return this.over(ROOM_AWAY_WORDS);
-        await new Promise((resolve) => setTimeout(resolve, RESUME_RETRY_MS));
+      for (let tries = 0; !gone() && !social.claims; tries++) {
+        const wait = retryIn(tries, this._resumeBegan);
+        if (!wait) return this.over(ROOM_AWAY_WORDS);
+        await new Promise((resolve) => setTimeout(resolve, wait));
         if (!gone()) await askForPass();
       }
       if (gone()) return;
@@ -255,7 +261,7 @@ export const useRoomStore = defineStore('room', {
         const row = this.chatRow(entry);
         return only.has(entry.id) ? { ...row, muted: true } : row;
       });
-      await until(() => !!project.image || workspace.documentAnswered).toBe(true);
+      await until(() => !!project.image || workspace.documentAnswered).toBe(true, { timeout: Math.max(0, this._resumeBegan + RETURN_WITHIN_MS - Date.now()) });   // a database that never answers is the room gone
       if (gone()) return;
       if (!project.image) return this.over(ROOM_AWAY_WORDS);
       this.share();
@@ -324,6 +330,7 @@ export const useRoomStore = defineStore('room', {
         watch(() => workspace.displayFontLoaded && workspace.sharedView, (v) => { if (v) view.push(v); }, { immediate: true }),   // PIXEL's zoom is against the font's width: not before it's in
         watch(() => JSON.stringify(this.lobbyPlace), changed, { immediate: true }),
         watch(() => this.hereNow, (here) => sessionSaw(this.session, here), { immediate: true }),
+        watch(() => project.documentId, () => { workspace.viewToRestore = null; }),   // another document isn't where the old one was scrolled to
         watch([() => this.room, () => this.lobbyPin, () => this.peopleOpen, () => this.muted, () => workspace.sharedView], () => this.keepSoon()),
         watch(() => this.status, (status) => {
           if (status === 'live') this.session.liveSince ??= Date.now();   // a reconnect keeps it
@@ -703,8 +710,9 @@ export const useRoomStore = defineStore('room', {
     // one was sent: a link's first try goes without). Anything else is the end of it.
     refused(reason) {
       const connection = this._connection;
-      if (reason === 'throttled' && this._resuming) {   // too busy to say: the room may well be there
-        setTimeout(() => { if (connection === this._connection) connection.open(); }, RESUME_RETRY_MS);
+      const wait = reason === 'throttled' && this._resuming ? retryIn(this._throttled++, this._resumeBegan) : null;
+      if (wait) {   // too busy to say: the room may well be there
+        setTimeout(() => { if (connection === this._connection) connection.open(); }, wait);
       } else if (reason === 'bad-pass' && !this._refusedOnce) {
         this._refusedOnce = true;
         useSocialStore().renewPass().then(() => { if (connection === this._connection) connection.open(); });

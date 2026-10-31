@@ -520,7 +520,7 @@ const here = async (...subs) => Promise.all(subs.map(async (sub) => ({ sub, pass
 
 test('a restored host\'s log goes to a returning watcher as its history', async () => {
   const sends = watchSends();
-  const log = [said('one', 1), said('two', 2), await line('u_p2')];
+  const log = [said('one', 1), said('two', 2), { id: newId(), ts: 3, deleted: true }, await line('u_p2')];
   const r = await returning({ log, only: [], removed: [], muted: [], here: await here('u_p1') }, ['p1']);
   await expect.poll(() => r.log.p1.views.length, PATIENT).toBe(1);
   expect(historyOf(sends, r, 'p1').map((m) => m.messages)).toEqual([log]);
@@ -541,7 +541,7 @@ test('someone who was here but isn\'t in hosting\'s peers gets a left line at on
 
 test('someone listed who never connects gets a left line after returnWithinMs, and one who connects first gets none', async () => {
   const [p1, p2] = await here('u_p1', 'u_p2');
-  const r = await returning({ log: [], only: [], removed: [], muted: [], here: [p1, p2] }, ['p1', 'p2'], { lost: ['p1'], returnWithinMs: 1000 });
+  const r = await returning({ log: [], only: [], removed: [], muted: [], here: [p1, p2] }, ['p1', 'p2'], { lost: ['p1'], returnWithinMs: 2000 });
   await expect.poll(() => r.log.p2.views.length, PATIENT).toBe(1);
   expect(presences(r)).toEqual([]);
   await expect.poll(() => presences(r).length, PATIENT).toBe(1);

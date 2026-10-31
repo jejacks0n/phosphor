@@ -269,8 +269,9 @@ is part of the address.
   when you're signed out or your email isn't confirmed, the two-factor code page when no code was
   asked for, and the new-password page without a link from an email. ANSI and SAUCE with no image
   open show PIXEL.
-- **Following a link to a room** asks **Join this room?** first, as always. A link that can't be a
-  room's says **This room isn't available** without asking.
+- **Following a link to a room** asks **Join this room?** first, as always, except that loading
+  another room's link in the tab you host in keeps you in your own room and drops the link. A link
+  that can't be a room's says **This room isn't available** without asking.
 - **Watching**: reloading, or Forward onto a page where you were watching, joins the room again
   without asking (a private room asks for its password again). Back past the page where you joined
   leaves the room, and Forward joins it again. A room you left with **Exit**, or that ended, isn't

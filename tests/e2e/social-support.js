@@ -387,6 +387,8 @@ export const hash = (page, path) => expect.poll(() => new URL(page.url()).hash).
 export const asked = (page) => page.getByRole('dialog', { name: 'Join this room?' });
 export const chat = (page) => page.getByRole('complementary', { name: 'Chat' });
 export const outOfRoom = (page) => expect.poll(() => store(page, 'room', (r) => r.role)).toBe(null);
+export const live = (page) => expect.poll(() => store(page, 'room', (r) => r.status), { timeout: 20_000, intervals: [100] }).toBe('live');
+export const joins = (room) => room.received.filter((r) => r.msg.type === 'join').length;
 
 // A host live in `room` (with goLive's options), and a watcher on it from the lobby's card, on /social?room=.
 export async function watching(host, context, room, options) {

@@ -1,12 +1,10 @@
 // The room you're watching in the address: Back, Forward and reload, with a real history (its entries'
 // marks are what tell your own room from a link).
 import { test, expect, tab, store, openApp } from './support.js';
-import { fakeRoom, member, ROOM_ID, shown, goLive, watcherPage, joinFromCard, followLink, watching, selected, hash, asked, chat, outOfRoom } from './social-support.js';
+import { fakeRoom, member, ROOM_ID, shown, goLive, watcherPage, joinFromCard, followLink, watching, selected, hash, asked, chat, outOfRoom, live, joins } from './social-support.js';
 
 const UNAVAILABLE = "This room isn't available";
 const status = (page) => store(page, 'room', (r) => r.status);
-const live = (page) => expect.poll(() => status(page), { timeout: 20_000, intervals: [100] }).toBe('live');
-const joins = (room) => room.received.filter((r) => r.msg.type === 'join').length;
 
 test('a watcher reloading on PIXEL is back in the room, unasked, still on PIXEL', async ({ page: host, context }) => {
   const room = fakeRoom();
