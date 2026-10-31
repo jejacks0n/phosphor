@@ -112,7 +112,8 @@ export const useRoomStore = defineStore('room', {
     hostView: null,      // a watcher's: { col, row, cols, rows, zoom }
     lookingAt: null,     // a watcher's: the cell in the middle of the art in view { middleCol, middleRow } (RoomArt's looking-at)
     tracking: true,
-    artZoom: 1,          // a watcher's: the zoom the art is drawn at, the host's while tracking
+    artZoom: 1,          // a watcher's: the zoom the art is drawn at; while tracking, the host's, or less to fit their view
+    artFit: 1,           // a watcher's: the biggest zoom that fits all of the host's view in the window
     chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence?, muted? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
     chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
     joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
@@ -397,7 +398,7 @@ export const useRoomStore = defineStore('room', {
         onArt: (art) => { this.art = art; },
         onView: (view) => {
           this.hostView = view;
-          if (this.tracking) this.artZoom = view.zoom;
+          if (this.tracking) this.artZoom = Math.min(view.zoom, this.artFit);
         },
         onState: (state) => this.watchState(state),
       }));
@@ -415,8 +416,13 @@ export const useRoomStore = defineStore('room', {
 
     setTracking(on) {
       this.tracking = on;
-      if (on) this.artZoom = this.hostView?.zoom ?? 1;
+      if (on) this.artZoom = Math.min(this.hostView?.zoom ?? 1, this.artFit);
       this._watch?.setTracking(on);
+    },
+
+    fitArt(fit) {
+      this.artFit = fit;
+      if (this.tracking) this.artZoom = Math.min(this.hostView?.zoom ?? 1, fit);
     },
 
     // A watcher's own zoom: the art stops following the host's until they track again.
@@ -459,7 +465,7 @@ export const useRoomStore = defineStore('room', {
       useWorkspaceStore().viewToRestore = null;   // it was this room's: the next art opens as usual
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, lookingAt: null, tracking: true, artZoom: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),
+        hostView: null, lookingAt: null, tracking: true, artZoom: 1, artFit: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false, _resuming: false, _keepTimer: null,
       });

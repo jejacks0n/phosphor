@@ -78,33 +78,55 @@ test('the middle of what\'s in view, in cells, is told as it changes (a room rep
   await expect.poll(() => seen.lookingAt).toEqual({ middleCol: 100 / 8, middleRow: 50 / 16 });   // the 200 x 100 px box's middle
 });
 
-test('a host\'s view bigger than the window while tracking: the host at an end of the art is that end in the window, and between them the window stays inside the box', async () => {
+test('the zoom that fits all of the host\'s view in the window is told while tracking, and not once looking around', async () => {
   await createTestApp();
-  // 480 x 480 px in a 200 x 100 window, over art of 800 x 800 px.
-  const { state, scroll, box, seen } = mount({ hostView: { col: 0, row: 0, cols: 60, rows: 30 } });
-  await expect.poll(() => box.style.width).toBe('480px');
+  const fits = [], last = () => fits.at(-1);
+  // A view of 240 x 192 px at 100%, in a 200 x 100 window: its height is what has to fit.
+  const { state, scroll, box } = mount({ hostView: { col: 10, row: 10, cols: 30, rows: 12 }, onFit: (fit) => fits.push(fit) });
+  await expect.poll(() => box.style.width).toBe('240px');
   await frames();
-  expect([scroll.scrollLeft, scroll.scrollTop]).toEqual([0, 0]);
+  await expect.poll(last).toBeLessThan(0.75);
+  state.zoom = last();
+  await expect.poll(() => box.getBoundingClientRect().height).toBeLessThanOrEqual(scroll.clientHeight);
+  await frames();
+  expect(box.getBoundingClientRect().height).toBeGreaterThan(scroll.clientHeight * 0.75);   // no smaller than it needs
+  expect(box.getBoundingClientRect().width).toBeLessThanOrEqual(scroll.clientWidth);
 
-  state.hostView = { col: 40, row: 20, cols: 60, rows: 30 };
-  await nextTick();
-  expect(scroll.scrollLeft).toBe(scroll.scrollWidth - scroll.clientWidth);
-  expect(scroll.scrollTop).toBe(scroll.scrollHeight - scroll.clientHeight);
+  state.hostView = { col: 40, row: 20, cols: 10, rows: 4 };   // fits at 100%
+  await expect.poll(last).toBe(1);
 
-  state.hostView = { col: 10, row: 5, cols: 60, rows: 30 };
-  await nextTick();
-  expect([scroll.scrollLeft, scroll.scrollTop]).toEqual([0.25 * 600, 0.25 * 700]);
-  expect(scroll.scrollTop).toBeGreaterThanOrEqual(5 * 16);
-  expect(scroll.scrollTop + scroll.clientHeight).toBeLessThanOrEqual((5 + 30) * 16);
-  expect(seen.lookArounds).toBe(0);
+  fits.length = 0;
+  state.tracking = false;
+  state.hostView = { col: 10, row: 10, cols: 60, rows: 30 };
+  await frames();
+  expect(fits).toEqual([]);
 });
 
-test('a host\'s view of all the art, bigger than the window, has no end to go to: its middle is centered', async () => {
+test('the fit doesn\'t change as the host\'s scroll brings a whole line in and out of view', async () => {
   await createTestApp();
-  const { scroll, box } = mount({ hostView: { col: 0, row: 0, cols: COLS, rows: LINES } });
-  await expect.poll(() => box.style.width).toBe('800px');
+  const fits = [];
+  const { state, box } = mount({ hostView: { col: 10, row: 10, cols: 60, rows: 31 }, onFit: (fit) => fits.push(fit) });
+  await expect.poll(() => box.style.width).toBe('480px');
   await frames();
-  expect([scroll.scrollLeft, scroll.scrollTop]).toEqual([(800 - 200) / 2, (800 - 100) / 2]);
+  const fit = fits.at(-1);
+  state.hostView = { col: 10, row: 11, cols: 60, rows: 30 };
+  await frames();
+  state.hostView = { col: 10, row: 11, cols: 60, rows: 31 };
+  await frames();
+  expect(new Set(fits.slice(fits.indexOf(fit)))).toEqual(new Set([fit]));
+});
+
+test('no fit for a window with no size (its tab hidden), so the art isn\'t shrunk to nothing', async () => {
+  await createTestApp();
+  const fits = [];
+  const { box } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 }, onFit: (fit) => fits.push(fit) });
+  await expect.poll(() => box.style.width).toBe('80px');
+  await frames();
+  expect(fits.at(-1)).toBe(1);
+  fits.length = 0;
+  host.style.display = 'none';
+  await frames();
+  expect(fits).toEqual([]);
 });
 
 test('at a zoom of 0.5 the cells and the box are half size, and the box is centered', async () => {

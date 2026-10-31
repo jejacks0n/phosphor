@@ -14,7 +14,7 @@ import UserName from './UserName.vue';
 // upper left is the Track button (pressed while tracking). The tag is the box's own child, held to
 // the part of the box in view by CSS (sticky), so it moves with the box in the same frame; only once
 // the box is out of view is it placed here, at the edge nearest the box, with an arrow toward it. While tracking, each new view of the
-// host's is scrolled to the center (or, bigger than the window, as far through the art as it is). A wheel, a key or a press in it is looking around (a scroll it
+// host's is scrolled to the center, and the zoom that fits all of it in the window is told (fit). A wheel, a key or a press in it is looking around (a scroll it
 // made itself isn't; the tag is no part of it); Ctrl+wheel or a pinch asks for a zoom (zoom) instead, and
 // a zoom while not tracking keeps the same cell under the pointer, or in the middle of the view. Each draw tells the cell in the middle of the view (looking-at). The host's numbers are a stranger's: the view is held
 // to the grid here, and the font's size by fontFor.
@@ -26,7 +26,7 @@ const props = defineProps({
   zoom: { type: Number, default: 1 },          // the cell's size against the font's (the host's, never above 1)
   boxed: { type: Boolean, default: true },     // the host's box and tag (false: just the art, scrolled to the view)
 });
-const emit = defineEmits(['look-around', 'track', 'looking-at', 'zoom', 'cell']);
+const emit = defineEmits(['look-around', 'track', 'looking-at', 'zoom', 'cell', 'fit']);
 
 const scrollRef = useTemplateRef('scroll'), sizerRef = useTemplateRef('sizer'), canvasRef = useTemplateRef('canvas'), tagRef = useTemplateRef('tag');
 const font = computed(() => fontFor(props.art?.font));
@@ -105,6 +105,22 @@ const ensureCellCanvas = () => {
   return cellCanvas;
 };
 
+// The biggest zoom (to 1) at which all of the host's view fits in the window, as far down as a cell of
+// about a device pixel. Whole cells in view come and go by one as the host scrolls, and a size within one
+// of the biggest lately is sized as that, so the art doesn't change size under a scroll.
+let fitted = null;   // { cols, rows }
+const fitZoom = (v, el, dpr) => {
+  const near = fitted && Math.abs(v.cols - fitted.cols) <= 1 && Math.abs(v.rows - fitted.rows) <= 1;
+  fitted = near ? { cols: Math.max(v.cols, fitted.cols), rows: Math.max(v.rows, fitted.rows) } : { cols: v.cols, rows: v.rows };
+  const whole = cellCanvas.cellSize(dpr, 1), least = 1 / (dpr * Math.min(whole.cellWidth, whole.lineHeight));
+  for (let zoom = 1; ;) {
+    const { cellWidth, lineHeight } = cellCanvas.cellSize(dpr, zoom);
+    const over = Math.max(fitted.cols * cellWidth / el.clientWidth, fitted.rows * lineHeight / el.clientHeight);
+    if (over <= 1 || zoom <= least) return zoom;
+    zoom = Math.max(least, zoom / over);   // cells round to whole device pixels, so measured again
+  }
+};
+
 // The window of cells around the viewport, against the layout as it is now (the resize observer
 // draws again after a layout change). The window's size can change the cell and the cell the
 // window's size; cells are whole device px, so it settles in a pass or two.
@@ -112,6 +128,7 @@ const render = () => {
   const art = props.art, el = scrollRef.value;
   if (!art || !el || !canvasRef.value || !ensureCellCanvas()) return;
   const dpr = window.devicePixelRatio;
+  if (props.boxed && props.tracking && view.value && el.clientWidth && el.clientHeight) emit('fit', fitZoom(view.value, el, dpr));
   let m = (sizedZoom === props.zoom && cellCanvas.metrics) || cellCanvas.cellSize(dpr, props.zoom), win, seen;
   sizedZoom = props.zoom;
   for (let pass = 0; pass < 3; pass++) {
@@ -131,17 +148,12 @@ const render = () => {
   placeTag();
 };
 
-// Where tracking scrolls, along one direction: the host's view in the middle (the browser keeps the scroll
-// inside the art). A view bigger than the window can't all show, so the window goes as far through the
-// art as the view has, which puts each end of the art in the window when the host is at it.
-const scrollTo = (first, shown, all, cell, room) => (
-  shown * cell > room && shown < all ? first / (all - shown) * (all * cell - room) : (first + shown / 2) * cell - room / 2
-);
+// Tracking: the host's view in the middle (the browser keeps the scroll inside the art).
 const center = () => {
-  const v = view.value, m = metrics.value, el = scrollRef.value, art = props.art;
+  const v = view.value, m = metrics.value, el = scrollRef.value;
   if (!props.tracking || !v || !m || !el) return;
-  el.scrollLeft = scrollTo(v.col, v.cols, art.cols, m.cellWidth, el.clientWidth);
-  el.scrollTop = scrollTo(v.row, v.rows, art.lines, m.lineHeight, el.clientHeight);
+  el.scrollLeft = (v.col + v.cols / 2) * m.cellWidth - el.clientWidth / 2;
+  el.scrollTop = (v.row + v.rows / 2) * m.lineHeight - el.clientHeight / 2;
 };
 watch([view, () => props.tracking, metrics], center, { flush: 'post' });
 watch(metrics, (m) => emit('cell', m), { flush: 'post' });   // in the sizer's own flush, before the browser lays it out
@@ -211,6 +223,7 @@ onBeforeUnmount(() => {
       v-else
       ref="scroll"
       class="room-art"
+      :class="{ fitted: boxed && tracking }"
       :style="colors"
       tabindex="0"
       role="region"
@@ -251,6 +264,10 @@ onBeforeUnmount(() => {
   height: 100%;
   overflow: auto;
   background: var(--surface-dark);
+}
+
+.room-art.fitted {
+  scrollbar-width: none;   /* all that's being tracked is in view, and a bar coming and going would change the fit */
 }
 
 .sizer {

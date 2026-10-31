@@ -99,14 +99,22 @@ test('the host sees the watcher tracking; a wheel is looking around, and Track b
 
 test('a tracking watcher\'s art stays centered when their own view changes size; looking around, it stays put', async ({ page: host, context }) => {
   const room = fakeRoom();
-  await goLive(host, room);
+  await goLive(host, room, { image: 'images/tall.png' });   // the art scrolls, and the host is partway down it
+  await tab(host, 'ANSI').click();
+  await settled(host);
+  await store(host, 'workspace', (w) => { w.ansiZoom = 1; });
+  await host.locator('.ansi-editor > article').evaluate((el) => { el.scrollTop = el.scrollHeight / 2; });
+  await expect.poll(() => store(host, 'workspace', (w) => w.ansiViewOrigin.row)).toBeGreaterThan(400);
+  await tab(host, 'SOCIAL').click();
+
   const watcher = await watcherPage(context, room);
-  await watcher.setViewportSize({ width: 830, height: 500 });   // the art's 80 columns don't fit across
+  await watcher.setViewportSize({ width: 830, height: 500 });
   await watcher.goto('/');
   await joinFromCard(watcher);
-  const offCenter = () => watcher.locator('.room-art').evaluate((el) => {
-    const box = el.querySelector('.host-view');
-    return Math.abs(el.scrollLeft - (box.offsetLeft + box.offsetWidth / 2 - el.clientWidth / 2));
+  const art = watching(watcher).getByLabel('The room\'s art');
+  const offCenter = () => art.evaluate((el) => {
+    const box = el.querySelector('.host-view').getBoundingClientRect(), seen = el.getBoundingClientRect();
+    return box.height ? Math.abs(box.top + box.height / 2 - (seen.top + seen.height / 2)) : Infinity;
   });
   await expect.poll(offCenter).toBeLessThanOrEqual(1);
 
@@ -115,18 +123,17 @@ test('a tracking watcher\'s art stays centered when their own view changes size;
   await watcher.setViewportSize({ width: 950, height: 500 });
   await expect.poll(offCenter).toBeLessThanOrEqual(1);
 
-  const art = watching(watcher).getByLabel('The room\'s art');
   await art.hover();
-  await watcher.mouse.wheel(40, 0);
+  await watcher.mouse.wheel(0, 40);
   await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'false');
   await expect.poll(offCenter).toBeGreaterThan(1);
-  const at = await art.evaluate((el) => el.scrollLeft), width = await art.evaluate((el) => el.clientWidth);
-  await watcher.setViewportSize({ width: 900, height: 500 });
-  await expect.poll(() => art.evaluate((el) => el.clientWidth)).toBeLessThan(width);
-  expect(await art.evaluate((el) => el.scrollLeft)).toBe(at);
+  const at = await art.evaluate((el) => el.scrollTop), height = await art.evaluate((el) => el.clientHeight);
+  await watcher.setViewportSize({ width: 950, height: 450 });
+  await expect.poll(() => art.evaluate((el) => el.clientHeight)).toBeLessThan(height);
+  expect(await art.evaluate((el) => el.scrollTop)).toBe(at);
 });
 
-test('a tracking watcher in a short window, on a phone held sideways, sees the art\'s first and last lines when the host goes there', async ({ page: host, context }) => {
+test('a tracking watcher in a short window, on a phone held sideways, is drawn small enough to see all of the host\'s view; looking around keeps that zoom, and Track fits again', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room, { image: 'images/tall.png' });
   await tab(host, 'ANSI').click();
@@ -143,15 +150,34 @@ test('a tracking watcher in a short window, on a phone held sideways, sees the a
   await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'true');
   const art = watching(watcher).getByLabel('The room\'s art');
   await expect(art).toBeInViewport({ ratio: 1 });   // nothing of the art's own window is cut off
-  const fromEnds = () => art.evaluate((el) => ({ top: el.scrollTop, bottom: el.scrollHeight - el.clientHeight - el.scrollTop }));
-  const boxTaller = () => art.evaluate((el) => el.querySelector('.host-view').offsetHeight > el.clientHeight);
-  await expect.poll(boxTaller).toBe(true);   // the host's view doesn't fit in the watcher's window
+  const fits = () => art.evaluate((el) => {
+    const box = el.querySelector('.host-view').getBoundingClientRect(), seen = el.getBoundingClientRect();
+    return box.height > 0 && box.top >= seen.top - 1 && box.bottom <= seen.bottom + 1 && box.left >= seen.left - 1 && box.right <= seen.right + 1;
+  });
+  await expect.poll(fits).toBe(true);
+  const zoom = () => store(watcher, 'room', (r) => r.artZoom);
+  expect(await zoom()).toBeLessThan(1);
+  expect(await store(watcher, 'room', (r) => r.hostView.zoom)).toBe(1);
 
+  // Wherever the host goes, the box stays whole in the window, up to the art's very ends.
   await hostArt.evaluate((el) => { el.scrollTop = 0; });
-  await expect.poll(async () => (await fromEnds()).top).toBeLessThanOrEqual(1);
+  await expect.poll(() => store(watcher, 'room', (r) => r.hostView.row)).toBe(0);
+  await expect.poll(fits).toBe(true);
   await hostArt.evaluate((el) => { el.scrollTop = el.scrollHeight; });
-  await expect.poll(async () => (await fromEnds()).bottom).toBeLessThanOrEqual(1);
+  await expect.poll(() => art.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThanOrEqual(1);
+  await expect.poll(fits).toBe(true);
   await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'true');   // still tracking, not looking around
+
+  const fitted = await zoom();
+  await art.hover();
+  await watcher.mouse.wheel(0, -400);
+  await expect(trackTag(watcher)).toHaveAttribute('aria-pressed', 'false');
+  expect(await zoom()).toBe(fitted);
+  await watcher.getByRole('group', { name: 'Zoom' }).getByRole('button', { name: 'Zoom in' }).click();
+  await expect.poll(zoom).toBeGreaterThan(fitted);
+  await trackTag(watcher).click();
+  await expect.poll(zoom).toBe(fitted);
+  await expect.poll(fits).toBe(true);
 });
 
 test('a watcher zooms the art themselves: it stops tracking, and Track goes back to the host\'s zoom', async ({ page: host, context }) => {

@@ -1246,6 +1246,14 @@ test('artZoom follows the host\'s zoom while tracking, stays put while looking a
   await host.peer('p1', await passFor('g_1', 'quiet-amber-fox-1', true));
   await expect.poll(() => room.artZoom, PATIENT).toBe(0.5);
 
+  room.fitArt(0.2);   // the window is smaller than the host's view: the less of the two, below the zoom's own range
+  expect(room.artZoom).toBe(0.2);
+  host.setView({ col: 0, row: 0, cols: 2, rows: 1, zoom: 0.4 });
+  await expect.poll(() => room.hostView?.zoom, PATIENT).toBe(0.4);
+  expect(room.artZoom).toBe(0.2);
+  room.fitArt(1);
+  expect(room.artZoom).toBe(0.4);
+
   host.setView({ col: 0, row: 0, cols: 2, rows: 1, zoom: 0.25 });
   await expect.poll(() => room.artZoom, PATIENT).toBe(0.25);
   room.setTracking(false);

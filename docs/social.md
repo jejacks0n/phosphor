@@ -241,8 +241,8 @@ than the page. The art is view only, in the host's font. A box
 in the host's name color shows where they're looking, with a tag in its corner: the host's cell and name, and
 *tracking* while your view tracks theirs. The box is their whole view, and while you track, the
 art is drawn at their zoom (never above 100%: a PIXEL host who zooms in is shown at 100%, with a
-smaller box). If their view is bigger than your window, your window moves through the art as they
-do, so you see its top and bottom when they go there. Scroll away to look around on your own and you keep the zoom you had, and the tag
+smaller box), and smaller still if that's what it takes to fit all of their view in your window,
+however small that comes out. Scroll away to look around on your own and you keep the zoom you had, and the tag
 becomes a **Track** button to bring you back, at the host's zoom. Zoom the art yourself, from 25% to
 100%, with the **−** and **+** in its corner, Ctrl+wheel or a pinch: that's looking around too. Scroll the box out of sight and the tag waits at the
 edge of the art, with an arrow pointing to it. If the connection to the host is lost, the art dims and the page says
