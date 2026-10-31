@@ -4,7 +4,8 @@
 >
 > **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, the lobby
 > with its Join counts and reasons, its filter and who's here, starting and hosting a room, watching
-> one, and the chat in a room, with the host's Delete, Remove and Block, and reporting people and rooms.
+> one, drawing together, and the chat in a room, with the host's Delete, Remove and Block, and reporting
+> people and rooms.
 
 Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others
 watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
@@ -215,7 +216,7 @@ the pinned welcome, which watchers see at once), and **Settings and stats** (the
 In the chat, **Delete** takes the place of a message's time when you point at it or tab to it, and takes the message out for everyone, leaving **Message deleted by the host** in its place (a message
 from someone you blocked shows **Show** first).
 
-**End room** ends it for everyone, and tells watchers at once. Reloading the tab comes back to the same
+**End room** ends it for everyone, including anyone drawing, and tells watchers at once. Reloading the tab comes back to the same
 room as its host, at the same address and the same view, and watchers wait and see it's reconnecting. Closing the tab for
 good ends the room within about a minute. The prompt still asks first; if the room ended while the page was
 away, you're told so and your art stays. Signing out while you host ends the room as well. A chat longer
@@ -258,6 +259,40 @@ own art.
 
 When the host ends the room, it ends for you too. The art goes with it: Phosphor doesn't keep a
 copy.
+
+## Drawing together
+
+A host can invite a member in the room to draw. **N here** lists them; their **⋯** menu has **Make artist**,
+and the row then says **invited** with **Withdraw invitation** in the menu. Guests can't be asked.
+
+The invited person sees "{host} invited you to draw." in the chat panel, with **Accept** and **Not now**. It
+blocks nothing, so they can save what they have open first; if that art has unsaved changes, it says accepting
+replaces it. **Not now** just clears the notice, and the host can ask again. Leaving the room clears an
+invitation. Accepting opens the room's art in the ordinary tabs, and the row says **artist**. What they had open
+stays in the browser's own list, like anything else autosave keeps.
+
+Everyone draws on the edit layer and sees each other's strokes as they happen. Undo takes back only your own
+edits and shows what's beneath, even if that's someone else's. Artists have no undo steps from before they came
+or after a reload. Each artist has their own tool, colors and view, with **Show others' cursors** in the chat
+panel, on by default: a mark and a name at each other artist's cell, or a tag at the edge for someone out of
+view, which goes there when pressed. Anyone drawing can save the art; a project they save has no names in it.
+
+**Only the host** changes the picture and the grid: the settings, sliders, base layer, Bake, Merge up, Merge
+down and Into the image are off for an artist and say "Only the host can do this." Merging or baking is final
+while anyone's listed as an artist, since other people's strokes can land on it. If another artist is connected,
+Merge and Bake warn first: "Strokes merged into the image can't be undone by anyone."
+
+**While others are drawing**, a host can't Open, start a new image or blank canvas, restore a version or Clear
+the edit layer; those say "Not while others are drawing." An artist who has dropped out holds none of this up,
+and if the host opens something else while only dropped artists are listed, they come back as watchers.
+
+If the host is reconnecting, drawing pauses for the artists: "The host is reconnecting. Drawing is paused."
+A stroke being drawn ends, and strokes that haven't reached the host yet are marked. Scrolling and zooming still
+work. When the host is back, what's waiting is sent and drawing goes on.
+
+The host can choose **Back to watching** in the person's menu. They keep the art open as an ordinary document
+to save or keep working on, with its undo emptied, and nothing they do there reaches the room. The same happens
+to anyone drawing when the room ends. A reload as an artist comes back as an artist, with the art as it is now.
 
 ## The address, Back and Forward
 
@@ -372,5 +407,4 @@ Thank you.**, and **Report room** goes away for that room (this browser remember
 
 - Narrow screens: the SOCIAL tab needs a wide one. A link from one of Phosphor's emails, or to a room,
   opened on a narrow screen does nothing there; open it on a computer, or with the screen wider.
-- Drawing together: only the host draws.
-- Keeping a copy of someone else's art.
+- Keeping a copy of art you're only watching.

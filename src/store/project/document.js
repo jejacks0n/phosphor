@@ -250,7 +250,9 @@ export const documentActions = {
   // A project's parts (readProject) as the open document. Without a documentId it gets a new one.
   // If it throws, either nothing has changed or no document is open.
   async openParts(parts, options) {
-    showParts.call(this, parts, await loadParts(parts), options);
+    const pictures = await loadParts(parts);
+    if (this._sharing?.role === 'artist') return; // a host's project landed meanwhile (an artist's reload, racing autosave's restore)
+    showParts.call(this, parts, pictures, options);
   },
 
   // The same for the project a host sends an artist (takeProject is the only caller), the one way past

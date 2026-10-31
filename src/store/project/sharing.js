@@ -21,6 +21,7 @@
 // where the ledger reads them (readCell) and a slice of the host's, numbered after, takes them back.
 import { markRaw } from 'vue';
 import { deserializeBase, serializeBase } from '@/document/baseRecords.js';
+import { parseKey } from '@/document/editCells.js';
 import { cellChanges, pixelRuns, splitChange, pack } from '@/document/changes.js';
 import { TILE } from '@/document/History.js';
 import { MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf } from '@/lib/Cells.js';
@@ -378,6 +379,41 @@ export const sharingActions = {
     askForProject(sharing);
   },
 
+  // A host is back and has said all it numbered of mine (what it had, in a project or a tail). What's still
+  // unechoed never reached it, so it goes now, oldest first, on this connection. A float still held is in
+  // Pending but never left: it goes when it's placed (sendHeld), as it would have.
+  resendPending() {
+    const sharing = this._sharing;
+    if (!sharing?.pending) return;
+    const changes = sharing.pending.resend(), held = sharing.held?.parts.length ?? 0;
+    for (const { stroke, cells, runs } of held ? changes.slice(0, -held) : changes) sharing.send({ t: 'change', stroke, cells, runs });
+  },
+
+  // Out of the room with what's agreed: what never got a number goes, and the document's left as the host had it.
+  dropWaiting() {
+    this.commitPending();
+    if (this._sharing?.pending?.size) this.throughPending((pending) => pending.dropAll());
+  },
+
+  // What's waiting for a number, a box in grid pixels for each stroke, for the screen to mark while paused.
+  waitingBoxes() {
+    const { pending } = this._sharing ?? {};
+    if (!pending) return [];
+    const boxes = new Map(), scale = this.paintLayer?.scale ?? 1;
+    const grow = (stroke, x0, y0, x1, y1) => {
+      const box = boxes.get(stroke);
+      boxes.set(stroke, box ? { x0: Math.min(box.x0, x0), y0: Math.min(box.y0, y0), x1: Math.max(box.x1, x1), y1: Math.max(box.y1, y1) } : { x0, y0, x1, y1 });
+    };
+    for (const { stroke, cells, runs } of pending.waiting) {
+      for (const [key] of cells) {
+        const { col, row } = parseKey(key);
+        grow(stroke, col, row * 2, col + 1, row * 2 + 2);
+      }
+      for (const [x, y, length] of runs) grow(stroke, x / scale, y / scale, (x + length) / scale, (y + 1) / scale);
+    }
+    return [...boxes.values()];
+  },
+
   // A new connection to the host: an ask on the last one went with it, and the host counts `took` afresh.
   newConnection() {
     const sharing = this._sharing;
@@ -479,7 +515,8 @@ export const sharingActions = {
   // holds are gone with what was waiting; the room's Watch sees to any later. In the epoch I have, it's the same
   // document brought up to date: History only asks the host by stroke id, and the host still has those strokes,
   // so undo and the selection stay. A new epoch means the positions don't mean what they did, so both go.
-  async takeProject(parts, { n, epoch = null, took = 0, filename, send, me }) {
+  // documentId: what a reload had open as this art, so it's the one document in the autosave list.
+  async takeProject(parts, { n, epoch = null, took = 0, filename, send, me, documentId }) {
     const cells = [...parts.editCells];
     if (cells.length > MAX_CELLS || !readChange({ stroke: 'project', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES })) return false;
     const opening = this._sharing;
@@ -487,7 +524,7 @@ export const sharingActions = {
     try {
       await this.openFromHost(
         { ...parts, settings: settingsFromHost(parts.settings), erasedCells: [], migrated: false },
-        { filename, documentId: opening ? this.documentId : undefined, sameDocument: !!opening && epoch !== null && opening.epoch === epoch },
+        { filename, documentId: opening ? this.documentId : documentId, sameDocument: !!opening && epoch !== null && opening.epoch === epoch },
       );
     } catch (error) {
       console.warn('The room\'s art couldn\'t be opened.', error);

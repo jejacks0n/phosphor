@@ -208,6 +208,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     clearTimeout(timer);
     _pendingPaste = null;
     e.preventDefault();
+    if (projectStore._paused) return; // refused: nothing moves to where it would have gone
     const text = (e.clipboardData?.getData('text/plain') ?? '').replace(/\r\n/g, '\n'); // Windows' clipboard adds CRs
     const ours = workspaceStore.clipboardText?.replace(/\r\n/g, '\n') ?? null;
     if (workspaceStore.clipboard && (!text || ours === null || text === ours)) _pasteBlock(at);

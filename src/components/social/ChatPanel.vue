@@ -2,6 +2,8 @@
 import { ref, reactive, computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
+import { useDrawingStore } from '@/store/DrawingStore';
+import { useProjectStore } from '@/store/ProjectStore';
 import UserName from './UserName.vue';
 import { clock } from '@/social/chat';
 import ChatFoot from './ChatFoot.vue';
@@ -19,7 +21,8 @@ import ReportDialog from './ReportDialog.vue';
 // left"); your own comings and goings aren't shown, as "You joined" marks where you came in. A confirmed
 // member can Report someone else's message (it shows on hover or focus, as the host's Delete does), until
 // they've reported that person in this room; and Report room, under Exit, until they've reported the room.
-const room = useRoomStore(), social = useSocialStore();
+// An invitation to draw waits here, blocking nothing, until it's answered, withdrawn or they leave.
+const room = useRoomStore(), social = useSocialStore(), drawing = useDrawingStore(), project = useProjectStore();
 
 const folded = ref(false);
 const since = ref(0);    // messages since the fold
@@ -58,6 +61,7 @@ async function fold(to) {
   if (!to) list.value.scrollTop = list.value.scrollHeight;
 }
 watch(() => room.chat.at(-1)?.id, () => { if (folded.value && !room.chat.at(-1)?.presence) since.value++; });
+watch(() => drawing.invitation, (asked) => { if (asked && folded.value) since.value++; });
 
 // The list as drawn: messages, runs of who came and went ({ id, people }), and "You joined" after the
 // last of a watcher's first history (a run ends there, so what came after is below it). A run names each
@@ -135,6 +139,19 @@ function askIfAtTop() {
         </span>
         {{ room.room.welcome }}
       </p>
+      <div v-if="drawing.invitation" class="invitation" role="status">
+        <p><UserName class="person" :name="host ?? 'The host'" /> invited you to draw.</p>
+        <p v-if="project.image && (project.isDirty || project._stroke)">Accepting replaces your open art, which has unsaved changes.</p>
+        <div class="answers">
+          <button class="primary" @click="drawing.accept()">Accept</button>
+          <button @click="drawing.decline()">Not now</button>
+        </div>
+      </div>
+      <p v-if="drawing.notice" class="drawing-notice" role="status">
+        <span>{{ drawing.notice }}</span>
+        <button class="link" aria-label="Dismiss" @click="drawing.notice = null">✕</button>
+      </p>
+      <label v-if="project._sharing" class="show-cursors"><input v-model="drawing.showCursors" type="checkbox"> Show others' cursors</label>
       <div ref="list" class="list" role="log" aria-label="Messages" tabindex="-1" @scroll.passive="askIfAtTop">
         <p v-if="room.chatMore" class="more">↑ Scroll up for earlier messages</p>
         <p v-if="room.role === 'watch' && room.joinedAt === null && room.status === 'live'" class="joined">You joined</p>
@@ -304,6 +321,44 @@ p.pinned button.edit {
   font-size: 11px;
   text-transform: none;
   letter-spacing: normal;
+}
+
+div.invitation {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-0);
+  color: var(--text);
+}
+div.invitation p {
+  margin: 0;
+}
+div.answers {
+  display: flex;
+  gap: 8px;
+}
+p.drawing-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+p.drawing-notice button.link {
+  padding: 0 4px;
+}
+label.show-cursors {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 div.list {

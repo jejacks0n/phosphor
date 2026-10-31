@@ -1,7 +1,11 @@
 <script setup>
-import { ref, computed, unref, useTemplateRef, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, unref, useTemplateRef, watch, onMounted, onBeforeUnmount } from 'vue';
+import { useElementBounding } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useDrawingStore } from '@/store/DrawingStore';
+import ArtistCursors from '@/components/social/ArtistCursors.vue';
+import PauseLayer from '@/components/social/PauseLayer.vue';
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
 import { getTool } from '@/tools';
 import { charRowsOf, cellAt, cellsOfPixels } from '@/lib/Cells';
@@ -25,6 +29,7 @@ const props = defineProps({
 
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
+const drawingStore = useDrawingStore();
 const tool = computed(() => getTool(workspaceStore.activeTool));
 const toolCtx = () => ({ project: projectStore, workspace: workspaceStore, view: props.view });
 const rootRef = useTemplateRef('root');
@@ -52,7 +57,7 @@ const {
   disableZoom: !props.zoom,
   callbacks: {
     pixelCoordsAt: props.coordsAt,
-    onPaintStart: (event, pos) => (tool.value.begin ? tool.value.begin(toolCtx(), pos, event) !== false : false),
+    onPaintStart: (event, pos) => (!projectStore._paused && tool.value.begin ? tool.value.begin(toolCtx(), pos, event) !== false : false),
     onPaintMove: (from, to) => tool.value.move?.(toolCtx(), from, to),
     onPaintEnd: () => tool.value.end?.(toolCtx()),
     // A stroke a pinch interrupted: what it drew is taken back, then the tool's cancel (or its end) runs.
@@ -69,6 +74,7 @@ const {
 // colors (the [FG][BG] toggles; Shift: foreground only, Alt: background only). Picks repeat while
 // dragging; the recent colors get the old and new colors when the pick ends (workspace.endPick).
 function pickAt(pos, event) {
+  if (projectStore._paused) return; // the layer takes the press
   if (pos.x < 0 || pos.y < 0 || pos.x >= projectStore.cols || pos.y >= projectStore.rows) return; // off the grid
   const mode = pickMode({
     view: props.view,
@@ -190,6 +196,32 @@ const toolCursor = computed(() => {
   return tool.value.cursor(toolCtx(), { x: pos.x / unit.x, y: pos.y / unit.y });
 });
 
+// Sharing: what floats over the drawing area, not scrolled with it, inside this element so that a wheel over it
+// comes here (handleWheel) and a press too. A press held when the drawing pauses ends: its stroke, if there is
+// one, goes in with the rest of what's waiting, before anything is refused.
+const { left: rootLeft, top: rootTop } = useElementBounding(rootRef);
+const overArt = computed(() => {
+  const el = rootRef.value;
+  return { left: `${rootLeft.value}px`, top: `${rootTop.value}px`, width: `${el?.clientWidth ?? 0}px`, height: `${el?.clientHeight ?? 0}px` };
+});
+watch(() => drawingStore.paused, (paused) => { if (paused) commitPaint(); }, { flush: 'sync' });
+watch([mousePos, isMouseOver], ([pos, over]) => {
+  const unit = props.unit;
+  if (!projectStore._sharing) return;
+  if (!pos || !over || !unit) return drawingStore.pointAt(null);
+  const col = Math.floor(pos.x / unit.x), row = Math.floor(pos.y / unit.y / 2);
+  drawingStore.pointAt(col >= 0 && row >= 0 && col < projectStore.cols && row < charRowsOf(projectStore.rows) ? { col, row } : null);
+});
+// A stroke with no number yet, while paused.
+const waitingStyle = ({ x0, y0, x1, y1 }) => {
+  const display = unref(props.display), unit = props.unit;
+  if (!unit) return { display: 'none' };
+  return {
+    left: `${x0 * unit.x + (display?.clientLeft ?? 0)}px`, top: `${y0 * unit.y + (display?.clientTop ?? 0)}px`,
+    width: `${(x1 - x0) * unit.x}px`, height: `${(y1 - y0) * unit.y}px`,
+  };
+};
+
 // Padded layout: room to pan the content well past each edge.
 const viewportWidth = ref(0);
 const viewportHeight = ref(0);
@@ -280,11 +312,16 @@ defineExpose({ centerContent });
       @touchend.prevent.stop="handleTouchEnd"
       @touchcancel.prevent.stop="handleTouchCancel"
   >
+    <div v-if="projectStore._sharing" class="over-art" :style="overArt">
+      <ArtistCursors v-if="drawingStore.showCursors" :root="rootRef" :display="unref(display)" :unit="unit"/>
+      <PauseLayer v-if="drawingStore.paused"/>
+    </div>
     <div class="canvas-viewport" :class="{ padded: !!contentSize }" :style="viewportStyle">
       <div class="canvas-container">
         <slot/>
         <div class="tool-preview" :style="previewStyle"></div>
         <div v-if="shapeDragStyle" class="shape-drag" :style="shapeDragStyle"></div>
+        <div v-for="(box, i) in drawingStore.waiting" :key="i" class="waiting" :style="waitingStyle(box)"></div>
         <slot name="overlay"/>
       </div>
     </div>
@@ -334,6 +371,22 @@ div.shape-drag {
   pointer-events: none;
   z-index: 100;
   border: 1px dashed var(--white);
+  box-shadow: 0 0 0 1px var(--black);
+}
+
+div.over-art {
+  position: fixed;   /* over the view whatever it's scrolled to; it holds still as the view doesn't move */
+  z-index: 150;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+div.waiting {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 200;   /* over the pause layer: it's what the layer is about */
+  outline: 1px dashed var(--white);
   box-shadow: 0 0 0 1px var(--black);
 }
 

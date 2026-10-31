@@ -3,7 +3,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   CHUNK_BYTES, MOST_SNAPSHOT_BYTES, MOST_ARTIST_BYTES, MOST_PROJECT_BYTES, MOST_CHANGE_BYTES, encodeCells, decodeCells, decodeChange, changedCells,
-  fontOnWire, fontFor, packSnapshot, unpackSnapshot, readChange, packProject, unpackProject,
+  fontOnWire, fontFor, packSnapshot, unpackSnapshot, readChange, packProject, unpackProject, readCursor, readCursors,
 } from '../../src/social/wire.js';
 import { withPins, EMPTY_BASE } from '../../src/document/baseRecords.js';
 import { hex2rgb } from '../../src/lib/ColorUtils.js';
@@ -308,4 +308,22 @@ test('unpackProject refuses what isn\'t a project, with null', async () => {
   const gzipped = async (bytes) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
   assert.equal(await unpackProject([await gzipped(new TextEncoder().encode('not a project at all'))], { mostBytes: MOST_PROJECT_BYTES }), null);
   assert.equal(await unpackProject([new Uint8Array(100)], { mostBytes: MOST_PROJECT_BYTES }), null);
+});
+
+test('a cursor is read only if it can be drawn', () => {
+  const at = { col: 3, row: 4 }, view = { col: 0, row: 0, cols: 80, rows: 40, zoom: 1.5 };
+  assert.deepEqual(readCursor({ at, view, name: 'ann' }), { at, view, name: 'ann' });
+  assert.deepEqual(readCursor({ at: null, view: null, name: 'ann' }), { at: null, view: null, name: 'ann' });
+  for (const bad of [
+    { at: { col: -1, row: 0 }, view, name: 'ann' }, { at: { col: 1.5, row: 0 }, view, name: 'ann' }, { at: { col: '1', row: 0 }, view, name: 'ann' }, { at: 'there', view, name: 'ann' },
+    { at, view: { col: 0, row: 0, cols: 80 }, name: 'ann' }, { at, view: { ...view, zoom: 'big' }, name: 'ann' },
+    { at, view }, { at, view, name: '' }, { at, view, name: 'x'.repeat(61) }, { at, view, name: { toString: 'x' } },
+  ]) assert.equal(readCursor(bad), null);
+});
+
+test('a host\'s cursors keep only the ones that are cursors, and only so many', () => {
+  const good = { at: { col: 1, row: 1 }, view: null, name: 'ann' };
+  assert.deepEqual(readCursors({ a: good, b: { at: 'x', name: 'bob' }, c: 'nope', d: null }), { a: good });
+  assert.deepEqual(readCursors(undefined), {});
+  assert.equal(Object.keys(readCursors(Object.fromEntries(Array.from({ length: 500 }, (_, i) => [`u${i}`, good])))).length, 64);
 });

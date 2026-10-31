@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useDrawingStore } from '@/store/DrawingStore';
 import { SETTINGS, getSetting } from '@/store/settings';
 
 import ProjectActions from '@/components/ProjectActions.vue';
@@ -12,6 +13,7 @@ import FontField from '@/components/FontField.vue';
 import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
 
 const store = useProjectStore();
+const drawing = useDrawingStore();
 
 const SLIDER_GROUPS = [
   { id: 'transform', title: 'Transforms' },
@@ -31,7 +33,7 @@ const charsetName = computed(() => {
 <template>
   <aside class="control-panel">
     <div class="logo"></div>
-    <fieldset>
+    <fieldset :disabled="!!drawing.hostOnly" :title="drawing.hostOnly">
       <legend>Setup</legend>
 
       <div class="field">
@@ -122,10 +124,10 @@ const charsetName = computed(() => {
     <template v-for="group in SLIDER_GROUPS" :key="group.id">
       <hr/>
 
-      <fieldset>
+      <fieldset :disabled="!!drawing.hostOnly" :title="drawing.hostOnly">
         <legend>
           {{ group.title }}
-          <button @click="store.resetGroup(group.id)" tabindex="-1">RESET</button>
+          <button :disabled="!!drawing.hostOnly" @click="store.resetGroup(group.id)" tabindex="-1">RESET</button>
         </legend>
 
         <!-- Undoable: each drag, nudge or color pick is one step (setSlider, then commitSliders). -->

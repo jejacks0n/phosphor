@@ -1,16 +1,18 @@
 <script setup>
 import { ref, useTemplateRef } from 'vue';
 import { useRoomStore } from '@/store/RoomStore';
+import { useDrawingStore } from '@/store/DrawingStore';
 import UserName from './UserName.vue';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ReportDialog from './ReportDialog.vue';
 
 // Who is here, under the host's chat header: "N here" (those connected), folded or open for as long as
-// the room lasts. The list is every watcher, one still connecting too. A member's ⋯ menu: Remove for this
+// the room lasts. The list is every watcher, one still connecting too. A member's ⋯ menu: Make artist (then
+// Withdraw invitation, or Back to watching), Remove for this
 // session, Block from my rooms, which asks first, and Report (when you may report, and haven't reported them in this room). Cancel (or Escape) puts
 // focus back on the ⋯ button the menu came from, or on the "N here" button when that member has left.
-const room = useRoomStore();
+const room = useRoomStore(), drawing = useDrawingStore();
 
 const menuTrigger = (event) => event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger');   // the ⋯ a menu item is under
 const blocking = ref(null);   // { watcher, trigger }
@@ -46,6 +48,8 @@ const confirmBlock = async () => {
         <UserName class="name" :name="watcher.name" />
         <span v-if="watcher.guest" class="tag">guest</span>
         <span v-else-if="room.muted.includes(watcher.sub)" class="tag">muted</span>
+        <span v-if="drawing.artists.includes(watcher.sub)" class="tag">artist</span>
+        <span v-else-if="drawing.invited.includes(watcher.sub)" class="tag">invited</span>
         <span class="what">{{ !watcher.connected ? 'connecting…' : watcher.tracking ? 'tracking' : 'looking around' }}</span>
         <DropdownMenu v-if="watcher.guest && room.room?.allowGuests === false" :label="`More for ${watcher.name}`">
           <template #trigger><span aria-hidden="true">⋯</span></template>
@@ -53,6 +57,9 @@ const confirmBlock = async () => {
         </DropdownMenu>
         <DropdownMenu v-else-if="!watcher.guest" :label="`More for ${watcher.name}`">
           <template #trigger><span aria-hidden="true">⋯</span></template>
+          <button v-if="drawing.artists.includes(watcher.sub)" @click="drawing.backToWatching(watcher.sub)">Back to watching</button>
+          <button v-else-if="drawing.invited.includes(watcher.sub)" @click="drawing.withdraw(watcher.sub)">Withdraw invitation</button>
+          <button v-else-if="watcher.connected" @click="drawing.invite(watcher.sub)">Make artist</button>
           <button @click="room.remove(watcher.peer)">Kick – for this session</button>
           <button v-if="room.muted.includes(watcher.sub)" @click="room.mute(watcher.sub, false)">Unmute</button>
           <button v-else title="Their messages stop reaching anyone else. They aren't told." @click="room.mute(watcher.sub, true)">Mute – for everyone but you</button>

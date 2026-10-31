@@ -6,7 +6,7 @@ defineEmits(['end', 'cancel']);
 </script>
 
 <template>
-  <ModalDialog title="End the room?" sub="Everyone watching leaves, and the chat is gone." @cancel="$emit('cancel')">
+  <ModalDialog title="End the room?" sub="Everyone leaves, including anyone drawing, and the chat is gone." @cancel="$emit('cancel')">
     <div class="actions">
       <button class="danger" @click="$emit('end')">End room</button>
       <button autofocus @click="$emit('cancel')">Cancel</button>

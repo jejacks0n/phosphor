@@ -7,15 +7,15 @@ const ACTIONS = [
   'applyBase', 'applyChange', 'applyEditCells', 'applyNumbered', 'applySettings', 'askForStroke', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit',
   'cancelEdit', 'cellHasPaint', 'changeSelection', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect',
   'commitEdit', 'commitPending', 'commitSliders', 'compareCheck', 'completeAt', 'composite', 'copySelection',
-  'deleteAt', 'deleteIn', 'deleteInWand', 'deleteSelection', 'dropEdits', 'dropHeard', 'dropOldUndo', 'editCell', 'editCellAt', 'editLayerSum', 'ensureLayer',
+  'deleteAt', 'deleteIn', 'deleteInWand', 'deleteSelection', 'dropEdits', 'dropHeard', 'dropOldUndo', 'dropWaiting', 'editCell', 'editCellAt', 'editLayerSum', 'ensureLayer',
   'eraseBase', 'eraseBasePixels', 'eraseEditPixels', 'exportFile', 'fitFor', 'flipBase', 'flipCell',
   'flipPaint', 'floatSelection', 'flushHeard', 'gridRect', 'hasCharacters', 'hasEditsIn', 'hearDrawing', 'imageColorAt', 'keepMigratedLook', 'layersFor',
   'loadProject', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeUp',
   'moveSelection', 'newConnection', 'newDocument', 'openFromHost', 'openParts', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
   'pasteSelection', 'processingScale', 'projectNow', 'projectParts', 'pushEdit', 'pushWholeLayer', 'randomizeSeed', 'rawColorAt', 'readCell', 'readTile', 'rebuildCells', 'recolorSelection', 'recompose', 'redo', 'redoStroke', 'refreshCells', 'refreshChanged', 'rename',
-  'render', 'replaceImage', 'resetGroup', 'resetSliders', 'restoreDocument', 'saveProject', 'selectionEdit', 'sendBase', 'sendHeld', 'sendNumbered', 'sendParts', 'sendSettings', 'sendSlice',
+  'render', 'replaceImage', 'resendPending', 'resetGroup', 'resetSliders', 'restoreDocument', 'saveProject', 'selectionEdit', 'sendBase', 'sendHeld', 'sendNumbered', 'sendParts', 'sendSettings', 'sendSlice',
   'setBaseRecords', 'setBlankCanvas', 'setCells', 'setEditCells', 'setImageFromFile', 'setPaused', 'setSlider', 'shareWholeDocument', 'shiftCells',
-  'sliderValues', 'stampSelection', 'startSharing', 'stopSharing', 'takeFromArtist', 'takeProject', 'throughPending', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'undoStroke', 'updateCols', 'updateRows', 'writeAt',
+  'sliderValues', 'stampSelection', 'startSharing', 'stopSharing', 'takeFromArtist', 'takeProject', 'throughPending', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'undoStroke', 'updateCols', 'updateRows', 'waitingBoxes', 'writeAt',
   'writeBase', 'writeEditCells',
 ];
 

@@ -3,6 +3,7 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useElementSize, useMediaQuery, useResizeObserver } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { MERGE_WARNING, useDrawingStore } from '@/store/DrawingStore';
 import { getTool, offeredTools, toolTitle } from '@/tools';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
@@ -16,6 +17,10 @@ import { copySelection as copyToClipboards } from '@/composables/clipboard';
 
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
+const drawing = useDrawingStore();
+// A control that's off for a reason: the reason in its title, and what it is still its name for screen readers.
+const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name } : {});
+const warnedSub = (sub) => (drawing.othersHere ? `${sub} ${MERGE_WARNING}` : sub);
 
 // The toolbar offers the tools that work in the current view (editorTab is 'input' or 'output' while editing),
 // with a divider wherever the toolbar section changes.
@@ -146,10 +151,17 @@ const mergeChoices = computed(() => (project.pictureIsOriginal ? [MERGE_CHOICES[
 // colors are gone) or keep full color (a few cells near palette boundaries can tip). Other
 // palettes bake exactly either way.
 const baking = ref(null); // the palette's name while the dialog is open
+const bakingFinal = ref(false); // others are drawing, and it can't be undone: it asks first
 function bake() {
   const palette = { cga: 'CGA', vga: 'VGA' }[project.quantize];
   if (palette) baking.value = palette;
+  else if (drawing.othersHere) bakingFinal.value = true;
   else project.bake();
+}
+const BAKE_CHOICE = [{ id: 'bake', title: 'Bake', text: 'The picture as it looks now becomes the image, and the sliders go back to neutral.' }];
+function chooseBakeFinal() {
+  bakingFinal.value = false;
+  project.bake();
 }
 const bakeChoices = computed(() => [
   { id: 'full', title: 'Keep full color', text: `The picture keeps its in-between colors, so switching the palette later still has them. A few cells near the edges between ${baking.value} colors may change, more with many sliders on.` },
@@ -177,9 +189,9 @@ const selectionHasCharacters = computed(() => {
   <ChoiceDialog
       v-if="merging"
       title="Merge down"
-      :sub="merging.rect
+      :sub="warnedSub(merging.rect
         ? 'Only what\'s drawn inside the selection moves into the base layer; the rest of the edit layer stays where it is.'
-        : 'Everything you\'ve drawn is merged into the base layer. Select how you want it to be merged:'"
+        : 'Everything you\'ve drawn is merged into the base layer. Select how you want it to be merged:')"
       :choices="mergeChoices"
       @choose="merge"
       @cancel="merging = null"
@@ -187,10 +199,18 @@ const selectionHasCharacters = computed(() => {
   <ChoiceDialog
       v-if="baking"
       :title="`Bake with the ${baking} palette`"
-      sub="The picture as it looks now becomes the image, and the sliders go back to neutral. How should it keep its colors?"
+:sub="warnedSub('The picture as it looks now becomes the image, and the sliders go back to neutral. How should it keep its colors?')"
       :choices="bakeChoices"
       @choose="chooseBake"
       @cancel="baking = null"
+  />
+  <ChoiceDialog
+      v-if="bakingFinal"
+      title="Bake"
+      :sub="MERGE_WARNING"
+      :choices="BAKE_CHOICE"
+      @choose="chooseBakeFinal"
+      @cancel="bakingFinal = false"
   />
   <article ref="toolbar" class="edit-toolbar" :class="{ 'actions-folded': actionsFolded }">
     <div class="toolbar-row primary-row">
@@ -268,18 +288,21 @@ const selectionHasCharacters = computed(() => {
             @click="bake"
             class="primary"
             :disabled="!project.canBake"
+            v-bind="off(drawing.hostOnly, 'Bake')"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg></button>
         <button
             title="Merge down: move the edit layer into the base layer."
             @click="openMerge()"
             class="primary"
             :disabled="!project.hasEdits"
+            v-bind="off(drawing.hostOnly, 'Merge down')"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg></button>
         <button
             title="Clear edit layer: remove everything on the edit layer."
             @click="confirmClear"
             class="primary"
             :disabled="!project.hasEdits"
+            v-bind="off(drawing.offWithOthers, 'Clear edit layer')"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M431.2 476.5L163.5 208.8C141.1 240.2 128 278.6 128 320C128 426 214 512 320 512C361.5 512 399.9 498.9 431.2 476.5zM476.5 431.2C498.9 399.8 512 361.4 512 320C512 214 426 128 320 128C278.5 128 240.1 141.1 208.8 163.5L476.5 431.2zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z"/></svg></button>
       </div>
 
@@ -297,17 +320,17 @@ const selectionHasCharacters = computed(() => {
             </svg>
             Redo
           </button>
-          <button @click="bake" :disabled="!project.canBake">
+          <button @click="bake" :disabled="!project.canBake" v-bind="off(drawing.hostOnly, 'Bake')">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg>
             Bake
           </button>
-          <button @click="openMerge()" :disabled="!project.hasEdits">
+          <button @click="openMerge()" :disabled="!project.hasEdits" v-bind="off(drawing.hostOnly, 'Merge down')">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/>
             </svg>
             Merge down
           </button>
-          <button @click="confirmClear" :disabled="!project.hasEdits">
+          <button @click="confirmClear" :disabled="!project.hasEdits" v-bind="off(drawing.offWithOthers, 'Clear edit layer')">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M431.2 476.5L163.5 208.8C141.1 240.2 128 278.6 128 320C128 426 214 512 320 512C361.5 512 399.9 498.9 431.2 476.5zM476.5 431.2C498.9 399.8 512 361.4 512 320C512 214 426 128 320 128C278.5 128 240.1 141.1 208.8 163.5L476.5 431.2zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z"/>
             </svg>
@@ -333,15 +356,15 @@ const selectionHasCharacters = computed(() => {
           <button title="Flip vertically" aria-label="Flip vertically" @click="turnSelection('v')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M128 272H512L128 64Z"/><path fill-rule="evenodd" d="M128 368H512L128 576ZM320 416H176V494Z"/><path d="M64 304H576V336H64Z"/></svg></button>
           <button :title="selectionHasCharacters ? 'Rotate turns only pixels, and the selection has characters' : 'Rotate 90° clockwise'" aria-label="Rotate 90° clockwise" :disabled="selectionHasCharacters" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
           <div class="divider"/>
-          <button class="text" title="Merge up: what the base layer shows here becomes edit cells" @click="project.mergeUp(workspace.selection)">Merge up</button>
-          <button class="text" title="Merge down: what's drawn here goes into the base layer" :disabled="!selectionHasEdits" @click="openMerge(workspace.selection)">Merge down</button>
+          <button class="text" title="Merge up: what the base layer shows here becomes edit cells" v-bind="off(drawing.hostOnly, 'Merge up')" @click="project.mergeUp(workspace.selection)">Merge up</button>
+          <button class="text" title="Merge down: what's drawn here goes into the base layer" :disabled="!selectionHasEdits" v-bind="off(drawing.hostOnly, 'Merge down')" @click="openMerge(workspace.selection)">Merge down</button>
           <button class="text" title="Deselect: set the block down (Esc or Enter)" aria-keyshortcuts="Escape Enter" @click="deselect">Deselect</button>
         </template>
         <template v-else>
           <span class="hint">Drag to select cells, or:</span>
           <button class="text" :title="`Select the whole canvas (${shortcut('mod', 'A')})`" @click="project.changeSelection((w) => w.selectAll(project.gridRect()))">Select all</button>
-          <button class="text" title="Merge up: what the base layer shows becomes edit cells, over the whole canvas" @click="project.mergeUp(null)">Merge up</button>
-          <button class="text" title="Merge down: the whole edit layer into the base layer" :disabled="!project.hasEdits" @click="openMerge()">Merge down</button>
+          <button class="text" title="Merge up: what the base layer shows becomes edit cells, over the whole canvas" v-bind="off(drawing.hostOnly, 'Merge up')" @click="project.mergeUp(null)">Merge up</button>
+          <button class="text" title="Merge down: the whole edit layer into the base layer" :disabled="!project.hasEdits" v-bind="off(drawing.hostOnly, 'Merge down')" @click="openMerge()">Merge down</button>
         </template>
       </div>
       <div v-if="toolOptions.length" class="tool-setting-group">
