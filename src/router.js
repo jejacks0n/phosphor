@@ -55,7 +55,7 @@ export function followAddress(router) {
     if (pending) return;
     const path = pathOf({ tab: workspace.editorTab, page: social.page, role: room.role });
     if (path === router.currentRoute.value.path) return;   // later tasks compare the query too
-    const replace = landing || replaceNext || path === '/social/name';
+    const replace = landing || replaceNext || path === '/social/name' || !router.currentRoute.value.meta.tab;   // / is never a step
     replaceNext = false;
     ours = true;
     pending = true;   // beforeEach is a few promises off, and a second call before it would navigate again

@@ -1,5 +1,6 @@
 // The address, and the browser's Back, Forward and reload.
 import { test, expect, openApp, tab, store, imageInput, fixture } from './support.js';
+import { fakeServer } from './social-support.js';
 
 const selected = (page, label) => expect(tab(page, label)).toHaveAttribute('aria-selected', 'true');
 const hash = (page, path) => expect.poll(() => new URL(page.url()).hash).toBe(`#${path}`);
@@ -55,6 +56,19 @@ for (const [label, path] of [['PIXEL', '/pixel'], ['ANSI', '/ansi'], ['SAUCE', '
     await hash(page, path);
   });
 }
+
+test('reloading on a SOCIAL page stays on it', async ({ page }) => {
+  await fakeServer(page);
+  await page.goto('/');
+  await tab(page, 'SOCIAL').click();
+  await page.locator('.people-tab [data-page="lobby"]').getByRole('complementary').getByRole('button', { name: 'Sign in', exact: true }).click();
+  await hash(page, '/social/sign-in');
+
+  await page.reload();
+  await selected(page, 'SOCIAL');
+  await expect(page.locator('.people-tab [data-page="sign-in"]')).toBeVisible();
+  await hash(page, '/social/sign-in');
+});
 
 test('a load at / with an autosaved document still opens on ANSI, with no extra step', async ({ page }) => {
   await noteHistoryAtLoad(page);

@@ -128,6 +128,32 @@ test('Back onto /ansi with no image goes to /pixel, replacing', async () => {
   expect(replace).toHaveBeenCalledTimes(1);
 });
 
+test('/ with the app open is no step: it is replaced, and Back goes past it', async () => {
+  await loadImage(project, GRADIENT);
+  await landed();
+  workspace.editorTab = 'sauce';
+  await settled();
+  push.mockClear();
+
+  await router.push('/');   // #/ or an unknown path, pasted in
+  await settled();
+  expect(path()).toBe('/sauce');
+  expect(push).toHaveBeenCalledTimes(1);   // the one above
+  expect(replace).toHaveBeenCalledTimes(1);
+
+  router.back();   // the /sauce it was before, not a / that pushes again
+  await settled();
+  router.back();
+  await settled();
+  expect(path()).toBe('/pixel');
+  expect(workspace.editorTab).toBe('input');
+  expect(push).toHaveBeenCalledTimes(1);
+
+  router.forward();   // nothing was cut off
+  await settled();
+  expect(path()).toBe('/sauce');
+});
+
 test('an unknown path lands on the default tab', async () => {
   await landed('/no/such/place');
   expect(path()).toBe('/pixel');
