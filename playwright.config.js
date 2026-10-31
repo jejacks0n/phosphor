@@ -10,6 +10,7 @@ export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  timeout: process.env.CI ? 60_000 : 30_000, // the runner can stall for 15 s or more, whichever test is starting
   expect: { timeout: process.env.CI ? 10_000 : 5_000 }, // software WebGL on a small CI runner
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
