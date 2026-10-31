@@ -344,8 +344,8 @@ test('a visitor who never shows SOCIAL costs nothing', async () => {
   expect(server.requests).toEqual([]);
 });
 
-// In a room, as a lobby card's Join does. Memory history has one state, the last written, not one per entry, so
-// what the marks decide (a link against your own entry, a reload, a host's) is in tests/e2e/addresses-rooms.spec.js.
+// In a room, as a lobby card's Join does. Memory history keeps each entry's state, so the marks work here; what
+// a page load does with them (a reload, a host's) is in tests/e2e/addresses-rooms.spec.js.
 async function inRoomFrom(address, id = ID) {
   useFakeSockets();
   serverFor(member());
@@ -450,6 +450,63 @@ test('joining another room spends the first', async () => {
   expect(social.roomInvite).toBe(null);
   expect(hasLeftRoom(OTHER)).toBe(false);
   expect(roomSockets()).toHaveLength(2);
+});
+
+// Back past the join and Forward onto its entry: the rejoin is waiting for the room's answer.
+async function rejoinedOnForward() {
+  await inRoomFrom('/social');
+  router.back();
+  await settled();
+  router.forward();
+  await expect.poll(() => room.status).toBe('joining');
+  await settled();
+  expect(push).toHaveBeenCalledTimes(1);
+  expect(replace).not.toHaveBeenCalled();
+}
+
+test('a password form on SOCIAL already moves nothing: the next tab change is still a step', async () => {
+  await rejoinedOnForward();
+  room.heard({ type: 'refused', reason: 'wrong-password' });
+  await settled();
+  expect(room.status).toBe('password');
+  expect(address()).toBe(`/social?room=${ID}`);
+
+  workspace.editorTab = 'input';
+  await settled();
+  expect(address()).toBe(`/pixel?room=${ID}`);
+  expect(push).toHaveBeenCalledTimes(2);
+  expect(replace).not.toHaveBeenCalled();
+});
+
+test('a refusal on SOCIAL already loses ?room= by replacing, and the next tab change is still a step', async () => {
+  await rejoinedOnForward();
+  room.heard({ type: 'refused', reason: 'unavailable' });
+  await settled();
+  expect(address()).toBe('/social');
+  expect(replace).toHaveBeenCalledTimes(1);
+
+  workspace.editorTab = 'input';
+  await settled();
+  expect(address()).toBe('/pixel');
+  expect(push).toHaveBeenCalledTimes(2);
+  expect(replace).toHaveBeenCalledTimes(1);
+});
+
+test('a password form for an entry on another tab moves to SOCIAL by replacing it', async () => {
+  await inRoomFrom('/social');
+  workspace.editorTab = 'input';
+  await settled();
+  router.go(-2);
+  await settled();
+  expect(room.role).toBe(null);
+  router.go(2);
+  await expect.poll(() => room.status).toBe('joining');
+  room.heard({ type: 'refused', reason: 'wrong-password' });
+  await settled();
+  expect(workspace.editorTab).toBe('social');
+  expect(address()).toBe(`/social?room=${ID}`);
+  expect(push).toHaveBeenCalledTimes(2);
+  expect(replace).toHaveBeenCalledTimes(1);
 });
 
 test('joining a spent room again un-spends it', async () => {

@@ -65,7 +65,7 @@ const noteLeft = (id, left) => {
   try {
     const others = JSON.parse(sessionStorage.getItem(LEFT_ROOMS) ?? '[]').filter((other) => other !== id);
     sessionStorage.setItem(LEFT_ROOMS, JSON.stringify(left ? [...others, id] : others));
-  } catch { /* no storage: every room reads as left */ }
+  } catch { /* no storage: where reads fail too, every room reads as left; a write alone failing loses this note */ }
 };
 export const hasLeftRoom = (id) => {
   try {

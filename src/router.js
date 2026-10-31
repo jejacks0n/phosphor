@@ -114,8 +114,8 @@ export function followAddress(router) {
       if (!joining || status === 'joining') return;
       joining = false;
       if (status === 'password' || (was && !role && social.notice)) {
+        replaceNext = workspace.editorTab !== 'social';   // with no move, nothing would navigate and clear it
         workspace.editorTab = 'social';
-        replaceNext = true;
       }
     }),
     watch(() => [workspace.editorTab, social.page, room.role, room.id, social.roomGoingTo], reconcile),   // default flush: changes in one tick are one step
