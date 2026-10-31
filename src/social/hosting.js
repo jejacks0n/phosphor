@@ -108,7 +108,7 @@ export class Host {
     if (this.removed.has(peer)) return;
     this.drop(peer);
     const w = {
-      peer, pass, claims: null, tracking: true, following: null, everyone: false, told: null, conn: null, channel: null, has: null, packing: false, behind: false,
+      peer, pass, claims: null, tracking: true, following: null, everyone: false, told: null, owed: false, answeredAt: -Infinity, conn: null, channel: null, has: null, packing: false, behind: false,
       allowance: new Allowance(), heard: Promise.resolve(), checking: 0, askedAt: -Infinity,
       drawing: false, took: 0, queue: [], queued: 0, projecting: false, again: false, checked: null, drained: null,
     };
@@ -231,9 +231,17 @@ export class Host {
   // artist or asked for everyone, at most every VIEWS_EVERY_MS, and only what has changed.
   setArtistViews(views) {
     this.artistViews = Object.fromEntries(Object.entries(views).filter(([sub]) => this.artists.has(sub)).map(([sub, view]) => [sub, readView(view)]).filter(([, view]) => view));
+    this.scheduleViews();
+  }
+
+  // The artists' views to those who follow, and what is owed to a watcher who chose too soon after its last choice.
+  scheduleViews() {
     this.viewsTimer ??= setTimeout(() => {
       this.viewsTimer = null;
-      for (const w of this.open()) this.sendViews(w);
+      for (const w of this.open()) {
+        if (!w.owed) this.sendViews(w);
+        else this.answer(w, true);
+      }
     }, VIEWS_EVERY_MS);
   }
 
@@ -241,7 +249,7 @@ export class Host {
   sendViews(w) {
     let msg = null;
     if (w.everyone) msg = { t: 'views', ...this.artistViews };
-    else if (w.following !== null && this.artistViews[w.following]) msg = { t: 'view', ...this.artistViews[w.following], who: w.following };
+    else if (w.following !== null && Object.hasOwn(this.artistViews, w.following)) msg = { t: 'view', ...this.artistViews[w.following], who: w.following };
     const data = msg && JSON.stringify(msg);
     if (!data || data === w.told) return;
     w.told = data;
@@ -252,14 +260,36 @@ export class Host {
   // anything that isn't a sub or null isn't an ask.
   follow(w, sub) {
     if (sub !== null && !isSub(sub)) return;
-    w.following = sub !== null && this.artists.has(sub) ? sub : null;
-    w.told = null;
-    this.sendNow(w);
+    const next = sub !== null && this.artists.has(sub) ? sub : null;
+    if (next === w.following) return;
+    w.following = next;
+    this.answer(w);
   }
 
   showEveryone(w, on) {
     if (typeof on !== 'boolean' || on === w.everyone) return;
     w.everyone = on;
+    this.answer(w);
+  }
+
+  // A watcher whose choice is back to the host without its asking.
+  backToHost(w) {
+    if (w.following === null) return;
+    w.following = null;
+    this.answer(w);
+  }
+
+  // What a new choice shows: at once, unless the last answer was less than VIEWS_EVERY_MS ago, and then with the
+  // next views that go. The choice itself is made at once, so a flood of them costs a send a tick, not one each.
+  answer(w, due = false) {
+    w.owed = false;
+    if (w.channel?.readyState !== 'open') return;
+    if (!due && Date.now() - w.answeredAt < VIEWS_EVERY_MS) {
+      w.owed = true;
+      this.scheduleViews();
+      return;
+    }
+    w.answeredAt = Date.now();
     w.told = null;
     this.sendNow(w);
   }
@@ -294,7 +324,8 @@ export class Host {
     if (!n) return;   // the room is closing
     if (n > 1) return void this.here.set(w.claims.sub, n - 1);
     this.here.delete(w.claims.sub);
-    for (const other of this.watchers.values()) if (other.following === w.claims.sub) Object.assign(other, { following: null, told: null });   // gone: the watcher hears it in 'left' and goes back to the host
+    for (const other of this.watchers.values()) if (other.following === w.claims.sub) this.backToHost(other);   // gone: they hear it in 'left' too
+    if (this.isArtist(w.claims.sub)) this.sendArtists();   // still listed, but no one to name or to follow
     this.post('presence', { pass: w.pass, id: newId(), ts: Date.now(), presence: 'left' });
   }
 
@@ -410,7 +441,7 @@ export class Host {
     if (msg?.t === 'tracking') this.track(w, msg.on);
     else if (msg?.t === 'chat') this.check(w, msg);
     else if (msg?.t === 'earlier') this.earlier(w, msg.before);
-    else if (msg?.t === 'follow') this.follow(w, msg.sub === undefined ? NaN : msg.sub);
+    else if (msg?.t === 'follow') this.follow(w, msg.sub);
     else if (msg?.t === 'show-everyone') this.showEveryone(w, msg.on);
     else if (msg?.t === 'accept' || msg?.t === 'decline' || artist) this.drawn(w, msg);
   }
@@ -444,9 +475,7 @@ export class Host {
     for (const w of this.watchers.values()) {
       if (w.claims && !this.artists.has(w.claims.sub)) Object.assign(w, { drawing: false, took: 0, queue: [], queued: 0, again: false });
     }
-    for (const w of this.watchers.values()) {
-      if (w.following !== null && !this.artists.has(w.following)) Object.assign(w, { following: null, told: null });   // put back to watching: the watcher goes back to the host as well
-    }
+    for (const w of this.watchers.values()) if (w.following !== null && !this.artists.has(w.following)) this.backToHost(w);   // put back to watching
     this.sendArtists();
   }
 

@@ -213,7 +213,9 @@ watch([mousePos, isMouseOver], ([pos, over]) => {
   const col = Math.floor(pos.x / unit.x), row = Math.floor(pos.y / unit.y / 2);
   drawingStore.pointAt(col >= 0 && row >= 0 && col < projectStore.cols && row < charRowsOf(projectStore.rows) ? { col, row } : null);
 });
-watch(() => workspaceStore.sharedView, () => drawingStore.viewMoved());   // scrolled or zoomed with the pointer still: someone may be following
+// The view goes out when it moves with the pointer still (a wheel, a scrollbar, a zoom, the window), and when drawing
+// begins again after a pause, since the host forgot where everyone was while they were away. Someone may be following.
+watch(() => [workspaceStore.sharedView, drawingStore.mayDraw, drawingStore.paused], () => drawingStore.viewMoved());
 // A stroke with no number yet, while paused.
 const waitingStyle = ({ x0, y0, x1, y1 }) => {
   const display = unref(props.display), unit = props.unit;

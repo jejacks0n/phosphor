@@ -172,13 +172,18 @@ export const useRoomStore = defineStore('room', {
     // A watcher's: the view being followed, the host's or an artist's, or null while there's none yet. The host's sub is
     // read from the room each time: it can change.
     followedView() {
-      return !this.following || this.following === this.room?.hostSub ? this.hostView : this.artistViews[this.following] ?? null;
+      if (!this.following || this.following === this.room?.hostSub) return this.hostView;
+      return Object.hasOwn(this.artistViews, this.following) ? this.artistViews[this.following] : null;   // not an Object's method of that name
     },
     // A watcher's: who can be followed, the host and the artists the host has named.
     followable() {
       const drawing = useDrawingStore();
       const host = this.room?.hostSub ? [{ sub: this.room.hostSub, name: this.room.host, host: true }] : [];
-      return [...host, ...drawing.artists.filter((sub) => drawing.artistNames[sub]).map((sub) => ({ sub, name: drawing.artistNames[sub] }))];
+      return [...host, ...drawing.artists.filter((sub) => Object.hasOwn(drawing.artistNames, sub) && drawing.artistNames[sub]).map((sub) => ({ sub, name: drawing.artistNames[sub] }))];
+    },
+    // A watcher's: there is a list to choose from (more than the host, and not drawing yourself).
+    canFollow() {
+      return this.role === 'watch' && !useDrawingStore().mayDraw && this.followable.length > 1;
     },
     followedName() {
       return this.followable.find((p) => p.sub === (this.following ?? this.room?.hostSub))?.name ?? this.room?.host ?? null;
@@ -187,7 +192,7 @@ export const useRoomStore = defineStore('room', {
     otherBoxes() {
       if (!this.showEveryone) return [];
       const followed = this.following ?? this.room?.hostSub;
-      return this.followable.filter((p) => p.sub !== followed).map((p) => ({ ...p, view: p.host ? this.hostView : this.artistViews[p.sub] })).filter((p) => p.view);
+      return this.followable.filter((p) => p.sub !== followed).map((p) => ({ ...p, view: p.host ? this.hostView : Object.hasOwn(this.artistViews, p.sub) ? this.artistViews[p.sub] : null })).filter((p) => p.view);
     },
 
     // Where the lobby picture looks: the cell it's pinned to, else the middle of the shared view.
@@ -443,9 +448,18 @@ export const useRoomStore = defineStore('room', {
         onState: (state) => this.watchState(state),
       }));
       drawing.watching(this._watch, { me: () => social.claims?.sub, roomId: id, roomName: () => this.room?.name });
-      this._stops.push(watch(() => drawing.artists, (list) => {   // put back to watching: the host's view is the one to follow
+      this._stops.push(watch(() => drawing.artists, (list) => {
         this.artistViews = Object.fromEntries(Object.entries(this.artistViews).filter(([sub]) => list.includes(sub)));
-        if (this.following && this.following !== this.room?.hostSub && !list.includes(this.following)) this.follow(this.room?.hostSub);
+      }));
+      // Not named any more (put back to watching, or gone): the host's view is the one to follow.
+      this._stops.push(watch(() => this.followable, (list) => {
+        if (this.following && this.following !== this.room?.hostSub && !list.some((p) => p.sub === this.following)) this.follow(this.room?.hostSub);
+      }));
+      // With no list to choose from there's nothing to change them back with: the host's box shows, alone.
+      this._stops.push(watch(() => this.canFollow, (can) => {
+        if (can) return;
+        this.showBox = true;
+        if (this.showEveryone) this.setShowEveryone(false);
       }));
       this.connect({ type: 'join', ...(password === undefined ? {} : { password }) }, { liveOn: ['joined'], endOn: ['refused', 'removed', 'ended', 'replaced'] });
       // The host judges the pass this watcher joined with: confirming your email mid-room joins again, with the new one.
@@ -599,7 +613,7 @@ export const useRoomStore = defineStore('room', {
       return true;
     },
 
-    // A watcher's report of the room itself, with a picture of what they see now: the host's view while tracking,
+    // A watcher's report of the room itself, with a picture of what they see now: the view followed while tracking,
     // else their own. False, sending nothing, if you can't report the room (canReportRoom) or the reason isn't one;
     // also when the socket isn't open or the connection ends while the picture is made, and then it isn't kept as
     // reported.

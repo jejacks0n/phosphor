@@ -787,3 +787,41 @@ test('a watcher follows an artist from the people list, sees everyone only by as
   await expect(art.getByRole('button', { name: 'Track ansi-fan' })).toBeVisible();
   expect(await store(watcher, 'room', (r) => r.following === r.room.hostSub)).toBe(true);
 });
+
+// A watcher following tin_owl on tall art, and tin_owl's view as the watcher has it.
+async function followingOwl(host, context, room) {
+  const { artist } = await together(host, context, room, { image: 'images/tall.png' });
+  await store(artist, 'workspace', (w) => { w.ansiZoom = 1; });
+  const watcher = await watcherPage(context, room);
+  await watcher.goto('/');
+  await joinFromCard(watcher);
+  const view = artist.locator('.ansi-editor > article');
+  const box = await view.boundingBox();
+  await artist.mouse.move(box.x + 100, box.y + 100);
+  await artist.mouse.move(box.x + 110, box.y + 100);
+  await watcher.getByRole('list', { name: 'Who to follow' }).getByRole('button', { name: 'Follow tin_owl' }).click();
+  const seen = () => store(watcher, 'room', (r) => r.followedView?.row ?? null);
+  await expect.poll(seen, { timeout: 10_000 }).not.toBe(null);
+  return { artist, watcher, view, box, seen };
+}
+
+test('a followed artist who scrolls with the pointer still is followed there', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist, view, seen } = await followingOwl(host, context, room);
+  const before = await seen();
+  await artist.mouse.wheel(0, 900);   // the pointer doesn't move
+  await expect.poll(() => view.evaluate((el) => el.scrollTop)).toBeGreaterThan(400);
+  const row = await store(artist, 'workspace', (w) => w.sharedView.row);
+  expect(row).toBeGreaterThan(before);
+  await expect.poll(seen, { timeout: 10_000 }).toBe(row);
+});
+
+test('a followed artist who was away is followed again once drawing resumes, without moving the pointer', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await followingOwl(host, context, room);
+  await expect.poll(() => store(host, 'drawing', `(d) => d.cursors['${ARTIST.id}']?.view ?? null`), { timeout: 10_000 }).not.toBe(null);
+  await hostSaysAway(host);
+  await expect.poll(() => store(host, 'drawing', `(d) => d.cursors['${ARTIST.id}']?.view ?? null`), { timeout: 20_000 }).toBe(null);   // the host forgot where they were
+  await expect.poll(() => store(artist, 'drawing', (d) => d.paused), { timeout: 20_000 }).toBe(false);
+  await expect.poll(() => store(host, 'drawing', `(d) => d.cursors['${ARTIST.id}']?.view ?? null`), { timeout: 20_000 }).not.toBe(null);
+});

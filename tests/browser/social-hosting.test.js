@@ -1287,3 +1287,45 @@ test('a host\'s views are a stranger\'s: ones that aren\'t views, or are of no o
   await hear({ t: 'artists', subs: ['u_a'] });
   expect(artists).toEqual([[['u_a', 'u_b'], { u_a: 'Ann' }], [['u_a'], {}], [['u_a'], {}]]);
 });
+
+test('an artist who has left is left out of the names everyone is told, and stays an artist at the host', async () => {
+  const r = await room(['p1', 'p2']);
+  drawingCalls(r);
+  r.host.setArtists(['u_p1', 'u_p2']);
+  await seated(r, 'p1', 'p2');
+  const told = [];
+  r.log.p1.watch.onArtists = (subs, names) => told.push([subs, names]);
+  r.host.peerGone('p2');
+  await expect.poll(() => told, PATIENT).toEqual([[['u_p1', 'u_p2'], { u_p1: 'p1' }]]);
+  expect(r.host.isArtist('u_p2')).toBe(true);   // dropped out, still listed
+  r.host.peerGone('p1');   // and a watcher who isn't an artist leaving says nothing
+  expect(told.length).toBe(1);
+});
+
+test('a follow that changes nothing is not answered, and a flood of them is answered at a pace', async () => {
+  const sends = watchSends();
+  const r = await room(['p1', 'p2']);
+  drawingCalls(r);
+  r.host.setArtists(['u_p2']);
+  r.host.setArtistViews({ u_p2: VIEW });
+  await viewsSeated(r, 'p1', 'p2');
+  const w = connected(r, 'p1');
+  r.log.p1.watch.follow('u_p2');
+  await expect.poll(() => w.following, PATIENT).toBe('u_p2');
+  await wait(300);
+  sends.clear();
+  for (let i = 0; i < 5; i++) r.log.p1.watch.follow('u_p2');   // the same again
+  await wait(100);
+  expect(sends.sent().filter((m) => m.channel === w.channel)).toEqual([]);
+
+  for (let i = 0; i < 100; i++) {
+    r.log.p1.watch.follow(i % 2 ? 'u_p2' : null);
+    r.log.p1.watch.post({ t: 'show-everyone', on: !!(i % 2) });
+  }
+  await expect.poll(() => w.following, PATIENT).toBe('u_p2');   // the last choice stands
+  await wait(600);
+  const replies = sends.sent().filter((m) => m.channel === w.channel && (m.t === 'view' || m.t === 'views'));
+  expect(replies.length).toBeLessThan(8);
+  expect(w.everyone).toBe(true);
+  expect(replies.at(-1).t).toBe('views');   // and what's shown is what was last asked
+});
