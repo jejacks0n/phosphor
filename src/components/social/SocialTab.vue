@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
+import { SIGN_IN_PAGES } from '@/lib/addresses';
 import ModalDialog from '@/components/ModalDialog.vue';
 import LobbyPage from './LobbyPage.vue';
 import SignInPage from './SignInPage.vue';
@@ -21,7 +22,6 @@ const PAGES = {
   reset: ResetPasswordPage, onboarding: OnboardingPage, account: AccountPage,
   'two-factor': TwoFactorPage, 'start-room': LobbyPage, 'host-room': HostRoomPage, 'watch-room': WatchRoomPage,
 };
-const SIGN_IN_PAGES = new Set(['sign-in', 'create', 'forgot', 'two-factor', 'onboarding']);
 onMounted(() => social.showLobby());
 
 // The room you host or watch, while you do (a guest watching still gets the sign-in pages, to sign in to chat). Account is only for someone signed in: until /api/me has answered
