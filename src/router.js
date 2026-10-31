@@ -47,7 +47,7 @@ export function followAddress(router) {
   function enterRoomOf(to) {
     const id = to.query.room == null ? null : String(to.query.room), mark = router.options.history.state.inRoom;
     const hostGone = mark === 'host' && !(room.role === 'host' && room.id === id);   // a host's reload, or a room since ended
-    const spent = !!id && (hasLeftRoom(id) || hostGone);                             // same place, no room
+    const spent = !!id && ((mark && hasLeftRoom(id)) || hostGone);                   // same place, no room; a link from outside asks
     const here = spent ? null : id;
     joining = joining && here === (room.id ?? social.roomGoingTo);
     if (room.role === 'watch' && room.id !== here) room.close({ spent: false });   // Back past the join: Forward can undo it

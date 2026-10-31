@@ -170,6 +170,40 @@ for (const typed of ['garbage', 'a&room=b']) {
   });
 }
 
+test('a link to a room you already left asks, from the address or a page load', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const watcher = await watching(host, context, room);
+  await chat(watcher).getByRole('button', { name: 'Exit' }).click();
+  await hash(watcher, '/social');
+
+  await watcher.evaluate((id) => { location.hash = `#/pixel?room=${id}`; }, ROOM_ID);
+  await expect(asked(watcher)).toBeVisible();
+  await asked(watcher).getByRole('button', { name: 'Not now' }).click();
+
+  await watcher.goto('about:blank');
+  await watcher.goto(`/#/social?room=${ROOM_ID}`);
+  await expect(asked(watcher)).toBeVisible();
+  expect(joins(room)).toBe(1);
+});
+
+test('with storage that can\'t be read, reloading on an entry of yours doesn\'t join', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const watcher = await watching(host, context, room);
+  await watcher.addInitScript(() => {
+    const read = Storage.prototype.getItem;
+    Storage.prototype.getItem = function getItem(key) {
+      if (key === 'phosphor-left-rooms') throw new Error('no storage');
+      return read.call(this, key);
+    };
+  });
+
+  await watcher.reload();
+  await hash(watcher, '/social');
+  await expect(asked(watcher)).toHaveCount(0);
+  await outOfRoom(watcher);
+  expect(joins(room)).toBe(1);
+});
+
 test('signing in while watching, Back from the room you come back to stays in it', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room);
