@@ -71,6 +71,7 @@ export const useProjectStore = defineStore('project', {
     _sharing: null, // the room this document is shared with (sharing.js)
     _paused: false,
     _takingProject: false, // a host's project is being written: the guard below doesn't apply (document.js)
+    _sameDocument: false, // and it's this document brought up to date, so undo and the selection stay
   }),
 
   getters: {

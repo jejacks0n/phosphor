@@ -10,7 +10,9 @@ import { Watch } from '@/social/watching';
 import { toBase64url } from '@/social/base64url';
 import { CHECK_EVERY_MS, useDrawingStore } from '@/store/DrawingStore';
 import { useProjectStore } from '@/store/ProjectStore';
+import { ASK_AGAIN_MS } from '@/store/project/sharing';
 import { useRoomStore } from '@/store/RoomStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { serializeBase, withPins } from '@/document/baseRecords';
 import { CHUNK_BYTES } from '@/social/wire';
 import { hashCell } from '@/document/changes';
@@ -334,15 +336,20 @@ test('a project that comes again keeps a stroke of mine that isn\'t numbered yet
   await expect.poll(() => char(ann.project, 5, 5), PATIENT).toBe('H');
 
   const w = room.host.open().find((other) => other.peer === 'ann');
-  vi.spyOn(room.host, 'onChange').mockImplementation(() => true);   // the host hasn't got to it yet
+  const sharing = ann.project._sharing, send = sharing.send, held = [];
+  sharing.send = (msg) => held.push(msg);   // on its way: the host hasn't got to it yet
   ann.project.editCell(6, 6, { char: 'A' });
   ann.project.commitEdit();
-  await expect.poll(() => ann.project._sharing.pending.size, PATIENT).toBe(1);
+  expect(sharing.pending.size).toBe(1);
   await room.host.sendProject(w);
   await expect.poll(() => char(ann.project, 5, 5) === 'H' && ann.project.documentId === id && ann.project._sharing.pending.n === room.project._ledger.n, PATIENT).toBe(true);
   expect(char(ann.project, 6, 6)).toBe('A');
   expect(ann.project._sharing.pending.sum).toBe(room.project.editLayerSum());   // seeded before reapply
   expect(ann.drawing.mayDraw).toBe(true);
+  sharing.send = send;
+  for (const msg of held) send(msg);
+  await allMatch(room, ann);
+  expect(char(room.project, 6, 6)).toBe('A');
 });
 
 test('a project from a host is a stranger\'s: what doesn\'t fit opens nothing, and only a document\'s settings are taken', async () => {
@@ -958,7 +965,7 @@ function gatePacking(room) {
   };
 }
 
-test('a client whose edit layer was changed behind its back re-fetches and matches', async () => {
+test('an edit layer changed behind a client\'s back, at a position a number then touches, re-fetches and matches', async () => {
   const room = await hosting();
   const ann = await artist(room, 'ann'), asked = asks(ann);
   const { epoch } = room.project._ledger;
@@ -1131,7 +1138,7 @@ test('the check stays quiet through a fill across 80 x 2000 with another artist 
   const room = await hosting({ cols: 80, rows: 4000 });
   const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
   const asksAnn = asks(ann), asksBob = asks(bob), projects = vi.spyOn(room.host, 'sendProject');
-  const heard = vi.spyOn(ann.project, 'hearDrawing');
+  const heard = vi.spyOn(ann.project, 'hearDrawing'), heardBob = vi.spyOn(bob.project, 'hearDrawing');
   const sends = vi.spyOn(room.host, 'sendAll');
   const before = room.project._ledger.n, list = [];
   for (let row = 0; row < 2000; row++) for (let col = 0; col < 80; col++) list.push({ col, row, attrs: { char: 'F', fg: '#ff0000' } });
@@ -1164,8 +1171,10 @@ test('the check stays quiet through a fill across 80 x 2000 with another artist 
   await reach(room, ann);
   await reach(room, bob);
   checkNow(room);
-  await expect.poll(() => heard.mock.calls.filter(([m]) => m.t === 'check' && m.n === room.project._ledger.n).length, PATIENT).toBe(1);
+  for (const spy of [heard, heardBob]) await expect.poll(() => spy.mock.calls.filter(([m]) => m.t === 'check' && m.n === room.project._ledger.n).length, PATIENT).toBe(1);
   await wait(50);
+  expect(ann.project._sharing.pending.sum).toBe(room.project._ledger.sum);
+  expect(bob.project._sharing.pending.sum).toBe(room.project._ledger.sum);
   console.info(`fill across 160k cells, ${fills.length} numbered, to matching: ${Math.round(performance.now() - started)} ms`);
   expect(room.project._ledger.n).toBeGreaterThan(before + fills.length);
   expect(asksAnn()).toEqual([]);
@@ -1393,4 +1402,147 @@ test('an accept that didn\'t get an answer before the connection went doesn\'t l
     ann.drawing.heardArtists([]);   // the new connection's list: the host never heard it
     expect(sessionStorage.getItem('phosphor-artist:room:ann')).toBe(null);
   }
+});
+
+// Fix round: undo through a project, an ask that isn't answered, and the bigger cap.
+const SELECTED = { col: 1, row: 1, cols: 2, rows: 2 };
+
+test('a re-fetch keeps my undo and selection: undo still takes back my earlier stroke, and one left open ends', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const workspace = useWorkspaceStore();   // ann's: hers is the pinia joined last
+  ann.project.editCell(1, 1, { char: 'a' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  workspace.selection = SELECTED;
+  const epoch = room.project._ledger.epoch;
+  ann.project.editCell(2, 2, { char: 'b' });   // open
+  await room.host.sendProject(seat(room, 'ann'));
+  await expect.poll(() => ann.project._stroke, PATIENT).toBe(null);
+  await allMatch(room, ann);
+  expect(room.project._ledger.epoch).toBe(epoch);
+  expect(workspace.selection).toEqual(SELECTED);
+  expect(ann.project.history.canUndo).toBe(true);
+  ann.project.undo();
+  await expect.poll(() => char(ann.project, 2, 2), PATIENT).toBe(undefined);
+  ann.project.undo();
+  await expect.poll(() => char(ann.project, 1, 1), PATIENT).toBe(undefined);
+  await expect.poll(() => char(room.project, 1, 1), PATIENT).toBe(undefined);
+  await allMatch(room, ann);
+  ann.project.redo();
+  await expect.poll(() => char(room.project, 1, 1), PATIENT).toBe('a');
+});
+
+test('a merge resets it: undo has nothing for me, and the selection goes', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const workspace = useWorkspaceStore();
+  ann.project.editCell(1, 1, { char: 'a' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  workspace.selection = SELECTED;
+  expect(ann.project.history.canUndo).toBe(true);
+  room.project.mergeDown();
+  await expect.poll(() => char(ann.project, 1, 1), PATIENT).toBe(undefined);
+  await allMatch(room, ann);
+  expect(ann.project.history.canUndo).toBe(false);
+  expect(workspace.selection).toBe(null);
+});
+
+function askTimers() {
+  const set = vi.spyOn(globalThis, 'setTimeout');
+  const made = () => set.mock.calls.flatMap(([fn, ms], i) => (ms === ASK_AGAIN_MS ? [{ fn, id: set.mock.results[i].value }] : []));
+  return Object.assign(() => made().map(({ fn }) => fn), { lastId: () => made().at(-1).id });
+}
+
+async function drifted(room, ann) {
+  room.project.editCell(0, 0, { char: 'C' });
+  room.project.commitEdit();
+  await reach(room, ann);
+  ann.project._sharing.pending.seedSum(12345);
+  ann.project.hearDrawing({ t: 'check', n: ann.project._sharing.pending.n, sum: room.project._ledger.sum });
+  ann.project.flushHeard();
+}
+
+test('an ask no project answers goes again after a long wait, and stops when one lands', async () => {
+  expect(ASK_AGAIN_MS).toBe(30_000);
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), asked = asks(ann);
+  const timers = askTimers(), stop = vi.spyOn(globalThis, 'clearTimeout');
+  const hello = vi.spyOn(room.host, 'onHello').mockImplementation(() => {});   // no answer
+  await drifted(room, ann);
+  expect(asked().length).toBe(1);
+  await expect.poll(() => hello.mock.calls.length, PATIENT).toBe(1);
+  expect(timers().length).toBe(1);
+  ann.project.hearDrawing({ t: 'check', n: ann.project._sharing.pending.n, sum: 1 });
+  ann.project.flushHeard();
+  expect(asked().length).toBe(1);   // not a moment sooner
+  timers()[0]();
+  expect(asked().length).toBe(2);
+  await expect.poll(() => hello.mock.calls.length, PATIENT).toBe(2);
+  hello.mockRestore();
+  timers().at(-1)();
+  expect(asked().length).toBe(3);
+  await expect.poll(() => ann.project._sharing.asked, PATIENT).toBe(false);
+  await allMatch(room, ann);
+  expect(stop.mock.calls.some(([id]) => id === timers.lastId())).toBe(true);
+});
+
+test('a project that fails to open shows its notice, and it\'s asked for no sooner than the long wait', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), asked = asks(ann);
+  const timers = askTimers(), sends = vi.spyOn(room.host, 'sendProject');
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const open = vi.spyOn(ann.project, 'openFromHost').mockRejectedValueOnce(new Error('no'));
+  await drifted(room, ann);
+  await expect.poll(() => ann.drawing.notice, PATIENT).toBeTruthy();
+  ann.project.hearDrawing({ t: 'check', n: ann.project._sharing.pending.n, sum: 1 });
+  ann.project.flushHeard();
+  await wait(60);
+  expect(asked().length).toBe(1);
+  expect(sends).toHaveBeenCalledOnce();
+  timers().at(-1)();
+  await expect.poll(() => open.mock.calls.length, PATIENT).toBe(2);
+  await expect.poll(() => ann.project._sharing.asked, PATIENT).toBe(false);
+  await allMatch(room, ann);
+});
+
+test('a project that failed unasked doesn\'t stop a later check from asking', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), asked = asks(ann);
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(ann.project, 'openFromHost').mockRejectedValueOnce(new Error('no'));
+  await room.host.sendProject(seat(room, 'ann'));
+  await expect.poll(() => ann.drawing.notice, PATIENT).toBeTruthy();
+  await drifted(room, ann);
+  expect(asked().length).toBe(1);
+  await expect.poll(() => ann.project._sharing.asked, PATIENT).toBe(false);
+  await allMatch(room, ann);
+});
+
+const flood = (person) => {
+  for (let i = 0; i < 1100; i++) person.watch.hear('not json', person.watch.conn);
+};
+
+test('from project-start, before the first project has unpacked, an artist may have more waiting', async () => {
+  const room = await hosting();
+  const ann = await join(room, 'ann');
+  ann.drawing.accept();
+  ann.drawing.artists = ['ann'];
+  ann.watch.projectStart({ n: 1, epoch: 'e', bytes: 1, chunks: 1, took: 0 });
+  flood(ann);
+  ann.watch.project = null;
+  expect(ann.watch.ready).toBe(true);
+});
+
+test('a project sent to someone who hasn\'t said yes doesn\'t let a host fill their memory', async () => {
+  const room = await hosting();
+  const wes = await join(room, 'wes');
+  room.project.startSharing({ send: () => {}, role: 'host', me: 'host' });
+  const w = seat(room, 'wes');
+  w.drawing = true;
+  await room.host.sendProject(w);
+  await expect.poll(() => wes.watch.projectN, PATIENT).toBeGreaterThanOrEqual(0);
+  flood(wes);
+  expect(wes.watch.ready).toBe(false);
 });

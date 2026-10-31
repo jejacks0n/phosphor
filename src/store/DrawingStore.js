@@ -128,10 +128,12 @@ export const useDrawingStore = defineStore('drawing', () => {
   // The watcher's side.
   function watchCallbacks() {
     const heard = (msg) => { if (mayDraw.value) project.hearDrawing(msg); };
+    const takesProjects = () => artists.value.includes(me()) && hasAccepted();
     return {
+      takesProjects,
       onNumbered: heard, onSettings: heard, onBase: heard, onCheck: heard,
       onProject: async ({ n, epoch, took, parts }) => {
-        if (!artists.value.includes(me()) || !hasAccepted()) return;
+        if (!takesProjects()) return;
         if (!await project.takeProject(parts, { n, epoch, took, filename: roomName(), send: (msg) => room?.post(msg), me: me() })) notice.value = 'The room\'s art couldn\'t be opened.';
       },
       onCursors: (all) => { cursors.value = all; },

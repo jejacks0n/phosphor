@@ -21,7 +21,17 @@ export function cellChanges(before, after) {
 // A transparent pixel is 0 whatever its color channels hold.
 export const pack = (px, i) => (px[i + 3] ? ((px[i] << 24) | (px[i + 1] << 16) | (px[i + 2] << 8) | px[i + 3]) >>> 0 : 0);
 
+// A pixel as a canvas stores it. Browsers read one stored pixel back differently ([0, 255, 42, 6] or
+// [0, 255, 43, 6]), so where another browser's pixel might meet this one's, this is what says they're the same.
+const stored = (rgba) => {
+  const a = rgba & 0xff;
+  if (a === 0xff) return rgba;
+  const by = (channel) => Math.round((channel * a) / 255);
+  return ((by(rgba >>> 24) << 24) | (by((rgba >>> 16) & 0xff) << 16) | (by((rgba >>> 8) & 0xff) << 8) | a) >>> 0;
+};
+
 // The pixels that differ between two width x height RGBA images, as runs at (ox, oy) from the top left.
+// Another browser's pixel written mid-stroke reads back as this one's reading of it, which isn't a change.
 export function pixelRuns(before, after, width, height, ox, oy) {
   const runs = [];
   for (let y = 0; y < height; y++) {
@@ -29,7 +39,8 @@ export function pixelRuns(before, after, width, height, ox, oy) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
       const rgba = pack(after, i);
-      if (rgba === pack(before, i)) { run = null; continue; }
+      const was = pack(before, i);
+      if (rgba === was || stored(rgba) === stored(was)) { run = null; continue; }
       if (run && run[3] === rgba) run[2]++;
       else runs.push(run = [ox + x, oy + y, 1, rgba]);
     }
@@ -113,7 +124,7 @@ export function hashCell(key, entry) {
   return hashText(`${key}\n${JSON.stringify(fields.map((name) => [name, entry[name]]))}`);
 }
 
-export const hashPixel = (x, y, rgba) => ((rgba & 0xff) === 0 ? 0 : mix(x ^ mix(y ^ mix(rgba))));
+export const hashPixel = (x, y, rgba) => ((rgba & 0xff) === 0 ? 0 : mix(x ^ mix(y ^ mix(stored(rgba)))));
 
 const TAIL_BYTES = 16 * 1024 * 1024;
 
