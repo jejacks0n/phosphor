@@ -151,3 +151,59 @@ test('the reset address holds no token', async ({ page }) => {
   await expect(shown(page, 'lobby')).toBeVisible();
   await hash(page, '/social');
 });
+
+// Back from where a form took you to the drawing: the lobby you left stays an entry, and it's the only
+// press that shows no change.
+async function backToTheDrawing(page) {
+  await hash(page, '/social');
+  await page.goBack();
+  await hash(page, '/social');
+  await page.goBack();
+  await selected(page, 'ANSI');
+  await hash(page, '/ansi');
+}
+
+async function drawingThenSignIn(page, button = 'Sign in') {
+  await openApp(page);
+  await tab(page, 'SOCIAL').click();
+  await shown(page, 'lobby').getByRole('button', { name: button, exact: true }).click();
+}
+
+async function submitSignIn(page) {
+  const form = shown(page, 'sign-in');
+  await form.getByLabel('Email or username').fill('fan@example.com');
+  await form.getByLabel('Password').fill('correct horse battery');
+  await form.getByRole('button', { name: 'Sign in', exact: true }).click();
+}
+
+test('signing in leaves one dead Back on the way to the drawing', async ({ page }) => {
+  await fakeServer(page);
+  await drawingThenSignIn(page);
+  await submitSignIn(page);
+  await expect(shown(page, 'lobby').locator('.you')).toContainText('ansi-fan');
+  await backToTheDrawing(page);
+});
+
+test('signing in with a code leaves one dead Back on the way to the drawing', async ({ page }) => {
+  await fakeServer(page, { twoFactor: true });
+  await drawingThenSignIn(page);
+  await submitSignIn(page);
+  const form = shown(page, 'two-factor');
+  await form.getByLabel('Code from your authenticator app').fill('123456');
+  await form.getByRole('button', { name: 'Verify' }).click();
+  await expect(shown(page, 'lobby').locator('.you')).toContainText('ansi-fan');
+  await backToTheDrawing(page);
+});
+
+test('creating an account leaves one dead Back on the way to the drawing', async ({ page }) => {
+  await fakeServer(page);
+  await drawingThenSignIn(page, 'Create one');
+  const form = shown(page, 'create');
+  await form.getByLabel('Username').fill('pixel_wren');
+  await form.getByLabel('Email').fill('wren@example.com');
+  await form.getByLabel('Password').fill('a long new password');
+  await form.getByRole('checkbox').first().check();
+  await form.getByRole('button', { name: 'Create account' }).click();
+  await expect(shown(page, 'lobby').locator('.you')).not.toContainText('guest');
+  await backToTheDrawing(page);
+});

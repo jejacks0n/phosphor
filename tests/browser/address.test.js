@@ -310,14 +310,16 @@ test('a stale session\'s Sign in page isn\'t bounced while signed in', async () 
 test('a Two-factor page the store showed is not an arrival, and stays', async () => {
   const server = serverFor();
   server.route('POST /api/auth/sign-in/email', () => [200, { twoFactorRedirect: true, twoFactorMethods: ['totp'] }]);
-  await landed('/social/sign-in');
+  await landed('/social');
   await expect.poll(() => social.supported).toBe(true);
+  social.page = 'sign-in';
+  await settled();
   await social.signIn('fan@example.com', 'right-password');
   await settled();
   expect(social.page).toBe('two-factor');
   expect(path()).toBe('/social/two-factor');
 
-  router.back();   // to Sign in, and forward to the code still being asked for
+  router.back();   // to the lobby (the code took Sign in's place), and forward to the code still being asked for
   await settled();
   router.forward();
   await settled();
@@ -527,6 +529,57 @@ test('signing in while watching goes back into the room, which is not spent', as
   expect(room.id).toBe(ID);
   expect(hasLeftRoom(ID)).toBe(false);
   expect(address()).toBe(`/social?room=${ID}`);
+});
+
+// [the page, how you stop being able to come back to it, the page you're on then]
+const NO_RETURN = [
+  ['sign-in', () => social.signIn('fan@example.com', 'right-password'), 'lobby'],
+  ['create', () => social.signUp({ username: 'pixel_wren', email: 'wren@example.com', password: 'a long new password', termsAccepted: true }), 'lobby'],
+  ['reset', () => Object.assign(social, { resetToken: null, page: 'sign-in' }), 'sign-in'],
+  ['onboarding', () => social.finishOnboarding('wren'), 'lobby'],
+];
+
+for (const [page, leave, next] of NO_RETURN) {
+  test(`leaving ${page} for good replaces it`, async () => {
+    useFakeSockets();
+    const server = serverFor(page === 'onboarding' ? member({ needsOnboarding: true }) : null);
+    server.route('POST /api/auth/sign-up/email', () => ((server.session = member()), [200, { token: 't' }]));
+    server.route('POST /api/me/onboarding', () => ((server.session = member()), [200, server.session]));
+    await landed('/pixel');
+    await social.boot();
+    if (page === 'reset') social.resetToken = 'tok';
+    social.page = page;
+    workspace.editorTab = 'social';
+    await settled();
+    expect(social.page).toBe(page);
+    push.mockClear();
+    replace.mockClear();
+
+    await leave();
+    await settled();
+    expect(social.page).toBe(next);
+    expect(push).not.toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+}
+
+test('the Sign in a stale session sends you to still shows, and is a step; leaving it replaces', async () => {
+  serverFor(member());
+  await landed('/social/account');
+  await expect.poll(() => social.signedIn).toBe(true);
+  await settled();
+
+  social.staleSession('SESSION_NOT_FRESH');
+  await settled();
+  expect(path()).toBe('/social/sign-in');
+  expect(push).toHaveBeenCalledTimes(1);
+  expect(replace).not.toHaveBeenCalled();
+
+  workspace.editorTab = 'input';
+  await settled();
+  expect(path()).toBe('/pixel');
+  expect(push).toHaveBeenCalledTimes(1);
+  expect(replace).toHaveBeenCalledTimes(1);
 });
 
 // A /api/me that answers when told to.

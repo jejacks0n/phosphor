@@ -30,6 +30,12 @@ export function followAddress(router) {
   const workspace = useWorkspaceStore(), social = useSocialStore(), room = useRoomStore(), project = useProjectStore();
   let pending = false, ours = false, landing = true, replaceNext = false, joining = false;
 
+  // What decides which SOCIAL pages can be arrived at.
+  function known() {
+    const { signedIn, me, resetToken, _codePending } = social;
+    return { signedIn, needsOnboarding: me?.needsOnboarding, resetToken, codePending: _codePending, canStart: signedIn && me?.emailVerified !== false };
+  }
+
   // ANSI and SAUCE need an image, and only once autosave has answered do we know there isn't one.
   function leaveIfNoImage() {
     if (!workspace.documentSettled || project.image || !['output', 'sauce'].includes(workspace.editorTab)) return;
@@ -70,10 +76,7 @@ export function followAddress(router) {
     if (workspace.editorTab !== 'social' || !page) return;
     await social.boot();   // who you are decides which pages can be shown
     if (workspace.editorTab !== 'social' || social.page !== page) return;
-    const { signedIn, me, resetToken, _codePending } = social;
-    const shown = arrivalPage(page, {
-      signedIn, needsOnboarding: me?.needsOnboarding, resetToken, codePending: _codePending, canStart: signedIn && me?.emailVerified !== false,
-    });
+    const shown = arrivalPage(page, known());
     if (shown === page) return;
     replaceNext = true;
     social.page = shown;
@@ -91,7 +94,11 @@ export function followAddress(router) {
     }
     // Exit, End, removal, the room ending, a spent entry or a link that asks. (Back past a join never gets here: its address is right.)
     const lost = was !== null && wanted === null;
-    const replace = landing || replaceNext || lost || path === '/social/name' || !current.meta.tab;   // / is never a step
+    // A page you can no longer arrive at (signed in, say) would bounce a Back that lands on it. So would the
+    // Sign in under a two-factor code, and the name page has no way back.
+    const spentPage = current.meta.page && arrivalPage(current.meta.page, known()) !== current.meta.page;
+    const noStep = ['/social/name', '/social/two-factor'].includes(path);
+    const replace = landing || replaceNext || lost || spentPage || noStep || !current.meta.tab;   // / is never a step
     replaceNext = false;
     ours = true;
     pending = true;   // beforeEach is a few promises off, and a second call before it would navigate again
