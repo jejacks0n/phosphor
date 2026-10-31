@@ -304,6 +304,15 @@ test('a pagehide doesn\'t end the room, and leaves a record', async () => {
   expect(keptHostingRecord()).toMatchObject({ sub: 'u_1', id: ID, link: room.link, hasPassword: false, peopleOpen: false, muted: [], view: null });
 });
 
+test('a pagehide tells an open watcher, which goes to lost while the room stays', async () => {
+  const socket = await goLive();
+  const log = await watcherOn(socket);
+  window.dispatchEvent(new PageTransitionEvent('pagehide'));
+  await expect.poll(() => log.states.at(-1), PATIENT).toBe('lost');
+  expect(socket.sent.map((m) => m.type)).not.toContain('end');
+  expect(room.status).toBe('live');
+});
+
 test('endRoom sends end, closes the socket and the watchers\' connections, and goes back to the lobby', async () => {
   const socket = await goLive();
   const log = await watcherOn(socket);

@@ -187,6 +187,17 @@ test('a connection that can\'t be made (openPeer throws) gets left sent for it, 
   expect(r.watchers.flat().some((w) => w.peer === 'p1')).toBe(false);
 });
 
+test('goingAway reaches an open watcher, which goes to lost and then takes a new offer live', async () => {
+  const r = await room(['p1']);
+  await expect.poll(() => r.log.p1.views.length, PATIENT).toBe(1);
+  r.host.goingAway();
+  await expect.poll(() => r.log.p1.states, PATIENT).toEqual(['connecting', 'live', 'lost']);
+
+  await r.host.peer('p1', await passFor('u_p1', 'p1'));
+  await expect.poll(() => r.log.p1.states, PATIENT).toEqual(['connecting', 'live', 'lost', 'connecting', 'live']);
+  await expect.poll(() => r.log.p1.views.length, PATIENT).toBe(2);
+});
+
 test('a view reaches the watchers, and the same view again sends nothing', async () => {
   const sends = watchSends();
   const r = await room();

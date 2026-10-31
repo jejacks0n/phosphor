@@ -310,7 +310,10 @@ export const useRoomStore = defineStore('room', {
         this._host?.setView(v);
         return true;
       });
-      const pagehide = () => this.keepRecord();   // a reload isn't the room's end: what comes back reads this
+      const pagehide = () => {   // a reload isn't the room's end: what comes back reads this, and watchers are told
+        this.keepRecord();
+        this._host?.goingAway();
+      };
       addEventListener('pagehide', pagehide);
       this._stops = [
         watch([() => project.cells, () => project.cols, () => project.rows, () => workspace.displayFontSpec], () => { schedule(); changed(); }),

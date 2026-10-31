@@ -281,6 +281,12 @@ export class Host {
     return true;
   }
 
+  // The page is going (a reload, or closed): each open channel hears it, and the watchers say the host is
+  // reconnecting instead of finding out when their connection times out. The room itself isn't ended.
+  goingAway() {
+    for (const w of this.open()) this.sendTo(w, { t: 'away' });
+  }
+
   changed() {
     this.onWatchers([...this.watchers.values()].filter((w) => w.claims).map((w) => ({
       peer: w.peer, sub: w.claims.sub, name: w.claims.name, guest: w.claims.guest, tracking: w.tracking, connected: !!w.channel,

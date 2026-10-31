@@ -3,9 +3,9 @@
 // doesn't fit (a snapshot too big or of the wrong size, a color or cell that isn't there, a room or view
 // that isn't as the host's side sends it) is ignored, and however fast it sends, the art goes to onArt
 // at most once a frame. States go to onState: 'connecting', 'live', then 'failed' if it never opened or
-// 'lost' if it closed after. Chat comes the same way, and goes to onChat only as its sender sent it: a
-// verified member's pass the server signed, and their signature over the message for this room, so a
-// host can't put words in anyone's mouth.
+// 'lost' if it closed after (or the host said its page is going). Chat comes the same way, and goes to
+// onChat only as its sender sent it: a verified member's pass the server signed, and their signature over
+// the message for this room, so a host can't put words in anyone's mouth.
 import { openPeer } from './peer.js';
 import { verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
@@ -120,7 +120,10 @@ export class Watch {
     }
     const msg = JSON.parse(data);
     if (msg.t === 'room') this.room(msg);
-    else if (msg.t === 'view') this.view(msg);
+    else if (msg.t === 'away') {   // the host's page is going: as a channel closing is, and its next offer connects again
+      this.close();
+      this.onState('lost');
+    } else if (msg.t === 'view') this.view(msg);
     else if (msg.t === 'snapshot') {
       const want = msg.chunks;
       this.gathering = Number.isInteger(want) && want >= 1 && want <= MOST_SNAPSHOT_CHUNKS ? { want, chunks: [] } : null;
