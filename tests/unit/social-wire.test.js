@@ -2,8 +2,10 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
-  CHUNK_BYTES, MOST_SNAPSHOT_BYTES, encodeCells, decodeCells, decodeChange, changedCells, fontOnWire, fontFor, packSnapshot, unpackSnapshot,
+  CHUNK_BYTES, MOST_SNAPSHOT_BYTES, MOST_ARTIST_BYTES, MOST_PROJECT_BYTES, MOST_CHANGE_BYTES, encodeCells, decodeCells, decodeChange, changedCells,
+  fontOnWire, fontFor, packSnapshot, unpackSnapshot, readChange, packProject, unpackProject,
 } from '../../src/social/wire.js';
+import { withPins, EMPTY_BASE } from '../../src/document/baseRecords.js';
 import { hex2rgb } from '../../src/lib/ColorUtils.js';
 import { DISPLAY_FONTS } from '../../src/lib/displayFonts.js';
 
@@ -145,3 +147,151 @@ test('the biggest snapshot is cut into chunks of CHUNK_BYTES or less and arrives
   assert.ok(chunks.every((c) => c instanceof Uint8Array && c.length > 0 && c.length <= CHUNK_BYTES));
   assert.deepEqual(await unpackSnapshot(chunks), { cols, lines, font, cells });
 }, 60000);
+
+// An artist's change is a stranger's data, checked as a host's cells are.
+const GRID = { cols: 10, rows: 4, layerWidth: 20, layerHeight: 8 };
+const good = () => ({
+  stroke: 's1',
+  cells: [['0,0', { char: 'a', fg: '#ffffff', bg: '#000000' }], ['9,3', { fg: '#00aa00' }], ['3,2', null]],
+  runs: [[0, 0, 20, 0xff0000ff], [5, 7, 3, 0]],
+});
+
+test('readChange gives back a good change unchanged, the same arrays', () => {
+  const msg = { t: 'change', ...good() };
+  const read = readChange(msg, GRID);
+  assert.deepEqual(read, good());
+  assert.equal(read.cells, msg.cells);
+  assert.equal(read.runs, msg.runs);
+  assert.deepEqual(readChange({ stroke: 'x', cells: [], runs: [] }, GRID), { stroke: 'x', cells: [], runs: [] });
+  assert.equal(readChange({ ...good(), stroke: 'é'.repeat(40) }, GRID).stroke.length, 40);
+  assert.ok(readChange({ ...good(), runs: [[0, 0, 1, 0xffffffff]] }, GRID));
+});
+
+test.each([
+  ['a cell off the grid', { cells: [['10,0', null]] }],
+  ['a cell below the grid', { cells: [['0,4', null]] }],
+  ['a key that isn\'t a place', { cells: [['a,b', null]] }],
+  ['a negative place', { cells: [['-1,0', null]] }],
+  ['a place with a fraction', { cells: [['1.5,0', null]] }],
+  ['a place of three numbers', { cells: [['1,0,2', null]] }],
+  ['a key that isn\'t a string', { cells: [[1, null]] }],
+  ['a cell that isn\'t a pair', { cells: [['0,0']] }],
+  ['a character that can\'t be drawn', { cells: [['0,0', { char: 'ab' }]] }],
+  ['a markup character', { cells: [['0,0', { char: '<b>' }]] }],
+  ['a character that isn\'t a string', { cells: [['0,0', { char: 1 }]] }],
+  ['a bad color', { cells: [['0,0', { fg: 'red' }]] }],
+  ['a short hex', { cells: [['0,0', { bg: '#fff' }]] }],
+  ['an entry with nothing in it', { cells: [['0,0', {}]] }],
+  ['an entry with something else in it', { cells: [['0,0', { char: 'a', wide: 'lead' }]] }],
+  ['an entry that is a list', { cells: [['0,0', ['a']]] }],
+  ['an entry that is a string', { cells: [['0,0', 'a']] }],
+  ['an entry that is missing', { cells: [['0,0', undefined]] }],
+  ['cells not an array', { cells: 'x' }],
+  ['cells missing', { cells: undefined }],
+  ['runs not an array', { runs: {} }],
+  ['a run off the layer', { runs: [[19, 0, 2, 1]] }],
+  ['a run below the layer', { runs: [[0, 8, 1, 1]] }],
+  ['a run of negative length', { runs: [[5, 0, -1, 1]] }],
+  ['a run of no length', { runs: [[5, 0, 0, 1]] }],
+  ['a run of fractional length', { runs: [[5, 0, 1.5, 1]] }],
+  ['a run starting before the layer', { runs: [[-1, 0, 2, 1]] }],
+  ['a run that isn\'t four numbers', { runs: [[0, 0, 1]] }],
+  ['a run with a text length', { runs: [[0, 0, '1', 1]] }],
+  ['rgba not a whole number', { runs: [[0, 0, 1, 1.5]] }],
+  ['rgba negative', { runs: [[0, 0, 1, -1]] }],
+  ['rgba past 32 bits', { runs: [[0, 0, 1, 0x100000000]] }],
+  ['rgba text', { runs: [[0, 0, 1, '255']] }],
+  ['rgba not a number', { runs: [[0, 0, 1, NaN]] }],
+  ['a stroke id over 40 characters', { stroke: 'x'.repeat(41) }],
+  ['an empty stroke id', { stroke: '' }],
+  ['a stroke id that isn\'t text', { stroke: 7 }],
+  ['no stroke id', { stroke: undefined }],
+])('readChange refuses %s', (_, bad) => {
+  assert.equal(readChange({ ...good(), ...bad }, GRID), null);
+});
+
+test('readChange refuses what isn\'t an object, without throwing', () => {
+  for (const msg of [null, undefined, 5, 'x', [], () => {}]) assert.equal(readChange(msg, GRID), null);
+});
+
+test('readChange checks a big change with each position visited once', () => {
+  const cells = Array.from({ length: 3000 }, (_, i) => [`${i % 10},${i % 4}`, { char: 'a' }]);
+  const runs = Array.from({ length: 3000 }, (_, i) => [i % 10, i % 8, 1, i]);
+  assert.equal(readChange({ stroke: 's', cells, runs }, GRID).cells, cells);
+  cells.push(['10,0', null]);
+  assert.equal(readChange({ stroke: 's', cells, runs }, GRID), null);
+});
+
+test('an artist\'s change is a message, and a project a lot', () => {
+  assert.equal(MOST_ARTIST_BYTES, CHUNK_BYTES);
+  assert.ok(MOST_CHANGE_BYTES < MOST_ARTIST_BYTES);
+  assert.equal(MOST_PROJECT_BYTES, 256 * 1024 * 1024);
+});
+
+const parts = () => ({
+  settings: { cols: 6, rows: 4, hasPaint: true, paintScale: 1, baseScale: 1 },
+  imageBuffer: new Uint8Array([1, 2, 3, 4, 5]).buffer,
+  paintBlob: new Blob([new Uint8Array([9, 8, 7])]),
+  baseBlob: new Blob([new Uint8Array([6, 6])]),
+  editCells: new Map([['0,0', Object.freeze({ char: 'a', fg: '#ffffff' })], ['5,3', Object.freeze({ bg: '#000000' })]]),
+  baseRecords: withPins(EMPTY_BASE, [{ col: 2, row: 1, char: 'x' }]),
+});
+
+const bigParts = () => {
+  let seed = 7;
+  const noise = new Uint8Array(3 * CHUNK_BYTES);   // doesn't compress, so it takes several chunks
+  for (let i = 0; i < noise.length; i++) noise[i] = (seed = (Math.imul(seed, 1103515245) + 12345) | 0) >>> 16;
+  return { ...parts(), imageBuffer: noise.buffer };
+};
+
+test('packProject and unpackProject give back the same parts', async () => {
+  const chunks = await packProject(parts());
+  assert.ok(chunks.every((c) => c instanceof Uint8Array && c.length > 0 && c.length <= CHUNK_BYTES));
+  const back = await unpackProject(chunks, { mostBytes: MOST_PROJECT_BYTES });
+  const bytes = (buffer) => [...new Uint8Array(buffer)];
+  const settings = { ...parts().settings };
+  delete settings.hasPaint;   // the reader takes it to decide the paint buffer
+  assert.deepEqual(back.settings, settings);
+  assert.deepEqual(bytes(back.imageBuffer), [1, 2, 3, 4, 5]);
+  assert.deepEqual(bytes(back.paintBuffer), [9, 8, 7]);
+  assert.deepEqual(bytes(back.baseBuffer), [6, 6]);
+  assert.deepEqual([...back.editCells], [...parts().editCells]);
+  assert.deepEqual([...back.baseRecords.pins], [...parts().baseRecords.pins]);
+  assert.equal(back.baseRecords.pins.size, 1);
+});
+
+test('a project with no paint or base pixels packs and unpacks', async () => {
+  const back = await unpackProject(await packProject({ ...parts(), paintBlob: null, baseBlob: null }), { mostBytes: MOST_PROJECT_BYTES });
+  assert.equal(back.paintBuffer, null);
+  assert.equal(back.baseBuffer, null);
+});
+
+test('a big project is several chunks and arrives whole', async () => {
+  const chunks = await packProject(bigParts());
+  assert.ok(chunks.length > 2);
+  assert.ok(chunks.every((c) => c.length <= CHUNK_BYTES));
+  assert.equal((await unpackProject(chunks, { mostBytes: MOST_PROJECT_BYTES })).imageBuffer.byteLength, 3 * CHUNK_BYTES);
+});
+
+test('unpackProject refuses more than the limit, and missing or repeated chunks, with null', async () => {
+  const chunks = await packProject(bigParts());
+  const unpack = (list, mostBytes = MOST_PROJECT_BYTES) => unpackProject(list, { mostBytes });
+  assert.equal(await unpack(chunks, 1000), null);
+  assert.equal(await unpack(chunks.slice(1)), null);   // the first is missing
+  assert.equal(await unpack(chunks.slice(0, -1)), null);   // the last is missing
+  assert.equal(await unpack([...chunks.slice(0, 1), ...chunks.slice(2)]), null);   // one in the middle
+  assert.equal(await unpack([chunks[0], chunks[0], ...chunks.slice(1)]), null);   // the first twice
+  assert.equal(await unpack([...chunks.slice(0, 2), chunks[1], ...chunks.slice(2)]), null);   // one in the middle twice
+  assert.equal(await unpack([...chunks, chunks.at(-1)]), null);   // the last twice
+  assert.equal(await unpack([]), null);
+  assert.equal(await unpack('x'), null);
+  assert.equal(await unpack([chunks[0], 'x']), null);
+  assert.equal(await unpack([chunks[0], undefined, ...chunks.slice(2)]), null);
+  assert.ok(await unpack(chunks));
+});
+
+test('unpackProject refuses what isn\'t a project, with null', async () => {
+  const gzipped = async (bytes) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+  assert.equal(await unpackProject([await gzipped(new TextEncoder().encode('not a project at all'))], { mostBytes: MOST_PROJECT_BYTES }), null);
+  assert.equal(await unpackProject([new Uint8Array(100)], { mostBytes: MOST_PROJECT_BYTES }), null);
+});
