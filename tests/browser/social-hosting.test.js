@@ -106,7 +106,7 @@ test('each watcher gets the room, the latest messages, then art deep-equal to th
     expect(log.views).toEqual([{ col: 1, row: 2, cols: 3, rows: 4, zoom: 1 }]);
   }
   for (const channel of new Set(sends.sent().map((m) => m.channel))) {
-    expect(sends.sent().filter((m) => m.channel === channel && m.t !== 'presence').map((m) => m.t)).toEqual(['room', 'history', 'snapshot', 'view']);   // who came goes as they come
+    expect(sends.sent().filter((m) => m.channel === channel && m.t !== 'presence').map((m) => m.t)).toEqual(['room', 'history', 'artists', 'snapshot', 'view']);   // who came goes as they come
   }
   expect(lastList(r)).toEqual([
     { peer: 'p1', sub: 'u_p1', name: 'p1', guest: false, tracking: true, connected: true },
@@ -859,4 +859,135 @@ test('a project that won\'t pack still lets out what waited, and leaves the room
   expect(sends.sent().map((m) => m.t)).toEqual(['numbered']);
   expect(w.projecting).toBe(false);
   expect(r.log.p1.watch.ready).toBe(true);
+});
+
+// A channel as Chromium's is: send throws past 16 MiB buffered. It drains in steps, as a slow network does.
+const CHANNEL_LIMIT = 16 * 1024 * 1024;
+function fullChannel(real) {
+  const channel = {
+    readyState: 'open', bufferedAmount: 0, bufferedAmountLowThreshold: real.bufferedAmountLowThreshold, onbufferedamountlow: real.onbufferedamountlow,
+    sent: [], most: 0,
+    send(data) {
+      const size = typeof data === 'string' ? data.length : data.byteLength;
+      if (channel.bufferedAmount + size > CHANNEL_LIMIT) throw new DOMException('RTCDataChannel send queue is full', 'OperationError');
+      channel.bufferedAmount += size;
+      channel.most = Math.max(channel.most, channel.bufferedAmount);
+      channel.sent.push(data);
+    },
+    drain() {
+      if (channel.bufferedAmount <= channel.bufferedAmountLowThreshold) return;
+      channel.bufferedAmount = channel.bufferedAmountLowThreshold;
+      channel.onbufferedamountlow?.();
+    },
+  };
+  return channel;
+}
+
+test('a project past what a channel buffers goes at the pace it drains, and the artist stays', async () => {
+  const r = await room(['p1']);
+  drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  const w = connected(r, 'p1'), channel = fullChannel(w.channel), close = vi.spyOn(w.conn, 'close');
+  w.channel = channel;
+  w.drawing = true;
+  const chunks = Array.from({ length: 400 }, () => new Uint8Array(CHUNK_BYTES));   // 26 MB
+  r.host.project = () => ({ n: 1, epoch: 'e', chunks: Promise.resolve(chunks) });
+  let done = false;
+  const going = r.host.sendProject(w).then(() => { done = true; });
+  await later();
+  r.host.sendAll({ t: 'numbered', n: 2 });
+  expect(done).toBe(false);
+  expect(w.projecting).toBe(true);
+  expect(channel.sent.filter((d) => typeof d === 'string' && JSON.parse(d).t === 'numbered')).toEqual([]);
+  while (!done) {
+    channel.drain();
+    await later();
+  }
+  await going;
+  expect(close).not.toHaveBeenCalled();
+  expect(channel.sent.filter((d) => typeof d !== 'string').length).toBe(400);
+  expect(channel.most).toBeLessThanOrEqual(CHANNEL_LIMIT);
+  expect(channel.sent.filter((d) => typeof d === 'string').map((d) => JSON.parse(d).t).slice(0, 2)).toEqual(['project-start', 'numbered']);
+  expect(w.projecting).toBe(false);
+});
+
+test('art waits for a project\'s chunks, and that artist is brought up to date after', async () => {
+  const r = await room(['p1']);
+  drawingCalls(r);
+  await seated(r, 'p1');
+  await expect.poll(() => r.log.p1.arts.length, PATIENT).toBe(1);
+  r.host.setArtists(['u_p1']);
+  const w = connected(r, 'p1'), channel = fullChannel(w.channel);
+  w.channel = channel;
+  w.drawing = true;
+  const chunks = Array.from({ length: 200 }, () => new Uint8Array(CHUNK_BYTES));
+  r.host.project = () => ({ n: 1, epoch: 'e', chunks: Promise.resolve(chunks) });
+  let done = false;
+  r.host.sendProject(w).then(() => { done = true; });
+  await later();
+  const chunksThen = channel.sent.length;
+  r.host.setArt(changed(art(), [5]));   // cells
+  r.host.setArt(art('z'.repeat(COLS * LINES)));   // too much: a snapshot
+  await wait(50);
+  const texts = () => channel.sent.filter((d) => typeof d === 'string').map((d) => JSON.parse(d).t);
+  expect(texts()).not.toContain('cells');
+  expect(texts()).not.toContain('snapshot');
+  expect(channel.sent.length).toBe(chunksThen);
+  expect(w.behind).toBe(true);
+  channel.onbufferedamountlow();   // a drain mid-project doesn't let art through
+  await wait(30);
+  expect(texts()).not.toContain('snapshot');
+  while (!done) {
+    channel.drain();
+    await later();
+  }
+  await expect.poll(() => texts().includes('snapshot'), PATIENT).toBe(true);
+  expect(w.behind).toBe(false);
+  expect(channel.sent.filter((d) => typeof d !== 'string').length).toBeGreaterThan(200);
+  expect(channel.sent.lastIndexOf(chunks[199])).toBeLessThan(channel.sent.findIndex((d) => typeof d === 'string' && JSON.parse(d).t === 'snapshot'));
+});
+
+test('someone put back to watching in the middle of a project is still sent the rest: their watcher is expecting it', async () => {
+  const r = await room(['p1']);
+  drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  const w = connected(r, 'p1'), channel = fullChannel(w.channel);
+  w.channel = channel;
+  w.drawing = true;
+  const chunks = Array.from({ length: 200 }, () => new Uint8Array(CHUNK_BYTES));
+  r.host.project = () => ({ n: 1, epoch: 'e', chunks: Promise.resolve(chunks) });
+  let done = false;
+  r.host.sendProject(w).then(() => { done = true; });
+  await later();
+  r.host.setArtists([]);
+  while (!done) {
+    channel.drain();
+    await later();
+  }
+  expect(channel.sent.filter((d) => typeof d !== 'string').length).toBe(200);
+});
+
+test('a connection gone while a project waits to drain ends the wait', async () => {
+  const r = await room(['p1']);
+  drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  const w = connected(r, 'p1'), channel = fullChannel(w.channel);
+  w.channel = channel;
+  w.drawing = true;
+  r.host.project = () => ({ n: 1, epoch: 'e', chunks: Promise.resolve(Array.from({ length: 200 }, () => new Uint8Array(CHUNK_BYTES))) });
+  const going = r.host.sendProject(w);
+  await later();
+  r.host.drop('p1');
+  await going;
+  expect(channel.sent.filter((d) => typeof d !== 'string').length).toBeLessThan(200);
+});
+
+test('who may draw goes to someone connecting even when no one may', async () => {
+  const sends = watchSends();
+  const r = await room(['p1']);
+  await seated(r, 'p1');
+  await expect.poll(() => sends.sent().find((m) => m.t === 'artists')?.subs, PATIENT).toEqual([]);
 });
