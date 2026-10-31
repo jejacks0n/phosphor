@@ -20,6 +20,9 @@ import { MOST_KEPT, signedText } from '@/social/chat';
 import { fontFor } from '@/social/wire';
 import { openPeer } from '@/social/peer';
 import { passKey } from '@/social/pass';
+import { ROOM_AWAY_WORDS } from '@/social/messages';
+import { keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
+import { toastMessage } from '@/composables/useToast';
 import { newSession, removedCount } from '@/social/session';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
@@ -31,6 +34,8 @@ const ID = 'abcdefghij';
 const PATIENT = { timeout: 5000 };   // connecting and packing a snapshot take longer on a busy machine
 const later = () => new Promise((resolve) => setTimeout(resolve, 0));
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const RECORD = 'phosphor-hosting';
+const gradient = await (await fetch('/tests/fixtures/images/gradient.png')).blob();   // before fetch is the fake's
 
 const keys = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
 const keyB64 = toBase64url(new Uint8Array(await crypto.subtle.exportKey('raw', keys.publicKey)));
@@ -51,6 +56,8 @@ let deleteDatabase, server, social, room, project, toClose;
 beforeEach(async () => {
   deleteDatabase = ownSocialDatabase('room-store');
   localStorage.removeItem('phosphor-reported');
+  sessionStorage.removeItem(RECORD);
+  toastMessage.value = null;
   forgetKey();
   await deleteDatabase();
   useFakeSockets();
@@ -288,10 +295,13 @@ test('Review focus 1: a dropped socket reconnects with a new host, and hosting w
   expect(again.sent.filter((m) => m.type === 'signal-to')).toEqual([]);
 });
 
-test('Review focus 4: a pagehide sends end', async () => {
+test('a pagehide doesn\'t end the room, and leaves a record', async () => {
   const socket = await goLive();
+  sessionStorage.removeItem(RECORD);
   window.dispatchEvent(new PageTransitionEvent('pagehide'));
-  expect(socket.sent.at(-1)).toEqual({ type: 'end' });
+  expect(socket.sent.map((m) => m.type)).not.toContain('end');
+  expect(socket.closed).toBe(false);
+  expect(keptHostingRecord()).toMatchObject({ sub: 'u_1', id: ID, link: room.link, hasPassword: false, peopleOpen: false, muted: [], view: null });
 });
 
 test('endRoom sends end, closes the socket and the watchers\' connections, and goes back to the lobby', async () => {
@@ -1464,4 +1474,262 @@ test('While your pass says you\'re silenced, say sends nothing', async () => {
   expect(room.chat.map((m) => m.text)).toEqual(['hi']);
   social.claims = { ...social.claims, silencedUntil: Date.now() - 1 };
   expect(await room.say('later')).toBe(true);
+});
+
+// A host's reload. The page goes: what its pagehide left stays, its socket closes without an end, and the
+// stores are new (with the art back, unless art is false).
+async function reload({ art = true } = {}) {
+  window.dispatchEvent(new PageTransitionEvent('pagehide'));
+  const record = sessionStorage.getItem(RECORD);
+  const connection = room._connection;
+  room._connection = null;
+  connection?.close();
+  room.close();
+  sessionStorage.setItem(RECORD, record);
+  ({ project } = await createTestApp());
+  social = useSocialStore();
+  room = useRoomStore();
+  if (art) await openArt();
+}
+
+async function openArt() {
+  await project.setImageFromFile(new File([gradient], 'gradient.png', { type: gradient.type }));
+  Object.assign(project, { aspectLock: false, cols: 8, rows: 8 });
+  project.render();
+  await settle(project);
+}
+
+// The resumed room's socket (the test's second), greeted.
+async function greeted() {
+  const socket = await lastSocket(2);
+  socket.accept();
+  await vi.waitFor(() => expect(socket.sent[0]?.type).toBe('host'));
+  return socket;
+}
+
+const plain = (value) => JSON.parse(JSON.stringify(value));
+
+test('the record round-trips RoomStore', async () => {
+  const socket = await goLive();
+  await watcherOn(socket);
+  await room.say('mine');
+  await room.say('gone');
+  room.deleteMessage(room.chat.at(-1).id);
+  const pass = await passFor('u_p1', 'p1');
+  room._host.post('chat', { pass, id: 'theirs', ts: 1000, text: 'theirs', sig: 's' });
+  room.mute('u_p1', true);
+  room._host.post('chat', { pass, id: 'hushed', ts: 2000, text: 'hushed', sig: 's' }, 'u_p1');
+  room.pinLobby({ col: 1, row: 2 });
+  room.peopleOpen = true;
+  room.hasPassword = true;
+  await expect.poll(() => room.session.liveSince).not.toBe(null);
+  const fields = () => plain({
+    role: room.role, id: room.id, link: room.link, room: room.room, hasPassword: room.hasPassword, session: room.session,
+    lobbyPin: room.lobbyPin, peopleOpen: room.peopleOpen, muted: room.muted,
+  });
+  const before = fields();
+  const chat = plain(room.chat).map((m) => (m.deleted ? { id: m.id, ts: m.ts, text: '', pass: null, sig: null, sub: null, name: null, host: false, mine: false, deleted: true } : m));
+  expect(chat.map((m) => [m.text, !!m.mine, !!m.host, !!m.muted, !!m.deleted])).toEqual([
+    ['', false, false, false, false],   // p1 joined
+    ['mine', true, true, false, false],
+    ['', false, false, false, true],
+    ['theirs', false, false, false, false],
+    ['hushed', false, false, true, false],
+  ]);
+
+  await reload();
+  expect(socket.sent.map((m) => m.type)).not.toContain('end');
+  room.resume();
+  await lastSocket(2);
+  expect(fields()).toEqual(before);
+  expect(before.session.liveSince).toBeGreaterThan(0);
+  expect(plain(room.chat)).toEqual(chat);
+  expect(room._host.muted.has('u_p1')).toBe(true);
+  expect(room._host.returning.has('u_p1')).toBe(true);
+});
+
+test('resume() sets role, id and status \'reconnecting\' synchronously', async () => {
+  await goLive();
+  await reload({ art: false });
+  room.resume();
+  expect([room.role, room.id, room.status]).toEqual(['host', ID, 'reconnecting']);
+});
+
+test('resume() with no record, or one that can\'t be read, changes nothing', async () => {
+  const good = { sub: 'u_1', id: ID, link: 'l', room: {}, session: newSession(), muted: [], host: { log: [], only: [], removed: [], here: [] } };
+  for (const bad of [null, 'not json', '{}', '"text"', JSON.stringify({ ...good, id: 'NOT A ROOM' }), JSON.stringify({ ...good, sub: undefined }), JSON.stringify({ ...good, room: null }),
+    JSON.stringify({ ...good, session: null }), JSON.stringify({ ...good, host: undefined }), JSON.stringify({ ...good, host: { ...good.host, only: [1] } })]) {
+    if (bad === null) sessionStorage.removeItem(RECORD);
+    else sessionStorage.setItem(RECORD, bad);
+    expect(() => room.resume()).not.toThrow();
+    expect([room.role, room.id, room.status, room._host]).toEqual([null, null, null, null]);
+  }
+  await later();
+  expect(sockets).toHaveLength(0);
+});
+
+test('resume() greets with host once the account is known and the document is there', async () => {
+  await goLive();
+  await reload({ art: false });
+  room.resume();
+  await social.boot();
+  await expect.poll(() => social.claims?.sub).toBe('u_1');
+  await wait(50);
+  expect(sockets).toHaveLength(1);
+  await openArt();
+  await greeted();
+});
+
+test('a restored host\'s hosting keeps liveSince and sends the art to the returning watcher', async () => {
+  const socket = await goLive();
+  const log = await watcherOn(socket);
+  await expect.poll(() => room.session.liveSince).not.toBe(null);
+  const since = room.session.liveSince;
+  await reload();
+  await expect.poll(() => log.states.at(-1), PATIENT).toBe('lost');
+  room.resume();
+  const again = await greeted();
+  relay(again, 'p1', log.watch);
+  const arts = log.arts.length;
+  again.receive({ type: 'hosting', room: info({ count: 1 }), peers: [{ peer: 'p1', pass: await passFor('u_p1', 'p1') }] });
+  expect(room.status).toBe('live');
+  await expect.poll(() => log.arts.length, PATIENT).toBeGreaterThan(arts);
+  expect(room.session.liveSince).toBe(since);
+  expect(room.chat.filter((m) => m.presence === 'joined')).toHaveLength(1);
+});
+
+test.each([
+  ['a different account', () => { server.session = member({ id: 'u_2', username: 'someone-else' }); }],
+  ['signed out', () => { server.session = null; }],
+])('%s drops the record and stays quiet', async (_, away) => {
+  await goLive();
+  await reload();
+  away();
+  room.resume();
+  await expect.poll(() => room.role).toBe(null);
+  await wait(50);
+  expect(sockets).toHaveLength(1);
+  expect(social.notice).toBe(null);
+  expect(toastMessage.value).toBe(null);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+});
+
+test('refused unavailable on resume drops the record, says ROOM_AWAY_WORDS, and the art stays', async () => {
+  await goLive();
+  await reload();
+  const { image } = project;
+  room.resume();
+  const again = await greeted();
+  again.receive({ type: 'refused', reason: 'unavailable' });
+  expect(room.role).toBe(null);
+  expect(ROOM_AWAY_WORDS).toBe('Your room ended while the page was away');
+  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+  expect(project.image).toBe(image);
+  expect(again.sent.map((m) => m.type)).not.toContain('end');
+});
+
+test('ended before the first hosting says ROOM_AWAY_WORDS', async () => {
+  await goLive();
+  await reload();
+  room.resume();
+  (await greeted()).receive({ type: 'ended' });
+  expect(room.role).toBe(null);
+  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+});
+
+test('ended after a resumed room\'s first hosting, as today, says nothing', async () => {
+  await goLive();
+  await reload();
+  room.resume();
+  const again = await greeted();
+  again.receive({ type: 'hosting', room: info(), peers: [] });
+  again.receive({ type: 'ended' });
+  expect(room.role).toBe(null);
+  expect(social.notice).toBe(null);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+});
+
+test('no document once settled drops the record and says ROOM_AWAY_WORDS', async () => {
+  await goLive();
+  await reload({ art: false });
+  room.resume();
+  await social.boot();
+  await expect.poll(() => social.claims?.sub).toBe('u_1');
+  useWorkspaceStore().documentSettled = true;
+  await expect.poll(() => room.role).toBe(null);
+  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+  expect(sockets).toHaveLength(1);
+});
+
+test('a failed resume toasts when the tab isn\'t SOCIAL', async () => {
+  await goLive();
+  await reload();
+  useWorkspaceStore().editorTab = 'output';
+  room.resume();
+  (await greeted()).receive({ type: 'refused', reason: 'unavailable' });
+  expect(toastMessage.value).toBe(ROOM_AWAY_WORDS);
+});
+
+test('a failed resume on the SOCIAL tab doesn\'t toast: the notice is in view', async () => {
+  await goLive();
+  await reload();
+  useWorkspaceStore().editorTab = 'social';
+  room.resume();
+  (await greeted()).receive({ type: 'refused', reason: 'unavailable' });
+  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(toastMessage.value).toBe(null);
+});
+
+test('End room, signing out and starting another room forget the record', async () => {
+  await goLive();
+  expect(keptHostingRecord().id).toBe(ID);
+  room.pinLobby({ col: 1, row: 2 });   // a write on its way doesn't bring it back
+  room.endRoom();
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+  await wait(1100);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+
+  await startPublic();
+  expect(keptHostingRecord().id).toBe(ID);
+  await lastSocket(2);
+  expect(await social.signOut()).toBe(true);
+  expect(sessionStorage.getItem(RECORD)).toBe(null);
+
+  server.session = member();
+  await social.refreshMe();
+  await startPublic();
+  await vi.waitFor(() => expect(keptHostingRecord()?.id).toBe(ID));
+  await room.say('old');
+  window.dispatchEvent(new PageTransitionEvent('pagehide'));
+  server.route('POST /api/rooms', () => [200, { id: 'zyxwvutsrq', link: 'http://localhost/?room=zyxwvutsrq' }]);
+  await startPublic();
+  expect(keptHostingRecord()).toMatchObject({ id: 'zyxwvutsrq', host: { log: [] } });
+});
+
+test('the record follows the room about once a second, with no pagehide', async () => {
+  await goLive();
+  await room.say('kept');
+  const setItem = vi.spyOn(Storage.prototype, 'setItem');
+  for (const col of [1, 2, 3, 4, 5]) {
+    room.pinLobby({ col, row: 0 });
+    await later();
+  }
+  await expect.poll(() => keptHostingRecord().lobbyPin, { timeout: 2000 }).toEqual({ col: 5, row: 0 });
+  expect(keptHostingRecord().host.log).toHaveLength(1);
+  expect(setItem.mock.calls.filter(([key]) => key === RECORD).length).toBeLessThanOrEqual(2);
+});
+
+test('a write that won\'t fit leaves the last good record', async () => {
+  await goLive();
+  window.dispatchEvent(new PageTransitionEvent('pagehide'));
+  const good = sessionStorage.getItem(RECORD);
+  const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Full', 'QuotaExceededError'); });
+  room.pinLobby({ col: 1, row: 2 });
+  expect(() => window.dispatchEvent(new PageTransitionEvent('pagehide'))).not.toThrow();
+  expect(setItem).toHaveBeenCalled();
+  expect(sessionStorage.getItem(RECORD)).toBe(good);
+  expect(keepHostingRecord({})).toBe(false);
 });
