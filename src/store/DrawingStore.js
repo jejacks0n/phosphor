@@ -19,6 +19,7 @@ export const MERGE_WARNING = 'Strokes merged into the image can\'t be undone by 
 export const useDrawingStore = defineStore('drawing', () => {
   const project = useProjectStore(), workspace = useWorkspaceStore();
   const artists = ref([]);        // the subs who may draw: everyone in the room hears this
+  const artistNames = ref({});    // a watcher's: sub -> name, of those of them the host says are here
   const invited = ref([]);        // a host's: the subs asked, who haven't answered
   const invitation = ref(false);  // a watcher's: the host has asked
   const paused = ref(false);      // an artist's: no host to number anything
@@ -108,6 +109,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     cursorTimer ??= setTimeout(() => {
       cursorTimer = null;
       host?.sendAll({ t: 'cursors', ...cursors.value });
+      host?.setArtistViews(Object.fromEntries(Object.entries(cursors.value).filter(([sub, { view }]) => view && sub !== me()).map(([sub, { view }]) => [sub, view])));
     }, CURSORS_EVERY_MS);
   }
 
@@ -175,9 +177,15 @@ export const useDrawingStore = defineStore('drawing', () => {
     myName = name;
   }
 
-  // Where this person's pointer is on the art, a cell or null: for others to see.
+  // Where this person's pointer is on the art, a cell or null: for others to see. Their view goes with it, and by
+  // itself when it moves without the pointer (a wheel, a scrollbar, the window): someone may be following it.
+  let pointedAt = null;
   function pointAt(at) {
+    pointedAt = at;
     if (project._sharing && !paused.value) myCursor.push({ at, view: workspace.sharedView });
+  }
+  function viewMoved() {
+    if (mayDraw.value && !paused.value) myCursor.push({ at: pointedAt, view: workspace.sharedView });
   }
 
   // How the document being replaced is written out first (autosave's).
@@ -249,8 +257,9 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   // On the list, and having said yes: hello, first thing, and then the project or what's missed. Off it, the
   // art stays open as an ordinary document, unless this list simply left the host before my yes reached it.
-  function heardArtists(subs) {
+  function heardArtists(subs, names = {}) {
     artists.value = subs;
+    artistNames.value = names;
     const mine = subs.includes(me());
     if (mine) awaitingList = false;
     if (mine && hasAccepted()) sayHello();
@@ -343,6 +352,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     host = room = null;
     awaitingList = goToArt = false;
     artists.value = [];
+    artistNames.value = {};
     invited.value = [];
     connected.value = [];
     peersOn = new Set();
@@ -352,8 +362,8 @@ export const useDrawingStore = defineStore('drawing', () => {
   }
 
   return {
-    artists, invited, invitation, paused, waiting, connected, cursors, showCursors, notice, mayDraw, othersHere, hostOnly, offWithOthers, others,
-    hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, autosavedBy,
+    artists, artistNames, invited, invitation, paused, waiting, connected, cursors, showCursors, notice, mayDraw, othersHere, hostOnly, offWithOthers, others,
+    hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, autosavedBy,
     watchCallbacks, watching, heardArtists, accept, decline, connection, close,
   };
 });

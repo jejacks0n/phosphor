@@ -113,6 +113,10 @@ export const useRoomStore = defineStore('room', {
     hostView: null,      // a watcher's: { col, row, cols, rows, zoom }
     lookingAt: null,     // a watcher's: the cell in the middle of the art in view { middleCol, middleRow } (RoomArt's looking-at)
     tracking: true,
+    following: null,     // a watcher's: the sub of the host (it starts there) or of the artist whose view is the one tracked
+    showEveryone: false, // a watcher's: the others' boxes and tags show too
+    showBox: true,       // a watcher's: the followed one's box shows (false: just followed)
+    artistViews: {},     // a watcher's: sub -> view, of the artists the host has sent
     artZoom: 1,          // a watcher's: the zoom the art is drawn at; while tracking, the host's, or less to fit their view
     artFit: 1,           // a watcher's: the biggest zoom that fits all of the host's view in the window
     chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence?, muted? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
@@ -165,6 +169,27 @@ export const useRoomStore = defineStore('room', {
     },
     // When your silence ends (epoch ms), while your pass says you're silenced.
     silencedUntil: () => useSocialStore().claims?.silencedUntil ?? null,
+    // A watcher's: the view being followed, the host's or an artist's, or null while there's none yet. The host's sub is
+    // read from the room each time: it can change.
+    followedView() {
+      return !this.following || this.following === this.room?.hostSub ? this.hostView : this.artistViews[this.following] ?? null;
+    },
+    // A watcher's: who can be followed, the host and the artists the host has named.
+    followable() {
+      const drawing = useDrawingStore();
+      const host = this.room?.hostSub ? [{ sub: this.room.hostSub, name: this.room.host, host: true }] : [];
+      return [...host, ...drawing.artists.filter((sub) => drawing.artistNames[sub]).map((sub) => ({ sub, name: drawing.artistNames[sub] }))];
+    },
+    followedName() {
+      return this.followable.find((p) => p.sub === (this.following ?? this.room?.hostSub))?.name ?? this.room?.host ?? null;
+    },
+    // A watcher's: the boxes of the others, with Show everyone on.
+    otherBoxes() {
+      if (!this.showEveryone) return [];
+      const followed = this.following ?? this.room?.hostSub;
+      return this.followable.filter((p) => p.sub !== followed).map((p) => ({ ...p, view: p.host ? this.hostView : this.artistViews[p.sub] })).filter((p) => p.view);
+    },
+
     // Where the lobby picture looks: the cell it's pinned to, else the middle of the shared view.
     lobbyPlace() {
       if (this.lobbyPin !== null) return { ...this.lobbyPin };
@@ -405,13 +430,23 @@ export const useRoomStore = defineStore('room', {
         onChat: (event) => this.chatHeard(event),
         onRoom: ({ name, welcome }) => { this.room = { ...this.room, name, welcome }; },   // the host is joined's
         onArt: (art) => { this.art = art; },
-        onView: (view) => {
-          this.hostView = view;
-          if (this.tracking) this.artZoom = Math.min(view.zoom, this.artFit);
+        onView: (view, who) => {
+          if (who === undefined) this.hostView = view;
+          else if (drawing.artists.includes(who)) this.artistViews = { ...this.artistViews, [who]: view };   // the host's word on who, from a stranger
+          else return;
+          if (who === undefined ? this.followedView === this.hostView : who === this.following) this.refit();
+        },
+        onViews: (views) => {
+          this.artistViews = Object.fromEntries(Object.entries(views).filter(([sub]) => drawing.artists.includes(sub)));
+          this.refit();
         },
         onState: (state) => this.watchState(state),
       }));
       drawing.watching(this._watch, { me: () => social.claims?.sub, roomId: id, roomName: () => this.room?.name });
+      this._stops.push(watch(() => drawing.artists, (list) => {   // put back to watching: the host's view is the one to follow
+        this.artistViews = Object.fromEntries(Object.entries(this.artistViews).filter(([sub]) => list.includes(sub)));
+        if (this.following && this.following !== this.room?.hostSub && !list.includes(this.following)) this.follow(this.room?.hostSub);
+      }));
       this.connect({ type: 'join', ...(password === undefined ? {} : { password }) }, { liveOn: ['joined'], endOn: ['refused', 'removed', 'ended', 'replaced'] });
       // The host judges the pass this watcher joined with: confirming your email mid-room joins again, with the new one.
       this._stops.push(watch(() => social.claims?.verified, (now, was) => {
@@ -426,13 +461,36 @@ export const useRoomStore = defineStore('room', {
 
     setTracking(on) {
       this.tracking = on;
-      if (on) this.artZoom = Math.min(this.hostView?.zoom ?? 1, this.artFit);
+      this.refit();
       this._watch?.setTracking(on);
     },
 
     fitArt(fit) {
       this.artFit = fit;
-      if (this.tracking) this.artZoom = Math.min(this.hostView?.zoom ?? 1, fit);
+      this.refit();
+    },
+
+    // While tracking, the zoom of the view followed, or less to fit all of it in the window.
+    refit() {
+      if (this.tracking) this.artZoom = Math.min(this.followedView?.zoom ?? 1, this.artFit);
+    },
+
+    // A watcher follows the host (their sub) or an artist, and tracks them. Anyone else is the host.
+    follow(sub) {
+      const host = this.room?.hostSub;
+      this.following = sub === host || useDrawingStore().artists.includes(sub) ? sub : host;
+      this._watch?.follow(this.following === host ? null : this.following);
+      this.setTracking(true);
+    },
+
+    setShowEveryone(on) {
+      this.showEveryone = on;
+      this.artistViews = Object.fromEntries(Object.entries(this.artistViews).filter(([sub]) => sub === this.following));   // the rest are the host's to send again
+      this._watch?.showEveryone(on);
+    },
+
+    setShowBox(on) {
+      this.showBox = on;
     },
 
     // A watcher's own zoom: the art stops following the host's until they track again.
@@ -476,7 +534,7 @@ export const useRoomStore = defineStore('room', {
       useWorkspaceStore().viewToRestore = null;   // it was this room's: the next art opens as usual
       Object.assign(this, {
         role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, lookingAt: null, tracking: true, artZoom: 1, artFit: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),
+        hostView: null, lookingAt: null, tracking: true, following: null, showEveryone: false, showBox: true, artistViews: {}, artZoom: 1, artFit: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),
         _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
         _refusedOnce: false, _resuming: false, _keepTimer: null,
       });
@@ -551,7 +609,7 @@ export const useRoomStore = defineStore('room', {
       const connection = this._connection, art = this.art, id = this.id;
       let picture = null;
       try {
-        if (art) picture = await thumbnailOf({ ...art, font: fontFor(art.font) }, (!this.tracking && this.lookingAt) || middleOf(this.hostView), REPORT_PICTURE);
+        if (art) picture = await thumbnailOf({ ...art, font: fontFor(art.font) }, (!this.tracking && this.lookingAt) || middleOf(this.followedView), REPORT_PICTURE);
       } catch (error) {
         console.warn('The room report\'s picture failed.', error);   // it goes without one
       }
@@ -613,6 +671,7 @@ export const useRoomStore = defineStore('room', {
       } else if (event.type === 'chat' || event.type === 'presence') {
         if (!this.chat.some((m) => m.id === event.entry.id)) {
           const row = this.chatRow(event.entry, event.claims);
+          if (this.role === 'watch' && row.presence === 'left' && row.sub === this.following && row.sub !== this.room?.hostSub) this.follow(this.room?.hostSub);   // the artist followed has gone
           this.keep([...this.chat, event.muted ? { ...row, muted: true } : row]);
           if (this.role === 'host') this.counted(event);
         }
@@ -703,6 +762,7 @@ export const useRoomStore = defineStore('room', {
           this._refusedOnce = false;
           this.status = 'waiting';
           this.room = { name: '', welcome: '', ...this.room, host: msg.hostName, hostSub: msg.hostSub };
+          this.following ??= msg.hostSub;
           break;
         case 'refused':
           this.refused(msg.reason);

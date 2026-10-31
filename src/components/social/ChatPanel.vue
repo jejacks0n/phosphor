@@ -12,8 +12,8 @@ import RoomPeople from './RoomPeople.vue';
 import ReportDialog from './ReportDialog.vue';
 
 // The chat of the room you host or watch, at the right of the whole app (every tab, while you're in
-// one): the room's name (and, watching, who hosts it, and Exit; hosting, the room menu and who is here), the
-// host's welcome pinned (with the host's Edit), the messages, and the box to write in. » folds it
+// one): the room's name (and, watching, who hosts it, and Exit; hosting, the room menu and who is here;
+// a watcher's list of who to follow is there once an artist is), the host's welcome pinned (with the host's Edit), the messages, and the box to write in. » folds it
 // to a thin rail that counts what came since. The list keeps its place: a new message scrolls it only
 // when it was already at the bottom, and earlier ones (asked for on reaching the top) go in above
 // without moving what you were reading. Someone you blocked is folded to one line (Show opens just
@@ -131,7 +131,7 @@ function askIfAtTop() {
           <button class="fold link" aria-label="Fold the chat" @click="fold(true)">»</button>
         </div>
       </header>
-      <RoomPeople v-if="room.role === 'host'" />
+      <RoomPeople v-if="room.role" />
       <p v-if="room.room?.welcome" class="pinned">
         <span>
           Pinned, from the host

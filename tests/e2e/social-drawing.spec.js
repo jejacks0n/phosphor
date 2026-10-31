@@ -740,3 +740,50 @@ test('someone gone takes their mark off every other artist\'s screen, with no po
   await expect(mark).toHaveCount(0, { timeout: 10_000 });
 });
 
+
+test('a watcher follows an artist from the people list, sees everyone only by asking, and goes back to the host when they are put back to watching', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  const watcher = await watcherPage(context, room);
+  await watcher.goto('/');
+  await joinFromCard(watcher);
+  const art = shown(watcher, 'watch-room');
+  const list = watcher.getByRole('list', { name: 'Who to follow' });
+  const choice = (name) => list.getByRole('button', { name: `Follow ${name}` });
+  await expect(choice('tin_owl')).toHaveAttribute('aria-pressed', 'false');
+  await expect(choice('ansi-fan')).toHaveAttribute('aria-pressed', 'true');   // it starts on the host
+  await expect(art.locator('.host-view')).toHaveCount(1);
+  await expect(art.getByRole('button', { name: 'Track ansi-fan' })).toBeVisible();
+  await expect(art.locator('.other-view')).toHaveCount(0);
+
+  const box = await artist.locator('.ansi-editor > article').boundingBox();
+  await artist.mouse.move(box.x + 100, box.y + 100);
+  await artist.mouse.move(box.x + 110, box.y + 100);
+  await choice('tin_owl').click();
+  await expect(choice('tin_owl')).toHaveAttribute('aria-pressed', 'true');
+  await expect(choice('ansi-fan')).toHaveAttribute('aria-pressed', 'false');
+  await expect(art.getByRole('button', { name: 'Track tin_owl' })).toBeVisible();
+  const theirs = async () => { const { col, row, cols, rows } = await store(artist, 'workspace', (w) => w.sharedView); return { col, row, cols, rows }; };
+  await expect.poll(async () => { const { col, row, cols, rows } = (await store(watcher, 'room', (r) => r.followedView)) ?? {}; return { col, row, cols, rows }; }, { timeout: 10_000 }).toEqual(await theirs());
+  await expect(art.locator('.host-view')).toHaveCount(1);
+  await expect(art.locator('.other-view')).toHaveCount(0);   // only the followed one
+
+  const everyone = list.locator('xpath=..').getByRole('checkbox', { name: 'Show everyone' });
+  await everyone.check();
+  await expect(art.locator('.other-view')).toHaveCount(1);
+  await expect(art.locator('.other-view')).toContainText('ansi-fan');
+  await everyone.uncheck();
+  await expect(art.locator('.other-view')).toHaveCount(0);
+
+  const showBox = list.locator('xpath=..').getByRole('checkbox', { name: 'Show box' });
+  await showBox.uncheck();
+  await expect(art.locator('.host-view')).toHaveCount(0);
+  expect(await store(watcher, 'room', (r) => r.following)).toBe(ARTIST.id);   // still following
+  await showBox.check();
+  await expect(art.locator('.host-view')).toHaveCount(1);
+
+  await fromMenu(host, 'Back to watching');
+  await expect(list).toHaveCount(0);   // no one to choose between: the screen is quiet again
+  await expect(art.getByRole('button', { name: 'Track ansi-fan' })).toBeVisible();
+  expect(await store(watcher, 'room', (r) => r.following === r.room.hostSub)).toBe(true);
+});

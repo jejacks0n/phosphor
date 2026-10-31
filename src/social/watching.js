@@ -12,8 +12,7 @@ import { openPeer } from './peer.js';
 import { verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
 import { PAGE, chatText, isId, signedText } from './chat.js';
-import { CHUNK_BYTES, MOST_PROJECT_BYTES, MOST_SNAPSHOT_CHUNKS, decodeChange, unpackProject, unpackSnapshot } from './wire.js';
-import { clampAnsiZoom } from '../lib/zoom.js';
+import { CHUNK_BYTES, MOST_PROJECT_BYTES, MOST_SNAPSHOT_CHUNKS, decodeChange, isSub, readNames, readView, readViews, unpackProject, unpackSnapshot } from './wire.js';
 
 const MOST_HEARD_CHARS = 256 * 1024;   // a host's text message: what a channel carries
 const MOST_WAITING = 1024;  // messages waiting to be handled: a whole snapshot's chunks and plenty more
@@ -30,17 +29,19 @@ const place = (n) => Number.isInteger(n) && n >= 0;
 export class Watch {
   constructor({
     send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = NOTHING,
-    onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING,
+    onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onViews = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING,
     takesProjects = () => false,
   }) {
     Object.assign(this, {
       send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat,
-      onNumbered, onSettings, onBase, onProject, onCheck, onCaughtUp, onCursors, onInvite, onWithdrawn, onArtists, takesProjects,
+      onNumbered, onSettings, onBase, onProject, onCheck, onCaughtUp, onCursors, onViews, onInvite, onWithdrawn, onArtists, takesProjects,
     });
     this.mostWaiting = MOST_WAITING;
     this.conn = null;
     this.channel = null;
     this.tracking = true;
+    this.following = null;   // a sub, or null for the host
+    this.everyone = false;
     this.frame = null;   // the next frame's onArt, once asked for
   }
 
@@ -54,6 +55,18 @@ export class Watch {
   setTracking(on) {
     this.tracking = on;
     this.post({ t: 'tracking', on });
+  }
+
+  // Whose view is sent: an artist's by their sub, or the host's (null). Said again on every new connection.
+  follow(sub) {
+    this.following = sub;
+    this.post({ t: 'follow', sub });
+  }
+
+  // Whether every artist's view is sent too, and the host's.
+  showEveryone(on) {
+    this.everyone = on;
+    this.post({ t: 'show-everyone', on });
   }
 
   // The watcher's own message, already signed. It shows when the host sends it back to everyone.
@@ -126,6 +139,8 @@ export class Watch {
         channel.onmessage = ({ data }) => this.hear(data, conn);
         this.onState('live');
         if (!this.tracking) this.setTracking(false);
+        if (this.following !== null) this.follow(this.following);
+        if (this.everyone) this.showEveryone(true);
       },
       onClose: ({ failed }) => {
         if (this.conn !== conn) return;   // closed here
@@ -158,6 +173,7 @@ export class Watch {
       this.close();
       this.onState('lost');
     } else if (msg.t === 'view') this.view(msg);
+    else if (msg.t === 'views') this.onViews(readViews(msg));
     else if (msg.t === 'snapshot') {
       const want = msg.chunks;
       this.gathering = Number.isInteger(want) && want >= 1 && want <= MOST_SNAPSHOT_CHUNKS ? { want, chunks: [] } : null;
@@ -171,7 +187,7 @@ export class Watch {
     else if (msg.t === 'cursors') this.onCursors(Object.fromEntries(Object.entries(msg).filter(([key]) => key !== 't')));
     else if (msg.t === 'invite') this.onInvite();
     else if (msg.t === 'withdrawn') this.onWithdrawn();
-    else if (msg.t === 'artists' && Array.isArray(msg.subs) && msg.subs.every((sub) => typeof sub === 'string')) this.onArtists(msg.subs);
+    else if (msg.t === 'artists' && Array.isArray(msg.subs) && msg.subs.every((sub) => typeof sub === 'string')) this.onArtists(msg.subs, readNames(msg.names, msg.subs));
   }
 
   drawn(msg) {
@@ -284,8 +300,10 @@ export class Watch {
     if (room.name !== null && room.welcome !== null) this.onRoom(room);
   }
 
-  view({ col, row, cols, rows, zoom }) {
-    if ([col, row, cols, rows].every(place)) this.onView({ col, row, cols, rows, zoom: typeof zoom === 'number' && zoom > 0 ? clampAnsiZoom(zoom) : 1 });
+  // The host's view, or an artist's (who is their sub, and it names no one the watcher doesn't know: the store drops it).
+  view(msg) {
+    const view = readView(msg);
+    if (view && (msg.who === undefined || isSub(msg.who))) this.onView(view, msg.who);
   }
 
   // The changed cells into the art, a copy of it once it's been given (the art given is never changed).

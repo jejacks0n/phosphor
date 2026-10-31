@@ -2059,3 +2059,116 @@ test('a write that won\'t fit leaves the last good record', async () => {
   expect(sessionStorage.getItem(RECORD)).toBe(good);
   expect(keepHostingRecord({})).toBe(false);
 });
+
+// Following: a watcher tracks the host to begin with, or an artist the host has named, and sees the others' boxes only if it asks.
+const THEIRS = { col: 10, row: 4, cols: 20, rows: 10, zoom: 0.5 };
+const THE_HOST = { col: 1, row: 2, cols: 3, rows: 4, zoom: 1 };
+async function following() {
+  const socket = await watching();
+  const posted = [];
+  room._watch.post = (msg) => { posted.push(msg); return true; };
+  room._watch.onArtists(['u_2', 'u_3'], { u_2: 'tin_owl', u_3: 'grim_reaper' });
+  room._watch.onView(THE_HOST);
+  room._watch.onView(THEIRS, 'u_2');
+  return { socket, posted };
+}
+
+test('a new watcher follows the host, and can choose the host or an artist the host has named', async () => {
+  await watching();
+  expect([room.following, room.showEveryone, room.showBox]).toEqual(['u_9', false, true]);
+  expect(room.followable).toEqual([{ sub: 'u_9', name: 'ansi-fan', host: true }]);
+  room._watch.onArtists(['u_2', 'u_3'], { u_2: 'tin_owl' });
+  expect(room.followable).toEqual([{ sub: 'u_9', name: 'ansi-fan', host: true }, { sub: 'u_2', name: 'tin_owl' }]);   // no name, nothing to show
+  expect(room.followedName).toBe('ansi-fan');
+  expect(room.otherBoxes).toEqual([]);
+});
+
+test('choosing an artist follows them: it asks the host, tracks, and the fit is their view', async () => {
+  const { posted } = await following();
+  room.setTracking(false);
+  room.follow('u_2');
+  expect([room.following, room.tracking, room.followedName]).toEqual(['u_2', true, 'tin_owl']);
+  expect(posted.filter((m) => m.t === 'follow')).toEqual([{ t: 'follow', sub: 'u_2' }]);
+  expect(room.followedView).toEqual(THEIRS);
+  expect(room.artZoom).toBe(0.5);   // their zoom
+  room.fitArt(0.3);
+  expect(room.artZoom).toBe(0.3);   // or less to fit all of their view
+  room._watch.onView({ ...THE_HOST, zoom: 0.25 });
+  expect(room.artZoom).toBe(0.3);   // the host's view moving doesn't change what's tracked
+  room._watch.onView({ ...THEIRS, zoom: 0.4 }, 'u_2');
+  expect(room.followedView.zoom).toBe(0.4);
+  room.fitArt(1);
+  expect(room.artZoom).toBe(0.4);
+
+  room.follow('u_9');   // back to the host: asking for null
+  expect([room.following, room.followedView, room.artZoom]).toEqual(['u_9', { ...THE_HOST, zoom: 0.25 }, 0.25]);
+  expect(posted.filter((m) => m.t === 'follow').at(-1)).toEqual({ t: 'follow', sub: null });
+  room.follow('u_7');   // no one the host has named: the host
+  expect(room.following).toBe('u_9');
+});
+
+test('a view of someone the watcher doesn\'t know is dropped, whoever the host says it is', async () => {
+  await following();
+  room._watch.onView(THEIRS, 'u_5');
+  room._watch.onViews({ u_5: THEIRS, u_3: THEIRS });
+  expect(Object.keys(room.artistViews)).toEqual(['u_3']);
+  room._watch.onViews({ u_2: THEIRS, [`__proto__`]: THEIRS });
+  expect(Object.keys(room.artistViews)).toEqual(['u_2']);
+});
+
+test('Show everyone adds the others\' boxes, the host\'s too, and turning it off takes them away', async () => {
+  const { posted } = await following();
+  room._watch.onViews({ u_2: THEIRS, u_3: { ...THEIRS, col: 50 } });
+  expect(room.otherBoxes).toEqual([]);   // asked for none
+  room.setShowEveryone(true);
+  expect(posted.at(-1)).toEqual({ t: 'show-everyone', on: true });
+  room._watch.onViews({ u_2: THEIRS, u_3: { ...THEIRS, col: 50 } });
+  expect(room.otherBoxes.map((b) => [b.sub, b.name, b.view.col])).toEqual([['u_2', 'tin_owl', 10], ['u_3', 'grim_reaper', 50]]);   // the host is followed
+  room.follow('u_2');
+  expect(room.otherBoxes.map((b) => [b.sub, b.view.col])).toEqual([['u_9', 1], ['u_3', 50]]);
+  room.setShowEveryone(false);
+  expect(posted.at(-1)).toEqual({ t: 'show-everyone', on: false });
+  expect(room.otherBoxes).toEqual([]);
+  expect(Object.keys(room.artistViews)).toEqual(['u_2']);   // those not followed are the host's to send again
+  expect(room.following).toBe('u_2');
+});
+
+test('hiding the box keeps following', async () => {
+  const { posted } = await following();
+  room.follow('u_2');
+  posted.length = 0;
+  room.setShowBox(false);
+  expect([room.showBox, room.following, room.tracking, room.followedView, room.artZoom]).toEqual([false, 'u_2', true, THEIRS, 0.5]);
+  expect(posted).toEqual([]);   // the screen's alone
+});
+
+test('when the followed artist leaves or is put back to watching, it goes back to the host', async () => {
+  const { posted } = await following();
+  room.follow('u_2');
+  room._watch.onArtists(['u_3'], { u_3: 'grim_reaper' });   // put back to watching
+  await vi.waitFor(() => expect(room.following).toBe('u_9'));
+  expect(posted.filter((m) => m.t === 'follow').at(-1)).toEqual({ t: 'follow', sub: null });
+  expect(room.artistViews).toEqual({});
+
+  room._watch.onArtists(['u_2', 'u_3'], { u_2: 'tin_owl', u_3: 'grim_reaper' });
+  room.follow('u_3');
+  room.chatHeard({ type: 'presence', entry: { id: 'aaaaaaaaaaaaaaaaaaaaaa', ts: 1, pass: 'x', presence: 'left' }, claims: { sub: 'u_2', name: 'tin_owl' } });
+  expect(room.following).toBe('u_3');   // someone else
+  room.chatHeard({ type: 'presence', entry: { id: 'bbbbbbbbbbbbbbbbbbbbbb', ts: 2, pass: 'x', presence: 'left' }, claims: { sub: 'u_3', name: 'grim_reaper' } });
+  expect(room.following).toBe('u_9');
+});
+
+test('a reload starts on the host again, and the choice and Show everyone go to the host again on a new connection', async () => {
+  await following();
+  room.follow('u_2');
+  room.setShowEveryone(true);
+  room.leave();
+  expect([room.following, room.showEveryone, room.showBox]).toEqual([null, false, true]);
+  await watching2();
+  expect(room.following).toBe('u_9');
+});
+
+async function watching2() {
+  const again = await joining(2);
+  again.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
+}

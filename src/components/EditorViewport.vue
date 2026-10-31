@@ -213,6 +213,7 @@ watch([mousePos, isMouseOver], ([pos, over]) => {
   const col = Math.floor(pos.x / unit.x), row = Math.floor(pos.y / unit.y / 2);
   drawingStore.pointAt(col >= 0 && row >= 0 && col < projectStore.cols && row < charRowsOf(projectStore.rows) ? { col, row } : null);
 });
+watch(() => workspaceStore.sharedView, () => drawingStore.viewMoved());   // scrolled or zoomed with the pointer still: someone may be following
 // A stroke with no number yet, while paused.
 const waitingStyle = ({ x0, y0, x1, y1 }) => {
   const display = unref(props.display), unit = props.unit;

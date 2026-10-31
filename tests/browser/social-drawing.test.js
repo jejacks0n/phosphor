@@ -1676,3 +1676,37 @@ test('an answer that lands stops the wait', async () => {
   expect(stop.mock.calls.some(([one]) => one === id)).toBe(true);
 });
 
+
+test('a watcher is told the names of the artists, and follows one: their view reaches it, also when they scroll without moving the pointer', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const wes = await join(room, 'wes');
+  await expect.poll(() => wes.drawing.artistNames, PATIENT).toEqual({ ann: 'ann' });
+  const heard = [];
+  wes.watch.onView = (view, who) => heard.push([view, who]);
+  wes.watch.follow('ann');
+  ann.watch.sendCursor({ col: 1, row: 1 }, { col: 2, row: 3, cols: 9, rows: 9 });
+  await expect.poll(() => heard.at(-1), PATIENT).toEqual([{ col: 2, row: 3, cols: 9, rows: 9, zoom: 1 }, 'ann']);
+
+  setActivePinia(ann.pinia);
+  const workspace = useWorkspaceStore();
+  Object.assign(workspace, { viewTab: 'output', ansiViewOrigin: { col: 7, row: 8 }, ansiViewSize: { cols: 5, rows: 4 } });
+  ann.drawing.viewMoved();   // what the viewport does when the view moves
+  await expect.poll(() => heard.at(-1), PATIENT).toEqual([{ col: 7, row: 8, cols: 5, rows: 4, zoom: 1 }, 'ann']);
+  ann.drawing.pointAt({ col: 3, row: 3 });
+  ann.drawing.viewMoved();
+  await expect.poll(() => room.drawing.cursors.ann?.at, PATIENT).toEqual({ col: 3, row: 3 });   // the pointer stays where it was
+});
+
+test('the host\'s own view is not an artist\'s: it is never sent as one', async () => {
+  const room = await hosting();
+  await artist(room, 'ann');
+  const wes = await join(room, 'wes');
+  const heard = [];
+  wes.watch.onView = (view, who) => heard.push([view, who]);
+  wes.watch.follow('host');
+  room.drawing.pointAt({ col: 1, row: 1 });
+  room.host.setView({ col: 4, row: 4, cols: 2, rows: 2 });
+  await expect.poll(() => heard.at(-1), PATIENT).toEqual([{ col: 4, row: 4, cols: 2, rows: 2, zoom: 1 }, undefined]);
+  expect(heard.filter(([, who]) => who !== undefined)).toEqual([]);
+});

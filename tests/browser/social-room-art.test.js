@@ -352,3 +352,71 @@ test('boxed false draws no host\'s box or tag, and still scrolls to the view whi
   await expect.poll(() => scroll.scrollTop).toBeGreaterThan(0);
   expect(seen.lookArounds).toBe(0);
 });
+
+// Following: the followed person's box is the tracked one (hostView, host); the others', with Show everyone on, are `others`.
+const others = (...names) => names.map((name, i) => ({ sub: `u_${i}`, name, view: { col: 10 + 20 * i, row: 30, cols: 10, rows: 4 } }));
+const boxes = () => [...host.querySelectorAll('.other-view')];
+
+test('a new watcher follows the host, and only that box shows', async () => {
+  await createTestApp();
+  const { box, tag, state } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 }, others: [] });
+  await expect.poll(() => box.style.width).toBe('80px');
+  expect(host.querySelectorAll('.host-view').length).toBe(1);
+  expect(boxes()).toEqual([]);
+  expect(tag().getAttribute('aria-label')).toBe('Track ansi-fan');
+  state.others = others('tin_owl');   // the host sending more than was asked for would not show unless it's handed over
+  await nextTick();
+  expect(boxes().length).toBe(1);
+});
+
+test('choosing an artist in the people list follows them: their box is the tracked one, and the fit is their view', async () => {
+  await createTestApp();
+  const fits = [];
+  const { state, box, tag } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 }, onFit: (fit) => fits.push(fit) });
+  await expect.poll(() => box.style.width).toBe('80px');
+  await frames();
+  expect(fits.at(-1)).toBe(1);
+  Object.assign(state, { host: 'tin_owl', hostView: { col: 10, row: 10, cols: 30, rows: 12 } });   // 240 x 192 px at 100%, in 200 x 100
+  await expect.poll(() => box.style.width).toBe('240px');
+  await frames();
+  await expect.poll(() => fits.at(-1)).toBeLessThan(0.75);
+  expect(tag().getAttribute('aria-label')).toBe('Track tin_owl');
+  expect(getComputedStyle(box).outlineColor).toBe(rgb(nameColor('tin_owl')));
+});
+
+test('Show everyone adds the others\' boxes and tags in their own colors, and turning it off removes them', async () => {
+  await createTestApp();
+  const { state, box } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 }, others: others('tin_owl', 'wren') });
+  await expect.poll(() => box.style.width).toBe('80px');
+  await expect.poll(() => boxes().length).toBe(2);
+  await frames();
+  const [owl, wren] = boxes();
+  expect([owl.style.left, owl.style.top, owl.style.width, owl.style.height]).toEqual(['80px', '480px', '80px', '64px']);
+  expect(owl.textContent).toContain('tin_owl');
+  expect(wren.textContent).toContain('wren');
+  expect(getComputedStyle(owl).outlineColor).toBe(rgb(nameColor('tin_owl')));
+  expect(getComputedStyle(wren).outlineColor).toBe(rgb(nameColor('wren')));
+  expect(owl.querySelector('button')).toBe(null);   // tags to read: the people list is where to choose
+  expect(owl.getAttribute('aria-hidden')).toBe('true');   // and the screen is quiet
+  state.others = [];
+  await nextTick();
+  expect(boxes()).toEqual([]);
+});
+
+test('hiding the box keeps following: no box or tag, and the view is still centered and fit', async () => {
+  await createTestApp();
+  const fits = [];
+  const { state, scroll, seen } = mount({ hostView: { col: 40, row: 20, cols: 10, rows: 4 }, showBox: false, onFit: (fit) => fits.push(fit) });
+  await expect.poll(() => fits.at(-1)).toBe(1);
+  await frames();
+  expect(host.querySelector('.host-view')).toBe(null);
+  expect(host.querySelector('.host-tag')).toBe(null);
+  expect([scroll.scrollLeft + scroll.clientWidth / 2, scroll.scrollTop + scroll.clientHeight / 2]).toEqual([45 * 8, 22 * 16]);
+  state.hostView = { col: 10, row: 10, cols: 10, rows: 4 };
+  await nextTick();
+  expect([scroll.scrollLeft + scroll.clientWidth / 2, scroll.scrollTop + scroll.clientHeight / 2]).toEqual([15 * 8, 12 * 16]);
+  expect(seen.lookArounds).toBe(0);
+  state.showBox = true;
+  await nextTick();
+  expect(host.querySelector('.host-view')).not.toBe(null);
+});

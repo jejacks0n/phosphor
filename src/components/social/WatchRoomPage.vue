@@ -5,8 +5,9 @@ import { ANSI_ZOOM_MAX, ANSI_ZOOM_MIN } from '@/lib/zoom';
 import RoomArt from './RoomArt.vue';
 
 // The room you watch: the host's art with the part they're looking at (tracked until you look around;
-// the tag on the host's box tracks again). Its name, who hosts it, their welcome and Exit are at the
-// top of the chat panel. Until the
+// the tag on the host's box tracks again). Following an artist instead (the chat panel's list is where to
+// choose), it's their view and box. Its name, who hosts it, their welcome and Exit are at the top of the chat
+// panel. Until the
 // room's name comes from the host, the heading says how joining is going; once it's the name it's for
 // screen readers only (the panel shows it). A status region always there says how joining is going for
 // screen readers. A private room asks for its password here. With the host's art already on the page,
@@ -51,7 +52,7 @@ const zoomIn = () => room.setArtZoom((Math.floor(room.artZoom * 4) + 1) / 4);
       <button class="primary" type="submit">Join</button>
     </form>
     <div v-if="room.art" class="art" :class="{ stale: coming }">
-      <RoomArt :art="room.art" :host-view="room.hostView" :tracking="room.tracking" :zoom="room.artZoom" :host="room.room?.host || null" @zoom="room.setArtZoom" @fit="room.fitArt" @look-around="lookAround" @track="room.setTracking(true)" @looking-at="room.lookingAt = $event" />
+      <RoomArt :art="room.art" :host-view="room.followedView" :tracking="room.tracking" :zoom="room.artZoom" :host="room.followedName || null" :show-box="room.showBox" :others="room.otherBoxes" @zoom="room.setArtZoom" @fit="room.fitArt" @look-around="lookAround" @track="room.setTracking(true)" @looking-at="room.lookingAt = $event" />
       <div class="zoom" role="group" aria-label="Zoom">
         <button aria-label="Zoom out" :disabled="room.artZoom <= ANSI_ZOOM_MIN" @click="zoomOut">−</button>
         <span>{{ Math.round(room.artZoom * 100) }}%</span>
