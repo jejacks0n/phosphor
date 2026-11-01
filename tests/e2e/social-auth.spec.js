@@ -6,7 +6,7 @@ import { fakeServer, member } from './social-support.js';
 const social = (page) => page.locator('.people-tab');
 const shown = (page, name) => social(page).locator(`[data-page="${name}"]`);
 const notice = (page) => social(page).getByRole('status');
-const TERMS = 'I\'m 13 or older and agree to the Terms and Privacy Policy';
+const TERMS = /^I'm 13 or older and agree to the Terms\s*, Privacy Policy and Community Guidelines$/;
 
 async function open(page, url = '/') {
   await page.goto(url);
@@ -99,6 +99,17 @@ test('the sign-in page links to creating an account, a forgotten password and th
   await expect(shown(page, 'forgot')).toBeVisible();
   await shown(page, 'forgot').getByRole('button', { name: '‹ Back to the lobby' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
+});
+
+test('the Community Guidelines open from sign-up, say what they are and link to what governs', async ({ page }) => {
+  await fakeServer(page);
+  await page.goto('/#/social/create');
+  await page.locator('.people-tab').getByRole('button', { name: 'Community Guidelines' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Community Guidelines' });
+  await expect(dialog).toContainText('section 5 of our Terms');
+  await expect(dialog).toContainText('the Terms govern');
+  await dialog.getByRole('button', { name: 'Privacy Policy' }).click();
+  await expect(page.getByRole('dialog', { name: 'Privacy Policy' }).getByRole('heading', { level: 1 })).toHaveText('Privacy Policy');
 });
 
 test('the Terms and the Privacy Policy open over the app, like About, and link to each other', async ({ page }) => {
