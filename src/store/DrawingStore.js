@@ -666,6 +666,7 @@ export const useDrawingStore = defineStore('drawing', () => {
       else if (!paused.value) pause();
     } else if (state === 'lost' || state === 'failed') {
       saidHello = false;
+      if (state === 'failed') artCame();   // nothing's coming now, and failed stays until they leave
       if (mayDraw.value) pause();
     }
   }
