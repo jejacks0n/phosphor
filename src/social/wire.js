@@ -61,6 +61,8 @@
  *                                               the server says new-host. room: { name, welcome }
  *   { t: 'catch-up', has, epoch }               a host back from a reload, behind this artist: what's after has
  *   { t: 'undo-reset' }                         the host's stacks started over: everyone's undo goes with them
+ *   { t: 'undo-refused', stroke } / { t: 'redo-refused', stroke }
+ *                                               the host can't do that undo or redo, and no number is coming for it
  * Pausing and resuming are the 'away' message and the channel closing.
  */
 import { hex2rgb } from '../lib/ColorUtils.js';
@@ -202,6 +204,7 @@ export async function unpackSnapshot(chunks) {
 
 const isCoord = (n) => Number.isInteger(n) && n >= 0;
 const MOST_STROKE = 40;
+export const isStroke = (stroke) => typeof stroke === 'string' && !!stroke && stroke.length <= MOST_STROKE;
 
 // 'col,row' as two whole numbers, one pass over its characters, or null when the key isn't what cellKey
 // makes: two runs of digits around a comma, neither with a leading zero (01,0 would be stored but never
@@ -243,7 +246,7 @@ function goodEntry(entry) {
 export function readChange(msg, { cols, rows, layerWidth, layerHeight }) {
   if (!msg || typeof msg !== 'object') return null;
   const { stroke, cells, runs } = msg;
-  if (typeof stroke !== 'string' || !stroke || stroke.length > MOST_STROKE || !Array.isArray(cells) || !Array.isArray(runs)) return null;
+  if (!isStroke(stroke) || !Array.isArray(cells) || !Array.isArray(runs)) return null;
   for (const cell of cells) {
     if (!Array.isArray(cell) || cell.length !== 2 || typeof cell[0] !== 'string') return null;
     const at = placeOf(cell[0]);

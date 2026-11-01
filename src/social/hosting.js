@@ -11,7 +11,7 @@ import { openPeer } from './peer.js';
 import { decodePass, verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
 import { Allowance, ChatLog, chatText, isId, newId, signedText } from './chat.js';
-import { CHUNK_BYTES, MOST_ARTIST_BYTES, MOST_PROJECT_BYTES, changedCells, encodeCells, isSub, packSnapshot, readView, unpackProject, unpackValue } from './wire.js';
+import { CHUNK_BYTES, MOST_ARTIST_BYTES, MOST_PROJECT_BYTES, changedCells, encodeCells, isStroke, isSub, packSnapshot, readView, unpackProject, unpackValue } from './wire.js';
 
 const BACKED_UP_BYTES = 8 * 1024 * 1024;   // a channel further behind than this is sent no art until it drains
 const DRAINED_BYTES = 1024 * 1024;           // to this, and then gets one fresh snapshot
@@ -465,7 +465,8 @@ export class Host {
   }
 
   // A message about the drawing. Whatever it does, the room goes on, and a change that can't be taken is
-  // refused: its sender has it on screen, so it's sent the project, which puts that right.
+  // refused: its sender has it on screen, so it's sent the project, which puts that right. An undo or redo
+  // that can't be done has moved nothing, so it's only told.
   drawn(w, msg) {
     const { sub, name } = w.claims;
     if (this.holding && (msg?.t === 'change' || msg?.t === 'undo' || msg?.t === 'redo')) return void this.holding.push([w, msg]);
@@ -476,9 +477,11 @@ export class Host {
       else if (msg?.t === 'change') {
         w.took++;
         if (!this.onChange(sub, msg)) this.sendProject(w);
-      } else if (msg?.t === 'undo') this.onUndo(sub, msg);
-      else if (msg?.t === 'redo') this.onRedo(sub, msg);
-      else if (msg?.t === 'cursor') this.onCursor(sub, msg, name);
+      } else if (msg?.t === 'undo') {
+        if (!this.onUndo(sub, msg)) this.refuse(w, msg);
+      } else if (msg?.t === 'redo') {
+        if (!this.onRedo(sub, msg)) this.refuse(w, msg);
+      } else if (msg?.t === 'cursor') this.onCursor(sub, msg, name);
       else if (msg?.t === 'artist-hello') {
         w.drawing = true;
         this.onHello(w, msg);
@@ -486,7 +489,12 @@ export class Host {
     } catch (error) {
       console.warn('A message about the drawing failed.', error);
       if (msg?.t === 'change') this.sendProject(w);
+      if (msg?.t === 'undo' || msg?.t === 'redo') this.refuse(w, msg);
     }
+  }
+
+  refuse(w, { t, stroke }) {
+    if (isStroke(stroke)) this.sendTo(w, { t: `${t}-refused`, stroke });
   }
 
   // Nothing's being numbered for now: artists' changes wait here, in order, until every hold() has its release().

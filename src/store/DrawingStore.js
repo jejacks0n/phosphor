@@ -524,6 +524,7 @@ export const useDrawingStore = defineStore('drawing', () => {
         project.clearHistory();
         if (!notice.value?.includes(UNDO_RESET_WORDS)) notice.value = [notice.value, UNDO_RESET_WORDS].filter(Boolean).join(' ');
       },
+      onRefused: (kind, stroke) => { if (mayDraw.value) project.strokeRefused(kind, stroke); },
       onInvite: () => { invitation.value = true; },
       onWithdrawn: () => {
         invitation.value = false;
