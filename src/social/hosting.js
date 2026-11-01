@@ -688,7 +688,7 @@ export class Host {
   // What someone missed, from the ledger's tail, and that that's all of it (n, the last number): anything of
   // theirs they've heard no number for by then never got here.
   sendTail(w, items, n) {
-    for (const item of items) this.deliver(w, JSON.stringify(item.t ? item : { t: 'numbered', ...item }));
+    for (const item of items) this.deliver(w, JSON.stringify({ t: 'numbered', ...item }));   // settings and base have their own t
     this.deliver(w, JSON.stringify({ t: 'caught-up', n }));
   }
 
