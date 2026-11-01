@@ -5,7 +5,8 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { settingsJson } from '@/store/project/shared';
 import { Pacer } from '@/social/lobby';
 import { readCursor, readCursors } from '@/social/wire';
-import { UNDO_RESET_WORDS } from '@/social/messages';
+import { UNDO_RESET_WORDS, backAsArtistWords } from '@/social/messages';
+import { LONG_TOAST_MS, toast } from '@/composables/useToast';
 
 const CURSORS_EVERY_MS = 100;
 // How many can draw in a room, the host among them: what docs/investigations/drawing-together.md measured.
@@ -48,7 +49,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   const others = computed(() => Object.fromEntries(Object.entries(cursors.value).filter(([sub, { at }]) => at && sub !== me())));
 
   let host = null, room = null;    // the Host, or the Watch
-  let me = () => null, myName = () => null, roomId = null, roomName = () => null;
+  let me = () => null, myName = () => null, roomId = null, roomName = () => null, hostName = () => null;
   let saidHello = false;
   let awaitingList = false;        // accepted, and the host's list may not have me on it yet
   let goToArt = false;             // accepted just now: the next project closes the watcher's view
@@ -62,6 +63,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   let listAsked = 0;               // a host's: how many artists-now are still owed for artists sent
   let listHeard = null;            // a host's: the list as the room last said it
   let adopting = false;            // a host's: a document coming from an artist is still this one
+  let formerHost = false;          // back after the role moved on, and the room's art hasn't replaced what's open
   let undoTold = null;             // a host's whose ledger can't answer anyone's undo from before it: those told, at their hello
   const myCursor = new Pacer(CURSORS_EVERY_MS, (cursor) => {
     if (!host) return room?.post({ t: 'cursor', ...cursor }) ?? false;
@@ -464,6 +466,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   // hold what they drew while away, so the room's art opens as a document of its own.
   function noteFormerHost() {
     noteAccepted(true);
+    formerHost = true;
   }
 
   // The watcher's side.
@@ -498,6 +501,11 @@ export const useDrawingStore = defineStore('drawing', () => {
           return;
         }
         noteAccepted(project.documentId);
+        if (formerHost) {
+          formerHost = false;
+          notice.value = backAsArtistWords(hostName() ?? 'Someone else');
+          toast(notice.value, LONG_TOAST_MS);
+        }
         if (goToArt && workspace.editorTab === 'social') workspace.editorTab = 'output';
         goToArt = false;
         caughtUp();
@@ -526,11 +534,12 @@ export const useDrawingStore = defineStore('drawing', () => {
     };
   }
 
-  function watching(theWatch, { me: whoAmI, roomId: id, roomName: name }) {
+  function watching(theWatch, { me: whoAmI, roomId: id, roomName: name, hostName: host = () => null }) {
     room = theWatch;
     me = whoAmI;
     roomId = id;
     roomName = name;
+    hostName = host;
   }
 
   // On the list, and having said yes: hello, first thing, and then the project or what's missed. Off it, the
@@ -632,7 +641,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     if (host) stopHostSharing();
     else if (room) stopDrawing({ keepAccepted: !spent });
     host = room = handed = null;
-    awaitingList = goToArt = false;
+    awaitingList = goToArt = formerHost = false;
     hostChanging.value = false;
     paused.value = false;
     undoTold = null;

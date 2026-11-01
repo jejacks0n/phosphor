@@ -96,5 +96,8 @@ export const ROOM_AWAY_WORDS = 'Your room ended while the page was away';
 export const UNDO_RESET_WORDS = 'The host changed, so undo starts over. All the drawing is still here.';
 export const newHostWords = ({ old, name, planned }) => (planned ? `${old} made ${name} the host.` : `${old} left the room. ${name} is now the host.`);
 
+// A host cut off who's back as an artist, when the room's art replaces what they had open.
+export const backAsArtistWords = (name) => `${name} is now the host. What you had open is saved: open a new tab, and it's under "Continue where you left off."`;
+
 // What a host is told when another tab took its room (a copy of the tab hosts it too, and the older one is closed).
 export const HOST_REPLACED_WORDS = 'This room is open in another tab';

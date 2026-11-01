@@ -4,8 +4,10 @@ import { ref } from 'vue';
 export const toastMessage = ref(null);
 let timer = null;
 
-export function toast(message) {
+export const LONG_TOAST_MS = 6000;   // a sentence or two someone didn't ask to read
+
+export function toast(message, ms = 2600) {
   toastMessage.value = message;
   clearTimeout(timer);
-  timer = setTimeout(() => { toastMessage.value = null; }, 2600);
+  timer = setTimeout(() => { toastMessage.value = null; }, ms);
 }
