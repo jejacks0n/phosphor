@@ -16,7 +16,7 @@ for wide screens: a phone held sideways can be wide enough, and narrower screens
 The first time a browser opens SOCIAL, it asks first. **Before you open SOCIAL** is the short version of
 the policies: what the lobby shows about you, what watching and starting a room mean (each of you can see
 the other's IP address; an invited artist gets the whole project, including the original image), and
-how to behave. Accept is off until you tick **I'm 13 or older and agree to the Terms, Privacy Policy and
+how to behave. Accept is off until you tick **I'm 13 or older and agree to the Terms, Privacy Policy, and
 Community Guidelines**. Each of those opens over the question, and coming back leaves it and your tick as they were.
 
 Everyone is asked, with an account or without: the browser can't tell before it connects. Nothing from SOCIAL
@@ -96,7 +96,7 @@ has them set up; with neither, the page is just the email or username and passwo
 - your **email** (not one at Phosphor's own domains; Discord and GitHub may use one they've
   verified), and a **password** of at least 10 characters that isn't a known leaked password;
 - a quick check that you're not a script (Cloudflare Turnstile);
-- that you're **13 or older** and agree to the **Terms**, **Privacy Policy** and **Community Guidelines**
+- that you're **13 or older** and agree to the **Terms**, **Privacy Policy**, and **Community Guidelines**
   (each opens over the app, like About).
 
 Phosphor then emails you a link to confirm your address. Until you do, you can watch but not chat

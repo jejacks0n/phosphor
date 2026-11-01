@@ -5,7 +5,7 @@ import { CONSENT_KEY, CONSENT_VERSION } from '../../src/social/consent.js';
 
 test.use({ consented: false });
 
-const TERMS = /^I'm 13 or older and agree to the Terms\s*, Privacy Policy and Community Guidelines$/;
+const TERMS = /^I'm 13 or older and agree to the Terms\s*, Privacy Policy\s*, and Community Guidelines$/;
 const consent = (page) => page.getByRole('dialog', { name: 'Before you open SOCIAL' });
 const agree = (page) => consent(page).getByRole('checkbox', { name: TERMS });
 const notNow = (page) => consent(page).getByRole('button', { name: 'Not now' });
@@ -55,7 +55,7 @@ test('Accept stays off until the 13-or-older box is ticked', async ({ page }) =>
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
   await expect(accept(page)).toBeDisabled();
-  await expect(consent(page).locator('label')).toHaveText('I\'m 13 or older and agree to the Terms, Privacy Policy and Community Guidelines');
+  await expect(consent(page).locator('label')).toHaveText('I\'m 13 or older and agree to the Terms, Privacy Policy, and Community Guidelines');
   await agree(page).check();
   await expect(accept(page)).toBeEnabled();
   await agree(page).uncheck();
@@ -66,7 +66,7 @@ test('the modal says what the lobby, watching and starting a room mean, and how 
   await fakeServer(page);
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
-  for (const heading of ['The lobby', 'Watching a room', 'Starting a room', 'Being good to each other']) {
+  for (const heading of ['The lobby', 'Watching a room', 'Starting a room', 'Be kind']) {
     await expect(consent(page).getByRole('heading', { name: heading })).toBeVisible();
   }
   await expect(consent(page)).toContainText('each of you can see the other\'s IP address');

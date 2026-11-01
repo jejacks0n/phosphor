@@ -6,7 +6,7 @@ import { fakeServer, member } from './social-support.js';
 const social = (page) => page.locator('.people-tab');
 const shown = (page, name) => social(page).locator(`[data-page="${name}"]`);
 const notice = (page) => social(page).getByRole('status');
-const TERMS = /^I'm 13 or older and agree to the Terms\s*, Privacy Policy and Community Guidelines$/;
+const TERMS = /^I'm 13 or older and agree to the Terms\s*, Privacy Policy\s*, and Community Guidelines$/;
 
 async function open(page, url = '/') {
   await page.goto(url);
@@ -107,7 +107,7 @@ test('the Community Guidelines open from sign-up, say what they are and link to 
   await page.locator('.people-tab').getByRole('button', { name: 'Community Guidelines' }).click();
   const dialog = page.getByRole('dialog', { name: 'Community Guidelines' });
   await expect(dialog).toContainText('section 5 of our Terms');
-  await expect(dialog).toContainText('the Terms govern');
+  await expect(dialog).toContainText('the Terms take priority');
   await dialog.getByRole('button', { name: 'Privacy Policy' }).click();
   await expect(page.getByRole('dialog', { name: 'Privacy Policy' }).getByRole('heading', { level: 1 })).toHaveText('Privacy Policy');
 });
