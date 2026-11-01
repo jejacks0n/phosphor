@@ -1270,6 +1270,32 @@ test('an artist back from a reload in a password room is still an artist, with n
   await expect(invitation(person)).toHaveCount(0);
 });
 
+test('SAUCE fields are off for an artist, and say why; the host\'s still work', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  await tab(artist, 'SAUCE').click();
+  const title = artist.getByLabel('Title');
+  await expect(title).toBeDisabled();
+  await expect(artist.locator('.sauce-editor fieldset[title="Only the host can do this."]')).toContainText('Custom Comments');
+  await tab(host, 'SAUCE').click();
+  await host.getByLabel('Title').fill('Harbor');
+  await expect.poll(() => store(artist, 'project', (p) => p.sauceTitle)).toBe('Harbor');
+  await expect(title).toHaveValue('Harbor');
+});
+
+test('an artist going to the SOCIAL tab takes their cursor off the others\' screens', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  const at = await cellPoint(artist, 4, 4);
+  await artist.mouse.move(at.x, at.y);
+  await artist.mouse.move(at.x + 1, at.y);
+  await expect(host.locator('.artist-cursor').filter({ hasText: ARTIST.name })).toHaveCount(1);
+  await tab(artist, 'SOCIAL').focus();
+  await artist.keyboard.press('Enter');   // the pointer stays where it was, so it never moves off the art
+  await expect.poll(() => store(artist, 'workspace', (w) => w.editorTab)).toBe('social');
+  await expect(host.locator('.artist-cursor').filter({ hasText: ARTIST.name })).toHaveCount(0);
+});
+
 test('Reset all is off for an artist, and says why', async ({ page: host, context }) => {
   const room = fakeRoom();
   const { artist } = await together(host, context, room);

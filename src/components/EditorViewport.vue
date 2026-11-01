@@ -289,6 +289,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   commitPaint();
+  drawingStore.pointAt(null);   // off the art: another tab has no one's pointer on it
   const el = rootRef.value;
   if (el) {
     el.removeEventListener('wheel', handleWheel);
