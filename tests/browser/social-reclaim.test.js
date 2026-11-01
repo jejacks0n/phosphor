@@ -22,7 +22,7 @@ const info = (fields = {}) => ({ id: ID, name: 'Night shift', hostSub: 'u_1', ho
 const copyOf = (fields = {}) => ({ id: ID, sub: 'u_1', documentId: 'doc', room: { name: 'Night shift', hostName: 'ansi-fan' }, host: { log: [], only: [] }, session: { people: [] }, ...fields });
 const held = async () => (await navigator.locks.query()).held.some((lock) => lock.name === LOCK);
 
-let server, social, room, project, letGo;
+let server, social, room, project, letGo, ahead;
 beforeEach(async () => {
   const deleteDatabases = ownDatabase(['phosphor-social', 'phosphor-host-records', 'phosphor-room-ledgers'], 'reclaim');
   forgetKey();
@@ -42,6 +42,9 @@ beforeEach(async () => {
   useDrawingStore().autosavedBy(async () => true);
   vi.mocked(readLatest).mockReset().mockResolvedValue({ record: {}, imageBuffer: new ArrayBuffer(1) });
   letGo = null;
+  ahead = 0;
+  const now = Date.now.bind(Date);
+  vi.spyOn(Date, 'now').mockImplementation(() => now() + ahead);
 });
 afterEach(async () => {
   letGo?.();
@@ -52,7 +55,11 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-const look = () => room.lookForOwnRooms();
+// A look, with the clock moved on to the next one's.
+const look = async () => {
+  await room.lookForOwnRooms();
+  ahead += 2000;
+};
 
 const anotherTabHosts = () => new Promise((granted) => {
   navigator.locks.request(LOCK, () => new Promise((release) => { letGo = release; granted(); }));
@@ -147,30 +154,53 @@ test('a hosting tab holds the room\'s lock, and lets go when it\'s done', async 
 
 test('a room of yours is offered once its tab has stayed gone from one look to the next', async () => {
   await keepHostCopy(copyOf());
-  await room.lookForOwnRooms();
+  await look();
   expect(room.reclaimable).toEqual([]);   // a reload's gap looks just like this
-  await room.lookForOwnRooms();
+  await look();
   expect(room.reclaimable).toEqual([{ id: ID, name: 'Night shift' }]);
+});
+
+test('looks moments apart aren\'t two looks: the first still counts when about 2 s have passed', async () => {
+  await keepHostCopy(copyOf());
+  await room.lookForOwnRooms();
+  await room.lookForOwnRooms();
+  expect(room.reclaimable).toEqual([]);
+  ahead += 2000;
+  await room.lookForOwnRooms();
+  expect(room.reclaimable).toHaveLength(1);
+});
+
+test('SOCIAL going away starts the looking over, and takes the offer down', async () => {
+  await keepHostCopy(copyOf());
+  await look();
+  await look();
+  expect(room.reclaimable).toHaveLength(1);
+  room.stopLooking();
+  expect(room.reclaimable).toEqual([]);
+  await look();
+  expect(room.reclaimable).toEqual([]);
+  await look();
+  expect(room.reclaimable).toHaveLength(1);
 });
 
 test('a tab that came back between looks starts the count over', async () => {
   await keepHostCopy(copyOf());
-  await room.lookForOwnRooms();
+  await look();
   await anotherTabHosts();
-  await room.lookForOwnRooms();
+  await look();
   letGo();
   await expect.poll(held).toBe(false);
-  await room.lookForOwnRooms();
+  await look();
   expect(room.reclaimable).toEqual([]);
 });
 
 test('a tab still hosting it means no offer, and an offer already up goes', async () => {
   await keepHostCopy(copyOf());
-  await room.lookForOwnRooms();
-  await room.lookForOwnRooms();
+  await look();
+  await look();
   expect(room.reclaimable).toHaveLength(1);
   await anotherTabHosts();
-  await room.lookForOwnRooms();
+  await look();
   expect(room.reclaimable).toEqual([]);
 });
 
@@ -179,8 +209,8 @@ test('a reloading tab, waiting for the lock it left, counts as there', async () 
   await anotherTabHosts();
   let granted = false;
   navigator.locks.request(LOCK, () => { granted = true; });
-  await room.lookForOwnRooms();
-  await room.lookForOwnRooms();
+  await look();
+  await look();
   expect(room.reclaimable).toEqual([]);
   letGo();
   await expect.poll(() => granted).toBe(true);
@@ -188,8 +218,8 @@ test('a reloading tab, waiting for the lock it left, counts as there', async () 
 
 test('another account\'s room isn\'t offered, and its copy is left for them', async () => {
   await keepHostCopy(copyOf({ sub: 'u_2' }));
-  await room.lookForOwnRooms();
-  await room.lookForOwnRooms();
+  await look();
+  await look();
   expect(room.reclaimable).toEqual([]);
   expect(await hostCopies()).toHaveLength(1);
 });
@@ -197,31 +227,31 @@ test('another account\'s room isn\'t offered, and its copy is left for them', as
 test('someone in a room is offered nothing', async () => {
   await keepHostCopy(copyOf({ id: 'bcdefghijk', sub: 'u_1' }));
   await live();
-  await room.lookForOwnRooms();
-  await room.lookForOwnRooms();
+  await look();
+  await look();
   expect(room.reclaimable).toEqual([]);
 });
 
 test('with no Web Locks, a closed tab can\'t be told from an open one: nothing is offered', async () => {
   await keepHostCopy(copyOf());
   vi.spyOn(navigator, 'locks', 'get').mockReturnValue(undefined);
-  await room.lookForOwnRooms();
-  await room.lookForOwnRooms();
+  await look();
+  await look();
   expect(room.reclaimable).toEqual([]);
 });
 
 test('a card naming another host means the role moved: the copy goes', async () => {
   await keepHostCopy(copyOf());
   social.lobby = { rooms: new Map([[ID, { id: ID, host: 'tin_owl' }]]), people: new Map() };
-  await room.lookForOwnRooms();
+  await look();
   expect(await hostCopies()).toEqual([]);
 });
 
 test('a card naming you is the room as you left it', async () => {
   await keepHostCopy(copyOf());
   social.lobby = { rooms: new Map([[ID, { id: ID, host: 'ansi-fan' }]]), people: new Map() };
-  await room.lookForOwnRooms();
-  await room.lookForOwnRooms();
+  await look();
+  await look();
   expect(room.reclaimable).toHaveLength(1);
 });
 
@@ -281,14 +311,31 @@ test('going back with autosave failing keeps what\'s open and says so', async ()
 
 test('going back once another tab has it does nothing but take the offer away', async () => {
   await keepHostCopy(copyOf());
-  await room.lookForOwnRooms();
-  await room.lookForOwnRooms();
+  await look();
+  await look();
   await anotherTabHosts();
   const reload = vi.fn();
   await room.goBackToRoom(ID, { reload });
   expect(reload).not.toHaveBeenCalled();
   expect(room.reclaimable).toEqual([]);
   expect(social.notice).toBe(null);
+});
+
+test('a tab that comes back while going back saves what\'s open keeps its room', async () => {
+  await keepHostCopy(copyOf());
+  await look();
+  await look();
+  useDrawingStore().autosavedBy(async () => {
+    await anotherTabHosts();
+    return true;
+  });
+  const reload = vi.fn();
+  await room.goBackToRoom(ID, { reload });
+  expect(reload).not.toHaveBeenCalled();
+  expect(sessionStorage.getItem('phosphor-hosting')).toBe(null);
+  expect(room.goingBack).toBe(false);
+  expect(room.reclaimable).toEqual([]);
+  expect(await hostCopies()).toHaveLength(1);
 });
 
 test('going back with the copy past its life doesn\'t say the room ended, since it may not have', async () => {
