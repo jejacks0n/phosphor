@@ -24,8 +24,9 @@ function toggle() {
     : { top: `${rect.bottom + 4}px`, right: `${document.documentElement.clientWidth - rect.right}px` };
 }
 const close = () => { isOpen.value = false; };
-// Scrolling anything but the menu itself would leave it behind, so it closes.
-const handleScroll = (e) => { if (isOpen.value && !root.value.contains(e.target)) close(); };
+// Scrolling what holds the menu would leave it behind, so it closes. Something beside it, a chat
+// keeping up with its messages, say, doesn't move it.
+const handleScroll = (e) => { if (isOpen.value && !root.value.contains(e.target) && e.target.contains(root.value)) close(); };
 // Pointer presses, in the capture phase: the canvas cancels its pointerdowns, so no mousedown
 // follows a click there.
 const handleOutsideClick = (e) => { if (isOpen.value && !root.value.contains(e.target)) close(); };

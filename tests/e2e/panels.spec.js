@@ -53,6 +53,29 @@ test('the Actions menu (narrow screens) opens, and closes on Escape and outside 
   await expect(menu).toBeHidden();
 });
 
+test('an open menu stays when something beside it scrolls, and closes when what holds it scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 800 });
+  await openApp(page);
+  await page.getByTitle('Actions').click();
+  const menu = page.locator('.dropdown-content');
+  await expect(menu).toBeVisible();
+  const scrollFrom = (selector) => page.evaluate((s) => {
+    const from = s ? document.querySelector(s) : document;
+    from.dispatchEvent(new Event('scroll'));
+  }, selector);
+  await page.evaluate(() => {
+    const beside = document.createElement('div');
+    beside.id = 'beside';
+    document.body.append(beside);
+  });
+  await scrollFrom('#beside');
+  await expect(menu).toBeVisible();
+  await scrollFrom('.dropdown');
+  await expect(menu).toBeVisible();   // a scroll from inside it, as the menu's own list does
+  await scrollFrom(null);
+  await expect(menu).toBeHidden();
+});
+
 test('the status bar scrolls sideways when it doesn\'t fit, and nothing in it is cut short', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 800 });
   await openApp(page);
