@@ -131,7 +131,7 @@ test('Tail forgets what came before a gap in n, and never answers has: -1', () =
 });
 
 // Browsers keep a canvas premultiplied, and read the same stored pixel back differently: this pair is one.
-test('hashPixel agrees for two readings of one stored pixel, and tells real differences apart', () => {
+test('hashPixel goes by alpha alone for a partly transparent pixel, and by every value for an opaque one', () => {
   const chromium = 0x00ff2a06, webkit = 0x00ff2b06;
   assert.equal(hashPixel(3, 4, chromium), hashPixel(3, 4, webkit));
   assert.notEqual(hashPixel(3, 4, chromium), hashPixel(3, 4, 0x00ff2a07));

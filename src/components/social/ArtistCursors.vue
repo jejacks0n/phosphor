@@ -30,7 +30,7 @@ const marks = computed(() => {
     const arrow = x + unit.x <= 0 ? '←' : x >= width ? '→' : y + unit.y * 2 <= 0 ? '↑' : y >= height ? '↓' : null;   // any of the cell in view is in view
     const across = x > width / 2 ? -100 : 0, down = y > height / 2 ? -100 : 0;
     return {
-      sub, name, arrow, x, y, color: nameColor(name),
+      sub, name, arrow, x, y,
       style: arrow
         ? { left: `${clamp(x, width)}px`, top: `${clamp(y, height)}px`, transform: `translate(${across}%, ${down}%)` }
         : { left: `${x}px`, top: `${y}px`, '--cursor': nameColor(name), width: `${unit.x}px`, height: `${unit.y * 2}px` },
