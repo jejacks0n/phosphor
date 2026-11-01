@@ -368,6 +368,8 @@ test('Block – from all future rooms asks first, then blocks and removes', asyn
   await host.getByRole('button', { name: 'Block – from all future rooms' }).click();
 
   const dialog = blockDialog(host);
+  const [back, forward] = await Promise.all(['Cancel', 'Block'].map((name) => dialog.getByRole('button', { name, exact: true }).boundingBox()));
+  expect(back.x).toBeLessThan(forward.x);   // the way out first, and on the left
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText('They can\'t join any room you host, and they leave this one now. Unblock them from Account.')).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();

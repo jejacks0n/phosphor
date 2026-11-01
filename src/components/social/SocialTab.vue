@@ -72,9 +72,9 @@ watch(shownPage, async () => {
       <ModalDialog v-if="social.roomInvite" title="Join this room?" sub="You followed a link to it. Joining connects your browser directly to the host's, so the host can see your IP address." @cancel="social.answerRoomInvite(false)">
         <p v-if="linkIsYours && room.goingBackReplaces" class="replaces">{{ GOING_BACK_REPLACES_WORDS }}</p>
         <div class="actions">
-          <button v-if="linkIsYours" class="primary" @click="room.goBackToRoom(social.roomInvite)">Back to your room</button>
-          <button @click="social.answerRoomInvite(true)">Join</button>
           <button @click="social.answerRoomInvite(false)">Not now</button>
+          <button @click="social.answerRoomInvite(true)">Join</button>
+          <button v-if="linkIsYours" class="primary" @click="room.goBackToRoom(social.roomInvite)">Back to your room</button>
         </div>
       </ModalDialog>
     </template>

@@ -9,8 +9,8 @@ defineEmits(['confirm', 'cancel']);
 <template>
   <ModalDialog :title="`Make ${name} the host?`" sub="You'll stay in the room as an artist." @cancel="$emit('cancel')">
     <div class="actions">
-      <button class="primary" @click="$emit('confirm')">Make host</button>
       <button autofocus @click="$emit('cancel')">Cancel</button>
+      <button class="primary" @click="$emit('confirm')">Make host</button>
     </div>
   </ModalDialog>
 </template>
