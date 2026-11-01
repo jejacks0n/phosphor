@@ -27,9 +27,9 @@ import { cellChanges, exactly, keepBaseline, pixelRuns, splitChange, pack, Tail 
 import { keepRoomLedger } from '@/document/autosaveStore.js';
 import { Ledger, keptForWire, keptFromWire } from '@/document/ledger.js';
 import { TILE } from '@/document/History.js';
-import { MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf } from '@/lib/Cells.js';
+import { MAX_CELLS, charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
-import { MOST_CHANGE_BYTES, MOST_PROJECT_BYTES, packProject, packValue, readChange, unpackValue } from '@/social/wire.js';
+import { MOST_CHANGE_BYTES, MOST_PROJECT_BYTES, cellsFitAnyGrid, packProject, packValue, readChange, unpackValue } from '@/social/wire.js';
 import { REFUSED_WORDS } from '@/social/messages.js';
 import { toast } from '@/composables/useToast.js';
 import { ALONE, SAVED_KEYS, randomId, runsPatch } from '@/store/project/shared.js';
@@ -289,9 +289,8 @@ export const sharingActions = {
       this.ensureLayer();
       const { layerWidth: width, layerHeight: height } = boundsOf(this);
       const kept = keptFromWire(plain, { width, height });
-      const bounds = { cols: MAX_COLS, rows: MAX_LINES };
-      for (const { cells } of kept.stacks.strokes.values()) if (!readChange({ stroke: 'kept', cells: [...cells], runs: [] }, bounds)) return null;
-      for (const [key, { base }] of kept.stacks.cells) if (!readChange({ stroke: 'kept', cells: [[key, base]], runs: [] }, bounds)) return null;
+      for (const { cells } of kept.stacks.strokes.values()) if (!cellsFitAnyGrid([...cells])) return null;
+      for (const [key, { base }] of kept.stacks.cells) if (!cellsFitAnyGrid([[key, base]])) return null;
       return kept;
     } catch {
       return null;
@@ -398,7 +397,7 @@ export const sharingActions = {
       return true;
     }
     const cells = [...parts.editCells], settings = settingsFromStranger(parts.settings);
-    if (!settings || cells.length > MAX_CELLS || !readChange({ stroke: 'project', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES })) return false;
+    if (!settings || cells.length > MAX_CELLS || !cellsFitAnyGrid(cells)) return false;
     await this.openFromHost(
       { ...parts, settings, erasedCells: [], migrated: false },
       { filename: this.filename, documentId: this.documentId, sameDocument: true },
@@ -809,7 +808,7 @@ export const sharingActions = {
   // documentId: what a reload had open as this art, so it's the one document in the autosave list.
   async takeProject(parts, { n, epoch = null, took = 0, filename, send, me, documentId }) {
     const cells = [...parts.editCells], settings = settingsFromStranger(parts.settings);
-    if (!settings || cells.length > MAX_CELLS || !readChange({ stroke: 'project', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES })) return false;
+    if (!settings || cells.length > MAX_CELLS || !cellsFitAnyGrid(cells)) return false;
     const opening = this._sharing;
     if (opening) opening.opening = true; // no check says anything while this opens
     try {
