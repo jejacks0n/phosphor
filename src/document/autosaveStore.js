@@ -5,7 +5,8 @@
  * `rest` is the .phosphor bytes with an empty image. It and the images are stored as Blobs, which load
  * lazily, so reading a row doesn't read its bytes and a version shares its latest state's. Callers pass
  * and get ArrayBuffers. The rows also carry the sizes of their `rest` and image (restSize, imageSize),
- * so sizes are counted without reading bytes.
+ * so sizes are counted without reading bytes. Where the browser won't store a Blob (Safari's private
+ * windows), the bytes go in as they are, and reading a row reads them.
  *
  * Apart from them, a database of its own keeps a hosted room's ledger through a reload: sessionStorage is too small for it.
  * Another keeps a copy of a hosted room's record, for its host in another tab: sessionStorage goes with the tab.
@@ -102,18 +103,23 @@ async function removeDocument(tx, id) {
 export async function writeLatest({ id, filename, editedAt, savedToFile, dirty, savedSettings, ledgerN, rest, imageBuffer }) {
   // Before the transaction: it dies across an await on crypto.
   const imageHash = await hashBytes(imageBuffer), restHash = await hashBytes(rest);
-  const row = {
-    id, filename, editedAt, savedToFile, dirty, savedSettings, ledgerN,
-    rest: new Blob([rest]), restSize: rest.byteLength, restHash, imageHash, imageSize: imageBuffer.byteLength,
-  };
-  await run(STORES, 'readwrite', async (tx) => {
+  const write = (stored) => run(STORES, 'readwrite', async (tx) => {
     const before = await ask(tx.objectStore('documents').get(id));
     if ((await ask(tx.objectStore('images').getKey(imageHash))) === undefined) {
-      tx.objectStore('images').put({ hash: imageHash, bytes: new Blob([imageBuffer]), size: imageBuffer.byteLength });
+      tx.objectStore('images').put({ hash: imageHash, bytes: stored(imageBuffer), size: imageBuffer.byteLength });
     }
-    tx.objectStore('documents').put(row);
+    tx.objectStore('documents').put({
+      id, filename, editedAt, savedToFile, dirty, savedSettings, ledgerN,
+      rest: stored(rest), restSize: rest.byteLength, restHash, imageHash, imageSize: imageBuffer.byteLength,
+    });
     if (before && before.imageHash !== imageHash) await freeImages(tx, [before.imageHash]);
   });
+  try {
+    await write((buffer) => new Blob([buffer]));
+  } catch (error) {
+    if (error.name === 'QuotaExceededError') throw error;
+    await write((buffer) => buffer);
+  }
 }
 
 // Copies the document's latest state into a new version, then drops the versions past KEEP_VERSIONS.
@@ -139,7 +145,7 @@ export function addVersion(documentId, { reason, savedAt }) {
 }
 
 // { record, imageBuffer } for a stored row, or null, with its bytes read once the transaction has
-// finished: it dies across an await on a Blob. A rest or image that isn't a Blob rejects here.
+// finished: it dies across an await on a Blob. A rest or image that's neither a Blob nor bytes rejects here.
 async function readRow(store, key) {
   const found = await run(STORES, 'readonly', async (tx) => {
     const record = await ask(tx.objectStore(store).get(key));
@@ -147,7 +153,8 @@ async function readRow(store, key) {
   });
   if (!found) return null;
   const { record, image } = found;
-  const [rest, imageBuffer] = await Promise.all([record.rest.arrayBuffer(), image.bytes.arrayBuffer()]);
+  const buffer = (stored) => (stored instanceof ArrayBuffer ? stored : stored.arrayBuffer());
+  const [rest, imageBuffer] = await Promise.all([buffer(record.rest), buffer(image.bytes)]);
   return { record: { ...record, rest }, imageBuffer };
 }
 
