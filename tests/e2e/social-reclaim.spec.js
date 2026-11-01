@@ -1,6 +1,6 @@
 // A host whose tab closed goes back to the room from a new tab in the same browser: the lobby's card or a plain
 // line offers it, or the question a link asks, and pressing it reloads the tab into the room as a host's reload would.
-import { test, expect, tab, store, chars, editAt, settled, openApp } from './support.js';
+import { test, expect, tab, store, chars, editAt, settled, openApp, otherBrowser } from './support.js';
 import { fakeRoom, fakeServer, member, ROOM_ID, shown, goLive, chat, live, joins, artistPage, asked, mayDraw as mayDrawOf } from './social-support.js';
 
 const BACK = 'Back to your room';
@@ -167,7 +167,7 @@ test('pressed once the room is over: it says so, and it isn\'t offered again', a
 test('pressed after the role moved: back in as an artist, with the existing words', async ({ page: host, context, browser }) => {
   const room = fakeRoom({ hostWaitMs: 2000 });
   await goLive(host, room);
-  const artist = await artistPage(await browser.newContext(), host, room);   // their own browser
+  const artist = await artistPage(await otherBrowser(browser), host, room);   // their own browser
   await kept(host);
   await host.close();
 
@@ -183,7 +183,7 @@ test('pressed after the role moved: back in as an artist, with the existing word
 test('with an artist in the room, they wait and then draw on with the host back', async ({ page: host, context, browser }) => {
   const room = fakeRoom();
   await goLive(host, room);
-  const artist = await artistPage(await browser.newContext(), host, room);   // their own browser
+  const artist = await artistPage(await otherBrowser(browser), host, room);   // their own browser
   await kept(host);
   await host.close();
   await expect.poll(() => store(artist, 'drawing', (d) => d.paused)).toBe(true);

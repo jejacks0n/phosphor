@@ -64,7 +64,9 @@ Playwright against `npm run build` served by `vite preview`. Act through the UI 
 the mouse and keyboard); read the stores with `store(page, 'project', (p) => ...)` to check the result.
 Take `test` and `expect` from `./support.js` (lint insists): its `test` cuts the page off from the
 SOCIAL server, so no spec reaches the network; a SOCIAL spec fakes it with `fakeServer` from
-`./social-support.js`.
+`./social-support.js`. It also answers the question SOCIAL asks first, as `createTestApp` does in the browser
+layer; `test.use({ consented: false })` leaves it unanswered (`tests/e2e/social-consent.spec.js`), and a
+second browser made in a spec comes from `otherBrowser(browser)`.
 
 `tests/e2e/path-addresses.spec.js` runs against the other way the app can be built, with path addresses
 (`/social` in place of `/#/social`): its own Playwright project, build and port.

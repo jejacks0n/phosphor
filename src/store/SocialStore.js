@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { markRaw, shallowRef } from 'vue';
+import { until, useLocalStorage } from '@vueuse/core';
 import { api } from '@/social/api';
 import { apiOrigin, wsOrigin, appOrigin, desktopQuery } from '@/social/config';
 import { messageFor } from '@/social/messages';
@@ -9,6 +10,7 @@ import { requestPass, renewAt } from '@/social/pass';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ROOM_ID, useRoomStore, hasReportedRoom, keepRoomReport, keptRoomReports } from '@/store/RoomStore';
 import { REASONS } from '@/social/chat';
+import { CONSENT_KEY, CONSENT_VERSION } from '@/social/consent';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection } from '@/social/lobby';
 
 const RENEW_RETRY_MS = 30_000;   // after a renewal that failed for a passing reason (NETWORK, THROTTLED)
@@ -73,6 +75,9 @@ const withToken = (turnstileToken) => (turnstileToken ? { 'x-turnstile-token': t
 // opens it, so a visitor who never uses SOCIAL costs nothing and isn't in the lobby.
 export const useSocialStore = defineStore('social', {
   state: () => ({
+    consentVersion: useLocalStorage(CONSENT_KEY, 0, { writeDefaults: false }),   // the version of SOCIAL's question this browser accepted (consent.js)
+    _roomGoesOn: false,  // this load is coming back to a room, which that question doesn't interrupt (allowed)
+    _cameFromTab: 'input',   // the tab SOCIAL's question goes back to: the editor when there's none (router.js)
     supported: null,     // null until checked: false when this browser can't do Ed25519 or IndexedDB
     me: null,            // /api/me's body; null signed out
     page: 'lobby',       // 'lobby' | 'sign-in' | 'create' | 'forgot' | 'reset' | 'onboarding' | 'account' | 'two-factor' | 'start-room'
@@ -101,6 +106,9 @@ export const useSocialStore = defineStore('social', {
   }),
 
   getters: {
+    // SOCIAL may run: its question is accepted, or a reload is coming back to a room you're in (from a session before
+    // the question, or its new version), which asks on a later load instead of throwing you out of a live room.
+    allowed: (state) => state.consentVersion === CONSENT_VERSION || state._roomGoesOn,
     signedIn: (state) => !!state.me && !state.me.needsOnboarding,
     rooms: (state) => sortedRooms(state.lobby),
     people: (state) => sortedPeople(state.lobby, state.claims?.sub),
@@ -151,7 +159,7 @@ export const useSocialStore = defineStore('social', {
 
     // Your own room again, from an entry of yours (Forward, a reload): no asking.
     async rejoin(id) {
-      Object.assign(this, { _roomLink: id, _roomLinkAsks: false });
+      Object.assign(this, { _roomLink: id, _roomLinkAsks: false, _roomGoesOn: true });
       await this.boot();
       this.joinLink();
     },
@@ -171,9 +179,23 @@ export const useSocialStore = defineStore('social', {
       if (yes && id !== null) useRoomStore().join(id);
     },
 
-    // This browser's key, then who you are; once, however often it's asked for.
+    // SOCIAL's question, answered: what was waiting on boot goes on to where it was going.
+    acceptConsent() {
+      this.consentVersion = CONSENT_VERSION;
+    },
+
+    // Not now: back to the tab you came from, with what brought you here (a link's room, its page, its token and words) forgotten.
+    declineConsent() {
+      keepRoom(null);
+      Object.assign(this, { page: 'lobby', resetToken: null, notice: null, _codePending: false, _roomLink: null, _roomLinkAsks: false });
+      useWorkspaceStore().editorTab = this._cameFromTab;
+    },
+
+    // This browser's key, then who you are; once, however often it's asked for. Everything SOCIAL does starts
+    // here, so here's where it waits for its question to be answered: no key and no request until then.
     boot() {
       this._boot ??= (async () => {
+        if (!this.allowed) await until(() => this.allowed).toBe(true);
         const supported = await ed25519Supported() && await loadKey().then(
           (key) => { this._key = markRaw(key); return true; },
           () => false,   // no IndexedDB (a private window in some browsers): the same plain message

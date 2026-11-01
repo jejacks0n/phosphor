@@ -11,6 +11,29 @@ Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone 
 watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
 for wide screens: a phone held sideways can be wide enough, and narrower screens don't show the tab.
 
+## Before you come in
+
+The first time a browser opens SOCIAL, it asks first. **Before you open SOCIAL** is the short version of
+the policies: what the lobby shows about you, what watching and starting a room mean (each of you can see
+the other's IP address; an invited artist gets the whole project, including the original image), and
+how to behave. Accept is off until you tick **I'm 13 or older and agree to the Terms, Privacy Policy and
+Community Guidelines**. Each of those opens over the question, and coming back leaves it and your tick as they were.
+
+Everyone is asked, with an account or without: the browser can't tell before it connects. Nothing from SOCIAL
+runs until you accept: no signing key, no pass, no request, no lobby. The answer stays in this browser. It's
+asked again if the policies change in a way that matters, or after clearing the site's data.
+
+- **Accept** goes on to where you were going: the lobby, a page of SOCIAL, a room's link (which then asks
+  whether to join), or a link from one of our emails.
+- **Not now**, or Escape, goes back to the tab you came from, with a link's room and page forgotten. With no tab to
+  go back to, as when you arrive straight from a link, you land on PIXEL at a plain address. A link from an email
+  still works when you open it again, until it expires.
+- **Coming back to a room you're in** isn't held up. A reload while hosting or watching stays in the room, unasked,
+  even from a session from before you were asked. The next plain load of the page asks.
+
+The **Community Guidelines** (a page beside the Terms and the Privacy Policy) put section 5 of the Terms in plain
+words. The Terms govern.
+
 ## The lobby
 
 The SOCIAL tab opens on the lobby: a gallery of the **public rooms** that are live right now. Each
@@ -73,8 +96,8 @@ has them set up; with neither, the page is just the email or username and passwo
 - your **email** (not one at Phosphor's own domains; Discord and GitHub may use one they've
   verified), and a **password** of at least 10 characters that isn't a known leaked password;
 - a quick check that you're not a script (Cloudflare Turnstile);
-- that you're **13 or older** and agree to the **Terms** and **Privacy Policy** (each opens over
-  the app, like About).
+- that you're **13 or older** and agree to the **Terms**, **Privacy Policy** and **Community Guidelines**
+  (each opens over the app, like About).
 
 Phosphor then emails you a link to confirm your address. Until you do, you can watch but not chat
 or start a room. The lobby says **Confirm your email to start a room**, with **Resend** to send the

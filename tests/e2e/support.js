@@ -2,6 +2,7 @@
 // stores (for assertions only; actions go through the UI).
 import { fileURLToPath } from 'node:url';
 import { test as base } from '@playwright/test';
+import { CONSENT_KEY, CONSENT_VERSION } from '../../src/social/consent.js';
 
 export { expect } from '@playwright/test';
 
@@ -9,8 +10,17 @@ export { expect } from '@playwright/test';
 // every page in the context unless the spec installs fakeServer (social-support.js), whose page routes
 // come before the context's.
 // And anything the built page's Content-Security-Policy refuses fails the test, even if the flow went on without it.
+// SOCIAL's first question is already answered, as most specs want; social-consent.spec.js turns that off.
+export const seedConsent = (context, version = CONSENT_VERSION) => context.addInitScript(([key, value]) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch { /* about:blank has no storage */ }
+}, [CONSENT_KEY, version]);
+
 export const test = base.extend({
-  context: async ({ context }, use) => {
+  consented: [true, { option: true }],
+  context: async ({ context, consented }, use) => {
+    if (consented) await seedConsent(context);
     await context.route('http://localhost:8787/**', (route) => route.abort());
     await context.routeWebSocket('ws://localhost:8787/**', (ws) => ws.close());
     await use(context);
@@ -22,6 +32,13 @@ export const test = base.extend({
     base.expect(refused).toEqual([]);
   },
 });
+
+// A second person's browser, in a spec that has one, who's been asked too.
+export async function otherBrowser(browser) {
+  const context = await browser.newContext();
+  await seedConsent(context);
+  return context;
+}
 
 export const fixture = (path) => fileURLToPath(new URL(`../fixtures/${path}`, import.meta.url));
 
