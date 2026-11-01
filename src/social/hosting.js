@@ -11,10 +11,9 @@ import { openPeer } from './peer.js';
 import { decodePass, verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
 import { Allowance, ChatLog, chatText, isId, newId, signedText } from './chat.js';
-import { CHUNK_BYTES, MOST_ARTIST_BYTES, MOST_PROJECT_BYTES, changedCells, encodeCells, isStroke, isSub, packSnapshot, readView, unpackProject, unpackValue } from './wire.js';
+import { BACKED_UP_BYTES, CHUNK_BYTES, MOST_ARTIST_BYTES, MOST_PROJECT_BYTES, changedCells, encodeCells, isStroke, isSub, packSnapshot, readView, unpackProject, unpackValue } from './wire.js';
 
-const BACKED_UP_BYTES = 8 * 1024 * 1024;   // a channel further behind than this is sent no art until it drains
-const DRAINED_BYTES = 1024 * 1024;           // to this, and then gets one fresh snapshot
+const DRAINED_BYTES = 1024 * 1024;           // a channel backed up is sent no art until it drains to this, and then gets one fresh snapshot
 export const MOST_QUEUED_BYTES = 32 * 1024 * 1024;   // waiting for one artist's channel; past this it's discarded and they get the project
 const MOST_HEARD_BYTES = 2048;               // a watcher's message longer than this is ignored, and an artist's, but for a change
 const MOST_SKEW_MS = 120_000;                // a chat message's time, from the host's clock
