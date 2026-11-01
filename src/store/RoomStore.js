@@ -913,7 +913,7 @@ export const useRoomStore = defineStore('room', {
           this.heardNewHost(msg);
           break;
         case 'artists-now':
-          useDrawingStore().artistsNow(msg.subs);
+          useDrawingStore().artistsNow(msg.subs, msg.tag);
           break;
         case 'last-change?':
           this.answerLastChange();

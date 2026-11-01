@@ -62,7 +62,8 @@ export const useDrawingStore = defineStore('drawing', () => {
   let handed = null;               // an artist's: the ledger an old host sent, for when the server names me
   let handingOver = null;          // a host's, in makeHost: ends its wait for the server
   let gathering = null;            // a host's, without knowing all that's numbered: { hellos, timer, finishing, waiting, asked, asking, deadline }
-  let listAsked = 0;               // a host's: how many artists-now are still owed for artists sent
+  let listTag = 0;                 // a host's: the last tag put on a list
+  let listAsked = null;            // a host's: the tag of the list on its way, until its answer
   let listHeard = null;            // a host's: the list as the room last said it
   let adopting = false;            // a host's: a document coming from an artist is still this one
   let formerHost = false;          // back after the role moved on, and the room's art hasn't replaced what's open
@@ -106,16 +107,23 @@ export const useDrawingStore = defineStore('drawing', () => {
     forgetCursors();
     if (first) startHostSharing();
     host.setArtists(list);
-    if (tell && host.send({ type: 'artists', subs: list }) !== false) listAsked++;
+    if (tell) sendList(list);
     if (!list.length) stopHostSharing();
   }
 
-  // The room's own word on the list. Only the answer to the last list sent says anything: the ones before it
-  // are about lists that have since changed.
-  function artistsNow(subs) {
+  function sendList(list) {
+    const tag = ++listTag;
+    if (host.send({ type: 'artists', subs: list, tag }) !== false) listAsked = tag;
+  }
+
+  // The room's own word on the list. While one of ours is on its way, only the answer to it says anything, and that
+  // takes in whatever else has changed there. An answer to one before it is about a list that has since changed, and
+  // one the room says unasked may not have ours in it yet. With none on its way, an unasked one is the list.
+  function artistsNow(subs, tag) {
     if (!host || !Array.isArray(subs) || !subs.every((sub) => typeof sub === 'string')) return;
     listHeard = subs;
-    if (listAsked > 0 && --listAsked > 0) return;
+    if (listAsked === null ? tag !== undefined : tag !== listAsked) return;
+    listAsked = null;
     const list = subs.filter((sub) => sub !== me());
     if (list.length !== artists.value.length || list.some((sub) => !artists.value.includes(sub))) setArtists(list, { tell: false });
   }
@@ -126,9 +134,9 @@ export const useDrawingStore = defineStore('drawing', () => {
   function hostingAgain({ tookOver = false } = {}) {
     if (gathering) gathering.timer ??= setTimeout(finishGathering, HELLOS_WITHIN_MS);
     const same = listHeard?.length === artists.value.length && artists.value.every((sub) => listHeard.includes(sub));
-    listAsked = 0;
+    listAsked = null;   // that socket's: its answer isn't coming
     if (tookOver || same || (!artists.value.length && !listHeard?.length)) return;
-    if (host.send({ type: 'artists', subs: artists.value }) !== false) listAsked = listHeard?.length ? 2 : 1;
+    sendList(artists.value);
   }
 
   // Someone gone takes their invitation and their cursor with them (one the host's still waiting for after a
@@ -410,8 +418,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     waiting.value = [];
     invitation.value = false;
     cursors.value = {};
-    listHeard = null;
-    listAsked = 0;
+    listHeard = listAsked = null;
     noteAccepted(false);
     const taken = project.takeLedger(kept, left);
     notice.value = [words, taken ? null : UNDO_RESET_WORDS].filter(Boolean).join(' ') || null;
@@ -449,8 +456,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     invited.value = [];
     peersOn = new Set();
     cursors.value = {};
-    listHeard = null;
-    listAsked = 0;
+    listHeard = listAsked = null;
     noteAccepted(project.documentId);
     project.continueAsArtist({ send: (msg) => room?.post(msg), me: me() });
     if (!planned) project.clearHistory();
@@ -668,8 +674,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     hostChanging.value = false;
     paused.value = false;
     undoTold = null;
-    listAsked = 0;
-    listHeard = null;
+    listHeard = listAsked = null;
     artists.value = [];
     artistNames.value = {};
     invited.value = [];
