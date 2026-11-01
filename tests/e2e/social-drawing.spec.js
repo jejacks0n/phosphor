@@ -1259,3 +1259,10 @@ test('Merge\'s warning doesn\'t come after the question it asks', async ({ page:
   expect(sub.startsWith(MERGE_WARNING)).toBe(true);
   expect(sub.endsWith(':')).toBe(true);
 });
+
+test('an artist\'s row in the people list says artist, and not that they\'re tracking the host', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await together(host, context, room);
+  await expect(rowOf(host).getByText('artist', { exact: true })).toBeVisible();
+  await expect(rowOf(host).getByText('tracking', { exact: true })).toHaveCount(0);
+});

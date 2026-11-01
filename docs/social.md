@@ -197,7 +197,7 @@ left), and how many messages they said. Ten rows show; **and N more** opens the 
 You run the room from the chat panel, beside every tab. Under its header, **N here** (those
 connected, folded to begin with) opens the list of who is in the room, and stays as you left it while
 the room lasts. Each watcher shows their name after its cell, **guest** for a guest, and whether
-they're tracking you or looking around on their own (or still connecting). A member's row has a
+they're tracking you or looking around on their own (or still connecting); someone drawing says **artist** instead. A member's row has a
 **⋯** button (guests have none) with:
 
 - **Kick – for this session**: they leave the room now, and can't come back until the room ends.
