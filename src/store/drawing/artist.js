@@ -4,7 +4,7 @@
 // An artist has no single phase, as these come in any combination, so each stays a flag of its own:
 //   saidHello     hello has gone on this connection; a lost or new connection clears it
 //   catchingUp    a new connection while drawing, before or after hello, until the host has said what it numbered
-//   awaitingList  accepted, and a list without me says nothing yet; ends with a list that has me, or this connection
+//   awaitingList  accepted, and a list without me says nothing yet; ends with a list that has me, a withdrawal, or any state but live
 //   goToArt       accepted: the next project closes the watcher's view, however long it takes after the list
 //   formerHost    the next project also says I'm back as an artist
 //   gettingArt    back from a reload with no document to draw on; the room's project, or nothing coming, ends it
