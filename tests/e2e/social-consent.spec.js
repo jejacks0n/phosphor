@@ -181,8 +181,8 @@ test('each link waits for the answer, then goes on to where it was going', async
   ];
   for (const [address, there] of steps) {
     await page.evaluate((key) => localStorage.removeItem(key), CONSENT_KEY).catch(() => {});
+    await page.goto('about:blank');   // first: a request from the page being left can still land
     server.requests.length = 0;
-    await page.goto('about:blank');
     await page.goto(address);
     await expect(consent(page)).toBeVisible();
     expect(server.requests).toEqual([]);
