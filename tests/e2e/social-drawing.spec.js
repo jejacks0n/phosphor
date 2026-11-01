@@ -1266,3 +1266,16 @@ test('an artist\'s row in the people list says artist, and not that they\'re tra
   await expect(rowOf(host).getByText('artist', { exact: true })).toBeVisible();
   await expect(rowOf(host).getByText('tracking', { exact: true })).toHaveCount(0);
 });
+
+test('someone asked back after leaving isn\'t offered themselves to follow', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  await artist.close({ runBeforeUnload: false });
+  const person = await watcherPage(context, room, { me: ARTIST });
+  await person.goto('/');
+  await joinFromCard(person);
+  await expect(invitation(person)).toBeVisible();
+  const list = chat(person).getByRole('list', { name: 'Who to follow' });
+  await expect(person.getByRole('button', { name: `Follow ${ARTIST.name}` })).toHaveCount(0);
+  await expect(list).toHaveCount(0);   // only the host left to follow
+});

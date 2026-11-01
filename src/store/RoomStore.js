@@ -187,9 +187,9 @@ export const useRoomStore = defineStore('room', {
     },
     // A watcher's: who can be followed, the host and the artists the host has named.
     followable() {
-      const drawing = useDrawingStore();
+      const drawing = useDrawingStore(), me = useSocialStore().claims?.sub;
       const host = this.room?.hostSub ? [{ sub: this.room.hostSub, name: this.room.host, host: true }] : [];
-      return [...host, ...drawing.artists.filter((sub) => Object.hasOwn(drawing.artistNames, sub) && drawing.artistNames[sub]).map((sub) => ({ sub, name: drawing.artistNames[sub] }))];
+      return [...host, ...drawing.artists.filter((sub) => sub !== me && Object.hasOwn(drawing.artistNames, sub) && drawing.artistNames[sub]).map((sub) => ({ sub, name: drawing.artistNames[sub] }))];
     },
     // A watcher's: there is a list to choose from (more than the host, and not drawing yourself).
     canFollow() {
