@@ -19,6 +19,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
   let awaitingList = false;        // accepted, and the host's list may not have me on it yet
   let goToArt = false;             // accepted just now: the next project closes the watcher's view
   let catchingUp = false;          // a new connection: no drawing until the host has said what it numbered
+  let connections = 0;             // how many have begun: a project that outlasts one doesn't answer for the next
   let flushAutosave = async () => {};
   let handed = null;               // the ledger an old host sent, for when the server names me
   let formerHost = false;          // back after the role moved on, and the room's art hasn't replaced what's open
@@ -104,6 +105,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
       },
       onProject: async ({ n, epoch, took, parts }) => {
         if (!takesProjects()) return;
+        const onConnection = connections;
         if (!project._sharing) {   // the last of what's open goes out under its own id
           project.commitPending();
           await flushAutosave();
@@ -124,7 +126,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
         }
         if (goToArt && workspace.editorTab === 'social') workspace.editorTab = 'output';
         goToArt = false;
-        caughtUp();
+        if (connections === onConnection) caughtUp();   // a newer one has its own host to hear from, and its own resend
       },
       onCursors: (all) => { cursors.value = readCursors(all); },
       onHandOver: async (chunks) => {
@@ -241,6 +243,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
   function connection(state) {
     if (state !== 'live') awaitingList = false;   // the next list is that connection's, and answers for the accept
     if (state === 'connecting') {
+      connections++;
       saidHello = false;
       invitation.value = false;   // the last connection's: a host who still means it says so on this one
       catchingUp = mayDraw.value;
