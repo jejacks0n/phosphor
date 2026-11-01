@@ -15,8 +15,9 @@ const row = (store, key) => new Promise((resolve, reject) => {
   open.onerror = () => reject(open.error);
   open.onsuccess = () => {
     const db = open.result;
-    const get = db.transaction(store).objectStore(store).get(key);
-    get.onsuccess = () => { db.close(); resolve(get.result); };
+    const tx = db.transaction(store);
+    const get = tx.objectStore(store).get(key);
+    tx.oncomplete = () => { db.close(); resolve(get.result); };   // complete, or the next test's delete can find it still open
   };
 });
 
@@ -26,8 +27,9 @@ const rows = (store) => new Promise((resolve, reject) => {
   open.onerror = () => reject(open.error);
   open.onsuccess = () => {
     const db = open.result;
-    const count = db.transaction(store).objectStore(store).count();
-    count.onsuccess = () => { db.close(); resolve(count.result); };
+    const tx = db.transaction(store);
+    const count = tx.objectStore(store).count();
+    tx.oncomplete = () => { db.close(); resolve(count.result); };
   };
 });
 
