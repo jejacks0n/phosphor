@@ -3111,3 +3111,20 @@ test('the wait for the project of a reload holds through a live connection, and 
   project.editCell(2, 2, { char: 'A' });
   expect(char(project, 2, 2)).toBe('A');
 });
+
+test('a tall project reaches an artist, who draws on it, at both ends of the grid', async () => {
+  const room = await hosting({ cols: 40, rows: 6000 });   // 3000 lines
+  expect(room.project.baseLayer.scale).toBeGreaterThanOrEqual(1);
+  const ann = await artist(room, 'ann');
+  expect([ann.project.cols, ann.project.rows]).toEqual([40, 6000]);
+  expect(ann.project.baseLayer.scale).toBe(room.project.baseLayer.scale);
+  ann.project.editCell(3, 2990, { char: 'A' });
+  ann.project.commitEdit();
+  dab(ann.project, 5, ann.project.paintLayer.canvas.height - 2);
+  ann.project.commitEdit();
+  room.project.editCell(4, 2, { char: 'H' });
+  room.project.commitEdit();
+  await allMatch(room, ann);
+  expect(char(room.project, 3, 2990)).toBe('A');
+  expect(char(ann.project, 4, 2)).toBe('H');
+});
