@@ -150,7 +150,7 @@ const charsetName = computed(() => {
       </fieldset>
     </template>
 
-    <button @click="store.resetSliders">RESET ALL</button>
+    <button :disabled="!!drawing.hostOnly" :title="drawing.hostOnly" @click="store.resetSliders">RESET ALL</button>
 
     <hr/>
 
