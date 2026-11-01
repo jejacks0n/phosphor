@@ -163,6 +163,19 @@ test('unsaved art in the new tab: it says it\'s replaced, and what was open stay
   expect(documents).toContain(own);
 });
 
+test('the card\'s Back to your room is described by what it replaces', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  await kept(host);
+  await host.close();
+  const again = await newTab(context, room, { open: (page) => openApp(page, 'images/gradient.png') });
+  await tab(again, 'ANSI').click();
+  await editAt(again, 3, 3);
+  await again.keyboard.type('m');
+  await tab(again, 'SOCIAL').click();
+  await expect(card(again).getByRole('button', { name: BACK })).toHaveAccessibleDescription(REPLACES, { timeout: LOOKS });
+});
+
 test('pressed once the room is over: it says so, and it isn\'t offered again', async ({ page: host, context }) => {
   const room = fakeRoom({ hostWaitMs: 500 });
   await goLive(host, room);

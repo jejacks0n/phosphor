@@ -46,12 +46,12 @@ const askToReport = (event) => {
       <div class="name" :title="room.name">{{ room.name }}</div>
       <div class="host-line">
         <UserName class="host" :name="room.host" />
-        <button v-if="yours" class="join primary" @click="roomStore.goBackToRoom(room.id)">Back to your room</button>
+        <button v-if="yours" class="join primary" :aria-describedby="roomStore.goingBackReplaces ? reasonId : undefined" @click="roomStore.goBackToRoom(room.id)">Back to your room</button>
         <button v-else ref="join" class="join" :disabled="!join.enabled" :aria-describedby="join.reason ? reasonId : undefined" @click="roomStore.join(room.id)">{{ join.label }}</button>
       </div>
       <div class="meta">{{ meta }}</div>
       <div v-if="room.blockedInside" class="blocked">Someone you blocked is here</div>
-      <div v-if="yours && roomStore.goingBackReplaces" class="reason">{{ GOING_BACK_REPLACES_WORDS }}</div>
+      <div v-if="yours && roomStore.goingBackReplaces" :id="reasonId" class="reason">{{ GOING_BACK_REPLACES_WORDS }}</div>
       <div v-else-if="!yours && join.reason" :id="reasonId" class="reason">{{ join.reason }}</div>
     </div>
   </article>
