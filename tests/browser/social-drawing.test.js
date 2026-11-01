@@ -2167,6 +2167,8 @@ test('a host whose kept ledger doesn\'t reach takes the artist\'s agreed picture
   await expect.poll(() => char(room.project, 3, 3), PATIENT).toBe('w');
   await expect.poll(() => room.drawing.notice, PATIENT).toContain('undo starts over');
   await expect.poll(() => ann.drawing.notice, PATIENT).toContain('undo starts over');
+  expect(room.drawing.notice).not.toContain('host changed');   // the host only reloaded
+  expect(ann.drawing.notice).not.toContain('host changed');
   await allMatch({ project: room.project }, ann);
   expect(char(ann.project, 3, 3)).toBe('w');
 });

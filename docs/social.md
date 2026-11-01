@@ -299,7 +299,8 @@ view, which goes there when pressed. Anyone drawing can save the art; a project 
 **Only the host** changes the picture and the grid: the settings, sliders, base layer, Bake, Merge up, Merge
 down and Into the image are off for an artist and say "Only the host can do this." Merging or baking is final
 while anyone's listed as an artist, since other people's strokes can land on it. If another artist is connected,
-Merge and Bake warn first: "Strokes merged into the image can't be undone by anyone."
+Merge warns first: "Strokes merged into the image can't be undone by anyone." Bake warns too: "A bake can't be undone
+by anyone."
 
 **While others are drawing**, a host can't Open, start a new image or blank canvas, restore a version or Clear
 the edit layer; those say "Not while others are drawing." An artist who has dropped out holds none of this up,
@@ -339,7 +340,10 @@ in a new tab has nothing open of the room's, and gets an invitation, since accep
 A host's reload picks up where it was, whatever autosave had reached: for up to about 5 seconds drawing waits while
 the artists check in, and if one of them has strokes the host doesn't, the host catches up from them first, which can
 hold drawing for up to a minute. If they can't be reached or can't bridge the gap, the room carries on from the host's
-own saved document, undo starts over, with the same words as above, and strokes only an artist had may be lost.
+own saved document and strokes only an artist had may be lost. Undo starts over, and everyone sees "Your undo starts
+over. All the drawing is still here." since the host hasn't changed.
+
+Anything said in the chat panel about the drawing shows as a toast too while the chat is folded.
 
 ## The address, Back and Forward
 
