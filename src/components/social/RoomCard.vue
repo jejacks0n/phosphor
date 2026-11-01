@@ -42,13 +42,13 @@ const askToReport = (event) => {
     </div>
     <div class="info">
       <div class="name" :title="room.name">{{ room.name }}</div>
-      <UserName class="host" :name="room.host" />
-      <div class="meta">{{ meta }}</div>
-      <div v-if="room.blockedInside" class="blocked">Someone you blocked is here</div>
-      <div class="foot">
-        <span v-if="join.reason" :id="reasonId" class="reason">{{ join.reason }}</span>
+      <div class="host-line">
+        <UserName class="host" :name="room.host" />
         <button ref="join" class="join" :disabled="!join.enabled" :aria-describedby="join.reason ? reasonId : undefined" @click="roomStore.join(room.id)">{{ join.label }}</button>
       </div>
+      <div class="meta">{{ meta }}</div>
+      <div v-if="room.blockedInside" class="blocked">Someone you blocked is here</div>
+      <div v-if="join.reason" :id="reasonId" class="reason">{{ join.reason }}</div>
     </div>
   </article>
 </template>
@@ -98,9 +98,16 @@ div.name {
   text-overflow: ellipsis;
 }
 
-span.host {
-  display: block;
+div.host-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-top: 4px;
+}
+
+span.host {
+  flex: 1;
+  min-width: 0;
   font-family: 'JetBrains Mono', monospace;
   white-space: nowrap;
   overflow: hidden;
@@ -116,15 +123,6 @@ div.blocked {
   margin-top: 4px;
   font-size: 10px;
   color: var(--text-faint);
-}
-
-div.foot {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 8px;
 }
 
 article.more {   /* the ⋯, over the picture's top right corner, see-through until pointed at */
@@ -143,11 +141,13 @@ article.more :deep(.dropdown-trigger:focus-visible) {
   opacity: 1;
 }
 
-span.reason {
+div.reason {
+  margin-top: 4px;
   color: var(--text-faint);
 }
 
 button.join {
+  flex: none;
   padding: 5px 10px;
   font-size: 11px;
 }

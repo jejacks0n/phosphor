@@ -31,6 +31,22 @@ async function showLobby(page, server) {
   await expect.poll(() => server.lobby.received.map((m) => m.type)).toContain('hello');
 }
 
+test('a room\'s Join is on the host\'s line, at its right, even beside a long name or a reason', async ({ page }) => {
+  const long = { ...ROOMS[0], id: 'long', name: 'long host', host: 'a-very-long-name-that-goes-on-and-on-and-on-and-on-and-on-and-on' };
+  const server = await fakeServer(page, { rooms: [...ROOMS, long], people: PEOPLE });
+  await showLobby(page, server);
+  for (const name of ['neon harbor at dusk', 'acid logo', 'long host']) {
+    const room = card(page, name);
+    const join = await room.getByRole('button', { name: /^Join/ }).boundingBox();
+    const host = await room.locator('.host').boundingBox();
+    const box = await room.boundingBox();
+    expect(Math.abs((join.y + join.height / 2) - (host.y + host.height / 2))).toBeLessThanOrEqual(1);
+    expect(host.x + host.width).toBeLessThanOrEqual(join.x);
+    expect(join.x + join.width).toBeCloseTo(box.x + box.width - 11, 0);   // the card's padding and border
+  }
+  await expect(card(page, 'acid logo').getByText('Room is full')).toBeVisible();
+});
+
 test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Join opens a room', async ({ page }) => {
   const server = await fakeServer(page, { rooms: ROOMS, people: PEOPLE });
   await showLobby(page, server);
