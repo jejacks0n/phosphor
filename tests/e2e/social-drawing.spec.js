@@ -1161,3 +1161,49 @@ test('Make host is off while drawing is paused', async ({ page: host, context })
   await expect(button).toBeDisabled();
   await expect(button).toHaveAttribute('title', 'Not while drawing is paused.');
 });
+
+// What the SOCIAL tab shows of the room, as text, for a row of cells.
+const artRow = (page, row, length = 8) => store(page, 'room', `(r) => r.art?.cells.slice(${row} * r.art.cols, ${row} * r.art.cols + ${length}).map((c) => c.char).join('') ?? null`);
+
+test('an artist\'s SOCIAL tab shows their own document as it changes, and put back to watching they get the host\'s', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  await typeAt(host, 1, 1, 'h');
+  await typeAt(artist, 2, 2, 'a');
+  await agreed(host, artist);
+  await tab(artist, 'SOCIAL').click();
+  await expect(artist.getByLabel('The room\'s art')).toBeVisible();
+  await expect.poll(() => artRow(artist, 2)).toContain('a');
+  await expect.poll(() => artRow(artist, 1)).toContain('h');
+
+  await typeAt(host, 3, 3, 'n');   // what they hear
+  await expect.poll(() => artRow(artist, 3)).toContain('n');
+  const own = await store(artist, 'project', (p) => p.cells);
+  expect(await store(artist, 'room', (r) => r.art.cells.length)).toBe(own.length);
+
+  await fromMenu(host, 'Back to watching');
+  await mayDraw(artist).toBe(false);
+  await typeAt(host, 4, 4, 'w');   // only the host's art could say this now
+  await expect.poll(() => artRow(artist, 4)).toContain('w');
+});
+
+test('a former host\'s SOCIAL tab shows the document it carries on with, and the new host has no art left over', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  await typeAt(artist, 2, 2, 'a');
+  await agreed(host, artist);
+  await tab(artist, 'SOCIAL').click();
+  await expect.poll(() => artRow(artist, 2)).toContain('a');
+
+  await makeHost(host);
+  await isHost(artist).toBe('host');
+  await isHost(host).toBe('watch');
+  await mayDraw(host).toBe(true);
+  await notDrawing(host);
+  expect(await store(artist, 'room', (r) => r.art)).toBe(null);
+  await tab(host, 'SOCIAL').click();
+  await expect.poll(() => artRow(host, 2)).toContain('a');
+  await tab(artist, 'ANSI').click();
+  await typeAt(artist, 3, 3, 'z');   // the new host's stroke, on the old host's own document
+  await expect.poll(() => artRow(host, 3)).toContain('z');
+});

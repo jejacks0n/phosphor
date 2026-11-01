@@ -835,8 +835,9 @@ test('someone put back to watching while their project is packed isn\'t sent it,
   sends.clear();
   release([new Uint8Array(4)]);
   await going;
-  expect(sends.sent().filter((m) => m.t !== 'artists')).toEqual([]);
-  expect(sends.chunks()).toEqual([]);
+  await expect.poll(() => sends.sent().filter((m) => m.t === 'snapshot').length, PATIENT).toBe(1);   // the art, now they're watching
+  expect(sends.sent().filter((m) => m.t !== 'artists' && m.t !== 'snapshot')).toEqual([]);
+  expect(sends.chunks().filter(({ byteLength }) => byteLength === 4)).toEqual([]);
   expect(w.took).toBe(0);
 });
 
@@ -912,7 +913,7 @@ test('a project past what a channel buffers goes at the pace it drains, and the 
   expect(w.projecting).toBe(false);
 });
 
-test('art waits for a project\'s chunks, and that artist is brought up to date after', async () => {
+test('art waits for a project\'s chunks if they go back to watching during it, and they\'re brought up to date after', async () => {
   const r = await room(['p1']);
   drawingCalls(r);
   await seated(r, 'p1');
@@ -925,6 +926,8 @@ test('art waits for a project\'s chunks, and that artist is brought up to date a
   r.host.project = () => ({ n: 1, epoch: 'e', chunks: Promise.resolve(chunks) });
   let done = false;
   r.host.sendProject(w).then(() => { done = true; });
+  await later();
+  r.host.setArtists([]);
   await later();
   const chunksThen = channel.sent.length;
   r.host.setArt(changed(art(), [5]));   // cells
@@ -966,7 +969,7 @@ test('someone put back to watching in the middle of a project is still sent the 
     channel.drain();
     await later();
   }
-  expect(channel.sent.filter((d) => typeof d !== 'string').length).toBe(200);
+  expect(channel.sent.filter((d) => typeof d !== 'string' && d.byteLength === CHUNK_BYTES).length).toBe(200);   // and after them, the art
 });
 
 test('a connection gone while a project waits to drain ends the wait', async () => {

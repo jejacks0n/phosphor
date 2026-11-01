@@ -2732,3 +2732,81 @@ test('someone listed keeps their place: back on a new connection at the cap, the
   room.drawing.backToWatching('ann');
   expect(room.drawing.artistsFull).toBe(null);
 });
+
+// A picture for the Host to show, with what it heard by each person kept: they have what `art` does as of now.
+const artOf = (char) => ({
+  cols: 2, lines: 1, font: { id: 'vga', size: 20 },
+  cells: [char, 'b'].map((c) => ({ char: c, fg: { r: 255, g: 255, b: 255, hex: '#ffffff' }, bg: { r: 0, g: 0, b: 0, hex: '#000000' } })),
+});
+const hearsArt = (person) => {
+  person.art = null;
+  person.watch.onArt = (art) => { person.art = art.cells[0].char; };
+};
+const artSent = (spy, person, room) => {
+  const w = room.host.open().find(({ peer }) => peer === person.sub);
+  return spy.mock.calls.filter(([to, data]) => to === w && (typeof data !== 'string' || /^\{"t":"(cells|snapshot)"/.test(data))).length;
+};
+
+test('an artist is sent no art, and a watcher in the same room still is', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), cid = await join(room, 'cid'), dee = await join(room, 'dee');
+  hearsArt(ann);
+  hearsArt(cid);
+  hearsArt(dee);
+  expect(room.drawing.invite('dee')).toBe(true);   // asked, and no answer: a watcher still
+  const put = vi.spyOn(room.host, 'put');
+
+  room.host.setArt(artOf('a'));   // a snapshot, as nothing's been sent
+  await expect.poll(() => cid.art, PATIENT).toBe('a');
+  await expect.poll(() => dee.art, PATIENT).toBe('a');
+  room.host.setArt(artOf('c'));   // the changed cells
+  await expect.poll(() => cid.art, PATIENT).toBe('c');
+  expect(artSent(put, cid, room)).toBeGreaterThan(1);
+  expect(artSent(put, ann, room)).toBe(0);
+  await wait(50);
+  expect(ann.art).toBe(null);
+});
+
+test('someone put back to watching gets the art straight away, a snapshot, and then what changes', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  room.host.setArt(artOf('a'));
+  hearsArt(ann);
+  const put = vi.spyOn(room.host, 'put');
+
+  room.drawing.backToWatching('ann');
+  await expect.poll(() => ann.art, PATIENT).toBe('a');   // with nothing new to send
+  await expect.poll(() => ann.drawing.mayDraw, PATIENT).toBe(false);
+  const w = room.host.open().find(({ peer }) => peer === 'ann');
+  const first = put.mock.calls.findIndex(([to, data]) => to === w && typeof data === 'string' && data.startsWith('{"t":"snapshot"'));
+  const list = put.mock.calls.findIndex(([to, data]) => to === w && typeof data === 'string' && data.startsWith('{"t":"artists"'));
+  expect(list).toBeGreaterThanOrEqual(0);
+  expect(first).toBeGreaterThan(list);   // they've heard they're watching, so the art's for them
+  room.host.setArt(artOf('z'));
+  await expect.poll(() => ann.art, PATIENT).toBe('z');
+});
+
+test('art that was held back behind a project isn\'t waited for by an artist, and is sent if they go back to watching first', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  room.host.setArt(artOf('a'));
+  const w = room.host.open().find(({ peer }) => peer === 'ann');
+  hearsArt(ann);
+
+  await room.host.sendProject(w);
+  expect(w.behind).toBeFalsy();
+  w.projecting = true;   // one on its way
+  room.host.setArt(artOf('b'));
+  expect(w.behind).toBeFalsy();
+  await room.host.sentWhole(w);
+  await wait(50);
+  expect(ann.art).toBe(null);
+
+  w.projecting = true;
+  room.drawing.backToWatching('ann');
+  expect(w.drawing).toBe(false);
+  await expect.poll(() => w.behind, PATIENT).toBe(true);   // not over a project
+  await room.host.sentWhole(w);
+  await expect.poll(() => ann.art, PATIENT).toBe('b');
+  expect(w.behind).toBe(false);
+});

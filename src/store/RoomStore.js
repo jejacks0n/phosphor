@@ -97,6 +97,8 @@ const logEntry = ({ id, ts, deleted, text, pass, sig, presence }) => (deleted ? 
 // A deleted message as the list shows it: nothing says whose it was.
 const deletedRow = ({ id, ts }) => ({ id, ts, text: '', pass: null, sig: null, sub: null, name: null, host: false, mine: false, deleted: true });
 
+// What's open, as a room's picture.
+const artOf = (project, workspace) => ({ cells: project.cells, cols: project.cols, lines: charRowsOf(project.rows), font: fontOnWire(workspace.displayFontSpec) });
 const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12, signal: null });
 const newSettingsDraft = () => ({ welcome: '', allowGuests: true, max: 12, signal: null, seen: {} });
 
@@ -340,7 +342,7 @@ export const useRoomStore = defineStore('room', {
     share() {
       const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore();
       let timer = null, pictureTimer = null, pictureAt = null;
-      const artNow = () => ({ cells: project.cells, cols: project.cols, lines: charRowsOf(project.rows), font: fontOnWire(workspace.displayFontSpec) });
+      const artNow = () => artOf(project, workspace);
       const flush = () => {
         timer = null;
         if (project._sliderBefore) return schedule();
@@ -449,7 +451,7 @@ export const useRoomStore = defineStore('room', {
         connectWithinMs: this._connectWithinMs, roomId: id, passKey,
         onChat: (event) => this.chatHeard(event),
         onRoom: ({ name, welcome }) => { this.room = { ...this.room, name, welcome }; },   // the host is joined's
-        onArt: (art) => { this.art = art; },
+        onArt: (art) => { if (!drawing.mayDraw) this.art = art; },   // one that crossed their yes: they have the document
         onView: (view, who) => {
           if (who === undefined) this.hostView = view;
           else if (drawing.artists.includes(who)) this.artistViews = { ...this.artistViews, [who]: view };   // the host's word on who, from a stranger
@@ -463,6 +465,7 @@ export const useRoomStore = defineStore('room', {
         onState: (state) => this.watchState(state),
       }));
       drawing.watching(this._watch, { me: () => social.claims?.sub, roomId: id, roomName: () => this.room?.name });
+      this._stops.push(this.showOwnDocument());
       this._stops.push(watch(() => drawing.artists, (list) => {
         this.artistViews = Object.fromEntries(Object.entries(this.artistViews).filter(([sub]) => list.includes(sub)));
       }));
@@ -481,6 +484,15 @@ export const useRoomStore = defineStore('room', {
       this._stops.push(watch(() => social.claims?.verified, (now, was) => {
         if (was === false && now === true) this.join(this.id, { password: this._password });
       }));
+    },
+
+    // An artist is sent no art, and the room's page still shows some: their own document, as the host's is its own.
+    showOwnDocument() {
+      const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore();
+      return watch([() => drawing.mayDraw, () => project.cells, () => project.cols, () => project.rows, () => workspace.displayFontSpec], () => {
+        const art = drawing.mayDraw && artOf(project, workspace);
+        if (art && art.cells.length === art.cols * art.lines) this.art = art;   // not a new size before its render
+      }, { immediate: true });
     },
 
     // The room you're watching, to go back into after signing in: its id and password, or null.
