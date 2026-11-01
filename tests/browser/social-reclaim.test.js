@@ -4,9 +4,10 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { forgetKey } from '@/social/keys';
 import { desktopQuery } from '@/social/config';
-import { ROOM_AWAY_WORDS } from '@/social/messages';
+import { GOING_BACK_FAILED_WORDS, ROOM_AWAY_WORDS } from '@/social/messages';
 import { keepHostCopy, hostCopies, keepRoomLedger, readRoomLedger, readLatest } from '@/document/autosaveStore';
 import { settingsJson } from '@/store/project/shared';
 import { createTestApp, loadImage } from '../support/app.js';
@@ -50,6 +51,8 @@ afterEach(async () => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
+
+const look = () => room.lookForOwnRooms();
 
 const anotherTabHosts = () => new Promise((granted) => {
   navigator.locks.request(LOCK, () => new Promise((release) => { letGo = release; granted(); }));
@@ -288,11 +291,44 @@ test('going back once another tab has it does nothing but take the offer away', 
   expect(social.notice).toBe(null);
 });
 
-test('going back with the copy past its life says the room ended', async () => {
+test('going back with the copy past its life doesn\'t say the room ended, since it may not have', async () => {
   const reload = vi.fn();
   await room.goBackToRoom(ID, { reload });
   expect(reload).not.toHaveBeenCalled();
-  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(social.notice).toBe(GOING_BACK_FAILED_WORDS);
+  expect(social.notice).not.toBe(ROOM_AWAY_WORDS);
+});
+
+test('going back with no room for the record in this tab doesn\'t say the room ended, and it\'s still offered', async () => {
+  await keepHostCopy(copyOf());
+  await look();
+  await look();
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('full', 'QuotaExceededError'); });
+  const reload = vi.fn();
+  await room.goBackToRoom(ID, { reload });
+  expect(reload).not.toHaveBeenCalled();
+  expect(social.notice).toBe(GOING_BACK_FAILED_WORDS);
+  expect(room.reclaimable).toHaveLength(1);
+  expect(await hostCopies()).toHaveLength(1);
+});
+
+test('art that won\'t open after the reload says so, and leaves the copy and ledger to try again', async () => {
+  await live();
+  await keepRoomLedger(ID, 'doc', () => ({ n: 7 }));
+  const record = sessionStorage.getItem('phosphor-hosting');
+  room._connection = null;
+  room._letGoOfTab?.();
+  for (const stop of room._stops) stop();
+  Object.assign(room, { role: null, id: null, _host: null, _stops: [] });
+  sessionStorage.setItem('phosphor-hosting', record);
+  project.clearImage();
+  room.resume();
+  useWorkspaceStore().documentAnswered = true;
+  await expect.poll(() => room.role).toBe(null);
+  expect(social.notice).toBe('The room\'s art couldn\'t be opened.');
+  expect(sessionStorage.getItem('phosphor-hosting')).toBe(null);
+  expect(await hostCopies()).toHaveLength(1);
+  expect(await readRoomLedger(ID)).toMatchObject({ kept: { n: 7 } });
 });
 
 test('another account can\'t go back, even by the id', async () => {
