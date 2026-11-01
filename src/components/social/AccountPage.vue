@@ -149,6 +149,11 @@ function cancelDelete() {
   focusOn(deleteButton);
 }
 
+// Folding it away while the panel is open closes the panel, so no password stays behind in it.
+function foldDelete(event) {
+  if (!event.target.open && deleting.value) cancelDelete();
+}
+
 function startAsk(name) {
   twoFactorError.value = null;
   ask.value = name;
@@ -332,18 +337,23 @@ async function deleteAccount() {
     </section>
 
     <section aria-labelledby="account-delete">
-      <h3 id="account-delete">Delete account</h3>
-      <button v-if="!deleting" ref="deleteButton" class="danger" @click="startDelete">Delete account</button>
-      <form v-else ref="deleteForm" @submit.prevent="deleteAccount">
-        <p class="help">This removes your account, your username and your blocks. It can't be undone.</p>
-        <label v-if="hasPassword">Password <input v-model="password" type="password" autocomplete="current-password" required></label>
-        <p v-else class="help">Deleting needs a sign-in in the last 5 minutes</p>
-        <div class="actions">
-          <button type="button" @click="cancelDelete">Cancel</button>
-          <button class="danger" type="submit" :disabled="social.busy || (hasPassword && !password)">Delete for good</button>
-        </div>
-        <p v-if="deleteError" class="error" role="alert">{{ deleteError }}</p>
-      </form>
+      <details @toggle="foldDelete">
+        <summary>
+          <h3 id="account-delete">Delete account</h3>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
+        </summary>
+        <button v-if="!deleting" ref="deleteButton" class="danger" @click="startDelete">Delete account</button>
+        <form v-else ref="deleteForm" @submit.prevent="deleteAccount">
+          <p class="help">This removes your account, your username and your blocks. It can't be undone.</p>
+          <label v-if="hasPassword">Password <input v-model="password" type="password" autocomplete="current-password" required></label>
+          <p v-else class="help">Deleting needs a sign-in in the last 5 minutes</p>
+          <div class="actions">
+            <button type="button" @click="cancelDelete">Cancel</button>
+            <button class="danger" type="submit" :disabled="social.busy || (hasPassword && !password)">Delete for good</button>
+          </div>
+          <p v-if="deleteError" class="error" role="alert">{{ deleteError }}</p>
+        </form>
+      </details>
     </section>
   </div>
 </template>
@@ -422,7 +432,35 @@ ul.codes {
   padding: 0;
   list-style: none;
 }
-button.danger {
-  align-self: flex-start;
+summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+details[open] > summary {
+  margin-bottom: 8px;
+}
+details > button.danger {
+  width: 100%;
+}
+svg.chevron {   /* as the charset field's: down while folded, up once open */
+  flex: none;
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+  transition: transform 0.15s ease;
+}
+details[open] svg.chevron {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  svg.chevron {
+    transition: none;
+  }
 }
 </style>

@@ -16,6 +16,12 @@ async function openAccount(page) {
   return shown(page, 'account');
 }
 
+// The Delete account button sits folded away: open the fold to reach it.
+async function deleteButton(account) {
+  await account.locator('summary', { hasText: 'Delete account' }).click();
+  return account.getByRole('button', { name: 'Delete account' });
+}
+
 test('rename: Change opens a field, Save sends it, and the lobby shows the new name', async ({ page }) => {
   const server = await fakeServer(page, { me: member() });
   const account = await openAccount(page);
@@ -268,10 +274,37 @@ test('Unblock removes the row; with nobody blocked it says so', async ({ page })
   await expect(account.getByText('Nobody blocked')).toBeVisible();
 });
 
+test('Delete account stays folded away until it is toggled open, and then fills the width', async ({ page }) => {
+  await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  const fold = account.locator('details');
+  const button = account.getByRole('button', { name: 'Delete account' });
+  await expect(account.locator('summary')).toHaveText('Delete account');
+  await expect(button).toBeHidden();
+  await account.locator('summary').click();
+  await expect(button).toBeVisible();
+  expect((await button.boundingBox()).width).toBe((await fold.boundingBox()).width);
+  await account.locator('summary').click();
+  await expect(button).toBeHidden();
+});
+
+test('Folding Delete account away closes its panel and forgets the password', async ({ page }) => {
+  await fakeServer(page, { me: member() });
+  const account = await openAccount(page);
+  await (await deleteButton(account)).click();
+  await account.getByLabel('Password').fill('secret one');
+  await account.locator('summary').click();
+  await expect(account.getByLabel('Password')).toBeHidden();
+  await account.locator('summary').click();
+  await expect(account.getByLabel('Password')).toHaveCount(0);
+  await account.getByRole('button', { name: 'Delete account' }).click();
+  await expect(account.getByLabel('Password')).toHaveValue('');
+});
+
 test('delete with a password: back in the lobby as a guest, told the account is deleted', async ({ page }) => {
   const server = await fakeServer(page, { me: member() });
   const account = await openAccount(page);
-  await account.getByRole('button', { name: 'Delete account' }).click();
+  await (await deleteButton(account)).click();
   await account.getByLabel('Password').fill('correct horse battery');
   await account.getByRole('button', { name: 'Delete for good' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
@@ -286,7 +319,7 @@ test('delete without a password asks for a recent sign-in; Cancel closes the pan
     'POST /api/auth/delete-user': () => [400, { code: 'INVALID_PASSWORD' }],
   });
   const account = await openAccount(page);
-  await account.getByRole('button', { name: 'Delete account' }).click();
+  await (await deleteButton(account)).click();
   await account.getByLabel('Password').fill('wrong');
   await account.getByRole('button', { name: 'Delete for good' }).click();
   await expect(account.getByRole('alert')).toHaveText('That password doesn\'t match');
@@ -297,7 +330,7 @@ test('delete without a password asks for a recent sign-in; Cancel closes the pan
 test('an account without a password says deleting needs a recent sign-in', async ({ page }) => {
   const server = await fakeServer(page, { me: member({ providers: ['github'] }) });
   const account = await openAccount(page);
-  await account.getByRole('button', { name: 'Delete account' }).click();
+  await (await deleteButton(account)).click();
   await expect(account.getByText('Deleting needs a sign-in in the last 5 minutes')).toBeVisible();
   await account.getByRole('button', { name: 'Delete for good' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
@@ -331,7 +364,7 @@ test('Delete account and Delete for good can be read: their text is not the colo
     const style = getComputedStyle(el);
     return [style.color, style.backgroundColor];
   });
-  const open = account.getByRole('button', { name: 'Delete account' });
+  const open = await deleteButton(account);
   const [text, background] = await colors(open);
   expect(text).not.toBe(background);
   await open.click();
@@ -342,7 +375,7 @@ test('Delete account and Delete for good can be read: their text is not the colo
 test('the delete panel says what is lost, takes focus, and Cancel clears the password and gives focus back', async ({ page }) => {
   await fakeServer(page, { me: member() });
   const account = await openAccount(page);
-  const open = account.getByRole('button', { name: 'Delete account' });
+  const open = await deleteButton(account);
   await open.click();
   await expect(account.getByText('This removes your account, your username and your blocks. It can\'t be undone.')).toBeVisible();
   await expect(account.getByLabel('Password')).toBeFocused();
@@ -438,7 +471,7 @@ test('Every form\'s button is off until what it needs is filled in: Continue, Tu
     await section.getByRole('button', { name: 'Cancel' }).click();
   }
 
-  await account.getByRole('button', { name: 'Delete account' }).click();
+  await (await deleteButton(account)).click();
   const forGood = account.getByRole('button', { name: 'Delete for good' });
   await expect(forGood).toBeDisabled();
   await account.getByLabel('Password').fill('violet-lantern-harbor-42');
@@ -450,7 +483,7 @@ test('With no password to ask for, Continue and Delete for good are on from the 
   const account = await openAccount(page);
   await twoFactor(account).getByRole('button', { name: 'Turn on' }).click();
   await expect(twoFactor(account).getByRole('button', { name: 'Continue' })).toBeEnabled();
-  await account.getByRole('button', { name: 'Delete account' }).click();
+  await (await deleteButton(account)).click();
   await expect(account.getByRole('button', { name: 'Delete for good' })).toBeEnabled();
 });
 
