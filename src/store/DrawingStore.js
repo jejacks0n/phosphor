@@ -8,8 +8,11 @@ import { readCursor, readCursors } from '@/social/wire';
 import { UNDO_RESET_WORDS } from '@/social/messages';
 
 const CURSORS_EVERY_MS = 100;
+// How many can draw in a room, the host among them: what docs/investigations/drawing-together.md measured.
+export const MOST_ARTISTS = 6;
+const ROOM_FULL = 'This room has as many artists as it can take.';
 export const CHECK_EVERY_MS = 2000;
-const KEEP_LEDGER_EVERY_MS = 2000;   // written for a reload that can't stop to write anything on its way out
+const KEEP_LEDGER_EVERY_MS = 10_000; // written for a reload that can't stop to write anything on its way out; a large one stalls the tab (docs/investigations/drawing-together.md), and autosave writes it too
 const HELLOS_WITHIN_MS = 5000;       // a host without all that's numbered (a reload, a new host) waits this long to hear who's ahead of it
 const ONLY_THE_HOST = 'Only the host can do this.';
 const NOT_WITH_OTHERS = 'Not while others are drawing.';
@@ -38,6 +41,9 @@ export const useDrawingStore = defineStore('drawing', () => {
   // Why a control is off, or null: the host's alone, and those a host can't use under others either.
   const hostOnly = computed(() => (mayDraw.value ? ONLY_THE_HOST : null));
   const offWithOthers = computed(() => hostOnly.value ?? (othersHere.value ? NOT_WITH_OTHERS : null));
+  // Why no one more can be asked, or null. A place is the host's, or a listed artist's, here or not (their place waits
+  // for them to come back), or held by someone asked, as their yes has to find one.
+  const artistsFull = computed(() => (1 + artists.value.length + invited.value.length >= MOST_ARTISTS ? ROOM_FULL : null));
   // The cursors to draw: anyone else's on the art.
   const others = computed(() => Object.fromEntries(Object.entries(cursors.value).filter(([sub, { at }]) => at && sub !== me())));
 
@@ -309,7 +315,9 @@ export const useDrawingStore = defineStore('drawing', () => {
           return;
         }
         invited.value = invited.value.filter((other) => other !== sub);
-        if (yes) setArtists([...artists.value, sub]);
+        if (!yes) return;
+        if (1 + artists.value.length < MOST_ARTISTS) setArtists([...artists.value, sub]);
+        else host.tell(sub, { t: 'withdrawn' });   // asked before the room was full, say, as a reload brings back
       },
     };
   }
@@ -338,8 +346,9 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   // Guests can't draw (tell refuses them), and the host already does.
   function invite(sub) {
-    if (!host || sub === me() || artists.value.includes(sub) || !host.tell(sub, { t: 'invite' })) return false;
-    if (!invited.value.includes(sub)) invited.value = [...invited.value, sub];
+    const asked = invited.value.includes(sub);
+    if (!host || sub === me() || artists.value.includes(sub) || (artistsFull.value && !asked) || !host.tell(sub, { t: 'invite' })) return false;
+    if (!asked) invited.value = [...invited.value, sub];
     return true;
   }
 
@@ -630,7 +639,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   }
 
   return {
-    artists, artistNames, invited, invitation, paused, hostChanging, waiting, connected, cursors, showCursors, notice, mayDraw, othersHere, hostOnly, offWithOthers, others,
+    artists, artistNames, invited, invitation, paused, hostChanging, waiting, connected, cursors, showCursors, notice, mayDraw, othersHere, hostOnly, offWithOthers, artistsFull, others,
     hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, autosavedBy,
     watchCallbacks, watching, heardArtists, accept, decline, connection, close,
     makeHost, takeOver, hostChanged, becomeArtist, artistsNow, hostingAgain, lastChange, holdsTheArt, noteFormerHost,
