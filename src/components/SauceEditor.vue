@@ -1,9 +1,11 @@
 <script setup>
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useDrawingStore } from '@/store/DrawingStore';
 import ProjectActions from '@/components/ProjectActions.vue';
 
 const { sauceTitle, sauceAuthor, sauceGroup, sauceUserComments } = storeToRefs(useProjectStore());
+const drawing = useDrawingStore();
 </script>
 
 <template>
@@ -12,25 +14,27 @@ const { sauceTitle, sauceAuthor, sauceGroup, sauceUserComments } = storeToRefs(u
       <h3>SAUCE Metadata</h3>
       <p>This metadata is embedded in the exported .ans or .utf8ans file and can be viewed by other ANSI editors or viewer applications.</p>
 
-      <div class="field">
-        <label for="sauce-title">Title</label>
-        <input id="sauce-title" v-model="sauceTitle" type="text" placeholder="Title (35 chars)" maxlength="35">
-      </div>
+      <fieldset :disabled="!!drawing.hostOnly" :title="drawing.hostOnly">
+        <div class="field">
+          <label for="sauce-title">Title</label>
+          <input id="sauce-title" v-model="sauceTitle" type="text" placeholder="Title (35 chars)" maxlength="35">
+        </div>
 
-      <div class="field">
-        <label for="sauce-author">Author</label>
-        <input id="sauce-author" v-model="sauceAuthor" type="text" placeholder="Author (20 chars)" maxlength="20">
-      </div>
+        <div class="field">
+          <label for="sauce-author">Author</label>
+          <input id="sauce-author" v-model="sauceAuthor" type="text" placeholder="Author (20 chars)" maxlength="20">
+        </div>
 
-      <div class="field">
-        <label for="sauce-group">Group</label>
-        <input id="sauce-group" v-model="sauceGroup" type="text" placeholder="Group (20 chars)" maxlength="20">
-      </div>
+        <div class="field">
+          <label for="sauce-group">Group</label>
+          <input id="sauce-group" v-model="sauceGroup" type="text" placeholder="Group (20 chars)" maxlength="20">
+        </div>
 
-      <div class="field">
-        <label for="sauce-comments">Custom Comments</label>
-        <textarea id="sauce-comments" v-model="sauceUserComments" placeholder="Add your own notes to the file metadata..."></textarea>
-      </div>
+        <div class="field">
+          <label for="sauce-comments">Custom Comments</label>
+          <textarea id="sauce-comments" v-model="sauceUserComments" placeholder="Add your own notes to the file metadata..."></textarea>
+        </div>
+      </fieldset>
 
       <hr/>
 
@@ -64,6 +68,16 @@ p {
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-muted);
+}
+
+fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
 
 div.field {
