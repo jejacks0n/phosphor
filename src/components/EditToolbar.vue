@@ -20,7 +20,7 @@ const workspace = useWorkspaceStore();
 const drawing = useDrawingStore();
 // A control that's off for a reason: the reason in its title, and what it is still its name for screen readers.
 const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name } : {});
-const warnedSub = (sub) => (drawing.othersHere ? `${sub} ${MERGE_WARNING}` : sub);
+const warnedSub = (sub) => (drawing.othersHere ? `${MERGE_WARNING} ${sub}` : sub);
 
 // The toolbar offers the tools that work in the current view (editorTab is 'input' or 'output' while editing),
 // with a divider wherever the toolbar section changes.

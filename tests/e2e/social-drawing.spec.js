@@ -1248,3 +1248,14 @@ test('asked again and accepting, "You\'re back to watching." goes', async ({ pag
   await mayDraw(artist).toBe(true);
   await expect(chat(artist).getByText('You\'re back to watching.')).toHaveCount(0);
 });
+
+test('Merge\'s warning doesn\'t come after the question it asks', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  await typeAt(artist, 1, 1, 'a');
+  await sameArt(host, artist);
+  await host.getByRole('button', { name: 'Merge down', exact: false }).first().click();
+  const sub = await host.getByRole('dialog', { name: 'Merge down' }).locator('p').first().innerText();
+  expect(sub.startsWith(MERGE_WARNING)).toBe(true);
+  expect(sub.endsWith(':')).toBe(true);
+});
