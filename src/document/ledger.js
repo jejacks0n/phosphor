@@ -62,6 +62,10 @@ export function keptForWire({ n, epoch, limits, sum, stacks }) {
 // Each array or tile sent costs a whole tile here, however few bytes it took to say. A ledger at its limit holds about
 // 2000 (MOST_BYTES), and the newest stroke may run past that.
 const MOST_WIRE_TILES = 8192;
+// A ledger keeps MOST_STROKES a person, of the most a room can list (ponytail: at a time, and it holds those gone too: a room
+// through more than that refuses a hand-over, and undo starts over); and a stack costs a cell in some stroke.
+const MOST_WIRE_STROKES = MOST_STROKES * 64;
+const MOST_WIRE_CELLS = MOST_BYTES / CELL_BYTES;
 const must = (ok) => { if (!ok) throw new Error('Not a ledger'); };
 const isCount = (n) => Number.isSafeInteger(n) && n >= 0;
 const isPairs = (pairs) => Array.isArray(pairs) && pairs.length % 2 === 0 && pairs.length <= 2 * TILE * TILE
@@ -74,6 +78,7 @@ export function keptFromWire({ n, epoch, limits, sum, bytes, strokes, cells, til
   must(isCount(n) && typeof epoch === 'string' && typeof limits === 'boolean' && Number.isInteger(sum) && isCount(bytes));
   must(Array.isArray(strokes) && Array.isArray(cells) && Array.isArray(tiles) && Array.isArray(arrays));
   must(arrays.length <= MOST_WIRE_TILES && tiles.length <= MOST_WIRE_TILES && arrays.every(isPairs));
+  must(strokes.length <= MOST_WIRE_STROKES && cells.length <= MOST_WIRE_CELLS);
   const inLayer = (x, y) => isCount(x) && isCount(y) && !(x % TILE) && !(y % TILE) && x < width && y < height;
   const pixels = arrays.map(filled);
   const pixelsAt = (at) => {

@@ -1,9 +1,12 @@
 // The ledger: numbering every change, a stack per position, and undo that takes back one person's stroke.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { Ledger } from '../../src/document/ledger.js';
+import { Ledger, keptForWire, keptFromWire } from '../../src/document/ledger.js';
 import { hashCell, hashPixel, eachPixel, Tail } from '../../src/document/changes.js';
 import { TILE } from '../../src/document/History.js';
+
+// The ledger's own: 64 MB in a room, and what a cell counts for.
+const MOST_BYTES = 64 * 1024 * 1024, CELL_BYTES = 128;
 
 const RED = 0xff0000ff, GREEN = 0x00ff00ff, BLUE = 0x0000ffff, GRAY = 0x80808080;
 const cell = (char) => Object.freeze({ char });
@@ -706,4 +709,26 @@ test('a change too big for mostBytes takes several numbers, all in the tail; alo
 
   const alone = new Ledger({ readCell: pic.readCell, readTile: pic.readTile, mostBytes: 1000, numbering: false });
   assert.equal(alone.submit('a', 's1', { cells }).parts, undefined);
+});
+
+test('a ledger with as many strokes as its limits leave passes keptFromWire, and one more can\'t be from a ledger', () => {
+  const { ledger, drawCell } = setup({}, { limits: true, epoch: 'e' });
+  for (let person = 0; person < 64; person++) for (let i = 0; i < 51; i++) drawCell(`p${person}`, `s${person}-${i}`, `${person},${i}`, { char: 'x' });
+  const full = keptForWire(ledger.kept());
+  assert.equal(full.strokes.length, 64 * 50);
+  assert.ok(keptFromWire(full));
+  const stroke = { id: 'one-more', by: 'p64', undone: false, bytes: 0, cells: [], paint: [] };
+  assert.throws(() => keptFromWire({ ...full, strokes: [...full.strokes, stroke] }), /Not a ledger/);
+});
+
+test('a ledger with as many cells as its bytes hold passes keptFromWire, and one more can\'t be from a ledger', () => {
+  const { ledger } = setup({}, { limits: true, epoch: 'e' });
+  const strokes = 16, each = MOST_BYTES / CELL_BYTES / strokes;
+  for (let s = 0; s < strokes; s++) ledger.submit('ann', `s${s}`, { cells: Array.from({ length: each }, (_, i) => [`${i},${s}`, { char: 'x' }]), runs: [] });
+  const full = keptForWire(ledger.kept());
+  assert.equal(full.cells.length, MOST_BYTES / CELL_BYTES);
+  assert.ok(keptFromWire(full));
+  assert.throws(() => keptFromWire({ ...full, cells: [...full.cells, ['0,99', null, []]] }), /Not a ledger/);
+  ledger.submit('ann', 'more', { cells: [['0,99', { char: 'y' }]], runs: [] });
+  assert.ok(keptFromWire(keptForWire(ledger.kept())));   // past its bytes, the oldest went
 });
