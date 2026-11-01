@@ -327,8 +327,8 @@ the browser's own list, and the room's art opens beside it.
 
 A host's reload picks up where it was, whatever autosave had reached: for up to about 5 seconds drawing waits while
 the artists check in, and if one of them has strokes the host doesn't, the host catches up from them first, which can
-hold drawing for up to a minute. If they can't bridge the gap, undo starts over, with the same words as above. No
-strokes are lost.
+hold drawing for up to a minute. If they can't be reached or can't bridge the gap, the room carries on from the host's
+own saved document, undo starts over, with the same words as above, and strokes only an artist had may be lost.
 
 ## The address, Back and Forward
 
