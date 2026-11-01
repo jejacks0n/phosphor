@@ -274,6 +274,9 @@ export function readChange(msg, { cols, rows, layerWidth, layerHeight }) {
   return { stroke, cells, runs };
 }
 
+// Whether these could be a document's cells or a ledger's on any grid the app allows: they may be past the one in use.
+export const cellsFitAnyGrid = (cells) => !!readChange({ stroke: 'any', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES });
+
 // The whole document, as chunks. The parts are projectParts()'
 // (with the imageBuffer, as writeProject has it): the file's own form, so a project that opens from a
 // file opens from this, and the blobs become the buffers openParts takes on the other side.
