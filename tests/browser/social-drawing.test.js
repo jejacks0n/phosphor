@@ -2640,10 +2640,10 @@ test('a gather stopped with no number yet leaves a number a project can carry', 
 
 
 // Full but for `left` places, the host counted: the room's own word on who's listed, none of them here.
-const listedUpTo = (room, left, also = []) => {
+const listedUpTo = (room, left, also = [], tag = undefined) => {
   const others = Array.from({ length: MOST_ARTISTS - 1 - left - also.length }, (_, i) => `listed-${i}`);
   setActivePinia(room.pinia ?? getActivePinia());
-  room.drawing.artistsNow([...others, ...also]);
+  room.drawing.artistsNow([...others, ...also], tag);
 };
 
 // The host's list of who's here, with one watcher, and the button their ⋯ menu has for Make artist.
@@ -2714,10 +2714,9 @@ test('a yes that finds the room full isn\'t listed, and is told so', async () =>
 });
 
 test('someone listed keeps their place: back on a new connection at the cap, they still draw, and going frees it', async () => {
-  const room = await hosting();
-  room.pinia = getActivePinia();
+  const room = await hostingWithSocket();
   const ann = await artist(room, 'ann');
-  listedUpTo(room, 0, ['ann']);
+  listedUpTo(room, 0, ['ann'], lastList(room).tag);   // the answer to the list that has ann on it
   await expect.poll(() => ann.drawing.artists.includes('ann'), PATIENT).toBe(true);
   setActivePinia(room.pinia);
   const list = [...room.drawing.artists];
@@ -3127,4 +3126,91 @@ test('a tall project reaches an artist, who draws on it, at both ends of the gri
   await allMatch(room, ann);
   expect(char(room.project, 3, 2990)).toBe('A');
   expect(char(ann.project, 4, 2)).toBe('H');
+});
+
+// The last list the host's socket sent: the tag an answer to it says.
+const lastList = (room) => room.socket.findLast((msg) => msg.type === 'artists');
+
+test('a list the room says unasked, while the host\'s is on its way, costs someone just accepted nothing', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  room.drawing.artistsNow(['ann'], lastList(room).tag);
+  const bob = await join(room, 'bob');
+  expect(room.drawing.invite('bob')).toBe(true);
+  await expect.poll(() => bob.drawing.invitation, PATIENT).toBe(true);
+  bob.drawing.accept();
+  await expect.poll(() => bob.drawing.mayDraw, PATIENT).toBe(true);
+  const { tag } = lastList(room);
+  bob.project.editCell(1, 1, { char: 'B' });
+  bob.project.commitEdit();
+
+  room.drawing.artistsNow(['ann']);   // unasked: from before the room took bob
+  await wait(100);
+  expect(room.drawing.artists).toEqual(['ann', 'bob']);
+  expect(lastList(room).tag).toBe(tag);   // nothing was said again
+  expect(bob.drawing.mayDraw).toBe(true);
+  expect(bob.drawing.invitation).toBe(false);
+
+  room.drawing.artistsNow(['ann', 'bob'], tag);
+  await allMatch(room, ann, bob);
+  expect(char(room.project, 1, 1)).toBe('B');
+  expect(char(bob.project, 1, 1)).toBe('B');
+});
+
+test('while a list is on its way only the answer to the latest counts, and it\'s the room\'s word', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  await allMatch(room, ann, bob);
+  const first = lastList(room).tag;
+  room.drawing.backToWatching('bob');
+  const second = lastList(room).tag;
+  expect(second).not.toBe(first);
+  room.drawing.artistsNow(['ann', 'bob'], first);   // an older answer
+  expect(room.drawing.artists).toEqual(['ann']);
+  room.drawing.artistsNow([], second);              // the room left ann off
+  expect(room.drawing.artists).toEqual([]);
+  room.drawing.artistsNow(['ann'], first);          // late, with nothing on its way
+  expect(room.drawing.artists).toEqual([]);
+});
+
+test('with no list on its way, a list the room says unasked is the list', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  await allMatch(room, ann, bob);
+  room.drawing.artistsNow(['ann', 'bob'], lastList(room).tag);
+  room.drawing.artistsNow(['ann']);
+  expect(room.drawing.artists).toEqual(['ann']);
+  await expect.poll(() => bob.drawing.mayDraw, PATIENT).toBe(false);
+  expect(ann.drawing.mayDraw).toBe(true);
+});
+
+test('the socket coming back forgets the list that was on its way, and the room\'s unasked one is the list', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  await allMatch(room, ann, bob);
+  room.drawing.artistsNow(['ann', 'bob'], lastList(room).tag);
+  room.drawing.backToWatching('bob');   // its answer goes with the socket
+  room.drawing.artistsNow(['ann']);     // the room's word, while that's still on its way
+  const sent = room.socket.length;
+  room.drawing.hostingAgain();
+  expect(room.socket).toHaveLength(sent);   // it's what the room last said
+  room.drawing.artistsNow([]);
+  expect(room.drawing.artists).toEqual([]);
+});
+
+test('a list sent on the way back is the one that waits for its answer, past the room\'s unasked one', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  await allMatch(room, ann, bob);
+  room.drawing.artistsNow(['ann', 'bob'], lastList(room).tag);
+  room.host.send = () => false;   // the socket's down: this one goes when it's back
+  room.drawing.backToWatching('bob');
+  room.host.send = (msg) => { room.socket.push(msg); return true; };
+  room.drawing.hostingAgain();
+  const { subs, tag } = lastList(room);
+  expect(subs).toEqual(['ann']);
+  room.drawing.artistsNow(['ann', 'bob']);   // the room's unasked, right after hosting
+  expect(room.drawing.artists).toEqual(['ann']);
+  room.drawing.artistsNow(['ann'], tag);
+  expect(room.drawing.artists).toEqual(['ann']);
 });

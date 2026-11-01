@@ -197,7 +197,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
 // with none left in its place ends the room after that long (it stays otherwise): ended goes to everyone, and a
 // later host is refused unavailable, unless artists are in the room when the wait ends: then each hears last-change?,
 // the most advanced (or the first let in) after pickWaitMs is named, and everyone hears new-host. A host's artists is
-// answered artists-now, without room.unqualified's subs; room.picking (a sub) is who the room names if they're here, room.relist() says it again unasked, and room.dropHost() drops the host's socket. A hand-over to an
+// answered artists-now with its tag, without room.unqualified's subs; room.picking (a sub) is who the room names if they're here, room.relist() says it again unasked, and room.dropHost() drops the host's socket. A hand-over to an
 // artist in the room names them (nothing happens with room.ignoringHandOvers, or for anyone else). The one named has
 // its socket become the host's: new-host, hosting, artists-now with the old host. The old host's closes on new-host;
 // its host again is refused not-host, and its join skips the password, but room.refusing (a reason) holds for it.
@@ -240,7 +240,7 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
   };
 
   const listed = () => artists.filter((sub) => !room.unqualified.includes(sub) && sub !== room.setup.hostSub);
-  const artistsNow = () => send('host', { type: 'artists-now', subs: listed() });
+  const artistsNow = (tag) => send('host', { type: 'artists-now', subs: listed(), ...(tag === undefined ? {} : { tag }) });
 
   // The role moves to this peer, whose socket is the host's from here on.
   const name = (peer, planned) => {
@@ -331,7 +331,7 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     else if (msg.type === 'end' && who === 'host') end();
     else if (msg.type === 'artists' && who === 'host') {
       artists = [...msg.subs];
-      artistsNow();
+      artistsNow(msg.tag);
     } else if (msg.type === 'hand-over' && who === 'host' && !room.ignoringHandOvers) {
       const to = [...watchers].find(([, w]) => w.sub === msg.to && listed().includes(w.sub));
       if (to) name(to[0], true);
@@ -348,7 +348,7 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     unqualified: [],
     ignoringHandOvers: false,
     refusing: null,
-    relist: artistsNow,
+    relist: () => artistsNow(),
     dropHost: () => {   // a dropped socket: the page and its channels carry on, and the wait runs
       close(sockets.get('host'), 1011, 'gone');
       setTimeout(() => { if (!sockets.has('host') && !ended) waitOver(); }, room.hostWaitMs);
