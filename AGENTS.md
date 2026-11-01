@@ -37,6 +37,7 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   - `sharing.js`: the document shared with a room: slices of an edit going out, changes heard, undo asking the host
   - `sharingHost.js`: a host's side of that: the ledger kept, an artist's change numbered, the project, base and settings sent
   - `sharingArtist.js`: an artist's: slices held and sent, what's asked of the host, a check, the project opened
+  - `handover.js`: the numbering moving between people: a host's reload, a handover, a new host, an artist who's ahead asked
   - `shared.js`: constants the groups share
 
   Actions call each other through `this` (they're all one store), so the files don't import each
