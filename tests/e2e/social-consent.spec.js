@@ -288,6 +288,20 @@ test('focus starts in the modal and stays there; a click on its text or backdrop
   await expect(tab(page, 'PIXEL')).toBeFocused();
 });
 
+test('the agreement and both answers share a row, with the answers at the right', async ({ page }) => {
+  await fakeServer(page);
+  await page.goto('/');
+  await tab(page, 'SOCIAL').click();
+  const box = await agree(page).boundingBox();
+  const no = await notNow(page).boundingBox(), yes = await accept(page).boundingBox();
+  const middle = ({ y, height }) => y + height / 2;
+  expect(Math.abs(middle(no) - middle(box))).toBeLessThanOrEqual(12);
+  expect(no.height).toBe(yes.height);
+  expect(no.y).toBe(yes.y);
+  expect(box.x).toBeLessThan(no.x);
+  expect(no.x).toBeLessThan(yes.x);
+});
+
 test('in a window too short for it, the modal scrolls and its buttons stay reachable', async ({ page }) => {
   await fakeServer(page);
   await page.setViewportSize({ width: 1000, height: 420 });

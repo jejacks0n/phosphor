@@ -54,13 +54,15 @@ onBeforeUnmount(() => nextTick(() => {
       <p class="guardian">If you're under the age of majority where you live, a parent or legal guardian must agree for
         you.</p>
     </div>
-    <label class="agree">
-      <input v-model="agreed" type="checkbox">
-      <span>I'm 13 or older and agree to the <button type="button" class="link inline" @click="read('terms', $event)">Terms</button>, <button type="button" class="link inline" @click="read('privacy', $event)">Privacy Policy</button>, and <button type="button" class="link inline" @click="read('guidelines', $event)">Community Guidelines</button></span>
-    </label>
-    <div class="actions">
-      <button @click="social.declineConsent()">Not now</button>
-      <button class="primary" :disabled="!agreed" @click="social.acceptConsent()">Accept</button>
+    <div class="answer">
+      <label class="agree">
+        <input v-model="agreed" type="checkbox">
+        <span>I'm 13 or older and agree to the <button type="button" class="link inline" @click="read('terms', $event)">Terms</button>, <button type="button" class="link inline" @click="read('privacy', $event)">Privacy Policy</button>, and <button type="button" class="link inline" @click="read('guidelines', $event)">Community Guidelines</button></span>
+      </label>
+      <div class="actions">
+        <button @click="social.declineConsent()">Not now</button>
+        <button class="primary" :disabled="!agreed" @click="social.acceptConsent()">Accept</button>
+      </div>
     </div>
   </ModalDialog>
 </template>
@@ -98,12 +100,21 @@ p.guardian {
   color: var(--text-muted);
 }
 
-label.agree {
+div.answer {   /* the agreement beside the answers, and over them where it doesn't fit */
   flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px 16px;
+  margin-top: 12px;
+}
+
+label.agree {
+  flex: 1 1 280px;
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin: 12px 0;
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-dim);
@@ -125,7 +136,11 @@ button.link.inline {
 div.actions {
   flex-shrink: 0;
   display: flex;
-  justify-content: flex-end;
   gap: 8px;
+}
+
+div.actions button {   /* Accept no taller than Not now */
+  padding: 10px 12px;
+  font-size: 12px;
 }
 </style>
