@@ -3111,6 +3111,20 @@ test('the wait for the project of a reload holds through a live connection, and 
   expect(char(project, 2, 2)).toBe('A');
 });
 
+test('the wait for the project of a reload ends when the connection fails, as nothing is coming', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+  project.ensureLayer();
+  const drawing = useDrawingStore();
+  toStop.push(() => drawing.close());
+  sessionStorage.setItem('phosphor-artist:room:ann', project.documentId);
+  drawing.watching({ post: () => true }, { me: () => 'ann', roomId: 'room', roomName: () => 'Night shift' });
+  expect(drawing.paused).toBe(true);
+  drawing.connection('failed');
+  expect(drawing.paused).toBe(false);
+  expect(project._paused).toBe(false);
+});
+
 test('a tall project reaches an artist, who draws on it, at both ends of the grid', async () => {
   const room = await hosting({ cols: 40, rows: 6000 });   // 3000 lines
   expect(room.project.baseLayer.scale).toBeGreaterThanOrEqual(1);
