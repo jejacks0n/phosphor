@@ -27,6 +27,19 @@ const HOST_MOVES = { idle: ['gathering', 'handing-over'], gathering: ['idle'], '
 // cursors, kept out of the room store. The drawing itself is the project store's (sharing.js), which this
 // connects to the room's Host (hostCallbacks, hosted) or Watch (watchCallbacks, watching). A setup store, so
 // that it keeps to its own project store.
+//
+// What state there is. A host has one phase: hostPhase, idle, gathering or handing-over (HOST_MOVES). An artist has
+// none, as these come in any combination, so each stays a flag of its own:
+//   saidHello     hello has gone on this connection; a lost or new connection clears it
+//   catchingUp    a new connection while drawing, before or after hello, until the host has said what it numbered
+//   awaitingList  accepted, and a list without me says nothing yet; ends with a list that has me, or this connection
+//   goToArt       accepted: the next project closes the watcher's view, however long it takes after the list
+//   formerHost    the next project also says I'm back as an artist
+//   gettingArt    back from a reload with no document to draw on; the room's project, or nothing coming, ends it
+// paused goes across both sides and all of those: an artist can be paused catching up or not, and hostChanging and
+// gettingArt only say which words go with it. adopting isn't part of gathering, though only gathering starts it: a
+// project still opening outlives a gather that's stopped. What's left is data, not state: listTag and listAsked (the
+// tag of the list on its way), listHeard, peersOn, pointedAt, undoTold (those told), handed (a ledger).
 export const useDrawingStore = defineStore('drawing', () => {
   const project = useProjectStore(), workspace = useWorkspaceStore();
   const artists = ref([]);        // the subs who may draw: everyone in the room hears this
@@ -96,6 +109,10 @@ export const useDrawingStore = defineStore('drawing', () => {
       else sessionStorage.removeItem(acceptedKey());
     } catch { /* no storage: a reload joins as a watcher */ }
   };
+
+  function forgetArtistFlags() {
+    saidHello = catchingUp = awaitingList = goToArt = formerHost = false;
+  }
 
   function moveHost(next) {
     if (!HOST_MOVES[hostPhase.phase].includes(next.phase)) console.warn(`A host going from ${hostPhase.phase} to ${next.phase}.`);
@@ -436,7 +453,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     handed = null;
     host = hosting;
     room = null;
-    saidHello = catchingUp = awaitingList = goToArt = formerHost = false;
+    forgetArtistFlags();
     paused.value = false;
     waiting.value = [];
     invitation.value = false;
@@ -647,7 +664,7 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   function stopDrawing({ keepAccepted = false } = {}) {
     artCame();
-    saidHello = catchingUp = goToArt = formerHost = false;
+    forgetArtistFlags();
     if (!keepAccepted) noteAccepted(false);
     hostChanging.value = false;
     paused.value = false;
@@ -703,7 +720,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     if (host) stopHostSharing();
     else if (room) stopDrawing({ keepAccepted: !spent });
     host = room = handed = null;
-    awaitingList = goToArt = formerHost = false;
+    forgetArtistFlags();
     hostChanging.value = false;
     paused.value = false;
     undoTold = null;
