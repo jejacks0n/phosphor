@@ -184,14 +184,15 @@ export const sharingActions = {
   // own name now; an artist's document is the room's, and what it undid alone means nothing to the host.
   // sendDocument, a host's: send every artist the project.
   // roomId, a host's: where keepLedger keeps its ledger.
-  startSharing({ send, role, me, sendDocument, roomId = null }) {
+  // hold and release, a host's: artists' changes wait, and go on being numbered (Into the image reads, then encodes).
+  startSharing({ send, role, me, sendDocument, roomId = null, hold, release }) {
     this.stopSharing();
     this.commitPending();
     this.ensureLayer();
     const sum = this.editLayerSum();
     let sharing;
     if (role === 'host') {
-      sharing = { send, sendDocument, role, me, roomId, timer: setInterval(() => this.sendSlice(), SLICE_MS), heardCells: new Map(), heardRuns: [], heard: [], cancelFlush: null, held: null };
+      sharing = { send, sendDocument, hold, release, role, me, roomId, timer: setInterval(() => this.sendSlice(), SLICE_MS), heardCells: new Map(), heardRuns: [], heard: [], cancelFlush: null, held: null };
       this._ledger.epoch ??= randomId();
       this._ledger.rename(this._by, me);
       this._ledger.startNumbering({ sum });
