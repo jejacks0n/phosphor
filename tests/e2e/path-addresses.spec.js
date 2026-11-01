@@ -85,3 +85,28 @@ test('a narrow window keeps a return for a computer; widened, it\'s read once an
   await tab(page, 'SOCIAL').click();
   await expect(page.getByText('Your email is confirmed')).toHaveCount(0);
 });
+
+test.describe('before SOCIAL\'s question is answered', () => {
+  test.use({ consented: false });
+  const consent = (page) => page.getByRole('dialog', { name: 'Before you open SOCIAL' });
+
+  test('a link waits for the answer: Not now leaves a clean address, and accepting goes on to it', async ({ page }) => {
+    const server = await fakeServer(page);
+    await page.goto(`/?room=${ROOM_ID}`);
+    await consent(page).getByRole('button', { name: 'Not now' }).click();
+    await selected(page, 'PIXEL');
+    await at(page, '/pixel');
+    expect(server.requests).toEqual([]);
+
+    // Here the room in a tab's address is read before the router looks, so it stays on that tab: the link waits for SOCIAL.
+    await page.goto(`/pixel?room=${ROOM_ID}`);
+    await selected(page, 'PIXEL');
+    await expect(consent(page)).toHaveCount(0);
+    await page.waitForLoadState('networkidle');
+    expect(server.requests).toEqual([]);
+    await tab(page, 'SOCIAL').click();
+    await consent(page).getByRole('checkbox').check();
+    await consent(page).getByRole('button', { name: 'Accept' }).click();
+    await expect(asked(page)).toBeVisible();
+  });
+});

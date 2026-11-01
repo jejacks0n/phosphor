@@ -3,6 +3,7 @@ import { watch, onMounted } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
+import { useSocialStore } from '@/store/SocialStore';
 import { toast } from '@/composables/useToast';
 import { isProjectFile } from '@/document/projectIO';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
@@ -15,6 +16,7 @@ import AnsiEditor from '@/components/AnsiEditor.vue';
 import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
 import SocialTab from '@/components/social/SocialTab.vue';
+import ConsentDialog from '@/components/social/ConsentDialog.vue';
 
 defineProps({
   ready: { type: Boolean, default: true },
@@ -25,6 +27,7 @@ defineProps({
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const drawing = useDrawingStore();
+const social = useSocialStore();
 useKeyboardShortcuts(project, workspace);
 
 onMounted(() => project.render());
@@ -47,7 +50,10 @@ async function handleFileSelected(file) {
       @click="workspace.settingsOpen && workspace.toggleSettings()"
   >
     <EditTabs v-model="workspace.editorTab"/>
-    <SocialTab v-if="workspace.editorTab === 'social'"/>
+    <template v-if="workspace.editorTab === 'social'">
+      <SocialTab v-if="social.allowed"/>
+      <ConsentDialog v-else/>
+    </template>
     <template v-else>
       <EditToolbar v-if="project.image && workspace.editMode"/>
       <DropZone @file-dropped="handleFileSelected">

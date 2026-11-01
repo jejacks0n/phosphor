@@ -8,8 +8,12 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
 import { setDisplayFont } from '@/lib/displayFonts';
 import { halfColors } from '@/lib/Cells';
+import { CONSENT_KEY, CONSENT_VERSION } from '@/social/consent';
 
 let stopWatching = null;
+
+// SOCIAL's first question, answered: for after a localStorage.clear(), before the stores are made.
+export const seedConsent = () => localStorage.setItem(CONSENT_KEY, CONSENT_VERSION);
 
 // Fresh stores and settings (localStorage cleared, a fixed character seed), the default display font
 // loaded and glyph coverage measured in it, as App.vue does; settings changes re-render, as EditWorkspace.vue
@@ -17,6 +21,7 @@ let stopWatching = null;
 export async function createTestApp() {
   stopWatching?.();
   localStorage.clear();
+  seedConsent();
   setActivePinia(createPinia());
   await setDisplayFont('jetbrains');
   setGlyphRasterizer(rasterizeCoverage);

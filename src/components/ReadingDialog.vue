@@ -1,29 +1,33 @@
 <script setup>
 import { onMounted, useTemplateRef } from 'vue';
+import { keepTabIn } from '@/lib/focus';
 
 // A large box of text to read over the app (About, the Terms, the Privacy Policy): a close button, and the slot,
-// scrolled when it's long. Each user styles its own text.
+// scrolled when it's long. Each user styles its own text. On the body as ModalDialog is, so it can open over one.
 defineProps({ label: { type: String, required: true } });
 const emit = defineEmits(['close']);
 const close = useTemplateRef('close');
 onMounted(() => close.value?.focus());
 
-// Keys are the dialog's while it's up (none reach the app's shortcuts); Escape closes it.
+// Keys are the dialog's while it's up (none reach the app's shortcuts); Escape closes it, and Tab keeps to it.
 function onKeyDown(event) {
   event.stopPropagation();
   if (event.key === 'Escape') emit('close');
+  else keepTabIn(event);
 }
 </script>
 
 <template>
-  <div class="modal-backdrop" @click.self="emit('close')">
-    <article class="reading-dialog" role="dialog" aria-modal="true" :aria-label="label" @keydown="onKeyDown">
-      <button ref="close" class="close" @click="emit('close')" title="Close" aria-label="Close">×</button>
-      <div class="content-container">
-        <slot/>
-      </div>
-    </article>
-  </div>
+  <Teleport to="body">
+    <div class="modal-backdrop" @click.self="emit('close')">
+      <article class="reading-dialog" role="dialog" aria-modal="true" :aria-label="label" @keydown="onKeyDown">
+        <button ref="close" class="close" @click="emit('close')" title="Close" aria-label="Close">×</button>
+        <div class="content-container">
+          <slot/>
+        </div>
+      </article>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>

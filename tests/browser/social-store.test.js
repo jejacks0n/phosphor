@@ -4,11 +4,13 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore, hasReportedRoom } from '@/store/RoomStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { forgetKey, loadKey } from '@/social/keys';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
 import { verify, claimsOf, member, fakeServer, sockets, useFakeSockets, goLive, lastSocket, at } from '../support/socialServer.js';
 import { messageFor } from '@/social/messages';
 import { desktopQuery } from '@/social/config';
+import { seedConsent } from '../support/app.js';
 
 let deleteDatabase;
 
@@ -23,6 +25,7 @@ beforeEach(async () => {
   forgetKey();
   await deleteDatabase();
   localStorage.clear();
+  seedConsent();
   sessionStorage.clear();
   useFakeSockets();
   vi.stubGlobal('matchMedia', (query) => ({ matches: query === desktopQuery }));   // a desktop: links back are read
@@ -34,6 +37,58 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+test('Until SOCIAL\'s question is answered, boot waits: no key, no IndexedDB, no request; the answer lets it go on', async () => {
+  localStorage.clear();
+  setActivePinia(createPinia());
+  social = useSocialStore();
+  const server = fakeServer();
+  const opened = vi.spyOn(indexedDB, 'open');
+  let booted = false;
+  social.boot().then(() => { booted = true; });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect([booted, social.allowed, social.supported]).toEqual([false, false, null]);
+  expect(opened).not.toHaveBeenCalled();
+  expect(server.requests).toEqual([]);
+
+  social.acceptConsent();
+  await social.boot();
+  expect([booted, social.allowed, social.supported]).toEqual([true, true, true]);
+  expect(server.requests.length).toBeGreaterThan(0);
+  expect(localStorage.getItem('phosphor.socialConsent')).toBe('1');
+});
+
+test('Not now forgets what a link was going to do, and goes back to the tab you came from', async () => {
+  localStorage.clear();
+  setActivePinia(createPinia());
+  social = useSocialStore();
+  const server = fakeServer();
+  useWorkspaceStore().editorTab = 'sauce';
+  social._cameFromTab = 'sauce';
+  social.start(at('?reset=tok'));
+  const going = social.followRoomLink('abcdefghij');
+  Object.assign(social, { notice: 'Your email is confirmed' });
+  social.declineConsent();
+  expect(useWorkspaceStore().editorTab).toBe('sauce');
+  expect([social.page, social.resetToken, social._roomLink, social._roomLinkAsks, social.notice]).toEqual(['lobby', null, null, false, null]);
+
+  social.acceptConsent();
+  await going;
+  expect(social.roomInvite).toBe(null);
+  expect(server.requests.length).toBeGreaterThan(0);
+});
+
+test('A room coming back on a reload isn\'t held up by the question', async () => {
+  localStorage.clear();
+  setActivePinia(createPinia());
+  social = useSocialStore();
+  fakeServer();
+  expect(social.allowed).toBe(false);
+  await social.rejoin('abcdefghij').catch(() => {});
+  expect(social.allowed).toBe(true);
+  expect(social.supported).toBe(true);
+  useRoomStore().close();
 });
 
 test('A plain page load runs nothing SOCIAL: no key, no IndexedDB, no request; showing the tab starts it all', async () => {

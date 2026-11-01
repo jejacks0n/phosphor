@@ -1,7 +1,7 @@
 // Drawing together: a host and an artist, each a real page in one fake Room, joined by real WebRTC. Art never
 // passes through the server, so all of this is between the two pages; the room's socket only carries signals.
 import { readFile } from 'node:fs/promises';
-import { test, expect, tab, store, chars, editAt, cellPoint, settled, saveAs, openApp, imageInput } from './support.js';
+import { test, expect, tab, store, chars, editAt, cellPoint, settled, saveAs, openApp, imageInput, otherBrowser } from './support.js';
 import { fakeRoom, member, ROOM_ID, goLive, shown, chat, hash, selected, ARTIST, people, rowOf, invitation, mayDraw, fromMenu, invitedPage, artistPage, watcherPage, joinFromCard, followLink } from './social-support.js';
 
 const WAITING_WORDS = 'The host is reconnecting. Drawing is paused.';
@@ -699,7 +699,7 @@ test('a project saved by an artist opens as an ordinary project, with no names i
   const text = file.toString('latin1');
   for (const name of ['tin_owl', 'ansi-fan', ARTIST.id, member().id]) expect(text).not.toContain(name);
 
-  const fresh = await (await browser.newContext()).newPage();
+  const fresh = await (await otherBrowser(browser)).newPage();
   await fresh.goto('/');
   await imageInput(fresh).setInputFiles({ name: 'ours.phosphor', mimeType: 'application/octet-stream', buffer: file });
   await settled(fresh);

@@ -58,7 +58,7 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   (the lobby picture) and `chat.js` (the text rule, the kept log and its pages, the allowance); and in `src/document/`,
   `ledger.js` (who drew what, for undo and the numbers) and `changes.js` (a change as data, its hash, the tail)),
   `src/store/SocialStore.js` (who you are, your pass, the lobby), `src/store/RoomStore.js` (the room
-  you host or watch), `src/store/DrawingStore.js` (who's an artist, invitations, cursors; a host's side in `src/store/drawing/host.js`, an artist's in `src/store/drawing/artist.js`) and `src/components/social/` (one component per page; the chat is `ChatPanel.vue`, `ChatFoot.vue` and `ReportDialog.vue`). Its tests are the
+  you host or watch), `src/store/DrawingStore.js` (who's an artist, invitations, cursors; a host's side in `src/store/drawing/host.js`, an artist's in `src/store/drawing/artist.js`) and `src/components/social/` (one component per page; the chat is `ChatPanel.vue`, `ChatFoot.vue` and `ReportDialog.vue`; the question asked before anything of SOCIAL runs is `ConsentDialog.vue`, with the wait in `SocialStore.boot` and its version in `src/social/consent.js`). Its tests are the
   `social-*` files in `tests/unit`, `tests/browser` and `tests/e2e`; the end-to-end fake server is
   `tests/e2e/social-support.js` ([docs/testing.md](docs/testing.md)).
 - `server/`: a symlink to the SOCIAL server's own repo (`/server` is gitignored), so both can be

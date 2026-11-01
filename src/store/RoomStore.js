@@ -302,6 +302,7 @@ export const useRoomStore = defineStore('room', {
         forgetHostCopy(record.id).catch(() => {});
         return;
       }
+      useSocialStore()._roomGoesOn = true;
       this.comeBack(record).catch((error) => {
         console.warn('The room couldn\'t come back.', error);
         if (this.id === id) this.over(ROOM_AWAY_WORDS);

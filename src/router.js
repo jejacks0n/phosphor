@@ -48,7 +48,7 @@ export function followAddress(router) {
   }
 
   // The room a place names, on an entry of yours or not. True when it's a link, which asks on SOCIAL.
-  function enterRoomOf(to) {
+  function enterRoomOf(to, from) {
     const id = to.query.room == null ? null : String(to.query.room), mark = router.options.history.state.inRoom;
     const hostGone = mark === 'host' && !(room.role === 'host' && room.id === id);   // a reload that kept no record, or a room since ended
     const spent = !!id && ((mark && hasLeftRoom(id)) || hostGone);                   // same place, no room; a link from outside asks
@@ -56,6 +56,7 @@ export function followAddress(router) {
     joining = joining && here === (room.id ?? social.roomGoingTo);
     if (room.role === 'watch' && room.id !== here) room.close({ spent: false });   // Back past the join: Forward can undo it
     if (social.roomGoingTo !== null && social.roomGoingTo !== here) social._roomLink = null;   // gone by before it joined
+    if (from !== START_LOCATION && !here && !social.allowed) social._roomLink = null;   // gone by while SOCIAL's question was up (with path addresses, a landing has read its link already)
     if (!here || room.role) return false;
     if (mark !== 'watch') {
       social.followRoomLink(id);
@@ -66,12 +67,12 @@ export function followAddress(router) {
     return false;
   }
 
-  async function applyPlace(to) {
+  async function applyPlace(to, from) {
     const { tab, page } = to.meta;
     if (!tab) return;
     if (landing) workspace.tabAddressed = true;
     if (page) social.page = page;
-    workspace.editorTab = matchMedia(desktopQuery).matches && enterRoomOf(to) ? 'social' : tab;
+    workspace.editorTab = matchMedia(desktopQuery).matches && enterRoomOf(to, from) ? 'social' : tab;
     if (tab === 'social' && !matchMedia(desktopQuery).matches) {
       workspace.editorTab = 'input';
       replaceNext = true;
@@ -137,9 +138,15 @@ export function followAddress(router) {
     router.afterEach((to, from, failure) => {
       const own = ours;
       pending = ours = false;   // (not after the navigation's promise: reconcile below may have started the next by then)
-      if (!failure && !own) applyPlace(to);
+      if (!failure && !own) applyPlace(to, from);
       nextTick(reconcile);
     }),
+    // SOCIAL's question goes back where it came from (start() can move to SOCIAL before this watches: no tab, the
+    // editor), and leaves no SOCIAL entry for Back to land on.
+    watch(() => workspace.editorTab, (tab, was) => {
+      if (tab === 'social') social._cameFromTab = was;
+      else if (was === 'social' && !social.allowed) replaceNext = true;
+    }, { flush: 'sync' }),
     // A join the address started can need SOCIAL, the only place its password form and refusal words show.
     watch(() => [room.status, room.role], ([status, role], [, was]) => {
       if (!joining || status === 'joining') return;
