@@ -21,13 +21,16 @@ export function cellChanges(before, after) {
 // A transparent pixel is 0 whatever its color channels hold.
 export const pack = (px, i) => (px[i + 3] ? ((px[i] << 24) | (px[i + 1] << 16) | (px[i + 2] << 8) | px[i + 3]) >>> 0 : 0);
 
-// A pixel as a canvas stores it. Browsers read one stored pixel back differently ([0, 255, 42, 6] or
-// [0, 255, 43, 6]), so where another browser's pixel might meet this one's, this is what says they're the same.
-const stored = (rgba) => {
-  const a = rgba & 0xff;
-  if (a === 0xff) return rgba;
-  const by = (channel) => Math.round((channel * a) / 255);
-  return ((by(rgba >>> 24) << 24) | (by((rgba >>> 16) & 0xff) << 16) | (by((rgba >>> 8) & 0xff) << 8) | a) >>> 0;
+// Browsers keep a partly transparent pixel premultiplied and don't agree on it: Firefox rounds up going in and
+// down coming out, so it reads [0, 11, 255, 1] as [0, 255, 255, 1], where Chromium and WebKit read [0, 0, 255, 1].
+// Readings of one pixel differ by up to one step of what's stored, so that's what counts as the same; a real
+// change that small at the same alpha can't be told from one, and doesn't show.
+const samePixel = (a, b) => {
+  const alpha = a & 0xff;
+  if (a === b) return true;
+  if (alpha === 0xff || alpha !== (b & 0xff)) return false;
+  const step = (color, shift) => Math.round((((color >>> shift) & 0xff) * alpha) / 255);
+  return [24, 16, 8].every((shift) => Math.abs(step(a, shift) - step(b, shift)) <= 1);
 };
 
 // The pixels that differ between two width x height RGBA images, as runs at (ox, oy) from the top left.
@@ -40,7 +43,7 @@ export function pixelRuns(before, after, width, height, ox, oy) {
       const i = (y * width + x) * 4;
       const rgba = pack(after, i);
       const was = pack(before, i);
-      if (rgba === was || stored(rgba) === stored(was)) { run = null; continue; }
+      if (samePixel(rgba, was)) { run = null; continue; }
       if (run && run[3] === rgba) run[2]++;
       else runs.push(run = [ox + x, oy + y, 1, rgba]);
     }
@@ -124,7 +127,8 @@ export function hashCell(key, entry) {
   return hashText(`${key}\n${JSON.stringify(fields.map((name) => [name, entry[name]]))}`);
 }
 
-export const hashPixel = (x, y, rgba) => ((rgba & 0xff) === 0 ? 0 : mix(x ^ mix(y ^ mix(stored(rgba)))));
+// "Within one step" doesn't chain into a hash, so a partly transparent pixel hashes by its alpha alone (see samePixel).
+export const hashPixel = (x, y, rgba) => ((rgba & 0xff) === 0 ? 0 : mix(x ^ mix(y ^ mix((rgba & 0xff) === 0xff ? rgba : rgba & 0xff))));
 
 const TAIL_BYTES = 16 * 1024 * 1024;
 

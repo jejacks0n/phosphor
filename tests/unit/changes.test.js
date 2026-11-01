@@ -135,7 +135,6 @@ test('hashPixel agrees for two readings of one stored pixel, and tells real diff
   const chromium = 0x00ff2a06, webkit = 0x00ff2b06;
   assert.equal(hashPixel(3, 4, chromium), hashPixel(3, 4, webkit));
   assert.notEqual(hashPixel(3, 4, chromium), hashPixel(3, 4, 0x00ff2a07));
-  assert.notEqual(hashPixel(3, 4, chromium), hashPixel(3, 4, 0x00002a06));
   assert.notEqual(hashPixel(3, 4, RED), hashPixel(3, 4, 0xff0001ff));   // opaque: every value is its own
   assert.equal(hashPixel(3, 4, 0x12345600), 0);
 });
@@ -143,4 +142,24 @@ test('hashPixel agrees for two readings of one stored pixel, and tells real diff
 test('pixelRuns sees no change between two readings of one stored pixel', () => {
   assert.deepEqual(pixelRuns([0, 255, 42, 6], [0, 255, 43, 6], 1, 1, 0, 0), []);
   assert.deepEqual(pixelRuns([0, 255, 42, 6], [0, 255, 42, 7], 1, 1, 0, 0), [[0, 0, 1, 0x00ff2a07]]);
+});
+
+// How Firefox keeps and reads a partly transparent pixel, as measured: it rounds up going in, and down coming out.
+const firefoxReads = (channel, alpha) => Math.min(255, Math.floor((Math.ceil((channel * alpha) / 255) * 255) / alpha));
+
+test('a pixel Firefox read back hashes and compares as the one written, at every alpha and color', () => {
+  for (let alpha = 1; alpha < 255; alpha++) {
+    for (let channel = 0; channel < 256; channel++) {
+      const written = [channel, 255 - channel, 42, alpha], read = [firefoxReads(channel, alpha), firefoxReads(255 - channel, alpha), firefoxReads(42, alpha), alpha];
+      const pack = ([r, g, b, a]) => ((r << 24) | (g << 16) | (b << 8) | a) >>> 0;
+      assert.equal(hashPixel(3, 4, pack(read)), hashPixel(3, 4, pack(written)), `${written} read as ${read}`);
+      assert.deepEqual(pixelRuns(written, read, 1, 1, 0, 0), [], `${written} read as ${read}`);
+    }
+  }
+  assert.equal(hashPixel(3, 4, 0x00ffff01), hashPixel(3, 4, 0x000bff01));   // measured: [0, 11, 255, 1] reads [0, 255, 255, 1]
+});
+
+test('pixelRuns still sees a real change of color at the same alpha, and any change of an opaque one', () => {
+  assert.deepEqual(pixelRuns([200, 0, 0, 128], [100, 0, 0, 128], 1, 1, 0, 0), [[0, 0, 1, 0x64000080]]);
+  assert.deepEqual(pixelRuns([200, 0, 0, 255], [201, 0, 0, 255], 1, 1, 0, 0), [[0, 0, 1, 0xc90000ff]]);
 });
