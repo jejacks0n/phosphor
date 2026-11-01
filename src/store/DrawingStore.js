@@ -55,6 +55,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   let awaitingList = false;        // accepted, and the host's list may not have me on it yet
   let goToArt = false;             // accepted just now: the next project closes the watcher's view
   let catchingUp = false;          // a new connection: no drawing until the host has said what it numbered
+  let gettingArt = false;          // back from a reload: no drawing on what's open until the room's replaces it
   let flushAutosave = async () => {};
   let stops = [], cursorTimer = null;
   let peersOn = new Set();         // a host's: who peopleHere last saw connected
@@ -398,6 +399,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   // one that fits, or what I've heard of the numbering, and my own strokes that have no number take the first ones.
   function takeOver(hosting, { planned = false, words = null } = {}) {
     const kept = planned ? handed : null;
+    artCame();
     const left = project.leavePending();
     const whoIs = me();
     handed = null;
@@ -484,6 +486,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     const projectFailed = () => {
       if (!takesProjects()) return;
       notice.value = 'The room\'s art couldn\'t be opened.';
+      artCame();
       if (!project._sharing) decline();
     };
     return {
@@ -507,6 +510,7 @@ export const useDrawingStore = defineStore('drawing', () => {
           return;
         }
         noteAccepted(project.documentId);
+        artCame();
         if (formerHost) {
           formerHost = false;
           notice.value = backAsArtistWords(hostName() ?? 'Someone else');
@@ -547,6 +551,8 @@ export const useDrawingStore = defineStore('drawing', () => {
     roomId = id;
     roomName = name;
     hostName = host;
+    gettingArt = !project._sharing && !!accepted() && accepted() !== '1';   // kept documentId: this art is on its way
+    if (gettingArt) pause();
   }
 
   // On the list, and having said yes: hello, first thing, and then the project or what's missed. Off it, the
@@ -580,6 +586,14 @@ export const useDrawingStore = defineStore('drawing', () => {
     goOn();
   }
 
+  // The wait for a reload's project is over, for whatever reason.
+  function artCame() {
+    if (!gettingArt) return;
+    gettingArt = false;
+    paused.value = false;
+    project.setPaused(false);
+  }
+
   function goOn() {
     hostChanging.value = false;
     paused.value = false;
@@ -594,6 +608,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   }
 
   function stopDrawing({ keepAccepted = false } = {}) {
+    artCame();
     saidHello = catchingUp = goToArt = false;
     if (!keepAccepted) noteAccepted(false);
     hostChanging.value = false;
@@ -631,6 +646,7 @@ export const useDrawingStore = defineStore('drawing', () => {
       catchingUp = mayDraw.value;
       project.newConnection();
     } else if (state === 'live') {
+      if (gettingArt) return;
       if (!catchingUp) goOn();
       else if (!paused.value) pause();
     } else if (state === 'lost' || state === 'failed') {
