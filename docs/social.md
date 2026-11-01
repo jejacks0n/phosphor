@@ -273,7 +273,8 @@ copy. If the role passes to an artist (see **Drawing together**), the room carri
 ## Drawing together
 
 A host can invite a member in the room to draw. **N here** lists them; their **⋯** menu has **Make artist**,
-and the row then says **invited** with **Withdraw invitation** in the menu. Guests can't be asked. A room holds a
+and the row then says **invited** with **Withdraw invitation** in the menu. Inviting someone who accepts gives them the
+whole project, including the original image, where watching only ever shows the rendered art. Guests can't be asked. A room holds a
 limited number of people drawing, the host among them; at that number **Make artist** is off and says "This room has
 as many artists as it can take." Someone asked holds a place until they answer, and someone listed keeps theirs while
 they're away, so they can always come back. Someone going back to watching frees theirs.
@@ -333,6 +334,8 @@ is sent again to the new one. Someone chosen who hasn't got the art passes the r
 artist left, the room ends. **End room** always ends it for everyone.
 
 The new host keeps the chat so far, the room's name and its welcome, and starts with new stats and no one muted.
+People the former host removed stay removed, and everyone else stays in until the new host removes them. A former host
+can come back into a password room without the password; **Remove** keeps them out.
 Watchers can't be chosen; they carry on watching, now the new host. A host cut off who comes back after the role has moved
 is an artist, with no new invitation, and so is an artist who drops out and returns. The room's art replaces what they
 had open, which stays in the browser's own list, with what they drew while away. They're told: "{name} is now the host.
