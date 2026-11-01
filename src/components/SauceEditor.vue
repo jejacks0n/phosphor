@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import ProjectActions from '@/components/ProjectActions.vue';
+import { SAUCE_WIDTHS } from '@/lib/Sauce.js';
 
 const { sauceTitle, sauceAuthor, sauceGroup, sauceUserComments } = storeToRefs(useProjectStore());
 const drawing = useDrawingStore();
@@ -32,7 +33,7 @@ const drawing = useDrawingStore();
 
         <div class="field">
           <label for="sauce-comments">Custom Comments</label>
-          <textarea id="sauce-comments" v-model="sauceUserComments" placeholder="Add your own notes to the file metadata..."></textarea>
+          <textarea id="sauce-comments" v-model="sauceUserComments" :maxlength="SAUCE_WIDTHS.comments" placeholder="Add your own notes to the file metadata..."></textarea>
         </div>
       </fieldset>
 

@@ -2,6 +2,11 @@ import { useLocalStorage } from '@vueuse/core';
 import { generateSlug } from 'random-word-slugs';
 import { goodBaseScale, goodFit, goodScale } from '@/document/projectIO.js';
 import { MAX_COLS, maxRowsBeside } from '@/lib/Cells.js';
+import { SAUCE_WIDTHS } from '@/lib/Sauce.js';
+
+// A list of characters or colors, in characters: every CP437 character 64 times over, or 2000 colors.
+const MOST_LIST = 16 * 1024;
+const MOST_TEXT = 1024;   // any other text a setting holds
 
 // Every persisted project setting, declared once. Order within the transform, adjust and effects
 // groups is the ControlPanel's on-screen order. Storage keys must never change: they hold users' settings.
@@ -10,12 +15,12 @@ export const SETTINGS = [
   { key: 'rows', default: 50, group: 'setup' },
   { key: 'aspectLock', default: true, group: 'setup', pipeline: false },
   { key: 'renderStyle', default: 'ansi', group: 'setup', help: 'ANSI colors both the character and its background. Color ASCII puts colored characters on black, heavier the more intense the color. Monochrome ASCII is one color, heavier the brighter.' },
-  { key: 'chars', default: '.*:%░░▒▒▓▓▄■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, help: 'The characters the converter picks from, at random for ANSI and by brightness for ASCII. Repeat a character to get more of it.' },
-  { key: 'charsAscii', default: ' .:*%#@', group: 'setup', pipeline: false },
+  { key: 'chars', default: '.*:%░░▒▒▓▓▄■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, most: MOST_LIST, help: 'The characters the converter picks from, at random for ANSI and by brightness for ASCII. Repeat a character to get more of it.' },
+  { key: 'charsAscii', default: ' .:*%#@', group: 'setup', pipeline: false, most: MOST_LIST },
   { key: 'seed', default: () => generateSlug(2), group: 'setup', help: 'Decides which character goes in each cell. The same seed gives the same result. Rolling the dice generates a new one.' },
   { key: 'quantize', default: 'none', group: 'setup', help: 'Full color keeps every color. VGA and CGA snap to those palettes. Color count picks that many colors from your picture, and Color list uses only the colors you type.' },
   { key: 'colorCount', default: 16, group: 'setup', label: 'Color Count', min: 2, max: 255 },
-  { key: 'palette', default: '#FFFFFF #AA5601 #000000', group: 'setup' },
+  { key: 'palette', default: '#FFFFFF #AA5601 #000000', group: 'setup', most: MOST_LIST },
   { key: 'smoothing', default: 'high', group: 'setup', help: 'How the image is scaled down to the grid. High is smoother; Low keeps harder edges and more noise.' },
 
   { key: 'colorizeStrength', default: 0, group: 'transform', label: 'Colorize', min: 0, max: 100, unit: '%', ticks: [0], companion: 'colorize', help: 'Tints the image with a color, keeping its lightness.' },
@@ -34,12 +39,12 @@ export const SETTINGS = [
   { key: 'edgeThickness', default: 1, group: 'effects', label: 'Edge Thickness', min: 0, max: 5, step: 0.1, decimals: 1, help: 'How thick the outlines are.' },
 
   { key: 'sauceUse9pxFont', default: false, group: 'sauce', storageKey: 'current_file.sauce.use9pxFont' },
-  { key: 'sauceFontName', default: 'IBM VGA', group: 'sauce', storageKey: 'current_file.sauce.fontName' },
-  { key: 'sauceTitle', default: '', group: 'sauce', storageKey: 'current_file.sauce.title' },
-  { key: 'sauceAuthor', default: '', group: 'sauce', storageKey: 'current_file.sauce.author' },
-  { key: 'sauceGroup', default: '', group: 'sauce', storageKey: 'current_file.sauce.group' },
-  { key: 'sauceDate', default: '', group: 'sauce', storageKey: 'current_file.sauce.date' },
-  { key: 'sauceUserComments', default: '', group: 'sauce', storageKey: 'current_file.sauce.userComments' },
+  { key: 'sauceFontName', default: 'IBM VGA', group: 'sauce', most: SAUCE_WIDTHS.fontName, storageKey: 'current_file.sauce.fontName' },
+  { key: 'sauceTitle', default: '', group: 'sauce', most: SAUCE_WIDTHS.title, storageKey: 'current_file.sauce.title' },
+  { key: 'sauceAuthor', default: '', group: 'sauce', most: SAUCE_WIDTHS.author, storageKey: 'current_file.sauce.author' },
+  { key: 'sauceGroup', default: '', group: 'sauce', most: SAUCE_WIDTHS.group, storageKey: 'current_file.sauce.group' },
+  { key: 'sauceDate', default: '', group: 'sauce', most: SAUCE_WIDTHS.date, storageKey: 'current_file.sauce.date' },
+  { key: 'sauceUserComments', default: '', group: 'sauce', most: SAUCE_WIDTHS.comments, storageKey: 'current_file.sauce.userComments' },
 ];
 
 const BY_KEY = new Map(SETTINGS.map(s => [s.key, s]));
@@ -58,13 +63,13 @@ export function slidersAtDefaults(state) {
 }
 
 // A value a setting could hold: its default's kind, a slider within its range (a slider can hold a numeric
-// string), a color a hex.
+// string), a color a hex, text no longer than it could be.
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const asNumber = (value) => (typeof value === 'string' && value.trim() ? Number(value) : value);
-function goodSetting({ default: usual, min = -Infinity, max = Infinity }, value) {
+function goodSetting({ default: usual, min = -Infinity, max = Infinity, most = MOST_TEXT }, value) {
   if (typeof usual === 'boolean') return typeof value === 'boolean';
   if (typeof usual === 'number') return typeof asNumber(value) === 'number' && Number.isFinite(asNumber(value)) && asNumber(value) >= min && asNumber(value) <= max;
-  return typeof value === 'string' && (typeof usual !== 'string' || !HEX_COLOR.test(usual) || HEX_COLOR.test(value));
+  return typeof value === 'string' && value.length <= most && (typeof usual !== 'string' || !HEX_COLOR.test(usual) || HEX_COLOR.test(value));
 }
 
 // Settings from another browser, only what a document saves and how its layers sit (null for those of a document

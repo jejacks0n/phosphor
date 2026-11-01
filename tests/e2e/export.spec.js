@@ -30,3 +30,11 @@ for (const ext of ['ans', 'utf8ans']) {
     if (ext === 'utf8ans') expect(terminalGrid(bytes, cols)[2].slice(2, 10)).toEqual(['H', 'é', ' ', '漢', '', '字', '', ' ']);
   });
 }
+
+test('comments stop at what a SAUCE record holds, so a room\'s artists can always take them', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('tab', { name: /sauce/i }).click();
+  await page.locator('#sauce-comments').click();
+  await page.keyboard.insertText('x'.repeat(255 * 65 + 10));
+  expect((await page.locator('#sauce-comments').inputValue()).length).toBe(255 * 65);
+});

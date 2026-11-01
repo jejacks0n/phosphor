@@ -7,6 +7,10 @@ import { SETTING_KEYS, SAUCE_KEYS, getSetting, groupDefaults, settingsFromStrang
 import { readProject } from '../../src/document/projectIO.js';
 import { editScaleFor } from '../../src/document/PaintLayer.js';
 import { fitRect } from '../../src/lib/Canvas.js';
+import { CP437 } from '../../src/lib/Cp437.js';
+import { ANSI_CHARSETS, ASCII_CHARSETS } from '../../src/lib/charsetPresets.js';
+import { PALETTES } from '../../src/lib/ColorUtils.js';
+import { generateSlug } from 'random-word-slugs';
 
 test("Settings schema: same keys, storage keys and reset defaults as before the schema existed, so users' persisted settings survive", async () => {
   // same 23 keys as the pre-schema SETTING_KEYS; order follows the table
@@ -82,4 +86,18 @@ test('a project file keeps the paint scale of a tall grid, so its paint opens wh
   const { settings } = await readProject(file);
   assert.equal(settings.paintScale, 1);
   assert.deepEqual(settings.fit, { dx: 0, dy: 0, dw: 80, dh: 6000 });
+});
+
+test('a setting\'s text from a host is as long as a person could have, and no longer', () => {
+  const widths = { sauceTitle: 35, sauceAuthor: 20, sauceGroup: 20, sauceDate: 8, sauceFontName: 20, sauceUserComments: 255 * 65 };
+  for (const [key, width] of Object.entries(widths)) {
+    assert.ok(settingsFromStranger({ [key]: 'x'.repeat(width) }), key);
+    assert.equal(settingsFromStranger({ [key]: 'x'.repeat(width + 1) }), null, key);
+  }
+  for (const key of ['chars', 'charsAscii', 'palette', 'seed', 'renderStyle', 'quantize', 'smoothing']) assert.equal(settingsFromStranger({ [key]: 'x'.repeat(64 * 1024) }), null, key);
+  const everyCp437Weighted = [...CP437].map((char) => char.repeat(40)).join('');
+  assert.ok(settingsFromStranger({ chars: everyCp437Weighted, charsAscii: everyCp437Weighted }));
+  for (const { chars } of [...ANSI_CHARSETS, ...ASCII_CHARSETS]) assert.ok(settingsFromStranger({ chars, charsAscii: chars }));
+  for (const list of Object.values(PALETTES)) assert.ok(settingsFromStranger({ palette: list.map(({ hex }) => hex).join(' ') }));
+  assert.ok(settingsFromStranger({ seed: generateSlug(2) }));
 });
