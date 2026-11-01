@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
+import { useRoomStore } from '@/store/RoomStore';
+import { GOING_BACK_REPLACES_WORDS } from '@/social/messages';
 import { silencedWords } from '@/social/chat';
 import { signalWords } from '@/social/lobby';
 import ConfirmEmail from './ConfirmEmail.vue';
@@ -9,7 +11,7 @@ import RoomCard from './RoomCard.vue';
 import ReportDialog from './ReportDialog.vue';
 import StartRoomPage from './StartRoomPage.vue';
 
-const social = useSocialStore();
+const social = useSocialStore(), roomStore = useRoomStore();
 
 const FILTERS = [['All', null], ...Object.entries(signalWords).map(([value, words]) => [words, value])];
 const filter = ref(null);
@@ -25,6 +27,9 @@ const view = computed(() => {
   return social.rooms.length ? 'rooms' : 'empty';
 });
 const reconnecting = computed(() => social.lobbyStatus === 'reconnecting' && view.value !== 'unavailable');
+
+// A room of yours to go back to with no card to say so: private, or out of the lobby, or filtered out.
+const yoursUnlisted = computed(() => (view.value === 'loading' ? [] : roomStore.reclaimable.filter((r) => !shown.value.some((card) => card.id === r.id))));
 
 const name = computed(() => social.myName ?? social.me?.username);
 // Who you are is known once /api/me has answered: until then, neither you nor a guest (no Sign in to flash).
@@ -48,6 +53,10 @@ onBeforeUnmount(() => clearInterval(tick));
       <StartRoomPage />
     </section>
     <section v-else class="main">
+      <p v-for="room in yoursUnlisted" :key="room.id" class="yours">
+        <span>Your room <strong>{{ room.name }}</strong> is waiting for you.<template v-if="roomStore.goingBackReplaces"> {{ GOING_BACK_REPLACES_WORDS }}</template></span>
+        <button class="primary" @click="roomStore.goBackToRoom(room.id)">Back to your room</button>
+      </p>
       <header>
         <h2>Public rooms</h2>
         <span class="count">{{ social.rooms.length }} live</span>
@@ -190,6 +199,14 @@ button.chip[aria-pressed="true"] {
   border-color: var(--accent);
   color: var(--text-inverted);
   font-weight: 600;
+}
+
+p.yours {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
 }
 
 p.status {

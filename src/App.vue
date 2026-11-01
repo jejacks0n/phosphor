@@ -43,6 +43,7 @@ drawing.autosavedBy(autosave.flush);
 // Leaving with unsaved changes asks first, unless they're safe in the browser and the art has been
 // saved to a file at least once. A room you host always asks.
 function onBeforeUnload(e) {
+  if (room.goingBack) return; // what's open is written, or it wouldn't be going
   project.commitPending(); // text typed a moment ago counts
   if ((project.image && project.isDirty && !(project.savedToFile && autosave.current.value)) || room.role === 'host') {
     e.preventDefault();

@@ -31,6 +31,8 @@ to rooms whose host wants feedback, is open to chat or is heads down. When none 
 
 If someone you've blocked is in a room, its card says **Someone you blocked is here**.
 
+A room of yours whose tab you closed shows **Back to your room** in place of Join (see **Hosting**). One with no card, because it isn't listed, is offered in a line at the top of the lobby instead: "Your room {name} is waiting for you."
+
 Beside the gallery, signed in:
 
 - **You**: your username, with **Edit account** and **Sign out**.
@@ -218,11 +220,22 @@ from someone you blocked shows **Show** first).
 
 **End room** ends it for everyone, including anyone drawing, and tells watchers at once. Reloading the tab comes back to the same
 room as its host, at the same address and the same view, and watchers wait and see it's reconnecting. Closing the tab for
-good ends the room within about a minute, unless someone is drawing with you: then an artist carries it on
+good ends the room within about a minute, unless you come back to it or someone is drawing with you: then an artist carries it on
 (see **Drawing together**). The prompt still asks first; if the room ended while the page was
 away, you're told so and your art stays. Signing out while you host works the same way. A chat longer
 than 1000 entries keeps its newest after a reload. A room opened in a copy of the tab moves to the copy,
 and the older tab says so.
+
+**Back to your room** brings it back from a new tab, in the same browser and signed in to the same account, for that minute.
+SOCIAL offers it a couple of seconds after the room's tab has gone (never while the tab is open or reloading): on the room's
+card, in a line at the top of the lobby for a room with no card, and beside **Join** when you follow a link to your room.
+Pressing it reloads the tab into the room, with the art from autosave, and it's as if you had reloaded: chat, numbers and view are
+back, undo is as a reload leaves it, and watchers and artists carry on. Autosave can be a few seconds behind; with an artist in the room you catch
+up from them, and with none you have what autosave had, as after a crash. Anything that changed in the last second before the tab closed
+may be missing from the chat and the numbers. Art open in the new tab is replaced and stays in the browser's own list; if it
+has unsaved changes the offer says "Going back replaces your open art, which has unsaved changes." If the room's art can't
+be read, you're told "The room's art couldn't be opened." and the room carries on without you. Pressed too late, you're told the
+room ended, or you're back in as an artist if the role moved. Signing out forgets it.
 
 Watchers connect straight to your browser, so the room is as fast as your connection. A direct
 connection shows each side's IP address to the other (a VPN hides yours). If your connection to the
@@ -331,7 +344,8 @@ an artist takes the room, and everyone sees "{old} left the room. {new} is now t
 so undo starts over. All the drawing is still here." Drawing pauses with "The host is changing. Drawing is paused."
 while the new host hears from the artists. All the drawing stays, and any stroke that hadn't reached the old host
 is sent again to the new one. Someone chosen who hasn't got the art passes the role to another artist here. With no
-artist left, the room ends. **End room** always ends it for everyone.
+artist left, the room ends. **End room** always ends it for everyone. Coming back in time (a reload, or **Back to your room**
+from a new tab; see **Hosting**) calls it off.
 
 The new host keeps the chat so far, the room's name and its welcome, and starts with new stats and no one muted.
 People the former host removed stay removed, and everyone else stays in until the new host removes them. A former host
@@ -364,7 +378,8 @@ is part of the address.
   open show PIXEL.
 - **Following a link to a room** asks **Join this room?** first, as always, except that loading
   another room's link in the tab you host in keeps you in your own room and drops the link. A link
-  that can't be a room's says **This room isn't available** without asking.
+  that can't be a room's says **This room isn't available** without asking. A link to your own room,
+  with its tab closed, also offers **Back to your room**.
 - **Watching**: reloading, or Forward onto a page where you were watching, joins the room again
   without asking (a private room asks for its password again). Back past the page where you joined
   leaves the room, and Forward joins it again. A room you left with **Exit**, or that ended, isn't

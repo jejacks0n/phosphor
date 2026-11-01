@@ -4,6 +4,7 @@ import { useNow } from '@vueuse/core';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { joinState, liveFor, pictureUrl, signalWord } from '@/social/lobby';
+import { GOING_BACK_REPLACES_WORDS } from '@/social/messages';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import UserName from './UserName.vue';
 
@@ -20,6 +21,7 @@ const meta = computed(() => {
   return liveFor(props.room.liveSince, now.value.getTime()) + (signal ? `, ${signal.toLowerCase()}` : '');
 });
 const reasonId = useId();
+const yours = computed(() => roomStore.reclaimable.some((r) => r.id === props.room.id));   // your own, with its tab gone
 
 // The ⋯ with Report room: for a confirmed member, not on their own room, until they've reported it.
 const reportable = computed(() => roomStore.canReport && props.room.host !== social.myName && !social.reportedRooms.includes(props.room.id));
@@ -44,11 +46,13 @@ const askToReport = (event) => {
       <div class="name" :title="room.name">{{ room.name }}</div>
       <div class="host-line">
         <UserName class="host" :name="room.host" />
-        <button ref="join" class="join" :disabled="!join.enabled" :aria-describedby="join.reason ? reasonId : undefined" @click="roomStore.join(room.id)">{{ join.label }}</button>
+        <button v-if="yours" class="join primary" @click="roomStore.goBackToRoom(room.id)">Back to your room</button>
+        <button v-else ref="join" class="join" :disabled="!join.enabled" :aria-describedby="join.reason ? reasonId : undefined" @click="roomStore.join(room.id)">{{ join.label }}</button>
       </div>
       <div class="meta">{{ meta }}</div>
       <div v-if="room.blockedInside" class="blocked">Someone you blocked is here</div>
-      <div v-if="join.reason" :id="reasonId" class="reason">{{ join.reason }}</div>
+      <div v-if="yours && roomStore.goingBackReplaces" class="reason">{{ GOING_BACK_REPLACES_WORDS }}</div>
+      <div v-else-if="!yours && join.reason" :id="reasonId" class="reason">{{ join.reason }}</div>
     </div>
   </article>
 </template>
