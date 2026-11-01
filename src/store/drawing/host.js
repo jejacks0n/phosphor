@@ -18,7 +18,7 @@ export const CHECK_EVERY_MS = 2000;
 const KEEP_LEDGER_EVERY_MS = 10_000; // written for a reload that can't stop to write anything on its way out; a large one stalls the tab (docs/investigations/drawing-together.md), and autosave writes it too
 const HELLOS_WITHIN_MS = 5000;       // a host without all that's numbered (a reload, a new host) waits this long to hear who's ahead of it
 // What a host is busy with, and what can follow what. Neither starts during the other, and each ends in idle.
-const HOST_IDLE = { phase: 'idle' };
+const HOST_IDLE = Object.freeze({ phase: 'idle' });
 const HOST_MOVES = { idle: ['gathering', 'handing-over'], gathering: ['idle'], 'handing-over': ['idle'] };
 
 export function hostSide({ project, me, artist, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sayUndoRestarts }) {
@@ -341,7 +341,7 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
   function takeOver(hosting, { planned = false, words = null } = {}) {
     const kept = planned ? artist.handed() : null;
     artist.artCame();
-    const left = project.leavePending();
+    const left = project.leavePending();   // first: the last slice goes out through the room it leaves
     const whoIs = me();
     artist.leaveRoom();
     host = hosting;

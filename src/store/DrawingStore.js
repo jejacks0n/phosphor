@@ -51,20 +51,20 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   let me = () => null, myName = () => null;
   const myCursor = new Pacer(CURSORS_EVERY_MS, (cursor) => {
-    if (!host.hosting()) return artist.post({ t: 'cursor', ...cursor }) ?? false;
-    host.noteCursor(me(), cursor, myName());
+    if (!hostParts.hosting()) return artistParts.post({ t: 'cursor', ...cursor }) ?? false;
+    hostParts.noteCursor(me(), cursor, myName());
     return true;
   });
 
-  const artist = artistSide({ project, workspace, me: () => me(), artists, artistNames, invitation, paused, waiting, cursors, notice, hostChanging, gettingArt, mayDraw, myCursor, pause, goOn, sayUndoRestarts });
-  const { autosavedBy, hostChanged, lastChange, holdsTheArt, noteFormerHost, watchCallbacks, knownNow, heardArtists, accept, decline, connection } = artist;
-  const host = hostSide({ project, me: () => me(), artist, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sayUndoRestarts });
-  const { hostCallbacks, invite, withdraw, backToWatching, peopleHere, resumeHosting, makeHost, takeOver, becomeArtist, artistsNow, hostingAgain } = host;
+  const artistParts = artistSide({ project, workspace, me: () => me(), artists, artistNames, invitation, paused, waiting, cursors, notice, hostChanging, gettingArt, mayDraw, myCursor, pause, goOn, sayUndoRestarts });
+  const { autosavedBy, hostChanged, lastChange, holdsTheArt, noteFormerHost, watchCallbacks, knownNow, heardArtists, accept, decline, connection } = artistParts;
+  const hostParts = hostSide({ project, me: () => me(), artist: artistParts, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sayUndoRestarts });
+  const { hostCallbacks, invite, withdraw, backToWatching, peopleHere, resumeHosting, makeHost, takeOver, becomeArtist, artistsNow, hostingAgain } = hostParts;
 
   // Who this person is comes with the room's Host, or its Watch.
   function watching(theWatch, { me: whoAmI, ...room }) {
     me = whoAmI;
-    artist.watching(theWatch, room);
+    artistParts.watching(theWatch, room);
   }
 
   // Undo has started over, and that's said unless it has been: "The host changed" only where it did.
@@ -73,7 +73,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   }
 
   function hosted(theHost, { me: whoAmI, name = () => null }) {
-    host.hosted(theHost);
+    hostParts.hosted(theHost);
     me = whoAmI;
     myName = name;
   }
@@ -105,8 +105,8 @@ export const useDrawingStore = defineStore('drawing', () => {
   // The room's over, for you. What's on screen stays. Not spent: Back past the join, and Forward picks it up.
   function close({ spent = true } = {}) {
     myCursor.reset();
-    if (!host.leaveHosting() && artist.inRoom()) artist.stopDrawing({ keepAccepted: !spent });
-    artist.leaveRoom();
+    if (!hostParts.leaveHosting() && artistParts.inRoom()) artistParts.stopDrawing({ keepAccepted: !spent });
+    artistParts.leaveRoom();
     hostChanging.value = false;
     paused.value = false;
     artists.value = [];
