@@ -1228,3 +1228,12 @@ test('an artist back from a reload in a password room is still an artist, with n
   await mayDraw(person).toBe(true);
   await expect(invitation(person)).toHaveCount(0);
 });
+
+test('Reset all is off for an artist, and says why', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  const reset = artist.getByRole('button', { name: 'RESET ALL' });
+  await expect(reset).toBeDisabled();
+  await expect(reset).toHaveAttribute('title', ONLY_HOST);
+  await expect(host.getByRole('button', { name: 'RESET ALL' })).toBeEnabled();
+});
