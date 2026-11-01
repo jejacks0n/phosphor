@@ -85,6 +85,7 @@ export class Host {
     this.handOverWithinMs = HAND_OVER_WITHIN_MS;
     this.serverAnswersWithinMs = SERVER_ANSWERS_WITHIN_MS;
     this.gatherWithinMs = GATHER_WITHIN_MS;
+    this.catchUpQuietMs = CATCH_UP_QUIET_MS;
   }
 
   // What the host keeps through a reload, for restore() to take back: the newest of the log, who was sent
@@ -558,16 +559,17 @@ export class Host {
     return new Promise((resolve) => {
       let timer = null;
       const catchUp = w.catchUp = {
-        chunks: [], want: null,
+        chunks: [], want: null, unpacking: false,
         done: (answer) => {
           clearTimeout(timer);
-          w.catchUp = null;
+          if (w.catchUp === catchUp) w.catchUp = null;
           resolve(answer);
         },
         wait: () => {
           clearTimeout(timer);
-          timer = setTimeout(() => catchUp.done(null), CATCH_UP_QUIET_MS);
+          timer = setTimeout(() => catchUp.done(null), this.catchUpQuietMs);
         },
+        quietOver: () => clearTimeout(timer),
       };
       catchUp.wait();
       this.sendTo(w, { t: 'catch-up', has, epoch });
@@ -582,12 +584,17 @@ export class Host {
     catchUp.wait();
   }
 
+  // All of it in, the artist has said what it has to: the unpack takes as long as it takes, and the gather's own
+  // deadline is what limits that. Anything more they send while it does isn't part of it.
   async catchUpChunk(w, data) {
     const { catchUp } = w;
+    if (catchUp.unpacking) return;
     if (catchUp.want === null || data.byteLength > CHUNK_BYTES) return catchUp.done(null);
     catchUp.chunks.push(new Uint8Array(data));
     catchUp.wait();
     if (catchUp.chunks.length < catchUp.want) return;
+    catchUp.unpacking = true;
+    catchUp.quietOver();
     const { n, epoch, kind, chunks } = catchUp;
     if (kind === 'tail') {
       const tail = await unpackValue(chunks, { mostBytes: MOST_PROJECT_BYTES });

@@ -6,7 +6,7 @@ import { Host, KEPT_THROUGH_RELOAD, MOST_QUEUED_BYTES } from '@/social/hosting';
 import { Watch } from '@/social/watching';
 import { openPeer } from '@/social/peer';
 import { newId } from '@/social/chat';
-import { packSnapshot, CHUNK_BYTES, MOST_SNAPSHOT_BYTES, MOST_SNAPSHOT_CHUNKS } from '@/social/wire';
+import { packSnapshot, packValue, CHUNK_BYTES, MOST_SNAPSHOT_BYTES, MOST_SNAPSHOT_CHUNKS } from '@/social/wire';
 import { toBase64url } from '@/social/base64url';
 import { hex2rgb } from '@/lib/ColorUtils';
 
@@ -1378,4 +1378,43 @@ test('a follow that changes nothing is not answered, and a flood of them is answ
   expect(replies.length).toBeLessThan(8);
   expect(w.everyone).toBe(true);
   expect(replies.at(-1).t).toBe('views');   // and what's shown is what was last asked
+});
+
+// A catch-up asked of someone, with its answer's chunks ready: from a real packing, slowed if asked.
+async function catchUpAsked(unpackMs = 0) {
+  const made = [];
+  const Real = DecompressionStream;
+  vi.stubGlobal('DecompressionStream', function (format) {
+    made.push(format);
+    const real = new Real(format);
+    return { writable: real.writable, readable: real.readable.pipeThrough(new TransformStream({ async transform(chunk, out) { await wait(unpackMs); out.enqueue(chunk); } })) };
+  });
+  const chunks = await packValue([{ n: 3 }]);
+  const host = new Host({ config, send() {} });
+  host.sendTo = () => {};
+  const w = {};
+  const answer = host.askCatchUp(w, { has: 1, epoch: 'e' });
+  host.catchUpStart(w, { n: 3, epoch: 'e', kind: 'tail', chunks: chunks.length });
+  return { host, w, chunks, answer, made };
+}
+
+test('a catch-up chunk that comes during the unpack isn\'t unpacked again, and can\'t end the next one asked', async () => {
+  const { host, w, chunks, answer, made } = await catchUpAsked(20);
+  for (const chunk of chunks) host.heard(w, chunk.slice().buffer);
+  host.heard(w, new Uint8Array(4).buffer);
+  expect(await answer).toEqual({ n: 3, epoch: 'e', kind: 'tail', tail: [{ n: 3 }] });
+  host.askCatchUp(w, { has: 3, epoch: 'e' });
+  const next = w.catchUp;
+  await wait(100);
+  expect(made).toHaveLength(1);
+  expect(w.catchUp).toBe(next);
+  next.done(null);
+});
+
+test('a slow unpack isn\'t taken for an artist gone quiet', async () => {
+  const { host, w, chunks, answer } = await catchUpAsked(150);
+  host.catchUpQuietMs = 50;
+  w.catchUp.wait();
+  for (const chunk of chunks) host.heard(w, chunk.slice().buffer);
+  expect(await answer).toEqual({ n: 3, epoch: 'e', kind: 'tail', tail: [{ n: 3 }] });
 });
