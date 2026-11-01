@@ -329,9 +329,11 @@ is sent again to the new one. Someone chosen who hasn't got the art passes the r
 artist left, the room ends. **End room** always ends it for everyone.
 
 The new host keeps the chat so far, the room's name and its welcome, and starts with new stats and no one muted.
-Watchers can't be chosen; they carry on watching, now the new host. A host who comes back after the role has moved is
-an artist, and an artist who drops out and returns is still one, with no new invitation. What they had open stays in
-the browser's own list, and the room's art opens beside it.
+Watchers can't be chosen; they carry on watching, now the new host. A host cut off who comes back after the role has moved
+is an artist, with no new invitation, and so is an artist who drops out and returns. The room's art replaces what they
+had open, which stays in the browser's own list, with what they drew while away. They're told: "{name} is now the host.
+What you had open is saved: open a new tab, and it's under "Continue where you left off."" A former host who comes back
+in a new tab has nothing open of the room's, and gets an invitation, since accepting replaces whatever is open there.
 
 A host's reload picks up where it was, whatever autosave had reached: for up to about 5 seconds drawing waits while
 the artists check in, and if one of them has strokes the host doesn't, the host catches up from them first, which can

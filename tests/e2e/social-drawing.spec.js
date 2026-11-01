@@ -1065,6 +1065,31 @@ test('a host back too late without reloading keeps what it had as its own docume
   await agreed(host, artist);
 });
 
+test('a host cut off who comes back as an artist is told who hosts now, with the chat folded, and finds what they drew in a new tab', async ({ page: host, context }) => {
+  const room = fakeRoom({ hostWaitMs: 100 });
+  const { artist } = await together(host, context, room);
+  await typeAt(artist, 30, 12, 'a');
+  await agreed(host, artist);
+  await chat(host).getByRole('button', { name: 'Fold the chat' }).click();
+  const before = await store(host, 'project', (p) => p.documentId);
+  room.dropHost();
+  await store(host, 'project', (p) => { p.typeAt(25, 12, 'o', { fg: '#ffffff', bg: '#000000' }); p.commitEdit(); });   // the page lives, and goes on drawing
+  await isHost(artist).toBe('host');
+  await mayDraw(host).toBe(true);
+  const toast = host.locator('.app-toast');
+  await expect(toast).toContainText('tin_owl is now the host.', { timeout: 20_000 });
+  await expect(toast).toContainText('Continue where you left off');
+  expect(await store(host, 'project', (p) => p.documentId)).not.toBe(before);
+
+  const other = await context.newPage();
+  await other.goto('/');
+  const row = other.getByRole('list', { name: 'Continue where you left off' }).getByRole('listitem').filter({ hasText: 'gradient' });
+  await row.getByRole('button', { name: /^Open/ }).click();
+  await settled(other);
+  await expect.poll(() => chars(other, 12, 25, 25)).toBe('o');
+  await other.close();
+});
+
 test('signing out as host passes the role, and End room doesn\'t', async ({ page: host, context }) => {
   const room = fakeRoom({ hostWaitMs: 200 });
   const { artist } = await together(host, context, room);
