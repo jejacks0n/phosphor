@@ -104,6 +104,9 @@ export const REFUSED_WORDS = { undo: 'That can\'t be undone anymore.', redo: 'Th
 // A host cut off who's back as an artist, when the room's art replaces what they had open.
 export const backAsArtistWords = (name) => `${name} is now the host. What you had open is saved: open a new tab, and it's under "Continue where you left off."`;
 
+// Going back to your room from a tab with art of its own open.
+export const GOING_BACK_REPLACES_WORDS = 'Going back replaces your open art, which has unsaved changes.';
+
 // The art of a room you're going back to, or that's come to you, won't open.
 export const ART_NOT_OPENED_WORDS = 'The room\'s art couldn\'t be opened.';
 

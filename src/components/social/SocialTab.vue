@@ -1,8 +1,9 @@
 <script setup>
-import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { SIGN_IN_PAGES } from '@/lib/addresses';
+import { GOING_BACK_REPLACES_WORDS } from '@/social/messages';
 import ModalDialog from '@/components/ModalDialog.vue';
 import LobbyPage from './LobbyPage.vue';
 import SignInPage from './SignInPage.vue';
@@ -23,6 +24,13 @@ const PAGES = {
   'two-factor': TwoFactorPage, 'start-room': LobbyPage, 'host-room': HostRoomPage, 'watch-room': WatchRoomPage,
 };
 onMounted(() => social.showLobby());
+
+// A room of yours whose tab has gone: looked for while this tab shows, from when it's known who you are.
+const LOOK_EVERY_MS = 2000;
+const looking = setInterval(() => room.lookForOwnRooms(), LOOK_EVERY_MS);
+onBeforeUnmount(() => clearInterval(looking));
+watch(() => social.claims?.sub, () => room.lookForOwnRooms(), { immediate: true });
+const linkIsYours = computed(() => room.reclaimable.some((r) => r.id === social.roomInvite));
 
 // The room you host or watch, while you do (a guest watching still gets the sign-in pages, to sign in to chat). Account is only for someone signed in: until /api/me has answered
 // nothing shows (a link back from connecting a provider asks for Account first), and once it has,
@@ -59,7 +67,9 @@ watch(shownPage, async () => {
         <component :is="PAGES[shownPage]" v-if="PAGES[shownPage]" />
       </div>
       <ModalDialog v-if="social.roomInvite" title="Join this room?" sub="You followed a link to it. Joining connects your browser directly to the host's, so the host can see your IP address." @cancel="social.answerRoomInvite(false)">
+        <p v-if="linkIsYours && room.goingBackReplaces" class="replaces">{{ GOING_BACK_REPLACES_WORDS }}</p>
         <div class="actions">
+          <button v-if="linkIsYours" class="primary" @click="room.goBackToRoom(social.roomInvite)">Back to your room</button>
           <button @click="social.answerRoomInvite(true)">Join</button>
           <button @click="social.answerRoomInvite(false)">Not now</button>
         </div>
@@ -69,6 +79,12 @@ watch(shownPage, async () => {
 </template>
 
 <style scoped>
+p.replaces {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 div.actions {
   display: flex;
   justify-content: flex-end;
