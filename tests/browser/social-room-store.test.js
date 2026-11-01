@@ -2203,6 +2203,58 @@ test('an artist the host no longer names is no one to follow: back to the host',
   expect(posted.filter((m) => m.t === 'follow').at(-1)).toEqual({ t: 'follow', sub: null });
 });
 
+// Back from a reload as someone the room named while away: what they had open not back yet, as a watcher.
+async function namedWhileAway() {
+  ({ project } = await createTestApp());   // with nothing open yet
+  social = useSocialStore();
+  room = useRoomStore();
+  await social.boot();
+  sessionStorage.setItem(`phosphor-artist:${ID}:u_1`, 'their-document');
+  const socket = await joining(1);
+  socket.receive({ type: 'joined', peer: 'p1', hostName: social.claims.name, hostSub: social.claims.sub });
+  expect(room.role).toBe('watch');
+  return socket;
+}
+
+const documentBack = async (documentId) => {
+  const image = await createImageBitmap(gradient);
+  project.replaceImage(image, await gradient.arrayBuffer(), { documentId, cols: 8, rows: 8, aspectLock: false });
+};
+
+test('named while away, a reload takes the room when its document comes back, rather than sitting as a watcher', async () => {
+  await namedWhileAway();
+  await documentBack('their-document');
+  const again = await lastSocket(2);
+  again.accept();
+  await vi.waitFor(() => expect(again.sent[0]?.type).toBe('host'));
+  expect(room.role).toBe('host');
+});
+
+test('named while away, a reload whose document turns out to be another watches as anyone does', async () => {
+  await namedWhileAway();
+  await documentBack('another-document');
+  await wait(50);
+  expect(room.role).toBe('watch');
+  expect(sockets).toHaveLength(1);
+});
+
+test('named while away, with nothing to come back, a reload watches as anyone does', async () => {
+  await namedWhileAway();
+  useWorkspaceStore().documentAnswered = true;
+  await wait(50);
+  expect(room.role).toBe('watch');
+  expect(sockets).toHaveLength(1);
+});
+
+test('named while away, and the room moved on by the time the document\'s back, it stays moved on', async () => {
+  const socket = await namedWhileAway();
+  socket.receive({ type: 'new-host', name: 'tin_owl', sub: 'u_3', planned: false });
+  await documentBack('their-document');
+  await wait(50);
+  expect(room.role).toBe('watch');
+  expect(sockets).toHaveLength(1);
+});
+
 test('a list of artists longer than a room\'s can be is ignored, and the longest there can be is heard', async () => {
   await watching();
   const heard = vi.spyOn(room._watch, 'onArtists');
