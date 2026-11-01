@@ -1237,3 +1237,14 @@ test('Reset all is off for an artist, and says why', async ({ page: host, contex
   await expect(reset).toHaveAttribute('title', ONLY_HOST);
   await expect(host.getByRole('button', { name: 'RESET ALL' })).toBeEnabled();
 });
+
+test('asked again and accepting, "You\'re back to watching." goes', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  await fromMenu(host, 'Back to watching');
+  await expect(chat(artist).getByText('You\'re back to watching.')).toBeVisible();
+  await fromMenu(host, 'Make artist');
+  await invitation(artist).getByRole('button', { name: 'Accept' }).click();
+  await mayDraw(artist).toBe(true);
+  await expect(chat(artist).getByText('You\'re back to watching.')).toHaveCount(0);
+});
