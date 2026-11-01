@@ -27,7 +27,7 @@ const marks = computed(() => {
   const width = root.clientWidth, height = root.clientHeight;
   return Object.entries(drawing.others).map(([sub, { at, name }]) => {
     const x = box.left - seen.left + display.clientLeft + at.col * unit.x, y = box.top - seen.top + display.clientTop + at.row * 2 * unit.y;
-    const arrow = x < 0 ? '←' : x >= width ? '→' : y < 0 ? '↑' : y >= height ? '↓' : null;
+    const arrow = x + unit.x <= 0 ? '←' : x >= width ? '→' : y + unit.y * 2 <= 0 ? '↑' : y >= height ? '↓' : null;   // any of the cell in view is in view
     const across = x > width / 2 ? -100 : 0, down = y > height / 2 ? -100 : 0;
     return {
       sub, name, arrow, x, y, color: nameColor(name),

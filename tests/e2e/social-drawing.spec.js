@@ -653,6 +653,20 @@ test('pressing the tag of an artist off screen goes to where they are', async ({
   expect(await edits(host)).toBe(editsBefore);   // the press drew nothing
 });
 
+test('someone whose cell is only partly out of view is marked where they are, and no tag lies over the art', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  await artist.locator('.ansi-editor > article').evaluate((el) => { el.scrollTop = 0; });
+  const { height } = await artist.locator('.ansi-editor .display').boundingBox();
+  const rowHeight = height / (await store(artist, 'project', (p) => Math.ceil(p.rows / 2)));
+  await artist.locator('.ansi-editor > article').evaluate((el, by) => { el.scrollTop = by; }, rowHeight * 1.5);   // half of the second row is out of view
+  const at = await cellPoint(host, 1, 1);
+  await host.mouse.move(at.x, at.y);
+  await host.mouse.move(at.x + 1, at.y);
+  await expect(artist.locator('.artist-cursor').or(artist.getByRole('button', { name: /^Go to / }))).toHaveCount(1);
+  await expect(artist.getByRole('button', { name: /^Go to / })).toHaveCount(0);
+});
+
 test('a project saved by an artist opens as an ordinary project, with no names in it', async ({ page: host, context, browser }) => {
   const room = fakeRoom();
   const { artist } = await together(host, context, room);
