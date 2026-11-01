@@ -47,6 +47,12 @@ function cellsMessage(art, at) {
   return new TextEncoder().encode(message).length > CHUNK_BYTES ? null : message;
 }
 
+// Nothing waiting for an artist's channel: a project holds all of it, and someone not drawing is owed none.
+const nothingWaiting = () => ({ queue: [], queued: 0, again: false });
+// A watcher who isn't drawing. This leaves projecting, as a project once started is finished (sendProject), and checked,
+// so a new start at the same number is sent no check it's had.
+const notDrawing = () => ({ drawing: false, took: 0, ...nothingWaiting() });
+
 export class Host {
   // project(): the document as of now, { n, epoch, chunks (a promise) }. onChange gives back what it numbered,
   // or nothing when it's refused.
@@ -123,7 +129,7 @@ export class Host {
     const w = {
       peer, pass, claims: null, tracking: true, following: null, everyone: false, told: null, owed: false, answeredAt: -Infinity, conn: null, channel: null, has: null, packing: false, behind: false,
       allowance: new Allowance(), heard: Promise.resolve(), checking: 0, askedAt: -Infinity,
-      drawing: false, took: 0, queue: [], queued: 0, projecting: false, again: false, checked: null, drained: null,
+      ...notDrawing(), projecting: false, checked: null, drained: null,
     };
     this.watchers.set(peer, w);
     let claims = null;
@@ -613,7 +619,7 @@ export class Host {
     for (const w of this.watchers.values()) {
       if (!w.claims || this.artists.has(w.claims.sub)) continue;
       if (w.drawing) back.push(w);
-      Object.assign(w, { drawing: false, took: 0, queue: [], queued: 0, again: false });
+      Object.assign(w, notDrawing());
     }
     for (const w of this.watchers.values()) if (w.following !== null && !this.artists.has(w.following)) this.backToHost(w);   // put back to watching
     this.sendArtists();
@@ -701,9 +707,7 @@ export class Host {
     w.queue.push(data);
     w.queued += data.length;
     if (w.queued <= MOST_QUEUED_BYTES) return;
-    w.queue = [];
-    w.queued = 0;
-    w.again = true;
+    Object.assign(w, nothingWaiting(), { again: true });
   }
 
   // Their queue down the channel, as far as it'll take now; bufferedamountlow brings this back for the rest.
@@ -725,7 +729,7 @@ export class Host {
       w.again = true;
       return;
     }
-    Object.assign(w, { projecting: true, again: false, queue: [], queued: 0 });
+    Object.assign(w, nothingWaiting(), { projecting: true });
     const took = w.took;
     try {
       const { n, epoch, chunks: packing } = this.project();
