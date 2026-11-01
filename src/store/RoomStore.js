@@ -33,6 +33,8 @@ const KEEP_EVERY_MS = 1000;     // the host's resume record, as the room changes
 // How often an idle host's copy of it says it's still here, or it would read as too old to come back to. A hidden tab's
 // timers can run a minute apart once it has no one connected, so one closed unseen may not be offered.
 const HOST_HERE_EVERY_MS = 15_000;
+const ART_WRITTEN_WITHIN_MS = 3000;   // a document the host just opened has no first write for a second or so
+const ART_LOOK_EVERY_MS = 250;
 const RESUME_RETRY_MS = 3000;   // a host coming back asks again after this, then twice that, and so on, for a pass or a room that was too busy to answer
 const DOCUMENT_BACK_WITHIN_MS = 5000;   // named host just after a reload: how long to wait for the art to open
 const HAND_OVER_ANSWERED_WITHIN_MS = 5000;
@@ -91,6 +93,20 @@ export const hasLeftRoom = (id) => {
     return true;   // joining shows the host your IP address: not knowing means no
   }
 };
+
+// Whether autosave has this document, waiting a moment for one just opened; false if it can't be read.
+async function artWritten(id) {
+  const end = Date.now() + ART_WRITTEN_WITHIN_MS;
+  try {
+    while (!await readLatest(id)) {
+      if (Date.now() >= end) return false;
+      await new Promise((resolve) => setTimeout(resolve, ART_LOOK_EVERY_MS));
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // The cell in the middle of a view ({ col, row, cols, rows }), or the top left without one.
 const middleOf = (v) => (v ? { middleCol: v.col + v.cols / 2, middleRow: v.row + v.rows / 2 } : { middleCol: 0, middleRow: 0 });
@@ -404,7 +420,7 @@ export const useRoomStore = defineStore('room', {
       }
       if (!(await hostingTabsGone([id])).length) return notOffered();   // its tab is back, or another went back first
       const record = JSON.parse(copy.record);
-      if (!await readLatest(record.documentId).catch(() => null)) {
+      if (!await artWritten(record.documentId)) {
         notOffered();
         forgetHostCopy(id).catch(() => {});
         social.notice = ART_NOT_OPENED_WORDS;
@@ -476,7 +492,10 @@ export const useRoomStore = defineStore('room', {
         watch(() => workspace.displayFontLoaded && workspace.sharedView, (v) => { if (v) view.push(v); }, { immediate: true }),   // PIXEL's zoom is against the font's width: not before it's in
         watch(() => JSON.stringify(this.lobbyPlace), changed, { immediate: true }),
         watch(() => this.hereNow, (here) => sessionSaw(this.session, here), { immediate: true }),
-        watch(() => project.documentId, () => { workspace.viewToRestore = null; }),   // another document isn't where the old one was scrolled to
+        watch(() => project.documentId, () => {
+          workspace.viewToRestore = null;   // another document isn't where the old one was scrolled to
+          this.keepRecord();   // at once: a tab closed now must not bring the old document back to the room
+        }),
         watch([() => this.room, () => this.lobbyPin, () => this.peopleOpen, () => this.muted, () => drawing.artists, () => drawing.invited, () => workspace.sharedView], () => this.keepSoon()),
         ((here) => () => clearInterval(here))(setInterval(() => this.keepRecord(), HOST_HERE_EVERY_MS)),
         watch(() => this.status, (status) => {

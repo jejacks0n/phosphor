@@ -87,6 +87,12 @@ test('a host doing nothing still says it\'s here, or its copy would read as too 
   }
 });
 
+test('the host opening another document moves the copy to it, without waiting for the next keep', async () => {
+  await live();
+  project.documentId = 'another';
+  await expect.poll(async () => JSON.parse((await hostCopies())[0].record).documentId, { timeout: 500 }).toBe('another');
+});
+
 test('the role moving, or the room refusing, takes the copy with it', async () => {
   const socket = await live();
   socket.receive({ type: 'new-host', name: 'tin_owl', sub: 'u_2', planned: true });
@@ -236,6 +242,26 @@ test('going back with art that can\'t be read says so and takes nothing', async 
   expect(reload).not.toHaveBeenCalled();
   expect(social.notice).toBe('The room\'s art couldn\'t be opened.');
   expect(sessionStorage.getItem('phosphor-hosting')).toBe(null);
+  await expect.poll(() => hostCopies()).toEqual([]);
+});
+
+test('going back to a document just opened waits for its first write', async () => {
+  await keepHostCopy(copyOf());
+  vi.mocked(readLatest).mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+  const reload = vi.fn();
+  await room.goBackToRoom(ID, { reload });
+  expect(reload).toHaveBeenCalled();
+  expect(social.notice).toBe(null);
+  expect(await hostCopies()).toHaveLength(1);
+});
+
+test('going back to a document that never gets written says so and takes nothing', async () => {
+  await keepHostCopy(copyOf());
+  vi.mocked(readLatest).mockResolvedValue(null);
+  const reload = vi.fn();
+  await room.goBackToRoom(ID, { reload });
+  expect(reload).not.toHaveBeenCalled();
+  expect(social.notice).toBe('The room\'s art couldn\'t be opened.');
   await expect.poll(() => hostCopies()).toEqual([]);
 });
 
