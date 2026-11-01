@@ -23,8 +23,9 @@ export const pack = (px, i) => (px[i + 3] ? ((px[i] << 24) | (px[i + 1] << 16) |
 
 // Browsers keep a partly transparent pixel premultiplied and don't agree on it: Firefox rounds up going in and
 // down coming out, so it reads [0, 11, 255, 1] as [0, 255, 255, 1], where Chromium and WebKit read [0, 0, 255, 1].
-// Readings of one pixel differ by up to one step of what's stored, so that's what counts as the same; a real
-// change that small at the same alpha can't be told from one, and doesn't show.
+// Readings of one pixel differ by up to one step of what's stored, so in a room that's what counts as the same; a
+// real change that small at the same alpha can't be told from one, and doesn't show. Alone there's only one browser,
+// so a comparison goes by exactly.
 const samePixel = (a, b) => {
   const alpha = a & 0xff;
   if (a === b) return true;
@@ -33,9 +34,11 @@ const samePixel = (a, b) => {
   return [24, 16, 8].every((shift) => Math.abs(step(a, shift) - step(b, shift)) <= 1);
 };
 
+export const exactly = (a, b) => a === b;
+
 // The pixels that differ between two width x height RGBA images, as runs at (ox, oy) from the top left.
 // Another browser's pixel written mid-stroke reads back as this one's reading of it, which isn't a change.
-export function pixelRuns(before, after, width, height, ox, oy) {
+export function pixelRuns(before, after, width, height, ox, oy, same = samePixel) {
   const runs = [];
   for (let y = 0; y < height; y++) {
     let run = null;
@@ -43,12 +46,20 @@ export function pixelRuns(before, after, width, height, ox, oy) {
       const i = (y * width + x) * 4;
       const rgba = pack(after, i);
       const was = pack(before, i);
-      if (samePixel(rgba, was)) { run = null; continue; }
+      if (same(rgba, was)) { run = null; continue; }
       if (run && run[3] === rgba) run[2]++;
       else runs.push(run = [ox + x, oy + y, 1, rgba]);
     }
   }
   return runs;
+}
+
+// A slice's image is the next slice's baseline. What counted as the same stays what it was compared with, so small
+// steps that add up are seen, and go out.
+export function keepBaseline(before, after) {
+  for (let i = 0; i < after.length; i += 4) {
+    if (samePixel(pack(after, i), pack(before, i))) for (let at = i; at < i + 4; at++) after[at] = before[at];
+  }
 }
 
 export function eachPixel(runs, fn) {

@@ -12,6 +12,7 @@ import { mergingActions } from '@/store/project/merging.js';
 import { baseLayerActions } from '@/store/project/baseLayer.js';
 import { DRAWING_ACTIONS, HELD_FLOAT_MS, HOST_ONLY_ACTIONS } from '@/store/project/sharing.js';
 import { cellIndex } from '@/lib/Cells';
+import { ctx2d } from '@/lib/Canvas.js';
 import { guarded } from '@/store/project/combineActions.js';
 import { createApp } from 'vue';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
@@ -1021,6 +1022,61 @@ test('while paused, drawing does nothing and changes heard still land', async ()
   project.editCell(2, 2, { char: 'x' });
   project.commitEdit();
   expect(char(project, 2, 2)).toBe('x');
+});
+
+// A partly transparent pixel set exactly, in a stroke of the layer: another browser's reading of it is one step off.
+const SOFT = 128;
+const setSoft = (layer, red) => {
+  layer.paint([{ x: 3, y: 3, r: 0, g: 0, b: 0, alpha: 0.01 }]);
+  ctx2d(layer.canvas).putImageData(new ImageData(Uint8ClampedArray.of(red, 0, 0, SOFT), 1, 1), 3 * layer.scale, 3 * layer.scale);
+};
+const softAt = (layer) => [...ctx2d(layer.canvas).getImageData(3 * layer.scale, 3 * layer.scale, 1, 1).data];
+
+test('alone, undo restores the exact old value, even one step off at the same alpha', async () => {
+  const { project } = await drawing();
+  project.beginEdit();
+  setSoft(project.paintLayer, 100);
+  project.commitEdit();
+  const was = softAt(project.paintLayer);
+  project.beginEdit();
+  setSoft(project.paintLayer, 102);
+  project.commitEdit();
+  expect(softAt(project.paintLayer)).not.toEqual(was);
+  project.undo();
+  expect(softAt(project.paintLayer)).toEqual(was);
+});
+
+test('in a room, one reading of a pixel isn\'t a change, and small steps that add up do go out', async () => {
+  const { project, sent } = await drawing('artist');
+  const layer = project.paintLayer;
+  const at = 3 * layer.scale;
+  const slice = (red) => {
+    setSoft(layer, red);
+    sent.length = 0;
+    project.sendSlice();
+    return allRuns(changes(sent)).filter(([x, y]) => x === at && y === at).map(([, , rgba]) => rgba >>> 24);
+  };
+  project.beginEdit();
+  expect(slice(100).length).toBe(1);
+  expect(slice(102)).toEqual([]);   // within a step of what went out
+  const [last] = slice(104);        // two steps from it
+  expect(last).toBe(softAt(layer)[0]);
+  project.commitEdit();
+});
+
+test('a host\'s base goes out exactly, since nothing else writes to it mid-stroke', async () => {
+  const { project, sent } = await drawing('host');
+  const layer = project.baseLayer;
+  project.beginEdit();
+  setSoft(layer, 100);
+  project.commitEdit();
+  project.beginEdit();
+  setSoft(layer, 102);
+  sent.length = 0;
+  project.commitEdit();
+  const at = 3 * layer.scale;
+  const runs = sent.filter(({ t }) => t === 'base').flatMap(({ runs: those }) => those).filter(([x, y]) => x === at && y === at);
+  expect(runs.map(([, , , rgba]) => rgba >>> 24)).toEqual([softAt(layer)[0]]);
 });
 
 test('applySettings takes only the document\'s saved settings', async () => {
