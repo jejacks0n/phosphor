@@ -9,7 +9,7 @@
 //   formerHost    the next project also says I'm back as an artist
 //   gettingArt    back from a reload with no document to draw on; the room's project, or nothing coming, ends it
 import { readCursors } from '@/social/wire';
-import { UNDO_RESET_WORDS, backAsArtistWords } from '@/social/messages';
+import { ART_NOT_OPENED_WORDS, UNDO_RESET_WORDS, backAsArtistWords } from '@/social/messages';
 import { LONG_TOAST_MS, toast } from '@/composables/useToast';
 
 export function artistSide({ project, workspace, me, artists, artistNames, invitation, paused, waiting, cursors, notice, hostChanging, gettingArt, mayDraw, myCursor, pause, goOn, sayUndoRestarts }) {
@@ -52,6 +52,9 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
     flushAutosave = flush;
   }
 
+  // Everything open is written; whether it worked.
+  const autosaved = () => flushAutosave();
+
   // The server named someone else, with me here. A planned handover moved the undo with it; a sudden one couldn't,
   // and what I've drawn is all still here.
   function hostChanged({ planned = false, words = null } = {}) {
@@ -91,7 +94,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
     // document to draw on and is sent no art for having said hello, so they go back to watching, and can be asked again.
     const projectFailed = () => {
       if (!takesProjects()) return;
-      notice.value = 'The room\'s art couldn\'t be opened.';
+      notice.value = ART_NOT_OPENED_WORDS;
       artCame();
       if (!project._sharing) decline();
     };
@@ -268,7 +271,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
   return {
     post: (msg) => room?.post(msg), inRoom: () => !!room, handed: () => handed, leaveRoom,
     noteAccepted, artCame, stopDrawing,
-    autosavedBy, hostChanged, lastChange, holdsTheArt, noteFormerHost,
+    autosavedBy, autosaved, hostChanged, lastChange, holdsTheArt, noteFormerHost,
     watchCallbacks, watching, knownNow, heardArtists, accept, decline, connection,
   };
 }
