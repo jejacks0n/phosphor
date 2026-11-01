@@ -17,16 +17,20 @@ writes its ledger, and that someone drawing is no longer sent the art.
   people. A person drawing is now sent no art. At 8 people, the 95th percentile went from 156 to 239 ms down to 44
   to 133 ms. Both sets of numbers are below.
 - **What stops 8 and 10 is now one thing: the ledger's write.** 8 misses in one run, and 10 in one run, both on the
-  clone alone (249 and 266 ms). Their latency passes every time (up to 206 ms). Take the write away and the cap
-  would be 10. 12 misses on latency (up to 376 ms) and 15 on both.
+  clone alone (249 and 266 ms). Their latency passes every time (up to 206 ms). No run took the write away, but
+  by inference the cap would then be 10. 12 misses on latency (up to 376 ms) and 15 on both.
 - **Steady drawing isn't what limits it.** 15 people drawing with no fills pass easily (measured before the art
   change, which it can only have helped): 22 ms at the 95th percentile, and no task on the host over 50 ms. The
   limit comes from one person filling 500 lines every 10 seconds.
-- **From about 8 people, this machine is the limit as much as the code is.** All of them are on 12 cores, and at
-  each fill the machine's idle falls to 6% at 8 people and under 1% at 10. People on their own computers would
+- **7 holds for a new room, and partly because these runs last 60 seconds.** They end with about 20 MB in the
+  ledger. An estimate from the ledger's table: one person's 40,000-cell fill every 20 seconds adds about 15 MB a
+  minute, which crosses the 25 MB where the write alone goes over 200 ms about 2 minutes in, and in a smaller room
+  with the same person filling too. So a long room with a lot of filling misses this rule at any size.
+- **From about 8 people, this machine is the limit as much as the code is.** All of them are on 12 cores, and the
+  lowest of the machine's idle, sampled about every 7 seconds, is 6% at 8 people and under 1% at 10. People on their own computers would
   each do only their own share, so 7 is cautious. How cautious can't be told from one machine.
 - **The ledger write is a visible stall when the ledger is full of cells, at any number of people.** About half
-  a second at the limit. It used to come every 2 seconds; it's now at most about every 8. A cap doesn't help
+  a second at the limit. It used to come every 2 seconds; it's now about every 7 to 10. A cap doesn't help
   this, and pacing makes it rare but doesn't remove it.
 
 ## How this was measured
@@ -114,7 +118,7 @@ about 1.5 MB with fills (8 MB is where the host starts queueing), and at 2 KB wi
 | 15 | 132 | 267 KB/s |
 
 At 15, that's about 19 KB/s to each artist, in 9 messages a second of about 2 KB, since each holds everyone's
-cursor. Each artist sends 9 a second, under 1 KB/s. It's about an eighth of what the numbered changes take at 15 with fills
+cursor. Each artist sends 9 a second, under 1 KB/s. It's about a sixth of what the numbered changes take at 15 with fills
 (1.6 MB/s) and doesn't limit anything, so the pace stays. Nor does the slice pace limit anything, since steady
 drawing passes at 15.
 
@@ -142,14 +146,15 @@ One artist filling the whole document again and again, until the ledger's 64 MB 
 
 Steady drawing costs little: before the art change, at 15 people with no fills, after 60 seconds, 9 MB of stacks and 17,000 items in the tail
 clone in 29 ms. Filling with cells is what's costly. Past about 25 MB of them, the clone alone is over the 200 ms
-this document calls usable, in a room of any size.
+this document calls usable, in a room of any size. By the estimate in the summary, a room that keeps filling reaches
+that in minutes, not hours.
 
 **A stall every 2 seconds at the limit was too often**, a quarter of the host's time, so `KEEP_LEDGER_EVERY_MS` went
 from 2 to 10 seconds. Autosave also writes it, 1 second after edits stop and at least every 10 seconds, so in the
 runs above that came to 6 to 9 writes a minute. The document is never ahead of the ledger on a reload, since
 autosave's write comes straight after the document's. What a host loses is only that the ledger may be up to 10
 seconds behind the artists, who catch it up from their own tail. This stays a half-second hitch every several
-seconds, in a room that has filled most of the document several times. It's noted here as what it is: the design
+seconds, in a room whose ledger is full of cells. It's noted here as what it is: the design
 writes a whole copy, and only a different design would take that away.
 
 ## A project over 16 MB
@@ -163,14 +168,15 @@ afterward reached the host and the other artist. The host's longest task was 522
 ## What these numbers don't show
 
 - **There's no real network here.** Every browser is on one machine, so a change crosses loopback. A real room adds
-  the time across the internet, and a host's upload becomes the limit: 15 people with fills asks for about 1.9 MB/s
-  (15 Mbit/s) up, every byte of it from the host, and 6 far less. Packet loss and slow links aren't tested at all.
+  the time across the internet, and a host's upload becomes the limit: 15 people with fills asks for about 1.8 MB/s
+  (15 Mbit/s) up, every byte of it from the host, and 7 far less. Packet loss and slow links aren't tested at all.
   Nor is a channel over a relay, as there's no TURN.
 - **Nothing here is a typical computer.** It's a fast laptop, split among every person in the room. A host on a slower
   machine has longer tasks, and an artist on their own machine has less to compete with. Both are unmeasured.
 - **Not real hands.** The drawing goes through the store rather than pointer events, and everyone keeps at it for the
   whole minute.
-- **Rooms this short don't fill the ledger.** The runs show what a new room does, and the ledger's table shows what
+- **Rooms this short don't fill the ledger.** The runs show what a new room does, and the cap is only measured for
+  that. Nothing here ran for longer than a minute at these counts. The ledger's table shows what
   an old one adds.
 - **Three runs is few.** 8 and 10 each passed some and missed others, so the line between them and 7 is not sharp.
 

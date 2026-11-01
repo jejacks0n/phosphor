@@ -30,12 +30,12 @@ const place = (n) => Number.isInteger(n) && n >= 0;
 export class Watch {
   constructor({
     send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = NOTHING,
-    onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onViews = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING, onHandOver = NOTHING, onCatchUp = NOTHING, onUndoReset = NOTHING,
+    onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onViews = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING, onHandOver = NOTHING, onCatchUp = NOTHING, onUndoReset = NOTHING, onProjectFailed = NOTHING,
     takesProjects = () => false,
   }) {
     Object.assign(this, {
       send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat,
-      onNumbered, onSettings, onBase, onProject, onCheck, onCaughtUp, onCursors, onViews, onInvite, onWithdrawn, onArtists, onHandOver, onCatchUp, onUndoReset, takesProjects,
+      onNumbered, onSettings, onBase, onProject, onCheck, onCaughtUp, onCursors, onViews, onInvite, onWithdrawn, onArtists, onHandOver, onCatchUp, onUndoReset, onProjectFailed, takesProjects,
     });
     this.mostWaiting = MOST_WAITING;
     this.conn = null;
@@ -199,6 +199,7 @@ export class Watch {
     else if (msg.t === 'chat-no' && isId(msg.id) && msg.reason === 'too-fast') this.onChat({ type: 'refused', id: msg.id, reason: msg.reason });
     else if (msg.t === 'numbered' || msg.t === 'settings' || msg.t === 'base' || msg.t === 'caught-up' || (msg.t === 'check' && Number.isInteger(msg.sum))) this.drawn(msg);
     else if (msg.t === 'project-start') this.projectStart(msg);
+    else if (msg.t === 'project-failed') this.onProjectFailed();
     else if (msg.t === 'hand-over') this.handOverStart(msg);
     else if (msg.t === 'catch-up') this.onCatchUp({ has: msg.has, epoch: msg.epoch });
     else if (msg.t === 'undo-reset') this.onUndoReset();
@@ -256,7 +257,7 @@ export class Watch {
     if (parts) {
       this.projectN = project.n;
       await this.onProject({ n: project.n, epoch: project.epoch, took: project.took, parts });
-    }
+    } else this.onProjectFailed();
     if (this.conn === conn) for (const msg of project.held) this.drawn(msg);
   }
 

@@ -857,7 +857,7 @@ test('a project that won\'t pack still lets out what waited, and leaves the room
   r.host.sendAll({ t: 'numbered', n: 2 });
   fail(new Error('no'));
   await going;
-  expect(sends.sent().map((m) => m.t)).toEqual(['numbered']);
+  expect(sends.sent().map((m) => m.t)).toEqual(['project-failed', 'numbered']);
   expect(w.projecting).toBe(false);
   expect(r.log.p1.watch.ready).toBe(true);
 });
