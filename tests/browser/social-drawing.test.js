@@ -11,7 +11,7 @@ import { toBase64url } from '@/social/base64url';
 import { CHECK_EVERY_MS, MOST_ARTISTS, useDrawingStore } from '@/store/DrawingStore';
 import RoomPeople from '@/components/social/RoomPeople.vue';
 import { useProjectStore } from '@/store/ProjectStore';
-import { ASK_AGAIN_MS } from '@/store/project/sharing';
+import { ASK_AGAIN_MS, HELD_FLOAT_MS } from '@/store/project/sharing';
 import { useRoomStore } from '@/store/RoomStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { serializeBase, withPins } from '@/document/baseRecords';
@@ -3214,3 +3214,110 @@ test('a list sent on the way back is the one that waits for its answer, past the
   room.drawing.artistsNow(['ann'], tag);
   expect(room.drawing.artists).toEqual(['ann']);
 });
+
+test('a refusal for what was never asked does nothing: no step goes, and nothing\'s said', async () => {
+  toastMessage.value = null;
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  ann.project.editCell(1, 1, { char: 'A' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  const [stroke] = room.project._ledger.strokesBy('ann');
+  ann.project.strokeRefused('undo', stroke);
+  expect(toastMessage.value).toBe(null);
+  expect(ann.project.canUndo).toBe(true);
+});
+
+test('a refusal goes by what was asked: an undo and a redo of one stroke are two questions', async () => {
+  toastMessage.value = null;
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  ann.project.editCell(1, 1, { char: 'A' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  const [stroke] = room.project._ledger.strokesBy('ann');
+  room.host.hold();
+  ann.project.askForStroke('undo', stroke);
+  ann.project.strokeRefused('redo', stroke);   // not what's asked
+  expect(toastMessage.value).toBe(null);
+  expect(ann.project._sharing.strokesAsked).toEqual([{ kind: 'undo', stroke }]);
+  ann.project.askForStroke('redo', stroke);
+  ann.project.strokeRefused('redo', stroke);
+  expect(toastMessage.value).toBe('That can\'t be redone anymore.');
+  expect(ann.project._sharing.strokesAsked).toEqual([{ kind: 'undo', stroke }]);
+});
+
+test('put back to watching before the room\'s art came, a former host asked again isn\'t told they\'re back as one', async () => {
+  toastMessage.value = null;
+  const room = await hosting();
+  const ann = await join(room, 'ann');
+  ann.drawing.noteFormerHost();
+  ann.drawing.heardArtists([]);
+  expect(room.drawing.invite('ann')).toBe(true);
+  await expect.poll(() => ann.drawing.invitation, PATIENT).toBe(true);
+  ann.drawing.accept();
+  await expect.poll(() => ann.drawing.mayDraw, PATIENT).toBe(true);
+  expect(ann.drawing.notice).toBe(null);
+  expect(toastMessage.value).toBe(null);
+});
+
+test('named host before the room\'s art came, a former host isn\'t told later that they\'re back as one', async () => {
+  toastMessage.value = null;
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  await allMatch(room, ann);
+  ann.drawing.noteFormerHost();
+  const hosting2 = new Host({ config, passKey, roomId: 'room', send: async () => {}, ...ann.drawing.hostCallbacks() });
+  toStop.push(() => hosting2.close());
+  ann.watch.close();
+  ann.drawing.hosted(hosting2, { me: () => 'ann' });
+  ann.drawing.takeOver(hosting2, { planned: false });
+  hosting2.close();
+
+  // The role moves on from them in time, and the room's art comes.
+  const answers = ann.drawing.watchCallbacks();
+  ann.drawing.watching({ post: () => true }, { me: () => 'ann', roomId: 'room', roomName: () => 'Night shift' });
+  ann.drawing.becomeArtist();
+  ann.drawing.heardArtists(['ann']);
+  vi.spyOn(ann.project, 'takeProject').mockResolvedValue(true);
+  ann.drawing.notice = null;
+  await answers.onProject({ n: 9, epoch: 'e', took: 0, parts: {} });
+  expect(ann.drawing.notice).toBe(null);
+  expect(toastMessage.value).toBe(null);
+});
+
+test('back as an artist, what\'s said joins what\'s still being said', async () => {
+  toastMessage.value = null;
+  const room = await hosting();
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  const ann = await join(room, 'ann');
+  ann.drawing.noteFormerHost();
+  ann.drawing.notice = 'Your undo starts over. All the drawing is still here.';
+  ann.drawing.heardArtists(['ann']);
+  room.drawing.artistsNow(['ann']);
+  await expect.poll(() => ann.project.image, PATIENT).toBeTruthy();
+  await expect.poll(() => ann.drawing.notice, PATIENT).toContain('What you had open');
+  expect(ann.drawing.notice).toContain('Your undo starts over.');
+  expect(toastMessage.value).toContain('What you had open');
+  expect(toastMessage.value).not.toContain('undo starts over');
+});
+
+test('a block held when the art is replaced from a new start still goes out on its time, once', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  ann.project.editCell(1, 1, { char: 'A' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  const posted = vi.spyOn(ann.watch, 'post');
+  ann.project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, { base: false, edit: true }, 2, 0);
+  await wait(150);
+  expect(posted.mock.calls.filter(([msg]) => msg.t === 'change')).toEqual([]);
+  room.project.shareWholeDocument();
+  await expect.poll(() => ann.project._sharing.epoch, PATIENT).toBe(room.project._ledger.epoch);
+  await wait(HELD_FLOAT_MS + 200);
+  expect(ann.project._sharing.held).toBe(null);
+  expect(posted.mock.calls.filter(([msg]) => msg.t === 'change')).toHaveLength(1);
+  await allMatch(room, ann);
+  expect(char(room.project, 3, 1)).toBe(char(ann.project, 3, 1));
+}, 15_000);
