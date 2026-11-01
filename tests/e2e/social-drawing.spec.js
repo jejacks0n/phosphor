@@ -1155,7 +1155,6 @@ test('Make host is off while drawing is paused', async ({ page: host, context })
   const room = fakeRoom();
   await together(host, context, room);
   await store(host, 'drawing', '(d) => { d.paused = true; }');
-  await chat(host).getByRole('button', { name: /^\d+ here$/ }).isVisible();
   if (!await people(host).isVisible()) await chat(host).getByRole('button', { name: /^\d+ here$/ }).click();
   await rowOf(host).getByRole('button', { name: 'More for tin_owl' }).click();
   const button = rowOf(host).getByRole('button', { name: 'Make host' });

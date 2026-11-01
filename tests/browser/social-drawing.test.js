@@ -2576,3 +2576,58 @@ test('a claim from someone put back to watching since isn\'t asked about', async
   await expect.poll(() => room.drawing.paused, PATIENT).toBe(false);
   expect(asked).not.toHaveBeenCalled();
 });
+
+// An artist back from a reload, named host before hearing any number: nothing of the room's sharing left.
+const reloaded = (person) => person.project.stopSharing();
+
+test('a new host with no number and no one ahead settles on a number a project can carry, and someone invited gets the art', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  ann.project.editCell(4, 4, { char: 'A' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  room.host.close();
+  room.people.delete('ann');
+  reloaded(ann);
+
+  const next = await newHostIs(room, ann, { planned: false });
+  await expect.poll(() => ann.drawing.paused, PATIENT).toBe(false);
+  expect(ann.project._ledger.n).toBe(0);
+  next.pinia = room.pinia;
+  const cid = await artist(next, 'cid');
+  await expect.poll(() => char(cid.project, 4, 4), PATIENT).toBe('A');
+  await allMatch(next, cid);
+});
+
+test('a catch-up that comes to nothing with no number yet still settles, and the artist gets the art', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  ann.project.editCell(4, 4, { char: 'A' });
+  ann.project.commitEdit();
+  await allMatch(room, ann, bob);
+  room.host.close();
+  room.people.delete('ann');
+  bob.drawing.connection('lost');
+  reloaded(ann);
+  const bad = await packValue([null]);
+  vi.spyOn(bob.project, 'catchUpFor').mockResolvedValue({ n: bob.project._sharing.pending.n, epoch: 'e', kind: 'tail', chunks: bad });
+
+  const next = await newHostIs(room, ann, { planned: false });
+  expect(bob.project.catchUpFor).toHaveBeenCalled();
+  expect(ann.project._ledger.n).toBe(0);
+  await allMatch(next, bob);
+  expect(char(bob.project, 4, 4)).toBe('A');
+});
+
+test('a gather stopped with no number yet leaves a number a project can carry', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  await allMatch(room, ann);
+  room.project._documentN = null;
+  setActivePinia(room.pinia);
+  room.drawing.resumeHosting({ artists: ['ann'], invited: [] }, null);
+  expect(room.project._ledger.n).toBe(-1);
+  room.drawing.backToWatching('ann');
+  expect(room.project._ledger.n).toBe(0);
+});
+

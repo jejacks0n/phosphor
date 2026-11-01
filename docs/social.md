@@ -326,8 +326,9 @@ an artist, and an artist who drops out and returns is still one, with no new inv
 the browser's own list, and the room's art opens beside it.
 
 A host's reload picks up where it was, whatever autosave had reached: for up to about 5 seconds drawing waits while
-the artists check in, and if one of them has strokes the host doesn't, the host catches up from them first. If they
-can't bridge the gap, undo starts over, with the same words as above. No strokes are lost.
+the artists check in, and if one of them has strokes the host doesn't, the host catches up from them first, which can
+hold drawing for up to a minute. If they can't bridge the gap, undo starts over, with the same words as above. No
+strokes are lost.
 
 ## The address, Back and Forward
 

@@ -189,10 +189,16 @@ export const useDrawingStore = defineStore('drawing', () => {
     }
     clearTimeout(now.deadline);
     gathering = null;
+    settleNumber();
     goOn();
     for (const [w, msg] of now.hellos) if (w.drawing && host.open().includes(w)) answerHello(w, msg);
     project.numberWaiting(now.waiting);
     host.release();
+  }
+
+  // A gather can end with no number heard from anyone (-1), which no project or hand-over can carry.
+  function settleNumber() {
+    project._ledger.n = Math.max(project._ledger.n, 0);
   }
 
   // Who to ask next: once each, by who they are, as a new connection is still them, and only someone listed and here.
@@ -230,6 +236,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     clearTimeout(now.deadline);
     now.asking?.catchUp?.done(null);
     gathering = null;
+    settleNumber();
     project.numberWaiting(now.waiting);
     host?.release();
     goOn();
