@@ -206,7 +206,7 @@ export const sharingActions = {
 
   // The ledger as it is, written for this host's next reload, unless it's what was written last. Autosave calls
   // this after each write of the document, so what's kept is never behind that.
-  // ponytail: a whole copy per write (in the 2 s, while anything changes), up to the stacks' 64 MB; write what changed if it hitches.
+  // ponytail: a whole copy per write (in the 10 s, while anything changes, and at autosave's), up to the stacks' 64 MB; write what changed if it hitches.
   async keepLedger() {
     const sharing = this._sharing, ledger = this._ledger;
     if (sharing?.role !== 'host' || !sharing.roomId || sharing.keeping || sharing.keptN === ledger.n) return;

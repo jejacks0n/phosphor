@@ -9,7 +9,7 @@ import { UNDO_RESET_WORDS } from '@/social/messages';
 
 const CURSORS_EVERY_MS = 100;
 // How many can draw in a room, the host among them: what docs/investigations/drawing-together.md measured.
-export const MOST_ARTISTS = 6;
+export const MOST_ARTISTS = 7;
 const ROOM_FULL = 'This room has as many artists as it can take.';
 export const CHECK_EVERY_MS = 2000;
 const KEEP_LEDGER_EVERY_MS = 10_000; // written for a reload that can't stop to write anything on its way out; a large one stalls the tab (docs/investigations/drawing-together.md), and autosave writes it too
