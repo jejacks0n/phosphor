@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { SETTING_KEYS, SAUCE_KEYS, getSetting, groupDefaults, settingsFromStranger, slidersAtDefaults, RESET_GROUPS } from '../../src/store/settings.js';
 import { readProject } from '../../src/document/projectIO.js';
+import { editScaleFor } from '../../src/document/PaintLayer.js';
+import { fitRect } from '../../src/lib/Canvas.js';
 
 test("Settings schema: same keys, storage keys and reset defaults as before the schema existed, so users' persisted settings survive", async () => {
   // same 23 keys as the pre-schema SETTING_KEYS; order follows the table
@@ -51,4 +53,33 @@ test('every project fixture\'s settings would be taken from a host', async () =>
     const { settings } = await readProject(new Blob([readFileSync(`tests/fixtures/projects/${name}`)]));
     assert.ok(settingsFromStranger(settings), name);
   }
+});
+
+// A tall piece: a real project's layers at 1001 to 5000 lines. What a blank canvas or a large picture makes: a base layer at
+// two pixels a grid pixel, whatever its length, and a paint layer at one past MAX_LAYER_DIM.
+test('a tall grid\'s own layers are taken from a host, up to the longest the limits allow', () => {
+  for (const [cols, lines] of [[80, 1001], [80, 2001], [80, 3000], [100, 5000], [300, 1666]]) {
+    const rows = 2 * lines, size = Math.max(cols, rows);
+    const made = { cols, rows, paintScale: editScaleFor(Infinity, Infinity, cols, rows), baseScale: Math.max(2, Math.floor(400 / size)), fit: fitRect(cols * 2, rows * 2, cols, rows) };
+    assert.deepEqual(settingsFromStranger(made), made, `${cols} x ${lines} lines`);
+  }
+});
+
+test('past the layer\'s rule, a scale on a tall grid is still refused', () => {
+  const tall = { cols: 80, rows: 6000 };
+  for (const bad of [{ baseScale: 3 }, { paintScale: 2 }, { baseScale: 1e9 }, { fit: { dx: 0, dy: 0, dw: 80, dh: 10001 } }, { fit: { dx: -10001, dy: 0, dw: 80, dh: 100 } }]) {
+    assert.equal(settingsFromStranger({ ...tall, ...bad }), null, JSON.stringify(bad));
+  }
+  assert.equal(settingsFromStranger({ cols: 300, rows: 3336 }), null);   // past 500k cells
+  assert.equal(settingsFromStranger({ cols: 100, rows: 10002 }), null);  // past 5000 lines
+  assert.ok(settingsFromStranger({ cols: 300, rows: 3332 }));
+  assert.ok(settingsFromStranger({ cols: 100, rows: 10000 }));
+});
+
+test('a project file keeps the paint scale of a tall grid, so its paint opens where it was', async () => {
+  const json = new TextEncoder().encode(JSON.stringify({ cols: 80, rows: 6000, paintScale: 1, fit: { dx: 0, dy: 0, dw: 80, dh: 6000 } }));
+  const file = new Blob(['PHOSPHOR', new Uint32Array([json.length, 0, 0]), json]);
+  const { settings } = await readProject(file);
+  assert.equal(settings.paintScale, 1);
+  assert.deepEqual(settings.fit, { dx: 0, dy: 0, dw: 80, dh: 6000 });
 });

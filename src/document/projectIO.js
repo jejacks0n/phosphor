@@ -7,16 +7,19 @@
 import { serializeEditCells, deserializeEditCells, migrateCharEdits } from './editCells.js';
 import { EMPTY_BASE, serializeBase, deserializeBase } from './baseRecords.js';
 import { MAX_LAYER_DIM } from './PaintLayer.js';
-import { MAX_COLS, maxRowsBeside } from '../lib/Cells.js';
+import { MAX_COLS, MAX_LINES, maxRowsBeside } from '../lib/Cells.js';
 
 export const PROJECT_EXTENSION = '.phosphor';
 export const isProjectFile = (name) => name.toLowerCase().endsWith(PROJECT_EXTENSION);
 const MAGIC_HEADER = 'PHOSPHOR';
 
-// A fit four numbers with a size, and a layer's scale a whole number small enough to draw (a layer stays within
-// MAX_LAYER_DIM pixels a side): what's untrusted in a file, and in what another browser sends.
-export const goodFit = (fit) => !!fit && ['dx', 'dy', 'dw', 'dh'].every(k => Number.isFinite(fit[k]) && Math.abs(fit[k]) <= MAX_LAYER_DIM) && fit.dw > 0 && fit.dh > 0;
-export const goodScale = (scale, size) => Number.isInteger(scale) && scale > 0 && scale * size <= MAX_LAYER_DIM;
+// A fit four numbers with a size, no longer than the longest grid, and a layer's scale a whole number small enough to
+// draw: within MAX_LAYER_DIM pixels a side, except that a grid longer than that still has its layers (editScaleFor), a
+// paint layer at a pixel a grid pixel and a base layer at the 2 the picture's processed at (ImageProcessor's prepare).
+// What's untrusted in a file, and in what another browser sends.
+export const goodFit = (fit) => !!fit && ['dx', 'dy', 'dw', 'dh'].every(k => Number.isFinite(fit[k]) && Math.abs(fit[k]) <= 2 * MAX_LINES) && fit.dw > 0 && fit.dh > 0;
+export const goodScale = (scale, size, longest = 1) => Number.isInteger(scale) && scale > 0 && scale <= Math.max(longest, Math.floor(MAX_LAYER_DIM / size));
+export const goodBaseScale = (scale, size) => goodScale(scale, size, 2);
 
 // Decode image bytes; the object URL only lives until the image has loaded.
 export function loadImage(source, type) {

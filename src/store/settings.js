@@ -1,6 +1,6 @@
 import { useLocalStorage } from '@vueuse/core';
 import { generateSlug } from 'random-word-slugs';
-import { goodFit, goodScale } from '@/document/projectIO.js';
+import { goodBaseScale, goodFit, goodScale } from '@/document/projectIO.js';
 import { MAX_COLS, maxRowsBeside } from '@/lib/Cells.js';
 
 // Every persisted project setting, declared once. Order within the transform, adjust and effects
@@ -81,9 +81,9 @@ export function settingsFromStranger(values) {
   const cols = asNumber(taken.cols ?? 1), rows = asNumber(taken.rows ?? 1);
   if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1 || cols > MAX_COLS || rows > maxRowsBeside(cols)) return null;
   const size = Math.max(cols, rows);
-  for (const key of ['paintScale', 'baseScale']) {
+  for (const [key, good] of [['paintScale', goodScale], ['baseScale', goodBaseScale]]) {
     if (values[key] === null || values[key] === undefined) continue;
-    if (!goodScale(values[key], size)) return null;
+    if (!good(values[key], size)) return null;
     taken[key] = values[key];
   }
   if (values.fit !== null && values.fit !== undefined) {
