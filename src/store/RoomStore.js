@@ -434,7 +434,7 @@ export const useRoomStore = defineStore('room', {
         useSocialStore().notice = refusalWords('unavailable');
         return;
       }
-      this.close();
+      this.close({ spent: this.id !== id });   // the same room again (its password, say): still in it, as an artist too
       noteLeft(id, false);
       this.watchRoom(id, { password });
     },

@@ -2,7 +2,7 @@
 // passes through the server, so all of this is between the two pages; the room's socket only carries signals.
 import { readFile } from 'node:fs/promises';
 import { test, expect, tab, store, chars, editAt, cellPoint, settled, saveAs, openApp, imageInput } from './support.js';
-import { fakeRoom, member, ROOM_ID, goLive, shown, chat, hash, selected, ARTIST, people, rowOf, invitation, mayDraw, fromMenu, invitedPage, artistPage, watcherPage, joinFromCard } from './social-support.js';
+import { fakeRoom, member, ROOM_ID, goLive, shown, chat, hash, selected, ARTIST, people, rowOf, invitation, mayDraw, fromMenu, invitedPage, artistPage, watcherPage, joinFromCard, followLink } from './social-support.js';
 
 const WAITING_WORDS = 'The host is reconnecting. Drawing is paused.';
 const CHANGING_WORDS = 'The host is changing. Drawing is paused.';
@@ -1206,4 +1206,25 @@ test('a former host\'s SOCIAL tab shows the document it carries on with, and the
   await tab(artist, 'ANSI').click();
   await typeAt(artist, 3, 3, 'z');   // the new host's stroke, on the old host's own document
   await expect.poll(() => artRow(host, 3)).toContain('z');
+});
+
+test('an artist back from a reload in a password room is still an artist, with no new invitation', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room, { password: 'hunter22' });
+  const person = await watcherPage(context, room, { me: ARTIST });
+  await followLink(person);
+  const enter = async () => {
+    await person.getByLabel('Password').fill('hunter22');
+    await person.getByRole('button', { name: 'Join', exact: true }).click();
+  };
+  await enter();
+  await fromMenu(host, 'Make artist');
+  await invitation(person).getByRole('button', { name: 'Accept' }).click();
+  await mayDraw(person).toBe(true);
+
+  person.on('dialog', (dialog) => dialog.accept());
+  await person.reload();
+  await enter();
+  await mayDraw(person).toBe(true);
+  await expect(invitation(person)).toHaveCount(0);
 });
