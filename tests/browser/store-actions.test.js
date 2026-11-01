@@ -13,7 +13,7 @@ const ACTIONS = [
   'loadProject', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeUp',
   'moveSelection', 'newConnection', 'newDocument', 'numberWaiting', 'openFromHost', 'openParts', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
   'pasteSelection', 'processingScale', 'projectNow', 'projectParts', 'pushEdit', 'pushKeptStroke', 'pushWholeLayer', 'randomizeSeed', 'rawColorAt', 'readCell', 'readHandOver', 'readTile', 'rebuildCells', 'recolorSelection', 'recompose', 'redo', 'redoStroke', 'refreshCells', 'refreshChanged', 'rename',
-  'render', 'replaceImage', 'replayOnPicture', 'resendPending', 'resetGroup', 'resetSliders', 'restoreDocument', 'restoreLedger', 'saveProject', 'selectionEdit', 'sendBase', 'sendHeld', 'sendNumbered', 'sendParts', 'sendSettings', 'sendSlice',
+  'render', 'replaceImage', 'replayOnPicture', 'resendPending', 'resetGroup', 'resetSliders', 'restoreDocument', 'restoreLedger', 'saveProject', 'selectionEdit', 'sendBase', 'sendHeld', 'sendHeldSoon', 'sendNumbered', 'sendParts', 'sendSettings', 'sendSlice',
   'setBaseRecords', 'setBlankCanvas', 'setCells', 'setEditCells', 'setImageFromFile', 'setPaused', 'setSlider', 'shareWholeDocument', 'shiftCells',
   'sliderValues', 'stampSelection', 'startSharing', 'stopSharing', 'takeCatchUp', 'takeFromArtist', 'takeLedger', 'takeProject', 'throughPending', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'undoStroke', 'updateCols', 'updateRows', 'waitForAnswer', 'waitingBoxes', 'writeAt',
   'writeBase', 'writeEditCells',

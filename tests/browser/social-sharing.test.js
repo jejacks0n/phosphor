@@ -10,7 +10,7 @@ import { editLayerActions } from '@/store/project/editLayer.js';
 import { selectionActions } from '@/store/project/selection.js';
 import { mergingActions } from '@/store/project/merging.js';
 import { baseLayerActions } from '@/store/project/baseLayer.js';
-import { DRAWING_ACTIONS, HOST_ONLY_ACTIONS } from '@/store/project/sharing.js';
+import { DRAWING_ACTIONS, HELD_FLOAT_MS, HOST_ONLY_ACTIONS } from '@/store/project/sharing.js';
 import { cellIndex } from '@/lib/Cells';
 import { guarded } from '@/store/project/combineActions.js';
 import { createApp } from 'vue';
@@ -618,6 +618,103 @@ test('an artist\'s float that has gone out starts a new run, since it can\'t be 
   expect(landed.c0).toBe(5);
   expect(sent.filter(({ t }) => t === 'undo')).toEqual([]);
   expect(char(project, 5, 1)).toBe('A');
+});
+
+test('an artist\'s block left where it is goes out once it\'s been still a while, the timer starting over with each move', async () => {
+  const { project, sent } = await drawing('artist');
+  project.editCell(1, 1, { char: 'A' });
+  project.commitEdit();
+  project.applyNumbered(echo(changes(sent)[0]));
+  sent.length = 0;
+  vi.useFakeTimers();
+  const layers = { base: false, edit: true };
+  let rect = project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, layers, 1, 0);
+  vi.advanceTimersByTime(HELD_FLOAT_MS - 1);
+  rect = project.floatSelection(rect, layers, 1, 0);
+  vi.advanceTimersByTime(HELD_FLOAT_MS - 1);
+  expect(changes(sent)).toEqual([]);
+  vi.advanceTimersByTime(1);
+  expect(changes(sent).map(({ cells }) => cells.map(([key]) => key).sort())).toEqual([['1,1', '3,1']]);
+  expect(project._sharing.held).toBe(null);
+  expect(HELD_FLOAT_MS).toBe(2000);
+
+  // A later move starts a new run and a new undo step, and what the block covered stays covered.
+  const steps = project.history.version;
+  project.applyNumbered(echo(changes(sent)[0]));
+  sent.length = 0;
+  project.floatSelection(rect, layers, 1, 0);
+  expect(sent.filter(({ t }) => t === 'undo')).toEqual([]);
+  expect(project.history.version).toBeGreaterThan(steps);
+  vi.advanceTimersByTime(HELD_FLOAT_MS);
+  expect(changes(sent).map(({ cells }) => cells.map(([key]) => key).sort())).toEqual([['3,1', '4,1']]);
+  project.undo();
+  expect(sent.filter(({ t }) => t === 'undo').map(({ stroke }) => stroke)).toEqual([changes(sent)[0].stroke]);
+});
+
+test('an artist\'s paste left where it is goes out too, and a nudge starts its timer over', async () => {
+  const { project, sent } = await drawing('artist');
+  vi.useFakeTimers();
+  const layers = { base: false, edit: true };
+  let rect = project.pasteSelection({ w: 1, h: 1, cells: [Object.freeze({ char: 'P' })] }, 2, 2);
+  vi.advanceTimersByTime(HELD_FLOAT_MS - 1);
+  rect = project.floatSelection(rect, layers, 0, 1);
+  vi.advanceTimersByTime(HELD_FLOAT_MS - 1);
+  expect(changes(sent)).toEqual([]);
+  vi.advanceTimersByTime(1);
+  expect(changes(sent).length).toBe(1);
+  expect(changes(sent)[0].cells.map(([key]) => key)).toEqual(['2,3']);
+});
+
+test('a block placed or undone before its time sends what it does now, and the timer adds nothing', async () => {
+  const { project, sent } = await drawing('artist');
+  project.editCell(1, 1, { char: 'A' });
+  project.commitEdit();
+  project.applyNumbered(echo(changes(sent)[0]));
+  sent.length = 0;
+  vi.useFakeTimers();
+  const layers = { base: false, edit: true };
+  const rect = project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, layers, 2, 0);
+  project.commitPending();
+  expect(changes(sent).length).toBe(1);
+  vi.advanceTimersByTime(HELD_FLOAT_MS * 2);
+  expect(changes(sent).length).toBe(1);
+
+  project.applyNumbered(echo(changes(sent)[0]));
+  sent.length = 0;
+  project.floatSelection(rect, layers, 1, 0);
+  project.undo();   // it goes, then its undo is asked
+  expect(sent.map(({ t }) => t)).toEqual(['change', 'undo']);
+  vi.advanceTimersByTime(HELD_FLOAT_MS * 2);
+  expect(sent.length).toBe(2);
+});
+
+test('a block\'s timer doesn\'t fire once the room\'s gone or the person went back to watching', async () => {
+  const { project, sent } = await drawing('artist');
+  project.editCell(1, 1, { char: 'A' });
+  project.commitEdit();
+  project.applyNumbered(echo(changes(sent)[0]));
+  vi.useFakeTimers();
+  project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, { base: false, edit: true }, 2, 0);
+  const send = vi.spyOn(project, 'sendHeld');
+  project.stopSharing();
+  send.mockClear();
+  const count = sent.length;
+  vi.advanceTimersByTime(HELD_FLOAT_MS * 2);
+  expect(send).not.toHaveBeenCalled();
+  expect(sent.length).toBe(count);
+});
+
+test('a host\'s float isn\'t held, so it has no timer to wait for', async () => {
+  const { project, sent } = await drawing('host');
+  project.editCell(1, 1, { char: 'A' });
+  project.commitEdit();
+  sent.length = 0;
+  vi.useFakeTimers();
+  project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, { base: false, edit: true }, 2, 0);
+  const out = sent.length;
+  expect(out).toBeGreaterThan(0);
+  vi.advanceTimersByTime(HELD_FLOAT_MS);
+  expect(sent.length).toBe(out);
 });
 
 test('an edit after an artist\'s float sends the float first, and undo then asks the host', async () => {
