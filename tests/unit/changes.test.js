@@ -1,7 +1,7 @@
 // A change to the edit layer as data: the cells and pixels it set, split to fit a message, hashed for the check.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { cellChanges, pixelRuns, eachPixel, splitChange, changeBytes, hashCell, hashPixel, Tail } from '../../src/document/changes.js';
+import { cellChanges, pixelRuns, eachPixel, splitChange, changeBytes, hashCell, hashPixel, Tail, exactly, keepBaseline } from '../../src/document/changes.js';
 
 const RED = 0xff0000ff;
 const cell = (char, fg, bg) => Object.freeze({ char, ...(fg && { fg }), ...(bg && { bg }) });
@@ -142,6 +142,13 @@ test('hashPixel agrees for two readings of one stored pixel, and tells real diff
 test('pixelRuns sees no change between two readings of one stored pixel', () => {
   assert.deepEqual(pixelRuns([0, 255, 42, 6], [0, 255, 43, 6], 1, 1, 0, 0), []);
   assert.deepEqual(pixelRuns([0, 255, 42, 6], [0, 255, 42, 7], 1, 1, 0, 0), [[0, 0, 1, 0x00ff2a07]]);
+});
+
+test('pixelRuns can compare exactly, and keepBaseline holds a reading at what it was compared with', () => {
+  assert.deepEqual(pixelRuns([0, 255, 42, 6], [0, 255, 43, 6], 1, 1, 0, 0, exactly), [[0, 0, 1, 0x00ff2b06]]);
+  const before = [0, 255, 42, 6, 1, 2, 3, 255], after = [0, 255, 43, 6, 9, 9, 9, 255];
+  keepBaseline(before, after);
+  assert.deepEqual(after, [0, 255, 42, 6, 9, 9, 9, 255]);
 });
 
 // How Firefox keeps and reads a partly transparent pixel, as measured: it rounds up going in, and down coming out.

@@ -23,7 +23,7 @@
 import { markRaw } from 'vue';
 import { deserializeBase, serializeBase } from '@/document/baseRecords.js';
 import { parseKey } from '@/document/editCells.js';
-import { cellChanges, pixelRuns, splitChange, pack, Tail } from '@/document/changes.js';
+import { cellChanges, exactly, keepBaseline, pixelRuns, splitChange, pack, Tail } from '@/document/changes.js';
 import { keepRoomLedger } from '@/document/autosaveStore.js';
 import { Ledger, keptForWire, keptFromWire } from '@/document/ledger.js';
 import { TILE } from '@/document/History.js';
@@ -447,7 +447,12 @@ export const sharingActions = {
     stroke.wroteCells ||= stroke.editCells !== this.editCells;
     stroke.editCells = this.editCells;
     stroke.noted = null;
-    const runs = tiles.flatMap(({ x, y, before, after }) => pixelRuns(before.data, after.data, after.width, after.height, x, y));
+    const runs = tiles.flatMap(({ x, y, before, after }) => {
+      if (!this._sharing) return pixelRuns(before.data, after.data, after.width, after.height, x, y, exactly);
+      const changed = pixelRuns(before.data, after.data, after.width, after.height, x, y);
+      keepBaseline(before.data, after.data);
+      return changed;
+    });
     if (!cells.length && !runs.length) { // only base pixels or pins, or a float landing on what's already there
       if (stroke.hold && this._sharing?.pending && this._sharing.held?.stroke !== stroke.id) {
         this.sendHeld();
@@ -747,12 +752,13 @@ export const sharingActions = {
   // A host's change to the base, numbered and kept like any change: what a stroke's patch did, or undoing it
   // what it undid, and the pins as they are now. It's split as a change is, each part with the pins and
   // fitting a message. Pins too many to fit one go as the project; its number isn't in the tail, so a reconnect
-  // gets the project too. It doesn't replace the document, so the host's undo and the epoch stay.
+  // gets the project too. It doesn't replace the document, so the host's undo and the epoch stay. Compared exactly:
+  // no other browser writes to the base, so any difference is a change.
   sendBase(patch, side) {
     if (this._sharing?.role !== 'host') return;
     const runs = (patch?.tiles ?? []).flatMap(({ x, y, before, after }) => (side === 'after'
-      ? pixelRuns(before.data, after.data, after.width, after.height, x, y)
-      : pixelRuns(after.data, before.data, after.width, after.height, x, y)));
+      ? pixelRuns(before.data, after.data, after.width, after.height, x, y, exactly)
+      : pixelRuns(after.data, before.data, after.width, after.height, x, y, exactly)));
     const records = serializeBase(this.baseRecords) ?? { pins: [] };
     const room = MOST_CHANGE_BYTES - JSON.stringify(records).length;
     if (room < LEAST_BASE_RUNS_BYTES) {
