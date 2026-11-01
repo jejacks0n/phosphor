@@ -50,7 +50,7 @@ afterEach(async () => {
   letGo?.();
   room.leave();
   social.disconnectLobby();
-  await hostCopies();   // what leaving forgets is done, so the next test can delete the database
+  await Promise.all([hostCopies(), readRoomLedger(ID)]);   // what leaving forgets is done, so the next test can delete the databases
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
