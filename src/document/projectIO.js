@@ -13,6 +13,11 @@ export const PROJECT_EXTENSION = '.phosphor';
 export const isProjectFile = (name) => name.toLowerCase().endsWith(PROJECT_EXTENSION);
 const MAGIC_HEADER = 'PHOSPHOR';
 
+// A fit four numbers with a size, and a layer's scale a whole number small enough to draw (a layer stays within
+// MAX_LAYER_DIM pixels a side): what's untrusted in a file, and in what another browser sends.
+export const goodFit = (fit) => !!fit && ['dx', 'dy', 'dw', 'dh'].every(k => Number.isFinite(fit[k]) && Math.abs(fit[k]) <= MAX_LAYER_DIM) && fit.dw > 0 && fit.dh > 0;
+export const goodScale = (scale, size) => Number.isInteger(scale) && scale > 0 && scale * size <= MAX_LAYER_DIM;
+
 // Decode image bytes; the object URL only lives until the image has loaded.
 export function loadImage(source, type) {
   const url = URL.createObjectURL(source instanceof Blob ? source : new Blob([source], type ? { type } : {}));
@@ -56,14 +61,13 @@ export async function readProject(file) {
   delete settings.documentId; // Untrusted, and autosave's, not the file's: one could overwrite another document's record
   delete settings.savedToFile;
   // Untrusted: a grid within the limits (Cells.js; left out, the columns are the default, which fits
-  // any height), a fit four numbers with a size, and a paint scale a whole number, both small enough
-  // to draw (a layer stays within MAX_LAYER_DIM pixels a side).
+  // any height), and a fit and paint scale that can be drawn.
   if (settings.cols !== undefined) settings.cols = Math.min(MAX_COLS, Math.max(1, settings.cols | 0));
   if (settings.rows !== undefined) settings.rows = Math.min(maxRowsBeside(settings.cols ?? 1), Math.max(1, settings.rows | 0));
   const { fit, paintScale } = settings;
   const size = Math.max(1, settings.cols | 0, settings.rows | 0);
-  if (!(fit && ['dx', 'dy', 'dw', 'dh'].every(k => Number.isFinite(fit[k]) && Math.abs(fit[k]) <= MAX_LAYER_DIM) && fit.dw > 0 && fit.dh > 0)) delete settings.fit;
-  if (!(Number.isInteger(paintScale) && paintScale > 0 && paintScale * size <= MAX_LAYER_DIM)) delete settings.paintScale;
+  if (!goodFit(fit)) delete settings.fit;
+  if (!goodScale(paintScale, size)) delete settings.paintScale;
   if (typeof settings.imageIsWorkingCopy !== 'boolean') delete settings.imageIsWorkingCopy;
   const imageBuffer = buffer.slice(offset, offset += imageLen);
   const paint = buffer.slice(offset, offset += paintLen);

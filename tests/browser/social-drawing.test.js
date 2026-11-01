@@ -371,8 +371,11 @@ test('a project from a host is a stranger\'s: what doesn\'t fit opens nothing, a
   expect(person.project.documentId).toBe(own);
   expect(person.project._sharing).toBe(null);
 
+  expect(await take({ settings: { ...whole.settings, baseScale: -1 } })).toBe(false);   // a bad value refuses them all
+  expect(person.project._sharing).toBe(null);
+
   const history = person.project.history;
-  expect(await take({ settings: { ...whole.settings, _sharing: 'x', history: 'x', image: 'x', renderer: 'x', baseScale: -1 }, editCells: new Map([['299,4999', { char: 'p' }]]) })).toBe(true);
+  expect(await take({ settings: { ...whole.settings, _sharing: 'x', history: 'x', image: 'x', renderer: 'x' }, editCells: new Map([['299,4999', { char: 'p' }]]) })).toBe(true);
   expect(person.project.history).toBe(history);
   expect(typeof person.project.renderer).toBe('object');
   expect(person.project.baseScale).toBeGreaterThan(0);
@@ -2946,6 +2949,23 @@ test('what an artist draws while Bake encodes survives on every screen', async (
     await expect.poll(() => painted(project, 8, 8)?.a, PATIENT).toBe(1);
   }
   await allMatch(room, ann);
+});
+
+test('a project whose settings are bad is refused, with nothing applied', async () => {
+  const room = await hosting();
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  const ann = await artist(room, 'ann');
+  const { n, epoch } = room.project._ledger;
+  const parts = await room.project.projectParts();
+  const buffer = await new Blob([room.project.imageBuffer]).arrayBuffer();
+  const brightness = ann.project.brightness;
+  const taken = await ann.project.takeProject({
+    settings: { ...parts.settings, brightness: brightness + 1, baseScale: 1e9 }, imageBuffer: buffer, paintBuffer: null, baseBuffer: null, editCells: new Map(), baseRecords: parts.baseRecords,
+  }, { n: n + 1, epoch, took: 0, filename: 'x' });
+  expect(taken).toBe(false);
+  expect(ann.project.brightness).toBe(brightness);
+  expect(char(ann.project, 1, 1)).toBe('H');
 });
 
 test('an undo the host can\'t do says so and takes the step away, and the older one is still there', async () => {
