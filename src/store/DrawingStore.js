@@ -19,6 +19,9 @@ const ONLY_THE_HOST = 'Only the host can do this.';
 const NOT_WITH_OTHERS = 'Not while others are drawing.';
 export const MERGE_WARNING = 'Strokes merged into the image can\'t be undone by anyone.';
 export const BAKE_WARNING = 'A bake can\'t be undone by anyone.';
+// What a host is busy with, and what can follow what. Neither starts during the other, and each ends in idle.
+const HOST_IDLE = { phase: 'idle' };
+const HOST_MOVES = { idle: ['gathering', 'handing-over'], gathering: ['idle'], 'handing-over': ['idle'] };
 
 // The people drawing in the room you're in, and the invitations to: who's an artist, who's asked, and the
 // cursors, kept out of the room store. The drawing itself is the project store's (sharing.js), which this
@@ -60,8 +63,9 @@ export const useDrawingStore = defineStore('drawing', () => {
   let stops = [], cursorTimer = null;
   let peersOn = new Set();         // a host's: who peopleHere last saw connected
   let handed = null;               // an artist's: the ledger an old host sent, for when the server names me
-  let handingOver = null;          // a host's, in makeHost: ends its wait for the server
-  let gathering = null;            // a host's, without knowing all that's numbered: { hellos, timer, finishing, waiting, asked, asking, deadline }
+  // A host's: idle; gathering, without knowing all that's numbered, { hellos, timer, finishing, waiting, asked, asking, deadline };
+  // or handing-over, in makeHost, { end } ending its wait for the server.
+  let hostPhase = HOST_IDLE;
   let listTag = 0;                 // a host's: the last tag put on a list
   let listAsked = null;            // a host's: the tag of the list on its way, until its answer
   let listHeard = null;            // a host's: the list as the room last said it
@@ -93,6 +97,13 @@ export const useDrawingStore = defineStore('drawing', () => {
     } catch { /* no storage: a reload joins as a watcher */ }
   };
 
+  function moveHost(next) {
+    if (!HOST_MOVES[hostPhase.phase].includes(next.phase)) console.warn(`A host going from ${hostPhase.phase} to ${next.phase}.`);
+    hostPhase = next;
+  }
+
+  const gathering = () => (hostPhase.phase === 'gathering' ? hostPhase : null);
+
   // Undo has started over, and that's said unless it has been: "The host changed" only where it did.
   function sayUndoRestarts() {
     if (!notice.value?.includes('undo starts over')) notice.value = [notice.value, UNDO_RESTART_WORDS].filter(Boolean).join(' ');
@@ -103,7 +114,8 @@ export const useDrawingStore = defineStore('drawing', () => {
   function setArtists(list, { tell = true } = {}) {
     const first = !stops.length && list.length;
     artists.value = list;
-    if (gathering?.asking && !list.includes(gathering.asking.claims.sub)) gathering.asking.catchUp?.done(null);
+    const asking = gathering()?.asking;
+    if (asking && !list.includes(asking.claims.sub)) asking.catchUp?.done(null);
     forgetCursors();
     if (first) startHostSharing();
     host.setArtists(list);
@@ -132,7 +144,8 @@ export const useDrawingStore = defineStore('drawing', () => {
   // socket was down); one who took over hears the room's, the only one that knows the old host. A room with a
   // list says it first, unasked. What it's waiting to hear from those it's asked starts its clock now.
   function hostingAgain({ tookOver = false } = {}) {
-    if (gathering) gathering.timer ??= setTimeout(finishGathering, HELLOS_WITHIN_MS);
+    const now = gathering();
+    if (now) now.timer ??= setTimeout(finishGathering, HELLOS_WITHIN_MS);
     const same = listHeard?.length === artists.value.length && artists.value.every((sub) => listHeard.includes(sub));
     listAsked = null;   // that socket's: its answer isn't coming
     if (tookOver || same || (!artists.value.length && !listHeard?.length)) return;
@@ -188,8 +201,9 @@ export const useDrawingStore = defineStore('drawing', () => {
   // Nothing's numbered until the artists have said what they have. waiting: this person's own strokes with no number
   // yet, which take the first ones after that.
   function startGathering(waiting = []) {
-    if (gathering) return;
-    const now = gathering = { hellos: [], timer: null, finishing: false, waiting, asked: new Set(), asking: null, deadline: null };
+    if (gathering()) return;
+    const now = { phase: 'gathering', hellos: [], timer: null, finishing: false, waiting, asked: new Set(), asking: null, deadline: null };
+    moveHost(now);
     now.deadline = setTimeout(() => {   // what it has by then is what it has
       now.asked = null;
       now.asking?.catchUp?.done(null);
@@ -202,16 +216,16 @@ export const useDrawingStore = defineStore('drawing', () => {
   // The most advanced artist is asked for what this host doesn't have (the next, if they've nothing to show for their
   // claim), then everyone's answered as usual, and only then is anything numbered: everyone's up to the same number.
   async function finishGathering() {
-    const now = gathering;
+    const now = gathering();
     if (!now || now.finishing) return;
     now.finishing = true;
     clearTimeout(now.timer);
     for (let next; (next = mostAhead(now));) {
       await catchUpFrom(...next);
-      if (gathering !== now) return;
+      if (hostPhase !== now) return;
     }
     clearTimeout(now.deadline);
-    gathering = null;
+    moveHost(HOST_IDLE);
     settleNumber();
     goOn();
     for (const [w, msg] of now.hellos) if (w.drawing && host.open().includes(w)) answerHello(w, msg);
@@ -232,12 +246,12 @@ export const useDrawingStore = defineStore('drawing', () => {
   }
 
   async function catchUpFrom(w, has) {
-    const theHost = host, now = gathering;
+    const theHost = host, now = gathering();
     now.asked.add(w.claims.sub);
     now.asking = w;
     const answer = await theHost.askCatchUp(w, { has: project._ledger.n, epoch: project._ledger.epoch });
     now.asking = null;
-    if (!answer || gathering !== now || !now.asked) return;
+    if (!answer || hostPhase !== now || !now.asked) return;
     adopting = answer.kind === 'project';
     try {
       if (await project.takeCatchUp(answer, has) && adopting) {
@@ -253,12 +267,12 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   // Over before it's finished (no one left to ask, or the room's moved on): whatever it was holding goes on.
   function stopGathering() {
-    const now = gathering;
+    const now = gathering();
     if (!now) return;
     clearTimeout(now.timer);
     clearTimeout(now.deadline);
     now.asking?.catchUp?.done(null);
-    gathering = null;
+    moveHost(HOST_IDLE);
     settleNumber();
     project.numberWaiting(now.waiting);
     host?.release();
@@ -284,7 +298,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     project.startSharing({ send: (msg) => host.sendAll(msg), sendDocument: () => host.sendProjectToAll(), hold: () => theHost.hold(), release: () => theHost.release(), role: 'host', me: me(), roomId: host.roomId });
     project.dropOldUndo();
     stops.push(watch(() => project._document, () => { if (!adopting) setArtists([]); }));   // something else opened, with only those who've dropped out listed
-    const checks = setInterval(() => { if (!gathering) host.sendCheck(project._ledger.n, project._ledger.sum); }, CHECK_EVERY_MS);
+    const checks = setInterval(() => { if (!gathering()) host.sendCheck(project._ledger.n, project._ledger.sum); }, CHECK_EVERY_MS);
     stops.push(() => clearInterval(checks));
     const keeps = setInterval(() => project.keepLedger(), KEEP_LEDGER_EVERY_MS);
     stops.push(() => clearInterval(keeps));
@@ -293,7 +307,7 @@ export const useDrawingStore = defineStore('drawing', () => {
       const now = settingsJson(project), gridNow = `${project.cols},${project.rows}`;
       if (project._sliderBefore || now === sent) return;
       sent = now;
-      if (gathering) {   // from a catch-up, and everyone hears it in what they're answered
+      if (gathering()) {   // from a catch-up, and everyone hears it in what they're answered
         grid = gridNow;
         return;
       }
@@ -321,9 +335,10 @@ export const useDrawingStore = defineStore('drawing', () => {
       },
       // A host back from a reload or new to it: they wait until all of them have said, or the time's up.
       onHello: (w, msg) => {
-        if (!gathering) return answerHello(w, msg);
-        gathering.hellos.push([w, msg]);
-        const said = new Set(gathering.hellos.map(([{ claims }]) => claims.sub));
+        const now = gathering();
+        if (!now) return answerHello(w, msg);
+        now.hellos.push([w, msg]);
+        const said = new Set(now.hellos.map(([{ claims }]) => claims.sub));
         if (artists.value.every((sub) => said.has(sub))) finishGathering();
       },
       onAnswer: (sub, yes) => {
@@ -382,13 +397,14 @@ export const useDrawingStore = defineStore('drawing', () => {
   // A host's Make host: nothing more's numbered, the artist is sent the ledger, and on their word the server is
   // asked. False, with the room as it was, if that doesn't happen: new-host (becomeArtist) ends it otherwise.
   async function makeHost(sub) {
-    if (!host || handingOver || gathering || !artists.value.includes(sub) || !connected.value.includes(sub)) return false;
+    if (!host || hostPhase !== HOST_IDLE || !artists.value.includes(sub) || !connected.value.includes(sub)) return false;
     const theHost = host;
     hostChanging.value = true;
     pause();
     host.hold();
     let done = false;
-    const ended = new Promise((resolve) => { handingOver = resolve; });
+    const ended = new Promise((end) => moveHost({ phase: 'handing-over', end }));
+    const mine = hostPhase;
     try {
       if (await theHost.handOver(sub, await project.keptForHandOver()) && host === theHost && theHost.send({ type: 'hand-over', to: sub }) !== false) {
         done = await Promise.race([ended, new Promise((resolve) => setTimeout(() => resolve(false), theHost.serverAnswersWithinMs))]);
@@ -396,11 +412,18 @@ export const useDrawingStore = defineStore('drawing', () => {
     } catch (error) {
       console.warn('The room couldn\'t be handed over.', error);
     }
-    handingOver = null;
+    if (hostPhase === mine) moveHost(HOST_IDLE);
     if (done || host !== theHost) return true;
     theHost.release();
     goOn();
     return false;
+  }
+
+  // new-host, or the room's over: makeHost's wait is done, whatever else it's still waiting on.
+  function handOverEnded() {
+    if (hostPhase.phase !== 'handing-over') return;
+    hostPhase.end(true);
+    moveHost(HOST_IDLE);
   }
 
   // The server named me. What's on screen goes on as the room's art, as host: the old host's ledger if it's the
@@ -447,7 +470,7 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   // I was the host, and now the room's Watch is set up (watching): on as anyone else, keeping the document.
   function becomeArtist({ planned = true } = {}) {
-    handingOver?.(true);
+    handOverEnded();
     stopGathering();
     for (const stop of stops) stop();
     stops = [];
@@ -676,7 +699,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     clearTimeout(cursorTimer);
     cursorTimer = null;
     myCursor.reset();
-    handingOver?.(true);
+    handOverEnded();
     if (host) stopHostSharing();
     else if (room) stopDrawing({ keepAccepted: !spent });
     host = room = handed = null;
