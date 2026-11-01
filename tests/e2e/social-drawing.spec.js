@@ -1125,3 +1125,40 @@ test('a chosen artist whose socket drops comes back to the room as its host', as
   await expect.poll(() => store(artist, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
   expect(await chars(artist, 1, 1, 1)).toBe('a');
 });
+
+test('an artist who reloads and is named through joined gathers first: it takes the room\'s numbers from whoever has them', async ({ page: host, context }) => {
+  const room = fakeRoom({ hostWaitMs: 200 });
+  const { artist } = await together(host, context, room);
+  const second = await artistPage(context, host, room, { me: REAPER });
+  await typeAt(second, 20, 12, 'b');
+  await agreed(artist, second);
+  const n = await store(artist, 'project', (p) => { p.flushHeard(); return p._sharing.pending.n; });
+  await expect.poll(() => store(second, 'project', (p) => p._sharing.pending.n)).toBe(n);   // its own stroke's echo
+  room.picking = ARTIST.id;
+  await store(artist, 'room', (r) => { r._connection.socket.onmessage = null; });   // it hears nothing more on this one
+  host.on('dialog', (dialog) => dialog.accept());
+  await host.close({ runBeforeUnload: false });
+  await expect.poll(() => room.info().hostSub, { timeout: 20_000 }).toBe(ARTIST.id);
+  room.hostWaitMs = 60_000;
+
+  artist.on('dialog', (dialog) => dialog.accept());
+  await artist.reload();
+  await isHost(artist).toBe('host');
+  await expect.poll(() => store(artist, 'project', (p) => p._ledger.n), { timeout: 20_000 }).toBe(n);
+  await expect.poll(() => store(artist, 'drawing', (d) => d.paused), { timeout: 20_000 }).toBe(false);
+  await agreed(artist, second);
+  expect(await chars(artist, 12, 20, 20)).toBe('b');
+  await expect(chat(artist).getByRole('status').filter({ hasText: UNDO_RESET })).toBeVisible();
+});
+
+test('Make host is off while drawing is paused', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await together(host, context, room);
+  await store(host, 'drawing', '(d) => { d.paused = true; }');
+  await chat(host).getByRole('button', { name: /^\d+ here$/ }).isVisible();
+  if (!await people(host).isVisible()) await chat(host).getByRole('button', { name: /^\d+ here$/ }).click();
+  await rowOf(host).getByRole('button', { name: 'More for tin_owl' }).click();
+  const button = rowOf(host).getByRole('button', { name: 'Make host' });
+  await expect(button).toBeDisabled();
+  await expect(button).toHaveAttribute('title', 'Not while drawing is paused.');
+});

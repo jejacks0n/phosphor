@@ -2209,14 +2209,17 @@ test('a new host that didn\'t take the old ledger tells artists undo starts over
   const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
   bob.project.editCell(2, 2, { char: 'B' });
   bob.project.commitEdit();
+  room.project.editCell(3, 3, { char: 'H' });
+  room.project.commitEdit();
   await allMatch(room, ann, bob);
   expect(bob.project.canUndo).toBe(true);
-  room.host.close();
+  expect(room.project.canUndo).toBe(true);
   room.people.delete('ann');
 
-  await newHostIs(room, ann, { planned: true });   // the ledger never came
+  const next = await newHostIs(room, ann, { planned: true, former: 'host' });   // the ledger never came
   await expect.poll(() => bob.project.canUndo, PATIENT).toBe(false);
   expect(bob.drawing.notice).toContain('undo starts over');
+  await expect.poll(() => next.former.project.canUndo, PATIENT).toBe(false);   // the old host's own undo too
 });
 
 test('a host back from a reload with no ledger tells artists undo starts over', async () => {
@@ -2481,4 +2484,95 @@ test('during any handover the layer says the host is changing, and a host who is
   await asked;
   expect(room.drawing.hostChanging).toBe(false);
   expect(room.drawing.paused).toBe(false);
+});
+
+// A host gathering, with its artists still connected, as after a reload.
+function gatheringAgain(room, list) {
+  setActivePinia(room.pinia);
+  room.project._documentN = room.project._ledger.n;
+  room.drawing.resumeHosting({ artists: list, invited: [] }, null);
+  expect(room.drawing.paused).toBe(true);
+}
+const stalling = (person) => vi.spyOn(person.project, 'catchUpFor').mockImplementation(() => new Promise(() => {}));
+const saysAhead = (room, person, by = 5) => person.watch.post({ t: 'artist-hello', has: room.project._ledger.n + by, epoch: room.project._ledger.epoch });
+
+test('Make host is refused while the host is gathering', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  await allMatch(room, ann);
+  gatheringAgain(room, ['ann']);
+  expect(await room.drawing.makeHost('ann')).toBe(false);
+  expect(room.drawing.paused).toBe(true);
+  expect(room.host.holding).not.toBe(null);
+  expect(sentHandOver(room)).toBe(undefined);
+});
+
+test('settings a catch-up brings aren\'t numbered and sent to those still to be answered', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  await allMatch(room, ann);
+  gatheringAgain(room, ['ann']);
+  const sent = vi.spyOn(room.project, 'sendSettings');
+  room.project.applySettings({ brightness: room.project.brightness + 7 });
+  await later();
+  await later();
+  expect(sent).not.toHaveBeenCalled();
+});
+
+test('a catch-up answer landing after the gather has stopped isn\'t taken', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  await allMatch(room, ann);
+  gatheringAgain(room, ['ann']);
+  let answer = null;
+  vi.spyOn(room.host, 'askCatchUp').mockImplementation(() => new Promise((resolve) => { answer = resolve; }));
+  const taken = vi.spyOn(room.project, 'takeCatchUp');
+  saysAhead(room, ann);
+  await expect.poll(() => answer, PATIENT).not.toBe(null);
+  room.drawing.backToWatching('ann');
+  answer({ n: room.project._ledger.n + 5, epoch: 'other', kind: 'project', parts: {} });
+  await later();
+  await later();
+  expect(taken).not.toHaveBeenCalled();
+});
+
+test('a gather finishes with what it has when its time is up, whoever\'s still sending', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  await allMatch(room, ann);
+  room.host.gatherWithinMs = 200;
+  stalling(ann);
+  gatheringAgain(room, ['ann']);
+  saysAhead(room, ann);
+  await expect.poll(() => ann.project.catchUpFor.mock.calls.length, PATIENT).toBe(1);
+  await expect.poll(() => room.drawing.paused, { timeout: 3000 }).toBe(false);
+  expect(room.host.holding).toBe(null);
+});
+
+test('a catch-up stops when its artist is put back to watching', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  await allMatch(room, ann, bob);
+  stalling(ann);
+  gatheringAgain(room, ['ann', 'bob']);
+  saysAhead(room, ann);
+  bob.watch.post({ t: 'artist-hello', has: room.project._ledger.n, epoch: room.project._ledger.epoch });
+  await expect.poll(() => ann.project.catchUpFor.mock.calls.length, PATIENT).toBe(1);
+  room.drawing.backToWatching('ann');
+  await expect.poll(() => room.drawing.paused, { timeout: 3000 }).toBe(false);
+});
+
+test('a claim from someone put back to watching since isn\'t asked about', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  await allMatch(room, ann, bob);
+  const asked = vi.spyOn(room.host, 'askCatchUp');
+  stalling(bob);
+  gatheringAgain(room, ['ann', 'bob']);
+  saysAhead(room, ann);
+  await wait(100);
+  room.drawing.backToWatching('ann');
+  saysAhead(room, bob, 0);   // everyone left has said
+  await expect.poll(() => room.drawing.paused, PATIENT).toBe(false);
+  expect(asked).not.toHaveBeenCalled();
 });
