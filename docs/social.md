@@ -251,7 +251,7 @@ and the older tab says so.
 
 **Back to your room** brings it back from a new tab, in the same browser and signed in to the same account, for that minute.
 SOCIAL offers it a couple of seconds after the room's tab has gone (never while the tab is open; a reload slower than that can show it
-until the tab is back, and pressing it then moves the room to this tab, and the reloading one says so): on the room's
+until the tab is back, and pressing it then doesn't take the room: the tab that reaches it last hosts it, and the other says "This room is open in another tab"): on the room's
 card, in a line at the top of the lobby for a room with no card, and beside **Join** when you follow a link to your room.
 Pressing it reloads the tab into the room, with the art from autosave, and it's as if you had reloaded: chat, numbers and view are
 back, undo is as a reload leaves it, and watchers and artists carry on. Autosave can be a few seconds behind; with an artist in the room you catch
