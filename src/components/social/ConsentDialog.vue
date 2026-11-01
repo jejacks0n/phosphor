@@ -26,37 +26,37 @@ onBeforeUnmount(() => nextTick(() => {
 <template>
   <ModalDialog long title="Before you open SOCIAL" @cancel="social.declineConsent()">
     <div class="reading" autofocus tabindex="0" role="region" aria-label="What SOCIAL means for you">
-      <p>This is where you watch people draw, or let them watch you. Here's the short version of what that means. The
-        Terms, Privacy Policy and Community Guidelines linked below have all of it.</p>
+      <p>SOCIAL is where you watch people draw or let them watch you. Here's what that means for your privacy. The full
+        details are in the links below.</p>
 
       <h4>The lobby</h4>
-      <p>Going on connects your browser to our server. It makes a signing key and gets a temporary pass that admits you
-        to the lobby and rooms. Everyone in the lobby sees your username or nickname and whether you're a guest. Public
-        rooms are listed for everyone with their name, host, viewer count, the signal the host chose and a preview
-        picture of the art. Private rooms aren't listed.</p>
+      <p>Opening SOCIAL connects your browser to our server. Your browser creates a signing key and gets a temporary pass
+        for the lobby and rooms. Everyone in the lobby sees your username or nickname and whether you're a guest. Public
+        rooms are listed with their name, host, viewer count, signal, and a preview of the art. Private rooms aren't
+        listed.</p>
 
       <h4>Watching a room</h4>
-      <p>Your browser connects directly to the host's browser, so each of you can see the other's IP address, which can
-        reveal your approximate location and your internet service provider. If you'd rather keep it private, use a VPN.
-        The host's browser relays the room's chat, and anyone in the room can see it and copy it.</p>
+      <p>Your browser connects directly to the host's, so each of you can see the other's IP address. That can reveal your
+        approximate location and internet provider, so use a VPN if you want to hide it. Chat goes through the host's
+        browser, and anyone in the room can see and copy it.</p>
 
       <h4>Starting a room</h4>
-      <p>Your art goes to the people you admit, as you draw it. A public room's preview shows in the lobby. Everyone who
-        joins can see your IP address. Anyone you invite to draw gets the whole project, including the original image.
-        If someone reports your room, we keep a snapshot of the canvas to review and resolve the report.</p>
+      <p>The people you admit see your art as you draw it, and everyone who joins can see your IP address. Public rooms
+        show a preview in the lobby. Anyone you invite to draw gets the whole project, including the original image. If
+        someone reports your room, we keep a snapshot of the canvas to review and resolve the report.</p>
 
-      <h4>Being good to each other</h4>
-      <p>Be kind. Don't bully, harass or threaten anyone, or attack people for who they are. Don't use someone's IP
-        address against them or share their personal information. Keep public rooms suitable, respect people's art and
+      <h4>Be kind</h4>
+      <p>Don't bully, harass, or threaten anyone, or attack people for who they are. Don't use someone's IP address against
+        them or share their personal information. Keep public rooms appropriate, respect other people's art, and only
         report in good faith. Hosts can remove or block people, and anyone signed in with a confirmed email can report a
-        person or a room.</p>
+        person or room.</p>
 
-      <p class="guardian">If you're under the age of majority where you live, a parent or legal guardian must agree on
-        your behalf.</p>
+      <p class="guardian">If you're under the age of majority where you live, a parent or legal guardian must agree for
+        you.</p>
     </div>
     <label class="agree">
       <input v-model="agreed" type="checkbox">
-      <span>I'm 13 or older and agree to the <button type="button" class="link inline" @click="read('terms', $event)">Terms</button>, <button type="button" class="link inline" @click="read('privacy', $event)">Privacy Policy</button> and <button type="button" class="link inline" @click="read('guidelines', $event)">Community Guidelines</button></span>
+      <span>I'm 13 or older and agree to the <button type="button" class="link inline" @click="read('terms', $event)">Terms</button>, <button type="button" class="link inline" @click="read('privacy', $event)">Privacy Policy</button>, and <button type="button" class="link inline" @click="read('guidelines', $event)">Community Guidelines</button></span>
     </label>
     <div class="actions">
       <button @click="social.declineConsent()">Not now</button>
