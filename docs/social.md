@@ -284,7 +284,8 @@ replaces it. **Not now** just clears the notice, and the host can ask again. Lea
 invitation. Accepting opens the room's art in the ordinary tabs, and the row says **artist**. What they had open
 stays in the browser's own list, like anything else autosave keeps.
 The room's page on their SOCIAL tab then shows their own copy of the art, strokes that haven't reached the host
-included, and **Back to watching** brings back the host's straight away.
+included, and **Back to watching** brings back the host's straight away. If the art doesn't reach them or won't open,
+they see "The room's art couldn't be opened." and go back to watching, and the host can ask again.
 
 Everyone draws on the edit layer and sees each other's strokes as they happen. Undo takes back only your own
 edits and shows what's beneath, even if that's someone else's. Artists have no undo steps from before they came

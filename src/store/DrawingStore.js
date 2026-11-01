@@ -469,8 +469,16 @@ export const useDrawingStore = defineStore('drawing', () => {
   function watchCallbacks() {
     const heard = (msg) => { if (mayDraw.value) project.hearDrawing(msg); };
     const takesProjects = () => artists.value.includes(me()) && hasAccepted();
+    // Their project came to nothing. Anyone drawing has what they have, and a check will ask again. Anyone else has no
+    // document to draw on and is sent no art for having said hello, so they go back to watching, and can be asked again.
+    const projectFailed = () => {
+      if (!takesProjects()) return;
+      notice.value = 'The room\'s art couldn\'t be opened.';
+      if (!project._sharing) decline();
+    };
     return {
       takesProjects,
+      onProjectFailed: projectFailed,
       onNumbered: heard, onSettings: heard, onBase: heard, onCheck: heard,
       onCaughtUp: () => {
         project.flushHeard();   // what came before this has landed: its echoes are heard
@@ -485,7 +493,7 @@ export const useDrawingStore = defineStore('drawing', () => {
         }
         const documentId = accepted() === '1' ? undefined : accepted() ?? undefined;
         if (!await project.takeProject(parts, { n, epoch, took, documentId, filename: roomName(), send: (msg) => room?.post(msg), me: me() })) {
-          notice.value = 'The room\'s art couldn\'t be opened.';
+          projectFailed();
           return;
         }
         noteAccepted(project.documentId);

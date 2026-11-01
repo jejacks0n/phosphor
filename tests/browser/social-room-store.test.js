@@ -4,9 +4,11 @@
 // its signals relayed through the fake socket. Watchers' passes are signed by a test key, served as
 // the server's.
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { nextTick } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore, hasReportedRoom } from '@/store/RoomStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useProjectStore } from '@/store/ProjectStore';
 import { thumbnailOf } from '@/social/thumbnail';
 import { forgetKey, loadKey } from '@/social/keys';
 import { toBase64url } from '@/social/base64url';
@@ -2212,4 +2214,25 @@ test('a host naming a sub like an Object method is not followable, and breaks no
   room.setShowEveryone(true);
   await room._watch.handle(JSON.stringify({ t: 'view', col: 1, row: 1, cols: 1, rows: 1, who: 'toString' }));
   expect(room.otherBoxes.map((b) => b.sub)).toEqual([]);   // the host's box needs a view too
+});
+
+test('art heard while drawing is dropped: someone drawing has the document, and art counts again once they\'re not', async () => {
+  await social.boot();
+  await joining(1);
+  const project = useProjectStore();
+  const frame = (char) => ({ cols: 1, lines: 1, font: { id: 'vga', size: 20 }, cells: [{ char }] });
+  const first = frame('a');
+  room._watch.onArt(first);
+  expect(room.art).toBe(first);
+
+  project._sharing = { role: 'artist' };   // a frame crossing their project opening
+  await nextTick();
+  room._watch.onArt(frame('b'));
+  expect(room.art?.cells[0].char).not.toBe('b');
+
+  project._sharing = null;
+  await nextTick();
+  const after = frame('c');
+  room._watch.onArt(after);
+  expect(room.art).toBe(after);
 });

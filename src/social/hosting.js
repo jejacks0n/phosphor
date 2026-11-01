@@ -222,6 +222,7 @@ export class Host {
     this.art = next;
     const changes = at && cellsMessage(next, at);
     for (const w of this.open()) {
+      if (w.drawing) continue;
       if (w.has !== prev || w.behind) this.update(w);
       else if (changes) this.sendArt(w, changes, next);
       else this.update(w, null);   // too much changed, or too big as cells: the snapshot
@@ -717,6 +718,7 @@ export class Host {
       }
     } catch (error) {
       console.warn('The art couldn\'t be packed for an artist.', error);
+      this.sendTo(w, { t: 'project-failed' });
     }
     await this.sentWhole(w);
   }

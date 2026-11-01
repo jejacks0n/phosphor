@@ -2717,13 +2717,13 @@ test('someone listed keeps their place: back on a new connection at the cap, the
   const list = [...room.drawing.artists];
   expect(room.drawing.artistsFull).not.toBe(null);
 
-  ann.drawing.connection('lost');
+  room.host.drop('ann');
   room.drawing.peopleHere([]);
   expect(room.drawing.artists).toEqual(list);   // gone, and still counted
   expect(room.drawing.artistsFull).not.toBe(null);
-  ann.drawing.connection('live');
-  ann.drawing.heardArtists(list);
-  expect(ann.drawing.paused).toBe(false);
+  await room.host.peer('ann', await passFor('ann'));
+  await expect.poll(() => room.host.open().find((w) => w.peer === 'ann')?.drawing, PATIENT).toBe(true);
+  await expect.poll(() => ann.drawing.paused, PATIENT).toBe(false);
   ann.project.editCell(1, 1, { char: 'A' });
   ann.project.commitEdit();
   await expect.poll(() => char(room.project, 1, 1), PATIENT).toBe('A');
@@ -2809,6 +2809,68 @@ test('art that was held back behind a project isn\'t waited for by an artist, an
   await room.host.sentWhole(w);
   await expect.poll(() => ann.art, PATIENT).toBe('b');
   expect(w.behind).toBe(false);
+});
+
+// Someone saying yes for the first time, whose project doesn't come to anything. fails: what's set up first.
+async function firstProjectFails(fails) {
+  const room = await hosting();
+  room.host.setArt(artOf('a'));
+  const person = await join(room, 'ann');
+  await expect.poll(() => room.host.open().find((w) => w.peer === 'ann')?.has, PATIENT).toBeTruthy();
+  hearsArt(person);
+  const undo = fails(room, person);
+  expect(room.drawing.invite('ann')).toBe(true);
+  await expect.poll(() => person.drawing.invitation, PATIENT).toBe(true);
+  person.drawing.accept();
+
+  await expect.poll(() => person.drawing.notice, PATIENT).toBe('The room\'s art couldn\'t be opened.');
+  await expect.poll(() => room.drawing.artists, PATIENT).toEqual([]);   // back to watching
+  await expect.poll(() => person.art, PATIENT).toBe('a');               // a fresh snapshot
+  expect(person.drawing.mayDraw).toBe(false);
+  room.host.setArt(artOf('z'));                                         // and the art as it changes
+  await expect.poll(() => person.art, PATIENT).toBe('z');
+
+  undo();   // and they can be asked again
+  expect(room.drawing.invite('ann')).toBe(true);
+  await expect.poll(() => person.drawing.invitation, PATIENT).toBe(true);
+  person.drawing.accept();
+  await expect.poll(() => person.drawing.mayDraw, PATIENT).toBe(true);
+}
+
+test('a first project that won\'t open puts them back to watching, with the notice and the art', async () => {
+  await firstProjectFails((room, person) => {
+    const take = vi.spyOn(person.project, 'takeProject').mockResolvedValue(false);
+    return () => take.mockRestore();
+  });
+});
+
+test('a first project with a bad chunk puts them back to watching, with the notice and the art', async () => {
+  await firstProjectFails((room) => {
+    const project = room.host.project;
+    room.host.project = () => ({ n: 0, epoch: 'e', chunks: Promise.resolve([new Uint8Array(4)]) });
+    return () => { room.host.project = project; };
+  });
+});
+
+test('a first project the host can\'t pack puts them back to watching, with the notice and the art', async () => {
+  await firstProjectFails((room) => {
+    const project = room.host.project;
+    room.host.project = () => { throw new Error('no'); };
+    return () => { room.host.project = project; };
+  });
+});
+
+test('a project that fails for someone already drawing leaves them drawing on what they have', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const project = room.host.project;
+  room.host.project = () => ({ n: 0, epoch: 'e', chunks: Promise.reject(new Error('no')) });
+  await room.host.sendProject(room.host.open().find((w) => w.peer === 'ann'));
+  await expect.poll(() => ann.drawing.notice, PATIENT).toBe('The room\'s art couldn\'t be opened.');
+  room.host.project = project;
+  await wait(50);
+  expect(room.drawing.artists).toEqual(['ann']);
+  expect(ann.drawing.mayDraw).toBe(true);
 });
 
 test('a host writes its ledger every 10 seconds at most, by the clock', async () => {
