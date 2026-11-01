@@ -18,6 +18,7 @@ import { sliderActions } from '@/store/project/sliders.js';
 import { historyActions } from '@/store/project/history.js';
 import { sharingActions, DRAWING_ACTIONS, HOST_ONLY_ACTIONS } from '@/store/project/sharing.js';
 import { sharingHostActions } from '@/store/project/sharingHost.js';
+import { sharingArtistActions } from '@/store/project/sharingArtist.js';
 import { MOST_CHANGE_BYTES } from '@/social/wire.js';
 import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES, ALONE } from '@/store/project/shared.js';
 
@@ -122,5 +123,6 @@ export const useProjectStore = defineStore('project', {
     historyActions,
     sharingActions,
     sharingHostActions,
+    sharingArtistActions,
   ), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => !!store._sharing && (store._sharing.role === 'artist' || store._paused) && !store._takingProject),
 });
