@@ -308,16 +308,17 @@ If they stop being able to draw for any other reason, the same happens, without 
 ### When the host changes
 
 A room outlives its host while anyone's drawing. In an artist's row, while they're connected, the **⋯** menu has
-**Make host**, which asks "Make {name} the host? You'll stay in the room as an artist." Drawing pauses for you with
-"The host is changing. Drawing is paused." Once they've taken the
-art, everyone sees "{old} made {new} the host." and the old host goes on drawing as an artist. Everyone keeps their
-undo. If the new host doesn't answer within about 15 seconds, nothing has changed.
+**Make host**, off while drawing is paused, which asks "Make {name} the host? You'll stay in the room as an artist."
+Drawing pauses for you with "The host is changing. Drawing is paused." Once they've taken the art, everyone sees
+"{old} made {new} the host." and the old host goes on drawing as an artist. Everyone keeps their undo. If the new host
+doesn't answer within about 15 seconds, nothing has changed.
 
 A host who closes their tab or signs out, and doesn't come back in time, hands over the same way without asking:
 an artist takes the room, and everyone sees "{old} left the room. {new} is now the host." and "The host changed,
 so undo starts over. All the drawing is still here." Drawing pauses with "The host is changing. Drawing is paused."
-while the new host hears from the artists. All the drawing stays, and any stroke that hadn't reached the
-old host is sent again to the new one. Someone chosen who hasn't got the art passes the role to another artist here. With no artist left, the room ends. **End room** always ends it for everyone.
+while the new host hears from the artists. All the drawing stays, and any stroke that hadn't reached the old host
+is sent again to the new one. Someone chosen who hasn't got the art passes the role to another artist here. With no
+artist left, the room ends. **End room** always ends it for everyone.
 
 The new host keeps the chat so far, the room's name and its welcome, and starts with new stats and no one muted.
 Watchers can't be chosen; they carry on watching, now the new host. A host who comes back after the role has moved is

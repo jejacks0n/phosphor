@@ -197,7 +197,7 @@ export async function fakeServer(page, { me = null, rooms = [], people = [], blo
 // with none left in its place ends the room after that long (it stays otherwise): ended goes to everyone, and a
 // later host is refused unavailable, unless artists are in the room when the wait ends: then each hears last-change?,
 // the most advanced (or the first let in) after pickWaitMs is named, and everyone hears new-host. A host's artists is
-// answered artists-now, without room.unqualified's subs; room.relist() says it again unasked, and room.dropHost() drops the host's socket. A hand-over to an
+// answered artists-now, without room.unqualified's subs; room.picking (a sub) is who the room names if they're here, room.relist() says it again unasked, and room.dropHost() drops the host's socket. A hand-over to an
 // artist in the room names them (nothing happens with room.ignoringHandOvers, or for anyone else). The one named has
 // its socket become the host's: new-host, hosting, artists-now with the old host. The old host's closes on new-host;
 // its host again is refused not-host, and its join skips the password, but room.refusing (a reason) holds for it.
@@ -266,7 +266,7 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
     if (!answers || sockets.has('host')) return;
     const here = [...watchers].filter(([, w]) => listed().includes(w.sub));
     if (!here.length) return end();
-    const best = here.reduce((most, [peer]) => ((answers.get(peer) ?? -1) > (answers.get(most) ?? -1) ? peer : most), here[0][0]);
+    const best = here.find(([, w]) => w.sub === room.picking)?.[0] ?? here.reduce((most, [peer]) => ((answers.get(peer) ?? -1) > (answers.get(most) ?? -1) ? peer : most), here[0][0]);
     name(best, false);
   };
 

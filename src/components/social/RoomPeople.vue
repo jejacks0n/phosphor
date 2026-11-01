@@ -73,7 +73,7 @@ const confirmBlock = async () => {
         </DropdownMenu>
         <DropdownMenu v-else-if="!watcher.guest" :label="`More for ${watcher.name}`">
           <template #trigger><span aria-hidden="true">⋯</span></template>
-          <button v-if="drawing.artists.includes(watcher.sub) && watcher.connected" @click="askToMakeHost(watcher, $event)">Make host</button>
+          <button v-if="drawing.artists.includes(watcher.sub) && watcher.connected" :disabled="drawing.paused" :title="drawing.paused ? 'Not while drawing is paused.' : undefined" @click="askToMakeHost(watcher, $event)">Make host</button>
           <button v-if="drawing.artists.includes(watcher.sub)" @click="drawing.backToWatching(watcher.sub)">Back to watching</button>
           <button v-else-if="drawing.invited.includes(watcher.sub)" @click="drawing.withdraw(watcher.sub)">Withdraw invitation</button>
           <button v-else-if="watcher.connected" @click="drawing.invite(watcher.sub)">Make artist</button>

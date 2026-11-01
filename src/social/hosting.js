@@ -25,6 +25,7 @@ export const KEPT_THROUGH_RELOAD = 1000;     // the newest messages kept() hands
 export const RETURN_WITHIN_MS = 60_000;      // after a reload, those who were here have this long to come back before they're said to have left
 const HAND_OVER_WITHIN_MS = 15_000;          // for the artist chosen to have the ledger and say so
 const SERVER_ANSWERS_WITHIN_MS = 5000;       // for new-host after hand-over: the server says nothing if it won't
+const GATHER_WITHIN_MS = 60_000;             // however it's going, long enough for a real catch-up's transfer
 const CATCH_UP_QUIET_MS = 10_000;            // an artist asked to catch-up, going this long without a word, isn't going to
 const MOST_CATCH_UP_CHUNKS = MOST_PROJECT_BYTES / CHUNK_BYTES;
 
@@ -63,7 +64,7 @@ export class Host {
     // waiting for its channel, and how much), projecting (a project is on its way, and the queue and any art wait
     // behind it), again (a project is owed, which will hold whatever would have been queued), checked (the last
     // number it was sent a check for), drained (ends the wait for its channel to drain), handedOver (ends the wait
-    // for its hand-over-ok), catchUp (an answer to catch-up, coming in), askedCatchUp (it was asked once) }
+    // for its hand-over-ok), catchUp (an answer to catch-up, coming in) }
     this.watchers = new Map();
     this.here = new Map();   // sub -> their open connections: one person in two tabs comes and goes once
     this.silences = new Map();   // sub -> until (epoch ms), from 'silenced' since a pass was made (kept through a reconnect)
@@ -81,6 +82,7 @@ export class Host {
     this.holding = null;   // [[w, msg]]: artists' changes that wait while nothing's being numbered
     this.handOverWithinMs = HAND_OVER_WITHIN_MS;
     this.serverAnswersWithinMs = SERVER_ANSWERS_WITHIN_MS;
+    this.gatherWithinMs = GATHER_WITHIN_MS;
   }
 
   // What the host keeps through a reload, for restore() to take back: the newest of the log, who was sent
@@ -537,9 +539,8 @@ export class Host {
   }
 
   // What an artist ahead of this host holds after has: { n, epoch, kind, tail or parts }, or null for no answer
-  // that can be used. Once per connection, so one who won't say can't hold anything up again.
+  // that can be used.
   askCatchUp(w, { has, epoch }) {
-    w.askedCatchUp = true;
     return new Promise((resolve) => {
       let timer = null;
       const catchUp = w.catchUp = {

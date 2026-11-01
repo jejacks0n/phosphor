@@ -10,7 +10,7 @@ import { UNDO_RESET_WORDS } from '@/social/messages';
 const CURSORS_EVERY_MS = 100;
 export const CHECK_EVERY_MS = 2000;
 const KEEP_LEDGER_EVERY_MS = 2000;   // written for a reload that can't stop to write anything on its way out
-const HELLOS_WITHIN_MS = 5000;       // a host back from a reload waits this long to hear who's ahead of it
+const HELLOS_WITHIN_MS = 5000;       // a host without all that's numbered (a reload, a new host) waits this long to hear who's ahead of it
 const ONLY_THE_HOST = 'Only the host can do this.';
 const NOT_WITH_OTHERS = 'Not while others are drawing.';
 export const MERGE_WARNING = 'Strokes merged into the image can\'t be undone by anyone.';
@@ -52,11 +52,11 @@ export const useDrawingStore = defineStore('drawing', () => {
   let peersOn = new Set();         // a host's: who peopleHere last saw connected
   let handed = null;               // an artist's: the ledger an old host sent, for when the server names me
   let handingOver = null;          // a host's, in makeHost: ends its wait for the server
-  let gathering = null;            // a host's, without knowing all that's numbered: { hellos, timer, finishing, waiting }
+  let gathering = null;            // a host's, without knowing all that's numbered: { hellos, timer, finishing, waiting, asked, asking, deadline }
   let listAsked = 0;               // a host's: how many artists-now are still owed for artists sent
   let listHeard = null;            // a host's: the list as the room last said it
   let adopting = false;            // a host's: a document coming from an artist is still this one
-  let undoFor = new Set();         // a host's: artists whose undo this ledger can't answer, to be told at their hello
+  let undoTold = null;             // a host's whose ledger can't answer anyone's undo from before it: those told, at their hello
   const myCursor = new Pacer(CURSORS_EVERY_MS, (cursor) => {
     if (!host) return room?.post({ t: 'cursor', ...cursor }) ?? false;
     noteCursor(me(), cursor, myName());
@@ -87,6 +87,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   function setArtists(list, { tell = true } = {}) {
     const first = !stops.length && list.length;
     artists.value = list;
+    if (gathering?.asking && !list.includes(gathering.asking.claims.sub)) gathering.asking.catchUp?.done(null);
     forgetCursors();
     if (first) startHostSharing();
     host.setArtists(list);
@@ -156,7 +157,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     setArtists(list);
     if (!whole) {
       notice.value = UNDO_RESET_WORDS;
-      undoFor = new Set(list);
+      undoTold = new Set();
     }
     startGathering();
   }
@@ -165,7 +166,12 @@ export const useDrawingStore = defineStore('drawing', () => {
   // yet, which take the first ones after that.
   function startGathering(waiting = []) {
     if (gathering) return;
-    gathering = { hellos: [], timer: null, finishing: false, waiting };
+    const now = gathering = { hellos: [], timer: null, finishing: false, waiting, asked: new Set(), asking: null, deadline: null };
+    now.deadline = setTimeout(() => {   // what it has by then is what it has
+      now.asked = null;
+      now.asking?.catchUp?.done(null);
+      finishGathering();
+    }, host.gatherWithinMs);
     pause();
     host.hold();
   }
@@ -181,27 +187,33 @@ export const useDrawingStore = defineStore('drawing', () => {
       await catchUpFrom(...next);
       if (gathering !== now) return;
     }
+    clearTimeout(now.deadline);
     gathering = null;
     goOn();
-    for (const [w, msg] of now.hellos) answerHello(w, msg);
+    for (const [w, msg] of now.hellos) if (w.drawing && host.open().includes(w)) answerHello(w, msg);
     project.numberWaiting(now.waiting);
     host.release();
   }
 
-  function mostAhead({ hellos }) {
-    const n = project._ledger.n;
-    return hellos.reduce((most, [w, { has }]) => (Number.isSafeInteger(has) && has > (most?.[1] ?? n) && !w.askedCatchUp ? [w, has] : most), null);
+  // Who to ask next: once each, by who they are, as a new connection is still them, and only someone listed and here.
+  function mostAhead({ hellos, asked }) {
+    if (!asked) return null;
+    const n = project._ledger.n, here = host.open();
+    return hellos.reduce((most, [w, { has }]) => (Number.isSafeInteger(has) && has > (most?.[1] ?? n) && !asked.has(w.claims.sub) && artists.value.includes(w.claims.sub) && here.includes(w) ? [w, has] : most), null);
   }
 
   async function catchUpFrom(w, has) {
-    const theHost = host;
+    const theHost = host, now = gathering;
+    now.asked.add(w.claims.sub);
+    now.asking = w;
     const answer = await theHost.askCatchUp(w, { has: project._ledger.n, epoch: project._ledger.epoch });
-    if (!answer || host !== theHost) return;
+    now.asking = null;
+    if (!answer || gathering !== now || !now.asked) return;
     adopting = answer.kind === 'project';
     try {
       if (await project.takeCatchUp(answer, has) && adopting) {
         notice.value = UNDO_RESET_WORDS;
-        undoFor = new Set(artists.value);
+        undoTold = new Set();
       }
     } catch (error) {
       console.warn('What an artist had couldn\'t be taken.', error);
@@ -215,6 +227,8 @@ export const useDrawingStore = defineStore('drawing', () => {
     const now = gathering;
     if (!now) return;
     clearTimeout(now.timer);
+    clearTimeout(now.deadline);
+    now.asking?.catchUp?.done(null);
     gathering = null;
     project.numberWaiting(now.waiting);
     host?.release();
@@ -226,7 +240,10 @@ export const useDrawingStore = defineStore('drawing', () => {
   // while gathering that anyone's asked what they have.
   function answerHello(w, { has, epoch: theirs }) {
     const { n, epoch: ours, tail: kept } = project._ledger;
-    if (undoFor.delete(w.claims.sub)) host.sendTo(w, { t: 'undo-reset' });
+    if (undoTold && !undoTold.has(w.claims.sub)) {
+      undoTold.add(w.claims.sub);
+      host.sendTo(w, { t: 'undo-reset' });
+    }
     const tail = Number.isInteger(has) && theirs === ours ? kept.since(has) : null;
     if (tail && (has === n || tail.at(-1)?.n === n)) host.sendTail(w, tail, n);
     else host.sendProject(w);
@@ -245,6 +262,10 @@ export const useDrawingStore = defineStore('drawing', () => {
       const now = settingsJson(project), gridNow = `${project.cols},${project.rows}`;
       if (project._sliderBefore || now === sent) return;
       sent = now;
+      if (gathering) {   // from a catch-up, and everyone hears it in what they're answered
+        grid = gridNow;
+        return;
+      }
       if (gridNow === grid) project.sendSettings();
       else project.shareWholeDocument();
       grid = gridNow;
@@ -327,7 +348,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   // A host's Make host: nothing more's numbered, the artist is sent the ledger, and on their word the server is
   // asked. False, with the room as it was, if that doesn't happen: new-host (becomeArtist) ends it otherwise.
   async function makeHost(sub) {
-    if (!host || handingOver || !artists.value.includes(sub) || !connected.value.includes(sub)) return false;
+    if (!host || handingOver || gathering || !artists.value.includes(sub) || !connected.value.includes(sub)) return false;
     const theHost = host;
     hostChanging.value = true;
     pause();
@@ -370,9 +391,10 @@ export const useDrawingStore = defineStore('drawing', () => {
     artists.value = artists.value.filter((sub) => sub !== whoIs);
     startHostSharing();
     host.setArtists(artists.value);
-    undoFor = new Set(taken ? [] : artists.value);
-    hostChanging.value = !taken && !!artists.value.length;
-    // Artists reach this at different numbers: the old host's channels can outlive its socket.
+    undoTold = taken ? null : new Set();
+    // Artists reach this at different numbers: the old host's channels can outlive its socket. With no list and no
+    // number of its own (a reload named by joined), the list is on its way and they're who has the numbers.
+    hostChanging.value = !taken && (!!artists.value.length || !left);
     if (hostChanging.value) startGathering(left?.waiting ?? []);
     else project.numberWaiting(left?.waiting ?? []);
   }
@@ -587,7 +609,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     awaitingList = goToArt = false;
     hostChanging.value = false;
     paused.value = false;
-    undoFor = new Set();
+    undoTold = null;
     listAsked = 0;
     listHeard = null;
     artists.value = [];
