@@ -3,7 +3,7 @@
 Question: how does a room behave with many people drawing, and how many should it let in?
 
 Written 2026-10-31 against the `jejacks0n/drawing-together` branch. The cap this sets is `MOST_ARTISTS`
-(`src/store/DrawingStore.js`), and it counts the host. Two other things changed because of it: how often a host
+(`src/store/drawing/host.js`), and it counts the host. Two other things changed because of it: how often a host
 writes its ledger, and that someone drawing is no longer sent the art.
 
 ## Summary
