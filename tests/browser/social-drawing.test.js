@@ -2810,3 +2810,15 @@ test('art that was held back behind a project isn\'t waited for by an artist, an
   await expect.poll(() => ann.art, PATIENT).toBe('b');
   expect(w.behind).toBe(false);
 });
+
+test('a host writes its ledger every 10 seconds at most, by the clock', async () => {
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+  toStop.push(() => vi.useRealTimers());
+  const room = await hosting();
+  room.drawing.artistsNow(['ann']);
+  const keep = vi.spyOn(room.project, 'keepLedger').mockResolvedValue();
+  vi.advanceTimersByTime(9999);
+  expect(keep).not.toHaveBeenCalled();
+  vi.advanceTimersByTime(1);
+  expect(keep).toHaveBeenCalledTimes(1);
+});

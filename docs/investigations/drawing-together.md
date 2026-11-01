@@ -3,26 +3,28 @@
 Question: how does a room behave with many people drawing, and how many should it let in?
 
 Written 2026-10-31 against the `jejacks0n/drawing-together` branch. The cap this sets is `MOST_ARTISTS`
-(`src/store/DrawingStore.js`), and it counts the host. The one other value changed because of it is how often
-a host writes its ledger.
+(`src/store/DrawingStore.js`), and it counts the host. Two other things changed because of it: how often a host
+writes its ledger, and that someone drawing is no longer sent the art.
 
 ## Summary
 
-- **`MOST_ARTISTS` is 6.** The rule: the largest count where a change lands on someone else's screen within
+- **`MOST_ARTISTS` is 7.** The rule: the largest count where a change lands on someone else's screen within
   250 ms at the 95th percentile, and the host's tab stays usable, in every one of three runs. **Usable** means
   that the host's longest main-thread task in a run is under 200 ms, the point past which a press that lands
   behind it reads as late. The threshold was chosen before any of these runs.
-- **The cap comes from large fills and from this machine, not from steady drawing.** 15 people drawing with no
-  fills pass easily: 22 ms at the 95th percentile, and no task on the host over 50 ms. With one person filling 500
-  lines every 10 seconds, 7 misses once on latency (334 ms), 8 misses once on the longest task (229 ms), and 10
-  and up miss every time.
+- **It was 6 at first, and a defect was holding it down.** Artists were also sent the art as watchers get it, and
+  after a fill each one decoded a whole-document snapshot it never used, at 1 to 2 seconds of main thread at 15
+  people. A person drawing is now sent no art. At 8 people, the 95th percentile went from 156 to 239 ms down to 44
+  to 133 ms. Both sets of numbers are below.
+- **What stops 8 and 10 is now one thing: the ledger's write.** 8 misses in one run, and 10 in one run, both on the
+  clone alone (249 and 266 ms). Their latency passes every time (up to 206 ms). Take the write away and the cap
+  would be 10. 12 misses on latency (up to 376 ms) and 15 on both.
+- **Steady drawing isn't what limits it.** 15 people drawing with no fills pass easily (measured before the art
+  change, which it can only have helped): 22 ms at the 95th percentile, and no task on the host over 50 ms. The
+  limit comes from one person filling 500 lines every 10 seconds.
 - **From about 8 people, this machine is the limit as much as the code is.** All of them are on 12 cores, and at
   each fill the machine's idle falls to 6% at 8 people and under 1% at 10. People on their own computers would
-  each do only their own share, so 6 is cautious. How cautious can't be told from one machine.
-- **One finding that isn't a tuning value, so it isn't changed here.** Artists are also sent the art as watchers
-  get it. After a fill, that's a whole-document snapshot, which each artist decodes and throws away, at 1 to 2
-  seconds of main thread at 15 people. A scratch run that dropped it brought 8 people from 156 to 239 ms down to
-  66 ms. It doesn't reach 12 (393 ms) on this machine.
+  each do only their own share, so 7 is cautious. How cautious can't be told from one machine.
 - **The ledger write is a visible stall when the ledger is full of cells, at any number of people.** About half
   a second at the limit. It used to come every 2 seconds; it's now at most about every 8. A cap doesn't help
   this, and pacing makes it rare but doesn't remove it.
@@ -45,7 +47,7 @@ seconds, by turns 40,000 cells or 80,000 pixels. Most people would call that a l
 **What was done to lighten it:** only that artists' windows are 800 x 500 against the host's 1400 x 900. Each run
 is 60 seconds on a new room, and the first 5 seconds don't count. So the ledger starts empty in every run, which
 is why it's measured apart below. Rooms up to 8 hold together. Above that the numbers describe a saturated
-machine (the pages drop to about 45 frames a second at 15).
+machine (the pages drop to about 40 frames a second at 15).
 
 **A change's time** runs from the message being handed to the data channel to the frame it's written to the
 screen, read from the one clock all the pages share. It doesn't include the wait for the next slice before the
@@ -53,8 +55,23 @@ send, up to 100 ms.
 
 ## The numbers
 
-Three runs each, except 15. The latency is to other artists. "Task" is the host's longest in the run. "Idle" is
-the whole machine's, sampled about every 7 seconds: the mean, and the lowest seen in any of the runs.
+Three runs each, on the final code. The latency is to other artists. "Task" is the host's longest in the run. "Idle"
+is the whole machine's, sampled about every 7 seconds: the mean, and the lowest seen in any of the runs. The count that
+sets the cap, and each miss, are in bold.
+
+| People | p50 (ms) | p95 (ms) | p95, to the host (ms) | Host's longest task (ms) | An artist's longest task (ms) | Idle: mean, lowest |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 6 | 15 to 18 | 28, 27, 65 | 22 to 24 | 145, 121, 148 | 141 | 58%, 40% |
+| **7** | 13 to 14 | **27, 29, 26** | 20 to 22 | **131, 117, 115** | 205 | 57%, 27% |
+| 8 | 15 to 18 | 133, 60, 44 | 22 to 28 | 148, 142, **249** | 241 | 44%, 6% |
+| 10 | 16 to 19 | 163, 121, 206 | 33 to 73 | **266**, 176, 186 | 274 | 34%, 0.4% |
+| 12 | 17 to 27 | **376, 372**, 239 | 27 to 75 | **248, 210**, 150 | 558 | 33%, 0.4% |
+| 15 | 50 to 53 | **1164, 884, 929** | 127 to 137 | **366, 468, 295** | 905 | 49%, 0% |
+
+Above 8 the numbers describe a saturated machine. The longest tasks at 8, 10 and 12 are all the ledger's clone.
+
+Before the art stopped going to artists, and so what set the first cap of 6 (the ledger written every 10 seconds, as
+now):
 
 | People | p50 (ms) | p95 (ms) | p95, to the host (ms) | Host's longest task (ms) | An artist's longest task (ms) | Idle: mean, lowest |
 | ---: | --- | --- | --- | --- | ---: | --- |
@@ -67,8 +84,8 @@ the whole machine's, sampled about every 7 seconds: the mean, and the lowest see
 | 12 | 22 to 28 | **1009, 1780, 1561** | 63 to 93 | **322, 202, 233** | 1407 | 28%, 0.7% |
 | 15 (one run) | 40 | **2471** | 128 | **297** | 1544 | 36%, 4% |
 
-The same, without the fills, and with the art left out for artists (a scratch change to the running page, not in
-the app). One run each:
+The same, without the fills, and with the art left out for artists by a scratch change to the running page, which is
+what pointed at the defect. One run each:
 
 | People | | p50 (ms) | p95 (ms) | Host's longest task (ms) | An artist's longest task (ms) | Idle: mean, lowest |
 | ---: | --- | --- | --- | --- | ---: | --- |
@@ -80,14 +97,15 @@ the app). One run each:
 The median hardly moves, and a change reaches the host fast at every count. What grows is the time after a fill,
 when everyone is applying it at once and everything behind it waits.
 
+The rest of this section is on the final code, unless it says otherwise.
+
 **Queued bytes per artist:** the host's queue was never used, at 0 in every run. The channel's own buffer peaked at
-about 1.5 MB, at 15 people with fills (8 MB is where the host starts queueing), and at 2 KB without them. No channel
-closed.
+about 1.5 MB with fills (8 MB is where the host starts queueing), and at 2 KB without them. No channel closed.
 
-**The check:** it never fired. Across all the runs, thousands of checks were heard (for instance 448 at 15 people,
-1,034 across the three runs at 12), with no mismatch and no project sent because of one.
+**The check:** it never fired. Across all the runs, thousands of checks were heard (1,316 across the three runs at
+15 people), with no mismatch and no project sent because of one.
 
-**Cursors:** with everyone's on, the host sends:
+**Cursors:** with everyone's on, the host sends (measured before the art change, which doesn't touch them):
 
 | People | Messages a second | Sent, in all |
 | ---: | ---: | ---: |
@@ -96,15 +114,15 @@ closed.
 | 15 | 132 | 267 KB/s |
 
 At 15, that's about 19 KB/s to each artist, in 9 messages a second of about 2 KB, since each holds everyone's
-cursor. Each artist sends 9 a second, under 1 KB/s. It's about a seventh of what the numbered changes take at 15 with fills
-(1.5 MB/s) and doesn't limit anything, so the pace stays. Nor does the slice pace limit anything, since steady
+cursor. Each artist sends 9 a second, under 1 KB/s. It's about an eighth of what the numbered changes take at 15 with fills
+(1.6 MB/s) and doesn't limit anything, so the pace stays. Nor does the slice pace limit anything, since steady
 drawing passes at 15.
 
-**A heard cell change:** batching holds. At 15 people drawing steadily, an artist writes what it's heard about 52
+**A heard cell change:** batching holds. At 15 people drawing steadily (before the art change), an artist writes what it's heard about 52
 times a second, never more than a frame's worth, with 5 messages in a batch (9 at the 95th percentile), and takes
 1.5 ms for one (3.1 ms at the 95th percentile, 12 ms at most). That's about 80 ms of main thread a second. The host
-does the same in the same time. A fill is another matter: 25 messages of up to 64 KB at once. At 4 people the
-longest batch takes about 60 ms, and at 15 up to 700 ms, on a machine with nothing left.
+does the same in the same time. A fill is another matter: 25 messages of up to 64 KB at once. At 7 people the
+longest batch takes about 75 ms, and at 15 up to 440 ms, on a machine with nothing left.
 
 ## The ledger's write
 
@@ -116,13 +134,13 @@ One artist filling the whole document again and again, until the ledger's 64 MB 
 
 | What's in it | Stacks | Clone on the main thread (ms) | Until written (ms) |
 | --- | ---: | ---: | ---: |
-| Cells | 19.5 MB | 171 | 185 |
-| Cells | 39.1 MB | 311 | 330 |
-| Cells | 58.6 MB (the limit, for this fill) | 430 to 610 | 460 to 640 |
-| Paint | 31.5 MB | 24 | 34 |
-| Paint | 63 MB | 30 to 55 | 50 to 75 |
+| Cells | 19.5 MB | 164 | 174 |
+| Cells | 39.1 MB | 270 | 287 |
+| Cells | 58.6 MB (the limit, for this fill) | 407 to 488 | 444 to 525 |
+| Paint | 31.5 MB | 27 | 36 |
+| Paint | 63 MB | 34 to 58 | 49 to 74 |
 
-Steady drawing costs little: at 15 people with no fills, after 60 seconds, 9 MB of stacks and 17,000 items in the tail
+Steady drawing costs little: before the art change, at 15 people with no fills, after 60 seconds, 9 MB of stacks and 17,000 items in the tail
 clone in 29 ms. Filling with cells is what's costly. Past about 25 MB of them, the clone alone is over the 200 ms
 this document calls usable, in a room of any size.
 
@@ -137,10 +155,10 @@ writes a whole copy, and only a different design would take that away.
 ## A project over 16 MB
 
 The pacing had only been tested on a fake channel, so: a 34.8 MB project (a PNG of random noise, which doesn't
-compress) went to two artists accepting at the same moment. They had the art after 5.0 and 6.4 seconds. The host sent
-69.7 MB in 1,118 chunks, the channel's buffer stayed under 8 MB (7.95 MB at its highest, which is the pacing doing
-its work), and neither channel closed in any of the samples, taken every 50 ms. A stroke afterward reached the host
-and the other artist. The host's longest task was 525 ms, packing it.
+compress) went to two artists accepting at the same moment. They had the art after 6.1 and 6.3 seconds. The host sent
+69.7 MB in 1,118 chunks, the channel's buffer stayed at about 8 MB (8.03 MB at its highest, one chunk past the line,
+which is the pacing doing its work), and neither channel closed in any of the samples, taken every 50 ms. A stroke
+afterward reached the host and the other artist. The host's longest task was 522 ms, packing it.
 
 ## What these numbers don't show
 
@@ -154,11 +172,10 @@ and the other artist. The host's longest task was 525 ms, packing it.
   whole minute.
 - **Rooms this short don't fill the ledger.** The runs show what a new room does, and the ledger's table shows what
   an old one adds.
-- **Three runs is few.** 7 and 8 each passed some and missed others, so the line between them and 6 is not sharp.
+- **Three runs is few.** 8 and 10 each passed some and missed others, so the line between them and 7 is not sharp.
 
 ## If this should go higher
 
-1. Stop sending the art to someone who's drawing. They have the document, and it's what the 1 to 2 second stall on
-   artists is. That is a change to how a room works, so it isn't made here. It would make 8 likely, though that's one
-   run.
+1. Write less of the ledger at a time. It's what stops 8 and 10, and an old room at any size. That's a change to how
+   a room works, so it isn't made here.
 2. Then measure on several machines. Past 8, the numbers on this one say little about the code.
