@@ -122,6 +122,7 @@ const hostFields = () => ({
   _refusedOnce: false, // the room refused a pass since it was last live: the next refusal stands
   _replaced: false,    // another tab took the room: the copy in the browser is that tab's now
   _letGoOfTab: null,   // lets go of the lock that says a tab is hosting this room
+  _hostedBy: null,     // the account that took the role; another tab's sign-in can change who this tab's pass says it is
 });
 
 // A watcher's side, the same: carryOn leaves this behind as well. Hosting doesn't touch it, so becomeArtist needn't.
@@ -283,7 +284,7 @@ export const useRoomStore = defineStore('room', {
       }));
       if (kept) host.restore(kept);
       drawing.hosted(host, { me: () => useSocialStore().claims?.sub, name: () => useSocialStore().claims?.name });
-      Object.assign(this, { ...fields, role: 'host', _host: host, _letGoOfTab: holdHostingTab(fields.id), _settings: markRaw(new Pacer(SETTINGS_EVERY_MS, (msg) => this._connection?.send(msg) ?? false)) });
+      Object.assign(this, { ...fields, role: 'host', _host: host, _hostedBy: fields._hostedBy ?? useSocialStore().claims?.sub ?? null, _letGoOfTab: holdHostingTab(fields.id), _settings: markRaw(new Pacer(SETTINGS_EVERY_MS, (msg) => this._connection?.send(msg) ?? false)) });
     },
 
     // The room this tab was hosting before a reload, from its record: in place at once, for the router's
@@ -295,7 +296,7 @@ export const useRoomStore = defineStore('room', {
       const { id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, view } = record;
       try {
         const { col, row } = !view ? {} : view.viewTab === 'input' ? view.inputView : view.ansiViewOrigin;
-        this.hostRoom({ id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, status: 'reconnecting', _resuming: true, _resumeBegan: Date.now(), _throttled: 0 }, { ...record.host, muted });
+        this.hostRoom({ id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, status: 'reconnecting', _hostedBy: record.sub, _resuming: true, _resumeBegan: Date.now(), _throttled: 0 }, { ...record.host, muted });
         if (view) Object.assign(useWorkspaceStore(), view, { viewToRestore: { tab: view.viewTab, col, row } });   // here, so watchers are shown it whichever tab this lands on
       } catch {
         forgetHostingRecord();
@@ -357,9 +358,10 @@ export const useRoomStore = defineStore('room', {
       const { viewTab, ansiZoom, editZoom, ansiViewOrigin, ansiViewSize, ansiViewZoom, inputView } = useWorkspaceStore();
       const view = { viewTab, ansiZoom, editZoom, ansiViewOrigin, ansiViewSize, ansiViewZoom, inputView };
       const { artists, invited } = useDrawingStore();
-      const record = { sub: useSocialStore().claims?.sub, documentId: useProjectStore().documentId, id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, artists, invited, host: this._host.kept(), view };
+      this._hostedBy ??= useSocialStore().claims?.sub ?? null;   // a room can be made before the pass is back
+      const record = { sub: this._hostedBy, documentId: useProjectStore().documentId, id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, artists, invited, host: this._host.kept(), view };
       keepHostingRecord(record);
-      if (record.sub) keepHostCopy(record).catch(() => {});   // on pagehide this may not land: the last one is at most a second behind what changed
+      if (record.sub === useSocialStore().claims?.sub) keepHostCopy(record).catch(() => {});   // on pagehide this may not land: the last one is at most a second behind what changed
     },
 
     // This tab is done hosting, and what was kept for coming back goes with it.

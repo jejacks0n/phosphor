@@ -258,7 +258,9 @@ up from them, and with none you have what autosave had, as after a crash. Anythi
 may be missing from the chat and the numbers. Art open in the new tab is replaced and stays in the browser's own list; if it
 has unsaved changes the offer says "Going back replaces your open art, which has unsaved changes." If the room's art can't
 be read, you're told "The room's art couldn't be opened." and the room carries on without you. Pressed too late, you're told the
-room ended, or you're back in as an artist if the role moved. Signing out forgets it.
+room ended, or you're back in as an artist if the role moved. Signing out or deleting the account forgets it; a tab still
+hosting under that account keeps its copy until it hears the session has ended, which closes its side of the room as signing out does. A hosting
+tab whose browser has since signed in to another account stops keeping its copy, and that account is never offered the room.
 
 Watchers connect straight to your browser, so the room is as fast as your connection. A direct
 connection shows each side's IP address to the other (a VPN hides yours). If your connection to the
