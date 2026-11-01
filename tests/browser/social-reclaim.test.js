@@ -108,6 +108,18 @@ test('signing out takes every copy in this browser', async () => {
   await expect.poll(() => hostCopies()).toEqual([]);
 });
 
+test('a pass that\'s become another account\'s doesn\'t make the room theirs: the copy stays the host\'s, and stops being written', async () => {
+  await live();
+  const before = (await hostCopies())[0];
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  social.claims = { ...social.claims, sub: 'u_2', name: 'tin_owl' };
+  room.keepRecord();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const [row] = await hostCopies();
+  expect([row.sub, row.at]).toEqual(['u_1', before.at]);
+  expect(JSON.parse(sessionStorage.getItem('phosphor-hosting')).sub).toBe('u_1');
+});
+
 test('a hosting tab holds the room\'s lock, and lets go when it\'s done', async () => {
   await live();
   await expect.poll(held).toBe(true);
