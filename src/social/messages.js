@@ -96,6 +96,9 @@ export const ROOM_AWAY_WORDS = 'Your room ended while the page was away';
 export const UNDO_RESET_WORDS = 'The host changed, so undo starts over. All the drawing is still here.';
 export const newHostWords = ({ old, name, planned }) => (planned ? `${old} made ${name} the host.` : `${old} left the room. ${name} is now the host.`);
 
+// An undo or redo that can't be done.
+export const REFUSED_WORDS = { undo: 'That can\'t be undone anymore.', redo: 'That can\'t be redone anymore.' };
+
 // A host cut off who's back as an artist, when the room's art replaces what they had open.
 export const backAsArtistWords = (name) => `${name} is now the host. What you had open is saved: open a new tab, and it's under "Continue where you left off."`;
 

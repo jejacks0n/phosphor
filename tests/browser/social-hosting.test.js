@@ -713,6 +713,29 @@ test('a callback that throws doesn\'t reach the channel, and a change that threw
   expect(calls.undo).toEqual([]);
 });
 
+test('an undo or redo the host can\'t do is told to its sender, and only with a stroke id that could be one', async () => {
+  const r = await room(['p1']);
+  drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  r.host.onUndo = () => null;
+  r.host.onRedo = () => null;
+  const refused = [];
+  r.log.p1.watch.onRefused = (kind, stroke) => refused.push([kind, stroke]);
+  const w = connected(r, 'p1');
+  w.drawing = true;
+  const send = vi.spyOn(w.channel, 'send');
+  r.host.heard(w, JSON.stringify({ t: 'undo', stroke: 's' }));
+  r.host.heard(w, JSON.stringify({ t: 'redo', stroke: 't' }));
+  r.host.heard(w, JSON.stringify({ t: 'undo', stroke: 42 }));
+  await expect.poll(() => refused, PATIENT).toEqual([['undo', 's'], ['redo', 't']]);
+  expect(send).toHaveBeenCalledTimes(2);
+  w.channel.send(JSON.stringify({ t: 'undo-refused', stroke: 42 }));
+  w.channel.send(JSON.stringify({ t: 'redo-refused', stroke: 'x'.repeat(41) }));
+  await wait(60);
+  expect(refused.length).toBe(2);
+});
+
 test('accept and decline come from anyone; undo, redo, cursor and hello from artists reach their callbacks', async () => {
   const r = await room(['p1']);
   const calls = drawingCalls(r);

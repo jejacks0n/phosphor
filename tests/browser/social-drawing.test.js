@@ -19,6 +19,7 @@ import { CHUNK_BYTES, packValue } from '@/social/wire';
 import { hashCell } from '@/document/changes';
 import { Ledger, keptForWire, keptFromWire } from '@/document/ledger';
 import { forgetRoomLedger, readRoomLedger } from '@/document/autosaveStore';
+import { toastMessage } from '@/composables/useToast';
 
 const config = { iceServers: [] };
 const later = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -547,7 +548,7 @@ test('a change whose stroke is someone else\'s is refused the same way', async (
   expect(char(room.project, 2, 2)).toBe(undefined);
 });
 
-test('an undo the ledger can\'t do has no reply', async () => {
+test('an undo the ledger can\'t do takes no number and sends no project', async () => {
   const room = await hosting();
   const ann = await artist(room, 'ann');
   const n = room.project._ledger.n, projects = vi.spyOn(room.host, 'sendProject');
@@ -2943,4 +2944,113 @@ test('what an artist draws while Bake encodes survives on every screen', async (
     await expect.poll(() => painted(project, 8, 8)?.a, PATIENT).toBe(1);
   }
   await allMatch(room, ann);
+});
+
+test('an undo the host can\'t do says so and takes the step away, and the older one is still there', async () => {
+  toastMessage.value = null;
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  ann.project.editCell(1, 1, { char: 'A' });
+  ann.project.commitEdit();
+  ann.project.editCell(2, 2, { char: 'B' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  room.project._ledger.forget(room.project._ledger.strokesBy('ann').at(-1));
+
+  ann.project.undo();
+  await expect.poll(() => toastMessage.value, PATIENT).toBe('That can\'t be undone anymore.');
+  expect(ann.project.history.canRedo).toBe(false);
+  expect(ann.project._sharing.strokesAsked).toEqual([]);
+  expect(char(ann.project, 2, 2)).toBe('B');
+  ann.project.undo();
+  await expect.poll(() => char(room.project, 1, 1), PATIENT).toBe(undefined);
+  await allMatch(room, ann);
+  expect(char(ann.project, 1, 1)).toBe(undefined);
+});
+
+test('a redo the host can\'t do says so and takes the step away', async () => {
+  toastMessage.value = null;
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  ann.project.editCell(1, 1, { char: 'A' });
+  ann.project.commitEdit();
+  ann.project.editCell(2, 2, { char: 'B' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  const last = room.project._ledger.strokesBy('ann').at(-1);
+  ann.project.undo();
+  await expect.poll(() => char(ann.project, 2, 2), PATIENT).toBe(undefined);
+  await allMatch(room, ann);
+  expect(ann.project._sharing.strokesAsked).toEqual([]);
+  room.project._ledger.forget(last);
+
+  ann.project.redo();
+  await expect.poll(() => toastMessage.value, PATIENT).toBe('That can\'t be redone anymore.');
+  expect(ann.project.history.canRedo).toBe(false);
+  expect(ann.project.history.canUndo).toBe(true);
+  ann.project.undo();
+  await expect.poll(() => char(room.project, 1, 1), PATIENT).toBe(undefined);
+});
+
+test('an undo held across a project that replaced the stacks says so', async () => {
+  toastMessage.value = null;
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  ann.project.editCell(1, 1, { char: 'A' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  room.host.hold();
+  ann.project.undo();
+  await expect.poll(() => room.host.holding.length, PATIENT).toBe(1);
+  room.project.mergeDown();
+  room.host.release();
+  await expect.poll(() => toastMessage.value, PATIENT).toBe('That can\'t be undone anymore.');
+});
+
+test('an undo lost with its connection says so once the host has said all it numbered', async () => {
+  toastMessage.value = null;
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  ann.project.editCell(1, 1, { char: 'A' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  const { send } = ann.project._sharing;
+  ann.project._sharing.send = () => {};
+  ann.project.undo();
+  ann.project._sharing.send = send;
+  expect(toastMessage.value).toBe(null);
+  ann.drawing.connection('connecting');
+  ann.drawing.heardArtists(['ann'], {});   // a new connection's list, and with it the hello
+  await expect.poll(() => toastMessage.value, PATIENT).toBe('That can\'t be undone anymore.');
+  expect(ann.project.history.canRedo).toBe(false);
+});
+
+test('an undo the host did says nothing, on a reconnect either', async () => {
+  toastMessage.value = null;
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  ann.project.editCell(1, 1, { char: 'A' });
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  ann.project.undo();
+  await expect.poll(() => char(ann.project, 1, 1), PATIENT).toBe(undefined);
+  await allMatch(room, ann);
+  ann.drawing.connection('connecting');
+  ann.drawing.heardArtists(['ann'], {});
+  await wait(200);
+  expect(toastMessage.value).toBe(null);
+  expect(ann.project.history.canRedo).toBe(true);
+});
+
+test('a host\'s own undo the ledger no longer has says so and takes the step away', async () => {
+  toastMessage.value = null;
+  const room = await hosting();
+  await artist(room, 'ann');
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  room.project._ledger.forget(room.project._ledger.strokesBy('host').at(-1));
+  room.project.undo();
+  expect(toastMessage.value).toBe('That can\'t be undone anymore.');
+  expect(room.project.history.canRedo).toBe(false);
+  expect(char(room.project, 1, 1)).toBe('H');
 });

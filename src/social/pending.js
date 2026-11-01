@@ -92,7 +92,7 @@ export class Pending {
       tile.agreed[i] = rgba;
       if (echo && !--tile.claims[i] && !--tile.held) this.#tiles.delete(`${tile.x},${tile.y}`);
     });
-    return { applied };
+    return { applied, echo };
   }
 
   // The room ended: everyone keeps the last agreed picture.

@@ -30,6 +30,8 @@ import { TILE } from '@/document/History.js';
 import { MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
 import { MOST_CHANGE_BYTES, MOST_PROJECT_BYTES, packProject, packValue, readChange, unpackValue } from '@/social/wire.js';
+import { REFUSED_WORDS } from '@/social/messages.js';
+import { toast } from '@/composables/useToast.js';
 import { ALONE, SAVED_KEYS, randomId, runsPatch } from '@/store/project/shared.js';
 
 const SLICE_MS = 100;
@@ -141,7 +143,7 @@ function artistSharing(project, { send, me, sum, n = 0, tail = new Tail(), epoch
   const pending = new Pending({ me, read: screen.read, write: screen.write, n, tail });
   pending.seedSum(sum);
   return {
-    send, role: 'artist', me, held: null, takenBack: null, timer: setInterval(() => project.sendSlice(), SLICE_MS),
+    send, role: 'artist', me, held: null, takenBack: null, strokesAsked: [], timer: setInterval(() => project.sendSlice(), SLICE_MS),
     heard: [], heardCells: new Map(), heardRuns: [], cancelFlush: null,
     // The project's epoch; a project being opened; one asked for that hasn't landed, and when to ask again.
     epoch, opening: false, asked: false, askAgain: null,
@@ -527,8 +529,23 @@ export const sharingActions = {
       }
       this.sendParts(stroke, takenBack.parts);
     } else {
+      sharing.strokesAsked.push({ kind, stroke });
       sharing.send({ t: kind, stroke });
     }
+  },
+
+  // An undo or redo that can't be done: its step goes, here as anywhere it still is, and that's said. An older
+  // one is still there for the next press.
+  strokeRefused(kind, stroke) {
+    this.forgetAsked(stroke);
+    this.history.retain((entry) => entry.stroke !== stroke);
+    this.historyVersion = this.history.version;
+    toast(REFUSED_WORDS[kind]);
+  },
+
+  forgetAsked(stroke) {
+    const asked = this._sharing?.strokesAsked, at = asked?.findIndex((ask) => ask.stroke === stroke) ?? -1;
+    if (at >= 0) asked.splice(at, 1);
   },
 
   // fn(pending), then one write and one refresh for what it wrote, however many positions that was. For
@@ -550,7 +567,11 @@ export const sharingActions = {
     this.sendSlice();
     const { pending } = this._sharing ?? {};
     const written = pending
-      ? this.throughPending((p) => numbered.map((one) => p.heard(one).applied))
+      ? this.throughPending((p) => numbered.map((one) => {
+        const { applied, echo } = p.heard(one);
+        if (!echo && one.by === p.me) this.forgetAsked(one.stroke); // the number of an undo or redo of mine
+        return applied;
+      }))
       : numbered;
     if (!pending) this.applyChange({ cells: written.flatMap(({ cells }) => cells), runs: written.flatMap(({ runs }) => runs) });
     if (written.some(({ cells, runs }) => cells.length || runs.length)) this.editVersion++;
@@ -620,13 +641,15 @@ export const sharingActions = {
 
   // A host is back and has said all it numbered of mine (what it had, in a project or a tail). What's still
   // unechoed never reached it, so it goes now, oldest first, on this connection. A float still held is in
-  // Pending but never left: it goes when it's placed (sendHeld), as it would have.
+  // Pending but never left: it goes when it's placed (sendHeld), as it would have. An undo or redo with no number
+  // by now went with the last connection, and isn't asked again: the person has gone on since. Those are refused.
   resendPending() {
     const sharing = this._sharing;
     if (!sharing?.pending) return;
     stopAsking(sharing);
     const changes = sharing.pending.resend(), held = sharing.held?.parts.length ?? 0;
     for (const { stroke, cells, runs } of held ? changes.slice(0, -held) : changes) sharing.send({ t: 'change', stroke, cells, runs });
+    for (const { kind, stroke } of sharing.strokesAsked.splice(0)) this.strokeRefused(kind, stroke);
   },
 
   // A hello on a new connection, with drawing paused until it's answered: a host whose project is bad, or who says
@@ -681,7 +704,7 @@ export const sharingActions = {
   },
 
   // An artist's change, undo or redo reaching the host, in the order they're heard. Null when it can't be
-  // taken: a change for the room to answer, an undo or redo for it to say nothing about. Otherwise it's numbered and
+  // taken, for the room to answer (hosting.js). Otherwise it's numbered and
   // sent, and it's what was numbered that comes back. My open stroke's slice goes first, or the ledger would
   // read my unsent paint as what's beneath theirs.
   takeFromArtist(by, message) {

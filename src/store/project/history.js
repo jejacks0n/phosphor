@@ -66,17 +66,16 @@ export const historyActions = {
         return;
       }
       if (drawnAsArtist) { // and now the host: the stroke's in the ledger, and its pins are from another time
-        if (side === 'before') this.undoStroke(id);
-        else this.redoStroke(id);
+        this.ownStroke(side, id);
         return;
       }
       if (basePatch) this.baseLayer.applyPatch(basePatch, side);
       this.setBaseRecords(records[side]);
       if (basePatch || records.before !== records.after) this.sendBase(basePatch, side);
-      if (side === 'before') this.undoStroke(id, also);
-      else this.redoStroke(id, also);
+      this.ownStroke(side, id, also, sent);
     };
     this.pushEdit({
+      stroke: id,
       undo: () => apply('before'),
       redo: () => apply('after'),
       onDrop: () => this._ledger.forget(id), // or while a merge holds its stacks, not found: see pushWholeLayer
@@ -88,8 +87,9 @@ export const historyActions = {
   // A step for a stroke the ledger came back with, as the host's own: a reload has only its id.
   pushKeptStroke(id) {
     this.history.push({
-      undo: () => (this._sharing?.role === 'artist' ? this.askForStroke('undo', id) : this.undoStroke(id)),
-      redo: () => (this._sharing?.role === 'artist' ? this.askForStroke('redo', id) : this.redoStroke(id)),
+      stroke: id,
+      undo: () => (this._sharing?.role === 'artist' ? this.askForStroke('undo', id) : this.ownStroke('before', id)),
+      redo: () => (this._sharing?.role === 'artist' ? this.askForStroke('redo', id) : this.ownStroke('after', id)),
       onDrop: () => this._ledger.forget(id),
       bytes: this._ledger.bytesOf(id),
     });
@@ -110,6 +110,13 @@ export const historyActions = {
     this.applyChange(change ?? NO_CHANGE, also);
     this.sendNumbered(change);
     return change;
+  },
+
+  // A host's own step. In a room the ledger can have let go of a stroke that went in it (expected: false for one
+  // of base pixels alone), and then the step's no use: it goes, and that's said.
+  ownStroke(side, id, also, expected = true) {
+    const change = side === 'before' ? this.undoStroke(id, also) : this.redoStroke(id, also);
+    if (!change && expected && this._sharing) this.strokeRefused(side === 'before' ? 'undo' : 'redo', id);
   },
 
   // Write a change's cells and runs and refresh only what changed. also: what's changed with it, for
@@ -202,6 +209,7 @@ export const historyActions = {
   },
 
   clearHistory() {
+    if (this._sharing?.strokesAsked) this._sharing.strokesAsked = [];
     this._ledger.reset(); // first: what History drops next has nothing left to forget
     this.history.clear();
     this.historyVersion = this.history.version;

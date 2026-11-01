@@ -291,8 +291,9 @@ Everyone draws on the edit layer and sees each other's strokes as they happen. A
 reaches the others when it's placed, or after 2 seconds with no further move; moving it again after that is a new
 undo step, and what it covered there stays covered. Undo takes back only your own
 edits and shows what's beneath, even if that's someone else's. Artists have no undo steps from before they came
-or after a reload. Each artist has their own tool, colors and view, with **Show others' cursors** in the chat
-panel, on by default: a mark and a name at each other artist's cell, or a tag at the edge for someone out of
+or after a reload. If the host can't do an undo or a redo (it's too old, or the art was replaced since), they see "That
+can't be undone anymore." or "That can't be redone anymore." and that step is gone. Each artist has their own tool,
+colors and view, with **Show others' cursors** in the chat panel, on by default: a mark and a name at each other artist's cell, or a tag at the edge for someone out of
 view, which goes there when pressed. Anyone drawing can save the art; a project they save has no names in it.
 
 **Only the host** changes the picture and the grid: the settings, sliders, base layer, Bake, Merge up, Merge
