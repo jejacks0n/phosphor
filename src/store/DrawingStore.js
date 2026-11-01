@@ -591,6 +591,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   // On the list already (they'd left, and came back): nothing to ask, only to say hello.
   function accept() {
     invitation.value = false;
+    notice.value = null;   // what it said (back to watching, say) is over
     goToArt = true;
     noteAccepted(true);
     if (artists.value.includes(me())) return sayHello();
