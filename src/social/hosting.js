@@ -508,7 +508,7 @@ export class Host {
     this.holds = 0;
     const held = this.holding ?? [];
     this.holding = null;
-    for (const [w, msg] of held) if (this.watchers.get(w.peer) === w) this.drawn(w, msg);
+    for (const [w, msg] of held) if (this.watchers.get(w.peer) === w && this.isArtist(w.claims.sub)) this.drawn(w, msg);
   }
 
   // The chunks to the artist named, behind whatever's already on its way to them, and true once they've said it's
