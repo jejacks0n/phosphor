@@ -360,14 +360,21 @@ test('Kick – for this session: the watcher is in the lobby with "The host remo
   expect(server.sent('POST', '/api/blocks')).toHaveLength(0);   // removing is not blocking
 });
 
-test('the chat box says who you are, as [ name ] on top of it, each person their own', async ({ page: host, context }) => {
+test('the chat box says who you are on its top border, as [ avatar name ], each person their own', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { me: wren });
   for (const [page, name, other] of [[watcher, 'pixel_wren', 'ansi-fan'], [host, 'ansi-fan', 'pixel_wren']]) {
-    const tag = panel(page).locator('footer').getByText(`[ ${name} ]`, { exact: true });
+    const foot = panel(page).locator('footer');
+    const tag = foot.getByText(`[ ${name} ]`, { exact: true });
     await expect(tag).toBeVisible();
-    await expect(panel(page).locator('footer').getByText(`[ ${other} ]`)).toHaveCount(0);
-    const box = await panel(page).getByRole('textbox', { name: 'Message' }).boundingBox();
-    expect((await tag.boundingBox()).y).toBeLessThan(box.y);
+    await expect(foot.getByText(`[ ${other} ]`)).toHaveCount(0);
+    await expect(tag.locator('.cell')).toBeVisible();
+    // On the line, a little in from its left end, and hiding the line behind it.
+    const frame = await foot.locator('.box').boundingBox();
+    const at = await tag.boundingBox();
+    expect(Math.abs(at.y + at.height / 2 - frame.y)).toBeLessThanOrEqual(1.5);
+    expect(at.x).toBeGreaterThan(frame.x);
+    expect(at.x + at.width).toBeLessThan(frame.x + frame.width);
+    await expect(tag).not.toHaveCSS('background-image', 'none');
   }
 });
 

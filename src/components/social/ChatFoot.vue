@@ -4,6 +4,7 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { MOST_CHARS, silencedWords } from '@/social/chat';
+import UserName from './UserName.vue';
 
 // The foot of the chat panel: one bordered box with the message in it and a round send arrow at its
 // bottom-right (gray with nothing to send, purple with text). Enter sends, Shift+Enter is a new line,
@@ -74,8 +75,8 @@ function signIn() {
   <footer>
     <p v-if="silenced" class="silenced" role="status">{{ silencedWords(room.silencedUntil, now) }}</p>
     <form v-else-if="room.canChat" @submit.prevent="send">
-      <span class="who-am-i">[ {{ social.myName }} ]</span>
       <div class="box">
+        <span class="who-am-i">[ <UserName :name="social.myName" /> ]</span>
         <textarea ref="field" v-model="text" aria-label="Message" :maxlength="MOST_CHARS" rows="1" @input="typed" @keydown="onKeyDown"></textarea>
         <button type="submit" class="send" :class="{ ready: hasText }" aria-label="Send">
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" fill="currentColor"/></svg>
@@ -97,20 +98,10 @@ footer {
 form {
   display: flex;
   flex-direction: column;
-}
-span.who-am-i {
-  align-self: flex-start;
-  max-width: 100%;
-  margin: 0 0 3px 2px;
-  overflow: hidden;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  line-height: 14px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--text-muted);
+  margin-top: 4px;   /* room for the name, half of it above the box's border */
 }
 div.box {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 6px;
@@ -118,6 +109,26 @@ div.box {
   border: 1px solid var(--border-light);
   border-radius: 4px;
   background: var(--surface-0);
+}
+span.who-am-i {   /* on the box's top border and hiding it: each half the color of the side it's on */
+  position: absolute;
+  top: -8px;
+  left: 8px;
+  display: flex;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+  padding: 0 4px;
+  background: linear-gradient(var(--surface-1) 50%, var(--surface-0) 50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+span.who-am-i > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 div.box:focus-within {
   border-color: var(--accent);
