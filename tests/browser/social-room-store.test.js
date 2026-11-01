@@ -2203,6 +2203,16 @@ test('an artist the host no longer names is no one to follow: back to the host',
   expect(posted.filter((m) => m.t === 'follow').at(-1)).toEqual({ t: 'follow', sub: null });
 });
 
+test('a list of artists longer than a room\'s can be is ignored, and the longest there can be is heard', async () => {
+  await watching();
+  const heard = vi.spyOn(room._watch, 'onArtists');
+  const subs = (count) => Array.from({ length: count }, (_, i) => `u_${100 + i}`);
+  await room._watch.handle(JSON.stringify({ t: 'artists', subs: subs(65), names: {} }));
+  expect(heard).not.toHaveBeenCalled();
+  await room._watch.handle(JSON.stringify({ t: 'artists', subs: subs(64), names: {} }));
+  expect(heard).toHaveBeenCalledTimes(1);
+});
+
 test('a host naming a sub like an Object method is not followable, and breaks nothing', async () => {
   await watching();
   await room._watch.handle(JSON.stringify({ t: 'artists', subs: ['constructor', '__proto__', 'toString'], names: {} }));

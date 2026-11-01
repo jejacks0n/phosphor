@@ -19,6 +19,7 @@ const MOST_WAITING = 1024;  // messages waiting to be handled: a whole snapshot'
 const MOST_WAITING_DRAWING = 64 * 1024;   // for an artist from project-start: everything numbered waits here while it unpacks and opens
 const MOST_NAME = 60;       // a room's name
 const MOST_WELCOME = 200;
+const MOST_ARTISTS_LISTED = 64;   // the most a room's list holds
 const MOST_PROJECT_CHUNKS = MOST_PROJECT_BYTES / CHUNK_BYTES;   // zipped, it's never more than unzipped
 const BACKED_UP_BYTES = 8 * 1024 * 1024;   // an answer to catch-up waits for a channel further behind than this
 const NOTHING = () => {};
@@ -207,7 +208,7 @@ export class Watch {
     else if (msg.t === 'cursors') this.onCursors(Object.fromEntries(Object.entries(msg).filter(([key]) => key !== 't')));
     else if (msg.t === 'invite') this.onInvite();
     else if (msg.t === 'withdrawn') this.onWithdrawn();
-    else if (msg.t === 'artists' && Array.isArray(msg.subs) && msg.subs.every((sub) => typeof sub === 'string')) this.onArtists(msg.subs, readNames(msg.names, msg.subs));
+    else if (msg.t === 'artists' && Array.isArray(msg.subs) && msg.subs.length <= MOST_ARTISTS_LISTED && msg.subs.every((sub) => typeof sub === 'string')) this.onArtists(msg.subs, readNames(msg.names, msg.subs));
   }
 
   drawn(msg) {
