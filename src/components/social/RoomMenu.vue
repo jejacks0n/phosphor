@@ -61,8 +61,8 @@ async function copyLink() {
       <form @submit.prevent="saveWelcome">
         <label>Welcome message <textarea v-model="welcome" maxlength="200" rows="3"></textarea></label>
         <div class="actions">
-          <button type="submit">Save</button>
           <button type="button" @click="cancelWelcome">Cancel</button>
+          <button type="submit">Save</button>
         </div>
       </form>
     </ModalDialog>

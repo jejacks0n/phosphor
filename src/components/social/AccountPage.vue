@@ -221,8 +221,8 @@ async function deleteAccount() {
       <form v-if="renaming" ref="renameForm" @submit.prevent="usernameProblem(username) || rename()">
         <UsernameField v-model="username" help="Once every 30 days. Your color and glyph come from your username." />
         <div class="actions">
-          <button class="primary" type="submit" :disabled="social.busy || !!usernameProblem(username)">Save</button>
           <button type="button" @click="cancelRename">Cancel</button>
+          <button class="primary" type="submit" :disabled="social.busy || !!usernameProblem(username)">Save</button>
         </div>
         <p v-if="renameError" class="error" role="alert">{{ renameError }}</p>
       </form>
@@ -250,8 +250,8 @@ async function deleteAccount() {
         <p class="help">{{ me.emailVerified ? `Nothing changes until ${me.email} approves, then the new address confirms.` : 'Nothing changes until the new address confirms.' }} Each link works for an hour, in this browser. Twice a day.</p>
         <div ref="emailWidget" class="turnstile"></div>
         <div class="actions">
-          <button class="primary" type="submit" :disabled="social.busy || !newEmail.trim() || !emailPassword">Change email</button>
           <button type="button" @click="endEmail">Cancel</button>
+          <button class="primary" type="submit" :disabled="social.busy || !newEmail.trim() || !emailPassword">Change email</button>
         </div>
         <p v-if="emailError" class="error" role="alert">{{ emailError }}</p>
       </form>
@@ -261,8 +261,8 @@ async function deleteAccount() {
         <label>Confirm new password <input v-model="confirmPassword" type="password" autocomplete="new-password" required></label>
         <p id="new-password-help" class="help">At least 10 characters, not a known leaked password. Changing it signs you out everywhere else.</p>
         <div class="actions">
-          <button class="primary" type="submit" :disabled="social.busy || !currentPassword || !newPassword || !confirmPassword">Change password</button>
           <button type="button" @click="endPassword">Cancel</button>
+          <button class="primary" type="submit" :disabled="social.busy || !currentPassword || !newPassword || !confirmPassword">Change password</button>
         </div>
         <p v-if="passwordError" class="error" role="alert">{{ passwordError }}</p>
         <p class="forgot"><button type="button" class="link" @click="social.page = 'forgot'">Forgot your password?</button></p>
@@ -297,8 +297,8 @@ async function deleteAccount() {
         <code class="key">{{ setup.key }}</code>
         <label>Code from the app <input v-model="setupCode" inputmode="numeric" autocomplete="one-time-code" required></label>
         <div class="actions">
-          <button class="primary" type="submit" :disabled="social.busy || !setupCode.trim()">Turn on</button>
           <button type="button" @click="endTwoFactor('on')">Cancel</button>
+          <button class="primary" type="submit" :disabled="social.busy || !setupCode.trim()">Turn on</button>
         </div>
         <p v-if="twoFactorError" class="error" role="alert">{{ twoFactorError }}</p>
       </form>
@@ -306,8 +306,8 @@ async function deleteAccount() {
         <label v-if="hasPassword">Password <input v-model="twoFactorPassword" type="password" autocomplete="current-password" required></label>
         <p v-else class="help">Needs a sign-in in the last 5 minutes</p>
         <div class="actions">
-          <button class="primary" type="submit" :disabled="social.busy || (hasPassword && !twoFactorPassword)">{{ TWO_FACTOR_ASKS[ask] }}</button>
           <button type="button" @click="endTwoFactor(ask)">Cancel</button>
+          <button class="primary" type="submit" :disabled="social.busy || (hasPassword && !twoFactorPassword)">{{ TWO_FACTOR_ASKS[ask] }}</button>
         </div>
         <p v-if="twoFactorError" class="error" role="alert">{{ twoFactorError }}</p>
       </form>
@@ -339,8 +339,8 @@ async function deleteAccount() {
         <label v-if="hasPassword">Password <input v-model="password" type="password" autocomplete="current-password" required></label>
         <p v-else class="help">Deleting needs a sign-in in the last 5 minutes</p>
         <div class="actions">
-          <button class="danger" type="submit" :disabled="social.busy || (hasPassword && !password)">Delete for good</button>
           <button type="button" @click="cancelDelete">Cancel</button>
+          <button class="danger" type="submit" :disabled="social.busy || (hasPassword && !password)">Delete for good</button>
         </div>
         <p v-if="deleteError" class="error" role="alert">{{ deleteError }}</p>
       </form>

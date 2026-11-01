@@ -89,8 +89,8 @@ const confirmBlock = async () => {
     <ModalDialog v-if="blocking" :title="`Block ${blocking.watcher.name}?`"
         sub="They can't join any room you host, and they leave this one now. Unblock them from Account." @cancel="cancelBlock">
       <div class="actions">
-        <button class="danger" @click="confirmBlock">Block</button>
         <button autofocus @click="cancelBlock">Cancel</button>
+        <button class="danger" @click="confirmBlock">Block</button>
       </div>
     </ModalDialog>
     <ReportDialog v-if="reporting" :key="opened" v-bind="reporting" @done="reporting = null" />
