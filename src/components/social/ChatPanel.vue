@@ -145,8 +145,8 @@ function askIfAtTop() {
         <p><UserName class="person" :name="host ?? 'The host'" /> invited you to draw.</p>
         <p v-if="project.image && (project.isDirty || project._stroke)">Accepting replaces your open art, which has unsaved changes.</p>
         <div class="answers">
-          <button class="primary" @click="drawing.accept()">Accept</button>
           <button @click="drawing.decline()">Not now</button>
+          <button class="primary" @click="drawing.accept()">Accept</button>
         </div>
       </div>
       <p v-if="drawing.notice" class="drawing-notice" role="status">
@@ -340,6 +340,11 @@ div.invitation p {
 div.answers {
   display: flex;
   gap: 8px;
+}
+div.answers button {   /* half the row each, and Accept no taller than Not now */
+  flex: 1 1 0;
+  padding: 10px 12px;
+  font-size: 12px;
 }
 p.drawing-notice {
   display: flex;
