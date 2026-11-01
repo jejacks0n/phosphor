@@ -110,5 +110,8 @@ export const GOING_BACK_REPLACES_WORDS = 'Going back replaces your open art, whi
 // The art of a room you're going back to, or that's come to you, won't open.
 export const ART_NOT_OPENED_WORDS = 'The room\'s art couldn\'t be opened.';
 
+// Going back didn't work, and that says nothing about whether the room is still there.
+export const GOING_BACK_FAILED_WORDS = 'Couldn\'t go back to your room.';
+
 // What a host is told when another tab took its room (a copy of the tab hosts it too, and the older one is closed).
 export const HOST_REPLACED_WORDS = 'This room is open in another tab';

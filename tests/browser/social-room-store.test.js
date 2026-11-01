@@ -22,7 +22,7 @@ import { MOST_KEPT, signedText } from '@/social/chat';
 import { fontFor } from '@/social/wire';
 import { openPeer } from '@/social/peer';
 import { passKey } from '@/social/pass';
-import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, refusalWords } from '@/social/messages';
+import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, GOING_BACK_FAILED_WORDS, ART_NOT_OPENED_WORDS, refusalWords } from '@/social/messages';
 import { keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
 import { toastMessage } from '@/composables/useToast';
 import { newSession, removedCount } from '@/social/session';
@@ -1704,7 +1704,7 @@ test('a record whose restore throws is forgotten, with nothing half set', async 
   expect(sockets).toHaveLength(0);
 });
 
-test('comeBack failing says ROOM_AWAY_WORDS, keeps its warning, and drops the record', async () => {
+test('comeBack failing doesn\'t say the room ended, keeps its warning, and drops the record', async () => {
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   await goLive();
   await reload();
@@ -1712,7 +1712,7 @@ test('comeBack failing says ROOM_AWAY_WORDS, keeps its warning, and drops the re
   sessionStorage.setItem(RECORD, JSON.stringify({ ...record, host: { ...record.host, log: [{ id: 'bad', ts: 1, text: 'x', pass: 'not a pass', sig: 's' }] } }));
   room.resume();
   await expect.poll(() => room.role).toBe(null);
-  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(social.notice).toBe(GOING_BACK_FAILED_WORDS);
   expect(sessionStorage.getItem(RECORD)).toBe(null);
   expect(warn).toHaveBeenCalledWith('The room couldn\'t come back.', expect.anything());
   expect(sockets).toHaveLength(1);
@@ -1815,7 +1815,7 @@ test('ended after a resumed room\'s first hosting, as today, says nothing', asyn
   expect(sessionStorage.getItem(RECORD)).toBe(null);
 });
 
-test('no document once autosave has answered drops the record and says ROOM_AWAY_WORDS', async () => {
+test('no document once autosave has answered drops the record and says the art couldn\'t be opened', async () => {
   await goLive();
   await reload({ art: false });
   room.resume();
@@ -1823,7 +1823,7 @@ test('no document once autosave has answered drops the record and says ROOM_AWAY
   await expect.poll(() => social.claims?.sub).toBe('u_1');
   useWorkspaceStore().documentAnswered = true;
   await expect.poll(() => room.role).toBe(null);
-  expect(social.notice).toBe(ROOM_AWAY_WORDS);
+  expect(social.notice).toBe(ART_NOT_OPENED_WORDS);
   expect(sessionStorage.getItem(RECORD)).toBe(null);
   expect(sockets).toHaveLength(1);
 });

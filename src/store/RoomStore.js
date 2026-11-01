@@ -6,7 +6,7 @@ import { forgetHostCopy, forgetRoomLedger, hostCopies, keepHostCopy, readLatest,
 import { proof, sign } from '@/social/keys';
 import { Allowance, MOST_KEPT, REASONS, chatText, evidenceFor, newId, signedText } from '@/social/chat';
 import { LobbyConnection, Pacer } from '@/social/lobby';
-import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, ART_NOT_OPENED_WORDS, newHostWords, refusalWords } from '@/social/messages';
+import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, ART_NOT_OPENED_WORDS, GOING_BACK_FAILED_WORDS, newHostWords, refusalWords } from '@/social/messages';
 import { decodePass, passKey } from '@/social/pass';
 import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
 import { forgetHostingRecord, holdHostingTab, hostingTabsGone, keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
@@ -136,7 +136,7 @@ const hostFields = () => ({
   _keepTimer: null,    // the resume record's next write
   _resuming: false,    // a host's: back from a reload, and the room hasn't said hosting yet
   _refusedOnce: false, // the room refused a pass since it was last live: the next refusal stands
-  _leaveKept: false,   // another tab took the room: the copy and ledger in the browser are that tab's now
+  _leaveKept: false,   // the copy and ledger in the browser aren't done with: another tab took the room, or this one couldn't open its art
   _letGoOfTab: null,   // lets go of the lock that says a tab is hosting this room
   _hostedBy: null,     // the account that took the role; another tab's sign-in can change who this tab's pass says it is
 });
@@ -322,7 +322,7 @@ export const useRoomStore = defineStore('room', {
       useSocialStore()._roomGoesOn = true;
       this.comeBack(record).catch((error) => {
         console.warn('The room couldn\'t come back.', error);
-        if (this.id === id) this.over(ROOM_AWAY_WORDS);
+        if (this.id === id) this.over(GOING_BACK_FAILED_WORDS);
       });
     },
 
@@ -358,7 +358,11 @@ export const useRoomStore = defineStore('room', {
       });
       await until(() => !!project.image || workspace.documentAnswered).toBe(true, { timeout: Math.max(0, this._resumeBegan + RETURN_WITHIN_MS - Date.now()) });   // a database that never answers is the room gone
       if (gone()) return;
-      if (!project.image) return this.over(ROOM_AWAY_WORDS);
+      if (!project.image && !workspace.documentAnswered) return this.over(ROOM_AWAY_WORDS);
+      if (!project.image) {   // the room is still waiting, and another try may open it
+        this._leaveKept = true;
+        return this.over(ART_NOT_OPENED_WORDS);
+      }
       const kept = await readRoomLedger(record.id).catch(() => null);
       if (gone()) return;
       useDrawingStore().resumeHosting(record, kept);
@@ -415,7 +419,7 @@ export const useRoomStore = defineStore('room', {
       const copy = (await hostCopies().catch(() => [])).find((row) => row.id === id && row.sub === social.claims?.sub);
       if (!copy) {
         notOffered();
-        social.notice = ROOM_AWAY_WORDS;
+        social.notice = GOING_BACK_FAILED_WORDS;
         return;
       }
       if (!(await hostingTabsGone([id])).length) return notOffered();   // its tab is back, or another went back first
@@ -432,7 +436,7 @@ export const useRoomStore = defineStore('room', {
         return;
       }
       if (!keepHostingRecord(record)) {
-        social.notice = ROOM_AWAY_WORDS;
+        social.notice = GOING_BACK_FAILED_WORDS;
         return;
       }
       keepDocument(record.documentId);

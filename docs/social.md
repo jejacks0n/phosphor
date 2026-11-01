@@ -257,7 +257,8 @@ back, undo is as a reload leaves it, and watchers and artists carry on. Autosave
 up from them, and with none you have what autosave had, as after a crash. Anything that changed in the last second before the tab closed
 may be missing from the chat and the numbers. Art open in the new tab is replaced and stays in the browser's own list; if it
 has unsaved changes the offer says "Going back replaces your open art, which has unsaved changes." If the room's art can't
-be read, or the host had only just opened it and it was never written, you're told "The room's art couldn't be opened." and the room carries on without you. Pressed too late, you're told the
+be read, or the host had only just opened it and it was never written, you're told "The room's art couldn't be opened." and the room carries on without you; if the art won't open after the reload, you can try again while the offer lasts. If going
+back fails for another reason, you're told "Couldn't go back to your room." Pressed too late, you're told the
 room ended, or you're back in as an artist if the role moved. Signing out or deleting the account forgets it; a tab still
 hosting under that account keeps its copy until it hears the session has ended, which closes its side of the room as signing out does. A hosting
 tab whose browser has since signed in to another account stops keeping its copy, and that account is never offered the room.
