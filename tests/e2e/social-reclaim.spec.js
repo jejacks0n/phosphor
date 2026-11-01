@@ -235,3 +235,24 @@ test('another account in the same browser sees nothing', async ({ page: host, co
   await expect(back(other)).toHaveCount(0);
   await expect(card(other).getByRole('button', { name: /^Join/ })).toBeVisible();
 });
+
+test.describe(() => {
+  test.use({ consented: false });
+  test('a closed tab\'s old copy goes from the disk when the app next starts, before anything from SOCIAL', async ({ page }) => {
+    await page.goto('/');
+    const rows = (fill) => page.evaluate((fill) => new Promise((resolve, reject) => {
+      const open = indexedDB.open('phosphor-host-records', 1);
+      open.onupgradeneeded = () => open.result.createObjectStore('rooms', { keyPath: 'id' });
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const tx = open.result.transaction('rooms', 'readwrite'), rooms = tx.objectStore('rooms');
+        if (fill) rooms.put({ id: 'old', sub: 'u_1', at: 0, record: '{}' });
+        const all = rooms.getAllKeys();
+        tx.oncomplete = () => { open.result.close(); resolve(all.result); };
+      };
+    }), fill);
+    expect(await rows(true)).toEqual(['old']);
+    await page.reload();
+    await expect.poll(() => rows(false)).toEqual([]);
+  });
+});
