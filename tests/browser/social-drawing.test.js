@@ -3076,3 +3076,38 @@ test('a host\'s own undo the ledger no longer has says so and takes the step awa
   expect(room.project.history.canRedo).toBe(false);
   expect(char(room.project, 1, 1)).toBe('H');
 });
+
+test('back from a reload, an artist can\'t draw until the project has come: nothing is silently replaced', async () => {
+  const room = await hosting();
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  room.drawing.resumeHosting({ artists: ['ann'], invited: [] }, null);
+  room.drawing.hostingAgain();
+  sessionStorage.setItem('phosphor-artist:room:ann', 'their-document');
+  await expect.poll(() => room.drawing.paused, PATIENT).toBe(true);
+  const ann = await join(room, 'ann');
+  await expect.poll(() => ann.drawing.mayDraw, PATIENT).toBe(true);
+  expect(ann.drawing.paused).toBe(false);
+  expect(ann.project._paused).toBe(false);
+  ann.project.editCell(2, 2, { char: 'A' });
+  expect(char(ann.project, 2, 2)).toBe('A');
+});
+
+test('the wait for the project of a reload holds through a live connection, and ends if the list says otherwise', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+  project.ensureLayer();
+  const drawing = useDrawingStore();
+  toStop.push(() => drawing.close());
+  sessionStorage.setItem('phosphor-artist:room:ann', project.documentId);
+  drawing.watching({ post: () => true }, { me: () => 'ann', roomId: 'room', roomName: () => 'Night shift' });
+  expect(drawing.paused).toBe(true);
+  project.editCell(2, 2, { char: 'A' });
+  expect(char(project, 2, 2)).toBe(undefined);
+  drawing.connection('live');
+  expect(drawing.paused).toBe(true);
+  drawing.heardArtists([], {});
+  expect(drawing.paused).toBe(false);
+  project.editCell(2, 2, { char: 'A' });
+  expect(char(project, 2, 2)).toBe('A');
+});

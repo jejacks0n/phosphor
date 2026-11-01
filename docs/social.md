@@ -312,7 +312,7 @@ work. When the host is back, what's waiting is sent and drawing goes on.
 
 The host can choose **Back to watching** in the person's menu. They keep the art open as an ordinary document
 to save or keep working on, with its undo emptied, and nothing they do there reaches the room. The same happens
-to anyone drawing when the room ends. A reload as an artist comes back as an artist, with the art as it is now.
+to anyone drawing when the room ends. A reload as an artist comes back as an artist, with the art as it is now; drawing is paused until it has come.
 If they stop being able to draw for any other reason, the same happens, without a reason given.
 
 ### When the host changes
