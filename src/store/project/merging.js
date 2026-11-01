@@ -2,7 +2,9 @@
 // cells), Merge down exactly or into the image, and Bake (the picture as it looks becomes the image).
 // Owns _baking and _merging (one at a time: a second call while one runs is ignored). Both wait on
 // image encoding; anything changed meanwhile (an edit, a slider, an undo, the other one landing)
-// and they start over from what shows then.
+// and they start over from what shows then. An artist's change doesn't count as one, as starting over
+// for those would never end under steady drawing. Bake reads the layers after it encodes, so what came
+// meanwhile is in it; Into the image reads them before, so a host holds artists' changes until the project's gone.
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellKey, parseKey, rectCells, updateRect, bakeEditCells, bakeEntry, mergeKind } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
@@ -135,6 +137,8 @@ export const mergingActions = {
   async mergeIntoPicture(rect = null) {
     if (!this.image || this._merging) return;
     this._merging = true;
+    const sharing = this._sharing;
+    sharing?.hold?.();
     let again = false;
     try {
       this.ensureLayer();
@@ -229,7 +233,7 @@ export const mergingActions = {
       // What's merged was read before encoding: a change since (or an edit still open) means it's stale.
       if (this._document !== doc) return;
       this.commitPending();
-      if (this.image !== params.image || this.history.version !== version) {
+      if (this.image !== params.image || this.history.version !== version || this._sharing !== sharing) {
         again = true;
         return;
       }
@@ -267,6 +271,7 @@ export const mergingActions = {
       console.error('Failed to merge into the image', e);
       alert("Couldn't merge into the image.");
     } finally {
+      sharing?.release?.();
       this._merging = false;
       if (again) await this.mergeIntoPicture(rect);
     }

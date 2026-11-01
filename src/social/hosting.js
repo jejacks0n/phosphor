@@ -81,6 +81,7 @@ export class Host {
     this.artistViews = {};   // sub -> view, from the artists' cursors
     this.packed = null;   // { art, chunks }: one snapshot for every watcher, packed again only for new art
     this.holding = null;   // [[w, msg]]: artists' changes that wait while nothing's being numbered
+    this.holds = 0;   // how many are holding them: a merge can overlap a handover or a gather
     this.handOverWithinMs = HAND_OVER_WITHIN_MS;
     this.serverAnswersWithinMs = SERVER_ANSWERS_WITHIN_MS;
     this.gatherWithinMs = GATHER_WITHIN_MS;
@@ -488,12 +489,15 @@ export class Host {
     }
   }
 
-  // Nothing's being numbered for now: artists' changes wait here, in order, until release().
+  // Nothing's being numbered for now: artists' changes wait here, in order, until every hold() has its release().
   hold() {
+    this.holds++;
     this.holding ??= [];
   }
 
   release() {
+    if (--this.holds > 0) return;
+    this.holds = 0;
     const held = this.holding ?? [];
     this.holding = null;
     for (const [w, msg] of held) if (this.watchers.get(w.peer) === w) this.drawn(w, msg);

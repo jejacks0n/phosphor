@@ -2884,3 +2884,63 @@ test('a host writes its ledger every 10 seconds at most, by the clock', async ()
   vi.advanceTimersByTime(1);
   expect(keep).toHaveBeenCalledTimes(1);
 });
+
+// A canvas's encoding held back until the answer's called: what's merged waits on this, and a room goes on meanwhile.
+function holdEncoding() {
+  const toBlob = HTMLCanvasElement.prototype.toBlob;
+  let go;
+  const open = new Promise((resolve) => { go = resolve; });
+  const spy = vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (...args) {
+    open.then(() => toBlob.apply(this, args));
+  });
+  return { spy, go };
+}
+
+test('what an artist draws while Into the image encodes survives on every screen', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  await allMatch(room, ann);
+
+  const { spy, go } = holdEncoding();
+  const merging = room.project.mergeIntoPicture();
+  await expect.poll(() => spy.mock.calls.length, PATIENT).toBeGreaterThan(0);
+  ann.project.editCell(1, 1, { char: 'A' });   // on a cell being merged
+  dab(ann.project, 8, 8);
+  ann.project.commitEdit();
+  await wait(150);
+  go();
+  await merging;
+
+  for (const { project } of [room, ann]) {
+    await expect.poll(() => char(project, 1, 1), PATIENT).toBe('A');
+    await expect.poll(() => painted(project, 8, 8)?.a, PATIENT).toBe(1);
+  }
+  await allMatch(room, ann);
+  expect(room.host.holding).toBe(null);
+});
+
+test('what an artist draws while Bake encodes survives on every screen', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  room.project.setSlider('brightness', 120);
+  room.project.commitSliders('brightness');
+  await expect.poll(() => ann.project.brightness, PATIENT).toBe(120);
+
+  const { spy, go } = holdEncoding();
+  const baking = room.project.bake();
+  await expect.poll(() => spy.mock.calls.length, PATIENT).toBeGreaterThan(0);
+  ann.project.editCell(1, 1, { char: 'A' });
+  dab(ann.project, 8, 8);
+  ann.project.commitEdit();
+  await wait(150);
+  go();
+  await baking;
+
+  for (const { project } of [room, ann]) {
+    await expect.poll(() => char(project, 1, 1), PATIENT).toBe('A');
+    await expect.poll(() => painted(project, 8, 8)?.a, PATIENT).toBe(1);
+  }
+  await allMatch(room, ann);
+});

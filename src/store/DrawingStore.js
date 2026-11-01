@@ -263,7 +263,8 @@ export const useDrawingStore = defineStore('drawing', () => {
   }
 
   function startHostSharing() {
-    project.startSharing({ send: (msg) => host.sendAll(msg), sendDocument: () => host.sendProjectToAll(), role: 'host', me: me(), roomId: host.roomId });
+    const theHost = host;
+    project.startSharing({ send: (msg) => host.sendAll(msg), sendDocument: () => host.sendProjectToAll(), hold: () => theHost.hold(), release: () => theHost.release(), role: 'host', me: me(), roomId: host.roomId });
     project.dropOldUndo();
     stops.push(watch(() => project._document, () => { if (!adopting) setArtists([]); }));   // something else opened, with only those who've dropped out listed
     const checks = setInterval(() => { if (!gathering) host.sendCheck(project._ledger.n, project._ledger.sum); }, CHECK_EVERY_MS);
