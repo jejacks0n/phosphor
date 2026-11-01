@@ -82,6 +82,10 @@ export const MOST_PROJECT_BYTES = 256 * 1024 * 1024;
 // worst (500,000 cells, every color different, wide characters) is 20 MB of JSON, 4.5 MB gzipped.
 export const MOST_SNAPSHOT_BYTES = 32 * 1024 * 1024;   // unzipped
 export const MOST_SNAPSHOT_CHUNKS = (16 * 1024 * 1024) / CHUNK_BYTES;   // zipped: 256
+export const BACKED_UP_BYTES = 8 * 1024 * 1024;   // a channel further behind than this waits: the host's art until it drains, an answer to catch-up
+export const MOST_NAME = 60;   // a room's or a person's, as a stranger sends it
+
+export const isWhole = (n) => Number.isInteger(n) && n >= 0;
 
 const WIDE = { lead: 1, trail: 2 };
 const WIDE_NAMES = [undefined, 'lead', 'trail'];
@@ -168,15 +172,35 @@ export function changedCells(prev, next) {
   return at;
 }
 
-const bytesOf = (stream) => new Response(stream).arrayBuffer().then((b) => new Uint8Array(b));
-
-// The whole document gzipped, cut into pieces of CHUNK_BYTES or less.
-export async function packSnapshot({ cols, lines, font, cells }) {
-  const json = JSON.stringify({ cols, lines, font, ...encodeCells(cells) });
-  const bytes = await bytesOf(new Blob([json]).stream().pipeThrough(new CompressionStream('gzip')));
+// A Blob gzipped, cut into pieces of CHUNK_BYTES or less.
+async function gzipChunks(blob) {
+  const bytes = new Uint8Array(await new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
   const chunks = [];
   for (let i = 0; i < bytes.length; i += CHUNK_BYTES) chunks.push(bytes.subarray(i, i + CHUNK_BYTES));
   return chunks;
+}
+
+// What chunks unzip to, as a Blob. It throws for anything packed chunks wouldn't be: missing or repeated or not
+// bytes (the gzip's own check catches those), or more than mostBytes unzipped (it stops reading there).
+async function unzipped(chunks, mostBytes) {
+  if (!Array.isArray(chunks) || !chunks.length || !chunks.every((c) => c instanceof Uint8Array)) throw new Error('Not chunks');
+  const reader = new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
+  const parts = [];
+  let size = 0;
+  for (let read = await reader.read(); !read.done; read = await reader.read()) {
+    size += read.value.length;
+    if (size > mostBytes) {
+      reader.cancel();
+      throw new Error('Unzipped too big');
+    }
+    parts.push(read.value);
+  }
+  return new Blob(parts);
+}
+
+// The whole document, as chunks.
+export async function packSnapshot({ cols, lines, font, cells }) {
+  return gzipChunks(new Blob([JSON.stringify({ cols, lines, font, ...encodeCells(cells) })]));
 }
 
 // A grid the app could have made: within its limits, and the cells to fill it.
@@ -186,23 +210,11 @@ const fits = (cols, lines, cells) => Number.isInteger(cols) && Number.isInteger(
 // The document again. Throws for anything a host's packSnapshot wouldn't make: unzipped past
 // MOST_SNAPSHOT_BYTES (it stops reading there), or a grid that doesn't fit, before any cell is made.
 export async function unpackSnapshot(chunks) {
-  const reader = new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
-  const parts = [];
-  let size = 0;
-  for (let read = await reader.read(); !read.done; read = await reader.read()) {
-    size += read.value.length;
-    if (size > MOST_SNAPSHOT_BYTES) {
-      reader.cancel();
-      throw new Error('Snapshot too big');
-    }
-    parts.push(read.value);
-  }
-  const { cols, lines, font, colors, cells } = JSON.parse(await new Blob(parts).text());
+  const { cols, lines, font, colors, cells } = JSON.parse(await (await unzipped(chunks, MOST_SNAPSHOT_BYTES)).text());
   if (!fits(cols, lines, cells)) throw new Error('Snapshot doesn\'t fit the grid');
   return { cols, lines, font, cells: decodeCells({ colors, cells }) };
 }
 
-const isCoord = (n) => Number.isInteger(n) && n >= 0;
 const MOST_STROKE = 40;
 export const isStroke = (stroke) => typeof stroke === 'string' && !!stroke && stroke.length <= MOST_STROKE;
 
@@ -256,38 +268,17 @@ export function readChange(msg, { cols, rows, layerWidth, layerHeight }) {
   for (const run of runs) {
     if (!Array.isArray(run) || run.length !== 4) return null;
     const [x, y, length, rgba] = run;
-    if (!isCoord(x) || !isCoord(y) || !Number.isInteger(length) || length < 1 || y >= layerHeight || x + length > layerWidth) return null;
+    if (!isWhole(x) || !isWhole(y) || !Number.isInteger(length) || length < 1 || y >= layerHeight || x + length > layerWidth) return null;
     if (!Number.isInteger(rgba) || rgba < 0 || rgba > 0xffffffff) return null;
   }
   return { stroke, cells, runs };
 }
 
-// The whole document gzipped, cut into pieces of CHUNK_BYTES or less. The parts are projectParts()'
+// The whole document, as chunks. The parts are projectParts()'
 // (with the imageBuffer, as writeProject has it): the file's own form, so a project that opens from a
 // file opens from this, and the blobs become the buffers openParts takes on the other side.
 export async function packProject(parts) {
-  const bytes = await bytesOf((await writeProject(parts)).stream().pipeThrough(new CompressionStream('gzip')));
-  const chunks = [];
-  for (let i = 0; i < bytes.length; i += CHUNK_BYTES) chunks.push(bytes.subarray(i, i + CHUNK_BYTES));
-  return chunks;
-}
-
-// What chunks unzip to, as a Blob. It throws for anything packed chunks wouldn't be: missing or repeated or not
-// bytes (the gzip's own check catches those), or more than mostBytes unzipped (it stops reading there).
-async function unzipped(chunks, mostBytes) {
-  if (!Array.isArray(chunks) || !chunks.length || !chunks.every((c) => c instanceof Uint8Array)) throw new Error('Not chunks');
-  const reader = new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
-  const parts = [];
-  let size = 0;
-  for (let read = await reader.read(); !read.done; read = await reader.read()) {
-    size += read.value.length;
-    if (size > mostBytes) {
-      reader.cancel();
-      throw new Error('Too big');
-    }
-    parts.push(read.value);
-  }
-  return new Blob(parts);
+  return gzipChunks(await writeProject(parts));
 }
 
 // The parts openParts takes, or null for anything a host's packProject wouldn't make, or that's not a project.
@@ -301,10 +292,7 @@ export async function unpackProject(chunks, { mostBytes }) {
 
 // Anything JSON can hold, gzipped and cut as a project is; undefined for what packValue wouldn't have made.
 export async function packValue(value) {
-  const bytes = await bytesOf(new Blob([JSON.stringify(value)]).stream().pipeThrough(new CompressionStream('gzip')));
-  const chunks = [];
-  for (let i = 0; i < bytes.length; i += CHUNK_BYTES) chunks.push(bytes.subarray(i, i + CHUNK_BYTES));
-  return chunks;
+  return gzipChunks(new Blob([JSON.stringify(value)]));
 }
 
 export async function unpackValue(chunks, { mostBytes }) {
@@ -317,11 +305,10 @@ export async function unpackValue(chunks, { mostBytes }) {
 
 // Where someone is, for the screen: a cell or null (the pointer's off the art), the cells in their view or null,
 // and their name. Null for anything else: what a host relays is a stranger's, and this is drawn on the art.
-const place = (n) => Number.isInteger(n) && n >= 0;
-const MOST_NAME = 60, MOST_CURSORS = 64;
+const MOST_CURSORS = 64;
 export function readCursor({ at = null, view = null, name } = {}) {
-  const goodAt = at === null || (place(at?.col) && place(at?.row));
-  const goodView = view === null || ([view?.col, view?.row, view?.cols, view?.rows].every(place) && (view.zoom === undefined || (typeof view.zoom === 'number' && view.zoom > 0)));
+  const goodAt = at === null || (isWhole(at?.col) && isWhole(at?.row));
+  const goodView = view === null || ([view?.col, view?.row, view?.cols, view?.rows].every(isWhole) && (view.zoom === undefined || (typeof view.zoom === 'number' && view.zoom > 0)));
   if (!goodAt || !goodView || typeof name !== 'string' || !name || name.length > MOST_NAME) return null;
   return { at, view, name };
 }
@@ -329,7 +316,7 @@ export function readCursor({ at = null, view = null, name } = {}) {
 // A view as the watcher draws it, or null for anything that isn't one: a stranger's numbers (a host's, or an
 // artist's by way of the host) are whole cells, and a zoom that isn't one is the font's size.
 export function readView(view) {
-  if (!view || typeof view !== 'object' || ![view.col, view.row, view.cols, view.rows].every(place)) return null;
+  if (!view || typeof view !== 'object' || ![view.col, view.row, view.cols, view.rows].every(isWhole)) return null;
   const { col, row, cols, rows, zoom } = view;
   return { col, row, cols, rows, zoom: typeof zoom === 'number' && zoom > 0 ? clampAnsiZoom(zoom) : 1 };
 }

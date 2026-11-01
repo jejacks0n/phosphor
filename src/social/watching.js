@@ -12,21 +12,18 @@ import { openPeer } from './peer.js';
 import { verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
 import { PAGE, chatText, isId, signedText } from './chat.js';
-import { CHUNK_BYTES, MOST_PROJECT_BYTES, MOST_SNAPSHOT_CHUNKS, decodeChange, isStroke, isSub, readNames, readView, readViews, unpackProject, unpackSnapshot } from './wire.js';
+import { BACKED_UP_BYTES, CHUNK_BYTES, MOST_NAME, MOST_PROJECT_BYTES, MOST_SNAPSHOT_CHUNKS, decodeChange, isStroke, isSub, isWhole, readNames, readView, readViews, unpackProject, unpackSnapshot } from './wire.js';
 
 const MOST_HEARD_CHARS = 256 * 1024;   // a host's text message: what a channel carries
 const MOST_WAITING = 1024;  // messages waiting to be handled: a whole snapshot's chunks and plenty more
 const MOST_WAITING_DRAWING = 64 * 1024;   // for an artist from project-start: everything numbered waits here while it unpacks and opens
-const MOST_NAME = 60;       // a room's name
 const MOST_WELCOME = 200;
 const MOST_ARTISTS_LISTED = 64;   // the most a room's list holds
 const MOST_PROJECT_CHUNKS = MOST_PROJECT_BYTES / CHUNK_BYTES;   // zipped, it's never more than unzipped
-const BACKED_UP_BYTES = 8 * 1024 * 1024;   // an answer to catch-up waits for a channel further behind than this
 const NOTHING = () => {};
 
 // A string, cut to most characters; null for anything else.
 const text = (value, most) => (typeof value === 'string' ? value.slice(0, most) : null);
-const place = (n) => Number.isInteger(n) && n >= 0;
 
 export class Watch {
   constructor({
@@ -176,7 +173,7 @@ export class Watch {
         this.gathering = null;
         return;
       }
-      snapshot.chunks.push(data);
+      snapshot.chunks.push(new Uint8Array(data));
       if (snapshot.chunks.length < snapshot.want) return;
       this.gathering = null;
       this.art = await unpackSnapshot(snapshot.chunks);
@@ -212,7 +209,7 @@ export class Watch {
   }
 
   drawn(msg) {
-    if (!place(msg.n) || (msg.n <= this.projectN && msg.t !== 'caught-up')) return;   // nothing new can be at a project's number
+    if (!isWhole(msg.n) || (msg.n <= this.projectN && msg.t !== 'caught-up')) return;   // nothing new can be at a project's number
     if (this.project) this.project.held.push(msg);
     else if (msg.t === 'numbered') this.onNumbered(msg);
     else if (msg.t === 'settings') this.onSettings(msg);
@@ -222,7 +219,7 @@ export class Watch {
   }
 
   projectStart({ n, epoch, bytes, chunks, took }) {
-    const fits = place(n) && typeof epoch === 'string' && place(took) && Number.isInteger(chunks) && chunks >= 1 && chunks <= MOST_PROJECT_CHUNKS;
+    const fits = isWhole(n) && typeof epoch === 'string' && isWhole(took) && Number.isInteger(chunks) && chunks >= 1 && chunks <= MOST_PROJECT_CHUNKS;
     this.project = fits ? { n, epoch, bytes, took, want: chunks, chunks: [], held: [] } : null;
     if (fits && this.takesProjects()) this.mostWaiting = MOST_WAITING_DRAWING;
   }
