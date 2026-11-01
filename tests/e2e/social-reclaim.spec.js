@@ -87,6 +87,20 @@ test('a host\'s reload doesn\'t flash the offer in another tab, and that tab off
   await expect(back(second)).toBeVisible({ timeout: LOOKS });
 });
 
+test('leaving SOCIAL and coming back looks again from the start: nothing from before counts', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  await goLive(host, room);
+  await kept(host);
+  await host.close();
+  const again = await newTab(context, room);
+  await expect(back(again)).toBeVisible({ timeout: LOOKS });
+  await tab(again, 'PIXEL').click();
+  await tab(again, 'SOCIAL').click();
+  await again.waitForTimeout(800);
+  await expect(back(again)).toHaveCount(0);
+  await expect(back(again)).toBeVisible({ timeout: LOOKS });
+});
+
 test('a room that isn\'t listed is offered in a line at the top of the lobby', async ({ page: host, context }) => {
   const room = fakeRoom({ password: 'a good password' });
   await goLive(host, room, { password: 'a good password' });

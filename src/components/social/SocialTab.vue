@@ -28,7 +28,10 @@ onMounted(() => social.showLobby());
 // A room of yours whose tab has gone: looked for while this tab shows, from when it's known who you are.
 const LOOK_EVERY_MS = 2000;
 const looking = setInterval(() => room.lookForOwnRooms(), LOOK_EVERY_MS);
-onBeforeUnmount(() => clearInterval(looking));
+onBeforeUnmount(() => {
+  clearInterval(looking);
+  room.stopLooking();
+});
 watch(() => social.claims?.sub, () => room.lookForOwnRooms(), { immediate: true });
 const linkIsYours = computed(() => room.reclaimable.some((r) => r.id === social.roomInvite));
 

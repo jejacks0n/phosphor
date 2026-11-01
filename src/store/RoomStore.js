@@ -33,6 +33,7 @@ const KEEP_EVERY_MS = 1000;     // the host's resume record, as the room changes
 // How often an idle host's copy of it says it's still here, or it would read as too old to come back to. A hidden tab's
 // timers can run a minute apart once it has no one connected, so one closed unseen may not be offered.
 const HOST_HERE_EVERY_MS = 15_000;
+const GONE_FOR_MS = 1800;   // no tab holding a room's lock for this long before it's offered: two of SOCIAL's looks, 2 s apart, less their jitter
 const ART_WRITTEN_WITHIN_MS = 3000;   // a document the host just opened has no first write for a second or so
 const ART_LOOK_EVERY_MS = 250;
 const RESUME_RETRY_MS = 3000;   // a host coming back asks again after this, then twice that, and so on, for a pass or a room that was too busy to answer
@@ -197,7 +198,7 @@ export const useRoomStore = defineStore('room', {
     _throttled: 0,       // the room's refusals as too busy since then: the socket's retry steps on from each
     reclaimable: [],     // rooms of yours whose tab has gone, to go back to: [{ id, name }]
     goingBack: false,    // the page is reloading into one of them, with what's open kept: nothing to ask about leaving
-    _seenGone: [],       // the rooms whose tab was gone at the last look (a reload's gap lasts one)
+    _seenGone: {},       // id -> when a look first found the room's tab gone, for as long as looks keep finding that (a reload's gap is shorter)
   }),
 
   getters: {
@@ -395,7 +396,7 @@ export const useRoomStore = defineStore('room', {
     },
 
     // SOCIAL looks every so often for a room of yours whose tab has gone: its copy is here, and no tab has held its lock
-    // from one look to the next. A lobby card naming someone else means the role has moved, and the copy goes.
+    // at any look for about 2 s. A lobby card naming someone else means the role has moved, and the copy goes.
     async lookForOwnRooms() {
       const social = useSocialStore(), sub = social.claims?.sub;
       const mine = sub && !this.role ? (await hostCopies().catch(() => [])).filter((copy) => copy.sub === sub) : [];
@@ -406,8 +407,15 @@ export const useRoomStore = defineStore('room', {
         return false;
       });
       const gone = await hostingTabsGone(here.map((copy) => copy.id));
-      this.reclaimable = this.role || social.claims?.sub !== sub ? [] : here.filter((copy) => gone.includes(copy.id) && this._seenGone.includes(copy.id)).map(({ id, name }) => ({ id, name }));
-      this._seenGone = gone;
+      const now = Date.now(), seen = Object.fromEntries(gone.map((id) => [id, this._seenGone[id] ?? now]));
+      this.reclaimable = this.role || social.claims?.sub !== sub ? [] : here.filter((copy) => now - (seen[copy.id] ?? now) >= GONE_FOR_MS).map(({ id, name }) => ({ id, name }));
+      this._seenGone = seen;
+    },
+
+    // SOCIAL isn't showing: what the last looks saw says nothing about when it's back.
+    stopLooking() {
+      this._seenGone = {};
+      this.reclaimable = [];
     },
 
     // Back to a room of yours from another tab: a reload that comes back to it, with its record and document put where a
@@ -435,6 +443,7 @@ export const useRoomStore = defineStore('room', {
         social.notice = AUTOSAVE_FAILING_WORDS;
         return;
       }
+      if (!(await hostingTabsGone([id])).length) return notOffered();   // it came back while that was going on
       if (!keepHostingRecord(record)) {
         social.notice = GOING_BACK_FAILED_WORDS;
         return;
