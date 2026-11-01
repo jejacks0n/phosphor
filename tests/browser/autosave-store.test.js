@@ -200,6 +200,26 @@ test('a write the database refuses rejects, and leaves what was stored alone', a
 });
 
 // A room's record, for its host in another tab: its own database, one row a room, gone when it can't be waiting.
+test('where the browser won\'t store a Blob (Safari\'s private windows), the bytes go in as they are and read the same', async () => {
+  const put = IDBObjectStore.prototype.put;
+  vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (value, ...rest) {
+    if (Object.values(value).some((field) => field instanceof Blob)) throw new DOMException('Error preparing Blob/File data to be stored in object store', 'UnknownError');
+    return put.call(this, value, ...rest);
+  });
+  await save('a', bytes(7, 7), { rest: bytes(1, 2) });
+  const versionId = await addVersion('a', { reason: 'timed', savedAt: 1 });
+  for (const { record, imageBuffer } of [await readLatest('a'), await readVersion(versionId)]) {
+    expect(new Uint8Array(record.rest)).toEqual(new Uint8Array([1, 2]));
+    expect(new Uint8Array(imageBuffer)).toEqual(new Uint8Array([7, 7]));
+  }
+});
+
+test('a full disk isn\'t taken for that: it\'s for the caller to make room', async () => {
+  const put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(() => { throw new DOMException('full', 'QuotaExceededError'); });
+  await expect(save('a', bytes(7, 7))).rejects.toMatchObject({ name: 'QuotaExceededError' });
+  expect(put).toHaveBeenCalledTimes(1);
+});
+
 describe('host copies', () => {
   const copy = (id, fields = {}) => ({ id, sub: 'u_1', room: { name: `room ${id}`, hostName: 'ansi-fan' }, ...fields });
 
