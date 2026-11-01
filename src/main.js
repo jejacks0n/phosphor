@@ -7,6 +7,7 @@ import App from './App.vue';
 import { createAddressRouter, followAddress } from './router';
 import { useSocialStore } from './store/SocialStore';
 import { useRoomStore } from './store/RoomStore';
+import { hostCopies } from './document/autosaveStore';
 
 const pinia = createPinia();
 
@@ -17,6 +18,7 @@ app.use(pinia);
 // be reached leaves the editor be). Before the router's made, which keeps what the URL has then.
 useSocialStore().start();
 useRoomStore().resume();   // a room this tab hosts: the router must see it on its first look
+hostCopies().catch(() => {});   // a tab that closed never says it's done with its copy, and looking drops an old one
 
 // The stores are placed from the address before App's setup, and autosave's start reads them.
 const router = createAddressRouter();

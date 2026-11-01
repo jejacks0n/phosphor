@@ -3,6 +3,7 @@ import { markRaw, shallowRef } from 'vue';
 import { api } from '@/social/api';
 import { apiOrigin, wsOrigin, appOrigin, desktopQuery } from '@/social/config';
 import { messageFor } from '@/social/messages';
+import { forgetHostCopies } from '@/document/autosaveStore';
 import { ed25519Supported, loadKey } from '@/social/keys';
 import { requestPass, renewAt } from '@/social/pass';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -254,6 +255,7 @@ export const useSocialStore = defineStore('social', {
       const back = signedOut ? null : rooms.rejoinInfo();
       keepRoom(null);
       rooms.close({ passRole: signedOut });
+      if (signedOut) forgetHostCopies().catch(() => {});   // what's kept for coming back doesn't outlive the sign-in
       if (signedOut) this.me = null;
       else await this.refreshMe();
       Object.assign(this, { blocked: [], _codePending: false, page: this.me?.needsOnboarding ? 'onboarding' : 'lobby' });

@@ -1,12 +1,13 @@
 // Autosave's IndexedDB store: images kept once, versions kept to 20, and eviction. Real IndexedDB and
 // WebCrypto.
-import { test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   hashBytes, writeLatest, addVersion, readLatest, readVersion, listDocuments, listVersions, deleteDocument, evict,
+  HOST_COPY_LASTS_MS, keepHostCopy, hostCopies, forgetHostCopy, forgetHostCopies,
 } from '@/document/autosaveStore';
 import { ownDatabase } from '../support/socialDatabase.js';
 
-beforeEach(() => ownDatabase('phosphor-autosave', 'store')());
+beforeEach(() => ownDatabase(['phosphor-autosave', 'phosphor-host-records'], 'store')());
 afterEach(() => { vi.restoreAllMocks(); });
 
 // A stored row as it is, with the database's own Blobs.
@@ -196,4 +197,46 @@ test('a write the database refuses rejects, and leaves what was stored alone', a
   await expect(save('a', bytes(2), { savedSettings: () => {} })).rejects.toThrow();
   expect(new Uint8Array((await readLatest('a')).imageBuffer)).toEqual(new Uint8Array([1]));
   expect(await rows('images')).toBe(1);
+});
+
+// A room's record, for its host in another tab: its own database, one row a room, gone when it can't be waiting.
+describe('host copies', () => {
+  const copy = (id, fields = {}) => ({ id, sub: 'u_1', room: { name: `room ${id}`, hostName: 'ansi-fan' }, ...fields });
+
+  test('a copy says whose and which room it is, with the record as it was', async () => {
+    await keepHostCopy(copy('a', { documentId: 'doc' }));
+    const [row] = await hostCopies();
+    expect(row).toMatchObject({ id: 'a', sub: 'u_1', name: 'room a', hostName: 'ansi-fan' });
+    expect(JSON.parse(row.record).documentId).toBe('doc');
+  });
+
+  test('a room has one, the newest', async () => {
+    await keepHostCopy(copy('a', { documentId: 'old' }));
+    await keepHostCopy(copy('a', { documentId: 'new' }));
+    const rows = await hostCopies();
+    expect(rows).toHaveLength(1);
+    expect(JSON.parse(rows[0].record).documentId).toBe('new');
+  });
+
+  test('one older than a room could be waiting is gone once anything looks', async () => {
+    const now = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    await keepHostCopy(copy('a'));
+    vi.mocked(Date.now).mockReturnValue(now + HOST_COPY_LASTS_MS);
+    expect(await hostCopies()).toHaveLength(1);
+    vi.mocked(Date.now).mockReturnValue(now + HOST_COPY_LASTS_MS + 1);
+    expect(await hostCopies()).toEqual([]);
+    vi.mocked(Date.now).mockReturnValue(now);
+    expect(await hostCopies()).toEqual([]);   // deleted, not just passed over
+  });
+
+  test('forgetting takes one room\'s, or all of them', async () => {
+    await keepHostCopy(copy('a'));
+    await keepHostCopy(copy('b'));
+    await forgetHostCopy('a');
+    expect((await hostCopies()).map((row) => row.id)).toEqual(['b']);
+    await keepHostCopy(copy('c'));
+    await forgetHostCopies();
+    expect(await hostCopies()).toEqual([]);
+  });
 });

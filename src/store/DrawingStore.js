@@ -57,7 +57,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   });
 
   const artistParts = artistSide({ project, workspace, me: () => me(), artists, artistNames, invitation, paused, waiting, cursors, notice, hostChanging, gettingArt, mayDraw, myCursor, pause, goOn, sayUndoRestarts });
-  const { autosavedBy, hostChanged, lastChange, holdsTheArt, noteFormerHost, watchCallbacks, knownNow, heardArtists, accept, decline, connection } = artistParts;
+  const { autosavedBy, autosaved, hostChanged, lastChange, holdsTheArt, noteFormerHost, watchCallbacks, knownNow, heardArtists, accept, decline, connection } = artistParts;
   const hostParts = hostSide({ project, me: () => me(), artist: artistParts, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sayUndoRestarts });
   const { hostCallbacks, invite, withdraw, backToWatching, peopleHere, resumeHosting, makeHost, takeOver, becomeArtist, artistsNow, hostingAgain } = hostParts;
 
@@ -120,7 +120,7 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   return {
     artists, artistNames, invited, invitation, paused, hostChanging, gettingArt, waiting, connected, cursors, showCursors, notice, mayDraw, othersHere, hostOnly, offWithOthers, artistsFull, others,
-    hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, autosavedBy,
+    hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, autosavedBy, autosaved,
     watchCallbacks, watching, knownNow, heardArtists, accept, decline, connection, close,
     makeHost, takeOver, hostChanged, becomeArtist, artistsNow, hostingAgain, lastChange, holdsTheArt, noteFormerHost,
   };

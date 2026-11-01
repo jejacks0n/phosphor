@@ -8,11 +8,14 @@
  * so sizes are counted without reading bytes.
  *
  * Apart from them, a database of its own keeps a hosted room's ledger through a reload: sessionStorage is too small for it.
+ * Another keeps a copy of a hosted room's record, for its host in another tab: sessionStorage goes with the tab.
  */
 import { versionsToDrop, documentsToEvict, MAX_TOTAL_BYTES } from './autosaveRules.js';
 
 const STORES = ['images', 'documents', 'versions'];
 const KEEP_ROOM_LEDGER_MS = 86_400_000; // a tab that closed never says it's done with its row
+// The room's 60-second wait for its host, plus how far behind a hosting tab's last write can be (RoomStore's HOST_HERE_EVERY_MS).
+export const HOST_COPY_LASTS_MS = 75_000;
 
 // Rooms' ledgers have their own database: they're short-lived, and no document's quota or versions are theirs.
 const UPGRADES = {
@@ -25,6 +28,9 @@ const UPGRADES = {
   },
   'phosphor-room-ledgers': (db) => {
     db.createObjectStore('rooms', { keyPath: 'id' }).createIndex('at', 'at');
+  },
+  'phosphor-host-records': (db) => {
+    db.createObjectStore('rooms', { keyPath: 'id' });
   },
 };
 
@@ -212,3 +218,24 @@ export const readRoomLedger = (id) =>
 
 export const forgetRoomLedger = (id) =>
   run(['rooms'], 'readwrite', async (tx) => { tx.objectStore('rooms').delete(id); }, 'phosphor-room-ledgers');
+
+// A room's record, as hostingRecord keeps it for the tab, for its host in another tab: one row a room, which says whose it is
+// without reading the record. A chat log with passes in it, so it lasts no longer than the room could be waiting.
+export const keepHostCopy = (record) => {
+  const row = { id: record.id, sub: record.sub, name: record.room.name, hostName: record.room.hostName, at: Date.now(), record: JSON.stringify(record) };
+  return run(['rooms'], 'readwrite', async (tx) => { tx.objectStore('rooms').put(row); }, 'phosphor-host-records');
+};
+
+// The copies still good. The rest go now.
+export const hostCopies = () =>
+  run(['rooms'], 'readwrite', async (tx) => {
+    const rooms = tx.objectStore('rooms'), all = await ask(rooms.getAll()), good = (row) => Date.now() - row.at <= HOST_COPY_LASTS_MS;
+    for (const row of all) if (!good(row)) rooms.delete(row.id);
+    return all.filter(good);
+  }, 'phosphor-host-records');
+
+export const forgetHostCopy = (id) =>
+  run(['rooms'], 'readwrite', async (tx) => { tx.objectStore('rooms').delete(id); }, 'phosphor-host-records');
+
+export const forgetHostCopies = () =>
+  run(['rooms'], 'readwrite', async (tx) => { tx.objectStore('rooms').clear(); }, 'phosphor-host-records');

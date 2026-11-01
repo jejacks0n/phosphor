@@ -2,14 +2,14 @@ import { defineStore } from 'pinia';
 import { markRaw, shallowRef, watch } from 'vue';
 import { until } from '@vueuse/core';
 import { apiOrigin, appOrigin, wsOrigin } from '@/social/config';
-import { forgetRoomLedger, readRoomLedger } from '@/document/autosaveStore';
+import { forgetHostCopy, forgetRoomLedger, hostCopies, keepHostCopy, readLatest, readRoomLedger } from '@/document/autosaveStore';
 import { proof, sign } from '@/social/keys';
 import { Allowance, MOST_KEPT, REASONS, chatText, evidenceFor, newId, signedText } from '@/social/chat';
 import { LobbyConnection, Pacer } from '@/social/lobby';
-import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, newHostWords, refusalWords } from '@/social/messages';
+import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, ART_NOT_OPENED_WORDS, newHostWords, refusalWords } from '@/social/messages';
 import { decodePass, passKey } from '@/social/pass';
 import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
-import { forgetHostingRecord, keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
+import { forgetHostingRecord, holdHostingTab, hostingTabsGone, keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
 import { Watch } from '@/social/watching';
 import { fontOnWire, fontFor } from '@/social/wire';
 import { thumbnailOf } from '@/social/thumbnail';
@@ -17,6 +17,7 @@ import { newSession, sessionJoined, sessionLeft, sessionRemoved, sessionSaid, se
 import { charRowsOf } from '@/lib/Cells';
 import { clampAnsiZoom } from '@/lib/zoom';
 import { toast } from '@/composables/useToast';
+import { AUTOSAVE_FAILING_WORDS, keepDocument } from '@/composables/useAutosave';
 import { useSocialStore } from '@/store/SocialStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
@@ -29,6 +30,9 @@ const THUMBNAIL_EVERY_MS = 180_000;   // then at most this often (the server's o
 const SETTINGS_EVERY_MS = 1250;  // the server's 1 s, with slack: it measures when settings arrive
 const ASK_FOR_MS = 3000;        // how long an earlier() waits for its page (the host may drop it unanswered)
 const KEEP_EVERY_MS = 1000;     // the host's resume record, as the room changes (and at once on pagehide)
+// How often an idle host's copy of it says it's still here, or it would read as too old to come back to. A hidden tab's
+// timers can run a minute apart once it has no one connected, so one closed unseen may not be offered.
+const HOST_HERE_EVERY_MS = 15_000;
 const RESUME_RETRY_MS = 3000;   // a host coming back asks again after this, then twice that, and so on, for a pass or a room that was too busy to answer
 const DOCUMENT_BACK_WITHIN_MS = 5000;   // named host just after a reload: how long to wait for the art to open
 const HAND_OVER_ANSWERED_WITHIN_MS = 5000;
@@ -116,6 +120,8 @@ const hostFields = () => ({
   _keepTimer: null,    // the resume record's next write
   _resuming: false,    // a host's: back from a reload, and the room hasn't said hosting yet
   _refusedOnce: false, // the room refused a pass since it was last live: the next refusal stands
+  _replaced: false,    // another tab took the room: the copy in the browser is that tab's now
+  _letGoOfTab: null,   // lets go of the lock that says a tab is hosting this room
 });
 
 // A watcher's side, the same: carryOn leaves this behind as well. Hosting doesn't touch it, so becomeArtist needn't.
@@ -172,6 +178,9 @@ export const useRoomStore = defineStore('room', {
     _endAnswer: null,    // answers End the room? while Back past going live waits on it (markRaw)
     _resumeBegan: 0,     // when it began, which RETURN_WITHIN_MS counts from
     _throttled: 0,       // the room's refusals as too busy since then: the socket's retry steps on from each
+    reclaimable: [],     // rooms of yours whose tab has gone, to go back to: [{ id, name }]
+    goingBack: false,    // the page is reloading into one of them, with what's open kept: nothing to ask about leaving
+    _seenGone: [],       // the rooms whose tab was gone at the last look (a reload's gap lasts one)
   }),
 
   getters: {
@@ -189,6 +198,11 @@ export const useRoomStore = defineStore('room', {
     },
     // A watcher reported this room (Report room is gone).
     roomReported: (state) => state.reported.includes(ROOM_REPORT),
+    // Going back replaces what's open, so it says so as Accept does.
+    goingBackReplaces() {
+      const project = useProjectStore();
+      return !!project.image && (project.isDirty || !!project._stroke);
+    },
     // Report room, for a watcher who can report, until they have; never in your own room (watched from a second tab).
     canReportRoom() {
       return this.role === 'watch' && this.canReport && !this.roomReported && this.room?.hostSub !== useSocialStore().claims?.sub;
@@ -269,7 +283,7 @@ export const useRoomStore = defineStore('room', {
       }));
       if (kept) host.restore(kept);
       drawing.hosted(host, { me: () => useSocialStore().claims?.sub, name: () => useSocialStore().claims?.name });
-      Object.assign(this, { ...fields, role: 'host', _host: host, _settings: markRaw(new Pacer(SETTINGS_EVERY_MS, (msg) => this._connection?.send(msg) ?? false)) });
+      Object.assign(this, { ...fields, role: 'host', _host: host, _letGoOfTab: holdHostingTab(fields.id), _settings: markRaw(new Pacer(SETTINGS_EVERY_MS, (msg) => this._connection?.send(msg) ?? false)) });
     },
 
     // The room this tab was hosting before a reload, from its record: in place at once, for the router's
@@ -285,6 +299,7 @@ export const useRoomStore = defineStore('room', {
         if (view) Object.assign(useWorkspaceStore(), view, { viewToRestore: { tab: view.viewTab, col, row } });   // here, so watchers are shown it whichever tab this lands on
       } catch {
         forgetHostingRecord();
+        forgetHostCopy(record.id).catch(() => {});
         return;
       }
       this.comeBack(record).catch((error) => {
@@ -341,7 +356,67 @@ export const useRoomStore = defineStore('room', {
       const { viewTab, ansiZoom, editZoom, ansiViewOrigin, ansiViewSize, ansiViewZoom, inputView } = useWorkspaceStore();
       const view = { viewTab, ansiZoom, editZoom, ansiViewOrigin, ansiViewSize, ansiViewZoom, inputView };
       const { artists, invited } = useDrawingStore();
-      keepHostingRecord({ sub: useSocialStore().claims?.sub, id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, artists, invited, host: this._host.kept(), view });
+      const record = { sub: useSocialStore().claims?.sub, documentId: useProjectStore().documentId, id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, artists, invited, host: this._host.kept(), view };
+      keepHostingRecord(record);
+      if (record.sub) keepHostCopy(record).catch(() => {});   // on pagehide this may not land: the last one is at most a second behind what changed
+    },
+
+    // This tab is done hosting, and what was kept for coming back goes with it.
+    doneHosting() {
+      forgetHostingRecord();
+      forgetRoomLedger(this.id).catch(() => {});
+      if (!this._replaced) forgetHostCopy(this.id).catch(() => {});
+      this._letGoOfTab?.();
+    },
+
+    // SOCIAL looks every so often for a room of yours whose tab has gone: its copy is here, and no tab has held its lock
+    // from one look to the next. A lobby card naming someone else means the role has moved, and the copy goes.
+    async lookForOwnRooms() {
+      const social = useSocialStore(), sub = social.claims?.sub;
+      const mine = sub && !this.role ? (await hostCopies().catch(() => [])).filter((copy) => copy.sub === sub) : [];
+      const here = mine.filter((copy) => {
+        const card = social.lobby.rooms.get(copy.id);
+        if (!card || !copy.hostName || card.host === copy.hostName) return true;
+        forgetHostCopy(copy.id).catch(() => {});
+        return false;
+      });
+      const gone = await hostingTabsGone(here.map((copy) => copy.id));
+      this.reclaimable = this.role || social.claims?.sub !== sub ? [] : here.filter((copy) => gone.includes(copy.id) && this._seenGone.includes(copy.id)).map(({ id, name }) => ({ id, name }));
+      this._seenGone = gone;
+    },
+
+    // Back to a room of yours from another tab: a reload that comes back to it, with its record and document put where a
+    // reload looks for them. What's open goes into the browser's own list first, as it would for Accept. The rest is
+    // resume() and comeBack(), with what they do about a room that's over or a role that's moved.
+    async goBackToRoom(id, { reload = () => location.reload() } = {}) {
+      const social = useSocialStore(), project = useProjectStore();
+      const notOffered = () => { this.reclaimable = this.reclaimable.filter((room) => room.id !== id); };
+      const copy = (await hostCopies().catch(() => [])).find((row) => row.id === id && row.sub === social.claims?.sub);
+      if (!copy) {
+        notOffered();
+        social.notice = ROOM_AWAY_WORDS;
+        return;
+      }
+      if (!(await hostingTabsGone([id])).length) return notOffered();   // its tab is back, or another went back first
+      const record = JSON.parse(copy.record);
+      if (!await readLatest(record.documentId).catch(() => null)) {
+        notOffered();
+        forgetHostCopy(id).catch(() => {});
+        social.notice = ART_NOT_OPENED_WORDS;
+        return;
+      }
+      project.commitPending();
+      if (project.image && !await useDrawingStore().autosaved()) {
+        social.notice = AUTOSAVE_FAILING_WORDS;
+        return;
+      }
+      if (!keepHostingRecord(record)) {
+        social.notice = ROOM_AWAY_WORDS;
+        return;
+      }
+      keepDocument(record.documentId);
+      this.goingBack = true;
+      reload();
     },
 
     keepSoon() {
@@ -398,6 +473,7 @@ export const useRoomStore = defineStore('room', {
         watch(() => this.hereNow, (here) => sessionSaw(this.session, here), { immediate: true }),
         watch(() => project.documentId, () => { workspace.viewToRestore = null; }),   // another document isn't where the old one was scrolled to
         watch([() => this.room, () => this.lobbyPin, () => this.peopleOpen, () => this.muted, () => drawing.artists, () => drawing.invited, () => workspace.sharedView], () => this.keepSoon()),
+        ((here) => () => clearInterval(here))(setInterval(() => this.keepRecord(), HOST_HERE_EVERY_MS)),
         watch(() => this.status, (status) => {
           if (status === 'live') this.session.liveSince ??= Date.now();   // a reconnect keeps it
           if (status === 'live') this.keepSoon();
@@ -579,8 +655,7 @@ export const useRoomStore = defineStore('room', {
       if (spent && this.id) noteLeft(this.id, true);
       if (this.role === 'host') {
         if (!passRole || !useDrawingStore().artists.length) this._connection?.send({ type: 'end' });
-        forgetHostingRecord();
-        forgetRoomLedger(this.id).catch(() => {});
+        this.doneHosting();
       }
       const connection = this._connection;
       this._connection = null;
@@ -726,8 +801,7 @@ export const useRoomStore = defineStore('room', {
       this._connection = null;   // ending itself
       this._host?.close();
       this._settings?.reset();
-      forgetHostingRecord();
-      forgetRoomLedger(this.id).catch(() => {});
+      this.doneHosting();
       const { id, room } = this;
       Object.assign(this, {
         ...hostFields(),
@@ -988,8 +1062,10 @@ export const useRoomStore = defineStore('room', {
         case 'removed':
         case 'replaced':
           if (this.role === 'watch') this.over(refusalWords(msg.type));
-          else if (msg.type === 'replaced') this.over(HOST_REPLACED_WORDS);   // sent as the socket's close, not a message
-          else this.over(this._resuming ? ROOM_AWAY_WORDS : null);
+          else if (msg.type === 'replaced') {   // sent as the socket's close, not a message
+            this._replaced = true;
+            this.over(HOST_REPLACED_WORDS);
+          } else this.over(this._resuming ? ROOM_AWAY_WORDS : null);
           break;
       }
     },

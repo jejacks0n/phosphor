@@ -1624,3 +1624,11 @@ test('versions that can\'t be read say so, not that there are none', async () =>
     unmount();
   }
 });
+
+test('a flush answers whether what\'s open is written', async () => {
+  const { project } = await opened();
+  expect(await autosave.flush()).toBe(true);
+  vi.mocked(writeLatest).mockRejectedValue(new Error('no'));
+  await project.setBlankCanvas();
+  expect(await autosave.flush()).toBe(false);
+});
