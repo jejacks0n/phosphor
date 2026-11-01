@@ -43,7 +43,7 @@ async function create() {
       <div ref="widget" class="turnstile"></div>
       <label class="terms">
         <input v-model="terms" type="checkbox">
-        <span>I'm 13 or older and agree to the <button type="button" class="link inline" @click="workspace.legalPage = 'terms'">Terms</button> and <button type="button" class="link inline" @click="workspace.legalPage = 'privacy'">Privacy Policy</button></span>
+        <span>I'm 13 or older and agree to the <button type="button" class="link inline" @click="workspace.legalPage = 'terms'">Terms</button>, <button type="button" class="link inline" @click="workspace.legalPage = 'privacy'">Privacy Policy</button> and <button type="button" class="link inline" @click="workspace.legalPage = 'guidelines'">Community Guidelines</button></span>
       </label>
       <button class="primary" type="submit" :disabled="!ready">Create account</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>

@@ -1,14 +1,15 @@
 <script setup>
 import ReadingDialog from '@/components/ReadingDialog.vue';
 
-// The Terms and the Privacy Policy, read over the app like About. `page` is 'terms' or 'privacy'; the Terms' link
-// to the policy asks for it with open.
+// The Terms, the Privacy Policy and the Community Guidelines, read over the app like About. `page` is 'terms',
+// 'privacy' or 'guidelines'; a link to another of them asks for it with open.
+const LABELS = { terms: 'Terms', privacy: 'Privacy Policy', guidelines: 'Community Guidelines' };
 const props = defineProps({ page: { type: String, required: true } });
 const emit = defineEmits(['close', 'open']);
 </script>
 
 <template>
-  <ReadingDialog :key="props.page" :label="props.page === 'terms' ? 'Terms' : 'Privacy Policy'" @close="emit('close')">
+  <ReadingDialog :key="props.page" :label="LABELS[props.page]" @close="emit('close')">
     <div v-if="props.page === 'terms'">
       <h1>Terms</h1>
       <p class="updated">Last updated: October 29, 2026.</p>
@@ -106,6 +107,41 @@ const emit = defineEmits(['close', 'open']);
 
       <h2>Contact</h2>
       <p>TFC &amp; CO LLC, 1500 N Grant St, Denver, CO 80203. For questions regarding these terms, contact <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
+    </div>
+    <div v-else-if="props.page === 'guidelines'">
+      <h1>Community Guidelines</h1>
+      <p class="updated">Last updated: November 1, 2026.</p>
+
+      <p>SOCIAL is a place to draw with people and watch them draw. It works when people are decent to each other, so
+        the short version is: be nice. This page puts section 5 of our <button class="link inline" @click="emit('open', 'terms')">Terms</button>
+        in plain words. It adds no new rules, and where the two seem to differ, the Terms govern.</p>
+
+      <h2>How We Treat Each Other</h2>
+      <ul>
+        <li><strong>Be kind.</strong> There's a person behind every name in the lobby and every message in a chat.</li>
+        <li><strong>Don't bully, harass, or threaten anyone,</strong> and don't demean them. No attacks on people for who they are.</li>
+        <li><strong>Leave people's connections and private lives alone.</strong> Rooms reveal IP addresses. Don't use
+          someone's IP address to track, threaten, or attack them or their connection, and don't share anyone's personal
+          information without their consent.</li>
+        <li><strong>Keep public rooms suitable.</strong> Nothing sexually explicit in a public room. No gore or anything
+          illegal in any room. Sexual content involving a minor is never allowed, and we report child exploitation to
+          law enforcement immediately.</li>
+        <li><strong>Respect people's art.</strong> Only share art you have the right to share. Watching a room doesn't give
+          you any right to copy the host's art or claim it as your own.</li>
+        <li><strong>Be who you are.</strong> Don't impersonate anyone. No spam, scams, or links to malware.</li>
+        <li><strong>Take no for an answer.</strong> Don't get around a block, removal, mute, silence, or suspension, or
+          create more accounts to do it.</li>
+        <li><strong>Report in good faith.</strong> Reports are for what's really wrong, not for getting back at someone.</li>
+      </ul>
+
+      <h2>When Something Goes Wrong</h2>
+      <p>You can always leave a room. Hosts can remove or block people from their rooms, and anyone signed in with a
+        confirmed email can report a person or a room.</p>
+      <p>People who break the Terms can be silenced or suspended. If you think we got a decision wrong, write to us at
+        <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
+
+      <p>The full rules are in the <button class="link inline" @click="emit('open', 'terms')">Terms</button>, and what
+        happens to your information is in the <button class="link inline" @click="emit('open', 'privacy')">Privacy Policy</button>.</p>
     </div>
     <div v-else>
       <h1>Privacy Policy</h1>
