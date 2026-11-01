@@ -5,7 +5,8 @@
 // too (chat.js has its pieces): a watcher's message goes on to everyone only if it's theirs to send,
 // signed by the key in their pass, and the host keeps the last of them for anyone who joins later,
 // with who came and went among them. A room drawing together goes through here as well: artists' messages
-// reach the callbacks, which the drawing store gives, and what's numbered goes back to them with sendAll.
+// reach the callbacks, which the drawing store gives, and what's numbered goes back to them with sendAll, in place of
+// the art: from their artist-hello until they're off the list, they're sent none.
 import { openPeer } from './peer.js';
 import { decodePass, verifyPass } from './pass.js';
 import { verifySignature } from './keys.js';
@@ -588,11 +589,20 @@ export class Host {
   // theirs still on its way is someone else's message by the time it lands.
   setArtists(subs) {
     this.artists = new Set(subs);
+    const back = [];
     for (const w of this.watchers.values()) {
-      if (w.claims && !this.artists.has(w.claims.sub)) Object.assign(w, { drawing: false, took: 0, queue: [], queued: 0, again: false });
+      if (!w.claims || this.artists.has(w.claims.sub)) continue;
+      if (w.drawing) back.push(w);
+      Object.assign(w, { drawing: false, took: 0, queue: [], queued: 0, again: false });
     }
     for (const w of this.watchers.values()) if (w.following !== null && !this.artists.has(w.following)) this.backToHost(w);   // put back to watching
     this.sendArtists();
+    for (const w of back) {   // art again, now they've heard, and from scratch: what they had is from before they drew
+      if (w.channel?.readyState !== 'open') continue;
+      w.behind = false;
+      w.has = null;
+      this.update(w);
+    }
   }
 
   // Who may draw, with the names of those here: a watcher can't ask anyone's name, and one it isn't told it can't show.
@@ -765,8 +775,9 @@ export class Host {
   }
 
   // Art to a watcher, unless its channel is backed up: then it's marked, and sent nothing more until
-  // it drains. True when sent.
+  // it drains. True when sent. Someone drawing has the document, and is sent none: they hear of it in setArtists.
   sendArt(w, message, art) {
+    if (w.drawing) return false;
     if (w.projecting || w.channel.bufferedAmount > BACKED_UP_BYTES) {
       w.behind = true;
       return false;
@@ -782,7 +793,7 @@ export class Host {
   // do), or else the shared snapshot. A snapshot that fails to pack isn't kept, and the watcher waits
   // for the next art.
   async update(w, at = this.art && changesFrom(w.has, this.art)) {
-    if (!this.art || w.packing || w.behind || at?.length === 0) return;
+    if (!this.art || w.drawing || w.packing || w.behind || at?.length === 0) return;
     const changes = at && cellsMessage(this.art, at);
     if (changes) {
       this.sendArt(w, changes, this.art);

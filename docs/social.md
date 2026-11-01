@@ -283,6 +283,8 @@ blocks nothing, so they can save what they have open first; if that art has unsa
 replaces it. **Not now** just clears the notice, and the host can ask again. Leaving the room clears an
 invitation. Accepting opens the room's art in the ordinary tabs, and the row says **artist**. What they had open
 stays in the browser's own list, like anything else autosave keeps.
+The room's page on their SOCIAL tab then shows their own copy of the art, strokes that haven't reached the host
+included, and **Back to watching** brings back the host's straight away.
 
 Everyone draws on the edit layer and sees each other's strokes as they happen. Undo takes back only your own
 edits and shows what's beneath, even if that's someone else's. Artists have no undo steps from before they came
