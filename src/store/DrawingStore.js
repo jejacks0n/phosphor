@@ -37,6 +37,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   const showCursors = ref(true);
   const notice = ref(null);
   const hostChanging = ref(false); // paused for a handover, not for a host who's away
+  const gettingArt = ref(false);   // back from a reload: no drawing on what's open until the room's replaces it
   const mayDraw = computed(() => project._sharing?.role === 'artist');
   // Other artists here now: when the host's undo and its document aren't only its own.
   const othersHere = computed(() => artists.value.some((sub) => sub !== me() && connected.value.includes(sub)));
@@ -55,7 +56,6 @@ export const useDrawingStore = defineStore('drawing', () => {
   let awaitingList = false;        // accepted, and the host's list may not have me on it yet
   let goToArt = false;             // accepted just now: the next project closes the watcher's view
   let catchingUp = false;          // a new connection: no drawing until the host has said what it numbered
-  let gettingArt = false;          // back from a reload: no drawing on what's open until the room's replaces it
   let flushAutosave = async () => {};
   let stops = [], cursorTimer = null;
   let peersOn = new Set();         // a host's: who peopleHere last saw connected
@@ -558,8 +558,16 @@ export const useDrawingStore = defineStore('drawing', () => {
     roomId = id;
     roomName = name;
     hostName = host;
-    gettingArt = !project._sharing && !!accepted() && accepted() !== '1';   // kept documentId: this art is on its way
-    if (gettingArt) pause();
+    gettingArt.value = false;
+    knownNow();
+  }
+
+  // A reload joins before it knows who's signed in, so this comes again when it does. A documentId kept under that
+  // name: this art is on its way.
+  function knownNow() {
+    if (gettingArt.value || project._sharing || !accepted() || accepted() === '1') return;
+    gettingArt.value = true;
+    pause();
   }
 
   // On the list, and having said yes: hello, first thing, and then the project or what's missed. Off it, the
@@ -595,8 +603,8 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   // The wait for a reload's project is over, for whatever reason.
   function artCame() {
-    if (!gettingArt) return;
-    gettingArt = false;
+    if (!gettingArt.value) return;
+    gettingArt.value = false;
     paused.value = false;
     project.setPaused(false);
   }
@@ -653,7 +661,7 @@ export const useDrawingStore = defineStore('drawing', () => {
       catchingUp = mayDraw.value;
       project.newConnection();
     } else if (state === 'live') {
-      if (gettingArt) return;
+      if (gettingArt.value) return;
       if (!catchingUp) goOn();
       else if (!paused.value) pause();
     } else if (state === 'lost' || state === 'failed') {
@@ -687,9 +695,9 @@ export const useDrawingStore = defineStore('drawing', () => {
   }
 
   return {
-    artists, artistNames, invited, invitation, paused, hostChanging, waiting, connected, cursors, showCursors, notice, mayDraw, othersHere, hostOnly, offWithOthers, artistsFull, others,
+    artists, artistNames, invited, invitation, paused, hostChanging, gettingArt, waiting, connected, cursors, showCursors, notice, mayDraw, othersHere, hostOnly, offWithOthers, artistsFull, others,
     hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, autosavedBy,
-    watchCallbacks, watching, heardArtists, accept, decline, connection, close,
+    watchCallbacks, watching, knownNow, heardArtists, accept, decline, connection, close,
     makeHost, takeOver, hostChanged, becomeArtist, artistsNow, hostingAgain, lastChange, holdsTheArt, noteFormerHost,
   };
 });

@@ -8,7 +8,9 @@ const drawing = useDrawingStore();
 
 <template>
   <div class="pause-layer" role="status">
-    <p>{{ drawing.hostChanging ? 'The host is changing. Drawing is paused.' : 'The host is reconnecting. Drawing is paused.' }}</p>
+    <p v-if="drawing.hostChanging">The host is changing. Drawing is paused.</p>
+    <p v-else-if="drawing.gettingArt">Getting the room's art. Drawing is paused.</p>
+    <p v-else>The host is reconnecting. Drawing is paused.</p>
   </div>
 </template>
 

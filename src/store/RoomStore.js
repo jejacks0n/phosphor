@@ -465,6 +465,7 @@ export const useRoomStore = defineStore('room', {
         onState: (state) => this.watchState(state),
       }));
       drawing.watching(this._watch, { me: () => social.claims?.sub, roomId: id, roomName: () => this.room?.name, hostName: () => this.room?.host });
+      this._stops.push(watch(() => social.claims?.sub, () => drawing.knownNow()));
       this._stops.push(this.showOwnDocument());
       this._stops.push(watch(() => drawing.artists, (list) => {
         this.artistViews = Object.fromEntries(Object.entries(this.artistViews).filter(([sub]) => list.includes(sub)));

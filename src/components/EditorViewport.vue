@@ -317,7 +317,7 @@ defineExpose({ centerContent });
       @touchend.prevent.stop="handleTouchEnd"
       @touchcancel.prevent.stop="handleTouchCancel"
   >
-    <div v-if="projectStore._sharing" class="over-art" :style="overArt">
+    <div v-if="projectStore._sharing || drawingStore.gettingArt" class="over-art" :style="overArt">
       <ArtistCursors v-if="drawingStore.showCursors" :root="rootRef" :display="unref(display)" :unit="unit"/>
       <PauseLayer v-if="drawingStore.paused"/>
     </div>

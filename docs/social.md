@@ -309,7 +309,8 @@ and if the host opens something else while only dropped artists are listed, they
 
 If the host is reconnecting, drawing pauses for the artists: "The host is reconnecting. Drawing is paused."
 A stroke being drawn ends, and strokes that haven't reached the host yet are marked. Scrolling and zooming still
-work. When the host is back, what's waiting is sent and drawing goes on.
+work. When the host is back, what's waiting is sent and drawing goes on. An artist who reloads waits the same way
+until the room's art has come back to them: "Getting the room's art. Drawing is paused."
 
 The host can choose **Back to watching** in the person's menu. They keep the art open as an ordinary document
 to save or keep working on, with its undo emptied, and nothing they do there reaches the room. The same happens
