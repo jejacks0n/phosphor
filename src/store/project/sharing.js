@@ -11,8 +11,9 @@
 //
 // An artist's undo goes to the host and nothing moves until the number comes back. A float's moves can't
 // wait for that: each takes the last back at once. So an artist holds a float's change at home (in Pending,
-// where what it covers is kept and what's heard goes beneath, but not sent) until the next edit or the
-// next commitPending, which placing it is. Others see it land then rather than follow the drag.
+// where what it covers is kept and what's heard goes beneath, but not sent) until the next edit, the
+// next commitPending, which placing it is, or HELD_FLOAT_MS with no further move. Others see it land then
+// rather than follow the drag; a move after that is a new run, and a new undo step.
 //
 // A change heard copies the map (22 ms at 500k cells) and refreshes, and several artists at ten slices a
 // second would swamp a tab, so what comes in one frame is written together. An artist can just wait: what it
@@ -33,6 +34,7 @@ import { ALONE, SAVED_KEYS, randomId, runsPatch } from '@/store/project/shared.j
 
 const SLICE_MS = 100;
 export const ASK_AGAIN_MS = 30_000;
+export const HELD_FLOAT_MS = 2000; // an artist's block left this long with no further move goes out
 const LEAST_BASE_RUNS_BYTES = 4096; // of a base message, beside its pins; less and it's the project instead
 const HIDDEN_TAB_MS = 100; // a hidden tab has no frames, and still has to catch up
 const EDIT_ONLY = { base: false, edit: true };
@@ -310,6 +312,7 @@ export const sharingActions = {
     const waiting = sharing.pending.waiting;
     this.throughPending((pending) => pending.dropAll());
     clearInterval(sharing.timer);
+    clearTimeout(sharing.heldTimer);
     stopAsking(sharing);
     sharing.cancelFlush?.();
     this._sharing = null;
@@ -419,6 +422,7 @@ export const sharingActions = {
     if (!sharing) return;
     this.commitPending();
     clearInterval(sharing.timer);
+    clearTimeout(sharing.heldTimer);
     stopAsking(sharing);
     this._sharing = null;
     this._paused = false;
@@ -467,8 +471,10 @@ export const sharingActions = {
         const parts = splitChange(change, MOST_CHANGE_BYTES);
         for (const part of parts) pending.add(stroke.id, part);
         screen.take(); // only read: what it kept was as of the baseline
-        if (stroke.hold) this._sharing.held = { stroke: stroke.id, parts };
-        else this.sendParts(stroke.id, parts);
+        if (stroke.hold) {
+          this._sharing.held = { stroke: stroke.id, parts };
+          this.sendHeldSoon();
+        } else this.sendParts(stroke.id, parts);
       } else {
         this.sendNumbered(this._ledger.submit(this._by, stroke.id, change));
         for (const [key] of cells) this._sharing?.heardCells.delete(key); // numbered after what was waiting there
@@ -480,6 +486,13 @@ export const sharingActions = {
 
   sendParts(stroke, parts) {
     for (const part of parts) this._sharing.send({ t: 'change', stroke, ...part });
+  },
+
+  // Each move of a float starts this over. Its own sharing, so it can't land on a later one.
+  sendHeldSoon() {
+    const sharing = this._sharing;
+    clearTimeout(sharing.heldTimer);
+    sharing.heldTimer = setTimeout(() => { if (this._sharing === sharing) this.sendHeld(); }, HELD_FLOAT_MS);
   },
 
   // A float left where it is goes out. One with nothing to send stays: its run can still go on.

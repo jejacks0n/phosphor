@@ -287,7 +287,9 @@ The room's page on their SOCIAL tab then shows their own copy of the art, stroke
 included, and **Back to watching** brings back the host's straight away. If the art doesn't reach them or won't open,
 they see "The room's art couldn't be opened." and go back to watching, and the host can ask again.
 
-Everyone draws on the edit layer and sees each other's strokes as they happen. Undo takes back only your own
+Everyone draws on the edit layer and sees each other's strokes as they happen. A block an artist moves or pastes
+reaches the others when it's placed, or after 2 seconds with no further move; moving it again after that is a new
+undo step, and what it covered there stays covered. Undo takes back only your own
 edits and shows what's beneath, even if that's someone else's. Artists have no undo steps from before they came
 or after a reload. Each artist has their own tool, colors and view, with **Show others' cursors** in the chat
 panel, on by default: a mark and a name at each other artist's cell, or a tag at the edge for someone out of
