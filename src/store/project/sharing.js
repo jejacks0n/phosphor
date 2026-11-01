@@ -533,17 +533,21 @@ export const sharingActions = {
   },
 
   // An undo or redo that can't be done: its step goes, here as anywhere it still is, and that's said. An older
-  // one is still there for the next press.
+  // one is still there for the next press. A host's own (ownStroke) asks no one; for an artist, a host's word on
+  // anything not asked is nothing.
   strokeRefused(kind, stroke) {
-    this.forgetAsked(stroke);
+    if (!this.forgetAsked(stroke, kind) && this._sharing?.role !== 'host') return;
     this.history.retain((entry) => entry.stroke !== stroke);
     this.historyVersion = this.history.version;
     toast(REFUSED_WORDS[kind]);
   },
 
-  forgetAsked(stroke) {
-    const asked = this._sharing?.strokesAsked, at = asked?.findIndex((ask) => ask.stroke === stroke) ?? -1;
+  // Whether it had been asked. A number doesn't say which of the two it answers, so with no kind it's the oldest,
+  // as the host answers them in order.
+  forgetAsked(stroke, kind = null) {
+    const asked = this._sharing?.strokesAsked, at = asked?.findIndex((ask) => ask.stroke === stroke && (!kind || ask.kind === kind)) ?? -1;
     if (at >= 0) asked.splice(at, 1);
+    return at >= 0;
   },
 
   // fn(pending), then one write and one refresh for what it wrote, however many positions that was. For
@@ -662,7 +666,7 @@ export const sharingActions = {
     stopAsking(sharing);
     const changes = sharing.pending.resend(), held = sharing.held?.parts.length ?? 0;
     for (const { stroke, cells, runs } of held ? changes.slice(0, -held) : changes) sharing.send({ t: 'change', stroke, cells, runs });
-    for (const { kind, stroke } of sharing.strokesAsked.splice(0)) this.strokeRefused(kind, stroke);
+    for (const { kind, stroke } of [...sharing.strokesAsked]) this.strokeRefused(kind, stroke);
   },
 
   // A hello on a new connection, with drawing paused until it's answered: a host whose project is bad, or who says

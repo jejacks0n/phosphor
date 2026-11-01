@@ -1294,3 +1294,18 @@ test('leaving lands what the host already numbered first: an echo in the queue k
   expect(char(project, 5, 4)).toBeUndefined();
 });
 
+
+test('a block held when its artist is put back to watching goes nowhere on its time', async () => {
+  const { project, sent } = await drawing('artist');
+  project.editCell(1, 1, { char: 'A' });
+  project.commitEdit();
+  project.applyNumbered(echo(changes(sent)[0]));
+  sent.length = 0;
+  vi.useFakeTimers();
+  project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, { base: false, edit: true }, 1, 0);
+  project.dropWaiting();
+  project.stopSharing();
+  sent.length = 0;
+  vi.advanceTimersByTime(HELD_FLOAT_MS * 2);
+  expect(sent).toEqual([]);
+});

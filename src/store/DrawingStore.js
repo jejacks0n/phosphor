@@ -413,7 +413,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     handed = null;
     host = hosting;
     room = null;
-    saidHello = catchingUp = awaitingList = goToArt = false;
+    saidHello = catchingUp = awaitingList = goToArt = formerHost = false;
     paused.value = false;
     waiting.value = [];
     invitation.value = false;
@@ -519,8 +519,9 @@ export const useDrawingStore = defineStore('drawing', () => {
         artCame();
         if (formerHost) {
           formerHost = false;
-          notice.value = backAsArtistWords(hostName() ?? 'Someone else');
-          toast(notice.value, LONG_TOAST_MS);
+          const words = backAsArtistWords(hostName() ?? 'Someone else');
+          notice.value = [notice.value, words].filter(Boolean).join(' ');   // what undo did is still so
+          toast(words, LONG_TOAST_MS);
         }
         if (goToArt && workspace.editorTab === 'social') workspace.editorTab = 'output';
         goToArt = false;
@@ -615,7 +616,7 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   function stopDrawing({ keepAccepted = false } = {}) {
     artCame();
-    saidHello = catchingUp = goToArt = false;
+    saidHello = catchingUp = goToArt = formerHost = false;
     if (!keepAccepted) noteAccepted(false);
     hostChanging.value = false;
     paused.value = false;
