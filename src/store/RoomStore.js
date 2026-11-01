@@ -102,60 +102,76 @@ const artOf = (project, workspace) => ({ cells: project.cells, cols: project.col
 const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12, signal: null });
 const newSettingsDraft = () => ({ welcome: '', allowGuests: true, max: 12, signal: null, seen: {} });
 
+// A host's side of a room, as no one has it: what becomeArtist leaves behind.
+const hostFields = () => ({
+  link: null,          // the host's link to the room
+  hasPassword: false,  // a host's: the room was made with a password (it can't change)
+  watchers: [],        // a host's: [{ peer, sub, name, guest, tracking, connected }]
+  peopleOpen: false,   // a host's: the chat panel's "N here" list is open
+  muted: [],           // a host's: the subs it muted in this room (their messages reach only them, and the host)
+  lobbyPin: null,      // a host's (picked in Setup room, or while live): the top-left cell { col, row } the lobby picture uses; null while it follows the view
+  session: newSession(),   // a host's: what this browser counted since the room started (social/session.js)
+  _host: null,         // Host (markRaw)
+  _settings: null,     // Pacer for the host's settings (markRaw)
+  _keepTimer: null,    // the resume record's next write
+  _resuming: false,    // a host's: back from a reload, and the room hasn't said hosting yet
+  _refusedOnce: false, // the room refused a pass since it was last live: the next refusal stands
+});
+
+// A watcher's side, the same: carryOn leaves this behind as well. Hosting doesn't touch it, so becomeArtist needn't.
+const watcherFields = () => ({
+  art: null,           // a watcher's: { cells, cols, lines, font }
+  hostView: null,      // a watcher's: { col, row, cols, rows, zoom }
+  lookingAt: null,     // a watcher's: the cell in the middle of the art in view { middleCol, middleRow } (RoomArt's looking-at)
+  tracking: true,
+  following: null,     // a watcher's: the sub of the host (it starts there) or of the artist whose view is the one tracked
+  showEveryone: false, // a watcher's: the others' boxes and tags show too
+  showBox: true,       // a watcher's: the followed one's box shows (false: just followed)
+  artistViews: {},     // a watcher's: sub -> view, of the artists the host has sent
+  artZoom: 1,          // a watcher's: the zoom the art is drawn at; while tracking, the host's, or less to fit their view
+  artFit: 1,           // a watcher's: the biggest zoom that fits all of the host's view in the window
+  joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
+  _watch: null,        // Watch (markRaw)
+  _password: undefined, // the password the join sent
+});
+
+// No room at all: what close() goes back to. The chat and what's reported go only here: a role changing hands keeps them.
+const noRoom = () => ({
+  role: null,          // null | 'host' | 'watch'
+  id: null,
+  room: null,          // a host's: the server's room and your welcome; a watcher's: { name, welcome, host, hostSub } (joined's host and its account)
+  // a host's: 'connecting' | 'live' | 'reconnecting'; a watcher's: 'joining' | 'password' | 'waiting' |
+  // 'connecting' | 'live' | 'failed'
+  status: null,
+  passwordWrong: false,
+  ...hostFields(),
+  ...watcherFields(),
+  chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence?, muted? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
+  chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
+  chatRefused: null,   // 'too-fast' until the next message goes
+  reported: [],        // the subs you reported in this room (Report is gone for them there, rejoining too), and ROOM_REPORT once you reported the room
+  _allowance: null,    // the composer's Allowance (markRaw)
+  _asking: false,      // a watcher's earlier() is waiting for its answer
+  _askTimer: null,     // gives up on that answer after ASK_FOR_MS
+  _stops: [],          // what close() undoes: the host's watches, timers and pagehide listener
+  _tookOver: false,    // named host by the room: the hosting that follows starts the Host off
+  _named: null,        // named host, and not on with it yet: { planned, words, heard, passing, to, tried, timer } (markRaw)
+});
+
 // The room you host or watch: its socket (a LobbyConnection with the room's greeting), and the host's
 // side (Host: your art to every watcher) or the watcher's (Watch: the host's art, never your own
 // project). One room at a time; signing in or out closes it (SocialStore.becameSomeoneElse).
 export const useRoomStore = defineStore('room', {
   state: () => ({
-    role: null,          // null | 'host' | 'watch'
-    id: null,
-    link: null,          // the host's link to the room
-    room: null,          // a host's: the server's room and your welcome; a watcher's: { name, welcome, host, hostSub } (joined's host and its account)
-    // a host's: 'connecting' | 'live' | 'reconnecting'; a watcher's: 'joining' | 'password' | 'waiting' |
-    // 'connecting' | 'live' | 'failed'
-    status: null,
-    passwordWrong: false,
-    hasPassword: false,  // a host's: the room was made with a password (it can't change)
-    watchers: [],        // a host's: [{ peer, sub, name, guest, tracking, connected }]
-    art: shallowRef(null),   // a watcher's: { cells, cols, lines, font }
-    hostView: null,      // a watcher's: { col, row, cols, rows, zoom }
-    lookingAt: null,     // a watcher's: the cell in the middle of the art in view { middleCol, middleRow } (RoomArt's looking-at)
-    tracking: true,
-    following: null,     // a watcher's: the sub of the host (it starts there) or of the artist whose view is the one tracked
-    showEveryone: false, // a watcher's: the others' boxes and tags show too
-    showBox: true,       // a watcher's: the followed one's box shows (false: just followed)
-    artistViews: {},     // a watcher's: sub -> view, of the artists the host has sent
-    artZoom: 1,          // a watcher's: the zoom the art is drawn at; while tracking, the host's, or less to fit their view
-    artFit: 1,           // a watcher's: the biggest zoom that fits all of the host's view in the window
-    chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence?, muted? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'
-    chatMore: false,     // the host has older messages to ask for (never once the list is full: it goes no further back)
-    joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
-    chatRefused: null,   // 'too-fast' until the next message goes
-    reported: [],        // the subs you reported in this room (Report is gone for them there, rejoining too), and ROOM_REPORT once you reported the room
-    peopleOpen: false,   // a host's: the chat panel's "N here" list is open
-    muted: [],           // a host's: the subs it muted in this room (their messages reach only them, and the host)
-    lobbyPin: null,      // a host's (picked in Setup room, or while live): the top-left cell { col, row } the lobby picture uses; null while it follows the view
-    session: newSession(),   // a host's: what this browser counted since the room started (social/session.js)
+    ...noRoom(),
+    art: shallowRef(null),   // the art's cells aren't made reactive
     startDraft: newStartDraft(),         // Start a room's form; empty again once a room is made
     settingsDraft: newSettingsDraft(),   // a host's Room settings form
     _connection: null,   // the room's LobbyConnection (markRaw)
-    _host: null,         // Host (markRaw)
-    _watch: null,        // Watch (markRaw)
-    _allowance: null,    // the composer's Allowance (markRaw)
-    _asking: false,      // a watcher's earlier() is waiting for its answer
-    _askTimer: null,     // gives up on that answer after ASK_FOR_MS
-    _settings: null,     // Pacer for the host's settings (markRaw)
-    _stops: [],          // what close() undoes: the host's watches, timers and pagehide listener
-    _password: undefined, // the password the join sent
-    _refusedOnce: false, // the room refused a pass since it was last live: the next refusal stands
     _connectWithinMs: undefined,   // the peers' (tests make it short)
     _endAnswer: null,    // answers End the room? while Back past going live waits on it (markRaw)
-    _resuming: false,    // a host's: back from a reload, and the room hasn't said hosting yet
     _resumeBegan: 0,     // when it began, which RETURN_WITHIN_MS counts from
     _throttled: 0,       // the room's refusals as too busy since then: the socket's retry steps on from each
-    _keepTimer: null,    // the resume record's next write
-    _named: null,        // named host, and not on with it yet: { planned, words, heard, passing, to, tried, timer } (markRaw)
-    _tookOver: false,    // named host by the room: the hosting that follows starts the Host off
   }),
 
   getters: {
@@ -577,12 +593,7 @@ export const useRoomStore = defineStore('room', {
       this._settings?.reset();
       for (const stop of this._stops) stop();
       useWorkspaceStore().viewToRestore = null;   // it was this room's: the next art opens as usual
-      Object.assign(this, {
-        role: null, id: null, link: null, room: null, status: null, passwordWrong: false, hasPassword: false, watchers: [], art: null,
-        hostView: null, lookingAt: null, tracking: true, following: null, showEveryone: false, showBox: true, artistViews: {}, artZoom: 1, artFit: 1, chat: [], chatMore: false, joinedAt: null, chatRefused: null, reported: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(),
-        _allowance: null, _asking: false, _askTimer: null, _host: null, _watch: null, _settings: null, _stops: [], _password: undefined,
-        _refusedOnce: false, _resuming: false, _keepTimer: null, _tookOver: false, _named: null,
-      });
+      Object.assign(this, noRoom());
     },
 
     // The room's socket: a LobbyConnection greeting with a proof over room:<id>:<ts>.
@@ -696,11 +707,10 @@ export const useRoomStore = defineStore('room', {
       this._watch?.close();
       const { id, room, _password: password } = this;
       this.hostRoom({
+        ...hostFields(), ...watcherFields(),
         id, link: `${appOrigin()}/?room=${id}`, status: 'reconnecting', hasPassword: password !== undefined,
         room: { ...room, hostSub: useSocialStore().claims.sub, hostName: useSocialStore().claims.name },
-        watchers: [], art: null, hostView: null, lookingAt: null, tracking: true, following: null, showEveryone: false, showBox: true, artistViews: {},
-        artZoom: 1, artFit: 1, joinedAt: null, muted: [], peopleOpen: false, lobbyPin: null, session: newSession(),
-        _watch: null, _password: undefined, _refusedOnce: false, _resuming: false, _tookOver: true,
+        _tookOver: true,
       });
       drawing.takeOver(this._host, { planned, words });
       this.chat = this.chat.map((row) => ({ ...row, host: row.mine }));
@@ -720,9 +730,9 @@ export const useRoomStore = defineStore('room', {
       forgetRoomLedger(this.id).catch(() => {});
       const { id, room } = this;
       Object.assign(this, {
-        link: null, hasPassword: false, watchers: [], peopleOpen: false, muted: [], lobbyPin: null, session: newSession(), joinedAt: this.chat.at(-1)?.id ?? null,
-        room: { name: room.name, welcome: room.welcome, host: name, hostSub: sub }, following: sub,
-        _host: null, _settings: null, _stops: [], _keepTimer: null, _resuming: false, _refusedOnce: false,
+        ...hostFields(),
+        joinedAt: this.chat.at(-1)?.id ?? null, room: { name: room.name, welcome: room.welcome, host: name, hostSub: sub }, following: sub,
+        _stops: [],
       });
       this.chat = this.chat.map((row) => ({ ...row, host: row.sub === sub }));
       this.watchRoom(id);
