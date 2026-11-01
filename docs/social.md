@@ -139,8 +139,8 @@ you out everywhere else. Signed out, it has a **Sign in** link back.
   - If you lose the phone and the backup codes, there is no way back in from the app: write to
     hello@phosphor.work for help.
 - **Blocked**: everyone you've blocked, with **Unblock**.
-- **Delete account**: asks for your password, then (**Delete for good**) removes your account, your
-  username and your blocks. An account with no password needs you to have signed in with Discord or
+- **Delete account**: folded away until you open it. Its button asks for your password, then
+  (**Delete for good**) removes your account, your username and your blocks. An account with no password needs you to have signed in with Discord or
   GitHub in the last 5 minutes.
 
 ## Starting a room
