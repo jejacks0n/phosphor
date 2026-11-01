@@ -3,7 +3,7 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useElementSize, useMediaQuery, useResizeObserver } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { MERGE_WARNING, useDrawingStore } from '@/store/DrawingStore';
+import { BAKE_WARNING, MERGE_WARNING, useDrawingStore } from '@/store/DrawingStore';
 import { getTool, offeredTools, toolTitle } from '@/tools';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
@@ -20,7 +20,7 @@ const workspace = useWorkspaceStore();
 const drawing = useDrawingStore();
 // A control that's off for a reason: the reason in its title, and what it is still its name for screen readers.
 const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name } : {});
-const warnedSub = (sub) => (drawing.othersHere ? `${MERGE_WARNING} ${sub}` : sub);
+const warnedSub = (sub, warning = MERGE_WARNING) => (drawing.othersHere ? `${warning} ${sub}` : sub);
 
 // The toolbar offers the tools that work in the current view (editorTab is 'input' or 'output' while editing),
 // with a divider wherever the toolbar section changes.
@@ -199,7 +199,7 @@ const selectionHasCharacters = computed(() => {
   <ChoiceDialog
       v-if="baking"
       :title="`Bake with the ${baking} palette`"
-:sub="warnedSub('The picture as it looks now becomes the image, and the sliders go back to neutral. How should it keep its colors?')"
+:sub="warnedSub('The picture as it looks now becomes the image, and the sliders go back to neutral. How should it keep its colors?', BAKE_WARNING)"
       :choices="bakeChoices"
       @choose="chooseBake"
       @cancel="baking = null"
@@ -207,7 +207,7 @@ const selectionHasCharacters = computed(() => {
   <ChoiceDialog
       v-if="bakingFinal"
       title="Bake"
-      :sub="MERGE_WARNING"
+      :sub="BAKE_WARNING"
       :choices="BAKE_CHOICE"
       @choose="chooseBakeFinal"
       @cancel="bakingFinal = false"

@@ -9,6 +9,7 @@ const CHANGING_WORDS = 'The host is changing. Drawing is paused.';
 const ONLY_HOST = 'Only the host can do this.';
 const NOT_WHILE = 'Not while others are drawing.';
 const MERGE_WARNING = 'Strokes merged into the image can\'t be undone by anyone.';
+const BAKE_WARNING = 'A bake can\'t be undone by anyone.';
 const UNSAVED = 'Accepting replaces your open art, which has unsaved changes.';
 
 const edits = (page) => store(page, 'project', (p) => JSON.stringify([...p.editCells].sort(([a], [b]) => (a < b ? -1 : 1))));
@@ -310,7 +311,8 @@ test('host: Bake warns too, while others are connected', async ({ page: host, co
   await store(host, 'project', (p) => { p.setSlider('brightness', 120); p.commitSliders('brightness'); });
   await host.locator('.edit-toolbar .desktop-only button.primary').first().click();
   const dialog = host.getByRole('dialog', { name: 'Bake' });
-  await expect(dialog.getByText(MERGE_WARNING)).toBeVisible();
+  await expect(dialog.getByText(BAKE_WARNING)).toBeVisible();
+  await expect(dialog.getByText(MERGE_WARNING)).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(dialog).toHaveCount(0);
   expect(await store(host, 'project', (p) => p.brightness)).toBe(120);
@@ -1297,6 +1299,24 @@ test('Merge\'s warning doesn\'t come after the question it asks', async ({ page:
   const sub = await host.getByRole('dialog', { name: 'Merge down' }).locator('p').first().innerText();
   expect(sub.startsWith(MERGE_WARNING)).toBe(true);
   expect(sub.endsWith(':')).toBe(true);
+});
+
+test('with the chat folded, what the chat panel would have said shows as a toast', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  await chat(artist).getByRole('button', { name: 'Fold the chat' }).click();
+  await fromMenu(host, 'Back to watching');
+  await mayDraw(artist).toBe(false);
+  await expect(artist.locator('.app-toast')).toHaveText('You\'re back to watching.');
+});
+
+test('with the chat open, what it says isn\'t said twice', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+  await fromMenu(host, 'Back to watching');
+  await mayDraw(artist).toBe(false);
+  await expect(chat(artist).getByRole('status').filter({ hasText: 'You\'re back to watching.' })).toBeVisible();
+  await expect(artist.locator('.app-toast')).toHaveCount(0);
 });
 
 test('an artist\'s row in the people list says artist, and not that they\'re tracking the host', async ({ page: host, context }) => {

@@ -94,6 +94,8 @@ export const ROOM_AWAY_WORDS = 'Your room ended while the page was away';
 
 // The room's host changed.
 export const UNDO_RESET_WORDS = 'The host changed, so undo starts over. All the drawing is still here.';
+// The stacks started over with the host still the host (a reload), or for someone who wasn't here to see why.
+export const UNDO_RESTART_WORDS = 'Your undo starts over. All the drawing is still here.';
 export const newHostWords = ({ old, name, planned }) => (planned ? `${old} made ${name} the host.` : `${old} left the room. ${name} is now the host.`);
 
 // An undo or redo that can't be done.

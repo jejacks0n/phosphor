@@ -5,7 +5,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { settingsJson } from '@/store/project/shared';
 import { Pacer } from '@/social/lobby';
 import { readCursor, readCursors } from '@/social/wire';
-import { UNDO_RESET_WORDS, backAsArtistWords } from '@/social/messages';
+import { UNDO_RESET_WORDS, UNDO_RESTART_WORDS, backAsArtistWords } from '@/social/messages';
 import { LONG_TOAST_MS, toast } from '@/composables/useToast';
 
 const CURSORS_EVERY_MS = 100;
@@ -18,6 +18,7 @@ const HELLOS_WITHIN_MS = 5000;       // a host without all that's numbered (a re
 const ONLY_THE_HOST = 'Only the host can do this.';
 const NOT_WITH_OTHERS = 'Not while others are drawing.';
 export const MERGE_WARNING = 'Strokes merged into the image can\'t be undone by anyone.';
+export const BAKE_WARNING = 'A bake can\'t be undone by anyone.';
 
 // The people drawing in the room you're in, and the invitations to: who's an artist, who's asked, and the
 // cursors, kept out of the room store. The drawing itself is the project store's (sharing.js), which this
@@ -89,6 +90,11 @@ export const useDrawingStore = defineStore('drawing', () => {
       else sessionStorage.removeItem(acceptedKey());
     } catch { /* no storage: a reload joins as a watcher */ }
   };
+
+  // Undo has started over, and that's said unless it has been: "The host changed" only where it did.
+  function sayUndoRestarts() {
+    if (!notice.value?.includes('undo starts over')) notice.value = [notice.value, UNDO_RESTART_WORDS].filter(Boolean).join(' ');
+  }
 
   // The host's side. The list going from empty is when a stroke can start to have others under it, so
   // that's when whole-layer undo goes; the list emptying changes nothing about the undo that's left.
@@ -164,7 +170,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     const whole = project.restoreLedger(kept, me());
     setArtists(list);
     if (!whole) {
-      notice.value = UNDO_RESET_WORDS;
+      sayUndoRestarts();
       undoTold = new Set();
     }
     startGathering();
@@ -226,7 +232,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     adopting = answer.kind === 'project';
     try {
       if (await project.takeCatchUp(answer, has) && adopting) {
-        notice.value = UNDO_RESET_WORDS;
+        sayUndoRestarts();
         undoTold = new Set();
       }
     } catch (error) {
@@ -522,7 +528,7 @@ export const useDrawingStore = defineStore('drawing', () => {
       onUndoReset: () => {
         if (!mayDraw.value) return;
         project.clearHistory();
-        if (!notice.value?.includes(UNDO_RESET_WORDS)) notice.value = [notice.value, UNDO_RESET_WORDS].filter(Boolean).join(' ');
+        sayUndoRestarts();
       },
       onRefused: (kind, stroke) => { if (mayDraw.value) project.strokeRefused(kind, stroke); },
       onInvite: () => { invitation.value = true; },
