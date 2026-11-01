@@ -76,7 +76,7 @@ const confirmBlock = async () => {
           <button v-if="drawing.artists.includes(watcher.sub) && watcher.connected" :disabled="drawing.paused" :title="drawing.paused ? 'Not while drawing is paused.' : undefined" @click="askToMakeHost(watcher, $event)">Make host</button>
           <button v-if="drawing.artists.includes(watcher.sub)" @click="drawing.backToWatching(watcher.sub)">Back to watching</button>
           <button v-else-if="drawing.invited.includes(watcher.sub)" @click="drawing.withdraw(watcher.sub)">Withdraw invitation</button>
-          <button v-else-if="watcher.connected" @click="drawing.invite(watcher.sub)">Make artist</button>
+          <button v-else-if="watcher.connected" :disabled="!!drawing.artistsFull" :title="drawing.artistsFull ?? undefined" @click="drawing.invite(watcher.sub)">Make artist</button>
           <button @click="room.remove(watcher.peer)">Kick – for this session</button>
           <button v-if="room.muted.includes(watcher.sub)" @click="room.mute(watcher.sub, false)">Unmute</button>
           <button v-else title="Their messages stop reaching anyone else. They aren't told." @click="room.mute(watcher.sub, true)">Mute – for everyone but you</button>

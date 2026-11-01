@@ -273,7 +273,10 @@ copy. If the role passes to an artist (see **Drawing together**), the room carri
 ## Drawing together
 
 A host can invite a member in the room to draw. **N here** lists them; their **⋯** menu has **Make artist**,
-and the row then says **invited** with **Withdraw invitation** in the menu. Guests can't be asked.
+and the row then says **invited** with **Withdraw invitation** in the menu. Guests can't be asked. A room holds a
+limited number of people drawing, the host among them; at that number **Make artist** is off and says "This room has
+as many artists as it can take." Someone asked holds a place until they answer, and someone listed keeps theirs while
+they're away, so they can always come back. Someone going back to watching frees theirs.
 
 The invited person sees "{host} invited you to draw." in the chat panel, with **Accept** and **Not now**. It
 blocks nothing, so they can save what they have open first; if that art has unsaved changes, it says accepting

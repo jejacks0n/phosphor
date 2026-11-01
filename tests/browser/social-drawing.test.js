@@ -3,12 +3,13 @@
 // passes signed by a test key. The tests draw through the stores and read what each ends up with.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createPinia, getActivePinia, setActivePinia } from 'pinia';
-import { watch } from 'vue';
+import { createApp, h, nextTick, watch } from 'vue';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { Host } from '@/social/hosting';
 import { Watch } from '@/social/watching';
 import { toBase64url } from '@/social/base64url';
-import { CHECK_EVERY_MS, useDrawingStore } from '@/store/DrawingStore';
+import { CHECK_EVERY_MS, MOST_ARTISTS, useDrawingStore } from '@/store/DrawingStore';
+import RoomPeople from '@/components/social/RoomPeople.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { ASK_AGAIN_MS } from '@/store/project/sharing';
 import { useRoomStore } from '@/store/RoomStore';
@@ -2631,3 +2632,103 @@ test('a gather stopped with no number yet leaves a number a project can carry', 
   expect(room.project._ledger.n).toBe(0);
 });
 
+
+// Full but for `left` places, the host counted: the room's own word on who's listed, none of them here.
+const listedUpTo = (room, left, also = []) => {
+  const others = Array.from({ length: MOST_ARTISTS - 1 - left - also.length }, (_, i) => `listed-${i}`);
+  setActivePinia(room.pinia ?? getActivePinia());
+  room.drawing.artistsNow([...others, ...also]);
+};
+
+// The host's list of who's here, with one watcher, and the button their ⋯ menu has for Make artist.
+async function makeArtistButton(room, watcher) {
+  const rooms = useRoomStore();
+  rooms.$patch({ role: 'host', peopleOpen: true, watchers: [{ peer: watcher, sub: watcher, name: watcher, guest: false, tracking: false, connected: true }] });
+  const app = createApp({ render: () => h(RoomPeople) });
+  app.use(getActivePinia());
+  const element = document.createElement('div');
+  document.body.append(element);
+  app.mount(element);
+  toStop.push(() => { app.unmount(); element.remove(); });
+  await nextTick();
+  element.querySelector('.dropdown-trigger').click();
+  await nextTick();
+  return () => [...element.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Make artist');
+}
+
+test('the host can\'t make more artists than the cap', async () => {
+  const room = await hosting();
+  const pinia = getActivePinia();
+  room.pinia = pinia;
+  listedUpTo(room, 1);
+  const ann = await join(room, 'ann'), bob = await join(room, 'bob');
+  setActivePinia(pinia);
+  const button = await makeArtistButton(room, 'bob');
+  expect(button().disabled).toBe(false);
+
+  expect(room.drawing.invite('ann')).toBe(true);   // asked is a place held, as a yes has to find one
+  await expect.poll(() => ann.drawing.invitation, PATIENT).toBe(true);
+  expect(room.drawing.artistsFull).toBe('This room has as many artists as it can take.');
+  await nextTick();
+  expect(button().disabled).toBe(true);
+  expect(button().title).toBe('This room has as many artists as it can take.');
+  expect(room.drawing.invite('bob')).toBe(false);
+  expect(room.drawing.invited).toEqual(['ann']);
+  await wait(50);
+  expect(bob.drawing.invitation).toBe(false);
+  expect(room.drawing.invite('ann')).toBe(true);   // who's asked can be asked again
+
+  room.drawing.withdraw('ann');
+  expect(room.drawing.artistsFull).toBe(null);
+  await nextTick();
+  expect(button().disabled).toBe(false);
+  expect(button().title).toBe('');
+  expect(room.drawing.invite('bob')).toBe(true);
+  await expect.poll(() => bob.drawing.invitation, PATIENT).toBe(true);
+  bob.drawing.accept();
+  await expect.poll(() => bob.drawing.mayDraw, PATIENT).toBe(true);
+  expect(room.drawing.artists).toHaveLength(MOST_ARTISTS - 1);   // the host makes up the cap
+  expect(room.drawing.artistsFull).toBe('This room has as many artists as it can take.');
+});
+
+test('a yes that finds the room full isn\'t listed, and is told so', async () => {
+  const room = await hosting();
+  room.pinia = getActivePinia();
+  listedUpTo(room, 0);
+  const bob = await join(room, 'bob');
+  setActivePinia(room.pinia);
+  room.drawing.invited = ['bob'];   // as a reload can bring back
+  bob.drawing.accept();
+  await expect.poll(() => room.drawing.invited, PATIENT).toEqual([]);
+  expect(room.drawing.artists).not.toContain('bob');
+  expect(room.drawing.artists).toHaveLength(MOST_ARTISTS - 1);
+  await wait(50);
+  expect(bob.drawing.mayDraw).toBe(false);
+  expect(sessionStorage.getItem('phosphor-artist:room:bob')).toBe(null);
+});
+
+test('someone listed keeps their place: back on a new connection at the cap, they still draw, and going frees it', async () => {
+  const room = await hosting();
+  room.pinia = getActivePinia();
+  const ann = await artist(room, 'ann');
+  listedUpTo(room, 0, ['ann']);
+  await expect.poll(() => ann.drawing.artists.includes('ann'), PATIENT).toBe(true);
+  setActivePinia(room.pinia);
+  const list = [...room.drawing.artists];
+  expect(room.drawing.artistsFull).not.toBe(null);
+
+  ann.drawing.connection('lost');
+  room.drawing.peopleHere([]);
+  expect(room.drawing.artists).toEqual(list);   // gone, and still counted
+  expect(room.drawing.artistsFull).not.toBe(null);
+  ann.drawing.connection('live');
+  ann.drawing.heardArtists(list);
+  expect(ann.drawing.paused).toBe(false);
+  ann.project.editCell(1, 1, { char: 'A' });
+  ann.project.commitEdit();
+  await expect.poll(() => char(room.project, 1, 1), PATIENT).toBe('A');
+  expect(room.drawing.artists).toEqual(list);
+
+  room.drawing.backToWatching('ann');
+  expect(room.drawing.artistsFull).toBe(null);
+});
