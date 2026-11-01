@@ -78,6 +78,22 @@ test('the host invites, the row says invited, and withdrawing takes the notice a
   await expect(rowOf(host).getByText('invited', { exact: true })).toBeVisible();
   await expect(invitation(person)).toContainText('ansi-fan invited you to draw.');
 
+  // Not now, then Accept, each half the row, and both the height of an ordinary button.
+  const notNow = await invitation(person).getByRole('button', { name: 'Not now' }).boundingBox();
+  const accept = await invitation(person).getByRole('button', { name: 'Accept' }).boundingBox();
+  expect(notNow.x).toBeLessThan(accept.x);
+  expect(accept.width).toBeCloseTo(notNow.width, 0);
+  expect(accept.height).toBe(notNow.height);
+  expect(accept.width + notNow.width).toBeGreaterThan((await invitation(person).boundingBox()).width * 0.8);
+  const ordinary = await person.evaluate(() => {
+    const button = document.body.appendChild(document.createElement('button'));
+    button.textContent = 'Not now';
+    const { height } = button.getBoundingClientRect();
+    button.remove();
+    return height;
+  });
+  expect(accept.height).toBe(ordinary);
+
   await fromMenu(host, 'Withdraw invitation');
   await expect(invitation(person)).toHaveCount(0);
   await expect(rowOf(host).getByText('invited', { exact: true })).toHaveCount(0);
