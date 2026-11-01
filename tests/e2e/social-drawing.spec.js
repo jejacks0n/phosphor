@@ -6,6 +6,7 @@ import { fakeRoom, member, ROOM_ID, goLive, shown, chat, hash, selected, ARTIST,
 
 const WAITING_WORDS = 'The host is reconnecting. Drawing is paused.';
 const CHANGING_WORDS = 'The host is changing. Drawing is paused.';
+const GETTING_WORDS = 'Getting the room\'s art. Drawing is paused.';
 const ONLY_HOST = 'Only the host can do this.';
 const NOT_WHILE = 'Not while others are drawing.';
 const MERGE_WARNING = 'Strokes merged into the image can\'t be undone by anyone.';
@@ -721,6 +722,17 @@ test('the pause layer follows the view: folding the chat and narrowing the windo
   const at = await exit.boundingBox();
   expect(await artist.evaluate(({ x, y }) => !document.elementFromPoint(x, y).closest('.pause-layer'), { x: at.x + 2, y: at.y + 2 })).toBe(true);
   release();
+});
+
+test('back from a reload with the room\'s art still on its way, the pause says that, not that the host is away', async ({ page: host, context }) => {
+  const { artist } = await together(host, context, fakeRoom());
+  await artist.waitForTimeout(1200);   // autosave has what's open, under this id
+  await store(host, 'room', (r) => { r._host.sendProject = async () => {}; });   // it never comes
+  artist.on('dialog', (dialog) => dialog.accept());
+  await artist.reload();
+  await expect(pauseLayer(artist)).toContainText(GETTING_WORDS, { timeout: 15_000 });
+  await expect(pauseLayer(artist)).not.toContainText('reconnecting');
+  expect(await store(artist, 'project', (p) => p._paused)).toBe(true);   // and nothing they'd draw is silently replaced
 });
 
 test('a host back from a reload still has both invitations, and either can accept', async ({ page: host, context }) => {
