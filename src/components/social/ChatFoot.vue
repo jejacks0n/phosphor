@@ -74,6 +74,7 @@ function signIn() {
   <footer>
     <p v-if="silenced" class="silenced" role="status">{{ silencedWords(room.silencedUntil, now) }}</p>
     <form v-else-if="room.canChat" @submit.prevent="send">
+      <span class="who-am-i">[ {{ social.myName }} ]</span>
       <div class="box">
         <textarea ref="field" v-model="text" aria-label="Message" :maxlength="MOST_CHARS" rows="1" @input="typed" @keydown="onKeyDown"></textarea>
         <button type="submit" class="send" :class="{ ready: hasText }" aria-label="Send">
@@ -96,6 +97,18 @@ footer {
 form {
   display: flex;
   flex-direction: column;
+}
+span.who-am-i {
+  align-self: flex-start;
+  max-width: 100%;
+  margin: 0 0 3px 2px;
+  overflow: hidden;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
 }
 div.box {
   display: flex;

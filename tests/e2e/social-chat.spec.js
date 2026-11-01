@@ -360,6 +360,17 @@ test('Kick – for this session: the watcher is in the lobby with "The host remo
   expect(server.sent('POST', '/api/blocks')).toHaveLength(0);   // removing is not blocking
 });
 
+test('the chat box says who you are, as [ name ] on top of it, each person their own', async ({ page: host, context }) => {
+  const { watcher } = await inRoom(host, context, { me: wren });
+  for (const [page, name, other] of [[watcher, 'pixel_wren', 'ansi-fan'], [host, 'ansi-fan', 'pixel_wren']]) {
+    const tag = panel(page).locator('footer').getByText(`[ ${name} ]`, { exact: true });
+    await expect(tag).toBeVisible();
+    await expect(panel(page).locator('footer').getByText(`[ ${other} ]`)).toHaveCount(0);
+    const box = await panel(page).getByRole('textbox', { name: 'Message' }).boundingBox();
+    expect((await tag.boundingBox()).y).toBeLessThan(box.y);
+  }
+});
+
 test('Block – from all future rooms asks first, then blocks and removes', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
   await openPeople(host);
