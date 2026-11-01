@@ -713,6 +713,30 @@ test('a callback that throws doesn\'t reach the channel, and a change that threw
   expect(calls.undo).toEqual([]);
 });
 
+test('someone taken off the list during a hold isn\'t numbered when it ends, and holds overlap', async () => {
+  const r = await room(['p1']);
+  const calls = drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  const w = connected(r, 'p1');
+  w.drawing = true;
+  r.host.hold();
+  r.host.hold();
+  r.host.heard(w, JSON.stringify(CHANGE));
+  r.host.release();
+  expect(calls.change).toEqual([]);   // another hold's still on
+  r.host.release();
+  expect(calls.change.length).toBe(1);
+
+  r.host.hold();
+  r.host.heard(w, JSON.stringify(CHANGE));
+  r.host.heard(w, JSON.stringify({ t: 'undo', stroke: 's' }));
+  r.host.setArtists([]);
+  r.host.release();
+  expect(calls.change.length).toBe(1);
+  expect(calls.undo).toEqual([]);
+});
+
 test('an undo or redo the host can\'t do is told to its sender, and only with a stroke id that could be one', async () => {
   const r = await room(['p1']);
   drawingCalls(r);
