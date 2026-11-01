@@ -652,6 +652,20 @@ export const useRoomStore = defineStore('room', {
       for (const msg of named.heard) this.heard(msg);
     },
 
+    tookItBack() {
+      this.takeOver({ planned: false, words: null });
+      this._connection.open();
+    },
+
+    // Named while away, and what's open isn't back yet: they watch until it is, and then look again.
+    async takeItBackWhenSettled(sub) {
+      const project = useProjectStore(), workspace = useWorkspaceStore(), connection = this._connection;
+      const back = () => !!project.image || workspace.documentAnswered;
+      if (back()) return;
+      await until(back).toBe(true);
+      if (this._connection === connection && this.room?.hostSub === sub && useDrawingStore().holdsTheArt()) this.tookItBack();
+    },
+
     // Named with none of the room's art to carry on with: the role goes to someone listed who's here, since they
     // may have it. No answer means it didn't happen, so it's the next one's; with no one left, the room ends.
     passOn(answerLate = false) {
@@ -934,11 +948,14 @@ export const useRoomStore = defineStore('room', {
           (this._host ?? this._watch)?.signalFrom(msg.from, msg.data);
           break;
         case 'joined':
-          // The room moved on to this person while their socket was down, and this is their way back in: it's theirs.
-          if (msg.hostSub === useSocialStore().claims?.sub && this.room?.hostSub !== msg.hostSub && useDrawingStore().holdsTheArt()) {
-            this.takeOver({ planned: false, words: null });
-            this._connection.open();
-            break;
+          // The room moved on to this person while their socket was down, and this is their way back in: it's theirs,
+          // or will be if what's coming back (a reload) is the room's art.
+          if (msg.hostSub === useSocialStore().claims?.sub && this.room?.hostSub !== msg.hostSub) {
+            if (useDrawingStore().holdsTheArt()) {
+              this.tookItBack();
+              break;
+            }
+            this.takeItBackWhenSettled(msg.hostSub);
           }
           if (Array.isArray(msg.artists) && !useDrawingStore().mayDraw) useDrawingStore().artists = msg.artists;
           this._refusedOnce = false;
