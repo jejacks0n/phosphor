@@ -33,6 +33,7 @@ import { MOST_CHANGE_BYTES, MOST_PROJECT_BYTES, packProject, packValue, readChan
 import { REFUSED_WORDS } from '@/social/messages.js';
 import { toast } from '@/composables/useToast.js';
 import { ALONE, SAVED_KEYS, randomId, runsPatch } from '@/store/project/shared.js';
+import { settingsFromStranger } from '@/store/settings.js';
 
 const SLICE_MS = 100;
 export const ASK_AGAIN_MS = 30_000;
@@ -156,20 +157,12 @@ const boundsOf = ({ cols, rows, paintLayer }) => ({ cols, rows: charRowsOf(rows)
 
 // Whether a number's message can be taken as heard, from a host or an artist: a stranger, either way.
 function readsAsHeard(project, message) {
-  if (message?.t === 'settings') return !!message.values && typeof message.values === 'object';
+  if (message?.t === 'settings') return !!settingsFromStranger(message.values);
   if (message?.t === 'base') {
     return !!readChange({ stroke: 'base', cells: [], runs: message.runs }, boundsOf({ cols: 0, rows: 0, paintLayer: project.baseLayer }))
       && !!message.records && typeof message.records === 'object';
   }
   return !!readChange(message, boundsOf(project));
-}
-
-// What a project's settings may set: only what a document saves. A host is a stranger, and these are patched
-// onto the store.
-function settingsFromHost(settings) {
-  const taken = Object.fromEntries([...SAVED_KEYS, 'fit', 'paintScale', 'baseScale', 'imageIsWorkingCopy'].filter((key) => key in settings).map((key) => [key, settings[key]]));
-  if (!(Number.isInteger(taken.baseScale) && taken.baseScale > 0)) delete taken.baseScale;
-  return taken;
 }
 
 // What the open stroke's cells have changed since its last slice.
@@ -404,10 +397,10 @@ export const sharingActions = {
       this.replayOnPicture(tail);
       return true;
     }
-    const cells = [...parts.editCells];
-    if (cells.length > MAX_CELLS || !readChange({ stroke: 'project', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES })) return false;
+    const cells = [...parts.editCells], settings = settingsFromStranger(parts.settings);
+    if (!settings || cells.length > MAX_CELLS || !readChange({ stroke: 'project', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES })) return false;
     await this.openFromHost(
-      { ...parts, settings: settingsFromHost(parts.settings), erasedCells: [], migrated: false },
+      { ...parts, settings, erasedCells: [], migrated: false },
       { filename: this.filename, documentId: this.documentId, sameDocument: true },
     );
     this.ensureLayer();
@@ -608,24 +601,39 @@ export const sharingActions = {
     if (!this.paintLayer) return;
     const heard = sharing.heard;
     sharing.heard = [];
+    // A number that won't land costs the picture, not the rest of what's here: the project puts it right.
+    const landing = (fn) => {
+      try {
+        fn();
+      } catch (error) {
+        console.warn('A change heard couldn\'t be written.', error);
+        askForProject(sharing);
+      }
+    };
     let numbered = [];
+    const landNumbered = () => {
+      const these = numbered;
+      numbered = [];
+      landing(() => this.applyNumbered(...these));
+    };
     for (const message of heard) {
       if (message.t === 'numbered') {
         numbered.push(message);
         continue;
       }
-      this.applyNumbered(...numbered);
-      numbered = [];
+      landNumbered();
       if (message.t === 'check') {
         this.compareCheck(message);
         continue;
       }
       sharing.pending.n = message.n;
       sharing.pending.tail.add(message);
-      if (message.t === 'settings') this.applySettings(message.values);
-      else this.applyBase(message.runs, deserializeBase(message.records).records);
+      landing(() => {
+        if (message.t === 'settings') this.applySettings(message.values);
+        else this.applyBase(message.runs, deserializeBase(message.records).records);
+      });
     }
-    this.applyNumbered(...numbered);
+    landNumbered();
   },
 
   // A check heard in its place among the numbers, so what came before it has landed and Pending's sum is the
@@ -790,13 +798,13 @@ export const sharingActions = {
   // so undo and the selection stay. A new epoch means the positions don't mean what they did, so both go.
   // documentId: what a reload had open as this art, so it's the one document in the autosave list.
   async takeProject(parts, { n, epoch = null, took = 0, filename, send, me, documentId }) {
-    const cells = [...parts.editCells];
-    if (cells.length > MAX_CELLS || !readChange({ stroke: 'project', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES })) return false;
+    const cells = [...parts.editCells], settings = settingsFromStranger(parts.settings);
+    if (!settings || cells.length > MAX_CELLS || !readChange({ stroke: 'project', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES })) return false;
     const opening = this._sharing;
     if (opening) opening.opening = true; // no check says anything while this opens
     try {
       await this.openFromHost(
-        { ...parts, settings: settingsFromHost(parts.settings), erasedCells: [], migrated: false },
+        { ...parts, settings, erasedCells: [], migrated: false },
         { filename, documentId: opening ? this.documentId : documentId, sameDocument: !!opening && epoch !== null && opening.epoch === epoch },
       );
     } catch (error) {

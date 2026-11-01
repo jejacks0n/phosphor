@@ -2,7 +2,9 @@
 // so users' persisted settings survive.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { SETTING_KEYS, SAUCE_KEYS, getSetting, groupDefaults, slidersAtDefaults, RESET_GROUPS } from '../../src/store/settings.js';
+import { readdirSync, readFileSync } from 'node:fs';
+import { SETTING_KEYS, SAUCE_KEYS, getSetting, groupDefaults, settingsFromStranger, slidersAtDefaults, RESET_GROUPS } from '../../src/store/settings.js';
+import { readProject } from '../../src/document/projectIO.js';
 
 test("Settings schema: same keys, storage keys and reset defaults as before the schema existed, so users' persisted settings survive", async () => {
   // same 23 keys as the pre-schema SETTING_KEYS; order follows the table
@@ -21,4 +23,32 @@ test("Settings schema: same keys, storage keys and reset defaults as before the 
   assert.equal(slidersAtDefaults({ ...neutral, brightness: '100' }), true);    // a slider's numeric string
   assert.equal(slidersAtDefaults({ ...neutral, edgeColor: '#ff0000' }), false); // the Edges color counts
   assert.equal(slidersAtDefaults({ ...neutral, colorize: '#00ff00' }), true);   // the Colorize color alone doesn't
+});
+
+const GOOD = { brightness: 120, contrast: '150', chars: 'abc', colorize: '#00ff00', aspectLock: false, sauceTitle: 'Hi', cols: 80, rows: 50 };
+
+test('settings from another browser come back when every value is one a document could have, and only what a document saves', () => {
+  assert.deepEqual(settingsFromStranger({ ...GOOD, _sharing: null, editCells: 1, hasPaint: true }), GOOD);
+  const layout = { fit: { dx: 0, dy: 0, dw: 80, dh: 100 }, paintScale: 4, baseScale: 2, imageIsWorkingCopy: true };
+  assert.deepEqual(settingsFromStranger({ ...GOOD, ...layout }), { ...GOOD, ...layout });
+  assert.deepEqual(settingsFromStranger({ ...GOOD, paintScale: null, baseScale: null, fit: null }), GOOD);   // no layer yet
+});
+
+test('one bad value refuses them all, so nothing is half applied', () => {
+  for (const bad of [
+    { brightness: 501 }, { brightness: -1 }, { brightness: 'bright' }, { brightness: null }, { hue: Infinity }, { colorCount: 1 },
+    { chars: 7 }, { chars: ['a'] }, { palette: {} }, { seed: 1 }, { sauceTitle: 1 },
+    { colorize: 'red' }, { edgeColor: '#12' }, { aspectLock: 'yes' }, { sauceUse9pxFont: 1 },
+    { cols: 0 }, { cols: 1e6 }, { cols: 1.5 }, { rows: 0 }, { rows: 1e7 },
+    { baseScale: 1e9 }, { baseScale: 0 }, { baseScale: 1.5 }, { baseScale: '2' }, { paintScale: 1e9 }, { paintScale: -1 }, { paintScale: 'x' },
+    { fit: { dx: 0, dy: 0, dw: -1, dh: 1 } }, { fit: 'wide' }, { imageIsWorkingCopy: 'yes' },
+  ]) assert.equal(settingsFromStranger({ ...GOOD, ...bad }), null, JSON.stringify(bad));
+  for (const notAnObject of [null, undefined, 'x', 7]) assert.equal(settingsFromStranger(notAnObject), null);
+});
+
+test('every project fixture\'s settings would be taken from a host', async () => {
+  for (const name of readdirSync('tests/fixtures/projects').filter((file) => file.endsWith('.phosphor'))) {
+    const { settings } = await readProject(new Blob([readFileSync(`tests/fixtures/projects/${name}`)]));
+    assert.ok(settingsFromStranger(settings), name);
+  }
 });

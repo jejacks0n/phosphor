@@ -655,9 +655,9 @@ test('an artist\'s paste left where it is goes out too, and a nudge starts its t
   const { project, sent } = await drawing('artist');
   vi.useFakeTimers();
   const layers = { base: false, edit: true };
-  let rect = project.pasteSelection({ w: 1, h: 1, cells: [Object.freeze({ char: 'P' })] }, 2, 2);
+  const rect = project.pasteSelection({ w: 1, h: 1, cells: [Object.freeze({ char: 'P' })] }, 2, 2);
   vi.advanceTimersByTime(HELD_FLOAT_MS - 1);
-  rect = project.floatSelection(rect, layers, 0, 1);
+  project.floatSelection(rect, layers, 0, 1);
   vi.advanceTimersByTime(HELD_FLOAT_MS - 1);
   expect(changes(sent)).toEqual([]);
   vi.advanceTimersByTime(1);
@@ -1031,6 +1031,30 @@ test('applySettings takes only the document\'s saved settings', async () => {
   expect(project._sharing).toBe(sharing);
   expect(project.cols).toBe(40);
   expect(project.editCells.size).toBe(0);
+});
+
+test('a settings message with a bad value is refused whole, and what\'s fine goes on', async () => {
+  const { project } = await drawing('artist');
+  const before = project.brightness;
+  project.hearDrawing({ t: 'settings', n: 1, values: { brightness: before + 1, chars: 7 } });
+  project.flushHeard();
+  expect(project.brightness).toBe(before);
+  expect(project._sharing.pending.n).toBe(0);
+  project.hearDrawing({ t: 'settings', n: 1, values: { brightness: before + 1 } });
+  project.flushHeard();
+  expect(project.brightness).toBe(before + 1);
+});
+
+test('a throw on one message heard doesn\'t lose the rest, and asks for the project', async () => {
+  const { project, sent } = await drawing('artist');
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(project, 'applyBase').mockImplementationOnce(() => { throw new Error('no'); });
+  project.hearDrawing({ t: 'base', n: 1, runs: [], records: {} });
+  project.hearDrawing({ t: 'numbered', n: 2, by: 'them', stroke: 'theirs', cells: [['4,4', THEM]], runs: [] });
+  project.flushHeard();
+  expect(char(project, 4, 4)).toBe('T');
+  expect(project._sharing.pending.n).toBe(2);
+  expect(sent.filter(({ t }) => t === 'artist-hello')).toEqual([{ t: 'artist-hello', has: -1, epoch: null }]);
 });
 
 test('applyBase writes the base\'s pixels and pins, refreshing their cells, and an open stroke leaves them alone', async () => {

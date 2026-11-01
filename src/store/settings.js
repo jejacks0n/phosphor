@@ -1,5 +1,7 @@
 import { useLocalStorage } from '@vueuse/core';
 import { generateSlug } from 'random-word-slugs';
+import { goodFit, goodScale } from '@/document/projectIO.js';
+import { MAX_COLS, maxRowsBeside } from '@/lib/Cells.js';
 
 // Every persisted project setting, declared once. Order within the transform, adjust and effects
 // groups is the ControlPanel's on-screen order. Storage keys must never change: they hold users' settings.
@@ -53,6 +55,46 @@ export const RESET_GROUPS = ['transform', 'adjust', 'effects'];
 export function slidersAtDefaults(state) {
   return RESET_GROUPS.every(group => Object.entries(groupDefaults(group)).every(([key, value]) =>
     (typeof value === 'number' ? Number(state[key]) === value : state[key] === value)));
+}
+
+// A value a setting could hold: its default's kind, a slider within its range (a slider can hold a numeric
+// string), a color a hex.
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+const asNumber = (value) => (typeof value === 'string' && value.trim() ? Number(value) : value);
+function goodSetting({ default: usual, min = -Infinity, max = Infinity }, value) {
+  if (typeof usual === 'boolean') return typeof value === 'boolean';
+  if (typeof usual === 'number') return typeof asNumber(value) === 'number' && Number.isFinite(asNumber(value)) && asNumber(value) >= min && asNumber(value) <= max;
+  return typeof value === 'string' && (typeof usual !== 'string' || !HEX_COLOR.test(usual) || HEX_COLOR.test(value));
+}
+
+// Settings from another browser, only what a document saves and how its layers sit (null for those of a document
+// with no layers yet), or null if any of it is bad: a host is a stranger, and these reach the store, the render and
+// local settings. It isn't half applied.
+export function settingsFromStranger(values) {
+  if (!values || typeof values !== 'object') return null;
+  const taken = {};
+  for (const setting of SETTINGS) {
+    if (!(setting.key in values)) continue;
+    if (!goodSetting(setting, values[setting.key])) return null;
+    taken[setting.key] = values[setting.key];
+  }
+  const cols = asNumber(taken.cols ?? 1), rows = asNumber(taken.rows ?? 1);
+  if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1 || cols > MAX_COLS || rows > maxRowsBeside(cols)) return null;
+  const size = Math.max(cols, rows);
+  for (const key of ['paintScale', 'baseScale']) {
+    if (values[key] === null || values[key] === undefined) continue;
+    if (!goodScale(values[key], size)) return null;
+    taken[key] = values[key];
+  }
+  if (values.fit !== null && values.fit !== undefined) {
+    if (!goodFit(values.fit)) return null;
+    taken.fit = values.fit;
+  }
+  if (values.imageIsWorkingCopy !== undefined) {
+    if (typeof values.imageIsWorkingCopy !== 'boolean') return null;
+    taken.imageIsWorkingCopy = values.imageIsWorkingCopy;
+  }
+  return taken;
 }
 
 export function getSetting(key) {
