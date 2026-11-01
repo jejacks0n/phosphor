@@ -3335,3 +3335,25 @@ test('a block held when the art is replaced from a new start still goes out on i
   await allMatch(room, ann);
   expect(char(room.project, 3, 1)).toBe(char(ann.project, 3, 1));
 }, 15_000);
+
+test('a project that finishes opening after a new connection began leaves that connection still catching up', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const take = ann.project.takeProject.bind(ann.project);
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const taking = vi.spyOn(ann.project, 'takeProject').mockImplementation(async (...args) => {
+    await gate;
+    return take(...args);
+  });
+  await room.host.sendProject(seat(room, 'ann'));
+  await expect.poll(() => taking.mock.calls.length, PATIENT).toBe(1);
+  ann.drawing.connection('lost');
+  ann.drawing.connection('connecting');
+  release();
+  await taking.mock.results[0].value;
+  await later();
+  expect(ann.drawing.paused).toBe(true);   // the new connection's host hasn't said what it numbered
+  ann.drawing.connection('live');
+  expect(ann.drawing.paused).toBe(true);
+});
