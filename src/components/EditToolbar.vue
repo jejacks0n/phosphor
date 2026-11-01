@@ -199,7 +199,7 @@ const selectionHasCharacters = computed(() => {
   <ChoiceDialog
       v-if="baking"
       :title="`Bake with the ${baking} palette`"
-:sub="warnedSub('The picture as it looks now becomes the image, and the sliders go back to neutral. How should it keep its colors?', BAKE_WARNING)"
+      :sub="warnedSub('The picture as it looks now becomes the image, and the sliders go back to neutral. How should it keep its colors?', BAKE_WARNING)"
       :choices="bakeChoices"
       @choose="chooseBake"
       @cancel="baking = null"

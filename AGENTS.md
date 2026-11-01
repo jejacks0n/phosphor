@@ -51,8 +51,9 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   (cells, colors, the image pipeline, exports); `src/tools/`: one file per tool.
 - The SOCIAL tab: `src/social/` (the network and crypto modules: API calls, the lobby socket, keys
   and passes, Turnstile, names, the server's error words; for rooms `wire.js` (messages between
-  browsers), `peer.js` (WebRTC), `hosting.js`, `watching.js`, `thumbnail.js` (the lobby picture) and
-  `chat.js` (the text rule, the kept log and its pages, the allowance)),
+  browsers), `peer.js` (WebRTC), `hosting.js`, `watching.js`, `pending.js` (an artist's changes with no number yet), `thumbnail.js`
+  (the lobby picture) and `chat.js` (the text rule, the kept log and its pages, the allowance); and in `src/document/`,
+  `ledger.js` (who drew what, for undo and the numbers) and `changes.js` (a change as data, its hash, the tail)),
   `src/store/SocialStore.js` (who you are, your pass, the lobby), `src/store/RoomStore.js` (the room
   you host or watch), `src/store/DrawingStore.js` (who's an artist, invitations, cursors) and `src/components/social/` (one component per page; the chat is `ChatPanel.vue`, `ChatFoot.vue` and `ReportDialog.vue`). Its tests are the
   `social-*` files in `tests/unit`, `tests/browser` and `tests/e2e`; the end-to-end fake server is

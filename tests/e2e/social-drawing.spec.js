@@ -658,10 +658,12 @@ test('pressing the tag of an artist off screen goes to where they are', async ({
 test('someone whose cell is only partly out of view is marked where they are, and no tag lies over the art', async ({ page: host, context }) => {
   const room = fakeRoom();
   const { artist } = await together(host, context, room);
+  await settled(artist);
   await artist.locator('.ansi-editor > article').evaluate((el) => { el.scrollTop = 0; });
   const { height } = await artist.locator('.ansi-editor .display').boundingBox();
   const rowHeight = height / (await store(artist, 'project', (p) => Math.ceil(p.rows / 2)));
   await artist.locator('.ansi-editor > article').evaluate((el, by) => { el.scrollTop = by; }, rowHeight * 1.5);   // half of the second row is out of view
+  expect(await artist.locator('.ansi-editor > article').evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
   const at = await cellPoint(host, 1, 1);
   await host.mouse.move(at.x, at.y);
   await host.mouse.move(at.x + 1, at.y);

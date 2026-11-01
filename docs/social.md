@@ -297,8 +297,9 @@ colors and view, with **Show others' cursors** in the chat panel, on by default:
 view, which goes there when pressed. Anyone drawing can save the art; a project they save has no names in it.
 
 **Only the host** changes the picture and the grid: the settings, SAUCE fields, sliders, base layer, Bake, Merge up,
-Merge down and Into the image are off for an artist and say "Only the host can do this." Merging or baking is final
-while anyone's listed as an artist, since other people's strokes can land on it. If another artist is connected,
+Merge down and Into the image are off for an artist and say "Only the host can do this." Merge down, Into the image
+and Bake are final while anyone's listed as an artist, since other people's strokes can land on them; Merge up is an
+ordinary stroke that its maker can undo. If another artist is connected,
 Merge warns first: "Strokes merged into the image can't be undone by anyone." Bake warns too: "A bake can't be undone
 by anyone."
 
