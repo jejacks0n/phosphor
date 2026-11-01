@@ -7,7 +7,7 @@ import { useDrawingStore } from '@/store/DrawingStore';
 import { forgetKey } from '@/social/keys';
 import { desktopQuery } from '@/social/config';
 import { ROOM_AWAY_WORDS } from '@/social/messages';
-import { keepHostCopy, hostCopies, readLatest } from '@/document/autosaveStore';
+import { keepHostCopy, hostCopies, keepRoomLedger, readRoomLedger, readLatest } from '@/document/autosaveStore';
 import { settingsJson } from '@/store/project/shared';
 import { createTestApp, loadImage } from '../support/app.js';
 import { ownDatabase } from '../support/socialDatabase.js';
@@ -23,7 +23,7 @@ const held = async () => (await navigator.locks.query()).held.some((lock) => loc
 
 let server, social, room, project, letGo;
 beforeEach(async () => {
-  const deleteDatabases = ownDatabase(['phosphor-social', 'phosphor-host-records'], 'reclaim');
+  const deleteDatabases = ownDatabase(['phosphor-social', 'phosphor-host-records', 'phosphor-room-ledgers'], 'reclaim');
   forgetKey();
   await deleteDatabases();
   sessionStorage.clear();
@@ -99,6 +99,15 @@ test('a room taken by another tab leaves that tab\'s copy alone', async () => {
   expect(room.role).toBe(null);
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(await hostCopies()).toHaveLength(1);
+});
+
+test('a room taken by another tab leaves that tab\'s ledger alone', async () => {
+  const socket = await live();
+  await keepRoomLedger(ID, 'doc', () => ({ n: 7 }));
+  socket.receive({ type: 'replaced' });
+  expect(room.role).toBe(null);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(await readRoomLedger(ID)).toMatchObject({ kept: { n: 7 } });
 });
 
 test('signing out takes every copy in this browser', async () => {

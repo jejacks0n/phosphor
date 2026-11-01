@@ -120,7 +120,7 @@ const hostFields = () => ({
   _keepTimer: null,    // the resume record's next write
   _resuming: false,    // a host's: back from a reload, and the room hasn't said hosting yet
   _refusedOnce: false, // the room refused a pass since it was last live: the next refusal stands
-  _replaced: false,    // another tab took the room: the copy in the browser is that tab's now
+  _leaveKept: false,   // another tab took the room: the copy and ledger in the browser are that tab's now
   _letGoOfTab: null,   // lets go of the lock that says a tab is hosting this room
   _hostedBy: null,     // the account that took the role; another tab's sign-in can change who this tab's pass says it is
 });
@@ -367,8 +367,10 @@ export const useRoomStore = defineStore('room', {
     // This tab is done hosting, and what was kept for coming back goes with it.
     doneHosting() {
       forgetHostingRecord();
-      forgetRoomLedger(this.id).catch(() => {});
-      if (!this._replaced) forgetHostCopy(this.id).catch(() => {});
+      if (!this._leaveKept) {
+        forgetRoomLedger(this.id).catch(() => {});
+        forgetHostCopy(this.id).catch(() => {});
+      }
       this._letGoOfTab?.();
     },
 
@@ -1066,7 +1068,7 @@ export const useRoomStore = defineStore('room', {
         case 'replaced':
           if (this.role === 'watch') this.over(refusalWords(msg.type));
           else if (msg.type === 'replaced') {   // sent as the socket's close, not a message
-            this._replaced = true;
+            this._leaveKept = true;
             this.over(HOST_REPLACED_WORDS);
           } else this.over(this._resuming ? ROOM_AWAY_WORDS : null);
           break;
