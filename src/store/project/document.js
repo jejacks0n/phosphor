@@ -6,6 +6,7 @@ import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { castText } from '@/lib/CastFile.js';
+import { MAX_GIF_PIXELS, gifBytes, gifDelay, gifFrames } from '@/lib/GifFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
@@ -288,7 +289,8 @@ export const documentActions = {
     return cells;
   },
 
-  // The animated formats, written from every frame: 'ansimation' (.ans) or 'cast'.
+  // The animated formats, written from every frame: 'ansimation' (.ans), 'cast' or 'gif'. Throws with userMessage
+  // what the save dialog should say.
   async exportAnimation(format, { filename = this.filename } = {}) {
     const frames = await this.animationCells(), lines = charRowsOf(this.rows);
     const durations = this.frames.map((frame) => frameDuration(frame, this.fps));
@@ -296,8 +298,17 @@ export const documentActions = {
     if (format === 'ansimation') {
       ext = 'ans';
       blob = new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { colorMode: this.quantize, sauce: this.sauceFields() })], { type: 'application/octet-stream' });
-    } else {
+    } else if (format === 'cast') {
       blob = new Blob([castText(this.cols, lines, frames, durations.map((ms) => ms / 1000), { colorMode: this.quantize })], { type: 'application/x-asciicast' });
+    } else {
+      const shot = await gifFrames(frames, this.cols, lines, durations.map(gifDelay), {
+        smooth: useWorkspaceStore().smoothText,
+        tooLarge: (pixels) => {
+          if (pixels <= MAX_GIF_PIXELS) return;
+          throw Object.assign(new Error('Too large for a GIF'), { userMessage: 'This animation is too large for a GIF. Fewer frames or a smaller canvas would fit; .cast has no limit.' });
+        },
+      });
+      blob = new Blob([gifBytes(shot.width, shot.height, shot.frames)], { type: 'image/gif' });
     }
     this.rename(filename);
     downloadBlob(blob, `${this.filename}.${ext}`);

@@ -105,3 +105,17 @@ test('a .cast download holds a frame per event at its time', async ({ page }) =>
   expect(lines[0]).toMatchObject({ version: 2, width: cols, height: rows });
   expect(lines.slice(1).map(([t]) => t)).toEqual([0, 0.125, 2.125]);
 });
+
+test('a .gif download is a GIF', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('switch', { name: 'Animate' }).check();
+  const bar = page.getByRole('toolbar', { name: 'Animation' });
+  await bar.getByRole('button', { name: '+ Frame' }).click();
+  await page.getByRole('button', { name: /^Wipe/ }).click();
+  await page.getByRole('button', { name: 'Export .gif' }).click();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('button', { name: 'Export' }).click()]);
+  expect(download.suggestedFilename()).toMatch(/\.gif$/);
+  const bytes = await readFile(await download.path());
+  expect(bytes.subarray(0, 6).toString()).toBe('GIF89a');
+  expect(bytes.at(-1)).toBe(0x3b);
+});
