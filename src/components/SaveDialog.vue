@@ -9,7 +9,7 @@ import { fileStem, timestamped } from '@/document/projectIO';
 // Save Project and the two exports: the filename (it renames the document; every browser downloads
 // with it, Safari included), and for .ans the characters CP437 can't hold, with what's written instead.
 const props = defineProps({
-  ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'ansimation' | 'cast' | 'gif'
+  ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'ansimation' | 'utf8ansimation' | 'cast' | 'gif'
 });
 const emit = defineEmits(['close']);
 const project = useProjectStore();
@@ -18,6 +18,7 @@ const FORMATS = {
   phosphor: { title: 'Save project', sub: 'Everything, to open again in Phosphor: the image, both layers and the settings.', action: 'Save', busy: 'Saving…' },
   ans: { title: 'Export .ans', sub: 'Classic ANSI art: CP437 characters with ANSI colors, for art viewers and BBS-era tools.', action: 'Export', busy: 'Exporting…' },
   ansimation: { title: 'Export animated .ans', sub: 'An ANSiMation: the art draws itself frame by frame in a viewer or terminal. Timing is lost: its speed depends on the viewer.', action: 'Export', busy: 'Exporting…', ext: 'ans', animated: true },
+  utf8ansimation: { title: 'Export animated .utf8ans', sub: 'An ANSiMation as UTF-8: the art draws itself frame by frame in a modern terminal, and every character is kept. Timing is lost: its speed depends on the terminal.', action: 'Export', busy: 'Exporting…', ext: 'utf8ans', animated: true },
   cast: { title: 'Export .cast', sub: 'An asciinema recording, for terminals and the web, with the exact timing and every character.', action: 'Export', busy: 'Exporting…', animated: true },
   gif: { title: 'Export .gif', sub: 'A looping picture of the art in its font, for anywhere an image goes.', action: 'Export', busy: 'Exporting…', animated: true },
   utf8ans: { title: 'Export .utf8ans', sub: 'ANSI art as UTF-8 text with ANSI colors, for modern terminals. Every character is kept.', action: 'Export', busy: 'Exporting…' },
@@ -26,7 +27,7 @@ const format = computed(() => FORMATS[props.ext]);
 const extension = computed(() => format.value.ext ?? props.ext);
 const animated = computed(() => !!format.value.animated);
 // A terminal shows the rows it has: an animation moves its cursor, so it can't scroll down to the rest.
-const tooTall = computed(() => props.ext === 'ansimation' && (project.cols > 80 || charRowsOf(project.rows) > 25));
+const tooTall = computed(() => ['ansimation', 'utf8ansimation'].includes(props.ext) && (project.cols > 80 || charRowsOf(project.rows) > 25));
 
 const name = ref(timestamped(project.filename ?? 'untitled'));
 const saving = ref(false);

@@ -292,15 +292,16 @@ export const documentActions = {
     return cells;
   },
 
-  // The animated formats, written from every frame: 'ansimation' (.ans), 'cast' or 'gif'. Throws with userMessage
+  // The animated formats, written from every frame: 'ansimation' (.ans), 'utf8ansimation' (.utf8ans), 'cast' or 'gif'. Throws with userMessage
   // what the save dialog should say.
   async exportAnimation(format, { filename = this.filename } = {}) {
     const frames = await this.animationCells(), lines = charRowsOf(this.rows);
     const durations = this.frames.map((frame) => frameDuration(frame, this.fps));
     let blob, ext = format;
-    if (format === 'ansimation') {
-      ext = 'ans';
-      blob = new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { colorMode: this.quantize, sauce: this.sauceFields() })], { type: 'application/octet-stream' });
+    if (format === 'ansimation' || format === 'utf8ansimation') {
+      const utf8 = format === 'utf8ansimation';
+      ext = utf8 ? 'utf8ans' : 'ans';
+      blob = new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { utf8, colorMode: this.quantize, sauce: this.sauceFields() })], { type: 'application/octet-stream' });
     } else if (format === 'cast') {
       blob = new Blob([castText(this.cols, lines, frames, durations.map((ms) => ms / 1000), { colorMode: this.quantize })], { type: 'application/x-asciicast' });
     } else {

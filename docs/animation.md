@@ -82,12 +82,15 @@ A file whose frames are damaged or too large opens that way too, and says so; sa
 
 ## Exporting
 
-The usual exports, .ans and .utf8ans, write the frame showing. With more than one frame there are three more:
+The usual exports, .ans and .utf8ans, write the frame showing. With more than one frame there are four more:
 
 - **Animated .ans** (an ANSiMation): the art draws itself in a viewer or terminal, frame by frame. A file like this has no
   clock, so timing is lost and its speed depends on the viewer. It moves the cursor instead of scrolling, so
   rows past the bottom of the terminal can't be reached; the dialog says so above 80 x 25. It's CP437, like any
   .ans, and the dialog lists the characters on any frame that it has to replace.
+- **Animated .utf8ans**: the same, in UTF-8, for a modern terminal. Every character is kept, so there's nothing to
+  replace. `cat` writes it faster than the eye can follow; something that slows it down plays it, like
+  `pv -qL 20000 art.utf8ans`.
 - **.cast** (an asciinema recording): exact timing, and every character, in a terminal or on the web. It
   needs a terminal or player at least as wide and tall as the art.
 - **.gif**: a looping picture of the art in its font, for anywhere an image goes. It holds 256 colors, one
