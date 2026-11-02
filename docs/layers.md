@@ -321,6 +321,8 @@ These work in both the ANSI and the pixel view, for as long as you hold the key:
   click picks the foreground color; add **Shift** to pick the background color instead.
 - **Shift**, with the Pencil or Brush: a click draws a straight line from where your last stroke
   ended (with either of them, in either view) to where you click, and keeps going if you drag.
+- **Shift**, while dragging a shape: a Rectangle becomes a square and an Ellipse a circle, and a Line
+  snaps to steps of 45°. A Single or Double line runs only straight across or down, Shift or not.
 - **Space**, with any tool: the Hand, to drag the view around (the middle mouse button does too).
   Space still types in Edit Mode and in text fields.
 

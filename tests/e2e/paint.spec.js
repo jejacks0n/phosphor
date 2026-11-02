@@ -1,5 +1,5 @@
 import { test, expect } from './support.js';
-import { openApp, store, cellPoint, drag, chars, tab } from './support.js';
+import { openApp, store, cellPoint, drag, chars, tab, settled } from './support.js';
 
 const row = (page, r) => store(page, 'project', `(p) => p.cells.slice(${r} * p.cols, ${r} * p.cols + 20).map((c) => c.fg.hex + c.bg.hex)`);
 
@@ -66,4 +66,37 @@ test("Half-block: the Pencil's and Brush's Draw with offer it in the ANSI view, 
   await expect(page.getByRole('button', { name: 'Half-block' })).toBeVisible(); // its own setting, kept
   await tab(page, 'PIXEL').click();
   await expect(page.getByRole('button', { name: 'Half-block' })).toHaveCount(0); // the Pixel view has no characters
+});
+
+test('Shift while dragging a shape makes a square, a circle or a 45° line, and the status bar says so', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'ANSI').click();
+  await settled(page);
+  await page.keyboard.press('u');
+  const hint = page.locator('footer.ansi-status');
+  const dragTo = async (kind, words) => {
+    await store(page, 'workspace', `(w) => { w.shapeKind = '${kind}'; w.shapeDrawWith = 'half'; }`);
+    await expect(hint).toContainText(words);
+    const from = await cellPoint(page, 4, 4), to = await cellPoint(page, 16, 7);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y);
+    const without = await store(page, 'workspace', (w) => w.shapeDrag);
+    await page.keyboard.down('Shift');
+    const held = await store(page, 'workspace', (w) => w.shapeDrag);
+    await page.keyboard.up('Shift');
+    expect(await store(page, 'workspace', (w) => w.shapeDrag)).toEqual(without);
+    await page.keyboard.down('Shift');
+    await page.mouse.up();
+    await page.keyboard.up('Shift');
+    expect(await store(page, 'workspace', (w) => w.shapeDrag)).toBe(null);
+    return { without, held };
+  };
+  for (const [kind, words] of [['rect', 'square'], ['ellipse', 'circle']]) {
+    const { without, held } = await dragTo(kind, words);
+    expect(without.to.y - without.from.y).toBeLessThan(without.to.x - without.from.x);
+    expect(held.to.y - held.from.y).toBe(held.to.x - held.from.x);
+  }
+  const { held } = await dragTo('line', 'snap to 45°');
+  expect(Math.abs(held.to.y - held.from.y)).toBe(Math.abs(held.to.x - held.from.x));   // 12 across and 3 rows (6 pixels) down is 26.6°: the diagonal
 });
