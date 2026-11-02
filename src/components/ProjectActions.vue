@@ -25,6 +25,7 @@ function confirmNewProject() {
     <template v-if="project.hasFrames">
       <button @click="saveDialog = 'ansimation'" :disabled="!image" class="secondary">Export animated .ans</button>
       <button @click="saveDialog = 'cast'" :disabled="!image" class="secondary">Export .cast</button>
+      <button @click="saveDialog = 'gif'" :disabled="!image" class="secondary">Export .gif</button>
     </template>
     <button @click="versionsOpen = true" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="secondary">Versions</button>
     <hr/>
