@@ -132,9 +132,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
           :disabled="tab.disabled"
           :data-id="tab.id"
           :data-text="tab.label"
+          :aria-description="tab.id === 'social' ? 'Beta' : null"
           @click="$emit('update:modelValue', tab.id)"
       >
         {{ tab.label }}
+        <span v-if="tab.id === 'social'" class="beta" aria-hidden="true">Beta</span>
         <span v-if="tab.id === 'social' && room.inRoom" class="dot" aria-hidden="true"></span>
       </button>
       <div class="indicator" :style="indicatorStyle" aria-hidden="true"></div>
@@ -242,11 +244,23 @@ button.tab {
 span.dot {
   position: absolute;
   top: 5px;
-  right: 8px;
+  left: 8px; /* the beta tag has the right corner */
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--accent);
+}
+
+span.beta {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 button.tab::after {

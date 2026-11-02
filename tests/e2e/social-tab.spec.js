@@ -27,6 +27,13 @@ test('the SOCIAL tab is there before any image; nothing SOCIAL runs until it\'s 
   expect(server.lobby.received.map((m) => m.type)).toEqual(['hello']);
 });
 
+test('the SOCIAL tab is tagged beta, for screen readers as well; its name stays SOCIAL', async ({ page }) => {
+  await page.goto('/');
+  await expect(tab(page, 'SOCIAL').locator('.beta')).toBeVisible();
+  await expect(tab(page, 'SOCIAL')).toHaveAccessibleDescription('Beta');
+  await expect(tab(page, 'PIXEL').locator('.beta')).toHaveCount(0);
+});
+
 test('a link back from the server (?reset=, ?verified=1, ?social=) opens the SOCIAL tab, on desktops', async ({ page }) => {
   await fakeServer(page);
   await page.goto('/?reset=tok');
