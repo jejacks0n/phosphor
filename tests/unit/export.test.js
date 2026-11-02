@@ -72,7 +72,7 @@ for (const [name, grid] of Object.entries(GRIDS)) {
         const art = bytes.slice(0, bytes.indexOf(0x1a));
         let text = '';
         for (const b of art) text += String.fromCharCode(b);
-        const lines = text.replace(/\x1b\[[0-9;]*m/g, '').split('\r\n'); // eslint-disable-line no-control-regex
+        const lines = text.replace(/\x1b\[\?33h|\x1b\[[0-9;]*m/g, '').split('\r\n'); // eslint-disable-line no-control-regex
         expect(lines.map((line) => line.length)).toEqual(grid.rows.map(() => grid.cols));
       });
     }
@@ -87,4 +87,25 @@ test('SAUCE: the fields come back from the record', async () => {
   expect(sauce.fileSize).toBe(bytes.indexOf(0x1a)); // the art's length, before the EOF marker
   const nine = readSauce(await exported(grid, build(grid, 'none'), 'none', false, { ...SAUCE, use9pxFont: true, comments: [] }));
   expect(nine).toMatchObject({ letterSpacing: 9, comments: [] });
+});
+
+// Bright CGA backgrounds go out as blink (5) with SAUCE's iCE Colors flag; a viewer that ignores SAUCE but knows
+// ESC[?33h (SyncTERM and some BBS terminals) is told the same at the top of the file.
+describe('iCE colors without SAUCE', () => {
+  const ICE = '\x1b[?33h';
+  const start = (bytes) => new TextDecoder('latin1').decode(bytes.subarray(0, ICE.length));
+  const cells = build(GRIDS.runs, 'cga');
+
+  test('a CGA .ans and an animated CGA .ans open with ESC[?33h', async () => {
+    expect(start(await exported(GRIDS.runs, cells, 'cga', false))).toBe(ICE);
+    expect(start(AnsiFile.animationBytes(GRIDS.runs.cols, 2, [cells], { colorMode: 'cga' }))).toBe(ICE);
+  });
+
+  test('a .utf8ans, and an .ans in any other color mode, don\'t: their colors never use blink', async () => {
+    expect(start(await exported(GRIDS.runs, cells, 'cga', true))).not.toBe(ICE);
+    expect(start(AnsiFile.animationBytes(GRIDS.runs.cols, 2, [cells], { utf8: true, colorMode: 'cga' }))).not.toBe(ICE);
+    for (const mode of ['none', 'count', 'palette', 'vga']) {
+      expect(start(await exported(GRIDS.runs, build(GRIDS.runs, mode), mode, false))).not.toBe(ICE);
+    }
+  });
 });
