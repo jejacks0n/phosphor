@@ -55,6 +55,9 @@ export class CellWriter {
     this.#utf8 = utf8;
     this.#colorMode = colorMode;
     this.sgr = this.sgr.bind(this);
+    // CGA in CP437 writes a bright background as blink (5). SAUCE's iCE Colors flag says to show it bright;
+    // ESC[?33h says the same to a viewer that ignores SAUCE but knows it (SyncTERM, some BBS terminals).
+    if (colorMode === 'cga' && !utf8) this.output.pushAll(toBytes('\x1b[?33h'));
   }
 
   sgr(...codes) {

@@ -52,6 +52,8 @@ Phosphor shrinks the picture to the grid, two pixels per character cell: the top
 | `.cast` | As `.utf8ans` | UTF-8 | asciinema v2, timed per frame |
 | `.gif` | 256, one palette for the whole movie | Drawn in the art's font | — |
 
+With CGA colors, an `.ans` writes a bright background the DOS way, as blink, and tells viewers to show it bright instead (iCE colors) twice: in its SAUCE record, and with `ESC[?33h` at the top for viewers like SyncTERM that read that. A viewer that knows neither shows those cells blinking, or with the dark background.
+
 Many older ANSI viewers only show 16 colors. To view or edit 256-color and 24-bit `.ans` files, try the [Advanced Color fork of Moebius](https://github.com/christiansacks/moebius).
 
 ## Setup and development
