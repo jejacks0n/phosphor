@@ -104,6 +104,7 @@ const backTo100 = () => {
 <style scoped>
 /* Scrolls sideways when it doesn't fit, without a scrollbar, like the toolbar's options row. */
 footer.ansi-status {
+  cursor: default; /* its own: the brush's and eraser's hidden cursor is set on the viewport it sits in */
   display: flex;
   align-items: center;
   gap: 16px;
