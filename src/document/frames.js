@@ -19,6 +19,9 @@ export const isEmptyState = (state) => !state.cell && !state.top && !state.botto
 let nextId = 1;
 export const newFrame = (kind, changes = new Map()) => markRaw({ id: nextId++, kind, hold: 0, changes, ledger: null, resolved: null, built: null });
 
+// How long a frame stays, in ms: its hold, or one tick at the movie's fps.
+export const frameDuration = ({ hold }, fps) => (hold > 0 ? hold * 1000 : 1000 / fps);
+
 // What a frame shows, given what the frame before it shows. Frame 0 goes over an empty map, so it acts as a wipe.
 export function resolveOver(previous, { kind, changes }) {
   const resolved = kind === 'blank' ? new Map(previous) : new Map();

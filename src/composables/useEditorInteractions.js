@@ -1,5 +1,6 @@
 import { ref, unref } from 'vue';
 import { dragZoom } from '@/lib/zoom';
+import { usePlayback } from '@/composables/usePlayback';
 
 const TOUCH_DELAY_MS = 150; // a touch waits this long before drawing, in case a second finger makes it a pinch
 const TOUCH_MOVE_THRESHOLD = 5; // Pixels to move before immediate paint start
@@ -30,6 +31,7 @@ const isStylus = (event) => Array.prototype.some.call(event.changedTouches ?? []
 
 // options.activeTool: a ref to the active tool object (src/tools); its kind and id decide how pointers behave.
 export function useEditorInteractions(options) {
+  const playback = usePlayback();
   const {
     containerRef,
     displayRef,
@@ -191,6 +193,7 @@ export function useEditorInteractions(options) {
 
   let _lastInteractionTime = 0;
   function startPaint(event) {
+    if (playback.playing) playback.pause(); // drawing lands on the frame showing
     // Ignore touch-based pointer events to let handleTouchStart manage them
     // with the appropriate delay and multi-touch logic.
     if (event.pointerType === 'touch') return;
@@ -401,6 +404,7 @@ export function useEditorInteractions(options) {
 
   function handleTouchStart(event) {
     if (isStylus(event)) return;
+    if (playback.playing) playback.pause();
     const tool = unref(activeTool);
 
     if (event.touches.length === 1) {

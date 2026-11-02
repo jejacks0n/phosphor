@@ -150,7 +150,7 @@ const render = () => {
     const was = sizedBy.value;
     sizedBy.value = m;
     if (was && (was.cellWidth !== m.cellWidth || was.lineHeight !== m.lineHeight)) keepPlace(was);
-    cellCanvas.draw(projectStore.cells, { cols, rows: lines, col: win.col, row: win.row });
+    cellCanvas.draw(projectStore.shownCells, { cols, rows: lines, col: win.col, row: win.row });
     canvasRef.value.style.left = `${win.col * m.cellWidth}px`;
     canvasRef.value.style.top = `${win.row * m.lineHeight}px`;
     return;
@@ -162,7 +162,7 @@ const render = () => {
     rows: charRowsOf(projectStore.rows),
   }, m);
 
-  const buffer = projectStore.cells.map(({ char, fg, bg, wide }) => ({
+  const buffer = projectStore.shownCells.map(({ char, fg, bg, wide }) => ({
     char: wide === 'trail' ? '' : char, // the lead's glyph is the whole wide character
     fit: wide === 'trail' ? 0 : fitColumns(char), // held to its columns, its shape spilling over what follows
     color: fg.hex,
@@ -239,7 +239,7 @@ const selectionBox = computed(() => {
 
 // The first content renders immediately so it's laid out before the viewport restores/centers its
 // scroll on the next frame; later updates (e.g. every paint move) coalesce to one render per frame.
-watch(() => projectStore.cells, () => ((useDom.value ? displayRef.value?.childElementCount : cellCanvas) ? queueRender() : render()));
+watch(() => projectStore.shownCells, () => ((useDom.value ? displayRef.value?.childElementCount : cellCanvas) ? queueRender() : render()));
 watch(() => [projectStore.cols, projectStore.rows], () => {
   metrics.value = null;
   queueRender();

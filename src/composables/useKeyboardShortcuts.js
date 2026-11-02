@@ -6,8 +6,10 @@ import { copySelection } from '@/composables/clipboard';
 import { typeText } from '@/composables/useTextTool';
 import { colorBoxKey, helpKey } from '@/lib/TextKeys';
 import { isField } from '@/lib/fields';
+import { usePlayback } from '@/composables/usePlayback';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
+  const playback = usePlayback();
 
   // Not on SOCIAL: the art isn't showing, and its fields keep their own undo.
   const _handleUndoRedo = (e) => {
@@ -223,6 +225,9 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       workspaceStore.isCtrlPressed = true;
     }
     if (e.key === 'Shift') workspaceStore.isShiftPressed = true;
+
+    // A key while playing pauses first, on the frame showing, so what it does lands there.
+    if (workspaceStore.playing && !isField(e.target) && !['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) playback.pause();
 
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;

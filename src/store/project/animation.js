@@ -6,8 +6,8 @@
 import FrameBuilder from '@/document/FrameBuilder.js';
 import { cellState, foldDeleted, frameDiff, newFrame, paintImage, resolveOver, sameChanges } from '@/document/frames.js';
 import { pack } from '@/document/changes.js';
-import { cellKey } from '@/document/editCells.js';
-import { MAX_FRAMES } from '@/lib/Cells.js';
+import { cellKey, parseKey } from '@/document/editCells.js';
+import { MAX_FRAMES, cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { newLedger } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
 
@@ -233,6 +233,20 @@ export const animationActions = {
       frame.built ??= builder.build(resolved, this.processParams, this.frames[i - 1]?.built);
       return frame.built;
     }
+  },
+
+  // The cells the frame showing shows only because a frame before it did, by index on the grid: its ghost.
+  inheritedCells() {
+    const inherited = new Set();
+    if (!this.frame || this.currentFrame.kind !== 'blank') return inherited;
+    const previous = this.resolvedOf(this.frame - 1), own = frameDiff(previous, liveStates(this));
+    const { cols } = this, rows = charRowsOf(this.rows);
+    for (const key of previous.keys()) {
+      if (own.has(key)) continue;
+      const { col, row } = parseKey(key);
+      if (col < cols && row < rows) inherited.add(cellIndex(col, row, cols));
+    }
+    return inherited;
   },
 
   // What's cached of frame i onward goes, as far as a change there can reach: a frame that isn't Blank is cut

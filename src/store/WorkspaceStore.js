@@ -1,3 +1,4 @@
+import { shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
 import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
@@ -35,6 +36,10 @@ export const useWorkspaceStore = defineStore('workspace', {
     textCursor: null,      // { col, row } of the Text tool's cursor
     insertMode: false,     // typing pushes the row right instead of overwriting
     paletteLayerOpen: false, // the character palette layer has the keyboard
+    playing: false,          // an animation is playing (usePlayback)
+    playFrame: 0,            // and this frame is on screen
+    played: shallowRef(null), // that frame, built (FrameBuilder): what the views show meanwhile
+    ghost: true,             // earlier frames show dimmed on a Blank frame
     ansiOverlay: 100,        // % opacity of the edit cells drawn over the pixel view
     ansiOverlayAll: false,   // draw every cell over the pixel view, not just the edit cells
     wand: null,              // the Magic Wand's selection: { view, width, height, mask (markRaw'd, a byte per unit: cells or grid pixels) }
