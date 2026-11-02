@@ -382,3 +382,38 @@ test('the Ghost slider sets the strength, and it’s remembered', async ({ page 
   await animateSwitch(page).check();
   await expect(bar(page).getByRole('slider', { name: 'Ghost strength' })).toHaveValue('70');
 });
+
+test('on a narrow screen the bar holds two tidy lines, and every control stays on screen', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  const lines = async () => bar(page).evaluate((el) => {
+    const controls = [...el.querySelectorAll('button, input, output')].filter((c) => c.getBoundingClientRect().width);
+    const boxes = controls.map((c) => c.getBoundingClientRect());
+    const rows = [];
+    for (const { top, bottom } of boxes) {
+      const row = rows.find((r) => top < r.bottom && bottom > r.top);
+      if (!row) rows.push({ top, bottom });
+    }
+    return { rows: rows.length, inside: boxes.every(({ left, right }) => left >= 0 && right <= innerWidth), smallest: Math.min(...boxes.map((b) => b.width)) };
+  });
+  const switchInside = async () => {
+    const box = await page.locator('label.animate').boundingBox();
+    return box.x >= 0 && box.x + box.width <= page.viewportSize().width;
+  };
+  for (const [width, height, rows] of [[390, 844, 2], [375, 667, 2], [360, 640, 2], [932, 430, 1], [844, 390, 2], [750, 340, 1], [667, 375, 1], [568, 320, 2], [1400, 900, 1]]) {
+    await page.setViewportSize({ width, height });
+    await expect.poll(lines, { message: `${width} wide` }).toEqual({ rows, inside: true, smallest: expect.any(Number) });
+    expect((await lines()).smallest).toBeGreaterThanOrEqual(20);
+    expect((await bar(page).getByRole('button', { name: '+ Frame' }).boundingBox()).height, `+ Frame at ${width}`).toBeLessThan(30);
+    const words = await bar(page).getByRole('button', { name: '+ Frame' }).evaluate((button) => {
+      const range = document.createRange();
+      range.selectNodeContents(button.querySelector('span'));
+      return new Set([...range.getClientRects()].map(({ top }) => top)).size;
+    });
+    expect(words, `+ Frame on one line at ${width}`).toBe(1);
+    await expect.poll(switchInside, { message: `the switch at ${width}` }).toBe(true); // the layout may still be sliding
+  }
+  await page.setViewportSize({ width: 320, height: 568 }); // the narrowest phone: more lines, but nothing lost
+  await expect.poll(async () => (await lines()).inside).toBe(true);
+  await expect.poll(switchInside).toBe(true);
+});
