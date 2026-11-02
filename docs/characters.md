@@ -77,6 +77,10 @@ much of it its character covers, measured in the font you see. It doesn't change
 converts, or what's saved or exported; a terminal or viewer draws the file in its own font. The
 font and size are kept in this browser, not in the project.
 
+While you draw in someone's room, the art is in the host's font and size, and follows them when they
+change it; the field shows it, off, and yours comes back when you stop. A font the host loaded from
+their computer can't be sent, so the room sees JetBrains Mono instead.
+
 ## Typing any script
 
 With the Text tool, you can type with your system's input method (Japanese, Chinese, Korean...),

@@ -28,12 +28,12 @@ const text = (value, most) => (typeof value === 'string' ? value.slice(0, most) 
 export class Watch {
   constructor({
     send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = NOTHING,
-    onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onViews = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING, onHandOver = NOTHING, onCatchUp = NOTHING, onUndoReset = NOTHING, onRefused = NOTHING, onProjectFailed = NOTHING,
+    onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onViews = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING, onHandOver = NOTHING, onCatchUp = NOTHING, onUndoReset = NOTHING, onRefused = NOTHING, onProjectFailed = NOTHING, onFont = NOTHING,
     takesProjects = () => false,
   }) {
     Object.assign(this, {
       send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat,
-      onNumbered, onSettings, onBase, onProject, onCheck, onCaughtUp, onCursors, onViews, onInvite, onWithdrawn, onArtists, onHandOver, onCatchUp, onUndoReset, onRefused, onProjectFailed, takesProjects,
+      onNumbered, onSettings, onBase, onProject, onCheck, onCaughtUp, onCursors, onViews, onInvite, onWithdrawn, onArtists, onHandOver, onCatchUp, onUndoReset, onRefused, onProjectFailed, onFont, takesProjects,
     });
     this.mostWaiting = MOST_WAITING;
     this.conn = null;
@@ -196,6 +196,7 @@ export class Watch {
     else if (msg.t === 'deleted' && isId(msg.id)) this.onChat({ type: 'deleted', id: msg.id });
     else if (msg.t === 'chat-no' && isId(msg.id) && msg.reason === 'too-fast') this.onChat({ type: 'refused', id: msg.id, reason: msg.reason });
     else if (msg.t === 'numbered' || msg.t === 'settings' || msg.t === 'base' || msg.t === 'caught-up' || (msg.t === 'check' && Number.isInteger(msg.sum))) this.drawn(msg);
+    else if (msg.t === 'font') this.onFont(msg.font);
     else if (msg.t === 'project-start') this.projectStart(msg);
     else if (msg.t === 'project-failed') this.onProjectFailed();
     else if (msg.t === 'hand-over') this.handOverStart(msg);

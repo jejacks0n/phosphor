@@ -44,6 +44,7 @@
  * Host to artist:
  *   { t: 'numbered', n, by, stroke, cells, runs }   a change, by the sub who made it
  *   { t: 'settings', n, values }                the document's saved settings, changed
+ *   { t: 'font', font }                         the font the art is in (fontOnWire), at hello and when it changes
  *   { t: 'base', n, runs, records }             the base layer's own pixels, and its pinned characters
  *   { t: 'project-failed' }                     the host couldn't pack the project this artist was owed
  *   { t: 'project-start', n, epoch, bytes, chunks, took }
