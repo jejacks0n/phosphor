@@ -42,6 +42,10 @@ export const historyActions = {
     const stroke = this._stroke;
     this.sendSlice();
     this._stroke = null;
+    if (stroke?.drawn) { // what's kept of it for the ghost, even if it changed nothing
+      (this.currentFrame.drawn ??= new Map()).set(stroke.id, stroke.drawn);
+      this._ghost.frame = null;
+    }
     const patch = this.paintLayer?.endStroke();
     const basePatch = this.baseLayer?.endStroke();
     this.hasPaint = this.paintLayer?.hasPaint ?? false; // an erase may have left none
@@ -55,7 +59,7 @@ export const historyActions = {
     if (!stroke || (!patch && !basePatch && !stroke.wroteCells && stroke.baseRecords === this.baseRecords)) return;
 
     // The entry mustn't close over stroke or patch: the old map and the tiles are the ledger's to hold now.
-    const { cursor, id, sent } = stroke;
+    const { cursor, id, sent, drawn } = stroke;
     const drawnAsArtist = this._sharing?.role === 'artist';
     const records = { before: stroke.baseRecords, after: this.baseRecords };
     const frame = this.currentFrame, ledger = this._ledger; // undoing goes back to the frame it was drawn on, and its ledger
@@ -63,6 +67,11 @@ export const historyActions = {
     const apply = (side) => {
       if (!this.frames.includes(frame)) return;
       this.showFrame(this.frames.indexOf(frame));
+      if (drawn) {
+        if (side === 'before') frame.drawn.delete(id);
+        else frame.drawn.set(id, drawn);
+        this._ghost.frame = null;
+      }
       if (side === 'before' && cursor) useWorkspaceStore().textCursor = cursor; // typing undone: the cursor goes back to where it started
       if (this._sharing?.role === 'artist') { // the host says what happens; an artist has no base edits to put back
         if (sent) this.askForStroke(side === 'before' ? 'undo' : 'redo', id); // or it changed nothing: nothing to ask
@@ -81,7 +90,7 @@ export const historyActions = {
       stroke: id,
       undo: () => apply('before'),
       redo: () => apply('after'),
-      onDrop: () => ledger.forget(id), // or while a merge holds its stacks, not found: see pushWholeLayer
+      onDrop: () => { ledger.forget(id); frame.drawn?.delete(id); }, // or while a merge holds its stacks, not found: see pushWholeLayer
       bytes: this._ledger.bytesOf(id) + bytesHeld(basePatch),
     });
     if (basePatch || records.before !== records.after) this.sendBase(basePatch, 'after');
@@ -221,7 +230,7 @@ export const historyActions = {
   clearHistory() {
     if (this._sharing?.strokesAsked) this._sharing.strokesAsked = [];
     this._ledger.reset(); // first: what History drops next has nothing left to forget
-    for (const frame of this.frames) frame.ledger = null;
+    for (const frame of this.frames) Object.assign(frame, { ledger: null, drawn: null });
     this.history.clear();
     this.historyVersion = this.history.version;
   },

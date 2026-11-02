@@ -52,7 +52,9 @@ Undo works across frames: it goes back to the frame the edit was made on and und
 
 On a Blank frame, what's inherited shows dimmed on the PIXEL and ANSI tabs, in its own colors, so you can see what you're
 drawing over. What you draw on this frame shows at full strength, as soon as you draw it. The ghost is only there to draw by:
-it never plays and never reaches an export. **Ghost** on the bar turns it off, and inherited cells show solid. The slider
+it never plays and never reaches an export. That holds even where you draw in exactly the color a cell inherited; once
+undo can't reach that drawing (after a reload, say), a cell that's the same as the frame before is inherited again and
+dims. **Ghost** on the bar turns it off, and inherited cells show solid. The slider
 beside it sets how strong the ghost is, from 0% (inherited cells don't show) to 100% (solid). It starts at 35%, and this browser remembers it.
 
 ## Timing

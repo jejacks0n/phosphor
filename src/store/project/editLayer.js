@@ -15,6 +15,7 @@ export const editLayerActions = {
     if (!pixels.length || !this.renderer.outputCanvas) return;
     this.ensureLayer();
     this.beginEdit();
+    this.noteDrawn(pixels);
     this.paintLayer.paint(pixels, opacity, stack);
     this.hasPaint = this.paintLayer.hasPaint;
 
@@ -52,6 +53,7 @@ export const editLayerActions = {
     this.ensureLayer();
     this.beginEdit();
     const pixels = [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }];
+    this.noteDrawn(pixels);
     if (clearPaint && this.cellHasPaint(col, row)) {
       this.paintLayer.erase(pixels);
       this.composite({ rect: boundsOf(pixels) });
@@ -153,6 +155,7 @@ export const editLayerActions = {
       else next.delete(key);
       pixels.push({ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 });
     }
+    this.noteDrawn(pixels);
     if (clearPaint && this.paintLayer?.hasPaint) {
       this.paintLayer.erase(pixels);
       this.composite({ rect: boundsOf(pixels) });

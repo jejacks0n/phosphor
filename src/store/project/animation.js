@@ -237,6 +237,13 @@ export const animationActions = {
     }
   },
 
+  // The open stroke went over these pixels ({ x, y }), whether or not that changed them. Frame 0 has no ghost.
+  noteDrawn(pixels) {
+    if (!this.frame || !this._stroke) return;
+    const drawn = (this._stroke.drawn ??= new Set());
+    for (const { x, y } of pixels) drawn.add(cellKey(x, y >> 1));
+  },
+
   // The cells the frame showing shows only because a frame before it did, by index on the grid: its ghost.
   inheritedCells() {
     const inherited = new Set();
@@ -247,6 +254,13 @@ export const animationActions = {
       if (own.has(key)) continue;
       const { col, row } = parseKey(key);
       if (col < cols && row < rows) inherited.add(cellIndex(col, row, cols));
+    }
+    // Drawn here in exactly the color it inherited: the frame doesn't own it, but it's no ghost to whoever drew it.
+    for (const keys of this.currentFrame.drawn?.values() ?? []) {
+      for (const key of keys) {
+        const { col, row } = parseKey(key);
+        if (col < cols) inherited.delete(cellIndex(col, row, cols));
+      }
     }
     return inherited;
   },
