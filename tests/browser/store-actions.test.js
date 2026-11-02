@@ -4,18 +4,18 @@ import { test, expect } from 'vitest';
 import { createTestApp } from '../support/app.js';
 
 const ACTIONS = [
-  'applyBase', 'applyChange', 'applyEditCells', 'applyNumbered', 'applySettings', 'askForStroke', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit',
+  'addFrame', 'applyBase', 'applyChange', 'applyEditCells', 'applyNumbered', 'applySettings', 'askForStroke', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit',
   'cancelEdit', 'catchUpFor', 'cellHasPaint', 'changeSelection', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect',
   'commitEdit', 'commitPending', 'commitSliders', 'compareCheck', 'completeAt', 'composite', 'continueAsArtist', 'copySelection',
-  'deleteAt', 'deleteIn', 'deleteInWand', 'deleteSelection', 'documentNumber', 'dropEdits', 'dropHeard', 'dropOldUndo', 'dropWaiting', 'editCell', 'editCellAt', 'editLayerSum', 'ensureLayer',
+  'deleteAt', 'deleteFrame', 'deleteIn', 'deleteInWand', 'deleteSelection', 'documentNumber', 'dropEdits', 'dropHeard', 'dropOldUndo', 'dropWaiting', 'editCell', 'editCellAt', 'editLayerSum', 'ensureLayer',
   'eraseBase', 'eraseBasePixels', 'eraseEditPixels', 'exportFile', 'fitFor', 'flipBase', 'flipCell',
   'flipPaint', 'floatSelection', 'flushHeard', 'forgetAsked', 'gridRect', 'hasCharacters', 'hasEditsIn', 'hearDrawing', 'imageColorAt', 'keepLedger', 'keepMigratedLook', 'keptForHandOver', 'layersFor', 'leavePending',
   'loadProject', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeUp',
-  'moveSelection', 'newConnection', 'newDocument', 'numberWaiting', 'openFromHost', 'openParts', 'ownStroke', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
+  'moveFrame', 'moveSelection', 'newConnection', 'newDocument', 'noteFrame', 'numberWaiting', 'openFromHost', 'openParts', 'ownStroke', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
   'pasteSelection', 'processingScale', 'projectNow', 'projectParts', 'pushEdit', 'pushKeptStroke', 'pushWholeLayer', 'randomizeSeed', 'rawColorAt', 'readCell', 'readHandOver', 'readTile', 'rebuildCells', 'recolorSelection', 'recompose', 'redo', 'redoStroke', 'refreshCells', 'refreshChanged', 'rename',
-  'render', 'replaceImage', 'replayOnPicture', 'resendPending', 'resetGroup', 'resetSliders', 'restoreDocument', 'restoreLedger', 'saveProject', 'selectionEdit', 'sendBase', 'sendHeld', 'sendHeldSoon', 'sendNumbered', 'sendParts', 'sendSettings', 'sendSlice',
-  'setBaseRecords', 'setBlankCanvas', 'setCells', 'setEditCells', 'setImageFromFile', 'setPaused', 'setSlider', 'shareWholeDocument', 'shiftCells',
-  'sliderValues', 'stampSelection', 'startSharing', 'stopSharing', 'strokeRefused', 'takeCatchUp', 'takeFromArtist', 'takeLedger', 'takeProject', 'throughPending', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'undoStroke', 'updateCols', 'updateRows', 'waitForAnswer', 'waitingBoxes', 'writeAt',
+  'render', 'replaceImage', 'replayOnPicture', 'resendPending', 'resetGroup', 'resetSliders', 'resolvedOf', 'restoreDocument', 'restoreLedger', 'saveProject', 'selectionEdit', 'sendBase', 'sendHeld', 'sendHeldSoon', 'sendNumbered', 'sendParts', 'sendSettings', 'sendSlice',
+  'setAnimate', 'setBaseRecords', 'setBlankCanvas', 'setCells', 'setEditCells', 'setFps', 'setHold', 'setImageFromFile', 'setPaused', 'setSlider', 'shareWholeDocument', 'shiftCells', 'showFrame',
+  'sliderValues', 'staleFrames', 'stampSelection', 'startSharing', 'stopSharing', 'strokeRefused', 'takeCatchUp', 'takeFromArtist', 'takeLedger', 'takeProject', 'throughPending', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'undoStroke', 'updateCols', 'updateRows', 'waitForAnswer', 'waitingBoxes', 'writeAt',
   'writeBase', 'writeEditCells',
 ];
 

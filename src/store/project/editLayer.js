@@ -8,6 +8,7 @@ import { cellIndex, bakedEntry, cellsOfPixels } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
+import { frameShown, showFrameState } from '@/store/project/animation.js';
 import { TYPING_PAUSE_MS, boundsOf, bytesHeld } from '@/store/project/shared.js';
 
 export const editLayerActions = {
@@ -213,6 +214,13 @@ export const editLayerActions = {
     this.ensureLayer();
     if (!this.paintLayer) return;
     this.commitPending();
+    if (this.hasFrames) { // it's the frame that changes: to a Wipe, empty
+      this.noteFrame();
+      const was = frameShown(this), cleared = { kind: 'wipe', changes: new Map() };
+      showFrameState(this, cleared);
+      this.pushWholeLayer(() => showFrameState(this, was), () => showFrameState(this, cleared), bytesHeld(was.changes));
+      return;
+    }
     const before = { paintLayer: this.paintLayer.snapshot(), editCells: this.editCells };
     const after = { paintLayer: null, editCells: new Map() };
     const apply = ({ paintLayer, editCells }) => {

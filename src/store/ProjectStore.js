@@ -3,7 +3,7 @@ import { defineStore, getActivePinia } from 'pinia';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
-import { Ledger } from '@/document/ledger.js';
+import { newFrame } from '@/document/frames.js';
 import { MAX_COLS, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
@@ -20,18 +20,13 @@ import { sharingActions, DRAWING_ACTIONS, HOST_ONLY_ACTIONS } from '@/store/proj
 import { sharingHostActions } from '@/store/project/sharingHost.js';
 import { sharingArtistActions } from '@/store/project/sharingArtist.js';
 import { handoverActions } from '@/store/project/handover.js';
-import { MOST_CHANGE_BYTES } from '@/social/wire.js';
-import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES, ALONE } from '@/store/project/shared.js';
+import { animationActions } from '@/store/project/animation.js';
+import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES, ALONE, newLedger } from '@/store/project/shared.js';
 
 // While the state is made there's no store yet, but there is by the time the ledger reads.
-function newLedger() {
+function firstLedger() {
   const pinia = getActivePinia();
-  return markRaw(new Ledger({
-    readCell: (key) => useProjectStore(pinia).readCell(key),
-    readTile: (x, y) => useProjectStore(pinia).readTile(x, y),
-    numbering: false,
-    mostBytes: MOST_CHANGE_BYTES,
-  }));
+  return newLedger(() => useProjectStore(pinia));
 }
 
 export const useProjectStore = defineStore('project', {
@@ -53,6 +48,12 @@ export const useProjectStore = defineStore('project', {
     editCells: shallowRef(new Map()), // the edit cells (see document/editCells.js)
     baseRecords: shallowRef(EMPTY_BASE), // the base layer's pinned characters (see document/baseRecords.js)
 
+    // Animation (store/project/animation.js): the showing frame's resolved state is editCells and paintLayer.
+    frames: shallowRef([newFrame('blank')]),
+    frame: 0,    // which one's showing
+    fps: 8,
+    animate: false, // the bar is up
+
     filename: null,
     cells: shallowRef([]),          // what the ANSI view shows and exports (renderedCells + edit cells + paint)
     composedCells: shallowRef([]),  // the same before the wide-character layout (what partial updates rebuild from)
@@ -69,7 +70,7 @@ export const useProjectStore = defineStore('project', {
     historyVersion: 0, // mirrors history.version so canUndo/canRedo stay reactive
 
     // Every stroke on the edit layer, position by position; history's entries undo them through it.
-    _ledger: newLedger(),
+    _ledger: firstLedger(),
     _by: ALONE, // who the ledger knows this person as
     _sharing: null, // the room this document is shared with (sharing.js)
     _paused: false,
@@ -85,7 +86,10 @@ export const useProjectStore = defineStore('project', {
     // The image is still the one loaded, at its own size (the merge dialog says what Into the image costs).
     pictureIsOriginal: (state) => !state.imageIsWorkingCopy,
     canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo,
-    hasEdits: (state) => state.editCells.size > 0 || state.hasPaint, // anything on the edit layer (a grid resize is then a canvas resize)
+    // Anything on the edit layer, of any frame (a grid resize is then a canvas resize).
+    hasEdits: (state) => state.editCells.size > 0 || state.hasPaint || (state.frames.length > 1 && state.frames.some((frame, i) => i !== state.frame && frame.changes.size > 0)),
+    currentFrame: (state) => state.frames[state.frame],
+    hasFrames: (state) => state.frames.length > 1,
     isDirty: (state) => settingsJson(state) !== state.savedSettings || state.editVersion !== state.savedEditVersion,
     imageRatio: (state) => {
       if (!state.image) return 1;
@@ -126,5 +130,6 @@ export const useProjectStore = defineStore('project', {
     sharingHostActions,
     sharingArtistActions,
     handoverActions,
+    animationActions,
   ), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => !!store._sharing && (store._sharing.role === 'artist' || store._paused) && !store._takingProject),
 });
