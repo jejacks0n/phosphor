@@ -268,3 +268,26 @@ test('a grid grown past the limit with Animate on can’t gain frames, which a f
   project.addFrame('blank');
   expect(project.frames).toHaveLength(1);
 });
+
+test('a file whose frames can’t be read says so as it opens as a still', async () => {
+  const { toastMessage } = await import('@/composables/useToast');
+  const { writeProject } = await import('@/document/projectIO.js');
+  const { project } = await animated();
+  project.setAnimate(true);
+  type(project, 1, 1, 'A');
+  project.addFrame('blank');
+  const parts = await project.projectParts();
+  const good = new File([await writeProject({ imageBuffer: project.imageBuffer, ...parts })], 'good.phosphor');
+  parts.animation.frames[0].kind = 'a kind from a later Phosphor';
+  const bad = new File([await writeProject({ imageBuffer: project.imageBuffer, ...parts })], 'bad.phosphor');
+
+  toastMessage.value = null;
+  await project.loadProject(good);
+  expect(project.frames.length).toBe(2);
+  expect(toastMessage.value).toBe(null);
+
+  await project.loadProject(bad);
+  expect(project.frames.length).toBe(1);
+  expect(toastMessage.value).toMatch(/opened as a still/);
+  toastMessage.value = null;
+});

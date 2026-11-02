@@ -18,6 +18,7 @@ Inputs the tests read, and (under `reference/`) the outputs they must reproduce.
 | `projects/no-haspaint.phosphor` | paint with no `hasPaint` flag or paint scale | `npm run fixtures` |
 | `projects/erased-cells.phosphor` | erased cells as a record, from before the base had its own pixels | `npm run fixtures` |
 | `projects/charmode.phosphor` | a stored `charMode` (now derived from the art style) | `npm run fixtures` |
+| `projects/animated.phosphor` | frames, holds and frames per second | saved by the app |
 | `projects/live-main.phosphor` | a project saved by the live site's code (`main`) | `node tests/fixtures/capture-main.mjs` |
 | `../../examples/*.phosphor` | real projects from earlier versions | committed by hand |
 | `fonts/wide.ttf` | ﷽ as a bar 7.5 columns wide (drawing over 8), for the overflow tests in any system's fonts | `python3 tests/fixtures/fonts/make-fonts.py` (needs fontTools) |

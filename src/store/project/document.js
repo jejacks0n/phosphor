@@ -11,6 +11,7 @@ import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
+import { LONG_TOAST_MS, toast } from '@/composables/useToast.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults } from '@/store/settings.js';
 import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJson, randomId } from '@/store/project/shared.js';
@@ -18,6 +19,7 @@ import { generateSlug } from 'random-word-slugs';
 import { shallowRef } from 'vue';
 
 // A project's pictures, decoded: what can fail before anything has changed.
+const FRAMES_LOST_WORDS = "This file's animation couldn't be opened, so it opened as a still. Saving it keeps only the still.";
 const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer }) => ({
   image: await loadImage(imageBuffer),
   paint: paintBuffer && await loadImage(paintBuffer, 'image/png'),
@@ -25,7 +27,7 @@ const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer }) => ({
 });
 
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.
-function showParts({ settings, imageBuffer, editCells, baseRecords, erasedCells, migrated, animation }, { image, paint, basePixels }, { filename, documentId }) {
+function showParts({ settings, imageBuffer, editCells, baseRecords, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels }, { filename, documentId }) {
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
   this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }) });
   try {
@@ -63,6 +65,7 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, erasedCells,
       this.clearHistory();
     }
     if (animation?.frames.length > 1 && !this._sharing && !this._takingProject) this.openFrames(animation); // a room holds a still: the file's still is what's open
+    if (framesLost && !this._sharing && !this._takingProject) toast(FRAMES_LOST_WORDS, LONG_TOAST_MS);
     this.render();
     this.markSaved();
   } catch (error) {
