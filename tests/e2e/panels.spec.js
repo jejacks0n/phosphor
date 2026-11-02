@@ -133,3 +133,12 @@ test('the tool options row is the same height for every tool, its options on one
     expect(Math.abs(got.middle - first.middle), tool).toBeLessThanOrEqual(1);
   }
 });
+
+test('over the status bar the pointer is the ordinary arrow, whatever the tool hides it for over the canvas', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Edit Mode' }).click();
+  for (const tool of ['brush', 'eraser', 'char', 'flip']) {
+    await page.evaluate((id) => document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('workspace').setActiveTool(id), tool);
+    await expect.poll(() => page.locator('footer.ansi-status').evaluate((el) => getComputedStyle(el).cursor), { message: tool }).toBe('default');
+  }
+});
