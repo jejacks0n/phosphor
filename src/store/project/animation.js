@@ -104,6 +104,7 @@ const framesNow = (project) => ({ list: project.frames, states: project.frames.m
 // it. Holds aren't part of a step, and they live on the frame, so they stay.
 function putFrames(project, { list, states, showing }) {
   const was = project.frames, leaving = project.currentFrame;
+  for (const frame of was) if (!list.includes(frame)) frame.resolved = frame.built = null; // history holds it, and these are only worked out
   const differs = (frame, at) => frame !== was[at] || frame.kind !== states[at].kind || frame.changes !== states[at].changes;
   const first = list.findIndex(differs);
   list.forEach((frame, at) => Object.assign(frame, states[at]));
@@ -297,6 +298,7 @@ export const animationActions = {
       const deleted = this.currentFrame, at = this.frame, next = this.frames[at + 1];
       if (next) Object.assign(next, foldDeleted(deleted, next));
       this.frames = this.frames.filter((frame) => frame !== deleted);
+      deleted.resolved = deleted.built = null; // history holds it, and these are only worked out
       if (next) this.frames[at].resolved = this.frames[at].built = null;
       return this.frames[Math.min(at, this.frames.length - 1)];
     });

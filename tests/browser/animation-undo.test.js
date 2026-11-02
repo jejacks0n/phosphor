@@ -286,3 +286,24 @@ test('a frame scrubbed through keeps its look after undo and redo of strokes on 
   project.showFrame(1);
   expect(cellsKey(project)).toEqual(look);
 });
+
+test('a deleted frame gives up what’s cached of it, and undoing the delete works it out again', async () => {
+  const { project } = await animated();
+  project.addFrame('wipe');
+  project.paintStroke([{ x: 2, y: 2, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  const deleted = project.currentFrame;
+  project.showFrame(0);
+  project.resolvedOf(1);
+  await project.builtFrame(1);
+  expect(deleted.resolved && deleted.built).toBeTruthy();
+  project.showFrame(1);
+  project.deleteFrame();
+  expect([deleted.resolved, deleted.built]).toEqual([null, null]);
+
+  project.undo();
+  expect(project.resolvedOf(1).has('2,1')).toBe(true);
+  await project.builtFrame(1);
+  project.redo(); // and again, on the way back out
+  expect([deleted.resolved, deleted.built]).toEqual([null, null]);
+});
