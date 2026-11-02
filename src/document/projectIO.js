@@ -5,6 +5,7 @@
  * JSON, the source image bytes, and the paint layer PNG (empty when there's no paint).
  */
 import { serializeEditCells, deserializeEditCells, migrateCharEdits } from './editCells.js';
+import { deserializeFrames } from './frames.js';
 import { EMPTY_BASE, serializeBase, deserializeBase } from './baseRecords.js';
 import { MAX_LAYER_DIM } from './PaintLayer.js';
 import { MAX_COLS, MAX_LINES, maxRowsBeside } from '../lib/Cells.js';
@@ -36,11 +37,13 @@ export function loadImage(source, type) {
 // baseBlob: PNG of the base layer's own pixels, or null (saved after the paint; its length is in the
 // JSON as baseLength, so older readers just ignore it);
 // editCells: the edit layer's cells (saved under the file's original key, `cellEdits`);
-// baseRecords: the base layer's pinned characters (saved as `base`, left out when there are none).
-export async function writeProject({ settings, imageBuffer, paintBlob, baseBlob = null, editCells, baseRecords = EMPTY_BASE }) {
+// baseRecords: the base layer's pinned characters (saved as `base`, left out when there are none);
+// animation: { frames (serializeFrames), frame, fps }, left out for a still. The rest holds the frame
+// showing, so older copies open it as a still.
+export async function writeProject({ settings, imageBuffer, paintBlob, baseBlob = null, editCells, baseRecords = EMPTY_BASE, animation = null }) {
   const base = serializeBase(baseRecords);
   const baseBuffer = baseBlob ? await baseBlob.arrayBuffer() : new ArrayBuffer(0);
-  const json = new TextEncoder().encode(JSON.stringify({ ...settings, cellEdits: serializeEditCells(editCells), ...(base && { base }), ...(baseBlob && { baseLength: baseBuffer.byteLength }) }));
+  const json = new TextEncoder().encode(JSON.stringify({ ...settings, cellEdits: serializeEditCells(editCells), ...(base && { base }), ...(baseBlob && { baseLength: baseBuffer.byteLength }), ...animation }));
   const paintBuffer = paintBlob ? await paintBlob.arrayBuffer() : new ArrayBuffer(0);
   const header = new TextEncoder().encode(MAGIC_HEADER);
   const lengths = new Uint32Array([json.byteLength, imageBuffer.byteLength, paintBuffer.byteLength]);
@@ -59,7 +62,7 @@ export async function readProject(file) {
   const paintLen = view.getUint32(16, true);
 
   let offset = 20;
-  const { cellEdits, charEditMap, hasPaint, base, baseLength, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
+  const { cellEdits, charEditMap, hasPaint, base, baseLength, frames, frame, fps, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
   delete settings.charMode; // older files stored a charMode that's now derived from renderStyle
   delete settings.documentId; // Untrusted, and autosave's, not the file's: one could overwrite another document's record
   delete settings.savedToFile;
@@ -80,7 +83,7 @@ export async function readProject(file) {
   const usePaint = (hasPaint ?? paintLen > 0) && paintLen > 0;
   // Files from before the cell layer have charEditMap (cell index -> char) instead.
   const edits = cellEdits ? deserializeEditCells(cellEdits) : migrateCharEdits(charEditMap || [], settings.cols);
-  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, baseBuffer, editCells: edits, ...readBase(base), migrated: !cellEdits && edits.size > 0 };
+  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, baseBuffer, editCells: edits, ...readBase(base), migrated: !cellEdits && edits.size > 0, animation: frames === undefined ? null : deserializeFrames({ frames, frame, fps }, settings.cols, settings.rows) };
 }
 
 // The base record, and (from files before the base had its own pixels) the cells to erase.

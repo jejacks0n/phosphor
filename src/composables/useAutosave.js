@@ -195,6 +195,7 @@ export function useAutosave() {
     return current.value;
   };
 
+  let swaps = project._frameSwaps;
   watch([
     () => project.documentId,
     () => project.editVersion,
@@ -203,8 +204,9 @@ export function useAutosave() {
     () => project.filename,
     () => project.imageBuffer, // merging into the image swaps it
   ], () => {
-    edited = true;
-    schedule();
+    if (project._frameSwaps === swaps) edited = true; // going to another frame replaces editCells, and is no edit
+    swaps = project._frameSwaps;
+    schedule(); // though the frame's kept
   }, { flush: 'sync' }); // sync: beforeunload commits a typing run and reads current straight after
 
   // A save to a file isn't a change to the art, but the record has to say it happened. Opening a

@@ -53,7 +53,8 @@ function liveStates(project) {
 // Frame i becomes the one showing: its state in editCells and the paint layer, its ledger in _ledger. Whatever
 // was showing has been noted already, or is going away. leaving: the frame whose ledger is out, when the list
 // has just changed under it.
-function arrive(project, i, leaving = project.currentFrame) {
+function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}) {
+  project._frameSwaps++; // before editCells: autosave's told this isn't an edit
   const frame = project.frames[i], version = project.history.version;
   leaving.ledger = project._ledger;
   leaving.ledgerAt = version;
@@ -70,6 +71,7 @@ function arrive(project, i, leaving = project.currentFrame) {
   project.hasPaint = layer.hasPaint;
   project._arrived = markRaw({ paint: layer.hasPaint ? layer.gridPixels() : null, states: resolved });
   if (frame.ledgerAt !== version) project._ledger.refreshBases(); // an earlier frame may have changed what's under its strokes
+  if (!draw) return;
   const output = project.renderer.outputCanvas;
   if (output?.width !== project.cols || output.height !== project.rows) project.render(); // a grid change's is on its way
   else if (!project.composite()) project.rebuildCells();
@@ -328,6 +330,28 @@ export const animationActions = {
 
   setAnimate(on) {
     this.animate = !!on && this.canAnimate;
+  },
+
+  // The frames a file held (deserializeFrames), over the document just opened from it: the frame it was on shows,
+  // from its own state, and Animate's on. The render that opens the document draws it.
+  openFrames({ frames, frame, fps }) {
+    const leaving = this.currentFrame;
+    this.ensureLayer();
+    let cols = 0, rows = 0;
+    for (const { changes } of frames) {
+      for (const [key, { top, bottom }] of changes) {
+        if (!top && !bottom) continue;
+        const at = parseKey(key);
+        cols = Math.max(cols, at.col + 1);
+        rows = Math.max(rows, 2 * (at.row + 1));
+      }
+    }
+    this.paintLayer.extend(cols, rows);
+    this.baseLayer.extend(this.paintLayer.cols, this.paintLayer.rows); // together, as ever
+    this.frames = frames;
+    this.fps = fps;
+    arrive(this, frame, leaving, { draw: false });
+    this.setAnimate(true);
   },
 
   // A fresh document's one frame. Autosave doesn't count this one, or a frame's swap, as editing.

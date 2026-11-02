@@ -1,6 +1,7 @@
-import { test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import assert from 'node:assert/strict';
-import { EMPTY_STATE, FRAME_KINDS, cellState, foldDeleted, frameDiff, isEmptyState, newFrame, resolveOver } from '../../src/document/frames.js';
+import { EMPTY_STATE, FRAME_KINDS, cellState, deserializeFrames, foldDeleted, frameDiff, isEmptyState, newFrame, resolveOver, serializeFrames } from '../../src/document/frames.js';
+import { MAX_CELLS, MAX_COLS, MAX_FRAMES, MAX_LINES } from '../../src/lib/Cells.js';
 
 const A = Object.freeze({ char: 'A' }), B = Object.freeze({ char: 'B' });
 const RED = 0xff0000ff, BLUE = 0x0000ffff;
@@ -116,4 +117,69 @@ test('frameDiff records an erase for what live no longer has, and a whole state 
 
 test('frameDiff records no erase of nothing', () => {
   assert.equal(frameDiff(new Map(), new Map([['1,1', EMPTY_STATE]])).size, 0);
+});
+
+describe('saving frames', () => {
+  const cell = Object.freeze({ char: 'A', fg: '#ffee00' });
+  const good = () => {
+    const first = newFrame('blank', new Map([['0,0', cellState(cell, 0xff0000ff, 0)], ['3,1', EMPTY_STATE]]));
+    const second = newFrame('wipe', new Map([['2,2', cellState(null, 0, 0x00ff00ff)]]));
+    second.hold = 0.5;
+    return { frames: serializeFrames([first, second, newFrame('duplicate')]), frame: 1, fps: 12 };
+  };
+  const on = (change) => { const json = JSON.parse(JSON.stringify(good())); change(json); return json; };
+
+  test('frames round-trip through JSON', () => {
+    const read = deserializeFrames(JSON.parse(JSON.stringify(good())), 20, 20);
+    expect(read.frame).toBe(1);
+    expect(read.fps).toBe(12);
+    expect(read.frames.map((f) => [f.kind, f.hold])).toEqual([['blank', 0], ['wipe', 0.5], ['duplicate', 0]]);
+    expect([...read.frames[0].changes.keys()]).toEqual(['0,0', '3,1']);
+    expect(read.frames[0].changes.get('0,0')).toEqual({ cell, top: 0xff0000ff, bottom: 0 });
+    expect(isEmptyState(read.frames[0].changes.get('3,1'))).toBe(true);
+    expect(read.frames[1].changes.get('2,2')).toEqual({ cell: null, top: 0, bottom: 0x00ff00ff });
+  });
+
+  const damaged = [
+    ['frames not a list', (j) => { j.frames = 'x'; }],
+    ['no frames', (j) => { j.frames = []; }],
+    ['too many frames', (j) => { j.frames = Array(MAX_FRAMES + 1).fill({ kind: 'blank', hold: 0, changes: [] }); }],
+    ['a frame not an object', (j) => { j.frames[0] = 3; }],
+    ['an unknown kind', (j) => { j.frames[0].kind = 'fade'; }],
+    ['a hold that isn’t a number', (j) => { j.frames[0].hold = '1'; }],
+    ['a hold too long', (j) => { j.frames[0].hold = 61; }],
+    ['a negative hold', (j) => { j.frames[0].hold = -1; }],
+    ['fps not whole', (j) => { j.fps = 1.5; }],
+    ['fps too high', (j) => { j.fps = 61; }],
+    ['frame past the end', (j) => { j.frame = 3; }],
+    ['frame negative', (j) => { j.frame = -1; }],
+    ['changes not a list', (j) => { j.frames[0].changes = {}; }],
+    ['an entry not a list', (j) => { j.frames[0].changes[0] = 'x'; }],
+    ['a bad key', (j) => { j.frames[0].changes[0][0] = '../1'; }],
+    ['a column past the limit', (j) => { j.frames[0].changes[0][0] = `${MAX_COLS},0`; }],
+    ['a line past the limit', (j) => { j.frames[0].changes[0][0] = `0,${MAX_LINES}`; }],
+    ['a color that isn’t one', (j) => { j.frames[0].changes[0][1] = { fg: 'red' }; }],
+    ['a cell that isn’t one', (j) => { j.frames[0].changes[0][1] = 7; }],
+    ['paint not whole', (j) => { j.frames[0].changes[0][2] = 1.5; }],
+    ['paint too large', (j) => { j.frames[0].changes[0][3] = 2 ** 32; }],
+    ['paint negative', (j) => { j.frames[0].changes[0][2] = -1; }],
+  ];
+  test.each(damaged)('a damaged frames value is refused: %s', (_, change) => {
+    expect(deserializeFrames(on(change), 20, 20)).toBeNull();
+  });
+
+  test('too many entries on a frame is refused', () => {
+    const changes = { length: MAX_CELLS + 1 };
+    expect(deserializeFrames(on((j) => { j.frames[0].changes = Array.from(changes, () => ['0,0', null, 0, 0]); }), 20, 20)).toBeNull();
+  });
+
+  test('a grid too large to animate opens as a still', () => {
+    expect(deserializeFrames(good(), 300, 400)).toBeNull();
+    expect(deserializeFrames(good(), undefined, 20)).toBeNull();
+  });
+
+  test('anything but an object is refused', () => {
+    expect(deserializeFrames(null, 20, 20)).toBeNull();
+    expect(deserializeFrames({ fps: 8, frame: 0 }, 20, 20)).toBeNull();
+  });
 });
