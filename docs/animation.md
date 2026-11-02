@@ -52,9 +52,8 @@ Undo works across frames: it goes back to the frame the edit was made on and und
 
 On a Blank frame, what's inherited shows dimmed on the PIXEL and ANSI tabs, in its own colors, so you can see what you're
 drawing over. What you draw on this frame shows at full strength, as soon as you draw it. The ghost is only there to draw by:
-it never plays and never reaches an export. That holds even where you draw in exactly the color a cell inherited; once
-undo can't reach that drawing (after a reload, say), a cell that's the same as the frame before is inherited again and
-dims. **Ghost** on the bar turns it off, and inherited cells show solid. The slider
+it never plays and never reaches an export. What you draw stays solid even in exactly the color a cell inherited; after a
+reload, or past what undo keeps, a cell that's the same as the frame before is inherited again and dims. **Ghost** on the bar turns it off, and inherited cells show solid. The slider
 beside it sets how strong the ghost is, from 0% (inherited cells don't show) to 100% (solid). It starts at 35%, and this browser remembers it.
 
 ## Timing
@@ -70,7 +69,7 @@ One frames-per-second number holds for the whole movie (8 to begin with, 1 to 60
   holds 100. The grid can only grow as far as the frames allow. Those keep a movie where every cell changes on every frame within
   what a browser tab can hold.
 
-**Merge up** and **Bake** work on every frame. Moving a slider changes every frame, since they all sit on the same base.
+**Merge up** works on the frame showing, and **Bake** on every frame. Moving a slider changes every frame, since they all sit on the same base.
 With a Color count palette, there's one palette for the whole movie, picked from every frame, so colors stay
 put from frame to frame ([Layers](layers.md)).
 
@@ -78,7 +77,7 @@ put from frame to frame ([Layers](layers.md)).
 
 A project file keeps the frames, their holds, the frames per second and the frame you were on, and autosave and
 Versions do too. A copy of Phosphor from before animation opens such a file as a still, of the frame that was showing.
-A file whose frames are damaged opens that way too. Going from frame to frame isn't an edit, so it doesn't count toward a new version.
+A file whose frames are damaged or too large opens that way too, and says so; saving it then keeps only the still. Going from frame to frame isn't an edit, so it doesn't count toward a new version.
 
 ## Exporting
 

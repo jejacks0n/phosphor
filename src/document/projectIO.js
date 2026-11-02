@@ -83,7 +83,8 @@ export async function readProject(file) {
   const usePaint = (hasPaint ?? paintLen > 0) && paintLen > 0;
   // Files from before the cell layer have charEditMap (cell index -> char) instead.
   const edits = cellEdits ? deserializeEditCells(cellEdits) : migrateCharEdits(charEditMap || [], settings.cols);
-  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, baseBuffer, editCells: edits, ...readBase(base), migrated: !cellEdits && edits.size > 0, animation: frames === undefined ? null : deserializeFrames({ frames, frame, fps }, settings.cols, settings.rows) };
+  const animation = frames === undefined ? null : deserializeFrames({ frames, frame, fps }, settings.cols, settings.rows);
+  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, baseBuffer, editCells: edits, ...readBase(base), migrated: !cellEdits && edits.size > 0, animation, framesLost: frames !== undefined && !animation };
 }
 
 // The base record, and (from files before the base had its own pixels) the cells to erase.
