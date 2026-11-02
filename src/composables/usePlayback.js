@@ -37,7 +37,7 @@ async function buildAhead(run) {
 function tick(run, now) {
   if (running !== run) return;
   const { project, workspace } = run;
-  if (project._document !== run.document || !project.hasFrames) {
+  if (project._document !== run.document || !project.hasFrames || !project.animate) {
     stop(run);
     return;
   }

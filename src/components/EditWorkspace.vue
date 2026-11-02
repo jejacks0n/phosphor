@@ -12,6 +12,7 @@ import EditTabs from '@/components/EditTabs.vue';
 import ZeroState from '@/components/ZeroState.vue';
 import SauceEditor from '@/components/SauceEditor.vue';
 import DropZone from '@/components/DropZone.vue';
+import AnimationBar from '@/components/AnimationBar.vue';
 import AnsiEditor from '@/components/AnsiEditor.vue';
 import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
@@ -65,6 +66,7 @@ async function handleFileSelected(file) {
 
         <ZeroState v-else :ready="ready" :recent="recent" :open-recent="openRecent" @file-selected="handleFileSelected" @start-blank="project.setBlankCanvas"/>
       </DropZone>
+      <AnimationBar v-if="project.image && project.animate && ['input', 'output'].includes(workspace.editorTab)"/>
     </template>
   </section>
 </template>
