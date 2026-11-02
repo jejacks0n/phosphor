@@ -83,6 +83,51 @@ test('a frame drawn on gets a tall mark at once', async ({ page }) => {
   await expect(page.locator('.scrubber-marks .drawn')).toHaveCount(1);
 });
 
+// Where the scrubber's handle is drawn, from a screenshot (its pink is nowhere else on the bar): its middle, across.
+async function handleMiddle(page) {
+  const slider = bar(page).getByRole('slider', { name: 'Frame' });
+  const box = await slider.boundingBox();
+  const shot = (await page.screenshot({ clip: { x: box.x - 20, y: box.y, width: box.width + 40, height: box.height } })).toString('base64');
+  const [from, to] = await page.evaluate(async (png) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${png}`;
+    await image.decode();
+    const canvas = Object.assign(document.createElement('canvas'), { width: image.width, height: image.height });
+    const context = canvas.getContext('2d');
+    context.drawImage(image, 0, 0);
+    const { data, width, height } = context.getImageData(0, 0, image.width, image.height);
+    let left = Infinity, right = -Infinity;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        if (Math.abs(data[i] - 0xe8) < 40 && data[i + 1] < 60 && Math.abs(data[i + 2] - 0xfc) < 40) { left = Math.min(left, x); right = Math.max(right, x); }
+      }
+    }
+    return [left, right];
+  }, shot);
+  const scale = (await page.evaluate(() => devicePixelRatio));
+  return box.x - 20 + (from + to + 1) / 2 / scale;
+}
+const markMiddle = async (page, i) => {
+  const box = await page.locator('.scrubber-marks span').nth(i).boundingBox();
+  return box.x + box.width / 2;
+};
+
+test('the first and last frame marks sit centered under the scrubber’s handle', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  for (let i = 0; i < 4; i++) await addFrame(page, 'Blank');
+  for (const [width, height] of [[1400, 900], [390, 844]]) {
+    await page.setViewportSize({ width, height });
+    await page.mouse.move(0, 0);
+    for (const i of [0, 4]) {
+      await scrubTo(page, i);
+      await page.locator('body').click({ position: { x: 1, y: 1 } }); // the handle unfocused, in its own color
+      await expect.poll(async () => Math.abs(await handleMiddle(page) - await markMiddle(page, i)), { message: `frame ${i + 1} at ${width}` }).toBeLessThan(1);
+    }
+  }
+});
+
 test('Play runs and Pause stops, and the indicator moves', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();

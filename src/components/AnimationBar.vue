@@ -31,8 +31,8 @@ const marks = computed(() => {
   void project.historyVersion;
   return project.hasFrames ? frameMarks(project.frames) : [project.hasEdits ? 'drawn' : 'empty'];
 });
-// Where the range's thumb sits for frame i: its travel stops half a thumb short of each end.
-const markAt = (i) => (count.value > 1 ? `calc(7px + (100% - 14px) * ${i / (count.value - 1)})` : '7px');
+// Where the range's thumb sits for frame i: its travel stops half a thumb (--thumb, the global slider's) short of each end.
+const markAt = (i) => `calc(var(--thumb) / 2 + (100% - var(--thumb)) * ${count.value > 1 ? i / (count.value - 1) : 0})`;
 
 // Anything that changes the frames lands on the frame showing.
 const paused = (act) => (...args) => {
@@ -191,6 +191,7 @@ output.indicator {
 }
 
 div.scrubber {
+  --thumb: 17px; /* global.css's slider thumb, border and all */
   position: relative;
   flex: 1 1 0;
   min-width: 60px;
@@ -292,6 +293,12 @@ button.ghost.active {
 }
 button.ghost.active svg {
   fill: var(--white);
+}
+
+@media (max-width: 768px) { /* global.css's thumb is larger here, for a finger */
+  div.scrubber {
+    --thumb: 23px;
+  }
 }
 
 @media (max-width: 960px) { /* up to the largest phone on its side */
