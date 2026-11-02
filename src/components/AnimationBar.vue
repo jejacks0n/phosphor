@@ -19,6 +19,11 @@ const KINDS = [
 
 const at = computed(() => (workspace.playing ? workspace.playFrame : project.frame));
 const count = computed(() => project.frames.length);
+// Why + Frame is off, if it is.
+const full = computed(() => {
+  if (!project.canAnimate) return 'This canvas is too large to add frames';
+  return count.value >= project.mostFrames ? `${count.value} frames is the most at this canvas size` : '';
+});
 
 // A frame's changes are worked out when it's left, and here when it's edited, so its mark is right at once.
 watch(() => project.historyVersion, () => project.noteFrame());
@@ -80,10 +85,10 @@ const setFps = (event) => {
       <input type="number" aria-label="Hold" min="0" max="60" step="0.05" :value="project.frames[at]?.hold" @change="setHold">
       s
     </label>
-    <DropdownMenu label="+ Frame" up :disabled="count >= project.mostFrames">
+    <DropdownMenu label="+ Frame" up :disabled="!!full">
       <button v-for="[kind, label] in KINDS" :key="kind" @click="add(kind)">{{ label }}</button>
     </DropdownMenu>
-    <span v-if="count >= project.mostFrames" class="full">{{ count }} frames is the most at this canvas size</span>
+    <span v-if="full" class="full">{{ full }}</span>
     <DropdownMenu label="Frame actions" up>
       <template #trigger>
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 7h3v3H2zM6.5 7h3v3h-3zM11 7h3v3h-3z"/></svg>

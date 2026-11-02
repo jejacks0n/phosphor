@@ -257,3 +257,14 @@ test('a large grid takes only so many frames, and a grid with many frames only g
   expect(project.cols * project.maxRows / 2).toBeLessThanOrEqual(MAX_FRAME_CELLS / 200);
   expect(project.maxCols * charRowsOf(project.rows)).toBeLessThanOrEqual(MAX_FRAME_CELLS / 200);
 });
+
+test('a grid grown past the limit with Animate on can’t gain frames, which a file couldn’t keep', async () => {
+  const { project } = await animated({ cols: 20, rows: 20 });
+  project.setAnimate(true);
+  project.cols = 300;
+  project.rows = 400;
+  await settle(project);
+  expect(project.canAnimate).toBe(false);
+  project.addFrame('blank');
+  expect(project.frames).toHaveLength(1);
+});

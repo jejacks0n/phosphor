@@ -264,7 +264,7 @@ export const animationActions = {
   // A new frame after the one showing, which it then shows. A Duplicate holds a full copy of what it
   // inherited, so later fixes on earlier frames can't reach it.
   addFrame(kind) {
-    if (!this.image || this.frames.length >= this.mostFrames || this._sharing) return;
+    if (!this.image || !this.canAnimate || this.frames.length >= this.mostFrames) return; // a file couldn't keep them over the limit
     settleFrame(this);
     frameStep(this, () => {
       const at = this.frame + 1;

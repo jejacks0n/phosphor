@@ -351,3 +351,18 @@ test('a Version restored brings its frames back', async ({ page }) => {
   await scrubTo(page, 0);
   await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
 });
+
+test('a canvas grown past the limit offers no + Frame, and Animate can still be turned off', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  await page.evaluate(() => {
+    const p = document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('project');
+    p.cols = 300;
+    p.rows = 400;
+  });
+  await expect(bar(page).getByRole('button', { name: '+ Frame' })).toBeDisabled();
+  await expect(bar(page)).toContainText('too large');
+  await animateSwitch(page).uncheck();
+  await expect(bar(page)).toBeHidden();
+  await expect(animateSwitch(page)).toBeDisabled();
+});
