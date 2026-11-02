@@ -21,7 +21,12 @@ export const cellOfPixel = (x, y) => ({ col: x, row: Math.floor(y / 2) });
 // milliseconds, and a document well within a browser tab's memory (docs/investigations/viewport-rendering.md).
 export const MAX_COLS = 300, MAX_LINES = 5000, MAX_CELLS = 500_000;
 // An animation is smaller: each frame is built whole, and kept, for playing. Set from what that costs (bench/).
-export const MAX_ANIMATION_CELLS = 40_000, MAX_FRAMES = 1000;
+// An animation's limits, from bench/large-documents.bench.js, every cell changed on every frame, on software WebGL:
+// at 40,000 cells a 24-frame rebuild takes 0.9s (80,000: 2.1s) and playing with the PIXEL overlay up holds 57 fps. A
+// frame like that takes about 20MB, its changes, what it shows and what's built, so MAX_FRAME_CELLS keeps the
+// worst of them to about 2GB: 100 frames at 40,000 cells, the whole 1,000 up to 4,000.
+export const MAX_ANIMATION_CELLS = 40_000, MAX_FRAMES = 1000, MAX_FRAME_CELLS = 4_000_000;
+export const maxFramesFor = (cells) => Math.min(MAX_FRAMES, Math.floor(MAX_FRAME_CELLS / Math.max(1, cells)));
 export const gridFits = (cols, rows) => cols <= MAX_COLS && rows <= 2 * MAX_LINES && cols * charRowsOf(rows) <= MAX_CELLS;
 // The most columns there's room for beside rows, and the most rows beside cols.
 export const maxColsBeside = (rows) => Math.min(MAX_COLS, Math.floor(MAX_CELLS / Math.max(1, charRowsOf(rows))));

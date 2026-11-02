@@ -34,6 +34,7 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   - `merging.js`: Merge up, Merge down, Into the image, Bake
   - `sliders.js`: slider moves as undo steps
   - `history.js`: recording edits, undo and redo
+  - `animation.js`: frames: moving between them, adding, deleting, reordering, timing, a whole movie's palette
   - `sharing.js`: the document shared with a room: slices of an edit going out, changes heard, undo asking the host
   - `sharingHost.js`: a host's side of that: the ledger kept, an artist's change numbered, the project, base and settings sent
   - `sharingArtist.js`: an artist's: slices held and sent, what's asked of the host, a check, the project opened
@@ -50,6 +51,7 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
 - `src/router.js` and `src/lib/addresses.js`: the address (which tab, SOCIAL page and room) and Back,
   Forward and reload. The stores are the truth; the router follows them, and `reconcile` is the one
   place that navigates. `addresses.js` is the table of paths and where an address may land.
+- `src/document/frames.js` (a frame as data, what it resolves to) and `src/document/FrameBuilder.js` (a frame's cells, made the way a still's are), with `src/composables/usePlayback.js` (playing) and `src/lib/CastFile.js` and `src/lib/GifFile.js` (exports): animation.
 - `src/document/`: the document's data (layers, cells, history, files); `src/lib/`: the libraries
   (cells, colors, the image pipeline, exports); `src/tools/`: one file per tool.
 - The SOCIAL tab: `src/social/` (the network and crypto modules: API calls, the lobby socket, keys

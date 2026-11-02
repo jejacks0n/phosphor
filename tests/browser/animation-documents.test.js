@@ -3,7 +3,7 @@ import { test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
-import { cellIndex, MAX_ANIMATION_CELLS, MAX_FRAMES } from '@/lib/Cells.js';
+import { cellIndex, charRowsOf, MAX_ANIMATION_CELLS, MAX_FRAME_CELLS, MAX_FRAMES, maxFramesFor } from '@/lib/Cells.js';
 import { readProject } from '@/document/projectIO.js';
 
 const INK = { fg: '#ffee00', bg: '#0044aa' };
@@ -237,4 +237,23 @@ test('a project from a host never makes frames: parts.frames is dropped', async 
   await project.openFromHost(opened, { filename: 'x' });
   await settle(project);
   expect(project.frames).toHaveLength(1);
+});
+
+test('the limits are pinned: 40,000 cells, 1,000 frames, and 4 million cells across the frames', () => {
+  expect([MAX_ANIMATION_CELLS, MAX_FRAMES, MAX_FRAME_CELLS]).toEqual([40_000, 1000, 4_000_000]);
+  expect(maxFramesFor(80 * 25)).toBe(1000);
+  expect(maxFramesFor(200 * 100)).toBe(200);
+  expect(maxFramesFor(40_000)).toBe(100);
+});
+
+test('a large grid takes only so many frames, and a grid with many frames only grows so far', async () => {
+  const { project } = await animated({ cols: 200, rows: 200 });
+  expect(project.mostFrames).toBe(200);
+  project.frames = Array.from({ length: 199 }, () => project.frames[0]);
+  project.addFrame('blank');
+  expect(project.frames).toHaveLength(200);
+  project.addFrame('blank');
+  expect(project.frames).toHaveLength(200);
+  expect(project.cols * project.maxRows / 2).toBeLessThanOrEqual(MAX_FRAME_CELLS / 200);
+  expect(project.maxCols * charRowsOf(project.rows)).toBeLessThanOrEqual(MAX_FRAME_CELLS / 200);
 });

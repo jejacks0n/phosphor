@@ -4,7 +4,7 @@ import CellCanvas from './CellCanvas.js';
 import { ctx2d } from './Canvas.js';
 import quantize from './Quantizer.js';
 
-export const MAX_GIF_PIXELS = 1_000_000_000; // across frames: an index a pixel is held until the file's written
+export const MAX_GIF_PIXELS = 500_000_000; // across frames: an index a pixel is held until the file's written, and it runs at about 20M pixels a second
 export const gifDelay = (ms) => Math.max(2, Math.round(ms / 10)); // hundredths of a second; browsers slow anything shorter
 
 const MAX_CODE = 4096;

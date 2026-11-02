@@ -7,7 +7,7 @@ import FrameBuilder from '@/document/FrameBuilder.js';
 import { cellState, foldDeleted, frameDiff, newFrame, paintImage, resolveOver, sameChanges } from '@/document/frames.js';
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
-import { MAX_FRAMES, cellIndex, charRowsOf } from '@/lib/Cells.js';
+import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { newLedger } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
 
@@ -264,7 +264,7 @@ export const animationActions = {
   // A new frame after the one showing, which it then shows. A Duplicate holds a full copy of what it
   // inherited, so later fixes on earlier frames can't reach it.
   addFrame(kind) {
-    if (!this.image || this.frames.length >= MAX_FRAMES || this._sharing) return;
+    if (!this.image || this.frames.length >= this.mostFrames || this._sharing) return;
     settleFrame(this);
     frameStep(this, () => {
       const at = this.frame + 1;
