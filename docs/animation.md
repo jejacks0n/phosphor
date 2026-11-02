@@ -10,7 +10,7 @@ The **Animate** switch is on the tab bar, beside the color picker. Turning it on
 canvas, on the PIXEL and ANSI tabs. Turning it off hides the bar and keeps the frames; the canvas stays on the
 frame it was on. A document opened with more than one frame has it on.
 
-The switch is off, and says why, in a room and on a canvas over 40,000 cells. A document with more than one
+The switch is off in a room and on a canvas over 40,000 cells, and clicking or tapping it says why. A document with more than one
 frame can't start a room.
 
 ## The bar

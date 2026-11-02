@@ -7,7 +7,8 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { usePlayback } from '@/composables/usePlayback';
-import { MAX_ANIMATION_CELLS } from '@/lib/Cells';
+import { MAX_ANIMATION_CELLS, charRowsOf } from '@/lib/Cells';
+import { toast } from '@/composables/useToast';
 
 const props = defineProps({
   modelValue: { type: String, required: true },
@@ -35,7 +36,19 @@ const switchTitle = computed(() => {
   if (!project.canAnimate) return `This canvas is too large to animate: ${MAX_ANIMATION_CELLS.toLocaleString('en-US')} cells at most.`;
   return image.value ? 'Draw frame by frame' : 'Open something to animate it';
 });
+// Why it can't be turned on, said when it's tried: a phone has no hover to show the title.
+const blocked = computed(() => !canSwitch.value && !project.animate);
+function whyNot() {
+  if (project._sharing || !image.value) return switchTitle.value;
+  const cells = (project.cols * charRowsOf(project.rows)).toLocaleString('en-US');
+  return `This canvas has ${cells} cells, and animation works up to ${MAX_ANIMATION_CELLS.toLocaleString('en-US')}. Make it smaller in Dimensions to animate it.`;
+}
 function switchAnimate(event) {
+  if (blocked.value) {
+    event.target.checked = false;
+    toast(whyNot());
+    return;
+  }
   playback.pause();
   project.setAnimate(event.target.checked);
   event.target.checked = project.animate;
@@ -127,7 +140,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
       <div class="indicator" :style="indicatorStyle" aria-hidden="true"></div>
     </div>
     <label class="animate" :class="{ on: project.animate, off: !canSwitch }" :title="switchTitle">
-      <input type="checkbox" role="switch" aria-label="Animate" :checked="project.animate" :disabled="!canSwitch && !project.animate" @change="switchAnimate">
+      <input type="checkbox" role="switch" aria-label="Animate" :checked="project.animate" :aria-disabled="blocked || null" @change="switchAnimate">
       <span class="track" aria-hidden="true"></span>
       <span class="word">Animate</span>
     </label>

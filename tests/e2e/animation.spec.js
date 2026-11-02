@@ -311,8 +311,15 @@ test('the switch is off with a reason above the limit', async ({ page }) => {
     p.cols = 300;
     p.rows = 400;
   });
-  await expect(animateSwitch(page)).toBeDisabled();
+  await expect(animateSwitch(page)).toHaveAttribute('aria-disabled', 'true');
   await expect(page.locator('label.animate')).toHaveAttribute('title', /too large/i);
+  // A tap says why, as a phone has no hover for the title. (A click where it is: Playwright won't click what's
+  // marked disabled, which is what the switch says it is.)
+  const box = await page.locator('label.animate').boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator('.app-toast')).toHaveText(/60,000 cells.*up to 40,000.*Dimensions/);
+  await expect(animateSwitch(page)).not.toBeChecked();
+  expect(await store(page, 'project', (p) => p.animate)).toBe(false);
 });
 
 test('on a narrow screen the bar wraps and stays on screen', async ({ page }) => {
@@ -440,7 +447,7 @@ test('a canvas grown past the limit offers no Add frame, and Animate can still b
   await expect(bar(page)).toContainText('too large');
   await animateSwitch(page).uncheck();
   await expect(bar(page)).toBeHidden();
-  await expect(animateSwitch(page)).toBeDisabled();
+  await expect(animateSwitch(page)).toHaveAttribute('aria-disabled', 'true'); // off, and saying why when tried
 });
 
 test('the Ghost slider sets the strength, and it’s remembered', async ({ page }) => {
