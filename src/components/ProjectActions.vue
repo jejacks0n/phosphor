@@ -22,6 +22,9 @@ function confirmNewProject() {
     <button @click="saveDialog = 'phosphor'" :disabled="!image" class="primary">Save Project (.phosphor)</button>
     <button @click="saveDialog = 'ans'" :disabled="!image" class="secondary">Export .ans</button>
     <button @click="saveDialog = 'utf8ans'" :disabled="!image" class="secondary">Export .utf8ans</button>
+    <template v-if="project.hasFrames">
+      <button @click="saveDialog = 'ansimation'" :disabled="!image" class="secondary">Export animated .ans</button>
+    </template>
     <button @click="versionsOpen = true" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="secondary">Versions</button>
     <hr/>
     <button @click="confirmNewProject" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="danger">Start New Project</button>

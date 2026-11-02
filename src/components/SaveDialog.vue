@@ -3,12 +3,13 @@ import { ref, computed } from 'vue';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { AnsiFile } from '@/lib/AnsiFile';
+import { charRowsOf } from '@/lib/Cells';
 import { fileStem, timestamped } from '@/document/projectIO';
 
 // Save Project and the two exports: the filename (it renames the document; every browser downloads
 // with it, Safari included), and for .ans the characters CP437 can't hold, with what's written instead.
 const props = defineProps({
-  ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans'
+  ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'ansimation'
 });
 const emit = defineEmits(['close']);
 const project = useProjectStore();
@@ -16,17 +17,25 @@ const project = useProjectStore();
 const FORMATS = {
   phosphor: { title: 'Save project', sub: 'Everything, to open again in Phosphor: the image, both layers and the settings.', action: 'Save', busy: 'Saving…' },
   ans: { title: 'Export .ans', sub: 'Classic ANSI art: CP437 characters with ANSI colors, for art viewers and BBS-era tools.', action: 'Export', busy: 'Exporting…' },
+  ansimation: { title: 'Export animated .ans', sub: 'An ANSiMation: the art draws itself frame by frame in a viewer or terminal. Timing is lost: its speed depends on the viewer.', action: 'Export', busy: 'Exporting…', ext: 'ans', animated: true },
   utf8ans: { title: 'Export .utf8ans', sub: 'ANSI art as UTF-8 text with ANSI colors, for modern terminals. Every character is kept.', action: 'Export', busy: 'Exporting…' },
 };
 const format = computed(() => FORMATS[props.ext]);
+const extension = computed(() => format.value.ext ?? props.ext);
+const animated = computed(() => !!format.value.animated);
+// A terminal shows the rows it has: an animation moves its cursor, so it can't scroll down to the rest.
+const tooTall = computed(() => props.ext === 'ansimation' && (project.cols > 80 || charRowsOf(project.rows) > 25));
 
 const name = ref(timestamped(project.filename ?? 'untitled'));
 const saving = ref(false);
 const problem = ref('');
-const stem = computed(() => fileStem(name.value, props.ext));
-const replacements = computed(() => (props.ext === 'ans'
-  ? [...AnsiFile.unmappable(project.cells)].map(([char, { count, as }]) => ({ char, count, as }))
-  : []));
+const stem = computed(() => fileStem(name.value, extension.value));
+const listed = (cells) => [...AnsiFile.unmappable(cells)].map(([char, { count, as }]) => ({ char, count, as }));
+const replacements = ref(props.ext === 'ans' ? listed(project.cells) : []);
+// An animated .ans: what every frame holds, once they're built.
+if (props.ext === 'ansimation') {
+  project.animationCells().then((frames) => { replacements.value = listed((function* all() { for (const cells of frames) yield* cells; })()); });
+}
 
 async function save() {
   if (!stem.value || saving.value) return;
@@ -34,6 +43,7 @@ async function save() {
   problem.value = '';
   try {
     if (props.ext === 'phosphor') await project.saveProject(stem.value);
+    else if (animated.value) await project.exportAnimation(props.ext, { filename: stem.value });
     else await project.exportFile(props.ext, { filename: stem.value });
     emit('close');
   } catch (error) {
@@ -55,8 +65,10 @@ function cancel() {
       <label for="save-filename">File name</label>
       <div class="name">
         <input id="save-filename" v-model="name" autofocus autocomplete="off" spellcheck="false" @focus="$event.target.select()">
-        <span class="ext">.{{ ext }}</span>
+        <span class="ext">.{{ extension }}</span>
       </div>
+
+      <p v-if="tooTall" class="note">It's {{ project.cols }}×{{ charRowsOf(project.rows) }}: rows past the terminal can't be reached, since a viewer can't scroll an animation.</p>
 
       <template v-if="replacements.length">
         <p class="note">
