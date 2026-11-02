@@ -107,12 +107,14 @@ export const useProjectStore = defineStore('project', {
         Object.assign(held, { frame, version, rendered, cells, inherited: this.inheritedCells() });
       }
       const still = (i) => held.inherited.has(i) && sameLook(cells[i], held.cells[i]); // a stroke's new object: no longer a ghost
-      const { cols } = this, params = this.processParams;
+      const { cols } = this, params = this.processParams, strength = workspace.ghostStrength / 100;
+      if (held.strength !== strength) Object.assign(held, { strength, memo: new WeakMap() });
       return ghostedCells(
         cells,
         (i) => this.renderer.underCell(i % cols, Math.floor(i / cols), params, rendered),
         (i) => (cells[i].wide === 'trail' ? still(i - 1) : still(i)),
         held.memo,
+        strength,
       );
     },
     hasFrames: (state) => state.frames.length > 1,
