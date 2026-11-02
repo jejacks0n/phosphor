@@ -19,6 +19,7 @@ test('About opens from the footer, says which build it is, and closes', async ({
   await expect(page.locator('p.build')).toHaveText(new RegExp(`^build ${sha}(-dirty)?$`));
   const meta = await page.locator('meta[name="phosphor-build"]').getAttribute('content');
   expect(meta).toMatch(new RegExp(`^v\\d+\\.\\d+\\.${today} ${sha}(-dirty)?$`));
+  await expect(page.getByRole('listitem').filter({ hasText: 'cmang' }).getByRole('link', { name: 'Durdraw' })).toHaveAttribute('href', 'https://github.com/cmang/durdraw');
   // The icons are credited as their license asks.
   await expect(page.getByRole('link', { name: 'Font Awesome Free' })).toHaveAttribute('href', 'https://fontawesome.com');
   await expect(page.getByRole('listitem').filter({ hasText: 'Font Awesome Free' }).getByRole('link', { name: 'CC BY 4.0' }))
