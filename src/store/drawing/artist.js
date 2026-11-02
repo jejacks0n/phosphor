@@ -8,7 +8,7 @@
 //   goToArt       accepted: the next project closes the watcher's view, however long it takes after the list
 //   formerHost    the next project also says I'm back as an artist
 //   gettingArt    back from a reload with no document to draw on; the room's project, or nothing coming, ends it
-import { readCursors } from '@/social/wire';
+import { fontFor, readCursors } from '@/social/wire';
 import { ART_NOT_OPENED_WORDS, UNDO_RESET_WORDS, backAsArtistWords } from '@/social/messages';
 import { LONG_TOAST_MS, toast } from '@/composables/useToast';
 
@@ -132,6 +132,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
         if (connections === onConnection) caughtUp();   // a newer one has its own host to hear from, and its own resend
       },
       onCursors: (all) => { cursors.value = readCursors(all); },
+      onFont: (font) => { if (takesProjects()) workspace.roomFont = fontFor(font); },
       onHandOver: async (chunks) => {
         handed = await project.readHandOver(chunks);
         if (handed) room?.post({ t: 'hand-over-ok' });
@@ -221,6 +222,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
     waiting.value = [];
     cursors.value = {};
     myCursor.reset();
+    workspace.roomFont = null;
     project.dropWaiting();
     project.stopSharing();
   }
@@ -265,6 +267,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
   // Leaving as an artist, for hosting or for good.
   function leaveRoom() {
     room = handed = null;
+    workspace.roomFont = null;   // a new host's is their own, and they send it
     forgetArtistFlags();
   }
 

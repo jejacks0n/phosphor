@@ -29,13 +29,13 @@ const GATHER_WITHIN_MS = 60_000;             // however it's going, long enough 
 const CATCH_UP_QUIET_MS = 10_000;            // an artist asked to catch-up, going this long without a word, isn't going to
 const MOST_CATCH_UP_CHUNKS = MOST_PROJECT_BYTES / CHUNK_BYTES;
 
+const sameFont = (a, b) => a?.id === b?.id && a?.size === b?.size;
 const sameView = (a, b) => a.col === b.col && a.row === b.row && a.cols === b.cols && a.rows === b.rows && a.zoom === b.zoom;
 
 // The indexes that changed from one art to the next; null when a snapshot should go instead (nothing to
 // change from, another size or font, or too much changed).
 function changesFrom(prev, next) {
-  if (!prev || prev.cols !== next.cols || prev.lines !== next.lines
-    || prev.font?.id !== next.font?.id || prev.font?.size !== next.font?.size) return null;
+  if (!prev || prev.cols !== next.cols || prev.lines !== next.lines || !sameFont(prev.font, next.font)) return null;
   return changedCells(prev.cells, next.cells);
 }
 
@@ -228,8 +228,12 @@ export class Host {
     if (at?.length === 0) return;
     this.art = next;
     const changes = at && cellsMessage(next, at);
+    const newFont = !prev || !sameFont(prev.font, next.font);
     for (const w of this.open()) {
-      if (w.drawing) continue;
+      if (w.drawing) {   // no art, as they have the document; only what it's drawn in, which isn't in it
+        if (newFont) this.sendTo(w, { t: 'font', font: next.font });
+        continue;
+      }
       if (w.has !== prev || w.behind) this.update(w);
       else if (changes) this.sendArt(w, changes, next);
       else this.update(w, null);   // too much changed, or too big as cells: the snapshot
@@ -490,6 +494,7 @@ export class Host {
       } else if (msg?.t === 'cursor') this.onCursor(sub, msg, name);
       else if (msg?.t === 'artist-hello') {
         w.drawing = true;
+        if (this.art) this.sendTo(w, { t: 'font', font: this.art.font });
         this.onHello(w, msg);
       }
     } catch (error) {

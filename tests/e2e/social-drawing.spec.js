@@ -1419,3 +1419,41 @@ test('someone asked back after leaving isn\'t offered themselves to follow', asy
   await expect(person.getByRole('button', { name: `Follow ${ARTIST.name}` })).toHaveCount(0);
   await expect(list).toHaveCount(0);   // only the host left to follow
 });
+
+test('an artist draws in the host\'s font and size, follows a change, and has their own back on leaving', async ({ page: host, browser }) => {
+  // Browsers of their own: in one, a font chosen in either tab is chosen in both, which would hide this.
+  const context = await otherBrowser(browser);
+  const room = fakeRoom();
+  await goLive(host, room);
+  const font = (page) => page.getByLabel('Font', { exact: true }), size = (page) => page.getByLabel('Font size');
+  const fontNow = (page) => store(page, 'workspace', (w) => `${w.displayFontLoaded?.id} ${w.displayFontLoaded?.size}`);
+  await tab(host, 'ANSI').click();
+  await font(host).selectOption({ label: 'IBM VGA' });
+
+  const artist = await artistPage(context, host, room, { prepare: (page) => store(page, 'workspace', (w) => { w.displayFont = 'unscii'; }) });
+  await tab(artist, 'ANSI').click();
+  await expect.poll(() => fontNow(artist)).toBe('vga 16');
+  await expect(font(artist)).toHaveValue('vga');
+  await expect(font(artist)).toBeDisabled();
+  await expect(size(artist)).toBeDisabled();
+  await expect(artist.getByRole('button', { name: 'Load custom' })).toBeDisabled();
+  await expect(artist.getByText('The host\'s font, while you draw in their room.')).toBeVisible();
+  expect(await store(artist, 'project', (p) => p.cols * 8 + 4)).toBeCloseTo(await artist.locator('.ansi-editor div.display').evaluate((c) => c.getBoundingClientRect().width), 0);
+
+  await size(host).fill('32');
+  await size(host).press('Enter');
+  await expect.poll(() => fontNow(artist)).toBe('vga 32');
+  await expect(size(artist)).toHaveValue('32');
+
+  // Back from a reload it's the host's still, and their own never changed in this browser.
+  artist.on('dialog', (dialog) => dialog.accept());
+  await artist.reload();
+  await mayDraw(artist).toBe(true);
+  await expect.poll(() => fontNow(artist), { timeout: 20_000 }).toBe('vga 32');
+  expect(await artist.evaluate(() => localStorage.getItem('phosphor.displayFont'))).toBe('unscii');
+
+  await fromMenu(host, 'Back to watching');
+  await mayDraw(artist).toBe(false);
+  await expect.poll(() => fontNow(artist)).toBe('unscii 16');
+  await expect(font(artist)).toBeEnabled();
+});

@@ -10,12 +10,14 @@ import HelpInfo from '@/components/HelpInfo.vue';
 const HELP = 'The font the art is drawn in. '
   + 'Load custom adds a monospaced TrueType, OpenType or WOFF font from your computer. '
   + 'Pixel fonts look sharpest at their own size or a multiple of it (16 or 32 for the 8x16 fonts). '
-  + 'The font and size stay in this browser; they aren\'t saved with the project.';
+  + 'The font and size stay in this browser; they aren\'t saved with the project. '
+  + 'While you draw in someone\'s room, the art is in their font, and yours comes back after.';
 
 const workspace = useWorkspaceStore();
 const current = computed(() => workspace.displayFontSpec);
 const loaded = computed(() => workspace.userFonts ?? []);
 const isLoaded = computed(() => loaded.value.some((font) => font.id === current.value.id));
+const hostsFont = computed(() => !!workspace.roomFont);   // the host's, so not yours to change here
 const problem = ref('');
 const fileInput = useTemplateRef('file');
 
@@ -68,12 +70,12 @@ const remove = async () => {
       <div class="label-group"><label for="displayFont">Font</label><HelpInfo :text="HELP"/></div>
       <span class="actions">
         <button v-if="isLoaded" class="text" title="Remove this font from this browser" aria-label="Remove font" @click="remove">Remove</button>
-        <button class="text" title="Load a monospaced font from your computer" @click="fileInput.click()">Load custom</button>
+        <button class="text" title="Load a monospaced font from your computer" :disabled="hostsFont" @click="fileInput.click()">Load custom</button>
       </span>
       <input ref="file" type="file" accept=".ttf,.otf,.woff,.woff2" hidden @change="onFile">
     </div>
     <div class="row-inputs">
-      <select id="displayFont" :value="current.id" @change="onSelect">
+      <select id="displayFont" :value="current.id" :disabled="hostsFont" @change="onSelect">
         <optgroup label="Phosphor's">
           <option v-for="font in DISPLAY_FONTS" :key="font.id" :value="font.id">{{ font.name }}</option>
         </optgroup>
@@ -89,9 +91,11 @@ const remove = async () => {
           :value="current.size"
           :min="MIN_SIZE"
           :max="MAX_SIZE"
+          :disabled="hostsFont"
           @change="onSize"
       >
     </div>
+    <p v-if="hostsFont" class="hosts-font">The host's font, while you draw in their room.</p>
     <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
   </div>
 </template>
@@ -127,10 +131,22 @@ button.text {
   cursor: pointer;
 }
 
-button.text:hover {
+button.text:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.text:hover:not(:disabled) {
   transform: none;
   background: transparent;
   color: var(--accent-hot);
+}
+
+p.hosts-font {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-faint);
 }
 
 p.problem {

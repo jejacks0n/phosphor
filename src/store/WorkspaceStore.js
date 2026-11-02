@@ -23,6 +23,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     displayFont: useLocalStorage('phosphor.displayFont', 'jetbrains'), // the font the art is drawn in: an id in displayFonts.js, or a loaded font's
     displayFontSizes: useLocalStorage('phosphor.displayFontSizes', {}), // { font id: px } for the fonts you've resized
     userFonts: null,         // the fonts you've loaded ([{ id, name, lineHeight }], userFonts.js), once read from this browser (App.vue)
+    roomFont: null,          // while drawing in someone's room, their font (wire.fontFor), in place of the two above; never kept
     displayFontLoaded: null, // displayFontSpec, once it's loaded and measured in (App.vue)
     theme: useLocalStorage('phosphor.theme', 'dark'), // the app's colors: 'dark' | 'light' | 'system' (the computer's; index.html sets it before the first paint)
     smoothText: useLocalStorage('phosphor.smoothText', true), // the art's text anti-aliased (both views), or sharp
@@ -128,6 +129,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     // The font the art is drawn in, at its size (a font displayFonts.js can set). A loaded font
     // starts at 16px; an unknown one (a loaded font since removed) is the default.
     displayFontSpec(state) {
+      if (state.roomFont) return state.roomFont;
       const loaded = state.userFonts?.find((f) => f.id === state.displayFont);
       const font = loaded
         ? { id: loaded.id, name: loaded.name, family: familyOf(loaded.id), size: 16, lineHeight: loaded.lineHeight }

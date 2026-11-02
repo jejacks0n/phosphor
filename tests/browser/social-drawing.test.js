@@ -3357,3 +3357,50 @@ test('a project that finishes opening after a new connection began leaves that c
   ann.drawing.connection('live');
   expect(ann.drawing.paused).toBe(true);
 });
+
+// The art's font is the host's: an artist draws in it, as a watcher sees in it, and their own comes back after.
+const fontArt = (font) => ({ cols: 2, lines: 1, font, cells: [{ char: 'a' }, { char: 'b' }] });
+const fontOf = (person) => useWorkspaceStore(person.pinia).displayFontSpec;
+
+test('an artist draws in the host\'s font, follows it as it changes, and has their own back when they stop', async () => {
+  const room = await hosting();
+  room.host.setArt(fontArt({ id: 'vga', size: 20 }));
+  const ann = await artist(room, 'ann');
+  useWorkspaceStore(ann.pinia).displayFont = 'unscii';
+  await expect.poll(() => fontOf(ann).id, PATIENT).toBe('vga');
+  expect(fontOf(ann).size).toBe(20);
+  expect(fontOf(ann).family).toContain('IBM VGA');
+
+  room.host.setArt(fontArt({ id: 'unifont', size: 32 }));
+  await expect.poll(() => [fontOf(ann).id, fontOf(ann).size], PATIENT).toEqual(['unifont', 32]);
+
+  room.drawing.backToWatching('ann');
+  await expect.poll(() => ann.drawing.mayDraw, PATIENT).toBe(false);
+  expect(fontOf(ann).id).toBe('unscii');   // theirs, which the host's never replaced
+  expect(useWorkspaceStore(ann.pinia).roomFont).toBe(null);
+});
+
+test('an artist who arrives after the font changed, or whose host\'s font is their own, gets what a watcher gets', async () => {
+  const room = await hosting();
+  room.host.setArt(fontArt({ id: 'vga', size: 20 }));
+  room.host.setArt(fontArt({ id: 'unifont', size: 24 }));
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => [fontOf(ann).id, fontOf(ann).size], PATIENT).toEqual(['unifont', 24]);
+
+  room.host.setArt(fontArt(null));   // loaded from the host's computer: it can't be sent
+  await expect.poll(() => fontOf(ann).id, PATIENT).toBe('jetbrains');
+});
+
+test('someone only watching is sent no font message, and leaving forgets the room\'s font', async () => {
+  const room = await hosting();
+  room.host.setArt(fontArt({ id: 'vga', size: 20 }));
+  const watcher = await join(room, 'wes');
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => fontOf(ann).id, PATIENT).toBe('vga');
+  room.host.setArt(fontArt({ id: 'unifont', size: 20 }));
+  await expect.poll(() => fontOf(ann).id, PATIENT).toBe('unifont');
+  expect(useWorkspaceStore(watcher.pinia).roomFont).toBe(null);
+
+  ann.drawing.close();
+  expect(useWorkspaceStore(ann.pinia).roomFont).toBe(null);
+});
