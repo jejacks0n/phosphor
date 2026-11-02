@@ -988,6 +988,31 @@ test('no artists left: the room ends as today', async ({ page: host, context }) 
   expect(room.received.some((r) => r.msg.type === 'last-change')).toBe(false);
 });
 
+test('an artist reloading before autosave has their document comes back on the tab they were on when the art arrives', async ({ page: host, context }) => {
+  const { artist } = await together(host, context, fakeRoom());
+  await selected(artist, 'ANSI');
+  await artist.evaluate(() => sessionStorage.setItem('phosphor-autosave-document', crypto.randomUUID()));   // what a slow first write leaves
+  artist.on('dialog', (dialog) => dialog.accept());
+  await artist.reload();
+  await mayDraw(artist).toBe(true);
+  await settled(artist);
+  await selected(artist, 'ANSI');
+  await hash(artist, `/ansi?room=${ROOM_ID}`);
+  await typeAt(artist, 2, 2, 'b');
+  await expect.poll(() => chars(host, 2, 2, 2), { timeout: 10_000 }).toBe('b');
+});
+
+test('someone who chose another tab while the art was coming stays there', async ({ page: host, context }) => {
+  const { artist } = await together(host, context, fakeRoom());
+  await artist.evaluate(() => sessionStorage.setItem('phosphor-autosave-document', crypto.randomUUID()));
+  artist.on('dialog', (dialog) => dialog.accept());
+  await artist.reload();
+  await tab(artist, 'SOCIAL').click();
+  await mayDraw(artist).toBe(true);
+  await settled(artist);
+  await selected(artist, 'SOCIAL');
+});
+
 test('an artist dropping out and returning stays an artist with no invitation', async ({ page: host, context }) => {
   const room = fakeRoom();
   const { artist } = await together(host, context, room);

@@ -41,8 +41,10 @@ export function followAddress(router) {
   }
 
   // ANSI and SAUCE need an image, and only once autosave has answered do we know there isn't one.
+  let leftForNoImage = null;   // the tab that leaveIfNoImage moved away from
   function leaveIfNoImage() {
     if (!workspace.documentSettled || project.image || !['output', 'sauce'].includes(workspace.editorTab)) return;
+    leftForNoImage = workspace.editorTab;
     workspace.editorTab = 'input';
     replaceNext = true;
   }
@@ -164,6 +166,11 @@ export function followAddress(router) {
     watch(() => workspace.documentSettled, () => {
       landing = false;
       leaveIfNoImage();
+    }),
+    // A room's art that came after that (an artist's reload autosave had nothing for): back to where they were.
+    watch(() => project.image, (image) => {
+      if (image && room.role && workspace.editorTab === 'input' && leftForNoImage) workspace.editorTab = leftForNoImage;
+      if (image) leftForNoImage = null;
     }),
   ];
   return () => stops.forEach((stop) => stop());
