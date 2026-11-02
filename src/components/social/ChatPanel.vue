@@ -6,7 +6,7 @@ import { useDrawingStore } from '@/store/DrawingStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import UserName from './UserName.vue';
 import { clock } from '@/social/chat';
-import { LONG_TOAST_MS, toast } from '@/composables/useToast';
+import { toast } from '@/composables/useToast';
 import ChatFoot from './ChatFoot.vue';
 import RoomMenu from './RoomMenu.vue';
 import RoomPeople from './RoomPeople.vue';
@@ -63,7 +63,7 @@ async function fold(to) {
 }
 watch(() => room.chat.at(-1)?.id, () => { if (folded.value && !room.chat.at(-1)?.presence) since.value++; });
 watch(() => drawing.invitation, (asked) => { if (asked && folded.value) since.value++; });
-watch(() => drawing.notice, (words) => { if (words && folded.value) toast(words, LONG_TOAST_MS); });   // it's in a part that isn't showing
+watch(() => drawing.notice, (words) => { if (words && folded.value) toast(words); });   // it's in a part that isn't showing
 
 // The list as drawn: messages, runs of who came and went ({ id, people }), and "You joined" after the
 // last of a watcher's first history (a run ends there, so what came after is below it). A run names each

@@ -6,7 +6,7 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { useAutosave } from '@/composables/useAutosave';
 import { useProjectStore } from '@/store/ProjectStore';
-import { LONG_TOAST_MS, toastMessage } from '@/composables/useToast';
+import { TOAST_MS, toastMessage } from '@/composables/useToast';
 import ZeroState from '@/components/ZeroState.vue';
 import VersionsDialog from '@/components/VersionsDialog.vue';
 import SaveDialog from '@/components/SaveDialog.vue';
@@ -502,7 +502,7 @@ test('the warning that autosave has failed stays long enough to read', async () 
   edit(project);
   await pass(SAVE_AFTER_MS);
   expect(toastMessage.value).toBe(BROKEN);
-  await pass(LONG_TOAST_MS - 100);
+  await pass(TOAST_MS - 100);
   expect(toastMessage.value).toBe(BROKEN);
   await pass(200);
   expect(toastMessage.value).toBe(null);

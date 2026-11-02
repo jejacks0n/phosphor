@@ -318,6 +318,8 @@ test('the switch is off with a reason above the limit', async ({ page }) => {
   const box = await page.locator('label.animate').boundingBox();
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(page.locator('.app-toast')).toHaveText(/60,000 cells.*up to 40,000.*Dimensions/);
+  await page.locator('.app-toast').click(); // a click closes it
+  await expect(page.locator('.app-toast')).toBeHidden();
   await expect(animateSwitch(page)).not.toBeChecked();
   expect(await store(page, 'project', (p) => p.animate)).toBe(false);
 });

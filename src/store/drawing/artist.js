@@ -10,7 +10,7 @@
 //   gettingArt    back from a reload with no document to draw on; the room's project, or nothing coming, ends it
 import { fontFor, readCursors } from '@/social/wire';
 import { ART_NOT_OPENED_WORDS, UNDO_RESET_WORDS, backAsArtistWords } from '@/social/messages';
-import { LONG_TOAST_MS, toast } from '@/composables/useToast';
+import { toast } from '@/composables/useToast';
 
 export function artistSide({ project, workspace, me, artists, artistNames, invitation, paused, waiting, cursors, notice, hostChanging, gettingArt, mayDraw, myCursor, pause, goOn, sayUndoRestarts }) {
   let room = null;                 // the Watch
@@ -125,7 +125,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
           formerHost = false;
           const words = backAsArtistWords(hostName() ?? 'Someone else');
           notice.value = [notice.value, words].filter(Boolean).join(' ');   // what undo did is still so
-          toast(words, LONG_TOAST_MS);
+          toast(words);
         }
         if (goToArt && workspace.editorTab === 'social') workspace.editorTab = 'output';
         goToArt = false;

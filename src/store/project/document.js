@@ -11,7 +11,7 @@ import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
-import { LONG_TOAST_MS, toast } from '@/composables/useToast.js';
+import { toast } from '@/composables/useToast.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults } from '@/store/settings.js';
 import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJson, randomId } from '@/store/project/shared.js';
@@ -65,7 +65,7 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, erasedCells,
       this.clearHistory();
     }
     if (animation?.frames.length > 1 && !this._sharing && !this._takingProject) this.openFrames(animation); // a room holds a still: the file's still is what's open
-    if (framesLost && !this._sharing && !this._takingProject) toast(FRAMES_LOST_WORDS, LONG_TOAST_MS);
+    if (framesLost && !this._sharing && !this._takingProject) toast(FRAMES_LOST_WORDS);
     this.render();
     this.markSaved();
   } catch (error) {
