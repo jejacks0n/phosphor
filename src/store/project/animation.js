@@ -1,38 +1,21 @@
 // Animation: the document's frames (document/frames.js). The current frame's resolved state is the normal
 // editCells and paintLayer, swapped when the frame changes, because everything that edits only ever touches
 // those two. A frame's changes are worked out from them on leaving it (noteFrame), so no tool knows about
-// frames. Owns _arrived (what the frame held on arrival) and _noted (what noteFrame last saw).
-import { cellState, foldDeleted, frameDiff, newFrame, resolveOver, sameChanges } from '@/document/frames.js';
+// frames. Owns _arrived (what the frame held on arrival), _noted (what noteFrame last saw) and _builder (what
+// builds frames for playing, and what it was prepared for).
+import FrameBuilder from '@/document/FrameBuilder.js';
+import { cellState, foldDeleted, frameDiff, newFrame, paintImage, resolveOver, sameChanges } from '@/document/frames.js';
 import { pack } from '@/document/changes.js';
-import { cellKey, parseKey } from '@/document/editCells.js';
+import { cellKey } from '@/document/editCells.js';
 import { MAX_FRAMES } from '@/lib/Cells.js';
 import { newLedger } from '@/store/project/shared.js';
+import { markRaw } from 'vue';
 
 const NOTHING = new Map();
 const MOST_HOLD = 60;
 const MOST_FPS = 60;
 
 const clamped = (value, least, most) => Math.min(most, Math.max(least, value));
-
-// A resolved frame's paint, as PaintLayer.loadGrid takes it.
-function paintImage(resolved, cols, rows) {
-  const image = new ImageData(cols, rows), { data } = image;
-  const put = (x, y, rgba) => {
-    if (!rgba || x >= cols || y >= rows) return;
-    const i = (y * cols + x) * 4;
-    data[i] = rgba >>> 24;
-    data[i + 1] = (rgba >>> 16) & 0xff;
-    data[i + 2] = (rgba >>> 8) & 0xff;
-    data[i + 3] = rgba & 0xff;
-  };
-  for (const [key, { top, bottom }] of resolved) {
-    if (!top && !bottom) continue;
-    const { col, row } = parseKey(key);
-    put(col, 2 * row, top);
-    put(col, 2 * row + 1, bottom);
-  }
-  return image;
-}
 
 // The frame showing, as states. Browsers read soft paint back a step off what was written (changes.js), so a
 // half is compared with what it read on arrival, and one that hasn't changed keeps the value it arrived with:
@@ -137,6 +120,31 @@ function frameStep(project, change) {
   arrive(project, project.frames.indexOf(showing), before.showing);
 }
 
+// What every built frame depends on besides its own state: anything here changing means building them all again.
+function buildKey(project) {
+  const { image, ...params } = project.processParams;
+  return { image, settings: JSON.stringify(params), baseLayer: project.baseLayer, baseVersion: project.baseLayer?.version, baseRecords: project.baseRecords };
+}
+const sameKey = (a, b) => !!a && !!b && Object.keys(a).every((name) => a[name] === b[name]);
+
+// A builder prepared for the document as it is now. Everything built before that goes.
+async function readyBuilder(project) {
+  for (;;) {
+    const key = buildKey(project), held = project._builder;
+    if (sameKey(held?.key, key) && !held.preparing) return held.builder;
+    if (sameKey(held?.key, key)) {
+      await held.preparing;
+      continue;
+    }
+    const builder = new FrameBuilder();
+    const preparing = builder.prepare(key.image, project.processParams, project);
+    project._builder = markRaw({ key, builder, preparing });
+    for (const frame of project.frames) frame.built = null;
+    await preparing;
+    if (project._builder?.builder === builder) project._builder.preparing = null;
+  }
+}
+
 export const animationActions = {
   // Moving the scrubber: what's open is set down on the frame it was done on. The selection and the text
   // cursor stay.
@@ -161,6 +169,22 @@ export const animationActions = {
       frame.resolved ??= resolveOver(at ? this.frames[at - 1].resolved : NOTHING, frame);
     }
     return this.frames[i].resolved;
+  },
+
+  // Frame i's cells for playing, built if they need to be (document/FrameBuilder.js). What's built stays until
+  // something it depends on changes.
+  async builtFrame(i) {
+    this.ensureLayer();
+    for (;;) {
+      if (!this.frames[i] || !this.image) return null;
+      const builder = await readyBuilder(this);
+      if (!sameKey(this._builder?.key, buildKey(this))) continue; // changed while waiting
+      const frame = this.frames[i];
+      if (!frame) return null;
+      const resolved = this.resolvedOf(i); // the frame showing is noted by this, which can stale what's built
+      frame.built ??= builder.build(resolved, this.processParams, this.frames[i - 1]?.built);
+      return frame.built;
+    }
   },
 
   // What's cached of frame i onward goes, as far as a change there can reach: a frame that isn't Blank is cut

@@ -8,7 +8,7 @@
  * three belong to the store: the frame's undo while it's not showing, and what's cached of it.
  */
 import { markRaw } from 'vue';
-import { sameEntry } from './editCells.js';
+import { parseKey, sameEntry } from './editCells.js';
 
 export const FRAME_KINDS = ['blank', 'duplicate', 'wipe'];
 
@@ -57,4 +57,24 @@ export function sameChanges(a, b) {
 export function foldDeleted(deleted, next) {
   if (next.kind !== 'blank') return { kind: next.kind, changes: next.changes };
   return { kind: deleted.kind, changes: new Map([...deleted.changes, ...next.changes]) };
+}
+
+// A resolved frame's paint as an image cols x rows, a pixel a grid pixel (PaintLayer.loadGrid takes it).
+export function paintImage(resolved, cols, rows) {
+  const image = new ImageData(cols, rows), { data } = image;
+  const put = (x, y, rgba) => {
+    if (!rgba || x >= cols || y >= rows) return;
+    const i = (y * cols + x) * 4;
+    data[i] = rgba >>> 24;
+    data[i + 1] = (rgba >>> 16) & 0xff;
+    data[i + 2] = (rgba >>> 8) & 0xff;
+    data[i + 3] = rgba & 0xff;
+  };
+  for (const [key, { top, bottom }] of resolved) {
+    if (!top && !bottom) continue;
+    const { col, row } = parseKey(key);
+    put(col, 2 * row, top);
+    put(col, 2 * row + 1, bottom);
+  }
+  return image;
 }
