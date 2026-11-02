@@ -44,7 +44,7 @@ test('the animated export appears with frames, warns above 80x25 and downloads a
   await expect(page.getByRole('button', { name: 'Export animated .ans' })).toHaveCount(0);
   await page.getByRole('switch', { name: 'Animate' }).check();
   const bar = page.getByRole('toolbar', { name: 'Animation' });
-  await bar.getByRole('button', { name: '+ Frame' }).click();
+  await bar.getByRole('button', { name: 'Add frame' }).click();
   await page.getByRole('button', { name: /^Wipe/ }).click();
 
   await page.getByRole('button', { name: 'Export animated .ans' }).click();
@@ -66,7 +66,7 @@ test('the animated export appears with frames, warns above 80x25 and downloads a
 test('at 80x25 or smaller the export says nothing about rows past the terminal', async ({ page }) => {
   await openApp(page);
   await page.getByRole('switch', { name: 'Animate' }).check();
-  await page.getByRole('toolbar', { name: 'Animation' }).getByRole('button', { name: '+ Frame' }).click();
+  await page.getByRole('toolbar', { name: 'Animation' }).getByRole('button', { name: 'Add frame' }).click();
   await page.getByRole('button', { name: /^Blank/ }).click();
   await page.evaluate(() => {
     const p = document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('project');
@@ -80,7 +80,7 @@ test('at 80x25 or smaller the export says nothing about rows past the terminal',
 test('a character on a frame not showing is listed before an animated .ans is written', async ({ page }) => {
   await openApp(page);
   await page.getByRole('switch', { name: 'Animate' }).check();
-  await page.getByRole('toolbar', { name: 'Animation' }).getByRole('button', { name: '+ Frame' }).click();
+  await page.getByRole('toolbar', { name: 'Animation' }).getByRole('button', { name: 'Add frame' }).click();
   await page.getByRole('button', { name: /^Blank/ }).click();
   await editAt(page, 2, 2);
   await page.keyboard.insertText('漢');
@@ -93,7 +93,7 @@ test('a .cast download holds a frame per event at its time', async ({ page }) =>
   await openApp(page);
   await page.getByRole('switch', { name: 'Animate' }).check();
   const bar = page.getByRole('toolbar', { name: 'Animation' });
-  await bar.getByRole('button', { name: '+ Frame' }).click();
+  await bar.getByRole('button', { name: 'Add frame' }).click();
   await page.getByRole('button', { name: /^Wipe/ }).click();
   await bar.getByRole('spinbutton', { name: 'Hold' }).fill('2');
   await bar.getByRole('spinbutton', { name: 'Hold' }).blur();
@@ -110,7 +110,7 @@ test('a .gif download is a GIF', async ({ page }) => {
   await openApp(page);
   await page.getByRole('switch', { name: 'Animate' }).check();
   const bar = page.getByRole('toolbar', { name: 'Animation' });
-  await bar.getByRole('button', { name: '+ Frame' }).click();
+  await bar.getByRole('button', { name: 'Add frame' }).click();
   await page.getByRole('button', { name: /^Wipe/ }).click();
   await page.getByRole('button', { name: 'Export .gif' }).click();
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('button', { name: 'Export' }).click()]);

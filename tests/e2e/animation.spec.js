@@ -4,7 +4,7 @@ import { test, expect, openApp, imageInput, saveAs, store, tab, chars, cellPoint
 const animateSwitch = (page) => page.getByRole('switch', { name: 'Animate' });
 const bar = (page) => page.getByRole('toolbar', { name: 'Animation' });
 const addFrame = async (page, kind) => {
-  await bar(page).getByRole('button', { name: '+ Frame' }).click();
+  await bar(page).getByRole('button', { name: 'Add frame' }).click();
   await page.getByRole('button', { name: new RegExp(`^${kind}`) }).click();
 };
 const scrubTo = (page, i) => bar(page).getByRole('slider', { name: 'Frame' }).fill(String(i));
@@ -44,7 +44,7 @@ test('Animate works from any tab', async ({ page }) => {
   await expect(bar(page)).toBeVisible();
 });
 
-test('draw, + Frame Blank, draw, scrub back and forward: the canvas follows', async ({ page }) => {
+test('draw, Add frame Blank, draw, scrub back and forward: the canvas follows', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
   await type(page, 2, 2, 'A');
@@ -59,7 +59,7 @@ test('draw, + Frame Blank, draw, scrub back and forward: the canvas follows', as
   await expect.poll(() => chars(page, 2, 4, 4)).toBe('B');
 });
 
-test('+ Frame Wipe shows a clean canvas; Duplicate shows it solid', async ({ page }) => {
+test('Add frame Wipe shows a clean canvas; Duplicate shows it solid', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
   await type(page, 2, 2, 'A');
@@ -179,9 +179,23 @@ test('Ghost toggles', async ({ page }) => {
   await animateSwitch(page).check();
   const ghost = bar(page).getByRole('button', { name: 'Ghost' });
   await expect(ghost).toHaveAttribute('aria-pressed', 'true');
+  await expect(ghost).toHaveClass(/\bactive\b/); // lit as a toolbar button is
+  await expect(ghost.locator('svg')).toBeVisible(); // a ghost, not a word
   await ghost.click();
   await expect(ghost).toHaveAttribute('aria-pressed', 'false');
+  await expect(ghost).not.toHaveClass(/\bactive\b/);
+  await expect(ghost).toBeEnabled();
   expect(await store(page, 'workspace', (w) => w.ghost)).toBe(false);
+});
+
+test('Add frame is a film frame with a plus, and opens the three kinds', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  const add = bar(page).getByRole('button', { name: 'Add frame' });
+  await expect(add.locator('svg')).toBeVisible();
+  await expect(add).toHaveText('');
+  await add.click();
+  for (const kind of ['Blank', 'Duplicate', 'Wipe']) await expect(page.getByRole('button', { name: new RegExp(`^${kind}`) })).toBeVisible();
 });
 
 test('Delete frame is off with one frame', async ({ page }) => {
@@ -210,7 +224,7 @@ test('Move earlier and later reorder the frames', async ({ page }) => {
 test('the menus open above the bar, on screen', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
-  await bar(page).getByRole('button', { name: '+ Frame' }).click();
+  await bar(page).getByRole('button', { name: 'Add frame' }).click();
   const box = await page.getByRole('button', { name: /^Wipe/ }).boundingBox();
   expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize().height);
 });
@@ -246,7 +260,7 @@ test('on a narrow screen the bar wraps and stays on screen', async ({ page }) =>
   const box = await bar(page).boundingBox();
   expect(box.x + box.width).toBeLessThanOrEqual(600);
   expect(box.y + box.height).toBeLessThanOrEqual(800);
-  const add = await bar(page).getByRole('button', { name: '+ Frame' }).boundingBox();
+  const add = await bar(page).getByRole('button', { name: 'Add frame' }).boundingBox();
   expect(add.x + add.width).toBeLessThanOrEqual(600);
 });
 
@@ -352,7 +366,7 @@ test('a Version restored brings its frames back', async ({ page }) => {
   await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
 });
 
-test('a canvas grown past the limit offers no + Frame, and Animate can still be turned off', async ({ page }) => {
+test('a canvas grown past the limit offers no Add frame, and Animate can still be turned off', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
   await page.evaluate(() => {
@@ -360,7 +374,7 @@ test('a canvas grown past the limit offers no + Frame, and Animate can still be 
     p.cols = 300;
     p.rows = 400;
   });
-  await expect(bar(page).getByRole('button', { name: '+ Frame' })).toBeDisabled();
+  await expect(bar(page).getByRole('button', { name: 'Add frame' })).toBeDisabled();
   await expect(bar(page)).toContainText('too large');
   await animateSwitch(page).uncheck();
   await expect(bar(page)).toBeHidden();
@@ -404,13 +418,7 @@ test('on a narrow screen the bar holds two tidy lines, and every control stays o
     await page.setViewportSize({ width, height });
     await expect.poll(lines, { message: `${width} wide` }).toEqual({ rows, inside: true, smallest: expect.any(Number) });
     expect((await lines()).smallest).toBeGreaterThanOrEqual(20);
-    expect((await bar(page).getByRole('button', { name: '+ Frame' }).boundingBox()).height, `+ Frame at ${width}`).toBeLessThan(30);
-    const words = await bar(page).getByRole('button', { name: '+ Frame' }).evaluate((button) => {
-      const range = document.createRange();
-      range.selectNodeContents(button.querySelector('span'));
-      return new Set([...range.getClientRects()].map(({ top }) => top)).size;
-    });
-    expect(words, `+ Frame on one line at ${width}`).toBe(1);
+    expect((await bar(page).getByRole('button', { name: 'Add frame' }).boundingBox()).height, `Add frame at ${width}`).toBeLessThan(30);
     await expect.poll(switchInside, { message: `the switch at ${width}` }).toBe(true); // the layout may still be sliding
   }
   await page.setViewportSize({ width: 320, height: 568 }); // the narrowest phone: more lines, but nothing lost
