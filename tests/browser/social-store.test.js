@@ -890,7 +890,7 @@ test('A guest watching a room who signs in joins it again with the same password
   server.route('POST /api/auth/sign-in/email', () => ((server.session = member()), [200, { token: 't' }]));
   expect(await social.signIn('fan@example.com', 'right-password')).toBe(true);
   expect(join).toHaveBeenCalledOnce();
-  expect(join).toHaveBeenCalledWith('abcdefghij', { password: 'hush' });
+  expect(join).toHaveBeenCalledWith('abcdefghij', { password: 'hush', keepNotice: true });
 
   join.mockClear();
   watching(undefined);
@@ -948,7 +948,7 @@ test('A two-factor code that signs you in joins the room kept before Discord, on
   watching('hush');
   sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
   await social.verifyTwoFactor('123456');
-  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij', { password: 'hush' });
+  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij', { password: 'hush', keepNotice: true });
   expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
   expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(2);
 });
@@ -994,7 +994,7 @@ test('Back from Discord needing a username: no room is joined until onboarding i
   expect(join).not.toHaveBeenCalled();
 
   await social.finishOnboarding('ansi-fan');
-  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij');
+  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij', { keepNotice: true });
 });
 
 test('The back link says "room" while watching and "lobby" otherwise', () => {
