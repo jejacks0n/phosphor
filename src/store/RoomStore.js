@@ -269,6 +269,7 @@ export const useRoomStore = defineStore('room', {
       const { ok, data, code } = await social.request('/api/rooms', { method: 'POST', body });
       if (code === 'SILENCED') social.renewPass();   // a pass that says so, so Start a room is off now
       if (!ok) return false;
+      social.notice = null;   // what it said was about somewhere else
       const lobbyPin = isPublic ? this.lobbyPin : null;   // picked in Setup room, kept through close()
       this.close();
       this.hostRoom({
@@ -558,11 +559,14 @@ export const useRoomStore = defineStore('room', {
     },
 
     // A room by its id (a lobby card's Join, or a ?room= link), with its password once it asks for one.
-    join(id, { password } = {}) {
+    // keepNotice: this comes with what the notice says (signing in, a link back from confirming an email).
+    join(id, { password, keepNotice = false } = {}) {
+      const social = useSocialStore();
       if (!ROOM_ID.test(id)) {
-        useSocialStore().notice = refusalWords('unavailable');
+        social.notice = refusalWords('unavailable');
         return;
       }
+      if (!keepNotice && id !== this.id) social.notice = null;   // what it said was about somewhere else
       this.close({ spent: this.id !== id });   // the same room again (its password, say): still in it, as an artist too
       noteLeft(id, false);
       this.watchRoom(id, { password });

@@ -154,7 +154,7 @@ export const useSocialStore = defineStore('social', {
       this._roomLink = null;
       if (id === null || !this.supported) return;
       if (this._roomLinkAsks && ROOM_ID.test(id)) this.roomInvite = id;
-      else useRoomStore().join(id);   // (one that can't be a room's goes no further, and says so)
+      else useRoomStore().join(id, { keepNotice: true });   // (one that can't be a room's goes no further, and says so)
     },
 
     // Your own room again, from an entry of yours (Forward, a reload): no asking.
@@ -282,7 +282,7 @@ export const useSocialStore = defineStore('social', {
       else await this.refreshMe();
       Object.assign(this, { blocked: [], _codePending: false, page: this.me?.needsOnboarding ? 'onboarding' : 'lobby' });
       this.reconnect();
-      if (back) rooms.join(back.id, { password: back.password });
+      if (back) rooms.join(back.id, { password: back.password, keepNotice: true });
     },
 
     // Signing in or up stays busy until you're known, so the form can't be sent a second time meanwhile.

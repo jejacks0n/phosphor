@@ -2298,3 +2298,44 @@ test('art heard while drawing is dropped: someone drawing has the document, and 
   room._watch.onArt(after);
   expect(room.art).toBe(after);
 });
+
+// The line at the top of the tab belongs to where you were: a new room starts without it.
+test('going into a new room clears the notice at the top of the tab', async () => {
+  await social.boot();
+  const ended = await joining(1);
+  ended.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
+  ended.receive({ type: 'ended' });
+  expect(social.notice).toBe('The host ended the room');
+
+  const again = await joining(2);
+  expect(social.notice).toBe(null);
+  again.receive({ type: 'refused', reason: 'full' });
+  expect(social.notice).toBe('Room is full');   // a new room's own says so as ever
+
+  await startPublic();
+  expect(social.notice).toBe(null);
+});
+
+test('a room that can\'t be started keeps its reason, and joining the same room again keeps the notice', async () => {
+  await social.boot();
+  social.notice = 'The host ended the room';
+  server.route('POST /api/rooms', () => [400, { code: 'INVALID', field: 'name' }]);
+  await startPublic({ name: ' ' });
+  expect(social.notice).toBe('Room names are 1 to 60 characters');
+
+  const socket = await joining(1);
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
+  social.notice = 'Your email is confirmed';
+  room.join(ID);   // what confirming your email mid-room does
+  expect(social.notice).toBe('Your email is confirmed');
+});
+
+test('signing in while watching goes back in with what the sign-in said still showing', async () => {
+  await social.boot();
+  await joining(1);
+  social.notice = 'Check your email to confirm your account';
+  await social.becameSomeoneElse();
+  await lastSocket(2);
+  expect(room.id).toBe(ID);
+  expect(social.notice).toBe('Check your email to confirm your account');
+});
