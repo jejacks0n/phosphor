@@ -6,6 +6,8 @@ How Phosphor works, for people drawing with it.
   (everything you draw): merging up and down, erasing, and what the Select tool acts on.
 - [Characters](characters.md) — what a cell can hold, one- and two-column characters (Chinese,
   Japanese, Korean, emoji), typing any script, pasting text, and saving as .utf8ans or .ans.
+- [Animation](animation.md) — frames, the bar under the canvas, what carries from one frame to the next,
+  the ghost, timing, and exporting as animated .ans, .cast and .gif.
 - [Social](social.md) — the SOCIAL tab: the lobby, accounts and guests, hosting a room and watching
   someone draw, chat, blocking and reporting, and what isn't in this version yet.
 

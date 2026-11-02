@@ -107,6 +107,8 @@ so colors stay put from frame to frame.
 ## Moving things between layers
 
 - **Merge down** (top toolbar, or the Select tool's row) puts the edit layer into the base layer.
+  In an [animation](animation.md) with more than one frame it's off, Into the image too: the base is under
+  every frame, so one frame can't go into it.
   With a selection, only what's drawn inside it goes; the rest of the edit layer stays. Each time,
   it asks how:
   - **Exactly as is**: paint and cells become base pixels exactly as they show, and your typed and drawn

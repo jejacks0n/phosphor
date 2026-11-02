@@ -15,6 +15,11 @@ import { floodFill } from '@/lib/FloodFill';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { layoutWide } from '@/lib/Cells';
 import bucket from '@/tools/bucket';
+import { createApp, h } from 'vue';
+import { getActivePinia } from 'pinia';
+import InputEditor from '@/components/InputEditor.vue';
+import { usePlayback } from '@/composables/usePlayback';
+import { gifBytes, gifFrames } from '@/lib/GifFile';
 
 // [cols, lines]: today's largest (300 x 300 pixel rows), then bigger.
 const SIZES = [[300, 150], [100, 1000], [80, 10_000], [1000, 1000]];
@@ -283,4 +288,97 @@ test.runIf(__BENCH_HUGE__)('1000 cols x 10,000 lines', async () => {
   const heap0 = heapMB();
   const openMs = await time(open);
   console.log(`HUGE ${JSON.stringify({ openMs, cells: project.cells.length, heapMB: heapMB() - heap0 })}`);
+});
+
+// Animations, every cell changed on every frame (the worst case): building one, a rebuild, the swap, what playing
+// holds with the PIXEL view's overlay up, and memory. Run: add -t animations. What it plays at here is software
+// WebGL on a headless page, so a real graphics card only does better.
+const ANIMATIONS = [[200, 100], [200, 200], [300, 267]];
+const FRAMES = 24;
+
+test('animations', { timeout: 900_000 }, async () => {
+  const rows = [];
+  for (const [cols, lines] of ANIMATIONS) {
+    const { project, workspace, open } = await blankDocument(cols, lines);
+    await open();
+    project.animate = true; // past the limit too: that's what's being measured
+    workspace.ansiOverlay = 100;
+    workspace.ansiOverlayAll = true;
+    project.addFrame('blank');
+    const everywhere = [];
+    for (let row = 0; row < lines; row++) for (let col = 0; col < cols; col++) everywhere.push({ col, row });
+    const pixels = [];
+    for (let y = 0; y < 2 * lines; y++) for (let x = 0; x < cols; x++) pixels.push({ x, y, alpha: 1 });
+    const fill = (i) => {
+      project.paintStroke(pixels, `#00${(16 + i).toString(16)}ff`);
+      project.commitEdit();
+      project.writeEditCells(everywhere.map(({ col, row }) => ({ col, row, attrs: { char: 'abcdefgh'[(col + row + i) % 8], fg: `#ff${(16 + i).toString(16)}00`, bg: '#0000aa' } })));
+      project.commitEdit();
+    };
+    const before = heapMB();
+    const add = await time(async (i) => {
+      fill(i);
+      if (i < FRAMES - 1) project.addFrame('blank');
+    }, FRAMES);
+    project.noteFrame();
+    await settled(project);
+    const sample = project.currentFrame.changes.size;
+    const swap = await time((i) => project.showFrame(i % FRAMES), 8);
+    const heldChanges = heapMB();
+    const rebuild = await time(async () => {
+      project.staleFrames(0);
+      for (let i = 0; i < FRAMES; i++) await project.builtFrame(i);
+    });
+    const heldBuilt = heapMB();
+    let gifPixels = 0;
+    const gif = await time(async () => {
+      const shot = await gifFrames(await project.animationCells(), cols, lines, Array(FRAMES).fill(13));
+      gifPixels = shot.width * shot.height * FRAMES;
+      gifBytes(shot.width, shot.height, shot.frames);
+    });
+    const one = +(rebuild / FRAMES).toFixed(1);
+
+    workspace.editorTab = 'input';
+    const host = document.createElement('div');
+    host.style.cssText = 'width:1000px;height:700px;position:fixed;left:0;top:0';
+    document.body.append(host);
+    const view = createApp({ render: () => h(InputEditor) });
+    view.use(getActivePinia());
+    view.mount(host);
+    await settled(project);
+    project.setFps(60);
+    const playback = usePlayback();
+    await playback.play();
+    let changes = 0;
+    const start = performance.now();
+    let last = workspace.playFrame, ticks = 0;
+    while (performance.now() - start < 3000) {
+      await frame();
+      ticks++;
+      if (workspace.playFrame !== last) {
+        last = workspace.playFrame;
+        changes++;
+      }
+    }
+    const seconds = (performance.now() - start) / 1000;
+    playback.pause();
+    view.unmount();
+    host.remove();
+    rows.push({
+      cells: cols * lines,
+      'changes a frame': sample,
+      'add frame ms': add,
+      'swap ms': swap,
+      'build one ms': one,
+      '24-frame rebuild ms': rebuild,
+      'gif ms': gif,
+      'gif Mpx': Math.round(gifPixels / 1e6),
+      'frames/s playing': +(changes / seconds).toFixed(1),
+      'display/s': +(ticks / seconds).toFixed(1),
+      'MB/frame changes': +((heldChanges - before) / FRAMES).toFixed(1),
+      'MB/frame built': +((heldBuilt - heldChanges) / FRAMES).toFixed(1),
+    });
+    project.clearImage();
+  }
+  for (const row of rows) console.log(`ANIMATION ${JSON.stringify(row)}`);
 });

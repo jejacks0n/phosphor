@@ -178,6 +178,12 @@ describe('saving frames', () => {
     expect(deserializeFrames(good(), undefined, 20)).toBeNull();
   });
 
+  test('more frames than the grid can have is refused', () => {
+    const many = { frames: Array(101).fill({ kind: 'blank', hold: 0, changes: [] }), frame: 0, fps: 8 };
+    expect(deserializeFrames(many, 200, 400)).toBeNull();
+    expect(deserializeFrames(many, 80, 50)).not.toBeNull();
+  });
+
   test('anything but an object is refused', () => {
     expect(deserializeFrames(null, 20, 20)).toBeNull();
     expect(deserializeFrames({ fps: 8, frame: 0 }, 20, 20)).toBeNull();

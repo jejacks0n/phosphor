@@ -80,9 +80,10 @@ const setFps = (event) => {
       <input type="number" aria-label="Hold" min="0" max="60" step="0.05" :value="project.frames[at]?.hold" @change="setHold">
       s
     </label>
-    <DropdownMenu label="+ Frame" up>
+    <DropdownMenu label="+ Frame" up :disabled="count >= project.mostFrames">
       <button v-for="[kind, label] in KINDS" :key="kind" @click="add(kind)">{{ label }}</button>
     </DropdownMenu>
+    <span v-if="count >= project.mostFrames" class="full">{{ count }} frames is the most at this canvas size</span>
     <DropdownMenu label="Frame actions" up>
       <template #trigger>
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 7h3v3H2zM6.5 7h3v3h-3zM11 7h3v3h-3z"/></svg>
@@ -202,6 +203,11 @@ label.field input {
   width: 52px;
   height: 26px;
   padding: 2px 4px;
+}
+
+span.full {
+  font-size: 12px;
+  color: var(--warning);
 }
 
 button.ghost {

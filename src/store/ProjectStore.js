@@ -5,7 +5,7 @@ import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
 import { ghostedCells } from '@/lib/ghostCells.js';
-import { MAX_ANIMATION_CELLS, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
+import { MAX_ANIMATION_CELLS, MAX_FRAME_CELLS, maxFramesFor, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
@@ -126,12 +126,14 @@ export const useProjectStore = defineStore('project', {
     // The grid's largest size (Cells.js): aspect locked, the biggest that keeps the picture's ratio;
     // otherwise the most there's room for beside the other side.
     // With frames, whichever is less: that and an animation's own limit.
+    frameCellLimit: (state) => Math.min(MAX_ANIMATION_CELLS, Math.floor(MAX_FRAME_CELLS / state.frames.length)),
+    mostFrames: (state) => maxFramesFor(state.cols * charRowsOf(state.rows)),
     maxCols() {
-      if (this.hasFrames) return Math.max(1, Math.min(maxColsBeside(this.rows), Math.floor(MAX_ANIMATION_CELLS / Math.max(1, charRowsOf(this.rows)))));
+      if (this.hasFrames) return Math.max(1, Math.min(maxColsBeside(this.rows), Math.floor(this.frameCellLimit / Math.max(1, charRowsOf(this.rows)))));
       return this.aspectLock && this.image && !this.hasEdits ? lockedGrid(MAX_COLS, this.imageRatio).cols : maxColsBeside(this.rows);
     },
     maxRows() {
-      if (this.hasFrames) return Math.max(2, Math.min(maxRowsBeside(this.cols), 2 * Math.floor(MAX_ANIMATION_CELLS / Math.max(1, this.cols))));
+      if (this.hasFrames) return Math.max(2, Math.min(maxRowsBeside(this.cols), 2 * Math.floor(this.frameCellLimit / Math.max(1, this.cols))));
       return this.aspectLock && this.image && !this.hasEdits ? lockedGrid(MAX_COLS, this.imageRatio).rows : maxRowsBeside(this.cols);
     },
     // Why the Animate switch is off, if it is; rooms hold one still document, and frames never travel.

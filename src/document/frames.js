@@ -9,7 +9,7 @@
  */
 import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
-import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_FRAMES, MAX_LINES, charRowsOf } from '../lib/Cells.js';
+import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf, maxFramesFor } from '../lib/Cells.js';
 
 export const FRAME_KINDS = ['blank', 'duplicate', 'wipe'];
 
@@ -115,10 +115,10 @@ function readChanges(entries) {
 // large to animate: the file's still holds what it needs to open as one. Files are untrusted.
 export function deserializeFrames(json, cols, rows) {
   const { frames, frame, fps } = json ?? {};
-  if (!Array.isArray(frames) || !frames.length || frames.length > MAX_FRAMES) return null;
+  if (!Array.isArray(frames) || !frames.length) return null;
   if (!Number.isInteger(frame) || frame < 0 || frame >= frames.length) return null;
   if (!Number.isInteger(fps) || fps < 1 || fps > 60) return null;
-  if (!(cols * charRowsOf(rows) <= MAX_ANIMATION_CELLS)) return null;
+  if (!(cols * charRowsOf(rows) <= MAX_ANIMATION_CELLS) || frames.length > maxFramesFor(cols * charRowsOf(rows))) return null;
   const read = [];
   for (const entry of frames) {
     const { kind, hold, changes } = entry ?? {};
