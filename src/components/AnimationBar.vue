@@ -78,6 +78,23 @@ const setFps = (event) => {
       <!-- A pointer lets go of it, so the app's keys work again; the keyboard keeps its arrows. -->
       <input type="range" aria-label="Frame" min="0" :max="count - 1" step="1" :value="at" @input="scrub" @pointerup="$event.target.blur()">
     </div>
+    <DropdownMenu label="Add frame" up :disabled="!!full">
+      <template #trigger>
+        <!-- A frame of film, on its side, with a plus at its corner. -->
+        <svg class="add-frame" viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
+          <path d="M0.5 6h11.5v9H0.5zM1.6 6.7h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zM1.6 13.3h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zM1.5 8.4h9.5v4.2H1.5zM12.55 0.8h1.5v1.45h1.45v1.5h-1.45v1.45h-1.5v-1.45H11.1v-1.5h1.45z"/>
+        </svg>
+      </template>
+      <button v-for="[kind, label] in KINDS" :key="kind" @click="add(kind)">{{ label }}</button>
+    </DropdownMenu>
+    <DropdownMenu label="Frame actions" up>
+      <template #trigger>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 7h3v3H2zM6.5 7h3v3h-3zM11 7h3v3h-3z"/></svg>
+      </template>
+      <button :disabled="at === 0" @click="move(-1)">Move earlier</button>
+      <button :disabled="at === count - 1" @click="move(1)">Move later</button>
+      <button :disabled="count < 2" @click="remove">Delete frame</button>
+    </DropdownMenu>
     </div>
     <div class="settings">
     <label class="field fps" title="Frames per second">
@@ -89,24 +106,7 @@ const setFps = (event) => {
       <input type="number" aria-label="Hold" min="0" max="60" step="0.05" :value="project.frames[at]?.hold" @change="setHold">
       s
     </label>
-    <DropdownMenu label="Add frame" up :disabled="!!full">
-      <template #trigger>
-        <!-- A frame of film, on its side, with a plus at its corner. -->
-        <svg class="add-frame" viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
-          <path d="M0.5 6h11.5v9H0.5zM1.6 6.7h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zM1.6 13.3h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zM1.5 8.4h9.5v4.2H1.5zM12.55 0.8h1.5v1.45h1.45v1.5h-1.45v1.45h-1.5v-1.45H11.1v-1.5h1.45z"/>
-        </svg>
-      </template>
-      <button v-for="[kind, label] in KINDS" :key="kind" @click="add(kind)">{{ label }}</button>
-    </DropdownMenu>
     <span v-if="full" class="full">{{ full }}</span>
-    <DropdownMenu label="Frame actions" up>
-      <template #trigger>
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 7h3v3H2zM6.5 7h3v3h-3zM11 7h3v3h-3z"/></svg>
-      </template>
-      <button :disabled="at === 0" @click="move(-1)">Move earlier</button>
-      <button :disabled="at === count - 1" @click="move(1)">Move later</button>
-      <button :disabled="count < 2" @click="remove">Delete frame</button>
-    </DropdownMenu>
     <button class="ghost" :class="{ active: workspace.ghost }" aria-label="Ghost" :aria-pressed="workspace.ghost" title="Ghost: show earlier frames, dimmed, on a Blank frame" @click="workspace.ghost = !workspace.ghost">
       <svg viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
         <path d="M8 1.5C5 1.5 3 3.9 3 7v7.5l1.67-1.25 1.66 1.25L8 13.25l1.67 1.25 1.66-1.25L13 14.5V7c0-3.1-2-5.5-5-5.5zM6.25 5.5a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zm3.5 0a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2z"/>
@@ -135,7 +135,7 @@ div.transport, div.settings {
   min-width: 0;
 }
 div.transport { /* takes the spare room beside the settings; on a line of its own, each fills its line */
-  flex: 9999 1 340px;
+  flex: 9999 1 400px;
 }
 div.settings {
   flex: 1 1 auto;
@@ -299,7 +299,7 @@ button.ghost.active svg {
     column-gap: 6px;
   }
   div.transport {
-    flex-basis: 240px;
+    flex-basis: 300px;
   }
   button.step { /* for a finger */
     width: 32px;

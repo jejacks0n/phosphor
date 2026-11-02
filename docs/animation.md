@@ -15,9 +15,9 @@ frame can't start a room.
 
 ## The bar
 
-Left to right: play and pause, step back and forward, which frame you're on, the scrubber, frames per second,
-this frame's hold, **Add frame** (a frame of film with a plus), a menu to move or delete the frame, and **Ghost** (a
-ghost, lit while it's on) with its strength beside it.
+Left to right: play and pause, step back and forward, which frame you're on, the scrubber, **Add frame** (a frame of
+film with a plus), a menu to move or delete the frame, frames per second, this frame's hold, and **Ghost** (a ghost, lit
+while it's on) with its strength beside it. On a narrow screen the controls from frames per second on take a second line.
 
 The marks under the scrubber say what each frame is: a tall tick where something was drawn, a short tick where
 nothing was, a block for a Duplicate, and a diamond for a Wipe.
