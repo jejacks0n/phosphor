@@ -279,8 +279,27 @@ export const documentActions = {
     }
   },
 
-  // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first.
-  async exportFile(ext, { filename = this.filename, ...opts } = {}) {
+  // Every frame's cells, built as a still is.
+  async animationCells() {
+    this.commitPending();
+    const cells = [];
+    for (let i = 0; i < this.frames.length; i++) cells.push((await this.builtFrame(i)).cells);
+    return cells;
+  },
+
+  // The animated formats, written from every frame: 'ansimation' (.ans).
+  async exportAnimation(format, { filename = this.filename } = {}) {
+    const frames = await this.animationCells();
+    const bytes = AnsiFile.animationBytes(this.cols, charRowsOf(this.rows), frames, {
+      colorMode: this.quantize,
+      sauce: this.sauceFields(),
+    });
+    this.rename(filename);
+    downloadBlob(new Blob([bytes], { type: 'application/octet-stream' }), `${this.filename}.ans`);
+  },
+
+  // What an art file's SAUCE record says, from the SAUCE tab.
+  sauceFields() {
     const comments = [
       `Created with Phosphor`,
       `Params: seed=${this.seed}, smoothing=${this.smoothing}, quantize=${this.quantize}`,
@@ -291,17 +310,21 @@ export const documentActions = {
       comments.push(''); // Spacer
       comments.push(...this.sauceUserComments.split('\n'));
     }
+    return {
+      use9pxFont: this.sauceUse9pxFont,
+      fontName: this.sauceFontName,
+      title: this.sauceTitle,
+      author: this.sauceAuthor,
+      group: this.sauceGroup,
+      date: this.sauceDate,
+      comments,
+    };
+  },
 
+  // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first.
+  async exportFile(ext, { filename = this.filename, ...opts } = {}) {
     const blob = new AnsiFile(this.cols, charRowsOf(this.rows), this.cells).toBlob({
-      sauce: {
-        use9pxFont: this.sauceUse9pxFont,
-        fontName: this.sauceFontName,
-        title: this.sauceTitle,
-        author: this.sauceAuthor,
-        group: this.sauceGroup,
-        date: this.sauceDate,
-        comments,
-      },
+      sauce: this.sauceFields(),
       colorMode: this.quantize,
       utf8: ext === 'utf8ans',
       ...opts,
