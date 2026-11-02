@@ -4,8 +4,9 @@
  * 0 is none). A change owns the whole cell, so a later fix on an earlier frame stops there, all of it. An
  * empty state is an explicit erase, which carries forward like any change. Nothing here touches a canvas.
  *
- * Frame = { id, kind, hold, changes, ledger, resolved, built }: hold is in seconds (0 is one tick). The last
- * three belong to the store: the frame's undo while it's not showing, and what's cached of it.
+ * Frame = { id, kind, hold, changes, ledger, drawn, resolved, built }: hold is in seconds (0 is one tick). The last
+ * four belong to the store: the frame's undo while it's not showing, the cells each stroke with undo went over
+ * (for the ghost), and what's cached of it.
  */
 import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
@@ -18,7 +19,7 @@ export const EMPTY_STATE = cellState(null, 0, 0);
 export const isEmptyState = (state) => !state.cell && !state.top && !state.bottom;
 
 let nextId = 1;
-export const newFrame = (kind, changes = new Map()) => markRaw({ id: nextId++, kind, hold: 0, changes, ledger: null, resolved: null, built: null });
+export const newFrame = (kind, changes = new Map()) => markRaw({ id: nextId++, kind, hold: 0, changes, ledger: null, drawn: null, resolved: null, built: null });
 
 // How long a frame stays, in ms: its hold, or one tick at the movie's fps.
 export const frameDuration = ({ hold }, fps) => (hold > 0 ? hold * 1000 : 1000 / fps);

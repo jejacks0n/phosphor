@@ -378,3 +378,42 @@ test('the ghost’s strength sets how far inherited cells dim, in both views, fr
   app.unmount();
   host.remove();
 });
+
+test('what’s drawn on this frame never dims, even in exactly the color it inherited', async () => {
+  const { project, workspace } = await animated();
+  project.paintStroke([{ x: 8, y: 8, alpha: 1 }, { x: 8, y: 9, alpha: 1 }, { x: 12, y: 12, alpha: 1 }, { x: 12, y: 13, alpha: 1 }], '#ffffff');
+  project.commitEdit();
+  type(project, 1, 1, 'A');
+  project.addFrame('blank');
+  await settle(project);
+  const crossed = cellIndex(8, 4, project.cols), left = cellIndex(12, 6, project.cols), typed = cellIndex(1, 1, project.cols);
+  const dim = (i) => project.shownCells[i] !== project.cells[i];
+  expect([dim(crossed), dim(left), dim(typed)]).toEqual([true, true, true]);
+
+  // Across the old drawing in exactly its color, and on past it: only the new pixels change anything.
+  project.paintStroke([{ x: 8, y: 8, alpha: 1 }, { x: 8, y: 9, alpha: 1 }, { x: 20, y: 20, alpha: 1 }], '#ffffff');
+  project.commitEdit();
+  type(project, 1, 1, 'A');
+  await settle(project);
+  expect([dim(crossed), dim(left), dim(typed)]).toEqual([false, true, false]);
+  expect(project.currentFrame.changes.has('8,4')).toBe(false); // it's still inherited: only how it shows differs
+
+  project.showFrame(0);
+  project.showFrame(1);
+  await settle(project);
+  expect([dim(crossed), dim(left), dim(typed)]).toEqual([false, true, false]); // scrubbing doesn't forget
+
+  project.undo(); // the typing
+  project.undo(); // the stroke
+  await settle(project);
+  expect([dim(crossed), dim(left), dim(typed)]).toEqual([true, true, true]);
+  project.redo();
+  await settle(project);
+  expect([dim(crossed), dim(left), dim(typed)]).toEqual([false, true, true]);
+
+  project.paintStroke([{ x: 12, y: 12, alpha: 1 }, { x: 12, y: 13, alpha: 1 }], '#ffffff'); // nothing but what's there already
+  project.commitEdit();
+  await settle(project);
+  expect(dim(left)).toBe(false);
+  expect(workspace.ghost).toBe(true);
+});

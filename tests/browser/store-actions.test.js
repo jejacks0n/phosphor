@@ -11,7 +11,7 @@ const ACTIONS = [
   'eraseBase', 'eraseBasePixels', 'eraseEditPixels', 'exportAnimation', 'exportFile', 'fitFor', 'flipBase', 'flipCell',
   'flipPaint', 'floatSelection', 'flushHeard', 'forgetAsked', 'gridRect', 'hasCharacters', 'hasEditsIn', 'hearDrawing', 'imageColorAt', 'inheritedCells', 'keepLedger', 'keepMigratedLook', 'keptForHandOver', 'layersFor', 'leavePending',
   'loadProject', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeUp',
-  'moveFrame', 'moveSelection', 'newConnection', 'newDocument', 'noteFrame', 'numberWaiting', 'openFrames', 'openFromHost', 'openParts', 'ownStroke', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
+  'moveFrame', 'moveSelection', 'newConnection', 'newDocument', 'noteDrawn', 'noteFrame', 'numberWaiting', 'openFrames', 'openFromHost', 'openParts', 'ownStroke', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
   'pasteSelection', 'pickPalette', 'processingScale', 'projectNow', 'projectParts', 'pushEdit', 'pushKeptStroke', 'pushWholeLayer', 'randomizeSeed', 'rawColorAt', 'readCell', 'readHandOver', 'readTile', 'rebuildCells', 'recolorSelection', 'recompose', 'redo', 'redoStroke', 'refreshCells', 'refreshChanged', 'rename',
   'render', 'replaceImage', 'replayOnPicture', 'resendPending', 'resetFrames', 'resetGroup', 'resetSliders', 'resolvedOf', 'restoreDocument', 'restoreLedger', 'sauceFields', 'saveProject', 'selectionEdit', 'sendBase', 'sendHeld', 'sendHeldSoon', 'sendNumbered', 'sendParts', 'sendSettings', 'sendSlice',
   'setAllFrames', 'setAnimate', 'setBaseRecords', 'setBlankCanvas', 'setCells', 'setEditCells', 'setFps', 'setFrameState', 'setHold', 'setImageFromFile', 'setPaused', 'setSlider', 'shareWholeDocument', 'shiftCells', 'showFrame',
