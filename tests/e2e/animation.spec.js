@@ -436,6 +436,13 @@ test('on a narrow screen the bar holds two tidy lines, and every control stays o
     await expect.poll(lines, { message: `${width} wide` }).toEqual({ rows, inside: true, smallest: expect.any(Number) });
     expect((await lines()).smallest).toBeGreaterThanOrEqual(20);
     expect((await bar(page).getByRole('button', { name: 'Add frame' }).boundingBox()).height, `Add frame at ${width}`).toBeLessThan(30);
+    // Adding and arranging frames sit right after the scrubber, on its line.
+    const scrubber = await bar(page).getByRole('slider', { name: 'Frame' }).boundingBox();
+    for (const name of ['Add frame', 'Frame actions']) {
+      const box = await bar(page).getByRole('button', { name }).boundingBox();
+      expect(box.x, `${name} at ${width}`).toBeGreaterThan(scrubber.x + scrubber.width);
+      expect(Math.abs(box.y + box.height / 2 - (scrubber.y + scrubber.height / 2)), `${name} at ${width}`).toBeLessThan(14);
+    }
     await expect.poll(switchInside, { message: `the switch at ${width}` }).toBe(true); // the layout may still be sliding
   }
   await page.setViewportSize({ width: 320, height: 568 }); // the narrowest phone: more lines, but nothing lost
