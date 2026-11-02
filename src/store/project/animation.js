@@ -70,9 +70,11 @@ function liveStates(project) {
 // was showing has been noted already, or is going away. leaving: the frame whose ledger is out, when the list
 // has just changed under it.
 function arrive(project, i, leaving = project.currentFrame) {
+  const frame = project.frames[i], version = project.history.version;
   leaving.ledger = project._ledger;
-  project._ledger = project.frames[i].ledger ?? newLedger(() => project);
-  project.frames[i].ledger = null;
+  leaving.ledgerAt = version;
+  project._ledger = frame.ledger ?? newLedger(() => project);
+  frame.ledger = null;
   project.frame = i;
   project._noted = { frame: project.frames[i], history: project.history.version, edit: project.editVersion };
   const resolved = project.resolvedOf(i);
@@ -83,7 +85,52 @@ function arrive(project, i, leaving = project.currentFrame) {
   layer.loadGrid(paintImage(resolved, layer.cols, layer.rows));
   project.hasPaint = layer.hasPaint;
   project._arrived = { paint: layer.hasPaint ? layer.gridPixels() : null, states: resolved };
+  if (frame.ledgerAt !== version) project._ledger.refreshBases(); // an earlier frame may have changed what's under its strokes
   if (!project.composite()) project.rebuildCells();
+}
+
+// The frame showing's changes, from what it shows now. Skipped when nothing's happened since the last time.
+function note(project) {
+  const frame = project.currentFrame, noted = project._noted;
+  if (!project._stroke && noted?.frame === frame && noted.history === project.history.version && noted.edit === project.editVersion) return;
+  project._noted = { frame, history: project.history.version, edit: project.editVersion };
+  const previous = project.frame > 0 && frame.kind === 'blank' ? project.resolvedOf(project.frame - 1) : NOTHING;
+  const changes = frameDiff(previous, liveStates(project));
+  if (sameChanges(changes, frame.changes)) return;
+  frame.changes = changes;
+  project.staleFrames(project.frame);
+  project.frames = [...project.frames]; // the bar's marks, and hasEdits
+}
+
+// Before anything that changes which frames there are: what's open is set down on the frame it was done on.
+function settleFrame(project) {
+  project.commitPending();
+  project._float = null;
+  note(project);
+}
+
+const framesNow = (project) => ({ list: project.frames, states: project.frames.map(({ kind, changes }) => ({ kind, changes })), showing: project.currentFrame });
+
+// The frames as a step of history left them. Frame objects are kept, so a deleted frame's ledger comes back with
+// it. Holds aren't part of a step, and they live on the frame, so they stay.
+function putFrames(project, { list, states, showing }) {
+  const was = project.frames, leaving = project.currentFrame;
+  const differs = (frame, at) => frame !== was[at] || frame.kind !== states[at].kind || frame.changes !== states[at].changes;
+  const first = list.findIndex(differs);
+  list.forEach((frame, at) => Object.assign(frame, states[at]));
+  if (first >= 0) for (let at = first; at < list.length; at++) list[at].resolved = list[at].built = null;
+  project.frames = list;
+  project._float = null;
+  arrive(project, list.indexOf(showing), leaving);
+}
+
+// One undo step around a change to the frames: change makes the new list and says which frame shows.
+function frameStep(project, change) {
+  const before = framesNow(project);
+  const showing = change();
+  const after = { ...framesNow(project), showing };
+  project.pushEdit({ frameOp: true, undo: () => putFrames(project, before), redo: () => putFrames(project, after), bytes: 0 });
+  arrive(project, project.frames.indexOf(showing), before.showing);
 }
 
 export const animationActions = {
@@ -93,24 +140,13 @@ export const animationActions = {
     if (i === this.frame || !this.frames[i]) return;
     this.ensureLayer();
     if (!this.paintLayer) return;
-    this.commitPending();
-    this._float = null;
-    this.noteFrame();
+    settleFrame(this);
     arrive(this, i);
   },
 
-  // The frame showing's changes, from what it shows now. A still has no one to carry anything to.
+  // A still has no one to carry anything to, so it never works out changes.
   noteFrame() {
-    if (!this.hasFrames) return;
-    const frame = this.currentFrame, noted = this._noted;
-    if (!this._stroke && noted?.frame === frame && noted.history === this.history.version && noted.edit === this.editVersion) return;
-    this._noted = { frame, history: this.history.version, edit: this.editVersion };
-    const previous = this.frame > 0 && frame.kind === 'blank' ? this.resolvedOf(this.frame - 1) : NOTHING;
-    const changes = frameDiff(previous, liveStates(this));
-    if (sameChanges(changes, frame.changes)) return;
-    frame.changes = changes;
-    this.staleFrames(this.frame);
-    this.frames = [...this.frames]; // the bar's marks, and hasEdits
+    if (this.hasFrames) note(this);
   },
 
   // What frame i shows, cached on the frame. An earlier frame can't have changed while another shows.
@@ -140,46 +176,50 @@ export const animationActions = {
   addFrame(kind) {
     this.ensureLayer();
     if (!this.paintLayer) return;
-    this.commitPending();
-    this._float = null;
-    const leaving = this.currentFrame, at = this.frame + 1;
-    this.frames = [...this.frames.slice(0, at), newFrame('blank'), ...this.frames.slice(at)];
-    this.noteFrame();
-    const frame = this.frames[at];
-    frame.kind = kind;
-    if (kind === 'duplicate') frame.changes = new Map(this.resolvedOf(this.frame));
-    this.editVersion++;
-    arrive(this, at, leaving);
+    settleFrame(this);
+    frameStep(this, () => {
+      const at = this.frame + 1;
+      const added = newFrame(kind, kind === 'duplicate' ? new Map(this.resolvedOf(this.frame)) : new Map());
+      this.frames = [...this.frames.slice(0, at), added, ...this.frames.slice(at)];
+      this.staleFrames(at);
+      return added;
+    });
   },
 
   // The rest of the movie looks the same (foldDeleted). The only frame can't go.
   deleteFrame() {
     if (!this.hasFrames) return;
-    this.commitPending();
-    this._float = null;
-    this.noteFrame();
-    const leaving = this.currentFrame, at = this.frame, next = this.frames[at + 1];
-    if (next) Object.assign(next, foldDeleted(leaving, next));
-    this.frames = this.frames.filter((frame) => frame !== leaving);
-    this.staleFrames(Math.min(at, this.frames.length - 1));
-    this.editVersion++;
-    arrive(this, Math.min(at, this.frames.length - 1), leaving);
+    settleFrame(this);
+    frameStep(this, () => {
+      const deleted = this.currentFrame, at = this.frame, next = this.frames[at + 1];
+      if (next) Object.assign(next, foldDeleted(deleted, next));
+      this.frames = this.frames.filter((frame) => frame !== deleted);
+      if (next) this.frames[at].resolved = this.frames[at].built = null;
+      return this.frames[Math.min(at, this.frames.length - 1)];
+    });
   },
 
   // A frame moves with its changes as they are, so its look can change with what now comes before it. The
   // frame showing stays the one showing, wherever that puts it.
   moveFrame(from, to) {
     if (from === to || !this.frames[from] || !this.frames[to]) return;
-    this.commitPending();
-    this._float = null;
-    this.noteFrame();
-    const showing = this.currentFrame, frames = [...this.frames];
-    frames.splice(to, 0, ...frames.splice(from, 1));
-    this.frames = frames;
-    // Whatever follows the move's two ends can have changed, so all of them from the first end on.
-    for (let at = Math.min(from, to); at < frames.length; at++) frames[at].resolved = frames[at].built = null;
-    this.editVersion++;
-    arrive(this, frames.indexOf(showing), showing);
+    settleFrame(this);
+    frameStep(this, () => {
+      const showing = this.currentFrame, frames = [...this.frames];
+      frames.splice(to, 0, ...frames.splice(from, 1));
+      for (let at = Math.min(from, to); at < frames.length; at++) frames[at].resolved = frames[at].built = null;
+      this.frames = frames;
+      return showing;
+    });
+  },
+
+  // A frame's kind and changes set from outside (a Clear, and its undo), and shown as the frame now resolves.
+  setFrameState({ kind, changes }) {
+    const frame = this.currentFrame;
+    Object.assign(frame, { kind, changes });
+    this.staleFrames(this.frame);
+    this.frames = [...this.frames];
+    arrive(this, this.frame, frame);
   },
 
   setHold(i, seconds) {
@@ -198,16 +238,3 @@ export const animationActions = {
     this.animate = !!on;
   },
 };
-
-// The state a frame's clear needs to go back to (clearEditLayer).
-export const frameShown = (project) => ({ kind: project.currentFrame.kind, changes: project.currentFrame.changes });
-
-// A frame's kind and changes set from outside, and shown as the frame now resolves.
-export function showFrameState(project, { kind, changes }) {
-  const frame = project.currentFrame;
-  frame.kind = kind;
-  frame.changes = changes;
-  project.staleFrames(project.frame);
-  project.frames = [...project.frames];
-  arrive(project, project.frame, frame);
-}
