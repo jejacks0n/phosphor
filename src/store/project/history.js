@@ -6,6 +6,7 @@
 // sendSlice leaves it, and _baseline, what a slice being submitted began with (reading.js).
 import { markRaw, toRaw } from 'vue';
 import { parseKey } from '@/document/editCells.js';
+import { keepDrawn } from '@/document/frames.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { ALONE, bytesHeld, newLedger, randomId, runsPatch } from '@/store/project/shared.js';
 
@@ -56,7 +57,10 @@ export const historyActions = {
       if (pixels) this.recompose(pixels);
       else this.rebuildCells();
     }
-    if (!stroke || (!patch && !basePatch && !stroke.wroteCells && stroke.baseRecords === this.baseRecords)) return;
+    if (!stroke || (!patch && !basePatch && !stroke.wroteCells && stroke.baseRecords === this.baseRecords)) {
+      if (stroke) keepDrawn(this.currentFrame, stroke.id); // no step to undo it
+      return;
+    }
 
     // The entry mustn't close over stroke or patch: the old map and the tiles are the ledger's to hold now.
     const { cursor, id, sent, drawn } = stroke;
@@ -90,7 +94,7 @@ export const historyActions = {
       stroke: id,
       undo: () => apply('before'),
       redo: () => apply('after'),
-      onDrop: () => { ledger.forget(id); frame.drawn?.delete(id); }, // or while a merge holds its stacks, not found: see pushWholeLayer
+      onDrop: () => { ledger.forget(id); keepDrawn(frame, id); }, // or while a merge holds its stacks, not found: see pushWholeLayer
       bytes: this._ledger.bytesOf(id) + bytesHeld(basePatch),
     });
     if (basePatch || records.before !== records.after) this.sendBase(basePatch, 'after');
@@ -230,7 +234,10 @@ export const historyActions = {
   clearHistory() {
     if (this._sharing?.strokesAsked) this._sharing.strokesAsked = [];
     this._ledger.reset(); // first: what History drops next has nothing left to forget
-    for (const frame of this.frames) Object.assign(frame, { ledger: null, drawn: null });
+    for (const frame of this.frames) {
+      frame.ledger = null;
+      keepDrawn(frame); // past undo now
+    }
     this.history.clear();
     this.historyVersion = this.history.version;
   },

@@ -5,8 +5,8 @@
  * empty state is an explicit erase, which carries forward like any change. Nothing here touches a canvas.
  *
  * Frame = { id, kind, hold, changes, ledger, drawn, resolved, built }: hold is in seconds (0 is one tick). The last
- * four belong to the store: the frame's undo while it's not showing, the cells each stroke with undo went over
- * (for the ghost), and what's cached of it.
+ * four belong to the store: the frame's undo while it's not showing, the cells drawn over on it (for the ghost: by
+ * stroke while undo can take one back, then KEPT), and what's cached of it.
  */
 import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
@@ -20,6 +20,25 @@ export const isEmptyState = (state) => !state.cell && !state.top && !state.botto
 
 let nextId = 1;
 export const newFrame = (kind, changes = new Map()) => markRaw({ id: nextId++, kind, hold: 0, changes, ledger: null, drawn: null, resolved: null, built: null });
+
+// Cells drawn over on a frame, whether or not that changed them: drawn maps a stroke's id to its cells, and KEPT to
+// those no undo can take back any more. A cell drawn in exactly what it inherited isn't owned, but it isn't a ghost.
+export const KEPT = 'kept';
+export function drawnKeys(frame) {
+  const keys = new Set();
+  for (const cells of frame.drawn?.values() ?? []) for (const key of cells) keys.add(key);
+  return keys;
+}
+// A stroke's cells, or with no id every stroke's, past undo now: kept.
+export function keepDrawn(frame, id) {
+  if (!frame.drawn?.size || (id !== undefined && !frame.drawn.has(id))) return;
+  const cells = id === undefined ? drawnKeys(frame) : frame.drawn.get(id);
+  if (id === undefined) frame.drawn = new Map();
+  else frame.drawn.delete(id);
+  const kept = frame.drawn.get(KEPT) ?? new Set();
+  for (const key of cells) kept.add(key);
+  frame.drawn.set(KEPT, kept);
+}
 
 // How long a frame stays, in ms: its hold, or one tick at the movie's fps.
 export const frameDuration = ({ hold }, fps) => (hold > 0 ? hold * 1000 : 1000 / fps);
@@ -84,12 +103,17 @@ export function paintImage(resolved, cols, rows) {
   return image;
 }
 
-// Frames as a file holds them: an entry is [key, cell, top, bottom].
-export const serializeFrames = (frames) => frames.map(({ kind, hold, changes }) => ({
-  kind,
-  hold,
-  changes: Array.from(changes, ([key, { cell, top, bottom }]) => [key, cell, top, bottom]),
-}));
+// Frames as a file holds them: an entry is [key, cell, top, bottom]. drawn: the cells drawn over that changes doesn't
+// hold, if any (what changes holds was drawn, or the frame wouldn't own it).
+export const serializeFrames = (frames) => frames.map((frame) => {
+  const { kind, hold, changes } = frame, drawn = [...drawnKeys(frame)].filter((key) => !changes.has(key));
+  return {
+    kind,
+    hold,
+    changes: Array.from(changes, ([key, { cell, top, bottom }]) => [key, cell, top, bottom]),
+    ...(drawn.length && { drawn }),
+  };
+});
 
 const goodPaint = (rgba) => Number.isInteger(rgba) && rgba >= 0 && rgba <= 0xffffffff;
 const goodKey = (key) => {
@@ -122,12 +146,14 @@ export function deserializeFrames(json, cols, rows) {
   if (!(cols * charRowsOf(rows) <= MAX_ANIMATION_CELLS) || frames.length > maxFramesFor(cols * charRowsOf(rows))) return null;
   const read = [];
   for (const entry of frames) {
-    const { kind, hold, changes } = entry ?? {};
+    const { kind, hold, changes, drawn } = entry ?? {};
     if (!FRAME_KINDS.includes(kind) || !Number.isFinite(hold) || hold < 0 || hold > 60) return null;
     const map = readChanges(changes);
     if (!map) return null;
+    if (drawn !== undefined && !(Array.isArray(drawn) && drawn.length <= MAX_CELLS && drawn.every(goodKey))) return null;
     const next = newFrame(kind, map);
     next.hold = hold;
+    if (drawn?.length) next.drawn = new Map([[KEPT, new Set(drawn)]]);
     read.push(next);
   }
   return { frames: read, frame, fps };

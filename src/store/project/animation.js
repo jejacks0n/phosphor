@@ -4,7 +4,7 @@
 // frames. Owns _arrived (what the frame held on arrival), _noted (what noteFrame last saw) and _builder (what
 // builds frames for playing, and what it was prepared for).
 import FrameBuilder from '@/document/FrameBuilder.js';
-import { cellState, foldDeleted, frameDiff, newFrame, paintImage, resolveOver, sameChanges } from '@/document/frames.js';
+import { cellState, foldDeleted, frameDiff, newFrame, paintImage, resolveOver, sameChanges, drawnKeys } from '@/document/frames.js';
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
@@ -257,11 +257,9 @@ export const animationActions = {
       if (col < cols && row < rows) inherited.add(cellIndex(col, row, cols));
     }
     // Drawn here in exactly the color it inherited: the frame doesn't own it, but it's no ghost to whoever drew it.
-    for (const keys of this.currentFrame.drawn?.values() ?? []) {
-      for (const key of keys) {
-        const { col, row } = parseKey(key);
-        if (col < cols) inherited.delete(cellIndex(col, row, cols));
-      }
+    for (const key of drawnKeys(this.currentFrame)) {
+      const { col, row } = parseKey(key);
+      if (col < cols) inherited.delete(cellIndex(col, row, cols));
     }
     return inherited;
   },
