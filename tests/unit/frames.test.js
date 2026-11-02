@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import assert from 'node:assert/strict';
-import { EMPTY_STATE, FRAME_KINDS, cellState, deserializeFrames, foldDeleted, frameDiff, isEmptyState, newFrame, resolveOver, serializeFrames } from '../../src/document/frames.js';
+import { EMPTY_STATE, FRAME_KINDS, cellState, deserializeFrames, drawnKeys, foldDeleted, frameDiff, isEmptyState, newFrame, resolveOver, serializeFrames } from '../../src/document/frames.js';
 import { MAX_CELLS, MAX_COLS, MAX_FRAMES, MAX_LINES } from '../../src/lib/Cells.js';
 
 const A = Object.freeze({ char: 'A' }), B = Object.freeze({ char: 'B' });
@@ -125,6 +125,7 @@ describe('saving frames', () => {
     const first = newFrame('blank', new Map([['0,0', cellState(cell, 0xff0000ff, 0)], ['3,1', EMPTY_STATE]]));
     const second = newFrame('wipe', new Map([['2,2', cellState(null, 0, 0x00ff00ff)]]));
     second.hold = 0.5;
+    first.drawn = new Map([['a stroke', new Set(['0,0', '5,5'])], ['another', new Set(['6,1'])]]);
     return { frames: serializeFrames([first, second, newFrame('duplicate')]), frame: 1, fps: 12 };
   };
   const on = (change) => { const json = JSON.parse(JSON.stringify(good())); change(json); return json; };
@@ -138,6 +139,15 @@ describe('saving frames', () => {
     expect(read.frames[0].changes.get('0,0')).toEqual({ cell, top: 0xff0000ff, bottom: 0 });
     expect(isEmptyState(read.frames[0].changes.get('3,1'))).toBe(true);
     expect(read.frames[1].changes.get('2,2')).toEqual({ cell: null, top: 0, bottom: 0x00ff00ff });
+  });
+
+  test('what was drawn on a frame without changing it is kept; what it changed is already in its changes', () => {
+    const json = JSON.parse(JSON.stringify(good()));
+    expect(json.frames[0].drawn).toEqual(['5,5', '6,1']);
+    expect(json.frames[1].drawn).toBeUndefined();
+    const read = deserializeFrames(json, 20, 20);
+    expect([...drawnKeys(read.frames[0])]).toEqual(['5,5', '6,1']);
+    expect([...drawnKeys(read.frames[1])]).toEqual([]);
   });
 
   const damaged = [
@@ -163,6 +173,9 @@ describe('saving frames', () => {
     ['paint not whole', (j) => { j.frames[0].changes[0][2] = 1.5; }],
     ['paint too large', (j) => { j.frames[0].changes[0][3] = 2 ** 32; }],
     ['paint negative', (j) => { j.frames[0].changes[0][2] = -1; }],
+    ['drawn not a list', (j) => { j.frames[0].drawn = '5,5'; }],
+    ['a drawn key that isn’t one', (j) => { j.frames[0].drawn = ['5;5']; }],
+    ['a drawn key past the limit', (j) => { j.frames[0].drawn = [`${MAX_COLS},0`]; }],
   ];
   test.each(damaged)('a damaged frames value is refused: %s', (_, change) => {
     expect(deserializeFrames(on(change), 20, 20)).toBeNull();

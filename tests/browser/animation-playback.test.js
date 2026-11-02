@@ -417,3 +417,28 @@ test('what’s drawn on this frame never dims, even in exactly the color it inhe
   expect(dim(left)).toBe(false);
   expect(workspace.ghost).toBe(true);
 });
+
+test('what’s drawn in exactly the inherited color stays solid once undo can’t reach it, and after saving and opening', async () => {
+  const { project } = await animated();
+  project.paintStroke([{ x: 8, y: 8, alpha: 1 }, { x: 8, y: 9, alpha: 1 }, { x: 12, y: 12, alpha: 1 }, { x: 12, y: 13, alpha: 1 }], '#ffffff');
+  project.commitEdit();
+  project.addFrame('blank');
+  project.paintStroke([{ x: 8, y: 8, alpha: 1 }, { x: 8, y: 9, alpha: 1 }, { x: 20, y: 20, alpha: 1 }], '#ffffff');
+  project.commitEdit();
+  await settle(project);
+  const crossed = cellIndex(8, 4, project.cols), left = cellIndex(12, 6, project.cols);
+  const dim = (i) => project.shownCells[i] !== project.cells[i];
+  expect([dim(crossed), dim(left)]).toEqual([false, true]);
+
+  project.clearHistory(); // as past the undo limit, or opening a project
+  await settle(project);
+  expect([dim(crossed), dim(left)]).toEqual([false, true]);
+
+  const { writeProject } = await import('@/document/projectIO.js');
+  const parts = await project.projectParts();
+  await project.loadProject(new File([await writeProject({ imageBuffer: project.imageBuffer, ...parts })], 'movie.phosphor'));
+  await settle(project);
+  expect([project.frames.length, project.frame]).toEqual([2, 1]);
+  expect([dim(crossed), dim(left)]).toEqual([false, true]);
+  expect(project.currentFrame.changes.has('8,4')).toBe(false); // still inherited: only how it shows differs
+});
