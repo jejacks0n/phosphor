@@ -89,6 +89,31 @@ test('a character on a frame not showing is listed before an animated .ans is wr
   await expect(page.getByRole('dialog').getByRole('list', { name: 'Replacements' })).toContainText('漢');
 });
 
+test('an animated .utf8ans keeps every character, warns above 80x25, and lists nothing to replace', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('switch', { name: 'Animate' }).check();
+  await page.getByRole('toolbar', { name: 'Animation' }).getByRole('button', { name: 'Add frame' }).click();
+  await page.getByRole('button', { name: /^Blank/ }).click();
+  await editAt(page, 2, 2);
+  await page.keyboard.insertText('漢');
+  await settled(page);
+
+  await page.getByRole('button', { name: 'Export animated .utf8ans' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('rows past the terminal');
+  await expect(dialog.getByRole('list', { name: 'Replacements' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  const download = await saveAs(page, 'Export animated .utf8ans');
+  expect(download.suggestedFilename()).toMatch(/\.utf8ans$/);
+  const bytes = new Uint8Array(await readFile(await download.path()));
+  expect(readSauce(bytes).fileType).toBe(2);
+  const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2) }));
+  const played = replay(bytes, cols, rows, { utf8: true });
+  expect(played.clears).toBe(1);
+  expect(played.grid[2 * cols + 2].char).toBe('漢');
+});
+
 test('a .cast download holds a frame per event at its time', async ({ page }) => {
   await openApp(page);
   await page.getByRole('switch', { name: 'Animate' }).check();
