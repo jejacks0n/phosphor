@@ -6,15 +6,19 @@
 // resolution, which is half-block drawing. Anti-aliased ellipses paint edge pixels by coverage, or shade cells ░▒▓█.
 // Block shapes paint over the cells, each keeping its own character; Block characters (off by
 // default) makes them real ▄/█ cells instead. Character mode is the character in FG, with its own
-// Fill option, and leaves the cells' backgrounds as they were.
+// Fill option, and leaves the cells' backgrounds as they were. Shift makes a rectangle a square, an
+// ellipse a circle, and a line run at a 45° step, counted in grid pixels (a cell is two tall).
 import { linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/editCells';
 import { charRowsOf, cellsOfPixels, showsChar } from '@/lib/Cells';
 import { joinBox, inwardArms } from '@/lib/BoxJoin';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { selectionClip } from '@/lib/selectionClip';
+import { watch } from 'vue';
 
 let start = null; // the drag's first grid position
+let last = null;  // where the pointer is, before Shift or a box line has its say
+let stopShift = null;
 
 const cellRect = (a, b) => ({
   c0: Math.floor(Math.min(a.x, b.x)), c1: Math.floor(Math.max(a.x, b.x)),
@@ -34,6 +38,28 @@ const boxLine = ({ shapeKind, shapeDrawWith }, view) =>
 // Where a drag to `to` ends: a box line runs across from `from` (on its row) or down (in its column),
 // whichever the drag is closer to, counted in cells (a cell is two grid pixels tall).
 const lineEnd = (from, to) => (Math.abs(to.x - from.x) >= Math.abs(to.y - from.y) / 2 ? { x: to.x, y: from.y } : { x: from.x, y: to.y });
+
+// Shift: as far down as across, by the longer of the two, on the drag's side of the start.
+const squareEnd = (from, to) => {
+  const dx = to.x - from.x, dy = to.y - from.y, side = Math.max(Math.abs(dx), Math.abs(dy));
+  return { x: from.x + (dx < 0 ? -side : side), y: from.y + (dy < 0 ? -side : side) };
+};
+
+// Shift on a line: straight across or down within 22.5° of it (tan 22.5° is below), and otherwise the diagonal.
+const TAN_22_5 = Math.SQRT2 - 1;
+const snappedEnd = (from, to) => {
+  const across = Math.abs(to.x - from.x), down = Math.abs(to.y - from.y);
+  if (down < across * TAN_22_5) return { x: to.x, y: from.y };
+  if (across < down * TAN_22_5) return { x: from.x, y: to.y };
+  return squareEnd(from, to);
+};
+
+// Where a drag to `to` ends, by what's being drawn and whether Shift is down.
+const dragEnd = (workspace, view, to) => {
+  if (boxLine(workspace, view)) return lineEnd(start, to);
+  if (!workspace.isShiftPressed) return to;
+  return workspace.shapeKind === 'line' ? snappedEnd(start, to) : squareEnd(start, to);
+};
 
 // What the ANSI view draws with: an ellipse set to box lines draws half-blocks.
 const drawnWith = ({ shapeKind, shapeDrawWith }) => (shapeKind === 'ellipse' && (shapeDrawWith === 'single' || shapeDrawWith === 'double') ? 'half' : shapeDrawWith);
@@ -207,6 +233,12 @@ function apply({ project, workspace, view }, end) {
   project.writeEditCells(kept(cells), { clearPaint: true });
 }
 
+function stopDrag({ workspace }) {
+  stopShift?.();
+  stopShift = null;
+  workspace.shapeDrag = null;
+}
+
 export default {
   id: 'shapes',
   title: 'Shapes',
@@ -215,6 +247,8 @@ export default {
   views: ['input', 'output'],
   kind: 'paint',
   altPicks: true,
+  // What Shift does, for the status bar. A box line only runs across or down already.
+  shiftHint: (ws) => (boxLine(ws, 'output') ? null : { rect: 'square', ellipse: 'circle', line: 'snap to 45°' }[ws.shapeKind]),
   options: [
     {
       key: 'shapeKind', label: 'Shape', type: 'segmented',
@@ -259,24 +293,31 @@ export default {
       title: "Draw with real block characters; off, the paint shows through each cell's own character",
     },
   ],
-  begin({ workspace }, pos) {
-    start = pos;
+  begin({ workspace, view }, pos) {
+    start = last = pos;
     workspace.shapeDrag = { from: pos, to: pos };
+    stopShift?.();
+    // Shift going down or up shapes the drag at once, with the pointer still.
+    stopShift = watch(() => workspace.isShiftPressed, () => {
+      workspace.shapeDrag = { from: start, to: dragEnd(workspace, view, last) };
+    }, { flush: 'sync' });
     return true;
   },
   move({ workspace, view }, from, to) {
-    if (start) workspace.shapeDrag = { from: start, to: boxLine(workspace, view) ? lineEnd(start, to) : to };
+    if (!start) return;
+    last = to;
+    workspace.shapeDrag = { from: start, to: dragEnd(workspace, view, to) };
   },
   end(ctx) {
     const drag = ctx.workspace.shapeDrag;
-    ctx.workspace.shapeDrag = null;
+    stopDrag(ctx);
     if (start && drag) apply(ctx, drag.to);
     start = null;
     ctx.project.commitEdit();
   },
   // A pinch took over the drag: nothing is drawn.
-  cancel({ workspace }) {
-    workspace.shapeDrag = null;
+  cancel(ctx) {
+    stopDrag(ctx);
     start = null;
   },
 };

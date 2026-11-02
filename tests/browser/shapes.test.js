@@ -169,3 +169,75 @@ test('Connect joins a box to a line it can see, and not to one hidden under pain
   const hidden = await boxes({ paintOver: true });
   expect([charAt(hidden, 20, 6), charAt(hidden, 20, 9)]).toEqual(['─', '─']);
 });
+
+// Shift, held while dragging: squares, circles and lines at 45° steps.
+async function shiftScene(settings) {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+  const { default: shapes } = await import('@/tools/shapes');
+  Object.assign(workspace, { shapeAntialias: false, editBgNone: true }, settings);
+  return { project, workspace, shapes, ctx: { project, workspace, view: 'input' } };
+}
+
+test.each([
+  ['rect', { x: 10, y: 10 }, { x: 18, y: 13 }, { x: 18, y: 18 }],
+  ['rect', { x: 20, y: 20 }, { x: 17, y: 8 }, { x: 8, y: 8 }],
+  ['ellipse', { x: 10, y: 10 }, { x: 13, y: 18 }, { x: 18, y: 18 }],
+  ['ellipse', { x: 20, y: 20 }, { x: 8, y: 23 }, { x: 8, y: 32 }],
+  ['ellipse', { x: 10, y: 10 }, { x: 10, y: 16 }, { x: 16, y: 16 }],
+])('with Shift, a %s from %o dragged to %o is a square, ending at %o', async (shapeKind, from, to, end) => {
+  const { workspace, shapes, ctx } = await shiftScene({ shapeKind, isShiftPressed: true });
+  shapes.begin(ctx, from);
+  shapes.move(ctx, from, to);
+  expect(workspace.shapeDrag).toEqual({ from, to: end });
+  shapes.cancel(ctx);
+});
+
+test.each([
+  [{ x: 12, y: 2 }, { x: 12, y: 0 }],     // near enough to straight across
+  [{ x: -12, y: 2 }, { x: -12, y: 0 }],
+  [{ x: 2, y: 12 }, { x: 0, y: 12 }],     // near enough to straight down
+  [{ x: 2, y: -12 }, { x: 0, y: -12 }],
+  [{ x: 10, y: 7 }, { x: 10, y: 10 }],    // the diagonals
+  [{ x: -7, y: 10 }, { x: -10, y: 10 }],
+  [{ x: 10, y: -7 }, { x: 10, y: -10 }],
+  [{ x: -10, y: -7 }, { x: -10, y: -10 }],
+])('with Shift, a line dragged by %o runs at a 45° step, by %o', async (by, snapped) => {
+  const { workspace, shapes, ctx } = await shiftScene({ shapeKind: 'line', isShiftPressed: true });
+  const from = { x: 20, y: 20 };
+  shapes.begin(ctx, from);
+  shapes.move(ctx, from, { x: 20 + by.x, y: 20 + by.y });
+  expect(workspace.shapeDrag.to).toEqual({ x: 20 + snapped.x, y: 20 + snapped.y });
+  shapes.cancel(ctx);
+});
+
+test('Shift pressed and let go mid-drag changes the shape at once, without the pointer moving', async () => {
+  const { workspace, shapes, ctx } = await shiftScene({ shapeKind: 'rect' });
+  const from = { x: 10, y: 10 }, to = { x: 18, y: 13 };
+  shapes.begin(ctx, from);
+  shapes.move(ctx, from, to);
+  expect(workspace.shapeDrag.to).toEqual(to);
+  workspace.isShiftPressed = true;
+  expect(workspace.shapeDrag.to).toEqual({ x: 18, y: 18 });
+  workspace.isShiftPressed = false;
+  expect(workspace.shapeDrag.to).toEqual(to);
+  shapes.cancel(ctx);
+  workspace.isShiftPressed = true;   // the drag's over: nothing comes back
+  expect(workspace.shapeDrag).toBe(null);
+});
+
+test('a Shift-dragged square is drawn square, and a box line stays across or down', async () => {
+  const { project, shapes, ctx } = await shiftScene({ shapeKind: 'rect', isShiftPressed: true });
+  shapes.begin(ctx, { x: 4, y: 4 });
+  shapes.move(ctx, { x: 4, y: 4 }, { x: 12, y: 6 });
+  shapes.end(ctx);
+  expect(project.paintLayer.pixelAt(12, 12)).toBeTruthy();   // the far corner, 8 across and 8 down
+  expect(project.paintLayer.pixelAt(13, 12)).toBeFalsy();
+
+  const line = await shiftScene({ shapeKind: 'line', shapeDrawWith: 'single', isShiftPressed: true });
+  const box = { ...line.ctx, view: 'output' };
+  line.shapes.begin(box, { x: 4, y: 4 });
+  line.shapes.move(box, { x: 4, y: 4 }, { x: 12, y: 8 });
+  expect(line.workspace.shapeDrag.to).toEqual({ x: 12, y: 4 });
+  line.shapes.cancel(box);
+});
