@@ -12,7 +12,7 @@ const emit = defineEmits(['close', 'open']);
   <ReadingDialog :key="props.page" :label="LABELS[props.page]" @close="emit('close')">
     <div v-if="props.page === 'terms'">
       <h1>Terms</h1>
-      <p class="updated">Last updated: October 29, 2026.</p>
+      <p class="updated">Last updated: November 1, 2026.</p>
 
       <p>These terms are an agreement between you and TFC &amp; CO LLC, 1500 N Grant St, Denver, CO 80203
         ("we," "us"). They cover Phosphor at phosphor.work: the editor and its SOCIAL tab (the lobby,
@@ -44,6 +44,9 @@ const emit = defineEmits(['close', 'open']);
         is live, and you allow the people you admit to watch you draw. When someone reports your room, you allow us to
         retain a snapshot of the canvas to review and resolve the report. That is all we do with it, and we do not sell your art or use it
         for advertising.</p>
+      <p>When you invite someone to draw and they accept, you allow them to receive a copy of the whole project, including
+        the original image, to draw on and keep in their browser. If you leave the room, an artist can carry it on as its
+        next host.</p>
       <p>Only share art you have the right to share. Watching a room does not give you any right to copy the
         host's art or claim it as your own.</p>
 
@@ -65,7 +68,7 @@ const emit = defineEmits(['close', 'open']);
       </ul>
 
       <h2>6. Blocks and Reports</h2>
-      <p>Hosts can remove or block people from their rooms, and any signed-in user can report a user or a
+      <p>Hosts can remove or block people from their rooms, and anyone signed in with a confirmed email can report a user or a
         room.</p>
       <p>We may remove content, silence, suspend, or terminate an account, or close a room, if we believe it violated
         these terms or the law. When feasible, we will explain why. To appeal a moderation decision, contact us at <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
@@ -144,7 +147,7 @@ const emit = defineEmits(['close', 'open']);
     </div>
     <div v-else>
       <h1>Privacy Policy</h1>
-      <p class="updated">Last updated: October 30, 2026.</p>
+      <p class="updated">Last updated: November 1, 2026.</p>
 
       <p>Phosphor is an ANSI art editor that runs in your browser at phosphor.work. Its SOCIAL tab is
         optional, offering a lobby, rooms where you can watch someone draw, chat, and user accounts. This policy explains what
@@ -200,6 +203,9 @@ const emit = defineEmits(['close', 'open']);
         <li><strong>In a room, your browser connects directly to the host's browser:</strong> Each participant
           can see the other's IP address, which can reveal your approximate geographic location and your internet service provider (ISP). If
           you prefer to keep your IP address private, use a VPN. Everyone in a room sees the host's art in real time as it is drawn.</li>
+        <li><strong>Artists get the whole project:</strong> When a host invites someone to draw and they accept, that
+          person's browser receives the whole project, including the original image, directly from the host's browser.
+          They keep their copy in their browser, and if the host leaves, an artist can become the room's next host.</li>
         <li><strong>Chat travels directly between browsers through the host:</strong> It never passes through our
           servers, and we do not store or log it. Anyone in the room can see the chat, and any participant can copy it.</li>
       </ul>
