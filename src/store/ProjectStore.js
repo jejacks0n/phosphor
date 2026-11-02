@@ -4,8 +4,10 @@ import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
+import { ghostedCells } from '@/lib/ghostCells.js';
 import { MAX_ANIMATION_CELLS, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { settingsState, slidersAtDefaults } from '@/store/settings.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
 import { documentActions } from '@/store/project/document.js';
 import { mergingActions } from '@/store/project/merging.js';
@@ -22,6 +24,9 @@ import { sharingArtistActions } from '@/store/project/sharingArtist.js';
 import { handoverActions } from '@/store/project/handover.js';
 import { animationActions } from '@/store/project/animation.js';
 import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES, ALONE, newLedger } from '@/store/project/shared.js';
+
+// A cell an edit didn't touch stays the same object, except a wide one, which is laid out again with its row.
+const sameLook = (a, b) => a === b || (!!a?.wide && !!b && a.wide === b.wide && a.char === b.char && a.fg.hex === b.fg.hex && a.bg.hex === b.bg.hex);
 
 // While the state is made there's no store yet, but there is by the time the ledger reads.
 function firstLedger() {
@@ -53,6 +58,7 @@ export const useProjectStore = defineStore('project', {
     frame: 0,    // which one's showing
     fps: 8,
     animate: false, // the bar is up
+    _ghost: markRaw({ memo: new WeakMap() }), // what shownCells worked out last, kept out of what it reacts to
 
     filename: null,
     cells: shallowRef([]),          // what the ANSI view shows and exports (renderedCells + edit cells + paint)
@@ -89,6 +95,25 @@ export const useProjectStore = defineStore('project', {
     // Anything on the edit layer, of any frame (a grid resize is then a canvas resize).
     hasEdits: (state) => state.editCells.size > 0 || state.hasPaint || (state.frames.length > 1 && state.frames.some((frame, i) => i !== state.frame && frame.changes.size > 0)),
     currentFrame: (state) => state.frames[state.frame],
+    // What the ANSI view shows: while playing, the built frame; on a Blank frame, what's inherited as a ghost.
+    // cells is never ghosted, so exports can't see one.
+    shownCells() {
+      const workspace = useWorkspaceStore(), { cells } = this;
+      if (workspace.playing && workspace.played) return workspace.played.cells;
+      if (!this.animate || !workspace.ghost || !this.frame || this.currentFrame?.kind !== 'blank') return cells;
+      const held = this._ghost, frame = this.currentFrame, version = this.historyVersion, rendered = this.renderedCells;
+      if (held.frame !== frame || (!this._stroke && (held.version !== version || held.rendered !== rendered))) {
+        Object.assign(held, { frame, version, rendered, cells, inherited: this.inheritedCells() });
+      }
+      const still = (i) => held.inherited.has(i) && sameLook(cells[i], held.cells[i]); // a stroke's new object: no longer a ghost
+      const { cols } = this, params = this.processParams;
+      return ghostedCells(
+        cells,
+        (i) => this.renderer.underCell(i % cols, Math.floor(i / cols), params, rendered),
+        (i) => (cells[i].wide === 'trail' ? still(i - 1) : still(i)),
+        held.memo,
+      );
+    },
     hasFrames: (state) => state.frames.length > 1,
     isDirty: (state) => settingsJson(state) !== state.savedSettings || state.editVersion !== state.savedEditVersion,
     imageRatio: (state) => {

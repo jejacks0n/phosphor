@@ -28,9 +28,12 @@ const zoom = { get: () => workspaceStore.editZoom, set: workspaceStore.setEditZo
 // One bitmap the grid's size, not redrawn on zoom or opacity; when the cells change, only those that
 // did are painted again (an edit keeps every other cell the same object), so a stroke costs its own
 // cells, not the grid's. A new grid size, or All cells switched, paints it all.
+// While an animation plays, the frame playing's own (FrameBuilder); there's no ghost in this view.
+const shownFrame = () => (workspaceStore.playing && workspaceStore.played) || projectStore;
 const overlay = { canvas: null, image: null, cells: null, editCells: null, edited: new Set(), all: null, cols: 0, rows: 0, empty: true };
 const updateOverlay = () => {
-  const { cols, rows, cells, editCells } = projectStore;
+  const { cols, rows } = projectStore;
+  const { cells, editCells } = shownFrame();
   const all = workspaceStore.ansiOverlayAll;
   if (overlay.cells === cells && overlay.editCells === editCells && overlay.all === all) return;
 
@@ -92,7 +95,7 @@ const place = (dc, win, zoom) => Object.assign(dc.style, { width: `${win.cols * 
 
 const redrawDisplay = () => {
   const dc = canvasRef.value, sizer = sizerRef.value;
-  const output = projectStore.renderer.outputCanvas;
+  const output = (workspaceStore.playing && workspaceStore.played?.output) || projectStore.renderer.outputCanvas;
   if (!dc || !sizer || !viewportEl || !output) return;
   const zoom = workspaceStore.editZoom, view = viewIn(sizer, viewportEl);
   // A grid pixel is a column wide and half a line tall: the whole cells in view, and the zoom they're
@@ -191,6 +194,7 @@ const publishOrigin = () => {
 // (including when the first render arrives).
 const sizeOf = (canvas) => canvas && `${canvas.width}x${canvas.height}`;
 let lastOutputSize = sizeOf(projectStore.renderer.outputCanvas); // a remount keeps the restored scroll
+watch(() => workspaceStore.played, queueRedraw);
 watch(() => projectStore.cells, () => {
   queueRedraw();
   const size = sizeOf(projectStore.renderer.outputCanvas);
