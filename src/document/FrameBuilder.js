@@ -11,6 +11,7 @@
 import PaintLayer from './PaintLayer.js';
 import Renderer from './Renderer.js';
 import { paintImage } from './frames.js';
+import { getPaletteColors } from '../lib/ImageProcessor.js';
 import { layoutWide } from '../lib/Cells.js';
 import { ctx2d } from '../lib/Canvas.js';
 
@@ -27,6 +28,25 @@ export default class FrameBuilder {
     Object.assign(this.#renderer, { baseLayer, baseRecords });
     this.#scratch = new PaintLayer({ cols: params.cols, rows: params.rows, scale: 1 });
     await this.#renderer.render(image, params, this.#scratch, null);
+  }
+
+  // The Number palette for a whole movie: every frame's output, before it's quantized, as one picture. Each
+  // frame's unsnapped output is what a still's palette is picked from. resolved: every frame's.
+  // ponytail: holds every frame's pixels at once while it picks, so this is what the frame limit protects.
+  moviePalette(resolved, params) {
+    const renderer = this.#renderer, { cols, rows } = params, size = cols * rows * 4;
+    const all = new Uint8ClampedArray(size * resolved.length);
+    renderer.usePalette([]); // none to snap to, and none to pick
+    resolved.forEach((frame, at) => {
+      this.#scratch.loadGrid(paintImage(frame, cols, rows));
+      renderer.composite(this.#scratch, params);
+      all.set(ctx2d(renderer.outputCanvas).getImageData(0, 0, cols, rows).data, at * size);
+    });
+    return getPaletteColors(params, { getImageData: () => all });
+  }
+
+  usePalette(palette) {
+    this.#renderer.usePalette(palette);
   }
 
   // resolved: what the frame shows (frames.js). previous: the frame before's build, to share cells with.

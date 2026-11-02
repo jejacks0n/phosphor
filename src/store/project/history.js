@@ -182,6 +182,7 @@ export const historyActions = {
     this.history.push(entry);
     this.historyVersion = this.history.version;
     this.editVersion++;
+    if (this.hasFrames && this.quantize === 'count') this.pickPalette(); // a whole movie's (animation.js); a still's is picked by composite
   },
 
   // An edit that replaced the whole edit layer, already applied: the strokes under it are out of reach
@@ -245,6 +246,7 @@ export const historyActions = {
       if (toRaw(workspace.selection) === toRaw(float.landed)) workspace.selection = float.paste && !float.stamped ? null : float.from;
     }
     this.editVersion++; // undo moves away from what was saved (undoing back to it still counts as dirty)
+    if (this.hasFrames && this.quantize === 'count') this.pickPalette();
   },
 
   redo() {
@@ -253,6 +255,7 @@ export const historyActions = {
     if (!entry) return;
     this.historyVersion = this.history.version;
     if (!entry.selectionOnly) this.editVersion++;
+    if (!entry.selectionOnly && this.hasFrames && this.quantize === 'count') this.pickPalette();
   },
 };
 

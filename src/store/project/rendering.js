@@ -105,9 +105,14 @@ export const renderingActions = {
       this._rendering = true;
       try {
         this.ensureLayer();
+        if (this._moviePalette && (this.quantize !== 'count' || !this.hasFrames)) { // Color count left: the palette goes with it
+          this._moviePalette = null;
+          this.renderer.usePalette(null);
+        }
         this.renderedCells = await this.renderer.render(this.image, this.processParams, this.paintLayer, baseParams(this.processParams));
         this.activePalette = this.renderer.palette;
         this.applyEditCells();
+        if (this._moviePalette || (this.hasFrames && this.quantize === 'count')) this.pickPalette(); // settings changed: a whole movie's palette follows
       } finally {
         this._rendering = false;
       }

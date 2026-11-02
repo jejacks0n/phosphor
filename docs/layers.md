@@ -101,7 +101,8 @@ The palette updates when you finish a stroke or a shape: while you're painting, 
 still and your stroke shows in its own colors. When the picture has no more colors than the number
 you set, it keeps exactly its own; when there are more, a new color can move some untouched cells to
 a neighboring palette color as the palette rebalances. (Typed cells' colors don't count toward it
-yet.)
+yet.) In an [animation](animation.md) there's one palette for the whole movie, picked from every frame,
+so colors stay put from frame to frame.
 
 ## Moving things between layers
 

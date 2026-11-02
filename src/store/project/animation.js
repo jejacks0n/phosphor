@@ -60,7 +60,7 @@ function arrive(project, i, leaving = project.currentFrame) {
   project._ledger = frame.ledger ?? newLedger(() => project);
   frame.ledger = null;
   project.frame = i;
-  project._noted = { frame: project.frames[i], history: project.history.version, edit: project.editVersion };
+  project._noted = markRaw({ frame, history: version, edit: project.editVersion });
   const resolved = project.resolvedOf(i);
   const cells = new Map();
   for (const [key, { cell }] of resolved) if (cell) cells.set(key, cell);
@@ -68,7 +68,7 @@ function arrive(project, i, leaving = project.currentFrame) {
   const layer = project.paintLayer;
   layer.loadGrid(paintImage(resolved, layer.cols, layer.rows));
   project.hasPaint = layer.hasPaint;
-  project._arrived = { paint: layer.hasPaint ? layer.gridPixels() : null, states: resolved };
+  project._arrived = markRaw({ paint: layer.hasPaint ? layer.gridPixels() : null, states: resolved });
   if (frame.ledgerAt !== version) project._ledger.refreshBases(); // an earlier frame may have changed what's under its strokes
   const output = project.renderer.outputCanvas;
   if (output?.width !== project.cols || output.height !== project.rows) project.render(); // a grid change's is on its way
@@ -79,7 +79,7 @@ function arrive(project, i, leaving = project.currentFrame) {
 function note(project) {
   const frame = project.currentFrame, noted = project._noted;
   if (!project._stroke && noted?.frame === frame && noted.history === project.history.version && noted.edit === project.editVersion) return;
-  project._noted = { frame, history: project.history.version, edit: project.editVersion };
+  project._noted = markRaw({ frame, history: project.history.version, edit: project.editVersion });
   const previous = project.frame > 0 && frame.kind === 'blank' ? project.resolvedOf(project.frame - 1) : NOTHING;
   const changes = frameDiff(previous, liveStates(project));
   if (sameChanges(changes, frame.changes)) return;
@@ -118,6 +118,7 @@ function frameStep(project, change) {
   const after = { ...framesNow(project), showing };
   project.pushEdit({ frameOp: true, undo: () => putFrames(project, before), redo: () => putFrames(project, after), bytes: 0 });
   arrive(project, project.frames.indexOf(showing), before.showing);
+  project.pickPalette();
 }
 
 // What every built frame depends on besides its own state: anything here changing means building them all again.
@@ -141,8 +142,38 @@ async function readyBuilder(project) {
     project._builder = markRaw({ key, builder, preparing });
     for (const frame of project.frames) frame.built = null;
     await preparing;
-    if (project._builder?.builder === builder) project._builder.preparing = null;
+    if (project._builder?.builder === builder) {
+      project._builder.preparing = null;
+      builder.usePalette(project._moviePalette ?? null);
+    }
   }
+}
+
+const samePalette = (a, b) => a?.length === b?.length && a?.every((color, i) => color.hex === b[i].hex);
+
+// The movie's Number palette, for whatever's showing now. Between frames only with frames and Color count.
+async function pick(project) {
+  const wanted = project.hasFrames && project.quantize === 'count';
+  if (!wanted) {
+    if (!project._moviePalette) return;
+    project._moviePalette = null;
+    project.renderer.usePalette(null);
+    project._builder?.builder.usePalette(null);
+    if (project.renderer.outputCanvas && project.image && !project.composite()) project.rebuildCells();
+    return;
+  }
+  if (project._stroke) return; // it comes when the stroke ends
+  const builder = await readyBuilder(project);
+  if (!project.hasFrames || project.quantize !== 'count' || project._stroke || !project.renderer.outputCanvas) return;
+  const params = project.processParams;
+  const next = builder.moviePalette(project.frames.map((_, i) => project.resolvedOf(i)), params);
+  builder.usePalette(next);
+  if (samePalette(next, project._moviePalette)) return;
+  project._moviePalette = markRaw(next);
+  project.renderer.usePalette(next);
+  for (const frame of project.frames) frame.built = null;
+  project.composite();
+  project.rebuildCells();
 }
 
 export const animationActions = {
@@ -171,12 +202,29 @@ export const animationActions = {
     return this.frames[i].resolved;
   },
 
+  // One Number palette for the movie, so colors don't shift between frames: picked from every frame's output and
+  // re-picked as a still's is, when an edit ends. A call while one runs waits for it, then runs again.
+  pickPalette() {
+    const running = this._palettePick ?? Promise.resolve();
+    if (this._paletteAgain) return running;
+    this._paletteAgain = true;
+    const next = running.then(() => {
+      this._paletteAgain = false;
+      return pick(this);
+    }).catch((error) => console.error('Failed to pick the palette', error)).finally(() => {
+      if (this._palettePick === next) this._palettePick = null;
+    });
+    this._palettePick = next;
+    return next;
+  },
+
   // Frame i's cells for playing, built if they need to be (document/FrameBuilder.js). What's built stays until
   // something it depends on changes.
   async builtFrame(i) {
     this.ensureLayer();
     for (;;) {
       if (!this.frames[i] || !this.image) return null;
+      if (this.hasFrames && this.quantize === 'count' && !this._moviePalette) await this.pickPalette();
       const builder = await readyBuilder(this);
       if (!sameKey(this._builder?.key, buildKey(this))) continue; // changed while waiting
       const frame = this.frames[i];
@@ -268,7 +316,8 @@ export const animationActions = {
     this.frames = [newFrame('blank')];
     this.frame = 0;
     this.fps = 8;
-    this._arrived = this._noted = null;
+    this._arrived = this._noted = this._moviePalette = null;
+    this.renderer.usePalette(null);
   },
 
   // Bake's before and after: every frame's kind and changes, set, and the frame showing shown from them.
