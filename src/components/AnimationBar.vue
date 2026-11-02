@@ -19,7 +19,7 @@ const KINDS = [
 
 const at = computed(() => (workspace.playing ? workspace.playFrame : project.frame));
 const count = computed(() => project.frames.length);
-// Why + Frame is off, if it is.
+// Why Add frame is off, if it is.
 const full = computed(() => {
   if (!project.canAnimate) return 'This canvas is too large to add frames';
   return count.value >= project.mostFrames ? `${count.value} frames is the most at this canvas size` : '';
@@ -89,7 +89,13 @@ const setFps = (event) => {
       <input type="number" aria-label="Hold" min="0" max="60" step="0.05" :value="project.frames[at]?.hold" @change="setHold">
       s
     </label>
-    <DropdownMenu label="+ Frame" up :disabled="!!full">
+    <DropdownMenu label="Add frame" up :disabled="!!full">
+      <template #trigger>
+        <!-- A piece of film with a plus in its frame. -->
+        <svg class="add-frame" viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
+          <path d="M1.5 1h13v14h-13zM2.6 2.5h1.3v2H2.6zm0 4.5h1.3v2H2.6zm0 4.5h1.3v2H2.6zM12.1 2.5h1.3v2h-1.3zm0 4.5h1.3v2h-1.3zm0 4.5h1.3v2h-1.3zM5 2.5h6v11H5zM7.4 6.2h1.2v1.2h1.2v1.2H8.6v1.2H7.4V8.6H6.2V7.4h1.2z"/>
+        </svg>
+      </template>
       <button v-for="[kind, label] in KINDS" :key="kind" @click="add(kind)">{{ label }}</button>
     </DropdownMenu>
     <span v-if="full" class="full">{{ full }}</span>
@@ -101,7 +107,11 @@ const setFps = (event) => {
       <button :disabled="at === count - 1" @click="move(1)">Move later</button>
       <button :disabled="count < 2" @click="remove">Delete frame</button>
     </DropdownMenu>
-    <button class="ghost" :class="{ on: workspace.ghost }" :aria-pressed="workspace.ghost" title="Show earlier frames, dimmed, on a Blank frame" @click="workspace.ghost = !workspace.ghost">Ghost</button>
+    <button class="ghost" :class="{ active: workspace.ghost }" aria-label="Ghost" :aria-pressed="workspace.ghost" title="Ghost: show earlier frames, dimmed, on a Blank frame" @click="workspace.ghost = !workspace.ghost">
+      <svg viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
+        <path d="M8 1.5C5 1.5 3 3.9 3 7v7.5l1.67-1.25 1.66 1.25L8 13.25l1.67 1.25 1.66-1.25L13 14.5V7c0-3.1-2-5.5-5-5.5zM6.25 5.5a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zm3.5 0a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2z"/>
+      </svg>
+    </button>
     <input v-model.number="workspace.ghostStrength" class="strength" type="range" aria-label="Ghost strength" :title="`Ghost strength: ${workspace.ghostStrength}%`" min="0" max="100" step="1" :disabled="!workspace.ghost" @pointerup="$event.target.blur()">
     </div>
   </div>
@@ -251,19 +261,37 @@ span.full {
   color: var(--warning);
 }
 
-button.ghost {
-  height: 26px;
-  padding: 3px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  background: var(--surface-4);
-  border: 1px solid var(--border-light);
-  color: var(--text-muted);
+svg.add-frame {
+  width: 14px;
+  height: 14px;
 }
-button.ghost.on {
-  background: var(--accent-glow);
+
+/* As the toolbar's tool buttons: an icon, lit when it's on. */
+button.ghost {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+button.ghost svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: var(--text-faint);
+}
+@media (hover: hover) {
+  button.ghost:hover svg {
+    fill: var(--text);
+  }
+}
+button.ghost.active {
+  background: var(--accent);
   border-color: var(--accent);
-  color: var(--text);
+}
+button.ghost.active svg {
+  fill: var(--white);
 }
 
 @media (max-width: 960px) { /* up to the largest phone on its side */
@@ -293,15 +321,9 @@ button.ghost.on {
   label.fps input {
     width: 36px;
   }
-  :deep(.dropdown-trigger > span + svg) { /* + Frame's arrow */
-    display: none;
-  }
   span.full {
     flex-basis: 100%;
     order: 1;
-  }
-  button.ghost {
-    padding: 3px 8px;
   }
 }
 
