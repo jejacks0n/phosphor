@@ -85,7 +85,7 @@ const drawVeil = (ctx, win, width, height) => {
     const indexes = [];
     for (let i = 0; i < cells.length; i++) if (shown[i] !== cells[i]) indexes.push(i);
     const image = new ImageData(cols, rows);
-    veilPixels(image.data, base.data, indexes, cols);
+    veilPixels(image.data, base.data, indexes, cols, workspaceStore.ghostStrength / 100);
     veil.canvas ??= document.createElement('canvas');
     veil.canvas.width = cols;
     veil.canvas.height = rows;

@@ -98,6 +98,7 @@ const setFps = (event) => {
       <button :disabled="count < 2" @click="remove">Delete frame</button>
     </DropdownMenu>
     <button class="ghost" :class="{ on: workspace.ghost }" :aria-pressed="workspace.ghost" title="Show earlier frames, dimmed, on a Blank frame" @click="workspace.ghost = !workspace.ghost">Ghost</button>
+    <input v-model.number="workspace.ghostStrength" class="strength" type="range" aria-label="Ghost strength" :title="`Ghost strength: ${workspace.ghostStrength}%`" min="0" max="100" step="1" :disabled="!workspace.ghost" @pointerup="$event.target.blur()">
   </div>
 </template>
 
@@ -208,6 +209,12 @@ label.field input {
   width: 52px;
   height: 26px;
   padding: 2px 4px;
+}
+
+input.strength {
+  width: 72px;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 span.full {

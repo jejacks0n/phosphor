@@ -366,3 +366,19 @@ test('a canvas grown past the limit offers no + Frame, and Animate can still be 
   await expect(bar(page)).toBeHidden();
   await expect(animateSwitch(page)).toBeDisabled();
 });
+
+test('the Ghost slider sets the strength, and it’s remembered', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  const slider = bar(page).getByRole('slider', { name: 'Ghost strength' });
+  await expect(slider).toHaveValue('35');
+  await slider.fill('70');
+  expect(await store(page, 'workspace', (w) => w.ghostStrength)).toBe(70);
+  await bar(page).getByRole('button', { name: 'Ghost' }).click();
+  await expect(slider).toBeDisabled();
+  await bar(page).getByRole('button', { name: 'Ghost' }).click();
+  await page.reload();
+  await expect(page.locator('.ansi-editor .display')).toBeVisible();
+  await animateSwitch(page).check();
+  await expect(bar(page).getByRole('slider', { name: 'Ghost strength' })).toHaveValue('70');
+});
