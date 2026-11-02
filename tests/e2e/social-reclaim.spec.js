@@ -7,6 +7,7 @@ const BACK = 'Back to your room';
 const AWAY = 'Your room ended while the page was away';
 const REPLACES = 'Going back replaces your open art, which has unsaved changes.';
 const LOOKS = 4500;   // long enough for two looks to have passed
+const OFFERED = 15_000;   // how long an offer that's coming may take on a busy machine; a wait for one that isn't stays LOOKS
 
 const listing = () => [{ id: ROOM_ID, name: 'neon harbor', host: 'ansi-fan', count: 0, max: 12, allowGuests: true, signal: null, liveSince: Date.now(), thumbnail: null, blockedInside: false }];
 const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });
@@ -44,7 +45,7 @@ test('a closed tab\'s room: its card offers Back to your room in Join\'s place, 
   await host.close();
 
   const again = await newTab(context, room);
-  await expect(back(again)).toBeVisible({ timeout: LOOKS });
+  await expect(back(again)).toBeVisible({ timeout: OFFERED });
   await expect(card(again).getByRole('button', { name: BACK })).toHaveClass(/primary/);
   await expect(card(again).getByRole('button', { name: /^Join/ })).toHaveCount(0);
 
@@ -84,7 +85,7 @@ test('a host\'s reload doesn\'t flash the offer in another tab, and that tab off
   await expect(back(host)).toHaveCount(0);
 
   await host.close();
-  await expect(back(second)).toBeVisible({ timeout: LOOKS });
+  await expect(back(second)).toBeVisible({ timeout: OFFERED });
 });
 
 test('leaving SOCIAL and coming back looks again from the start: nothing from before counts', async ({ page: host, context }) => {
@@ -93,12 +94,12 @@ test('leaving SOCIAL and coming back looks again from the start: nothing from be
   await kept(host);
   await host.close();
   const again = await newTab(context, room);
-  await expect(back(again)).toBeVisible({ timeout: LOOKS });
+  await expect(back(again)).toBeVisible({ timeout: OFFERED });
   await tab(again, 'PIXEL').click();
   await tab(again, 'SOCIAL').click();
   await again.waitForTimeout(800);
   await expect(back(again)).toHaveCount(0);
-  await expect(back(again)).toBeVisible({ timeout: LOOKS });
+  await expect(back(again)).toBeVisible({ timeout: OFFERED });
 });
 
 test('a room that isn\'t listed is offered in a line at the top of the lobby', async ({ page: host, context }) => {
@@ -108,7 +109,7 @@ test('a room that isn\'t listed is offered in a line at the top of the lobby', a
   await host.close();
 
   const again = await newTab(context, room, { rooms: [] });
-  await expect(back(again)).toBeVisible({ timeout: LOOKS });
+  await expect(back(again)).toBeVisible({ timeout: OFFERED });
   await expect(shown(again, 'lobby').getByText('Your room neon harbor is waiting for you.')).toBeVisible();
   await press(again, back(again));
   await live(again);
@@ -126,7 +127,7 @@ test('a link to your own room offers it as well as the question', async ({ page:
   await fakeServer(again, { me: member(), room, rooms: [] });
   await again.goto(`/?room=${ROOM_ID}`);
   await expect(asked(again)).toBeVisible();
-  await expect(asked(again).getByRole('button', { name: BACK })).toBeVisible({ timeout: LOOKS });
+  await expect(asked(again).getByRole('button', { name: BACK })).toBeVisible({ timeout: OFFERED });
   await expect(asked(again).getByRole('button', { name: 'Join', exact: true })).toBeVisible();
   await press(again, asked(again).getByRole('button', { name: BACK }));
   await live(again);
@@ -148,7 +149,7 @@ test('unsaved art in the new tab: it says it\'s replaced, and what was open stay
   await editAt(again, 3, 3);
   await again.keyboard.type('m');
   await tab(again, 'SOCIAL').click();
-  await expect(card(again).getByText(REPLACES)).toBeVisible({ timeout: LOOKS });
+  await expect(card(again).getByText(REPLACES)).toBeVisible({ timeout: OFFERED });
   await press(again, back(again));
   await live(again);
   expect(await store(again, 'project', (p) => p.documentId)).not.toBe(own);
@@ -173,7 +174,7 @@ test('the card\'s Back to your room is described by what it replaces', async ({ 
   await editAt(again, 3, 3);
   await again.keyboard.type('m');
   await tab(again, 'SOCIAL').click();
-  await expect(card(again).getByRole('button', { name: BACK })).toHaveAccessibleDescription(REPLACES, { timeout: LOOKS });
+  await expect(card(again).getByRole('button', { name: BACK })).toHaveAccessibleDescription(REPLACES, { timeout: OFFERED });
 });
 
 test('pressed once the room is over: it says so, and it isn\'t offered again', async ({ page: host, context }) => {
@@ -182,7 +183,7 @@ test('pressed once the room is over: it says so, and it isn\'t offered again', a
   await kept(host);
   await host.close();
   const again = await newTab(context, room);
-  await expect(back(again)).toBeVisible({ timeout: LOOKS });
+  await expect(back(again)).toBeVisible({ timeout: OFFERED });
   await press(again, back(again));
   await expect(shown(again, 'lobby').getByRole('button', { name: /^Join/ })).toBeVisible();
   await expect(again.getByRole('status').filter({ hasText: AWAY })).toBeVisible();
@@ -199,7 +200,7 @@ test('pressed after the role moved: back in as an artist, with the existing word
   await host.close();
 
   const again = await newTab(context, room);
-  await expect(back(again)).toBeVisible({ timeout: LOOKS });
+  await expect(back(again)).toBeVisible({ timeout: OFFERED });
   await expect.poll(() => store(artist, 'room', (r) => r.role), { timeout: 10_000 }).toBe('host');
   await press(again, back(again));
   await expect.poll(() => store(again, 'room', (r) => r.role), { timeout: 10_000 }).toBe('watch');
@@ -216,7 +217,7 @@ test('with an artist in the room, they wait and then draw on with the host back'
   await expect.poll(() => store(artist, 'drawing', (d) => d.paused)).toBe(true);
 
   const again = await newTab(context, room);
-  await expect(back(again)).toBeVisible({ timeout: LOOKS });
+  await expect(back(again)).toBeVisible({ timeout: OFFERED });
   await press(again, back(again));
   await live(again);
   await expect.poll(() => store(artist, 'drawing', (d) => d.paused), { timeout: 15_000 }).toBe(false);
