@@ -58,6 +58,7 @@ export const useProjectStore = defineStore('project', {
     frame: 0,    // which one's showing
     fps: 8,
     animate: false, // the bar is up
+    _frameSwaps: 0, // how many times the frame showing was swapped in: autosave doesn't count those as edits
     _ghost: markRaw({ memo: new WeakMap() }), // what shownCells worked out last, kept out of what it reacts to
 
     filename: null,

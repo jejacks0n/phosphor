@@ -8,7 +8,8 @@
  * three belong to the store: the frame's undo while it's not showing, and what's cached of it.
  */
 import { markRaw } from 'vue';
-import { parseKey, sameEntry } from './editCells.js';
+import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
+import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_FRAMES, MAX_LINES, charRowsOf } from '../lib/Cells.js';
 
 export const FRAME_KINDS = ['blank', 'duplicate', 'wipe'];
 
@@ -80,4 +81,53 @@ export function paintImage(resolved, cols, rows) {
     put(col, 2 * row + 1, bottom);
   }
   return image;
+}
+
+// Frames as a file holds them: an entry is [key, cell, top, bottom].
+export const serializeFrames = (frames) => frames.map(({ kind, hold, changes }) => ({
+  kind,
+  hold,
+  changes: Array.from(changes, ([key, { cell, top, bottom }]) => [key, cell, top, bottom]),
+}));
+
+const goodPaint = (rgba) => Number.isInteger(rgba) && rgba >= 0 && rgba <= 0xffffffff;
+const goodKey = (key) => {
+  if (typeof key !== 'string' || !/^\d+,\d+$/.test(key)) return false;
+  const { col, row } = parseKey(key);
+  return col < MAX_COLS && row < MAX_LINES;
+};
+function readChanges(entries) {
+  if (!Array.isArray(entries) || entries.length > MAX_CELLS) return null;
+  const changes = new Map();
+  for (const entry of entries) {
+    if (!Array.isArray(entry)) return null;
+    const [key, cell, top, bottom] = entry;
+    if (!goodKey(key) || !goodPaint(top) || !goodPaint(bottom)) return null;
+    const clean = deserializeEditCells([[key, cell]]).get(key) ?? null;
+    if (cell != null && !clean) return null; // a cell with nothing a cell can hold
+    if (clean && Object.keys(clean).length !== Object.keys(cell).length) return null;
+    changes.set(key, cellState(clean, top, bottom));
+  }
+  return changes;
+}
+
+// { frames, frame, fps } from a file, or null when anything's wrong with them, or the grid (cols, rows) is too
+// large to animate: the file's still holds what it needs to open as one. Files are untrusted.
+export function deserializeFrames(json, cols, rows) {
+  const { frames, frame, fps } = json ?? {};
+  if (!Array.isArray(frames) || !frames.length || frames.length > MAX_FRAMES) return null;
+  if (!Number.isInteger(frame) || frame < 0 || frame >= frames.length) return null;
+  if (!Number.isInteger(fps) || fps < 1 || fps > 60) return null;
+  if (!(cols * charRowsOf(rows) <= MAX_ANIMATION_CELLS)) return null;
+  const read = [];
+  for (const entry of frames) {
+    const { kind, hold, changes } = entry ?? {};
+    if (!FRAME_KINDS.includes(kind) || !Number.isFinite(hold) || hold < 0 || hold > 60) return null;
+    const map = readChanges(changes);
+    if (!map) return null;
+    const next = newFrame(kind, map);
+    next.hold = hold;
+    read.push(next);
+  }
+  return { frames: read, frame, fps };
 }

@@ -2,6 +2,7 @@
 // exporting .ans and .utf8ans, the filename, and what counts as saved.
 import { EMPTY_BASE } from '@/document/baseRecords.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
+import { serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
@@ -22,7 +23,7 @@ const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer }) => ({
 });
 
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.
-function showParts({ settings, imageBuffer, editCells, baseRecords, erasedCells, migrated }, { image, paint, basePixels }, { filename, documentId }) {
+function showParts({ settings, imageBuffer, editCells, baseRecords, erasedCells, migrated, animation }, { image, paint, basePixels }, { filename, documentId }) {
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
   this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }) });
   try {
@@ -59,6 +60,7 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, erasedCells,
       this.commitEdit();
       this.clearHistory();
     }
+    if (animation?.frames.length > 1 && !this._sharing && !this._takingProject) this.openFrames(animation); // a room holds a still: the file's still is what's open
     this.render();
     this.markSaved();
   } catch (error) {
@@ -220,6 +222,10 @@ export const documentActions = {
       editCells: this.editCells,
       baseRecords: this.baseRecords,
     };
+    if (this.hasFrames) { // as of the call, as the rest is
+      this.noteFrame();
+      parts.animation = { frames: serializeFrames(this.frames), frame: this.frame, fps: this.fps };
+    }
     const paintBlob = this.paintLayer?.toBlob() ?? null, baseBlob = this.baseLayer?.hasPaint ? this.baseLayer.toBlob() : null;
     return { ...parts, paintBlob: await paintBlob, baseBlob: await baseBlob };
   },

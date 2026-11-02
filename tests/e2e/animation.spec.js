@@ -1,4 +1,5 @@
-import { test, expect, openApp, store, tab, chars, cellPoint, settled } from './support.js';
+import { readFile } from 'node:fs/promises';
+import { test, expect, openApp, imageInput, saveAs, store, tab, chars, cellPoint, settled } from './support.js';
 
 const animateSwitch = (page) => page.getByRole('switch', { name: 'Animate' });
 const bar = (page) => page.getByRole('toolbar', { name: 'Animation' });
@@ -247,4 +248,106 @@ test('on a narrow screen the bar wraps and stays on screen', async ({ page }) =>
   expect(box.y + box.height).toBeLessThanOrEqual(800);
   const add = await bar(page).getByRole('button', { name: '+ Frame' }).boundingBox();
   expect(add.x + add.width).toBeLessThanOrEqual(600);
+});
+
+// The open document's record: when it was last edited, and the frame it's on.
+const written = (page) => page.evaluate(async () => {
+  const pinia = document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia;
+  const id = pinia._s.get('project').documentId;
+  const db = await new Promise((resolve, reject) => {
+    const open = indexedDB.open('phosphor-autosave', 1);
+    open.onsuccess = () => resolve(open.result);
+    open.onerror = () => reject(open.error);
+  });
+  const record = await new Promise((resolve) => { db.transaction('documents').objectStore('documents').get(id).onsuccess = (e) => resolve(e.target.result); });
+  db.close();
+  if (!record) return null;
+  const rest = await new Blob([record.rest]).arrayBuffer(), length = new DataView(rest).getUint32(8, true);
+  const json = JSON.parse(new TextDecoder().decode(rest.slice(20, 20 + length)));
+  return { editedAt: record.editedAt, frame: json.frame, cells: json.frames?.[json.frame]?.changes.map(([key]) => key) };
+});
+
+test('a reload brings the animation back on the same frame, including text typed a moment ago', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  await type(page, 2, 2, 'A');
+  await addFrame(page, 'Blank');
+  await type(page, 4, 2, 'B');
+  await addFrame(page, 'Blank');
+  await scrubTo(page, 1);
+  await expect(shown(page)).toHaveText('2 / 3');
+  const at = await cellPoint(page, 6, 2);
+  await page.mouse.click(at.x, at.y);
+  await page.waitForFunction(() => document.activeElement?.dataset?.textInput !== undefined);
+  await page.keyboard.press('C');
+  await expect.poll(async () => (await written(page))?.cells).toContain('6,2'); // a write, whether or not the run has ended
+  await page.reload();
+  await expect(page.locator('.ansi-editor .display')).toBeVisible();
+  await settled(page);
+  await expect(shown(page)).toHaveText('2 / 3');
+  await expect(animateSwitch(page)).toBeChecked();
+  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
+  expect(await chars(page, 2, 4, 4)).toBe('B');
+  expect(await chars(page, 2, 6, 6)).toBe('C');
+  await scrubTo(page, 0);
+  await expect.poll(() => chars(page, 2, 4, 4)).not.toBe('B');
+});
+
+test('scrubbing alone isn’t an edit for autosave, though the frame is kept', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  await addFrame(page, 'Blank');
+  await expect.poll(async () => (await written(page))?.frame).toBe(1);
+  const { editedAt } = await written(page);
+  const version = await store(page, 'project', (p) => p.editVersion);
+  await scrubTo(page, 0);
+  await expect.poll(async () => (await written(page))?.frame, { timeout: 5000 }).toBe(0);
+  expect((await written(page)).editedAt).toBe(editedAt);
+  expect(await store(page, 'project', (p) => p.editVersion)).toBe(version);
+});
+
+test('saving a project and opening it brings the frames back', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  await type(page, 2, 2, 'A');
+  await addFrame(page, 'Wipe');
+  const download = await saveAs(page, 'Save Project (.phosphor)');
+  const buffer = await readFile(await download.path());
+  await page.evaluate(() => sessionStorage.removeItem('phosphor-autosave-document'));
+  await page.goto('/');
+  await imageInput(page).setInputFiles({ name: 'movie.phosphor', mimeType: 'application/octet-stream', buffer });
+  await expect(shown(page)).toHaveText('2 / 2');
+  await scrubTo(page, 0);
+  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
+});
+
+test('a Version restored brings its frames back', async ({ page }) => {
+  await page.clock.install();
+  await openApp(page);
+  await animateSwitch(page).check();
+  await type(page, 2, 2, 'A');
+  await addFrame(page, 'Blank');
+  await page.clock.fastForward('00:02');
+  const versions = page.getByRole('dialog', { name: 'Versions' }).getByRole('listitem');
+  const count = async () => {
+    const id = await store(page, 'project', (p) => p.documentId);
+    return page.evaluate((id) => new Promise((resolve, reject) => {
+      const open = indexedDB.open('phosphor-autosave', 1);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const count = open.result.transaction('versions').objectStore('versions').index('documentId').count(id);
+        count.onsuccess = () => { open.result.close(); resolve(count.result); };
+      };
+    }), id);
+  };
+  await expect.poll(count).toBe(1);
+  await page.clock.fastForward('06:00');
+  await addFrame(page, 'Blank');
+  await page.clock.fastForward('00:02');
+  await expect.poll(count).toBe(2);
+  await page.getByRole('button', { name: 'Versions', exact: true }).click();
+  await versions.nth(1).getByRole('button', { name: 'Restore' }).click();
+  await expect(shown(page)).toHaveText('2 / 2');
+  await scrubTo(page, 0);
+  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
 });
