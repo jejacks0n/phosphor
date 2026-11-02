@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { ghostCell, ghostedCells } from '../../src/lib/ghostCells.js';
+import { ghostCell, ghostedCells, veilPixels } from '../../src/lib/ghostCells.js';
 import { frameDuration } from '../../src/document/frames.js';
 
 const color = (r, g, b) => ({ r, g, b, hex: `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`, c: [r, g, b] });
@@ -43,4 +43,11 @@ test('ghostedCells ghosts only what isGhost says, and keeps a ghost the same obj
 test('a cell with no base to sit on shows solid', () => {
   const cells = [cell('A', color(100, 100, 100), color(0, 0, 0))];
   assert.equal(ghostedCells(cells, () => null, () => true), cells);
+});
+
+test('veilPixels covers both halves of a ghost cell in what’s under it, enough to leave the ghost’s strength showing', () => {
+  const base = Uint8ClampedArray.from([10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255, 100, 110, 120, 255]); // 2 x 2
+  const veil = new Uint8ClampedArray(16);
+  veilPixels(veil, base, [1], 2, 0.35);
+  assert.deepEqual([...veil], [0, 0, 0, 0, 40, 50, 60, 166, 0, 0, 0, 0, 100, 110, 120, 166]);
 });

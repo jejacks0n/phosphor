@@ -50,10 +50,9 @@ Undo works across frames: it goes back to the frame the edit was made on and und
 
 ## The ghost
 
-On a Blank frame, what's inherited shows dimmed on the ANSI tab, in its own colors, so you can see what you're drawing
-over. What you draw on this frame shows at full strength, as soon as you draw it. The ghost is only there to draw by:
-it never plays and never reaches an export. **Ghost** on the bar turns it off, and inherited cells show solid. The
-PIXEL tab shows the frame solid, with no ghost.
+On a Blank frame, what's inherited shows dimmed on the PIXEL and ANSI tabs, in its own colors, so you can see what you're
+drawing over. What you draw on this frame shows at full strength, as soon as you draw it. The ghost is only there to draw by:
+it never plays and never reaches an export. **Ghost** on the bar turns it off, and inherited cells show solid.
 
 ## Timing
 

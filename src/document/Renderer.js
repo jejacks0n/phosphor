@@ -384,6 +384,11 @@ export default class Renderer {
 
   // The base layer's cell (no edit cells, no paint): what an edit cell sits on. Null while the
   // pipeline pixels are stale (between a grid resize and its render).
+  // The pipeline with the base layer's pixels over it, as of the last composite: what the paint sits on.
+  get basePixels() {
+    return this.#baseData;
+  }
+
   underCell(col, row, params, baseCells) {
     const { cols, chars: charset, charMode, renderStyle } = params;
     const data = this.#baseData;

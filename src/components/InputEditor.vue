@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf, putCellPixels } from '@/lib/Cells';
 import { parseKey } from '@/document/editCells';
+import { veilPixels } from '@/lib/ghostCells';
 import { viewWindow, viewIn, wholeCellsIn, scrollToCell } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
@@ -28,8 +29,8 @@ const zoom = { get: () => workspaceStore.editZoom, set: workspaceStore.setEditZo
 // One bitmap the grid's size, not redrawn on zoom or opacity; when the cells change, only those that
 // did are painted again (an edit keeps every other cell the same object), so a stroke costs its own
 // cells, not the grid's. A new grid size, or All cells switched, paints it all.
-// While an animation plays, the frame playing's own (FrameBuilder); there's no ghost in this view.
-const shownFrame = () => (workspaceStore.playing && workspaceStore.played) || projectStore;
+// While an animation plays, the frame playing's own (FrameBuilder); otherwise with its ghost, if it has one.
+const shownFrame = () => (workspaceStore.playing && workspaceStore.played) || { cells: projectStore.shownCells, editCells: projectStore.editCells };
 const overlay = { canvas: null, image: null, cells: null, editCells: null, edited: new Set(), all: null, cols: 0, rows: 0, empty: true };
 const updateOverlay = () => {
   const { cols, rows } = projectStore;
@@ -72,6 +73,26 @@ const updateOverlay = () => {
     if (changed.length) ctx2d(overlay.canvas).putImageData(overlay.image, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
   }
   Object.assign(overlay, { cells, editCells, edited, all, cols, rows, empty: all ? !cells.length : !edited.size });
+};
+
+// The ghost on the art: what's under the cells that shownCells dims, laid over them. The cells only say which, since
+// paint is in the output, not in a cell's colors alone. Worked out again only when they change.
+const veil = { canvas: null, shown: null, any: false };
+const drawVeil = (ctx, win, width, height) => {
+  const shown = projectStore.shownCells, { cells, cols, rows } = projectStore, base = projectStore.renderer.basePixels;
+  if (workspaceStore.playing || shown === cells || !base || base.width !== cols || base.height !== rows) return;
+  if (veil.shown !== shown) {
+    const indexes = [];
+    for (let i = 0; i < cells.length; i++) if (shown[i] !== cells[i]) indexes.push(i);
+    const image = new ImageData(cols, rows);
+    veilPixels(image.data, base.data, indexes, cols);
+    veil.canvas ??= document.createElement('canvas');
+    veil.canvas.width = cols;
+    veil.canvas.height = rows;
+    ctx2d(veil.canvas).putImageData(image, 0, 0);
+    veil.shown = shown;
+  }
+  ctx.drawImage(veil.canvas, win.col, win.row, win.cols, win.rows, 0, 0, width, height);
 };
 
 const drawOverlay = (ctx, win, width, height) => {
@@ -119,6 +140,7 @@ const redrawDisplay = () => {
   ctx.imageSmoothingEnabled = false;
   // Drawn to the backing size, not the CSS size: at a fractional zoom the two differ by under a pixel.
   ctx.drawImage(output, win.col, win.row, win.cols, win.rows, 0, 0, dc.width, dc.height);
+  drawVeil(ctx, win, dc.width, dc.height);
   drawOverlay(ctx, win, dc.width, dc.height);
 };
 
@@ -195,6 +217,7 @@ const publishOrigin = () => {
 const sizeOf = (canvas) => canvas && `${canvas.width}x${canvas.height}`;
 let lastOutputSize = sizeOf(projectStore.renderer.outputCanvas); // a remount keeps the restored scroll
 watch(() => workspaceStore.played, queueRedraw);
+watch(() => projectStore.shownCells, queueRedraw); // the ghost goes on and off with the cells unchanged
 watch(() => projectStore.cells, () => {
   queueRedraw();
   const size = sizeOf(projectStore.renderer.outputCanvas);
