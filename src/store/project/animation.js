@@ -309,6 +309,11 @@ export const animationActions = {
     arrive(this, this.frame, frame);
   },
 
+  // The next or previous frame, wrapping as playback does.
+  stepFrame(by) {
+    this.showFrame((this.frame + by + this.frames.length) % this.frames.length);
+  },
+
   setHold(i, seconds) {
     if (!this.frames[i]) return;
     this.frames[i].hold = clamped(Number(seconds) || 0, 0, MOST_HOLD);

@@ -79,6 +79,13 @@ const GROUPS = [
     ],
   },
   {
+    title: 'Animation (with Animate on)',
+    rows: [
+      [['L'], 'Play or pause (any other key pauses too)'],
+      [[',', '.'], 'Previous or next frame'],
+    ],
+  },
+  {
     title: 'Editor tabs',
     rows: [
       [['← →', 'Home', 'End'], 'With a tab focused: switch tabs'],

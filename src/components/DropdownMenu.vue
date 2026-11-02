@@ -7,6 +7,7 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   closeOnSelect: { type: Boolean, default: true }, // false for panels of controls (sliders, checkboxes)
   align: { type: String, default: 'right' }, // the trigger edge the menu lines up with: 'right' | 'left'
+  up: { type: Boolean, default: false }, // opens above the trigger, for a trigger at the bottom of the window
 });
 
 const isOpen = ref(false);
@@ -19,9 +20,10 @@ function toggle() {
   isOpen.value = !isOpen.value;
   if (!isOpen.value) return;
   const rect = root.value.getBoundingClientRect();
+  const edge = props.up ? { bottom: `${document.documentElement.clientHeight - rect.top + 4}px` } : { top: `${rect.bottom + 4}px` };
   position.value = props.align === 'left'
-    ? { top: `${rect.bottom + 4}px`, left: `${rect.left}px` }
-    : { top: `${rect.bottom + 4}px`, right: `${document.documentElement.clientWidth - rect.right}px` };
+    ? { ...edge, left: `${rect.left}px` }
+    : { ...edge, right: `${document.documentElement.clientWidth - rect.right}px` };
 }
 const close = () => { isOpen.value = false; };
 // Scrolling what holds the menu would leave it behind, so it closes. Something beside it, a chat

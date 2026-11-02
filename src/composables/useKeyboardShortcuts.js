@@ -95,6 +95,11 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // Typing in Edit Mode: the Text tool with its cursor placed, in the ANSI view.
   const _typing = () => workspaceStore.activeTool === 'text' && !!workspaceStore.textCursor && workspaceStore.editorTab === 'output';
 
+  // L plays and pauses, comma and period step: with Animate on, in the art views, never while typing.
+  const _animationKeysApply = (e) => projectStore.animate && projectStore.image && !e.ctrlKey && !e.metaKey && !e.altKey
+    && ['input', 'output'].includes(workspaceStore.editorTab) && !isField(e.target) && !_typing()
+    && !workspaceStore.isPainting && !workspaceStore.paletteLayerOpen && !workspaceStore.colorBox;
+
   // The shortcuts list: ?, or Alt+? while typing in Edit Mode (where ? types). Not in a field.
   const _handleHelp = (e) => {
     if (!helpKey(e, { typing: _typing() }) || isField(e.target) || workspaceStore.paletteLayerOpen) return false;
@@ -226,8 +231,21 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     }
     if (e.key === 'Shift') workspaceStore.isShiftPressed = true;
 
-    // A key while playing pauses first, on the frame showing, so what it does lands there.
-    if (workspaceStore.playing && !isField(e.target) && !['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) playback.pause();
+    if (_animationKeysApply(e) && e.key.toLowerCase() === 'l') {
+      e.preventDefault();
+      if (!e.repeat) playback.toggle();
+      return;
+    }
+    // A key while playing pauses first, on the frame showing, so what it does lands there. The bar's
+    // own controls have their keys, and they pause for themselves.
+    if (workspaceStore.playing && !isField(e.target) && !e.target?.closest?.('[role="toolbar"]') && !['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) playback.pause();
+
+    if (_animationKeysApply(e) && (e.key === ',' || e.key === '.')) {
+      e.preventDefault();
+      playback.pause();
+      projectStore.stepFrame(e.key === ',' ? -1 : 1);
+      return;
+    }
 
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;

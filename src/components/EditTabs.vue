@@ -6,6 +6,8 @@ import { desktopQuery } from '@/social/config';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
+import { usePlayback } from '@/composables/usePlayback';
+import { MAX_ANIMATION_CELLS } from '@/lib/Cells';
 
 const props = defineProps({
   modelValue: { type: String, required: true },
@@ -23,6 +25,21 @@ const THEMES = [
   ['system', 'System', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-64 -64 640 640"><path d="M64 32C28.7 32 0 60.7 0 96L0 352c0 35.3 28.7 64 64 64l144 0-16 48-72 0c-13.3 0-24 10.7-24 24s10.7 24 24 24l272 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-72 0-16-48 144 0c35.3 0 64-28.7 64-64l0-256c0-35.3-28.7-64-64-64L64 32zM96 96l320 0c17.7 0 32 14.3 32 32l0 160c0 17.7-14.3 32-32 32L96 320c-17.7 0-32-14.3-32-32l0-160c0-17.7 14.3-32 32-32z"/></svg>'],
 ];
 const toggleSettings = () => workspace.toggleSettings();
+
+// Turning it off keeps the frames; the canvas stays on the frame showing.
+const project = useProjectStore();
+const playback = usePlayback();
+const canSwitch = computed(() => !!image.value && project.canAnimate);
+const switchTitle = computed(() => {
+  if (project._sharing) return 'Rooms can’t hold animations yet.';
+  if (!project.canAnimate) return `This canvas is too large to animate: ${MAX_ANIMATION_CELLS.toLocaleString('en-US')} cells at most.`;
+  return image.value ? 'Draw frame by frame' : 'Open something to animate it';
+});
+function switchAnimate(event) {
+  playback.pause();
+  project.setAnimate(event.target.checked);
+  event.target.checked = project.animate;
+}
 
 const tabList = useTemplateRef('tabList');
 const indicatorStyle = ref({ transform: 'translateX(0px)', width: '0px', opacity: 0 });
@@ -109,6 +126,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
       </button>
       <div class="indicator" :style="indicatorStyle" aria-hidden="true"></div>
     </div>
+    <label class="animate" :class="{ on: project.animate, off: !canSwitch }" :title="switchTitle">
+      <input type="checkbox" role="switch" aria-label="Animate" :checked="project.animate" :disabled="!canSwitch" @change="switchAnimate">
+      <span class="track" aria-hidden="true"></span>
+      Animate
+    </label>
     <!-- Radios: one Tab stop, and the arrow keys move the choice. -->
     <div class="themes" role="radiogroup" aria-label="Theme">
       <label v-for="[id, label, icon] in THEMES" :key="id" :class="{ on: theme === id }" :title="label">
@@ -268,10 +290,67 @@ div.indicator {
   box-shadow: 0 0 3px var(--accent), 0 0 20px var(--accent);
 }
 
+label.animate {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+label.animate:hover, label.animate.on {
+  color: var(--text);
+}
+label.animate.off {
+  opacity: 0.4;
+  cursor: default;
+}
+label.animate input { /* unseen, over its label: the label's look, the switch's behavior */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+label.animate span.track {
+  position: relative;
+  width: 26px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--surface-4);
+  transition: background 0.2s ease;
+}
+label.animate span.track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: transform 0.2s ease;
+}
+label.animate.on span.track {
+  background: var(--accent);
+}
+label.animate.on span.track::after {
+  transform: translateX(12px);
+}
+label.animate:has(:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 div.themes {
   display: flex;
   gap: 2px;
-  margin-left: auto;
   padding: 2px;
   border: 1px solid var(--border);
   border-radius: 6px;
