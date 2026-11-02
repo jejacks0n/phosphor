@@ -20,6 +20,8 @@ export const cellOfPixel = (x, y) => ({ col: x, row: Math.floor(y / 2) });
 // a narrow piece can run long. The budget keeps whole-grid work (a render, a slider step) to tens of
 // milliseconds, and a document well within a browser tab's memory (docs/investigations/viewport-rendering.md).
 export const MAX_COLS = 300, MAX_LINES = 5000, MAX_CELLS = 500_000;
+// An animation is smaller: each frame is built whole, and kept, for playing. Set from what that costs (bench/).
+export const MAX_ANIMATION_CELLS = 40_000, MAX_FRAMES = 1000;
 export const gridFits = (cols, rows) => cols <= MAX_COLS && rows <= 2 * MAX_LINES && cols * charRowsOf(rows) <= MAX_CELLS;
 // The most columns there's room for beside rows, and the most rows beside cols.
 export const maxColsBeside = (rows) => Math.min(MAX_COLS, Math.floor(MAX_CELLS / Math.max(1, charRowsOf(rows))));

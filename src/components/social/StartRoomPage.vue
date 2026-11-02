@@ -13,6 +13,7 @@ const social = useSocialStore(), room = useRoomStore(), project = useProjectStor
 
 const hasArt = computed(() => !!project.image && project.cells.length > 0);
 const noArt = 'Open some art in PIXEL or ANSI to share it first.';
+const ROOMS_ARE_STILL = 'Rooms can’t hold animations yet.';
 
 const draft = room.startDraft;   // kept in the store while you're on another tab
 watch(() => draft.max, (max) => { if (max > MAX_WATCHERS) draft.max = MAX_WATCHERS; });
@@ -63,9 +64,10 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
         <p v-else class="no-art">{{ noArt }}</p>
       </section>
       <p v-else-if="!hasArt" class="no-art">{{ noArt }}</p>
+      <p v-if="project.hasFrames" class="no-art">{{ ROOMS_ARE_STILL }}</p>
 
       <div class="buttons">
-        <button class="primary" type="submit" :disabled="social.busy || !hasArt">Go live</button>
+        <button class="primary" type="submit" :disabled="social.busy || !hasArt || project.hasFrames" :title="project.hasFrames ? ROOMS_ARE_STILL : undefined">Go live</button>
       </div>
     </form>
   </div>
