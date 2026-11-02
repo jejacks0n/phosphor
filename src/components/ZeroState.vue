@@ -1,4 +1,5 @@
 <script setup>
+import { useMediaQuery } from '@vueuse/core';
 import { PROJECT_EXTENSION } from '@/document/projectIO';
 
 defineProps({
@@ -7,6 +8,11 @@ defineProps({
   openRecent: Function,
 });
 const emit = defineEmits(['file-dropped', 'file-selected', 'start-blank']);
+
+// A phone's picker greys out any file it can't match to the list, and it can't match .phosphor (no type it knows), so
+// on a touch screen there's no list; a file that isn't an image or a project says so when it fails to open.
+const touch = useMediaQuery('(pointer: coarse)');
+const accept = `image/*,${PROJECT_EXTENSION}`;
 
 const MAX_RECENT = 5;
 const editedTime = (ms) => new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -26,7 +32,7 @@ function onFileSelected(e) {
       <label>
         <span class="mobile">Upload File to Start</span>
         <span class="desktop">Browse Files</span>
-        <input type="file" @change="onFileSelected" :accept="`image/*,${PROJECT_EXTENSION}`" hidden>
+        <input type="file" @change="onFileSelected" :accept="touch ? null : accept" hidden>
       </label>
 
       <button class="link" @click="$emit('start-blank')">
