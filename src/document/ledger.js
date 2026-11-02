@@ -258,6 +258,16 @@ export class Ledger {
 
   putStacks(stacks) { this.#stacks = stacks; }
 
+  // A tile is read whole the first time a stroke touches it, and on an animation frame what's under the pixels no
+  // stroke has touched can change after that, by way of an earlier frame. The picture has them right now: the
+  // caller says when it holds that, on arriving at a frame.
+  refreshBases() {
+    for (const { x, y, base, entries } of this.#stacks.tiles.values()) {
+      const data = this.readTile(x, y);
+      for (let i = 0; i < base.length; i++) if (!entries.some(({ px }) => px[i])) base[i] = pack(data, i * 4);
+    }
+  }
+
   setLimits(on) {
     this.limits = on;
     this.#trim();

@@ -7,7 +7,7 @@
 import { markRaw, toRaw } from 'vue';
 import { parseKey } from '@/document/editCells.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { ALONE, bytesHeld, randomId, runsPatch } from '@/store/project/shared.js';
+import { ALONE, bytesHeld, newLedger, randomId, runsPatch } from '@/store/project/shared.js';
 
 const NO_CHANGE = { cells: [], runs: [] };
 
@@ -58,8 +58,11 @@ export const historyActions = {
     const { cursor, id, sent } = stroke;
     const drawnAsArtist = this._sharing?.role === 'artist';
     const records = { before: stroke.baseRecords, after: this.baseRecords };
+    const frame = this.currentFrame, ledger = this._ledger; // undoing goes back to the frame it was drawn on, and its ledger
     const also = { patches: [[basePatch, this.baseLayer]], pins: [records.before.pins, records.after.pins] };
     const apply = (side) => {
+      if (!this.frames.includes(frame)) return;
+      this.showFrame(this.frames.indexOf(frame));
       if (side === 'before' && cursor) useWorkspaceStore().textCursor = cursor; // typing undone: the cursor goes back to where it started
       if (this._sharing?.role === 'artist') { // the host says what happens; an artist has no base edits to put back
         if (sent) this.askForStroke(side === 'before' ? 'undo' : 'redo', id); // or it changed nothing: nothing to ask
@@ -78,7 +81,7 @@ export const historyActions = {
       stroke: id,
       undo: () => apply('before'),
       redo: () => apply('after'),
-      onDrop: () => this._ledger.forget(id), // or while a merge holds its stacks, not found: see pushWholeLayer
+      onDrop: () => ledger.forget(id), // or while a merge holds its stacks, not found: see pushWholeLayer
       bytes: this._ledger.bytesOf(id) + bytesHeld(basePatch),
     });
     if (basePatch || records.before !== records.after) this.sendBase(basePatch, 'after');
@@ -185,18 +188,24 @@ export const historyActions = {
   // until it's undone, and those after it until it's redone, so the entry holds whichever side isn't
   // showing. History dropping one of those strokes meanwhile finds nothing to forget, so what it holds
   // stays until the next reset; the picture and undo stay right.
-  // In a room it's final: artists can't follow it being undone (sharing.js).
-  pushWholeLayer(undo, redo, bytes) {
+  // In a room it's final: artists can't follow it being undone (sharing.js). It's the showing frame's edit layer,
+  // and undoing goes back to that frame; everyFrame: all of them's, undone from wherever (a Bake).
+  pushWholeLayer(undo, redo, bytes, { everyFrame = false } = {}) {
     if (this._sharing?.role === 'host') {
       this.editVersion++;
       this.shareWholeDocument();
       return;
     }
-    let away = this._ledger.takeStacks();
+    const frames = everyFrame ? this.frames : [this.currentFrame];
+    const ledgerOf = (frame) => (frame === this.currentFrame ? this._ledger : (frame.ledger ??= newLedger(() => this)));
+    let away = frames.map((frame) => ledgerOf(frame).takeStacks());
     const swap = () => {
-      const showing = this._ledger.takeStacks();
-      this._ledger.putStacks(away);
-      this._ledger.rename(ALONE, this._by); // drawn before sharing started, and held here through that
+      if (!everyFrame) this.showFrame(this.frames.indexOf(frames[0]));
+      const showing = frames.map((frame) => ledgerOf(frame).takeStacks());
+      frames.forEach((frame, i) => {
+        ledgerOf(frame).putStacks(away[i]);
+        ledgerOf(frame).rename(ALONE, this._by); // drawn before sharing started, and held here through that
+      });
       away = showing;
     };
     this.pushEdit({ undo: () => { swap(); undo(); }, redo: () => { swap(); redo(); }, wholeLayer: true, bytes });
@@ -211,6 +220,7 @@ export const historyActions = {
   clearHistory() {
     if (this._sharing?.strokesAsked) this._sharing.strokesAsked = [];
     this._ledger.reset(); // first: what History drops next has nothing left to forget
+    for (const frame of this.frames) frame.ledger = null;
     this.history.clear();
     this.historyVersion = this.history.version;
   },

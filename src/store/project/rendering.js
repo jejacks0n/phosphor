@@ -78,6 +78,7 @@ export const renderingActions = {
   dropEdits() {
     this._stroke = null;
     this._ledger.reset(); // first: what History drops next has nothing left to forget
+    for (const frame of this.frames) frame.ledger = null;
     this.history.retain(entry => entry.settingsOnly);
     this.historyVersion = this.history.version;
   },
