@@ -56,6 +56,8 @@ const setFps = (event) => {
 
 <template>
   <div class="animation-bar" role="toolbar" aria-label="Animation">
+    <!-- Two groups, one line where they fit and a line each where they don't, so a narrow screen never strands a control. -->
+    <div class="transport">
     <button class="play" :aria-label="workspace.playing ? 'Pause' : 'Play'" :title="workspace.playing ? 'Pause (L)' : 'Play (L)'" :disabled="count < 2" @click="playback.toggle()">
       <svg viewBox="0 0 16 16" aria-hidden="true">
         <path v-if="workspace.playing" d="M3 2h4v12H3zM9 2h4v12H9z"/>
@@ -76,7 +78,9 @@ const setFps = (event) => {
       <!-- A pointer lets go of it, so the app's keys work again; the keyboard keeps its arrows. -->
       <input type="range" aria-label="Frame" min="0" :max="count - 1" step="1" :value="at" @input="scrub" @pointerup="$event.target.blur()">
     </div>
-    <label class="field" title="Frames per second">
+    </div>
+    <div class="settings">
+    <label class="field fps" title="Frames per second">
       <input type="number" aria-label="Frames per second" min="1" max="60" step="1" :value="project.fps" @change="setFps">
       fps
     </label>
@@ -99,6 +103,7 @@ const setFps = (event) => {
     </DropdownMenu>
     <button class="ghost" :class="{ on: workspace.ghost }" :aria-pressed="workspace.ghost" title="Show earlier frames, dimmed, on a Blank frame" @click="workspace.ghost = !workspace.ghost">Ghost</button>
     <input v-model.number="workspace.ghostStrength" class="strength" type="range" aria-label="Ghost strength" :title="`Ghost strength: ${workspace.ghostStrength}%`" min="0" max="100" step="1" :disabled="!workspace.ghost" @pointerup="$event.target.blur()">
+    </div>
   </div>
 </template>
 
@@ -107,11 +112,33 @@ div.animation-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 8px;
+  gap: 6px 12px;
   padding: 6px 10px;
   flex-shrink: 0;
   background: var(--surface-2);
   border-top: 1px solid var(--accent);
+}
+div.transport, div.settings {
+  display: flex;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+div.transport { /* takes the spare room beside the settings; on a line of its own, each fills its line */
+  flex: 9999 1 340px;
+}
+div.settings {
+  flex: 1 1 auto;
+}
+div.settings > * {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+div.settings > input.strength {
+  flex-shrink: 1;
+}
+div.settings:has(span.full) {
+  flex-wrap: wrap;
 }
 
 button.play, button.step {
@@ -155,8 +182,8 @@ output.indicator {
 
 div.scrubber {
   position: relative;
-  flex: 1 1 200px;
-  min-width: 120px;
+  flex: 1 1 0;
+  min-width: 60px;
   height: 28px;
 }
 div.scrubber input {
@@ -212,7 +239,9 @@ label.field input {
 }
 
 input.strength {
+  flex: 1 1 72px;
   width: 72px;
+  min-width: 20px;
   margin: 0;
   accent-color: var(--accent);
 }
@@ -235,5 +264,50 @@ button.ghost.on {
   background: var(--accent-glow);
   border-color: var(--accent);
   color: var(--text);
+}
+
+@media (max-width: 960px) { /* up to the largest phone on its side */
+  div.animation-bar, div.transport, div.settings {
+    column-gap: 6px;
+  }
+  div.transport {
+    flex-basis: 240px;
+  }
+  button.step { /* for a finger */
+    width: 32px;
+  }
+  output.indicator {
+    min-width: 44px;
+  }
+  label.field {
+    gap: 3px;
+  }
+  label.field input { /* 16px: Safari on a phone zooms the page to anything smaller when it's focused */
+    width: 44px;
+    font-size: 16px;
+    appearance: textfield;
+  }
+  label.field input::-webkit-inner-spin-button {
+    display: none;
+  }
+  label.fps input {
+    width: 36px;
+  }
+  :deep(.dropdown-trigger > span + svg) { /* + Frame's arrow */
+    display: none;
+  }
+  span.full {
+    flex-basis: 100%;
+    order: 1;
+  }
+  button.ghost {
+    padding: 3px 8px;
+  }
+}
+
+@media (max-width: 350px) { /* no room for one line of them */
+  div.settings {
+    flex-wrap: wrap;
+  }
 }
 </style>

@@ -129,7 +129,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
     <label class="animate" :class="{ on: project.animate, off: !canSwitch }" :title="switchTitle">
       <input type="checkbox" role="switch" aria-label="Animate" :checked="project.animate" :disabled="!canSwitch && !project.animate" @change="switchAnimate">
       <span class="track" aria-hidden="true"></span>
-      Animate
+      <span class="word">Animate</span>
     </label>
     <!-- Radios: one Tab stop, and the arrow keys move the choice. -->
     <div class="themes" role="radiogroup" aria-label="Theme">
@@ -320,6 +320,7 @@ label.animate input { /* unseen, over its label: the label's look, the switch's 
 }
 label.animate span.track {
   position: relative;
+  pointer-events: none; /* the switch's, over it */
   width: 26px;
   height: 14px;
   border-radius: 7px;
@@ -405,6 +406,18 @@ div.themes input { /* unseen, over its label: the label's look, the radio's beha
   }
 
   div.themes { /* no room beside the tabs: the last choice stands */
+    display: none;
+  }
+}
+
+@media (max-width: 480px) { /* a phone upright: the tabs give way, so the switch stays on screen */
+  button.tab {
+    padding: 5px 12px;
+  }
+}
+
+@media (max-width: 340px) {
+  span.word {
     display: none;
   }
 }
