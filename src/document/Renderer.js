@@ -43,10 +43,11 @@ export default class Renderer {
   #baseDrawn = null;    // { layer, version, key, data, canvas }: the base layer as drawn at grid resolution (#baseGrid)
   #baseStored = null;   // the same for its stored colors (#baseGrid, stored)
   #baseParams = null;   // the last render's baseParams
+  #chosen = null;       // a Number palette someone else picked (usePalette): composite doesn't pick its own
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
-    this.pipelineCanvas = this.outputCanvas = this.palette = null;
+    this.pipelineCanvas = this.outputCanvas = this.palette = this.#chosen = null;
     this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = null;
     this.#effective = new Map();
   }
@@ -55,7 +56,7 @@ export default class Renderer {
   async render(image, params, paintLayer, baseParams) {
     const { canvas: pipeline, paletteColors } = await processImage(image, params);
     this.pipelineCanvas = pipeline.canvas;
-    this.palette = paletteColors;
+    this.palette = this.#chosen ?? paletteColors;
     this.#pipelineData = ctx2d(this.pipelineCanvas).getImageData(0, 0, params.cols, params.rows);
     this.#effective = new Map();
 
@@ -163,13 +164,21 @@ export default class Renderer {
     else this.#baseData = ctx.getImageData(0, 0, w, h);
 
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params, partial ? area : null) : null;
-    const changed = !hold && params.quantize === 'count' && this.#recount(params);
+    const changed = !hold && params.quantize === 'count' && !this.#chosen && this.#recount(params);
     if (!hold) this.#heldData = null;
     else if (partial) putRows(this.#heldData, w, ctx.getImageData(x, y, area.w, area.h).data, area);
     else this.#heldData = ctx.getImageData(0, 0, w, h).data;
     this.#snapped = paintLayer && this.palette?.length ? snapToPalette(this.outputCanvas, this.palette, area) : null;
     if (partial) this.#snapped = null; // only the area's
     return changed;
+  }
+
+  // A Number palette chosen from outside (one for a whole animation), until it's null: cells then use it, and
+  // a composite doesn't pick one from what it shows. The output's snap waits for the next composite.
+  usePalette(palette) {
+    this.#chosen = palette;
+    if (palette) this.palette = palette;
+    this.#effective = new Map();
   }
 
   // The Number palette from the output as composited (before it's quantized); true when it changed.
