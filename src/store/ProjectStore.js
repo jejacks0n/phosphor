@@ -4,7 +4,7 @@ import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
-import { MAX_COLS, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
+import { MAX_ANIMATION_CELLS, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
 import { documentActions } from '@/store/project/document.js';
@@ -99,12 +99,17 @@ export const useProjectStore = defineStore('project', {
     },
     // The grid's largest size (Cells.js): aspect locked, the biggest that keeps the picture's ratio;
     // otherwise the most there's room for beside the other side.
+    // With frames, whichever is less: that and an animation's own limit.
     maxCols() {
+      if (this.hasFrames) return Math.max(1, Math.min(maxColsBeside(this.rows), Math.floor(MAX_ANIMATION_CELLS / Math.max(1, charRowsOf(this.rows)))));
       return this.aspectLock && this.image && !this.hasEdits ? lockedGrid(MAX_COLS, this.imageRatio).cols : maxColsBeside(this.rows);
     },
     maxRows() {
+      if (this.hasFrames) return Math.max(2, Math.min(maxRowsBeside(this.cols), 2 * Math.floor(MAX_ANIMATION_CELLS / Math.max(1, this.cols))));
       return this.aspectLock && this.image && !this.hasEdits ? lockedGrid(MAX_COLS, this.imageRatio).rows : maxRowsBeside(this.cols);
     },
+    // Why the Animate switch is off, if it is; rooms hold one still document, and frames never travel.
+    canAnimate: (state) => !state._sharing && state.cols * charRowsOf(state.rows) <= MAX_ANIMATION_CELLS,
     processParams: (state) => ({
       ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),
       chars: state.renderStyle === 'ansi' ? state.chars : state.charsAscii,

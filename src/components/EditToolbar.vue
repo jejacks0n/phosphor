@@ -20,6 +20,9 @@ const workspace = useWorkspaceStore();
 const drawing = useDrawingStore();
 // A control that's off for a reason: the reason in its title, and what it is still its name for screen readers.
 const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name } : {});
+// Off with frames: it would put one frame in the base, under all of them.
+const ONE_FRAME = 'Merge down puts one frame in the base, under all of them, so it needs a single frame.';
+const mergeOff = () => off(drawing.hostOnly ?? (project.hasFrames ? ONE_FRAME : null), 'Merge down');
 const warnedSub = (sub, warning = MERGE_WARNING) => (drawing.othersHere ? `${warning} ${sub}` : sub);
 
 // The toolbar offers the tools that work in the current view (editorTab is 'input' or 'output' while editing),
@@ -295,7 +298,7 @@ const selectionHasCharacters = computed(() => {
             @click="openMerge()"
             class="primary"
             :disabled="!project.hasEdits"
-            v-bind="off(drawing.hostOnly, 'Merge down')"
+            v-bind="mergeOff()"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg></button>
         <button
             title="Clear edit layer: remove everything on the edit layer."
@@ -324,7 +327,7 @@ const selectionHasCharacters = computed(() => {
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg>
             Bake
           </button>
-          <button @click="openMerge()" :disabled="!project.hasEdits" v-bind="off(drawing.hostOnly, 'Merge down')">
+          <button @click="openMerge()" :disabled="!project.hasEdits" v-bind="mergeOff()">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/>
             </svg>
@@ -357,14 +360,14 @@ const selectionHasCharacters = computed(() => {
           <button :title="selectionHasCharacters ? 'Rotate turns only pixels, and the selection has characters' : 'Rotate 90° clockwise'" aria-label="Rotate 90° clockwise" :disabled="selectionHasCharacters" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
           <div class="divider"/>
           <button class="text" title="Merge up: what the base layer shows here becomes edit cells" v-bind="off(drawing.hostOnly, 'Merge up')" @click="project.mergeUp(workspace.selection)">Merge up</button>
-          <button class="text" title="Merge down: what's drawn here goes into the base layer" :disabled="!selectionHasEdits" v-bind="off(drawing.hostOnly, 'Merge down')" @click="openMerge(workspace.selection)">Merge down</button>
+          <button class="text" title="Merge down: what's drawn here goes into the base layer" :disabled="!selectionHasEdits" v-bind="mergeOff()" @click="openMerge(workspace.selection)">Merge down</button>
           <button class="text" title="Deselect: set the block down (Esc or Enter)" aria-keyshortcuts="Escape Enter" @click="deselect">Deselect</button>
         </template>
         <template v-else>
           <span class="hint">Drag to select cells, or:</span>
           <button class="text" :title="`Select the whole canvas (${shortcut('mod', 'A')})`" @click="project.changeSelection((w) => w.selectAll(project.gridRect()))">Select all</button>
           <button class="text" title="Merge up: what the base layer shows becomes edit cells, over the whole canvas" v-bind="off(drawing.hostOnly, 'Merge up')" @click="project.mergeUp(null)">Merge up</button>
-          <button class="text" title="Merge down: the whole edit layer into the base layer" :disabled="!project.hasEdits" v-bind="off(drawing.hostOnly, 'Merge down')" @click="openMerge()">Merge down</button>
+          <button class="text" title="Merge down: the whole edit layer into the base layer" :disabled="!project.hasEdits" v-bind="mergeOff()" @click="openMerge()">Merge down</button>
         </template>
       </div>
       <div v-if="toolOptions.length" class="tool-setting-group">

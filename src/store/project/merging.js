@@ -6,6 +6,7 @@
 // for those would never end under steady drawing. Bake reads the layers after it encodes, so what came
 // meanwhile is in it; Into the image reads them before, so a host holds artists' changes until the project's gone.
 import { withPins, withoutPins } from '@/document/baseRecords.js';
+import { cellState } from '@/document/frames.js';
 import { cellKey, parseKey, rectCells, updateRect, bakeEditCells, bakeEntry, mergeKind } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
@@ -17,6 +18,17 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { copyOf, over, bytesHeld } from '@/store/project/shared.js';
 import { RESET_GROUPS, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
+
+// A frame's changes with the color transforms burnt in, as Bake does to the edit layer: a stored color, then
+// its paint's alpha back on it.
+function bakedChanges(changes, params) {
+  const baked = (rgba) => {
+    if (!rgba) return 0;
+    const { r, g, b } = hex2rgb(getEffectiveColor(rgb2hex({ r: rgba >>> 24, g: (rgba >>> 16) & 0xff, b: (rgba >>> 8) & 0xff }), params));
+    return ((r << 24) | (g << 16) | (b << 8) | (rgba & 0xff)) >>> 0;
+  };
+  return new Map([...changes].map(([key, { cell, top, bottom }]) => [key, cellState(cell && bakeEntry(cell, params), baked(top), baked(bottom))]));
+}
 
 export const mergingActions = {
   // Bake: the picture as it shows becomes the image and the Transform, Adjustment and Effect
@@ -35,9 +47,10 @@ export const mergingActions = {
     try {
       this.ensureLayer();
       this.commitPending();
+      this.noteFrame();
       const workspace = useWorkspaceStore();
       const params = this.processParams;
-      const doc = this._document, version = this.history.version;
+      const doc = this._document, version = this.history.version, frame = this.frame;
 
       const canvas = await processedImage(this.image, params, { snap: lockPalette });
       const blob = await canvasPng(canvas);
@@ -47,7 +60,7 @@ export const mergingActions = {
       // now, so its undo isn't recorded against the baked layers) means baking what shows now.
       if (this._document !== doc) return;
       this.commitPending();
-      if (this.image !== params.image || this.history.version !== version) {
+      if (this.image !== params.image || this.history.version !== version || this.frame !== frame) {
         again = true;
         return;
       }
@@ -60,6 +73,7 @@ export const mergingActions = {
         image: this.image, imageBuffer: this.imageBuffer, workingCopy: this.imageIsWorkingCopy, sliders: sliders(params), // what it was baked with
         paint: this.paintLayer.snapshot(), base: this.baseLayer.snapshot(), editCells: this.editCells,
         fg: workspace.editFgColor, bg: workspace.editBgColor, clipboard: clip,
+        frames: this.hasFrames && this.frames.map(({ kind, changes }) => ({ kind, changes })),
       };
       const after = {
         image, imageBuffer, workingCopy: true, sliders: defaults,
@@ -71,6 +85,7 @@ export const mergingActions = {
           ...(clip.paint && { paint: bakedCanvas(clip.paint, params) }),
           ...(clip.base && { base: { ...clip.base, pixels: bakedCanvas(clip.base.pixels, params), colors: bakedCanvas(clip.base.colors, params) } }),
         },
+        frames: before.frames && before.frames.map(({ kind, changes }) => ({ kind, changes: bakedChanges(changes, params) })),
       };
 
       // The color pair and the clipboard swap only while they hold what the other side left: a
@@ -84,10 +99,11 @@ export const mergingActions = {
         if (workspace.editFgColor === from.fg) workspace.editFgColor = state.fg;
         if (workspace.editBgColor === from.bg) workspace.editBgColor = state.bg;
         if (toRaw(workspace.clipboard) === from.clipboard) workspace.clipboard = state.clipboard;
+        if (state.frames) this.setAllFrames(state.frames);
         this.render();
       };
       apply(after, before);
-      this.pushWholeLayer(() => apply(before, after), () => apply(after, before), bytesHeld(before.paint, before.base, before.image, before.imageBuffer, after.paint, after.base, after.image, after.imageBuffer, after.editCells));
+      this.pushWholeLayer(() => apply(before, after), () => apply(after, before), bytesHeld(before.paint, before.base, before.image, before.imageBuffer, after.paint, after.base, after.image, after.imageBuffer, after.editCells, ...(after.frames || []).map(({ changes }) => changes)), { everyFrame: true });
     } catch (e) {
       console.error('Failed to bake', e);
       alert("Couldn't bake the image.");
@@ -103,7 +119,7 @@ export const mergingActions = {
     const area = rect ?? this.gridRect();
     this.selectionEdit([area], () => {
       this.editCells = updateRect(this.editCells, area, (col, row, entry) => this.completeAt(col, row, entry));
-      this.setBaseRecords(withoutPins(this.baseRecords, rectCells(area)));
+      if (!this.hasFrames) this.setBaseRecords(withoutPins(this.baseRecords, rectCells(area))); // the base is under every frame
     });
   },
 
@@ -135,7 +151,7 @@ export const mergingActions = {
   // and anything outside the picture's area (the letterbox), merges exactly (mergeKind). The
   // sliders aren't touched. One undo step.
   async mergeIntoPicture(rect = null) {
-    if (!this.image || this._merging) return;
+    if (!this.image || this._merging || this.hasFrames) return;
     this._merging = true;
     const sharing = this._sharing;
     sharing?.hold?.();
@@ -279,7 +295,7 @@ export const mergingActions = {
 
   // rect: only the edit layer inside a cell rect (a selection) is merged; the rest stays.
   mergeDown(rect = null) {
-    if (!this.image) return;
+    if (!this.image || this.hasFrames) return; // it would put one frame in the base, under all of them
     this.ensureLayer();
     this.commitPending();
 

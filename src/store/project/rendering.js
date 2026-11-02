@@ -17,19 +17,19 @@ export const renderingActions = {
     let num = parseInt(val);
     if (isNaN(num) || num < 1) return;
 
-    if (this.aspectLock && this.image && !this.hasEdits) this.$patch(lockedGrid(num, this.imageRatio));
-    else this.cols = Math.min(num, maxColsBeside(this.rows));
+    if (this.aspectLock && this.image && !this.hasEdits && !this.hasFrames) this.$patch(lockedGrid(num, this.imageRatio));
+    else this.cols = Math.min(num, this.hasFrames ? this.maxCols : maxColsBeside(this.rows));
   },
 
   updateRows(val) {
     let num = parseInt(val);
     if (isNaN(num) || num < 1) return;
 
-    if (this.aspectLock && this.image && !this.hasEdits) {
+    if (this.aspectLock && this.image && !this.hasEdits && !this.hasFrames) {
       const cols = Math.max(1, Math.round(num * this.imageRatio));
       this.$patch(gridFits(cols, num) ? { cols, rows: num } : lockedGrid(cols, this.imageRatio));
     } else {
-      this.rows = Math.min(num, maxRowsBeside(this.cols));
+      this.rows = Math.min(num, this.hasFrames ? this.maxRows : maxRowsBeside(this.cols));
     }
   },
 

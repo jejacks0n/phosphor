@@ -5,6 +5,7 @@
 import { cellState, foldDeleted, frameDiff, newFrame, resolveOver, sameChanges } from '@/document/frames.js';
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
+import { MAX_FRAMES } from '@/lib/Cells.js';
 import { newLedger } from '@/store/project/shared.js';
 
 const NOTHING = new Map();
@@ -86,7 +87,9 @@ function arrive(project, i, leaving = project.currentFrame) {
   project.hasPaint = layer.hasPaint;
   project._arrived = { paint: layer.hasPaint ? layer.gridPixels() : null, states: resolved };
   if (frame.ledgerAt !== version) project._ledger.refreshBases(); // an earlier frame may have changed what's under its strokes
-  if (!project.composite()) project.rebuildCells();
+  const output = project.renderer.outputCanvas;
+  if (output?.width !== project.cols || output.height !== project.rows) project.render(); // a grid change's is on its way
+  else if (!project.composite()) project.rebuildCells();
 }
 
 // The frame showing's changes, from what it shows now. Skipped when nothing's happened since the last time.
@@ -104,6 +107,7 @@ function note(project) {
 
 // Before anything that changes which frames there are: what's open is set down on the frame it was done on.
 function settleFrame(project) {
+  project.ensureLayer();
   project.commitPending();
   project._float = null;
   note(project);
@@ -137,9 +141,7 @@ export const animationActions = {
   // Moving the scrubber: what's open is set down on the frame it was done on. The selection and the text
   // cursor stay.
   showFrame(i) {
-    if (i === this.frame || !this.frames[i]) return;
-    this.ensureLayer();
-    if (!this.paintLayer) return;
+    if (i === this.frame || !this.frames[i] || !this.image) return;
     settleFrame(this);
     arrive(this, i);
   },
@@ -174,8 +176,7 @@ export const animationActions = {
   // A new frame after the one showing, which it then shows. A Duplicate holds a full copy of what it
   // inherited, so later fixes on earlier frames can't reach it.
   addFrame(kind) {
-    this.ensureLayer();
-    if (!this.paintLayer) return;
+    if (!this.image || this.frames.length >= MAX_FRAMES || this._sharing) return;
     settleFrame(this);
     frameStep(this, () => {
       const at = this.frame + 1;
@@ -235,6 +236,23 @@ export const animationActions = {
   },
 
   setAnimate(on) {
-    this.animate = !!on;
+    this.animate = !!on && this.canAnimate;
+  },
+
+  // A fresh document's one frame. Autosave doesn't count this one, or a frame's swap, as editing.
+  resetFrames() {
+    this.frames = [newFrame('blank')];
+    this.frame = 0;
+    this.fps = 8;
+    this._arrived = this._noted = null;
+  },
+
+  // Bake's before and after: every frame's kind and changes, set, and the frame showing shown from them.
+  setAllFrames(states) {
+    this.frames.forEach((frame, at) => {
+      Object.assign(frame, states[at]);
+      frame.resolved = frame.built = null;
+    });
+    arrive(this, this.frame);
   },
 };

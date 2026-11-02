@@ -190,6 +190,7 @@ export const documentActions = {
     this.dropHeard();
     if (this._sameDocument) return; // a host's project bringing this one up to date (openFromHost)
     this.clearHistory();
+    this.resetFrames();
     const workspace = useWorkspaceStore();
     workspace.selection = workspace.selectionOffset = workspace.lastPick = workspace.wand = null;
   },
