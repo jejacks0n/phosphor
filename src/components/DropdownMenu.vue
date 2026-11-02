@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, nextTick, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 
 const props = defineProps({
   label: { type: String, default: 'Actions' },
@@ -13,9 +13,12 @@ const props = defineProps({
 const isOpen = ref(false);
 const position = ref(null);
 const root = useTemplateRef('root');
+const content = useTemplateRef('content');
+const MARGIN = 4; // between the menu and the window's edge
 
-// The menu is fixed under the trigger, so a scrolling toolbar row doesn't clip it.
-function toggle() {
+// The menu is fixed under the trigger, so a scrolling toolbar row doesn't clip it; lined up with the trigger, then
+// moved along as far as it takes to stay in the window, which on a phone it may not.
+async function toggle() {
   if (props.disabled) return;
   isOpen.value = !isOpen.value;
   if (!isOpen.value) return;
@@ -24,6 +27,11 @@ function toggle() {
   position.value = props.align === 'left'
     ? { ...edge, left: `${rect.left}px` }
     : { ...edge, right: `${document.documentElement.clientWidth - rect.right}px` };
+  await nextTick();
+  const menu = content.value?.getBoundingClientRect(), width = document.documentElement.clientWidth;
+  if (!menu) return;
+  if (menu.left < MARGIN) position.value = { ...edge, left: `${MARGIN}px` };
+  else if (menu.right > width - MARGIN) position.value = { ...edge, right: `${MARGIN}px` };
 }
 const close = () => { isOpen.value = false; };
 // Scrolling what holds the menu would leave it behind, so it closes. Something beside it, a chat
@@ -59,7 +67,7 @@ onBeforeUnmount(() => {
         </svg>
       </slot>
     </button>
-    <div class="dropdown-content" v-if="isOpen" :style="position" @click="closeOnSelect && close()">
+    <div ref="content" class="dropdown-content" v-if="isOpen" :style="position" @click="closeOnSelect && close()">
       <slot></slot>
     </div>
   </article>
@@ -108,6 +116,7 @@ div.dropdown-content {
   border-radius: 6px;
   z-index: 1000;
   min-width: 140px;
+  max-width: calc(100vw - 8px);
   display: flex;
   flex-direction: column;
   padding: 4px;

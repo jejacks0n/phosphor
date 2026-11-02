@@ -229,6 +229,23 @@ test('the menus open above the bar, on screen', async ({ page }) => {
   expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize().height);
 });
 
+test('on a phone the menus stay on screen side to side too', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  for (const [width, height] of [[390, 844], [320, 568], [844, 390]]) {
+    await page.setViewportSize({ width, height });
+    for (const [name, item] of [['Add frame', /^Duplicate/], ['Frame actions', 'Move earlier']]) {
+      await expect.poll(async () => (await bar(page).getByRole('button', { name }).boundingBox())?.x ?? -1).toBeGreaterThanOrEqual(0);
+      await bar(page).getByRole('button', { name }).click();
+      const menu = await page.locator('.dropdown-content').boundingBox();
+      expect(menu.x, `${name} at ${width}`).toBeGreaterThanOrEqual(0);
+      expect(menu.x + menu.width, `${name} at ${width}`).toBeLessThanOrEqual(width);
+      await expect(page.getByRole('button', { name: item })).toBeVisible();
+      await page.keyboard.press('Escape');
+    }
+  }
+});
+
 test('the bar is hidden on SOCIAL and SAUCE', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
