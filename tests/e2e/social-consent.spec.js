@@ -62,11 +62,11 @@ test('Accept stays off until the 13-or-older box is ticked', async ({ page }) =>
   await expect(accept(page)).toBeDisabled();
 });
 
-test('the modal says what the lobby, watching and starting a room mean, and how to behave', async ({ page }) => {
+test('the modal says what the lobby, joining and starting a room mean, and how to behave', async ({ page }) => {
   await fakeServer(page);
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
-  for (const heading of ['The lobby', 'Watching a room', 'Starting a room', 'Be kind']) {
+  for (const heading of ['The lobby', 'Joining a room', 'Starting a room', 'Be kind']) {
     await expect(consent(page).getByRole('heading', { name: heading })).toBeVisible();
   }
   await expect(consent(page)).toContainText('each of you can see the other\'s IP address');
