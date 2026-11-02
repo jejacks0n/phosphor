@@ -161,7 +161,7 @@ export function pasteBlock(map, block, col, row, cols, rows) {
   return result ?? map;
 }
 
-const sameEntry = (a, b) => !!a && !!b && ATTRS.every(attr => a[attr] === b[attr]);
+export const sameEntry = (a, b) => !!a && !!b && ATTRS.every(attr => a[attr] === b[attr]);
 
 // Every cell of a rect merged with attrsFor(col, row, entry), on one Map copy (merge up).
 // Returns the same Map when nothing changed.
