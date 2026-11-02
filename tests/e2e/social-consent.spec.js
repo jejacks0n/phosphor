@@ -240,6 +240,23 @@ test('a watcher\'s reload from a session before the question stays in the room, 
   await expect(consent(watcher)).toHaveCount(0);
 });
 
+test('the Privacy Policy and the Terms say artists get the whole project, and the Terms say who can report as the rest do', async ({ page }) => {
+  await fakeServer(page);
+  await page.goto('/');
+  await tab(page, 'SOCIAL').click();
+  await consent(page).getByRole('button', { name: 'Privacy Policy', exact: true }).click();
+  const privacy = page.getByRole('dialog', { name: 'Privacy Policy' });
+  await expect(privacy).toContainText('receives the whole project, including the original image');
+  await expect(privacy).toContainText('Last updated: November 1, 2026.');
+  await privacy.getByRole('button', { name: 'Close' }).click();
+  await consent(page).getByRole('button', { name: 'Terms', exact: true }).click();
+  const terms = page.getByRole('dialog', { name: 'Terms' });
+  await expect(terms).toContainText('anyone signed in with a confirmed email can report a user or a room');
+  await expect(terms).not.toContainText('any signed-in user');
+  await expect(terms).toContainText('you allow them to receive a copy of the whole project, including the original image');
+  await expect(terms).toContainText('Last updated: November 1, 2026.');
+});
+
 test('the Terms, Privacy Policy and Guidelines open over the modal, and coming back leaves it and its tick as they were', async ({ page }) => {
   await fakeServer(page);
   await page.goto('/');
