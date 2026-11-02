@@ -1,10 +1,10 @@
 <script setup>
-import { toastMessage } from '@/composables/useToast';
+import { toastMessage, closeToast } from '@/composables/useToast';
 </script>
 
 <template>
   <Transition name="toast">
-    <div v-if="toastMessage" class="app-toast" role="status">{{ toastMessage }}</div>
+    <div v-if="toastMessage" class="app-toast" role="status" title="Close" @click="closeToast">{{ toastMessage }}</div>
   </Transition>
 </template>
 
@@ -21,7 +21,12 @@ div.app-toast {
   color: var(--black);
   font-size: 12px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
+  cursor: pointer; /* a click closes it */
+}
+div.app-toast::after { /* drawn, so it isn't part of what the message says */
+  content: '×';
+  margin-left: 10px;
+  opacity: 0.6;
 }
 
 .toast-enter-active,

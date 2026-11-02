@@ -1,13 +1,19 @@
 import { ref } from 'vue';
 
-// One app-wide toast: a short message at the bottom of the screen (AppToast shows it).
+// One app-wide toast: a short message at the bottom of the screen (AppToast shows it), for ten seconds or until
+// it's clicked.
 export const toastMessage = ref(null);
 let timer = null;
 
-export const LONG_TOAST_MS = 6000;   // a sentence or two someone didn't ask to read
+export const TOAST_MS = 10_000;
 
-export function toast(message, ms = 2600) {
-  toastMessage.value = message;
+export function closeToast() {
   clearTimeout(timer);
-  timer = setTimeout(() => { toastMessage.value = null; }, ms);
+  toastMessage.value = null;
+}
+
+export function toast(message) {
+  clearTimeout(timer);
+  toastMessage.value = message;
+  timer = setTimeout(closeToast, TOAST_MS);
 }

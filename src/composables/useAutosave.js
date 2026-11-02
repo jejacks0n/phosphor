@@ -9,7 +9,7 @@ import { settingsJson } from '@/store/project/shared';
 import { writeProject } from '@/document/projectIO';
 import { writeLatest, addVersion, listVersions, evict, readLatest, readVersion, listDocuments } from '@/document/autosaveStore';
 import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, READY_WAIT_MS, versionDue } from '@/document/autosaveRules';
-import { LONG_TOAST_MS, toast } from '@/composables/useToast';
+import { toast } from '@/composables/useToast';
 
 export const AUTOSAVE_FAILING_WORDS = "Autosave isn't working in this browser. Save to a file to keep your work.";
 const KEPT_DOCUMENT = 'phosphor-autosave-document'; // in sessionStorage: this tab's document
@@ -94,7 +94,7 @@ export function useAutosave() {
     for (;;) {
       try {
         await writeLatest(record);
-        if (removedWork) toast("This browser's storage was full, so the oldest work kept here was removed.", LONG_TOAST_MS);
+        if (removedWork) toast("This browser's storage was full, so the oldest work kept here was removed.");
         removedWork = false;
         return;
       } catch (error) {
@@ -166,8 +166,8 @@ export function useAutosave() {
       unwritten = true;
       edited ||= real && !opening && project._document === doc; // opening isn't a change; if it wasn't stored, the next write is the opening again
       console.warn('Autosave failed', error);
-      if (removedWork) toast("This browser's storage was full, so the oldest work kept here was removed, and this still didn't fit. Save to a file to keep your work.", LONG_TOAST_MS);
-      else if (!warned) toast(AUTOSAVE_FAILING_WORDS, LONG_TOAST_MS);
+      if (removedWork) toast("This browser's storage was full, so the oldest work kept here was removed, and this still didn't fit. Save to a file to keep your work.");
+      else if (!warned) toast(AUTOSAVE_FAILING_WORDS);
       removedWork = false;
       warned = true;
     }
