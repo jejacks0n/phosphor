@@ -127,7 +127,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
       <div class="indicator" :style="indicatorStyle" aria-hidden="true"></div>
     </div>
     <label class="animate" :class="{ on: project.animate, off: !canSwitch }" :title="switchTitle">
-      <input type="checkbox" role="switch" aria-label="Animate" :checked="project.animate" :disabled="!canSwitch" @change="switchAnimate">
+      <input type="checkbox" role="switch" aria-label="Animate" :checked="project.animate" :disabled="!canSwitch && !project.animate" @change="switchAnimate">
       <span class="track" aria-hidden="true"></span>
       Animate
     </label>
