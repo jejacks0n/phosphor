@@ -81,16 +81,34 @@ export default class PaintLayer {
   colorCounts() {
     const counts = new Map();
     if (!this.hasPaint) return counts;
-    const ctx = ctx2d(newCanvas(this.cols, this.rows));
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(this.canvas, 0, 0, this.cols, this.rows);
-    const { data } = ctx.getImageData(0, 0, this.cols, this.rows);
+    const { data } = this.gridPixels();
     for (let i = 0; i < data.length; i += 4) {
       if (data[i + 3] < 250) continue;
       const hex = rgb2hex({ r: data[i], g: data[i + 1], b: data[i + 2] });
       counts.set(hex, (counts.get(hex) ?? 0) + 1);
     }
     return counts;
+  }
+
+  // The whole layer a grid pixel at a time, as the Renderer draws it: an ImageData cols x rows.
+  gridPixels() {
+    const ctx = ctx2d(newCanvas(this.cols, this.rows));
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.canvas, 0, 0, this.cols, this.rows);
+    return ctx.getImageData(0, 0, this.cols, this.rows);
+  }
+
+  // Replace the layer with gridPixels' kind of image, each grid pixel a whole block. Unlike load, never smooths.
+  loadGrid(image) {
+    const grid = newCanvas(image.width, image.height);
+    ctx2d(grid).putImageData(image, 0, 0);
+    const ctx = ctx2d(this.canvas);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(grid, 0, 0, image.width * this.scale, image.height * this.scale);
+    this.hasPaint = false;
+    for (let i = 3; i < image.data.length && !this.hasPaint; i += 4) this.hasPaint = !!image.data[i];
+    this.#changed(null);
   }
 
   // pixels: { x, y, r, g, b, alpha }[] in grid pixels. Paint builds up to `opacity`, then blends. With
@@ -456,10 +474,7 @@ export default class PaintLayer {
   // draws it (paint covers whole grid pixels).
   recheckPaint() {
     if (!this.hasPaint) return;
-    const ctx = ctx2d(newCanvas(this.cols, this.rows));
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(this.canvas, 0, 0, this.cols, this.rows);
-    const { data } = ctx.getImageData(0, 0, this.cols, this.rows);
+    const { data } = this.gridPixels();
     for (let i = 3; i < data.length; i += 4) if (data[i]) return;
     this.hasPaint = false;
   }
