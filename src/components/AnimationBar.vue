@@ -91,9 +91,9 @@ const setFps = (event) => {
     </label>
     <DropdownMenu label="Add frame" up :disabled="!!full">
       <template #trigger>
-        <!-- A piece of film with a plus in its frame. -->
+        <!-- A frame of film, on its side, with a plus at its corner. -->
         <svg class="add-frame" viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
-          <path d="M1.5 1h13v14h-13zM2.6 2.5h1.3v2H2.6zm0 4.5h1.3v2H2.6zm0 4.5h1.3v2H2.6zM12.1 2.5h1.3v2h-1.3zm0 4.5h1.3v2h-1.3zm0 4.5h1.3v2h-1.3zM5 2.5h6v11H5zM7.4 6.2h1.2v1.2h1.2v1.2H8.6v1.2H7.4V8.6H6.2V7.4h1.2z"/>
+          <path d="M0.5 6h11.5v9H0.5zM1.6 6.7h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zM1.6 13.3h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zM1.5 8.4h9.5v4.2H1.5zM12.55 0.8h1.5v1.45h1.45v1.5h-1.45v1.45h-1.5v-1.45H11.1v-1.5h1.45z"/>
         </svg>
       </template>
       <button v-for="[kind, label] in KINDS" :key="kind" @click="add(kind)">{{ label }}</button>
@@ -262,8 +262,8 @@ span.full {
 }
 
 svg.add-frame {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 /* As the toolbar's tool buttons: an icon, lit when it's on. */

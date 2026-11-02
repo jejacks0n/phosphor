@@ -188,7 +188,7 @@ test('Ghost toggles', async ({ page }) => {
   expect(await store(page, 'workspace', (w) => w.ghost)).toBe(false);
 });
 
-test('Add frame is a film frame with a plus, and opens the three kinds', async ({ page }) => {
+test('Add frame is a frame of film with a plus, and opens the three kinds', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
   const add = bar(page).getByRole('button', { name: 'Add frame' });
