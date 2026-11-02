@@ -9,7 +9,7 @@ import { fileStem, timestamped } from '@/document/projectIO';
 // Save Project and the two exports: the filename (it renames the document; every browser downloads
 // with it, Safari included), and for .ans the characters CP437 can't hold, with what's written instead.
 const props = defineProps({
-  ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'ansimation'
+  ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'ansimation' | 'cast'
 });
 const emit = defineEmits(['close']);
 const project = useProjectStore();
@@ -18,6 +18,7 @@ const FORMATS = {
   phosphor: { title: 'Save project', sub: 'Everything, to open again in Phosphor: the image, both layers and the settings.', action: 'Save', busy: 'Saving…' },
   ans: { title: 'Export .ans', sub: 'Classic ANSI art: CP437 characters with ANSI colors, for art viewers and BBS-era tools.', action: 'Export', busy: 'Exporting…' },
   ansimation: { title: 'Export animated .ans', sub: 'An ANSiMation: the art draws itself frame by frame in a viewer or terminal. Timing is lost: its speed depends on the viewer.', action: 'Export', busy: 'Exporting…', ext: 'ans', animated: true },
+  cast: { title: 'Export .cast', sub: 'An asciinema recording, for terminals and the web, with the exact timing and every character.', action: 'Export', busy: 'Exporting…', animated: true },
   utf8ans: { title: 'Export .utf8ans', sub: 'ANSI art as UTF-8 text with ANSI colors, for modern terminals. Every character is kept.', action: 'Export', busy: 'Exporting…' },
 };
 const format = computed(() => FORMATS[props.ext]);

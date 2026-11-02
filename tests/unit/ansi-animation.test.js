@@ -77,6 +77,15 @@ test('a wide character’s trail writes nothing in UTF-8, and a change to either
   expect(text(stream([first, second]))).toContain('\x1b[1;1H字');
 });
 
+test('a change to only a wide character’s second column still writes it whole', () => {
+  const lead = cell('漢', '#ffffff', '#000000', 'lead');
+  const first = grid(lead, cell('漢', '#ffffff', '#000000', 'trail'), 'c', 'd', 'e', 'f', 'g', 'h');
+  const second = grid(lead, cell('漢', '#ffffff', '#ff0000', 'trail'), 'c', 'd', 'e', 'f', 'g', 'h');
+  const added = text(stream([first, second])).slice(text(stream([first])).length - '\x1b[0m'.length, -'\x1b[0m'.length);
+  expect(added.startsWith('\x1b[1;1H')).toBe(true);
+  expect(added).toContain('漢');
+});
+
 test('a wide lead whose colors match is two spaces, as in a still', () => {
   const lead = cell('漢', '#000000', '#000000', 'lead'), trail = cell('漢', '#000000', '#000000', 'trail');
   const { grid: shown } = replay(stream([grid(lead, trail, 'c', 'd', 'e', 'f', 'g', 'h')]), COLS, ROWS);

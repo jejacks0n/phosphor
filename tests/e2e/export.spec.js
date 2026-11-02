@@ -88,3 +88,20 @@ test('a character on a frame not showing is listed before an animated .ans is wr
   await page.getByRole('button', { name: 'Export animated .ans' }).click();
   await expect(page.getByRole('dialog').getByRole('list', { name: 'Replacements' })).toContainText('漢');
 });
+
+test('a .cast download holds a frame per event at its time', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('switch', { name: 'Animate' }).check();
+  const bar = page.getByRole('toolbar', { name: 'Animation' });
+  await bar.getByRole('button', { name: '+ Frame' }).click();
+  await page.getByRole('button', { name: /^Wipe/ }).click();
+  await bar.getByRole('spinbutton', { name: 'Hold' }).fill('2');
+  await bar.getByRole('spinbutton', { name: 'Hold' }).blur();
+  await page.getByRole('button', { name: 'Export .cast' }).click();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('button', { name: 'Export' }).click()]);
+  expect(download.suggestedFilename()).toMatch(/\.cast$/);
+  const lines = (await readFile(await download.path(), 'utf8')).trimEnd().split('\n').map((line) => JSON.parse(line));
+  const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2) }));
+  expect(lines[0]).toMatchObject({ version: 2, width: cols, height: rows });
+  expect(lines.slice(1).map(([t]) => t)).toEqual([0, 0.125, 2.125]);
+});

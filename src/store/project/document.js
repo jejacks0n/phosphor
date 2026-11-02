@@ -2,9 +2,10 @@
 // exporting .ans and .utf8ans, the filename, and what counts as saved.
 import { EMPTY_BASE } from '@/document/baseRecords.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
-import { serializeFrames } from '@/document/frames.js';
+import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
+import { castText } from '@/lib/CastFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
@@ -287,15 +288,19 @@ export const documentActions = {
     return cells;
   },
 
-  // The animated formats, written from every frame: 'ansimation' (.ans).
+  // The animated formats, written from every frame: 'ansimation' (.ans) or 'cast'.
   async exportAnimation(format, { filename = this.filename } = {}) {
-    const frames = await this.animationCells();
-    const bytes = AnsiFile.animationBytes(this.cols, charRowsOf(this.rows), frames, {
-      colorMode: this.quantize,
-      sauce: this.sauceFields(),
-    });
+    const frames = await this.animationCells(), lines = charRowsOf(this.rows);
+    const durations = this.frames.map((frame) => frameDuration(frame, this.fps));
+    let blob, ext = format;
+    if (format === 'ansimation') {
+      ext = 'ans';
+      blob = new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { colorMode: this.quantize, sauce: this.sauceFields() })], { type: 'application/octet-stream' });
+    } else {
+      blob = new Blob([castText(this.cols, lines, frames, durations.map((ms) => ms / 1000), { colorMode: this.quantize })], { type: 'application/x-asciicast' });
+    }
     this.rename(filename);
-    downloadBlob(new Blob([bytes], { type: 'application/octet-stream' }), `${this.filename}.ans`);
+    downloadBlob(blob, `${this.filename}.${ext}`);
   },
 
   // What an art file's SAUCE record says, from the SAUCE tab.
