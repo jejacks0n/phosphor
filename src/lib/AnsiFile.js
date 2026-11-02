@@ -66,6 +66,10 @@ export class CellWriter {
     this.#active = { fg: { hex: null }, bg: { hex: null }, blink: false, bold: false };
   }
 
+  clear() {
+    this.output.push(27, 91, 50, 74);
+  }
+
   moveTo(col, row) {
     this.output.pushAll(toBytes(`\x1b[${row + 1};${col + 1}H`));
   }
@@ -282,7 +286,7 @@ export class AnsiFile {
   static animationBytes(cols, rows, frames, { utf8 = false, colorMode = 'none', sauce = null } = {}) {
     const writer = new CellWriter({ utf8, colorMode });
     writer.sgr(0);
-    writer.output.push(27, 91, 50, 74);
+    writer.clear();
     frames.forEach((frame, i) => frameDiffBytes(frames[i - 1] ?? null, frame, cols, writer));
     writer.sgr(0);
     return new AnsiFile(cols, rows, null).#appendSauce(writer.output.bytes, { ...sauce, fileType: 2 });
