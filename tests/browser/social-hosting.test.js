@@ -99,7 +99,7 @@ test('each watcher gets the room, the latest messages, then art deep-equal to th
   const r = await room();
   for (const peer of ['p1', 'p2']) {
     const log = r.log[peer];
-    await expect.poll(() => log.views.length, PATIENT).toBe(1);
+    await expect.poll(() => log.views.length && log.arts.length, PATIENT).toBe(1);   // art comes on a frame, which can be after the view
     expect(log.states).toEqual(['connecting', 'live']);
     expect(log.rooms).toEqual([{ name: 'Night shift', welcome: 'Hi' }]);
     expect(log.arts).toEqual([art()]);

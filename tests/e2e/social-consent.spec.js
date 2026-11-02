@@ -169,28 +169,24 @@ test('a new version of the policies asks again', async ({ page, context }) => {
   await nothingRan(page, server, seen);
 });
 
-test('each link waits for the answer, then goes on to where it was going', async ({ page }) => {
-  const server = await fakeServer(page);
-  const steps = [
-    [`/?room=${ROOM_ID}`, () => expect(asked(page)).toBeVisible()],
-    [`/#/pixel?room=${ROOM_ID}`, () => expect(asked(page)).toBeVisible()],
-    ['/?reset=tok', () => expect(shown(page, 'reset')).toBeVisible()],
-    ['/?verified=1', () => expect(page.locator('.people-tab')).toContainText('Your email is confirmed')],
-    ['/?social=two-factor', () => expect(shown(page, 'two-factor')).toBeVisible()],
-    ['/#/social/sign-in', () => expect(shown(page, 'sign-in')).toBeVisible()],
-  ];
-  for (const [address, there] of steps) {
-    await page.evaluate((key) => localStorage.removeItem(key), CONSENT_KEY).catch(() => {});
-    await page.goto('about:blank');   // first: a request from the page being left can still land
-    server.requests.length = 0;
+// Each its own test: a page load is slow on CI, and six of them don't fit one test's time.
+for (const [address, there] of [
+  [`/?room=${ROOM_ID}`, (page) => expect(asked(page)).toBeVisible()],
+  [`/#/pixel?room=${ROOM_ID}`, (page) => expect(asked(page)).toBeVisible()],
+  ['/?reset=tok', (page) => expect(shown(page, 'reset')).toBeVisible()],
+  ['/?verified=1', (page) => expect(page.locator('.people-tab')).toContainText('Your email is confirmed')],
+  ['/?social=two-factor', (page) => expect(shown(page, 'two-factor')).toBeVisible()],
+  ['/#/social/sign-in', (page) => expect(shown(page, 'sign-in')).toBeVisible()],
+]) {
+  test(`${address} waits for the answer, then goes on to where it was going`, async ({ page }) => {
+    const server = await fakeServer(page);
     await page.goto(address);
     await expect(consent(page)).toBeVisible();
     expect(server.requests).toEqual([]);
     await accepted(page);
-    await there();
-    await page.evaluate((key) => localStorage.removeItem(key), CONSENT_KEY);
-  }
-});
+    await there(page);
+  });
+}
 
 test('a page you can\'t arrive at still goes where it would: Start a room for a guest is the lobby', async ({ page }) => {
   await fakeServer(page);
