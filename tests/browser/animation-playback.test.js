@@ -271,3 +271,70 @@ test('the PIXEL view plays output and overlay in place, without changing tab', a
   host.remove();
 });
 
+
+test('the PIXEL view dims what’s inherited on a Blank frame, drawn or typed, and plays and exports it solid', async () => {
+  const { project, workspace } = await animated();
+  const playback = usePlayback();
+  workspace.editorTab = 'input';
+  workspace.ansiOverlay = 100;
+  project.paintStroke([{ x: 8, y: 8, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  type(project, 1, 1, 'A');
+  project.addFrame('blank');
+  project.paintStroke([{ x: 10, y: 10, alpha: 1 }], '#00ff00');
+  project.commitEdit();
+
+  const host = document.createElement('div');
+  host.style.cssText = 'width:400px;height:400px;position:fixed;left:0;top:0';
+  document.body.append(host);
+  const app = createApp({ render: () => h(InputEditor) });
+  app.use(getActivePinia());
+  app.mount(host);
+  await nextTick();
+  await settle(project);
+  const canvas = host.querySelector('canvas');
+  const px = (x, y) => {
+    const c = canvas.getContext('2d'), { width, height } = canvas;
+    return [...c.getImageData(Math.floor((x + 0.5) * (width / 20)), Math.floor((y + 0.5) * (height / 20)), 1, 1).data].slice(0, 3);
+  };
+  const solidRed = [255, 0, 0], solidGreen = [0, 255, 0];
+  expect(px(10, 10)).toEqual(solidGreen); // this frame's own
+  const dimmed = px(8, 8);
+  expect(dimmed).not.toEqual(solidRed);
+  const under = project.renderer.underCell(8, 4, project.processParams, project.renderedCells).fg;
+  expect(Math.abs(dimmed[0] - Math.round(under.r + (255 - under.r) * 0.35))).toBeLessThanOrEqual(2);
+  const typedBefore = px(1, 2);
+
+  workspace.ghost = false;
+  await settle(project);
+  expect(px(8, 8)).toEqual(solidRed);
+  expect(px(1, 2)).not.toEqual(typedBefore);
+
+  workspace.ghost = true;
+  await settle(project);
+  expect(px(8, 8)).toEqual(dimmed);
+  expect(project.renderer.outputCanvas.getContext('2d').getImageData(8, 8, 1, 1).data[0]).toBe(255); // the art itself is solid
+
+  // Drawing over it: solid, at once.
+  project.paintStroke([{ x: 8, y: 8, alpha: 1 }], '#0000ff');
+  project.commitEdit();
+  await settle(project);
+  expect(px(8, 8)).toEqual([0, 0, 255]);
+  project.undo();
+  await settle(project);
+  expect(px(8, 8)).toEqual(dimmed);
+
+  project.setFps(1);
+  await playback.play();
+  await settle(project);
+  expect(px(8, 8)).toEqual(solidRed);
+  playback.pause();
+  await settle(project);
+  expect(px(8, 8)).toEqual(dimmed);
+
+  project.setAnimate(false);
+  await settle(project);
+  expect(px(8, 8)).toEqual(solidRed);
+  app.unmount();
+  host.remove();
+});

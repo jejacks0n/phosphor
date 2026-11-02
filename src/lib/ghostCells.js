@@ -10,7 +10,8 @@ const dim = (color, base, strength) => {
 };
 
 // A cell mixed toward the cell under it, so a ghost over a picture sits on the picture.
-export const ghostCell = (cell, baseCell, strength = 0.35) => ({ ...cell, fg: dim(cell.fg, baseCell.fg, strength), bg: dim(cell.bg, baseCell.bg, strength) });
+export const GHOST_STRENGTH = 0.35;
+export const ghostCell = (cell, baseCell, strength = GHOST_STRENGTH) => ({ ...cell, fg: dim(cell.fg, baseCell.fg, strength), bg: dim(cell.bg, baseCell.bg, strength) });
 
 // cells with those isGhost(i) says ghosted over baseOf(i), or the same array when none are. memo: a WeakMap that
 // keeps a cell's ghost the same object from one call to the next, so what draws them redraws only what changed.
@@ -26,4 +27,22 @@ export function ghostedCells(cells, baseOf, isGhost, memo = new WeakMap()) {
     out[i] = ghost;
   }
   return out ?? cells;
+}
+
+// The PIXEL view's ghost: what's under each ghost cell (indexes) on both its halves, opaque enough that drawing it over
+// the art leaves the same mix ghostCell makes. veil and base are RGBA, a pixel a grid pixel, cols wide.
+export function veilPixels(veil, base, indexes, cols, strength = GHOST_STRENGTH) {
+  const alpha = Math.round(255 * (1 - strength));
+  const put = (x, y) => {
+    const at = 4 * (y * cols + x);
+    veil[at] = base[at];
+    veil[at + 1] = base[at + 1];
+    veil[at + 2] = base[at + 2];
+    veil[at + 3] = alpha;
+  };
+  for (const i of indexes) {
+    const col = i % cols, row = (i - col) / cols;
+    put(col, 2 * row);
+    put(col, 2 * row + 1);
+  }
 }
