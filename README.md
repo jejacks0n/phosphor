@@ -2,7 +2,7 @@
 
 You can try the live app at [phosphor.work](https://phosphor.work).
 
-Phosphor turns an image into ANSI art in your browser, then lets you keep working on it: paint, type, select and move cells, and export `.ans` (CP437) or `.utf8ans`, both with a [SAUCE](https://www.acid.org/info/sauce/sauce.htm) record. You can also start from a blank canvas.
+Phosphor turns an image into ANSI art in your browser, then lets you keep working on it: paint, type, select and move cells, animate it frame by frame, and export `.ans` (CP437) or `.utf8ans`, both with a [SAUCE](https://www.acid.org/info/sauce/sauce.htm) record, or a movie as an animated `.ans` or `.utf8ans`, a `.cast` or a `.gif`. You can also start from a blank canvas.
 
 [![Phosphor screenshot](screenshot.png)](https://phosphor.work)
 
@@ -16,7 +16,9 @@ Then you draw. There are two layers: the base layer is the converted picture, an
 
 Typing works the way a terminal does. Chinese, Japanese and Korean characters and most emoji take two columns. F1 to F12 type from a palette of twelve characters (box drawing, blocks, shades, arrows and more), and you can switch palettes or make your own. Anything CP437 doesn't have still saves in `.utf8ans`.
 
-Press **?** in the app for the keyboard shortcuts. The [layer guide](docs/layers.md) and the [character guide](docs/characters.md) go into the details.
+Turn on **Animate** and the document becomes a movie: a row of frames, each drawn with the same tools, played back in place over the same base layer. A new frame can be Blank (earlier frames show through as a dimmed ghost to draw over, and a fix on an earlier frame carries forward), a Duplicate of the one before, or a Wipe that starts clean. Each frame can hold for its own time, playback loops, and undo works across frames.
+
+Press **?** in the app for the keyboard shortcuts. The [layer guide](docs/layers.md), the [character guide](docs/characters.md) and the [animation guide](docs/animation.md) go into the details.
 
 ## Saving
 
@@ -24,7 +26,14 @@ Press **?** in the app for the keyboard shortcuts. The [layer guide](docs/layers
 - **`.ans`** is CP437 with ANSI color codes, for classic viewers. Phosphor writes a character CP437 doesn't have as its closest lookalike (or `?`) and lists every one before you export.
 - **`.utf8ans`** is UTF-8, for modern terminals, and matches what you see character for character.
 
-Both exports end with a SAUCE record: the title, author, group and comments you fill in on the SAUCE tab, plus the date, size and font.
+With more than one frame, those two write the frame showing, and four more save the whole movie:
+
+- **Animated `.ans`** (an ANSiMation) draws itself frame by frame in a viewer or terminal. It has no clock, so its speed depends on the viewer.
+- **Animated `.utf8ans`** is the same in UTF-8, for a modern terminal, and keeps every character. Play it slowed down, with something like `pv -qL 20000 art.utf8ans`.
+- **`.cast`** is an [asciinema](https://asciinema.org) recording, with exact timing and every character.
+- **`.gif`** is a looping picture of the art in its font, for anywhere an image goes.
+
+The `.ans` and `.utf8ans` exports, animated or not, end with a SAUCE record: the title, author, group and comments you fill in on the SAUCE tab, plus the date, size and font.
 
 Your settings are kept in your browser between visits.
 
@@ -38,6 +47,10 @@ Phosphor shrinks the picture to the grid, two pixels per character cell: the top
 |---|---|---|---|
 | `.ans` | CGA (16 colors), or 256 / 24-bit color | CP437 | CR LF after each row when the art is narrower than 80 columns |
 | `.utf8ans` | 24-bit (CGA and VGA as 256-color codes) | UTF-8 | CR LF after each row |
+| Animated `.ans` | As `.ans` | CP437 | Moves the cursor instead of scrolling |
+| Animated `.utf8ans` | As `.utf8ans` | UTF-8 | Moves the cursor instead of scrolling |
+| `.cast` | As `.utf8ans` | UTF-8 | asciinema v2, timed per frame |
+| `.gif` | 256, one palette for the whole movie | Drawn in the art's font | — |
 
 Many older ANSI viewers only show 16 colors. To view or edit 256-color and 24-bit `.ans` files, try the [Advanced Color fork of Moebius](https://github.com/christiansacks/moebius).
 
