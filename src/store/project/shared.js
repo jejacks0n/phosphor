@@ -1,6 +1,9 @@
 // Constants and small helpers the project store's action groups (this folder) and its getters share.
 import { getSetting, SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS } from '@/store/settings.js';
+import { markRaw } from 'vue';
+import { Ledger } from '@/document/ledger.js';
 import { ctx2d } from '@/lib/Canvas.js';
+import { MOST_CHANGE_BYTES } from '@/social/wire.js';
 
 export const DEFAULT_COLS = getSetting('cols').default;
 export const DEFAULT_ROWS = getSetting('rows').default;
@@ -26,6 +29,13 @@ export const randomId = () => crypto.randomUUID?.()
 export const runsPatch = (runs) => ({ tiles: runs.map(([x, y, w]) => ({ x, y, w, h: 1 })) });
 // Who the ledger knows someone drawing alone as.
 export const ALONE = 'me';
+// A ledger for someone drawing alone, reading the store project() gives.
+export const newLedger = (project) => markRaw(new Ledger({
+  readCell: (key) => project().readCell(key),
+  readTile: (x, y) => project().readTile(x, y),
+  numbering: false,
+  mostBytes: MOST_CHANGE_BYTES,
+}));
 // A color ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
 export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
 
