@@ -410,8 +410,8 @@ const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasTex
 
 // The host live with a room made through Start a room, with `image` open and the form filled as asked;
 // the host's fake server comes back.
-export async function goLive(host, room, { image = 'images/gradient.png', welcome = '', password = null, allowGuests = true } = {}) {
-  const server = await fakeServer(host, { me: member(), room });
+export async function goLive(host, room, { image = 'images/gradient.png', welcome = '', password = null, allowGuests = true, me = member() } = {}) {
+  const server = await fakeServer(host, { me, room });
   await openApp(host, image);
   await tab(host, 'SOCIAL').click();
   await host.getByRole('button', { name: 'Start a room' }).click();

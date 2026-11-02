@@ -30,7 +30,7 @@ const marks = computed(() => {
     const arrow = x + unit.x <= 0 ? '←' : x >= width ? '→' : y + unit.y * 2 <= 0 ? '↑' : y >= height ? '↓' : null;   // any of the cell in view is in view
     const across = x > width / 2 ? -100 : 0, down = y > height / 2 ? -100 : 0;
     return {
-      sub, name, arrow, x, y,
+      sub, name, arrow, x, y, tagSide: { 'tag-left': x > width / 2, 'tag-up': y > height / 2 },   // the name goes toward the view's middle, so it isn't cut off at an edge
       style: arrow
         ? { left: `${clamp(x, width)}px`, top: `${clamp(y, height)}px`, transform: `translate(${across}%, ${down}%)` }
         : { left: `${x}px`, top: `${y}px`, '--cursor': nameColor(name), width: `${unit.x}px`, height: `${unit.y * 2}px` },
@@ -49,7 +49,7 @@ function goTo({ x, y }) {
       <span aria-hidden="true">{{ mark.arrow }}</span>
       <UserName :name="mark.name" />
     </button>
-    <div v-else class="artist-cursor" :style="mark.style">
+    <div v-else class="artist-cursor" :class="mark.tagSide" :style="mark.style">
       <UserName class="tag" :name="mark.name" />
     </div>
   </template>
@@ -76,6 +76,14 @@ span.tag {
   top: 100%;
   padding: 0 4px;
   border-radius: 0 4px 4px 4px;
+}
+div.tag-left span.tag {
+  left: auto;
+  right: 100%;
+}
+div.tag-up span.tag {
+  top: auto;
+  bottom: 100%;
 }
 button.off-view,
 button.off-view:hover,

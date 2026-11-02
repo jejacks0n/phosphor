@@ -261,6 +261,12 @@ h2 {
   font-weight: 600;
   color: var(--text);
 }
+p.host span.person {
+  display: block;   /* the name's own line when it won't fit after "hosted by": its cell stays beside it */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 p.host {
   margin: 5px 0 0;
   overflow-wrap: anywhere;
