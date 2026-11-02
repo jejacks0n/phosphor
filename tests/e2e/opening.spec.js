@@ -48,3 +48,21 @@ test('a project named ART.PHOSPHOR (upper-case extension) opens', async ({ page 
   expect(alerts).toEqual([]);
   await settled(page);
 });
+
+test('on a computer the file picker offers images and .phosphor files', async ({ page }) => {
+  await page.goto('/');
+  await expect(imageInput(page)).toHaveAttribute('accept', 'image/*,.phosphor');
+});
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  // A phone's picker greys out what it can't name from the accept list, and it can't name .phosphor.
+  test('the file picker lets a .phosphor file be picked, and it opens', async ({ page }) => {
+    await page.goto('/');
+    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+    await expect(imageInput(page)).not.toHaveAttribute('accept');
+    await imageInput(page).setInputFiles(fixture('projects/animated.phosphor'));
+    await expect.poll(() => store(page, 'project', (p) => p.frames.length)).toBeGreaterThan(1);
+  });
+});
