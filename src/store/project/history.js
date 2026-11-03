@@ -7,6 +7,7 @@
 import { markRaw, toRaw } from 'vue';
 import { parseKey } from '@/document/editCells.js';
 import { keepDrawn } from '@/document/frames.js';
+import { carriesError } from '@/lib/CharResolver.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { ALONE, bytesHeld, newLedger, randomId, runsPatch } from '@/store/project/shared.js';
 
@@ -50,9 +51,10 @@ export const historyActions = {
     const patch = this.paintLayer?.endStroke();
     const basePatch = this.baseLayer?.endStroke();
     this.hasPaint = this.paintLayer?.hasPaint ?? false; // an erase may have left none
-    // The Number palette, held still through the stroke, is picked again: when that changed it, every
-    // cell was rebuilt; when not, only the stroke's cells (shown in its own colors) need catching up.
-    if (stroke && this.quantize === 'count' && !this.composite()) {
+    // The Number palette, held still through the stroke, is picked again, and Best match's
+    // Floyd–Steinberg carries the stroke's change to the base on: when that changed anything else,
+    // every cell was rebuilt; when not, only the stroke's cells (shown in its own colors) need catching up.
+    if (stroke && (this.quantize === 'count' || carriesError(this.processParams)) && !this.composite()) {
       const pixels = changedPixels(this.cols, this.rows, [[patch, this.paintLayer], [basePatch, this.baseLayer]], [[stroke.baseRecords.pins, this.baseRecords.pins]], stroke.keys);
       if (pixels) this.recompose(pixels);
       else this.rebuildCells();

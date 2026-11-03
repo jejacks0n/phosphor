@@ -1,7 +1,7 @@
 // Choosing a cell's character: the mode the settings come to, and what it asks of the pipeline.
 // No DOM and no translations here: the unit tests run it in Node.
 import { BAYER, nudgeSpread } from './Dither.js';
-import { charRowsOf } from './Cells.js';
+import { charRowsOf, colorOf } from './Cells.js';
 
 // How a cell's character is picked (Cells.js): ANSI picks at random, or Best match / By shape;
 // Color ASCII by intensity or By shape; ASCII by brightness or By shape. Anything unknown (an old
@@ -131,21 +131,28 @@ function fit(t, b, a, c, light, fg, bg) {
 
 // A matcher for the palette (null: any color), the glyphs ({ char, ink: [top, bottom] }), Solids
 // (0..1: how much closer another choice must be than one plain color to be taken over it, up to 64
-// levels a channel) and Pattern light (0..1). The last one made is kept while those stay the same.
+// levels a channel) and Pattern light (0..1). Its mix table and lookups (table) are kept while the
+// palette, glyphs and Pattern light stay the same, so a Solids step doesn't make them again.
+// match(t, b) returns one object, overwritten by the next call: copy what you keep.
 let last = null;
 export function bestMatcher({ palette, glyphs, solids = 0, light = 0 }) {
   const key = glyphs.map(({ char, ink }) => char + ink.join()).join('|');
-  if (last?.palette === palette && last.key === key && last.solids === solids && last.light === light) return last.matcher;
-  last = { palette, key, solids, light, matcher: makeMatcher(palette?.length ? palette : null, glyphs, solids, light) };
+  if (!(last?.palette === palette && last.key === key && last.light === light)) {
+    last = { palette, key, light, core: makeMatcher(palette?.length ? palette : null, glyphs, light), solids: null, matcher: null };
+  }
+  if (last.solids !== solids) {
+    const { core } = last, tolerance = 6 * (64 * solids) ** 2;
+    last.solids = solids;
+    last.matcher = { palette: core.palette, table: core.table, match: (t, b) => core.match(t, b, tolerance) };
+  }
   return last.matcher;
 }
 
-function makeMatcher(palette, glyphs, solids, light) {
+function makeMatcher(palette, glyphs, light) {
   const chars = new Set(glyphs.map(({ char }) => char));
   const has = (char) => chars.has(char);
   // A solid (fg = bg) needs no █ in the set: it's written as █ if the set has it, else ▄, else the first.
   const solidChar = has('█') ? '█' : has('▄') ? '▄' : glyphs[0]?.char ?? '▄';
-  const tolerance = 6 * (64 * solids) ** 2;
   // A glyph with the same ink as one before it (a repeat, ▗ after ▖) shows the same and loses the
   // tie: it's left out.
   const inks = new Set(), flat = [], twoInk = [];
@@ -162,7 +169,7 @@ function makeMatcher(palette, glyphs, solids, light) {
   const res = { char: '', fg: null, bg: null, top: new Float64Array(3), bottom: new Float64Array(3) };
   const top = new Float64Array(3), bottom = new Float64Array(3), fgv = new Float64Array(3), bgv = new Float64Array(3);
   const bestFg = new Float64Array(3), bestBg = new Float64Array(3);
-  const color = (v) => ({ r: v[0], g: v[1], b: v[2] });
+  const color = (v) => colorOf({ r: v[0], g: v[1], b: v[2] });
   const nearest = palette && nearestOf(palette);
   const near = (v) => nearest(Math.round(v[0]), Math.round(v[1]), Math.round(v[2]));
 
@@ -187,7 +194,7 @@ function makeMatcher(palette, glyphs, solids, light) {
   };
   const mean = new Float64Array(3), s = new Float64Array(3);
 
-  function match(t, b) {
+  function match(t, b, tolerance) {
     bestErr = Infinity; bestGi = Infinity;
     for (let k = 0; k < 3; k++) mean[k] = (t[k] + b[k]) / 2;
     if (mixes) {
@@ -226,7 +233,7 @@ function makeMatcher(palette, glyphs, solids, light) {
     }
     return res;
   }
-  return { palette, match };
+  return { palette, table: mixes, match };
 }
 
 // Each cell's two halves (raw: cols x rows RGBA, kept within 0..255) in order, with Dither's error
@@ -280,9 +287,9 @@ export function walkCells(raw, cols, rows, { strength = 0, style = 'floyd', area
 }
 
 // Best match over the grid: a cell ({ char, fg, bg }) for each of charRowsOf(rows) lines of cols,
-// Dither's error carried or nudged as walkCells does. With area, the cells outside it are left out.
-export function resolveGrid(raw, cols, rows, matcher, { strength = 0, style = 'floyd', area = null, carried = null } = {}) {
-  const cells = new Array(cols * charRowsOf(rows));
+// Dither's error carried or nudged as walkCells does. With area, the cells outside it are left out
+// (or, given cells, left as they are there). fg and bg are the palette's entries, or Colors without one.
+export function resolveGrid(raw, cols, rows, matcher, { strength = 0, style = 'floyd', area = null, carried = null, cells = new Array(cols * charRowsOf(rows)) } = {}) {
   const spread = nudgeSpread(matcher.palette);
   const out = walkCells(raw, cols, rows, { strength, style, area, carried, spread }, (i, col, line, t, b) => {
     const r = matcher.match(t, b);

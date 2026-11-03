@@ -138,11 +138,12 @@ export const renderingActions = {
   // Recomposite the output after the paint or base pixels changed. When that rebalanced the Number
   // palette, every cell's colors can change: the cells are rebuilt from the output (as a full render
   // would, without rerunning the pipeline). While an edit is open (a stroke, a shape) the Number
-  // palette holds still and the paint shows in its own colors; commitEdit catches up. True when
-  // the palette changed. rect: the grid pixels that changed ({ x, y, w, h }), when an edit knows them.
+  // palette holds still and the paint shows in its own colors, and Best match with Floyd–Steinberg
+  // carries a change to the base no further than the edit's cells; commitEdit catches up. True when
+  // every cell was rebuilt. rect: the grid pixels that changed ({ x, y, w, h }), when an edit knows them.
   composite({ rect = null } = {}) {
     const hold = !!this._stroke && this.quantize === 'count';
-    const changed = this.renderer.composite(this.paintLayer, this.processParams, { hold, rect });
+    const changed = this.renderer.composite(this.paintLayer, this.processParams, { hold, rect, open: !!this._stroke });
     if (changed) this.rebuildCells();
     return changed;
   },

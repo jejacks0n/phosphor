@@ -64,6 +64,16 @@ test('Solids: a solid within the tolerance wins', () => {
   assert.equal(at(0.25), '█');
 });
 
+test('a Solids step keeps the mix table (a slider step stays live); Pattern light makes it again', () => {
+  const glyphs = g('░', '▒', '▓', '█');
+  const at = (solids, light = 0) => bestMatcher({ palette: CGA, glyphs, solids, light });
+  const table = at(0).table;
+  assert.ok(table);
+  assert.equal(at(0.5).table, table);
+  assert.equal(at(0).table, table);
+  assert.notEqual(at(0, 1).table, table);
+});
+
 test('Pattern light: in linear light a lighter shade reads as the same gray', () => {
   const bw = [CGA[0], CGA[15]];
   const at = (light) => pick(bestMatcher({ palette: bw, glyphs: g('░', '▒', '█'), solids: 0, light }).match([128, 128, 128], [128, 128, 128]))[0];

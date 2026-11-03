@@ -47,13 +47,13 @@ export function cellAt(x, y, cols, rows) {
   return col >= 0 && row >= 0 && col < cols && row < charRowsOf(rows) ? { col, row } : null;
 }
 
-const colorOf = (p) => ({ r: p.r, g: p.g, b: p.b, hex: rgb2hex(p), c: p.c !== undefined ? p.c : [p.r, p.g, p.b] });
+export const colorOf = (p) => ({ r: p.r, g: p.g, b: p.b, hex: rgb2hex(p), c: p.c !== undefined ? p.c : [p.r, p.g, p.b] });
 
 // The characters a charset generates from: whole characters (an astral one isn't two UTF-16
 // halves), one column wide only so generated cells never overlap, ▄ when nothing's left. Cached for
 // the last charset: it's asked once per cell.
 let lastCharset = null, lastGlyphs = null;
-function glyphsOf(charset) {
+export function glyphsOf(charset) {
   if (charset !== lastCharset) {
     const glyphs = graphemes(charset || '').filter(c => cellWidth(c) === 1);
     lastCharset = charset;
@@ -67,8 +67,10 @@ function glyphsOf(charset) {
 // pure color is as heavy as white.
 const weightOf = (p, charMode) => (charMode === 'intensity' ? Math.max(p.r, p.g, p.b) / 255 : rgb2gray(p));
 
-// Whether a cell's character comes from the seed (until Best match and By shape resolve it themselves).
-export const keepsSeed = (charMode) => charMode === 'random' || charMode === 'best' || charMode === 'shape';
+// Whether a cell's character comes from the seed: Random, and Best match where the Renderer hasn't
+// resolved the cell (a pinned one shows its pin). ANSI's By shape too, until it resolves cells itself;
+// the ASCII styles' By shape picks by weight until then.
+export const keepsSeed = (charMode, renderStyle) => charMode === 'random' || charMode === 'best' || (charMode === 'shape' && renderStyle === 'ansi');
 
 // The character for a cell's two pixels by their weight (charMode 'brightness' or 'intensity'),
 // lightest first in the set.
@@ -148,7 +150,7 @@ function buildCellsWith(pixelAt, cols, rows, { charset, charMode, renderStyle, s
     for (let col = 0; col < cols; col++) {
       const top = pixelAt(2 * row * cols + col, 0);
       const bottom = pixelAt((2 * row + 1) * cols + col, 1) || top;
-      const char = keepsSeed(charMode) ? chars[cellRandom(h, col, row) % chars.length] : weightedChar(top, bottom, charset, charMode);
+      const char = keepsSeed(charMode, renderStyle) ? chars[cellRandom(h, col, row) % chars.length] : weightedChar(top, bottom, charset, charMode);
       cells[cellIndex(col, row, cols)] = buildCell(top, bottom, char, renderStyle, color);
     }
   }
