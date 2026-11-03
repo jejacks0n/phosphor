@@ -51,6 +51,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
+    clipboardId: null,       // the last copy's id, in the block it put on the system clipboard (clipboard.js)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     ansiViewSize: { cols: 0, rows: 0 }, // how many whole cells from there are on screen (AnsiEditor)
     ansiViewZoom: 1,         // the ansiZoom those cells were measured at (AnsiEditor)
