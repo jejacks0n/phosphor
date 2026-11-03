@@ -40,9 +40,9 @@ export default class Renderer {
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
   #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
   #dithered = null;     // { palette, key, raw, data }: #baseData dithered to the palette (raw: the #baseData it's from), while Dither is on
-  #resolved = null;     // { key, palette, raw, cells, carried }: the base resolved to cells by Best match or By shape (raw: the #baseData or samples they're from)
+  #resolved = null;     // the base resolved to cells: { key, palette, raw, cells, carried } by Best match (raw: the #baseData they're from), { key, palette, cells, stale } by By shape
   #picture = null;      // By shape's samples of the picture alone (processImage), from the last render
-  #samples = null;      // { picture, layer, key, data }: #picture with the base layer's own pixels over it (#shapeSamples)
+  #samples = null;      // { picture, layer, key, version, data }: #picture with the base layer's own pixels over it (#shapeSamples)
   #baseSnapped = null;  // { from, palette, data }: #baseData (from) snapped to the palette, for basePixels under Best match
   #fontReady = false;   // the reference font has loaded: Best match and By shape can measure glyphs
   #glyphs = null;       // { chars, glyphs }: the set's glyphs with their inks and masks in the reference font
@@ -229,64 +229,86 @@ export default class Renderer {
 
   // Best match and By shape: the base (before the palette snap) resolved to cells, each the glyph,
   // fg and bg that come closest to it, with Dither's error carried or nudged by the resolver
-  // (#ditherUnder dithers nothing then). Best match compares each cell's two halves (#baseData), By
-  // shape its samples (#shapeSamples). Worked out again whole when the settings, the grid or the
-  // palette change, else only over the area when the base changed there. Floyd–Steinberg's cells
-  // depend on every cell before them: while an edit is open only the area's cells are resolved
-  // again, from the error that arrived there before (raw stays as it was, so the edit's end sees the
-  // change), and with none open the whole grid is. True when every cell may have changed (a full rebuild).
+  // (#ditherUnder dithers nothing then). Worked out again whole when the settings, the grid or the
+  // palette change, else only where the base changed. Floyd–Steinberg's cells depend on every cell
+  // before them: while an edit is open only the changed cells are resolved again, and with none open
+  // the whole grid is. True when every cell may have changed (a full rebuild).
   #resolveUnder(params, area, open) {
-    const shape = params.charMode === 'shape';
-    const input = resolves(params) && this.#fontReady && this.#baseData && (shape ? this.#shapeSamples(params, area) : this.#baseData);
-    if (!input) {
+    if (!resolves(params) || !this.#fontReady || !this.#baseData) {
       this.#resolved = null;
       return false;
     }
-    const { width: w, height: h } = this.#baseData, { width: iw, data: raw } = input;
-    const n = shape ? SAMPLES.w : 1, inArea = { x: area.x * n, y: area.y * n, w: area.w * n, h: area.h * n }; // the area in the input
-    const key = resolvedKey(params, w, h), r = this.#resolved;
-    const whole = r?.palette !== this.palette || r.key !== key;
-    if (!whole && sameRows(r.raw, raw, iw, inArea)) return false;
+    const { width: w, height: h } = this.#baseData, r = this.#resolved;
+    const key = resolvedKey(params, w, h), whole = r?.palette !== this.palette || r.key !== key;
     const glyphs = this.#glyphsOf(params.chars), solids = params.solids / 100, light = params.patternLight / 100;
-    const resolve = shape
-      ? (opts) => resolveShapes(raw, w, charRowsOf(h), shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle }), opts)
-      : (opts) => resolveGrid(raw, w, h, bestMatcher({ palette: this.palette, glyphs, solids, light }), opts);
     const opts = { strength: params.dither / 100, style: params.ditherStyle };
     const carries = carriesError(params);
+    if (params.charMode === 'shape') return this.#resolveShapes(params, area, open, { key, whole, glyphs, solids, light, opts, carries });
+
+    // Best match: each cell's two halves (#baseData). While an edit is open Floyd–Steinberg resolves
+    // the area from the error that arrived there before, and raw stays as it was, so the edit's end
+    // sees the change.
+    const raw = this.#baseData.data;
+    if (!whole && sameRows(r.raw, raw, w, area)) return false;
+    const matcher = bestMatcher({ palette: this.palette, glyphs, solids, light });
     if (whole || (carries && !open)) {
-      const { cells, carried } = resolve(opts);
+      const { cells, carried } = resolveGrid(raw, w, h, matcher, opts);
       this.#resolved = { key, palette: this.palette, raw: raw.slice(), cells, carried };
       return true; // cells outside the area may have changed (or weren't resolved before)
     }
-    resolve({ ...opts, area, carried: r.carried, cells: r.cells });
-    if (!carries) putRows(r.raw, iw, rowsOf(raw, iw, inArea), inArea);
+    resolveGrid(raw, w, h, matcher, { ...opts, area, carried: r.carried, cells: r.cells });
+    if (!carries) putRows(r.raw, w, rowsOf(raw, w, area), area);
     return false;
+  }
+
+  // By shape: each cell's samples (#shapeSamples), resolved again where they changed. Nothing of
+  // Floyd–Steinberg's error is kept (12 bytes a sample): while an edit is open the changed cells are
+  // resolved with no error coming in, and the grid is left stale, so the edit's end resolves it whole.
+  #resolveShapes(params, area, open, { key, whole, glyphs, solids, light, opts, carries }) {
+    const samples = this.#shapeSamples(params);
+    if (!samples) {
+      this.#resolved = null;
+      return false;
+    }
+    const { width: w, height: h } = this.#baseData, r = this.#resolved, { changed } = samples;
+    if (!whole && !changed && !(r.stale && carries && !open)) return false;
+    const resolve = (o) => resolveShapes(samples.data.data, w, charRowsOf(h), shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle }), o);
+    if (whole || (carries && !open)) {
+      this.#resolved = { key, palette: this.palette, cells: resolve(opts).cells, stale: false };
+      return true;
+    }
+    resolve({ ...opts, area: changed, cells: r.cells });
+    r.stale ||= carries;
+    return !inside(changed, area); // a change to the samples past the composite's area (all of them, as the base's last pixels go)
   }
 
   // By shape's samples (SAMPLES: 4 a grid pixel each way): the picture's (#picture) with the base
   // layer's own pixels over them, drawn from its canvas at 4 a grid pixel through the color
   // transforms and no palette (baseSamplesOver), as #baseGrid draws them at grid resolution. Paint
-  // isn't sampled. Kept, and worked out again only over area (grid pixels) while it's of the same
-  // picture, layer and color settings. Null while the picture is another grid's (between a resize
-  // and its render).
-  #shapeSamples(params, area) {
+  // isn't sampled. The picture's own when the base has no pixels. Kept as #baseGrid keeps its grid:
+  // while it's of the same picture, layer and color settings, only what the layer changed since
+  // (changedSince) is worked out again. { data, changed }: changed the grid pixels that changed
+  // since the last call, or null. Null while the picture is another grid's (between a resize and its render).
+  #shapeSamples(params) {
     const picture = this.#picture, w = this.#baseData.width, h = this.#baseData.height, n = SAMPLES.w;
     if (picture?.width !== w * n || picture.height !== h * n) return null;
     const layer = this.baseLayer?.hasPaint ? this.baseLayer : null;
-    if (!layer) {
-      this.#samples = null;
-      return picture;
-    }
-    const key = [layer.scale, ...COLOR_KEYS.map((key) => params[key])].join();
-    let s = this.#samples;
+    const key = layer && [layer.scale, ...COLOR_KEYS.map((key) => params[key])].join();
+    const s = this.#samples, all = { x: 0, y: 0, w, h };
     if (s?.picture !== picture || s.layer !== layer || s.key !== key) {
-      s = this.#samples = { picture, layer, key, data: new ImageData(picture.data.slice(), picture.width, picture.height) };
-      area = { x: 0, y: 0, w, h };
+      const data = layer ? new ImageData(picture.data.slice(), picture.width, picture.height) : picture;
+      if (layer) baseSamplesOver(data.data, w * n, layer, params, all, n);
+      this.#samples = { picture, layer, key, version: layer?.version, data };
+      return { data, changed: all };
     }
+    if (!layer || s.version === layer.version) return { data: s.data, changed: null };
+    const since = layer.changedSince(s.version), area = since ? gridRectOf(since, layer.scale, w, h) : all;
+    s.version = layer.version;
+    if (!area.w || !area.h) return { data: s.data, changed: null };
     const inArea = { x: area.x * n, y: area.y * n, w: area.w * n, h: area.h * n };
     putRows(s.data.data, w * n, rowsOf(picture.data, w * n, inArea), inArea);
     baseSamplesOver(s.data.data, w * n, layer, params, area, n);
-    return s.data;
+    return { data: s.data, changed: area };
   }
 
   // The set's one-column characters (as the converter's, Cells.glyphsOf), each once, with their ink
@@ -643,6 +665,9 @@ function sameRows(a, b, width, { x, y, w, h }) {
   }
   return true;
 }
+
+// Whether rect a lies inside rect b.
+const inside = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
 
 // A rect clipped to a w x h grid.
 function clipped(rect, w, h) {

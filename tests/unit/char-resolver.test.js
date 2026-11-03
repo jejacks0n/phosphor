@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { charModeOf, snapsLate, carriesError, mixChannel, bestMatcher, resolveGrid, SAMPLES, shapeMatcher, resolveShapes } from '../../src/lib/CharResolver.js';
+import { charModeOf, snapsLate, carriesError, mixChannel, bestMatcher, resolveGrid, walkCells, SAMPLES, shapeMatcher, resolveShapes } from '../../src/lib/CharResolver.js';
 import { PALETTES, rgb2hex, nearestIndex } from '../../src/lib/ColorUtils.js';
 
 const CGA = PALETTES.cga;
@@ -229,18 +229,26 @@ test('resolveShapes: no dither matches each cell alone; Bayer keeps a change to 
   assert.deepEqual(pick(after[6 + 3]), ['█', '#ffffff', '#ffffff']);
 });
 
-test('resolveShapes Floyd–Steinberg carries each sample\'s error on; with area and carried, the same cells', () => {
+test('resolveShapes Floyd–Steinberg carries each sample\'s error on, keeping only two lines of it; an area takes no error in', () => {
   const m = shapeMatcher({ palette: CGA, glyphs: masks('▀', '▄', '▌', '█'), solids: 0, light: 0, renderStyle: 'ansi' });
   const raw = sampleNoise(8, 5);
   const plain = resolveShapes(raw, 8, 5, m, { palette: CGA }).cells;
   const full = resolveShapes(raw, 8, 5, m, { strength: 0.8, style: 'floyd', palette: CGA });
-  assert.equal(full.carried.length, 8 * 4 * 5 * 8 * 3);
+  assert.equal(full.carried, null); // nothing kept: an open edit's area is resolved without it
   assert.notDeepEqual(full.cells.map(pick), plain.map(pick));
+  // The same walk keeping every sample's error (as Best match does) gives the same cells.
+  const kept = [];
+  walkCells(raw, 8, 5, { sw: 4, sh: 8, strength: 0.8, style: 'floyd', spread: 0 }, (i, col, line, s) => {
+    const r = m.match(s);
+    kept[i] = pick(r);
+    return r.shown;
+  });
+  assert.deepEqual(full.cells.map(pick), kept);
   const area = { x: 2, y: 2, w: 3, h: 4 }; // lines 1 and 2
-  const again = resolveShapes(raw, 8, 5, m, { strength: 0.8, style: 'floyd', area, carried: full.carried, palette: CGA });
+  const again = resolveShapes(raw, 8, 5, m, { strength: 0.8, style: 'floyd', area, palette: CGA });
   for (let i = 0; i < 40; i++) {
     const col = i % 8, line = (i - col) / 8;
-    if (line >= 1 && line <= 2 && col >= 2 && col <= 4) same(again.cells[i], full.cells[i]);
+    if (line >= 1 && line <= 2 && col >= 2 && col <= 4) same(again.cells[i], plain[i]);
     else assert.equal(again.cells[i], undefined);
   }
 });

@@ -243,38 +243,43 @@ function makeMatcher(palette, glyphs, light) {
 // from raw (RGBA, cols x sw samples wide, at least lines x sh tall, kept within 0..255); visit
 // returns what the cell shows (the same layout) for the error Floyd–Steinberg passes on. Best
 // match's samples are a cell's two halves (1 x 2), By shape's SAMPLES. Returns the error that
-// arrived at each sample (3 a sample) when Floyd–Steinberg runs, else null.
+// arrived at each sample (3 a sample) when Floyd–Steinberg runs and keep is on, else null; with keep
+// off only two lines of it are held as the walk goes (By shape's would be 12 bytes a sample).
 // - 'floyd': each sample's error x strength goes to the same sample of the cells right (7/16),
 //   below-left (3/16), below (5/16) and below-right (1/16).
 // - 'bayer': every sample nudged by the cell's place in the 4x4 pattern x spread x strength.
-// With area (grid pixels), only the cells over it, with the error that arrived (carried), and
-// nothing passed on: an open edit.
-export function walkCells(raw, cols, lines, { sw = 1, sh = 2, strength = 0, style = 'floyd', area = null, carried = null, spread = 0 }, visit) {
+// With area (grid pixels), only the cells over it, with the error that arrived (carried, or none),
+// and nothing passed on: an open edit.
+export function walkCells(raw, cols, lines, { sw = 1, sh = 2, strength = 0, style = 'floyd', area = null, carried = null, spread = 0, keep = true }, visit) {
   const floyd = strength > 0 && style !== 'bayer';
   const bayer = strength > 0 && style === 'bayer';
   const width = cols * sw, n = sw * sh;
-  const carry = floyd ? (area ? carried : new Float32Array(width * lines * sh * 3)) : null;
+  const carry = floyd ? (area ? carried : new Float32Array(width * (keep ? lines : 2) * sh * 3)) : null;
   const pass = floyd && !area;
   const c0 = area ? Math.max(0, area.x) : 0, c1 = area ? Math.min(cols, area.x + area.w) : cols;
   const l0 = area ? Math.max(0, Math.floor(area.y / 2)) : 0;
   const l1 = area ? Math.min(lines, Math.floor((area.y + area.h - 1) / 2) + 1) : lines;
   const s = new Float64Array(n * 3);
-  const across = sw * 3, down = sh * width * 3; // to the same sample of the next cell right, and below
+  const across = sw * 3; // to the same sample of the next cell right
+  // Where a line's samples are in carry: their own place, or (keep off) one of two lines in turn.
+  const at = (line) => (keep || area ? line : line & 1) * sh * width;
   for (let line = l0; line < l1; line++) {
+    const down = (at(line + 1) - at(line)) * 3; // to the same sample of the cell below
+    if (pass && !keep) carry.fill(0, at(line + 1) * 3, (at(line + 1) + sh * width) * 3); // the line before's, used
     for (let col = c0; col < c1; col++) {
       const nudge = bayer ? (BAYER[(line & 3) * 4 + (col & 3)] / 16 - 15 / 32) * spread * strength : 0;
       for (let y = 0, j = 0; y < sh; y++) {
-        for (let x = 0, p = (line * sh + y) * width + col * sw; x < sw; x++, p++, j += 3) {
-          for (let k = 0; k < 3; k++) s[j + k] = clamp(raw[p * 4 + k] + nudge + (carry ? carry[p * 3 + k] : 0));
+        for (let x = 0, p = (line * sh + y) * width + col * sw, q = at(line) + y * width + col * sw; x < sw; x++, p++, q++, j += 3) {
+          for (let k = 0; k < 3; k++) s[j + k] = clamp(raw[p * 4 + k] + nudge + (carry ? carry[q * 3 + k] : 0));
         }
       }
       const shown = visit(line * cols + col, col, line, s);
       if (!pass) continue;
       const right = col + 1 < cols, left = col > 0, below = line + 1 < lines;
       for (let y = 0, j = 0; y < sh; y++) {
-        for (let x = 0, p = (line * sh + y) * width + col * sw; x < sw; x++, p++, j += 3) {
+        for (let x = 0, q = at(line) + y * width + col * sw; x < sw; x++, q++, j += 3) {
           for (let k = 0; k < 3; k++) {
-            const e = (s[j + k] - shown[j + k]) * strength, o = p * 3 + k;
+            const e = (s[j + k] - shown[j + k]) * strength, o = q * 3 + k;
             if (right) carry[o + across] += e * (7 / 16);
             if (!below) continue;
             if (left) carry[o + down - across] += e * (3 / 16);
@@ -285,7 +290,7 @@ export function walkCells(raw, cols, lines, { sw = 1, sh = 2, strength = 0, styl
       }
     }
   }
-  return floyd ? carry : null;
+  return floyd && keep ? carry : null;
 }
 
 // Best match over the grid: a cell ({ char, fg, bg }) for each of charRowsOf(rows) lines of cols,
@@ -444,13 +449,14 @@ function makeShapeMatcher(palette, glyphs, light, style) {
 // By shape over the grid: a cell ({ char, fg, bg }) for each of lines x cols, from samples (RGBA,
 // cols x SAMPLES.w wide, at least lines x SAMPLES.h tall), Dither's error carried from each sample to
 // the same sample of the cells after it or nudged by the cell's place (walkCells), the nudge sized to
-// palette. area, carried and cells as resolveGrid's.
-export function resolveShapes(samples, cols, lines, matcher, { strength = 0, style = 'floyd', area = null, carried = null, palette = matcher.palette, cells = new Array(cols * lines) } = {}) {
+// palette. area and cells as resolveGrid's. The error isn't kept (carried is null): an area is
+// resolved with none coming in (an open edit), and the whole grid catches up when it ends.
+export function resolveShapes(samples, cols, lines, matcher, { strength = 0, style = 'floyd', area = null, palette = matcher.palette, cells = new Array(cols * lines) } = {}) {
   const spread = nudgeSpread(palette);
-  const out = walkCells(samples, cols, lines, { sw: SAMPLES.w, sh: SAMPLES.h, strength, style, area, carried, spread }, (i, col, line, s) => {
+  walkCells(samples, cols, lines, { sw: SAMPLES.w, sh: SAMPLES.h, strength, style, area, spread, keep: false }, (i, col, line, s) => {
     const r = matcher.match(s);
     cells[i] = { char: r.char, fg: r.fg, bg: r.bg };
     return r.shown;
   });
-  return { cells, carried: out };
+  return { cells, carried: null };
 }
