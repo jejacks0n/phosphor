@@ -56,3 +56,12 @@ test('the picker is one stop for Tab, and the arrow keys move the choice', async
   await page.keyboard.press('ArrowRight');   // wraps to the first
   await expect(picker(page).getByRole('radio', { name: 'Dark' })).toBeChecked();
 });
+
+// Without it Safari (iOS's too) draws select arrows and number steppers dark on the dark fields.
+test("the browser's own control parts are drawn for the theme", async ({ page }) => {
+  const scheme = () => page.evaluate(() => getComputedStyle(document.querySelector('select')).colorScheme);
+  await page.goto('/');
+  expect(await scheme()).toBe('dark');
+  await picker(page).getByRole('radio', { name: 'Light' }).click();
+  expect(await scheme()).toBe('light');
+});
