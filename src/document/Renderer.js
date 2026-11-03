@@ -24,6 +24,7 @@ import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
 import { buildCellsFromBytes, buildCell, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
 import { cellKey, parseKey } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
+import { ditherPixels } from '../lib/Dither.js';
 
 export default class Renderer {
   pipelineCanvas = null;
@@ -36,6 +37,7 @@ export default class Renderer {
   #baseData = null;     // the pipeline with the base layer's pixels over it, from the last composite(): what edit cells sit on
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
   #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
+  #dithered = null;     // { palette, key, raw, data }: #baseData dithered to the palette (raw: the #baseData it's from), while Dither is on
   #snapped = null;      // the whole output's bytes and palette entries, from the composite that just snapped it
   #effective = new Map(); // stored color -> displayed Color, until the next render
   #source = null;       // { key, data }: the image through the pipeline with color adjustments neutral (stored colors)
@@ -48,7 +50,7 @@ export default class Renderer {
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.pipelineCanvas = this.outputCanvas = this.palette = this.#chosen = null;
-    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = null;
+    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = null;
     this.#effective = new Map();
   }
 
@@ -64,7 +66,7 @@ export default class Renderer {
     // adjustments don't redo this.
     this.#baseParams = baseParams;
     const sp = baseParams ?? {};
-    const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.blur, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness].join();
+    const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.blur, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness, sp.dither > 0].join();
     if (baseParams && (this.#source?.image !== image || this.#source.key !== sourceKey)) {
       const { canvas: source } = await processImage(image, baseParams);
       this.#source = { image, key: sourceKey, data: ctx2d(source.canvas).getImageData(0, 0, params.cols, params.rows) };
@@ -165,12 +167,13 @@ export default class Renderer {
 
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params, partial ? area : null) : null;
     const changed = !hold && params.quantize === 'count' && !this.#chosen && this.#recount(params);
+    const moved = this.#ditherUnder(ctx, params, area, !!paintLayer);
     if (!hold) this.#heldData = null;
     else if (partial) putRows(this.#heldData, w, ctx.getImageData(x, y, area.w, area.h).data, area);
     else this.#heldData = ctx.getImageData(0, 0, w, h).data;
     this.#snapped = paintLayer && this.palette?.length ? snapToPalette(this.outputCanvas, this.palette, area) : null;
     if (partial) this.#snapped = null; // only the area's
-    return changed;
+    return changed || moved;
   }
 
   // A Number palette chosen from outside (one for a whole animation), until it's null: cells then use it, and
@@ -204,7 +207,7 @@ export default class Renderer {
   // (an erase, a move), only the grid pixels over what changed are worked out again.
   #baseGrid(layer, params, stored = false) {
     const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
-    const palette = (params.quantize === 'cga' || params.quantize === 'vga') && this.palette?.length ? this.palette : null;
+    const palette = (params.quantize === 'cga' || params.quantize === 'vga') && !(params.dither > 0) && this.palette?.length ? this.palette : null;
     const key = [w, h, params.smoothing, palette && params.quantize, ...COLOR_KEYS.map(key => params[key])].join();
     const cached = stored ? this.#baseStored : this.#baseDrawn;
     const same = cached?.layer === layer && cached.key === key;
@@ -224,6 +227,34 @@ export default class Renderer {
     if (stored) this.#baseStored = result;
     else this.#baseDrawn = result;
     return result;
+  }
+
+  // With Dither on, the picture under the paint (#baseData) dithered to the palette and shown in the
+  // area, the paint drawn over it again (it snaps plainly: paint keeps its own color). Worked out
+  // again only when the picture or the palette changes, so a stroke of paint doesn't move the pattern
+  // around it. True when Floyd–Steinberg's pattern was worked out again: it depends on everything
+  // before a pixel, so a change to the picture (a base pixel erased or moved) can move it anywhere after,
+  // and every cell needs its colors again (Bayer's pattern is by place: only the area's change).
+  // ponytail: a Floyd–Steinberg stroke on the base layer rebuilds every cell each move; hold the
+  // pattern through the stroke (as the Number palette holds) if that's slow on large grids.
+  #ditherUnder(ctx, params, area, painted) {
+    if (!(params.dither > 0) || !this.palette?.length) {
+      this.#dithered = null;
+      return false;
+    }
+    const { width: w, height: h, data: raw } = this.#baseData;
+    const key = [params.ditherStyle, params.dither, w, h].join();
+    const d = this.#dithered;
+    const again = d?.palette !== this.palette || d.key !== key || !sameRows(d.raw, raw, w, area);
+    if (again) {
+      const data = ditherPixels(raw, w, h, this.palette, { style: params.ditherStyle, strength: params.dither / 100 });
+      this.#dithered = { palette: this.palette, key, raw: raw.slice(), data: new ImageData(data, w, h) };
+    }
+    const moved = again && !!d && params.ditherStyle !== 'bayer';
+    const { x, y, w: aw, h: ah } = moved ? { x: 0, y: 0, w, h } : area;
+    ctx.putImageData(this.#dithered.data, 0, 0, x, y, aw, ah);
+    if (painted) ctx.drawImage(this.#scratch, x, y, aw, ah, x, y, aw, ah);
+    return moved;
   }
 
   #drawBase(ctx, layer, params, { x, y, w, h }) {
@@ -386,12 +417,12 @@ export default class Renderer {
   // pipeline pixels are stale (between a grid resize and its render).
   // The pipeline with the base layer's pixels over it, as of the last composite: what the paint sits on.
   get basePixels() {
-    return this.#baseData;
+    return this.#dithered?.data ?? this.#baseData;
   }
 
   underCell(col, row, params, baseCells) {
     const { cols, chars: charset, charMode, renderStyle } = params;
-    const data = this.#baseData;
+    const data = this.basePixels;
     // Between a grid resize and the render it queues, the pipeline pixels are the old size.
     if (!data || data.width !== cols || data.height !== params.rows) return null;
     const pixelAt = (y) => {
@@ -446,6 +477,15 @@ function snapToPalette(canvas, palette, { x, y, w, h } = { x: 0, y: 0, w: canvas
 // A rect ({ x, y, w, h }) of rows (RGBA bytes, rect.w wide) put into a width-wide image's bytes.
 function putRows(target, width, rows, { x, y, w, h }) {
   for (let row = 0; row < h; row++) target.set(rows.subarray(row * w * 4, (row + 1) * w * 4), ((y + row) * width + x) * 4);
+}
+
+// Whether two width-wide images' bytes agree over a rect.
+function sameRows(a, b, width, { x, y, w, h }) {
+  if (a.length !== b.length) return false;
+  for (let row = y; row < y + h; row++) {
+    for (let o = (row * width + x) * 4, end = o + w * 4; o < end; o++) if (a[o] !== b[o]) return false;
+  }
+  return true;
 }
 
 // A rect clipped to a w x h grid.

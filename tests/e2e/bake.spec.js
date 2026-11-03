@@ -25,6 +25,20 @@ test('Bake from the toolbar: the sliders go back to neutral and the picture stay
   await expect(bake).toBeDisabled();
 });
 
+test('Bake under CGA with Dither on asks nothing: dithered, CGA snaps on the grid, so it bakes exactly', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('combobox', { name: 'Color palette' }).selectOption('cga');
+  await page.getByRole('slider', { name: 'Dither' }).fill('100');
+  await raiseContrast(page);
+  const cells = await cellsOf(page);
+
+  await page.getByTitle(/^Bake:/).click();
+  await expect.poll(() => store(page, 'project', (p) => p.contrast)).toBe(100);
+  await expect(page.getByRole('dialog', { name: 'Bake with CGA palette' })).toHaveCount(0);
+  await settled(page);
+  expect(await cellsOf(page)).toBe(cells);
+});
+
 test('Bake under CGA asks first: Keep full color is the default, Lock changes nothing on the canvas', async ({ page }) => {
   await openApp(page);
   await page.getByRole('combobox', { name: 'Color palette' }).selectOption('cga');

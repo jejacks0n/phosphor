@@ -148,6 +148,11 @@
     "paletteColors": {
       "label": "Couleurs de la palette"
     },
+    "ditherStyle": {
+      "label": "Style de tramage",
+      "floyd": "Floyd–Steinberg",
+      "bayer": "Ordonné (Bayer)"
+    },
     "smoothing": {
       "label": "Lissage",
       "low": "Faible",
@@ -174,6 +179,13 @@
     },
     "colorCount": {
       "label": "Nombre de couleurs"
+    },
+    "ditherStyle": {
+      "help": "La façon dont le tramage mélange les couleurs de la palette. Floyd–Steinberg les disperse comme un grain ; Ordonné les dispose en une trame régulière qui ne bouge pas d'une image à l'autre."
+    },
+    "dither": {
+      "label": "Tramage",
+      "help": "Mélange les couleurs de la palette en un motif fin là où l'image tombe entre elles, pour des dégradés lisses plutôt qu'en bandes. La peinture garde sa propre couleur."
     },
     "smoothing": {
       "help": "Détermine la façon dont l'image est échantillonnée sur la grille. Élevé fond les transitions en douceur ; Faible préserve les bords nets et le grain."

@@ -12,7 +12,7 @@ Load a picture and Phosphor converts it to a grid of character cells. Brightness
 
 Or open a `.ans`, `.utf8ans`, `.asc` or `.txt` file. Its art goes on the base layer just as the file shows it, and its SAUCE record fills the SAUCE tab. See the [layer guide](docs/layers.md) for what opens and the limits.
 
-Colors can stay full 24-bit, snap to the CGA or VGA palettes, be picked from the picture (a color count you choose), or come from a list you type. Characters come from a set you pick or type yourself; the ANSI style picks them at random from a seed, and the two ASCII styles (color and monochrome) pick them by brightness.
+Colors can stay full 24-bit, snap to the CGA or VGA palettes, be picked from the picture (a color count you choose), or come from a list you type, with dithering (Floyd–Steinberg or ordered) to smooth gradients between a palette's colors. Characters come from a set you pick or type yourself; the ANSI style picks them at random from a seed, and the two ASCII styles (color and monochrome) pick them by brightness.
 
 Then you draw. There are two layers: the base layer is the converted picture, and the edit layer is everything you add on top with the pencil, brush, paint bucket, shapes and eraser, or by typing. Merge down puts your drawing into the base; merge up lifts the base into editable cells. Select lets you cut, copy, paste and drag blocks around, and pastes plain text from other apps.
 
@@ -41,7 +41,7 @@ Your settings are kept in your browser between visits.
 
 ## How the conversion works
 
-Phosphor shrinks the picture to the grid, two pixels per character cell: the top pixel becomes the cell's background color and the bottom pixel its foreground. With the Pixel character set every cell is a half block (`▄`), so the art has twice as many rows of color as it has rows of text; other sets put their own characters in the cells. With a palette, each pixel is matched to the nearest palette color.
+Phosphor shrinks the picture to the grid, two pixels per character cell: the top pixel becomes the cell's background color and the bottom pixel its foreground. With the Pixel character set every cell is a half block (`▄`), so the art has twice as many rows of color as it has rows of text; other sets put their own characters in the cells. With a palette, each pixel is matched to the nearest palette color, or dithered: a picture's pixels between two palette colors become a pattern of both.
 
 ## Output formats
 

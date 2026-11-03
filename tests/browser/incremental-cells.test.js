@@ -16,11 +16,12 @@ function fullRebuild(project) {
 }
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
 
-for (const quantize of ['none', 'vga', 'count']) {
-  test(`brush, typing, wide characters and base edits come out as a full rebuild would (${quantize})`, async () => {
+const DITHERS = [{ dither: 0 }, { dither: 0 }, { dither: 0 }, { dither: 100, ditherStyle: 'floyd' }, { dither: 70, ditherStyle: 'bayer' }];
+for (const [quantize, dithering] of [['none', DITHERS[0]], ['vga', DITHERS[1]], ['count', DITHERS[2]], ['cga', DITHERS[3]], ['count', DITHERS[4]]]) {
+  test(`brush, typing, wide characters and base edits come out as a full rebuild would (${quantize}, dither ${dithering.dither}${dithering.ditherStyle ? ` ${dithering.ditherStyle}` : ''})`, async () => {
     const { project } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
-    project.quantize = quantize;
+    Object.assign(project, { quantize, ...dithering });
     project.render();
     await settle(project);
 
@@ -69,11 +70,14 @@ test('undo and redo rebuild only what the edit changed, and come back to exactly
   expect(key(project.cells)).toEqual(key(fullRebuild(project)));
 });
 
-for (const [quantize, smoothing, brightness] of [['none', 'high', 100], ['vga', 'medium', 120], ['cga', 'low', 85]]) {
-  test(`partial recomposites leave the output, the cells and the base's colors as a full render does (${quantize}, ${smoothing}, brightness ${brightness})`, async () => {
+for (const [quantize, smoothing, brightness, dithering = { dither: 0 }] of [
+  ['none', 'high', 100], ['vga', 'medium', 120], ['cga', 'low', 85],
+  ['cga', 'high', 100, { dither: 100, ditherStyle: 'floyd' }], ['vga', 'medium', 120, { dither: 80, ditherStyle: 'bayer' }],
+]) {
+  test(`partial recomposites leave the output, the cells and the base's colors as a full render does (${quantize}, ${smoothing}, brightness ${brightness}, dither ${dithering.dither})`, async () => {
     const { project } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
-    Object.assign(project, { quantize, smoothing, brightness });
+    Object.assign(project, { quantize, smoothing, brightness, ...dithering });
     project.render();
     await settle(project);
 

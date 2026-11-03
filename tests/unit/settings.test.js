@@ -14,7 +14,7 @@ import { generateSlug } from 'random-word-slugs';
 
 test("Settings schema: same keys, storage keys and reset defaults as before the schema existed, so users' persisted settings survive", async () => {
   // same 23 keys as the pre-schema SETTING_KEYS; order follows the table
-  assert.deepEqual([...SETTING_KEYS].sort(), ['cols', 'rows', 'aspectLock', 'renderStyle', 'chars', 'charsAscii', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount', 'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'blur', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'].sort());
+  assert.deepEqual([...SETTING_KEYS].sort(), ['cols', 'rows', 'aspectLock', 'renderStyle', 'chars', 'charsAscii', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount', 'ditherStyle', 'dither', 'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'blur', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'].sort());
   assert.deepEqual(SAUCE_KEYS, ['sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments']);
   assert.equal(getSetting('brightness').storageKey ?? 'current_file.brightness', 'current_file.brightness');
   assert.equal(getSetting('sauceUse9pxFont').storageKey, 'current_file.sauce.use9pxFont');
@@ -42,7 +42,7 @@ test('settings from another browser come back when every value is one a document
 
 test('one bad value refuses them all, so nothing is half applied', () => {
   for (const bad of [
-    { brightness: 501 }, { brightness: -1 }, { brightness: 'bright' }, { brightness: null }, { hue: Infinity }, { colorCount: 1 },
+    { brightness: 501 }, { brightness: -1 }, { brightness: 'bright' }, { brightness: null }, { hue: Infinity }, { colorCount: 1 }, { dither: 101 }, { dither: -1 }, { ditherStyle: 3 },
     { chars: 7 }, { chars: ['a'] }, { palette: {} }, { seed: 1 }, { sauceTitle: 1 },
     { colorize: 'red' }, { edgeColor: '#12' }, { aspectLock: 'yes' }, { sauceUse9pxFont: 1 },
     { cols: 0 }, { cols: 1e6 }, { cols: 1.5 }, { rows: 0 }, { rows: 1e7 },

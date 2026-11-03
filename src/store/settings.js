@@ -22,6 +22,8 @@ export const SETTINGS = [
   { key: 'quantize', default: 'none', group: 'setup', get help() { return t('settings.quantize.help'); } },
   { key: 'colorCount', default: 16, group: 'setup', get label() { return t('settings.colorCount.label'); }, min: 2, max: 255 },
   { key: 'palette', default: '#FFFFFF #AA5601 #000000', group: 'setup', most: MOST_LIST },
+  { key: 'ditherStyle', default: 'floyd', group: 'setup', get help() { return t('settings.ditherStyle.help'); } },
+  { key: 'dither', default: 0, group: 'setup', get label() { return t('settings.dither.label'); }, min: 0, max: 100, unit: '%', ticks: [0], get help() { return t('settings.dither.help'); } },
   { key: 'smoothing', default: 'high', group: 'setup', get help() { return t('settings.smoothing.help'); } },
 
   { key: 'colorizeStrength', default: 0, group: 'transform', get label() { return t('settings.colorizeStrength.label'); }, min: 0, max: 100, unit: '%', ticks: [0], companion: 'colorize', get help() { return t('settings.colorizeStrength.help'); } },
