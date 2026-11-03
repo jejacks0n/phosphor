@@ -26,16 +26,19 @@ const listen = (project, workspace) => {
   app.mount(document.createElement('div'));
 };
 
-// The system clipboard's write, faked: what was written ({ text, html }), or refused.
-function fakeClipboard({ writes = true } = {}) {
+// The system clipboard's write, faked: a copy is written through a copy event (execCommand), and
+// the text alone through writeText when that's refused. written: what went ({ text, html }).
+function fakeClipboard({ writes = true, copyEvents = writes } = {}) {
   const written = [];
-  const write = vi.spyOn(navigator.clipboard, 'write').mockImplementation(async ([item]) => {
-    if (!writes) throw new Error('denied');
-    const read = async (type) => (await item.getType(type)).text();
-    written.push({ text: await read('text/plain'), html: await read('text/html') });
+  const write = vi.spyOn(document, 'execCommand').mockImplementation((command) => {
+    if (command !== 'copy' || !copyEvents) return false;
+    const clipboardData = new DataTransfer();
+    document.dispatchEvent(new ClipboardEvent('copy', { clipboardData, cancelable: true }));
+    written.push({ text: clipboardData.getData('text/plain'), html: clipboardData.getData('text/html') });
+    return true;
   });
-  vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(() => (writes ? Promise.resolve() : Promise.reject(new Error('denied'))));
-  return { written, write };
+  const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(() => (writes ? Promise.resolve() : Promise.reject(new Error('denied'))));
+  return { written, write, writeText };
 }
 
 // The editor with its keyboard shortcuts listening, 'ab漢' typed at the top left and copied.
@@ -48,7 +51,7 @@ async function editor({ writes = true } = {}) {
   project.commitEdit();
   const clipboard = fakeClipboard({ writes });
   copySelection(project, workspace, SOURCE, { base: true, edit: true });
-  await vi.waitFor(() => expect(clipboard.write).toHaveBeenCalled());
+  await vi.waitFor(() => expect(clipboard.writeText).toHaveBeenCalledTimes(writes ? 0 : 1));
   if (writes) await vi.waitFor(() => expect(workspace.clipboardText).not.toBe(null));
   return { project, workspace, ...clipboard };
 }
@@ -75,6 +78,15 @@ test('a copy writes the characters as text, a wide character once, and the block
   expect(html.data[0]).toMatchObject({ code: 97, fg: 15, bg: 0, fg_rgb: { r: 255, g: 255, b: 255 } });
   expect(html.phosphor).toMatchObject({ version: 1, id: workspace.clipboardId, w: 5, h: 2 });
   expect(html.phosphor.cells[0]).toEqual({ char: 'a', ...ATTRS });
+});
+
+test('where the copy event is refused, the text alone is written', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: COLS, rows: 20 });
+  const { writeText } = fakeClipboard({ copyEvents: false });
+  copySelection(project, workspace, SOURCE, { base: true, edit: true });
+  await vi.waitFor(() => expect(workspace.clipboardText).not.toBe(null));
+  expect(writeText).toHaveBeenCalledWith(workspace.clipboardText);
 });
 
 test('Cmd+V with the system clipboard still holding our copy pastes the block', async () => {
