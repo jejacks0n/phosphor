@@ -21,10 +21,11 @@ import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
-import { buildCellsFromBytes, buildCell, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
+import { buildCellsFromBytes, buildCell, keepsSeed, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
 import { cellKey, parseKey } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { ditherPixels } from '../lib/Dither.js';
+import { snapsLate } from '../lib/CharResolver.js';
 
 export default class Renderer {
   pipelineCanvas = null;
@@ -66,7 +67,7 @@ export default class Renderer {
     // adjustments don't redo this.
     this.#baseParams = baseParams;
     const sp = baseParams ?? {};
-    const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.blur, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness, sp.dither > 0].join();
+    const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.blur, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness, snapsLate(sp)].join();
     if (baseParams && (this.#source?.image !== image || this.#source.key !== sourceKey)) {
       const { canvas: source } = await processImage(image, baseParams);
       this.#source = { image, key: sourceKey, data: ctx2d(source.canvas).getImageData(0, 0, params.cols, params.rows) };
@@ -207,7 +208,7 @@ export default class Renderer {
   // (an erase, a move), only the grid pixels over what changed are worked out again.
   #baseGrid(layer, params, stored = false) {
     const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
-    const palette = (params.quantize === 'cga' || params.quantize === 'vga') && !(params.dither > 0) && this.palette?.length ? this.palette : null;
+    const palette = (params.quantize === 'cga' || params.quantize === 'vga') && !snapsLate(params) && this.palette?.length ? this.palette : null;
     const key = [w, h, params.smoothing, palette && params.quantize, ...COLOR_KEYS.map(key => params[key])].join();
     const cached = stored ? this.#baseStored : this.#baseDrawn;
     const same = cached?.layer === layer && cached.key === key;
@@ -336,7 +337,7 @@ export default class Renderer {
       }
 
       // Random mode keeps the cell's rendered character
-      const char = charMode === 'random' ? (baseCells[i] ?? next[i]).char : weightedChar(top, bottom, charset, charMode);
+      const char = keepsSeed(charMode) ? (baseCells[i] ?? next[i]).char : weightedChar(top, bottom, charset, charMode);
       next[i] = this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
     }
     return next;
@@ -431,7 +432,7 @@ export default class Renderer {
       return this.palette ? nearestColor(p, this.palette) : p;
     };
     const top = pixelAt(2 * row), bottom = pixelAt(2 * row + 1);
-    const char = charMode === 'random' ? baseCells[cellIndex(col, row, cols)]?.char ?? ' ' : weightedChar(top, bottom, charset || '▄', charMode);
+    const char = keepsSeed(charMode) ? baseCells[cellIndex(col, row, cols)]?.char ?? ' ' : weightedChar(top, bottom, charset || '▄', charMode);
     return this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
   }
 

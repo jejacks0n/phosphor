@@ -261,6 +261,17 @@
     "edgeThickness": {
       "label": "Edge thickness",
       "help": "Controls how bold the traced outlines appear."
+    },
+    "charChoice": {
+      "help": "How each cell gets its character."
+    },
+    "solids": {
+      "label": "Solids",
+      "help": "How much of the picture the solid blocks may take."
+    },
+    "patternLight": {
+      "label": "Pattern light",
+      "help": "How light the patterns of dots and lines may be."
     }
   },
   "charsets": {

@@ -6,6 +6,7 @@ import { rgb2hex, hex2rgb, parseColorList, PALETTES } from './ColorUtils.js';
 import Canvas, { fitRect, ctx2d } from './Canvas.js';
 import WebGLProcessor from './WebGLProcessor.js';
 import quantizeColors from './Quantizer.js';
+import { snapsLate } from './CharResolver.js';
 
 let glProcessor;
 let glBase; // the base layer's own, so the pipeline's processor keeps the picture uploaded
@@ -104,8 +105,8 @@ function shaderParams(params) {
     edges: parseFloat(edges),
     edgeColor: [ec.r / 255, ec.g / 255, ec.b / 255],
     edgeThickness: parseFloat(edgeThickness),
-    // Dithering needs the colors between CGA's or VGA's: the grid is snapped (dithered) instead (Renderer).
-    palette: (quantize === 'cga' || quantize === 'vga') && !(params.dither > 0) ? PALETTES[quantize] : null,
+    // Dithering and resolving characters need the colors between CGA's or VGA's: the grid is snapped later instead (Renderer).
+    palette: (quantize === 'cga' || quantize === 'vga') && !snapsLate(params) ? PALETTES[quantize] : null,
     passes: Math.max(1, Math.floor(parseFloat(flatten) / 2))
   };
 }
