@@ -118,6 +118,7 @@
     },
     "reset": "Réinitialiser",
     "resetAll": "Tout réinitialiser",
+    "onCount": "{count} actif | {count} actifs",
     "colsAria": "Colonnes",
     "rowsAria": "Lignes",
     "aspectLock": "Conserver les proportions",

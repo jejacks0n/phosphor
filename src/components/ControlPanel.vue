@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useLocalStorage } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { SETTINGS, getSetting } from '@/store/settings';
@@ -24,6 +25,13 @@ const sliderGroups = computed(() => [
 ].map(group => ({ ...group, sliders: SETTINGS.filter(s => s.group === group.id && s.min !== undefined) })));
 
 const help = (key) => getSetting(key).help;
+
+// A slider group folds and unfolds on its title, and stays as it was left in this browser. Folded, it says how many of
+// its sliders are on (off their defaults), so a forgotten Threshold doesn't change the picture unseen.
+const folded = useLocalStorage('phosphor.panel.folded', []);
+const isFolded = (id) => folded.value.includes(id);
+const toggleFold = (id) => { folded.value = isFolded(id) ? folded.value.filter((f) => f !== id) : [...folded.value, id]; };
+const onCount = (group) => group.sliders.filter((s) => Number(store[s.key]) !== s.default).length;
 
 // The ready-made set the Characters field holds, or Custom.
 const charsetName = computed(() => {
@@ -133,36 +141,43 @@ const charsetName = computed(() => {
       </div>
     </fieldset>
 
-    <template v-for="group in sliderGroups" :key="group.id">
-      <hr/>
+    <template v-for="(group, i) in sliderGroups" :key="group.id">
+      <!-- Under a folded group its title's line is the separator. -->
+      <hr v-if="i === 0 || !isFolded(sliderGroups[i - 1].id)"/>
 
-      <fieldset :disabled="!!drawing.hostOnly" :title="drawing.hostOnly">
+      <fieldset :class="{ folded: isFolded(group.id) }" :disabled="!!drawing.hostOnly" :title="drawing.hostOnly">
         <legend>
-          {{ group.title }}
+          <button class="fold" :aria-expanded="!isFolded(group.id)" :aria-controls="`group-${group.id}`" @click="toggleFold(group.id)">
+            <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
+            {{ group.title }}
+            <span v-if="isFolded(group.id) && onCount(group)" class="on">{{ t('panel.onCount', onCount(group)) }}</span>
+          </button>
           <button :disabled="!!drawing.hostOnly" @click="store.resetGroup(group.id)" tabindex="-1">{{ t('panel.reset') }}</button>
         </legend>
 
-        <!-- Undoable: each drag, nudge or color pick is one step (setSlider, then commitSliders). -->
-        <RangeField
-            v-for="slider in group.sliders"
-            :key="slider.key"
-            :setting="slider"
-            :model-value="store[slider.key]"
-            @update:model-value="store.setSlider(slider.key, $event)"
-            @commit="store.commitSliders(slider.key, $event)"
-        >
-          <!-- Its colors: Edges' one, Threshold's dark and light. -->
-          <input
-              v-for="key in [slider.companion ?? []].flat()"
-              :key="key"
-              type="color"
-              :aria-label="getSetting(key).label"
-              :title="getSetting(key).label"
-              :value="store[key]"
-              @input="store.setSlider(key, $event.target.value)"
-              @change="store.commitSliders(key)"
+        <div v-show="!isFolded(group.id)" :id="`group-${group.id}`">
+          <!-- Undoable: each drag, nudge or color pick is one step (setSlider, then commitSliders). -->
+          <RangeField
+              v-for="slider in group.sliders"
+              :key="slider.key"
+              :setting="slider"
+              :model-value="store[slider.key]"
+              @update:model-value="store.setSlider(slider.key, $event)"
+              @commit="store.commitSliders(slider.key, $event)"
           >
-        </RangeField>
+            <!-- Its colors: Edges' one, Threshold's dark and light. -->
+            <input
+                v-for="key in [slider.companion ?? []].flat()"
+                :key="key"
+                type="color"
+                :aria-label="getSetting(key).label"
+                :title="getSetting(key).label"
+                :value="store[key]"
+                @input="store.setSlider(key, $event.target.value)"
+                @change="store.commitSliders(key)"
+            >
+          </RangeField>
+        </div>
       </fieldset>
     </template>
 
@@ -234,6 +249,40 @@ legend button {
 legend button:hover {
   transform: none;
   color: var(--accent-hot);
+}
+
+/* Folded, a group is its underlined title (where it was: folding doesn't move it), with no room for sliders under it. */
+fieldset.folded legend {
+  margin-bottom: 0;
+}
+
+legend button.fold {
+  float: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
+legend button.fold svg.chevron {
+  width: 9px;
+  height: 9px;
+  fill: currentColor;
+  transition: transform 0.15s;
+}
+
+legend button.fold[aria-expanded="false"] svg.chevron {
+  transform: rotate(-90deg);
+}
+
+legend button.fold span.on {
+  color: var(--accent-hot);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 :deep(div.field) {
