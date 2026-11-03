@@ -199,3 +199,57 @@ test('Delete on a stamped block that moved on leaves the stamped copy', async ()
   expect(cell(project, 5, 5).char).toBe('A');
   expect(cell(project, 8, 5).char).not.toBe('A');
 });
+
+// A block's empty cells (no edit cell, no paint) are see-through: what's on the edit layer where it lands shows
+// through them, as it moves and once it's set down.
+const EDIT = { base: false, edit: true };
+const seen = (project, col, row) => JSON.stringify(cell(project, col, row));
+
+test("a moved block's empty cells don't cover the edit cells it passes over, and they come back after it", async () => {
+  const { project } = await scene();
+  for (const [c, ch] of [[5, 'A'], [7, 'C'], [11, 'Z']]) project.typeAt(c, 5, ch, ATTRS);
+  project.commitEdit();
+  project.render(); await settle(project);
+  const before = cellsKey(project);
+  const rect = project.floatSelection({ c0: 5, r0: 5, c1: 7, r1: 5 }, EDIT, 5, 0); // A _ C over 10..12: Z in the gap
+  project.render(); await settle(project);
+  expect([10, 11, 12].map((c) => cell(project, c, 5).char).join('')).toBe('AZC');
+  const on = project.floatSelection(rect, EDIT, 1, 0); // A covers Z
+  project.render(); await settle(project);
+  expect(cell(project, 11, 5).char).toBe('A');
+  project.floatSelection(on, EDIT, 3, 0); // moved on: Z as it was
+  project.render(); await settle(project);
+  expect(cell(project, 11, 5).char).toBe('Z');
+  project.undo(); await settle(project); // the whole move
+  expect(cellsKey(project)).toEqual(before);
+});
+
+test("a moved block's empty cells show the paint under them, and a cell with paint still covers", async () => {
+  const { project } = await scene();
+  project.typeAt(5, 5, 'A', ATTRS);
+  project.paintEditPixels([{ x: 7, y: 10, r: 255, g: 0, b: 0, alpha: 1 }]); // the top half of cell 7,5
+  project.commitEdit();
+  for (const [c, ch] of [[11, 'Y'], [12, 'Z']]) project.typeAt(c, 5, ch, ATTRS);
+  project.paintEditPixels([{ x: 11, y: 11, r: 0, g: 0, b: 255, alpha: 1 }]); // under the gap's landing
+  project.commitEdit();
+  project.render(); await settle(project);
+  const gapUnder = seen(project, 11, 5);
+  project.floatSelection({ c0: 5, r0: 5, c1: 7, r1: 5 }, EDIT, 5, 0); // A _ (red) over 10..12
+  project.render(); await settle(project);
+  expect(seen(project, 11, 5)).toBe(gapUnder);
+  expect(cell(project, 12, 5).char).not.toBe('Z'); // the painted cell replaces Z
+  project.commitPending();
+  project.changeSelection((workspace) => { workspace.selection = null; }); // set down
+  project.render(); await settle(project);
+  expect(seen(project, 11, 5)).toBe(gapUnder);
+});
+
+test("a pasted block's empty cells don't cover what's under them", async () => {
+  const { project } = await scene();
+  for (const [c, ch] of [[1, 'A'], [3, 'C'], [21, 'Z']]) project.typeAt(c, 1, ch, ATTRS);
+  project.commitEdit();
+  const block = project.copySelection({ c0: 1, r0: 1, c1: 3, r1: 1 }, EDIT);
+  project.pasteSelection(block, 20, 1);
+  project.render(); await settle(project);
+  expect([20, 21, 22].map((c) => cell(project, c, 1).char).join('')).toBe('AZC');
+});
