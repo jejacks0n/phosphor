@@ -20,6 +20,13 @@ Shapes are part of the edit layer: undo and redo take every change to them back 
 **Clear** on ANSI leaves them alone, and a drawing with shapes counts as drawn on when the canvas is
 resized (it grows or trims on the right and bottom, and shapes keep their place).
 
+## Saving
+
+Shapes are saved as shapes: a `.phosphor` file, autosave and Versions keep them editable, and an animation's
+frames each keep their own. A copy of Phosphor from before shapes opens such a file without its shapes (the
+art they made isn't there either), and drops them if it saves it. Exports (`.ans`, PNG, GIF and the rest)
+have the shapes' converted cells, as they show.
+
 ## Vector select (V)
 
 - Click a shape to select it. Shift-click adds a shape to the selection, or takes it away.

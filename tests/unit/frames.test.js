@@ -150,6 +150,22 @@ describe('saving frames', () => {
     expect([...drawnKeys(read.frames[1])]).toEqual([]);
   });
 
+  test('frames keep their shapes in their own field, so frames read without them still open', async () => {
+    const { rectShape } = await import('../../src/document/shapes.js');
+    const shape = rectShape(1, 1, 5, 5, { fill: '#ff0000' });
+    const frame = newFrame('blank', new Map([['0,0', cellState(A, 0, 0)], ['v:one', cellState(shape, 0, 0)], ['v:gone', EMPTY_STATE]]));
+    const json = JSON.parse(JSON.stringify({ frames: serializeFrames([frame]), frame: 0, fps: 12 }));
+    expect(json.frames[0].changes.map(([key]) => key)).toEqual(['0,0']);
+    expect(json.frames[0].shapes).toEqual([['v:one', JSON.parse(JSON.stringify(shape))], ['v:gone', null]]);
+    const read = deserializeFrames(json, 20, 20);
+    expect(read.frames[0].changes.get('v:one')).toEqual(cellState(shape, 0, 0));
+    expect(isEmptyState(read.frames[0].changes.get('v:gone'))).toBe(true);
+    delete json.frames[0].shapes; // as a copy of Phosphor from before shapes wrote it
+    expect([...deserializeFrames(json, 20, 20).frames[0].changes.keys()]).toEqual(['0,0']);
+    json.frames[0].shapes = [['v:one', { ...shape, z: 'top' }]];
+    expect(deserializeFrames(json, 20, 20)).toBe(null); // a bad shape refuses the frames, as a bad cell does
+  });
+
   const damaged = [
     ['frames not a list', (j) => { j.frames = 'x'; }],
     ['no frames', (j) => { j.frames = []; }],

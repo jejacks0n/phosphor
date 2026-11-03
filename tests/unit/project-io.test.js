@@ -92,3 +92,17 @@ test('the name offered has the local time, in place of any it had', () => {
   assert.equal(timestamped('art-2', at), 'art-2-20260102-030405');   // only a whole time goes
   assert.equal(timestamped('v1.2', at), 'v1.2-20260102-030405');
 });
+
+test('a project file keeps its shapes, and a file with a bad shape opens without shapes', async () => {
+  const { rectShape } = await import('../../src/document/shapes.js');
+  const imageBuffer = new ArrayBuffer(4), shape = rectShape(1, 2, 9, 7, { fill: '#ff0000', stroke: '#00ff00', width: 2 });
+  const shapes = new Map([['v:abc', shape]]);
+  const back = await readProject(await writeProject({ settings: { cols: 20 }, imageBuffer, paintBlob: null, editCells: new Map(), shapes }));
+  assert.deepEqual([...back.shapes], [['v:abc', shape]]);
+  const none = await readProject(await writeProject({ settings: { cols: 20 }, imageBuffer, paintBlob: null, editCells: new Map() }));
+  assert.equal(none.shapes.size, 0);
+  const fileOf = (json) => { const b = new TextEncoder().encode(JSON.stringify(json)); return new Blob([new TextEncoder().encode('PHOSPHOR'), new Uint32Array([b.byteLength, 0, 0]), b]); };
+  const bad = await readProject(fileOf({ cols: 4, shapes: [['v:abc', { ...shape, width: 'wide' }]] }));
+  assert.equal(bad.shapes.size, 0);
+  assert.equal((await readProject(fileOf({ cols: 4, shapes: 'x' }))).shapes.size, 0);
+});
