@@ -7,7 +7,7 @@
  * installed (the app does that once that font has loaded); until then they count as half-inked.
  */
 
-import { DISPLAY_FONT, displayFontCss, drawGlyph } from './displayFonts.js';
+import { DISPLAY_FONT, DISPLAY_FONTS, displayFontCss, drawGlyph, loadFontFaces } from './displayFonts.js';
 
 const EXACT = new Map([
   [' ', [0, 0]], ['\u00a0', [0, 0]],
@@ -52,4 +52,81 @@ export function rasterizeCoverage(char) {
     }
   }
   return [top / half, bottom / half];
+}
+
+// The reference font: Best match and By shape measure glyphs in IBM VGA (8 x 16, the font's own cell),
+// never the display font, so the same document picks the same characters in every browser. A glyph it
+// lacks is measured in its fallback on the same grid.
+const REFERENCE = DISPLAY_FONTS.find((font) => font.id === 'vga');
+const REF_W = 8, REF_H = 16;
+
+let referenceLoaded = null;
+export function loadReferenceFont() {
+  return referenceLoaded ??= loadFontFaces(REFERENCE);
+}
+
+const referenceInks = new Map();
+export function referenceInk(char) {
+  const exact = EXACT.get(char);
+  if (exact) return exact;
+  if (!referenceInks.has(char)) {
+    const data = drawGlyph(char, REF_W, REF_H, 1, '#fff', false, REFERENCE);
+    const half = REF_W * REF_H / 2;
+    let top = 0, bottom = 0;
+    for (let i = 0; i < REF_W * REF_H; i++) {
+      if (data[i * 4 + 3] > 127) {
+        if (i < half) top++;
+        else bottom++;
+      }
+    }
+    referenceInks.set(char, [top / half, bottom / half]);
+  }
+  return referenceInks.get(char);
+}
+
+// Block elements as rectangles [x0, y0, x1, y1] of the cell (0..1); ░ ▒ ▓ as a flat level.
+const UL = [0, 0, 0.5, 0.5], UR = [0.5, 0, 1, 0.5], LL = [0, 0.5, 0.5, 1], LR = [0.5, 0.5, 1, 1];
+const BLOCK_RECTS = new Map([
+  ['▀', [[0, 0, 1, 0.5]]], ['▄', [[0, 0.5, 1, 1]]], ['█', [[0, 0, 1, 1]]],
+  ['▌', [[0, 0, 0.5, 1]]], ['▐', [[0.5, 0, 1, 1]]],
+  ['▖', [LL]], ['▗', [LR]], ['▘', [UL]], ['▝', [UR]], ['▚', [UL, LR]], ['▞', [UR, LL]],
+  ['▙', [UL, LL, LR]], ['▟', [UR, LL, LR]], ['▛', [UL, UR, LL]], ['▜', [UL, UR, LR]],
+]);
+const FLAT = new Map([['░', 0.25], ['▒', 0.5], ['▓', 0.75]]);
+
+const overlap = (a0, a1, b0, b1) => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+
+const referenceMasks = new Map();
+// The ink in each of sw x sh samples of the glyph's cell, row-major from the top, 0..1 each.
+export function referenceMask(char, sw = 4, sh = 8) {
+  const key = `${sw}x${sh}${char}`;
+  let mask = referenceMasks.get(key);
+  if (mask) return mask;
+  mask = new Float32Array(sw * sh);
+  const rects = BLOCK_RECTS.get(char);
+  if (FLAT.has(char)) mask.fill(FLAT.get(char));
+  else if (rects) {
+    for (let y = 0; y < sh; y++) {
+      for (let x = 0; x < sw; x++) {
+        let covered = 0;
+        for (const [x0, y0, x1, y1] of rects) {
+          covered += overlap(x / sw, (x + 1) / sw, x0, x1) * overlap(y / sh, (y + 1) / sh, y0, y1);
+        }
+        mask[y * sw + x] = covered * sw * sh;
+      }
+    }
+  } else if (!EXACT.has(char)) {
+    const data = drawGlyph(char, REF_W, REF_H, 1, '#fff', true, REFERENCE);
+    const counts = new Float32Array(sw * sh);
+    for (let y = 0; y < REF_H; y++) {
+      for (let x = 0; x < REF_W; x++) {
+        const at = Math.floor(y * sh / REF_H) * sw + Math.floor(x * sw / REF_W);
+        mask[at] += data[(y * REF_W + x) * 4 + 3] / 255;
+        counts[at]++;
+      }
+    }
+    for (let i = 0; i < mask.length; i++) mask[i] /= counts[i] || 1;
+  }
+  referenceMasks.set(key, mask);
+  return mask;
 }
