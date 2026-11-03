@@ -17,6 +17,17 @@ export const baseLayerActions = {
     this.recompose(pixels.filter(({ x, y }) => x < cols && y < rows)); // with their pins (the cells were rebuilt before them)
   },
 
+  // Write whole cells into the base ({ col, row, char, fg, bg }), as Merge down does: the
+  // background as the top pixel, the foreground as the bottom one, and every character pinned.
+  writeBaseCells(cells) {
+    if (!cells.length) return;
+    const pixels = cells.flatMap(({ col, row, fg, bg }) => [{ x: col, y: 2 * row, hex: bg }, { x: col, y: 2 * row + 1, hex: fg }]);
+    this.writeBase(pixels);
+    this.setBaseRecords(withPins(this.baseRecords, cells.map(({ col, row, char }) => ({ col, row, char }))));
+    const { cols, rows } = this;
+    this.recompose(pixels.filter(({ x, y }) => x < cols && y < rows));
+  },
+
   // Erase base pixels (the Pixel view): black, the characters left as they are.
   eraseBasePixels(pixels) {
     this.writeBase(pixels.map(({ x, y }) => ({ x, y, hex: BLANK.bg })));

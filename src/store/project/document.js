@@ -5,12 +5,14 @@ import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
+import { readArtFile } from '@/lib/ArtFile.js';
 import { castText } from '@/lib/CastFile.js';
 import { MAX_GIF_PIXELS, gifBytes, gifDelay, gifFrames } from '@/lib/GifFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
+import { userComments } from '@/lib/Sauce.js';
 import { toast } from '@/composables/useToast.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults } from '@/store/settings.js';
@@ -102,9 +104,9 @@ export const documentActions = {
   },
 
   // The blank picture is BLANK_CANVAS_SCALE pixels a grid pixel, or fewer for a long grid: no more than
-  // the GPU processes (gpuMaxSide) and Safari draws (16M pixels a canvas).
-  async setBlankCanvas() {
-    const cols = this.cols || DEFAULT_COLS, rows = this.rows || DEFAULT_ROWS;
+  // the GPU processes (gpuMaxSide) and Safari draws (16M pixels a canvas). cols, rows: its size
+  // (grid pixels), else the grid's; patch: more for replaceImage. False when it couldn't start.
+  async setBlankCanvas({ cols = this.cols || DEFAULT_COLS, rows = this.rows || DEFAULT_ROWS, ...patch } = {}) {
     const scale = Math.max(1, Math.min(BLANK_CANVAS_SCALE, Math.floor(gpuMaxSide() / Math.max(cols, rows)), Math.floor(Math.sqrt(16_000_000 / (cols * rows)))));
     const canvas = document.createElement('canvas');
     canvas.width = cols * scale;
@@ -119,7 +121,7 @@ export const documentActions = {
     } catch (e) {
       console.error('Failed to start a blank canvas', e);
       alert("Couldn't start a blank canvas.");
-      return;
+      return false;
     }
     this.replaceImage(await loadImage(blob), await blob.arrayBuffer(), {
       cols: Math.max(1, cols),
@@ -127,8 +129,43 @@ export const documentActions = {
       filename: 'untitled',
       sauceTitle: '',
       savedToFile: false,
+      ...patch,
     });
     this.markSaved(); // nothing to lose until something is drawn
+    return true;
+  },
+
+  // An .ans, .utf8ans, .asc or .txt file as a new document: a blank canvas its size with the art on
+  // the base layer, its palette and SAUCE in the settings (the rest at their defaults, so the sliders
+  // leave it as the file shows it). Loading, not an edit: nothing to undo or save. A file that can't
+  // open throws (with its userMessage) before anything changes.
+  async openArtFile(file) {
+    const art = readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
+    const { sauce } = art;
+    const opened = await this.setBlankCanvas({
+      ...settingDefaults(),
+      cols: art.cols,
+      rows: 2 * art.rows,
+      filename: file.name.replace(/\.[^/.]+$/, ''),
+      quantize: art.palette,
+      renderStyle: 'ansi',
+      savedToFile: false,
+      ...(sauce && {
+        sauceTitle: sauce.title,
+        sauceAuthor: sauce.author,
+        sauceGroup: sauce.group,
+        sauceDate: sauce.date,
+        sauceUserComments: userComments(sauce.comments),
+        sauceFontName: sauce.fontName,
+        sauceUse9pxFont: sauce.use9pxFont,
+      }),
+    });
+    if (!opened) return;
+    this.writeBaseCells(art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell })));
+    this.commitEdit();
+    this.clearHistory();
+    this.render();
+    this.markSaved();
   },
 
   // Swap in a new base image and start a fresh document around it.
