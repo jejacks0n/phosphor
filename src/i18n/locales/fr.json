@@ -76,7 +76,7 @@
     "motto": "Make Code Not War"
   },
   "zero": {
-    "dropPrompt": "Déposez une image ou un fichier {ext} ici",
+    "dropPrompt": "Déposez une image, un fichier {ext} ou un fichier ANSI ici",
     "browseMobile": "Choisir un fichier",
     "browseDesktop": "Choisir un fichier",
     "startBlank": "Ou commencez avec un canevas vierge",
@@ -644,7 +644,15 @@
     "exportCast": "Exporter en .cast",
     "exportGif": "Exporter en .gif",
     "versions": "Versions",
-    "newProject": "Nouveau projet"
+    "newProject": "Nouveau projet",
+    "artDropTitle": "Ajouter {name} ?",
+    "artDropSub": "L'ajouter à ce dessin, ou l'ouvrir à la place de celui-ci.",
+    "artDropSubAddOnly": "L'ajouter à ce dessin.",
+    "artAdd": "Ajouter à ce dessin",
+    "artAddWhere": "Il arrive là où vous l'avez déposé, sur le calque d'édition, à faire glisser en place.",
+    "artAddTopLeft": "Il arrive en haut à gauche de la vue, sur le calque d'édition, à faire glisser en place.",
+    "artOpen": "Ouvrir à la place",
+    "artOpenText": "À la place de ce dessin."
   },
   "sauce": {
     "heading": "Métadonnées SAUCE",
@@ -723,7 +731,9 @@
     "invalidProject": "Fichier de projet Phosphor non valide",
     "loadProjectFailed": "Échec du chargement du fichier de projet : {reason}",
     "bakeFailed": "Impossible de figer l'image.",
-    "mergeIntoImageFailed": "Impossible de fondre dans l'image."
+    "mergeIntoImageFailed": "Impossible de fondre dans l'image.",
+    "artTooBig": "Ce fichier fait {cols} × {rows}. Phosphor ouvre au plus {maxCols} colonnes, {maxLines} lignes et {maxCells} cellules.",
+    "artEmpty": "Ce fichier ne contient aucun dessin."
   },
   "shortcuts": {
     "title": "Raccourcis clavier",
