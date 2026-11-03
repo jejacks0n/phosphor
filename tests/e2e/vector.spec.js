@@ -279,3 +279,19 @@ test('double-click edits points: drag a point and a handle, click the outline to
   await undoSteps(page, 5); // Delete point, Corner, the handle, Smooth, the added point
   expect((await world(2))).toMatchObject({ n: 4, x: expect.closeTo(36, 0) });
 });
+
+test('on a Blank frame, the shapes it carries have dimmed outlines; one changed there is its own', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const key = await addRect(page, 10, 10, 20, 20);
+  await store(page, 'project', (p) => { p.setAnimate(true); p.addFrame('blank'); });
+  await expect(page.locator('.vector-overlay .carried')).toHaveCount(1);
+  await expect(page.locator('.vector-overlay .carried')).toHaveCSS('opacity', '0.4');
+  await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.vector-overlay .carried')).toHaveCount(0);
+  await store(page, 'project', (p) => p.showFrame(0));
+  expect((await matrix(page, key))[4]).toBe(0);
+});

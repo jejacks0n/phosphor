@@ -1,5 +1,5 @@
 // Animation: the document's frames (document/frames.js). The current frame's resolved state is the normal
-// editCells and paintLayer, swapped when the frame changes, because everything that edits only ever touches
+// editCells, shapes (its 'v:' keys, a shape as a state's cell) and paintLayer, swapped when the frame changes, because everything that edits only ever touches
 // those two. A frame's changes are worked out from them on leaving it (noteFrame), so no tool knows about
 // frames. Owns _arrived (what the frame held on arrival), _noted (what noteFrame last saw) and _builder (what
 // builds frames for playing, and what it was prepared for).
@@ -8,6 +8,7 @@ import { cellState, foldDeleted, frameDiff, newFrame, paintImage, resolveOver, s
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
+import { isShapeKey } from '@/document/shapes.js';
 import { newLedger } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
 
@@ -47,6 +48,7 @@ function liveStates(project) {
     states.set(key, cellState(cell, half?.[0] ?? 0, half?.[1] ?? 0));
   }
   for (const [key, [top, bottom]] of halves) if (!states.has(key)) states.set(key, cellState(null, top, bottom));
+  for (const [key, shape] of project.shapes) states.set(key, cellState(shape, 0, 0));
   return states;
 }
 
@@ -63,9 +65,12 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
   project.frame = i;
   project._noted = markRaw({ frame, history: version, edit: project.editVersion });
   const resolved = project.resolvedOf(i);
-  const cells = new Map();
-  for (const [key, { cell }] of resolved) if (cell) cells.set(key, cell);
+  const cells = new Map(), shapes = new Map();
+  for (const [key, { cell }] of resolved) if (cell) (isShapeKey(key) ? shapes : cells).set(key, cell);
   project.editCells = cells;
+  project._frameSwaps++; // and before shapes: autosave hears each on its own
+  project.shapes = shapes;
+  project._shapeLayer?.set(shapes); // drawn by the composite below
   const layer = project.paintLayer;
   layer.loadGrid(paintImage(resolved, layer.cols, layer.rows));
   project.hasPaint = layer.hasPaint;
@@ -252,7 +257,7 @@ export const animationActions = {
     const previous = this.resolvedOf(this.frame - 1), own = frameDiff(previous, liveStates(this));
     const { cols } = this, rows = charRowsOf(this.rows);
     for (const key of previous.keys()) {
-      if (own.has(key)) continue;
+      if (own.has(key) || isShapeKey(key)) continue;
       const { col, row } = parseKey(key);
       if (col < cols && row < rows) inherited.add(cellIndex(col, row, cols));
     }
@@ -261,6 +266,15 @@ export const animationActions = {
       const { col, row } = parseKey(key);
       if (col < cols) inherited.delete(cellIndex(col, row, cols));
     }
+    return inherited;
+  },
+
+  // The shapes the frame showing shows only because a frame before it did (VECTOR dims their outlines).
+  inheritedShapes() {
+    const inherited = new Set();
+    if (!this.frame || this.currentFrame.kind !== 'blank') return inherited;
+    const previous = this.resolvedOf(this.frame - 1), own = frameDiff(previous, liveStates(this));
+    for (const key of previous.keys()) if (isShapeKey(key) && !own.has(key)) inherited.add(key);
     return inherited;
   },
 

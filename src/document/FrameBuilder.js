@@ -9,6 +9,8 @@
  * differs, and what draws them can compare identity.
  */
 import PaintLayer from './PaintLayer.js';
+import ShapeLayer from './ShapeLayer.js';
+import { isShapeKey } from './shapes.js';
 import Renderer from './Renderer.js';
 import { paintImage } from './frames.js';
 import { getPaletteColors } from '../lib/ImageProcessor.js';
@@ -18,14 +20,23 @@ import { ctx2d } from '../lib/Canvas.js';
 const sameColor = (a, b) => a === b || (a.hex === b.hex && (a.c === b.c || typeof a.c !== 'number'));
 const sameCell = (a, b) => a === b || (a.char === b.char && a.wide === b.wide && sameColor(a.fg, b.fg) && sameColor(a.bg, b.bg));
 
+// A frame's shapes, from its resolved states.
+function shapesOf(resolved) {
+  const shapes = new Map();
+  for (const [key, { cell }] of resolved) if (cell && isShapeKey(key)) shapes.set(key, cell);
+  return shapes;
+}
+
 export default class FrameBuilder {
   #renderer = new Renderer();
   #scratch = null;
+  #shapes = null; // its own ShapeLayer over the store's base layer: each frame has its own shapes
 
   // The picture through the pipeline, for these settings. stores: the store's base layer and records, which
   // are under every frame.
   async prepare(image, params, { baseLayer, baseRecords }) {
-    Object.assign(this.#renderer, { baseLayer, baseRecords });
+    this.#shapes = baseLayer ? new ShapeLayer(baseLayer) : null;
+    Object.assign(this.#renderer, { baseLayer, baseRecords, shapes: this.#shapes });
     this.#scratch = new PaintLayer({ cols: params.cols, rows: params.rows, scale: 1 });
     await this.#renderer.render(image, params, this.#scratch, null);
   }
@@ -39,6 +50,7 @@ export default class FrameBuilder {
     renderer.usePalette([]); // none to snap to, and none to pick
     resolved.forEach((frame, at) => {
       this.#scratch.loadGrid(paintImage(frame, cols, rows));
+      this.#shapes?.set(shapesOf(frame));
       renderer.composite(this.#scratch, params);
       all.set(ctx2d(renderer.outputCanvas).getImageData(0, 0, cols, rows).data, at * size);
     });
@@ -53,9 +65,10 @@ export default class FrameBuilder {
   build(resolved, params, previous = null) {
     const renderer = this.#renderer, { cols, rows } = params;
     this.#scratch.loadGrid(paintImage(resolved, cols, rows));
+    this.#shapes?.set(shapesOf(resolved));
     renderer.composite(this.#scratch, params);
     const editCells = new Map();
-    for (const [key, { cell }] of resolved) if (cell) editCells.set(key, cell);
+    for (const [key, { cell }] of resolved) if (cell && !isShapeKey(key)) editCells.set(key, cell);
     const cells = layoutWide(renderer.composeAll(renderer.cellsFromOutput(params), editCells, params), cols);
     if (previous?.cells.length === cells.length) {
       for (let i = 0; i < cells.length; i++) if (sameCell(cells[i], previous.cells[i])) cells[i] = previous.cells[i];

@@ -20,6 +20,12 @@ Shapes are part of the edit layer: undo and redo take every change to them back 
 **Clear** on ANSI leaves them alone, and a drawing with shapes counts as drawn on when the canvas is
 resized (it grows or trims on the right and bottom, and shapes keep their place).
 
+## Animation
+
+Each frame has its own shapes: a Blank frame carries the shapes before it, as it carries cells, and changing one
+there makes it that frame's ([Animation](animation.md)). On VECTOR, the outlines of the shapes a Blank frame
+carries show dimmed. Playing and the exports show each frame's shapes.
+
 ## Saving
 
 Shapes are saved as shapes: a `.phosphor` file, autosave and Versions keep them editable, and an animation's
