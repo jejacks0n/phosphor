@@ -94,8 +94,9 @@ column where the paste began; once a row is full, the rest of that line is dropp
 the last row are dropped too. Characters a cell can't hold (tabs, invisible ones, an accent on its
 own) are skipped. A paste is one undo step.
 
-Cmd/Ctrl+V pastes whatever you copied last: a Select-tool block you copied in Phosphor, or text
-you copied anywhere else since (see [Layers](layers.md#the-select-tool)).
+Cmd/Ctrl+V pastes whatever you copied last: a Select-tool block you copied in Phosphor (in this tab
+or another), a block copied in Moebius, or text you copied anywhere else, such as PabloDraw, which
+gives other apps only its characters (see [Layers](layers.md#the-select-tool)).
 
 ## Saving: .utf8ans and .ans
 
