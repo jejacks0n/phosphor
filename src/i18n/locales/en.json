@@ -118,6 +118,7 @@
     },
     "reset": "Reset",
     "resetAll": "Reset all",
+    "onCount": "{count} on",
     "colsAria": "Columns",
     "rowsAria": "Rows",
     "aspectLock": "Lock aspect ratio",
