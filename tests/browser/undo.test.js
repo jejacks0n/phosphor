@@ -139,10 +139,12 @@ function makeActions(project, workspace, r, opts) {
         else { const ch = pick(CHARS); if (project.typeAt(Math.min(col, project.cols - 1), rr, ch, { fg: pick(COLORS) }, { insert: r() < 0.3 })) col = Math.min(project.cols - 1, col + (ch === '漢' ? 2 : 1)); }
       }
     },
-    pasteFloat: () => {
+    pasteFloat: () => { // the paste is a step and its moves another: the state between comes back
       const block = project.copySelection(rect(), layers());
       let landed = project.pasteSelection(block, int(project.cols), int(rows()));
+      const between = docState(project, workspace);
       for (let k = 0; k < 1 + int(3) && landed; k++) landed = project.floatSelection(landed, layers(), int(5) - 2, int(5) - 2);
+      return { between };
     },
     reset: () => (r() < 0.5 ? project.resetSliders() : project.resetGroup(pick(['transform', 'adjust', 'effects']))),
   };
@@ -159,7 +161,8 @@ function makeActions(project, workspace, r, opts) {
 
 // The stack of expected states, kept in step with the history. An open typing run is on the stack
 // (provisionally) but not yet in the history; it becomes a step when committed, if it changed anything.
-function account(stack, s, d, project, acc) {
+// between: the document's state between an action's two steps (a paste, then its moves), when it has two.
+function account(stack, s, d, project, acc, between) {
   const nowOpen = !!project._stroke?.typing;
   if (acc.open && !nowOpen) { // the run was committed by this step
     acc.open = false;
@@ -173,7 +176,8 @@ function account(stack, s, d, project, acc) {
     return d > 1 ? `depth ${d}` : null;
   }
   if (nowOpen && acc.open && d === 0) { stack[stack.length - 1] = s; return null; }
-  if (d === 1) stack.push(s);
+  if (d === 2 && between) stack.push(between, s);
+  else if (d === 1) stack.push(s);
   else if (d === 0) stack[stack.length - 1] = s; // a no-op (or a float run replacing its step)
   else return `depth changed by ${d}`;
   return null;
@@ -203,13 +207,13 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
   for (let i = 0; i < steps; i++) {
     const name = names[Math.floor(r() * names.length)];
     const before = t.depth;
-    await actions[name]();
+    const done = await actions[name]();
     const s = await snap(project, workspace, { forceRender });
     let d = t.depth - before;
     log.push(`${name}(${d >= 0 ? '+' : ''}${d})`);
     if (globalThis.__debug) console.log(i, name, d, 'stroke', !!project._stroke, project._stroke?.typing, 'cells', JSON.stringify([...project.editCells.keys()]), 'strokeCells', project._stroke && JSON.stringify([...project._stroke.editCells.keys()]));
     if (t.cleared) return { seed, log, problem: 'history cleared mid-run' };
-    const err = account(stack, s, d, project, acc);
+    const err = account(stack, s, d, project, acc, done?.between);
     if (err) return { seed, log, problem: err };
     // a shown state should match a full render of the same document
     if (forceRender && s.shown !== s.full && realDiff(s.shown, s.full)) return { seed, log, problem: `step ${i} ${name}: shown cells differ from a full render`, diff: diffCells(s.shown, s.full) };
@@ -420,12 +424,12 @@ async function fuzzSettings(seed, { steps = 20, forceRender = false } = {}) {
   for (let i = 0; i < steps; i++) {
     const name = names[Math.floor(r() * names.length)];
     const before = t.depth;
-    await actions[name]();
+    const done = await actions[name]();
     const s = await snap(project, workspace, { forceRender });
     const d = t.depth - before;
     log.push(`${name}(${d})`);
     if (t.cleared) return { seed, log, problem: 'history cleared' };
-    const err = account(stack, s, d, project, acc);
+    const err = account(stack, s, d, project, acc, done?.between);
     if (err) return { seed, log, problem: err };
   }
   closeRun(stack, project, t, acc);
