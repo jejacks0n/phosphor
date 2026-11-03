@@ -18,8 +18,15 @@ The base layer is your image. When you load a picture (or start with a blank can
 In Monochrome ASCII every cell shows white on black, but what you paint still picks the characters by its
 brightness, so on the ANSI tab the foreground and background show as the grays they act as.
 
-The color transforms, adjustments and effects in the sidebar (Brightness, Contrast, Hue Rotation,
-Colorize, Blur, Edges, Flatten, Sharpen…) change the picture before it's converted.
+The color transforms, adjustments and effects in the sidebar (Brightness, Contrast, Levels, Hue Rotation,
+Colorize, Posterize, Threshold, Blur, Edges, Flatten, Sharpen…) change the picture before it's converted.
+
+- **Levels** (Black point, White point, Midtones) runs before the other adjustments: tones at or below the
+  black point turn black, tones at or above the white point turn white, the rest spread across the range,
+  and Midtones lifts or deepens the middle without moving either end.
+- **Posterize** cuts each color channel to the number of steps you set (Off by default), and **Threshold**
+  splits the picture into its two colors (black and white by default): tones at or above the level take
+  the light one. They run after the other adjustments, Threshold last, and the color palette after them.
 
 You can edit the base like pixels in an image editor. Erasing, flipping, moving, pasting and
 merging down change the base's own pixels, laid over the converted image. They're exact: never
@@ -132,7 +139,7 @@ make the paint solid. With it off, Opacity is a ceiling: paint never gets more s
 more strokes only change its color. Within a stroke, **Flow** is how quickly it builds up.
 
 Color adjustments apply to the edit layer too: moving Brightness or Hue changes your edits along
-with the picture. The color palette (CGA, VGA, a color count) applies to everything, so an
+with the picture, and with Threshold on, your paint splits into its two colors as the picture does. The color palette (CGA, VGA, a color count) applies to everything, so an
 `.ans` export always fits it. With **Color count**, the colors are picked from everything you see (the
 picture, your base edits and your paint), so a color you paint with gets a place in the palette.
 The palette updates when you finish a stroke or a shape: while you're painting, the picture holds

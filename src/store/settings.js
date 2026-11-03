@@ -33,7 +33,14 @@ export const SETTINGS = [
 
   { key: 'brightness', default: 100, group: 'adjust', get label() { return t('settings.brightness.label'); }, min: 0, max: 500, unit: '%', ticks: [100], get help() { return t('settings.brightness.help'); } },
   { key: 'contrast', default: 100, group: 'adjust', get label() { return t('settings.contrast.label'); }, min: 0, max: 500, unit: '%', ticks: [100], get help() { return t('settings.contrast.help'); } },
+  { key: 'levelsBlack', default: 0, group: 'adjust', get label() { return t('settings.levelsBlack.label'); }, min: 0, max: 254, ticks: [0], get help() { return t('settings.levelsBlack.help'); } },
+  { key: 'levelsWhite', default: 255, group: 'adjust', get label() { return t('settings.levelsWhite.label'); }, min: 1, max: 255, ticks: [255], get help() { return t('settings.levelsWhite.help'); } },
+  { key: 'levelsMid', default: 1, group: 'adjust', get label() { return t('settings.levelsMid.label'); }, min: 0.1, max: 3, step: 0.01, decimals: 2, ticks: [1], get help() { return t('settings.levelsMid.help'); } },
   { key: 'saturation', default: 100, group: 'adjust', get label() { return t('settings.saturation.label'); }, min: 0, max: 500, unit: '%', ticks: [100], get help() { return t('settings.saturation.help'); } },
+  { key: 'posterize', default: 1, group: 'adjust', get label() { return t('settings.posterize.label'); }, min: 1, max: 32, off: 1, ticks: [1], get help() { return t('settings.posterize.help'); } },
+  { key: 'threshold', default: 0, group: 'adjust', get label() { return t('settings.threshold.label'); }, min: 0, max: 255, off: 0, ticks: [0], companion: ['thresholdDark', 'thresholdLight'], get help() { return t('settings.threshold.help'); } },
+  { key: 'thresholdDark', default: '#000000', group: 'adjust', get label() { return t('settings.thresholdDark.label'); } },
+  { key: 'thresholdLight', default: '#ffffff', group: 'adjust', get label() { return t('settings.thresholdLight.label'); } },
 
   { key: 'blur', default: 0, group: 'effects', get label() { return t('settings.blur.label'); }, min: 0, max: 10, ticks: [0], get help() { return t('settings.blur.help'); } },
   { key: 'flatten', default: 0, group: 'effects', get label() { return t('settings.flatten.label'); }, min: 0, max: 10, ticks: [0], get help() { return t('settings.flatten.help'); } },

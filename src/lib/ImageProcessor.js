@@ -77,6 +77,9 @@ function prepare(image, params, scale = null) {
   return { dx, dy, dw, dh, m, pw, ph, glParams: shaderParams(params) };
 }
 
+// A hex color as the shader takes it: [r, g, b], each 0-1.
+const unit = (hex) => { const { r, g, b } = hex2rgb(hex); return [r / 255, g / 255, b / 255]; };
+
 // The shader's parameters for the pipeline params.
 function shaderParams(params) {
   const { invert, brightness, contrast, saturation, blur, sharpen, flatten, edges, edgeColor, edgeThickness, quantize } = params;
@@ -90,6 +93,11 @@ function shaderParams(params) {
     invert: parseFloat(invert),
     colorize: [cz.r / 255, cz.g / 255, cz.b / 255],
     colorizeStrength: parseFloat(params.colorizeStrength || 0),
+    levels: [parseFloat(params.levelsBlack ?? 0) / 255, parseFloat(params.levelsWhite ?? 255) / 255, parseFloat(params.levelsMid ?? 1)],
+    posterize: parseFloat(params.posterize ?? 1),
+    threshold: parseFloat(params.threshold ?? 0),
+    thresholdDark: unit(params.thresholdDark ?? '#000000'),
+    thresholdLight: unit(params.thresholdLight ?? '#ffffff'),
     blur: parseFloat(blur || 0),
     sharpen: parseFloat(sharpen),
     flatten: parseFloat(flatten),

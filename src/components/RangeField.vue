@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import HelpInfo from '@/components/HelpInfo.vue';
+import { t } from '@/i18n';
 
 // One slider from a settings-schema entry (src/store/settings.js). Unstyled: the container
 // (e.g. ControlPanel) styles .field/.label-row/.value with :deep() so each context can differ.
@@ -19,7 +20,10 @@ let pointing = false; // a pointer drag, not a key
 
 const value = computed(() => draft.value ?? props.modelValue);
 const percent = computed(() => ((value.value - props.setting.min) / (props.setting.max - props.setting.min)) * 100);
-const formatted = computed(() => Number(value.value).toFixed(props.setting.decimals ?? 0) + (props.setting.unit ?? ''));
+// A setting with an off value (Posterize, Threshold) says Off there.
+const formatted = computed(() => (props.setting.off !== undefined && Number(value.value) === props.setting.off
+  ? t('common.off')
+  : Number(value.value).toFixed(props.setting.decimals ?? 0) + (props.setting.unit ?? '')));
 const ticksId = computed(() => (props.setting.ticks ? `ticks-${props.setting.key}` : undefined));
 
 function onInput(event) {
