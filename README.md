@@ -8,7 +8,7 @@ Phosphor turns an image into ANSI art in your browser, or opens a `.ans`, `.utf8
 
 ## What it does
 
-Load a picture and Phosphor converts it to a grid of character cells. Brightness, contrast, saturation, hue, colorize, invert, sharpen, flatten and edges all apply live, and every slider move is an undo step. When you like where it's going, **Bake** makes the adjusted picture your new starting point and resets the sliders, so you can do another round on top.
+Load a picture and Phosphor converts it to a grid of character cells. Brightness, contrast, saturation, hue, colorize, invert, blur, sharpen, flatten and edges all apply live, and every slider move is an undo step. When you like where it's going, **Bake** makes the adjusted picture your new starting point and resets the sliders, so you can do another round on top.
 
 Or open a `.ans`, `.utf8ans`, `.asc` or `.txt` file. Its art goes on the base layer just as the file shows it, and its SAUCE record fills the SAUCE tab. See the [layer guide](docs/layers.md) for what opens and the limits.
 

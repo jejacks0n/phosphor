@@ -7,7 +7,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { drawnDocument, outputKey } from '../support/scenes.js';
 
-const SLIDERS = { brightness: 140, contrast: 160, saturation: 130, hue: 40, colorizeStrength: 30, sharpen: 40, edges: 2 };
+const SLIDERS = { brightness: 140, contrast: 160, saturation: 130, hue: 40, colorizeStrength: 30, blur: 2, sharpen: 40, edges: 2 };
 // A copied block holds the picture's colors before effects (Sharpen, Edges), and pasted base pixels
 // sit outside the effects, so a block pasted back under effects loses them, bake or not. The
 // paste-back check uses the color sliders only.

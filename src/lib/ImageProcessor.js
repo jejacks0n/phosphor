@@ -79,7 +79,7 @@ function prepare(image, params, scale = null) {
 
 // The shader's parameters for the pipeline params.
 function shaderParams(params) {
-  const { invert, brightness, contrast, saturation, sharpen, flatten, edges, edgeColor, edgeThickness, quantize } = params;
+  const { invert, brightness, contrast, saturation, blur, sharpen, flatten, edges, edgeColor, edgeThickness, quantize } = params;
   const ec = hex2rgb(edgeColor);
   const cz = hex2rgb(params.colorize || '#ff00ff');
   return {
@@ -90,6 +90,7 @@ function shaderParams(params) {
     invert: parseFloat(invert),
     colorize: [cz.r / 255, cz.g / 255, cz.b / 255],
     colorizeStrength: parseFloat(params.colorizeStrength || 0),
+    blur: parseFloat(blur || 0),
     sharpen: parseFloat(sharpen),
     flatten: parseFloat(flatten),
     edges: parseFloat(edges),
@@ -120,7 +121,7 @@ export function adjustedPixels(canvas, params) {
       part = Object.assign(document.createElement('canvas'), { width: w, height: bh });
       ctx2d(part).drawImage(canvas, 0, y, w, bh, 0, 0, w, bh);
     }
-    glBase.process(part, { ...shaderParams(params), sharpen: 0, flatten: 0, edges: 0, passes: 1 }, w, bh);
+    glBase.process(part, { ...shaderParams(params), blur: 0, sharpen: 0, flatten: 0, edges: 0, passes: 1 }, w, bh);
     ctx.clearRect(0, 0, w, band);
     ctx.drawImage(glBase.canvas, 0, 0);
     pixels.set(ctx.getImageData(0, 0, w, bh).data, y * w * 4);

@@ -202,6 +202,10 @@
       "label": "Saturation",
       "help": "Boosts color intensity or pulls it toward grayscale."
     },
+    "blur": {
+      "label": "Blur",
+      "help": "Softens noise and fine grain before the picture is converted. Applied before the other effects."
+    },
     "flatten": {
       "label": "Flatten",
       "help": "Groups nearby tones into clean, painterly shapes."

@@ -33,6 +33,7 @@ export const SETTINGS = [
   { key: 'contrast', default: 100, group: 'adjust', get label() { return t('settings.contrast.label'); }, min: 0, max: 500, unit: '%', ticks: [100], get help() { return t('settings.contrast.help'); } },
   { key: 'saturation', default: 100, group: 'adjust', get label() { return t('settings.saturation.label'); }, min: 0, max: 500, unit: '%', ticks: [100], get help() { return t('settings.saturation.help'); } },
 
+  { key: 'blur', default: 0, group: 'effects', get label() { return t('settings.blur.label'); }, min: 0, max: 10, ticks: [0], get help() { return t('settings.blur.help'); } },
   { key: 'flatten', default: 0, group: 'effects', get label() { return t('settings.flatten.label'); }, min: 0, max: 10, ticks: [0], get help() { return t('settings.flatten.help'); } },
   { key: 'sharpen', default: 0, group: 'effects', get label() { return t('settings.sharpen.label'); }, min: 0, max: 100, ticks: [0], get help() { return t('settings.sharpen.help'); } },
   { key: 'edges', default: 0, group: 'effects', get label() { return t('settings.edges.label'); }, min: 0, max: 20, step: 0.01, decimals: 2, ticks: [0], companion: 'edgeColor', get help() { return t('settings.edges.help'); } },
