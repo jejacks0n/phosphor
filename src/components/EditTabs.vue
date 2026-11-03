@@ -98,7 +98,17 @@ function onKeyDown(event) {
   event.stopPropagation();
   const tab = enabled[(next + enabled.length) % enabled.length];
   tab.focus();
-  emit('update:modelValue', tab.dataset.id);
+  choose(tab.dataset.id);
+}
+
+// A tab chosen from SOCIAL with nothing open dims as it's chosen (the start screen), which takes focus from it:
+// focus stays in the tab list, on its one stop.
+function choose(id) {
+  emit('update:modelValue', id);
+  nextTick(() => {
+    const lost = document.activeElement === document.body || document.activeElement?.disabled;
+    if (lost) tabList.value?.querySelector('[role="tab"][tabindex="0"]')?.focus();
+  });
 }
 
 // The underline slides to the selected tab. With none before (nothing was open), it grows out of the
@@ -155,7 +165,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
           :data-id="tab.id"
           :data-text="tab.label"
           :aria-description="tab.id === 'social' ? t('tabs.beta') : null"
-          @click="$emit('update:modelValue', tab.id)"
+          @click="choose(tab.id)"
       >
         {{ tab.label }}
         <span v-if="tab.id === 'social'" class="beta" aria-hidden="true">{{ t('tabs.beta') }}</span>
