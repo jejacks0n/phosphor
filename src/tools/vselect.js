@@ -6,7 +6,7 @@
 // (Shift: 10), Delete or Backspace deletes (the selected point, when editing points), Esc leaves the points
 // and then the selection.
 import { t } from '@/i18n/index.js';
-import { apply, deletePoint, invert, localBounds, moveHandle, movePoint, multiply, nearestOnOutline, rotation, scaling, shapeBounds, splitAt, translation, transformed, withShape, worldPoints } from '@/document/shapes.js';
+import { apply, curveBounds, deletePoint, invert, localBounds, moveHandle, movePoint, multiply, nearestOnOutline, rotation, scaling, splitAt, translation, transformed, withShape, worldPoints } from '@/document/shapes.js';
 import { shapeAt } from '@/lib/shapeHits.js';
 
 const KNOB = 24;           // CSS px above the box's top edge
@@ -28,8 +28,8 @@ export function selectionBox(shapes, keys) {
   }
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const shape of chosen) {
-    const b = shapeBounds(withShape(shape, { stroke: null })); // the points' hull, as one shape's box is
-    x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h);
+    const b = curveBounds(shape); // round the curves, not their handles, as one shape's box is
+    x0 = Math.min(x0, b.x0); y0 = Math.min(y0, b.y0); x1 = Math.max(x1, b.x1); y1 = Math.max(y1, b.y1);
   }
   return { corners: [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }], center: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, local: null };
 }
