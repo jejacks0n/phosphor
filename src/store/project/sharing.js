@@ -48,11 +48,11 @@ export const DRAWING_ACTIONS = [
 
 // Refused for artists: the picture, the settings, the grid and which document this is.
 export const HOST_ONLY_ACTIONS = [
-  'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'pasteBase',
+  'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells', 'pasteBase',
   'bake', 'mergeUp', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'clearEditLayer',
   'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'randomizeSeed',
   'updateCols', 'updateRows',
-  'setImageFromFile', 'setBlankCanvas', 'replaceImage', 'newDocument', 'clearImage', 'loadProject', 'restoreDocument', 'openParts',
+  'setImageFromFile', 'setBlankCanvas', 'replaceImage', 'newDocument', 'clearImage', 'loadProject', 'restoreDocument', 'openParts', 'openArtFile',
 ];
 
 // What a Pending reads and writes. Its positions come one at a time, and a store write or a canvas read
