@@ -21,6 +21,8 @@ Inputs the tests read, and (under `reference/`) the outputs they must reproduce.
 | `projects/animated.phosphor` | frames, holds and frames per second | saved by the app |
 | `projects/live-main.phosphor` | a project saved by the live site's code (`main`) | `node tests/fixtures/capture-main.mjs` |
 | `../../examples/*.phosphor` | real projects from earlier versions | committed by hand |
+| `clipboard/moebius-16-colors.html` | Moebius's clipboard HTML, 16 colors only (the Advanced Color fork, 2026-11-02) | copied in Moebius, read from the Mac clipboard |
+| `clipboard/moebius-24-bit.html` | the same with one cell in 24-bit color (`fg_rgb`, `fg_idx`) | copied in Moebius, read from the Mac clipboard |
 | `fonts/wide.ttf` | ﷽ as a bar 7.5 columns wide (drawing over 8), for the overflow tests in any system's fonts | `python3 tests/fixtures/fonts/make-fonts.py` (needs fontTools) |
 | `fonts/color.ttf` | 😀 as a two-color glyph (red, then green), for the canvas's color glyphs (emoji) in any system's fonts | `python3 tests/fixtures/fonts/make-fonts.py` |
 | `fonts/tall.ttf` | a monospaced font taller than its em (ascent 1.1, descent 0.1), its `_` filling the descent: where the canvas puts the baseline, and a font you load | `python3 tests/fixtures/fonts/make-fonts.py` |
