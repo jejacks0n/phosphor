@@ -1,12 +1,12 @@
 <script setup>
-import { watch, onMounted } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { toast } from '@/composables/useToast';
 import { isProjectFile } from '@/document/projectIO';
-import { isArtFile } from '@/lib/ArtFile';
+import { isArtFile, readArtFile } from '@/lib/ArtFile';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 
 import EditTabs from '@/components/EditTabs.vue';
@@ -19,6 +19,7 @@ import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
 import SocialTab from '@/components/social/SocialTab.vue';
 import ConsentDialog from '@/components/social/ConsentDialog.vue';
+import ChoiceDialog from '@/components/ChoiceDialog.vue';
 
 defineProps({
   ready: { type: Boolean, default: true },
@@ -36,19 +37,52 @@ onMounted(() => project.render());
 watch(() => project.processParams, () => project.render(), { deep: true });
 
 async function handleFileSelected(file) {
+  // An art file over a drawing asks whether to add it or open it (artDrop), even in a room: adding is a paste.
+  if (project.image && isArtFile(file.name)) return (workspace.artDrop = { file, at: null });
   if (drawing.offWithOthers) return toast(drawing.offWithOthers);
   project.commitPending(); // text typed a moment ago counts
   if (project.image && project.isDirty && !confirm(`You have unsaved changes. Open ${file.name} anyway?`)) return;
   if (isProjectFile(file.name)) await project.loadProject(file);
-  else if (isArtFile(file.name)) {
-    try {
-      await project.openArtFile(file);
-    } catch (error) {
-      if (!error.userMessage) throw error;
-      return toast(error.userMessage); // nothing changed, so stay where we are
-    }
-  } else await project.setImageFromFile(file);
+  else if (isArtFile(file.name)) return openArt(file);
+  else await project.setImageFromFile(file);
   workspace.editorTab = 'output';
+}
+
+async function openArt(file) {
+  try {
+    await project.openArtFile(file);
+  } catch (error) {
+    if (!error.userMessage) throw error;
+    return toast(error.userMessage); // nothing changed, so stay where we are
+  }
+  workspace.editorTab = 'output';
+}
+
+// The dropped art file's question: added as a paste is (floating and selected, where it was dropped or at the
+// view's top-left), or opened in place of this drawing (not in a room where opening is off).
+const artChoices = computed(() => [
+  { id: 'add', title: 'Add to this drawing', text: 'It lands where you dropped it, on the edit layer, to drag into place.' },
+  ...(drawing.offWithOthers ? [] : [{ id: 'open', title: 'Open instead', text: 'In place of this drawing.' }]),
+]);
+async function chooseArt(choice) {
+  const { file, at } = workspace.artDrop;
+  workspace.artDrop = null;
+  if (choice === 'open') {
+    project.commitPending(); // text typed a moment ago counts
+    if (project.isDirty && !confirm(`You have unsaved changes. Open ${file.name} anyway?`)) return;
+    return openArt(file);
+  }
+  if (project._paused) return; // refused, as a paste is
+  let art;
+  try {
+    art = readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
+  } catch (error) {
+    if (!error.userMessage) throw error;
+    return toast(error.userMessage);
+  }
+  const { col, row } = at ?? (workspace.editorTab === 'output' ? workspace.ansiViewOrigin : workspace.pixelViewOrigin);
+  const pasted = project.pasteSelection({ w: art.cols, h: art.rows, cells: art.cells }, col, row); // a block's h is lines, as the reader's rows are
+  if (pasted) workspace.selectAll(pasted); // selected, with the Select tool, to drag into place
 }
 </script>
 
@@ -74,6 +108,14 @@ async function handleFileSelected(file) {
 
         <ZeroState v-else :ready="ready" :recent="recent" :open-recent="openRecent" @file-selected="handleFileSelected" @start-blank="project.setBlankCanvas"/>
       </DropZone>
+      <ChoiceDialog
+          v-if="workspace.artDrop"
+          :title="`Add ${workspace.artDrop.file.name}?`"
+          sub="Add it to this drawing, or open it in place of this one."
+          :choices="artChoices"
+          @choose="chooseArt"
+          @cancel="workspace.artDrop = null"
+      />
       <AnimationBar v-if="project.image && project.animate && ['input', 'output'].includes(workspace.editorTab)"/>
     </template>
   </section>

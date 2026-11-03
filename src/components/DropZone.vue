@@ -19,6 +19,7 @@ function handleDrop(e) {
       :class="{ dragging: isDragging }"
       @dragover.prevent="isDragging = true"
       @dragleave.prevent="isDragging = false"
+      @drop.capture="isDragging = false"
       @drop.prevent="handleDrop"
   >
     <slot></slot>

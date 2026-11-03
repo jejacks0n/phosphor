@@ -1,6 +1,8 @@
-// Opening .ans, .utf8ans, .asc and .txt files from the start screen: the file picker and the drop zone.
+// Opening .ans, .utf8ans, .asc and .txt files from the start screen: the file picker and the drop zone;
+// and dropping one on an open drawing, to add it there or open it instead.
 import { test, expect } from './support.js';
-import { imageInput, chars, store, tab, settled } from './support.js';
+import { imageInput, chars, store, tab, settled, openApp, cellPoint, editAt } from './support.js';
+import { Sauce } from '../../src/lib/Sauce.js';
 
 // Two rows: "Hi" in red, then "there".
 const boat = Buffer.from('\x1b[31mHi\x1b[0m\r\nthere', 'latin1');
@@ -34,4 +36,85 @@ test('dropping a .ans on the start screen opens it', async ({ page }) => {
   await settled(page);
   expect(await chars(page, 0, 0, 1)).toBe('Hi');
   expect(await store(page, 'project', (p) => p.filename)).toBe('dropped');
+});
+
+// A 3 x 2 .ans: ABC over DEF, 3 wide by its SAUCE, titled Tiny.
+const tiny = [...new Sauce({ cols: 3, rows: 2 }, { title: 'Tiny' }).appendTo(Buffer.from('ABCDEF', 'latin1'))];
+
+// Drop a file on the element at a selector, at a page point (or its middle), as dragging one from the desktop does.
+async function dropOn(page, selector, bytes, name, at = null) {
+  await page.evaluate(([selector, bytes, name, at]) => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(new File([new Uint8Array(bytes)], name));
+    const target = document.querySelector(selector), box = target.getBoundingClientRect();
+    const point = at ?? { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    for (const type of ['dragenter', 'dragover', 'drop']) {
+      target.dispatchEvent(new DragEvent(type, { dataTransfer, bubbles: true, cancelable: true, clientX: point.x, clientY: point.y }));
+    }
+  }, [selector, bytes, name, at]);
+}
+
+const question = (page) => page.getByRole('dialog');
+
+test('a .ans dropped on the drawing can be added where it lands, as one undo step', async ({ page }) => {
+  await openApp(page);
+  const before = await store(page, 'project', (p) => ({ cells: p.cells.map((c) => c.char), title: p.sauceTitle, quantize: p.quantize, filename: p.filename }));
+  await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
+  await expect(question(page)).toContainText('Add tiny.ans?');
+  await expect(page.locator('article.drop-zone')).not.toHaveClass(/dragging/); // the drop ended its highlight
+  await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
+  await expect(question(page)).toBeHidden();
+  await expect.poll(() => chars(page, 4, 10, 12)).toBe('ABC'); // once the file is read
+  await settled(page);
+  expect(await chars(page, 5, 10, 12)).toBe('DEF');
+  expect(await store(page, 'workspace', (w) => ({ tool: w.activeTool, selection: w.selection }))).toEqual({ tool: 'select', selection: { c0: 10, r0: 4, c1: 12, r1: 5 } });
+  expect(await store(page, 'project', (p) => ({ title: p.sauceTitle, quantize: p.quantize, filename: p.filename }))).toEqual({ title: before.title, quantize: before.quantize, filename: before.filename });
+
+  await page.keyboard.press('ControlOrMeta+z');
+  await settled(page);
+  expect(await store(page, 'project', (p) => p.cells.map((c) => c.char))).toEqual(before.cells);
+});
+
+test('Open instead opens the dropped file, after asking about unsaved work', async ({ page }) => {
+  await openApp(page);
+  await editAt(page, 3, 3);
+  await page.keyboard.insertText('my work');
+  await page.waitForTimeout(1300); // the typing run commits
+  await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
+  const asked = [];
+  page.once('dialog', (d) => { asked.push(d.message()); d.accept(); });
+  await question(page).getByRole('button', { name: /Open instead/ }).click();
+  await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('tiny');
+  expect(asked).toEqual(['You have unsaved changes. Open tiny.ans anyway?']);
+  await settled(page);
+  expect(await store(page, 'project', (p) => ({ cols: p.cols, title: p.sauceTitle }))).toEqual({ cols: 3, title: 'Tiny' });
+  expect(await chars(page, 0, 0, 2)).toBe('ABC');
+});
+
+test('Cancel leaves the drawing as it was', async ({ page }) => {
+  await openApp(page);
+  const before = await store(page, 'project', (p) => ({ cells: p.cells.map((c) => c.char), filename: p.filename, version: p.history.version }));
+  await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
+  await question(page).getByRole('button', { name: 'Cancel' }).click();
+  await expect(question(page)).toBeHidden();
+  expect(await store(page, 'project', (p) => ({ cells: p.cells.map((c) => c.char), filename: p.filename, version: p.history.version }))).toEqual(before);
+  expect(await store(page, 'workspace', (w) => w.artDrop)).toBe(null);
+});
+
+test('dropped beside the drawing, an added file lands at the view\'s top-left', async ({ page }) => {
+  await openApp(page);
+  await dropOn(page, 'article.drop-zone', tiny, 'tiny.ans', { x: 1, y: 1 });
+  await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
+  const { col, row } = await store(page, 'workspace', (w) => w.ansiViewOrigin);
+  await expect.poll(() => chars(page, row, col, col + 2)).toBe('ABC'); // once the file is read
+  expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: col, r0: row, c1: col + 2, r1: row + 1 });
+});
+
+test('with others drawing, the question offers no Open instead', async ({ page }) => {
+  await openApp(page);
+  await store(page, 'drawing', (d) => d.$patch({ artists: ['someone'], connected: ['someone'] }));
+  expect(await store(page, 'drawing', (d) => d.offWithOthers)).toBeTruthy();
+  await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
+  await expect(question(page).getByRole('button', { name: /Add to this drawing/ })).toBeVisible();
+  await expect(question(page).getByRole('button', { name: /Open instead/ })).toHaveCount(0);
 });
