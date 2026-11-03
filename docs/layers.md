@@ -181,9 +181,9 @@ scrolls the view, faster the further you go.
   sliders apply to the pasted colors as to anything drawn there.
 - into **Moebius** with its characters and colors. Moebius's Advanced Color fork shows the exact
   colors; the original Moebius shows the nearest of its 16. A character CP437 doesn't have goes as
-  its closest lookalike (or `?`), as in a .ans export. Copy in Chrome for this: Safari rewrites
-  what a web page puts on the clipboard in a way Moebius can't read, so a copy made in Safari
-  pastes into Moebius as characters only, in Moebius's colors.
+  its closest lookalike (or `?`), as in a .ans export. Copy in Chrome for this: Safari and Firefox
+  rewrite what a web page puts on the clipboard in ways Moebius can't read, so a copy made in
+  either pastes into Moebius as characters only, in Moebius's colors.
 - into a terminal, a chat or a text editor as plain text, a line per row.
 
 **Paste** (Cmd/Ctrl+V) pastes whatever you copied last, wherever you copied it:
