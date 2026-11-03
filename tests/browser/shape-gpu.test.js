@@ -81,10 +81,9 @@ function samplesOf(cols, lines, sw, sh) {
 
 test('a grid taller than a texture can be is matched in bands, and an area gives the cells a whole match gives there', async () => {
   await loadReferenceFont();
-  const gl = document.createElement('canvas').getContext('webgl2');
-  const lines = Math.ceil(gl.getParameter(gl.MAX_TEXTURE_SIZE) / SAMPLES.h) + 20, cols = 5;
-  const glyphs = [...'▄▀▌▐░▒▓█'].map((char) => ({ char, ink: referenceInk(char), mask: referenceMask(char, SAMPLES.w, SAMPLES.h) }));
   const gpu = ShapeMatcher.shared();
+  const lines = Math.ceil(gpu.maxSize / SAMPLES.h) + 20, cols = 5;
+  const glyphs = [...'▄▀▌▐░▒▓█'].map((char) => ({ char, ink: referenceInk(char), mask: referenceMask(char, SAMPLES.w, SAMPLES.h) }));
 
   const shape = shapeMatcher({ palette: PALETTES.cga, glyphs, solids: 0.25, light: 1, renderStyle: 'ansi' });
   const samples = samplesOf(cols, lines, SAMPLES.w, SAMPLES.h);
@@ -110,4 +109,39 @@ test('the GPU says when it can\'t match (more than 256 colors), and the JavaScri
   const palette = Array.from({ length: 300 }, (_, i) => ({ r: i % 256, g: 0, b: 0, hex: '#000000', c: i }));
   const samples = samplesOf(2, 2, SAMPLES.w, SAMPLES.h);
   expect(ShapeMatcher.shared().resolve(samples, 2, 2, shapeMatcher({ palette, glyphs, renderStyle: 'ansi' }), {})).toBe(null);
+});
+
+for (const charChoice of ['best', 'shape']) {
+  test(`an edit after the GPU stops (its context lost) resolves the whole grid again, as a full rebuild would (${charChoice})`, async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+    Object.assign(project, { quantize: 'cga', charChoice, chars: SHADES, solids: 25, patternLight: 100 });
+    project.render();
+    await settle(project);
+    const gpu = vi.spyOn(ShapeMatcher.prototype, 'resolve');
+    gpu.mockReturnValue(null);
+    const composite = vi.spyOn(project.renderer, 'composite');
+    project.beginEdit();
+    project.eraseBase([{ col: 6, row: 9 }]);
+    project.commitEdit();
+    expect(gpu).toHaveBeenCalled();
+    expect(composite.mock.results.some((r) => r.value === true), 'a whole resolve').toBe(true);
+    const partial = key(project.cells);
+    composite.mockRestore();
+    project.renderer.reset();
+    project.render();
+    await settle(project);
+    expect(partial).toEqual(key(project.cells));
+  });
+}
+
+test('a GL error (an upload out of memory) gives no cells, so the JavaScript matches, and the next match uploads again', async () => {
+  await loadReferenceFont();
+  const glyphs = [...'▄░▒▓█'].map((char) => ({ char, mask: referenceMask(char, SAMPLES.w, SAMPLES.h) }));
+  const matcher = shapeMatcher({ palette: PALETTES.cga, glyphs, renderStyle: 'ansi' });
+  const samples = samplesOf(6, 4, SAMPLES.w, SAMPLES.h), gpu = ShapeMatcher.shared();
+  const error = vi.spyOn(WebGL2RenderingContext.prototype, 'getError').mockReturnValueOnce(WebGL2RenderingContext.OUT_OF_MEMORY);
+  expect(gpu.resolve(samples, 6, 4, matcher, {})).toBe(null);
+  error.mockRestore();
+  expect(key(gpu.resolve(samples, 6, 4, matcher, {}).cells)).toEqual(key(resolveShapes(samples, 6, 4, matcher).cells));
 });

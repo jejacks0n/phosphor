@@ -41,7 +41,7 @@ export default class Renderer {
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
   #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
   #dithered = null;     // { palette, key, raw, data }: #baseData dithered to the palette (raw: the #baseData it's from), while Dither is on
-  #resolved = null;     // the base resolved to cells: { key, palette, raw, cells, carried } by Best match (raw: the #baseData they're from), { key, palette, cells, stale } by By shape
+  #resolved = null;     // the base resolved to cells: { key, palette, raw, cells, carried, gpu } by Best match (raw: the #baseData they're from), { key, palette, cells, stale, gpu } by By shape (gpu: the GPU made them)
   #picture = null;      // By shape's samples of the picture alone (processImage), from the last render
   #samples = null;      // { picture, layer, key, version, data }: #picture with the base layer's own pixels over it (#shapeSamples)
   #baseSnapped = null;  // { from, palette, data }: #baseData (from) snapped to the palette, for basePixels under Best match
@@ -252,13 +252,12 @@ export default class Renderer {
     const raw = this.#baseData.data;
     if (!whole && sameRows(r.raw, raw, w, area)) return false;
     const matcher = bestMatcher({ palette: this.palette, glyphs, solids, light });
-    const resolve = (o) => onGpu(carries, raw, w, charRowsOf(h), matcher, o) ?? resolveGrid(raw, w, h, matcher, o);
-    if (whole || (carries && !open)) {
-      const { cells, carried } = resolve(opts);
-      this.#resolved = { key, palette: this.palette, raw: raw.slice(), cells, carried };
+    const resolve = (o, gpu) => resolveBy(gpu, carries, () => resolveGrid(raw, w, h, matcher, o), raw, w, charRowsOf(h), matcher, o);
+    if (whole || (carries && !open) || !resolve({ ...opts, area, carried: r.carried, cells: r.cells }, r.gpu)) {
+      const { out: { cells, carried }, gpu } = resolve(opts);
+      this.#resolved = { key, palette: this.palette, raw: raw.slice(), cells, carried, gpu };
       return true; // cells outside the area may have changed (or weren't resolved before)
     }
-    resolve({ ...opts, area, carried: r.carried, cells: r.cells });
     if (!carries) putRows(r.raw, w, rowsOf(raw, w, area), area);
     return false;
   }
@@ -275,12 +274,12 @@ export default class Renderer {
     const { width: w, height: h } = this.#baseData, r = this.#resolved, { changed } = samples;
     if (!whole && !changed && !(r.stale && carries && !open)) return false;
     const matcher = shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle });
-    const resolve = (o) => onGpu(carries, samples.data.data, w, charRowsOf(h), matcher, o) ?? resolveShapes(samples.data.data, w, charRowsOf(h), matcher, o);
-    if (whole || (carries && !open)) {
-      this.#resolved = { key, palette: this.palette, cells: resolve(opts).cells, stale: false };
+    const resolve = (o, gpu) => resolveBy(gpu, carries, () => resolveShapes(samples.data.data, w, charRowsOf(h), matcher, o), samples.data.data, w, charRowsOf(h), matcher, o);
+    if (whole || (carries && !open) || !resolve({ ...opts, area: changed, cells: r.cells }, r.gpu)) {
+      const { out: { cells }, gpu } = resolve(opts);
+      this.#resolved = { key, palette: this.palette, cells, stale: false, gpu };
       return true;
     }
-    resolve({ ...opts, area: changed, cells: r.cells });
     r.stale ||= carries;
     return !inside(changed, area); // a change to the samples past the composite's area (all of them, as the base's last pixels go)
   }
@@ -660,10 +659,18 @@ function rowsOf(data, width, { x, y, w, h }) {
 // What Best match's cells (Renderer #resolved) are worked out from, besides the picture and the palette.
 const resolvedKey = (params, cols, rows) => JSON.stringify([params.charMode, params.chars, params.solids, params.patternLight, params.dither, params.ditherStyle, params.renderStyle, cols, rows]);
 
-// With no error carried from cell to cell, the cells from the GPU (ShapeMatcher) when it can match
-// them, else null (the JavaScript's). A whole resolve and an area go the same way, so an area's cells
-// are the ones a whole resolve would give, near-ties and all.
-const onGpu = (carries, ...args) => (carries ? null : ShapeMatcher.shared()?.resolve(...args) ?? null);
+// A resolve's cells, { out, gpu }: with no error carried from cell to cell the GPU's (ShapeMatcher,
+// args) when it can match them, else the JavaScript's (js), gpu saying which. gpu given (an area):
+// only that way, so the area's cells are the ones its grid's whole resolve would give, near-ties and
+// all; null when the GPU made the grid and can't any more (its context lost), for a whole resolve.
+function resolveBy(gpu, carries, js, ...args) {
+  if (gpu !== false && !carries) {
+    const out = ShapeMatcher.shared()?.resolve(...args);
+    if (out) return { out, gpu: true };
+    if (gpu) return null;
+  }
+  return { out: js(), gpu: false };
+}
 
 // Whether two width-wide images' bytes agree over a rect.
 function sameRows(a, b, width, { x, y, w, h }) {
