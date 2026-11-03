@@ -1,7 +1,8 @@
 /**
  * Turns the image + settings + base pixels + paint layer into cells. Owns the two canvases the
  * editors read: pipelineCanvas (processed image at cols x rows, nothing over it) and outputCanvas
- * (pipeline + base pixels + paint, quantized), which generated cells are built from.
+ * (pipeline + base pixels + paint, quantized), which generated cells are built from; under Best
+ * match and By shape (ANSI, with a palette) it shows the cells they chose instead (#showResolved).
  *
  * The base layer is the image through the pipeline with the base's own pixels over it (baseLayer,
  * a grid-resolution PaintLayer set by the store: erased, flipped, moved and merged-down pixels,
@@ -21,12 +22,12 @@ import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
-import { buildCellsFromBytes, buildCell, keepsSeed, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf } from '../lib/Cells.js';
+import { buildCellsFromBytes, buildCell, keepsSeed, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix } from '../lib/Cells.js';
 import { cellKey, parseKey } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { ditherPixels } from '../lib/Dither.js';
 import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid, shapeMatcher, resolveShapes, SAMPLES } from '../lib/CharResolver.js';
-import { loadReferenceFont, referenceInk, referenceMask } from '../lib/GlyphCoverage.js';
+import { loadReferenceFont, referenceInk, referenceMask, coverageOf } from '../lib/GlyphCoverage.js';
 import ShapeMatcher from '../lib/ShapeMatcher.js';
 
 export default class Renderer {
@@ -140,20 +141,19 @@ export default class Renderer {
   // The output's bytes are read once and snapped in place (no object per pixel: this runs over the
   // whole grid on every render and slider step).
   // Under Best match the cells are the resolved ones (#resolved) with the paint over them (#shown);
-  // a pinned cell is built from its pixels as Random builds it, the pin its character (composeAll).
+  // a pinned cell is built from its pixels as Random builds it, the pin its character (composeAll),
+  // from the picture (#pictureAt), not the output, which shows the resolved cells (#showResolved).
   cellsFromOutput(params) {
-    const { data, indexes } = this.#snapped ?? snapToPalette(this.outputCanvas, this.palette);
     const resolved = this.#resolvedFor(params);
     if (resolved) {
       const { cols } = params, pins = this.baseRecords.pins;
-      const pixelAt = (i) => (i * 4 >= data.length ? undefined : indexes ? this.palette[indexes[i]] : { r: data[i * 4], g: data[i * 4 + 1], b: data[i * 4 + 2] });
       return resolved.cells.map((cell, i) => {
         const col = i % cols, row = (i - col) / cols;
         if (!pins.size || !pins.has(cellKey(col, row))) return this.#shown(cell, col, row, params);
-        const top = pixelAt(2 * row * cols + col);
-        return buildCell(top, pixelAt((2 * row + 1) * cols + col) ?? top, cell.char, params.renderStyle);
+        return buildCell(this.#pictureAt(col, 2 * row), this.#pictureAt(col, 2 * row + 1), cell.char, params.renderStyle);
       });
     }
+    const { data, indexes } = this.#snapped ?? snapToPalette(this.outputCanvas, this.palette);
     return buildCellsFromBytes(data, params.cols, params.rows, {
       charset: params.chars,
       charMode: params.charMode || 'random',
@@ -223,9 +223,62 @@ export default class Renderer {
     if (!hold) this.#heldData = null;
     else if (partial) putRows(this.#heldData, w, ctx.getImageData(x, y, area.w, area.h).data, area);
     else this.#heldData = ctx.getImageData(0, 0, w, h).data;
-    this.#snapped = paintLayer && this.palette?.length ? snapToPalette(this.outputCanvas, this.palette, area) : null;
+    const resolved = !!this.#resolvedFor(params); // its cells don't read the output (cellsFromOutput): it's snapped here
+    this.#snapped = (paintLayer || resolved) && this.palette?.length ? snapToPalette(this.outputCanvas, this.palette, area) : null;
     if (partial) this.#snapped = null; // only the area's
+    if (this.#showsResolved(params)) this.#showResolved(ctx, params, resolvedAgain ? { x: 0, y: 0, w, h } : area);
     return changed || moved || resolvedAgain;
+  }
+
+  // Under Best match and By shape, a grid pixel of the picture with any paint over it (#baseData and
+  // #paintData, as composited), snapped as the output is: what a pinned cell is built from and shows.
+  #pictureAt(x, y) {
+    const { data, width } = this.#baseData, o = (y * width + x) * 4, paint = this.paintAt(x, y);
+    const p = { r: data[o], g: data[o + 1], b: data[o + 2] };
+    return nearestColor(paint ? mix(p, paint, paint.a) : p, this.palette);
+  }
+
+  // Whether the output shows the resolved cells (#showResolved): Best match and By shape in ANSI, with
+  // a palette. The ASCII styles show the picture there, as By intensity and By brightness do (their
+  // cells sit on black); without a palette there's nothing snapped, and the output is what a movie's
+  // Number palette is picked from (FrameBuilder.moviePalette).
+  #showsResolved(params) {
+    return params.renderStyle === 'ansi' && !!this.palette?.length && !!this.#resolvedFor(params);
+  }
+
+  // The resolved cells in the output over area (whole cells), as #ditherUnder shows its pattern: the PIXEL
+  // view, and what the Paint Bucket and Magic Wand read there, show the cells chosen, not the picture
+  // snapped a pixel at a time. Each half its cell's half color (halfColors: the plain average, as edit
+  // cells show at pixel scale; a shade's mix isn't a palette color), with any paint over it snapped
+  // as the output snaps paint. A pinned cell shows the picture's own pixels, which its colors come
+  // from (#pictureAt), and an odd last pixel row (no cell) keeps them. Also called for the cells an edit
+  // rebuilds (updateCells), whose pins can change after its composite (eraseBase).
+  #showResolved(ctx, params, area) {
+    const { cols } = params, cells = this.#resolved.cells, pins = this.baseRecords.pins;
+    const r0 = area.y >> 1, r1 = Math.min(charRowsOf(params.rows), (area.y + area.h + 1) >> 1);
+    if (r1 <= r0) return;
+    const { x, w } = area, y = 2 * r0, image = ctx.getImageData(x, y, w, 2 * (r1 - r0)), d = image.data;
+    const paint = this.#paintData?.data, inks = new Map(); // halfColors' math, inline: this runs over the whole grid
+    for (let row = r0; row < r1; row++) {
+      for (let col = x; col < x + w; col++) {
+        const pinned = pins.size && pins.has(cellKey(col, row)), cell = cells[row * cols + col];
+        let ink = inks.get(cell.char);
+        if (!ink) inks.set(cell.char, ink = coverageOf(cell.char));
+        for (let half = 0; half < 2; half++) {
+          const py = 2 * row + half, o = ((py - y) * w + col - x) * 4;
+          if (pinned || paint?.[(py * cols + col) * 4 + 3]) {
+            const over = !pinned && this.paintAt(col, py);
+            const c = pinned ? this.#pictureAt(col, py) : nearestColor(mix(halfColors(cell)[half], over, over.a), this.palette);
+            d[o] = c.r; d[o + 1] = c.g; d[o + 2] = c.b;
+          } else {
+            const { fg, bg } = cell, t = ink[half];
+            d[o] = Math.round(bg.r + (fg.r - bg.r) * t); d[o + 1] = Math.round(bg.g + (fg.g - bg.g) * t); d[o + 2] = Math.round(bg.b + (fg.b - bg.b) * t);
+          }
+          d[o + 3] = 255;
+        }
+      }
+    }
+    ctx.putImageData(image, x, y);
   }
 
   // Best match and By shape: the base (before the palette snap) resolved to cells, each the glyph,
@@ -459,14 +512,15 @@ export default class Renderer {
     const next = cells.slice();
     const { cols, chars: charset, charMode, renderStyle } = params;
     const done = new Set();
-    const pixelAt = this.#outputPixels(pixels);
-    const resolved = this.#resolvedFor(params);
+    const resolved = this.#resolvedFor(params), rebuilt = { x0: Infinity, x1: -1, r0: Infinity, r1: -1 }; // the cells' bounds, for #showResolved
+    const pixelAt = !resolved && this.#outputPixels(pixels); // the resolved cells don't read the output
 
     for (const { x, y } of pixels) {
       const { col, row } = cellOfPixel(x, y);
       const i = cellIndex(col, row, cols);
       if (done.has(i) || !next[i]) continue;
       done.add(i);
+      if (resolved) Object.assign(rebuilt, { x0: Math.min(rebuilt.x0, col), x1: Math.max(rebuilt.x1, col), r0: Math.min(rebuilt.r0, row), r1: Math.max(rebuilt.r1, row) });
 
       const entry = editCells.get(cellKey(col, row));
       if (entry) {
@@ -474,8 +528,13 @@ export default class Renderer {
         continue;
       }
 
-      if (resolved && !this.baseRecords.pins.has(cellKey(col, row))) {
-        next[i] = this.#shown(resolved.cells[i], col, row, params);
+      if (resolved) { // a pin as cellsFromOutput builds it, held paint in its own colors
+        if (!this.baseRecords.pins.has(cellKey(col, row))) {
+          next[i] = this.#shown(resolved.cells[i], col, row, params);
+          continue;
+        }
+        const half = (y) => this.#held(col, y, cols) ?? this.#pictureAt(col, y);
+        next[i] = this.#onBase(col, row, buildCell(half(2 * row), half(2 * row + 1), resolved.cells[i].char, renderStyle));
         continue;
       }
 
@@ -491,6 +550,9 @@ export default class Renderer {
       // Random mode keeps the cell's rendered character
       const char = keepsSeed(charMode) ? (baseCells[i] ?? next[i]).char : weightedChar(top, bottom, charset, charMode);
       next[i] = this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
+    }
+    if (rebuilt.x1 >= 0 && this.#showsResolved(params)) {
+      this.#showResolved(ctx2d(this.outputCanvas), params, { x: rebuilt.x0, y: 2 * rebuilt.r0, w: rebuilt.x1 - rebuilt.x0 + 1, h: 2 * (rebuilt.r1 - rebuilt.r0 + 1) });
     }
     return next;
   }

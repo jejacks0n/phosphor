@@ -91,13 +91,20 @@ documents, and while you edit the base layer, the cells under the edit settle wh
 Ordered (Bayer) nudges each cell by its place in the grid.
 
 Paint and typed cells aren't touched by any of this: paint colors a cell's halves through its
-character (or makes a `▄` over a solid cell), and a pinned character stays pinned. With the CGA or
+character (or makes a `▄` over a solid cell), and a pinned character stays pinned.
+
+In ANSI with a palette, the Pixel tab shows the cells Best match or By shape chose, each half its
+two colors blended by how much of it the character covers (as typed and drawn characters show
+there), so a `▒` of black and white is a gray there even when the palette has no such gray, and the
+Paint Bucket and Magic Wand go by what you see. Without a palette, and in the ASCII styles, the
+Pixel tab shows the picture. With the CGA or
 VGA palette, Bake bakes exactly, without asking how to keep the colors, when Dither is on or the
 characters come from Best match or By shape.
 
-**The characters are measured in IBM VGA**, whichever font you view the art in, so the same document
-picks the same characters on every screen, in every room and in every export. Changing the font
-changes how the cells look, not which characters they hold.
+**The characters are measured in IBM VGA**, whichever font you view the art in, so the font never
+changes which characters are chosen: changing it changes how the cells look, not which characters
+they hold. Where two choices come out almost exactly as close, another computer (its graphics card)
+can now and then pick the other one, in a cell here and there.
 
 ## The font
 
