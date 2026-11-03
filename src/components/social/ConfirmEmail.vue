@@ -1,9 +1,11 @@
 <script setup>
 import { onBeforeUnmount, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { mountTurnstile, turnstileSiteKey } from '@/social/turnstile';
 
 const social = useSocialStore();
+const { t } = useI18n();
 
 // Sending the mail again needs a Turnstile token, so Resend starts the check and its answer sends the
 // mail. The widget shows only if it needs you, compact to fit the sidebar. One that fails or doesn't load
@@ -36,8 +38,8 @@ onBeforeUnmount(stopCheck);
 
 <template>
   <div>
-    Confirm your email to start a room
-    <button class="link inline" :disabled="social.busy || checking" @click="resend">Resend</button>
+    {{ t('social.lobby.confirmToStart') }}
+    <button class="link inline" :disabled="social.busy || checking" @click="resend">{{ t('social.lobby.resend') }}</button>
     <div ref="widget" class="turnstile"></div>
   </div>
 </template>

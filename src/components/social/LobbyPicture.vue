@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, useTemplateRef, onBeforeUnmount, useId } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoomStore } from '@/store/RoomStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -18,6 +19,7 @@ import RoomArt from './RoomArt.vue';
 const FRAME = 300;   // until the picture's room is measured
 const room = useRoomStore(), project = useProjectStore(), workspace = useWorkspaceStore();
 const headingId = useId();
+const { t } = useI18n();
 
 const spec = computed(() => fontOnWire(workspace.displayFontSpec));
 const font = computed(() => fontFor(spec.value));
@@ -120,11 +122,11 @@ onBeforeUnmount(() => {
 
 <template>
   <section ref="picture" class="lobby-picture" :aria-labelledby="headingId">
-    <h3 :id="headingId">Lobby picture</h3>
+    <h3 :id="headingId">{{ t('social.picture.heading') }}</h3>
     <div ref="frame" class="frame" :style="frameStyle" @scroll.capture="scrolled">
       <RoomArt v-if="art" ref="roomArt" :art="art" :host-view="hostView" :tracking="!pinned" :zoom="zoom" :boxed="false" @cell="cellDrawn" />
     </div>
-    <label class="choice"><input type="checkbox" :checked="pinned" @change="pin"> Use this exact position</label>
+    <label class="choice"><input type="checkbox" :checked="pinned" @change="pin"> {{ t('social.picture.exactPosition') }}</label>
   </section>
 </template>
 

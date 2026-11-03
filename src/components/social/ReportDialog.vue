@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, nextTick, onUnmounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { REASONS } from '@/social/chat';
@@ -11,6 +12,7 @@ import ModalDialog from '@/components/ModalDialog.vue';
 // read out); one that can't be sent leaves the dialog as it is.
 // Cancel, Escape and the backdrop send nothing; while a room report makes its picture, they wait. Focus goes back to `trigger`, or (that gone, as a message's
 // Report is once you've reported them) to `back`, else the "N here" button or the messages.
+const { t } = useI18n();
 const props = defineProps({
   name: { type: String, default: null },
   sub: { type: String, default: null },
@@ -23,10 +25,10 @@ const emit = defineEmits(['done']);
 const roomStore = useRoomStore(), social = useSocialStore();
 const SHOWN_MS = 4000;
 
-const title = computed(() => (props.room ? 'Report this room?' : `Report ${props.name}?`));
-const says = computed(() => (!props.room ? 'Phosphor\'s moderators see this message and the few before it.'
-  : props.room.from === 'inside' ? 'Phosphor\'s moderators see the room\'s last lobby pictures and a picture of what you see now.'
-    : 'Phosphor\'s moderators see the room\'s last lobby pictures.'));
+const title = computed(() => (props.room ? t('social.report.titleRoom') : t('social.report.titlePerson', { name: props.name })));
+const says = computed(() => (!props.room ? t('social.report.subMessage')
+  : props.room.from === 'inside' ? t('social.report.subRoomInside')
+    : t('social.report.subRoomLobby')));
 
 const reason = ref(null);
 const sent = ref(false);
@@ -63,16 +65,16 @@ function report() {
 
 <template>
   <Teleport to="body">
-    <p class="reported" role="status">{{ sent ? 'Reported. Thank you.' : '' }}</p>
+    <p class="reported" role="status">{{ sent ? t('social.report.thanks') : '' }}</p>
   </Teleport>
   <ModalDialog v-if="!sent" :title="title" :sub="says" @cancel="cancel">
     <fieldset>
-      <legend>What's wrong?</legend>
+      <legend>{{ t('social.report.whatsWrong') }}</legend>
       <label v-for="r in REASONS" :key="r.id"><input v-model="reason" type="radio" name="report-reason" :value="r.id"> {{ r.label }}</label>
     </fieldset>
     <div class="actions">
-      <button :disabled="sending" @click="cancel">Cancel</button>
-      <button class="danger" :disabled="!reason || sending" @click="report">{{ sending ? 'Reporting…' : 'Report' }}</button>
+      <button :disabled="sending" @click="cancel">{{ t('common.cancel') }}</button>
+      <button class="danger" :disabled="!reason || sending" @click="report">{{ sending ? t('social.report.reporting') : t('social.report.submit') }}</button>
     </div>
   </ModalDialog>
 </template>

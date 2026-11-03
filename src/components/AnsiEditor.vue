@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, useTemplateRef, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useTextTool } from '@/composables/useTextTool';
@@ -20,6 +21,7 @@ import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 // character cell tall. The canvas covers only the cells in view, plus a margin (viewWindow), inside
 // a sizer the whole grid's size: the sizer is the display everything measures against. It zooms out
 // (workspace.ansiZoom): the canvas draws its glyphs at the zoom, the <pre> its font.
+const { t } = useI18n();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 // The Magic Wand's selection, made in either view, in this view's units.
@@ -366,7 +368,7 @@ onBeforeUnmount(() => {
           autocomplete="off"
           autocapitalize="off"
           spellcheck="false"
-          aria-label="Type into the canvas"
+          :aria-label="t('tools.text.canvasInputAria')"
       ></textarea>
       <WandOverlay v-if="wand" :wand="wand" :unit="cellUnit" :display="displayRef" :tint="workspaceStore.activeTool === 'wand'"/>
       <template v-if="selectionBox">

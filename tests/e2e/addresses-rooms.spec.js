@@ -240,7 +240,7 @@ test('a ?room= moved between a phone\'s tabs is no mark of yours: widened and re
 
 // Hosting: going live is a step, and Back past it asks. The browser has moved already by then, so while
 // it asks the address is where Back was going; a refusal puts it back with no navigation of its own.
-const endRoom = (page) => page.getByRole('dialog', { name: 'End the room?' });
+const endRoom = (page) => page.getByRole('dialog', { name: 'End this room?' });
 const entry = (page) => page.evaluate(() => [history.state.position, history.length]);
 const LIVE = `/social?room=${ROOM_ID}`;
 // What the router does from here on: each navigation's address and how it failed (4 is refused by a guard).
@@ -315,7 +315,7 @@ test('Back past several entries at once asks once: Cancel puts them all back, En
   await hash(host, `/pixel?room=${ROOM_ID}`);
   const before = await entry(host);
 
-  await host.evaluate(() => history.go(-3));   // PIXEL, the host's page, Setup room: the lobby
+  await host.evaluate(() => history.go(-3));   // PIXEL, the host's page, Set up your room: the lobby
   await expect(endRoom(host)).toBeVisible();
   await hash(host, '/social');
   await endRoom(host).getByRole('button', { name: 'Cancel' }).click();

@@ -7,9 +7,9 @@ const LIST = ['#ffffff', '#aa5601', '#e03020', '#000000', '#4a4a4a'];
 
 test('Color list with Contrast moved: each swatch shows and types its own color', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('combobox', { name: 'Color Palette' }).selectOption('palette');
-  await page.getByRole('textbox', { name: 'Palette Colors' }).fill(LIST.join(' '));
-  await page.getByRole('textbox', { name: 'Palette Colors' }).press('Enter');
+  await page.getByRole('combobox', { name: 'Color palette' }).selectOption('palette');
+  await page.getByRole('textbox', { name: 'Palette colors' }).fill(LIST.join(' '));
+  await page.getByRole('textbox', { name: 'Palette colors' }).press('Enter');
   const contrast = page.getByRole('group', { name: /Adjustments/ }).getByRole('slider').nth(1);
   await contrast.focus();
   for (let i = 0; i < 3; i++) await page.keyboard.press('PageUp');

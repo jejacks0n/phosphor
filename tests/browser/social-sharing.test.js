@@ -602,7 +602,7 @@ test('keys while paused: a refused type says nothing and the cursor stays', asyn
   expect(toastMessage.value).toBe(null);
   project.setPaused(false);
   typeAtCursor(project, workspace, '漢');
-  expect(toastMessage.value).toContain('No room');
+  expect(toastMessage.value).toContain("won't fit");
 });
 
 test('an artist\'s float that has gone out starts a new run, since it can\'t be taken back at once', async () => {

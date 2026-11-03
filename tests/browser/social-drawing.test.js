@@ -4,6 +4,7 @@
 import { test, expect, afterEach, vi } from 'vitest';
 import { createPinia, getActivePinia, setActivePinia } from 'pinia';
 import { createApp, h, nextTick, watch } from 'vue';
+import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { Host } from '@/social/hosting';
 import { Watch } from '@/social/watching';
@@ -2651,7 +2652,7 @@ async function makeArtistButton(room, watcher) {
   const rooms = useRoomStore();
   rooms.$patch({ role: 'host', peopleOpen: true, watchers: [{ peer: watcher, sub: watcher, name: watcher, guest: false, tracking: false, connected: true }] });
   const app = createApp({ render: () => h(RoomPeople) });
-  app.use(getActivePinia());
+  app.use(getActivePinia()).use(i18n);
   const element = document.createElement('div');
   document.body.append(element);
   app.mount(element);
@@ -2674,10 +2675,10 @@ test('the host can\'t make more artists than the cap', async () => {
 
   expect(room.drawing.invite('ann')).toBe(true);   // asked is a place held, as a yes has to find one
   await expect.poll(() => ann.drawing.invitation, PATIENT).toBe(true);
-  expect(room.drawing.artistsFull).toBe('This room has as many artists as it can take.');
+  expect(room.drawing.artistsFull).toBe('This room already has the maximum number of artists.');
   await nextTick();
   expect(button().disabled).toBe(true);
-  expect(button().title).toBe('This room has as many artists as it can take.');
+  expect(button().title).toBe('This room already has the maximum number of artists.');
   expect(room.drawing.invite('bob')).toBe(false);
   expect(room.drawing.invited).toEqual(['ann']);
   await wait(50);
@@ -2694,7 +2695,7 @@ test('the host can\'t make more artists than the cap', async () => {
   bob.drawing.accept();
   await expect.poll(() => bob.drawing.mayDraw, PATIENT).toBe(true);
   expect(room.drawing.artists).toHaveLength(MOST_ARTISTS - 1);   // the host makes up the cap
-  expect(room.drawing.artistsFull).toBe('This room has as many artists as it can take.');
+  expect(room.drawing.artistsFull).toBe('This room already has the maximum number of artists.');
 });
 
 test('a yes that finds the room full isn\'t listed, and is told so', async () => {

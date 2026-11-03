@@ -4,6 +4,7 @@ import './assets/fonts.css';
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
+import { i18n, initLocale } from './i18n';
 import { createAddressRouter, followAddress } from './router';
 import { useSocialStore } from './store/SocialStore';
 import { useRoomStore } from './store/RoomStore';
@@ -13,6 +14,8 @@ const pinia = createPinia();
 
 const app = createApp(App);
 app.use(pinia);
+app.use(i18n);
+initLocale();
 
 // SOCIAL: a link back from the server is read at load; the rest waits for the tab (a server that can't
 // be reached leaves the editor be). Before the router's made, which keeps what the URL has then.

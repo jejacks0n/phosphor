@@ -1,56 +1,112 @@
 <script setup>
+import { useI18n } from 'vue-i18n';
 import ReadingDialog from '@/components/ReadingDialog.vue';
 
 // This build: the version (its third number is the day it was built) and the commit (vite.config.js, buildInfo).
 const { version, sha } = __BUILD__;
 
 const emit = defineEmits(['close']);
+const { t } = useI18n();
 </script>
 
 <template>
-  <ReadingDialog label="About Phosphor" @close="emit('close')">
+  <ReadingDialog :label="t('about.label')" @close="emit('close')">
     <header>
       <div class="logo"></div>
-      <p class="tagline">Turn images into ANSI and ASCII, then keep drawing ... with style?</p>
-      <p class="version accent">v{{ version }}</p>
-      <p class="build">build {{ sha }}</p>
+      <p class="tagline">{{ t('about.tagline') }}</p>
+      <p class="version accent">{{ t('about.version', { version }) }}</p>
+      <p class="build">{{ t('about.build', { sha }) }}</p>
     </header>
 
     <hr/>
 
-    <p>
-      Phosphor began in 2019 as a small experiment to build tooling for a concept I called "ANSI Nouveau." At the time, I was interested in the idea of recreating the mid-90s BBS experience I grew up with, but through a modern, high-fidelity lens. Like many passion projects, it eventually got sidetracked and shelved and life gets in the way.
-    </p>
+    <p>{{ t('about.p1') }}</p>
 
-    <p>
-      Years later, I came across a fantastic <a href="https://github.com/christiansacks/moebius" target="_blank">fork of the Moebius ANSI editor</a> that added 256-color and full-color support. It reminded me of this project, so I dragged it out of storage, dusted off the code -- and leveraging modern tools and techniques, brought it back to life.
-    </p>
+    <i18n-t keypath="about.p2" tag="p">
+      <template #moebiusFork>
+        <a href="https://github.com/christiansacks/moebius" target="_blank">fork of the Moebius ANSI editor</a>
+      </template>
+    </i18n-t>
 
-    <p>
-      While Phosphor started as an image to ANSI tool, today it attempts to do two things. It can turn an image into ANSI or ASCII, allowing you to tune it to your liking, and then lets you draw and type over that, cell by cell, and export it as .ans or .utf8ans. Finish the piece here, or take the file into another editor for the last pass -- whether you're after "Pure ANSI" for the purists or the full-color, UTF-8 "ANSI Nouveau" modern style that was my initial inspiration for the project.
-    </p>
+    <p>{{ t('about.p3') }}</p>
 
-    <p>
-      It's still early versions. Expect bugs, and expect it to be rough on phones and tablets, though it is largely supported on iPad with Apple Pencil via my testing. Feedback, bug reports and ideas are welcome: open an issue on <a href="https://github.com/jejacks0n/phosphor" target="_blank">GitHub</a>, or fork the repo and take it in your own direction.
-    </p>
+    <i18n-t keypath="about.p4" tag="p">
+      <template #github>
+        <a href="https://github.com/jejacks0n/phosphor" target="_blank">GitHub</a>
+      </template>
+    </i18n-t>
 
-    <p>Credits and special thanks:</p>
+    <p>{{ t('about.creditsIntro') }}</p>
     <ul>
-      <li><a href="https://ertdfgcvb.xyz" target="_blank">ertdfgcvb</a> (Andreas Gysin) for the inspiration for Phosphor with the (awesome) <a href="https://play.ertdfgcvb.xyz" target="_blank">play.core</a> library</li>
-      <li>Andy Herbert, Blocktronics and MeaTLoTioN for their work on Moebius</li>
-      <li>cmang for <a href="https://github.com/cmang/durdraw" target="_blank">Durdraw</a>, the ANSI and ASCII art editor that animates</li>
-      <li>lordscarlet (Doug Moore) and Brendan O'Connor for creating sixteencolors and those working to keep <a href="https://16colo.rs" target="_blank">https://16colo.rs</a> alive today.</li>
-      <li>The fonts: <a href="https://int10h.org/oldschool-pc-fonts/" target="_blank">IBM VGA 8x16</a> from VileR's Ultimate Oldschool PC Font Pack (<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a>), <a href="https://github.com/JetBrains/JetBrainsMono" target="_blank">JetBrains Mono</a> by The JetBrains Mono Project Authors (<a href="https://openfontlicense.org" target="_blank">SIL OFL 1.1</a>), <a href="http://viznut.fi/unscii/" target="_blank">Unscii</a> by viznut (public domain), and <a href="https://unifoundry.com/unifont/" target="_blank">GNU Unifont</a> by Roman Czyborra, Paul Hardy and others (<a href="https://openfontlicense.org" target="_blank">SIL OFL 1.1</a>)</li>
-      <li>The icons: most are from <a href="https://fontawesome.com" target="_blank">Font Awesome Free</a> by Fonticons, Inc. (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>)</li>
-      <li>And the many authors, maintainers, and ANSI artists who have inspired me over the years -- too many to name</li>
+      <li>
+        <i18n-t keypath="about.creditErtdfgcvb" tag="span">
+          <template #ertdfgcvb>
+            <a href="https://ertdfgcvb.xyz" target="_blank">ertdfgcvb</a>
+          </template>
+          <template #playCore>
+            <a href="https://play.ertdfgcvb.xyz" target="_blank">play.core</a>
+          </template>
+        </i18n-t>
+      </li>
+      <li>{{ t('about.creditMoebius') }}</li>
+      <li>
+        <i18n-t keypath="about.creditDurdraw" tag="span">
+          <template #durdraw>
+            <a href="https://github.com/cmang/durdraw" target="_blank">Durdraw</a>
+          </template>
+        </i18n-t>
+      </li>
+      <li>
+        <i18n-t keypath="about.credit16Colors" tag="span">
+          <template #sixteenColors>
+            <a href="https://16colo.rs" target="_blank">https://16colo.rs</a>
+          </template>
+        </i18n-t>
+      </li>
+      <li>
+        <i18n-t keypath="about.creditFonts" tag="span">
+          <template #ibmVga>
+            <a href="https://int10h.org/oldschool-pc-fonts/" target="_blank">IBM VGA 8x16</a>
+          </template>
+          <template #ccBySa>
+            <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a>
+          </template>
+          <template #jetbrains>
+            <a href="https://github.com/JetBrains/JetBrainsMono" target="_blank">JetBrains Mono</a>
+          </template>
+          <template #ofl1>
+            <a href="https://openfontlicense.org" target="_blank">SIL OFL 1.1</a>
+          </template>
+          <template #unscii>
+            <a href="http://viznut.fi/unscii/" target="_blank">Unscii</a>
+          </template>
+          <template #unifont>
+            <a href="https://unifoundry.com/unifont/" target="_blank">GNU Unifont</a>
+          </template>
+          <template #ofl2>
+            <a href="https://openfontlicense.org" target="_blank">SIL OFL 1.1</a>
+          </template>
+        </i18n-t>
+      </li>
+      <li>
+        <i18n-t keypath="about.creditIcons" tag="span">
+          <template #fontAwesome>
+            <a href="https://fontawesome.com" target="_blank">Font Awesome Free</a>
+          </template>
+          <template #ccBy>
+            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>
+          </template>
+        </i18n-t>
+      </li>
+      <li>{{ t('about.creditScene') }}</li>
     </ul>
-    <p>Thanks to all of you for the inspiration, and for keeping the scene going.</p>
+    <p>{{ t('about.thanks') }}</p>
 
     <hr/>
 
     <div class="footer">
       <p>&copy; 2026 Phosphor Project</p>
-      <p class="accent">Make Code Not War</p>
+      <p class="accent">{{ t('about.motto') }}</p>
     </div>
   </ReadingDialog>
 </template>

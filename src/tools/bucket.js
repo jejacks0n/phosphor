@@ -9,6 +9,7 @@ import { hex2rgb } from '@/lib/ColorUtils';
 import { toast } from '@/composables/useToast';
 import { snappedEnd } from './shapes';
 import { watch } from 'vue';
+import { t } from '@/i18n/index.js';
 
 // Grid pixels the fill stops at: edit cells showing a character with something to see through (text,
 // box lines), so a fill stays inside a drawn box and never covers typed text. A line hidden under
@@ -94,44 +95,49 @@ function stopDrag({ workspace }) {
 }
 
 const cellOptions = { views: ['output'], when: (ws) => ws.bucketFillWith === 'cells' };
-const PARTS = (what) => [
-  { key: 'fg', label: 'FG', title: `${what} foreground color` },
-  { key: 'bg', label: 'BG', title: `${what} background color` },
-  { key: 'char', label: 'Char', title: `${what} character` },
+const MATCH_OPTIONS = [
+  { key: 'fg', get label() { return t('tools.matchToggles.fg'); }, get title() { return t('tools.matchToggles.fgTitle'); } },
+  { key: 'bg', get label() { return t('tools.matchToggles.bg'); }, get title() { return t('tools.matchToggles.bgTitle'); } },
+  { key: 'char', get label() { return t('tools.matchToggles.char'); }, get title() { return t('tools.matchToggles.charTitle'); } },
+];
+const SET_OPTIONS = [
+  { key: 'fg', get label() { return t('tools.matchToggles.fg'); }, get title() { return t('tools.bucket.setFgTitle'); } },
+  { key: 'bg', get label() { return t('tools.matchToggles.bg'); }, get title() { return t('tools.bucket.setBgTitle'); } },
+  { key: 'char', get label() { return t('tools.matchToggles.char'); }, get title() { return t('tools.bucket.setCharTitle'); } },
 ];
 
 export default {
   id: 'bucket',
-  title: 'Paint Bucket (fill)',
+  get title() { return t('tools.bucket.title'); },
   keys: ['G'],
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M341.7 135.6L277.3 200L310.7 233.4C323.2 245.9 323.2 266.2 310.7 278.7C298.2 291.2 277.9 291.2 265.4 278.7L232 245.3L135.6 341.7C132.7 344.6 130.5 348.2 129.3 352L450.8 352L504.5 298.3C509.4 293.4 512.1 286.8 512.1 280C512.1 273.2 509.4 266.5 504.5 261.7L378.3 135.6C373.5 130.7 366.9 128 360 128C353.1 128 346.5 130.7 341.7 135.6zM90.3 296.4L186.7 200L137.3 150.6C124.8 138.1 124.8 117.8 137.3 105.3C149.8 92.8 170.1 92.8 182.6 105.3L232 154.7L296.4 90.3C313.3 73.5 336.1 64 360 64C383.9 64 406.7 73.5 423.6 90.3L549.7 216.4C566.5 233.3 576 256.1 576 280C576 303.9 566.5 326.7 549.7 343.6L343.6 549.7C326.7 566.5 303.9 576 280 576C256.1 576 233.3 566.5 216.4 549.7L90.3 423.6C73.5 406.7 64 383.9 64 360C64 336.1 73.5 313.3 90.3 296.4zM544 608C508.7 608 480 579.3 480 544C480 518.8 512.6 464.4 531.2 435.3C537.2 425.9 550.7 425.9 556.7 435.3C575.4 464.4 607.9 518.8 607.9 544C607.9 579.3 579.2 608 543.9 608z"/></svg>`,
   views: ['input', 'output'],
   kind: 'paint',
   altPicks: true,
   options: [
-    { key: 'editFillTolerance', label: 'Tolerance', title: 'Fill tolerance', min: 0, max: 100 },
-    { key: 'editFillContiguous', label: 'Contiguous', type: 'checkbox' },
-    { key: 'editFillFeather', label: 'Feathering', title: 'Fill feathering', min: 0, max: 100, when: (ws) => ws.editorTab === 'input' || ws.bucketFillWith !== 'cells' },
-    { key: 'bucketMatch', label: 'Match', type: 'toggles', options: PARTS('Cells with the same'), ...cellOptions },
-    { key: 'bucketSet', label: 'Set', type: 'toggles', options: PARTS('Set the cells to your'), views: ['output'], when: (ws) => ws.bucketFillWith === 'cells' && ws.bucketGradient === 'solid' },
+    { key: 'editFillTolerance', get label() { return t('tools.bucket.tolerance'); }, get title() { return t('tools.bucket.toleranceTitle'); }, min: 0, max: 100 },
+    { key: 'editFillContiguous', get label() { return t('tools.bucket.contiguous'); }, get title() { return t('tools.bucket.contiguousTitle'); }, type: 'checkbox' },
+    { key: 'editFillFeather', get label() { return t('tools.bucket.feather'); }, get title() { return t('tools.bucket.featherTitle'); }, min: 0, max: 100, when: (ws) => ws.editorTab === 'input' || ws.bucketFillWith !== 'cells' },
+    { key: 'bucketMatch', get label() { return t('tools.bucket.match'); }, type: 'toggles', options: MATCH_OPTIONS, ...cellOptions },
+    { key: 'bucketSet', get label() { return t('tools.bucket.set'); }, type: 'toggles', options: SET_OPTIONS, views: ['output'], when: (ws) => ws.bucketFillWith === 'cells' && ws.bucketGradient === 'solid' },
     {
-      key: 'bucketFillWith', label: 'Fill', type: 'dropdown', views: ['output'],
+      key: 'bucketFillWith', get label() { return t('tools.bucket.fill'); }, type: 'dropdown', views: ['output'],
       choices: [
-        { value: 'normal', label: 'Normal mode', glyph: '' }, // the color you see, at grid resolution
-        { value: 'cells', label: 'Cells', glyph: '▒▓' },      // whole cells: their colors and characters
+        { value: 'normal', get label() { return t('tools.drawWith.normal'); }, glyph: '' }, // the color you see, at grid resolution
+        { value: 'cells', get label() { return t('tools.drawWith.cells'); }, glyph: '▒▓' },      // whole cells: their colors and characters
       ],
     },
     {
-      key: 'bucketGradient', label: 'Gradient', type: 'segmented',
+      key: 'bucketGradient', get label() { return t('tools.bucket.gradient'); }, type: 'segmented',
       choices: [
-        { value: 'solid', label: 'Solid' },
-        { value: 'linear', label: 'Linear' },
-        { value: 'spherical', label: 'Spherical' },
+        { value: 'solid', get label() { return t('tools.bucket.gradientSolid'); } },
+        { value: 'linear', get label() { return t('tools.bucket.gradientLinear'); } },
+        { value: 'spherical', get label() { return t('tools.bucket.gradientSpherical'); } },
       ],
     },
   ],
   // What Shift does, for the status bar.
-  shiftHint: (ws) => (ws.bucketGradient === 'solid' ? null : 'snap to 45°'),
+  shiftHint: (ws) => (ws.bucketGradient === 'solid' ? null : t('tools.shapes.shiftSnap45')),
   // Solid: one click fills, with no stroke to continue. Linear and Spherical: a drag draws the line
   // (shown as Shapes shows a line) and the release fills; a press outside the selection does nothing.
   begin(ctx, pos, event) {
@@ -165,7 +171,7 @@ export default {
     if (!from || !drag) return;
     const to = drag.to;
     if (Math.floor(to.x) === Math.floor(from.x) && Math.floor(to.y) === Math.floor(from.y)) fillSolid(ctx, from);
-    else if (ctx.workspace.editFgNone || ctx.workspace.editBgNone) toast('A gradient needs both a foreground and a background color: neither can be None.');
+    else if (ctx.workspace.editFgNone || ctx.workspace.editBgNone) toast(t('tools.bucket.gradientNeedsColors'));
     else fillGradient(ctx, from, to);
   },
   // A pinch took over the drag: nothing is filled.

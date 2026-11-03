@@ -13,6 +13,6 @@ test('User fonts: ten sample characters, one width or a refusal naming the narro
   const mismatch = widthMismatch(proportional);
   assert.deepEqual(mismatch, { narrow: 'i', wide: 'W' });
   assert.equal(notMonospacedMessage('Comic Sans MS', proportional, mismatch),
-    '“Comic Sans MS” isn\'t monospaced: “i” is 4.1px wide and “W” is 12.5px. Every character has to be the same width, as in a terminal, so it can\'t be used.');
-  assert.match(notMonospacedMessage('X', { ...mono, ' ': 3 }, widthMismatch({ ...mono, ' ': 3 })), /a space is 3\.0px wide/);
+    '“Comic Sans MS” isn\'t monospaced (“i” is 4.1px wide, while “W” is 12.5px). Phosphor needs fixed-width fonts where every character shares one cell width.');
+  assert.match(notMonospacedMessage('X', { ...mono, ' ': 3 }, widthMismatch({ ...mono, ' ': 3 })), /space is 3\.0px wide/);
 });

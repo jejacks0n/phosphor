@@ -9,6 +9,8 @@ import { cellWidth, graphemes } from './CharWidth.js';
 import { PALETTES } from './ColorUtils.js';
 import { MAX_CELLS, MAX_COLS, MAX_LINES } from './Cells.js';
 import { artEndOf, readSauce } from './Sauce.js';
+import { t } from '@/i18n';
+import { formatNumber } from '@/i18n/format';
 
 export const ART_EXTENSIONS = ['ans', 'utf8ans', 'asc', 'txt'];
 
@@ -56,7 +58,9 @@ export function readArtFile(bytes, name) {
 
   const colsNow = () => fixed || widest;
   const tooBig = () => colsNow() > MAX_COLS || maxRow + 1 > MAX_LINES || colsNow() * (maxRow + 1) > MAX_CELLS;
-  const failTooBig = () => fail(`This file is ${colsNow()} × ${maxRow + 1}. Phosphor opens at most ${MAX_COLS} columns, ${MAX_LINES.toLocaleString('en-US')} lines and ${MAX_CELLS.toLocaleString('en-US')} cells.`);
+  const failTooBig = () => fail(t('document.artTooBig', {
+    cols: colsNow(), rows: maxRow + 1, maxCols: MAX_COLS, maxLines: formatNumber(MAX_LINES), maxCells: formatNumber(MAX_CELLS),
+  }));
   // A file with no width stops at the first limit it passes. One with a width is read to the end for its true size, but stops keeping cells.
   const checkSize = () => {
     if (!tooBig()) return;
@@ -184,7 +188,7 @@ export function readArtFile(bytes, name) {
   }
 
   const cols = colsNow(), rows = maxRow + 1;
-  if (!wrote || !cols) fail("There's no art in this file.");
+  if (!wrote || !cols) fail(t('document.artEmpty'));
   if (tooBig()) failTooBig();
 
   const cells = new Array(cols * rows);

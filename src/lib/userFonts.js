@@ -7,6 +7,8 @@
  * (ascent + descent) per em, so a full block fills its cell.
  */
 
+import { t } from '@/i18n';
+
 // Checked to be one width: the narrowest and widest characters of a proportional font, and a digit.
 export const MONOSPACE_SAMPLE = Object.freeze([...'il.\' MWm@0']);
 
@@ -18,13 +20,18 @@ export function widthMismatch(widths) {
   return widths[wide] - widths[narrow] > widths[wide] * 0.005 ? { narrow, wide } : null;
 }
 
-const quoted = (char) => (char === ' ' ? 'a space' : `“${char}”`);
+const quoted = (char) => (char === ' ' ? t('font.errors.aSpace') : `“${char}”`);
 
 // What we tell you when a font isn't monospaced (widths in px at 16px).
 export function notMonospacedMessage(name, widths, { narrow, wide }) {
-  const px = (char) => `${widths[char].toFixed(1)}px`;
-  return `“${name}” isn't monospaced: ${quoted(narrow)} is ${px(narrow)} wide and ${quoted(wide)} is ${px(wide)}. `
-    + 'Every character has to be the same width, as in a terminal, so it can\'t be used.';
+  const px = (char) => widths[char].toFixed(1);
+  return t('font.errors.notMonospaced', {
+    name,
+    narrow: quoted(narrow),
+    narrowPx: px(narrow),
+    wide: quoted(wide),
+    widePx: px(wide),
+  });
 }
 
 // The CSS family a stored font is registered under.
@@ -112,7 +119,7 @@ export async function addFont(file) {
   try {
     await register(id, data);
   } catch {
-    throw new Error(`“${file.name}” couldn't be read as a font. Phosphor can use TrueType, OpenType and WOFF fonts.`);
+    throw new Error(t('font.errors.unreadable', { name: file.name }));
   }
   const widths = sampleWidths(id), mismatch = widthMismatch(widths);
   if (mismatch) {

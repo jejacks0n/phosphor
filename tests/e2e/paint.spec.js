@@ -3,7 +3,7 @@ import { openApp, store, cellPoint, drag, chars, tab, settled } from './support.
 
 const row = (page, r) => store(page, 'project', `(p) => p.cells.slice(${r} * p.cols, ${r} * p.cols + 20).map((c) => c.fg.hex + c.bg.hex)`);
 
-for (const tool of ['Pencil (1px)', 'Brush (soft)']) {
+for (const tool of ['Pencil', 'Brush']) {
   test(`${tool}: a right-click paints nothing, and strokes change the cells under them`, async ({ page }) => {
     await openApp(page);
     const before = await row(page, 5);
@@ -22,7 +22,7 @@ for (const tool of ['Pencil (1px)', 'Brush (soft)']) {
 
 test('each pointer move of a stroke paints once', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   await page.evaluate(() => {
     const p = document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('project');
     const paintStroke = p.paintStroke;
@@ -41,7 +41,7 @@ test('DOM view: a Pencil click paints the cell under the pointer, at the far rig
   await openApp(page);
   await page.getByRole('button', { name: 'DOM', exact: true }).click();
   await expect(page.locator('.ansi-editor pre.display')).toBeVisible();
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.floor(p.rows / 2) }));
   const display = page.locator('.ansi-editor .display');
   const box = await display.boundingBox();
@@ -54,15 +54,15 @@ test('DOM view: a Pencil click paints the cell under the pointer, at the far rig
 
 test("Half-block: the Pencil's and Brush's Draw with offer it in the ANSI view, and a cell painted with it becomes a ▄", async ({ page }) => {
   await openApp(page);
-  for (const tool of ['Brush (soft)', 'Pencil (1px)']) {
+  for (const tool of ['Brush', 'Pencil']) {
     await page.getByRole('button', { name: tool }).click();
-    await page.getByRole('button', { name: 'Normal mode' }).click(); // the default
+    await page.getByRole('button', { name: 'Colors only' }).click(); // the default
     await page.getByRole('button', { name: 'Half-block' }).click();
   }
   const at = await cellPoint(page, 7, 4, 0);
   await page.mouse.click(at.x, at.y);
   expect(await chars(page, 4, 7, 7)).toBe('▄');
-  await page.getByRole('button', { name: 'Brush (soft)' }).click();
+  await page.getByRole('button', { name: 'Brush' }).click();
   await expect(page.getByRole('button', { name: 'Half-block' })).toBeVisible(); // its own setting, kept
   await tab(page, 'PIXEL').click();
   await expect(page.getByRole('button', { name: 'Half-block' })).toHaveCount(0); // the Pixel view has no characters

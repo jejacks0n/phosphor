@@ -1,5 +1,6 @@
 // The document as a whole: a new image or blank canvas, opening and saving .phosphor projects,
 // exporting .ans and .utf8ans, the filename, and what counts as saved.
+import { t } from '@/i18n';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { frameDuration, serializeFrames } from '@/document/frames.js';
@@ -21,7 +22,6 @@ import { generateSlug } from 'random-word-slugs';
 import { shallowRef } from 'vue';
 
 // A project's pictures, decoded: what can fail before anything has changed.
-const FRAMES_LOST_WORDS = "This file's animation couldn't be opened, so it opened as a still. Saving it keeps only the still.";
 const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer }) => ({
   image: await loadImage(imageBuffer),
   paint: paintBuffer && await loadImage(paintBuffer, 'image/png'),
@@ -67,7 +67,7 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, erasedCells,
       this.clearHistory();
     }
     if (animation?.frames.length > 1 && !this._sharing && !this._takingProject) this.openFrames(animation); // a room holds a still: the file's still is what's open
-    if (framesLost && !this._sharing && !this._takingProject) toast(FRAMES_LOST_WORDS);
+    if (framesLost && !this._sharing && !this._takingProject) toast(t('document.framesLost'));
     this.render();
     this.markSaved();
   } catch (error) {
@@ -89,7 +89,8 @@ export const documentActions = {
     try {
       image = await loadImage(buffer, file.type);
     } catch (e) {
-      alert(`Couldn't open ${file.name}: ${e.message}`);
+      const reason = e?.code === 'DECODE_IMAGE_FAILED' ? t('document.decodeImageFailed') : e.message;
+      alert(t('document.openImageFailed', { name: file.name, reason }));
       return;
     }
     const ratio = (image.naturalWidth || 1) / (image.naturalHeight || 1);
@@ -120,13 +121,13 @@ export const documentActions = {
       blob = await canvasPng(canvas);
     } catch (e) {
       console.error('Failed to start a blank canvas', e);
-      alert("Couldn't start a blank canvas.");
+      alert(t('document.blankFailed'));
       return false;
     }
     this.replaceImage(await loadImage(blob), await blob.arrayBuffer(), {
       cols: Math.max(1, cols),
       rows: Math.max(1, rows),
-      filename: 'untitled',
+      filename: t('common.untitled'),
       sauceTitle: '',
       savedToFile: false,
       ...patch,
@@ -283,7 +284,8 @@ export const documentActions = {
       this.savedToFile = true;
     } catch (e) {
       console.error('Failed to load project file', e);
-      alert('Failed to load project file: ' + e.message);
+      const reason = e?.code === 'INVALID_PROJECT' ? t('document.invalidProject') : e?.code === 'DECODE_IMAGE_FAILED' ? t('document.decodeImageFailed') : e.message;
+      alert(t('document.loadProjectFailed', { reason }));
     }
   },
 
@@ -349,7 +351,7 @@ export const documentActions = {
         smooth: useWorkspaceStore().smoothText,
         tooLarge: (pixels) => {
           if (pixels <= MAX_GIF_PIXELS) return;
-          throw Object.assign(new Error('Too large for a GIF'), { userMessage: 'This animation is too large for a GIF. Fewer frames or a smaller canvas would fit; .cast has no limit.' });
+          throw Object.assign(new Error('Too large for a GIF'), { userMessage: t('save.gifTooLarge') });
         },
       });
       blob = new Blob([gifBytes(shot.width, shot.height, shot.frames)], { type: 'image/gif' });

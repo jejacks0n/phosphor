@@ -25,6 +25,7 @@ import text from './text';
 import select from './select';
 import wand from './wand';
 import shapes from './shapes';
+import { t } from '@/i18n/index.js';
 
 export const TOOLS = [pencil, brush, eraser, bucket, shapes, picker, wand, select, hand, zoom, text, flip];
 
@@ -41,4 +42,8 @@ export function offeredTools(view, project) {
 }
 
 // A tool's name with its keys, for its button's tooltip: 'Pencil (1px) · P'.
-export const toolTitle = (tool) => (tool.keys ? `${tool.title} · ${tool.keys.join(' or ')}` : tool.title);
+export const toolTitle = (tool) => {
+  if (!tool.keys?.length) return tool.title;
+  const keys = tool.keys.reduce((acc, key) => t('tools.keysOr', { a: acc, b: key }));
+  return t('tools.titleWithKeys', { title: tool.title, keys });
+};

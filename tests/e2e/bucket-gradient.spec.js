@@ -43,7 +43,7 @@ test('ANSI tab, Fill: Normal, Spherical: the press is the center, the line shows
 test('ANSI tab, Fill: Cells, Linear: blend characters in the two colors', async ({ page }) => {
   await openApp(page);
   await gradientBucket(page, 'Linear');
-  await page.getByRole('button', { name: 'Normal mode' }).click();
+  await page.getByRole('button', { name: 'Colors only' }).click();
   await page.getByRole('button', { name: '▒▓ Cells' }).click();
   await expect(page.getByRole('group', { name: 'Set', exact: true })).toHaveCount(0); // a gradient sets the character and both colors
   // Match the colors only, within Tolerance 100: every cell.

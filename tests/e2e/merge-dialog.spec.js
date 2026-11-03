@@ -1,12 +1,12 @@
 import { test, expect } from './support.js';
 import { openApp, store, cellPoint, drag } from './support.js';
 
-const mergeButton = (page) => page.getByRole('button', { name: 'Merge down: move the edit layer into the base layer.' });
+const mergeButton = (page) => page.getByRole('button', { name: /^Merge down:/ });
 const dialog = (page) => page.getByRole('dialog', { name: 'Merge down' });
 const hasEdits = (page) => store(page, 'project', (p) => p.hasEdits);
 
 async function drawLine(page, row) {
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   await drag(page, await cellPoint(page, 4, row, 0), await cellPoint(page, 14, row, 0));
 }
 
@@ -19,7 +19,7 @@ test('the merge dialog: centered, canceled three ways, keys kept inside, each ch
   const viewport = page.viewportSize();
   expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(2);
   expect(Math.abs(box.y + box.height / 2 - viewport.height / 2)).toBeLessThan(2);
-  await expect(dialog(page).getByRole('button', { name: /^Exactly as is/ })).toBeFocused();
+  await expect(dialog(page).getByRole('button', { name: /^Keep crisp cells/ })).toBeFocused();
 
   await page.keyboard.press('Escape');
   await expect(dialog(page)).toBeHidden();
@@ -38,12 +38,12 @@ test('the merge dialog: centered, canceled three ways, keys kept inside, each ch
   await expect(dialog(page)).toBeVisible();
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(cells);
 
-  await dialog(page).getByRole('button', { name: /^Exactly as is/ }).click();
+  await dialog(page).getByRole('button', { name: /^Keep crisp cells/ }).click();
   await expect(dialog(page)).toBeHidden();
   expect(await hasEdits(page)).toBe(false);
 
   await drawLine(page, 10);
   await mergeButton(page).click();
-  await dialog(page).getByRole('button', { name: /^Into the image/ }).click();
+  await dialog(page).getByRole('button', { name: /^Blend into source image/ }).click();
   await expect.poll(() => hasEdits(page)).toBe(false);
 });

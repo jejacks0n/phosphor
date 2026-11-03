@@ -68,11 +68,11 @@ test('People: you first, then members, then guests, each by name', () => {
 });
 
 test('Join: open, full, members only for a guest, full wins over members only, a member joins a members-only room', () => {
-  assert.deepEqual(joinState(room('r', { count: 4, max: 12 }), { signedIn: false }), { enabled: true, label: 'Join 4/12', reason: null });
-  assert.deepEqual(joinState(room('r', { count: 12, max: 12 }), { signedIn: true }), { enabled: false, label: 'Join 12/12', reason: 'Room is full' });
-  assert.deepEqual(joinState(room('r', { count: 3, max: 8, allowGuests: false }), { signedIn: false }), { enabled: false, label: 'Join 3/8', reason: 'Signed-in users only' });
-  assert.deepEqual(joinState(room('r', { count: 8, max: 8, allowGuests: false }), { signedIn: false }), { enabled: false, label: 'Join 8/8', reason: 'Room is full' });
-  assert.deepEqual(joinState(room('r', { count: 3, max: 8, allowGuests: false }), { signedIn: true }), { enabled: true, label: 'Join 3/8', reason: null });
+  assert.deepEqual(joinState(room('r', { count: 4, max: 12 }), { signedIn: false }), { enabled: true, label: 'Join (4/12)', reason: null });
+  assert.deepEqual(joinState(room('r', { count: 12, max: 12 }), { signedIn: true }), { enabled: false, label: 'Join (12/12)', reason: 'Room is full' });
+  assert.deepEqual(joinState(room('r', { count: 3, max: 8, allowGuests: false }), { signedIn: false }), { enabled: false, label: 'Join (3/8)', reason: 'Signed-in users only' });
+  assert.deepEqual(joinState(room('r', { count: 8, max: 8, allowGuests: false }), { signedIn: false }), { enabled: false, label: 'Join (8/8)', reason: 'Room is full' });
+  assert.deepEqual(joinState(room('r', { count: 3, max: 8, allowGuests: false }), { signedIn: true }), { enabled: true, label: 'Join (3/8)', reason: null });
 });
 
 // A pacer on a fake clock: setTimer remembers its callbacks for the test to run, clearTimer marks one

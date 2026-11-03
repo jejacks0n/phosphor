@@ -1,5 +1,6 @@
 <script setup>
 import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import ProjectActions from '@/components/ProjectActions.vue';
@@ -7,33 +8,34 @@ import { SAUCE_WIDTHS } from '@/lib/Sauce.js';
 
 const { sauceTitle, sauceAuthor, sauceGroup, sauceUserComments } = storeToRefs(useProjectStore());
 const drawing = useDrawingStore();
+const { t } = useI18n();
 </script>
 
 <template>
   <article class="sauce-editor">
     <div class="editor-container">
-      <h3>SAUCE Metadata</h3>
-      <p>This metadata is embedded in the exported .ans or .utf8ans file and can be viewed by other ANSI editors or viewer applications.</p>
+      <h3>{{ t('sauce.heading') }}</h3>
+      <p>{{ t('sauce.description') }}</p>
 
       <fieldset :disabled="!!drawing.hostOnly" :title="drawing.hostOnly">
         <div class="field">
-          <label for="sauce-title">Title</label>
-          <input id="sauce-title" v-model="sauceTitle" type="text" placeholder="Title (35 chars)" maxlength="35">
+          <label for="sauce-title">{{ t('sauce.title') }}</label>
+          <input id="sauce-title" v-model="sauceTitle" type="text" :placeholder="t('sauce.titlePlaceholder')" maxlength="35">
         </div>
 
         <div class="field">
-          <label for="sauce-author">Author</label>
-          <input id="sauce-author" v-model="sauceAuthor" type="text" placeholder="Author (20 chars)" maxlength="20">
+          <label for="sauce-author">{{ t('sauce.author') }}</label>
+          <input id="sauce-author" v-model="sauceAuthor" type="text" :placeholder="t('sauce.authorPlaceholder')" maxlength="20">
         </div>
 
         <div class="field">
-          <label for="sauce-group">Group</label>
-          <input id="sauce-group" v-model="sauceGroup" type="text" placeholder="Group (20 chars)" maxlength="20">
+          <label for="sauce-group">{{ t('sauce.group') }}</label>
+          <input id="sauce-group" v-model="sauceGroup" type="text" :placeholder="t('sauce.groupPlaceholder')" maxlength="20">
         </div>
 
         <div class="field">
-          <label for="sauce-comments">Custom Comments</label>
-          <textarea id="sauce-comments" v-model="sauceUserComments" :maxlength="SAUCE_WIDTHS.comments" placeholder="Add your own notes to the file metadata..."></textarea>
+          <label for="sauce-comments">{{ t('sauce.comments') }}</label>
+          <textarea id="sauce-comments" v-model="sauceUserComments" :maxlength="SAUCE_WIDTHS.comments" :placeholder="t('sauce.commentsPlaceholder')"></textarea>
         </div>
       </fieldset>
 

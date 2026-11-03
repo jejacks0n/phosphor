@@ -1,5 +1,6 @@
 <script setup>
 import { ref, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import UserName from './UserName.vue';
@@ -15,6 +16,7 @@ import MakeHostDialog from './MakeHostDialog.vue';
 // focus back on the ⋯ button the menu came from, or on the "N here" button when that member has left.
 // A watcher's is a list of who to follow, when there's more than the host: Follow on each row (pressed for the one
 // followed), and Show everyone and Show box under it. Nothing shows while the host is the only one to follow.
+const { t } = useI18n();
 const room = useRoomStore(), drawing = useDrawingStore();
 
 const menuTrigger = (event) => event.currentTarget.closest('.dropdown').querySelector('.dropdown-trigger');   // the ⋯ a menu item is under
@@ -56,61 +58,61 @@ const confirmBlock = async () => {
 <template>
   <section v-if="room.role === 'host'" class="people">
     <button ref="toggle" class="link here" :aria-expanded="room.peopleOpen" @click="room.peopleOpen = !room.peopleOpen">
-      {{ room.hereNow }} here
+      {{ t('social.people.hereCount', { count: room.hereNow }) }}
       <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
     </button>
-    <ul v-if="room.peopleOpen" aria-label="Who is here">
+    <ul v-if="room.peopleOpen" :aria-label="t('social.people.whoIsHereAria')">
       <li v-for="watcher in room.watchers" :key="watcher.peer">
         <UserName class="name" :name="watcher.name" />
-        <span v-if="watcher.guest" class="tag">guest</span>
-        <span v-else-if="room.muted.includes(watcher.sub)" class="tag">muted</span>
-        <span v-if="drawing.artists.includes(watcher.sub)" class="tag">artist</span>
-        <span v-else-if="drawing.invited.includes(watcher.sub)" class="tag">invited</span>
-        <span v-if="!watcher.connected || !drawing.artists.includes(watcher.sub)" class="what">{{ !watcher.connected ? 'connecting…' : watcher.tracking ? 'tracking' : 'looking around' }}</span>
-        <DropdownMenu v-if="watcher.guest && room.room?.allowGuests === false" :label="`More for ${watcher.name}`">
+        <span v-if="watcher.guest" class="tag">{{ t('common.guest') }}</span>
+        <span v-else-if="room.muted.includes(watcher.sub)" class="tag">{{ t('common.muted') }}</span>
+        <span v-if="drawing.artists.includes(watcher.sub)" class="tag">{{ t('common.artist') }}</span>
+        <span v-else-if="drawing.invited.includes(watcher.sub)" class="tag">{{ t('common.invited') }}</span>
+        <span v-if="!watcher.connected || !drawing.artists.includes(watcher.sub)" class="what">{{ !watcher.connected ? t('social.people.connecting') : watcher.tracking ? t('social.people.tracking') : t('social.people.lookingAround') }}</span>
+        <DropdownMenu v-if="watcher.guest && room.room?.allowGuests === false" :label="t('social.people.moreFor', { name: watcher.name })">
           <template #trigger><span aria-hidden="true">⋯</span></template>
-          <button @click="room.remove(watcher.peer)">Kick</button>
+          <button @click="room.remove(watcher.peer)">{{ t('social.people.kick') }}</button>
         </DropdownMenu>
-        <DropdownMenu v-else-if="!watcher.guest" :label="`More for ${watcher.name}`">
+        <DropdownMenu v-else-if="!watcher.guest" :label="t('social.people.moreFor', { name: watcher.name })">
           <template #trigger><span aria-hidden="true">⋯</span></template>
-          <button v-if="drawing.artists.includes(watcher.sub) && watcher.connected" :disabled="drawing.paused" :title="drawing.paused ? 'Not while drawing is paused.' : undefined" @click="askToMakeHost(watcher, $event)">Make host</button>
-          <button v-if="drawing.artists.includes(watcher.sub)" @click="drawing.backToWatching(watcher.sub)">Back to watching</button>
-          <button v-else-if="drawing.invited.includes(watcher.sub)" @click="drawing.withdraw(watcher.sub)">Withdraw invitation</button>
-          <button v-else-if="watcher.connected" :disabled="!!drawing.artistsFull" :title="drawing.artistsFull ?? undefined" @click="drawing.invite(watcher.sub)">Make artist</button>
-          <button @click="room.remove(watcher.peer)">Kick – for this session</button>
-          <button v-if="room.muted.includes(watcher.sub)" @click="room.mute(watcher.sub, false)">Unmute</button>
-          <button v-else title="Their messages stop reaching anyone else. They aren't told." @click="room.mute(watcher.sub, true)">Mute – for everyone but you</button>
-          <button @click="askToBlock(watcher, $event)">Block – from all future rooms</button>
-          <button v-if="room.canReport && !room.reported.includes(watcher.sub)" @click="askToReport(watcher, $event)">Report</button>
+          <button v-if="drawing.artists.includes(watcher.sub) && watcher.connected" :disabled="drawing.paused" :title="drawing.paused ? t('social.people.notWhilePaused') : undefined" @click="askToMakeHost(watcher, $event)">{{ t('social.people.makeHost') }}</button>
+          <button v-if="drawing.artists.includes(watcher.sub)" @click="drawing.backToWatching(watcher.sub)">{{ t('social.people.backToWatching') }}</button>
+          <button v-else-if="drawing.invited.includes(watcher.sub)" @click="drawing.withdraw(watcher.sub)">{{ t('social.people.withdrawInvitation') }}</button>
+          <button v-else-if="watcher.connected" :disabled="!!drawing.artistsFull" :title="drawing.artistsFull ?? undefined" @click="drawing.invite(watcher.sub)">{{ t('social.people.makeArtist') }}</button>
+          <button @click="room.remove(watcher.peer)">{{ t('social.people.kickSession') }}</button>
+          <button v-if="room.muted.includes(watcher.sub)" @click="room.mute(watcher.sub, false)">{{ t('social.people.unmute') }}</button>
+          <button v-else :title="t('social.people.muteTitle')" @click="room.mute(watcher.sub, true)">{{ t('social.people.mute') }}</button>
+          <button @click="askToBlock(watcher, $event)">{{ t('social.people.blockFuture') }}</button>
+          <button v-if="room.canReport && !room.reported.includes(watcher.sub)" @click="askToReport(watcher, $event)">{{ t('social.people.report') }}</button>
         </DropdownMenu>
       </li>
     </ul>
 
-    <ModalDialog v-if="blocking" :title="`Block ${blocking.watcher.name}?`"
-        sub="They can't join any room you host, and they leave this one now. Unblock them from Account." @cancel="cancelBlock">
+    <ModalDialog v-if="blocking" :title="t('social.people.blockTitle', { name: blocking.watcher.name })"
+        :sub="t('social.people.blockSub')" @cancel="cancelBlock">
       <div class="actions">
-        <button autofocus @click="cancelBlock">Cancel</button>
-        <button class="danger" @click="confirmBlock">Block</button>
+        <button autofocus @click="cancelBlock">{{ t('common.cancel') }}</button>
+        <button class="danger" @click="confirmBlock">{{ t('social.people.blockConfirm') }}</button>
       </div>
     </ModalDialog>
     <ReportDialog v-if="reporting" :key="opened" v-bind="reporting" @done="reporting = null" />
     <MakeHostDialog v-if="handing" :name="handing.name" @confirm="confirmMakeHost" @cancel="cancelMakeHost" />
   </section>
   <section v-else-if="room.canFollow" class="people follow">
-    <ul aria-label="Who to follow">
+    <ul :aria-label="t('social.people.whoToFollowAria')">
       <li v-for="person in room.followable" :key="person.sub">
         <UserName class="name" :name="person.name" />
-        <span v-if="person.host" class="tag">host</span>
+        <span v-if="person.host" class="tag">{{ t('common.host') }}</span>
         <button
             class="link follow-person"
-            :aria-label="`Follow ${person.name}`"
+            :aria-label="t('social.people.followAria', { name: person.name })"
             :aria-pressed="room.following === person.sub"
             @click="room.follow(person.sub)"
-        >{{ room.following === person.sub ? 'Following' : 'Follow' }}</button>
+        >{{ room.following === person.sub ? t('social.people.following') : t('social.people.follow') }}</button>
       </li>
     </ul>
-    <label><input type="checkbox" :checked="room.showEveryone" @change="room.setShowEveryone($event.target.checked)"> Show everyone</label>
-    <label><input type="checkbox" :checked="room.showBox" @change="room.setShowBox($event.target.checked)"> Show box</label>
+    <label><input type="checkbox" :checked="room.showEveryone" @change="room.setShowEveryone($event.target.checked)"> {{ t('social.people.showEveryone') }}</label>
+    <label><input type="checkbox" :checked="room.showBox" @change="room.setShowBox($event.target.checked)"> {{ t('social.people.showBox') }}</label>
   </section>
 </template>
 

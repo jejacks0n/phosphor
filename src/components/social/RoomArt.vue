@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, useTemplateRef, watch, onMounted, onBeforeUnmount } from 'vue';
+import { useI18n } from 'vue-i18n';
 import CellCanvas from '@/lib/CellCanvas';
 import { loadFontFaces } from '@/lib/displayFonts';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
@@ -32,6 +33,7 @@ const props = defineProps({
   others: { type: Array, default: () => [] },  // [{ sub, name, view }]: the others' boxes
 });
 const emit = defineEmits(['look-around', 'track', 'looking-at', 'zoom', 'cell', 'fit']);
+const { t } = useI18n();
 
 const scrollRef = useTemplateRef('scroll'), sizerRef = useTemplateRef('sizer'), canvasRef = useTemplateRef('canvas'), tagRef = useTemplateRef('tag');
 const font = computed(() => fontFor(props.art?.font));
@@ -226,7 +228,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <p v-if="unavailable" class="room-art-unavailable">This browser can't show the room's art</p>
+  <p v-if="unavailable" class="room-art-unavailable">{{ t('social.watch.artUnavailable') }}</p>
   <div
       v-else
       ref="scroll"
@@ -235,7 +237,7 @@ onBeforeUnmount(() => {
       :style="colors"
       tabindex="0"
       role="region"
-      aria-label="The room's art"
+      :aria-label="t('social.watch.artRegionAria')"
       @wheel="wheel"
       @keydown="keyDown"
       @pointerdown="lookAround"
@@ -252,7 +254,7 @@ onBeforeUnmount(() => {
             class="host-tag"
             :class="{ tracking, away: away }"
             :style="tagStyle"
-            :aria-label="`Track ${host}`"
+            :aria-label="t('social.watch.trackAria', { name: host })"
             :aria-pressed="tracking"
             @pointerdown.stop
             @keydown.stop
@@ -260,8 +262,8 @@ onBeforeUnmount(() => {
         >
           <span v-if="away" aria-hidden="true">{{ away.arrow }}</span>
           <UserName class="name" :name="host" />
-          <span v-if="tracking" class="state">· tracking</span>
-          <span v-else class="track">Track ›</span>
+          <span v-if="tracking" class="state">{{ t('social.watch.trackingState') }}</span>
+          <span v-else class="track">{{ t('social.watch.trackBtn') }}</span>
         </button>
       </div>
     </div>

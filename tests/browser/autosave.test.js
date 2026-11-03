@@ -2,6 +2,7 @@
 // when it can't. Real IndexedDB, with the timers and the clock faked and the store's writes spied on.
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
+import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { useAutosave } from '@/composables/useAutosave';
@@ -19,10 +20,10 @@ vi.mock('@/document/autosaveStore', { spy: true });
 
 const GRADIENT = '/tests/fixtures/images/gradient.png';
 const ATTRS = { fg: '#ffffff', bg: '#000000' };
-const BROKEN = "Autosave isn't working in this browser. Save to a file to keep your work.";
-const COULD_NOT_OPEN = "Couldn't open that document.";
-const STORAGE_FULL = "This browser's storage was full, so the oldest work kept here was removed.";
-const STORAGE_FULL_STILL = "This browser's storage was full, so the oldest work kept here was removed, and this still didn't fit. Save to a file to keep your work.";
+const BROKEN = "Autosave isn't available in this browser. Save a .phosphor file to keep your work.";
+const COULD_NOT_OPEN = "Couldn't reopen that project.";
+const STORAGE_FULL = 'Browser storage was full, so your oldest saved snapshot was removed to make room.';
+const STORAGE_FULL_STILL = "Browser storage is full—even after clearing old snapshots, this project didn't fit. Save a .phosphor file to keep your work.";
 const KEPT_ID = 'phosphor-autosave-document';
 let app = null, autosave = null, started = null, deleteDatabase;
 
@@ -624,7 +625,7 @@ test('a save that fails says so in the dialog, stays open and doesn\'t count as 
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   const encoding = paintThatWontEncode(project);
   const closed = vi.fn();
-  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: closed });
+  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: closed }).use(i18n);
   dialog.mount(document.createElement('div'));
   try {
     document.querySelector('.modal-dialog form').requestSubmit();
@@ -657,7 +658,7 @@ test('a save that fails leaves the name as it was', async () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   const named = project.filename;
   paintThatWontEncode(project);
-  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: () => {} });
+  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: () => {} }).use(i18n);
   dialog.mount(document.createElement('div'));
   try {
     const input = document.querySelector('.modal-dialog input');
@@ -686,7 +687,7 @@ test('while a save is under way the dialog says so, and Cancel and Escape wait f
   started.mockImplementationOnce(() => new Promise((resolve) => { finish = () => resolve(parts); }));
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   const closed = vi.fn();
-  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: closed });
+  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: closed }).use(i18n);
   dialog.mount(document.createElement('div'));
   try {
     const root = document.querySelector('.modal-dialog');
@@ -1507,7 +1508,7 @@ test('without Web Locks, every lock is available', async () => {
 // The start screen on its own, as a component mounted without App has it.
 function startScreen(props) {
   const element = document.createElement('div');
-  const screen = createApp(ZeroState, props);
+  const screen = createApp(ZeroState, props).use(i18n);
   screen.mount(element);
   return { element, unmount: () => screen.unmount() };
 }
@@ -1520,7 +1521,7 @@ test('the start screen waits for ready, and shows its drop zone without being to
 
   const plain = startScreen({});
   expect(plain.element.querySelector('.drop-zone')).not.toBe(null);
-  expect(plain.element.textContent).not.toContain('Continue where you left off');
+  expect(plain.element.textContent).not.toContain('Pick up where you left off');
   plain.unmount();
 });
 
@@ -1528,12 +1529,12 @@ test('the start screen lists at most 5 recent documents; one open elsewhere is d
   const opened = [];
   const recent = Array.from({ length: 7 }, (_, i) => ({ id: `d${i}`, filename: `art ${i}`, editedAt: 1, openElsewhere: i === 1 }));
   const { element, unmount } = startScreen({ recent, openRecent: (id) => opened.push(id) });
-  expect(element.textContent).toContain('Continue where you left off');
+  expect(element.textContent).toContain('Pick up where you left off');
   const rows = element.querySelectorAll('li');
   expect(rows).toHaveLength(5);
   expect(rows[0].textContent).toContain('art 0');
   expect(rows[1].querySelector('button').disabled).toBe(true);
-  expect(rows[1].querySelector('button').textContent.trim()).toBe('Open in another tab');
+  expect(rows[1].querySelector('button').textContent.trim()).toBe('Open in other tab');
   rows[1].querySelector('button').click();
   rows[0].querySelector('button').click();
   expect(opened).toEqual(['d0']);
@@ -1547,7 +1548,7 @@ test('the versions dialog says so when a restore fails, and stays open with the 
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   const closed = vi.fn();
   const restoreVersion = vi.fn().mockRejectedValue(new Error('partway'));
-  const dialog = createApp(VersionsDialog, { flush: autosave.flush, restoreVersion, onClose: closed });
+  const dialog = createApp(VersionsDialog, { flush: autosave.flush, restoreVersion, onClose: closed }).use(i18n);
   dialog.mount(document.createElement('div'));
   try {
     await vi.waitUntil(() => document.querySelector('.modal-dialog li button'), { interval: 5 });
@@ -1568,7 +1569,7 @@ async function versionsDialog(props) {
   edit(project);
   await pass(SAVE_AFTER_MS);
   vi.spyOn(console, 'warn').mockImplementation(() => {});
-  const dialog = createApp(VersionsDialog, { flush: autosave.flush, restoreVersion: vi.fn(), ...props });
+  const dialog = createApp(VersionsDialog, { flush: autosave.flush, restoreVersion: vi.fn(), ...props }).use(i18n);
   dialog.mount(document.createElement('div'));
   await vi.waitUntil(() => document.querySelector('.modal-dialog [role=alert], .modal-dialog li button'), { interval: 5 });
   return {

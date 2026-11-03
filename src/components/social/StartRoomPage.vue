@@ -1,5 +1,6 @@
 <script setup>
 import { computed, watch, useId } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore, MAX_WATCHERS } from '@/store/RoomStore';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -10,10 +11,11 @@ import LobbyPicture from './LobbyPicture.vue';
 // lobby, its lobby picture. Going live makes it (its errors are the notice at the top of the tab), and the
 // tab shows the room you host from then on.
 const social = useSocialStore(), room = useRoomStore(), project = useProjectStore();
+const { t } = useI18n();
 
 const hasArt = computed(() => !!project.image && project.cells.length > 0);
-const noArt = 'Open some art in PIXEL or ANSI to share it first.';
-const ROOMS_ARE_STILL = 'Rooms can’t hold animations yet.';
+const noArt = computed(() => t('social.start.noArt'));
+const roomsAreStill = computed(() => t('tabs.animateInRoom'));
 
 const draft = room.startDraft;   // kept in the store while you're on another tab
 watch(() => draft.max, (max) => { if (max > MAX_WATCHERS) draft.max = MAX_WATCHERS; });
@@ -24,50 +26,50 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
 
 <template>
   <div class="start-room">
-    <button class="link back" @click="social.page = 'lobby'">‹ Back to the lobby</button>
-    <h2>Setup room</h2>
+    <button class="link back" @click="social.page = 'lobby'">{{ t('social.nav.backToLobby') }}</button>
+    <h2>{{ t('social.start.heading') }}</h2>
     <!-- Two groups, side by side when there's room and stacked when there isn't: the room and who can join it,
          then its lobby card (for a room in the lobby). -->
     <form @submit.prevent="goLive">
       <div class="group">
-        <label>Room name <input v-model="draft.name" maxlength="60" pattern=".*\S.*" title="Use at least one character that isn't a space" required></label>
-        <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="`${id}-count`"></textarea></label>
-        <p :id="`${id}-count`" class="help count">{{ draft.welcome.length }}/200</p>
+        <label>{{ t('social.start.roomName') }} <input v-model="draft.name" maxlength="60" pattern=".*\S.*" :title="t('social.start.roomNamePatternTitle')" required></label>
+        <label>{{ t('social.start.welcomeMessage') }} <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="`${id}-count`"></textarea></label>
+        <p :id="`${id}-count`" class="help count">{{ t('social.start.charCount', { count: draft.welcome.length, max: 200 }) }}</p>
         <fieldset>
-          <legend>Who can join</legend>
+          <legend>{{ t('social.start.whoCanJoin') }}</legend>
           <div class="choices">
-            <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="true"> Anyone, in the lobby</label>
-            <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="false"> Only with the link</label>
+            <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="true"> {{ t('social.start.anyoneInLobby') }}</label>
+            <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="false"> {{ t('social.start.onlyWithLink') }}</label>
           </div>
         </fieldset>
         <template v-if="!draft.isPublic">
-          <label>Password (optional) <input v-model="draft.password" type="text" autocomplete="off" :aria-describedby="`${id}-password`"></label>
-          <p :id="`${id}-password`" class="help">The link alone lets people in. Add a password if you want them to need both.</p>
+          <label>{{ t('social.start.passwordOptional') }} <input v-model="draft.password" type="text" autocomplete="off" :aria-describedby="`${id}-password`"></label>
+          <p :id="`${id}-password`" class="help">{{ t('social.start.passwordHelp') }}</p>
         </template>
-        <label class="choice"><input v-model="draft.allowGuests" type="checkbox" :aria-describedby="`${id}-guests`"> Allow guests</label>
-        <p :id="`${id}-guests`" class="help">Guests can only watch. Turn this off if you'd rather have members only, now or once you're live.</p>
-        <label>Max watchers <input v-model.number="draft.max" class="short" type="number" min="1" :max="MAX_WATCHERS" required :aria-describedby="`${id}-max`"></label>
-        <p :id="`${id}-max`" class="help">Each watcher uses some of your upload speed. 12 suits most home connections.</p>
+        <label class="choice"><input v-model="draft.allowGuests" type="checkbox" :aria-describedby="`${id}-guests`"> {{ t('social.start.allowGuests') }}</label>
+        <p :id="`${id}-guests`" class="help">{{ t('social.start.allowGuestsHelp') }}</p>
+        <label>{{ t('social.start.maxWatchers') }} <input v-model.number="draft.max" class="short" type="number" min="1" :max="MAX_WATCHERS" required :aria-describedby="`${id}-max`"></label>
+        <p :id="`${id}-max`" class="help">{{ t('social.start.maxWatchersHelp') }}</p>
       </div>
 
       <section v-if="draft.isPublic" class="group" :aria-labelledby="`${id}-card`">
-        <h3 :id="`${id}-card`">Lobby card</h3>
+        <h3 :id="`${id}-card`">{{ t('social.start.lobbyCard') }}</h3>
         <fieldset :aria-describedby="`${id}-signal`">
-          <legend>Signal</legend>
+          <legend>{{ t('social.start.signal') }}</legend>
           <div class="choices">
-            <label class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="null"> None</label>
+            <label class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="null"> {{ t('common.none') }}</label>
             <label v-for="(words, value) in signalWords" :key="value" class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="value"> {{ words }}</label>
           </div>
         </fieldset>
-        <p :id="`${id}-signal`" class="help">Shown on your room's card in the lobby.</p>
+        <p :id="`${id}-signal`" class="help">{{ t('social.start.signalHelp') }}</p>
         <LobbyPicture v-if="hasArt" />
         <p v-else class="no-art">{{ noArt }}</p>
       </section>
       <p v-else-if="!hasArt" class="no-art">{{ noArt }}</p>
-      <p v-if="project.hasFrames" class="no-art">{{ ROOMS_ARE_STILL }}</p>
+      <p v-if="project.hasFrames" class="no-art">{{ roomsAreStill }}</p>
 
       <div class="buttons">
-        <button class="primary" type="submit" :disabled="social.busy || !hasArt || project.hasFrames" :title="project.hasFrames ? ROOMS_ARE_STILL : undefined">Go live</button>
+        <button class="primary" type="submit" :disabled="social.busy || !hasArt || project.hasFrames" :title="project.hasFrames ? roomsAreStill : undefined">{{ t('social.start.goLive') }}</button>
       </div>
     </form>
   </div>

@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 // A text field you can type any characters into, with a ▾ that offers ready-made sets. The ▾ is a
 // native <select> laid invisibly over it, so the sets open in the system's own menu, like the other
@@ -11,6 +12,7 @@ const props = defineProps({
   id: { type: String, required: true },
 });
 const emit = defineEmits(['update:modelValue']);
+const { t } = useI18n();
 
 const current = computed(() => props.presets.findIndex((p) => p.chars === props.modelValue));
 const preview = (chars) => {
@@ -30,13 +32,13 @@ function pick(event) {
         :id="id"
         type="text"
         :value="modelValue"
-        placeholder="characters"
+        :placeholder="t('panel.chars.placeholder')"
         autocomplete="off"
         spellcheck="false"
         @change="emit('update:modelValue', $event.target.value)"
     >
-    <select aria-label="Character sets" :value="current" @change="pick">
-      <option v-if="current < 0" :value="-1" disabled>Custom</option>
+    <select :aria-label="t('panel.chars.setsAria')" :value="current" @change="pick">
+      <option v-if="current < 0" :value="-1" disabled>{{ t('common.custom') }}</option>
       <option v-for="(preset, i) in presets" :key="preset.name" :value="i">{{ preset.name }} · {{ preview(preset.chars) }}</option>
     </select>
     <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>

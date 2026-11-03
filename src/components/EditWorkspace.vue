@@ -1,5 +1,6 @@
 <script setup>
 import { computed, watch, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
@@ -28,6 +29,7 @@ defineProps({
   openRecent: Function,
 });
 
+const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const drawing = useDrawingStore();
@@ -43,7 +45,7 @@ async function handleFileSelected(file) {
   if (project.image && isArtFile(file.name)) return (workspace.artDrop = { file, at: null });
   if (drawing.offWithOthers) return toast(drawing.offWithOthers);
   project.commitPending(); // text typed a moment ago counts
-  if (project.image && project.isDirty && !confirm(`You have unsaved changes. Open ${file.name} anyway?`)) return;
+  if (project.image && project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
   if (isProjectFile(file.name)) await project.loadProject(file);
   else if (isArtFile(file.name)) return openArt(file);
   else await project.setImageFromFile(file);
@@ -63,15 +65,15 @@ async function openArt(file) {
 // The dropped art file's question: added as a paste is (floating and selected, where it was dropped or at the
 // view's top-left), or opened in place of this drawing (not in a room where opening is off).
 const artChoices = computed(() => [
-  { id: 'add', title: 'Add to this drawing', text: `It lands ${workspace.artDrop?.at ? 'where you dropped it' : 'at the top-left of the view'}, on the edit layer, to drag into place.` },
-  ...(drawing.offWithOthers ? [] : [{ id: 'open', title: 'Open instead', text: 'In place of this drawing.' }]),
+  { id: 'add', title: t('actions.artAdd'), text: workspace.artDrop?.at ? t('actions.artAddWhere') : t('actions.artAddTopLeft') },
+  ...(drawing.offWithOthers ? [] : [{ id: 'open', title: t('actions.artOpen'), text: t('actions.artOpenText') }]),
 ]);
 async function chooseArt(choice) {
   const { file, at } = workspace.artDrop;
   workspace.artDrop = null;
   if (choice === 'open') {
     project.commitPending(); // text typed a moment ago counts
-    if (project.isDirty && !confirm(`You have unsaved changes. Open ${file.name} anyway?`)) return;
+    if (project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
     return openArt(file);
   }
   if (playback.playing) playback.pause(); // it lands on the frame showing
@@ -115,8 +117,8 @@ async function chooseArt(choice) {
       </DropZone>
       <ChoiceDialog
           v-if="workspace.artDrop"
-          :title="`Add ${workspace.artDrop.file.name}?`"
-          :sub="drawing.offWithOthers ? 'Add it to this drawing.' : 'Add it to this drawing, or open it in place of this one.'"
+          :title="t('actions.artDropTitle', { name: workspace.artDrop.file.name })"
+          :sub="drawing.offWithOthers ? t('actions.artDropSubAddOnly') : t('actions.artDropSub')"
           :choices="artChoices"
           @choose="chooseArt"
           @cancel="workspace.artDrop = null"

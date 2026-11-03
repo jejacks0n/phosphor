@@ -7,6 +7,7 @@ import { toast } from '@/composables/useToast';
 import { cellWidth } from '@/lib/CharWidth';
 import { isField, isTextInput } from '@/lib/fields';
 import { snapCursor } from '@/document/wideChars';
+import { t } from '@/i18n/index.js';
 
 // Type one character at the Text tool's cursor and move right by its width (the keyboard and the
 // F-key strip). The cursor never rests on a wide character's trail.
@@ -14,7 +15,7 @@ export function typeAtCursor(project, workspace, char) {
   const cursor = workspace.textCursor;
   if (!cursor) return;
   const typed = project.typeAt(cursor.col, cursor.row, char, workspace.typingAttrs(), { insert: workspace.insertMode });
-  if (typed === false) toast('No room for a two-column character in the last column.');
+  if (typed === false) toast(t('palette.wideLastColToast'));
   if (!typed) return; // false, or nothing at all: refused while paused
   workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(cursor, cellWidth(char), 0, project.cols, charRowsOf(project.rows)), 1);
 }
@@ -104,7 +105,7 @@ export function useTextTool(project, workspace, textInput) {
         if (!char) break;
         const { forked } = palettes.setSlot(palettes.active.id, action.index, char);
         palettes.flash(action.index);
-        if (forked) toast(`Built-ins are locked, so you're now editing your copy, "${forked}".`);
+        if (forked) toast(t('palette.forkedToast', { name: forked }));
         break;
       }
       case 'palette': palettes.flip(action.delta); break;

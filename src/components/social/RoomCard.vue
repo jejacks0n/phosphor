@@ -1,10 +1,11 @@
 <script setup>
 import { computed, useId, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useNow } from '@vueuse/core';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { joinState, liveFor, pictureUrl, signalWord } from '@/social/lobby';
-import { GOING_BACK_REPLACES_WORDS } from '@/social/messages';
+import { goingBackReplacesWords } from '@/social/messages';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import UserName from './UserName.vue';
 
@@ -14,11 +15,13 @@ const props = defineProps({
 });
 
 const roomStore = useRoomStore(), social = useSocialStore();
+const { t } = useI18n();
 const now = useNow({ interval: 60_000 });   // "live 42 min" moves on while the lobby is shown
 const join = computed(() => joinState(props.room, { signedIn: props.signedIn }));
 const meta = computed(() => {
   const signal = signalWord(props.room.signal);
-  return liveFor(props.room.liveSince, now.value.getTime()) + (signal ? `, ${signal.toLowerCase()}` : '');
+  const live = liveFor(props.room.liveSince, now.value.getTime());
+  return signal ? t('social.card.metaWithSignal', { live, signal: signal.toLowerCase() }) : live;
 });
 const reasonId = useId();
 const yours = computed(() => roomStore.reclaimable.some((r) => r.id === props.room.id));   // your own, with its tab gone
@@ -37,21 +40,21 @@ const askToReport = (event) => {
   <article class="room-card">
     <div class="thumb">
       <img v-if="room.thumbnail" :src="pictureUrl(room.thumbnail)" alt="">
-      <DropdownMenu v-if="reportable" class="more" :label="`More for ${room.name}`">
+      <DropdownMenu v-if="reportable" class="more" :label="t('social.card.moreFor', { name: room.name })">
         <template #trigger><span aria-hidden="true">⋯</span></template>
-        <button @click="askToReport">Report room</button>
+        <button @click="askToReport">{{ t('social.card.reportRoom') }}</button>
       </DropdownMenu>
     </div>
     <div class="info">
       <div class="name" :title="room.name">{{ room.name }}</div>
       <div class="host-line">
         <UserName class="host" :name="room.host" />
-        <button v-if="yours" class="join primary" :aria-describedby="roomStore.goingBackReplaces ? reasonId : undefined" @click="roomStore.goBackToRoom(room.id)">Back to your room</button>
+        <button v-if="yours" class="join primary" :aria-describedby="roomStore.goingBackReplaces ? reasonId : undefined" @click="roomStore.goBackToRoom(room.id)">{{ t('social.lobby.backToYourRoom') }}</button>
         <button v-else ref="join" class="join" :disabled="!join.enabled" :aria-describedby="join.reason ? reasonId : undefined" @click="roomStore.join(room.id)">{{ join.label }}</button>
       </div>
       <div class="meta">{{ meta }}</div>
-      <div v-if="room.blockedInside" class="blocked">Someone you blocked is here</div>
-      <div v-if="yours && roomStore.goingBackReplaces" :id="reasonId" class="reason">{{ GOING_BACK_REPLACES_WORDS }}</div>
+      <div v-if="room.blockedInside" class="blocked">{{ t('social.card.blockedInside') }}</div>
+      <div v-if="yours && roomStore.goingBackReplaces" :id="reasonId" class="reason">{{ goingBackReplacesWords() }}</div>
       <div v-else-if="!yours && join.reason" :id="reasonId" class="reason">{{ join.reason }}</div>
     </div>
   </article>

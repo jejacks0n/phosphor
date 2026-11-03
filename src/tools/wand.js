@@ -9,6 +9,7 @@ import { selectMatching, wandIn } from '@/lib/MagicWand';
 import { colorDistance } from '@/lib/FloodFill';
 import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf } from '@/lib/Cells';
+import { t } from '@/i18n/index.js';
 
 // The units and whether unit i matches unit `seed`.
 function matcher(project, workspace, view) {
@@ -32,24 +33,24 @@ function matcher(project, workspace, view) {
 
 export default {
   id: 'wand',
-  title: 'Magic Wand',
+  get title() { return t('tools.wand.title'); },
   keys: ['W'],
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M496 64L512 112L560 128L512 144L496 192L480 144L432 128L480 112ZM272 80L284 116L320 128L284 140L272 176L260 140L224 128L260 116ZM528 304L540 340L576 352L540 364L528 400L516 364L480 352L516 340ZM400 192L448 240L144 544C130.7 557.3 109.3 557.3 96 544C82.7 530.7 82.7 509.3 96 496ZM376 216L320 272L368 320L424 264Z"/></svg>`,
   views: ['input', 'output'],
   kind: 'paint',
   section: 'select',
   options: [
-    { key: 'selectLayers', label: 'Layers', type: 'layers' }, // the Select tool's: what Delete takes away
+    { key: 'selectLayers', get label() { return t('tools.wand.layers'); }, type: 'layers' }, // the Select tool's: what Delete takes away
     {
-      key: 'wandMatch', label: 'Match', type: 'toggles', views: ['output'],
+      key: 'wandMatch', get label() { return t('tools.wand.match'); }, type: 'toggles', views: ['output'],
       options: [
-        { key: 'fg', label: 'FG', title: 'Cells with the same foreground color' },
-        { key: 'bg', label: 'BG', title: 'Cells with the same background color' },
-        { key: 'char', label: 'Char', title: 'Cells with the same character' },
+        { key: 'fg', get label() { return t('tools.matchToggles.fg'); }, get title() { return t('tools.matchToggles.fgTitle'); } },
+        { key: 'bg', get label() { return t('tools.matchToggles.bg'); }, get title() { return t('tools.matchToggles.bgTitle'); } },
+        { key: 'char', get label() { return t('tools.matchToggles.char'); }, get title() { return t('tools.matchToggles.charTitle'); } },
       ],
     },
-    { key: 'wandTolerance', label: 'Tolerance', title: 'How far a color may be from the one clicked and still match', min: 0, max: 100 },
-    { key: 'wandContiguous', label: 'Contiguous', type: 'checkbox', title: 'Only what touches the cell you click; off, everything that matches' },
+    { key: 'wandTolerance', get label() { return t('tools.wand.tolerance'); }, get title() { return t('tools.wand.toleranceTitle'); }, min: 0, max: 100 },
+    { key: 'wandContiguous', get label() { return t('tools.wand.contiguous'); }, type: 'checkbox', get title() { return t('tools.wand.contiguousTitle'); } },
   ],
   // One click selects; there's no stroke to continue.
   begin({ project, workspace, view }, pos, event) {

@@ -12,7 +12,7 @@ const messages = (page) => panel(page).getByRole('log').locator('.message');
 const box = (page) => panel(page).getByRole('textbox', { name: 'Message' });
 const dialog = (page, name) => page.getByRole('dialog', { name: `Report ${name}?` });
 const reported = (page) => page.getByRole('status').filter({ hasText: 'Reported. Thank you.' });
-const SUB = 'Phosphor\'s moderators see this message and the few before it.';
+const SUB = 'Moderators receive this message and a few preceding messages for context.';
 // "Reported. Thank you." stays a few seconds, and on CI a click can take longer than that: the page's
 // clock is held from just before Report until the checks are done (then page.clock.resume()). It pauses
 // further ahead than a test can run: the time to pause at has to be still to come when the pause arrives.
@@ -134,7 +134,7 @@ test('once you\'ve reported someone, Report is gone for them for the rest of the
   await expect(reportFrom(host, 'tin_owl')).toHaveCount(0);
   await expect(reportFrom(host, 'pixel_wren')).toHaveCount(1);
   await more('tin_owl').click();
-  await expect(host.getByRole('button', { name: 'Block – from all future rooms' })).toBeVisible();
+  await expect(host.getByRole('button', { name: 'Block from your rooms' })).toBeVisible();
   await expect(host.getByRole('button', { name: 'Report', exact: true })).toHaveCount(0);
   await host.keyboard.press('Escape');
   await more('pixel_wren').click();
@@ -178,7 +178,7 @@ test('a member reports the room from under Exit: the fake hears report-room with
   await asked.getByRole('button', { name: 'Cancel' }).click();   // nothing sent; focus back on Report room
   await expect(reportRoom).toBeFocused();
   await reportRoom.click();
-  await expect(asked.getByText('Phosphor\'s moderators see the room\'s last lobby pictures and a picture of what you see now.', { exact: true })).toBeVisible();
+  await expect(asked.getByText('Moderators receive recent lobby previews plus a snapshot of the canvas right now.', { exact: true })).toBeVisible();
   await expect(asked.getByRole('button', { name: 'Report', exact: true })).toBeDisabled();
   await asked.getByRole('radio', { name: 'Sexual or violent' }).check();
   await holdTime(watcher);
@@ -228,7 +228,7 @@ test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears repo
   await more(watcher).click();
   await watcher.getByRole('button', { name: 'Report room' }).click();
   const asked = roomDialog(watcher);
-  await expect(asked.getByText('Phosphor\'s moderators see the room\'s last lobby pictures.', { exact: true })).toBeVisible();
+  await expect(asked.getByText("Moderators receive the room's recent lobby previews.", { exact: true })).toBeVisible();
   await asked.getByRole('radio', { name: 'Spam or flooding' }).check();
   await holdTime(watcher);
   await asked.getByRole('button', { name: 'Report', exact: true }).click();

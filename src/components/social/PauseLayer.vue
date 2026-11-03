@@ -1,16 +1,18 @@
 <script setup>
+import { useI18n } from 'vue-i18n';
 import { useDrawingStore } from '@/store/DrawingStore';
 
 // Over the drawing area while there's no host to number anything. Tools stay as they are and the keys are
 // refused at the store; a press here goes to the viewport, which starts nothing but scrolling and zooming.
 const drawing = useDrawingStore();
+const { t } = useI18n();
 </script>
 
 <template>
   <div class="pause-layer" role="status">
-    <p v-if="drawing.hostChanging">The host is changing. Drawing is paused.</p>
-    <p v-else-if="drawing.gettingArt">Getting the room's art. Drawing is paused.</p>
-    <p v-else>The host is reconnecting. Drawing is paused.</p>
+    <p v-if="drawing.hostChanging">{{ t('social.pause.hostChanging') }}</p>
+    <p v-else-if="drawing.gettingArt">{{ t('social.pause.gettingArt') }}</p>
+    <p v-else>{{ t('social.pause.hostReconnecting') }}</p>
   </div>
 </template>
 

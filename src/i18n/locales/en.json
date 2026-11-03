@@ -1,0 +1,1224 @@
+{
+  "app": {
+    "meta": {
+      "title": "Phosphor — Modern ANSI & ASCII Art Editor",
+      "description": "Turn images into ANSI or ASCII art in your browser, then paint, type, animate, and export."
+    },
+    "noscript": "Phosphor needs JavaScript enabled to run."
+  },
+  "common": {
+    "close": "Close",
+    "cancel": "Cancel",
+    "done": "Done",
+    "save": "Save",
+    "saved": "Saved",
+    "saving": "Saving…",
+    "export": "Export",
+    "exporting": "Exporting…",
+    "dismiss": "Dismiss",
+    "actions": "Actions",
+    "edit": "Edit",
+    "delete": "Delete",
+    "clear": "Clear",
+    "remove": "Remove",
+    "restore": "Restore",
+    "continue": "Continue",
+    "accept": "Accept",
+    "notNow": "Not now",
+    "none": "None",
+    "custom": "Custom",
+    "yours": "Yours",
+    "builtIn": "Built-in",
+    "copied": "Copied",
+    "copyLink": "Copy link",
+    "reconnecting": "Reconnecting…",
+    "or": "or",
+    "guest": "guest",
+    "host": "host",
+    "artist": "artist",
+    "invited": "invited",
+    "muted": "muted",
+    "untitled": "untitled"
+  },
+  "legal": {
+    "titles": {
+      "terms": "Terms",
+      "privacy": "Privacy Policy",
+      "guidelines": "Community Guidelines"
+    }
+  },
+  "footer": {
+    "about": "About Phosphor",
+    "language": "Language",
+    "byline": "Made by{br}{ishifishi} and {euphio}",
+    "copyright": "© {year} Phosphor Project"
+  },
+  "about": {
+    "label": "About Phosphor",
+    "tagline": "Turn images into ANSI and ASCII, then keep drawing … with style.",
+    "version": "v{version}",
+    "build": "build {sha}",
+    "p1": "Phosphor began in 2019 as a small experiment to build tooling for a concept I called “ANSI Nouveau.” At the time, I was interested in the idea of recreating the mid-90s BBS experience I grew up with, but through a modern, high-fidelity lens. Like many passion projects, life got in the way and it eventually landed on the shelf.",
+    "p2": "Years later, I came across a fantastic {moebiusFork} that added 256-color and full-color support. It reminded me of this project, so I dragged it out of storage, dusted off the code—and leveraging modern tools and techniques, brought it back to life.",
+    "moebiusForkLink": "fork of the Moebius ANSI editor",
+    "p3": "Phosphor started as an image-to-ANSI converter, and today it brings two workflows together. It turns images into ANSI or ASCII that you can fine-tune to your liking, then lets you draw and type over that cell by cell and export as .ans or .utf8ans. Finish your piece here, or take the file into another editor for a final pass—whether you're after “Pure ANSI” or the full-color, UTF-8 “ANSI Nouveau” modern style that inspired the project.",
+    "p4": "It's still early days. Expect rough edges on phones and small tablets—though iPad with Apple Pencil works well in testing. Feedback, bug reports, and ideas are always welcome: open an issue on {github}, or fork the repo and take it in your own direction.",
+    "githubLink": "GitHub",
+    "creditsIntro": "Credits and special thanks:",
+    "creditErtdfgcvb": "{ertdfgcvb} (Andreas Gysin) for the inspiration for Phosphor with the (awesome) {playCore} library",
+    "creditMoebius": "Andy Herbert, Blocktronics and MeaTLoTioN for their work on Moebius",
+    "creditDurdraw": "cmang for {durdraw}, the ANSI and ASCII art editor that animates",
+    "credit16Colors": "lordscarlet (Doug Moore) and Brendan O'Connor for creating sixteencolors and those working to keep {sixteenColors} alive today.",
+    "creditFonts": "The fonts: {ibmVga} from VileR's Ultimate Oldschool PC Font Pack ({ccBySa}), {jetbrains} by The JetBrains Mono Project Authors ({ofl1}), {unscii} by viznut (public domain), and {unifont} by Roman Czyborra, Paul Hardy and others ({ofl2})",
+    "creditIcons": "The icons: most are from {fontAwesome} by Fonticons, Inc. ({ccBy})",
+    "creditScene": "And the many authors, maintainers, and ANSI artists who have inspired me over the years—too many to name",
+    "thanks": "Thanks to all of you for the inspiration, and for keeping the scene going.",
+    "motto": "Make Code Not War"
+  },
+  "zero": {
+    "dropPrompt": "Drop an image, {ext} or ANSI file here",
+    "browseMobile": "Choose a file",
+    "browseDesktop": "Choose a file",
+    "startBlank": "Or start with a blank canvas",
+    "recentHeading": "Pick up where you left off",
+    "open": "Open",
+    "openElsewhere": "Open in other tab",
+    "openAria": "Open {name}",
+    "openElsewhereAria": "{name} (already open in another tab)"
+  },
+  "tabs": {
+    "toggleSettings": "Toggle settings",
+    "tablistAria": "Workspace views",
+    "pixel": "PIXEL",
+    "ansi": "ANSI",
+    "ascii": "ASCII",
+    "sauce": "SAUCE",
+    "social": "SOCIAL",
+    "beta": "Beta",
+    "animate": "Animate",
+    "animateHint": "Animate frame by frame",
+    "animateNeedArt": "Open an image or start a canvas to animate.",
+    "animateInRoom": "Live rooms don't support animations yet.",
+    "animateTooLargeTitle": "Canvas is too large to animate ({max} cells max).",
+    "animateTooLargeToast": "This canvas has {cells} cells (animation supports up to {max}). Lower Dimensions to animate.",
+    "themeAria": "Theme",
+    "themes": {
+      "dark": "Dark",
+      "light": "Light",
+      "system": "System"
+    }
+  },
+  "panel": {
+    "groups": {
+      "setup": "Setup",
+      "transform": "Transforms",
+      "adjust": "Adjustments",
+      "effects": "Image filters"
+    },
+    "reset": "Reset",
+    "resetAll": "Reset all",
+    "colsAria": "Columns",
+    "rowsAria": "Rows",
+    "aspectLock": "Lock aspect ratio",
+    "aspectFreeWithEdits": "Once you've drawn on the canvas, resizing adds or trims cells on the right and bottom freely.",
+    "renderStyle": {
+      "label": "Art style",
+      "ansi": "ANSI",
+      "colorAscii": "Color ASCII",
+      "ascii": "Monochrome ASCII"
+    },
+    "chars": {
+      "label": "Characters",
+      "placeholder": "Characters…",
+      "setsAria": "Character presets"
+    },
+    "seed": {
+      "label": "Character seed",
+      "placeholder": "Seed",
+      "randomize": "Roll a new seed"
+    },
+    "quantize": {
+      "label": "Color palette",
+      "none": "Full color (24-bit)",
+      "vga": "VGA (256 colors)",
+      "cga": "CGA (16 colors)",
+      "count": "Limited count",
+      "palette": "Custom color list"
+    },
+    "paletteColors": {
+      "label": "Palette colors"
+    },
+    "smoothing": {
+      "label": "Smoothing",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    }
+  },
+  "settings": {
+    "cols": {
+      "label": "Dimensions",
+      "help": "Canvas width in columns and height in pixel rows (two pixel rows make one character row)."
+    },
+    "renderStyle": {
+      "help": "ANSI colors each character and its background. Color ASCII draws colored characters on black, using denser glyphs for stronger colors. Monochrome ASCII uses one color, mapping brightness from light to dense."
+    },
+    "chars": {
+      "help": "Characters the converter chooses from—randomly for ANSI, or from dark to bright for ASCII. Repeat a character to weight it higher."
+    },
+    "seed": {
+      "help": "Controls random character placement in ANSI mode. Same seed, same pattern—roll the dice to shuffle."
+    },
+    "quantize": {
+      "help": "Full color keeps 24-bit color. VGA and CGA snap to classic 256- and 16-color palettes. Limited count picks the best N colors from the image, and Custom color list uses only the hex colors you enter."
+    },
+    "colorCount": {
+      "label": "Color count"
+    },
+    "smoothing": {
+      "help": "Controls how the image is sampled onto the grid. High blends smoothly; Low preserves sharp edges and grain."
+    },
+    "colorizeStrength": {
+      "label": "Colorize",
+      "help": "Tints the image toward a single hue while preserving light and shadow."
+    },
+    "hue": {
+      "label": "Hue shift",
+      "help": "Rotates every color around the color wheel."
+    },
+    "invert": {
+      "label": "Invert",
+      "help": "Flips colors to their negatives (applied after Colorize and Hue shift)."
+    },
+    "brightness": {
+      "label": "Brightness",
+      "help": "Shifts the overall image lighter or darker."
+    },
+    "contrast": {
+      "label": "Contrast",
+      "help": "Pushes lights and darks further apart, or brings them closer."
+    },
+    "saturation": {
+      "label": "Saturation",
+      "help": "Boosts color intensity or pulls it toward grayscale."
+    },
+    "flatten": {
+      "label": "Flatten",
+      "help": "Groups nearby tones into clean, painterly shapes."
+    },
+    "sharpen": {
+      "label": "Sharpen",
+      "help": "Crisps up edges and fine detail."
+    },
+    "edges": {
+      "label": "Edges",
+      "help": "Traces detected outlines in your chosen edge color."
+    },
+    "edgeThickness": {
+      "label": "Edge thickness",
+      "help": "Controls how bold the traced outlines appear."
+    }
+  },
+  "charsets": {
+    "default": "Default",
+    "defaultBlocks": "Default +   ▂▃▅",
+    "shades": "Shades",
+    "risingBlocks": "Rising blocks",
+    "halfBlocks": "Half-blocks",
+    "pixel": "Pixel",
+    "quadrants": "Quadrants",
+    "classicRamp": "Classic ramp",
+    "longRamp": "Long ramp"
+  },
+  "font": {
+    "label": "Font",
+    "help": "Sets the display font for your canvas. Use Load font to add a monospaced TrueType, OpenType, or WOFF font from your computer. Bitmap fonts look crispest at multiples of their native size (16 or 32px for 8×16 fonts). Your font choice stays in this browser; in a shared room, you'll see the host's font temporarily.",
+    "remove": "Remove",
+    "removeAria": "Remove font",
+    "removeTitle": "Remove this font from your browser",
+    "load": "Load font",
+    "loadTitle": "Load a monospaced font from your computer",
+    "groupBuiltIn": "Built-in",
+    "groupYours": "Yours",
+    "sizeAria": "Font size",
+    "sizeTitle": "Font size (px)",
+    "hostsFont": "Using the host's font while you draw here.",
+    "errors": {
+      "unreadable": "Couldn't read “{name}” as a font. Try a TrueType (.ttf), OpenType (.otf), or WOFF file.",
+      "notMonospaced": "“{name}” isn't monospaced ({narrow} is {narrowPx}px wide, while {wide} is {widePx}px). Phosphor needs fixed-width fonts where every character shares one cell width.",
+      "aSpace": "space"
+    }
+  },
+  "layers": {
+    "label": "Layers",
+    "base": "Base",
+    "baseTitle": "Base layer: the converted source image",
+    "edit": "Edit",
+    "editTitle": "Edit layer: everything you've painted, typed, or pasted"
+  },
+  "tools": {
+    "titleWithKeys": "{title} · {keys}",
+    "keysOr": "{a} or {b}",
+    "moreTools": "More tools",
+    "pencil": {
+      "title": "Pencil",
+      "connect": "Connect",
+      "connectTitle": "Auto-join corners and intersections with existing box-drawing lines"
+    },
+    "brush": {
+      "title": "Brush",
+      "size": "Size",
+      "sizeTitle": "Brush size",
+      "opacity": "Opacity",
+      "opacityTitle": "Brush opacity",
+      "flow": "Flow",
+      "flowTitle": "Paint rate while dragging",
+      "hardness": "Hardness",
+      "hardnessTitle": "Edge softness",
+      "stack": "Build up",
+      "stackTitle": "Layer strokes additively—two passes at 50% reach full opacity. When off, overlapping strokes cap at Opacity."
+    },
+    "eraser": {
+      "title": "Eraser",
+      "size": "Size",
+      "sizeTitle": "Eraser size",
+      "erase": "Erase"
+    },
+    "bucket": {
+      "title": "Paint Bucket",
+      "tolerance": "Tolerance",
+      "toleranceTitle": "Fill tolerance",
+      "contiguous": "Contiguous",
+      "contiguousTitle": "Fill only connected areas; turn off to fill matches across the canvas",
+      "feather": "Feather",
+      "featherTitle": "Soften the filled edge",
+      "match": "Match",
+      "set": "Set",
+      "fill": "Fill",
+      "setFgTitle": "Set the cells to your foreground color",
+      "setBgTitle": "Set the cells to your background color",
+      "setCharTitle": "Set the cells to your character",
+      "gradient": "Gradient",
+      "gradientSolid": "Solid",
+      "gradientLinear": "Linear",
+      "gradientSpherical": "Spherical",
+      "gradientNeedsColors": "A gradient needs both a foreground and a background color: neither can be None."
+    },
+    "picker": {
+      "title": "Eyedropper",
+      "pick": "Pick",
+      "pickFgTitle": "Pick the cell's foreground",
+      "pickBgTitle": "Pick the cell's background"
+    },
+    "hand": {
+      "title": "Hand (pan)"
+    },
+    "zoom": {
+      "title": "Zoom"
+    },
+    "flip": {
+      "title": "Swap cell FG/BG",
+      "flip": "Flip"
+    },
+    "text": {
+      "title": "Edit Mode",
+      "canvasInputAria": "Type into the canvas"
+    },
+    "select": {
+      "title": "Select"
+    },
+    "wand": {
+      "title": "Magic Wand",
+      "layers": "Layers",
+      "match": "Match",
+      "tolerance": "Tolerance",
+      "toleranceTitle": "How far a color may be from the one clicked and still match",
+      "contiguous": "Contiguous",
+      "contiguousTitle": "Select only connected matches; turn off to select matches across the whole canvas"
+    },
+    "shapes": {
+      "title": "Shapes",
+      "shape": "Shape",
+      "rectangle": "Rectangle",
+      "ellipse": "Ellipse",
+      "line": "Line",
+      "shiftSquare": "square",
+      "shiftCircle": "circle",
+      "shiftSnap45": "snap to 45°",
+      "fill": "Fill",
+      "fillTitle": "Fill the inside with the character too",
+      "connect": "Connect",
+      "connectTitle": "Auto-join corners and intersections with existing box-drawing lines",
+      "antialiased": "Anti-aliased",
+      "antialiasedTitle": "Smooth edges—uses shade blocks ░▒▓ in Full-block mode",
+      "verticalHalves": "Half-column detail",
+      "verticalHalvesTitle": "Use side-half (▌▐) and quarter blocks (▝▘▗▖) for smoother horizontal curves",
+      "blockChars": "Write block glyphs",
+      "blockCharsTitle": "Replace touched cells with block characters; turn off to tint existing characters instead"
+    },
+    "matchToggles": {
+      "fg": "FG",
+      "fgTitle": "Cells with the same foreground color",
+      "bg": "BG",
+      "bgTitle": "Cells with the same background color",
+      "char": "Char",
+      "charTitle": "Cells with the same character"
+    },
+    "drawWith": {
+      "label": "Draw with",
+      "normal": "Colors only",
+      "single": "Single line",
+      "double": "Double line",
+      "halfBlock": "Half-block",
+      "fullBlock": "Full-block",
+      "character": "Character",
+      "cells": "Cells"
+    }
+  },
+  "toolbar": {
+    "overlay": {
+      "aria": "ANSI overlay",
+      "shortLabel": "Overlay",
+      "title": "ANSI layer opacity over the pixel view",
+      "styleOverlay": "{style} overlay",
+      "styles": {
+        "ansi": "ANSI",
+        "colorAscii": "Color ASCII",
+        "ascii": "ASCII"
+      },
+      "allCells": "All cells",
+      "allCellsTitle": "Show converted base characters too, not just your edits"
+    },
+    "undo": "Undo",
+    "undoTitle": "Undo ({key})",
+    "redo": "Redo",
+    "redoTitle": "Redo ({key})",
+    "bake": "Bake",
+    "bakeTitle": "Bake: lock current slider effects into the source image and reset sliders to neutral. Your edit layer stays untouched.",
+    "mergeDown": "Merge down",
+    "mergeDownTitle": "Merge down: flatten the edit layer into the base layer.",
+    "mergeOneFrame": "Merge down flattens into the shared base layer, so it's only available on single-frame art.",
+    "clearEdit": "Clear edit layer",
+    "clearEditTitle": "Clear edit layer: erase everything on the edit layer.",
+    "clearConfirm": "Clear the edit layer? Everything you've painted, typed, or pasted on it will be removed.",
+    "mergeDialog": {
+      "title": "Merge down",
+      "warning": "Merging down can't be undone while drawing together.",
+      "warnedSub": "{warning} {sub}",
+      "subSelection": "Only what's drawn inside the selection moves into the base layer; the rest of the edit layer stays where it is.",
+      "subAll": "Choose how to merge your edit layer into the base layer:",
+      "exactTitle": "Keep crisp cells",
+      "exactText": "Locks each cell cleanly as shown. Image filters like Edges and Sharpen won't affect it.",
+      "intoImageTitle": "Blend into source image",
+      "intoImageText": "Paints into the underlying image so live sliders and filters affect it too.",
+      "originalNote": "Flattens the source image to working resolution (like Bake), so filters like Edges may shift slightly this first time."
+    },
+    "bakeDialog": {
+      "title": "Bake",
+      "titlePalette": "Bake with {palette} palette",
+      "warning": "Baking can't be undone while drawing together.",
+      "subPalette": "Locks current slider adjustments into the source image and resets sliders to zero. How should colors be stored?",
+      "choiceText": "The picture as it looks now becomes the image, and the sliders go back to neutral.",
+      "keepFullTitle": "Keep full color",
+      "keepFullText": "Preserves smooth gradients underneath so switching palettes later keeps full detail. A few border cells between {palette} colors may shift.",
+      "lockPaletteTitle": "Snap to {palette} colors",
+      "lockPaletteText": "Canvas stays pixel-identical right now, keeping only {palette} colors. Switching back to Full color later won't restore smooth gradients unless you undo."
+    },
+    "selection": {
+      "layers": "Layers",
+      "layersAria": "Layers the selection acts on",
+      "copyTitle": "Copy ({key})",
+      "cutTitle": "Cut ({key})",
+      "pasteTitle": "Paste what you copied in Phosphor, at the selection",
+      "pasteElsewhereTitle": "Nothing copied in this tab. To paste from another tab or app, use {key}",
+      "delete": "Delete",
+      "deleteTitle": "Delete (Delete or E)",
+      "stamp": "Stamp",
+      "stampTitle": "Stamp: leave a copy here and move the block on (S or C)",
+      "flipH": "Flip horizontally",
+      "flipHTitle": "Flip horizontally (mirror)",
+      "flipV": "Flip vertically",
+      "rotateAria": "Rotate 90° clockwise",
+      "rotateTitle": "Rotate 90° clockwise",
+      "rotateCharsDisabled": "Can't rotate a selection that contains typed characters",
+      "mergeUp": "Merge up",
+      "mergeUpSelectionTitle": "Merge up: what the base layer shows here becomes edit cells",
+      "mergeDownSelectionTitle": "Merge down: what's drawn here goes into the base layer",
+      "deselect": "Deselect",
+      "deselectBlockTitle": "Deselect: set the block down (Esc or Enter)",
+      "dragHint": "Drag to select cells, or:",
+      "selectAll": "Select all",
+      "selectAllTitle": "Select the whole canvas ({key})",
+      "mergeUpAllTitle": "Merge up: what the base layer shows becomes edit cells, over the whole canvas",
+      "mergeDownAllTitle": "Merge down: the whole edit layer into the base layer",
+      "setFg": "Set FG",
+      "setFgTitle": "Set FG: apply foreground color to selected cells on active layers",
+      "setFgNoneTitle": "Set FG: your foreground color is None; choose one first",
+      "setBg": "Set BG",
+      "setBgTitle": "Set BG: every cell selected takes your background color, on the layers lit",
+      "setBgNoneTitle": "Set BG: your background color is None; choose one first",
+      "fill": "Fill",
+      "fillTitle": "Fill: every pixel selected takes your foreground color, on the layers lit",
+      "fillNoneTitle": "Fill: your foreground color is None; choose one first",
+      "wandDeleteTitle": "Clear selected area on active layers (Delete)",
+      "wandDeselectTitle": "Deselect so tools paint anywhere again (Esc)"
+    }
+  },
+  "colors": {
+    "fgAria": "Foreground color",
+    "fgTitle": "Foreground: {color} ({key})",
+    "fgNoneTitle": "Foreground: none ({key})",
+    "bgAria": "Background color",
+    "bgTitle": "Background: {color} ({key})",
+    "bgNoneTitle": "Background: none ({key})",
+    "popoverAria": "Color picker",
+    "fg": "FG",
+    "bg": "BG",
+    "swap": "Swap",
+    "swapTitle": "Swap foreground and background (X or {key})",
+    "inThisDrawing": "In this artwork",
+    "painted": "{arrow} Painted ({count})",
+    "none": "None",
+    "noneTitle": "None: keep underlying color",
+    "recentTitle": "Recent: {hex}"
+  },
+  "palette": {
+    "untitled": "Untitled palette",
+    "copyName": "{name} copy",
+    "forkName": "{name} (custom)",
+    "forkNameNumbered": "{name} (custom {n})",
+    "forkedToast": "Built-in palettes are read-only—editing your new copy, “{name}”.",
+    "wideLastColToast": "A two-column character won't fit in the last column.",
+    "builtins": {
+      "shades": "Shades & blocks",
+      "single": "Single lines",
+      "double": "Double lines",
+      "single-double": "Single → double",
+      "double-single": "Double → single",
+      "faces": "Faces & suits",
+      "arrows": "Arrows",
+      "greek": "Greek & math",
+      "quadrants": "Quadrants"
+    },
+    "blocks": {
+      "boxDrawing": "Box drawing",
+      "blocks": "Blocks",
+      "shapes": "Shapes",
+      "braille": "Braille",
+      "arrows": "Arrows",
+      "math": "Math",
+      "miscSymbols": "Misc symbols",
+      "dingbats": "Dingbats",
+      "latin1": "Latin-1",
+      "greek": "Greek",
+      "miscTechnical": "Misc technical"
+    },
+    "strip": {
+      "slotFilled": "F{n}: {glyph}",
+      "slotEmpty": "F{n}: empty",
+      "slotAria": "F{n}",
+      "prevTitle": "Previous palette ({key})",
+      "prevAria": "Previous palette",
+      "palettes": "Character palettes",
+      "nextTitle": "Next palette ({key})",
+      "nextAria": "Next palette"
+    },
+    "layer": {
+      "dialogAria": "Character palettes",
+      "filterPlaceholder": "Filter palettes…",
+      "filterAria": "Filter palettes",
+      "doneBtn": "◂ Done",
+      "editBtn": "Edit ▸",
+      "newBtn": "＋ New",
+      "utf8": "UTF-8",
+      "lockedNote": "Built-in — editing creates your own copy",
+      "duplicateBtn": "⧉ Duplicate",
+      "deletePalette": "Delete palette",
+      "aimAtAria": "Aim at F{n}",
+      "clearSlotAria": "Clear slot",
+      "tabs": {
+        "cp437": "CP437",
+        "unicode": "Unicode",
+        "inDrawing": "In this drawing",
+        "recent": "Recent"
+      },
+      "findPlaceholder": "Paste characters, U+2605, or a block name",
+      "findAria": "Find or paste characters",
+      "notes": {
+        "codePoint": "Code point",
+        "pasted": "Pasted characters — click to add (struck-through glyphs don't fit a cell).",
+        "inDrawing": "Every character on the canvas right now",
+        "recent": "Characters you've used recently, across projects"
+      },
+      "hoverDefault": "Hover any glyph to inspect it.",
+      "aimingNext": "Filling F{slot} (next: F{next}) — click a glyph below, or drag onto any slot.",
+      "aimingLast": "Filling F{slot} — click a glyph below, or drag onto any slot.",
+      "unusableChar": "{char} can't fit a single grid cell (control, invisible, or multi-character).",
+      "notCp437Warning": "{char} isn't in CP437 — saved in .utf8ans, or substituted when exporting .ans.",
+      "infoCp437": "CP437 {byte}",
+      "infoUtf8Only": "UTF-8 only",
+      "infoCantUse": "can't be used",
+      "infoWide": "2 cells wide",
+      "infoOnSlot": "already on F{slot}",
+      "legendInPalette": "already in this palette",
+      "legendNotCp437": "not CP437 (.ans export warns)",
+      "legendDoesntFit": "doesn't fit one cell"
+    }
+  },
+  "status": {
+    "origin": {
+      "edit": "edit",
+      "base": "base"
+    },
+    "panning": "Panning",
+    "pickingBg": "Picking the background color",
+    "pickingFg": "Picking the foreground color · add {shift} for the background",
+    "straightLine": "straight line",
+    "pickColor": "pick color",
+    "pickBackground": "pick background",
+    "spaceKey": "Space",
+    "pan": "pan",
+    "colRow": "Col {col} Row {row}",
+    "colRowEmpty": "Col — Row —",
+    "charOrigin": "Char {char} {origin}",
+    "fgOrigin": "FG {swatch}{hex} {origin}",
+    "bgOrigin": "BG {swatch}{hex} {origin}",
+    "selection": "Selection {size}",
+    "selectionAt": "at Col {col}, Row {row}",
+    "pickedColRow": "Picked Col {col} Row {row}",
+    "zoomResetTitle": "Zoomed out: back to 100%",
+    "zoomResetAria": "Zoom {percent}%: back to 100%",
+    "domToCanvasTitle": "Rendered as DOM text (experimental). Click to switch to canvas rendering.",
+    "canvasToDomTitle": "Rendered on canvas. Click to switch to DOM text rendering (experimental).",
+    "canvas": "Canvas",
+    "dom": "DOM",
+    "smoothOnTitle": "Smooth text is on (anti-aliased glyphs). Click for crisp 2-color pixel edges.",
+    "smoothOffTitle": "Smooth text is off (crisp 2-color pixels). Click for anti-aliased glyphs.",
+    "smooth": "Smooth",
+    "insertTitle": "Insert: typing pushes the row right (Insert key)",
+    "overwriteTitle": "Overwrite: typing replaces the cell (Insert key)",
+    "insert": "Insert",
+    "overwrite": "Overwrite"
+  },
+  "animation": {
+    "toolbarAria": "Animation",
+    "kinds": {
+      "blank": "Blank — empty edit layer (shows ghost)",
+      "duplicate": "Duplicate — copy current frame",
+      "wipe": "Wipe — blank slate, blocks ghost"
+    },
+    "tooLarge": "Canvas is too large to add frames",
+    "maxFrames": "Max {count} frame at this canvas size | Max {count} frames at this canvas size",
+    "play": "Play",
+    "playTitle": "Play (L)",
+    "pause": "Pause",
+    "pauseTitle": "Pause (L)",
+    "prevFrame": "Previous frame",
+    "prevFrameTitle": "Previous frame (,)",
+    "nextFrame": "Next frame",
+    "nextFrameTitle": "Next frame (.)",
+    "frameAria": "Frame",
+    "addFrame": "Add frame",
+    "frameActions": "Frame actions",
+    "moveEarlier": "Move earlier",
+    "moveLater": "Move later",
+    "deleteFrame": "Delete frame",
+    "fpsTitle": "Frames per second",
+    "fpsUnit": "fps",
+    "hold": "Hold",
+    "holdUnit": "s",
+    "holdTitle": "Hold duration in seconds (0 = one frame tick)",
+    "ghost": "Ghost",
+    "ghostTitle": "Onion skin: show previous frames dimmed behind Blank frames",
+    "ghostStrength": "Ghost strength",
+    "ghostStrengthTitle": "Onion skin opacity: {percent}%"
+  },
+  "actions": {
+    "confirmNew": "You have unsaved changes. Start a new project anyway?",
+    "confirmOpen": "You have unsaved changes. Open {name} anyway?",
+    "saveProject": "Save project (.phosphor)",
+    "exportAns": "Export .ans",
+    "exportUtf8ans": "Export .utf8ans",
+    "exportAnimatedAns": "Export animated .ans",
+    "exportAnimatedUtf8ans": "Export animated .utf8ans",
+    "exportCast": "Export .cast",
+    "exportGif": "Export .gif",
+    "versions": "Versions",
+    "newProject": "New project",
+    "artDropTitle": "Add {name}?",
+    "artDropSub": "Add it to this drawing, or open it in place of this one.",
+    "artDropSubAddOnly": "Add it to this drawing.",
+    "artAdd": "Add to this drawing",
+    "artAddWhere": "It lands where you dropped it, on the edit layer, to drag into place.",
+    "artAddTopLeft": "It lands at the top-left of the view, on the edit layer, to drag into place.",
+    "artOpen": "Open instead",
+    "artOpenText": "In place of this drawing."
+  },
+  "sauce": {
+    "heading": "SAUCE metadata",
+    "description": "Embedded inside exported .ans and .utf8ans files for ANSI viewers, archives, and BBS tools.",
+    "title": "Title",
+    "titlePlaceholder": "Up to 35 characters",
+    "author": "Author",
+    "authorPlaceholder": "Up to 20 characters",
+    "group": "Group",
+    "groupPlaceholder": "Up to 20 characters",
+    "comments": "Comments",
+    "commentsPlaceholder": "Notes saved inside the file…"
+  },
+  "save": {
+    "fileName": "File name",
+    "formats": {
+      "phosphor": {
+        "title": "Save project",
+        "sub": "Saves your full project—source image, layers, frames, and settings—to reopen in Phosphor."
+      },
+      "ans": {
+        "title": "Export .ans",
+        "sub": "Classic CP437 ANSI art for traditional viewers, editors, and BBSes."
+      },
+      "ansimation": {
+        "title": "Export animated .ans",
+        "sub": "Classic CP437 ANSiMation stream. Playback speed depends on the viewer's baud rate rather than frame holds."
+      },
+      "utf8ansimation": {
+        "title": "Export animated .utf8ans",
+        "sub": "UTF-8 ANSiMation stream for modern terminals, keeping every character. Playback speed depends on the terminal."
+      },
+      "cast": {
+        "title": "Export .cast",
+        "sub": "asciinema recording for terminals and the web—keeps exact frame timing and every character."
+      },
+      "gif": {
+        "title": "Export .gif",
+        "sub": "Looping animated GIF rendered in your current display font—ready to share anywhere."
+      },
+      "utf8ans": {
+        "title": "Export .utf8ans",
+        "sub": "UTF-8 ANSI art for modern terminals—preserves every Unicode character and color."
+      }
+    },
+    "tooTall": "At {cols}×{rows}, this exceeds standard 80×25 terminals—rows taller than the viewer window will be clipped during playback.",
+    "cp437Note": "1 character isn't in CP437 and will be substituted in .ans: | {count} characters aren't in CP437 and will be substituted in .ans:",
+    "replacementsAria": "Replacements",
+    "becomesAria": "becomes",
+    "cellCount": "{count} cell | {count} cells",
+    "keepHint": "Export as .utf8ans to keep exact characters.",
+    "saveFailed": "Couldn't save the file.",
+    "gifTooLarge": "This animation is too large for a GIF. Try fewer frames or smaller dimensions—or export .cast, which has no size limit."
+  },
+  "versions": {
+    "title": "Versions",
+    "sub": "Phosphor saves up to 20 snapshots in this browser (about every 5 minutes while you work). Clearing browser data removes them, so save a .phosphor file for anything you want to keep.",
+    "beforeRestore": "Before restore",
+    "empty": "No snapshots saved yet.",
+    "readError": "Couldn't read the versions.",
+    "restoreError": "Couldn't restore that version.",
+    "kb": "{n} KB",
+    "mb": "{n} MB"
+  },
+  "autosave": {
+    "failing": "Autosave isn't available in this browser. Save a .phosphor file to keep your work.",
+    "evictedOldest": "Browser storage was full, so your oldest saved snapshot was removed to make room.",
+    "stillFull": "Browser storage is full—even after clearing old snapshots, this project didn't fit. Save a .phosphor file to keep your work.",
+    "openFailed": "Couldn't reopen that project."
+  },
+  "document": {
+    "framesLost": "Couldn't read this file's frames, so it opened as a still image. Saving will overwrite it as a still.",
+    "openImageFailed": "Couldn't open “{name}”. Make sure it's a supported image or .phosphor file.",
+    "decodeImageFailed": "Could not decode image",
+    "blankFailed": "Couldn't start a blank canvas.",
+    "invalidProject": "Not a valid Phosphor project file",
+    "loadProjectFailed": "Failed to load project file: {reason}",
+    "bakeFailed": "Couldn't bake the image.",
+    "mergeIntoImageFailed": "Couldn't merge into the image.",
+    "artTooBig": "This file is {cols} × {rows}. Phosphor opens at most {maxCols} columns, {maxLines} lines and {maxCells} cells.",
+    "artEmpty": "There's no art in this file."
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "holdKey": "hold {key}",
+    "holdSpace": "hold Space",
+    "macFnNote": "On Mac keyboards, hold Fn to use F1–F12.",
+    "groups": {
+      "general": "General",
+      "tools": "Tools",
+      "drawing": "Drawing",
+      "colors": "Colors",
+      "editMode": "Edit Mode",
+      "select": "Select",
+      "animation": "Animation (with Animate on)",
+      "tabs": "Editor tabs"
+    },
+    "rows": {
+      "thisList": "This list ({key} in Edit Mode)",
+      "undo": "Undo",
+      "redo": "Redo",
+      "saveProject": "Save the project",
+      "pencil": "Pencil",
+      "brush": "Brush",
+      "eraser": "Eraser (with Select and a selection: erase it)",
+      "bucket": "Paint Bucket",
+      "shapes": "Shapes",
+      "picker": "Eyedropper",
+      "wand": "Magic Wand: select by color or character",
+      "hand": "Hand",
+      "zoom": "Zoom",
+      "editMode": "Edit Mode — type characters (press Esc to return to single-key tool shortcuts)",
+      "flip": "Flip (ANSI view)",
+      "select": "Select",
+      "holdAlt": "Pick a color (Pencil, Brush, Paint Bucket, Shapes)",
+      "holdAltShift": "Pick the background color",
+      "holdSpace": "Pan, with any tool (or drag with the middle button)",
+      "openFg": "Open the color box on the foreground",
+      "openBg": "Open it on the background",
+      "swapColors": "Swap foreground and background (X types in Edit Mode)",
+      "moveSwatches": "In the color box: move between swatches",
+      "pickSwatch": "In the color box: pick and close, or pick and stay",
+      "moveCursor": "Move the cursor",
+      "homeEnd": "Start or end of the row",
+      "nextLine": "Start of the next line",
+      "erase": "Erase before or at the cursor",
+      "insertOverwrite": "Insert or overwrite",
+      "typeFKey": "Type the character palette's slot",
+      "grabFKey": "Put the character under the cursor on that slot",
+      "prevNextPalette": "Previous or next character palette",
+      "stepFgPalette": "Step the foreground through the palette (add Shift for the background)",
+      "selectAll": "Select all",
+      "copyCutPaste": "Copy, cut, paste",
+      "nudge": "Nudge the selection",
+      "deleteSelection": "Delete what's selected",
+      "stamp": "Stamp: leave a copy here and move the block on",
+      "deselect": "Deselect, setting the block down",
+      "playPause": "Play or pause (any other key pauses too)",
+      "prevNextFrame": "Previous or next frame",
+      "switchTabs": "With a tab focused: switch tabs"
+    }
+  },
+  "social": {
+    "unsupported": "This browser doesn't support the security features SOCIAL needs.",
+    "agreeTerms": "I'm 13 or older and agree to the {terms}, {privacy}, and {guidelines}",
+    "nav": {
+      "backToLobby": "‹ Back to lobby",
+      "backToRoom": "‹ Back to room",
+      "cancel": "‹ Cancel",
+      "cancelSignOut": "Cancel and sign out"
+    },
+    "consent": {
+      "title": "Before you open SOCIAL",
+      "regionAria": "What SOCIAL means for you",
+      "intro": "SOCIAL lets you watch people draw live, draw together, or host your own room. Here's how your privacy works.",
+      "lobbyHeading": "The lobby",
+      "lobbyBody": "Opening SOCIAL connects your browser to our server. People in the lobby can see your username (guests get a random three-word nickname). Public rooms show their host, title, viewer count, and a live preview.",
+      "joiningHeading": "Joining a room",
+      "joiningBody": "Your browser connects directly to the host's, so each of you can see the other's IP address. That can reveal your approximate location and internet provider, so use a VPN if you want to hide it. Chat goes through the host's browser, and anyone in the room can see and copy it.",
+      "startingHeading": "Starting a room",
+      "startingBody": "The people you admit see your art as you draw it, and everyone who joins can see your IP address. Public rooms show a preview in the lobby. Anyone you invite to draw gets the whole project, including the original image. If someone reports your room, we keep a snapshot of the canvas to review and resolve the report.",
+      "beKindHeading": "Be kind",
+      "beKindBody": "Don't bully, harass, threaten anyone, or attack people for who they are. Don't use someone's IP address against them or share their personal information. Keep public rooms appropriate, respect other people's art, and only report in good faith. Hosts can remove or block people, and anyone signed in with a confirmed email can report a person or room."
+    },
+    "joinDialog": {
+      "title": "Join this room?",
+      "sub": "You followed a link to it. Joining connects your browser directly to the host's, so the host can see your IP address.",
+      "join": "Join",
+      "backToYourRoom": "Back to your room"
+    },
+    "signals": {
+      "feedback": "Wants feedback",
+      "chat": "Open to chat",
+      "heads-down": "Heads down"
+    },
+    "lobby": {
+      "filterAll": "All",
+      "filterAria": "Filter rooms",
+      "reclaimWaiting": "Your room {name} is waiting for you.",
+      "reclaimWaitingDirty": "Your room {name} is waiting for you. {replaces}",
+      "backToYourRoom": "Back to your room",
+      "publicRooms": "Public rooms",
+      "liveCount": "{count} live",
+      "startRoom": "Start a room",
+      "unavailableHeading": "Can't reach the lobby right now",
+      "unavailableBody": "Your local editor still works normally.",
+      "clockHint": "If your device's clock is off, fix the time and reload.",
+      "emptyHeading": "No public rooms live right now",
+      "emptyBody": "Start a room and your canvas will light up the lobby.",
+      "emptyFilter": "No rooms match this filter",
+      "you": "You",
+      "editAccount": "Edit account",
+      "signOut": "Sign out",
+      "signIn": "Sign in",
+      "noAccount": "No account? {create}",
+      "createOne": "Create one",
+      "signInHint": "Sign in to chat and start rooms.",
+      "inLobby": "In the lobby",
+      "confirmToStart": "Confirm your email to start a room",
+      "resend": "Resend"
+    },
+    "card": {
+      "moreFor": "More for {name}",
+      "reportRoom": "Report room",
+      "joinCount": "Join ({count}/{max})",
+      "liveMinutes": "live {min} min",
+      "liveHoursMinutes": "live {hr} hr {min} min",
+      "metaWithSignal": "{live} · {signal}",
+      "blockedInside": "Someone you blocked is here"
+    },
+    "picture": {
+      "heading": "Lobby picture",
+      "exactPosition": "Use this exact position"
+    },
+    "start": {
+      "heading": "Set up your room",
+      "noArt": "Open an image or start a canvas first so you have something to share.",
+      "roomName": "Room name",
+      "roomNamePatternTitle": "Use at least one character that isn't a space",
+      "welcomeMessage": "Welcome message",
+      "charCount": "{count}/{max}",
+      "whoCanJoin": "Who can join",
+      "anyoneInLobby": "Public in the lobby",
+      "onlyWithLink": "Unlisted (link only)",
+      "passwordOptional": "Password (optional)",
+      "passwordHelp": "Anyone with the link can join—add a password to require both.",
+      "allowGuests": "Allow guests",
+      "allowGuestsHelp": "Guests can watch but can't chat or draw. You can switch to signed-in members anytime.",
+      "maxWatchers": "Max watchers",
+      "maxWatchersHelp": "Rooms stream directly from your browser. Up to 12 watchers suits most home connections.",
+      "lobbyCard": "Lobby card",
+      "signal": "Signal",
+      "signalHelp": "Shown on your room's card in the lobby.",
+      "goLive": "Go live"
+    },
+    "host": {
+      "liveFor": "Live for {duration}",
+      "endRoom": "End room",
+      "sendLinkWithPassword": "Send the link and the password to anyone you want in.",
+      "sendLink": "Send the link to anyone you want in.",
+      "stats": {
+        "hereNow": "Here now",
+        "max": "Max",
+        "total": "Total",
+        "messages": "Messages",
+        "removed": "Removed"
+      },
+      "roomSettings": "Room settings",
+      "kickGuests": "Also remove the guest currently here | Also remove the {count} guests currently here",
+      "setAtStart": "Set when the room started",
+      "listedInLobby": "Listed in the lobby",
+      "onlyWithLink": "Only with the link",
+      "passwordSet": "Password set"
+    },
+    "cameBy": {
+      "heading": "Who came by",
+      "empty": "Nobody has stopped by yet.",
+      "cols": {
+        "name": "Name",
+        "time": "Time",
+        "status": "Status",
+        "messages": "Messages"
+      },
+      "underMinute": "< 1 min",
+      "minutes": "{m}m",
+      "hoursMinutes": "{h}h {m}m",
+      "removedAt": "Removed at {time}",
+      "leftAt": "Left at {time}",
+      "here": "Here now",
+      "andMore": "Show {count} more"
+    },
+    "menu": {
+      "label": "Room",
+      "editWelcome": "Edit welcome",
+      "settingsAndStats": "Settings and stats"
+    },
+    "endDialog": {
+      "title": "End this room?",
+      "sub": "Everyone will be disconnected (including co-artists) and the room chat will clear.",
+      "confirm": "End room"
+    },
+    "makeHostDialog": {
+      "title": "Make {name} the host?",
+      "sub": "You'll stay in the room as an artist.",
+      "confirm": "Make host"
+    },
+    "watch": {
+      "joining": "Joining…",
+      "waiting": "Waiting for the host…",
+      "needsPassword": "This room needs a password",
+      "failed": "Couldn't reach this host",
+      "hostReconnecting": "The host is reconnecting…",
+      "password": "Password",
+      "wrongPassword": "Wrong password",
+      "join": "Join",
+      "zoomAria": "Zoom",
+      "zoomOutAria": "Zoom out",
+      "zoomInAria": "Zoom in",
+      "artUnavailable": "This browser can't show the room's art",
+      "artRegionAria": "The room's art",
+      "trackAria": "Track {name}",
+      "trackingState": "· tracking",
+      "trackBtn": "Track ›"
+    },
+    "pause": {
+      "hostChanging": "Handing off to the new host—drawing paused…",
+      "gettingArt": "Syncing the room's canvas—drawing paused…",
+      "hostReconnecting": "Waiting for the host to reconnect—drawing paused…"
+    },
+    "cursors": {
+      "goToAria": "Go to {name}"
+    },
+    "people": {
+      "hereCount": "{count} here",
+      "whoIsHereAria": "Who is here",
+      "connecting": "connecting…",
+      "tracking": "tracking",
+      "lookingAround": "looking around",
+      "moreFor": "More for {name}",
+      "kick": "Kick",
+      "makeHost": "Make host",
+      "notWhilePaused": "Not while drawing is paused.",
+      "backToWatching": "Back to watching",
+      "withdrawInvitation": "Withdraw invitation",
+      "makeArtist": "Make artist",
+      "kickSession": "Remove from room",
+      "unmute": "Unmute",
+      "mute": "Quiet mute (only you see them)",
+      "muteTitle": "Hides their messages from everyone else without notifying them.",
+      "blockFuture": "Block from your rooms",
+      "report": "Report",
+      "blockTitle": "Block {name}?",
+      "blockSub": "They can't join any room you host, and they leave this one now. Unblock them from Account.",
+      "blockConfirm": "Block",
+      "whoToFollowAria": "Who to follow",
+      "followAria": "Follow {name}",
+      "following": "Following",
+      "follow": "Follow",
+      "showEveryone": "Show everyone",
+      "showBox": "Show box"
+    },
+    "chat": {
+      "panelAria": "Chat",
+      "openAria": "Open the chat",
+      "foldAria": "Fold the chat",
+      "hostedBy": "hosted by {host}",
+      "exit": "Exit",
+      "reportRoomAria": "Report room",
+      "report": "Report",
+      "pinnedFromHost": "Pinned note",
+      "invitedByHost": "{host} invited you to draw together.",
+      "invitedFallback": "The host invited you to draw.",
+      "acceptReplacesDirty": "Accepting replaces your current canvas (you have unsaved changes).",
+      "showCursors": "Show others' cursors",
+      "messagesAria": "Messages",
+      "scrollForEarlier": "↑ Scroll up for earlier messages",
+      "youJoined": "You joined",
+      "presence": {
+        "joined": "{person} joined",
+        "left": "{person} left",
+        "cameAndWent": "{person} came and went",
+        "cameBack": "{person} came back"
+      },
+      "deletedByHost": "Message deleted by the host",
+      "fromBlocked": "Message from someone you blocked",
+      "show": "Show",
+      "youSuffix": " (you)",
+      "reportMessageAria": "Report message from {name}",
+      "deleteMessageAria": "Delete message from {name}",
+      "mutedNote": "Quietly muted — visible only to the two of you",
+      "messageAria": "Message",
+      "sendAria": "Send",
+      "slowDown": "Easy there—wait a moment before sending again.",
+      "silencedUntil": "You're silenced until {until}.",
+      "signInToChat": "Sign in to chat",
+      "confirmToChat": "Confirm your email to chat"
+    },
+    "report": {
+      "titleRoom": "Report this room?",
+      "titlePerson": "Report {name}?",
+      "subMessage": "Moderators receive this message and a few preceding messages for context.",
+      "subPerson": "Moderators receive this user's recent chat messages in this room.",
+      "subRoomInside": "Moderators receive recent lobby previews plus a snapshot of the canvas right now.",
+      "subRoomLobby": "Moderators receive the room's recent lobby previews.",
+      "thanks": "Reported. Thank you.",
+      "whatsWrong": "What's wrong?",
+      "reasons": {
+        "spam": "Spam or flooding",
+        "harassment": "Harassment or hate",
+        "sexual": "Sexual or violent",
+        "other": "Something else"
+      },
+      "reporting": "Reporting…",
+      "submit": "Report"
+    },
+    "auth": {
+      "usernameLabel": "Username",
+      "usernameHelp": "How everyone sees you. Letters, numbers, - and _.",
+      "emailLabel": "Email",
+      "emailOrUsername": "Email or username",
+      "passwordLabel": "Password",
+      "passwordHelp": "At least 10 characters, not a known leaked password.",
+      "signInHeading": "Sign in",
+      "signInIntro": "Sign in to chat and start rooms.",
+      "continueWith": "Continue with {provider}",
+      "signInSubmit": "Sign in",
+      "forgotPassword": "Forgot your password?",
+      "createHeading": "Create an account",
+      "createIntro": "An account lets you chat and start rooms, under a username that's yours.",
+      "createSubmit": "Create account",
+      "haveAccount": "Have an account? {signIn}",
+      "forgotHeading": "Forgot your password?",
+      "forgotIntro": "We'll email you a link to set a new one.",
+      "sendLink": "Send link",
+      "rememberedIt": "Remembered it? {signIn}",
+      "resetHeading": "Set a new password",
+      "resetIntro": "Choose the password you'll sign in with from now on.",
+      "newPasswordLabel": "New password",
+      "resetPasswordHelp": "At least 10 characters, not a known leaked password. Setting it signs you out everywhere else.",
+      "setPassword": "Set password",
+      "onboardingHeading": "Pick your username",
+      "onboardingIntro": "One more step before you're in. You can change it once every 30 days.",
+      "twoFactorHeading": "Two-factor code",
+      "twoFactorIntro": "This account asks for a code each time you sign in.",
+      "backupCodeLabel": "Backup code",
+      "totpCodeLabel": "Code from your authenticator app",
+      "trustComputer": "Trust this computer for 30 days",
+      "verify": "Verify",
+      "useAuthenticator": "Use your authenticator app",
+      "useBackupCode": "Use a backup code instead"
+    },
+    "account": {
+      "heading": "Account",
+      "usernameHeading": "Username",
+      "usernameCooldownHelp": "Once every 30 days. Your color and glyph come from your username.",
+      "changeUsernameBtn": "Change",
+      "waysHeading": "Ways to sign in",
+      "emailAndPassword": "Email and password",
+      "changeEmail": "Change email",
+      "changePassword": "Change password",
+      "newEmail": "New email",
+      "currentPassword": "Current password",
+      "emailHelpVerified": "We'll send an approval link to {email} first, then a confirmation link to your new address. Links expire after 1 hour and must open in this browser (up to 2 changes a day).",
+      "emailHelpUnverified": "We'll send a confirmation link to your new address. Links expire after 1 hour and must open in this browser (up to 2 changes a day).",
+      "confirmNewPassword": "Confirm new password",
+      "newPasswordHelp": "At least 10 characters, not a known leaked password. Changing it signs you out everywhere else.",
+      "passwordsDontMatch": "Those new passwords don't match",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "disconnect": "Disconnect",
+      "disconnectAria": "Disconnect {provider}",
+      "connect": "Connect",
+      "connectAria": "Connect {provider}",
+      "needOneWay": "You need at least one way to sign in",
+      "twoFactorHeading": "Two-factor",
+      "backupCodesHelp": "Save these backup codes somewhere safe. Each one works once, if you lose your phone. You won't see them again.",
+      "scanQrHelp": "Scan this with your authenticator app, or enter the key:",
+      "qrAria": "QR code",
+      "codeFromApp": "Code from the app",
+      "turnOn": "Turn on",
+      "turnOff": "Turn off",
+      "turnOffTwoFactor": "Turn off two-factor",
+      "makeNewCodes": "Make new codes",
+      "recentSignInHelp": "Requires a fresh sign-in within the last 5 minutes.",
+      "twoFactorOn": "On. Signing in asks for a code.",
+      "newBackupCodes": "New backup codes",
+      "twoFactorOff": "Ask for a code from an authenticator app whenever you sign in.",
+      "blockedHeading": "Blocked",
+      "nobodyBlocked": "Nobody blocked",
+      "unblock": "Unblock",
+      "unblockAria": "Unblock {name}",
+      "deleteHeading": "Delete account",
+      "deleteHelp": "This removes your account, your username and your blocks. It can't be undone.",
+      "deleteRecentSignInHelp": "Requires a fresh sign-in within the last 5 minutes.",
+      "deleteForGood": "Delete for good"
+    },
+    "drawing": {
+      "roomFull": "This room already has the maximum number of artists.",
+      "onlyHost": "Only the room's host can change this.",
+      "notWithOthers": "Unavailable while co-artists are drawing.",
+      "backToWatching": "You're back to watching.",
+      "someoneElse": "Someone else"
+    },
+    "notices": {
+      "checkEmailConfirm": "Check your inbox to confirm your email address.",
+      "relinkSignIn": "For your security, please sign in again to continue.",
+      "emailConfirmed": "Your email is confirmed.",
+      "emailChanged": "Your email address has been updated.",
+      "emailApproved": "Approved—now open the confirmation link sent to your new email.",
+      "confirmWithProvider": "Confirm your email with Discord or GitHub first.",
+      "resetLinkSentTo": "A link is on its way to {email}",
+      "resetLinkIfAccount": "If that email has an account, a link is on its way",
+      "passwordResetDone": "Password updated. Sign in with your new password.",
+      "checkEmailApprove": "Check {email} to approve the change",
+      "checkEmailConfirmNew": "Check {email} to confirm it",
+      "passwordChanged": "Your password has been updated.",
+      "accountDeleted": "Your account has been deleted.",
+      "copyLinkFailed": "Couldn't copy the link"
+    },
+    "errors": {
+      "fallback": "Something went wrong. Try again.",
+      "network": "Couldn't reach Phosphor's server. Check your connection.",
+      "termsRequired": "Agree to the terms to continue",
+      "username": {
+        "length": "Usernames are 3 to 24 characters",
+        "characters": "Use only letters, numbers, underscores and hyphens",
+        "reserved": "That username is reserved—avoid staff or Phosphor terms (admin, mod, support), placeholders (test, demo, user), or three hyphenated words (used for guest nicknames).",
+        "generic": "That username won't work"
+      },
+      "invalidRoom": {
+        "name": "Room names are 1 to 60 characters",
+        "password": "A private room needs a password",
+        "max": "Max watchers is 1 to 30"
+      },
+      "invalidEmail": "That doesn't look like an email address",
+      "emailReserved": "That address is at one of Phosphor's own domains. Sign up with Discord or GitHub using it, or with another email",
+      "emailSame": "That's already your email",
+      "emailChangeLimit": "You can ask to change your email twice a day. Try again tomorrow",
+      "signInToConfirm": "Sign in to that account here, then open the link again",
+      "noPassword": "This email comes from Discord or GitHub",
+      "taken": "That username is taken",
+      "tooSoonDate": "You can change your username again on {date}",
+      "tooSoonGeneric": "You changed your username recently. Try again later",
+      "onboardingRequired": "Pick a username to finish setting up your account",
+      "suspendedUntil": "This account is suspended until {date}",
+      "suspendedForever": "This account is suspended for good",
+      "bannedUser": "This account is suspended",
+      "accountNotFound": "That sign-in method isn't linked to your account.",
+      "lastWay": "You need at least one way to sign in",
+      "throttled": "Too many tries. Wait a moment and try again",
+      "turnstileFailed": "We couldn't check that you're a person. Try again",
+      "passwordBreached": "That password has appeared in a data breach. Choose another",
+      "passwordTooShort": "Passwords need at least 10 characters",
+      "emailNotVerified": "Confirm your email first—check your inbox for the link.",
+      "verifyEmail": "Check your inbox to confirm your email.",
+      "useRename": "Use Change username to rename your account",
+      "sessionExpired": "Your session ended. Sign in again",
+      "invalidToken": "That link has expired or was already used. Ask for a new one.",
+      "invalidEmailOrPassword": "That email or username and password don't match",
+      "invalidPassword": "That password doesn't match",
+      "invalidCode": "That code isn't right",
+      "invalidBackupCode": "That backup code isn't right, or it was already used",
+      "tooManyAttempts": "Too many wrong codes. Wait a few minutes, then sign in again",
+      "twoFactorExpired": "That took too long. Sign in again",
+      "userAlreadyExists": "An account already uses that email",
+      "room": {
+        "unavailable": "This room isn't available",
+        "signedInOnly": "Signed-in users only",
+        "wrongPassword": "Wrong password",
+        "full": "Room is full",
+        "ended": "The host ended the room",
+        "removed": "The host removed you",
+        "replaced": "You're watching this room in another tab"
+      },
+      "roomAway": "Your room closed while you were away.",
+      "undoReset": "The host changed, so undo starts over. All the drawing is still here.",
+      "undoRestart": "Your undo starts over. All the drawing is still here.",
+      "newHostPlanned": "{old} made {name} the host.",
+      "newHostLeft": "{old} left the room. {name} is now the host.",
+      "refusedUndo": "That can't be undone anymore.",
+      "refusedRedo": "That can't be redone anymore.",
+      "backAsArtist": "{name} is now the host. What you had open is saved: open a new tab, and it's under \"Pick up where you left off.\"",
+      "goingBackReplaces": "Going back replaces your open art, which has unsaved changes.",
+      "artNotOpened": "The room's art couldn't be opened.",
+      "goingBackFailed": "Couldn't go back to your room.",
+      "hostReplaced": "This room is open in another tab"
+    }
+  }
+}

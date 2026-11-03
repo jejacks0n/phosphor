@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
@@ -10,6 +11,7 @@ import ColorPopover from '@/components/ColorPopover.vue';
 // The foreground/background chips: each shows its color as it displays (after adjustments and the
 // palette); a none slot shows a checkerboard. Clicking a chip opens the picker for that slot (so do
 // Alt+F / Alt+A and Alt+B: workspace.colorBox).
+const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 
@@ -35,16 +37,16 @@ const toggle = (slot) => { workspace.colorBox = workspace.colorBox === slot ? nu
         class="chip fg"
         :class="{ none: fgNone }"
         :style="fgNone ? null : { backgroundColor: shown(workspace.editFgColor) }"
-        :title="`Foreground: ${fgNone ? 'none' : workspace.editFgColor} (${shortcut('alt', 'F')})`"
-        aria-label="Foreground color"
+        :title="fgNone ? t('colors.fgNoneTitle', { key: shortcut('alt', 'F') }) : t('colors.fgTitle', { color: workspace.editFgColor, key: shortcut('alt', 'F') })"
+        :aria-label="t('colors.fgAria')"
         @click="toggle('fg')"
     ></button>
     <button
         class="chip bg"
         :class="{ none: workspace.editBgNone }"
         :style="workspace.editBgNone ? null : { backgroundColor: shown(workspace.editBgColor) }"
-        :title="`Background: ${workspace.editBgNone ? 'none' : workspace.editBgColor} (${shortcut('alt', 'B')})`"
-        aria-label="Background color"
+        :title="workspace.editBgNone ? t('colors.bgNoneTitle', { key: shortcut('alt', 'B') }) : t('colors.bgTitle', { color: workspace.editBgColor, key: shortcut('alt', 'B') })"
+        :aria-label="t('colors.bgAria')"
         @click="toggle('bg')"
     ></button>
     <ColorPopover v-if="workspace.colorBox" v-model:slot-name="workspace.colorBox" @close="workspace.colorBox = null"/>

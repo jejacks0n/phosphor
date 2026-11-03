@@ -22,9 +22,9 @@ test("Character palettes: the built-in sets, glyph lists, fork naming, what a ce
   assert.deepEqual(normalizeGlyphs('🬀ab'), ['🬀', 'a', 'b', '', '', '', '', '', '', '', '', '']);
   assert.equal(normalizeGlyphs('abcdefghijklmnop').length, 12);
   assert.deepEqual(normalizeGlyphs(['x', undefined]).slice(0, 2), ['x', '']);
-  assert.equal(forkName('Double lines', ['Double lines']), 'Double lines (mine)');
-  assert.equal(forkName('Double lines', ['Double lines (mine)']), 'Double lines (mine 2)');
-  assert.equal(forkName('Double lines', ['Double lines (mine)', 'Double lines (mine 2)']), 'Double lines (mine 3)');
+  assert.equal(forkName('Double lines', ['Double lines']), 'Double lines (custom)');
+  assert.equal(forkName('Double lines', ['Double lines (custom)']), 'Double lines (custom 2)');
+  assert.equal(forkName('Double lines', ['Double lines (custom)', 'Double lines (custom 2)']), 'Double lines (custom 3)');
   // What a cell may hold: one character, one or two columns wide (a terminal's width, not the
   // display font's advance), assigned and not private use.
   for (const ok of ['╬', '中', '🙂', '﷽', '☺', '👍🏽']) assert.equal(fitsGrid(ok), true, ok);

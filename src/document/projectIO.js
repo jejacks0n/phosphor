@@ -28,7 +28,7 @@ export function loadImage(source, type) {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
-    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not decode image')); };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(Object.assign(new Error('Could not decode image'), { code: 'DECODE_IMAGE_FAILED' })); };
     image.src = url;
   });
 }
@@ -53,7 +53,7 @@ export async function writeProject({ settings, imageBuffer, paintBlob, baseBlob 
 export async function readProject(file) {
   const buffer = await file.arrayBuffer();
   if (new TextDecoder().decode(buffer.slice(0, 8)) !== MAGIC_HEADER) {
-    throw new Error('Not a valid Phosphor project file');
+    throw Object.assign(new Error('Not a valid Phosphor project file'), { code: 'INVALID_PROJECT' });
   }
 
   const view = new DataView(buffer);

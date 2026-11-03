@@ -4,6 +4,7 @@
  *
  * Palette = { id, name, glyphs: string[12], builtin? }
  */
+import { t } from '@/i18n';
 import { graphemes, usableChar } from './CharWidth.js';
 
 const SLOTS = 12;
@@ -13,43 +14,54 @@ export function normalizeGlyphs(input) {
   return Array.from({ length: SLOTS }, (_, i) => glyphs[i] ?? '');
 }
 
-const builtin = (id, name, glyphs) => Object.freeze({ id, name, glyphs: Object.freeze(normalizeGlyphs(glyphs)), builtin: true });
+function builtin(id, glyphs) {
+  const entry = { id, glyphs: Object.freeze(normalizeGlyphs(glyphs)), builtin: true };
+  Object.defineProperty(entry, 'name', { get: () => t(`palette.builtins.${id}`), enumerable: true });
+  return Object.freeze(entry);
+}
 
 // Everything but Quadrants is CP437 (• ◘ ○ ◙ ♪ → ← sit on control bytes, so .ans writes lookalikes).
 export const BUILTIN_PALETTES = Object.freeze([
-  builtin('shades', 'Shades & blocks', '░▒▓█▀▄▌▐■▬·∙'),
-  builtin('single', 'Single lines', '┌┐└┘─│┬┴├┤┼·'),
-  builtin('double', 'Double lines', '╔╗╚╝═║╦╩╠╣╬·'),
-  builtin('single-double', 'Single → double', '╒╕╘╛═│╤╧╞╡╪·'),
-  builtin('double-single', 'Double → single', '╓╖╙╜─║╥╨╟╢╫·'),
-  builtin('faces', 'Faces & suits', '☺☻♥♦♣♠•◘○◙♪♫'),
-  builtin('arrows', 'Arrows', '↑↓→←↕↔▲▼►◄∟⌂'),
-  builtin('greek', 'Greek & math', 'αßΓπΣσµτΦΘΩδ'),
-  builtin('quadrants', 'Quadrants', '▖▗▘▝▚▞▙▛▜▟▀▄'),
+  builtin('shades', '░▒▓█▀▄▌▐■▬·∙'),
+  builtin('single', '┌┐└┘─│┬┴├┤┼·'),
+  builtin('double', '╔╗╚╝═║╦╩╠╣╬·'),
+  builtin('single-double', '╒╕╘╛═│╤╧╞╡╪·'),
+  builtin('double-single', '╓╖╙╜─║╥╨╟╢╫·'),
+  builtin('faces', '☺☻♥♦♣♠•◘○◙♪♪'.replace(/♪♪$/, '♪♫')),
+  builtin('arrows', '↑↓→←↕↔▲▼►◄∟⌂'),
+  builtin('greek', 'αßΓπΣσµτΦΘΩδ'),
+  builtin('quadrants', '▖▗▘▝▚▞▙▛▜▟▀▄'),
 ]);
 
-// The palette layer's Unicode source: [name, first, last] code points.
-export const UNICODE_BLOCKS = Object.freeze([
-  ['Box drawing', 0x2500, 0x257F],
-  ['Blocks', 0x2580, 0x259F],
-  ['Shapes', 0x25A0, 0x25FF],
-  ['Braille', 0x2800, 0x28FF],
-  ['Arrows', 0x2190, 0x21FF],
-  ['Math', 0x2200, 0x22FF],
-  ['Misc symbols', 0x2600, 0x26FF],
-  ['Dingbats', 0x2700, 0x27BF],
-  ['Latin-1', 0x00A1, 0x00FF],
-  ['Greek', 0x0391, 0x03C9],
-  ['Misc technical', 0x2300, 0x23FF],
-]);
+const UNICODE_BLOCK_DEFS = [
+  ['boxDrawing', 'Box drawing', 0x2500, 0x257F],
+  ['blocks', 'Blocks', 0x2580, 0x259F],
+  ['shapes', 'Shapes', 0x25A0, 0x25FF],
+  ['braille', 'Braille', 0x2800, 0x28FF],
+  ['arrows', 'Arrows', 0x2190, 0x21FF],
+  ['math', 'Math', 0x2200, 0x22FF],
+  ['miscSymbols', 'Misc symbols', 0x2600, 0x26FF],
+  ['dingbats', 'Dingbats', 0x2700, 0x27BF],
+  ['latin1', 'Latin-1', 0x00A1, 0x00FF],
+  ['greek', 'Greek', 0x0391, 0x03C9],
+  ['miscTechnical', 'Misc technical', 0x2300, 0x23FF],
+];
+
+// The palette layer's Unicode source: [name, first, last] code points, with [0] reactive to the active locale.
+export const UNICODE_BLOCKS = Object.freeze(UNICODE_BLOCK_DEFS.map(([key, , first, last]) => {
+  const tuple = [null, first, last];
+  Object.defineProperty(tuple, 0, { get: () => t(`palette.blocks.${key}`), enumerable: true });
+  return Object.freeze(tuple);
+}));
 
 // The name for your copy of a palette: "<name> (mine)", then "(mine 2)", …
 export function forkName(name, existingNames) {
   const taken = new Set(existingNames);
-  if (!taken.has(`${name} (mine)`)) return `${name} (mine)`;
+  const first = t('palette.forkName', { name });
+  if (!taken.has(first)) return first;
   let n = 2;
-  while (taken.has(`${name} (mine ${n})`)) n++;
-  return `${name} (mine ${n})`;
+  while (taken.has(t('palette.forkNameNumbered', { name, n }))) n++;
+  return t('palette.forkNameNumbered', { name, n });
 }
 
 // Whether a character can go in a palette: one a cell can hold (one or two columns wide, as a
@@ -66,10 +78,14 @@ export function parseFind(query) {
     const code = parseInt(q.slice(2), 16);
     return code <= 0x10ffff ? { kind: 'code', chars: [String.fromCodePoint(code)] } : null;
   }
-  // A single character is always itself; a word searches block names.
+  // A single character is always itself; a word searches block names (localized or canonical English).
   const name = q.toLowerCase();
-  if (graphemes(q).length > 1 && /^[a-z -]+$/.test(name) && UNICODE_BLOCKS.some(([block]) => block.toLowerCase().includes(name))) {
-    return { kind: 'block', query: q };
+  if (graphemes(q).length > 1 && !/\d/.test(name)) {
+    const matched = UNICODE_BLOCK_DEFS.some(([key, enName]) =>
+      t(`palette.blocks.${key}`).toLowerCase().includes(name) || enName.toLowerCase().includes(name));
+    if (matched && (/^[a-z -]+$/.test(name) || UNICODE_BLOCK_DEFS.some(([key]) => t(`palette.blocks.${key}`).toLowerCase().includes(name)))) {
+      return { kind: 'block', query: q };
+    }
   }
   return { kind: 'paste', chars: [...new Set(graphemes(q).filter(c => c.trim()))] };
 }

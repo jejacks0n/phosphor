@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
@@ -8,6 +9,7 @@ import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 // The Text tool's F-key strip: the active palette's 12 glyphs (tap one to type it, which is how
 // touch screens use F-keys), and the palette controls on the right. No palette name, so the strip
 // never shifts; names are in the palette layer.
+const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const palettes = usePaletteStore();
@@ -27,8 +29,8 @@ const use = (glyph) => {
           :key="i"
           class="key"
           :class="{ flash: palettes.flashIndex === i, empty: !glyph }"
-          :title="glyph ? `F${i + 1}: ${glyph}` : `F${i + 1}: empty`"
-          :aria-label="`F${i + 1}`"
+          :title="glyph ? t('palette.strip.slotFilled', { n: i + 1, glyph }) : t('palette.strip.slotEmpty', { n: i + 1 })"
+          :aria-label="t('palette.strip.slotAria', { n: i + 1 })"
           @mousedown.prevent
           @click="use(glyph)"
       >
@@ -38,17 +40,17 @@ const use = (glyph) => {
     </div>
     <div class="spacer"></div>
     <!-- Clicks don't take focus, so a following Space/Enter types instead of re-pressing the button. -->
-    <button class="nav" title="Previous palette (Alt+←)" aria-label="Previous palette" @mousedown.prevent @click="palettes.flip(-1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 2v12L3 8z"/></svg></button>
+    <button class="nav" :title="t('palette.strip.prevTitle', { key: 'Alt+←' })" :aria-label="t('palette.strip.prevAria')" @mousedown.prevent @click="palettes.flip(-1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 2v12L3 8z"/></svg></button>
     <button
         class="nav"
         :class="{ on: workspace.paletteLayerOpen }"
         data-palette-toggle
-        title="Palettes"
-        aria-label="Palettes"
+        :title="t('palette.strip.palettes')"
+        :aria-label="t('palette.strip.palettes')"
         @mousedown.prevent
         @click="workspace.paletteLayerOpen = !workspace.paletteLayerOpen"
     ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true"><rect x="144" y="42" width="60" height="60" rx="8"/><rect x="226" y="42" width="60" height="60" rx="8"/><rect x="308" y="42" width="60" height="60" rx="8"/><rect x="144" y="154" width="60" height="60" rx="8"/><rect x="226" y="154" width="60" height="60" rx="8"/><rect x="308" y="154" width="60" height="60" rx="8"/><rect x="144" y="266" width="60" height="60" rx="8"/><rect x="226" y="266" width="60" height="60" rx="8"/><rect x="308" y="266" width="60" height="60" rx="8"/><rect x="144" y="377" width="60" height="60" rx="8"/><rect x="226" y="377" width="60" height="60" rx="8"/><rect x="308" y="377" width="60" height="60" rx="8"/></svg></button>
-    <button class="nav" title="Next palette (Alt+→)" aria-label="Next palette" @mousedown.prevent @click="palettes.flip(1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2v12l8-6z"/></svg></button>
+    <button class="nav" :title="t('palette.strip.nextTitle', { key: 'Alt+→' })" :aria-label="t('palette.strip.nextAria')" @mousedown.prevent @click="palettes.flip(1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2v12l8-6z"/></svg></button>
     <CharPaletteLayer v-if="workspace.paletteLayerOpen" @close="workspace.paletteLayerOpen = false"/>
   </div>
 </template>

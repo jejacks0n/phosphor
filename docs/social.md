@@ -145,7 +145,7 @@ you out everywhere else. Signed out, it has a **Sign in** link back.
 
 ## Starting a room
 
-**Start a room** needs some art open in Phosphor: it's the art you share. It opens **Setup room**
+**Start a room** needs some art open in Phosphor: it's the art you share. It opens **Set up your room**
 in the lobby, in place of the public rooms (the column beside stays), and asks for:
 
 - **Room name**: up to 60 characters.
@@ -165,7 +165,7 @@ in the lobby, in place of the public rooms (the column beside stays), and asks f
 - **Max watchers**: from 1 to 30 (12 to begin with; a higher number goes back to 30). Each watcher uses some of your upload speed,
   and 12 suits most home connections.
 
-For a room in the lobby, Setup room also has a **Lobby card** group: the **Signal**, and the **Lobby
+For a room in the lobby, Set up your room also has a **Lobby card** group: the **Signal**, and the **Lobby
 picture**, the part of the art its card will show, as the host's page does while you're live (see
 **Lobby picture** under Hosting); a position you pin there is kept when you go live. With room to
 spare it sits beside the rest of the form; in a narrower window, below it.
@@ -225,12 +225,12 @@ the room lasts. Each watcher shows their name after its cell, **guest** for a gu
 they're tracking you or looking around on their own (or still connecting); someone drawing says **artist** instead. A member's row has a
 **⋯** button (guests have none) with:
 
-- **Kick – for this session**: they leave the room now, and can't come back until the room ends.
-- **Mute – for everyone but you**: their messages stop reaching anyone else. They aren't told: they still see what they
+- **Remove from room**: they leave the room now, and can't come back until the room ends.
+- **Quiet mute (only you see them)**: their messages stop reaching anyone else. They aren't told: they still see what they
   send, and you see it too, marked "Muted: only you and they see this" (you can still report it).
   They're tagged **muted** in the list until you **Unmute** them or the room ends; what they
   said while muted stays hidden from the others.
-- **Block – from all future rooms**: asks first (**Block** or **Cancel**), then they can't join any room you host again, and your rooms no longer show in their lobby.
+- **Block from your rooms**: asks first (**Block** or **Cancel**), then they can't join any room you host again, and your rooms no longer show in their lobby.
   They aren't told; your rooms simply aren't there for them, and a link to one says "This room
   isn't available". Unblock them from Account.
 

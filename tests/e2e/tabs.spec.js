@@ -3,7 +3,7 @@ import { openApp, tab, store, cellPoint, drag } from './support.js';
 
 test('the editor tabs are a tablist: Tab reaches the selected one, arrows move and select', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('tablist', { name: 'Editor' })).toBeVisible();
+  await expect(page.getByRole('tablist', { name: 'Workspace views' })).toBeVisible();
   await expect(tab(page, 'PIXEL')).toHaveAttribute('aria-selected', 'true');
   await expect(tab(page, 'ANSI')).toBeDisabled(); // no image yet
 

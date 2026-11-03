@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useEventListener, useResizeObserver } from '@vueuse/core';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { nameColor } from '@/social/names';
@@ -13,6 +14,7 @@ const props = defineProps({
   unit: { type: Object, default: null },      // { x, y }: CSS px per grid pixel
 });
 const drawing = useDrawingStore();
+const { t } = useI18n();
 const moved = ref(0);   // the view scrolled or resized: every place changes
 useEventListener(() => props.root, 'scroll', () => { moved.value++; }, { passive: true });
 useResizeObserver(() => props.root, () => { moved.value++; });
@@ -45,7 +47,7 @@ function goTo({ x, y }) {
 
 <template>
   <template v-for="mark in marks" :key="mark.sub">
-    <button v-if="mark.arrow" class="off-view" :style="mark.style" :aria-label="`Go to ${mark.name}`" @pointerdown.stop @mousedown.stop @touchstart.stop @click="goTo(mark)">
+    <button v-if="mark.arrow" class="off-view" :style="mark.style" :aria-label="t('social.cursors.goToAria', { name: mark.name })" @pointerdown.stop @mousedown.stop @touchstart.stop @click="goTo(mark)">
       <span aria-hidden="true">{{ mark.arrow }}</span>
       <UserName :name="mark.name" />
     </button>

@@ -1,8 +1,10 @@
 <script setup>
 import { onMounted, ref, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 
 const social = useSocialStore();
+const { t } = useI18n();
 const code = ref('');
 const backup = ref(false);
 const trust = ref(false);
@@ -28,23 +30,23 @@ function toggle() {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'sign-in'">‹ Cancel</button>
-    <h2>Two-factor code</h2>
-    <p class="intro">This account asks for a code each time you sign in.</p>
+    <button class="link back" @click="social.page = 'sign-in'">{{ t('social.nav.cancel') }}</button>
+    <h2>{{ t('social.auth.twoFactorHeading') }}</h2>
+    <p class="intro">{{ t('social.auth.twoFactorIntro') }}</p>
     <form @submit.prevent="verify">
-      <label>{{ backup ? 'Backup code' : 'Code from your authenticator app' }}
+      <label>{{ backup ? t('social.auth.backupCodeLabel') : t('social.auth.totpCodeLabel') }}
         <input ref="input" v-model="code" autocomplete="one-time-code" :inputmode="backup ? undefined : 'numeric'" spellcheck="false" required>
       </label>
       <label class="terms">
         <input v-model="trust" type="checkbox">
-        <span>Trust this computer for 30 days</span>
+        <span>{{ t('social.auth.trustComputer') }}</span>
       </label>
-      <button class="primary" type="submit" :disabled="social.busy">Verify</button>
+      <button class="primary" type="submit" :disabled="social.busy">{{ t('social.auth.verify') }}</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
     <hr>
     <p class="foot">
-      <button class="link inline" @click="toggle">{{ backup ? 'Use your authenticator app' : 'Use a backup code instead' }}</button>
+      <button class="link inline" @click="toggle">{{ backup ? t('social.auth.useAuthenticator') : t('social.auth.useBackupCode') }}</button>
     </p>
   </div>
 </template>

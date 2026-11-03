@@ -57,17 +57,17 @@ test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Joi
 
   const harbor = card(page, 'neon harbor at dusk');
   await expect(harbor.getByText('velvet-static-moth')).toBeVisible();
-  await expect(harbor.getByText('live 42 min, wants feedback')).toBeVisible();
+  await expect(harbor.getByText('live 42 min · wants feedback')).toBeVisible();
   await expect(harbor.locator('img')).toHaveAttribute('src', 'data:image/webp;base64,UklGRg==');
   await expect(card(page, 'acid logo').getByText('live 1 hr 15 min')).toBeVisible();
   await expect(card(page, 'first time').locator('img')).toHaveCount(0); // no thumbnail yet: a placeholder
 
-  const join = harbor.getByRole('button', { name: 'Join 4/12', exact: true });
+  const join = harbor.getByRole('button', { name: 'Join (4/12)', exact: true });
   await expect(join).toBeEnabled();
-  const full = card(page, 'acid logo').getByRole('button', { name: 'Join 7/7', exact: true });
+  const full = card(page, 'acid logo').getByRole('button', { name: 'Join (7/7)', exact: true });
   await expect(full).toBeDisabled();
   await expect(full).toHaveAccessibleDescription('Room is full');
-  const members = card(page, 'members only').getByRole('button', { name: 'Join 3/8', exact: true });
+  const members = card(page, 'members only').getByRole('button', { name: 'Join (3/8)', exact: true });
   await expect(members).toBeDisabled();
   await expect(members).toHaveAccessibleDescription('Signed-in users only');
   await expect(card(page, 'members only').getByText('Someone you blocked is here')).toBeVisible();
@@ -113,8 +113,8 @@ test('a member can join a members-only room and can start a room, and has no sig
   const server = await fakeServer(page, { me: member(), rooms: ROOMS });
   await showLobby(page, server);
 
-  await expect(card(page, 'members only').getByRole('button', { name: 'Join 3/8', exact: true })).toBeEnabled();
-  await expect(card(page, 'acid logo').getByRole('button', { name: 'Join 7/7', exact: true })).toBeDisabled();
+  await expect(card(page, 'members only').getByRole('button', { name: 'Join (3/8)', exact: true })).toBeEnabled();
+  await expect(card(page, 'acid logo').getByRole('button', { name: 'Join (7/7)', exact: true })).toBeDisabled();
 
   await expect(you(page)).toContainText('ansi-fan');
   await expect(you(page).getByText('guest', { exact: true })).toHaveCount(0);
@@ -145,7 +145,7 @@ test('a member can join a members-only room and can start a room, and has no sig
 
   await side(page).getByRole('button', { name: 'Edit account' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('account');
-  await page.getByRole('button', { name: '‹ Back to the lobby' }).click();
+  await page.getByRole('button', { name: '‹ Back to lobby' }).click();
   await lobby(page).getByRole('button', { name: 'Start a room' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('start-room');
 });
@@ -208,8 +208,8 @@ test('a room the server adds appears, one it removes disappears; people come and
 test('no rooms: the lobby says so', async ({ page }) => {
   const server = await fakeServer(page);
   await showLobby(page, server);
-  await expect(lobby(page).getByText('No public rooms right now')).toBeVisible();
-  await expect(lobby(page).getByText('Start one and you\'ll be the first thing people see here.')).toBeVisible();
+  await expect(lobby(page).getByText('No public rooms live right now')).toBeVisible();
+  await expect(lobby(page).getByText('Start a room and your canvas will light up the lobby.')).toBeVisible();
   await expect(lobby(page).getByText('0 live')).toBeVisible();
 });
 
@@ -219,9 +219,9 @@ test('a refused pass is tried once more with a fresh one; refused again, the roo
   await expect(lobby(page).getByRole('article')).toHaveCount(4);
   server.lobby.refusing = true;
   server.lobby.send({ type: 'refused', code: 'bad-pass' });
-  await expect(lobby(page).getByText('Rooms are unavailable right now')).toBeVisible();
-  await expect(lobby(page).getByText('The editor works as usual.')).toBeVisible();
-  await expect(lobby(page).getByText('If your computer\'s clock is wrong, fix it and reload.')).toBeVisible();
+  await expect(lobby(page).getByText("Can't reach the lobby right now")).toBeVisible();
+  await expect(lobby(page).getByText('Your local editor still works normally.')).toBeVisible();
+  await expect(lobby(page).getByText("If your device's clock is off, fix the time and reload.")).toBeVisible();
   await expect(lobby(page).getByRole('article')).toHaveCount(0);
   expect(server.lobby.received.filter((m) => m.type === 'hello')).toHaveLength(2);
   expect(server.sent('POST', '/api/pass')).toHaveLength(2);
@@ -231,8 +231,8 @@ test('a server that can\'t be reached: unavailable, not loading forever', async 
   await fakeServer(page, { 'POST /api/pass': () => [503, { code: 'UNAVAILABLE' }] });
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
-  await expect(lobby(page).getByText('Rooms are unavailable right now')).toBeVisible();
-  await expect(lobby(page).getByText('If your computer\'s clock is wrong', { exact: false })).toHaveCount(0); // not refused
+  await expect(lobby(page).getByText("Can't reach the lobby right now")).toBeVisible();
+  await expect(lobby(page).getByText("If your device's clock is off", { exact: false })).toHaveCount(0); // not refused
   await expect(lobby(page).getByText('Reconnecting…')).toHaveCount(0);
 });
 
@@ -247,7 +247,7 @@ test('while connecting, skeleton cards stand in for the rooms', async ({ page })
   const claims = { sub: 'g_1', name: 'quiet-amber-fox', guest: true, verified: false, key: 'k', exp: Math.floor(Date.now() / 1000) + 3600 };
   answer([200, { pass: 'e30.c2ln', claims }]);
   await expect.poll(() => server.lobby.received.map((m) => m.type)).toContain('hello');
-  await expect(lobby(page).getByText('No public rooms right now')).toBeVisible();
+  await expect(lobby(page).getByText('No public rooms live right now')).toBeVisible();
   await expect(lobby(page).locator('.skeleton')).toHaveCount(0);
 });
 
@@ -288,7 +288,7 @@ test('a browser that can\'t do Ed25519 is told plainly, with nothing else on the
   });
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
-  await expect(page.locator('.people-tab')).toHaveText('This browser can\'t sign you in to SOCIAL yet');
+  await expect(page.locator('.people-tab')).toHaveText("This browser doesn't support the security features SOCIAL needs.");
 });
 
 // A person shows the same wherever they do: their name in the text color, after a 14px cell of its glyph on its color.
@@ -303,7 +303,7 @@ test('a name is drawn the same everywhere: its cell (its glyph on its color), th
   const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
   const text = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--text').trim());
   const textColor = rgb(text.length === 4 ? `#${[...text.slice(1)].map((c) => c + c).join('')}` : text);
-  const expected = (name) => ({ name, color: textColor, cell: [14, 14, rgb(nameColor(name)), rgb(nameInk(nameColor(name))), `"${nameGlyph(name)}" / ""`] });
+  const expected = (name) => ({ name, color: textColor, cell: [14, 14, rgb(nameColor(name)), rgb(nameInk(nameColor(name))), `"${nameGlyph(name)}" / ""` ] });
 
   expect(await look(you(page).locator('.name'))).toEqual(expected('ansi-fan'));
   expect(await look(side(page).getByRole('listitem').filter({ hasText: 'dusty-neon-heron' }).locator('.name'))).toEqual(expected('dusty-neon-heron'));
@@ -318,11 +318,11 @@ test('a pass that can\'t be had says rooms are unavailable, and the lobby comes 
   await page.route('**/api/pass', noPass);
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
-  await expect(lobby(page).getByRole('heading', { name: 'Rooms are unavailable right now' })).toBeVisible();
+  await expect(lobby(page).getByRole('heading', { name: "Can't reach the lobby right now" })).toBeVisible();
 
   await page.unroute('**/api/pass', noPass);
   await expect(lobby(page).getByRole('article')).toHaveCount(4, { timeout: 15_000 });
   await expect(you(page)).toContainText('quiet-amber-fox');
-  await expect(lobby(page).getByRole('heading', { name: 'Rooms are unavailable right now' })).toHaveCount(0);
+  await expect(lobby(page).getByRole('heading', { name: "Can't reach the lobby right now" })).toHaveCount(0);
   expect(server.lobby.received.map((m) => m.type)).toContain('hello');
 });

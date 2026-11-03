@@ -17,7 +17,7 @@ test('a monospaced font is kept, with its own line height, and can be removed', 
 
 test('a proportional font, or a file that isn\'t a font, is refused and not kept', async () => {
   const before = (await loadFonts()).length;
-  await expect(addFont(await file('proportional.ttf', 'Wobbly.ttf'))).rejects.toThrow(/^“Wobbly” isn't monospaced: “i” is 4\.0px wide and “W” is 14\.4px\./);
-  await expect(addFont(new File(['not a font'], 'notes.ttf'))).rejects.toThrow('“notes.ttf” couldn\'t be read as a font.');
+  await expect(addFont(await file('proportional.ttf', 'Wobbly.ttf'))).rejects.toThrow(/^“Wobbly” isn't monospaced \(“i” is 4\.0px wide, while “W” is 14\.4px\)\./);
+  await expect(addFont(new File(['not a font'], 'notes.ttf'))).rejects.toThrow("Couldn't read “notes.ttf” as a font.");
   expect((await loadFonts()).length).toBe(before);
 });

@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 
 // A choice in a centered confirm box (Merge down: exactly or into the picture; Bake under CGA/VGA:
@@ -10,6 +11,7 @@ const props = defineProps({
   choices: { type: Array, required: true },
 });
 const emit = defineEmits(['choose', 'cancel']);
+const { t } = useI18n();
 </script>
 
 <template>
@@ -26,7 +28,7 @@ const emit = defineEmits(['choose', 'cancel']);
       <span v-if="choice.note" class="warn">{{ choice.note }}</span>
     </button>
     <div class="actions">
-      <button class="cancel" @click="emit('cancel')">Cancel</button>
+      <button class="cancel" @click="emit('cancel')">{{ t('common.cancel') }}</button>
     </div>
   </ModalDialog>
 </template>

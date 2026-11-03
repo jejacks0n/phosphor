@@ -1,6 +1,7 @@
 <script setup>
 import { computed, useTemplateRef } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
+import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
@@ -12,6 +13,7 @@ import { shortcut } from '@/lib/keyLabels';
 // Color Picker, its last pick and where each color came from. On the right, with a mouse or trackpad,
 // the held-key shortcuts for the tool (they work in the pixel view too; this is where they're taught),
 // or what a held key is doing. Zoomed out, the zoom, which goes back to 100%.
+const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const tool = computed(() => workspace.activeTool);
@@ -31,14 +33,14 @@ const keyboard = useMediaQuery('(pointer: fine)');
 // [key, what it does] pairs, or a sentence while a key is held.
 const hint = computed(() => {
   const held = workspace.heldTool?.by;
-  if (held === 'space') return 'Panning';
-  if (held === 'alt') return workspace.isShiftPressed ? 'Picking the background color' : `Picking the foreground color · add ${KEYS.shift} for the background`;
+  if (held === 'space') return t('status.panning');
+  if (held === 'alt') return workspace.isShiftPressed ? t('status.pickingBg') : t('status.pickingFg', { shift: KEYS.shift });
   const current = getTool(tool.value);
   if (current?.altPicks) {
-    const shift = current.shiftLines ? 'straight line' : current.shiftHint?.(workspace);
-    return [[KEYS.alt, 'pick color'], [KEYS.altShift, 'pick background'], ...(shift ? [[KEYS.shift, shift]] : []), ['Space', 'pan']];
+    const shift = current.shiftLines ? t('status.straightLine') : current.shiftHint?.(workspace);
+    return [[KEYS.alt, t('status.pickColor')], [KEYS.altShift, t('status.pickBackground')], ...(shift ? [[KEYS.shift, shift]] : []), [t('status.spaceKey'), t('status.pan')]];
   }
-  if (tool.value !== 'text' && tool.value !== 'hand') return [['Space', 'pan']];
+  if (tool.value !== 'text' && tool.value !== 'hand') return [[t('status.spaceKey'), t('status.pan')]];
   return null;
 });
 
@@ -56,11 +58,11 @@ const backTo100 = () => {
     <template v-if="tool === 'text'">
       <template v-if="cursor && cell">
         <span>Col <b>{{ cursor.col + 1 }}</b> Row <b>{{ cursor.row + 1 }}</b></span>
-        <span>Char <b class="glyph">{{ cell.char === ' ' ? '␣' : cell.char }}</b> {{ origin('char') }}</span>
-        <span>FG <i class="swatch" :style="{ backgroundColor: cell.fg.hex }"></i><b>{{ cell.fg.hex }}</b> {{ origin('fg') }}</span>
-        <span>BG <i class="swatch" :style="{ backgroundColor: cell.bg.hex }"></i><b>{{ cell.bg.hex }}</b> {{ origin('bg') }}</span>
+        <span>Char <b class="glyph">{{ cell.char === ' ' ? '␣' : cell.char }}</b> {{ t(`status.origin.${origin('char')}`) }}</span>
+        <span>FG <i class="swatch" :style="{ backgroundColor: cell.fg.hex }"></i><b>{{ cell.fg.hex }}</b> {{ t(`status.origin.${origin('fg')}`) }}</span>
+        <span>BG <i class="swatch" :style="{ backgroundColor: cell.bg.hex }"></i><b>{{ cell.bg.hex }}</b> {{ t(`status.origin.${origin('bg')}`) }}</span>
       </template>
-      <span v-else>Col — Row —</span>
+      <span v-else>{{ t('status.colRowEmpty') }}</span>
     </template>
     <template v-else-if="tool === 'select' && sel">
       <span>Selection <b>{{ sel.c1 - sel.c0 + 1 }} × {{ sel.r1 - sel.r0 + 1 }}</b></span>
@@ -68,8 +70,8 @@ const backTo100 = () => {
     </template>
     <template v-else-if="tool === 'picker' && !workspace.pickSwapped && pick">
       <span>Picked Col <b>{{ pick.col + 1 }}</b> Row <b>{{ pick.row + 1 }}</b></span>
-      <span>FG <i class="swatch" :style="{ backgroundColor: shown(pick.fg) }"></i><b>{{ pick.fg }}</b> {{ pick.fgFrom }}</span>
-      <span v-if="pick.bg">BG <i class="swatch" :style="{ backgroundColor: shown(pick.bg) }"></i><b>{{ pick.bg }}</b> {{ pick.bgFrom }}</span>
+      <span>FG <i class="swatch" :style="{ backgroundColor: shown(pick.fg) }"></i><b>{{ pick.fg }}</b> {{ pick.fgFrom ? t(`status.origin.${pick.fgFrom}`) : '' }}</span>
+      <span v-if="pick.bg">BG <i class="swatch" :style="{ backgroundColor: shown(pick.bg) }"></i><b>{{ pick.bg }}</b> {{ pick.bgFrom ? t(`status.origin.${pick.bgFrom}`) : '' }}</span>
     </template>
     <span class="spacer"></span>
     <span v-if="keyboard && hint" class="hint">
@@ -78,26 +80,26 @@ const backTo100 = () => {
     </span>
     <button
         v-if="percent < 100"
-        title="Zoomed out: back to 100%"
-        :aria-label="`Zoom ${percent}%: back to 100%`"
+        :title="t('status.zoomResetTitle')"
+        :aria-label="t('status.zoomResetAria', { percent })"
         @click="backTo100"
     >{{ percent }}%</button>
     <button
         ref="renderer"
-        :title="workspace.ansiRenderer === 'dom' ? 'The ANSI view is drawn as page text (DOM, a trial). Click to draw it on a canvas.' : 'The ANSI view is drawn on a canvas. Click to draw it as page text (DOM, a trial).'"
+        :title="workspace.ansiRenderer === 'dom' ? t('status.domToCanvasTitle') : t('status.canvasToDomTitle')"
         @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
-    >{{ workspace.ansiRenderer === 'dom' ? 'Canvas' : 'DOM' }}</button>
+    >{{ workspace.ansiRenderer === 'dom' ? t('status.canvas') : t('status.dom') }}</button>
     <button
         :class="{ on: workspace.smoothText }"
         :aria-pressed="workspace.smoothText"
-        :title="workspace.smoothText ? 'Smooth text is on: letters have soft edges. Click for crisp pixels in each cell\'s two colors.' : 'Smooth text is off: crisp pixels in each cell\'s two colors. Click for soft edges.'"
+        :title="workspace.smoothText ? t('status.smoothOnTitle') : t('status.smoothOffTitle')"
         @click="workspace.smoothText = !workspace.smoothText"
-    >Smooth</button>
+    >{{ t('status.smooth') }}</button>
     <button
         v-if="tool === 'text'"
-        :title="workspace.insertMode ? 'Insert: typing pushes the row right (Insert key)' : 'Overwrite: typing replaces the cell (Insert key)'"
+        :title="workspace.insertMode ? t('status.insertTitle') : t('status.overwriteTitle')"
         @click="workspace.insertMode = !workspace.insertMode"
-    >{{ workspace.insertMode ? 'Insert' : 'Overwrite' }}</button>
+    >{{ workspace.insertMode ? t('status.insert') : t('status.overwrite') }}</button>
   </footer>
 </template>
 

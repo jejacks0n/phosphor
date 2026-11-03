@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { listVersions } from '@/document/autosaveStore';
+import { formatMediumDateTime } from '@/i18n/format';
 
 // The versions autosave has kept of this document, newest first, to go back to. useAutosave is called
 // once, in App, so it hands over what this needs.
@@ -11,6 +13,7 @@ const props = defineProps({
   restoreVersion: { type: Function, required: true },
 });
 const emit = defineEmits(['close']);
+const { t } = useI18n();
 const project = useProjectStore();
 
 const versions = ref(null); // null until they're read, so "No versions yet" doesn't flash
@@ -18,8 +21,8 @@ const problem = ref('');
 const restoring = ref(false);
 const closeButton = useTemplateRef('closeButton');
 
-const when = (ms) => new Date(ms).toLocaleString();
-const size = (bytes) => (bytes < 2 ** 20 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 2 ** 20).toFixed(1)} MB`);
+const when = (ms) => formatMediumDateTime(ms);
+const size = (bytes) => (bytes < 2 ** 20 ? t('versions.kb', { n: Math.max(1, Math.round(bytes / 1024)) }) : t('versions.mb', { n: (bytes / 2 ** 20).toFixed(1) }));
 
 onMounted(async () => {
   try {
@@ -27,7 +30,7 @@ onMounted(async () => {
     versions.value = await listVersions(project.documentId);
   } catch (error) {
     console.warn('Autosave could not list versions', error);
-    problem.value = "Couldn't read the versions.";
+    problem.value = t('versions.readError');
   }
 });
 
@@ -44,7 +47,7 @@ async function restore(id) {
     emit('close');
   } catch (error) {
     console.warn('Autosave could not restore the version', error);
-    problem.value = "Couldn't restore that version.";
+    problem.value = t('versions.restoreError');
     restoring.value = false;
     closeButton.value.focus(); // the Restore button had it, and lost it on being disabled
   }
@@ -53,24 +56,24 @@ async function restore(id) {
 
 <template>
   <ModalDialog
-      title="Versions"
-      sub="We keep 20 of the last versions in this browser. We create a backup every 5 minutes while you work. Clearing site data deletes them, so saving to a file is still recommended for a proper backup."
-      @cancel="close"
+    :title="t('versions.title')"
+    :sub="t('versions.sub')"
+    @cancel="close"
   >
-    <ul v-if="versions?.length" aria-label="Versions">
+    <ul v-if="versions?.length" :aria-label="t('versions.title')">
       <li v-for="version in versions" :key="version.id">
         <span class="when">{{ when(version.savedAt) }}</span>
-        <span v-if="version.reason === 'before-restore'" class="reason">Before restoring</span>
+        <span v-if="version.reason === 'before-restore'" class="reason">{{ t('versions.beforeRestore') }}</span>
         <span class="size">{{ size(version.bytes) }}</span>
-        <button type="button" :disabled="restoring" @click="restore(version.id)">Restore</button>
+        <button type="button" :disabled="restoring" @click="restore(version.id)">{{ t('common.restore') }}</button>
       </li>
     </ul>
-    <p v-else-if="versions" class="none">No versions yet</p>
+    <p v-else-if="versions" class="none">{{ t('versions.empty') }}</p>
 
     <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
 
     <div class="actions">
-      <button ref="closeButton" type="button" class="cancel" @click="close">Close</button>
+      <button ref="closeButton" type="button" class="cancel" @click="close">{{ t('common.close') }}</button>
     </div>
   </ModalDialog>
 </template>

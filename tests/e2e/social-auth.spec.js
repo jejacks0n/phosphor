@@ -28,7 +28,7 @@ async function openCreate(page) {
 test('sign in by email or by username, each at its own endpoint; back in the lobby as the member', async ({ page }) => {
   const server = await fakeServer(page);
   let form = await openSignIn(page);
-  await expect(form.getByRole('button', { name: '‹ Back to the lobby' })).toBeVisible();
+  await expect(form.getByRole('button', { name: '‹ Back to lobby' })).toBeVisible();
   await form.getByLabel('Email or username').fill('fan@example.com');
   await form.getByLabel('Password').fill('correct horse battery');
   await form.getByRole('button', { name: 'Sign in', exact: true }).click();
@@ -97,7 +97,7 @@ test('the sign-in page links to creating an account, a forgotten password and th
   await shown(page, 'create').getByRole('button', { name: 'Sign in', exact: true }).click();
   await shown(page, 'sign-in').getByRole('button', { name: 'Forgot your password?' }).click();
   await expect(shown(page, 'forgot')).toBeVisible();
-  await shown(page, 'forgot').getByRole('button', { name: '‹ Back to the lobby' }).click();
+  await shown(page, 'forgot').getByRole('button', { name: '‹ Back to lobby' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
 });
 
@@ -151,7 +151,7 @@ test('create an account: disabled until the terms are agreed to; success is the 
   await create.click();
 
   await expect(shown(page, 'lobby')).toBeVisible();
-  await expect(notice(page)).toContainText('Check your email to confirm your address');
+  await expect(notice(page)).toContainText('Check your inbox to confirm your email address.');
   expect(server.sent('POST', '/api/auth/sign-up/email')[0].body).toMatchObject({
     username: 'pixel_wren', email: 'wren@example.com', password: 'a long new password', termsAccepted: true,
   });
@@ -172,13 +172,13 @@ test('a reserved or guest-shaped username is flagged as you type, and never sent
   const create = form.getByRole('button', { name: 'Create account' });
   for (const name of ['admin', 'quiet-amber-fox']) {
     await username.fill(name);
-    await expect(form.getByText('That name is reserved', { exact: false })).toBeVisible();
+    await expect(form.getByText('That username is reserved', { exact: false })).toBeVisible();
     await expect(create).toBeDisabled();
   }
   await username.fill('pixel.wren');
   await expect(form.getByText('Use only letters, numbers, underscores and hyphens')).toBeVisible();
   await username.fill('pixel-wren');
-  await expect(form.getByText('That name is reserved', { exact: false })).toHaveCount(0);
+  await expect(form.getByText('That username is reserved', { exact: false })).toHaveCount(0);
   await expect(create).toBeEnabled();
   expect(server.sent('POST', '/api/auth/sign-up/email')).toHaveLength(0);
 });
@@ -213,7 +213,7 @@ test('after a first Discord sign-in, pick a username (from the provider\'s name)
   await expect(go).toBeDisabled();
   await form.getByRole('checkbox', { name: TERMS }).check();
   await username.fill('guest');
-  await expect(form.getByText('That name is reserved', { exact: false })).toBeVisible();
+  await expect(form.getByText('That username is reserved', { exact: false })).toBeVisible();
   await expect(go).toBeDisabled();
   await username.fill('wren');
   await go.click();
@@ -228,7 +228,7 @@ test('onboarding offers no way back half signed in: Cancel and sign out lands on
   await open(page, '/?social=signed-in');
   const form = shown(page, 'onboarding');
   await expect(form.getByLabel('Username')).toHaveValue('quiet'); // the provider's name is guest-shaped
-  await expect(form.getByRole('button', { name: /Back to the lobby/ })).toHaveCount(0);
+  await expect(form.getByRole('button', { name: /Back to lobby/ })).toHaveCount(0);
   await form.getByRole('button', { name: 'Cancel and sign out' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
   await expect(shown(page, 'lobby').locator('.you .tag')).toHaveText('guest');
@@ -256,7 +256,7 @@ test('the emailed link (/?reset=tok) sets a new password and lands on Sign in wi
   await reset.getByLabel('New password').fill('a brand new password');
   await reset.getByRole('button', { name: 'Set password' }).click();
   await expect(shown(page, 'sign-in')).toBeVisible();
-  await expect(notice(page)).toContainText('Your password is changed. Sign in with it');
+  await expect(notice(page)).toContainText('Password updated. Sign in with your new password.');
   expect(server.sent('POST', '/api/auth/reset-password').map((r) => r.body)).toEqual([{ newPassword: 'a brand new password', token: 'tok' }]);
 });
 

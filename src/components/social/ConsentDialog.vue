@@ -1,5 +1,6 @@
 <script setup>
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import ModalDialog from '@/components/ModalDialog.vue';
@@ -8,6 +9,7 @@ import ModalDialog from '@/components/ModalDialog.vue';
 // (EditWorkspace), and nothing from SOCIAL runs before that (SocialStore.boot). The legal pages open over it.
 const social = useSocialStore(), workspace = useWorkspaceStore();
 const agreed = ref(false);
+const { t } = useI18n();
 
 // A legal page closing gives focus back to its link, here, where Tab and Escape are the dialog's.
 let opener = null;
@@ -24,30 +26,40 @@ onBeforeUnmount(() => nextTick(() => {
 </script>
 
 <template>
-  <ModalDialog long title="Before you open SOCIAL" @cancel="social.declineConsent()">
-    <div class="reading" autofocus tabindex="0" role="region" aria-label="What SOCIAL means for you">
-      <p>SOCIAL is where you can watch or join people draw or let them watch you. Here's what that means for your privacy.</p>
+  <ModalDialog long :title="t('social.consent.title')" @cancel="social.declineConsent()">
+    <div class="reading" autofocus tabindex="0" role="region" :aria-label="t('social.consent.regionAria')">
+      <p>{{ t('social.consent.intro') }}</p>
 
-      <h4>The lobby</h4>
-      <p>Opening SOCIAL connects your browser to our server. Anyone in the lobby will see your username and whether you're a guest or not. Guests are given randomly assigned usernames. Public rooms are listed with their host, room name, viewer count, and a preview of the art.</p>
+      <h4>{{ t('social.consent.lobbyHeading') }}</h4>
+      <p>{{ t('social.consent.lobbyBody') }}</p>
 
-      <h4>Joining a room</h4>
-      <p>Your browser connects directly to the host's, so each of you can see the other's IP address. That can reveal your approximate location and internet provider, so use a VPN if you want to hide it. Chat goes through the host's browser, and anyone in the room can see and copy it.</p>
+      <h4>{{ t('social.consent.joiningHeading') }}</h4>
+      <p>{{ t('social.consent.joiningBody') }}</p>
 
-      <h4>Starting a room</h4>
-      <p>The people you admit see your art as you draw it, and everyone who joins can see your IP address. Public rooms show a preview in the lobby. Anyone you invite to draw gets the whole project, including the original image. If someone reports your room, we keep a snapshot of the canvas to review and resolve the report.</p>
+      <h4>{{ t('social.consent.startingHeading') }}</h4>
+      <p>{{ t('social.consent.startingBody') }}</p>
 
-      <h4>Be kind</h4>
-      <p>Don't bully, harass, threaten anyone, or attack people for who they are. Don't use someone's IP address against them or share their personal information. Keep public rooms appropriate, respect other people's art, and only report in good faith. Hosts can remove or block people, and anyone signed in with a confirmed email can report a person or room.</p>
+      <h4>{{ t('social.consent.beKindHeading') }}</h4>
+      <p>{{ t('social.consent.beKindBody') }}</p>
     </div>
     <div class="answer">
       <label class="agree">
         <input v-model="agreed" type="checkbox">
-        <span>I'm 13 or older and agree to the <button type="button" class="link inline" @click="read('terms', $event)">Terms</button>, <button type="button" class="link inline" @click="read('privacy', $event)">Privacy Policy</button>, and <button type="button" class="link inline" @click="read('guidelines', $event)">Community Guidelines</button></span>
+        <i18n-t keypath="social.agreeTerms" tag="span">
+          <template #terms>
+            <button type="button" class="link inline" @click="read('terms', $event)">{{ t('legal.titles.terms') }}</button>
+          </template>
+          <template #privacy>
+            <button type="button" class="link inline" @click="read('privacy', $event)">{{ t('legal.titles.privacy') }}</button>
+          </template>
+          <template #guidelines>
+            <button type="button" class="link inline" @click="read('guidelines', $event)">{{ t('legal.titles.guidelines') }}</button>
+          </template>
+        </i18n-t>
       </label>
       <div class="actions">
-        <button @click="social.declineConsent()">Not now</button>
-        <button class="primary" :disabled="!agreed" @click="social.acceptConsent()">Accept</button>
+        <button @click="social.declineConsent()">{{ t('common.notNow') }}</button>
+        <button class="primary" :disabled="!agreed" @click="social.acceptConsent()">{{ t('common.accept') }}</button>
       </div>
     </div>
   </ModalDialog>

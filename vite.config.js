@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -54,6 +55,11 @@ export default defineConfig(({ mode }) => {
     base: '/',
     plugins: [
       vue(),
+      VueI18nPlugin({
+        include: [fileURLToPath(new URL('./src/i18n/locales/**', import.meta.url))],
+        runtimeOnly: true,
+        strictMessage: false,
+      }),
       {
         name: 'phosphor-build',
         transformIndexHtml: () => [{ tag: 'meta', attrs: { name: 'phosphor-build', content: `v${build.version} ${build.sha}` }, injectTo: 'head' }],

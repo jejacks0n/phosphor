@@ -9,7 +9,7 @@
 import { nextTick, watch } from 'vue';
 import { settingsJson } from '@/store/project/shared';
 import { readCursor } from '@/social/wire';
-import { UNDO_RESET_WORDS } from '@/social/messages';
+import { undoResetWords } from '@/social/messages';
 
 export const CURSORS_EVERY_MS = 100;
 // How many can draw in a room, the host among them: what docs/investigations/drawing-together.md measured.
@@ -21,7 +21,7 @@ const HELLOS_WITHIN_MS = 5000;       // a host without all that's numbered (a re
 const HOST_IDLE = Object.freeze({ phase: 'idle' });
 const HOST_MOVES = { idle: ['gathering', 'handing-over'], gathering: ['idle'], 'handing-over': ['idle'] };
 
-export function hostSide({ project, me, artist, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sayUndoRestarts }) {
+export function hostSide({ project, me, artist, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sayUndoRestarts, noteUndoSaid }) {
   let host = null;                 // the Host
   let stops = [], cursorTimer = null;
   let peersOn = new Set();         // who peopleHere last saw connected
@@ -352,7 +352,8 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
     listHeard = listAsked = null;
     artist.noteAccepted(false);
     const taken = project.takeLedger(kept, left);
-    notice.value = [words, taken ? null : UNDO_RESET_WORDS].filter(Boolean).join(' ') || null;
+    noteUndoSaid(!taken);
+    notice.value = [words, taken ? null : undoResetWords()].filter(Boolean).join(' ') || null;
     artists.value = artists.value.filter((sub) => sub !== whoIs);
     startHostSharing();
     host.setArtists(artists.value);

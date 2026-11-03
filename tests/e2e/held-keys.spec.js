@@ -10,7 +10,7 @@ const colorAt = (page, col, row) => store(page, 'project', `(p) => p.rawColorAt(
 
 test('Alt picks the foreground and Alt+Shift the background, from Pencil and Shapes; letting go brings the tool back', async ({ page }) => {
   await openApp(page);
-  for (const tool of ['Pencil (1px)', 'Shapes']) {
+  for (const tool of ['Pencil', 'Shapes']) {
     await page.getByRole('button', { name: tool }).click();
     await expect(hint(page)).toContainText('pick color');
     const id = await ws(page, (w) => w.activeTool);
@@ -37,7 +37,7 @@ test('Alt picks the foreground and Alt+Shift the background, from Pencil and Sha
 
 test('letting go of Alt mid-drag doesn\'t turn the pick into a stroke', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   const from = await cellPoint(page, 5, 5), to = await cellPoint(page, 25, 5);
   await page.keyboard.down('Alt');
   await page.mouse.move(from.x, from.y);
@@ -52,7 +52,7 @@ test('letting go of Alt mid-drag doesn\'t turn the pick into a stroke', async ({
 
 test('Space pans with any tool, keeps a selection, and never paints', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Brush (soft)' }).click();
+  await page.getByRole('button', { name: 'Brush' }).click();
   await expect(hint(page)).toContainText('Space pan');
   const from = await cellPoint(page, 30, 20);
   await page.mouse.move(from.x, from.y);
@@ -79,7 +79,7 @@ test('Space pans with any tool, keeps a selection, and never paints', async ({ p
 
 test('with a button focused and the pointer over the canvas, Space pans and doesn\'t press the button', async ({ page }) => {
   await openApp(page);
-  const lock = page.getByRole('button', { name: 'Lock Aspect Ratio' });
+  const lock = page.getByRole('button', { name: 'Lock aspect ratio' });
   const pressed = await lock.getAttribute('aria-pressed');
   await lock.focus();
   const at = await cellPoint(page, 30, 20);
@@ -98,14 +98,14 @@ test('with a button focused and the pointer over the canvas, Space pans and does
 
 test('Shift-click with the Pencil draws a straight line from the last point; Pencil and Brush say so', async ({ page }) => {
   await openApp(page);
-  for (const tool of ['Pencil (1px)', 'Brush (soft)']) {
+  for (const tool of ['Pencil', 'Brush']) {
     await page.getByRole('button', { name: tool }).click();
     await expect(hint(page)).toContainText('straight line');
   }
   await page.getByRole('button', { name: 'Shapes' }).click();
   await expect(hint(page)).not.toContainText('straight line');
 
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   const a = await cellPoint(page, 5, 4, 0), b = await cellPoint(page, 25, 4, 0);
   await page.mouse.click(a.x, a.y);
   await page.keyboard.down('Shift');

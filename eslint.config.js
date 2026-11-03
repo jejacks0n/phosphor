@@ -16,6 +16,12 @@ export default [
     },
   },
   {
+    files: ['src/i18n/legal/**/*.vue'],
+    rules: {
+      'vue/multi-word-component-names': 'off',
+    },
+  },
+  {
     // The house style, enforced so it stays one style: 2-space indents, no tabs, semicolons, single
     // quotes, no trailing spaces.
     plugins: { '@stylistic': stylistic },

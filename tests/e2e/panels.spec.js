@@ -7,7 +7,7 @@ import { openApp, store, settled, fixture, cellPoint } from './support.js';
 // bar, dropping a file, and starting a new project.
 test('About opens from the footer, says which build it is, and closes', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Read About Phosphor' }).click();
+  await page.getByRole('button', { name: 'About Phosphor' }).click();
   await expect(page.locator('.modal-backdrop')).toBeVisible();
   // The build it is: major.minor with the day it was built as the third number, and the commit
   // (GitHub Actions' when deploying; "-dirty" with uncommitted changes), in About and in the page's
@@ -104,12 +104,12 @@ test('dropping an image onto the editor loads it', async ({ page }) => {
   await settled(page);
 });
 
-test('Start New Project asks when there are changes, then clears the document', async ({ page }) => {
+test('New project asks when there are changes, then clears the document', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('combobox', { name: 'Color Palette' }).selectOption('cga'); // a change
+  await page.getByRole('combobox', { name: 'Color palette' }).selectOption('cga'); // a change
   const asked = [];
   page.on('dialog', (d) => { asked.push(d.message()); d.accept(); });
-  await page.getByRole('button', { name: 'Start New Project' }).click();
+  await page.getByRole('button', { name: 'New project' }).click();
   expect(asked[0]).toMatch(/unsaved changes/);
   expect(await store(page, 'project', (p) => p.image)).toBe(null);
   await expect(page.getByRole('tab', { name: 'PIXEL' })).toHaveAttribute('aria-selected', 'true');
@@ -123,7 +123,7 @@ test('the tool options row is the same height for every tool, its options on one
     return { height: Math.round(r.height), middle: Math.round(first.top + first.height / 2 - r.top) };
   });
   const seen = {};
-  for (const tool of ['Pencil (1px)', 'Brush (soft)', 'Paint Bucket (fill)', 'Shapes', 'Flip FG/BG Colors', 'Eraser']) {
+  for (const tool of ['Pencil', 'Brush', 'Paint Bucket', 'Shapes', 'Swap cell FG/BG', 'Eraser']) {
     await page.getByRole('button', { name: tool }).click();
     seen[tool] = await measure();
   }

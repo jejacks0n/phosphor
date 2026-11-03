@@ -1,8 +1,9 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
-import { GOING_BACK_REPLACES_WORDS } from '@/social/messages';
+import { goingBackReplacesWords } from '@/social/messages';
 import { silencedWords } from '@/social/chat';
 import { signalWords } from '@/social/lobby';
 import ConfirmEmail from './ConfirmEmail.vue';
@@ -12,8 +13,12 @@ import ReportDialog from './ReportDialog.vue';
 import StartRoomPage from './StartRoomPage.vue';
 
 const social = useSocialStore(), roomStore = useRoomStore();
+const { t } = useI18n();
 
-const FILTERS = [['All', null], ...Object.entries(signalWords).map(([value, words]) => [words, value])];
+const filters = computed(() => [
+  [t('social.lobby.filterAll'), null],
+  ...Object.entries(signalWords).map(([value, words]) => [words, value]),
+]);
 const filter = ref(null);
 const shown = computed(() => (filter.value ? social.rooms.filter((r) => r.signal === filter.value) : social.rooms));
 
@@ -54,27 +59,31 @@ onBeforeUnmount(() => clearInterval(tick));
     </section>
     <section v-else class="main">
       <p v-for="room in yoursUnlisted" :key="room.id" class="yours">
-        <span>Your room <strong>{{ room.name }}</strong> is waiting for you.<template v-if="roomStore.goingBackReplaces"> {{ GOING_BACK_REPLACES_WORDS }}</template></span>
-        <button class="primary" @click="roomStore.goBackToRoom(room.id)">Back to your room</button>
+        <i18n-t :keypath="roomStore.goingBackReplaces ? 'social.lobby.reclaimWaitingDirty' : 'social.lobby.reclaimWaiting'" tag="span" :values="{ replaces: goingBackReplacesWords() }">
+          <template #name>
+            <strong>{{ room.name }}</strong>
+          </template>
+        </i18n-t>
+        <button class="primary" @click="roomStore.goBackToRoom(room.id)">{{ t('social.lobby.backToYourRoom') }}</button>
       </p>
       <header>
-        <h2>Public rooms</h2>
-        <span class="count">{{ social.rooms.length }} live</span>
+        <h2>{{ t('social.lobby.publicRooms') }}</h2>
+        <span class="count">{{ t('social.lobby.liveCount', { count: social.rooms.length }) }}</span>
         <template v-if="social.signedIn && social.me?.emailVerified !== false">
           <p v-if="silenced" class="silenced" role="status">{{ silencedWords(social.claims.silencedUntil, now) }}</p>
-          <button class="start" :disabled="silenced" @click="social.page = 'start-room'">Start a room</button>
+          <button class="start" :disabled="silenced" @click="social.page = 'start-room'">{{ t('social.lobby.startRoom') }}</button>
         </template>
       </header>
       <hr>
-      <div class="chips" role="group" aria-label="Filter rooms">
-        <button v-for="[label, value] in FILTERS" :key="label" class="chip" :aria-pressed="filter === value" @click="filter = value">{{ label }}</button>
+      <div class="chips" role="group" :aria-label="t('social.lobby.filterAria')">
+        <button v-for="[label, value] in filters" :key="label" class="chip" :aria-pressed="filter === value" @click="filter = value">{{ label }}</button>
       </div>
-      <p v-if="reconnecting" class="status" role="status">Reconnecting…</p>
+      <p v-if="reconnecting" class="status" role="status">{{ t('common.reconnecting') }}</p>
 
       <div v-if="view === 'unavailable'" class="state">
-        <h3>Rooms are unavailable right now</h3>
-        <p>The editor works as usual.</p>
-        <p v-if="social.lobbyStatus === 'refused'">If your computer's clock is wrong, fix it and reload.</p>
+        <h3>{{ t('social.lobby.unavailableHeading') }}</h3>
+        <p>{{ t('social.lobby.unavailableBody') }}</p>
+        <p v-if="social.lobbyStatus === 'refused'">{{ t('social.lobby.clockHint') }}</p>
       </div>
       <div v-else-if="view === 'loading'" class="rooms" aria-busy="true">
         <div v-for="i in 4" :key="i" class="skeleton-card">
@@ -84,11 +93,11 @@ onBeforeUnmount(() => clearInterval(tick));
         </div>
       </div>
       <div v-else-if="view === 'empty'" class="state">
-        <h3>No public rooms right now</h3>
-        <p>Start one and you'll be the first thing people see here.</p>
+        <h3>{{ t('social.lobby.emptyHeading') }}</h3>
+        <p>{{ t('social.lobby.emptyBody') }}</p>
       </div>
       <div v-else-if="!shown.length" class="state">
-        <h3>No rooms match this filter</h3>
+        <h3>{{ t('social.lobby.emptyFilter') }}</h3>
       </div>
       <!-- stale while reconnecting: dimmed, and their Join buttons out of reach -->
       <div v-else class="rooms" :class="{ stale: reconnecting }" :inert="reconnecting">
@@ -98,14 +107,14 @@ onBeforeUnmount(() => clearInterval(tick));
 
     <aside class="side">
       <div class="you">
-        <div class="label">You</div>
+        <div class="label">{{ t('social.lobby.you') }}</div>
         <div v-if="known" class="who">
           <UserName v-if="name" class="name" :name="name" />
-          <span v-if="!social.signedIn" class="tag">guest</span>
+          <span v-if="!social.signedIn" class="tag">{{ t('common.guest') }}</span>
         </div>
         <div v-if="social.signedIn" class="links">
-          <button @click="social.page = 'account'">Edit account</button>
-          <button @click="social.signOut()">Sign out</button>
+          <button @click="social.page = 'account'">{{ t('social.lobby.editAccount') }}</button>
+          <button @click="social.signOut()">{{ t('social.lobby.signOut') }}</button>
         </div>
       </div>
 
@@ -113,17 +122,21 @@ onBeforeUnmount(() => clearInterval(tick));
         <ConfirmEmail v-if="social.me?.emailVerified === false" class="confirm" />
       </template>
       <template v-else-if="known">
-        <button class="primary sign-in" @click="social.page = 'sign-in'">Sign in</button>
-        <p class="help">No account? <button class="link inline" @click="social.page = 'create'">Create one</button></p>
-        <p class="help">Sign in to chat and start rooms.</p>
+        <button class="primary sign-in" @click="social.page = 'sign-in'">{{ t('social.lobby.signIn') }}</button>
+        <i18n-t keypath="social.lobby.noAccount" tag="p" class="help">
+          <template #create>
+            <button class="link inline" @click="social.page = 'create'">{{ t('social.lobby.createOne') }}</button>
+          </template>
+        </i18n-t>
+        <p class="help">{{ t('social.lobby.signInHint') }}</p>
       </template>
 
       <hr>
-      <h3 class="here">In the lobby <span class="count">{{ social.people.length }}</span></h3>
-      <ul aria-label="In the lobby">
+      <h3 class="here">{{ t('social.lobby.inLobby') }} <span class="count">{{ social.people.length }}</span></h3>
+      <ul :aria-label="t('social.lobby.inLobby')">
         <li v-for="person in social.people" :key="person.sub">
           <UserName class="name" :name="person.name" />
-          <span v-if="person.guest" class="what">guest</span>
+          <span v-if="person.guest" class="what">{{ t('common.guest') }}</span>
         </li>
       </ul>
     </aside>

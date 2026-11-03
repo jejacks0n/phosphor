@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { AnsiFile } from '@/lib/AnsiFile';
@@ -12,20 +13,26 @@ const props = defineProps({
   ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'ansimation' | 'utf8ansimation' | 'cast' | 'gif'
 });
 const emit = defineEmits(['close']);
+const { t } = useI18n();
 const project = useProjectStore();
 
-const FORMATS = {
-  phosphor: { title: 'Save project', sub: 'Everything, to open again in Phosphor: the image, both layers and the settings.', action: 'Save', busy: 'Saving…' },
-  ans: { title: 'Export .ans', sub: 'Classic ANSI art: CP437 characters with ANSI colors, for art viewers and BBS-era tools.', action: 'Export', busy: 'Exporting…' },
-  ansimation: { title: 'Export animated .ans', sub: 'An ANSiMation: the art draws itself frame by frame in a viewer or terminal. Timing is lost: its speed depends on the viewer.', action: 'Export', busy: 'Exporting…', ext: 'ans', animated: true },
-  utf8ansimation: { title: 'Export animated .utf8ans', sub: 'An ANSiMation as UTF-8: the art draws itself frame by frame in a modern terminal, and every character is kept. Timing is lost: its speed depends on the terminal.', action: 'Export', busy: 'Exporting…', ext: 'utf8ans', animated: true },
-  cast: { title: 'Export .cast', sub: 'An asciinema recording, for terminals and the web, with the exact timing and every character.', action: 'Export', busy: 'Exporting…', animated: true },
-  gif: { title: 'Export .gif', sub: 'A looping picture of the art in its font, for anywhere an image goes.', action: 'Export', busy: 'Exporting…', animated: true },
-  utf8ans: { title: 'Export .utf8ans', sub: 'ANSI art as UTF-8 text with ANSI colors, for modern terminals. Every character is kept.', action: 'Export', busy: 'Exporting…' },
+const FORMAT_META = {
+  phosphor: { action: 'save', busy: 'saving' },
+  ans: { action: 'export', busy: 'exporting' },
+  ansimation: { action: 'export', busy: 'exporting', ext: 'ans', animated: true },
+  utf8ansimation: { action: 'export', busy: 'exporting', ext: 'utf8ans', animated: true },
+  cast: { action: 'export', busy: 'exporting', animated: true },
+  gif: { action: 'export', busy: 'exporting', animated: true },
+  utf8ans: { action: 'export', busy: 'exporting' },
 };
-const format = computed(() => FORMATS[props.ext]);
-const extension = computed(() => format.value.ext ?? props.ext);
-const animated = computed(() => !!format.value.animated);
+
+const meta = computed(() => FORMAT_META[props.ext]);
+const title = computed(() => t(`save.formats.${props.ext}.title`));
+const sub = computed(() => t(`save.formats.${props.ext}.sub`));
+const actionLabel = computed(() => t(`common.${meta.value.action}`));
+const busyLabel = computed(() => t(`common.${meta.value.busy}`));
+const extension = computed(() => meta.value.ext ?? props.ext);
+const animated = computed(() => !!meta.value.animated);
 // A terminal shows the rows it has: an animation moves its cursor, so it can't scroll down to the rest.
 const tooTall = computed(() => ['ansimation', 'utf8ansimation'].includes(props.ext) && (project.cols > 80 || charRowsOf(project.rows) > 25));
 
@@ -51,7 +58,7 @@ async function save() {
     emit('close');
   } catch (error) {
     console.warn('Could not save the file', error);
-    problem.value = error.userMessage ?? "Couldn't save the file.";
+    problem.value = error.userMessage ?? t('save.saveFailed');
     saving.value = false;
   }
 }
@@ -63,37 +70,36 @@ function cancel() {
 </script>
 
 <template>
-  <ModalDialog :title="format.title" :sub="format.sub" @cancel="cancel">
+  <ModalDialog :title="title" :sub="sub" @cancel="cancel">
     <form @submit.prevent="save">
-      <label for="save-filename">File name</label>
+      <label for="save-filename">{{ t('save.fileName') }}</label>
       <div class="name">
         <input id="save-filename" v-model="name" autofocus autocomplete="off" spellcheck="false" @focus="$event.target.select()">
         <span class="ext">.{{ extension }}</span>
       </div>
 
-      <p v-if="tooTall" class="note">It's {{ project.cols }}×{{ charRowsOf(project.rows) }}: rows past the terminal can't be reached, since a viewer can't scroll an animation.</p>
+      <p v-if="tooTall" class="note">{{ t('save.tooTall', { cols: project.cols, rows: charRowsOf(project.rows) }) }}</p>
 
       <template v-if="replacements.length">
         <p class="note">
-          {{ replacements.length === 1 ? 'One character isn\'t' : `${replacements.length} characters aren't` }} in CP437, the
-          character set .ans uses, so {{ replacements.length === 1 ? 'it\'s' : 'they\'re' }} written as:
+          {{ t('save.cp437Note', { count: replacements.length }, replacements.length) }}
         </p>
-        <ul class="replacements" aria-label="Replacements" tabindex="0">
+        <ul class="replacements" :aria-label="t('save.replacementsAria')" tabindex="0">
           <li v-for="r in replacements" :key="r.char">
             <span class="char">{{ r.char }}</span>
-            <span class="arrow" aria-label="becomes">→</span>
+            <span class="arrow" :aria-label="t('save.becomesAria')">→</span>
             <span class="char">{{ r.as }}</span>
-            <span class="count">{{ r.count }} {{ r.count === 1 ? 'cell' : 'cells' }}</span>
+            <span class="count">{{ t('save.cellCount', { count: r.count }, r.count) }}</span>
           </li>
         </ul>
-        <p class="hint">Export as .utf8ans to keep them.</p>
+        <p class="hint">{{ t('save.keepHint') }}</p>
       </template>
 
       <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
 
       <div class="actions">
-        <button type="button" class="cancel" :aria-disabled="saving" @click="cancel">Cancel</button>
-        <button type="submit" class="primary" :disabled="!stem">{{ saving ? format.busy : format.action }}</button>
+        <button type="button" class="cancel" :aria-disabled="saving" @click="cancel">{{ t('common.cancel') }}</button>
+        <button type="submit" class="primary" :disabled="!stem">{{ saving ? busyLabel : actionLabel }}</button>
       </div>
     </form>
   </ModalDialog>

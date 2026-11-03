@@ -5,14 +5,16 @@
  */
 import { toBase64url } from './base64url.js';
 import { CHUNK_BYTES } from './wire.js';
+import { t } from '@/i18n/index.js';
+import { formatClock, formatDayAndTime } from '@/i18n/format.js';
 
 export const MOST_CHARS = 300;
 export const MOST_KEPT = 5000;
 export const PAGE = 50;
 
-export const clock = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });   // made once: building one per row is slow
+export const clock = { format: (ms) => formatClock(ms) };
 
-export const dayAndTime = new Intl.DateTimeFormat([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+export const dayAndTime = { format: (ms) => formatDayAndTime(ms) };
 
 export const ID = /^[A-Za-z0-9_-]{16}$/;
 export const isId = (id) => typeof id === 'string' && ID.test(id);
@@ -72,10 +74,10 @@ export class ChatLog {
 
 // Why a person is reported, in the order the dialog lists them; the ids are what the server takes.
 export const REASONS = [
-  { id: 'spam', label: 'Spam or flooding' },
-  { id: 'harassment', label: 'Harassment or hate' },
-  { id: 'sexual', label: 'Sexual or violent' },
-  { id: 'other', label: 'Something else' },
+  { id: 'spam', get label() { return t('social.report.reasons.spam'); } },
+  { id: 'harassment', get label() { return t('social.report.reasons.harassment'); } },
+  { id: 'sexual', get label() { return t('social.report.reasons.sexual'); } },
+  { id: 'other', get label() { return t('social.report.reasons.other'); } },
 ];
 export const CONTEXT = 5;   // the messages a report carries besides the one reported
 
@@ -93,7 +95,7 @@ export function evidenceFor(rows, { sub, messageId = null }) {
 // Until when you're silenced: the time if it ends today, else the date too.
 export function silencedWords(until, now = Date.now()) {
   const today = new Date(until).toDateString() === new Date(now).toDateString();
-  return `You're silenced until ${(today ? clock : dayAndTime).format(until)}.`;
+  return t('social.chat.silencedUntil', { until: (today ? clock : dayAndTime).format(until) });
 }
 
 // A bucket of `most`, refilled one every `everyMs`: take() says whether there's one to spend. The level is

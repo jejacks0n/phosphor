@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, useId } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { usernameProblem } from '@/social/names';
 import { messageFor } from '@/social/messages';
 
@@ -8,6 +9,7 @@ import { messageFor } from '@/social/messages';
 defineProps({ help: { type: String, default: null } });
 const name = defineModel({ type: String, required: true });
 
+const { t } = useI18n();
 const touched = ref(false);
 const problem = computed(() => {
   const found = usernameProblem(name.value);
@@ -17,7 +19,7 @@ const id = useId();
 </script>
 
 <template>
-  <label>Username
+  <label>{{ t('social.auth.usernameLabel') }}
     <input v-model="name" class="mono" autocomplete="username" spellcheck="false" required
       :aria-invalid="!!problem" :aria-describedby="`${id}-help ${id}-problem`" @blur="touched = true">
   </label>

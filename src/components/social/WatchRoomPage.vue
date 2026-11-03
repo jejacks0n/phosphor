@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, nextTick, useTemplateRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoomStore } from '@/store/RoomStore';
 import { ANSI_ZOOM_MAX, ANSI_ZOOM_MIN } from '@/lib/zoom';
 import RoomArt from './RoomArt.vue';
@@ -13,13 +14,17 @@ import RoomArt from './RoomArt.vue';
 // screen readers. A private room asks for its password here. With the host's art already on the page,
 // waiting and connecting mean the host is coming back (a reload of theirs), and the art stays, dimmed.
 const room = useRoomStore();
+const { t } = useI18n();
 
-const STATUS = {
-  joining: 'Joining…', connecting: 'Joining…', waiting: 'Waiting for the host…',
-  password: 'This room needs a password', failed: 'Couldn\'t reach this host',
-};
+const statusWords = computed(() => ({
+  joining: t('social.watch.joining'),
+  connecting: t('social.watch.joining'),
+  waiting: t('social.watch.waiting'),
+  password: t('social.watch.needsPassword'),
+  failed: t('social.watch.failed'),
+}));
 const coming = computed(() => !!room.art && (room.status === 'waiting' || room.status === 'connecting'));
-const said = computed(() => (coming.value ? 'The host is reconnecting…' : STATUS[room.status] ?? null));
+const said = computed(() => (coming.value ? t('social.watch.hostReconnecting') : statusWords.value[room.status] ?? null));
 const name = computed(() => room.room?.name || null);
 
 // A try takes the form (and the focused Join) away: focus waits on the heading, and goes back to the
@@ -47,16 +52,16 @@ const zoomIn = () => room.setArtZoom((Math.floor(room.artZoom * 4) + 1) / 4);
     <h2 ref="heading" tabindex="-1" :class="{ unseen: name }">{{ name ?? said }}</h2>
     <p class="status" :class="{ unseen: !name || !said }" role="status">{{ said }}</p>
     <form v-if="room.status === 'password'" @submit.prevent="join">
-      <label>Password <input ref="passwordInput" v-model="password" type="password" autocomplete="off" required></label>
-      <p v-if="room.passwordWrong" class="error" role="alert">Wrong password</p>
-      <button class="primary" type="submit">Join</button>
+      <label>{{ t('social.watch.password') }} <input ref="passwordInput" v-model="password" type="password" autocomplete="off" required></label>
+      <p v-if="room.passwordWrong" class="error" role="alert">{{ t('social.watch.wrongPassword') }}</p>
+      <button class="primary" type="submit">{{ t('social.watch.join') }}</button>
     </form>
     <div v-if="room.art" class="art" :class="{ stale: coming }">
       <RoomArt :art="room.art" :host-view="room.followedView" :tracking="room.tracking" :zoom="room.artZoom" :host="room.followedName || null" :show-box="room.showBox" :others="room.otherBoxes" @zoom="room.setArtZoom" @fit="room.fitArt" @look-around="lookAround" @track="room.setTracking(true)" @looking-at="room.lookingAt = $event" />
-      <div class="zoom" role="group" aria-label="Zoom">
-        <button aria-label="Zoom out" :disabled="room.artZoom <= ANSI_ZOOM_MIN" @click="zoomOut">−</button>
+      <div class="zoom" role="group" :aria-label="t('social.watch.zoomAria')">
+        <button :aria-label="t('social.watch.zoomOutAria')" :disabled="room.artZoom <= ANSI_ZOOM_MIN" @click="zoomOut">−</button>
         <span>{{ Math.round(room.artZoom * 100) }}%</span>
-        <button aria-label="Zoom in" :disabled="room.artZoom >= ANSI_ZOOM_MAX" @click="zoomIn">+</button>
+        <button :aria-label="t('social.watch.zoomInAria')" :disabled="room.artZoom >= ANSI_ZOOM_MAX" @click="zoomIn">+</button>
       </div>
     </div>
   </div>

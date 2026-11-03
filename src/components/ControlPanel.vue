@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { SETTINGS, getSetting } from '@/store/settings';
@@ -12,21 +13,22 @@ import CharsetField from '@/components/CharsetField.vue';
 import FontField from '@/components/FontField.vue';
 import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
 
+const { t } = useI18n();
 const store = useProjectStore();
 const drawing = useDrawingStore();
 
-const SLIDER_GROUPS = [
-  { id: 'transform', title: 'Transforms' },
-  { id: 'adjust', title: 'Adjustments' },
-  { id: 'effects', title: 'Image Filters' },
-].map(group => ({ ...group, sliders: SETTINGS.filter(s => s.group === group.id && s.min !== undefined) }));
+const sliderGroups = computed(() => [
+  { id: 'transform', title: t('panel.groups.transform') },
+  { id: 'adjust', title: t('panel.groups.adjust') },
+  { id: 'effects', title: t('panel.groups.effects') },
+].map(group => ({ ...group, sliders: SETTINGS.filter(s => s.group === group.id && s.min !== undefined) })));
 
 const help = (key) => getSetting(key).help;
 
 // The ready-made set the Characters field holds, or Custom.
 const charsetName = computed(() => {
   const [chars, presets] = store.renderStyle === 'ansi' ? [store.chars, ANSI_CHARSETS] : [store.charsAscii, ASCII_CHARSETS];
-  return presets.find((p) => p.chars === chars)?.name ?? 'Custom';
+  return presets.find((p) => p.chars === chars)?.name ?? t('common.custom');
 });
 </script>
 
@@ -34,10 +36,10 @@ const charsetName = computed(() => {
   <aside class="control-panel">
     <div class="logo"></div>
     <fieldset :disabled="!!drawing.hostOnly" :title="drawing.hostOnly">
-      <legend>Setup</legend>
+      <legend>{{ t('panel.groups.setup') }}</legend>
 
       <div class="field">
-        <div class="label-group"><label for="cols">Dimensions</label><HelpInfo :text="help('cols')" /></div>
+        <div class="label-group"><label for="cols">{{ getSetting('cols').label }}</label><HelpInfo :text="help('cols')" /></div>
         <div class="row-inputs">
           <input
               type="number"
@@ -49,7 +51,7 @@ const charsetName = computed(() => {
               :max="store.maxCols"
               class="mono"
           >
-          <button :title="store.hasEdits ? 'With edits, resizing adds or removes cells at the right and bottom (the aspect ratio is free)' : 'Lock Aspect Ratio'" :aria-pressed="store.aspectLock && !store.hasEdits" :class="{ active: store.aspectLock && !store.hasEdits }" :disabled="store.hasEdits" @click="store.aspectLock = !store.aspectLock">
+          <button :title="store.hasEdits ? t('panel.aspectFreeWithEdits') : t('panel.aspectLock')" :aria-pressed="store.aspectLock && !store.hasEdits" :class="{ active: store.aspectLock && !store.hasEdits }" :disabled="store.hasEdits" @click="store.aspectLock = !store.aspectLock">
             <svg v-if="store.aspectLock" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M192 288V192A128 128 0 0 1 448 192V288H384V192A64 64 0 0 0 256 192V288ZM176 288H464A48 48 0 0 1 512 336V528A48 48 0 0 1 464 576H176A48 48 0 0 1 128 528V336A48 48 0 0 1 176 288Z"/></svg>
             <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 288V192A128 128 0 0 1 576 192V256H512V192A64 64 0 0 0 384 192V288ZM112 288H400A48 48 0 0 1 448 336V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V336A48 48 0 0 1 112 288Z"/></svg>
           </button>
@@ -67,17 +69,17 @@ const charsetName = computed(() => {
       </div>
 
       <div class="field">
-        <div class="label-group"><label for="renderStyle">Art Style</label><HelpInfo :text="help('renderStyle')" /></div>
+        <div class="label-group"><label for="renderStyle">{{ t('panel.renderStyle.label') }}</label><HelpInfo :text="help('renderStyle')" /></div>
         <select id="renderStyle" v-model="store.renderStyle">
-          <option value="ansi">ANSI</option>
-          <option value="colorAscii">Color ASCII</option>
-          <option value="ascii">Monochrome ASCII</option>
+          <option value="ansi">{{ t('panel.renderStyle.ansi') }}</option>
+          <option value="colorAscii">{{ t('panel.renderStyle.colorAscii') }}</option>
+          <option value="ascii">{{ t('panel.renderStyle.ascii') }}</option>
         </select>
       </div>
 
       <div class="field">
         <div class="label-row">
-          <div class="label-group"><label for="chars">Characters</label><HelpInfo :text="help('chars')" /></div>
+          <div class="label-group"><label for="chars">{{ t('panel.chars.label') }}</label><HelpInfo :text="help('chars')" /></div>
           <span class="value">{{ charsetName }}</span>
         </div>
         <CharsetField v-if="store.renderStyle === 'ansi'" id="chars" v-model="store.chars" :presets="ANSI_CHARSETS"/>
@@ -85,49 +87,49 @@ const charsetName = computed(() => {
       </div>
 
       <div v-if="store.renderStyle === 'ansi' && store.chars.length > 1" class="field">
-        <div class="label-group"><label for="seed">Character Seed</label><HelpInfo :text="help('seed')" /></div>
+        <div class="label-group"><label for="seed">{{ t('panel.seed.label') }}</label><HelpInfo :text="help('seed')" /></div>
         <div class="row-inputs">
-          <input type="text" id="seed" v-model.lazy="store.seed" placeholder="seed">
-          <button @click="store.randomizeSeed" title="Randomize Seed">🎲</button>
+          <input type="text" id="seed" v-model.lazy="store.seed" :placeholder="t('panel.seed.placeholder')">
+          <button @click="store.randomizeSeed" :title="t('panel.seed.randomize')">🎲</button>
         </div>
       </div>
 
       <FontField/>
 
       <div class="field">
-        <div class="label-group"><label for="quantize">Color Palette</label><HelpInfo :text="help('quantize')" /></div>
+        <div class="label-group"><label for="quantize">{{ t('panel.quantize.label') }}</label><HelpInfo :text="help('quantize')" /></div>
         <select id="quantize" v-model="store.quantize">
-          <option value="none">Full color (24-bit)</option>
-          <option value="vga">VGA colors (8-bit)</option>
-          <option value="cga">CGA colors (4-bit)</option>
-          <option value="count">Color count (24-bit)</option>
-          <option value="palette">Color list (24-bit)</option>
+          <option value="none">{{ t('panel.quantize.none') }}</option>
+          <option value="vga">{{ t('panel.quantize.vga') }}</option>
+          <option value="cga">{{ t('panel.quantize.cga') }}</option>
+          <option value="count">{{ t('panel.quantize.count') }}</option>
+          <option value="palette">{{ t('panel.quantize.palette') }}</option>
         </select>
       </div>
 
       <RangeField v-if="store.quantize === 'count'" :setting="getSetting('colorCount')" v-model="store.colorCount"/>
       <div v-else-if="store.quantize === 'palette'" class="field">
-        <label for="palette">Palette Colors</label>
+        <label for="palette">{{ t('panel.paletteColors.label') }}</label>
         <input type="text" id="palette" v-model.lazy="store.palette" placeholder="#FFFFFF #000000">
       </div>
 
       <div class="field">
-        <div class="label-group"><label for="smoothing">Smoothing</label><HelpInfo :text="help('smoothing')" /></div>
+        <div class="label-group"><label for="smoothing">{{ t('panel.smoothing.label') }}</label><HelpInfo :text="help('smoothing')" /></div>
         <select id="smoothing" v-model="store.smoothing">
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
+          <option value="low">{{ t('panel.smoothing.low') }}</option>
+          <option value="medium">{{ t('panel.smoothing.medium') }}</option>
+          <option value="high">{{ t('panel.smoothing.high') }}</option>
         </select>
       </div>
     </fieldset>
 
-    <template v-for="group in SLIDER_GROUPS" :key="group.id">
+    <template v-for="group in sliderGroups" :key="group.id">
       <hr/>
 
       <fieldset :disabled="!!drawing.hostOnly" :title="drawing.hostOnly">
         <legend>
           {{ group.title }}
-          <button :disabled="!!drawing.hostOnly" @click="store.resetGroup(group.id)" tabindex="-1">RESET</button>
+          <button :disabled="!!drawing.hostOnly" @click="store.resetGroup(group.id)" tabindex="-1">{{ t('panel.reset') }}</button>
         </legend>
 
         <!-- Undoable: each drag, nudge or color pick is one step (setSlider, then commitSliders). -->
@@ -150,7 +152,7 @@ const charsetName = computed(() => {
       </fieldset>
     </template>
 
-    <button :disabled="!!drawing.hostOnly" :title="drawing.hostOnly" @click="store.resetSliders">RESET ALL</button>
+    <button :disabled="!!drawing.hostOnly" :title="drawing.hostOnly" @click="store.resetSliders">{{ t('panel.resetAll') }}</button>
 
     <hr/>
 

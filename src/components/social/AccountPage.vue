@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { renderSVG } from 'uqr';
 import { useSocialStore, PROVIDERS } from '@/store/SocialStore';
 import { usernameProblem } from '@/social/names';
@@ -11,6 +12,7 @@ import UserName from './UserName.vue';
 // Your username, the ways to sign in, two-factor, who you blocked, and deleting the account. Errors of a form
 // show under it; the others are the notice at the top of the tab.
 const social = useSocialStore();
+const { t } = useI18n();
 const me = computed(() => social.me);
 // The ones set up on the server, and any you have connected (so it can still be disconnected).
 const ways = computed(() => PROVIDERS.filter(([id]) => social.providers.includes(id) || me.value.providers.includes(id)));
@@ -42,7 +44,11 @@ const passwordError = ref(null);
 
 // Two-factor is one of three asks (turn on, turn off, new backup codes), each wanting the password; turning on then
 // shows the secret to scan, and the backup codes. Both live here only, so they're gone once you leave the page.
-const TWO_FACTOR_ASKS = { on: 'Continue', off: 'Turn off two-factor', codes: 'Make new codes' };
+const TWO_FACTOR_ASKS = computed(() => ({
+  on: t('common.continue'),
+  off: t('social.account.turnOffTwoFactor'),
+  codes: t('social.account.makeNewCodes'),
+}));
 const ask = ref(null);
 const twoFactorPassword = ref('');
 const twoFactorError = ref(null);
@@ -132,7 +138,7 @@ function endPassword() {
 
 async function submitPassword() {
   passwordError.value = null;
-  if (newPassword.value !== confirmPassword.value) passwordError.value = "Those new passwords don't match";
+  if (newPassword.value !== confirmPassword.value) passwordError.value = t('social.account.passwordsDontMatch');
   else if (await social.changePassword(currentPassword.value, newPassword.value)) endPassword();
   else failed(passwordError);
 }
@@ -218,138 +224,138 @@ async function deleteAccount() {
 
 <template>
   <div class="form-page account">
-    <button class="link back" @click="social.page = 'lobby'">‹ Back to the lobby</button>
-    <h2>Account</h2>
+    <button class="link back" @click="social.page = 'lobby'">{{ t('social.nav.backToLobby') }}</button>
+    <h2>{{ t('social.account.heading') }}</h2>
 
     <section aria-labelledby="account-username">
-      <h3 id="account-username">Username</h3>
+      <h3 id="account-username">{{ t('social.account.usernameHeading') }}</h3>
       <form v-if="renaming" ref="renameForm" @submit.prevent="usernameProblem(username) || rename()">
-        <UsernameField v-model="username" help="Once every 30 days. Your color and glyph come from your username." />
+        <UsernameField v-model="username" :help="t('social.account.usernameCooldownHelp')" />
         <div class="actions">
-          <button type="button" @click="cancelRename">Cancel</button>
-          <button class="primary" type="submit" :disabled="social.busy || !!usernameProblem(username)">Save</button>
+          <button type="button" @click="cancelRename">{{ t('common.cancel') }}</button>
+          <button class="primary" type="submit" :disabled="social.busy || !!usernameProblem(username)">{{ t('common.save') }}</button>
         </div>
         <p v-if="renameError" class="error" role="alert">{{ renameError }}</p>
       </form>
       <template v-else>
         <div class="row">
           <UserName class="username" :name="me.username" />
-          <button ref="changeButton" :disabled="!!tooSoon" aria-describedby="rename-help" @click="startRename">Change</button>
+          <button ref="changeButton" :disabled="!!tooSoon" aria-describedby="rename-help" @click="startRename">{{ t('social.account.changeUsernameBtn') }}</button>
         </div>
-        <p id="rename-help" class="help">{{ tooSoon ?? 'Once every 30 days. Your color and glyph come from your username.' }}</p>
+        <p id="rename-help" class="help">{{ tooSoon ?? t('social.account.usernameCooldownHelp') }}</p>
       </template>
     </section>
 
     <section aria-labelledby="account-ways">
-      <h3 id="account-ways">Ways to sign in</h3>
+      <h3 id="account-ways">{{ t('social.account.waysHeading') }}</h3>
       <div v-if="hasPassword" class="row">
-        <span class="what">Email and password <span class="detail" :title="me.email">{{ me.email }}</span></span>
+        <span class="what">{{ t('social.account.emailAndPassword') }} <span class="detail" :title="me.email">{{ me.email }}</span></span>
         <span class="buttons">
-          <button ref="changeEmailButton" :disabled="changingEmail" @click="startEmail">Change email</button>
-          <button ref="changePasswordButton" :disabled="changingPassword" @click="startPassword">Change password</button>
+          <button ref="changeEmailButton" :disabled="changingEmail" @click="startEmail">{{ t('social.account.changeEmail') }}</button>
+          <button ref="changePasswordButton" :disabled="changingPassword" @click="startPassword">{{ t('social.account.changePassword') }}</button>
         </span>
       </div>
       <form v-if="changingEmail" ref="emailForm" @submit.prevent="submitEmail">
-        <label>New email <input v-model="newEmail" type="email" autocomplete="email" maxlength="254" required></label>
-        <label>Current password <input v-model="emailPassword" type="password" autocomplete="current-password" required></label>
-        <p class="help">{{ me.emailVerified ? `Nothing changes until ${me.email} approves, then the new address confirms.` : 'Nothing changes until the new address confirms.' }} Each link works for an hour, in this browser. Twice a day.</p>
+        <label>{{ t('social.account.newEmail') }} <input v-model="newEmail" type="email" autocomplete="email" maxlength="254" required></label>
+        <label>{{ t('social.account.currentPassword') }} <input v-model="emailPassword" type="password" autocomplete="current-password" required></label>
+        <p class="help">{{ me.emailVerified ? t('social.account.emailHelpVerified', { email: me.email }) : t('social.account.emailHelpUnverified') }}</p>
         <div ref="emailWidget" class="turnstile"></div>
         <div class="actions">
-          <button type="button" @click="endEmail">Cancel</button>
-          <button class="primary" type="submit" :disabled="social.busy || !newEmail.trim() || !emailPassword">Change email</button>
+          <button type="button" @click="endEmail">{{ t('common.cancel') }}</button>
+          <button class="primary" type="submit" :disabled="social.busy || !newEmail.trim() || !emailPassword">{{ t('social.account.changeEmail') }}</button>
         </div>
         <p v-if="emailError" class="error" role="alert">{{ emailError }}</p>
       </form>
       <form v-if="changingPassword" ref="passwordForm" @submit.prevent="submitPassword">
-        <label>Current password <input v-model="currentPassword" type="password" autocomplete="current-password" required></label>
-        <label>New password <input v-model="newPassword" type="password" autocomplete="new-password" minlength="10" required aria-describedby="new-password-help"></label>
-        <label>Confirm new password <input v-model="confirmPassword" type="password" autocomplete="new-password" required></label>
-        <p id="new-password-help" class="help">At least 10 characters, not a known leaked password. Changing it signs you out everywhere else.</p>
+        <label>{{ t('social.account.currentPassword') }} <input v-model="currentPassword" type="password" autocomplete="current-password" required></label>
+        <label>{{ t('social.auth.newPasswordLabel') }} <input v-model="newPassword" type="password" autocomplete="new-password" minlength="10" required aria-describedby="new-password-help"></label>
+        <label>{{ t('social.account.confirmNewPassword') }} <input v-model="confirmPassword" type="password" autocomplete="new-password" required></label>
+        <p id="new-password-help" class="help">{{ t('social.account.newPasswordHelp') }}</p>
         <div class="actions">
-          <button type="button" @click="endPassword">Cancel</button>
-          <button class="primary" type="submit" :disabled="social.busy || !currentPassword || !newPassword || !confirmPassword">Change password</button>
+          <button type="button" @click="endPassword">{{ t('common.cancel') }}</button>
+          <button class="primary" type="submit" :disabled="social.busy || !currentPassword || !newPassword || !confirmPassword">{{ t('social.account.changePassword') }}</button>
         </div>
         <p v-if="passwordError" class="error" role="alert">{{ passwordError }}</p>
-        <p class="forgot"><button type="button" class="link" @click="social.page = 'forgot'">Forgot your password?</button></p>
+        <p class="forgot"><button type="button" class="link" @click="social.page = 'forgot'">{{ t('social.auth.forgotPassword') }}</button></p>
       </form>
       <div v-for="[id, label] in ways" :key="id" class="row">
         <template v-if="me.providers.includes(id)">
-          <span class="what">{{ label }} <span class="detail">Connected</span></span>
-          <button :disabled="social.busy || lastWay" :aria-label="`Disconnect ${label}`" :aria-describedby="lastWay ? 'last-way' : undefined" @click="social.unlink(id)">Disconnect</button>
+          <span class="what">{{ label }} <span class="detail">{{ t('social.account.connected') }}</span></span>
+          <button :disabled="social.busy || lastWay" :aria-label="t('social.account.disconnectAria', { provider: label })" :aria-describedby="lastWay ? 'last-way' : undefined" @click="social.unlink(id)">{{ t('social.account.disconnect') }}</button>
         </template>
         <template v-else>
-          <span class="what">{{ label }} <span class="detail">Not connected</span></span>
-          <button :disabled="social.busy" :aria-label="`Connect ${label}`" @click="social.linkWith(id)">Connect</button>
+          <span class="what">{{ label }} <span class="detail">{{ t('social.account.notConnected') }}</span></span>
+          <button :disabled="social.busy" :aria-label="t('social.account.connectAria', { provider: label })" @click="social.linkWith(id)">{{ t('social.account.connect') }}</button>
         </template>
       </div>
-      <p v-if="lastWay && canDisconnect" id="last-way" class="help">You need at least one way to sign in</p>
+      <p v-if="lastWay && canDisconnect" id="last-way" class="help">{{ t('social.account.needOneWay') }}</p>
     </section>
 
     <section ref="twoFactorSection" aria-labelledby="account-two-factor">
-      <h3 id="account-two-factor">Two-factor</h3>
+      <h3 id="account-two-factor">{{ t('social.account.twoFactorHeading') }}</h3>
       <template v-if="backupCodes">
-        <p class="help">Save these backup codes somewhere safe. Each one works once, if you lose your phone. You won't see them again.</p>
+        <p class="help">{{ t('social.account.backupCodesHelp') }}</p>
         <ul class="codes">
           <li v-for="code in backupCodes" :key="code">{{ code }}</li>
         </ul>
         <div class="actions">
-          <button class="primary" type="button" @click="endTwoFactor('codes')">Done</button>
+          <button class="primary" type="button" @click="endTwoFactor('codes')">{{ t('common.done') }}</button>
         </div>
       </template>
       <form v-else-if="setup" @submit.prevent="confirmSetup">
-        <p class="help">Scan this with your authenticator app, or enter the key:</p>
-        <div class="qr" role="img" aria-label="QR code" v-html="setup.qr"></div>
+        <p class="help">{{ t('social.account.scanQrHelp') }}</p>
+        <div class="qr" role="img" :aria-label="t('social.account.qrAria')" v-html="setup.qr"></div>
         <code class="key">{{ setup.key }}</code>
-        <label>Code from the app <input v-model="setupCode" inputmode="numeric" autocomplete="one-time-code" required></label>
+        <label>{{ t('social.account.codeFromApp') }} <input v-model="setupCode" inputmode="numeric" autocomplete="one-time-code" required></label>
         <div class="actions">
-          <button type="button" @click="endTwoFactor('on')">Cancel</button>
-          <button class="primary" type="submit" :disabled="social.busy || !setupCode.trim()">Turn on</button>
+          <button type="button" @click="endTwoFactor('on')">{{ t('common.cancel') }}</button>
+          <button class="primary" type="submit" :disabled="social.busy || !setupCode.trim()">{{ t('social.account.turnOn') }}</button>
         </div>
         <p v-if="twoFactorError" class="error" role="alert">{{ twoFactorError }}</p>
       </form>
       <form v-else-if="ask" @submit.prevent="submitAsk">
-        <label v-if="hasPassword">Password <input v-model="twoFactorPassword" type="password" autocomplete="current-password" required></label>
-        <p v-else class="help">Needs a sign-in in the last 5 minutes</p>
+        <label v-if="hasPassword">{{ t('social.auth.passwordLabel') }} <input v-model="twoFactorPassword" type="password" autocomplete="current-password" required></label>
+        <p v-else class="help">{{ t('social.account.recentSignInHelp') }}</p>
         <div class="actions">
-          <button type="button" @click="endTwoFactor(ask)">Cancel</button>
+          <button type="button" @click="endTwoFactor(ask)">{{ t('common.cancel') }}</button>
           <button class="primary" type="submit" :disabled="social.busy || (hasPassword && !twoFactorPassword)">{{ TWO_FACTOR_ASKS[ask] }}</button>
         </div>
         <p v-if="twoFactorError" class="error" role="alert">{{ twoFactorError }}</p>
       </form>
       <div v-else-if="me.twoFactorEnabled" class="row">
-        <span class="what">On. Signing in asks for a code.</span>
-        <button data-ask="codes" @click="startAsk('codes')">New backup codes</button>
-        <button data-ask="off" @click="startAsk('off')">Turn off</button>
+        <span class="what">{{ t('social.account.twoFactorOn') }}</span>
+        <button data-ask="codes" @click="startAsk('codes')">{{ t('social.account.newBackupCodes') }}</button>
+        <button data-ask="off" @click="startAsk('off')">{{ t('social.account.turnOff') }}</button>
       </div>
       <div v-else class="row">
-        <span class="what">Ask for a code from an authenticator app whenever you sign in.</span>
-        <button data-ask="on" @click="startAsk('on')">Turn on</button>
+        <span class="what">{{ t('social.account.twoFactorOff') }}</span>
+        <button data-ask="on" @click="startAsk('on')">{{ t('social.account.turnOn') }}</button>
       </div>
     </section>
 
     <section aria-labelledby="account-blocked">
-      <h3 id="account-blocked">Blocked</h3>
-      <p v-if="!social.blocked.length" class="help">Nobody blocked</p>
+      <h3 id="account-blocked">{{ t('social.account.blockedHeading') }}</h3>
+      <p v-if="!social.blocked.length" class="help">{{ t('social.account.nobodyBlocked') }}</p>
       <div v-for="person in social.blocked" :key="person.username" class="row">
         <UserName class="username" :name="person.username" />
-        <button :disabled="social.busy" :aria-label="`Unblock ${person.username}`" @click="social.unblock(person.username)">Unblock</button>
+        <button :disabled="social.busy" :aria-label="t('social.account.unblockAria', { name: person.username })" @click="social.unblock(person.username)">{{ t('social.account.unblock') }}</button>
       </div>
     </section>
 
     <section aria-labelledby="account-delete">
       <details @toggle="foldDelete">
         <summary>
-          <h3 id="account-delete">Delete account</h3>
+          <h3 id="account-delete">{{ t('social.account.deleteHeading') }}</h3>
           <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
         </summary>
-        <button v-if="!deleting" ref="deleteButton" class="danger" @click="startDelete">Delete account</button>
+        <button v-if="!deleting" ref="deleteButton" class="danger" @click="startDelete">{{ t('social.account.deleteHeading') }}</button>
         <form v-else ref="deleteForm" @submit.prevent="deleteAccount">
-          <p class="help">This removes your account, your username and your blocks. It can't be undone.</p>
-          <label v-if="hasPassword">Password <input v-model="password" type="password" autocomplete="current-password" required></label>
-          <p v-else class="help">Deleting needs a sign-in in the last 5 minutes</p>
+          <p class="help">{{ t('social.account.deleteHelp') }}</p>
+          <label v-if="hasPassword">{{ t('social.auth.passwordLabel') }} <input v-model="password" type="password" autocomplete="current-password" required></label>
+          <p v-else class="help">{{ t('social.account.deleteRecentSignInHelp') }}</p>
           <div class="actions">
-            <button type="button" @click="cancelDelete">Cancel</button>
-            <button class="danger" type="submit" :disabled="social.busy || (hasPassword && !password)">Delete for good</button>
+            <button type="button" @click="cancelDelete">{{ t('common.cancel') }}</button>
+            <button class="danger" type="submit" :disabled="social.busy || (hasPassword && !password)">{{ t('social.account.deleteForGood') }}</button>
           </div>
           <p v-if="deleteError" class="error" role="alert">{{ deleteError }}</p>
         </form>

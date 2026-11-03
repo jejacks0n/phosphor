@@ -8,11 +8,12 @@
 //   goToArt       accepted: the next project closes the watcher's view, however long it takes after the list
 //   formerHost    the next project also says I'm back as an artist
 //   gettingArt    back from a reload with no document to draw on; the room's project, or nothing coming, ends it
+import { t } from '@/i18n';
 import { fontFor, readCursors } from '@/social/wire';
-import { ART_NOT_OPENED_WORDS, UNDO_RESET_WORDS, backAsArtistWords } from '@/social/messages';
+import { artNotOpenedWords, undoResetWords, backAsArtistWords } from '@/social/messages';
 import { toast } from '@/composables/useToast';
 
-export function artistSide({ project, workspace, me, artists, artistNames, invitation, paused, waiting, cursors, notice, hostChanging, gettingArt, mayDraw, myCursor, pause, goOn, sayUndoRestarts }) {
+export function artistSide({ project, workspace, me, artists, artistNames, invitation, paused, waiting, cursors, notice, hostChanging, gettingArt, mayDraw, myCursor, pause, goOn, sayUndoRestarts, noteUndoSaid }) {
   let room = null;                 // the Watch
   let roomId = null, roomName = () => null, hostName = () => null;
   let saidHello = false;
@@ -63,8 +64,11 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
     hostChanging.value = mayDraw.value;
     const sayUndo = !planned && mayDraw.value;
     if (sayUndo) project.clearHistory();
-    const said = [words, sayUndo ? UNDO_RESET_WORDS : null].filter(Boolean).join(' ');
-    if (said) notice.value = said;
+    const said = [words, sayUndo ? undoResetWords() : null].filter(Boolean).join(' ');
+    if (said) {
+      noteUndoSaid(sayUndo);
+      notice.value = said;
+    }
   }
 
   // The answer to last-change?: the last number heard, flushed so it's the last that landed. Null if not drawing.
@@ -94,7 +98,8 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
     // document to draw on and is sent no art for having said hello, so they go back to watching, and can be asked again.
     const projectFailed = () => {
       if (!takesProjects()) return;
-      notice.value = ART_NOT_OPENED_WORDS;
+      noteUndoSaid(false);
+      notice.value = artNotOpenedWords();
       artCame();
       if (!project._sharing) decline();
     };
@@ -123,7 +128,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
         artCame();
         if (formerHost) {
           formerHost = false;
-          const words = backAsArtistWords(hostName() ?? 'Someone else');
+          const words = backAsArtistWords(hostName() ?? t('social.drawing.someoneElse'));
           notice.value = [notice.value, words].filter(Boolean).join(' ');   // what undo did is still so
           toast(words);
         }
@@ -184,7 +189,10 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
     if (mine && hasAccepted()) sayHello();
     else if (mine) invitation.value = true;   // come back after leaving: still theirs, if they still want it
     else if (!awaitingList && hasAccepted()) {
-      if (mayDraw.value) notice.value = 'You\'re back to watching.';
+      if (mayDraw.value) {
+        noteUndoSaid(false);
+        notice.value = t('social.drawing.backToWatching');
+      }
       stopDrawing();
     }
   }

@@ -15,6 +15,7 @@ import { joinBox, inwardArms } from '@/lib/BoxJoin';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { selectionClip } from '@/lib/selectionClip';
 import { watch } from 'vue';
+import { t } from '@/i18n/index.js';
 
 let start = null; // the drag's first grid position
 let last = null;  // where the pointer is, before Shift or a box line has its say
@@ -241,56 +242,60 @@ function stopDrag({ workspace }) {
 
 export default {
   id: 'shapes',
-  title: 'Shapes',
+  get title() { return t('tools.shapes.title'); },
   keys: ['U'],
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M112 64H336A48 48 0 0 1 384 112V168.1A224 224 0 0 0 328 177.3V120H120V328H177.3A224 224 0 0 0 168.1 384H112A48 48 0 0 1 64 336V112A48 48 0 0 1 112 64ZM208 392A184 184 0 1 0 576 392A184 184 0 1 0 208 392Z"/></svg>`,
   views: ['input', 'output'],
   kind: 'paint',
   altPicks: true,
   // What Shift does, for the status bar. A box line only runs across or down already.
-  shiftHint: (ws) => (boxLine(ws, 'output') ? null : { rect: 'square', ellipse: 'circle', line: 'snap to 45°' }[ws.shapeKind]),
+  shiftHint: (ws) => (boxLine(ws, 'output') ? null : {
+    rect: t('tools.shapes.shiftSquare'),
+    ellipse: t('tools.shapes.shiftCircle'),
+    line: t('tools.shapes.shiftSnap45'),
+  }[ws.shapeKind]),
   options: [
     {
-      key: 'shapeKind', label: 'Shape', type: 'segmented',
+      key: 'shapeKind', get label() { return t('tools.shapes.shape'); }, type: 'segmented',
       choices: [
-        { value: 'rect', label: 'Rectangle', icon: '<svg viewBox="0 0 16 16"><path d="M1 3h14v10H1zM3 5v6h10V5z"/></svg>' },
-        { value: 'ellipse', label: 'Ellipse', icon: '<svg viewBox="0 0 16 16"><path d="M8 2.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 1 1 0-11zM8 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/></svg>' },
-        { value: 'line', label: 'Line', icon: '<svg viewBox="0 0 16 16"><path d="M1.3 13.3L13.3 1.3l1.4 1.4L2.7 14.7z"/></svg>' },
+        { value: 'rect', get label() { return t('tools.shapes.rectangle'); }, icon: '<svg viewBox="0 0 16 16"><path d="M1 3h14v10H1zM3 5v6h10V5z"/></svg>' },
+        { value: 'ellipse', get label() { return t('tools.shapes.ellipse'); }, icon: '<svg viewBox="0 0 16 16"><path d="M8 2.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 1 1 0-11zM8 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/></svg>' },
+        { value: 'line', get label() { return t('tools.shapes.line'); }, icon: '<svg viewBox="0 0 16 16"><path d="M1.3 13.3L13.3 1.3l1.4 1.4L2.7 14.7z"/></svg>' },
       ],
     },
     {
-      key: 'shapeDrawWith', label: 'Draw with', type: 'dropdown', views: ['output'],
+      key: 'shapeDrawWith', get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
       choices: [
         // Box lines are for rectangles and lines; an ellipse set to them draws (and shows) half-blocks.
-        { value: 'single', label: 'Single', glyph: '┌─', when: (ws) => ws.shapeKind !== 'ellipse', instead: 'half' },
-        { value: 'double', label: 'Double', glyph: '╔═', when: (ws) => ws.shapeKind !== 'ellipse', instead: 'half' },
-        { value: 'half', label: 'Half-block', glyph: '▀▄' },
-        { value: 'full', label: 'Full block', glyph: '██' },
+        { value: 'single', get label() { return t('tools.drawWith.single'); }, glyph: '┌─', when: (ws) => ws.shapeKind !== 'ellipse', instead: 'half' },
+        { value: 'double', get label() { return t('tools.drawWith.double'); }, glyph: '╔═', when: (ws) => ws.shapeKind !== 'ellipse', instead: 'half' },
+        { value: 'half', get label() { return t('tools.drawWith.halfBlock'); }, glyph: '▀▄' },
+        { value: 'full', get label() { return t('tools.drawWith.fullBlock'); }, glyph: '██' },
         // Offered unless the active character is a block the other choices already draw.
-        { value: 'char', label: 'Character', glyph: (workspace) => workspace.activeChar.repeat(2), when: (ws) => !'▀▄█'.includes(ws.activeChar) },
+        { value: 'char', get label() { return t('tools.drawWith.character'); }, glyph: (workspace) => workspace.activeChar.repeat(2), when: (ws) => !'▀▄█'.includes(ws.activeChar) },
       ],
     },
     {
-      key: 'shapeCharFill', label: 'Fill', type: 'checkbox', views: ['output'], when: (ws) => ws.shapeDrawWith === 'char' && ws.shapeKind !== 'line',
-      title: 'Fill the inside with the character too',
+      key: 'shapeCharFill', get label() { return t('tools.shapes.fill'); }, type: 'checkbox', views: ['output'], when: (ws) => ws.shapeDrawWith === 'char' && ws.shapeKind !== 'line',
+      get title() { return t('tools.shapes.fillTitle'); },
     },
     {
-      key: 'shapeConnect', label: 'Connect', type: 'checkbox', views: ['output'],
+      key: 'shapeConnect', get label() { return t('tools.shapes.connect'); }, type: 'checkbox', views: ['output'],
       when: (ws) => ws.shapeKind !== 'ellipse' && (ws.shapeDrawWith === 'single' || ws.shapeDrawWith === 'double'),
-      title: 'Join the frame or line to the line characters it crosses or meets',
+      get title() { return t('tools.shapes.connectTitle'); },
     },
     {
-      key: 'shapeAntialias', label: 'Anti-aliased', type: 'checkbox',
+      key: 'shapeAntialias', get label() { return t('tools.shapes.antialiased'); }, get title() { return t('tools.shapes.antialiasedTitle'); }, type: 'checkbox',
       when: (ws) => ws.shapeKind !== 'rect' && (ws.editorTab === 'input'
         || ((ws.shapeKind === 'ellipse' ? ws.shapeDrawWith !== 'char' : blockShape(ws)) && !usesHalves(ws))),
     },
     {
-      key: 'shapeVerticalHalves', label: 'Vertical half blocks', type: 'checkbox', views: ['output'], when: blockShape,
-      title: 'Place blocks to the nearest half cell across: a block between two columns is drawn ▐▌ (in Half-block, ▝▘ and ▗▖)',
+      key: 'shapeVerticalHalves', get label() { return t('tools.shapes.verticalHalves'); }, type: 'checkbox', views: ['output'], when: blockShape,
+      get title() { return t('tools.shapes.verticalHalvesTitle'); },
     },
     {
-      key: 'shapeBlockChars', label: 'Block characters', type: 'checkbox', views: ['output'], when: (ws) => drawsBlocks(ws) && !usesHalves(ws),
-      title: "Draw with real block characters; off, the paint shows through each cell's own character",
+      key: 'shapeBlockChars', get label() { return t('tools.shapes.blockChars'); }, type: 'checkbox', views: ['output'], when: (ws) => drawsBlocks(ws) && !usesHalves(ws),
+      get title() { return t('tools.shapes.blockCharsTitle'); },
     },
   ],
   begin({ workspace, view }, pos) {

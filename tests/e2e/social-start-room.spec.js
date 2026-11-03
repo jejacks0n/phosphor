@@ -35,31 +35,31 @@ test('Start a room with no art open says to open some, and Go live is disabled',
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
   await page.getByRole('button', { name: 'Start a room' }).click();
-  await expect(shown(page, 'start-room').getByRole('heading', { name: 'Setup room' })).toBeVisible();
+  await expect(shown(page, 'start-room').getByRole('heading', { name: 'Set up your room' })).toBeVisible();
   // A warning in place of the lobby picture, and in the same column for a room only the link reaches.
-  const warning = 'Open some art in PIXEL or ANSI to share it first.';
+  const warning = 'Open an image or start a canvas first so you have something to share.';
   await expect(page.getByRole('region', { name: 'Lobby card' }).getByText(warning)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Lobby picture' })).toHaveCount(0);   // nothing to picture
-  await page.getByRole('radio', { name: 'Only with the link' }).check();
+  await page.getByRole('radio', { name: 'Unlisted (link only)' }).check();
   await expect(page.getByText(warning)).toBeVisible();
-  await page.getByRole('radio', { name: 'Anyone, in the lobby' }).check();
+  await page.getByRole('radio', { name: 'Public in the lobby' }).check();
   await page.getByRole('textbox', { name: 'Room name' }).fill('nothing yet');
   await expect(page.getByRole('button', { name: 'Go live' })).toBeDisabled();
 
   await expect(page.getByRole('button', { name: 'Cancel' })).toHaveCount(0);   // the way back is Back to the lobby
-  await page.getByRole('button', { name: '‹ Back to the lobby' }).click();
+  await page.getByRole('button', { name: '‹ Back to lobby' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
   expect(server.sent('POST', '/api/rooms')).toEqual([]);
 });
 
-test('Setup room: the radio buttons look like the checkboxes; the room beside its lobby card when there\'s room, stacked when there isn\'t; link-only has no card', async ({ page }) => {
+test('Set up your room: the radio buttons look like the checkboxes; the room beside its lobby card when there\'s room, stacked when there isn\'t; link-only has no card', async ({ page }) => {
   await startPage(page);
   const setup = shown(page, 'start-room');
   const style = (el) => el.evaluate((input) => {
     const s = getComputedStyle(input);
     return { appearance: s.appearance, width: s.width, radius: s.borderRadius, background: s.backgroundColor };
   });
-  const radio = setup.getByRole('radio', { name: 'Anyone, in the lobby' });
+  const radio = setup.getByRole('radio', { name: 'Public in the lobby' });
   const checkbox = setup.getByRole('checkbox', { name: 'Allow guests' });
   // (both are on, and their colors fade in: compared once they've settled)
   await expect.poll(async () => [await style(radio), { ...await style(checkbox), radius: '50%' }])
@@ -83,7 +83,7 @@ test('Setup room: the radio buttons look like the checkboxes; the room beside it
   expect(Math.abs(live.width - field.width)).toBeLessThan(1);
 
   await page.setViewportSize({ width: 1400, height: 900 });
-  await setup.getByRole('radio', { name: 'Only with the link' }).check();
+  await setup.getByRole('radio', { name: 'Unlisted (link only)' }).check();
   await expect(card).toHaveCount(0);
   const form = await setup.locator('form').boundingBox();
   expect((await name.boundingBox()).width).toBeLessThan(form.width * 0.6);   // still a column wide, not stretched
@@ -93,13 +93,13 @@ test('going live with a public room: a name of only spaces isn\'t sent; the POST
   const { room, server } = await startPage(page);
   // The setup takes the Public rooms section; the lobby's column stays beside it.
   const setup = shown(page, 'start-room');
-  await expect(setup.getByRole('heading', { name: 'Setup room' })).toBeFocused();
+  await expect(setup.getByRole('heading', { name: 'Set up your room' })).toBeFocused();
   await expect(setup.getByRole('heading', { name: 'Public rooms' })).toHaveCount(0);
   await expect(setup.getByRole('complementary').getByRole('heading', { name: /In the lobby/ })).toBeVisible();
   const section = await setup.locator('section.main').boundingBox(), column = await setup.getByRole('complementary').boundingBox();
   expect(section.x + section.width).toBeCloseTo(column.x, 0);
   await expect(setup.getByRole('region', { name: 'Lobby picture' }).getByLabel('The room\'s art')).toBeVisible();
-  await expect(page.getByRole('radio', { name: 'Anyone, in the lobby' })).toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Public in the lobby' })).toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toBeChecked();
   await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('12');
   await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveAttribute('max', '30');
@@ -107,8 +107,8 @@ test('going live with a public room: a name of only spaces isn\'t sent; the POST
   await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('30');
   await page.getByRole('spinbutton', { name: 'Max watchers' }).fill('12');
   await expect(page.getByRole('textbox', { name: 'Password' })).toHaveCount(0);
-  await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toHaveAccessibleDescription(/^Guests can only watch/);
-  await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveAccessibleDescription(/^Each watcher uses some/);
+  await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toHaveAccessibleDescription(/^Guests can watch/);
+  await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveAccessibleDescription(/^Rooms stream directly/);
   await expect(page.getByRole('textbox', { name: 'Welcome message' })).toHaveAccessibleDescription('0/200');
   const signal = page.getByRole('group', { name: 'Signal' });
   await expect(signal.locator('label')).toHaveText(['None', 'Wants feedback', 'Open to chat', 'Heads down']);
@@ -160,7 +160,7 @@ test('a private room\'s password is optional: without one its link alone reaches
   const { room, server } = await startPage(page);
   await page.getByRole('textbox', { name: 'Room name' }).fill('just us');
   await page.getByRole('radio', { name: 'Open to chat' }).check();   // chosen while public, then not sent
-  await page.getByRole('radio', { name: 'Only with the link' }).check();
+  await page.getByRole('radio', { name: 'Unlisted (link only)' }).check();
   await expect(page.getByRole('group', { name: 'Signal' })).toHaveCount(0);   // only lobby cards show a signal
   await expect(page.getByRole('textbox', { name: 'Password (optional)' })).not.toHaveAttribute('required');
   await page.getByRole('button', { name: 'Go live' }).click();
@@ -172,7 +172,7 @@ test('a private room\'s password is optional: without one its link alone reaches
 test('a private room with a password sends it, and its page says to send both', async ({ page }) => {
   const { room, server } = await startPage(page);
   await page.getByRole('textbox', { name: 'Room name' }).fill('just us');
-  await page.getByRole('radio', { name: 'Only with the link' }).check();
+  await page.getByRole('radio', { name: 'Unlisted (link only)' }).check();
   await page.getByRole('textbox', { name: 'Password (optional)' }).fill('hunter22');
   await page.getByRole('button', { name: 'Go live' }).click();
   await expect(page.getByText('Send the link and the password to anyone you want in.')).toBeVisible();
@@ -212,7 +212,7 @@ test('what\'s typed in Start a room stays while you\'re on another tab, and is g
   await page.getByRole('button', { name: 'Go live' }).click();
   await expect.poll(() => store(page, 'room', (r) => r.status)).toBe('live');
   await page.getByRole('button', { name: 'End room' }).click();
-  await page.getByRole('dialog', { name: 'End the room?' }).getByRole('button', { name: 'End room' }).click();
+  await page.getByRole('dialog', { name: 'End this room?' }).getByRole('button', { name: 'End room' }).click();
   await page.getByRole('button', { name: 'Start a room' }).click();
   await expect(start.getByRole('textbox', { name: 'Room name' })).toHaveValue('');
   await expect(start.getByRole('checkbox', { name: 'Allow guests' })).toBeChecked();
@@ -265,7 +265,7 @@ test('Room settings send the guests, max watchers and signal, and two quick save
   expect(await store(page, 'room', (r) => [r.room.allowGuests, r.room.max])).toEqual([false, 8]);
 
   await host.getByRole('button', { name: 'End room' }).click();
-  const ask = page.getByRole('dialog', { name: 'End the room?' });
+  const ask = page.getByRole('dialog', { name: 'End this room?' });
   await expect(ask.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await ask.getByRole('button', { name: 'Cancel' }).click();
   await expect(ask).toHaveCount(0);
@@ -361,7 +361,7 @@ test('a SILENCED refusal shows the server\'s words and no room starts', async ({
   await page.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
   await page.getByRole('button', { name: 'Go live' }).click();
   await expect(page.locator('.people-tab .notice')).toContainText(silencedWords(until));
-  await expect(shown(page, 'start-room').getByRole('heading', { name: 'Setup room' })).toBeVisible();
+  await expect(shown(page, 'start-room').getByRole('heading', { name: 'Set up your room' })).toBeVisible();
   expect(await store(page, 'room', (r) => r.role)).toBe(null);
   expect(server.sent('POST', '/api/rooms')).toHaveLength(1);
   // A new pass at once, so Start a room is off without waiting for the next renewal.
