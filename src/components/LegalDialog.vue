@@ -10,7 +10,7 @@ const props = defineProps({ page: { type: String, required: true } });
 const emit = defineEmits(['close', 'open']);
 const { t, locale } = useI18n();
 
-const legalLoaders = typeof import.meta.glob === 'function' ? import.meta.glob('@/i18n/legal/*.vue') : {};
+const legalLoaders = import.meta.glob(['@/i18n/legal/*.vue', '!@/i18n/legal/en.vue']);
 const legalComponent = shallowRef(EnLegal);
 
 watch(locale, (code) => {

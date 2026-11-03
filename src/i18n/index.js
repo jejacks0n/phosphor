@@ -11,9 +11,10 @@ export const LOCALE_STORAGE_KEY = 'phosphor.locale';
 // ./locales/<code>.json (and optional legal copy under ./legal/<code>.vue) and add an entry here.
 export const SUPPORTED_LOCALES = reactive([
   { code: 'en', label: 'English', dir: 'ltr' },
+  { code: 'fr', label: 'Français', dir: 'ltr' },
 ]);
 
-const localeLoaders = typeof import.meta.glob === 'function' ? import.meta.glob('./locales/*.json') : {};
+const localeLoaders = import.meta.glob(['./locales/*.json', '!./locales/en.json']);
 
 export const i18n = createI18n({
   legacy: false,

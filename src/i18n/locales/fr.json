@@ -1,0 +1,1214 @@
+{
+  "app": {
+    "meta": {
+      "title": "Phosphor — Éditeur d'art ANSI & ASCII moderne",
+      "description": "Transformez vos images en art ANSI ou ASCII dans votre navigateur, puis peignez, écrivez, animez et exportez."
+    },
+    "noscript": "Phosphor a besoin de JavaScript pour fonctionner."
+  },
+  "common": {
+    "close": "Fermer",
+    "cancel": "Annuler",
+    "done": "Terminé",
+    "save": "Enregistrer",
+    "saved": "Enregistré",
+    "saving": "Enregistrement…",
+    "export": "Exporter",
+    "exporting": "Exportation…",
+    "dismiss": "Ignorer",
+    "actions": "Actions",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "clear": "Effacer",
+    "remove": "Retirer",
+    "restore": "Restaurer",
+    "continue": "Continuer",
+    "accept": "Accepter",
+    "notNow": "Pas maintenant",
+    "none": "Aucun",
+    "custom": "Personnalisé",
+    "yours": "Les vôtres",
+    "builtIn": "Intégré",
+    "copied": "Copié",
+    "copyLink": "Copier le lien",
+    "reconnecting": "Reconnexion…",
+    "or": "ou",
+    "guest": "invité",
+    "host": "hôte",
+    "artist": "artiste",
+    "invited": "invité",
+    "muted": "masqué",
+    "untitled": "sans titre"
+  },
+  "legal": {
+    "titles": {
+      "terms": "Conditions d'utilisation",
+      "privacy": "Politique de confidentialité",
+      "guidelines": "Règles de la communauté"
+    }
+  },
+  "footer": {
+    "about": "À propos de Phosphor",
+    "language": "Langue",
+    "byline": "Créé par{br}{ishifishi} et {euphio}",
+    "copyright": "© {year} Phosphor Project"
+  },
+  "about": {
+    "label": "À propos de Phosphor",
+    "tagline": "Transformez vos images en art ANSI et ASCII, puis continuez à dessiner… avec style.",
+    "version": "v{version}",
+    "build": "build {sha}",
+    "p1": "Phosphor a débuté en 2019 comme une modeste expérience visant à concevoir des outils pour un concept que j'appelais « ANSI Nouveau ». À l'époque, je voulais recréer l'expérience des BBS du milieu des années 90 qui ont bercé ma jeunesse, mais à travers un prisme moderne et haute fidélité. Comme bien des projets de passionnés, la vie a suivi son cours et le projet a fini sur une étagère.",
+    "p2": "Des années plus tard, je suis tombé sur un fantastique {moebiusFork} qui ajoutait la prise en charge des 256 couleurs et de la couleur vraie. Cela m'a rappelé ce projet : je l'ai sorti de sa boîte, dépoussiéré le code — et, tirant parti des outils et techniques modernes, je lui ai redonné vie.",
+    "moebiusForkLink": "fork de l'éditeur ANSI Moebius",
+    "p3": "Phosphor a commencé comme un convertisseur image-vers-ANSI, et réunit aujourd'hui deux flux de travail. Il transforme des images en ANSI ou ASCII que vous pouvez affiner à votre goût, puis vous permet de peindre et taper par-dessus cellule par cellule et d'exporter en .ans ou .utf8ans. Terminez votre création ici, ou ouvrez le fichier dans un autre éditeur pour une passe finale — que vous recherchiez le « Pur ANSI » ou le style moderne « ANSI Nouveau » en 24 bits et UTF-8 qui a inspiré ce projet.",
+    "p4": "Nous n'en sommes qu'aux débuts. Attendez-vous à quelques aspérités sur téléphones et petites tablettes — bien que l'iPad avec l'Apple Pencil fonctionne bien lors des tests. Les retours, signalements de bugs et idées sont toujours les bienvenus : ouvrez un ticket sur {github}, ou forkez le dépôt pour l'emmener dans votre propre direction.",
+    "githubLink": "GitHub",
+    "creditsIntro": "Crédits et remerciements chaleureux :",
+    "creditErtdfgcvb": "{ertdfgcvb} (Andreas Gysin) pour l'inspiration de Phosphor avec l'(incroyable) bibliothèque {playCore}",
+    "creditMoebius": "Andy Herbert, Blocktronics et MeaTLoTioN pour leur travail sur Moebius",
+    "creditDurdraw": "cmang pour {durdraw}, l'éditeur d'art ANSI et ASCII qui s'anime",
+    "credit16Colors": "lordscarlet (Doug Moore) et Brendan O'Connor pour avoir créé sixteencolors, ainsi que ceux qui œuvrent pour maintenir {sixteenColors} en vie aujourd'hui.",
+    "creditFonts": "Les polices : {ibmVga} du pack Ultimate Oldschool PC Font de VileR ({ccBySa}), {jetbrains} par les auteurs du projet JetBrains Mono ({ofl1}), {unscii} par viznut (domaine public), et {unifont} par Roman Czyborra, Paul Hardy et leurs contributeurs ({ofl2})",
+    "creditIcons": "Les icônes : la plupart proviennent de {fontAwesome} par Fonticons, Inc. ({ccBy})",
+    "creditScene": "Et les nombreux auteurs, mainteneurs et artistes ANSI qui m'ont inspiré au fil des années — trop nombreux pour être tous cités",
+    "thanks": "Merci à vous tous pour l'inspiration et pour faire vivre la scène.",
+    "motto": "Make Code Not War"
+  },
+  "zero": {
+    "dropPrompt": "Déposez une image ou un fichier {ext} ici",
+    "browseMobile": "Choisir un fichier",
+    "browseDesktop": "Choisir un fichier",
+    "startBlank": "Ou commencez avec un canevas vierge",
+    "recentHeading": "Reprenez là où vous vous étiez arrêté",
+    "open": "Ouvrir",
+    "openElsewhere": "Ouvrir dans l'autre onglet",
+    "openAria": "Ouvrir {name}",
+    "openElsewhereAria": "{name} (déjà ouvert dans un autre onglet)"
+  },
+  "tabs": {
+    "toggleSettings": "Afficher/masquer les paramètres",
+    "tablistAria": "Vues de l'espace de travail",
+    "pixel": "PIXEL",
+    "ansi": "ANSI",
+    "ascii": "ASCII",
+    "sauce": "SAUCE",
+    "social": "SOCIAL",
+    "beta": "Bêta",
+    "animate": "Animer",
+    "animateHint": "Animer image par image",
+    "animateNeedArt": "Ouvrez une image ou créez un canevas pour animer.",
+    "animateInRoom": "Les salles en direct ne prennent pas encore en charge les animations.",
+    "animateTooLargeTitle": "Le canevas est trop grand pour être animé ({max} cellules max).",
+    "animateTooLargeToast": "Ce canevas compte {cells} cellules (l'animation prend en charge jusqu'à {max}). Réduisez les Dimensions pour animer.",
+    "themeAria": "Thème",
+    "themes": {
+      "dark": "Sombre",
+      "light": "Clair",
+      "system": "Système"
+    }
+  },
+  "panel": {
+    "groups": {
+      "setup": "Configuration",
+      "transform": "Transformations",
+      "adjust": "Ajustements",
+      "effects": "Filtres d'image"
+    },
+    "reset": "Réinitialiser",
+    "resetAll": "Tout réinitialiser",
+    "colsAria": "Colonnes",
+    "rowsAria": "Lignes",
+    "aspectLock": "Conserver les proportions",
+    "aspectFreeWithEdits": "Une fois que vous avez dessiné sur le canevas, le redimensionnement ajoute ou rogne librement des cellules à droite et en bas.",
+    "renderStyle": {
+      "label": "Style artistique",
+      "ansi": "ANSI",
+      "colorAscii": "ASCII couleur",
+      "ascii": "ASCII monochrome"
+    },
+    "chars": {
+      "label": "Caractères",
+      "placeholder": "Caractères…",
+      "setsAria": "Préréglages de caractères"
+    },
+    "seed": {
+      "label": "Graine de caractères",
+      "placeholder": "Graine",
+      "randomize": "Tirer une nouvelle graine"
+    },
+    "quantize": {
+      "label": "Palette de couleurs",
+      "none": "Couleurs réelles (24 bits)",
+      "vga": "VGA (256 couleurs)",
+      "cga": "CGA (16 couleurs)",
+      "count": "Nombre limité",
+      "palette": "Liste de couleurs personnalisée"
+    },
+    "paletteColors": {
+      "label": "Couleurs de la palette"
+    },
+    "smoothing": {
+      "label": "Lissage",
+      "low": "Faible",
+      "medium": "Moyen",
+      "high": "Élevé"
+    }
+  },
+  "settings": {
+    "cols": {
+      "label": "Dimensions",
+      "help": "Largeur du canevas en colonnes et hauteur en lignes de pixels (deux lignes de pixels forment une ligne de caractères)."
+    },
+    "renderStyle": {
+      "help": "L'ANSI colore chaque caractère et son arrière-plan. L'ASCII couleur dessine des caractères colorés sur fond noir, en utilisant des glyphes plus denses pour les couleurs plus intenses. L'ASCII monochrome n'utilise qu'une couleur, faisant correspondre la luminosité du clair au dense."
+    },
+    "chars": {
+      "help": "Caractères parmi lesquels le convertisseur choisit — aléatoirement pour l'ANSI, ou du sombre au clair pour l'ASCII. Répétez un caractère pour augmenter sa fréquence d'apparition."
+    },
+    "seed": {
+      "help": "Contrôle la disposition aléatoire des caractères en mode ANSI. Même graine, même motif — lancez le dé pour mélanger."
+    },
+    "quantize": {
+      "help": "Couleurs réelles conserve les couleurs 24 bits. VGA et CGA s'alignent sur les palettes classiques de 256 et 16 couleurs. Nombre limité sélectionne les N meilleures couleurs de l'image, et Liste de couleurs personnalisée n'utilise que les couleurs hexadécimales saisies."
+    },
+    "colorCount": {
+      "label": "Nombre de couleurs"
+    },
+    "smoothing": {
+      "help": "Détermine la façon dont l'image est échantillonnée sur la grille. Élevé fond les transitions en douceur ; Faible préserve les bords nets et le grain."
+    },
+    "colorizeStrength": {
+      "label": "Coloriser",
+      "help": "Teinte l'image vers une nuance unique tout en préservant l'ombre et la lumière."
+    },
+    "hue": {
+      "label": "Décalage de teinte",
+      "help": "Fait tourner toutes les couleurs autour du cercle chromatique."
+    },
+    "invert": {
+      "label": "Inverser",
+      "help": "Inverse les couleurs en leurs négatifs (appliqué après Coloriser et Décalage de teinte)."
+    },
+    "brightness": {
+      "label": "Luminosité",
+      "help": "Rend l'ensemble de l'image plus clair ou plus sombre."
+    },
+    "contrast": {
+      "label": "Contraste",
+      "help": "Écarte davantage les tons clairs et sombres, ou les rapproche."
+    },
+    "saturation": {
+      "label": "Saturation",
+      "help": "Augmente l'intensité des couleurs ou tend vers des niveaux de gris."
+    },
+    "flatten": {
+      "label": "Aplatir",
+      "help": "Regroupe les tons proches en aplats nets et picturaux."
+    },
+    "sharpen": {
+      "label": "Netteté",
+      "help": "Accentue les contours et les détails fins."
+    },
+    "edges": {
+      "label": "Contours",
+      "help": "Trace les contours détectés dans la couleur de contour choisie."
+    },
+    "edgeThickness": {
+      "label": "Épaisseur des contours",
+      "help": "Contrôle l'épaisseur des contours tracés."
+    }
+  },
+  "charsets": {
+    "default": "Par défaut",
+    "defaultBlocks": "Par défaut +   ▂▃▅",
+    "shades": "Trames",
+    "risingBlocks": "Blocs progressifs",
+    "halfBlocks": "Demi-blocs",
+    "pixel": "Pixel",
+    "quadrants": "Quadrants",
+    "classicRamp": "Rampe classique",
+    "longRamp": "Rampe étendue"
+  },
+  "font": {
+    "label": "Police",
+    "help": "Définit la police d'affichage de votre canevas. Utilisez Charger une police pour ajouter une police à chasse fixe TrueType, OpenType ou WOFF depuis votre ordinateur. Les polices matricielles (bitmap) sont plus nettes à des multiples de leur taille native (16 ou 32 px pour les polices 8×16). Votre choix de police reste dans ce navigateur ; dans une salle partagée, vous verrez temporairement la police de l'hôte.",
+    "remove": "Retirer",
+    "removeAria": "Retirer la police",
+    "removeTitle": "Retirer cette police de votre navigateur",
+    "load": "Charger une police",
+    "loadTitle": "Charger une police à chasse fixe depuis votre ordinateur",
+    "groupBuiltIn": "Intégrées",
+    "groupYours": "Les vôtres",
+    "sizeAria": "Taille de police",
+    "sizeTitle": "Taille de police (px)",
+    "hostsFont": "Police de l'hôte utilisée pendant que vous dessinez ici.",
+    "errors": {
+      "unreadable": "Impossible de lire « {name} » comme une police. Essayez un fichier TrueType (.ttf), OpenType (.otf) ou WOFF.",
+      "notMonospaced": "« {name} » n'est pas à chasse fixe ({narrow} mesure {narrowPx} px de large, alors que {wide} en mesure {widePx} px). Phosphor nécessite des polices à espacement fixe où chaque caractère occupe la même largeur de cellule.",
+      "aSpace": "espace"
+    }
+  },
+  "layers": {
+    "label": "Calques",
+    "base": "Base",
+    "baseTitle": "Calque de base : l'image source convertie",
+    "edit": "Édition",
+    "editTitle": "Calque d'édition : tout ce que vous avez peint, tapé ou collé"
+  },
+  "tools": {
+    "titleWithKeys": "{title} · {keys}",
+    "keysOr": "{a} ou {b}",
+    "moreTools": "Plus d'outils",
+    "pencil": {
+      "title": "Crayon",
+      "connect": "Connecter",
+      "connectTitle": "Raccorder automatiquement les angles et intersections avec les lignes de tracé de cadres existantes"
+    },
+    "brush": {
+      "title": "Pinceau",
+      "size": "Taille",
+      "sizeTitle": "Taille du pinceau",
+      "opacity": "Opacité",
+      "opacityTitle": "Opacité du pinceau",
+      "flow": "Flux",
+      "flowTitle": "Débit de peinture pendant le tracé",
+      "hardness": "Dureté",
+      "hardnessTitle": "Douceur des contours",
+      "stack": "Cumuler",
+      "stackTitle": "Superposer les traits de façon additive — deux passages à 50 % atteignent la pleine opacité. Si désactivé, les traits superposés plafonnent à l'Opacité."
+    },
+    "eraser": {
+      "title": "Gomme",
+      "size": "Taille",
+      "sizeTitle": "Taille de la gomme",
+      "erase": "Effacer"
+    },
+    "bucket": {
+      "title": "Pot de peinture",
+      "tolerance": "Tolérance",
+      "toleranceTitle": "Tolérance de remplissage",
+      "contiguous": "Contigu",
+      "contiguousTitle": "Remplir uniquement les zones connectées ; désactivez pour remplir toutes les correspondances sur l'ensemble du canevas",
+      "feather": "Adoucir",
+      "featherTitle": "Adoucir les contours du remplissage",
+      "match": "Critère",
+      "set": "Appliquer",
+      "fill": "Remplir",
+      "setFgTitle": "Appliquer votre couleur de premier plan aux cellules",
+      "setBgTitle": "Appliquer votre couleur d'arrière-plan aux cellules",
+      "setCharTitle": "Appliquer votre caractère aux cellules",
+      "gradient": "Dégradé",
+      "gradientSolid": "Uni",
+      "gradientLinear": "Linéaire",
+      "gradientSpherical": "Sphérique",
+      "gradientNeedsColors": "Un dégradé nécessite une couleur de premier plan et une couleur d'arrière-plan : aucune ne peut être Aucun."
+    },
+    "picker": {
+      "title": "Pipette",
+      "pick": "Prélever",
+      "pickFgTitle": "Prélever le premier plan de la cellule",
+      "pickBgTitle": "Prélever l'arrière-plan de la cellule"
+    },
+    "hand": {
+      "title": "Main (panoramique)"
+    },
+    "zoom": {
+      "title": "Zoom"
+    },
+    "flip": {
+      "title": "Inverser PP/AP de la cellule",
+      "flip": "Inverser"
+    },
+    "text": {
+      "title": "Mode Édition",
+      "canvasInputAria": "Écrire sur le canevas"
+    },
+    "select": {
+      "title": "Sélection"
+    },
+    "wand": {
+      "title": "Baguette magique",
+      "layers": "Calques",
+      "match": "Critère",
+      "tolerance": "Tolérance",
+      "toleranceTitle": "Écart de couleur maximal par rapport au point cliqué pour être inclus",
+      "contiguous": "Contigu",
+      "contiguousTitle": "Sélectionner uniquement les correspondances connectées ; désactivez pour sélectionner sur tout le canevas"
+    },
+    "shapes": {
+      "title": "Formes",
+      "shape": "Forme",
+      "rectangle": "Rectangle",
+      "ellipse": "Ellipse",
+      "line": "Ligne",
+      "shiftSquare": "carré",
+      "shiftCircle": "cercle",
+      "shiftSnap45": "aligner à 45°",
+      "fill": "Remplir",
+      "fillTitle": "Remplir également l'intérieur avec le caractère",
+      "connect": "Connecter",
+      "connectTitle": "Raccorder automatiquement les angles et intersections avec les lignes de tracé de cadres existantes",
+      "antialiased": "Anticrénelé",
+      "antialiasedTitle": "Bords lisses — utilise des blocs de trame ░▒▓ en mode Bloc plein",
+      "verticalHalves": "Détail en demi-colonnes",
+      "verticalHalvesTitle": "Utiliser les demi-blocs latéraux (▌▐) et quarts de bloc (▝▘▗▖) pour des courbes horizontales plus fluides",
+      "blockChars": "Écrire des blocs",
+      "blockCharsTitle": "Remplacer les cellules touchées par des blocs graphiques ; désactivez pour teinter les caractères existants"
+    },
+    "matchToggles": {
+      "fg": "PP",
+      "fgTitle": "Cellules avec la même couleur de premier plan",
+      "bg": "AP",
+      "bgTitle": "Cellules avec la même couleur d'arrière-plan",
+      "char": "Car.",
+      "charTitle": "Cellules avec le même caractère"
+    },
+    "drawWith": {
+      "label": "Dessiner avec",
+      "normal": "Couleurs seulement",
+      "single": "Ligne simple",
+      "double": "Ligne double",
+      "halfBlock": "Demi-bloc",
+      "fullBlock": "Bloc plein",
+      "character": "Caractère",
+      "cells": "Cellules"
+    }
+  },
+  "toolbar": {
+    "overlay": {
+      "aria": "Incrustation ANSI",
+      "shortLabel": "Incrustation",
+      "title": "Opacité du calque ANSI sur la vue pixel",
+      "styleOverlay": "Incrustation {style}",
+      "styles": {
+        "ansi": "ANSI",
+        "colorAscii": "ASCII couleur",
+        "ascii": "ASCII"
+      },
+      "allCells": "Toutes les cellules",
+      "allCellsTitle": "Afficher aussi les caractères de base convertis, pas seulement vos modifications"
+    },
+    "undo": "Annuler",
+    "undoTitle": "Annuler ({key})",
+    "redo": "Rétablir",
+    "redoTitle": "Rétablir ({key})",
+    "bake": "Figer",
+    "bakeTitle": "Figer : intégrer les effets des curseurs dans l'image source et réinitialiser les curseurs au point neutre. Votre calque d'édition reste intact.",
+    "mergeDown": "Fusionner vers le bas",
+    "mergeDownTitle": "Fusionner vers le bas : intégrer le calque d'édition au calque de base.",
+    "mergeOneFrame": "Fusionner vers le bas s'intègre au calque de base partagé, ce n'est donc disponible que sur une création à image unique.",
+    "clearEdit": "Effacer le calque d'édition",
+    "clearEditTitle": "Effacer le calque d'édition : efface tout ce qui se trouve sur le calque d'édition.",
+    "clearConfirm": "Effacer le calque d'édition ? Tout ce que vous avez peint, tapé ou collé dessus sera supprimé.",
+    "mergeDialog": {
+      "title": "Fusionner vers le bas",
+      "warning": "La fusion vers le bas ne peut pas être annulée lors d'un dessin en commun.",
+      "warnedSub": "{warning} {sub}",
+      "subSelection": "Seul ce qui est dessiné à l'intérieur de la sélection est transféré sur le calque de base ; le reste du calque d'édition reste en place.",
+      "subAll": "Choisissez comment fusionner votre calque d'édition dans le calque de base :",
+      "exactTitle": "Conserver des cellules nettes",
+      "exactText": "Fixe chaque cellule telle qu'affichée. Les filtres d'image comme Contours et Netteté ne l'affecteront pas.",
+      "intoImageTitle": "Fondre dans l'image source",
+      "intoImageText": "Intègre directement à l'image sous-jacente afin que les curseurs et filtres en direct l'affectent aussi.",
+      "originalNote": "Aligne l'image source sur la résolution de travail (comme Figer), donc des filtres comme Contours peuvent varier légèrement cette première fois."
+    },
+    "bakeDialog": {
+      "title": "Figer",
+      "titlePalette": "Figer avec la palette {palette}",
+      "warning": "Cette action ne peut pas être annulée lors d'un dessin en commun.",
+      "subPalette": "Intègre les réglages actuels des curseurs dans l'image source et remet les curseurs à zéro. Comment enregistrer les couleurs ?",
+      "choiceText": "L'image telle qu'elle apparaît devient l'image source, et les curseurs reviennent au point neutre.",
+      "keepFullTitle": "Conserver les couleurs réelles",
+      "keepFullText": "Préserve les dégradés sous-jacents afin qu'un changement de palette ultérieur conserve tous les détails. Quelques cellules en bordure entre les couleurs de {palette} peuvent varier.",
+      "lockPaletteTitle": "S'aligner sur les couleurs {palette}",
+      "lockPaletteText": "Le canevas reste strictement identique au pixel près, ne conservant que les couleurs de {palette}. Revenir en Couleurs réelles par la suite ne restaurera pas les dégradés, sauf en cas d'annulation."
+    },
+    "selection": {
+      "layers": "Calques",
+      "layersAria": "Calques sur lesquels la sélection s'applique",
+      "copyTitle": "Copier ({key})",
+      "cutTitle": "Couper ({key})",
+      "pasteTitle": "Coller les cellules copiées à l'emplacement de la sélection",
+      "pasteElsewhereTitle": "Rien n'a été copié dans cet onglet. Pour coller depuis un autre onglet ou une autre application, utilisez {key}",
+      "delete": "Supprimer",
+      "deleteTitle": "Supprimer (Suppr ou E)",
+      "stamp": "Tampon",
+      "stampTitle": "Tampon : laisser une copie ici et continuer à déplacer le bloc (S ou C)",
+      "flipH": "Retourner horizontalement",
+      "flipHTitle": "Retourner horizontalement (miroir)",
+      "flipV": "Retourner verticalement",
+      "rotateAria": "Pivoter de 90° dans le sens horaire",
+      "rotateTitle": "Pivoter de 90° dans le sens horaire",
+      "rotateCharsDisabled": "Impossible de faire pivoter une sélection contenant des caractères tapés",
+      "mergeUp": "Fusionner vers le haut",
+      "mergeUpSelectionTitle": "Fusionner vers le haut : ce que le calque de base affiche ici devient des cellules d'édition",
+      "mergeDownSelectionTitle": "Fusionner vers le bas : ce qui est dessiné ici s'intègre au calque de base",
+      "deselect": "Désélectionner",
+      "deselectBlockTitle": "Désélectionner : déposer le bloc (Échap ou Entrée)",
+      "dragHint": "Glissez pour sélectionner des cellules, ou :",
+      "selectAll": "Tout sélectionner",
+      "selectAllTitle": "Sélectionner tout le canevas ({key})",
+      "mergeUpAllTitle": "Fusionner vers le haut : ce que le calque de base affiche devient des cellules d'édition, sur l'ensemble du canevas",
+      "mergeDownAllTitle": "Fusionner vers le bas : l'ensemble du calque d'édition s'intègre au calque de base",
+      "setFg": "Appliquer PP",
+      "setFgTitle": "Appliquer PP : applique la couleur de premier plan aux cellules sélectionnées sur les calques actifs",
+      "setFgNoneTitle": "Appliquer PP : votre premier plan est Aucun ; choisissez d'abord une couleur",
+      "setBg": "Appliquer AP",
+      "setBgTitle": "Appliquer AP : chaque cellule sélectionnée prend votre couleur d'arrière-plan, sur les calques actifs",
+      "setBgNoneTitle": "Appliquer AP : votre arrière-plan est Aucun ; choisissez d'abord une couleur",
+      "fill": "Remplir",
+      "fillTitle": "Remplir : chaque pixel sélectionné prend votre couleur de premier plan, sur les calques actifs",
+      "fillNoneTitle": "Remplir : votre premier plan est Aucun ; choisissez d'abord une couleur",
+      "wandDeleteTitle": "Effacer la zone sélectionnée sur les calques actifs (Suppr)",
+      "wandDeselectTitle": "Désélectionner pour que les outils puissent à nouveau peindre partout (Échap)"
+    }
+  },
+  "colors": {
+    "fgAria": "Couleur de premier plan",
+    "fgTitle": "Premier plan : {color} ({key})",
+    "fgNoneTitle": "Premier plan : aucun ({key})",
+    "bgAria": "Couleur d'arrière-plan",
+    "bgTitle": "Arrière-plan : {color} ({key})",
+    "bgNoneTitle": "Arrière-plan : aucun ({key})",
+    "popoverAria": "Sélecteur de couleur",
+    "fg": "PP",
+    "bg": "AP",
+    "swap": "Intervertir",
+    "swapTitle": "Intervertir premier plan et arrière-plan (X ou {key})",
+    "inThisDrawing": "Dans ce dessin",
+    "painted": "{arrow} Peintes ({count})",
+    "none": "Aucun",
+    "noneTitle": "Aucun : conserve la couleur sous-jacente",
+    "recentTitle": "Récente : {hex}"
+  },
+  "palette": {
+    "untitled": "Palette sans titre",
+    "copyName": "Copie de {name}",
+    "forkName": "{name} (personnalisée)",
+    "forkNameNumbered": "{name} (personnalisée {n})",
+    "forkedToast": "Les palettes intégrées sont en lecture seule — modification de votre nouvelle copie, « {name} ».",
+    "wideLastColToast": "Un caractère sur deux colonnes ne peut pas tenir dans la dernière colonne.",
+    "builtins": {
+      "shades": "Trames & blocs",
+      "single": "Lignes simples",
+      "double": "Lignes doubles",
+      "single-double": "Simple → double",
+      "double-single": "Double → simple",
+      "faces": "Visages & enseignes",
+      "arrows": "Flèches",
+      "greek": "Grec & maths",
+      "quadrants": "Quadrants"
+    },
+    "blocks": {
+      "boxDrawing": "Tracé de cadres",
+      "blocks": "Blocs",
+      "shapes": "Formes géométriques",
+      "braille": "Braille",
+      "arrows": "Flèches",
+      "math": "Mathématiques",
+      "miscSymbols": "Symboles divers",
+      "dingbats": "Dingbats",
+      "latin1": "Latin-1",
+      "greek": "Grec",
+      "miscTechnical": "Symboles techniques divers"
+    },
+    "strip": {
+      "slotFilled": "F{n} : {glyph}",
+      "slotEmpty": "F{n} : vide",
+      "slotAria": "F{n}",
+      "prevTitle": "Palette précédente ({key})",
+      "prevAria": "Palette précédente",
+      "palettes": "Palettes de caractères",
+      "nextTitle": "Palette suivante ({key})",
+      "nextAria": "Palette suivante"
+    },
+    "layer": {
+      "dialogAria": "Palettes de caractères",
+      "filterPlaceholder": "Filtrer les palettes…",
+      "filterAria": "Filtrer les palettes",
+      "doneBtn": "◂ Terminé",
+      "editBtn": "Modifier ▸",
+      "newBtn": "＋ Nouvelle",
+      "utf8": "UTF-8",
+      "lockedNote": "Intégrée — la modification crée votre propre copie",
+      "duplicateBtn": "⧉ Dupliquer",
+      "deletePalette": "Supprimer la palette",
+      "aimAtAria": "Cibler F{n}",
+      "clearSlotAria": "Vider l'emplacement",
+      "tabs": {
+        "cp437": "CP437",
+        "unicode": "Unicode",
+        "inDrawing": "Dans ce dessin",
+        "recent": "Récents"
+      },
+      "findPlaceholder": "Collez des caractères, U+2605, ou un nom de bloc",
+      "findAria": "Rechercher ou coller des caractères",
+      "notes": {
+        "codePoint": "Point de code",
+        "pasted": "Caractères collés — cliquez pour ajouter (les glyphes barrés ne rentrent pas dans une cellule).",
+        "inDrawing": "Tous les caractères actuellement présents sur le canevas",
+        "recent": "Caractères récemment utilisés, tous projets confondus"
+      },
+      "hoverDefault": "Survolez un glyphe pour l'inspecter.",
+      "aimingNext": "Remplissage de F{slot} (suivant : F{next}) — cliquez sur un glyphe ci-dessous ou glissez-le sur un emplacement.",
+      "aimingLast": "Remplissage de F{slot} — cliquez sur un glyphe ci-dessous ou glissez-le sur un emplacement.",
+      "unusableChar": "{char} ne peut pas entrer dans une cellule de grille (caractère de contrôle, invisible ou multiple).",
+      "notCp437Warning": "{char} ne fait pas partie de CP437 — enregistré en .utf8ans, ou substitué lors de l'exportation .ans.",
+      "infoCp437": "CP437 {byte}",
+      "infoUtf8Only": "UTF-8 uniquement",
+      "infoCantUse": "inutilisable",
+      "infoWide": "large de 2 cellules",
+      "infoOnSlot": "déjà sur F{slot}",
+      "legendInPalette": "déjà dans cette palette",
+      "legendNotCp437": "hors CP437 (avertissement à l'export .ans)",
+      "legendDoesntFit": "ne rentre pas dans une cellule"
+    }
+  },
+  "status": {
+    "origin": {
+      "edit": "édition",
+      "base": "base"
+    },
+    "panning": "Panoramique",
+    "pickingBg": "Prélèvement de la couleur d'arrière-plan",
+    "pickingFg": "Prélèvement de la couleur de premier plan · ajoutez {shift} pour l'arrière-plan",
+    "straightLine": "ligne droite",
+    "pickColor": "prélever la couleur",
+    "pickBackground": "prélever l'arrière-plan",
+    "spaceKey": "Espace",
+    "pan": "panoramique",
+    "colRow": "Col {col} Lig {row}",
+    "colRowEmpty": "Col — Lig —",
+    "charOrigin": "Car. {char} {origin}",
+    "fgOrigin": "PP {swatch}{hex} {origin}",
+    "bgOrigin": "AP {swatch}{hex} {origin}",
+    "selection": "Sélection {size}",
+    "selectionAt": "à Col {col}, Lig {row}",
+    "pickedColRow": "Prélevé Col {col} Lig {row}",
+    "zoomResetTitle": "Zoom arrière : retour à 100 %",
+    "zoomResetAria": "Zoom {percent} % : retour à 100 %",
+    "domToCanvasTitle": "Rendu sous forme de texte DOM (expérimental). Cliquez pour basculer vers le rendu canevas.",
+    "canvasToDomTitle": "Rendu sur canevas. Cliquez pour basculer vers le rendu texte DOM (expérimental).",
+    "canvas": "Canevas",
+    "dom": "DOM",
+    "smoothOnTitle": "Le texte lissé est activé (glyphes avec anticrénelage). Cliquez pour des contours de pixels nets.",
+    "smoothOffTitle": "Le texte lissé est désactivé (pixels nets). Cliquez pour des glyphes avec anticrénelage.",
+    "smooth": "Lissé",
+    "insertTitle": "Insertion : la frappe décale la ligne vers la droite (touche Inser)",
+    "overwriteTitle": "Refrappe : la frappe remplace la cellule (touche Inser)",
+    "insert": "Insertion",
+    "overwrite": "Refrappe"
+  },
+  "animation": {
+    "toolbarAria": "Animation",
+    "kinds": {
+      "blank": "Vierge — calque d'édition vide (affiche le fantôme)",
+      "duplicate": "Dupliquer — copier l'image actuelle",
+      "wipe": "Effacement — repart de zéro, bloque le fantôme"
+    },
+    "tooLarge": "Le canevas est trop grand pour ajouter des images",
+    "maxFrames": "Max {count} image pour cette taille de canevas | Max {count} images pour cette taille de canevas",
+    "play": "Lecture",
+    "playTitle": "Lecture (L)",
+    "pause": "Pause",
+    "pauseTitle": "Pause (L)",
+    "prevFrame": "Image précédente",
+    "prevFrameTitle": "Image précédente (,)",
+    "nextFrame": "Image suivante",
+    "nextFrameTitle": "Image suivante (.)",
+    "frameAria": "Image",
+    "addFrame": "Ajouter une image",
+    "frameActions": "Actions d'image",
+    "moveEarlier": "Déplacer vers l'avant",
+    "moveLater": "Déplacer vers l'arrière",
+    "deleteFrame": "Supprimer l'image",
+    "fpsTitle": "Images par seconde",
+    "fpsUnit": "ips",
+    "hold": "Maintien",
+    "holdUnit": "s",
+    "holdTitle": "Durée de maintien en secondes (0 = un pas d'image)",
+    "ghost": "Fantôme",
+    "ghostTitle": "Pelure d'oignon : afficher les images précédentes estompées derrière les images vierges",
+    "ghostStrength": "Intensité du fantôme",
+    "ghostStrengthTitle": "Opacité de la pelure d'oignon : {percent} %"
+  },
+  "actions": {
+    "confirmNew": "Vous avez des modifications non enregistrées. Commencer un nouveau projet quand même ?",
+    "confirmOpen": "Vous avez des modifications non enregistrées. Ouvrir {name} quand même ?",
+    "saveProject": "Enregistrer le projet (.phosphor)",
+    "exportAns": "Exporter en .ans",
+    "exportUtf8ans": "Exporter en .utf8ans",
+    "exportAnimatedAns": "Exporter en .ans animé",
+    "exportAnimatedUtf8ans": "Exporter en .utf8ans animé",
+    "exportCast": "Exporter en .cast",
+    "exportGif": "Exporter en .gif",
+    "versions": "Versions",
+    "newProject": "Nouveau projet"
+  },
+  "sauce": {
+    "heading": "Métadonnées SAUCE",
+    "description": "Intégrées dans les fichiers .ans et .utf8ans exportés pour les visionneuses ANSI, les archives et les BBS.",
+    "title": "Titre",
+    "titlePlaceholder": "Jusqu'à 35 caractères",
+    "author": "Auteur",
+    "authorPlaceholder": "Jusqu'à 20 caractères",
+    "group": "Groupe",
+    "groupPlaceholder": "Jusqu'à 20 caractères",
+    "comments": "Commentaires",
+    "commentsPlaceholder": "Notes enregistrées dans le fichier…"
+  },
+  "save": {
+    "fileName": "Nom de fichier",
+    "formats": {
+      "phosphor": {
+        "title": "Enregistrer le projet",
+        "sub": "Enregistre votre projet complet — image source, calques, images et paramètres — pour le rouvrir dans Phosphor."
+      },
+      "ans": {
+        "title": "Exporter en .ans",
+        "sub": "Art ANSI CP437 classique pour les visionneuses traditionnelles, les éditeurs et les BBS."
+      },
+      "ansimation": {
+        "title": "Exporter en .ans animé",
+        "sub": "Flux ANSiMation CP437 classique. La vitesse de lecture dépend de la vitesse en bauds de la visionneuse plutôt que des durées de maintien des images."
+      },
+      "utf8ansimation": {
+        "title": "Exporter en .utf8ans animé",
+        "sub": "Flux ANSiMation UTF-8 pour les terminaux modernes, conservant tous les caractères. La vitesse de lecture dépend du terminal."
+      },
+      "cast": {
+        "title": "Exporter en .cast",
+        "sub": "Enregistrement asciinema pour terminaux et le web — conserve le minutage exact des images et chaque caractère."
+      },
+      "gif": {
+        "title": "Exporter en .gif",
+        "sub": "GIF animé en boucle rendu avec votre police d'affichage actuelle — prêt à être partagé partout."
+      },
+      "utf8ans": {
+        "title": "Exporter en .utf8ans",
+        "sub": "Art ANSI UTF-8 pour les terminaux modernes — conserve chaque caractère et couleur Unicode."
+      }
+    },
+    "tooTall": "À {cols}×{rows}, cela dépasse les terminaux standard 80×25 — les lignes dépassant la fenêtre de lecture seront coupées pendant la lecture.",
+    "cp437Note": "1 caractère n'est pas dans CP437 et sera substitué en .ans : | {count} caractères ne sont pas dans CP437 et seront substitués en .ans :",
+    "replacementsAria": "Substitutions",
+    "becomesAria": "devient",
+    "cellCount": "{count} cellule | {count} cellules",
+    "keepHint": "Exportez en .utf8ans pour conserver les caractères exacts.",
+    "saveFailed": "Impossible d'enregistrer le fichier.",
+    "gifTooLarge": "Cette animation est trop volumineuse pour un GIF. Essayez avec moins d'images ou des dimensions plus petites — ou exportez en .cast, qui n'a pas de limite de taille."
+  },
+  "versions": {
+    "title": "Versions",
+    "sub": "Phosphor enregistre jusqu'à 20 instantanés dans ce navigateur (environ toutes les 5 minutes pendant votre travail). Effacer les données de navigation les supprime : enregistrez un fichier .phosphor pour tout travail que vous souhaitez conserver.",
+    "beforeRestore": "Avant restauration",
+    "empty": "Aucun instantané enregistré pour l'instant.",
+    "readError": "Impossible de lire les versions.",
+    "restoreError": "Impossible de restaurer cette version.",
+    "kb": "{n} Ko",
+    "mb": "{n} Mo"
+  },
+  "autosave": {
+    "failing": "La sauvegarde automatique n'est pas disponible dans ce navigateur. Enregistrez un fichier .phosphor pour conserver votre travail.",
+    "evictedOldest": "L'espace de stockage du navigateur était plein, votre instantané le plus ancien a donc été supprimé pour faire de la place.",
+    "stillFull": "L'espace de stockage du navigateur est plein — même après avoir libéré les anciens instantanés, ce projet ne rentre pas. Enregistrez un fichier .phosphor pour conserver votre travail.",
+    "openFailed": "Impossible de rouvrir ce projet."
+  },
+  "document": {
+    "framesLost": "Impossible de lire les images de ce fichier : il a été ouvert comme une image fixe. L'enregistrer l'écrasera en tant qu'image fixe.",
+    "openImageFailed": "Impossible d'ouvrir « {name} ». Assurez-vous qu'il s'agit d'une image prise en charge ou d'un fichier .phosphor.",
+    "decodeImageFailed": "Impossible de décoder l'image",
+    "blankFailed": "Impossible de créer un canevas vierge.",
+    "invalidProject": "Fichier de projet Phosphor non valide",
+    "loadProjectFailed": "Échec du chargement du fichier de projet : {reason}",
+    "bakeFailed": "Impossible de figer l'image.",
+    "mergeIntoImageFailed": "Impossible de fondre dans l'image."
+  },
+  "shortcuts": {
+    "title": "Raccourcis clavier",
+    "holdKey": "maintenir {key}",
+    "holdSpace": "maintenir Espace",
+    "macFnNote": "Sur les claviers Mac, maintenez Fn pour utiliser F1–F12.",
+    "groups": {
+      "general": "Général",
+      "tools": "Outils",
+      "drawing": "Dessin",
+      "colors": "Couleurs",
+      "editMode": "Mode Édition",
+      "select": "Sélection",
+      "animation": "Animation (avec Animer activé)",
+      "tabs": "Onglets de l'éditeur"
+    },
+    "rows": {
+      "thisList": "Cette liste ({key} en Mode Édition)",
+      "undo": "Annuler",
+      "redo": "Rétablir",
+      "saveProject": "Enregistrer le projet",
+      "pencil": "Crayon",
+      "brush": "Pinceau",
+      "eraser": "Gomme (avec Sélection et une sélection active : l'effacer)",
+      "bucket": "Pot de peinture",
+      "shapes": "Formes",
+      "picker": "Pipette",
+      "wand": "Baguette magique : sélectionner par couleur ou caractère",
+      "hand": "Main",
+      "zoom": "Zoom",
+      "editMode": "Mode Édition — taper des caractères (appuyez sur Échap pour revenir aux raccourcis outils à une touche)",
+      "flip": "Inverser (vue ANSI)",
+      "select": "Sélection",
+      "holdAlt": "Prélever une couleur (Crayon, Pinceau, Pot de peinture, Formes)",
+      "holdAltShift": "Prélever la couleur d'arrière-plan",
+      "holdSpace": "Panoramique, avec n'importe quel outil (ou glisser avec le bouton central)",
+      "openFg": "Ouvrir le sélecteur sur le premier plan",
+      "openBg": "Ouvrir le sélecteur sur l'arrière-plan",
+      "swapColors": "Intervertir premier plan et arrière-plan (X écrit en Mode Édition)",
+      "moveSwatches": "Dans le sélecteur : naviguer entre les échantillons",
+      "pickSwatch": "Dans le sélecteur : choisir et fermer, ou choisir et rester",
+      "moveCursor": "Déplacer le curseur",
+      "homeEnd": "Début ou fin de la ligne",
+      "nextLine": "Début de la ligne suivante",
+      "erase": "Effacer avant ou au curseur",
+      "insertOverwrite": "Insertion ou refrappe",
+      "typeFKey": "Taper le glyphe de l'emplacement de palette",
+      "grabFKey": "Placer le caractère sous le curseur sur cet emplacement",
+      "prevNextPalette": "Palette de caractères précédente ou suivante",
+      "stepFgPalette": "Faire défiler le premier plan dans la palette (ajouter Maj pour l'arrière-plan)",
+      "selectAll": "Tout sélectionner",
+      "copyCutPaste": "Copier, couper, coller",
+      "nudge": "Ajuster la sélection pas à pas",
+      "deleteSelection": "Supprimer ce qui est sélectionné",
+      "stamp": "Tampon : laisser une copie ici et continuer à déplacer le bloc",
+      "deselect": "Désélectionner, en déposant le bloc",
+      "playPause": "Lecture ou pause (toute autre touche met aussi en pause)",
+      "prevNextFrame": "Image précédente ou suivante",
+      "switchTabs": "Lorsqu'un onglet a le focus : changer d'onglet"
+    }
+  },
+  "social": {
+    "unsupported": "Ce navigateur ne prend pas en charge les fonctionnalités de sécurité nécessaires à SOCIAL.",
+    "agreeTerms": "J'ai 13 ans ou plus et j'accepte les {terms}, la {privacy} et les {guidelines}",
+    "nav": {
+      "backToLobby": "‹ Retour au hall",
+      "backToRoom": "‹ Retour à la salle",
+      "cancel": "‹ Annuler",
+      "cancelSignOut": "Annuler et se déconnecter"
+    },
+    "consent": {
+      "title": "Avant d'ouvrir SOCIAL",
+      "regionAria": "Ce que SOCIAL implique pour vous",
+      "intro": "SOCIAL vous permet de regarder des artistes dessiner en direct, de dessiner ensemble ou d'héberger votre propre salle. Voici comment fonctionne votre vie privée.",
+      "lobbyHeading": "Le hall",
+      "lobbyBody": "Ouvrir SOCIAL connecte votre navigateur à notre serveur. Les personnes présentes dans le hall peuvent voir votre nom d'utilisateur (les invités reçoivent un pseudonyme aléatoire de trois mots). Les salles publiques affichent leur hôte, titre, nombre de spectateurs et un aperçu en direct.",
+      "joiningHeading": "Rejoindre une salle",
+      "joiningBody": "Votre navigateur se connecte directement à celui de l'hôte : chacun de vous peut voir l'adresse IP de l'autre. Cela peut révéler votre localisation approximative et votre fournisseur d'accès, utilisez donc un VPN si vous souhaitez la masquer. Le chat transite par le navigateur de l'hôte, et toute personne dans la salle peut le voir et le copier.",
+      "startingHeading": "Créer une salle",
+      "startingBody": "Les personnes que vous admettez voient votre création pendant que vous dessinez, et toute personne qui rejoint peut voir votre adresse IP. Les salles publiques affichent un aperçu dans le hall. Toute personne que vous invitez à dessiner reçoit l'intégralité du projet, y compris l'image originale. Si quelqu'un signale votre salle, nous conservons un instantané du canevas pour examiner et résoudre le signalement.",
+      "beKindHeading": "Bienveillance",
+      "beKindBody": "Ne harcelez pas, ne menacez personne et n'attaquez personne pour ce qu'il est. N'utilisez pas l'adresse IP d'une personne contre elle et ne partagez pas ses informations personnelles. Gardez les salles publiques convenables, respectez le travail des autres et ne signalez que de bonne foi. Les hôtes peuvent retirer ou bloquer des participants, et tout membre connecté avec un e-mail confirmé peut signaler une personne ou une salle."
+    },
+    "joinDialog": {
+      "title": "Rejoindre cette salle ?",
+      "sub": "Vous avez suivi un lien vers celle-ci. La rejoindre connecte directement votre navigateur à celui de l'hôte, qui pourra voir votre adresse IP.",
+      "join": "Rejoindre",
+      "backToYourRoom": "Retourner dans votre salle"
+    },
+    "signals": {
+      "feedback": "Attend des retours",
+      "chat": "Prêt à discuter",
+      "heads-down": "Concentré"
+    },
+    "lobby": {
+      "filterAll": "Toutes",
+      "filterAria": "Filtrer les salles",
+      "reclaimWaiting": "Votre salle {name} vous attend.",
+      "reclaimWaitingDirty": "Votre salle {name} vous attend. {replaces}",
+      "backToYourRoom": "Retourner dans votre salle",
+      "publicRooms": "Salles publiques",
+      "liveCount": "{count} en direct",
+      "startRoom": "Créer une salle",
+      "unavailableHeading": "Impossible de joindre le hall pour le moment",
+      "unavailableBody": "Votre éditeur local continue de fonctionner normalement.",
+      "clockHint": "Si l'horloge de votre appareil est décalée, corrigez l'heure et rechargez la page.",
+      "emptyHeading": "Aucune salle publique en direct pour le moment",
+      "emptyBody": "Créez une salle et votre canevas illuminera le hall.",
+      "emptyFilter": "Aucune salle ne correspond à ce filtre",
+      "you": "Vous",
+      "editAccount": "Gérer le compte",
+      "signOut": "Se déconnecter",
+      "signIn": "Se connecter",
+      "noAccount": "Pas de compte ? {create}",
+      "createOne": "En créer un",
+      "signInHint": "Connectez-vous pour discuter et créer des salles.",
+      "inLobby": "Dans le hall",
+      "confirmToStart": "Confirmez votre adresse e-mail pour créer une salle",
+      "resend": "Renvoyer"
+    },
+    "card": {
+      "moreFor": "Plus pour {name}",
+      "reportRoom": "Signaler la salle",
+      "joinCount": "Rejoindre ({count}/{max})",
+      "liveMinutes": "en direct depuis {min} min",
+      "liveHoursMinutes": "en direct depuis {hr} h {min} min",
+      "metaWithSignal": "{live} · {signal}",
+      "blockedInside": "Une personne que vous avez bloquée se trouve ici"
+    },
+    "picture": {
+      "heading": "Aperçu pour le hall",
+      "exactPosition": "Utiliser cette position exacte"
+    },
+    "start": {
+      "heading": "Configurer votre salle",
+      "noArt": "Ouvrez d'abord une image ou un canevas pour avoir quelque chose à partager.",
+      "roomName": "Nom de la salle",
+      "roomNamePatternTitle": "Utilisez au moins un caractère qui n'est pas un espace",
+      "welcomeMessage": "Message de bienvenue",
+      "charCount": "{count}/{max}",
+      "whoCanJoin": "Qui peut rejoindre",
+      "anyoneInLobby": "Publique dans le hall",
+      "onlyWithLink": "Non répertoriée (lien uniquement)",
+      "passwordOptional": "Mot de passe (optionnel)",
+      "passwordHelp": "Toute personne disposant du lien peut rejoindre — ajoutez un mot de passe pour exiger les deux.",
+      "allowGuests": "Autoriser les invités",
+      "allowGuestsHelp": "Les invités peuvent regarder mais ne peuvent pas discuter ni dessiner. Vous pouvez restreindre aux membres connectés à tout moment.",
+      "maxWatchers": "Spectateurs max",
+      "maxWatchersHelp": "Les salles diffusent directement depuis votre navigateur. Jusqu'à 12 spectateurs convient à la plupart des connexions domestiques.",
+      "lobbyCard": "Carte du hall",
+      "signal": "Signal",
+      "signalHelp": "Affiché sur la carte de votre salle dans le hall.",
+      "goLive": "Passer en direct"
+    },
+    "host": {
+      "liveFor": "En direct depuis {duration}",
+      "endRoom": "Fermer la salle",
+      "sendLinkWithPassword": "Envoyez le lien et le mot de passe aux personnes que vous souhaitez inviter.",
+      "sendLink": "Envoyez le lien aux personnes que vous souhaitez inviter.",
+      "stats": {
+        "hereNow": "Ici actuellement",
+        "max": "Max",
+        "total": "Total",
+        "messages": "Messages",
+        "removed": "Retirés"
+      },
+      "roomSettings": "Paramètres de la salle",
+      "kickGuests": "Retirer aussi l'invité actuellement présent | Retirer aussi les {count} invités actuellement présents",
+      "setAtStart": "Défini au démarrage de la salle",
+      "listedInLobby": "Répertoriée dans le hall",
+      "onlyWithLink": "Accessible uniquement avec le lien",
+      "passwordSet": "Mot de passe défini"
+    },
+    "cameBy": {
+      "heading": "Visiteurs passés",
+      "empty": "Personne n'est encore passé.",
+      "cols": {
+        "name": "Nom",
+        "time": "Durée",
+        "status": "Statut",
+        "messages": "Messages"
+      },
+      "underMinute": "< 1 min",
+      "minutes": "{m} min",
+      "hoursMinutes": "{h} h {m} min",
+      "removedAt": "Retiré à {time}",
+      "leftAt": "Parti à {time}",
+      "here": "Présent actuellement",
+      "andMore": "Afficher {count} de plus"
+    },
+    "menu": {
+      "label": "Salle",
+      "editWelcome": "Modifier le message de bienvenue",
+      "settingsAndStats": "Paramètres et statistiques"
+    },
+    "endDialog": {
+      "title": "Fermer cette salle ?",
+      "sub": "Tous les participants seront déconnectés (y compris les co-artistes) et le chat de la salle sera effacé.",
+      "confirm": "Fermer la salle"
+    },
+    "makeHostDialog": {
+      "title": "Désigner {name} comme hôte ?",
+      "sub": "Vous resterez dans la salle en tant qu'artiste.",
+      "confirm": "Désigner hôte"
+    },
+    "watch": {
+      "joining": "Connexion en cours…",
+      "waiting": "En attente de l'hôte…",
+      "needsPassword": "Cette salle nécessite un mot de passe",
+      "failed": "Impossible de joindre cet hôte",
+      "hostReconnecting": "L'hôte se reconnecte…",
+      "password": "Mot de passe",
+      "wrongPassword": "Mot de passe incorrect",
+      "join": "Rejoindre",
+      "zoomAria": "Zoom",
+      "zoomOutAria": "Zoom arrière",
+      "zoomInAria": "Zoom avant",
+      "artUnavailable": "Ce navigateur ne peut pas afficher l'art de la salle",
+      "artRegionAria": "L'art de la salle",
+      "trackAria": "Suivre {name}",
+      "trackingState": "· suivi en cours",
+      "trackBtn": "Suivre ›"
+    },
+    "pause": {
+      "hostChanging": "Passation vers le nouvel hôte — dessin en pause…",
+      "gettingArt": "Synchronisation du canevas de la salle — dessin en pause…",
+      "hostReconnecting": "En attente de la reconnexion de l'hôte — dessin en pause…"
+    },
+    "cursors": {
+      "goToAria": "Aller à {name}"
+    },
+    "people": {
+      "hereCount": "{count} ici",
+      "whoIsHereAria": "Qui est ici",
+      "connecting": "connexion…",
+      "tracking": "suivi",
+      "lookingAround": "regarde autour",
+      "moreFor": "Plus pour {name}",
+      "kick": "Expulser",
+      "makeHost": "Désigner hôte",
+      "notWhilePaused": "Indisponible pendant que le dessin est en pause.",
+      "backToWatching": "Repasser spectateur",
+      "withdrawInvitation": "Retirer l'invitation",
+      "makeArtist": "Nommer artiste",
+      "kickSession": "Retirer de la salle",
+      "unmute": "Rétablir la parole",
+      "mute": "Masquage discret (vous seul le voyez)",
+      "muteTitle": "Masque ses messages pour tous les autres sans l'avertir.",
+      "blockFuture": "Bloquer de vos salles",
+      "report": "Signaler",
+      "blockTitle": "Bloquer {name} ?",
+      "blockSub": "Il ne pourra rejoindre aucune salle que vous hébergez et quitte celle-ci immédiatement. Débloquez-le depuis votre Compte.",
+      "blockConfirm": "Bloquer",
+      "whoToFollowAria": "Qui suivre",
+      "followAria": "Suivre {name}",
+      "following": "Suivi en cours",
+      "follow": "Suivre",
+      "showEveryone": "Afficher tout le monde",
+      "showBox": "Afficher la boîte"
+    },
+    "chat": {
+      "panelAria": "Chat",
+      "openAria": "Ouvrir le chat",
+      "foldAria": "Replier le chat",
+      "hostedBy": "hébergé par {host}",
+      "exit": "Quitter",
+      "reportRoomAria": "Signaler la salle",
+      "report": "Signaler",
+      "pinnedFromHost": "Note épinglée",
+      "invitedByHost": "{host} vous a invité à dessiner ensemble.",
+      "invitedFallback": "L'hôte vous a invité à dessiner.",
+      "acceptReplacesDirty": "Accepter remplacera votre canevas actuel (vous avez des modifications non enregistrées).",
+      "showCursors": "Afficher les curseurs des autres",
+      "messagesAria": "Messages",
+      "scrollForEarlier": "↑ Faites défiler vers le haut pour les messages précédents",
+      "youJoined": "Vous avez rejoint la salle",
+      "presence": {
+        "joined": "{person} a rejoint la salle",
+        "left": "{person} a quitté la salle",
+        "cameAndWent": "{person} est passé brièvement",
+        "cameBack": "{person} est de retour"
+      },
+      "deletedByHost": "Message supprimé par l'hôte",
+      "fromBlocked": "Message d'une personne que vous avez bloquée",
+      "show": "Afficher",
+      "youSuffix": " (vous)",
+      "reportMessageAria": "Signaler le message de {name}",
+      "deleteMessageAria": "Supprimer le message de {name}",
+      "mutedNote": "Masqué discrètement — visible uniquement entre vous deux",
+      "messageAria": "Message",
+      "sendAria": "Envoyer",
+      "slowDown": "Doucement — attendez un instant avant d'envoyer un autre message.",
+      "silencedUntil": "Vous êtes réduit au silence jusqu'au {until}.",
+      "signInToChat": "Connectez-vous pour discuter",
+      "confirmToChat": "Confirmez votre e-mail pour discuter"
+    },
+    "report": {
+      "titleRoom": "Signaler cette salle ?",
+      "titlePerson": "Signaler {name} ?",
+      "subMessage": "Les modérateurs recevront ce message ainsi que quelques messages précédents pour le contexte.",
+      "subPerson": "Les modérateurs recevront les messages de chat récents de cet utilisateur dans cette salle.",
+      "subRoomInside": "Les modérateurs recevront les aperçus récents du hall ainsi qu'un instantané du canevas actuel.",
+      "subRoomLobby": "Les modérateurs recevront les aperçus récents du hall de cette salle.",
+      "thanks": "Signalé. Merci.",
+      "whatsWrong": "Quel est le problème ?",
+      "reasons": {
+        "spam": "Spam ou inondation",
+        "harassment": "Harcèlement ou haine",
+        "sexual": "Sexuel ou violent",
+        "other": "Autre problème"
+      },
+      "reporting": "Envoi du signalement…",
+      "submit": "Signaler"
+    },
+    "auth": {
+      "usernameLabel": "Nom d'utilisateur",
+      "usernameHelp": "Votre identifiant visible de tous. Lettres, chiffres, - et _.",
+      "emailLabel": "E-mail",
+      "emailOrUsername": "E-mail ou nom d'utilisateur",
+      "passwordLabel": "Mot de passe",
+      "passwordHelp": "Au moins 10 caractères, ne faisant pas partie d'une fuite connue.",
+      "signInHeading": "Connexion",
+      "signInIntro": "Connectez-vous pour discuter et créer des salles.",
+      "continueWith": "Continuer avec {provider}",
+      "signInSubmit": "Se connecter",
+      "forgotPassword": "Mot de passe oublié ?",
+      "createHeading": "Créer un compte",
+      "createIntro": "Un compte vous permet de discuter et de créer des salles sous un nom d'utilisateur qui vous appartient.",
+      "createSubmit": "Créer un compte",
+      "haveAccount": "Vous avez déjà un compte ? {signIn}",
+      "forgotHeading": "Mot de passe oublié ?",
+      "forgotIntro": "Nous vous enverrons un lien par e-mail pour en définir un nouveau.",
+      "sendLink": "Envoyer le lien",
+      "rememberedIt": "Vous vous en souvenez ? {signIn}",
+      "resetHeading": "Définir un nouveau mot de passe",
+      "resetIntro": "Choisissez le mot de passe avec lequel vous vous connecterez désormais.",
+      "newPasswordLabel": "Nouveau mot de passe",
+      "resetPasswordHelp": "Au moins 10 caractères, ne faisant pas partie d'une fuite connue. Le définir vous déconnecte partout ailleurs.",
+      "setPassword": "Définir le mot de passe",
+      "onboardingHeading": "Choisissez votre nom d'utilisateur",
+      "onboardingIntro": "Encore une étape avant de commencer. Vous pourrez le modifier une fois tous les 30 jours.",
+      "twoFactorHeading": "Code d'authentification à deux facteurs",
+      "twoFactorIntro": "Ce compte exige un code à chaque connexion.",
+      "backupCodeLabel": "Code de secours",
+      "totpCodeLabel": "Code de votre application d'authentification",
+      "trustComputer": "Faire confiance à cet ordinateur pendant 30 jours",
+      "verify": "Vérifier",
+      "useAuthenticator": "Utiliser votre application d'authentification",
+      "useBackupCode": "Utiliser un code de secours à la place"
+    },
+    "account": {
+      "heading": "Compte",
+      "usernameHeading": "Nom d'utilisateur",
+      "usernameCooldownHelp": "Une fois tous les 30 jours. Votre couleur et votre glyphe dépendent de votre nom d'utilisateur.",
+      "changeUsernameBtn": "Modifier",
+      "waysHeading": "Moyens de connexion",
+      "emailAndPassword": "E-mail et mot de passe",
+      "changeEmail": "Changer d'e-mail",
+      "changePassword": "Changer de mot de passe",
+      "newEmail": "Nouvel e-mail",
+      "currentPassword": "Mot de passe actuel",
+      "emailHelpVerified": "Nous enverrons d'abord un lien d'approbation à {email}, puis un lien de confirmation à votre nouvelle adresse. Les liens expirent après 1 heure et doivent s'ouvrir dans ce navigateur (jusqu'à 2 modifications par jour).",
+      "emailHelpUnverified": "Nous enverrons un lien de confirmation à votre nouvelle adresse. Les liens expirent après 1 heure et doivent s'ouvrir dans ce navigateur (jusqu'à 2 modifications par jour).",
+      "confirmNewPassword": "Confirmer le nouveau mot de passe",
+      "newPasswordHelp": "Au moins 10 caractères, ne faisant pas partie d'une fuite connue. Le modifier vous déconnecte partout ailleurs.",
+      "passwordsDontMatch": "Ces nouveaux mots de passe ne correspondent pas",
+      "connected": "Connecté",
+      "notConnected": "Non connecté",
+      "disconnect": "Déconnecter",
+      "disconnectAria": "Déconnecter {provider}",
+      "connect": "Connecter",
+      "connectAria": "Connecter {provider}",
+      "needOneWay": "Vous devez conserver au moins un moyen de connexion",
+      "twoFactorHeading": "Authentification à deux facteurs",
+      "backupCodesHelp": "Conservez ces codes de secours en lieu sûr. Chacun fonctionne une seule fois en cas de perte de votre téléphone. Vous ne les reverrez plus.",
+      "scanQrHelp": "Scannez ceci avec votre application d'authentification, ou saisissez la clé :",
+      "qrAria": "Code QR",
+      "codeFromApp": "Code de l'application",
+      "turnOn": "Activer",
+      "turnOff": "Désactiver",
+      "turnOffTwoFactor": "Désactiver l'authentification à deux facteurs",
+      "makeNewCodes": "Générer de nouveaux codes",
+      "recentSignInHelp": "Nécessite une connexion récente datant de moins de 5 minutes.",
+      "twoFactorOn": "Activée. La connexion nécessite un code.",
+      "newBackupCodes": "Nouveaux codes de secours",
+      "twoFactorOff": "Demander un code provenant d'une application d'authentification lors de chaque connexion.",
+      "blockedHeading": "Personnes bloquées",
+      "nobodyBlocked": "Aucune personne bloquée",
+      "unblock": "Débloquer",
+      "unblockAria": "Débloquer {name}",
+      "deleteHeading": "Supprimer le compte",
+      "deleteHelp": "Ceci supprime définitivement votre compte, votre nom d'utilisateur et vos blocages. Cette action est irréversible.",
+      "deleteRecentSignInHelp": "Nécessite une connexion récente datant de moins de 5 minutes.",
+      "deleteForGood": "Supprimer définitivement"
+    },
+    "drawing": {
+      "roomFull": "Cette salle a déjà atteint le nombre maximal d'artistes.",
+      "onlyHost": "Seul l'hôte de la salle peut modifier ceci.",
+      "notWithOthers": "Indisponible pendant que d'autres artistes dessinent.",
+      "backToWatching": "Vous êtes de nouveau spectateur.",
+      "someoneElse": "Quelqu'un d'autre"
+    },
+    "notices": {
+      "checkEmailConfirm": "Consultez votre boîte de réception pour confirmer votre adresse e-mail.",
+      "relinkSignIn": "Pour votre sécurité, veuillez vous reconnecter pour continuer.",
+      "emailConfirmed": "Votre e-mail est confirmé.",
+      "emailChanged": "Votre adresse e-mail a été mise à jour.",
+      "emailApproved": "Approuvé — ouvrez maintenant le lien de confirmation envoyé à votre nouvel e-mail.",
+      "confirmWithProvider": "Confirmez d'abord votre e-mail auprès de Discord ou GitHub.",
+      "resetLinkSentTo": "Un lien est en route vers {email}",
+      "resetLinkIfAccount": "Si cette adresse est associée à un compte, un lien lui a été envoyé",
+      "passwordResetDone": "Mot de passe mis à jour. Connectez-vous avec votre nouveau mot de passe.",
+      "checkEmailApprove": "Consultez {email} pour approuver la modification",
+      "checkEmailConfirmNew": "Consultez {email} pour confirmer",
+      "passwordChanged": "Votre mot de passe a été mis à jour.",
+      "accountDeleted": "Votre compte a été supprimé.",
+      "copyLinkFailed": "Impossible de copier le lien"
+    },
+    "errors": {
+      "fallback": "Une erreur est survenue. Veuillez réessayer.",
+      "network": "Impossible de joindre le serveur de Phosphor. Vérifiez votre connexion.",
+      "termsRequired": "Acceptez les conditions pour continuer",
+      "username": {
+        "length": "Les noms d'utilisateur doivent comporter entre 3 et 24 caractères",
+        "characters": "Utilisez uniquement des lettres, des chiffres, des traits d'union et des tirets bas",
+        "reserved": "Ce nom d'utilisateur est réservé — évitez les termes relatifs à l'équipe ou à Phosphor (admin, mod, support), les noms génériques (test, demo, user) ou trois mots séparés par des traits d'union (utilisés pour les pseudonymes d'invités).",
+        "generic": "Ce nom d'utilisateur n'est pas valide"
+      },
+      "invalidRoom": {
+        "name": "Les noms de salle comportent de 1 à 60 caractères",
+        "password": "Une salle privée nécessite un mot de passe",
+        "max": "Le nombre de spectateurs max est compris entre 1 et 30"
+      },
+      "invalidEmail": "Ceci ne ressemble pas à une adresse e-mail",
+      "emailReserved": "Cette adresse appartient à l'un des domaines de Phosphor. Inscrivez-vous avec Discord ou GitHub en l'utilisant, ou avec une autre adresse e-mail",
+      "emailSame": "Il s'agit déjà de votre adresse e-mail",
+      "emailChangeLimit": "Vous pouvez demander à changer d'e-mail deux fois par jour. Réessayez demain",
+      "signInToConfirm": "Connectez-vous à ce compte ici, puis rouvrez le lien",
+      "noPassword": "Cet e-mail provient de Discord ou GitHub",
+      "taken": "Ce nom d'utilisateur est déjà pris",
+      "tooSoonDate": "Vous pourrez de nouveau changer de nom d'utilisateur le {date}",
+      "tooSoonGeneric": "Vous avez récemment changé de nom d'utilisateur. Réessayez plus tard",
+      "onboardingRequired": "Choisissez un nom d'utilisateur pour finaliser la configuration de votre compte",
+      "suspendedUntil": "Ce compte est suspendu jusqu'au {date}",
+      "suspendedForever": "Ce compte est définitivement suspendu",
+      "bannedUser": "Ce compte est suspendu",
+      "accountNotFound": "Cette méthode de connexion n'est pas associée à votre compte.",
+      "lastWay": "Vous devez conserver au moins un moyen de connexion",
+      "throttled": "Trop de tentatives. Attendez un moment et réessayez",
+      "turnstileFailed": "Nous n'avons pas pu vérifier que vous êtes un humain. Réessayez",
+      "passwordBreached": "Ce mot de passe est apparu dans une fuite de données. Choisissez-en un autre",
+      "passwordTooShort": "Les mots de passe doivent comporter au moins 10 caractères",
+      "emailNotVerified": "Confirmez d'abord votre e-mail — consultez votre boîte de réception pour trouver le lien.",
+      "verifyEmail": "Consultez votre boîte de réception pour confirmer votre e-mail.",
+      "useRename": "Utilisez Modifier le nom d'utilisateur pour renommer votre compte",
+      "sessionExpired": "Votre session a expiré. Reconnectez-vous",
+      "invalidToken": "Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau.",
+      "invalidEmailOrPassword": "Cet e-mail ou nom d'utilisateur et ce mot de passe ne correspondent pas",
+      "invalidPassword": "Ce mot de passe ne correspond pas",
+      "invalidCode": "Ce code n'est pas correct",
+      "invalidBackupCode": "Ce code de secours n'est pas correct ou a déjà été utilisé",
+      "tooManyAttempts": "Trop de codes erronés. Attendez quelques minutes avant de vous reconnecter",
+      "twoFactorExpired": "Le délai est dépassé. Reconnectez-vous",
+      "userAlreadyExists": "Un compte utilise déjà cette adresse e-mail",
+      "room": {
+        "unavailable": "Cette salle n'est pas disponible",
+        "signedInOnly": "Membres connectés uniquement",
+        "wrongPassword": "Mot de passe incorrect",
+        "full": "La salle est pleine",
+        "ended": "L'hôte a fermé la salle",
+        "removed": "L'hôte vous a retiré de la salle",
+        "replaced": "Vous regardez cette salle dans un autre onglet"
+      },
+      "roomAway": "Votre salle a été fermée pendant votre absence.",
+      "undoReset": "L'hôte a changé, l'historique d'annulation repart donc à zéro. Tout le dessin reste intact.",
+      "undoRestart": "Votre historique d'annulation repart à zéro. Tout le dessin reste intact.",
+      "newHostPlanned": "{old} a désigné {name} comme hôte.",
+      "newHostLeft": "{old} a quitté la salle. {name} est maintenant l'hôte.",
+      "refusedUndo": "Ceci ne peut plus être annulé.",
+      "refusedRedo": "Ceci ne peut plus être rétabli.",
+      "backAsArtist": "{name} est maintenant l'hôte. Ce qui était ouvert a été sauvegardé : ouvrez un nouvel onglet, c'est sous « Reprendre là où vous vous étiez arrêté ».",
+      "goingBackReplaces": "Revenir en arrière remplacera votre création ouverte, qui contient des modifications non enregistrées.",
+      "artNotOpened": "Impossible d'ouvrir l'art de la salle.",
+      "goingBackFailed": "Impossible de retourner dans votre salle.",
+      "hostReplaced": "Cette salle est ouverte dans un autre onglet"
+    }
+  }
+}

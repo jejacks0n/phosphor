@@ -253,6 +253,21 @@ test('the Privacy Policy and the Terms say artists get the whole project, and th
   await expect(terms).toContainText('Last updated: November 1, 2026.');
 });
 
+test('in French, the Terms and the Privacy Policy they link to are the French copy', async ({ page }) => {
+  await fakeServer(page);
+  await page.goto('/');
+  await page.getByRole('combobox', { name: 'Language' }).selectOption('fr');
+  await tab(page, 'SOCIAL').click();
+  await page.getByRole('dialog', { name: 'Avant d\'ouvrir SOCIAL' }).getByRole('button', { name: 'Conditions d\'utilisation', exact: true }).click();
+  const terms = page.getByRole('dialog', { name: 'Conditions d\'utilisation' });
+  await expect(terms.getByRole('heading', { level: 1 })).toHaveText('Conditions d\'utilisation');
+  await expect(terms).toContainText('Dernière mise à jour : 1er novembre 2026.');
+  await terms.getByRole('button', { name: 'Politique de confidentialité' }).first().click();
+  const privacy = page.getByRole('dialog', { name: 'Politique de confidentialité' });
+  await expect(privacy.getByRole('heading', { level: 1 })).toHaveText('Politique de confidentialité');
+  await expect(privacy).not.toContainText('Last updated');
+});
+
 test('the Terms, Privacy Policy and Guidelines open over the modal, and coming back leaves it and its tick as they were', async ({ page }) => {
   await fakeServer(page);
   await page.goto('/');
