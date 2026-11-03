@@ -293,6 +293,24 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   foreground color (to start), background color and/or character, as edit cells. **Contiguous**
   works as in Normal mode; there's no Feathering. Cells fills text and lines too, since it's
   matching cells rather than flowing around them.
+- **Paint Bucket**'s **Gradient** choice fills with a blend from your foreground color to your
+  background color instead of one color. **Solid** (to start) is the plain fill. In **Linear** and
+  **Spherical** you drag a line, which shows while you drag, and the fill lands when you let go. The
+  area is the bucket's usual one: the selection if there is one, otherwise what a click where the
+  drag starts would fill, by the same Tolerance, Contiguous, Feathering and Match. **Linear** is
+  foreground where you press and background where you let go, with the bands square to the line, so
+  a diagonal drag makes a diagonal gradient. Before the press it stays foreground, and past the
+  release it stays background. **Spherical** is a circle: foreground at the press, background as far
+  out as the line is long, and evenly between. **Shift** snaps the line to steps of 45°. A click
+  without a drag fills with solid foreground, and a drag with either color set to None fills nothing
+  and says why. In the pixel view, and in the ANSI view's Normal mode, every grid pixel gets its own
+  blended color (blended in sRGB), at the Brush opacity. With the CGA or VGA palette or a color list,
+  the blend shows in the palette's colors, banded, as any paint does, and comes back smooth in full
+  color. In the ANSI view's **Cells**, the gradient is built from characters in your two colors
+  only: █, ▓, ▒, ░ and then a space in the background color. Where two of those meet, the cells mix
+  them in an ordered pattern so the bands don't show as hard lines. Where the blend changes faster
+  than a cell can show, a half-block (▀ ▄ ▌ ▐) puts the edge mid-cell. Set doesn't apply to a
+  gradient: it gives each cell its character and both colors. A gradient is one undo step.
 - **Color Picker**'s **FG** and **BG** toggles choose what a pick sets; both lit sets both.
 - **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
   selection's size and place, and the Color Picker its last pick and where each color came from.
@@ -326,6 +344,8 @@ These work in both the ANSI and the pixel view, for as long as you hold the key:
   ended (with either of them, in either view) to where you click, and keeps going if you drag.
 - **Shift**, while dragging a shape: a Rectangle becomes a square and an Ellipse a circle, and a Line
   snaps to steps of 45°. A Single or Double line runs only straight across or down, Shift or not.
+- **Shift**, while dragging the Paint Bucket's Linear or Spherical gradient: the line snaps to steps
+  of 45°.
 - **Space**, with any tool: the Hand, to drag the view around (the middle mouse button does too).
   Space still types in Edit Mode and in text fields.
 
