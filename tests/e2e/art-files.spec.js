@@ -55,6 +55,7 @@ async function dropOn(page, selector, bytes, name, at = null) {
 }
 
 const question = (page) => page.getByRole('dialog');
+const frames = (page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
 
 test('a .ans dropped on the drawing can be added where it lands, as one undo step', async ({ page }) => {
   await openApp(page);
@@ -101,13 +102,45 @@ test('Cancel leaves the drawing as it was', async ({ page }) => {
   expect(await store(page, 'workspace', (w) => w.artDrop)).toBe(null);
 });
 
-test('dropped beside the drawing, an added file lands at the view\'s top-left', async ({ page }) => {
-  await openApp(page);
+test('dropped beside the drawing, an added file lands at the top-left of the view', async ({ page }) => {
+  await openApp(page, 'images/tall.png');
+  await frames(page); // the view has its place
+  await page.locator('.ansi-editor > article').evaluate((el) => { el.scrollTop = 3000; });
+  await frames(page);
+  const { col, row } = await store(page, 'workspace', (w) => w.ansiViewOrigin);
+  expect(row).toBeGreaterThan(0);
   await dropOn(page, 'article.drop-zone', tiny, 'tiny.ans', { x: 1, y: 1 });
   await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
-  const { col, row } = await store(page, 'workspace', (w) => w.ansiViewOrigin);
   await expect.poll(() => chars(page, row, col, col + 2)).toBe('ABC'); // once the file is read
   expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: col, r0: row, c1: col + 2, r1: row + 1 });
+});
+
+test('dropped on the SAUCE tab, an added file lands in the art view last shown, and that view comes back', async ({ page }) => {
+  await openApp(page);
+  const { col, row } = await store(page, 'workspace', (w) => w.ansiViewOrigin);
+  await tab(page, 'SAUCE').click();
+  await dropOn(page, 'article.drop-zone', tiny, 'tiny.ans');
+  await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
+  await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
+  await expect.poll(() => chars(page, row, col, col + 2)).toBe('ABC');
+  expect(await store(page, 'workspace', (w) => ({ tool: w.activeTool, selection: w.selection }))).toEqual({ tool: 'select', selection: { c0: col, r0: row, c1: col + 2, r1: row + 1 } });
+});
+
+test('added while an animation plays, the file lands on the frame showing, paused there', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('switch', { name: 'Animate' }).check();
+  const bar = page.getByRole('toolbar', { name: 'Animation' });
+  await bar.getByRole('button', { name: 'Add frame' }).click();
+  await page.getByRole('button', { name: /^Blank/ }).click();
+  await bar.getByRole('button', { name: 'Play' }).click();
+  await expect(bar.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
+  await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
+  await expect(bar.getByRole('button', { name: 'Play' })).toBeVisible(); // paused
+  await expect.poll(() => chars(page, 4, 10, 12)).toBe('ABC');
+  const frame = await store(page, 'project', (p) => p.frame);
+  await expect(bar.getByTestId('frame-indicator')).toHaveText(`${frame + 1} / 2`); // the frame edited is the one showing
+  expect(await store(page, 'workspace', (w) => w.playing)).toBe(false);
 });
 
 test('with others drawing, the question offers no Open instead', async ({ page }) => {

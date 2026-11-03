@@ -8,6 +8,7 @@ import { toast } from '@/composables/useToast';
 import { isProjectFile } from '@/document/projectIO';
 import { isArtFile, readArtFile } from '@/lib/ArtFile';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
+import { usePlayback } from '@/composables/usePlayback';
 
 import EditTabs from '@/components/EditTabs.vue';
 import ZeroState from '@/components/ZeroState.vue';
@@ -32,6 +33,7 @@ const workspace = useWorkspaceStore();
 const drawing = useDrawingStore();
 const social = useSocialStore();
 useKeyboardShortcuts(project, workspace);
+const playback = usePlayback();
 
 onMounted(() => project.render());
 watch(() => project.processParams, () => project.render(), { deep: true });
@@ -72,7 +74,7 @@ async function chooseArt(choice) {
     if (project.isDirty && !confirm(`You have unsaved changes. Open ${file.name} anyway?`)) return;
     return openArt(file);
   }
-  if (project._paused) return; // refused, as a paste is
+  if (playback.playing) playback.pause(); // it lands on the frame showing
   let art;
   try {
     art = readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
@@ -80,7 +82,10 @@ async function chooseArt(choice) {
     if (!error.userMessage) throw error;
     return toast(error.userMessage);
   }
-  const { col, row } = at ?? (workspace.editorTab === 'output' ? workspace.ansiViewOrigin : workspace.pixelViewOrigin);
+  if (project._paused) return; // refused, as a paste is
+  // Dropped beside the drawing (or on the SAUCE tab): the top-left of the art view last shown, which comes back.
+  workspace.editorTab = workspace.viewTab;
+  const { col, row } = at ?? (workspace.viewTab === 'output' ? workspace.ansiViewOrigin : workspace.pixelViewOrigin);
   const pasted = project.pasteSelection({ w: art.cols, h: art.rows, cells: art.cells }, col, row); // a block's h is lines, as the reader's rows are
   if (pasted) workspace.selectAll(pasted); // selected, with the Select tool, to drag into place
 }
