@@ -63,72 +63,7 @@ export default class Canvas {
       return this;
     }
 
-    let srcData;
-    const srcCtx = (typeof source.getContext === 'function') ? ctx2d(source) : null;
-
-    if (srcCtx) {
-      srcData = srcCtx.getImageData(0, 0, sw, sh).data;
-    } else {
-      // Source is likely a WebGL canvas. In Safari, drawImage(webglCanvas)
-      // is often more reliable than readPixels for capturing the backbuffer.
-      const temp = document.createElement('canvas');
-      temp.width = sw;
-      temp.height = sh;
-      const tctx = ctx2d(temp);
-      tctx.drawImage(source, 0, 0);
-      srcData = tctx.getImageData(0, 0, sw, sh).data;
-    }
-
-    // For 'medium' and 'high', we do manual box averaging
-    const image = this.ctx.createImageData(tw, th), out = image.data;
-    for (let i = 3; i < out.length; i += 4) out[i] = 255; // black
-    const xRatio = sw / dw;
-    const yRatio = sh / dh;
-
-    let step = (quality === 'medium') ? 2 : 1;
-
-    for (let y = 0; y < dh; y++) {
-      const targetY = y + dy;
-      if (targetY < 0 || targetY >= th) continue;
-
-      for (let x = 0; x < dw; x++) {
-        const targetX = x + dx;
-        if (targetX < 0 || targetX >= tw) continue;
-
-        let r = 0, g = 0, b = 0, a = 0;
-        let count = 0;
-
-        const syStart = Math.floor(y * yRatio);
-        const syEnd = Math.floor((y + 1) * yRatio);
-        const sxStart = Math.floor(x * xRatio);
-        const sxEnd = Math.floor((x + 1) * xRatio);
-
-        for (let sy = syStart; sy < syEnd; sy += step) {
-          for (let sx = sxStart; sx < sxEnd; sx += step) {
-            const idx = (sy * sw + sx) * 4;
-            r += srcData[idx];
-            g += srcData[idx + 1];
-            b += srcData[idx + 2];
-            a += srcData[idx + 3];
-            count++;
-          }
-        }
-
-        if (count === 0) {
-          const idx = (Math.floor(syStart) * sw + Math.floor(sxStart)) * 4;
-          r = srcData[idx]; g = srcData[idx + 1]; b = srcData[idx + 2]; a = srcData[idx + 3];
-          count = 1;
-        }
-
-        const o = (targetY * tw + targetX) * 4;
-        out[o] = Math.round(r / count);
-        out[o + 1] = Math.round(g / count);
-        out[o + 2] = Math.round(b / count);
-        out[o + 3] = (((a / count) / 255.0) || 1.0) * 255; // an empty block is written opaque
-      }
-    }
-
-    this.ctx.putImageData(image, 0, 0);
+    this.ctx.putImageData(boxFiltered(source, tw, th, dx, dy, dw, dh, quality === 'medium' ? 2 : 1), 0, 0);
     return this;
   }
 
@@ -136,3 +71,77 @@ export default class Canvas {
     return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data;
   }
 }
+
+// A source (a canvas, WebGL's too) box-filtered into dx, dy, dw, dh of a new tw x th ImageData,
+// black (opaque) around it: each target pixel the average of the source pixels it covers (every
+// step-th each way), or the one it falls in when it covers none (scaled up). An ImageData, not a
+// canvas, so it can be taller than a canvas can (By shape's samples of a long grid).
+export function boxFiltered(source, tw, th, dx, dy, dw, dh, step = 1) {
+  const sw = source.width;
+  const sh = source.height;
+
+  let srcData;
+  const srcCtx = (typeof source.getContext === 'function') ? ctx2d(source) : null;
+
+  if (srcCtx) {
+    srcData = srcCtx.getImageData(0, 0, sw, sh).data;
+  } else {
+    // Source is likely a WebGL canvas. In Safari, drawImage(webglCanvas)
+    // is often more reliable than readPixels for capturing the backbuffer.
+    const temp = document.createElement('canvas');
+    temp.width = sw;
+    temp.height = sh;
+    const tctx = ctx2d(temp);
+    tctx.drawImage(source, 0, 0);
+    srcData = tctx.getImageData(0, 0, sw, sh).data;
+  }
+
+  const image = new ImageData(tw, th), out = image.data;
+  for (let i = 3; i < out.length; i += 4) out[i] = 255; // black
+  const xRatio = sw / dw;
+  const yRatio = sh / dh;
+
+  for (let y = 0; y < dh; y++) {
+    const targetY = y + dy;
+    if (targetY < 0 || targetY >= th) continue;
+
+    for (let x = 0; x < dw; x++) {
+      const targetX = x + dx;
+      if (targetX < 0 || targetX >= tw) continue;
+
+      let r = 0, g = 0, b = 0, a = 0;
+      let count = 0;
+
+      const syStart = Math.floor(y * yRatio);
+      const syEnd = Math.floor((y + 1) * yRatio);
+      const sxStart = Math.floor(x * xRatio);
+      const sxEnd = Math.floor((x + 1) * xRatio);
+
+      for (let sy = syStart; sy < syEnd; sy += step) {
+        for (let sx = sxStart; sx < sxEnd; sx += step) {
+          const idx = (sy * sw + sx) * 4;
+          r += srcData[idx];
+          g += srcData[idx + 1];
+          b += srcData[idx + 2];
+          a += srcData[idx + 3];
+          count++;
+        }
+      }
+
+      if (count === 0) {
+        const idx = (Math.floor(syStart) * sw + Math.floor(sxStart)) * 4;
+        r = srcData[idx]; g = srcData[idx + 1]; b = srcData[idx + 2]; a = srcData[idx + 3];
+        count = 1;
+      }
+
+      const o = (targetY * tw + targetX) * 4;
+      out[o] = Math.round(r / count);
+      out[o + 1] = Math.round(g / count);
+      out[o + 2] = Math.round(b / count);
+      out[o + 3] = (((a / count) / 255.0) || 1.0) * 255; // an empty block is written opaque
+    }
+  }
+
+  return image;
+}
+

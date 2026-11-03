@@ -117,8 +117,8 @@ test('a set with no one-column characters still renders', async () => {
   expect(p.cells.every((c) => c.char === '▄' || c.char === '█')).toBe(true);
 });
 
-test('an odd number of pixel rows renders, and equals a full rebuild', async () => {
-  const p = await gradient({ rows: 31, quantize: 'cga', charChoice: 'best', chars: SHADES, dither: 100, ditherStyle: 'floyd' });
+for (const charChoice of ['best', 'shape']) test(`an odd number of pixel rows renders, and equals a full rebuild (${charChoice})`, async () => {
+  const p = await gradient({ rows: 31, quantize: 'cga', charChoice, chars: SHADES, dither: 100, ditherStyle: 'floyd' });
   expect(p.cells.length).toBe(40 * 15);
   expect(key(p.cells)).toEqual(key(fullRebuild(p)));
 });
@@ -273,4 +273,30 @@ test('processImage makes By shape\'s samples only under By shape: 4 a grid pixel
   p.charChoice = 'shape';
   const { samples } = await processImage(p.image, p.processParams);
   expect([samples.width, samples.height]).toEqual([40 * 4, 40 * 4]);
+});
+
+test('By shape on a grid whose samples are taller than a canvas can be (rows x 4 over 32,767)', async () => {
+  const { project: p } = await createTestApp();
+  await loadImage(p, '/tests/fixtures/images/gradient.png', { cols: 4, rows: 8200 });
+  // Chromium draws a canvas that tall; Firefox and Safari don't (32,767 at most a side): no canvas may be.
+  const height = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'height');
+  Object.defineProperty(HTMLCanvasElement.prototype, 'height', { ...height, set(v) {
+    if (v > 32767) throw new RangeError(`a canvas ${v} tall`);
+    height.set.call(this, v);
+  } });
+  let samples;
+  try {
+    Object.assign(p, { quantize: 'cga', charChoice: 'shape', chars: SHADES });
+    await settle(p);
+    ({ samples } = await processImage(p.image, p.processParams));
+  } finally {
+    Object.defineProperty(HTMLCanvasElement.prototype, 'height', height);
+  }
+  expect([samples.width, samples.height]).toEqual([16, 32800]);
+  const { dy, dh } = p.fit; // the picture's rows, in the middle of the grid: sampled, not black
+  let lit = 0;
+  for (let y = dy * 4; y < (dy + dh) * 4; y++) for (let x = 0; x < 16; x++) lit += samples.data[(y * 16 + x) * 4] + samples.data[(y * 16 + x) * 4 + 2];
+  expect(lit).toBeGreaterThan(0);
+  const lines = p.cells.slice(Math.ceil(dy / 2) * 4, Math.floor((dy + dh) / 2) * 4);
+  expect(lines.some((c) => c.fg.hex.toLowerCase() !== '#000000' || c.bg.hex.toLowerCase() !== '#000000')).toBe(true);
 });

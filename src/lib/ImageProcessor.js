@@ -3,7 +3,7 @@
  */
 
 import { rgb2hex, hex2rgb, parseColorList, PALETTES } from './ColorUtils.js';
-import Canvas, { fitRect, ctx2d } from './Canvas.js';
+import Canvas, { fitRect, ctx2d, boxFiltered } from './Canvas.js';
 import WebGLProcessor from './WebGLProcessor.js';
 import quantizeColors from './Quantizer.js';
 import { snapsLate, SAMPLES } from './CharResolver.js';
@@ -151,8 +151,8 @@ export function workingScale(image, params) {
 // The picture at cols x rows, and its palette (none for the Number palette: Renderer picks it). Under
 // By shape (charMode 'shape', unless samples is false) its samples too: the processed picture at
 // SAMPLES' 4 a grid pixel each way (cols*4 x rows*4), black around it, unsnapped (the shader doesn't
-// snap under By shape), box-averaged down or repeated up from the scale it was processed at; else
-// samples is null.
+// snap under By shape), box-averaged down or repeated up from the scale it was processed at (an
+// ImageData, never a canvas: a long grid's would be taller than a canvas can be); else null.
 export async function processImage(image, params, { samples = true } = {}) {
   const { cols, rows, smoothing } = params;
   const { dx, dy, dw, dh, pw, ph, glParams } = prepare(image, params);
@@ -166,12 +166,8 @@ export async function processImage(image, params, { samples = true } = {}) {
   canvas.ctx.imageSmoothingQuality = smoothing;
   // Fit by the image's natural aspect (the store's fit), not pw x ph
   canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
-  let sampled = null;
-  if (samples && params.charMode === 'shape') {
-    const s = SAMPLES.w; // a grid pixel's samples each way (a cell is two grid pixels tall)
-    sampled = new Canvas().resize(cols * s, rows * s).drawManual(glProcessor.canvas, dx * s, dy * s, dw * s, dh * s, 'high');
-    sampled = sampled.ctx.getImageData(0, 0, cols * s, rows * s);
-  }
+  const s = SAMPLES.w; // a grid pixel's samples each way (a cell is two grid pixels tall)
+  const sampled = samples && params.charMode === 'shape' ? boxFiltered(glProcessor.canvas, cols * s, rows * s, dx * s, dy * s, dw * s, dh * s) : null;
 
   // Quantization happens after paint is composited (Renderer), not here. The Number palette is picked
   // there too, from the composited picture (Renderer.composite), so it isn't worked out here.
