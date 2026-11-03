@@ -10,10 +10,12 @@ The base layer is your image. When you load a picture (or start with a blank can
 
 1. It shrinks the picture to the grid, two colors per cell: one for the top half and one for the
    bottom half.
-2. It picks a character for each cell from your **Characters** set — at random from the
-   **Character seed** (the dice re-rolls it), or by weight in the ASCII styles: Monochrome ASCII
-   by brightness, and Color ASCII by intensity (a cell's strongest color), so pure red, green or blue
-   gets as heavy a character as white.
+2. It picks a character for each cell from your **Characters** set, the way **Choose characters**
+   says: at random from the **Character seed** (the dice re-rolls it), or by weight in the ASCII
+   styles: Monochrome ASCII by brightness, and Color ASCII by intensity (a cell's strongest color),
+   so pure red, green or blue gets as heavy a character as white. **Best match** and **By shape**
+   choose the character from the picture itself; [Characters](characters.md#how-the-converter-picks-characters)
+   describes all three.
 
 In Monochrome ASCII every cell shows white on black, but what you paint still picks the characters by its
 brightness, so on the ANSI tab the foreground and background show as the grays they act as.
@@ -62,7 +64,7 @@ round on top of the result. Nothing on the canvas changes when you bake:
   edits to the base, so baking burns them in; the same goes for your color pair and anything
   you've copied.
 - The color palette isn't baked: it keeps applying afterwards.
-- With the CGA or VGA palette, Bake asks how to keep the colors (not with Dither on: then it bakes exactly, as other palettes do):
+- With the CGA or VGA palette, Bake asks how to keep the colors (not with Dither on, or with Best match or By shape: then it bakes exactly, as other palettes do):
   - **Keep full color** (the default): the picture keeps its in-between colors, so switching the
     palette later still has them. A few cells near the edges between palette colors can come out
     as the neighboring color, more with many sliders on.
@@ -156,6 +158,10 @@ picture and your base edits, two pixels a cell like everything else, so more col
 pattern. Paint isn't dithered: it snaps to its nearest palette color, so a color you paint with
 shows as that color, and painting doesn't stir the pattern around your stroke. Erasing or moving
 base pixels can: with Floyd–Steinberg, the pattern after the change shifts with it.
+
+With **Best match** or **By shape** choosing the characters, Dither works on the cells instead of
+the pixels: Floyd–Steinberg carries each cell's error on to the cells after it, and Ordered (Bayer)
+nudges each cell by its place in the grid. See [Characters](characters.md#how-the-converter-picks-characters).
 
 ## Moving things between layers
 

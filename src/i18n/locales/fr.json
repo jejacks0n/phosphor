@@ -134,6 +134,14 @@
       "placeholder": "Caractères…",
       "setsAria": "Préréglages de caractères"
     },
+    "charChoice": {
+      "label": "Choix des caractères",
+      "random": "Aléatoire",
+      "best": "Meilleure correspondance",
+      "shape": "Par forme",
+      "intensity": "Par intensité",
+      "brightness": "Par luminosité"
+    },
     "seed": {
       "label": "Graine de caractères",
       "placeholder": "Graine",
@@ -171,7 +179,7 @@
       "help": "L'ANSI colore chaque caractère et son arrière-plan. L'ASCII couleur dessine des caractères colorés sur fond noir, en utilisant des glyphes plus denses pour les couleurs plus intenses. L'ASCII monochrome n'utilise qu'une couleur, faisant correspondre la luminosité du clair au dense."
     },
     "chars": {
-      "help": "Caractères parmi lesquels le convertisseur choisit — aléatoirement pour l'ANSI, ou du sombre au clair pour l'ASCII. Répétez un caractère pour augmenter sa fréquence d'apparition."
+      "help": "Caractères parmi lesquels le convertisseur choisit — aléatoirement pour l'ANSI, ou du sombre au clair pour l'ASCII. Répétez un caractère pour augmenter sa fréquence d'apparition. La meilleure correspondance et le choix par forme ignorent les répétitions."
     },
     "seed": {
       "help": "Contrôle la disposition aléatoire des caractères en mode ANSI. Même graine, même motif — lancez le dé pour mélanger."
@@ -187,7 +195,7 @@
     },
     "dither": {
       "label": "Tramage",
-      "help": "Mélange les couleurs de la palette en un motif fin là où l'image tombe entre elles, pour des dégradés lisses plutôt qu'en bandes. La peinture garde sa propre couleur."
+      "help": "Mélange les couleurs de la palette en un motif fin là où l'image tombe entre elles, pour des dégradés lisses plutôt qu'en bandes. La peinture garde sa propre couleur. Avec la meilleure correspondance ou le choix par forme, les caractères le font passer d'une cellule à l'autre."
     },
     "smoothing": {
       "help": "Détermine la façon dont l'image est échantillonnée sur la grille. Élevé fond les transitions en douceur ; Faible préserve les bords nets et le grain."
@@ -263,21 +271,22 @@
       "help": "Contrôle l'épaisseur des contours tracés."
     },
     "charChoice": {
-      "help": "Comment chaque cellule reçoit son caractère."
+      "help": "Aléatoire choisit dans votre jeu selon la graine. La meilleure correspondance choisit le caractère et ses deux couleurs de palette qui se rapprochent le plus de l'image. Par forme compare la forme de chaque caractère au détail de l'image dans la cellule."
     },
     "solids": {
       "label": "Aplats",
-      "help": "La part de l'image que les blocs pleins peuvent prendre."
+      "help": "À quel point une cellule pleine unie est préférée à une trame ou à un demi-bloc."
     },
     "patternLight": {
       "label": "Lumière des motifs",
-      "help": "Le degré de clarté des motifs de points et de lignes."
+      "help": "La façon dont l'encre d'un caractère mélange ses deux couleurs : 0 % est une moyenne simple, 100 % les mélange comme le fait la lumière sur un écran, si bien que les trames paraissent plus claires."
     }
   },
   "charsets": {
     "default": "Par défaut",
     "defaultBlocks": "Par défaut +   ▂▃▅",
     "shades": "Trames",
+    "blocksShades": "Blocs et ombres",
     "risingBlocks": "Blocs progressifs",
     "halfBlocks": "Demi-blocs",
     "pixel": "Pixel",
