@@ -472,13 +472,19 @@ div.themes input { /* unseen, over its label: the label's look, the radio's beha
 
 @media (max-width: 480px) { /* a phone upright: the tabs give way, so the switch stays on screen */
   button.tab {
-    padding: 5px 12px;
+    padding: 5px 8px;
+  }
+}
+
+@media (max-width: 400px) { /* four art tabs: the switch keeps its icon */
+  span.word {
+    display: none;
   }
 }
 
 @media (max-width: 340px) {
-  span.word {
-    display: none;
+  button.tab {
+    padding: 5px 6px;
   }
 }
 </style>
