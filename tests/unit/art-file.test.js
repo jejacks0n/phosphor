@@ -33,6 +33,12 @@ test('another extension is UTF-8 only when it is valid UTF-8 with a multi-byte s
   assert.equal(text(readArtFile(utf('abc'), 'a.txt')), 'abc');
 });
 
+test('a UTF-8 byte-order mark makes the file UTF-8 and is not a cell', () => {
+  const art = readArtFile(Uint8Array.from([0xef, 0xbb, 0xbf, 0x41, 0x42]), 'a.txt');
+  assert.equal(art.cols, 2);
+  assert.equal(text(art), 'AB');
+});
+
 test('CP437 shows control bytes other than 7, 8, 9, 10, 13, 26 and 27 as glyphs', () => {
   const art = readArtFile(Uint8Array.from([1, 2, 7, 65]), 'a.txt');
   assert.equal(text(art), '☺☻A');
@@ -128,6 +134,18 @@ test('K erases to the end of the line in the current background and counts as re
   assert.equal(at(loose, 4, 1).bg, '#aa0000');
 });
 
+test('K under inverse erases with the swapped colors', () => {
+  const art = read('\x1b[7;44mA\x1b[K');
+  assert.deepEqual(at(art, 0), { char: 'A', fg: '#0000aa', bg: '#aaaaaa' });
+  assert.deepEqual(at(art, 1), { char: ' ', fg: '#0000aa', bg: '#aaaaaa' });
+  assert.deepEqual(at(art, 79), { char: ' ', fg: '#0000aa', bg: '#aaaaaa' });
+});
+
+test('a 0 in a cursor position is the first row or column', () => {
+  assert.equal(at(read('AB\r\nCD\x1b[0;0HX'), 0, 0).char, 'X');
+  assert.equal(at(read('AB\r\nCD\x1b[0;0HX'), 1, 0).char, 'B');
+});
+
 test('default colors, reset, and the 16 colors', () => {
   const art = read('A\x1b[31;42mB\x1b[0mC\x1b[91;104mD\x1b[39;49mE');
   assert.deepEqual([at(art, 0).fg, at(art, 0).bg], ['#aaaaaa', '#000000']);
@@ -173,6 +191,9 @@ test('256-color and 24-bit colors set the palette to none only when a cell gets 
   assert.equal(at(low, 0).fg, '#ff5555');
   assert.equal(at(low, 0).bg, '#0000aa');
   assert.equal(low.palette, 'cga');
+  const deepBg = read('\x1b[48;5;100mX');
+  assert.equal(at(deepBg, 0).bg, '#878700');
+  assert.equal(deepBg.palette, 'none');
   assert.equal(read('\x1b[38;5;196m\x1b[0mX').palette, 'cga'); // set and never written with
 });
 
@@ -200,6 +221,13 @@ test('too big names the size reached', () => {
   assert.equal(e.userMessage, 'This file is 301 × 1. Phosphor opens at most 300 columns, 5,000 lines and 500,000 cells.');
   const lines = error(() => readArtFile(cp('x\n'.repeat(5001)), 'a.txt'));
   assert.match(lines.userMessage, /^This file is 1 × 5001\./);
+  const fixed = error(() => read('x\r\n'.repeat(6000)));
+  assert.match(fixed.userMessage, /^This file is 80 × 6000\./);
+  const record = new Uint8Array(128); // SAUCE: dataType 1, width 300
+  record.set(cp('SAUCE00'), 0);
+  record[94] = 1; record[95] = 1; record[96] = 300 & 0xff; record[97] = 300 >> 8;
+  const wide = error(() => readArtFile(Uint8Array.from([...cp('x\r\n'.repeat(2000)), 26, ...record]), 'a.txt'));
+  assert.match(wide.userMessage, /^This file is 300 × 2000\./);
   const cells = error(() => readArtFile(cp(('x'.repeat(200) + '\n').repeat(2600)), 'a.txt'));
   assert.match(cells.userMessage, /^This file is 200 × \d+\./);
 });
