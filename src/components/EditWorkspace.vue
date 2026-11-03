@@ -6,6 +6,7 @@ import { useDrawingStore } from '@/store/DrawingStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { toast } from '@/composables/useToast';
 import { isProjectFile } from '@/document/projectIO';
+import { isArtFile } from '@/lib/ArtFile';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 
 import EditTabs from '@/components/EditTabs.vue';
@@ -39,7 +40,14 @@ async function handleFileSelected(file) {
   project.commitPending(); // text typed a moment ago counts
   if (project.image && project.isDirty && !confirm(`You have unsaved changes. Open ${file.name} anyway?`)) return;
   if (isProjectFile(file.name)) await project.loadProject(file);
-  else await project.setImageFromFile(file);
+  else if (isArtFile(file.name)) {
+    try {
+      await project.openArtFile(file);
+    } catch (error) {
+      if (!error.userMessage) throw error;
+      return toast(error.userMessage); // nothing changed, so stay where we are
+    }
+  } else await project.setImageFromFile(file);
   workspace.editorTab = 'output';
 }
 </script>

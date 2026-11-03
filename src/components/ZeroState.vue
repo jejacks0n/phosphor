@@ -1,6 +1,7 @@
 <script setup>
 import { useMediaQuery } from '@vueuse/core';
 import { PROJECT_EXTENSION } from '@/document/projectIO';
+import { ART_EXTENSIONS } from '@/lib/ArtFile';
 
 defineProps({
   ready: { type: Boolean, default: true }, // nothing until it's known there's nothing to restore, so this doesn't flash
@@ -10,9 +11,9 @@ defineProps({
 const emit = defineEmits(['file-dropped', 'file-selected', 'start-blank']);
 
 // A phone's picker greys out any file it can't match to the list, and it can't match .phosphor (no type it knows), so
-// on a touch screen there's no list; a file that isn't an image or a project says so when it fails to open.
+// on a touch screen there's no list; a file that isn't an image, a project or an art file says so when it fails to open.
 const touch = useMediaQuery('(pointer: coarse)');
-const accept = `image/*,${PROJECT_EXTENSION}`;
+const accept = ['image/*', PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)].join(',');
 
 const MAX_RECENT = 5;
 const editedTime = (ms) => new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });

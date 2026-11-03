@@ -2,13 +2,15 @@
 
 You can try the live app at [phosphor.work](https://phosphor.work).
 
-Phosphor turns an image into ANSI art in your browser, then lets you keep working on it: paint, type, select and move cells, animate it frame by frame, and export `.ans` (CP437) or `.utf8ans`, both with a [SAUCE](https://www.acid.org/info/sauce/sauce.htm) record, or a movie as an animated `.ans` or `.utf8ans`, a `.cast` or a `.gif`. You can also start from a blank canvas.
+Phosphor turns an image into ANSI art in your browser, or opens a `.ans`, `.utf8ans`, `.asc` or `.txt` file, then lets you keep working on it: paint, type, select and move cells, animate it frame by frame, and export `.ans` (CP437) or `.utf8ans`, both with a [SAUCE](https://www.acid.org/info/sauce/sauce.htm) record, or a movie as an animated `.ans` or `.utf8ans`, a `.cast` or a `.gif`. You can also start from a blank canvas.
 
 [![Phosphor screenshot](screenshot.png)](https://phosphor.work)
 
 ## What it does
 
 Load a picture and Phosphor converts it to a grid of character cells. Brightness, contrast, saturation, hue, colorize, invert, sharpen, flatten and edges all apply live, and every slider move is an undo step. When you like where it's going, **Bake** makes the adjusted picture your new starting point and resets the sliders, so you can do another round on top.
+
+Or open a `.ans`, `.utf8ans`, `.asc` or `.txt` file. Its art goes on the base layer just as the file shows it, and its SAUCE record fills the SAUCE tab. See the [layer guide](docs/layers.md) for what opens and the limits.
 
 Colors can stay full 24-bit, snap to the CGA or VGA palettes, be picked from the picture (a color count you choose), or come from a list you type. Characters come from a set you pick or type yourself; the ANSI style picks them at random from a seed, and the two ASCII styles (color and monochrome) pick them by brightness.
 
