@@ -138,14 +138,14 @@ const field = (bytes, from, to) => {
   return Array.from(bytes.subarray(from, end), (byte) => CP437[byte]).join('');
 };
 
-// Where the art stops: the first 0x1A, else where the comment block or the record starts, else the end.
+// Where the art stops: the first 0x1A before the comment block or the record, else where they start, else the end.
+// (A 0x1A inside the record, a width of 26 say, is not the end of the art.)
 export function artEndOf(bytes) {
-  const eof = bytes.indexOf(0x1a);
-  if (eof >= 0) return eof;
   const record = recordStart(bytes);
-  if (record < 0) return bytes.length;
-  const comments = commentsStart(bytes, record);
-  return comments >= 0 ? comments : record;
+  const comments = record < 0 ? -1 : commentsStart(bytes, record);
+  const limit = comments >= 0 ? comments : record >= 0 ? record : bytes.length;
+  const eof = bytes.subarray(0, limit).indexOf(0x1a);
+  return eof >= 0 ? eof : limit;
 }
 
 export function readSauce(bytes) {
