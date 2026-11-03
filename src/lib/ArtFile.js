@@ -95,7 +95,7 @@ export function readArtFile(bytes, name) {
   // ESC[K: the cursor to the end of the line; ESC[1K: the start through the cursor; ESC[2K: the whole line.
   const erase = (mode) => {
     const from = mode === 1 || mode === 2 ? 0 : col;
-    const to = mode === 1 ? col + 1 : fixed || widest;
+    const to = Math.min(mode === 1 ? col + 1 : Infinity, fixed || widest); // cells past widest are blank, so a far cursor never makes the walk long
     if (!over) for (let c = from; c < to; c++) setCell(c, ' '); // past the limits nothing is kept, so skip the walk
     wrote = true;
     maxRow = Math.max(maxRow, row);

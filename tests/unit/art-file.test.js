@@ -151,6 +151,17 @@ test('a huge SAUCE width with thousands of ESC[K is read fast and still reports 
   assert.ok(performance.now() - started < 500);
 });
 
+test('with no width, a long cursor move then an erase is read fast and never walks past the widest line', () => {
+  const started = performance.now();
+  for (const k of ['1K', '2K', '0K', 'K']) {
+    const art = readArtFile(cp(`A\x1b[99999999C\x1b[${k}`), 'a.txt');
+    assert.deepEqual([art.cols, art.rows], [1, 1]);
+    assert.equal(text(art), k === '0K' || k === 'K' ? 'A' : ' ');
+  }
+  assert.throws(() => readArtFile(cp('A\x1b[99999999CB'), 'a.txt'), /Phosphor opens at most/);
+  assert.ok(performance.now() - started < 500);
+});
+
 test('K under inverse erases with the swapped colors', () => {
   const art = read('\x1b[7;44mA\x1b[K');
   assert.deepEqual(at(art, 0), { char: 'A', fg: '#0000aa', bg: '#aaaaaa' });
