@@ -327,3 +327,17 @@ test('a host\'s cursors keep only the ones that are cursors, and only so many', 
   assert.deepEqual(readCursors(undefined), {});
   assert.equal(Object.keys(readCursors(Object.fromEntries(Array.from({ length: 500 }, (_, i) => [`u${i}`, good])))).length, 64);
 });
+
+test('readChange takes a valid shape and its deletion, and refuses a bad one or a bad v: key', async () => {
+  const { rectShape } = await import('../../src/document/shapes.js');
+  const shape = JSON.parse(JSON.stringify(rectShape(1, 1, 30, 20, { fill: '#ff0000' }))); // as it comes off the wire
+  const of = (cells) => readChange({ stroke: 's1', cells, runs: [] }, GRID);
+  const read = of([['v:abc', shape], ['v:gone', null]]);
+  assert.deepEqual(read.cells, [['v:abc', shape], ['v:gone', null]]);
+  assert.equal(of([['v:abc', { ...shape, width: -1 }]]), null);
+  assert.equal(of([['v:abc', { ...shape, extra: 1 }]]), null);
+  assert.equal(of([['v:', shape]]), null);
+  assert.equal(of([['v:a b', shape]]), null);
+  assert.equal(of([['0,0', shape]]), null); // a shape isn't a cell
+  assert.equal(of([['v:abc', { char: 'A' }]]), null); // nor a cell a shape
+});

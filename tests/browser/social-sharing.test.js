@@ -9,6 +9,7 @@ import { MOST_CHANGE_BYTES, CHUNK_BYTES } from '@/social/wire.js';
 import { editLayerActions } from '@/store/project/editLayer.js';
 import { selectionActions } from '@/store/project/selection.js';
 import { mergingActions } from '@/store/project/merging.js';
+import { vectorActions } from '@/store/project/vector.js';
 import { baseLayerActions } from '@/store/project/baseLayer.js';
 import { DRAWING_ACTIONS, HELD_FLOAT_MS, HOST_ONLY_ACTIONS } from '@/store/project/sharing.js';
 import { cellIndex } from '@/lib/Cells';
@@ -1223,6 +1224,10 @@ test('an action added to the edit layer or selection is listed or known to only 
     expect([name, DRAWING_ACTIONS.includes(name) || READS.includes(name)]).toEqual([name, true]);
   }
   expect(DRAWING_ACTIONS).toEqual(expect.arrayContaining(['undo', 'redo']));
+  // The shapes' too; finishPen ends what's open (commitEdit, which a pause runs first), and the rest is how they're written.
+  for (const name of Object.keys(vectorActions)) {
+    expect([name, DRAWING_ACTIONS.includes(name) || ['setShapes', 'refreshShapes', 'finishPen'].includes(name)]).toEqual([name, true]);
+  }
   for (const name of [...Object.keys(mergingActions), ...Object.keys(baseLayerActions), 'pasteBase', 'clearEditLayer', 'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'updateCols', 'updateRows', 'setImageFromFile', 'setBlankCanvas', 'loadProject', 'restoreDocument', 'openParts', 'replaceImage', 'newDocument', 'clearImage']) {
     expect([name, HOST_ONLY_ACTIONS.includes(name)]).toEqual([name, true]);
   }

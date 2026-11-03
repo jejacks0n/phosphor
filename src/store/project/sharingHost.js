@@ -5,8 +5,24 @@ import { keepRoomLedger } from '@/document/autosaveStore.js';
 import { MOST_CHANGE_BYTES, packProject, readChange } from '@/social/wire.js';
 import { SAVED_KEYS, randomId } from '@/store/project/shared.js';
 import { boundsOf, flushSoon } from '@/store/project/sharing.js';
+import { MOST_SHAPES, isShapeKey } from '@/document/shapes.js';
 
 const LEAST_BASE_RUNS_BYTES = 4096; // of a base message, beside its pins; less and it's the project instead
+
+// Whether an artist's change would leave the drawing with more shapes than it holds: the store's, with what's
+// been heard and not yet written, and then the change's.
+function tooManyShapes(project, cells) {
+  const heard = project._sharing.heardCells, after = new Map();
+  let size = project.shapes.size;
+  for (const [key, value] of heard) if (isShapeKey(key) && (value !== null) !== project.shapes.has(key)) size += value !== null ? 1 : -1;
+  const has = (key) => (after.has(key) ? after.get(key) : heard.has(key) ? heard.get(key) !== null : project.shapes.has(key));
+  for (const [key, value] of cells) {
+    if (!isShapeKey(key) || has(key) === (value !== null)) continue;
+    size += value !== null ? 1 : -1;
+    after.set(key, value !== null);
+  }
+  return size > MOST_SHAPES;
+}
 
 export const sharingHostActions = {
   // The ledger as it is, written for this host's next reload, unless it's what was written last. Autosave calls
@@ -51,7 +67,7 @@ export const sharingHostActions = {
     const sharing = this._sharing;
     if (sharing?.role !== 'host' || !this.paintLayer) return null;
     const change = message.t === 'change' ? readChange(message, boundsOf(this)) : message;
-    if (!change) return null;
+    if (!change || (change.cells && tooManyShapes(this, change.cells))) return null;
     this.sendSlice();
     const numbered = change.t === 'undo' ? this._ledger.undo(by, change.stroke)
       : change.t === 'redo' ? this._ledger.redo(by, change.stroke)

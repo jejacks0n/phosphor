@@ -3405,3 +3405,72 @@ test('someone only watching is sent no font message, and leaving forgets the roo
   ann.drawing.close();
   expect(useWorkspaceStore(ann.pinia).roomFont).toBe(null);
 });
+
+// Shapes travel as changes do: a 'v:' key and the shape, numbered, sent, in the check, undone per person.
+const shapesOf = (project) => JSON.stringify([...project.shapes].sort(([a], [b]) => (a < b ? -1 : 1)));
+async function sameShapes(room, ...people) {
+  await allMatch(room, ...people);
+  for (const person of people) await expect.poll(() => shapesOf(person.project), PATIENT).toBe(shapesOf(room.project));
+}
+
+test('an artist\'s shape reaches the host and back, and the checks agree', async () => {
+  const { rectShape } = await import('@/document/shapes.js');
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  const key = ann.project.addShape(rectShape(2, 2, 12, 9, { fill: '#ff0000' }));
+  await expect.poll(() => room.project.shapes.has(key), PATIENT).toBe(true);
+  await sameShapes(room, ann, bob);
+  expect(bob.project.shapes.get(key).fill).toBe('#ff0000');
+});
+
+test('two people dragging one shape end as two edits to one cell do', async () => {
+  const { rectShape, translation, transformed } = await import('@/document/shapes.js');
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const key = room.project.addShape(rectShape(2, 2, 12, 9, { fill: '#ff0000' }));
+  await sameShapes(room, ann);
+  room.project.beginEdit();
+  ann.project.beginEdit();
+  const start = room.project.shapes.get(key);
+  for (let i = 1; i <= 5; i++) {
+    room.project.updateShapes([[key, transformed(start, translation(i, 0))]]);
+    ann.project.updateShapes([[key, transformed(start, translation(0, 2 * i))]]);
+    await later();
+  }
+  room.project.commitEdit();
+  ann.project.commitEdit();
+  await sameShapes(room, ann);
+});
+
+test('an artist\'s undo takes back only their own shape change', async () => {
+  const { rectShape, withShape } = await import('@/document/shapes.js');
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const theirs = room.project.addShape(rectShape(2, 2, 12, 9, { fill: '#ff0000' }));
+  await sameShapes(room, ann);
+  ann.project.updateShapes([[theirs, withShape(ann.project.shapes.get(theirs), { fill: '#00ff00' })]]);
+  const mine = ann.project.addShape(rectShape(20, 20, 30, 30, { fill: '#0000ff' }));
+  await sameShapes(room, ann);
+  room.project.updateShapes([[theirs, withShape(room.project.shapes.get(theirs), { stroke: '#ffffff' })]]);
+  await sameShapes(room, ann);
+  ann.project.undo(); // the new shape
+  await expect.poll(() => room.project.shapes.has(mine), PATIENT).toBe(false);
+  const now = shapesOf(room.project);
+  ann.project.undo(); // the recolor, under the host's change: a shape is one cell, and the host's stands
+  await sameShapes(room, ann);
+  expect(shapesOf(room.project)).toBe(now);
+  expect(room.project.shapes.get(theirs)).toMatchObject({ fill: '#00ff00', stroke: '#ffffff' });
+});
+
+test('a host refuses an artist\'s shape past MOST_SHAPES', async () => {
+  const { MOST_SHAPES, rectShape } = await import('@/document/shapes.js');
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const full = Array.from({ length: MOST_SHAPES }, (_, i) => [`v:host${i}`, rectShape(i % 30, 1, i % 30 + 2, 3, { fill: '#ff0000' })]);
+  room.project.applyChange({ cells: full, runs: [] }); // the host's own, not sent: ann doesn't know it's full
+  const key = ann.project.addShape(rectShape(2, 2, 12, 9, { fill: '#00ff00' }));
+  expect(key).toBeTruthy();
+  await expect.poll(() => ann.project.shapes.has(key), PATIENT).toBe(false); // refused, and taken back
+  expect(room.project.shapes.size).toBe(MOST_SHAPES);
+  expect(room.project.shapes.has(key)).toBe(false);
+});
