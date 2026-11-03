@@ -47,6 +47,18 @@ test('with no EOF byte, the art ends where the comment block, or the record, sta
   assert.equal(artEndOf(withoutEof(bare)), bare.indexOf(0x1a));
 });
 
+test('a 0x1A inside a record with no EOF byte is not taken for the end of the art', async () => {
+  const bytes = await new AnsiFile(26, 2, [...cells, ...cells, ...cells, ...cells]).toBlob({ sauce }).arrayBuffer().then((b) => new Uint8Array(b));
+  const eof = bytes.indexOf(0x1a);
+  const noEof = withoutEof(bytes); // the width byte, 26, is now the first 0x1A
+  assert.equal(noEof.indexOf(0x1a) > eof, true);
+  assert.equal(artEndOf(noEof), eof);
+  assert.equal(readSauce(noEof).artEnd, eof);
+  const bare = new Uint8Array(await new AnsiFile(26, 2, cells).toBlob({ sauce: { ...sauce, comments: [] } }).arrayBuffer());
+  const bareNoEof = withoutEof(bare);
+  assert.equal(artEndOf(bareNoEof), bare.indexOf(0x1a));
+});
+
 test('garbled input does not throw: a comment count that runs off the start is ignored', async () => {
   const bytes = await bytesOf({ sauce: { ...sauce, comments: [] } });
   bytes[bytes.length - 128 + 104] = 200; // 200 comment lines, and no room for them
