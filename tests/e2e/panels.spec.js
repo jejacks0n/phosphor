@@ -28,6 +28,15 @@ test('About opens from the footer, says which build it is, and closes', async ({
   await expect(page.locator('.modal-backdrop')).toBeHidden();
 });
 
+// The page itself never scrolls: nothing hangs below the window (the panel's footer, the language picker in it, scrolls
+// inside the panel). A page that could scroll moves the whole app when anything scrolls into view, and that scroll
+// closes an open menu.
+test('nothing hangs below the window, so the page has nothing to scroll', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByRole('combobox', { name: 'Language' })).toBeAttached();
+  expect(await page.evaluate(() => [document.body.scrollHeight, document.body.scrollWidth])).toEqual([900, 1400]);
+});
+
 test('a help tooltip shows on hover, on screen, and hides', async ({ page }) => {
   await openApp(page);
   const help = page.locator('div.help-info').first();
