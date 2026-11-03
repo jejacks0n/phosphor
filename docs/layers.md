@@ -65,6 +65,27 @@ round on top of the result. Nothing on the canvas changes when you bake:
 The baked image is the size Phosphor works from to make the preview, not your photo's full size, so
 making the grid bigger afterwards works from that smaller image.
 
+## Opening ANSI and text files
+
+Drop a `.ans`, `.utf8ans`, `.asc` or `.txt` file on the start screen, or choose one with **Browse Files**,
+and it opens as a new document, with its art on the base layer.
+
+- **The grid** is the file's size. Its width comes from the file's SAUCE record if it has one; otherwise
+  it's 80 columns for a `.ans` and the widest line for the others. Its height is as many lines as the art
+  reaches.
+- **The art is the base layer**, as if you'd used Merge down: every cell keeps its character and colors, so
+  it looks just as the file does. Opening a file isn't an edit, so there's nothing to undo. The color
+  sliders, the palette and Bake work on it as they do on any picture.
+- **The palette** follows the file: CGA when it only uses the 16 classic colors, otherwise full color.
+- **SAUCE** fills the SAUCE tab: title, author, group, date, comments, font name and the 9px font setting.
+  Your display font stays as you have it.
+- **Bright backgrounds** are kept bright. Blink isn't shown.
+- **Characters**: a `.utf8ans` is UTF-8. The other three are UTF-8 when they look like it, and CP437
+  otherwise.
+- **Limits**: a file over 300 columns, 5,000 lines or 500,000 cells doesn't open. A message says the file's
+  size and the limits, and what you had open stays open. A file with no art in it doesn't open either.
+- An animated `.ans` (one that moves the cursor or clears the screen) opens as its last screen.
+
 ## The edit layer
 
 The edit layer is everything you draw: typed text (Edit Mode), shapes, pasted cells and paint

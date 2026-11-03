@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { isProjectFile } from '@/document/projectIO';
+import { isArtFile } from '@/lib/ArtFile';
 
 const emit = defineEmits(['file-dropped']);
 const isDragging = ref(false);
@@ -8,7 +9,7 @@ const isDragging = ref(false);
 function handleDrop(e) {
   isDragging.value = false;
   const file = e.dataTransfer.files[0];
-  if (file && (file.type.startsWith('image/') || isProjectFile(file.name))) emit('file-dropped', file);
+  if (file && (file.type.startsWith('image/') || isProjectFile(file.name) || isArtFile(file.name))) emit('file-dropped', file);
 }
 </script>
 
