@@ -1,5 +1,5 @@
 // SOCIAL's first question: nothing from the tab runs until it's answered, however you arrive.
-import { test, expect, tab, store, seedConsent, openApp } from './support.js';
+import { test, expect, tab, store, seedConsent, openApp, startScreen } from './support.js';
 import { fakeServer, fakeRoom, goLive, watcherPage, joinFromCard, shown, asked, hash, selected, live, ROOM_ID } from './social-support.js';
 import { CONSENT_KEY, CONSENT_VERSION } from '../../src/social/consent.js';
 
@@ -101,7 +101,7 @@ test('Back with the question up leaves it, and a link\'s room with it', async ({
   await page.evaluate((id) => { location.hash = `#/pixel?room=${id}`; }, ROOM_ID);
   await expect(consent(page)).toBeVisible();
   await page.goBack();
-  await selected(page, 'PIXEL');
+  await startScreen(page);
   await expect(consent(page)).toHaveCount(0);
   await tab(page, 'SOCIAL').click();
   await accepted(page);
@@ -123,17 +123,17 @@ test('Escape declines as Not now does', async ({ page }) => {
   expect(await page.evaluate((key) => localStorage.getItem(key), CONSENT_KEY)).toBe(null);
 });
 
-test('with no tab to go back to, Not now lands on the editor at a clean address, with no room asked', async ({ page }) => {
+test('with no tab to go back to, Not now lands on the start screen at a clean address, with no room asked', async ({ page }) => {
   const seen = elsewhere(page);
   const server = await fakeServer(page);
   await page.goto(`/#/social/sign-in`);
   await notNow(page).click();
-  await selected(page, 'PIXEL');
-  await hash(page, '/pixel');
+  await startScreen(page);
+  await hash(page, '/');
   await page.goto(`/?room=${ROOM_ID}`);
   await notNow(page).click();
-  await selected(page, 'PIXEL');
-  await hash(page, '/pixel');
+  await startScreen(page);
+  await hash(page, '/');
   expect(new URL(page.url()).search).toBe('');
   await nothingRan(page, server, seen);
   await expect(asked(page)).toHaveCount(0);
@@ -313,7 +313,7 @@ test('focus starts in the modal and stays there; a click on its text or backdrop
   expect(await inside()).toBe(true);
   await page.keyboard.press('Escape');
   await expect(consent(page)).toHaveCount(0);
-  await expect(tab(page, 'PIXEL')).toBeFocused();
+  await expect(tab(page, 'SOCIAL')).toBeFocused();   // nothing open, so no tab selected: the tab list's one stop
 });
 
 test('the agreement and both answers share a row, with the answers at the right', async ({ page }) => {
@@ -346,11 +346,11 @@ test('in a window too short for it, the modal scrolls and its buttons stay reach
   await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
 });
 
-test('a narrow screen has no SOCIAL: an address for it lands on PIXEL, unasked', async ({ page }) => {
+test('a narrow screen has no SOCIAL: an address for it lands on the start screen, unasked', async ({ page }) => {
   const server = await fakeServer(page);
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto('/#/social');
-  await selected(page, 'PIXEL');
+  await startScreen(page);
   await expect(consent(page)).toHaveCount(0);
   await page.waitForLoadState('networkidle');
   expect(server.requests).toEqual([]);

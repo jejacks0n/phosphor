@@ -1,5 +1,5 @@
 // The SOCIAL tab: a fourth editor tab, desktop only, where the editor's shortcuts are off.
-import { test, expect, openApp, tab, store, cellPoint, drag, imageInput, settled } from './support.js';
+import { test, expect, openApp, tab, store, cellPoint, drag, imageInput, settled, startScreen } from './support.js';
 import { fakeServer } from './social-support.js';
 
 const databases = (page) => page.evaluate(async () => (await indexedDB.databases()).map((d) => d.name));
@@ -47,7 +47,7 @@ test('a link back opened on a narrow screen is left alone, and nothing SOCIAL ru
   const server = await fakeServer(page);
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto('/?verified=1&error=TOKEN_EXPIRED');
-  await expect(tab(page, 'PIXEL')).toHaveAttribute('aria-selected', 'true');
+  await startScreen(page);
   await page.waitForLoadState('networkidle');
   expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('input');
   expect(new URL(page.url()).search).toBe('?verified=1&error=TOKEN_EXPIRED');
@@ -107,16 +107,16 @@ test('a second page in the context is cut off from localhost:8787 too', async ({
 
 test('the tablist\'s arrow keys reach SOCIAL', async ({ page }) => {
   await fakeServer(page);
-  await page.goto('/');
-  await tab(page, 'PIXEL').focus();
-  await page.keyboard.press('ArrowRight'); // ANSI and SAUCE wait for an image
+  await openApp(page);
+  await tab(page, 'SAUCE').click();
+  await page.keyboard.press('ArrowRight');
   await expect(tab(page, 'SOCIAL')).toBeFocused();
   await expect(tab(page, 'SOCIAL')).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('ArrowRight'); // wraps
   await expect(tab(page, 'PIXEL')).toHaveAttribute('aria-selected', 'true');
 });
 
-test('narrow screens have no SOCIAL tab; narrowing while on it lands on PIXEL', async ({ page }) => {
+test('narrow screens have no SOCIAL tab; narrowing while on it lands on the art (the start screen, with nothing open)', async ({ page }) => {
   await fakeServer(page);
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto('/');
@@ -127,7 +127,7 @@ test('narrow screens have no SOCIAL tab; narrowing while on it lands on PIXEL', 
   await tab(page, 'SOCIAL').click();
   await page.setViewportSize({ width: 700, height: 900 });
   await expect(tab(page, 'SOCIAL')).toHaveCount(0);
-  await expect(tab(page, 'PIXEL')).toHaveAttribute('aria-selected', 'true');
+  await startScreen(page);
   expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('input');
 });
 

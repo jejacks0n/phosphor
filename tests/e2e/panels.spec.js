@@ -121,7 +121,7 @@ test('New project asks when there are changes, then clears the document', async 
   await page.getByRole('button', { name: 'New project' }).click();
   expect(asked[0]).toMatch(/unsaved changes/);
   expect(await store(page, 'project', (p) => p.image)).toBe(null);
-  await expect(page.getByRole('tab', { name: 'PIXEL' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { selected: true })).toHaveCount(0); // the start screen, no tab
 });
 
 test('the tool options row is the same height for every tool, its options on one line', async ({ page }) => {

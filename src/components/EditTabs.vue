@@ -69,12 +69,18 @@ const indicatorStyle = ref({ transform: 'translateX(0px)', width: '0px', opacity
 
 const isDesktop = useMediaQuery(desktopQuery);
 
+// The art tabs wait for something to show. From SOCIAL they're the way back to the start screen.
+const noArt = computed(() => !image.value && props.modelValue !== 'social');
 const tabs = computed(() => [
-  { id: 'input', label: t('tabs.pixel'), disabled: false },
-  { id: 'output', label: renderStyle.value === 'ansi' ? t('tabs.ansi') : t('tabs.ascii'), disabled: !image.value },
-  { id: 'sauce', label: t('tabs.sauce'), disabled: !image.value },
+  { id: 'input', label: t('tabs.pixel'), disabled: noArt.value },
+  { id: 'output', label: renderStyle.value === 'ansi' ? t('tabs.ansi') : t('tabs.ascii'), disabled: noArt.value },
+  { id: 'sauce', label: t('tabs.sauce'), disabled: noArt.value },
   ...(isDesktop.value ? [{ id: 'social', label: t('tabs.social'), disabled: false }] : []),
 ]);
+// With nothing open no tab is selected: the start screen isn't a view of the art. The tab stays chosen
+// underneath, for when something opens.
+const selected = computed(() => tabs.value.find((tab) => tab.id === props.modelValue && !tab.disabled)?.id);
+const focusable = computed(() => selected.value ?? tabs.value.find((tab) => !tab.disabled)?.id); // the tab list's one Tab stop
 
 // SOCIAL is desktop only: a window narrowed while on it goes to PIXEL.
 watchEffect(() => {
@@ -95,7 +101,10 @@ function onKeyDown(event) {
   emit('update:modelValue', tab.dataset.id);
 }
 
-// The underline slides to the selected tab.
+// The underline slides to the selected tab. With none before (nothing was open), it grows out of the
+// middle of the one it lands on instead of sliding in from wherever it last was.
+const APPEAR = 'width 0.3s cubic-bezier(0.23, 1, 0.32, 1), transform 0.3s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.15s ease';
+const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 function updateIndicator() {
   requestAnimationFrame(() => {
     const activeEl = tabList.value?.querySelector('[role="tab"].active');
@@ -105,11 +114,14 @@ function updateIndicator() {
     }
     const listRect = tabList.value.getBoundingClientRect();
     const activeRect = activeEl.getBoundingClientRect();
-    indicatorStyle.value = {
-      transform: `translateX(${Math.round(activeRect.left - listRect.left)}px)`,
-      width: `${Math.round(activeRect.width)}px`,
-      opacity: 1,
-    };
+    const left = Math.round(activeRect.left - listRect.left), width = Math.round(activeRect.width);
+    const placed = { transform: `translateX(${left}px)`, width: `${width}px`, opacity: 1 };
+    if (indicatorStyle.value.opacity || reducedMotion.value) {
+      indicatorStyle.value = placed;
+      return;
+    }
+    indicatorStyle.value = { transform: `translateX(${left + width / 2}px)`, width: '0px', opacity: 0, transition: 'none' };
+    requestAnimationFrame(() => { indicatorStyle.value = { ...placed, transition: APPEAR }; });
   });
 }
 
@@ -136,9 +148,9 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
           :key="tab.id"
           class="tab"
           role="tab"
-          :class="{ active: modelValue === tab.id }"
-          :aria-selected="modelValue === tab.id"
-          :tabindex="modelValue === tab.id ? 0 : -1"
+          :class="{ active: selected === tab.id }"
+          :aria-selected="selected === tab.id"
+          :tabindex="focusable === tab.id ? 0 : -1"
           :disabled="tab.disabled"
           :data-id="tab.id"
           :data-text="tab.label"

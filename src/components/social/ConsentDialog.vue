@@ -19,9 +19,9 @@ function read(page, event) {
 }
 watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); });
 
-// Answered, focus goes on from the tab that's showing, unless what's showing took it.
+// Answered, focus goes on from the tab that's showing (with nothing open, the tab list's one stop), unless what's showing took it.
 onBeforeUnmount(() => nextTick(() => {
-  if (document.activeElement === document.body) document.querySelector('[role="tab"][aria-selected="true"]')?.focus();
+  if (document.activeElement === document.body) document.querySelector('[role="tab"][tabindex="0"]')?.focus();
 }));
 </script>
 

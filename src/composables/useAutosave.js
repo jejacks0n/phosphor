@@ -323,8 +323,8 @@ export function useAutosave() {
       const saved = await readLatest(id);
       if (project.image) return; // something else opened meanwhile
       if (!saved) throw new Error(`No record for ${id}`);
+      workspace.editorTab = 'output'; // chosen first, so the address moves once
       await restore(saved, id);
-      workspace.editorTab = 'output';
     } catch (error) {
       console.warn('Autosave could not open the document', error);
       if (project.image) return; // something else opened meanwhile, which is what's wrong with this one

@@ -17,8 +17,10 @@ export const PLACES = [
 // The pages a guest watching a room still gets, to sign in to chat.
 export const SIGN_IN_PAGES = new Set(['sign-in', 'create', 'forgot', 'two-factor', 'onboarding']);
 
-// The room you host or watch shows in place of the lobby, so its address is /social.
-export function pathOf({ tab, page, role }) {
+// The room you host or watch shows in place of the lobby, so its address is /social. With nothing open the
+// art tabs are the start screen, which is /.
+export function pathOf({ tab, page, role, empty = false }) {
+  if (empty && tab !== 'social') return '/';
   const inRoom = role === 'host' || (role === 'watch' && !SIGN_IN_PAGES.has(page));
   const shown = tab === 'social' && !inRoom ? page : 'lobby';
   return PLACES.find(([, p]) => p.tab === tab && (tab !== 'social' || p.page === shown))?.[0] ?? '/social';

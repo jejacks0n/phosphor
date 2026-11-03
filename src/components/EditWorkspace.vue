@@ -46,10 +46,17 @@ async function handleFileSelected(file) {
   if (drawing.offWithOthers) return toast(drawing.offWithOthers);
   project.commitPending(); // text typed a moment ago counts
   if (project.image && project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
+  if (!project.image) workspace.editorTab = 'output'; // from the start screen, chosen first: the address moves once
   if (isProjectFile(file.name)) await project.loadProject(file);
   else if (isArtFile(file.name)) return openArt(file);
   else await project.setImageFromFile(file);
   workspace.editorTab = 'output';
+}
+
+// A blank canvas opens on ANSI, as everything else does (chosen first, so the address moves once).
+function startBlank() {
+  workspace.editorTab = 'output';
+  project.setBlankCanvas();
 }
 
 async function openArt(file) {
@@ -113,7 +120,7 @@ async function chooseArt(choice) {
           <SauceEditor v-if="workspace.editorTab === 'sauce'"/>
         </div>
 
-        <ZeroState v-else :ready="ready" :recent="recent" :open-recent="openRecent" @file-selected="handleFileSelected" @start-blank="project.setBlankCanvas"/>
+        <ZeroState v-else :ready="ready" :recent="recent" :open-recent="openRecent" @file-selected="handleFileSelected" @start-blank="startBlank"/>
       </DropZone>
       <ChoiceDialog
           v-if="workspace.artDrop"

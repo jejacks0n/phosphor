@@ -45,6 +45,7 @@ const serverFor = (session = null) => Object.assign(fakeServer(), { session });
 
 beforeEach(async () => {
   ({ project, workspace } = await createTestApp());
+  await loadImage(project, GRADIENT);   // art open: with nothing open the art tabs are the start screen, at /
   social = useSocialStore();
   room = useRoomStore();
   sessionStorage.removeItem('phosphor-left-rooms');
@@ -127,7 +128,7 @@ test('a SOCIAL page is in the address both ways, and the page stays when you lea
   expect(social.page).toBe('lobby');
 });
 
-test('Back onto /ansi with no image goes to /pixel, replacing', async () => {
+test('Back onto /ansi with no image is the start screen at /, replacing', async () => {
   await loadImage(project, GRADIENT);
   await landed();
   workspace.editorTab = 'output';
@@ -136,13 +137,63 @@ test('Back onto /ansi with no image goes to /pixel, replacing', async () => {
   await settled();
   expect(push).toHaveBeenCalledTimes(2);
   project.image = null;
+  await settled();
+  expect(path()).toBe('/');
 
   router.back();
   await settled();
-  expect(workspace.editorTab).toBe('input');
-  expect(path()).toBe('/pixel');
+  expect(workspace.editorTab).toBe('output');   // chosen underneath, for when something opens
+  expect(path()).toBe('/');
   expect(push).toHaveBeenCalledTimes(2);
-  expect(replace).toHaveBeenCalledTimes(1);
+  expect(replace).toHaveBeenCalledTimes(2);
+});
+
+test('the start screen and SOCIAL are a step apart either way', async () => {
+  project.clearImage();
+  await landed();
+  workspace.editorTab = 'social';
+  await settled();
+  expect(path()).toBe('/social');
+  expect(push).toHaveBeenCalledTimes(1);
+  router.back();
+  await settled();
+  expect(path()).toBe('/');
+  expect(workspace.editorTab).toBe('input');   // the tab SOCIAL was left from, under the start screen
+  router.forward();
+  await settled();
+  workspace.editorTab = 'output';   // an art tab, from SOCIAL: the way back
+  await settled();
+  expect(path()).toBe('/');
+  expect(push).toHaveBeenCalledTimes(2);
+});
+
+test('a Back the moment the address moves cancels one of them, not each other without end', async () => {
+  await loadImage(project, GRADIENT);
+  await landed();
+  workspace.editorTab = 'sauce';
+  await settled();
+  project.image = null;
+  router.back();
+  await settled();
+  expect(path()).toBe('/');
+  expect(replace.mock.calls.length).toBeLessThan(3);
+});
+
+test('the art opening goes from / to the tab underneath, and closing goes back, neither a step', async () => {
+  project.clearImage();
+  await landed();
+  expect(path()).toBe('/');
+  workspace.editorTab = 'output';   // a blank canvas, say: the tab before the art
+  await settled();
+  expect(path()).toBe('/');
+  await loadImage(project, GRADIENT);
+  await settled();
+  expect(path()).toBe('/ansi');
+
+  project.image = null;   // New project
+  await settled();
+  expect(path()).toBe('/');
+  expect(push).not.toHaveBeenCalled();
 });
 
 test('/ with the app open is no step: it is replaced, and Back goes past it', async () => {
@@ -190,13 +241,18 @@ test('/social on a phone falls back to the art tab, replacing', async () => {
   expect(replace).toHaveBeenCalledTimes(1);
 });
 
-test('/ names no tab, and is replaced by the default one', async () => {
+test('/ names no tab: it stays while autosave answers, and with nothing open', async () => {
+  project.clearImage();
   await landing('/');
-  expect(path()).toBe('/pixel');
+  expect(path()).toBe('/');
   expect(workspace.tabAddressed).toBe(false);
+  workspace.documentSettled = true;
+  await settled();
+  expect(path()).toBe('/');
 });
 
 test('a landing that names a tab waits for the document before it gives up on it', async () => {
+  project.clearImage();
   await landing('/sauce');
   expect(workspace.tabAddressed).toBe(true);
   expect(workspace.editorTab).toBe('sauce');   // no image yet: autosave hasn't answered
@@ -205,13 +261,14 @@ test('a landing that names a tab waits for the document before it gives up on it
   replace = vi.spyOn(router, 'replace');
   push = vi.spyOn(router, 'push');
   await settled();
-  expect(workspace.editorTab).toBe('input');
-  expect(path()).toBe('/pixel');
+  expect(workspace.editorTab).toBe('sauce');   // nothing came: the start screen, with SAUCE underneath
+  expect(path()).toBe('/');
   expect(replace).toHaveBeenCalledTimes(1);
   expect(push).not.toHaveBeenCalled();
 });
 
 test('a landing whose document comes back stays where it named, and changes while landing add no step', async () => {
+  project.clearImage();
   await landing('/sauce');
   await loadImage(project, GRADIENT);
   workspace.documentSettled = true;
