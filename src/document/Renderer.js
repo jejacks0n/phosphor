@@ -242,8 +242,9 @@ export default class Renderer {
     const { width: w, height: h } = this.#baseData, r = this.#resolved;
     const key = resolvedKey(params, w, h), whole = r?.palette !== this.palette || r.key !== key;
     const glyphs = this.#glyphsOf(params.chars), solids = params.solids / 100, light = params.patternLight / 100;
-    const opts = { strength: params.dither / 100, style: params.ditherStyle };
-    const carries = carriesError(params);
+    const palette = !!this.palette?.length; // without one Dither does nothing (as #ditherUnder), Bayer too
+    const opts = { strength: palette ? params.dither / 100 : 0, style: params.ditherStyle };
+    const carries = palette && carriesError(params);
     if (params.charMode === 'shape') return this.#resolveShapes(params, area, open, { key, whole, glyphs, solids, light, opts, carries });
 
     // Best match: each cell's two halves (#baseData). While an edit is open Floyd–Steinberg resolves

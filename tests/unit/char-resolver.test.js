@@ -38,6 +38,9 @@ test('snapsLate and carriesError', () => {
   assert.equal(carriesError({ charMode: 'shape', dither: 50, ditherStyle: 'floyd' }), true);
   assert.equal(carriesError({ charMode: 'shape', dither: 50, ditherStyle: 'bayer' }), false);
   assert.equal(carriesError({ charMode: 'random', dither: 50, ditherStyle: 'floyd' }), false);
+  // Full color has no palette to dither to: a Dither value left from CGA (its slider hidden) carries nothing.
+  assert.equal(carriesError({ charMode: 'best', dither: 60, ditherStyle: 'floyd', quantize: 'none' }), false);
+  assert.equal(carriesError({ charMode: 'best', dither: 60, ditherStyle: 'floyd', quantize: 'cga' }), true);
 });
 
 test('mixChannel: a plain average at 0, linear light at 1', () => {

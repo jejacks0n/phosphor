@@ -15,8 +15,9 @@ export function charModeOf(renderStyle, charChoice, charChoiceAscii) {
 // Whether the character comes from comparing the picture with glyphs, not from its weight or the seed.
 export const resolves = (params) => params.charMode === 'best' || params.charMode === 'shape';
 
-// Whether the resolver needs the error Floyd–Steinberg passes on.
-export const carriesError = (params) => resolves(params) && params.dither > 0 && params.ditherStyle !== 'bayer';
+// Whether the resolver needs the error Floyd–Steinberg passes on. Full color has no palette to
+// dither to: a Dither value left from one (its slider hidden) dithers nothing, as with pixels.
+export const carriesError = (params) => resolves(params) && params.dither > 0 && params.ditherStyle !== 'bayer' && params.quantize !== 'none';
 
 // CGA and VGA aren't snapped in the shader when the grid is snapped later: dithered or resolved.
 export const snapsLate = (params) => params.dither > 0 || resolves(params);

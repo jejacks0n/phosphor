@@ -1,6 +1,7 @@
 // Choosing characters: Best match picks each base cell's character and colors from the picture, in
 // the reference font whatever the display font, with paint, pins and frames as a still has them.
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
+import ShapeMatcher from '@/lib/ShapeMatcher.js';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { setDisplayFont } from '@/lib/displayFonts';
 import { layoutWide } from '@/lib/Cells';
@@ -60,6 +61,23 @@ test('Dither under Best match changes the cells, and Floyd–Steinberg differs f
   expect(floyd).not.toEqual(plain);
   expect(bayer).not.toEqual(plain);
   expect(floyd).not.toEqual(bayer);
+});
+
+for (const charChoice of ['best', 'shape']) test(`Full color has no palette to dither to: a Dither left from CGA changes nothing, and the GPU matches (${charChoice})`, async () => {
+  const spy = vi.spyOn(ShapeMatcher.prototype, 'resolve');
+  try {
+    for (const ditherStyle of ['floyd', 'bayer']) {
+      const plain = cellsKey(await gradient({ quantize: 'none', charChoice, chars: SHADES, dither: 0 }));
+      spy.mockClear();
+      const p = await gradient({ quantize: 'cga', charChoice, chars: SHADES, dither: 60, ditherStyle });
+      p.quantize = 'none'; // the Dither slider hides, its value stays
+      await settle(p);
+      expect(cellsKey(p), ditherStyle).toEqual(plain);
+      expect(spy.mock.results.at(-1).value, ditherStyle).toBeTruthy(); // the last resolve was the GPU's
+    }
+  } finally {
+    spy.mockRestore();
+  }
 });
 
 test('the display font doesn\'t change the characters', async () => {
