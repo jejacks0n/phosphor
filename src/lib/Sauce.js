@@ -2,7 +2,7 @@
  * Generates and appends SAUCE (Standard Architecture for Universal Comment Extensions)
  * metadata records to ANSI files, including a comment block for Phosphor settings.
  */
-import { cp437Byte, cp437Substitute } from './Cp437.js';
+import { CP437, cp437Byte, cp437Substitute } from './Cp437.js';
 
 // What a record holds of each text field, in characters: comments are 255 lines of 64, and the line ends between them.
 const MOST_COMMENT_LINES = 255, COMMENT_WIDTH = 64;
@@ -118,4 +118,63 @@ export class Sauce {
 
     return output;
   }
+}
+
+// Reading: the record is the last 128 bytes, and its comment block sits just before it.
+const RECORD_SIZE = 128;
+const ascii = (bytes, at, text) => [...text].every((char, i) => bytes[at + i] === char.charCodeAt(0));
+const recordStart = (bytes) => (bytes.length >= RECORD_SIZE && ascii(bytes, bytes.length - RECORD_SIZE, 'SAUCE00') ? bytes.length - RECORD_SIZE : -1);
+
+// Where the comment block starts, or -1 when the record counts none or the count doesn't fit.
+const commentsStart = (bytes, record) => {
+  const start = record - 5 - bytes[record + 104] * COMMENT_WIDTH;
+  return bytes[record + 104] && start >= 0 && ascii(bytes, start, 'COMNT') ? start : -1;
+};
+
+// A text field: CP437, without the spaces and NULs it's padded with.
+const field = (bytes, from, to) => {
+  let end = to;
+  while (end > from && (bytes[end - 1] === 32 || bytes[end - 1] === 0)) end--;
+  return Array.from(bytes.subarray(from, end), (byte) => CP437[byte]).join('');
+};
+
+// Where the art stops: the first 0x1A, else where the comment block or the record starts, else the end.
+export function artEndOf(bytes) {
+  const eof = bytes.indexOf(0x1a);
+  if (eof >= 0) return eof;
+  const record = recordStart(bytes);
+  if (record < 0) return bytes.length;
+  const comments = commentsStart(bytes, record);
+  return comments >= 0 ? comments : record;
+}
+
+export function readSauce(bytes) {
+  const record = recordStart(bytes);
+  if (record < 0) return null;
+  const at = (offset) => record + offset;
+  const comments = commentsStart(bytes, record);
+  const count = comments >= 0 ? bytes[at(104)] : 0;
+  const flags = bytes[at(105)];
+  return {
+    title: field(bytes, at(7), at(42)),
+    author: field(bytes, at(42), at(62)),
+    group: field(bytes, at(62), at(82)),
+    date: field(bytes, at(82), at(90)),
+    comments: Array.from({ length: count }, (_, i) => field(bytes, comments + 5 + i * COMMENT_WIDTH, comments + 5 + (i + 1) * COMMENT_WIDTH)),
+    dataType: bytes[at(94)],
+    fileType: bytes[at(95)],
+    width: bytes[at(96)] | (bytes[at(97)] << 8),
+    height: bytes[at(98)] | (bytes[at(99)] << 8),
+    iceColors: !!(flags & 1),
+    use9pxFont: (flags & 6) === 4,
+    fontName: field(bytes, at(106), at(126)),
+    artEnd: artEndOf(bytes),
+  };
+}
+
+// The comments as the SAUCE tab keeps them: without the lines Phosphor writes itself (sauceFields), which end at a blank line.
+export function userComments(comments) {
+  if (comments[0] !== 'Created with Phosphor') return comments.join('\n');
+  const blank = comments.indexOf('');
+  return blank < 0 ? '' : comments.slice(blank + 1).join('\n');
 }
