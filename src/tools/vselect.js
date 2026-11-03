@@ -115,7 +115,7 @@ export default {
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M160 96C160 83.1 167.8 71.4 179.8 66.4C191.8 61.4 205.5 64.2 214.7 73.4L534.7 393.4C543.9 402.6 546.6 416.3 541.6 428.3C536.6 440.3 524.9 448 512 448L374.6 448L436.3 571.5C444.2 587.3 437.8 606.5 422 614.4C406.2 622.3 387 615.9 379.1 600.1L316.3 474.5L214.6 566.6C205.2 575.1 191.7 577.3 180.1 572.2C168.5 567.1 160 555.6 160 542.9L160 96z"/></svg>`,
   views: ['vector'],
   kind: 'paint',
-  section: 'select',
+  section: 'vector',
 
   begin({ project, workspace, unit }, pos, event) {
     const shift = !!event?.shiftKey, radius = handleRadius(), tol = radius / unit.x;

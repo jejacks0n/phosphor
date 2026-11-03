@@ -13,10 +13,15 @@ import { shortcut } from '@/lib/keyLabels';
 // 24-bit. A palette swatch stores a color that displays as its palette color under the color
 // adjustments (paletteChoices), so every palette color can be painted with; other swatches show
 // how their color displays (adjusted, snapped) and store the color itself.
+// With a value (VECTOR's Fill and Stroke), it picks for that alone: it emits pick (a hex, or null for none)
+// and leaves the color pair as it is.
 const props = defineProps({
-  slotName: { type: String, required: true }, // 'fg' | 'bg'
+  slotName: { type: String, default: 'fg' },     // 'fg' | 'bg'
+  value: { type: String, default: undefined },   // a hex, or null for none: the value mode
+  offersNone: { type: Boolean, default: false }, // in the value mode, whether None is offered
 });
-const emit = defineEmits(['update:slotName', 'close']);
+const emit = defineEmits(['update:slotName', 'close', 'pick']);
+const valueMode = computed(() => props.value !== undefined);
 
 const { t } = useI18n();
 const project = useProjectStore();
@@ -24,10 +29,10 @@ const workspace = useWorkspaceStore();
 const root = useTemplateRef('root');
 
 const ansiView = computed(() => workspace.editorTab === 'output');
-const current = computed(() => (props.slotName === 'fg' ? workspace.editFgColor : workspace.editBgColor));
-const isNone = computed(() => (props.slotName === 'fg' ? ansiView.value && workspace.editFgNone : workspace.editBgNone));
+const current = computed(() => (valueMode.value ? props.value ?? '#000000' : props.slotName === 'fg' ? workspace.editFgColor : workspace.editBgColor));
+const isNone = computed(() => (valueMode.value ? props.value === null : props.slotName === 'fg' ? ansiView.value && workspace.editFgNone : workspace.editBgNone));
 // None means "leave what's underneath": a typing choice, so the foreground offers it only in the ANSI view.
-const offersNone = computed(() => props.slotName === 'bg' || ansiView.value);
+const offersNone = computed(() => (valueMode.value ? props.offersNone : props.slotName === 'bg' || ansiView.value));
 
 // The palette as the colors its swatches store.
 const sections = computed(() => {
@@ -42,10 +47,14 @@ const painted = computed(() => (project.hasPaint ? drawingColors(new Map(), proj
 const showPainted = ref(false);
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 
-const choose = (hex, remember = true) => workspace.setColor(props.slotName, hex, { remember });
+const choose = (hex, remember = true) => {
+  if (!valueMode.value) return workspace.setColor(props.slotName, hex, { remember });
+  if (hex && remember) workspace.rememberColor(hex);
+  emit('pick', hex, { remember });
+};
 
 const onPointerDown = (event) => {
-  if (root.value && !root.value.contains(event.target) && !event.target.closest('.color-pair')) emit('close');
+  if (root.value && !root.value.contains(event.target) && !event.target.closest('.color-pair, [data-color-trigger]')) emit('close');
 };
 const onKeyDown = (event) => {
   if (event.key !== 'Escape') return;
@@ -85,7 +94,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="root" class="color-popover" role="dialog" :aria-label="t('colors.popoverAria')" @keydown="onArrow">
-    <div class="head">
+    <div v-if="!valueMode" class="head">
       <button :class="{ on: slotName === 'fg' }" @click="emit('update:slotName', 'fg')">{{ t('colors.fg') }}</button>
       <button :class="{ on: slotName === 'bg' }" @click="emit('update:slotName', 'bg')">{{ t('colors.bg') }}</button>
       <span class="spacer"></span>

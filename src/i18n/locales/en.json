@@ -382,6 +382,12 @@
     "vselect": {
       "title": "Vector select"
     },
+    "vshape": {
+      "title": "Shape",
+      "polygon": "Polygon",
+      "sides": "Sides",
+      "sidesTitle": "The polygon's number of sides"
+    },
     "hand": {
       "title": "Hand (pan)"
     },
@@ -825,6 +831,7 @@
     },
     "rows": {
       "vselect": "Vector select: pick, move, scale and rotate shapes",
+      "vshape": "Shape: drag a rectangle, an ellipse or a polygon (with Shift: square)",
       "vectorNudge": "Nudge the selected shapes (with Shift: 10 pixels)",
       "vectorDelete": "Delete the selected shapes",
       "vectorEsc": "Stop editing points, then deselect",
@@ -1301,6 +1308,22 @@
     }
   },
   "vector": {
-    "tooMany": "A drawing holds at most {count} shapes."
+    "tooMany": "A drawing holds at most {count} shapes.",
+    "fill": "Fill",
+    "fillTitle": "The color inside the shape",
+    "stroke": "Stroke",
+    "strokeTitle": "The color of the shape's outline",
+    "width": "Width",
+    "widthTitle": "The outline's width, in pixels",
+    "forward": "Forward",
+    "forwardTitle": "Bring the shapes one step forward",
+    "back": "Back",
+    "backTitle": "Send the shapes one step back",
+    "editPoints": "Edit points",
+    "editPointsTitle": "Edit the shape's points and curves",
+    "points": "Points",
+    "deleteTitle": "Delete the selected shapes",
+    "selectHint": "Drag to move, the handles to scale, the knob to rotate",
+    "more": "More"
   }
 }

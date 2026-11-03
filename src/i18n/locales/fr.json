@@ -382,6 +382,12 @@
     "vselect": {
       "title": "Sélection vectorielle"
     },
+    "vshape": {
+      "title": "Forme",
+      "polygon": "Polygone",
+      "sides": "Côtés",
+      "sidesTitle": "Le nombre de côtés du polygone"
+    },
     "hand": {
       "title": "Main (panoramique)"
     },
@@ -825,6 +831,7 @@
     },
     "rows": {
       "vselect": "Sélection vectorielle : choisir, déplacer, redimensionner et faire pivoter les formes",
+      "vshape": "Forme : tracez un rectangle, une ellipse ou un polygone (avec Maj : carré)",
       "vectorNudge": "Décaler les formes sélectionnées (avec Maj : 10 pixels)",
       "vectorDelete": "Supprimer les formes sélectionnées",
       "vectorEsc": "Arrêter de modifier les points, puis désélectionner",
@@ -1301,6 +1308,22 @@
     }
   },
   "vector": {
-    "tooMany": "Un dessin contient au plus {count} formes."
+    "tooMany": "Un dessin contient au plus {count} formes.",
+    "fill": "Remplissage",
+    "fillTitle": "La couleur à l'intérieur de la forme",
+    "stroke": "Contour",
+    "strokeTitle": "La couleur du contour de la forme",
+    "width": "Épaisseur",
+    "widthTitle": "L'épaisseur du contour, en pixels",
+    "forward": "Avancer",
+    "forwardTitle": "Avancer les formes d'un cran",
+    "back": "Reculer",
+    "backTitle": "Reculer les formes d'un cran",
+    "editPoints": "Modifier les points",
+    "editPointsTitle": "Modifier les points et les courbes de la forme",
+    "points": "Points",
+    "deleteTitle": "Supprimer les formes sélectionnées",
+    "selectHint": "Faites glisser pour déplacer, les poignées pour redimensionner, le bouton pour faire pivoter",
+    "more": "Plus"
   }
 }
