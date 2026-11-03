@@ -166,6 +166,9 @@ export const documentActions = {
     this.clearHistory();
     this.render();
     this.markSaved();
+    // The base holds each cell as its two colors (background over foreground), which the PIXEL tab
+    // would show as stripes; All cells draws every cell there as it looks.
+    useWorkspaceStore().ansiOverlayAll = true;
   },
 
   // Swap in a new base image and start a fresh document around it.
