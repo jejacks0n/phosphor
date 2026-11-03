@@ -93,7 +93,8 @@ export const useProjectStore = defineStore('project', {
   getters: {
     canUndo: (state) => state.historyVersion >= 0 && state.history.canUndo,
     // Something to bake: an image, and a Transform, Adjustment or Effect slider off its default.
-    canBake: (state) => !!state.image && !slidersAtDefaults(state),
+    // Shapes alone make a still bakeable (Bake presses them in); in an animation they stay shapes.
+    canBake: (state) => !!state.image && (!slidersAtDefaults(state) || (state.shapes.size > 0 && state.frames.length <= 1)),
     // The image is still the one loaded, at its own size (the merge dialog says what Into the image costs).
     pictureIsOriginal: (state) => !state.imageIsWorkingCopy,
     canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo,

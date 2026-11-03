@@ -295,3 +295,28 @@ test('on a Blank frame, the shapes it carries have dimmed outlines; one changed 
   await store(page, 'project', (p) => p.showFrame(0));
   expect((await matrix(page, key))[4]).toBe(0);
 });
+
+test('VECTOR\'s Merge down presses the selected shapes into the base, and ANSI\'s Merge down says shapes go too', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const a = await addRect(page, 10, 10, 20, 20), b = await addRect(page, 40, 30, 50, 40);
+  await settled(page);
+  const shown = await cells(page);
+  const merge = page.getByRole('button', { name: /^Merge down: press the selected shapes/ });
+  await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
+  await merge.click();
+  await expect(page.getByRole('dialog')).toHaveCount(0); // no question on VECTOR
+  expect((await shapeList(page)).map((s) => s.key)).toEqual([b]);
+  await expect.poll(() => cells(page)).toEqual(shown);
+  await page.keyboard.press('ControlOrMeta+z');
+  expect((await shapeList(page)).map((s) => s.key).sort()).toEqual([a, b].sort());
+
+  await tab(page, 'ANSI').click();
+  await page.getByRole('button', { name: /^Merge down: flatten/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Merge down' });
+  await expect(dialog.getByText('Shapes are merged too, and stop being editable.')).toBeVisible();
+  await dialog.getByRole('button', { name: /^Keep crisp cells/ }).click();
+  expect(await shapeList(page)).toEqual([]);
+  await expect.poll(() => cells(page)).toEqual(shown);
+});

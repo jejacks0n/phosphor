@@ -8,6 +8,7 @@
 import { t } from '@/i18n';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
+import { isShape, shapeBounds, withShape } from '@/document/shapes.js';
 import { cellKey, parseKey, rectCells, updateRect, bakeEditCells, bakeEntry, mergeKind } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
@@ -20,6 +21,15 @@ import { copyOf, over, bytesHeld } from '@/store/project/shared.js';
 import { RESET_GROUPS, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
 
+const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+// A shape with the color transforms burnt into its fill and stroke.
+const bakedShape = (shape, params) => withShape(shape, {
+  fill: shape.fill && getEffectiveColor(shape.fill, params),
+  stroke: shape.stroke && getEffectiveColor(shape.stroke, params),
+});
+const bakedShapes = (shapes, params) => new Map([...shapes].map(([key, shape]) => [key, bakedShape(shape, params)]));
+
 // A frame's changes with the color transforms burnt in, as Bake does to the edit layer: a stored color, then
 // its paint's alpha back on it.
 function bakedChanges(changes, params) {
@@ -28,7 +38,8 @@ function bakedChanges(changes, params) {
     const { r, g, b } = hex2rgb(getEffectiveColor(rgb2hex({ r: rgba >>> 24, g: (rgba >>> 16) & 0xff, b: (rgba >>> 8) & 0xff }), params));
     return ((r << 24) | (g << 16) | (b << 8) | (rgba & 0xff)) >>> 0;
   };
-  return new Map([...changes].map(([key, { cell, top, bottom }]) => [key, cellState(cell && bakeEntry(cell, params), baked(top), baked(bottom))]));
+  const entry = (cell) => cell && (isShape(cell) ? bakedShape(cell, params) : bakeEntry(cell, params));
+  return new Map([...changes].map(([key, { cell, top, bottom }]) => [key, cellState(entry(cell), baked(top), baked(bottom))]));
 }
 
 export const mergingActions = {
@@ -72,13 +83,16 @@ export const mergingActions = {
       const clip = toRaw(workspace.clipboard);
       const before = {
         image: this.image, imageBuffer: this.imageBuffer, workingCopy: this.imageIsWorkingCopy, sliders: sliders(params), // what it was baked with
-        paint: this.paintLayer.snapshot(), base: this.baseLayer.snapshot(), editCells: this.editCells,
+        paint: this.paintLayer.snapshot(), base: this.baseLayer.snapshot(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords,
         fg: workspace.editFgColor, bg: workspace.editBgColor, clipboard: clip,
         frames: this.hasFrames && this.frames.map(({ kind, changes }) => ({ kind, changes })),
       };
+      // A still's shapes are pressed into the base; an animation's stay shapes, in baked colors.
+      const pressed = !this.hasFrames && this.shapes.size ? this.pressShapes(new Set(this.shapes.keys())) : null;
       const after = {
         image, imageBuffer, workingCopy: true, sliders: defaults,
-        paint: baked(before.paint), base: baked(before.base), editCells: bakeEditCells(this.editCells, params),
+        paint: baked(before.paint), base: baked(pressed?.base ?? before.base), editCells: bakeEditCells(this.editCells, params),
+        shapes: pressed ? pressed.shapes : bakedShapes(this.shapes, params), baseRecords: pressed?.baseRecords ?? this.baseRecords,
         fg: getEffectiveColor(before.fg, params), bg: getEffectiveColor(before.bg, params),
         clipboard: clip && {
           ...clip,
@@ -97,6 +111,8 @@ export const mergingActions = {
         this.baseLayer.restore(state.base);
         this.hasPaint = this.paintLayer.hasPaint;
         this.editCells = state.editCells;
+        this.shapes = state.shapes;
+        this.setBaseRecords(state.baseRecords);
         if (workspace.editFgColor === from.fg) workspace.editFgColor = state.fg;
         if (workspace.editBgColor === from.bg) workspace.editBgColor = state.bg;
         if (toRaw(workspace.clipboard) === from.clipboard) workspace.clipboard = state.clipboard;
@@ -294,11 +310,15 @@ export const mergingActions = {
     }
   },
 
-  // rect: only the edit layer inside a cell rect (a selection) is merged; the rest stays.
+  // rect: only the edit layer inside a cell rect (a selection) is merged; the rest stays. Shapes go first, under
+  // the edit cells and paint: every one touching rect (or all), whole, with those beneath that overlap them.
   mergeDown(rect = null) {
     if (!this.image || this.hasFrames) return; // it would put one frame in the base, under all of them
     this.ensureLayer();
     this.commitPending();
+    const area = rect && { x: rect.c0, y: 2 * rect.r0, w: rect.c1 - rect.c0 + 1, h: 2 * (rect.r1 - rect.r0 + 1) };
+    const touching = [...this.shapes].filter(([, shape]) => !area || meets(shapeBounds(shape), area)).map(([key]) => key);
+    const pressed = touching.length ? this.pressShapes(this.pressedKeys(touching)) : null;
 
     const rows = charRowsOf(this.rows);
     const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);
@@ -313,24 +333,29 @@ export const mergingActions = {
       }
       merged.push(this.mergeCellOf(col, row));
     }
-    if (rect && !merged.length && !this.paintLayer.hasPaintIn(rect)) return; // nothing drawn inside: no empty undo step
+    if (rect && !merged.length && !pressed && !this.paintLayer.hasPaintIn(rect)) return; // nothing drawn inside: no empty undo step
     const paintedPins = [...this.baseRecords.pins.keys()].map(parseKey)
       .filter(({ col, row }) => inRect(col, row) && !this.editCells.has(cellKey(col, row)) && this.cellHasPaint(col, row))
       .map(({ col, row }) => ({ col, row, char: shownChar(col, row) ?? '▄' }));
 
-    const before = { base: this.baseLayer.snapshot(), paint: this.paintLayer.snapshot(), editCells: this.editCells, baseRecords: this.baseRecords };
+    const before = { base: this.baseLayer.snapshot(), paint: this.paintLayer.snapshot(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords };
+    if (pressed) this.baseLayer.restore(pressed.base);
     const pixels = merged.flatMap(({ col, row, top, bottom }) => [{ x: col, y: 2 * row, ...top, alpha: 1 }, { x: col, y: 2 * row + 1, ...bottom, alpha: 1 }]);
     this.baseLayer.erase(pixels);
     this.baseLayer.paint(pixels);
     this.baseLayer.drawOver(this.paintLayer, rect);
     if (rect) this.paintLayer.clearCells(rect);
     const pins = [...merged.map(({ col, row, char }) => ({ col, row, char })), ...paintedPins];
-    const after = { base: this.baseLayer.snapshot(), paint: rect ? this.paintLayer.snapshot() : null, editCells: kept, baseRecords: withPins(before.baseRecords, pins) };
-    const apply = ({ base, paint, editCells, baseRecords }) => {
+    const after = {
+      base: this.baseLayer.snapshot(), paint: rect ? this.paintLayer.snapshot() : null, editCells: kept,
+      shapes: pressed?.shapes ?? this.shapes, baseRecords: withPins(pressed?.baseRecords ?? before.baseRecords, pins),
+    };
+    const apply = ({ base, paint, editCells, shapes, baseRecords }) => {
       this.baseLayer.restore(base);
       this.paintLayer.restore(paint);
       this.hasPaint = this.paintLayer.hasPaint;
       this.editCells = editCells;
+      this.shapes = shapes;
       this.setBaseRecords(baseRecords);
       this.render();
     };

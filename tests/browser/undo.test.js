@@ -126,6 +126,7 @@ function makeActions(project, workspace, r, opts) {
     },
     mergeUp: () => project.mergeUp(r() < 0.5 ? rect() : undefined),
     mergeDown: () => project.mergeDown(r() < 0.5 ? rect() : null),
+    mergeShapes: () => project.mergeShapes(r() < 0.5 ? [pick([...project.shapes.keys()])].filter(Boolean) : null),
     clearEdit: () => project.clearEditLayer(),
     slider: () => {
       const [key, values] = pick(SLIDERS);
@@ -311,7 +312,7 @@ for (const quantize of ['none', 'count']) {
 
 test('fuzz: shapes among typing, paint, selections and merges', async () => {
   const failures = [];
-  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'deleteShape', 'restackShape', 'pen', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
+  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
   for (const seed of seeds([1, 2, 3, 6])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);

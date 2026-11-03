@@ -105,10 +105,27 @@ export default class ShapeLayer {
     return col < this.#base.cols && !!this.#covered[row * this.#base.cols + col];
   }
 
-  // Shapes (keys, in stacking order) drawn onto a canvas the base layer's size and scale.
-  drawInto(canvas, keys) {
-    const ctx = ctx2d(canvas), k = this.#base.scale;
-    for (const [key, shape] of this.#order) if (keys.has(key)) this.#paint(ctx, shape, k);
+  // The base layer with the shapes keys (a Set) pressed in, drawn as this layer draws them (alone, then over
+  // the base's bytes), so nothing shown changes: { canvas, covered }, covered the cells ({ col, row }) they draw in.
+  pressed(keys) {
+    const base = this.#base, k = base.scale, { width, height } = base.canvas;
+    const own = newCanvas(width, height), ownCtx = ctx2d(own);
+    for (const [key, shape] of this.#order) if (keys.has(key)) this.#paint(ownCtx, shape, k);
+    const canvas = newCanvas(width, height), ctx = ctx2d(canvas);
+    ctx.putImageData(ctx2d(base.canvas).getImageData(0, 0, width, height), 0, 0);
+    ctx.drawImage(own, 0, 0);
+    const { data } = ownCtx.getImageData(0, 0, width, height), covered = [];
+    offHalfSteps(ctx, data, width, height);
+    for (let row = 0; row < charRowsOf(base.rows) && 2 * k * (row + 1) <= height; row++) {
+      for (let col = 0; col < base.cols && k * (col + 1) <= width; col++) {
+        let any = false;
+        for (let py = 2 * k * row; py < 2 * k * (row + 1) && !any; py++) {
+          for (let px = k * col; px < k * (col + 1); px++) if (data[(py * width + px) * 4 + 3]) { any = true; break; }
+        }
+        if (any) covered.push({ col, row });
+      }
+    }
+    return { canvas, covered };
   }
 
   changedSince(version) {
@@ -195,4 +212,24 @@ export default class ShapeLayer {
       }
     }
   }
+}
+
+// A partly transparent pixel is held premultiplied, and one whose color comes out halfway between two values when
+// it's unpremultiplied (a soft edge over a soft base can) is read as either, depending on what else Chromium has
+// done to the canvas: a cell could change a shade with nothing drawn on it, and an undo wouldn't read back the same.
+// Each such color the shapes drew (own: their pixels alone) moves a step down, which no one can see.
+function offHalfSteps(ctx, own, width, height) {
+  const image = ctx.getImageData(0, 0, width, height), { data } = image;
+  let moved = false;
+  for (let i = 0; i < data.length; i += 4) {
+    const a = data[i + 3];
+    if (!own[i + 3] || !a || a === 255) continue;
+    for (let j = i; j < i + 3; j++) {
+      const held = Math.round((data[j] * a) / 255);
+      if ((510 * held) % (2 * a) !== a) continue;
+      data[j] = Math.round(((held - 1) * 255) / a);
+      moved = true;
+    }
+  }
+  if (moved) ctx.putImageData(image, 0, 0);
 }

@@ -64,6 +64,9 @@ round on top of the result. Nothing on the canvas changes when you bake:
   edits to the base, so baking burns them in; the same goes for your color pair and anything
   you've copied.
 - The color palette isn't baked: it keeps applying afterwards.
+- [Shapes](vector.md) are pressed into the base layer's pixels and stop being shapes, so shapes alone make
+  Bake available. In an animation they stay shapes, with the sliders burnt into their colors; where a shape's
+  edge is soft (an outline's antialiasing), its cells can come out a different color.
 - With the CGA or VGA palette, Bake asks how to keep the colors (not with Dither on, or with Best match or By shape: then it bakes exactly, as other palettes do):
   - **Keep full color** (the default): the picture keeps its in-between colors, so switching the
     palette later still has them. A few cells near the edges between palette colors can come out
@@ -76,6 +79,16 @@ round on top of the result. Nothing on the canvas changes when you bake:
 
 The baked image is the size Phosphor works from to make the preview, not your photo's full size, so
 making the grid bigger afterwards works from that smaller image.
+
+### Shapes
+
+The VECTOR tab's [shapes](vector.md) sit between the base layer's own pixels and the edit layer:
+
+the picture → the base layer's own pixels → shapes → edit cells → paint
+
+They're converted with the picture, so the color sliders, the palette and dither reach them (the image filters
+don't). A shape over a pinned character shows its conversion there. When a shape is pressed into the base (Bake,
+Merge down), pins it covers go, since its pixels are what shows there now.
 
 ## Opening ANSI and text files
 
@@ -176,7 +189,9 @@ nudges each cell by its place in the grid. See [Characters](characters.md#how-th
   it asks how:
   - **Keep crisp cells**: paint and cells become base pixels exactly as they show, and your typed and drawn
     cells keep their characters, pinned on the base layer. Nothing is resampled or re-filtered, and
-    the effects never touch it.
+    the effects never touch it. [Shapes](vector.md) go too, first, under the cells and paint, and stop being
+    editable: with a selection, every shape touching it goes whole, with any shape beneath one of those that
+    overlaps it, so nothing on the canvas changes.
   - **Blend into source image**: your drawing becomes part of the image itself, so every effect applies
     to it, live, like the photo: Edges outlines it, Sharpen sharpens it, and moving the sliders keeps
     changing it. Paint and solid cells (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep
@@ -187,7 +202,7 @@ nudges each cell by its place in the grid. See [Characters](characters.md#how-th
     picture that first time. With a color-count palette, the palette is worked out again from the
     merged picture, so some colors can shift. When the graphics card can't process a picture as
     long as the grid (most handle the full 5000 lines; some phones stop at 2000 or 4000), it merges
-    exactly instead.
+    exactly instead. Shapes stay shapes.
 - **Merge up** (the Select tool's row) does the opposite for the base: what the base layer shows —
   its characters and colors, effects included — becomes edit cells, which the seed, character set
   and effects no longer change. With a selection it merges that area; without one, the whole
