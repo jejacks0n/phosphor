@@ -14,6 +14,7 @@ import LayerToggles from '@/components/LayerToggles.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import { shortcut } from '@/lib/keyLabels';
+import { snapsLate } from '@/lib/CharResolver';
 import { copySelection as copyToClipboards } from '@/composables/clipboard';
 
 const { t } = useI18n();
@@ -163,11 +164,11 @@ const mergeChoices = computed(() => {
 
 // Bake under CGA or VGA asks whether to lock the picture to the palette (exact, but the in-between
 // colors are gone) or keep full color (a few cells near palette boundaries can tip). Other
-// palettes bake exactly either way, and so do CGA and VGA dithered (they snap on the grid then).
+// palettes bake exactly either way, and so do CGA and VGA dithered or resolved (they snap on the grid then).
 const baking = ref(null); // the palette's name while the dialog is open
 const bakingFinal = ref(false); // others are drawing, and it can't be undone: it asks first
 function bake() {
-  const palette = !(project.dither > 0) && { cga: 'CGA', vga: 'VGA' }[project.quantize];
+  const palette = !snapsLate(project.processParams) && { cga: 'CGA', vga: 'VGA' }[project.quantize];
   if (palette) baking.value = palette;
   else if (drawing.othersHere) bakingFinal.value = true;
   else project.bake();

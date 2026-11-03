@@ -14,7 +14,7 @@ import { generateSlug } from 'random-word-slugs';
 
 test("Settings schema: same keys, storage keys and reset defaults as before the schema existed, so users' persisted settings survive", async () => {
   // same 23 keys as the pre-schema SETTING_KEYS; order follows the table
-  assert.deepEqual([...SETTING_KEYS].sort(), ['cols', 'rows', 'aspectLock', 'renderStyle', 'chars', 'charsAscii', 'seed', 'smoothing', 'quantize', 'palette', 'colorCount', 'ditherStyle', 'dither', 'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'levelsBlack', 'levelsWhite', 'levelsMid', 'posterize', 'threshold', 'thresholdDark', 'thresholdLight', 'blur', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'].sort());
+  assert.deepEqual([...SETTING_KEYS].sort(), ['cols', 'rows', 'aspectLock', 'renderStyle', 'chars', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solids', 'patternLight', 'smoothing', 'quantize', 'palette', 'colorCount', 'ditherStyle', 'dither', 'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'levelsBlack', 'levelsWhite', 'levelsMid', 'posterize', 'threshold', 'thresholdDark', 'thresholdLight', 'blur', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'].sort());
   assert.deepEqual(SAUCE_KEYS, ['sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments']);
   assert.equal(getSetting('brightness').storageKey ?? 'current_file.brightness', 'current_file.brightness');
   assert.equal(getSetting('sauceUse9pxFont').storageKey, 'current_file.sauce.use9pxFont');
@@ -46,7 +46,7 @@ test('settings from another browser come back when every value is one a document
 test('one bad value refuses them all, so nothing is half applied', () => {
   for (const bad of [
     { brightness: 501 }, { brightness: -1 }, { brightness: 'bright' }, { brightness: null }, { hue: Infinity }, { colorCount: 1 }, { dither: 101 }, { dither: -1 }, { ditherStyle: 3 },
-    { chars: 7 }, { chars: ['a'] }, { palette: {} }, { seed: 1 }, { sauceTitle: 1 },
+    { chars: 7 }, { chars: ['a'] }, { palette: {} }, { seed: 1 }, { sauceTitle: 1 }, { solids: 101 }, { solids: -1 }, { patternLight: 101 }, { charChoice: 3 },
     { colorize: 'red' }, { edgeColor: '#12' }, { aspectLock: 'yes' }, { sauceUse9pxFont: 1 },
     { cols: 0 }, { cols: 1e6 }, { cols: 1.5 }, { rows: 0 }, { rows: 1e7 },
     { baseScale: 1e9 }, { baseScale: 0 }, { baseScale: 1.5 }, { baseScale: '2' }, { paintScale: 1e9 }, { paintScale: -1 }, { paintScale: 'x' },

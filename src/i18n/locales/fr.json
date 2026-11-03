@@ -261,6 +261,17 @@
     "edgeThickness": {
       "label": "Épaisseur des contours",
       "help": "Contrôle l'épaisseur des contours tracés."
+    },
+    "charChoice": {
+      "help": "Comment chaque cellule reçoit son caractère."
+    },
+    "solids": {
+      "label": "Aplats",
+      "help": "La part de l'image que les blocs pleins peuvent prendre."
+    },
+    "patternLight": {
+      "label": "Lumière des motifs",
+      "help": "Le degré de clarté des motifs de points et de lignes."
     }
   },
   "charsets": {

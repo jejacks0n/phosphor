@@ -67,6 +67,9 @@ function glyphsOf(charset) {
 // pure color is as heavy as white.
 const weightOf = (p, charMode) => (charMode === 'intensity' ? Math.max(p.r, p.g, p.b) / 255 : rgb2gray(p));
 
+// Whether a cell's character comes from the seed (until Best match and By shape resolve it themselves).
+export const keepsSeed = (charMode) => charMode === 'random' || charMode === 'best' || charMode === 'shape';
+
 // The character for a cell's two pixels by their weight (charMode 'brightness' or 'intensity'),
 // lightest first in the set.
 export function weightedChar(top, bottom, charset, charMode) {
@@ -145,7 +148,7 @@ function buildCellsWith(pixelAt, cols, rows, { charset, charMode, renderStyle, s
     for (let col = 0; col < cols; col++) {
       const top = pixelAt(2 * row * cols + col, 0);
       const bottom = pixelAt((2 * row + 1) * cols + col, 1) || top;
-      const char = charMode === 'random' ? chars[cellRandom(h, col, row) % chars.length] : weightedChar(top, bottom, charset, charMode);
+      const char = keepsSeed(charMode) ? chars[cellRandom(h, col, row) % chars.length] : weightedChar(top, bottom, charset, charMode);
       cells[cellIndex(col, row, cols)] = buildCell(top, bottom, char, renderStyle, color);
     }
   }

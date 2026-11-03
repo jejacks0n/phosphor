@@ -6,6 +6,7 @@ import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
 import { ghostedCells } from '@/lib/ghostCells.js';
 import { MAX_ANIMATION_CELLS, MAX_FRAME_CELLS, maxFramesFor, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
+import { charModeOf } from '@/lib/CharResolver.js';
 import { settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
@@ -143,7 +144,10 @@ export const useProjectStore = defineStore('project', {
     processParams: (state) => ({
       ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),
       chars: state.renderStyle === 'ansi' ? state.chars : state.charsAscii,
-      charMode: { ansi: 'random', colorAscii: 'intensity' }[state.renderStyle] ?? 'brightness', // how a cell's character is picked (Cells.js)
+      charMode: charModeOf(state.renderStyle, state.charChoice, state.charChoiceAscii), // how a cell's character is picked (Cells.js)
+      charChoice: state.charChoice,
+      solids: state.solids,
+      patternLight: state.patternLight,
       image: state.image,
       fit: state.fit,
       workScale: state.baseScale,
