@@ -153,3 +153,30 @@ test('between a grid resize and its render, the old grid\'s cells are never used
   expect(p.cells.length).toBe(30 * 20);
   expect(key(p.cells)).toEqual(key(fullRebuild(p)));
 });
+
+test('the base under the paint stays snapped through partial edits, as a full render snaps it', async () => {
+  const p = await gradient({ quantize: 'vga', charChoice: 'best', chars: SHADES });
+  void p.renderer.basePixels; // snapped once, then kept up over each edit's area
+  p.beginEdit();
+  p.eraseBase([{ col: 5, row: 5 }]);
+  p.commitEdit();
+  p.moveSelection({ c0: 2, r0: 2, c1: 8, r1: 5 }, { base: true, edit: true }, 4, 6);
+  const partial = Array.from(p.renderer.basePixels.data);
+  p.renderer.reset();
+  p.render();
+  await settle(p);
+  expect(Array.from(p.renderer.basePixels.data)).toEqual(partial);
+});
+
+for (const dithering of [{ dither: 0 }, { dither: 100, ditherStyle: 'floyd' }]) {
+  test(`an edit just as Best match comes on rebuilds every cell (dither ${dithering.dither})`, async () => {
+    const p = await gradient({ quantize: 'cga', charChoice: 'best', chars: SHADES, ...dithering }); // the reference font has loaded
+    p.charChoice = 'random';
+    await settle(p);
+    p.charChoice = 'best'; // its render hasn't run yet: the edit's composite resolves the grid first
+    p.beginEdit();
+    p.eraseBase([{ col: 6, row: 6 }]);
+    p.commitEdit();
+    expect(key(p.cells)).toEqual(key(fullRebuild(p)));
+  });
+}
