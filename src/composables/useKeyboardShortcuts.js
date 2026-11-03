@@ -2,7 +2,8 @@ import { onMounted, onBeforeUnmount, watch } from 'vue';
 import { getTool, offeredTools } from '@/tools';
 import { clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
-import { copySelection } from '@/composables/clipboard';
+import { copySelection, decodeBlock } from '@/composables/clipboard';
+import { readClipboardHtml } from '@/lib/clipboardBlocks';
 import { typeText } from '@/composables/useTextTool';
 import { colorBoxKey, helpKey } from '@/lib/TextKeys';
 import { isField } from '@/lib/fields';
@@ -151,8 +152,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     }
     const key = e.key.toLowerCase();
     if (key === 'v') {
-      // Left to the browser: its paste event carries the system clipboard's text (_handlePaste
-      // decides what to paste). A browser that sends no paste event here pastes Phosphor's own block.
+      // Left to the browser: its paste event carries the system clipboard (_handlePaste decides
+      // what to paste). A browser that sends no paste event here pastes Phosphor's own block.
       // The Text cursor only counts in Edit Mode (it lingers, unseen, after switching tools), and there
       // it wins over a selection kept from another tool.
       const cursor = workspaceStore.activeTool === 'text' ? workspaceStore.textCursor : null;
@@ -200,14 +201,21 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
-  // Paste: Phosphor's own block (a Select copy), unless the system clipboard holds something newer
-  // (text that isn't what the last copy put there), which is typed in instead: at the Text cursor in
-  // Edit Mode, else at the selection or the top-left of the view.
+  // Paste, from what the system clipboard holds (the paste event's text and HTML), the first that
+  // applies: a Phosphor block (this tab's own copy pastes Phosphor's own block, which a Bake keeps
+  // up to date; another tab's pastes as it came); a Moebius block; or text, typed in: at the Text
+  // cursor in Edit Mode, else at the selection or the top-left of the view. Phosphor's own block
+  // wins when the browser refused the copy, and over text that's what the last copy put there. A
+  // block lands floating and selected, to drag into place.
   let _pendingPaste = null; // { at, timer } from Cmd/Ctrl+V until its paste event
-  const _pasteBlock = (at) => {
-    if (!workspaceStore.clipboard) return;
-    const pasted = projectStore.pasteSelection(workspaceStore.clipboard, at.col, at.row);
+  const _pasteBlock = (at, block = workspaceStore.clipboard) => {
+    if (!block) return;
+    const pasted = projectStore.pasteSelection(block, at.col, at.row);
     if (pasted) workspaceStore.selectAll(pasted); // selected, with the Select tool, to drag into place
+  };
+  const _typeText = (at, text) => {
+    if (workspaceStore.activeTool !== 'text' || !workspaceStore.textCursor) workspaceStore.textCursor = at;
+    typeText(projectStore, workspaceStore, text);
   };
   const _handlePaste = (e) => {
     if (!_pendingPaste) return; // not a Cmd/Ctrl+V we routed (a field's own paste, the context menu)
@@ -218,11 +226,13 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (projectStore._paused) return; // refused: nothing moves to where it would have gone
     const text = (e.clipboardData?.getData('text/plain') ?? '').replace(/\r\n/g, '\n'); // Windows' clipboard adds CRs
     const ours = workspaceStore.clipboardText?.replace(/\r\n/g, '\n') ?? null;
-    if (workspaceStore.clipboard && (!text || ours === null || text === ours)) _pasteBlock(at);
-    else if (text) {
-      if (workspaceStore.activeTool !== 'text' || !workspaceStore.textCursor) workspaceStore.textCursor = at;
-      typeText(projectStore, workspaceStore, text);
-    }
+    const own = workspaceStore.clipboard;
+    const found = own && ours === null ? null : readClipboardHtml(e.clipboardData?.getData('text/html'));
+    if (found?.phosphor && !(own && found.phosphor.id === workspaceStore.clipboardId)) {
+      decodeBlock(found.phosphor).then((block) => { if (!projectStore._paused) _pasteBlock(at, block); }, () => { if (text) _typeText(at, text); });
+    } else if (found?.moebius) _pasteBlock(at, found.moebius);
+    else if (own && (found?.phosphor || !text || ours === null || text === ours)) _pasteBlock(at);
+    else if (text) _typeText(at, text);
   };
 
   const _handleGlobalKeyDown = (e) => {
