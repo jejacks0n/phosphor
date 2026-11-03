@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 import { AnsiFile } from '../../src/lib/AnsiFile.js';
 import { readArtFile } from '../../src/lib/ArtFile.js';
 import { buildCell, layoutWide } from '../../src/lib/Cells.js';
-import { cp437Substitute } from '../../src/lib/Cp437.js';
 import { PALETTES, rgb2hex } from '../../src/lib/ColorUtils.js';
 
 const SAUCE = { title: 'Round trip', author: 'Test Author', group: '', date: '20261102', fontName: 'IBM VGA', use9pxFont: false, comments: [] };
@@ -18,7 +17,9 @@ const COLORS = {
   cga: [14, 1, 4, 0, 10, 1].map((i) => PALETTES.cga[i]),
 };
 const PLAIN = ['a', 'Z', '7', '█', '▀', 'é', '░', '╬', ' ', '~'];
-const CHARS = { ans: PLAIN, utf8ans: [...PLAIN, '漢', 'é'] };
+// An .ans also gets characters CP437 lacks: lookalikes (a control byte's glyph, a block) and one with none.
+const STAND_INS = { '•': '∙', '▅': '▄', '→': '>', '漢': '?' }; // written literally, not through the writer's own table
+const CHARS = { ans: [...PLAIN, ...Object.keys(STAND_INS)], utf8ans: [...PLAIN, '漢', 'ж'] };
 
 // A cols x rows grid; shift moves which character and colors each cell gets (for a second frame).
 const build = (cols, rows, mode, chars, shift = 0) => layoutWide(Array.from({ length: cols * rows }, (_, i) => {
@@ -28,7 +29,7 @@ const build = (cols, rows, mode, chars, shift = 0) => layoutWide(Array.from({ le
 
 // The cell a reader should give for an exported one: a hidden cell (matching colors) or a wide trail is a space.
 const shows = (cell, utf8) => ({
-  char: cell.fg.hex === cell.bg.hex || cell.wide === 'trail' ? ' ' : utf8 ? cell.char : cp437Substitute(cell.char),
+  char: cell.fg.hex === cell.bg.hex || cell.wide === 'trail' ? ' ' : utf8 ? cell.char : STAND_INS[cell.char] ?? cell.char,
   fg: cell.fg.hex.toLowerCase(),
   bg: cell.bg.hex.toLowerCase(),
 });
@@ -48,6 +49,7 @@ describe('an export reads back as it was exported', () => {
           const rows = 5;
           const cells = build(cols, rows, mode, CHARS[kind]);
           if (kind === 'utf8ans') assert.ok(cells.some((c) => c.wide === 'lead'), 'the grid has wide characters');
+          else for (const char of Object.keys(STAND_INS)) assert.ok(cells.some((c) => c.char === char && c.fg.hex !== c.bg.hex), `the grid shows ${char}`);
           assert.ok(cells.some((c) => c.fg.hex === c.bg.hex), 'the grid has cells whose colors match');
           const blob = new AnsiFile(cols, rows, cells).toBlob({ colorMode: mode, utf8: kind === 'utf8ans', sauce: SAUCE });
           const art = readArtFile(new Uint8Array(await blob.arrayBuffer()), `drawing.${kind}`);
@@ -62,7 +64,9 @@ describe('an export reads back as it was exported', () => {
     const cols = 8, rows = 3;
     const frames = [build(cols, rows, 'none', CHARS.ans, 0), build(cols, rows, 'none', CHARS.ans, 11)];
     const bytes = AnsiFile.animationBytes(cols, rows, frames, { colorMode: 'none', sauce: SAUCE });
-    expectCells(readArtFile(bytes, 'movie.ans'), frames[1], cols, rows, false);
+    const art = readArtFile(bytes, 'movie.ans');
+    expectCells(art, frames[1], cols, rows, false);
+    assert.equal(art.palette, 'none');
   });
 
   test('an animated .utf8ans reads as its last frame', () => {
