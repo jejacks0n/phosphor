@@ -5,6 +5,7 @@ import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { setDisplayFont } from '@/lib/displayFonts';
 import { layoutWide } from '@/lib/Cells';
 import { PALETTES } from '@/lib/ColorUtils.js';
+import { processImage } from '@/lib/ImageProcessor.js';
 
 const SHADES = '▄░▒▓█';
 
@@ -122,11 +123,11 @@ test('an odd number of pixel rows renders, and equals a full rebuild', async () 
   expect(key(p.cells)).toEqual(key(fullRebuild(p)));
 });
 
-test('an animation frame is built as the still is', async () => {
+test('an animation frame is built as the still is (Best match and By shape)', async () => {
   const color = ({ hex, c }) => ({ hex, c });
   const values = (cells) => cells.map(({ char, wide, fg, bg }) => ({ char, wide, fg: color(fg), bg: color(bg) }));
-  for (const dither of [{ dither: 0 }, { dither: 100, ditherStyle: 'floyd' }]) {
-    const p = await gradient({ cols: 24, rows: 24, quantize: 'cga', charChoice: 'best', chars: SHADES, solids: 0, ...dither });
+  for (const dither of [{ dither: 0, charChoice: 'best' }, { dither: 100, ditherStyle: 'floyd', charChoice: 'best' }, { dither: 0, charChoice: 'shape' }, { dither: 100, ditherStyle: 'floyd', charChoice: 'shape' }]) {
+    const p = await gradient({ cols: 24, rows: 24, quantize: 'cga', chars: SHADES, solids: 0, ...dither });
     p.beginEdit();
     p.eraseBase([{ col: 2, row: 9 }]);
     p.commitEdit();
@@ -145,8 +146,8 @@ test('an animation frame is built as the still is', async () => {
   }
 });
 
-test('between a grid resize and its render, the old grid\'s cells are never used', async () => {
-  const p = await gradient({ quantize: 'cga', charChoice: 'best', chars: SHADES });
+for (const charChoice of ['best', 'shape']) test(`between a grid resize and its render, the old grid's cells are never used (${charChoice})`, async () => {
+  const p = await gradient({ quantize: 'cga', charChoice, chars: SHADES });
   p.cols = 30; // the render this queues hasn't run yet
   expect(p.renderer.underCell(3, 3, p.processParams, p.renderedCells)).toBe(null);
   await settle(p);
@@ -180,3 +181,96 @@ for (const dithering of [{ dither: 0 }, { dither: 100, ditherStyle: 'floyd' }]) 
     expect(key(p.cells)).toEqual(key(fullRebuild(p)));
   });
 }
+
+// By shape: each cell sampled 4 x 8 from the picture before it's shrunk to the grid, in every style.
+const SHAPE_STYLES = [['ansi', { charChoice: 'shape' }, { charChoice: 'random' }], ['colorAscii', { charChoiceAscii: 'shape' }, { charChoiceAscii: 'weight' }], ['ascii', { charChoiceAscii: 'shape' }, { charChoiceAscii: 'weight' }]];
+for (const [renderStyle, shape, other] of SHAPE_STYLES) {
+  test(`By shape in ${renderStyle}: only the set's characters and CGA's colors, not the other way's, whatever the display font`, async () => {
+    const p = await gradient({ renderStyle, quantize: 'cga', ...shape });
+    const set = p.processParams.chars, cga = new Set(PALETTES.cga.map((c) => c.hex.toLowerCase()));
+    for (const cell of p.cells) {
+      expect(set.includes(cell.char), cell.char).toBe(true);
+      for (const color of [cell.fg, cell.bg]) expect(cga.has(color.hex.toLowerCase()), color.hex).toBe(true);
+    }
+    const before = cellsKey(p);
+    try {
+      await setDisplayFont('unifont');
+      p.render();
+      await settle(p);
+      expect(cellsKey(p)).toEqual(before);
+    } finally {
+      await setDisplayFont('jetbrains');
+    }
+    Object.assign(p, other);
+    await settle(p);
+    expect(cellsKey(p)).not.toEqual(before);
+  });
+}
+
+// A picture of stripes half a grid pixel wide (8 image pixels a grid pixel: the picture is
+// processed at 8 a grid pixel), white then black.
+async function stripes(project, cols = 10, rows = 10) {
+  const canvas = Object.assign(document.createElement('canvas'), { width: cols * 8, height: rows * 8 });
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'white';
+  for (let x = 0; x < canvas.width; x += 8) ctx.fillRect(x, 0, 4, canvas.height);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  await loadImage(project, URL.createObjectURL(blob), { cols, rows });
+}
+
+test('By shape sees inside a cell: stripes half a cell wide are ▌, where Best match sees only one gray', async () => {
+  const { project: p } = await createTestApp();
+  await stripes(p);
+  Object.assign(p, { quantize: 'cga', charChoice: 'shape', chars: '▄▀▌▐█', solids: 0 });
+  await settle(p);
+  expect(new Set(p.cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`.toLowerCase()))).toEqual(new Set(['▌#ffffff#000000']));
+  const shape = cellsKey(p);
+  p.charChoice = 'best'; // each half one gray: in linear light, ▌ of white and black is lighter than it
+  await settle(p);
+  expect(cellsKey(p)).not.toEqual(shape);
+});
+
+test('By shape samples the base layer\'s own pixels, not their average in the grid', async () => {
+  const { project: p } = await createTestApp();
+  await stripes(p, 40, 40); // large enough that undoing a few tiles of the base is a partial update, not a render
+  Object.assign(p, { quantize: 'cga', charChoice: 'shape', chars: '▄▀▌▐█', solids: 0 });
+  await settle(p);
+  const at = (col, row) => `${p.cells[row * p.cols + col].char}${p.cells[row * p.cols + col].fg.hex}${p.cells[row * p.cols + col].bg.hex}`.toLowerCase();
+  const black = (col, row) => {
+    p.beginEdit();
+    p.eraseBasePixels([{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }, { x: col + 1, y: 2 * row }, { x: col + 1, y: 2 * row + 1 }]); // no pins
+    p.commitEdit();
+  };
+  black(30, 15); // so the base keeps pixels of its own through the undos below
+  black(0, 3);
+  expect(at(0, 3)).toBe('█#000000#000000');
+  p.moveSelection({ c0: 0, r0: 0, c1: 1, r1: 0 }, { base: true, edit: true }, 0, 3); // the stripes' pixels, over the black
+  expect([at(0, 3), at(1, 3)]).toEqual(['▌#ffffff#000000', '▌#ffffff#000000']);
+  expect(key(p.cells)).toEqual(key(fullRebuild(p)));
+  const partial = key(p.cells);
+  p.undo(); // the move: the black is back over the stripes, and the cells it left are the picture's again
+  await settle(p);
+  expect([at(0, 0), at(0, 3)]).toEqual(['▌#ffffff#000000', '█#000000#000000']);
+  p.undo(); // the black: the picture's stripes again, the base's pixels gone from over them (only there)
+  expect(p._renderQueued).toBe(false);
+  expect(at(0, 3)).toBe('▌#ffffff#000000');
+  expect(key(p.cells)).toEqual(key(fullRebuild(p)));
+  p.redo();
+  p.redo();
+  await settle(p);
+  expect(key(p.cells)).toEqual(partial);
+  p.renderer.reset();
+  p.render();
+  await settle(p);
+  expect(key(p.cells)).toEqual(partial);
+});
+
+test('processImage makes By shape\'s samples only under By shape: 4 a grid pixel each way', async () => {
+  const p = await gradient({ quantize: 'cga' });
+  expect((await processImage(p.image, p.processParams)).samples).toBe(null);
+  p.charChoice = 'shape';
+  const { samples } = await processImage(p.image, p.processParams);
+  expect([samples.width, samples.height]).toEqual([40 * 4, 40 * 4]);
+});

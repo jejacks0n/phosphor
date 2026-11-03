@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { charModeOf, snapsLate, carriesError, mixChannel, bestMatcher, resolveGrid } from '../../src/lib/CharResolver.js';
+import { charModeOf, snapsLate, carriesError, mixChannel, bestMatcher, resolveGrid, SAMPLES, shapeMatcher, resolveShapes } from '../../src/lib/CharResolver.js';
 import { PALETTES, rgb2hex, nearestIndex } from '../../src/lib/ColorUtils.js';
 
 const CGA = PALETTES.cga;
@@ -147,4 +147,100 @@ test('resolveGrid with area and carried: the same raw gives the same cells', () 
     }
   }
   assert.equal(count, 12);
+});
+
+// By shape: glyph masks at SAMPLES (4 x 8 a cell, row-major), made here from exact geometry, so no font is needed.
+const RECTS = { '▀': [0, 0, 4, 4], '▄': [0, 4, 4, 8], '█': [0, 0, 4, 8], '▌': [0, 0, 2, 8], '|': [1, 0, 3, 8], '-': [0, 3, 4, 5] };
+const maskOf = ([x0, y0, x1, y1]) => Float32Array.from({ length: 32 }, (_, i) => (i % 4 >= x0 && i % 4 < x1 && i >> 2 >= y0 && i >> 2 < y1 ? 1 : 0));
+const masks = (...chars) => chars.map((char) => ({ char, mask: maskOf(RECTS[char]) }));
+// A cell's 32 samples (RGB each), color where the rect is, else black.
+const samplesOf = (rect, color) => {
+  const s = new Float32Array(96), m = maskOf(rect);
+  for (let i = 0; i < 32; i++) if (m[i]) s.set(color, i * 3);
+  return s;
+};
+
+test('SAMPLES is a 4 x 8 grid a cell', () => {
+  assert.deepEqual(SAMPLES, { w: 4, h: 8 });
+});
+
+test('By shape: a cell whose top half is white and bottom black is ▀ white on black', () => {
+  const s = new Float32Array(96); for (let i = 0; i < 16; i++) s.set([255, 255, 255], i * 3);
+  const m = shapeMatcher({ palette: CGA, glyphs: masks('▀', '▄', '█', '▌'), solids: 0, light: 0, renderStyle: 'ansi' });
+  const r = m.match(s);
+  assert.deepEqual(pick(r), ['▀', '#ffffff', '#000000']); // ▄ black on white shows the same: ▀ is first
+  assert.deepEqual([...r.shown], [...s]);
+});
+
+test('By shape: a left half picks ▌ over ▄', () => {
+  const m = shapeMatcher({ palette: CGA, glyphs: masks('▄', '▌'), solids: 0, light: 0, renderStyle: 'ansi' });
+  assert.deepEqual(pick(m.match(samplesOf([0, 0, 2, 8], [255, 255, 255]))), ['▌', '#ffffff', '#000000']);
+});
+
+test('By shape: a palette color is a solid, and Solids takes one within the tolerance', () => {
+  const at = (solids, s) => pick(shapeMatcher({ palette: CGA, glyphs: masks('▄', '▌', '█'), solids, light: 0, renderStyle: 'ansi' }).match(s));
+  assert.deepEqual(at(0, samplesOf([0, 0, 4, 8], [85, 85, 85])), ['█', '#555555', '#555555']);
+  const bar = samplesOf([0, 0, 2, 8], [100, 100, 100]); // ▌ gray on black, or a solid gray
+  assert.deepEqual(at(0, bar), ['▌', '#555555', '#000000']);
+  assert.deepEqual(at(1, bar), ['█', '#555555', '#555555']);
+});
+
+test('Monochrome ASCII By shape: a vertical bar of ink picks | over -', () => {
+  const m = shapeMatcher({ palette: null, glyphs: masks('-', '|'), solids: 0, light: 0, renderStyle: 'ascii' });
+  const r = m.match(samplesOf([1, 0, 3, 8], [200, 200, 200]));
+  assert.deepEqual(pick(r), ['|', '#ffffff', '#000000']);
+  assert.deepEqual(pick(m.match(samplesOf([0, 3, 4, 5], [90, 255, 90]))), ['-', '#ffffff', '#000000']);
+});
+
+test('Color ASCII By shape: the ink color is the inked samples\' color', () => {
+  const m = shapeMatcher({ palette: CGA, glyphs: masks('-', '|'), solids: 0, light: 0, renderStyle: 'colorAscii' });
+  const r = m.match(samplesOf([1, 0, 3, 8], [170, 0, 0]));
+  assert.deepEqual(pick(r), ['|', '#aa0000', '#000000']);
+  assert.equal(r.fg, CGA[1]); // a palette entry, for .ans export
+});
+
+// cols x lines cells of samples (RGBA, cols*4 wide), noise.
+const sampleNoise = (cols, lines) => noise(cols * SAMPLES.w, lines * SAMPLES.h);
+const cellSamples = (raw, cols, col, line) => {
+  const s = new Float32Array(96), width = cols * SAMPLES.w;
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 4; x++) {
+      const o = ((line * 8 + y) * width + col * 4 + x) * 4;
+      s.set([raw[o], raw[o + 1], raw[o + 2]], (y * 4 + x) * 3);
+    }
+  }
+  return s;
+};
+
+test('resolveShapes: no dither matches each cell alone; Bayer keeps a change to its own cell', () => {
+  const m = shapeMatcher({ palette: CGA, glyphs: masks('▀', '▄', '▌', '█'), solids: 0.1, light: 0.5, renderStyle: 'ansi' });
+  const raw = sampleNoise(6, 4);
+  const { cells, carried } = resolveShapes(raw, 6, 4, m, { palette: CGA });
+  assert.equal(cells.length, 24);
+  assert.equal(carried, null);
+  for (let line = 0; line < 4; line++) {
+    for (let col = 0; col < 6; col++) same(cells[line * 6 + col], m.match(cellSamples(raw, 6, col, line)));
+  }
+  const before = resolveShapes(raw, 6, 4, m, { strength: 1, style: 'bayer', palette: CGA }).cells;
+  const changed = raw.slice();
+  for (let y = 0; y < 8; y++) changed.fill(255, ((8 + y) * 24 + 12) * 4, ((8 + y) * 24 + 16) * 4); // the cell at col 3, line 1, white
+  const after = resolveShapes(changed, 6, 4, m, { strength: 1, style: 'bayer', palette: CGA }).cells;
+  for (let i = 0; i < cells.length; i++) if (i !== 6 + 3) same(after[i], before[i]);
+  assert.deepEqual(pick(after[6 + 3]), ['█', '#ffffff', '#ffffff']);
+});
+
+test('resolveShapes Floyd–Steinberg carries each sample\'s error on; with area and carried, the same cells', () => {
+  const m = shapeMatcher({ palette: CGA, glyphs: masks('▀', '▄', '▌', '█'), solids: 0, light: 0, renderStyle: 'ansi' });
+  const raw = sampleNoise(8, 5);
+  const plain = resolveShapes(raw, 8, 5, m, { palette: CGA }).cells;
+  const full = resolveShapes(raw, 8, 5, m, { strength: 0.8, style: 'floyd', palette: CGA });
+  assert.equal(full.carried.length, 8 * 4 * 5 * 8 * 3);
+  assert.notDeepEqual(full.cells.map(pick), plain.map(pick));
+  const area = { x: 2, y: 2, w: 3, h: 4 }; // lines 1 and 2
+  const again = resolveShapes(raw, 8, 5, m, { strength: 0.8, style: 'floyd', area, carried: full.carried, palette: CGA });
+  for (let i = 0; i < 40; i++) {
+    const col = i % 8, line = (i - col) / 8;
+    if (line >= 1 && line <= 2 && col >= 2 && col <= 4) same(again.cells[i], full.cells[i]);
+    else assert.equal(again.cells[i], undefined);
+  }
 });

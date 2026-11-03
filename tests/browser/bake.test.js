@@ -39,8 +39,8 @@ describe('nothing on the canvas changes', () => {
   // Dithered or with Best match, CGA and VGA snap on the grid as the other palettes do, so they bake exactly too.
   const BEST = { charChoice: 'best', chars: '▄░▒▓█' };
   for (const [quantize, dithering = {}] of [['none'], ['count'], ['palette'], ['cga', { dither: 100 }], ['vga', { dither: 60, ditherStyle: 'bayer' }], ['count', { dither: 100 }],
-    ['cga', BEST], ['vga', { ...BEST, dither: 100 }]]) {
-    test(`color palette: ${quantize}${dithering.dither ? `, dithered (${dithering.ditherStyle ?? 'floyd'})` : ''}${dithering.charChoice ? ', Best match' : ''}`, async () => {
+    ['cga', BEST], ['vga', { ...BEST, dither: 100 }], ['cga', { charChoice: 'shape' }]]) {
+    test(`color palette: ${quantize}${dithering.dither ? `, dithered (${dithering.ditherStyle ?? 'floyd'})` : ''}${dithering.charChoice ? `, ${dithering.charChoice === 'best' ? 'Best match' : 'By shape'}` : ''}`, async () => {
       const { project, workspace } = await createTestApp();
       await drawnDocument(project, workspace, { quantize, clipboard: true });
       Object.assign(project, SLIDERS, dithering);

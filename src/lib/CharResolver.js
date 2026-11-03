@@ -1,7 +1,7 @@
 // Choosing a cell's character: the mode the settings come to, and what it asks of the pipeline.
 // No DOM and no translations here: the unit tests run it in Node.
 import { BAYER, nudgeSpread } from './Dither.js';
-import { charRowsOf, colorOf } from './Cells.js';
+import { charRowsOf, colorOf, buildCell, ASCII_BG } from './Cells.js';
 
 // How a cell's character is picked (Cells.js): ANSI picks at random, or Best match / By shape;
 // Color ASCII by intensity or By shape; ASCII by brightness or By shape. Anything unknown (an old
@@ -165,8 +165,10 @@ function makeMatcher(palette, glyphs, light) {
   // Without a palette a flat mix is just a color: the solid is as close.
   const mixes = palette && flat.length ? flatMixes(palette, flat, light) : null;
 
-  // Reused for every cell: the result (copy what you keep), the candidate and the best so far.
-  const res = { char: '', fg: null, bg: null, top: new Float64Array(3), bottom: new Float64Array(3) };
+  // Reused for every cell: the result (copy what you keep; shown is its top then its bottom), the
+  // candidate and the best so far.
+  const shownHalves = new Float64Array(6);
+  const res = { char: '', fg: null, bg: null, shown: shownHalves, top: shownHalves.subarray(0, 3), bottom: shownHalves.subarray(3, 6) };
   const top = new Float64Array(3), bottom = new Float64Array(3), fgv = new Float64Array(3), bgv = new Float64Array(3);
   const bestFg = new Float64Array(3), bestBg = new Float64Array(3);
   const color = (v) => colorOf({ r: v[0], g: v[1], b: v[2] });
@@ -236,51 +238,51 @@ function makeMatcher(palette, glyphs, light) {
   return { palette, table: mixes, match };
 }
 
-// Each cell's two halves (raw: cols x rows RGBA, kept within 0..255) in order, with Dither's error
-// carried in or its nudge added, given to visit(i, col, line, t, b); visit returns what the cell
-// shows ({ top, bottom }, number[3] each) for the error Floyd–Steinberg passes on. Returns the
-// error that arrived at each half (cols x rows x 3) when Floyd–Steinberg runs, else null.
-// - 'floyd': each half's error x strength goes to the same half of the cells right (7/16),
+// Each cell's samples in order, with Dither's error carried in or its nudge added, given to
+// visit(i, col, line, s): s is the cell's sw x sh samples (RGB each, row-major from its top left),
+// from raw (RGBA, cols x sw samples wide, at least lines x sh tall, kept within 0..255); visit
+// returns what the cell shows (the same layout) for the error Floyd–Steinberg passes on. Best
+// match's samples are a cell's two halves (1 x 2), By shape's SAMPLES. Returns the error that
+// arrived at each sample (3 a sample) when Floyd–Steinberg runs, else null.
+// - 'floyd': each sample's error x strength goes to the same sample of the cells right (7/16),
 //   below-left (3/16), below (5/16) and below-right (1/16).
-// - 'bayer': both halves nudged by the cell's place in the 4x4 pattern x spread x strength.
+// - 'bayer': every sample nudged by the cell's place in the 4x4 pattern x spread x strength.
 // With area (grid pixels), only the cells over it, with the error that arrived (carried), and
 // nothing passed on: an open edit.
-export function walkCells(raw, cols, rows, { strength = 0, style = 'floyd', area = null, carried = null, spread = 0 }, visit) {
-  const lines = charRowsOf(rows);
+export function walkCells(raw, cols, lines, { sw = 1, sh = 2, strength = 0, style = 'floyd', area = null, carried = null, spread = 0 }, visit) {
   const floyd = strength > 0 && style !== 'bayer';
   const bayer = strength > 0 && style === 'bayer';
-  const carry = floyd ? (area ? carried : new Float32Array(cols * rows * 3)) : null;
+  const width = cols * sw, n = sw * sh;
+  const carry = floyd ? (area ? carried : new Float32Array(width * lines * sh * 3)) : null;
   const pass = floyd && !area;
   const c0 = area ? Math.max(0, area.x) : 0, c1 = area ? Math.min(cols, area.x + area.w) : cols;
   const l0 = area ? Math.max(0, Math.floor(area.y / 2)) : 0;
   const l1 = area ? Math.min(lines, Math.floor((area.y + area.h - 1) / 2) + 1) : lines;
-  const t = new Float64Array(3), b = new Float64Array(3);
-  const push = (p, e, f) => { carry[p] += e[0] * f; carry[p + 1] += e[1] * f; carry[p + 2] += e[2] * f; };
-  const et = new Float64Array(3), eb = new Float64Array(3);
-  // A half's error to the same half of the cells right, below-left, below and below-right.
-  const spill = (p, e, col, line) => {
-    const q = p + 2 * cols;
-    if (col + 1 < cols) push((p + 1) * 3, e, 7 / 16);
-    if (line + 1 >= lines) return;
-    if (col > 0) push((q - 1) * 3, e, 3 / 16);
-    push(q * 3, e, 5 / 16);
-    if (col + 1 < cols) push((q + 1) * 3, e, 1 / 16);
-  };
+  const s = new Float64Array(n * 3);
+  const across = sw * 3, down = sh * width * 3; // to the same sample of the next cell right, and below
   for (let line = l0; line < l1; line++) {
     for (let col = c0; col < c1; col++) {
-      const pt = 2 * line * cols + col, pb = pt + cols;
       const nudge = bayer ? (BAYER[(line & 3) * 4 + (col & 3)] / 16 - 15 / 32) * spread * strength : 0;
-      for (let k = 0; k < 3; k++) {
-        t[k] = clamp(raw[pt * 4 + k] + nudge + (carry ? carry[pt * 3 + k] : 0));
-        b[k] = clamp(raw[pb * 4 + k] + nudge + (carry ? carry[pb * 3 + k] : 0));
+      for (let y = 0, j = 0; y < sh; y++) {
+        for (let x = 0, p = (line * sh + y) * width + col * sw; x < sw; x++, p++, j += 3) {
+          for (let k = 0; k < 3; k++) s[j + k] = clamp(raw[p * 4 + k] + nudge + (carry ? carry[p * 3 + k] : 0));
+        }
       }
-      const shown = visit(line * cols + col, col, line, t, b);
+      const shown = visit(line * cols + col, col, line, s);
       if (!pass) continue;
-      for (let k = 0; k < 3; k++) {
-        et[k] = (t[k] - shown.top[k]) * strength;
-        eb[k] = (b[k] - shown.bottom[k]) * strength;
+      const right = col + 1 < cols, left = col > 0, below = line + 1 < lines;
+      for (let y = 0, j = 0; y < sh; y++) {
+        for (let x = 0, p = (line * sh + y) * width + col * sw; x < sw; x++, p++, j += 3) {
+          for (let k = 0; k < 3; k++) {
+            const e = (s[j + k] - shown[j + k]) * strength, o = p * 3 + k;
+            if (right) carry[o + across] += e * (7 / 16);
+            if (!below) continue;
+            if (left) carry[o + down - across] += e * (3 / 16);
+            carry[o + down] += e * (5 / 16);
+            if (right) carry[o + down + across] += e * (1 / 16);
+          }
+        }
       }
-      spill(pt, et, col, line); spill(pb, eb, col, line);
     }
   }
   return floyd ? carry : null;
@@ -291,10 +293,164 @@ export function walkCells(raw, cols, rows, { strength = 0, style = 'floyd', area
 // (or, given cells, left as they are there). fg and bg are the palette's entries, or Colors without one.
 export function resolveGrid(raw, cols, rows, matcher, { strength = 0, style = 'floyd', area = null, carried = null, cells = new Array(cols * charRowsOf(rows)) } = {}) {
   const spread = nudgeSpread(matcher.palette);
-  const out = walkCells(raw, cols, rows, { strength, style, area, carried, spread }, (i, col, line, t, b) => {
+  let t, b; // the cell's two halves, views of its samples
+  const out = walkCells(raw, cols, charRowsOf(rows), { strength, style, area, carried, spread }, (i, col, line, s) => {
+    t ??= s.subarray(0, 3); b ??= s.subarray(3, 6);
     const r = matcher.match(t, b);
     cells[i] = { char: r.char, fg: r.fg, bg: r.bg };
-    return r;
+    return r.shown;
+  });
+  return { cells, carried: out };
+}
+
+// By shape: each cell sampled at SAMPLES (4 x 8, 4 a grid pixel each way) and matched against each
+// glyph's mask at that grid (GlyphCoverage.referenceMask), not just its two halves.
+export const SAMPLES = { w: 4, h: 8 };
+const N = SAMPLES.w * SAMPLES.h;
+
+// A matcher for the palette (null: any color), the glyphs ({ char, mask: Float32Array(32) }), Solids
+// (0..1, ANSI only: up to 64 levels a channel, as bestMatcher's), Pattern light (0..1) and the
+// render style. match(s), s a cell's 32 samples (RGB each, row-major), returns { char, fg, bg, shown }
+// (shown: what the cell shows at each sample, for Floyd–Steinberg), one object overwritten by the
+// next call. Per glyph, in order:
+// - ANSI: fg the mask-weighted mean of the samples, bg the mean weighted by the rest (all of one:
+//   the plain mean), each snapped; shown mixChannel(bg, fg, mask); scored by squared error. A solid
+//   at the samples' mean (snapped) wins ties and within Solids' tolerance, written as bestMatcher's.
+// - Color ASCII: bg black, fg the least-squares ink over black (sum of mask x sample over sum of mask
+//   squared), snapped, shown mixChannel(0, fg, mask).
+// - Monochrome ASCII: white on black, scored against the samples' brightness (0..255, rgb2gray's).
+// Ties go to the first glyph. Its precomputation is kept while the palette, glyphs, Pattern light and
+// style stay the same, so a Solids step doesn't make it again.
+let lastShape = null;
+export function shapeMatcher({ palette, glyphs, solids = 0, light = 0, renderStyle = 'ansi' }) {
+  const fits = lastShape?.palette === palette && lastShape.light === light && lastShape.renderStyle === renderStyle
+    && lastShape.glyphs.length === glyphs.length && glyphs.every((g, i) => g.char === lastShape.glyphs[i].char && g.mask === lastShape.glyphs[i].mask);
+  if (!fits) {
+    lastShape = { palette, glyphs, light, renderStyle, core: makeShapeMatcher(palette?.length ? palette : null, glyphs, light, renderStyle), solids: null, matcher: null };
+  }
+  if (lastShape.solids !== solids) {
+    const { core } = lastShape, tolerance = renderStyle === 'ansi' ? N * 3 * (64 * solids) ** 2 : null;
+    lastShape.solids = solids;
+    lastShape.matcher = { palette: core.palette, match: (s) => core.match(s, tolerance) };
+  }
+  return lastShape.matcher;
+}
+
+function makeShapeMatcher(palette, glyphs, light, style) {
+  const nearest = palette && nearestOf(palette);
+  const solidChar = glyphs.some((g) => g.char === '█') ? '█' : glyphs.some((g) => g.char === '▄') ? '▄' : glyphs[0]?.char ?? '▄';
+  // Per glyph: its mask's sums, and each sample's place among its distinct ink levels (each level's
+  // color is mixed once a glyph, not once a sample).
+  const prepared = glyphs.map(({ char, mask }) => {
+    const levels = [...new Set(mask)];
+    let m1 = 0, m0 = 0, m2 = 0;
+    for (const m of mask) { m1 += m; m0 += 1 - m; m2 += m * m; }
+    return { char, mask, m1, m0, m2, levels: Float64Array.from(levels), at: Uint8Array.from(mask, (m) => levels.indexOf(m)), gray: Float64Array.from(mask, (m) => mixChannel(0, 255, m, light)) };
+  });
+  const most = Math.max(1, ...prepared.map((g) => g.levels.length));
+  const shownAt = new Float64Array(most * 3), lum = new Float64Array(N);
+  const res = { char: '', fg: null, bg: null, shown: new Float32Array(N * 3) };
+  const sum = new Float64Array(3), fit = new Float64Array(3), fitBg = new Float64Array(3);
+  const fg = new Float64Array(3), bg = new Float64Array(3), solid = new Float64Array(3), bestFg = new Float64Array(3), bestBg = new Float64Array(3);
+  // Monochrome's white, as buildCell makes it (its c the palette's nearest to white).
+  const white = buildCell({ r: 0, g: 0, b: 0 }, nearest ? nearest(255, 255, 255) : { r: 255, g: 255, b: 255 }, '', 'ascii').fg;
+  const byte = (v) => Math.round(clamp(v));
+  // v (rounded) snapped to the palette into out, or just rounded; the palette entry or null.
+  const snap = (v, out) => {
+    const p = nearest ? nearest(byte(v[0]), byte(v[1]), byte(v[2])) : null;
+    if (p) { out[0] = p.r; out[1] = p.g; out[2] = p.b; } else for (let k = 0; k < 3; k++) out[k] = byte(v[k]);
+    return p;
+  };
+  // The squared error of a glyph showing bg mixed with fg by its mask, stopped once it reaches bound.
+  const errOf = (g, s, bound) => {
+    const { levels, at } = g;
+    for (let l = 0; l < levels.length; l++) {
+      for (let k = 0; k < 3; k++) shownAt[l * 3 + k] = mixChannel(bg[k], fg[k], levels[l], light);
+    }
+    let e = 0;
+    for (let i = 0; i < N && e < bound; i++) {
+      const o = at[i] * 3, j = i * 3;
+      e += (shownAt[o] - s[j]) ** 2 + (shownAt[o + 1] - s[j + 1]) ** 2 + (shownAt[o + 2] - s[j + 2]) ** 2;
+    }
+    return e;
+  };
+
+  function matchMono(s) {
+    for (let i = 0; i < N; i++) lum[i] = Math.round(0.2126 * s[i * 3] + 0.7152 * s[i * 3 + 1] + 0.0722 * s[i * 3 + 2]);
+    let best = Infinity, won = prepared[0];
+    for (const g of prepared) {
+      let e = 0;
+      for (let i = 0; i < N && e < best; i++) e += (lum[i] - g.gray[i]) ** 2;
+      if (e < best) best = e, won = g;
+    }
+    res.char = won.char; res.fg = white; res.bg = ASCII_BG;
+    for (let i = 0; i < N; i++) res.shown[i * 3] = res.shown[i * 3 + 1] = res.shown[i * 3 + 2] = won.gray[i];
+    return res;
+  }
+
+  function match(s, tolerance) {
+    if (style === 'ascii') return matchMono(s);
+    const ansi = style === 'ansi';
+    sum.fill(0);
+    for (let i = 0; i < N * 3; i += 3) { sum[0] += s[i]; sum[1] += s[i + 1]; sum[2] += s[i + 2]; }
+    // The solid (ANSI): a glyph has to come closer than its error less the tolerance to be taken over
+    // it. Glyphs never empty (glyphsOf gives ▄), so the ASCII styles always have one.
+    let solidP = null, bound = Infinity;
+    if (ansi) {
+      for (let k = 0; k < 3; k++) fit[k] = sum[k] / N;
+      solidP = snap(fit, solid);
+      let e = 0;
+      for (let i = 0; i < N * 3; i += 3) e += (solid[0] - s[i]) ** 2 + (solid[1] - s[i + 1]) ** 2 + (solid[2] - s[i + 2]) ** 2;
+      bound = e - tolerance;
+    }
+    let best = bound, won = null, wonFg = null, wonBg = null;
+    for (const g of prepared) {
+      const { mask, m1, m0, m2 } = g;
+      fit.fill(0); fitBg.fill(0);
+      for (let i = 0, j = 0; i < N; i++, j += 3) {
+        const m = mask[i];
+        fit[0] += m * s[j]; fit[1] += m * s[j + 1]; fit[2] += m * s[j + 2];
+        if (ansi) { const u = 1 - m; fitBg[0] += u * s[j]; fitBg[1] += u * s[j + 1]; fitBg[2] += u * s[j + 2]; }
+      }
+      let F, B = null;
+      if (ansi) {
+        for (let k = 0; k < 3; k++) { fit[k] = m1 ? fit[k] / m1 : sum[k] / N; fitBg[k] = m0 ? fitBg[k] / m0 : sum[k] / N; }
+        F = snap(fit, fg); B = snap(fitBg, bg);
+      } else {
+        for (let k = 0; k < 3; k++) fit[k] = m2 ? fit[k] / m2 : 0;
+        F = snap(fit, fg); bg.fill(0);
+      }
+      const e = errOf(g, s, best);
+      if (e < best) { best = e; won = g; wonFg = F; wonBg = B; bestFg.set(fg); bestBg.set(bg); }
+    }
+    if (!won) { // the solid
+      res.char = solidChar;
+      res.fg = res.bg = solidP ?? colorOf({ r: solid[0], g: solid[1], b: solid[2] });
+      for (let i = 0; i < N * 3; i += 3) res.shown.set(solid, i);
+      return res;
+    }
+    res.char = won.char;
+    res.fg = wonFg ?? colorOf({ r: bestFg[0], g: bestFg[1], b: bestFg[2] });
+    res.bg = ansi ? wonBg ?? colorOf({ r: bestBg[0], g: bestBg[1], b: bestBg[2] }) : ASCII_BG;
+    for (let i = 0; i < N; i++) {
+      const m = won.mask[i];
+      for (let k = 0; k < 3; k++) res.shown[i * 3 + k] = mixChannel(bestBg[k], bestFg[k], m, light);
+    }
+    return res;
+  }
+  return { palette, match };
+}
+
+// By shape over the grid: a cell ({ char, fg, bg }) for each of lines x cols, from samples (RGBA,
+// cols x SAMPLES.w wide, at least lines x SAMPLES.h tall), Dither's error carried from each sample to
+// the same sample of the cells after it or nudged by the cell's place (walkCells), the nudge sized to
+// palette. area, carried and cells as resolveGrid's.
+export function resolveShapes(samples, cols, lines, matcher, { strength = 0, style = 'floyd', area = null, carried = null, palette = matcher.palette, cells = new Array(cols * lines) } = {}) {
+  const spread = nudgeSpread(palette);
+  const out = walkCells(samples, cols, lines, { sw: SAMPLES.w, sh: SAMPLES.h, strength, style, area, carried, spread }, (i, col, line, s) => {
+    const r = matcher.match(s);
+    cells[i] = { char: r.char, fg: r.fg, bg: r.bg };
+    return r.shown;
   });
   return { cells, carried: out };
 }
