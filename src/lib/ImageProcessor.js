@@ -96,7 +96,8 @@ function shaderParams(params) {
     edges: parseFloat(edges),
     edgeColor: [ec.r / 255, ec.g / 255, ec.b / 255],
     edgeThickness: parseFloat(edgeThickness),
-    palette: (quantize === 'cga' || quantize === 'vga') ? PALETTES[quantize] : null,
+    // Dithering needs the colors between CGA's or VGA's: the grid is snapped (dithered) instead (Renderer).
+    palette: (quantize === 'cga' || quantize === 'vga') && !(params.dither > 0) ? PALETTES[quantize] : null,
     passes: Math.max(1, Math.floor(parseFloat(flatten) / 2))
   };
 }

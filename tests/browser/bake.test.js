@@ -36,11 +36,12 @@ describe('nothing on the canvas changes', () => {
     expect(cellsKey(project)).toEqual(cells);
   });
 
-  for (const quantize of ['none', 'count', 'palette']) {
-    test(`color palette: ${quantize}`, async () => {
+  // Dithered, CGA and VGA snap on the grid as the other palettes do, so they bake exactly too.
+  for (const [quantize, dithering = {}] of [['none'], ['count'], ['palette'], ['cga', { dither: 100 }], ['vga', { dither: 60, ditherStyle: 'bayer' }], ['count', { dither: 100 }]]) {
+    test(`color palette: ${quantize}${dithering.dither ? `, dithered (${dithering.ditherStyle ?? 'floyd'})` : ''}`, async () => {
       const { project, workspace } = await createTestApp();
       await drawnDocument(project, workspace, { quantize, clipboard: true });
-      Object.assign(project, SLIDERS);
+      Object.assign(project, SLIDERS, dithering);
       await settle(project);
       const cells = cellsKey(project), output = outputKey(project);
       await project.bake();

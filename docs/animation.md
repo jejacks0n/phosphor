@@ -72,7 +72,8 @@ One frames-per-second number holds for the whole movie (8 to begin with, 1 to 60
 
 **Merge up** works on the frame showing, and **Bake** on every frame. Moving a slider changes every frame, since they all sit on the same base.
 With a Color count palette, there's one palette for the whole movie, picked from every frame, so colors stay
-put from frame to frame ([Layers](layers.md)).
+put from frame to frame ([Layers](layers.md)). Dither only touches the picture under the frames, so it holds still too;
+your frames' drawing is paint and keeps its own colors.
 
 ## Saving
 

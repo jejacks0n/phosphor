@@ -148,6 +148,11 @@
     "paletteColors": {
       "label": "Palette colors"
     },
+    "ditherStyle": {
+      "label": "Dither style",
+      "floyd": "Floyd–Steinberg",
+      "bayer": "Ordered (Bayer)"
+    },
     "smoothing": {
       "label": "Smoothing",
       "low": "Low",
@@ -174,6 +179,13 @@
     },
     "colorCount": {
       "label": "Color count"
+    },
+    "ditherStyle": {
+      "help": "How dithering mixes the palette's colors. Floyd–Steinberg scatters them like grain; Ordered lays them in a regular crosshatch that stays put from frame to frame."
+    },
+    "dither": {
+      "label": "Dither",
+      "help": "Mixes the palette's colors in a fine pattern where the picture falls between them, so gradients come out smooth instead of in bands. Paint keeps its own color."
     },
     "smoothing": {
       "help": "Controls how the image is sampled onto the grid. High blends smoothly; Low preserves sharp edges and grain."

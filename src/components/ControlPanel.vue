@@ -112,6 +112,16 @@ const charsetName = computed(() => {
         <label for="palette">{{ t('panel.paletteColors.label') }}</label>
         <input type="text" id="palette" v-model.lazy="store.palette" placeholder="#FFFFFF #000000">
       </div>
+      <template v-if="store.quantize !== 'none'">
+        <div class="field">
+          <div class="label-group"><label for="ditherStyle">{{ t('panel.ditherStyle.label') }}</label><HelpInfo :text="help('ditherStyle')" /></div>
+          <select id="ditherStyle" v-model="store.ditherStyle">
+            <option value="floyd">{{ t('panel.ditherStyle.floyd') }}</option>
+            <option value="bayer">{{ t('panel.ditherStyle.bayer') }}</option>
+          </select>
+        </div>
+        <RangeField :setting="getSetting('dither')" v-model="store.dither"/>
+      </template>
 
       <div class="field">
         <div class="label-group"><label for="smoothing">{{ t('panel.smoothing.label') }}</label><HelpInfo :text="help('smoothing')" /></div>

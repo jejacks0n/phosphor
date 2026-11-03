@@ -55,7 +55,7 @@ round on top of the result. Nothing on the canvas changes when you bake:
   edits to the base, so baking burns them in; the same goes for your color pair and anything
   you've copied.
 - The color palette isn't baked: it keeps applying afterwards.
-- With the CGA or VGA palette, Bake asks how to keep the colors:
+- With the CGA or VGA palette, Bake asks how to keep the colors (not with Dither on: then it bakes exactly, as other palettes do):
   - **Keep full color** (the default): the picture keeps its in-between colors, so switching the
     palette later still has them. A few cells near the edges between palette colors can come out
     as the neighboring color, more with many sliders on.
@@ -141,6 +141,14 @@ you set, it keeps exactly its own; when there are more, a new color can move som
 a neighboring palette color as the palette rebalances. (Typed cells' colors don't count toward it
 yet.) In an [animation](animation.md) there's one palette for the whole movie, picked from every frame,
 so colors stay put from frame to frame.
+
+**Dither** (under the palette, off at 0%) mixes the palette's colors in a fine pattern where the
+picture falls between them, so a gradient comes out smooth instead of in flat bands. **Floyd–Steinberg**
+scatters them like grain; **Ordered (Bayer)** lays them in a regular crosshatch. It works on the
+picture and your base edits, two pixels a cell like everything else, so more columns make a finer
+pattern. Paint isn't dithered: it snaps to its nearest palette color, so a color you paint with
+shows as that color, and painting doesn't stir the pattern around your stroke. Erasing or moving
+base pixels can: with Floyd–Steinberg, the pattern after the change shifts with it.
 
 ## Moving things between layers
 
