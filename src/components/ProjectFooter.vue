@@ -14,7 +14,6 @@ const year = new Date().getFullYear();
     <div class="footer-controls">
       <button class="link" @click="showAboutModal = true">{{ t('footer.about') }}</button>
       <label class="locale-picker" :title="t('footer.language')">
-        <span class="sr-only">{{ t('footer.language') }}</span>
         <select
             class="locale-select"
             :value="locale"
@@ -94,17 +93,5 @@ button.link {
 .locale-select:hover {
   color: var(--text);
   border-color: var(--border-light, var(--border));
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
 }
 </style>
