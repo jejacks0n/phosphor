@@ -21,11 +21,12 @@ import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
-import { buildCellsFromBytes, buildCell, keepsSeed, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell } from '../lib/Cells.js';
+import { buildCellsFromBytes, buildCell, keepsSeed, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf } from '../lib/Cells.js';
 import { cellKey, parseKey } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { ditherPixels } from '../lib/Dither.js';
-import { snapsLate } from '../lib/CharResolver.js';
+import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid } from '../lib/CharResolver.js';
+import { loadReferenceFont, referenceInk } from '../lib/GlyphCoverage.js';
 
 export default class Renderer {
   pipelineCanvas = null;
@@ -39,6 +40,11 @@ export default class Renderer {
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
   #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
   #dithered = null;     // { palette, key, raw, data }: #baseData dithered to the palette (raw: the #baseData it's from), while Dither is on
+  #resolved = null;     // { key, palette, raw, cells, carried }: #baseData resolved to cells by Best match (raw: the #baseData they're from)
+  #baseSnapped = null;  // { version, data }: #baseData snapped to the palette, for basePixels under Best match
+  #baseVersion = 0;     // counts composites: #baseData may have changed
+  #fontReady = false;   // the reference font has loaded: Best match can measure glyphs
+  #glyphs = null;       // { chars, glyphs }: the set's glyphs with their inks in the reference font
   #snapped = null;      // the whole output's bytes and palette entries, from the composite that just snapped it
   #effective = new Map(); // stored color -> displayed Color, until the next render
   #source = null;       // { key, data }: the image through the pipeline with color adjustments neutral (stored colors)
@@ -51,12 +57,16 @@ export default class Renderer {
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.pipelineCanvas = this.outputCanvas = this.palette = this.#chosen = null;
-    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = null;
+    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = null;
     this.#effective = new Map();
   }
 
   // baseParams: params with the color adjustments neutral (settings.baseParams).
   async render(image, params, paintLayer, baseParams) {
+    if (resolves(params) && !this.#fontReady) { // glyphs measured in a placeholder font would choose the characters
+      await loadReferenceFont().catch(() => {}); // or measured in its fallback: still the same everywhere
+      this.#fontReady = true;
+    }
     const { canvas: pipeline, paletteColors } = await processImage(image, params);
     this.pipelineCanvas = pipeline.canvas;
     this.palette = this.#chosen ?? paletteColors;
@@ -126,14 +136,43 @@ export default class Renderer {
   // gives the pixels their palette index (c), which the cells and CGA/VGA export rely on.
   // The output's bytes are read once and snapped in place (no object per pixel: this runs over the
   // whole grid on every render and slider step).
+  // Under Best match the cells are the resolved ones (#resolved) with the paint over them (#shown);
+  // a pinned cell is built from its pixels as Random builds it, the pin its character (composeAll).
   cellsFromOutput(params) {
     const { data, indexes } = this.#snapped ?? snapToPalette(this.outputCanvas, this.palette);
+    const resolved = this.#resolvedFor(params);
+    if (resolved) {
+      const { cols } = params, pins = this.baseRecords.pins;
+      const pixelAt = (i) => (i * 4 >= data.length ? undefined : indexes ? this.palette[indexes[i]] : { r: data[i * 4], g: data[i * 4 + 1], b: data[i * 4 + 2] });
+      return resolved.cells.map((cell, i) => {
+        const col = i % cols, row = (i - col) / cols;
+        if (!pins.size || !pins.has(cellKey(col, row))) return this.#shown(cell, col, row, params);
+        const top = pixelAt(2 * row * cols + col);
+        return buildCell(top, pixelAt((2 * row + 1) * cols + col) ?? top, cell.char, params.renderStyle);
+      });
+    }
     return buildCellsFromBytes(data, params.cols, params.rows, {
       charset: params.chars,
       charMode: params.charMode || 'random',
       renderStyle: params.renderStyle || 'ansi',
       seed: params.seed,
     }, indexes && { indexes, palette: this.palette });
+  }
+
+  // A resolved cell with any paint in it over it: paint colors the character, never changes it
+  // (coverCell). While a stroke is held, paint shows in its own colors, as #held has it.
+  #shown(cell, col, row, params) {
+    const top = this.paintAt(col, 2 * row), bottom = this.paintAt(col, 2 * row + 1);
+    if (!top && !bottom) return cell;
+    return coverCell(cell, top, bottom, { renderStyle: params.renderStyle, palette: this.#heldData ? null : this.palette });
+  }
+
+  // #resolved when it's for these settings and this grid (not between a resize and its render), else null.
+  #resolvedFor(params) {
+    const r = this.#resolved;
+    if (!r) return null;
+    if (r.params !== params) Object.assign(r, { params, fits: r.key === resolvedKey(params, params.cols, params.rows) });
+    return r.fits ? r : null;
   }
 
   // Redraw outputCanvas: the pipeline image, then the base layer's pixels and the paint layer, each
@@ -143,8 +182,9 @@ export default class Renderer {
   // and the Number palette waits for it to end; meanwhile the paint shows in its own colors
   // (updateCells). rect: the grid pixels an edit changed ({ x, y, w, h }), the only ones redrawn
   // when what's kept from the last composite still fits (not when the Number palette is picked
-  // again: that can change every pixel).
-  composite(paintLayer, params, { hold = false, rect = null } = {}) {
+  // again: that can change every pixel). open: an edit is open (Best match with Floyd–Steinberg
+  // waits for it to end to carry a change to the base on to every cell after it: #resolveUnder).
+  composite(paintLayer, params, { hold = false, rect = null, open = false } = {}) {
     if (!this.outputCanvas || !this.pipelineCanvas) return false;
 
     const ctx = ctx2d(this.outputCanvas);
@@ -169,12 +209,55 @@ export default class Renderer {
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params, partial ? area : null) : null;
     const changed = !hold && params.quantize === 'count' && !this.#chosen && this.#recount(params);
     const moved = this.#ditherUnder(ctx, params, area, !!paintLayer);
+    const resolvedAgain = this.#resolveUnder(params, area, open);
+    this.#baseVersion++;
     if (!hold) this.#heldData = null;
     else if (partial) putRows(this.#heldData, w, ctx.getImageData(x, y, area.w, area.h).data, area);
     else this.#heldData = ctx.getImageData(0, 0, w, h).data;
     this.#snapped = paintLayer && this.palette?.length ? snapToPalette(this.outputCanvas, this.palette, area) : null;
     if (partial) this.#snapped = null; // only the area's
-    return changed || moved;
+    return changed || moved || resolvedAgain;
+  }
+
+  // Best match: the base (#baseData, before the palette snap) resolved to cells, each the glyph, fg
+  // and bg that come closest to its two halves, with Dither's error carried or nudged by the
+  // resolver (#ditherUnder dithers nothing then). Worked out again whole when the settings, the grid
+  // or the palette change, else only over the area when the base changed there. Floyd–Steinberg's
+  // cells depend on every cell before them: while an edit is open only the area's cells are
+  // resolved again, from the error that arrived there before (raw stays as it was, so the edit's
+  // end sees the change), and with none open the whole grid is. True when every cell may have
+  // changed (a full rebuild).
+  #resolveUnder(params, area, open) {
+    if (params.charMode !== 'best' || !this.#fontReady || !this.#baseData) {
+      this.#resolved = null;
+      return false;
+    }
+    const { width: w, height: h, data: raw } = this.#baseData;
+    const key = resolvedKey(params, w, h), r = this.#resolved;
+    const whole = r?.palette !== this.palette || r.key !== key;
+    if (!whole && sameRows(r.raw, raw, w, area)) return false;
+    const matcher = bestMatcher({
+      palette: this.palette, glyphs: this.#glyphsOf(params.chars), solids: params.solids / 100, light: params.patternLight / 100,
+    });
+    const opts = { strength: params.dither / 100, style: params.ditherStyle };
+    const carries = carriesError(params);
+    if (whole || (carries && !open)) {
+      const { cells, carried } = resolveGrid(raw, w, h, matcher, opts);
+      this.#resolved = { key, palette: this.palette, raw: raw.slice(), cells, carried };
+      return !!r;
+    }
+    resolveGrid(raw, w, h, matcher, { ...opts, area, carried: r.carried, cells: r.cells });
+    if (!carries) putRows(r.raw, w, rowsOf(raw, w, area), area);
+    return false;
+  }
+
+  // The set's one-column characters (as the converter's, Cells.glyphsOf), each once, with their ink
+  // in the reference font.
+  #glyphsOf(chars) {
+    if (this.#glyphs?.chars !== chars) {
+      this.#glyphs = { chars, glyphs: [...new Set(glyphsOf(chars))].map((char) => ({ char, ink: referenceInk(char) })) };
+    }
+    return this.#glyphs.glyphs;
   }
 
   // A Number palette chosen from outside (one for a whole animation), until it's null: cells then use it, and
@@ -239,7 +322,7 @@ export default class Renderer {
   // ponytail: a Floyd–Steinberg stroke on the base layer rebuilds every cell each move; hold the
   // pattern through the stroke (as the Number palette holds) if that's slow on large grids.
   #ditherUnder(ctx, params, area, painted) {
-    if (!(params.dither > 0) || !this.palette?.length) {
+    if (!(params.dither > 0) || !this.palette?.length || resolves(params)) { // a resolver carries the error itself
       this.#dithered = null;
       return false;
     }
@@ -314,6 +397,7 @@ export default class Renderer {
     const { cols, chars: charset, charMode, renderStyle } = params;
     const done = new Set();
     const pixelAt = this.#outputPixels(pixels);
+    const resolved = this.#resolvedFor(params);
 
     for (const { x, y } of pixels) {
       const { col, row } = cellOfPixel(x, y);
@@ -327,6 +411,11 @@ export default class Renderer {
         continue;
       }
 
+      if (resolved && !this.baseRecords.pins.has(cellKey(col, row))) {
+        next[i] = this.#shown(resolved.cells[i], col, row, params);
+        continue;
+      }
+
       let top = pixelAt(col, 2 * row);
       if (!top) continue; // output canvas from an older grid size
       let bottom = pixelAt(col, 2 * row + 1) || top;
@@ -337,7 +426,7 @@ export default class Renderer {
       }
 
       // Random mode keeps the cell's rendered character
-      const char = keepsSeed(charMode) ? (baseCells[i] ?? next[i]).char : weightedChar(top, bottom, charset, charMode);
+      const char = keepsSeed(charMode, renderStyle) ? (baseCells[i] ?? next[i]).char : weightedChar(top, bottom, charset, charMode);
       next[i] = this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
     }
     return next;
@@ -414,16 +503,26 @@ export default class Renderer {
     return { r: data.data[o], g: data.data[o + 1], b: data.data[o + 2] };
   }
 
-  // The base layer's cell (no edit cells, no paint): what an edit cell sits on. Null while the
-  // pipeline pixels are stale (between a grid resize and its render).
   // The pipeline with the base layer's pixels over it, as of the last composite: what the paint sits on.
+  // Under Best match (which the shader leaves unsnapped) snapped to the palette, as the output is.
   get basePixels() {
-    return this.#dithered?.data ?? this.#baseData;
+    if (this.#dithered) return this.#dithered.data;
+    if (!this.#resolved || !this.palette?.length || !this.#baseData) return this.#baseData;
+    if (this.#baseSnapped?.version !== this.#baseVersion) {
+      const { width, height, data } = this.#baseData, bytes = data.slice();
+      snapBytes(bytes, this.palette);
+      this.#baseSnapped = { version: this.#baseVersion, data: new ImageData(bytes, width, height) };
+    }
+    return this.#baseSnapped.data;
   }
 
+  // The base layer's cell (no edit cells, no paint): what an edit cell sits on, Best match's own
+  // where it resolved one. Null while the pipeline pixels are stale (between a grid resize and its render).
   underCell(col, row, params, baseCells) {
     const { cols, chars: charset, charMode, renderStyle } = params;
-    const data = this.basePixels;
+    const resolved = this.#resolvedFor(params); // for this grid only
+    if (resolved && !this.baseRecords.pins.has(cellKey(col, row))) return resolved.cells[cellIndex(col, row, cols)] ?? null;
+    const data = this.#dithered?.data ?? this.#baseData; // snapped below
     // Between a grid resize and the render it queues, the pipeline pixels are the old size.
     if (!data || data.width !== cols || data.height !== params.rows) return null;
     const pixelAt = (y) => {
@@ -432,7 +531,7 @@ export default class Renderer {
       return this.palette ? nearestColor(p, this.palette) : p;
     };
     const top = pixelAt(2 * row), bottom = pixelAt(2 * row + 1);
-    const char = keepsSeed(charMode) ? baseCells[cellIndex(col, row, cols)]?.char ?? ' ' : weightedChar(top, bottom, charset || '▄', charMode);
+    const char = keepsSeed(charMode, renderStyle) ? baseCells[cellIndex(col, row, cols)]?.char ?? ' ' : weightedChar(top, bottom, charset || '▄', charMode);
     return this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
   }
 
@@ -462,7 +561,14 @@ export default class Renderer {
 function snapToPalette(canvas, palette, { x, y, w, h } = { x: 0, y: 0, w: canvas.width, h: canvas.height }) {
   const ctx = ctx2d(canvas), image = ctx.getImageData(x, y, w, h), data = image.data;
   if (!palette?.length) return { data, indexes: null };
-  const indexes = new Uint16Array(w * h);
+  const indexes = snapBytes(data, palette);
+  ctx.putImageData(image, x, y);
+  return { data, indexes };
+}
+
+// RGBA bytes snapped to a palette in place; each pixel's palette entry.
+function snapBytes(data, palette) {
+  const indexes = new Uint16Array(data.length / 4);
   let last = -1, k = 0; // a pixel the color of the one before it (most are) skips the lookup
   for (let i = 0, o = 0; i < indexes.length; i++, o += 4) {
     const rgb = data[o] << 16 | data[o + 1] << 8 | data[o + 2];
@@ -471,14 +577,23 @@ function snapToPalette(canvas, palette, { x, y, w, h } = { x: 0, y: 0, w: canvas
     data[o] = palette[k].r; data[o + 1] = palette[k].g; data[o + 2] = palette[k].b;
     data[o + 3] ||= 255; // as Canvas.writePixels writes a see-through pixel
   }
-  ctx.putImageData(image, x, y);
-  return { data, indexes };
+  return indexes;
 }
 
 // A rect ({ x, y, w, h }) of rows (RGBA bytes, rect.w wide) put into a width-wide image's bytes.
 function putRows(target, width, rows, { x, y, w, h }) {
   for (let row = 0; row < h; row++) target.set(rows.subarray(row * w * 4, (row + 1) * w * 4), ((y + row) * width + x) * 4);
 }
+
+// A rect's rows of a width-wide image's bytes (as putRows takes them).
+function rowsOf(data, width, { x, y, w, h }) {
+  const out = new Uint8ClampedArray(w * h * 4);
+  for (let row = 0; row < h; row++) out.set(data.subarray(((y + row) * width + x) * 4, ((y + row) * width + x + w) * 4), row * w * 4);
+  return out;
+}
+
+// What Best match's cells (Renderer #resolved) are worked out from, besides the picture and the palette.
+const resolvedKey = (params, cols, rows) => JSON.stringify([params.charMode, params.chars, params.solids, params.patternLight, params.dither, params.ditherStyle, params.renderStyle, cols, rows]);
 
 // Whether two width-wide images' bytes agree over a rect.
 function sameRows(a, b, width, { x, y, w, h }) {

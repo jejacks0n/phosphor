@@ -17,8 +17,13 @@ function fullRebuild(project) {
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
 
 const DITHERS = [{ dither: 0 }, { dither: 0 }, { dither: 0 }, { dither: 100, ditherStyle: 'floyd' }, { dither: 70, ditherStyle: 'bayer' }];
-for (const [quantize, dithering] of [['none', DITHERS[0]], ['vga', DITHERS[1]], ['count', DITHERS[2]], ['cga', DITHERS[3]], ['count', DITHERS[4]]]) {
-  test(`brush, typing, wide characters and base edits come out as a full rebuild would (${quantize}, dither ${dithering.dither}${dithering.ditherStyle ? ` ${dithering.ditherStyle}` : ''})`, async () => {
+// Best match, with and without Dither (each cell resolved from the picture; Floyd–Steinberg carries from cell to cell).
+const BEST = { charChoice: 'best', chars: '▄░▒▓█' };
+const BEST_CASES = [['cga', { dither: 0 }], ['cga', { dither: 100, ditherStyle: 'floyd' }], ['count', { dither: 70, ditherStyle: 'bayer' }], ['none', { dither: 0 }]]
+  .map(([quantize, dithering]) => [quantize, { ...BEST, ...dithering }]);
+const named = (dithering) => `dither ${dithering.dither}${dithering.ditherStyle ? ` ${dithering.ditherStyle}` : ''}${dithering.charChoice ? `, ${dithering.charChoice}` : ''}`;
+for (const [quantize, dithering] of [['none', DITHERS[0]], ['vga', DITHERS[1]], ['count', DITHERS[2]], ['cga', DITHERS[3]], ['count', DITHERS[4]], ...BEST_CASES]) {
+  test(`brush, typing, wide characters and base edits come out as a full rebuild would (${quantize}, ${named(dithering)})`, async () => {
     const { project } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
     Object.assign(project, { quantize, ...dithering });
@@ -73,8 +78,9 @@ test('undo and redo rebuild only what the edit changed, and come back to exactly
 for (const [quantize, smoothing, brightness, dithering = { dither: 0 }] of [
   ['none', 'high', 100], ['vga', 'medium', 120], ['cga', 'low', 85],
   ['cga', 'high', 100, { dither: 100, ditherStyle: 'floyd' }], ['vga', 'medium', 120, { dither: 80, ditherStyle: 'bayer' }],
+  ...BEST_CASES.map(([quantize, dithering]) => [quantize, 'high', 100, dithering]),
 ]) {
-  test(`partial recomposites leave the output, the cells and the base's colors as a full render does (${quantize}, ${smoothing}, brightness ${brightness}, dither ${dithering.dither})`, async () => {
+  test(`partial recomposites leave the output, the cells and the base's colors as a full render does (${quantize}, ${smoothing}, brightness ${brightness}, ${named(dithering)})`, async () => {
     const { project } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
     Object.assign(project, { quantize, smoothing, brightness, ...dithering });

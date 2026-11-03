@@ -37,7 +37,7 @@ export const mergingActions = {
   // preview is made from (the processed image at its processing size; the palette isn't baked,
   // it keeps applying). Under CGA/VGA that can tip a cell near a palette boundary (8-bit rounding);
   // lockPalette bakes the palette into the image instead, so nothing moves, but the picture keeps
-  // only the palette's colors. Dithered, CGA/VGA snap on the grid (as other palettes do): exact either way. The color transforms also tint the drawing when it's shown, so they're
+  // only the palette's colors. Dithered or with Best match, CGA/VGA snap on the grid (as other palettes do): exact either way. The color transforms also tint the drawing when it's shown, so they're
   // burnt into it (paint, the base's own pixels, edit cells) and into the color pair and the
   // clipboard; recent colors are shared across projects and stay. One undo step (slider moves after
   // it are steps of their own).
