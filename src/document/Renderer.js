@@ -41,6 +41,7 @@ export default class Renderer {
   #baseData = null;     // the pipeline with the base layer's pixels over it, from the last composite(): what edit cells sit on
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
   #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
+  #heldPaint = null;    // and the paint layer it's drawing on, whose stroke's own paint shows in its own colors
   #dithered = null;     // { palette, key, raw, data }: #baseData dithered to the palette (raw: the #baseData it's from), while Dither is on
   #resolved = null;     // the base resolved to cells: { key, palette, raw, cells, carried, gpu } by Best match (raw: the #baseData they're from), { key, palette, cells, stale, gpu } by By shape (gpu: the GPU made them)
   #picture = null;      // By shape's samples of the picture alone (processImage), from the last render
@@ -225,6 +226,7 @@ export default class Renderer {
     const changed = !hold && params.quantize === 'count' && !this.#chosen && this.#recount(params);
     const moved = this.#ditherUnder(ctx, params, area, !!paintLayer);
     const resolvedAgain = this.#resolveUnder(params, area, open, paintLayer);
+    this.#heldPaint = hold ? paintLayer : null;
     if (!hold) this.#heldData = null;
     else if (partial) putRows(this.#heldData, w, ctx.getImageData(x, y, area.w, area.h).data, area);
     else this.#heldData = ctx.getImageData(0, 0, w, h).data;
@@ -636,9 +638,9 @@ export default class Renderer {
     };
   }
 
-  // A painted grid pixel's color before the palette snap, while a stroke is held; else null.
+  // A grid pixel the held stroke painted: its color before the palette snap; else null.
   #held(x, y, cols) {
-    if (!this.#heldData || !this.paintAt(x, y)) return null;
+    if (!this.#heldData || !this.paintAt(x, y) || !this.#heldPaint?.strokeCovers(x, y)) return null; // paint from before snaps
     const o = (y * cols + x) * 4, d = this.#heldData;
     return { r: d[o], g: d[o + 1], b: d[o + 2], a: 1 };
   }

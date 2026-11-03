@@ -380,6 +380,15 @@ export default class PaintLayer {
     return !!this.#stroke;
   }
 
+  // Whether the stroke being recorded has drawn in a tile under grid pixel (x, y).
+  // ponytail: by tile, so paint from before beside the stroke's can show held too; by pixel if that shows.
+  strokeCovers(x, y) {
+    if (!this.#stroke?.tiles.size) return false;
+    const k = this.scale, px = x * k, py = y * k;
+    for (const { x: tx, y: ty, w, h } of this.#stroke.tiles.values()) if (px < tx + w && px + k > tx && py < ty + h && py + k > ty) return true;
+    return false;
+  }
+
   beginStroke() {
     this.#stroke = { tiles: new Map(), touched: new Set(), hadPaint: this.hasPaint, erased: false, laid: new Map() };
   }
