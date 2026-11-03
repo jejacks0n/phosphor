@@ -92,9 +92,11 @@ export function readArtFile(bytes, name) {
     if (fixed && col >= fixed) { col = fixed - 1; pending = true; }
   };
 
-  const erase = () => {
-    const to = fixed || widest;
-    for (let c = col; c < to; c++) setCell(c, ' ');
+  // ESC[K: the cursor to the end of the line; ESC[1K: the start through the cursor; ESC[2K: the whole line.
+  const erase = (mode) => {
+    const from = mode === 1 || mode === 2 ? 0 : col;
+    const to = mode === 1 ? col + 1 : fixed || widest;
+    if (!over) for (let c = from; c < to; c++) setCell(c, ' '); // past the limits nothing is kept, so skip the walk
     wrote = true;
     maxRow = Math.max(maxRow, row);
     checkSize();
@@ -148,7 +150,7 @@ export function readArtFile(bytes, name) {
       case 'J':
         if (params[0] === 2) { lines.clear(); maxRow = -1; widest = 0; wrote = deep = over = false; col = row = 0; pending = false; }
         break;
-      case 'K': erase(); break;
+      case 'K': erase(params[0]); break;
       case 'm': sgr(params.length ? params : [0]); break;
     }
   };
