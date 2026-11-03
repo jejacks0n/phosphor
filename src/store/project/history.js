@@ -244,7 +244,6 @@ export const historyActions = {
 
   undo() {
     this.commitPending();
-    const float = this._float?.recorded && this._float.version === this.history.version ? this._float : null;
     const entry = this.history.undo();
     if (!entry) return;
     this.historyVersion = this.history.version;
@@ -254,12 +253,13 @@ export const historyActions = {
       if (entry.float) this._float = { ...entry.float, version: this.history.version };
       return;
     }
-    // Undoing a move or paste: the selection goes back with the cells (a paste's is dropped; a stamp's
-    // goes back to the copy it left).
-    if (float) {
-      this._float = null;
+    // Undoing a step of a move or paste: the block floats as it was before it, the selection with it
+    // (a paste's first step: the selection is dropped; a stamp's goes back to the copy it left).
+    if (entry.floats) {
+      const { before, after } = entry.floats;
+      this._float = before && { ...before, version: this.history.version };
       const workspace = useWorkspaceStore();
-      if (toRaw(workspace.selection) === toRaw(float.landed)) workspace.selection = float.paste && !float.stamped ? null : float.from;
+      if (toRaw(workspace.selection) === toRaw(after.landed)) workspace.selection = before ? before.landed : after.paste && !after.stamped ? null : after.from;
     }
     this.editVersion++; // undo moves away from what was saved (undoing back to it still counts as dirty)
     if (this.hasFrames && this.quantize === 'count') this.pickPalette();
@@ -270,6 +270,11 @@ export const historyActions = {
     const entry = this.history.redo();
     if (!entry) return;
     this.historyVersion = this.history.version;
+    // Redoing a step of a move or paste: the block floats where it landed, selected, to move on from there.
+    if (entry.floats) {
+      this._float = { ...entry.floats.after, version: this.history.version };
+      useWorkspaceStore().selection = entry.floats.after.landed;
+    }
     if (!entry.selectionOnly) this.editVersion++;
     if (!entry.selectionOnly && this.hasFrames && this.quantize === 'count') this.pickPalette();
   },

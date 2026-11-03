@@ -17,6 +17,7 @@ export default class History {
   get canUndo() { return this.#cursor > 0; }
   get bytes() { return this.#entries.reduce((sum, entry) => sum + (entry.bytes ?? 0), 0); }
   get canRedo() { return this.#cursor < this.#entries.length; }
+  get last() { return this.#entries[this.#cursor - 1]; } // the entry undo would take back next
 
   push(entry) {
     dropped(this.#entries.splice(this.#cursor)); // a new edit drops the redo tail

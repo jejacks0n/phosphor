@@ -47,3 +47,36 @@ test('the block follows the pointer while it is dragged, and the drag is one und
   await page.keyboard.press('ControlOrMeta+z');
   await expect.poll(() => chars(page, 4, 4, 5)).toBe('AB');
 });
+
+// A paste and the drags after it are two undo steps, and undo or redo leaves the block floating.
+test('a pasted block dragged away: undo puts it back where it was pasted, redo where it was dragged, and it still drags', async ({ page }) => {
+  await openApp(page);
+  await editAt(page, 4, 4);
+  await page.keyboard.type('AB');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  const select = async (c0, r0, c1, r1) => {
+    await drag(page, await cellPoint(page, c0, r0), await cellPoint(page, c1, r1));
+    await expect.poll(() => store(page, 'workspace', (w) => w.selection)).toEqual({ c0, r0, c1, r1 });
+  };
+  await select(4, 4, 5, 4);
+  await page.keyboard.press('ControlOrMeta+c');
+  await select(10, 8, 11, 8);
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect.poll(() => chars(page, 8, 10, 11)).toBe('AB');
+  const under = await chars(page, 10, 10, 11);
+
+  await drag(page, await cellPoint(page, 10, 8), await cellPoint(page, 10, 10));
+  await expect.poll(() => chars(page, 10, 10, 11)).toBe('AB');
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => chars(page, 8, 10, 11)).toBe('AB');
+  expect(await chars(page, 10, 10, 11)).toBe(under);
+  expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: 10, r0: 8, c1: 11, r1: 8 });
+
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect.poll(() => chars(page, 10, 10, 11)).toBe('AB');
+  expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: 10, r0: 10, c1: 11, r1: 10 });
+  await drag(page, await cellPoint(page, 10, 10), await cellPoint(page, 13, 10)); // still floating
+  await expect.poll(() => chars(page, 10, 13, 14)).toBe('AB');
+  expect(await chars(page, 8, 10, 11)).not.toBe('AB');
+});

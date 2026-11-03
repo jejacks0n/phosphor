@@ -168,8 +168,10 @@ nudging act on:
 until you're done: you can let go, drag again and nudge as often as you like, and whatever the
 block passes over or pauses on comes back as it moves on. It's set down when you deselect (Escape,
 **Deselect**, a click outside), select something else, or make any other change, and the whole move
-is one undo step. A paste floats the same way, so you can paste and then drag it into place. The
-block follows the pointer as you drag, and dragging it (or a new selection) to the edge of the view
+is one undo step. Undo puts the block back where it started and redo where you left it, floating
+either way, so you can drag it on. A paste floats the same way, so you can paste and then drag it
+into place: the paste is one undo step and moving it another, so undo puts the block back where it
+was pasted, and undo again takes it away. The block follows the pointer as you drag, and dragging it (or a new selection) to the edge of the view
 scrolls the view, faster the further you go.
 
 **Copy and Cut** also put the selection on your system clipboard, so it pastes outside the tab:
@@ -191,7 +193,8 @@ scrolls the view, faster the further you go.
 - text copied anywhere else, typed in. **PabloDraw** gives other apps only its characters, so art
   copied there comes in as text, in your colors.
 
-A block lands floating and selected, so you can drag it into place, and the paste is one undo step.
+A block lands floating and selected, so you can drag it into place, and the paste is one undo step
+(moving it is another).
 A paste lands at the Edit Mode cursor in Edit Mode, or else at the selection, or the top-left of
 the view. A block bigger than the canvas is cut at its edge. The **Paste** button pastes only
 what you copied in this tab; with nothing copied here it's off, and its tip points you to Cmd/Ctrl+V.
@@ -218,7 +221,8 @@ The rotated block starts at the same top-left corner (moved back onto the canvas
 off it).
 
 A flipped or rotated block floats like a moved one: drag or nudge it on and whatever it covered
-comes back, and the turns and moves together are one undo step.
+comes back, and the turns and moves together are one undo step (for a pasted block, one after the
+paste's own).
 
 In Edit Mode, dragging across cells switches to the Select tool and selects them, the way dragging
 selects text in a text editor; a plain click still just places the cursor. With a pen (the Apple
@@ -272,8 +276,9 @@ first.
 Making, changing or dropping a selection is an undo step too: a wand click, a new rectangle, moving
 the rectangle's outline, **Select all**, **Escape** and **Deselect**. Undo brings back the selection
 you had before, so a stray wand click is one undo away. These steps don't count as changes to the
-document (nothing new to save). A move or paste is still one step with its selection: undoing it
-puts the selection back where the block came from. A grid change drops the selection steps, as it
+document (nothing new to save). A move or paste keeps its selection with it: undoing a move puts the
+selection back where the block came from, undoing a pasted block's moves puts it back where the
+block was pasted, and redo puts it back on the block. A grid change drops the selection steps, as it
 drops the drawing ones.
 
 ## Flip FG/BG

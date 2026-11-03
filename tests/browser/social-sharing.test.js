@@ -658,12 +658,15 @@ test('an artist\'s paste left where it is goes out too, and a nudge starts its t
   const layers = { base: false, edit: true };
   const rect = project.pasteSelection({ w: 1, h: 1, cells: [Object.freeze({ char: 'P' })] }, 2, 2);
   vi.advanceTimersByTime(HELD_FLOAT_MS - 1);
-  project.floatSelection(rect, layers, 0, 1);
-  vi.advanceTimersByTime(HELD_FLOAT_MS - 1);
   expect(changes(sent)).toEqual([]);
-  vi.advanceTimersByTime(1);
+  // The paste is its own undo step and its moves another: the nudge sends the paste and holds the move.
+  project.floatSelection(rect, layers, 0, 1);
+  expect(changes(sent).map(({ cells }) => cells.map(([key]) => key))).toEqual([['2,2']]);
+  vi.advanceTimersByTime(HELD_FLOAT_MS - 1);
   expect(changes(sent).length).toBe(1);
-  expect(changes(sent)[0].cells.map(([key]) => key)).toEqual(['2,3']);
+  vi.advanceTimersByTime(1);
+  expect(changes(sent).length).toBe(2);
+  expect(changes(sent)[1].cells.map(([key]) => key).sort()).toEqual(['2,2', '2,3']);
 });
 
 test('a block placed or undone before its time sends what it does now, and the timer adds nothing', async () => {

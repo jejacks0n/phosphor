@@ -22,7 +22,8 @@ import { toRaw } from 'vue';
 import { unitsOf, wandIn } from '@/lib/MagicWand.js';
 
 // A float's moves take the last one back at once, which an artist can only do while it hasn't gone out
-// (sharing.js): those are held. floated marks what's in a float's move; canTakeBack says the run can go on.
+// (sharing.js): those are held. floated marks what's in a float's move; canTakeBack says the run can go on
+// (steps: whether it has steps to take back).
 const floated = (action) => function (...args) {
   this._floating = true;
   try {
@@ -31,7 +32,7 @@ const floated = (action) => function (...args) {
     this._floating = false;
   }
 };
-const canTakeBack = (project, run) => !run.recorded || project._sharing?.role !== 'artist' || !!project._sharing.held;
+const canTakeBack = (project, run, steps = run.recorded) => !steps || project._sharing?.role !== 'artist' || !!project._sharing.held;
 
 export const selectionActions = {
   copySelection(rect, { base, edit }) {
@@ -92,15 +93,17 @@ export const selectionActions = {
     return out;
   },
 
-  // Delete (and Cut) on a block that's floating takes away the block, not what it's over: the move or
-  // paste is undone and, for a move, the place it came from is cleared (one undo step), and the
-  // selection goes with the block. Otherwise what's selected is deleted.
+  // Delete (and Cut) on a block that's floating takes away the block, not what it's over: the move, or
+  // the paste and its moves, are undone and, for a move, the place it came from is cleared (one undo
+  // step), and the selection goes with the block. Otherwise what's selected is deleted.
   deleteSelection(rect, layers) {
     layers = this.layersFor(layers);
     const run = this._float;
-    if (run?.recorded && canTakeBack(this, run) && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)) {
+    // Its steps: a move's, or a paste's and the moves after it.
+    const steps = run?.version === this.history.version && toRaw(rect) === toRaw(run.landed) ? Number(!!run.recorded) + Number(!!(run.paste && run.pasted)) : 0;
+    if (steps && canTakeBack(this, run, steps)) {
+      floated(() => { for (let i = 0; i < steps; i++) this.undo(); }).call(this);
       this._float = null;
-      floated(() => this.undo()).call(this);
       if (!run.paste) this.selectionEdit([run.from], () => this.deleteIn(run.from, run.layers));
       useWorkspaceStore().selection = null;
       return;
@@ -109,17 +112,33 @@ export const selectionActions = {
   },
 
   // Returns the pasted rect (clipped), or null when it's all off the grid.
-  // A paste starts a float (floatSelection): moving it right after re-pastes it, so what it first
-  // landed on comes back. recorded: whether it was an undo step (a paste that changes nothing isn't).
+  // A paste is one undo step, and starts a float (floatSelection) whose moves are another: each lifts
+  // the block off what it was pasted on, which comes back as it was (covered), and lands it again. So
+  // undo after moving it puts it back where it was pasted, still floating, and undo again takes it away.
+  // pasted: whether the paste was an undo step (one that changes nothing isn't).
   pasteSelection: floated(function (block, col, row) {
-    const paste = (c, r) => {
-      const rect = this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
-      if (rect) this.selectionEdit([rect], () => this.pasteAt(block, c, r));
+    this.ensureLayer();
+    const rectAt = (c, r) => this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
+    const landed = rectAt(col, row);
+    if (!landed) {
+      this._float = null;
+      return null;
+    }
+    const under = covered(this, landed, block);
+    const version = this.history.version;
+    this.selectionEdit([landed], () => this.pasteAt(block, col, row));
+    const pasted = this.history.version !== version;
+    const redo = (dc, dr) => {
+      const rect = rectAt(col + dc, row + dr);
+      this.selectionEdit([under.rect, rect].filter(Boolean), () => {
+        uncover(this, under);
+        if (rect) this.pasteAt(block, col + dc, row + dr);
+      });
       return rect;
     };
-    const version = this.history.version;
-    const landed = paste(col, row);
-    this._float = landed && { paste: true, block, redo: (dc, dr) => paste(col + dc, row + dr), from: landed, layers: null, dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version };
+    const start = { paste: true, block, redo, under, from: landed, layers: null, dc: 0, dr: 0, landed, recorded: false, pasted };
+    this._float = { ...start, start, version: this.history.version };
+    if (pasted) this.history.last.floats = { before: null, after: this._float };
     return landed;
   }),
 
@@ -128,7 +147,7 @@ export const selectionActions = {
   stampSelection(rect, layers) {
     this.commitPending();
     const landed = this.pasteSelection(this.copySelection(rect, this.layersFor(layers)), rect.c0, rect.r0);
-    if (this._float) this._float.stamped = true;
+    if (this._float) this._float.stamped = this._float.start.stamped = true;
     return landed;
   },
 
@@ -148,13 +167,15 @@ export const selectionActions = {
     const current = sameRun ? run : { redo: (c, r) => this.moveSelection(rect, layers, c, r), from: rect, layers: { ...layers }, dc: 0, dr: 0 };
     const offset = { dc: current.dc + dc, dr: current.dr + dr };
     if (sameRun && run.recorded) this.undo();
-    if (!current.paste && !current.turned && !offset.dc && !offset.dr) { // back where the move started: nothing moved, nothing recorded
-      this._float = null;
+    if (!current.turned && !offset.dc && !offset.dr) { // back where it started: a move's nothing, a paste's where it was pasted
+      this._float = current.paste ? { ...current.start, start: current.start, version: this.history.version } : null;
       return current.from;
     }
     const version = this.history.version;
     const landed = current.redo(offset.dc, offset.dr);
-    this._float = landed && { ...current, ...offset, landed, version: this.history.version, recorded: this.history.version !== version };
+    const recorded = this.history.version !== version;
+    this._float = landed && { ...current, ...offset, landed, version: this.history.version, recorded };
+    if (recorded) this.history.last.floats = { before: current.paste ? { ...current.start, start: current.start } : null, after: this._float ?? { ...current, landed: null } };
     return landed;
   }),
 
@@ -173,27 +194,32 @@ export const selectionActions = {
     const sameRun = run && canTakeBack(this, run) && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
       && (!run.layers || (run.layers.base === layers.base && run.layers.edit === layers.edit));
     if (sameRun && run.recorded) this.undo();
-    // Lifted from (cleared each time it lands; none for a paste), and the block as it floats.
+    // Lifted from (cleared each time it lands; none for a paste, which puts back what it covered), and
+    // the block as it floats.
     const lifted = sameRun ? (run.paste ? null : run.from) : rect;
     const liftedLayers = sameRun ? run.layers : { ...layers };
+    const under = !lifted ? run.under : null, start = !lifted ? run.start : null;
     const block = turnBlock(sameRun && run.block ? run.block : this.copySelection(lifted, liftedLayers), op);
     const col = Math.max(0, Math.min(rect.c0, this.cols - block.w));
     const row = Math.max(0, Math.min(rect.r0, charRowsOf(this.rows) - block.h));
     const place = (dc, dr) => {
       const c = col + dc, r = row + dr;
       const landed = this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
-      this.selectionEdit([lifted, landed].filter(Boolean), () => {
+      this.selectionEdit([lifted, under?.rect, landed].filter(Boolean), () => {
         if (lifted) this.deleteIn(lifted, liftedLayers);
+        if (under) uncover(this, under);
         this.pasteAt(block, c, r, lifted);
       });
       return landed;
     };
     const version = this.history.version;
     const landed = place(0, 0);
+    const recorded = this.history.version !== version;
     this._float = landed && {
-      paste: !lifted, turned: true, block, redo: place, from: lifted ?? landed, layers: lifted ? liftedLayers : null,
-      dc: 0, dr: 0, landed, version: this.history.version, recorded: this.history.version !== version,
+      paste: !lifted, turned: true, block, redo: place, from: lifted ?? run.from, layers: lifted ? liftedLayers : null, under, start, pasted: !lifted && run.pasted, stamped: !lifted && run.stamped,
+      dc: 0, dr: 0, landed, version: this.history.version, recorded,
     };
+    if (recorded) this.history.last.floats = { before: start && { ...start, start }, after: this._float ?? { paste: !lifted, from: lifted ?? run.from, landed: null } };
     return landed;
   }),
 
@@ -446,4 +472,28 @@ function withHalfRowUnder(project, block, col, row) {
     out.base = { ...block.base, pixels: fill(pixels, project.basePixelsOf(last)), colors: fill(colors, project.baseColorsOf(last)), pins: keep(pins, (key) => project.baseRecords.pins.get(key)) };
   }
   return out;
+}
+
+// What a paste covers (a column either side too, for the wide characters it breaks), as it was, on the
+// layers the block has: put back by uncover, exactly, when the paste moves on.
+function covered(project, rect, block) {
+  const area = { ...rect, c0: Math.max(0, rect.c0 - 1), c1: Math.min(project.cols - 1, rect.c1 + 1) };
+  const cells = rectCells(area), under = { rect: area };
+  if (block.cells) under.entries = cells.map(({ col, row }) => project.editCells.get(cellKey(col, row)) ?? null);
+  if (block.paint) under.paint = project.paintLayer.copyCells(area);
+  if (block.base) {
+    under.base = project.baseLayer.copyCells(area);
+    under.pins = cells.map(({ col, row }) => ({ col, row, char: project.baseRecords.pins.get(cellKey(col, row)) ?? null }));
+  }
+  return under;
+}
+
+function uncover(project, { rect, entries, paint, base, pins }) {
+  const w = rect.c1 - rect.c0 + 1, h = rect.r1 - rect.r0 + 1;
+  if (entries) project.editCells = pasteBlock(project.editCells, { w, h, entries }, rect.c0, rect.r0, project.cols, charRowsOf(project.rows));
+  if (paint) project.paintLayer.pasteCells(paint, rect.c0, rect.r0, w, h);
+  if (base) {
+    project.baseLayer.pasteCells(base, rect.c0, rect.r0, w, h);
+    project.setBaseRecords(withPins(withoutPins(project.baseRecords, pins.filter((p) => !p.char)), pins.filter((p) => p.char)));
+  }
 }
