@@ -3,7 +3,6 @@
 // before a hosting tab closes.
 import { test, expect, openApp, tab, store } from './support.js';
 import { fakeServer, fakeRoom, member, tile, ROOM_ID } from './social-support.js';
-import { silencedWords } from '../../src/social/chat.js';
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
@@ -360,7 +359,7 @@ test('a SILENCED refusal shows the server\'s words and no room starts', async ({
   }));
   await page.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
   await page.getByRole('button', { name: 'Go live' }).click();
-  await expect(page.locator('.people-tab .notice')).toContainText(silencedWords(until));
+  await expect(page.locator('.people-tab .notice')).toContainText('You\'re silenced until');   // the words for the time are a unit test's (social-api)
   await expect(shown(page, 'start-room').getByRole('heading', { name: 'Set up your room' })).toBeVisible();
   expect(await store(page, 'room', (r) => r.role)).toBe(null);
   expect(server.sent('POST', '/api/rooms')).toHaveLength(1);
