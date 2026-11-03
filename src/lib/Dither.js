@@ -11,7 +11,11 @@
  */
 import { paletteIndex } from './ColorUtils.js';
 
-const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+export const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+
+// About one step between palette colors: a Bayer nudge that size moves a color across to its
+// neighbor. No palette, nothing to move across to: no nudge.
+export const nudgeSpread = (palette) => (palette?.length ? 255 / Math.max(1, Math.cbrt(palette.length) - 1) : 0);
 
 const byte = (v) => (v < 0 ? 0 : v > 255 ? 255 : Math.round(v));
 
@@ -21,8 +25,7 @@ export function ditherPixels(data, w, h, palette, { style = 'floyd', strength = 
   const out = new Uint8ClampedArray(data.length);
   const floyd = style !== 'bayer';
   const work = floyd ? Float32Array.from(data) : data;
-  // About one step between palette colors: a nudge that size moves a color across to its neighbor.
-  const spread = 255 / Math.max(1, Math.cbrt(palette.length) - 1);
+  const spread = nudgeSpread(palette);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const o = (y * w + x) * 4;

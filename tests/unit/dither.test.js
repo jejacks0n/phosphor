@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ditherPixels } from '@/lib/Dither.js';
+import { ditherPixels, nudgeSpread } from '@/lib/Dither.js';
 import { PALETTES } from '@/lib/ColorUtils.js';
 
 const BW = [{ r: 0, g: 0, b: 0, hex: '#000000', c: 0 }, { r: 255, g: 255, b: 255, hex: '#FFFFFF', c: 1 }];
@@ -76,5 +76,13 @@ describe('ditherPixels', () => {
   it('spreads the error with Floyd–Steinberg: an even gray comes out as a fine mix, not a band', () => {
     const out = ditherPixels(gray(8, 1, 128), 8, 1, BW, { style: 'floyd' });
     expect(Array.from({ length: 8 }, (_, i) => out[i * 4])).toEqual([255, 0, 255, 0, 255, 0, 255, 0]);
+  });
+});
+
+describe('nudgeSpread', () => {
+  it('is about one step between palette colors, and no nudge without a palette', () => {
+    expect(nudgeSpread(BW)).toBe(255);
+    expect(nudgeSpread(PALETTES.cga)).toBeCloseTo(255 / (Math.cbrt(16) - 1));
+    expect(nudgeSpread(null)).toBe(0);
   });
 });
