@@ -2,6 +2,7 @@
 // character pinned, its palette and SAUCE in the settings, and nothing to undo or save.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { buildCell, layoutWide } from '@/lib/Cells';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils';
@@ -66,6 +67,7 @@ test('a CGA .ans opens as a document: its cells, size, palette and SAUCE, nothin
   });
   expect(project.history.canUndo).toBe(false);
   expect(project.isDirty).toBe(false);
+  expect(useWorkspaceStore().ansiOverlayAll).toBe(true); // the PIXEL tab shows each cell as it looks, not its two colors as stripes
 });
 
 test('a 24-bit .utf8ans opens in full color, wide characters and all', async () => {
@@ -99,4 +101,5 @@ test('a file over the limits rejects with its message, and the open document sta
   expect(project.documentId).toBe(documentId);
   expect(project.filename).toBe(filename);
   expect(cellsKey(project)).toEqual(cells);
+  expect(useWorkspaceStore().ansiOverlayAll).toBe(false);
 });
