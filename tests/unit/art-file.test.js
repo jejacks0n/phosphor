@@ -83,7 +83,7 @@ test('a wide character that does not fit in the last column wraps first', () => 
 });
 
 test('CR, LF, TAB and the end mark', () => {
-  assert.equal(text(read('ABC\rX'), 0).slice(0, 3), 'XBC');
+  assert.equal(text(read('ABC\rX\n'), 0).slice(0, 3), 'XBC'); // CR returns to column 0 when the file has an LF
   assert.equal(at(read('A\nB'), 0, 1).char, 'B'); // LF returns to column 0
   assert.equal(at(read('A\tB'), 8).char, 'B');
   assert.equal(at(read('A\x08B'), 0).char, 'B');
@@ -160,6 +160,21 @@ test('with no width, a long cursor move then an erase is read fast and never wal
   }
   assert.throws(() => readArtFile(cp('A\x1b[99999999CB'), 'a.txt'), /Phosphor opens at most/);
   assert.ok(performance.now() - started < 500);
+});
+
+test('a file with CR and no LF reads each CR as a line break, in any kind of file', () => {
+  const two = readArtFile(cp('abc\rde'), 'a.txt');
+  assert.deepEqual([two.cols, two.rows, text(two, 0), text(two, 1)], [3, 2, 'abc', 'de ']);
+  assert.equal(read('abc\rde').rows, 2);
+  const wide = read('A'.repeat(80) + '\rB');
+  assert.equal(wide.rows, 2); // the wait to wrap is not an extra row before the CR
+  assert.equal(at(wide, 0, 1).char, 'B');
+  assert.equal(read('A'.repeat(80) + '\r\rB').rows, 3);
+  assert.equal(text(read('abc\r\nde'), 1).slice(0, 2), 'de'); // CR LF is one break, not two
+  assert.equal(read('abc\r\nde').rows, 2);
+  const mixed = readArtFile(cp('abc\rde\nf'), 'a.txt'); // an LF anywhere keeps CR as column 0
+  assert.deepEqual([mixed.rows, text(mixed, 0), text(mixed, 1)], [2, 'dec', 'f  ']);
+  assert.equal(read('abc\rde\x1a\nf').rows, 2); // an LF after the end mark is not in the art
 });
 
 test('K under inverse erases with the swapped colors', () => {
