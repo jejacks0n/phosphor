@@ -60,7 +60,8 @@ function inkOfHalves(data, width, height) {
 
 // The reference font: Best match and By shape measure glyphs in IBM VGA (8 x 16, the font's own cell),
 // never the display font, so the same document picks the same characters in every browser. A glyph it
-// lacks is measured in its fallback on the same grid.
+// lacks is measured in its fallback (Unscii) on the same grid, and one Unscii lacks too in the system's
+// monospace font, which differs from computer to computer.
 const REFERENCE = DISPLAY_FONTS.find((font) => font.id === 'vga');
 const REF_W = 8, REF_H = 16;
 
