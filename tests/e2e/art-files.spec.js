@@ -9,6 +9,7 @@ const boat = Buffer.from('\x1b[31mHi\x1b[0m\r\nthere', 'latin1');
 
 test('the file picker opens a .ans on the ANSI tab, named for the file', async ({ page }) => {
   await page.goto('/');
+  await expect(page.getByText(/Drop an image, .* or ANSI file here to start/)).toBeVisible();
   await imageInput(page).setInputFiles({ name: 'boat.ans', mimeType: 'application/octet-stream', buffer: boat });
   await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
   await settled(page);
@@ -62,6 +63,8 @@ test('a .ans dropped on the drawing can be added where it lands, as one undo ste
   const before = await store(page, 'project', (p) => ({ cells: p.cells.map((c) => c.char), title: p.sauceTitle, quantize: p.quantize, filename: p.filename }));
   await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
   await expect(question(page)).toContainText('Add tiny.ans?');
+  await expect(question(page)).toContainText('Add it to this drawing, or open it in place of this one.');
+  await expect(question(page)).toContainText('It lands where you dropped it, on the edit layer');
   await expect(page.locator('article.drop-zone')).not.toHaveClass(/dragging/); // the drop ended its highlight
   await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
   await expect(question(page)).toBeHidden();
@@ -110,6 +113,7 @@ test('dropped beside the drawing, an added file lands at the top-left of the vie
   const { col, row } = await store(page, 'workspace', (w) => w.ansiViewOrigin);
   expect(row).toBeGreaterThan(0);
   await dropOn(page, 'article.drop-zone', tiny, 'tiny.ans', { x: 1, y: 1 });
+  await expect(question(page)).toContainText('It lands at the top-left of the view, on the edit layer');
   await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
   await expect.poll(() => chars(page, row, col, col + 2)).toBe('ABC'); // once the file is read
   expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: col, r0: row, c1: col + 2, r1: row + 1 });
@@ -132,14 +136,18 @@ test('added while an animation plays, the file lands on the frame showing, pause
   const bar = page.getByRole('toolbar', { name: 'Animation' });
   await bar.getByRole('button', { name: 'Add frame' }).click();
   await page.getByRole('button', { name: /^Blank/ }).click();
+  // Start on frame 0, which holds briefly, then sit on frame 1 for a minute: playback has moved off the frame being edited.
+  await store(page, 'project', (p) => { p.setHold(0, 0.2); p.setHold(1, 60); p.showFrame(0); });
   await bar.getByRole('button', { name: 'Play' }).click();
   await expect(bar.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect.poll(() => store(page, 'workspace', (w) => w.playFrame)).toBe(1);
+  expect(await store(page, 'project', (p) => p.frame)).toBe(0);
   await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
   await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
   await expect(bar.getByRole('button', { name: 'Play' })).toBeVisible(); // paused
   await expect.poll(() => chars(page, 4, 10, 12)).toBe('ABC');
-  const frame = await store(page, 'project', (p) => p.frame);
-  await expect(bar.getByTestId('frame-indicator')).toHaveText(`${frame + 1} / 2`); // the frame edited is the one showing
+  expect(await store(page, 'project', (p) => p.frame)).toBe(1); // the frame that was showing took it
+  await expect(bar.getByTestId('frame-indicator')).toHaveText('2 / 2');
   expect(await store(page, 'workspace', (w) => w.playing)).toBe(false);
 });
 
@@ -150,4 +158,6 @@ test('with others drawing, the question offers no Open instead', async ({ page }
   await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
   await expect(question(page).getByRole('button', { name: /Add to this drawing/ })).toBeVisible();
   await expect(question(page).getByRole('button', { name: /Open instead/ })).toHaveCount(0);
+  await expect(question(page)).toContainText('Add it to this drawing.');
+  await expect(question(page)).not.toContainText('open it in place');
 });

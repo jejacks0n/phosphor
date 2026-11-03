@@ -63,7 +63,7 @@ async function openArt(file) {
 // The dropped art file's question: added as a paste is (floating and selected, where it was dropped or at the
 // view's top-left), or opened in place of this drawing (not in a room where opening is off).
 const artChoices = computed(() => [
-  { id: 'add', title: 'Add to this drawing', text: 'It lands where you dropped it, on the edit layer, to drag into place.' },
+  { id: 'add', title: 'Add to this drawing', text: `It lands ${workspace.artDrop?.at ? 'where you dropped it' : 'at the top-left of the view'}, on the edit layer, to drag into place.` },
   ...(drawing.offWithOthers ? [] : [{ id: 'open', title: 'Open instead', text: 'In place of this drawing.' }]),
 ]);
 async function chooseArt(choice) {
@@ -116,7 +116,7 @@ async function chooseArt(choice) {
       <ChoiceDialog
           v-if="workspace.artDrop"
           :title="`Add ${workspace.artDrop.file.name}?`"
-          sub="Add it to this drawing, or open it in place of this one."
+          :sub="drawing.offWithOthers ? 'Add it to this drawing.' : 'Add it to this drawing, or open it in place of this one.'"
           :choices="artChoices"
           @choose="chooseArt"
           @cancel="workspace.artDrop = null"
