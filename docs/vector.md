@@ -27,11 +27,25 @@ resized (it grows or trims on the right and bottom, and shapes keep their place)
   from the opposite side (Shift keeps the proportions), or drag the knob above it to rotate them (Shift
   turns in steps of 15°). One shape's box turns with it; several shapes share one box, square to the grid.
 - Click empty canvas to deselect.
-- Double-click a shape to edit its points.
+- Double-click a shape (or press **Edit points**) to edit its points (below).
 - The arrow keys nudge the selection a pixel (with Shift, 10). Delete or Backspace deletes it. Esc stops
   editing points, then deselects.
 
 Each drag, nudge or delete is one undo step.
+
+## Editing points
+
+While a shape's points are edited, its points and their curve handles show over it:
+
+- Drag a point to move it, its handles with it. Drag a handle to bend the curves beside its point.
+- Click the outline to add a point there; the curve stays where it was, and the new point is selected.
+- The options row: **Smooth** (the point's handles stay in line: drag one and the other turns with it; a
+  point with no handles gets some), **Corner** (they move apart), **Delete point** (Delete or Backspace too;
+  a shape left with fewer than two points goes), and **Done**.
+- Click empty canvas, press Esc, or press Done to stop editing points; the shape stays selected.
+
+Each drag, added point and change is one undo step. This works on rotated and scaled shapes too: a point goes
+where the pointer is.
 
 ## Pen (P)
 

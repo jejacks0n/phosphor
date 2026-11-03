@@ -1,14 +1,17 @@
 <script setup>
 // VECTOR's options row. With shapes selected: Fill, Stroke, Width, Forward and Back (the stacking order), Edit
 // points and Delete, each one undo step; with nothing selected, or with the Pen or the Shape tool, the Fill,
-// Stroke and Width the next shape gets (workspace.vectorStyle, where 'fg' is the foreground color when it's made). A phone's row keeps
-// Fill, Stroke, Width and Points, and puts the rest under ⋯.
+// Stroke and Width the next shape gets (workspace.vectorStyle, where 'fg' is the foreground color when it's
+// made). While a shape's points are edited, the Point row: the selected point Smooth or Corner, Delete point
+// and Done. A phone's row keeps Fill, Stroke, Width and Points, and puts the rest under ⋯; its Point row has
+// no label or hint.
 import { computed, ref } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { withShape } from '@/document/shapes.js';
+import { setSmooth, withShape } from '@/document/shapes.js';
+import { deleteSelectedPoint } from '@/tools/vselect.js';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import ColorPopover from '@/components/ColorPopover.vue';
 import DropdownMenu from '@/components/DropdownMenu.vue';
@@ -69,6 +72,13 @@ const remove = () => {
   project.deleteShapes(selected.value);
   workspace.vectorSelected = [];
 };
+// The Point row: the shape whose points are edited, and its selected point.
+const pointsOf = computed(() => workspace.activeTool === 'vselect' && workspace.vectorPoints && project.shapes.get(workspace.vectorPoints));
+const point = computed(() => (pointsOf.value && workspace.vectorPoint !== null ? pointsOf.value.points[workspace.vectorPoint] : null));
+const smooth = (on) => project.updateShapes([[workspace.vectorPoints, setSmooth(pointsOf.value, workspace.vectorPoint, on)]]);
+const removePoint = () => deleteSelectedPoint(project, workspace);
+const done = () => (workspace.vectorPoints = workspace.vectorPoint = null);
+
 const editPoints = () => {
   workspace.vectorPoints = selected.value[0];
   workspace.vectorPoint = null;
@@ -76,7 +86,15 @@ const editPoints = () => {
 </script>
 
 <template>
-  <div v-if="editing || styling" class="tool-setting-group vector-options">
+  <div v-if="pointsOf" class="tool-setting-group vector-options">
+    <span v-if="!phone" class="option-label">{{ t('vector.point') }}</span>
+    <button class="text" :aria-pressed="!!point?.[6]" :disabled="!point" :title="t('vector.smoothTitle')" @click="smooth(true)">{{ t('vector.smooth') }}</button>
+    <button class="text" :aria-pressed="!!point && !point[6]" :disabled="!point" :title="t('vector.cornerTitle')" @click="smooth(false)">{{ t('vector.corner') }}</button>
+    <button class="text" :disabled="!point" :title="t('vector.deletePointTitle')" @click="removePoint">{{ t('vector.deletePoint') }}</button>
+    <button class="text" :title="t('vector.doneTitle')" @click="done">{{ t('vector.done') }}</button>
+    <span v-if="!phone" class="hint">{{ t('vector.pointsHint') }}</span>
+  </div>
+  <div v-else-if="editing || styling" class="tool-setting-group vector-options">
     <template v-for="slot in ['fill', 'stroke']" :key="slot">
       <button class="swatch-button" data-color-trigger :aria-label="t(`vector.${slot}`)" :title="t(`vector.${slot}Title`)" @click="openBox(slot, $event)">
         <span class="option-label">{{ t(`vector.${slot}`) }}</span>

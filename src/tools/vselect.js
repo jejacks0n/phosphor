@@ -1,11 +1,12 @@
 // Vector select (the VECTOR tab): click a shape to select it (Shift adds or takes it away), then drag inside
 // the box to move, a handle to scale (Shift keeps the proportions) or the knob above it to rotate (Shift: in
-// steps of 15°). A second click on a shape edits its points (workspace.vectorPoints; points.js). Each drag
-// is one edit, worked out each move from the shapes as they were at the press, so nothing drifts. Keys:
-// arrows nudge a grid pixel (Shift: 10), Delete or Backspace deletes, Esc leaves the points and then the
-// selection.
+// steps of 15°). A second click on a shape edits its points (workspace.vectorPoints): drag a point or a
+// handle, click the outline to add a point there, click empty canvas to leave. Each drag is one edit, worked
+// out each move from the shapes as they were at the press, so nothing drifts. Keys: arrows nudge a grid pixel
+// (Shift: 10), Delete or Backspace deletes (the selected point, when editing points), Esc leaves the points
+// and then the selection.
 import { t } from '@/i18n/index.js';
-import { apply, invert, localBounds, multiply, rotation, scaling, shapeBounds, translation, transformed, withShape } from '@/document/shapes.js';
+import { apply, deletePoint, invert, localBounds, moveHandle, movePoint, multiply, nearestOnOutline, rotation, scaling, shapeBounds, splitAt, translation, transformed, withShape, worldPoints } from '@/document/shapes.js';
 import { shapeAt } from '@/lib/shapeHits.js';
 
 const KNOB = 24;           // CSS px above the box's top edge
@@ -104,6 +105,36 @@ function rotateTo(project, drag, pos, shift) {
   reshape(project, drag, (shape) => multiply(w, shape.m));
 }
 
+// Points mode: a press on a handle, a point or the outline of the shape being edited, or null (anything else).
+// Hits are in grid pixels; the drag works in the shape's own (local) pixels.
+function pointsPress(project, workspace, pos, unit, radius) {
+  const key = workspace.vectorPoints, shape = project.shapes.get(key);
+  const world = worldPoints(shape), start = (kind, i, extra = {}) => {
+    workspace.vectorPoint = i;
+    project.beginEdit();
+    drag = { kind, key, i, from: apply(invert(shape.m), pos.x, pos.y), start: project.shapes.get(key), ...extra };
+    return true;
+  };
+  for (let i = 0; i < world.length; i++) {
+    for (const which of ['in', 'out']) if (world[i][which] && near(pos, world[i][which], unit, radius)) return start('handle', i, { which });
+  }
+  const i = world.findIndex((p) => near(pos, p, unit, radius));
+  if (i >= 0) return start('point', i);
+  const on = nearestOnOutline(shape, pos.x, pos.y);
+  if (on.segment >= 0 && on.distance * unit.x <= radius) {
+    project.beginEdit();
+    project.updateShapes([[key, splitAt(shape, on.segment, on.t)]]);
+    return start('point', on.segment + 1);
+  }
+  return null;
+}
+
+function pointsMove(project, to) {
+  const local = apply(invert(drag.start.m), to.x, to.y), { start, i } = drag;
+  const next = drag.kind === 'handle' ? moveHandle(start, i, drag.which, local.x, local.y) : movePoint(start, i, local.x - drag.from.x, local.y - drag.from.y);
+  project.updateShapes([[drag.key, next]]);
+}
+
 let drag = null, lastPress = null;
 
 const selected = (workspace, project) => workspace.vectorSelected.filter((key) => project.shapes.has(key));
@@ -119,6 +150,13 @@ export default {
 
   begin({ project, workspace, unit }, pos, event) {
     const shift = !!event?.shiftKey, radius = handleRadius(), tol = radius / unit.x;
+    if (workspace.vectorPoints && project.shapes.has(workspace.vectorPoints)) {
+      if (pointsPress(project, workspace, pos, unit, radius)) return true;
+      const hit = shapeAt(project.shapes, pos.x, pos.y, tol);
+      if (hit === workspace.vectorPoints) return false; // inside it: still editing its points
+      workspace.vectorPoints = workspace.vectorPoint = null; // and the selection stays, unless it's another shape
+      if (!hit) return false;
+    }
     const keys = selected(workspace, project), box = selectionBox(project.shapes, keys);
     const at = (kind, extra = {}) => {
       drag = { kind, from: pos, box, start: (extra.keys ?? keys).map((key) => [key, project.shapes.get(key)]), shift, ...extra };
@@ -155,7 +193,8 @@ export default {
     if (!drag) return;
     const shift = workspace.isShiftPressed;
     drag.moved ||= to.x !== drag.from.x || to.y !== drag.from.y;
-    if (drag.kind === 'move') reshape(project, drag, (shape) => transformed(shape, translation(to.x - drag.from.x, to.y - drag.from.y)).m);
+    if (drag.kind === 'point' || drag.kind === 'handle') pointsMove(project, to);
+    else if (drag.kind === 'move') reshape(project, drag, (shape) => transformed(shape, translation(to.x - drag.from.x, to.y - drag.from.y)).m);
     else if (drag.kind === 'scale') scaleTo(project, drag, to, shift);
     else rotateTo(project, drag, to, shift);
   },
@@ -185,6 +224,10 @@ export default {
       return true;
     }
     if (!keys.length || event.metaKey || event.ctrlKey || event.altKey) return false;
+    if ((event.key === 'Delete' || event.key === 'Backspace') && workspace.vectorPoints && workspace.vectorPoint !== null) {
+      deleteSelectedPoint(project, workspace);
+      return true;
+    }
     if (event.key === 'Delete' || event.key === 'Backspace') {
       project.deleteShapes(keys);
       workspace.vectorSelected = [];
@@ -196,5 +239,15 @@ export default {
     return true;
   },
 };
+
+// The point selected in points mode deleted; with under two left, the shape goes, and points mode with it.
+export function deleteSelectedPoint(project, workspace) {
+  const key = workspace.vectorPoints, shape = project.shapes.get(key);
+  if (!shape || workspace.vectorPoint === null) return;
+  const next = deletePoint(shape, workspace.vectorPoint);
+  project.updateShapes([[key, next]]);
+  workspace.vectorPoint = null;
+  if (!next) workspace.vectorPoints = null;
+}
 
 const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
