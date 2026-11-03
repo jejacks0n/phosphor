@@ -13,6 +13,7 @@ import PaletteStrip from '@/components/PaletteStrip.vue';
 import LayerToggles from '@/components/LayerToggles.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
+import VectorOptions from '@/components/VectorOptions.vue';
 import { shortcut } from '@/lib/keyLabels';
 import { snapsLate } from '@/lib/CharResolver';
 import { copySelection as copyToClipboards } from '@/composables/clipboard';
@@ -109,6 +110,9 @@ const deselect = () => project.changeSelection((w) => { w.selection = null; w.wa
 const recolored = computed(() => (workspace.activeTool === 'wand' ? wandHere.value && workspace.wand : workspace.activeTool === 'select' && workspace.selection));
 const recolor = (colors) => project.recolorSelection(recolored.value, workspace.editorTab, workspace.selectLayers, colors);
 const asciiStyle = computed(() => ['ascii', 'colorAscii'].includes(project.renderStyle));
+// VECTOR's options row (VectorOptions), with Vector select, the Pen and the Shape tool. It stays up with
+// nothing selected, so selecting a shape doesn't move the canvas under the pointer.
+const vectorRow = computed(() => workspace.editorTab === 'vector' && ['vselect', 'pen', 'vshape'].includes(workspace.activeTool));
 
 // The pixel view's preview of the ANSI layer: edit cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = computed(() => ({ key: 'ansiOverlay', label: t('toolbar.overlay.shortLabel'), title: t('toolbar.overlay.title'), min: 0, max: 100, unit: '%' }));
@@ -313,6 +317,7 @@ const selectionHasCharacters = computed(() => {
             v-bind="mergeOff()"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg></button>
         <button
+            v-if="workspace.editorTab !== 'vector'"
             :title="t('toolbar.clearEditTitle')"
             @click="confirmClear"
             class="primary"
@@ -345,7 +350,7 @@ const selectionHasCharacters = computed(() => {
             </svg>
             {{ t('toolbar.mergeDown') }}
           </button>
-          <button @click="confirmClear" :disabled="!project.hasEditLayer" v-bind="off(drawing.offWithOthers, t('toolbar.clearEdit'))">
+          <button v-if="workspace.editorTab !== 'vector'" @click="confirmClear" :disabled="!project.hasEditLayer" v-bind="off(drawing.offWithOthers, t('toolbar.clearEdit'))">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M431.2 476.5L163.5 208.8C141.1 240.2 128 278.6 128 320C128 426 214 512 320 512C361.5 512 399.9 498.9 431.2 476.5zM476.5 431.2C498.9 399.8 512 361.4 512 320C512 214 426 128 320 128C278.5 128 240.1 141.1 208.8 163.5L476.5 431.2zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z"/>
             </svg>
@@ -355,7 +360,8 @@ const selectionHasCharacters = computed(() => {
       </div>
     </div>
 
-    <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select' || kept">
+    <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select' || kept || vectorRow">
+      <VectorOptions v-if="workspace.editorTab === 'vector'"/>
       <PaletteStrip v-if="activeTool.palette"/>
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">
         <span class="option-label">{{ t('toolbar.selection.layers') }}</span>

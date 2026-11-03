@@ -14,6 +14,7 @@ import { pickMode, pickTargetOf } from '@/lib/pickMode';
 import { drawsCells } from '@/tools/shapes';
 import { snapCursor } from '@/document/wideChars';
 import { isArtFile } from '@/lib/ArtFile';
+import { withShape } from '@/document/shapes.js';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
@@ -84,6 +85,18 @@ function pickAt(pos, event) {
     swapped: workspaceStore.pickSwapped,
     target: pickTargetOf(workspaceStore.pickLayers),
   });
+  // VECTOR: the color under the point is the selected shapes' Fill (Shift: their Stroke), one step for the
+  // whole drag (the picker's end commits it), or the next shape's.
+  if (props.view === 'vector') {
+    const hex = projectStore.rawColorAt(pos.x, pos.y), slot = event?.shiftKey ? 'stroke' : 'fill';
+    const keys = workspaceStore.vectorSelected.filter((key) => projectStore.shapes.has(key));
+    if (!keys.length) workspaceStore.vectorStyle = { ...workspaceStore.vectorStyle, [slot]: hex };
+    else {
+      projectStore.beginEdit();
+      projectStore.updateShapes(keys.map((key) => [key, withShape(projectStore.shapes.get(key), { [slot]: hex })]));
+    }
+    return;
+  }
   // The pixel view, and a picker held with Alt from a drawing tool, pick exactly the half under the
   // pointer: into the foreground, or with Alt+Shift the background.
   if (props.view === 'input' || workspaceStore.pickSwapped) {

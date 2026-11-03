@@ -4,7 +4,7 @@
  *   keys       the letters that choose it (useKeyboardShortcuts; shown on its button)
  *   altPicks?  holding Alt switches to the picker (Alt+Shift: picking the background)
  *   available? (project) => boolean: offered in the toolbar only when true (e.g. flip needs the ANSI art style)
- *   section?   toolbar group ('select', 'navigate', 'cell'); a divider separates groups
+ *   section?   toolbar group ('select', 'navigate', 'cell', 'vector'); a divider separates groups
  *   autoScroll? a drag near the view's edge scrolls it (useEditorInteractions)
  *   preview?   { shape: 'circle' | 'square' | 'cell', size?: (workspace) => grid pixels }
  *   cursor?    (ctx, pos) => CSS cursor | null: the pointer over the content, at grid pixel pos
@@ -27,9 +27,10 @@ import select from './select';
 import wand from './wand';
 import shapes from './shapes';
 import vselect from './vselect';
+import vshape from './vshape';
 import { t } from '@/i18n/index.js';
 
-export const TOOLS = [vselect, pencil, brush, eraser, bucket, shapes, picker, wand, select, hand, zoom, text, flip];
+export const TOOLS = [vselect, vshape, pencil, brush, eraser, bucket, shapes, picker, wand, select, hand, zoom, text, flip];
 
 const BY_ID = new Map(TOOLS.map(tool => [tool.id, tool]));
 const NONE = { id: 'none', kind: 'none', views: [] };

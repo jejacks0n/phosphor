@@ -92,3 +92,112 @@ test('Esc deselects and arrows nudge; a double-click edits points, and Esc leave
   await page.keyboard.press('Delete');
   expect(await store(page, 'project', (p) => p.shapes.size)).toBe(0);
 });
+
+const shapeList = (page) => store(page, 'project', (p) => [...p.shapes].map(([key, s]) => ({ key, ...s })));
+const undoSteps = async (page, n) => { for (let i = 0; i < n; i++) await page.keyboard.press('ControlOrMeta+z'); };
+
+test('the Shape tool draws a rectangle, an ellipse and a 5-sided polygon that convert to cells, each one undo step', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const bare = await cells(page);
+  await page.keyboard.press('u');
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vshape');
+  const kinds = [['Rectangle', 10, 4], ['Ellipse', 25, 4], ['Polygon', 40, 5]];
+  for (const [kind, x, points] of kinds) {
+    await page.getByRole('button', { name: kind, exact: true }).click();
+    await dragPoints(page, await gridPoint(page, x, 10), await gridPoint(page, x + 10, 20));
+    const list = await shapeList(page);
+    expect(list.at(-1).points).toHaveLength(points);
+    expect(await selected(page)).toEqual([list.at(-1).key]);
+  }
+  expect((await shapeList(page)).map((s) => s.points[0].length)).toEqual([7, 7, 7]);
+  await settled(page);
+  expect(await cells(page)).not.toBe(bare);
+  await page.mouse.click(...Object.values(await gridPoint(page, 60, 10))); // a click makes nothing
+  expect(await shapeList(page)).toHaveLength(3);
+  await undoSteps(page, 3);
+  expect(await shapeList(page)).toHaveLength(0);
+});
+
+test('Fill, Stroke and Width change the selected shape; Forward and Back restack it; Delete removes it', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
+  const below = await addRect(page, 10, 10, 20, 20);
+  const above = await addRect(page, 15, 15, 25, 25);
+  await page.mouse.click(...Object.values(await gridPoint(page, 11, 11)));
+  expect(await selected(page)).toEqual([below]);
+
+  await page.getByRole('button', { name: 'Fill', exact: true }).click();
+  await page.locator('.color-popover .swatch.none').click();
+  await page.getByRole('button', { name: 'Stroke', exact: true }).click();
+  await page.locator('.color-popover .swatch.small').first().click();
+  await page.keyboard.press('Escape');
+  await page.getByLabel('Width', { exact: true }).fill('4');
+  const changed = (await shapeList(page)).find((s) => s.key === below);
+  expect([changed.fill, changed.stroke, changed.width]).toEqual([null, '#00ff00', 4]);
+
+  const z = async () => Object.fromEntries((await shapeList(page)).map((s) => [s.key, s.z]));
+  const before = await z(page);
+  await page.getByRole('button', { name: 'Forward', exact: true }).click();
+  expect((await z(page))[below]).toBeGreaterThan((await z(page))[above]);
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  expect(await z(page)).toEqual(before);
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  expect((await shapeList(page)).map((s) => s.key)).toEqual([above]);
+
+  await undoSteps(page, 6); // Delete, Back, Forward, Width, Stroke, Fill
+  const back = (await shapeList(page)).find((s) => s.key === below);
+  expect([back.fill, back.stroke, back.width]).toEqual(['#ff0000', null, 1]);
+});
+
+test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  const key = await addRect(page, 10, 10, 20, 20);
+  await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
+  const color = await store(page, 'project', (p) => p.rawColorAt(40.5, 30.5));
+  await page.keyboard.press('i');
+  await page.mouse.click(...Object.values(await gridPoint(page, 40.5, 30.5)));
+  expect((await shapeList(page))[0].fill).toBe(color);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(...Object.values(await gridPoint(page, 40.5, 30.5)));
+  await page.keyboard.up('Shift');
+  expect((await shapeList(page))[0].stroke).toBe(color);
+  await page.keyboard.press('ControlOrMeta+z');
+  expect((await shapeList(page))[0].stroke).toBe(null);
+
+  await store(page, 'workspace', (w) => { w.vectorSelected = []; });
+  await page.mouse.click(...Object.values(await gridPoint(page, 40.5, 30.5)));
+  expect(await store(page, 'workspace', (w) => w.vectorStyle.fill)).toBe(color);
+  expect(key).toMatch(/^v:/);
+});
+
+test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await addRect(page, 10, 10, 30, 30);
+  const clear = page.getByTitle('Clear edit layer: erase everything on the edit layer.');
+  await expect(clear).toHaveCount(0);
+  await tab(page, 'ANSI').click();
+  await expect(clear).toBeDisabled();
+});
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  test('the options row is Fill, Stroke, Width, Points and ⋯', async ({ page }) => {
+    await openApp(page);
+    await tab(page, 'VECTOR').click();
+    const key = await addRect(page, 4, 4, 14, 14);
+    await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
+    const row = page.locator('.vector-options');
+    for (const name of ['Fill', 'Stroke', 'Points']) await expect(row.getByRole('button', { name, exact: true })).toBeVisible();
+    await expect(row.getByLabel('Width', { exact: true })).toBeVisible();
+    await expect(row.getByRole('button', { name: 'Forward', exact: true })).toHaveCount(0);
+    await expect(row.locator('.hint')).toHaveCount(0);
+    await row.getByRole('button', { name: 'More', exact: true }).click();
+    for (const name of ['Forward', 'Back', 'Delete']) await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+  });
+});
