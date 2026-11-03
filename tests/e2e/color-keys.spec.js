@@ -69,3 +69,20 @@ test('in the color box the arrow keys move between swatches, Space picks, Enter 
   expect(await ws(page, (w) => w.selection)).toEqual(selection); // the arrows didn't nudge it
 });
 
+
+// Monochrome ASCII shows every cell white on black, but paint still picks the characters by its brightness, so the
+// chips stay, as the grays they act as: red (#ff0000) is rgb(54, 54, 54), blue (#0000ff) rgb(18, 18, 18).
+test('in Monochrome ASCII the ANSI tab keeps the colors, shown as their grays, and a chip opens the color box', async ({ page }) => {
+  await openApp(page);
+  await store(page, 'project', (p) => { p.renderStyle = 'ascii'; });
+  await store(page, 'workspace', (w) => { w.editFgColor = '#ff0000'; w.editBgColor = '#0000ff'; w.editFgNone = false; w.editBgNone = false; });
+  const fg = page.getByRole('button', { name: 'Foreground color' }), bg = page.getByRole('button', { name: 'Background color' });
+  await expect(fg).toHaveCSS('background-color', 'rgb(54, 54, 54)');
+  await expect(bg).toHaveCSS('background-color', 'rgb(18, 18, 18)');
+  await fg.click();
+  await expect(box(page)).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await store(page, 'project', (p) => { p.renderStyle = 'colorAscii'; }); // Color ASCII shows the colors themselves
+  await expect(fg).toHaveCSS('background-color', 'rgb(255, 0, 0)');
+});
