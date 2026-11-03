@@ -2,20 +2,48 @@
 // whatever the display font is.
 import { test, expect, afterEach } from 'vitest';
 import { createTestApp } from '../support/app.js';
-import { DISPLAY_FONTS, setDisplayFont } from '@/lib/displayFonts';
-import { loadReferenceFont, referenceInk, referenceMask } from '@/lib/GlyphCoverage';
+import { DISPLAY_FONTS, drawGlyph, setDisplayFont } from '@/lib/displayFonts';
+import { loadReferenceFont, rasterizeCoverage, referenceInk, referenceMask } from '@/lib/GlyphCoverage';
 
 afterEach(() => setDisplayFont(DISPLAY_FONTS[0].id));
 
-test('reference inks and masks are the same whatever the display font', async () => {
+// First in the file: the module's reference font hasn't loaded yet.
+test('before the reference font has loaded nothing is cached', async () => {
+  await createTestApp();
+  expect(referenceMask('#')).not.toBe(referenceMask('#'));
+  expect(referenceInk('#')).not.toBe(referenceInk('#'));
+  await loadReferenceFont();
+  expect(referenceMask('#')).toBe(referenceMask('#'));
+  expect(referenceInk('#')).toBe(referenceInk('#'));
+});
+
+const vga = DISPLAY_FONTS.find((font) => font.id === 'vga');
+const vgaInk = (char) => {
+  const data = drawGlyph(char, 8, 16, 1, '#fff', false, vga);
+  let top = 0, bottom = 0;
+  for (let i = 0; i < 128; i++) {
+    if (data[i * 4 + 3] > 127) {
+      if (i < 64) top++;
+      else bottom++;
+    }
+  }
+  return [top / 64, bottom / 64];
+};
+
+test('reference inks and masks are measured in IBM VGA whatever the display font', async () => {
   await createTestApp();
   await loadReferenceFont();
-  await setDisplayFont('jetbrains');
-  const a = [referenceInk('%'), [...referenceMask('A')]];
+  // Glyphs first measured with a font that isn't VGA showing, so a cache from before can't answer.
   await setDisplayFont('unifont');
-  const b = [referenceInk('%'), [...referenceMask('A')]];
-  expect(b).toEqual(a);
-  expect(loadReferenceFont()).toBe(loadReferenceFont());
+  const unifontInk = rasterizeCoverage('%');
+  expect(referenceInk('%')).toEqual(vgaInk('%'));
+  const a = [referenceInk('&'), [...referenceMask('A')]];
+  await setDisplayFont('jetbrains');
+  expect(referenceInk('&')).toEqual(vgaInk('&'));
+  expect(referenceInk('@')).toEqual(vgaInk('@'));
+  expect([referenceInk('&'), [...referenceMask('A')]]).toEqual(a);
+  // The display font measures differently here, so measuring in it would show.
+  expect(unifontInk).not.toEqual(vgaInk('%'));
 });
 
 test('block elements are exact', () => {

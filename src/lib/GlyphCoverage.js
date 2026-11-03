@@ -42,7 +42,11 @@ export function rasterizeCoverage(char) {
   measure.font = displayFontCss();
   const width = Math.max(1, Math.round(measure.measureText('M').width));
   const height = Math.round(DISPLAY_FONT.size * DISPLAY_FONT.lineHeight / 2) * 2; // even, so the halves match
-  const data = drawGlyph(char, width, height);
+  return inkOfHalves(drawGlyph(char, width, height), width, height);
+}
+
+// The inked pixels (over half covered) of the top and bottom half of drawn RGBA bytes, as fractions.
+function inkOfHalves(data, width, height) {
   const half = width * height / 2;
   let top = 0, bottom = 0;
   for (let i = 0; i < width * height; i++) {
@@ -60,28 +64,22 @@ export function rasterizeCoverage(char) {
 const REFERENCE = DISPLAY_FONTS.find((font) => font.id === 'vga');
 const REF_W = 8, REF_H = 16;
 
-let referenceLoaded = null;
+// Until the font has loaded a glyph is drawn in a placeholder, so nothing is cached before then.
+let referenceLoaded = null, referenceReady = false;
 export function loadReferenceFont() {
-  return referenceLoaded ??= loadFontFaces(REFERENCE);
+  return referenceLoaded ??= loadFontFaces(REFERENCE).then(() => { referenceReady = true; });
 }
 
 const referenceInks = new Map();
 export function referenceInk(char) {
   const exact = EXACT.get(char);
   if (exact) return exact;
-  if (!referenceInks.has(char)) {
-    const data = drawGlyph(char, REF_W, REF_H, 1, '#fff', false, REFERENCE);
-    const half = REF_W * REF_H / 2;
-    let top = 0, bottom = 0;
-    for (let i = 0; i < REF_W * REF_H; i++) {
-      if (data[i * 4 + 3] > 127) {
-        if (i < half) top++;
-        else bottom++;
-      }
-    }
-    referenceInks.set(char, [top / half, bottom / half]);
+  let ink = referenceInks.get(char);
+  if (!ink) {
+    ink = inkOfHalves(drawGlyph(char, REF_W, REF_H, 1, '#fff', false, REFERENCE), REF_W, REF_H);
+    if (referenceReady) referenceInks.set(char, ink);
   }
-  return referenceInks.get(char);
+  return ink;
 }
 
 // Block elements as rectangles [x0, y0, x1, y1] of the cell (0..1); ░ ▒ ▓ as a flat level.
@@ -127,6 +125,6 @@ export function referenceMask(char, sw = 4, sh = 8) {
     }
     for (let i = 0; i < mask.length; i++) mask[i] /= counts[i] || 1;
   }
-  referenceMasks.set(key, mask);
+  if (referenceReady) referenceMasks.set(key, mask);
   return mask;
 }
