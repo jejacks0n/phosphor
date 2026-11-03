@@ -1,4 +1,7 @@
 :root {
+  /* The browser draws its own parts of controls (select arrows, number steppers, scrollbars) for a dark page:
+     without it Safari, iOS's too, draws them dark on the dark fields. */
+  color-scheme: dark;
   --logo: url('/logo.png');
   /* The ANSI view's font: displayFonts.js sets these to the chosen one. */
   --display-font-family: "JetBrains Mono", monospace;
@@ -282,7 +285,6 @@ input[type=checkbox]:disabled, input[type=radio]:disabled {
 
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
-  filter: invert(1);
   opacity: 1;
 }
 
@@ -493,6 +495,7 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
 /* Light colored theme (html[data-theme], set from the tab bar's picker or the computer's)
  ----------------------------------------------------------------------------*/
 :root[data-theme="light"] {
+  color-scheme: light;
   --logo: url('/logo-light.png');
 
   /* Background */
@@ -522,11 +525,6 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
 }
 
 /* :where() keeps these as specific as they were, so a component's own button styles still win. */
-:where([data-theme="light"]) input[type="number"]::-webkit-inner-spin-button,
-:where([data-theme="light"]) input[type="number"]::-webkit-outer-spin-button {
-  filter: none !important;
-}
-
 :where([data-theme="light"]) button:not(.primary) {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
