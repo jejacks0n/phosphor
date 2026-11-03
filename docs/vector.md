@@ -20,6 +20,16 @@ Shapes are part of the edit layer: undo and redo take every change to them back 
 **Clear** on ANSI leaves them alone, and a drawing with shapes counts as drawn on when the canvas is
 resized (it grows or trims on the right and bottom, and shapes keep their place).
 
+## Bake and Merge down
+
+- **Merge down** on VECTOR presses the selected shapes (or, with none selected, all of them) into the base
+  layer's pixels, where they stop being shapes, with nothing on the canvas changing. Any shape beneath one of
+  them that overlaps it goes too. One undo brings them back as shapes. In an animation it's off: the base is
+  under every frame.
+- **Merge down** on ANSI takes shapes along ([Layers](layers.md)); its dialog says so.
+- **Bake** presses every shape in on a still; in an animation they stay shapes, with the sliders burnt into
+  their colors.
+
 ## Animation
 
 Each frame has its own shapes: a Blank frame carries the shapes before it, as it carries cells, and changing one

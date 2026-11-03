@@ -14,6 +14,7 @@ import LayerToggles from '@/components/LayerToggles.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import VectorOptions from '@/components/VectorOptions.vue';
+import { shapeBounds } from '@/document/shapes.js';
 import { shortcut } from '@/lib/keyLabels';
 import { snapsLate } from '@/lib/CharResolver';
 import { copySelection as copyToClipboards } from '@/composables/clipboard';
@@ -26,7 +27,17 @@ const drawing = useDrawingStore();
 // A control that's off for a reason: the reason in its title, and what it is still its name for screen readers.
 const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name } : {});
 // Off with frames: it would put one frame in the base, under all of them.
-const mergeOff = () => off(drawing.hostOnly ?? (project.hasFrames ? t('toolbar.mergeOneFrame') : null), t('toolbar.mergeDown'));
+const mergeOff = () => off(drawing.hostOnly ?? (project.hasFrames ? t(onVector.value ? 'toolbar.mergeShapesOneFrame' : 'toolbar.mergeOneFrame') : null), t('toolbar.mergeDown'));
+// On VECTOR, Merge down presses the selected shapes (or all of them) into the base layer, without asking how.
+const onVector = computed(() => workspace.editorTab === 'vector');
+const vectorSelection = computed(() => workspace.vectorSelected.filter((key) => project.shapes.has(key)));
+const mergeOn = computed(() => (onVector.value ? project.shapes.size > 0 : project.hasEdits));
+const mergeTitle = computed(() => t(onVector.value ? 'toolbar.mergeShapesTitle' : 'toolbar.mergeDownTitle'));
+function mergeHere() {
+  if (!onVector.value) return openMerge();
+  project.mergeShapes(vectorSelection.value.length ? vectorSelection.value : null);
+  workspace.vectorSelected = [];
+}
 const warnedSub = (sub, warning = mergeWarning()) => (drawing.othersHere ? t('toolbar.mergeDialog.warnedSub', { warning, sub }) : sub);
 
 // The toolbar offers the tools that work in the current view (editorTab is 'input' or 'output' while editing),
@@ -158,9 +169,19 @@ function merge(kind) {
   if (kind === 'exact') project.mergeDown(rect);
   else project.mergeIntoPicture(rect);
 }
+// Whether merging exactly takes shapes too: any touching the selection, or any at all.
+const mergeTakesShapes = computed(() => {
+  const rect = merging.value?.rect;
+  if (!rect) return project.shapes.size > 0;
+  const area = { x: rect.c0, y: 2 * rect.r0, w: rect.c1 - rect.c0 + 1, h: 2 * (rect.r1 - rect.r0 + 1) };
+  return [...project.shapes.values()].some((shape) => {
+    const b = shapeBounds(shape);
+    return b.x < area.x + area.w && area.x < b.x + b.w && b.y < area.y + area.h && area.y < b.y + b.h;
+  });
+});
 const mergeChoices = computed(() => {
   const choices = [
-    { id: 'exact', title: t('toolbar.mergeDialog.exactTitle'), text: t('toolbar.mergeDialog.exactText') },
+    { id: 'exact', title: t('toolbar.mergeDialog.exactTitle'), text: t('toolbar.mergeDialog.exactText'), ...(mergeTakesShapes.value && { note: t('toolbar.mergeDownShapes') }) },
     { id: 'picture', title: t('toolbar.mergeDialog.intoImageTitle'), text: t('toolbar.mergeDialog.intoImageText') },
   ];
   return project.pictureIsOriginal ? [choices[0], { ...choices[1], note: t('toolbar.mergeDialog.originalNote') }] : choices;
@@ -310,10 +331,10 @@ const selectionHasCharacters = computed(() => {
             v-bind="off(drawing.hostOnly, t('toolbar.bake'))"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg></button>
         <button
-            :title="t('toolbar.mergeDownTitle')"
-            @click="openMerge()"
+            :title="mergeTitle"
+            @click="mergeHere"
             class="primary"
-            :disabled="!project.hasEdits"
+            :disabled="!mergeOn"
             v-bind="mergeOff()"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg></button>
         <button
@@ -344,7 +365,7 @@ const selectionHasCharacters = computed(() => {
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg>
             {{ t('toolbar.bake') }}
           </button>
-          <button @click="openMerge()" :disabled="!project.hasEdits" v-bind="mergeOff()">
+          <button @click="mergeHere" :disabled="!mergeOn" v-bind="mergeOff()">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/>
             </svg>

@@ -7,6 +7,8 @@ import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { IDENTITY, MOST_POINTS, MOST_SHAPES, makeShape, newShapeKey, shapeBounds, stacked, styleColors, withShape } from '@/document/shapes.js';
+import { withoutPins } from '@/document/baseRecords.js';
+import { bytesHeld } from '@/store/project/shared.js';
 
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
@@ -120,6 +122,49 @@ export const vectorActions = {
       this.updateShapes([[key, withShape(shape, { fill: null, stroke: shape.stroke ?? fg ?? shape.fill })]]);
     }
     this.commitEdit();
+  },
+
+  // The shapes keys, and every shape beneath one of them whose bounds overlap it, and so on down: what a merge
+  // presses into the base together, so that nothing shown changes.
+  pressedKeys(keys) {
+    const order = stacked(this.shapes), pressed = new Set(keys.filter((key) => this.shapes.has(key)));
+    for (let i = order.length - 1; i >= 0; i--) { // top down: each one added is below, and looked at later
+      const [key, shape] = order[i];
+      if (!pressed.has(key)) continue;
+      const bounds = shapeBounds(shape);
+      for (let j = i - 1; j >= 0; j--) if (!pressed.has(order[j][0]) && meets(bounds, shapeBounds(order[j][1]))) pressed.add(order[j][0]);
+    }
+    return pressed;
+  },
+
+  // The layers with the shapes pressed (a Set) in the base: { base (a snapshot), shapes (the rest), baseRecords
+  // (without the pins they cover, since the shapes' pixels are what shows there) }.
+  pressShapes(pressed) {
+    this._shapeLayer.set(this.shapes);
+    const { canvas, covered } = this._shapeLayer.pressed(pressed);
+    const shapes = new Map([...this.shapes].filter(([key]) => !pressed.has(key)));
+    return { base: { canvas, hasPaint: true }, shapes, baseRecords: withoutPins(this.baseRecords, covered) };
+  },
+
+  // VECTOR's Merge down: the shapes keys (or all of them), with those beneath that overlap them, pressed into the
+  // base layer's pixels, where they stop being shapes. One whole-layer step. A still only: in an animation the
+  // base is under every frame.
+  mergeShapes(keys = null) {
+    if (!this.image || this.hasFrames) return;
+    this.ensureLayer();
+    this.commitPending();
+    const chosen = keys ?? [...this.shapes.keys()];
+    if (!chosen.some((key) => this.shapes.has(key))) return;
+    const before = { base: this.baseLayer.snapshot(), shapes: this.shapes, baseRecords: this.baseRecords };
+    const after = this.pressShapes(this.pressedKeys(chosen));
+    const apply = ({ base, shapes, baseRecords }) => {
+      this.baseLayer.restore(base);
+      this.shapes = shapes;
+      this.setBaseRecords(baseRecords);
+      this.render();
+    };
+    apply(after);
+    this.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(before.base, after.base));
   },
 
   // Each shape swaps places in the stacking order with the nearest shape it overlaps above it (forward) or
