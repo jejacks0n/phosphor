@@ -1,0 +1,211 @@
+// Reading an art file into cells: encoding, width and wrapping, controls, escape sequences, colors and limits.
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
+import { ART_EXTENSIONS, isArtFile, readArtFile } from '../../src/lib/ArtFile.js';
+
+const cp = (text) => Uint8Array.from(text, (c) => c.charCodeAt(0));
+const utf = (text) => new TextEncoder().encode(text);
+const read = (text, name = 'a.ans') => readArtFile(cp(text), name);
+const at = (art, col, row = 0) => art.cells[row * art.cols + col];
+const text = (art, row = 0) => art.cells.slice(row * art.cols, (row + 1) * art.cols).map((c) => c.char).join('');
+const error = (fn) => { try { fn(); } catch (e) { return e; } assert.fail('did not throw'); };
+
+test('isArtFile checks the extension, ignoring case', () => {
+  assert.deepEqual(ART_EXTENSIONS, ['ans', 'utf8ans', 'asc', 'txt']);
+  assert.equal(isArtFile('A.ANS'), true);
+  assert.equal(isArtFile('x.utf8ans'), true);
+  assert.equal(isArtFile('a.png'), false);
+  assert.equal(isArtFile('ans'), false);
+});
+
+test('a .utf8ans is UTF-8, and a wide character holds two columns', () => {
+  const art = readArtFile(utf('漢x'), 'a.utf8ans');
+  assert.equal(art.cols, 3);
+  assert.equal(at(art, 0).char, '漢');
+  assert.equal(at(art, 1).char, ' ');
+  assert.equal(at(art, 2).char, 'x');
+});
+
+test('another extension is UTF-8 only when it is valid UTF-8 with a multi-byte sequence, else CP437', () => {
+  assert.equal(text(readArtFile(utf('é█'), 'a.txt')), 'é█');
+  // 0xB0 0xDB (a shade and a block) is not valid UTF-8.
+  assert.equal(text(readArtFile(Uint8Array.from([0xb0, 0xdb]), 'a.txt')), '░█');
+  assert.equal(text(readArtFile(utf('abc'), 'a.txt')), 'abc');
+});
+
+test('CP437 shows control bytes other than 7, 8, 9, 10, 13, 26 and 27 as glyphs', () => {
+  const art = readArtFile(Uint8Array.from([1, 2, 7, 65]), 'a.txt');
+  assert.equal(text(art), '☺☻A');
+});
+
+test('width is the SAUCE width for dataType 1, else 80 for .ans, else the widest line', () => {
+  const record = (width, dataType) => {
+    const sauce = new Uint8Array(128);
+    sauce.set(cp('SAUCE00'), 0);
+    sauce[94] = dataType; sauce[95] = 1; sauce[96] = width;
+    return sauce;
+  };
+  const withSauce = (body, width, dataType = 1) => Uint8Array.from([...cp(body), 26, ...record(width, dataType)]);
+  assert.equal(readArtFile(withSauce('ABCDEF', 4), 'a.ans').cols, 4);
+  assert.equal(readArtFile(withSauce('ABCDEF', 4), 'a.txt').rows, 2);
+  assert.equal(readArtFile(withSauce('AB', 4, 5), 'a.ans').cols, 80);
+  assert.equal(readArtFile(withSauce('AB', 0), 'a.ans').cols, 80);
+  assert.equal(read('AB').cols, 80);
+  const loose = readArtFile(cp('AB\r\nABCDE\r\nA'), 'a.txt');
+  assert.deepEqual([loose.cols, loose.rows], [5, 3]);
+  assert.equal(readArtFile(cp('AB'), 'a.asc').sauce, null);
+});
+
+test('writing the last column waits to wrap, so an 80-column line then CR LF is not an extra row', () => {
+  const art = read('A'.repeat(80) + '\r\nB');
+  assert.equal(art.rows, 2);
+  assert.equal(at(art, 0, 1).char, 'B');
+  assert.equal(read('A'.repeat(81)).rows, 2);
+  const moved = read('A'.repeat(80) + '\x1b[DB'); // a cursor move clears the wait
+  assert.equal(moved.rows, 1);
+  assert.equal(at(moved, 78).char, 'B');
+  assert.equal(at(moved, 79).char, 'A');
+});
+
+test('a wide character that does not fit in the last column wraps first', () => {
+  assert.equal(readArtFile(utf('ab漢'), 'a.ans').rows, 1);
+  const wrapped = readArtFile(utf('x'.repeat(79) + '漢'), 'a.ans');
+  assert.equal(wrapped.rows, 2);
+  assert.equal(at(wrapped, 78).char, 'x');
+  assert.equal(at(wrapped, 79).char, ' ');
+  assert.equal(at(wrapped, 0, 1).char, '漢');
+});
+
+test('CR, LF, TAB and the end mark', () => {
+  assert.equal(text(read('ABC\rX'), 0).slice(0, 3), 'XBC');
+  assert.equal(at(read('A\nB'), 0, 1).char, 'B'); // LF returns to column 0
+  assert.equal(at(read('A\tB'), 8).char, 'B');
+  assert.equal(at(read('A\x08B'), 0).char, 'B');
+  assert.equal(text(read('AB\x1aSAUCE00junk')).slice(0, 3), 'AB ');
+  assert.equal(read('AB\x1aCD').cols, 80);
+  assert.equal(read('AB\x1aCD').rows, 1);
+  assert.equal(at(read('AB\x1aCD'), 2).char, ' ');
+});
+
+test('cursor movement clamps to the grid', () => {
+  assert.equal(at(read('\x1b[255DX'), 0).char, 'X');
+  assert.equal(at(read('\x1b[999CX'), 79).char, 'X');
+  assert.equal(at(read('\x1b[3CX'), 3).char, 'X');
+  assert.equal(at(read('\x1b[CX'), 1).char, 'X');
+  assert.equal(at(read('A\r\n\x1b[AB'), 0, 0).char, 'B');
+  assert.equal(read('\x1b[5AX').rows, 1);
+  assert.equal(at(read('\x1b[2BX'), 0, 2).char, 'X');
+  assert.equal(at(read('\x1b[3;5HX'), 4, 2).char, 'X');
+  assert.equal(at(read('\x1b[4fX'), 0, 3).char, 'X');
+  assert.equal(at(read('\x1b[2;2H\x1b[HX'), 0, 0).char, 'X');
+});
+
+test('save and restore the cursor', () => {
+  const art = read('AB\x1b[s\r\nCD\x1b[uX');
+  assert.equal(at(art, 2).char, 'X');
+});
+
+test('2J clears what was written and homes the cursor; other J and unknown sequences are ignored', () => {
+  const art = read('AAAA\r\nBBBB\x1b[2JX');
+  assert.equal(art.rows, 1);
+  assert.equal(at(art, 0).char, 'X');
+  assert.equal(at(art, 1).char, ' ');
+  assert.equal(text(read('AB\x1b[JC')).slice(0, 3), 'ABC');
+  assert.equal(text(read('\x1b[?33hAB\x1b[=7lC\x1b[5zD')).slice(0, 4), 'ABCD');
+  assert.equal(text(read('A\x1bcB')).slice(0, 2), 'AB'); // ESC c skips two bytes
+});
+
+test('K erases to the end of the line in the current background and counts as reaching the line', () => {
+  const art = read('\x1b[44mABCD\x1b[2D\x1b[K');
+  assert.equal(at(art, 1).bg, '#0000aa');
+  assert.equal(at(art, 2).char, ' ');
+  assert.equal(at(art, 2).bg, '#0000aa');
+  assert.equal(at(art, 79).bg, '#0000aa');
+  assert.equal(at(art, 0).char, 'A');
+  assert.equal(read('A\r\n\x1b[41m\x1b[K').rows, 2);
+  const loose = readArtFile(cp('ABCDE\r\n\x1b[41mx\x1b[K'), 'a.txt');
+  assert.equal(loose.cols, 5);
+  assert.equal(at(loose, 4, 1).bg, '#aa0000');
+});
+
+test('default colors, reset, and the 16 colors', () => {
+  const art = read('A\x1b[31;42mB\x1b[0mC\x1b[91;104mD\x1b[39;49mE');
+  assert.deepEqual([at(art, 0).fg, at(art, 0).bg], ['#aaaaaa', '#000000']);
+  assert.deepEqual([at(art, 1).fg, at(art, 1).bg], ['#aa0000', '#00aa00']);
+  assert.deepEqual([at(art, 2).fg, at(art, 2).bg], ['#aaaaaa', '#000000']);
+  assert.deepEqual([at(art, 3).fg, at(art, 3).bg], ['#ff5555', '#5555ff']);
+  assert.deepEqual([at(art, 4).fg, at(art, 4).bg], ['#aaaaaa', '#000000']);
+  assert.equal(art.palette, 'cga');
+});
+
+test('bold brightens the foreground whichever order it is set in', () => {
+  assert.equal(at(read('\x1b[1;31mX'), 0).fg, '#ff5555');
+  assert.equal(at(read('\x1b[31;1mX'), 0).fg, '#ff5555');
+  assert.equal(at(read('\x1b[1mX'), 0).fg, '#ffffff');
+  assert.equal(at(read('\x1b[1;22;31mX'), 0).fg, '#aa0000');
+  assert.equal(at(read('\x1b[1;38;5;1mX'), 0).fg, '#aa0000'); // bold does not touch 256-color indices
+  assert.equal(at(read('\x1b[1;91mX'), 0).fg, '#ff5555');
+});
+
+test('blink gives a bright background', () => {
+  assert.equal(at(read('\x1b[5;44mX'), 0).bg, '#5555ff');
+  assert.equal(at(read('\x1b[44;5mX'), 0).bg, '#5555ff');
+  assert.equal(at(read('\x1b[6;44mX'), 0).bg, '#5555ff');
+  assert.equal(at(read('\x1b[5;25;44mX'), 0).bg, '#0000aa');
+});
+
+test('inverse swaps the colors as written to the cell', () => {
+  const art = read('\x1b[1;31;44;7mX');
+  assert.equal(at(art, 0).fg, '#0000aa');
+  assert.equal(at(art, 0).bg, '#ff5555');
+  assert.equal(at(read('\x1b[7;27;31mX'), 0).fg, '#aa0000');
+});
+
+test('256-color and 24-bit colors set the palette to none only when a cell gets one', () => {
+  const art = read('\x1b[38;5;196mX');
+  assert.equal(at(art, 0).fg, '#ff0000');
+  assert.equal(art.palette, 'none');
+  const bg = read('\x1b[48;2;18;52;86mX');
+  assert.equal(at(bg, 0).bg, '#123456');
+  assert.equal(bg.palette, 'none');
+  assert.equal(at(read('\x1b[38;2;255;0;170mX'), 0).fg, '#ff00aa');
+  const low = read('\x1b[38;5;9;48;5;4mX');
+  assert.equal(at(low, 0).fg, '#ff5555');
+  assert.equal(at(low, 0).bg, '#0000aa');
+  assert.equal(low.palette, 'cga');
+  assert.equal(read('\x1b[38;5;196m\x1b[0mX').palette, 'cga'); // set and never written with
+});
+
+test('cells never written are spaces in the default colors, and rows is the last line reached', () => {
+  const art = read('\x1b[3;3HX');
+  assert.equal(art.rows, 3);
+  assert.equal(art.cells.length, 80 * 3);
+  assert.deepEqual(at(art, 0, 0), { char: ' ', fg: '#aaaaaa', bg: '#000000' });
+  assert.equal(read('A\r\n\r\n').rows, 1);
+});
+
+test('a wide character repeats its colors in the trail', () => {
+  const art = readArtFile(utf('\x1b[31;44m漢'), 'a.utf8ans');
+  assert.deepEqual(at(art, 1), { char: ' ', fg: '#aa0000', bg: '#0000aa' });
+});
+
+test('a CR LF pair in UTF-8 text is a line end', () => {
+  const art = readArtFile(utf('é\r\nb'), 'a.txt');
+  assert.equal(art.rows, 2);
+  assert.equal(at(art, 0, 1).char, 'b');
+});
+
+test('too big names the size reached', () => {
+  const e = error(() => readArtFile(cp('x'.repeat(301)), 'a.txt'));
+  assert.equal(e.userMessage, 'This file is 301 × 1. Phosphor opens at most 300 columns, 5,000 lines and 500,000 cells.');
+  const lines = error(() => readArtFile(cp('x\n'.repeat(5001)), 'a.txt'));
+  assert.match(lines.userMessage, /^This file is 1 × 5001\./);
+  const cells = error(() => readArtFile(cp(('x'.repeat(200) + '\n').repeat(2600)), 'a.txt'));
+  assert.match(cells.userMessage, /^This file is 200 × \d+\./);
+});
+
+test('no art in an empty file or one that never wrote a cell', () => {
+  assert.equal(error(() => readArtFile(new Uint8Array(0), 'a.ans')).userMessage, "There's no art in this file.");
+  assert.equal(error(() => read('\r\n\r\n\x1b[31m')).userMessage, "There's no art in this file.");
+  assert.equal(error(() => read('\x1a')).userMessage, "There's no art in this file.");
+});
