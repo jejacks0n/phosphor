@@ -3,6 +3,7 @@
 // a picture with no more colors than asked for keeps exactly its own.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
+import { drawnDocument } from '../support/scenes.js';
 
 const hexes = (project) => project.activePalette.map((p) => p.hex.toLowerCase()).sort();
 const line = (y) => Array.from({ length: 10 }, (_, k) => ({ x: 5 + k, y, alpha: 1 }));
@@ -105,4 +106,19 @@ test('a shape updates the palette once, when it is drawn', async () => {
   shapes.end(ctx);
   expect(hexes(project)).not.toEqual(before);
   expect(cellsKey(project)).toEqual(await fullRender(project));
+});
+
+test('paint from before an edit keeps its palette color while the edit holds the palette (a Delete pulling a row along)', async () => {
+  const { project, workspace } = await createTestApp();
+  await drawnDocument(project, workspace, { cols: 40, rows: 40, quantize: 'count' });
+  project.typeAt(19, 9, 'A', { fg: '#00ff00', bg: '#0000ff' });
+  project.commitEdit();
+  project.paintStroke([{ x: 19, y: 19, alpha: 1 }, { x: 20, y: 19, alpha: 1 }], '#ffee00');
+  project.commitEdit();
+  await settle(project);
+  project.typeAt(15, 9, 'X', { fg: '#00ff00' }); // a typing run, left open
+  project.deleteAt(15, 9); // the row after it moves left, and every cell there is drawn again
+  await settle(project);
+  const shown = cellsKey(project);
+  expect(shown).toEqual(await fullRender(project));
 });
