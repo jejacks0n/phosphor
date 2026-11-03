@@ -24,9 +24,7 @@ const CASES = {
   levels: { levelsBlack: 30, levelsWhite: 220, levelsMid: 1.6 },
   posterize: { posterize: 5 },
   threshold: { threshold: 110, thresholdDark: '#2a1000', thresholdLight: '#ffb000' },
-  // Hue and Saturation after Brightness or Contrast push colors out of range disagree already (the shader reads hue
-  // from colors under 0, the twin clamps them first), so they're left out here.
-  'with the others': { brightness: 120, contrast: 130, invert: 30, levelsBlack: 20, levelsMid: 0.7, posterize: 6 },
+  'with the others': { brightness: 120, contrast: 130, hue: 40, saturation: 80, invert: 30, levelsBlack: 20, levelsMid: 0.7, posterize: 6 },
   'all three': { levelsWhite: 200, levelsMid: 1.3, posterize: 4, threshold: 90, thresholdLight: '#00ffcc' },
 };
 
