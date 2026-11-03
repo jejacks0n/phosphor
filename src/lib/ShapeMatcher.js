@@ -74,10 +74,14 @@ int snap(vec3 v, out vec3 c) {
   return best;
 }
 
+// A byte (a color channel, a palette index, a glyph) as it's read back from an 8-bit target. A
+// quarter over it: a driver may take either integer next to v / 255 x 255, which in 32-bit floats can
+// fall just under v, and v + 0.25 rounds and truncates to v alike.
+vec3 byte(vec3 v) { return (v + 0.25) / 255.0; }
 // A color as it's read back: its palette index, or itself.
-vec3 code(vec3 c, int i) { return (i < 0 ? c : vec3(float(i), 0, 0)) / 255.0; }
+vec3 code(vec3 c, int i) { return byte(i < 0 ? c : vec3(float(i), 0, 0)); }
 void put(vec3 fg, int fi, vec3 bg, int bi, int glyph) {
-  outFg = vec4(code(fg, fi), float(glyph) / 255.0);
+  outFg = vec4(code(fg, fi), byte(vec3(glyph)).x);
   outBg = vec4(code(bg, bi), 0);
 }
 `;
@@ -360,6 +364,12 @@ export default class ShapeMatcher {
     }
     for (const name of ['UNPACK_ROW_LENGTH', 'UNPACK_SKIP_PIXELS', 'UNPACK_SKIP_ROWS']) gl.pixelStorei(gl[name], 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    // An upload or a draw that failed (out of memory) drew from whatever was there: the JavaScript's
+    // cells then, and everything uploaded again next time.
+    if (gl.getError() !== gl.NO_ERROR) {
+      this.#core = this.#palette = null;
+      return null;
+    }
     return { fg, bg, c0, c1, l0, l1 };
   }
 
