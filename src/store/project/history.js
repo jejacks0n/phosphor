@@ -6,6 +6,7 @@
 // sendSlice leaves it, and _baseline, what a slice being submitted began with (reading.js).
 import { markRaw, toRaw } from 'vue';
 import { parseKey } from '@/document/editCells.js';
+import { isShapeKey } from '@/document/shapes.js';
 import { keepDrawn } from '@/document/frames.js';
 import { carriesError } from '@/lib/CharResolver.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -20,7 +21,7 @@ export const historyActions = {
     if (this._stroke || !this.paintLayer) return;
     // Raw, so commitEdit's identity checks see the same objects. keys: the cells it's sent. A stroke begun
     // for a float's move is held for an artist (sharing.js).
-    this._stroke = markRaw({ id: randomId(), editCells: this.editCells, baseRecords: this.baseRecords, keys: [], hold: !!this._floating });
+    this._stroke = markRaw({ id: randomId(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords, keys: [], hold: !!this._floating });
     this.paintLayer.beginStroke();
     this.baseLayer.beginStroke();
   },
@@ -139,7 +140,17 @@ export const historyActions = {
 
   // Write a change's cells and runs and refresh only what changed. also: what's changed with it, for
   // one refresh to cover: patches ([patch, layer]) already applied, and pins ([before, after]).
-  applyChange({ cells, runs }, { patches = [], pins = [] } = {}) {
+  applyChange({ cells: all, runs }, { patches = [], pins = [] } = {}) {
+    const cells = all.filter(([key]) => !isShapeKey(key)), shapes = all.filter(([key]) => isShapeKey(key));
+    if (shapes.length) {
+      const next = new Map(this.shapes);
+      for (const [key, shape] of shapes) {
+        if (shape) next.set(key, shape);
+        else next.delete(key);
+      }
+      this.shapes = next;
+      if (this._stroke) this._stroke.shapes = next;
+    }
     if (cells.length) {
       const next = new Map(this.editCells);
       for (const [key, entry] of cells) {
@@ -152,6 +163,7 @@ export const historyActions = {
     this.paintLayer.writeRuns(runs);
     this.hasPaint = this.paintLayer.hasPaint;
     this.refreshChanged([[runsPatch(runs), this.paintLayer], ...patches], pins.length ? [pins] : [], cells.map(([key]) => key));
+    if (shapes.length) this.refreshShapes();
   },
 
   // Take back the open edit without recording it (a stroke a pinch interrupted): its paint, base
@@ -172,8 +184,10 @@ export const historyActions = {
     this.hasPaint = this.paintLayer?.hasPaint ?? false;
     const pairs = [[this.editCells, stroke.editCells], [this.baseRecords.pins, stroke.baseRecords.pins]];
     this.editCells = stroke.editCells;
+    this.shapes = stroke.shapes;
     this.setBaseRecords(stroke.baseRecords);
     this.refreshChanged([[patch, this.paintLayer], [basePatch, this.baseLayer]], pairs);
+    this.refreshShapes();
   },
 
   // After an edit was undone, redone or taken back: rebuild what it changed (under its paint and

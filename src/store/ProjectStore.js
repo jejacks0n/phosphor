@@ -24,6 +24,7 @@ import { sharingHostActions } from '@/store/project/sharingHost.js';
 import { sharingArtistActions } from '@/store/project/sharingArtist.js';
 import { handoverActions } from '@/store/project/handover.js';
 import { animationActions } from '@/store/project/animation.js';
+import { vectorActions } from '@/store/project/vector.js';
 import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES, ALONE, newLedger } from '@/store/project/shared.js';
 
 // A cell an edit didn't touch stays the same object, except a wide one, which is laid out again with its row.
@@ -52,6 +53,8 @@ export const useProjectStore = defineStore('project', {
     fit: null,        // where the image sits in the grid ({ dx, dy, dw, dh }); fixed while the edit layer has content
     paintScale: null, // the paint layer's scale from a loaded file (its saved paint is at that scale)
     editCells: shallowRef(new Map()), // the edit cells (see document/editCells.js)
+    shapes: shallowRef(new Map()), // the vector layer's shapes, 'v:<id>' -> Shape (document/shapes.js), the frame showing's
+    _shapeLayer: null, // the base layer with the shapes over it (ShapeLayer, markRaw), the renderer's
     baseRecords: shallowRef(EMPTY_BASE), // the base layer's pinned characters (see document/baseRecords.js)
 
     // Animation (store/project/animation.js): the showing frame's resolved state is editCells and paintLayer.
@@ -94,8 +97,10 @@ export const useProjectStore = defineStore('project', {
     // The image is still the one loaded, at its own size (the merge dialog says what Into the image costs).
     pictureIsOriginal: (state) => !state.imageIsWorkingCopy,
     canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo,
-    // Anything on the edit layer, of any frame (a grid resize is then a canvas resize).
-    hasEdits: (state) => state.editCells.size > 0 || state.hasPaint || (state.frames.length > 1 && state.frames.some((frame, i) => i !== state.frame && frame.changes.size > 0)),
+    // Anything on the edit layer or the vector layer, of any frame (a grid resize is then a canvas resize).
+    hasEdits() { return this.hasEditLayer || this.shapes.size > 0; },
+    // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.
+    hasEditLayer: (state) => state.editCells.size > 0 || state.hasPaint || (state.frames.length > 1 && state.frames.some((frame, i) => i !== state.frame && frame.changes.size > 0)),
     currentFrame: (state) => state.frames[state.frame],
     // What the ANSI view shows: while playing, the built frame; on a Blank frame, what's inherited as a ghost.
     // cells is never ghosted, so exports can't see one.
@@ -170,5 +175,6 @@ export const useProjectStore = defineStore('project', {
     sharingArtistActions,
     handoverActions,
     animationActions,
+    vectorActions,
   ), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => !!store._sharing && (store._sharing.role === 'artist' || store._paused) && !store._takingProject),
 });

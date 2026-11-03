@@ -3,6 +3,7 @@
 // _renderQueued and _rendering (a render on its way, which tests wait on) and _layerGrid (the grid
 // the layers were last sized to).
 import PaintLayer, { editScaleFor, resizeTransform } from '@/document/PaintLayer.js';
+import ShapeLayer from '@/document/ShapeLayer.js';
 import { remapBaseRecords } from '@/document/baseRecords.js';
 import { parseKey } from '@/document/editCells.js';
 import { fitRect } from '@/lib/Canvas.js';
@@ -49,6 +50,9 @@ export const renderingActions = {
       this.paintLayer = markRaw(new PaintLayer({ cols, rows, scale: this.paintScale ?? editScaleFor(sw, sh, cols, rows) }));
       this.baseLayer = markRaw(new PaintLayer({ cols, rows, scale: this.baseScale ?? this.processingScale(), smooth: false }));
       this.renderer.baseLayer = this.baseLayer;
+      this._shapeLayer = markRaw(new ShapeLayer(this.baseLayer));
+      this._shapeLayer.set(this.shapes);
+      this.renderer.shapes = this._shapeLayer;
       this.baseScale = this.baseLayer.scale;
       this._layerGrid = { cols, rows };
       return;
@@ -109,6 +113,7 @@ export const renderingActions = {
           this._moviePalette = null;
           this.renderer.usePalette(null);
         }
+        this._shapeLayer?.set(this.shapes);
         this.renderedCells = await this.renderer.render(this.image, this.processParams, this.paintLayer, baseParams(this.processParams));
         this.activePalette = this.renderer.palette;
         this.applyEditCells();

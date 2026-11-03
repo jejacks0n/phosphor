@@ -188,6 +188,7 @@ export const documentActions = {
       paintLayer: null,
       baseLayer: null,
       editCells: new Map(),
+      shapes: new Map(),
       hasPaint: false,
     });
     this.newDocument();
@@ -222,6 +223,7 @@ export const documentActions = {
       baseLayer: null,
       baseScale: null,
       editCells: new Map(),
+      shapes: new Map(),
       hasPaint: false,
     });
     this.newDocument();
@@ -233,7 +235,7 @@ export const documentActions = {
   newDocument() {
     this._document = (this._document ?? 0) + 1; // Bake and Merge into the image check they're still in the same one
     this.setBaseRecords(EMPTY_BASE);
-    this.renderer.baseLayer = null;
+    this.renderer.baseLayer = this.renderer.shapes = this._shapeLayer = null;
     this._stroke = null;
     this.dropHeard();
     if (this._sameDocument) return; // a host's project bringing this one up to date (openFromHost)

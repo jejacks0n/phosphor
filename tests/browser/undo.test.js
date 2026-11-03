@@ -5,6 +5,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
+import { ellipseShape, polygonShape, rectShape, rotation, transformed, translation, withShape } from '@/document/shapes.js';
 
 function rng(seed) {
   let a = seed >>> 0;
@@ -34,6 +35,7 @@ function docState(project, workspace) {
   return {
     editCells: JSON.stringify([...project.editCells].sort()),
     pins: JSON.stringify([...project.baseRecords.pins].sort()),
+    shapes: JSON.stringify([...project.shapes].sort()),
     paint: layerHash(project.paintLayer),
     base: layerHash(project.baseLayer),
     sliders: JSON.stringify(project.sliderValues()),
@@ -147,6 +149,31 @@ function makeActions(project, workspace, r, opts) {
       for (let k = 0; k < 1 + int(3) && landed; k++) landed = project.floatSelection(landed, layers(), int(5) - 2, int(5) - 2);
       return { between };
     },
+    addShape: () => {
+      const x = int(project.cols), y = int(project.rows), style = { fill: pick([...COLORS, null]), stroke: pick([null, ...COLORS]), width: pick([1, 2.5]) };
+      const make = pick([rectShape, ellipseShape, (x0, y0, x1, y1, s) => polygonShape(x0, y0, x1, y1, 3 + int(5), s)]);
+      project.addShape(make(x, y, x + 2 + int(12), y + 2 + int(10), style.fill || style.stroke ? style : { ...style, fill: '#ff0000' }));
+    },
+    moveShape: () => { // moved a few times in one edit: one step
+      const key = pick([...project.shapes.keys()]);
+      if (!key) return;
+      const start = project.shapes.get(key), dx = r() * 8 - 4, dy = r() * 8 - 4;
+      project.beginEdit();
+      for (let k = 1; k <= 1 + int(3); k++) project.updateShapes([[key, transformed(start, r() < 0.7 ? translation(dx * k, dy * k) : rotation(0.3 * k, 10, 10))]]);
+      project.commitEdit();
+    },
+    recolorShape: () => {
+      const key = pick([...project.shapes.keys()]);
+      if (key) project.updateShapes([[key, withShape(project.shapes.get(key), { fill: pick(COLORS) })]]);
+    },
+    deleteShape: () => {
+      const keys = [...project.shapes.keys()];
+      if (keys.length) project.deleteShapes(keys.filter(() => r() < 0.5).slice(0, 2));
+    },
+    restackShape: () => {
+      const key = pick([...project.shapes.keys()]);
+      if (key) project.restackShapes([key], pick(['forward', 'back']));
+    },
     reset: () => (r() < 0.5 ? project.resetSliders() : project.resetGroup(pick(['transform', 'adjust', 'effects']))),
   };
   if (opts.async) {
@@ -254,20 +281,33 @@ function diffCells(a, b) {
 }
 
 // A few seeds by default, the ones that once failed (a removed pin kept showing: sync 18, 28, 29;
-// bake+merge 7); VITE_FUZZ_SEEDS=n runs seeds 1..n (30 takes about six minutes).
+// bake+merge 7; a shape edit after a typing run left open, a base restored by undo drawn under a shape a
+// shade apart: shapes 6; paint from before a typing run shown unsnapped: count 23); VITE_FUZZ_SEEDS=n runs
+// seeds 1..n (30 takes about eight minutes), VITE_FUZZ_ONLY=6,23 just those.
 const FUZZ_SEEDS = Number(import.meta.env?.VITE_FUZZ_SEEDS ?? 0);
-const seeds = (failed) => (FUZZ_SEEDS ? Array.from({ length: FUZZ_SEEDS }, (_, i) => i + 1) : failed);
+const ONLY_SEEDS = import.meta.env?.VITE_FUZZ_ONLY?.split(',').map(Number);
+const seeds = (failed) => ONLY_SEEDS ?? (FUZZ_SEEDS ? Array.from({ length: FUZZ_SEEDS }, (_, i) => i + 1) : failed);
 
 for (const quantize of ['none', 'count']) {
   test(`fuzz: sync actions, quantize ${quantize}`, async () => {
     const failures = [];
-    for (const seed of seeds([18, 28])) {
+    for (const seed of seeds(quantize === 'count' ? [18, 23, 28] : [18, 28])) {
       const f = await fuzz(seed, { quantize, async: false, steps: 20 });
       if (f) failures.push(f);
     }
     expect(failures).toEqual([]);
   }, 300_000);
 }
+
+test('fuzz: shapes among typing, paint, selections and merges', async () => {
+  const failures = [];
+  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'deleteShape', 'restackShape', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
+  for (const seed of seeds([1, 2, 3, 6])) {
+    const f = await fuzz(seed, { async: false, steps: 20, only });
+    if (f) failures.push(f);
+  }
+  expect(failures).toEqual([]);
+}, 300_000);
 
 test('fuzz: with bake and merge into the picture', async () => {
   const failures = [];

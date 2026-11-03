@@ -10,6 +10,10 @@
  * editCells.js) compose over the base, and paint draws over them: base -> edit cells -> paint. The
  * base layer's pins (baseRecords.js, set by the store) keep their characters.
  *
+ * While there are shapes (the vector layer, shapes.js), the base layer is read through shapes, a
+ * ShapeLayer: the base's pixels with the shapes drawn over them, at the same scale, so they convert
+ * with the picture. A pin under a shape gives way to the conversion (pinAt).
+ *
  * The base layer is at the pipeline's processing scale (m x m pixels per grid pixel), so a block of
  * the picture moved into it keeps every processed pixel (processed: the picture with its effects,
  * before the color adjustments and the palette), and it's drawn the way the pipeline draws the
@@ -36,6 +40,7 @@ export default class Renderer {
   palette = null;
   baseRecords = EMPTY_BASE; // the store keeps this in step with its own
   baseLayer = null;         // the base layer's pixels (PaintLayer), the store's
+  shapes = null;            // the base layer with the vector layer's shapes over it (ShapeLayer), the store's
   #scratch = null;
   #pipelineData = null; // pipelineCanvas pixels
   #baseData = null;     // the pipeline with the base layer's pixels over it, from the last composite(): what edit cells sit on
@@ -61,6 +66,7 @@ export default class Renderer {
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
+    this.shapes?.reset();
     this.pipelineCanvas = this.outputCanvas = this.palette = this.#chosen = null;
     this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = this.#picture = this.#samples = this.#painted = null;
     this.#effective = new Map();
@@ -153,7 +159,7 @@ export default class Renderer {
       const { cols } = params, pins = this.baseRecords.pins;
       return resolved.cells.map((cell, i) => {
         const col = i % cols, row = (i - col) / cols;
-        if (!pins.size || !pins.has(cellKey(col, row))) return this.#shown(cell, col, row, params);
+        if (!pins.size || this.pinAt(col, row) === undefined) return this.#shown(cell, col, row, params);
         return buildCell(this.#pictureAt(col, 2 * row), this.#pictureAt(col, 2 * row + 1), cell.char, params.renderStyle);
       });
     }
@@ -198,7 +204,7 @@ export default class Renderer {
 
     const ctx = ctx2d(this.outputCanvas);
     const w = this.outputCanvas.width, h = this.outputCanvas.height;
-    const base = !!this.baseLayer?.hasPaint, fits = (data) => data?.width === w && data.height === h;
+    const layer = this.#base, base = !!layer?.hasPaint, fits = (data) => data?.width === w && data.height === h;
     const partial = !!rect && !(params.quantize === 'count' && !hold) && this.pipelineCanvas.width === w && this.pipelineCanvas.height === h
       && (base ? fits(this.#baseData) && this.#baseData !== this.#pipelineData : true)
       && (!paintLayer || fits(this.#paintData)) && (!hold || this.#heldData?.length === w * h * 4);
@@ -210,7 +216,7 @@ export default class Renderer {
     ctx.fillRect(x, y, area.w, area.h);
     ctx.drawImage(this.pipelineCanvas, x, y, area.w, area.h, x, y, area.w, area.h);
 
-    if (base) this.#drawBase(ctx, this.baseLayer, params, area);
+    if (base) this.#drawBase(ctx, layer, params, area);
     if (!base) this.#baseData = this.#pipelineData;
     else if (partial) {
       putRows(this.#baseData.data, w, ctx.getImageData(x, y, area.w, area.h).data, area);
@@ -268,7 +274,7 @@ export default class Renderer {
     const paint = this.#paintData?.data, inks = new Map(); // halfColors' math, inline: this runs over the whole grid
     for (let row = r0; row < r1; row++) {
       for (let col = x; col < x + w; col++) {
-        const pinned = pins.size && pins.has(cellKey(col, row)), cell = cells[row * cols + col];
+        const pinned = pins.size && this.pinAt(col, row) !== undefined, cell = cells[row * cols + col];
         let ink = inks.get(cell.char);
         if (!ink) inks.set(cell.char, ink = coverageOf(cell.char));
         for (let half = 0; half < 2; half++) {
@@ -408,7 +414,7 @@ export default class Renderer {
   #shapeSamples(params) {
     const picture = this.#picture, w = this.#baseData.width, h = this.#baseData.height, n = SAMPLES.w;
     if (picture?.width !== w * n || picture.height !== h * n) return null;
-    const layer = this.baseLayer?.hasPaint ? this.baseLayer : null;
+    const base = this.#base, layer = base?.hasPaint ? base : null;
     const key = layer && [layer.scale, ...COLOR_KEYS.map((key) => params[key])].join();
     const s = this.#samples, all = { x: 0, y: 0, w, h };
     if (s?.picture !== picture || s.layer !== layer || s.key !== key) {
@@ -529,8 +535,9 @@ export default class Renderer {
   // The base layer's own color at grid pixel (x, y) as stored (before adjustments; see #baseGrid),
   // with its alpha (0..1), or null where it has none.
   baseStoredAt(x, y) {
-    if (!this.baseLayer?.hasPaint || !this.outputCanvas || !this.#baseParams) return null;
-    const { data } = this.#baseGrid(this.baseLayer, this.#baseParams, true);
+    const layer = this.#base;
+    if (!layer?.hasPaint || !this.outputCanvas || !this.#baseParams) return null;
+    const { data } = this.#baseGrid(layer, this.#baseParams, true);
     if (x < 0 || y < 0 || x >= data.width || y >= data.height) return null;
     const o = (y * data.width + x) * 4, p = data.data;
     return p[o + 3] ? { r: p[o], g: p[o + 1], b: p[o + 2], a: p[o + 3] / 255 } : null;
@@ -589,7 +596,7 @@ export default class Renderer {
       }
 
       if (resolved) { // a pin as cellsFromOutput builds it, held paint in its own colors
-        if (!this.baseRecords.pins.has(cellKey(col, row))) {
+        if (this.pinAt(col, row) === undefined) {
           next[i] = this.#shown(resolved.cells[i], col, row, params);
           continue;
         }
@@ -708,7 +715,7 @@ export default class Renderer {
   underCell(col, row, params, baseCells) {
     const { cols, chars: charset, charMode, renderStyle } = params;
     const resolved = this.#resolvedFor(params); // for this grid only
-    if (resolved && !this.baseRecords.pins.has(cellKey(col, row))) return resolved.cells[cellIndex(col, row, cols)] ?? null;
+    if (resolved && this.pinAt(col, row) === undefined) return resolved.cells[cellIndex(col, row, cols)] ?? null;
     const data = this.#dithered?.data ?? this.#baseData; // snapped below
     // Between a grid resize and the render it queues, the pipeline pixels are the old size.
     if (!data || data.width !== cols || data.height !== params.rows) return null;
@@ -724,8 +731,22 @@ export default class Renderer {
 
   // A converted cell with the base layer's pin (if any) as its character.
   #onBase(col, row, cell) {
+    const pin = this.pinAt(col, row);
+    return pin !== undefined ? { ...cell, char: pin } : cell;
+  }
+
+  // The base layer's pinned character at a cell, or undefined: none, or a shape draws there and the cell's
+  // character comes from the conversion (the pin shows again once no shape covers it).
+  pinAt(col, row) {
     const pin = this.baseRecords.pins.get(cellKey(col, row));
-    return pin ? { ...cell, char: pin } : cell;
+    return pin !== undefined && this.shapes?.covers(col, row) ? undefined : pin;
+  }
+
+  // What's under the shapes' side of the converter: the base layer, with the shapes over it while there are any.
+  get #base() {
+    if (!this.shapes?.drawsShapes) return this.baseLayer;
+    this.shapes.sync();
+    return this.shapes;
   }
 
   // An edit cell and paint in the same cell: the edit cell's entry composes over the paint-free
