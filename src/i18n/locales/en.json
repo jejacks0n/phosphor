@@ -273,6 +273,9 @@
     "charChoice": {
       "help": "Random picks from your set by the seed. Best match picks the character and its two palette colors that come closest to the picture. By shape compares each character's shape with the picture's detail in the cell."
     },
+    "charChoiceAscii": {
+      "help": "By intensity (Color ASCII) and By brightness (Monochrome ASCII) pick a character further along your set the brighter the cell. By shape compares each character's shape with the picture's detail in the cell."
+    },
     "solids": {
       "label": "Solids",
       "help": "How strongly a plain solid cell is preferred over a shade or a half-block."
