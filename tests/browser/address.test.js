@@ -2,6 +2,7 @@
 // router on a memory history.
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createMemoryHistory } from 'vue-router';
+import { getActivePinia, setActivePinia } from 'pinia';
 import { createTestApp, loadImage } from '../support/app.js';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore, hasLeftRoom } from '@/store/RoomStore';
@@ -12,7 +13,7 @@ import { createAddressRouter, followAddress } from '@/router';
 
 const GRADIENT = '/tests/fixtures/images/gradient.png';
 const ID = 'abcdefghij', OTHER = 'bcdefghijk';
-let project, workspace, social, room, router, stop, push, replace;
+let pinia, project, workspace, social, room, router, stop, push, replace;
 
 // The router's work is promises, so a macrotask sees it through.
 const settled = async () => {
@@ -25,6 +26,7 @@ const desktop = (matches) => vi.stubGlobal('matchMedia', () => ({ matches }));
 
 // A page load at an address, up to where autosave has yet to answer.
 async function landing(address) {
+  setActivePinia(pinia);   // the last test's async work, finishing late, makes its own stores the active ones
   router = createAddressRouter(createMemoryHistory());
   stop = followAddress(router);
   await router.replace(address);
@@ -45,9 +47,10 @@ const serverFor = (session = null) => Object.assign(fakeServer(), { session });
 
 beforeEach(async () => {
   ({ project, workspace } = await createTestApp());
-  await loadImage(project, GRADIENT);   // art open: with nothing open the art tabs are the start screen, at /
+  pinia = getActivePinia();
   social = useSocialStore();
   room = useRoomStore();
+  await loadImage(project, GRADIENT);   // art open: with nothing open the art tabs are the start screen, at /
   sessionStorage.removeItem('phosphor-left-rooms');
   ownSocialDatabase('address');   // its own copy: the files run side by side
   forgetKey();
