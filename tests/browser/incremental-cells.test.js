@@ -119,3 +119,27 @@ for (const [quantize, smoothing, brightness, dithering = { dither: 0 }] of [
     expect(baseColors()).toEqual(partial.base);
   });
 }
+
+// Floyd–Steinberg under Best match and By shape: while a base stroke is open each move resolves only
+// its cells, and its end carries the change on to every cell after it.
+for (const charChoice of ['best', 'shape']) {
+  test(`a base stroke of several moves under Floyd–Steinberg comes out as a full render when it ends (${charChoice})`, async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+    Object.assign(project, { quantize: 'cga', charChoice, chars: '▄░▒▓█', dither: 100, ditherStyle: 'floyd' });
+    project.render();
+    await settle(project);
+
+    project.beginEdit();
+    for (const [col, row] of [[4, 3], [5, 3], [6, 4], [12, 8], [20, 2]]) project.eraseBase([{ col, row }]);
+    project.commitEdit();
+    expect(key(project.cells)).toEqual(key(fullRebuild(project)));
+    const partial = { output: outputKey(project), cells: key(project.cells) };
+
+    project.renderer.reset();
+    project.render();
+    await settle(project);
+    expect(outputKey(project)).toBe(partial.output);
+    expect(key(project.cells)).toEqual(partial.cells);
+  });
+}

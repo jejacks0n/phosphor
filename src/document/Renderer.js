@@ -67,7 +67,9 @@ export default class Renderer {
   // baseParams: params with the color adjustments neutral (settings.baseParams).
   async render(image, params, paintLayer, baseParams) {
     if (resolves(params) && !this.#fontReady) { // glyphs measured in a placeholder font would choose the characters
-      await loadReferenceFont().catch(() => {}); // or measured in its fallback: still the same everywhere
+      // If it doesn't load, glyphs are measured in its fallbacks, ending in the system's monospace font,
+      // which differs from computer to computer: the characters may then too.
+      await loadReferenceFont().catch((error) => console.warn('IBM VGA did not load: Best match and By shape measure glyphs in a fallback font', error));
       this.#fontReady = true;
     }
     const { canvas: pipeline, paletteColors, samples } = await processImage(image, params);
