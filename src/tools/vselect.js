@@ -62,15 +62,12 @@ function inside(corners, { x, y }) {
   return true;
 }
 
-// A transform that's still a shape's: not squashed flat, nothing past the limits files keep to.
-const usable = (m) => Math.abs(m[0] * m[3] - m[1] * m[2]) >= 1e-4 && m.every((v) => Math.abs(v) <= 1e4);
-
 // The shapes as they were at the press, each changed by change(shape) → its new transform (or null: as it was).
 function reshape(project, drag, change) {
   const changes = [];
   for (const [key, shape] of drag.start) {
     const m = change(shape);
-    if (m && usable(m)) changes.push([key, withShape(shape, { m })]);
+    if (m) changes.push([key, withShape(shape, { m })]); // one the document wouldn't keep, it doesn't take
   }
   project.updateShapes(changes);
 }

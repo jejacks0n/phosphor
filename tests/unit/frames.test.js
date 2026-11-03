@@ -166,6 +166,21 @@ describe('saving frames', () => {
     expect(deserializeFrames(json, 20, 20)).toBe(null); // a bad shape refuses the frames, as a bad cell does
   });
 
+  // Blank frames carry shapes forward, so frames that each add MOST_SHAPES would show more and more.
+  test('frames that would show more than MOST_SHAPES shapes on one frame are refused', async () => {
+    const { rectShape, MOST_SHAPES } = await import('../../src/document/shapes.js');
+    const shape = JSON.parse(JSON.stringify(rectShape(1, 1, 5, 5, { fill: '#ff0000' })));
+    const adding = (from, n) => ({ kind: 'blank', hold: 0, changes: [], shapes: Array.from({ length: n }, (_, i) => [`v:s${from + i}`, shape]) });
+    const json = { frames: [adding(0, MOST_SHAPES), { kind: 'blank', hold: 0, changes: [] }], frame: 0, fps: 12 };
+    expect(deserializeFrames(json, 20, 20)).not.toBe(null);
+    json.frames[1] = adding(MOST_SHAPES, 1);
+    expect(deserializeFrames(json, 20, 20)).toBe(null);
+    json.frames[1] = { ...adding(MOST_SHAPES, 1), kind: 'wipe' }; // a Wipe starts over
+    expect(deserializeFrames(json, 20, 20)).not.toBe(null);
+    json.frames[1] = { ...adding(MOST_SHAPES, 1), shapes: [['v:s0', null], ['v:new', shape]] }; // one goes, one comes
+    expect(deserializeFrames(json, 20, 20)).not.toBe(null);
+  });
+
   const damaged = [
     ['frames not a list', (j) => { j.frames = 'x'; }],
     ['no frames', (j) => { j.frames = []; }],

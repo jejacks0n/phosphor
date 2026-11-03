@@ -3474,3 +3474,17 @@ test('a host refuses an artist\'s shape past MOST_SHAPES', async () => {
   expect(room.project.shapes.size).toBe(MOST_SHAPES);
   expect(room.project.shapes.has(key)).toBe(false);
 });
+
+// The Pen's first click makes a shape of one point, and it goes out before the second.
+test('an artist draws with the Pen, a click at a time, and the host keeps every point', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const key = ann.project.penPoint(2, 2);
+  await expect.poll(() => room.project.shapes.get(key)?.points.length, PATIENT).toBe(1);
+  ann.project.penPoint(12, 4);
+  await expect.poll(() => room.project.shapes.get(key)?.points.length, PATIENT).toBe(2);
+  ann.project.penPoint(8, 12);
+  ann.project.finishPen();
+  await sameShapes(room, ann);
+  expect(ann.project.shapes.get(key).points.length).toBe(3);
+});

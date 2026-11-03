@@ -162,11 +162,15 @@ export function deserializeFrames(json, cols, rows) {
   if (!Number.isInteger(fps) || fps < 1 || fps > 60) return null;
   if (!(cols * charRowsOf(rows) <= MAX_ANIMATION_CELLS) || frames.length > maxFramesFor(cols * charRowsOf(rows))) return null;
   const read = [];
+  let shown = new Set(); // the shapes a frame shows: Blank frames carry them on, so each frame is counted whole
   for (const entry of frames) {
     const { kind, hold, changes, drawn, shapes } = entry ?? {};
     if (!FRAME_KINDS.includes(kind) || !Number.isFinite(hold) || hold < 0 || hold > 60) return null;
     const map = readChanges(changes);
     if (!map || !readShapes(shapes, map)) return null;
+    if (kind !== 'blank') shown = new Set();
+    for (const [key, state] of map) if (isShapeKey(key)) shown[isEmptyState(state) ? 'delete' : 'add'](key);
+    if (shown.size > MOST_SHAPES) return null;
     if (drawn !== undefined && !(Array.isArray(drawn) && drawn.length <= MAX_CELLS && drawn.every(goodKey))) return null;
     const next = newFrame(kind, map);
     next.hold = hold;
