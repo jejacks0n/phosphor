@@ -307,11 +307,14 @@ export const selectionActions = {
   },
 
   // A character pasted over half of a wide character turns its other half into a space, as typing
-  // does; not in the rect a move just vacated (the cells there still show what was moved).
+  // does; not in the rect a move just vacated (the cells there still show what was moved). The
+  // block's empty cells are see-through (withEditUnder).
   pasteAt(block, col, row, vacated = null) {
     if (block.px % 2) block = withHalfRowUnder(this, block, col, row);
+    const own = block.cells;
+    if (block.cells) block = withEditUnder(this, block, col, row);
     if (block.cells) {
-      const written = block.cells.flatMap((entry, i) => (entry ? [{ col: col + (i % block.w), row: row + Math.floor(i / block.w), char: entry.char }] : []));
+      const written = own.flatMap((entry, i) => (entry ? [{ col: col + (i % block.w), row: row + Math.floor(i / block.w), char: entry.char }] : []));
       const inVacated = ({ col: c, row: r }) => vacated && c >= vacated.c0 && c <= vacated.c1 && r >= vacated.r0 && r <= vacated.r1;
       const blanks = overwritesAll(this.cells, this.cols, written).filter((cell) => !inVacated(cell));
       this.editCells = pasteBlock(this.editCells, { w: block.w, h: block.h, entries: block.cells }, col, row, this.cols, charRowsOf(this.rows));
@@ -470,6 +473,33 @@ function withHalfRowUnder(project, block, col, row) {
   if (block.base) {
     const { pixels, colors, pins } = block.base;
     out.base = { ...block.base, pixels: fill(pixels, project.basePixelsOf(last)), colors: fill(colors, project.baseColorsOf(last)), pins: keep(pins, (key) => project.baseRecords.pins.get(key)) };
+  }
+  return out;
+}
+
+// A block for pasting at (col, row) whose empty cells (no edit cell and no paint) take the edit layer
+// there now, so what's drawn shows through them instead of being cleared. The base isn't see-through:
+// the picture under a cell is always there.
+function withEditUnder(project, block, col, row) {
+  const painted = block.paint && paintedCells(block.paint, block.w, block.h);
+  const empty = block.cells.map((entry, i) => !entry && !painted?.[i]);
+  if (!empty.some(Boolean)) return block;
+  const keyAt = (i) => cellKey(col + (i % block.w), row + Math.floor(i / block.w));
+  const out = { ...block, cells: block.cells.map((entry, i) => (empty[i] ? project.editCells.get(keyAt(i)) ?? null : entry)) };
+  if (block.paint) {
+    const under = project.paintLayer.copyCells({ c0: col, r0: row, c1: col + block.w - 1, r1: row + block.h - 1 });
+    const k = block.paint.width / block.w, u = under.width / block.w;
+    out.paint = document.createElement('canvas');
+    out.paint.width = block.paint.width;
+    out.paint.height = block.paint.height;
+    const ctx = ctx2d(out.paint);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(block.paint, 0, 0);
+    empty.forEach((e, i) => {
+      if (!e) return;
+      const c = i % block.w, r = Math.floor(i / block.w);
+      ctx.drawImage(under, c * u, 2 * r * u, u, 2 * u, c * k, 2 * r * k, k, 2 * k);
+    });
   }
   return out;
 }

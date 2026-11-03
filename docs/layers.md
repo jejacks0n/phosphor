@@ -218,7 +218,10 @@ nudging act on:
 - **Base** is the base's colors and any pinned characters. Moving the base moves those and
   leaves the area it came from erased (black, with pinned spaces). Characters the converter picked
   stay where they are, and your edits on top stay too.
-- **Edit** is your typed and drawn cells and paint.
+- **Edit** is your typed and drawn cells and paint. A cell with no edit of its own (nothing typed,
+  drawn or painted in it) is see-through: moved, pasted or stamped, it leaves the edits it lands on
+  showing, while it floats and once it's set down. A cell with anything in it, even half a cell of
+  paint, covers the whole cell under it.
 - With both on, each layer moves, copies and pastes as itself. Pasting puts base content back on
   the base and edit content on the edit layer.
 - **Delete** erases the base (with Base on) and removes your edits (with Edit on).
