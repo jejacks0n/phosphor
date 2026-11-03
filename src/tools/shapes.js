@@ -47,7 +47,7 @@ const squareEnd = (from, to) => {
 
 // Shift on a line: straight across or down within 22.5° of it (tan 22.5° is below), and otherwise the diagonal.
 const TAN_22_5 = Math.SQRT2 - 1;
-const snappedEnd = (from, to) => {
+export const snappedEnd = (from, to) => {
   const across = Math.abs(to.x - from.x), down = Math.abs(to.y - from.y);
   if (down < across * TAN_22_5) return { x: to.x, y: from.y };
   if (across < down * TAN_22_5) return { x: from.x, y: to.y };

@@ -155,14 +155,15 @@ const previewStyle = computed(() => {
   };
 });
 
-// The Shapes tool's drag outline (grid positions -> CSS px), drawn while dragging: the rect, its ellipse, or the line.
+// The Shapes tool's drag outline (grid positions -> CSS px), drawn while dragging: the rect, its ellipse, or the line
+// (the Paint Bucket's gradient line too: line, between grid pixels).
 // In the ANSI view a line/character rectangle snaps to whole cells, so its outline does too; it sits
 // inside the display's border, like the cursor and cell highlights.
 const shapeDragStyle = computed(() => {
   const drag = workspaceStore.shapeDrag, unit = props.unit;
   if (!drag || !unit) return null;
   const ansi = props.view === 'output';
-  const cellShape = ansi && drawsCells(workspaceStore);
+  const cellShape = ansi && !drag.line && drawsCells(workspaceStore);
   const x0 = Math.floor(Math.min(drag.from.x, drag.to.x)), x1 = Math.floor(Math.max(drag.from.x, drag.to.x)) + 1;
   let y0 = Math.floor(Math.min(drag.from.y, drag.to.y)), y1 = Math.floor(Math.max(drag.from.y, drag.to.y)) + 1;
   if (cellShape) {
@@ -171,7 +172,7 @@ const shapeDragStyle = computed(() => {
   }
   const display = unref(props.display);
   const dx = display?.clientLeft ?? 0, dy = display?.clientTop ?? 0;
-  if (workspaceStore.shapeKind === 'line') {
+  if (drag.line || workspaceStore.shapeKind === 'line') {
     // A dashed line between the centers of its end pixels (cells, when it's drawn in cells).
     const center = (p) => (cellShape
       ? { x: (Math.floor(p.x) + 0.5) * unit.x, y: (Math.floor(p.y / 2) * 2 + 1) * unit.y }

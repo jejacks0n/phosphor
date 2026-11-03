@@ -68,7 +68,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     shapeAntialias: false,   // ellipses and lines: edge pixels by coverage, or ░▒▓█ cells
     shapeVerticalHalves: false, // ANSI blocks: ▌▐ too (Half-block: quadrants), for lines and ellipses
     strokeEnd: null,         // where the last Pencil or Brush stroke ended (a grid position): Shift-click draws a line from there
-    shapeDrag: null,         // { from, to } grid positions while a shape is being dragged
+    shapeDrag: null,         // { from, to, line? } grid positions while a shape (or the bucket's gradient line) is being dragged
     editZoom:  5,
     ansiZoom:  1,            // the ANSI view's zoom: 25% to 100% of its cell size
     editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'sauce' or 'social'
@@ -111,6 +111,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     bucketFillWith: 'normal', // ANSI view: 'normal' (the color you see) | 'cells' (whole cells, by Match and Set)
     bucketMatch: { fg: true, bg: true, char: true }, // Cells: what a cell must share with the one clicked
     bucketSet: { fg: true, bg: false, char: false }, // Cells: what the fill sets (your FG, BG, character)
+    bucketGradient: 'solid', // 'solid' | 'linear' | 'spherical' (a drag from FG to BG)
   }),
   getters: {
     activeTool(state) {
