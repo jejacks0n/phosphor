@@ -1319,9 +1319,11 @@
   "vector": {
     "tooMany": "Un dessin contient au plus {count} formes.",
     "fill": "Remplissage",
-    "fillTitle": "La couleur à l'intérieur de la forme",
     "stroke": "Contour",
-    "strokeTitle": "La couleur du contour de la forme",
+    "fillChipTitle": "Remplissage : {color} ({key})",
+    "fillNoneTitle": "Remplissage : aucun ({key})",
+    "strokeChipTitle": "Contour : {color} ({key})",
+    "strokeNoneTitle": "Contour : aucun ({key})",
     "width": "Épaisseur",
     "widthTitle": "L'épaisseur du contour, en pixels",
     "forward": "Avancer",

@@ -6,11 +6,13 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { hex2rgb, rgb2gray } from '@/lib/ColorUtils';
 import { shortcut } from '@/lib/keyLabels';
+import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import ColorPopover from '@/components/ColorPopover.vue';
 
 // The foreground/background chips: each shows its color as it displays (after adjustments and the
 // palette); a none slot shows a checkerboard. Clicking a chip opens the picker for that slot (so do
-// Alt+F / Alt+A and Alt+B: workspace.colorBox).
+// Alt+F / Alt+A and Alt+B: workspace.colorBox). On VECTOR they're the shapes' Fill and Stroke (useVectorStyle),
+// and the picker picks for them alone.
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -29,27 +31,42 @@ const shown = (hex) => {
 const fgNone = computed(() => ansiView.value && workspace.editFgNone);
 
 const toggle = (slot) => { workspace.colorBox = workspace.colorBox === slot ? null : slot; };
+
+const vector = computed(() => workspace.editorTab === 'vector');
+const style = useVectorStyle();
+const SLOTS = { fg: 'fill', bg: 'stroke' };
+// One chip as it shows: { none, color, title, aria }.
+const chip = (slot) => {
+  const key = shortcut('alt', slot === 'fg' ? 'F' : 'B');
+  if (vector.value) {
+    const name = SLOTS[slot], hex = style.value(name);
+    return { none: !hex, color: hex && shown(hex), title: t(hex ? `vector.${name}ChipTitle` : `vector.${name}NoneTitle`, { color: hex, key }), aria: t(`vector.${name}`) };
+  }
+  const none = slot === 'fg' ? fgNone.value : workspace.editBgNone, hex = slot === 'fg' ? workspace.editFgColor : workspace.editBgColor;
+  return { none, color: none ? null : shown(hex), title: t(none ? `colors.${slot}NoneTitle` : `colors.${slot}Title`, { color: hex, key }), aria: t(`colors.${slot}Aria`) };
+};
 </script>
 
 <template>
   <div class="color-pair">
     <button
-        class="chip fg"
-        :class="{ none: fgNone }"
-        :style="fgNone ? null : { backgroundColor: shown(workspace.editFgColor) }"
-        :title="fgNone ? t('colors.fgNoneTitle', { key: shortcut('alt', 'F') }) : t('colors.fgTitle', { color: workspace.editFgColor, key: shortcut('alt', 'F') })"
-        :aria-label="t('colors.fgAria')"
-        @click="toggle('fg')"
+        v-for="slot in ['fg', 'bg']"
+        :key="slot"
+        class="chip"
+        :class="[slot, { none: chip(slot).none }]"
+        :style="chip(slot).none ? null : { backgroundColor: chip(slot).color }"
+        :title="chip(slot).title"
+        :aria-label="chip(slot).aria"
+        @click="toggle(slot)"
     ></button>
-    <button
-        class="chip bg"
-        :class="{ none: workspace.editBgNone }"
-        :style="workspace.editBgNone ? null : { backgroundColor: shown(workspace.editBgColor) }"
-        :title="workspace.editBgNone ? t('colors.bgNoneTitle', { key: shortcut('alt', 'B') }) : t('colors.bgTitle', { color: workspace.editBgColor, key: shortcut('alt', 'B') })"
-        :aria-label="t('colors.bgAria')"
-        @click="toggle('bg')"
-    ></button>
-    <ColorPopover v-if="workspace.colorBox" v-model:slot-name="workspace.colorBox" @close="workspace.colorBox = null"/>
+    <ColorPopover
+        v-if="workspace.colorBox && vector"
+        :value="style.value(SLOTS[workspace.colorBox])"
+        offers-none
+        @pick="(hex, opts) => style.set(SLOTS[workspace.colorBox], hex, opts)"
+        @close="workspace.colorBox = null"
+    />
+    <ColorPopover v-else-if="workspace.colorBox" v-model:slot-name="workspace.colorBox" @close="workspace.colorBox = null"/>
   </div>
 </template>
 

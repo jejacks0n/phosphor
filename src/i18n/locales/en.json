@@ -1319,9 +1319,11 @@
   "vector": {
     "tooMany": "A drawing holds at most {count} shapes.",
     "fill": "Fill",
-    "fillTitle": "The color inside the shape",
     "stroke": "Stroke",
-    "strokeTitle": "The color of the shape's outline",
+    "fillChipTitle": "Fill: {color} ({key})",
+    "fillNoneTitle": "Fill: none ({key})",
+    "strokeChipTitle": "Stroke: {color} ({key})",
+    "strokeNoneTitle": "Stroke: none ({key})",
     "width": "Width",
     "widthTitle": "The outline's width, in pixels",
     "forward": "Forward",

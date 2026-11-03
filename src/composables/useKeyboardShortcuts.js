@@ -8,8 +8,12 @@ import { typeText } from '@/composables/useTextTool';
 import { colorBoxKey, helpKey } from '@/lib/TextKeys';
 import { isField } from '@/lib/fields';
 import { usePlayback } from '@/composables/usePlayback';
+import { useVectorStyle } from '@/composables/useVectorStyle.js';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
+  // The pair's swap: on VECTOR, the shapes' Fill and Stroke trade places.
+  const vectorStyle = useVectorStyle();
+  const swapColors = () => (workspaceStore.editorTab === 'vector' ? vectorStyle.swap() : workspaceStore.swapColors());
   const playback = usePlayback();
 
   // Not on SOCIAL: the art isn't showing, and its fields keep their own undo.
@@ -84,7 +88,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (isField(e.target) || !projectStore.image || !workspaceStore.editMode || workspaceStore.paletteLayerOpen) return false;
     e.preventDefault();
     if (swap) {
-      workspaceStore.swapColors();
+      swapColors();
       return true;
     }
     if (workspaceStore.heldTool?.by === 'alt') workspaceStore.releaseTool();
@@ -112,7 +116,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _handleSwapColors = (e) => {
     if (e.key.toLowerCase() !== 'x' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
     if (isField(e.target) || !workspaceStore.editMode || workspaceStore.activeTool === 'text') return false; // in Edit Mode, X types
-    workspaceStore.swapColors();
+    swapColors();
     return true;
   };
 

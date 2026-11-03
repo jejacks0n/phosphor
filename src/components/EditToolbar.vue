@@ -482,6 +482,9 @@ div.toolbar-row {
   padding: 4px 10px;
 }
 
+/* VECTOR's options row is a component of its own: its buttons, labels and dividers take these styles too
+   (div.vector-options > :deep(…)), so the row looks and measures as every other tool's does. */
+
 /* The options row scrolls sideways when it doesn't fit, without a scrollbar. It's as tall as a row of
    sliders whatever the tool's options are, so they line up from tool to tool and the view below
    doesn't move. */
@@ -578,13 +581,15 @@ div.segmented button.on {
   color: var(--white);
 }
 
-span.hint {
+span.hint,
+div.vector-options > :deep(span.hint) {
   font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
 }
 
-span.option-label {
+span.option-label,
+div.vector-options > :deep(span.option-label) {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -593,7 +598,8 @@ span.option-label {
   user-select: none;
 }
 
-button.text {
+button.text,
+div.vector-options > :deep(button.text) {
   width: auto;
   padding: 4px 10px;
   font-size: 12px;
@@ -659,7 +665,8 @@ label.checkbox-wrapper {
   user-select: none;
 }
 
-div.divider {
+div.divider,
+div.vector-options > :deep(div.divider) {
   width: 1px;
   height: 18px;
   background: var(--border);
@@ -671,7 +678,8 @@ div.spacer {
   flex: 1;
 }
 
-button {
+button,
+div.vector-options > :deep(button) {
   padding: 3px 8px;
   border-radius: 3px;
   border: 1px solid var(--border);
@@ -717,7 +725,8 @@ button.active :deep(svg) {
   fill: var(--white);
 }
 
-button:disabled {
+button:disabled,
+div.vector-options > :deep(button:disabled) {
   opacity: 0.35;
 }
 
