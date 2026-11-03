@@ -221,7 +221,7 @@ export function cellsOfPixels(pixels, cols, rows) {
   return cells;
 }
 
-const mix = (a, b, t) => ({
+export const mix = (a, b, t) => ({
   r: Math.round(a.r + (b.r - a.r) * t),
   g: Math.round(a.g + (b.g - a.g) * t),
   b: Math.round(a.b + (b.b - a.b) * t),

@@ -3,8 +3,9 @@
 import { test, expect, vi } from 'vitest';
 import ShapeMatcher from '@/lib/ShapeMatcher.js';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
+import { outputKey } from '../support/scenes.js';
 import { setDisplayFont } from '@/lib/displayFonts';
-import { layoutWide } from '@/lib/Cells';
+import { layoutWide, halfColors } from '@/lib/Cells';
 import { PALETTES } from '@/lib/ColorUtils.js';
 import { processImage } from '@/lib/ImageProcessor.js';
 
@@ -36,13 +37,29 @@ test('Best match with Blocks & shades on CGA: only its characters, only CGA colo
       expect(typeof color.c).toBe('number'); // a palette entry, for .ans export
     }
   }
-  // What else reads the base shows only CGA's colors too: the output, and the base under the paint.
-  const { data } = p.renderer.outputCanvas.getContext('2d').getImageData(0, 0, p.cols, p.rows);
+  // The base under the paint (the ghost's) shows only CGA's colors too.
   const base = p.renderer.basePixels.data;
   const hexAt = (d, o) => `#${[d[o], d[o + 1], d[o + 2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
-  for (let o = 0; o < data.length; o += 4) {
-    expect(cga.has(hexAt(data, o))).toBe(true);
-    expect(cga.has(hexAt(base, o))).toBe(true);
+  for (let o = 0; o < base.length; o += 4) expect(cga.has(hexAt(base, o))).toBe(true);
+});
+
+// The output (the PIXEL view, and what the Paint Bucket and Magic Wand read there) as each cell's two half colors.
+const halvesOf = (p) => p.cells.flatMap((cell) => halfColors(cell).map(({ r, g, b }) => [r, g, b].join()));
+function outputHalves(p) {
+  const { data } = p.renderer.outputCanvas.getContext('2d').getImageData(0, 0, p.cols, p.rows);
+  return p.cells.flatMap((_, i) => [0, 1].map((half) => {
+    const col = i % p.cols, o = (((i - col) / p.cols * 2 + half) * p.cols + col) * 4;
+    return [data[o], data[o + 1], data[o + 2]].join();
+  }));
+}
+for (const charChoice of ['best', 'shape']) test(`the PIXEL view shows the cells chosen, each its two half colors (${charChoice}, CGA, Dither)`, async () => {
+  for (const ditherStyle of ['floyd', 'bayer']) {
+    const p = await gradient({ quantize: 'cga', charChoice, chars: SHADES, solids: 0, dither: 60, ditherStyle });
+    expect(outputHalves(p), ditherStyle).toEqual(halvesOf(p));
+    p.beginEdit(); // an edit's area, and the cells after it Floyd–Steinberg carries the change to
+    p.eraseBasePixels([{ x: 4, y: 6 }, { x: 5, y: 7 }]);
+    p.commitEdit();
+    expect(outputHalves(p), ditherStyle).toEqual(halvesOf(p));
   }
 });
 
@@ -127,6 +144,30 @@ test('a pinned character shows its own two halves, as with Random', async () => 
   p.paintStroke([{ x: 8, y: 16, alpha: 1 }], '#55ff55'); // paint over it, then a partial rebuild
   p.commitEdit();
   expect(key(p.cells)).toEqual(key(fullRebuild(p)));
+});
+
+for (const charChoice of ['best', 'shape']) test(`a pin set after its edit's composite shows the picture's own pixels and colors, as a full render does (${charChoice})`, async () => {
+  const p = await gradient({ quantize: 'cga', charChoice, chars: '░▒▓█', solids: 0 });
+  p.beginEdit();
+  p.writeBaseCells([{ col: 8, row: 8, char: '▄', fg: '#0000aa', bg: '#aa0000' }]); // its pin is set after the composite
+  p.commitEdit();
+  expect(p._renderQueued).toBe(false);
+  const { data } = p.renderer.outputCanvas.getContext('2d').getImageData(8, 16, 1, 1);
+  expect(Array.from(data.slice(0, 3))).toEqual([0xaa, 0, 0]); // the pin's top pixel, not the half color of a cell Best match would pick there
+  const partial = { output: outputKey(p), cells: key(p.cells) };
+  p.renderer.reset();
+  p.render();
+  await settle(p);
+  expect(outputKey(p)).toBe(partial.output);
+  expect(key(p.cells)).toEqual(partial.cells);
+  p.paintStroke([{ x: 8, y: 17, alpha: 0.5 }, { x: 9, y: 17, alpha: 0.5 }], '#55ff55'); // half-strength paint over it and its neighbor
+  p.commitEdit();
+  const painted = { output: outputKey(p), cells: key(p.cells) };
+  p.renderer.reset();
+  p.render();
+  await settle(p);
+  expect(outputKey(p)).toBe(painted.output);
+  expect(key(p.cells)).toEqual(painted.cells);
 });
 
 test('a set with no one-column characters still renders', async () => {
