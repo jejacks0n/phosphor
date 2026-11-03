@@ -10,7 +10,7 @@
  */
 import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
-import { isShapeKey, shapeFromStranger, isGoodShapeKey, MOST_SHAPES } from './shapes.js';
+import { isShape, isShapeKey, sameShape, shapeFromStranger, isGoodShapeKey, MOST_SHAPES } from './shapes.js';
 import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf, maxFramesFor } from '../lib/Cells.js';
 
 export const FRAME_KINDS = ['blank', 'duplicate', 'wipe'];
@@ -54,7 +54,7 @@ export function resolveOver(previous, { kind, changes }) {
   return resolved;
 }
 
-const sameCell = (a, b) => a === b || (!a && !b) || sameEntry(a, b);
+const sameCell = (a, b) => a === b || (!a && !b) || (isShape(a) || isShape(b) ? sameShape(a, b) : sameEntry(a, b));
 const sameState = (a, b) => a === b || (a.top === b.top && a.bottom === b.bottom && sameCell(a.cell, b.cell));
 
 // What a frame changed: every cell live shows differently from previous, with its whole live state.

@@ -49,6 +49,11 @@ what it shows can change.
 
 Undo works across frames: it goes back to the frame the edit was made on and undoes it there.
 
+Shapes ([Vector shapes](vector.md)) belong to frames the same way. A Blank frame carries the shapes before it;
+moving, reshaping or recoloring one there makes it that frame's, and the change carries on until a frame that
+changed that shape itself. Deleting a shape carries forward too. A Duplicate starts with its own copy of every shape,
+and a Wipe with none.
+
 ## The ghost
 
 On a Blank frame, what's inherited shows dimmed on the PIXEL and ANSI tabs, in its own colors, so you can see what you're
@@ -72,8 +77,9 @@ One frames-per-second number holds for the whole movie (8 to begin with, 1 to 60
 
 **Merge up** works on the frame showing, and **Bake** on every frame. Moving a slider changes every frame, since they all sit on the same base.
 With a Color count palette, there's one palette for the whole movie, picked from every frame, so colors stay
-put from frame to frame ([Layers](layers.md)). Dither only touches the picture under the frames, so it holds still too;
-your frames' drawing is paint and keeps its own colors.
+put from frame to frame ([Layers](layers.md)). Dither touches the picture under the frames, which holds still, and the
+shapes, which are dithered where each frame has them: with Floyd–Steinberg, a shape that moves can shift the pattern
+below and to its right. Your frames' drawing is paint and keeps its own colors.
 
 ## Saving
 

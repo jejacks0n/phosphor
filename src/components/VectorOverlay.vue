@@ -1,5 +1,6 @@
 <script setup>
-// VECTOR's overlay over the art, in CSS px: the selected shapes' outlines, Vector select's box with its 8
+// VECTOR's overlay over the art, in CSS px: the selected shapes' outlines (and on a Blank frame, dimmed, those
+// of the shapes it carries), Vector select's box with its 8
 // handles and rotate knob, the points and handles of the shape whose points are being edited (the selected
 // point filled), and the Pen's points (the first filled: a click there closes) with its next segment, dashed, to
 // the pointer. It takes no pointer events, and shows nothing while the animation plays.
@@ -29,6 +30,12 @@ const style = computed(() => {
 const shown = computed(() => !!props.unit && !workspace.playing);
 const selected = computed(() => workspace.vectorSelected.filter((key) => project.shapes.has(key)));
 const outlines = computed(() => selected.value.map((key) => pathData(project.shapes.get(key), props.unit.x, props.unit.y)));
+// On a Blank frame, the shapes it carries from the frame before: their outlines, dimmed.
+const carried = computed(() => {
+  if (!props.unit || !project.hasFrames) return [];
+  void project.shapes; void project.frames; // what the carried set is worked out from
+  return [...project.inheritedShapes()].filter((key) => !selected.value.includes(key)).map((key) => pathData(project.shapes.get(key), props.unit.x, props.unit.y));
+});
 
 const box = computed(() => {
   if (workspace.vectorPoints || !selected.value.length) return null;
@@ -60,6 +67,7 @@ const r = computed(() => handleRadius() / 2 + 1);
 <template>
   <svg class="vector-overlay" :style="style" data-vector-overlay>
     <g v-if="shown">
+      <path v-for="(d, i) in carried" :key="`c${i}`" :d="d" class="outline carried"/>
       <path v-for="(d, i) in outlines" :key="i" :d="d" class="outline"/>
       <template v-if="box">
         <polygon :points="box.corners" class="box"/>
@@ -99,6 +107,10 @@ svg.vector-overlay {
 
 .box {
   stroke-dasharray: 4 3;
+}
+
+.carried {
+  opacity: 0.4;
 }
 
 .handle {
