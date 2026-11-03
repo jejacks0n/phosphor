@@ -41,8 +41,7 @@ export default class Renderer {
   #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
   #dithered = null;     // { palette, key, raw, data }: #baseData dithered to the palette (raw: the #baseData it's from), while Dither is on
   #resolved = null;     // { key, palette, raw, cells, carried }: #baseData resolved to cells by Best match (raw: the #baseData they're from)
-  #baseSnapped = null;  // { version, data }: #baseData snapped to the palette, for basePixels under Best match
-  #baseVersion = 0;     // counts composites: #baseData may have changed
+  #baseSnapped = null;  // { from, palette, data }: #baseData (from) snapped to the palette, for basePixels under Best match
   #fontReady = false;   // the reference font has loaded: Best match can measure glyphs
   #glyphs = null;       // { chars, glyphs }: the set's glyphs with their inks in the reference font
   #snapped = null;      // the whole output's bytes and palette entries, from the composite that just snapped it
@@ -203,14 +202,20 @@ export default class Renderer {
 
     if (base) this.#drawBase(ctx, this.baseLayer, params, area);
     if (!base) this.#baseData = this.#pipelineData;
-    else if (partial) putRows(this.#baseData.data, w, ctx.getImageData(x, y, area.w, area.h).data, area);
-    else this.#baseData = ctx.getImageData(0, 0, w, h);
+    else if (partial) {
+      putRows(this.#baseData.data, w, ctx.getImageData(x, y, area.w, area.h).data, area);
+      const snapped = this.#baseSnapped;
+      if (snapped?.from === this.#baseData) { // only the area changed: only it is snapped again
+        const rows = rowsOf(this.#baseData.data, w, area);
+        snapBytes(rows, snapped.palette);
+        putRows(snapped.data.data, w, rows, area);
+      }
+    } else this.#baseData = ctx.getImageData(0, 0, w, h);
 
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params, partial ? area : null) : null;
     const changed = !hold && params.quantize === 'count' && !this.#chosen && this.#recount(params);
     const moved = this.#ditherUnder(ctx, params, area, !!paintLayer);
     const resolvedAgain = this.#resolveUnder(params, area, open);
-    this.#baseVersion++;
     if (!hold) this.#heldData = null;
     else if (partial) putRows(this.#heldData, w, ctx.getImageData(x, y, area.w, area.h).data, area);
     else this.#heldData = ctx.getImageData(0, 0, w, h).data;
@@ -244,7 +249,7 @@ export default class Renderer {
     if (whole || (carries && !open)) {
       const { cells, carried } = resolveGrid(raw, w, h, matcher, opts);
       this.#resolved = { key, palette: this.palette, raw: raw.slice(), cells, carried };
-      return !!r;
+      return true; // cells outside the area may have changed (or weren't resolved before)
     }
     resolveGrid(raw, w, h, matcher, { ...opts, area, carried: r.carried, cells: r.cells });
     if (!carries) putRows(r.raw, w, rowsOf(raw, w, area), area);
@@ -504,14 +509,16 @@ export default class Renderer {
   }
 
   // The pipeline with the base layer's pixels over it, as of the last composite: what the paint sits on.
-  // Under Best match (which the shader leaves unsnapped) snapped to the palette, as the output is.
+  // Under Best match (which the shader leaves unsnapped) snapped to the palette, as the output is:
+  // whole when first asked for, then only over what a composite changes.
   get basePixels() {
     if (this.#dithered) return this.#dithered.data;
     if (!this.#resolved || !this.palette?.length || !this.#baseData) return this.#baseData;
-    if (this.#baseSnapped?.version !== this.#baseVersion) {
+    const snapped = this.#baseSnapped;
+    if (snapped?.from !== this.#baseData || snapped.palette !== this.palette) {
       const { width, height, data } = this.#baseData, bytes = data.slice();
       snapBytes(bytes, this.palette);
-      this.#baseSnapped = { version: this.#baseVersion, data: new ImageData(bytes, width, height) };
+      this.#baseSnapped = { from: this.#baseData, palette: this.palette, data: new ImageData(bytes, width, height) };
     }
     return this.#baseSnapped.data;
   }

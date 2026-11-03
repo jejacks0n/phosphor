@@ -79,9 +79,11 @@ const updateOverlay = () => {
 // paint is in the output, not in a cell's colors alone. Worked out again only when they change.
 const veil = { canvas: null, shown: null, any: false };
 const drawVeil = (ctx, win, width, height) => {
-  const shown = projectStore.shownCells, { cells, cols, rows } = projectStore, base = projectStore.renderer.basePixels;
-  if (workspaceStore.playing || shown === cells || !base || base.width !== cols || base.height !== rows) return;
+  const shown = projectStore.shownCells, { cells, cols, rows } = projectStore;
+  if (workspaceStore.playing || shown === cells) return;
   if (veil.shown !== shown) {
+    const base = projectStore.renderer.basePixels; // read only when it's needed: under Best match it's snapped on asking
+    if (!base || base.width !== cols || base.height !== rows) return;
     const indexes = [];
     for (let i = 0; i < cells.length; i++) if (shown[i] !== cells[i]) indexes.push(i);
     const image = new ImageData(cols, rows);
