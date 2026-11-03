@@ -113,16 +113,38 @@ export function pathData(shape, sx = 1, sy = 1) {
 // [[key, shape]] in stacking order, bottom first: by z, ties by key.
 export const stacked = (shapes) => [...shapes].sort(([ka, a], [kb, b]) => a.z - b.z || (ka < kb ? -1 : ka > kb ? 1 : 0));
 
-// The hull of a shape's points and handles in its own (local) grid pixels: { x0, y0, x1, y1 }.
-export function localBounds({ points }) {
+// Where a cubic from p0 to p3 (handles p1, p2), along one axis, turns: its t in (0, 1).
+function turns(p0, p1, p2, p3) {
+  const a = -p0 + 3 * p1 - 3 * p2 + p3, b = 2 * (p0 - 2 * p1 + p2), c = p1 - p0;
+  if (Math.abs(a) < 1e-12) return Math.abs(b) < 1e-12 ? [] : [-c / b];
+  const d = b * b - 4 * a * c;
+  if (d < 0) return [];
+  return [(-b + Math.sqrt(d)) / (2 * a), (-b - Math.sqrt(d)) / (2 * a)];
+}
+
+// The box round a path itself, not its handles (a curve's handles reach past it): { x0, y0, x1, y1 } of points
+// as worldPoints gives them.
+function pathBox(w, closed) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const [x, y, ix, iy, ox, oy] of points) {
-    for (const [px, py] of [[x, y], [x + ix, y + iy], [x + ox, y + oy]]) {
-      x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px); y1 = Math.max(y1, py);
+  const take = (x, y) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
+  const curve = (a, b) => {
+    if (!a.out && !b.in) return;
+    const c1 = a.out ?? a, c2 = b.in ?? b;
+    for (const t of [...turns(a.x, c1.x, c2.x, b.x), ...turns(a.y, c1.y, c2.y, b.y)]) {
+      if (!(t > 0 && t < 1)) continue;
+      const u = 1 - t, k0 = u * u * u, k1 = 3 * u * u * t, k2 = 3 * u * t * t, k3 = t * t * t;
+      take(k0 * a.x + k1 * c1.x + k2 * c2.x + k3 * b.x, k0 * a.y + k1 * c1.y + k2 * c2.y + k3 * b.y);
     }
-  }
+  };
+  for (const p of w) take(p.x, p.y);
+  for (let i = 1; i < w.length; i++) curve(w[i - 1], w[i]);
+  if (closed && w.length > 1) curve(w.at(-1), w[0]);
   return { x0, y0, x1, y1 };
 }
+
+// The box round a shape in its own (local) grid pixels, and in grid pixels (square to the grid): the selection's.
+export const localBounds = ({ points, closed }) => pathBox(worldPoints({ points, m: IDENTITY }), closed);
+export const curveBounds = (shape) => pathBox(worldPoints(shape), shape.closed);
 
 // Grid pixels the shape can draw in: its points' and handles' hull (a cubic stays inside it), with half the
 // stroke around it.

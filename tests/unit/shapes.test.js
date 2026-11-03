@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   makeShape, sameShape, isShape, isShapeKey, newShapeKey, pathData, shapeBounds, dirtyRect, worldPoints,
   multiply, invert, apply, rotation, scaling, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
-  moveHandle, setSmooth, deletePoint, shapeFromStranger, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
+  moveHandle, setSmooth, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
 } from '../../src/document/shapes.js';
 import { changeBytes } from '../../src/document/changes.js';
 import { MOST_CHANGE_BYTES } from '../../src/social/wire.js';
@@ -171,4 +171,20 @@ test('the biggest legal shape fits in one room message', () => {
   const biggest = makeShape({ points: Array.from({ length: MOST_POINTS }, () => [v, v, v, v, v, v, 1]), closed: true, fill: '#ffffff', stroke: '#ffffff', width: 63.99, z: -999999, m: [-9999.9999, -9999.9999, -9999.9999, 9999.9999, -9999.9999, -9999.9999] });
   assert.ok(shapeFromStranger(JSON.parse(JSON.stringify(biggest))));
   assert.ok(changeBytes({ cells: [[`v:${'k'.repeat(32)}`, biggest]], runs: [] }) < MOST_CHANGE_BYTES);
+});
+
+// A curve's handles reach past it: the box goes round the curve, not them. Here both handles pull up 10, and the
+// curve between them rises only three quarters of that.
+test('localBounds goes round the curve itself, not its handles', () => {
+  const arch = makeShape({ points: [[0, 0, 0, 0, 0, -10, 0], [10, 0, 0, -10, 0, 0, 0]], closed: false });
+  const { x0, y0, x1, y1 } = localBounds(arch);
+  close(y0, -7.5);
+  assert.deepEqual([x0, x1, y1], [0, 10, 0]);
+  const loop = makeShape({ points: [[0, 0, 0, -10, 0, 0, 0], [10, 0, 0, 0, 0, -10, 0]], closed: true }); // a line there, the arch closing it
+  close(localBounds(loop).y0, -7.5);
+  assert.equal(localBounds(rectShape(1, 2, 5, 9)).x1, 5);
+  const moved = curveBounds(transformed(arch, translation(5, 5))); // several shapes' box: in grid pixels
+  close(moved.y0, -2.5);
+  assert.deepEqual([moved.x0, moved.x1, moved.y1], [5, 15, 5]);
+  assert.deepEqual(localBounds(makeShape({ points: [[3, 4, 0, 0, 0, 0, 0]], closed: false })), { x0: 3, y0: 4, x1: 3, y1: 4 });
 });
