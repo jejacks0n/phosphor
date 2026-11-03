@@ -52,6 +52,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     clipboardId: null,       // the last copy's id, in the block it put on the system clipboard (clipboard.js)
+    artDrop: null,           // { file, at: { col, row } | null }: an art file dropped on an open drawing, asking to add it or open it (EditWorkspace)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     ansiViewSize: { cols: 0, rows: 0 }, // how many whole cells from there are on screen (AnsiEditor)
     ansiViewZoom: 1,         // the ansiZoom those cells were measured at (AnsiEditor)

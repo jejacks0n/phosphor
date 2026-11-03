@@ -13,6 +13,7 @@ import { squarePixels } from '@/lib/Brushes';
 import { pickMode, pickTargetOf } from '@/lib/pickMode';
 import { drawsCells } from '@/tools/shapes';
 import { snapCursor } from '@/document/wideChars';
+import { isArtFile } from '@/lib/ArtFile';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
@@ -227,6 +228,17 @@ const waitingStyle = ({ x0, y0, x1, y1 }) => {
   };
 };
 
+// An art file dropped on the drawing: EditWorkspace asks whether to add it at the cell under the drop (or the
+// view's top-left, off the art) or open it, so the drop zone around this doesn't open it.
+function onDrop(event) {
+  const file = event.dataTransfer?.files[0];
+  if (!file || !isArtFile(file.name) || !projectStore.image) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const pos = props.coordsAt(event);
+  workspaceStore.artDrop = { file, at: pos && cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows) };
+}
+
 // Padded layout: room to pan the content well past each edge.
 const viewportWidth = ref(0);
 const viewportHeight = ref(0);
@@ -317,6 +329,7 @@ defineExpose({ centerContent });
       @touchmove.prevent.stop="handleTouchMove"
       @touchend.prevent.stop="handleTouchEnd"
       @touchcancel.prevent.stop="handleTouchCancel"
+      @drop="onDrop"
   >
     <div v-if="projectStore._sharing || drawingStore.gettingArt" class="over-art" :style="overArt">
       <ArtistCursors v-if="drawingStore.showCursors" :root="rootRef" :display="unref(display)" :unit="unit"/>

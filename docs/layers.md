@@ -86,6 +86,19 @@ and it opens as a new document, with its art on the base layer.
   size and the limits, and what you had open stays open. A file with no art in it doesn't open either.
 - An animated `.ans` (one that moves the cursor or clears the screen) opens as its last screen.
 
+### Adding a file to the drawing
+
+With a drawing open, dropping one of these files on it asks what to do:
+
+- **Add to this drawing**: the file's art lands as a paste does, floating and selected with the Select tool, at
+  the cell you dropped it on (or the top-left of the view, when it's dropped beside the drawing), to drag into
+  place. It goes on the edit layer, as one undo step. Whatever runs past the canvas edge is cut off. The
+  drawing's SAUCE and palette stay as they are.
+- **Open instead**: it opens in place of this drawing, as above, asking first if there are unsaved changes.
+- **Cancel** leaves everything as it was.
+
+In a room where opening isn't allowed, there's no **Open instead**; adding works as pasting does.
+
 ## The edit layer
 
 The edit layer is everything you draw: typed text (Edit Mode), shapes, pasted cells and paint
