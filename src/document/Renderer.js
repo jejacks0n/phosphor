@@ -25,8 +25,8 @@ import { buildCellsFromBytes, buildCell, keepsSeed, weightedChar, cellIndex, cel
 import { cellKey, parseKey } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { ditherPixels } from '../lib/Dither.js';
-import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid } from '../lib/CharResolver.js';
-import { loadReferenceFont, referenceInk } from '../lib/GlyphCoverage.js';
+import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid, shapeMatcher, resolveShapes, SAMPLES } from '../lib/CharResolver.js';
+import { loadReferenceFont, referenceInk, referenceMask } from '../lib/GlyphCoverage.js';
 
 export default class Renderer {
   pipelineCanvas = null;
@@ -40,10 +40,12 @@ export default class Renderer {
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
   #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
   #dithered = null;     // { palette, key, raw, data }: #baseData dithered to the palette (raw: the #baseData it's from), while Dither is on
-  #resolved = null;     // { key, palette, raw, cells, carried }: #baseData resolved to cells by Best match (raw: the #baseData they're from)
+  #resolved = null;     // { key, palette, raw, cells, carried }: the base resolved to cells by Best match or By shape (raw: the #baseData or samples they're from)
+  #picture = null;      // By shape's samples of the picture alone (processImage), from the last render
+  #samples = null;      // { picture, layer, key, data }: #picture with the base layer's own pixels over it (#shapeSamples)
   #baseSnapped = null;  // { from, palette, data }: #baseData (from) snapped to the palette, for basePixels under Best match
-  #fontReady = false;   // the reference font has loaded: Best match can measure glyphs
-  #glyphs = null;       // { chars, glyphs }: the set's glyphs with their inks in the reference font
+  #fontReady = false;   // the reference font has loaded: Best match and By shape can measure glyphs
+  #glyphs = null;       // { chars, glyphs }: the set's glyphs with their inks and masks in the reference font
   #snapped = null;      // the whole output's bytes and palette entries, from the composite that just snapped it
   #effective = new Map(); // stored color -> displayed Color, until the next render
   #source = null;       // { key, data }: the image through the pipeline with color adjustments neutral (stored colors)
@@ -56,7 +58,7 @@ export default class Renderer {
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.pipelineCanvas = this.outputCanvas = this.palette = this.#chosen = null;
-    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = null;
+    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = this.#picture = this.#samples = null;
     this.#effective = new Map();
   }
 
@@ -66,8 +68,9 @@ export default class Renderer {
       await loadReferenceFont().catch(() => {}); // or measured in its fallback: still the same everywhere
       this.#fontReady = true;
     }
-    const { canvas: pipeline, paletteColors } = await processImage(image, params);
+    const { canvas: pipeline, paletteColors, samples } = await processImage(image, params);
     this.pipelineCanvas = pipeline.canvas;
+    this.#picture = samples;
     this.palette = this.#chosen ?? paletteColors;
     this.#pipelineData = ctx2d(this.pipelineCanvas).getImageData(0, 0, params.cols, params.rows);
     this.#effective = new Map();
@@ -78,7 +81,7 @@ export default class Renderer {
     const sp = baseParams ?? {};
     const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.blur, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness, snapsLate(sp)].join();
     if (baseParams && (this.#source?.image !== image || this.#source.key !== sourceKey)) {
-      const { canvas: source } = await processImage(image, baseParams);
+      const { canvas: source } = await processImage(image, baseParams, { samples: false });
       this.#source = { image, key: sourceKey, data: ctx2d(source.canvas).getImageData(0, 0, params.cols, params.rows) };
     }
     const scale = this.baseLayer?.scale;
@@ -224,43 +227,73 @@ export default class Renderer {
     return changed || moved || resolvedAgain;
   }
 
-  // Best match: the base (#baseData, before the palette snap) resolved to cells, each the glyph, fg
-  // and bg that come closest to its two halves, with Dither's error carried or nudged by the
-  // resolver (#ditherUnder dithers nothing then). Worked out again whole when the settings, the grid
-  // or the palette change, else only over the area when the base changed there. Floyd–Steinberg's
-  // cells depend on every cell before them: while an edit is open only the area's cells are
-  // resolved again, from the error that arrived there before (raw stays as it was, so the edit's
-  // end sees the change), and with none open the whole grid is. True when every cell may have
-  // changed (a full rebuild).
+  // Best match and By shape: the base (before the palette snap) resolved to cells, each the glyph,
+  // fg and bg that come closest to it, with Dither's error carried or nudged by the resolver
+  // (#ditherUnder dithers nothing then). Best match compares each cell's two halves (#baseData), By
+  // shape its samples (#shapeSamples). Worked out again whole when the settings, the grid or the
+  // palette change, else only over the area when the base changed there. Floyd–Steinberg's cells
+  // depend on every cell before them: while an edit is open only the area's cells are resolved
+  // again, from the error that arrived there before (raw stays as it was, so the edit's end sees the
+  // change), and with none open the whole grid is. True when every cell may have changed (a full rebuild).
   #resolveUnder(params, area, open) {
-    if (params.charMode !== 'best' || !this.#fontReady || !this.#baseData) {
+    const shape = params.charMode === 'shape';
+    const input = resolves(params) && this.#fontReady && this.#baseData && (shape ? this.#shapeSamples(params, area) : this.#baseData);
+    if (!input) {
       this.#resolved = null;
       return false;
     }
-    const { width: w, height: h, data: raw } = this.#baseData;
+    const { width: w, height: h } = this.#baseData, { width: iw, data: raw } = input;
+    const n = shape ? SAMPLES.w : 1, inArea = { x: area.x * n, y: area.y * n, w: area.w * n, h: area.h * n }; // the area in the input
     const key = resolvedKey(params, w, h), r = this.#resolved;
     const whole = r?.palette !== this.palette || r.key !== key;
-    if (!whole && sameRows(r.raw, raw, w, area)) return false;
-    const matcher = bestMatcher({
-      palette: this.palette, glyphs: this.#glyphsOf(params.chars), solids: params.solids / 100, light: params.patternLight / 100,
-    });
+    if (!whole && sameRows(r.raw, raw, iw, inArea)) return false;
+    const glyphs = this.#glyphsOf(params.chars), solids = params.solids / 100, light = params.patternLight / 100;
+    const resolve = shape
+      ? (opts) => resolveShapes(raw, w, charRowsOf(h), shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle }), opts)
+      : (opts) => resolveGrid(raw, w, h, bestMatcher({ palette: this.palette, glyphs, solids, light }), opts);
     const opts = { strength: params.dither / 100, style: params.ditherStyle };
     const carries = carriesError(params);
     if (whole || (carries && !open)) {
-      const { cells, carried } = resolveGrid(raw, w, h, matcher, opts);
+      const { cells, carried } = resolve(opts);
       this.#resolved = { key, palette: this.palette, raw: raw.slice(), cells, carried };
       return true; // cells outside the area may have changed (or weren't resolved before)
     }
-    resolveGrid(raw, w, h, matcher, { ...opts, area, carried: r.carried, cells: r.cells });
-    if (!carries) putRows(r.raw, w, rowsOf(raw, w, area), area);
+    resolve({ ...opts, area, carried: r.carried, cells: r.cells });
+    if (!carries) putRows(r.raw, iw, rowsOf(raw, iw, inArea), inArea);
     return false;
   }
 
+  // By shape's samples (SAMPLES: 4 a grid pixel each way): the picture's (#picture) with the base
+  // layer's own pixels over them, drawn from its canvas at 4 a grid pixel through the color
+  // transforms and no palette (baseSamplesOver), as #baseGrid draws them at grid resolution. Paint
+  // isn't sampled. Kept, and worked out again only over area (grid pixels) while it's of the same
+  // picture, layer and color settings. Null while the picture is another grid's (between a resize
+  // and its render).
+  #shapeSamples(params, area) {
+    const picture = this.#picture, w = this.#baseData.width, h = this.#baseData.height, n = SAMPLES.w;
+    if (picture?.width !== w * n || picture.height !== h * n) return null;
+    const layer = this.baseLayer?.hasPaint ? this.baseLayer : null;
+    if (!layer) {
+      this.#samples = null;
+      return picture;
+    }
+    const key = [layer.scale, ...COLOR_KEYS.map((key) => params[key])].join();
+    let s = this.#samples;
+    if (s?.picture !== picture || s.layer !== layer || s.key !== key) {
+      s = this.#samples = { picture, layer, key, data: new ImageData(picture.data.slice(), picture.width, picture.height) };
+      area = { x: 0, y: 0, w, h };
+    }
+    const inArea = { x: area.x * n, y: area.y * n, w: area.w * n, h: area.h * n };
+    putRows(s.data.data, w * n, rowsOf(picture.data, w * n, inArea), inArea);
+    baseSamplesOver(s.data.data, w * n, layer, params, area, n);
+    return s.data;
+  }
+
   // The set's one-column characters (as the converter's, Cells.glyphsOf), each once, with their ink
-  // in the reference font.
+  // (Best match) and mask (By shape) in the reference font.
   #glyphsOf(chars) {
     if (this.#glyphs?.chars !== chars) {
-      this.#glyphs = { chars, glyphs: [...new Set(glyphsOf(chars))].map((char) => ({ char, ink: referenceInk(char) })) };
+      this.#glyphs = { chars, glyphs: [...new Set(glyphsOf(chars))].map((char) => ({ char, ink: referenceInk(char), mask: referenceMask(char, SAMPLES.w, SAMPLES.h) })) };
     }
     return this.#glyphs.glyphs;
   }
@@ -431,7 +464,7 @@ export default class Renderer {
       }
 
       // Random mode keeps the cell's rendered character
-      const char = keepsSeed(charMode, renderStyle) ? (baseCells[i] ?? next[i]).char : weightedChar(top, bottom, charset, charMode);
+      const char = keepsSeed(charMode) ? (baseCells[i] ?? next[i]).char : weightedChar(top, bottom, charset, charMode);
       next[i] = this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
     }
     return next;
@@ -538,7 +571,7 @@ export default class Renderer {
       return this.palette ? nearestColor(p, this.palette) : p;
     };
     const top = pixelAt(2 * row), bottom = pixelAt(2 * row + 1);
-    const char = keepsSeed(charMode, renderStyle) ? baseCells[cellIndex(col, row, cols)]?.char ?? ' ' : weightedChar(top, bottom, charset || '▄', charMode);
+    const char = keepsSeed(charMode) ? baseCells[cellIndex(col, row, cols)]?.char ?? ' ' : weightedChar(top, bottom, charset || '▄', charMode);
     return this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
   }
 
@@ -652,6 +685,46 @@ function baseGridPart(layer, params, palette, area, stored) {
   }
   if (stored) keepUniform(data, raw, w, h, k);
   return data;
+}
+
+// The base layer's own pixels (k a grid pixel) blended over samples (RGBA bytes, width wide, n a grid
+// pixel each way) in area (grid pixels): each sample the alpha-weighted average of the layer pixels
+// it covers, or the one it falls in when it covers none (k under n), through the color transforms.
+// Worked out from the layer's bytes, not drawn scaled, so an area comes out as the whole would.
+function baseSamplesOver(data, width, layer, params, area, n) {
+  const k = layer.scale;
+  const lx = Math.floor(area.x * k), ly = Math.floor(area.y * k);
+  const lw = Math.max(1, Math.ceil((area.x + area.w) * k) - lx), lh = Math.max(1, Math.ceil((area.y + area.h) * k) - ly);
+  const d = ctx2d(layer.canvas).getImageData(lx, ly, lw, lh).data;
+  if (transformsOn(params)) applyTransforms(d, params);
+  // The layer pixels [from, to) a sample covers, across and down, from the area's corner.
+  const spans = (start, count) => {
+    const from = new Int32Array(count), to = new Int32Array(count);
+    for (let i = 0; i < count; i++) {
+      const s = start * n + i, a = Math.floor(s * k / n);
+      from[i] = a; to[i] = Math.max(a + 1, Math.floor((s + 1) * k / n));
+    }
+    return { from, to };
+  };
+  const xs = spans(area.x, area.w * n), ys = spans(area.y, area.h * n);
+  for (let j = 0; j < area.h * n; j++) {
+    for (let i = 0; i < area.w * n; i++) {
+      let r = 0, g = 0, b = 0, a = 0, count = 0;
+      for (let y = ys.from[j]; y < ys.to[j]; y++) {
+        for (let x = xs.from[i]; x < xs.to[i]; x++) {
+          const o = ((y - ly) * lw + (x - lx)) * 4, al = d[o + 3];
+          r += d[o] * al; g += d[o + 1] * al; b += d[o + 2] * al; a += al;
+          count++;
+        }
+      }
+      if (!a) continue;
+      const alpha = a / count / 255, o = ((area.y * n + j) * width + area.x * n + i) * 4;
+      data[o] = Math.round(Math.round(r / a) * alpha + data[o] * (1 - alpha));
+      data[o + 1] = Math.round(Math.round(g / a) * alpha + data[o + 1] * (1 - alpha));
+      data[o + 2] = Math.round(Math.round(b / a) * alpha + data[o + 2] * (1 - alpha));
+      data[o + 3] = 255;
+    }
+  }
 }
 
 // The color settings a layer is drawn with.

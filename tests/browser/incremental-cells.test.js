@@ -21,7 +21,12 @@ const DITHERS = [{ dither: 0 }, { dither: 0 }, { dither: 0 }, { dither: 100, dit
 const BEST = { charChoice: 'best', chars: '▄░▒▓█' };
 const BEST_CASES = [['cga', { dither: 0 }], ['cga', { dither: 100, ditherStyle: 'floyd' }], ['count', { dither: 70, ditherStyle: 'bayer' }], ['none', { dither: 0 }]]
   .map(([quantize, dithering]) => [quantize, { ...BEST, ...dithering }]);
-const named = (dithering) => `dither ${dithering.dither}${dithering.ditherStyle ? ` ${dithering.ditherStyle}` : ''}${dithering.charChoice ? `, ${dithering.charChoice}` : ''}`;
+// By shape (each cell sampled 4 x 8 from the picture and the base's own pixels), in the default set and in Color ASCII.
+const SHAPE_CASES = [['cga', { dither: 0 }], ['vga', { dither: 80, ditherStyle: 'bayer' }], ['cga', { dither: 100, ditherStyle: 'floyd' }]]
+  .map(([quantize, dithering]) => [quantize, { charChoice: 'shape', ...dithering }])
+  .concat([['cga', { dither: 0, renderStyle: 'colorAscii', charChoiceAscii: 'shape' }]]);
+BEST_CASES.push(...SHAPE_CASES);
+const named = (dithering) => `dither ${dithering.dither}${dithering.ditherStyle ? ` ${dithering.ditherStyle}` : ''}${dithering.charChoice ? `, ${dithering.charChoice}` : ''}${dithering.renderStyle ? `, ${dithering.renderStyle} ${dithering.charChoiceAscii}` : ''}`;
 for (const [quantize, dithering] of [['none', DITHERS[0]], ['vga', DITHERS[1]], ['count', DITHERS[2]], ['cga', DITHERS[3]], ['count', DITHERS[4]], ...BEST_CASES]) {
   test(`brush, typing, wide characters and base edits come out as a full rebuild would (${quantize}, ${named(dithering)})`, async () => {
     const { project } = await createTestApp();
