@@ -3,6 +3,7 @@
 import { wholeTile } from '@/document/PaintLayer.js';
 import { hashCell, hashPixel, pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
+import { isShapeKey } from '@/document/shapes.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
@@ -16,6 +17,7 @@ export const readingActions = {
   readCell(key) {
     const heard = this._sharing?.heardCells;
     if (heard?.has(key)) return heard.get(key);
+    if (isShapeKey(key)) return (this._baseline?.shapes ?? this.shapes).get(key);
     return (this._baseline?.cells ?? this.editCells).get(key);
   },
 
@@ -28,6 +30,7 @@ export const readingActions = {
   editLayerSum() {
     let sum = 0;
     for (const [key, entry] of this.editCells) sum ^= hashCell(key, entry);
+    for (const [key, shape] of this.shapes) sum ^= hashCell(key, shape);
     if (!this.paintLayer?.hasPaint) return sum;
     const { width, height } = this.paintLayer.canvas;
     const { data } = ctx2d(this.paintLayer.canvas).getImageData(0, 0, width, height);
@@ -98,7 +101,7 @@ export const readingActions = {
   // the pinned one) on the base's colors (bg the top half, fg the bottom).
   baseCellAt(col, row) {
     return {
-      char: this.baseRecords.pins.get(cellKey(col, row)) ?? this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ',
+      char: this.renderer.pinAt(col, row) ?? this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ',
       bg: this.baseColorAt(col, 2 * row),
       fg: this.baseColorAt(col, 2 * row + 1),
     };

@@ -1290,5 +1290,8 @@
       "goingBackFailed": "Couldn't go back to your room.",
       "hostReplaced": "This room is open in another tab"
     }
+  },
+  "vector": {
+    "tooMany": "A drawing holds at most {count} shapes."
   }
 }

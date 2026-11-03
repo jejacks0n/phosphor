@@ -229,10 +229,11 @@ export const sharingActions = {
     const stroke = this._stroke;
     if (!stroke) return;
     const tiles = this.paintLayer?.strokeSlice() ?? [];
-    const cells = changedCells(stroke, this.editCells);
-    const baseline = markRaw({ cells: stroke.editCells, tiles: new Map(tiles.map(({ x, y, before }) => [`${x},${y}`, before])) });
-    stroke.wroteCells ||= stroke.editCells !== this.editCells;
+    const own = changedCells(stroke, this.editCells), cells = [...own, ...cellChanges(stroke.shapes, this.shapes)];
+    const baseline = markRaw({ cells: stroke.editCells, shapes: stroke.shapes, tiles: new Map(tiles.map(({ x, y, before }) => [`${x},${y}`, before])) });
+    stroke.wroteCells ||= stroke.editCells !== this.editCells || stroke.shapes !== this.shapes;
     stroke.editCells = this.editCells;
+    stroke.shapes = this.shapes;
     stroke.noted = null;
     const runs = tiles.flatMap(({ x, y, before, after }) => {
       if (!this._sharing) return pixelRuns(before.data, after.data, after.width, after.height, x, y, exactly);
@@ -247,7 +248,7 @@ export const sharingActions = {
       }
       return;
     }
-    for (const [key] of cells) stroke.keys.push(key);
+    for (const [key] of own) stroke.keys.push(key); // the cells it's rebuilt over (commitEdit), not its shapes'
     stroke.sent = true;
 
     const change = { cells, runs }, { pending, screen } = this._sharing ?? {};

@@ -1290,5 +1290,8 @@
       "goingBackFailed": "Impossible de retourner dans votre salle.",
       "hostReplaced": "Cette salle est ouverte dans un autre onglet"
     }
+  },
+  "vector": {
+    "tooMany": "Un dessin contient au plus {count} formes."
   }
 }

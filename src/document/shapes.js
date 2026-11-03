@@ -102,6 +102,9 @@ export function pathData(shape, sx = 1, sy = 1) {
   return d;
 }
 
+// [[key, shape]] in stacking order, bottom first: by z, ties by key.
+export const stacked = (shapes) => [...shapes].sort(([ka, a], [kb, b]) => a.z - b.z || (ka < kb ? -1 : ka > kb ? 1 : 0));
+
 // Grid pixels the shape can draw in: its points' and handles' hull (a cubic stays inside it), with half the
 // stroke around it.
 export function shapeBounds(shape) {
