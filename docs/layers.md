@@ -172,12 +172,31 @@ is one undo step. A paste floats the same way, so you can paste and then drag it
 block follows the pointer as you drag, and dragging it (or a new selection) to the edge of the view
 scrolls the view, faster the further you go.
 
-**Copy and Cut** also put the selection's characters on your system clipboard as plain text, a line
-per row, so you can paste them into a terminal, a chat or a text editor. **Paste** (Cmd/Ctrl+V)
-pastes whatever you copied last: the block you copied in Phosphor, with its colors and layers; or,
-if you've copied text anywhere else since, that text, typed in. Either lands at the Edit Mode
-cursor in Edit Mode, or else at the selection, or the top-left of the view. The **Paste** button always pastes the block you copied in
-Phosphor, whatever's on your system clipboard.
+**Copy and Cut** also put the selection on your system clipboard, so it pastes outside the tab:
+
+- into **another Phosphor tab** (or window) with everything: characters, colors, paint and the base,
+  on the layers you copied. It lands in that document's grid, palette and font, and its color
+  sliders apply to the pasted colors as to anything drawn there.
+- into **Moebius** with its characters and colors. Moebius's Advanced Color fork shows the exact
+  colors; the original Moebius shows the nearest of its 16. A character CP437 doesn't have goes as
+  its closest lookalike (or `?`), as in a .ans export.
+- into a terminal, a chat or a text editor as plain text, a line per row.
+
+**Paste** (Cmd/Ctrl+V) pastes whatever you copied last, wherever you copied it:
+
+- a block copied in Phosphor, with its colors and layers;
+- a block copied in **Moebius**, with its characters and colors. A bright background comes in
+  bright (iCE colors), not blinking. A Moebius file's own palette doesn't travel with a copy, so the
+  colors are the standard ones.
+- text copied anywhere else, typed in. **PabloDraw** gives other apps only its characters, so art
+  copied there comes in as text, in your colors.
+
+A block lands floating and selected, so you can drag it into place, and the paste is one undo step.
+A paste lands at the Edit Mode cursor in Edit Mode, or else at the selection, or the top-left of
+the view. A block bigger than the canvas is cut at its edge. The **Paste** button pastes only
+what you copied in this tab; with nothing copied here it's off, and its tip points you to Cmd/Ctrl+V.
+If your browser doesn't let Phosphor write the clipboard, Cmd/Ctrl+V in the same tab still pastes
+the block you copied.
 
 **Stamp** (**S**, or **C** as in Moebius) leaves a copy of the selection where it is and floats the
 block on from there, so you can drag or nudge it away and stamp again. Each stamp is its own undo
