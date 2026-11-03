@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
+import { hex2rgb, rgb2gray } from '@/lib/ColorUtils';
 import { shortcut } from '@/lib/keyLabels';
 import ColorPopover from '@/components/ColorPopover.vue';
 
@@ -13,9 +14,15 @@ const project = useProjectStore();
 const workspace = useWorkspaceStore();
 
 const ansiView = computed(() => workspace.editorTab === 'output');
-// ASCII saves white on black: there's nothing to choose in the ANSI view.
-const hidden = computed(() => ansiView.value && project.renderStyle === 'ascii');
-const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
+// Monochrome ASCII shows every cell white on black, but paint still picks the characters by its brightness, so
+// in the ANSI view each chip shows the gray its color acts as.
+const asGray = computed(() => ansiView.value && project.renderStyle === 'ascii');
+const shown = (hex) => {
+  const color = getEffectiveColor(hex, project, project.activePalette);
+  if (!asGray.value) return color;
+  const v = Math.round(rgb2gray(hex2rgb(color)) * 255);
+  return `rgb(${v}, ${v}, ${v})`;
+};
 // The foreground only means "none" for typing, in the ANSI view; paint always uses its color.
 const fgNone = computed(() => ansiView.value && workspace.editFgNone);
 
@@ -23,7 +30,7 @@ const toggle = (slot) => { workspace.colorBox = workspace.colorBox === slot ? nu
 </script>
 
 <template>
-  <div v-if="!hidden" class="color-pair">
+  <div class="color-pair">
     <button
         class="chip fg"
         :class="{ none: fgNone }"

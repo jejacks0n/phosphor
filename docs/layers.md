@@ -15,6 +15,9 @@ The base layer is your image. When you load a picture (or start with a blank can
    by brightness, and Color ASCII by intensity (a cell's strongest color), so pure red, green or blue
    gets as heavy a character as white.
 
+In Monochrome ASCII every cell shows white on black, but what you paint still picks the characters by its
+brightness, so on the ANSI tab the foreground and background show as the grays they act as.
+
 The color transforms, adjustments and effects in the sidebar (Brightness, Contrast, Hue Rotation,
 Colorize, Edges, Flatten, Sharpen…) change the picture before it's converted.
 
