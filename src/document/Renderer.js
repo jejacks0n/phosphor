@@ -27,6 +27,7 @@ import { EMPTY_BASE } from './baseRecords.js';
 import { ditherPixels } from '../lib/Dither.js';
 import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid, shapeMatcher, resolveShapes, SAMPLES } from '../lib/CharResolver.js';
 import { loadReferenceFont, referenceInk, referenceMask } from '../lib/GlyphCoverage.js';
+import ShapeMatcher from '../lib/ShapeMatcher.js';
 
 export default class Renderer {
   pipelineCanvas = null;
@@ -251,12 +252,13 @@ export default class Renderer {
     const raw = this.#baseData.data;
     if (!whole && sameRows(r.raw, raw, w, area)) return false;
     const matcher = bestMatcher({ palette: this.palette, glyphs, solids, light });
+    const resolve = (o) => onGpu(carries, raw, w, charRowsOf(h), matcher, o) ?? resolveGrid(raw, w, h, matcher, o);
     if (whole || (carries && !open)) {
-      const { cells, carried } = resolveGrid(raw, w, h, matcher, opts);
+      const { cells, carried } = resolve(opts);
       this.#resolved = { key, palette: this.palette, raw: raw.slice(), cells, carried };
       return true; // cells outside the area may have changed (or weren't resolved before)
     }
-    resolveGrid(raw, w, h, matcher, { ...opts, area, carried: r.carried, cells: r.cells });
+    resolve({ ...opts, area, carried: r.carried, cells: r.cells });
     if (!carries) putRows(r.raw, w, rowsOf(raw, w, area), area);
     return false;
   }
@@ -272,7 +274,8 @@ export default class Renderer {
     }
     const { width: w, height: h } = this.#baseData, r = this.#resolved, { changed } = samples;
     if (!whole && !changed && !(r.stale && carries && !open)) return false;
-    const resolve = (o) => resolveShapes(samples.data.data, w, charRowsOf(h), shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle }), o);
+    const matcher = shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle });
+    const resolve = (o) => onGpu(carries, samples.data.data, w, charRowsOf(h), matcher, o) ?? resolveShapes(samples.data.data, w, charRowsOf(h), matcher, o);
     if (whole || (carries && !open)) {
       this.#resolved = { key, palette: this.palette, cells: resolve(opts).cells, stale: false };
       return true;
@@ -656,6 +659,11 @@ function rowsOf(data, width, { x, y, w, h }) {
 
 // What Best match's cells (Renderer #resolved) are worked out from, besides the picture and the palette.
 const resolvedKey = (params, cols, rows) => JSON.stringify([params.charMode, params.chars, params.solids, params.patternLight, params.dither, params.ditherStyle, params.renderStyle, cols, rows]);
+
+// With no error carried from cell to cell, the cells from the GPU (ShapeMatcher) when it can match
+// them, else null (the JavaScript's). A whole resolve and an area go the same way, so an area's cells
+// are the ones a whole resolve would give, near-ties and all.
+const onGpu = (carries, ...args) => (carries ? null : ShapeMatcher.shared()?.resolve(...args) ?? null);
 
 // Whether two width-wide images' bytes agree over a rect.
 function sameRows(a, b, width, { x, y, w, h }) {
