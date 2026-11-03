@@ -1,8 +1,8 @@
 <script setup>
 // VECTOR's overlay over the art, in CSS px: the selected shapes' outlines, Vector select's box with its 8
 // handles and rotate knob, the points and handles of the shape whose points are being edited (the selected
-// point filled), and the Pen's next segment, dashed, to the pointer. It takes no pointer events, and shows
-// nothing while the animation plays.
+// point filled), and the Pen's points (the first filled: a click there closes) with its next segment, dashed, to
+// the pointer. It takes no pointer events, and shows nothing while the animation plays.
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -46,6 +46,14 @@ const points = computed(() => {
   return { all, arms };
 });
 
+// The Pen's shape: its points, and a dashed segment from the last to the pointer.
+const pen = computed(() => {
+  const shape = workspace.vectorPen && project.shapes.get(workspace.vectorPen);
+  if (!shape) return null;
+  const all = worldPoints(shape).map((p) => px(p)), hover = workspace.vectorHover && px(workspace.vectorHover);
+  return { all, next: hover && { from: all.at(-1), to: hover } };
+});
+
 const r = computed(() => handleRadius() / 2 + 1);
 </script>
 
@@ -65,6 +73,10 @@ const r = computed(() => handleRadius() / 2 + 1);
           <circle :cx="a.to.x" :cy="a.to.y" :r="r * 0.8" class="handle"/>
         </g>
         <rect v-for="p in points.all" :key="p.i" :x="p.at.x - r" :y="p.at.y - r" :width="2 * r" :height="2 * r" class="handle" :class="{ on: workspace.vectorPoint === p.i }"/>
+      </template>
+      <template v-if="pen">
+        <line v-if="pen.next" :x1="pen.next.from.x" :y1="pen.next.from.y" :x2="pen.next.to.x" :y2="pen.next.to.y" class="box"/>
+        <rect v-for="(p, i) in pen.all" :key="i" :x="p.x - r" :y="p.y - r" :width="2 * r" :height="2 * r" class="handle" :class="{ on: i === 0 }"/>
       </template>
     </g>
   </svg>
