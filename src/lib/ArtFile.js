@@ -32,7 +32,7 @@ function decode(bytes, name) {
   let text = null;
   try {
     text = new TextDecoder('utf-8', { fatal: !utf8 }).decode(bytes);
-    if (!utf8 && !/[\u0080-\u{10ffff}]/u.test(text)) text = null;
+    if (!utf8 && !bytes.some((byte) => byte >= 0x80)) text = null; // valid UTF-8 with a high byte has a multi-byte sequence (a BOM is one)
   } catch { /* not UTF-8 */ }
   if (text !== null) return { items: graphemes(text), cp437: false };
   return { items: Array.from(bytes, (byte) => (CONTROLS.has(byte) ? String.fromCharCode(byte) : CP437[byte])), cp437: true };
@@ -46,17 +46,19 @@ export function readArtFile(bytes, name) {
   const lines = new Map(); // row -> sparse array of cells
   let widest = 0; // the widest line reached, used when there's no fixed width
   let maxRow = -1; // the last line a character or erase reached
-  let wrote = false, deep = false;
+  let wrote = false, deep = false, over = false;
   let col = 0, row = 0, pending = false, saved = [0, 0];
   let bold = false, blink = false, inverse = false, fg = { i: 7 }, bg = { i: 0 };
   let pen = null; // fg and bg as a cell gets them; cleared when the colors change
 
   const colsNow = () => fixed || widest;
+  const tooBig = () => colsNow() > MAX_COLS || maxRow + 1 > MAX_LINES || colsNow() * (maxRow + 1) > MAX_CELLS;
+  const failTooBig = () => fail(`This file is ${colsNow()} × ${maxRow + 1}. Phosphor opens at most ${MAX_COLS} columns, ${MAX_LINES.toLocaleString('en-US')} lines and ${MAX_CELLS.toLocaleString('en-US')} cells.`);
+  // A file with no width stops at the first limit it passes. One with a width is read to the end for its true size, but stops keeping cells.
   const checkSize = () => {
-    const cols = colsNow(), rows = maxRow + 1;
-    if (cols > MAX_COLS || rows > MAX_LINES || cols * rows > MAX_CELLS) {
-      fail(`This file is ${cols} × ${rows}. Phosphor opens at most ${MAX_COLS} columns, ${MAX_LINES.toLocaleString('en-US')} lines and ${MAX_CELLS.toLocaleString('en-US')} cells.`);
-    }
+    if (!tooBig()) return;
+    if (!fixed) failTooBig();
+    over = true;
   };
 
   const colors = () => {
@@ -68,6 +70,7 @@ export function readArtFile(bytes, name) {
   };
 
   const setCell = (c, char, trail = false) => {
+    if (over) return;
     const { fg: f, bg: b, deep: d } = colors();
     let line = lines.get(row);
     if (!line) lines.set(row, line = []);
@@ -143,7 +146,7 @@ export function readArtFile(bytes, name) {
       case 's': saved = [col, row]; break;
       case 'u': [col, row] = saved; pending = false; break;
       case 'J':
-        if (params[0] === 2) { lines.clear(); maxRow = -1; widest = 0; wrote = deep = false; col = row = 0; pending = false; }
+        if (params[0] === 2) { lines.clear(); maxRow = -1; widest = 0; wrote = deep = over = false; col = row = 0; pending = false; }
         break;
       case 'K': erase(); break;
       case 'm': sgr(params.length ? params : [0]); break;
@@ -177,7 +180,7 @@ export function readArtFile(bytes, name) {
 
   const cols = colsNow(), rows = maxRow + 1;
   if (!wrote || !cols) fail("There's no art in this file.");
-  checkSize();
+  if (tooBig()) failTooBig();
 
   const cells = new Array(cols * rows);
   for (let r = 0; r < rows; r++) {
