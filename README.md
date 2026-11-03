@@ -12,7 +12,7 @@ Load a picture and Phosphor converts it to a grid of character cells. Brightness
 
 Or open a `.ans`, `.utf8ans`, `.asc` or `.txt` file. Its art goes on the base layer just as the file shows it, and its SAUCE record fills the SAUCE tab. See the [layer guide](docs/layers.md) for what opens and the limits.
 
-Colors can stay full 24-bit, snap to the CGA or VGA palettes, be picked from the picture (a color count you choose), or come from a list you type, with dithering (Floyd–Steinberg or ordered) to smooth gradients between a palette's colors. Characters come from a set you pick or type yourself; the ANSI style picks them at random from a seed, and the two ASCII styles (color and monochrome) pick them by brightness.
+Colors can stay full 24-bit, snap to the CGA or VGA palettes, be picked from the picture (a color count you choose), or come from a list you type, with dithering (Floyd–Steinberg or ordered) to smooth gradients between a palette's colors. Characters come from a set you pick or type yourself; the ANSI style picks them at random from a seed, or the ones that best match the picture or its shapes, and the two ASCII styles (color and monochrome) pick them by brightness or by shape.
 
 Then you draw. There are two layers: the base layer is the converted picture, and the edit layer is everything you add on top with the pencil, brush, paint bucket, shapes and eraser, or by typing. Merge down puts your drawing into the base; merge up lifts the base into editable cells. Select lets you cut, copy, paste and drag blocks around, and pastes plain text from other apps.
 

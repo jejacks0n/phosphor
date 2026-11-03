@@ -134,6 +134,14 @@
       "placeholder": "Characters…",
       "setsAria": "Character presets"
     },
+    "charChoice": {
+      "label": "Choose characters",
+      "random": "Random",
+      "best": "Best match",
+      "shape": "By shape",
+      "intensity": "By intensity",
+      "brightness": "By brightness"
+    },
     "seed": {
       "label": "Character seed",
       "placeholder": "Seed",
@@ -171,7 +179,7 @@
       "help": "ANSI colors each character and its background. Color ASCII draws colored characters on black, using denser glyphs for stronger colors. Monochrome ASCII uses one color, mapping brightness from light to dense."
     },
     "chars": {
-      "help": "Characters the converter chooses from—randomly for ANSI, or from dark to bright for ASCII. Repeat a character to weight it higher."
+      "help": "Characters the converter chooses from—randomly for ANSI, or from dark to bright for ASCII. Repeat a character to weight it higher. Best match and By shape ignore repeats."
     },
     "seed": {
       "help": "Controls random character placement in ANSI mode. Same seed, same pattern—roll the dice to shuffle."
@@ -187,7 +195,7 @@
     },
     "dither": {
       "label": "Dither",
-      "help": "Mixes the palette's colors in a fine pattern where the picture falls between them, so gradients come out smooth instead of in bands. Paint keeps its own color."
+      "help": "Mixes the palette's colors in a fine pattern where the picture falls between them, so gradients come out smooth instead of in bands. Paint keeps its own color. With Best match or By shape, the characters carry it from cell to cell."
     },
     "smoothing": {
       "help": "Controls how the image is sampled onto the grid. High blends smoothly; Low preserves sharp edges and grain."
@@ -263,21 +271,22 @@
       "help": "Controls how bold the traced outlines appear."
     },
     "charChoice": {
-      "help": "How each cell gets its character."
+      "help": "Random picks from your set by the seed. Best match picks the character and its two palette colors that come closest to the picture. By shape compares each character's shape with the picture's detail in the cell."
     },
     "solids": {
       "label": "Solids",
-      "help": "How much of the picture the solid blocks may take."
+      "help": "How strongly a plain solid cell is preferred over a shade or a half-block."
     },
     "patternLight": {
       "label": "Pattern light",
-      "help": "How light the patterns of dots and lines may be."
+      "help": "How a character's ink mixes its two colors: 0% is a plain average, 100% mixes them as light does on a screen, so shades read lighter."
     }
   },
   "charsets": {
     "default": "Default",
     "defaultBlocks": "Default +   ▂▃▅",
     "shades": "Shades",
+    "blocksShades": "Blocks & shades",
     "risingBlocks": "Rising blocks",
     "halfBlocks": "Half-blocks",
     "pixel": "Pixel",

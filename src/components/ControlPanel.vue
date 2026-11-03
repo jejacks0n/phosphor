@@ -25,6 +25,7 @@ const sliderGroups = computed(() => [
 ].map(group => ({ ...group, sliders: SETTINGS.filter(s => s.group === group.id && s.min !== undefined) })));
 
 const help = (key) => getSetting(key).help;
+const ansi = computed(() => store.renderStyle === 'ansi');
 
 // A slider group folds and unfolds on its title, and stays as it was left in this browser. Folded, it says how many of
 // its sliders are on (off their defaults), so a forgotten Threshold doesn't change the picture unseen.
@@ -86,6 +87,19 @@ const charsetName = computed(() => {
       </div>
 
       <div class="field">
+        <div class="label-group"><label :for="ansi ? 'charChoice' : 'charChoiceAscii'">{{ t('panel.charChoice.label') }}</label><HelpInfo :text="help('charChoice')" /></div>
+        <select v-if="ansi" id="charChoice" v-model="store.charChoice">
+          <option value="random">{{ t('panel.charChoice.random') }}</option>
+          <option value="best">{{ t('panel.charChoice.best') }}</option>
+          <option value="shape">{{ t('panel.charChoice.shape') }}</option>
+        </select>
+        <select v-else id="charChoiceAscii" v-model="store.charChoiceAscii">
+          <option value="weight">{{ store.renderStyle === 'ascii' ? t('panel.charChoice.brightness') : t('panel.charChoice.intensity') }}</option>
+          <option value="shape">{{ t('panel.charChoice.shape') }}</option>
+        </select>
+      </div>
+
+      <div class="field">
         <div class="label-row">
           <div class="label-group"><label for="chars">{{ t('panel.chars.label') }}</label><HelpInfo :text="help('chars')" /></div>
           <span class="value">{{ charsetName }}</span>
@@ -94,13 +108,16 @@ const charsetName = computed(() => {
         <CharsetField v-else id="chars" v-model="store.charsAscii" :presets="ASCII_CHARSETS"/>
       </div>
 
-      <div v-if="store.renderStyle === 'ansi' && store.chars.length > 1" class="field">
+      <div v-if="ansi && store.charChoice === 'random' && store.chars.length > 1" class="field">
         <div class="label-group"><label for="seed">{{ t('panel.seed.label') }}</label><HelpInfo :text="help('seed')" /></div>
         <div class="row-inputs">
           <input type="text" id="seed" v-model.lazy="store.seed" :placeholder="t('panel.seed.placeholder')">
           <button @click="store.randomizeSeed" :title="t('panel.seed.randomize')">🎲</button>
         </div>
       </div>
+
+      <RangeField v-if="ansi && store.charChoice !== 'random'" :setting="getSetting('solids')" v-model="store.solids"/>
+      <RangeField v-if="ansi ? store.charChoice !== 'random' : store.charChoiceAscii === 'shape'" :setting="getSetting('patternLight')" v-model="store.patternLight"/>
 
       <FontField/>
 

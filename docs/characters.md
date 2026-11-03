@@ -47,6 +47,58 @@ holds, just as a terminal draws it.
 The converter only uses one-column characters: anything two columns wide in your **Characters**
 set is skipped, so the cells it fills never overlap.
 
+## How the converter picks characters
+
+**Choose characters**, above the Characters field in Setup, sets how the converter picks each cell's
+character from your set. Each Art style offers its own ways:
+
+| Art style | Ways |
+| --- | --- |
+| ANSI | Random, Best match, By shape |
+| Color ASCII | By intensity, By shape |
+| Monochrome ASCII | By brightness, By shape |
+
+- **Random** (ANSI): a character from your set at random, by the **Character seed**. The seed shows only
+  with Random, and only when the set has more than one character.
+- **By intensity** (Color ASCII) and **By brightness** (Monochrome ASCII): the brighter or stronger the
+  cell, the further along your set its character, darkest first. This is how these styles have always
+  chosen.
+- **Best match** (ANSI): for each cell, the character and its foreground and background colors that
+  come closest to the picture, with both colors taken from the palette. Each character counts by how
+  much ink it has in its top half and its bottom half, so `▄` shows one color above and another below,
+  and `░ ▒ ▓` show one flat mix of the two colors. Repeating a character in your set makes no
+  difference. With **Blocks & shades** (`▄░▒▓█`) and the CGA or VGA palette it draws gradients
+  with shades of the palette's colors. Without a palette it mostly gives `▄` or solid cells,
+  since it has no colors to mix.
+- **By shape** (every style): each cell is compared at a finer detail than the grid, 4 × 8 samples, with
+  the shape of each character in your set, and the closest wins. In ANSI it picks the character and
+  both colors; in Color ASCII the character and its ink color, on black; in Monochrome ASCII the
+  character alone, white on black. Smoothing doesn't change these samples: they're always averaged.
+
+Two sliders tune Best match and By shape:
+
+- **Solids** (ANSI): how strongly a plain solid cell (one color, whatever the character) is preferred
+  over a shade or a half-block. At 0% every cell is whatever matches best; higher gives more flat
+  cells. It isn't offered in the ASCII styles, where the background is always black.
+- **Pattern light** (Best match and By shape, every style): how a character's ink mixes its two colors.
+  At 0% the mix is a plain average; at 100% it's mixed as light mixes on a screen, so a shade reads
+  lighter than the average.
+
+**Dither** (under the palette) still applies. With Random, By intensity and By brightness it dithers the
+picture's pixels, as described in [Layers](layers.md). With Best match or By shape,
+Floyd–Steinberg carries each cell's error on to the cells after it (it can lag on very large
+documents, and while you edit the base layer, the cells under the edit settle when you let go), and
+Ordered (Bayer) nudges each cell by its place in the grid.
+
+Paint and typed cells aren't touched by any of this: paint colors a cell's halves through its
+character (or makes a `▄` over a solid cell), and a pinned character stays pinned. With the CGA or
+VGA palette, Bake bakes exactly, without asking how to keep the colors, when Dither is on or the
+characters come from Best match or By shape.
+
+**The characters are measured in IBM VGA**, whichever font you view the art in, so the same document
+picks the same characters on every screen, in every room and in every export. Changing the font
+changes how the cells look, not which characters they hold.
+
 ## The font
 
 **Font**, in the side panel's Setup, sets the font the art is drawn in, in both views, and its size.
