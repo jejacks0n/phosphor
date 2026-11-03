@@ -26,12 +26,15 @@ export function ditherPixels(data, w, h, palette, { style = 'floyd', strength = 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const o = (y * w + x) * 4;
-      let r = work[o], g = work[o + 1], b = work[o + 2];
+      // Kept within 0..255, and the error worked out from that: a color past what the palette's
+      // colors can mix (a yellow with less blue than its yellow) would otherwise pass on more error
+      // at every pixel until it tipped one into a far color.
+      let r = byte(work[o]), g = byte(work[o + 1]), b = byte(work[o + 2]);
       if (!floyd) {
         const nudge = (BAYER[(y & 3) * 4 + (x & 3)] / 16 - 15 / 32) * spread * strength;
-        r += nudge; g += nudge; b += nudge;
+        r = byte(r + nudge); g = byte(g + nudge); b = byte(b + nudge);
       }
-      const p = palette[paletteIndex(byte(r), byte(g), byte(b), palette)];
+      const p = palette[paletteIndex(r, g, b, palette)];
       out[o] = p.r; out[o + 1] = p.g; out[o + 2] = p.b; out[o + 3] = data[o + 3] || 255;
       if (floyd && strength) {
         const er = (r - p.r) * strength, eg = (g - p.g) * strength, eb = (b - p.b) * strength;

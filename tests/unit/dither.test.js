@@ -58,6 +58,21 @@ describe('ditherPixels', () => {
     expect(outB.slice(16 * 4)).toEqual(outA.slice(16 * 4));
   });
 
+  it('keeps Floyd–Steinberg\'s error within bounds: a color the palette can\'t reach doesn\'t spill into what comes after it', () => {
+    // Pure yellow has less blue than CGA's yellow (85), so every pixel of it passes on "less blue";
+    // without a bound that piles up row after row and turns the palette's own light gray under it into
+    // brown, green and yellow specks.
+    const w = 64, h = 32, data = new Uint8ClampedArray(w * h * 4);
+    for (let i = 0; i < w * h; i++) data.set(i < 16 * w ? [255, 255, 0, 255] : [170, 170, 170, 255], i * 4);
+    const out = ditherPixels(data, w, h, PALETTES.cga, { style: 'floyd' });
+    const off = [];
+    for (let y = 20; y < h; y++) for (let x = 0; x < w; x++) {
+      const o = (y * w + x) * 4;
+      if (`${out[o]},${out[o + 1]},${out[o + 2]}` !== '170,170,170') off.push(`${x},${y}`);
+    }
+    expect(off).toEqual([]);
+  });
+
   it('spreads the error with Floyd–Steinberg: an even gray comes out as a fine mix, not a band', () => {
     const out = ditherPixels(gray(8, 1, 128), 8, 1, BW, { style: 'floyd' });
     expect(Array.from({ length: 8 }, (_, i) => out[i * 4])).toEqual([255, 0, 255, 0, 255, 0, 255, 0]);
