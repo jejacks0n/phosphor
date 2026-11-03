@@ -5,7 +5,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
-import { rectShape, ellipseShape, translation, transformed, rotation, setSmooth, worldPoints } from '@/document/shapes';
+import { rectShape, ellipseShape, translation, transformed, rotation, setSmooth, withShape, worldPoints } from '@/document/shapes';
 import vselect from '@/tools/vselect.js';
 
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
@@ -152,6 +152,38 @@ test('deleteShapes and restackShapes are one step each; Forward swaps only with 
   project.undo();
   expect(at(project, 8, 4).bg.hex).toBe('#0000ff');
   expect(key(project.cells)).toEqual(key(fullRebuild(project)));
+});
+
+// Forward moves a shape above the nearest one it overlaps, and every other pair keeps its order: here a shape
+// it doesn't overlap sits between them, and overlaps the one it's moved above.
+test('Forward and Back change no order but the moved shape\'s', async () => {
+  const { project } = await gradient();
+  const k = project.addShape(rectShape(2, 2, 8, 8, RED));
+  const a = project.addShape(rectShape(12, 2, 20, 8, { fill: '#00ff00' }));
+  const o = project.addShape(rectShape(6, 4, 16, 6, { fill: '#0000ff' }));
+  const order = () => [...project.shapes].sort(([, x], [, y]) => x.z - y.z).map(([key]) => key);
+  expect(at(project, 14, 2).bg.hex).toBe('#0000ff'); // O over A
+  project.restackShapes([k], 'forward');
+  expect(order()).toEqual([a, o, k]);
+  expect(at(project, 14, 2).bg.hex).toBe('#0000ff');
+  expect(at(project, 7, 2).bg.hex).toBe('#ff0000');
+  project.restackShapes([k], 'back');
+  expect(order()).toEqual([a, k, o]);
+  expect(new Set(order().map((key) => project.shapes.get(key).z)).size).toBe(3); // no two at one height
+  expect(key(project.cells)).toEqual(key(fullRebuild(project)));
+});
+
+// What the document holds is what a file or a room would take back, so nothing drawn is lost on a reload.
+test('a shape squashed flat or past the limits isn\'t taken: an update leaves it as it was', async () => {
+  const { project } = await gradient();
+  const key = project.addShape(rectShape(2, 2, 10, 10, RED));
+  const kept = project.shapes.get(key);
+  project.updateShapes([[key, withShape(kept, { m: [0, 0, 0, 1, 0, 0] })]]);
+  expect(project.shapes.get(key)).toBe(kept);
+  project.updateShapes([[key, withShape(kept, { m: [1, 0, 0, 1, 0, 1e8] })]]);
+  expect(project.shapes.get(key)).toBe(kept);
+  expect(project.addShape(rectShape(0, 0, 30000, 4, RED))).toBe(null);
+  expect(project.shapes.size).toBe(1);
 });
 
 test('Merge up lifts what a shape shows into edit cells', async () => {

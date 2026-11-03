@@ -3,7 +3,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   makeShape, sameShape, isShape, isShapeKey, newShapeKey, pathData, shapeBounds, dirtyRect, worldPoints,
-  multiply, invert, apply, rotation, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
+  multiply, invert, apply, rotation, scaling, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
   moveHandle, setSmooth, deletePoint, shapeFromStranger, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
 } from '../../src/document/shapes.js';
 import { changeBytes } from '../../src/document/changes.js';
@@ -130,7 +130,7 @@ test('shapeFromStranger refuses what a shape can\'t be', () => {
   bad({ extra: 1 });
   bad({ points: Array.from({ length: MOST_POINTS + 1 }, (_, i) => [i, 0, 0, 0, 0, 0, 0]) });
   bad({ points: [[20001, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0]] });
-  bad({ points: [[0, 0, 0, 0, 0, 0, 0]] });
+  bad({ points: [] });
   bad({ points: ['nope', [0, 0, 0, 0, 0, 0, 0]] });
   bad({ m: [0, 0, 0, 0, 0, 0] });
   bad({ width: 65 });
@@ -138,6 +138,22 @@ test('shapeFromStranger refuses what a shape can\'t be', () => {
   bad({ closed: 'yes' });
   bad({ z: 1.5 });
   assert.equal(shapeFromStranger(null), null);
+});
+
+// The Pen's shape has one point after its first click, and goes out to a room as it is.
+test('shapeFromStranger takes a shape of one point, as the Pen starts one', () => {
+  const pen = makeShape({ points: [[3, 4, 0, 0, 0, 0, 0]], closed: false, stroke: '#ffffff' });
+  assert.ok(sameShape(shapeFromStranger(JSON.parse(JSON.stringify(pen))), pen));
+});
+
+// Turned half round about its middle at the foot of a document 10,000 grid pixels tall, a shape's transform
+// moves it 18,000 down; scaled about the same point, further.
+test('shapeFromStranger takes the transforms the tools make anywhere on the largest grid', () => {
+  const low = rectShape(100, 8990, 120, 9010, { fill: '#ff0000' });
+  const turned = transformed(low, rotation(Math.PI, 110, 9000));
+  assert.ok(sameShape(shapeFromStranger(JSON.parse(JSON.stringify(turned))), turned));
+  const grown = transformed(low, scaling(3, 3, 110, 9000));
+  assert.ok(sameShape(shapeFromStranger(JSON.parse(JSON.stringify(grown))), grown));
 });
 
 test('deserializeShapes refuses more than MOST_SHAPES and bad keys', () => {

@@ -103,7 +103,7 @@ With shapes selected (Vector select):
 
 - **Fill** and **Stroke** open a color box: the palette, the recent colors, a color of your own, or
   **None**. **Width** is the outline's width in pixels (0.5 to 64).
-- **Forward** and **Back** move the shapes one step up or down the stacking order.
+- **Forward** and **Back** move the shapes just above the nearest shape they overlap, or just beneath it; every other shape keeps its place.
 - **Edit points** edits the first shape's points. **Delete** deletes the shapes.
 
 Each change is one undo step; a Width drag is one step when you let go. With the Shape tool (or with

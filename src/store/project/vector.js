@@ -6,10 +6,12 @@
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { IDENTITY, MOST_POINTS, MOST_SHAPES, makeShape, newShapeKey, shapeBounds, stacked, styleColors, withShape } from '@/document/shapes.js';
+import { IDENTITY, MOST_POINTS, MOST_SHAPES, makeShape, newShapeKey, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
 import { withoutPins } from '@/document/baseRecords.js';
 import { bytesHeld } from '@/store/project/shared.js';
 
+// What the document holds is what a file, a project or a room takes back: one check for both.
+const keeps = (shape) => !!shapeFromStranger(shape);
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
 export const vectorActions = {
@@ -42,7 +44,7 @@ export const vectorActions = {
     this.refreshCells(pixels);
   },
 
-  // A new shape on top of the rest; its key, or null at the most a document holds.
+  // A new shape on top of the rest; its key, or null at the most a document holds, or for one a file wouldn't keep.
   addShape(shape) {
     this.ensureLayer();
     if (!this.paintLayer) return null;
@@ -51,18 +53,20 @@ export const vectorActions = {
       return null;
     }
     const key = newShapeKey(), own = ownsEdit(this);
-    const z = Math.max(0, ...[...this.shapes.values()].map((s) => s.z + 1));
-    this.setShapes(new Map(this.shapes).set(key, withShape(shape, { z })));
+    const z = Math.max(0, ...[...this.shapes.values()].map((s) => s.z + 1)), added = withShape(shape, { z });
+    if (!keeps(added)) return null;
+    this.setShapes(new Map(this.shapes).set(key, added));
     if (own) this.commitEdit();
     return key;
   },
 
-  // [[key, Shape | null]]: each shape there replaced, or deleted with null. A key that's gone stays gone.
+  // [[key, Shape | null]]: each shape there replaced, or deleted with null. A key that's gone stays gone, and a
+  // shape a file wouldn't keep (squashed flat, past the limits) stays as it was: a drag stops there.
   updateShapes(changes) {
     const own = ownsEdit(this);
     let next = this.shapes;
     for (const [key, shape] of changes) {
-      if (!this.shapes.has(key) || this.shapes.get(key) === shape) continue;
+      if (!this.shapes.has(key) || this.shapes.get(key) === shape || (shape && !keeps(shape))) continue;
       if (next === this.shapes) next = new Map(this.shapes);
       if (shape) next.set(key, shape);
       else next.delete(key);
@@ -167,27 +171,24 @@ export const vectorActions = {
     this.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(before.base, after.base));
   },
 
-  // Each shape swaps places in the stacking order with the nearest shape it overlaps above it (forward) or
-  // beneath it (back); one with none there stays.
+  // Each shape moves in the stacking order to just above the nearest shape it overlaps above it (forward), or
+  // just beneath the nearest beneath it (back); one with none there stays. Every other pair keeps its order:
+  // the shapes are numbered again from the bottom, and those whose number changed are the step.
   restackShapes(keys, direction) {
     const order = stacked(this.shapes).map(([key]) => key);
-    const moving = new Set(keys), z = new Map([...this.shapes].map(([key, shape]) => [key, shape.z]));
-    const up = direction === 'forward', sequence = up ? [...order].reverse() : order;
+    const moving = new Set(keys), up = direction === 'forward', sequence = up ? [...order].reverse() : [...order];
     for (const key of sequence) {
       if (!moving.has(key)) continue;
       const at = order.indexOf(key), bounds = shapeBounds(this.shapes.get(key));
       for (let i = at + (up ? 1 : -1); i >= 0 && i < order.length; i += up ? 1 : -1) {
         const other = order[i];
         if (moving.has(other) || !meets(bounds, shapeBounds(this.shapes.get(other)))) continue;
-        const [za, zb] = [z.get(key), z.get(other)];
-        z.set(key, za === zb ? zb + (up ? 1 : -1) : zb);
-        z.set(other, za);
         order.splice(at, 1);
         order.splice(i, 0, key);
         break;
       }
     }
-    this.updateShapes([...z].filter(([key, value]) => value !== this.shapes.get(key).z).map(([key, value]) => [key, withShape(this.shapes.get(key), { z: value })]));
+    this.updateShapes(order.flatMap((key, z) => (this.shapes.get(key).z === z ? [] : [[key, withShape(this.shapes.get(key), { z })]])));
   },
 };
 

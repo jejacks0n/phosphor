@@ -21,7 +21,8 @@ export const MOST_POINTS = 500;  // a shape's: the biggest still fits in one roo
 const MOST_COORD = 20000;
 const MOST_WIDTH = 64;
 const MOST_Z = 1e6;
-const MOST_M = 1e4;
+const MOST_M = 1e4;       // a transform's stretch
+const MOST_SHIFT = 1e7;   // and its move: turned or grown about a point far down the grid, a shape moves further than any point is
 const KEY = /^v:[A-Za-z0-9_-]{1,32}$/;
 const HEX = /^#[0-9a-f]{6}$/i;
 const FIELDS = ['z', 'closed', 'points', 'fill', 'stroke', 'width', 'm'];
@@ -289,8 +290,8 @@ export function shapeFromStranger(value) {
   if (!Number.isInteger(z) || Math.abs(z) > MOST_Z || typeof closed !== 'boolean') return null;
   if (!(fill === null || (typeof fill === 'string' && HEX.test(fill))) || !(stroke === null || (typeof stroke === 'string' && HEX.test(stroke)))) return null;
   if (!finite(width, MOST_WIDTH) || width < 0) return null;
-  if (!Array.isArray(m) || m.length !== 6 || !m.every((v) => finite(v, MOST_M)) || Math.abs(m[0] * m[3] - m[1] * m[2]) < 1e-6) return null;
-  if (!Array.isArray(points) || points.length < 2 || points.length > MOST_POINTS) return null;
+  if (!Array.isArray(m) || m.length !== 6 || !m.every((v, i) => finite(v, i < 4 ? MOST_M : MOST_SHIFT)) || Math.abs(m[0] * m[3] - m[1] * m[2]) < 1e-6) return null;
+  if (!Array.isArray(points) || !points.length || points.length > MOST_POINTS) return null;
   for (const p of points) {
     if (!Array.isArray(p) || p.length !== 7 || !p.slice(0, 6).every((v) => finite(v, MOST_COORD)) || (p[6] !== 0 && p[6] !== 1)) return null;
   }
