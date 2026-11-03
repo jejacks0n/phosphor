@@ -42,6 +42,7 @@ export const historyActions = {
   // End of a user edit: what's left of its paint and cells goes in the ledger (alone, that's all of it), and
   // one undo entry undoes them with its base pixel tiles and pin changes, and it counts as unsaved.
   commitEdit() {
+    if (this._stroke?.pen) return this.finishPen(); // the Pen's shape, left an open curve
     const stroke = this._stroke;
     this.sendSlice();
     this._stroke = null;
@@ -167,10 +168,11 @@ export const historyActions = {
   },
 
   // Take back the open edit without recording it (a stroke a pinch interrupted): its paint, base
-  // pixels, edit cells and pins go back as they were. A typing run isn't interrupted by a pinch: it stays.
+  // pixels, edit cells and pins go back as they were. A typing run or the Pen's shape isn't interrupted by a
+  // pinch: it stays (the Pen takes back the point the press made).
   cancelEdit() {
     const stroke = this._stroke;
-    if (!stroke || stroke.typing) return;
+    if (!stroke || stroke.typing || stroke.pen) return;
     if (stroke.sent) { // some of it has gone out: it comes back the way any stroke does
       this.commitEdit();
       this.undo();

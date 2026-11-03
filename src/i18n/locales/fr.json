@@ -382,6 +382,9 @@
     "vselect": {
       "title": "Sélection vectorielle"
     },
+    "pen": {
+      "title": "Plume"
+    },
     "vshape": {
       "title": "Forme",
       "polygon": "Polygone",
@@ -831,6 +834,9 @@
     },
     "rows": {
       "vselect": "Sélection vectorielle : choisir, déplacer, redimensionner et faire pivoter les formes",
+      "pen": "Plume : cliquez pour un angle, faites glisser pour une courbe ; cliquez sur le premier point pour fermer",
+      "penEnd": "Laisser la forme de la plume en courbe ouverte",
+      "penBack": "Retirer le dernier point de la plume",
       "vshape": "Forme : tracez un rectangle, une ellipse ou un polygone (avec Maj : carré)",
       "vectorNudge": "Décaler les formes sélectionnées (avec Maj : 10 pixels)",
       "vectorDelete": "Supprimer les formes sélectionnées",

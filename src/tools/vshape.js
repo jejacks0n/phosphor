@@ -3,15 +3,9 @@
 // or a regular polygon. It gets the next shape's style (workspace.vectorStyle) and is selected when it's
 // made; a click without a drag makes nothing.
 import { t } from '@/i18n/index.js';
-import { ellipseShape, polygonShape, rectShape, withShape } from '@/document/shapes.js';
+import { ellipseShape, polygonShape, rectShape, styleColors, withShape } from '@/document/shapes.js';
 
 let drag = null; // { from, key }
-
-// A style's colors as a shape takes them: 'fg' is the foreground color now (none: no color).
-export function styleColors({ vectorStyle: style, editFgColor, editFgNone }) {
-  const color = (c) => (c === 'fg' ? (editFgNone ? null : editFgColor) : c);
-  return { fill: color(style.fill), stroke: color(style.stroke), width: style.width };
-}
 
 function shapeFor(workspace, from, to, square) {
   let dx = to.x - from.x, dy = to.y - from.y;

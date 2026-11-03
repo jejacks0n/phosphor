@@ -204,6 +204,12 @@ const shapeDragStyle = computed(() => {
   };
 });
 
+// VECTOR: where the pointer is, in grid pixels, while the Pen draws (the overlay's dashed next segment).
+watch(() => props.view === 'vector' && workspaceStore.vectorPen && isMouseOver.value && mousePos.value, (pos) => {
+  const unit = props.unit;
+  workspaceStore.vectorHover = pos && unit ? { x: pos.x / unit.x, y: pos.y / unit.y } : null;
+});
+
 // A tool's own pointer over the content (the Select tool's border vs inside), when it has one.
 const toolCursor = computed(() => {
   const pos = mousePos.value, unit = props.unit;

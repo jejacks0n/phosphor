@@ -1,10 +1,12 @@
 // The vector layer: shapes (document/shapes.js) drawn, changed, restacked and deleted, each change part of the
 // edit that's open, or one of its own. this.shapes is copy-on-write, like editCells; the history, the ledger and
 // rooms take a shape as a cell under its 'v:' key (sendSlice, applyChange, readCell). refreshShapes shows a
-// change: only the cells the shapes covered before and after it are drawn again.
+// change: only the cells the shapes covered before and after it are drawn again. The Pen's shape is one edit,
+// marked _stroke.pen, from its first point until finishPen: any commit finishes it (commitEdit).
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
-import { MOST_SHAPES, newShapeKey, shapeBounds, stacked, withShape } from '@/document/shapes.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
+import { IDENTITY, MOST_POINTS, MOST_SHAPES, makeShape, newShapeKey, shapeBounds, stacked, styleColors, withShape } from '@/document/shapes.js';
 
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
@@ -70,6 +72,54 @@ export const vectorActions = {
 
   deleteShapes(keys) {
     this.updateShapes(keys.map((key) => [key, null]));
+  },
+
+  // The Pen: a point on the shape it's drawing, or a shape begun with it, in workspace.vectorStyle's colors (one
+  // with neither gets the foreground as its fill). out: a smooth point's out handle, its in handle opposite.
+  // The shape's key, or null.
+  penPoint(x, y, out = null) {
+    const point = out ? [x, y, -out.x, -out.y, out.x, out.y, 1] : [x, y, 0, 0, 0, 0, 0];
+    const key = this._stroke?.pen, shape = key && this.shapes.get(key);
+    if (shape) {
+      if (shape.points.length < MOST_POINTS) this.updateShapes([[key, withShape(shape, { points: [...shape.points, point] })]]);
+      return key;
+    }
+    this.beginEdit();
+    if (!this._stroke) return null;
+    const workspace = useWorkspaceStore(), style = styleColors(workspace);
+    if (!style.fill && !style.stroke) style.fill = workspace.editFgColor;
+    const added = this.addShape(makeShape({ points: [point], closed: false, m: IDENTITY, ...style }));
+    if (!added) return null;
+    this._stroke.pen = added;
+    workspace.vectorPen = added;
+    return added;
+  },
+
+  // Backspace while the Pen draws: its last point goes, and with it the last, the shape.
+  penBack() {
+    const key = this._stroke?.pen, shape = key && this.shapes.get(key);
+    if (!shape) return;
+    if (shape.points.length > 1) this.updateShapes([[key, withShape(shape, { points: shape.points.slice(0, -1) })]]);
+    else this.finishPen();
+  },
+
+  // The Pen's shape as it's left: closed, or an open curve, which strokes (its stroke, or the foreground color)
+  // and doesn't fill. One under two points goes, with no undo step unless some of it went out to a room.
+  finishPen({ closed = false } = {}) {
+    const stroke = this._stroke, key = stroke?.pen;
+    if (!key) return;
+    stroke.pen = null;
+    const workspace = useWorkspaceStore(), shape = this.shapes.get(key);
+    workspace.vectorPen = null;
+    if (!shape || shape.points.length < 2) {
+      if (!stroke.sent) return this.cancelEdit();
+      if (shape) this.deleteShapes([key]);
+    } else if (closed) this.updateShapes([[key, withShape(shape, { closed: true })]]);
+    else {
+      const fg = workspace.editFgNone ? null : workspace.editFgColor;
+      this.updateShapes([[key, withShape(shape, { fill: null, stroke: shape.stroke ?? fg ?? shape.fill })]]);
+    }
+    this.commitEdit();
   },
 
   // Each shape swaps places in the stacking order with the nearest shape it overlaps above it (forward) or

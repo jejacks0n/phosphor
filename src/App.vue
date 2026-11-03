@@ -63,6 +63,12 @@ watch(() => workspace.editorTab, (tab) => {
   if (tool === 'select' || tool === 'wand') workspace[tab === 'input' ? 'inputActiveTool' : 'outputActiveTool'] = tool;
 });
 
+// The Pen's shape ends, an open curve, when you choose another tool or tab (one held, like the Hand on Space,
+// leaves it going).
+watch(() => [workspace.activeTool, workspace.editorTab], () => {
+  if (project._stroke?.pen && !workspace.heldTool) project.finishPen();
+});
+
 // VECTOR's selection follows the shapes: one undone, deleted, or gone with a frame or a room's change drops out.
 watch(() => project.shapes, (shapes) => {
   const kept = workspace.vectorSelected.filter((key) => shapes.has(key));

@@ -174,6 +174,40 @@ test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', asy
   expect(key).toMatch(/^v:/);
 });
 
+test('the Pen draws a closed shape with a curve, and Enter or a tool change leaves an open one', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const bare = await cells(page);
+  await page.keyboard.press('p');
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('pen');
+  const click = async (x, y) => page.mouse.click(...Object.values(await gridPoint(page, x, y)));
+  await click(10, 10);
+  await click(30, 10);
+  await dragPoints(page, await gridPoint(page, 30, 30), await gridPoint(page, 36, 30)); // a smooth point
+  await click(10.2, 10.2); // the first point: closed
+  const [closed] = await shapeList(page);
+  expect(closed).toMatchObject({ closed: true, stroke: null });
+  expect(closed.points).toHaveLength(3);
+  expect(closed.points[2][6]).toBe(1);
+  expect(closed.points[2][4]).toBeCloseTo(6, 0);
+  await expect.poll(() => cells(page)).not.toEqual(bare);
+  expect(await store(page, 'workspace', (w) => w.vectorPen)).toBe(null);
+
+  await click(5, 40);
+  await click(25, 45);
+  await page.keyboard.press('Enter');
+  await click(5, 50);
+  await click(25, 55);
+  await page.keyboard.press('v');
+  const shapes = await shapeList(page);
+  expect(shapes).toHaveLength(3);
+  expect(shapes.filter((s) => !s.closed)).toHaveLength(2);
+  for (const open of shapes.filter((s) => !s.closed)) expect(open.fill).toBe(null);
+  await undoSteps(page, 3);
+  await expect.poll(() => cells(page)).toEqual(bare);
+});
+
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

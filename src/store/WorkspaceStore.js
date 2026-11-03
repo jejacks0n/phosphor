@@ -128,8 +128,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorSelected: [],      // the keys of the shapes Vector select has selected (follows project.shapes: one gone drops out)
     vectorPoints: null,      // the key of the shape whose points are being edited (a double-click), or null
     vectorPoint: null,       // the point selected there: its index, or null
-    vectorPen: null,         // the Pen's shape while it's being drawn: { key, closing? }, or null
+    vectorPen: null,         // the key of the Pen's shape while it's being drawn, or null
     vectorStyle: { fill: 'fg', stroke: null, width: 1 }, // what a new shape gets: a color, 'fg' (the foreground's then) or null
+    vectorHover: null,       // where the pointer is over VECTOR's art, in grid pixels, for the Pen's next segment
     vectorShapeKind: 'rect', // the Shape tool: 'rect' | 'ellipse' | 'polygon'
     vectorSides: 5,          // a polygon's sides, 3 to 12
   }),

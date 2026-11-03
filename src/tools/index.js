@@ -28,9 +28,10 @@ import wand from './wand';
 import shapes from './shapes';
 import vselect from './vselect';
 import vshape from './vshape';
+import pen from './pen';
 import { t } from '@/i18n/index.js';
 
-export const TOOLS = [vselect, vshape, pencil, brush, eraser, bucket, shapes, picker, wand, select, hand, zoom, text, flip];
+export const TOOLS = [vselect, pen, vshape, pencil, brush, eraser, bucket, shapes, picker, wand, select, hand, zoom, text, flip];
 
 const BY_ID = new Map(TOOLS.map(tool => [tool.id, tool]));
 const NONE = { id: 'none', kind: 'none', views: [] };

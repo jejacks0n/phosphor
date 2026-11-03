@@ -174,6 +174,16 @@ function makeActions(project, workspace, r, opts) {
       const key = pick([...project.shapes.keys()]);
       if (key) project.restackShapes([key], pick(['forward', 'back']));
     },
+    pen: () => { // a point at a time, some smooth, then closed, left open, ended by a commit, or taken back to none
+      const x = int(project.cols - 10), y = int(project.rows - 10), n = 1 + int(5);
+      for (let k = 0; k < n; k++) project.penPoint(x + r() * 10, y + r() * 10, r() < 0.4 ? { x: r() * 4 - 2, y: r() * 4 - 2 } : null);
+      if (r() < 0.2) project.penBack();
+      const end = int(4);
+      if (end === 0) project.finishPen({ closed: true });
+      else if (end === 1) project.finishPen({ closed: false });
+      else if (end === 2) project.commitPending();
+      else while (project._stroke?.pen) project.penBack();
+    },
     reset: () => (r() < 0.5 ? project.resetSliders() : project.resetGroup(pick(['transform', 'adjust', 'effects']))),
   };
   if (opts.async) {
@@ -301,7 +311,7 @@ for (const quantize of ['none', 'count']) {
 
 test('fuzz: shapes among typing, paint, selections and merges', async () => {
   const failures = [];
-  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'deleteShape', 'restackShape', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
+  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'deleteShape', 'restackShape', 'pen', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
   for (const seed of seeds([1, 2, 3, 6])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
