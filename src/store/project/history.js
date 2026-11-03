@@ -52,11 +52,11 @@ export const historyActions = {
     const patch = this.paintLayer?.endStroke();
     const basePatch = this.baseLayer?.endStroke();
     this.hasPaint = this.paintLayer?.hasPaint ?? false; // an erase may have left none
-    // The Number palette, held still through the stroke, is picked again, and Best match's
-    // Floyd–Steinberg carries the stroke's change to the base on: when that changed anything else,
-    // every cell was rebuilt; when not, only the stroke's cells (shown in its own colors) need catching up.
-    if (stroke && (this.quantize === 'count' || carriesError(this.processParams)) && !this.composite()) {
-      const pixels = changedPixels(this.cols, this.rows, [[patch, this.paintLayer], [basePatch, this.baseLayer]], [[stroke.baseRecords.pins, this.baseRecords.pins]], stroke.keys);
+    // The Number palette, held still through the stroke, is picked again, and Floyd–Steinberg (Best match's,
+    // or the dither's) carries the stroke's change to the base on: when that changed anything else, every
+    // cell was rebuilt; when not, only the stroke's cells (shown in its own colors) need catching up.
+    if (stroke && (this.quantize === 'count' || carriesError(this.processParams) || this.renderer.holdsDither(this.processParams)) && !this.composite()) {
+      const pixels = changedPixels(this.cols, this.rows, [[patch, this.paintLayer], [basePatch, this.baseLayer]], [[stroke.baseRecords.pins, this.baseRecords.pins]], stroke.keys, stroke.shapeRect);
       if (pixels) this.recompose(pixels);
       else this.rebuildCells();
     }
@@ -296,10 +296,10 @@ export const historyActions = {
   },
 };
 
-// The grid pixels under patches' tiles ([patch, layer]: tiles in the layer's pixels) and in the
-// cells whose value differs between each pair of maps ('col,row' keys) or named in keys, or null past
-// a quarter of the grid.
-function changedPixels(cols, rows, patches, mapPairs, keys = []) {
+// The grid pixels under patches' tiles ([patch, layer]: tiles in the layer's pixels), in the cells whose
+// value differs between each pair of maps ('col,row' keys) or named in keys, and in rect (grid pixels: the
+// shapes' area), or null past a quarter of the grid.
+function changedPixels(cols, rows, patches, mapPairs, keys = [], rect = null) {
   const limit = cols * rows / 4, seen = new Set(), pixels = [];
   const add = (x, y) => {
     const i = y * cols + x;
@@ -329,5 +329,9 @@ function changedPixels(cols, rows, patches, mapPairs, keys = []) {
     if (pixels.length > limit) return null;
   }
   for (const key of keys) addCell(key);
+  if (rect) {
+    if (pixels.length + rect.w * rect.h > limit) return null;
+    for (let y = rect.y; y < rect.y + rect.h; y++) for (let x = rect.x; x < rect.x + rect.w; x++) add(x, y);
+  }
   return pixels.length > limit ? null : pixels;
 }

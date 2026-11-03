@@ -230,7 +230,7 @@ export default class Renderer {
 
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params, partial ? area : null) : null;
     const changed = !hold && params.quantize === 'count' && !this.#chosen && this.#recount(params);
-    const moved = this.#ditherUnder(ctx, params, area, !!paintLayer);
+    const moved = this.#ditherUnder(ctx, params, area, !!paintLayer, open);
     const resolvedAgain = this.#resolveUnder(params, area, open, paintLayer);
     this.#heldPaint = hold ? paintLayer : null;
     if (!hold) this.#heldData = null;
@@ -241,6 +241,12 @@ export default class Renderer {
     if (partial) this.#snapped = null; // only the area's
     if (this.#showsResolved(params)) this.#showResolved(ctx, params, resolvedAgain ? { x: 0, y: 0, w, h } : area);
     return changed || moved || resolvedAgain;
+  }
+
+  // Whether Floyd–Steinberg's dither holds still through an open edit (#ditherUnder): the edit's end
+  // composites whole.
+  holdsDither(params) {
+    return params.dither > 0 && params.ditherStyle !== 'bayer' && !!this.palette?.length && !resolves(params);
   }
 
   // Under Best match and By shape, a grid pixel of the picture with any paint over it (#baseData and
@@ -501,9 +507,10 @@ export default class Renderer {
   // around it. True when Floyd–Steinberg's pattern was worked out again: it depends on everything
   // before a pixel, so a change to the picture (a base pixel erased or moved) can move it anywhere after,
   // and every cell needs its colors again (Bayer's pattern is by place: only the area's change).
-  // ponytail: a Floyd–Steinberg stroke on the base layer rebuilds every cell each move; hold the
-  // pattern through the stroke (as the Number palette holds) if that's slow on large grids.
-  #ditherUnder(ctx, params, area, painted) {
+  // While an edit is open (a stroke on the base, a shape dragged) Floyd–Steinberg's pattern holds still: a
+  // change dithers its area alone, with no error coming in from outside it, and raw stays as it was, so the
+  // edit's end works the grid out whole (commitEdit, holdsDither).
+  #ditherUnder(ctx, params, area, painted, open) {
     if (!(params.dither > 0) || !this.palette?.length || resolves(params)) { // a resolver carries the error itself
       this.#dithered = null;
       return false;
@@ -511,7 +518,16 @@ export default class Renderer {
     const { width: w, height: h, data: raw } = this.#baseData;
     const key = [params.ditherStyle, params.dither, w, h].join();
     const d = this.#dithered;
-    const again = d?.palette !== this.palette || d.key !== key || !sameRows(d.raw, raw, w, area);
+    const fits = d?.palette === this.palette && d.key === key, floyd = params.ditherStyle !== 'bayer';
+    if (open && floyd && fits && (d.held || !sameRows(d.raw, raw, w, area))) {
+      const rows = rowsOf(raw, w, area);
+      putRows(d.data.data, w, ditherPixels(rows, area.w, area.h, this.palette, { style: params.ditherStyle, strength: params.dither / 100 }), area);
+      d.held = true;
+      ctx.putImageData(d.data, 0, 0, area.x, area.y, area.w, area.h);
+      if (painted) ctx.drawImage(this.#scratch, area.x, area.y, area.w, area.h, area.x, area.y, area.w, area.h);
+      return false;
+    }
+    const again = !fits || d.held || !sameRows(d.raw, raw, w, area);
     if (again) {
       const data = ditherPixels(raw, w, h, this.palette, { style: params.ditherStyle, strength: params.dither / 100 });
       this.#dithered = { palette: this.palette, key, raw: raw.slice(), data: new ImageData(data, w, h) };

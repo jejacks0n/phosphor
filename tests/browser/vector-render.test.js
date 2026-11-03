@@ -194,3 +194,28 @@ test('a grid change keeps shapes in grid pixels, even when the base layer drops 
   expect(key(project.cells)).toEqual(key(fullRebuild(project)));
 });
 
+// A drag under Floyd–Steinberg or the Number palette: what's outside the shapes' area holds still while it
+// goes, and its end is a full render's.
+for (const [quantize, settings] of [['cga', { dither: 100, ditherStyle: 'floyd' }], ['count', { dither: 0 }], ['count', { dither: 100, ditherStyle: 'floyd' }]]) {
+  test(`under ${quantize} ${JSON.stringify(settings)} a drag changes only its area, and its end is a full render's`, async () => {
+    const { project } = await gradient(40, 40);
+    Object.assign(project, { quantize, ...settings });
+    await settle(project);
+    const shape = project.addShape(rectShape(4, 4, 10, 10, RED));
+    await settle(project);
+    const before = key(project.cells);
+    project.beginEdit();
+    const start = project.shapes.get(shape);
+    for (let k = 1; k <= 5; k++) {
+      project.updateShapes([[shape, transformed(start, translation(1.5 * k, k))]]);
+      // the area the shape covered on any move: cols 3 to 19, lines 1 to 8 (grid y 3 to 17)
+      const outside = key(project.cells).filter((c, i) => c !== before[i] && !(i % 40 >= 3 && i % 40 <= 19 && Math.floor(i / 40) >= 1 && Math.floor(i / 40) <= 8));
+      expect(outside).toEqual([]);
+    }
+    project.commitEdit();
+    await settle(project);
+    expect(key(project.cells)).toEqual(key(fullRebuild(project)));
+    const partial = { output: outputKey(project), cells: key(project.cells) };
+    expect(await fromScratch(project)).toEqual(partial);
+  });
+}
