@@ -78,13 +78,17 @@ test('a paste floats too: moving it brings back what it first landed on', async 
   const block = project.copySelection(START, LAYERS);
   const under = cellsKey(project);
   let rect = project.pasteSelection(block, 15, 10); // the grid's 15 character rows: 0-14
+  project.render(); await settle(project);
+  const pasted = cellsKey(project);
   rect = project.floatSelection(rect, LAYERS, 5, 0);
   project.render(); await settle(project);
   const after = cellsKey(project);
   for (const col of [15, 16, 17]) expect(after[10 * 30 + col]).toBe(under[10 * 30 + col]); // where it first landed
   expect(rect).toEqual({ c0: 20, r0: 10, c1: 22, r1: 12 });
   project.undo(); await settle(project);
-  expect(cellsKey(project)).toEqual(under); // the paste and its moves: one step
+  expect(cellsKey(project)).toEqual(pasted); // its moves: one step, back to where it was pasted
+  project.undo(); await settle(project);
+  expect(cellsKey(project)).toEqual(under); // and the paste another
 });
 
 test('deselecting leaves it where it is: selecting the same cells again starts a new move', async () => {
