@@ -22,6 +22,21 @@ test('with nothing open no tab is selected; whatever opens lands on ANSI, and Ne
   await expect.poll(() => new URL(page.url()).hash).toBe('#/');
 });
 
+test('a tab chosen from SOCIAL with nothing open keeps focus in the tab list, though it dims', async ({ page }) => {
+  await page.goto('/');
+  await tab(page, 'SOCIAL').click();
+  await expect(tab(page, 'PIXEL')).toBeEnabled(); // the way back to the start screen
+  await tab(page, 'SOCIAL').focus();
+  await page.keyboard.press('ArrowRight'); // wraps to PIXEL: the start screen, where PIXEL is dimmed
+  await expect(page.getByRole('button', { name: 'Or start with a blank canvas' })).toBeVisible();
+  await expect(tab(page, 'PIXEL')).toBeDisabled();
+  await expect(tab(page, 'SOCIAL')).toBeFocused(); // the tab list's one stop, not the page
+
+  await tab(page, 'SOCIAL').click();
+  await tab(page, 'ANSI').click();
+  await expect(tab(page, 'SOCIAL')).toBeFocused();
+});
+
 test('the editor tabs are a tablist: Tab reaches the selected one, arrows move and select', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('tablist', { name: 'Workspace views' })).toBeVisible();
