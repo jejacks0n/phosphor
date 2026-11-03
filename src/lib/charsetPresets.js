@@ -23,7 +23,8 @@ export const ANSI_CHARSETS = [
   preset('risingBlocks', '▁▂▃▄▅▆▇█'),
   preset('halfBlocks', '▀▄█'),
   preset('pixel', '▄'), // every cell two pixels: the top half the background, the bottom the foreground
-  preset('quadrants', '▖▗▘▝▚▞▙▛▜▟'),
+  preset('quadrants', '▖▗▘▝▚▞▙▛▜▟▄'),
+  preset('highres', '▖▗▘▝▚▞▙▛▜▟▐▌▁▂▃▄▅▆▇█'),
 ];
 
 export const ASCII_CHARSETS = [

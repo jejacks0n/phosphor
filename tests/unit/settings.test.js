@@ -101,6 +101,7 @@ test('a setting\'s text from a host is as long as a person could have, and no lo
   const everyCp437Weighted = [...CP437].map((char) => char.repeat(40)).join('');
   assert.ok(settingsFromStranger({ chars: everyCp437Weighted, charsAscii: everyCp437Weighted }));
   for (const { chars } of [...ANSI_CHARSETS, ...ASCII_CHARSETS]) assert.ok(settingsFromStranger({ chars, charsAscii: chars }));
+  for (const { id, name } of [...ANSI_CHARSETS, ...ASCII_CHARSETS]) assert.ok(name !== `charsets.${id}` && name.length <= 15, id); // named, and the name fits beside Characters
   for (const list of Object.values(PALETTES)) assert.ok(settingsFromStranger({ palette: list.map(({ hex }) => hex).join(' ') }));
   assert.ok(settingsFromStranger({ seed: generateSlug(2) }));
 });
