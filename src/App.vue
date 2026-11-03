@@ -63,6 +63,13 @@ watch(() => workspace.editorTab, (tab) => {
   if (tool === 'select' || tool === 'wand') workspace[tab === 'input' ? 'inputActiveTool' : 'outputActiveTool'] = tool;
 });
 
+// VECTOR's selection follows the shapes: one undone, deleted, or gone with a frame or a room's change drops out.
+watch(() => project.shapes, (shapes) => {
+  const kept = workspace.vectorSelected.filter((key) => shapes.has(key));
+  if (kept.length !== workspace.vectorSelected.length) workspace.vectorSelected = kept;
+  if (workspace.vectorPoints && !shapes.has(workspace.vectorPoints)) workspace.vectorPoints = workspace.vectorPoint = null;
+});
+
 // When the grid changes (in either view), the Text cursor stays on the grid and the selection (and
 // the Picker's last pick), which may no longer fit, are dropped. A new document drops them too
 // (ProjectStore.newDocument).

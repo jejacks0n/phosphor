@@ -14,6 +14,7 @@ import WandOverlay from '@/components/WandOverlay.vue';
 import { clampAnsiZoom } from '@/lib/zoom';
 import { fitColumns } from '@/lib/DrawnWidth';
 import EditorViewport from '@/components/EditorViewport.vue';
+import VectorOverlay from '@/components/VectorOverlay.vue';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 
 // The ANSI view: cells drawn on a canvas (CellCanvas), or rendered as text in a <pre> (the DOM
@@ -21,6 +22,8 @@ import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
 // character cell tall. The canvas covers only the cells in view, plus a margin (viewWindow), inside
 // a sizer the whole grid's size: the sizer is the display everything measures against. It zooms out
 // (workspace.ansiZoom): the canvas draws its glyphs at the zoom, the <pre> its font.
+// On VECTOR (view 'vector') it's the same view, with the shapes' overlay in place of the text cursor and wand.
+const props = defineProps({ view: { type: String, default: 'output' } });
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
@@ -352,14 +355,15 @@ onBeforeUnmount(() => {
       :coords-at="coordsAt"
       :zoom="zoom"
       scroll-key="ansi"
-      view="output"
+      :view="props.view"
       :unit="unit"
   >
     <pre v-if="useDom" ref="pre" class="display" :style="{ pointerEvents: 'none' }"></pre>
     <div v-else ref="sizer" class="display" :style="sizerStyle"><canvas ref="canvas"></canvas></div>
     <div class="interaction-overlay"></div>
     <template #overlay>
-      <div ref="cursor" class="text-cursor" :style="cursorStyle"></div>
+      <VectorOverlay v-if="props.view === 'vector'" :unit="unit" :display="displayRef"/>
+      <div ref="cursor" class="text-cursor" :style="cursorStyle" v-show="props.view === 'output'"></div>
       <textarea
           ref="textInput"
           class="text-input"
@@ -370,8 +374,8 @@ onBeforeUnmount(() => {
           spellcheck="false"
           :aria-label="t('tools.text.canvasInputAria')"
       ></textarea>
-      <WandOverlay v-if="wand" :wand="wand" :unit="cellUnit" :display="displayRef" :tint="workspaceStore.activeTool === 'wand'"/>
-      <template v-if="selectionBox">
+      <WandOverlay v-if="wand && props.view === 'output'" :wand="wand" :unit="cellUnit" :display="displayRef" :tint="workspaceStore.activeTool === 'wand'"/>
+      <template v-if="selectionBox && props.view === 'output'">
         <div class="marquee" :style="selectionBox.marquee"></div>
       </template>
     </template>

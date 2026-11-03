@@ -98,7 +98,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
   // L plays and pauses, comma and period step: with Animate on, in the art views, never while typing.
   const _animationKeysApply = (e) => projectStore.animate && projectStore.image && !e.ctrlKey && !e.metaKey && !e.altKey
-    && ['input', 'output'].includes(workspaceStore.editorTab) && !isField(e.target) && !_typing()
+    && workspaceStore.editMode && !isField(e.target) && !_typing()
     && !workspaceStore.isPainting && !workspaceStore.paletteLayerOpen && !workspaceStore.colorBox;
 
   // The shortcuts list: ?, or Alt+? while typing in Edit Mode (where ? types). Not in a field.
@@ -266,6 +266,17 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     else if (text) _typeText(at, text);
   };
 
+  // The active tool's own keys (Vector select's nudges, say), before the rest: not in a field, mid-drag, or
+  // with the palette layer or the color box open.
+  const _handleActiveToolKeys = (e) => {
+    if (e.defaultPrevented || isField(e.target) || !workspaceStore.editMode || workspaceStore.isPainting) return false;
+    if (workspaceStore.paletteLayerOpen || workspaceStore.colorBox || !projectStore.image) return false;
+    const tool = getTool(workspaceStore.activeTool);
+    if (!tool.keydown?.({ project: projectStore, workspace: workspaceStore, view: workspaceStore.editorTab }, e)) return false;
+    e.preventDefault();
+    return true;
+  };
+
   const _handleGlobalKeyDown = (e) => {
     if (e.key === 'Control') {
       workspaceStore.isCtrlPressed = true;
@@ -291,6 +302,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;
     if (_handleHelp(e)) return;
+    if (_handleActiveToolKeys(e)) return;
     if (_handleColorKeys(e)) return;
     if (_handleToolSwap(e)) return;
     if (_handleSwapColors(e)) return;

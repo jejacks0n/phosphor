@@ -6,6 +6,8 @@ How Phosphor works, for people drawing with it.
   (everything you draw): merging up and down, erasing, and what the Select tool acts on.
 - [Characters](characters.md) — what a cell can hold, one- and two-column characters (Chinese,
   Japanese, Korean, emoji), typing any script, pasting text, and saving as .utf8ans or .ans.
+- [Vector shapes](vector.md) — the VECTOR tab: shapes and curves that stay editable over the art and
+  convert with it, selecting, moving, scaling and rotating them.
 - [Animation](animation.md) — frames, the bar under the canvas, what carries from one frame to the next,
   the ghost, timing, and exporting as animated .ans, .cast and .gif.
 - [Social](social.md) — the SOCIAL tab: the lobby, accounts and guests, hosting a room and watching
@@ -18,9 +20,9 @@ stays on your last choice (Dark to begin with).
 
 The address: the address bar says which tab you're on and, on SOCIAL, which page, so Back and Forward
 move between them and a reload comes back to the same place. With nothing open you're on the start
-screen, not a tab: PIXEL, ANSI and SAUCE wait for something to show, none is selected, and the address
+screen, not a tab: PIXEL, ANSI, VECTOR and SAUCE wait for something to show, none is selected, and the address
 is plain (`/`). Whatever you open (an image, a project, an ANSI or text file, or a blank canvas) opens on
-ANSI. From SOCIAL, any of the three takes you back to the start screen. A narrow window has no SOCIAL
+ANSI. From SOCIAL, any of the four takes you back to the start screen. A narrow window has no SOCIAL
 tab, so its address shows PIXEL instead (or `/`, with nothing open).
 What the address does in a room is under [Social](social.md).
 

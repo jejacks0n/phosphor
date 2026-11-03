@@ -105,6 +105,17 @@ export function pathData(shape, sx = 1, sy = 1) {
 // [[key, shape]] in stacking order, bottom first: by z, ties by key.
 export const stacked = (shapes) => [...shapes].sort(([ka, a], [kb, b]) => a.z - b.z || (ka < kb ? -1 : ka > kb ? 1 : 0));
 
+// The hull of a shape's points and handles in its own (local) grid pixels: { x0, y0, x1, y1 }.
+export function localBounds({ points }) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [x, y, ix, iy, ox, oy] of points) {
+    for (const [px, py] of [[x, y], [x + ix, y + iy], [x + ox, y + oy]]) {
+      x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px); y1 = Math.max(y1, py);
+    }
+  }
+  return { x0, y0, x1, y1 };
+}
+
 // Grid pixels the shape can draw in: its points' and handles' hull (a cubic stays inside it), with half the
 // stroke around it.
 export function shapeBounds(shape) {

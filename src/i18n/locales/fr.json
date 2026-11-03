@@ -93,6 +93,7 @@
     "pixel": "PIXEL",
     "ansi": "ANSI",
     "ascii": "ASCII",
+    "vector": "VECTOR",
     "sauce": "SAUCE",
     "social": "SOCIAL",
     "beta": "Bêta",
@@ -377,6 +378,9 @@
       "pick": "Prélever",
       "pickFgTitle": "Prélever le premier plan de la cellule",
       "pickBgTitle": "Prélever l'arrière-plan de la cellule"
+    },
+    "vselect": {
+      "title": "Sélection vectorielle"
     },
     "hand": {
       "title": "Main (panoramique)"
@@ -809,6 +813,7 @@
     "holdSpace": "maintenir Espace",
     "macFnNote": "Sur les claviers Mac, maintenez Fn pour utiliser F1–F12.",
     "groups": {
+      "vector": "VECTOR",
       "general": "Général",
       "tools": "Outils",
       "drawing": "Dessin",
@@ -819,6 +824,10 @@
       "tabs": "Onglets de l'éditeur"
     },
     "rows": {
+      "vselect": "Sélection vectorielle : choisir, déplacer, redimensionner et faire pivoter les formes",
+      "vectorNudge": "Décaler les formes sélectionnées (avec Maj : 10 pixels)",
+      "vectorDelete": "Supprimer les formes sélectionnées",
+      "vectorEsc": "Arrêter de modifier les points, puis désélectionner",
       "thisList": "Cette liste ({key} en Mode Édition)",
       "undo": "Annuler",
       "redo": "Rétablir",

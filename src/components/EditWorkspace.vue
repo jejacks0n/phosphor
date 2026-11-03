@@ -116,7 +116,7 @@ async function chooseArt(choice) {
       <DropZone @file-dropped="handleFileSelected">
         <div class="edit-viewport viewport" :class="{ editing: workspace.editMode }" v-if="project.image">
           <InputEditor v-if="workspace.editorTab === 'input'"/>
-          <AnsiEditor v-if="workspace.editorTab === 'output'"/>
+          <AnsiEditor v-if="workspace.editorTab === 'output' || workspace.editorTab === 'vector'" :view="workspace.editorTab"/>
           <SauceEditor v-if="workspace.editorTab === 'sauce'"/>
         </div>
 
@@ -130,7 +130,7 @@ async function chooseArt(choice) {
           @choose="chooseArt"
           @cancel="workspace.artDrop = null"
       />
-      <AnimationBar v-if="project.image && project.animate && ['input', 'output'].includes(workspace.editorTab)"/>
+      <AnimationBar v-if="project.image && project.animate && workspace.editMode"/>
     </template>
   </section>
 </template>
