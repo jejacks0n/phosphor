@@ -134,6 +134,23 @@ test('K erases to the end of the line in the current background and counts as re
   assert.equal(at(loose, 4, 1).bg, '#aa0000');
 });
 
+test('ESC[1K erases from the start of the line through the cursor, ESC[2K the whole line', () => {
+  assert.equal(text(read('abcdef\x1b[3D\x1b[1KZ')).slice(0, 6), '   Zef');
+  assert.equal(text(read('abcdef\x1b[3D\x1b[2KZ')).slice(0, 6), '   Z  ');
+  assert.equal(text(read('abcdef\x1b[3D\x1b[0KZ')).slice(0, 6), 'abcZ  '); // 0 is cursor to end, as no number is
+  assert.equal(at(read('\x1b[44mabc\x1b[1K'), 0).bg, '#0000aa');
+});
+
+test('a huge SAUCE width with thousands of ESC[K is read fast and still reports the real size', () => {
+  const sauce = new Uint8Array(128);
+  sauce.set(cp('SAUCE00'), 0);
+  sauce[94] = 1; sauce[95] = 1; sauce[96] = 0xff; sauce[97] = 0xff; // width 65535
+  const bytes = Uint8Array.from([...cp('A' + '\x1b[K'.repeat(20000)), 26, ...sauce]);
+  const started = performance.now();
+  assert.throws(() => readArtFile(bytes, 'a.ans'), /65535 × 1\. Phosphor opens at most/);
+  assert.ok(performance.now() - started < 500);
+});
+
 test('K under inverse erases with the swapped colors', () => {
   const art = read('\x1b[7;44mA\x1b[K');
   assert.deepEqual(at(art, 0), { char: 'A', fg: '#0000aa', bg: '#aaaaaa' });
