@@ -120,6 +120,33 @@ test('the Shape tool draws a rectangle, an ellipse and a 5-sided polygon that co
   expect(await shapeList(page)).toHaveLength(0);
 });
 
+test('on VECTOR the color pair is Fill and Stroke: it shows the selected shape\'s, or the next shape\'s, and the options row has no colors and stays the height ANSI\'s is', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'ANSI').click();
+  await page.keyboard.press('m');
+  const height = async () => (await page.locator('.edit-toolbar').boundingBox()).height;
+  const ansi = await height();
+  await tab(page, 'VECTOR').click();
+  const pair = page.locator('.color-pair');
+  await expect(pair.getByRole('button', { name: 'Fill', exact: true })).toBeVisible();
+  await expect(pair.getByRole('button', { name: 'Stroke', exact: true })).toBeVisible();
+  await expect(page.locator('.vector-options').getByRole('button', { name: 'Fill', exact: true })).toHaveCount(0);
+  expect(await height()).toBe(ansi);
+  const fg = await store(page, 'workspace', (w) => w.editFgColor);
+  await expect(pair.getByRole('button', { name: 'Fill', exact: true })).toHaveAttribute('title', new RegExp(`^Fill: ${fg} \\(`));
+  await expect(pair.getByRole('button', { name: 'Stroke', exact: true })).toHaveAttribute('title', /^Stroke: none \(/);
+  const key = await addRect(page, 10, 10, 20, 20);
+  await page.mouse.click(...Object.values(await gridPoint(page, 11, 11)));
+  expect(await selected(page)).toEqual([key]);
+  await expect(pair.getByRole('button', { name: 'Fill', exact: true })).toHaveAttribute('title', /^Fill: #ff0000 \(/);
+  expect(await height()).toBe(ansi);
+  await page.keyboard.press('ControlOrMeta+Shift+x'); // swaps the shape's Fill and Stroke
+  expect((await shapeList(page))[0]).toMatchObject({ fill: null, stroke: '#ff0000' });
+  await page.keyboard.press('ControlOrMeta+z');
+  expect((await shapeList(page))[0]).toMatchObject({ fill: '#ff0000', stroke: null });
+  expect(await store(page, 'workspace', (w) => w.editFgColor)).toBe(fg); // ANSI's colors are left alone
+});
+
 test('Fill, Stroke and Width change the selected shape; Forward and Back restack it; Delete removes it', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
@@ -129,9 +156,9 @@ test('Fill, Stroke and Width change the selected shape; Forward and Back restack
   await page.mouse.click(...Object.values(await gridPoint(page, 11, 11)));
   expect(await selected(page)).toEqual([below]);
 
-  await page.getByRole('button', { name: 'Fill', exact: true }).click();
+  await page.locator('.color-pair').getByRole('button', { name: 'Fill', exact: true }).click();
   await page.locator('.color-popover .swatch.none').click();
-  await page.getByRole('button', { name: 'Stroke', exact: true }).click();
+  await page.locator('.color-pair').getByRole('button', { name: 'Stroke', exact: true }).click();
   await page.locator('.color-popover .swatch.small').first().click();
   await page.keyboard.press('Escape');
   await page.getByLabel('Width', { exact: true }).fill('4');
@@ -221,13 +248,14 @@ test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shap
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  test('the options row is Fill, Stroke, Width, Points and ⋯', async ({ page }) => {
+  test('the options row is Width, Points and ⋯', async ({ page }) => {
     await openApp(page);
     await tab(page, 'VECTOR').click();
     const key = await addRect(page, 4, 4, 14, 14);
     await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
     const row = page.locator('.vector-options');
-    for (const name of ['Fill', 'Stroke', 'Points']) await expect(row.getByRole('button', { name, exact: true })).toBeVisible();
+    await expect(row.getByRole('button', { name: 'Points', exact: true })).toBeVisible();
+    await expect(row.getByRole('button', { name: 'Fill', exact: true })).toHaveCount(0);
     await expect(row.getByLabel('Width', { exact: true })).toBeVisible();
     await expect(row.getByRole('button', { name: 'Forward', exact: true })).toHaveCount(0);
     await expect(row.locator('.hint')).toHaveCount(0);
