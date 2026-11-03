@@ -202,6 +202,10 @@
       "label": "Saturation",
       "help": "Augmente l'intensité des couleurs ou tend vers des niveaux de gris."
     },
+    "blur": {
+      "label": "Flou",
+      "help": "Adoucit le bruit et le grain fin avant la conversion de l'image. Appliqué avant les autres effets."
+    },
     "flatten": {
       "label": "Aplatir",
       "help": "Regroupe les tons proches en aplats nets et picturaux."

@@ -366,7 +366,7 @@ export const documentActions = {
       `Created with Phosphor`,
       `Params: seed=${this.seed}, smoothing=${this.smoothing}, quantize=${this.quantize}`,
       `Adjust: brightness=${this.brightness}%, contrast=${this.contrast}%, saturation=${this.saturation}%, invert=${this.invert}%`,
-      `Effects: sharpen=${this.sharpen}, flatten=${this.flatten}, edges=${this.edges} (${this.edgeColor}), thickness=${this.edgeThickness}`,
+      `Effects: blur=${this.blur}, sharpen=${this.sharpen}, flatten=${this.flatten}, edges=${this.edges} (${this.edgeColor}), thickness=${this.edgeThickness}`,
     ];
     if (this.sauceUserComments) {
       comments.push(''); // Spacer

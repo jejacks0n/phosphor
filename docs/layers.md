@@ -19,7 +19,7 @@ In Monochrome ASCII every cell shows white on black, but what you paint still pi
 brightness, so on the ANSI tab the foreground and background show as the grays they act as.
 
 The color transforms, adjustments and effects in the sidebar (Brightness, Contrast, Hue Rotation,
-Colorize, Edges, Flatten, Sharpen…) change the picture before it's converted.
+Colorize, Blur, Edges, Flatten, Sharpen…) change the picture before it's converted.
 
 You can edit the base like pixels in an image editor. Erasing, flipping, moving, pasting and
 merging down change the base's own pixels, laid over the converted image. They're exact: never

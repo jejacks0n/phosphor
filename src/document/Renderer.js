@@ -64,7 +64,7 @@ export default class Renderer {
     // adjustments don't redo this.
     this.#baseParams = baseParams;
     const sp = baseParams ?? {};
-    const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness].join();
+    const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.blur, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness].join();
     if (baseParams && (this.#source?.image !== image || this.#source.key !== sourceKey)) {
       const { canvas: source } = await processImage(image, baseParams);
       this.#source = { image, key: sourceKey, data: ctx2d(source.canvas).getImageData(0, 0, params.cols, params.rows) };

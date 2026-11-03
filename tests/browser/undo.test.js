@@ -69,7 +69,7 @@ function trackDepth(project) {
 
 const SLIDERS = [
   ['brightness', [60, 140, 180]], ['contrast', [70, 150]], ['saturation', [40, 160]], ['hue', [30, 200]],
-  ['invert', [50, 100]], ['colorizeStrength', [40]], ['sharpen', [30]], ['edges', [2]], ['flatten', [3]],
+  ['invert', [50, 100]], ['colorizeStrength', [40]], ['sharpen', [30]], ['edges', [2]], ['flatten', [3]], ['blur', [4]],
 ];
 const CHARS = ['A', 'x', '█', '▀', ' ', '#', '漢'];
 const COLORS = ['#ff0000', '#00ff00', '#0000ff', '#ffee00', '#ffffff', '#123456'];

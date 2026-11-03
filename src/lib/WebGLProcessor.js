@@ -28,6 +28,8 @@ const FRAGMENT_SHADER = `
     uniform vec3 uColorize;
     uniform float uColorizeStrength;
     uniform float uSharpen;
+    uniform float uBlur;    // Gaussian radius, in a pass of its own
+    uniform vec2 uBlurDir;  // the pass's direction: (1, 0) across, then (0, 1) down
     uniform float uFlatten; // Kuwahara radius
     uniform float uEdges;   // Sobel intensity
     uniform vec3 uEdgeColor;
@@ -96,6 +98,24 @@ const FRAGMENT_SHADER = `
 
     void main() {
         vec2 texel = 1.0 / uResolution;
+
+        // Blur: one direction of a Gaussian (sigma half the radius, out to the radius), a pass of its own,
+        // run across and then down before the effects, so they read the blurred picture.
+        if (uBlur > 0.0) {
+            float sigma = uBlur / 2.0;
+            vec3 sum = vec3(0.0);
+            float total = 0.0;
+            for (int i = -10; i <= 10; ++i) {
+                float x = float(i);
+                if (abs(x) > uBlur) continue;
+                float weight = exp(-(x * x) / (2.0 * sigma * sigma));
+                sum += texture2D(uImage, vTexCoord + uBlurDir * x * texel).rgb * weight;
+                total += weight;
+            }
+            gl_FragColor = vec4(sum / total, 1.0);
+            return;
+        }
+
         vec3 color = texture2D(uImage, vTexCoord).rgb;
 
         // Kuwahara (Flatten)
@@ -389,21 +409,37 @@ export default class WebGLProcessor {
     });
 
     const passes = params.passes || 1;
-    let currentSrc = this.texture;
+    let currentSrc = this.texture, drawn = 0;
 
-    // Intermediate passes (NO FLIP)
-    setUniform('uFlipY', false);
-
-    for (let i = 0; i < passes; i++) {
-      const destTex = tempTextures[i % 2];
+    // Draws a pass of what's drawn so far into the next scratch texture.
+    const pass = () => {
+      const destTex = tempTextures[drawn++ % 2];
       gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, destTex, 0);
       gl.viewport(0, 0, w, h);
-
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, currentSrc);
       gl.uniform1i(gl.getUniformLocation(program, 'uImage'), 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      currentSrc = destTex;
+    };
 
+    // Intermediate passes (NO FLIP)
+    setUniform('uFlipY', false);
+    setUniform('uResolution', [w, h]);
+
+    // Blur first, across and then down: the effects work on the blurred picture.
+    const blur = Math.min(10, params.blur ?? 0);
+    if (blur > 0) {
+      setUniform('uBlur', blur);
+      for (const dir of [[1, 0], [0, 1]]) {
+        setUniform('uBlurDir', dir);
+        pass();
+      }
+      setUniform('uBlur', 0);
+    }
+
+    for (let i = 0; i < passes; i++) {
       if (this.paletteTexture) {
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, this.paletteTexture);
@@ -427,8 +463,7 @@ export default class WebGLProcessor {
       setUniform('uUsePalette', paletteSize > 0 && (snapLastPass || i < passes - 1));
       setUniform('uApplyFilters', i === passes - 1);
 
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-      currentSrc = destTex;
+      pass();
     }
 
     // Final pass to main canvas (FLIP HERE)
