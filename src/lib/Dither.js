@@ -17,6 +17,9 @@ export const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 // neighbor. No palette, nothing to move across to: no nudge.
 export const nudgeSpread = (palette) => (palette?.length ? 255 / Math.max(1, Math.cbrt(palette.length) - 1) : 0);
 
+// Bayer's nudge at a place in its 4 x 4 pattern (x and y the pixel's or the cell's), spread x strength in size.
+export const bayerNudge = (x, y, spread, strength) => (BAYER[(y & 3) * 4 + (x & 3)] / 16 - 15 / 32) * spread * strength;
+
 const byte = (v) => (v < 0 ? 0 : v > 255 ? 255 : Math.round(v));
 
 // RGBA bytes (w x h) dithered to the palette: new bytes, the same alpha (none becomes opaque, as a
@@ -34,7 +37,7 @@ export function ditherPixels(data, w, h, palette, { style = 'floyd', strength = 
       // at every pixel until it tipped one into a far color.
       let r = byte(work[o]), g = byte(work[o + 1]), b = byte(work[o + 2]);
       if (!floyd) {
-        const nudge = (BAYER[(y & 3) * 4 + (x & 3)] / 16 - 15 / 32) * spread * strength;
+        const nudge = bayerNudge(x, y, spread, strength);
         r = byte(r + nudge); g = byte(g + nudge); b = byte(b + nudge);
       }
       const p = palette[paletteIndex(r, g, b, palette)];

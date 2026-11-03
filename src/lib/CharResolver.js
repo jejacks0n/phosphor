@@ -1,6 +1,6 @@
 // Choosing a cell's character: the mode the settings come to, and what it asks of the pipeline.
 // No DOM and no translations here: the unit tests run it in Node.
-import { BAYER, nudgeSpread } from './Dither.js';
+import { bayerNudge, nudgeSpread } from './Dither.js';
 import { charRowsOf, colorOf, buildCell, ASCII_BG } from './Cells.js';
 
 // How a cell's character is picked (Cells.js): ANSI picks at random, or Best match / By shape;
@@ -133,7 +133,8 @@ function fit(t, b, a, c, light, fg, bg) {
 // (0..1: how much closer another choice must be than one plain color to be taken over it, up to 64
 // levels a channel) and Pattern light (0..1). Its mix table and lookups (table) are kept while the
 // palette, glyphs and Pattern light stay the same, so a Solids step doesn't make them again.
-// match(t, b) returns one object, overwritten by the next call: copy what you keep.
+// match(t, b) returns one object, overwritten by the next call: copy what you keep. core and
+// tolerance are what the GPU matches with (ShapeMatcher).
 let last = null;
 export function bestMatcher({ palette, glyphs, solids = 0, light = 0 }) {
   const key = glyphs.map(({ char, ink }) => char + ink.join()).join('|');
@@ -143,7 +144,7 @@ export function bestMatcher({ palette, glyphs, solids = 0, light = 0 }) {
   if (last.solids !== solids) {
     const { core } = last, tolerance = 6 * (64 * solids) ** 2;
     last.solids = solids;
-    last.matcher = { palette: core.palette, table: core.table, match: (t, b) => core.match(t, b, tolerance) };
+    last.matcher = { palette: core.palette, table: core.table, core, tolerance, match: (t, b) => core.match(t, b, tolerance) };
   }
   return last.matcher;
 }
@@ -235,7 +236,13 @@ function makeMatcher(palette, glyphs, light) {
     }
     return res;
   }
-  return { palette, table: mixes, match };
+  return { kind: 'best', palette, table: mixes, glyphs, flat, twoInk, solidChar, light, match };
+}
+
+// The columns (c0 to c1) and lines (l0 to l1, ends excluded) of the cells over area (grid pixels), or all of them.
+export function cellRange(area, cols, lines) {
+  if (!area) return { c0: 0, c1: cols, l0: 0, l1: lines };
+  return { c0: Math.max(0, area.x), c1: Math.min(cols, area.x + area.w), l0: Math.max(0, Math.floor(area.y / 2)), l1: Math.min(lines, Math.floor((area.y + area.h - 1) / 2) + 1) };
 }
 
 // Each cell's samples in order, with Dither's error carried in or its nudge added, given to
@@ -256,9 +263,7 @@ export function walkCells(raw, cols, lines, { sw = 1, sh = 2, strength = 0, styl
   const width = cols * sw, n = sw * sh;
   const carry = floyd ? (area ? carried : new Float32Array(width * (keep ? lines : 2) * sh * 3)) : null;
   const pass = floyd && !area;
-  const c0 = area ? Math.max(0, area.x) : 0, c1 = area ? Math.min(cols, area.x + area.w) : cols;
-  const l0 = area ? Math.max(0, Math.floor(area.y / 2)) : 0;
-  const l1 = area ? Math.min(lines, Math.floor((area.y + area.h - 1) / 2) + 1) : lines;
+  const { c0, c1, l0, l1 } = cellRange(area, cols, lines);
   const s = new Float64Array(n * 3);
   const across = sw * 3; // to the same sample of the next cell right
   // Where a line's samples are in carry: their own place, or (keep off) one of two lines in turn.
@@ -267,7 +272,7 @@ export function walkCells(raw, cols, lines, { sw = 1, sh = 2, strength = 0, styl
     const down = (at(line + 1) - at(line)) * 3; // to the same sample of the cell below
     if (pass && !keep) carry.fill(0, at(line + 1) * 3, (at(line + 1) + sh * width) * 3); // the line before's, used
     for (let col = c0; col < c1; col++) {
-      const nudge = bayer ? (BAYER[(line & 3) * 4 + (col & 3)] / 16 - 15 / 32) * spread * strength : 0;
+      const nudge = bayer ? bayerNudge(col, line, spread, strength) : 0;
       for (let y = 0, j = 0; y < sh; y++) {
         for (let x = 0, p = (line * sh + y) * width + col * sw, q = at(line) + y * width + col * sw; x < sw; x++, p++, q++, j += 3) {
           for (let k = 0; k < 3; k++) s[j + k] = clamp(raw[p * 4 + k] + nudge + (carry ? carry[q * 3 + k] : 0));
@@ -325,7 +330,8 @@ const N = SAMPLES.w * SAMPLES.h;
 //   squared), snapped, shown mixChannel(0, fg, mask).
 // - Monochrome ASCII: white on black, scored against the samples' brightness (0..255, rgb2gray's).
 // Ties go to the first glyph. Its precomputation is kept while the palette, glyphs, Pattern light and
-// style stay the same, so a Solids step doesn't make it again.
+// style stay the same, so a Solids step doesn't make it again. core and tolerance are what the GPU
+// matches with (ShapeMatcher).
 let lastShape = null;
 export function shapeMatcher({ palette, glyphs, solids = 0, light = 0, renderStyle = 'ansi' }) {
   const fits = lastShape?.palette === palette && lastShape.light === light && lastShape.renderStyle === renderStyle
@@ -336,7 +342,7 @@ export function shapeMatcher({ palette, glyphs, solids = 0, light = 0, renderSty
   if (lastShape.solids !== solids) {
     const { core } = lastShape, tolerance = renderStyle === 'ansi' ? N * 3 * (64 * solids) ** 2 : null;
     lastShape.solids = solids;
-    lastShape.matcher = { palette: core.palette, match: (s) => core.match(s, tolerance) };
+    lastShape.matcher = { palette: core.palette, core, tolerance, match: (s) => core.match(s, tolerance) };
   }
   return lastShape.matcher;
 }
@@ -443,7 +449,7 @@ function makeShapeMatcher(palette, glyphs, light, style) {
     }
     return res;
   }
-  return { palette, match };
+  return { kind: 'shape', palette, glyphs, solidChar, light, style, white, match };
 }
 
 // By shape over the grid: a cell ({ char, fg, bg }) for each of lines x cols, from samples (RGBA,
