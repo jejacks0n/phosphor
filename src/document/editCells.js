@@ -63,12 +63,19 @@ const VALID = {
   fg: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
   bg: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
 };
+// An entry from outside (a file, the clipboard) with only what a cell can hold, or null when nothing's left.
+export function cleanEntry(entry) {
+  if (!entry || typeof entry !== 'object') return null;
+  const clean = Object.fromEntries(ATTRS.filter(attr => VALID[attr](entry[attr])).map(attr => [attr, entry[attr]]));
+  return Object.keys(clean).length ? Object.freeze(clean) : null;
+}
+
 export function deserializeEditCells(pairs) {
   const map = new Map();
   for (const [key, entry] of Array.isArray(pairs) ? pairs : []) {
-    if (typeof key !== 'string' || !/^\d+,\d+$/.test(key) || !entry) continue;
-    const clean = Object.fromEntries(ATTRS.filter(attr => VALID[attr](entry[attr])).map(attr => [attr, entry[attr]]));
-    if (Object.keys(clean).length) map.set(key, Object.freeze(clean));
+    if (typeof key !== 'string' || !/^\d+,\d+$/.test(key)) continue;
+    const clean = cleanEntry(entry);
+    if (clean) map.set(key, clean);
   }
   return map;
 }
