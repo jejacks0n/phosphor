@@ -1,5 +1,6 @@
 // Phosphor's i18n subsystem: locale switching, fallback to English, runtime message registration,
 // HTML document attributes synchronization, and reactive Intl formatters.
+import { readFileSync } from 'node:fs';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   setLocale,
@@ -38,8 +39,29 @@ describe('i18n subsystem', () => {
     expect(matchLocale('en')).toBe('en');
     expect(matchLocale('en-US')).toBe('en');
     expect(matchLocale('EN-GB')).toBe('en');
-    expect(matchLocale('fr-FR')).toBe(null);
+    expect(matchLocale('fr')).toBe('fr');
+    expect(matchLocale('fr-FR')).toBe('fr');
+    expect(matchLocale('FR-CA')).toBe('fr');
+    expect(matchLocale('de-DE')).toBe(null);
     expect(matchLocale(null)).toBe(null);
+  });
+
+  test('loads French locale and translates keys', async () => {
+    const active = await setLocale('fr', { persist: false });
+    expect(active).toBe('fr');
+    expect(locale.value).toBe('fr');
+    expect(t('common.cancel')).toBe('Annuler');
+    expect(t('tools.pencil.title')).toBe('Crayon');
+    expect(t('toolbar.bake')).toBe('Figer');
+  });
+
+  test('every supported locale has exactly the keys en.json has', () => {
+    // Read from disk: importing the JSON through Vite gives vue-i18n's compiled messages, not the strings.
+    const messages = (code) => JSON.parse(readFileSync(`src/i18n/locales/${code}.json`, 'utf8'));
+    const keys = (obj, prefix = '') => Object.entries(obj).flatMap(([k, v]) => (
+      v && typeof v === 'object' ? keys(v, `${prefix}${k}.`) : [`${prefix}${k}`]));
+    const english = keys(messages('en')).sort();
+    for (const { code } of SUPPORTED_LOCALES) expect(keys(messages(code)).sort(), code).toEqual(english);
   });
 
   test('setLocale with unknown locale falls back to en', async () => {

@@ -12,7 +12,6 @@ const year = new Date().getFullYear();
 <template>
   <footer class="project-footer">
     <div class="footer-controls">
-      <button class="link" @click="showAboutModal = true">{{ t('footer.about') }}</button>
       <label class="locale-picker" :title="t('footer.language')">
         <select
             class="locale-select"
@@ -25,6 +24,7 @@ const year = new Date().getFullYear();
           </option>
         </select>
       </label>
+      <button class="link" @click="showAboutModal = true">{{ t('footer.about') }}</button>
     </div>
     <i18n-t keypath="footer.byline" tag="div">
       <template #br><br/></template>
@@ -48,11 +48,12 @@ footer.project-footer {
   color: var(--text);
 }
 
+/* The language picker sits above the About link: side by side, they don't fit the panel. */
 .footer-controls {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 10px;
 }
 
