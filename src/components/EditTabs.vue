@@ -74,6 +74,7 @@ const noArt = computed(() => !image.value && props.modelValue !== 'social');
 const tabs = computed(() => [
   { id: 'input', label: t('tabs.pixel'), disabled: noArt.value },
   { id: 'output', label: renderStyle.value === 'ansi' ? t('tabs.ansi') : t('tabs.ascii'), disabled: noArt.value },
+  { id: 'vector', label: t('tabs.vector'), disabled: noArt.value },
   { id: 'sauce', label: t('tabs.sauce'), disabled: noArt.value },
   ...(isDesktop.value ? [{ id: 'social', label: t('tabs.social'), disabled: false }] : []),
 ]);

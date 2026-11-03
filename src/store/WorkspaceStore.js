@@ -11,10 +11,14 @@ import { useProjectStore } from '@/store/ProjectStore';
 
 const RECENT_COLORS = 12;
 
+// The field that holds a tab's tool: PIXEL's, VECTOR's, or ANSI's (which SAUCE and SOCIAL keep).
+const toolKey = (tab) => (tab === 'input' ? 'inputActiveTool' : tab === 'vector' ? 'vectorActiveTool' : 'outputActiveTool');
+
 export const useWorkspaceStore = defineStore('workspace', {
   state: () => ({
     inputActiveTool: 'brush',
     outputActiveTool: 'hand',
+    vectorActiveTool: 'vselect',
     heldTool: null,          // a tool held with a key: { key, tool (the one to go back to), by: 'alt' | 'space' }
     // The color pair. Paint uses the foreground; typing uses both, where a none slot leaves that
     // attribute as it is underneath (with the background none, typed text sits on the image).
@@ -78,7 +82,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     shapeDrag: null,         // { from, to, line? } grid positions while a shape (or the bucket's gradient line) is being dragged
     editZoom:  5,
     ansiZoom:  1,            // the ANSI view's zoom: 25% to 100% of its cell size
-    editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'sauce' or 'social'
+    editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'vector', 'sauce' or 'social'
     viewTab: 'output',       // the art tab last shown, 'input' or 'output' (its view mounts and sets it)
     tabAddressed: false,     // the landing address named a tab (router.js)
     documentSettled: false,  // autosave has finished bringing back what it can (useAutosave), or the start screen stopped waiting
@@ -119,12 +123,21 @@ export const useWorkspaceStore = defineStore('workspace', {
     bucketMatch: { fg: true, bg: true, char: true }, // Cells: what a cell must share with the one clicked
     bucketSet: { fg: true, bg: false, char: false }, // Cells: what the fill sets (your FG, BG, character)
     bucketGradient: 'solid', // 'solid' | 'linear' | 'spherical' (a drag from FG to BG)
+
+    // The VECTOR tab
+    vectorSelected: [],      // the keys of the shapes Vector select has selected (follows project.shapes: one gone drops out)
+    vectorPoints: null,      // the key of the shape whose points are being edited (a double-click), or null
+    vectorPoint: null,       // the point selected there: its index, or null
+    vectorPen: null,         // the Pen's shape while it's being drawn: { key, closing? }, or null
+    vectorStyle: { fill: 'fg', stroke: null, width: 1 }, // what a new shape gets: a color, 'fg' (the foreground's then) or null
+    vectorShapeKind: 'rect', // the Shape tool: 'rect' | 'ellipse' | 'polygon'
+    vectorSides: 5,          // a polygon's sides, 3 to 12
   }),
   getters: {
     activeTool(state) {
-      return state.editorTab === 'input' ? state.inputActiveTool : state.outputActiveTool;
+      return state[toolKey(state.editorTab)];
     },
-    editMode: (state) => state.editorTab === 'input' || state.editorTab === 'output', // the art is showing
+    editMode: (state) => ['input', 'output', 'vector'].includes(state.editorTab), // the art is showing
     // The view the room's host is looking at, for watchers: whole cells and the zoom to draw them at
     // (a fraction of the font's cell), of the art tab last shown (SAUCE and SOCIAL keep it). PIXEL's
     // zoom is its pixels per column against the font's cell width. Each zoom is the one its cells were
@@ -165,8 +178,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     setActiveTool(tool) {
       this.heldTool = null; // a tool chosen while another is held stays chosen
       this.selectFromText = false;
-      if (this.editorTab === 'input') this.inputActiveTool = tool;
-      else this.outputActiveTool = tool;
+      this[toolKey(this.editorTab)] = tool;
       if (tool !== 'text' || this.editorTab !== 'output') return;
       const project = useProjectStore();
       if (this.selection || this.wand) project.changeSelection((w) => { w.selection = null; w.wand = null; });
@@ -180,7 +192,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     // does (the selection stays), and releaseTool puts the tool back. False when one is already held.
     holdTool(tool, by) {
       if (this.heldTool) return false;
-      const key = this.editorTab === 'input' ? 'inputActiveTool' : 'outputActiveTool';
+      const key = toolKey(this.editorTab);
       this.heldTool = { key, tool: this[key], by };
       this[key] = tool;
       return true;

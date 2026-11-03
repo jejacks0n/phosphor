@@ -4,7 +4,7 @@ import { openApp, tab, store, cellPoint, drag } from './support.js';
 test('with nothing open no tab is selected; whatever opens lands on ANSI, and New project goes back', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Or start with a blank canvas' })).toBeVisible();
-  for (const name of ['PIXEL', 'ANSI', 'SAUCE']) await expect(tab(page, name)).toBeDisabled();
+  for (const name of ['PIXEL', 'ANSI', 'VECTOR', 'SAUCE']) await expect(tab(page, name)).toBeDisabled();
   await expect(page.getByRole('tab', { selected: true })).toHaveCount(0);
   await expect(tab(page, 'SOCIAL')).toHaveAttribute('tabindex', '0'); // the one tab to choose is the Tab stop
   await expect(page.locator('.tab-list .indicator')).toHaveCSS('opacity', '0');
@@ -50,6 +50,10 @@ test('the editor tabs are a tablist: Tab reaches the selected one, arrows move a
 
   await tab(page, 'ANSI').focus();
   await page.keyboard.press('ArrowRight');
+  await expect(tab(page, 'VECTOR')).toBeFocused();
+  await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');
+  expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('vector');
+  await page.keyboard.press('ArrowRight');
   await expect(tab(page, 'SAUCE')).toBeFocused();
   await expect(tab(page, 'SAUCE')).toHaveAttribute('aria-selected', 'true');
   expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('sauce');
@@ -59,8 +63,7 @@ test('the editor tabs are a tablist: Tab reaches the selected one, arrows move a
   await expect(tab(page, 'PIXEL')).toBeFocused();
   await page.keyboard.press('End');
   await expect(tab(page, 'SOCIAL')).toBeFocused();
-  await page.keyboard.press('ArrowLeft');
-  await page.keyboard.press('ArrowLeft');
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowLeft');
   await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
   expect(await store(page, 'workspace', (w) => w.selection)).toEqual(selection); // the arrows stayed with the tabs
   await expect(tab(page, 'PIXEL')).toHaveAttribute('tabindex', '-1');

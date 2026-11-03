@@ -24,7 +24,7 @@ const props = defineProps({
   zoom: { type: Object, default: null },                    // { get, set, clamp } for the view's zoom; null: not zoomable
   scrollKey: { type: String, required: true },              // 'input' | 'ansi': where scroll position is remembered
   contentSize: { type: Object, default: null },             // { width, height } -> padded layout that keeps its center on resize
-  view: { type: String, required: true },                   // 'input' (PIXEL) | 'output' (ANSI), passed to tools
+  view: { type: String, required: true },                   // 'input' (PIXEL) | 'output' (ANSI) | 'vector' (VECTOR), passed to tools
   unit: { type: Object, default: null },                    // { x, y }: CSS px per grid pixel, for tool previews
 });
 
@@ -32,7 +32,7 @@ const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const drawingStore = useDrawingStore();
 const tool = computed(() => getTool(workspaceStore.activeTool));
-const toolCtx = () => ({ project: projectStore, workspace: workspaceStore, view: props.view });
+const toolCtx = () => ({ project: projectStore, workspace: workspaceStore, view: props.view, unit: props.unit });
 const rootRef = useTemplateRef('root');
 const isMouseOver = ref(false);
 

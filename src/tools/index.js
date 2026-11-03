@@ -1,6 +1,6 @@
 /**
  * Editing tools. A tool is a plain object:
- *   id, title, icon (SVG markup), views ('input' = PIXEL, 'output' = ANSI), kind ('paint' | 'pick' | 'navigate'),
+ *   id, title, icon (SVG markup), views ('input' = PIXEL, 'output' = ANSI, 'vector' = VECTOR), kind ('paint' | 'pick' | 'navigate'),
  *   keys       the letters that choose it (useKeyboardShortcuts; shown on its button)
  *   altPicks?  holding Alt switches to the picker (Alt+Shift: picking the background)
  *   available? (project) => boolean: offered in the toolbar only when true (e.g. flip needs the ANSI art style)
@@ -11,7 +11,8 @@
  *   options?   toolbar settings: { key (workspace store field), label, title, min, max, step?, decimals?, unit?, type?: 'checkbox' }
  *   begin(ctx, pos, event) -> false when there's no stroke to continue; move(ctx, from, to); end(ctx)
  *   cancel?(ctx)  end without applying (a second finger landed: a pinch); without it, end(ctx)
- * ctx = { project, workspace, view }; positions are fractional grid pixels.
+ *   keydown?(ctx, event) -> true when the tool took the key (useKeyboardShortcuts asks it first)
+ * ctx = { project, workspace, view, unit (CSS px per grid pixel, { x, y }) }; positions are fractional grid pixels.
  */
 import pencil from './pencil';
 import brush from './brush';
@@ -25,9 +26,10 @@ import text from './text';
 import select from './select';
 import wand from './wand';
 import shapes from './shapes';
+import vselect from './vselect';
 import { t } from '@/i18n/index.js';
 
-export const TOOLS = [pencil, brush, eraser, bucket, shapes, picker, wand, select, hand, zoom, text, flip];
+export const TOOLS = [vselect, pencil, brush, eraser, bucket, shapes, picker, wand, select, hand, zoom, text, flip];
 
 const BY_ID = new Map(TOOLS.map(tool => [tool.id, tool]));
 const NONE = { id: 'none', kind: 'none', views: [] };
@@ -36,7 +38,7 @@ export function getTool(id) {
   return BY_ID.get(id) ?? NONE;
 }
 
-// The tools offered in a view ('input' or 'output'), as the toolbar shows them.
+// The tools offered in a view ('input', 'output' or 'vector'), as the toolbar shows them.
 export function offeredTools(view, project) {
   return TOOLS.filter(tool => tool.views.includes(view) && (!tool.available || tool.available(project)));
 }

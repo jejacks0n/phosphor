@@ -2,6 +2,7 @@
 export const PLACES = [
   ['/pixel', { tab: 'input' }],
   ['/ansi', { tab: 'output' }],
+  ['/vector', { tab: 'vector' }],
   ['/sauce', { tab: 'sauce' }],
   ['/social', { tab: 'social', page: 'lobby' }],
   ['/social/sign-in', { tab: 'social', page: 'sign-in' }],

@@ -93,6 +93,7 @@
     "pixel": "PIXEL",
     "ansi": "ANSI",
     "ascii": "ASCII",
+    "vector": "VECTOR",
     "sauce": "SAUCE",
     "social": "SOCIAL",
     "beta": "Beta",
@@ -377,6 +378,9 @@
       "pick": "Pick",
       "pickFgTitle": "Pick the cell's foreground",
       "pickBgTitle": "Pick the cell's background"
+    },
+    "vselect": {
+      "title": "Vector select"
     },
     "hand": {
       "title": "Hand (pan)"
@@ -809,6 +813,7 @@
     "holdSpace": "hold Space",
     "macFnNote": "On Mac keyboards, hold Fn to use F1–F12.",
     "groups": {
+      "vector": "VECTOR",
       "general": "General",
       "tools": "Tools",
       "drawing": "Drawing",
@@ -819,6 +824,10 @@
       "tabs": "Editor tabs"
     },
     "rows": {
+      "vselect": "Vector select: pick, move, scale and rotate shapes",
+      "vectorNudge": "Nudge the selected shapes (with Shift: 10 pixels)",
+      "vectorDelete": "Delete the selected shapes",
+      "vectorEsc": "Stop editing points, then deselect",
       "thisList": "This list ({key} in Edit Mode)",
       "undo": "Undo",
       "redo": "Redo",
