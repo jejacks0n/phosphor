@@ -1330,6 +1330,16 @@
     "points": "Points",
     "deleteTitle": "Supprimer les formes sélectionnées",
     "selectHint": "Faites glisser pour déplacer, les poignées pour redimensionner, le bouton pour faire pivoter",
-    "more": "Plus"
+    "more": "Plus",
+    "point": "Point",
+    "smooth": "Lisse",
+    "smoothTitle": "Rendre le point lisse : ses poignées restent alignées",
+    "corner": "Angle",
+    "cornerTitle": "Faire du point un angle : ses poignées bougent séparément",
+    "deletePoint": "Supprimer le point",
+    "deletePointTitle": "Supprimer le point sélectionné",
+    "done": "Terminé",
+    "doneTitle": "Arrêter de modifier les points",
+    "pointsHint": "Faites glisser un point ou une poignée ; cliquez sur le contour pour ajouter un point"
   }
 }

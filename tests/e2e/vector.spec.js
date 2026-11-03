@@ -235,3 +235,47 @@ test.describe('on a phone', () => {
     for (const name of ['Forward', 'Back', 'Delete']) await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
   });
 });
+
+test('double-click edits points: drag a point and a handle, click the outline to add one, Smooth and Corner, Delete point, Done', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const key = await addRect(page, 10, 10, 30, 30);
+  const world = (i) => store(page, 'project', `(p) => { const s = p.shapes.get('${key}'); const [x, y] = s.points[${i}]; return { x: x + s.m[4], y: y + s.m[5], n: s.points.length, smooth: s.points[${i}][6] }; }`);
+  await page.mouse.dblclick(...Object.values(await gridPoint(page, 20, 20)));
+  expect(await store(page, 'workspace', (w) => w.vectorPoints)).toBe(key);
+  const row = page.locator('.vector-options');
+  await expect(row.getByText('Point', { exact: true })).toBeVisible();
+
+  // A point dragged: it moves, one step.
+  await dragPoints(page, await gridPoint(page, 30, 30), await gridPoint(page, 36, 34));
+  expect(await world(2)).toMatchObject({ x: expect.closeTo(36, 0), y: expect.closeTo(34, 0) });
+  expect(await store(page, 'workspace', (w) => w.vectorPoint)).toBe(2);
+
+  // Clicking the top edge's middle adds a point there, selected.
+  await page.mouse.click(...Object.values(await gridPoint(page, 20, 10)));
+  expect((await world(1)).n).toBe(5);
+  expect(await store(page, 'workspace', (w) => w.vectorPoint)).toBe(1);
+
+  // Smooth gives it handles; dragging the out handle bends the edge; Corner keeps the handles where they are.
+  await row.getByRole('button', { name: 'Smooth', exact: true }).click();
+  expect((await world(1)).smooth).toBe(1);
+  const out = await store(page, 'project', `(p) => { const s = p.shapes.get('${key}'); const q = s.points[1]; return { x: q[0] + q[4] + s.m[4], y: q[1] + q[5] + s.m[5] }; }`);
+  await dragPoints(page, await gridPoint(page, out.x, out.y), await gridPoint(page, out.x, out.y - 5));
+  const bent = await store(page, 'project', `(p) => p.shapes.get('${key}').points[1]`);
+  expect(bent[5]).toBeLessThan(-3);
+  expect(Math.hypot(bent[2], bent[3])).toBeCloseTo(10 / 3, 1); // the in handle turned with it, at its own length
+  expect(bent[3]).toBeGreaterThan(2);
+  await row.getByRole('button', { name: 'Corner', exact: true }).click();
+  expect((await world(1)).smooth).toBe(0);
+
+  // Delete point, then Done.
+  await row.getByRole('button', { name: 'Delete point', exact: true }).click();
+  expect((await world(0)).n).toBe(4);
+  await row.getByRole('button', { name: 'Done', exact: true }).click();
+  expect(await store(page, 'workspace', (w) => w.vectorPoints)).toBe(null);
+  expect(await selected(page)).toEqual([key]);
+
+  await undoSteps(page, 5); // Delete point, Corner, the handle, Smooth, the added point
+  expect((await world(2))).toMatchObject({ n: 4, x: expect.closeTo(36, 0) });
+});

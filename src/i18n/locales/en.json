@@ -1330,6 +1330,16 @@
     "points": "Points",
     "deleteTitle": "Delete the selected shapes",
     "selectHint": "Drag to move, the handles to scale, the knob to rotate",
-    "more": "More"
+    "more": "More",
+    "point": "Point",
+    "smooth": "Smooth",
+    "smoothTitle": "Make the point smooth: its handles stay in line",
+    "corner": "Corner",
+    "cornerTitle": "Make the point a corner: its handles move apart",
+    "deletePoint": "Delete point",
+    "deletePointTitle": "Delete the selected point",
+    "done": "Done",
+    "doneTitle": "Stop editing points",
+    "pointsHint": "Drag a point or a handle; click the outline to add a point"
   }
 }
