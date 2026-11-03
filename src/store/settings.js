@@ -20,7 +20,7 @@ export const SETTINGS = [
   { key: 'charsAscii', default: ' .:*%#@', group: 'setup', pipeline: false, most: MOST_LIST },
   { key: 'seed', default: () => generateSlug(2), group: 'setup', get help() { return t('settings.seed.help'); } },
   { key: 'charChoice', default: 'random', group: 'setup', pipeline: false, get help() { return t('settings.charChoice.help'); } },
-  { key: 'charChoiceAscii', default: 'weight', group: 'setup', pipeline: false },
+  { key: 'charChoiceAscii', default: 'weight', group: 'setup', pipeline: false, get help() { return t('settings.charChoiceAscii.help'); } },
   { key: 'solids', default: 25, group: 'setup', pipeline: false, get label() { return t('settings.solids.label'); }, min: 0, max: 100, unit: '%', ticks: [0], get help() { return t('settings.solids.help'); } },
   { key: 'patternLight', default: 100, group: 'setup', pipeline: false, get label() { return t('settings.patternLight.label'); }, min: 0, max: 100, unit: '%', ticks: [0, 100], get help() { return t('settings.patternLight.help'); } },
   { key: 'quantize', default: 'none', group: 'setup', get help() { return t('settings.quantize.help'); } },

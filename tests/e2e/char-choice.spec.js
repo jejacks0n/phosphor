@@ -53,8 +53,18 @@ test('Choose characters comes before Characters, and each choice shows its own o
   await panel(page).locator('#renderStyle').selectOption('ascii');
   await expect(ascii.locator('option')).toHaveText(['By brightness', 'By shape']);
   await expect(ascii).toHaveValue('shape');
+  await expect(light).toBeVisible();
+  await expect(solids).toHaveCount(0);
   await ascii.selectOption('weight');
   await expect(light).toHaveCount(0);
+});
+
+test('an unknown choice (from an old file or a room) shows its options as Random, the way it converts', async ({ page }) => {
+  await openApp(page);
+  await store(page, 'project', (p) => { p.charChoice = 'bogus'; });
+  await expect(panel(page).locator('#seed')).toBeVisible();
+  await expect(panel(page).getByRole('slider', { name: 'Solids' })).toHaveCount(0);
+  await expect(panel(page).getByRole('slider', { name: 'Pattern light' })).toHaveCount(0);
 });
 
 test('the Blocks & shades preset sets ▄░▒▓█', async ({ page }) => {

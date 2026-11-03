@@ -273,6 +273,9 @@
     "charChoice": {
       "help": "Aléatoire choisit dans votre jeu selon la graine. La meilleure correspondance choisit le caractère et ses deux couleurs de palette qui se rapprochent le plus de l'image. Par forme compare la forme de chaque caractère au détail de l'image dans la cellule."
     },
+    "charChoiceAscii": {
+      "help": "Par intensité (ASCII couleur) et Par luminosité (ASCII monochrome) choisissent un caractère plus loin dans votre jeu à mesure que la cellule est claire. Par forme compare la forme de chaque caractère au détail de l'image dans la cellule."
+    },
     "solids": {
       "label": "Aplats",
       "help": "À quel point une cellule pleine unie est préférée à une trame ou à un demi-bloc."

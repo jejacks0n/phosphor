@@ -104,3 +104,12 @@ test('a setting\'s text from a host is as long as a person could have, and no lo
   for (const list of Object.values(PALETTES)) assert.ok(settingsFromStranger({ palette: list.map(({ hex }) => hex).join(' ') }));
   assert.ok(settingsFromStranger({ seed: generateSlug(2) }));
 });
+
+test('Choose characters has its own help in the ASCII styles, about their ways of choosing, not Random or Best match', () => {
+  const ascii = getSetting('charChoiceAscii').help;
+  assert.match(ascii, /By intensity/);
+  assert.match(ascii, /By brightness/);
+  assert.match(ascii, /By shape/);
+  assert.doesNotMatch(ascii, /Random|Best match/);
+  assert.match(getSetting('charChoice').help, /Random/);
+});

@@ -13,6 +13,7 @@ import RangeField from '@/components/RangeField.vue';
 import CharsetField from '@/components/CharsetField.vue';
 import FontField from '@/components/FontField.vue';
 import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
+import { resolves } from '@/lib/CharResolver';
 
 const { t } = useI18n();
 const store = useProjectStore();
@@ -33,6 +34,12 @@ const folded = useLocalStorage('phosphor.panel.folded', []);
 const isFolded = (id) => folded.value.includes(id);
 const toggleFold = (id) => { folded.value = isFolded(id) ? folded.value.filter((f) => f !== id) : [...folded.value, id]; };
 const onCount = (group) => group.sliders.filter((s) => Number(store[s.key]) !== s.default).length;
+
+// Each way of choosing characters' own options, from the way the cells are made (an unknown choice
+// from an old file or a room converts as Random or By weight, and shows their options).
+const showSeed = computed(() => store.processParams.charMode === 'random' && store.chars.length > 1);
+const showPatternLight = computed(() => resolves(store.processParams));
+const showSolids = computed(() => ansi.value && showPatternLight.value); // ASCII's background is always black: no solid to prefer
 
 // The ready-made set the Characters field holds, or Custom.
 const charsetName = computed(() => {
@@ -87,7 +94,7 @@ const charsetName = computed(() => {
       </div>
 
       <div class="field">
-        <div class="label-group"><label :for="ansi ? 'charChoice' : 'charChoiceAscii'">{{ t('panel.charChoice.label') }}</label><HelpInfo :text="help('charChoice')" /></div>
+        <div class="label-group"><label :for="ansi ? 'charChoice' : 'charChoiceAscii'">{{ t('panel.charChoice.label') }}</label><HelpInfo :text="help(ansi ? 'charChoice' : 'charChoiceAscii')" /></div>
         <select v-if="ansi" id="charChoice" v-model="store.charChoice">
           <option value="random">{{ t('panel.charChoice.random') }}</option>
           <option value="best">{{ t('panel.charChoice.best') }}</option>
@@ -108,7 +115,7 @@ const charsetName = computed(() => {
         <CharsetField v-else id="chars" v-model="store.charsAscii" :presets="ASCII_CHARSETS"/>
       </div>
 
-      <div v-if="ansi && store.charChoice === 'random' && store.chars.length > 1" class="field">
+      <div v-if="showSeed" class="field">
         <div class="label-group"><label for="seed">{{ t('panel.seed.label') }}</label><HelpInfo :text="help('seed')" /></div>
         <div class="row-inputs">
           <input type="text" id="seed" v-model.lazy="store.seed" :placeholder="t('panel.seed.placeholder')">
@@ -116,8 +123,8 @@ const charsetName = computed(() => {
         </div>
       </div>
 
-      <RangeField v-if="ansi && store.charChoice !== 'random'" :setting="getSetting('solids')" v-model="store.solids"/>
-      <RangeField v-if="ansi ? store.charChoice !== 'random' : store.charChoiceAscii === 'shape'" :setting="getSetting('patternLight')" v-model="store.patternLight"/>
+      <RangeField v-if="showSolids" :setting="getSetting('solids')" v-model="store.solids"/>
+      <RangeField v-if="showPatternLight" :setting="getSetting('patternLight')" v-model="store.patternLight"/>
 
       <FontField/>
 
