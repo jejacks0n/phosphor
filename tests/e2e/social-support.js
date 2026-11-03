@@ -418,7 +418,7 @@ export async function goLive(host, room, { image = 'images/gradient.png', welcom
   await host.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
   await host.getByRole('textbox', { name: 'Welcome message' }).fill(welcome);
   if (password !== null) {
-    await host.getByRole('radio', { name: 'Only with the link' }).check();
+    await host.getByRole('radio', { name: 'Unlisted (link only)' }).check();
     await host.getByRole('textbox', { name: 'Password' }).fill(password);
   }
   if (!allowGuests) await host.getByRole('checkbox', { name: 'Allow guests' }).uncheck();

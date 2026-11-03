@@ -162,7 +162,7 @@ test('?verified=1 says the email is confirmed and leaves the URL without it, kee
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
   await social.start(at('?keep=abc&verified=1'));
   await social.showLobby();
-  expect(social.notice).toBe('Your email is confirmed');
+  expect(social.notice).toBe('Your email is confirmed.');
   expect(replaceState).toHaveBeenCalledTimes(1);
   expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?keep=abc`);
 });
@@ -178,9 +178,9 @@ test('?social=email-approved and ?social=email-changed say where a change of ema
   fakeServer();
   vi.spyOn(history, 'replaceState').mockImplementation(() => {});
   await social.start(at('?social=email-approved'));
-  expect(social.notice).toBe('Approved. Now open the link sent to your new address');
+  expect(social.notice).toBe('Approved—now open the confirmation link sent to your new email.');
   social.readReturn(at('?social=email-changed'));
-  expect(social.notice).toBe('Your email is changed');
+  expect(social.notice).toBe('Your email address has been updated.');
   social.readReturn(at('?social=email-changed&error=SIGN_IN_TO_CONFIRM'));
   expect(social.notice).toBe('Sign in to that account here, then open the link again');
 });
@@ -199,7 +199,7 @@ test('?reset=<token> opens the reset page; resetPassword sends the token and lan
   expect(server.sent('POST', '/api/auth/reset-password')[0].body).toEqual({ newPassword: 'a-new-long-password', token: 'abc' });
   expect(server.sent('GET', '/api/me')).toHaveLength(asked + 1);   // a reset ends every session
   expect(social.page).toBe('sign-in');
-  expect(social.notice).toBe('Your password is changed. Sign in with it');
+  expect(social.notice).toBe('Password updated. Sign in with your new password.');
 });
 
 test('An OAuth return: ?social=error with EMAIL_NOT_VERIFIED says so in words, and its error params leave the URL', async () => {
@@ -207,7 +207,7 @@ test('An OAuth return: ?social=error with EMAIL_NOT_VERIFIED says so in words, a
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
   await social.start(at('?social=error&error=EMAIL_NOT_VERIFIED&error_description=Email%20not%20verified&keep=abc'));
   await social.showLobby();
-  expect(social.notice).toBe('Confirm your email with Discord or GitHub first');
+  expect(social.notice).toBe('Confirm your email with Discord or GitHub first.');
   expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?keep=abc`);
 });
 
@@ -408,7 +408,7 @@ test('?social=two-factor&verified=1 opens the Two-factor page with the email con
   await social.start(at('?social=two-factor&verified=1'));
   await social.showLobby();
   expect(social.page).toBe('two-factor');
-  expect(social.notice).toBe('Your email is confirmed');
+  expect(social.notice).toBe('Your email is confirmed.');
 });
 
 test('?social=two-factor opens the Two-factor page and leaves the URL', async () => {
@@ -444,7 +444,7 @@ test('busy lasts the whole sign-in, sign-up or provider sign-in (until you\'re k
     expect(await done).toBe(true);
     expect(social.busy).toBe(false);
   }
-  expect(social.notice).toBe('Check your email to confirm your address');
+  expect(social.notice).toBe('Check your inbox to confirm your email address.');
 
   const location = { assign: vi.fn() };
   await social.signInWith('discord', location);
@@ -709,7 +709,7 @@ test('unlink finds the account for the provider; SESSION_EXPIRED goes to sign-in
   expect(await social.unlink('discord')).toBe(false);
   expect(server.sent('POST', '/api/auth/unlink-account')[0].body).toEqual({ accountId: 'acc_2' });
   expect(social.page).toBe('sign-in');
-  expect(social.notice).toBe('Sign in again to change how you sign in');
+  expect(social.notice).toBe('For your security, please sign in again to continue.');
 
   server.route('POST /api/auth/unlink-account', () => {
     server.session = member({ providers: ['credential'] });
@@ -722,7 +722,7 @@ test('unlink finds the account for the provider; SESSION_EXPIRED goes to sign-in
 
   social.notice = null;
   expect(await social.unlink('github')).toBe(false);
-  expect(social.notice).toBe("That way to sign in isn't connected");
+  expect(social.notice).toBe("That sign-in method isn't linked to your account.");
   expect(server.sent('POST', '/api/auth/unlink-account')).toHaveLength(2);
 });
 
@@ -741,7 +741,7 @@ test('startTwoFactor sends the password only when given, and SESSION_NOT_FRESH g
   server.route('POST /api/auth/two-factor/enable', () => [403, { code: 'SESSION_NOT_FRESH' }]);
   expect(await social.startTwoFactor()).toBe(null);
   expect(social.page).toBe('sign-in');
-  expect(social.notice).toBe('Sign in again to change how you sign in');
+  expect(social.notice).toBe('For your security, please sign in again to continue.');
 });
 
 test('confirmTwoFactor strips spaces and refreshes me', async () => {
@@ -796,7 +796,7 @@ test('Deleting without a password after a stale sign-in goes to sign-in with the
   expect(await social.deleteAccount()).toBe(false);
   expect(server.sent('POST', '/api/auth/delete-user')[0].body).toEqual({});
   expect(social.page).toBe('sign-in');
-  expect(social.notice).toBe('Sign in again to change how you sign in');
+  expect(social.notice).toBe('For your security, please sign in again to continue.');
   expect(social.me).not.toBe(null);
 });
 
@@ -832,7 +832,7 @@ test('The account actions send the server\'s shapes', async () => {
   });
   expect(signUp.headers['x-turnstile-token']).toBe('tt');
   expect(social.page).toBe('lobby');
-  expect(social.notice).toBe('Check your email to confirm your address');
+  expect(social.notice).toBe('Check your inbox to confirm your email address.');
   expect(social.signedIn).toBe(true);
   expect(claimsOf((await goLive(await lastSocket(2))).pass).guest).toBe(false);
 
@@ -867,7 +867,7 @@ test('The account actions send the server\'s shapes', async () => {
   expect(server.sent('POST', '/api/auth/delete-user')[0].body).toEqual({ password: 'long-enough-1' });
   expect(social.me).toBe(null);
   expect(social.page).toBe('lobby');
-  expect(social.notice).toBe('Your account is deleted');
+  expect(social.notice).toBe('Your account has been deleted.');
   const hello = await goLive(await lastSocket(4));
   expect(claimsOf(hello.pass).guest).toBe(true);
 });

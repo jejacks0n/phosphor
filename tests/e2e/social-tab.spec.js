@@ -135,7 +135,7 @@ test('narrow screens have no SOCIAL tab; narrowing while on it lands on PIXEL', 
 test('on the SOCIAL tab, letters, X, Space and Ctrl+Z leave the art and its tools alone', async ({ page }) => {
   await fakeServer(page);
   await openApp(page);
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   await drag(page, await cellPoint(page, 4, 5, 0), await cellPoint(page, 14, 5, 0));
   await drag(page, await cellPoint(page, 4, 8, 0), await cellPoint(page, 14, 8, 0));
   await page.keyboard.press('ControlOrMeta+z'); // the second stroke, undone here: something to redo

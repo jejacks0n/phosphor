@@ -3,6 +3,7 @@
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
+import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
@@ -23,7 +24,7 @@ async function mount() {
   useRoomStore().role = 'watch';
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ChatFoot).use(getActivePinia());
+  app = createApp(ChatFoot).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
   return useSocialStore();

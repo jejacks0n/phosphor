@@ -5,6 +5,7 @@
 // and they start over from what shows then. An artist's change doesn't count as one, as starting over
 // for those would never end under steady drawing. Bake reads the layers after it encodes, so what came
 // meanwhile is in it; Into the image reads them before, so a host holds artists' changes until the project's gone.
+import { t } from '@/i18n';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
 import { cellKey, parseKey, rectCells, updateRect, bakeEditCells, bakeEntry, mergeKind } from '@/document/editCells.js';
@@ -106,7 +107,7 @@ export const mergingActions = {
       this.pushWholeLayer(() => apply(before, after), () => apply(after, before), bytesHeld(before.paint, before.base, before.image, before.imageBuffer, after.paint, after.base, after.image, after.imageBuffer, after.editCells, ...(after.frames || []).map(({ changes }) => changes)), { everyFrame: true });
     } catch (e) {
       console.error('Failed to bake', e);
-      alert("Couldn't bake the image.");
+      alert(t('document.bakeFailed'));
     } finally {
       this._baking = false;
       if (again) await this.bake({ lockPalette });
@@ -285,7 +286,7 @@ export const mergingActions = {
       this.pushWholeLayer(() => apply(before), () => apply(after), bytes);
     } catch (e) {
       console.error('Failed to merge into the image', e);
-      alert("Couldn't merge into the image.");
+      alert(t('document.mergeIntoImageFailed'));
     } finally {
       sharing?.release?.();
       this._merging = false;

@@ -1,8 +1,9 @@
 <script setup>
 import { ref, nextTick, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import { t } from '@/i18n';
 
 const props = defineProps({
-  label: { type: String, default: 'Actions' },
+  label: { type: String, default: () => t('common.actions') },
   icon: { type: String, default: null },
   disabled: { type: Boolean, default: false },
   closeOnSelect: { type: Boolean, default: true }, // false for panels of controls (sliders, checkboxes)
@@ -109,7 +110,6 @@ button.dropdown-trigger svg {
   fill: currentColor;
   transition: transform 0.2s;
 }
-
 
 div.dropdown-content {
   position: fixed;

@@ -32,7 +32,7 @@ test('rename: Change opens a field, Save sends it, and the lobby shows the new n
   await expect(account.getByRole('button', { name: 'Change', exact: true })).toBeVisible();
   await expect(account.locator('.username')).toHaveText('pixel-pal');
   expect(server.sent('PATCH', '/api/me/username').map((r) => r.body)).toEqual([{ username: 'pixel-pal' }]);
-  await account.getByRole('button', { name: '‹ Back to the lobby' }).click();
+  await account.getByRole('button', { name: '‹ Back to lobby' }).click();
   await expect(shown(page, 'lobby').locator('.you')).toContainText('pixel-pal');
 });
 
@@ -116,7 +116,7 @@ test('Change password asks for the current one and the new one twice, and you st
   await expect(account.getByLabel('Current password')).toBeFocused();
   await fillPassword(account, 'violet-lantern-harbor-42', 'copper-meadow-signal-77');
   await send.click();
-  await expect(social(page).getByRole('status')).toContainText('Your password is changed');
+  await expect(social(page).getByRole('status')).toContainText('Your password has been updated.');
   expect(server.sent('POST', '/api/auth/change-password')[0].body).toEqual({
     currentPassword: 'violet-lantern-harbor-42', newPassword: 'copper-meadow-signal-77', revokeOtherSessions: true,
   });
@@ -308,7 +308,7 @@ test('delete with a password: back in the lobby as a guest, told the account is 
   await account.getByLabel('Password').fill('correct horse battery');
   await account.getByRole('button', { name: 'Delete for good' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
-  await expect(social(page).getByRole('status')).toContainText('Your account is deleted');
+  await expect(social(page).getByRole('status')).toContainText('Your account has been deleted.');
   await expect(shown(page, 'lobby').locator('.you .tag')).toHaveText('guest');
   expect(server.sent('POST', '/api/auth/delete-user')[0].body).toEqual({ password: 'correct horse battery' });
 });
@@ -331,7 +331,7 @@ test('an account without a password says deleting needs a recent sign-in', async
   const server = await fakeServer(page, { me: member({ providers: ['github'] }) });
   const account = await openAccount(page);
   await (await deleteButton(account)).click();
-  await expect(account.getByText('Deleting needs a sign-in in the last 5 minutes')).toBeVisible();
+  await expect(account.getByText('Requires a fresh sign-in within the last 5 minutes.')).toBeVisible();
   await account.getByRole('button', { name: 'Delete for good' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
   expect(server.sent('POST', '/api/auth/delete-user')[0].body).toEqual({});
@@ -437,7 +437,7 @@ test('Two-factor: turning it on asks for your password, shows a QR code and the 
   await expect(section.getByText('On. Signing in asks for a code.')).toBeVisible();
   await expect(section.locator('li')).toHaveCount(0);
 
-  await account.getByRole('button', { name: '‹ Back to the lobby' }).click();
+  await account.getByRole('button', { name: '‹ Back to lobby' }).click();
   await shown(page, 'lobby').getByRole('button', { name: 'Edit account' }).click();
   await expect(section.getByText('On. Signing in asks for a code.')).toBeVisible();
   await expect(section.locator('li')).toHaveCount(0);
@@ -516,7 +516,7 @@ test('Two-factor: a Discord-only account turns it on without a password field', 
   const section = twoFactor(account);
   await section.getByRole('button', { name: 'Turn on' }).click();
   await expect(section.getByLabel('Password')).toHaveCount(0);
-  await expect(section.getByText('Needs a sign-in in the last 5 minutes')).toBeVisible();
+  await expect(section.getByText('Requires a fresh sign-in within the last 5 minutes.')).toBeVisible();
   await section.getByRole('button', { name: 'Continue' }).click();
   await expect(section.locator('svg')).toBeVisible();
   expect(server.sent('POST', '/api/auth/two-factor/enable')[0].body).toEqual({});
@@ -531,7 +531,7 @@ test('Two-factor: an old sign-in on a Discord-only account goes to Sign in with 
   await twoFactor(account).getByRole('button', { name: 'Turn on' }).click();
   await twoFactor(account).getByRole('button', { name: 'Continue' }).click();
   await expect(shown(page, 'sign-in')).toBeVisible();
-  await expect(social(page).getByRole('status')).toContainText('Sign in again to change how you sign in');
+  await expect(social(page).getByRole('status')).toContainText('For your security, please sign in again to continue.');
 });
 
 test('Two-factor: Turn off and New backup codes ask for the password', async ({ page }) => {

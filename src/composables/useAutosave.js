@@ -10,8 +10,10 @@ import { writeProject } from '@/document/projectIO';
 import { writeLatest, addVersion, listVersions, evict, readLatest, readVersion, listDocuments } from '@/document/autosaveStore';
 import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, READY_WAIT_MS, versionDue } from '@/document/autosaveRules';
 import { toast } from '@/composables/useToast';
+import { t } from '@/i18n/index.js';
 
-export const AUTOSAVE_FAILING_WORDS = "Autosave isn't working in this browser. Save to a file to keep your work.";
+export const autosaveFailingWords = () => t('autosave.failing');
+export const AUTOSAVE_FAILING_WORDS = t('autosave.failing');
 const KEPT_DOCUMENT = 'phosphor-autosave-document'; // in sessionStorage: this tab's document
 const LOCK_PREFIX = 'phosphor-autosave:'; // a Web Lock per open document: the tab holding it has it open
 const RELOAD_WAIT_MS = 500; // a reload can get here before the old page has let go of the lock
@@ -94,7 +96,7 @@ export function useAutosave() {
     for (;;) {
       try {
         await writeLatest(record);
-        if (removedWork) toast("This browser's storage was full, so the oldest work kept here was removed.");
+        if (removedWork) toast(t('autosave.evictedOldest'));
         removedWork = false;
         return;
       } catch (error) {
@@ -166,8 +168,8 @@ export function useAutosave() {
       unwritten = true;
       edited ||= real && !opening && project._document === doc; // opening isn't a change; if it wasn't stored, the next write is the opening again
       console.warn('Autosave failed', error);
-      if (removedWork) toast("This browser's storage was full, so the oldest work kept here was removed, and this still didn't fit. Save to a file to keep your work.");
-      else if (!warned) toast(AUTOSAVE_FAILING_WORDS);
+      if (removedWork) toast(t('autosave.stillFull'));
+      else if (!warned) toast(autosaveFailingWords());
       removedWork = false;
       warned = true;
     }
@@ -327,7 +329,7 @@ export function useAutosave() {
       console.warn('Autosave could not open the document', error);
       if (project.image) return; // something else opened meanwhile, which is what's wrong with this one
       holdLock(null);
-      toast("Couldn't open that document.");
+      toast(t('autosave.openFailed'));
       await loadRecent();
     } finally {
       openingRecent = false;

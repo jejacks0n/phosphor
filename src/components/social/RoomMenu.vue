@@ -1,5 +1,6 @@
 <script setup>
 import { ref, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoomStore } from '@/store/RoomStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import DropdownMenu from '@/components/DropdownMenu.vue';
@@ -10,10 +11,11 @@ import ModalDialog from '@/components/ModalDialog.vue';
 // calls editWelcome with its link); Save is the settings change that sends only the welcome. Cancel
 // (or Escape) puts focus back where the box came from, or on the menu's button if that has gone.
 const room = useRoomStore(), workspace = useWorkspaceStore();
+const { t } = useI18n();
 
 const root = useTemplateRef('root');
 const welcome = ref(null);   // the text while the Edit welcome box is open
-const copied = ref('');
+const copied = ref(false);
 let opener = null, copiedTimer = null;
 onBeforeUnmount(() => clearTimeout(copiedTimer));
 
@@ -41,28 +43,28 @@ function cancelWelcome() {
 
 async function copyLink() {
   if (!await room.copyLink()) return;
-  copied.value = 'Copied';
+  copied.value = true;
   clearTimeout(copiedTimer);
-  copiedTimer = setTimeout(() => { copied.value = ''; }, 2000);
+  copiedTimer = setTimeout(() => { copied.value = false; }, 2000);
 }
 </script>
 
 <template>
   <div ref="root" class="room-menu">
-    <span class="copied" role="status">{{ copied }}</span>
-    <DropdownMenu label="Room">
+    <span class="copied" role="status">{{ copied ? t('common.copied') : '' }}</span>
+    <DropdownMenu :label="t('social.menu.label')">
       <template #trigger><span aria-hidden="true">⋯</span></template>
-      <button @click="copyLink">Copy link</button>
-      <button @click="editWelcome()">Edit welcome</button>
-      <button @click="workspace.editorTab = 'social'">Settings and stats</button>
+      <button @click="copyLink">{{ t('common.copyLink') }}</button>
+      <button @click="editWelcome()">{{ t('social.menu.editWelcome') }}</button>
+      <button @click="workspace.editorTab = 'social'">{{ t('social.menu.settingsAndStats') }}</button>
     </DropdownMenu>
 
-    <ModalDialog v-if="welcome !== null" title="Edit welcome" @cancel="cancelWelcome">
+    <ModalDialog v-if="welcome !== null" :title="t('social.menu.editWelcome')" @cancel="cancelWelcome">
       <form @submit.prevent="saveWelcome">
-        <label>Welcome message <textarea v-model="welcome" maxlength="200" rows="3"></textarea></label>
+        <label>{{ t('social.start.welcomeMessage') }} <textarea v-model="welcome" maxlength="200" rows="3"></textarea></label>
         <div class="actions">
-          <button type="button" @click="cancelWelcome">Cancel</button>
-          <button type="submit">Save</button>
+          <button type="button" @click="cancelWelcome">{{ t('common.cancel') }}</button>
+          <button type="submit">{{ t('common.save') }}</button>
         </div>
       </form>
     </ModalDialog>

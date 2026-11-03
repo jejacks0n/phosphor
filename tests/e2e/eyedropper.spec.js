@@ -8,7 +8,7 @@ test('an eyedropper pick puts the color it replaced and the color it picked in R
   // A slot set to None has no color to remember.
   const colors = (w) => ({ fg: w.editFgNone ? null : w.editFgColor, bg: w.editBgNone ? null : w.editBgColor, recent: [...w.recentColors] });
   const before = await workspace(page, colors);
-  await page.getByRole('button', { name: 'Color Picker' }).click();
+  await page.getByRole('button', { name: 'Eyedropper' }).click();
   await drag(page, await cellPoint(page, 5, 5), await cellPoint(page, 30, 20)); // picks all along the way
 
   const after = await workspace(page, colors);
@@ -37,7 +37,7 @@ test('PIXEL view: the picker clicked off the canvas leaves the color alone', asy
   await openApp(page);
   await tab(page, 'PIXEL').click();
   await settled(page);
-  await page.getByRole('button', { name: 'Color Picker' }).click();
+  await page.getByRole('button', { name: 'Eyedropper' }).click();
   const box = await page.locator('article .display').first().boundingBox();
   const y = box.y + box.height * 0.5;
   await page.mouse.click(box.x + box.width * 0.8, y);
@@ -49,7 +49,7 @@ test('PIXEL view: the picker clicked off the canvas leaves the color alone', asy
 
 test('ANSI view: an Alt-held pick off the canvas leaves the color alone', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   const box = await page.locator('.ansi-editor .display').boundingBox();
   const inside = await cellPoint(page, 30, 5, 1);
   await page.mouse.move(inside.x, inside.y);
@@ -67,7 +67,7 @@ test('the picker on the right half of a wide character picks the wide character\
   await editAt(page, 5, 3);
   await page.keyboard.insertText('漢');
   const wide = await store(page, 'project', (p) => p.underlyingAt(5, 3));
-  await page.getByRole('button', { name: 'Color Picker' }).click();
+  await page.getByRole('button', { name: 'Eyedropper' }).click();
   const elsewhere = await cellPoint(page, 20, 10);
   await page.mouse.click(elsewhere.x, elsewhere.y);
   expect(await workspace(page, (w) => w.editFgColor)).not.toBe(wide.fg);

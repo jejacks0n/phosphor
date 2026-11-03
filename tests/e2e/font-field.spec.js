@@ -4,9 +4,9 @@ import { openApp, store, fixture, tab, editAt, settled, screenPixels } from './s
 // The grid's CSS width (the canvas view's sizer): 2px borders on each side of its cells.
 const canvasWidth = (page) => page.locator('.ansi-editor div.display').evaluate((c) => c.getBoundingClientRect().width);
 
-// Load a font with the Font field's Load custom button.
+// Load a font with the Font field's Load font button.
 async function loadFont(page, path) {
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Load custom' }).click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Load font' }).click()]);
   await chooser.setFiles(path);
 }
 
@@ -38,7 +38,7 @@ test('a monospaced font from your computer is used and kept; a proportional one 
   await openApp(page);
   const cols = await store(page, 'project', (p) => p.cols);
   await loadFont(page, fixture('fonts/proportional.ttf'));
-  await expect(page.getByRole('alert')).toHaveText(/^“proportional” isn't monospaced: “i” is 4\.0px wide and “W” is 14\.4px\./);
+  await expect(page.getByRole('alert')).toHaveText(/^“proportional” isn't monospaced \(“i” is 4\.0px wide, while “W” is 14\.4px\)\./);
   await expect(page.getByLabel('Font', { exact: true })).toHaveValue('jetbrains');
   // tests/fixtures/fonts/tall.ttf: every glyph 0.6em wide, 1.2em tall; a loaded font starts at 16px.
   await loadFont(page, fixture('fonts/tall.ttf'));
@@ -57,13 +57,13 @@ test('a monospaced font from your computer is used and kept; a proportional one 
 // Each toggle's tooltip says what's on now and what a click does (the renderer's button is named for the other one).
 test('the status bar\'s DOM/Canvas and Smooth tooltips say what\'s on and what a click does', async ({ page }) => {
   await openApp(page);
-  await expect(page.getByRole('button', { name: 'DOM', exact: true })).toHaveAttribute('title', 'The ANSI view is drawn on a canvas. Click to draw it as page text (DOM, a trial).');
+  await expect(page.getByRole('button', { name: 'DOM', exact: true })).toHaveAttribute('title', 'Rendered on canvas. Click to switch to DOM text rendering (experimental).');
   await page.getByRole('button', { name: 'DOM', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Canvas', exact: true })).toHaveAttribute('title', 'The ANSI view is drawn as page text (DOM, a trial). Click to draw it on a canvas.');
+  await expect(page.getByRole('button', { name: 'Canvas', exact: true })).toHaveAttribute('title', 'Rendered as DOM text (experimental). Click to switch to canvas rendering.');
   const smooth = page.getByRole('button', { name: 'Smooth' });
-  await expect(smooth).toHaveAttribute('title', 'Smooth text is on: letters have soft edges. Click for crisp pixels in each cell\'s two colors.');
+  await expect(smooth).toHaveAttribute('title', 'Smooth text is on (anti-aliased glyphs). Click for crisp 2-color pixel edges.');
   await smooth.click();
-  await expect(smooth).toHaveAttribute('title', 'Smooth text is off: crisp pixels in each cell\'s two colors. Click for soft edges.');
+  await expect(smooth).toHaveAttribute('title', 'Smooth text is off (crisp 2-color pixels). Click for anti-aliased glyphs.');
 });
 
 test('the status bar\'s Smooth button turns anti-aliasing off and on, in both views, and keeps it', async ({ page }) => {

@@ -1,10 +1,13 @@
 <script setup>
+import { useI18n } from 'vue-i18n';
 import { toastMessage, closeToast } from '@/composables/useToast';
+
+const { t } = useI18n();
 </script>
 
 <template>
   <Transition name="toast">
-    <div v-if="toastMessage" class="app-toast" role="status" title="Close" @click="closeToast">{{ toastMessage }}</div>
+    <div v-if="toastMessage" class="app-toast" role="status" :title="t('common.close')" @click="closeToast">{{ toastMessage }}</div>
   </Transition>
 </template>
 

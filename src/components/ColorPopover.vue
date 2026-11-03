@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount, ref, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor, paletteChoices } from '@/lib/PixelTransforms';
@@ -17,6 +18,7 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:slotName', 'close']);
 
+const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const root = useTemplateRef('root');
@@ -82,14 +84,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="color-popover" role="dialog" aria-label="Color picker" @keydown="onArrow">
+  <div ref="root" class="color-popover" role="dialog" :aria-label="t('colors.popoverAria')" @keydown="onArrow">
     <div class="head">
-      <button :class="{ on: slotName === 'fg' }" @click="emit('update:slotName', 'fg')">FG</button>
-      <button :class="{ on: slotName === 'bg' }" @click="emit('update:slotName', 'bg')">BG</button>
+      <button :class="{ on: slotName === 'fg' }" @click="emit('update:slotName', 'fg')">{{ t('colors.fg') }}</button>
+      <button :class="{ on: slotName === 'bg' }" @click="emit('update:slotName', 'bg')">{{ t('colors.bg') }}</button>
       <span class="spacer"></span>
-      <button class="swap" :title="`Swap foreground and background (X or ${shortcut('shift', 'mod', 'X')})`" @click="workspace.swapColors()">
+      <button class="swap" :title="t('colors.swapTitle', { key: shortcut('shift', 'mod', 'X') })" @click="workspace.swapColors()">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2 1 5l3 3V6h8V4H4zm8 6v2H4v2h8v2l3-3z"/></svg>
-        Swap
+        {{ t('colors.swap') }}
       </button>
     </div>
 
@@ -110,12 +112,12 @@ onBeforeUnmount(() => {
         <input type="color" :value="current" @input="choose($event.target.value, false)" @change="choose($event.target.value)"/>
         <span>{{ current }}</span>
       </label>
-      <div v-if="inUse.length" class="row-label">In this drawing</div>
+      <div v-if="inUse.length" class="row-label">{{ t('colors.inThisDrawing') }}</div>
       <div v-if="inUse.length" class="swatches" style="grid-template-columns: repeat(8, 1fr)">
         <button v-for="hex in inUse" :key="hex" class="swatch" :style="{ backgroundColor: shown(hex) }" :title="hex" @click="choose(hex)"></button>
       </div>
       <button v-if="painted.length" class="row-label fold" :aria-expanded="showPainted" @click="showPainted = !showPainted">
-        {{ showPainted ? '▾' : '▸' }} Painted ({{ painted.length }})
+        {{ t('colors.painted', { arrow: showPainted ? '▾' : '▸', count: painted.length }) }}
       </button>
       <div v-if="showPainted && painted.length" class="swatches" style="grid-template-columns: repeat(8, 1fr)">
         <button v-for="hex in painted" :key="hex" class="swatch" :style="{ backgroundColor: shown(hex) }" :title="hex" @click="choose(hex)"></button>
@@ -123,15 +125,15 @@ onBeforeUnmount(() => {
     </template>
 
     <div class="foot">
-      <button v-if="offersNone" class="swatch none" :class="{ selected: isNone }" title="None: leave what's underneath" @click="choose(null)"></button>
-      <span v-if="offersNone">None</span>
+      <button v-if="offersNone" class="swatch none" :class="{ selected: isNone }" :title="t('colors.noneTitle')" @click="choose(null)"></button>
+      <span v-if="offersNone">{{ t('colors.none') }}</span>
       <span class="spacer"></span>
       <button
           v-for="hex in workspace.recentColors"
           :key="hex"
           class="swatch small"
           :style="{ backgroundColor: shown(hex) }"
-          :title="`Recent: ${hex}`"
+          :title="t('colors.recentTitle', { hex })"
           @click="choose(hex)"
       ></button>
     </div>
@@ -180,11 +182,6 @@ div.head button.swap {
   gap: 5px;
 }
 
-div.head button.swap:hover {
-  background: var(--surface-4);
-  color: var(--text);
-}
-
 div.head button.swap svg {
   width: 12px;
   height: 12px;
@@ -196,48 +193,35 @@ div.head button.on {
   color: var(--white);
 }
 
-.spacer {
-  flex: 1;
-}
-
 div.swatches {
   display: grid;
-  gap: 1px;
+  gap: 2px;
 }
 
 button.swatch {
-  height: 18px;
-  min-width: 0;
+  aspect-ratio: 1;
   padding: 0;
-  border: none;
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   cursor: pointer;
 }
 
-button.swatch.small {
-  width: 14px;
-  height: 14px;
-}
-
 button.swatch.selected {
   outline: 2px solid var(--white);
-  outline-offset: 1px;
-  position: relative;
-  z-index: 1;
+  outline-offset: -1px;
+  box-shadow: 0 0 0 1px var(--black);
 }
 
-/* Where the arrow keys are (the selected color keeps its white ring when it isn't focused). */
-button.swatch:focus-visible {
-  outline: 2px solid var(--accent-hot);
-  outline-offset: 1px;
-  position: relative;
-  z-index: 2;
+button.swatch.small {
+  width: 12px;
+  height: 12px;
 }
 
 button.swatch.none {
-  width: 18px;
   position: relative;
-  background: repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0 / 8px 8px;
+  width: 16px;
+  height: 16px;
+  background: repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0 / 6px 6px;
 }
 
 button.swatch.none::after {
@@ -251,38 +235,49 @@ label.native {
   display: flex;
   align-items: center;
   gap: 8px;
-  font: 12px ui-monospace, Menlo, monospace;
-  color: var(--text-dim);
-}
-
-label.native input {
-  width: 48px;
-  height: 32px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface-2);
-}
-
-div.row-label,
-button.row-label {
   font-size: 11px;
-  color: var(--text-muted);
-}
-
-button.fold {
-  align-self: flex-start;
-  padding: 0;
-  border: none;
-  background: none;
-  box-shadow: none;
-  font-weight: normal;
+  font-family: monospace;
+  color: var(--text-dim);
   cursor: pointer;
 }
 
-button.fold:hover {
-  transform: none;
-  box-shadow: none;
-  color: var(--text);
+label.native input[type="color"] {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+div.row-label {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+button.row-label.fold {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+button.row-label.fold:hover {
+  color: var(--accent-hot);
+}
+
+.spacer {
+  flex: 1;
 }
 </style>

@@ -1,6 +1,7 @@
 // The lobby: the rooms and people the server reports, kept by a reducer over its messages
 // (the server's API), and the websocket that says hello with a pass and reconnects.
 import { proof } from './keys.js';
+import { t } from '@/i18n/index.js';
 
 const FIRST_RETRY_MS = 1000;
 const LAST_RETRY_MS = 30_000;
@@ -50,14 +51,18 @@ export function sortedPeople(lobby, mySub) {
 
 // The Join button: its label, and why it's disabled (a full room says so even when it's members only).
 export function joinState(room, { signedIn }) {
-  const reason = room.count >= room.max ? 'Room is full'
-    : !signedIn && !room.allowGuests ? 'Signed-in users only'
+  const reason = room.count >= room.max ? t('social.errors.room.full')
+    : !signedIn && !room.allowGuests ? t('social.errors.room.signedInOnly')
       : null;
-  return { enabled: !reason, label: `Join ${room.count}/${room.max}`, reason };
+  return { enabled: !reason, label: t('social.card.joinCount', { count: room.count, max: room.max }), reason };
 }
 
 // A signal as the lobby says it.
-export const signalWords = { feedback: 'Wants feedback', chat: 'Open to chat', 'heads-down': 'Heads down' };
+export const signalWords = {
+  get feedback() { return t('social.signals.feedback'); },
+  get chat() { return t('social.signals.chat'); },
+  get 'heads-down'() { return t('social.signals.heads-down'); },
+};
 export const signalWord = (signal) => (Object.hasOwn(signalWords, signal ?? '') ? signalWords[signal] : null);
 
 // A card's picture as an image: a JPEG (from a browser that can't make WebP) starts /9j/, else it's WebP.
@@ -66,7 +71,9 @@ export const pictureUrl = (base64) => `data:image/${base64.startsWith('/9j/') ? 
 // How long a room has been live: "live 42 min", then "live 1 hr 15 min".
 export function liveFor(liveSince, now = Date.now()) {
   const min = Math.max(0, Math.floor((now - liveSince) / 60_000));
-  return min < 60 ? `live ${min} min` : `live ${Math.floor(min / 60)} hr ${min % 60} min`;
+  return min < 60
+    ? t('social.card.liveMinutes', { min })
+    : t('social.card.liveHoursMinutes', { hr: Math.floor(min / 60), min: min % 60 });
 }
 
 // Sends at most one value per interval: a change goes at once if the interval has passed, else the

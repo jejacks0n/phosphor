@@ -4,6 +4,7 @@
 // sight, pointing to the box, when the box is scrolled out of view.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, reactive, nextTick } from 'vue';
+import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import RoomArt from '@/components/social/RoomArt.vue';
 import CellCanvas from '@/lib/CellCanvas';
@@ -26,7 +27,7 @@ function mount(props) {
   host = document.createElement('div');
   host.style.cssText = 'width: 200px; height: 100px';
   document.body.append(host);
-  app = createApp({ render: () => h(RoomArt, { ...state, onLookAround: () => seen.lookArounds++, onTrack: () => seen.tracks++, onZoom: (zoom) => { seen.zoom = zoom; }, onLookingAt: (middle) => { seen.lookingAt = middle; } }) });
+  app = createApp({ render: () => h(RoomArt, { ...state, onLookAround: () => seen.lookArounds++, onTrack: () => seen.tracks++, onZoom: (zoom) => { seen.zoom = zoom; }, onLookingAt: (middle) => { seen.lookingAt = middle; } }) }).use(i18n);
   app.mount(host);
   return { state, seen, scroll: host.querySelector('.room-art'), box: host.querySelector('.host-view'), tag: () => host.querySelector('.host-tag') };
 }

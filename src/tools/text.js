@@ -4,12 +4,13 @@
 import { cellAt } from '@/lib/Cells';
 import { snapCursor } from '@/document/wideChars';
 import select from '@/tools/select';
+import { t } from '@/i18n/index.js';
 
 let start = null; // { pos, cell } of the press while it might still become a drag
 
 const text = {
   id: 'text',
-  title: 'Edit Mode',
+  get title() { return t('tools.text.title'); },
   keys: ['T', 'K'],
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M64 64h384v112h-48l-16-56H288v296h56v32H168v-32h56V120H112l-16 56H48V64z"/></svg>`,
   views: ['output'],

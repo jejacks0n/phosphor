@@ -3,6 +3,7 @@ import { generateSlug } from 'random-word-slugs';
 import { goodBaseScale, goodFit, goodScale } from '@/document/projectIO.js';
 import { MAX_COLS, maxRowsBeside } from '@/lib/Cells.js';
 import { SAUCE_WIDTHS } from '@/lib/Sauce.js';
+import { t } from '@/i18n/index.js';
 
 // A list of characters or colors, in characters: every CP437 character 64 times over, or 2000 colors.
 const MOST_LIST = 16 * 1024;
@@ -11,32 +12,32 @@ const MOST_TEXT = 1024;   // any other text a setting holds
 // Every persisted project setting, declared once. Order within the transform, adjust and effects
 // groups is the ControlPanel's on-screen order. Storage keys must never change: they hold users' settings.
 export const SETTINGS = [
-  { key: 'cols', default: 80, group: 'setup', label: 'Dimensions', help: 'The art\'s width in columns and height in rows (two pixel rows per character row).' },
+  { key: 'cols', default: 80, group: 'setup', get label() { return t('settings.cols.label'); }, get help() { return t('settings.cols.help'); } },
   { key: 'rows', default: 50, group: 'setup' },
   { key: 'aspectLock', default: true, group: 'setup', pipeline: false },
-  { key: 'renderStyle', default: 'ansi', group: 'setup', help: 'ANSI colors both the character and its background. Color ASCII puts colored characters on black, heavier the more intense the color. Monochrome ASCII is one color, heavier the brighter.' },
-  { key: 'chars', default: '.*:%░░▒▒▓▓▄■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, most: MOST_LIST, help: 'The characters the converter picks from, at random for ANSI and by brightness for ASCII. Repeat a character to get more of it.' },
+  { key: 'renderStyle', default: 'ansi', group: 'setup', get help() { return t('settings.renderStyle.help'); } },
+  { key: 'chars', default: '.*:%░░▒▒▓▓▄■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, most: MOST_LIST, get help() { return t('settings.chars.help'); } },
   { key: 'charsAscii', default: ' .:*%#@', group: 'setup', pipeline: false, most: MOST_LIST },
-  { key: 'seed', default: () => generateSlug(2), group: 'setup', help: 'Decides which character goes in each cell. The same seed gives the same result. Rolling the dice generates a new one.' },
-  { key: 'quantize', default: 'none', group: 'setup', help: 'Full color keeps every color. VGA and CGA snap to those palettes. Color count picks that many colors from your picture, and Color list uses only the colors you type.' },
-  { key: 'colorCount', default: 16, group: 'setup', label: 'Color Count', min: 2, max: 255 },
+  { key: 'seed', default: () => generateSlug(2), group: 'setup', get help() { return t('settings.seed.help'); } },
+  { key: 'quantize', default: 'none', group: 'setup', get help() { return t('settings.quantize.help'); } },
+  { key: 'colorCount', default: 16, group: 'setup', get label() { return t('settings.colorCount.label'); }, min: 2, max: 255 },
   { key: 'palette', default: '#FFFFFF #AA5601 #000000', group: 'setup', most: MOST_LIST },
-  { key: 'smoothing', default: 'high', group: 'setup', help: 'How the image is scaled down to the grid. High is smoother; Low keeps harder edges and more noise.' },
+  { key: 'smoothing', default: 'high', group: 'setup', get help() { return t('settings.smoothing.help'); } },
 
-  { key: 'colorizeStrength', default: 0, group: 'transform', label: 'Colorize', min: 0, max: 100, unit: '%', ticks: [0], companion: 'colorize', help: 'Tints the image with a color, keeping its lightness.' },
+  { key: 'colorizeStrength', default: 0, group: 'transform', get label() { return t('settings.colorizeStrength.label'); }, min: 0, max: 100, unit: '%', ticks: [0], companion: 'colorize', get help() { return t('settings.colorizeStrength.help'); } },
   { key: 'colorize', default: '#ff00ff', group: 'transform', reset: false },
-  { key: 'hue', default: 0, group: 'transform', label: 'Hue Rotation', min: 0, max: 360, unit: '°', help: 'Shifts all colors around the color wheel.' },
-  { key: 'invert', default: 0, group: 'transform', label: 'Invert', min: 0, max: 100, unit: '%', help: 'Turns colors into their negatives (applied after the other color changes).' },
+  { key: 'hue', default: 0, group: 'transform', get label() { return t('settings.hue.label'); }, min: 0, max: 360, unit: '°', get help() { return t('settings.hue.help'); } },
+  { key: 'invert', default: 0, group: 'transform', get label() { return t('settings.invert.label'); }, min: 0, max: 100, unit: '%', get help() { return t('settings.invert.help'); } },
 
-  { key: 'brightness', default: 100, group: 'adjust', label: 'Brightness', min: 0, max: 500, unit: '%', ticks: [100], help: 'Makes the whole image lighter or darker.' },
-  { key: 'contrast', default: 100, group: 'adjust', label: 'Contrast', min: 0, max: 500, unit: '%', ticks: [100], help: 'Widens or narrows the range between light and dark.' },
-  { key: 'saturation', default: 100, group: 'adjust', label: 'Saturation', min: 0, max: 500, unit: '%', ticks: [100], help: 'How strong the colors are.' },
+  { key: 'brightness', default: 100, group: 'adjust', get label() { return t('settings.brightness.label'); }, min: 0, max: 500, unit: '%', ticks: [100], get help() { return t('settings.brightness.help'); } },
+  { key: 'contrast', default: 100, group: 'adjust', get label() { return t('settings.contrast.label'); }, min: 0, max: 500, unit: '%', ticks: [100], get help() { return t('settings.contrast.help'); } },
+  { key: 'saturation', default: 100, group: 'adjust', get label() { return t('settings.saturation.label'); }, min: 0, max: 500, unit: '%', ticks: [100], get help() { return t('settings.saturation.help'); } },
 
-  { key: 'flatten', default: 0, group: 'effects', label: 'Flatten', min: 0, max: 10, ticks: [0], help: 'Merges similar colors into flat areas, for a simpler, painted look.' },
-  { key: 'sharpen', default: 0, group: 'effects', label: 'Sharpen', min: 0, max: 100, ticks: [0], help: 'Sharpens edges and fine detail.' },
-  { key: 'edges', default: 0, group: 'effects', label: 'Edges', min: 0, max: 20, step: 0.01, decimals: 2, ticks: [0], companion: 'edgeColor', help: 'Finds outlines in the image and draws them in the Edges color.' },
+  { key: 'flatten', default: 0, group: 'effects', get label() { return t('settings.flatten.label'); }, min: 0, max: 10, ticks: [0], get help() { return t('settings.flatten.help'); } },
+  { key: 'sharpen', default: 0, group: 'effects', get label() { return t('settings.sharpen.label'); }, min: 0, max: 100, ticks: [0], get help() { return t('settings.sharpen.help'); } },
+  { key: 'edges', default: 0, group: 'effects', get label() { return t('settings.edges.label'); }, min: 0, max: 20, step: 0.01, decimals: 2, ticks: [0], companion: 'edgeColor', get help() { return t('settings.edges.help'); } },
   { key: 'edgeColor', default: '#000000', group: 'effects' },
-  { key: 'edgeThickness', default: 1, group: 'effects', label: 'Edge Thickness', min: 0, max: 5, step: 0.1, decimals: 1, help: 'How thick the outlines are.' },
+  { key: 'edgeThickness', default: 1, group: 'effects', get label() { return t('settings.edgeThickness.label'); }, min: 0, max: 5, step: 0.1, decimals: 1, get help() { return t('settings.edgeThickness.help'); } },
 
   { key: 'sauceUse9pxFont', default: false, group: 'sauce', storageKey: 'current_file.sauce.use9pxFont' },
   { key: 'sauceFontName', default: 'IBM VGA', group: 'sauce', most: SAUCE_WIDTHS.fontName, storageKey: 'current_file.sauce.fontName' },

@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { isMac, shortcut } from '@/lib/keyLabels';
 
@@ -6,98 +8,99 @@ import { isMac, shortcut } from '@/lib/keyLabels';
 // platform's way (⌘ and ⌥ on a Mac). Keep it in step with useKeyboardShortcuts, useTextTool and
 // TextKeys when a shortcut changes.
 const emit = defineEmits(['close']);
+const { t } = useI18n();
 const k = shortcut;
 
-const GROUPS = [
+const groups = computed(() => [
   {
-    title: 'General',
+    title: t('shortcuts.groups.general'),
     rows: [
-      [['?'], `This list (${k('alt', '?')} in Edit Mode)`],
-      [[k('mod', 'Z')], 'Undo'],
-      [[k('shift', 'mod', 'Z')], 'Redo'],
-      [[k('mod', 'S')], 'Save the project'],
+      [['?'], t('shortcuts.rows.thisList', { key: k('alt', '?') })],
+      [[k('mod', 'Z')], t('shortcuts.rows.undo')],
+      [[k('shift', 'mod', 'Z')], t('shortcuts.rows.redo')],
+      [[k('mod', 'S')], t('shortcuts.rows.saveProject')],
     ],
   },
   {
-    title: 'Tools',
+    title: t('shortcuts.groups.tools'),
     rows: [
-      [['P'], 'Pencil'],
-      [['B'], 'Brush'],
-      [['E'], 'Eraser (with Select and a selection: erase it)'],
-      [['G'], 'Paint Bucket'],
-      [['U'], 'Shapes'],
-      [['I'], 'Color Picker'],
-      [['W'], 'Magic Wand: select by color or character'],
-      [['H'], 'Hand'],
-      [['Z'], 'Zoom'],
-      [['T', 'K'], 'Edit Mode (Esc puts the cursor away, so letters choose tools again)'],
-      [['F'], 'Flip (ANSI view)'],
-      [['M'], 'Select (ANSI view)'],
+      [['P'], t('shortcuts.rows.pencil')],
+      [['B'], t('shortcuts.rows.brush')],
+      [['E'], t('shortcuts.rows.eraser')],
+      [['G'], t('shortcuts.rows.bucket')],
+      [['U'], t('shortcuts.rows.shapes')],
+      [['I'], t('shortcuts.rows.picker')],
+      [['W'], t('shortcuts.rows.wand')],
+      [['H'], t('shortcuts.rows.hand')],
+      [['Z'], t('shortcuts.rows.zoom')],
+      [['T', 'K'], t('shortcuts.rows.editMode')],
+      [['F'], t('shortcuts.rows.flip')],
+      [['M'], t('shortcuts.rows.select')],
     ],
   },
   {
-    title: 'Drawing',
+    title: t('shortcuts.groups.drawing'),
     rows: [
-      [[`hold ${k('alt')}`], 'Pick a color (Pencil, Brush, Paint Bucket, Shapes)'],
-      [[`hold ${k('alt', 'shift')}`], 'Pick the background color'],
-      [['hold Space'], 'Pan, with any tool (or drag with the middle button)'],
+      [[t('shortcuts.holdKey', { key: k('alt') })], t('shortcuts.rows.holdAlt')],
+      [[t('shortcuts.holdKey', { key: k('alt', 'shift') })], t('shortcuts.rows.holdAltShift')],
+      [[t('shortcuts.holdSpace')], t('shortcuts.rows.holdSpace')],
     ],
   },
   {
-    title: 'Colors',
+    title: t('shortcuts.groups.colors'),
     rows: [
-      [[k('alt', 'F'), k('alt', 'A')], 'Open the color box on the foreground'],
-      [[k('alt', 'B')], 'Open it on the background'],
-      [['X', k('shift', 'mod', 'X')], 'Swap foreground and background (X types in Edit Mode)'],
-      [['← ↑ → ↓'], 'In the color box: move between swatches'],
-      [['Enter', 'Space'], 'In the color box: pick and close, or pick and stay'],
+      [[k('alt', 'F'), k('alt', 'A')], t('shortcuts.rows.openFg')],
+      [[k('alt', 'B')], t('shortcuts.rows.openBg')],
+      [['X', k('shift', 'mod', 'X')], t('shortcuts.rows.swapColors')],
+      [['← ↑ → ↓'], t('shortcuts.rows.moveSwatches')],
+      [['Enter', 'Space'], t('shortcuts.rows.pickSwatch')],
     ],
   },
   {
-    title: 'Edit Mode',
+    title: t('shortcuts.groups.editMode'),
     rows: [
-      [['← ↑ → ↓'], 'Move the cursor'],
-      [['Home', 'End'], 'Start or end of the row'],
-      [['Enter'], 'Start of the next line'],
-      [['Backspace', 'Delete'], 'Erase before or at the cursor'],
-      [['Insert'], 'Insert or overwrite'],
-      [['F1–F12'], 'Type the character palette\'s slot'],
-      [[k('ctrl', 'F1–F12')], 'Put the character under the cursor on that slot'],
-      [[k('alt', '←'), k('alt', '→')], 'Previous or next character palette'],
-      [[k('alt', '↑'), k('alt', '↓')], 'Step the foreground through the palette (add Shift for the background)'],
+      [['← ↑ → ↓'], t('shortcuts.rows.moveCursor')],
+      [['Home', 'End'], t('shortcuts.rows.homeEnd')],
+      [['Enter'], t('shortcuts.rows.nextLine')],
+      [['Backspace', 'Delete'], t('shortcuts.rows.erase')],
+      [['Insert'], t('shortcuts.rows.insertOverwrite')],
+      [['F1–F12'], t('shortcuts.rows.typeFKey')],
+      [[k('ctrl', 'F1–F12')], t('shortcuts.rows.grabFKey')],
+      [[k('alt', '←'), k('alt', '→')], t('shortcuts.rows.prevNextPalette')],
+      [[k('alt', '↑'), k('alt', '↓')], t('shortcuts.rows.stepFgPalette')],
     ],
   },
   {
-    title: 'Select',
+    title: t('shortcuts.groups.select'),
     rows: [
-      [[k('mod', 'A')], 'Select all'],
-      [[k('mod', 'C'), k('mod', 'X'), k('mod', 'V')], 'Copy, cut, paste'],
-      [['← ↑ → ↓'], 'Nudge the selection'],
-      [['Delete', 'Backspace', 'E'], 'Delete what\'s selected'],
-      [['S', 'C'], 'Stamp: leave a copy here and move the block on'],
-      [['Esc', 'Enter'], 'Deselect, setting the block down'],
+      [[k('mod', 'A')], t('shortcuts.rows.selectAll')],
+      [[k('mod', 'C'), k('mod', 'X'), k('mod', 'V')], t('shortcuts.rows.copyCutPaste')],
+      [['← ↑ → ↓'], t('shortcuts.rows.nudge')],
+      [['Delete', 'Backspace', 'E'], t('shortcuts.rows.deleteSelection')],
+      [['S', 'C'], t('shortcuts.rows.stamp')],
+      [['Esc', 'Enter'], t('shortcuts.rows.deselect')],
     ],
   },
   {
-    title: 'Animation (with Animate on)',
+    title: t('shortcuts.groups.animation'),
     rows: [
-      [['L'], 'Play or pause (any other key pauses too)'],
-      [[',', '.'], 'Previous or next frame'],
+      [['L'], t('shortcuts.rows.playPause')],
+      [[',', '.'], t('shortcuts.rows.prevNextFrame')],
     ],
   },
   {
-    title: 'Editor tabs',
+    title: t('shortcuts.groups.tabs'),
     rows: [
-      [['← →', 'Home', 'End'], 'With a tab focused: switch tabs'],
+      [['← →', 'Home', 'End'], t('shortcuts.rows.switchTabs')],
     ],
   },
-];
+]);
 </script>
 
 <template>
-  <ModalDialog title="Keyboard shortcuts" @cancel="emit('close')">
+  <ModalDialog :title="t('shortcuts.title')" @cancel="emit('close')">
     <div class="groups">
-      <section v-for="group in GROUPS" :key="group.title">
+      <section v-for="group in groups" :key="group.title">
         <h4>{{ group.title }}</h4>
         <dl>
           <template v-for="([keys, does]) in group.rows" :key="does">
@@ -106,10 +109,10 @@ const GROUPS = [
           </template>
         </dl>
       </section>
-      <p v-if="isMac" class="note">On a Mac keyboard, the F-keys may need Fn.</p>
+      <p v-if="isMac" class="note">{{ t('shortcuts.macFnNote') }}</p>
     </div>
     <div class="actions">
-      <button class="primary" @click="emit('close')">Done</button>
+      <button class="primary" @click="emit('close')">{{ t('common.done') }}</button>
     </div>
   </ModalDialog>
 </template>

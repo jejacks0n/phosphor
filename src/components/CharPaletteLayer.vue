@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, useTemplateRef, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
@@ -13,6 +14,7 @@ import { toast } from '@/composables/useToast';
 // shown as its 12 glyphs) for choosing one; Edit grows the same element into the editor, with the
 // selected palette's slots and glyph sources. Built-ins are locked: the first edit makes your copy.
 const emit = defineEmits(['close']);
+const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const palettes = usePaletteStore();
@@ -26,7 +28,7 @@ const find = ref('');
 const source = ref('cp437');
 const block = ref(0);
 const hint = ref({ text: '', warn: false });
-const info = ref('Hover a glyph for details.');
+const hoveredChar = ref(null);
 
 const current = computed(() => palettes.all.find(p => p.id === currentId.value) ?? palettes.active);
 const matches = (p) => {
@@ -50,35 +52,42 @@ const visibleBlocks = computed(() => {
 });
 const pane = computed(() => {
   const found = findResult.value;
-  if (found?.kind === 'code') return { note: 'Code point', chars: found.chars };
-  if (found?.kind === 'paste') return { note: "From what you pasted: click to add. Anything struck through can't be used.", chars: found.chars };
+  if (found?.kind === 'code') return { note: t('palette.layer.notes.codePoint'), chars: found.chars };
+  if (found?.kind === 'paste') return { note: t('palette.layer.notes.pasted'), chars: found.chars };
   if (found?.kind === 'block' || source.value === 'unicode') {
     const shown = visibleBlocks.value;
     const index = shown.some(b => b.index === block.value) ? block.value : shown[0]?.index ?? 0;
     return { blocks: shown, block: index, chars: range(UNICODE_BLOCKS[index][1], UNICODE_BLOCKS[index][2]) };
   }
-  if (source.value === 'drawing') return { note: 'Every character on the canvas right now', chars: [...new Set(project.cells.map(c => c.char))] };
-  if (source.value === 'recent') return { note: "Characters you've used recently, across projects", chars: palettes.recentChars };
+  if (source.value === 'drawing') return { note: t('palette.layer.notes.inDrawing'), chars: [...new Set(project.cells.map(c => c.char))] };
+  if (source.value === 'recent') return { note: t('palette.layer.notes.recent'), chars: palettes.recentChars };
   return { chars: [...CP437].map((c, i) => (i === 0 ? '' : c)) };
 });
 const sourceTab = computed(() => (findResult.value?.kind === 'block' ? 'unicode' : source.value));
 
 const setHint = (text = '', warn = false) => { hint.value = { text, warn }; };
-const aimHint = () => setHint(`Aiming at F${target.value + 1}: click a glyph below to fill it${target.value < 11 ? ` (then F${target.value + 2})` : ''}, or drag one onto any slot.`);
+const aimHint = () => {
+  const slot = target.value + 1;
+  const next = target.value + 2;
+  const text = target.value < 11
+    ? t('palette.layer.aimingNext', { slot, next })
+    : t('palette.layer.aimingLast', { slot });
+  setHint(text);
+};
 
 // Every edit goes through the store; the first edit to a built-in edits your copy instead.
 const followFork = ({ id, forked }) => {
   currentId.value = id;
-  if (forked) toast(`Built-ins are locked, so you're now editing your copy, "${forked}".`);
+  if (forked) toast(t('palette.forkedToast', { name: forked }));
 };
 const assign = (index, char, advance = true) => {
   if (char && !fits(char)) {
-    setHint(`${char} can't go in a cell (it's invisible, a control, or more than one character), so it can't go in a palette.`, true);
+    setHint(t('palette.layer.unusableChar', { char }), true);
     return;
   }
   followFork(palettes.setSlot(current.value.id, index, char));
   if (char && advance) target.value = Math.min(11, index + 1);
-  if (char && !isCp437(char)) setHint(`${char} isn't in CP437: it saves in .utf8ans, and .ans export will warn about it.`, true);
+  if (char && !isCp437(char)) setHint(t('palette.layer.notCp437Warning', { char }), true);
   else aimHint();
 };
 const pickGlyph = (char) => {
@@ -137,11 +146,23 @@ const onDrop = (event, index) => {
   }
 };
 
-const onGlyphHover = (char) => {
-  if (!char) return;
+const info = computed(() => {
+  const char = hoveredChar.value;
+  if (!char) return t('palette.layer.hoverDefault');
   const byte = cp437Byte(char);
   const slot = current.value.glyphs.indexOf(char);
-  info.value = `${char}  ${code(char)} · ${byte !== null && isCp437(char) ? `CP437 ${byte}` : 'UTF-8 only'}${!fits(char) ? " · can't be used" : cellWidth(char) === 2 ? ' · 2 cells wide' : ''}${slot >= 0 ? ` · already on F${slot + 1}` : ''}`;
+  const parts = [
+    `${char}  ${code(char)}`,
+    byte !== null && isCp437(char) ? t('palette.layer.infoCp437', { byte }) : t('palette.layer.infoUtf8Only'),
+  ];
+  if (!fits(char)) parts.push(t('palette.layer.infoCantUse'));
+  else if (cellWidth(char) === 2) parts.push(t('palette.layer.infoWide'));
+  if (slot >= 0) parts.push(t('palette.layer.infoOnSlot', { slot: slot + 1 }));
+  return parts.join(' · ');
+});
+
+const onGlyphHover = (char) => {
+  if (char) hoveredChar.value = char;
 };
 
 const onKeyDown = (event) => {
@@ -193,15 +214,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="palette-layer" :class="{ editing }" tabindex="0" role="dialog" aria-label="Character palettes" @keydown="onKeyDown">
+  <div ref="root" class="palette-layer" :class="{ editing }" tabindex="0" role="dialog" :aria-label="t('palette.layer.dialogAria')" @keydown="onKeyDown">
     <!-- the list: choose a palette -->
     <div class="list-side">
       <div class="top">
-        <input v-model="filter" placeholder="Filter palettes…" aria-label="Filter palettes">
-        <button @click="toggleEditing">{{ editing ? '◂ Done' : 'Edit ▸' }}</button>
+        <input v-model="filter" :placeholder="t('palette.layer.filterPlaceholder')" :aria-label="t('palette.layer.filterAria')">
+        <button @click="toggleEditing">{{ editing ? t('palette.layer.doneBtn') : t('palette.layer.editBtn') }}</button>
       </div>
       <div class="list">
-        <div class="group">Built-in</div>
+        <div class="group">{{ t('common.builtIn') }}</div>
         <div
             v-for="p in builtins"
             :key="p.id"
@@ -210,10 +231,10 @@ onBeforeUnmount(() => {
             @click="onRowClick(p)"
             @dblclick="use(p.id); startEditing()"
         >
-          <div class="name"><span>{{ p.name }}</span><em>{{ p.glyphs.every(g => !g || isCp437(g)) ? '' : 'UTF-8' }}</em></div>
+          <div class="name"><span>{{ p.name }}</span><em>{{ p.glyphs.every(g => !g || isCp437(g)) ? '' : t('palette.layer.utf8') }}</em></div>
           <div class="glyphs"><span v-for="(g, i) in p.glyphs" :key="i" class="glyph-cell" :class="{ empty: !g }">{{ g || '·' }}</span></div>
         </div>
-        <div class="group">Yours<button class="new" @click="createPalette">＋ New</button></div>
+        <div class="group">{{ t('common.yours') }}<button class="new" @click="createPalette">{{ t('palette.layer.newBtn') }}</button></div>
         <div
             v-for="p in yours"
             :key="p.id"
@@ -238,10 +259,10 @@ onBeforeUnmount(() => {
             @blur="rename"
             @keydown.enter.prevent="$event.target.blur()"
         >{{ current.name }}</span>
-        <span v-if="current.builtin" class="lock"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M192 288V192A128 128 0 0 1 448 192V288H384V192A64 64 0 0 0 256 192V288ZM176 288H464A48 48 0 0 1 512 336V528A48 48 0 0 1 464 576H176A48 48 0 0 1 128 528V336A48 48 0 0 1 176 288Z"/></svg>built-in: editing makes your copy</span>
+        <span v-if="current.builtin" class="lock"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M192 288V192A128 128 0 0 1 448 192V288H384V192A64 64 0 0 0 256 192V288ZM176 288H464A48 48 0 0 1 512 336V528A48 48 0 0 1 464 576H176A48 48 0 0 1 128 528V336A48 48 0 0 1 176 288Z"/></svg>{{ t('palette.layer.lockedNote') }}</span>
         <span class="spacer"></span>
-        <button class="ghost" @click="duplicate">⧉ Duplicate</button>
-        <button v-if="!current.builtin" class="ghost icon" title="Delete palette" aria-label="Delete palette" @click="remove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
+        <button class="ghost" @click="duplicate">{{ t('palette.layer.duplicateBtn') }}</button>
+        <button v-if="!current.builtin" class="ghost icon" :title="t('palette.layer.deletePalette')" :aria-label="t('palette.layer.deletePalette')" @click="remove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
       </div>
 
       <div class="slots">
@@ -252,7 +273,7 @@ onBeforeUnmount(() => {
             :class="{ target: i === target, over: i === dragOver }"
             role="button"
             tabindex="0"
-            :aria-label="`Aim at F${i + 1}`"
+            :aria-label="t('palette.layer.aimAtAria', { n: i + 1 })"
             :draggable="!!g"
             @click="target = i; aimHint()"
             @keydown.enter.space.prevent.stop="target = i; aimHint()"
@@ -263,19 +284,19 @@ onBeforeUnmount(() => {
         >
           <small>F{{ i + 1 }}</small>
           <span class="glyph-cell">{{ g || ' ' }}</span>
-          <button v-if="g" class="clear" title="Clear" aria-label="Clear slot" @click.stop="assign(i, '', false)">×</button>
-          <span v-if="g && !isCp437(g)" class="badge">UTF-8</span>
+          <button v-if="g" class="clear" :title="t('common.clear')" :aria-label="t('palette.layer.clearSlotAria')" @click.stop="assign(i, '', false)">×</button>
+          <span v-if="g && !isCp437(g)" class="badge">{{ t('palette.layer.utf8') }}</span>
         </div>
       </div>
       <div class="hint" :class="{ warn: hint.warn }">{{ hint.text }}</div>
 
       <div class="sources">
         <div class="tabs">
-          <button :class="{ on: sourceTab === 'cp437' }" @click="source = 'cp437'; find = ''">CP437</button>
-          <button :class="{ on: sourceTab === 'unicode' }" @click="source = 'unicode'; find = ''">Unicode</button>
-          <button :class="{ on: sourceTab === 'drawing' }" @click="source = 'drawing'; find = ''">In this drawing</button>
-          <button :class="{ on: sourceTab === 'recent' }" @click="source = 'recent'; find = ''">Recent</button>
-          <input v-model="find" placeholder="Paste characters, U+2605, or a block name" aria-label="Find or paste characters">
+          <button :class="{ on: sourceTab === 'cp437' }" @click="source = 'cp437'; find = ''">{{ t('palette.layer.tabs.cp437') }}</button>
+          <button :class="{ on: sourceTab === 'unicode' }" @click="source = 'unicode'; find = ''">{{ t('palette.layer.tabs.unicode') }}</button>
+          <button :class="{ on: sourceTab === 'drawing' }" @click="source = 'drawing'; find = ''">{{ t('palette.layer.tabs.inDrawing') }}</button>
+          <button :class="{ on: sourceTab === 'recent' }" @click="source = 'recent'; find = ''">{{ t('palette.layer.tabs.recent') }}</button>
+          <input v-model="find" :placeholder="t('palette.layer.findPlaceholder')" :aria-label="t('palette.layer.findAria')">
         </div>
         <div class="pane">
           <div v-if="pane.note" class="note">{{ pane.note }}</div>
@@ -296,7 +317,7 @@ onBeforeUnmount(() => {
             ><span class="glyph-cell">{{ char || ' ' }}</span></button>
           </div>
         </div>
-        <div class="legend"><span class="l1">already in this palette</span><span class="l2">not CP437 (.ans export warns)</span><span class="l3">doesn't fit one cell</span></div>
+        <div class="legend"><span class="l1">{{ t('palette.layer.legendInPalette') }}</span><span class="l2">{{ t('palette.layer.legendNotCp437') }}</span><span class="l3">{{ t('palette.layer.legendDoesntFit') }}</span></div>
         <div class="info">{{ info }}</div>
       </div>
     </div>
@@ -368,103 +389,93 @@ div.palette-layer.editing div.row div.glyphs {
   }
 
   div.palette-layer.editing div.edit-side {
-    min-height: 0;
-  }
-
-  div.palette-layer.editing div.slots {
-    flex-wrap: wrap;
+    max-height: 65vh;
   }
 }
 
 div.list-side {
-  width: 300px;
-  flex: none;
   display: flex;
   flex-direction: column;
+  flex: 1 1 300px;
+  min-width: 260px;
   border-right: 1px solid var(--surface-3);
 }
 
 div.top {
   display: flex;
-  gap: 6px;
-  padding: 8px;
+  gap: 8px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--surface-3);
 }
 
-div.top input,
-div.tabs input {
+div.top input {
   flex: 1;
   min-width: 0;
-  padding: 6px 8px;
-  border: 1px solid var(--border-light);
-  border-radius: 5px;
-  background: var(--surface-0);
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
   color: var(--text);
+  font: inherit;
   font-size: 12px;
 }
 
-button {
-  padding: 4px 9px;
+div.top button {
+  padding: 5px 10px;
   border: none;
   border-radius: 4px;
   background: var(--surface-3);
   color: var(--text-dim);
+  font: inherit;
   font-size: 12px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-button.ghost {
-  background: transparent;
-  color: var(--text-muted);
-}
-
-/* Icon buttons look like the toolbar's: a muted filled icon that brightens on hover. */
-button.ghost.icon {
-  display: flex;
-  align-items: center;
-  padding: 4px 6px;
-}
-
-button.ghost.icon svg {
-  width: 14px;
-  height: 14px;
-  fill: var(--text-faint);
-}
-
-button.ghost.icon:hover svg {
-  fill: var(--text);
+div.top button:hover {
+  background: var(--accent);
+  color: var(--white);
 }
 
 div.list {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 6px 8px;
+  padding: 6px 0;
 }
 
 div.group {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px 6px 4px;
-  color: var(--text-muted);
+  justify-content: space-between;
+  padding: 6px 12px 2px;
   font-size: 10px;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-div.group button.new {
-  padding: 0;
-  background: none;
+button.new {
+  padding: 2px 6px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
   color: var(--accent);
-  font-size: 11px;
-  text-transform: none;
-  letter-spacing: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.new:hover {
+  background: var(--surface-3);
 }
 
 div.row {
-  padding: 5px 6px 6px;
-  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 12px;
   cursor: pointer;
+  border-left: 2px solid transparent;
 }
 
 div.row:hover {
@@ -472,74 +483,69 @@ div.row:hover {
 }
 
 div.row.current {
-  background: var(--surface-3);
+  background: var(--surface-2);
 }
 
-div.row div.name {
+div.row.active {
+  border-left-color: var(--accent);
+}
+
+div.name {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  font-size: 11px;
-  color: var(--text-dim);
+  font-size: 12px;
+  color: var(--text);
 }
 
-div.row div.name em {
+div.name em {
+  font-size: 9px;
   font-style: normal;
-  font-size: 10px;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
 }
 
-div.row.active div.name span::before {
-  content: "●";
-  margin-right: 5px;
-  color: var(--accent);
-  font-size: 9px;
-  vertical-align: 1px;
-}
-
-div.row div.glyphs {
+div.glyphs {
   display: flex;
-  gap: 5px;
-  margin-top: 1px;
+  gap: 2px;
   overflow: hidden;
 }
 
-div.row div.glyphs .empty {
-  color: #555;
-}
-
 div.edit-side {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
+  flex: 2 1 600px;
+  min-width: 0;
+  padding: 12px 16px;
+  gap: 10px;
 }
 
 div.head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px 4px;
+  gap: 10px;
 }
 
 span.title {
-  padding: 1px 3px;
-  border-radius: 3px;
+  font-size: 15px;
   font-weight: 600;
-  font-size: 14px;
+  color: var(--text);
+  padding: 2px 4px;
+  border-radius: 4px;
   outline: none;
 }
 
-span.title[contenteditable="true"]:hover,
 span.title[contenteditable="true"]:focus {
-  background: var(--surface-3);
+  background: var(--surface-2);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 span.lock {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: #e0b050;
+  gap: 5px;
   font-size: 11px;
+  color: var(--text-muted);
 }
 
 span.lock svg {
@@ -548,243 +554,287 @@ span.lock svg {
   fill: currentColor;
 }
 
-.spacer {
-  flex: 1;
+button.ghost {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+button.ghost:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+button.ghost.icon svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+  display: block;
 }
 
 div.slots {
-  display: flex;
-  gap: 5px;
-  padding: 6px 12px 4px;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 4px;
 }
 
 div.slot {
   position: relative;
-  flex: 0 1 46px;
-  min-width: 30px;
-  height: 58px;
-  border: 2px solid transparent;
-  border-radius: 6px;
-  background: var(--surface-3);
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 2px 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
   cursor: pointer;
+  user-select: none;
 }
 
-div.slot small {
-  display: block;
-  padding-top: 4px;
-  font-size: 9px;
-  color: var(--text-muted);
-}
-
-div.slot .glyph-cell {
-  margin-top: 6px;
+div.slot:hover {
+  border-color: var(--text-muted);
 }
 
 div.slot.target {
   border-color: var(--accent);
-  background: #2d2440;
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 div.slot.over {
-  border-color: var(--accent-hot);
-  border-style: dashed;
+  border-color: var(--accent);
+  background: var(--surface-3);
 }
 
-div.slot button.clear {
+div.slot small {
+  font-size: 8px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+div.slot span.glyph-cell {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+button.clear {
   position: absolute;
   top: 1px;
-  right: 3px;
-  display: none;
+  right: 1px;
+  width: 14px;
+  height: 14px;
   padding: 0;
-  background: none;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  display: none;
 }
 
 div.slot:hover button.clear {
   display: block;
 }
 
-div.slot span.badge {
+button.clear:hover {
+  color: var(--text);
+  background: var(--surface-4);
+}
+
+span.badge {
   position: absolute;
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0 3px;
-  border-radius: 3px;
-  background: #b8860b;
-  color: var(--black);
-  font-size: 8px;
-  white-space: nowrap;
+  bottom: 1px;
+  right: 2px;
+  font-size: 7px;
+  color: var(--accent);
+  line-height: 1;
 }
 
 div.hint {
-  min-height: 22px;
-  padding: 4px 12px 8px;
-  color: var(--text-muted);
+  min-height: 16px;
   font-size: 11px;
+  color: var(--text-muted);
 }
 
 div.hint.warn {
-  color: #e0b050;
+  color: var(--accent-hot);
 }
 
 div.sources {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--surface-3);
+  flex: 1;
+  min-height: 0;
+  gap: 6px;
 }
 
-div.tabs {
+div.sources div.tabs {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 2px;
-  padding: 8px 12px 0;
+  gap: 4px;
 }
 
-div.tabs button {
-  border-radius: 5px 5px 0 0;
+div.sources div.tabs button {
+  padding: 3px 8px;
+  border: none;
+  border-radius: 3px;
   background: transparent;
   color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
 }
 
-div.tabs button.on {
-  background: var(--surface-0);
+div.sources div.tabs button.on {
+  background: var(--surface-3);
   color: var(--text);
 }
 
-div.tabs input {
+div.sources div.tabs input {
   margin-left: auto;
-  flex: 0 1 230px;
+  width: 240px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
 }
 
 div.pane {
+  display: flex;
+  flex-direction: column;
   flex: 1;
-  min-height: 0;
-  margin: 0 12px;
-  padding: 8px;
-  overflow: auto;
-  border-radius: 0 6px 6px 6px;
+  min-height: 180px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--surface-3);
+  border-radius: 4px;
   background: var(--surface-0);
+  gap: 6px;
 }
 
 div.note {
-  margin-bottom: 6px;
-  color: var(--text-muted);
   font-size: 11px;
+  color: var(--text-muted);
+  padding: 2px 4px;
 }
 
 div.blocks {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-bottom: 8px;
+  padding: 2px;
 }
 
 div.blocks button {
-  padding: 2px 7px;
-  border-radius: 10px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface-1);
+  color: var(--text-dim);
+  font: inherit;
   font-size: 11px;
+  cursor: pointer;
 }
 
 div.blocks button.on {
   background: var(--accent);
   color: var(--white);
+  border-color: var(--accent);
 }
 
 div.grid {
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
-  gap: 1px;
-  border: 1px solid var(--surface-2);
-  background: var(--surface-2);
+  grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+  gap: 2px;
 }
 
 button.g {
-  position: relative;
-  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
   padding: 0;
-  border-radius: 0;
-  background: var(--surface-0);
-  color: var(--text-dim);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: var(--surface-1);
+  color: var(--text);
+  cursor: pointer;
+  position: relative;
 }
 
-/* No global hover lift: a transformed cell gets its own layer and the glyphs after it re-snap. */
 button.g:hover:not(:disabled) {
-  transform: none;
-  box-shadow: none;
-  background: var(--accent);
-  color: var(--white);
+  border-color: var(--accent);
+  background: var(--surface-2);
 }
 
-button.g.inset::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--accent);
+button.g.inset {
+  box-shadow: inset 0 0 0 1px var(--text-muted);
 }
 
-button.g.utf::before {
-  content: "";
-  position: absolute;
-  left: 2px;
-  bottom: 2px;
-  width: 4px;
-  height: 4px;
-  background: #b8860b;
+button.g.utf {
+  border-bottom-color: var(--accent);
 }
 
 button.g.bad {
-  color: #444;
+  opacity: 0.3;
   cursor: not-allowed;
+  text-decoration: line-through;
 }
 
-button.g.bad .glyph-cell {
-  text-decoration: line-through;
+button.g:disabled {
+  opacity: 0.25;
+  cursor: default;
 }
 
 div.legend {
   display: flex;
-  gap: 14px;
-  padding: 6px 12px 0;
+  gap: 12px;
+  font-size: 10px;
   color: var(--text-muted);
-  font-size: 11px;
 }
 
-div.legend span::before {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 5px;
-  vertical-align: 1px;
+div.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-div.legend .l1::before {
-  border-radius: 50%;
+div.legend span.l1::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--text-muted);
+}
+
+div.legend span.l2::before {
+  content: '';
+  width: 8px;
+  height: 2px;
   background: var(--accent);
 }
 
-div.legend .l2::before {
-  background: #b8860b;
-}
-
-div.legend .l3::before {
-  background: #444;
+div.legend span.l3::before {
+  content: '—';
 }
 
 div.info {
-  min-height: 30px;
-  padding: 6px 12px 10px;
-  color: var(--text-muted);
-  font: 11px ui-monospace, Menlo, monospace;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  min-height: 16px;
+}
+
+.spacer {
+  flex: 1;
 }
 </style>

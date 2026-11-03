@@ -85,16 +85,16 @@ test('a pinned lobby picture is still at its line when you come back to the tab'
   expect(await pin(page)).toEqual(pinned);
 });
 
-test('the lobby picture is picked in Setup room too, for a listed room only, and going live keeps the pin', async ({ page }) => {
+test('the lobby picture is picked in Set up your room too, for a listed room only, and going live keeps the pin', async ({ page }) => {
   const server = await fakeServer(page, { me: member(), room: fakeRoom() });
   await openApp(page, 'images/tall.png');
   await tab(page, 'SOCIAL').click();
   await page.getByRole('button', { name: 'Start a room' }).click();
   const setup = shown(page, 'start-room');
   await expect(picture(page)).toBeVisible();
-  await setup.getByRole('radio', { name: 'Only with the link' }).check();
+  await setup.getByRole('radio', { name: 'Unlisted (link only)' }).check();
   await expect(picture(page)).toHaveCount(0);   // no lobby card, so no picture
-  await setup.getByRole('radio', { name: 'Anyone, in the lobby' }).check();
+  await setup.getByRole('radio', { name: 'Public in the lobby' }).check();
 
   await frame(page).evaluate((el) => { el.scrollTop = el.scrollHeight / 3; });
   await exact(page).check();

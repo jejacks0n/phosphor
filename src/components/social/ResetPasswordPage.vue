@@ -1,8 +1,10 @@
 <script setup>
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 
 const social = useSocialStore();
+const { t } = useI18n();
 const password = ref('');
 const error = ref(null);
 
@@ -14,13 +16,13 @@ async function set() {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">‹ Back to the lobby</button>
-    <h2>Set a new password</h2>
-    <p class="intro">Choose the password you'll sign in with from now on.</p>
+    <button class="link back" @click="social.page = 'lobby'">{{ t('social.nav.backToLobby') }}</button>
+    <h2>{{ t('social.auth.resetHeading') }}</h2>
+    <p class="intro">{{ t('social.auth.resetIntro') }}</p>
     <form @submit.prevent="set">
-      <label>New password <input v-model="password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="reset-password-help"></label>
-      <p id="reset-password-help" class="help">At least 10 characters, not a known leaked password. Setting it signs you out everywhere else.</p>
-      <button class="primary" type="submit" :disabled="social.busy">Set password</button>
+      <label>{{ t('social.auth.newPasswordLabel') }} <input v-model="password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="reset-password-help"></label>
+      <p id="reset-password-help" class="help">{{ t('social.auth.resetPasswordHelp') }}</p>
+      <button class="primary" type="submit" :disabled="social.busy">{{ t('social.auth.setPassword') }}</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
   </div>

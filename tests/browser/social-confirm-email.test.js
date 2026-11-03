@@ -3,6 +3,7 @@
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
+import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useSocialStore } from '@/store/SocialStore';
 import { mountTurnstile } from '@/social/turnstile';
@@ -23,7 +24,7 @@ async function mount() {
   social.resendConfirmation = vi.fn(async () => true);
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ConfirmEmail).use(getActivePinia());
+  app = createApp(ConfirmEmail).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
   return { social, resend: host.querySelector('button') };

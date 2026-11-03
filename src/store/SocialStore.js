@@ -12,10 +12,11 @@ import { ROOM_ID, useRoomStore, hasReportedRoom, keepRoomReport, keptRoomReports
 import { REASONS } from '@/social/chat';
 import { CONSENT_KEY, CONSENT_VERSION } from '@/social/consent';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection } from '@/social/lobby';
+import { t } from '@/i18n/index.js';
 
 const RENEW_RETRY_MS = 30_000;   // after a renewal that failed for a passing reason (NETWORK, THROTTLED)
-const CONFIRMED = 'Check your email to confirm your address';
-const RELINK = 'Sign in again to change how you sign in';
+const confirmedWords = () => t('social.notices.checkEmailConfirm');
+const relinkWords = () => t('social.notices.relinkSignIn');
 
 // The query params the server sends people back with (an error, and an error_description, come
 // with verified or social), and a room's link; start() reads them and takes them off the URL, on a desktop
@@ -218,17 +219,17 @@ export const useSocialStore = defineStore('social', {
       // With path addresses, the room on an entry of yours is the address's own: the router's to follow, not a link.
       const returned = history.state?.inRoom ? RETURN_PARAMS.filter((name) => name !== 'room') : RETURN_PARAMS;
       const error = params.get('error');
-      if (params.get('verified') === '1') this.notice = error ? messageFor(error) : 'Your email is confirmed';
+      if (params.get('verified') === '1') this.notice = error ? messageFor(error) : t('social.notices.emailConfirmed');
       if (params.get('reset')) Object.assign(this, { resetToken: params.get('reset'), page: 'reset' });
       if (params.get('social') === 'linked') this.page = 'account';
-      if (params.get('social') === 'email-changed') this.notice = error ? messageFor(error) : 'Your email is changed';
-      if (params.get('social') === 'email-approved') this.notice = 'Approved. Now open the link sent to your new address';
+      if (params.get('social') === 'email-changed') this.notice = error ? messageFor(error) : t('social.notices.emailChanged');
+      if (params.get('social') === 'email-approved') this.notice = t('social.notices.emailApproved');
       if (params.get('social') === 'two-factor') Object.assign(this, { page: 'two-factor', _codePending: true });   // (the room stays kept until the code)
       if (params.get('social') === 'signed-in') this._roomLink = keptRoom();
       if (returned.includes('room') && params.has('room')) Object.assign(this, { _roomLink: params.get('room'), _roomLinkAsks: true });
       if (['signed-in', 'error'].includes(params.get('social'))) keepRoom(null);
       if (params.get('social') === 'error') {
-        this.notice = error === 'EMAIL_NOT_VERIFIED' ? 'Confirm your email with Discord or GitHub first' : messageFor(error);
+        this.notice = error === 'EMAIL_NOT_VERIFIED' ? t('social.notices.confirmWithProvider') : messageFor(error);
       }
       if (!returned.some((name) => params.has(name))) return false;
       useWorkspaceStore().editorTab = 'social';   // back to where you were
@@ -362,7 +363,7 @@ export const useSocialStore = defineStore('social', {
           headers: withToken(turnstileToken),
         });
         if (!ok) return false;
-        this.notice = CONFIRMED;
+        this.notice = confirmedWords();
         await this.becameSomeoneElse();
         return true;
       });
@@ -407,7 +408,7 @@ export const useSocialStore = defineStore('social', {
       });
       // Your own address you know has an account; any other gets the same words whether or not it has one.
       const yours = email.toLowerCase() === this.me?.email?.toLowerCase();
-      if (ok) this.notice = yours ? `A link is on its way to ${email}` : 'If that email has an account, a link is on its way';
+      if (ok) this.notice = yours ? t('social.notices.resetLinkSentTo', { email }) : t('social.notices.resetLinkIfAccount');
       return ok;
     },
 
@@ -416,7 +417,7 @@ export const useSocialStore = defineStore('social', {
         method: 'POST', body: { newPassword, token: this.resetToken },
       });
       if (!ok) return false;
-      Object.assign(this, { resetToken: null, page: 'sign-in', notice: 'Your password is changed. Sign in with it' });
+      Object.assign(this, { resetToken: null, page: 'sign-in', notice: t('social.notices.passwordResetDone') });
       await this.refreshMe();   // a reset ends every session
       return true;
     },
@@ -425,7 +426,7 @@ export const useSocialStore = defineStore('social', {
       const { ok } = await this.request('/api/auth/send-verification-email', {
         method: 'POST', body: { email: this.me?.email, callbackURL: appOrigin() + '/?verified=1' }, headers: withToken(turnstileToken),
       });
-      if (ok) this.notice = CONFIRMED;
+      if (ok) this.notice = confirmedWords();
       return ok;
     },
 
@@ -436,7 +437,7 @@ export const useSocialStore = defineStore('social', {
         method: 'POST', body: { newEmail, password, callbackURL: appOrigin() + '/?social=email-changed' }, headers: withToken(turnstileToken),
       });
       this.staleSession(code);
-      if (ok) this.notice = this.me.emailVerified ? `Check ${this.me.email} to approve the change` : `Check ${newEmail} to confirm it`;
+      if (ok) this.notice = this.me.emailVerified ? t('social.notices.checkEmailApprove', { email: this.me.email }) : t('social.notices.checkEmailConfirmNew', { email: newEmail });
       return ok;
     },
 
@@ -446,7 +447,7 @@ export const useSocialStore = defineStore('social', {
         method: 'POST', body: { currentPassword, newPassword, revokeOtherSessions: true },
       });
       this.staleSession(code);
-      if (ok) this.notice = 'Your password is changed';
+      if (ok) this.notice = t('social.notices.passwordChanged');
       return ok;
     },
 
@@ -500,14 +501,14 @@ export const useSocialStore = defineStore('social', {
 
     // Unlinking, or deleting without a password, needs a sign-in in the last 5 minutes.
     staleSession(code) {
-      if (STALE_SESSION.has(code)) Object.assign(this, { notice: RELINK, page: 'sign-in' });
+      if (STALE_SESSION.has(code)) Object.assign(this, { notice: relinkWords(), page: 'sign-in' });
     },
 
     async deleteAccount(password) {
       const { ok, code } = await this.request('/api/auth/delete-user', { method: 'POST', body: password ? { password } : {} });
       this.staleSession(code);
       if (!ok) return false;
-      this.notice = 'Your account is deleted';
+      this.notice = t('social.notices.accountDeleted');
       await this.becameSomeoneElse({ signedOut: true });
       return true;
     },

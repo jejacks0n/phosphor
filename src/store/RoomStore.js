@@ -6,7 +6,7 @@ import { forgetHostCopy, forgetRoomLedger, hostCopies, keepHostCopy, readLatest,
 import { proof, sign } from '@/social/keys';
 import { Allowance, MOST_KEPT, REASONS, chatText, evidenceFor, newId, signedText } from '@/social/chat';
 import { LobbyConnection, Pacer } from '@/social/lobby';
-import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, ART_NOT_OPENED_WORDS, GOING_BACK_FAILED_WORDS, newHostWords, refusalWords } from '@/social/messages';
+import { roomAwayWords, hostReplacedWords, artNotOpenedWords, goingBackFailedWords, newHostWords, refusalWords } from '@/social/messages';
 import { decodePass, passKey } from '@/social/pass';
 import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
 import { forgetHostingRecord, holdHostingTab, hostingTabsGone, keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
@@ -17,11 +17,12 @@ import { newSession, sessionJoined, sessionLeft, sessionRemoved, sessionSaid, se
 import { charRowsOf } from '@/lib/Cells';
 import { clampAnsiZoom } from '@/lib/zoom';
 import { toast } from '@/composables/useToast';
-import { AUTOSAVE_FAILING_WORDS, keepDocument } from '@/composables/useAutosave';
+import { autosaveFailingWords, keepDocument } from '@/composables/useAutosave';
 import { useSocialStore } from '@/store/SocialStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { t } from '@/i18n/index.js';
 
 const SEND_EVERY_MS = 100;       // the art, as it changes (a stroke shows as it's drawn)
 const VIEW_EVERY_MS = 250;       // the part of the art the host is looking at
@@ -325,7 +326,7 @@ export const useRoomStore = defineStore('room', {
       useSocialStore()._roomGoesOn = true;
       this.comeBack(record).catch((error) => {
         console.warn('The room couldn\'t come back.', error);
-        if (this.id === id) this.over(GOING_BACK_FAILED_WORDS);
+        if (this.id === id) this.over(goingBackFailedWords());
       });
     },
 
@@ -343,7 +344,7 @@ export const useRoomStore = defineStore('room', {
       const late = !social.claims;
       for (let tries = 0; !gone() && !social.claims; tries++) {
         const wait = retryIn(tries, this._resumeBegan);
-        if (!wait) return this.over(ROOM_AWAY_WORDS);
+        if (!wait) return this.over(roomAwayWords());
         await new Promise((resolve) => setTimeout(resolve, wait));
         if (!gone()) await askForPass();
       }
@@ -361,10 +362,10 @@ export const useRoomStore = defineStore('room', {
       });
       await until(() => !!project.image || workspace.documentAnswered).toBe(true, { timeout: Math.max(0, this._resumeBegan + RETURN_WITHIN_MS - Date.now()) });   // a database that never answers is the room gone
       if (gone()) return;
-      if (!project.image && !workspace.documentAnswered) return this.over(ROOM_AWAY_WORDS);
+      if (!project.image && !workspace.documentAnswered) return this.over(roomAwayWords());
       if (!project.image) {   // the room is still waiting, and another try may open it
         this._leaveKept = true;
-        return this.over(ART_NOT_OPENED_WORDS);
+        return this.over(artNotOpenedWords());
       }
       const kept = await readRoomLedger(record.id).catch(() => null);
       if (gone()) return;
@@ -429,7 +430,7 @@ export const useRoomStore = defineStore('room', {
       const copy = (await hostCopies().catch(() => [])).find((row) => row.id === id && row.sub === social.claims?.sub);
       if (!copy) {
         notOffered();
-        social.notice = GOING_BACK_FAILED_WORDS;
+        social.notice = goingBackFailedWords();
         return;
       }
       if (!(await hostingTabsGone([id])).length) return notOffered();   // its tab is back, or another went back first
@@ -437,17 +438,17 @@ export const useRoomStore = defineStore('room', {
       if (!await artWritten(record.documentId)) {
         notOffered();
         forgetHostCopy(id).catch(() => {});
-        social.notice = ART_NOT_OPENED_WORDS;
+        social.notice = artNotOpenedWords();
         return;
       }
       project.commitPending();
       if (project.image && !await useDrawingStore().autosaved()) {
-        social.notice = AUTOSAVE_FAILING_WORDS;
+        social.notice = autosaveFailingWords();
         return;
       }
       if (!(await hostingTabsGone([id])).length) return notOffered();   // it came back while that was going on
       if (!keepHostingRecord(record)) {
-        social.notice = GOING_BACK_FAILED_WORDS;
+        social.notice = goingBackFailedWords();
         return;
       }
       keepDocument(record.documentId);
@@ -539,7 +540,7 @@ export const useRoomStore = defineStore('room', {
         await navigator.clipboard.writeText(this.link);
         return true;
       } catch {
-        useSocialStore().notice = 'Couldn\'t copy the link';
+        useSocialStore().notice = t('social.notices.copyLinkFailed');
         return false;
       }
     },
@@ -1106,8 +1107,8 @@ export const useRoomStore = defineStore('room', {
           if (this.role === 'watch') this.over(refusalWords(msg.type));
           else if (msg.type === 'replaced') {   // sent as the socket's close, not a message
             this._leaveKept = true;
-            this.over(HOST_REPLACED_WORDS);
-          } else this.over(this._resuming ? ROOM_AWAY_WORDS : null);
+            this.over(hostReplacedWords());
+          } else this.over(this._resuming ? roomAwayWords() : null);
           break;
       }
     },
@@ -1126,7 +1127,7 @@ export const useRoomStore = defineStore('room', {
       } else if (reason === 'wrong-password') {
         Object.assign(this, { status: 'password', passwordWrong: this._password !== undefined });
       } else {
-        this.over(this._resuming ? ROOM_AWAY_WORDS : refusalWords(reason));
+        this.over(this._resuming ? roomAwayWords() : refusalWords(reason));
       }
     },
 

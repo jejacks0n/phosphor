@@ -51,7 +51,7 @@ async function restored(page) {
 }
 
 const undoButton = (page) => page.getByRole('button', { name: /^Undo/ });
-const recentList = (page) => page.getByRole('list', { name: 'Continue where you left off' });
+const recentList = (page) => page.getByRole('list', { name: 'Pick up where you left off' });
 
 test('never saved to a file: leaving asks; saved once and written: it does not', async ({ page }) => {
   const dialogs = [];
@@ -71,7 +71,7 @@ test('never saved to a file: leaving asks; saved once and written: it does not',
   await expect.poll(() => dialogs).toEqual(['beforeunload']);
   expect(page.isClosed()).toBe(false);
 
-  await saveAs(page, 'Save Project (.phosphor)');
+  await saveAs(page, 'Save project (.phosphor)');
   await editAt(page, 3, 4);
   await page.keyboard.insertText('and more');
   await expect.poll(() => store(page, 'project', (p) => p.isDirty && !p._stroke)).toBe(true);
@@ -107,7 +107,7 @@ test('a new tab offers recent work and opens it; a tab open on it is marked and 
   await expect(row).toHaveCount(1);
   await expect(row).toContainText('gradient');
   await expect(row.getByRole('button')).toBeDisabled();
-  await expect(row.getByRole('button')).toHaveText('Open in another tab');
+  await expect(row.getByRole('button')).toHaveText('Open in other tab');
 
   await page.close();
   await other.reload();
@@ -167,11 +167,11 @@ test('an unreadable record opens the zero state', async ({ page }) => {
   expect(await page.evaluate(() => sessionStorage.getItem('phosphor-autosave-document'))).toBe(null);
 });
 
-test('Start New Project keeps the old work in the list, and a refresh stays at the zero state', async ({ page }) => {
+test('New project keeps the old work in the list, and a refresh stays at the zero state', async ({ page }) => {
   await openApp(page);
   await typeAndWrite(page, 3, 3, 'kept');
   page.on('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Start New Project' }).click();
+  await page.getByRole('button', { name: 'New project' }).click();
   await expect(imageInput(page)).toBeAttached();
   const button = recentList(page).getByRole('listitem').getByRole('button');
   await expect(recentList(page)).toContainText('gradient');
@@ -248,7 +248,7 @@ test('restoring keeps what you had as Before restoring', async ({ page }) => {
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(first);
 
   await versionsButton(page).click();
-  const kept = versionRows(page).filter({ hasText: 'Before restoring' });
+  const kept = versionRows(page).filter({ hasText: 'Before restore' });
   await expect(kept).toHaveCount(1);
   await kept.getByRole('button', { name: 'Restore' }).click();
   await expect(versionsDialog(page)).toHaveCount(0);
@@ -272,7 +272,7 @@ test('restoring and going back leaves the list as it was', async ({ page }) => {
 
   await versionsButton(page).click();
   await expect(versionRows(page)).toHaveCount(2);
-  await expect(versionRows(page).filter({ hasText: 'Before restoring' })).toHaveCount(0);
+  await expect(versionRows(page).filter({ hasText: 'Before restore' })).toHaveCount(0);
 });
 
 test('no versions says so, and the button waits for an image', async ({ page }) => {
@@ -284,7 +284,7 @@ test('no versions says so, and the button waits for an image', async ({ page }) 
   await tab(page, 'ANSI').click();
   await settled(page);
   await versionsButton(page).click();
-  await expect(versionsDialog(page)).toContainText('No versions yet');
+  await expect(versionsDialog(page)).toContainText('No snapshots saved yet.');
   await expect(versionRows(page)).toHaveCount(0);
 });
 

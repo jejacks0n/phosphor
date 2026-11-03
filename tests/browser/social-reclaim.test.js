@@ -304,7 +304,7 @@ test('going back with autosave failing keeps what\'s open and says so', async ()
   const reload = vi.fn();
   await room.goBackToRoom(ID, { reload });
   expect(reload).not.toHaveBeenCalled();
-  expect(social.notice).toBe('Autosave isn\'t working in this browser. Save to a file to keep your work.');
+  expect(social.notice).toBe("Autosave isn't available in this browser. Save a .phosphor file to keep your work.");
   expect(sessionStorage.getItem('phosphor-hosting')).toBe(null);
   expect(room.goingBack).toBe(false);
 });

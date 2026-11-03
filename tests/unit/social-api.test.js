@@ -85,7 +85,7 @@ test('messageFor has plain words for every code the server sends, and a fallback
   assert.equal(messageFor('USERNAME', { problem: 'length' }), 'Usernames are 3 to 24 characters');
   assert.equal(messageFor('USERNAME', { problem: 'characters' }), 'Use only letters, numbers, underscores and hyphens');
   assert.equal(messageFor('USERNAME', { problem: 'reserved' }),
-    "That name is reserved: nothing that reads as staff or Phosphor (admin, mod, support, adm1n, wren_mod), a placeholder (test, user, demo, even test1), or three words joined by hyphens (a guest's nickname)");
+    'That username is reserved—avoid staff or Phosphor terms (admin, mod, support), placeholders (test, demo, user), or three hyphenated words (used for guest nicknames).');
   // Sign-up's own refusals of a username say the same as the username step's.
   assert.equal(messageFor('INVALID_USERNAME'), messageFor('USERNAME', { problem: 'reserved' }));
   assert.equal(messageFor('USERNAME_TOO_SHORT'), messageFor('USERNAME', { problem: 'length' }));
@@ -112,7 +112,7 @@ test('messageFor has plain words for every code the server sends, and a fallback
   assert.equal(messageFor('INVALID', { field: 'password' }), 'A private room needs a password');
   assert.equal(messageFor('INVALID', { field: 'max' }), 'Max watchers is 1 to 30');
   assert.equal(messageFor('INVALID', { field: 'signal' }), fallback);
-  assert.equal(messageFor('ACCOUNT_NOT_FOUND'), "That way to sign in isn't connected");
+  assert.equal(messageFor('ACCOUNT_NOT_FOUND'), "That sign-in method isn't linked to your account.");
   assert.equal(messageFor('FAILED_TO_UNLINK_LAST_ACCOUNT'), 'You need at least one way to sign in');
 });
 

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, useId, onBeforeUnmount, nextTick, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoomStore, MAX_WATCHERS } from '@/store/RoomStore';
 import { removedCount } from '@/social/session';
 import { signalWords } from '@/social/lobby';
@@ -12,6 +13,7 @@ import CameBy from './CameBy.vue';
 // region, always there, says Reconnecting… (seen; also while connecting a room that has been live: a reload
 // bringing it back) and Copied or Saved (which their buttons show).
 const room = useRoomStore();
+const { t } = useI18n();
 
 // Once a second, for Live for and for what else on this page counts time: `now` is passed down to it.
 const now = ref(Date.now());
@@ -25,11 +27,11 @@ const liveFor = computed(() => {
 });
 
 const numbers = computed(() => [
-  ['Here now', room.hereNow],
-  ['Max', room.session.most],
-  ['Total', room.session.people.length],
-  ['Messages', room.session.messages],
-  ['Removed', removedCount(room.session)],
+  [t('social.host.stats.hereNow'), room.hereNow],
+  [t('social.host.stats.max'), room.session.most],
+  [t('social.host.stats.total'), room.session.people.length],
+  [t('social.host.stats.messages'), room.session.messages],
+  [t('social.host.stats.removed'), removedCount(room.session)],
 ]);
 
 // Copied or Saved, on its button and in the status region, for 2 s.
@@ -42,10 +44,10 @@ const say = (word) => {
 };
 onBeforeUnmount(() => clearTimeout(doneTimer));
 const reconnecting = computed(() => room.status === 'reconnecting' || (room.status === 'connecting' && !!room.session.liveSince));
-const said = computed(() => (reconnecting.value ? 'Reconnecting…' : done.value ?? ''));
+const said = computed(() => (reconnecting.value ? t('common.reconnecting') : done.value === 'copied' ? t('common.copied') : done.value === 'saved' ? t('common.saved') : ''));
 
 async function copyLink() {
-  if (await room.copyLink()) say('Copied');
+  if (await room.copyLink()) say('copied');
 }
 
 const endButton = useTemplateRef('endButton');
@@ -77,14 +79,13 @@ const countId = useId();
 // time, from the chat panel).
 const guests = computed(() => room.watchers.filter((w) => w.guest));
 const kickGuests = ref(false);
-const kickLabel = computed(() => (guests.value.length === 1 ? 'Kick the guest here too'
-  : `Kick the ${guests.value.length} guests here too`));
+const kickLabel = computed(() => t('social.host.kickGuests', { count: guests.value.length }, guests.value.length));
 
 const save = () => {
   room.changeSettings({ welcome: draft.welcome, allowGuests: draft.allowGuests, max: draft.max, signal: draft.signal });
   if (!draft.allowGuests && kickGuests.value) for (const guest of guests.value) room.remove(guest.peer);
   kickGuests.value = false;
-  say('Saved');
+  say('saved');
 };
 </script>
 
@@ -92,15 +93,15 @@ const save = () => {
   <div class="host-room">
     <header>
       <h2>{{ room.room.name }}</h2>
-      <span v-if="room.session.liveSince" class="live">Live for {{ liveFor }}</span>
+      <span v-if="room.session.liveSince" class="live">{{ t('social.host.liveFor', { duration: liveFor }) }}</span>
       <span class="actions">
-        <button @click="copyLink">{{ done === 'Copied' ? 'Copied' : 'Copy link' }}</button>
-        <button ref="endButton" class="danger" @click="ending = true">End room</button>
+        <button @click="copyLink">{{ done === 'copied' ? t('common.copied') : t('common.copyLink') }}</button>
+        <button ref="endButton" class="danger" @click="ending = true">{{ t('social.host.endRoom') }}</button>
       </span>
     </header>
     <p class="status" :class="{ unseen: !reconnecting }" role="status">{{ said }}</p>
     <p class="link"><span class="link-text">{{ room.link }}</span></p>
-    <p v-if="!room.room.public" class="help">{{ room.hasPassword ? 'Send the link and the password to anyone you want in.' : 'Send the link to anyone you want in.' }}</p>
+    <p v-if="!room.room.public" class="help">{{ room.hasPassword ? t('social.host.sendLinkWithPassword') : t('social.host.sendLink') }}</p>
 
     <dl class="numbers">
       <div v-for="[label, value] in numbers" :key="label">
@@ -114,24 +115,24 @@ const save = () => {
       <div class="column">
         <LobbyPicture v-if="room.room.public" />
         <section class="settings">
-          <h3>Room settings</h3>
+          <h3>{{ t('social.host.roomSettings') }}</h3>
           <form @submit.prevent="save">
-            <label>Welcome message <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
-            <p :id="countId" class="help count">{{ draft.welcome.length }}/200</p>
-            <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> Allow guests</label>
+            <label>{{ t('social.start.welcomeMessage') }} <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
+            <p :id="countId" class="help count">{{ t('social.start.charCount', { count: draft.welcome.length, max: 200 }) }}</p>
+            <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> {{ t('social.start.allowGuests') }}</label>
             <label v-if="!draft.allowGuests && guests.length" class="choice kick"><input v-model="kickGuests" type="checkbox"> {{ kickLabel }}</label>
-            <label>Max watchers <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required></label>
+            <label>{{ t('social.start.maxWatchers') }} <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required></label>
             <fieldset v-if="room.room.public">
-              <legend>Signal</legend>
-              <label class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="null"> None</label>
+              <legend>{{ t('social.start.signal') }}</legend>
+              <label class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="null"> {{ t('common.none') }}</label>
               <label v-for="(words, value) in signalWords" :key="value" class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="value"> {{ words }}</label>
             </fieldset>
-            <button type="submit">{{ done === 'Saved' ? 'Saved' : 'Save' }}</button>
+            <button type="submit">{{ done === 'saved' ? t('common.saved') : t('common.save') }}</button>
           </form>
           <div class="facts">
-            <p class="help">Set when the room started</p>
-            <p>{{ room.room.public ? 'Listed in the lobby' : 'Only with the link' }}</p>
-            <p v-if="room.hasPassword">Password set</p>
+            <p class="help">{{ t('social.host.setAtStart') }}</p>
+            <p>{{ room.room.public ? t('social.host.listedInLobby') : t('social.host.onlyWithLink') }}</p>
+            <p v-if="room.hasPassword">{{ t('social.host.passwordSet') }}</p>
           </div>
         </section>
       </div>

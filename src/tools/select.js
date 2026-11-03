@@ -5,6 +5,7 @@
 // draws a new one, and a click outside clears it. The actions are on the options row.
 import { normalizeRect, selectionHit, clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
+import { t } from '@/i18n/index.js';
 
 let drag = null; // { mode: 'select' | 'move' | 'outline', start: { col, row }, rect?, moved?: { dc, dr } }
 
@@ -18,7 +19,7 @@ const hitOf = (workspace, pos) => (workspace.selection ? selectionHit(workspace.
 
 export default {
   id: 'select',
-  title: 'Select',
+  get title() { return t('tools.select.title'); },
   keys: ['M'],
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M64 64h80v40h-40v40H64zm120 0h64v40h-64zm104 0h64v40h-64zm104 0h56v80h-40v-40h-16zM64 184h40v64H64zm344 0h40v64h-40zM64 288h40v64H64zm344 0h40v64h-40zM64 392h40v16h40v40H64zm344 0h40v56h-80v-40h40zM184 408h64v40h-64zm104 0h64v40h-64z"/></svg>`,
   views: ['input', 'output'],

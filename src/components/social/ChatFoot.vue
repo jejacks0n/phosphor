@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, nextTick, useTemplateRef, onMounted, onBeforeUnmount } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -13,6 +14,7 @@ import UserName from './UserName.vue';
 // known) it holds a blank line's space, so the panel doesn't jump and "Confirm your email" doesn't flash.
 // A silenced person gets a notice of until when in place of the box, and the box back (its text kept) when the
 // silence ends: a minute-by-minute clock, as a silence can be longer than a timeout can wait.
+const { t } = useI18n();
 const room = useRoomStore(), social = useSocialStore(), workspace = useWorkspaceStore();
 
 const text = ref('');
@@ -27,7 +29,7 @@ watch(silenced, async () => {   // the box is back: as tall as its text
   await nextTick();
   grow();
 });
-const refused = computed(() => (room.chatRefused === 'too-fast' ? 'Slow down a little' : ''));
+const refused = computed(() => (room.chatRefused === 'too-fast' ? t('social.chat.slowDown') : ''));
 
 // As tall as the text, up to the box's own limit (CSS).
 const grow = () => {
@@ -77,16 +79,16 @@ function signIn() {
     <form v-else-if="room.canChat" @submit.prevent="send">
       <div class="box">
         <span class="who-am-i">[ <UserName :name="social.myName" /> ]</span>
-        <textarea ref="field" v-model="text" aria-label="Message" :maxlength="MOST_CHARS" rows="1" @input="typed" @keydown="onKeyDown"></textarea>
-        <button type="submit" class="send" :class="{ ready: hasText }" aria-label="Send">
+        <textarea ref="field" v-model="text" :aria-label="t('social.chat.messageAria')" :maxlength="MOST_CHARS" rows="1" @input="typed" @keydown="onKeyDown"></textarea>
+        <button type="submit" class="send" :class="{ ready: hasText }" :aria-label="t('social.chat.sendAria')">
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" fill="currentColor"/></svg>
         </button>
       </div>
       <p class="refused" role="status">{{ refused }}</p>
     </form>
     <p v-else-if="!social.claims" class="confirm" aria-hidden="true">&nbsp;</p>
-    <button v-else-if="social.claims.guest" class="sign-in" @click="signIn">Sign in to chat</button>
-    <p v-else class="confirm">Confirm your email to chat</p>
+    <button v-else-if="social.claims.guest" class="sign-in" @click="signIn">{{ t('social.chat.signInToChat') }}</button>
+    <p v-else class="confirm">{{ t('social.chat.confirmToChat') }}</p>
   </footer>
 </template>
 

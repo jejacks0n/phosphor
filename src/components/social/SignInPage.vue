@@ -1,9 +1,11 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSocialStore, PROVIDERS } from '@/store/SocialStore';
 import { mountTurnstile } from '@/social/turnstile';
 
 const social = useSocialStore();
+const { t } = useI18n();
 const shown = computed(() => PROVIDERS.filter(([id]) => social.providers.includes(id)));
 const login = ref('');
 const password = ref('');
@@ -34,24 +36,28 @@ async function signInWith(provider) {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">‹ Back to the {{ social.backTo }}</button>
-    <h2>Sign in</h2>
-    <p class="intro">Sign in to chat and start rooms.</p>
+    <button class="link back" @click="social.page = 'lobby'">{{ social.backTo === 'room' ? t('social.nav.backToRoom') : t('social.nav.backToLobby') }}</button>
+    <h2>{{ t('social.auth.signInHeading') }}</h2>
+    <p class="intro">{{ t('social.auth.signInIntro') }}</p>
     <template v-if="shown.length">
       <div class="providers">
-        <button v-for="[id, label] in shown" :key="id" :disabled="social.busy" @click="signInWith(id)">Continue with {{ label }}</button>
+        <button v-for="[id, label] in shown" :key="id" :disabled="social.busy" @click="signInWith(id)">{{ t('social.auth.continueWith', { provider: label }) }}</button>
       </div>
-      <p class="or">or</p>
+      <p class="or">{{ t('common.or') }}</p>
     </template>
     <form @submit.prevent="signIn">
-      <label>Email or username <input v-model="login" autocomplete="username" spellcheck="false" required></label>
-      <label>Password <input v-model="password" type="password" autocomplete="current-password" required></label>
+      <label>{{ t('social.auth.emailOrUsername') }} <input v-model="login" autocomplete="username" spellcheck="false" required></label>
+      <label>{{ t('social.auth.passwordLabel') }} <input v-model="password" type="password" autocomplete="current-password" required></label>
       <div ref="widget" class="turnstile"></div>
-      <button class="primary" type="submit" :disabled="social.busy">Sign in</button>
+      <button class="primary" type="submit" :disabled="social.busy">{{ t('social.auth.signInSubmit') }}</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
     <hr>
-    <p class="foot"><button class="link inline" @click="social.page = 'forgot'">Forgot your password?</button></p>
-    <p class="foot">No account? <button class="link inline" @click="social.page = 'create'">Create one</button></p>
+    <p class="foot"><button class="link inline" @click="social.page = 'forgot'">{{ t('social.auth.forgotPassword') }}</button></p>
+    <i18n-t keypath="social.lobby.noAccount" tag="p" class="foot">
+      <template #create>
+        <button class="link inline" @click="social.page = 'create'">{{ t('social.lobby.createOne') }}</button>
+      </template>
+    </i18n-t>
   </div>
 </template>

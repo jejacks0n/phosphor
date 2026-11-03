@@ -38,7 +38,7 @@ test('Escape, Cancel and the backdrop close it without saving; an empty name can
   await openApp(page);
   let downloads = 0;
   page.on('download', () => downloads++);
-  const open = () => page.getByRole('button', { name: 'Save Project (.phosphor)' }).click();
+  const open = () => page.getByRole('button', { name: 'Save project (.phosphor)' }).click();
 
   await open();
   await page.keyboard.press('Escape');
@@ -61,7 +61,7 @@ test('Escape, Cancel and the backdrop close it without saving; an empty name can
 
 test('keys stay inside it: Cmd+Z in the name field undoes nothing on the canvas', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   await drag(page, await cellPoint(page, 4, 5, 0), await cellPoint(page, 14, 5, 0));
   await page.keyboard.press('ControlOrMeta+s');
   await page.keyboard.press('ControlOrMeta+z');

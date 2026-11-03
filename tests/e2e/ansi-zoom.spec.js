@@ -116,7 +116,7 @@ for (const renderer of ['canvas', 'DOM']) {
 
     const row = (r) => store(page, 'project', `(p) => p.cells.slice(${r} * p.cols, ${r} * p.cols + 20).map((c) => c.fg.hex + c.bg.hex)`);
     const before = await row(7);
-    await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+    await page.getByRole('button', { name: 'Pencil' }).click();
     const paintAt = await cellPoint(page, 4, 7, 0);
     await page.mouse.click(paintAt.x, paintAt.y);
     const changed = (await row(7)).map((v, i) => v !== before[i]);

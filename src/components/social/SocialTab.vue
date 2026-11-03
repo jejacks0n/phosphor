@@ -1,9 +1,10 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { SIGN_IN_PAGES } from '@/lib/addresses';
-import { GOING_BACK_REPLACES_WORDS } from '@/social/messages';
+import { goingBackReplacesWords } from '@/social/messages';
 import ModalDialog from '@/components/ModalDialog.vue';
 import LobbyPage from './LobbyPage.vue';
 import SignInPage from './SignInPage.vue';
@@ -18,6 +19,7 @@ import WatchRoomPage from './WatchRoomPage.vue';
 
 const social = useSocialStore();
 const room = useRoomStore();
+const { t } = useI18n();
 const PAGES = {
   lobby: LobbyPage, 'sign-in': SignInPage, create: CreateAccountPage, forgot: ForgotPasswordPage,
   reset: ResetPasswordPage, onboarding: OnboardingPage, account: AccountPage,
@@ -60,21 +62,21 @@ watch(shownPage, async () => {
 <template>
   <!-- Not "social" in a class or id: content blockers hide those, and the tab goes blank. -->
   <article class="people-tab" @dragover.prevent @drop.prevent> <!-- a dropped file isn't opened by the browser -->
-    <p v-if="social.supported === false" class="unsupported">This browser can't sign you in to SOCIAL yet</p>
+    <p v-if="social.supported === false" class="unsupported">{{ t('social.unsupported') }}</p>
     <template v-else>
       <p v-if="social.notice" class="notice" role="status">
         <span>{{ social.notice }}</span>
-        <button class="link" aria-label="Dismiss" @click="social.notice = null">✕</button>
+        <button class="link" :aria-label="t('common.dismiss')" @click="social.notice = null">✕</button>
       </p>
       <div ref="page" class="page" :data-page="shownPage">
         <component :is="PAGES[shownPage]" v-if="PAGES[shownPage]" />
       </div>
-      <ModalDialog v-if="social.roomInvite" title="Join this room?" sub="You followed a link to it. Joining connects your browser directly to the host's, so the host can see your IP address." @cancel="social.answerRoomInvite(false)">
-        <p v-if="linkIsYours && room.goingBackReplaces" class="replaces">{{ GOING_BACK_REPLACES_WORDS }}</p>
+      <ModalDialog v-if="social.roomInvite" :title="t('social.joinDialog.title')" :sub="t('social.joinDialog.sub')" @cancel="social.answerRoomInvite(false)">
+        <p v-if="linkIsYours && room.goingBackReplaces" class="replaces">{{ goingBackReplacesWords() }}</p>
         <div class="actions">
-          <button @click="social.answerRoomInvite(false)">Not now</button>
-          <button @click="social.answerRoomInvite(true)">Join</button>
-          <button v-if="linkIsYours" class="primary" @click="room.goBackToRoom(social.roomInvite)">Back to your room</button>
+          <button @click="social.answerRoomInvite(false)">{{ t('common.notNow') }}</button>
+          <button @click="social.answerRoomInvite(true)">{{ t('social.joinDialog.join') }}</button>
+          <button v-if="linkIsYours" class="primary" @click="room.goBackToRoom(social.roomInvite)">{{ t('social.joinDialog.backToYourRoom') }}</button>
         </div>
       </ModalDialog>
     </template>

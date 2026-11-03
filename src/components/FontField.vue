@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { DISPLAY_FONTS, MIN_FONT_SIZE as MIN_SIZE, MAX_FONT_SIZE as MAX_SIZE } from '@/lib/displayFonts';
 import { addFont, removeFont } from '@/lib/userFonts';
@@ -7,12 +8,7 @@ import HelpInfo from '@/components/HelpInfo.vue';
 
 // The font the art is drawn in, and its size: one of Phosphor's, or a monospaced one you load from
 // your computer (userFonts.js). Kept in this browser, not in the project.
-const HELP = 'The font the art is drawn in. '
-  + 'Load custom adds a monospaced TrueType, OpenType or WOFF font from your computer. '
-  + 'Pixel fonts look sharpest at their own size or a multiple of it (16 or 32 for the 8x16 fonts). '
-  + 'The font and size stay in this browser; they aren\'t saved with the project. '
-  + 'While you draw in someone\'s room, the art is in their font, and yours comes back after.';
-
+const { t } = useI18n();
 const workspace = useWorkspaceStore();
 const current = computed(() => workspace.displayFontSpec);
 const loaded = computed(() => workspace.userFonts ?? []);
@@ -67,27 +63,27 @@ const remove = async () => {
 <template>
   <div class="field">
     <div class="label-row">
-      <div class="label-group"><label for="displayFont">Font</label><HelpInfo :text="HELP"/></div>
+      <div class="label-group"><label for="displayFont">{{ t('font.label') }}</label><HelpInfo :text="t('font.help')"/></div>
       <span class="actions">
-        <button v-if="isLoaded" class="text" title="Remove this font from this browser" aria-label="Remove font" @click="remove">Remove</button>
-        <button class="text" title="Load a monospaced font from your computer" :disabled="hostsFont" @click="fileInput.click()">Load custom</button>
+        <button v-if="isLoaded" class="text" :title="t('font.removeTitle')" :aria-label="t('font.removeAria')" @click="remove">{{ t('font.remove') }}</button>
+        <button class="text" :title="t('font.loadTitle')" :disabled="hostsFont" @click="fileInput.click()">{{ t('font.load') }}</button>
       </span>
       <input ref="file" type="file" accept=".ttf,.otf,.woff,.woff2" hidden @change="onFile">
     </div>
     <div class="row-inputs">
       <select id="displayFont" :value="current.id" :disabled="hostsFont" @change="onSelect">
-        <optgroup label="Phosphor's">
+        <optgroup :label="t('font.groupBuiltIn')">
           <option v-for="font in DISPLAY_FONTS" :key="font.id" :value="font.id">{{ font.name }}</option>
         </optgroup>
-        <optgroup v-if="loaded.length" label="Yours">
+        <optgroup v-if="loaded.length" :label="t('font.groupYours')">
           <option v-for="font in loaded" :key="font.id" :value="font.id">{{ font.name }}</option>
         </optgroup>
       </select>
       <input
           type="number"
           class="mono size"
-          aria-label="Font size"
-          title="Font size (px)"
+          :aria-label="t('font.sizeAria')"
+          :title="t('font.sizeTitle')"
           :value="current.size"
           :min="MIN_SIZE"
           :max="MAX_SIZE"
@@ -95,7 +91,7 @@ const remove = async () => {
           @change="onSize"
       >
     </div>
-    <p v-if="hostsFont" class="hosts-font">The host's font, while you draw in their room.</p>
+    <p v-if="hostsFont" class="hosts-font">{{ t('font.hostsFont') }}</p>
     <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
   </div>
 </template>

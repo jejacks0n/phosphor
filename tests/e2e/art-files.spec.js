@@ -9,7 +9,7 @@ const boat = Buffer.from('\x1b[31mHi\x1b[0m\r\nthere', 'latin1');
 
 test('the file picker opens a .ans on the ANSI tab, named for the file', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText(/Drop an image, .* or ANSI file here to start/)).toBeVisible();
+  await expect(page.getByText(/Drop an image, .* or ANSI file here/)).toBeVisible();
   await imageInput(page).setInputFiles({ name: 'boat.ans', mimeType: 'application/octet-stream', buffer: boat });
   await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
   await settled(page);

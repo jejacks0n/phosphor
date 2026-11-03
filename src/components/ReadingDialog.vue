@@ -1,11 +1,13 @@
 <script setup>
 import { onMounted, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { keepTabIn } from '@/lib/focus';
 
 // A large box of text to read over the app (About, the Terms, the Privacy Policy): a close button, and the slot,
 // scrolled when it's long. Each user styles its own text. On the body as ModalDialog is, so it can open over one.
 defineProps({ label: { type: String, required: true } });
 const emit = defineEmits(['close']);
+const { t } = useI18n();
 const close = useTemplateRef('close');
 onMounted(() => close.value?.focus());
 
@@ -21,7 +23,7 @@ function onKeyDown(event) {
   <Teleport to="body">
     <div class="modal-backdrop" @click.self="emit('close')">
       <article class="reading-dialog" role="dialog" aria-modal="true" :aria-label="label" @keydown="onKeyDown">
-        <button ref="close" class="close" @click="emit('close')" title="Close" aria-label="Close">×</button>
+        <button ref="close" class="close" @click="emit('close')" :title="t('common.close')" :aria-label="t('common.close')">×</button>
         <div class="content-container">
           <slot/>
         </div>

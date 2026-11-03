@@ -3,7 +3,7 @@
 import { test, expect, tab, store, chars, editAt, settled } from './support.js';
 import { fakeRoom, fakeServer, member, ROOM_ID, ARTIST, shown, tile, goLive, watching, selected, hash, asked, chat, outOfRoom, live, joins, invitedPage, invitation, mayDraw as mayDrawOf } from './social-support.js';
 
-const AWAY = 'Your room ended while the page was away';
+const AWAY = 'Your room closed while you were away.';
 const ELSEWHERE = 'This room is open in another tab';
 const NUMBERS = ['Here now', 'Max', 'Total', 'Messages'];
 const hosts = (room) => room.from('host').filter((m) => m.type === 'host').length;
@@ -181,7 +181,7 @@ test('the site\'s plain address in the hosting tab mounts, asks nothing and is s
   await host.goto('/');
   await live(host);
   await expect(asked(host)).toHaveCount(0);
-  await expect(host.getByRole('dialog', { name: 'End the room?' })).toHaveCount(0);
+  await expect(host.getByRole('dialog', { name: 'End this room?' })).toHaveCount(0);
   await expect.poll(() => new URL(host.url()).hash).toContain(`room=${ROOM_ID}`);
   expect(await store(host, 'room', (r) => [r.role, r.id])).toEqual(['host', ROOM_ID]);
   expect(joins(room)).toBe(0);

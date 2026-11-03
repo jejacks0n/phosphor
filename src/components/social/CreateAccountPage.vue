@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usernameProblem } from '@/social/names';
@@ -8,6 +9,7 @@ import UsernameField from './UsernameField.vue';
 
 const social = useSocialStore();
 const workspace = useWorkspaceStore();
+const { t } = useI18n();
 const username = ref('');
 const email = ref('');
 const password = ref('');
@@ -32,23 +34,37 @@ async function create() {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">‹ Back to the {{ social.backTo }}</button>
-    <h2>Create an account</h2>
-    <p class="intro">An account lets you chat and start rooms, under a username that's yours.</p>
+    <button class="link back" @click="social.page = 'lobby'">{{ social.backTo === 'room' ? t('social.nav.backToRoom') : t('social.nav.backToLobby') }}</button>
+    <h2>{{ t('social.auth.createHeading') }}</h2>
+    <p class="intro">{{ t('social.auth.createIntro') }}</p>
     <form @submit.prevent="ready && create()">
-      <UsernameField v-model="username" help="How everyone sees you. Letters, numbers, - and _." />
-      <label>Email <input v-model="email" type="email" autocomplete="email" required></label>
-      <label>Password <input v-model="password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="create-password-help"></label>
-      <p id="create-password-help" class="help">At least 10 characters, not a known leaked password.</p>
+      <UsernameField v-model="username" :help="t('social.auth.usernameHelp')" />
+      <label>{{ t('social.auth.emailLabel') }} <input v-model="email" type="email" autocomplete="email" required></label>
+      <label>{{ t('social.auth.passwordLabel') }} <input v-model="password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="create-password-help"></label>
+      <p id="create-password-help" class="help">{{ t('social.auth.passwordHelp') }}</p>
       <div ref="widget" class="turnstile"></div>
       <label class="terms">
         <input v-model="terms" type="checkbox">
-        <span>I'm 13 or older and agree to the <button type="button" class="link inline" @click="workspace.legalPage = 'terms'">Terms</button>, <button type="button" class="link inline" @click="workspace.legalPage = 'privacy'">Privacy Policy</button>, and <button type="button" class="link inline" @click="workspace.legalPage = 'guidelines'">Community Guidelines</button></span>
+        <i18n-t keypath="social.agreeTerms" tag="span">
+          <template #terms>
+            <button type="button" class="link inline" @click="workspace.legalPage = 'terms'">{{ t('legal.titles.terms') }}</button>
+          </template>
+          <template #privacy>
+            <button type="button" class="link inline" @click="workspace.legalPage = 'privacy'">{{ t('legal.titles.privacy') }}</button>
+          </template>
+          <template #guidelines>
+            <button type="button" class="link inline" @click="workspace.legalPage = 'guidelines'">{{ t('legal.titles.guidelines') }}</button>
+          </template>
+        </i18n-t>
       </label>
-      <button class="primary" type="submit" :disabled="!ready">Create account</button>
+      <button class="primary" type="submit" :disabled="!ready">{{ t('social.auth.createSubmit') }}</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
     <hr>
-    <p class="foot">Have an account? <button class="link inline" @click="social.page = 'sign-in'">Sign in</button></p>
+    <i18n-t keypath="social.auth.haveAccount" tag="p" class="foot">
+      <template #signIn>
+        <button class="link inline" @click="social.page = 'sign-in'">{{ t('social.lobby.signIn') }}</button>
+      </template>
+    </i18n-t>
   </div>
 </template>

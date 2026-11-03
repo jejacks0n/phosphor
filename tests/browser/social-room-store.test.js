@@ -1786,7 +1786,7 @@ test('refused unavailable on resume drops the record, says ROOM_AWAY_WORDS, and 
   const again = await greeted();
   again.receive({ type: 'refused', reason: 'unavailable' });
   expect(room.role).toBe(null);
-  expect(ROOM_AWAY_WORDS).toBe('Your room ended while the page was away');
+  expect(ROOM_AWAY_WORDS).toBe('Your room closed while you were away.');
   expect(social.notice).toBe(ROOM_AWAY_WORDS);
   expect(sessionStorage.getItem(RECORD)).toBe(null);
   expect(project.image).toBe(image);

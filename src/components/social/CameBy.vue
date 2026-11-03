@@ -1,13 +1,15 @@
 <script setup>
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import UserName from './UserName.vue';
 import { timeIn } from '@/social/session';
-import { clock } from '@/social/chat';
+import { formatClock } from '@/i18n/format';
 
 // Everyone who came by this session, a row each, newest last: their time in the room, whether they're
 // here, left (and when) or were removed (and when; removed wins over left), and what they said. Ten
 // rows show, then "and N more" opens the rest in place. `now` ticks once a second from the page.
 const props = defineProps({ people: { type: Array, required: true }, now: { type: Number, required: true } });
+const { t } = useI18n();
 
 const SHOWN = 10;
 const all = ref(false);
@@ -15,33 +17,35 @@ const shown = computed(() => (all.value ? props.people : props.people.slice(0, S
 
 const inRoom = (person) => {
   const minutes = Math.floor(timeIn(person, props.now) / 60_000);
-  if (minutes < 1) return 'under a minute';
-  return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+  if (minutes < 1) return t('social.cameBy.underMinute');
+  return minutes < 60
+    ? t('social.cameBy.minutes', { m: minutes })
+    : t('social.cameBy.hoursMinutes', { h: Math.floor(minutes / 60), m: minutes % 60 });
 };
 const where = (person) => {
-  if (person.removed !== null) return `removed ${clock.format(person.removed)}`;
-  return person.since === null ? `left ${clock.format(person.left)}` : 'here';
+  if (person.removed !== null) return t('social.cameBy.removedAt', { time: formatClock(person.removed) });
+  return person.since === null ? t('social.cameBy.leftAt', { time: formatClock(person.left) }) : t('social.cameBy.here');
 };
 </script>
 
 <template>
   <section class="came-by">
-    <h3>Who came by</h3>
-    <p v-if="!people.length" class="empty">Nobody has stopped by yet.</p>
+    <h3>{{ t('social.cameBy.heading') }}</h3>
+    <p v-if="!people.length" class="empty">{{ t('social.cameBy.empty') }}</p>
     <table v-else>
       <thead>
-        <tr><th>Name</th><th>Time</th><th>Status</th><th class="said">Messages</th></tr>
+        <tr><th>{{ t('social.cameBy.cols.name') }}</th><th>{{ t('social.cameBy.cols.time') }}</th><th>{{ t('social.cameBy.cols.status') }}</th><th class="said">{{ t('social.cameBy.cols.messages') }}</th></tr>
       </thead>
       <tbody>
         <tr v-for="person in shown" :key="person.sub">
-          <td><div class="who"><UserName class="name" :name="person.name" /> <span v-if="person.guest" class="guest">guest</span></div></td>
+          <td><div class="who"><UserName class="name" :name="person.name" /> <span v-if="person.guest" class="guest">{{ t('common.guest') }}</span></div></td>
           <td>{{ inRoom(person) }}</td>
           <td>{{ where(person) }}</td>
           <td class="said">{{ person.said }}</td>
         </tr>
       </tbody>
     </table>
-    <button v-if="people.length > SHOWN && !all" @click="all = true">and {{ people.length - SHOWN }} more</button>
+    <button v-if="people.length > SHOWN && !all" @click="all = true">{{ t('social.cameBy.andMore', { count: people.length - SHOWN }) }}</button>
   </section>
 </template>
 

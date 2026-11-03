@@ -1,7 +1,9 @@
 <script setup>
 import { useMediaQuery } from '@vueuse/core';
+import { useI18n } from 'vue-i18n';
 import { PROJECT_EXTENSION } from '@/document/projectIO';
 import { ART_EXTENSIONS } from '@/lib/ArtFile';
+import { formatMediumDateTime } from '@/i18n/format';
 
 defineProps({
   ready: { type: Boolean, default: true }, // nothing until it's known there's nothing to restore, so this doesn't flash
@@ -9,6 +11,7 @@ defineProps({
   openRecent: Function,
 });
 const emit = defineEmits(['file-dropped', 'file-selected', 'start-blank']);
+const { t } = useI18n();
 
 // A phone's picker greys out any file it can't match to the list, and it can't match .phosphor (no type it knows), so
 // on a touch screen there's no list; a file that isn't an image, a project or an art file says so when it fails to open.
@@ -16,7 +19,6 @@ const touch = useMediaQuery('(pointer: coarse)');
 const accept = ['image/*', PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)].join(',');
 
 const MAX_RECENT = 5;
-const editedTime = (ms) => new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 function onFileSelected(e) {
   const file = e.target.files[0];
@@ -29,26 +31,30 @@ function onFileSelected(e) {
     <div v-if="ready" class="drop-zone">
       <div class="logo"></div>
       <span class="icon">⬆</span>
-      <p>Drop an image, {{ PROJECT_EXTENSION }} or ANSI file here to start</p>
+      <p>{{ t('zero.dropPrompt', { ext: PROJECT_EXTENSION }) }}</p>
       <label>
-        <span class="mobile">Upload File to Start</span>
-        <span class="desktop">Browse Files</span>
+        <span class="mobile">{{ t('zero.browseMobile') }}</span>
+        <span class="desktop">{{ t('zero.browseDesktop') }}</span>
         <input type="file" @change="onFileSelected" :accept="touch ? null : accept" hidden>
       </label>
 
       <button class="link" @click="$emit('start-blank')">
-        Or start with a blank canvas
+        {{ t('zero.startBlank') }}
       </button>
     </div>
 
     <section v-if="ready && recent.length" class="recent">
-      <h2 id="recent-heading">Continue where you left off</h2>
+      <h2 id="recent-heading">{{ t('zero.recentHeading') }}</h2>
       <ul aria-labelledby="recent-heading">
         <li v-for="row in recent.slice(0, MAX_RECENT)" :key="row.id">
           <span class="name" :title="row.filename">{{ row.filename }}</span>
-          <time :datetime="new Date(row.editedAt).toISOString()">{{ editedTime(row.editedAt) }}</time>
-          <button :disabled="row.openElsewhere" :aria-label="`${row.openElsewhere ? 'Open in another tab' : 'Open'}: ${row.filename}`" @click="openRecent(row.id)">
-            {{ row.openElsewhere ? 'Open in another tab' : 'Open' }}
+          <time :datetime="new Date(row.editedAt).toISOString()">{{ formatMediumDateTime(row.editedAt) }}</time>
+          <button
+            :disabled="row.openElsewhere"
+            :aria-label="row.openElsewhere ? t('zero.openElsewhereAria', { name: row.filename }) : t('zero.openAria', { name: row.filename })"
+            @click="openRecent(row.id)"
+          >
+            {{ row.openElsewhere ? t('zero.openElsewhere') : t('zero.open') }}
           </button>
         </li>
       </ul>

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
 import { BUILTIN_PALETTES, normalizeGlyphs, forkName } from '@/lib/charPalettes';
+import { t } from '@/i18n/index.js';
 
 const RECENT_CHARS = 24;
 const newId = () => `u${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -21,7 +22,7 @@ export const usePaletteStore = defineStore('palettes', {
       ...BUILTIN_PALETTES,
       ...(Array.isArray(state.userPalettes) ? state.userPalettes : [])
         .filter(p => p && typeof p.id === 'string')
-        .map(p => ({ ...p, name: String(p.name ?? 'Untitled palette'), glyphs: normalizeGlyphs(Array.isArray(p.glyphs) ? p.glyphs.map(g => (typeof g === 'string' ? g : '')) : '') })),
+        .map(p => ({ ...p, name: String(p.name ?? t('palette.untitled')), glyphs: normalizeGlyphs(Array.isArray(p.glyphs) ? p.glyphs.map(g => (typeof g === 'string' ? g : '')) : '') })),
     ],
     active() {
       return this.all.find(p => p.id === this.activeId) ?? this.all[0];
@@ -60,7 +61,7 @@ export const usePaletteStore = defineStore('palettes', {
     },
 
     create() {
-      const palette = { id: newId(), name: 'Untitled palette', glyphs: normalizeGlyphs('') };
+      const palette = { id: newId(), name: t('palette.untitled'), glyphs: normalizeGlyphs('') };
       this.userPalettes = [...this.userPalettes, palette];
       return palette.id;
     },
@@ -68,7 +69,7 @@ export const usePaletteStore = defineStore('palettes', {
     duplicate(id) {
       const source = this.all.find(p => p.id === id);
       if (!source) return null;
-      const palette = { id: newId(), name: `${source.name} copy`, glyphs: [...source.glyphs] };
+      const palette = { id: newId(), name: t('palette.copyName', { name: source.name }), glyphs: [...source.glyphs] };
       this.userPalettes = [...this.userPalettes, palette];
       return palette.id;
     },

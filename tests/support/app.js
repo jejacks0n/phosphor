@@ -3,6 +3,7 @@
 import { watch } from 'vue';
 import { setActivePinia, createPinia } from 'pinia';
 import '@/assets/fonts.css';
+import { setLocale } from '@/i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
@@ -21,6 +22,7 @@ export const seedConsent = () => localStorage.setItem(CONSENT_KEY, CONSENT_VERSI
 export async function createTestApp() {
   stopWatching?.();
   localStorage.clear();
+  await setLocale('en', { persist: false });
   seedConsent();
   setActivePinia(createPinia());
   await setDisplayFont('jetbrains');

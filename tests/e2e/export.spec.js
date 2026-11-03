@@ -49,8 +49,8 @@ test('the animated export appears with frames, warns above 80x25 and downloads a
 
   await page.getByRole('button', { name: 'Export animated .ans' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('Timing is lost');
-  await expect(dialog).toContainText('rows past the terminal');
+  await expect(dialog).toContainText('baud rate');
+  await expect(dialog).toContainText('clipped during playback');
   await page.keyboard.press('Escape');
 
   const download = await saveAs(page, 'Export animated .ans');
@@ -74,7 +74,7 @@ test('at 80x25 or smaller the export says nothing about rows past the terminal',
     p.rows = 50;
   });
   await page.getByRole('button', { name: 'Export animated .ans' }).click();
-  await expect(page.getByRole('dialog')).not.toContainText('rows past the terminal');
+  await expect(page.getByRole('dialog')).not.toContainText('clipped during playback');
 });
 
 test('a character on a frame not showing is listed before an animated .ans is written', async ({ page }) => {
@@ -100,7 +100,7 @@ test('an animated .utf8ans keeps every character, warns above 80x25, and lists n
 
   await page.getByRole('button', { name: 'Export animated .utf8ans' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('rows past the terminal');
+  await expect(dialog).toContainText('clipped during playback');
   await expect(dialog.getByRole('list', { name: 'Replacements' })).toHaveCount(0);
   await page.keyboard.press('Escape');
 

@@ -3,22 +3,29 @@
 // darkest first. The default is all CP437, so an .ans export of it never has to ask; "Default + ▁▂▃▅"
 // is the earlier default, whose low blocks .ans writes as lookalikes. A name has to fit beside the
 // Characters label (about 15 characters).
+import { t } from '@/i18n';
 import { getSetting } from '../store/settings.js';
 
 const ANSI_DEFAULT = getSetting('chars').default;
 
+function preset(key, chars) {
+  const entry = { id: key, chars };
+  Object.defineProperty(entry, 'name', { get: () => t(`charsets.${key}`), enumerable: true });
+  return entry;
+}
+
 export const ANSI_CHARSETS = [
-  { name: 'Default', chars: ANSI_DEFAULT },
-  { name: 'Default + ▁▂▃▅', chars: '.*:%░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄' },
-  { name: 'Shades', chars: '░▒▓█' },
-  { name: 'Rising blocks', chars: '▁▂▃▄▅▆▇█' },
-  { name: 'Half blocks', chars: '▀▄█' },
-  { name: 'Pixel', chars: '▄' }, // every cell two pixels: the top half the background, the bottom the foreground
-  { name: 'Quadrants', chars: '▖▗▘▝▚▞▙▛▜▟' },
+  preset('default', ANSI_DEFAULT),
+  preset('defaultBlocks', '.*:%░▒▓'.replace('░▒▓', '░░▒▒▓▓▁▂▃▄▅■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄')),
+  preset('shades', '░▒▓█'),
+  preset('risingBlocks', '▁▂▃▄▅▆▇█'),
+  preset('halfBlocks', '▀▄█'),
+  preset('pixel', '▄'), // every cell two pixels: the top half the background, the bottom the foreground
+  preset('quadrants', '▖▗▘▝▚▞▙▛▜▟'),
 ];
 
 export const ASCII_CHARSETS = [
-  { name: 'Default', chars: getSetting('charsAscii').default },
-  { name: 'Classic ramp', chars: ' .:-=+*#%@' },
-  { name: 'Long ramp', chars: ' .\'`^",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$' },
+  preset('default', getSetting('charsAscii').default),
+  preset('classicRamp', ' .:-=+*#%@'),
+  preset('longRamp', ' .\'`^",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$'),
 ];

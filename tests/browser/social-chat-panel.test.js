@@ -4,6 +4,7 @@
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
+import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
@@ -29,7 +30,7 @@ async function mount(role, count) {
   Object.assign(room, { role, id: 'abcdefghij', status: 'live', room: { name: 'neon harbor', welcome: '' }, chat: Array.from({ length: count }, (_, n) => row(n)) });
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ChatPanel).use(getActivePinia());
+  app = createApp(ChatPanel).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
   return room;
@@ -185,8 +186,8 @@ test('a member\'s ⋯ has Mute, then Unmute; they\'re tagged muted, and their me
   // Vue skips a click in the same millisecond as the menu opened (a person is never that fast).
   const open = async () => { li().querySelector('button.dropdown-trigger').click(); await nextTick(); await new Promise((r) => setTimeout(r, 2)); };
   await open();
-  expect(item('Mute – for everyone but you').title).toBe('Their messages stop reaching anyone else. They aren\'t told.');
-  item('Mute – for everyone but you').click();
+  expect(item('Quiet mute (only you see them)').title).toBe('Hides their messages from everyone else without notifying them.');
+  item('Quiet mute (only you see them)').click();
   expect(mute).toHaveBeenCalledWith('u_p1', true);
   expect(li().querySelector('.tag')).toBe(null);
 
@@ -194,11 +195,11 @@ test('a member\'s ⋯ has Mute, then Unmute; they\'re tagged muted, and their me
   await nextTick();
   expect(li().querySelector('.tag').textContent).toBe('muted');
   await open();
-  expect(item('Mute – for everyone but you')).toBe(undefined);
+  expect(item('Quiet mute (only you see them)')).toBe(undefined);
   item('Unmute').click();
   expect(mute).toHaveBeenLastCalledWith('u_p1', false);
   const marks = [...host.querySelectorAll('.list .message')].map((m) => m.querySelector('.muted')?.textContent ?? null);
-  expect(marks).toEqual(['Muted: only you and they see this', null]);
+  expect(marks).toEqual(['Quietly muted — visible only to the two of you', null]);
 });
 
 test('a watcher\'s panel has no people list and no room menu; the host\'s has both', async () => {
@@ -311,7 +312,7 @@ test('the report dialog, sent: "Reported" in the status line that was there from
   const props = { name: 'wren', sub: 'u_2', onDone: done };   // (a variable: the lint takes `name` in createApp's second argument for a component's)
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ReportDialog, props).use(getActivePinia());
+  app = createApp(ReportDialog, props).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
   const status = document.querySelector('p.reported[role=status]');
@@ -334,7 +335,7 @@ test('the report dialog, sent: "Reported" in the status line that was there from
   host.remove();
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ReportDialog, props).use(getActivePinia());
+  app = createApp(ReportDialog, props).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
   document.querySelector('[role=dialog] input[value=spam]').click();
@@ -405,7 +406,7 @@ test('Report room asks "Report this room?" with the inside sub, and Report sends
   await nextTick();
   const dialog = document.querySelector('[role=dialog]');
   expect(dialog.querySelector('h3').textContent).toBe('Report this room?');
-  expect(dialog.querySelector('p.sub').textContent).toBe('Phosphor\'s moderators see the room\'s last lobby pictures and a picture of what you see now.');
+  expect(dialog.querySelector('p.sub').textContent).toBe('Moderators receive recent lobby previews plus a snapshot of the canvas right now.');
   dialog.querySelector('input[value=sexual]').click();
   await nextTick();
   [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Report').click();

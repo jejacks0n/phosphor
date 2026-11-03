@@ -1,5 +1,6 @@
 <script setup>
 import { computed, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePlayback } from '@/composables/usePlayback';
@@ -7,22 +8,23 @@ import { frameMarks } from '@/lib/frameMarks';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 
 // Under the canvas while Animate is on: play, step, scrub, timing, and adding and arranging frames.
+const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const playback = usePlayback();
 
-const KINDS = [
-  ['blank', 'Blank: ghost of what came before'],
-  ['duplicate', 'Duplicate: everything, solid'],
-  ['wipe', 'Wipe: a clean slate, no ghost'],
-];
+const kinds = computed(() => [
+  ['blank', t('animation.kinds.blank')],
+  ['duplicate', t('animation.kinds.duplicate')],
+  ['wipe', t('animation.kinds.wipe')],
+]);
 
 const at = computed(() => (workspace.playing ? workspace.playFrame : project.frame));
 const count = computed(() => project.frames.length);
 // Why Add frame is off, if it is.
 const full = computed(() => {
-  if (!project.canAnimate) return 'This canvas is too large to add frames';
-  return count.value >= project.mostFrames ? `${count.value} frames is the most at this canvas size` : '';
+  if (!project.canAnimate) return t('animation.tooLarge');
+  return count.value >= project.mostFrames ? t('animation.maxFrames', { count: count.value }, count.value) : '';
 });
 
 // A frame's changes are worked out when it's left, and here when it's edited, so its mark is right at once.
@@ -55,19 +57,19 @@ const setFps = (event) => {
 </script>
 
 <template>
-  <div class="animation-bar" role="toolbar" aria-label="Animation">
+  <div class="animation-bar" role="toolbar" :aria-label="t('animation.toolbarAria')">
     <!-- Two groups, one line where they fit and a line each where they don't, so a narrow screen never strands a control. -->
     <div class="transport">
-    <button class="play" :aria-label="workspace.playing ? 'Pause' : 'Play'" :title="workspace.playing ? 'Pause (L)' : 'Play (L)'" :disabled="count < 2" @click="playback.toggle()">
+    <button class="play" :aria-label="workspace.playing ? t('animation.pause') : t('animation.play')" :title="workspace.playing ? t('animation.pauseTitle') : t('animation.playTitle')" :disabled="count < 2" @click="playback.toggle()">
       <svg viewBox="0 0 16 16" aria-hidden="true">
         <path v-if="workspace.playing" d="M3 2h4v12H3zM9 2h4v12H9z"/>
         <path v-else d="M4 2l10 6-10 6z"/>
       </svg>
     </button>
-    <button class="step" aria-label="Previous frame" title="Previous frame (,)" :disabled="count < 2" @click="step(-1)">
+    <button class="step" :aria-label="t('animation.prevFrame')" :title="t('animation.prevFrameTitle')" :disabled="count < 2" @click="step(-1)">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h2v10H3zM13 3v10L6 8z"/></svg>
     </button>
-    <button class="step" aria-label="Next frame" title="Next frame (.)" :disabled="count < 2" @click="step(1)">
+    <button class="step" :aria-label="t('animation.nextFrame')" :title="t('animation.nextFrameTitle')" :disabled="count < 2" @click="step(1)">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg>
     </button>
     <output class="indicator" data-testid="frame-indicator">{{ at + 1 }} / {{ count }}</output>
@@ -76,43 +78,43 @@ const setFps = (event) => {
         <span v-for="(mark, i) in marks" :key="i" :class="mark" :style="{ left: markAt(i) }"></span>
       </div>
       <!-- A pointer lets go of it, so the app's keys work again; the keyboard keeps its arrows. -->
-      <input type="range" aria-label="Frame" min="0" :max="count - 1" step="1" :value="at" @input="scrub" @pointerup="$event.target.blur()">
+      <input type="range" :aria-label="t('animation.frameAria')" min="0" :max="count - 1" step="1" :value="at" @input="scrub" @pointerup="$event.target.blur()">
     </div>
-    <DropdownMenu label="Add frame" up :disabled="!!full">
+    <DropdownMenu :label="t('animation.addFrame')" up :disabled="!!full">
       <template #trigger>
         <!-- A frame of film, on its side, with a plus at its corner. -->
         <svg class="add-frame" viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
           <path d="M0.5 6h11.5v9H0.5zM1.6 6.7h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zM1.6 13.3h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zm2.2 0h1.1v1h-1.1zM1.5 8.4h9.5v4.2H1.5zM12.55 0.8h1.5v1.45h1.45v1.5h-1.45v1.45h-1.5v-1.45H11.1v-1.5h1.45z"/>
         </svg>
       </template>
-      <button v-for="[kind, label] in KINDS" :key="kind" @click="add(kind)">{{ label }}</button>
+      <button v-for="[kind, label] in kinds" :key="kind" @click="add(kind)">{{ label }}</button>
     </DropdownMenu>
-    <DropdownMenu label="Frame actions" up>
+    <DropdownMenu :label="t('animation.frameActions')" up>
       <template #trigger>
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 7h3v3H2zM6.5 7h3v3h-3zM11 7h3v3h-3z"/></svg>
       </template>
-      <button :disabled="at === 0" @click="move(-1)">Move earlier</button>
-      <button :disabled="at === count - 1" @click="move(1)">Move later</button>
-      <button :disabled="count < 2" @click="remove">Delete frame</button>
+      <button :disabled="at === 0" @click="move(-1)">{{ t('animation.moveEarlier') }}</button>
+      <button :disabled="at === count - 1" @click="move(1)">{{ t('animation.moveLater') }}</button>
+      <button :disabled="count < 2" @click="remove">{{ t('animation.deleteFrame') }}</button>
     </DropdownMenu>
     </div>
     <div class="settings">
-    <label class="field fps" title="Frames per second">
-      <input type="number" aria-label="Frames per second" min="1" max="60" step="1" :value="project.fps" @change="setFps">
-      fps
+    <label class="field fps" :title="t('animation.fpsTitle')">
+      <input type="number" :aria-label="t('animation.fpsTitle')" min="1" max="60" step="1" :value="project.fps" @change="setFps">
+      {{ t('animation.fpsUnit') }}
     </label>
-    <label class="field" title="How long this frame stays, in seconds (0 is one tick)">
-      Hold
-      <input type="number" aria-label="Hold" min="0" max="60" step="0.05" :value="project.frames[at]?.hold" @change="setHold">
-      s
+    <label class="field" :title="t('animation.holdTitle')">
+      {{ t('animation.hold') }}
+      <input type="number" :aria-label="t('animation.hold')" min="0" max="60" step="0.05" :value="project.frames[at]?.hold" @change="setHold">
+      {{ t('animation.holdUnit') }}
     </label>
     <span v-if="full" class="full">{{ full }}</span>
-    <button class="ghost" :class="{ active: workspace.ghost }" aria-label="Ghost" :aria-pressed="workspace.ghost" title="Ghost: show earlier frames, dimmed, on a Blank frame" @click="workspace.ghost = !workspace.ghost">
+    <button class="ghost" :class="{ active: workspace.ghost }" :aria-label="t('animation.ghost')" :aria-pressed="workspace.ghost" :title="t('animation.ghostTitle')" @click="workspace.ghost = !workspace.ghost">
       <svg viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
         <path d="M8 1.5C5 1.5 3 3.9 3 7v7.5l1.67-1.25 1.66 1.25L8 13.25l1.67 1.25 1.66-1.25L13 14.5V7c0-3.1-2-5.5-5-5.5zM6.25 5.5a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zm3.5 0a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2z"/>
       </svg>
     </button>
-    <input v-model.number="workspace.ghostStrength" class="strength" type="range" aria-label="Ghost strength" :title="`Ghost strength: ${workspace.ghostStrength}%`" min="0" max="100" step="1" :disabled="!workspace.ghost" @pointerup="$event.target.blur()">
+    <input v-model.number="workspace.ghostStrength" class="strength" type="range" :aria-label="t('animation.ghostStrength')" :title="t('animation.ghostStrengthTitle', { percent: workspace.ghostStrength })" min="0" max="100" step="1" :disabled="!workspace.ghost" @pointerup="$event.target.blur()">
     </div>
   </div>
 </template>

@@ -45,7 +45,7 @@ test('the panel is beside every tab for the host and the watcher, with the welco
     for (const name of tabs) {
       await tab(page, name).click();
       await expect(panel(page).getByRole('heading', { name: 'neon harbor', level: 2 })).toBeVisible();
-      await expect(panel(page).getByText('Pinned, from the host')).toBeVisible();
+      await expect(panel(page).getByText('Pinned note')).toBeVisible();
       await expect(panel(page).getByText('be kind, draw big')).toBeVisible();
       expect((await panel(page).boundingBox()).width).toBe(280);
     }
@@ -147,9 +147,9 @@ test('the box: close to the panel\'s edges, Send a button only with something to
     await expect(box(watcher)).toHaveValue('');   // taken, before the next
   }
   await expect(messages(watcher)).toHaveCount(3);
-  await expect(panel(watcher).getByText('Slow down a little')).toHaveCount(0);
+  await expect(panel(watcher).getByText('Easy there—wait a moment before sending again.')).toHaveCount(0);
   await say(watcher, 'four');
-  await expect(panel(watcher).getByText('Slow down a little')).toBeVisible();
+  await expect(panel(watcher).getByText('Easy there—wait a moment before sending again.')).toBeVisible();
   await expect(box(watcher)).toHaveValue('four');   // kept, to send again
   await expect(messages(host)).toHaveCount(3);
   await expect(messages(host)).not.toContainText(['four']);
@@ -190,7 +190,7 @@ async function backAsWren(host, watcher) {
 test('a guest is asked to sign in over the room: "Back to the room" returns to it, and signing in with a password is back in it as themselves', async ({ page: host, context }) => {
   const watcher = await guestToSignIn(host, context);
   expect(await store(watcher, 'workspace', (w) => w.editorTab)).toBe('social');
-  await shown(watcher, 'sign-in').getByRole('button', { name: '‹ Back to the room' }).click();
+  await shown(watcher, 'sign-in').getByRole('button', { name: '‹ Back to room' }).click();
   await expect(shown(watcher, 'watch-room')).toBeVisible();
   expect(await store(watcher, 'room', (r) => r.role)).toBe('watch');
 
@@ -347,12 +347,12 @@ test('Report and Delete show on hover in the time\'s place: its size, its line a
 const more = (host, name = 'pixel_wren') => watching(host).getByRole('button', { name: `More for ${name}` });
 const blockDialog = (host) => host.getByRole('dialog', { name: 'Block pixel_wren?' });
 
-test('Kick – for this session: the watcher is in the lobby with "The host removed you" and the host\'s list is empty', async ({ page: host, context }) => {
+test('Remove from room: the watcher is in the lobby with "The host removed you" and the host\'s list is empty', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
   await openPeople(host);
   await expect(watching(host)).toHaveCount(1);
   await more(host).click();
-  await host.getByRole('button', { name: 'Kick – for this session' }).click();
+  await host.getByRole('button', { name: 'Remove from room' }).click();
   await expect(watching(host)).toHaveCount(0);
   await expect(shown(watcher, 'lobby')).toBeVisible();
   await expect(watcher.getByText('The host removed you')).toBeVisible();
@@ -378,12 +378,12 @@ test('the chat box says who you are on its top border, as [ avatar name ], each 
   }
 });
 
-test('Block – from all future rooms asks first, then blocks and removes', async ({ page: host, context }) => {
+test('Block from your rooms asks first, then blocks and removes', async ({ page: host, context }) => {
   const { watcher, server } = await inRoom(host, context, { me: wren });
   await openPeople(host);
   await more(host).click();
-  await expect(host.getByRole('button', { name: 'Block – from all future rooms' })).toBeVisible();
-  await host.getByRole('button', { name: 'Block – from all future rooms' }).click();
+  await expect(host.getByRole('button', { name: 'Block from your rooms' })).toBeVisible();
+  await host.getByRole('button', { name: 'Block from your rooms' }).click();
 
   const dialog = blockDialog(host);
   const [back, forward] = await Promise.all(['Cancel', 'Block'].map((name) => dialog.getByRole('button', { name, exact: true }).boundingBox()));
@@ -409,7 +409,7 @@ test('Cancel and Escape on the Block box leave everything as it was, with focus 
     () => host.keyboard.press('Escape'),
   ]) {
     await more(host).click();
-    await host.getByRole('button', { name: 'Block – from all future rooms' }).click();
+    await host.getByRole('button', { name: 'Block from your rooms' }).click();
     await expect(blockDialog(host)).toBeVisible();
     await dismiss();
     await expect(blockDialog(host)).toHaveCount(0);
@@ -421,7 +421,7 @@ test('Cancel and Escape on the Block box leave everything as it was, with focus 
 
   server.route('POST /api/blocks', () => [500, { code: 'SERVER_ERROR' }]);
   await more(host).click();
-  await host.getByRole('button', { name: 'Block – from all future rooms' }).click();
+  await host.getByRole('button', { name: 'Block from your rooms' }).click();
   await blockDialog(host).getByRole('button', { name: 'Block', exact: true }).click();
   await expect.poll(() => server.sent('POST', '/api/blocks')).toHaveLength(1);
   await expect(host.getByRole('status').filter({ hasText: 'Something went wrong. Try again.' })).toBeVisible();
@@ -433,7 +433,7 @@ test('Cancel and Escape on the Block box leave everything as it was, with focus 
 async function leaveWhileAsked(host, watcher) {
   await openPeople(host);
   await more(host).click();
-  await host.getByRole('button', { name: 'Block – from all future rooms' }).click();
+  await host.getByRole('button', { name: 'Block from your rooms' }).click();
   await expect(blockDialog(host)).toBeVisible();
   await watcher.getByRole('button', { name: 'Exit' }).click();
   await expect(watching(host)).toHaveCount(0);

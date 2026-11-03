@@ -28,7 +28,7 @@ test('the color tooltips show their shortcuts; Shift+Cmd/Ctrl+X swaps the colors
 
 test('from a drawing tool the held eyedropper gives way to the box, and the tool stays', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   await page.keyboard.down('Alt');
   expect(await ws(page, (w) => w.activeTool)).toBe('picker');
   await page.keyboard.press('f');
@@ -39,7 +39,7 @@ test('from a drawing tool the held eyedropper gives way to the box, and the tool
 
 test('in the color box the arrow keys move between swatches, Space picks, Enter picks and closes, and nothing else moves', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('combobox', { name: 'Color Palette' }).selectOption('cga');
+  await page.getByRole('combobox', { name: 'Color palette' }).selectOption('cga');
   await page.getByRole('button', { name: 'Select', exact: true }).click();
   await page.keyboard.press('ControlOrMeta+a');
   const selection = await ws(page, (w) => w.selection);

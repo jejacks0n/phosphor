@@ -4,7 +4,7 @@ import { test, expect, tab, store, chars, editAt, settled, openApp, otherBrowser
 import { fakeRoom, fakeServer, member, ROOM_ID, shown, goLive, chat, live, joins, artistPage, asked, mayDraw as mayDrawOf } from './social-support.js';
 
 const BACK = 'Back to your room';
-const AWAY = 'Your room ended while the page was away';
+const AWAY = 'Your room closed while you were away.';
 const REPLACES = 'Going back replaces your open art, which has unsaved changes.';
 const LOOKS = 4500;   // long enough for two looks to have passed
 const OFFERED = 15_000;   // how long an offer that's coming may take on a busy machine; a wait for one that isn't stays LOOKS

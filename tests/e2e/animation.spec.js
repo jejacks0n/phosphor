@@ -77,7 +77,7 @@ test('a frame drawn on gets a tall mark at once', async ({ page }) => {
   await animateSwitch(page).check();
   await addFrame(page, 'Blank');
   await expect(page.locator('.scrubber-marks .drawn')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   const at = await cellPoint(page, 3, 3);
   await page.mouse.click(at.x, at.y);
   await expect(page.locator('.scrubber-marks .drawn')).toHaveCount(1);
@@ -148,7 +148,7 @@ test('drawing while playing pauses, on the frame showing, and keeps the edit', a
   await openApp(page);
   await animateSwitch(page).check();
   await addFrame(page, 'Blank');
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   await bar(page).getByRole('button', { name: 'Play' }).click();
   await expect(bar(page).getByRole('button', { name: 'Pause' })).toBeVisible();
   const before = await store(page, 'project', (p) => p.frames.map((f) => f.changes.size));
@@ -396,7 +396,7 @@ test('saving a project and opening it brings the frames back', async ({ page }) 
   await animateSwitch(page).check();
   await type(page, 2, 2, 'A');
   await addFrame(page, 'Wipe');
-  const download = await saveAs(page, 'Save Project (.phosphor)');
+  const download = await saveAs(page, 'Save project (.phosphor)');
   const buffer = await readFile(await download.path());
   await page.evaluate(() => sessionStorage.removeItem('phosphor-autosave-document'));
   await page.goto('/');

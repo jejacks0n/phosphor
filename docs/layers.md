@@ -59,7 +59,7 @@ round on top of the result. Nothing on the canvas changes when you bake:
   - **Keep full color** (the default): the picture keeps its in-between colors, so switching the
     palette later still has them. A few cells near the edges between palette colors can come out
     as the neighboring color, more with many sliders on.
-  - **Lock to the palette**: nothing on the canvas changes, but the picture keeps only the
+  - **Snap to palette colors**: nothing on the canvas changes, but the picture keeps only the
     palette's colors, so switching to full color later won't bring the in-between shades back.
     Your drawing keeps its own colors either way.
 - Undo brings the original image and the sliders back. Once you've baked, saving keeps only the
@@ -115,19 +115,19 @@ instead. Typing or drawing cells (a line box, a Character or Full block shape) o
 the paint in those cells, so what you wrote shows; with the background set to None, each cell keeps
 the background color the paint gave it, as it keeps the picture's or an earlier cell's.
 
-The Pencil and Brush paint over each cell's own character, which shows through: **Normal mode**,
+The Pencil and Brush paint over each cell's own character, which shows through: **Colors only**,
 the default in their **Draw with** (ANSI view). With **Half-block** each cell they paint becomes a ▄
 instead, and the paint colors its two halves, so you draw clean half-blocks. The half you don't
 paint keeps its color.
 
-The Pencil's **Single** and **Double** (ANSI view) draw box-drawing lines as you drag from cell to
+The Pencil's **Single line** and **Double line** (ANSI view) draw box-drawing lines as you drag from cell to
 cell: each cell gets the piece its path needs (─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼), so the line turns corners and
 joins itself where it crosses back, in the foreground color (and the background color, unless it's
 None). A diagonal drag becomes a staircase. With **Connect** on it joins the lines it crosses (┼)
 or ends on (┬), and the ones that point into it; off, it draws over them.
 
 **Opacity** is how much one stroke lays at most: going back over the same spot within a stroke
-doesn't add more, but with **Stack opacity** on (the default) strokes stack, so two strokes at 50%
+doesn't add more, but with **Build up** on (the default) strokes stack, so two strokes at 50%
 make the paint solid. With it off, Opacity is a ceiling: paint never gets more solid than it, and
 more strokes only change its color. Within a stroke, **Flow** is how quickly it builds up.
 
@@ -149,10 +149,10 @@ so colors stay put from frame to frame.
   every frame, so one frame can't go into it.
   With a selection, only what's drawn inside it goes; the rest of the edit layer stays. Each time,
   it asks how:
-  - **Exactly as is**: paint and cells become base pixels exactly as they show, and your typed and drawn
+  - **Keep crisp cells**: paint and cells become base pixels exactly as they show, and your typed and drawn
     cells keep their characters, pinned on the base layer. Nothing is resampled or re-filtered, and
     the effects never touch it.
-  - **Into the image**: your drawing becomes part of the image itself, so every effect applies
+  - **Blend into source image**: your drawing becomes part of the image itself, so every effect applies
     to it, live, like the photo: Edges outlines it, Sharpen sharpens it, and moving the sliders keeps
     changing it. Paint and solid cells (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep
     showing their two halves; letters and other characters can't become picture pixels, so they
@@ -339,9 +339,9 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   in Full block or Character. Single and Double lines run straight across or down, whichever your
   drag is closer to, and join the lines they cross with Connect. **Anti-aliased** lines and ellipses
   share their edges between pixels, or shade cells ░▒▓ in Full block.
-- Lines and ellipses in Half-block or Full block can use **Vertical half blocks**: each block is
+- Lines and ellipses in Half-block or Full block can use **Half-column detail**: each block is
   placed to the nearest half cell across, so one that falls between two columns is drawn as the
-  right half of one cell and the left half of the next (▐▌), and a steep line or a round edge steps
+  right half of one cell and the left half of the next (▌▐), and a steep line or a round edge steps
   by half a cell instead of a whole one. In Half-block the blocks are half a cell tall, so the halves
   are quadrants (▝▘, ▗▖). They're always block characters: the parts of a cell the shape doesn't
   cover show the cell's background color, and a filled shape's inside is the background color
@@ -355,7 +355,7 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   click (its **FG**, **BG** and/or character, **Char**; all three to start, so cells that look the
   same), with the colors within the **Tolerance**, and **Set** what the fill gives the cells: your
   foreground color (to start), background color and/or character, as edit cells. **Contiguous**
-  works as in Normal mode; there's no Feathering. Cells fills text and lines too, since it's
+  works as in Colors only mode; there's no Feathering. Cells fills text and lines too, since it's
   matching cells rather than flowing around them.
 - **Paint Bucket**'s **Gradient** choice fills with a blend from your foreground color to your
   background color instead of one color. **Solid** (to start) is the plain fill. In **Linear** and
@@ -367,7 +367,7 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   release it stays background. **Spherical** is a circle: foreground at the press, background as far
   out as the line is long, and evenly between. **Shift** snaps the line to steps of 45°. A click
   without a drag fills with solid foreground, and a drag with either color set to None fills nothing
-  and says why. In the pixel view, and in the ANSI view's Normal mode, every grid pixel gets its own
+  and says why. In the pixel view, and in the ANSI view's Colors only mode, every grid pixel gets its own
   blended color (blended in sRGB), at the Brush opacity. With the CGA or VGA palette or a color list,
   the blend shows in the palette's colors, banded, as any paint does, and comes back smooth in full
   color. In the ANSI view's **Cells**, the gradient is built from characters in your two colors
@@ -375,9 +375,9 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   them in an ordered pattern so the bands don't show as hard lines. Where the blend changes faster
   than a cell can show, a half-block (▀ ▄ ▌ ▐) puts the edge mid-cell. Set doesn't apply to a
   gradient: it gives each cell its character and both colors. A gradient is one undo step.
-- **Color Picker**'s **FG** and **BG** toggles choose what a pick sets; both lit sets both.
+- **Eyedropper**'s **FG** and **BG** toggles choose what a pick sets; both lit sets both.
 - **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
-  selection's size and place, and the Color Picker its last pick and where each color came from.
+  selection's size and place, and the Eyedropper its last pick and where each color came from.
   On the right it shows the held-key shortcuts for the tool. When the view is too narrow for all of
   it, the bar scrolls sideways, like the toolbar's options row.
 - **Zoom**: the ANSI view zooms out, down to 25% of its cells' size (100% is the font at its size),
@@ -389,7 +389,7 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
 ### Tool keys
 
 A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the same tool: **P**
-Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Color Picker, **H** Hand,
+Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Eyedropper, **H** Hand,
 **Z** Zoom, **W** Magic Wand, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
 (Edit Mode and Flip are the ANSI view's). Each tool's button shows its key.
 In Edit Mode letters type, so press **Escape** to put the cursor away first; with the Select tool
@@ -402,7 +402,7 @@ pixel or ANSI view with either of them chosen and the other view takes it too.
 
 These work in both the ANSI and the pixel view, for as long as you hold the key:
 
-- **Alt** (Option on a Mac), with the Pencil, Brush, Paint Bucket or Shapes: the Color Picker. A
+- **Alt** (Option on a Mac), with the Pencil, Brush, Paint Bucket or Shapes: the Eyedropper. A
   click picks the foreground color; add **Shift** to pick the background color instead.
 - **Shift**, with the Pencil or Brush: a click draws a straight line from where your last stroke
   ended (with either of them, in either view) to where you click, and keeps going if you drag.

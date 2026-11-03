@@ -4,7 +4,7 @@ import { openApp, store, cellPoint, drag } from './support.js';
 
 test('Control+Shift+Z and Meta+Shift+Z redo what was undone', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   await drag(page, await cellPoint(page, 4, 5, 0), await cellPoint(page, 14, 5, 0));
   for (const keys of ['Control+Shift+KeyZ', 'Meta+Shift+KeyZ']) {
     await page.keyboard.press('ControlOrMeta+z');

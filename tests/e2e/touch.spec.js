@@ -16,7 +16,7 @@ const nudge = ({ x, y }, d) => ({ x: x + d, y: y + d });
 
 test('a quick tap with the Pencil leaves a dot', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   const at = await cellPoint(page, 4, 4);
   await page.touchscreen.tap(at.x, at.y);
   await expect.poll(() => store(page, 'project', (p) => p.cellHasPaint(4, 4))).toBe(true);
@@ -51,7 +51,7 @@ test('a second finger cancels a Shapes drag already under way', async ({ page })
 
 test('a second finger takes back a Pencil stroke already under way', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Pencil (1px)' }).click();
+  await page.getByRole('button', { name: 'Pencil' }).click();
   const a = await cellPoint(page, 6, 6), b = await cellPoint(page, 20, 10);
   const touch = await fingers(page);
   await touch('touchStart', a);
@@ -67,7 +67,7 @@ test('PIXEL view: a pinch-zoom with the Paint Bucket zooms and fills nothing', a
   await openApp(page);
   await tab(page, 'PIXEL').click();
   await settled(page);
-  await page.getByRole('button', { name: 'Paint Bucket (fill)' }).click();
+  await page.getByRole('button', { name: 'Paint Bucket' }).click();
   const box = await page.locator('article .display').first().boundingBox();
   const a = { x: box.x + box.width * 0.4, y: box.y + box.height * 0.4 }, b = { x: box.x + box.width * 0.6, y: box.y + box.height * 0.6 };
   const touch = await fingers(page);

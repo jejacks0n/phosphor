@@ -4,6 +4,7 @@
 import { test, expect, afterEach } from 'vitest';
 import { createApp } from 'vue';
 import { getActivePinia } from 'pinia';
+import { i18n } from '@/i18n';
 import { createTestApp, loadImage } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import LobbyPicture from '@/components/social/LobbyPicture.vue';
@@ -29,7 +30,7 @@ async function mount(row, cols = 40, width = 400) {
   host = document.createElement('div');
   host.style.width = `${width}px`;
   document.body.append(host);
-  app = createApp(LobbyPicture).use(getActivePinia());
+  app = createApp(LobbyPicture).use(getActivePinia()).use(i18n);
   app.mount(host);
   const el = host.querySelector('.room-art');
   await expect.poll(() => el.scrollTop).toBeGreaterThan(0);

@@ -12,7 +12,7 @@ test('letters choose the tools the view offers, and the buttons say which', asyn
     await page.keyboard.press(key);
     expect(await tool(page), key).toBe(id);
   }
-  await expect(page.getByRole('button', { name: 'Pencil (1px)' })).toHaveAttribute('title', 'Pencil (1px) · P');
+  await expect(page.getByRole('button', { name: 'Pencil' })).toHaveAttribute('title', 'Pencil · P');
   await expect(page.getByRole('button', { name: 'Edit Mode' })).toHaveAttribute('aria-keyshortcuts', 'T K');
 
   await tab(page, 'PIXEL').click();
@@ -82,8 +82,8 @@ test('with a selection: S stamps and the block moves on, E erases, Enter sets it
 test("the Pencil's Single draws lines of box characters: drag across, then down, and it turns the corner", async ({ page }) => {
   await openApp(page);
   await page.keyboard.press('p');
-  await page.getByRole('button', { name: 'Normal mode' }).click();
-  await page.getByRole('button', { name: 'Single' }).click();
+  await page.getByRole('button', { name: 'Colors only' }).click();
+  await page.getByRole('button', { name: 'Single line' }).click();
   await expect(page.getByRole('checkbox', { name: 'Connect' })).toBeChecked();
   const a = await cellPoint(page, 4, 3), b = await cellPoint(page, 12, 3), c = await cellPoint(page, 12, 7);
   await page.mouse.move(a.x, a.y);

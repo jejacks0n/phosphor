@@ -1,19 +1,19 @@
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
+import { t } from '@/i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { Pacer } from '@/social/lobby';
-import { UNDO_RESTART_WORDS } from '@/social/messages';
+import { undoResetWords, undoRestartWords } from '@/social/messages';
 import { artistSide } from '@/store/drawing/artist';
 import { CURSORS_EVERY_MS, MOST_ARTISTS, hostSide } from '@/store/drawing/host';
 
 export { CHECK_EVERY_MS, MOST_ARTISTS } from '@/store/drawing/host';
 
-const ROOM_FULL = 'This room has as many artists as it can take.';
-const ONLY_THE_HOST = 'Only the host can do this.';
-const NOT_WITH_OTHERS = 'Not while others are drawing.';
-export const MERGE_WARNING = 'Strokes merged into the image can\'t be undone by anyone.';
-export const BAKE_WARNING = 'A bake can\'t be undone by anyone.';
+export const mergeWarning = () => t('toolbar.mergeDialog.warning');
+export const bakeWarning = () => t('toolbar.bakeDialog.warning');
+export const MERGE_WARNING = mergeWarning();
+export const BAKE_WARNING = bakeWarning();
 
 // The people drawing in the room you're in, and the invitations to: who's an artist, who's asked, and the
 // cursors, kept out of the room store. The drawing itself is the project store's (sharing.js), which this
@@ -35,17 +35,20 @@ export const useDrawingStore = defineStore('drawing', () => {
   const cursors = ref({});        // sub -> { at, view, name }
   const showCursors = ref(true);
   const notice = ref(null);
+  let undoSaid = false;
+  const noteUndoSaid = (said) => { undoSaid = Boolean(said); };
+  watch(notice, (val) => { if (!val) undoSaid = false; }, { flush: 'sync' });
   const hostChanging = ref(false); // paused for a handover, not for a host who's away
   const gettingArt = ref(false);   // back from a reload: no drawing on what's open until the room's replaces it
   const mayDraw = computed(() => project._sharing?.role === 'artist');
   // Other artists here now: when the host's undo and its document aren't only its own.
   const othersHere = computed(() => artists.value.some((sub) => sub !== me() && connected.value.includes(sub)));
   // Why a control is off, or null: the host's alone, and those a host can't use under others either.
-  const hostOnly = computed(() => (mayDraw.value ? ONLY_THE_HOST : null));
-  const offWithOthers = computed(() => hostOnly.value ?? (othersHere.value ? NOT_WITH_OTHERS : null));
+  const hostOnly = computed(() => (mayDraw.value ? t('social.drawing.onlyHost') : null));
+  const offWithOthers = computed(() => hostOnly.value ?? (othersHere.value ? t('social.drawing.notWithOthers') : null));
   // Why no one more can be asked, or null. A place is the host's, or a listed artist's, here or not (their place waits
   // for them to come back), or held by someone asked, as their yes has to find one.
-  const artistsFull = computed(() => (1 + artists.value.length + invited.value.length >= MOST_ARTISTS ? ROOM_FULL : null));
+  const artistsFull = computed(() => (1 + artists.value.length + invited.value.length >= MOST_ARTISTS ? t('social.drawing.roomFull') : null));
   // The cursors to draw: anyone else's on the art.
   const others = computed(() => Object.fromEntries(Object.entries(cursors.value).filter(([sub, { at }]) => at && sub !== me())));
 
@@ -56,9 +59,9 @@ export const useDrawingStore = defineStore('drawing', () => {
     return true;
   });
 
-  const artistParts = artistSide({ project, workspace, me: () => me(), artists, artistNames, invitation, paused, waiting, cursors, notice, hostChanging, gettingArt, mayDraw, myCursor, pause, goOn, sayUndoRestarts });
+  const artistParts = artistSide({ project, workspace, me: () => me(), artists, artistNames, invitation, paused, waiting, cursors, notice, hostChanging, gettingArt, mayDraw, myCursor, pause, goOn, sayUndoRestarts, noteUndoSaid });
   const { autosavedBy, autosaved, hostChanged, lastChange, holdsTheArt, noteFormerHost, watchCallbacks, knownNow, heardArtists, accept, decline, connection } = artistParts;
-  const hostParts = hostSide({ project, me: () => me(), artist: artistParts, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sayUndoRestarts });
+  const hostParts = hostSide({ project, me: () => me(), artist: artistParts, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sayUndoRestarts, noteUndoSaid });
   const { hostCallbacks, invite, withdraw, backToWatching, peopleHere, resumeHosting, makeHost, takeOver, becomeArtist, artistsNow, hostingAgain } = hostParts;
 
   // Who this person is comes with the room's Host, or its Watch.
@@ -69,7 +72,10 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   // Undo has started over, and that's said unless it has been: "The host changed" only where it did.
   function sayUndoRestarts() {
-    if (!notice.value?.includes('undo starts over')) notice.value = [notice.value, UNDO_RESTART_WORDS].filter(Boolean).join(' ');
+    const restart = undoRestartWords(), reset = undoResetWords();
+    if (undoSaid || notice.value?.includes(restart) || notice.value?.includes(reset)) return;
+    undoSaid = true;
+    notice.value = [notice.value, restart].filter(Boolean).join(' ');
   }
 
   function hosted(theHost, { me: whoAmI, name = () => null }) {

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import vue from '@vitejs/plugin-vue';
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import { playwright } from '@vitest/browser-playwright';
 import { buildInfo } from './vite.config.js';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +18,14 @@ const launchOptions = await launchWithout(['WebRtcHideLocalIpsWithMdns'], SOFTWA
 if (process.env.CI && process.env.UPDATE_REFERENCES === '1') throw new Error('Refusing to update reference files in CI');
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    VueI18nPlugin({
+      include: [fileURLToPath(new URL('./src/i18n/locales/**', import.meta.url))],
+      runtimeOnly: true,
+      strictMessage: false,
+    }),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

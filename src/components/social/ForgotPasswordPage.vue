@@ -1,9 +1,11 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { mountTurnstile } from '@/social/turnstile';
 
 const social = useSocialStore();
+const { t } = useI18n();
 const email = ref(social.me?.email ?? '');   // from Account's Forgot your password?, yours
 const error = ref(null);
 
@@ -21,18 +23,22 @@ async function send() {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">‹ Back to the {{ social.backTo }}</button>
-    <h2>Forgot your password?</h2>
-    <p class="intro">We'll email you a link to set a new one.</p>
+    <button class="link back" @click="social.page = 'lobby'">{{ social.backTo === 'room' ? t('social.nav.backToRoom') : t('social.nav.backToLobby') }}</button>
+    <h2>{{ t('social.auth.forgotHeading') }}</h2>
+    <p class="intro">{{ t('social.auth.forgotIntro') }}</p>
     <form @submit.prevent="send">
-      <label>Email <input v-model="email" type="email" autocomplete="email" required></label>
+      <label>{{ t('social.auth.emailLabel') }} <input v-model="email" type="email" autocomplete="email" required></label>
       <div ref="widget" class="turnstile"></div>
-      <button class="primary" type="submit" :disabled="social.busy">Send link</button>
+      <button class="primary" type="submit" :disabled="social.busy">{{ t('social.auth.sendLink') }}</button>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
     <template v-if="!social.me">
       <hr>
-      <p class="foot">Remembered it? <button class="link inline" @click="social.page = 'sign-in'">Sign in</button></p>
+      <i18n-t keypath="social.auth.rememberedIt" tag="p" class="foot">
+        <template #signIn>
+          <button class="link inline" @click="social.page = 'sign-in'">{{ t('social.lobby.signIn') }}</button>
+        </template>
+      </i18n-t>
     </template>
   </div>
 </template>

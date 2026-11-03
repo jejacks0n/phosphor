@@ -10,10 +10,10 @@ test('an image loaded with the file input shows as cells in the ANSI tab', async
   await expect(page.locator('.ansi-editor .display canvas')).toBeVisible();
 });
 
-test('the page is titled phosphor [Modern ANSI Editor], and so are its link previews', async ({ page }) => {
+test('the page is titled Phosphor — Modern ANSI & ASCII Art Editor, and so are its link previews', async ({ page }) => {
   await openApp(page);
-  await expect(page).toHaveTitle('phosphor [Modern ANSI Editor]');
+  await expect(page).toHaveTitle('Phosphor — Modern ANSI & ASCII Art Editor');
   for (const meta of ['meta[property="og:title"]', 'meta[name="twitter:title"]']) {
-    await expect(page.locator(meta)).toHaveAttribute('content', 'phosphor [Modern ANSI Editor]');
+    await expect(page.locator(meta)).toHaveAttribute('content', 'Phosphor — Modern ANSI & ASCII Art Editor');
   }
 });

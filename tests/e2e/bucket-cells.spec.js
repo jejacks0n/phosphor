@@ -7,10 +7,10 @@ test('Fill → Cells sets the character of the matching cells it touches', async
   await page.keyboard.type('xxoxx');
   await page.keyboard.press('Escape');
   await page.keyboard.press('g');
-  await expect(page.getByText('Feathering')).toBeVisible();
-  await page.getByRole('button', { name: 'Normal mode' }).click();
+  await expect(page.getByText('Feather')).toBeVisible();
+  await page.getByRole('button', { name: 'Colors only' }).click();
   await page.getByRole('button', { name: '▒▓ Cells' }).click();
-  await expect(page.getByText('Feathering')).toHaveCount(0);
+  await expect(page.getByText('Feather')).toHaveCount(0);
   // Match the character only (typed text takes its background from the picture); set the character.
   const match = page.getByRole('group', { name: 'Match' }), set = page.getByRole('group', { name: 'Set' });
   await match.getByRole('button', { name: 'FG' }).click();

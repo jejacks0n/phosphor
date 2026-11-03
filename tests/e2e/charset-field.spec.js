@@ -4,7 +4,7 @@ import { openApp, store, settled } from './support.js';
 // The Characters field: type your own, or pick a ready-made set from the ▾, a native select (the
 // system's own menu, like the other menus) laid invisibly over it.
 const field = (page) => page.getByRole('textbox', { name: 'Characters' });
-const sets = (page) => page.getByRole('combobox', { name: 'Character sets' });
+const sets = (page) => page.getByRole('combobox', { name: 'Character presets' });
 const label = (page) => page.locator('div.field:has(#chars) > div.label-row span.value');
 const charsInCells = (page) => store(page, 'project', (p) => [...new Set(p.cells.map((c) => c.char))].sort().join(''));
 
@@ -37,7 +37,7 @@ test('the Characters field: pick a ready-made set, or type your own', async ({ p
 
 test('the ASCII styles have their own sets', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('combobox', { name: 'Art Style' }).selectOption('ascii');
+  await page.getByRole('combobox', { name: 'Art style' }).selectOption('ascii');
   await expect(sets(page).locator('option')).toHaveText([/^Default/, /^Classic ramp/, /^Long ramp/]);
   await sets(page).selectOption({ label: 'Classic ramp · .:-=+*#%@' });
   expect(await store(page, 'project', (p) => p.charsAscii)).toBe(' .:-=+*#%@');
@@ -48,7 +48,7 @@ test.describe('on a touch screen', () => {
 
   test('a tap on the ▾ lands on the select', async ({ page }) => {
     await openApp(page);
-    await page.getByTitle('Toggle Settings').click();
+    await page.getByTitle('Toggle settings').click();
     await expect(sets(page)).toBeVisible();
     await page.waitForFunction(() => { // the settings drawer has finished sliding in
       const b = document.querySelector('.charset-field svg.chevron').getBoundingClientRect();

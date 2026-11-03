@@ -1,9 +1,10 @@
 <script setup>
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useElementSize, useMediaQuery, useResizeObserver } from '@vueuse/core';
+import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { BAKE_WARNING, MERGE_WARNING, useDrawingStore } from '@/store/DrawingStore';
+import { bakeWarning, mergeWarning, useDrawingStore } from '@/store/DrawingStore';
 import { getTool, offeredTools, toolTitle } from '@/tools';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
@@ -15,15 +16,16 @@ import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import { shortcut } from '@/lib/keyLabels';
 import { copySelection as copyToClipboards } from '@/composables/clipboard';
 
+const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const drawing = useDrawingStore();
+
 // A control that's off for a reason: the reason in its title, and what it is still its name for screen readers.
 const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name } : {});
 // Off with frames: it would put one frame in the base, under all of them.
-const ONE_FRAME = 'Merge down puts one frame in the base, under all of them, so it needs a single frame.';
-const mergeOff = () => off(drawing.hostOnly ?? (project.hasFrames ? ONE_FRAME : null), 'Merge down');
-const warnedSub = (sub, warning = MERGE_WARNING) => (drawing.othersHere ? `${warning} ${sub}` : sub);
+const mergeOff = () => off(drawing.hostOnly ?? (project.hasFrames ? t('toolbar.mergeOneFrame') : null), t('toolbar.mergeDown'));
+const warnedSub = (sub, warning = mergeWarning()) => (drawing.othersHere ? t('toolbar.mergeDialog.warnedSub', { warning, sub }) : sub);
 
 // The toolbar offers the tools that work in the current view (editorTab is 'input' or 'output' while editing),
 // with a divider wherever the toolbar section changes.
@@ -79,8 +81,8 @@ const pasteSelection = () => {
 };
 // The Paste button pastes only what was copied in this tab: the system clipboard is Cmd/Ctrl+V's.
 const pasteTitle = computed(() => (workspace.clipboard
-  ? 'Paste what you copied in Phosphor, at the selection'
-  : `Nothing copied in this tab. To paste from another tab or app, use ${shortcut('mod', 'V')}`));
+  ? t('toolbar.selection.pasteTitle')
+  : t('toolbar.selection.pasteElsewhereTitle', { key: shortcut('mod', 'V') })));
 const stampSelection = () => {
   workspace.selection = project.stampSelection(workspace.selection, workspace.selectLayers) ?? workspace.selection;
 };
@@ -108,7 +110,7 @@ const recolor = (colors) => project.recolorSelection(recolored.value, workspace.
 const asciiStyle = computed(() => ['ascii', 'colorAscii'].includes(project.renderStyle));
 
 // The pixel view's preview of the ANSI layer: edit cells drawn over the image at pixel scale.
-const OVERLAY_SETTING = { key: 'ansiOverlay', label: 'Overlay', title: 'ANSI layer opacity over the pixel view', min: 0, max: 100, unit: '%' };
+const OVERLAY_SETTING = computed(() => ({ key: 'ansiOverlay', label: t('toolbar.overlay.shortLabel'), title: t('toolbar.overlay.title'), min: 0, max: 100, unit: '%' }));
 // The toolbar folds by its own width (the window's, less the side panel, and the chat column while it's open).
 // 1030px and narrower, the overlay controls fold into a dropdown named for the art style (like the Actions
 // dropdown), which opens them in a small floating toolbar under it. 630px and narrower, undo/redo, merge and
@@ -119,10 +121,14 @@ const phoneLayout = useMediaQuery('(max-width: 768px)');
 const narrowerThan = (px) => toolbarWidth.value > 0 && toolbarWidth.value <= px;   // 0: not measured yet
 const overlayFolded = computed(() => narrowerThan(1030));
 const actionsFolded = computed(() => phoneLayout.value || narrowerThan(630));
-const STYLE_NAMES = { ansi: 'ANSI', colorAscii: 'Color ASCII', ascii: 'ASCII' };
-const styleName = computed(() => STYLE_NAMES[project.renderStyle] ?? 'ANSI');
+const STYLE_NAMES = computed(() => ({
+  ansi: t('toolbar.overlay.styles.ansi'),
+  colorAscii: t('toolbar.overlay.styles.colorAscii'),
+  ascii: t('toolbar.overlay.styles.ascii'),
+}));
+const styleName = computed(() => STYLE_NAMES.value[project.renderStyle] ?? 'ANSI');
 // Unfolded, the slider names the layer itself ("ANSI Overlay"); folded, the dropdown's button does.
-const overlaySetting = computed(() => ({ ...OVERLAY_SETTING, label: `${styleName.value} Overlay` }));
+const overlaySetting = computed(() => ({ ...OVERLAY_SETTING.value, label: t('toolbar.overlay.styleOverlay', { style: styleName.value }) }));
 
 // A tool that stops being offered (flip after switching to an ASCII art style) shouldn't stay active unseen.
 watch(tools, (offered) => {
@@ -130,7 +136,7 @@ watch(tools, (offered) => {
 });
 
 function confirmClear() {
-  if (!project.hasEdits || confirm('Clear the edit layer? Everything drawn (typed, painted and pasted) is removed.')) {
+  if (!project.hasEdits || confirm(t('toolbar.clearConfirm'))) {
     project.clearEditLayer();
   }
 }
@@ -147,12 +153,13 @@ function merge(kind) {
   if (kind === 'exact') project.mergeDown(rect);
   else project.mergeIntoPicture(rect);
 }
-const MERGE_CHOICES = [
-  { id: 'exact', title: 'Exactly as is', text: "Stays crisp, cell for cell, as it shows now. Effects like Edges and Sharpen don't touch it." },
-  { id: 'picture', title: 'Into the image', text: 'Becomes part of the image itself, so every effect applies to it, live, like the photo.' },
-];
-const ORIGINAL_NOTE = 'The picture becomes the working-size copy the preview is made from (like Bake), so growing the grid later works from that, and effects like Edges can shift slightly across the picture this first time.';
-const mergeChoices = computed(() => (project.pictureIsOriginal ? [MERGE_CHOICES[0], { ...MERGE_CHOICES[1], note: ORIGINAL_NOTE }] : MERGE_CHOICES));
+const mergeChoices = computed(() => {
+  const choices = [
+    { id: 'exact', title: t('toolbar.mergeDialog.exactTitle'), text: t('toolbar.mergeDialog.exactText') },
+    { id: 'picture', title: t('toolbar.mergeDialog.intoImageTitle'), text: t('toolbar.mergeDialog.intoImageText') },
+  ];
+  return project.pictureIsOriginal ? [choices[0], { ...choices[1], note: t('toolbar.mergeDialog.originalNote') }] : choices;
+});
 
 // Bake under CGA or VGA asks whether to lock the picture to the palette (exact, but the in-between
 // colors are gone) or keep full color (a few cells near palette boundaries can tip). Other
@@ -165,14 +172,14 @@ function bake() {
   else if (drawing.othersHere) bakingFinal.value = true;
   else project.bake();
 }
-const BAKE_CHOICE = [{ id: 'bake', title: 'Bake', text: 'The picture as it looks now becomes the image, and the sliders go back to neutral.' }];
+const BAKE_CHOICE = computed(() => [{ id: 'bake', title: t('toolbar.bake'), text: t('toolbar.bakeDialog.choiceText') }]);
 function chooseBakeFinal() {
   bakingFinal.value = false;
   project.bake();
 }
 const bakeChoices = computed(() => [
-  { id: 'full', title: 'Keep full color', text: `The picture keeps its in-between colors, so switching the palette later still has them. A few cells near the edges between ${baking.value} colors may change, more with many sliders on.` },
-  { id: 'lock', title: `Lock to the ${baking.value} palette`, text: `Nothing on the canvas changes. The picture keeps only the ${baking.value} colors, so switching to full color later won't bring the in-between shades back (undo will).` },
+  { id: 'full', title: t('toolbar.bakeDialog.keepFullTitle'), text: t('toolbar.bakeDialog.keepFullText', { palette: baking.value }) },
+  { id: 'lock', title: t('toolbar.bakeDialog.lockPaletteTitle', { palette: baking.value }), text: t('toolbar.bakeDialog.lockPaletteText', { palette: baking.value }) },
 ]);
 function chooseBake(id) {
   baking.value = null;
@@ -195,26 +202,26 @@ const selectionHasCharacters = computed(() => {
 <template>
   <ChoiceDialog
       v-if="merging"
-      title="Merge down"
+      :title="t('toolbar.mergeDialog.title')"
       :sub="warnedSub(merging.rect
-        ? 'Only what\'s drawn inside the selection moves into the base layer; the rest of the edit layer stays where it is.'
-        : 'Everything you\'ve drawn is merged into the base layer. Select how you want it to be merged:')"
+        ? t('toolbar.mergeDialog.subSelection')
+        : t('toolbar.mergeDialog.subAll'))"
       :choices="mergeChoices"
       @choose="merge"
       @cancel="merging = null"
   />
   <ChoiceDialog
       v-if="baking"
-      :title="`Bake with the ${baking} palette`"
-      :sub="warnedSub('The picture as it looks now becomes the image, and the sliders go back to neutral. How should it keep its colors?', BAKE_WARNING)"
+      :title="t('toolbar.bakeDialog.titlePalette', { palette: baking })"
+      :sub="warnedSub(t('toolbar.bakeDialog.subPalette'), bakeWarning())"
       :choices="bakeChoices"
       @choose="chooseBake"
       @cancel="baking = null"
   />
   <ChoiceDialog
       v-if="bakingFinal"
-      title="Bake"
-      :sub="BAKE_WARNING"
+      :title="t('toolbar.bakeDialog.title')"
+      :sub="bakeWarning()"
       :choices="BAKE_CHOICE"
       @choose="chooseBakeFinal"
       @cancel="bakingFinal = false"
@@ -245,7 +252,7 @@ const selectionHasCharacters = computed(() => {
           ref="moreMenu"
           class="tools-menu"
           :class="{ 'holds-active': hiddenTools.includes(workspace.activeTool) }"
-          label="More tools"
+          :label="t('tools.moreTools')"
           align="left"
       >
         <template #trigger><span v-html="MORE_ICON"></span></template>
@@ -259,18 +266,18 @@ const selectionHasCharacters = computed(() => {
       <template v-if="workspace.editorTab === 'input'">
         <!-- Narrow screens fold the overlay controls into a button that opens a row of their own. -->
         <DropdownMenu v-if="overlayFolded" class="overlay-menu" :label="styleName" :close-on-select="false">
-          <div class="tool-setting-group overlay-group overlay-panel" aria-label="ANSI overlay">
+          <div class="tool-setting-group overlay-group overlay-panel" :aria-label="t('toolbar.overlay.aria')">
             <RangeField compact :setting="OVERLAY_SETTING" v-model="workspace.ansiOverlay"/>
-            <label class="checkbox-wrapper" title="Preview every cell's characters, not just the edit cells">
-              <span>All cells</span>
+            <label class="checkbox-wrapper" :title="t('toolbar.overlay.allCellsTitle')">
+              <span>{{ t('toolbar.overlay.allCells') }}</span>
               <input type="checkbox" v-model="workspace.ansiOverlayAll"/>
             </label>
           </div>
         </DropdownMenu>
         <div v-else class="tool-setting-group overlay-group">
           <RangeField compact :setting="overlaySetting" v-model="workspace.ansiOverlay"/>
-          <label class="checkbox-wrapper" title="Preview every cell's characters, not just the edit cells">
-            <span>All cells</span>
+          <label class="checkbox-wrapper" :title="t('toolbar.overlay.allCellsTitle')">
+            <span>{{ t('toolbar.overlay.allCells') }}</span>
             <input type="checkbox" v-model="workspace.ansiOverlayAll"/>
           </label>
         </div>
@@ -279,69 +286,69 @@ const selectionHasCharacters = computed(() => {
       <div class="desktop-only actions-container">
         <div class="history-group">
           <button
-              :title="`Undo (${shortcut('mod', 'Z')})`"
+              :title="t('toolbar.undoTitle', { key: shortcut('mod', 'Z') })"
               @click="project.undo"
               :disabled="!project.canUndo"
           ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M88 256L232 256C241.7 256 250.5 250.2 254.2 241.2C257.9 232.2 255.9 221.9 249 215L202.3 168.3C277.6 109.7 386.6 115 455.8 184.2C530.8 259.2 530.8 380.7 455.8 455.7C380.8 530.7 259.3 530.7 184.3 455.7C174.1 445.5 165.3 434.4 157.9 422.7C148.4 407.8 128.6 403.4 113.7 412.9C98.8 422.4 94.4 442.2 103.9 457.1C113.7 472.7 125.4 487.5 139 501C239 601 401 601 501 501C601 401 601 239 501 139C406.8 44.7 257.3 39.3 156.7 122.8L105 71C98.1 64.2 87.8 62.1 78.8 65.8C69.8 69.5 64 78.3 64 88L64 232C64 245.3 74.7 256 88 256z"/></svg></button>
           <button
-              :title="`Redo (${shortcut('shift', 'mod', 'Z')})`"
+              :title="t('toolbar.redoTitle', { key: shortcut('shift', 'mod', 'Z') })"
               @click="project.redo"
               :disabled="!project.canRedo"
           ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M552 256L408 256C398.3 256 389.5 250.2 385.8 241.2C382.1 232.2 384.1 221.9 391 215L437.7 168.3C362.4 109.7 253.4 115 184.2 184.2C109.2 259.2 109.2 380.7 184.2 455.7C259.2 530.7 380.7 530.7 455.7 455.7C463.9 447.5 471.2 438.8 477.6 429.6C487.7 415.1 507.7 411.6 522.2 421.7C536.7 431.8 540.2 451.8 530.1 466.3C521.6 478.5 511.9 490.1 501 501C401 601 238.9 601 139 501C39.1 401 39 239 139 139C233.3 44.7 382.7 39.4 483.3 122.8L535 71C541.9 64.1 552.2 62.1 561.2 65.8C570.2 69.5 576 78.3 576 88L576 232C576 245.3 565.3 256 552 256z"/></svg></button>
         </div>
 
         <button
-            title="Bake: keep the picture as it looks now and put the Transforms, Adjustments and Image Filters sliders back to neutral. Your drawing doesn't change."
+            :title="t('toolbar.bakeTitle')"
             @click="bake"
             class="primary"
             :disabled="!project.canBake"
-            v-bind="off(drawing.hostOnly, 'Bake')"
+            v-bind="off(drawing.hostOnly, t('toolbar.bake'))"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg></button>
         <button
-            title="Merge down: move the edit layer into the base layer."
+            :title="t('toolbar.mergeDownTitle')"
             @click="openMerge()"
             class="primary"
             :disabled="!project.hasEdits"
             v-bind="mergeOff()"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg></button>
         <button
-            title="Clear edit layer: remove everything on the edit layer."
+            :title="t('toolbar.clearEditTitle')"
             @click="confirmClear"
             class="primary"
             :disabled="!project.hasEdits"
-            v-bind="off(drawing.offWithOthers, 'Clear edit layer')"
+            v-bind="off(drawing.offWithOthers, t('toolbar.clearEdit'))"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M431.2 476.5L163.5 208.8C141.1 240.2 128 278.6 128 320C128 426 214 512 320 512C361.5 512 399.9 498.9 431.2 476.5zM476.5 431.2C498.9 399.8 512 361.4 512 320C512 214 426 128 320 128C278.5 128 240.1 141.1 208.8 163.5L476.5 431.2zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z"/></svg></button>
       </div>
 
       <div class="mobile-only">
-        <DropdownMenu label="Actions">
+        <DropdownMenu :label="t('common.actions')">
           <button @click="project.undo" :disabled="!project.canUndo">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M88 256L232 256C241.7 256 250.5 250.2 254.2 241.2C257.9 232.2 255.9 221.9 249 215L202.3 168.3C277.6 109.7 386.6 115 455.8 184.2C530.8 259.2 530.8 380.7 455.8 455.7C380.8 530.7 259.3 530.7 184.3 455.7C174.1 445.5 165.3 434.4 157.9 422.7C148.4 407.8 128.6 403.4 113.7 412.9C98.8 422.4 94.4 442.2 103.9 457.1C113.7 472.7 125.4 487.5 139 501C239 601 401 601 501 501C601 401 601 239 501 139C406.8 44.7 257.3 39.3 156.7 122.8L105 71C98.1 64.2 87.8 62.1 78.8 65.8C69.8 69.5 64 78.3 64 88L64 232C64 245.3 74.7 256 88 256z"/>
             </svg>
-            Undo
+            {{ t('toolbar.undo') }}
           </button>
           <button @click="project.redo" :disabled="!project.canRedo">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M552 256L408 256C398.3 256 389.5 250.2 385.8 241.2C382.1 232.2 384.1 221.9 391 215L437.7 168.3C362.4 109.7 253.4 115 184.2 184.2C109.2 259.2 109.2 380.7 184.2 455.7C259.2 530.7 380.7 530.7 455.7 455.7C463.9 447.5 471.2 438.8 477.6 429.6C487.7 415.1 507.7 411.6 522.2 421.7C536.7 431.8 540.2 451.8 530.1 466.3C521.6 478.5 511.9 490.1 501 501C401 601 238.9 601 139 501C39.1 401 39 239 139 139C233.3 44.7 382.7 39.4 483.3 122.8L535 71C541.9 64.1 552.2 62.1 561.2 65.8C570.2 69.5 576 78.3 576 88L576 232C576 245.3 565.3 256 552 256z"/>
             </svg>
-            Redo
+            {{ t('toolbar.redo') }}
           </button>
-          <button @click="bake" :disabled="!project.canBake" v-bind="off(drawing.hostOnly, 'Bake')">
+          <button @click="bake" :disabled="!project.canBake" v-bind="off(drawing.hostOnly, t('toolbar.bake'))">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg>
-            Bake
+            {{ t('toolbar.bake') }}
           </button>
           <button @click="openMerge()" :disabled="!project.hasEdits" v-bind="mergeOff()">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/>
             </svg>
-            Merge down
+            {{ t('toolbar.mergeDown') }}
           </button>
-          <button @click="confirmClear" :disabled="!project.hasEdits" v-bind="off(drawing.offWithOthers, 'Clear edit layer')">
+          <button @click="confirmClear" :disabled="!project.hasEdits" v-bind="off(drawing.offWithOthers, t('toolbar.clearEdit'))">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M431.2 476.5L163.5 208.8C141.1 240.2 128 278.6 128 320C128 426 214 512 320 512C361.5 512 399.9 498.9 431.2 476.5zM476.5 431.2C498.9 399.8 512 361.4 512 320C512 214 426 128 320 128C278.5 128 240.1 141.1 208.8 163.5L476.5 431.2zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z"/>
             </svg>
-            Clear edit layer
+            {{ t('toolbar.clearEdit') }}
           </button>
         </DropdownMenu>
       </div>
@@ -350,28 +357,28 @@ const selectionHasCharacters = computed(() => {
     <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select' || kept">
       <PaletteStrip v-if="activeTool.palette"/>
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">
-        <span class="option-label">Layers</span>
-        <LayerToggles v-model="workspace.selectLayers" label="Layers the selection acts on"/>
+        <span class="option-label">{{ t('toolbar.selection.layers') }}</span>
+        <LayerToggles v-model="workspace.selectLayers" :label="t('toolbar.selection.layersAria')"/>
         <div class="divider"/>
         <template v-if="workspace.selection">
-          <button :title="`Copy (${shortcut('mod', 'C')})`" :aria-label="`Copy (${shortcut('mod', 'C')})`" @click="copySelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M240 64H528A48 48 0 0 1 576 112V400A48 48 0 0 1 528 448H448V384H512V128H256V192H192V112A48 48 0 0 1 240 64ZM112 192H400A48 48 0 0 1 448 240V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V240A48 48 0 0 1 112 192Z"/></svg></button>
-          <button :title="`Cut (${shortcut('mod', 'X')})`" :aria-label="`Cut (${shortcut('mod', 'X')})`" @click="cutSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M192 368A96 96 0 1 1 192 560A96 96 0 1 1 192 368ZM192 416A48 48 0 1 0 192 512A48 48 0 1 0 192 416ZM448 368A96 96 0 1 1 448 560A96 96 0 1 1 448 368ZM448 416A48 48 0 1 0 448 512A48 48 0 1 0 448 416Z"/><path d="M480 48L544 88L310 408L254 372ZM160 48L96 88L330 408L386 372Z"/></svg></button>
+          <button :title="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" :aria-label="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" @click="copySelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M240 64H528A48 48 0 0 1 576 112V400A48 48 0 0 1 528 448H448V384H512V128H256V192H192V112A48 48 0 0 1 240 64ZM112 192H400A48 48 0 0 1 448 240V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V240A48 48 0 0 1 112 192Z"/></svg></button>
+          <button :title="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" :aria-label="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" @click="cutSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M192 368A96 96 0 1 1 192 560A96 96 0 1 1 192 368ZM192 416A48 48 0 1 0 192 512A48 48 0 1 0 192 416ZM448 368A96 96 0 1 1 448 560A96 96 0 1 1 448 368ZM448 416A48 48 0 1 0 448 512A48 48 0 1 0 448 416Z"/><path d="M480 48L544 88L310 408L254 372ZM160 48L96 88L330 408L386 372Z"/></svg></button>
           <button :title="pasteTitle" :aria-label="pasteTitle" :disabled="!workspace.clipboard" @click="pasteSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M160 96H208V176H432V96H480A64 64 0 0 1 544 160V528A64 64 0 0 1 480 592H160A64 64 0 0 1 96 528V160A64 64 0 0 1 160 96ZM160 224V528H480V224Z"/><path d="M256 48H384A32 32 0 0 1 416 80V144H224V80A32 32 0 0 1 256 48Z"/></svg></button>
-          <button title="Delete (Delete or E)" aria-label="Delete" aria-keyshortcuts="Delete E" @click="project.deleteSelection(workspace.selection, workspace.selectLayers)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
-          <button title="Stamp: leave a copy here and move the block on (S or C)" aria-label="Stamp" aria-keyshortcuts="S C" @click="stampSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 64H368A48 48 0 0 1 416 112V176C416 224 384 256 384 304H480A64 64 0 0 1 544 368V432H96V368A64 64 0 0 1 160 304H256C256 256 224 224 224 176V112A48 48 0 0 1 272 64ZM96 480H544V544H96Z"/></svg></button>
-          <button title="Flip horizontally (mirror)" aria-label="Flip horizontally" @click="turnSelection('h')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 128V512H64Z"/><path fill-rule="evenodd" d="M368 128L576 512H368ZM416 320V464H494Z"/><path d="M304 64H336V576H304Z"/></svg></button>
-          <button title="Flip vertically" aria-label="Flip vertically" @click="turnSelection('v')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M128 272H512L128 64Z"/><path fill-rule="evenodd" d="M128 368H512L128 576ZM320 416H176V494Z"/><path d="M64 304H576V336H64Z"/></svg></button>
-          <button :title="selectionHasCharacters ? 'Rotate turns only pixels, and the selection has characters' : 'Rotate 90° clockwise'" aria-label="Rotate 90° clockwise" :disabled="selectionHasCharacters" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
+          <button :title="t('toolbar.selection.deleteTitle')" :aria-label="t('toolbar.selection.delete')" aria-keyshortcuts="Delete E" @click="project.deleteSelection(workspace.selection, workspace.selectLayers)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
+          <button :title="t('toolbar.selection.stampTitle')" :aria-label="t('toolbar.selection.stamp')" aria-keyshortcuts="S C" @click="stampSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 64H368A48 48 0 0 1 416 112V176C416 224 384 256 384 304H480A64 64 0 0 1 544 368V432H96V368A64 64 0 0 1 160 304H256C256 256 224 224 224 176V112A48 48 0 0 1 272 64ZM96 480H544V544H96Z"/></svg></button>
+          <button :title="t('toolbar.selection.flipHTitle')" :aria-label="t('toolbar.selection.flipH')" @click="turnSelection('h')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 128V512H64Z"/><path fill-rule="evenodd" d="M368 128L576 512H368ZM416 320V464H494Z"/><path d="M304 64H336V576H304Z"/></svg></button>
+          <button :title="t('toolbar.selection.flipV')" :aria-label="t('toolbar.selection.flipV')" @click="turnSelection('v')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M128 272H512L128 64Z"/><path fill-rule="evenodd" d="M128 368H512L128 576ZM320 416H176V494Z"/><path d="M64 304H576V336H64Z"/></svg></button>
+          <button :title="selectionHasCharacters ? t('toolbar.selection.rotateCharsDisabled') : t('toolbar.selection.rotateTitle')" :aria-label="t('toolbar.selection.rotateAria')" :disabled="selectionHasCharacters" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
           <div class="divider"/>
-          <button class="text" title="Merge up: what the base layer shows here becomes edit cells" v-bind="off(drawing.hostOnly, 'Merge up')" @click="project.mergeUp(workspace.selection)">Merge up</button>
-          <button class="text" title="Merge down: what's drawn here goes into the base layer" :disabled="!selectionHasEdits" v-bind="mergeOff()" @click="openMerge(workspace.selection)">Merge down</button>
-          <button class="text" title="Deselect: set the block down (Esc or Enter)" aria-keyshortcuts="Escape Enter" @click="deselect">Deselect</button>
+          <button class="text" :title="t('toolbar.selection.mergeUpSelectionTitle')" v-bind="off(drawing.hostOnly, t('toolbar.selection.mergeUp'))" @click="project.mergeUp(workspace.selection)">{{ t('toolbar.selection.mergeUp') }}</button>
+          <button class="text" :title="t('toolbar.selection.mergeDownSelectionTitle')" :disabled="!selectionHasEdits" v-bind="mergeOff()" @click="openMerge(workspace.selection)">{{ t('toolbar.mergeDown') }}</button>
+          <button class="text" :title="t('toolbar.selection.deselectBlockTitle')" aria-keyshortcuts="Escape Enter" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
         </template>
         <template v-else>
-          <span class="hint">Drag to select cells, or:</span>
-          <button class="text" :title="`Select the whole canvas (${shortcut('mod', 'A')})`" @click="project.changeSelection((w) => w.selectAll(project.gridRect()))">Select all</button>
-          <button class="text" title="Merge up: what the base layer shows becomes edit cells, over the whole canvas" v-bind="off(drawing.hostOnly, 'Merge up')" @click="project.mergeUp(null)">Merge up</button>
-          <button class="text" title="Merge down: the whole edit layer into the base layer" :disabled="!project.hasEdits" v-bind="mergeOff()" @click="openMerge()">Merge down</button>
+          <span class="hint">{{ t('toolbar.selection.dragHint') }}</span>
+          <button class="text" :title="t('toolbar.selection.selectAllTitle', { key: shortcut('mod', 'A') })" @click="project.changeSelection((w) => w.selectAll(project.gridRect()))">{{ t('toolbar.selection.selectAll') }}</button>
+          <button class="text" :title="t('toolbar.selection.mergeUpAllTitle')" v-bind="off(drawing.hostOnly, t('toolbar.selection.mergeUp'))" @click="project.mergeUp(null)">{{ t('toolbar.selection.mergeUp') }}</button>
+          <button class="text" :title="t('toolbar.selection.mergeDownAllTitle')" :disabled="!project.hasEdits" v-bind="mergeOff()" @click="openMerge()">{{ t('toolbar.mergeDown') }}</button>
         </template>
       </div>
       <div v-if="toolOptions.length" class="tool-setting-group">
@@ -415,15 +422,15 @@ const selectionHasCharacters = computed(() => {
       <div v-if="recolored" class="tool-setting-group">
         <div class="divider"/>
         <template v-if="workspace.editorTab === 'output'">
-          <button class="text" :title="workspace.editFgNone ? 'Set FG: your foreground color is None; choose one first' : 'Set FG: every cell selected takes your foreground color, on the layers lit'" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor })">Set FG</button>
-          <button v-if="!asciiStyle" class="text" :title="workspace.editBgNone ? 'Set BG: your background color is None; choose one first' : 'Set BG: every cell selected takes your background color, on the layers lit'" :disabled="workspace.editBgNone" @click="recolor({ bg: workspace.editBgColor })">Set BG</button>
+          <button class="text" :title="workspace.editFgNone ? t('toolbar.selection.setFgNoneTitle') : t('toolbar.selection.setFgTitle')" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor })">{{ t('toolbar.selection.setFg') }}</button>
+          <button v-if="!asciiStyle" class="text" :title="workspace.editBgNone ? t('toolbar.selection.setBgNoneTitle') : t('toolbar.selection.setBgTitle')" :disabled="workspace.editBgNone" @click="recolor({ bg: workspace.editBgColor })">{{ t('toolbar.selection.setBg') }}</button>
         </template>
-        <button v-else class="text" :title="workspace.editFgNone ? 'Fill: your foreground color is None; choose one first' : 'Fill: every pixel selected takes your foreground color, on the layers lit'" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor })">Fill</button>
+        <button v-else class="text" :title="workspace.editFgNone ? t('toolbar.selection.fillNoneTitle') : t('toolbar.selection.fillTitle')" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor })">{{ t('toolbar.selection.fill') }}</button>
       </div>
       <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>
-        <button v-if="wandHere && activeTool.id === 'wand'" class="text" title="Take away what's in the selection, on the layers lit (Delete)" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.selectLayers)">Delete</button>
-        <button class="text" title="Deselect: the tools paint everywhere again (Esc)" aria-keyshortcuts="Escape" @click="deselect">Deselect</button>
+        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('toolbar.selection.wandDeleteTitle')" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.selectLayers)">{{ t('common.delete') }}</button>
+        <button class="text" :title="t('toolbar.selection.wandDeselectTitle')" aria-keyshortcuts="Escape" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
       </div>
     </div>
   </article>

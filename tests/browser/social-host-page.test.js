@@ -4,6 +4,7 @@
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
+import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
@@ -29,7 +30,7 @@ async function mount(state) {
   });
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(HostRoomPage).use(getActivePinia());
+  app = createApp(HostRoomPage).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
   return { room, region: host.querySelector('[role=status]') };
@@ -55,7 +56,7 @@ test('Live for counts up from going live, as H:MM:SS', async () => {
   expect(host.querySelector('header').textContent).toContain('Live for 1:02:03');
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'], now: room.session.liveSince + 3_723_000 });
   app.unmount();   // a fresh page, its timer on the fake clock
-  app = createApp(HostRoomPage).use(getActivePinia());
+  app = createApp(HostRoomPage).use(getActivePinia()).use(i18n);
   app.mount(host);
   await vi.advanceTimersByTimeAsync(1000);
   expect(host.querySelector('header').textContent).toContain('Live for 1:02:04');
@@ -107,8 +108,8 @@ test('turning off Allow guests offers to kick the guests here too, unticked; sav
   const removed = vi.spyOn(room, 'remove').mockImplementation(() => {});
   const label = (text) => [...host.querySelectorAll('label')].find((l) => l.textContent.trim() === text);
   const box = label('Allow guests').querySelector('input');
-  const kick = () => label('Kick the 2 guests here too')?.querySelector('input')
-    ?? label('Kick the guest here too')?.querySelector('input') ?? null;
+  const kick = () => label('Also remove the 2 guests currently here')?.querySelector('input')
+    ?? label('Also remove the guest currently here')?.querySelector('input') ?? null;
   expect(kick()).toBe(null);
 
   box.click();
@@ -116,7 +117,7 @@ test('turning off Allow guests offers to kick the guests here too, unticked; sav
   expect(kick().checked).toBe(false);   // turning guests off alone kicks nobody
   room.watchers = [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true })];
   await nextTick();
-  expect(label('Kick the guest here too')).toBeTruthy();
+  expect(label('Also remove the guest currently here')).toBeTruthy();
   room.watchers = [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true }), watcher('g2', 'fox', { guest: true })];
   await nextTick();
 
@@ -153,7 +154,7 @@ test('End room asks first: Cancel keeps the room, End room ends it', async () =>
   button('End room').click();
   await nextTick();
   const ask = document.querySelector('[role=dialog]');
-  expect(ask.textContent).toContain('End the room?');
+  expect(ask.textContent).toContain('End this room?');
   expect(end).not.toHaveBeenCalled();
   [...ask.querySelectorAll('button')].find((b) => b.textContent === 'Cancel').click();
   await nextTick();
@@ -251,10 +252,10 @@ test('who came by: a table, a row each, newest last, with time in the room, here
   expect([...host.querySelectorAll('.came-by th')].map((th) => th.textContent)).toEqual(['Name', 'Time', 'Status', 'Messages']);
   const text = rows().map(cells);
   expect(text).toHaveLength(4);
-  expect(text[0]).toEqual(['tin-lantern-owl', '1h 38m', 'here', '4']);
-  expect(text[1]).toEqual(['quiet-amber-fox', '54m', `left ${clock.format(at(8, 55))}`, '1']);
-  expect(text[2]).toEqual(['loud-teal-wren', '20m', `removed ${clock.format(at(9, 10))}`, '0']);   // removed wins over left
-  expect(text[3]).toEqual(['guest-visitor guest', 'under a minute', 'here', '2']);
+  expect(text[0]).toEqual(['tin-lantern-owl', '1h 38m', 'Here now', '4']);
+  expect(text[1]).toEqual(['quiet-amber-fox', '54m', `Left at ${clock.format(at(8, 55))}`, '1']);
+  expect(text[2]).toEqual(['loud-teal-wren', '20m', `Removed at ${clock.format(at(9, 10))}`, '0']);   // removed wins over left
+  expect(text[3]).toEqual(['guest-visitor guest', '< 1 min', 'Here now', '2']);
   const name = rows()[0].querySelector('.name');   // in the text color, after its cell
   expect(name.style.color).toBe('');
   expect(name.querySelector('.cell').style.backgroundColor).toBe(rgb(nameColor('tin-lantern-owl')));
@@ -309,12 +310,12 @@ test('past ten, "and N more" opens the rest in place', async () => {
   const people = Array.from({ length: 13 }, (_, i) => person(`u_${i}`, { name: `visitor-${i}`, since: NOW }));
   await mount({ session: { liveSince: NOW, most: 13, messages: 0, people } });
   expect(rows()).toHaveLength(10);
-  expect(button('and 3 more')).toBeTruthy();
-  button('and 3 more').click();
+  expect(button('Show 3 more')).toBeTruthy();
+  button('Show 3 more').click();
   await nextTick();
   expect(rows()).toHaveLength(13);
   expect(rows()[12].textContent).toContain('visitor-12');
-  expect(button('and 3 more')).toBeUndefined();
+  expect(button('Show 3 more')).toBeUndefined();
 });
 
 test('ten people show no "and N more"', async () => {

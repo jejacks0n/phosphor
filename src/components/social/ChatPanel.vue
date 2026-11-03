@@ -1,5 +1,6 @@
 <script setup>
 import { ref, reactive, computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { useDrawingStore } from '@/store/DrawingStore';
@@ -24,6 +25,7 @@ import ReportDialog from './ReportDialog.vue';
 // they've reported that person in this room; and Report room, under Exit, until they've reported the room.
 // An invitation to draw waits here, blocking nothing, until it's answered, withdrawn or they leave.
 const room = useRoomStore(), social = useSocialStore(), drawing = useDrawingStore(), project = useProjectStore();
+const { t } = useI18n();
 
 const folded = ref(false);
 const since = ref(0);    // messages since the fold
@@ -68,7 +70,7 @@ watch(() => drawing.notice, (words) => { if (words && folded.value) toast(words)
 // The list as drawn: messages, runs of who came and went ({ id, people }), and "You joined" after the
 // last of a watcher's first history (a run ends there, so what came after is below it). A run names each
 // person once, where they first came in it, by how they ended up: joined, left, came and went, came back.
-const did = ({ first, last }) => (first === last ? first : first === 'joined' ? 'came and went' : 'came back');
+const presenceKey = ({ first, last }) => (first === last ? first : first === 'joined' ? 'cameAndWent' : 'cameBack');
 const rows = computed(() => {
   const out = [];
   let run = null;
@@ -111,79 +113,95 @@ function askIfAtTop() {
 </script>
 
 <template>
-  <aside ref="panel" class="chat" :class="{ folded }" aria-label="Chat">
+  <aside ref="panel" class="chat" :class="{ folded }" :aria-label="t('social.chat.panelAria')">
     <div v-show="folded" class="rail">
-      <button class="open link" aria-label="Open the chat" @click="fold(false)">«</button>
+      <button class="open link" :aria-label="t('social.chat.openAria')" @click="fold(false)">«</button>
       <span v-if="since" class="count">{{ since }}</span>
     </div>
     <div v-show="!folded" class="body">
       <header>
         <div class="room">
           <h2 v-if="room.room?.name">{{ room.room.name }}</h2>
-          <p v-if="room.role === 'watch' && host" class="host">hosted by <UserName class="person" :name="host" /></p>
+          <p v-if="room.role === 'watch' && host" class="host">
+            <i18n-t keypath="social.chat.hostedBy" tag="span">
+              <template #host><UserName class="person" :name="host" /></template>
+            </i18n-t>
+          </p>
         </div>
         <div class="tools">
           <RoomMenu v-if="room.role === 'host'" ref="menu" />
           <template v-else-if="room.role === 'watch'">
             <div class="leave">
-              <button class="exit" @click="room.leave()">Exit</button>
-              <button v-if="room.canReportRoom" class="link report-room" aria-label="Report room" @click="askToReportRoom">Report</button>
+              <button class="exit" @click="room.leave()">{{ t('social.chat.exit') }}</button>
+              <button v-if="room.canReportRoom" class="link report-room" :aria-label="t('social.chat.reportRoomAria')" @click="askToReportRoom">{{ t('social.chat.report') }}</button>
             </div>
           </template>
-          <button class="fold link" aria-label="Fold the chat" @click="fold(true)">»</button>
+          <button class="fold link" :aria-label="t('social.chat.foldAria')" @click="fold(true)">»</button>
         </div>
       </header>
       <RoomPeople v-if="room.role" />
       <p v-if="room.room?.welcome" class="pinned">
         <span>
-          Pinned, from the host
-          <button v-if="room.role === 'host'" class="link edit" @click="menu.editWelcome($event.currentTarget)">Edit</button>
+          {{ t('social.chat.pinnedFromHost') }}
+          <button v-if="room.role === 'host'" class="link edit" @click="menu.editWelcome($event.currentTarget)">{{ t('common.edit') }}</button>
         </span>
         {{ room.room.welcome }}
       </p>
       <div v-if="drawing.invitation" class="invitation" role="status">
-        <p><UserName class="person" :name="host ?? 'The host'" /> invited you to draw.</p>
-        <p v-if="project.image && (project.isDirty || project._stroke)">Accepting replaces your open art, which has unsaved changes.</p>
+        <i18n-t v-if="host" keypath="social.chat.invitedByHost" tag="p">
+          <template #host><UserName class="person" :name="host" /></template>
+        </i18n-t>
+        <p v-else>{{ t('social.chat.invitedFallback') }}</p>
+        <p v-if="project.image && (project.isDirty || project._stroke)">{{ t('social.chat.acceptReplacesDirty') }}</p>
         <div class="answers">
-          <button @click="drawing.decline()">Not now</button>
-          <button class="primary" @click="drawing.accept()">Accept</button>
+          <button @click="drawing.decline()">{{ t('common.notNow') }}</button>
+          <button class="primary" @click="drawing.accept()">{{ t('common.accept') }}</button>
         </div>
       </div>
       <p v-if="drawing.notice" class="drawing-notice" role="status">
         <span>{{ drawing.notice }}</span>
-        <button class="link" aria-label="Dismiss" @click="drawing.notice = null">✕</button>
+        <button class="link" :aria-label="t('common.dismiss')" @click="drawing.notice = null">✕</button>
       </p>
-      <label v-if="project._sharing" class="show-cursors"><input v-model="drawing.showCursors" type="checkbox"> Show others' cursors</label>
-      <div ref="list" class="list" role="log" aria-label="Messages" tabindex="-1" @scroll.passive="askIfAtTop">
-        <p v-if="room.chatMore" class="more">↑ Scroll up for earlier messages</p>
-        <p v-if="room.role === 'watch' && room.joinedAt === null && room.status === 'live'" class="joined">You joined</p>
+      <label v-if="project._sharing" class="show-cursors"><input v-model="drawing.showCursors" type="checkbox"> {{ t('social.chat.showCursors') }}</label>
+      <div ref="list" class="list" role="log" :aria-label="t('social.chat.messagesAria')" tabindex="-1" @scroll.passive="askIfAtTop">
+        <p v-if="room.chatMore" class="more">{{ t('social.chat.scrollForEarlier') }}</p>
+        <p v-if="room.role === 'watch' && room.joinedAt === null && room.status === 'live'" class="joined">{{ t('social.chat.youJoined') }}</p>
         <!-- A row is drawn again only when what it shows changes, not on every new message. -->
-        <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.map(did).join()] : [m.deleted, hidden(m), room.role === 'host', reportable(m)]">
-          <p v-if="m.joined" class="joined">You joined</p>
+        <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.map(presenceKey).join()] : [m.deleted, hidden(m), room.role === 'host', reportable(m)]">
+          <p v-if="m.joined" class="joined">{{ t('social.chat.youJoined') }}</p>
           <p v-else-if="m.people" class="presence">
-            <span><template v-for="(p, i) in m.people" :key="p.id">{{ i ? ', ' : '' }}<span class="person">{{ p.name }}</span> {{ did(p) }}</template></span>
+            <span>
+              <template v-for="(p, i) in m.people" :key="p.id">
+                <template v-if="i">, </template>
+                <i18n-t :keypath="`social.chat.presence.${presenceKey(p)}`" tag="span">
+                  <template #person>
+                    <span class="person">{{ p.name }}</span>
+                  </template>
+                </i18n-t>
+              </template>
+            </span>
           </p>
           <div v-else class="message" :class="{ note: m.deleted || hidden(m) }">
-            <p v-if="m.deleted">Message deleted by the host</p>
+            <p v-if="m.deleted">{{ t('social.chat.deletedByHost') }}</p>
             <p v-else-if="hidden(m)">
-              Message from someone you blocked
-              <button class="link" @click="shownAnyway.add(m.id)">Show</button>
+              {{ t('social.chat.fromBlocked') }}
+              <button class="link" @click="shownAnyway.add(m.id)">{{ t('social.chat.show') }}</button>
             </p>
             <template v-else>
               <p class="who">
-                <UserName class="name" :name="m.name">{{ m.mine ? ' (you)' : '' }}</UserName>
-                <span v-if="m.host" class="tag">host</span>
+                <UserName class="name" :name="m.name">{{ m.mine ? t('social.chat.youSuffix') : '' }}</UserName>
+                <span v-if="m.host" class="tag">{{ t('common.host') }}</span>
                 <!-- Report and Delete take the time's place while the message is pointed at or has focus. -->
                 <span class="when">
                   <time>{{ time(m.ts) }}</time>
                   <span v-if="reportable(m) || room.role === 'host'" class="actions">
-                    <button v-if="reportable(m)" class="link report" :aria-label="`Report message from ${m.name}`" @click="askToReport(m, $event)">Report</button>
-                    <button v-if="room.role === 'host'" class="link delete" :aria-label="`Delete message from ${m.name}`" @click="room.deleteMessage(m.id)">Delete</button>
+                    <button v-if="reportable(m)" class="link report" :aria-label="t('social.chat.reportMessageAria', { name: m.name })" @click="askToReport(m, $event)">{{ t('social.chat.report') }}</button>
+                    <button v-if="room.role === 'host'" class="link delete" :aria-label="t('social.chat.deleteMessageAria', { name: m.name })" @click="room.deleteMessage(m.id)">{{ t('common.delete') }}</button>
                   </span>
                 </span>
               </p>
               <p class="text">{{ m.text }}</p>
-              <p v-if="m.muted" class="muted">Muted: only you and they see this</p>
+              <p v-if="m.muted" class="muted">{{ t('social.chat.mutedNote') }}</p>
             </template>
           </div>
         </div>

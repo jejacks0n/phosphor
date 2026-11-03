@@ -5,6 +5,7 @@
 import { test, expect, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
+import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import WatchRoomPage from '@/components/social/WatchRoomPage.vue';
@@ -22,7 +23,7 @@ async function mount(state) {
   host = document.createElement('div');
   host.style.cssText = 'width: 600px; height: 400px';
   document.body.append(host);
-  app = createApp(WatchRoomPage).use(getActivePinia());
+  app = createApp(WatchRoomPage).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
   return { room, heading: host.querySelector('h2'), region: host.querySelector('[role=status]') };

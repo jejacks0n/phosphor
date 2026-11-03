@@ -4,14 +4,14 @@ import { readFile } from 'node:fs/promises';
 import { test, expect, tab, store, chars, editAt, cellPoint, settled, saveAs, openApp, imageInput, otherBrowser } from './support.js';
 import { fakeRoom, member, ROOM_ID, goLive, shown, chat, hash, selected, ARTIST, people, rowOf, invitation, mayDraw, fromMenu, invitedPage, artistPage, watcherPage, joinFromCard, followLink } from './social-support.js';
 
-const WAITING_WORDS = 'The host is reconnecting. Drawing is paused.';
-const CHANGING_WORDS = 'The host is changing. Drawing is paused.';
-const GETTING_WORDS = 'Getting the room\'s art. Drawing is paused.';
-const ONLY_HOST = 'Only the host can do this.';
-const NOT_WHILE = 'Not while others are drawing.';
-const MERGE_WARNING = 'Strokes merged into the image can\'t be undone by anyone.';
-const BAKE_WARNING = 'A bake can\'t be undone by anyone.';
-const UNSAVED = 'Accepting replaces your open art, which has unsaved changes.';
+const WAITING_WORDS = 'Waiting for the host to reconnect—drawing paused…';
+const CHANGING_WORDS = 'Handing off to the new host—drawing paused…';
+const GETTING_WORDS = 'Syncing the room\'s canvas—drawing paused…';
+const ONLY_HOST = 'Only the room\'s host can change this.';
+const NOT_WHILE = 'Unavailable while co-artists are drawing.';
+const MERGE_WARNING = 'Merging down can\'t be undone while drawing together.';
+const BAKE_WARNING = 'Baking can\'t be undone while drawing together.';
+const UNSAVED = 'Accepting replaces your current canvas (you have unsaved changes).';
 
 const edits = (page) => store(page, 'project', (p) => JSON.stringify([...p.editCells].sort(([a], [b]) => (a < b ? -1 : 1))));
 const shownCells = (page) => store(page, 'project', (p) => p.cells.map((c) => c.char + c.fg.hex + c.bg.hex).join());
@@ -76,7 +76,7 @@ test('the host invites, the row says invited, and withdrawing takes the notice a
   await goLive(host, room);
   const person = await invitedPage(context, host, room);
   await expect(rowOf(host).getByText('invited', { exact: true })).toBeVisible();
-  await expect(invitation(person)).toContainText('ansi-fan invited you to draw.');
+  await expect(invitation(person)).toContainText('ansi-fan invited you to draw together.');
 
   // Not now, then Accept, each half the row, and both the height of an ordinary button.
   const notNow = await invitation(person).getByRole('button', { name: 'Not now' }).boundingBox();
@@ -134,7 +134,7 @@ test('the notice doesn\'t block: they save their art, then accept', async ({ pag
   await typeAt(person, 1, 1, 'mine');
   await expect(invitation(person).getByText(UNSAVED)).toBeVisible();
 
-  const download = await saveAs(person, 'Save Project (.phosphor)');
+  const download = await saveAs(person, 'Save project (.phosphor)');
   expect(download.suggestedFilename()).toMatch(/^photo.*\.phosphor$/);
   await expect(invitation(person).getByText(UNSAVED)).toHaveCount(0);
   await expect(invitation(person)).toBeVisible();
@@ -196,8 +196,8 @@ test('replaced art is still in the autosave list', async ({ page: host, context 
   await chat(person).getByRole('button', { name: 'Exit' }).click();
   person.on('dialog', (dialog) => dialog.accept());
   await tab(person, 'PIXEL').click();
-  await person.getByRole('button', { name: 'Start New Project' }).click();
-  await person.getByRole('button', { name: 'Open: photo' }).click();
+  await person.getByRole('button', { name: 'New project' }).click();
+  await person.getByRole('button', { name: 'Open photo' }).click();
   await settled(person);
   expect(await store(person, 'project', (p) => p.documentId)).toBe(own);
   expect(await chars(person, 4, 4, 4)).toBe('L');
@@ -252,7 +252,7 @@ test('an artist\'s host-only controls are off with the reason', async ({ page: h
     await expect(button).toBeDisabled();
     await expect(button).toHaveAttribute('title', ONLY_HOST);
   }
-  for (const name of ['Start New Project', 'Versions']) {
+  for (const name of ['New project', 'Versions']) {
     await expect(panel.getByRole('button', { name })).toBeDisabled();
     await expect(panel.getByRole('button', { name })).toHaveAttribute('title', ONLY_HOST);
   }
@@ -288,7 +288,7 @@ test('host: Open, New image, Blank canvas, restore and Clear are off while an ar
   await expect(undone).toBeEnabled();   // Merge isn't: it warns instead
 
   const panel = host.locator('aside.control-panel');
-  for (const name of ['Start New Project', 'Versions']) {
+  for (const name of ['New project', 'Versions']) {
     await expect(panel.getByRole('button', { name })).toBeDisabled();
     await expect(panel.getByRole('button', { name })).toHaveAttribute('title', NOT_WHILE);
   }
@@ -315,7 +315,7 @@ test('host: Merge warns, and afterward undo can\'t take it back', async ({ page:
   await host.locator('.edit-toolbar .desktop-only button.primary').nth(1).click();
   const dialog = host.getByRole('dialog', { name: 'Merge down' });
   await expect(dialog.getByText(MERGE_WARNING)).toBeVisible();
-  await dialog.getByRole('button', { name: /Exactly as is/ }).click();
+  await dialog.getByRole('button', { name: /Keep crisp cells/ }).click();
   await expect(undoButton(host)).toBeDisabled();
   await expect.poll(() => store(host, 'project', (p) => p.editCells.size)).toBe(0);
   await expect.poll(() => store(artist, 'project', (p) => p.editCells.size), { timeout: 10_000 }).toBe(0);
@@ -349,7 +349,7 @@ test('host alone again has its normal controls', async ({ page: host, context })
   await host.locator('.edit-toolbar .desktop-only button.primary').nth(1).click();
   const dialog = host.getByRole('dialog', { name: 'Merge down' });
   await expect(dialog.getByText(MERGE_WARNING)).toHaveCount(0);
-  await dialog.getByRole('button', { name: /Exactly as is/ }).click();
+  await dialog.getByRole('button', { name: /Keep crisp cells/ }).click();
   await expect(undoButton(host)).toBeEnabled();   // undoable again, as alone
   await expect(host.locator('aside.control-panel').getByRole('button', { name: 'Versions' })).toBeEnabled();
 });
@@ -363,7 +363,7 @@ test('an artist who dropped out holds nothing up: the host\'s controls come back
   const clear = host.locator('.edit-toolbar .desktop-only button.primary').nth(2);
   await expect(clear).not.toHaveAttribute('title', NOT_WHILE);
   host.on('dialog', (dialog) => dialog.accept());
-  await host.locator('aside.control-panel').getByRole('button', { name: 'Start New Project' }).click();
+  await host.locator('aside.control-panel').getByRole('button', { name: 'New project' }).click();
   await expect.poll(() => store(host, 'drawing', (d) => d.artists)).toEqual([]);
 });
 
@@ -375,8 +375,8 @@ test('End room says it ends for everyone, ends it for artists too, and the art s
 
   await tab(host, 'SOCIAL').click();
   await shown(host, 'host-room').getByRole('button', { name: 'End room' }).click();
-  const asked = host.getByRole('dialog', { name: 'End the room?' });
-  await expect(asked.getByText('Everyone leaves, including anyone drawing, and the chat is gone.')).toBeVisible();
+  const asked = host.getByRole('dialog', { name: 'End this room?' });
+  await expect(asked.getByText('Everyone will be disconnected (including co-artists) and the room chat will clear.')).toBeVisible();
   await asked.getByRole('button', { name: 'End room' }).click();
 
   await expect.poll(() => store(artist, 'room', (r) => r.role)).toBe(null);
@@ -385,7 +385,7 @@ test('End room says it ends for everyone, ends it for artists too, and the art s
   expect(await store(artist, 'project', (p) => [!!p.image, p._sharing, p.canUndo])).toEqual([true, null, false]);
   expect(await chars(artist, 3, 6, 6)).toBe('k');
   await expect(artist.locator('.edit-toolbar .desktop-only button.primary').nth(2)).toBeEnabled();   // an ordinary document
-  const download = await saveAs(artist, 'Save Project (.phosphor)');
+  const download = await saveAs(artist, 'Save project (.phosphor)');
   expect(download.suggestedFilename()).toMatch(/^neon harbor.*\.phosphor$/);
 });
 
@@ -694,7 +694,7 @@ test('a project saved by an artist opens as an ordinary project, with no names i
   await typeAt(host, 2, 2, 'h');
   await typeAt(artist, 3, 3, 'a');
   await expect.poll(() => chars(artist, 2, 2, 2)).toBe('h');
-  const download = await saveAs(artist, 'Save Project (.phosphor)');
+  const download = await saveAs(artist, 'Save project (.phosphor)');
   const file = await readFile(await download.path());
   const text = file.toString('latin1');
   for (const name of ['tin_owl', 'ansi-fan', ARTIST.id, member().id]) expect(text).not.toContain(name);
@@ -1135,12 +1135,12 @@ test('a host cut off who comes back as an artist is told who hosts now, with the
   await mayDraw(host).toBe(true);
   const toast = host.locator('.app-toast');
   await expect(toast).toContainText('tin_owl is now the host.', { timeout: 20_000 });
-  await expect(toast).toContainText('Continue where you left off');
+  await expect(toast).toContainText('Pick up where you left off');
   expect(await store(host, 'project', (p) => p.documentId)).not.toBe(before);
 
   const other = await context.newPage();
   await other.goto('/');
-  const row = other.getByRole('list', { name: 'Continue where you left off' }).getByRole('listitem').filter({ hasText: 'gradient' });
+  const row = other.getByRole('list', { name: 'Pick up where you left off' }).getByRole('listitem').filter({ hasText: 'gradient' });
   await row.getByRole('button', { name: /^Open/ }).click();
   await settled(other);
   await expect.poll(() => chars(other, 12, 25, 25)).toBe('o');
@@ -1331,7 +1331,7 @@ test('SAUCE fields are off for an artist, and say why; the host\'s still work', 
   await tab(artist, 'SAUCE').click();
   const title = artist.getByLabel('Title');
   await expect(title).toBeDisabled();
-  await expect(artist.locator('.sauce-editor fieldset[title="Only the host can do this."]')).toContainText('Custom Comments');
+  await expect(artist.locator(`.sauce-editor fieldset[title="${ONLY_HOST}"]`)).toContainText('Comments');
   await tab(host, 'SAUCE').click();
   await host.getByLabel('Title').fill('Harbor');
   await expect.poll(() => store(artist, 'project', (p) => p.sauceTitle)).toBe('Harbor');
@@ -1436,8 +1436,8 @@ test('an artist draws in the host\'s font and size, follows a change, and has th
   await expect(font(artist)).toHaveValue('vga');
   await expect(font(artist)).toBeDisabled();
   await expect(size(artist)).toBeDisabled();
-  await expect(artist.getByRole('button', { name: 'Load custom' })).toBeDisabled();
-  await expect(artist.getByText('The host\'s font, while you draw in their room.')).toBeVisible();
+  await expect(artist.getByRole('button', { name: 'Load font' })).toBeDisabled();
+  await expect(artist.getByText("Using the host's font while you draw here.")).toBeVisible();
   expect(await store(artist, 'project', (p) => p.cols * 8 + 4)).toBeCloseTo(await artist.locator('.ansi-editor div.display').evaluate((c) => c.getBoundingClientRect().width), 0);
 
   await size(host).fill('32');
