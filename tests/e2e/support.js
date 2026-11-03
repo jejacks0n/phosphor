@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { test as base } from '@playwright/test';
 import { CONSENT_KEY, CONSENT_VERSION } from '../../src/social/consent.js';
 
-export { expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+export { expect };
 
 // Every spec's test: the SOCIAL server (localhost:8787, the API and the lobby's socket) is cut off for
 // every page in the context unless the spec installs fakeServer (social-support.js), whose page routes
@@ -67,6 +68,12 @@ export async function saveAs(page, button, { name } = {}) {
 
 // An editor tab: PIXEL, ANSI, SAUCE or SOCIAL.
 export const tab = (page, label) => page.getByRole('tab', { name: label, exact: true });
+
+// Nothing open: the start screen, with no tab selected.
+export async function startScreen(page) {
+  await expect(imageInput(page)).toBeAttached();
+  await expect(page.getByRole('tab', { selected: true })).toHaveCount(0);
+}
 
 // A store's state, or an expression over it: store(page, 'project', (p) => p.cells.length).
 export function store(page, name, read = (s) => s.$state) {

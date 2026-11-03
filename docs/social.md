@@ -26,8 +26,8 @@ asked again if the policies change in a way that matters, or after clearing the 
 - **Accept** goes on to where you were going: the lobby, a page of SOCIAL, a room's link (which then asks
   whether to join), or a link from one of our emails.
 - **Not now**, or Escape, goes back to the tab you came from, with a link's room and page forgotten. With no tab to
-  go back to, as when you arrive straight from a link, you land on PIXEL at a plain address. A link from an email
-  still works when you open it again, until it expires.
+  go back to, as when you arrive straight from a link, you land on PIXEL (or the start screen, with nothing open) at a
+  plain address. A link from an email still works when you open it again, until it expires.
 - **Coming back to a room you're in** isn't held up. A reload while hosting or watching stays in the room, unasked,
   even from a session from before you were asked. The next plain load of the page asks.
 

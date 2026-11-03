@@ -6,6 +6,10 @@ test('every place round-trips through its path', () => {
   for (const [path, { tab, page = 'lobby' }] of PLACES) expect(pathOf({ tab, page, role: null })).toBe(path);
 });
 test('the page is forgotten off the SOCIAL tab', () => expect(pathOf({ tab: 'input', page: 'account', role: null })).toBe('/pixel'));
+test('with nothing open the art tabs are the start screen, at /', () => {
+  for (const tab of ['input', 'output', 'sauce']) expect(pathOf({ tab, page: 'lobby', role: null, empty: true })).toBe('/');
+  expect(pathOf({ tab: 'social', page: 'account', role: null, empty: true })).toBe('/social/account');
+});
 test('in a room, SOCIAL is the room', () => {
   expect(pathOf({ tab: 'social', page: 'start-room', role: 'host' })).toBe('/social');
   expect(pathOf({ tab: 'social', page: 'account', role: 'watch' })).toBe('/social');

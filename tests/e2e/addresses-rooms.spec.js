@@ -1,22 +1,22 @@
 // The room you're watching in the address: Back, Forward and reload, with a real history (its entries'
 // marks are what tell your own room from a link).
-import { test, expect, tab, store, openApp } from './support.js';
+import { test, expect, tab, store, openApp, startScreen } from './support.js';
 import { fakeRoom, member, ROOM_ID, shown, goLive, watcherPage, joinFromCard, followLink, watching, selected, hash, asked, chat, outOfRoom, live, joins } from './social-support.js';
 
 const UNAVAILABLE = "This room isn't available";
 const status = (page) => store(page, 'room', (r) => r.status);
 
-test('a watcher reloading on PIXEL is back in the room, unasked, still on PIXEL', async ({ page: host, context }) => {
+test('a watcher reloading on the start screen is back in the room, unasked, still there', async ({ page: host, context }) => {
   const room = fakeRoom();
   const watcher = await watching(host, context, room);
-  await tab(watcher, 'PIXEL').click();
-  await hash(watcher, `/pixel?room=${ROOM_ID}`);
+  await tab(watcher, 'PIXEL').click();   // nothing of the watcher's own open: the start screen
+  await hash(watcher, `/?room=${ROOM_ID}`);
 
   await watcher.reload();
   await live(watcher);
   await expect(asked(watcher)).toHaveCount(0);
-  await selected(watcher, 'PIXEL');
-  await hash(watcher, `/pixel?room=${ROOM_ID}`);
+  await startScreen(watcher);
+  await hash(watcher, `/?room=${ROOM_ID}`);
   expect(joins(room)).toBe(2);
 });
 
@@ -39,14 +39,14 @@ test('a link pasted over a page with the app open asks too, and leaves no entry 
   const room = fakeRoom();
   const watcher = await watcherPage(context, room);
   await watcher.goto('/');
-  await hash(watcher, '/pixel');
+  await hash(watcher, '/');
   await watcher.evaluate((id) => { location.hash = `#/pixel?room=${id}`; }, ROOM_ID);
   await expect(asked(watcher)).toBeVisible();
   await asked(watcher).getByRole('button', { name: 'Not now' }).click();
   await hash(watcher, '/social');
 
   await watcher.goBack();
-  await hash(watcher, '/pixel');
+  await hash(watcher, '/');
   await expect(asked(watcher)).toHaveCount(0);
   expect(room.received).toEqual([]);
 });
@@ -75,12 +75,12 @@ test('exit, reload, Back onto the room\'s entry: not rejoined, ?room= gone', asy
   const room = fakeRoom();
   const watcher = await watching(host, context, room);
   await tab(watcher, 'PIXEL').click();
-  await hash(watcher, `/pixel?room=${ROOM_ID}`);
+  await hash(watcher, `/?room=${ROOM_ID}`);
   await chat(watcher).getByRole('button', { name: 'Exit' }).click();
-  await hash(watcher, '/pixel');
+  await hash(watcher, '/');
 
   await watcher.reload();
-  await hash(watcher, '/pixel');
+  await hash(watcher, '/');
   await watcher.goBack();
   await hash(watcher, '/social');
   await selected(watcher, 'SOCIAL');
@@ -93,14 +93,14 @@ test('Forward onto a room that now wants a password shows its form on SOCIAL', a
   const room = fakeRoom();
   const watcher = await watching(host, context, room);
   await tab(watcher, 'PIXEL').click();
-  await hash(watcher, `/pixel?room=${ROOM_ID}`);
+  await hash(watcher, `/?room=${ROOM_ID}`);
   await watcher.goBack();
   await watcher.goBack();
   await hash(watcher, '/social');
   await outOfRoom(watcher);
 
   room.setup.password = 'hunter22';
-  await watcher.evaluate(() => history.go(2));   // right onto PIXEL's entry: the form isn't there
+  await watcher.evaluate(() => history.go(2));   // right onto the start screen's entry: the form isn't there
   await selected(watcher, 'SOCIAL');
   await expect(shown(watcher, 'watch-room').getByRole('heading', { name: 'This room needs a password' })).toBeVisible();
   await hash(watcher, `/social?room=${ROOM_ID}`);
@@ -110,7 +110,7 @@ test('Forward onto a room that ended shows why on SOCIAL, and the entry loses ?r
   const room = fakeRoom();
   const watcher = await watching(host, context, room);
   await tab(watcher, 'PIXEL').click();
-  await hash(watcher, `/pixel?room=${ROOM_ID}`);
+  await hash(watcher, `/?room=${ROOM_ID}`);
   await watcher.goBack();
   await watcher.goBack();
   await hash(watcher, '/social');
@@ -118,7 +118,7 @@ test('Forward onto a room that ended shows why on SOCIAL, and the entry loses ?r
 
   await store(host, 'room', (r) => r.endRoom());
   await expect.poll(() => store(host, 'room', (r) => r.role)).toBe(null);
-  await watcher.evaluate(() => history.go(2));   // right onto PIXEL's entry: the words aren't there
+  await watcher.evaluate(() => history.go(2));   // right onto the start screen's entry: the words aren't there
   await selected(watcher, 'SOCIAL');
   await expect(watcher.getByText(UNAVAILABLE)).toBeVisible();
   await hash(watcher, '/social');
@@ -216,7 +216,7 @@ test('a server ?room= link on a phone still stays in the URL for a computer', as
   const watcher = await watcherPage(context, room);
   await watcher.setViewportSize({ width: 700, height: 900 });
   await watcher.goto(`/?room=${ROOM_ID}`);
-  await selected(watcher, 'PIXEL');
+  await startScreen(watcher);
   await expect.poll(() => new URL(watcher.url()).search).toBe(`?room=${ROOM_ID}`);
   await expect(asked(watcher)).toHaveCount(0);
   expect(room.received).toEqual([]);

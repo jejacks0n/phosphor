@@ -1,7 +1,7 @@
 // The address and the stores, kept in step both ways. The stores are the truth while you work: the
 // address follows them (reconcile), and they follow it on a landing, Back or Forward (applyPlace).
 import { nextTick, watch } from 'vue';
-import { START_LOCATION, createRouter, createWebHashHistory, createWebHistory } from 'vue-router';
+import { NavigationFailureType, START_LOCATION, createRouter, createWebHashHistory, createWebHistory, isNavigationFailure } from 'vue-router';
 import { PLACES, arrivalPage, pathOf } from '@/lib/addresses';
 import { desktopQuery } from '@/social/config';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -40,15 +40,6 @@ export function followAddress(router) {
     return { signedIn, needsOnboarding: me?.needsOnboarding, resetToken, codePending: _codePending, canStart: signedIn && me?.emailVerified !== false };
   }
 
-  // ANSI and SAUCE need an image, and only once autosave has answered do we know there isn't one.
-  let leftForNoImage = null;   // the tab that leaveIfNoImage moved away from
-  function leaveIfNoImage() {
-    if (!workspace.documentSettled || project.image || !['output', 'sauce'].includes(workspace.editorTab)) return;
-    leftForNoImage = workspace.editorTab;
-    workspace.editorTab = 'input';
-    replaceNext = true;
-  }
-
   // The room a place names, on an entry of yours or not. True when it's a link, which asks on SOCIAL.
   function enterRoomOf(to, from) {
     const id = to.query.room == null ? null : String(to.query.room), mark = router.options.history.state.inRoom;
@@ -70,16 +61,18 @@ export function followAddress(router) {
   }
 
   async function applyPlace(to, from) {
-    const { tab, page } = to.meta;
-    if (!tab) return;
-    if (landing) workspace.tabAddressed = true;
+    // / is the start screen: the art tabs with nothing open, so the art tab you're on, or the one you left for SOCIAL.
+    // A landing there leaves the tab to autosave, unless it's your own room's entry (a reload in it).
+    const start = !to.meta.tab, { page } = to.meta;
+    if (start && from === START_LOCATION && !router.options.history.state.inRoom) return;
+    const tab = to.meta.tab ?? (workspace.editorTab === 'social' ? social._cameFromTab : workspace.editorTab);
+    if (landing && !start) workspace.tabAddressed = true;
     if (page) social.page = page;
     workspace.editorTab = matchMedia(desktopQuery).matches && enterRoomOf(to, from) ? 'social' : tab;
     if (tab === 'social' && !matchMedia(desktopQuery).matches) {
       workspace.editorTab = 'input';
       replaceNext = true;
     }
-    leaveIfNoImage();
     if (workspace.editorTab !== 'social' || !page) return;
     await social.boot();   // who you are decides which pages can be shown
     if (workspace.editorTab !== 'social' || social.page !== page) return;
@@ -93,7 +86,10 @@ export function followAddress(router) {
   function reconcile() {
     if (pending) return;
     const current = router.currentRoute.value, was = current.query.room ?? null, going = room.id ?? social.roomGoingTo;
-    const path = pathOf({ tab: workspace.editorTab, page: social.page, role: room.role });
+    // Nothing open, the start screen. Till autosave has answered that isn't known, so an address with no tab
+    // stays as it is (a document coming back moves it once, to its tab).
+    const empty = workspace.documentSettled ? !project.image : !current.meta.tab;
+    const path = pathOf({ tab: workspace.editorTab, page: social.page, role: room.role, empty });
     const computer = matchMedia(desktopQuery).matches;
     const wanted = going ?? (computer ? null : was);   // a phone has no rooms: a link stays, for a computer
     if (path === current.path && wanted === was) {
@@ -106,7 +102,10 @@ export function followAddress(router) {
     // Sign in under a two-factor code, and the name page has no way back.
     const spentPage = current.meta.page && arrivalPage(current.meta.page, known()) !== current.meta.page;
     const noStep = path === '/social/name' || (path === '/social/two-factor' && current.meta.page === 'sign-in');
-    const replace = (landing && !room.role) || replaceNext || lost || spentPage || noStep || !current.meta.tab;   // / is never a step
+    // The art opening or closing, between an art tab and /, is no step. The start screen and SOCIAL are steps apart.
+    const start = !current.meta.tab && !(workspace.documentSettled && workspace.editorTab === 'social');   // or a landing at / (or an unknown path)
+    const closed = path === '/' && current.meta.tab !== 'social';
+    const replace = (landing && !room.role) || replaceNext || lost || spentPage || noStep || start || closed;
     replaceNext = false;
     ours = true;
     pending = true;   // beforeEach is a few promises off, and a second call before it would navigate again
@@ -139,7 +138,11 @@ export function followAddress(router) {
     router.beforeEach(askBeforeLeavingHost),   // after the one above: pending stays true while it asks
     router.afterEach((to, from, failure) => {
       const own = ours;
-      pending = ours = false;   // (not after the navigation's promise: reconcile below may have started the next by then)
+      ours = false;
+      // Cancelled by a newer navigation (a Back as the address moves, or the other way): that one's end reconciles.
+      // Reconciling now would start a third that cancels it, whose end would do the same, without end.
+      if (isNavigationFailure(failure, NavigationFailureType.cancelled)) return;
+      pending = false;   // (not after the navigation's promise: reconcile below may have started the next by then)
       if (!failure && !own) applyPlace(to, from);
       nextTick(reconcile);
     }),
@@ -162,16 +165,10 @@ export function followAddress(router) {
     watch(() => room.role, (role, was) => {
       if (role && was && router.options.history.state.inRoom) router.options.history.replace(router.options.history.location, { inRoom: role });
     }),
-    watch(() => [workspace.editorTab, social.page, room.role, room.id, social.roomGoingTo], reconcile),   // default flush: changes in one tick are one step
-    watch(() => workspace.documentSettled, () => {
-      landing = false;
-      leaveIfNoImage();
-    }),
-    // A room's art that came after that (an artist's reload autosave had nothing for): back to where they were.
-    watch(() => project.image, (image) => {
-      if (image && room.role && workspace.editorTab === 'input' && leftForNoImage) workspace.editorTab = leftForNoImage;
-      if (image) leftForNoImage = null;
-    }),
+    // default flush: changes in one tick are one step. The art opening or closing moves between the start
+    // screen and the tab chosen underneath it (a room's art that comes after an artist's reload, say).
+    watch(() => [workspace.editorTab, social.page, room.role, room.id, social.roomGoingTo, workspace.documentSettled, !!project.image], reconcile),
+    watch(() => workspace.documentSettled, () => { landing = false; }),
   ];
   return () => stops.forEach((stop) => stop());
 }

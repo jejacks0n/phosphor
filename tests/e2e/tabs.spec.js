@@ -1,10 +1,30 @@
 import { test, expect } from './support.js';
 import { openApp, tab, store, cellPoint, drag } from './support.js';
 
+test('with nothing open no tab is selected; whatever opens lands on ANSI, and New project goes back', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Or start with a blank canvas' })).toBeVisible();
+  for (const name of ['PIXEL', 'ANSI', 'SAUCE']) await expect(tab(page, name)).toBeDisabled();
+  await expect(page.getByRole('tab', { selected: true })).toHaveCount(0);
+  await expect(tab(page, 'SOCIAL')).toHaveAttribute('tabindex', '0'); // the one tab to choose is the Tab stop
+  await expect(page.locator('.tab-list .indicator')).toHaveCSS('opacity', '0');
+  expect(new URL(page.url()).hash).toBe('#/');
+
+  await page.getByRole('button', { name: 'Or start with a blank canvas' }).click();
+  await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
+  await expect(tab(page, 'PIXEL')).toBeEnabled();
+  await expect(page.locator('.tab-list .indicator')).toHaveCSS('opacity', '1');
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/ansi');
+
+  await page.getByRole('button', { name: 'New project' }).click(); // nothing drawn: no question
+  await expect(page.getByRole('button', { name: 'Or start with a blank canvas' })).toBeVisible();
+  await expect(page.getByRole('tab', { selected: true })).toHaveCount(0);
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/');
+});
+
 test('the editor tabs are a tablist: Tab reaches the selected one, arrows move and select', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('tablist', { name: 'Workspace views' })).toBeVisible();
-  await expect(tab(page, 'PIXEL')).toHaveAttribute('aria-selected', 'true');
   await expect(tab(page, 'ANSI')).toBeDisabled(); // no image yet
 
   await openApp(page);

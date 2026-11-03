@@ -17,8 +17,11 @@ when it does). Your choice is kept in this browser. A narrow window has no room 
 stays on your last choice (Dark to begin with).
 
 The address: the address bar says which tab you're on and, on SOCIAL, which page, so Back and Forward
-move between them and a reload comes back to the same place. ANSI and SAUCE need an image: with none
-open, their addresses show PIXEL. A narrow window has no SOCIAL tab, so its address shows PIXEL too.
+move between them and a reload comes back to the same place. With nothing open you're on the start
+screen, not a tab: PIXEL, ANSI and SAUCE wait for something to show, none is selected, and the address
+is plain (`/`). Whatever you open (an image, a project, an ANSI or text file, or a blank canvas) opens on
+ANSI. From SOCIAL, any of the three takes you back to the start screen. A narrow window has no SOCIAL
+tab, so its address shows PIXEL instead (or `/`, with nothing open).
 What the address does in a room is under [Social](social.md).
 
 For people changing Phosphor:

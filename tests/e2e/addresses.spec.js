@@ -1,5 +1,5 @@
 // The address, and the browser's Back, Forward and reload.
-import { test, expect, openApp, tab, store, imageInput, fixture } from './support.js';
+import { test, expect, openApp, tab, store, imageInput, fixture, startScreen } from './support.js';
 import { fakeServer, member, shown } from './social-support.js';
 
 const selected = (page, label) => expect(tab(page, label)).toHaveAttribute('aria-selected', 'true');
@@ -83,41 +83,43 @@ test('a load at / with an autosaved document still opens on ANSI, with no extra 
   expect(await stepsSinceLoad(page)).toBe(0);
 });
 
-test('reloading /ansi with nothing saved lands on PIXEL with no extra step', async ({ page }) => {
+test('reloading /ansi with nothing saved lands on the start screen at / with no extra step', async ({ page }) => {
   await noteHistoryAtLoad(page);
   await page.goto('/#/ansi');
-  await selected(page, 'PIXEL');
-  await hash(page, '/pixel');
-  await expect(imageInput(page)).toBeAttached();   // the start screen
+  await startScreen(page);
+  await hash(page, '/');
   expect(await stepsSinceLoad(page)).toBe(0);
 });
 
-test('/ landing is the default tab and no step of its own', async ({ page }) => {
+test('/ with nothing open is the start screen, and no step of its own', async ({ page }) => {
   await noteHistoryAtLoad(page);
   await page.goto('/');
-  await selected(page, 'PIXEL');
-  await hash(page, '/pixel');
+  await startScreen(page);
+  await hash(page, '/');
   expect(await stepsSinceLoad(page)).toBe(0);
 });
 
-test('opening a file is a step', async ({ page }) => {
+test('opening a file goes from the start screen to ANSI, in place of it: the start screen is no step', async ({ page }) => {
+  await noteHistoryAtLoad(page);
   await page.goto('/');
-  await hash(page, '/pixel');
+  await hash(page, '/');
   await imageInput(page).setInputFiles(fixture('images/gradient.png'));
   await selected(page, 'ANSI');
   await hash(page, '/ansi');
+  expect(await stepsSinceLoad(page)).toBe(0);
 
-  await page.goBack();
-  await selected(page, 'PIXEL');
+  await tab(page, 'PIXEL').click();   // tabs are steps again, with something open
   await hash(page, '/pixel');
+  await page.goBack();
+  await selected(page, 'ANSI');
 });
 
-test('a phone at #/social is on the art tab', async ({ page }) => {
+test('a phone at #/social is on the start screen with nothing open', async ({ page }) => {
   await noteHistoryAtLoad(page);
   await page.setViewportSize({ width: 390, height: 800 });
   await page.goto('/#/social');
-  await selected(page, 'PIXEL');
-  await hash(page, '/pixel');
+  await startScreen(page);
+  await hash(page, '/');
   expect(await stepsSinceLoad(page)).toBe(0);
 });
 
