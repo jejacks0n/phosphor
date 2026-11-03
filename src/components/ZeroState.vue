@@ -29,7 +29,7 @@ function onFileSelected(e) {
     <div v-if="ready" class="drop-zone">
       <div class="logo"></div>
       <span class="icon">⬆</span>
-      <p>Drop an image or {{ PROJECT_EXTENSION }} file here to start</p>
+      <p>Drop an image, {{ PROJECT_EXTENSION }} or ANSI file here to start</p>
       <label>
         <span class="mobile">Upload File to Start</span>
         <span class="desktop">Browse Files</span>

@@ -76,7 +76,7 @@ and it opens as a new document, with its art on the base layer.
 - **The art is the base layer**, as if you'd used Merge down: every cell keeps its character and colors, so
   it looks just as the file does. Opening a file isn't an edit, so there's nothing to undo. The color
   sliders, the palette and Bake work on it as they do on any picture.
-- **The palette** follows the file: CGA when it only uses the 16 classic colors, otherwise full color.
+- **The palette** follows the file: CGA when every color is one of the 16 classic colors written as a 16-color code, otherwise full color.
 - **SAUCE** fills the SAUCE tab: title, author, group, date, comments, font name and the 9px font setting.
   Your display font stays as you have it.
 - **Bright backgrounds** are kept bright. Blink isn't shown.
