@@ -23,3 +23,35 @@ test('Threshold splits the picture into its dark and light colors; Posterize and
   await adjustments(page).getByRole('slider', { name: 'Posterize' }).fill('4');
   await expect(readout(page, 'Posterize')).toHaveText('4');
 });
+
+// White point starts at the slider's far end. On a computer the label row shows the value and the tooltip takes no
+// room, so it doesn't hang past the row; on a phone, where the finger covers the label row, it shows while dragging.
+const tooltip = (page, name) => adjustments(page).locator('.field').filter({ has: page.getByRole('slider', { name, exact: true }) }).locator('.value-tooltip');
+const wrapper = (page, name) => adjustments(page).locator('.range-wrapper').filter({ has: page.getByRole('slider', { name, exact: true }) });
+
+test('White point\'s hidden tooltip takes no room at the slider\'s far end', async ({ page }) => {
+  await openApp(page);
+  await expect(tooltip(page, 'White point')).toBeHidden();
+  expect(await wrapper(page, 'White point').evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
+});
+
+test.describe('on a phone', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+  test('a slider\'s tooltip shows while it\'s held, and hides after', async ({ page }) => {
+    await openApp(page);
+    await page.getByTitle('Toggle settings').click();
+    const slider = adjustments(page).getByRole('slider', { name: 'White point' });
+    await slider.scrollIntoViewIfNeeded();
+    await expect(slider).toBeInViewport();
+    await expect(tooltip(page, 'White point')).toBeHidden();
+    const box = await slider.boundingBox();
+    await page.waitForFunction(({ x, y }) => document.elementFromPoint(x, y)?.matches('input[type=range]'), // the drawer has finished sliding in
+      { x: box.x + box.width - 4, y: box.y + box.height / 2 });
+    await page.mouse.move(box.x + box.width - 4, box.y + box.height / 2);
+    await page.mouse.down();
+    await expect(tooltip(page, 'White point')).toBeVisible();
+    await page.mouse.up();
+    await expect(tooltip(page, 'White point')).toBeHidden();
+  });
+});

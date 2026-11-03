@@ -340,8 +340,10 @@ legend button.fold span.on {
   white-space: nowrap;
 }
 
+/* The label row shows the value, so the tooltip is gone (display, not visibility: hidden, so it takes no room;
+   at a slider's far end it would hang past the row). */
 :deep(span.value-tooltip) {
-  visibility: hidden !important;
+  display: none;
 }
 
 @media (max-width: 768px) {
@@ -349,8 +351,9 @@ legend button.fold span.on {
     height: 100dvh;
   }
 
-  :deep(input[type=range]:active + span.value-tooltip) {
-    visibility: visible !important;
+  /* A phone's finger covers the label row's value: the tooltip shows while dragging. */
+  :deep(span.value-tooltip) {
+    display: block;
   }
 }
 </style>
