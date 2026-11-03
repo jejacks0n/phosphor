@@ -6,6 +6,9 @@
 import { hex2rgb, rgb2hex, nearestColor } from './ColorUtils.js';
 import { ctx2d } from './Canvas.js';
 
+const clamp01 = (c) => Math.max(0, Math.min(1, c));
+const round8 = (c) => Math.round(c * 255) / 255; // as an 8-bit pixel holds it, like the shader's round8
+
 function rgb2hsv(r, g, b) {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -34,9 +37,27 @@ function hsv2rgb(h, s, v) {
   }
 }
 
-// Applies brightness/contrast/saturation/hue/invert/colorize to `data` (Uint8ClampedArray) in place.
-// Transparent pixels (alpha === 0) are skipped. Matches the GLSL applyCSSFilters order.
-export function applyTransforms(data, brightness, contrast, saturation, hue, invert, colorize = '#ff00ff', colorizeStrength = 0) {
+// Whether any color adjustment is off neutral (a setting not given is neutral).
+export function transformsOn(params) {
+  const n = (key, neutral) => parseFloat(params[key] ?? neutral) !== neutral;
+  return n('brightness', 100) || n('contrast', 100) || n('saturation', 100) || n('hue', 0) || n('invert', 0) || n('colorizeStrength', 0)
+    || n('levelsBlack', 0) || n('levelsWhite', 255) || n('levelsMid', 1) || parseFloat(params.posterize ?? 1) > 1 || n('threshold', 0);
+}
+
+// Applies the color adjustments in `params` (levels, brightness, contrast, colorize, saturation, hue, invert,
+// posterize, threshold; one not given is neutral) to `data` (Uint8ClampedArray) in place. Transparent pixels
+// (alpha === 0) are skipped. Matches the GLSL applyCSSFilters order.
+export function applyTransforms(data, params) {
+  const {
+    brightness = 100, contrast = 100, saturation = 100, hue = 0, invert = 0, colorize = '#ff00ff', colorizeStrength = 0,
+    levelsBlack = 0, levelsWhite = 255, levelsMid = 1, posterize = 1, threshold = 0, thresholdDark = '#000000', thresholdLight = '#ffffff',
+  } = params;
+  const lo = parseFloat(levelsBlack) / 255, hi = parseFloat(levelsWhite) / 255, gamma = parseFloat(levelsMid);
+  const levels = lo !== 0 || hi !== 1 || gamma !== 1;
+  const span = Math.max(hi - lo, 1 / 255);
+  const steps = parseFloat(posterize) - 1;
+  const cut = parseFloat(threshold) * 10000; // against 2126 R + 7152 G + 722 B, as the shader does
+  const [dark, light] = [thresholdDark, thresholdLight].map((hex) => { const { r, g, b } = hex2rgb(hex); return [r / 255, g / 255, b / 255]; });
   const br = parseFloat(brightness) / 100;
   const ct = parseFloat(contrast) / 100;
   const sa = parseFloat(saturation) / 100;
@@ -56,6 +77,13 @@ export function applyTransforms(data, brightness, contrast, saturation, hue, inv
     let r = data[i] / 255;
     let g = data[i + 1] / 255;
     let b = data[i + 2] / 255;
+
+    // Levels
+    if (levels) {
+      r = clamp01((r - lo) / span) ** (1 / gamma);
+      g = clamp01((g - lo) / span) ** (1 / gamma);
+      b = clamp01((b - lo) / span) ** (1 / gamma);
+    }
 
     // Brightness
     r *= br; g *= br; b *= br;
@@ -88,10 +116,24 @@ export function applyTransforms(data, brightness, contrast, saturation, hue, inv
     r = r * (1 - inv) + (1 - r) * inv;
     g = g * (1 - inv) + (1 - g) * inv;
     b = b * (1 - inv) + (1 - b) * inv;
+    r = clamp01(r); g = clamp01(g); b = clamp01(b);
 
-    data[i]     = Math.round(Math.max(0, Math.min(1, r)) * 255);
-    data[i + 1] = Math.round(Math.max(0, Math.min(1, g)) * 255);
-    data[i + 2] = Math.round(Math.max(0, Math.min(1, b)) * 255);
+    // Posterize and Threshold decide on 8-bit colors, as the shader does (see there).
+    if (steps > 0.5 || cut > 0) {
+      r = round8(r); g = round8(g); b = round8(b);
+      // Posterize
+      if (steps > 0.5) {
+        r = round8(Math.floor(r * steps + 0.5) / steps);
+        g = round8(Math.floor(g * steps + 0.5) / steps);
+        b = round8(Math.floor(b * steps + 0.5) / steps);
+      }
+      // Threshold
+      if (cut > 0) [r, g, b] = 2126 * Math.round(r * 255) + 7152 * Math.round(g * 255) + 722 * Math.round(b * 255) >= cut ? light : dark;
+    }
+
+    data[i]     = Math.round(clamp01(r) * 255);
+    data[i + 1] = Math.round(clamp01(g) * 255);
+    data[i + 2] = Math.round(clamp01(b) * 255);
   }
 }
 
@@ -105,7 +147,7 @@ export function bakedCanvas(canvas, params) {
   const ctx = ctx2d(out);
   ctx.drawImage(canvas, 0, 0);
   const pixels = ctx.getImageData(0, 0, out.width, out.height);
-  applyTransforms(pixels.data, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
+  applyTransforms(pixels.data, params);
   ctx.putImageData(pixels, 0, 0);
   return out;
 }
@@ -115,7 +157,7 @@ export function bakedCanvas(canvas, params) {
 export function effectiveColor(hex, params, palette = null) {
   const rgb = hex2rgb(hex);
   const data = new Uint8ClampedArray([rgb.r, rgb.g, rgb.b, 255]);
-  applyTransforms(data, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
+  applyTransforms(data, params);
   const transformed = { r: data[0], g: data[1], b: data[2] };
   if (!palette || !palette.length) return { ...transformed, hex: rgb2hex(transformed), c: [transformed.r, transformed.g, transformed.b] };
   const { r, g, b, c } = nearestColor(transformed, palette);
@@ -141,7 +183,7 @@ export function paletteChoices(params, palette) {
   let o = 0;
   for (const r of levels) for (const g of levels) for (const b of levels) data.set([r, g, b, 255], (o++) * 4);
   const grid = data.slice();
-  applyTransforms(data, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
+  applyTransforms(data, params);
 
   const best = new Map(); // palette hex -> { hex, d }: the grid color nearest it that displays as it
   for (let i = 0; i < data.length; i += 4) {

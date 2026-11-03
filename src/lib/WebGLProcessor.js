@@ -27,6 +27,11 @@ const FRAGMENT_SHADER = `
     uniform float uInvert;
     uniform vec3 uColorize;
     uniform float uColorizeStrength;
+    uniform vec3 uLevels;        // black point, white point (0-1), midtones (gamma)
+    uniform float uPosterize;    // steps per channel; 1 or less is off
+    uniform float uThreshold;    // the brightness that's light (0-255); 0 is off
+    uniform vec3 uThresholdDark;
+    uniform vec3 uThresholdLight;
     uniform float uSharpen;
     uniform float uBlur;    // Gaussian radius, in a pass of its own
     uniform vec2 uBlurDir;  // the pass's direction: (1, 0) across, then (0, 1) down
@@ -68,6 +73,13 @@ const FRAGMENT_SHADER = `
     // --- Filters ---
 
     vec3 applyCSSFilters(vec3 color) {
+        // Levels: the black and white points stretched to 0 and 1, then the midtones bent (gamma). Left
+        // alone at neutral, so the picture is exactly as it was.
+        if (uLevels != vec3(0.0, 1.0, 1.0)) {
+            color = clamp((color - uLevels.x) / max(uLevels.y - uLevels.x, 1.0 / 255.0), 0.0, 1.0);
+            color = pow(color, vec3(1.0 / uLevels.z));
+        }
+
         // Brightness
         color *= uBrightness;
 
@@ -92,8 +104,23 @@ const FRAGMENT_SHADER = `
 
         // Invert
         color = mix(color, 1.0 - color, uInvert);
+        color = clamp(color, 0.0, 1.0);
 
-        return clamp(color, 0.0, 1.0);
+        // Posterize and Threshold decide on 8-bit colors, so the JavaScript twin (PixelTransforms) decides the same:
+        // no 8-bit channel sits on a posterize step's edge, and Threshold's brightness is whole numbers (2126 R +
+        // 7152 G + 722 B against the level x 10000), exact in either.
+        if (uPosterize > 1.5 || uThreshold > 0.0) {
+            color = round8(color);
+            // Posterize: each channel to its nearest of the steps.
+            if (uPosterize > 1.5) color = round8(floor(color * (uPosterize - 1.0) + 0.5) / (uPosterize - 1.0));
+            // Threshold: light at or above the level, dark under it.
+            if (uThreshold > 0.0) {
+                float brightness = dot(floor(color * 255.0 + 0.5), vec3(2126.0, 7152.0, 722.0));
+                color = brightness >= uThreshold * 10000.0 ? uThresholdLight : uThresholdDark;
+            }
+        }
+
+        return color;
     }
 
     void main() {
@@ -454,6 +481,11 @@ export default class WebGLProcessor {
       setUniform('uInvert', (params.invert ?? 0) / 100);
       setUniform('uColorize', params.colorize ?? [1, 0, 1]);
       setUniform('uColorizeStrength', (params.colorizeStrength ?? 0) / 100);
+      setUniform('uLevels', params.levels ?? [0, 1, 1]);
+      setUniform('uPosterize', params.posterize ?? 1);
+      setUniform('uThreshold', params.threshold ?? 0);
+      setUniform('uThresholdDark', params.thresholdDark ?? [0, 0, 0]);
+      setUniform('uThresholdLight', params.thresholdLight ?? [1, 1, 1]);
       setUniform('uSharpen', (params.sharpen ?? 0) / 100);
       setUniform('uFlatten', params.flatten ?? 0);
       setUniform('uEdges', params.edges ?? 0);

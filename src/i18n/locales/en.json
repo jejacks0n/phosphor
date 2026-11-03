@@ -38,7 +38,8 @@
     "artist": "artist",
     "invited": "invited",
     "muted": "muted",
-    "untitled": "untitled"
+    "untitled": "untitled",
+    "off": "Off"
   },
   "legal": {
     "titles": {
@@ -210,9 +211,35 @@
       "label": "Contrast",
       "help": "Pushes lights and darks further apart, or brings them closer."
     },
+    "levelsBlack": {
+      "label": "Black point",
+      "help": "Tones at or below this become black, and the rest spread out to fill the range."
+    },
+    "levelsWhite": {
+      "label": "White point",
+      "help": "Tones at or above this become white, and the rest spread out to fill the range."
+    },
+    "levelsMid": {
+      "label": "Midtones",
+      "help": "Lifts the middle tones (above 1) or deepens them (below 1) without moving black or white."
+    },
     "saturation": {
       "label": "Saturation",
       "help": "Boosts color intensity or pulls it toward grayscale."
+    },
+    "posterize": {
+      "label": "Posterize",
+      "help": "Cuts each color channel to this many steps, for flat, poster-like color."
+    },
+    "threshold": {
+      "label": "Threshold",
+      "help": "Splits the picture in two: tones at or above this level take the light color, the rest the dark one."
+    },
+    "thresholdDark": {
+      "label": "Dark color"
+    },
+    "thresholdLight": {
+      "label": "Light color"
     },
     "blur": {
       "label": "Blur",

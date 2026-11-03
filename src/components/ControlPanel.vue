@@ -151,12 +151,16 @@ const charsetName = computed(() => {
             @update:model-value="store.setSlider(slider.key, $event)"
             @commit="store.commitSliders(slider.key, $event)"
         >
+          <!-- Its colors: Edges' one, Threshold's dark and light. -->
           <input
-              v-if="slider.companion"
+              v-for="key in [slider.companion ?? []].flat()"
+              :key="key"
               type="color"
-              :value="store[slider.companion]"
-              @input="store.setSlider(slider.companion, $event.target.value)"
-              @change="store.commitSliders(slider.companion)"
+              :aria-label="getSetting(key).label"
+              :title="getSetting(key).label"
+              :value="store[key]"
+              @input="store.setSlider(key, $event.target.value)"
+              @change="store.commitSliders(key)"
           >
         </RangeField>
       </fieldset>

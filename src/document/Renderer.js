@@ -17,7 +17,7 @@
  * that aren't adjusted, so a sharpened block can differ a little.)
  */
 import { processImage, processedImage, adjustedPixels, getPaletteColors, workingScale, fittingScale } from '../lib/ImageProcessor.js';
-import { applyTransforms } from '../lib/PixelTransforms.js';
+import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
@@ -295,8 +295,8 @@ export default class Renderer {
     scratchCtx.drawImage(layer.canvas, x * k, y * k, aw * k, ah * k, x, y, aw, ah); // the grid's part (a layer can reach past it)
 
     const pixels = scratchCtx.getImageData(x, y, aw, ah);
-    if (transforms(params)) {
-      applyTransforms(pixels.data, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
+    if (transformsOn(params)) {
+      applyTransforms(pixels.data, params);
       scratchCtx.putImageData(pixels, x, y);
     }
     ctx.drawImage(this.#scratch, x, y, aw, ah, x, y, aw, ah);
@@ -510,7 +510,7 @@ function baseGridPart(layer, params, palette, area, stored) {
   fullCtx.drawImage(layer.canvas, area.x * k, area.y * k, w * k, h * k, 0, 0, w * k, h * k);
   const raw = fullCtx.getImageData(0, 0, w * k, h * k).data;
   const pixels = new ImageData(new Uint8ClampedArray(raw), w * k, h * k), d = pixels.data;
-  if (transforms(params)) applyTransforms(d, params.brightness, params.contrast, params.saturation, params.hue, params.invert, params.colorize, params.colorizeStrength);
+  if (transformsOn(params)) applyTransforms(d, params);
   if (palette) {
     const snapped = adjustedPixels(full, params);
     for (let i = 0; i < d.length; i += 4) {
@@ -532,13 +532,8 @@ function baseGridPart(layer, params, palette, area, stored) {
 }
 
 // The color settings a layer is drawn with.
-const COLOR_KEYS = ['brightness', 'contrast', 'saturation', 'hue', 'invert', 'colorize', 'colorizeStrength'];
-
-// Whether any color transform is off neutral.
-function transforms(params) {
-  return parseFloat(params.brightness) !== 100 || parseFloat(params.contrast) !== 100 || parseFloat(params.saturation) !== 100
-    || parseFloat(params.hue) !== 0 || parseFloat(params.invert) !== 0 || parseFloat(params.colorizeStrength) !== 0;
-}
+const COLOR_KEYS = ['brightness', 'contrast', 'saturation', 'hue', 'invert', 'colorize', 'colorizeStrength',
+  'levelsBlack', 'levelsWhite', 'levelsMid', 'posterize', 'threshold', 'thresholdDark', 'thresholdLight'];
 
 // RGBA pixels w*k x h*k averaged to w x h, a k x k block per pixel (every step-th pixel, as
 // Canvas.drawManual samples), colors weighted by alpha so an empty pixel adds nothing.

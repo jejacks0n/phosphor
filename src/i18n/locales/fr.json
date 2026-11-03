@@ -38,7 +38,8 @@
     "artist": "artiste",
     "invited": "invité",
     "muted": "masqué",
-    "untitled": "sans titre"
+    "untitled": "sans titre",
+    "off": "Désactivé"
   },
   "legal": {
     "titles": {
@@ -210,9 +211,35 @@
       "label": "Contraste",
       "help": "Écarte davantage les tons clairs et sombres, ou les rapproche."
     },
+    "levelsBlack": {
+      "label": "Point noir",
+      "help": "Les tons à ce niveau ou en dessous deviennent noirs, et les autres s'étalent pour remplir la gamme."
+    },
+    "levelsWhite": {
+      "label": "Point blanc",
+      "help": "Les tons à ce niveau ou au-dessus deviennent blancs, et les autres s'étalent pour remplir la gamme."
+    },
+    "levelsMid": {
+      "label": "Tons moyens",
+      "help": "Éclaircit les tons moyens (au-dessus de 1) ou les assombrit (en dessous de 1) sans déplacer le noir ni le blanc."
+    },
     "saturation": {
       "label": "Saturation",
       "help": "Augmente l'intensité des couleurs ou tend vers des niveaux de gris."
+    },
+    "posterize": {
+      "label": "Postériser",
+      "help": "Réduit chaque canal de couleur à ce nombre de paliers, pour des couleurs plates façon affiche."
+    },
+    "threshold": {
+      "label": "Seuil",
+      "help": "Coupe l'image en deux : les tons à ce niveau ou au-dessus prennent la couleur claire, les autres la sombre."
+    },
+    "thresholdDark": {
+      "label": "Couleur sombre"
+    },
+    "thresholdLight": {
+      "label": "Couleur claire"
     },
     "blur": {
       "label": "Flou",
