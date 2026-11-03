@@ -1,6 +1,6 @@
 // A host's reload keeps the room: it comes back at the same address with its art, chat and numbers, the
 // watchers wait and see it, and a room that ended meanwhile says so. Every reload accepts the page-closing prompt.
-import { test, expect, tab, store, chars, editAt, settled } from './support.js';
+import { test, expect, tab, store, chars, editAt, settled, autosaved } from './support.js';
 import { fakeRoom, fakeServer, member, ROOM_ID, ARTIST, shown, tile, goLive, watching, selected, hash, asked, chat, outOfRoom, live, joins, invitedPage, invitation, mayDraw as mayDrawOf } from './social-support.js';
 
 const AWAY = 'Your room closed while you were away.';
@@ -31,6 +31,7 @@ async function hostingOnPixel(host, room, options) {
   await expect(messages(host)).toHaveCount(1);
   await tab(host, 'PIXEL').click();
   await hash(host, `/pixel?room=${ROOM_ID}`);
+  await autosaved(host);   // its tests reload
   host.on('dialog', (dialog) => dialog.accept());
   return server;
 }

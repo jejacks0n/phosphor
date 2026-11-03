@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { test, expect, openApp, imageInput, saveAs, store, tab, chars, cellPoint, settled } from './support.js';
+import { test, expect, openApp, imageInput, saveAs, store, tab, chars, cellPoint, settled, autosaved } from './support.js';
 
 const animateSwitch = (page) => page.getByRole('switch', { name: 'Animate' });
 const bar = (page) => page.getByRole('toolbar', { name: 'Animation' });
@@ -409,6 +409,7 @@ test('saving a project and opening it brings the frames back', async ({ page }) 
 test('a Version restored brings its frames back', async ({ page }) => {
   await page.clock.install();
   await openApp(page);
+  await autosaved(page);   // the opening write, which makes no Version: edits before it would go with it
   await animateSwitch(page).check();
   await type(page, 2, 2, 'A');
   await addFrame(page, 'Blank');
@@ -462,6 +463,7 @@ test('the Ghost slider sets the strength, and it’s remembered', async ({ page 
   await bar(page).getByRole('button', { name: 'Ghost' }).click();
   await expect(slider).toBeDisabled();
   await bar(page).getByRole('button', { name: 'Ghost' }).click();
+  await autosaved(page);
   await page.reload();
   await expect(page.locator('.ansi-editor .display')).toBeVisible();
   await animateSwitch(page).check();
