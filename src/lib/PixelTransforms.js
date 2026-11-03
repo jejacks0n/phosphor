@@ -1,7 +1,6 @@
-// JS port of the GLSL applyCSSFilters shader in WebGLProcessor.js.
-// Applies the same brightness/contrast/saturation/hue/invert transforms to a
-// raw Uint8ClampedArray (from ImageData) so the edit layer can be transformed
-// to match the pipeline output without relying on ctx.filter (no Safari < 18 support).
+// JS port of the GLSL applyCSSFilters shader in WebGLProcessor.js: the same color adjustments on a raw
+// Uint8ClampedArray (from ImageData), so the edit layer, the colors cells keep, the chips and Bake match the
+// pipeline's picture (without ctx.filter: no Safari < 18 support).
 
 import { hex2rgb, rgb2hex, nearestColor } from './ColorUtils.js';
 import { ctx2d } from './Canvas.js';
@@ -9,32 +8,20 @@ import { ctx2d } from './Canvas.js';
 const clamp01 = (c) => Math.max(0, Math.min(1, c));
 const round8 = (c) => Math.round(c * 255) / 255; // as an 8-bit pixel holds it, like the shader's round8
 
+const fract = (x) => x - Math.floor(x);
+
+// The shader's rgb2hsv and hsv2rgb, line for line: Brightness and Contrast can push a color past full or below zero
+// before Colorize, Saturation and Hue read it, and there only the shader's own math gives the shader's colors.
 function rgb2hsv(r, g, b) {
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const d = max - min;
-  let h;
-  if (d === 0) h = 0;
-  else if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-  else if (max === g) h = (b - r) / d + 2;
-  else h = (r - g) / d + 4;
-  return [h / 6, max === 0 ? 0 : d / max, max];
+  const [px, py, pz, pw] = g >= b ? [g, b, 0, -1 / 3] : [b, g, -1, 2 / 3];
+  const [qx, qy, qz, qw] = r >= px ? [r, py, pz, px] : [px, py, pw, r];
+  const d = qx - Math.min(qw, qy), e = 1e-10;
+  return [Math.abs(qz + (qw - qy) / (6 * d + e)), d / (qx + e), qx];
 }
 
 function hsv2rgb(h, s, v) {
-  const i = Math.floor(h * 6);
-  const f = h * 6 - i;
-  const p = v * (1 - s);
-  const q = v * (1 - f * s);
-  const t = v * (1 - (1 - f) * s);
-  switch (i % 6) {
-    case 0: return [v, t, p];
-    case 1: return [q, v, p];
-    case 2: return [p, v, t];
-    case 3: return [p, q, v];
-    case 4: return [t, p, v];
-    case 5: return [v, p, q];
-  }
+  const channel = (k) => v * (1 + (clamp01(Math.abs(fract(h + k) * 6 - 3) - 1) - 1) * s);
+  return [channel(1), channel(2 / 3), channel(1 / 3)];
 }
 
 // Whether any color adjustment is off neutral (a setting not given is neutral).
@@ -61,7 +48,7 @@ export function applyTransforms(data, params) {
   const br = parseFloat(brightness) / 100;
   const ct = parseFloat(contrast) / 100;
   const sa = parseFloat(saturation) / 100;
-  const hu = (parseFloat(hue) / 360) % 1;
+  const hu = parseFloat(hue) / 360;
   const inv = parseFloat(invert) / 100;
   const cStr = parseFloat(colorizeStrength) / 100;
 
@@ -93,23 +80,19 @@ export function applyTransforms(data, params) {
     g = (g - 0.5) * ct + 0.5;
     b = (b - 0.5) * ct + 0.5;
 
-    // Colorize (Applied before saturation/hue/invert to match GLSL order if we put it there)
-    // Actually, in the fragment shader, I should decide where it goes.
-    // Usually it replaces saturation/hue or is applied instead.
+    // Colorize: the colorize color's hue and saturation at this color's brightness.
     if (cStr > 0) {
-      const [, , v] = rgb2hsv(Math.max(0, r), Math.max(0, g), Math.max(0, b));
+      const [, , v] = rgb2hsv(r, g, b);
       const [cr, cg, cb] = hsv2rgb(targetH, targetS, v);
       r = r * (1 - cStr) + cr * cStr;
       g = g * (1 - cStr) + cg * cStr;
       b = b * (1 - cStr) + cb * cStr;
     }
 
-    // Saturation & Hue
+    // Saturation & Hue (the shader takes every color through HSV and back; at neutral that gives the color back).
     if (sa !== 1 || hu !== 0) {
-      const [h, s, v] = rgb2hsv(Math.max(0, r), Math.max(0, g), Math.max(0, b));
-      const nh = (h + hu + 1) % 1;
-      const ns = Math.max(0, s * sa);
-      [r, g, b] = hsv2rgb(nh, ns, v);
+      const [h, s, v] = rgb2hsv(r, g, b);
+      [r, g, b] = hsv2rgb(fract(h + hu), s * sa, v);
     }
 
     // Invert
