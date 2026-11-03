@@ -10,6 +10,7 @@
  */
 import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
+import { isShapeKey, shapeFromStranger, isGoodShapeKey, MOST_SHAPES } from './shapes.js';
 import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf, maxFramesFor } from '../lib/Cells.js';
 
 export const FRAME_KINDS = ['blank', 'duplicate', 'wipe'];
@@ -104,14 +105,17 @@ export function paintImage(resolved, cols, rows) {
 }
 
 // Frames as a file holds them: an entry is [key, cell, top, bottom]. drawn: the cells drawn over that changes doesn't
-// hold, if any (what changes holds was drawn, or the frame wouldn't own it).
+// hold, if any (what changes holds was drawn, or the frame wouldn't own it). shapes: the frame's shape changes,
+// [key, shape | null], in a field of their own so that a copy of Phosphor from before shapes still reads changes.
 export const serializeFrames = (frames) => frames.map((frame) => {
   const { kind, hold, changes } = frame, drawn = [...drawnKeys(frame)].filter((key) => !changes.has(key));
+  const all = [...changes], shapes = all.filter(([key]) => isShapeKey(key));
   return {
     kind,
     hold,
-    changes: Array.from(changes, ([key, { cell, top, bottom }]) => [key, cell, top, bottom]),
+    changes: all.filter(([key]) => !isShapeKey(key)).map(([key, { cell, top, bottom }]) => [key, cell, top, bottom]),
     ...(drawn.length && { drawn }),
+    ...(shapes.length && { shapes: shapes.map(([key, { cell }]) => [key, cell]) }),
   };
 });
 
@@ -136,6 +140,19 @@ function readChanges(entries) {
   return changes;
 }
 
+// A frame's shape changes into its changes, or false when any is bad.
+function readShapes(entries, changes) {
+  if (entries === undefined) return true;
+  if (!Array.isArray(entries) || entries.length > 2 * MOST_SHAPES) return false;
+  for (const entry of entries) {
+    if (!Array.isArray(entry) || entry.length !== 2 || !isGoodShapeKey(entry[0])) return false;
+    const shape = entry[1] === null ? null : shapeFromStranger(entry[1]);
+    if (entry[1] !== null && !shape) return false;
+    changes.set(entry[0], shape ? cellState(shape, 0, 0) : EMPTY_STATE);
+  }
+  return true;
+}
+
 // { frames, frame, fps } from a file, or null when anything's wrong with them, or the grid (cols, rows) is too
 // large to animate: the file's still holds what it needs to open as one. Files are untrusted.
 export function deserializeFrames(json, cols, rows) {
@@ -146,10 +163,10 @@ export function deserializeFrames(json, cols, rows) {
   if (!(cols * charRowsOf(rows) <= MAX_ANIMATION_CELLS) || frames.length > maxFramesFor(cols * charRowsOf(rows))) return null;
   const read = [];
   for (const entry of frames) {
-    const { kind, hold, changes, drawn } = entry ?? {};
+    const { kind, hold, changes, drawn, shapes } = entry ?? {};
     if (!FRAME_KINDS.includes(kind) || !Number.isFinite(hold) || hold < 0 || hold > 60) return null;
     const map = readChanges(changes);
-    if (!map) return null;
+    if (!map || !readShapes(shapes, map)) return null;
     if (drawn !== undefined && !(Array.isArray(drawn) && drawn.length <= MAX_CELLS && drawn.every(goodKey))) return null;
     const next = newFrame(kind, map);
     next.hold = hold;

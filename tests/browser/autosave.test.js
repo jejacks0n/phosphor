@@ -1633,3 +1633,22 @@ test('a flush answers whether what\'s open is written', async () => {
   await project.setBlankCanvas();
   expect(await autosave.flush()).toBe(false);
 });
+
+test('autosave brings shapes back, and drawing a shape counts as an edit', async () => {
+  const { rectShape } = await import('@/document/shapes.js');
+  const { project } = await opened();
+  const key = project.addShape(rectShape(2, 2, 12, 10, { fill: '#ff0000' }));
+  await pass(SAVE_AFTER_MS);
+  expect(writeLatest).toHaveBeenCalledTimes(1);
+  const { record } = await readLatest(project.documentId);
+  expect(record.dirty).toBe(true);
+  expect([...(await readProject(new Blob([record.rest]))).shapes.keys()]).toEqual([key]);
+  await settle(project);
+  const cells = project.cells.map((c) => c.char + c.fg.hex + c.bg.hex);
+  await leave();
+
+  const back = await mounted();
+  await settle(back.project);
+  expect([...back.project.shapes.keys()]).toEqual([key]);
+  expect(back.project.cells.map((c) => c.char + c.fg.hex + c.bg.hex)).toEqual(cells);
+});

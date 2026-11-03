@@ -202,6 +202,7 @@ export function useAutosave() {
     () => project.documentId,
     () => project.editVersion,
     () => project.editCells, // a typing run changes these long before its commit changes editVersion
+    () => project.shapes, // and a Pen's shape these
     () => settingsJson(project),
     () => project.filename,
     () => project.imageBuffer, // merging into the image swaps it

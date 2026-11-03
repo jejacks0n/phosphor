@@ -72,6 +72,19 @@ describe('save, then load', () => {
     expect(snapshot(project)).toEqual(before);
   });
 
+  test('with shapes: a saved and opened project shows the same cells, its shapes still shapes', async () => {
+    const { rectShape, ellipseShape } = await import('@/document/shapes.js');
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+    project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000', stroke: '#ffffff', width: 1.5 }));
+    project.addShape(ellipseShape(8, 6, 26, 24, { fill: '#0044aa' }));
+    await settle(project);
+    const before = { ...snapshot(project), shapes: JSON.stringify([...project.shapes]) };
+    await project.loadProject(await save(project));
+    await settle(project);
+    expect({ ...snapshot(project), shapes: JSON.stringify([...project.shapes]) }).toEqual(before);
+  });
+
   test('a moved block of the base comes back the same (the base is saved at its scale)', async () => {
     const { project } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 30, rows: 30 }); // 3 pixels per grid pixel
