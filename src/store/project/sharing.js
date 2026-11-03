@@ -43,6 +43,7 @@ export const DRAWING_ACTIONS = [
   'writeEditCells', 'clearEditCells', 'flipCell', 'flipPaint', 'clearEditLayer',
   'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'deleteInWand', 'recolorSelection', 'moveSelection',
   'deleteIn', 'pasteAt', 'pasteBase', 'selectionEdit',
+  'addShape', 'updateShapes', 'deleteShapes', 'restackShapes', 'penPoint', 'penBack',
   'undo', 'redo',
 ];
 

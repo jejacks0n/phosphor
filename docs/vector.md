@@ -26,6 +26,13 @@ Each frame has its own shapes: a Blank frame carries the shapes before it, as it
 there makes it that frame's ([Animation](animation.md)). On VECTOR, the outlines of the shapes a Blank frame
 carries show dimmed. Playing and the exports show each frame's shapes.
 
+## Rooms
+
+In a room, everyone drawing can draw and change shapes, and everyone sees them as they're drawn. A shape is one
+piece of the drawing, like a cell: when two people change the same shape at once, the change heard last is the one
+that stays, and undo takes back only your own changes (yours to a shape someone has changed since stays theirs).
+Bake and Merge down are the host's. Watchers see the art the shapes make.
+
 ## Saving
 
 Shapes are saved as shapes: a `.phosphor` file, autosave and Versions keep them editable, and an animation's

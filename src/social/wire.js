@@ -72,6 +72,7 @@ import { MAX_COLS, MAX_LINES, MAX_CELLS } from '../lib/Cells.js';
 import { usableChar } from '../lib/CharWidth.js';
 import { clampAnsiZoom } from '../lib/zoom.js';
 import { writeProject, readProject } from '../document/projectIO.js';
+import { isGoodShapeKey, isShapeKey, sameShape, shapeFromStranger } from '../document/shapes.js';
 
 export const CHUNK_BYTES = 65536;
 // An artist's message (and the host's numbered one) is a message like any other.
@@ -254,7 +255,7 @@ function goodEntry(entry) {
 
 // The change in an artist's message, or null (nothing thrown) when anything in it isn't one the app
 // could have made on a grid of cols x rows cells over a paint layer layerWidth x layerHeight: a cell off
-// the grid, one that can't be drawn, a run off the layer, a stroke id that isn't short text. The same
+// the grid, one that can't be drawn, a shape that isn't one, a run off the layer, a stroke id that isn't short text. The same
 // arrays come back, so what's sent on as numbered is what was sent.
 export function readChange(msg, { cols, rows, layerWidth, layerHeight }) {
   if (!msg || typeof msg !== 'object') return null;
@@ -262,6 +263,11 @@ export function readChange(msg, { cols, rows, layerWidth, layerHeight }) {
   if (!isStroke(stroke) || !Array.isArray(cells) || !Array.isArray(runs)) return null;
   for (const cell of cells) {
     if (!Array.isArray(cell) || cell.length !== 2 || typeof cell[0] !== 'string') return null;
+    if (isShapeKey(cell[0])) { // a shape (or null, its deletion), exactly as the app makes one
+      if (!isGoodShapeKey(cell[0])) return null;
+      if (cell[1] !== null && !sameShape(shapeFromStranger(cell[1]), cell[1])) return null;
+      continue;
+    }
     const at = placeOf(cell[0]);
     if (!at || at[0] >= cols || at[1] >= rows) return null;
     if (cell[1] !== null && !(cell[1] && goodEntry(cell[1]))) return null;
