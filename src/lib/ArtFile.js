@@ -43,6 +43,9 @@ export function readArtFile(bytes, name) {
   const { items, cp437 } = decode(bytes.subarray(0, artEndOf(bytes)), name);
   const fixed = sauce && sauce.dataType === 1 && sauce.width > 0 ? sauce.width : extensionOf(name) === 'ans' ? 80 : 0; // 0: no wrapping
 
+  const end = items.indexOf('\x1a');
+  const crOnly = !items.slice(0, end < 0 ? items.length : end).some((item) => item === '\n' || item === '\r\n'); // no LF in the art: a CR ends the line
+
   const lines = new Map(); // row -> sparse array of cells
   let widest = 0; // the widest line reached, used when there's no fixed width
   let maxRow = -1; // the last line a character or erase reached
@@ -169,8 +172,8 @@ export function readArtFile(bytes, name) {
       if (!/^[?=<>]/.test(text)) csi(text === '' ? [] : text.split(';').map((s) => parseInt(s, 10) || 0), items[j]);
       i = j;
     } else if (code === 26) break;
+    else if (code === 10 || (code === 13 && crOnly)) { col = 0; row++; pending = false; }
     else if (code === 13 || item === '\r\n') { col = 0; pending = false; if (item === '\r\n') { row++; } }
-    else if (code === 10) { col = 0; row++; pending = false; }
     else if (code === 9) { col = clampCol((col & ~7) + 8); pending = false; }
     else if (code === 8) { col = Math.max(0, col - 1); pending = false; }
     else if (code === 7) continue;
