@@ -760,6 +760,27 @@ test('the Node tool shows a shape\'s gradient\'s handles with its points; recolo
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBeNull();
 });
 
+test('Node: a gradient\'s end on a corner is taken first; a click again there takes the point, and a drag then moves it', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0],
+    fill: { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [20, 0, 0, 20, 10, 10] },
+    points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
+  await page.mouse.dblclick(...Object.values(await gridPoint(page, 20, 15)));
+  await expect(page.locator('.ansi-status .hint')).toContainText('again for the handle under it');
+  const picked = () => store(page, 'workspace', (w) => [w.vectorPoint, w.vectorStop]);
+  const corner = await gridPoint(page, 10, 10);
+  await page.mouse.click(corner.x, corner.y);
+  expect(await picked()).toEqual([null, 0]);
+  await page.mouse.click(corner.x, corner.y);
+  expect(await picked()).toEqual([0, null]);
+  await dragPoints(page, corner, await gridPoint(page, 6, 6));
+  const [shape] = await shapeList(page);
+  expect(shape.points[0].slice(0, 2).map(Math.round)).toEqual([6, 6]);
+  expect(shape.fill.m).toEqual([20, 0, 0, 20, 10, 10]);
+});
+
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

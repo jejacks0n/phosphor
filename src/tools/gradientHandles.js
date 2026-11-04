@@ -74,31 +74,35 @@ export function removeStop(project, workspace) {
   workspace.vectorStop = null;
 }
 
-// A press on the gradient's handles (true: the drag is theirs), or false.
+// Where a press finds the gradient's handles: its ends and stops in reach (candidates: { id, d, stop, take },
+// d in CSS px, take starting the drag; a stop at an end is the end's), else its line (line: take or null).
 export const gradientDrag = {
-  begin({ project, workspace, unit }, pos, radius) {
+  candidates({ project, workspace, unit }, pos, radius) {
     const key = gradientKey(project, workspace), shape = key && project.shapes.get(key);
-    if (shape) {
-      const slot = gradientSlot(shape, workspace), { p0, p1, stops } = gradientHandles(shape, slot), radial = shape[slot].type === 'radial';
-      const stopNear = (p) => stops.find((s) => near(s.at, p, unit, 1))?.i; // a stop at that end
-      let hit = null;
-      if (near(pos, p1, unit, radius)) hit = { kind: 'end', which: 1, stop: stopNear(p1) };
-      else if (near(pos, p0, unit, radius)) hit = { kind: radial ? 'move' : 'end', which: 0, stop: stopNear(p0) };
-      else {
-        const stop = stops.find((s) => near(s.at, pos, unit, radius));
-        if (stop) hit = { kind: 'stop', stop: stop.i };
-        else {
-          const on = along(p0, p1, pos, unit);
-          if (on.off <= radius && on.t > 0 && on.t < 1) hit = { kind: 'line', t: on.t };
-        }
-      }
-      if (hit) {
-        project.beginEdit();
-        drag = { ...hit, key, slot, start: shape, at: pos, moved: false };
-        return true;
-      }
-    }
-    return false;
+    if (!shape) return [];
+    const slot = gradientSlot(shape, workspace), { p0, p1, stops } = gradientHandles(shape, slot), radial = shape[slot].type === 'radial';
+    const stopNear = (p) => stops.find((s) => near(s.at, p, unit, 1))?.i; // a stop at that end
+    const take = (hit) => () => {
+      project.beginEdit();
+      drag = { ...hit, key, slot, start: shape, at: pos, moved: false };
+      return true;
+    };
+    const handle = (id, at, hit) => ({ id, d: Math.hypot((at.x - pos.x) * unit.x, (at.y - pos.y) * unit.y), stop: hit.stop, take: take(hit) });
+    return [
+      handle('g1', p1, { kind: 'end', which: 1, stop: stopNear(p1) }),
+      handle('g0', p0, { kind: radial ? 'move' : 'end', which: 0, stop: stopNear(p0) }),
+      ...stops.filter((s) => !near(s.at, p0, unit, 1) && !near(s.at, p1, unit, 1)).map((s) => handle(`s${s.i}`, s.at, { kind: 'stop', stop: s.i })),
+    ].filter((c) => c.d <= radius);
+  },
+
+  line({ project, workspace, unit }, pos, radius) {
+    const key = gradientKey(project, workspace), shape = key && project.shapes.get(key);
+    if (!shape) return false;
+    const slot = gradientSlot(shape, workspace), { p0, p1 } = gradientHandles(shape, slot), on = along(p0, p1, pos, unit);
+    if (on.off > radius || on.t <= 0 || on.t >= 1) return false;
+    project.beginEdit();
+    drag = { kind: 'line', t: on.t, key, slot, start: shape, at: pos, moved: false };
+    return true;
   },
 
   get active() {
