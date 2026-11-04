@@ -386,7 +386,8 @@
       "title": "Node",
       "mode": "Edit",
       "points": "Edit points",
-      "gradient": "Place gradient"
+      "gradient": "Place gradient",
+      "kind": "Kind"
     },
     "pen": {
       "title": "Pen"
@@ -1383,9 +1384,6 @@
     "gradientLabel": "Gradient",
     "gradientSlotTitle": "Which gradient's handles show",
     "joinTooBig": "A shape can have at most {count} points.",
-    "editPoints": "Edit points",
-    "editPointsTitle": "Edit the shape's points and curves with the Node tool (A)",
-    "points": "Points",
     "deleteTitle": "Delete the selected shapes",
     "pasteTitle": "Paste the copied shapes ({key})",
     "selectHint": "Drag to move, the handles to scale, the knob to rotate",
@@ -1398,7 +1396,7 @@
     "deletePointTitle": "Delete the selected point",
     "deleteStopTitle": "Delete the gradient's selected stop",
     "pointsHint": "Drag a point or a handle; click the outline to add a point; Esc or empty canvas to finish",
-    "gradientHint": "Drag across the shape for a gradient (Alt: radial); drag its line, ends or stops; click the line to add a stop",
+    "gradientHint": "Drag across the shape for a gradient (Alt: the other kind); drag its line, ends or stops; click the line to add a stop",
     "deleteStop": "Delete stop"
   }
 }

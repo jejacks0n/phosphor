@@ -80,12 +80,6 @@ const gradientOf = (slot) => {
   workspace.vectorStop = null;
 };
 
-const editPoints = () => {
-  workspace.setActiveTool('vnode');
-  workspace.vectorNodeMode = 'points';
-  workspace.vectorPoints = selected.value[0];
-  workspace.vectorPoint = null;
-};
 </script>
 
 <template>
@@ -135,13 +129,11 @@ const editPoints = () => {
     </template>
     <template v-if="editing">
       <div class="divider"/>
-      <button v-if="phone" class="text" :title="t('vector.editPointsTitle')" @click="editPoints">{{ t('vector.points') }}</button>
-      <template v-else>
+      <template v-if="!phone">
         <button class="text" :title="t('vector.forwardTitle')" @click="forward">{{ t('vector.forward') }}</button>
         <button class="text" :title="t('vector.backTitle')" @click="back">{{ t('vector.back') }}</button>
         <button class="text" :title="t('vector.joinTitle')" :disabled="selected.length < 2" @click="join">{{ t('vector.join') }}</button>
         <button class="text" :title="t('vector.separateTitle')" :disabled="!canSeparate" @click="separate">{{ t('vector.separate') }}</button>
-        <button class="text" :title="t('vector.editPointsTitle')" @click="editPoints">{{ t('vector.editPoints') }}</button>
         <button class="text" :title="t('vector.deleteTitle')" aria-keyshortcuts="Delete Backspace" @click="remove">{{ t('common.delete') }}</button>
         <span class="hint">{{ t('vector.selectHint') }}</span>
       </template>

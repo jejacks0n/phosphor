@@ -710,6 +710,7 @@ test('Node\'s Place gradient shows a shape\'s gradient\'s handles; recoloring a 
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vselect');
   await expect(page.getByRole('dialog', { name: /Keyboard shortcuts/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Gradient', exact: true })).toHaveCount(0); // no tool of its own
+  await expect(page.locator('.vector-options').getByRole('button', { name: 'Edit points', exact: true })).toHaveCount(0); // a double-click or A does
   await page.mouse.dblclick(...Object.values(await gridPoint(page, 12, 12)));
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vnode');
   await page.getByRole('button', { name: 'Place gradient', exact: true }).click();
@@ -774,19 +775,36 @@ test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shap
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  test('the options row is Stroke width, Points and ⋯', async ({ page }) => {
+  test('the options row is Stroke width and ⋯', async ({ page }) => {
     await openApp(page);
     await tab(page, 'VECTOR').click();
     const key = await addRect(page, 4, 4, 14, 14);
     await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
     const row = page.locator('.vector-options');
-    await expect(row.getByRole('button', { name: 'Points', exact: true })).toBeVisible();
+    await expect(row.getByRole('button', { name: 'More', exact: true })).toBeVisible();
+    await expect(row.getByRole('button', { name: 'Points', exact: true })).toHaveCount(0); // a double tap or A edits points
     await expect(row.getByRole('button', { name: 'Fill', exact: true })).toHaveCount(0);
     await expect(row.getByLabel('Stroke width', { exact: true })).toBeVisible();
     await expect(row.getByRole('button', { name: 'Forward', exact: true })).toHaveCount(0);
     await expect(row.locator('.hint')).toHaveCount(0);
     await row.getByRole('button', { name: 'More', exact: true }).click();
     for (const name of ['Forward', 'Back', 'Delete']) await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+  });
+
+  test('Place gradient\'s Radial makes a radial gradient by touch', async ({ page }) => {
+    await openApp(page);
+    await tab(page, 'VECTOR').click();
+    await settled(page);
+    const [cx, cy] = await store(page, 'project', (p) => [Math.round(p.cols / 2), Math.round(p.rows / 2)]); // the middle: what a phone's screen shows
+    await addRect(page, cx - 4, cy - 4, cx + 4, cy + 4);
+    await store(page, 'workspace', (w) => { w.setActiveTool('vnode'); w.vectorNodeMode = 'gradient'; });
+    await page.getByRole('button', { name: 'Radial', exact: true }).click();
+    const [from, to] = [await gridPoint(page, cx - 2, cy), await gridPoint(page, cx + 2, cy)];
+    expect(from.x).toBeGreaterThan(0);
+    await dragPoints(page, from, to);
+    const { fill } = (await shapeList(page))[0];
+    expect(fill.type).toBe('radial');
+    expect(fill.m.map(Math.round)).toEqual([4, 0, 0, 4, cx - 2, cy]);
   });
 });
 

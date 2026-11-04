@@ -102,15 +102,15 @@ export const gradientDrag = {
     return false;
   },
 
-  // A drag across the shape at key: its gradient drawn from the press to the pointer, linear (radial with Alt at
-  // the press: the press its middle, the pointer its edge; Shift: straight or at 45°), its stops kept or, from a
+  // A drag across the shape at key: its gradient drawn from the press to the pointer, workspace.vectorGradientKind's
+  // kind (Alt at the press: the other; a radial's middle the press, its edge the pointer; Shift: straight or at 45°), its stops kept or, from a
   // color, that color to the background color, as the color box's are. The fill's, or the outline's when the
   // shape has no fill (or Stroke is chosen for its gradients). A click changes nothing.
   draw({ project, workspace }, key, pos, event) {
     const shape = project.shapes.get(key), chosen = workspace.vectorGradientSlot;
     const slot = isGradient(shape[chosen]) ? chosen : shape.closed && (shape.fill || !shape.stroke) ? 'fill' : 'stroke';
     project.beginEdit();
-    drag = { kind: 'draw', key, slot, start: shape, at: pos, moved: false, radial: !!event?.altKey };
+    drag = { kind: 'draw', key, slot, start: shape, at: pos, moved: false, radial: (workspace.vectorGradientKind === 'radial') !== !!event?.altKey };
     return true;
   },
 

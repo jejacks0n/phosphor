@@ -67,6 +67,14 @@ export default {
         { value: 'gradient', get label() { return t('tools.vnode.gradient'); } },
       ],
     },
+    {
+      key: 'vectorGradientKind', get label() { return t('tools.vnode.kind'); }, type: 'segmented',
+      choices: [
+        { value: 'linear', get label() { return t('vector.linear'); } },
+        { value: 'radial', get label() { return t('vector.radial'); } },
+      ],
+      when: (ws) => ws.vectorNodeMode === 'gradient',
+    },
   ],
 
   begin(ctx, pos, event) {

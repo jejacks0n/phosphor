@@ -535,6 +535,15 @@ test('the Node tool\'s Place gradient: a drag across a shape gives it a gradient
   drag({ x: 20, y: 12 }, { x: 20, y: 16 }, { altKey: true });
   expect(fill()).toMatchObject({ type: 'radial', stops: [[0, '#ff0000'], [1, '#0000ff']] });
   expect(ends()).toEqual([[20, 12], [20, 16]]);
+  // Radial chosen: radial without Alt, and Alt then makes it linear.
+  workspace.vectorGradientKind = 'radial';
+  drag({ x: 14, y: 12 }, { x: 18, y: 12 });
+  expect(fill().type).toBe('radial');
+  drag({ x: 14, y: 17 }, { x: 18, y: 17 }, { altKey: true });
+  expect(fill().type).toBe('linear');
+  workspace.vectorGradientKind = 'linear';
+  project.undo();
+  project.undo();
   // Shift: straight across.
   workspace.isShiftPressed = true;
   drag({ x: 14, y: 14 }, { x: 26, y: 16 });
