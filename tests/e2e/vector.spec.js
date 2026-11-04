@@ -458,6 +458,52 @@ test('the Stroke panel sets caps, joins and the miter limit on the selection and
   expect(await height()).toBe(ansi);
 });
 
+test('the Fill color box makes a gradient and takes it back to solid', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const bg = await store(page, 'workspace', (w) => w.editBgColor);
+  const key = await addRect(page, 10, 10, 20, 20);
+  await page.locator('.color-pair .chip.fg').click();
+  const box = page.locator('.color-popover');
+  await expect(box.getByRole('button', { name: 'Linear', exact: true })).toBeDisabled(); // nothing selected: the next shape's fill is solid
+  await page.keyboard.press('Escape');
+  await page.mouse.click(...Object.values(await gridPoint(page, 11, 11)));
+  expect(await selected(page)).toEqual([key]);
+  await page.locator('.color-pair .chip.fg').click();
+  await expect(box.getByRole('button', { name: 'Solid', exact: true })).toHaveAttribute('aria-pressed', 'true');
+
+  await box.getByRole('button', { name: 'Linear', exact: true }).click();
+  const fill = async () => (await shapeList(page))[0].fill;
+  // Across the shape's box, left to right, from its color to the background color.
+  expect(await fill()).toEqual({ type: 'linear', stops: [[0, '#ff0000'], [1, bg]], m: [10, 0, 0, 10, 10, 15] });
+  await expect(page.locator('.color-pair .chip.fg')).toHaveAttribute('style', /linear-gradient/);
+  await expect(page.locator('.color-pair .chip.fg')).toHaveAttribute('title', /^Fill: linear gradient/);
+  await box.getByRole('button', { name: 'Radial', exact: true }).click();
+  // From the middle to the farthest corner, its stops kept.
+  const radial = await fill();
+  expect(radial).toMatchObject({ type: 'radial', stops: [[0, '#ff0000'], [1, bg]] });
+  expect(radial.m.map((v) => Math.round(v * 100) / 100)).toEqual([7.07, 0, 0, 7.07, 15, 15]);
+  await expect(page.locator('.color-pair .chip.fg')).toHaveAttribute('style', /radial-gradient/);
+  await box.getByRole('button', { name: 'Solid', exact: true }).click();
+  expect(await fill()).toBe('#ff0000'); // its first stop
+
+  await page.keyboard.press('Escape');
+  await undoSteps(page, 1);
+  expect((await fill()).type).toBe('radial');
+  await undoSteps(page, 1);
+  expect((await fill()).type).toBe('linear');
+  await undoSteps(page, 1);
+  expect(await fill()).toBe('#ff0000');
+
+  // Swapping a gradient's Fill and Stroke: the stroke takes its first stop.
+  await page.locator('.color-pair .chip.fg').click();
+  await box.getByRole('button', { name: 'Linear', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('ControlOrMeta+Shift+x');
+  expect((await shapeList(page))[0]).toMatchObject({ fill: null, stroke: '#ff0000' });
+});
+
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

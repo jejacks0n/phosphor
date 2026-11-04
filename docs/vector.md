@@ -68,9 +68,11 @@ their points into line with the cells, recolor them, or change them from frame t
 - **Colors are the file's.** Black art lands black: paint the background first, or recolor the shapes with the
   Fill and Stroke chips.
 - **What comes in:** paths (every command, arcs included), rectangles (rounded too), circles, ellipses, lines,
-  polylines and polygons, inside groups, nested SVGs and `use`; every transform; solid fills and strokes from
+  polylines and polygons, inside groups, nested SVGs and `use`; every transform; fills and strokes from
   attributes, `style` attributes and style sheets, inherited as SVG has them; fill rules, caps, joins and miter
-  limits. Each element is one shape, and a path of several parts is one shape of several outlines, its holes
+  limits; linear and radial gradient fills (with their focal points, either units, their transforms and
+  gradients that take from others; reflect and repeat come in as plain), a gradient outline as its first color.
+  Each element is one shape, and a path of several parts is one shape of several outlines, its holes
   kept.
 - **What doesn't:** text, images, filters, masks, clipping, patterns, markers and dashes (a dashed line comes in
   solid). When something is left out, a message says what. For text, convert it to curves (or paths) in the app
@@ -147,6 +149,23 @@ Shift+Ctrl+X) swaps each shape's Fill and Stroke. With the Pen or the Shape tool
 nothing selected, they're what the next shape gets. Until you change them, the next shape is filled with the
 foreground color and has no outline; a shape with neither gets the foreground color as its fill. ANSI's and
 PIXEL's colors are left as they were.
+
+### Gradient fills
+
+A fill can be a **gradient**: linear (bands of color across the shape) or radial (rings from a middle point
+out). It moves, scales and turns with its shape, and goes through the palette and dithering as any color does.
+On the Fill side of the color box, with shapes selected:
+
+- **Linear** makes the fill a gradient across the shape's box, left to right, from the fill's color to the
+  background color. **Radial** makes it one from the box's middle out to its farthest corner. Switching between
+  the two keeps the colors.
+- **Solid** makes it a single color again: the gradient's first color. Picking any color in the box does the
+  same, with that color.
+- Each is one undo step. With nothing selected they're off: the next shape's fill is always a single color.
+- The Fill chip shows the gradient's colors. Swapping Fill and Stroke gives the outline the gradient's first
+  color, since an outline is always a single color.
+
+Gradients from an SVG file come in as gradients ([Importing SVG](#importing-svg)).
 
 ## The options row
 

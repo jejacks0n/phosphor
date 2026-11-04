@@ -5,7 +5,7 @@ import {
   makeShape, sameShape, isShape, isShapeKey, newShapeKey, pathData, shapeBounds, dirtyRect, worldPoints,
   multiply, invert, apply, rotation, scaling, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
   moveHandle, setSmooth, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
-  outlines, withOutlines, locate, allPoints, strokeOf, STROKE_DEFAULTS, withShape, movePoint, joined, separated, styleColors,
+  outlines, withOutlines, locate, allPoints, strokeOf, STROKE_DEFAULTS, withShape, movePoint, joined, separated, styleColors, fillAs,
 } from '../../src/document/shapes.js';
 import { changeBytes } from '../../src/document/changes.js';
 import { MOST_CHANGE_BYTES } from '../../src/social/wire.js';
@@ -378,4 +378,22 @@ test('gradient fills validate and round trip', () => {
   bad([linear]);
   // A gradient can't be a stroke.
   assert.equal(shapeFromStranger({ ...base, fill: null, stroke: linear }), null);
+});
+
+test('fillAs makes a fill solid, linear or radial over the shape\'s box', () => {
+  const shape = makeShape({ points: sq(10, 20), closed: true, fill: '#ff0000' });
+  const colors = { from: '#00ff00', to: '#000000' };
+  const linear = fillAs(shape, 'linear', colors);
+  assert.deepEqual(linear, { type: 'linear', stops: [[0, '#ff0000'], [1, '#000000']], m: [10, 0, 0, 10, 10, 15] });
+  // Radial keeps the stops; Solid is the first stop.
+  const radial = fillAs({ ...shape, fill: linear }, 'radial', colors);
+  assert.deepEqual(radial.stops, linear.stops);
+  assert.deepEqual(radial.m.map((v) => Math.round(v * 100) / 100), [7.07, 0, 0, 7.07, 15, 15]);
+  assert.equal(fillAs({ ...shape, fill: radial }, 'solid', colors), '#ff0000');
+  assert.equal(fillAs({ ...shape, fill: radial }, 'radial', colors), radial);
+  // No fill: from the color given. A line straight down: top to bottom, and a valid gradient.
+  const line = makeShape({ points: [[5, 0, 0, 0, 0, 0, 0], [5, 30, 0, 0, 0, 0, 0]], closed: false, fill: null, stroke: '#ffffff' });
+  const down = fillAs(line, 'linear', colors);
+  assert.deepEqual(down, { type: 'linear', stops: [[0, '#00ff00'], [1, '#000000']], m: [0, 30, -30, 0, 5, 0] });
+  assert.ok(shapeFromStranger({ ...line, fill: down }));
 });

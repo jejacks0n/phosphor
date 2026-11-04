@@ -6,7 +6,7 @@
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { STROKE_DEFAULTS, strokeOf, withShape } from '@/document/shapes.js';
+import { STROKE_DEFAULTS, fillAs, isGradient, strokeOf, withShape } from '@/document/shapes.js';
 
 export function useVectorStyle() {
   const project = useProjectStore();
@@ -32,7 +32,19 @@ export function useVectorStyle() {
     project.updateShapes(selected.value.map((key) => [key, withShape(project.shapes.get(key), { [slot]: v })]));
     if (remember) finish();
   };
-  // Each shape's Fill and Stroke trade places (Shift+Cmd/Ctrl+X, as the pair's colors do elsewhere).
+  // The selected shapes' fill made Solid, Linear or Radial (fillAs: a color goes from itself to the background
+  // color); one step. With nothing selected the next shape's fill stays solid: a gradient needs a box to sit in.
+  const fillKind = computed(() => (first.value && isGradient(first.value.fill) ? first.value.fill.type : 'solid'));
+  const setFillKind = (kind) => {
+    if (!editing.value) return;
+    const colors = { from: workspace.editFgColor, to: workspace.editBgColor };
+    project.updateShapes(selected.value.map((key) => {
+      const shape = project.shapes.get(key);
+      return [key, withShape(shape, { fill: fillAs(shape, kind, colors) })];
+    }));
+  };
+  // Each shape's Fill and Stroke trade places (Shift+Cmd/Ctrl+X, as the pair's colors do elsewhere); a gradient
+  // goes to the stroke as its first stop's color.
   const swap = () => {
     if (!editing.value) {
       const { fill, stroke } = workspace.vectorStyle;
@@ -40,9 +52,9 @@ export function useVectorStyle() {
     }
     project.updateShapes(selected.value.map((key) => {
       const shape = project.shapes.get(key);
-      return [key, withShape(shape, { fill: shape.stroke, stroke: shape.fill })];
+      return [key, withShape(shape, { fill: shape.stroke, stroke: fillAs(shape, 'solid', {}) })];
     }));
   };
 
-  return { selected, editing, first, value, set, finish, swap };
+  return { selected, editing, first, value, set, finish, swap, fillKind, setFillKind };
 }
