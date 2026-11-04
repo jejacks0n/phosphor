@@ -138,3 +138,19 @@ test('removing points down to none leaves no shape and no undo step', async () =
   expect(project.shapes.size).toBe(0);
   expect(steps(project)).toBe(before);
 });
+
+test('a shape the Pen finishes is selected, as the Shape tool\'s is; one with under two points leaves the selection as it was', async () => {
+  const { project, workspace } = await drawing();
+  const before = project.addShape({ z: 0, closed: true, fill: '#00ff00', stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0], points: [[1, 1, 0, 0, 0, 0, 0], [3, 1, 0, 0, 0, 0, 0], [3, 3, 0, 0, 0, 0, 0]] });
+  workspace.vectorSelected = [before];
+  const key = project.penPoint(4, 4);
+  project.penPoint(20, 4);
+  expect(workspace.vectorSelected).toEqual([before]); // while it's drawn
+  project.finishPen({ closed: false });
+  expect(workspace.vectorSelected).toEqual([key]);
+
+  workspace.vectorSelected = [before];
+  project.penPoint(10, 10);
+  project.finishPen();
+  expect(workspace.vectorSelected).toEqual([before]);
+});

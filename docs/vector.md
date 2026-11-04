@@ -174,7 +174,8 @@ or a gradient goes where the pointer is.
 - Choosing another tool or tab, moving to another frame or a save also leave it an open curve. Holding a
   tool for a moment (the Hand on Space) doesn't.
 
-The whole shape is one undo step.
+A finished shape is selected, as the Shape tool's is, so the color pair changes it. The whole shape is one undo
+step.
 
 ## Shape (U)
 
@@ -189,7 +190,7 @@ On VECTOR the color pair is the shapes' **Fill** (the front chip) and **Stroke**
 selected, it shows the first one's colors, and a color picked there (the palette, the recent colors, a color
 of your own, or **None**) goes to every selected shape, as one undo step. It's the color box the other tabs
 have, with Fill and Stroke for FG and BG: Alt+F and Alt+B open it, and its **Swap** (or Shift+Cmd+X,
-Shift+Ctrl+X) swaps each shape's Fill and Stroke. A shape the Shape tool just drew is selected, so a
+Shift+Ctrl+X) swaps each shape's Fill and Stroke. A shape the Pen or the Shape tool just drew is selected, so a
 change goes to it; with the Pen or the Shape tool, the next shape gets it too. While the Pen is drawing a shape,
 or with nothing selected, they're what the next shape gets. Until you change them, the next shape is filled with the
 foreground color and has no outline; a shape with neither gets the foreground color as its fill. ANSI's and
