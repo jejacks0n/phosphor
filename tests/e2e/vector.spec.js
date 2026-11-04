@@ -811,7 +811,7 @@ test('Node: a gradient\'s end on a corner is taken first; a click again there ta
   expect(shape.fill.m).toEqual([20, 0, 0, 20, 10, 10]);
 });
 
-test('Vector select shows one shape\'s gradient: a click again on its end picks the stop there, which the Fill box recolors and Delete removes; Esc keeps the shape', async ({ page }) => {
+test('Vector select shows one shape\'s gradient: a click on its end, over a scale handle, picks the stop there, which the Fill box recolors and Delete removes; Esc keeps the shape', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await settled(page);
@@ -824,8 +824,10 @@ test('Vector select shows one shape\'s gradient: a click again on its end picks 
   await expect(page.locator('.vector-overlay .stop')).toHaveCount(3);
   await expect(page.locator('.ansi-status .hint')).toContainText('again for the handle under it');
 
-  // The right end, on the right scale handle: a click is the handle's, a click again the end's stop.
+  // The right end, on the right scale handle: a click is the end's stop, a click again the handle's.
   const end = await gridPoint(page, 30, 15);
+  await page.mouse.click(end.x, end.y);
+  expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(2);
   await page.mouse.click(end.x, end.y);
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBeNull();
   await page.mouse.click(end.x, end.y);
@@ -841,7 +843,6 @@ test('Vector select shows one shape\'s gradient: a click again on its end picks 
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(1);
   await page.locator('.vector-options').getByRole('button', { name: 'Delete', exact: true }).click();
   expect((await shapeList(page))[0].fill.stops).toEqual([[0, '#ff0000'], [1, '#00ff00']]);
-  await page.mouse.click(end.x, end.y);
   await page.mouse.click(end.x, end.y);
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(1);
   await page.keyboard.press('Escape');

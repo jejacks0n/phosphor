@@ -3,7 +3,7 @@
 // step (selectShapes). Then drag inside the box to move (Shift: straight across, up and down, or at 45°), a handle to scale (Shift keeps the proportions)
 // or the knob above it to rotate (Shift: one shape to angles in steps of 15°, several by them). A second click on a shape edits its points with the
 // Node tool (vnode.js). One shape selected, its gradient's ends and stops show and drag as the Node tool's do
-// (gradientHandles.js; a click on a stop selects it), a box handle first where one is on another (handlePick: a
+// (gradientHandles.js; a click on a stop selects it), ahead of the box's handles where they're near (handlePick: a
 // click again takes the next one there). Each drag is one edit, worked out each move from the shapes as they were at the press,
 // so nothing drifts. Keys: arrows nudge a grid pixel (Shift: 10), Delete or Backspace deletes (the selected stop,
 // or else the shapes), Esc lets the stop go or deselects.
@@ -155,7 +155,7 @@ export default {
       return true;
     };
     if (box && !shift) {
-      // The box's handles and the knob, then (one shape) its gradient's: the nearest, or a click again's.
+      // The box's handles and the knob, and (one shape) its gradient's, which come first; or a click again's.
       const { handles, knob } = boxHandles(box, unit), letStop = () => { workspace.vectorStop = null; };
       const d = (p) => Math.hypot((p.x - pos.x) * unit.x, (p.y - pos.y) * unit.y);
       const own = [{ id: 'knob', d: d(knob), take: () => at('rotate'), picked: letStop }, ...handles.map((h, handle) => ({ id: `h${handle}`, d: d(h), take: () => at('scale', { handle }), picked: letStop }))];

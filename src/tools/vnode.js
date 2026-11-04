@@ -2,7 +2,7 @@
 // points, its curve handles or (once it's being edited) its outline: drag a point or a handle (Alt: the handle
 // alone, broken from its partner; Shift: on a line across, up and down or at 45°), click the outline to add a
 // point there, click empty canvas to stop. A shape with a gradient (made in the color box) shows its handles too
-// (gradientHandles.js). A press takes the point or handle nearest it (on a tie, the gradient's), else the
+// (gradientHandles.js). A press takes the gradient's handle in reach, else the point or handle nearest it, else the
 // gradient's line, else the outline; with no zoom to part handles on top of each other, a click again in the same
 // place takes the next one there (pick), and a drag after moves that one. Each drag is one
 // edit, worked out each move from the shape as it was at the press. Keys: Delete or Backspace deletes the
@@ -42,7 +42,7 @@ function pointCandidates(project, workspace, pos, unit, radius, event) {
   return out.filter((c) => c.d <= radius);
 }
 
-// A press on the edited shape's handles, its gradient's or its points' (handlePick: on a tie, the gradient's).
+// A press on the edited shape's handles, its gradient's or its points' (handlePick: the gradient's first).
 function handlesPress(ctx, pos, radius, event) {
   const { project, workspace, unit } = ctx;
   return pick.press([...gradientDrag.candidates(ctx, pos, radius), ...pointCandidates(project, workspace, pos, unit, radius, event)], pos, unit);

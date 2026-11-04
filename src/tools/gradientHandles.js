@@ -94,7 +94,7 @@ export const gradientDrag = {
       workspace.vectorStop = stop ?? null;
       workspace.vectorPoint = null;
     };
-    const handle = (id, at, hit) => ({ id, d: Math.hypot((at.x - pos.x) * unit.x, (at.y - pos.y) * unit.y), picked: picked(hit.stop), take: take(hit) });
+    const handle = (id, at, hit) => ({ id, d: Math.hypot((at.x - pos.x) * unit.x, (at.y - pos.y) * unit.y), first: true, picked: picked(hit.stop), take: take(hit) });
     return [
       handle('g1', p1, { kind: 'end', which: 1, stop: stopNear(p1) }),
       handle('g0', p0, { kind: radial ? 'move' : 'end', which: 0, stop: stopNear(p0) }),
