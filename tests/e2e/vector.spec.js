@@ -861,6 +861,22 @@ test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shap
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  test('the Pen\'s path shows as it\'s tapped out, a line between its first two points before there\'s anything to fill', async ({ page }) => {
+    await openApp(page);
+    await tab(page, 'VECTOR').click();
+    await settled(page);
+    const [cx, cy] = await store(page, 'project', (p) => [Math.round(p.cols / 2), Math.round(p.rows / 2)]); // the middle: what a phone's screen shows
+    await page.keyboard.press('p');
+    const line = page.locator('.vector-overlay path.pen');
+    const a = await gridPoint(page, cx - 4, cy), b = await gridPoint(page, cx + 4, cy);
+    await page.touchscreen.tap(a.x, a.y);
+    await page.touchscreen.tap(b.x, b.y);
+    expect(await store(page, 'workspace', (w) => w.vectorPen)).toBeTruthy();
+    await expect(line).toHaveCount(1);
+    const box = await line.boundingBox();
+    expect(box.width).toBeGreaterThan((b.x - a.x) * 0.9); // from the first point to the second
+  });
+
   test('the options row has every button, as icons, and no hint; Stroke width is in the Stroke box', async ({ page }) => {
     await openApp(page);
     await tab(page, 'VECTOR').click();
