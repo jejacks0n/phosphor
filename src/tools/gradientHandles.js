@@ -1,4 +1,5 @@
-// A gradient's handles, for the Node tool's shape (workspace.vectorPoints) when its fill or stroke is a gradient
+// A gradient's handles, for the Node tool's shape (workspace.vectorPoints) with Place gradient chosen
+// (workspace.vectorNodeMode) when its fill or stroke is a gradient
 // (with both, workspace.vectorGradientSlot's; gradientSlot): a linear one shows a line
 // from its start to its end, a radial one its center and a radius handle, and both a dot for each stop along it
 // (gradientHandles). Drag the line (or a radial's center) to move the gradient, an end (or the radius handle) to
@@ -15,9 +16,9 @@ const MOVED = 2;         // CSS px a press goes before it's a drag, not a click
 let drag = null; // { kind: 'line' | 'move' | 'end' | 'stop' | 'draw', key, slot, start, at, moved, which?, stop?, t?, radial? }
 
 const hasGradient = (shape) => !!shape && (isGradient(shape.fill) || isGradient(shape.stroke));
-// The key of the Node tool's shape when it has a gradient, or null.
+// The key of the Node tool's shape, with Place gradient, when it has a gradient; or null.
 export const gradientKey = (project, workspace) => {
-  const key = workspace.activeTool === 'vnode' && workspace.vectorPoints;
+  const key = workspace.activeTool === 'vnode' && workspace.vectorNodeMode === 'gradient' && workspace.vectorPoints;
   return key && hasGradient(project.shapes.get(key)) ? key : null;
 };
 // Which of its gradients the tool edits: workspace.vectorGradientSlot's when that's one, else the one it has.

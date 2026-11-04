@@ -383,7 +383,10 @@
       "title": "Vector select"
     },
     "vnode": {
-      "title": "Node"
+      "title": "Node",
+      "mode": "Edit",
+      "points": "Edit points",
+      "gradient": "Place gradient"
     },
     "pen": {
       "title": "Pen"
@@ -842,7 +845,7 @@
     },
     "rows": {
       "vselect": "Vector select: pick, move, scale and rotate shapes (double-click: the Node tool)",
-      "vnode": "Node: press a shape to edit its points; drag across it for a gradient; drag a point, a handle or a stop, click the outline to add a point",
+      "vnode": "Node: press a shape to edit its points, drag a point or a handle, click the outline to add one; with Place gradient, drag across a shape for a gradient",
       "pen": "Pen: click for a corner, drag for a curve; click the first point to close",
       "penEnd": "Leave the Pen's shape an open curve",
       "penBack": "Take the Pen's last point away",
@@ -1394,6 +1397,8 @@
     "cornerTitle": "Make the point a sharp corner: its handles go",
     "deletePointTitle": "Delete the selected point",
     "deleteStopTitle": "Delete the gradient's selected stop",
-    "pointsHint": "Drag across the shape for a gradient (Alt: radial); drag a point, a handle or a stop; click the outline to add a point; Esc or empty canvas to finish"
+    "pointsHint": "Drag a point or a handle; click the outline to add a point; Esc or empty canvas to finish",
+    "gradientHint": "Drag across the shape for a gradient (Alt: radial); drag its line, ends or stops; click the line to add a stop",
+    "deleteStop": "Delete stop"
   }
 }

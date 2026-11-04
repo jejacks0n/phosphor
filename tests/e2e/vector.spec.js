@@ -668,9 +668,11 @@ test('the Stroke color box makes a gradient stroke, which the Node tool edits; w
   await expect(page.locator('.color-pair .chip.bg')).toHaveAttribute('style', /linear-gradient/);
   await page.keyboard.press('Escape');
 
-  // Its points edited: the stroke's gradient too, its only one. Its last stop, clicked, then recolored in the Stroke box.
-  await page.mouse.dblclick(...Object.values(await gridPoint(page, 15, 12))); // off the gradient's line: a press there adds a stop
-  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vnode');
+  // Node's Place gradient: the stroke's gradient, its only one. Its last stop, clicked, then recolored in the Stroke box.
+  await page.mouse.dblclick(...Object.values(await gridPoint(page, 15, 12)));
+  expect(await store(page, 'workspace', (w) => [w.activeTool, w.vectorNodeMode])).toEqual(['vnode', 'points']);
+  await expect(page.locator('.vector-overlay .stop')).toHaveCount(0); // Edit points: no gradient handles
+  await page.getByRole('button', { name: 'Place gradient', exact: true }).click();
   await expect(page.locator('.vector-overlay .stop')).toHaveCount(2);
   await page.mouse.click(...Object.values(await gridPoint(page, 20, 15)));
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(1);
@@ -693,7 +695,7 @@ test('the Stroke color box makes a gradient stroke, which the Node tool edits; w
   await expect(page.locator('.vector-overlay .stop').first()).toHaveCSS('fill', 'rgb(0, 255, 0)');
 });
 
-test('editing a shape\'s points shows its gradient\'s handles; recoloring a stop changes the art; G isn\'t a VECTOR tool', async ({ page }) => {
+test('Node\'s Place gradient shows a shape\'s gradient\'s handles; recoloring a stop changes the art; G isn\'t a VECTOR tool', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await settled(page);
@@ -710,7 +712,10 @@ test('editing a shape\'s points shows its gradient\'s handles; recoloring a stop
   await expect(page.getByRole('button', { name: 'Gradient', exact: true })).toHaveCount(0); // no tool of its own
   await page.mouse.dblclick(...Object.values(await gridPoint(page, 12, 12)));
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vnode');
+  await page.getByRole('button', { name: 'Place gradient', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Place gradient', exact: true })).toHaveClass(/\bon\b/);
   await expect(page.locator('.vector-overlay .stop')).toHaveCount(2);
+  await expect(page.locator('.vector-overlay rect.handle')).toHaveCount(2); // the gradient's ends, not the shape's points
 
   // The last stop, clicked: selected; the Fill box sets its color, one step.
   await settled(page);
@@ -735,7 +740,7 @@ test('editing a shape\'s points shows its gradient\'s handles; recoloring a stop
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBeNull();
 });
 
-test('in the Node tool, a drag across a shape gives it a gradient, whose handles then show; undo takes it back', async ({ page }) => {
+test('Node\'s Place gradient: a drag across a shape gives it a gradient, whose handles then show; undo takes it back', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await settled(page);
@@ -743,6 +748,7 @@ test('in the Node tool, a drag across a shape gives it a gradient, whose handles
     points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
   await page.keyboard.press('a');
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vnode');
+  await page.getByRole('button', { name: 'Place gradient', exact: true }).click();
   await settled(page);
   const before = await cells(page);
   await dragPoints(page, await gridPoint(page, 12, 15), await gridPoint(page, 28, 15));

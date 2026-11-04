@@ -49,7 +49,7 @@ const box = computed(() => {
 });
 
 const points = computed(() => {
-  const shape = workspace.vectorPoints && project.shapes.get(workspace.vectorPoints);
+  const shape = workspace.vectorNodeMode === 'points' && workspace.vectorPoints && project.shapes.get(workspace.vectorPoints);
   if (!shape) return null;
   const all = worldPoints(shape).map((p, i) => ({ i, at: px(p), in: p.in && px(p.in), out: p.out && px(p.out) }));
   const arms = all.flatMap((p) => [p.in, p.out].filter(Boolean).map((h, j) => ({ key: `${p.i}.${j}`, from: p.at, to: h })));
