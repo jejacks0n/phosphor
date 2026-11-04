@@ -97,7 +97,7 @@ their points into line with the cells, recolor them, or change them from frame t
   keeps their place; where the frame already has copies of them there, a little right of and below those, so
   you see them land. The options row has the same Copy, Cut and Paste buttons as Select's. The paste is one
   undo step, and goes to whatever frame is showing. Shapes copy within this tab only.
-- Double-click a shape (or press **Edit points**) to edit its points with the Node tool (below).
+- Double-click (or double-tap) a shape to edit its points with the Node tool (below), or press A.
 - The arrow keys nudge the selection a pixel (with Shift, 10). Delete or Backspace deletes it. Esc deselects.
 
 Each drag, nudge or delete is one undo step, and so is each change of what's selected (a click, a box, Esc,
@@ -107,7 +107,7 @@ were selected when it began.
 ## Node (A)
 
 The Node tool edits a shape's points or its gradient: **Edit points** and **Place gradient** in the options row
-choose which (Edit points to start with; a double-click or **Edit points** in Vector select's row goes back to it).
+choose which (Edit points to start with; a double-click in Vector select goes back to it).
 
 ### Edit points
 
@@ -132,8 +132,8 @@ several (a letter's counters, a ring's hole):
 ### Place gradient
 
 Press a shape to edit its gradient ([Gradients](#gradients)). **Drag across a shape** to give it one, from where
-you press to where you let go:
-linear, or radial with Alt (Option on a Mac) held as you press, the press its middle and the let-go its edge.
+you press to where you let go: **Linear** or **Radial**, as chosen beside Place gradient (a radial one's middle
+where you press, its edge where you let go). Alt (Option on a Mac) held as you press makes the other kind.
 Shift keeps it straight across, up and down, or at 45°. From a single color it runs from that color to the
 background color, as the color box's Linear does; a gradient already there keeps its stops and is drawn again.
 It's the fill's, or the outline's when the shape has no fill (or **Stroke** is chosen below). A click without a
@@ -233,11 +233,12 @@ With shapes selected:
 - **Join** makes the selected shapes one shape: the bottom one, with its colors and place, and every outline of
   the rest. An outline inside another becomes a hole, so an "o" and a smaller circle inside it make a ring.
   **Separate** takes a shape of several outlines apart, each outline a shape of its own in the same colors.
-- **Edit points** edits the first shape's points with the Node tool. **Delete** deletes the shapes.
+- **Delete** deletes the shapes.
 
 Each change is one undo step (each press in the Stroke panel too); a Stroke width drag is one step when you let go.
 
-On a phone the row keeps Stroke width, Stroke (its panel the window's width) and **Points**, and puts Forward, Back, Join, Separate and Delete under ⋯.
+On a phone the row keeps Stroke width and Stroke (its panel the window's width), and puts Forward, Back, Join,
+Separate and Delete under ⋯. A double tap on a shape edits its points.
 
 ## Eyedropper (I)
 

@@ -386,7 +386,8 @@
       "title": "Nœud",
       "mode": "Modifier",
       "points": "Modifier les points",
-      "gradient": "Placer un dégradé"
+      "gradient": "Placer un dégradé",
+      "kind": "Type"
     },
     "pen": {
       "title": "Plume"
@@ -1383,9 +1384,6 @@
     "gradientLabel": "Dégradé",
     "gradientSlotTitle": "Le dégradé dont les poignées s'affichent",
     "joinTooBig": "Une forme a au plus {count} points.",
-    "editPoints": "Modifier les points",
-    "editPointsTitle": "Modifier les points et les courbes de la forme avec l'outil Nœud (A)",
-    "points": "Points",
     "deleteTitle": "Supprimer les formes sélectionnées",
     "pasteTitle": "Coller les formes copiées ({key})",
     "selectHint": "Faites glisser pour déplacer, les poignées pour redimensionner, le bouton pour faire pivoter",
@@ -1398,7 +1396,7 @@
     "deletePointTitle": "Supprimer le point sélectionné",
     "deleteStopTitle": "Supprimer l'arrêt sélectionné du dégradé",
     "pointsHint": "Faites glisser un point ou une poignée ; cliquez sur le contour pour ajouter un point ; Échap ou un clic à côté pour terminer",
-    "gradientHint": "Glissez à travers la forme pour un dégradé (Alt : radial) ; faites glisser sa ligne, ses extrémités ou ses arrêts ; cliquez sur la ligne pour ajouter un arrêt",
+    "gradientHint": "Glissez à travers la forme pour un dégradé (Alt : l'autre type) ; faites glisser sa ligne, ses extrémités ou ses arrêts ; cliquez sur la ligne pour ajouter un arrêt",
     "deleteStop": "Supprimer l'arrêt"
   }
 }
