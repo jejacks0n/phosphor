@@ -1,15 +1,18 @@
 // Which shape is under a point, and how near a point is to one's outline: through Path2D on one 2D context
 // kept for it (the shapes' paths in grid pixels; tolerances in grid pixels).
-import { pathData, stacked } from '@/document/shapes.js';
+import { pathData, stacked, strokeOf } from '@/document/shapes.js';
 
 let context = null;
 const ctx = () => (context ??= document.createElement('canvas').getContext('2d'));
 
-// On its fill, or within tol of its outline (or of its stroke's edge).
+// On its fill (under its fill rule: a hole isn't on it), or within tol of its outline (or of its stroke's edge,
+// caps and joins as it draws them).
 export function hitsShape(shape, x, y, tol) {
-  const c = ctx(), path = new Path2D(pathData(shape));
-  if (shape.fill && c.isPointInPath(path, x, y)) return true;
+  const c = ctx(), path = new Path2D(pathData(shape)), { rule, cap, join, miter } = strokeOf(shape);
+  if (shape.fill && c.isPointInPath(path, x, y, rule)) return true;
   c.lineWidth = (shape.stroke ? shape.width : 0) + 2 * tol;
+  if (shape.stroke) Object.assign(c, { lineCap: cap, lineJoin: join, miterLimit: miter });
+  else Object.assign(c, { lineCap: 'round', lineJoin: 'round' });
   return c.isPointInStroke(path, x, y);
 }
 
@@ -23,6 +26,6 @@ export function shapeAt(shapes, x, y, tol) {
 // Whether (x, y) is within tol of the outline alone (its stroke left out): where a point can go on it.
 export function nearOutline(shape, x, y, tol) {
   const c = ctx();
-  c.lineWidth = 2 * tol;
+  Object.assign(c, { lineWidth: 2 * tol, lineCap: 'round', lineJoin: 'round' });
   return c.isPointInStroke(new Path2D(pathData(shape)), x, y);
 }

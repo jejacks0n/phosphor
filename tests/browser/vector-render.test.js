@@ -5,7 +5,8 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
-import { rectShape, ellipseShape, translation, transformed, rotation, setSmooth, withShape, worldPoints } from '@/document/shapes';
+import { makeShape, rectShape, ellipseShape, translation, transformed, rotation, setSmooth, withShape, worldPoints } from '@/document/shapes';
+import { shapeAt } from '@/lib/shapeHits.js';
 import vnode from '@/tools/vnode.js';
 
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
@@ -292,4 +293,46 @@ test('editing a point of a rotated shape moves it where the pointer is, its hand
   vnode.end(ctx);
   expect(workspace.vectorPoints).toBe(null);
   expect(workspace.vectorSelected).toEqual([key]);
+});
+
+const corners = (a, b) => [[a, a, 0, 0, 0, 0, 0], [b, a, 0, 0, 0, 0, 0], [b, b, 0, 0, 0, 0, 0], [a, b, 0, 0, 0, 0, 0]];
+
+test('a ring\'s hole shows what is under it, and a click there misses the ring', async () => {
+  const { project } = await gradient();
+  const bare = key(project.cells);
+  const middle = 7 * project.cols + 14; // grid pixels (14, 14..15)
+  for (const [inner, rule, holed] of [[corners(10, 18), 'evenodd', true], [corners(10, 18).reverse(), undefined, true], [corners(10, 18), undefined, false]]) {
+    const k = project.addShape(makeShape({ points: corners(2, 26), closed: true, more: [[true, inner]], rule, fill: '#ff0000' }));
+    await settle(project);
+    expect(key(project.cells)[middle] === bare[middle]).toBe(holed);
+    expect(at(project, 4, 2).bg.hex).toBe('#ff0000');
+    expect(shapeAt(project.shapes, 14, 14.5, 0.1)).toBe(holed ? null : k);
+    expect(shapeAt(project.shapes, 4, 4.5, 0.1)).toBe(k);
+    expect(key(project.cells)).toEqual(key(fullRebuild(project)));
+    project.deleteShapes([k]);
+  }
+});
+
+test('caps and joins draw as set, and a sharp miter is redrawn where it reaches', async () => {
+  const { project } = await gradient(80, 80); // big enough that a move redraws only its area
+  const bare = key(project.cells);
+  const changed = () => key(project.cells).filter((c, i) => c !== bare[i]).length;
+  const vee = (style) => makeShape({ points: [[6, 24, 0, 0, 0, 0, 0], [14, 10, 0, 0, 0, 0, 0], [22, 24, 0, 0, 0, 0, 0]], closed: false, stroke: '#ff0000', width: 6, ...style });
+  const counts = {};
+  for (const [name, style] of Object.entries({ butt: { cap: 'butt' }, square: { cap: 'square' }, miter: { join: 'miter', miter: 10 }, bevel: { join: 'bevel' } })) {
+    const k = project.addShape(vee(style));
+    await settle(project);
+    counts[name] = changed();
+    if (name === 'miter') {
+      const tip = at(project, 14, 3); // grid pixels (14, 6..7): the miter's tip reaches y 4, a bevel's only 7.4
+      expect([tip.fg.hex, tip.bg.hex]).toContain('#ff0000');
+      project.updateShapes([[k, transformed(project.shapes.get(k), translation(4, 0))]]);
+      await settle(project);
+      const partial = { output: outputKey(project), cells: key(project.cells) };
+      expect(await fromScratch(project)).toEqual(partial); // nothing left behind where the tip was
+    }
+    project.deleteShapes([k]);
+  }
+  expect(counts.square).toBeGreaterThan(counts.butt);
+  expect(counts.miter).toBeGreaterThan(counts.bevel);
 });

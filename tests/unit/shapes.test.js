@@ -299,3 +299,12 @@ test('curveBounds and localBounds cover every outline', () => {
   assert.deepEqual(localBounds(s), { x0: 0, y0: 0, x1: 12, y1: 12 });
   assert.deepEqual(curveBounds(transformed(s, translation(1, 2))), { x0: 1, y0: 2, x1: 13, y1: 14 });
 });
+
+test('shapeBounds pads for miters and square caps', () => {
+  const line = makeShape({ points: [[0, 0, 0, 0, 0, 0, 0], [10, 0, 0, 0, 0, 0, 0]], closed: false, stroke: '#ff0000', width: 4 });
+  assert.equal(shapeBounds(line).x, -2);
+  close(shapeBounds(withShape(line, { cap: 'square' })).x, -2 * Math.SQRT2, 1e-9);
+  assert.equal(shapeBounds(withShape(line, { join: 'miter', miter: 10 })).x, -20);
+  assert.equal(shapeBounds(withShape(line, { join: 'miter' })).x, -8); // the default limit, 4
+  assert.equal(shapeBounds(withShape(line, { stroke: null })).x, 0);
+});

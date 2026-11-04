@@ -195,8 +195,8 @@ function pathBox(shape, m) {
 export const localBounds = (shape) => pathBox(shape, IDENTITY);
 export const curveBounds = (shape) => pathBox(shape, shape.m);
 
-// Grid pixels the shape can draw in: its points' and handles' hull (a cubic stays inside it), with half the
-// stroke around it.
+// Grid pixels the shape can draw in: its points' and handles' hull (a cubic stays inside it), with the stroke
+// around it: half its width, as far as a miter join can reach past a corner, and a square cap past a diagonal end.
 export function shapeBounds(shape) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of worldPoints(shape)) {
@@ -205,7 +205,8 @@ export function shapeBounds(shape) {
       x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y);
     }
   }
-  const pad = shape.stroke ? shape.width / 2 : 0;
+  const { join, cap, miter } = strokeOf(shape);
+  const pad = shape.stroke ? (shape.width / 2) * Math.max(join === 'miter' ? miter : 1, cap === 'square' ? Math.SQRT2 : 1) : 0;
   return { x: x0 - pad, y: y0 - pad, w: x1 - x0 + 2 * pad, h: y1 - y0 + 2 * pad };
 }
 

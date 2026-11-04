@@ -14,7 +14,7 @@
  */
 import { ctx2d } from '../lib/Canvas.js';
 import { charRowsOf } from '../lib/Cells.js';
-import { dirtyRect, pathData, shapeBounds, stacked } from './shapes.js';
+import { dirtyRect, pathData, shapeBounds, stacked, strokeOf } from './shapes.js';
 
 const newCanvas = (w, h) => Object.assign(document.createElement('canvas'), { width: Math.max(1, w), height: Math.max(1, h) });
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -165,18 +165,7 @@ export default class ShapeLayer {
   }
 
   #paint(ctx, shape, k) {
-    const path = this.#path(shape, k);
-    if (shape.fill) {
-      ctx.fillStyle = shape.fill;
-      ctx.fill(path);
-    }
-    if (shape.stroke && shape.width > 0) {
-      ctx.strokeStyle = shape.stroke;
-      ctx.lineWidth = shape.width * k;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.stroke(path);
-    }
+    paintShape(ctx, shape, k, this.#path(shape, k));
   }
 
   // Draw a rect (layer pixels, whole cells, inside the canvas) again: the shapes that meet it, then the base
@@ -232,4 +221,22 @@ function offHalfSteps(ctx, own, width, height) {
     }
   }
   if (moved) ctx.putImageData(image, 0, 0);
+}
+
+// One shape drawn at k canvas pixels per grid pixel (path: its pathData at that scale, as a Path2D): its fill
+// under its fill rule, then its stroke with its width, caps, joins and miter limit.
+export function paintShape(ctx, shape, k, path = new Path2D(pathData(shape, k, k))) {
+  const { rule, cap, join, miter } = strokeOf(shape);
+  if (shape.fill) {
+    ctx.fillStyle = shape.fill;
+    ctx.fill(path, rule);
+  }
+  if (shape.stroke && shape.width > 0) {
+    ctx.strokeStyle = shape.stroke;
+    ctx.lineWidth = shape.width * k;
+    ctx.lineJoin = join;
+    ctx.lineCap = cap;
+    ctx.miterLimit = miter;
+    ctx.stroke(path);
+  }
 }
