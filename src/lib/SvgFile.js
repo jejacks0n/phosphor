@@ -1,16 +1,18 @@
 // An SVG file read as shapes' makings: { width, height, items, left }. The art's size is in user units after the
 // viewBox; each item is one drawn element: its outlines in the element's own units, m the whole transform to the
 // art's viewport (every ancestor's transform, nested viewports, the viewBox), and its paint resolved here (fill and
-// stroke '#rrggbb' or null, the stroke's width in the element's units, the fill rule, cap, join and miter limit).
+// stroke '#rrggbb' or null, a fill maybe a gradient as shapes have them (in the element's units), the stroke's
+// width in the element's units, the fill rule, cap, join and miter limit).
 // left is what couldn't come in, by kind. The file is parsed as data and never put in the page, so nothing in it
 // runs or loads; something that isn't SVG throws with a userMessage.
 import { t } from '@/i18n/index.js';
-import { IDENTITY, multiply, rotation, scaling, translation } from '@/document/shapes.js';
+import { IDENTITY, localBounds, multiply, rotation, scaling, translation } from '@/document/shapes.js';
 import { parsePathData } from '@/lib/svgPath.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const XLINK = 'http://www.w3.org/1999/xlink';
 const MOST_USE_DEPTH = 8;
+const MOST_STOPS = 16;
 
 export const isSvgFile = (name) => /\.svg$/i.test(name);
 
@@ -206,24 +208,80 @@ export function readSvgFile(text) {
     if (/^currentcolor$/i.test(value)) return colorOf(style.color, { color: 'black' });
     return cssColor(value);
   };
-  // A gradient's stops, following its href to the one that has them.
-  const stopsOf = (el, depth = 0) => {
-    const stops = [...el.children].filter((c) => c.localName === 'stop');
-    if (stops.length || depth >= MOST_USE_DEPTH) return stops;
-    const ref = href(el)?.startsWith('#') && byId(href(el).slice(1));
-    return ref && /Gradient$/.test(ref.localName) ? stopsOf(ref, depth + 1) : [];
+  // A gradient and those it takes from through href, nearest first (no loops, no deeper than uses go).
+  const chainOf = (el) => {
+    const chain = [el];
+    for (let ref = el; chain.length <= MOST_USE_DEPTH;) {
+      ref = href(ref)?.startsWith('#') && byId(href(ref).slice(1));
+      if (!ref || !/Gradient$/.test(ref.localName) || chain.includes(ref)) break;
+      chain.push(ref);
+    }
+    return chain;
   };
-  // A fill or stroke: '#rrggbb' or null; a gradient its first stop's color for now.
-  const paint = (value, style, initial) => {
+  // Its stops, [[offset, '#rrggbb'], ...]: the first in the chain that has any; offsets 0 to 1 and in order;
+  // past MOST_STOPS, that many taken evenly.
+  const stopsOf = (chain) => {
+    const els = [...(chain.find((g) => [...g.children].some((c) => c.localName === 'stop'))?.children ?? [])].filter((c) => c.localName === 'stop');
+    const gradientStyle = computed(chain[0], null);
+    let last = 0;
+    const stops = els.map((stop) => {
+      const raw = stop.getAttribute('offset') ?? '0', pct = raw.trim().endsWith('%');
+      const n = Number.parseFloat(raw);
+      const offset = Math.max(last, Math.min(1, Math.max(0, Number.isFinite(n) ? (pct ? n / 100 : n) : 0)));
+      last = offset;
+      const style = computed(stop, gradientStyle);
+      return [offset, colorOf(style['stop-color'], style) ?? '#000000'];
+    });
+    if (stops.length <= MOST_STOPS) return stops;
+    return Array.from({ length: MOST_STOPS }, (_, i) => stops[Math.round((i * (stops.length - 1)) / (MOST_STOPS - 1))]);
+  };
+  // A gradient as a fill: its unit space carried into the element's (a linear one from (0, 0) to (1, 0) along
+  // x1,y1 to x2,y2; a radial one's circle of radius 1 onto cx, cy, r), through gradientTransform and, for
+  // objectBoundingBox, the element's box. One stop is its color; none, no paint; no length, the last stop's.
+  // spreadMethod reflect and repeat come in as pad.
+  const gradientFill = (el, box, ctx) => {
+    const chain = chainOf(el), stops = stopsOf(chain);
+    if (!stops.length) return null;
+    if (stops.length === 1) return stops[0][1];
+    const attr = (name) => chain.map((g) => g.getAttribute(name)).find((v) => v !== null) ?? null;
+    const boxed = attr('gradientUnits') !== 'userSpaceOnUse';
+    const b = boxed && box();
+    if (boxed && (!b || b.x1 - b.x0 <= 0 || b.y1 - b.y0 <= 0)) return stops.at(-1)[1];
+    const at = (name, fallback, ref) => {
+      const v = attr(name) ?? fallback;
+      return boxed ? (v.trim().endsWith('%') ? Number.parseFloat(v) / 100 : Number(v)) : length(v, ref) ?? 0;
+    };
+    let unit, f;
+    if (el.localName === 'linearGradient') {
+      const x1 = at('x1', '0%', ctx.vw), y1 = at('y1', '0%', ctx.vh), x2 = at('x2', '100%', ctx.vw), y2 = at('y2', '0%', ctx.vh);
+      const dx = x2 - x1, dy = y2 - y1;
+      if (!Number.isFinite(dx + dy) || Math.hypot(dx, dy) < 1e-9) return stops.at(-1)[1];
+      unit = [dx, dy, -dy, dx, x1, y1];
+    } else {
+      const diagonal = Math.hypot(ctx.vw, ctx.vh) / Math.SQRT2;
+      const cx = at('cx', '50%', ctx.vw), cy = at('cy', '50%', ctx.vh), r = at('r', '50%', diagonal);
+      if (!Number.isFinite(cx + cy + r) || r <= 1e-9) return stops.at(-1)[1];
+      const fx = attr('fx') === null ? cx : at('fx', '50%', ctx.vw), fy = attr('fy') === null ? cy : at('fy', '50%', ctx.vh);
+      f = [(fx - cx) / r, (fy - cy) / r];
+      const reach = Math.hypot(...f);
+      if (reach > 0.99) f = f.map((v) => (v * 0.99) / reach); // SVG moves a focal point outside the circle onto it
+      unit = [r, 0, 0, r, cx, cy];
+    }
+    let m = multiply(transformOf(attr('gradientTransform')), unit);
+    if (boxed) m = multiply([b.x1 - b.x0, 0, 0, b.y1 - b.y0, b.x0, b.y0], m);
+    return { type: el.localName === 'linearGradient' ? 'linear' : 'radial', stops, m, ...(f && { f }) };
+  };
+  // A fill or stroke: '#rrggbb' or null; a fill may be a gradient (box: the element's, for objectBoundingBox),
+  // a stroke takes a gradient's first stop's color.
+  const paint = (value, style, initial, gradient = null) => {
     if (/^none$/i.test(value)) return null;
     const url = /^url\(\s*['"]?#([^'")\s]+)['"]?\s*\)\s*(.*)$/i.exec(value);
     if (url) {
       const ref = byId(url[1]);
       if (ref && /Gradient$/.test(ref.localName)) {
-        const [stop] = stopsOf(ref);
-        if (!stop) return null;
-        const stopStyle = computed(stop, style);
-        return colorOf(stopStyle['stop-color'], stopStyle) ?? '#000000';
+        if (gradient) return gradientFill(ref, gradient.box, gradient.ctx);
+        const [first] = stopsOf(chainOf(ref));
+        return first ? first[1] : null;
       }
       if (ref?.localName === 'pattern') left.add('pattern');
       return url[2] ? paint(url[2], style, null) : null;
@@ -278,7 +336,11 @@ export function readSvgFile(text) {
     if (!outlines) return;
     const diagonal = Math.hypot(ctx.vw, ctx.vh) / Math.SQRT2;
     const width = length(style['stroke-width'], diagonal) ?? 1;
-    const fill = paint(style.fill, style, INITIAL.fill), stroke = width > 0 ? paint(style.stroke, style, null) : null;
+    const box = () => {
+      const [first, ...rest] = outlines;
+      return localBounds({ points: first.points, closed: first.closed, more: rest.map((o) => [o.closed, o.points]) });
+    };
+    const fill = paint(style.fill, style, INITIAL.fill, { box, ctx }), stroke = width > 0 ? paint(style.stroke, style, null) : null;
     if (!fill && !stroke) return;
     if (stroke && style['stroke-dasharray'] !== 'none' && numbers(style['stroke-dasharray']).some((v) => v > 0)) left.add('dash');
     if (['marker-start', 'marker-mid', 'marker-end'].some((k) => style[k] !== 'none')) left.add('marker');

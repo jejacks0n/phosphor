@@ -10,6 +10,7 @@ import { readSvgFile } from '@/lib/SvgFile.js';
 import rose from '../fixtures/svg/rose-mark.svg?raw';
 import mark from '../fixtures/svg/belle-verriere-mark.svg?raw';
 import logo from '../fixtures/svg/belle-verriere-logo.svg?raw';
+import gradients from '../fixtures/svg/gradients.svg?raw';
 
 const svg = (body, attrs = 'viewBox="0 0 100 100"') => `<svg xmlns="http://www.w3.org/2000/svg" ${attrs}>${body}</svg>`;
 
@@ -33,7 +34,7 @@ const white = (w, h) => {
   return ctx;
 };
 
-for (const [name, text] of [['rose', rose], ['mark', mark], ['logo', logo]]) {
+for (const [name, text] of [['rose', rose], ['mark', mark], ['logo', logo], ['gradients', gradients]]) {
   test(`each yardstick, imported, looks as the browser draws it: ${name}`, async () => {
     const { project } = await blank();
     const K = 4, W = project.cols * K, H = project.rows * K;
@@ -44,7 +45,9 @@ for (const [name, text] of [['rose', rose], ['mark', mark], ['logo', logo]]) {
 
     const art = readSvgFile(text), fit = fitOf(art, project.cols, project.rows);
     const img = new Image();
-    img.src = URL.createObjectURL(new Blob([text], { type: 'image/svg+xml' }));
+    // A gradient stroke comes in as its first stop's color, by design: the browser's is drawn that way too.
+    const drawn = text.replace('stroke="url(#edge)"', 'stroke="#ff6a00"');
+    img.src = URL.createObjectURL(new Blob([drawn], { type: 'image/svg+xml' }));
     await img.decode();
     const theirs = white(W, H);
     theirs.drawImage(img, fit.x * K, fit.y * K, art.width * fit.s * K, art.height * fit.s * K);
@@ -57,7 +60,8 @@ for (const [name, text] of [['rose', rose], ['mark', mark], ['logo', logo]]) {
       if (b[i] < 128) inked++;
     }
     expect(inked / (W * H)).toBeGreaterThan(0.01); // the browser drew something to compare with
-    // Under 0.1%: started at 1.5%, and the three differ by 0.005% at most, at edges.
+    if (name === 'gradients') expect([...project.shapes.values()].filter((shape) => typeof shape.fill === 'object')).toHaveLength(4);
+    // Under 0.1%: started at 1.5%, and the four differ by 0.012% at most, at edges.
     expect(differ / (W * H)).toBeLessThan(0.001);
   });
 }

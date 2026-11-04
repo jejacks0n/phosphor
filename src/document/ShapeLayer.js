@@ -14,7 +14,7 @@
  */
 import { ctx2d } from '../lib/Canvas.js';
 import { charRowsOf } from '../lib/Cells.js';
-import { apply, dirtyRect, invert, isGradient, multiply, pathData, scaling, shapeBounds, stacked, strokeOf } from './shapes.js';
+import { dirtyRect, invert, isGradient, multiply, pathData, scaling, shapeBounds, stacked, strokeOf } from './shapes.js';
 
 const newCanvas = (w, h) => Object.assign(document.createElement('canvas'), { width: Math.max(1, w), height: Math.max(1, h) });
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -242,20 +242,18 @@ export function paintShape(ctx, shape, k, path = new Path2D(pathData(shape, k, k
   }
 }
 
-// A gradient fill, drawn in its own unit space: clipped to the path, then a rect over the shape's bounds (taken
-// back into that space) filled with the gradient there, so any stretch or turn of it is exact.
+// A gradient fill, drawn in its own unit space: the path carried into that space, then filled there under the
+// gradient's transform, so it lands where it was and any stretch or turn of the gradient is exact (and its edges
+// as smooth as a solid fill's).
 function paintGradient(ctx, shape, k, path, rule) {
   const { type, stops, m, f = [0, 0] } = shape.fill;
-  const t = multiply(multiply(scaling(k, k), shape.m), m), back = invert(t);
-  const box = shapeBounds({ ...shape, stroke: null });
-  const corners = [[box.x, box.y], [box.x + box.w, box.y], [box.x, box.y + box.h], [box.x + box.w, box.y + box.h]].map(([x, y]) => apply(back, x * k, y * k));
-  const xs = corners.map((p) => p.x), ys = corners.map((p) => p.y);
-  ctx.save();
-  ctx.clip(path, rule);
-  ctx.transform(...t);
+  const t = multiply(multiply(scaling(k, k), shape.m), m), inUnits = new Path2D();
+  inUnits.addPath(path, new DOMMatrix(invert(t)));
   const gradient = type === 'linear' ? ctx.createLinearGradient(0, 0, 1, 0) : ctx.createRadialGradient(f[0], f[1], 0, 0, 0, 1);
   for (const [offset, color] of stops) gradient.addColorStop(offset, color);
+  ctx.save();
+  ctx.transform(...t);
   ctx.fillStyle = gradient;
-  ctx.fillRect(Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+  ctx.fill(inUnits, rule);
   ctx.restore();
 }
