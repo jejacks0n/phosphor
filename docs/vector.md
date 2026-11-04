@@ -57,16 +57,20 @@ have the shapes' converted cells, as they show.
   straight across, straight up and down, or at 45°), drag one of its eight handles to scale them
   from the opposite side (Shift keeps the proportions), or drag the knob above it to rotate them (Shift
   turns in steps of 15°). One shape's box turns with it; several shapes share one box, square to the grid.
+- A two-point path selected on its own has no box: it has a handle at each end. Drag one to move that end
+  (Shift keeps it straight across, straight up and down, or at 45° from the other end); the path stretches
+  along itself and turns, and a curve in it keeps its height.
 - Click empty canvas to deselect.
-- Double-click a shape (or press **Edit points**) to edit its points (below).
-- The arrow keys nudge the selection a pixel (with Shift, 10). Delete or Backspace deletes it. Esc stops
-  editing points, then deselects.
+- Double-click a shape (or press **Edit points**) to edit its points with the Node tool (below).
+- The arrow keys nudge the selection a pixel (with Shift, 10). Delete or Backspace deletes it. Esc deselects.
 
 Each drag, nudge or delete is one undo step.
 
-## Editing points
+## Node (A)
 
-While a shape's points are edited, its points and their curve handles show over it:
+The Node tool edits a shape's points. Press a shape to edit its points (a press on one of them takes it at
+once, so a two-point path's ends can be dragged straight away); choosing the tool with shapes selected edits
+the first one's. Its points and their curve handles show over it:
 
 - Drag a point to move it, its handles with it. Drag a handle to bend the curves beside its point; on a
   smooth point the other handle turns with it. Alt-drag (Option-drag on a Mac) a handle to break it from its
@@ -78,7 +82,8 @@ While a shape's points are edited, its points and their curve handles show over 
 - The options row: **Smooth** (the point's handles stay in line: drag one and the other turns with it; a
   point with no handles gets some), **Corner** (a sharp point: its handles go), and **Delete** (the point; Delete
   or Backspace too; a shape left with fewer than two points goes).
-- Click empty canvas or press Esc to stop editing points; the shape stays selected.
+- Click empty canvas or press Esc to stop editing points; the shape stays selected. Press another shape to edit
+  its points instead. Choosing another tool stops too.
 
 Each drag, added point and change is one undo step. This works on rotated and scaled shapes too: a point goes
 where the pointer is.
@@ -123,7 +128,7 @@ shapes selected (Vector select):
 
 - **Forward** and **Back** move the shapes just above the nearest shape they overlap, or just beneath it;
   every other shape keeps its place.
-- **Edit points** edits the first shape's points. **Delete** deletes the shapes.
+- **Edit points** edits the first shape's points with the Node tool. **Delete** deletes the shapes.
 
 Each change is one undo step; a Stroke width drag is one step when you let go.
 

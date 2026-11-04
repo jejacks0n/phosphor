@@ -81,6 +81,17 @@ export function rotation(angle, cx = 0, cy = 0) {
   return [cos, sin, -sin, cos, cx - cos * cx + sin * cy, cy - sin * cx - cos * cy];
 }
 
+// A line's end b moved to p, its other end a staying: the line stretches along itself and turns, and across it
+// nothing changes size. Null when either length is nothing.
+export function stretching(a, b, p) {
+  const length = Math.hypot(b.x - a.x, b.y - a.y), reach = Math.hypot(p.x - a.x, p.y - a.y);
+  if (length < 1e-9 || reach < 1e-9) return null;
+  const ux = (b.x - a.x) / length, uy = (b.y - a.y) / length, vx = (p.x - a.x) / reach, vy = (p.y - a.y) / reach, s = reach / length;
+  // along: u → v, stretched by s; across: u's normal → v's
+  const m11 = s * vx * ux + vy * uy, m12 = s * vx * uy - vy * ux, m21 = s * vy * ux - vx * uy, m22 = s * vy * uy + vx * ux;
+  return [m11, m21, m12, m22, a.x - m11 * a.x - m12 * a.y, a.y - m21 * a.x - m22 * a.y];
+}
+
 // The shape moved by w, after its own transform.
 export const transformed = (shape, w) => withShape(shape, { m: multiply(w, shape.m) });
 

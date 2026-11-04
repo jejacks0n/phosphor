@@ -11,7 +11,8 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { setSmooth } from '@/document/shapes.js';
-import { deleteSelectedPoint } from '@/tools/vselect.js';
+import { deleteSelectedPoint } from '@/tools/vnode.js';
+import { selectionBox } from '@/tools/vselect.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
 
@@ -22,7 +23,9 @@ const phone = useMediaQuery('(max-width: 768px)');
 const style = useVectorStyle(), { selected } = style;
 
 const editing = computed(() => workspace.activeTool === 'vselect' && selected.value.length > 0);
-const styling = computed(() => ['vselect', 'pen', 'vshape'].includes(workspace.activeTool));
+// A two-point path on its own has ends to drag, not a box.
+const line = computed(() => !!selectionBox(project.shapes, selected.value)?.ends);
+const styling = computed(() => ['vselect', 'vnode', 'pen', 'vshape'].includes(workspace.activeTool));
 
 const WIDTH = computed(() => ({ key: 'vectorWidth', label: t('vector.width'), title: t('vector.widthTitle'), min: 0.5, max: 64, step: 0.5, decimals: 1 }));
 const width = computed({
@@ -37,12 +40,13 @@ const remove = () => {
   workspace.vectorSelected = [];
 };
 // The Point row: the shape whose points are edited, and its selected point.
-const pointsOf = computed(() => workspace.activeTool === 'vselect' && workspace.vectorPoints && project.shapes.get(workspace.vectorPoints));
+const pointsOf = computed(() => workspace.activeTool === 'vnode' && workspace.vectorPoints && project.shapes.get(workspace.vectorPoints));
 const point = computed(() => (pointsOf.value && workspace.vectorPoint !== null ? pointsOf.value.points[workspace.vectorPoint] : null));
 const smooth = (on) => project.updateShapes([[workspace.vectorPoints, setSmooth(pointsOf.value, workspace.vectorPoint, on)]]);
 const removePoint = () => deleteSelectedPoint(project, workspace);
 
 const editPoints = () => {
+  workspace.setActiveTool('vnode');
   workspace.vectorPoints = selected.value[0];
   workspace.vectorPoint = null;
 };
@@ -66,7 +70,7 @@ const editPoints = () => {
         <button class="text" :title="t('vector.backTitle')" @click="back">{{ t('vector.back') }}</button>
         <button class="text" :title="t('vector.editPointsTitle')" @click="editPoints">{{ t('vector.editPoints') }}</button>
         <button class="text" :title="t('vector.deleteTitle')" aria-keyshortcuts="Delete Backspace" @click="remove">{{ t('common.delete') }}</button>
-        <span class="hint">{{ t('vector.selectHint') }}</span>
+        <span class="hint">{{ t(line ? 'vector.lineHint' : 'vector.selectHint') }}</span>
       </template>
       <DropdownMenu v-if="phone" :label="t('vector.more')" align="right">
         <template #trigger><span aria-hidden="true">⋯</span></template>

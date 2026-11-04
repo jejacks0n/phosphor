@@ -382,6 +382,9 @@
     "vselect": {
       "title": "Sélection vectorielle"
     },
+    "vnode": {
+      "title": "Nœud"
+    },
     "pen": {
       "title": "Plume"
     },
@@ -837,7 +840,8 @@
       "tabs": "Onglets de l'éditeur"
     },
     "rows": {
-      "vselect": "Sélection vectorielle : choisir, déplacer, redimensionner et faire pivoter les formes",
+      "vselect": "Sélection vectorielle : choisir, déplacer, redimensionner et faire pivoter les formes (double-clic : l'outil Nœud)",
+      "vnode": "Nœud : appuyez sur une forme pour modifier ses points ; faites glisser un point ou une poignée, cliquez sur le contour pour en ajouter un",
       "pen": "Plume : cliquez pour un angle, faites glisser pour une courbe ; cliquez sur le premier point pour fermer",
       "penEnd": "Laisser la forme de la plume en courbe ouverte",
       "penBack": "Retirer le dernier point de la plume",
@@ -1332,10 +1336,11 @@
     "back": "Reculer",
     "backTitle": "Reculer les formes d'un cran",
     "editPoints": "Modifier les points",
-    "editPointsTitle": "Modifier les points et les courbes de la forme",
+    "editPointsTitle": "Modifier les points et les courbes de la forme avec l'outil Nœud (A)",
     "points": "Points",
     "deleteTitle": "Supprimer les formes sélectionnées",
     "selectHint": "Faites glisser pour déplacer, les poignées pour redimensionner, le bouton pour faire pivoter",
+    "lineHint": "Faites glisser pour déplacer, une extrémité pour l'étirer et la faire pivoter",
     "more": "Plus",
     "point": "Point",
     "smooth": "Lisse",
