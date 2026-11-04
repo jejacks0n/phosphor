@@ -262,6 +262,12 @@ With Vector select, **Copy**, **Cut** and **Paste**, and with shapes selected:
 - **Join** makes the selected shapes one shape: the bottom one, with its colors and place, and every outline of
   the rest. An outline inside another becomes a hole, so an "o" and a smaller circle inside it make a ring.
   **Separate** takes a shape of several outlines apart, each outline a shape of its own in the same colors.
+- **Add** makes the selected shapes one shape that covers everything they covered, and **Subtract** cuts the
+  shapes above out of the bottom one (a shape cut out of the middle of another leaves a hole). The result is
+  the bottom shape, with its colors, outline and place; the others are gone, and curves stay curves. Edges that
+  meet exactly, as Snap to leaves them, join with no seam and no extra points. They take two or more shapes whose
+  outlines are all closed. A Subtract that leaves nothing deletes them all. The first one you use takes a moment
+  to load.
 - **Delete** deletes the shapes.
 
 The buttons are icons, each named when you hover it. Each change is one undo step. On a phone the row is the

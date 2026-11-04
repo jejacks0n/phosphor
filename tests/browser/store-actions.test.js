@@ -5,7 +5,7 @@ import { createTestApp } from '../support/app.js';
 
 const ACTIONS = [
   'addFrame', 'addShape', 'addShapes', 'addSvg', 'animationCells', 'applyBase', 'applyChange', 'applyEditCells', 'applyNumbered', 'applySettings', 'askForStroke', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit', 'builtFrame',
-  'cancelEdit', 'catchUpFor', 'cellHasPaint', 'changeSelection', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect',
+  'cancelEdit', 'catchUpFor', 'cellHasPaint', 'changeSelection', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect', 'combineShapes',
   'commitEdit', 'commitPending', 'commitSliders', 'compareCheck', 'completeAt', 'composite', 'continueAsArtist', 'copySelection',
   'deleteAt', 'deleteFrame', 'deleteIn', 'deleteInWand', 'deleteSelection', 'deleteShapes', 'documentNumber', 'dropEdits', 'dropHeard', 'dropOldUndo', 'dropWaiting', 'editCell', 'editCellAt', 'editLayerSum', 'ensureLayer',
   'eraseBase', 'eraseBasePixels', 'eraseEditPixels', 'exportAnimation', 'exportFile', 'finishPen', 'fitFor', 'flipBase', 'flipCell',

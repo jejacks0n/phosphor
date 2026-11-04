@@ -1,6 +1,6 @@
 <script setup>
 // VECTOR's options row. With Vector select: Copy, Cut and Paste, and with shapes selected Forward and Back (the
-// stacking order), Join, Separate and Delete (one shape's gradient's selected stop, or else the shapes), each one
+// stacking order), Join, Separate, Add, Subtract and Delete (one shape's gradient's selected stop, or else the shapes), each one
 // undo step, and on one shape with two gradients Fill or Stroke. Fill and Stroke, and the stroke's width, caps,
 // joins and miter limit, are the color pair's (ColorPopover, useVectorStyle). While a shape's points are edited,
 // the Point row: the selected point Smooth, Free or Sharp, and Delete (the selected stop of its gradient, or else the
@@ -11,7 +11,8 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
-import { allPoints, isGradient, setFree, setSmooth } from '@/document/shapes.js';
+import { allClosed, allPoints, isGradient, setFree, setSmooth } from '@/document/shapes.js';
+import { loadBooleans } from '@/lib/shapeBooleans.js';
 import { gradientKey, gradientSlot, removeStop } from '@/tools/gradientHandles.js';
 import { deleteSelectedPoint } from '@/tools/vnode.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
@@ -40,6 +41,13 @@ const join = () => {
 const separate = () => {
   const keys = project.separateShape(selected.value[0]);
   if (keys) workspace.vectorSelected = keys;
+};
+// Add and Subtract: two or more closed shapes, the result selected. The math loads the first time.
+const canCombine = computed(() => selected.value.length > 1 && selected.value.every((key) => allClosed(project.shapes.get(key))));
+const combine = async (op) => {
+  await loadBooleans();
+  const key = project.combineShapes(selected.value, op);
+  if (key) workspace.vectorSelected = [key];
 };
 const back = () => project.restackShapes(selected.value, 'back');
 const remove = () => {
@@ -102,6 +110,8 @@ const gradientOf = (slot) => {
       <button :title="t('vector.backTitle')" :aria-label="t('vector.back')" @click="back"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M256 32H384V176H496L320 352 144 176H256ZM320 384 576 480 320 576 64 480ZM320 432 192 480 320 528 448 480Z"/></svg></button>
       <button :title="t('vector.joinTitle')" :aria-label="t('vector.join')" :disabled="selected.length < 2" @click="join"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><circle cx="232" cy="320" r="168"/><circle cx="408" cy="320" r="168"/></svg></button>
       <button :title="t('vector.separateTitle')" :aria-label="t('vector.separate')" :disabled="!canSeparate" @click="separate"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><circle cx="168" cy="320" r="128"/><circle cx="472" cy="320" r="128"/></svg></button>
+      <button :title="t('vector.addTitle')" :aria-label="t('vector.add')" :disabled="!canCombine" @click="combine('add')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M96 96H384V256H544V544H256V384H96Z"/></svg></button>
+      <button :title="t('vector.subtractTitle')" :aria-label="t('vector.subtract')" :disabled="!canCombine" @click="combine('subtract')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M96 96H384V256H256V384H96Z"/><path fill-rule="evenodd" opacity=".45" d="M256 256H544V544H256ZM296 296V504H504V296Z"/></svg></button>
       <button :title="t('vector.deleteTitle')" :aria-label="t('common.delete')" aria-keyshortcuts="Delete Backspace" @click="remove" v-html="TRASH"/>
       <template v-if="twoGradients">
         <div class="divider"/>

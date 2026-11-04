@@ -453,14 +453,17 @@ function carried(p, w) {
   return [at.x, at.y, i.x, i.y, o.x, o.y, p[6]];
 }
 
+// A shape's outlines carried into another's own space (into: the inverse of that one's m).
+export function outlinesIn(shape, into) {
+  const w = multiply(into, shape.m);
+  return outlines(shape).map((o) => ({ closed: o.closed, points: o.points.map((p) => carried(p, w)) }));
+}
+
 // Join: others' outlines carried into bottom's own space and added to it, filled evenodd so that any outline
 // inside another is a hole, in bottom's style. Null when that's more points or outlines than a shape may have.
 export function joined(bottom, others) {
   const list = outlines(bottom), into = invert(bottom.m);
-  for (const shape of others) {
-    const w = multiply(into, shape.m);
-    for (const o of outlines(shape)) list.push({ closed: o.closed, points: o.points.map((p) => carried(p, w)) });
-  }
+  for (const shape of others) list.push(...outlinesIn(shape, into));
   if (list.length > MOST_OUTLINES || list.reduce((n, o) => n + o.points.length, 0) > MOST_POINTS) return null;
   return withOutlines(withShape(bottom, { rule: 'evenodd' }), list);
 }
