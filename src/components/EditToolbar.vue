@@ -704,6 +704,20 @@ button :deep(svg) {
   }
 }
 
+/* The VECTOR row's icon buttons (Copy, Cut, Paste) are its component's, which the rule above doesn't reach. */
+div.vector-options > :deep(button svg) {
+  fill: var(--text-faint);
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+@media (hover: hover) {
+  div.vector-options > :deep(button:hover svg) {
+    fill: var(--text);
+  }
+}
+
 button.primary :deep(svg) {
   fill: var(--text);
 }
