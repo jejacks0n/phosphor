@@ -5,6 +5,7 @@ import {
   makeShape, sameShape, isShape, isShapeKey, newShapeKey, pathData, shapeBounds, dirtyRect, worldPoints,
   multiply, invert, apply, rotation, scaling, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
   moveHandle, setSmooth, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
+  outlines, withOutlines, locate, allPoints, strokeOf, STROKE_DEFAULTS, withShape, movePoint,
 } from '../../src/document/shapes.js';
 import { changeBytes } from '../../src/document/changes.js';
 import { MOST_CHANGE_BYTES } from '../../src/social/wire.js';
@@ -200,4 +201,101 @@ test('localBounds goes round the curve itself, not its handles', () => {
   close(moved.y0, -2.5);
   assert.deepEqual([moved.x0, moved.x1, moved.y1], [5, 15, 5]);
   assert.deepEqual(localBounds(makeShape({ points: [[3, 4, 0, 0, 0, 0, 0]], closed: false })), { x0: 3, y0: 4, x1: 3, y1: 4 });
+});
+
+// A ring: an outer square 0..10 and an inner one 3..7 (wound the other way), filled evenodd.
+const sq = (a, b, reverse = false) => {
+  const pts = [[a, a, 0, 0, 0, 0, 0], [b, a, 0, 0, 0, 0, 0], [b, b, 0, 0, 0, 0, 0], [a, b, 0, 0, 0, 0, 0]];
+  return reverse ? pts.reverse() : pts;
+};
+const ring = () => makeShape({ points: sq(0, 10), closed: true, more: [[true, sq(3, 7)]], rule: 'evenodd', fill: '#ff0000' });
+
+test('a shape that uses nothing new keeps exactly today\'s JSON', () => {
+  const s = makeShape({ points: [[1, 2, 0, 0, 0, 0, 0], [5, 6, 0, 0, 0, 0, 0]], closed: false, stroke: '#00ff00', width: 2 });
+  assert.equal(JSON.stringify(s), '{"z":0,"closed":false,"points":[[1,2,0,0,0,0,0],[5,6,0,0,0,0,0]],"fill":null,"stroke":"#00ff00","width":2,"m":[1,0,0,1,0,0]}');
+  const defaults = withShape(s, { cap: 'round', join: 'round', miter: 4, rule: 'nonzero', more: [] });
+  assert.equal(JSON.stringify(defaults), JSON.stringify(s));
+  const butt = withShape(s, { cap: 'butt' });
+  assert.equal(butt.cap, 'butt');
+  assert.deepEqual(Object.keys(butt), ['z', 'closed', 'points', 'fill', 'stroke', 'width', 'm', 'cap']);
+  assert.deepEqual(strokeOf(s), STROKE_DEFAULTS);
+  assert.deepEqual(strokeOf(withShape(s, { join: 'miter', miter: 10 })), { rule: 'nonzero', cap: 'round', join: 'miter', miter: 10 });
+});
+
+test('shapeFromStranger takes the new fields and refuses bad ones', () => {
+  const plain = JSON.parse(JSON.stringify(makeShape({ points: sq(0, 4), closed: true, fill: '#ff0000' })));
+  const good = [
+    { ...plain, more: [[true, sq(1, 2)]] }, { ...plain, rule: 'evenodd' }, { ...plain, cap: 'square' },
+    { ...plain, join: 'bevel' }, { ...plain, miter: 10 }, { ...plain, cap: 'butt', join: 'miter', miter: 1.5 },
+  ];
+  for (const v of good) {
+    const s = shapeFromStranger(v);
+    assert.ok(s, JSON.stringify(v));
+    assert.ok(sameShape(s, v), JSON.stringify(v));
+  }
+  const bad = [
+    { ...plain, cap: 'flat' }, { ...plain, miter: 0 }, { ...plain, miter: 1000 }, { ...plain, rule: 'winding' },
+    { ...plain, more: [[true, []]] }, { ...plain, more: [[1, sq(1, 2)]] }, { ...plain, more: [] }, { ...plain, cap: 'round' },
+    { ...plain, extra: 1 },
+    { ...plain, points: Array.from({ length: 300 }, (_, i) => [i, 0, 0, 0, 0, 0, 0]), more: [[false, Array.from({ length: 201 }, (_, i) => [i, 1, 0, 0, 0, 0, 0])]] },
+  ];
+  for (const v of bad) assert.equal(shapeFromStranger(v), null, JSON.stringify(v).slice(0, 80));
+});
+
+test('outlines, locate and allPoints read a shape of several outlines flat', () => {
+  const r = ring();
+  assert.equal(outlines(r).length, 2);
+  assert.deepEqual(outlines(r)[1], { closed: true, points: r.more[0][1] });
+  assert.deepEqual(locate(r, 5), { o: 1, j: 1 });
+  assert.deepEqual(locate(r, 3), { o: 0, j: 3 });
+  assert.equal(allPoints(r).length, 8);
+  assert.equal(worldPoints(r).length, 8);
+  const back = withOutlines(r, outlines(r));
+  assert.ok(sameShape(back, r));
+  assert.equal(withOutlines(r, outlines(r).slice(0, 1)).more, undefined);
+  assert.equal(withOutlines(r, []), null);
+});
+
+test('pathData draws every outline, each closed on itself', () => {
+  const d = pathData(ring());
+  assert.equal(d.match(/M/g).length, 2);
+  assert.equal(d.match(/Z/g).length, 2);
+  assert.match(d, /^M0 0L10 0L10 10L0 10ZM3 3L7 3L7 7L3 7Z$/);
+});
+
+test('editing a ring by flat index stays inside each outline', () => {
+  const r = ring();
+  const moved = movePoint(r, 5, 1, 0);
+  assert.deepEqual(moved.more[0][1][1].slice(0, 2), [8, 3]);
+  assert.deepEqual(moved.points, r.points);
+  const smooth = setSmooth(r, 4, true); // inner point 0 (3, 3): its neighbors are inner 3 (3, 7) and inner 1 (7, 3)
+  const p = smooth.more[0][1][0];
+  close(p[4] / Math.hypot(p[4], p[5]), Math.SQRT1_2, 1e-2); // along (7,3) - (3,7): right and up
+  close(p[5] / Math.hypot(p[4], p[5]), -Math.SQRT1_2, 1e-2);
+  const split = splitAt(r, 7, 0.5); // inner point 3 (3, 7) back to inner point 0 (3, 3)
+  assert.equal(split.more[0][1].length, 5);
+  assert.deepEqual(split.more[0][1][4].slice(0, 2), [3, 5]);
+  assert.equal(split.points.length, 4);
+  const near = nearestOnOutline(r, 5, 3.1);
+  assert.equal(near.segment, 4);
+  close(near.distance, 0.1, 1e-3);
+  const handle = moveHandle(setSmooth(r, 6, true), 6, 'out', 8, 8);
+  assert.deepEqual(handle.points, r.points);
+});
+
+test('deleting points takes an outline away before the shape', () => {
+  const s = makeShape({ points: sq(0, 10), closed: true, more: [[false, [[1, 1, 0, 0, 0, 0, 0], [2, 2, 0, 0, 0, 0, 0]]]] });
+  const fewer = deletePoint(s, 5);
+  assert.equal(fewer.more, undefined);
+  assert.equal(fewer.points.length, 4);
+  const outerFirst = deletePoint(makeShape({ points: sq(0, 10).slice(0, 2), closed: false, more: [[true, sq(3, 7)]] }), 0);
+  assert.deepEqual(outlines(outerFirst).map((o) => o.points.length), [4]);
+  assert.equal(deletePoint(makeShape({ points: sq(0, 10).slice(0, 2), closed: false }), 0), null);
+  assert.equal(deletePoint(ring(), 5).more[0][1].length, 3);
+});
+
+test('curveBounds and localBounds cover every outline', () => {
+  const s = makeShape({ points: sq(0, 4), closed: true, more: [[true, sq(10, 12)]] });
+  assert.deepEqual(localBounds(s), { x0: 0, y0: 0, x1: 12, y1: 12 });
+  assert.deepEqual(curveBounds(transformed(s, translation(1, 2))), { x0: 1, y0: 2, x1: 13, y1: 14 });
 });
