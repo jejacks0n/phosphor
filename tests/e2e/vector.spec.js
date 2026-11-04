@@ -310,6 +310,23 @@ test('Shift with the Pen keeps the next point, and a smooth point\'s handle, acr
   expect(points[3][4]).toBeGreaterThan(4);
 });
 
+test('undo while the Pen draws takes back the last point, and only that, even on a first shape', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await page.keyboard.press('p');
+  const at = (x, y) => gridPoint(page, x, y), undo = page.locator('.history-group button').first();
+  await expect(undo).toBeDisabled();
+  await page.mouse.click(...Object.values(await at(10, 10)));
+  await page.mouse.click(...Object.values(await at(30, 10)));
+  await expect(undo).toBeEnabled();
+  await page.keyboard.press('ControlOrMeta+z');
+  expect(await store(page, 'project', (p) => [...p.shapes.values()].map((s) => s.points.length))).toEqual([1]);
+  await undo.click();
+  expect(await store(page, 'project', (p) => p.shapes.size)).toBe(0);
+  await expect(undo).toBeDisabled();
+});
+
 test('Shift with the Pen shows the next segment where the point will go, before the click', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
