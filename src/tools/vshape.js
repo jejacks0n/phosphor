@@ -4,6 +4,7 @@
 // made; a click without a drag makes nothing.
 import { t } from '@/i18n/index.js';
 import { ellipseShape, polygonShape, rectShape, styleColors, withShape } from '@/document/shapes.js';
+import shapes from '@/tools/shapes.js';
 
 let drag = null; // { from, key }
 
@@ -28,7 +29,7 @@ export default {
   id: 'vshape',
   get title() { return t('tools.vshape.title'); },
   keys: ['U'],
-  icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M96 128H352V384H96zM144 176V336H304V176zM448 256A112 112 0 1 1 448 480A112 112 0 1 1 448 256zM448 304A64 64 0 1 0 448 432A64 64 0 1 0 448 304z"/></svg>',
+  icon: shapes.icon, // the Shapes tool's, as it's the same tool for shapes
   views: ['vector'],
   kind: 'paint',
   section: 'vector',
