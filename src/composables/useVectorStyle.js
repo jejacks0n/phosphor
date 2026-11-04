@@ -1,7 +1,7 @@
 // VECTOR's Fill, Stroke, Width, and the Stroke panel's cap, join and miter limit: the color pair's two chips there, and the options row's Width. They're the
-// selected shapes' (the first one's shown) unless the Pen or the Shape tool is drawing the next one, or nothing's
-// selected: then they're what the next shape gets (workspace.vectorStyle, where 'fg' is the foreground color when
-// it's made). A change to the selection is one undo step; one opened by a drag (a slider, the native picker)
+// selected shapes' (the first one's shown; with the Pen or the Shape tool, a change is the next shape's too, so it
+// matches the one just drawn) unless the Pen is drawing one, or nothing's selected: then they're what the next
+// shape gets (workspace.vectorStyle, where 'fg' is the foreground color when it's made). A change to the selection is one undo step; one opened by a drag (a slider, the native picker)
 // closes with finish().
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -13,7 +13,8 @@ export function useVectorStyle() {
   const workspace = useWorkspaceStore();
 
   const selected = computed(() => workspace.vectorSelected.filter((key) => project.shapes.has(key)));
-  const editing = computed(() => selected.value.length > 0 && !['pen', 'vshape'].includes(workspace.activeTool));
+  const editing = computed(() => selected.value.length > 0 && !workspace.vectorPen);
+  const drawing = () => ['pen', 'vshape'].includes(workspace.activeTool);
   const first = computed(() => editing.value && project.shapes.get(selected.value[0]));
 
   const value = (slot) => {
@@ -27,7 +28,8 @@ export function useVectorStyle() {
   };
   // remember: false while a drag goes on (the edit stays open until it ends).
   const set = (slot, v, { remember = true } = {}) => {
-    if (!editing.value) return (workspace.vectorStyle = { ...workspace.vectorStyle, [slot]: v });
+    if (!editing.value || drawing()) workspace.vectorStyle = { ...workspace.vectorStyle, [slot]: v };
+    if (!editing.value) return;
     if (!remember) project.beginEdit();
     project.updateShapes(selected.value.map((key) => [key, withShape(project.shapes.get(key), { [slot]: v })]));
     if (remember) finish();
@@ -48,10 +50,11 @@ export function useVectorStyle() {
   // Each shape's Fill and Stroke trade places, gradients and all (Shift+Cmd/Ctrl+X, as the pair's colors do
   // elsewhere).
   const swap = () => {
-    if (!editing.value) {
+    if (!editing.value || drawing()) {
       const { fill, stroke } = workspace.vectorStyle;
-      return (workspace.vectorStyle = { ...workspace.vectorStyle, fill: stroke, stroke: fill });
+      workspace.vectorStyle = { ...workspace.vectorStyle, fill: stroke, stroke: fill };
     }
+    if (!editing.value) return;
     project.updateShapes(selected.value.map((key) => {
       const shape = project.shapes.get(key);
       return [key, withShape(shape, { fill: shape.stroke, stroke: shape.fill })];

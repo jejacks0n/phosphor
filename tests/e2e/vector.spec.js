@@ -147,6 +147,36 @@ test('on VECTOR the color pair is Fill and Stroke: it shows the selected shape\'
   expect(await store(page, 'workspace', (w) => w.editFgColor)).toBe(fg); // ANSI's colors are left alone
 });
 
+test('a shape just drawn, shown selected, takes a Fill or Stroke change, and the next shape drawn gets it too; while the Pen draws, only the next does', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
+  await page.keyboard.press('u');
+  await dragPoints(page, await gridPoint(page, 10, 10), await gridPoint(page, 20, 20));
+  const [drawn] = await shapeList(page);
+  expect(await store(page, 'workspace', (w) => [w.activeTool, w.vectorSelected.length])).toEqual(['vshape', 1]);
+  await page.locator('.color-pair .chip.fg').click();
+  await page.locator('.color-popover .swatch.small').first().click();
+  await page.keyboard.press('Escape');
+  expect((await shapeList(page))[0].fill).toBe('#00ff00');
+  await dragPoints(page, await gridPoint(page, 30, 10), await gridPoint(page, 40, 20));
+  expect((await shapeList(page)).map((s) => s.fill)).toEqual(['#00ff00', '#00ff00']);
+  expect(drawn.fill).not.toBe('#00ff00');
+  await undoSteps(page, 2); // the second shape, the color
+  expect((await shapeList(page)).map((s) => s.fill)).toEqual([drawn.fill]);
+
+  // The Pen, mid-shape: its color is the next one's, and the selection's left alone.
+  await page.keyboard.press('p');
+  await page.mouse.click(...Object.values(await gridPoint(page, 30, 30)));
+  await page.mouse.click(...Object.values(await gridPoint(page, 40, 30)));
+  await page.locator('.color-pair .chip.bg').click();
+  await page.locator('.color-popover .swatch.small').first().click();
+  await page.keyboard.press('Escape');
+  expect((await shapeList(page))[0].stroke).toBe(null);
+  expect(await store(page, 'workspace', (w) => w.vectorStyle.stroke)).toBe('#00ff00');
+});
+
 test('VECTOR\'s color box is the one the other tabs have, with Fill and Stroke for FG and BG, and Swap', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
