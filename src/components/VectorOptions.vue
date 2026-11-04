@@ -1,6 +1,7 @@
 <script setup>
 // VECTOR's options row. With Vector select: Copy, Cut and Paste, and with shapes selected Forward and Back (the
-// stacking order), Join, Separate and Delete, each one undo step. Fill and Stroke, and the stroke's width, caps,
+// stacking order), Join, Separate and Delete (one shape's gradient's selected stop, or else the shapes), each one
+// undo step, and on one shape with two gradients Fill or Stroke. Fill and Stroke, and the stroke's width, caps,
 // joins and miter limit, are the color pair's (ColorPopover, useVectorStyle). While a shape's points are edited,
 // the Point row: the selected point Smooth, Free or Sharp, and Delete (the selected stop of its gradient, or else the
 // point); Esc or empty canvas ends it. On a shape with two gradients, Fill or Stroke too. The buttons are icons, named in their titles; a phone's rows have no label or hint.
@@ -42,6 +43,7 @@ const separate = () => {
 };
 const back = () => project.restackShapes(selected.value, 'back');
 const remove = () => {
+  if (workspace.vectorStop !== null) return removeStop(project, workspace);
   project.deleteShapes(selected.value);
   workspace.vectorSelected = [];
 };
@@ -101,6 +103,11 @@ const gradientOf = (slot) => {
       <button :title="t('vector.joinTitle')" :aria-label="t('vector.join')" :disabled="selected.length < 2" @click="join"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><circle cx="232" cy="320" r="168"/><circle cx="408" cy="320" r="168"/></svg></button>
       <button :title="t('vector.separateTitle')" :aria-label="t('vector.separate')" :disabled="!canSeparate" @click="separate"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><circle cx="168" cy="320" r="128"/><circle cx="472" cy="320" r="128"/></svg></button>
       <button :title="t('vector.deleteTitle')" :aria-label="t('common.delete')" aria-keyshortcuts="Delete Backspace" @click="remove" v-html="TRASH"/>
+      <template v-if="twoGradients">
+        <div class="divider"/>
+        <span v-if="!phone" class="option-label">{{ t('vector.gradientLabel') }}</span>
+        <button v-for="slot in ['fill', 'stroke']" :key="slot" class="text" :title="t('vector.gradientSlotTitle')" :aria-pressed="gradientSlot(twoGradients, workspace) === slot" @click="gradientOf(slot)">{{ t(`vector.${slot}`) }}</button>
+      </template>
       <span v-if="!phone" class="hint">{{ t('vector.selectHint') }}</span>
     </template>
   </div>

@@ -360,6 +360,7 @@ export const selectionActions = {
   // VECTOR's selection set to keys, as an undo step (changeSelection): a click, Esc, a box, Select all.
   selectShapes(keys) {
     this.changeSelection((w) => { w.vectorSelected = keys; });
+    useWorkspaceStore().vectorStop = null; // the selected stop was a selected shape's
   },
 
   // One undo step for a selection operation's changes (cells, paint, base pixels, pins); the cells in

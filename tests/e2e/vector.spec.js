@@ -709,7 +709,7 @@ test('the Node tool shows a shape\'s gradient\'s handles with its points; recolo
     points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
   await page.mouse.click(...Object.values(await gridPoint(page, 12, 12)));
   expect(await selected(page)).toEqual([key]);
-  await expect(page.locator('.vector-overlay .stop')).toHaveCount(0); // selected, not edited: no handles
+  await expect(page.locator('.vector-overlay .stop')).toHaveCount(2); // selected: its gradient's handles show
   await page.keyboard.press('g');
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vselect');
   await expect(page.getByRole('dialog', { name: /Keyboard shortcuts/ })).toHaveCount(0);
@@ -779,6 +779,43 @@ test('Node: a gradient\'s end on a corner is taken first; a click again there ta
   const [shape] = await shapeList(page);
   expect(shape.points[0].slice(0, 2).map(Math.round)).toEqual([6, 6]);
   expect(shape.fill.m).toEqual([20, 0, 0, 20, 10, 10]);
+});
+
+test('Vector select shows one shape\'s gradient: a click again on its end picks the stop there, which the Fill box recolors and Delete removes; Esc keeps the shape', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
+  await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0],
+    fill: { type: 'linear', stops: [[0, '#ff0000'], [0.5, '#ffffff'], [1, '#0000ff']], m: [20, 0, 0, 20, 10, 15] },
+    points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
+  await page.mouse.click(...Object.values(await gridPoint(page, 14, 12)));
+  expect(await store(page, 'workspace', (w) => [w.activeTool, w.vectorSelected.length])).toEqual(['vselect', 1]);
+  await expect(page.locator('.vector-overlay .stop')).toHaveCount(3);
+  await expect(page.locator('.ansi-status .hint')).toContainText('again for the handle under it');
+
+  // The right end, on the right scale handle: a click is the handle's, a click again the end's stop.
+  const end = await gridPoint(page, 30, 15);
+  await page.mouse.click(end.x, end.y);
+  expect(await store(page, 'workspace', (w) => w.vectorStop)).toBeNull();
+  await page.mouse.click(end.x, end.y);
+  expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(2);
+  await expect(page.locator('.vector-overlay .stop.on')).toHaveCount(1);
+  await page.locator('.color-pair .chip.fg').click();
+  await page.locator('.color-popover .swatch.small').first().click();
+  await page.keyboard.press('Escape');
+  expect((await shapeList(page))[0].fill.stops[2]).toEqual([1, '#00ff00']);
+
+  // The row's Delete: the stop, not the shape. Esc lets a stop go and keeps the shape selected.
+  await page.mouse.click(...Object.values(await gridPoint(page, 20, 15))); // the middle stop
+  expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(1);
+  await page.locator('.vector-options').getByRole('button', { name: 'Delete', exact: true }).click();
+  expect((await shapeList(page))[0].fill.stops).toEqual([[0, '#ff0000'], [1, '#00ff00']]);
+  await page.mouse.click(end.x, end.y);
+  await page.mouse.click(end.x, end.y);
+  expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(1);
+  await page.keyboard.press('Escape');
+  expect(await store(page, 'workspace', (w) => [w.vectorStop, w.vectorSelected.length])).toEqual([null, 1]);
 });
 
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {

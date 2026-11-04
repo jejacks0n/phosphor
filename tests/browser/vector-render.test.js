@@ -11,7 +11,7 @@ import { toastMessage } from '@/composables/useToast';
 import { shapeAt } from '@/lib/shapeHits.js';
 import vnode from '@/tools/vnode.js';
 import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
-import { gradientHandles } from '@/tools/gradientHandles.js';
+import { gradientHandles, gradientKey } from '@/tools/gradientHandles.js';
 
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
 const at = (project, col, row) => project.cells[row * project.cols + col];
@@ -685,4 +685,61 @@ test('Vector select\'s knob with Shift turns one shape to its own angle in steps
   turn([a, b], 17);
   expect(angle(a)).toBeCloseTo(35, 2);
   expect(angle(b)).toBeCloseTo(35, 2);
+});
+
+test('Vector select edits one selected shape\'s gradient: its ends and stops dragged or picked, a scale handle first on a tie and the end on a click again; Delete and Esc take the stop, another selection lets it go', async () => {
+  const { project, workspace } = await gradient(40, 40);
+  const fill = { type: 'linear', stops: [[0, '#ff0000'], [0.5, '#00ff00'], [1, '#0000ff']], m: [20, 0, 0, 20, 10, 15] }; // its ends on the box's left and right middles
+  const key = project.addShape(withShape(rectShape(10, 10, 30, 20, RED), { fill }));
+  const other = project.addShape(rectShape(32, 10, 38, 20, RED));
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } };
+  workspace.setActiveTool('vselect');
+  const drag = (from, ...to) => {
+    vselect.begin(ctx, from, {});
+    let at = from;
+    for (const p of to) {
+      vselect.move(ctx, at, p);
+      at = p;
+    }
+    vselect.end(ctx);
+  };
+  const press = (key) => vselect.keydown(ctx, new KeyboardEvent('keydown', { key }));
+  const shape = () => project.shapes.get(key);
+
+  project.selectShapes([key, other]);
+  expect(gradientKey(project, workspace)).toBe(null); // several: no gradient
+  project.selectShapes([key]);
+  expect(gradientKey(project, workspace)).toBe(key);
+
+  // The middle stop, dragged along the line: it slides, the shape stays.
+  drag({ x: 20, y: 15 }, { x: 22, y: 15 }, { x: 25, y: 15 });
+  expect(shape().fill.stops[1][0]).toBeCloseTo(0.75, 5);
+  expect(shape().m).toEqual([1, 0, 0, 1, 0, 0]);
+  expect(workspace.vectorStop).toBe(1);
+  // Esc lets the stop go, and the selection stays; another Esc deselects.
+  expect(press('Escape')).toBe(true);
+  expect(workspace.vectorStop).toBe(null);
+  expect(workspace.vectorSelected).toEqual([key]);
+
+  // The right end, on the right middle scale handle: a click is the handle's, a click again the end's (its stop).
+  drag({ x: 30, y: 15 });
+  expect(workspace.vectorStop).toBe(null);
+  drag({ x: 30, y: 15 });
+  expect(workspace.vectorStop).toBe(2);
+  drag({ x: 30, y: 15 }, { x: 30, y: 17 }, { x: 30, y: 19 }); // a drag then: the end, not the scale
+  expect(shape().m).toEqual([1, 0, 0, 1, 0, 0]);
+  expect(gradientHandles(shape()).p1.y).toBeCloseTo(19, 5);
+  // Delete takes the selected stop, not the shape.
+  workspace.vectorStop = 1;
+  expect(press('Delete')).toBe(true);
+  expect(shape().fill.stops).toHaveLength(2);
+  expect(workspace.vectorStop).toBe(null);
+  // A drag inside the box, off the handles, still moves the shape.
+  drag({ x: 15, y: 12 }, { x: 16, y: 13 });
+  expect(shape().m).toEqual([1, 0, 0, 1, 1, 1]);
+
+  // Another selection lets the stop go.
+  workspace.vectorStop = 0;
+  project.selectShapes([other]);
+  expect(workspace.vectorStop).toBe(null);
 });
