@@ -842,7 +842,7 @@
     },
     "rows": {
       "vselect": "Sélection vectorielle : choisir, déplacer, redimensionner et faire pivoter les formes (double-clic : l'outil Nœud)",
-      "vnode": "Nœud : appuyez sur une forme pour modifier ses points et son dégradé ; faites glisser un point, une poignée ou un arrêt, cliquez sur le contour pour ajouter un point",
+      "vnode": "Nœud : appuyez sur une forme pour modifier ses points ; faites-la traverser d'un glissé pour un dégradé ; faites glisser un point, une poignée ou un arrêt, cliquez sur le contour pour ajouter un point",
       "pen": "Plume : cliquez pour un angle, faites glisser pour une courbe ; cliquez sur le premier point pour fermer",
       "penEnd": "Laisser la forme de la plume en courbe ouverte",
       "penBack": "Retirer le dernier point de la plume",
@@ -1394,6 +1394,6 @@
     "cornerTitle": "Faire du point un angle vif : ses poignées disparaissent",
     "deletePointTitle": "Supprimer le point sélectionné",
     "deleteStopTitle": "Supprimer l'arrêt sélectionné du dégradé",
-    "pointsHint": "Faites glisser un point, une poignée ou un arrêt de dégradé ; cliquez sur le contour pour ajouter un point ; Échap ou un clic à côté pour terminer"
+    "pointsHint": "Glissez à travers la forme pour un dégradé (Alt : radial) ; faites glisser un point, une poignée ou un arrêt ; cliquez sur le contour pour ajouter un point ; Échap ou un clic à côté pour terminer"
   }
 }

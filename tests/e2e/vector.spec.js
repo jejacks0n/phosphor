@@ -735,6 +735,26 @@ test('editing a shape\'s points shows its gradient\'s handles; recoloring a stop
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBeNull();
 });
 
+test('in the Node tool, a drag across a shape gives it a gradient, whose handles then show; undo takes it back', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, fill: '#ff0000', stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0],
+    points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
+  await page.keyboard.press('a');
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vnode');
+  await settled(page);
+  const before = await cells(page);
+  await dragPoints(page, await gridPoint(page, 12, 15), await gridPoint(page, 28, 15));
+  const { fill } = (await shapeList(page))[0];
+  expect(fill.type).toBe('linear');
+  expect(fill.m.map(Math.round)).toEqual([16, 0, 0, 16, 12, 15]);
+  await expect(page.locator('.vector-overlay .stop')).toHaveCount(2);
+  await expect.poll(() => cells(page)).not.toEqual(before);
+  await undoSteps(page, 1);
+  expect((await shapeList(page))[0].fill).toBe('#ff0000');
+});
+
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

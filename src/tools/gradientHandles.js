@@ -6,13 +6,13 @@
 // or well off the line to remove it (two always stay); click the line to add a stop there, in the color the
 // gradient has there, or a stop to select it (workspace.vectorStop, the selected point let go), whose color that
 // chip's box then sets. Each drag or click that changes the gradient is one undo step; removeStop is Delete's.
-import { MOST_STOPS, apply, gradientColorAt, invert, isGradient, multiply, translation, withShape } from '@/document/shapes.js';
+import { MOST_STOPS, apply, fillAs, gradientColorAt, invert, isGradient, multiply, translation, withShape } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
 
 const OFF_THE_LINE = 24; // CSS px a stop is dragged off its line to remove it
 const MOVED = 2;         // CSS px a press goes before it's a drag, not a click
 
-let drag = null; // { kind: 'line' | 'move' | 'end' | 'stop', key, start, at, moved, which?, stop?, t? }
+let drag = null; // { kind: 'line' | 'move' | 'end' | 'stop' | 'draw', key, slot, start, at, moved, which?, stop?, t?, radial? }
 
 const hasGradient = (shape) => !!shape && (isGradient(shape.fill) || isGradient(shape.stroke));
 // The key of the Node tool's shape when it has a gradient, or null.
@@ -101,6 +101,18 @@ export const gradientDrag = {
     return false;
   },
 
+  // A drag across the shape at key: its gradient drawn from the press to the pointer, linear (radial with Alt at
+  // the press: the press its middle, the pointer its edge; Shift: straight or at 45°), its stops kept or, from a
+  // color, that color to the background color, as the color box's are. The fill's, or the outline's when the
+  // shape has no fill (or Stroke is chosen for its gradients). A click changes nothing.
+  draw({ project, workspace }, key, pos, event) {
+    const shape = project.shapes.get(key), chosen = workspace.vectorGradientSlot;
+    const slot = isGradient(shape[chosen]) ? chosen : shape.closed && (shape.fill || !shape.stroke) ? 'fill' : 'stroke';
+    project.beginEdit();
+    drag = { kind: 'draw', key, slot, start: shape, at: pos, moved: false, radial: !!event?.altKey };
+    return true;
+  },
+
   get active() {
     return !!drag;
   },
@@ -111,7 +123,14 @@ export const gradientDrag = {
     if (!drag.moved) return;
     const { start, slot } = drag, back = invert(start.m), local = (p) => apply(back, p.x, p.y);
     let next = null;
-    if (drag.kind === 'line' || drag.kind === 'move') {
+    if (drag.kind === 'draw') {
+      const a = local(drag.at), b = local(workspace.isShiftPressed ? snappedEnd(drag.at, to) : to), dx = b.x - a.x, dy = b.y - a.y;
+      if (!dx && !dy) return;
+      const type = drag.radial ? 'radial' : 'linear', { stops } = fillAs(start, type, { from: workspace.editFgColor, to: workspace.editBgColor }, slot);
+      next = withShape(start, { [slot]: { type, stops, m: [dx, dy, -dy, dx, a.x, a.y] } });
+      workspace.vectorGradientSlot = slot;
+      workspace.vectorStop = null;
+    } else if (drag.kind === 'line' || drag.kind === 'move') {
       const a = local(drag.at), b = local(to);
       next = withPaint(start, slot, { m: multiply(translation(b.x - a.x, b.y - a.y), start[slot].m) });
     } else if (drag.kind === 'end') {
@@ -135,7 +154,7 @@ export const gradientDrag = {
 
   end({ project, workspace }) {
     if (!drag) return;
-    const { kind, moved, start, key, slot } = drag, { stops } = start[slot];
+    const { kind, moved, start, key, slot } = drag, { stops } = start[slot] ?? {};
     if (!moved) {
       if (kind === 'line' && stops.length < MOST_STOPS) {
         const order = sorted([...stops, [drag.t, gradientColorAt(stops, drag.t)]], stops.length);
