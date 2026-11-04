@@ -2,7 +2,9 @@
 // points, its curve handles or (once it's being edited) its outline: drag a point or a handle (Alt: the handle
 // alone, broken from its partner; Shift: on a line across, up and down or at 45°), click the outline to add a
 // point there, click empty canvas to stop. A shape with a gradient (made in the color box) shows its handles too
-// (gradientHandles.js); a point or a handle comes first, then the gradient's, then the outline. Each drag is one
+// (gradientHandles.js). A press takes the point or handle nearest it (on a tie, the gradient's), else the
+// gradient's line, else the outline; with no zoom to part handles on top of each other, a click again in the same
+// place takes the next one there (pick), and a drag after moves that one. Each drag is one
 // edit, worked out each move from the shape as it was at the press. Keys: Delete or Backspace deletes the
 // selected stop or point, Esc lets a stop go or stops editing; the rest are Vector select's (the arrows, Delete
 // with nothing selected, Esc then).
@@ -14,32 +16,51 @@ import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
 import vselect, { handleRadius } from '@/tools/vselect.js';
 
 let drag = null; // { kind: 'point' | 'handle', key, i, at, from, start, which?, alone?, anchor? }
+let pick = null; // the last press on handles: { at, ids, i, picks, again, moved }
+
+const MOVED = 2; // CSS px a press goes before it's a drag, not a click
 
 const near = (a, b, unit, radius) => Math.hypot((a.x - b.x) * unit.x, (a.y - b.y) * unit.y) <= radius;
 
-// A press on the edited shape's handle, point or (with add) outline, or false. Hits are in grid pixels; the
-// drag works in the shape's own (local) pixels.
-function pointsPress(project, workspace, pos, unit, radius, { event, add = true } = {}) {
-  const key = workspace.vectorPoints, shape = project.shapes.get(key);
-  const world = worldPoints(shape), start = (kind, i, extra = {}) => {
+// The edited shape's points and curve handles in reach of pos: { id, d, point, take }, d in CSS px, take starting
+// the drag (in the shape's own, local, pixels).
+function pointCandidates(project, workspace, pos, unit, radius, event) {
+  const key = workspace.vectorPoints, shape = project.shapes.get(key), out = [];
+  const take = (kind, i, extra = {}) => () => {
     workspace.vectorPoint = i;
     workspace.vectorStop = null;
     project.beginEdit();
     drag = { kind, key, i, at: pos, from: apply(invert(shape.m), pos.x, pos.y), start: project.shapes.get(key), ...extra };
     return true;
   };
-  for (let i = 0; i < world.length; i++) {
-    for (const which of ['in', 'out']) if (world[i][which] && near(pos, world[i][which], unit, radius)) return start('handle', i, { which, alone: !!event?.altKey, anchor: world[i] });
-  }
-  const i = world.findIndex((p) => near(pos, p, unit, radius));
-  if (i >= 0) return start('point', i);
-  const on = add && nearestOnOutline(shape, pos.x, pos.y);
-  if (on && on.segment >= 0 && on.distance * unit.x <= radius) {
-    project.beginEdit();
-    project.updateShapes([[key, splitAt(shape, on.segment, on.t)]]);
-    return start('point', on.segment + 1);
-  }
-  return false;
+  const d = (p) => Math.hypot((p.x - pos.x) * unit.x, (p.y - pos.y) * unit.y);
+  worldPoints(shape).forEach((p, i) => {
+    for (const which of ['in', 'out']) if (p[which]) out.push({ id: `${which}${i}`, d: d(p[which]), point: i, take: take('handle', i, { which, alone: !!event?.altKey, anchor: p }) });
+    out.push({ id: `p${i}`, d: d(p), point: i, take: take('point', i) });
+  });
+  return out.filter((c) => c.d <= radius);
+}
+
+// A press on the edited shape's handles, its gradient's or its points': the nearest (a whole CSS px nearer; else
+// the gradient's), or, a click again where the last one was, the one that click picked.
+function handlesPress(ctx, pos, radius, event) {
+  const { project, workspace, unit } = ctx;
+  const all = [...gradientDrag.candidates(ctx, pos, radius).map((c) => ({ ...c, gradient: true })), ...pointCandidates(project, workspace, pos, unit, radius, event)];
+  if (!all.length) return (pick = null), false;
+  all.sort((a, b) => Math.round(a.d) - Math.round(b.d) || b.gradient - a.gradient);
+  const ids = all.map((c) => c.id).join(), again = !!pick && pick.ids === ids && near(pos, pick.at, unit, MOVED);
+  const i = again ? pick.i : 0;
+  pick = { at: pos, ids, i, again, moved: false, picks: all.map((c) => (c.gradient ? { point: null, stop: c.stop ?? null } : { point: c.point, stop: null })) };
+  return all[i].take();
+}
+
+// A click on the edited shape's outline: a point added there, the curve kept, and taken.
+function outlinePress(project, workspace, pos, unit, radius) {
+  const key = workspace.vectorPoints, shape = project.shapes.get(key), on = nearestOnOutline(shape, pos.x, pos.y);
+  if (!on || on.segment < 0 || on.distance * unit.x > radius) return false;
+  project.beginEdit();
+  project.updateShapes([[key, splitAt(shape, on.segment, on.t)]]);
+  return pointCandidates(project, workspace, pos, unit, radius).find((c) => c.id === `p${on.segment + 1}`).take();
 }
 
 // The point selected deleted; with under two left, the shape goes, and its points with it.
@@ -63,8 +84,7 @@ export default {
   begin(ctx, pos, event) {
     const { project, workspace, unit } = ctx, radius = handleRadius();
     if (workspace.vectorPoints && project.shapes.has(workspace.vectorPoints)) {
-      const press = (add) => pointsPress(project, workspace, pos, unit, radius, { event, add });
-      if (press(false) || gradientDrag.begin(ctx, pos, radius) || press(true)) return true;
+      if (handlesPress(ctx, pos, radius, event) || gradientDrag.line(ctx, pos, radius) || outlinePress(project, workspace, pos, unit, radius)) return true;
     }
     const hit = shapeAt(project.shapes, pos.x, pos.y, radius / unit.x);
     if (hit === workspace.vectorPoints && hit) return false; // inside it: still editing its points
@@ -72,10 +92,11 @@ export default {
     workspace.vectorPoints = hit; // another shape's points (a press on one of them takes it at once), or none
     if (!hit) return false; // the selection stays
     project.selectShapes([hit]);
-    return pointsPress(project, workspace, pos, unit, radius, { event, add: false });
+    return handlesPress(ctx, pos, radius, event);
   },
 
   move(ctx, from, to) {
+    if (pick && !pick.moved && !near(pick.at, to, ctx.unit, MOVED)) pick.moved = true;
     if (gradientDrag.active) return gradientDrag.move(ctx, from, to);
     const { project, workspace } = ctx;
     if (!drag) return;
@@ -87,15 +108,23 @@ export default {
   },
 
   end(ctx) {
-    if (gradientDrag.active) return gradientDrag.end(ctx);
-    const { project } = ctx;
-    if (!drag) return;
-    drag = null;
-    project.commitEdit();
+    const { project, workspace } = ctx;
+    if (gradientDrag.active) gradientDrag.end(ctx);
+    else if (drag) {
+      drag = null;
+      project.commitEdit();
+    }
+    if (pick?.moved) pick = null; // a drag: a press there starts over
+    else if (pick?.again) {
+      // A click again in the same place: the next one there picked, for the next press.
+      pick.i = (pick.i + 1) % pick.picks.length;
+      workspace.vectorPoint = pick.picks[pick.i].point;
+      workspace.vectorStop = pick.picks[pick.i].stop;
+    }
   },
 
   cancel(ctx) {
-    drag = null; // the viewport took the edit back
+    drag = pick = null; // the viewport took the edit back
     gradientDrag.cancel(ctx);
   },
 

@@ -664,6 +664,8 @@
     "pickColor": "pick color",
     "pickBackground": "pick background",
     "breakHandle": "drag a handle to break it from its partner",
+    "clickKey": "Click",
+    "clickAgain": "again for the handle under it",
     "spaceKey": "Space",
     "pan": "pan",
     "colRow": "Col {col} Row {row}",

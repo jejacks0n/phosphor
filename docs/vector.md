@@ -119,6 +119,10 @@ several (a letter's counters, a ring's hole):
   bar says so while you edit points.
 - Hold Shift while you drag to keep a point on a line from where it was, straight across, straight up and down,
   or at 45°, or a handle on such a line from its point.
+- A press takes the point, curve handle or gradient handle nearest it; when two are as near (a gradient's end on
+  a corner, say), the gradient's. There's no zooming in to part handles on top of each other, so click (or tap)
+  again in the same place for the next one there, and again for the one after; a drag then moves the one picked.
+  The status bar says so while you edit points.
 - Click the outline to add a point there; the curve stays where it was, and the new point is selected.
 - The options row: **Smooth**, **Free** or **Sharp**, the selected point's, one of them lit. Smooth: its handles
   stay in line (drag one and the other turns with it; a point with no handles gets some). Free: its handles each

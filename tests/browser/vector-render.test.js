@@ -498,7 +498,50 @@ test('a radial gradient stretched with its shape is an ellipse', async () => {
   expect(near(focal(25, 20), [255, 0, 0], 40)).toBe(true);
 });
 
-test('the Node tool, on a shape with a gradient, moves, stretches and turns it, and adds, slides and removes stops, one step each; its points come first, and a drag inside adds nothing', async () => {
+test('the Node tool takes the handle nearest a press, a gradient\'s on a tie; a click again in the same place takes the next one there, and a drag then moves that one', async () => {
+  const { project, workspace } = await gradient(40, 40);
+  const fill = { type: 'linear', stops: RED_TO_BLUE, m: [20, 0, 0, 20, 10, 10] }; // (10, 10) to (30, 10): its ends on the top corners
+  const key = project.addShape(withShape(rectShape(10, 10, 30, 20, RED), { fill }));
+  workspace.setActiveTool('vnode');
+  workspace.vectorPoints = key;
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } }; // the reach: 6 CSS px, 0.75 grid px
+  const drag = (from, ...to) => {
+    vnode.begin(ctx, from, {});
+    let at = from;
+    for (const p of to) {
+      vnode.move(ctx, at, p);
+      at = p;
+    }
+    vnode.end(ctx);
+  };
+  const picked = () => [workspace.vectorPoint, workspace.vectorStop];
+
+  // A tie: the gradient's end (its stop selected). Again in the same place: the point under it; again: the end.
+  drag({ x: 10, y: 10 });
+  expect(picked()).toEqual([null, 0]);
+  drag({ x: 10, y: 10 });
+  expect(picked()).toEqual([0, null]);
+  drag({ x: 10.2, y: 10 });
+  expect(picked()).toEqual([null, 0]);
+  drag({ x: 10, y: 10 });
+  expect(picked()).toEqual([0, null]);
+  // A drag then: the one picked (the point) moves, not the gradient.
+  drag({ x: 10, y: 10 }, { x: 9, y: 9 }, { x: 8, y: 8 });
+  expect(project.shapes.get(key).fill).toEqual(fill);
+  expect(project.shapes.get(key).points[0].slice(0, 2)).toEqual([8, 8]);
+  // After a drag, a press there starts over: what's nearest.
+  drag({ x: 8, y: 8 });
+  expect(picked()).toEqual([0, null]);
+
+  // Nearest wins: the gradient's end half a pixel from the point at (30, 10).
+  project.updateShapes([[key, withShape(project.shapes.get(key), { fill: { ...fill, m: [20.5, 0, 0, 20.5, 10, 10] } })]]);
+  drag({ x: 29.9, y: 10 });
+  expect(picked()).toEqual([1, null]);
+  drag({ x: 30.45, y: 10 });
+  expect(picked()).toEqual([null, 1]);
+});
+
+test('the Node tool, on a shape with a gradient, moves, stretches and turns it, and adds, slides and removes stops, one step each; a drag inside adds nothing', async () => {
   const { project, workspace } = await gradient(40, 40);
   const fill = { type: 'linear', stops: RED_TO_BLUE, m: [20, 0, 0, 20, 10, 15] }; // (10, 15) to (30, 15), on the outline
   const key = project.addShape(withShape(rectShape(10, 10, 30, 20, RED), { fill }));
@@ -522,7 +565,7 @@ test('the Node tool, on a shape with a gradient, moves, stretches and turns it, 
   const round = (p) => [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100];
   let version = steps();
 
-  // A press on the shape's point is still the point's; a drag inside the shape, off the gradient's line, is nothing.
+  // A press on the shape's point is the point's; a drag inside the shape, off the gradient's line, is nothing.
   drag({ x: 10, y: 10 });
   expect(workspace.vectorPoint).toBe(0);
   drag({ x: 20, y: 12 }, { x: 24, y: 12 }, { x: 26, y: 12 });
