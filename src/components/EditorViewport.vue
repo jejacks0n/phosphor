@@ -89,8 +89,8 @@ function pickAt(pos, event) {
   // VECTOR: the color under the point is the selected shapes' Fill or Stroke (workspace.vectorPickSlot; Shift:
   // the other), one step for the whole drag (the picker's end commits it), or the next shape's.
   if (props.view === 'vector') {
-    const hex = projectStore.rawColorAt(pos.x, pos.y), chosen = workspaceStore.vectorPickSlot;
-    const slot = !event?.shiftKey ? chosen : chosen === 'fill' ? 'stroke' : 'fill';
+    const hex = projectStore.rawColorAt(pos.x, pos.y), stroke = workspaceStore.vectorPickSlot.stroke;
+    const slot = stroke !== !!event?.shiftKey ? 'stroke' : 'fill';
     const keys = workspaceStore.vectorSelected.filter((key) => projectStore.shapes.has(key));
     if (!keys.length) workspaceStore.vectorStyle = { ...workspaceStore.vectorStyle, [slot]: hex };
     else {

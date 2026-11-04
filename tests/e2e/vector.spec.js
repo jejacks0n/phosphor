@@ -395,6 +395,7 @@ test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', asy
 
   // Stroke chosen in the options row (a phone has no Shift): a click sets the stroke, and Shift the fill.
   const row = page.locator('.tool-setting-group').filter({ has: page.getByRole('button', { name: 'Stroke', exact: true }) });
+  await expect(row.locator('.option-label')).toHaveText('Pick'); // as the ANSI view's FG and BG are
   await row.getByRole('button', { name: 'Stroke', exact: true }).click();
   await expect(page.locator('.ansi-status .hint')).toContainText('pick the fill');
   const other = await store(page, 'project', (p) => p.rawColorAt(5.5, 5.5));

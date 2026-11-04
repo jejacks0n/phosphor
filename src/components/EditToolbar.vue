@@ -429,7 +429,7 @@ const selectionHasCharacters = computed(() => {
           </div>
           <template v-else-if="option.type === 'toggles'">
             <span class="option-label">{{ option.label }}</span>
-            <ToggleGroup v-model="workspace[option.key]" :options="option.options" :label="option.label"/>
+            <ToggleGroup v-model="workspace[option.key]" :options="option.options" :label="option.label" :single="!!option.single"/>
           </template>
           <template v-else-if="option.type === 'layers'">
             <span class="option-label">{{ option.label }}</span>
