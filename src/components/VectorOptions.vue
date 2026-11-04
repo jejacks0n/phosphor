@@ -2,9 +2,9 @@
 // VECTOR's options row. With shapes selected: Width, Stroke (a panel of caps, joins and the miter limit), Forward and Back (the stacking order), Edit points and
 // Delete, each one undo step; with nothing selected, or with the Pen or the Shape tool, the Width the next shape
 // gets. Fill and Stroke are the color pair's chips (useVectorStyle). While a shape's points are edited, the Point
-// row: the selected point Smooth or Corner, and Delete (the point, or a gradient's selected stop); Esc or empty canvas ends it. A phone's row keeps Width and Points, and puts
-// the rest under ⋯; its Point row has no label or hint. On a shape whose fill and stroke are both gradients, the
-// Point row's Fill or Stroke says which one's handles show.
+// row: the selected point Smooth or Corner, and Delete (the point); Esc or empty canvas ends it. With the Node tool's
+// Place gradient, the Gradient row instead: Delete stop, and on a shape with two gradients Fill or Stroke. A phone's row keeps Width and Points, and puts
+// the rest under ⋯; its Point and Gradient rows have no label or hint.
 import { computed } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
@@ -68,7 +68,8 @@ const remove = () => {
 const pointsOf = computed(() => workspace.activeTool === 'vnode' && workspace.vectorPoints && project.shapes.get(workspace.vectorPoints));
 const point = computed(() => (pointsOf.value && workspace.vectorPoint !== null ? allPoints(pointsOf.value)[workspace.vectorPoint] : null));
 const smooth = (on) => project.updateShapes([[workspace.vectorPoints, setSmooth(pointsOf.value, workspace.vectorPoint, on)]]);
-const removePoint = () => (workspace.vectorStop === null ? deleteSelectedPoint(project, workspace) : removeStop(project, workspace));
+const removePoint = () => deleteSelectedPoint(project, workspace);
+const deleteStop = () => removeStop(project, workspace);
 // The shape whose points are edited, when it has two gradients to choose between.
 const twoGradients = computed(() => {
   const key = gradientKey(project, workspace), shape = key && project.shapes.get(key);
@@ -81,17 +82,22 @@ const gradientOf = (slot) => {
 
 const editPoints = () => {
   workspace.setActiveTool('vnode');
+  workspace.vectorNodeMode = 'points';
   workspace.vectorPoints = selected.value[0];
   workspace.vectorPoint = null;
 };
 </script>
 
 <template>
-  <div v-if="pointsOf" class="tool-setting-group vector-options">
+  <div v-if="pointsOf && workspace.vectorNodeMode === 'points'" class="tool-setting-group vector-options">
     <span v-if="!phone" class="option-label">{{ t('vector.point') }}</span>
     <button class="text" :aria-pressed="!!point?.[6]" :disabled="!point" :title="t('vector.smoothTitle')" @click="smooth(true)">{{ t('vector.smooth') }}</button>
     <button class="text" :aria-pressed="!!point && !point[6]" :disabled="!point" :title="t('vector.cornerTitle')" @click="smooth(false)">{{ t('vector.corner') }}</button>
-    <button class="text" :disabled="!point && workspace.vectorStop === null" :title="t(workspace.vectorStop === null ? 'vector.deletePointTitle' : 'vector.deleteStopTitle')" @click="removePoint">{{ t('common.delete') }}</button>
+    <button class="text" :disabled="!point" :title="t('vector.deletePointTitle')" @click="removePoint">{{ t('common.delete') }}</button>
+    <span v-if="!phone" class="hint">{{ t('vector.pointsHint') }}</span>
+  </div>
+  <div v-else-if="pointsOf" class="tool-setting-group vector-options">
+    <button class="text" :disabled="workspace.vectorStop === null" :title="t('vector.deleteStopTitle')" @click="deleteStop">{{ t('vector.deleteStop') }}</button>
     <template v-if="twoGradients">
       <div class="divider"/>
       <span v-if="!phone" class="option-label" aria-hidden="true">{{ t('vector.gradientLabel') }}</span>
@@ -99,7 +105,7 @@ const editPoints = () => {
         <button v-for="slot in ['fill', 'stroke']" :key="slot" class="text" :title="t('vector.gradientSlotTitle')" :aria-pressed="gradientSlot(twoGradients, workspace) === slot" @click="gradientOf(slot)">{{ t(`vector.${slot}`) }}</button>
       </span>
     </template>
-    <span v-if="!phone" class="hint">{{ t('vector.pointsHint') }}</span>
+    <span v-if="!phone" class="hint">{{ t('vector.gradientHint') }}</span>
   </div>
   <div v-else-if="editing || styling" class="tool-setting-group vector-options">
     <RangeField compact :setting="WIDTH" v-model="width" @commit="style.finish"/>

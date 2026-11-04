@@ -498,7 +498,7 @@ test('a radial gradient stretched with its shape is an ellipse', async () => {
   expect(near(focal(25, 20), [255, 0, 0], 40)).toBe(true);
 });
 
-test('a drag across a shape in the Node tool gives it a gradient from the press to the let-go (Alt: radial; Shift: straight), one step; a click doesn\'t', async () => {
+test('the Node tool\'s Place gradient: a drag across a shape gives it a gradient from the press to the let-go (Alt: radial; Shift: straight), one step; a click doesn\'t, nor a drag on Edit points', async () => {
   const { project, workspace } = await gradient(40, 40);
   const key = project.addShape(withShape(rectShape(10, 10, 30, 20, RED), {}));
   workspace.setActiveTool('vnode');
@@ -516,7 +516,12 @@ test('a drag across a shape in the Node tool gives it a gradient from the press 
     return [p0, p1].map((p) => [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100]);
   };
 
-  // A click: its points edited, and no gradient.
+  // Edit points (the start): a drag across the shape is no gradient.
+  expect(workspace.vectorNodeMode).toBe('points');
+  drag({ x: 12, y: 15 }, { x: 28, y: 15 });
+  expect(fill()).toBe('#ff0000');
+  workspace.vectorNodeMode = 'gradient';
+  // A click: its gradient edited, and no gradient yet.
   drag({ x: 12, y: 15 }, { x: 12, y: 15 });
   expect(workspace.vectorPoints).toBe(key);
   expect(fill()).toBe('#ff0000');
@@ -547,14 +552,18 @@ test('a drag across a shape in the Node tool gives it a gradient from the press 
   workspace.vectorPoints = null;
   drag({ x: 25, y: 12 }, { x: 25, y: 28 });
   expect(ends()).toEqual([[25, 12], [25, 28]]);
+  // Empty canvas: nothing edited.
+  drag({ x: 2, y: 36 }, { x: 2, y: 36 });
+  expect(workspace.vectorPoints).toBe(null);
 });
 
-test('the Node tool, on a shape with a gradient, moves, stretches and turns it, and adds, slides and removes stops, one step each', async () => {
+test('the Node tool\'s Place gradient, on a shape with a gradient, moves, stretches and turns it, and adds, slides and removes stops, one step each', async () => {
   const { project, workspace } = await gradient(40, 40);
   const fill = { type: 'linear', stops: RED_TO_BLUE, m: [20, 0, 0, 20, 10, 15] }; // (10, 15) to (30, 15), on the outline
   const key = project.addShape(withShape(rectShape(10, 10, 30, 20, RED), { fill }));
   workspace.vectorSelected = [key];
   workspace.setActiveTool('vnode');
+  workspace.vectorNodeMode = 'gradient';
   workspace.vectorPoints = key;
   const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } };
   const drag = (from, ...to) => {
@@ -573,10 +582,6 @@ test('the Node tool, on a shape with a gradient, moves, stretches and turns it, 
   const round = (p) => [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100];
   let version;
 
-  // A press on the shape's point is still the point's.
-  drag({ x: 10, y: 10 });
-  expect(workspace.vectorPoint).toBe(0);
-  expect(project.shapes.get(key).points).toHaveLength(4);
   version = steps();
   // The line, dragged: the gradient moves.
   expect(drag({ x: 20, y: 15 }, { x: 21, y: 16 }, { x: 22, y: 17 })).toBe(true);
@@ -607,7 +612,6 @@ test('the Node tool, on a shape with a gradient, moves, stretches and turns it, 
   expect(stops()[1][0]).toBeCloseTo(0.5, 2);
   expect(stops()[1][1]).toMatch(/^#(7f|80)00(7f|80)$/);
   expect(workspace.vectorStop).toBe(1);
-  expect(workspace.vectorPoint).toBe(null); // a stop or a point is selected, not both
   expect(steps()).toBe(++version);
 
   // The stop, dragged along the line: its offset; past another, it takes its place in order.
@@ -625,7 +629,7 @@ test('the Node tool, on a shape with a gradient, moves, stretches and turns it, 
   expect(steps()).toBe(version + 1);
   project.undo();
   expect(stops()).toHaveLength(3);
-  // Delete takes the selected stop, not a point; Esc lets it go, and the points are still edited.
+  // Delete takes the selected stop, not a point; Esc lets it go, and the shape is still edited.
   workspace.vectorStop = 1;
   press('Delete');
   expect(stops()).toHaveLength(2);
@@ -635,10 +639,6 @@ test('the Node tool, on a shape with a gradient, moves, stretches and turns it, 
   press('Escape');
   expect(workspace.vectorStop).toBe(null);
   expect(workspace.vectorPoints).toBe(key);
-  drag({ x: 30, y: 20 }); // a point, selected: the stop goes
-  workspace.vectorStop = 1;
-  drag({ x: 30, y: 20 });
-  expect([workspace.vectorPoint, workspace.vectorStop]).toEqual([2, null]);
   project.redo();
   // With two left, one dragged off stays.
   const two = withShape(project.shapes.get(key), { fill: { ...project.shapes.get(key).fill, stops: [[0.2, '#ff0000'], [0.8, '#0000ff']] } });
