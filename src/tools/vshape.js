@@ -44,7 +44,7 @@ export default {
       ],
     },
     {
-      key: 'vectorSides', get label() { return t('tools.vshape.sides'); }, get title() { return t('tools.vshape.sidesTitle'); }, min: 3, max: 12,
+      key: 'vectorSides', get label() { return t('tools.vshape.sides'); }, get title() { return t('tools.vshape.sidesTitle'); }, min: 3, max: 12, readout: true,
       when: (ws) => ws.vectorShapeKind === 'polygon',
     },
   ],
