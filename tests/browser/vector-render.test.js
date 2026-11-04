@@ -5,7 +5,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
-import { makeShape, rectShape, ellipseShape, translation, transformed, rotation, setSmooth, withShape, worldPoints } from '@/document/shapes';
+import { makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, setSmooth, withShape, worldPoints } from '@/document/shapes';
 import { shapeAt } from '@/lib/shapeHits.js';
 import vnode from '@/tools/vnode.js';
 
@@ -335,4 +335,36 @@ test('caps and joins draw as set, and a sharp miter is redrawn where it reaches'
   }
   expect(counts.square).toBeGreaterThan(counts.butt);
   expect(counts.miter).toBeGreaterThan(counts.bevel);
+});
+
+test('the Node tool edits an inner outline\'s points, adds to it, and deletes it before the shape', async () => {
+  const { project, workspace } = await gradient();
+  const k = project.addShape(makeShape({ points: corners(2, 26), closed: true, more: [[true, corners(10, 18)]], rule: 'evenodd', fill: '#ff0000' }));
+  workspace.vectorSelected = [k];
+  workspace.vectorPoints = k;
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } };
+  const inner = (s = project.shapes.get(k)) => outlines(s)[1].points;
+  expect(vnode.begin(ctx, { x: 18, y: 18 })).toBe(true); // inner point 2, flat 6
+  vnode.move(ctx, { x: 18, y: 18 }, { x: 20, y: 19 });
+  vnode.end(ctx);
+  expect(workspace.vectorPoint).toBe(6);
+  expect(inner()[2].slice(0, 2)).toEqual([20, 19]);
+  expect(outlines(project.shapes.get(k))[0].points).toEqual(corners(2, 26));
+
+  vnode.begin(ctx, { x: 14, y: 10 }); // the inner top edge's middle: a point there, on the inner outline
+  vnode.end(ctx);
+  expect(inner()).toHaveLength(5);
+  expect(workspace.vectorPoint).toBe(5);
+
+  const removeSelected = () => vnode.keydown(ctx, { key: 'Delete' });
+  for (let i = 0; i < 3; i++) {
+    workspace.vectorPoint = 4;
+    removeSelected();
+  }
+  expect(outlines(project.shapes.get(k))).toHaveLength(2);
+  expect(inner()).toHaveLength(2);
+  workspace.vectorPoint = 4;
+  removeSelected();
+  expect(outlines(project.shapes.get(k))).toHaveLength(1); // the inner outline went; the shape stays
+  expect(project.shapes.get(k).more).toBeUndefined();
 });

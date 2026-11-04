@@ -369,6 +369,26 @@ test('the Node tool (A) edits the points of the shape pressed, a two-point line\
   expect(await selected(page)).toEqual([rect]);
 });
 
+test('the Node tool shows and drags the points of every outline in a shape', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const key = await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, fill: '#ff0000', stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0], rule: 'evenodd',
+    points: [[10, 10, 0, 0, 0, 0, 0], [40, 10, 0, 0, 0, 0, 0], [40, 40, 0, 0, 0, 0, 0], [10, 40, 0, 0, 0, 0, 0]],
+    more: [[true, [[20, 20, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [30, 30, 0, 0, 0, 0, 0], [20, 30, 0, 0, 0, 0, 0]]]] })`);
+  await page.keyboard.press('a');
+  await page.mouse.click(...Object.values(await gridPoint(page, 12, 25))); // on the band: its points
+  await expect(page.locator('.vector-overlay rect.handle')).toHaveCount(8);
+  await dragPoints(page, await gridPoint(page, 30, 30), await gridPoint(page, 33, 34));
+  const inner = await store(page, 'project', `(p) => p.shapes.get('${key}').more[0][1][2]`);
+  expect(inner[0]).toBeCloseTo(33, 0);
+  expect(inner[1]).toBeCloseTo(34, 0);
+  const row = page.locator('.vector-options');
+  await expect(row.getByRole('button', { name: 'Delete', exact: true })).toBeEnabled(); // the Point row knows an inner point
+  await row.getByRole('button', { name: 'Smooth', exact: true }).click();
+  expect(await store(page, 'project', `(p) => p.shapes.get('${key}').more[0][1][2][6]`)).toBe(1);
+});
+
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
