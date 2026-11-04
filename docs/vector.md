@@ -123,9 +123,10 @@ several (a letter's counters, a ring's hole):
 - Hold Shift while you drag to keep a point on a line from where it was, straight across, straight up and down,
   or at 45°, or a handle on such a line from its point.
 - Click the outline to add a point there; the curve stays where it was, and the new point is selected.
-- The options row: **Smooth** (the point's handles stay in line: drag one and the other turns with it; a
-  point with no handles gets some), **Corner** (a sharp point: its handles go), and **Delete** (the point; Delete
-  or Backspace too; an outline left with fewer than two points goes, and the shape with its last one).
+- The options row: **Smooth** or **Sharp**, the selected point's, one of them lit. Smooth: its handles stay in
+  line (drag one and the other turns with it; a point with no handles gets some). Sharp: its handles go. A point
+  whose handles were broken apart is neither until you choose one. And **Delete** (the point; Delete or Backspace
+  too; an outline left with fewer than two points goes, and the shape with its last one).
 - Click empty canvas or press Esc to stop editing points; the shape stays selected. Press another shape to edit
   its points instead. Choosing another tool stops too.
 

@@ -1,13 +1,19 @@
 <script setup>
 // Connected toggle buttons over an object of booleans (v-model): any number lit, never none (a
-// click that would turn the last one off does nothing). options: [{ key, label, title, disabled? }].
+// click that would turn the last one off does nothing); or, single, a click lights its one alone (none lit is
+// fine until then). options: [{ key, label, title, disabled? }].
 const value = defineModel({ type: Object, required: true });
-defineProps({
+const props = defineProps({
   options: { type: Array, required: true },
   label: { type: String, default: '' }, // for screen readers; the toolbar shows its own
+  single: { type: Boolean, default: false },
 });
 
 function toggle(key) {
+  if (props.single) {
+    if (!value.value[key]) value.value = Object.fromEntries(props.options.map((o) => [o.key, o.key === key]));
+    return;
+  }
   const next = { ...value.value, [key]: !value.value[key] };
   if (Object.values(next).some(Boolean)) value.value = next;
 }
