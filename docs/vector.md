@@ -248,4 +248,6 @@ same, without the hint; a double tap on a shape edits its points.
 ## Eyedropper (I)
 
 On VECTOR the Eyedropper picks the color the art shows under the pointer and makes it the selected
-shapes' Fill (with Shift, their Stroke), as one undo step. With nothing selected, it sets the next shape's.
+shapes' Fill or Stroke, as one undo step: **Fill** or **Stroke** in the options row chooses which (Fill to start
+with), and Shift picks for the other one; the status bar says so. With nothing selected, it sets the next
+shape's.

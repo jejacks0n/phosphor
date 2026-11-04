@@ -41,6 +41,7 @@ const hint = computed(() => {
     const shift = current.shiftLines ? t('status.straightLine') : current.shiftHint?.(workspace);
     return [[KEYS.alt, t('status.pickColor')], [KEYS.altShift, t('status.pickBackground')], ...(shift ? [[KEYS.shift, shift]] : []), [t('status.spaceKey'), t('status.pan')]];
   }
+  if (tool.value === 'picker' && workspace.editorTab === 'vector') return [[KEYS.shift, t(workspace.vectorPickSlot === 'fill' ? 'status.pickStroke' : 'status.pickFill')], [t('status.spaceKey'), t('status.pan')]];
   if (tool.value === 'vselect' && gradientKey(project, workspace)) return [[t('status.clickKey'), t('status.clickAgain')], [t('status.spaceKey'), t('status.pan')]];
   if (tool.value === 'vnode' && workspace.vectorPoints) return [[KEYS.alt, t('status.breakHandle')], [t('status.clickKey'), t('status.clickAgain')], [t('status.spaceKey'), t('status.pan')]];
   if (tool.value !== 'text' && tool.value !== 'hand') return [[t('status.spaceKey'), t('status.pan')]];

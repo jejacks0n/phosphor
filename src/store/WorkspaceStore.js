@@ -39,6 +39,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     isShiftPressed: false,
     pointerOverEditor: false, // the pointer is over the canvas (Space pans even with a button focused)
     pickLayers: { fg: true, bg: true }, // ANSI view: what a plain picker click picks (both lit: both)
+    vectorPickSlot: 'fill', // VECTOR: what a plain picker click sets, 'fill' | 'stroke' (Shift: the other)
     lastPick: null,          // the Color Picker's last ANSI pick, for the status bar: { col, row, fg, bg, fgFrom, bgFrom }
     textCursor: null,      // { col, row } of the Text tool's cursor
     lastTextCursor: null,  // where it was when Escape put it away: choosing Edit Mode puts it back there
