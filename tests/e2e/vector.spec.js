@@ -680,15 +680,18 @@ test('the Stroke color box makes a gradient stroke, which the Node tool edits; w
   await box.locator('.swatch.small').first().click();
   await page.keyboard.press('Escape');
   expect((await shape()).stroke.stops).toEqual([[0, '#00ff00'], [1, '#ffff00']]);
-  const choice = page.locator('.vector-options').getByRole('group', { name: 'Gradient' });
-  await expect(choice).toHaveCount(0); // one gradient: no choice
+  const which = (name) => page.locator('.vector-options').getByRole('button', { name, exact: true });
+  await expect(which('Fill')).toHaveCount(0); // one gradient: no choice
 
   // The fill a gradient too: the tool goes to it, and Fill or Stroke chooses.
   await page.locator('.color-pair .chip.fg').click();
   await box.getByRole('button', { name: 'Radial', exact: true }).click();
   await page.keyboard.press('Escape');
-  const which = (name) => choice.getByRole('button', { name, exact: true });
   await expect(which('Fill')).toHaveAttribute('aria-pressed', 'true');
+  // As big as the row's other buttons, and lit when chosen.
+  const [fill, remove] = [await which('Fill').boundingBox(), await which('Delete stop').boundingBox()];
+  expect(fill.height).toBeCloseTo(remove.height, 0);
+  await expect(which('Fill')).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(page.locator('.vector-overlay .stop').first()).toHaveCSS('fill', 'rgb(255, 0, 0)'); // the fill's first stop
   await which('Stroke').click();
   await expect(which('Stroke')).toHaveAttribute('aria-pressed', 'true');

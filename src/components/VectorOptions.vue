@@ -94,10 +94,8 @@ const gradientOf = (slot) => {
     <button class="text" :disabled="workspace.vectorStop === null" :title="t('vector.deleteStopTitle')" @click="deleteStop">{{ t('vector.deleteStop') }}</button>
     <template v-if="twoGradients">
       <div class="divider"/>
-      <span v-if="!phone" class="option-label" aria-hidden="true">{{ t('vector.gradientLabel') }}</span>
-      <span class="gradient-slot" role="group" :aria-label="t('vector.gradientLabel')">
-        <button v-for="slot in ['fill', 'stroke']" :key="slot" class="text" :title="t('vector.gradientSlotTitle')" :aria-pressed="gradientSlot(twoGradients, workspace) === slot" @click="gradientOf(slot)">{{ t(`vector.${slot}`) }}</button>
-      </span>
+      <span v-if="!phone" class="option-label">{{ t('vector.gradientLabel') }}</span>
+      <button v-for="slot in ['fill', 'stroke']" :key="slot" class="text" :title="t('vector.gradientSlotTitle')" :aria-pressed="gradientSlot(twoGradients, workspace) === slot" @click="gradientOf(slot)">{{ t(`vector.${slot}`) }}</button>
     </template>
     <span v-if="!phone" class="hint">{{ t('vector.gradientHint') }}</span>
   </div>
@@ -150,10 +148,6 @@ const gradientOf = (slot) => {
 </template>
 
 <style scoped>
-span.gradient-slot {
-  display: contents;
-}
-
 svg.chevron {
   width: 10px;
   height: 10px;

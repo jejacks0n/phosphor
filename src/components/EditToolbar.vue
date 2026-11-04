@@ -606,6 +606,12 @@ div.vector-options > :deep(button.text) {
   color: var(--text-dim);
 }
 
+/* A choice in the row (Smooth or Corner, Fill or Stroke), lit as a segmented one is. */
+div.vector-options > :deep(button.text[aria-pressed='true']) {
+  background: var(--accent);
+  color: var(--white);
+}
+
 /* The two dropdowns sit 4px apart (the row's 6px gap, less 2px). */
 .overlay-menu {
   margin-right: -2px;
