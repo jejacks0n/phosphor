@@ -65,7 +65,7 @@ export default {
     workspace.vectorPoint = null;
     workspace.vectorPoints = hit; // another shape's points (a press on one of them takes it at once), or none
     if (!hit) return false; // the selection stays
-    workspace.vectorSelected = [hit];
+    project.selectShapes([hit]);
     return pointsPress(project, workspace, pos, unit, radius, { event, add: false });
   },
 

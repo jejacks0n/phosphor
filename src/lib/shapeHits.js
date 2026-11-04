@@ -1,6 +1,6 @@
 // Which shape is under a point, and how near a point is to one's outline: through Path2D on one 2D context
 // kept for it (the shapes' paths in grid pixels; tolerances in grid pixels).
-import { pathData, stacked, strokeOf } from '@/document/shapes.js';
+import { curveBounds, pathData, stacked, strokeOf } from '@/document/shapes.js';
 
 let context = null;
 const ctx = () => (context ??= document.createElement('canvas').getContext('2d'));
@@ -21,6 +21,25 @@ export function shapeAt(shapes, x, y, tol) {
   const order = stacked(shapes);
   for (let i = order.length - 1; i >= 0; i--) if (hitsShape(order[i][1], x, y, tol)) return order[i][0];
   return null;
+}
+
+// The keys of the shapes a box (grid pixels) touches, bottom to top: wholly inside it, or its fill or stroke
+// found at points sampled over where the two overlap.
+// ponytail: about 4000 samples a shape, each grown by half the spacing, so over a big overlap a shape that
+// close to the box's edge counts; exact geometry (curves against the box's edges) if that's ever noticed.
+export function shapesTouching(shapes, { x0, y0, x1, y1 }) {
+  return stacked(shapes).filter(([, shape]) => {
+    const b = curveBounds(shape), pad = shape.stroke ? shape.width / 2 : 0;
+    if (b.x0 >= x0 && b.y0 >= y0 && b.x1 <= x1 && b.y1 <= y1) return true;
+    const ax = Math.max(x0, b.x0 - pad), ay = Math.max(y0, b.y0 - pad), bx = Math.min(x1, b.x1 + pad), by = Math.min(y1, b.y1 + pad);
+    if (ax > bx || ay > by) return false;
+    const step = Math.max(0.5, Math.sqrt(((bx - ax) * (by - ay)) / 4000));
+    const nx = Math.ceil((bx - ax) / step), ny = Math.ceil((by - ay) / step);
+    for (let j = 0; j <= ny; j++) {
+      for (let i = 0; i <= nx; i++) if (hitsShape(shape, ax + ((bx - ax) * i) / (nx || 1), ay + ((by - ay) * j) / (ny || 1), step / 2)) return true;
+    }
+    return false;
+  }).map(([key]) => key);
 }
 
 // Whether (x, y) is within tol of the outline alone (its stroke left out): where a point can go on it.

@@ -1,12 +1,13 @@
-// Vector select (the VECTOR tab): click a shape to select it (Shift adds or takes it away), then drag inside the
-// box to move (Shift: straight across, up and down, or at 45°), a handle to scale (Shift keeps the proportions)
+// Vector select (the VECTOR tab): click a shape to select it (Shift adds or takes it away), or drag a box over
+// empty canvas to select every shape it touches (Shift: adds them); each change of the selection is an undo
+// step (selectShapes). Then drag inside the box to move (Shift: straight across, up and down, or at 45°), a handle to scale (Shift keeps the proportions)
 // or the knob above it to rotate (Shift: in steps of 15°). A second click on a shape edits its points with the
 // Node tool (vnode.js). Each drag is one edit, worked out each move from the shapes as they were at the press,
 // so nothing drifts. Keys: arrows nudge a grid pixel (Shift: 10), Delete or Backspace deletes, Esc deselects.
 import { t } from '@/i18n/index.js';
 import { apply, curveBounds, invert, localBounds, multiply, rotation, scaling, translation, transformed, withShape } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
-import { shapeAt } from '@/lib/shapeHits.js';
+import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 
 const KNOB = 24;           // CSS px above the box's top edge
 const DOUBLE_MS = 400, DOUBLE_PX = 4;
@@ -132,24 +133,33 @@ export default {
     const now = performance.now(), again = hit && lastPress?.key === hit && now - lastPress.time < DOUBLE_MS
       && near(pos, lastPress.pos, unit, DOUBLE_PX);
     lastPress = { key: hit, time: now, pos };
+    const marquee = () => {
+      drag = { kind: 'marquee', from: pos, keys, shift };
+      return true;
+    };
     if (shift) {
-      if (hit) workspace.vectorSelected = keys.includes(hit) ? keys.filter((key) => key !== hit) : [...keys, hit];
+      if (!hit) return marquee();
+      project.selectShapes(keys.includes(hit) ? keys.filter((key) => key !== hit) : [...keys, hit]);
       return false;
     }
     // A second click on a shape (pressed and let go without moving) edits its points: see end.
     if (box && inside(box.corners, pos)) return at('move', { again: again && hit });
     if (hit) {
-      workspace.vectorSelected = [hit];
+      project.selectShapes([hit]);
       return at('move', { keys: [hit], box: selectionBox(project.shapes, [hit]), again: again && hit });
     }
-    workspace.vectorSelected = [];
-    return false;
+    return marquee(); // let go where it was pressed: a click on empty canvas, which deselects
   },
 
   move({ project, workspace }, from, to) {
     if (!drag) return;
     const shift = workspace.isShiftPressed;
     drag.moved ||= to.x !== drag.from.x || to.y !== drag.from.y;
+    if (drag.kind === 'marquee') {
+      const { from: f } = drag;
+      if (drag.moved) workspace.vectorMarquee = { x0: Math.min(f.x, to.x), y0: Math.min(f.y, to.y), x1: Math.max(f.x, to.x), y1: Math.max(f.y, to.y) };
+      return;
+    }
     if (drag.kind === 'move') {
       const end = shift ? snappedEnd(drag.from, to) : to;
       reshape(project, drag, (shape) => transformed(shape, translation(end.x - drag.from.x, end.y - drag.from.y)).m);
@@ -160,8 +170,15 @@ export default {
 
   end({ project, workspace }) {
     if (!drag) return;
-    const { again, moved } = drag;
+    const { again, moved, kind, keys, shift } = drag;
     drag = null;
+    if (kind === 'marquee') {
+      const box = workspace.vectorMarquee;
+      workspace.vectorMarquee = null;
+      const touched = box ? shapesTouching(project.shapes, box) : [];
+      if (box || !shift) project.selectShapes(shift ? [...keys, ...touched.filter((key) => !keys.includes(key))] : touched);
+      return;
+    }
     project.commitEdit();
     if (again && !moved) {
       workspace.vectorSelected = [again];
@@ -171,15 +188,16 @@ export default {
     }
   },
 
-  cancel() {
+  cancel({ workspace }) {
     drag = null; // the viewport took the edit back
+    workspace.vectorMarquee = null;
   },
 
   keydown({ project, workspace }, event) {
     const keys = selected(workspace, project), [dx, dy] = ARROWS[event.key] ?? [];
     if (event.key === 'Escape') {
       if (!keys.length) return false;
-      workspace.vectorSelected = [];
+      project.selectShapes([]);
       return true;
     }
     if (!keys.length || event.metaKey || event.ctrlKey || event.altKey) return false;

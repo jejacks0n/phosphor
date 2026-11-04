@@ -21,7 +21,7 @@ export const historyActions = {
     if (this._stroke || !this.paintLayer) return;
     // Raw, so commitEdit's identity checks see the same objects. keys: the cells it's sent. A stroke begun
     // for a float's move is held for an artist (sharing.js).
-    this._stroke = markRaw({ id: randomId(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords, keys: [], hold: !!this._floating });
+    this._stroke = markRaw({ id: randomId(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords, keys: [], hold: !!this._floating, startShapes: this.shapes, vectorSelected: useWorkspaceStore().vectorSelected });
     this.paintLayer.beginStroke();
     this.baseLayer.beginStroke();
   },
@@ -67,7 +67,7 @@ export const historyActions = {
     }
 
     // The entry mustn't close over stroke or patch: the old map and the tiles are the ledger's to hold now.
-    const { cursor, id, sent, drawn } = stroke;
+    const { cursor, id, sent, drawn } = stroke, chosen = stroke.startShapes !== this.shapes && stroke.vectorSelected;
     const drawnAsArtist = this._sharing?.role === 'artist';
     const records = { before: stroke.baseRecords, after: this.baseRecords };
     const frame = this.currentFrame, ledger = this._ledger; // undoing goes back to the frame it was drawn on, and its ledger
@@ -81,6 +81,7 @@ export const historyActions = {
         this._ghost.frame = null;
       }
       if (side === 'before' && cursor) useWorkspaceStore().textCursor = cursor; // typing undone: the cursor goes back to where it started
+      if (side === 'before' && chosen) useWorkspaceStore().vectorSelected = chosen; // a shapes edit undone: its selection back
       if (this._sharing?.role === 'artist') { // the host says what happens; an artist has no base edits to put back
         if (sent) this.askForStroke(side === 'before' ? 'undo' : 'redo', id); // or it changed nothing: nothing to ask
         return;

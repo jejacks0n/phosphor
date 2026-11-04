@@ -261,19 +261,70 @@ test('Cmd+C and Cmd+V copy the selected shapes and paste them on top, selected; 
   expect(shapes).toHaveLength(4);
   const pasted = shapes.filter((s) => ![a, b].includes(s.key));
   expect(pasted.map(({ points, fill }) => ({ points, fill }))).toEqual(shapes.filter((s) => [a, b].includes(s.key)).map(({ points, fill }) => ({ points, fill })));
+  expect(pasted.map((s) => s.m)).toEqual([[1, 0, 0, 1, 2, 2], [1, 0, 0, 1, 2, 2]]); // a little right and down, to be seen
+  await page.keyboard.press('ControlOrMeta+v'); // again: past those
+  expect((await shapeList(page)).at(-1).m).toEqual([1, 0, 0, 1, 4, 4]);
+  await page.keyboard.press('ControlOrMeta+z');
   expect(Math.min(...pasted.map((s) => s.z))).toBeGreaterThan(Math.max(...shapes.filter((s) => [a, b].includes(s.key)).map((s) => s.z))); // on top
   expect((await selected(page)).sort()).toEqual(pasted.map((s) => s.key).sort());
   await page.keyboard.press('ControlOrMeta+z'); // one step
   expect(await shapeList(page)).toHaveLength(2);
 
+  expect((await selected(page)).sort()).toEqual([a, b].sort()); // undoing the paste: the selection before it
+  await page.keyboard.press('Escape');
   await page.mouse.click(...Object.values(await gridPoint(page, 15, 15))); // a alone
   await page.keyboard.press('ControlOrMeta+x');
   shapes = await shapeList(page);
   expect(shapes.map((s) => s.key)).toEqual([b]);
   await page.keyboard.press('p'); // pasted from any tool, with Vector select
   await page.keyboard.press('ControlOrMeta+v');
-  expect(await shapeList(page)).toHaveLength(2);
+  shapes = await shapeList(page);
+  expect(shapes).toHaveLength(2);
+  expect(shapes.find((s) => s.key !== b).m).toEqual([1, 0, 0, 1, 0, 0]); // a cut pastes back where it was
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vselect');
+});
+
+test('Vector select\'s Copy, Cut and Paste buttons', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await addRect(page, 10, 10, 20, 20);
+  await page.keyboard.press('v');
+  const button = (name) => page.locator('.vector-options').getByRole('button', { name });
+  await expect(button(/^Copy/)).toBeDisabled();
+  await expect(button(/^Paste/)).toBeDisabled();
+  await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
+  await button(/^Copy/).click();
+  await button(/^Paste/).click();
+  expect(await shapeList(page)).toHaveLength(2);
+  await button(/^Cut/).click();
+  expect(await shapeList(page)).toHaveLength(1);
+  await expect(button(/^Copy/)).toBeDisabled();
+  await button(/^Paste/).click();
+  expect(await shapeList(page)).toHaveLength(2);
+});
+
+test('a box dragged over empty canvas selects what it touches, and undo brings back a selection lost by a click', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const a = await addRect(page, 10, 10, 20, 20), b = await addRect(page, 30, 10, 40, 20);
+  await addRect(page, 10, 40, 20, 50);
+  await page.keyboard.press('v');
+  const from = await gridPoint(page, 5, 25), to = await gridPoint(page, 35, 15);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 4 });
+  await expect(page.locator('.vector-overlay rect.marquee')).toBeVisible();
+  await page.mouse.move(to.x, to.y, { steps: 4 });
+  await page.mouse.up();
+  await expect(page.locator('.vector-overlay rect.marquee')).toHaveCount(0);
+  expect((await selected(page)).sort()).toEqual([a, b].sort());
+  await page.mouse.click(...Object.values(await gridPoint(page, 60, 60))); // oops: empty canvas
+  expect(await selected(page)).toEqual([]);
+  await page.keyboard.press('ControlOrMeta+z');
+  expect((await selected(page)).sort()).toEqual([a, b].sort());
+  expect(await shapeList(page)).toHaveLength(3);
 });
 
 test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', async ({ page }) => {

@@ -1219,7 +1219,7 @@ test('Fill, Connect and the picker read another\'s work like your own', async ()
 });
 
 test('an action added to the edit layer or selection is listed or known to only read', () => {
-  const READS = ['completeAt', 'copySelection', 'basePixelsOf', 'baseColorsOf', 'hasCharacters', 'changeSelection'];
+  const READS = ['completeAt', 'copySelection', 'basePixelsOf', 'baseColorsOf', 'hasCharacters', 'changeSelection', 'selectShapes'];
   for (const name of [...Object.keys(editLayerActions), ...Object.keys(selectionActions)]) {
     expect([name, DRAWING_ACTIONS.includes(name) || READS.includes(name)]).toEqual([name, true]);
   }

@@ -60,6 +60,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     vectorClipboard: null,   // VECTOR's copied shapes, bottom to top (Cmd/Ctrl+C or X there)
+    vectorMarquee: null,     // the box Vector select drags over empty canvas, { x0, y0, x1, y1 } in grid pixels
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     clipboardId: null,       // the last copy's id, in the block it put on the system clipboard (clipboard.js)
     artDrop: null,           // { file, at: { col, row } | null }: an art file dropped on an open drawing, asking to add it or open it (EditWorkspace)
