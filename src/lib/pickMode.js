@@ -1,11 +1,11 @@
 // Which colors an eyedropper click picks: 'fg' | 'bg' | 'both'.
 // A picker held with Alt from a drawing tool picks the foreground, or with Shift added the background;
-// the pixel view's own picker picks the foreground. In the ANSI view, target (the tool's [FG][BG]
+// the pixel view's own picker picks its FG or BG (target: one lit), Shift the other. In the ANSI view, target (the tool's [FG][BG]
 // toggles, via pickTargetOf; default 'both') is what a plain click picks; Shift and Alt override it
 // with the foreground and background.
 export function pickMode({ view, shiftKey, altKey, swapped, target = 'both' }) {
   if (swapped) return shiftKey ? 'bg' : 'fg';
-  if (view === 'input') return 'fg';
+  if (view === 'input') return (target === 'bg') !== shiftKey ? 'bg' : 'fg'; // its FG or BG; Shift the other
   if (shiftKey) return 'fg';
   if (altKey) return 'bg';
   return target;

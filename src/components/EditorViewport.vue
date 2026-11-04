@@ -73,8 +73,9 @@ const {
   },
 });
 
-// The eyedropper: the pixel view picks the paint color; the ANSI view picks the cell's underlying
-// colors (the [FG][BG] toggles; Shift: foreground only, Alt: background only). Picks repeat while
+// The eyedropper: the pixel view picks the paint color, into the foreground or the background (its FG or BG;
+// Shift: the other); the ANSI view picks the cell's underlying colors (the [FG][BG] toggles; Shift: foreground
+// only, Alt: background only). Picks repeat while
 // dragging; the recent colors get the old and new colors when the pick ends (workspace.endPick).
 function pickAt(pos, event) {
   if (projectStore._paused) return; // the layer takes the press
@@ -84,7 +85,7 @@ function pickAt(pos, event) {
     shiftKey: !!event?.shiftKey,
     altKey: !!event?.altKey,
     swapped: workspaceStore.pickSwapped,
-    target: pickTargetOf(workspaceStore.pickLayers),
+    target: pickTargetOf(props.view === 'input' ? workspaceStore.pixelPickSlot : workspaceStore.pickLayers),
   });
   // VECTOR: the color under the point is the selected shapes' Fill or Stroke (workspace.vectorPickSlot; Shift:
   // the other), one step for the whole drag (the picker's end commits it), or the next shape's.

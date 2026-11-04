@@ -66,6 +66,11 @@ test('Underlying colors come from the pipeline run with every color adjustment, 
   assert.equal(pm({ target: 'bg', shiftKey: true }), 'fg');
   assert.equal(pm({ target: 'fg', altKey: true }), 'bg');
   assert.equal(pm({ view: 'input', target: 'both' }), 'fg');           // the pixel view picks the paint color
+  // The pixel view's option (FG or BG, one lit) sets what a click picks; Shift the other.
+  assert.equal(pm({ view: 'input', target: 'bg' }), 'bg');
+  assert.equal(pm({ view: 'input', target: 'bg', shiftKey: true }), 'fg');
+  assert.equal(pm({ view: 'input', target: 'fg', shiftKey: true }), 'bg');
+  assert.equal(pm({ view: 'input', target: 'fg' }), 'fg');
   // The Picker's [FG][BG] toggles: both lit picks both.
   assert.equal(pickTargetOf({ fg: true, bg: true }), 'both');
   assert.equal(pickTargetOf({ fg: true, bg: false }), 'fg');

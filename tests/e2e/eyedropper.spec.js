@@ -47,6 +47,31 @@ test('PIXEL view: the picker clicked off the canvas leaves the color alone', asy
   expect(await workspace(page, (w) => w.editFgColor)).toBe(picked);
 });
 
+test('PIXEL view: Pick FG or BG, one lit, chooses which color a click sets, and Shift the other', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'PIXEL').click();
+  await settled(page);
+  await page.getByRole('button', { name: 'Eyedropper' }).click();
+  const row = page.locator('.tool-setting-group').filter({ has: page.getByRole('button', { name: 'BG', exact: true }) });
+  await expect(row.locator('.option-label')).toHaveText('Pick');
+  const box = await page.locator('article .display').first().boundingBox();
+  const at = (fx) => [box.x + box.width * fx, box.y + box.height * 0.5];
+  const colors = () => workspace(page, (w) => [w.editFgColor, w.editBgColor]);
+
+  await row.getByRole('button', { name: 'BG', exact: true }).click();
+  await expect(row.getByRole('button', { name: 'FG', exact: true })).toHaveAttribute('aria-pressed', 'false'); // one lit
+  const [fg] = await colors();
+  await page.mouse.click(...at(0.8));
+  const [fgAfter, bg] = await colors();
+  expect(fgAfter).toBe(fg);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(...at(0.2));
+  await page.keyboard.up('Shift');
+  const [fgShift, bgAfter] = await colors();
+  expect(bgAfter).toBe(bg);
+  expect(fgShift).not.toBe(fg);
+});
+
 test('ANSI view: an Alt-held pick off the canvas leaves the color alone', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Pencil' }).click();

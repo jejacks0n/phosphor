@@ -39,6 +39,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     isShiftPressed: false,
     pointerOverEditor: false, // the pointer is over the canvas (Space pans even with a button focused)
     pickLayers: { fg: true, bg: true }, // ANSI view: what a plain picker click picks (both lit: both)
+    pixelPickSlot: { fg: true, bg: false }, // pixel view: what a plain picker click picks, one lit (Shift: the other)
     vectorPickSlot: { fill: true, stroke: false }, // VECTOR: what a plain picker click sets, one lit (Shift: the other)
     lastPick: null,          // the Color Picker's last ANSI pick, for the status bar: { col, row, fg, bg, fgFrom, bgFrom }
     textCursor: null,      // { col, row } of the Text tool's cursor

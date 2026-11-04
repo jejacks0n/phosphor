@@ -427,7 +427,8 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   them in an ordered pattern so the bands don't show as hard lines. Where the blend changes faster
   than a cell can show, a half-block (▀ ▄ ▌ ▐) puts the edge mid-cell. Set doesn't apply to a
   gradient: it gives each cell its character and both colors. A gradient is one undo step.
-- **Eyedropper**'s **FG** and **BG** toggles choose what a pick sets; both lit sets both.
+- **Eyedropper**'s **FG** and **BG** toggles choose what a pick sets; in the ANSI view both lit sets both. In
+  the pixel view one is lit at a time, and **Shift** picks into the other one.
 - **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
   selection's size and place, and the Eyedropper its last pick and where each color came from.
   On the right it shows the held-key shortcuts for the tool. When the view is too narrow for all of
