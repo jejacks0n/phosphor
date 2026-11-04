@@ -6,9 +6,10 @@
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { IDENTITY, MOST_POINTS, MOST_SHAPES, joined, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
+import { IDENTITY, MOST_OUTLINES, MOST_POINTS, MOST_SHAPES, apply, joined, multiply, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
 import { withoutPins } from '@/document/baseRecords.js';
 import { bytesHeld } from '@/store/project/shared.js';
+import { readSvgFile } from '@/lib/SvgFile.js';
 
 // What the document holds is what a file, a project or a room takes back: one check for both.
 const keeps = (shape) => !!shapeFromStranger(shape);
@@ -58,6 +59,66 @@ export const vectorActions = {
     this.setShapes(new Map(this.shapes).set(key, added));
     if (own) this.commitEdit();
     return key;
+  },
+
+  // An SVG file's art as shapes, on top, in the file's order (readSvgFile; it throws, with its userMessage, for a
+  // file that isn't SVG). Art bigger than the grid (less 2 grid pixels each side) is scaled down into it,
+  // proportions kept; any is centered. Each shape has its whole transform baked into its points (points round to
+  // 1/100, and letters drawn in font units would lose their shape under a kept one), and its stroke width scaled
+  // with it, once. One step; they're selected, with Vector select. Past a frame's shapes or a shape's points
+  // nothing comes in, and a toast says by how much; what couldn't come in is said too. The keys.
+  addSvg(text) {
+    const art = readSvgFile(text), workspace = useWorkspaceStore(), left = new Set(art.left);
+    const leftOut = () => (left.size
+      ? t('vector.svgLeftOut', { kinds: [...left].map((kind) => t(`vector.svgKinds.${kind}`)).join(', ') }) + (left.has('text') ? ` ${t('vector.svgTextHint')}` : '')
+      : '');
+    if (!art.items.length) {
+      toast(`${t('vector.svgEmpty')} ${leftOut()}`.trim());
+      return [];
+    }
+    const room = (n) => Math.max(1, n - 4);
+    const s = Math.min(1, ...[[this.cols, art.width], [this.rows, art.height]].filter(([, n]) => n > 0).map(([c, n]) => room(c) / n));
+    const fit = [s, 0, 0, s, (this.cols - art.width * s) / 2, (this.rows - art.height * s) / 2];
+    const shapes = art.items.map((item) => {
+      const m = multiply(fit, item.m), [a, b, c, d] = m;
+      const bake = (points) => points.map(([x, y, ix, iy, ox, oy, smooth]) => {
+        const p = apply(m, x, y);
+        return [p.x, p.y, a * ix + c * iy, b * ix + d * iy, a * ox + c * oy, b * ox + d * oy, smooth];
+      });
+      const [first, ...rest] = item.outlines;
+      return {
+        closed: first.closed, points: bake(first.points), more: rest.map((o) => [o.closed, bake(o.points)]), m: IDENTITY,
+        fill: item.fill, stroke: item.stroke, width: Math.min(64, Math.max(0.5, item.width * Math.sqrt(Math.abs(a * d - b * c)))),
+        rule: item.rule, cap: item.cap, join: item.join, miter: item.miter,
+      };
+    });
+    const points = Math.max(...art.items.map((item) => item.outlines.reduce((n, o) => n + o.points.length, 0)));
+    const outlineCount = Math.max(...art.items.map((item) => item.outlines.length));
+    if (this.shapes.size + shapes.length > MOST_SHAPES || points > MOST_POINTS || outlineCount > MOST_OUTLINES) {
+      toast(t('vector.svgTooBig', { shapes: shapes.length, points, mostShapes: MOST_SHAPES - this.shapes.size, mostPoints: MOST_POINTS }));
+      return [];
+    }
+    this.ensureLayer();
+    if (!this.paintLayer) return [];
+    const own = ownsEdit(this), next = new Map(this.shapes), keys = [];
+    let z = Math.max(0, ...[...this.shapes.values()].map((shape) => shape.z + 1));
+    for (const shape of shapes) {
+      const made = makeShape({ ...shape, z });
+      if (!keeps(made)) {
+        left.add('other');
+        continue;
+      }
+      const key = newShapeKey();
+      next.set(key, made);
+      keys.push(key);
+      z++;
+    }
+    if (keys.length) this.setShapes(next);
+    if (own) this.commitEdit();
+    workspace.vectorSelected = keys;
+    workspace.setActiveTool('vselect');
+    if (left.size) toast(leftOut());
+    return keys;
   },
 
   // [[key, Shape | null]]: each shape there replaced, or deleted with null. A key that's gone stays gone, and a
