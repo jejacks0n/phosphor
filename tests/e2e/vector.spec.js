@@ -147,6 +147,27 @@ test('on VECTOR the color pair is Fill and Stroke: it shows the selected shape\'
   expect(await store(page, 'workspace', (w) => w.editFgColor)).toBe(fg); // ANSI's colors are left alone
 });
 
+test('VECTOR\'s color box is the one the other tabs have, with Fill and Stroke for FG and BG, and Swap', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
+  const key = await addRect(page, 10, 10, 20, 20);
+  await page.mouse.click(...Object.values(await gridPoint(page, 11, 11)));
+  expect(await selected(page)).toEqual([key]);
+  await page.locator('.color-pair .chip.fg').click();
+  const box = page.locator('.color-popover');
+  await expect(box.locator('.head button.on')).toHaveText('Fill');
+  await box.getByRole('button', { name: 'Stroke', exact: true }).click();
+  await expect(box.locator('.head button.on')).toHaveText('Stroke');
+  await box.locator('.swatch.small').first().click(); // the stroke's now
+  expect((await shapeList(page))[0]).toMatchObject({ fill: '#ff0000', stroke: '#00ff00' });
+  await box.getByRole('button', { name: /Swap/ }).click();
+  expect((await shapeList(page))[0]).toMatchObject({ fill: '#00ff00', stroke: '#ff0000' });
+  await page.keyboard.press('Escape');
+  await undoSteps(page, 2); // Swap, Stroke
+  expect((await shapeList(page))[0]).toMatchObject({ fill: '#ff0000', stroke: null });
+});
+
 test('Fill, Stroke and Stroke width change the selected shape; Forward and Back restack it; Delete removes it', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
@@ -156,9 +177,9 @@ test('Fill, Stroke and Stroke width change the selected shape; Forward and Back 
   await page.mouse.click(...Object.values(await gridPoint(page, 11, 11)));
   expect(await selected(page)).toEqual([below]);
 
-  await page.locator('.color-pair').getByRole('button', { name: 'Fill', exact: true }).click();
+  await page.locator('.color-pair .chip.fg').click();
   await page.locator('.color-popover .swatch.none').click();
-  await page.locator('.color-pair').getByRole('button', { name: 'Stroke', exact: true }).click();
+  await page.locator('.color-pair .chip.bg').click();
   await page.locator('.color-popover .swatch.small').first().click();
   await page.keyboard.press('Escape');
   await page.getByLabel('Stroke width', { exact: true }).fill('4');
