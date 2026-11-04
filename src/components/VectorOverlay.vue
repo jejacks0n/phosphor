@@ -56,15 +56,16 @@ const points = computed(() => {
   return { all, arms };
 });
 
-// The Pen's shape: its points, and a dashed segment from the last to the pointer (with Shift, to where a click
-// puts the next point: across, up and down or at 45°).
+// The Pen's shape: its path so far (a line, whatever its fill and stroke: two points have nothing to fill, and a
+// finger leaves no pointer to follow), its points, and a dashed segment from the last to the pointer (with Shift,
+// to where a click puts the next point: across, up and down or at 45°).
 const pen = computed(() => {
   const shape = workspace.vectorPen && project.shapes.get(workspace.vectorPen);
   if (!shape) return null;
   const world = worldPoints(shape), hover = workspace.vectorHover;
   const to = hover && (workspace.isShiftPressed && world.length ? snappedEnd(world.at(-1), hover) : hover);
   const all = world.map((p) => px(p));
-  return { all, next: to && { from: all.at(-1), to: px(to) } };
+  return { d: pathData(shape, props.unit.x, props.unit.y), all, next: to && { from: all.at(-1), to: px(to) } };
 });
 
 const gradient = computed(() => {
@@ -110,6 +111,7 @@ const r = computed(() => handleRadius() / 2 + 1);
       </template>
       <rect v-if="marquee" :x="marquee.x" :y="marquee.y" :width="marquee.w" :height="marquee.h" class="box marquee"/>
       <template v-if="pen">
+        <path :d="pen.d" class="outline pen"/>
         <line v-if="pen.next" :x1="pen.next.from.x" :y1="pen.next.from.y" :x2="pen.next.to.x" :y2="pen.next.to.y" class="box"/>
         <rect v-for="(p, i) in pen.all" :key="i" :x="p.x - r" :y="p.y - r" :width="2 * r" :height="2 * r" class="handle" :class="{ on: i === 0 }"/>
       </template>

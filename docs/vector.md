@@ -162,6 +162,8 @@ or a gradient goes where the pointer is.
 ## Pen (P)
 
 - Click for a corner point. Press and drag for a smooth point: its handles follow the pointer, one on each side.
+- The path so far shows as a thin line while you draw, whatever its fill and outline, so a tap on a phone shows
+  where it goes before there's anything to fill.
 - Hold Shift to keep the next point straight across, straight up and down, or at 45° from the last one, and a
   smooth point's handles at those angles too. The dashed line to the pointer shows where the point will go.
 - The shape fills (or strokes) on the canvas as you draw it, with a dashed line from the last point to the
