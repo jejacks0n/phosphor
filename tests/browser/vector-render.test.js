@@ -499,7 +499,7 @@ test('a radial gradient stretched with its shape is an ellipse', async () => {
   expect(near(focal(25, 20), [255, 0, 0], 40)).toBe(true);
 });
 
-test('the Node tool takes the handle nearest a press, a gradient\'s on a tie; a click again in the same place takes the next one there, and a drag then moves that one', async () => {
+test('the Node tool takes a gradient\'s handle in reach of a press first, else the nearest; a click again in the same place takes the next one there, and a drag then moves that one', async () => {
   const { project, workspace } = await gradient(40, 40);
   const fill = { type: 'linear', stops: RED_TO_BLUE, m: [20, 0, 0, 20, 10, 10] }; // (10, 10) to (30, 10): its ends on the top corners
   const key = project.addShape(withShape(rectShape(10, 10, 30, 20, RED), { fill }));
@@ -534,12 +534,12 @@ test('the Node tool takes the handle nearest a press, a gradient\'s on a tie; a 
   drag({ x: 8, y: 8 });
   expect(picked()).toEqual([0, null]);
 
-  // Nearest wins: the gradient's end half a pixel from the point at (30, 10).
+  // The gradient's end comes first even a little farther than a point: half a pixel from the one at (30, 10).
   project.updateShapes([[key, withShape(project.shapes.get(key), { fill: { ...fill, m: [20.5, 0, 0, 20.5, 10, 10] } })]]);
   drag({ x: 29.9, y: 10 });
-  expect(picked()).toEqual([1, null]);
-  drag({ x: 30.45, y: 10 });
   expect(picked()).toEqual([null, 1]);
+  drag({ x: 29.9, y: 10 }); // again: the point
+  expect(picked()).toEqual([1, null]);
 });
 
 test('the Node tool, on a shape with a gradient, moves, stretches and turns it, and adds, slides and removes stops, one step each; a drag inside adds nothing', async () => {
@@ -687,7 +687,7 @@ test('Vector select\'s knob with Shift turns one shape to its own angle in steps
   expect(angle(b)).toBeCloseTo(35, 2);
 });
 
-test('Vector select edits one selected shape\'s gradient: its ends and stops dragged or picked, a scale handle first on a tie and the end on a click again; Delete and Esc take the stop, another selection lets it go', async () => {
+test('Vector select edits one selected shape\'s gradient: its ends and stops dragged or picked, the end first over a scale handle and the handle on a click again; Delete and Esc take the stop, another selection lets it go', async () => {
   const { project, workspace } = await gradient(40, 40);
   const fill = { type: 'linear', stops: [[0, '#ff0000'], [0.5, '#00ff00'], [1, '#0000ff']], m: [20, 0, 0, 20, 10, 15] }; // its ends on the box's left and right middles
   const key = project.addShape(withShape(rectShape(10, 10, 30, 20, RED), { fill }));
@@ -721,7 +721,9 @@ test('Vector select edits one selected shape\'s gradient: its ends and stops dra
   expect(workspace.vectorStop).toBe(null);
   expect(workspace.vectorSelected).toEqual([key]);
 
-  // The right end, on the right middle scale handle: a click is the handle's, a click again the end's (its stop).
+  // The right end, on the right middle scale handle: a click is the end's (its stop), a click again the handle's.
+  drag({ x: 30, y: 15 });
+  expect(workspace.vectorStop).toBe(2);
   drag({ x: 30, y: 15 });
   expect(workspace.vectorStop).toBe(null);
   drag({ x: 30, y: 15 });

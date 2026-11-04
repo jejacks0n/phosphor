@@ -96,7 +96,7 @@ their points into line with the cells, recolor them, or change them from frame t
   stop to select it (its chip's color box then sets its color; Delete, Backspace or the row's Delete removes it,
   and Esc lets it go). Its line isn't a handle here: a drag inside the box still moves the shape, and stops are
   added with the Node tool. Where a gradient's end sits on one of the box's handles (a Linear gradient's ends are
-  on the left and right ones), the box's handle comes first; click again in the same place for the end. With both
+  on the left and right ones), the gradient's end comes first; click again in the same place for the box's handle. With both
   a gradient fill and outline, **Fill** and **Stroke** in the options row choose which one's handles show.
 - Click empty canvas to deselect. Cmd+A (Ctrl+A) selects every shape on the frame, from any VECTOR tool (it
   switches to Vector select), finishing a Pen shape under way first.
@@ -127,8 +127,8 @@ several (a letter's counters, a ring's hole):
   bar says so while you edit points.
 - Hold Shift while you drag to keep a point on a line from where it was, straight across, straight up and down,
   or at 45°, or a handle on such a line from its point.
-- A press takes the point, curve handle or gradient handle nearest it; when two are as near (a gradient's end on
-  a corner, say), the gradient's. There's no zooming in to part handles on top of each other, so click (or tap)
+- A press on a gradient's handle (an end or a stop) takes it, even with a point or a curve handle as near or
+  nearer (a gradient's end on a corner, say); otherwise it takes the point or curve handle nearest. There's no zooming in to part handles on top of each other, so click (or tap)
   again in the same place for the next one there, and again for the one after; a drag then moves the one picked.
   The status bar says so while you edit points.
 - Click the outline to add a point there; the curve stays where it was, and the new point is selected.
