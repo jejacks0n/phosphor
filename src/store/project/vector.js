@@ -61,6 +61,32 @@ export const vectorActions = {
     return key;
   },
 
+  // Shapes on top, in their order (a paste's copies, an SVG's art), as one step; selected, with Vector select. One
+  // a file wouldn't keep is left out; past a frame's shapes none come in, and a toast says so. The keys.
+  addShapes(shapes) {
+    if (this.shapes.size + shapes.length > MOST_SHAPES) {
+      toast(t('vector.tooMany', { count: MOST_SHAPES }));
+      return [];
+    }
+    this.ensureLayer();
+    if (!this.paintLayer) return [];
+    const own = ownsEdit(this), next = new Map(this.shapes), keys = [], workspace = useWorkspaceStore();
+    let z = Math.max(0, ...[...this.shapes.values()].map((shape) => shape.z + 1));
+    for (const shape of shapes) {
+      const made = makeShape({ ...shape, z });
+      if (!keeps(made)) continue;
+      const key = newShapeKey();
+      next.set(key, made);
+      keys.push(key);
+      z++;
+    }
+    if (keys.length) this.setShapes(next);
+    if (own) this.commitEdit();
+    workspace.setActiveTool('vselect');
+    workspace.vectorSelected = keys;
+    return keys;
+  },
+
   // An SVG file's art as shapes, on top, in the file's order (readSvgFile; it throws, with its userMessage, for a
   // file that isn't SVG). Art bigger than the grid (less 2 grid pixels each side) is scaled down into it,
   // proportions kept; any is centered. Each shape has its whole transform baked into its points (points round to
@@ -68,7 +94,7 @@ export const vectorActions = {
   // its stroke width scaled with it, once. One step; they're selected, with Vector select. Past a frame's shapes or a shape's points
   // nothing comes in, and a toast says by how much; what couldn't come in is said too. The keys.
   addSvg(text) {
-    const art = readSvgFile(text), workspace = useWorkspaceStore(), left = new Set(art.left);
+    const art = readSvgFile(text), left = new Set(art.left);
     const refusal = svgRefusal(art, MOST_SHAPES - this.shapes.size);
     if (refusal) {
       toast(refusal);
@@ -90,25 +116,8 @@ export const vectorActions = {
         rule: item.rule, cap: item.cap, join: item.join, miter: item.miter,
       };
     });
-    this.ensureLayer();
-    if (!this.paintLayer) return [];
-    const own = ownsEdit(this), next = new Map(this.shapes), keys = [];
-    let z = Math.max(0, ...[...this.shapes.values()].map((shape) => shape.z + 1));
-    for (const shape of shapes) {
-      const made = makeShape({ ...shape, z });
-      if (!keeps(made)) {
-        left.add('other');
-        continue;
-      }
-      const key = newShapeKey();
-      next.set(key, made);
-      keys.push(key);
-      z++;
-    }
-    if (keys.length) this.setShapes(next);
-    if (own) this.commitEdit();
-    workspace.vectorSelected = keys;
-    workspace.setActiveTool('vselect');
+    const keys = this.addShapes(shapes);
+    if (keys.length < shapes.length) left.add('other');
     if (left.size) toast(svgLeftOut(left));
     return keys;
   },

@@ -176,6 +176,10 @@ function makeActions(project, workspace, r, opts) {
         : fillAs(shape, pick(['solid', 'linear', 'radial']), { from: '#000000', to: pick(COLORS) });
       project.updateShapes([[key, withShape(shape, { fill: next })]]);
     },
+    pasteShapes: () => { // copies of a few shapes, on top, as one step
+      const shapes = [...project.shapes.values()].filter(() => r() < 0.5).slice(0, 3);
+      if (shapes.length) project.addShapes(shapes);
+    },
     deleteShape: () => {
       const keys = [...project.shapes.keys()];
       if (keys.length) project.deleteShapes(keys.filter(() => r() < 0.5).slice(0, 2));
@@ -334,7 +338,7 @@ for (const quantize of ['none', 'count']) {
 
 test('fuzz: shapes among typing, paint, selections and merges', async () => {
   const failures = [];
-  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
+  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'pasteShapes', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
   for (const seed of seeds([1, 2, 3, 6])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);

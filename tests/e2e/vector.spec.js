@@ -249,6 +249,33 @@ test('Cmd+A selects every shape, with Vector select, and not the page\'s text', 
   expect(await page.evaluate(() => String(window.getSelection()))).toBe('');
 });
 
+test('Cmd+C and Cmd+V copy the selected shapes and paste them on top, selected; Cmd+X cuts', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const a = await addRect(page, 10, 10, 20, 20), b = await addRect(page, 30, 10, 40, 20);
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('ControlOrMeta+c');
+  await page.keyboard.press('ControlOrMeta+v');
+  let shapes = await shapeList(page);
+  expect(shapes).toHaveLength(4);
+  const pasted = shapes.filter((s) => ![a, b].includes(s.key));
+  expect(pasted.map(({ points, fill }) => ({ points, fill }))).toEqual(shapes.filter((s) => [a, b].includes(s.key)).map(({ points, fill }) => ({ points, fill })));
+  expect(Math.min(...pasted.map((s) => s.z))).toBeGreaterThan(Math.max(...shapes.filter((s) => [a, b].includes(s.key)).map((s) => s.z))); // on top
+  expect((await selected(page)).sort()).toEqual(pasted.map((s) => s.key).sort());
+  await page.keyboard.press('ControlOrMeta+z'); // one step
+  expect(await shapeList(page)).toHaveLength(2);
+
+  await page.mouse.click(...Object.values(await gridPoint(page, 15, 15))); // a alone
+  await page.keyboard.press('ControlOrMeta+x');
+  shapes = await shapeList(page);
+  expect(shapes.map((s) => s.key)).toEqual([b]);
+  await page.keyboard.press('p'); // pasted from any tool, with Vector select
+  await page.keyboard.press('ControlOrMeta+v');
+  expect(await shapeList(page)).toHaveLength(2);
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vselect');
+});
+
 test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
