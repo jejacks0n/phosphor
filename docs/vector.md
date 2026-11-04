@@ -67,7 +67,10 @@ Each drag, nudge or delete is one undo step.
 
 While a shape's points are edited, its points and their curve handles show over it:
 
-- Drag a point to move it, its handles with it. Drag a handle to bend the curves beside its point.
+- Drag a point to move it, its handles with it. Drag a handle to bend the curves beside its point; on a
+  smooth point the other handle turns with it. Alt-drag (Option-drag on a Mac) a handle to break it from its
+  partner: it moves alone, and from then on the point's two handles bend the curves on their own. The status
+  bar says so while you edit points.
 - Click the outline to add a point there; the curve stays where it was, and the new point is selected.
 - The options row: **Smooth** (the point's handles stay in line: drag one and the other turns with it; a
   point with no handles gets some), **Corner** (a sharp point: its handles go), and **Delete** (the point; Delete

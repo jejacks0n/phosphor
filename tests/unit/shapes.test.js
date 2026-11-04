@@ -101,6 +101,13 @@ test('moveHandle on a smooth point keeps the other handle in line and its length
   assert.deepEqual(moveHandle(free, 0, 'out', 5, 9).points[0].slice(2, 4), [-2, 0]);
 });
 
+// Alt-dragging a handle: it moves on its own, and the point's handles are free of each other from then on.
+test('moveHandle alone breaks a smooth point\'s handle from its partner', () => {
+  const smooth = makeShape({ points: [[5, 5, -2, 0, 3, 0, 1], [10, 10, 0, 0, 0, 0, 0]], closed: false });
+  const broken = moveHandle(smooth, 0, 'out', 5, 9, { alone: true }).points[0];
+  assert.deepEqual(broken, [5, 5, -2, 0, 0, 4, 0]);
+});
+
 test('setSmooth lines a corner point\'s handles up, or makes them when it has none', () => {
   const s = makeShape({ points: [[0, 0, 0, 0, 0, 0, 0], [6, 0, 0, 0, 0, 0, 0], [6, 6, 0, 0, 0, 0, 0]], closed: false });
   const smooth = setSmooth(s, 1, true).points[1];
