@@ -41,10 +41,11 @@ function mergeHere() {
 const warnedSub = (sub, warning = mergeWarning()) => (drawing.othersHere ? t('toolbar.mergeDialog.warnedSub', { warning, sub }) : sub);
 
 // The toolbar offers the tools that work in the current view (editorTab is 'input' or 'output' while editing),
-// with a divider wherever the toolbar section changes.
+// with a divider wherever the toolbar section changes (a tool's own, or its sections[tab] in that view).
 const tools = computed(() => {
-  const offered = offeredTools(workspace.editorTab, project);
-  return offered.map((tool, i) => ({ tool, divider: i > 0 && (tool.section ?? 'draw') !== (offered[i - 1].section ?? 'draw') }));
+  const tab = workspace.editorTab, offered = offeredTools(tab, project);
+  const section = (tool) => tool.sections?.[tab] ?? tool.section ?? 'draw';
+  return offered.map((tool, i) => ({ tool, divider: i > 0 && section(tool) !== section(offered[i - 1]) }));
 });
 const activeTool = computed(() => getTool(workspace.activeTool));
 
