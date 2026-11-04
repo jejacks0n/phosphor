@@ -1341,7 +1341,6 @@
     "smoothTitle": "Make the point smooth: its handles stay in line",
     "corner": "Corner",
     "cornerTitle": "Make the point a sharp corner: its handles go",
-    "deletePoint": "Delete point",
     "deletePointTitle": "Delete the selected point",
     "done": "Done",
     "doneTitle": "Stop editing points",

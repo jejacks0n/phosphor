@@ -320,7 +320,7 @@ test('double-click edits points: drag a point and a handle, click the outline to
   expect((await store(page, 'project', `(p) => p.shapes.get('${key}').points[1]`)).slice(2, 6)).toEqual([0, 0, 0, 0]);
 
   // Delete point, then Done.
-  await row.getByRole('button', { name: 'Delete point', exact: true }).click();
+  await row.getByRole('button', { name: 'Delete', exact: true }).click();
   expect((await world(0)).n).toBe(4);
   await row.getByRole('button', { name: 'Done', exact: true }).click();
   expect(await store(page, 'workspace', (w) => w.vectorPoints)).toBe(null);

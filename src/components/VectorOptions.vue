@@ -2,7 +2,7 @@
 // VECTOR's options row. With shapes selected: Width, Forward and Back (the stacking order), Edit points and
 // Delete, each one undo step; with nothing selected, or with the Pen or the Shape tool, the Width the next shape
 // gets. Fill and Stroke are the color pair's chips (useVectorStyle). While a shape's points are edited, the Point
-// row: the selected point Smooth or Corner, Delete point and Done. A phone's row keeps Width and Points, and puts
+// row: the selected point Smooth or Corner, Delete (the point) and Done. A phone's row keeps Width and Points, and puts
 // the rest under ⋯; its Point row has no label or hint.
 import { computed } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
@@ -54,7 +54,7 @@ const editPoints = () => {
     <span v-if="!phone" class="option-label">{{ t('vector.point') }}</span>
     <button class="text" :aria-pressed="!!point?.[6]" :disabled="!point" :title="t('vector.smoothTitle')" @click="smooth(true)">{{ t('vector.smooth') }}</button>
     <button class="text" :aria-pressed="!!point && !point[6]" :disabled="!point" :title="t('vector.cornerTitle')" @click="smooth(false)">{{ t('vector.corner') }}</button>
-    <button class="text" :disabled="!point" :title="t('vector.deletePointTitle')" @click="removePoint">{{ t('vector.deletePoint') }}</button>
+    <button class="text" :disabled="!point" :title="t('vector.deletePointTitle')" @click="removePoint">{{ t('common.delete') }}</button>
     <button class="text" :title="t('vector.doneTitle')" @click="done">{{ t('vector.done') }}</button>
     <span v-if="!phone" class="hint">{{ t('vector.pointsHint') }}</span>
   </div>
