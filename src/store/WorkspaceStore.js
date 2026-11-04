@@ -135,8 +135,6 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorPen: null,         // the key of the Pen's shape while it's being drawn, or null
     vectorStyle: { fill: 'fg', stroke: null, width: 1, cap: 'round', join: 'round', miter: 4 }, // what a new shape gets: a color, 'fg' (the foreground's then) or null
     vectorHover: null,       // where the pointer is over VECTOR's art, in grid pixels, for the Pen's next segment
-    vectorNodeMode: 'points', // the Node tool: 'points' (Edit points) | 'gradient' (Place gradient)
-    vectorGradientKind: 'linear', // the gradient Place gradient's drag draws: 'linear' | 'radial'
     vectorShapeKind: 'rect', // the Shape tool: 'rect' | 'ellipse' | 'polygon'
     vectorSides: 5,          // a polygon's sides, 3 to 12
   }),

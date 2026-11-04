@@ -183,7 +183,6 @@ export default {
     if (again && !moved) {
       workspace.vectorSelected = [again];
       workspace.setActiveTool('vnode');
-      workspace.vectorNodeMode = 'points';
       workspace.vectorPoints = again;
       workspace.vectorPoint = null;
     }

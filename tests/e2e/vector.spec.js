@@ -671,11 +671,9 @@ test('the Stroke color box makes a gradient stroke, which the Node tool edits; w
   await expect(page.locator('.color-pair .chip.bg')).toHaveAttribute('style', /linear-gradient/);
   await page.keyboard.press('Escape');
 
-  // Node's Place gradient: the stroke's gradient, its only one. Its last stop, clicked, then recolored in the Stroke box.
+  // The Node tool: the stroke's gradient, its only one, with the points. Its last stop, clicked, then recolored in the Stroke box.
   await page.mouse.dblclick(...Object.values(await gridPoint(page, 15, 12)));
-  expect(await store(page, 'workspace', (w) => [w.activeTool, w.vectorNodeMode])).toEqual(['vnode', 'points']);
-  await expect(page.locator('.vector-overlay .stop')).toHaveCount(0); // Edit points: no gradient handles
-  await page.getByRole('button', { name: 'Place gradient', exact: true }).click();
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vnode');
   await expect(page.locator('.vector-overlay .stop')).toHaveCount(2);
   await page.mouse.click(...Object.values(await gridPoint(page, 20, 15)));
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(1);
@@ -701,7 +699,7 @@ test('the Stroke color box makes a gradient stroke, which the Node tool edits; w
   await expect(page.locator('.vector-overlay .stop').first()).toHaveCSS('fill', 'rgb(0, 255, 0)');
 });
 
-test('Node\'s Place gradient shows a shape\'s gradient\'s handles; recoloring a stop changes the art; G isn\'t a VECTOR tool', async ({ page }) => {
+test('the Node tool shows a shape\'s gradient\'s handles with its points; recoloring a stop changes the art; G isn\'t a VECTOR tool', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await settled(page);
@@ -719,10 +717,9 @@ test('Node\'s Place gradient shows a shape\'s gradient\'s handles; recoloring a 
   await expect(page.locator('.vector-options').getByRole('button', { name: 'Edit points', exact: true })).toHaveCount(0); // a double-click or A does
   await page.mouse.dblclick(...Object.values(await gridPoint(page, 12, 12)));
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vnode');
-  await page.getByRole('button', { name: 'Place gradient', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Place gradient', exact: true })).toHaveClass(/\bon\b/);
+  await expect(page.getByRole('button', { name: 'Place gradient', exact: true })).toHaveCount(0);
   await expect(page.locator('.vector-overlay .stop')).toHaveCount(2);
-  await expect(page.locator('.vector-overlay rect.handle')).toHaveCount(2); // the gradient's ends, not the shape's points
+  await expect(page.locator('.vector-overlay rect.handle')).toHaveCount(6); // the shape's 4 points and the gradient's 2 ends
 
   // The last stop, clicked: selected; the Fill box sets its color, one step.
   await settled(page);
@@ -745,27 +742,6 @@ test('Node\'s Place gradient shows a shape\'s gradient\'s handles; recoloring a 
   // Another tool lets the stop go.
   await page.keyboard.press('v');
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBeNull();
-});
-
-test('Node\'s Place gradient: a drag across a shape gives it a gradient, whose handles then show; undo takes it back', async ({ page }) => {
-  await openApp(page);
-  await tab(page, 'VECTOR').click();
-  await settled(page);
-  await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, fill: '#ff0000', stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0],
-    points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
-  await page.keyboard.press('a');
-  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vnode');
-  await page.getByRole('button', { name: 'Place gradient', exact: true }).click();
-  await settled(page);
-  const before = await cells(page);
-  await dragPoints(page, await gridPoint(page, 12, 15), await gridPoint(page, 28, 15));
-  const { fill } = (await shapeList(page))[0];
-  expect(fill.type).toBe('linear');
-  expect(fill.m.map(Math.round)).toEqual([16, 0, 0, 16, 12, 15]);
-  await expect(page.locator('.vector-overlay .stop')).toHaveCount(2);
-  await expect.poll(() => cells(page)).not.toEqual(before);
-  await undoSteps(page, 1);
-  expect((await shapeList(page))[0].fill).toBe('#ff0000');
 });
 
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
@@ -803,22 +779,6 @@ test.describe('on a phone', () => {
     await expect(box.getByRole('button', { name: 'Miter join', exact: true })).toBeVisible();
     const { x, width } = await box.boundingBox();
     expect(x >= 0 && x + width <= 390).toBe(true); // on the screen
-  });
-
-  test('Place gradient\'s Radial makes a radial gradient by touch', async ({ page }) => {
-    await openApp(page);
-    await tab(page, 'VECTOR').click();
-    await settled(page);
-    const [cx, cy] = await store(page, 'project', (p) => [Math.round(p.cols / 2), Math.round(p.rows / 2)]); // the middle: what a phone's screen shows
-    await addRect(page, cx - 4, cy - 4, cx + 4, cy + 4);
-    await store(page, 'workspace', (w) => { w.setActiveTool('vnode'); w.vectorNodeMode = 'gradient'; });
-    await page.getByRole('button', { name: 'Radial', exact: true }).click();
-    const [from, to] = [await gridPoint(page, cx - 2, cy), await gridPoint(page, cx + 2, cy)];
-    expect(from.x).toBeGreaterThan(0);
-    await dragPoints(page, from, to);
-    const { fill } = (await shapeList(page))[0];
-    expect(fill.type).toBe('radial');
-    expect(fill.m.map(Math.round)).toEqual([4, 0, 0, 4, cx - 2, cy]);
   });
 });
 
