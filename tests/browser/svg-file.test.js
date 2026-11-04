@@ -6,6 +6,8 @@ import { apply } from '@/document/shapes.js';
 import rose from '../fixtures/svg/rose-mark.svg?raw';
 import mark from '../fixtures/svg/belle-verriere-mark.svg?raw';
 import logo from '../fixtures/svg/belle-verriere-logo.svg?raw';
+import gradients from '../fixtures/svg/gradients.svg?raw';
+import { multiply, rotation } from '@/document/shapes.js';
 
 const svg = (body, attrs = 'viewBox="0 0 100 100"') => `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ${attrs}>${body}</svg>`;
 // An item's first outline's points, in the viewport's units.
@@ -179,17 +181,56 @@ test('what can\'t come in is noted, and a hostile file runs and loads nothing', 
   images.mockRestore();
 });
 
-test('a gradient paint is its first stop\'s color for now', () => {
+const close = (a, b) => expect(a.map((v) => Math.round(v * 1e6) / 1e6)).toEqual(b.map((v) => Math.round(v * 1e6) / 1e6));
+
+test('gradients come in as gradient fills: both units, gradientTransform, focal points, href, and a stroke as its first color', () => {
+  const [sunset, turned, glow, glow2] = readSvgFile(gradients).items;
+  // The box's diagonal: (10, 10) to (90, 70), stretched with the 80 × 60 box.
+  expect(sunset.fill).toMatchObject({ type: 'linear', stops: [[0, '#ff6a00'], [0.5, '#ee0979'], [1, '#1e3c72']] });
+  close(sunset.fill.m, [80, 60, -80, 60, 10, 10]);
+  // In user space, along (110, 10) to (190, 10), turned 30° about (150, 40); reflect comes in as pad.
+  expect(turned.fill.stops).toEqual([[0, '#ffff00'], [1, '#008000']]);
+  close(turned.fill.m, multiply(rotation(Math.PI / 6, 150, 40), [80, 0, 0, 80, 110, 10]));
+  // A circle over the circle's box, its focal point up and to the left.
+  expect(glow.fill).toMatchObject({ type: 'radial', stops: [[0, '#ffffff'], [1, '#0050ff']] });
+  close(glow.fill.m, [35, 0, 0, 35, 50, 115]);
+  close(glow.fill.f, [-0.4, -0.3]);
+  // glow's circle and stops through href, squashed by its own gradientTransform in the ellipse's box.
+  close(glow2.fill.m, [40, 0, 0, 24, 150, 109]);
+  close(glow2.fill.f, [-0.4, -0.3]);
+  expect(glow2.stroke).toBe('#ff6a00');
+});
+
+test('a gradient with one stop is its color, with none no paint, and one with no length its last stop\'s', () => {
   const art = readSvgFile(svg(`
-    <defs><linearGradient id="g"><stop offset="0" stop-color="#ff8800"/><stop offset="1" stop-color="blue"/></linearGradient>
-      <radialGradient id="r"><stop offset="0" style="stop-color: rgb(0, 128, 0)"/></radialGradient>
-      <linearGradient id="h" href="#g"/></defs>
-    <rect width="10" height="10" fill="url(#g)"/>
-    <rect width="10" height="10" fill="url('#r')" stroke="url(#missing) red"/>
-    <rect width="10" height="10" fill="url(#h)"/>
+    <defs><linearGradient id="one"><stop offset="0" stop-color="#ff8800"/></linearGradient>
+      <linearGradient id="none"/>
+      <linearGradient id="flat" x2="0"><stop offset="0" stop-color="red"/><stop offset="1" stop-color="blue"/></linearGradient>
+      <radialGradient id="dot" r="0"><stop offset="0" stop-color="red"/><stop offset="1" stop-color="lime"/></radialGradient>
+      <linearGradient id="many">${Array.from({ length: 40 }, (_, i) => `<stop offset="${i / 39}" stop-color="${i % 2 ? '#000' : '#fff'}"/>`).join('')}</linearGradient>
+      <linearGradient id="messy"><stop offset="0.6" stop-color="red"/><stop offset="0.2" stop-color="blue"/><stop offset="150%" stop-color="lime"/></linearGradient>
+      <radialGradient id="far" fx="2"><stop offset="0" stop-color="red"/><stop offset="1" stop-color="blue"/></radialGradient>
+      <linearGradient id="loop" href="#loop2"/><linearGradient id="loop2" href="#loop"/></defs>
+    <rect width="10" height="10" fill="url(#one)"/>
+    <rect width="10" height="10" fill="url(#none)" stroke="black"/>
+    <rect width="10" height="10" fill="url(#flat)"/>
+    <rect width="10" height="10" fill="url(#dot)"/>
+    <rect width="10" height="10" fill="url(#many)"/>
+    <rect width="10" height="10" fill="url(#messy)"/>
+    <rect width="10" height="10" fill="url(#far)"/>
+    <rect width="10" height="10" fill="url(#loop)" stroke="black"/>
   `));
-  expect(art.items.map((i) => i.fill)).toEqual(['#ff8800', '#008000', '#ff8800']);
-  expect(art.items[1].stroke).toBe('#ff0000');
+  const [one, none, flat, dot, many, messy, far, loop] = art.items;
+  expect(one.fill).toBe('#ff8800');
+  expect(none.fill).toBeNull();
+  expect(flat.fill).toBe('#0000ff');
+  expect(dot.fill).toBe('#00ff00');
+  expect(many.fill.stops).toHaveLength(16);
+  expect(many.fill.stops[0]).toEqual([0, '#ffffff']);
+  expect(many.fill.stops.at(-1)).toEqual([1, '#000000']);
+  expect(messy.fill.stops.map(([o]) => o)).toEqual([0.6, 0.6, 1]);
+  expect(Math.hypot(...far.fill.f)).toBeLessThanOrEqual(1);
+  expect(loop.fill).toBeNull();
 });
 
 test('not an SVG says so', () => {

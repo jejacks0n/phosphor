@@ -6,7 +6,7 @@
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { IDENTITY, MOST_OUTLINES, MOST_POINTS, MOST_SHAPES, apply, joined, multiply, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
+import { IDENTITY, MOST_OUTLINES, MOST_POINTS, MOST_SHAPES, apply, isGradient, joined, multiply, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
 import { withoutPins } from '@/document/baseRecords.js';
 import { bytesHeld } from '@/store/project/shared.js';
 import { readSvgFile } from '@/lib/SvgFile.js';
@@ -64,8 +64,8 @@ export const vectorActions = {
   // An SVG file's art as shapes, on top, in the file's order (readSvgFile; it throws, with its userMessage, for a
   // file that isn't SVG). Art bigger than the grid (less 2 grid pixels each side) is scaled down into it,
   // proportions kept; any is centered. Each shape has its whole transform baked into its points (points round to
-  // 1/100, and letters drawn in font units would lose their shape under a kept one), and its stroke width scaled
-  // with it, once. One step; they're selected, with Vector select. Past a frame's shapes or a shape's points
+  // 1/100, and letters drawn in font units would lose their shape under a kept one), its gradient's with them, and
+  // its stroke width scaled with it, once. One step; they're selected, with Vector select. Past a frame's shapes or a shape's points
   // nothing comes in, and a toast says by how much; what couldn't come in is said too. The keys.
   addSvg(text) {
     const art = readSvgFile(text), workspace = useWorkspaceStore(), left = new Set(art.left);
@@ -88,7 +88,7 @@ export const vectorActions = {
       const [first, ...rest] = item.outlines;
       return {
         closed: first.closed, points: bake(first.points), more: rest.map((o) => [o.closed, bake(o.points)]), m: IDENTITY,
-        fill: item.fill, stroke: item.stroke, width: Math.min(64, Math.max(0.5, item.width * Math.sqrt(Math.abs(a * d - b * c)))),
+        fill: isGradient(item.fill) ? { ...item.fill, m: multiply(m, item.fill.m) } : item.fill, stroke: item.stroke, width: Math.min(64, Math.max(0.5, item.width * Math.sqrt(Math.abs(a * d - b * c)))),
         rule: item.rule, cap: item.cap, join: item.join, miter: item.miter,
       };
     });
