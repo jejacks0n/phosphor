@@ -183,7 +183,7 @@ test('what can\'t come in is noted, and a hostile file runs and loads nothing', 
 
 const close = (a, b) => expect(a.map((v) => Math.round(v * 1e6) / 1e6)).toEqual(b.map((v) => Math.round(v * 1e6) / 1e6));
 
-test('gradients come in as gradient fills: both units, gradientTransform, focal points, href, and a stroke as its first color', () => {
+test('gradients come in as gradient fills: both units, gradientTransform, focal points, href, and a stroke\'s too', () => {
   const [sunset, turned, glow, glow2] = readSvgFile(gradients).items;
   // The box's diagonal: (10, 10) to (90, 70), stretched with the 80 × 60 box.
   expect(sunset.fill).toMatchObject({ type: 'linear', stops: [[0, '#ff6a00'], [0.5, '#ee0979'], [1, '#1e3c72']] });
@@ -198,7 +198,9 @@ test('gradients come in as gradient fills: both units, gradientTransform, focal 
   // glow's circle and stops through href, squashed by its own gradientTransform in the ellipse's box.
   close(glow2.fill.m, [40, 0, 0, 24, 150, 109]);
   close(glow2.fill.f, [-0.4, -0.3]);
-  expect(glow2.stroke).toBe('#ff6a00');
+  // The stroke's: sunset's diagonal through href, over the ellipse's box.
+  expect(glow2.stroke).toMatchObject({ type: 'linear', stops: [[0, '#ff6a00'], [0.5, '#ee0979'], [1, '#1e3c72']] });
+  close(glow2.stroke.m, [80, 60, -80, 60, 110, 85]);
 });
 
 test('a gradient with one stop is its color, with none no paint, and one with no length its last stop\'s', () => {

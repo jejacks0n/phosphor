@@ -642,12 +642,54 @@ test('the Fill color box makes a gradient and takes it back to solid', async ({ 
   await undoSteps(page, 1);
   expect(await fill()).toBe('#ff0000');
 
-  // Swapping a gradient's Fill and Stroke: the stroke takes its first stop.
+  // Swapping a gradient's Fill and Stroke: the stroke takes the gradient.
   await page.locator('.color-pair .chip.fg').click();
   await box.getByRole('button', { name: 'Linear', exact: true }).click();
   await page.keyboard.press('Escape');
   await page.keyboard.press('ControlOrMeta+Shift+x');
-  expect((await shapeList(page))[0]).toMatchObject({ fill: null, stroke: '#ff0000' });
+  expect((await shapeList(page))[0]).toMatchObject({ fill: null, stroke: { type: 'linear', stops: [[0, '#ff0000'], [1, bg]] } });
+});
+
+test('the Stroke color box makes a gradient stroke, which G edits; with both gradients, Fill or Stroke says which', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const bg = await store(page, 'workspace', (w) => w.editBgColor);
+  await store(page, 'workspace', (w) => { w.recentColors = ['#ffff00']; });
+  await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, fill: '#ff0000', stroke: '#00ff00', width: 2, m: [1, 0, 0, 1, 0, 0],
+    points: [[10, 10, 0, 0, 0, 0, 0], [20, 10, 0, 0, 0, 0, 0], [20, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
+  await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
+  await page.locator('.color-pair .chip.bg').click();
+  const box = page.locator('.color-popover');
+  await box.getByRole('button', { name: 'Linear', exact: true }).click();
+  const shape = async () => (await shapeList(page))[0];
+  expect((await shape()).stroke).toEqual({ type: 'linear', stops: [[0, '#00ff00'], [1, bg]], m: [10, 0, 0, 10, 10, 15] });
+  expect((await shape()).fill).toBe('#ff0000');
+  await expect(page.locator('.color-pair .chip.bg')).toHaveAttribute('style', /linear-gradient/);
+  await page.keyboard.press('Escape');
+
+  // G: the stroke's gradient, its only one. Its last stop, clicked, then recolored in the Stroke box.
+  await page.keyboard.press('g');
+  await expect(page.locator('.vector-overlay .stop')).toHaveCount(2);
+  await page.mouse.click(...Object.values(await gridPoint(page, 20, 15)));
+  expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(1);
+  await page.locator('.color-pair .chip.bg').click();
+  await box.locator('.swatch.small').first().click();
+  await page.keyboard.press('Escape');
+  expect((await shape()).stroke.stops).toEqual([[0, '#00ff00'], [1, '#ffff00']]);
+  const choice = page.locator('.vector-options').getByRole('group', { name: 'Gradient' });
+  await expect(choice).toHaveCount(0); // one gradient: no choice
+
+  // The fill a gradient too: the tool goes to it, and Fill or Stroke chooses.
+  await page.locator('.color-pair .chip.fg').click();
+  await box.getByRole('button', { name: 'Radial', exact: true }).click();
+  await page.keyboard.press('Escape');
+  const which = (name) => choice.getByRole('button', { name, exact: true });
+  await expect(which('Fill')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.vector-overlay .stop').first()).toHaveCSS('fill', 'rgb(255, 0, 0)'); // the fill's first stop
+  await which('Stroke').click();
+  await expect(which('Stroke')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.vector-overlay .stop').first()).toHaveCSS('fill', 'rgb(0, 255, 0)');
 });
 
 test('G shows a gradient\'s handles; recoloring a stop changes the art', async ({ page }) => {

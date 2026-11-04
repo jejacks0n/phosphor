@@ -23,13 +23,12 @@ import { shallowRef, toRaw } from 'vue';
 
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
-// A shape with the color transforms burnt into its fill and stroke.
-const bakedShape = (shape, params) => withShape(shape, {
-  fill: isGradient(shape.fill)
-    ? { ...shape.fill, stops: finerStops(shape.fill.stops).map(([o, c]) => [o, getEffectiveColor(c, params)]) } // the sliders aren't straight between stops
-    : shape.fill && getEffectiveColor(shape.fill, params),
-  stroke: shape.stroke && getEffectiveColor(shape.stroke, params),
-});
+// A shape with the color transforms burnt into its fill and stroke; a gradient's sampled finer first, since the
+// sliders aren't straight between its stops.
+const bakedPaint = (paint, params) => (isGradient(paint)
+  ? { ...paint, stops: finerStops(paint.stops).map(([o, c]) => [o, getEffectiveColor(c, params)]) }
+  : paint && getEffectiveColor(paint, params));
+const bakedShape = (shape, params) => withShape(shape, { fill: bakedPaint(shape.fill, params), stroke: bakedPaint(shape.stroke, params) });
 const bakedShapes = (shapes, params) => new Map([...shapes].map(([key, shape]) => [key, bakedShape(shape, params)]));
 
 // A frame's changes with the color transforms burnt in, as Bake does to the edit layer: a stored color, then

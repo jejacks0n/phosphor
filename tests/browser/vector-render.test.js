@@ -466,6 +466,22 @@ test('a linear gradient runs from its first stop to its last across the shape, a
   expect(red(5)).toBeGreaterThan(red(34) + 100);
 });
 
+test('a gradient stroke runs along its gradient, as wide as a solid one, its edges as soft', async () => {
+  // A line across, 4 wide, red at its left end to blue at its right.
+  const line = makeShape({ points: [[4, 20, 0, 0, 0, 0, 0], [36, 20, 0, 0, 0, 0, 0]], closed: false, fill: null, stroke: '#ffffff', width: 4, cap: 'butt' });
+  const stroke = { type: 'linear', stops: RED_TO_BLUE, m: [32, 0, 0, 32, 4, 20] };
+  const px = painted(withShape(line, { stroke })), solid = painted(line);
+  expect(near(px(5, 20), [255, 0, 0], 40)).toBe(true);
+  expect(near(px(35, 20), [0, 0, 255], 40)).toBe(true);
+  expect(near(px(20, 20), [128, 0, 128], 24)).toBe(true);
+  expect(px(20, 23)).toEqual([0, 0, 0]); // its width, not the gradient's box
+  for (const y of [17.9, 18, 21.9, 22]) expect(px(20, y).some((v) => v > 0), `y ${y}`).toBe(solid(20, y).some((v) => v > 0));
+  // Rotated with its shape, the gradient turns too; the stroke stays 4 wide.
+  const turned = painted(transformed(withShape(line, { stroke }), rotation(Math.PI / 2, 20, 20)));
+  expect(near(turned(20, 5), [255, 0, 0], 40)).toBe(true);
+  expect(turned(23, 20)).toEqual([0, 0, 0]);
+});
+
 test('a radial gradient stretched with its shape is an ellipse', async () => {
   // A circle of radius 10 about (20, 20), red in the middle to blue at the rim, then the shape stretched ×1.5
   // across about its middle.

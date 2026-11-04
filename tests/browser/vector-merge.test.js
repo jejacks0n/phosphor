@@ -3,7 +3,7 @@
 // In an animation Bake keeps them shapes, with the sliders burnt into their colors.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
-import { ellipseShape, rectShape } from '@/document/shapes.js';
+import { ellipseShape, rectShape, withShape } from '@/document/shapes.js';
 import { cellIndex } from '@/lib/Cells.js';
 
 const SLIDERS = { brightness: 140, contrast: 160, saturation: 130, hue: 40 };
@@ -56,6 +56,9 @@ test('in an animation, Bake keeps shapes as shapes with the sliders burnt into t
   const { project } = await drawing({ cols: 20, rows: 20 });
   const key = project.addShape(rectShape(2, 2, 10, 10, { fill: '#ff0000', stroke: '#00ff00', width: 2 }));
   const shaded = project.addShape(rectShape(4, 12, 16, 18, { fill: { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [12, 0, 0, 6, 0, 0] } }));
+  // A gradient stroke as gentle as the fill, on whole pixels (miter corners): where a pixel's half covered, the cell
+  // mixes it with the picture under it, and that mix is off once baked whatever the stroke's color.
+  const edged = project.addShape(withShape(rectShape(1, 1, 4, 4, { stroke: { type: 'linear', stops: [[0, '#00ff00'], [1, '#ffffff']], m: [12, 0, 0, 12, 1, 1] }, width: 2 }), { join: 'miter' }));
   project.addFrame('blank');
   project.addShape(rectShape(8, 8, 18, 18, { fill: '#0044aa' }));
   project.addFrame('wipe');
@@ -71,18 +74,22 @@ test('in an animation, Bake keeps shapes as shapes with the sliders burnt into t
   for (let i = 0; i < project.frames.length; i++) {
     project.showFrame(i);
     await settle(project);
-    // Exact but under the gradient, sampled at 16 stops: the sliders curve between them, so a few levels off there.
+    // Exact but under the gradients: a cell's color is its pixels' average, which the sliders act on live and, baked,
+    // on each pixel first; they curve, so a gradient's cells are some levels off, more the steeper it is.
     const now = cellsKey(project), off = (a, b) => a.slice(1).split('#').slice(1).some((hex, j) => {
       const other = b.slice(1).split('#').slice(1)[j];
       return [0, 2, 4].some((c) => Math.abs(parseInt(hex.slice(c, c + 2), 16) - parseInt(other.slice(c, c + 2), 16)) > 12);
     });
     const differ = now.flatMap((cell, n) => (cell === looks[i][n] ? [] : [n]));
     expect(differ.every((n) => now[n][0] === looks[i][n][0] && !off(now[n], looks[i][n])), `frame ${i}`).toBe(true);
-    expect(differ.every((n) => n % 20 >= 4 && n % 20 <= 16 && Math.floor(n / 20) >= 6), `frame ${i}: only under the gradient`).toBe(true);
+    expect(differ.every((n) => (n % 20 >= 4 && n % 20 <= 16 && Math.floor(n / 20) >= 6) || (n % 20 <= 5 && Math.floor(n / 20) <= 2)), `frame ${i}: only under the gradients`).toBe(true);
   }
   project.showFrame(0);
   expect(project.shapes.get(key).fill).not.toBe('#ff0000'); // burnt in
   expect(project.shapes.get(key).stroke).not.toBe('#00ff00');
+  const { stroke } = project.shapes.get(edged); // a stroke's too
+  expect(stroke.stops).toHaveLength(16);
+  expect(stroke.stops[0][1]).not.toBe('#00ff00');
   const { fill } = project.shapes.get(shaded); // a gradient stays one, each stop burnt in
   expect(fill).toMatchObject({ type: 'linear', m: [12, 0, 0, 6, 0, 0] });
   expect(fill.stops).toHaveLength(16); // sampled finer: the sliders aren't straight between stops

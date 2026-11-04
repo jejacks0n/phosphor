@@ -10,7 +10,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { pathData, worldPoints } from '@/document/shapes.js';
 import { boxHandles, handleRadius, selectionBox } from '@/tools/vselect.js';
-import { gradientHandles, gradientKey } from '@/tools/vgradient.js';
+import { gradientHandles, gradientKey, gradientSlot } from '@/tools/vgradient.js';
 import { snappedEnd } from '@/tools/shapes.js';
 
 const props = defineProps({
@@ -71,7 +71,7 @@ const gradient = computed(() => {
   if (workspace.activeTool !== 'vgradient') return null;
   const key = gradientKey(project, workspace);
   if (!key) return null;
-  const { p0, p1, stops } = gradientHandles(project.shapes.get(key));
+  const shape = project.shapes.get(key), { p0, p1, stops } = gradientHandles(shape, gradientSlot(shape, workspace));
   return { p0: px(p0), p1: px(p1), stops: stops.map((s) => ({ ...s, at: px(s.at) })) };
 });
 

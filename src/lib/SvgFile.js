@@ -1,7 +1,7 @@
 // An SVG file read as shapes' makings: { width, height, items, left }. The art's size is in user units after the
 // viewBox; each item is one drawn element: its outlines in the element's own units, m the whole transform to the
 // art's viewport (every ancestor's transform, nested viewports, the viewBox), and its paint resolved here (fill and
-// stroke '#rrggbb' or null, a fill maybe a gradient as shapes have them (in the element's units), the stroke's
+// stroke '#rrggbb' or null, either maybe a gradient as shapes have them (in the element's units), the stroke's
 // width in the element's units, the fill rule, cap, join and miter limit).
 // left is what couldn't come in, by kind. The file is parsed as data and never put in the page, so nothing in it
 // runs or loads; something that isn't SVG throws with a userMessage.
@@ -275,8 +275,7 @@ export function readSvgFile(text) {
     if (boxed) m = multiply([b.x1 - b.x0, 0, 0, b.y1 - b.y0, b.x0, b.y0], m);
     return { type: el.localName === 'linearGradient' ? 'linear' : 'radial', stops, m, ...(f && { f }) };
   };
-  // A fill or stroke: '#rrggbb' or null; a fill may be a gradient (box: the element's, for objectBoundingBox),
-  // a stroke takes a gradient's first stop's color.
+  // A fill or stroke: '#rrggbb', a gradient (box: the element's, for objectBoundingBox) or null.
   const paint = (value, style, initial, gradient = null) => {
     if (/^none$/i.test(value)) return null;
     const url = /^url\(\s*['"]?#([^'")\s]+)['"]?\s*\)\s*(.*)$/i.exec(value);
@@ -345,7 +344,7 @@ export function readSvgFile(text) {
       const [first, ...rest] = outlines;
       return localBounds({ points: first.points, closed: first.closed, more: rest.map((o) => [o.closed, o.points]) });
     };
-    const fill = paint(style.fill, style, INITIAL.fill, { box, ctx }), stroke = width > 0 ? paint(style.stroke, style, null) : null;
+    const fill = paint(style.fill, style, INITIAL.fill, { box, ctx }), stroke = width > 0 ? paint(style.stroke, style, null, { box, ctx }) : null;
     if (!fill && !stroke) return;
     if (stroke && style['stroke-dasharray'] !== 'none' && numbers(style['stroke-dasharray']).some((v) => v > 0)) left.add('dash');
     if (['marker-start', 'marker-mid', 'marker-end'].some((k) => style[k] !== 'none')) left.add('marker');

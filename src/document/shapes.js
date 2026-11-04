@@ -15,7 +15,7 @@
  * exactly what it was before they existed (an older copy of Phosphor refuses a shape with a field it doesn't
  * know, and with it the whole file's shapes or a room's whole change). A point's index is flat: the first
  * outline's points, then each of more's in turn (locate).
- *   fill, stroke  '#rrggbb' or null (none); a fill may be a gradient instead:
+ *   fill, stroke  '#rrggbb' or null (none); either may be a gradient instead:
  *           { type: 'linear' | 'radial', stops: [[offset, '#rrggbb'], ...], m, f? }, in a unit space that m (as a
  *           shape's m) carries into the shape's own: a linear one runs from (0, 0) to (1, 0), a radial one is the
  *           circle at (0, 0) of radius 1, its focal point f (absent: the center). 2 to 16 stops, their offsets
@@ -88,7 +88,7 @@ const round = (v, places) => {
   return r === 0 ? 0 : r; // no -0: it reads back as 0
 };
 
-// A gradient fill frozen, its numbers rounded, its keys in one order (so JSON compares), f left out at the center.
+// A gradient (a fill's or a stroke's) frozen, its numbers rounded, its keys in one order (so JSON compares), f left out at the center.
 function roundFill(fill) {
   if (!isGradient(fill)) return fill;
   const out = {
@@ -108,7 +108,7 @@ export function makeShape({ points, closed, fill = null, stroke = null, width = 
     closed: !!closed,
     points: roundPoints(points),
     fill: roundFill(fill),
-    stroke,
+    stroke: roundFill(stroke),
     width: round(width, 2),
     m: Object.freeze(m.map((v) => round(v, 4))),
   };
@@ -150,11 +150,11 @@ export function styleColors({ vectorStyle: style, editFgColor, editFgNone }) {
   return { fill: color(style.fill), stroke: color(style.stroke), width: style.width, cap: style.cap, join: style.join, miter: style.miter };
 }
 
-// The shape's fill as another kind: 'solid' (a gradient's first stop), or 'linear' (across its box, left to right)
-// or 'radial' (from its box's middle to the farthest corner), a gradient keeping its stops and a color going
-// from itself (from, for none) to the color to.
-export function fillAs(shape, kind, { from, to }) {
-  const { fill } = shape;
+// The shape's fill (or its stroke: slot) as another kind: 'solid' (a gradient's first stop), or 'linear' (across
+// its box, left to right) or 'radial' (from its box's middle to the farthest corner), a gradient keeping its stops
+// and a color going from itself (from, for none) to the color to.
+export function fillAs(shape, kind, { from, to }, slot = 'fill') {
+  const fill = shape[slot];
   if (kind === 'solid') return isGradient(fill) ? fill.stops[0][1] : fill;
   if (isGradient(fill) && fill.type === kind) return fill;
   const stops = isGradient(fill) ? fill.stops : [[0, fill ?? from], [1, to]];
@@ -473,7 +473,7 @@ export function shapeFromStranger(value) {
   if (!FIELDS.every((f) => f in value) || !keys.every((k) => FIELDS.includes(k) || OPTIONAL.includes(k))) return null;
   const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter } = value;
   if (!Number.isInteger(z) || Math.abs(z) > MOST_Z || typeof closed !== 'boolean') return null;
-  if (!goodFill(fill) || !goodColor(stroke)) return null;
+  if (!goodFill(fill) || !goodFill(stroke)) return null;
   if (!finite(width, MOST_WIDTH) || width < 0) return null;
   if (!Array.isArray(m) || m.length !== 6 || !m.every((v, i) => finite(v, i < 4 ? MOST_M : MOST_SHIFT)) || Math.abs(m[0] * m[3] - m[1] * m[2]) < 1e-6) return null;
   if (!goodPoints(points)) return null;

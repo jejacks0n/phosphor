@@ -32,19 +32,21 @@ export function useVectorStyle() {
     project.updateShapes(selected.value.map((key) => [key, withShape(project.shapes.get(key), { [slot]: v })]));
     if (remember) finish();
   };
-  // The selected shapes' fill made Solid, Linear or Radial (fillAs: a color goes from itself to the background
-  // color); one step. With nothing selected the next shape's fill stays solid: a gradient needs a box to sit in.
-  const fillKind = computed(() => (first.value && isGradient(first.value.fill) ? first.value.fill.type : 'solid'));
-  const setFillKind = (kind) => {
+  // The selected shapes' fill or stroke (slot) made Solid, Linear or Radial (fillAs: a color goes from itself to the
+  // background color); one step. A gradient made is the one the Gradient tool edits then. With nothing selected the
+  // next shape's stays solid: a gradient needs a box to sit in.
+  const kindOf = (slot) => (first.value && isGradient(first.value[slot]) ? first.value[slot].type : 'solid');
+  const setKind = (slot, kind) => {
     if (!editing.value) return;
     const colors = { from: workspace.editFgColor, to: workspace.editBgColor };
     project.updateShapes(selected.value.map((key) => {
       const shape = project.shapes.get(key);
-      return [key, withShape(shape, { fill: fillAs(shape, kind, colors) })];
+      return [key, withShape(shape, { [slot]: fillAs(shape, kind, colors, slot) })];
     }));
+    if (kind !== 'solid') workspace.vectorGradientSlot = slot;
   };
-  // Each shape's Fill and Stroke trade places (Shift+Cmd/Ctrl+X, as the pair's colors do elsewhere); a gradient
-  // goes to the stroke as its first stop's color.
+  // Each shape's Fill and Stroke trade places, gradients and all (Shift+Cmd/Ctrl+X, as the pair's colors do
+  // elsewhere).
   const swap = () => {
     if (!editing.value) {
       const { fill, stroke } = workspace.vectorStyle;
@@ -52,9 +54,9 @@ export function useVectorStyle() {
     }
     project.updateShapes(selected.value.map((key) => {
       const shape = project.shapes.get(key);
-      return [key, withShape(shape, { fill: shape.stroke, stroke: fillAs(shape, 'solid', {}) })];
+      return [key, withShape(shape, { fill: shape.stroke, stroke: shape.fill })];
     }));
   };
 
-  return { selected, editing, first, value, set, finish, swap, fillKind, setFillKind };
+  return { selected, editing, first, value, set, finish, swap, kindOf, setKind };
 }
