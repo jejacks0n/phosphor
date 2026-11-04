@@ -1,8 +1,8 @@
 // The Node tool (the VECTOR tab): press a shape to edit its points (workspace.vectorPoints), and on one of its
 // points, its curve handles or (once it's being edited) its outline: drag a point or a handle (Alt: the handle
 // alone, broken from its partner; Shift: on a line across, up and down or at 45°), click the outline to add a
-// point there, click empty canvas to stop. A shape with a gradient shows its handles too (gradientHandles.js),
-// under its points and above its outline. Each drag is one edit, worked out each move from the shape as it was
+// point there, click empty canvas to stop. A drag across a shape gives it a gradient; a shape with one shows its
+// handles too (gradientHandles.js), under its points and above its outline. Each drag is one edit, worked out each move from the shape as it was
 // at the press. Keys: Delete or Backspace deletes the selected point (or stop), Esc lets a stop go or stops
 // editing points; the rest are Vector select's (the arrows, Delete with nothing selected, Esc then).
 import { t } from '@/i18n/index.js';
@@ -67,12 +67,12 @@ export default {
       if (press(false) || gradientDrag.begin(ctx, pos, radius) || press(true)) return true;
     }
     const hit = shapeAt(project.shapes, pos.x, pos.y, radius / unit.x);
-    if (hit === workspace.vectorPoints && hit) return false; // inside it: still editing its points
+    if (hit === workspace.vectorPoints && hit) return gradientDrag.draw(ctx, hit, pos, event); // inside it: a drag draws a gradient
     workspace.vectorPoint = workspace.vectorStop = null;
     workspace.vectorPoints = hit; // another shape's points (a press on one of them takes it at once), or none
     if (!hit) return false; // the selection stays
     project.selectShapes([hit]);
-    return pointsPress(project, workspace, pos, unit, radius, { event, add: false });
+    return pointsPress(project, workspace, pos, unit, radius, { event, add: false }) || gradientDrag.draw(ctx, hit, pos, event);
   },
 
   move(ctx, from, to) {

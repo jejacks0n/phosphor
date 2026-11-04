@@ -124,7 +124,14 @@ several (a letter's counters, a ring's hole):
 - Click empty canvas or press Esc to stop editing points; the shape stays selected. Press another shape to edit
   its points instead. Choosing another tool stops too.
 
-A shape whose fill or outline is a gradient ([Gradients](#gradients)) shows the gradient's handles too: for a
+**Drag across a shape** to give it a gradient ([Gradients](#gradients)), from where you press to where you let go:
+linear, or radial with Alt (Option on a Mac) held as you press, the press its middle and the let-go its edge.
+Shift keeps it straight across, up and down, or at 45°. From a single color it runs from that color to the
+background color, as the color box's Linear does; a gradient already there keeps its stops and is drawn again.
+It's the fill's, or the outline's when the shape has no fill (or **Stroke** is chosen below). A click without a
+drag changes nothing.
+
+A shape whose fill or outline is a gradient shows the gradient's handles too: for a
 linear one, a line from where it starts to where it ends, a square at each end; for a radial one, a square at its
 middle and one at its edge, joined by a line. Each color stop is a dot on the line, in its color. The shape's
 points and their handles come first where they meet the gradient's, and the gradient's come before the outline.
@@ -180,7 +187,8 @@ PIXEL's colors are left as they were.
 
 A fill or an outline can be a **gradient**: linear (bands of color across the shape) or radial (rings from a
 middle point out). It moves, scales and turns with its shape, and goes through the palette and dithering as any
-color does. On either side of the color box, with shapes selected:
+color does. Drag across a shape with the Node tool to draw one where you want it ([Node](#node-a)), or, on
+either side of the color box, with shapes selected:
 
 - **Linear** makes the fill (or outline) a gradient across the shape's box, left to right, from its color to the
   background color. **Radial** makes it one from the box's middle out to its farthest corner. Switching between
