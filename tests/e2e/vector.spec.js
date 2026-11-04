@@ -389,6 +389,28 @@ test('the Node tool shows and drags the points of every outline in a shape', asy
   expect(await store(page, 'project', `(p) => p.shapes.get('${key}').more[0][1][2][6]`)).toBe(1);
 });
 
+test('Join makes two shapes one with a hole, and Separate takes it apart', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const outer = await addRect(page, 10, 10, 40, 40);
+  await addRect(page, 20, 20, 30, 30);
+  const row = page.locator('.vector-options');
+  await page.mouse.click(...Object.values(await gridPoint(page, 12, 12)));
+  await expect(row.getByRole('button', { name: 'Join', exact: true })).toBeDisabled();
+  await page.keyboard.down('Shift');
+  await page.mouse.click(...Object.values(await gridPoint(page, 25, 25)));
+  await page.keyboard.up('Shift');
+  await row.getByRole('button', { name: 'Join', exact: true }).click();
+  expect(await shapeList(page)).toHaveLength(1);
+  expect(await selected(page)).toEqual([outer]);
+  expect((await shapeList(page))[0]).toMatchObject({ rule: 'evenodd', more: [[true, expect.any(Array)]] });
+  await row.getByRole('button', { name: 'Separate', exact: true }).click();
+  expect(await shapeList(page)).toHaveLength(2);
+  expect(await selected(page)).toHaveLength(2);
+  await expect(row.getByRole('button', { name: 'Separate', exact: true })).toBeDisabled();
+});
+
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

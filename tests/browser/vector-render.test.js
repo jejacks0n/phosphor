@@ -368,3 +368,31 @@ test('the Node tool edits an inner outline\'s points, adds to it, and deletes it
   expect(outlines(project.shapes.get(k))).toHaveLength(1); // the inner outline went; the shape stays
   expect(project.shapes.get(k).more).toBeUndefined();
 });
+
+test('Join makes a ring from a square and a smaller one inside it, and Separate takes it apart, one step each', async () => {
+  const { project } = await gradient();
+  const bare = key(project.cells), middle = 7 * project.cols + 14;
+  const outer = project.addShape(rectShape(2, 2, 26, 26, RED)), inner = project.addShape(rectShape(10, 10, 18, 18, { fill: '#0000ff' }));
+  await settle(project);
+  const before = project.history.version, two = key(project.cells);
+  expect(project.joinShapes([inner, outer])).toBe(outer);
+  await settle(project);
+  expect([...project.shapes.keys()]).toEqual([outer]);
+  expect(key(project.cells)[middle]).toBe(bare[middle]); // the inner square is a hole now
+  expect(project.history.version).toBe(before + 1);
+  const parts = project.separateShape(outer);
+  expect(parts).toHaveLength(2);
+  expect(parts[0]).toBe(outer);
+  await settle(project);
+  expect(project.shapes.size).toBe(2);
+  expect(key(project.cells)[middle]).not.toBe(bare[middle]);
+  expect(project.history.version).toBe(before + 2);
+  project.undo();
+  await settle(project);
+  expect(project.shapes.size).toBe(1);
+  project.undo();
+  await settle(project);
+  expect(key(project.cells)).toEqual(two);
+  expect(project.joinShapes([outer])).toBe(null); // one shape: nothing to join
+  expect(project.separateShape(inner)).toBe(null); // one outline: nothing to separate
+});

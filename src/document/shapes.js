@@ -368,6 +368,27 @@ export function deletePoint(shape, i) {
   return editOutline(shape, i, (pts, j) => (pts.length <= 2 ? null : pts.filter((_, at) => at !== j)));
 }
 
+// A point carried by w: its place by all of it, its handles (offsets) by its stretch and turn alone.
+function carried(p, w) {
+  const at = apply(w, p[0], p[1]), lin = [w[0], w[1], w[2], w[3], 0, 0], i = apply(lin, p[2], p[3]), o = apply(lin, p[4], p[5]);
+  return [at.x, at.y, i.x, i.y, o.x, o.y, p[6]];
+}
+
+// Join: others' outlines carried into bottom's own space and added to it, filled evenodd so that any outline
+// inside another is a hole, in bottom's style. Null when that's more points or outlines than a shape may have.
+export function joined(bottom, others) {
+  const list = outlines(bottom), into = invert(bottom.m);
+  for (const shape of others) {
+    const w = multiply(into, shape.m);
+    for (const o of outlines(shape)) list.push({ closed: o.closed, points: o.points.map((p) => carried(p, w)) });
+  }
+  if (list.length > MOST_OUTLINES || list.reduce((n, o) => n + o.points.length, 0) > MOST_POINTS) return null;
+  return withOutlines(withShape(bottom, { rule: 'evenodd' }), list);
+}
+
+// Separate: each outline a shape of its own, in the shape's style and place.
+export const separated = (shape) => outlines(shape).map((o) => withShape(shape, { points: o.points, closed: o.closed, more: [], rule: undefined }));
+
 // A shape from a file, a project or another browser, or null when it's anything a shape can't be.
 const finite = (v, most) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= most;
 const goodPoints = (points) => Array.isArray(points) && points.length > 0
