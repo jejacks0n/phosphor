@@ -2,7 +2,7 @@
  * The vector layer's shapes, as data. A shape is a path of points with cubic Bézier handles, a fill and a
  * stroke, kept as shapes until it's baked or merged (docs/vector.md). Nothing here touches a canvas.
  *
- * Shape = { z, closed, points, fill, stroke, width, m, more?, rule?, cap?, join?, miter? }, frozen:
+ * Shape = { z, closed, points, fill, stroke, width, m, more?, rule?, cap?, join?, miter?, align? }, frozen:
  *   points  [[x, y, inX, inY, outX, outY, smooth], ...] in the shape's own (local) grid pixels; a handle is an
  *           offset from its point, 0, 0 for none; smooth (1 or 0): its handles stay in line when one moves
  *   closed  whether that outline closes
@@ -11,6 +11,8 @@
  *   rule    'evenodd'; absent: 'nonzero', SVG's and canvas's default
  *   cap, join, miter  the stroke's: 'butt' | 'square', 'miter' | 'bevel', and the miter limit (1 to 100);
  *           absent: round, round and 4
+ *   align   'inside' | 'outside': the stroke inside the outline or outside it, its whole width; absent: centered
+ *           on it (SVG's only way). A shape with an open outline strokes centered whatever it says (strokeAlign)
  * The optional fields are written only when they aren't the default, so a shape that uses none of them is
  * exactly what it was before they existed (an older copy of Phosphor refuses a shape with a field it doesn't
  * know, and with it the whole file's shapes or a room's whole change). A point's index is flat: the first
@@ -34,7 +36,7 @@ export const SHAPE_PREFIX = 'v:';
 export const MOST_SHAPES = 1000; // a frame's, from a file, a project or a room
 export const MOST_POINTS = 500;  // a shape's, across its outlines: the biggest still fits in one room message
 export const MOST_OUTLINES = 200;
-export const STROKE_DEFAULTS = Object.freeze({ rule: 'nonzero', cap: 'round', join: 'round', miter: 4 });
+export const STROKE_DEFAULTS = Object.freeze({ rule: 'nonzero', cap: 'round', join: 'round', miter: 4, align: 'center' });
 const MOST_COORD = 20000;
 const MOST_WIDTH = 64;
 const MOST_Z = 1e6;
@@ -43,8 +45,8 @@ const MOST_SHIFT = 1e7;   // and its move: turned or grown about a point far dow
 const KEY = /^v:[A-Za-z0-9_-]{1,32}$/;
 const HEX = /^#[0-9a-f]{6}$/i;
 const FIELDS = ['z', 'closed', 'points', 'fill', 'stroke', 'width', 'm'];
-const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter'];
-const RULES = ['evenodd'], CAPS = ['butt', 'square'], JOINS = ['miter', 'bevel']; // the values other than the default
+const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter', 'align'];
+const RULES = ['evenodd'], CAPS = ['butt', 'square'], JOINS = ['miter', 'bevel'], ALIGNS = ['inside', 'outside']; // the values other than the default
 const GRADIENTS = ['linear', 'radial'];
 export const MOST_STOPS = 16;
 const KAPPA = 0.5523; // a cubic's handle length for a quarter circle, as a share of its radius
@@ -102,7 +104,7 @@ function roundFill(fill) {
 
 const roundPoints = (points) => Object.freeze(points.map((p) => Object.freeze(p.slice(0, 6).map((v) => round(v, 2)).concat(p[6] ? 1 : 0))));
 
-export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter }) {
+export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align }) {
   const shape = {
     z,
     closed: !!closed,
@@ -117,13 +119,22 @@ export function makeShape({ points, closed, fill = null, stroke = null, width = 
   if (cap && cap !== STROKE_DEFAULTS.cap) shape.cap = cap;
   if (join && join !== STROKE_DEFAULTS.join) shape.join = join;
   if (miter !== undefined && round(miter, 2) !== STROKE_DEFAULTS.miter) shape.miter = round(miter, 2);
+  if (align && align !== STROKE_DEFAULTS.align) shape.align = align;
   return Object.freeze(shape);
 }
 
-// The fill rule and the stroke's cap, join and miter limit, the defaults filled in.
-export const strokeOf = ({ rule, cap, join, miter }) => ({
+// The fill rule and the stroke's cap, join, miter limit and alignment, the defaults filled in.
+export const strokeOf = ({ rule, cap, join, miter, align }) => ({
   rule: rule ?? STROKE_DEFAULTS.rule, cap: cap ?? STROKE_DEFAULTS.cap, join: join ?? STROKE_DEFAULTS.join, miter: miter ?? STROKE_DEFAULTS.miter,
+  align: align ?? STROKE_DEFAULTS.align,
 });
+// Whether every outline closes: only then has the shape an inside for its stroke to go in or out of.
+export const allClosed = (shape) => shape.closed && (shape.more ?? []).every(([c]) => c);
+// Where the stroke is drawn: its alignment, or centered when an outline is open.
+export const strokeAlign = (shape) => (allClosed(shape) ? strokeOf(shape).align : 'center');
+// How far past its outline the stroke reaches, before caps and joins: half its width centered, none inside, all of
+// it outside.
+export const strokeReach = (shape) => (shape.stroke ? shape.width * { inside: 0, center: 0.5, outside: 1 }[strokeAlign(shape)] : 0);
 
 // The shape's outlines, [{ closed, points }], the first one first.
 export const outlines = (shape) => [{ closed: shape.closed, points: shape.points }, ...(shape.more ?? []).map(([closed, points]) => ({ closed, points }))];
@@ -147,7 +158,7 @@ export const withShape = (shape, changes) => makeShape({ ...shape, ...changes })
 // now (none: no color).
 export function styleColors({ vectorStyle: style, editFgColor, editFgNone }) {
   const color = (c) => (c === 'fg' ? (editFgNone ? null : editFgColor) : c);
-  return { fill: color(style.fill), stroke: color(style.stroke), width: style.width, cap: style.cap, join: style.join, miter: style.miter };
+  return { fill: color(style.fill), stroke: color(style.stroke), width: style.width, cap: style.cap, join: style.join, miter: style.miter, align: style.align };
 }
 
 // The shape's fill (or its stroke: slot) as another kind: 'solid' (a gradient's first stop), or 'linear' (across
@@ -255,7 +266,8 @@ export const localBounds = (shape) => pathBox(shape, IDENTITY);
 export const curveBounds = (shape) => pathBox(shape, shape.m);
 
 // Grid pixels the shape can draw in: its points' and handles' hull (a cubic stays inside it), with the stroke
-// around it: half its width, as far as a miter join can reach past a corner, and a square cap past a diagonal end.
+// around it: half its width (none inside, all of it outside), as far as a miter join can reach past a corner, and
+// a square cap past a diagonal end.
 export function shapeBounds(shape) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of worldPoints(shape)) {
@@ -265,7 +277,7 @@ export function shapeBounds(shape) {
     }
   }
   const { join, cap, miter } = strokeOf(shape);
-  const pad = shape.stroke ? (shape.width / 2) * Math.max(join === 'miter' ? miter : 1, cap === 'square' ? Math.SQRT2 : 1) : 0;
+  const pad = strokeReach(shape) * Math.max(join === 'miter' ? miter : 1, cap === 'square' ? Math.SQRT2 : 1);
   return { x: x0 - pad, y: y0 - pad, w: x1 - x0 + 2 * pad, h: y1 - y0 + 2 * pad };
 }
 
@@ -479,7 +491,7 @@ export function shapeFromStranger(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const keys = Object.keys(value);
   if (!FIELDS.every((f) => f in value) || !keys.every((k) => FIELDS.includes(k) || OPTIONAL.includes(k))) return null;
-  const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter } = value;
+  const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align } = value;
   if (!Number.isInteger(z) || Math.abs(z) > MOST_Z || typeof closed !== 'boolean') return null;
   if (!goodFill(fill) || !goodFill(stroke)) return null;
   if (!finite(width, MOST_WIDTH) || width < 0) return null;
@@ -495,9 +507,9 @@ export function shapeFromStranger(value) {
   }
   if (count > MOST_POINTS) return null;
   // Only the values other than the default: a default is written by leaving the field out.
-  if (('rule' in value && !RULES.includes(rule)) || ('cap' in value && !CAPS.includes(cap)) || ('join' in value && !JOINS.includes(join))) return null;
+  if (('rule' in value && !RULES.includes(rule)) || ('cap' in value && !CAPS.includes(cap)) || ('join' in value && !JOINS.includes(join)) || ('align' in value && !ALIGNS.includes(align))) return null;
   if ('miter' in value && (!finite(miter, 100) || miter < 1 || miter === STROKE_DEFAULTS.miter)) return null;
-  return makeShape({ z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter });
+  return makeShape({ z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align });
 }
 
 export const isGoodShapeKey = (key) => typeof key === 'string' && KEY.test(key);

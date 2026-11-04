@@ -5,7 +5,7 @@ import {
   makeShape, sameShape, isShape, isShapeKey, newShapeKey, pathData, shapeBounds, dirtyRect, worldPoints,
   multiply, invert, apply, rotation, scaling, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
   moveHandle, setSmooth, setFree, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
-  outlines, withOutlines, locate, allPoints, strokeOf, STROKE_DEFAULTS, withShape, movePoint, joined, separated, styleColors, fillAs,
+  outlines, withOutlines, locate, allPoints, strokeOf, strokeAlign, STROKE_DEFAULTS, withShape, movePoint, joined, separated, styleColors, fillAs,
 } from '../../src/document/shapes.js';
 import { changeBytes } from '../../src/document/changes.js';
 import { MOST_CHANGE_BYTES } from '../../src/social/wire.js';
@@ -222,13 +222,13 @@ const ring = () => makeShape({ points: sq(0, 10), closed: true, more: [[true, sq
 test('a shape that uses nothing new keeps exactly today\'s JSON', () => {
   const s = makeShape({ points: [[1, 2, 0, 0, 0, 0, 0], [5, 6, 0, 0, 0, 0, 0]], closed: false, stroke: '#00ff00', width: 2 });
   assert.equal(JSON.stringify(s), '{"z":0,"closed":false,"points":[[1,2,0,0,0,0,0],[5,6,0,0,0,0,0]],"fill":null,"stroke":"#00ff00","width":2,"m":[1,0,0,1,0,0]}');
-  const defaults = withShape(s, { cap: 'round', join: 'round', miter: 4, rule: 'nonzero', more: [] });
+  const defaults = withShape(s, { cap: 'round', join: 'round', miter: 4, rule: 'nonzero', align: 'center', more: [] });
   assert.equal(JSON.stringify(defaults), JSON.stringify(s));
   const butt = withShape(s, { cap: 'butt' });
   assert.equal(butt.cap, 'butt');
   assert.deepEqual(Object.keys(butt), ['z', 'closed', 'points', 'fill', 'stroke', 'width', 'm', 'cap']);
   assert.deepEqual(strokeOf(s), STROKE_DEFAULTS);
-  assert.deepEqual(strokeOf(withShape(s, { join: 'miter', miter: 10 })), { rule: 'nonzero', cap: 'round', join: 'miter', miter: 10 });
+  assert.deepEqual(strokeOf(withShape(s, { join: 'miter', miter: 10 })), { rule: 'nonzero', cap: 'round', join: 'miter', miter: 10, align: 'center' });
 });
 
 test('shapeFromStranger takes the new fields and refuses bad ones', () => {
@@ -236,6 +236,7 @@ test('shapeFromStranger takes the new fields and refuses bad ones', () => {
   const good = [
     { ...plain, more: [[true, sq(1, 2)]] }, { ...plain, rule: 'evenodd' }, { ...plain, cap: 'square' },
     { ...plain, join: 'bevel' }, { ...plain, miter: 10 }, { ...plain, cap: 'butt', join: 'miter', miter: 1.5 },
+    { ...plain, align: 'inside' }, { ...plain, align: 'outside' },
   ];
   for (const v of good) {
     const s = shapeFromStranger(v);
@@ -245,7 +246,7 @@ test('shapeFromStranger takes the new fields and refuses bad ones', () => {
   const bad = [
     { ...plain, cap: 'flat' }, { ...plain, miter: 0 }, { ...plain, miter: 1000 }, { ...plain, rule: 'winding' },
     { ...plain, more: [[true, []]] }, { ...plain, more: [[1, sq(1, 2)]] }, { ...plain, more: [] }, { ...plain, cap: 'round' },
-    { ...plain, extra: 1 },
+    { ...plain, extra: 1 }, { ...plain, align: 'center' }, { ...plain, align: 'middle' },
     { ...plain, points: Array.from({ length: 300 }, (_, i) => [i, 0, 0, 0, 0, 0, 0]), more: [[false, Array.from({ length: 201 }, (_, i) => [i, 1, 0, 0, 0, 0, 0])]] },
   ];
   for (const v of bad) assert.equal(shapeFromStranger(v), null, JSON.stringify(v).slice(0, 80));
@@ -309,6 +310,26 @@ test('curveBounds and localBounds cover every outline', () => {
   assert.deepEqual(curveBounds(transformed(s, translation(1, 2))), { x0: 1, y0: 2, x1: 13, y1: 14 });
 });
 
+test('a stroke\'s alignment: Inside or Outside written, Center (the default) left out; an open shape strokes centered', () => {
+  const square = makeShape({ points: sq(0, 10), closed: true, stroke: '#ff0000', width: 2 });
+  assert.equal('align' in square, false);
+  assert.equal(withShape(square, { align: 'inside' }).align, 'inside');
+  assert.equal('align' in withShape(square, { align: 'center' }), false);
+  assert.equal(strokeOf(square).align, 'center');
+  assert.equal(strokeAlign(withShape(square, { align: 'outside' })), 'outside');
+  const open = makeShape({ points: sq(0, 10), closed: false, stroke: '#ff0000', width: 2, align: 'inside' });
+  assert.equal(strokeAlign(open), 'center'); // no inside to it
+  assert.equal(strokeAlign(withShape(square, { align: 'inside', more: [[false, sq(2, 4)]] })), 'center'); // one outline open
+});
+
+test('shapeBounds reaches as far as the stroke does: half its width centered, none inside, all of it outside', () => {
+  const square = makeShape({ points: sq(0, 10), closed: true, stroke: '#ff0000', width: 4 });
+  assert.equal(shapeBounds(square).x, -2);
+  assert.equal(shapeBounds(withShape(square, { align: 'inside' })).x, 0);
+  assert.equal(shapeBounds(withShape(square, { align: 'outside' })).x, -4);
+  assert.equal(shapeBounds(withShape(square, { align: 'outside', join: 'miter' })).x, -16); // the miter limit, 4, of all of it
+});
+
 test('shapeBounds pads for miters and square caps', () => {
   const line = makeShape({ points: [[0, 0, 0, 0, 0, 0, 0], [10, 0, 0, 0, 0, 0, 0]], closed: false, stroke: '#ff0000', width: 4 });
   assert.equal(shapeBounds(line).x, -2);
@@ -346,9 +367,9 @@ test('joined carries outlines into the bottom shape\'s space and makes holes, an
 });
 
 test('styleColors gives the next shape its caps and joins', () => {
-  const workspace = { vectorStyle: { fill: 'fg', stroke: null, width: 2, cap: 'butt', join: 'miter', miter: 10 }, editFgColor: '#123456', editFgNone: false };
+  const workspace = { vectorStyle: { fill: 'fg', stroke: null, width: 2, cap: 'butt', join: 'miter', miter: 10, align: 'inside' }, editFgColor: '#123456', editFgNone: false };
   const style = styleColors(workspace);
-  assert.deepEqual(style, { fill: '#123456', stroke: null, width: 2, cap: 'butt', join: 'miter', miter: 10 });
+  assert.deepEqual(style, { fill: '#123456', stroke: null, width: 2, cap: 'butt', join: 'miter', miter: 10, align: 'inside' });
   const shape = makeShape({ z: 0, closed: false, m: [1, 0, 0, 1, 0, 0], points: [[0, 0, 0, 0, 0, 0, 0], [5, 0, 0, 0, 0, 0, 0]], ...style });
   assert.deepEqual([shape.cap, shape.join, shape.miter], ['butt', 'miter', 10]);
   // Round and round, as drawn shapes start, are left out of the shape.

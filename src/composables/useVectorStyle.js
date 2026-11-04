@@ -1,4 +1,4 @@
-// VECTOR's Fill, Stroke, Width, and the Stroke panel's cap, join and miter limit: the color pair's two chips there, and the options row's Width. They're the
+// VECTOR's Fill, Stroke, Width, and the Stroke panel's cap, join, miter limit and alignment: the color pair's two chips there, and the options row's Width. They're the
 // selected shapes' (the first one's shown; with the Pen or the Shape tool, a change is the next shape's too, so it
 // matches the one just drawn) unless the Pen is drawing one, or nothing's selected: then they're what the next
 // shape gets (workspace.vectorStyle, where 'fg' is the foreground color when it's made). A change to the selection is one undo step; one opened by a drag (a slider, the native picker)
@@ -6,7 +6,7 @@
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { STROKE_DEFAULTS, fillAs, isGradient, strokeOf, withShape } from '@/document/shapes.js';
+import { STROKE_DEFAULTS, allClosed, fillAs, isGradient, strokeOf, withShape } from '@/document/shapes.js';
 
 export function useVectorStyle() {
   const project = useProjectStore();
@@ -22,6 +22,9 @@ export function useVectorStyle() {
     const v = workspace.vectorStyle[slot];
     return v === 'fg' ? (workspace.editFgNone ? null : workspace.editFgColor) : v;
   };
+
+  // Inside or Outside means something only to a closed shape: one selected, or the next shape's (which may be).
+  const canAlign = computed(() => !editing.value || selected.value.some((key) => allClosed(project.shapes.get(key))));
 
   const finish = () => {
     if (editing.value && project._stroke && !project._stroke.typing) project.commitEdit();
@@ -61,5 +64,5 @@ export function useVectorStyle() {
     }));
   };
 
-  return { selected, editing, first, value, set, finish, swap, kindOf, setKind };
+  return { selected, editing, first, value, set, finish, swap, kindOf, setKind, canAlign };
 }

@@ -1,16 +1,21 @@
 // Which shape is under a point, and how near a point is to one's outline: through Path2D on one 2D context
 // kept for it (the shapes' paths in grid pixels; tolerances in grid pixels).
-import { curveBounds, pathData, stacked, strokeOf } from '@/document/shapes.js';
+import { curveBounds, pathData, stacked, strokeAlign, strokeOf, strokeReach } from '@/document/shapes.js';
 
 let context = null;
 const ctx = () => (context ??= document.createElement('canvas').getContext('2d'));
 
 // On its fill (under its fill rule: a hole isn't on it), or within tol of its outline (or of its stroke's edge,
-// caps and joins as it draws them).
+// caps and joins as it draws them; a stroke inside or outside the outline, only on that side of it).
 export function hitsShape(shape, x, y, tol) {
   const c = ctx(), path = new Path2D(pathData(shape)), { rule, cap, join, miter } = strokeOf(shape);
   if (shape.fill && c.isPointInPath(path, x, y, rule)) return true;
-  c.lineWidth = (shape.stroke ? shape.width : 0) + 2 * tol;
+  const align = shape.stroke ? strokeAlign(shape) : 'center';
+  if (align !== 'center') {
+    Object.assign(c, { lineWidth: 2 * (shape.width + tol), lineCap: cap, lineJoin: join, miterLimit: miter });
+    if (c.isPointInStroke(path, x, y) && c.isPointInPath(path, x, y, rule) === (align === 'inside')) return true;
+  }
+  c.lineWidth = (align === 'center' && shape.stroke ? shape.width : 0) + 2 * tol;
   if (shape.stroke) Object.assign(c, { lineCap: cap, lineJoin: join, miterLimit: miter });
   else Object.assign(c, { lineCap: 'round', lineJoin: 'round' });
   return c.isPointInStroke(path, x, y);
@@ -29,7 +34,7 @@ export function shapeAt(shapes, x, y, tol) {
 // close to the box's edge counts; exact geometry (curves against the box's edges) if that's ever noticed.
 export function shapesTouching(shapes, { x0, y0, x1, y1 }) {
   return stacked(shapes).filter(([, shape]) => {
-    const b = curveBounds(shape), pad = shape.stroke ? shape.width / 2 : 0;
+    const b = curveBounds(shape), pad = strokeReach(shape);
     if (b.x0 >= x0 && b.y0 >= y0 && b.x1 <= x1 && b.y1 <= y1) return true;
     const ax = Math.max(x0, b.x0 - pad), ay = Math.max(y0, b.y0 - pad), bx = Math.min(x1, b.x1 + pad), by = Math.min(y1, b.y1 + pad);
     if (ax > bx || ay > by) return false;
