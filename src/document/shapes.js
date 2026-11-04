@@ -279,10 +279,11 @@ export function moveHandle(shape, i, which, x, y) {
 }
 
 // Point i made smooth (its handles in line, along its neighbors; a third of the way to each when it has
-// none) or a corner (its handles as they are).
+// none) or a sharp corner (no handles: the edges either side of it run straight in).
 export function setSmooth(shape, i, smooth) {
   const pts = shape.points.map((p) => p.slice()), p = pts[i];
   p[6] = smooth ? 1 : 0;
+  if (!smooth) p.fill(0, 2, 6);
   if (smooth) {
     const n = pts.length, prev = pts[(i - 1 + n) % n], next = pts[(i + 1) % n];
     const hasPrev = shape.closed || i > 0, hasNext = shape.closed || i < n - 1;
