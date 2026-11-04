@@ -689,9 +689,9 @@ test('the Stroke color box makes a gradient stroke, which the Node tool edits; w
   await box.getByRole('button', { name: 'Radial', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(which('Fill')).toHaveAttribute('aria-pressed', 'true');
-  // As big as the row's other buttons, and lit when chosen.
-  const [fill, remove] = [await which('Fill').boundingBox(), await which('Delete stop').boundingBox()];
-  expect(fill.height).toBeCloseTo(remove.height, 0);
+  // As big as the row's other text buttons, and lit when chosen.
+  const [fill, sharp] = [await which('Fill').boundingBox(), await which('Sharp').boundingBox()];
+  expect(fill.height).toBeCloseTo(sharp.height, 0);
   await expect(which('Fill')).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(page.locator('.vector-overlay .stop').first()).toHaveCSS('fill', 'rgb(255, 0, 0)'); // the fill's first stop
   await which('Stroke').click();
@@ -699,7 +699,7 @@ test('the Stroke color box makes a gradient stroke, which the Node tool edits; w
   await expect(page.locator('.vector-overlay .stop').first()).toHaveCSS('fill', 'rgb(0, 255, 0)');
 });
 
-test('the Node tool shows a shape\'s gradient\'s handles with its points; recoloring a stop changes the art; G isn\'t a VECTOR tool', async ({ page }) => {
+test('the Node tool shows a shape\'s gradient\'s handles with its points; recoloring a stop changes the art; one Delete for a stop or a point; G isn\'t a VECTOR tool', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await settled(page);
@@ -739,7 +739,23 @@ test('the Node tool shows a shape\'s gradient\'s handles with its points; recolo
   expect((await shapeList(page))[0].fill.m[5]).toBeCloseTo(18, 0);
   await undoSteps(page, 2);
   expect((await shapeList(page))[0].fill).toEqual({ type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [20, 0, 0, 20, 10, 15] });
+  // One Delete, an icon: the selected stop, or else the selected point; neither, it's off.
+  const remove = page.locator('.vector-options').getByRole('button', { name: 'Delete', exact: true });
+  await expect(page.locator('.vector-options').getByRole('button', { name: 'Delete stop', exact: true })).toHaveCount(0);
+  await expect(remove.locator('svg')).toHaveCount(1);
+  await page.mouse.click(...Object.values(await gridPoint(page, 20, 15))); // the line: a stop added, selected
+  expect((await shapeList(page))[0].fill.stops).toHaveLength(3);
+  await remove.click();
+  expect((await shapeList(page))[0].fill.stops).toHaveLength(2);
+  expect((await shapeList(page))[0].points).toHaveLength(4);
+  await expect(remove).toBeDisabled();
+  await page.mouse.click(...Object.values(await gridPoint(page, 30, 20))); // a point
+  await remove.click();
+  expect((await shapeList(page))[0].points).toHaveLength(3);
+  await undoSteps(page, 3);
   // Another tool lets the stop go.
+  await page.mouse.click(...Object.values(await gridPoint(page, 30, 15)));
+  expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(1);
   await page.keyboard.press('v');
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBeNull();
 });

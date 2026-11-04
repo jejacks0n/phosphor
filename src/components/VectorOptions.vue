@@ -2,8 +2,8 @@
 // VECTOR's options row. With Vector select: Copy, Cut and Paste, and with shapes selected Forward and Back (the
 // stacking order), Join, Separate and Delete, each one undo step. Fill and Stroke, and the stroke's width, caps,
 // joins and miter limit, are the color pair's (ColorPopover, useVectorStyle). While a shape's points are edited,
-// the Point row: the selected point Smooth, Free or Sharp, and Delete (the point); Esc or empty canvas ends it. On a
-// shape with a gradient, Delete stop too, and with two gradients Fill or Stroke. The buttons are icons, named in their titles; a phone's rows have no label or hint.
+// the Point row: the selected point Smooth, Free or Sharp, and Delete (the selected stop of its gradient, or else the
+// point); Esc or empty canvas ends it. On a shape with two gradients, Fill or Stroke too. The buttons are icons, named in their titles; a phone's rows have no label or hint.
 import { computed } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
@@ -62,14 +62,13 @@ const pointKind = computed({
     else smooth(next.smooth);
   },
 });
-const removePoint = () => deleteSelectedPoint(project, workspace);
-const deleteStop = () => removeStop(project, workspace);
+const removeSelected = () => (workspace.vectorStop !== null ? removeStop(project, workspace) : deleteSelectedPoint(project, workspace));
+const TRASH = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg>';
 // The shape whose points are edited, when it has two gradients to choose between.
 const twoGradients = computed(() => {
   const key = gradientKey(project, workspace), shape = key && project.shapes.get(key);
   return shape && isGradient(shape.fill) && isGradient(shape.stroke) ? shape : null;
 });
-const hasGradient = computed(() => !!gradientKey(project, workspace));
 const gradientOf = (slot) => {
   workspace.vectorGradientSlot = slot;
   workspace.vectorStop = null;
@@ -81,11 +80,7 @@ const gradientOf = (slot) => {
   <div v-if="pointsOf" class="tool-setting-group vector-options">
     <span v-if="!phone" class="option-label">{{ t('vector.point') }}</span>
     <ToggleGroup v-model="pointKind" single :options="POINT_KINDS" :label="t('vector.point')"/>
-    <button class="text" :disabled="!point" :title="t('vector.deletePointTitle')" @click="removePoint">{{ t('common.delete') }}</button>
-    <template v-if="hasGradient">
-      <div class="divider"/>
-      <button class="text" :disabled="workspace.vectorStop === null" :title="t('vector.deleteStopTitle')" @click="deleteStop">{{ t('vector.deleteStop') }}</button>
-    </template>
+    <button :disabled="!point && workspace.vectorStop === null" :title="t('vector.deletePointTitle')" :aria-label="t('common.delete')" aria-keyshortcuts="Delete Backspace" @click="removeSelected" v-html="TRASH"/>
     <template v-if="twoGradients">
       <div class="divider"/>
       <span v-if="!phone" class="option-label">{{ t('vector.gradientLabel') }}</span>
@@ -105,7 +100,7 @@ const gradientOf = (slot) => {
       <button :title="t('vector.backTitle')" :aria-label="t('vector.back')" @click="back"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M256 32H384V176H496L320 352 144 176H256ZM320 384 576 480 320 576 64 480ZM320 432 192 480 320 528 448 480Z"/></svg></button>
       <button :title="t('vector.joinTitle')" :aria-label="t('vector.join')" :disabled="selected.length < 2" @click="join"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><circle cx="232" cy="320" r="168"/><circle cx="408" cy="320" r="168"/></svg></button>
       <button :title="t('vector.separateTitle')" :aria-label="t('vector.separate')" :disabled="!canSeparate" @click="separate"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><circle cx="168" cy="320" r="128"/><circle cx="472" cy="320" r="128"/></svg></button>
-      <button :title="t('vector.deleteTitle')" :aria-label="t('common.delete')" aria-keyshortcuts="Delete Backspace" @click="remove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
+      <button :title="t('vector.deleteTitle')" :aria-label="t('common.delete')" aria-keyshortcuts="Delete Backspace" @click="remove" v-html="TRASH"/>
       <span v-if="!phone" class="hint">{{ t('vector.selectHint') }}</span>
     </template>
   </div>

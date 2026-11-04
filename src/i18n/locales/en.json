@@ -1390,9 +1390,7 @@
     "freeTitle": "Free the point's handles: each moves on its own",
     "sharp": "Sharp",
     "sharpTitle": "Make the point sharp: its handles go",
-    "deletePointTitle": "Delete the selected point",
-    "deleteStopTitle": "Delete the gradient's selected stop",
-    "pointsHint": "Drag a point, a handle or a gradient's stop; click the outline to add a point; Esc or empty canvas to finish",
-    "deleteStop": "Delete stop"
+    "deletePointTitle": "Delete the selected stop, or else the selected point",
+    "pointsHint": "Drag a point, a handle or a gradient's stop; click the outline to add a point; Esc or empty canvas to finish"
   }
 }

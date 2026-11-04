@@ -141,8 +141,8 @@ handles show; a gradient you've just made is the one shown.
 - **Click the line** to add a stop there, in the color the gradient has there.
 - **Click a stop** to select it (it's ringed); the color box of its chip (Fill
   or Stroke) then sets that stop's color. **Drag a stop** along the line to slide it, or well off the line to
-  remove it (a gradient keeps at least two). **Delete stop** in the options row, Delete or Backspace removes the
-  selected stop; Esc lets it go. A stop or a point is selected, not both.
+  remove it (a gradient keeps at least two). Delete or Backspace removes the
+  selected stop; Esc lets it go. A stop or a point is selected, not both, and the row's **Delete** (the trash can) removes whichever it is.
 
 Each drag, added point or stop, and change is one undo step. This works on rotated and scaled shapes too: a point
 or a gradient goes where the pointer is.
