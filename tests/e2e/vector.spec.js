@@ -310,6 +310,24 @@ test('Shift with the Pen keeps the next point, and a smooth point\'s handle, acr
   expect(points[3][4]).toBeGreaterThan(4);
 });
 
+test('Shift with the Pen shows the next segment where the point will go, before the click', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await page.keyboard.press('p');
+  const at = (x, y) => gridPoint(page, x, y), next = page.locator('.vector-overlay line.box');
+  await page.mouse.click(...Object.values(await at(10, 10)));
+  await page.mouse.move(...Object.values(await at(30, 13)));
+  const ends = async () => Object.fromEntries(await Promise.all(['x1', 'y1', 'x2', 'y2'].map(async (a) => [a, Number(await next.getAttribute(a))])));
+  expect((await ends()).y2).toBeGreaterThan((await ends()).y1 + 2); // the pointer, a little below
+  await page.keyboard.down('Shift');
+  await expect.poll(async () => { const e = await ends(); return Math.abs(e.y2 - e.y1); }).toBeLessThan(0.01); // level: where the click puts it
+  await page.mouse.move(...Object.values(await at(12, 30)));
+  await expect.poll(async () => { const e = await ends(); return Math.abs(e.x2 - e.x1); }).toBeLessThan(0.01); // straight down
+  await page.keyboard.up('Shift');
+  await expect.poll(async () => { const e = await ends(); return Math.abs(e.x2 - e.x1); }).toBeGreaterThan(2);
+});
+
 test('Shift while editing points keeps a dragged point on a straight line, and a handle across, up and down or at 45°', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

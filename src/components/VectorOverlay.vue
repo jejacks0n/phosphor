@@ -11,6 +11,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { pathData, worldPoints } from '@/document/shapes.js';
 import { boxHandles, handleRadius, selectionBox } from '@/tools/vselect.js';
 import { gradientHandles, gradientKey } from '@/tools/vgradient.js';
+import { snappedEnd } from '@/tools/shapes.js';
 
 const props = defineProps({
   unit: { type: Object, default: null },    // CSS px per grid pixel: { x, y }
@@ -55,12 +56,15 @@ const points = computed(() => {
   return { all, arms };
 });
 
-// The Pen's shape: its points, and a dashed segment from the last to the pointer.
+// The Pen's shape: its points, and a dashed segment from the last to the pointer (with Shift, to where a click
+// puts the next point: across, up and down or at 45°).
 const pen = computed(() => {
   const shape = workspace.vectorPen && project.shapes.get(workspace.vectorPen);
   if (!shape) return null;
-  const all = worldPoints(shape).map((p) => px(p)), hover = workspace.vectorHover && px(workspace.vectorHover);
-  return { all, next: hover && { from: all.at(-1), to: hover } };
+  const world = worldPoints(shape), hover = workspace.vectorHover;
+  const to = hover && (workspace.isShiftPressed && world.length ? snappedEnd(world.at(-1), hover) : hover);
+  const all = world.map((p) => px(p));
+  return { all, next: to && { from: all.at(-1), to: px(to) } };
 });
 
 const gradient = computed(() => {

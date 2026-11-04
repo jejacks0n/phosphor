@@ -122,7 +122,7 @@ where the pointer is.
 
 - Click for a corner point. Press and drag for a smooth point: its handles follow the pointer, one on each side.
 - Hold Shift to keep the next point straight across, straight up and down, or at 45° from the last one, and a
-  smooth point's handles at those angles too.
+  smooth point's handles at those angles too. The dashed line to the pointer shows where the point will go.
 - The shape fills (or strokes) on the canvas as you draw it, with a dashed line from the last point to the
   pointer.
 - Click the first point (with three or more) to close the shape. **Enter** or **Esc** leaves it an open curve,
