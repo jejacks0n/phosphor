@@ -223,6 +223,12 @@ const selectionHasCharacters = computed(() => {
   void project.editCells; void project.baseRecords; void project.historyVersion; // re-check after edits
   return !!workspace.selection && project.hasCharacters(workspace.selection, workspace.selectLayers);
 });
+// A toggle group as shown: one with shiftFlips (the Eyedropper's one-lit choices) shows the other lit while Shift is
+// held, as that's what a click then picks.
+const shownToggles = (option) => {
+  const value = workspace[option.key];
+  return option.shiftFlips && workspace.isShiftPressed ? Object.fromEntries(Object.entries(value).map(([k, on]) => [k, !on])) : value;
+};
 </script>
 
 <template>
@@ -429,7 +435,7 @@ const selectionHasCharacters = computed(() => {
           </div>
           <template v-else-if="option.type === 'toggles'">
             <span class="option-label">{{ option.label }}</span>
-            <ToggleGroup v-model="workspace[option.key]" :options="option.options" :label="option.label" :single="!!option.single"/>
+            <ToggleGroup :model-value="shownToggles(option)" :options="option.options" :label="option.label" :single="!!option.single" @update:model-value="workspace[option.key] = $event"/>
           </template>
           <template v-else-if="option.type === 'layers'">
             <span class="option-label">{{ option.label }}</span>
