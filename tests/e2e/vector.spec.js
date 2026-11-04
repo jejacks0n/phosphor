@@ -650,7 +650,7 @@ test('the Fill color box makes a gradient and takes it back to solid', async ({ 
   expect((await shapeList(page))[0]).toMatchObject({ fill: null, stroke: { type: 'linear', stops: [[0, '#ff0000'], [1, bg]] } });
 });
 
-test('the Stroke color box makes a gradient stroke, which G edits; with both gradients, Fill or Stroke says which', async ({ page }) => {
+test('the Stroke color box makes a gradient stroke, which the Node tool edits; with both gradients, Fill or Stroke says which', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await settled(page);
@@ -668,8 +668,9 @@ test('the Stroke color box makes a gradient stroke, which G edits; with both gra
   await expect(page.locator('.color-pair .chip.bg')).toHaveAttribute('style', /linear-gradient/);
   await page.keyboard.press('Escape');
 
-  // G: the stroke's gradient, its only one. Its last stop, clicked, then recolored in the Stroke box.
-  await page.keyboard.press('g');
+  // Its points edited: the stroke's gradient too, its only one. Its last stop, clicked, then recolored in the Stroke box.
+  await page.mouse.dblclick(...Object.values(await gridPoint(page, 15, 12))); // off the gradient's line: a press there adds a stop
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vnode');
   await expect(page.locator('.vector-overlay .stop')).toHaveCount(2);
   await page.mouse.click(...Object.values(await gridPoint(page, 20, 15)));
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(1);
@@ -692,7 +693,7 @@ test('the Stroke color box makes a gradient stroke, which G edits; with both gra
   await expect(page.locator('.vector-overlay .stop').first()).toHaveCSS('fill', 'rgb(0, 255, 0)');
 });
 
-test('G shows a gradient\'s handles; recoloring a stop changes the art', async ({ page }) => {
+test('editing a shape\'s points shows its gradient\'s handles; recoloring a stop changes the art; G isn\'t a VECTOR tool', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await settled(page);
@@ -702,10 +703,14 @@ test('G shows a gradient\'s handles; recoloring a stop changes the art', async (
     points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
   await page.mouse.click(...Object.values(await gridPoint(page, 12, 12)));
   expect(await selected(page)).toEqual([key]);
+  await expect(page.locator('.vector-overlay .stop')).toHaveCount(0); // selected, not edited: no handles
   await page.keyboard.press('g');
-  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vgradient');
-  await expect(page.locator('.vector-overlay .stop')).toHaveCount(2);
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vselect');
   await expect(page.getByRole('dialog', { name: /Keyboard shortcuts/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Gradient', exact: true })).toHaveCount(0); // no tool of its own
+  await page.mouse.dblclick(...Object.values(await gridPoint(page, 12, 12)));
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vnode');
+  await expect(page.locator('.vector-overlay .stop')).toHaveCount(2);
 
   // The last stop, clicked: selected; the Fill box sets its color, one step.
   await settled(page);

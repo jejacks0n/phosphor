@@ -8,7 +8,7 @@ import { swatchSections, drawingColors } from '@/lib/ColorUtils';
 import { nearestInDirection } from '@/lib/spatialFocus';
 import { shortcut } from '@/lib/keyLabels';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
-import { gradientKey, gradientSlot, recolorStop } from '@/tools/vgradient.js';
+import { gradientKey, gradientSlot, recolorStop } from '@/tools/gradientHandles.js';
 
 // The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
@@ -16,7 +16,7 @@ import { gradientKey, gradientSlot, recolorStop } from '@/tools/vgradient.js';
 // adjustments (paletteChoices), so every palette color can be painted with; other swatches show
 // how their color displays (adjusted, snapped) and store the color itself.
 // On VECTOR the slots are the shapes' Fill and Stroke (useVectorStyle), each of which can be none, and the selected
-// shapes' Fill and Stroke can each be Solid, Linear or Radial; with the Gradient tool's stop selected, the chip for
+// shapes' Fill and Stroke can each be Solid, Linear or Radial; with a gradient's stop selected (the Node tool), the chip for
 // the gradient it edits (gradientSlot) is that stop's color.
 const props = defineProps({
   slotName: { type: String, required: true }, // 'fg' | 'bg'
@@ -35,7 +35,7 @@ const SHAPE_SLOTS = { fg: 'fill', bg: 'stroke' };
 // A gradient shows as its first stop; choosing a color makes it solid again.
 const solidOf = (v) => (v && typeof v === 'object' ? v.stops[0][1] : v);
 const stop = computed(() => {
-  if (!vector.value || workspace.activeTool !== 'vgradient' || workspace.vectorStop === null) return null;
+  if (!vector.value || workspace.vectorStop === null) return null;
   const key = gradientKey(project, workspace), shape = key && project.shapes.get(key);
   if (!shape) return null;
   const slot = gradientSlot(shape, workspace);

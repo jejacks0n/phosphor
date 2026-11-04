@@ -2,9 +2,9 @@
 // VECTOR's options row. With shapes selected: Width, Stroke (a panel of caps, joins and the miter limit), Forward and Back (the stacking order), Edit points and
 // Delete, each one undo step; with nothing selected, or with the Pen or the Shape tool, the Width the next shape
 // gets. Fill and Stroke are the color pair's chips (useVectorStyle). While a shape's points are edited, the Point
-// row: the selected point Smooth or Corner, and Delete (the point); Esc or empty canvas ends it. A phone's row keeps Width and Points, and puts
-// the rest under ⋯; its Point row has no label or hint. With the Gradient tool on a shape whose fill and stroke are both
-// gradients, Fill or Stroke says which one it edits.
+// row: the selected point Smooth or Corner, and Delete (the point, or a gradient's selected stop); Esc or empty canvas ends it. A phone's row keeps Width and Points, and puts
+// the rest under ⋯; its Point row has no label or hint. On a shape whose fill and stroke are both gradients, the
+// Point row's Fill or Stroke says which one's handles show.
 import { computed } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
@@ -12,7 +12,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { allPoints, isGradient, setSmooth } from '@/document/shapes.js';
-import { gradientKey, gradientSlot } from '@/tools/vgradient.js';
+import { gradientKey, gradientSlot, removeStop } from '@/tools/gradientHandles.js';
 import { deleteSelectedPoint } from '@/tools/vnode.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
 import { shortcut } from '@/lib/keyLabels';
@@ -26,7 +26,7 @@ const phone = useMediaQuery('(max-width: 768px)');
 const style = useVectorStyle(), { selected } = style;
 
 const editing = computed(() => workspace.activeTool === 'vselect' && selected.value.length > 0);
-const styling = computed(() => ['vselect', 'vnode', 'pen', 'vshape', 'vgradient'].includes(workspace.activeTool));
+const styling = computed(() => ['vselect', 'vnode', 'pen', 'vshape'].includes(workspace.activeTool));
 
 const WIDTH = computed(() => ({ key: 'vectorWidth', label: t('vector.width'), title: t('vector.widthTitle'), min: 0.5, max: 64, step: 0.5, decimals: 1 }));
 const width = computed({
@@ -68,10 +68,10 @@ const remove = () => {
 const pointsOf = computed(() => workspace.activeTool === 'vnode' && workspace.vectorPoints && project.shapes.get(workspace.vectorPoints));
 const point = computed(() => (pointsOf.value && workspace.vectorPoint !== null ? allPoints(pointsOf.value)[workspace.vectorPoint] : null));
 const smooth = (on) => project.updateShapes([[workspace.vectorPoints, setSmooth(pointsOf.value, workspace.vectorPoint, on)]]);
-const removePoint = () => deleteSelectedPoint(project, workspace);
-// The Gradient tool's shape, when it has two gradients to choose between.
+const removePoint = () => (workspace.vectorStop === null ? deleteSelectedPoint(project, workspace) : removeStop(project, workspace));
+// The shape whose points are edited, when it has two gradients to choose between.
 const twoGradients = computed(() => {
-  const key = workspace.activeTool === 'vgradient' && gradientKey(project, workspace), shape = key && project.shapes.get(key);
+  const key = gradientKey(project, workspace), shape = key && project.shapes.get(key);
   return shape && isGradient(shape.fill) && isGradient(shape.stroke) ? shape : null;
 });
 const gradientOf = (slot) => {
@@ -91,7 +91,14 @@ const editPoints = () => {
     <span v-if="!phone" class="option-label">{{ t('vector.point') }}</span>
     <button class="text" :aria-pressed="!!point?.[6]" :disabled="!point" :title="t('vector.smoothTitle')" @click="smooth(true)">{{ t('vector.smooth') }}</button>
     <button class="text" :aria-pressed="!!point && !point[6]" :disabled="!point" :title="t('vector.cornerTitle')" @click="smooth(false)">{{ t('vector.corner') }}</button>
-    <button class="text" :disabled="!point" :title="t('vector.deletePointTitle')" @click="removePoint">{{ t('common.delete') }}</button>
+    <button class="text" :disabled="!point && workspace.vectorStop === null" :title="t(workspace.vectorStop === null ? 'vector.deletePointTitle' : 'vector.deleteStopTitle')" @click="removePoint">{{ t('common.delete') }}</button>
+    <template v-if="twoGradients">
+      <div class="divider"/>
+      <span v-if="!phone" class="option-label" aria-hidden="true">{{ t('vector.gradientLabel') }}</span>
+      <span class="gradient-slot" role="group" :aria-label="t('vector.gradientLabel')">
+        <button v-for="slot in ['fill', 'stroke']" :key="slot" class="text" :title="t('vector.gradientSlotTitle')" :aria-pressed="gradientSlot(twoGradients, workspace) === slot" @click="gradientOf(slot)">{{ t(`vector.${slot}`) }}</button>
+      </span>
+    </template>
     <span v-if="!phone" class="hint">{{ t('vector.pointsHint') }}</span>
   </div>
   <div v-else-if="editing || styling" class="tool-setting-group vector-options">
@@ -114,13 +121,6 @@ const editPoints = () => {
         <input id="vector-miter" type="number" min="1" max="100" step="0.5" :title="t('vector.miterTitle')" :value="style.value('miter')" :disabled="style.value('join') !== 'miter'" @change="setMiter"/>
       </div>
     </DropdownMenu>
-    <template v-if="twoGradients">
-      <div class="divider"/>
-      <span class="option-label" aria-hidden="true">{{ t('vector.gradientLabel') }}</span>
-      <span class="gradient-slot" role="group" :aria-label="t('vector.gradientLabel')">
-        <button v-for="slot in ['fill', 'stroke']" :key="slot" class="text" :title="t('vector.gradientSlotTitle')" :aria-pressed="gradientSlot(twoGradients, workspace) === slot" @click="gradientOf(slot)">{{ t(`vector.${slot}`) }}</button>
-      </span>
-    </template>
     <template v-if="workspace.activeTool === 'vselect'">
       <div class="divider"/>
       <button :title="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" :aria-label="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" :disabled="!selected.length" @click="copy"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M240 64H528A48 48 0 0 1 576 112V400A48 48 0 0 1 528 448H448V384H512V128H256V192H192V112A48 48 0 0 1 240 64ZM112 192H400A48 48 0 0 1 448 240V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V240A48 48 0 0 1 112 192Z"/></svg></button>

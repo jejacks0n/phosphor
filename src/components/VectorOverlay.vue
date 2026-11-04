@@ -1,16 +1,16 @@
 <script setup>
 // VECTOR's overlay over the art, in CSS px: the selected shapes' outlines (and on a Blank frame, dimmed, those
 // of the shapes it carries), Vector select's box with its 8 handles and rotate knob, the Node tool's points and
-// handles of the shape whose points are being edited (the selected point filled), and the Pen's points (the
-// first filled: a click there closes) with its next segment, dashed, to the pointer; and the Gradient tool's line,
-// ends and stops (each in its color, the selected one ringed). It takes no pointer events,
+// handles of the shape whose points are being edited (the selected point filled) and its gradient's line, ends
+// and stops (each in its color, the selected one ringed), and the Pen's points (the first filled: a click there
+// closes) with its next segment, dashed, to the pointer. It takes no pointer events,
 // and shows nothing while the animation plays.
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { pathData, worldPoints } from '@/document/shapes.js';
 import { boxHandles, handleRadius, selectionBox } from '@/tools/vselect.js';
-import { gradientHandles, gradientKey, gradientSlot } from '@/tools/vgradient.js';
+import { gradientHandles, gradientKey, gradientSlot } from '@/tools/gradientHandles.js';
 import { snappedEnd } from '@/tools/shapes.js';
 
 const props = defineProps({
@@ -41,7 +41,7 @@ const carried = computed(() => {
 });
 
 const box = computed(() => {
-  if (['vnode', 'vgradient'].includes(workspace.activeTool) || !selected.value.length) return null;
+  if (workspace.activeTool === 'vnode' || !selected.value.length) return null;
   const b = selectionBox(project.shapes, selected.value);
   if (!b) return null;
   const { handles, top, knob } = boxHandles(b, props.unit);
@@ -68,7 +68,6 @@ const pen = computed(() => {
 });
 
 const gradient = computed(() => {
-  if (workspace.activeTool !== 'vgradient') return null;
   const key = gradientKey(project, workspace);
   if (!key) return null;
   const shape = project.shapes.get(key), { p0, p1, stops } = gradientHandles(shape, gradientSlot(shape, workspace));

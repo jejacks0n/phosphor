@@ -211,7 +211,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
 
   // Cmd/Ctrl+A, C, X and V on VECTOR, not the page's: A selects every shape on the frame, bottom to top, with
-  // Vector select (the Gradient tool keeps itself: it works on the selection); C copies the selected shapes and X
+  // Vector select; C copies the selected shapes and X
   // cuts them, to this tab's own clipboard; V pastes them on top, selected (vectorClipboard.js). A Pen shape under
   // way ends first.
   const _handleVectorKeys = (e) => {
@@ -220,7 +220,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (workspaceStore.editorTab !== 'vector' || isField(e.target) || workspaceStore.isPainting || !projectStore.image) return false;
     projectStore.commitPending();
     if (key === 'a') {
-      if (workspaceStore.activeTool !== 'vgradient') workspaceStore.setActiveTool('vselect');
+      workspaceStore.setActiveTool('vselect');
       projectStore.selectShapes(stacked(projectStore.shapes).map(([k]) => k));
       workspaceStore.vectorStop = null;
     } else if (!{ c: copyShapes, x: cutShapes, v: pasteShapes }[key](projectStore, workspaceStore)) return false;

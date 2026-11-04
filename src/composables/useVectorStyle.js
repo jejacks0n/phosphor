@@ -33,7 +33,7 @@ export function useVectorStyle() {
     if (remember) finish();
   };
   // The selected shapes' fill or stroke (slot) made Solid, Linear or Radial (fillAs: a color goes from itself to the
-  // background color); one step. A gradient made is the one the Gradient tool edits then. With nothing selected the
+  // background color); one step. A gradient made is the one whose handles the Node tool shows then. With nothing selected the
   // next shape's stays solid: a gradient needs a box to sit in.
   const kindOf = (slot) => (first.value && isGradient(first.value[slot]) ? first.value[slot].type : 'solid');
   const setKind = (slot, kind) => {

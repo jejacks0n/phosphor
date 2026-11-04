@@ -1,17 +1,13 @@
-// The Gradient tool (the VECTOR tab), for the first selected shape with a gradient fill or stroke (with both,
-// workspace.vectorGradientSlot's; gradientSlot): a linear one shows a line
+// A gradient's handles, for the Node tool's shape (workspace.vectorPoints) when its fill or stroke is a gradient
+// (with both, workspace.vectorGradientSlot's; gradientSlot): a linear one shows a line
 // from its start to its end, a radial one its center and a radius handle, and both a dot for each stop along it
 // (gradientHandles). Drag the line (or a radial's center) to move the gradient, an end (or the radius handle) to
 // stretch and turn it about the other (Shift: across, up and down or at 45°), a stop along the line to slide it,
 // or well off the line to remove it (two always stay); click the line to add a stop there, in the color the
-// gradient has there, or a stop to select it (workspace.vectorStop), whose color that chip's box then sets.
-// A press on another shape selects it. Each drag or click that changes the gradient is one undo step. Keys:
-// Delete or Backspace removes the selected stop, Esc lets it go; the rest are Vector select's.
-import { t } from '@/i18n/index.js';
+// gradient has there, or a stop to select it (workspace.vectorStop, the selected point let go), whose color that
+// chip's box then sets. Each drag or click that changes the gradient is one undo step; removeStop is Delete's.
 import { MOST_STOPS, apply, gradientColorAt, invert, isGradient, multiply, translation, withShape } from '@/document/shapes.js';
-import { shapeAt } from '@/lib/shapeHits.js';
 import { snappedEnd } from '@/tools/shapes.js';
-import vselect, { handleRadius } from '@/tools/vselect.js';
 
 const OFF_THE_LINE = 24; // CSS px a stop is dragged off its line to remove it
 const MOVED = 2;         // CSS px a press goes before it's a drag, not a click
@@ -19,8 +15,11 @@ const MOVED = 2;         // CSS px a press goes before it's a drag, not a click
 let drag = null; // { kind: 'line' | 'move' | 'end' | 'stop', key, start, at, moved, which?, stop?, t? }
 
 const hasGradient = (shape) => !!shape && (isGradient(shape.fill) || isGradient(shape.stroke));
-// The key of the first selected shape with a gradient, or null.
-export const gradientKey = (project, workspace) => workspace.vectorSelected.find((key) => hasGradient(project.shapes.get(key))) ?? null;
+// The key of the Node tool's shape when it has a gradient, or null.
+export const gradientKey = (project, workspace) => {
+  const key = workspace.activeTool === 'vnode' && workspace.vectorPoints;
+  return key && hasGradient(project.shapes.get(key)) ? key : null;
+};
 // Which of its gradients the tool edits: workspace.vectorGradientSlot's when that's one, else the one it has.
 export const gradientSlot = (shape, workspace) => {
   const slot = workspace.vectorGradientSlot;
@@ -67,7 +66,7 @@ export function recolorStop(project, workspace, hex, { remember = true } = {}) {
   if (remember && project._stroke && !project._stroke.typing) project.commitEdit();
 }
 
-function removeStop(project, workspace) {
+export function removeStop(project, workspace) {
   const key = gradientKey(project, workspace), shape = key && project.shapes.get(key), i = workspace.vectorStop;
   const slot = shape && gradientSlot(shape, workspace);
   if (!shape || i === null || shape[slot].stops.length <= 2) return;
@@ -75,17 +74,10 @@ function removeStop(project, workspace) {
   workspace.vectorStop = null;
 }
 
-export default {
-  id: 'vgradient',
-  get title() { return t('tools.vgradient.title'); },
-  keys: ['G'],
-  icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill-rule="evenodd" d="M128 96H512A32 32 0 0 1 544 128V512A32 32 0 0 1 512 544H128A32 32 0 0 1 96 512V128A32 32 0 0 1 128 96ZM144 144V496H224V144ZM272 144V496H320V144ZM368 144V496H400V144ZM448 144V496H464V144Z"/></svg>`,
-  views: ['vector'],
-  kind: 'paint',
-  section: 'vector',
-
-  begin({ project, workspace, unit }, pos) {
-    const radius = handleRadius(), key = gradientKey(project, workspace), shape = key && project.shapes.get(key);
+// A press on the gradient's handles (true: the drag is theirs), or false.
+export const gradientDrag = {
+  begin({ project, workspace, unit }, pos, radius) {
+    const key = gradientKey(project, workspace), shape = key && project.shapes.get(key);
     if (shape) {
       const slot = gradientSlot(shape, workspace), { p0, p1, stops } = gradientHandles(shape, slot), radial = shape[slot].type === 'radial';
       const stopNear = (p) => stops.find((s) => near(s.at, p, unit, 1))?.i; // a stop at that end
@@ -106,12 +98,11 @@ export default {
         return true;
       }
     }
-    const other = shapeAt(project.shapes, pos.x, pos.y, radius / unit.x);
-    if (other && other !== key) {
-      project.selectShapes([other]);
-      workspace.vectorStop = null;
-    }
     return false;
+  },
+
+  get active() {
+    return !!drag;
   },
 
   move({ project, workspace, unit }, from, to) {
@@ -152,26 +143,12 @@ export default {
         workspace.vectorStop = order.i;
       } else if (drag.stop !== undefined) workspace.vectorStop = drag.stop;
     }
+    if (workspace.vectorStop !== null) workspace.vectorPoint = null;
     drag = null;
     project.commitEdit();
   },
 
   cancel() {
     drag = null; // the viewport took the edit back
-  },
-
-  keydown(ctx, event) {
-    const { project, workspace } = ctx;
-    if (workspace.vectorStop !== null && !event.metaKey && !event.ctrlKey && !event.altKey) {
-      if (event.key === 'Escape') {
-        workspace.vectorStop = null;
-        return true;
-      }
-      if (event.key === 'Delete' || event.key === 'Backspace') {
-        removeStop(project, workspace);
-        return true;
-      }
-    }
-    return vselect.keydown(ctx, event);
   },
 };

@@ -1,13 +1,15 @@
 // The Node tool (the VECTOR tab): press a shape to edit its points (workspace.vectorPoints), and on one of its
 // points, its curve handles or (once it's being edited) its outline: drag a point or a handle (Alt: the handle
 // alone, broken from its partner; Shift: on a line across, up and down or at 45°), click the outline to add a
-// point there, click empty canvas to stop. Each drag is one edit, worked out each move from the shape as it was
-// at the press. Keys: Delete or Backspace deletes the selected point, Esc stops editing points; the rest are
-// Vector select's (the arrows, Delete with no point selected, Esc then).
+// point there, click empty canvas to stop. A shape with a gradient shows its handles too (gradientHandles.js),
+// under its points and above its outline. Each drag is one edit, worked out each move from the shape as it was
+// at the press. Keys: Delete or Backspace deletes the selected point (or stop), Esc lets a stop go or stops
+// editing points; the rest are Vector select's (the arrows, Delete with nothing selected, Esc then).
 import { t } from '@/i18n/index.js';
 import { apply, deletePoint, invert, moveHandle, movePoint, nearestOnOutline, splitAt, worldPoints } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { shapeAt } from '@/lib/shapeHits.js';
+import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
 import vselect, { handleRadius } from '@/tools/vselect.js';
 
 let drag = null; // { kind: 'point' | 'handle', key, i, at, from, start, which?, alone?, anchor? }
@@ -20,6 +22,7 @@ function pointsPress(project, workspace, pos, unit, radius, { event, add = true 
   const key = workspace.vectorPoints, shape = project.shapes.get(key);
   const world = worldPoints(shape), start = (kind, i, extra = {}) => {
     workspace.vectorPoint = i;
+    workspace.vectorStop = null;
     project.beginEdit();
     drag = { kind, key, i, at: pos, from: apply(invert(shape.m), pos.x, pos.y), start: project.shapes.get(key), ...extra };
     return true;
@@ -57,19 +60,24 @@ export default {
   kind: 'paint',
   section: 'vector',
 
-  begin({ project, workspace, unit }, pos, event) {
-    const radius = handleRadius();
-    if (workspace.vectorPoints && project.shapes.has(workspace.vectorPoints) && pointsPress(project, workspace, pos, unit, radius, { event })) return true;
+  begin(ctx, pos, event) {
+    const { project, workspace, unit } = ctx, radius = handleRadius();
+    if (workspace.vectorPoints && project.shapes.has(workspace.vectorPoints)) {
+      const press = (add) => pointsPress(project, workspace, pos, unit, radius, { event, add });
+      if (press(false) || gradientDrag.begin(ctx, pos, radius) || press(true)) return true;
+    }
     const hit = shapeAt(project.shapes, pos.x, pos.y, radius / unit.x);
     if (hit === workspace.vectorPoints && hit) return false; // inside it: still editing its points
-    workspace.vectorPoint = null;
+    workspace.vectorPoint = workspace.vectorStop = null;
     workspace.vectorPoints = hit; // another shape's points (a press on one of them takes it at once), or none
     if (!hit) return false; // the selection stays
     project.selectShapes([hit]);
     return pointsPress(project, workspace, pos, unit, radius, { event, add: false });
   },
 
-  move({ project, workspace }, from, to) {
+  move(ctx, from, to) {
+    if (gradientDrag.active) return gradientDrag.move(ctx, from, to);
+    const { project, workspace } = ctx;
     if (!drag) return;
     // Shift: a point on a line from where it was pressed, a handle on one from its point.
     if (workspace.isShiftPressed) to = snappedEnd(drag.kind === 'handle' ? drag.anchor : drag.at, to);
@@ -78,19 +86,27 @@ export default {
     project.updateShapes([[drag.key, next]]);
   },
 
-  end({ project }) {
+  end(ctx) {
+    if (gradientDrag.active) return gradientDrag.end(ctx);
+    const { project } = ctx;
     if (!drag) return;
     drag = null;
     project.commitEdit();
   },
 
-  cancel() {
+  cancel(ctx) {
     drag = null; // the viewport took the edit back
+    gradientDrag.cancel(ctx);
   },
 
   keydown(ctx, event) {
     const { project, workspace } = ctx;
     if (workspace.vectorPoints && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      if (workspace.vectorStop !== null && ['Escape', 'Delete', 'Backspace'].includes(event.key)) {
+        if (event.key === 'Escape') workspace.vectorStop = null;
+        else removeStop(project, workspace);
+        return true;
+      }
       if (event.key === 'Escape') {
         workspace.vectorPoints = workspace.vectorPoint = null;
         return true;

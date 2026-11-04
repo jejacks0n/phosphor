@@ -382,9 +382,6 @@
     "vselect": {
       "title": "Sélection vectorielle"
     },
-    "vgradient": {
-      "title": "Dégradé"
-    },
     "vnode": {
       "title": "Nœud"
     },
@@ -845,8 +842,7 @@
     },
     "rows": {
       "vselect": "Sélection vectorielle : choisir, déplacer, redimensionner et faire pivoter les formes (double-clic : l'outil Nœud)",
-      "vgradient": "Dégradé : déplacer, étirer et tourner le dégradé d'une forme, et modifier ses arrêts",
-      "vnode": "Nœud : appuyez sur une forme pour modifier ses points ; faites glisser un point ou une poignée, cliquez sur le contour pour en ajouter un",
+      "vnode": "Nœud : appuyez sur une forme pour modifier ses points et son dégradé ; faites glisser un point, une poignée ou un arrêt, cliquez sur le contour pour ajouter un point",
       "pen": "Plume : cliquez pour un angle, faites glisser pour une courbe ; cliquez sur le premier point pour fermer",
       "penEnd": "Laisser la forme de la plume en courbe ouverte",
       "penBack": "Retirer le dernier point de la plume",
@@ -1382,7 +1378,7 @@
     "linearStrokeChipTitle": "Contour : dégradé linéaire ({key})",
     "radialStrokeChipTitle": "Contour : dégradé radial ({key})",
     "gradientLabel": "Dégradé",
-    "gradientSlotTitle": "Le dégradé que l'outil Dégradé modifie",
+    "gradientSlotTitle": "Le dégradé dont les poignées s'affichent",
     "joinTooBig": "Une forme a au plus {count} points.",
     "editPoints": "Modifier les points",
     "editPointsTitle": "Modifier les points et les courbes de la forme avec l'outil Nœud (A)",
@@ -1397,6 +1393,7 @@
     "corner": "Angle",
     "cornerTitle": "Faire du point un angle vif : ses poignées disparaissent",
     "deletePointTitle": "Supprimer le point sélectionné",
-    "pointsHint": "Faites glisser un point ou une poignée ; cliquez sur le contour pour ajouter un point ; Échap ou un clic à côté pour terminer"
+    "deleteStopTitle": "Supprimer l'arrêt sélectionné du dégradé",
+    "pointsHint": "Faites glisser un point, une poignée ou un arrêt de dégradé ; cliquez sur le contour pour ajouter un point ; Échap ou un clic à côté pour terminer"
   }
 }
