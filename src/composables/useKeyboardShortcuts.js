@@ -211,14 +211,19 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
 
   // Cmd/Ctrl+A, C, X and V on VECTOR, not the page's: A selects every shape on the frame, bottom to top, with
-  // Vector select; C copies the selected shapes and X
-  // cuts them, to this tab's own clipboard; V pastes them on top, selected (vectorClipboard.js). A Pen shape under
-  // way ends first.
+  // Vector select; C copies the selected shapes and X cuts them (vectorClipboard.js); V is left to the browser,
+  // whose paste event has another tab's shapes (_handlePaste), and pastes this tab's when there's no paste event.
+  // A Pen shape under way ends first.
   const _handleVectorKeys = (e) => {
     const key = e.key.toLowerCase();
     if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || !['a', 'c', 'x', 'v'].includes(key)) return false;
     if (workspaceStore.editorTab !== 'vector' || isField(e.target) || workspaceStore.isPainting || !projectStore.image) return false;
     projectStore.commitPending();
+    if (key === 'v') {
+      clearTimeout(_pendingPaste?.timer);
+      _pendingPaste = { vector: true, timer: setTimeout(() => { _pendingPaste = null; pasteShapes(projectStore, workspaceStore); }, 50) };
+      return true;
+    }
     if (key === 'a') {
       workspaceStore.setActiveTool('vselect');
       projectStore.selectShapes(stacked(projectStore.shapes).map(([k]) => k));
@@ -261,7 +266,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // cursor in Edit Mode, else at the selection or the top-left of the view. Phosphor's own block
   // wins when the browser refused the copy, and over text that's what the last copy put there. A
   // block lands floating and selected, to drag into place.
-  let _pendingPaste = null; // { at, timer } from Cmd/Ctrl+V until its paste event
+  let _pendingPaste = null; // { at, timer }, or { vector, timer } on VECTOR, from Cmd/Ctrl+V until its paste event
   const _pasteBlock = (at, block = workspaceStore.clipboard) => {
     if (!block) return;
     const pasted = projectStore.pasteSelection(block, at.col, at.row);
@@ -273,11 +278,16 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
   const _handlePaste = (e) => {
     if (!_pendingPaste) return; // not a Cmd/Ctrl+V we routed (a field's own paste, the context menu)
-    const { at, timer } = _pendingPaste;
+    const { at, timer, vector } = _pendingPaste;
     clearTimeout(timer);
     _pendingPaste = null;
     e.preventDefault();
     if (projectStore._paused) return; // refused: nothing moves to where it would have gone
+    if (vector) { // another tab's shapes, else this tab's
+      const shapes = readClipboardHtml(e.clipboardData?.getData('text/html'))?.shapes;
+      pasteShapes(projectStore, workspaceStore, shapes && shapes.id !== workspaceStore.vectorClipboardId ? shapes.shapes : undefined);
+      return;
+    }
     const text = (e.clipboardData?.getData('text/plain') ?? '').replace(/\r\n/g, '\n'); // Windows' clipboard adds CRs
     const ours = workspaceStore.clipboardText?.replace(/\r\n/g, '\n') ?? null;
     const own = workspaceStore.clipboard;

@@ -338,6 +338,38 @@ test('pasted on another frame, shapes land where they were copied from; on top o
   }
 });
 
+test.describe('between tabs', () => {
+  test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+
+  test('shapes copied in one tab paste into another, where they were; its Paste button pastes only its own', async ({ page }) => {
+    await openApp(page);
+    await tab(page, 'VECTOR').click();
+    await settled(page);
+    await addRect(page, 10, 10, 20, 20);
+    const outer = await addRect(page, 30, 10, 40, 20), inner = await addRect(page, 33, 13, 37, 17);
+    await store(page, 'project', `(p) => p.joinShapes(['${outer}', '${inner}'])`); // a ring: two outlines
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('ControlOrMeta+c');
+    const drawing = (list) => list.map(({ points, more, fill, stroke, width, m, rule }) => ({ points, more, fill, stroke, width, m, rule }));
+    const copied = drawing(await shapeList(page));
+    expect(copied[1].more).toHaveLength(1);
+
+    const other = await page.context().newPage();
+    await openApp(other);
+    await tab(other, 'VECTOR').click();
+    await settled(other);
+    await other.keyboard.press('v');
+    await expect(other.locator('.vector-options').getByRole('button', { name: /^Nothing copied in this tab\. To paste from another tab or app, use (⌘V|Ctrl\+V)$/ })).toBeDisabled();
+    await other.keyboard.press('ControlOrMeta+v');
+    await expect.poll(async () => (await shapeList(other)).length).toBe(2);
+    const pasted = await shapeList(other);
+    expect(drawing(pasted)).toEqual(copied);
+    expect((await selected(other)).sort()).toEqual(pasted.map((s) => s.key).sort());
+    await other.keyboard.press('ControlOrMeta+z'); // one step
+    expect(await shapeList(other)).toHaveLength(0);
+  });
+});
+
 test('Vector select\'s Copy, Cut and Paste buttons', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
@@ -346,7 +378,7 @@ test('Vector select\'s Copy, Cut and Paste buttons', async ({ page }) => {
   await page.keyboard.press('v');
   const button = (name) => page.locator('.vector-options').getByRole('button', { name });
   await expect(button(/^Copy/)).toBeDisabled();
-  await expect(button(/^Paste/)).toBeDisabled();
+  await expect(button(/^Nothing copied in this tab/)).toBeDisabled();
   await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
   await button(/^Copy/).click();
   await button(/^Paste/).click();
