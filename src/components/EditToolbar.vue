@@ -710,6 +710,7 @@ div.vector-options > :deep(div.divider) {
   flex-shrink: 0;
 }
 
+
 div.spacer {
   flex: 1;
 }
@@ -719,6 +720,17 @@ div.vector-options > :deep(button) {
   padding: 3px 8px;
   border-radius: 3px;
   border: 1px solid var(--border);
+}
+
+/* A phone's VECTOR row is its widest: its buttons a little narrower and closer, it fits a 375px phone. */
+@media (max-width: 768px) {
+  div.tool-setting-group.vector-options {
+    gap: 4px;
+  }
+
+  div.vector-options > :deep(button) {
+    padding: 3px 5px;
+  }
 }
 
 button :deep(svg) {

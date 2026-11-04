@@ -6,10 +6,11 @@
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { IDENTITY, MOST_POINTS, MOST_SHAPES, apply, isGradient, joined, multiply, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
+import { IDENTITY, MOST_POINTS, MOST_SHAPES, allClosed, apply, isGradient, joined, multiply, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
 import { withoutPins } from '@/document/baseRecords.js';
 import { bytesHeld } from '@/store/project/shared.js';
 import { readSvgFile, svgLeftOut, svgRefusal } from '@/lib/SvgFile.js';
+import { combined } from '@/lib/shapeBooleans.js';
 
 // What the document holds is what a file, a project or a room takes back: one check for both.
 const keeps = (shape) => !!shapeFromStranger(shape);
@@ -247,6 +248,22 @@ export const vectorActions = {
     }
     this.updateShapes([[bottomKey, shape], ...rest.map(([key]) => [key, null])]);
     return bottomKey;
+  },
+
+  // Add or Subtract (op): the shapes keys made one, their union, or the bottom one with the rest cut out of it
+  // (shapeBooleans: loadBooleans first). The result is the bottom one, its key, style and place; the rest go. One
+  // step; the key, or null with under two shapes, an open outline among them, past a shape's points, or nothing
+  // left (then they all go).
+  combineShapes(keys, op) {
+    const order = stacked(this.shapes).filter(([key]) => keys.includes(key));
+    if (order.length < 2 || !order.every(([, shape]) => allClosed(shape))) return null;
+    const [[bottomKey, bottom], ...rest] = order, shape = combined(bottom, rest.map(([, s]) => s), op);
+    if (shape && !keeps(shape)) {
+      toast(t('vector.joinTooBig', { count: MOST_POINTS }));
+      return null;
+    }
+    this.updateShapes([[bottomKey, shape], ...rest.map(([key]) => [key, null])]);
+    return shape ? bottomKey : null;
   },
 
   // Separate: each of the shape's outlines a shape of its own, the first keeping its key, all where it was in

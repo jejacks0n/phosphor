@@ -619,6 +619,36 @@ test('Join makes two shapes one with a hole, and Separate takes it apart', async
   await expect(row.getByRole('button', { name: 'Separate', exact: true })).toBeDisabled();
 });
 
+test('Add makes the selected shapes one, and Subtract cuts the one above out of the one below', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const bottom = await addRect(page, 10, 10, 30, 30);
+  await addRect(page, 20, 20, 40, 40);
+  const row = page.locator('.vector-options'), button = (name) => row.getByRole('button', { name, exact: true });
+  const both = async () => {
+    await page.keyboard.press('Escape'); // none selected
+    await page.mouse.click(...Object.values(await gridPoint(page, 12, 12)));
+    await expect(button('Add')).toBeDisabled();
+    await page.keyboard.down('Shift');
+    await page.mouse.click(...Object.values(await gridPoint(page, 38, 38)));
+    await page.keyboard.up('Shift');
+  };
+  await both();
+  await button('Add').click();
+  await expect.poll(async () => (await shapeList(page)).length).toBe(1);
+  expect(await selected(page)).toEqual([bottom]);
+  expect((await shapeList(page))[0].points).toHaveLength(8); // the two squares' outline
+  await undoSteps(page, 1);
+  expect(await shapeList(page)).toHaveLength(2);
+
+  await both();
+  await button('Subtract').click();
+  await expect.poll(async () => (await shapeList(page)).length).toBe(1);
+  expect(await selected(page)).toEqual([bottom]);
+  expect((await shapeList(page))[0].points).toHaveLength(6); // a square with its corner cut away
+});
+
 test('the Stroke color box sets caps, joins and the miter limit on the selection and on the next shape', async ({ page }) => {
   await openApp(page);
   await tab(page, 'ANSI').click();
@@ -968,7 +998,7 @@ test.describe('on a phone', () => {
     await expect(row.getByRole('button', { name: 'Fill', exact: true })).toHaveCount(0);
     await expect(row.getByLabel('Stroke width', { exact: true })).toHaveCount(0);
     await expect(row.locator('.hint')).toHaveCount(0);
-    for (const name of ['Forward', 'Back', 'Join', 'Separate', 'Delete']) {
+    for (const name of ['Forward', 'Back', 'Join', 'Separate', 'Add', 'Subtract', 'Delete']) {
       const button = row.getByRole('button', { name, exact: true });
       await expect(button).toBeInViewport({ ratio: 1 });
       await expect(button.locator('svg')).toHaveCount(1);

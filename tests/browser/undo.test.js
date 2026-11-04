@@ -2,9 +2,10 @@
 // selections, merges, Bake, sliders, settings) undone and redone step by step, plus the cases it
 // found: Bake and Merge into the image racing other changes, slider steps surviving a grid resize,
 // and a removed pin no longer showing its character.
-import { test, expect } from 'vitest';
+import { test, expect, beforeAll } from 'vitest';
 import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
+import { loadBooleans } from '@/lib/shapeBooleans.js';
 import { ellipseShape, fillAs, isGradient, polygonShape, rectShape, rotation, transformed, translation, withShape } from '@/document/shapes.js';
 
 function rng(seed) {
@@ -188,6 +189,10 @@ function makeActions(project, workspace, r, opts) {
       const keys = [...project.shapes.keys()];
       if (keys.length >= 2) project.joinShapes([pick(keys), pick(keys)]);
     },
+    combineShapes: () => { // Add or Subtract
+      const keys = [...project.shapes.keys()];
+      if (keys.length >= 2) project.combineShapes([pick(keys), pick(keys)], pick(['add', 'subtract']));
+    },
     separateShape: () => {
       const key = pick([...project.shapes].filter(([, s]) => s.more).map(([k]) => k));
       if (key) project.separateShape(key);
@@ -322,6 +327,7 @@ function diffCells(a, b) {
 // shade apart: shapes 6; a gradient stroke drawn a shade apart from one render to the next: shapes 4; paint from
 // before a typing run shown unsnapped: count 23); VITE_FUZZ_SEEDS=n runs
 // seeds 1..n (30 takes about eight minutes), VITE_FUZZ_ONLY=6,23 just those.
+beforeAll(() => loadBooleans());
 const FUZZ_SEEDS = Number(import.meta.env?.VITE_FUZZ_SEEDS ?? 0);
 const ONLY_SEEDS = import.meta.env?.VITE_FUZZ_ONLY?.split(',').map(Number);
 const seeds = (failed) => ONLY_SEEDS ?? (FUZZ_SEEDS ? Array.from({ length: FUZZ_SEEDS }, (_, i) => i + 1) : failed);
@@ -339,7 +345,7 @@ for (const quantize of ['none', 'count']) {
 
 test('fuzz: shapes among typing, paint, selections and merges', async () => {
   const failures = [];
-  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'pasteShapes', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
+  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'pasteShapes', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'combineShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
   for (const seed of seeds([1, 2, 3, 4, 6])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
