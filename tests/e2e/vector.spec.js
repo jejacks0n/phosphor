@@ -284,6 +284,23 @@ test('Cmd+C and Cmd+V copy the selected shapes and paste them on top, selected; 
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vselect');
 });
 
+test('pasted on another frame, shapes land where they were copied from; on top of their copies, a little past them', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await addRect(page, 10, 10, 20, 20);
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('ControlOrMeta+c');
+  const newest = () => store(page, 'project', (p) => [...p.shapes.values()].at(-1).m[4]); // the last pasted's x offset
+  for (const kind of ['wipe', 'blank']) { // an empty frame, and one carrying the shapes from before it
+    await store(page, 'project', `(p) => p.addFrame('${kind}')`);
+    for (const offset of [0, 2, 4]) { // where it was copied from, then past each one pasted here
+      await page.keyboard.press('ControlOrMeta+v');
+      expect(await newest(), `${kind} ${offset}`).toBe(offset);
+    }
+  }
+});
+
 test('Vector select\'s Copy, Cut and Paste buttons', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
