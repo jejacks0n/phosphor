@@ -1,6 +1,6 @@
 // The Pen (penPoint, finishPen): a shape a point at a time, in one edit that converts live, closed on its first
 // point or left an open curve. Whatever else commits ends it as an open curve, and one with under two points
-// leaves nothing, not even an undo step.
+// leaves nothing, not even an undo step. Undo while it's drawn takes back its last point.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 
@@ -75,7 +75,6 @@ test('a Pen shape ends as an open curve when anything else commits', async () =>
   const ends = [
     ['showFrame', () => project.showFrame(1)],
     ['commitPending', () => project.commitPending()],
-    ['undo', () => project.undo()],
   ];
   for (const [name, end] of ends) {
     project.showFrame(0);
@@ -83,13 +82,30 @@ test('a Pen shape ends as an open curve when anything else commits', async () =>
     project.penPoint(15, 15);
     end();
     expect(project._stroke, name).toBe(null);
-    if (name === 'undo') {
-      expect(project.shapes.has(key), name).toBe(false); // finished, then that step undone
-      project.redo();
-    }
     project.showFrame(0);
     expect(project.shapes.get(key), name).toMatchObject({ closed: false, fill: null, stroke: '#ff0000' });
   }
+});
+
+test('undo while the Pen draws takes back its last point, and the shape before it stays', async () => {
+  const { project, workspace } = await drawing();
+  project.penPoint(4, 4);
+  project.penPoint(20, 4);
+  project.penPoint(20, 20);
+  project.finishPen({ closed: true });
+  const done = theShape(project), before = steps(project);
+  const key = project.penPoint(2, 25);
+  project.penPoint(25, 25);
+  project.undo();
+  expect(project._stroke?.pen).toBe(key); // still drawing, one point fewer
+  expect(project.shapes.get(key).points).toHaveLength(1);
+  project.undo(); // the last point: nothing left of it, and no step
+  expect(project.shapes.has(key)).toBe(false);
+  expect(workspace.vectorPen).toBe(null);
+  expect([...project.shapes.values()]).toEqual([done]);
+  expect(steps(project)).toBe(before);
+  project.undo(); // now the shape before it
+  expect(project.shapes.size).toBe(0);
 });
 
 test('a change heard from a room doesn\'t end the Pen', async () => {

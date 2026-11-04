@@ -127,8 +127,8 @@ where the pointer is.
   pointer.
 - Click the first point (with three or more) to close the shape. **Enter** or **Esc** leaves it an open curve,
   which has no fill and is stroked in its Stroke color, or the foreground color if it has none.
-- **Backspace** takes the last point away; taking the last one leaves nothing, not even an undo step.
-- Choosing another tool or tab, moving to another frame, undo or a save also leave it an open curve. Holding a
+- **Backspace** or undo takes the last point away; taking the last one leaves nothing, not even an undo step.
+- Choosing another tool or tab, moving to another frame or a save also leave it an open curve. Holding a
   tool for a moment (the Hand on Space) doesn't.
 
 The whole shape is one undo step.

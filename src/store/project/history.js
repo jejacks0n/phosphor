@@ -261,6 +261,7 @@ export const historyActions = {
   },
 
   undo() {
+    if (this._stroke?.pen) return this.penBack(); // while the Pen draws: its last point, as Backspace
     this.commitPending();
     const entry = this.history.undo();
     if (!entry) return;

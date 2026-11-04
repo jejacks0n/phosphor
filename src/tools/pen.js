@@ -1,8 +1,8 @@
 // The Pen (the VECTOR tab): a click adds a corner point, a press and drag a smooth one whose handles follow the
 // pointer (Shift: a point on a line from the last, a handle from its point, across, up and down or at 45°). The
 // shape converts live as it's drawn, all one undo step (penPoint, finishPen). Clicking the first point (with 3
-// or more) closes it; Enter or Esc leaves it an open curve; Backspace takes the last point away. A tool or tab
-// change, a frame, undo or a save finishes it as an open curve (commitEdit).
+// or more) closes it; Enter or Esc leaves it an open curve; Backspace or undo takes the last point away. A tool or
+// tab change, a frame or a save finishes it as an open curve (commitEdit).
 import { t } from '@/i18n/index.js';
 import { withShape, worldPoints } from '@/document/shapes.js';
 import { handleRadius } from '@/tools/vselect.js';
