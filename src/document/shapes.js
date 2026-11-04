@@ -422,6 +422,14 @@ export function setSmooth(shape, i, smooth) {
   });
 }
 
+// Point i free: its handles kept, each moving on its own (moveHandle); a point with none gets smooth ones first.
+export function setFree(shape, i) {
+  const [, , ix, iy, ox, oy] = allPoints(shape)[i];
+  return editOutline(ix || iy || ox || oy ? shape : setSmooth(shape, i, true), i, (pts, j) => {
+    pts[j][6] = 0;
+  });
+}
+
 // Point i gone; an outline left under two points goes with it, and null when that was the last outline.
 export function deletePoint(shape, i) {
   return editOutline(shape, i, (pts, j) => (pts.length <= 2 ? null : pts.filter((_, at) => at !== j)));

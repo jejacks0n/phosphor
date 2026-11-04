@@ -1390,6 +1390,8 @@
     "point": "Point",
     "smooth": "Lisse",
     "smoothTitle": "Rendre le point lisse : ses poignées restent alignées",
+    "free": "Libre",
+    "freeTitle": "Libérer les poignées du point : chacune bouge seule",
     "sharp": "Vif",
     "sharpTitle": "Rendre le point vif : ses poignées disparaissent",
     "deletePointTitle": "Supprimer le point sélectionné",
