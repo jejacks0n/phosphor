@@ -1,10 +1,11 @@
 // The Node tool (the VECTOR tab): press a shape to edit its points (workspace.vectorPoints), and on one of its
 // points, its curve handles or (once it's being edited) its outline: drag a point or a handle (Alt: the handle
 // alone, broken from its partner; Shift: on a line across, up and down or at 45°), click the outline to add a
-// point there, click empty canvas to stop. Its other choice, Place gradient (workspace.vectorNodeMode), works on
-// the shape's gradient instead (gradientHandles.js): a drag across the shape gives it one, and its handles show. Each drag is one edit, worked out each move from the shape as it was
-// at the press. Keys: Delete or Backspace deletes the selected point (with Place gradient, stop), Esc lets a
-// stop go or stops editing; the rest are Vector select's (the arrows, Delete with nothing selected, Esc then).
+// point there, click empty canvas to stop. A shape with a gradient (made in the color box) shows its handles too
+// (gradientHandles.js); a point or a handle comes first, then the gradient's, then the outline. Each drag is one
+// edit, worked out each move from the shape as it was at the press. Keys: Delete or Backspace deletes the
+// selected stop or point, Esc lets a stop go or stops editing; the rest are Vector select's (the arrows, Delete
+// with nothing selected, Esc then).
 import { t } from '@/i18n/index.js';
 import { apply, deletePoint, invert, moveHandle, movePoint, nearestOnOutline, splitAt, worldPoints } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
@@ -59,37 +60,19 @@ export default {
   views: ['vector'],
   kind: 'paint',
   section: 'vector',
-  options: [
-    {
-      key: 'vectorNodeMode', get label() { return t('tools.vnode.mode'); }, type: 'segmented',
-      choices: [
-        { value: 'points', get label() { return t('tools.vnode.points'); } },
-        { value: 'gradient', get label() { return t('tools.vnode.gradient'); } },
-      ],
-    },
-    {
-      key: 'vectorGradientKind', get label() { return t('tools.vnode.kind'); }, type: 'segmented',
-      choices: [
-        { value: 'linear', get label() { return t('vector.linear'); } },
-        { value: 'radial', get label() { return t('vector.radial'); } },
-      ],
-      when: (ws) => ws.vectorNodeMode === 'gradient',
-    },
-  ],
-
   begin(ctx, pos, event) {
-    const { project, workspace, unit } = ctx, radius = handleRadius(), gradient = workspace.vectorNodeMode === 'gradient';
+    const { project, workspace, unit } = ctx, radius = handleRadius();
     if (workspace.vectorPoints && project.shapes.has(workspace.vectorPoints)) {
-      if (gradient ? gradientDrag.begin(ctx, pos, radius) : pointsPress(project, workspace, pos, unit, radius, { event })) return true;
+      const press = (add) => pointsPress(project, workspace, pos, unit, radius, { event, add });
+      if (press(false) || gradientDrag.begin(ctx, pos, radius) || press(true)) return true;
     }
     const hit = shapeAt(project.shapes, pos.x, pos.y, radius / unit.x);
-    // Inside it: still editing its points, or a drag draws its gradient.
-    if (hit === workspace.vectorPoints && hit) return gradient && gradientDrag.draw(ctx, hit, pos, event);
+    if (hit === workspace.vectorPoints && hit) return false; // inside it: still editing its points
     workspace.vectorPoint = workspace.vectorStop = null;
     workspace.vectorPoints = hit; // another shape's points (a press on one of them takes it at once), or none
     if (!hit) return false; // the selection stays
     project.selectShapes([hit]);
-    return gradient ? gradientDrag.draw(ctx, hit, pos, event) : pointsPress(project, workspace, pos, unit, radius, { event, add: false });
+    return pointsPress(project, workspace, pos, unit, radius, { event, add: false });
   },
 
   move(ctx, from, to) {
@@ -119,8 +102,7 @@ export default {
   keydown(ctx, event) {
     const { project, workspace } = ctx;
     if (workspace.vectorPoints && !event.metaKey && !event.ctrlKey && !event.altKey) {
-      const gradient = workspace.vectorNodeMode === 'gradient';
-      if (gradient && workspace.vectorStop !== null && ['Escape', 'Delete', 'Backspace'].includes(event.key)) {
+      if (workspace.vectorStop !== null && ['Escape', 'Delete', 'Backspace'].includes(event.key)) {
         if (event.key === 'Escape') workspace.vectorStop = null;
         else removeStop(project, workspace);
         return true;
@@ -129,7 +111,7 @@ export default {
         workspace.vectorPoints = workspace.vectorPoint = null;
         return true;
       }
-      if (!gradient && (event.key === 'Delete' || event.key === 'Backspace') && workspace.vectorPoint !== null) {
+      if ((event.key === 'Delete' || event.key === 'Backspace') && workspace.vectorPoint !== null) {
         deleteSelectedPoint(project, workspace);
         return true;
       }

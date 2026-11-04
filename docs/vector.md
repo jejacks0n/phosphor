@@ -106,10 +106,7 @@ were selected when it began.
 
 ## Node (A)
 
-The Node tool edits a shape's points or its gradient: **Edit points** and **Place gradient** in the options row
-choose which (Edit points to start with; a double-click in Vector select goes back to it).
-
-### Edit points
+The Node tool edits a shape's points and, when it has one, its gradient.
 
 Press a shape to edit its points (a press on one of them takes it at
 once, so a two-point path's ends can be dragged straight away); choosing the tool with shapes selected edits
@@ -131,20 +128,11 @@ several (a letter's counters, a ring's hole):
 - Click empty canvas or press Esc to stop editing points; the shape stays selected. Press another shape to edit
   its points instead. Choosing another tool stops too.
 
-### Place gradient
-
-Press a shape to edit its gradient ([Gradients](#gradients)). **Drag across a shape** to give it one, from where
-you press to where you let go: **Linear** or **Radial**, as chosen beside Place gradient (a radial one's middle
-where you press, its edge where you let go). Alt (Option on a Mac) held as you press makes the other kind.
-Shift keeps it straight across, up and down, or at 45°. From a single color it runs from that color to the
-background color, as the color box's Linear does; a gradient already there keeps its stops and is drawn again.
-It's the fill's, or the outline's when the shape has no fill (or **Stroke** is chosen below). A click without a
-drag changes nothing, and empty canvas or Esc stops.
-
-A shape whose fill or outline is a gradient shows the gradient's handles: for a
+A shape whose fill or outline is a gradient ([Gradients](#gradients)) also shows the gradient's handles, with its
+points: for a
 linear one, a line from where it starts to where it ends, a square at each end; for a radial one, a square at its
-middle and one at its edge, joined by a line. Each color stop is a dot on the line, in its color. A drag that
-starts off them draws the gradient again. When the fill and outline are both gradients, **Fill** and **Stroke** in the options row choose which one's
+middle and one at its edge, joined by a line. Each color stop is a dot on the line, in its color. A press on
+a point or a curve handle is the point's; then the gradient's handles; then the outline. When the fill and outline are both gradients, **Fill** and **Stroke** in the options row choose which one's
 handles show; a gradient you've just made is the one shown.
 
 - **Drag the line** (or a radial gradient's middle) to move the gradient.
@@ -154,7 +142,7 @@ handles show; a gradient you've just made is the one shown.
 - **Click a stop** to select it (it's ringed); the color box of its chip (Fill
   or Stroke) then sets that stop's color. **Drag a stop** along the line to slide it, or well off the line to
   remove it (a gradient keeps at least two). **Delete stop** in the options row, Delete or Backspace removes the
-  selected stop; Esc lets it go.
+  selected stop; Esc lets it go. A stop or a point is selected, not both.
 
 Each drag, added point or stop, and change is one undo step. This works on rotated and scaled shapes too: a point
 or a gradient goes where the pointer is.
@@ -211,9 +199,8 @@ when you let go.
 
 A fill or an outline can be a **gradient**: linear (bands of color across the shape) or radial (rings from a
 middle point out). It moves, scales and turns with its shape, and goes through the palette and dithering as any
-color does. Drag across a shape with the Node tool's **Place gradient** to draw one where you want it
-([Place gradient](#place-gradient)), or, on
-either side of the color box, with shapes selected:
+color does. Make one on either side of the color box, with shapes selected, then place it with the Node
+tool ([Node](#node-a)):
 
 - **Linear** makes the fill (or outline) a gradient across the shape's box, left to right, from its color to the
   background color. **Radial** makes it one from the box's middle out to its farthest corner. Switching between
