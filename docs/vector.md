@@ -123,6 +123,18 @@ PIXEL's colors are left as they were.
 **Stroke width** is the outline's width in pixels (0.5 to 64): the selected shapes', or the next shape's. With
 shapes selected (Vector select):
 
+**Stroke** opens a panel for how the outline is drawn, again the selected shapes' or the next shape's:
+
+- **Cap**, the ends of an open outline: butt (cut off at the end point), round, or square (squared off half the
+  width past it).
+- **Join**, the corners: miter (a sharp point), round, or bevel (cut across).
+- **Miter**, the limit for miter joins (1 to 100): how far a sharp corner's point may reach, in stroke widths,
+  before it's cut off as a bevel. It's only for miter joins.
+
+Drawn shapes start with round caps and round joins.
+
+With shapes selected:
+
 - **Forward** and **Back** move the shapes just above the nearest shape they overlap, or just beneath it;
   every other shape keeps its place.
 - **Join** makes the selected shapes one shape: the bottom one, with its colors and place, and every outline of
@@ -130,9 +142,9 @@ shapes selected (Vector select):
   **Separate** takes a shape of several outlines apart, each outline a shape of its own in the same colors.
 - **Edit points** edits the first shape's points with the Node tool. **Delete** deletes the shapes.
 
-Each change is one undo step; a Stroke width drag is one step when you let go.
+Each change is one undo step (each press in the Stroke panel too); a Stroke width drag is one step when you let go.
 
-On a phone the row keeps Stroke width and **Points**, and puts Forward, Back and Delete under ⋯.
+On a phone the row keeps Stroke width, Stroke (its panel the window's width) and **Points**, and puts Forward, Back and Delete under ⋯.
 
 ## Eyedropper (I)
 

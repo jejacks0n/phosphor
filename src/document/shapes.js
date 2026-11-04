@@ -104,7 +104,7 @@ export const withShape = (shape, changes) => makeShape({ ...shape, ...changes })
 // now (none: no color).
 export function styleColors({ vectorStyle: style, editFgColor, editFgNone }) {
   const color = (c) => (c === 'fg' ? (editFgNone ? null : editFgColor) : c);
-  return { fill: color(style.fill), stroke: color(style.stroke), width: style.width };
+  return { fill: color(style.fill), stroke: color(style.stroke), width: style.width, cap: style.cap, join: style.join, miter: style.miter };
 }
 
 // Matrices, [a, b, c, d, e, f] as canvas has them.
