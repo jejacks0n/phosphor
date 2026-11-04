@@ -167,14 +167,14 @@ function makeActions(project, workspace, r, opts) {
       const key = pick([...project.shapes.keys()]);
       if (key) project.updateShapes([[key, withShape(project.shapes.get(key), { fill: pick(COLORS) })]]);
     },
-    gradient: () => { // a fill made a gradient, back, or a gradient's stop recolored
+    gradient: () => { // a fill or stroke made a gradient, back, or a gradient's stop recolored
       const key = pick([...project.shapes.keys()]), shape = key && project.shapes.get(key);
       if (!shape) return;
-      const { fill } = shape;
-      const next = isGradient(fill) && r() < 0.5
-        ? { ...fill, stops: fill.stops.map(([o, c], i) => [o, i === 0 ? pick(COLORS) : c]) }
-        : fillAs(shape, pick(['solid', 'linear', 'radial']), { from: '#000000', to: pick(COLORS) });
-      project.updateShapes([[key, withShape(shape, { fill: next })]]);
+      const slot = pick(['fill', 'stroke']), paint = shape[slot];
+      const next = isGradient(paint) && r() < 0.5
+        ? { ...paint, stops: paint.stops.map(([o, c], i) => [o, i === 0 ? pick(COLORS) : c]) }
+        : fillAs(shape, pick(['solid', 'linear', 'radial']), { from: '#000000', to: pick(COLORS) }, slot);
+      project.updateShapes([[key, withShape(shape, { [slot]: next })]]);
     },
     pasteShapes: () => { // copies of a few shapes, on top, as one step
       const shapes = [...project.shapes.values()].filter(() => r() < 0.5).slice(0, 3);
@@ -319,7 +319,8 @@ function diffCells(a, b) {
 
 // A few seeds by default, the ones that once failed (a removed pin kept showing: sync 18, 28, 29;
 // bake+merge 7; a shape edit after a typing run left open, a base restored by undo drawn under a shape a
-// shade apart: shapes 6; paint from before a typing run shown unsnapped: count 23); VITE_FUZZ_SEEDS=n runs
+// shade apart: shapes 6; a gradient stroke drawn a shade apart from one render to the next: shapes 4; paint from
+// before a typing run shown unsnapped: count 23); VITE_FUZZ_SEEDS=n runs
 // seeds 1..n (30 takes about eight minutes), VITE_FUZZ_ONLY=6,23 just those.
 const FUZZ_SEEDS = Number(import.meta.env?.VITE_FUZZ_SEEDS ?? 0);
 const ONLY_SEEDS = import.meta.env?.VITE_FUZZ_ONLY?.split(',').map(Number);
@@ -339,7 +340,7 @@ for (const quantize of ['none', 'count']) {
 test('fuzz: shapes among typing, paint, selections and merges', async () => {
   const failures = [];
   const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'pasteShapes', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
-  for (const seed of seeds([1, 2, 3, 6])) {
+  for (const seed of seeds([1, 2, 3, 4, 6])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
   }

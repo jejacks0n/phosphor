@@ -3,14 +3,16 @@
 // Delete, each one undo step; with nothing selected, or with the Pen or the Shape tool, the Width the next shape
 // gets. Fill and Stroke are the color pair's chips (useVectorStyle). While a shape's points are edited, the Point
 // row: the selected point Smooth or Corner, and Delete (the point); Esc or empty canvas ends it. A phone's row keeps Width and Points, and puts
-// the rest under ⋯; its Point row has no label or hint.
+// the rest under ⋯; its Point row has no label or hint. With the Gradient tool on a shape whose fill and stroke are both
+// gradients, Fill or Stroke says which one it edits.
 import { computed } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
-import { allPoints, setSmooth } from '@/document/shapes.js';
+import { allPoints, isGradient, setSmooth } from '@/document/shapes.js';
+import { gradientKey, gradientSlot } from '@/tools/vgradient.js';
 import { deleteSelectedPoint } from '@/tools/vnode.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
 import { shortcut } from '@/lib/keyLabels';
@@ -67,6 +69,15 @@ const pointsOf = computed(() => workspace.activeTool === 'vnode' && workspace.ve
 const point = computed(() => (pointsOf.value && workspace.vectorPoint !== null ? allPoints(pointsOf.value)[workspace.vectorPoint] : null));
 const smooth = (on) => project.updateShapes([[workspace.vectorPoints, setSmooth(pointsOf.value, workspace.vectorPoint, on)]]);
 const removePoint = () => deleteSelectedPoint(project, workspace);
+// The Gradient tool's shape, when it has two gradients to choose between.
+const twoGradients = computed(() => {
+  const key = workspace.activeTool === 'vgradient' && gradientKey(project, workspace), shape = key && project.shapes.get(key);
+  return shape && isGradient(shape.fill) && isGradient(shape.stroke) ? shape : null;
+});
+const gradientOf = (slot) => {
+  workspace.vectorGradientSlot = slot;
+  workspace.vectorStop = null;
+};
 
 const editPoints = () => {
   workspace.setActiveTool('vnode');
@@ -103,6 +114,13 @@ const editPoints = () => {
         <input id="vector-miter" type="number" min="1" max="100" step="0.5" :title="t('vector.miterTitle')" :value="style.value('miter')" :disabled="style.value('join') !== 'miter'" @change="setMiter"/>
       </div>
     </DropdownMenu>
+    <template v-if="twoGradients">
+      <div class="divider"/>
+      <span class="option-label" aria-hidden="true">{{ t('vector.gradientLabel') }}</span>
+      <span class="gradient-slot" role="group" :aria-label="t('vector.gradientLabel')">
+        <button v-for="slot in ['fill', 'stroke']" :key="slot" class="text" :title="t('vector.gradientSlotTitle')" :aria-pressed="gradientSlot(twoGradients, workspace) === slot" @click="gradientOf(slot)">{{ t(`vector.${slot}`) }}</button>
+      </span>
+    </template>
     <template v-if="workspace.activeTool === 'vselect'">
       <div class="divider"/>
       <button :title="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" :aria-label="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" :disabled="!selected.length" @click="copy"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M240 64H528A48 48 0 0 1 576 112V400A48 48 0 0 1 528 448H448V384H512V128H256V192H192V112A48 48 0 0 1 240 64ZM112 192H400A48 48 0 0 1 448 240V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V240A48 48 0 0 1 112 192Z"/></svg></button>
@@ -134,6 +152,10 @@ const editPoints = () => {
 </template>
 
 <style scoped>
+span.gradient-slot {
+  display: contents;
+}
+
 svg.chevron {
   width: 10px;
   height: 10px;

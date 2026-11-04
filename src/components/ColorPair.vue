@@ -34,13 +34,13 @@ const toggle = (slot) => { workspace.colorBox = workspace.colorBox === slot ? nu
 const vector = computed(() => workspace.editorTab === 'vector');
 const style = useVectorStyle();
 const SLOTS = { fg: 'fill', bg: 'stroke' };
-// One chip as it shows: { none, color (a CSS background), title, aria }; a gradient fill shows its stops.
+// One chip as it shows: { none, color (a CSS background), title, aria }; a gradient shows its stops.
 const gradientCss = ({ type, stops }) => `${type}-gradient(${type === 'linear' ? '90deg' : 'circle'}, ${stops.map(([o, c]) => `${shown(c)} ${o * 100}%`).join(', ')})`;
 const chip = (slot) => {
   const key = shortcut('alt', slot === 'fg' ? 'F' : 'B');
   if (vector.value) {
     const name = SLOTS[slot], hex = style.value(name);
-    if (hex && typeof hex === 'object') return { none: false, color: gradientCss(hex), title: t(`vector.${hex.type}ChipTitle`, { key }), aria: t(`vector.${name}`) };
+    if (hex && typeof hex === 'object') return { none: false, color: gradientCss(hex), title: t(`vector.${hex.type}${name === 'stroke' ? 'Stroke' : ''}ChipTitle`, { key }), aria: t(`vector.${name}`) };
     return { none: !hex, color: hex && shown(hex), title: t(hex ? `vector.${name}ChipTitle` : `vector.${name}NoneTitle`, { color: hex, key }), aria: t(`vector.${name}`) };
   }
   const none = slot === 'fg' ? fgNone.value : workspace.editBgNone, hex = slot === 'fg' ? workspace.editFgColor : workspace.editBgColor;

@@ -70,8 +70,8 @@ their points into line with the cells, recolor them, or change them from frame t
 - **What comes in:** paths (every command, arcs included), rectangles (rounded too), circles, ellipses, lines,
   polylines and polygons, inside groups, nested SVGs and `use`; every transform; fills and strokes from
   attributes, `style` attributes and style sheets, inherited as SVG has them; fill rules, caps, joins and miter
-  limits; linear and radial gradient fills (with their focal points, either units, their transforms and
-  gradients that take from others; reflect and repeat come in as plain), a gradient outline as its first color.
+  limits; linear and radial gradients, on fills and outlines (with their focal points, either units, their
+  transforms and gradients that take from others; reflect and repeat come in as plain).
   Each element is one shape, and a path of several parts is one shape of several outlines, its holes
   kept.
 - **What doesn't:** text, images, filters, masks, clipping, patterns, markers and dashes (a dashed line comes in
@@ -151,16 +151,18 @@ makes nothing.
 
 ## Gradient (G)
 
-For the first selected shape with a gradient fill ([Gradient fills](#gradient-fills)), the Gradient tool shows
+For the first selected shape with a gradient fill or outline ([Gradients](#gradients)), the Gradient tool shows
 the gradient's handles: for a linear one, a line from where it starts to where it ends, a square at each end; for a
 radial one, a square at its middle and one at its edge, joined by a line. Each color stop is a dot on the line, in
-its color.
+its color. When a shape's fill and outline are both gradients, **Fill** and **Stroke** in the options row choose
+which one the tool edits; a gradient you've just made is the one it starts on.
 
 - **Drag the line** (or a radial gradient's middle) to move the gradient.
 - **Drag an end** (or the edge) to stretch it and turn it about the other end (or the middle). Shift keeps it
   across, up and down, or at 45°.
 - **Click the line** to add a stop there, in the color the gradient has there.
-- **Click a stop** to select it (it's ringed); the Fill chip's color box then sets that stop's color. **Drag a
+- **Click a stop** to select it (it's ringed); the color box of its chip (Fill or Stroke) then sets that stop's
+  color. **Drag a
   stop** along the line to slide it, or well off the line to remove it (a gradient keeps at least two). Delete or
   Backspace removes the selected stop; Esc lets it go.
 - Press another shape to select it. Each drag, added or removed stop, and color is one undo step.
@@ -176,20 +178,22 @@ nothing selected, they're what the next shape gets. Until you change them, the n
 foreground color and has no outline; a shape with neither gets the foreground color as its fill. ANSI's and
 PIXEL's colors are left as they were.
 
-### Gradient fills
+### Gradients
 
-A fill can be a **gradient**: linear (bands of color across the shape) or radial (rings from a middle point
-out). It moves, scales and turns with its shape, and goes through the palette and dithering as any color does.
-On the Fill side of the color box, with shapes selected:
+A fill or an outline can be a **gradient**: linear (bands of color across the shape) or radial (rings from a
+middle point out). It moves, scales and turns with its shape, and goes through the palette and dithering as any
+color does. On either side of the color box, with shapes selected:
 
-- **Linear** makes the fill a gradient across the shape's box, left to right, from the fill's color to the
+- **Linear** makes the fill (or outline) a gradient across the shape's box, left to right, from its color to the
   background color. **Radial** makes it one from the box's middle out to its farthest corner. Switching between
   the two keeps the colors.
 - **Solid** makes it a single color again: the gradient's first color. Picking any color in the box does the
   same, with that color.
-- Each is one undo step. With nothing selected they're off: the next shape's fill is always a single color.
-- The Fill chip shows the gradient's colors. Swapping Fill and Stroke gives the outline the gradient's first
-  color, since an outline is always a single color.
+- Each is one undo step. With nothing selected they're off: the next shape's fill and outline are always single
+  colors.
+- The chip shows the gradient's colors. Swapping Fill and Stroke swaps the gradients too.
+- An outline's gradient runs across the shape as a fill's does, so the outline takes the colors of the bands it
+  crosses.
 
 Gradients from an SVG file come in as gradients ([Importing SVG](#importing-svg)).
 

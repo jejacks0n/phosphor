@@ -233,27 +233,52 @@ export function paintShape(ctx, shape, k, path = new Path2D(pathData(shape, k, k
     ctx.fill(path, rule);
   }
   if (shape.stroke && shape.width > 0) {
-    ctx.strokeStyle = shape.stroke;
-    ctx.lineWidth = shape.width * k;
-    ctx.lineJoin = join;
-    ctx.lineCap = cap;
-    ctx.miterLimit = miter;
-    ctx.stroke(path);
+    const styled = (c) => Object.assign(c, { lineWidth: shape.width * k, lineJoin: join, lineCap: cap, miterLimit: miter });
+    if (isGradient(shape.stroke)) paintGradientStroke(ctx, shape, k, path, styled);
+    else {
+      ctx.strokeStyle = shape.stroke;
+      styled(ctx).stroke(path);
+    }
   }
+}
+
+// A canvas gradient for a shape's fill or stroke, in its own unit space.
+function canvasGradient(ctx, { type, stops, f = [0, 0] }) {
+  const gradient = type === 'linear' ? ctx.createLinearGradient(0, 0, 1, 0) : ctx.createRadialGradient(f[0], f[1], 0, 0, 0, 1);
+  for (const [offset, color] of stops) gradient.addColorStop(offset, color);
+  return gradient;
+}
+
+// A gradient stroke: stroked solid into a mask over the shape's bounds, the gradient filled into that (under its
+// unit space's transform, as a fill's is), and the mask drawn over. Drawn in the gradient's space, as a fill is,
+// the stroke's width would stretch with it. The mask is a ctx2d canvas, as the layer's are: one the GPU might draw
+// would come out a shade apart from one drawing to the next.
+function paintGradientStroke(ctx, shape, k, path, styled) {
+  const b = shapeBounds(shape), x = Math.max(0, Math.floor(b.x * k)), y = Math.max(0, Math.floor(b.y * k));
+  const w = Math.min(ctx.canvas.width, Math.ceil((b.x + b.w) * k)) - x, h = Math.min(ctx.canvas.height, Math.ceil((b.y + b.h) * k)) - y;
+  if (w <= 0 || h <= 0) return;
+  const mask = ctx2d(new OffscreenCanvas(w, h));
+  mask.translate(-x, -y);
+  styled(mask).stroke(path);
+  mask.globalCompositeOperation = 'source-in';
+  const t = multiply(multiply(scaling(k, k), shape.m), shape.stroke.m), back = invert(t);
+  const corners = [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].map(([px, py]) => [back[0] * px + back[2] * py + back[4], back[1] * px + back[3] * py + back[5]]);
+  const xs = corners.map(([u]) => u), ys = corners.map(([, v]) => v);
+  mask.transform(...t);
+  mask.fillStyle = canvasGradient(mask, shape.stroke);
+  mask.fillRect(Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+  ctx.drawImage(mask.canvas, x, y);
 }
 
 // A gradient fill, drawn in its own unit space: the path carried into that space, then filled there under the
 // gradient's transform, so it lands where it was and any stretch or turn of the gradient is exact (and its edges
 // as smooth as a solid fill's).
 function paintGradient(ctx, shape, k, path, rule) {
-  const { type, stops, m, f = [0, 0] } = shape.fill;
-  const t = multiply(multiply(scaling(k, k), shape.m), m), inUnits = new Path2D();
+  const t = multiply(multiply(scaling(k, k), shape.m), shape.fill.m), inUnits = new Path2D();
   inUnits.addPath(path, new DOMMatrix(invert(t)));
-  const gradient = type === 'linear' ? ctx.createLinearGradient(0, 0, 1, 0) : ctx.createRadialGradient(f[0], f[1], 0, 0, 0, 1);
-  for (const [offset, color] of stops) gradient.addColorStop(offset, color);
   ctx.save();
   ctx.transform(...t);
-  ctx.fillStyle = gradient;
+  ctx.fillStyle = canvasGradient(ctx, shape.fill);
   ctx.fill(inUnits, rule);
   ctx.restore();
 }

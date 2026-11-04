@@ -109,10 +109,10 @@ export const vectorActions = {
         const p = apply(m, x, y);
         return [p.x, p.y, a * ix + c * iy, b * ix + d * iy, a * ox + c * oy, b * ox + d * oy, smooth];
       });
-      const [first, ...rest] = item.outlines;
+      const [first, ...rest] = item.outlines, baked = (paint) => (isGradient(paint) ? { ...paint, m: multiply(m, paint.m) } : paint);
       return {
         closed: first.closed, points: bake(first.points), more: rest.map((o) => [o.closed, bake(o.points)]), m: IDENTITY,
-        fill: isGradient(item.fill) ? { ...item.fill, m: multiply(m, item.fill.m) } : item.fill, stroke: item.stroke, width: Math.min(64, Math.max(0.5, item.width * Math.sqrt(Math.abs(a * d - b * c)))),
+        fill: baked(item.fill), stroke: baked(item.stroke), width: Math.min(64, Math.max(0.5, item.width * Math.sqrt(Math.abs(a * d - b * c)))),
         rule: item.rule, cap: item.cap, join: item.join, miter: item.miter,
       };
     });

@@ -376,8 +376,11 @@ test('gradient fills validate and round trip', () => {
   bad({ type: 'radial', stops: linear.stops, m: [1, 0, 0, 1, 0, 0], f: [2, 0] }); // outside the circle
   bad({ ...linear, extra: 1 });
   bad([linear]);
-  // A gradient can't be a stroke.
-  assert.equal(shapeFromStranger({ ...base, fill: null, stroke: linear }), null);
+  // A stroke can be a gradient too, checked and rounded the same way.
+  const stroked = shapeFromStranger({ ...base, fill: null, stroke: linear });
+  assert.deepEqual(stroked.stroke, shape.fill);
+  assert.ok(Object.isFrozen(stroked.stroke));
+  assert.equal(shapeFromStranger({ ...base, fill: null, stroke: { ...linear, type: 'conic' } }), null);
 });
 
 test('fillAs makes a fill solid, linear or radial over the shape\'s box', () => {
@@ -396,4 +399,7 @@ test('fillAs makes a fill solid, linear or radial over the shape\'s box', () => 
   const down = fillAs(line, 'linear', colors);
   assert.deepEqual(down, { type: 'linear', stops: [[0, '#00ff00'], [1, '#000000']], m: [0, 30, -30, 0, 5, 0] });
   assert.ok(shapeFromStranger({ ...line, fill: down }));
+  // The stroke's, over the same box, from its own color.
+  assert.deepEqual(fillAs(line, 'linear', colors, 'stroke'), { type: 'linear', stops: [[0, '#ffffff'], [1, '#000000']], m: [0, 30, -30, 0, 5, 0] });
+  assert.equal(fillAs({ ...line, stroke: down }, 'solid', colors, 'stroke'), '#00ff00');
 });
