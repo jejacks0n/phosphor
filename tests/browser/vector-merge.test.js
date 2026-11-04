@@ -55,6 +55,7 @@ test('Bake with sliders and shapes on a still: shapes pressed in, nothing change
 test('in an animation, Bake keeps shapes as shapes with the sliders burnt into their colors, and every frame looks as it did', async () => {
   const { project } = await drawing({ cols: 20, rows: 20 });
   const key = project.addShape(rectShape(2, 2, 10, 10, { fill: '#ff0000', stroke: '#00ff00', width: 2 }));
+  const shaded = project.addShape(rectShape(4, 12, 16, 18, { fill: { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [12, 0, 0, 6, 0, 0] } }));
   project.addFrame('blank');
   project.addShape(rectShape(8, 8, 18, 18, { fill: '#0044aa' }));
   project.addFrame('wipe');
@@ -70,11 +71,23 @@ test('in an animation, Bake keeps shapes as shapes with the sliders burnt into t
   for (let i = 0; i < project.frames.length; i++) {
     project.showFrame(i);
     await settle(project);
-    expect(cellsKey(project), `frame ${i}`).toEqual(looks[i]);
+    // Exact but under the gradient, sampled at 16 stops: the sliders curve between them, so a few levels off there.
+    const now = cellsKey(project), off = (a, b) => a.slice(1).split('#').slice(1).some((hex, j) => {
+      const other = b.slice(1).split('#').slice(1)[j];
+      return [0, 2, 4].some((c) => Math.abs(parseInt(hex.slice(c, c + 2), 16) - parseInt(other.slice(c, c + 2), 16)) > 12);
+    });
+    const differ = now.flatMap((cell, n) => (cell === looks[i][n] ? [] : [n]));
+    expect(differ.every((n) => now[n][0] === looks[i][n][0] && !off(now[n], looks[i][n])), `frame ${i}`).toBe(true);
+    expect(differ.every((n) => n % 20 >= 4 && n % 20 <= 16 && Math.floor(n / 20) >= 6), `frame ${i}: only under the gradient`).toBe(true);
   }
   project.showFrame(0);
   expect(project.shapes.get(key).fill).not.toBe('#ff0000'); // burnt in
   expect(project.shapes.get(key).stroke).not.toBe('#00ff00');
+  const { fill } = project.shapes.get(shaded); // a gradient stays one, each stop burnt in
+  expect(fill).toMatchObject({ type: 'linear', m: [12, 0, 0, 6, 0, 0] });
+  expect(fill.stops).toHaveLength(16); // sampled finer: the sliders aren't straight between stops
+  expect([fill.stops[0][0], fill.stops[15][0]]).toEqual([0, 1]);
+  expect([fill.stops[0][1], fill.stops[15][1]]).not.toEqual(['#ff0000', '#0000ff']);
   project.undo();
   project.showFrame(0);
   expect(project.shapes.get(key).fill).toBe('#ff0000');

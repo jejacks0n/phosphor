@@ -399,6 +399,20 @@ test('Join makes a ring from a square and a smaller one inside it, and Separate 
   expect(project.separateShape(inner)).toBe(null); // one outline: nothing to separate
 });
 
+test('paused in a room, Join, Separate and an SVG change nothing', async () => {
+  const { project } = await gradient();
+  const outer = project.addShape(rectShape(2, 2, 26, 26, RED)), inner = project.addShape(rectShape(10, 10, 18, 18, { fill: '#0000ff' }));
+  const ring = project.addShape(rectShape(2, 2, 26, 26, RED));
+  project.joinShapes([ring, project.addShape(rectShape(10, 10, 18, 18, RED))]);
+  const before = new Map(project.shapes), version = project.history.version;
+  project._paused = true;
+  project.joinShapes([inner, outer]);
+  project.separateShape(ring);
+  project.addSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="5" height="5"/></svg>');
+  expect(project.shapes).toEqual(before);
+  expect(project.history.version).toBe(version);
+});
+
 // A shape painted alone at 4 px a grid pixel on black: the color at grid pixel (x, y).
 function painted(shape, w = 40, h = 40) {
   const K = 4, ctx = new OffscreenCanvas(w * K, h * K).getContext('2d');

@@ -7,13 +7,11 @@
 // A press on another shape selects it. Each drag or click that changes the gradient is one undo step. Keys:
 // Delete or Backspace removes the selected stop, Esc lets it go; the rest are Vector select's.
 import { t } from '@/i18n/index.js';
-import { apply, invert, isGradient, multiply, translation, withShape } from '@/document/shapes.js';
-import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
+import { MOST_STOPS, apply, gradientColorAt, invert, isGradient, multiply, translation, withShape } from '@/document/shapes.js';
 import { shapeAt } from '@/lib/shapeHits.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import vselect, { handleRadius } from '@/tools/vselect.js';
 
-const MOST_STOPS = 16;
 const OFF_THE_LINE = 24; // CSS px a stop is dragged off its line to remove it
 const MOVED = 2;         // CSS px a press goes before it's a drag, not a click
 
@@ -26,15 +24,6 @@ export const gradientKey = (project, workspace) => workspace.vectorSelected.find
 export function gradientHandles(shape) {
   const w = multiply(shape.m, shape.fill.m), at = (o) => apply(w, o, 0);
   return { p0: at(0), p1: at(1), stops: shape.fill.stops.map(([o, color], i) => ({ i, at: at(o), color })) };
-}
-
-// The gradient's color at offset o, its stops mixed.
-function colorAt(stops, o) {
-  const after = stops.findIndex(([at]) => at >= o);
-  if (after <= 0) return stops[after < 0 ? stops.length - 1 : 0][1];
-  const [a, ca] = stops[after - 1], [b, cb] = stops[after], k = b > a ? (o - a) / (b - a) : 0;
-  const x = hex2rgb(ca), y = hex2rgb(cb);
-  return rgb2hex({ r: x.r + (y.r - x.r) * k, g: x.g + (y.g - x.g) * k, b: x.b + (y.b - x.b) * k });
 }
 
 // Where p is along the line from a to b (0 to 1, clamped) and how far off it, in CSS px.
@@ -148,7 +137,7 @@ export default {
     const { kind, moved, start, key } = drag;
     if (!moved) {
       if (kind === 'line' && start.fill.stops.length < MOST_STOPS) {
-        const order = sorted([...start.fill.stops, [drag.t, colorAt(start.fill.stops, drag.t)]], start.fill.stops.length);
+        const order = sorted([...start.fill.stops, [drag.t, gradientColorAt(start.fill.stops, drag.t)]], start.fill.stops.length);
         project.updateShapes([[key, withFill(start, { stops: order.stops })]]);
         workspace.vectorStop = order.i;
       } else if (drag.stop !== undefined) workspace.vectorStop = drag.stop;

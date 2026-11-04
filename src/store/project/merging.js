@@ -8,7 +8,7 @@
 import { t } from '@/i18n';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
-import { isShape, shapeBounds, withShape } from '@/document/shapes.js';
+import { finerStops, isGradient, isShape, shapeBounds, withShape } from '@/document/shapes.js';
 import { cellKey, parseKey, rectCells, updateRect, bakeEditCells, bakeEntry, mergeKind } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
@@ -25,7 +25,9 @@ const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h &&
 
 // A shape with the color transforms burnt into its fill and stroke.
 const bakedShape = (shape, params) => withShape(shape, {
-  fill: shape.fill && getEffectiveColor(shape.fill, params),
+  fill: isGradient(shape.fill)
+    ? { ...shape.fill, stops: finerStops(shape.fill.stops).map(([o, c]) => [o, getEffectiveColor(c, params)]) } // the sliders aren't straight between stops
+    : shape.fill && getEffectiveColor(shape.fill, params),
   stroke: shape.stroke && getEffectiveColor(shape.stroke, params),
 });
 const bakedShapes = (shapes, params) => new Map([...shapes].map(([key, shape]) => [key, bakedShape(shape, params)]));
