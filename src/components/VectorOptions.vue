@@ -4,7 +4,7 @@
 // joins and miter limit, are the color pair's (ColorPopover, useVectorStyle). While a shape's points are edited,
 // the Point row: the selected point Smooth or Corner, and Delete (the point); Esc or empty canvas ends it. With the
 // Node tool's Place gradient, the Gradient row instead: Delete stop, and on a shape with two gradients Fill or
-// Stroke. A phone's row puts Forward and the rest under ⋯; its Point and Gradient rows have no label or hint.
+// Stroke. The buttons are icons, named in their titles; a phone's rows have no label or hint.
 import { computed } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
@@ -16,7 +16,6 @@ import { gradientKey, gradientSlot, removeStop } from '@/tools/gradientHandles.j
 import { deleteSelectedPoint } from '@/tools/vnode.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
 import { shortcut } from '@/lib/keyLabels';
-import DropdownMenu from '@/components/DropdownMenu.vue';
 
 const { t } = useI18n();
 const project = useProjectStore();
@@ -89,22 +88,12 @@ const gradientOf = (slot) => {
     </template>
     <template v-if="editing">
       <div class="divider"/>
-      <template v-if="!phone">
-        <button class="text" :title="t('vector.forwardTitle')" @click="forward">{{ t('vector.forward') }}</button>
-        <button class="text" :title="t('vector.backTitle')" @click="back">{{ t('vector.back') }}</button>
-        <button class="text" :title="t('vector.joinTitle')" :disabled="selected.length < 2" @click="join">{{ t('vector.join') }}</button>
-        <button class="text" :title="t('vector.separateTitle')" :disabled="!canSeparate" @click="separate">{{ t('vector.separate') }}</button>
-        <button class="text" :title="t('vector.deleteTitle')" aria-keyshortcuts="Delete Backspace" @click="remove">{{ t('common.delete') }}</button>
-        <span class="hint">{{ t('vector.selectHint') }}</span>
-      </template>
-      <DropdownMenu v-if="phone" :label="t('vector.more')" align="right">
-        <template #trigger><span aria-hidden="true">⋯</span></template>
-        <button class="choice" @click="forward">{{ t('vector.forward') }}</button>
-        <button class="choice" @click="back">{{ t('vector.back') }}</button>
-        <button class="choice" :disabled="selected.length < 2" @click="join">{{ t('vector.join') }}</button>
-        <button class="choice" :disabled="!canSeparate" @click="separate">{{ t('vector.separate') }}</button>
-        <button class="choice" @click="remove">{{ t('common.delete') }}</button>
-      </DropdownMenu>
+      <button :title="t('vector.forwardTitle')" :aria-label="t('vector.forward')" @click="forward"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M320 32 496 208H384V352H256V208H144ZM320 384 576 480 320 576 64 480ZM320 432 192 480 320 528 448 480Z"/></svg></button>
+      <button :title="t('vector.backTitle')" :aria-label="t('vector.back')" @click="back"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M256 32H384V176H496L320 352 144 176H256ZM320 384 576 480 320 576 64 480ZM320 432 192 480 320 528 448 480Z"/></svg></button>
+      <button :title="t('vector.joinTitle')" :aria-label="t('vector.join')" :disabled="selected.length < 2" @click="join"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><circle cx="232" cy="320" r="168"/><circle cx="408" cy="320" r="168"/></svg></button>
+      <button :title="t('vector.separateTitle')" :aria-label="t('vector.separate')" :disabled="!canSeparate" @click="separate"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><circle cx="168" cy="320" r="128"/><circle cx="472" cy="320" r="128"/></svg></button>
+      <button :title="t('vector.deleteTitle')" :aria-label="t('common.delete')" aria-keyshortcuts="Delete Backspace" @click="remove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
+      <span v-if="!phone" class="hint">{{ t('vector.selectHint') }}</span>
     </template>
   </div>
 </template>

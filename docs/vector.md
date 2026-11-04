@@ -237,8 +237,8 @@ With Vector select, **Copy**, **Cut** and **Paste**, and with shapes selected:
   **Separate** takes a shape of several outlines apart, each outline a shape of its own in the same colors.
 - **Delete** deletes the shapes.
 
-Each change is one undo step. On a phone the row puts Forward, Back, Join, Separate and Delete under ⋯. A double
-tap on a shape edits its points.
+The buttons are icons, each named when you hover it. Each change is one undo step. On a phone the row is the
+same, without the hint; a double tap on a shape edits its points.
 
 ## Eyedropper (I)
 
