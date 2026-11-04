@@ -54,6 +54,12 @@ test('PIXEL view: Pick FG or BG, one lit, chooses which color a click sets, and 
   await page.getByRole('button', { name: 'Eyedropper' }).click();
   const row = page.locator('.tool-setting-group').filter({ has: page.getByRole('button', { name: 'BG', exact: true }) });
   await expect(row.locator('.option-label')).toHaveText('Pick');
+  // Shift held: the one it'll pick into is lit.
+  await page.keyboard.down('Shift');
+  await expect(row.getByRole('button', { name: 'BG', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(row.getByRole('button', { name: 'FG', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await page.keyboard.up('Shift');
+  await expect(row.getByRole('button', { name: 'FG', exact: true })).toHaveAttribute('aria-pressed', 'true');
   const box = await page.locator('article .display').first().boundingBox();
   const at = (fx) => [box.x + box.width * fx, box.y + box.height * 0.5];
   const colors = () => workspace(page, (w) => [w.editFgColor, w.editBgColor]);
