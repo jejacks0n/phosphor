@@ -676,6 +676,14 @@ div.tool-setting-group :deep(input[type=range]) {
   accent-color: var(--accent);
 }
 
+/* A slider's value beside it (setting.readout), two digits wide so the row doesn't shift. */
+div.tool-setting-group :deep(span.readout) {
+  min-width: 2ch;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
 /* A compact slider is as wide as its 80px range, not the row (its wrapper is 100% elsewhere). */
 div.tool-setting-group :deep(div.range-wrapper) {
   width: auto;

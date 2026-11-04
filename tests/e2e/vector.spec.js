@@ -112,6 +112,12 @@ test('the Shape tool draws a rectangle, an ellipse and a 5-sided polygon that co
     expect(await selected(page)).toEqual([list.at(-1).key]);
   }
   expect((await shapeList(page)).map((s) => s.points[0].length)).toEqual([7, 7, 7]);
+  // Sides says how many, beside its slider, and follows it.
+  const sides = page.locator('.tool-setting-group').filter({ has: page.getByLabel('Sides', { exact: true }) });
+  await expect(sides.locator('.readout')).toHaveText('5');
+  await page.getByLabel('Sides', { exact: true }).press('ArrowRight');
+  await expect(sides.locator('.readout')).toHaveText('6');
+  await page.getByLabel('Sides', { exact: true }).press('ArrowLeft');
   await settled(page);
   expect(await cells(page)).not.toBe(bare);
   await page.mouse.click(...Object.values(await gridPoint(page, 60, 10))); // a click makes nothing

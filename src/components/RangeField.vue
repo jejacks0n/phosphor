@@ -9,7 +9,7 @@ import { t } from '@/i18n';
 const props = defineProps({
   setting: { type: Object, required: true },
   modelValue: { type: [Number, String], default: 0 },
-  compact: { type: Boolean, default: false }, // toolbar style: just label + slider (tooltip shows the value)
+  compact: { type: Boolean, default: false }, // toolbar style: just label + slider (tooltip shows the value; setting.readout: beside it too)
 });
 const emit = defineEmits(['update:modelValue', 'commit']); // commit({ nudge }): a drag ended, or a key nudged it (undo steps)
 
@@ -59,6 +59,7 @@ function commit(event) {
       >
       <span class="value-tooltip">{{ formatted }}</span>
     </div>
+    <span v-if="setting.readout" class="readout">{{ formatted }}</span>
   </template>
   <div v-else class="field">
     <div class="label-row">
