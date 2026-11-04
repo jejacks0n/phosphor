@@ -1340,7 +1340,6 @@
     "points": "Points",
     "deleteTitle": "Delete the selected shapes",
     "selectHint": "Drag to move, the handles to scale, the knob to rotate",
-    "lineHint": "Drag to move, an end to stretch and turn it",
     "more": "More",
     "point": "Point",
     "smooth": "Smooth",

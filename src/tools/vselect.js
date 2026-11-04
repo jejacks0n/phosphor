@@ -1,12 +1,10 @@
 // Vector select (the VECTOR tab): click a shape to select it (Shift adds or takes it away), then drag inside the
 // box to move (Shift: straight across, up and down, or at 45°), a handle to scale (Shift keeps the proportions)
-// or the knob above it to rotate (Shift: in steps of 15°). A two-point path has a handle at each end instead:
-// one dragged moves that end (Shift: across, up and down or at 45° from the other), the path stretching along
-// itself and turning. A second click on a shape edits its points with the Node tool (vnode.js). Each drag is one
-// edit, worked out each move from the shapes as they were at the press, so nothing drifts. Keys: arrows nudge a
-// grid pixel (Shift: 10), Delete or Backspace deletes, Esc deselects.
+// or the knob above it to rotate (Shift: in steps of 15°). A second click on a shape edits its points with the
+// Node tool (vnode.js). Each drag is one edit, worked out each move from the shapes as they were at the press,
+// so nothing drifts. Keys: arrows nudge a grid pixel (Shift: 10), Delete or Backspace deletes, Esc deselects.
 import { t } from '@/i18n/index.js';
-import { apply, curveBounds, invert, localBounds, multiply, rotation, scaling, stretching, translation, transformed, withShape, worldPoints } from '@/document/shapes.js';
+import { apply, curveBounds, invert, localBounds, multiply, rotation, scaling, translation, transformed, withShape } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { shapeAt } from '@/lib/shapeHits.js';
 
@@ -18,14 +16,10 @@ const SNAP = Math.PI / 12; // 15°
 export const handleRadius = () => (matchMedia('(pointer: coarse)').matches ? 14 : 6);
 
 // The selection's box in grid pixels: one shape's own (turned with it), or several's together, square to the
-// grid. corners run top-left, top-right, bottom-right, bottom-left. A two-point path's is its ends (ends set).
+// grid. corners run top-left, top-right, bottom-right, bottom-left.
 export function selectionBox(shapes, keys) {
   const chosen = keys.map((key) => shapes.get(key)).filter(Boolean);
   if (!chosen.length) return null;
-  if (chosen.length === 1 && isLine(chosen[0])) {
-    const ends = worldPoints(chosen[0]).map(({ x, y }) => ({ x, y }));
-    return { corners: ends, center: mid(...ends), local: null, ends };
-  }
   if (chosen.length === 1) {
     const shape = chosen[0], { x0, y0, x1, y1 } = localBounds(shape);
     const corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => apply(shape.m, x, y));
@@ -38,9 +32,6 @@ export function selectionBox(shapes, keys) {
   }
   return { corners: [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }], center: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, local: null };
 }
-
-// A two-point path: its ends are its handles, and nothing scales it across.
-const isLine = (shape) => !shape.closed && shape.points.length === 2;
 
 const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 
@@ -102,15 +93,6 @@ function scaleTo(project, drag, pos, shift) {
   reshape(project, drag, (shape) => multiply(w, shape.m));
 }
 
-// A two-point path's end dragged: the pointer's move, from the end as it was (Shift: on a line from the other end).
-function endTo(project, drag, pos, shift) {
-  const { ends } = drag.box, fixed = ends[1 - drag.end], from = ends[drag.end];
-  let to = { x: from.x + pos.x - drag.from.x, y: from.y + pos.y - drag.from.y };
-  if (shift) to = snappedEnd(fixed, to);
-  const w = stretching(fixed, from, to);
-  reshape(project, drag, (shape) => w && multiply(w, shape.m));
-}
-
 function rotateTo(project, drag, pos, shift) {
   const { center } = drag.box;
   let angle = Math.atan2(pos.y - center.y, pos.x - center.x) - Math.atan2(drag.from.y - center.y, drag.from.x - center.x);
@@ -140,10 +122,7 @@ export default {
       project.beginEdit();
       return true;
     };
-    if (box?.ends && !shift) {
-      const end = box.ends.findIndex((p) => near(pos, p, unit, radius));
-      if (end >= 0) return at('end', { end });
-    } else if (box && !shift) {
+    if (box && !shift) {
       const { handles, knob } = boxHandles(box, unit);
       if (near(pos, knob, unit, radius)) return at('rotate');
       const handle = handles.findIndex((h) => near(pos, h, unit, radius));
@@ -158,7 +137,7 @@ export default {
       return false;
     }
     // A second click on a shape (pressed and let go without moving) edits its points: see end.
-    if (box && !box.ends && inside(box.corners, pos)) return at('move', { again: again && hit });
+    if (box && inside(box.corners, pos)) return at('move', { again: again && hit });
     if (hit) {
       workspace.vectorSelected = [hit];
       return at('move', { keys: [hit], box: selectionBox(project.shapes, [hit]), again: again && hit });
@@ -175,7 +154,6 @@ export default {
       const end = shift ? snappedEnd(drag.from, to) : to;
       reshape(project, drag, (shape) => transformed(shape, translation(end.x - drag.from.x, end.y - drag.from.y)).m);
     }
-    else if (drag.kind === 'end') endTo(project, drag, to, shift);
     else if (drag.kind === 'scale') scaleTo(project, drag, to, shift);
     else rotateTo(project, drag, to, shift);
   },

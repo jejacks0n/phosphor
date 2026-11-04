@@ -369,42 +369,6 @@ test('the Node tool (A) edits the points of the shape pressed, a two-point line\
   expect(await selected(page)).toEqual([rect]);
 });
 
-test('Vector select gives a two-point path a handle at each end: one dragged moves that end, the path stretching and turning but never across', async ({ page }) => {
-  await openApp(page);
-  await tab(page, 'VECTOR').click();
-  await settled(page);
-  const key = await addLine(page);
-  await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
-  await expect(page.locator('.vector-overlay rect.handle')).toHaveCount(2);
-  await expect(page.locator('.vector-overlay polygon.box')).toHaveCount(0);
-  await expect(page.locator('.vector-options .hint')).toHaveText('Drag to move, an end to stretch and turn it');
-
-  await dragPoints(page, await gridPoint(page, 30, 20), await gridPoint(page, 40, 20)); // half as long again
-  let ends = await lineEnds(page, key);
-  expect(ends.start).toMatchObject({ x: expect.closeTo(10, 1), y: expect.closeTo(20, 1) });
-  expect(ends.end).toMatchObject({ x: expect.closeTo(40, 0), y: expect.closeTo(20, 0) });
-  expect(ends.out.y).toBeCloseTo(16, 1); // the bulge as high as it was
-  expect(ends.out.x).toBeCloseTo(19, 0);
-
-  await dragPoints(page, await gridPoint(page, 40, 20), await gridPoint(page, 10, 50)); // turned straight down
-  ends = await lineEnds(page, key);
-  expect(ends.end).toMatchObject({ x: expect.closeTo(10, 0), y: expect.closeTo(50, 0) });
-  expect(ends.out.x - ends.start.x).toBeCloseTo(4, 1); // the bulge turned with it, as big
-  expect(ends.out.y - ends.start.y).toBeCloseTo(9, 0);
-
-  const from = await gridPoint(page, 10, 50);
-  await page.mouse.move(from.x, from.y);
-  await page.mouse.down();
-  await page.keyboard.down('Shift');
-  for (let i = 1; i <= 6; i++) await page.mouse.move(...Object.values(await gridPoint(page, 10 + i, 50 + i)));
-  await page.mouse.up();
-  await page.keyboard.up('Shift');
-  ends = await lineEnds(page, key);
-  expect(ends.end.x).toBeCloseTo(ends.start.x, 4); // Shift: straight down from the other end still
-  await undoSteps(page, 3);
-  expect((await lineEnds(page, key)).end).toMatchObject({ x: 30, y: 20 });
-});
-
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
