@@ -285,7 +285,7 @@ test.describe('on a phone', () => {
   });
 });
 
-test('double-click edits points: drag a point and a handle, click the outline to add one, Smooth and Corner, Delete point, Done', async ({ page }) => {
+test('double-click edits points: drag a point and a handle, click the outline to add one, Smooth and Corner, Delete, and empty canvas to finish', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await settled(page);
@@ -319,10 +319,11 @@ test('double-click edits points: drag a point and a handle, click the outline to
   expect((await world(1)).smooth).toBe(0);
   expect((await store(page, 'project', `(p) => p.shapes.get('${key}').points[1]`)).slice(2, 6)).toEqual([0, 0, 0, 0]);
 
-  // Delete point, then Done.
+  // Delete the point, then a click on empty canvas finishes; there's no Done.
+  await expect(row.getByRole('button', { name: 'Done', exact: true })).toHaveCount(0);
   await row.getByRole('button', { name: 'Delete', exact: true }).click();
   expect((await world(0)).n).toBe(4);
-  await row.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.mouse.click(...Object.values(await gridPoint(page, 50, 20)));
   expect(await store(page, 'workspace', (w) => w.vectorPoints)).toBe(null);
   expect(await selected(page)).toEqual([key]);
 

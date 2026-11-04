@@ -1342,8 +1342,6 @@
     "corner": "Angle",
     "cornerTitle": "Faire du point un angle vif : ses poignées disparaissent",
     "deletePointTitle": "Supprimer le point sélectionné",
-    "done": "Terminé",
-    "doneTitle": "Arrêter de modifier les points",
-    "pointsHint": "Faites glisser un point ou une poignée ; cliquez sur le contour pour ajouter un point"
+    "pointsHint": "Faites glisser un point ou une poignée ; cliquez sur le contour pour ajouter un point ; Échap ou un clic à côté pour terminer"
   }
 }

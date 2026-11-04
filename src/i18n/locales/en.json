@@ -1342,8 +1342,6 @@
     "corner": "Corner",
     "cornerTitle": "Make the point a sharp corner: its handles go",
     "deletePointTitle": "Delete the selected point",
-    "done": "Done",
-    "doneTitle": "Stop editing points",
-    "pointsHint": "Drag a point or a handle; click the outline to add a point"
+    "pointsHint": "Drag a point or a handle; click the outline to add a point; Esc or empty canvas to finish"
   }
 }
