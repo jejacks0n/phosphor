@@ -53,7 +53,8 @@ have the shapes' converted cells, as they show.
 ## Vector select (V)
 
 - Click a shape to select it. Shift-click adds a shape to the selection, or takes it away.
-- The selection gets a box. Drag inside it to move the shapes, drag one of its eight handles to scale them
+- The selection gets a box. Drag inside it to move the shapes (hold Shift once you're moving to keep them
+  straight across, straight up and down, or at 45°), drag one of its eight handles to scale them
   from the opposite side (Shift keeps the proportions), or drag the knob above it to rotate them (Shift
   turns in steps of 15°). One shape's box turns with it; several shapes share one box, square to the grid.
 - Click empty canvas to deselect.
