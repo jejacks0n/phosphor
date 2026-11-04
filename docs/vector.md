@@ -125,6 +125,9 @@ shapes selected (Vector select):
 
 - **Forward** and **Back** move the shapes just above the nearest shape they overlap, or just beneath it;
   every other shape keeps its place.
+- **Join** makes the selected shapes one shape: the bottom one, with its colors and place, and every outline of
+  the rest. An outline inside another becomes a hole, so an "o" and a smaller circle inside it make a ring.
+  **Separate** takes a shape of several outlines apart, each outline a shape of its own in the same colors.
 - **Edit points** edits the first shape's points with the Node tool. **Delete** deletes the shapes.
 
 Each change is one undo step; a Stroke width drag is one step when you let go.

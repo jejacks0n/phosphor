@@ -31,6 +31,16 @@ const width = computed({
 });
 
 const forward = () => project.restackShapes(selected.value, 'forward');
+// Join and Separate: the selection afterwards is what they made.
+const canSeparate = computed(() => !!project.shapes.get(selected.value[0])?.more);
+const join = () => {
+  const key = project.joinShapes(selected.value);
+  if (key) workspace.vectorSelected = [key];
+};
+const separate = () => {
+  const keys = project.separateShape(selected.value[0]);
+  if (keys) workspace.vectorSelected = keys;
+};
 const back = () => project.restackShapes(selected.value, 'back');
 const remove = () => {
   project.deleteShapes(selected.value);
@@ -65,6 +75,8 @@ const editPoints = () => {
       <template v-else>
         <button class="text" :title="t('vector.forwardTitle')" @click="forward">{{ t('vector.forward') }}</button>
         <button class="text" :title="t('vector.backTitle')" @click="back">{{ t('vector.back') }}</button>
+        <button class="text" :title="t('vector.joinTitle')" :disabled="selected.length < 2" @click="join">{{ t('vector.join') }}</button>
+        <button class="text" :title="t('vector.separateTitle')" :disabled="!canSeparate" @click="separate">{{ t('vector.separate') }}</button>
         <button class="text" :title="t('vector.editPointsTitle')" @click="editPoints">{{ t('vector.editPoints') }}</button>
         <button class="text" :title="t('vector.deleteTitle')" aria-keyshortcuts="Delete Backspace" @click="remove">{{ t('common.delete') }}</button>
         <span class="hint">{{ t('vector.selectHint') }}</span>
@@ -73,6 +85,8 @@ const editPoints = () => {
         <template #trigger><span aria-hidden="true">⋯</span></template>
         <button class="choice" @click="forward">{{ t('vector.forward') }}</button>
         <button class="choice" @click="back">{{ t('vector.back') }}</button>
+        <button class="choice" :disabled="selected.length < 2" @click="join">{{ t('vector.join') }}</button>
+        <button class="choice" :disabled="!canSeparate" @click="separate">{{ t('vector.separate') }}</button>
         <button class="choice" @click="remove">{{ t('common.delete') }}</button>
       </DropdownMenu>
     </template>

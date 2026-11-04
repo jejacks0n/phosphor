@@ -171,6 +171,14 @@ function makeActions(project, workspace, r, opts) {
       const keys = [...project.shapes.keys()];
       if (keys.length) project.deleteShapes(keys.filter(() => r() < 0.5).slice(0, 2));
     },
+    joinShapes: () => {
+      const keys = [...project.shapes.keys()];
+      if (keys.length >= 2) project.joinShapes([pick(keys), pick(keys)]);
+    },
+    separateShape: () => {
+      const key = pick([...project.shapes].filter(([, s]) => s.more).map(([k]) => k));
+      if (key) project.separateShape(key);
+    },
     restackShape: () => {
       const key = pick([...project.shapes.keys()]);
       if (key) project.restackShapes([key], pick(['forward', 'back']));

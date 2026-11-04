@@ -6,7 +6,7 @@
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { IDENTITY, MOST_POINTS, MOST_SHAPES, makeShape, newShapeKey, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
+import { IDENTITY, MOST_POINTS, MOST_SHAPES, joined, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
 import { withoutPins } from '@/document/baseRecords.js';
 import { bytesHeld } from '@/store/project/shared.js';
 
@@ -169,6 +169,40 @@ export const vectorActions = {
     };
     apply(after);
     this.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(before.base, after.base));
+  },
+
+  // Join: the shapes keys made one, the bottom one (its key, style and place) with every outline of the rest, so
+  // that an outline inside another is a hole. One step; the key, or null with under two or past a shape's points.
+  joinShapes(keys) {
+    const order = stacked(this.shapes).filter(([key]) => keys.includes(key));
+    if (order.length < 2) return null;
+    const [[bottomKey, bottom], ...rest] = order, shape = joined(bottom, rest.map(([, s]) => s));
+    if (!shape || !keeps(shape)) {
+      toast(t('vector.joinTooBig', { count: MOST_POINTS }));
+      return null;
+    }
+    this.updateShapes([[bottomKey, shape], ...rest.map(([key]) => [key, null])]);
+    return bottomKey;
+  },
+
+  // Separate: each of the shape's outlines a shape of its own, the first keeping its key, all where it was in
+  // the stacking order. One step; the keys, or null for a shape of one outline.
+  separateShape(key) {
+    const shape = this.shapes.get(key);
+    if (!shape?.more) return null;
+    const parts = separated(shape);
+    if (this.shapes.size - 1 + parts.length > MOST_SHAPES) {
+      toast(t('vector.tooMany', { count: MOST_SHAPES }));
+      return null;
+    }
+    const keys = [key, ...parts.slice(1).map(() => newShapeKey())], own = ownsEdit(this);
+    this.ensureLayer();
+    if (!this.paintLayer) return null;
+    const next = new Map(this.shapes);
+    keys.forEach((k, i) => next.set(k, parts[i]));
+    this.setShapes(next);
+    if (own) this.commitEdit();
+    return keys;
   },
 
   // Each shape moves in the stacking order to just above the nearest shape it overlaps above it (forward), or

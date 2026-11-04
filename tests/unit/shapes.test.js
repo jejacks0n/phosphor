@@ -5,7 +5,7 @@ import {
   makeShape, sameShape, isShape, isShapeKey, newShapeKey, pathData, shapeBounds, dirtyRect, worldPoints,
   multiply, invert, apply, rotation, scaling, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
   moveHandle, setSmooth, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
-  outlines, withOutlines, locate, allPoints, strokeOf, STROKE_DEFAULTS, withShape, movePoint,
+  outlines, withOutlines, locate, allPoints, strokeOf, STROKE_DEFAULTS, withShape, movePoint, joined, separated,
 } from '../../src/document/shapes.js';
 import { changeBytes } from '../../src/document/changes.js';
 import { MOST_CHANGE_BYTES } from '../../src/social/wire.js';
@@ -307,4 +307,31 @@ test('shapeBounds pads for miters and square caps', () => {
   assert.equal(shapeBounds(withShape(line, { join: 'miter', miter: 10 })).x, -20);
   assert.equal(shapeBounds(withShape(line, { join: 'miter' })).x, -8); // the default limit, 4
   assert.equal(shapeBounds(withShape(line, { stroke: null })).x, 0);
+});
+
+test('joined carries outlines into the bottom shape\'s space and makes holes, and separated takes them apart', () => {
+  const big = makeShape({ points: sq(0, 20), closed: true, fill: '#ff0000', stroke: '#00ff00', width: 2, cap: 'butt', m: [2, 0, 0, 1, 5, 5] });
+  const small = transformed(makeShape({ points: [[6, 6, 0, 0, 2, 0, 1], [12, 6, -2, 0, 0, 0, 1], [12, 12, 0, 0, 0, 0, 0]], closed: true, fill: '#0000ff' }), rotation(0.4, 9, 9));
+  const ring = joined(big, [small]);
+  assert.equal(ring.rule, 'evenodd');
+  assert.equal(ring.fill, '#ff0000');
+  assert.equal(ring.cap, 'butt');
+  assert.deepEqual(ring.m, big.m);
+  assert.equal(outlines(ring).length, 2);
+  const want = worldPoints(small), got = worldPoints(ring).slice(4);
+  want.forEach((p, i) => {
+    close(got[i].x, p.x, 0.02); close(got[i].y, p.y, 0.02);
+    for (const h of ['in', 'out']) {
+      assert.equal(!!got[i][h], !!p[h]);
+      if (p[h]) { close(got[i][h].x, p[h].x, 0.02); close(got[i][h].y, p[h].y, 0.02); }
+    }
+  });
+  const [a, b] = separated(ring);
+  assert.equal(a.more, undefined);
+  assert.equal(a.rule, undefined);
+  assert.equal(b.fill, '#ff0000');
+  assert.deepEqual(worldPoints(a), worldPoints(big));
+  worldPoints(b).forEach((p, i) => { close(p.x, want[i].x, 0.02); close(p.y, want[i].y, 0.02); });
+  const many = makeShape({ points: Array.from({ length: 300 }, (_, i) => [i, 0, 0, 0, 0, 0, 0]), closed: false });
+  assert.equal(joined(many, [many]), null); // past the points a shape may have
 });
