@@ -13,12 +13,16 @@
  * base?: { pixels: PNG data URL, scale, colors: PNG data URL, pins: (char | null)[] } }: a Select
  * block (ProjectStore's copySelection) with its canvases as PNGs. id says which copy it was, so the
  * tab that made it can paste its own block instead.
+ *
+ * ShapesField = { version: 1, id, shapes: Shape[] } (document/shapes.js), in a `phosphorShapes` field: shapes
+ * copied on VECTOR, bottom to top, for another Phosphor tab; id as a block's.
  */
 import { CP437, cp437Byte, cp437Substitute } from './Cp437.js';
 import { CGA, VGA, paletteIndex, rgb2hex } from './ColorUtils.js';
 import { MAX_CELLS, cellIndex } from './Cells.js';
 import { usableChar } from './CharWidth.js';
 import { cleanEntry } from '../document/editCells.js';
+import { MOST_SHAPES, shapeFromStranger } from '../document/shapes.js';
 
 export const VERSION = 1;
 
@@ -116,7 +120,15 @@ function phosphorField(p) {
   return out;
 }
 
-// What the HTML slot holds: { phosphor: PhosphorField }, { moebius: Block }, or null (empty, a web
+// A `phosphorShapes` field with the shapes that are shapes, or null when it isn't one this version reads or none
+// of them is.
+function shapesField(p) {
+  if (!p || p.version !== VERSION || typeof p.id !== 'string' || !Array.isArray(p.shapes) || p.shapes.length > MOST_SHAPES) return null;
+  const shapes = p.shapes.map(shapeFromStranger).filter(Boolean);
+  return shapes.length ? { version: VERSION, id: p.id, shapes } : null;
+}
+
+// What the HTML slot holds: { phosphor: PhosphorField }, { shapes: ShapesField }, { moebius: Block }, or null (empty, a web
 // page's HTML, a block this version can't read). Tags and comments are dropped first: browsers add a
 // <meta charset> before it, and Windows wraps it in <html><body><!--StartFragment-->.
 export function readClipboardHtml(html) {
@@ -130,6 +142,8 @@ export function readClipboardHtml(html) {
   }
   const phosphor = phosphorField(json?.phosphor);
   if (phosphor) return { phosphor };
+  const shapes = shapesField(json?.phosphorShapes);
+  if (shapes) return { shapes };
   const { columns, rows, data } = json ?? {};
   if (!size(columns) || !size(rows) || columns * rows > MAX_CELLS || !Array.isArray(data) || data.length !== columns * rows) return null;
   return { moebius: blockFromMoebius(json) };

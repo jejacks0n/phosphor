@@ -22,13 +22,13 @@ export function copySelection(project, workspace, rect, layers) {
   else navigator.clipboard?.writeText(text).then(written, () => {});
 }
 
-// Both entries written through a copy event, in the key press or click that asked (it's refused
-// outside one). Not navigator.clipboard.write: Chrome rewrites its HTML as a whole page, which
-// Moebius can't read. Returns whether it was written.
-function copyEvent(text, html) {
+// Both entries (text null: the HTML alone) written through a copy event, in the key press or click that
+// asked (it's refused outside one). Not navigator.clipboard.write: Chrome rewrites its HTML as a whole
+// page, which Moebius can't read. Returns whether it was written.
+export function copyEvent(text, html) {
   let wrote = false;
   const onCopy = (e) => {
-    e.clipboardData.setData('text/plain', text);
+    if (text !== null) e.clipboardData.setData('text/plain', text);
     e.clipboardData.setData('text/html', html);
     e.preventDefault();
     wrote = true;

@@ -120,7 +120,9 @@ on Windows and Linux) while you drag to place or move without snapping. The choi
   Vector select, to drag into place. They land where they were copied from, so a paste onto another frame
   keeps their place; where the frame already has copies of them there, a little right of and below those, so
   you see them land. The options row has the same Copy, Cut and Paste buttons as Select's. The paste is one
-  undo step, and goes to whatever frame is showing. Shapes copy within this tab only.
+  undo step, and goes to whatever frame is showing. Cmd+V (Ctrl+V) also pastes shapes copied on VECTOR in
+  another Phosphor tab, where they were in that drawing; the row's Paste button pastes only what this tab
+  copied, and says so when it hasn't copied anything.
 - Double-click (or double-tap) a shape to edit its points with the Node tool (below), or press A.
 - The arrow keys nudge the selection a pixel (with Shift, 10). Delete or Backspace deletes it. Esc deselects.
 

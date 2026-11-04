@@ -4,6 +4,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { blockFromMoebius, clipboardHtml, moebiusData, readClipboardHtml } from '../../src/lib/clipboardBlocks.js';
+import { MOST_SHAPES, rectShape } from '../../src/document/shapes.js';
 
 const sample = (name) => readFileSync(new URL(`../fixtures/clipboard/${name}.html`, import.meta.url), 'utf8');
 const SIXTEEN = sample('moebius-16-colors'), TRUE_COLOR = sample('moebius-24-bit');
@@ -62,6 +63,18 @@ test('a Phosphor block is recognized by its version, and only what a block can h
   assert.ok(readClipboardHtml(clipboardHtml({ ...moebius, phosphor: { ...phosphor, version: 2 } })).moebius, 'a later Phosphor\'s block: its Moebius cells');
   assert.ok(readClipboardHtml(clipboardHtml({ ...moebius, phosphor: { ...phosphor, paint: 'javascript:alert(1)' } })).moebius, 'not a PNG: not ours');
   assert.ok(readClipboardHtml(clipboardHtml({ ...moebius, phosphor: { ...phosphor, cells: [null] } })).moebius, 'cells the wrong length');
+});
+
+test('shapes copied on VECTOR are recognized by their version, each checked as a shape from outside; one that isn\'t is left out', () => {
+  const a = rectShape(1, 2, 5, 6, { fill: '#ff0000' }), b = rectShape(3, 3, 9, 9, { fill: null, stroke: '#00ff00', width: 2 });
+  const shapes = { version: 1, id: 'xyz', shapes: [a, { ...b, extra: 1 }, b, 'no'] };
+  const read = readClipboardHtml(clipboardHtml({ phosphorShapes: shapes }));
+  assert.equal(read.shapes.id, 'xyz');
+  assert.deepEqual(read.shapes.shapes, [a, b]);
+  assert.equal(readClipboardHtml(clipboardHtml({ phosphorShapes: { ...shapes, version: 2 } })), null, 'a later Phosphor\'s');
+  assert.equal(readClipboardHtml(clipboardHtml({ phosphorShapes: { ...shapes, shapes: ['no'] } })), null, 'none a shape');
+  assert.equal(readClipboardHtml(clipboardHtml({ phosphorShapes: { ...shapes, shapes: Array(MOST_SHAPES + 1).fill(a) } })), null, 'more than a frame holds');
+  assert.equal(readClipboardHtml(clipboardHtml({ phosphorShapes: { ...shapes, id: 5 } })), null);
 });
 
 test('the JSON is written as plain ASCII, so no browser or charset changes it', () => {
