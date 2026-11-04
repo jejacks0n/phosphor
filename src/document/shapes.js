@@ -15,7 +15,11 @@
  * exactly what it was before they existed (an older copy of Phosphor refuses a shape with a field it doesn't
  * know, and with it the whole file's shapes or a room's whole change). A point's index is flat: the first
  * outline's points, then each of more's in turn (locate).
- *   fill, stroke  '#rrggbb' or null (none)
+ *   fill, stroke  '#rrggbb' or null (none); a fill may be a gradient instead:
+ *           { type: 'linear' | 'radial', stops: [[offset, '#rrggbb'], ...], m, f? }, in a unit space that m (as a
+ *           shape's m) carries into the shape's own: a linear one runs from (0, 0) to (1, 0), a radial one is the
+ *           circle at (0, 0) of radius 1, its focal point f (absent: the center). 2 to 16 stops, their offsets
+ *           0 to 1 and in order (to 1/1000). It moves, scales and turns with the shape.
  *   width   the stroke's width in grid pixels (it doesn't scale with the shape)
  *   m       [a, b, c, d, e, f]: local to grid pixels, x' = a x + c y + e, y' = b x + d y + f
  *   z       stacking order, low first (ties go by key)
@@ -40,11 +44,14 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const FIELDS = ['z', 'closed', 'points', 'fill', 'stroke', 'width', 'm'];
 const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter'];
 const RULES = ['evenodd'], CAPS = ['butt', 'square'], JOINS = ['miter', 'bevel']; // the values other than the default
+const GRADIENTS = ['linear', 'radial'];
+const MOST_STOPS = 16;
 const KAPPA = 0.5523; // a cubic's handle length for a quarter circle, as a share of its radius
 
 export const IDENTITY = Object.freeze([1, 0, 0, 1, 0, 0]);
 export const isShapeKey = (key) => typeof key === 'string' && key.startsWith(SHAPE_PREFIX);
 export const isShape = (value) => !!value && Array.isArray(value.points);
+export const isGradient = (fill) => !!fill && typeof fill === 'object';
 export const sameShape = (a, b) => a === b || (!!a && !!b && JSON.stringify(a) === JSON.stringify(b));
 
 export function newShapeKey() {
@@ -57,6 +64,18 @@ const round = (v, places) => {
   return r === 0 ? 0 : r; // no -0: it reads back as 0
 };
 
+// A gradient fill frozen, its numbers rounded, its keys in one order (so JSON compares), f left out at the center.
+function roundFill(fill) {
+  if (!isGradient(fill)) return fill;
+  const out = {
+    type: fill.type,
+    stops: Object.freeze(fill.stops.map(([o, c]) => Object.freeze([round(o, 3), c]))),
+    m: Object.freeze(fill.m.map((v) => round(v, 4))),
+  };
+  if (fill.f && (round(fill.f[0], 4) || round(fill.f[1], 4))) out.f = Object.freeze(fill.f.map((v) => round(v, 4)));
+  return Object.freeze(out);
+}
+
 const roundPoints = (points) => Object.freeze(points.map((p) => Object.freeze(p.slice(0, 6).map((v) => round(v, 2)).concat(p[6] ? 1 : 0))));
 
 export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter }) {
@@ -64,7 +83,7 @@ export function makeShape({ points, closed, fill = null, stroke = null, width = 
     z,
     closed: !!closed,
     points: roundPoints(points),
-    fill,
+    fill: roundFill(fill),
     stroke,
     width: round(width, 2),
     m: Object.freeze(m.map((v) => round(v, 4))),
@@ -391,6 +410,21 @@ export const separated = (shape) => outlines(shape).map((o) => withShape(shape, 
 
 // A shape from a file, a project or another browser, or null when it's anything a shape can't be.
 const finite = (v, most) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= most;
+const goodColor = (c) => c === null || (typeof c === 'string' && HEX.test(c));
+function goodFill(fill) {
+  if (!isGradient(fill)) return goodColor(fill);
+  if (Array.isArray(fill) || !GRADIENTS.includes(fill.type)) return false;
+  if (!Object.keys(fill).every((k) => ['type', 'stops', 'm', ...(fill.type === 'radial' ? ['f'] : [])].includes(k))) return false;
+  const { stops, m, f } = fill;
+  if (!Array.isArray(stops) || stops.length < 2 || stops.length > MOST_STOPS) return false;
+  let last = 0;
+  for (const stop of stops) {
+    if (!Array.isArray(stop) || stop.length !== 2 || !finite(stop[0], 1) || stop[0] < last || typeof stop[1] !== 'string' || !HEX.test(stop[1])) return false;
+    last = stop[0];
+  }
+  if (!Array.isArray(m) || m.length !== 6 || !m.every((v) => finite(v, MOST_SHIFT)) || Math.abs(m[0] * m[3] - m[1] * m[2]) < 1e-6) return false;
+  return f === undefined || (Array.isArray(f) && f.length === 2 && f.every((v) => finite(v, 1)) && Math.hypot(...f) <= 1);
+}
 const goodPoints = (points) => Array.isArray(points) && points.length > 0
   && points.every((p) => Array.isArray(p) && p.length === 7 && p.slice(0, 6).every((v) => finite(v, MOST_COORD)) && (p[6] === 0 || p[6] === 1));
 export function shapeFromStranger(value) {
@@ -399,7 +433,7 @@ export function shapeFromStranger(value) {
   if (!FIELDS.every((f) => f in value) || !keys.every((k) => FIELDS.includes(k) || OPTIONAL.includes(k))) return null;
   const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter } = value;
   if (!Number.isInteger(z) || Math.abs(z) > MOST_Z || typeof closed !== 'boolean') return null;
-  if (!(fill === null || (typeof fill === 'string' && HEX.test(fill))) || !(stroke === null || (typeof stroke === 'string' && HEX.test(stroke)))) return null;
+  if (!goodFill(fill) || !goodColor(stroke)) return null;
   if (!finite(width, MOST_WIDTH) || width < 0) return null;
   if (!Array.isArray(m) || m.length !== 6 || !m.every((v, i) => finite(v, i < 4 ? MOST_M : MOST_SHIFT)) || Math.abs(m[0] * m[3] - m[1] * m[2]) < 1e-6) return null;
   if (!goodPoints(points)) return null;
