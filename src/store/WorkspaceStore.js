@@ -130,8 +130,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorSelected: [],      // the keys of the shapes Vector select has selected (follows project.shapes: one gone drops out)
     vectorPoints: null,      // the key of the shape whose points are being edited (a double-click), or null
     vectorPoint: null,       // the point selected there: its index, or null
-    vectorStop: null,        // the Gradient tool's selected stop: its index in the gradient it edits, or null
-    vectorGradientSlot: 'fill', // which gradient the Gradient tool edits on a shape with two: 'fill' or 'stroke'
+    vectorStop: null,        // the Node tool's selected gradient stop: its index in the gradient it edits, or null
+    vectorGradientSlot: 'fill', // which gradient the Node tool edits on a shape with two: 'fill' or 'stroke'
     vectorPen: null,         // the key of the Pen's shape while it's being drawn, or null
     vectorStyle: { fill: 'fg', stroke: null, width: 1, cap: 'round', join: 'round', miter: 4 }, // what a new shape gets: a color, 'fg' (the foreground's then) or null
     vectorHover: null,       // where the pointer is over VECTOR's art, in grid pixels, for the Pen's next segment

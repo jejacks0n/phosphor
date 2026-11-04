@@ -382,9 +382,6 @@
     "vselect": {
       "title": "Vector select"
     },
-    "vgradient": {
-      "title": "Gradient"
-    },
     "vnode": {
       "title": "Node"
     },
@@ -845,8 +842,7 @@
     },
     "rows": {
       "vselect": "Vector select: pick, move, scale and rotate shapes (double-click: the Node tool)",
-      "vgradient": "Gradient: move, stretch and turn a shape's gradient, and edit its stops",
-      "vnode": "Node: press a shape to edit its points; drag a point or a handle, click the outline to add one",
+      "vnode": "Node: press a shape to edit its points and its gradient; drag a point, a handle or a stop, click the outline to add a point",
       "pen": "Pen: click for a corner, drag for a curve; click the first point to close",
       "penEnd": "Leave the Pen's shape an open curve",
       "penBack": "Take the Pen's last point away",
@@ -1382,7 +1378,7 @@
     "linearStrokeChipTitle": "Stroke: linear gradient ({key})",
     "radialStrokeChipTitle": "Stroke: radial gradient ({key})",
     "gradientLabel": "Gradient",
-    "gradientSlotTitle": "Which gradient the Gradient tool edits",
+    "gradientSlotTitle": "Which gradient's handles show",
     "joinTooBig": "A shape can have at most {count} points.",
     "editPoints": "Edit points",
     "editPointsTitle": "Edit the shape's points and curves with the Node tool (A)",
@@ -1397,6 +1393,7 @@
     "corner": "Corner",
     "cornerTitle": "Make the point a sharp corner: its handles go",
     "deletePointTitle": "Delete the selected point",
-    "pointsHint": "Drag a point or a handle; click the outline to add a point; Esc or empty canvas to finish"
+    "deleteStopTitle": "Delete the gradient's selected stop",
+    "pointsHint": "Drag a point, a handle or a gradient's stop; click the outline to add a point; Esc or empty canvas to finish"
   }
 }

@@ -10,7 +10,7 @@ import { paintShape } from '@/document/ShapeLayer.js';
 import { toastMessage } from '@/composables/useToast';
 import { shapeAt } from '@/lib/shapeHits.js';
 import vnode from '@/tools/vnode.js';
-import vgradient, { gradientHandles } from '@/tools/vgradient.js';
+import { gradientHandles } from '@/tools/gradientHandles.js';
 
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
 const at = (project, col, row) => project.cells[row * project.cols + col];
@@ -498,27 +498,35 @@ test('a radial gradient stretched with its shape is an ellipse', async () => {
   expect(near(focal(25, 20), [255, 0, 0], 40)).toBe(true);
 });
 
-test('the Gradient tool moves, stretches and turns a gradient, and adds, slides and removes stops, one step each', async () => {
+test('the Node tool, on a shape with a gradient, moves, stretches and turns it, and adds, slides and removes stops, one step each', async () => {
   const { project, workspace } = await gradient(40, 40);
-  const fill = { type: 'linear', stops: RED_TO_BLUE, m: [20, 0, 0, 20, 10, 15] }; // (10, 15) to (30, 15)
+  const fill = { type: 'linear', stops: RED_TO_BLUE, m: [20, 0, 0, 20, 10, 15] }; // (10, 15) to (30, 15), on the outline
   const key = project.addShape(withShape(rectShape(10, 10, 30, 20, RED), { fill }));
   workspace.vectorSelected = [key];
+  workspace.setActiveTool('vnode');
+  workspace.vectorPoints = key;
   const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } };
   const drag = (from, ...to) => {
-    const took = vgradient.begin(ctx, from);
+    const took = vnode.begin(ctx, from, {});
     let at = from;
     for (const p of to) {
-      vgradient.move(ctx, at, p);
+      vnode.move(ctx, at, p);
       at = p;
     }
-    vgradient.end(ctx);
+    vnode.end(ctx);
     return took;
   };
+  const press = (key) => vnode.keydown(ctx, new KeyboardEvent('keydown', { key }));
   const handles = () => gradientHandles(project.shapes.get(key));
   const steps = () => project.history.version;
   const round = (p) => [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100];
-  let version = steps();
+  let version;
 
+  // A press on the shape's point is still the point's.
+  drag({ x: 10, y: 10 });
+  expect(workspace.vectorPoint).toBe(0);
+  expect(project.shapes.get(key).points).toHaveLength(4);
+  version = steps();
   // The line, dragged: the gradient moves.
   expect(drag({ x: 20, y: 15 }, { x: 21, y: 16 }, { x: 22, y: 17 })).toBe(true);
   expect(project.shapes.get(key).fill.m).toEqual([20, 0, 0, 20, 12, 17]);
@@ -548,6 +556,7 @@ test('the Gradient tool moves, stretches and turns a gradient, and adds, slides 
   expect(stops()[1][0]).toBeCloseTo(0.5, 2);
   expect(stops()[1][1]).toMatch(/^#(7f|80)00(7f|80)$/);
   expect(workspace.vectorStop).toBe(1);
+  expect(workspace.vectorPoint).toBe(null); // a stop or a point is selected, not both
   expect(steps()).toBe(++version);
 
   // The stop, dragged along the line: its offset; past another, it takes its place in order.
@@ -565,6 +574,20 @@ test('the Gradient tool moves, stretches and turns a gradient, and adds, slides 
   expect(steps()).toBe(version + 1);
   project.undo();
   expect(stops()).toHaveLength(3);
+  // Delete takes the selected stop, not a point; Esc lets it go, and the points are still edited.
+  workspace.vectorStop = 1;
+  press('Delete');
+  expect(stops()).toHaveLength(2);
+  expect(project.shapes.get(key).points).toHaveLength(4);
+  project.undo();
+  workspace.vectorStop = 1;
+  press('Escape');
+  expect(workspace.vectorStop).toBe(null);
+  expect(workspace.vectorPoints).toBe(key);
+  drag({ x: 30, y: 20 }); // a point, selected: the stop goes
+  workspace.vectorStop = 1;
+  drag({ x: 30, y: 20 });
+  expect([workspace.vectorPoint, workspace.vectorStop]).toEqual([2, null]);
   project.redo();
   // With two left, one dragged off stays.
   const two = withShape(project.shapes.get(key), { fill: { ...project.shapes.get(key).fill, stops: [[0.2, '#ff0000'], [0.8, '#0000ff']] } });
@@ -578,8 +601,11 @@ test('the Gradient tool moves, stretches and turns a gradient, and adds, slides 
   expect(project.shapes.get(key).fill.m).toEqual([5, 0, 0, 5, 22, 16]);
   drag(handles().p1, { x: 32, y: 16 });
   expect(project.shapes.get(key).fill.m.map((v) => Math.round(v * 100) / 100)).toEqual([10, 0, 0, 10, 22, 16]);
-  // A press on another shape selects it.
+  // A press on another shape edits it instead, its stop let go.
   const other = project.addShape(rectShape(2, 30, 8, 38, RED));
-  expect(vgradient.begin(ctx, { x: 5, y: 34 })).toBe(false);
+  workspace.vectorStop = 0;
+  vnode.begin(ctx, { x: 5, y: 34 }, {});
+  vnode.end(ctx);
   expect(workspace.vectorSelected).toEqual([other]);
+  expect([workspace.vectorPoints, workspace.vectorStop]).toEqual([other, null]);
 });

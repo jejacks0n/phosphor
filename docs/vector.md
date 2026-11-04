@@ -91,7 +91,7 @@ their points into line with the cells, recolor them, or change them from frame t
   from the opposite side (Shift keeps the proportions), or drag the knob above it to rotate them (Shift
   turns in steps of 15°). One shape's box turns with it; several shapes share one box, square to the grid.
 - Click empty canvas to deselect. Cmd+A (Ctrl+A) selects every shape on the frame, from any VECTOR tool (it
-  switches to Vector select; the Gradient tool stays), finishing a Pen shape under way first.
+  switches to Vector select), finishing a Pen shape under way first.
 - Cmd+C (Ctrl+C) copies the selected shapes and Cmd+X cuts them; Cmd+V pastes them on top, selected with
   Vector select, to drag into place. They land where they were copied from, so a paste onto another frame
   keeps their place; where the frame already has copies of them there, a little right of and below those, so
@@ -124,7 +124,23 @@ several (a letter's counters, a ring's hole):
 - Click empty canvas or press Esc to stop editing points; the shape stays selected. Press another shape to edit
   its points instead. Choosing another tool stops too.
 
-Each drag, added point and change is one undo step. This works on rotated and scaled shapes too: a point goes
+A shape whose fill or outline is a gradient ([Gradients](#gradients)) shows the gradient's handles too: for a
+linear one, a line from where it starts to where it ends, a square at each end; for a radial one, a square at its
+middle and one at its edge, joined by a line. Each color stop is a dot on the line, in its color. The shape's
+points and their handles come first where they meet the gradient's, and the gradient's come before the outline.
+When the fill and outline are both gradients, **Fill** and **Stroke** in the options row choose which one's
+handles show; a gradient you've just made is the one shown.
+
+- **Drag the line** (or a radial gradient's middle) to move the gradient.
+- **Drag an end** (or the edge) to stretch it and turn it about the other end (or the middle). Shift keeps it
+  across, up and down, or at 45°.
+- **Click the line** to add a stop there, in the color the gradient has there.
+- **Click a stop** to select it (it's ringed, and the selected point lets go); the color box of its chip (Fill
+  or Stroke) then sets that stop's color. **Drag a stop** along the line to slide it, or well off the line to
+  remove it (a gradient keeps at least two). **Delete** in the options row, Delete or Backspace removes the
+  selected stop; Esc lets it go.
+
+Each drag, added point or stop, and change is one undo step. This works on rotated and scaled shapes too: a point goes
 where the pointer is.
 
 ## Pen (P)
@@ -148,24 +164,6 @@ Drag from corner to corner for a **Rectangle**, an **Ellipse** or a **Polygon** 
 makes it a square, a circle or a regular polygon. The shape is drawn as you drag, becomes an ordinary
 path when you let go (so its points can be edited like any other), and is selected. A click without a drag
 makes nothing.
-
-## Gradient (G)
-
-For the first selected shape with a gradient fill or outline ([Gradients](#gradients)), the Gradient tool shows
-the gradient's handles: for a linear one, a line from where it starts to where it ends, a square at each end; for a
-radial one, a square at its middle and one at its edge, joined by a line. Each color stop is a dot on the line, in
-its color. When a shape's fill and outline are both gradients, **Fill** and **Stroke** in the options row choose
-which one the tool edits; a gradient you've just made is the one it starts on.
-
-- **Drag the line** (or a radial gradient's middle) to move the gradient.
-- **Drag an end** (or the edge) to stretch it and turn it about the other end (or the middle). Shift keeps it
-  across, up and down, or at 45°.
-- **Click the line** to add a stop there, in the color the gradient has there.
-- **Click a stop** to select it (it's ringed); the color box of its chip (Fill or Stroke) then sets that stop's
-  color. **Drag a
-  stop** along the line to slide it, or well off the line to remove it (a gradient keeps at least two). Delete or
-  Backspace removes the selected stop; Esc lets it go.
-- Press another shape to select it. Each drag, added or removed stop, and color is one undo step.
 
 ## Fill and Stroke
 
