@@ -6,7 +6,7 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
 import { rectShape, ellipseShape, translation, transformed, rotation, setSmooth, withShape, worldPoints } from '@/document/shapes';
-import vselect from '@/tools/vselect.js';
+import vnode from '@/tools/vnode.js';
 
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
 const at = (project, col, row) => project.cells[row * project.cols + col];
@@ -261,10 +261,10 @@ test('editing a point of a rotated shape moves it where the pointer is, its hand
   const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } };
   const before = project.history.version;
   const corner = worldPoints(project.shapes.get(key))[2];
-  expect(vselect.begin(ctx, corner)).toBe(true);
-  vselect.move(ctx, corner, { x: 12, y: 13 });
-  vselect.move(ctx, corner, { x: 10, y: 10 });
-  vselect.end(ctx);
+  expect(vnode.begin(ctx, corner)).toBe(true);
+  vnode.move(ctx, corner, { x: 12, y: 13 });
+  vnode.move(ctx, corner, { x: 10, y: 10 });
+  vnode.end(ctx);
   expect(workspace.vectorPoint).toBe(2);
   const moved = worldPoints(project.shapes.get(key))[2];
   expect(moved.x).toBeCloseTo(10, 1);
@@ -274,22 +274,22 @@ test('editing a point of a rotated shape moves it where the pointer is, its hand
   // The outline's middle: a point there, selected; then its handle dragged to a place in the world.
   const [a, b] = worldPoints(project.shapes.get(key));
   const middle = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-  vselect.begin(ctx, middle);
-  vselect.end(ctx);
+  vnode.begin(ctx, middle);
+  vnode.end(ctx);
   expect(project.shapes.get(key).points).toHaveLength(5);
   expect(workspace.vectorPoint).toBe(1);
   project.updateShapes([[key, setSmooth(project.shapes.get(key), 1, true)]]);
   const handle = worldPoints(project.shapes.get(key))[1].out;
-  vselect.begin(ctx, handle);
-  vselect.move(ctx, handle, { x: 20, y: 2 });
-  vselect.end(ctx);
+  vnode.begin(ctx, handle);
+  vnode.move(ctx, handle, { x: 20, y: 2 });
+  vnode.end(ctx);
   const out = worldPoints(project.shapes.get(key))[1].out;
   expect(out.x).toBeCloseTo(20, 1);
   expect(out.y).toBeCloseTo(2, 1);
 
   // Empty canvas leaves the points, and the selection stays.
-  vselect.begin(ctx, { x: 28, y: 28 });
-  vselect.end(ctx);
+  vnode.begin(ctx, { x: 28, y: 28 });
+  vnode.end(ctx);
   expect(workspace.vectorPoints).toBe(null);
   expect(workspace.vectorSelected).toEqual([key]);
 });

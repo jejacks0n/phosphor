@@ -382,6 +382,9 @@
     "vselect": {
       "title": "Vector select"
     },
+    "vnode": {
+      "title": "Node"
+    },
     "pen": {
       "title": "Pen"
     },
@@ -837,7 +840,8 @@
       "tabs": "Editor tabs"
     },
     "rows": {
-      "vselect": "Vector select: pick, move, scale and rotate shapes",
+      "vselect": "Vector select: pick, move, scale and rotate shapes (double-click: the Node tool)",
+      "vnode": "Node: press a shape to edit its points; drag a point or a handle, click the outline to add one",
       "pen": "Pen: click for a corner, drag for a curve; click the first point to close",
       "penEnd": "Leave the Pen's shape an open curve",
       "penBack": "Take the Pen's last point away",
@@ -1332,10 +1336,11 @@
     "back": "Back",
     "backTitle": "Send the shapes one step back",
     "editPoints": "Edit points",
-    "editPointsTitle": "Edit the shape's points and curves",
+    "editPointsTitle": "Edit the shape's points and curves with the Node tool (A)",
     "points": "Points",
     "deleteTitle": "Delete the selected shapes",
     "selectHint": "Drag to move, the handles to scale, the knob to rotate",
+    "lineHint": "Drag to move, an end to stretch and turn it",
     "more": "More",
     "point": "Point",
     "smooth": "Smooth",

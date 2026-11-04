@@ -1,7 +1,7 @@
 <script setup>
 // VECTOR's overlay over the art, in CSS px: the selected shapes' outlines (and on a Blank frame, dimmed, those
-// of the shapes it carries), Vector select's box with its 8
-// handles and rotate knob, the points and handles of the shape whose points are being edited (the selected
+// of the shapes it carries), Vector select's box with its 8 handles and rotate knob (a two-point path: a handle
+// at each end), the Node tool's points and handles of the shape whose points are being edited (the selected
 // point filled), and the Pen's points (the first filled: a click there closes) with its next segment, dashed, to
 // the pointer. It takes no pointer events, and shows nothing while the animation plays.
 import { computed } from 'vue';
@@ -38,9 +38,10 @@ const carried = computed(() => {
 });
 
 const box = computed(() => {
-  if (workspace.vectorPoints || !selected.value.length) return null;
+  if (workspace.activeTool === 'vnode' || !selected.value.length) return null;
   const b = selectionBox(project.shapes, selected.value);
   if (!b) return null;
+  if (b.ends) return { handles: b.ends.map(px) };
   const { handles, top, knob } = boxHandles(b, props.unit);
   return { corners: b.corners.map(px).map(({ x, y }) => `${x},${y}`).join(' '), handles: handles.map(px), top: px(top), knob: px(knob) };
 });
@@ -70,9 +71,11 @@ const r = computed(() => handleRadius() / 2 + 1);
       <path v-for="(d, i) in carried" :key="`c${i}`" :d="d" class="outline carried"/>
       <path v-for="(d, i) in outlines" :key="i" :d="d" class="outline"/>
       <template v-if="box">
-        <polygon :points="box.corners" class="box"/>
-        <line :x1="box.top.x" :y1="box.top.y" :x2="box.knob.x" :y2="box.knob.y" class="box"/>
-        <circle :cx="box.knob.x" :cy="box.knob.y" :r="r" class="handle"/>
+        <template v-if="box.knob">
+          <polygon :points="box.corners" class="box"/>
+          <line :x1="box.top.x" :y1="box.top.y" :x2="box.knob.x" :y2="box.knob.y" class="box"/>
+          <circle :cx="box.knob.x" :cy="box.knob.y" :r="r" class="handle"/>
+        </template>
         <rect v-for="(h, i) in box.handles" :key="i" :x="h.x - r" :y="h.y - r" :width="2 * r" :height="2 * r" class="handle"/>
       </template>
       <template v-if="points">

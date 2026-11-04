@@ -87,6 +87,7 @@ const groups = computed(() => [
     title: t('shortcuts.groups.vector'),
     rows: [
       [['V'], t('shortcuts.rows.vselect')],
+      [['A'], t('shortcuts.rows.vnode')],
       [['P'], t('shortcuts.rows.pen')],
       [['Enter', 'Esc'], t('shortcuts.rows.penEnd')],
       [['Backspace'], t('shortcuts.rows.penBack')],

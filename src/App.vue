@@ -69,6 +69,14 @@ watch(() => [workspace.activeTool, workspace.editorTab], () => {
   if (project._stroke?.pen && !workspace.heldTool) project.finishPen();
 });
 
+// The Node tool edits the points of the first selected shape when it's chosen; another tool stops (one held,
+// like the Hand on Space, doesn't).
+watch(() => workspace.activeTool, (tool) => {
+  if (workspace.heldTool) return;
+  if (tool !== 'vnode') workspace.vectorPoints = workspace.vectorPoint = null;
+  else if (!workspace.vectorPoints) workspace.vectorPoints = workspace.vectorSelected.find((key) => project.shapes.has(key)) ?? null;
+});
+
 // VECTOR's selection follows the shapes: one undone, deleted, or gone with a frame or a room's change drops out.
 watch(() => project.shapes, (shapes) => {
   const kept = workspace.vectorSelected.filter((key) => shapes.has(key));
