@@ -168,6 +168,39 @@ test('VECTOR\'s color box is the one the other tabs have, with Fill and Stroke f
   expect((await shapeList(page))[0]).toMatchObject({ fill: '#ff0000', stroke: null });
 });
 
+// Shift held once the drag is going (pressed first, it adds to or takes from the selection).
+test('Shift while moving a shape keeps it on a straight line or a 45° angle', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const key = await addRect(page, 10, 10, 20, 20);
+  await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
+  const drag = async (to) => {
+    const from = await gridPoint(page, 15, 15);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 4, from.y + 4);
+    await page.keyboard.down('Shift');
+    const end = await gridPoint(page, 15 + to.x, 15 + to.y);
+    for (let i = 1; i <= 6; i++) await page.mouse.move(from.x + (end.x - from.x) * i / 6, from.y + (end.y - from.y) * i / 6);
+    await page.mouse.up();
+    await page.keyboard.up('Shift');
+    const m = await matrix(page, key);
+    await page.keyboard.press('ControlOrMeta+z');
+    return [m[4], m[5]];
+  };
+  const [ax, ay] = await drag({ x: 12, y: 2 }); // mostly across: level
+  expect(ay).toBe(0);
+  expect(ax).toBeGreaterThan(10);
+  const [bx, by] = await drag({ x: 2, y: -12 }); // mostly up: straight up
+  expect(bx).toBe(0);
+  expect(by).toBeLessThan(-10);
+  const [cx, cy] = await drag({ x: 9, y: 11 }); // near the diagonal: on it
+  expect(cx).toBeCloseTo(cy, 4);
+  expect(cx).toBeGreaterThan(8);
+  expect(await matrix(page, key)).toEqual([1, 0, 0, 1, 0, 0]);
+});
+
 test('Fill, Stroke and Stroke width change the selected shape; Forward and Back restack it; Delete removes it', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
