@@ -233,6 +233,22 @@ test('Fill, Stroke and Stroke width change the selected shape; Forward and Back 
   expect([back.fill, back.stroke, back.width]).toEqual(['#ff0000', null, 1]);
 });
 
+test('Cmd+A selects every shape, with Vector select, and not the page\'s text', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const a = await addRect(page, 10, 10, 20, 20), b = await addRect(page, 30, 10, 40, 20);
+  await page.keyboard.press('p'); // from another tool, and with a Pen shape under way
+  await page.mouse.click(...Object.values(await gridPoint(page, 10, 40)));
+  await page.mouse.click(...Object.values(await gridPoint(page, 30, 40)));
+  await page.keyboard.press('ControlOrMeta+a');
+  const drawn = (await shapeList(page)).map((s) => s.key);
+  expect(drawn).toHaveLength(3); // the Pen's shape finished first
+  expect(await selected(page)).toEqual(expect.arrayContaining([a, b, ...drawn]));
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vselect');
+  expect(await page.evaluate(() => String(window.getSelection()))).toBe('');
+});
+
 test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

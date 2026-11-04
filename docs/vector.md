@@ -89,7 +89,8 @@ their points into line with the cells, recolor them, or change them from frame t
   straight across, straight up and down, or at 45°), drag one of its eight handles to scale them
   from the opposite side (Shift keeps the proportions), or drag the knob above it to rotate them (Shift
   turns in steps of 15°). One shape's box turns with it; several shapes share one box, square to the grid.
-- Click empty canvas to deselect.
+- Click empty canvas to deselect. Cmd+A (Ctrl+A) selects every shape on the frame, from any VECTOR tool (it
+  switches to Vector select; the Gradient tool stays), finishing a Pen shape under way first.
 - Double-click a shape (or press **Edit points**) to edit its points with the Node tool (below).
 - The arrow keys nudge the selection a pixel (with Shift, 10). Delete or Backspace deletes it. Esc deselects.
 
