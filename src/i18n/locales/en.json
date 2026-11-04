@@ -660,6 +660,7 @@
     "straightLine": "straight line",
     "pickColor": "pick color",
     "pickBackground": "pick background",
+    "breakHandle": "drag a handle to break it from its partner",
     "spaceKey": "Space",
     "pan": "pan",
     "colRow": "Col {col} Row {row}",

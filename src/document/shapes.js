@@ -264,9 +264,10 @@ export function movePoint(shape, i, dx, dy) {
 }
 
 // Point i's handle ('in' or 'out') to (x, y), local. A smooth point's other handle turns to stay in line, at
-// its own length.
-export function moveHandle(shape, i, which, x, y) {
+// its own length; alone (Alt), it stays where it is and the point's handles are free of each other from then on.
+export function moveHandle(shape, i, which, x, y, { alone = false } = {}) {
   const pts = shape.points.map((p) => p.slice()), p = pts[i];
+  if (alone) p[6] = 0;
   const [own, other] = which === 'in' ? [2, 4] : [4, 2];
   p[own] = x - p[0];
   p[own + 1] = y - p[1];

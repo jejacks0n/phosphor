@@ -660,6 +660,7 @@
     "straightLine": "ligne droite",
     "pickColor": "prélever la couleur",
     "pickBackground": "prélever l'arrière-plan",
+    "breakHandle": "faire glisser une poignée pour la séparer de l'autre",
     "spaceKey": "Espace",
     "pan": "panoramique",
     "colRow": "Col {col} Lig {row}",

@@ -315,6 +315,17 @@ test('double-click edits points: drag a point and a handle, click the outline to
   expect(bent[5]).toBeLessThan(-3);
   expect(Math.hypot(bent[2], bent[3])).toBeCloseTo(10 / 3, 1); // the in handle turned with it, at its own length
   expect(bent[3]).toBeGreaterThan(2);
+  // Alt-dragging the in handle breaks it from the out handle, which stays where it is; the status bar says how.
+  await expect(page.locator('.ansi-status .hint')).toContainText('drag a handle to break it from its partner');
+  const inHandle = { x: bent[0] + bent[2], y: bent[1] + bent[3] }, m = await matrix(page, key);
+  await page.keyboard.down('Alt');
+  await dragPoints(page, await gridPoint(page, inHandle.x + m[4], inHandle.y + m[5]), await gridPoint(page, inHandle.x + m[4] - 4, inHandle.y + m[5]));
+  await page.keyboard.up('Alt');
+  const broke = await store(page, 'project', `(p) => p.shapes.get('${key}').points[1]`);
+  expect(broke.slice(4, 6)).toEqual(bent.slice(4, 6));
+  expect(broke[2]).toBeLessThan(bent[2] - 2);
+  expect(broke[6]).toBe(0);
+  await row.getByRole('button', { name: 'Smooth', exact: true }).click(); // smooth again, for Corner below
   await row.getByRole('button', { name: 'Corner', exact: true }).click();
   expect((await world(1)).smooth).toBe(0);
   expect((await store(page, 'project', `(p) => p.shapes.get('${key}').points[1]`)).slice(2, 6)).toEqual([0, 0, 0, 0]);
@@ -327,7 +338,7 @@ test('double-click edits points: drag a point and a handle, click the outline to
   expect(await store(page, 'workspace', (w) => w.vectorPoints)).toBe(null);
   expect(await selected(page)).toEqual([key]);
 
-  await undoSteps(page, 5); // Delete point, Corner, the handle, Smooth, the added point
+  await undoSteps(page, 7); // Delete point, Corner, Smooth, the broken handle, the handle, Smooth, the added point
   expect((await world(2))).toMatchObject({ n: 4, x: expect.closeTo(36, 0) });
 });
 
