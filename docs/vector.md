@@ -93,9 +93,10 @@ their points into line with the cells, recolor them, or change them from frame t
 - Click empty canvas to deselect. Cmd+A (Ctrl+A) selects every shape on the frame, from any VECTOR tool (it
   switches to Vector select; the Gradient tool stays), finishing a Pen shape under way first.
 - Cmd+C (Ctrl+C) copies the selected shapes and Cmd+X cuts them; Cmd+V pastes them on top, selected with
-  Vector select, to drag into place. After a copy they land a little right of and below the last ones, so you
-  see them; after a cut, where they were. The options row has the same Copy, Cut and Paste buttons as Select's.
-  The paste is one undo step, and goes to whatever frame is showing. Shapes copy within this tab only.
+  Vector select, to drag into place. They land where they were copied from, so a paste onto another frame
+  keeps their place; where the frame already has copies of them there, a little right of and below those, so
+  you see them land. The options row has the same Copy, Cut and Paste buttons as Select's. The paste is one
+  undo step, and goes to whatever frame is showing. Shapes copy within this tab only.
 - Double-click a shape (or press **Edit points**) to edit its points with the Node tool (below).
 - The arrow keys nudge the selection a pixel (with Shift, 10). Delete or Backspace deletes it. Esc deselects.
 
