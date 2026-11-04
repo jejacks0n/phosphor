@@ -9,6 +9,7 @@ import { makeShape, outlines, rectShape, ellipseShape, translation, transformed,
 import { paintShape } from '@/document/ShapeLayer.js';
 import { shapeAt } from '@/lib/shapeHits.js';
 import vnode from '@/tools/vnode.js';
+import vgradient, { gradientHandles } from '@/tools/vgradient.js';
 
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
 const at = (project, col, row) => project.cells[row * project.cols + col];
@@ -444,4 +445,90 @@ test('a radial gradient stretched with its shape is an ellipse', async () => {
   // A focal point off the center: the red is there.
   const focal = painted(withShape(rectShape(10, 10, 30, 30, RED), { fill: { ...fill, f: [0.5, 0] } }));
   expect(near(focal(25, 20), [255, 0, 0], 40)).toBe(true);
+});
+
+test('the Gradient tool moves, stretches and turns a gradient, and adds, slides and removes stops, one step each', async () => {
+  const { project, workspace } = await gradient(40, 40);
+  const fill = { type: 'linear', stops: RED_TO_BLUE, m: [20, 0, 0, 20, 10, 15] }; // (10, 15) to (30, 15)
+  const key = project.addShape(withShape(rectShape(10, 10, 30, 20, RED), { fill }));
+  workspace.vectorSelected = [key];
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } };
+  const drag = (from, ...to) => {
+    const took = vgradient.begin(ctx, from);
+    let at = from;
+    for (const p of to) {
+      vgradient.move(ctx, at, p);
+      at = p;
+    }
+    vgradient.end(ctx);
+    return took;
+  };
+  const handles = () => gradientHandles(project.shapes.get(key));
+  const steps = () => project.history.version;
+  const round = (p) => [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100];
+  let version = steps();
+
+  // The line, dragged: the gradient moves.
+  expect(drag({ x: 20, y: 15 }, { x: 21, y: 16 }, { x: 22, y: 17 })).toBe(true);
+  expect(project.shapes.get(key).fill.m).toEqual([20, 0, 0, 20, 12, 17]);
+  expect(steps()).toBe(++version);
+
+  // An end, dragged: the other stays, and the gradient stretches and turns.
+  drag(handles().p1, { x: 32, y: 27 }, { x: 32, y: 37 });
+  expect(round(handles().p0)).toEqual([12, 17]);
+  expect(round(handles().p1)).toEqual([32, 37]);
+  expect(steps()).toBe(++version);
+  // Shift: at 45° (or across, or up and down).
+  workspace.isShiftPressed = true;
+  drag(handles().p1, { x: 30, y: 30 }, { x: 33, y: 36 });
+  workspace.isShiftPressed = false;
+  const [dx, dy] = [handles().p1.x - handles().p0.x, handles().p1.y - handles().p0.y];
+  expect(dx).toBeCloseTo(dy, 5);
+  expect(steps()).toBe(version + 1);
+  project.undo();
+  expect(round(handles().p1)).toEqual([32, 37]);
+  version = steps();
+
+  // A click on the line: a stop there, in the color the gradient has there, selected.
+  const middle = { x: 22, y: 27 };
+  drag(middle);
+  const stops = () => project.shapes.get(key).fill.stops;
+  expect(stops()).toHaveLength(3);
+  expect(stops()[1][0]).toBeCloseTo(0.5, 2);
+  expect(stops()[1][1]).toMatch(/^#(7f|80)00(7f|80)$/);
+  expect(workspace.vectorStop).toBe(1);
+  expect(steps()).toBe(++version);
+
+  // The stop, dragged along the line: its offset; past another, it takes its place in order.
+  drag(handles().stops[1].at, { x: 17, y: 22 });
+  expect(stops()[1][0]).toBeCloseTo(0.25, 2);
+  expect(steps()).toBe(++version);
+  // A click on a stop selects it, and changes nothing.
+  workspace.vectorStop = null;
+  drag(handles().stops[2].at);
+  expect(workspace.vectorStop).toBe(2);
+  expect(steps()).toBe(version);
+  // Dragged well off the line: gone (but two always stay).
+  drag(handles().stops[1].at, { x: 18, y: 22 }, { x: 30, y: 10 });
+  expect(stops()).toHaveLength(2);
+  expect(steps()).toBe(version + 1);
+  project.undo();
+  expect(stops()).toHaveLength(3);
+  project.redo();
+  // With two left, one dragged off stays.
+  const two = withShape(project.shapes.get(key), { fill: { ...project.shapes.get(key).fill, stops: [[0.2, '#ff0000'], [0.8, '#0000ff']] } });
+  project.updateShapes([[key, two]]);
+  drag(handles().stops[0].at, { x: 18, y: 22 }, { x: 30, y: 10 });
+  expect(stops()).toHaveLength(2);
+
+  // A radial gradient: its center moves it, its radius handle stretches it.
+  project.updateShapes([[key, withShape(project.shapes.get(key), { fill: { type: 'radial', stops: RED_TO_BLUE, m: [5, 0, 0, 5, 20, 15] } })]]);
+  drag({ x: 20, y: 15 }, { x: 22, y: 16 });
+  expect(project.shapes.get(key).fill.m).toEqual([5, 0, 0, 5, 22, 16]);
+  drag(handles().p1, { x: 32, y: 16 });
+  expect(project.shapes.get(key).fill.m.map((v) => Math.round(v * 100) / 100)).toEqual([10, 0, 0, 10, 22, 16]);
+  // A press on another shape selects it.
+  const other = project.addShape(rectShape(2, 30, 8, 38, RED));
+  expect(vgradient.begin(ctx, { x: 5, y: 34 })).toBe(false);
+  expect(workspace.vectorSelected).toEqual([other]);
 });

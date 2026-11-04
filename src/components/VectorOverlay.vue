@@ -2,13 +2,15 @@
 // VECTOR's overlay over the art, in CSS px: the selected shapes' outlines (and on a Blank frame, dimmed, those
 // of the shapes it carries), Vector select's box with its 8 handles and rotate knob, the Node tool's points and
 // handles of the shape whose points are being edited (the selected point filled), and the Pen's points (the
-// first filled: a click there closes) with its next segment, dashed, to the pointer. It takes no pointer events,
+// first filled: a click there closes) with its next segment, dashed, to the pointer; and the Gradient tool's line,
+// ends and stops (each in its color, the selected one ringed). It takes no pointer events,
 // and shows nothing while the animation plays.
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { pathData, worldPoints } from '@/document/shapes.js';
 import { boxHandles, handleRadius, selectionBox } from '@/tools/vselect.js';
+import { gradientHandles, gradientKey } from '@/tools/vgradient.js';
 
 const props = defineProps({
   unit: { type: Object, default: null },    // CSS px per grid pixel: { x, y }
@@ -38,7 +40,7 @@ const carried = computed(() => {
 });
 
 const box = computed(() => {
-  if (workspace.activeTool === 'vnode' || !selected.value.length) return null;
+  if (['vnode', 'vgradient'].includes(workspace.activeTool) || !selected.value.length) return null;
   const b = selectionBox(project.shapes, selected.value);
   if (!b) return null;
   const { handles, top, knob } = boxHandles(b, props.unit);
@@ -61,6 +63,14 @@ const pen = computed(() => {
   return { all, next: hover && { from: all.at(-1), to: hover } };
 });
 
+const gradient = computed(() => {
+  if (workspace.activeTool !== 'vgradient') return null;
+  const key = gradientKey(project, workspace);
+  if (!key) return null;
+  const { p0, p1, stops } = gradientHandles(project.shapes.get(key));
+  return { p0: px(p0), p1: px(p1), stops: stops.map((s) => ({ ...s, at: px(s.at) })) };
+});
+
 const r = computed(() => handleRadius() / 2 + 1);
 </script>
 
@@ -81,6 +91,11 @@ const r = computed(() => handleRadius() / 2 + 1);
           <circle :cx="a.to.x" :cy="a.to.y" :r="r * 0.8" class="handle"/>
         </g>
         <rect v-for="p in points.all" :key="p.i" :x="p.at.x - r" :y="p.at.y - r" :width="2 * r" :height="2 * r" class="handle" :class="{ on: workspace.vectorPoint === p.i }"/>
+      </template>
+      <template v-if="gradient">
+        <line :x1="gradient.p0.x" :y1="gradient.p0.y" :x2="gradient.p1.x" :y2="gradient.p1.y" class="arm"/>
+        <rect v-for="(p, i) in [gradient.p0, gradient.p1]" :key="`e${i}`" :x="p.x - r" :y="p.y - r" :width="2 * r" :height="2 * r" class="handle"/>
+        <circle v-for="s in gradient.stops" :key="`s${s.i}`" :cx="s.at.x" :cy="s.at.y" :r="r * 0.9" class="stop" :class="{ on: workspace.vectorStop === s.i }" :style="{ fill: s.color }" :data-stop="s.i"/>
       </template>
       <template v-if="pen">
         <line v-if="pen.next" :x1="pen.next.from.x" :y1="pen.next.from.y" :x2="pen.next.to.x" :y2="pen.next.to.y" class="box"/>
@@ -121,5 +136,14 @@ svg.vector-overlay {
 
 .handle.on {
   fill: var(--accent, #4aa3ff);
+}
+.stop {
+  stroke: white;
+  stroke-width: 1.5px;
+}
+
+.stop.on {
+  stroke: var(--accent, #4aa3ff);
+  stroke-width: 3px;
 }
 </style>

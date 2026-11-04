@@ -382,6 +382,9 @@
     "vselect": {
       "title": "Vector select"
     },
+    "vgradient": {
+      "title": "Gradient"
+    },
     "vnode": {
       "title": "Node"
     },
@@ -842,6 +845,7 @@
     },
     "rows": {
       "vselect": "Vector select: pick, move, scale and rotate shapes (double-click: the Node tool)",
+      "vgradient": "Gradient: move, stretch and turn a shape's gradient, and edit its stops",
       "vnode": "Node: press a shape to edit its points; drag a point or a handle, click the outline to add one",
       "pen": "Pen: click for a corner, drag for a curve; click the first point to close",
       "penEnd": "Leave the Pen's shape an open curve",
