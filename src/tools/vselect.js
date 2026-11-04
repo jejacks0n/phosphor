@@ -10,6 +10,7 @@
 import { t } from '@/i18n/index.js';
 import { apply, curveBounds, invert, localBounds, multiply, rotation, scaling, translation, transformed, withShape } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
+import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
 import { handlePicker } from '@/tools/handlePick.js';
@@ -158,7 +159,7 @@ export default {
       // The box's handles and the knob, and (one shape) its gradient's, which come first; or a click again's.
       const { handles, knob } = boxHandles(box, unit), letStop = () => { workspace.vectorStop = null; };
       const d = (p) => Math.hypot((p.x - pos.x) * unit.x, (p.y - pos.y) * unit.y);
-      const own = [{ id: 'knob', d: d(knob), take: () => at('rotate'), picked: letStop }, ...handles.map((h, handle) => ({ id: `h${handle}`, d: d(h), take: () => at('scale', { handle }), picked: letStop }))];
+      const own = [{ id: 'knob', d: d(knob), take: () => at('rotate'), picked: letStop }, ...handles.map((h, handle) => ({ id: `h${handle}`, d: d(h), take: () => at('scale', { handle, grip: h }), picked: letStop }))];
       if (pick.press([...own.filter((c) => c.d <= radius), ...gradientDrag.candidates(ctx, pos, radius)], pos, unit)) return true;
     } else pick.reset();
     const hit = shapeAt(project.shapes, pos.x, pos.y, tol);
@@ -195,11 +196,20 @@ export default {
       if (drag.moved) workspace.vectorMarquee = { x0: Math.min(f.x, to.x), y0: Math.min(f.y, to.y), x1: Math.max(f.x, to.x), y1: Math.max(f.y, to.y) };
       return;
     }
+    const snap = snapMode(workspace);
     if (drag.kind === 'move') {
       const end = shift ? snappedEnd(drag.from, to) : to;
-      reshape(project, drag, (shape) => transformed(shape, translation(end.x - drag.from.x, end.y - drag.from.y)).m);
+      // Snap to: the box's corner nearest the grab on the grid (along Shift's line), the shapes with it.
+      const corner = drag.box.corners.reduce((a, b) => (Math.hypot(b.x - drag.from.x, b.y - drag.from.y) < Math.hypot(a.x - drag.from.x, a.y - drag.from.y) ? b : a));
+      const moved = { x: corner.x + end.x - drag.from.x, y: corner.y + end.y - drag.from.y };
+      const at = shift ? snapAlong(corner, moved, snap) : snapPoint(moved, snap);
+      reshape(project, drag, (shape) => transformed(shape, translation(at.x - corner.x, at.y - corner.y)).m);
     }
-    else if (drag.kind === 'scale') scaleTo(project, drag, to, shift);
+    else if (drag.kind === 'scale') {
+      // Snap to: the handle dragged on the grid, where it was grabbed moved with the pointer.
+      const grip = snapPoint({ x: drag.grip.x + to.x - drag.from.x, y: drag.grip.y + to.y - drag.from.y }, snap);
+      scaleTo(project, drag, snap === 'none' ? to : grip, shift);
+    }
     else rotateTo(project, drag, to, shift);
   },
 

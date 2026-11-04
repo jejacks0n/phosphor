@@ -1,10 +1,11 @@
 // The Shape tool (the VECTOR tab): drag from corner to corner for a rectangle, an ellipse or a polygon
 // (Sides: 3 to 12), drawn live and made an ordinary path, one undo step. Shift makes it a square, a circle
-// or a regular polygon. It gets the next shape's style (workspace.vectorStyle) and is selected when it's
+// or a regular polygon; Snap to puts both corners on the grid. It gets the next shape's style (workspace.vectorStyle) and is selected when it's
 // made; a click without a drag makes nothing.
 import { t } from '@/i18n/index.js';
 import { ellipseShape, polygonShape, rectShape, styleColors, withShape } from '@/document/shapes.js';
 import shapes from '@/tools/shapes.js';
+import { snapMode, snapPoint } from '@/lib/vectorSnap.js';
 
 let drag = null; // { from, key }
 
@@ -48,13 +49,14 @@ export default {
     },
   ],
 
-  begin({ project }, pos) {
-    drag = { from: pos, key: null };
+  begin({ project, workspace }, pos) {
+    drag = { from: snapPoint(pos, snapMode(workspace)), key: null };
     project.beginEdit();
     return true;
   },
 
   move({ project, workspace }, from, to) {
+    to = snapPoint(to, snapMode(workspace));
     if (!drag || (to.x === drag.from.x && to.y === drag.from.y)) return;
     const shape = shapeFor(workspace, drag.from, to, workspace.isShiftPressed);
     if (!drag.key) drag.key = project.addShape(shape);

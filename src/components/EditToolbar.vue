@@ -230,6 +230,8 @@ const shownToggles = (option) => {
   const value = workspace[option.key];
   return option.shiftFlips && workspace.isShiftPressed ? Object.fromEntries(Object.entries(value).map(([k, on]) => [k, !on])) : value;
 };
+const SNAP_MODES = ['none', 'cells', 'half'];
+const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M128 96H256V160H128ZM384 96H512V160H384ZM128 176H256V320A64 64 0 0 0 384 320V176H512V320A192 192 0 0 1 128 320Z"/></svg>';
 </script>
 
 <template>
@@ -293,6 +295,15 @@ const shownToggles = (option) => {
           <span class="tool-icon" v-html="tool.icon"></span><span>{{ tool.title }}</span>
         </button>
       </DropdownMenu>
+
+      <!-- VECTOR's Snap to: where points placed or dragged land (vectorSnap.js). -->
+      <template v-if="workspace.editorTab === 'vector'">
+        <div v-if="!phoneLayout" class="divider"/>
+        <DropdownMenu class="option-menu snap-menu" :class="{ on: phoneLayout && workspace.vectorSnap !== 'none' }" align="left" :label="t('vector.snapTo', { mode: t(`vector.snap.${workspace.vectorSnap}`) })">
+          <template v-if="phoneLayout" #trigger><span v-html="SNAP_ICON"></span></template><!-- a phone: a magnet, lit when it snaps -->
+          <button v-for="mode in SNAP_MODES" :key="mode" class="choice" :class="{ on: workspace.vectorSnap === mode }" :title="t('vector.snapToTitle', { key: shortcut('mod') })" @click="workspace.vectorSnap = mode"><span>{{ t(`vector.snap.${mode}`) }}</span></button>
+        </DropdownMenu>
+      </template>
 
       <div ref="toolSpacer" class="spacer"/>
 
@@ -529,7 +540,8 @@ div.tool-group > * {
   flex-shrink: 0;
 }
 
-.tools-menu :deep(svg) {
+.tools-menu :deep(svg),
+.snap-menu :deep(.dropdown-trigger svg) {
   display: block;
   width: 16px;
   height: 16px;
@@ -537,17 +549,20 @@ div.tool-group > * {
 }
 
 .tools-menu :deep(.dropdown-trigger:hover) svg,
+.snap-menu :deep(.dropdown-trigger:hover svg),
 .tools-menu button.choice.on :deep(svg) {
   fill: var(--white);
 }
 
-/* The active tool is in the menu: the ⋯ lights up like a tool button. */
-.tools-menu.holds-active :deep(.dropdown-trigger) {
+/* The active tool is in the menu: the ⋯ lights up like a tool button; so does a phone's magnet when it snaps. */
+.tools-menu.holds-active :deep(.dropdown-trigger),
+.snap-menu.on :deep(.dropdown-trigger) {
   background: var(--accent);
   border-color: var(--accent);
 }
 
-.tools-menu.holds-active :deep(svg) {
+.tools-menu.holds-active :deep(svg),
+.snap-menu.on :deep(.dropdown-trigger svg) {
   fill: var(--white);
 }
 

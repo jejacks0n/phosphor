@@ -874,6 +874,25 @@ test('Vector select shows one shape\'s gradient: a click on its end, over a scal
   expect(await store(page, 'workspace', (w) => [w.vectorStop, w.vectorSelected.length])).toEqual([null, 1]);
 });
 
+test('Snap to in VECTOR\'s tool row: Cells puts a shape drawn on cell corners', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'ANSI').click();
+  await expect(page.getByRole('button', { name: /^Snap to/ })).toHaveCount(0); // VECTOR's only
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const snap = page.getByRole('button', { name: /^Snap to/ });
+  await expect(snap).toContainText('None');
+  await snap.click();
+  await page.getByRole('button', { name: 'Cells', exact: true }).click();
+  await expect(snap).toContainText('Cells');
+  expect(await store(page, 'workspace', (w) => w.vectorSnap)).toBe('cells');
+  await page.keyboard.press('u');
+  await dragPoints(page, await gridPoint(page, 10.3, 11.2), await gridPoint(page, 20.4, 18.7));
+  const xs = (shape) => shape.points.map((p) => p[0]), ys = (shape) => shape.points.map((p) => p[1]);
+  const [drawn] = await shapeList(page);
+  expect([Math.min(...xs(drawn)), Math.min(...ys(drawn)), Math.max(...xs(drawn)), Math.max(...ys(drawn))]).toEqual([10, 12, 20, 18]);
+});
+
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

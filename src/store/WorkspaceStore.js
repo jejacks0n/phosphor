@@ -41,6 +41,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     pickLayers: { fg: true, bg: true }, // ANSI view: what a plain picker click picks (both lit: both)
     pixelPickSlot: { fg: true, bg: false }, // pixel view: what a plain picker click picks, one lit (Shift: the other)
     vectorPickSlot: { fill: true, stroke: false }, // VECTOR: what a plain picker click sets, one lit (Shift: the other)
+    vectorSnap: 'none',      // VECTOR's Snap to: 'none' | 'cells' | 'half' (half cells, both ways); vectorSnap.js
     lastPick: null,          // the Color Picker's last ANSI pick, for the status bar: { col, row, fg, bg, fgFrom, bgFrom }
     textCursor: null,      // { col, row } of the Text tool's cursor
     lastTextCursor: null,  // where it was when Escape put it away: choosing Edit Mode puts it back there
@@ -93,6 +94,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     documentAnswered: false, // autosave's restore has really finished, however long it took (a room coming back waits for this)
     isPainting: false,
     isCtrlPressed: false,
+    isMetaPressed: false,    // Cmd on a Mac (with Ctrl, it turns VECTOR's Snap to off for a drag)
     isMiddleClick: false,
     settingsOpen: false,
     showAboutModal: false,

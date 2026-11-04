@@ -82,6 +82,22 @@ their points into line with the cells, recolor them, or change them from frame t
   nothing.
 - Nothing in the file runs or loads: it's read as data, never shown as a page.
 
+## Snap to
+
+**Snap to** in VECTOR's tool row (a magnet on a phone, lit while it snaps) puts the points you place or drag on
+the cell grid, so a shape's edges fall on cell edges and turn into clean characters:
+
+- **None** (to start with) leaves them where the pointer is.
+- **Cells** puts them on cells' corners.
+- **Half cells** puts them on cells' halves both ways: their corners, the middles of their edges and their
+  centers, where half-blocks (▀ ▄ ▌ ▐) split a cell.
+
+What snaps: the Pen's points (a curve's handles stay where you drag them), the Shape tool's two corners, a point
+dragged with the Node tool (curve handles and a gradient's handles stay free), and with Vector select the corner
+of the box nearest where you grabbed it, as you move, or the handle you drag, as you scale. Rotating doesn't
+snap. With Shift held, its straight line comes first, and the point snaps along it where it can. Hold Cmd (Ctrl
+on Windows and Linux) while you drag to place or move without snapping. The choice lasts until you reload.
+
 ## Vector select (V)
 
 - Click a shape to select it. Shift-click adds a shape to the selection, or takes it away.
