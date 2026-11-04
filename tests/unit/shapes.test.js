@@ -346,3 +346,36 @@ test('styleColors gives the next shape its caps and joins', () => {
   const plain = makeShape({ ...shape, ...styleColors({ ...workspace, vectorStyle: { ...workspace.vectorStyle, cap: 'round', join: 'round', miter: 4 } }) });
   assert.equal('cap' in plain || 'join' in plain || 'miter' in plain, false);
 });
+
+test('gradient fills validate and round trip', () => {
+  const linear = { type: 'linear', stops: [[0, '#ff0000'], [0.12345, '#00ff00'], [1, '#0000ff']], m: [10, 0, 0, 10, 0, 0] };
+  const base = { z: 0, closed: true, points: sq(0, 10), fill: linear, stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0] };
+  const shape = shapeFromStranger(base);
+  assert.ok(shape);
+  assert.deepEqual(shape.fill, { type: 'linear', stops: [[0, '#ff0000'], [0.123, '#00ff00'], [1, '#0000ff']], m: [10, 0, 0, 10, 0, 0] });
+  assert.ok(sameShape(shape, shapeFromStranger(JSON.parse(JSON.stringify(shape)))));
+  assert.ok(Object.isFrozen(shape.fill) && Object.isFrozen(shape.fill.stops[0]));
+  // A radial's focal point is kept, and left out at the center.
+  const radial = (f) => shapeFromStranger({ ...base, fill: { type: 'radial', stops: linear.stops, m: [5, 0, 0, 5, 5, 5], ...(f && { f }) } });
+  assert.deepEqual(radial([0.5, 0]).fill.f, [0.5, 0]);
+  assert.equal('f' in makeShape({ ...base, fill: { type: 'radial', stops: linear.stops, m: [5, 0, 0, 5, 5, 5], f: [0, 0] } }).fill, false);
+  assert.equal('f' in radial(null).fill, false);
+  // A solid fill is as it was.
+  assert.equal(shapeFromStranger({ ...base, fill: '#123456' }).fill, '#123456');
+  const bad = (fill) => assert.equal(shapeFromStranger({ ...base, fill }), null, JSON.stringify(fill));
+  bad({ ...linear, stops: [[0, '#ff0000']] });
+  bad({ ...linear, stops: Array.from({ length: 17 }, (_, i) => [i / 16, '#ff0000']) });
+  bad({ ...linear, stops: [[0, '#ff0000'], [2, '#0000ff']] });
+  bad({ ...linear, stops: [[0.5, '#ff0000'], [0.2, '#0000ff']] });
+  bad({ ...linear, stops: [[0, 'red'], [1, '#0000ff']] });
+  bad({ ...linear, stops: [[0, '#ff0000', 1], [1, '#0000ff']] });
+  bad({ ...linear, m: [1, 2, 2, 4, 0, 0] }); // singular
+  bad({ ...linear, m: [1, 0, 0, 1, 0] });
+  bad({ ...linear, type: 'conic' });
+  bad({ ...linear, f: [0.5, 0] }); // a focal point is a radial's
+  bad({ type: 'radial', stops: linear.stops, m: [1, 0, 0, 1, 0, 0], f: [2, 0] }); // outside the circle
+  bad({ ...linear, extra: 1 });
+  bad([linear]);
+  // A gradient can't be a stroke.
+  assert.equal(shapeFromStranger({ ...base, fill: null, stroke: linear }), null);
+});

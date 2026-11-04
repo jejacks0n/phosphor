@@ -5,7 +5,8 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
-import { makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, setSmooth, withShape, worldPoints } from '@/document/shapes';
+import { makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, scaling, setSmooth, withShape, worldPoints } from '@/document/shapes';
+import { paintShape } from '@/document/ShapeLayer.js';
 import { shapeAt } from '@/lib/shapeHits.js';
 import vnode from '@/tools/vnode.js';
 
@@ -395,4 +396,52 @@ test('Join makes a ring from a square and a smaller one inside it, and Separate 
   expect(key(project.cells)).toEqual(two);
   expect(project.joinShapes([outer])).toBe(null); // one shape: nothing to join
   expect(project.separateShape(inner)).toBe(null); // one outline: nothing to separate
+});
+
+// A shape painted alone at 4 px a grid pixel on black: the color at grid pixel (x, y).
+function painted(shape, w = 40, h = 40) {
+  const K = 4, ctx = new OffscreenCanvas(w * K, h * K).getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, w * K, h * K);
+  paintShape(ctx, shape, K);
+  return (x, y) => [...ctx.getImageData(Math.floor(x * K), Math.floor(y * K), 1, 1).data.slice(0, 3)];
+}
+const near = (a, b, by = 24) => a.every((v, i) => Math.abs(v - b[i]) <= by);
+const RED_TO_BLUE = [[0, '#ff0000'], [1, '#0000ff']];
+
+test('a linear gradient runs from its first stop to its last across the shape, and turns with it', async () => {
+  // Across the rectangle's box: (4, 4) to (36, 4) in the shape's own space.
+  const fill = { type: 'linear', stops: RED_TO_BLUE, m: [32, 0, 0, 32, 4, 4] };
+  const shape = withShape(rectShape(4, 4, 36, 36, RED), { fill });
+  const px = painted(shape);
+  expect(near(px(5, 20), [255, 0, 0], 40)).toBe(true);
+  expect(near(px(35, 20), [0, 0, 255], 40)).toBe(true);
+  expect(near(px(20, 20), [128, 0, 128], 24)).toBe(true);
+  expect(px(2, 20)).toEqual([0, 0, 0]); // only inside the shape
+  // Turned a quarter about its middle: the first stop is at the top.
+  const turned = painted(transformed(shape, rotation(Math.PI / 2, 20, 20)));
+  expect(near(turned(20, 5), [255, 0, 0], 40)).toBe(true);
+  expect(near(turned(20, 35), [0, 0, 255], 40)).toBe(true);
+  // And it converts with the picture: the cells on the left are redder than those on the right.
+  const { project } = await gradient(40, 40);
+  project.addShape(shape);
+  await settle(project);
+  const red = (col) => parseInt(at(project, col, 10).fg.hex.slice(1, 3), 16);
+  expect(red(5)).toBeGreaterThan(red(34) + 100);
+});
+
+test('a radial gradient stretched with its shape is an ellipse', async () => {
+  // A circle of radius 10 about (20, 20), red in the middle to blue at the rim, then the shape stretched ×1.5
+  // across about its middle.
+  const fill = { type: 'radial', stops: RED_TO_BLUE, m: [10, 0, 0, 10, 20, 20] };
+  const shape = transformed(withShape(rectShape(10, 10, 30, 30, RED), { fill }), scaling(1.5, 1, 20, 20));
+  const px = painted(shape);
+  expect(near(px(20, 20), [255, 0, 0], 40)).toBe(true);
+  // Half way out: 7.5 across, 5 down, the same color.
+  expect(near(px(27.5, 20), px(20, 25), 12)).toBe(true);
+  expect(near(px(27.5, 20), [128, 0, 128], 40)).toBe(true);
+  expect(near(px(20, 29.5), [0, 0, 255], 40)).toBe(true);
+  // A focal point off the center: the red is there.
+  const focal = painted(withShape(rectShape(10, 10, 30, 30, RED), { fill: { ...fill, f: [0.5, 0] } }));
+  expect(near(focal(25, 20), [255, 0, 0], 40)).toBe(true);
 });
