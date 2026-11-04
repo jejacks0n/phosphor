@@ -662,6 +662,35 @@ test('the Stroke color box sets caps, joins and the miter limit on the selection
   expect(await height()).toBe(ansi);
 });
 
+test('the Stroke color box puts the stroke inside, centered on or outside the outline; with only open paths selected it can\'t', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const key = await addRect(page, 10, 10, 20, 20);
+  await page.mouse.click(...Object.values(await gridPoint(page, 11, 11)));
+  await page.locator('.color-pair .chip.bg').click();
+  const box = page.locator('.color-popover'), button = (name) => box.getByRole('button', { name, exact: true });
+  await expect(button('Stroke centered')).toHaveAttribute('aria-pressed', 'true');
+  await button('Stroke inside').click();
+  expect((await shapeList(page))[0]).toMatchObject({ align: 'inside' });
+  await expect(button('Stroke inside')).toHaveAttribute('aria-pressed', 'true');
+  await button('Stroke outside').click();
+  expect((await shapeList(page))[0]).toMatchObject({ align: 'outside' });
+  await undoSteps(page, 1);
+  expect((await shapeList(page))[0]).toMatchObject({ align: 'inside' });
+  await undoSteps(page, 1);
+  expect((await shapeList(page))[0].align).toBeUndefined();
+
+  await page.keyboard.press('Escape'); // closes the box
+  await page.keyboard.press('p');
+  for (const [x, y] of [[30, 10], [40, 20], [30, 30]]) await page.mouse.click(...Object.values(await gridPoint(page, x, y)));
+  await page.keyboard.press('Enter'); // an open path, selected
+  expect(await selected(page)).not.toEqual([key]);
+  await page.locator('.color-pair .chip.bg').click();
+  await expect(button('Stroke inside')).toBeDisabled();
+  await expect(button('Stroke outside')).toBeDisabled();
+});
+
 test('the Fill color box makes a gradient and takes it back to solid', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

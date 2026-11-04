@@ -70,7 +70,7 @@ const choose = (hex, remember = true) => {
 };
 const swap = () => (vector.value ? style.swap() : workspace.swapColors());
 
-// VECTOR's Stroke side: the stroke's width, caps, joins and miter limit (useVectorStyle: the selected shapes', or
+// VECTOR's Stroke side: the stroke's width, caps, joins, miter limit and alignment (useVectorStyle: the selected shapes', or
 // the next shape's), each change one undo step (a Width drag when it's let go).
 const strokeSide = computed(() => vector.value && props.slotName === 'bg');
 const WIDTH = computed(() => ({ key: 'vectorWidth', label: t('vector.width'), title: t('vector.widthTitle'), min: 0.5, max: 64, step: 0.5, decimals: 1 }));
@@ -87,6 +87,9 @@ const CAPS = ['butt', 'round', 'square'].map((v) => ({ v, title: `vector.cap${v[
 // sharp, rounded or cut, is what differs).
 const corner = '<polyline points="12,22 12,12 22,12"'; // close in on the corner (its outer edge 10 from the path), 2 to 22, centered
 const JOINS = ['miter', 'round', 'bevel'].map((v) => ({ v, title: `vector.join${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`${corner} stroke-width="20" stroke-linejoin="${v}" opacity=".45"/>${corner} stroke-width="1.5"/>`) }));
+// An alignment: a square outline, a solid line, its stroke wide and faint inside it, on it or outside it.
+const band = { inside: 8, center: 6, outside: 4 };
+const ALIGNS = ['inside', 'center', 'outside'].map((v) => ({ v, title: `vector.align${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`<rect x="${band[v]}" y="${band[v]}" width="${24 - 2 * band[v]}" height="${24 - 2 * band[v]}" stroke-width="4" opacity=".45"/><rect x="6" y="6" width="12" height="12" stroke-width="1.5"/>`) }));
 const setMiter = (e) => {
   const v = Number(e.target.value);
   if (Number.isFinite(v) && e.target.value !== '') style.set('miter', Math.min(100, Math.max(1, v)));
@@ -203,6 +206,10 @@ onBeforeUnmount(() => {
     <div v-if="strokeSide" class="stroke-settings">
       <RangeField :setting="WIDTH" v-model="width" @commit="style.finish"/>
       <div class="settings">
+        <span class="option-label">{{ t('vector.align') }}</span>
+        <div class="icons">
+          <button v-for="a in ALIGNS" :key="a.v" class="icon" :title="t(a.title)" :aria-label="t(a.title)" :aria-pressed="style.value('align') === a.v" :disabled="!style.canAlign.value" @click="style.set('align', a.v)" v-html="a.icon"/>
+        </div>
         <span class="option-label">{{ t('vector.cap') }}</span>
         <div class="icons">
           <button v-for="c in CAPS" :key="c.v" class="icon" :title="t(c.title)" :aria-label="t(c.title)" :aria-pressed="style.value('cap') === c.v" @click="style.set('cap', c.v)" v-html="c.icon"/>

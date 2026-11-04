@@ -14,7 +14,7 @@
  */
 import { ctx2d } from '../lib/Canvas.js';
 import { charRowsOf } from '../lib/Cells.js';
-import { dirtyRect, invert, isGradient, multiply, pathData, scaling, shapeBounds, stacked, strokeOf } from './shapes.js';
+import { dirtyRect, invert, isGradient, multiply, pathData, scaling, shapeBounds, stacked, strokeAlign, strokeOf } from './shapes.js';
 
 const newCanvas = (w, h) => Object.assign(document.createElement('canvas'), { width: Math.max(1, w), height: Math.max(1, h) });
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -224,7 +224,8 @@ function offHalfSteps(ctx, own, width, height) {
 }
 
 // One shape drawn at k canvas pixels per grid pixel (path: its pathData at that scale, as a Path2D): its fill
-// under its fill rule, then its stroke with its width, caps, joins and miter limit.
+// under its fill rule, then its stroke with its width, caps, joins and miter limit, centered on the outline or
+// inside or outside it (strokeAlign).
 export function paintShape(ctx, shape, k, path = new Path2D(pathData(shape, k, k))) {
   const { rule, cap, join, miter } = strokeOf(shape);
   if (isGradient(shape.fill)) paintGradient(ctx, shape, k, path, rule);
@@ -233,8 +234,9 @@ export function paintShape(ctx, shape, k, path = new Path2D(pathData(shape, k, k
     ctx.fill(path, rule);
   }
   if (shape.stroke && shape.width > 0) {
-    const styled = (c) => Object.assign(c, { lineWidth: shape.width * k, lineJoin: join, lineCap: cap, miterLimit: miter });
-    if (isGradient(shape.stroke)) paintGradientStroke(ctx, shape, k, path, styled);
+    const align = strokeAlign(shape);
+    const styled = (c) => Object.assign(c, { lineWidth: shape.width * k * (align === 'center' ? 1 : 2), lineJoin: join, lineCap: cap, miterLimit: miter });
+    if (isGradient(shape.stroke) || align !== 'center') paintMaskedStroke(ctx, shape, k, path, styled, align, rule);
     else {
       ctx.strokeStyle = shape.stroke;
       styled(ctx).stroke(path);
@@ -249,18 +251,29 @@ function canvasGradient(ctx, { type, stops, f = [0, 0] }) {
   return gradient;
 }
 
-// A gradient stroke: stroked solid into a mask over the shape's bounds, the gradient filled into that (under its
-// unit space's transform, as a fill's is), and the mask drawn over. Drawn in the gradient's space, as a fill is,
-// the stroke's width would stretch with it. The mask is a ctx2d canvas, as the layer's are: one the GPU might draw
-// would come out a shade apart from one drawing to the next.
-function paintGradientStroke(ctx, shape, k, path, styled) {
+// A gradient stroke, or one inside or outside the outline: stroked solid into a mask over the shape's bounds (an
+// aligned one at twice its width, then cut to the fill's inside or outside, under its rule), its color or gradient
+// filled into that (a gradient under its unit space's transform, as a fill's is), and the mask drawn over. Drawn
+// in the gradient's space, as a fill is, the stroke's width would stretch with it. The mask is a ctx2d canvas, as
+// the layer's are: one the GPU might draw would come out a shade apart from one drawing to the next.
+function paintMaskedStroke(ctx, shape, k, path, styled, align, rule) {
   const b = shapeBounds(shape), x = Math.max(0, Math.floor(b.x * k)), y = Math.max(0, Math.floor(b.y * k));
   const w = Math.min(ctx.canvas.width, Math.ceil((b.x + b.w) * k)) - x, h = Math.min(ctx.canvas.height, Math.ceil((b.y + b.h) * k)) - y;
   if (w <= 0 || h <= 0) return;
   const mask = ctx2d(new OffscreenCanvas(w, h));
   mask.translate(-x, -y);
   styled(mask).stroke(path);
+  if (align !== 'center') {
+    mask.globalCompositeOperation = align === 'inside' ? 'destination-in' : 'destination-out';
+    mask.fill(path, rule);
+  }
   mask.globalCompositeOperation = 'source-in';
+  if (!isGradient(shape.stroke)) {
+    mask.fillStyle = shape.stroke;
+    mask.fillRect(x, y, w, h);
+    ctx.drawImage(mask.canvas, x, y);
+    return;
+  }
   const t = multiply(multiply(scaling(k, k), shape.m), shape.stroke.m), back = invert(t);
   const corners = [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].map(([px, py]) => [back[0] * px + back[2] * py + back[4], back[1] * px + back[3] * py + back[5]]);
   const xs = corners.map(([u]) => u), ys = corners.map(([, v]) => v);

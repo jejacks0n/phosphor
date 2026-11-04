@@ -483,6 +483,35 @@ test('a gradient stroke runs along its gradient, as wide as a solid one, its edg
   expect(turned(23, 20)).toEqual([0, 0, 0]);
 });
 
+test('a stroke inside or outside the outline takes its whole width there; an open path\'s stays centered', async () => {
+  // A square from 10 to 30, stroked 2 wide, read across its left edge at x = 10, along y = 20.
+  const square = rectShape(10, 10, 30, 30, { fill: null, stroke: '#ffffff', width: 2 });
+  const lit = (px) => [7.5, 8.5, 9.5, 10.5, 11.5, 12.5].filter((x) => px(x, 20).some((v) => v > 128));
+  expect(lit(painted(square))).toEqual([9.5, 10.5]);
+  expect(lit(painted(withShape(square, { align: 'inside' })))).toEqual([10.5, 11.5]);
+  expect(lit(painted(withShape(square, { align: 'outside' })))).toEqual([8.5, 9.5]);
+  // Over its fill, inside: the stroke on top of it, the fill past it.
+  const filled = painted(withShape(square, { align: 'inside', fill: '#ff0000' }));
+  expect(filled(10.5, 20)).toEqual([255, 255, 255]);
+  expect(filled(12.5, 20)).toEqual([255, 0, 0]);
+  expect(filled(9.5, 20)).toEqual([0, 0, 0]);
+  // A gradient stroke, inside: there, in its colors.
+  const stroke = { type: 'linear', stops: RED_TO_BLUE, m: [20, 0, 0, 20, 10, 20] };
+  const graded = painted(withShape(square, { align: 'inside', stroke }));
+  expect(near(graded(10.5, 20), [255, 0, 0], 40)).toBe(true);
+  expect(graded(9.5, 20)).toEqual([0, 0, 0]);
+  // Open (no left side now), there's no inside: centered, read across its right side at x = 30.
+  const open = painted(withShape(square, { align: 'inside', closed: false }));
+  expect([28.5, 29.5, 30.5, 31.5].filter((x) => open(x, 20).some((v) => v > 128))).toEqual([29.5, 30.5]);
+  // Its hits go where it draws.
+  const inside = withShape(square, { align: 'inside' }), shapes = new Map([['v:1', inside]]);
+  expect(shapeAt(shapes, 11.5, 20, 0.1)).toBe('v:1');
+  expect(shapeAt(shapes, 8.5, 20, 0.1)).toBe(null);
+  const outside = new Map([['v:1', withShape(square, { align: 'outside' })]]);
+  expect(shapeAt(outside, 8.5, 20, 0.1)).toBe('v:1');
+  expect(shapeAt(outside, 11.5, 20, 0.1)).toBe(null);
+});
+
 test('a radial gradient stretched with its shape is an ellipse', async () => {
   // A circle of radius 10 about (20, 20), red in the middle to blue at the rim, then the shape stretched ×1.5
   // across about its middle.
