@@ -179,6 +179,11 @@ function makeActions(project, workspace, r, opts) {
       const key = pick([...project.shapes].filter(([, s]) => s.more).map(([k]) => k));
       if (key) project.separateShape(key);
     },
+    addSvg: () => { // a few shapes, one with a hole, as one step
+      const x = Math.floor(r() * 20), y = Math.floor(r() * 20);
+      project.addSvg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect x="${x}" y="${y}" width="12" height="8" fill="#ff0000"/>`
+        + `<path d="M${x} ${y}h20v20h-20zM${x + 5} ${y + 5}h5v5h-5z" fill-rule="evenodd" stroke="#00ff00" stroke-linejoin="bevel"/></svg>`);
+    },
     restackShape: () => {
       const key = pick([...project.shapes.keys()]);
       if (key) project.restackShapes([key], pick(['forward', 'back']));
