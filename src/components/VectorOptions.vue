@@ -2,7 +2,7 @@
 // VECTOR's options row. With Vector select: Copy, Cut and Paste, and with shapes selected Forward and Back (the
 // stacking order), Join, Separate and Delete, each one undo step. Fill and Stroke, and the stroke's width, caps,
 // joins and miter limit, are the color pair's (ColorPopover, useVectorStyle). While a shape's points are edited,
-// the Point row: the selected point Smooth or Corner, and Delete (the point); Esc or empty canvas ends it. With the
+// the Point row: the selected point Smooth or Sharp, and Delete (the point); Esc or empty canvas ends it. With the
 // Node tool's Place gradient, the Gradient row instead: Delete stop, and on a shape with two gradients Fill or
 // Stroke. The buttons are icons, named in their titles; a phone's rows have no label or hint.
 import { computed } from 'vue';
@@ -16,6 +16,7 @@ import { gradientKey, gradientSlot, removeStop } from '@/tools/gradientHandles.j
 import { deleteSelectedPoint } from '@/tools/vnode.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
 import { shortcut } from '@/lib/keyLabels';
+import ToggleGroup from '@/components/ToggleGroup.vue';
 
 const { t } = useI18n();
 const project = useProjectStore();
@@ -49,6 +50,16 @@ const remove = () => {
 const pointsOf = computed(() => workspace.activeTool === 'vnode' && workspace.vectorPoints && project.shapes.get(workspace.vectorPoints));
 const point = computed(() => (pointsOf.value && workspace.vectorPoint !== null ? allPoints(pointsOf.value)[workspace.vectorPoint] : null));
 const smooth = (on) => project.updateShapes([[workspace.vectorPoints, setSmooth(pointsOf.value, workspace.vectorPoint, on)]]);
+// Smooth or Sharp, the selected point's: smooth, or sharp (no handles); a point whose handles were broken apart is
+// neither, so either can be chosen.
+const POINT_KINDS = computed(() => ['smooth', 'sharp'].map((key) => ({ key, label: t(`vector.${key}`), title: t(`vector.${key}Title`), disabled: !point.value })));
+const pointKind = computed({
+  get: () => {
+    const p = point.value;
+    return { smooth: !!p?.[6], sharp: !!p && !p[6] && !p[2] && !p[3] && !p[4] && !p[5] };
+  },
+  set: (next) => smooth(next.smooth),
+});
 const removePoint = () => deleteSelectedPoint(project, workspace);
 const deleteStop = () => removeStop(project, workspace);
 // The shape whose points are edited, when it has two gradients to choose between.
@@ -66,8 +77,7 @@ const gradientOf = (slot) => {
 <template>
   <div v-if="pointsOf && workspace.vectorNodeMode === 'points'" class="tool-setting-group vector-options">
     <span v-if="!phone" class="option-label">{{ t('vector.point') }}</span>
-    <button class="text" :aria-pressed="!!point?.[6]" :disabled="!point" :title="t('vector.smoothTitle')" @click="smooth(true)">{{ t('vector.smooth') }}</button>
-    <button class="text" :aria-pressed="!!point && !point[6]" :disabled="!point" :title="t('vector.cornerTitle')" @click="smooth(false)">{{ t('vector.corner') }}</button>
+    <ToggleGroup v-model="pointKind" single :options="POINT_KINDS" :label="t('vector.point')"/>
     <button class="text" :disabled="!point" :title="t('vector.deletePointTitle')" @click="removePoint">{{ t('common.delete') }}</button>
     <span v-if="!phone" class="hint">{{ t('vector.pointsHint') }}</span>
   </div>
