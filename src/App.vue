@@ -74,6 +74,7 @@ watch(() => [workspace.activeTool, workspace.editorTab], () => {
 watch(() => workspace.activeTool, (tool) => {
   if (workspace.heldTool) return;
   if (tool !== 'vnode') workspace.vectorPoints = workspace.vectorPoint = null;
+  if (tool !== 'vgradient') workspace.vectorStop = null;
   else if (!workspace.vectorPoints) workspace.vectorPoints = workspace.vectorSelected.find((key) => project.shapes.has(key)) ?? null;
 });
 

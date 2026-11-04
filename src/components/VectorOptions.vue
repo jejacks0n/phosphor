@@ -22,7 +22,7 @@ const phone = useMediaQuery('(max-width: 768px)');
 const style = useVectorStyle(), { selected } = style;
 
 const editing = computed(() => workspace.activeTool === 'vselect' && selected.value.length > 0);
-const styling = computed(() => ['vselect', 'vnode', 'pen', 'vshape'].includes(workspace.activeTool));
+const styling = computed(() => ['vselect', 'vnode', 'pen', 'vshape', 'vgradient'].includes(workspace.activeTool));
 
 const WIDTH = computed(() => ({ key: 'vectorWidth', label: t('vector.width'), title: t('vector.widthTitle'), min: 0.5, max: 64, step: 0.5, decimals: 1 }));
 const width = computed({

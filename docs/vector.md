@@ -139,6 +139,22 @@ makes it a square, a circle or a regular polygon. The shape is drawn as you drag
 path when you let go (so its points can be edited like any other), and is selected. A click without a drag
 makes nothing.
 
+## Gradient (G)
+
+For the first selected shape with a gradient fill ([Gradient fills](#gradient-fills)), the Gradient tool shows
+the gradient's handles: for a linear one, a line from where it starts to where it ends, a square at each end; for a
+radial one, a square at its middle and one at its edge, joined by a line. Each color stop is a dot on the line, in
+its color.
+
+- **Drag the line** (or a radial gradient's middle) to move the gradient.
+- **Drag an end** (or the edge) to stretch it and turn it about the other end (or the middle). Shift keeps it
+  across, up and down, or at 45°.
+- **Click the line** to add a stop there, in the color the gradient has there.
+- **Click a stop** to select it (it's ringed); the Fill chip's color box then sets that stop's color. **Drag a
+  stop** along the line to slide it, or well off the line to remove it (a gradient keeps at least two). Delete or
+  Backspace removes the selected stop; Esc lets it go.
+- Press another shape to select it. Each drag, added or removed stop, and color is one undo step.
+
 ## Fill and Stroke
 
 On VECTOR the color pair is the shapes' **Fill** (the front chip) and **Stroke** (the back one). With shapes

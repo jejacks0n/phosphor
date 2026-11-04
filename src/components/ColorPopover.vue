@@ -8,6 +8,7 @@ import { swatchSections, drawingColors } from '@/lib/ColorUtils';
 import { nearestInDirection } from '@/lib/spatialFocus';
 import { shortcut } from '@/lib/keyLabels';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
+import { gradientKey, recolorStop } from '@/tools/vgradient.js';
 
 // The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
@@ -15,7 +16,7 @@ import { useVectorStyle } from '@/composables/useVectorStyle.js';
 // adjustments (paletteChoices), so every palette color can be painted with; other swatches show
 // how their color displays (adjusted, snapped) and store the color itself.
 // On VECTOR the slots are the shapes' Fill and Stroke (useVectorStyle), each of which can be none, and the selected
-// shapes' Fill can be Solid, Linear or Radial.
+// shapes' Fill can be Solid, Linear or Radial; with the Gradient tool's stop selected, Fill is that stop's color.
 const props = defineProps({
   slotName: { type: String, required: true }, // 'fg' | 'bg'
 });
@@ -32,12 +33,17 @@ const style = useVectorStyle();
 const SHAPE_SLOTS = { fg: 'fill', bg: 'stroke' };
 // A gradient fill shows as its first stop; choosing a color makes the fill solid again.
 const solidOf = (v) => (v && typeof v === 'object' ? v.stops[0][1] : v);
-const current = computed(() => (vector.value ? solidOf(style.value(SHAPE_SLOTS[props.slotName])) ?? '#000000' : props.slotName === 'fg' ? workspace.editFgColor : workspace.editBgColor));
+const stop = computed(() => {
+  if (!vector.value || props.slotName !== 'fg' || workspace.activeTool !== 'vgradient' || workspace.vectorStop === null) return null;
+  const key = gradientKey(project, workspace);
+  return (key && project.shapes.get(key).fill.stops[workspace.vectorStop]?.[1]) ?? null;
+});
+const current = computed(() => stop.value ?? (vector.value ? solidOf(style.value(SHAPE_SLOTS[props.slotName])) ?? '#000000' : props.slotName === 'fg' ? workspace.editFgColor : workspace.editBgColor));
 const KINDS = ['solid', 'linear', 'radial'];
 const isNone = computed(() => (vector.value ? !style.value(SHAPE_SLOTS[props.slotName]) : props.slotName === 'fg' ? ansiView.value && workspace.editFgNone : workspace.editBgNone));
 // None means "leave what's underneath": a typing choice, so the foreground offers it only in the ANSI view. A
 // shape can go without either.
-const offersNone = computed(() => vector.value || props.slotName === 'bg' || ansiView.value);
+const offersNone = computed(() => !stop.value && (vector.value || props.slotName === 'bg' || ansiView.value));
 
 // The palette as the colors its swatches store.
 const sections = computed(() => {
@@ -55,6 +61,7 @@ const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 const choose = (hex, remember = true) => {
   if (!vector.value) return workspace.setColor(props.slotName, hex, { remember });
   if (hex && remember) workspace.rememberColor(hex);
+  if (stop.value) return recolorStop(project, workspace, hex, { remember });
   style.set(SHAPE_SLOTS[props.slotName], hex, { remember });
 };
 const swap = () => (vector.value ? style.swap() : workspace.swapColors());

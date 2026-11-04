@@ -382,6 +382,9 @@
     "vselect": {
       "title": "Sélection vectorielle"
     },
+    "vgradient": {
+      "title": "Dégradé"
+    },
     "vnode": {
       "title": "Nœud"
     },
@@ -842,6 +845,7 @@
     },
     "rows": {
       "vselect": "Sélection vectorielle : choisir, déplacer, redimensionner et faire pivoter les formes (double-clic : l'outil Nœud)",
+      "vgradient": "Dégradé : déplacer, étirer et tourner le dégradé d'une forme, et modifier ses arrêts",
       "vnode": "Nœud : appuyez sur une forme pour modifier ses points ; faites glisser un point ou une poignée, cliquez sur le contour pour en ajouter un",
       "pen": "Plume : cliquez pour un angle, faites glisser pour une courbe ; cliquez sur le premier point pour fermer",
       "penEnd": "Laisser la forme de la plume en courbe ouverte",

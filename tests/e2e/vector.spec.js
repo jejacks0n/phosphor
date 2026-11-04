@@ -504,6 +504,44 @@ test('the Fill color box makes a gradient and takes it back to solid', async ({ 
   expect((await shapeList(page))[0]).toMatchObject({ fill: null, stroke: '#ff0000' });
 });
 
+test('G shows a gradient\'s handles; recoloring a stop changes the art', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
+  const key = await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0],
+    fill: { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [20, 0, 0, 20, 10, 15] },
+    points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
+  await page.mouse.click(...Object.values(await gridPoint(page, 12, 12)));
+  expect(await selected(page)).toEqual([key]);
+  await page.keyboard.press('g');
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vgradient');
+  await expect(page.locator('.vector-overlay .stop')).toHaveCount(2);
+  await expect(page.getByRole('dialog', { name: /Keyboard shortcuts/ })).toHaveCount(0);
+
+  // The last stop, clicked: selected; the Fill box sets its color, one step.
+  await settled(page);
+  const before = await cells(page);
+  await page.mouse.click(...Object.values(await gridPoint(page, 30, 15)));
+  expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(1);
+  await expect(page.locator('.vector-overlay .stop.on')).toHaveCount(1);
+  await page.locator('.color-pair .chip.fg').click();
+  await page.locator('.color-popover .swatch.small').first().click();
+  await page.keyboard.press('Escape');
+  expect((await shapeList(page))[0].fill.stops).toEqual([[0, '#ff0000'], [1, '#00ff00']]);
+  await expect.poll(() => cells(page)).not.toEqual(before);
+  await expect(page.locator('.color-pair .chip.fg')).toHaveAttribute('style', /0, 255, 0|#00ff00/i);
+
+  // A drag along the line moves it.
+  await dragPoints(page, await gridPoint(page, 20, 15), await gridPoint(page, 20, 18));
+  expect((await shapeList(page))[0].fill.m[5]).toBeCloseTo(18, 0);
+  await undoSteps(page, 2);
+  expect((await shapeList(page))[0].fill).toEqual({ type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [20, 0, 0, 20, 10, 15] });
+  // Another tool lets the stop go.
+  await page.keyboard.press('v');
+  expect(await store(page, 'workspace', (w) => w.vectorStop)).toBeNull();
+});
+
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

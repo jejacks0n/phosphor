@@ -123,7 +123,7 @@ const recolor = (colors) => project.recolorSelection(recolored.value, workspace.
 const asciiStyle = computed(() => ['ascii', 'colorAscii'].includes(project.renderStyle));
 // VECTOR's options row (VectorOptions), with Vector select, the Pen and the Shape tool. It stays up with
 // nothing selected, so selecting a shape doesn't move the canvas under the pointer.
-const vectorRow = computed(() => workspace.editorTab === 'vector' && ['vselect', 'vnode', 'pen', 'vshape'].includes(workspace.activeTool));
+const vectorRow = computed(() => workspace.editorTab === 'vector' && ['vselect', 'vnode', 'pen', 'vshape', 'vgradient'].includes(workspace.activeTool));
 
 // The pixel view's preview of the ANSI layer: edit cells drawn over the image at pixel scale.
 const OVERLAY_SETTING = computed(() => ({ key: 'ansiOverlay', label: t('toolbar.overlay.shortLabel'), title: t('toolbar.overlay.title'), min: 0, max: 100, unit: '%' }));
