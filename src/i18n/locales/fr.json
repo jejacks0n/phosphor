@@ -1387,6 +1387,13 @@
     "deleteTitle": "Supprimer les formes sélectionnées",
     "pasteTitle": "Coller les formes copiées ({key})",
     "selectHint": "Faites glisser pour déplacer, les poignées pour redimensionner, le bouton pour faire pivoter",
+    "snapTo": "Aligner sur : {mode}",
+    "snapToTitle": "Où tombent les points que vous placez ou faites glisser ; maintenez {key} pour glisser sans aligner",
+    "snap": {
+      "none": "Rien",
+      "cells": "Cellules",
+      "half": "Demi-cellules"
+    },
     "point": "Point",
     "smooth": "Lisse",
     "smoothTitle": "Rendre le point lisse : ses poignées restent alignées",

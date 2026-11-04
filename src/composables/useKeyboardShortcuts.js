@@ -304,6 +304,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (e.key === 'Control') {
       workspaceStore.isCtrlPressed = true;
     }
+    if (e.key === 'Meta') workspaceStore.isMetaPressed = true;
     if (e.key === 'Shift') workspaceStore.isShiftPressed = true;
 
     if (_animationKeysApply(e) && e.key.toLowerCase() === 'l') {
@@ -339,6 +340,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (e.key === 'Control') {
       workspaceStore.isCtrlPressed = false;
     }
+    if (e.key === 'Meta') workspaceStore.isMetaPressed = false;
 
     if (e.key === 'Shift') workspaceStore.isShiftPressed = false;
     const held = workspaceStore.heldTool?.by;
@@ -349,7 +351,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
 
   const _handleBlur = () => {
-    workspaceStore.isCtrlPressed = false;
+    workspaceStore.isCtrlPressed = workspaceStore.isMetaPressed = false;
     workspaceStore.isMiddleClick = false;
     workspaceStore.isShiftPressed = false;
     if (workspaceStore.heldTool) _release(); // the keys were let go while the window was away

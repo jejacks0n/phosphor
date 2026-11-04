@@ -1,6 +1,7 @@
 // The Node tool (the VECTOR tab): press a shape to edit its points (workspace.vectorPoints), and on one of its
 // points, its curve handles or (once it's being edited) its outline: drag a point or a handle (Alt: the handle
-// alone, broken from its partner; Shift: on a line across, up and down or at 45°), click the outline to add a
+// alone, broken from its partner; Shift: on a line across, up and down or at 45°; Snap to: a point on the grid),
+// click the outline to add a
 // point there, click empty canvas to stop. A shape with a gradient (made in the color box) shows its handles too
 // (gradientHandles.js). A press takes the gradient's handle in reach, else the point or handle nearest it, else the
 // gradient's line, else the outline; with no zoom to part handles on top of each other, a click again in the same
@@ -11,6 +12,7 @@
 import { t } from '@/i18n/index.js';
 import { apply, deletePoint, invert, moveHandle, movePoint, nearestOnOutline, splitAt, worldPoints } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
+import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 import { shapeAt } from '@/lib/shapeHits.js';
 import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
 import { handlePicker } from '@/tools/handlePick.js';
@@ -95,9 +97,21 @@ export default {
     const { project, workspace } = ctx;
     if (!drag) return;
     // Shift: a point on a line from where it was pressed, a handle on one from its point.
-    if (workspace.isShiftPressed) to = snappedEnd(drag.kind === 'handle' ? drag.anchor : drag.at, to);
-    const local = apply(invert(drag.start.m), to.x, to.y), { start, i } = drag;
-    const next = drag.kind === 'handle' ? moveHandle(start, i, drag.which, local.x, local.y, { alone: drag.alone }) : movePoint(start, i, local.x - drag.from.x, local.y - drag.from.y);
+    const shift = workspace.isShiftPressed;
+    if (shift) to = snappedEnd(drag.kind === 'handle' ? drag.anchor : drag.at, to);
+    const back = invert(drag.start.m), { start, i } = drag;
+    let next;
+    if (drag.kind === 'handle') {
+      const local = apply(back, to.x, to.y);
+      next = moveHandle(start, i, drag.which, local.x, local.y, { alone: drag.alone });
+    } else {
+      // The point where it was grabbed, moved with the pointer: on the grid with Snap to (along Shift's line).
+      const was = worldPoints(start)[i], snap = snapMode(workspace);
+      const moved = { x: was.x + to.x - drag.at.x, y: was.y + to.y - drag.at.y };
+      const at = shift ? snapAlong(was, moved, snap) : snapPoint(moved, snap);
+      const a = apply(back, was.x, was.y), b = apply(back, at.x, at.y);
+      next = movePoint(start, i, b.x - a.x, b.y - a.y);
+    }
     project.updateShapes([[drag.key, next]]);
   },
 

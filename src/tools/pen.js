@@ -1,5 +1,6 @@
 // The Pen (the VECTOR tab): a click adds a corner point, a press and drag a smooth one whose handles follow the
-// pointer (Shift: a point on a line from the last, a handle from its point, across, up and down or at 45°). The
+// pointer (Shift: a point on a line from the last, a handle from its point, across, up and down or at 45°; Snap to
+// puts a point on the grid, its handles left free). The
 // shape converts live as it's drawn, all one undo step (penPoint, finishPen). Clicking the first point (with 3
 // or more) closes it; Enter or Esc leaves it an open curve; Backspace or undo takes the last point away. A tool or
 // tab change, a frame or a save finishes it as an open curve (commitEdit).
@@ -7,6 +8,7 @@ import { t } from '@/i18n/index.js';
 import { withShape, worldPoints } from '@/document/shapes.js';
 import { handleRadius } from '@/tools/vselect.js';
 import { snappedEnd } from '@/tools/shapes.js';
+import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 
 const SMOOTH_PX = 3; // a drag past this many CSS px makes the point smooth
 
@@ -29,7 +31,10 @@ export default {
       project.finishPen({ closed: true });
       return false;
     }
-    if (world.length && workspace.isShiftPressed) pos = snappedEnd(world.at(-1), pos);
+    // Snap to: the point on the grid (with Shift, along its line).
+    const snap = snapMode(workspace);
+    if (world.length && workspace.isShiftPressed) pos = snapAlong(world.at(-1), snappedEnd(world.at(-1), pos), snap);
+    else pos = snapPoint(pos, snap);
     const added = project.penPoint(pos.x, pos.y);
     press = added && { key: added, at: pos, unit };
     return !!press;
