@@ -77,7 +77,7 @@
     "motto": "Make Code Not War"
   },
   "zero": {
-    "dropPrompt": "Drop an image, {ext} or ANSI file here",
+    "dropPrompt": "Drop an image, SVG, {ext} or ANSI file here",
     "browseMobile": "Choose a file",
     "browseDesktop": "Choose a file",
     "startBlank": "Or start with a blank canvas",
@@ -739,6 +739,7 @@
     "artAdd": "Add to this drawing",
     "artAddWhere": "It lands where you dropped it, on the edit layer, to drag into place.",
     "artAddTopLeft": "It lands at the top-left of the view, on the edit layer, to drag into place.",
+    "svgAddText": "As shapes on VECTOR, in the frame showing, fitted to the canvas and selected.",
     "artOpen": "Open instead",
     "artOpenText": "In place of this drawing."
   },

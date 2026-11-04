@@ -77,7 +77,7 @@
     "motto": "Make Code Not War"
   },
   "zero": {
-    "dropPrompt": "Déposez une image, un fichier {ext} ou un fichier ANSI ici",
+    "dropPrompt": "Déposez une image, un SVG, un fichier {ext} ou un fichier ANSI ici",
     "browseMobile": "Choisir un fichier",
     "browseDesktop": "Choisir un fichier",
     "startBlank": "Ou commencez avec un canevas vierge",
@@ -739,6 +739,7 @@
     "artAdd": "Ajouter à ce dessin",
     "artAddWhere": "Il arrive là où vous l'avez déposé, sur le calque d'édition, à faire glisser en place.",
     "artAddTopLeft": "Il arrive en haut à gauche de la vue, sur le calque d'édition, à faire glisser en place.",
+    "svgAddText": "En formes sur VECTOR, dans l'image affichée, ajustées au canevas et sélectionnées.",
     "artOpen": "Ouvrir à la place",
     "artOpenText": "À la place de ce dessin."
   },
