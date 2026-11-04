@@ -289,6 +289,54 @@ test('the Pen draws a closed shape with a curve, and Enter or a tool change leav
   await expect.poll(() => cells(page)).toEqual(bare);
 });
 
+test('Shift with the Pen keeps the next point, and a smooth point\'s handle, across, up and down or at 45°', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await page.keyboard.press('p');
+  const at = (x, y) => gridPoint(page, x, y);
+  await page.mouse.click(...Object.values(await at(10, 10)));
+  await page.keyboard.down('Shift');
+  await page.mouse.click(...Object.values(await at(30, 12))); // mostly across: level with the first
+  await page.mouse.click(...Object.values(await at(40, 21))); // near the diagonal: on it
+  await dragPoints(page, await at(40, 40), await at(46, 41.5)); // straight down, its handle level
+  await page.keyboard.up('Shift');
+  await page.keyboard.press('Enter');
+  const [{ points }] = await shapeList(page);
+  expect(points[1][1]).toBeCloseTo(points[0][1], 4);
+  expect(points[2][0] - points[1][0]).toBeCloseTo(points[2][1] - points[1][1], 4);
+  expect(points[3][0]).toBeCloseTo(points[2][0], 4);
+  expect(points[3][5]).toBeCloseTo(0, 4);
+  expect(points[3][4]).toBeGreaterThan(4);
+});
+
+test('Shift while editing points keeps a dragged point on a straight line, and a handle across, up and down or at 45°', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const key = await addRect(page, 10, 10, 30, 30);
+  const point = (i) => store(page, 'project', `(p) => p.shapes.get('${key}').points[${i}]`);
+  await page.mouse.dblclick(...Object.values(await gridPoint(page, 20, 20)));
+  await page.mouse.move(...Object.values(await gridPoint(page, 30, 30)));
+  await page.mouse.down();
+  await page.keyboard.down('Shift');
+  for (let i = 1; i <= 6; i++) await page.mouse.move(...Object.values(await gridPoint(page, 30 + i, 30 + i / 4)));
+  await page.mouse.up();
+  await page.keyboard.up('Shift');
+  const moved = await point(2);
+  expect(moved[1]).toBeCloseTo(30, 4);
+  expect(moved[0]).toBeGreaterThan(35);
+
+  await page.locator('.vector-options').getByRole('button', { name: 'Smooth', exact: true }).click();
+  const smooth = await point(2);
+  await page.keyboard.down('Shift');
+  await dragPoints(page, await gridPoint(page, smooth[0] + smooth[4], smooth[1] + smooth[5]), await gridPoint(page, smooth[0] + 8, smooth[1] + 7));
+  await page.keyboard.up('Shift');
+  const bent = await point(2);
+  expect(bent[4]).toBeCloseTo(bent[5], 4);
+  expect(bent[4]).toBeGreaterThan(6);
+});
+
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

@@ -1,12 +1,14 @@
 // Vector select (the VECTOR tab): click a shape to select it (Shift adds or takes it away), then drag inside the
 // box to move (Shift: straight across, up and down, or at 45°), a handle to scale (Shift keeps the proportions)
 // or the knob above it to rotate (Shift: in steps of 15°). A second click on a shape edits its points
-// (workspace.vectorPoints): drag a point or a handle (Alt: the handle alone, broken from its partner), click the
-// outline to add a point there, click empty canvas to leave. Each drag is one edit, worked out each move from
-// the shapes as they were at the press, so nothing drifts. Keys: arrows nudge a grid pixel (Shift: 10), Delete
-// or Backspace deletes (the selected point, when editing points), Esc leaves the points and then the selection.
+// (workspace.vectorPoints): drag a point or a handle (Alt: the handle alone, broken from its partner; Shift: on
+// a line across, up and down or at 45°), click the outline to add a point there, click empty canvas to leave.
+// Each drag is one edit, worked out each move from the shapes as they were at the press, so nothing drifts.
+// Keys: arrows nudge a grid pixel (Shift: 10), Delete or Backspace deletes (the selected point, when editing
+// points), Esc leaves the points and then the selection.
 import { t } from '@/i18n/index.js';
 import { apply, curveBounds, deletePoint, invert, localBounds, moveHandle, movePoint, multiply, nearestOnOutline, rotation, scaling, splitAt, translation, transformed, withShape, worldPoints } from '@/document/shapes.js';
+import { snappedEnd } from '@/tools/shapes.js';
 import { shapeAt } from '@/lib/shapeHits.js';
 
 const KNOB = 24;           // CSS px above the box's top edge
@@ -72,13 +74,6 @@ function reshape(project, drag, change) {
   project.updateShapes(changes);
 }
 
-// A move with Shift: the pointer's offset on the nearest of the eight directions, across, up and down or at 45°.
-function straight(x, y) {
-  const angle = Math.round(Math.atan2(y, x) / (Math.PI / 4)) * (Math.PI / 4), ux = Math.round(Math.cos(angle)), uy = Math.round(Math.sin(angle));
-  const along = (x * ux + y * uy) / (ux * ux + uy * uy);
-  return { x: along * ux, y: along * uy };
-}
-
 // The scale handle i: which way it pulls ([-1, 0, 1] in x and y: left, none, right) and the handle opposite.
 const PULLS = [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -1], [1, 0], [0, 1], [-1, 0]];
 
@@ -116,11 +111,11 @@ function pointsPress(project, workspace, pos, unit, radius, event) {
   const world = worldPoints(shape), start = (kind, i, extra = {}) => {
     workspace.vectorPoint = i;
     project.beginEdit();
-    drag = { kind, key, i, from: apply(invert(shape.m), pos.x, pos.y), start: project.shapes.get(key), ...extra };
+    drag = { kind, key, i, at: pos, from: apply(invert(shape.m), pos.x, pos.y), start: project.shapes.get(key), ...extra };
     return true;
   };
   for (let i = 0; i < world.length; i++) {
-    for (const which of ['in', 'out']) if (world[i][which] && near(pos, world[i][which], unit, radius)) return start('handle', i, { which, alone: !!event?.altKey });
+    for (const which of ['in', 'out']) if (world[i][which] && near(pos, world[i][which], unit, radius)) return start('handle', i, { which, alone: !!event?.altKey, anchor: world[i] });
   }
   const i = world.findIndex((p) => near(pos, p, unit, radius));
   if (i >= 0) return start('point', i);
@@ -133,7 +128,9 @@ function pointsPress(project, workspace, pos, unit, radius, event) {
   return null;
 }
 
-function pointsMove(project, to) {
+// Shift: a point on a line from where it was pressed, a handle on one from its point, across, up and down or at 45°.
+function pointsMove(project, to, shift) {
+  if (shift) to = snappedEnd(drag.kind === 'handle' ? drag.anchor : drag.at, to);
   const local = apply(invert(drag.start.m), to.x, to.y), { start, i } = drag;
   const next = drag.kind === 'handle' ? moveHandle(start, i, drag.which, local.x, local.y, { alone: drag.alone }) : movePoint(start, i, local.x - drag.from.x, local.y - drag.from.y);
   project.updateShapes([[drag.key, next]]);
@@ -197,10 +194,10 @@ export default {
     if (!drag) return;
     const shift = workspace.isShiftPressed;
     drag.moved ||= to.x !== drag.from.x || to.y !== drag.from.y;
-    if (drag.kind === 'point' || drag.kind === 'handle') pointsMove(project, to);
+    if (drag.kind === 'point' || drag.kind === 'handle') pointsMove(project, to, shift);
     else if (drag.kind === 'move') {
-      const { x, y } = shift ? straight(to.x - drag.from.x, to.y - drag.from.y) : { x: to.x - drag.from.x, y: to.y - drag.from.y };
-      reshape(project, drag, (shape) => transformed(shape, translation(x, y)).m);
+      const end = shift ? snappedEnd(drag.from, to) : to;
+      reshape(project, drag, (shape) => transformed(shape, translation(end.x - drag.from.x, end.y - drag.from.y)).m);
     }
     else if (drag.kind === 'scale') scaleTo(project, drag, to, shift);
     else rotateTo(project, drag, to, shift);
