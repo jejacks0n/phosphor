@@ -2,12 +2,17 @@
 // empty canvas to select every shape it touches (Shift: adds them); each change of the selection is an undo
 // step (selectShapes). Then drag inside the box to move (Shift: straight across, up and down, or at 45°), a handle to scale (Shift keeps the proportions)
 // or the knob above it to rotate (Shift: one shape to angles in steps of 15°, several by them). A second click on a shape edits its points with the
-// Node tool (vnode.js). Each drag is one edit, worked out each move from the shapes as they were at the press,
-// so nothing drifts. Keys: arrows nudge a grid pixel (Shift: 10), Delete or Backspace deletes, Esc deselects.
+// Node tool (vnode.js). One shape selected, its gradient's ends and stops show and drag as the Node tool's do
+// (gradientHandles.js; a click on a stop selects it), a box handle first where one is on another (handlePick: a
+// click again takes the next one there). Each drag is one edit, worked out each move from the shapes as they were at the press,
+// so nothing drifts. Keys: arrows nudge a grid pixel (Shift: 10), Delete or Backspace deletes (the selected stop,
+// or else the shapes), Esc lets the stop go or deselects.
 import { t } from '@/i18n/index.js';
 import { apply, curveBounds, invert, localBounds, multiply, rotation, scaling, translation, transformed, withShape } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
+import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
+import { handlePicker } from '@/tools/handlePick.js';
 
 const KNOB = 24;           // CSS px above the box's top edge
 const DOUBLE_MS = 400, DOUBLE_PX = 4;
@@ -107,6 +112,28 @@ function rotateTo(project, drag, pos, shift) {
 }
 
 let drag = null, lastPress = null;
+const pick = handlePicker();
+
+// A drag of the box's (or a marquee) let go: a second click on a shape, not moved, edits its points.
+function endDrag(project, workspace) {
+  if (!drag) return;
+  const { again, moved, kind, keys, shift } = drag;
+  drag = null;
+  if (kind === 'marquee') {
+    const box = workspace.vectorMarquee;
+    workspace.vectorMarquee = null;
+    const touched = box ? shapesTouching(project.shapes, box) : [];
+    if (box || !shift) project.selectShapes(shift ? [...keys, ...touched.filter((key) => !keys.includes(key))] : touched);
+    return;
+  }
+  project.commitEdit();
+  if (again && !moved) {
+    workspace.vectorSelected = [again];
+    workspace.setActiveTool('vnode');
+    workspace.vectorPoints = again;
+    workspace.vectorPoint = null;
+  }
+}
 
 const selected = (workspace, project) => workspace.vectorSelected.filter((key) => project.shapes.has(key));
 
@@ -119,8 +146,8 @@ export default {
   kind: 'paint',
   section: 'vector',
 
-  begin({ project, workspace, unit }, pos, event) {
-    const shift = !!event?.shiftKey, radius = handleRadius(), tol = radius / unit.x;
+  begin(ctx, pos, event) {
+    const { project, workspace, unit } = ctx, shift = !!event?.shiftKey, radius = handleRadius(), tol = radius / unit.x;
     const keys = selected(workspace, project), box = selectionBox(project.shapes, keys);
     const at = (kind, extra = {}) => {
       drag = { kind, from: pos, box, start: (extra.keys ?? keys).map((key) => [key, project.shapes.get(key)]), shift, ...extra };
@@ -128,11 +155,12 @@ export default {
       return true;
     };
     if (box && !shift) {
-      const { handles, knob } = boxHandles(box, unit);
-      if (near(pos, knob, unit, radius)) return at('rotate');
-      const handle = handles.findIndex((h) => near(pos, h, unit, radius));
-      if (handle >= 0) return at('scale', { handle });
-    }
+      // The box's handles and the knob, then (one shape) its gradient's: the nearest, or a click again's.
+      const { handles, knob } = boxHandles(box, unit), letStop = () => { workspace.vectorStop = null; };
+      const d = (p) => Math.hypot((p.x - pos.x) * unit.x, (p.y - pos.y) * unit.y);
+      const own = [{ id: 'knob', d: d(knob), take: () => at('rotate'), picked: letStop }, ...handles.map((h, handle) => ({ id: `h${handle}`, d: d(h), take: () => at('scale', { handle }), picked: letStop }))];
+      if (pick.press([...own.filter((c) => c.d <= radius), ...gradientDrag.candidates(ctx, pos, radius)], pos, unit)) return true;
+    } else pick.reset();
     const hit = shapeAt(project.shapes, pos.x, pos.y, tol);
     const now = performance.now(), again = hit && lastPress?.key === hit && now - lastPress.time < DOUBLE_MS
       && near(pos, lastPress.pos, unit, DOUBLE_PX);
@@ -155,7 +183,10 @@ export default {
     return marquee(); // let go where it was pressed: a click on empty canvas, which deselects
   },
 
-  move({ project, workspace }, from, to) {
+  move(ctx, from, to) {
+    const { project, workspace } = ctx;
+    pick.move(to, ctx.unit);
+    if (gradientDrag.active) return gradientDrag.move(ctx, from, to);
     if (!drag) return;
     const shift = workspace.isShiftPressed;
     drag.moved ||= to.x !== drag.from.x || to.y !== drag.from.y;
@@ -172,33 +203,26 @@ export default {
     else rotateTo(project, drag, to, shift);
   },
 
-  end({ project, workspace }) {
-    if (!drag) return;
-    const { again, moved, kind, keys, shift } = drag;
-    drag = null;
-    if (kind === 'marquee') {
-      const box = workspace.vectorMarquee;
-      workspace.vectorMarquee = null;
-      const touched = box ? shapesTouching(project.shapes, box) : [];
-      if (box || !shift) project.selectShapes(shift ? [...keys, ...touched.filter((key) => !keys.includes(key))] : touched);
-      return;
-    }
-    project.commitEdit();
-    if (again && !moved) {
-      workspace.vectorSelected = [again];
-      workspace.setActiveTool('vnode');
-      workspace.vectorPoints = again;
-      workspace.vectorPoint = null;
-    }
+  end(ctx) {
+    const { project, workspace } = ctx;
+    if (gradientDrag.active) gradientDrag.end(ctx);
+    else endDrag(project, workspace);
+    pick.end();
   },
 
-  cancel({ workspace }) {
+  cancel(ctx) {
     drag = null; // the viewport took the edit back
-    workspace.vectorMarquee = null;
+    ctx.workspace.vectorMarquee = null;
+    gradientDrag.cancel(ctx);
+    pick.reset();
   },
 
   keydown({ project, workspace }, event) {
     const keys = selected(workspace, project), [dx, dy] = ARROWS[event.key] ?? [];
+    const stop = workspace.vectorStop !== null && !event.metaKey && !event.ctrlKey && !event.altKey;
+    if (stop && event.key === 'Escape') workspace.vectorStop = null;
+    else if (stop && (event.key === 'Delete' || event.key === 'Backspace')) removeStop(project, workspace);
+    if (stop && ['Escape', 'Delete', 'Backspace'].includes(event.key)) return true;
     if (event.key === 'Escape') {
       if (!keys.length) return false;
       project.selectShapes([]);

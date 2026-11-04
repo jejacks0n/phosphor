@@ -222,7 +222,6 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (key === 'a') {
       workspaceStore.setActiveTool('vselect');
       projectStore.selectShapes(stacked(projectStore.shapes).map(([k]) => k));
-      workspaceStore.vectorStop = null;
     } else if (!{ c: copyShapes, x: cutShapes, v: pasteShapes }[key](projectStore, workspaceStore)) return false;
     e.preventDefault();
     return true;

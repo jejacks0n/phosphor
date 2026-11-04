@@ -6,6 +6,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { getTool } from '@/tools';
+import { gradientKey } from '@/tools/gradientHandles.js';
 import { shortcut } from '@/lib/keyLabels';
 
 // Under the ANSI view, following the tool: Edit Mode shows its cursor's cell (each attribute from the
@@ -40,6 +41,7 @@ const hint = computed(() => {
     const shift = current.shiftLines ? t('status.straightLine') : current.shiftHint?.(workspace);
     return [[KEYS.alt, t('status.pickColor')], [KEYS.altShift, t('status.pickBackground')], ...(shift ? [[KEYS.shift, shift]] : []), [t('status.spaceKey'), t('status.pan')]];
   }
+  if (tool.value === 'vselect' && gradientKey(project, workspace)) return [[t('status.clickKey'), t('status.clickAgain')], [t('status.spaceKey'), t('status.pan')]];
   if (tool.value === 'vnode' && workspace.vectorPoints) return [[KEYS.alt, t('status.breakHandle')], [t('status.clickKey'), t('status.clickAgain')], [t('status.spaceKey'), t('status.pan')]];
   if (tool.value !== 'text' && tool.value !== 'hand') return [[t('status.spaceKey'), t('status.pan')]];
   return null;

@@ -1,4 +1,5 @@
-// A gradient's handles, for the Node tool's shape (workspace.vectorPoints) when its fill or stroke is a gradient
+// A gradient's handles, for the Node tool's shape (workspace.vectorPoints) or Vector select's one selected shape
+// (its line isn't, there: a drag inside moves the shape), when its fill or stroke is a gradient
 // (with both, workspace.vectorGradientSlot's; gradientSlot): a linear one shows a line
 // from its start to its end, a radial one its center and a radius handle, and both a dot for each stop along it
 // (gradientHandles). Drag the line (or a radial's center) to move the gradient, an end (or the radius handle) to
@@ -15,9 +16,11 @@ const MOVED = 2;         // CSS px a press goes before it's a drag, not a click
 let drag = null; // { kind: 'line' | 'move' | 'end' | 'stop', key, slot, start, at, moved, which?, stop?, t? }
 
 const hasGradient = (shape) => !!shape && (isGradient(shape.fill) || isGradient(shape.stroke));
-// The key of the Node tool's shape when it has a gradient; or null.
+// The key of the shape whose gradient's handles show, when it has a gradient: the Node tool's, or Vector select's
+// one selected shape; or null.
 export const gradientKey = (project, workspace) => {
-  const key = workspace.activeTool === 'vnode' && workspace.vectorPoints;
+  const { activeTool: tool, vectorSelected: chosen } = workspace;
+  const key = tool === 'vnode' ? workspace.vectorPoints : tool === 'vselect' && chosen.length === 1 && chosen[0];
   return key && hasGradient(project.shapes.get(key)) ? key : null;
 };
 // Which of its gradients the tool edits: workspace.vectorGradientSlot's when that's one, else the one it has.
@@ -74,8 +77,8 @@ export function removeStop(project, workspace) {
   workspace.vectorStop = null;
 }
 
-// Where a press finds the gradient's handles: its ends and stops in reach (candidates: { id, d, stop, take },
-// d in CSS px, take starting the drag; a stop at an end is the end's), else its line (line: take or null).
+// Where a press finds the gradient's handles: its ends and stops in reach (candidates, handlePick's; a stop at an
+// end is the end's), else its line (line: the drag started, or false).
 export const gradientDrag = {
   candidates({ project, workspace, unit }, pos, radius) {
     const key = gradientKey(project, workspace), shape = key && project.shapes.get(key);
@@ -87,7 +90,11 @@ export const gradientDrag = {
       drag = { ...hit, key, slot, start: shape, at: pos, moved: false };
       return true;
     };
-    const handle = (id, at, hit) => ({ id, d: Math.hypot((at.x - pos.x) * unit.x, (at.y - pos.y) * unit.y), stop: hit.stop, take: take(hit) });
+    const picked = (stop) => () => {
+      workspace.vectorStop = stop ?? null;
+      workspace.vectorPoint = null;
+    };
+    const handle = (id, at, hit) => ({ id, d: Math.hypot((at.x - pos.x) * unit.x, (at.y - pos.y) * unit.y), picked: picked(hit.stop), take: take(hit) });
     return [
       handle('g1', p1, { kind: 'end', which: 1, stop: stopNear(p1) }),
       handle('g0', p0, { kind: radial ? 'move' : 'end', which: 0, stop: stopNear(p0) }),

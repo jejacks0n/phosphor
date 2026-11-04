@@ -91,6 +91,13 @@ their points into line with the cells, recolor them, or change them from frame t
   from the opposite side (Shift keeps the proportions), or drag the knob above it to rotate them (Shift
   keeps one shape at an angle in steps of 15°, so a turned one can be squared up again; several turn in steps of
   15° from where they were). One shape's box turns with it; several shapes share one box, square to the grid.
+- With one shape selected whose fill or outline is a gradient, its gradient's handles show too, as the
+  [Node tool](#node-a)'s do: drag an end to stretch and turn it, or a stop to slide or remove it, and click a
+  stop to select it (its chip's color box then sets its color; Delete, Backspace or the row's Delete removes it,
+  and Esc lets it go). Its line isn't a handle here: a drag inside the box still moves the shape, and stops are
+  added with the Node tool. Where a gradient's end sits on one of the box's handles (a Linear gradient's ends are
+  on the left and right ones), the box's handle comes first; click again in the same place for the end. With both
+  a gradient fill and outline, **Fill** and **Stroke** in the options row choose which one's handles show.
 - Click empty canvas to deselect. Cmd+A (Ctrl+A) selects every shape on the frame, from any VECTOR tool (it
   switches to Vector select), finishing a Pen shape under way first.
 - Cmd+C (Ctrl+C) copies the selected shapes and Cmd+X cuts them; Cmd+V pastes them on top, selected with
