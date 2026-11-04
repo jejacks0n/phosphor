@@ -83,8 +83,8 @@ const guide = '<line x1="15" y1="3" x2="15" y2="21" stroke-width="1" stroke-dash
 const CAPS = ['butt', 'round', 'square'].map((v) => ({ v, title: `vector.cap${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`<line x1="3" y1="12" x2="15" y2="12" stroke-width="8" stroke-linecap="${v}"/>${guide}`) }));
 // A join: a square corner, its stroke wide and faint, the path through it a solid line (so the outer corner,
 // sharp, rounded or cut, is what differs).
-const corner = '<polyline points="9,24 9,9 24,9"';
-const JOINS = ['miter', 'round', 'bevel'].map((v) => ({ v, title: `vector.join${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`${corner} stroke-width="11" stroke-linejoin="${v}" opacity=".45"/>${corner} stroke-width="1.5"/>`) }));
+const corner = '<polyline points="14,24 14,14 24,14"'; // close in on the corner: its outer edge 10 from the path
+const JOINS = ['miter', 'round', 'bevel'].map((v) => ({ v, title: `vector.join${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`${corner} stroke-width="20" stroke-linejoin="${v}" opacity=".45"/>${corner} stroke-width="1.5"/>`) }));
 const setMiter = (e) => {
   const v = Number(e.target.value);
   if (Number.isFinite(v) && e.target.value !== '') style.set('miter', Math.min(100, Math.max(1, v)));
