@@ -101,8 +101,9 @@ makes nothing.
 
 On VECTOR the color pair is the shapes' **Fill** (the front chip) and **Stroke** (the back one). With shapes
 selected, it shows the first one's colors, and a color picked there (the palette, the recent colors, a color
-of your own, or **None**) goes to every selected shape, as one undo step. Alt+F and Alt+B open them, and
-Shift+Cmd+X (Shift+Ctrl+X) swaps each shape's Fill and Stroke. With the Pen or the Shape tool, or with
+of your own, or **None**) goes to every selected shape, as one undo step. It's the color box the other tabs
+have, with Fill and Stroke for FG and BG: Alt+F and Alt+B open it, and its **Swap** (or Shift+Cmd+X,
+Shift+Ctrl+X) swaps each shape's Fill and Stroke. With the Pen or the Shape tool, or with
 nothing selected, they're what the next shape gets. Until you change them, the next shape is filled with the
 foreground color and has no outline; a shape with neither gets the foreground color as its fill. ANSI's and
 PIXEL's colors are left as they were.

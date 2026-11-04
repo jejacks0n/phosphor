@@ -11,8 +11,7 @@ import ColorPopover from '@/components/ColorPopover.vue';
 
 // The foreground/background chips: each shows its color as it displays (after adjustments and the
 // palette); a none slot shows a checkerboard. Clicking a chip opens the picker for that slot (so do
-// Alt+F / Alt+A and Alt+B: workspace.colorBox). On VECTOR they're the shapes' Fill and Stroke (useVectorStyle),
-// and the picker picks for them alone.
+// Alt+F / Alt+A and Alt+B: workspace.colorBox). On VECTOR they're the shapes' Fill and Stroke (useVectorStyle).
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -59,14 +58,7 @@ const chip = (slot) => {
         :aria-label="chip(slot).aria"
         @click="toggle(slot)"
     ></button>
-    <ColorPopover
-        v-if="workspace.colorBox && vector"
-        :value="style.value(SLOTS[workspace.colorBox])"
-        offers-none
-        @pick="(hex, opts) => style.set(SLOTS[workspace.colorBox], hex, opts)"
-        @close="workspace.colorBox = null"
-    />
-    <ColorPopover v-else-if="workspace.colorBox" v-model:slot-name="workspace.colorBox" @close="workspace.colorBox = null"/>
+    <ColorPopover v-if="workspace.colorBox" v-model:slot-name="workspace.colorBox" @close="workspace.colorBox = null"/>
   </div>
 </template>
 
