@@ -1324,7 +1324,7 @@
     "fillNoneTitle": "Remplissage : aucun ({key})",
     "strokeChipTitle": "Contour : {color} ({key})",
     "strokeNoneTitle": "Contour : aucun ({key})",
-    "width": "Épaisseur",
+    "width": "Épaisseur du contour",
     "widthTitle": "L'épaisseur du contour, en pixels",
     "forward": "Avancer",
     "forwardTitle": "Avancer les formes d'un cran",

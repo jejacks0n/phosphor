@@ -147,7 +147,7 @@ test('on VECTOR the color pair is Fill and Stroke: it shows the selected shape\'
   expect(await store(page, 'workspace', (w) => w.editFgColor)).toBe(fg); // ANSI's colors are left alone
 });
 
-test('Fill, Stroke and Width change the selected shape; Forward and Back restack it; Delete removes it', async ({ page }) => {
+test('Fill, Stroke and Stroke width change the selected shape; Forward and Back restack it; Delete removes it', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
@@ -161,7 +161,7 @@ test('Fill, Stroke and Width change the selected shape; Forward and Back restack
   await page.locator('.color-pair').getByRole('button', { name: 'Stroke', exact: true }).click();
   await page.locator('.color-popover .swatch.small').first().click();
   await page.keyboard.press('Escape');
-  await page.getByLabel('Width', { exact: true }).fill('4');
+  await page.getByLabel('Stroke width', { exact: true }).fill('4');
   const changed = (await shapeList(page)).find((s) => s.key === below);
   expect([changed.fill, changed.stroke, changed.width]).toEqual([null, '#00ff00', 4]);
 
@@ -174,7 +174,7 @@ test('Fill, Stroke and Width change the selected shape; Forward and Back restack
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   expect((await shapeList(page)).map((s) => s.key)).toEqual([above]);
 
-  await undoSteps(page, 6); // Delete, Back, Forward, Width, Stroke, Fill
+  await undoSteps(page, 6); // Delete, Back, Forward, Stroke width, Stroke, Fill
   const back = (await shapeList(page)).find((s) => s.key === below);
   expect([back.fill, back.stroke, back.width]).toEqual(['#ff0000', null, 1]);
 });
@@ -248,7 +248,7 @@ test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shap
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  test('the options row is Width, Points and ⋯', async ({ page }) => {
+  test('the options row is Stroke width, Points and ⋯', async ({ page }) => {
     await openApp(page);
     await tab(page, 'VECTOR').click();
     const key = await addRect(page, 4, 4, 14, 14);
@@ -256,7 +256,7 @@ test.describe('on a phone', () => {
     const row = page.locator('.vector-options');
     await expect(row.getByRole('button', { name: 'Points', exact: true })).toBeVisible();
     await expect(row.getByRole('button', { name: 'Fill', exact: true })).toHaveCount(0);
-    await expect(row.getByLabel('Width', { exact: true })).toBeVisible();
+    await expect(row.getByLabel('Stroke width', { exact: true })).toBeVisible();
     await expect(row.getByRole('button', { name: 'Forward', exact: true })).toHaveCount(0);
     await expect(row.locator('.hint')).toHaveCount(0);
     await row.getByRole('button', { name: 'More', exact: true }).click();

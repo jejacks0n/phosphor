@@ -1324,7 +1324,7 @@
     "fillNoneTitle": "Fill: none ({key})",
     "strokeChipTitle": "Stroke: {color} ({key})",
     "strokeNoneTitle": "Stroke: none ({key})",
-    "width": "Width",
+    "width": "Stroke width",
     "widthTitle": "The outline's width, in pixels",
     "forward": "Forward",
     "forwardTitle": "Bring the shapes one step forward",
