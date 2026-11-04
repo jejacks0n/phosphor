@@ -50,6 +50,36 @@ frames each keep their own. A copy of Phosphor from before shapes opens such a f
 art they made isn't there either), and drops them if it saves it. Exports (`.ans`, PNG, GIF and the rest)
 have the shapes' converted cells, as they show.
 
+## Importing SVG
+
+An `.svg` file comes in as shapes, never as a picture, so its curves stay editable: move and scale them, drag
+their points into line with the cells, recolor them, or change them from frame to frame.
+
+- **From the start screen** (dropped, or chosen with **Browse Files**) it opens as a new drawing on VECTOR, at the
+  default size, named for the file.
+- **Over a drawing**, dropping one asks, as an ANSI file does: **Add to this drawing** puts its shapes on VECTOR,
+  in the frame showing; **Open instead** opens it in place of this drawing. In a room, Add is the only choice.
+- **Where it lands:** art bigger than the canvas is scaled down to fit inside it (less a margin of 2 grid pixels),
+  its proportions kept; art that fits keeps its size, one SVG unit to a grid pixel. Either way it's centered.
+  Its size is the file's viewBox (or its width and height when there's no viewBox).
+- **Stroke widths** scale with the art when it comes in, once. After that they stay as they are when you scale
+  the shapes, as every shape's do (and between 0.5 and 64).
+- Everything that came in is **selected**, with Vector select, ready to scale. The whole import is one undo step.
+- **Colors are the file's.** Black art lands black: paint the background first, or recolor the shapes with the
+  Fill and Stroke chips.
+- **What comes in:** paths (every command, arcs included), rectangles (rounded too), circles, ellipses, lines,
+  polylines and polygons, inside groups, nested SVGs and `use`; every transform; solid fills and strokes from
+  attributes, `style` attributes and style sheets, inherited as SVG has them; fill rules, caps, joins and miter
+  limits. Each element is one shape, and a path of several parts is one shape of several outlines, its holes
+  kept.
+- **What doesn't:** text, images, filters, masks, clipping, patterns, markers and dashes (a dashed line comes in
+  solid). When something is left out, a message says what. For text, convert it to curves (or paths) in the app
+  it came from before exporting.
+- **Limits:** a file that would go past 1,000 shapes in the frame, or 500 points in one shape, brings nothing in;
+  the message says how many it has, so you can simplify it first. A file that isn't SVG says so and changes
+  nothing.
+- Nothing in the file runs or loads: it's read as data, never shown as a page.
+
 ## Vector select (V)
 
 - Click a shape to select it. Shift-click adds a shape to the selection, or takes it away.

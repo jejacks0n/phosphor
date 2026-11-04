@@ -7,6 +7,7 @@ import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
+import { readSvgFile } from '@/lib/SvgFile.js';
 import { castText } from '@/lib/CastFile.js';
 import { MAX_GIF_PIXELS, gifBytes, gifDelay, gifFrames } from '@/lib/GifFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
@@ -171,6 +172,16 @@ export const documentActions = {
     // The base holds each cell as its two colors (background over foreground), which the PIXEL tab
     // would show as stripes; All cells draws every cell there as it looks.
     useWorkspaceStore().ansiOverlayAll = true;
+  },
+
+  // An .svg file as a new document: a blank canvas at the default size, named for the file, on VECTOR with the
+  // file's art as shapes (addSvg). A file that isn't SVG throws (with its userMessage) before anything changes.
+  async openSvgFile(file) {
+    const text = await file.text();
+    readSvgFile(text);
+    if (!(await this.setBlankCanvas({ cols: DEFAULT_COLS, rows: DEFAULT_ROWS, filename: file.name.replace(/\.[^/.]+$/, '') }))) return;
+    useWorkspaceStore().editorTab = 'vector';
+    this.addSvg(text);
   },
 
   // Swap in a new base image and start a fresh document around it.

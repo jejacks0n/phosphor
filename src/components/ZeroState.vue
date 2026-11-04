@@ -16,7 +16,7 @@ const { t } = useI18n();
 // A phone's picker greys out any file it can't match to the list, and it can't match .phosphor (no type it knows), so
 // on a touch screen there's no list; a file that isn't an image, a project or an art file says so when it fails to open.
 const touch = useMediaQuery('(pointer: coarse)');
-const accept = ['image/*', PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)].join(',');
+const accept = ['image/*', '.svg', PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)].join(',');
 
 const MAX_RECENT = 5;
 

@@ -14,6 +14,7 @@ import { pickMode, pickTargetOf } from '@/lib/pickMode';
 import { drawsCells } from '@/tools/shapes';
 import { snapCursor } from '@/document/wideChars';
 import { isArtFile } from '@/lib/ArtFile';
+import { isSvgFile } from '@/lib/SvgFile.js';
 import { withShape } from '@/document/shapes.js';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
@@ -247,11 +248,11 @@ const waitingStyle = ({ x0, y0, x1, y1 }) => {
   };
 };
 
-// An art file dropped on the drawing: EditWorkspace asks whether to add it at the cell under the drop (or the
+// An art or SVG file dropped on the drawing: EditWorkspace asks whether to add it at the cell under the drop (or the
 // view's top-left, off the art) or open it, so the drop zone around this doesn't open it.
 function onDrop(event) {
   const file = event.dataTransfer?.files[0];
-  if (!file || !isArtFile(file.name) || !projectStore.image) return;
+  if (!file || !(isArtFile(file.name) || isSvgFile(file.name)) || !projectStore.image) return;
   event.preventDefault();
   event.stopPropagation();
   const pos = props.coordsAt(event);

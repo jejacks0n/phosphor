@@ -49,9 +49,9 @@ test('a project named ART.PHOSPHOR (upper-case extension) opens', async ({ page 
   await settled(page);
 });
 
-test('on a computer the file picker offers images, .phosphor files and art files', async ({ page }) => {
+test('on a computer the file picker offers images, SVG files, .phosphor files and art files', async ({ page }) => {
   await page.goto('/');
-  await expect(imageInput(page)).toHaveAttribute('accept', 'image/*,.phosphor,.ans,.utf8ans,.asc,.txt');
+  await expect(imageInput(page)).toHaveAttribute('accept', 'image/*,.svg,.phosphor,.ans,.utf8ans,.asc,.txt');
 });
 
 test.describe('on a phone', () => {

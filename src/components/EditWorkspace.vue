@@ -8,6 +8,7 @@ import { useSocialStore } from '@/store/SocialStore';
 import { toast } from '@/composables/useToast';
 import { isProjectFile } from '@/document/projectIO';
 import { isArtFile, readArtFile } from '@/lib/ArtFile';
+import { isSvgFile } from '@/lib/SvgFile.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { usePlayback } from '@/composables/usePlayback';
 
@@ -41,14 +42,15 @@ onMounted(() => project.render());
 watch(() => project.processParams, () => project.render(), { deep: true });
 
 async function handleFileSelected(file) {
-  // An art file over a drawing asks whether to add it or open it (artDrop), even in a room: adding is a paste.
-  if (project.image && isArtFile(file.name)) return (workspace.artDrop = { file, at: null });
+  // An art or SVG file over a drawing asks whether to add it or open it (artDrop), even in a room: adding is a
+  // paste. An SVG is never a picture: it's shapes.
+  if (project.image && (isArtFile(file.name) || isSvgFile(file.name))) return (workspace.artDrop = { file, at: null });
   if (drawing.offWithOthers) return toast(drawing.offWithOthers);
   project.commitPending(); // text typed a moment ago counts
   if (project.image && project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
-  if (!project.image) workspace.editorTab = 'output'; // from the start screen, chosen first: the address moves once
+  if (!project.image) workspace.editorTab = isSvgFile(file.name) ? 'vector' : 'output'; // from the start screen, chosen first: the address moves once
   if (isProjectFile(file.name)) await project.loadProject(file);
-  else if (isArtFile(file.name)) return openArt(file);
+  else if (isArtFile(file.name) || isSvgFile(file.name)) return openArt(file);
   else await project.setImageFromFile(file);
   workspace.editorTab = 'output';
 }
@@ -59,20 +61,24 @@ function startBlank() {
   project.setBlankCanvas();
 }
 
+// An art file opens on ANSI, an SVG on VECTOR (openSvgFile chooses it).
 async function openArt(file) {
+  const svg = isSvgFile(file.name);
   try {
-    await project.openArtFile(file);
+    await (svg ? project.openSvgFile(file) : project.openArtFile(file));
   } catch (error) {
     if (!error.userMessage) throw error;
     return toast(error.userMessage); // nothing changed, so stay where we are
   }
-  workspace.editorTab = 'output';
+  if (!svg) workspace.editorTab = 'output';
 }
 
 // The dropped art file's question: added as a paste is (floating and selected, where it was dropped or at the
-// view's top-left), or opened in place of this drawing (not in a room where opening is off).
+// view's top-left), or an SVG as shapes on VECTOR; or opened in place of this drawing (not in a room where
+// opening is off).
+const addText = (drop) => (isSvgFile(drop.file.name) ? t('actions.svgAddText') : drop.at ? t('actions.artAddWhere') : t('actions.artAddTopLeft'));
 const artChoices = computed(() => [
-  { id: 'add', title: t('actions.artAdd'), text: workspace.artDrop?.at ? t('actions.artAddWhere') : t('actions.artAddTopLeft') },
+  { id: 'add', title: t('actions.artAdd'), text: workspace.artDrop && addText(workspace.artDrop) },
   ...(drawing.offWithOthers ? [] : [{ id: 'open', title: t('actions.artOpen'), text: t('actions.artOpenText') }]),
 ]);
 async function chooseArt(choice) {
@@ -84,6 +90,7 @@ async function chooseArt(choice) {
     return openArt(file);
   }
   if (playback.playing) playback.pause(); // it lands on the frame showing
+  if (isSvgFile(file.name)) return addSvg(file);
   let art;
   try {
     art = readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
@@ -97,6 +104,22 @@ async function chooseArt(choice) {
   const { col, row } = at ?? (workspace.viewTab === 'output' ? workspace.ansiViewOrigin : workspace.pixelViewOrigin);
   const pasted = project.pasteSelection({ w: art.cols, h: art.rows, cells: art.cells }, col, row); // a block's h is lines, as the reader's rows are
   if (pasted) workspace.selectAll(pasted); // selected, with the Select tool, to drag into place
+}
+
+// An SVG added to this drawing: its shapes on VECTOR (chosen first, as addSvg picks Vector select there), or the
+// tab it was on when nothing came in.
+async function addSvg(file) {
+  if (project._paused) return; // refused, as a paste is
+  const was = workspace.editorTab, text = await file.text();
+  workspace.editorTab = 'vector';
+  let keys = [];
+  try {
+    keys = project.addSvg(text);
+  } catch (error) {
+    if (!error.userMessage) throw error;
+    toast(error.userMessage);
+  }
+  if (!keys.length) workspace.editorTab = was;
 }
 </script>
 
