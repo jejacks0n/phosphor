@@ -306,7 +306,7 @@ test('double-click edits points: drag a point and a handle, click the outline to
   expect((await world(1)).n).toBe(5);
   expect(await store(page, 'workspace', (w) => w.vectorPoint)).toBe(1);
 
-  // Smooth gives it handles; dragging the out handle bends the edge; Corner keeps the handles where they are.
+  // Smooth gives it handles; dragging the out handle bends the edge; Corner takes them away: a sharp corner.
   await row.getByRole('button', { name: 'Smooth', exact: true }).click();
   expect((await world(1)).smooth).toBe(1);
   const out = await store(page, 'project', `(p) => { const s = p.shapes.get('${key}'); const q = s.points[1]; return { x: q[0] + q[4] + s.m[4], y: q[1] + q[5] + s.m[5] }; }`);
@@ -317,6 +317,7 @@ test('double-click edits points: drag a point and a handle, click the outline to
   expect(bent[3]).toBeGreaterThan(2);
   await row.getByRole('button', { name: 'Corner', exact: true }).click();
   expect((await world(1)).smooth).toBe(0);
+  expect((await store(page, 'project', `(p) => p.shapes.get('${key}').points[1]`)).slice(2, 6)).toEqual([0, 0, 0, 0]);
 
   // Delete point, then Done.
   await row.getByRole('button', { name: 'Delete point', exact: true }).click();

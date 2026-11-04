@@ -1340,7 +1340,7 @@
     "smooth": "Lisse",
     "smoothTitle": "Rendre le point lisse : ses poignées restent alignées",
     "corner": "Angle",
-    "cornerTitle": "Faire du point un angle : ses poignées bougent séparément",
+    "cornerTitle": "Faire du point un angle vif : ses poignées disparaissent",
     "deletePoint": "Supprimer le point",
     "deletePointTitle": "Supprimer le point sélectionné",
     "done": "Terminé",

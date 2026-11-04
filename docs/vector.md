@@ -70,8 +70,8 @@ While a shape's points are edited, its points and their curve handles show over 
 - Drag a point to move it, its handles with it. Drag a handle to bend the curves beside its point.
 - Click the outline to add a point there; the curve stays where it was, and the new point is selected.
 - The options row: **Smooth** (the point's handles stay in line: drag one and the other turns with it; a
-  point with no handles gets some), **Corner** (they move apart), **Delete point** (Delete or Backspace too;
-  a shape left with fewer than two points goes), and **Done**.
+  point with no handles gets some), **Corner** (a sharp point: its handles go), **Delete point** (Delete or
+  Backspace too; a shape left with fewer than two points goes), and **Done**.
 - Click empty canvas, press Esc, or press Done to stop editing points; the shape stays selected.
 
 Each drag, added point and change is one undo step. This works on rotated and scaled shapes too: a point goes

@@ -97,10 +97,9 @@ test('moveHandle on a smooth point keeps the other handle in line and its length
   assert.deepEqual([x, y, ox, oy], [5, 5, 0, 4]);
   close(ix, 0, 0.01);
   close(iy, -2, 0.01); // in line, opposite, its own length
-  const corner = moveHandle(withSmooth(smooth, 0), 0, 'out', 5, 9);
-  assert.deepEqual(corner.points[0].slice(2, 4), [-2, 0]);
+  const free = makeShape({ points: [[5, 5, -2, 0, 3, 0, 0], [10, 10, 0, 0, 0, 0, 0]], closed: false }); // handles not in line
+  assert.deepEqual(moveHandle(free, 0, 'out', 5, 9).points[0].slice(2, 4), [-2, 0]);
 });
-const withSmooth = (shape, i) => setSmooth(shape, i, false);
 
 test('setSmooth lines a corner point\'s handles up, or makes them when it has none', () => {
   const s = makeShape({ points: [[0, 0, 0, 0, 0, 0, 0], [6, 0, 0, 0, 0, 0, 0], [6, 6, 0, 0, 0, 0, 0]], closed: false });
@@ -109,6 +108,13 @@ test('setSmooth lines a corner point\'s handles up, or makes them when it has no
   // in and out point in opposite directions
   close(smooth[2] * smooth[5] - smooth[3] * smooth[4], 0, 0.05);
   assert.ok(smooth[2] * smooth[4] + smooth[3] * smooth[5] < 0);
+});
+
+test('setSmooth off makes the point a sharp corner: its handles go, and Smooth gives it some again', () => {
+  const s = makeShape({ points: [[0, 0, 0, 0, 0, 0, 0], [6, 0, -2, 0, 2, 0, 1], [6, 6, 0, 0, 0, 0, 0]], closed: false });
+  const corner = setSmooth(s, 1, false).points[1];
+  assert.deepEqual(corner, [6, 0, 0, 0, 0, 0, 0]);
+  assert.equal(setSmooth(setSmooth(s, 1, false), 1, true).points[1][6], 1);
 });
 
 test('deletePoint below two points is null', () => {
