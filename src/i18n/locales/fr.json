@@ -1350,6 +1350,7 @@
     "joinMiter": "Jointure en onglet",
     "joinRound": "Jointure ronde",
     "joinBevel": "Jointure biseautée",
+    "svgUnreadable": "Impossible de lire ce fichier comme un SVG.",
     "joinTooBig": "Une forme a au plus {count} points.",
     "editPoints": "Modifier les points",
     "editPointsTitle": "Modifier les points et les courbes de la forme avec l'outil Nœud (A)",

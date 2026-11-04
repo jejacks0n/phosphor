@@ -1350,6 +1350,7 @@
     "joinMiter": "Miter join",
     "joinRound": "Round join",
     "joinBevel": "Bevel join",
+    "svgUnreadable": "Couldn't read this file as an SVG.",
     "joinTooBig": "A shape can have at most {count} points.",
     "editPoints": "Edit points",
     "editPointsTitle": "Edit the shape's points and curves with the Node tool (A)",
