@@ -89,7 +89,8 @@ their points into line with the cells, recolor them, or change them from frame t
 - The selection gets a box. Drag inside it to move the shapes (hold Shift once you're moving to keep them
   straight across, straight up and down, or at 45°), drag one of its eight handles to scale them
   from the opposite side (Shift keeps the proportions), or drag the knob above it to rotate them (Shift
-  turns in steps of 15°). One shape's box turns with it; several shapes share one box, square to the grid.
+  keeps one shape at an angle in steps of 15°, so a turned one can be squared up again; several turn in steps of
+  15° from where they were). One shape's box turns with it; several shapes share one box, square to the grid.
 - Click empty canvas to deselect. Cmd+A (Ctrl+A) selects every shape on the frame, from any VECTOR tool (it
   switches to Vector select), finishing a Pen shape under way first.
 - Cmd+C (Ctrl+C) copies the selected shapes and Cmd+X cuts them; Cmd+V pastes them on top, selected with

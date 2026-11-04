@@ -1,7 +1,7 @@
 // Vector select (the VECTOR tab): click a shape to select it (Shift adds or takes it away), or drag a box over
 // empty canvas to select every shape it touches (Shift: adds them); each change of the selection is an undo
 // step (selectShapes). Then drag inside the box to move (Shift: straight across, up and down, or at 45°), a handle to scale (Shift keeps the proportions)
-// or the knob above it to rotate (Shift: in steps of 15°). A second click on a shape edits its points with the
+// or the knob above it to rotate (Shift: one shape to angles in steps of 15°, several by them). A second click on a shape edits its points with the
 // Node tool (vnode.js). Each drag is one edit, worked out each move from the shapes as they were at the press,
 // so nothing drifts. Keys: arrows nudge a grid pixel (Shift: 10), Delete or Backspace deletes, Esc deselects.
 import { t } from '@/i18n/index.js';
@@ -97,7 +97,11 @@ function scaleTo(project, drag, pos, shift) {
 function rotateTo(project, drag, pos, shift) {
   const { center } = drag.box;
   let angle = Math.atan2(pos.y - center.y, pos.x - center.x) - Math.atan2(drag.from.y - center.y, drag.from.x - center.x);
-  if (shift) angle = Math.round(angle / SNAP) * SNAP;
+  if (shift) {
+    // One shape: its own angle in steps (so a turned one squares up again); several, square to the grid: the turn.
+    const m = drag.box.local?.m, from = m ? Math.atan2(m[1], m[0]) : 0;
+    angle = Math.round((from + angle) / SNAP) * SNAP - from;
+  }
   const w = rotation(angle, center.x, center.y);
   reshape(project, drag, (shape) => multiply(w, shape.m));
 }

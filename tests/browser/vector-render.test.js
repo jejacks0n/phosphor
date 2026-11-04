@@ -10,6 +10,7 @@ import { paintShape } from '@/document/ShapeLayer.js';
 import { toastMessage } from '@/composables/useToast';
 import { shapeAt } from '@/lib/shapeHits.js';
 import vnode from '@/tools/vnode.js';
+import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
 import { gradientHandles } from '@/tools/gradientHandles.js';
 
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
@@ -651,4 +652,37 @@ test('the Node tool, on a shape with a gradient, moves, stretches and turns it, 
   vnode.end(ctx);
   expect(workspace.vectorSelected).toEqual([other]);
   expect([workspace.vectorPoints, workspace.vectorStop]).toEqual([other, null]);
+});
+
+test('Vector select\'s knob with Shift turns one shape to its own angle in steps of 15°, so a turned one can be squared again; several turn by steps', async () => {
+  const { project, workspace } = await gradient(40, 40);
+  const turned = (deg) => transformed(rectShape(10, 10, 30, 20, RED), rotation((deg * Math.PI) / 180, 20, 15));
+  const angle = (key) => { const { m } = project.shapes.get(key); return (Math.atan2(m[1], m[0]) * 180) / Math.PI; };
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } };
+  workspace.setActiveTool('vselect');
+  // The pointer at deg (0: the box's top, straight up from its middle at no turn), around the selection's middle.
+  const turn = (keys, deg) => {
+    workspace.vectorSelected = keys;
+    const box = selectionBox(project.shapes, keys), { knob } = boxHandles(box, ctx.unit), { center } = box;
+    const r = Math.hypot(knob.x - center.x, knob.y - center.y), a = ((deg - 90) * Math.PI) / 180;
+    vselect.begin(ctx, knob, {});
+    workspace.isShiftPressed = true;
+    vselect.move(ctx, knob, { x: center.x + r * Math.cos(a), y: center.y + r * Math.sin(a) });
+    vselect.end(ctx);
+    workspace.isShiftPressed = false;
+  };
+
+  const one = project.addShape(turned(20));
+  expect(angle(one)).toBeCloseTo(20, 2); // as the document keeps it, rounded
+  turn([one], 3); // 17° back: the shape near flat, so flat
+  expect(angle(one)).toBeCloseTo(0, 5);
+  expect(project.shapes.get(one).m[1]).toBeCloseTo(0, 9); // flat, exactly as the document keeps it
+  turn([one], 44); // near 45°
+  expect(angle(one)).toBeCloseTo(45, 5);
+
+  // Several: their box is square to the grid, so they turn by steps of 15° from where they were.
+  const a = project.addShape(turned(20)), b = project.addShape(turned(20));
+  turn([a, b], 17);
+  expect(angle(a)).toBeCloseTo(35, 2);
+  expect(angle(b)).toBeCloseTo(35, 2);
 });
