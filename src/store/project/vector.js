@@ -172,7 +172,8 @@ export const vectorActions = {
   },
 
   // The Pen's shape as it's left: closed, or an open curve, which strokes (its stroke, or the foreground color)
-  // and doesn't fill. One under two points goes, with no undo step unless some of it went out to a room.
+  // and doesn't fill, and selected, as the Shape tool's is. One under two points goes, with no undo step unless
+  // some of it went out to a room, and the selection stays.
   finishPen({ closed = false } = {}) {
     const stroke = this._stroke, key = stroke?.pen;
     if (!key) return;
@@ -188,6 +189,7 @@ export const vectorActions = {
       this.updateShapes([[key, withShape(shape, { fill: null, stroke: shape.stroke ?? fg ?? shape.fill })]]);
     }
     this.commitEdit();
+    if (shape && shape.points.length >= 2 && this.shapes.has(key)) workspace.vectorSelected = [key];
   },
 
   // The shapes keys, and every shape beneath one of them whose bounds overlap it, and so on down: what a merge
