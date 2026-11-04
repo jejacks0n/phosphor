@@ -21,6 +21,14 @@ export default {
       ],
     },
     {
+      // The pixel view: whether a click picks the foreground or the background color (Shift the other).
+      key: 'pixelPickSlot', get label() { return t('tools.picker.pick'); }, type: 'toggles', single: true, views: ['input'],
+      options: [
+        { key: 'fg', get label() { return t('tools.matchToggles.fg'); } },
+        { key: 'bg', get label() { return t('tools.matchToggles.bg'); } },
+      ],
+    },
+    {
       // VECTOR: whether a click sets the Fill or the Stroke (Shift the other), so a phone can set either.
       key: 'vectorPickSlot', get label() { return t('tools.picker.pick'); }, type: 'toggles', single: true, views: ['vector'],
       options: [
