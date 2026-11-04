@@ -9,6 +9,7 @@ import { nearestInDirection } from '@/lib/spatialFocus';
 import { shortcut } from '@/lib/keyLabels';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { gradientKey, gradientSlot, recolorStop } from '@/tools/gradientHandles.js';
+import RangeField from '@/components/RangeField.vue';
 
 // The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
@@ -69,6 +70,24 @@ const choose = (hex, remember = true) => {
 };
 const swap = () => (vector.value ? style.swap() : workspace.swapColors());
 
+// VECTOR's Stroke side: the stroke's width, caps, joins and miter limit (useVectorStyle: the selected shapes', or
+// the next shape's), each change one undo step (a Width drag when it's let go).
+const strokeSide = computed(() => vector.value && props.slotName === 'bg');
+const WIDTH = computed(() => ({ key: 'vectorWidth', label: t('vector.width'), title: t('vector.widthTitle'), min: 0.5, max: 64, step: 0.5, decimals: 1 }));
+const width = computed({
+  get: () => style.value('width'),
+  set: (v) => style.set('width', v, { remember: false }),
+});
+const ic = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">${inner}</svg>`;
+const guide = '<line x1="15" y1="3" x2="15" y2="21" stroke-width="1" stroke-dasharray="2 2" opacity=".6"/>';
+const CAPS = ['butt', 'round', 'square'].map((v) => ({ v, title: `vector.cap${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`<line x1="3" y1="12" x2="15" y2="12" stroke-width="8" stroke-linecap="${v}"/>${guide}`) }));
+const JOINS = ['miter', 'round', 'bevel'].map((v) => ({ v, title: `vector.join${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`<polyline points="4,20 12,7 20,20" stroke-width="5" stroke-linejoin="${v}"/>`) }));
+const setMiter = (e) => {
+  const v = Number(e.target.value);
+  if (Number.isFinite(v) && e.target.value !== '') style.set('miter', Math.min(100, Math.max(1, v)));
+  e.target.value = style.value('miter');
+};
+
 const onPointerDown = (event) => {
   if (root.value && !root.value.contains(event.target) && !event.target.closest('.color-pair')) emit('close');
 };
@@ -79,7 +98,8 @@ const onKeyDown = (event) => {
 };
 // The arrow keys move focus to the nearest control that way (the swatches, None, the recent colors,
 // the FG/BG switch); Enter on a swatch picks it and closes the box, Space picks it (as a click does)
-// and leaves it open. Taken here, so they don't also nudge a selection or move the text cursor.
+// and leaves it open. Taken here, so they don't also nudge a selection or move the text cursor. In a field of
+// the Stroke side (Width, Miter) they're the field's.
 const onArrow = (event) => {
   if (event.key === 'Enter' && document.activeElement?.classList.contains('swatch')) {
     event.preventDefault();
@@ -88,6 +108,7 @@ const onArrow = (event) => {
     return;
   }
   if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key) || event.altKey || event.metaKey || event.ctrlKey) return;
+  if (event.target.closest?.('.stroke-settings') && event.target.tagName === 'INPUT') return event.stopPropagation();
   event.preventDefault();
   event.stopPropagation();
   const controls = [...root.value.querySelectorAll('button, input')];
@@ -173,6 +194,22 @@ onBeforeUnmount(() => {
           @click="choose(hex)"
       ></button>
     </div>
+
+    <div v-if="strokeSide" class="stroke-settings">
+      <RangeField :setting="WIDTH" v-model="width" @commit="style.finish"/>
+      <div class="settings">
+        <span class="option-label">{{ t('vector.cap') }}</span>
+        <div class="icons">
+          <button v-for="c in CAPS" :key="c.v" class="icon" :title="t(c.title)" :aria-label="t(c.title)" :aria-pressed="style.value('cap') === c.v" @click="style.set('cap', c.v)" v-html="c.icon"/>
+        </div>
+        <span class="option-label">{{ t('vector.joinLabel') }}</span>
+        <div class="icons">
+          <button v-for="j in JOINS" :key="j.v" class="icon" :title="t(j.title)" :aria-label="t(j.title)" :aria-pressed="style.value('join') === j.v" @click="style.set('join', j.v)" v-html="j.icon"/>
+        </div>
+        <label class="option-label" for="vector-miter">{{ t('vector.miter') }}</label>
+        <input id="vector-miter" type="number" min="1" max="100" step="0.5" :title="t('vector.miterTitle')" :value="style.value('miter')" :disabled="style.value('join') !== 'miter'" @change="setMiter"/>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -227,6 +264,101 @@ div.head button.swap svg {
 div.head button.on {
   background: var(--accent);
   color: var(--white);
+}
+
+div.stroke-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Width, labeled as Cap, Join and Miter are, its value across from its label. */
+div.stroke-settings :deep(div.field) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+div.stroke-settings :deep(div.label-row) {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+div.stroke-settings :deep(div.label-row label) {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+div.stroke-settings :deep(span.value) {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+div.stroke-settings :deep(span.value-tooltip) {
+  display: none; /* the label row shows the value */
+}
+
+div.stroke-settings :deep(div.range-wrapper),
+div.stroke-settings :deep(input[type=range]) {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+div.stroke-settings .settings {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+div.stroke-settings .option-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+div.stroke-settings .icons {
+  display: flex;
+  gap: 4px;
+}
+
+div.stroke-settings button.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+div.stroke-settings button.icon[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--white);
+}
+
+div.stroke-settings button.icon :deep(svg) {
+  width: 20px;
+  height: 20px;
+}
+
+div.stroke-settings input[type='number'] {
+  width: 64px;
 }
 
 div.kinds {

@@ -190,6 +190,21 @@ nothing selected, they're what the next shape gets. Until you change them, the n
 foreground color and has no outline; a shape with neither gets the foreground color as its fill. ANSI's and
 PIXEL's colors are left as they were.
 
+### The outline
+
+The Stroke side of the color box also sets how the outline is drawn, again the selected shapes' or the next
+shape's:
+
+- **Stroke width**, the outline's width in pixels (0.5 to 64).
+- **Cap**, the ends of an open outline: butt (cut off at the end point), round, or square (squared off half the
+  width past it).
+- **Join**, the corners: miter (a sharp point), round, or bevel (cut across).
+- **Miter**, the limit for miter joins (1 to 100): how far a sharp corner's point may reach, in stroke widths,
+  before it's cut off as a bevel. It's only for miter joins.
+
+Drawn shapes start with round caps and round joins. Each press is one undo step; a Stroke width drag is one step
+when you let go.
+
 ### Gradients
 
 A fill or an outline can be a **gradient**: linear (bands of color across the shape) or radial (rings from a
@@ -213,20 +228,7 @@ Gradients from an SVG file come in as gradients ([Importing SVG](#importing-svg)
 
 ## The options row
 
-**Stroke width** is the outline's width in pixels (0.5 to 64): the selected shapes', or the next shape's. With
-shapes selected (Vector select):
-
-**Stroke** opens a panel for how the outline is drawn, again the selected shapes' or the next shape's:
-
-- **Cap**, the ends of an open outline: butt (cut off at the end point), round, or square (squared off half the
-  width past it).
-- **Join**, the corners: miter (a sharp point), round, or bevel (cut across).
-- **Miter**, the limit for miter joins (1 to 100): how far a sharp corner's point may reach, in stroke widths,
-  before it's cut off as a bevel. It's only for miter joins.
-
-Drawn shapes start with round caps and round joins.
-
-With shapes selected:
+With Vector select, **Copy**, **Cut** and **Paste**, and with shapes selected:
 
 - **Forward** and **Back** move the shapes just above the nearest shape they overlap, or just beneath it;
   every other shape keeps its place.
@@ -235,10 +237,8 @@ With shapes selected:
   **Separate** takes a shape of several outlines apart, each outline a shape of its own in the same colors.
 - **Delete** deletes the shapes.
 
-Each change is one undo step (each press in the Stroke panel too); a Stroke width drag is one step when you let go.
-
-On a phone the row keeps Stroke width and Stroke (its panel the window's width), and puts Forward, Back, Join,
-Separate and Delete under ⋯. A double tap on a shape edits its points.
+Each change is one undo step. On a phone the row puts Forward, Back, Join, Separate and Delete under ⋯. A double
+tap on a shape edits its points.
 
 ## Eyedropper (I)
 
