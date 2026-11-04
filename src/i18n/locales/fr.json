@@ -1387,7 +1387,6 @@
     "deleteTitle": "Supprimer les formes sélectionnées",
     "pasteTitle": "Coller les formes copiées ({key})",
     "selectHint": "Faites glisser pour déplacer, les poignées pour redimensionner, le bouton pour faire pivoter",
-    "more": "Plus",
     "point": "Point",
     "smooth": "Lisse",
     "smoothTitle": "Rendre le point lisse : ses poignées restent alignées",

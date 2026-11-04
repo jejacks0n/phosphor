@@ -1387,7 +1387,6 @@
     "deleteTitle": "Delete the selected shapes",
     "pasteTitle": "Paste the copied shapes ({key})",
     "selectHint": "Drag to move, the handles to scale, the knob to rotate",
-    "more": "More",
     "point": "Point",
     "smooth": "Smooth",
     "smoothTitle": "Make the point smooth: its handles stay in line",

@@ -781,21 +781,22 @@ test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shap
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  test('the options row is ⋯; Stroke width is in the Stroke box', async ({ page }) => {
+  test('the options row has every button, as icons, and no hint; Stroke width is in the Stroke box', async ({ page }) => {
     await openApp(page);
     await tab(page, 'VECTOR').click();
     const key = await addRect(page, 4, 4, 14, 14);
     await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
     const row = page.locator('.vector-options');
-    await expect(row.getByRole('button', { name: 'More', exact: true })).toBeVisible();
+    await expect(row.getByRole('button', { name: 'More', exact: true })).toHaveCount(0);
     await expect(row.getByRole('button', { name: 'Points', exact: true })).toHaveCount(0); // a double tap or A edits points
     await expect(row.getByRole('button', { name: 'Fill', exact: true })).toHaveCount(0);
     await expect(row.getByLabel('Stroke width', { exact: true })).toHaveCount(0);
-    await expect(row.getByRole('button', { name: 'Forward', exact: true })).toHaveCount(0);
     await expect(row.locator('.hint')).toHaveCount(0);
-    await row.getByRole('button', { name: 'More', exact: true }).click();
-    for (const name of ['Forward', 'Back', 'Delete']) await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
-    await page.keyboard.press('Escape');
+    for (const name of ['Forward', 'Back', 'Join', 'Separate', 'Delete']) {
+      const button = row.getByRole('button', { name, exact: true });
+      await expect(button).toBeInViewport({ ratio: 1 });
+      await expect(button.locator('svg')).toHaveCount(1);
+    }
     await page.locator('.color-pair .chip.bg').click();
     const box = page.locator('.color-popover');
     await expect(box.getByLabel('Stroke width', { exact: true })).toBeVisible();
