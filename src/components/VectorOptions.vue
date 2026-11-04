@@ -10,7 +10,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
-import { setSmooth } from '@/document/shapes.js';
+import { allPoints, setSmooth } from '@/document/shapes.js';
 import { deleteSelectedPoint } from '@/tools/vnode.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
@@ -38,7 +38,7 @@ const remove = () => {
 };
 // The Point row: the shape whose points are edited, and its selected point.
 const pointsOf = computed(() => workspace.activeTool === 'vnode' && workspace.vectorPoints && project.shapes.get(workspace.vectorPoints));
-const point = computed(() => (pointsOf.value && workspace.vectorPoint !== null ? pointsOf.value.points[workspace.vectorPoint] : null));
+const point = computed(() => (pointsOf.value && workspace.vectorPoint !== null ? allPoints(pointsOf.value)[workspace.vectorPoint] : null));
 const smooth = (on) => project.updateShapes([[workspace.vectorPoints, setSmooth(pointsOf.value, workspace.vectorPoint, on)]]);
 const removePoint = () => deleteSelectedPoint(project, workspace);
 
