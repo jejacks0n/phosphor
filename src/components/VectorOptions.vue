@@ -2,7 +2,7 @@
 // VECTOR's options row. With Vector select: Copy, Cut and Paste, and with shapes selected Forward and Back (the
 // stacking order), Join, Separate and Delete, each one undo step. Fill and Stroke, and the stroke's width, caps,
 // joins and miter limit, are the color pair's (ColorPopover, useVectorStyle). While a shape's points are edited,
-// the Point row: the selected point Smooth or Sharp, and Delete (the point); Esc or empty canvas ends it. With the
+// the Point row: the selected point Smooth, Free or Sharp, and Delete (the point); Esc or empty canvas ends it. With the
 // Node tool's Place gradient, the Gradient row instead: Delete stop, and on a shape with two gradients Fill or
 // Stroke. The buttons are icons, named in their titles; a phone's rows have no label or hint.
 import { computed } from 'vue';
@@ -11,7 +11,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
-import { allPoints, isGradient, setSmooth } from '@/document/shapes.js';
+import { allPoints, isGradient, setFree, setSmooth } from '@/document/shapes.js';
 import { gradientKey, gradientSlot, removeStop } from '@/tools/gradientHandles.js';
 import { deleteSelectedPoint } from '@/tools/vnode.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
@@ -50,15 +50,18 @@ const remove = () => {
 const pointsOf = computed(() => workspace.activeTool === 'vnode' && workspace.vectorPoints && project.shapes.get(workspace.vectorPoints));
 const point = computed(() => (pointsOf.value && workspace.vectorPoint !== null ? allPoints(pointsOf.value)[workspace.vectorPoint] : null));
 const smooth = (on) => project.updateShapes([[workspace.vectorPoints, setSmooth(pointsOf.value, workspace.vectorPoint, on)]]);
-// Smooth or Sharp, the selected point's: smooth, or sharp (no handles); a point whose handles were broken apart is
-// neither, so either can be chosen.
-const POINT_KINDS = computed(() => ['smooth', 'sharp'].map((key) => ({ key, label: t(`vector.${key}`), title: t(`vector.${key}Title`), disabled: !point.value })));
+// Smooth, Free or Sharp, the selected point's: its handles in line, apart (each moving on its own; Alt-dragging one
+// does that too), or none.
+const POINT_KINDS = computed(() => ['smooth', 'free', 'sharp'].map((key) => ({ key, label: t(`vector.${key}`), title: t(`vector.${key}Title`), disabled: !point.value })));
 const pointKind = computed({
   get: () => {
-    const p = point.value;
-    return { smooth: !!p?.[6], sharp: !!p && !p[6] && !p[2] && !p[3] && !p[4] && !p[5] };
+    const p = point.value, handles = !!p && !!(p[2] || p[3] || p[4] || p[5]);
+    return { smooth: !!p?.[6], free: !!p && !p[6] && handles, sharp: !!p && !p[6] && !handles };
   },
-  set: (next) => smooth(next.smooth),
+  set: (next) => {
+    if (next.free) project.updateShapes([[workspace.vectorPoints, setFree(pointsOf.value, workspace.vectorPoint)]]);
+    else smooth(next.smooth);
+  },
 });
 const removePoint = () => deleteSelectedPoint(project, workspace);
 const deleteStop = () => removeStop(project, workspace);

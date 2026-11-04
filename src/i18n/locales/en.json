@@ -1390,6 +1390,8 @@
     "point": "Point",
     "smooth": "Smooth",
     "smoothTitle": "Make the point smooth: its handles stay in line",
+    "free": "Free",
+    "freeTitle": "Free the point's handles: each moves on its own",
     "sharp": "Sharp",
     "sharpTitle": "Make the point sharp: its handles go",
     "deletePointTitle": "Delete the selected point",

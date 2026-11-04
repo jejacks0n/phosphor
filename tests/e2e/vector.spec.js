@@ -822,7 +822,7 @@ test.describe('on a phone', () => {
   });
 });
 
-test('double-click edits points: drag a point and a handle, click the outline to add one, Smooth or Sharp, Delete, and empty canvas to finish', async ({ page }) => {
+test('double-click edits points: drag a point and a handle, click the outline to add one, Smooth, Free or Sharp, Delete, and empty canvas to finish', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await settled(page);
@@ -843,9 +843,10 @@ test('double-click edits points: drag a point and a handle, click the outline to
   expect((await world(1)).n).toBe(5);
   expect(await store(page, 'workspace', (w) => w.vectorPoint)).toBe(1);
 
-  // Smooth or Sharp, one of them lit: Smooth gives it handles; dragging the out handle bends the edge; Sharp takes them away.
+  // Smooth, Free or Sharp, one of them lit: Smooth gives it handles; dragging the out handle bends the edge; Free
+  // lets its handles move apart; Sharp takes them away.
   const kind = row.getByRole('group', { name: 'Point', exact: true });
-  const [smooth, sharp] = ['Smooth', 'Sharp'].map((name) => kind.getByRole('button', { name, exact: true }));
+  const [smooth, free, sharp] = ['Smooth', 'Free', 'Sharp'].map((name) => kind.getByRole('button', { name, exact: true }));
   await expect(sharp).toHaveAttribute('aria-pressed', 'true');
   await smooth.click();
   expect((await world(1)).smooth).toBe(1);
@@ -867,7 +868,16 @@ test('double-click edits points: drag a point and a handle, click the outline to
   expect(broke.slice(4, 6)).toEqual(bent.slice(4, 6));
   expect(broke[2]).toBeLessThan(bent[2] - 2);
   expect(broke[6]).toBe(0);
-  for (const button of [smooth, sharp]) await expect(button).toHaveAttribute('aria-pressed', 'false'); // handles apart: neither
+  await expect(free).toHaveAttribute('aria-pressed', 'true'); // its handles apart
+  // Without Alt (a phone has none): Smooth lines them up again, Free lets one move on its own.
+  await smooth.click();
+  await free.click();
+  const lined = await store(page, 'project', `(p) => p.shapes.get('${key}').points[1]`);
+  expect(lined[6]).toBe(0);
+  await dragPoints(page, await gridPoint(page, lined[0] + lined[4] + m[4], lined[1] + lined[5] + m[5]), await gridPoint(page, lined[0] + lined[4] + m[4], lined[1] + lined[5] + m[5] + 4));
+  const freed = await store(page, 'project', `(p) => p.shapes.get('${key}').points[1]`);
+  expect(freed.slice(2, 4)).toEqual(lined.slice(2, 4)); // the in handle stayed
+  expect(freed[5]).toBeGreaterThan(lined[5] + 3);
   await sharp.click();
   expect((await world(1)).smooth).toBe(0);
   await expect(sharp).toHaveAttribute('aria-pressed', 'true');
@@ -881,7 +891,7 @@ test('double-click edits points: drag a point and a handle, click the outline to
   expect(await store(page, 'workspace', (w) => w.vectorPoints)).toBe(null);
   expect(await selected(page)).toEqual([key]);
 
-  await undoSteps(page, 6); // Delete point, Sharp, the broken handle, the handle, Smooth, the added point
+  await undoSteps(page, 9); // Delete point, Sharp, the free handle, Free, Smooth, the broken handle, the handle, Smooth, the added point
   expect((await world(2))).toMatchObject({ n: 4, x: expect.closeTo(36, 0) });
 });
 

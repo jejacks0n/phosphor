@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   makeShape, sameShape, isShape, isShapeKey, newShapeKey, pathData, shapeBounds, dirtyRect, worldPoints,
   multiply, invert, apply, rotation, scaling, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
-  moveHandle, setSmooth, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
+  moveHandle, setSmooth, setFree, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
   outlines, withOutlines, locate, allPoints, strokeOf, STROKE_DEFAULTS, withShape, movePoint, joined, separated, styleColors, fillAs,
 } from '../../src/document/shapes.js';
 import { changeBytes } from '../../src/document/changes.js';
@@ -123,6 +123,15 @@ test('setSmooth off makes the point a sharp corner: its handles go, and Smooth g
   const corner = setSmooth(s, 1, false).points[1];
   assert.deepEqual(corner, [6, 0, 0, 0, 0, 0, 0]);
   assert.equal(setSmooth(setSmooth(s, 1, false), 1, true).points[1][6], 1);
+});
+
+test('setFree keeps a point\'s handles but frees them of each other, giving a sharp point smooth ones first', () => {
+  const s = makeShape({ points: [[0, 0, 0, 0, 0, 0, 0], [6, 0, -2, 0, 2, 0, 1], [6, 6, 0, 0, 0, 0, 0]], closed: false });
+  assert.deepEqual(setFree(s, 1).points[1], [6, 0, -2, 0, 2, 0, 0]);
+  const sharp = setSmooth(s, 1, false), freed = setFree(sharp, 1).points[1];
+  assert.deepEqual(freed.slice(2, 6), setSmooth(sharp, 1, true).points[1].slice(2, 6));
+  assert.equal(freed[6], 0);
+  assert.deepEqual(moveHandle(setFree(s, 1), 1, 'out', 6, 3).points[1].slice(2, 4), [-2, 0]); // its partner stays
 });
 
 test('deletePoint below two points is null', () => {
