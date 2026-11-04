@@ -5,8 +5,9 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
-import { makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, scaling, setSmooth, withShape, worldPoints } from '@/document/shapes';
+import { MOST_SHAPES, makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, scaling, setSmooth, withShape, worldPoints } from '@/document/shapes';
 import { paintShape } from '@/document/ShapeLayer.js';
+import { toastMessage } from '@/composables/useToast';
 import { shapeAt } from '@/lib/shapeHits.js';
 import vnode from '@/tools/vnode.js';
 import vgradient, { gradientHandles } from '@/tools/vgradient.js';
@@ -399,6 +400,25 @@ test('Join makes a ring from a square and a smaller one inside it, and Separate 
   expect(project.separateShape(inner)).toBe(null); // one outline: nothing to separate
 });
 
+test('addShapes puts copies on top, in their order, as one step, selected; past a frame\'s shapes, none', async () => {
+  const { project, workspace } = await gradient();
+  const a = project.addShape(rectShape(2, 2, 10, 10, RED)), b = project.addShape(rectShape(12, 2, 20, 10, { fill: '#0000ff' }));
+  const version = project.history.version, copies = [project.shapes.get(a), project.shapes.get(b)];
+  const keys = project.addShapes(copies);
+  expect(keys).toHaveLength(2);
+  expect(keys.map((k) => project.shapes.get(k).points)).toEqual(copies.map((s) => s.points));
+  expect(keys.map((k) => project.shapes.get(k).z)).toEqual([2, 3]);
+  expect(workspace.vectorSelected).toEqual(keys);
+  expect(workspace.activeTool).toBe('vselect');
+  expect(project.history.version).toBe(version + 1);
+  project.undo();
+  expect([...project.shapes.keys()]).toEqual([a, b]);
+  toastMessage.value = null;
+  expect(project.addShapes(Array.from({ length: MOST_SHAPES - 1 }, () => copies[0]))).toEqual([]);
+  expect(toastMessage.value).toContain(String(MOST_SHAPES));
+  expect(project.shapes.size).toBe(2);
+});
+
 test('paused in a room, Join, Separate and an SVG change nothing', async () => {
   const { project } = await gradient();
   const outer = project.addShape(rectShape(2, 2, 26, 26, RED)), inner = project.addShape(rectShape(10, 10, 18, 18, { fill: '#0000ff' }));
@@ -409,6 +429,7 @@ test('paused in a room, Join, Separate and an SVG change nothing', async () => {
   project.joinShapes([inner, outer]);
   project.separateShape(ring);
   project.addSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="5" height="5"/></svg>');
+  project.addShapes([project.shapes.get(outer)]);
   expect(project.shapes).toEqual(before);
   expect(project.history.version).toBe(version);
 });

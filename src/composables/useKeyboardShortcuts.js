@@ -209,16 +209,30 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
-  // Cmd/Ctrl+A on VECTOR: every shape on the frame, bottom to top, with Vector select (the Gradient tool keeps
-  // itself: it works on the selection), not the page's text. A Pen shape under way ends first.
-  const _handleVectorSelectAll = (e) => {
-    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'a') return false;
+  // Cmd/Ctrl+A, C, X and V on VECTOR, not the page's: A selects every shape on the frame, bottom to top, with
+  // Vector select (the Gradient tool keeps itself: it works on the selection); C copies the selected shapes and X
+  // cuts them, to this tab's own clipboard; V pastes them on top, where they were, selected. A Pen shape under way
+  // ends first.
+  const _handleVectorKeys = (e) => {
+    const key = e.key.toLowerCase();
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || !['a', 'c', 'x', 'v'].includes(key)) return false;
     if (workspaceStore.editorTab !== 'vector' || isField(e.target) || workspaceStore.isPainting || !projectStore.image) return false;
-    e.preventDefault();
     projectStore.commitPending();
-    if (workspaceStore.activeTool !== 'vgradient') workspaceStore.setActiveTool('vselect');
-    workspaceStore.vectorSelected = stacked(projectStore.shapes).map(([key]) => key);
-    workspaceStore.vectorStop = null;
+    const chosen = () => stacked(projectStore.shapes).filter(([k]) => workspaceStore.vectorSelected.includes(k));
+    if (key === 'a') {
+      if (workspaceStore.activeTool !== 'vgradient') workspaceStore.setActiveTool('vselect');
+      workspaceStore.vectorSelected = stacked(projectStore.shapes).map(([k]) => k);
+      workspaceStore.vectorStop = null;
+    } else if (key === 'c' || key === 'x') {
+      const shapes = chosen();
+      if (!shapes.length) return false;
+      workspaceStore.vectorClipboard = shapes.map(([, shape]) => shape);
+      if (key === 'x') {
+        projectStore.deleteShapes(shapes.map(([k]) => k));
+        workspaceStore.vectorSelected = [];
+      }
+    } else if (!workspaceStore.vectorClipboard || !projectStore.addShapes(workspaceStore.vectorClipboard)) return false;
+    e.preventDefault();
     return true;
   };
 
@@ -320,7 +334,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;
     if (_handleHelp(e)) return;
-    if (_handleVectorSelectAll(e)) return;
+    if (_handleVectorKeys(e)) return;
     if (_handleActiveToolKeys(e)) return;
     if (_handleColorKeys(e)) return;
     if (_handleToolSwap(e)) return;
