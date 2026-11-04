@@ -98,7 +98,7 @@ export default {
     }
     const other = shapeAt(project.shapes, pos.x, pos.y, radius / unit.x);
     if (other && other !== key) {
-      workspace.vectorSelected = [other];
+      project.selectShapes([other]);
       workspace.vectorStop = null;
     }
     return false;

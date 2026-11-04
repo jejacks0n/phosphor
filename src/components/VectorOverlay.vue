@@ -75,6 +75,14 @@ const gradient = computed(() => {
   return { p0: px(p0), p1: px(p1), stops: stops.map((s) => ({ ...s, at: px(s.at) })) };
 });
 
+// Vector select's box over empty canvas, as it's dragged.
+const marquee = computed(() => {
+  const m = workspace.vectorMarquee;
+  if (!m) return null;
+  const a = px({ x: m.x0, y: m.y0 }), b = px({ x: m.x1, y: m.y1 });
+  return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
+});
+
 const r = computed(() => handleRadius() / 2 + 1);
 </script>
 
@@ -101,6 +109,7 @@ const r = computed(() => handleRadius() / 2 + 1);
         <rect v-for="(p, i) in [gradient.p0, gradient.p1]" :key="`e${i}`" :x="p.x - r" :y="p.y - r" :width="2 * r" :height="2 * r" class="handle"/>
         <circle v-for="s in gradient.stops" :key="`s${s.i}`" :cx="s.at.x" :cy="s.at.y" :r="r * 0.9" class="stop" :class="{ on: workspace.vectorStop === s.i }" :style="{ fill: s.color }" :data-stop="s.i"/>
       </template>
+      <rect v-if="marquee" :x="marquee.x" :y="marquee.y" :width="marquee.w" :height="marquee.h" class="box marquee"/>
       <template v-if="pen">
         <line v-if="pen.next" :x1="pen.next.from.x" :y1="pen.next.from.y" :x2="pen.next.to.x" :y2="pen.next.to.y" class="box"/>
         <rect v-for="(p, i) in pen.all" :key="i" :x="p.x - r" :y="p.y - r" :width="2 * r" :height="2 * r" class="handle" :class="{ on: i === 0 }"/>

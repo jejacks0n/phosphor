@@ -1384,6 +1384,7 @@
     "editPointsTitle": "Edit the shape's points and curves with the Node tool (A)",
     "points": "Points",
     "deleteTitle": "Delete the selected shapes",
+    "pasteTitle": "Paste the copied shapes ({key})",
     "selectHint": "Drag to move, the handles to scale, the knob to rotate",
     "more": "More",
     "point": "Point",

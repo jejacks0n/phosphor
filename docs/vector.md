@@ -85,19 +85,23 @@ their points into line with the cells, recolor them, or change them from frame t
 ## Vector select (V)
 
 - Click a shape to select it. Shift-click adds a shape to the selection, or takes it away.
+- Drag a box over empty canvas to select every shape it touches; with Shift, they're added to the selection.
 - The selection gets a box. Drag inside it to move the shapes (hold Shift once you're moving to keep them
   straight across, straight up and down, or at 45°), drag one of its eight handles to scale them
   from the opposite side (Shift keeps the proportions), or drag the knob above it to rotate them (Shift
   turns in steps of 15°). One shape's box turns with it; several shapes share one box, square to the grid.
 - Click empty canvas to deselect. Cmd+A (Ctrl+A) selects every shape on the frame, from any VECTOR tool (it
   switches to Vector select; the Gradient tool stays), finishing a Pen shape under way first.
-- Cmd+C (Ctrl+C) copies the selected shapes and Cmd+X cuts them; Cmd+V pastes them on top, where they were,
-  selected with Vector select, to drag into place. The paste is one undo step, and goes to whatever frame is
-  showing. Shapes copy within this tab only.
+- Cmd+C (Ctrl+C) copies the selected shapes and Cmd+X cuts them; Cmd+V pastes them on top, selected with
+  Vector select, to drag into place. After a copy they land a little right of and below the last ones, so you
+  see them; after a cut, where they were. The options row has the same Copy, Cut and Paste buttons as Select's.
+  The paste is one undo step, and goes to whatever frame is showing. Shapes copy within this tab only.
 - Double-click a shape (or press **Edit points**) to edit its points with the Node tool (below).
 - The arrow keys nudge the selection a pixel (with Shift, 10). Delete or Backspace deletes it. Esc deselects.
 
-Each drag, nudge or delete is one undo step.
+Each drag, nudge or delete is one undo step, and so is each change of what's selected (a click, a box, Esc,
+Select all), so undo brings back a selection lost to a stray click. Undoing an edit brings back the shapes that
+were selected when it began.
 
 ## Node (A)
 

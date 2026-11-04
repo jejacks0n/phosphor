@@ -345,14 +345,21 @@ export const selectionActions = {
   changeSelection(change, before = null) {
     const workspace = useWorkspaceStore();
     this.commitPending();
-    before ??= { selection: workspace.selection, wand: workspace.wand };
+    before ??= { selection: workspace.selection, wand: workspace.wand, vectorSelected: workspace.vectorSelected };
+    before.vectorSelected ??= workspace.vectorSelected;
     const float = this._float?.version === this.history.version ? this._float : null;
     change?.(workspace);
-    const after = { selection: workspace.selection, wand: workspace.wand };
-    if (toRaw(after.selection) === toRaw(before.selection) && toRaw(after.wand) === toRaw(before.wand)) return;
+    const after = { selection: workspace.selection, wand: workspace.wand, vectorSelected: workspace.vectorSelected };
+    const sameShapes = after.vectorSelected.length === before.vectorSelected.length && after.vectorSelected.every((key, i) => key === before.vectorSelected[i]);
+    if (toRaw(after.selection) === toRaw(before.selection) && toRaw(after.wand) === toRaw(before.wand) && sameShapes) return;
     const apply = (side) => Object.assign(workspace, side);
     this.history.push({ undo: () => apply(before), redo: () => apply(after), selectionOnly: true, float, bytes: after.wand?.mask.length ?? 0 });
     this.historyVersion = this.history.version;
+  },
+
+  // VECTOR's selection set to keys, as an undo step (changeSelection): a click, Esc, a box, Select all.
+  selectShapes(keys) {
+    this.changeSelection((w) => { w.vectorSelected = keys; });
   },
 
   // One undo step for a selection operation's changes (cells, paint, base pixels, pins); the cells in

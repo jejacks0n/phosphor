@@ -12,6 +12,8 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { allPoints, setSmooth } from '@/document/shapes.js';
 import { deleteSelectedPoint } from '@/tools/vnode.js';
+import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
+import { shortcut } from '@/lib/keyLabels';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
 
@@ -42,6 +44,9 @@ const setMiter = (e) => {
 };
 
 const forward = () => project.restackShapes(selected.value, 'forward');
+const copy = () => copyShapes(project, workspace);
+const cut = () => cutShapes(project, workspace);
+const paste = () => pasteShapes(project, workspace);
 // Join and Separate: the selection afterwards is what they made.
 const canSeparate = computed(() => !!project.shapes.get(selected.value[0])?.more);
 const join = () => {
@@ -98,6 +103,12 @@ const editPoints = () => {
         <input id="vector-miter" type="number" min="1" max="100" step="0.5" :title="t('vector.miterTitle')" :value="style.value('miter')" :disabled="style.value('join') !== 'miter'" @change="setMiter"/>
       </div>
     </DropdownMenu>
+    <template v-if="workspace.activeTool === 'vselect'">
+      <div class="divider"/>
+      <button :title="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" :aria-label="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" :disabled="!selected.length" @click="copy"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M240 64H528A48 48 0 0 1 576 112V400A48 48 0 0 1 528 448H448V384H512V128H256V192H192V112A48 48 0 0 1 240 64ZM112 192H400A48 48 0 0 1 448 240V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V240A48 48 0 0 1 112 192Z"/></svg></button>
+      <button :title="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" :aria-label="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" :disabled="!selected.length" @click="cut"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M192 368A96 96 0 1 1 192 560A96 96 0 1 1 192 368ZM192 416A48 48 0 1 0 192 512A48 48 0 1 0 192 416ZM448 368A96 96 0 1 1 448 560A96 96 0 1 1 448 368ZM448 416A48 48 0 1 0 448 512A48 48 0 1 0 448 416Z"/><path d="M480 48L544 88L310 408L254 372ZM160 48L96 88L330 408L386 372Z"/></svg></button>
+      <button :title="t('vector.pasteTitle', { key: shortcut('mod', 'V') })" :aria-label="t('vector.pasteTitle', { key: shortcut('mod', 'V') })" :disabled="!workspace.vectorClipboard" @click="paste"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M160 96H208V176H432V96H480A64 64 0 0 1 544 160V528A64 64 0 0 1 480 592H160A64 64 0 0 1 96 528V160A64 64 0 0 1 160 96ZM160 224V528H480V224Z"/><path d="M256 48H384A32 32 0 0 1 416 80V144H224V80A32 32 0 0 1 256 48Z"/></svg></button>
+    </template>
     <template v-if="editing">
       <div class="divider"/>
       <button v-if="phone" class="text" :title="t('vector.editPointsTitle')" @click="editPoints">{{ t('vector.points') }}</button>

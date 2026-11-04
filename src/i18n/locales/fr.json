@@ -1384,6 +1384,7 @@
     "editPointsTitle": "Modifier les points et les courbes de la forme avec l'outil Nœud (A)",
     "points": "Points",
     "deleteTitle": "Supprimer les formes sélectionnées",
+    "pasteTitle": "Coller les formes copiées ({key})",
     "selectHint": "Faites glisser pour déplacer, les poignées pour redimensionner, le bouton pour faire pivoter",
     "more": "Plus",
     "point": "Point",
