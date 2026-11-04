@@ -22,10 +22,10 @@ export default {
     },
     {
       // VECTOR: whether a click sets the Fill or the Stroke (Shift the other), so a phone can set either.
-      key: 'vectorPickSlot', get label() { return t('tools.picker.pick'); }, type: 'segmented', views: ['vector'],
-      choices: [
-        { value: 'fill', get label() { return t('vector.fill'); } },
-        { value: 'stroke', get label() { return t('vector.stroke'); } },
+      key: 'vectorPickSlot', get label() { return t('tools.picker.pick'); }, type: 'toggles', single: true, views: ['vector'],
+      options: [
+        { key: 'fill', get label() { return t('vector.fill'); } },
+        { key: 'stroke', get label() { return t('vector.stroke'); } },
       ],
     },
   ],
