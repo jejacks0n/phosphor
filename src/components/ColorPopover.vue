@@ -14,7 +14,8 @@ import { useVectorStyle } from '@/composables/useVectorStyle.js';
 // 24-bit. A palette swatch stores a color that displays as its palette color under the color
 // adjustments (paletteChoices), so every palette color can be painted with; other swatches show
 // how their color displays (adjusted, snapped) and store the color itself.
-// On VECTOR the slots are the shapes' Fill and Stroke (useVectorStyle), each of which can be none.
+// On VECTOR the slots are the shapes' Fill and Stroke (useVectorStyle), each of which can be none, and the selected
+// shapes' Fill can be Solid, Linear or Radial.
 const props = defineProps({
   slotName: { type: String, required: true }, // 'fg' | 'bg'
 });
@@ -29,7 +30,10 @@ const ansiView = computed(() => workspace.editorTab === 'output');
 const vector = computed(() => workspace.editorTab === 'vector');
 const style = useVectorStyle();
 const SHAPE_SLOTS = { fg: 'fill', bg: 'stroke' };
-const current = computed(() => (vector.value ? style.value(SHAPE_SLOTS[props.slotName]) ?? '#000000' : props.slotName === 'fg' ? workspace.editFgColor : workspace.editBgColor));
+// A gradient fill shows as its first stop; choosing a color makes the fill solid again.
+const solidOf = (v) => (v && typeof v === 'object' ? v.stops[0][1] : v);
+const current = computed(() => (vector.value ? solidOf(style.value(SHAPE_SLOTS[props.slotName])) ?? '#000000' : props.slotName === 'fg' ? workspace.editFgColor : workspace.editBgColor));
+const KINDS = ['solid', 'linear', 'radial'];
 const isNone = computed(() => (vector.value ? !style.value(SHAPE_SLOTS[props.slotName]) : props.slotName === 'fg' ? ansiView.value && workspace.editFgNone : workspace.editBgNone));
 // None means "leave what's underneath": a typing choice, so the foreground offers it only in the ANSI view. A
 // shape can go without either.
@@ -104,6 +108,17 @@ onBeforeUnmount(() => {
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2 1 5l3 3V6h8V4H4zm8 6v2H4v2h8v2l3-3z"/></svg>
         {{ t('colors.swap') }}
       </button>
+    </div>
+
+    <div v-if="vector && slotName === 'fg'" class="kinds">
+      <button
+          v-for="kind in KINDS"
+          :key="kind"
+          :aria-pressed="style.fillKind.value === kind"
+          :disabled="!style.editing.value"
+          :title="t(`vector.${kind}Title`)"
+          @click="style.setFillKind(kind)"
+      >{{ t(`vector.${kind}`) }}</button>
     </div>
 
     <div v-for="(section, i) in sections" :key="i" class="swatches" :style="{ gridTemplateColumns: `repeat(${section.columns}, 1fr)` }">
@@ -202,6 +217,33 @@ div.head button.swap svg {
 div.head button.on {
   background: var(--accent);
   color: var(--white);
+}
+
+div.kinds {
+  display: flex;
+  gap: 4px;
+}
+
+div.kinds button {
+  flex: 1;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+div.kinds button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--white);
+}
+
+div.kinds button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 div.swatches {

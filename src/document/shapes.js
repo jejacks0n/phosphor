@@ -126,6 +126,22 @@ export function styleColors({ vectorStyle: style, editFgColor, editFgNone }) {
   return { fill: color(style.fill), stroke: color(style.stroke), width: style.width, cap: style.cap, join: style.join, miter: style.miter };
 }
 
+// The shape's fill as another kind: 'solid' (a gradient's first stop), or 'linear' (across its box, left to right)
+// or 'radial' (from its box's middle to the farthest corner), a gradient keeping its stops and a color going
+// from itself (from, for none) to the color to.
+export function fillAs(shape, kind, { from, to }) {
+  const { fill } = shape;
+  if (kind === 'solid') return isGradient(fill) ? fill.stops[0][1] : fill;
+  if (isGradient(fill) && fill.type === kind) return fill;
+  const stops = isGradient(fill) ? fill.stops : [[0, fill ?? from], [1, to]];
+  const { x0, y0, x1, y1 } = localBounds(shape), w = x1 - x0, h = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  if (kind === 'radial') {
+    const r = Math.hypot(w, h) / 2 || 1;
+    return { type: 'radial', stops, m: [r, 0, 0, r, cx, cy] };
+  }
+  return { type: 'linear', stops, m: w ? [w, 0, 0, w, x0, cy] : [0, h || 1, -(h || 1), 0, cx, y0] }; // a line straight down: top to bottom
+}
+
 // Matrices, [a, b, c, d, e, f] as canvas has them.
 export const multiply = ([a1, b1, c1, d1, e1, f1], [a2, b2, c2, d2, e2, f2]) => [
   a1 * a2 + c1 * b2, b1 * a2 + d1 * b2, a1 * c2 + c1 * d2, b1 * c2 + d1 * d2, a1 * e2 + c1 * f2 + e1, b1 * e2 + d1 * f2 + f1,
