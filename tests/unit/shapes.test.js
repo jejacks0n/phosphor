@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   makeShape, sameShape, isShape, isShapeKey, newShapeKey, pathData, shapeBounds, dirtyRect, worldPoints,
   multiply, invert, apply, rotation, scaling, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
-  moveHandle, setSmooth, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS, stretching,
+  moveHandle, setSmooth, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
 } from '../../src/document/shapes.js';
 import { changeBytes } from '../../src/document/changes.js';
 import { MOST_CHANGE_BYTES } from '../../src/social/wire.js';
@@ -200,16 +200,4 @@ test('localBounds goes round the curve itself, not its handles', () => {
   close(moved.y0, -2.5);
   assert.deepEqual([moved.x0, moved.x1, moved.y1], [5, 15, 5]);
   assert.deepEqual(localBounds(makeShape({ points: [[3, 4, 0, 0, 0, 0, 0]], closed: false })), { x0: 3, y0: 4, x1: 3, y1: 4 });
-});
-
-test('stretching moves one end of a line and keeps the other; across the line, nothing changes size', () => {
-  const a = { x: 2, y: 3 }, b = { x: 12, y: 3 };
-  const w = stretching(a, b, { x: 2, y: 23 }); // twice as long, turned to point straight down
-  const at = (x, y) => apply(w, x, y);
-  close(at(2, 3).x, 2); close(at(2, 3).y, 3);
-  close(at(12, 3).x, 2); close(at(12, 3).y, 23);
-  const side = at(7, 5); // 2 below the middle: now 2 to its left, at the middle
-  close(side.x, 0); close(side.y, 13);
-  assert.equal(stretching(a, b, a), null); // an end dragged onto the other: no line
-  assert.equal(stretching(a, a, b), null);
 });

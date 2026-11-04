@@ -12,7 +12,6 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { setSmooth } from '@/document/shapes.js';
 import { deleteSelectedPoint } from '@/tools/vnode.js';
-import { selectionBox } from '@/tools/vselect.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
 
@@ -23,8 +22,6 @@ const phone = useMediaQuery('(max-width: 768px)');
 const style = useVectorStyle(), { selected } = style;
 
 const editing = computed(() => workspace.activeTool === 'vselect' && selected.value.length > 0);
-// A two-point path on its own has ends to drag, not a box.
-const line = computed(() => !!selectionBox(project.shapes, selected.value)?.ends);
 const styling = computed(() => ['vselect', 'vnode', 'pen', 'vshape'].includes(workspace.activeTool));
 
 const WIDTH = computed(() => ({ key: 'vectorWidth', label: t('vector.width'), title: t('vector.widthTitle'), min: 0.5, max: 64, step: 0.5, decimals: 1 }));
@@ -70,7 +67,7 @@ const editPoints = () => {
         <button class="text" :title="t('vector.backTitle')" @click="back">{{ t('vector.back') }}</button>
         <button class="text" :title="t('vector.editPointsTitle')" @click="editPoints">{{ t('vector.editPoints') }}</button>
         <button class="text" :title="t('vector.deleteTitle')" aria-keyshortcuts="Delete Backspace" @click="remove">{{ t('common.delete') }}</button>
-        <span class="hint">{{ t(line ? 'vector.lineHint' : 'vector.selectHint') }}</span>
+        <span class="hint">{{ t('vector.selectHint') }}</span>
       </template>
       <DropdownMenu v-if="phone" :label="t('vector.more')" align="right">
         <template #trigger><span aria-hidden="true">⋯</span></template>

@@ -57,9 +57,6 @@ have the shapes' converted cells, as they show.
   straight across, straight up and down, or at 45°), drag one of its eight handles to scale them
   from the opposite side (Shift keeps the proportions), or drag the knob above it to rotate them (Shift
   turns in steps of 15°). One shape's box turns with it; several shapes share one box, square to the grid.
-- A two-point path selected on its own has no box: it has a handle at each end. Drag one to move that end
-  (Shift keeps it straight across, straight up and down, or at 45° from the other end); the path stretches
-  along itself and turns, and a curve in it keeps its height.
 - Click empty canvas to deselect.
 - Double-click a shape (or press **Edit points**) to edit its points with the Node tool (below).
 - The arrow keys nudge the selection a pixel (with Shift, 10). Delete or Backspace deletes it. Esc deselects.
