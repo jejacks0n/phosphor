@@ -391,6 +391,25 @@ test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', asy
   await page.keyboard.press('ControlOrMeta+z');
   expect((await shapeList(page))[0].stroke).toBe(null);
 
+  await expect(page.locator('.ansi-status .hint')).toContainText('pick the stroke');
+
+  // Stroke chosen in the options row (a phone has no Shift): a click sets the stroke, and Shift the fill.
+  const row = page.locator('.tool-setting-group').filter({ has: page.getByRole('button', { name: 'Stroke', exact: true }) });
+  await row.getByRole('button', { name: 'Stroke', exact: true }).click();
+  await expect(page.locator('.ansi-status .hint')).toContainText('pick the fill');
+  const other = await store(page, 'project', (p) => p.rawColorAt(5.5, 5.5));
+  await page.mouse.click(...Object.values(await gridPoint(page, 5.5, 5.5)));
+  expect((await shapeList(page))[0]).toMatchObject({ fill: color, stroke: other });
+  await page.keyboard.down('Shift');
+  await page.mouse.click(...Object.values(await gridPoint(page, 40.5, 30.5)));
+  await page.keyboard.up('Shift');
+  expect((await shapeList(page))[0]).toMatchObject({ fill: color, stroke: other });
+  await page.keyboard.down('Shift');
+  await page.mouse.click(...Object.values(await gridPoint(page, 5.5, 5.5)));
+  await page.keyboard.up('Shift');
+  expect((await shapeList(page))[0].fill).toBe(other);
+  await row.getByRole('button', { name: 'Fill', exact: true }).click();
+
   await store(page, 'workspace', (w) => { w.vectorSelected = []; });
   await page.mouse.click(...Object.values(await gridPoint(page, 40.5, 30.5)));
   expect(await store(page, 'workspace', (w) => w.vectorStyle.fill)).toBe(color);

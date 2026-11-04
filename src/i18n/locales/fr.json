@@ -663,6 +663,8 @@
     "straightLine": "ligne droite",
     "pickColor": "prélever la couleur",
     "pickBackground": "prélever l'arrière-plan",
+    "pickFill": "prélever le remplissage",
+    "pickStroke": "prélever le contour",
     "breakHandle": "faire glisser une poignée pour la séparer de l'autre",
     "clickKey": "Clic",
     "clickAgain": "encore pour la poignée en dessous",

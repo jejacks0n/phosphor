@@ -663,6 +663,8 @@
     "straightLine": "straight line",
     "pickColor": "pick color",
     "pickBackground": "pick background",
+    "pickFill": "pick the fill",
+    "pickStroke": "pick the stroke",
     "breakHandle": "drag a handle to break it from its partner",
     "clickKey": "Click",
     "clickAgain": "again for the handle under it",
