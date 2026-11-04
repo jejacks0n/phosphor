@@ -72,6 +72,8 @@ While a shape's points are edited, its points and their curve handles show over 
   smooth point the other handle turns with it. Alt-drag (Option-drag on a Mac) a handle to break it from its
   partner: it moves alone, and from then on the point's two handles bend the curves on their own. The status
   bar says so while you edit points.
+- Hold Shift while you drag to keep a point on a line from where it was, straight across, straight up and down,
+  or at 45°, or a handle on such a line from its point.
 - Click the outline to add a point there; the curve stays where it was, and the new point is selected.
 - The options row: **Smooth** (the point's handles stay in line: drag one and the other turns with it; a
   point with no handles gets some), **Corner** (a sharp point: its handles go), and **Delete** (the point; Delete
@@ -84,6 +86,8 @@ where the pointer is.
 ## Pen (P)
 
 - Click for a corner point. Press and drag for a smooth point: its handles follow the pointer, one on each side.
+- Hold Shift to keep the next point straight across, straight up and down, or at 45° from the last one, and a
+  smooth point's handles at those angles too.
 - The shape fills (or strokes) on the canvas as you draw it, with a dashed line from the last point to the
   pointer.
 - Click the first point (with three or more) to close the shape. **Enter** or **Esc** leaves it an open curve,

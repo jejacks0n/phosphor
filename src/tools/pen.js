@@ -1,10 +1,12 @@
 // The Pen (the VECTOR tab): a click adds a corner point, a press and drag a smooth one whose handles follow the
-// pointer. The shape converts live as it's drawn, all one undo step (penPoint, finishPen). Clicking the first
-// point (with 3 or more) closes it; Enter or Esc leaves it an open curve; Backspace takes the last point away.
-// A tool or tab change, a frame, undo or a save finishes it as an open curve (commitEdit).
+// pointer (Shift: a point on a line from the last, a handle from its point, across, up and down or at 45°). The
+// shape converts live as it's drawn, all one undo step (penPoint, finishPen). Clicking the first point (with 3
+// or more) closes it; Enter or Esc leaves it an open curve; Backspace takes the last point away. A tool or tab
+// change, a frame, undo or a save finishes it as an open curve (commitEdit).
 import { t } from '@/i18n/index.js';
 import { withShape, worldPoints } from '@/document/shapes.js';
 import { handleRadius } from '@/tools/vselect.js';
+import { snappedEnd } from '@/tools/shapes.js';
 
 const SMOOTH_PX = 3; // a drag past this many CSS px makes the point smooth
 
@@ -21,20 +23,22 @@ export default {
   kind: 'paint',
   section: 'vector',
 
-  begin({ project, unit }, pos) {
-    const key = project._stroke?.pen, shape = key && project.shapes.get(key);
-    if (shape && shape.points.length >= 3 && near(pos, worldPoints(shape)[0], unit, handleRadius())) {
+  begin({ project, workspace, unit }, pos) {
+    const key = project._stroke?.pen, shape = key && project.shapes.get(key), world = shape ? worldPoints(shape) : [];
+    if (world.length >= 3 && near(pos, world[0], unit, handleRadius())) {
       project.finishPen({ closed: true });
       return false;
     }
+    if (world.length && workspace.isShiftPressed) pos = snappedEnd(world.at(-1), pos);
     const added = project.penPoint(pos.x, pos.y);
     press = added && { key: added, at: pos, unit };
     return !!press;
   },
 
-  move({ project }, from, to) {
+  move({ project, workspace }, from, to) {
     const shape = press && project.shapes.get(press.key);
     if (!shape) return;
+    if (workspace.isShiftPressed) to = snappedEnd(press.at, to);
     const out = { x: to.x - press.at.x, y: to.y - press.at.y };
     const smooth = Math.hypot(out.x * press.unit.x, out.y * press.unit.y) > SMOOTH_PX;
     const { x, y } = press.at;
