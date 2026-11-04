@@ -201,7 +201,7 @@ test('Shift while moving a shape keeps it on a straight line or a 45° angle', a
   expect(await matrix(page, key)).toEqual([1, 0, 0, 1, 0, 0]);
 });
 
-test('Fill, Stroke and Stroke width change the selected shape; Forward and Back restack it; Delete removes it', async ({ page }) => {
+test('Fill, Stroke and the Stroke box\'s Width change the selected shape; Forward and Back restack it; Delete removes it', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
@@ -214,8 +214,9 @@ test('Fill, Stroke and Stroke width change the selected shape; Forward and Back 
   await page.locator('.color-popover .swatch.none').click();
   await page.locator('.color-pair .chip.bg').click();
   await page.locator('.color-popover .swatch.small').first().click();
+  await page.locator('.color-popover').getByLabel('Stroke width', { exact: true }).fill('4');
   await page.keyboard.press('Escape');
-  await page.getByLabel('Stroke width', { exact: true }).fill('4');
+  await expect(page.locator('.vector-options').getByLabel('Stroke width', { exact: true })).toHaveCount(0); // not in the row
   const changed = (await shapeList(page)).find((s) => s.key === below);
   expect([changed.fill, changed.stroke, changed.width]).toEqual([null, '#00ff00', 4]);
 
@@ -557,7 +558,7 @@ test('Join makes two shapes one with a hole, and Separate takes it apart', async
   await expect(row.getByRole('button', { name: 'Separate', exact: true })).toBeDisabled();
 });
 
-test('the Stroke panel sets caps, joins and the miter limit on the selection and on the next shape', async ({ page }) => {
+test('the Stroke color box sets caps, joins and the miter limit on the selection and on the next shape', async ({ page }) => {
   await openApp(page);
   await tab(page, 'ANSI').click();
   const height = async () => (await page.locator('.edit-toolbar').boundingBox()).height;
@@ -569,8 +570,10 @@ test('the Stroke panel sets caps, joins and the miter limit on the selection and
   expect(await selected(page)).toEqual([key]);
   const row = page.locator('.vector-options');
   expect(await height()).toBe(ansi);
-  await row.getByRole('button', { name: 'Stroke', exact: true }).click();
-  const miter = page.getByLabel('Miter', { exact: true });
+  await expect(row.getByRole('button', { name: 'Stroke', exact: true })).toHaveCount(0); // not in the row
+  await page.locator('.color-pair .chip.bg').click();
+  await expect(page.locator('.color-popover').getByLabel('Stroke width', { exact: true })).toBeVisible();
+  const miter = page.locator('.color-popover').getByLabel('Miter', { exact: true });
   await expect(page.getByRole('button', { name: 'Round cap', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(miter).toBeDisabled();
   await page.getByRole('button', { name: 'Butt cap', exact: true }).click();
@@ -589,11 +592,11 @@ test('the Stroke panel sets caps, joins and the miter limit on the selection and
   await undoSteps(page, 1);
   expect((await shapeList(page))[0].cap).toBeUndefined();
 
-  await page.keyboard.press('Escape'); // closes the panel
+  await page.keyboard.press('Escape'); // closes the box
   await page.keyboard.press('Escape'); // deselects
   expect(await selected(page)).toEqual([]);
   await page.keyboard.press('p');
-  await row.getByRole('button', { name: 'Stroke', exact: true }).click();
+  await page.locator('.color-pair .chip.bg').click();
   await page.getByRole('button', { name: 'Bevel join', exact: true }).click();
   await page.keyboard.press('Escape');
   for (const [x, y] of [[30, 10], [40, 20], [30, 30]]) await page.mouse.click(...Object.values(await gridPoint(page, x, y)));
@@ -778,7 +781,7 @@ test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shap
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  test('the options row is Stroke width and ⋯', async ({ page }) => {
+  test('the options row is ⋯; Stroke width is in the Stroke box', async ({ page }) => {
     await openApp(page);
     await tab(page, 'VECTOR').click();
     const key = await addRect(page, 4, 4, 14, 14);
@@ -787,11 +790,18 @@ test.describe('on a phone', () => {
     await expect(row.getByRole('button', { name: 'More', exact: true })).toBeVisible();
     await expect(row.getByRole('button', { name: 'Points', exact: true })).toHaveCount(0); // a double tap or A edits points
     await expect(row.getByRole('button', { name: 'Fill', exact: true })).toHaveCount(0);
-    await expect(row.getByLabel('Stroke width', { exact: true })).toBeVisible();
+    await expect(row.getByLabel('Stroke width', { exact: true })).toHaveCount(0);
     await expect(row.getByRole('button', { name: 'Forward', exact: true })).toHaveCount(0);
     await expect(row.locator('.hint')).toHaveCount(0);
     await row.getByRole('button', { name: 'More', exact: true }).click();
     for (const name of ['Forward', 'Back', 'Delete']) await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.locator('.color-pair .chip.bg').click();
+    const box = page.locator('.color-popover');
+    await expect(box.getByLabel('Stroke width', { exact: true })).toBeVisible();
+    await expect(box.getByRole('button', { name: 'Miter join', exact: true })).toBeVisible();
+    const { x, width } = await box.boundingBox();
+    expect(x >= 0 && x + width <= 390).toBe(true); // on the screen
   });
 
   test('Place gradient\'s Radial makes a radial gradient by touch', async ({ page }) => {
