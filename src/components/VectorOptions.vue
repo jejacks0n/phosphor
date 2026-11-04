@@ -1,5 +1,5 @@
 <script setup>
-// VECTOR's options row. With shapes selected: Width, Forward and Back (the stacking order), Edit points and
+// VECTOR's options row. With shapes selected: Width, Stroke (a panel of caps, joins and the miter limit), Forward and Back (the stacking order), Edit points and
 // Delete, each one undo step; with nothing selected, or with the Pen or the Shape tool, the Width the next shape
 // gets. Fill and Stroke are the color pair's chips (useVectorStyle). While a shape's points are edited, the Point
 // row: the selected point Smooth or Corner, and Delete (the point); Esc or empty canvas ends it. A phone's row keeps Width and Points, and puts
@@ -29,6 +29,17 @@ const width = computed({
   get: () => style.value('width'),
   set: (v) => style.set('width', v, { remember: false }),
 });
+
+// The Stroke panel: each press one undo step, as Width's are.
+const ic = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">${inner}</svg>`;
+const guide = '<line x1="15" y1="3" x2="15" y2="21" stroke-width="1" stroke-dasharray="2 2" opacity=".6"/>';
+const CAPS = ['butt', 'round', 'square'].map((v) => ({ v, title: `vector.cap${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`<line x1="3" y1="12" x2="15" y2="12" stroke-width="8" stroke-linecap="${v}"/>${guide}`) }));
+const JOINS = ['miter', 'round', 'bevel'].map((v) => ({ v, title: `vector.join${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`<polyline points="4,20 12,7 20,20" stroke-width="5" stroke-linejoin="${v}"/>`) }));
+const setMiter = (e) => {
+  const v = Number(e.target.value);
+  if (Number.isFinite(v) && e.target.value !== '') style.set('miter', Math.min(100, Math.max(1, v)));
+  e.target.value = style.value('miter');
+};
 
 const forward = () => project.restackShapes(selected.value, 'forward');
 // Join and Separate: the selection afterwards is what they made.
@@ -69,6 +80,24 @@ const editPoints = () => {
   </div>
   <div v-else-if="editing || styling" class="tool-setting-group vector-options">
     <RangeField compact :setting="WIDTH" v-model="width" @commit="style.finish"/>
+    <DropdownMenu :label="t('vector.strokeTitle')" :close-on-select="false" align="left">
+      <template #trigger>
+        <span>{{ t('vector.stroke') }}</span>
+        <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
+      </template>
+      <div class="stroke-panel">
+        <span class="option-label">{{ t('vector.cap') }}</span>
+        <div class="icons">
+          <button v-for="c in CAPS" :key="c.v" class="icon" :title="t(c.title)" :aria-pressed="style.value('cap') === c.v" @click="style.set('cap', c.v)" v-html="c.icon"/>
+        </div>
+        <span class="option-label">{{ t('vector.joinLabel') }}</span>
+        <div class="icons">
+          <button v-for="j in JOINS" :key="j.v" class="icon" :title="t(j.title)" :aria-pressed="style.value('join') === j.v" @click="style.set('join', j.v)" v-html="j.icon"/>
+        </div>
+        <label class="option-label" for="vector-miter">{{ t('vector.miter') }}</label>
+        <input id="vector-miter" type="number" min="1" max="100" step="0.5" :title="t('vector.miterTitle')" :value="style.value('miter')" :disabled="style.value('join') !== 'miter'" @change="setMiter"/>
+      </div>
+    </DropdownMenu>
     <template v-if="editing">
       <div class="divider"/>
       <button v-if="phone" class="text" :title="t('vector.editPointsTitle')" @click="editPoints">{{ t('vector.points') }}</button>
@@ -92,3 +121,65 @@ const editPoints = () => {
     </template>
   </div>
 </template>
+
+<style scoped>
+svg.chevron {
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+}
+
+div.stroke-panel .option-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+div.stroke-panel {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 6px 8px;
+}
+
+div.stroke-panel .icons {
+  display: flex;
+  gap: 4px;
+}
+
+div.stroke-panel button.icon {
+  width: 36px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+div.stroke-panel button.icon[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+div.stroke-panel button.icon :deep(svg) {
+  width: 20px;
+  height: 20px;
+}
+
+div.stroke-panel input {
+  width: 64px;
+}
+
+@media (max-width: 768px) {
+  div.stroke-panel {
+    box-sizing: border-box;
+    width: calc(100vw - 18px);
+    grid-template-columns: auto 1fr;
+  }
+}
+</style>

@@ -5,7 +5,7 @@ import {
   makeShape, sameShape, isShape, isShapeKey, newShapeKey, pathData, shapeBounds, dirtyRect, worldPoints,
   multiply, invert, apply, rotation, scaling, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
   moveHandle, setSmooth, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
-  outlines, withOutlines, locate, allPoints, strokeOf, STROKE_DEFAULTS, withShape, movePoint, joined, separated,
+  outlines, withOutlines, locate, allPoints, strokeOf, STROKE_DEFAULTS, withShape, movePoint, joined, separated, styleColors,
 } from '../../src/document/shapes.js';
 import { changeBytes } from '../../src/document/changes.js';
 import { MOST_CHANGE_BYTES } from '../../src/social/wire.js';
@@ -334,4 +334,15 @@ test('joined carries outlines into the bottom shape\'s space and makes holes, an
   worldPoints(b).forEach((p, i) => { close(p.x, want[i].x, 0.02); close(p.y, want[i].y, 0.02); });
   const many = makeShape({ points: Array.from({ length: 300 }, (_, i) => [i, 0, 0, 0, 0, 0, 0]), closed: false });
   assert.equal(joined(many, [many]), null); // past the points a shape may have
+});
+
+test('styleColors gives the next shape its caps and joins', () => {
+  const workspace = { vectorStyle: { fill: 'fg', stroke: null, width: 2, cap: 'butt', join: 'miter', miter: 10 }, editFgColor: '#123456', editFgNone: false };
+  const style = styleColors(workspace);
+  assert.deepEqual(style, { fill: '#123456', stroke: null, width: 2, cap: 'butt', join: 'miter', miter: 10 });
+  const shape = makeShape({ z: 0, closed: false, m: [1, 0, 0, 1, 0, 0], points: [[0, 0, 0, 0, 0, 0, 0], [5, 0, 0, 0, 0, 0, 0]], ...style });
+  assert.deepEqual([shape.cap, shape.join, shape.miter], ['butt', 'miter', 10]);
+  // Round and round, as drawn shapes start, are left out of the shape.
+  const plain = makeShape({ ...shape, ...styleColors({ ...workspace, vectorStyle: { ...workspace.vectorStyle, cap: 'round', join: 'round', miter: 4 } }) });
+  assert.equal('cap' in plain || 'join' in plain || 'miter' in plain, false);
 });

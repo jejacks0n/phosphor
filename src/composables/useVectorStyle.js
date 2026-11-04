@@ -1,4 +1,4 @@
-// VECTOR's Fill, Stroke and Width: the color pair's two chips there, and the options row's Width. They're the
+// VECTOR's Fill, Stroke, Width, and the Stroke panel's cap, join and miter limit: the color pair's two chips there, and the options row's Width. They're the
 // selected shapes' (the first one's shown) unless the Pen or the Shape tool is drawing the next one, or nothing's
 // selected: then they're what the next shape gets (workspace.vectorStyle, where 'fg' is the foreground color when
 // it's made). A change to the selection is one undo step; one opened by a drag (a slider, the native picker)
@@ -6,7 +6,7 @@
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { withShape } from '@/document/shapes.js';
+import { STROKE_DEFAULTS, strokeOf, withShape } from '@/document/shapes.js';
 
 export function useVectorStyle() {
   const project = useProjectStore();
@@ -17,7 +17,7 @@ export function useVectorStyle() {
   const first = computed(() => editing.value && project.shapes.get(selected.value[0]));
 
   const value = (slot) => {
-    if (first.value) return first.value[slot];
+    if (first.value) return slot in STROKE_DEFAULTS ? strokeOf(first.value)[slot] : first.value[slot];
     const v = workspace.vectorStyle[slot];
     return v === 'fg' ? (workspace.editFgNone ? null : workspace.editFgColor) : v;
   };

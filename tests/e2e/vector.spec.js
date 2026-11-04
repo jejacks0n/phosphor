@@ -411,6 +411,53 @@ test('Join makes two shapes one with a hole, and Separate takes it apart', async
   await expect(row.getByRole('button', { name: 'Separate', exact: true })).toBeDisabled();
 });
 
+test('the Stroke panel sets caps, joins and the miter limit on the selection and on the next shape', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'ANSI').click();
+  const height = async () => (await page.locator('.edit-toolbar').boundingBox()).height;
+  const ansi = await height();
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const key = await addRect(page, 10, 10, 20, 20);
+  await page.mouse.click(...Object.values(await gridPoint(page, 11, 11)));
+  expect(await selected(page)).toEqual([key]);
+  const row = page.locator('.vector-options');
+  expect(await height()).toBe(ansi);
+  await row.getByRole('button', { name: 'Stroke', exact: true }).click();
+  const miter = page.getByLabel('Miter', { exact: true });
+  await expect(page.getByRole('button', { name: 'Round cap', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(miter).toBeDisabled();
+  await page.getByRole('button', { name: 'Butt cap', exact: true }).click();
+  await page.getByRole('button', { name: 'Miter join', exact: true }).click();
+  expect((await shapeList(page))[0]).toMatchObject({ cap: 'butt', join: 'miter' });
+  await expect(page.getByRole('button', { name: 'Butt cap', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(miter).toBeEnabled();
+  await miter.fill('10');
+  await miter.press('Enter');
+  expect((await shapeList(page))[0]).toMatchObject({ miter: 10 });
+  await undoSteps(page, 1);
+  expect((await shapeList(page))[0]).toMatchObject({ cap: 'butt', join: 'miter' });
+  expect((await shapeList(page))[0].miter).toBeUndefined();
+  await undoSteps(page, 1);
+  expect((await shapeList(page))[0].join).toBeUndefined();
+  await undoSteps(page, 1);
+  expect((await shapeList(page))[0].cap).toBeUndefined();
+
+  await page.keyboard.press('Escape'); // closes the panel
+  await page.keyboard.press('Escape'); // deselects
+  expect(await selected(page)).toEqual([]);
+  await page.keyboard.press('p');
+  await row.getByRole('button', { name: 'Stroke', exact: true }).click();
+  await page.getByRole('button', { name: 'Bevel join', exact: true }).click();
+  await page.keyboard.press('Escape');
+  for (const [x, y] of [[30, 10], [40, 20], [30, 30]]) await page.mouse.click(...Object.values(await gridPoint(page, x, y)));
+  await page.keyboard.press('Enter');
+  const drawn = (await shapeList(page)).find((s) => s.key !== key);
+  expect(drawn).toMatchObject({ join: 'bevel' });
+  expect(drawn.cap).toBeUndefined();
+  expect(await height()).toBe(ansi);
+});
+
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
