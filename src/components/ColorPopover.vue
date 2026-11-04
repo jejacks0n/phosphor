@@ -79,8 +79,10 @@ const width = computed({
   set: (v) => style.set('width', v, { remember: false }),
 });
 const ic = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">${inner}</svg>`;
-const guide = '<line x1="15" y1="3" x2="15" y2="21" stroke-width="1" stroke-dasharray="2 2" opacity=".6"/>';
-const CAPS = ['butt', 'round', 'square'].map((v) => ({ v, title: `vector.cap${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`<line x1="3" y1="12" x2="15" y2="12" stroke-width="8" stroke-linecap="${v}"/>${guide}`) }));
+// A cap: a line's end, close up, its stroke wide and faint, the path a solid line to a dot where it ends (so what
+// reaches past the dot, nothing, a half circle or a square, is what differs).
+const end = '<polyline points="0,12 13,12"'; // its end at 13, its edge 8 from the path: room for what's past it
+const CAPS = ['butt', 'round', 'square'].map((v) => ({ v, title: `vector.cap${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`${end} stroke-width="16" stroke-linecap="${v}" opacity=".45"/>${end} stroke-width="1.5"/><circle cx="13" cy="12" r="2" fill="currentColor" stroke="none"/>`) }));
 // A join: a square corner, its stroke wide and faint, the path through it a solid line (so the outer corner,
 // sharp, rounded or cut, is what differs).
 const corner = '<polyline points="14,24 14,14 24,14"'; // close in on the corner: its outer edge 10 from the path
