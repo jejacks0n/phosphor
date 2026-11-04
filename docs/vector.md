@@ -109,16 +109,16 @@ PIXEL's colors are left as they were.
 
 ## The options row
 
-**Width** is the outline's width in pixels (0.5 to 64): the selected shapes', or the next shape's. With
+**Stroke width** is the outline's width in pixels (0.5 to 64): the selected shapes', or the next shape's. With
 shapes selected (Vector select):
 
 - **Forward** and **Back** move the shapes just above the nearest shape they overlap, or just beneath it;
   every other shape keeps its place.
 - **Edit points** edits the first shape's points. **Delete** deletes the shapes.
 
-Each change is one undo step; a Width drag is one step when you let go.
+Each change is one undo step; a Stroke width drag is one step when you let go.
 
-On a phone the row keeps Width and **Points**, and puts Forward, Back and Delete under ⋯.
+On a phone the row keeps Stroke width and **Points**, and puts Forward, Back and Delete under ⋯.
 
 ## Eyedropper (I)
 
