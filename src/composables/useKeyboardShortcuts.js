@@ -1,6 +1,7 @@
 import { onMounted, onBeforeUnmount, watch, toRaw } from 'vue';
 import { getTool, offeredTools } from '@/tools';
 import { clampOffset, normalizeRect } from '@/document/editCells';
+import { stacked } from '@/document/shapes.js';
 import { charRowsOf } from '@/lib/Cells';
 import { copySelection, decodeBlock } from '@/composables/clipboard';
 import { readClipboardHtml } from '@/lib/clipboardBlocks';
@@ -208,6 +209,19 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
+  // Cmd/Ctrl+A on VECTOR: every shape on the frame, bottom to top, with Vector select (the Gradient tool keeps
+  // itself: it works on the selection), not the page's text. A Pen shape under way ends first.
+  const _handleVectorSelectAll = (e) => {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'a') return false;
+    if (workspaceStore.editorTab !== 'vector' || isField(e.target) || workspaceStore.isPainting || !projectStore.image) return false;
+    e.preventDefault();
+    projectStore.commitPending();
+    if (workspaceStore.activeTool !== 'vgradient') workspaceStore.setActiveTool('vselect');
+    workspaceStore.vectorSelected = stacked(projectStore.shapes).map(([key]) => key);
+    workspaceStore.vectorStop = null;
+    return true;
+  };
+
   // The Magic Wand's selection: Escape drops it; Delete or Backspace takes away what's drawn in it
   // (not in Edit Mode, where they edit the text).
   const _handleWandKeys = (e) => {
@@ -306,6 +320,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;
     if (_handleHelp(e)) return;
+    if (_handleVectorSelectAll(e)) return;
     if (_handleActiveToolKeys(e)) return;
     if (_handleColorKeys(e)) return;
     if (_handleToolSwap(e)) return;
