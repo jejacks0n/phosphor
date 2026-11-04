@@ -7,7 +7,8 @@ import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
-import { readSvgFile } from '@/lib/SvgFile.js';
+import { readSvgFile, svgRefusal } from '@/lib/SvgFile.js';
+import { MOST_SHAPES } from '@/document/shapes.js';
 import { castText } from '@/lib/CastFile.js';
 import { MAX_GIF_PIXELS, gifBytes, gifDelay, gifFrames } from '@/lib/GifFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
@@ -177,8 +178,8 @@ export const documentActions = {
   // An .svg file as a new document: a blank canvas at the default size, named for the file, on VECTOR with the
   // file's art as shapes (addSvg). A file that isn't SVG throws (with its userMessage) before anything changes.
   async openSvgFile(file) {
-    const text = await file.text();
-    readSvgFile(text);
+    const text = await file.text(), refusal = svgRefusal(readSvgFile(text), MOST_SHAPES);
+    if (refusal) return void toast(refusal); // the drawing stays
     if (!(await this.setBlankCanvas({ cols: DEFAULT_COLS, rows: DEFAULT_ROWS, filename: file.name.replace(/\.[^/.]+$/, '') }))) return;
     useWorkspaceStore().editorTab = 'vector';
     this.addSvg(text);

@@ -6,13 +6,16 @@
 // left is what couldn't come in, by kind. The file is parsed as data and never put in the page, so nothing in it
 // runs or loads; something that isn't SVG throws with a userMessage.
 import { t } from '@/i18n/index.js';
-import { IDENTITY, localBounds, multiply, rotation, scaling, translation } from '@/document/shapes.js';
+import { IDENTITY, MOST_OUTLINES, MOST_POINTS, localBounds, multiply, rotation, scaling, translation } from '@/document/shapes.js';
 import { parsePathData } from '@/lib/svgPath.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const XLINK = 'http://www.w3.org/1999/xlink';
 const MOST_USE_DEPTH = 8;
 const MOST_STOPS = 16;
+// Read no further than this: a few uses inside uses fan out to millions of shapes, and the file's too big anyway.
+const MOST_ITEMS = 20000;
+const MOST_VISITS = 200000; // elements, for ones that fan out and draw nothing
 
 export const isSvgFile = (name) => /\.svg$/i.test(name);
 
@@ -178,6 +181,7 @@ export function readSvgFile(text) {
 
   const rules = parseSheet([...doc.getElementsByTagNameNS(SVG, 'style')].map((s) => s.textContent).join('\n'));
   const left = new Set(), items = [];
+  let visits = 0, truncated = false;
   const byId = (id) => doc.getElementById(id);
 
   // An element's own declared values: presentation attributes, then the sheet, then its style attribute.
@@ -332,6 +336,7 @@ export function readSvgFile(text) {
 
   const addItem = (el, ctx, style) => {
     if (style.visibility === 'hidden' || style.visibility === 'collapse') return;
+    if (items.length >= MOST_ITEMS) return void (truncated = true);
     const outlines = outlinesOf(el, ctx.vw, ctx.vh);
     if (!outlines) return;
     const diagonal = Math.hypot(ctx.vw, ctx.vh) / Math.SQRT2;
@@ -351,7 +356,7 @@ export function readSvgFile(text) {
       rule: pick(style['fill-rule'], ['nonzero', 'evenodd'], 'nonzero'),
       cap: pick(style['stroke-linecap'], ['butt', 'round', 'square'], 'butt'),
       join: pick(style['stroke-linejoin'], ['miter', 'round', 'bevel'], 'miter'),
-      miter: Number.isFinite(miter) && miter >= 1 ? miter : 4,
+      miter: Number.isFinite(miter) && miter >= 1 ? Math.min(100, miter) : 4,
     });
   };
 
@@ -364,10 +369,13 @@ export function readSvgFile(text) {
 
   const children = (el, ctx) => {
     const kids = [...el.children].filter((c) => c.namespaceURI === SVG);
-    for (const child of el.localName === 'switch' ? kids.slice(0, 1) : kids) draw(child, ctx);
+    // A switch draws its first child with no extension asked for (Illustrator puts its own data first).
+    const drawn = el.localName === 'switch' ? kids.filter((c) => !c.hasAttribute('requiredExtensions')).slice(0, 1) : kids;
+    for (const child of drawn) draw(child, ctx);
   };
   // One element, under ctx: { m, style, vw, vh, chain (the elements drawing it), depth (uses deep) }.
   function draw(el, ctx) {
+    if (truncated || ++visits > MOST_VISITS) return void (truncated = true);
     const name = el.localName;
     if (UNDRAWN.has(name)) return;
     if (LEFT[name]) return void left.add(LEFT[name]);
@@ -432,5 +440,22 @@ export function readSvgFile(text) {
     for (const item of items) item.m = multiply(translation(-x0, -y0), item.m);
     [width, height] = [x1 - x0, y1 - y0];
   }
-  return { width, height, items, left };
+  return { width, height, items, left, truncated };
+}
+
+// What was left out of art, said, with how to bring text in; '' when nothing was.
+export const svgLeftOut = (left) => (left.size
+  ? t('vector.svgLeftOut', { kinds: [...left].map((kind) => t(`vector.svgKinds.${kind}`)).join(', ') }) + (left.has('text') ? ` ${t('vector.svgTextHint')}` : '')
+  : '');
+
+// Why read art can't come in where there's room for `room` more shapes, said; null when it can.
+export function svgRefusal(art, room) {
+  if (!art.truncated && !art.items.length) return `${t('vector.svgEmpty')} ${svgLeftOut(art.left)}`.trim();
+  let points = 0, outlines = 0;
+  for (const item of art.items) {
+    points = Math.max(points, item.outlines.reduce((n, o) => n + o.points.length, 0));
+    outlines = Math.max(outlines, item.outlines.length);
+  }
+  if (!art.truncated && art.items.length <= room && points <= MOST_POINTS && outlines <= MOST_OUTLINES) return null;
+  return t('vector.svgTooBig', { shapes: art.truncated ? `${art.items.length}+` : art.items.length, points, mostShapes: room, mostPoints: MOST_POINTS });
 }

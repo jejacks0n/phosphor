@@ -6,10 +6,10 @@
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { IDENTITY, MOST_OUTLINES, MOST_POINTS, MOST_SHAPES, apply, isGradient, joined, multiply, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
+import { IDENTITY, MOST_POINTS, MOST_SHAPES, apply, isGradient, joined, multiply, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
 import { withoutPins } from '@/document/baseRecords.js';
 import { bytesHeld } from '@/store/project/shared.js';
-import { readSvgFile } from '@/lib/SvgFile.js';
+import { readSvgFile, svgLeftOut, svgRefusal } from '@/lib/SvgFile.js';
 
 // What the document holds is what a file, a project or a room takes back: one check for both.
 const keeps = (shape) => !!shapeFromStranger(shape);
@@ -69,11 +69,9 @@ export const vectorActions = {
   // nothing comes in, and a toast says by how much; what couldn't come in is said too. The keys.
   addSvg(text) {
     const art = readSvgFile(text), workspace = useWorkspaceStore(), left = new Set(art.left);
-    const leftOut = () => (left.size
-      ? t('vector.svgLeftOut', { kinds: [...left].map((kind) => t(`vector.svgKinds.${kind}`)).join(', ') }) + (left.has('text') ? ` ${t('vector.svgTextHint')}` : '')
-      : '');
-    if (!art.items.length) {
-      toast(`${t('vector.svgEmpty')} ${leftOut()}`.trim());
+    const refusal = svgRefusal(art, MOST_SHAPES - this.shapes.size);
+    if (refusal) {
+      toast(refusal);
       return [];
     }
     const room = (n) => Math.max(1, n - 4);
@@ -92,12 +90,6 @@ export const vectorActions = {
         rule: item.rule, cap: item.cap, join: item.join, miter: item.miter,
       };
     });
-    const points = Math.max(...art.items.map((item) => item.outlines.reduce((n, o) => n + o.points.length, 0)));
-    const outlineCount = Math.max(...art.items.map((item) => item.outlines.length));
-    if (this.shapes.size + shapes.length > MOST_SHAPES || points > MOST_POINTS || outlineCount > MOST_OUTLINES) {
-      toast(t('vector.svgTooBig', { shapes: shapes.length, points, mostShapes: MOST_SHAPES - this.shapes.size, mostPoints: MOST_POINTS }));
-      return [];
-    }
     this.ensureLayer();
     if (!this.paintLayer) return [];
     const own = ownsEdit(this), next = new Map(this.shapes), keys = [];
@@ -117,7 +109,7 @@ export const vectorActions = {
     if (own) this.commitEdit();
     workspace.vectorSelected = keys;
     workspace.setActiveTool('vselect');
-    if (left.size) toast(leftOut());
+    if (left.size) toast(svgLeftOut(left));
     return keys;
   },
 

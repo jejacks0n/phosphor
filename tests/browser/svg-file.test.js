@@ -233,6 +233,27 @@ test('a gradient with one stop is its color, with none no paint, and one with no
   expect(loop.fill).toBeNull();
 });
 
+test('a file that fans out through use stops early, marked so', () => {
+  let defs = '<g id="u0">' + '<rect width="1" height="1"/>'.repeat(10) + '</g>';
+  for (let i = 1; i <= 7; i++) defs += `<g id="u${i}">` + `<use href="#u${i - 1}"/>`.repeat(10) + '</g>';
+  const started = performance.now(), art = readSvgFile(svg(`<defs>${defs}</defs><use href="#u7"/>`));
+  expect(performance.now() - started).toBeLessThan(2000);
+  expect(art.truncated).toBe(true);
+  expect(art.items.length).toBeLessThanOrEqual(20000);
+  expect(readSvgFile(svg('<rect width="1" height="1"/>')).truncated).toBe(false);
+});
+
+test('a switch draws its first child that can be drawn, past what needs an extension', () => {
+  const art = readSvgFile(svg('<switch><foreignObject requiredExtensions="http://ns.adobe.com/AdobeIllustrator/10.0/" width="1" height="1"/><g><rect width="10" height="10"/></g></switch>'));
+  expect(art.items).toHaveLength(1);
+  expect(art.left.size).toBe(0);
+});
+
+test('a miter limit is kept to 100 at most', () => {
+  const art = readSvgFile(svg('<path d="M0 0L10 10" stroke="red"/>', 'viewBox="0 0 10 10" style="stroke-miterlimit:200"'));
+  expect(art.items[0].miter).toBe(100);
+});
+
 test('not an SVG says so', () => {
   for (const text of ['', 'hello', '<html><body/></html>', '<svg xmlns="http://www.w3.org/2000/svg"><rect', '{"svg": 1}']) {
     let error;

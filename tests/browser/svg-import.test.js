@@ -138,6 +138,35 @@ test('past the limits, nothing comes in, and it says by how much', async () => {
   expect(project.canUndo).toBe(false);
 });
 
+test('a file that fans out says it is too big, by at least how much', async () => {
+  const { project } = await blank();
+  let defs = '<g id="u0">' + '<rect width="1" height="1"/>'.repeat(10) + '</g>';
+  for (let i = 1; i <= 7; i++) defs += `<g id="u${i}">` + `<use href="#u${i - 1}"/>`.repeat(10) + '</g>';
+  toastMessage.value = null;
+  expect(project.addSvg(svg(`<defs>${defs}</defs><use href="#u7"/>`))).toEqual([]);
+  expect(toastMessage.value).toMatch(/\d+\+ shapes/);
+  expect(project.shapes.size).toBe(0);
+});
+
+test('a high miter limit comes in as 100, and the shape with it', async () => {
+  const { project } = await blank();
+  const [key] = project.addSvg(svg('<path d="M0 0L10 10L0 20" stroke="red" fill="none" stroke-miterlimit="200"/>'));
+  expect(project.shapes.get(key).miter).toBe(100);
+});
+
+test('Open checks an SVG before the drawing goes: too big or empty, the drawing stays', async () => {
+  const { project } = await blank(40, 30);
+  const [kept] = project.addSvg(svg('<rect width="10" height="10"/>'));
+  const many = svg(Array.from({ length: MOST_SHAPES + 5 }, (_, i) => `<rect x="${i % 100}" width="1" height="1"/>`).join(''));
+  for (const text of [many, svg('<text>Hi</text>')]) {
+    toastMessage.value = null;
+    await project.openSvgFile(new File([text], 'big.svg', { type: 'image/svg+xml' }));
+    expect(toastMessage.value).toBeTruthy();
+    expect([project.cols, project.rows]).toEqual([40, 30]);
+    expect([...project.shapes.keys()]).toEqual([kept]);
+  }
+});
+
 test('what was left out is said, with how to bring text in; an SVG with nothing to bring says so', async () => {
   const { project } = await blank();
   toastMessage.value = null;

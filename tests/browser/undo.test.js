@@ -5,7 +5,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
-import { ellipseShape, polygonShape, rectShape, rotation, transformed, translation, withShape } from '@/document/shapes.js';
+import { ellipseShape, fillAs, isGradient, polygonShape, rectShape, rotation, transformed, translation, withShape } from '@/document/shapes.js';
 
 function rng(seed) {
   let a = seed >>> 0;
@@ -167,6 +167,15 @@ function makeActions(project, workspace, r, opts) {
       const key = pick([...project.shapes.keys()]);
       if (key) project.updateShapes([[key, withShape(project.shapes.get(key), { fill: pick(COLORS) })]]);
     },
+    gradient: () => { // a fill made a gradient, back, or a gradient's stop recolored
+      const key = pick([...project.shapes.keys()]), shape = key && project.shapes.get(key);
+      if (!shape) return;
+      const { fill } = shape;
+      const next = isGradient(fill) && r() < 0.5
+        ? { ...fill, stops: fill.stops.map(([o, c], i) => [o, i === 0 ? pick(COLORS) : c]) }
+        : fillAs(shape, pick(['solid', 'linear', 'radial']), { from: '#000000', to: pick(COLORS) });
+      project.updateShapes([[key, withShape(shape, { fill: next })]]);
+    },
     deleteShape: () => {
       const keys = [...project.shapes.keys()];
       if (keys.length) project.deleteShapes(keys.filter(() => r() < 0.5).slice(0, 2));
@@ -325,7 +334,7 @@ for (const quantize of ['none', 'count']) {
 
 test('fuzz: shapes among typing, paint, selections and merges', async () => {
   const failures = [];
-  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
+  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
   for (const seed of seeds([1, 2, 3, 6])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);

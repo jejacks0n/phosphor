@@ -29,6 +29,7 @@
  * a shape is a cell under that key, and the store keeps them in their own map.
  */
 
+import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 export const SHAPE_PREFIX = 'v:';
 export const MOST_SHAPES = 1000; // a frame's, from a file, a project or a room
 export const MOST_POINTS = 500;  // a shape's, across its outlines: the biggest still fits in one room message
@@ -45,13 +46,36 @@ const FIELDS = ['z', 'closed', 'points', 'fill', 'stroke', 'width', 'm'];
 const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter'];
 const RULES = ['evenodd'], CAPS = ['butt', 'square'], JOINS = ['miter', 'bevel']; // the values other than the default
 const GRADIENTS = ['linear', 'radial'];
-const MOST_STOPS = 16;
+export const MOST_STOPS = 16;
 const KAPPA = 0.5523; // a cubic's handle length for a quarter circle, as a share of its radius
 
 export const IDENTITY = Object.freeze([1, 0, 0, 1, 0, 0]);
 export const isShapeKey = (key) => typeof key === 'string' && key.startsWith(SHAPE_PREFIX);
 export const isShape = (value) => !!value && Array.isArray(value.points);
 export const isGradient = (fill) => !!fill && typeof fill === 'object';
+
+// A gradient's color at offset o, its stops mixed.
+export function gradientColorAt(stops, o) {
+  const after = stops.findIndex(([at]) => at >= o);
+  if (after <= 0) return stops[after < 0 ? stops.length - 1 : 0][1];
+  const [a, ca] = stops[after - 1], [b, cb] = stops[after], k = b > a ? (o - a) / (b - a) : 0;
+  const x = hex2rgb(ca), y = hex2rgb(cb);
+  return rgb2hex({ r: x.r + (y.r - x.r) * k, g: x.g + (y.g - x.g) * k, b: x.b + (y.b - x.b) * k });
+}
+
+// The same gradient sampled finer: its stops, with more between them (each gap its share, by length), MOST_STOPS in all.
+export function finerStops(stops) {
+  const span = stops.at(-1)[0] - stops[0][0], extra = MOST_STOPS - stops.length, out = [];
+  stops.forEach((stop, i) => {
+    out.push(stop);
+    const next = stops[i + 1], n = next && span > 0 ? Math.floor((extra * (next[0] - stop[0])) / span) : 0;
+    for (let k = 1; k <= n; k++) {
+      const o = stop[0] + ((next[0] - stop[0]) * k) / (n + 1);
+      out.push([o, gradientColorAt(stops, o)]);
+    }
+  });
+  return out;
+}
 export const sameShape = (a, b) => a === b || (!!a && !!b && JSON.stringify(a) === JSON.stringify(b));
 
 export function newShapeKey() {

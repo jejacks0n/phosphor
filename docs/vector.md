@@ -99,7 +99,8 @@ Each drag, nudge or delete is one undo step.
 
 The Node tool edits a shape's points. Press a shape to edit its points (a press on one of them takes it at
 once, so a two-point path's ends can be dragged straight away); choosing the tool with shapes selected edits
-the first one's. Its points and their curve handles show over it:
+the first one's. Its points and their curve handles show over it, those of every outline of a shape of
+several (a letter's counters, a ring's hole):
 
 - Drag a point to move it, its handles with it. Drag a handle to bend the curves beside its point; on a
   smooth point the other handle turns with it. Alt-drag (Option-drag on a Mac) a handle to break it from its
@@ -110,7 +111,7 @@ the first one's. Its points and their curve handles show over it:
 - Click the outline to add a point there; the curve stays where it was, and the new point is selected.
 - The options row: **Smooth** (the point's handles stay in line: drag one and the other turns with it; a
   point with no handles gets some), **Corner** (a sharp point: its handles go), and **Delete** (the point; Delete
-  or Backspace too; a shape left with fewer than two points goes).
+  or Backspace too; an outline left with fewer than two points goes, and the shape with its last one).
 - Click empty canvas or press Esc to stop editing points; the shape stays selected. Press another shape to edit
   its points instead. Choosing another tool stops too.
 
@@ -209,7 +210,7 @@ With shapes selected:
 
 Each change is one undo step (each press in the Stroke panel too); a Stroke width drag is one step when you let go.
 
-On a phone the row keeps Stroke width, Stroke (its panel the window's width) and **Points**, and puts Forward, Back and Delete under ⋯.
+On a phone the row keeps Stroke width, Stroke (its panel the window's width) and **Points**, and puts Forward, Back, Join, Separate and Delete under ⋯.
 
 ## Eyedropper (I)
 
