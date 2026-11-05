@@ -117,7 +117,7 @@ export function useTextTool(project, workspace, textInput) {
   const onKeyDown = (event) => {
     if (event.defaultPrevented) return;
     if (workspace.editorTab !== 'output' || workspace.activeTool !== 'text' || workspace.paletteLayerOpen) return;
-    const action = textKeyAction(event, { editable: editableFocus() });
+    const action = textKeyAction(event, { editable: editableFocus(), animate: project.animate });
     if (!action) return;
     // Without a cursor only palette flips and slot choices apply (a slot still sets the character to draw with).
     if (!workspace.textCursor && action.type !== 'palette' && action.type !== 'slot') return;

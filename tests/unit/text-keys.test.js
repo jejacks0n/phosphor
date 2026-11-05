@@ -89,12 +89,13 @@ test('? opens the shortcuts list, and Alt+? does even while typing (it never typ
   assert.deepEqual(textKeyAction(ev('?', 'Slash'), { editable: false }), { type: 'char', char: '?' });
 });
 
-test('Alt+, and Alt+. step frames by physical key, even while typing, and never type', () => {
+test('Alt+, and Alt+. step frames by physical key, even while typing, and with frames never type', () => {
   const ev = (key, code, mods = {}) => ({ key, code, altKey: true, ctrlKey: false, metaKey: false, shiftKey: false, ...mods });
   assert.equal(frameStepKey(ev('≤', 'Comma')), -1); // Option+, on a Mac
   assert.equal(frameStepKey(ev('≥', 'Period')), 1);
   assert.equal(frameStepKey(ev('.', 'Period', { altKey: false })), 0); // plain . types while typing
   assert.equal(frameStepKey(ev('.', 'Period', { ctrlKey: true })), 0); // AltGr
   assert.equal(frameStepKey(ev('>', 'Period', { shiftKey: true })), 0);
-  assert.equal(textKeyAction(ev('≥', 'Period'), { editable: false }), null);
+  assert.equal(textKeyAction(ev('≥', 'Period'), { editable: false, animate: true }), null);
+  assert.deepEqual(textKeyAction(ev('≥', 'Period'), { editable: false }), { type: 'char', char: '≥' }); // a still: Option+. types ≥
 });

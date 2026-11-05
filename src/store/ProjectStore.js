@@ -116,7 +116,7 @@ export const useProjectStore = defineStore('project', {
         Object.assign(held, { frame, version, rendered, cells, inherited: this.inheritedCells() });
       }
       const still = (i) => held.inherited.has(i) && sameLook(cells[i], held.cells[i]); // a stroke's new object: no longer a ghost
-      const { cols } = this, params = this.processParams, strength = workspace.ghost ? workspace.ghostStrength / 100 : 0;
+      const { cols } = this, params = this.processParams, strength = this.ghostStrength;
       if (held.strength !== strength) Object.assign(held, { strength, memo: new WeakMap() });
       return ghostedCells(
         cells,
@@ -127,6 +127,12 @@ export const useProjectStore = defineStore('project', {
       );
     },
     hasFrames: (state) => state.frames.length > 1,
+    // How much of its own colors a ghost keeps, 0 to 1: the bar's strength, or with Ghost off none (shownCells only
+    // asks then when cells don't carry, and the frame before mustn't show).
+    ghostStrength() {
+      const workspace = useWorkspaceStore();
+      return workspace.ghost ? workspace.ghostStrength / 100 : 0;
+    },
     isDirty: (state) => settingsJson(state) !== state.savedSettings || state.editVersion !== state.savedEditVersion,
     imageRatio: (state) => {
       if (!state.image) return 1;

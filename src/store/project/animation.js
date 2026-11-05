@@ -510,7 +510,7 @@ export const animationActions = {
     frameStep(this, () => {
       const deleted = this.currentFrame, at = this.frame, next = this.frames[at + 1];
       const before = this.frames.map((frame) => ({ ...frame })); // as they were, next before its fold
-      if (next) Object.assign(next, foldDeleted(deleted, next));
+      if (next) Object.assign(next, foldDeleted(deleted, next, this.cellsCarry));
       this.frames = this.frames.filter((frame) => frame !== deleted);
       deleted.resolved = deleted.built = null; // history holds it, and these are only worked out
       if (next) this.frames[at].resolved = this.frames[at].built = null;

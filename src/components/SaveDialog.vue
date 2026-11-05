@@ -42,6 +42,7 @@ const problem = ref('');
 const stem = computed(() => fileStem(name.value, extension.value));
 const listed = (cells) => [...AnsiFile.unmappable(cells)].map(([char, { count, as }]) => ({ char, count, as }));
 const replacements = ref(props.ext === 'ans' ? listed(project.cells) : []);
+if (props.ext === 'ans') project.exportCells().then((cells) => { replacements.value = listed(cells); });
 // An animated .ans: what every frame holds, once they're built.
 if (props.ext === 'ansimation') {
   project.animationCells().then((frames) => { replacements.value = listed((function* all() { for (const cells of frames) yield* cells; })()); });
