@@ -152,6 +152,21 @@ test('playing loops, honors holds, and leaves editCells and editVersion alone', 
   playback.pause();
 });
 
+test('a setting changed while playing shows at once, and playing goes on', async () => {
+  const { project, workspace } = await animated();
+  const playback = usePlayback();
+  type(project, 1, 1, 'A');
+  project.addFrame('blank');
+  project.setFps(30);
+  await playback.play();
+  const before = workspace.played.cells[at(10, 5)].bg.hex;
+  project.setSlider('brightness', 160);
+  await until(() => workspace.playing && workspace.played?.cells[at(10, 5)].bg.hex !== before, 'the brighter frames playing');
+  const seen = new Set();
+  await until(() => seen.add(workspace.playFrame).size === 2, 'both frames, still playing');
+  playback.pause();
+});
+
 test('what plays is solid, and is the frame’s own built cells', async () => {
   const { project, workspace } = await animated();
   const playback = usePlayback();

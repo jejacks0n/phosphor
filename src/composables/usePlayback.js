@@ -1,13 +1,14 @@
 // Playing an animation: frames swap on screen from what's built (FrameBuilder), ticking with the display and
 // looping. Nothing here touches editCells or the frame being edited, so autosave stays quiet; pausing lands the
-// editor on the frame showing. One at a time: the state is the workspace's.
+// editor on the frame showing. A setting changed while playing (a slider, the art style) starts it again from the
+// frame showing, built anew. One at a time: the state is the workspace's.
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { frameDuration } from '@/document/frames';
 
 const AHEAD = 8; // frames kept built ahead of the one showing, so a tick rarely waits
 
-let running = null; // { project, workspace, document, frame: the rAF, last, spare, building }
+let running = null; // { project, workspace, document, params: the settings it built with, frame: the rAF, last, spare, building }
 
 function stop(run) {
   cancelAnimationFrame(run.frame);
@@ -41,6 +42,13 @@ function tick(run, now) {
     stop(run);
     return;
   }
+  if (project.processParams !== run.params) { // what's built is of the settings before: as if paused and played again
+    const at = workspace.playFrame;
+    stop(run);
+    project.showFrame(at);
+    start(project, workspace);
+    return;
+  }
   run.spare += Math.min(now - run.last, 1000); // a tab left in the background doesn't race to catch up
   run.last = now;
   let at = workspace.playFrame % project.frames.length;
@@ -63,23 +71,25 @@ function tick(run, now) {
   run.frame = requestAnimationFrame((time) => tick(run, time));
 }
 
+async function start(project, workspace) {
+  if (workspace.playing || running || !project.hasFrames) return;
+  project.commitPending();
+  const document = project._document, at = project.frame, params = project.processParams; // before the wait: a change in it is caught
+  const built = await project.builtFrame(at);
+  if (!built || workspace.playing || project._document !== document) return;
+  workspace.playFrame = at;
+  workspace.played = built;
+  workspace.playing = true;
+  running = { project, workspace, document, params, frame: null, last: performance.now(), spare: 0, building: false };
+  const run = running;
+  run.frame = requestAnimationFrame((time) => tick(run, time));
+  buildAhead(run);
+}
+
 export function usePlayback() {
   const project = useProjectStore(), workspace = useWorkspaceStore();
 
-  const play = async () => {
-    if (workspace.playing || running || !project.hasFrames) return;
-    project.commitPending();
-    const document = project._document, at = project.frame;
-    const built = await project.builtFrame(at);
-    if (!built || workspace.playing || project._document !== document) return;
-    workspace.playFrame = at;
-    workspace.played = built;
-    workspace.playing = true;
-    running = { project, workspace, document, frame: null, last: performance.now(), spare: 0, building: false };
-    const run = running;
-    run.frame = requestAnimationFrame((time) => tick(run, time));
-    buildAhead(run);
-  };
+  const play = () => start(project, workspace);
 
   const pause = () => {
     if (!workspace.playing) return;
