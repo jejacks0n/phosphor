@@ -49,6 +49,11 @@ const CURVES = {
   elastic: 'M2 14C3 4 4 0 6 1S8 4 10 2.5S13 1.8 14 2',
 };
 const easings = computed(() => [['none', null], ...EASINGS.map((easing) => [easing, easing])]);
+// The Tween button shows only its curve, so its name says which easing that is.
+const tweenLabel = computed(() => {
+  if (!span.value) return t('animation.tweenDisabled');
+  return span.value.easing ? t('animation.tweenNamed', { easing: t(`animation.easings.${span.value.easing}`) }) : t('animation.tween');
+});
 // Where the range's thumb sits for frame i: its travel stops half a thumb (--thumb, the global slider's) short of each end.
 const markAt = (i) => `calc(var(--thumb) / 2 + (100% - var(--thumb)) * ${count.value > 1 ? i / (count.value - 1) : 0})`;
 
@@ -122,7 +127,7 @@ const setFps = (event) => {
       <p class="tween-frames">{{ t('animation.cellsCarry') }}</p>
       <button v-for="on in [true, false]" :key="on" :aria-pressed="project.cellsCarry === on" @click="carryCells(on)">{{ t(on ? 'animation.cellsCarryOn' : 'animation.cellsCarryOff') }}</button>
     </DropdownMenu>
-    <DropdownMenu class="tween-menu" :label="span ? t('animation.tween') : t('animation.tweenDisabled')" up :disabled="!span">
+    <DropdownMenu class="tween-menu" :label="tweenLabel" up :disabled="!span">
       <template #trigger>
         <svg class="curve" viewBox="0 0 16 16" aria-hidden="true">
           <path :d="CURVES[span?.easing ?? 'easeInOut']"/>

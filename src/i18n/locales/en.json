@@ -719,6 +719,7 @@
     "moveLater": "Move later",
     "deleteFrame": "Delete frame",
     "tween": "Tween",
+    "tweenNamed": "Tween: {easing}",
     "tweenDisabled": "Select a shape with a later key frame to tween it",
     "tweenFrames": "Frames {from} to {to}",
     "motion": "This tween moves",
