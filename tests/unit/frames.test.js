@@ -345,3 +345,11 @@ test('a movie saved before parts reads as it looked, its key frames setting only
   assert.deepEqual(reopened[12].parts.get('v:a'), new Set(['transform']));
   assert.deepEqual(looks(reopened), looks(same));
 });
+
+test('a key frame saved before parts, the same as its neighbors, stays a key frame', () => {
+  const frames = Array.from({ length: 13 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
+  for (const at of [0, 6, 12]) frames[at].changes.set('v:a', cellState(BALL, 0, 0));
+  frames[0].tweens = new Map([['v:a', 'easeIn']]);
+  const old = serializeFrames(frames).map((frame) => Object.fromEntries(Object.entries(frame).filter(([name]) => name !== 'parts')));
+  assert.deepEqual(read(old).frames[6].parts.get('v:a'), new Set(['transform']));
+});

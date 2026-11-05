@@ -218,9 +218,9 @@ export const editLayerActions = {
     this.commitPending();
     if (this.hasFrames) { // it's the frame that changes: to a Wipe, empty
       this.noteFrame();
-      const { kind, changes } = this.currentFrame, cleared = { kind: 'wipe', changes: new Map() };
+      const { kind, changes, parts } = this.currentFrame, cleared = { kind: 'wipe', changes: new Map(), parts: null };
       this.setFrameState(cleared);
-      this.pushWholeLayer(() => this.setFrameState({ kind, changes }), () => this.setFrameState(cleared), bytesHeld(changes));
+      this.pushWholeLayer(() => this.setFrameState({ kind, changes, parts }), () => this.setFrameState(cleared), bytesHeld(changes));
       return;
     }
     const before = { paintLayer: this.paintLayer.snapshot(), editCells: this.editCells };

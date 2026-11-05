@@ -118,15 +118,18 @@ function setParts(project, key, shape, { shapeOf, unsetOf }) {
 }
 
 // What the frame showing changed over previous (what the frame before shows): its cells, and its shapes by inheritance,
-// with the parts it sets of those it doesn't set all of. A shape it would set no part of isn't its own.
+// with the parts it sets of those it doesn't set all of. A shape it would set no part of isn't its own; one it set
+// parts of that are as they were stays its own, though the frames before have come to match it.
 // ponytail: each shape walks the frames back to its key frame; per-shape spans worked out once if huge movies lag.
 function ownChanges(project, previous) {
   const own = frameDiff(previous, liveStates(project)), inherited = inheritance(project), parts = new Map();
   const keys = new Set([...previous.keys(), ...project.shapes.keys(), ...project.currentFrame.changes.keys()].filter(isShapeKey));
   for (const key of keys) {
-    const shape = project.shapes.get(key);
-    const set = shape && !inherited.inherits(key, shape) ? setParts(project, key, shape, inherited) : null;
-    if (inherited.inherits(key, shape) || set?.size === 0) own.delete(key);
+    const shape = project.shapes.get(key), had = project.currentFrame.changes.get(key)?.cell;
+    const kept = had && shape && [...(project.currentFrame.parts?.get(key) ?? PARTS)].every((name) => samePart(had, shape, name));
+    const inherits = !kept && inherited.inherits(key, shape);
+    const set = shape && !inherits ? setParts(project, key, shape, inherited) : null;
+    if (inherits || set?.size === 0) own.delete(key);
     else own.set(key, shape ? cellState(shape, 0, 0) : EMPTY_STATE);
     if (set?.size && set.size < PARTS.length) parts.set(key, set);
   }
@@ -202,6 +205,7 @@ const framesNow = (project) => ({ list: project.frames, states: project.frames.m
 function staleTweens(project, before, at) {
   if (!project.frames.some((frame) => frame.tweens?.size) && !before.some((frame) => frame.tweens?.size)) return;
   project.staleFrames(Math.min(at, tweenReach(before, Math.min(at, before.length)), tweenReach(project.frames, Math.min(at, project.frames.length))));
+  project.staleFrames(at); // a reach from before at stops at a frame that isn't Blank, which at can be
 }
 
 // The frames as a step of history left them. Frame objects are kept, so a deleted frame's ledger comes back with
@@ -468,6 +472,7 @@ export const animationActions = {
         const reach = tweenReach(this.frames, from + 1); // a part fading across this span, before and after
         frame.tweens = tweens.size ? tweens : null;
         this.staleFrames(Math.min(from, reach, tweenReach(this.frames, from + 1)));
+        this.staleFrames(from);
       }
       this.frames = [...this.frames];
       return this.currentFrame;
@@ -498,10 +503,10 @@ export const animationActions = {
     this.refreshShapes();
   },
 
-  // A frame's kind and changes set from outside (a Clear, and its undo), and shown as the frame now resolves.
-  setFrameState({ kind, changes }) {
+  // A frame's kind, changes and parts set from outside (a Clear, and its undo), and shown as the frame now resolves.
+  setFrameState({ kind, changes, parts = null }) {
     const frame = this.currentFrame, reach = tweenReach(this.frames, this.frame); // the frames between of a tween ending here
-    Object.assign(frame, { kind, changes });
+    Object.assign(frame, { kind, changes, parts });
     this.staleFrames(Math.min(reach, tweenReach(this.frames, this.frame)));
     this.staleFrames(this.frame);
     this.frames = [...this.frames];
