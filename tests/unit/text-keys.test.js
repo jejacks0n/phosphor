@@ -1,7 +1,7 @@
 // The Text tool's keys -> editing actions, cursor clamping, and row shifting for insert mode.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { colorBoxKey, helpKey, textKeyAction, moveCursor, typedText } from '../../src/lib/TextKeys.js';
+import { colorBoxKey, frameStepKey, helpKey, textKeyAction, moveCursor, typedText } from '../../src/lib/TextKeys.js';
 import { shiftRow } from '../../src/document/editCells.js';
 
 test("The Text tool's keys -> editing actions, cursor clamping, and row shifting for insert mode", async () => {
@@ -87,4 +87,14 @@ test('? opens the shortcuts list, and Alt+? does even while typing (it never typ
   assert.equal(helpKey(ev('?', 'Slash', { metaKey: true }), { typing: false }), false);
   assert.equal(textKeyAction(ev('¿', 'Slash', { altKey: true }), { editable: false }), null);
   assert.deepEqual(textKeyAction(ev('?', 'Slash'), { editable: false }), { type: 'char', char: '?' });
+});
+
+test('Alt+, and Alt+. step frames by physical key, even while typing, and never type', () => {
+  const ev = (key, code, mods = {}) => ({ key, code, altKey: true, ctrlKey: false, metaKey: false, shiftKey: false, ...mods });
+  assert.equal(frameStepKey(ev('≤', 'Comma')), -1); // Option+, on a Mac
+  assert.equal(frameStepKey(ev('≥', 'Period')), 1);
+  assert.equal(frameStepKey(ev('.', 'Period', { altKey: false })), 0); // plain . types while typing
+  assert.equal(frameStepKey(ev('.', 'Period', { ctrlKey: true })), 0); // AltGr
+  assert.equal(frameStepKey(ev('>', 'Period', { shiftKey: true })), 0);
+  assert.equal(textKeyAction(ev('≥', 'Period'), { editable: false }), null);
 });

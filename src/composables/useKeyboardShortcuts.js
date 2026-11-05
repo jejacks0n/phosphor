@@ -6,7 +6,7 @@ import { charRowsOf } from '@/lib/Cells';
 import { copySelection, decodeBlock } from '@/composables/clipboard';
 import { readClipboardHtml } from '@/lib/clipboardBlocks';
 import { typeText } from '@/composables/useTextTool';
-import { colorBoxKey, helpKey } from '@/lib/TextKeys';
+import { colorBoxKey, frameStepKey, helpKey } from '@/lib/TextKeys';
 import { isField } from '@/lib/fields';
 import { usePlayback } from '@/composables/usePlayback';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
@@ -102,9 +102,11 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // Typing in Edit Mode: the Text tool with its cursor placed, in the ANSI view.
   const _typing = () => workspaceStore.activeTool === 'text' && !!workspaceStore.textCursor && workspaceStore.editorTab === 'output';
 
-  // L plays and pauses, comma and period step: with Animate on, in the art views, never while typing.
-  const _animationKeysApply = (e) => projectStore.animate && projectStore.image && !e.ctrlKey && !e.metaKey && !e.altKey
-    && workspaceStore.editMode && !isField(e.target) && !_typing()
+  // L plays and pauses, comma and period step: with Animate on, in the art views, never while typing. Alt+, and Alt+.
+  // step while typing too (typing: true).
+  const _animationKeysApply = (e, { typing = false } = {}) => projectStore.animate && projectStore.image
+    && (typing || (!e.ctrlKey && !e.metaKey && !e.altKey && !_typing()))
+    && workspaceStore.editMode && !isField(e.target)
     && !workspaceStore.isPainting && !workspaceStore.paletteLayerOpen && !workspaceStore.colorBox;
 
   // The shortcuts list: ?, or Alt+? while typing in Edit Mode (where ? types). Not in a field.
@@ -327,10 +329,11 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     // own controls have their keys, and they pause for themselves.
     if (workspaceStore.playing && !isField(e.target) && !e.target?.closest?.('[role="toolbar"]') && !['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) playback.pause();
 
-    if (_animationKeysApply(e) && (e.key === ',' || e.key === '.')) {
+    const step = frameStepKey(e) || (e.key === ',' ? -1 : e.key === '.' ? 1 : 0);
+    if (step && _animationKeysApply(e, { typing: !!frameStepKey(e) })) {
       e.preventDefault();
       playback.pause();
-      projectStore.stepFrame(e.key === ',' ? -1 : 1);
+      projectStore.stepFrame(step);
       return;
     }
 

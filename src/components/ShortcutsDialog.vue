@@ -101,7 +101,7 @@ const groups = computed(() => [
     title: t('shortcuts.groups.animation'),
     rows: [
       [['L'], t('shortcuts.rows.playPause')],
-      [[',', '.'], t('shortcuts.rows.prevNextFrame')],
+      [[',', '.'], t('shortcuts.rows.prevNextFrame', { keys: `${k('alt', ',')} ${k('alt', '.')}` })],
     ],
   },
   {
