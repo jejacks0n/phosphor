@@ -719,6 +719,7 @@
     "moveLater": "Déplacer vers l'arrière",
     "deleteFrame": "Supprimer l'image",
     "tween": "Interpolation",
+    "tweenNamed": "Interpolation : {easing}",
     "tweenDisabled": "Sélectionnez une forme qui a une image clé plus loin pour l'interpoler",
     "tweenFrames": "Images {from} à {to}",
     "motion": "Cette interpolation se déplace",

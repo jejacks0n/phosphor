@@ -312,6 +312,7 @@ test('the Tween menu eases a selected shape between its key frames, and the bar 
   await page.getByRole('button', { name: 'Ease in', exact: true }).click();
   await expect.poll(() => store(page, 'project', `(p) => p.shapes.get('${key}').m[5]`)).toBe(3);
   expect(await scrubberWidth()).toBe(width); // the button's as wide whatever easing it names
+  await expect(tween).toHaveAttribute('title', 'Tween: Ease in'); // it shows only the curve, so its name says which
   await expect(bar(page).locator('.scrubber-marks .tween')).toHaveCount(5);
   await expect(bar(page).locator('.scrubber-marks .band')).toHaveCount(1);
   await page.keyboard.press('ControlOrMeta+z');
