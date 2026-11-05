@@ -18,6 +18,7 @@ test("The Text tool's keys -> editing actions, cursor clamping, and row shifting
   assert.equal(k('F13'), null);
   assert.deepEqual(k('ArrowLeft', { altKey: true }), { type: 'palette', delta: -1 });
   assert.deepEqual(k('ArrowRight', { altKey: true }), { type: 'palette', delta: 1 });
+  assert.equal(k('ArrowRight', { shiftKey: true }), null);                    // Shift+arrows select (useKeyboardShortcuts)
   assert.deepEqual(k('ArrowUp', { altKey: true, shiftKey: true }), { type: 'color', slot: 'bg', delta: -1 });
   assert.deepEqual(k('ArrowDown', { altKey: true }), { type: 'color', slot: 'fg', delta: 1 });
   assert.deepEqual(k('å', { altKey: true }), { type: 'char', char: 'å' });   // macOS Option characters

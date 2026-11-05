@@ -52,7 +52,7 @@ export function textKeyAction(e, { editable }) {
   }
   const index = fKey(e.key);
   if (index >= 0) return { type: 'slot', index };
-  if (ARROWS[e.key]) return { type: 'move', dc: ARROWS[e.key][0], dr: ARROWS[e.key][1] };
+  if (ARROWS[e.key]) return e.shiftKey ? null : { type: 'move', dc: ARROWS[e.key][0], dr: ARROWS[e.key][1] }; // Shift+arrows select (useKeyboardShortcuts)
   if (NAMED[e.key]) return { type: NAMED[e.key] };
   return single(e.key) ? { type: 'char', char: e.key } : null;
 }

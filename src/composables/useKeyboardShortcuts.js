@@ -1,6 +1,6 @@
-import { onMounted, onBeforeUnmount, watch } from 'vue';
+import { onMounted, onBeforeUnmount, watch, toRaw } from 'vue';
 import { getTool, offeredTools } from '@/tools';
-import { clampOffset } from '@/document/editCells';
+import { clampOffset, normalizeRect } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
 import { copySelection, decodeBlock } from '@/composables/clipboard';
 import { readClipboardHtml } from '@/lib/clipboardBlocks';
@@ -123,14 +123,40 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // Backspace or E erase it, C or S stamp it (a copy stays, the block floats on), Enter sets it down;
   // and the arrow keys nudge it a cell. Fields, the palette layer and the Text tool keep their keys.
   const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  // Shift+arrows select, as in a text editor: in Edit Mode from the cursor's cell (the Select tool
+  // takes over, as it does a drag), and with the Select tool they move the selection's far corner, so
+  // it grows or shrinks from the corner it started at (a selection made another way: its top-left).
+  // Each press is an undo step, as a selection drawn is.
+  let _shiftRun = null; // { rect, anchor, head }: the selection Shift+arrows made last
+  const _shiftSelect = (dc, dr) => {
+    const sel = workspaceStore.selection;
+    let { anchor, head } = sel && toRaw(sel) === _shiftRun?.rect ? _shiftRun : {};
+    if (!anchor && _typing()) anchor = head = workspaceStore.textCursor;
+    else if (!anchor && workspaceStore.activeTool === 'select' && sel) [anchor, head] = [{ col: sel.c0, row: sel.r0 }, { col: sel.c1, row: sel.r1 }];
+    if (!anchor) return false;
+    const to = {
+      col: Math.max(0, Math.min(projectStore.cols - 1, head.col + dc)),
+      row: Math.max(0, Math.min(charRowsOf(projectStore.rows) - 1, head.row + dr)),
+    };
+    if (to.col === head.col && to.row === head.row) return true; // at the edge
+    workspaceStore.setActiveTool('select');
+    projectStore.changeSelection((w) => { w.selection = normalizeRect(anchor, to); w.wand = null; });
+    _shiftRun = { rect: toRaw(workspaceStore.selection), anchor, head: to };
+    return true;
+  };
   const _handleSelectionKeys = (e) => {
     // Something else already took the key (the palette layer, a popover).
     if (e.defaultPrevented || workspaceStore.paletteLayerOpen) return false;
-    if (!['input', 'output'].includes(workspaceStore.editorTab) || e.altKey || e.shiftKey) return false; // the art views
+    if (!['input', 'output'].includes(workspaceStore.editorTab) || e.altKey) return false; // the art views
     if (workspaceStore.isPainting) return false; // mid-drag: the drag's end decides
     // The Text tool's textarea isn't a field: Cmd/Ctrl+V there still pastes a Select block (and only
     // pastes text, through the textarea, when there's no block).
     if (isField(e.target)) return false;
+    if (e.shiftKey) {
+      if (!ARROWS[e.key] || e.metaKey || e.ctrlKey || !_shiftSelect(...ARROWS[e.key])) return false;
+      e.preventDefault();
+      return true;
+    }
     const sel = workspaceStore.selection, layers = workspaceStore.selectLayers;
     const selecting = workspaceStore.activeTool === 'select' && sel;
     const command = e.metaKey || e.ctrlKey;

@@ -253,3 +253,29 @@ test("a pasted block's empty cells don't cover what's under them", async () => {
   project.render(); await settle(project);
   expect([20, 21, 22].map((c) => cell(project, c, 1).char).join('')).toBe('AZC');
 });
+
+// Shift+arrows select, as in a text editor.
+test('in Edit Mode, Shift+arrows select from the cursor with the Select tool, and grow or shrink from where they started', async () => {
+  const { project, workspace } = await editor();
+  workspace.setActiveTool('text');
+  workspace.textCursor = { col: 5, row: 5 };
+  key('ArrowRight', { shiftKey: true });
+  expect(workspace.activeTool).toBe('select');
+  expect(workspace.selection).toEqual({ c0: 5, r0: 5, c1: 6, r1: 5 });
+  key('ArrowRight', { shiftKey: true });
+  key('ArrowDown', { shiftKey: true });
+  expect(workspace.selection).toEqual({ c0: 5, r0: 5, c1: 7, r1: 6 });
+  for (let i = 0; i < 3; i++) key('ArrowLeft', { shiftKey: true }); // back past where it started
+  expect(workspace.selection).toEqual({ c0: 4, r0: 5, c1: 5, r1: 6 });
+  project.undo();
+  expect(workspace.selection).toEqual({ c0: 5, r0: 5, c1: 5, r1: 6 }); // one press at a time
+});
+
+test('with the Select tool, Shift+arrows grow or shrink the selection from its top-left, and stop at the edge', async () => {
+  const { workspace } = await editor();
+  workspace.selectAll({ c0: 27, r0: 2, c1: 28, r1: 3 });
+  key('ArrowRight', { shiftKey: true });
+  key('ArrowRight', { shiftKey: true }); // the grid ends at column 29
+  key('ArrowUp', { shiftKey: true });
+  expect(workspace.selection).toEqual({ c0: 27, r0: 2, c1: 29, r1: 2 });
+});
