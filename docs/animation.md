@@ -16,11 +16,12 @@ frame can't start a room.
 ## The bar
 
 Left to right: play and pause, step back and forward, which frame you're on, the scrubber, **Add frame** (a frame of
-film with a plus), a menu to move or delete the frame, frames per second, this frame's hold, and **Ghost** (a ghost, lit
+film with a plus), a menu to move or delete the frame, **Tween** (see [Tweens](#tweens)), frames per second, this frame's hold, and **Ghost** (a ghost, lit
 while it's on) with its strength beside it. On a narrow screen the controls from frames per second on take a second line.
 
 The marks under the scrubber say what each frame is: a tall tick where something was drawn, a short tick where
-nothing was, a block for a Duplicate, and a diamond for a Wipe.
+nothing was, a block for a Duplicate, and a diamond for a Wipe. With a shape selected, its tweens show too: a band
+from key frame to key frame, with a dot for each frame between.
 
 The keys, with Animate on and not while you're typing: **L** plays and pauses, **,** and **.** step, wrapping around the
 ends. Any other key pauses first, and so does starting to draw, so what you do lands on the frame showing.
@@ -53,6 +54,36 @@ Shapes ([Vector shapes](vector.md)) belong to frames the same way. A Blank frame
 moving, reshaping or recoloring one there makes it that frame's, and the change carries on until a frame that
 changed that shape itself. Deleting a shape carries forward too. A Duplicate starts with its own copy of every shape,
 and a Wipe with none.
+
+## Tweens
+
+A tween moves a shape ([Vector shapes](vector.md)) from one of its key frames to the next, so you don't draw the frames
+between. A shape's **key frames** are the frames that change it. Place a ball on frame 1, add Blank frames, move it down
+on frame 7, select it, and choose an easing from **Tween** on the bar: frames 2 to 6 now show it on its way down.
+
+The menu says which frames the tween covers ("Frames 1 to 7"), and has:
+
+| Easing | The shape |
+| --- | --- |
+| **No tween** | Stays as the earlier key frame has it, then jumps (as without tweens) |
+| **Linear** | Moves at one speed |
+| **Ease in** | Starts slow and speeds up, as a ball falls |
+| **Ease out** | Starts fast and slows down, as a ball rising to its peak |
+| **Ease in and out** | Speeds up, then slows down |
+
+On a key frame, the menu sets the tween that starts there. It's off with no shape selected, or on a shape's last key
+frame. With several shapes selected, the bar shows the first one's tweens, and a choice sets each selected shape's tween
+on that frame. Each is one undo step.
+
+What tweens: the shape's position, size and rotation (it turns the short way round, so more than half a turn between two
+key frames goes back the other way), its points and curve handles when both key frames have as many in each outline,
+its fill and stroke colors, gradients of the same kind with as many stops, and its stroke width. What can't go part way
+(a different number of points, a solid fill against a gradient, the cap, join or alignment) changes half way.
+
+A tween's timing goes by frames: half way through is the middle frame, whatever the holds. It runs only across Blank
+frames that don't change the shape; a Duplicate or a Wipe ends it. Change a key frame and the frames between follow.
+Moving the shape on a frame between makes that a key frame: the tween splits in two, both halves with its easing.
+Tweens play, and the exports show them; projects and autosave keep them.
 
 ## The ghost
 

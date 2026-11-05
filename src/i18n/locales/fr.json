@@ -715,6 +715,16 @@
     "moveEarlier": "Déplacer vers l'avant",
     "moveLater": "Déplacer vers l'arrière",
     "deleteFrame": "Supprimer l'image",
+    "tween": "Interpolation",
+    "tweenDisabled": "Sélectionnez une forme qui a une image clé plus loin pour l'interpoler",
+    "tweenFrames": "Images {from} à {to}",
+    "easings": {
+      "none": "Aucune interpolation",
+      "linear": "Linéaire",
+      "easeIn": "Accélérer",
+      "easeOut": "Ralentir",
+      "easeInOut": "Accélérer puis ralentir"
+    },
     "fpsTitle": "Images par seconde",
     "fpsUnit": "ips",
     "hold": "Maintien",
