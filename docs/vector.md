@@ -40,7 +40,8 @@ resized (it grows or trims on the right and bottom, and shapes keep their place)
 
 Each frame has its own shapes: a Blank frame carries the shapes before it, as it carries cells, and changing one
 there makes it that frame's ([Animation](animation.md)). On VECTOR, the outlines of the shapes a Blank frame
-carries show dimmed. Playing and the exports show each frame's shapes.
+carries show dimmed. Playing and the exports show each frame's shapes. A shape can tween between its key frames, moving,
+turning, reshaping and changing color on the frames between ([Tweens](animation.md#tweens)).
 
 ## Rooms
 

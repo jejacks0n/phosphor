@@ -268,6 +268,6 @@ test("tweens are saved for the shapes a frame owns, and read back; what can't be
   const opened = read(odd);
   assert.ok(opened);
   assert.ok(opened.frames.every((frame) => frame.tweens === null));
-  const old = saved.map(({ tweens, ...rest }) => rest);
+  const old = saved.map((frame) => Object.fromEntries(Object.entries(frame).filter(([name]) => name !== 'tweens')));
   assert.ok(read(old).frames.every((frame) => frame.tweens === null));
 });

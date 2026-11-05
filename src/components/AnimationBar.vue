@@ -5,6 +5,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePlayback } from '@/composables/usePlayback';
 import { frameMarks } from '@/lib/frameMarks';
+import { EASINGS, spanAt, tweenBands } from '@/document/tweens.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 
 // Under the canvas while Animate is on: play, step, scrub, timing, and adding and arranging frames.
@@ -29,10 +30,24 @@ const full = computed(() => {
 
 // A frame's changes are worked out when it's left, and here when it's edited, so its mark is right at once.
 watch(() => project.historyVersion, () => project.noteFrame());
+// Tweens are each shape's: the bar shows the first selected shape's.
+const shapeKeys = computed(() => workspace.vectorSelected.filter((key) => project.shapes.has(key)));
 const marks = computed(() => {
   void project.historyVersion;
-  return project.hasFrames ? frameMarks(project.frames) : [project.hasEdits ? 'drawn' : 'empty'];
+  return project.hasFrames ? frameMarks(project.frames, shapeKeys.value[0]) : [project.hasEdits ? 'drawn' : 'empty'];
 });
+const bands = computed(() => (project.hasFrames && shapeKeys.value[0] ? tweenBands(project.frames, shapeKeys.value[0]) : []));
+// The tween the frame showing is in, or starts: what the Tween menu sets.
+const span = computed(() => (project.hasFrames && shapeKeys.value[0] ? spanAt(project.frames, shapeKeys.value[0], at.value) : null));
+// Each easing's curve, as a graph of how far along against time; and No tween's cross.
+const CURVES = {
+  none: 'M4 4l8 8M12 4l-8 8',
+  linear: 'M2 14L14 2',
+  easeIn: 'M2 14C9 14 12 9 14 2',
+  easeOut: 'M2 14C4 7 7 2 14 2',
+  easeInOut: 'M2 14C8 14 8 2 14 2',
+};
+const easings = computed(() => [['none', null], ...EASINGS.map((easing) => [easing, easing])]);
 // Where the range's thumb sits for frame i: its travel stops half a thumb (--thumb, the global slider's) short of each end.
 const markAt = (i) => `calc(var(--thumb) / 2 + (100% - var(--thumb)) * ${count.value > 1 ? i / (count.value - 1) : 0})`;
 
@@ -46,6 +61,7 @@ const step = paused((by) => project.stepFrame(by));
 const add = paused((kind) => project.addFrame(kind));
 const move = paused((by) => project.moveFrame(project.frame, project.frame + by));
 const remove = paused(() => project.deleteFrame());
+const tween = paused((easing) => project.setTween(shapeKeys.value, easing));
 const setHold = paused((event) => {
   project.setHold(project.frame, event.target.value);
   event.target.value = project.currentFrame.hold;
@@ -75,6 +91,7 @@ const setFps = (event) => {
     <output class="indicator" data-testid="frame-indicator">{{ at + 1 }} / {{ count }}</output>
     <div class="scrubber">
       <div class="scrubber-marks" aria-hidden="true">
+        <span v-for="band in bands" :key="`band${band.from}`" class="band" :style="{ left: `calc(${markAt(band.from)} + 3px)`, width: `calc((100% - var(--thumb)) * ${(band.to - band.from) / (count - 1)} - 6px)` }"></span>
         <span v-for="(mark, i) in marks" :key="i" :class="mark" :style="{ left: markAt(i) }"></span>
       </div>
       <!-- A pointer lets go of it, so the app's keys work again; the keyboard keeps its arrows. -->
@@ -96,6 +113,20 @@ const setFps = (event) => {
       <button :disabled="at === 0" @click="move(-1)">{{ t('animation.moveEarlier') }}</button>
       <button :disabled="at === count - 1" @click="move(1)">{{ t('animation.moveLater') }}</button>
       <button :disabled="count < 2" @click="remove">{{ t('animation.deleteFrame') }}</button>
+    </DropdownMenu>
+    <DropdownMenu class="tween-menu" :label="span ? t('animation.tween') : t('animation.tweenDisabled')" up :disabled="!span">
+      <template #trigger>
+        <svg class="curve" viewBox="0 0 16 16" aria-hidden="true">
+          <path :d="CURVES[span?.easing ?? 'easeInOut']"/>
+          <circle cx="2" cy="14" r="1.4"/><circle cx="14" cy="2" r="1.4"/>
+        </svg>
+        <span class="tween-name">{{ span?.easing ? t(`animation.easings.${span.easing}`) : t('animation.tween') }}</span>
+      </template>
+      <p class="tween-frames">{{ span ? t('animation.tweenFrames', { from: span.from + 1, to: span.to + 1 }) : '' }}</p>
+      <button v-for="[name, easing] in easings" :key="name" :aria-pressed="(span?.easing ?? null) === easing" @click="tween(easing)">
+        <svg class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[name]"/></svg>
+        {{ t(`animation.easings.${name}`) }}
+      </button>
     </DropdownMenu>
     </div>
     <div class="settings">
@@ -229,6 +260,19 @@ div.scrubber-marks span.duplicate {
   width: 6px;
   background: var(--warning);
 }
+div.scrubber-marks span.band { /* a tween, key frame to key frame, under the dots of the frames it works out */
+  top: 2px;
+  height: 5px;
+  transform: none;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+div.scrubber-marks span.tween {
+  top: 3px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+}
 div.scrubber-marks span.wipe {
   top: 1px;
   width: 7px;
@@ -262,6 +306,34 @@ input.strength {
 span.full {
   font-size: 12px;
   color: var(--warning);
+}
+
+svg.curve {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.tween-menu :deep(.dropdown-trigger) > svg.curve {
+  width: 16px;
+  height: 16px;
+  fill: none;
+}
+svg.curve circle {
+  fill: currentColor;
+  stroke: none;
+}
+p.tween-frames {
+  margin: 2px 10px 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.tween-menu button[aria-pressed='true']::after {
+  content: '✓';
+  margin-left: 4px;
 }
 
 svg.add-frame {
@@ -312,6 +384,9 @@ button.ghost.active svg {
   }
   button.step { /* for a finger */
     width: 32px;
+  }
+  span.tween-name { /* the curve says it */
+    display: none;
   }
   output.indicator {
     min-width: 44px;

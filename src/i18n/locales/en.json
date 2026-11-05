@@ -715,6 +715,16 @@
     "moveEarlier": "Move earlier",
     "moveLater": "Move later",
     "deleteFrame": "Delete frame",
+    "tween": "Tween",
+    "tweenDisabled": "Select a shape with a later key frame to tween it",
+    "tweenFrames": "Frames {from} to {to}",
+    "easings": {
+      "none": "No tween",
+      "linear": "Linear",
+      "easeIn": "Ease in",
+      "easeOut": "Ease out",
+      "easeInOut": "Ease in and out"
+    },
     "fpsTitle": "Frames per second",
     "fpsUnit": "fps",
     "hold": "Hold",
