@@ -1,6 +1,6 @@
 // Tweens: a shape worked out part way between two of its versions (its key frames), with the timing that eases it.
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { isGradient, outlines, withShape } from './shapes.js';
+import { allPoints, isGradient, outlines, withShape } from './shapes.js';
 
 export const EASINGS = Object.freeze(['linear', 'easeIn', 'easeOut', 'easeInOut']);
 
@@ -14,9 +14,10 @@ export function ease(easing, t) {
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
-// A transform taken apart into move, turn, scale and shear, each part way, and put back: so a turn turns (the short way
-// round) instead of shrinking through nothing.
-function tweenMatrix(m0, m1, t) {
+// A transform taken apart into turn, scale and shear, each part way, and put back: so a turn turns (the short way
+// round) instead of shrinking through nothing. The pivot (in the shape's own coordinates) moves in a straight line, so
+// a shape turned about it turns in place.
+function tweenMatrix(m0, m1, t, [px, py] = [0, 0]) {
   const parts = (m) => {
     const [a, b, c, d, e, f] = m, sx = Math.hypot(a, b);
     return sx ? { e, f, angle: Math.atan2(b, a), sx, sy: (a * d - b * c) / sx, k: (a * c + b * d) / sx } : null;
@@ -26,8 +27,9 @@ function tweenMatrix(m0, m1, t) {
   let turn = q.angle - p.angle;
   turn -= Math.round(turn / (2 * Math.PI)) * 2 * Math.PI;
   const angle = p.angle + turn * t, sx = lerp(p.sx, q.sx, t), sy = lerp(p.sy, q.sy, t), k = lerp(p.k, q.k, t);
-  const cos = Math.cos(angle), sin = Math.sin(angle);
-  return [sx * cos, sx * sin, k * cos - sy * sin, k * sin + sy * cos, lerp(p.e, q.e, t), lerp(p.f, q.f, t)];
+  const cos = Math.cos(angle), sin = Math.sin(angle), a = sx * cos, b = sx * sin, c = k * cos - sy * sin, d = k * sin + sy * cos;
+  const at = (m) => [m[0] * px + m[2] * py + m[4], m[1] * px + m[3] * py + m[5]], from = at(m0), to = at(m1);
+  return [a, b, c, d, lerp(from[0], to[0], t) - (a * px + c * py), lerp(from[1], to[1], t) - (b * px + d * py)];
 }
 
 function tweenColor(a, b, t) {
@@ -61,13 +63,19 @@ function tweenOutlines(a, b, t) {
   return { points: mixed[0], more: mixed.slice(1).map((points, i) => [oa[i + 1].closed, points]) };
 }
 
+// The middle of a shape's points, in its own coordinates.
+function pivot(shape) {
+  const points = allPoints(shape), xs = points.map(([x]) => x), ys = points.map(([, y]) => y);
+  return points.length ? [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2] : [0, 0];
+}
+
 // Shape a at t = 0 to b at t = 1 (t already eased). What can't be part way (the outlines' structure, a solid color
 // against a gradient, the cap, join, alignment, fill rule, stacking) is a's until half way, then b's.
 export function tweenShape(a, b, t) {
   const base = t < 0.5 ? a : b;
   return withShape(base, {
     ...tweenOutlines(a, b, t),
-    m: tweenMatrix(a.m, b.m, t),
+    m: tweenMatrix(a.m, b.m, t, pivot(a)),
     fill: tweenFill(a.fill, b.fill, t),
     stroke: tweenFill(a.stroke, b.stroke, t),
     width: lerp(a.width, b.width, t),
@@ -93,6 +101,20 @@ export function spanAt(frames, key, i) {
   return { from, to, easing: frames[from].tweens?.get(key) ?? null };
 }
 
+// A span's shape on frame i, between its key frames.
+const between = (frames, key, { from, to, easing }, i) => tweenShape(frames[from].changes.get(key).cell, frames[to].changes.get(key).cell, ease(easing, (i - from) / (to - from)));
+
+// What frame i shows of a shape: its own, the one carried to it, or where a tween puts it; null for none.
+export function shapeAt(frames, key, i) {
+  let from = i;
+  while (!frames[from].changes.has(key)) {
+    if (frames[from].kind !== 'blank' || from === 0) return null;
+    from--;
+  }
+  const span = from < i ? spanAt(frames, key, i) : null;
+  return span?.easing ? between(frames, key, span, i) : frames[from].changes.get(key).cell ?? null;
+}
+
 const tweenedKeys = (frames) => new Set(frames.flatMap((frame) => [...(frame.tweens?.keys() ?? [])]));
 
 // Every shape a tween puts on frame i, key to { shape, easing }: its key frames' shapes mixed as far as the easing says.
@@ -101,8 +123,7 @@ export function tweenedAt(frames, i) {
   for (const key of tweenedKeys(frames)) {
     const span = spanAt(frames, key, i);
     if (!span?.easing || span.from === i) continue;
-    const t = ease(span.easing, (i - span.from) / (span.to - span.from));
-    out.set(key, { shape: tweenShape(frames[span.from].changes.get(key).cell, frames[span.to].changes.get(key).cell, t), easing: span.easing });
+    out.set(key, { shape: between(frames, key, span, i), easing: span.easing });
   }
   return out;
 }

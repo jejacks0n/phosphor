@@ -71,6 +71,9 @@ export const historyActions = {
     const drawnAsArtist = this._sharing?.role === 'artist';
     const records = { before: stroke.baseRecords, after: this.baseRecords };
     const frame = this.currentFrame, ledger = this._ledger; // undoing goes back to the frame it was drawn on, and its ledger
+    // On a frame, its shapes as they were before this edit, for undo (shapesBefore).
+    const changed = stroke.startShapes === this.shapes ? [] : [...new Set([...stroke.startShapes.keys(), ...this.shapes.keys()])].filter((key) => stroke.startShapes.get(key) !== this.shapes.get(key));
+    const shapesBefore = this.shapesBefore(changed, stroke.startShapes);
     const also = { patches: [[basePatch, this.baseLayer]], pins: [records.before.pins, records.after.pins] };
     const apply = (side) => {
       if (!this.frames.includes(frame)) return;
@@ -94,6 +97,7 @@ export const historyActions = {
       this.setBaseRecords(records[side]);
       if (basePatch || records.before !== records.after) this.sendBase(basePatch, side);
       this.ownStroke(side, id, also, sent);
+      if (side === 'before') this.putShapesBack(shapesBefore);
     };
     this.pushEdit({
       stroke: id,
