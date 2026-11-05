@@ -14,6 +14,11 @@ Blur, don't). Edit cells and paint stay on top of them:
 
 the picture → the base layer's own pixels → shapes → edit cells → paint
 
+Shapes are drawn at the picture's own detail, finer than the grid, so with **By shape** choosing the
+characters ([Characters](characters.md#how-the-converter-picks-characters)) a shape's edge inside a cell
+can come out as a quadrant, `▐`, `▌` or a rising block. Paint can't do that: it covers whole half cells.
+Shapes are the way to draw finer than half a cell.
+
 Where a shape covers a pinned character (one an opened `.ans` file set), the shape's conversion shows
 instead; move the shape away and the character comes back. A drawing holds up to 1,000 shapes.
 
