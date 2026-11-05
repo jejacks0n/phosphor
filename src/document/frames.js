@@ -87,7 +87,7 @@ export function sameChanges(a, b) {
 // from the deleted frame, and the deleted frame's kind when that was what cut it off from the frames before; the
 // tweens of the shapes it takes in, which start there now; and of a shape both set parts of, the parts the deleted
 // frame set that it didn't.
-export function foldDeleted(deleted, next) {
+export function foldDeleted(deleted, next, carry = true) {
   if (next.kind !== 'blank') return { kind: next.kind, changes: next.changes, tweens: next.tweens, motions: next.motions, parts: next.parts };
   const takeIn = (name) => {
     const map = new Map([...(deleted[name] ?? [])].filter(([key]) => !next.changes.has(key)));
@@ -95,7 +95,8 @@ export function foldDeleted(deleted, next) {
     return map.size ? map : null;
   };
   const tweens = takeIn('tweens') ?? new Map(), motions = takeIn('motions');
-  const changes = new Map([...deleted.changes, ...next.changes]);
+  // With cells not carrying (carry false), the next frame never showed the deleted one's cells: only its shapes.
+  const changes = new Map([...[...deleted.changes].filter(([key]) => carry || isShapeKey(key)), ...next.changes]);
   const parts = new Map([...(deleted.parts ?? [])].filter(([key]) => !next.changes.has(key)));
   for (const [key, { cell }] of next.changes) {
     const own = next.parts?.get(key), was = deleted.changes.get(key)?.cell;
@@ -139,7 +140,7 @@ export function paintImage(resolved, cols, rows) {
 // [key, [part, …]] for the shapes the frame sets only some of, on every frame with shapes (a frame with shapes and no
 // parts was saved before them).
 export const serializeFrames = (frames) => frames.map((frame, i) => {
-  const { kind, hold, changes } = frame, drawn = [...drawnKeys(frame)].filter((key) => !changes.has(key));
+  const { kind, hold, changes } = frame, drawn = [...drawnKeys(frame)]; // all of them: with cells not carrying, a drawn cell is owned for being drawn
   const all = [...changes], shapes = all.filter(([key]) => isShapeKey(key));
   const tweens = [...(frame.tweens ?? [])].filter(([key]) => changes.get(key)?.cell);
   const motions = [...(frame.motions ?? [])].filter(([key, motion]) => frame.tweens?.has(key) && changes.get(key)?.cell && motion !== 'smooth');

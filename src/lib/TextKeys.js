@@ -40,9 +40,9 @@ export function helpKey(e, { typing }) {
   return !typing && e.key === '?' && !e.altKey && !e.ctrlKey && !e.metaKey;
 }
 
-export function textKeyAction(e, { editable }) {
+export function textKeyAction(e, { editable, animate = false }) {
   if (editable || e.metaKey || e.isComposing || e.keyCode === 229) return null; // a field, Cmd, or an IME
-  if (colorBoxKey(e) || altHelp(e) || frameStepKey(e)) return null; // the color box, the shortcuts list or a frame step, never types
+  if (colorBoxKey(e) || altHelp(e) || (animate && frameStepKey(e))) return null; // the color box, the shortcuts list or (with frames) a frame step, never types
   // AltGr (Windows/Linux) arrives as Ctrl+Alt and produces characters such as @ or €: those type.
   if (e.ctrlKey && e.altKey) return single(e.key) ? { type: 'char', char: e.key } : null;
   if (e.ctrlKey) {
