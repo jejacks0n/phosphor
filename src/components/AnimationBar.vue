@@ -123,7 +123,6 @@ const setFps = (event) => {
           <path :d="CURVES[span?.easing ?? 'easeInOut']"/>
           <circle cx="2" cy="14" r="1.4"/><circle cx="14" cy="2" r="1.4"/>
         </svg>
-        <span class="tween-name">{{ span?.easing ? t(`animation.easings.${span.easing}`) : t('animation.tween') }}</span>
       </template>
       <p class="tween-frames">{{ span ? t('animation.tweenFrames', { from: span.from + 1, to: span.to + 1 }) : '' }}</p>
       <button v-for="[name, easing] in easings" :key="name" :aria-pressed="(span?.easing ?? null) === easing" @click="tween(easing)">
@@ -399,9 +398,6 @@ button.ghost.active svg {
   }
   button.step { /* for a finger */
     width: 32px;
-  }
-  span.tween-name { /* the curve says it */
-    display: none;
   }
   output.indicator {
     min-width: 44px;

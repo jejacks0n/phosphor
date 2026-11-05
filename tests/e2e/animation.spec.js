@@ -305,10 +305,13 @@ test('the Tween menu eases a selected shape between its key frames, and the bar 
   await expect(tween).toBeDisabled(); // nothing selected
   await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
   await expect(tween).toBeEnabled();
+  const scrubberWidth = async () => (await bar(page).getByRole('slider', { name: 'Frame' }).boundingBox()).width;
+  const width = await scrubberWidth();
   await tween.click();
   await expect(page.locator('.dropdown-content')).toContainText('Frames 1 to 7');
   await page.getByRole('button', { name: 'Ease in', exact: true }).click();
   await expect.poll(() => store(page, 'project', `(p) => p.shapes.get('${key}').m[5]`)).toBe(3);
+  expect(await scrubberWidth()).toBe(width); // the button's as wide whatever easing it names
   await expect(bar(page).locator('.scrubber-marks .tween')).toHaveCount(5);
   await expect(bar(page).locator('.scrubber-marks .band')).toHaveCount(1);
   await page.keyboard.press('ControlOrMeta+z');
