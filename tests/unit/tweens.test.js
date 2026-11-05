@@ -245,3 +245,26 @@ test('going past the end key frame keeps a stroke width and gradient stops a sha
   assert.deepEqual(tweenPart('fill', thick, thin, 1.5).fill.stops.map(([o]) => o), [0, 1]);
   assert.deepEqual(tweenPart('fill', thin, thick, -0.5).fill.stops.map(([o]) => o), [0, 1]);
 });
+
+test('a tween can move a shape by whole cells or half cells, from where its key frame has it', () => {
+  const frames = scene('linear'); // down 24 over frames 0 to 6
+  frames[6].changes.set('v:a', cellState(transformed(A, translation(5, 24)), 0, 0));
+  assert.equal(shapeAt(frames, 'v:a', 1).m[4], 0.8333); // smooth, as before
+  assert.deepEqual([shapeAt(frames, 'v:a', 1, 'cells').m[4], shapeAt(frames, 'v:a', 1, 'cells').m[5]], [1, 4]);
+  const eased = scene('easeIn');
+  assert.equal(shapeAt(eased, 'v:a', 3, 'smooth').m[5], 3);
+  assert.equal(shapeAt(eased, 'v:a', 3, 'cells').m[5], 4); // a cell is two pixels tall
+  assert.equal(shapeAt(eased, 'v:a', 3, 'half').m[5], 3);
+  assert.equal(shapeAt(eased, 'v:a', 1, 'cells').m[5], 0);
+  assert.equal(shapeAt(eased, 'v:a', 6, 'cells').m[5], 24); // a key frame is where it was put
+  assert.equal(workedOutAt(eased, 3, 'cells').get('v:a').m[5], 4);
+  assert.equal(tweenedAt(eased, 3, 'cells').get('v:a').shape.m[5], 4);
+});
+
+test('a shape turning as it moves is snapped by where its middle goes', () => {
+  const frames = scene('linear');
+  frames[6].changes.set('v:a', cellState(transformed(transformed(A, rotation(Math.PI / 2, 2, 2)), translation(0, 18)), 0, 0));
+  const m = shapeAt(frames, 'v:a', 1, 'cells').m;
+  close(m[0] * 2 + m[2] * 2 + m[4], 2); // its middle, (2, 2), down 3 rounded to 4: whole cells
+  close(m[1] * 2 + m[3] * 2 + m[5], 6);
+});

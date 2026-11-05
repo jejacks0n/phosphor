@@ -353,3 +353,10 @@ test('a key frame saved before parts, the same as its neighbors, stays a key fra
   const old = serializeFrames(frames).map((frame) => Object.fromEntries(Object.entries(frame).filter(([name]) => name !== 'parts')));
   assert.deepEqual(read(old).frames[6].parts.get('v:a'), new Set(['transform']));
 });
+
+test("a movie's motion is saved and read back; one that can't be read is smooth", () => {
+  const frames = serializeFrames(ballFrames());
+  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, motion: 'cells' }, 20, 20).motion, 'cells');
+  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, motion: 'wobbly' }, 20, 20).motion, 'smooth');
+  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8 }, 20, 20).motion, 'smooth');
+});

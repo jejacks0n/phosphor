@@ -61,6 +61,7 @@ export const useProjectStore = defineStore('project', {
     frames: shallowRef([newFrame('blank')]),
     frame: 0,    // which one's showing
     fps: 8,
+    motion: 'smooth', // how tweens move shapes: MOTIONS (tweens.js)
     animate: false, // the bar is up
     _frameSwaps: 0, // how many times the frame showing was swapped in: autosave doesn't count those as edits
     _ghost: markRaw({ memo: new WeakMap() }), // what shownCells worked out last, kept out of what it reacts to

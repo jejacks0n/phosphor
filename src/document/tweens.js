@@ -1,9 +1,12 @@
 // Tweens: a shape worked out part way between two of its versions (its key frames), with the timing that eases it.
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { allPoints, isGradient, outlines, withShape } from './shapes.js';
+import { allPoints, apply, isGradient, outlines, withShape } from './shapes.js';
+import { snapPoint } from '../lib/vectorSnap.js';
 import { ALL_PARTS, PARTS, PART_FIELDS } from './parts.js';
 
 export const EASINGS = Object.freeze(['linear', 'easeIn', 'easeOut', 'easeInOut', 'elastic']);
+// How a movie's tweens move shapes: smoothly, or by half cells or whole cells (as VECTOR's Snap to steps them).
+export const MOTIONS = Object.freeze(['smooth', 'half', 'cells']);
 
 // How far along a tween is at t (0..1 of its frames), as its easing has it: cubic, speeding up, slowing down, or both;
 // or elastic, springing past the end and back, settling there (so it can be past 1 on the way).
@@ -159,10 +162,17 @@ function clockAt(frames, key, life, a, b, i) {
   return total ? done / total : 0;
 }
 
-// What frame i shows of a shape, part by part (parts.js), or null for none: each part from the last key frame at or
+// A tweened transform m of a shape tweening from `from`, moved so its middle has gone whole steps of motion.
+function snappedMove(from, m, motion) {
+  const [px, py] = pivot(from), was = apply(from.m, px, py), now = apply(m, px, py);
+  const step = snapPoint({ x: now.x - was.x, y: now.y - was.y }, motion);
+  return [m[0], m[1], m[2], m[3], m[4] + step.x - (now.x - was.x), m[5] + step.y - (now.y - was.y)];
+}
+
+// What frame i shows of a shape, part by part (parts.js), or null for none, moved as the movie's motion has it: each part from the last key frame at or
 // before i that set it, fading to the next that does, as clockAt has it. With nothing fading, the key frame's own.
 // ponytail: each call walks the shape's life; per-shape lives worked out once per movie if huge movies lag.
-export function shapeAt(frames, key, i) {
+export function shapeAt(frames, key, i, motion = 'smooth') {
   const life = lifeAt(frames, key, i);
   if (!life.length) return null;
   const stored = (j) => frames[life[j]].changes.get(key).cell;
@@ -177,6 +187,7 @@ export function shapeAt(frames, key, i) {
     const t = life[a] === i || b === life.length ? 0 : clockAt(frames, key, life, a, b, i);
     if (a !== at || t) own = false;
     Object.assign(fields, t ? tweenPart(name, stored(a), stored(b), t) : fieldsOf(stored(a), name));
+    if (name === 'transform' && t && motion !== 'smooth') fields.m = snappedMove(stored(a), fields.m, motion);
   }
   return own ? stored(at) : withShape(stored(transformAt), fields);
 }
@@ -186,22 +197,22 @@ const workedKeys = (frames) => new Set(frames.flatMap((frame) => [...(frame.twee
 
 // Every shape on frame i that a tween or a key frame setting only some of it works out, key to shape (what frame i
 // shows of it over what its key frames hold).
-export function workedOutAt(frames, i) {
+export function workedOutAt(frames, i, motion = 'smooth') {
   const out = new Map();
   for (const key of workedKeys(frames)) {
-    const shape = shapeAt(frames, key, i);
+    const shape = shapeAt(frames, key, i, motion);
     if (shape) out.set(key, shape);
   }
   return out;
 }
 
 // Every shape a tween puts on frame i, key to { shape, easing }: its key frames' shapes mixed as far as the easing says.
-export function tweenedAt(frames, i) {
+export function tweenedAt(frames, i, motion = 'smooth') {
   const out = new Map();
   for (const key of tweenedKeys(frames)) {
     const span = spanAt(frames, key, i);
     if (!span?.easing || span.from === i) continue;
-    out.set(key, { shape: shapeAt(frames, key, i), easing: span.easing });
+    out.set(key, { shape: shapeAt(frames, key, i, motion), easing: span.easing });
   }
   return out;
 }
