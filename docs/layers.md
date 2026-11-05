@@ -125,7 +125,8 @@ the paint in those cells, so what you wrote shows; with the background set to No
 the background color the paint gave it, as it keeps the picture's or an earlier cell's.
 With **By shape** choosing the characters, paint doesn't show through a cell's character: the cell
 is chosen again with the paint in it, as it would be after Merge down
-([Characters](characters.md#how-the-converter-picks-characters)).
+([Characters](characters.md#how-the-converter-picks-characters)). Paint is never finer than half a
+cell, so on its own it doesn't make quadrants or the rising blocks.
 
 The Pencil and Brush paint over each cell's own character, which shows through: **Colors only**,
 the default in their **Draw with** (ANSI view). With **Half-block** each cell they paint becomes a ▄
