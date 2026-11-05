@@ -90,11 +90,12 @@ const corner = '<polyline points="12,22 12,12 22,12"'; // close in on the corner
 const JOINS = ['miter', 'round', 'bevel'].map((v) => ({ v, title: `vector.join${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`${corner} stroke-width="20" stroke-linejoin="${v}" opacity=".45"/>${corner} stroke-width="1.5"/>`) }));
 // An alignment: a square outline, a solid line, its stroke wide and faint inside it, on it or outside it; for an
 // open path, a line drawn left to right (its arrow says which way), its stroke above it (its left), on it or below.
-const band = { inside: 8, center: 6, outside: 4 }, beside = { left: 9, center: 12, right: 15 };
+// The bands as bold as the caps' and joins', so which side they're on reads at a glance.
+const band = { inside: 7.5, center: 5, outside: 2.5 }, beside = { left: 7, center: 12, right: 17 };
 const title = (v) => `vector.align${v[0].toUpperCase()}${v.slice(1)}`;
 const ALIGNS = {
-  closed: ['inside', 'center', 'outside'].map((v) => ({ v, title: title(v), icon: ic(`<rect x="${band[v]}" y="${band[v]}" width="${24 - 2 * band[v]}" height="${24 - 2 * band[v]}" stroke-width="4" opacity=".45"/><rect x="6" y="6" width="12" height="12" stroke-width="1.5"/>`) })),
-  open: ['left', 'center', 'right'].map((v) => ({ v, title: title(v), icon: ic(`<line x1="3" y1="${beside[v]}" x2="21" y2="${beside[v]}" stroke-width="6" opacity=".45"/><polyline points="3,12 21,12" stroke-width="1.5"/><polyline points="17,9 21,12 17,15" stroke-width="1.5" fill="none"/>`) })),
+  closed: ['inside', 'center', 'outside'].map((v) => ({ v, title: title(v), icon: ic(`<rect x="${band[v]}" y="${band[v]}" width="${24 - 2 * band[v]}" height="${24 - 2 * band[v]}" stroke-width="5" opacity=".45"/><rect x="5" y="5" width="14" height="14" stroke-width="1.5"/>`) })),
+  open: ['left', 'center', 'right'].map((v) => ({ v, title: title(v), icon: ic(`<line x1="2" y1="${beside[v]}" x2="22" y2="${beside[v]}" stroke-width="10" opacity=".45"/><polyline points="2,12 21,12" stroke-width="1.5"/><polyline points="16,7 21,12 16,17" stroke-width="1.5"/>`) })),
 };
 const setWidth = (e) => {
   const v = Number(e.target.value);

@@ -232,7 +232,10 @@ shape's:
   width past it).
 - **Join**, the corners: miter (a sharp point), round, or bevel (cut across).
 - **Miter**, the limit for miter joins (1 to 100): how far a sharp corner's point may reach, in stroke widths,
-  before it's cut off as a bevel. It's only for miter joins.
+  before it's cut off as a bevel. It's only for miter joins. At 1 every corner is beveled; a square corner turns
+  sharp above about 1.4, and a star's points only well above 3. With the stroke inside or outside, a point reaches
+  twice as far as it would centered (the whole width is on one side), and inside, a shape's inward corners (a
+  star's) get the points.
 
 Drawn shapes start with round caps, round joins and centered strokes. Each press is one undo step; a Stroke width drag is one step
 when you let go.
