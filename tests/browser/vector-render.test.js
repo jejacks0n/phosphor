@@ -5,11 +5,11 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
-import { MOST_SHAPES, makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, scaling, setSmooth, withShape, worldPoints } from '@/document/shapes';
+import { MOST_SHAPES, deletePoint, makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, scaling, setSmooth, withShape, worldPoints } from '@/document/shapes';
 import { paintShape } from '@/document/ShapeLayer.js';
 import { toastMessage } from '@/composables/useToast';
 import { shapeAt } from '@/lib/shapeHits.js';
-import vnode from '@/tools/vnode.js';
+import vnode, { pickedPoints } from '@/tools/vnode.js';
 import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
 import { gradientHandles, gradientKey } from '@/tools/gradientHandles.js';
 
@@ -339,6 +339,67 @@ test('caps and joins draw as set, and a sharp miter is redrawn where it reaches'
   }
   expect(counts.square).toBeGreaterThan(counts.butt);
   expect(counts.miter).toBeGreaterThan(counts.bevel);
+});
+
+test('the Node tool takes more points with Shift or a box dragged over them, moves them together and deletes them as one step', async () => {
+  const { project, workspace } = await gradient();
+  const pts = [[4, 4], [14, 4], [20, 8], [14, 12], [4, 12]];
+  const key = project.addShape(makeShape({ points: pts.map(([x, y]) => [x, y, 0, 0, 0, 0, 0]), closed: true, fill: '#ff0000' }));
+  workspace.vectorSelected = [key];
+  workspace.vectorPoints = key;
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } }, shift = { shiftKey: true };
+  const at = (i) => worldPoints(project.shapes.get(key))[i], place = (i) => [at(i).x, at(i).y];
+  const picked = () => [...pickedPoints(workspace)].sort();
+  const click = (pos, event) => {
+    vnode.begin(ctx, pos, event);
+    vnode.end(ctx);
+  };
+  const drag = (from, to, event) => {
+    vnode.begin(ctx, from, event);
+    workspace.isShiftPressed = !!event?.shiftKey;
+    vnode.move(ctx, from, to);
+    vnode.end(ctx);
+    workspace.isShiftPressed = false;
+  };
+
+  click(at(0));
+  click(at(1), shift);
+  expect(picked()).toEqual([0, 1]);
+  expect(workspace.vectorPoint).toBe(1); // the one the Point row shows
+  const before = project.history.version;
+  drag(at(0), { x: 6, y: 7 }); // one of them dragged: both go
+  expect([place(0), place(1), place(2)]).toEqual([[6, 7], [16, 7], [20, 8]]);
+  expect(project.history.version).toBe(before + 1);
+  click(at(1), shift); // Shift on a selected one lets it go
+  expect(picked()).toEqual([0]);
+
+  drag({ x: 2, y: 14 }, { x: 25, y: 7.5 }); // a box from empty canvas: the points in it, instead
+  expect(picked()).toEqual([2, 3, 4]);
+  expect(workspace.vectorMarquee).toBe(null);
+  drag({ x: 5, y: 5 }, { x: 7, y: 8 }, shift); // with Shift, added to them
+  expect(picked()).toEqual([0, 2, 3, 4]);
+  click(at(0), shift);
+  click(at(4), shift);
+  expect(picked()).toEqual([2, 3]);
+
+  const steps = project.history.version;
+  vnode.keydown(ctx, { key: 'Delete' });
+  expect(project.shapes.get(key).points.map((p) => p.slice(0, 2))).toEqual([[6, 7], [16, 7], [4, 12]]);
+  expect(project.history.version).toBe(steps + 1);
+  expect(picked()).toEqual([]);
+
+  click({ x: 26, y: 26 }); // a click on empty canvas stops editing
+  expect(workspace.vectorPoints).toBe(null);
+  drag({ x: 2, y: 2 }, { x: 18, y: 9 }); // with no shape edited, a box takes the top shape with points in it
+  expect(workspace.vectorPoints).toBe(key);
+  expect(workspace.vectorSelected).toEqual([key]);
+  expect(picked()).toEqual([0, 1]);
+
+  // A point taken goes another way (an undo, a room's change): the rest still move, and Delete deletes them.
+  click(at(2), shift);
+  project.updateShapes([[key, deletePoint(project.shapes.get(key), 2)]]);
+  drag(at(0), { x: 6, y: 9 });
+  expect([place(0), place(1)]).toEqual([[6, 9], [16, 9]]);
 });
 
 test('the Node tool edits an inner outline\'s points, adds to it, and deletes it before the shape', async () => {

@@ -1164,6 +1164,29 @@ test('double-click edits points: drag a point and a handle, click the outline to
   expect((await world(2))).toMatchObject({ n: 4, x: expect.closeTo(36, 0) });
 });
 
+test('the Node tool takes more points with Shift-click or a box dragged over them, and drags them together', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const key = await addRect(page, 10, 10, 30, 30);
+  const ys = () => store(page, 'project', `(p) => p.shapes.get('${key}').points.map((q) => q[1] + p.shapes.get('${key}').m[5])`);
+  const picked = () => store(page, 'workspace', (w) => [...w.vectorPicked].sort());
+  await page.mouse.dblclick(...Object.values(await gridPoint(page, 20, 20)));
+  await page.mouse.click(...Object.values(await gridPoint(page, 10, 10)));
+  await page.keyboard.down('Shift');
+  await page.mouse.click(...Object.values(await gridPoint(page, 30, 10)));
+  await page.keyboard.up('Shift');
+  expect(await picked()).toEqual([0, 1]);
+  await expect(page.locator('.vector-overlay rect.handle.on')).toHaveCount(2);
+
+  await dragPoints(page, await gridPoint(page, 10, 10), await gridPoint(page, 10, 14)); // both go down
+  expect((await ys()).map(Math.round)).toEqual([14, 14, 30, 30]);
+
+  await dragPoints(page, await gridPoint(page, 5, 26), await gridPoint(page, 35, 36)); // a box over the bottom two
+  expect(await picked()).toEqual([2, 3]);
+  await expect(page.locator('.vector-overlay rect.handle.on')).toHaveCount(2);
+});
+
 test('on a Blank frame, the shapes it carries have dimmed outlines; one changed there is its own', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
