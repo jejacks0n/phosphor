@@ -8,3 +8,15 @@ test('a drag in Edit Mode becomes a Select selection', async ({ page }) => {
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('select');
   expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: 3, r0: 3, c1: 8, r1: 6 });
 });
+
+test('Shift and the arrow keys in Edit Mode select from the cursor, and the arrows alone then nudge', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Edit Mode' }).click();
+  const at = await cellPoint(page, 3, 3);
+  await page.mouse.click(at.x, at.y); // the cursor
+  for (const k of ['ArrowRight', 'ArrowRight', 'ArrowDown']) await page.keyboard.press(`Shift+${k}`);
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('select');
+  expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: 3, r0: 3, c1: 5, r1: 4 });
+  await page.keyboard.press('ArrowRight');
+  expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: 4, r0: 3, c1: 6, r1: 4 });
+});

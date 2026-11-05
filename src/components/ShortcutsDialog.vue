@@ -60,6 +60,7 @@ const groups = computed(() => [
     title: t('shortcuts.groups.editMode'),
     rows: [
       [['← ↑ → ↓'], t('shortcuts.rows.moveCursor')],
+      [[k('shift', '← ↑ → ↓')], t('shortcuts.rows.selectFromCursor')],
       [['Home', 'End'], t('shortcuts.rows.homeEnd')],
       [['Enter'], t('shortcuts.rows.nextLine')],
       [['Backspace', 'Delete'], t('shortcuts.rows.erase')],
@@ -76,6 +77,7 @@ const groups = computed(() => [
       [[k('mod', 'A')], t('shortcuts.rows.selectAll')],
       [[k('mod', 'C'), k('mod', 'X'), k('mod', 'V')], t('shortcuts.rows.copyCutPaste')],
       [['← ↑ → ↓'], t('shortcuts.rows.nudge')],
+      [[k('shift', '← ↑ → ↓')], t('shortcuts.rows.growShrink')],
       [['Delete', 'Backspace', 'E'], t('shortcuts.rows.deleteSelection')],
       [['S', 'C'], t('shortcuts.rows.stamp')],
       [['Esc', 'Enter'], t('shortcuts.rows.deselect')],

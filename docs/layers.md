@@ -289,7 +289,11 @@ comes back, and the turns and moves together are one undo step (for a pasted blo
 paste's own).
 
 In Edit Mode, dragging across cells switches to the Select tool and selects them, the way dragging
-selects text in a text editor; a plain click still just places the cursor. With a pen (the Apple
+selects text in a text editor; a plain click still just places the cursor. Shift and the arrow keys
+do the same from the cursor's cell. With the Select tool, Shift and the arrow keys grow or shrink
+the selection: they move its far corner, so it keeps the corner it started from (the top-left, for
+a selection drawn some other way). Each press is an undo step. The arrow keys alone then nudge the
+selection, as they always do with the Select tool. With a pen (the Apple
 Pencil), a tap can wobble a few pixels, even across a cell's edge, and still only place the cursor.
 
 The selection stays as you change tools, and the painting tools (Pencil, Brush, Eraser, Paint
