@@ -141,17 +141,18 @@ export function strokeAlign(shape) {
 export const strokeReach = (shape) => (shape.stroke ? shape.width * { inside: 0, center: 0.5, outside: 1, left: 1, right: 1 }[strokeAlign(shape)] : 0);
 
 const CURVE_STEPS = 16;
-// Each outline as a polyline in grid pixels, a curve in CURVE_STEPS steps: [{ closed, points: [[x, y], ...] }].
+// Each outline as a polyline in grid pixels, a curve in CURVE_STEPS steps: [{ closed, points: [[x, y, point], ...] }],
+// point true where the outline has one of its points (not a step along a curve).
 function polylines(shape) {
   return outlines(shape).map(({ closed, points }) => {
-    const w = worldOf(points, shape.m), out = w.length ? [[w[0].x, w[0].y]] : [];
+    const w = worldOf(points, shape.m), out = w.length ? [[w[0].x, w[0].y, true]] : [];
     for (let i = 0; i < (closed ? w.length : w.length - 1); i++) {
       const a = w[i], b = w[(i + 1) % w.length], p1 = a.out ?? a, p2 = b.in ?? b;
-      if (!a.out && !b.in) out.push([b.x, b.y]);
+      if (!a.out && !b.in) out.push([b.x, b.y, true]);
       else {
         for (let k = 1; k <= CURVE_STEPS; k++) {
           const t = k / CURVE_STEPS, u = 1 - t, at = (q) => u * u * u * a[q] + 3 * u * u * t * p1[q] + 3 * u * t * t * p2[q] + t * t * t * b[q];
-          out.push([at('x'), at('y')]);
+          out.push([at('x'), at('y'), k === CURVE_STEPS]);
         }
       }
     }
@@ -161,23 +162,25 @@ function polylines(shape) {
 
 const signedArea = (poly) => poly.reduce((sum, [ax, ay], i) => sum + ax * poly[(i + 1) % poly.length][1] - poly[(i + 1) % poly.length][0] * ay, 0) / 2;
 
-// How far a stroke to a side can reach from its path, drawn at twice its width: its width, a miter's point, a
-// square cap's corner, with room to spare (strokeSide's reach for it).
-export function sideReach(shape) {
-  const { join, cap, miter } = strokeOf(shape);
-  return shape.width * Math.max(1.5, join === 'miter' ? miter : 1, cap === 'square' ? Math.SQRT2 : 1);
-}
+// How far a stroke to a side can reach past a corner, drawn at twice its width: a miter's point, with room to spare.
+const cornerReach = (shape) => {
+  const { join, miter } = strokeOf(shape);
+  return shape.width * Math.max(1.5, join === 'miter' ? miter : 1);
+};
 
 // The area to one side ('left' or 'right' of the way it was drawn, as it shows: a mirrored shape's sides trade)
-// of the shape's outlines, out to reach (grid pixels): a quadrilateral beside each segment (an open outline's
-// first and last reaching past its ends, for caps), and a wedge across each corner that turns away from that side.
-// Polygons [[x, y], ...], each turned the same way, so that filled together (nonzero) they're one area with no
-// seams. A stroke at twice its width, cut to this, is a stroke to that side, its caps and joins as they were.
-// ponytail: an inner corner sharper than a right angle lets a little of the other side in; trim the quadrilaterals
+// of the shape's outlines, pad grid pixels wider all round: a quadrilateral beside each segment, as deep as the
+// stroke's width (an open outline's first and last reaching as far past its ends, for caps), and a wedge across
+// each corner that turns away from that side, out to a miter's point. Only the wedges reach further: beside a
+// curve that bends back on itself, a deeper quadrilateral would reach across to the other side. Polygons
+// [[x, y], ...], each turned the same way, so that filled together (nonzero) they're one area with no seams. A
+// stroke at twice its width, cut to this, is a stroke to that side, its caps and joins as they were.
+// ponytail: a bend tighter than the stroke's width lets a little of the other side in; trim the quadrilaterals
 // against their neighbors if that's ever noticed.
-export function strokeSide(shape, side, reach) {
+export function strokeSide(shape, side, pad = 0) {
   const m = shape.m, s = (side === 'left' ? 1 : -1) * Math.sign(m[0] * m[3] - m[1] * m[2] || 1), polys = [];
-  const normal = ([dx, dy]) => [s * dy * reach, -s * dx * reach];
+  const reach = shape.width + 0.25 + pad, corner = cornerReach(shape) + pad; // 0.25: past the stroke's soft edge
+  const normal = ([dx, dy], by = reach) => [s * dy * by, -s * dx * by];
   const plus = ([x, y], [dx, dy], by = 1) => [x + dx * by, y + dy * by];
   for (const { closed, points } of polylines(shape)) {
     const segs = [];
@@ -191,7 +194,8 @@ export function strokeSide(shape, side, reach) {
       const next = segs[i + 1] ?? (closed ? segs[0] : null);
       if (!next) return;
       const e = next[2], turn = d[0] * e[1] - d[1] * e[0], mid = [d[0] - e[0], d[1] - e[1]], midLong = Math.hypot(...mid);
-      if (s * turn > 1e-9 && midLong > 1e-9) polys.push([b, plus(b, n), plus(b, mid, (reach * 2) / midLong), plus(b, normal(e))]);
+      const by = b[2] ? corner : reach; // out to a miter's point only where the path has a point, not along a curve's steps
+      if (s * turn > 1e-9 && midLong > 1e-9) polys.push([b, plus(b, normal(d, by)), plus(b, mid, (by * 2) / midLong), plus(b, normal(e, by))]);
     });
   }
   return polys.map((poly) => (signedArea(poly) < 0 ? poly.reverse() : poly));

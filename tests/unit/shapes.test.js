@@ -343,25 +343,30 @@ const area = (poly) => poly.reduce((sum, [ax, ay], i) => { const [bx, by] = poly
 test('a stroke\'s side: the area beside each segment, across each outer corner and past each end, all turned the same way', () => {
   // East from (0, 0) to (10, 0), then south to (10, 10): left is north, then east; right is south, then west.
   const ell = makeShape({ points: [[0, 0, 0, 0, 0, 0, 0], [10, 0, 0, 0, 0, 0, 0], [10, 10, 0, 0, 0, 0, 0]], closed: false, stroke: '#ff0000', width: 2 });
-  const on = (side, x, y) => strokeSide(ell, side, 3).some((poly) => inPolygon(poly, x, y));
+  const on = (side, x, y) => strokeSide(ell, side).some((poly) => inPolygon(poly, x, y));
   assert.equal(on('left', 5, -1), true);
   assert.equal(on('left', 5, 1), false);
   assert.equal(on('left', 11, 5), true);
   assert.equal(on('left', 9, 5), false);
   assert.equal(on('left', 11, -1), true); // the outer corner
   assert.equal(on('left', -1, -1), true); // past the start, for a cap
+  assert.equal(on('left', 5, -2.5), false); // beside a segment, only as deep as the stroke's width
+  const mitered = (x, y) => strokeSide(withShape(ell, { join: 'miter', miter: 4 }), 'left').some((poly) => inPolygon(poly, x, y));
+  assert.equal(on('left', 15, -5), false);
+  assert.equal(mitered(15, -5), true); // a miter's point, out past the corner
+  assert.equal(mitered(5, -2.5), false);
   assert.equal(on('right', 5, 1), true);
   assert.equal(on('right', 9, 5), true);
   assert.equal(on('right', 5, -1), false);
   assert.equal(on('right', 11, 5), false);
   for (const side of ['left', 'right']) {
-    const signs = new Set(strokeSide(ell, side, 3).map((poly) => Math.sign(area(poly))));
+    const signs = new Set(strokeSide(ell, side).map((poly) => Math.sign(area(poly))));
     assert.deepEqual([...signs], [1], side);
   }
   // A curve: in steps, still beside it.
   const arc = makeShape({ points: [[0, 0, 0, 0, 10, 0, 0], [20, 20, 0, -10, 0, 0, 0]], closed: false, stroke: '#ff0000', width: 2 });
-  assert.equal(strokeSide(arc, 'left', 1).some((poly) => inPolygon(poly, 14.3, 5.7)), true); // its middle is (13.75, 6.25), heading southeast: left is northeast
-  assert.equal(strokeSide(arc, 'left', 1).some((poly) => inPolygon(poly, 13.2, 6.8)), false);
+  assert.equal(strokeSide(arc, 'left').some((poly) => inPolygon(poly, 14.3, 5.7)), true); // its middle is (13.75, 6.25), heading southeast: left is northeast
+  assert.equal(strokeSide(arc, 'left').some((poly) => inPolygon(poly, 13.2, 6.8)), false);
 });
 
 test('shapeBounds reaches as far as the stroke does: half its width centered, none inside, all of it outside', () => {
