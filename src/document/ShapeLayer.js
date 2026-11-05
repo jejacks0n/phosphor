@@ -14,7 +14,7 @@
  */
 import { ctx2d } from '../lib/Canvas.js';
 import { charRowsOf } from '../lib/Cells.js';
-import { dirtyRect, invert, isGradient, multiply, pathData, scaling, shapeBounds, sideReach, stacked, strokeAlign, strokeOf } from './shapes.js';
+import { dirtyRect, invert, isGradient, multiply, pathData, scaling, shapeBounds, stacked, strokeAlign, strokeOf } from './shapes.js';
 import { sidePath } from '../lib/shapeHits.js';
 
 const newCanvas = (w, h) => Object.assign(document.createElement('canvas'), { width: Math.max(1, w), height: Math.max(1, h) });
@@ -266,7 +266,7 @@ function paintMaskedStroke(ctx, shape, k, path, styled, align, rule) {
   styled(mask).stroke(path);
   if (align === 'left' || align === 'right') {
     mask.globalCompositeOperation = 'destination-in';
-    mask.fill(sidePath(shape, align, sideReach(shape), k));
+    mask.fill(sidePath(shape, align, 0, k));
   } else if (align !== 'center') {
     mask.globalCompositeOperation = align === 'inside' ? 'destination-in' : 'destination-out';
     mask.fill(path, rule);

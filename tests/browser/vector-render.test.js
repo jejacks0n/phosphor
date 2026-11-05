@@ -543,6 +543,25 @@ test('an open path\'s stroke to its left or right, of the way it was drawn: its 
   expect(shapeAt(shapes, 15, 10.6, 0.1)).toBe(null);
 });
 
+test('a curve stroked to one side with a long miter limit keeps off its other side (the reported file)', async () => {
+  const { project } = await createTestApp();
+  await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/one-sided-curve.phosphor')).arrayBuffer()], 'one-sided-curve.phosphor'));
+  const [shape] = project.shapes.values(); // an open curve, a sharp corner in it, 2.2 wide to its right, miter limit 8
+  expect(shape).toMatchObject({ closed: false, align: 'right', join: 'miter', miter: 8 });
+  const px = painted(shape), lit = ([x, y]) => px(x, y).some((v) => v > 128);
+  const wrong = [];
+  for (const [i, c] of [[0, [[17.09, 35.2], [11.3, 22.69], [27.55, 11.57], [27.55, 11.57]]], [1, [[27.55, 11.57], [27.55, 11.57], [33.14, 9.8], [32.54, 25]]]]) {
+    for (let t = 0.1; t < 0.95; t += 0.05) { // half its width to each side of the curve at t: right lit, left dark
+      const u = 1 - t, at = (k) => u * u * u * c[0][k] + 3 * u * u * t * c[1][k] + 3 * u * t * t * c[2][k] + t * t * t * c[3][k];
+      const along = (k) => 3 * u * u * (c[1][k] - c[0][k]) + 6 * u * t * (c[2][k] - c[1][k]) + 3 * t * t * (c[3][k] - c[2][k]);
+      const [x, y, dx, dy] = [at(0), at(1), along(0), along(1)], long = Math.hypot(dx, dy), by = 1.1 / long;
+      if (!lit([x - dy * by, y + dx * by])) wrong.push(`${i} ${t.toFixed(2)} right dark`);
+      if (lit([x + dy * by, y - dx * by])) wrong.push(`${i} ${t.toFixed(2)} left lit`);
+    }
+  }
+  expect(wrong).toEqual([]);
+});
+
 test('a radial gradient stretched with its shape is an ellipse', async () => {
   // A circle of radius 10 about (20, 20), red in the middle to blue at the rim, then the shape stretched ×1.5
   // across about its middle.

@@ -1,14 +1,14 @@
 // Which shape is under a point, and how near a point is to one's outline: through Path2D on one 2D context
 // kept for it (the shapes' paths in grid pixels; tolerances in grid pixels).
-import { curveBounds, pathData, sideReach, stacked, strokeAlign, strokeOf, strokeReach, strokeSide } from '@/document/shapes.js';
+import { curveBounds, pathData, stacked, strokeAlign, strokeOf, strokeReach, strokeSide } from '@/document/shapes.js';
 
 let context = null;
 const ctx = () => (context ??= document.createElement('canvas').getContext('2d'));
 
-// A stroke's side (strokeSide, out to reach) as one Path2D at k canvas pixels a grid pixel, to fill (nonzero).
-export function sidePath(shape, side, reach, k = 1) {
+// A stroke's side (strokeSide, pad wider) as one Path2D at k canvas pixels a grid pixel, to fill (nonzero).
+export function sidePath(shape, side, pad = 0, k = 1) {
   const path = new Path2D();
-  for (const [first, ...rest] of strokeSide(shape, side, reach)) {
+  for (const [first, ...rest] of strokeSide(shape, side, pad)) {
     path.moveTo(first[0] * k, first[1] * k);
     for (const [x, y] of rest) path.lineTo(x * k, y * k);
     path.closePath();
@@ -25,7 +25,7 @@ export function hitsShape(shape, x, y, tol) {
   if (align !== 'center') {
     Object.assign(c, { lineWidth: 2 * (shape.width + tol), lineCap: cap, lineJoin: join, miterLimit: miter });
     const side = align === 'left' || align === 'right';
-    if (c.isPointInStroke(path, x, y) && (side ? c.isPointInPath(sidePath(shape, align, sideReach(shape) + tol), x, y) : c.isPointInPath(path, x, y, rule) === (align === 'inside'))) return true;
+    if (c.isPointInStroke(path, x, y) && (side ? c.isPointInPath(sidePath(shape, align, tol), x, y) : c.isPointInPath(path, x, y, rule) === (align === 'inside'))) return true;
   }
   c.lineWidth = (align === 'center' && shape.stroke ? shape.width : 0) + 2 * tol;
   if (shape.stroke) Object.assign(c, { lineCap: cap, lineJoin: join, miterLimit: miter });
