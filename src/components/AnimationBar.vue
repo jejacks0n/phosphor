@@ -64,6 +64,7 @@ const move = paused((by) => project.moveFrame(project.frame, project.frame + by)
 const remove = paused(() => project.deleteFrame());
 const tween = paused((easing) => project.setTween(shapeKeys.value, easing));
 const moveBy = paused((mode) => project.setMotion(mode));
+const carryCells = paused((on) => project.setCellsCarry(on));
 const setHold = paused((event) => {
   project.setHold(project.frame, event.target.value);
   event.target.value = project.currentFrame.hold;
@@ -111,13 +112,15 @@ const setFps = (event) => {
       </template>
       <button v-for="[kind, label] in kinds" :key="kind" @click="add(kind)">{{ label }}</button>
     </DropdownMenu>
-    <DropdownMenu :label="t('animation.frameActions')" up>
+    <DropdownMenu class="frame-menu" :label="t('animation.frameActions')" up>
       <template #trigger>
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 7h3v3H2zM6.5 7h3v3h-3zM11 7h3v3h-3z"/></svg>
       </template>
       <button :disabled="at === 0" @click="move(-1)">{{ t('animation.moveEarlier') }}</button>
       <button :disabled="at === count - 1" @click="move(1)">{{ t('animation.moveLater') }}</button>
       <button :disabled="count < 2" @click="remove">{{ t('animation.deleteFrame') }}</button>
+      <p class="tween-frames">{{ t('animation.cellsCarry') }}</p>
+      <button v-for="on in [true, false]" :key="on" :aria-pressed="project.cellsCarry === on" @click="carryCells(on)">{{ t(on ? 'animation.cellsCarryOn' : 'animation.cellsCarryOff') }}</button>
     </DropdownMenu>
     <DropdownMenu class="tween-menu" :label="span ? t('animation.tween') : t('animation.tweenDisabled')" up :disabled="!span">
       <template #trigger>
@@ -341,7 +344,8 @@ p.tween-frames {
   color: var(--text-muted);
   white-space: nowrap;
 }
-.tween-menu button[aria-pressed='true']::after {
+.tween-menu button[aria-pressed='true']::after,
+.frame-menu button[aria-pressed='true']::after {
   content: '✓';
   margin-left: 4px;
 }

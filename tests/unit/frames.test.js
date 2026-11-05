@@ -360,3 +360,17 @@ test("a movie's motion is saved and read back; one that can't be read is smooth"
   assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, motion: 'wobbly' }, 20, 20).motion, 'smooth');
   assert.equal(deserializeFrames({ frames, frame: 0, fps: 8 }, 20, 20).motion, 'smooth');
 });
+
+test("a Blank carries only the shapes before it when cells don't carry", () => {
+  const before = new Map([['1,1', cellState(A, 0, 0)], ['v:a', cellState(BALL, 0, 0)]]);
+  const shown = resolveOver(before, blank([['2,2', cellState(B, 0, 0)]]), false);
+  assert.deepEqual([...shown.keys()].sort(), ['2,2', 'v:a']);
+  assert.deepEqual([...resolveOver(before, blank()).keys()].sort(), ['1,1', 'v:a']); // carrying, as ever
+});
+
+test("whether a movie's cells carry is read back; carrying unless a file says false", () => {
+  const frames = serializeFrames(ballFrames());
+  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, cellsCarry: false }, 20, 20).cellsCarry, false);
+  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, cellsCarry: 'no' }, 20, 20).cellsCarry, true);
+  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8 }, 20, 20).cellsCarry, true);
+});

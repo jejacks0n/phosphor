@@ -39,7 +39,7 @@ export function loadImage(source, type) {
 // JSON as baseLength, so older readers just ignore it);
 // editCells: the edit layer's cells (saved under the file's original key, `cellEdits`);
 // baseRecords: the base layer's pinned characters (saved as `base`, left out when there are none);
-// animation: { frames (serializeFrames), frame, fps, motion? }, left out for a still. The rest holds the frame
+// animation: { frames (serializeFrames), frame, fps, motion?, cellsCarry? }, left out for a still. The rest holds the frame
 // showing, so older copies open it as a still.
 export async function writeProject({ settings, imageBuffer, paintBlob, baseBlob = null, editCells, baseRecords = EMPTY_BASE, shapes = null, animation = null }) {
   const base = serializeBase(baseRecords);
@@ -63,7 +63,7 @@ export async function readProject(file) {
   const paintLen = view.getUint32(16, true);
 
   let offset = 20;
-  const { cellEdits, charEditMap, hasPaint, base, baseLength, shapes, frames, frame, fps, motion, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
+  const { cellEdits, charEditMap, hasPaint, base, baseLength, shapes, frames, frame, fps, motion, cellsCarry, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
   delete settings.charMode; // older files stored a charMode that's now derived from renderStyle
   delete settings.documentId; // Untrusted, and autosave's, not the file's: one could overwrite another document's record
   delete settings.savedToFile;
@@ -84,7 +84,7 @@ export async function readProject(file) {
   const usePaint = (hasPaint ?? paintLen > 0) && paintLen > 0;
   // Files from before the cell layer have charEditMap (cell index -> char) instead.
   const edits = cellEdits ? deserializeEditCells(cellEdits) : migrateCharEdits(charEditMap || [], settings.cols);
-  const animation = frames === undefined ? null : deserializeFrames({ frames, frame, fps, motion }, settings.cols, settings.rows);
+  const animation = frames === undefined ? null : deserializeFrames({ frames, frame, fps, motion, cellsCarry }, settings.cols, settings.rows);
   // Untrusted: a file with a shape that can't be one opens without its shapes.
   return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, baseBuffer, editCells: edits, shapes: deserializeShapes(shapes) ?? new Map(), ...readBase(base), migrated: !cellEdits && edits.size > 0, animation, framesLost: frames !== undefined && !animation };
 }

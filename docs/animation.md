@@ -50,6 +50,20 @@ what it shows can change.
 
 Undo works across frames: it goes back to the frame the edit was made on and undoes it there.
 
+### Cells that stay on their frame
+
+Carrying suits a picture that mostly stays put while something changes over it. For things that move (a word
+over a bouncing ball, a figure drawn pose by pose) it leaves a trail: what you typed on frame 5 is still there on
+frame 6. **Frame actions** on the bar has **Cells drawn on a frame**: **Carry on to later frames** (the default, as
+above) or **Stay on their frame**, for the whole movie.
+
+When cells stay, each frame plays only the cells drawn on it. The picture under them and the shapes carry on as
+ever. On a Blank frame the frame just before shows as the ghost to draw by ([The ghost](#the-ghost)), but it
+isn't this frame's: it doesn't play, and with **Ghost** off it doesn't show. To keep a character on the next
+frame too, type it there again; drawn there, it's that frame's even in exactly the same character and colors. A
+Duplicate starts with its own copy of the frame before's cells, so it keeps them. Switching back to carrying shows
+every frame as carrying again; nothing drawn is lost either way. Projects and autosave keep the choice.
+
 Shapes ([Vector shapes](vector.md)) belong to frames by their parts. A Blank frame carries the shapes before it;
 changing one there makes that frame a **key frame** for it, and the frame keeps only the parts you changed:
 
@@ -116,7 +130,8 @@ Projects and autosave keep the choice.
 On a Blank frame, what's inherited shows dimmed on the PIXEL and ANSI tabs, in its own colors, so you can see what you're
 drawing over. What you draw on this frame shows at full strength, as soon as you draw it. The ghost is only there to draw by:
 it never plays and never reaches an export. What you draw stays solid even in exactly the color a cell inherited, and the
-project file and autosave keep it that way; undoing that drawing dims it again. **Ghost** on the bar turns it off, and inherited cells show solid. The slider
+project file and autosave keep it that way; undoing that drawing dims it again. **Ghost** on the bar turns it off, and inherited cells show solid (with cells that stay on their frame, the frame
+before doesn't show at all). The slider
 beside it sets how strong the ghost is, from 0% (inherited cells don't show) to 100% (solid). It starts at 35%, and this browser remembers it.
 
 ## Timing

@@ -10,7 +10,8 @@ const dim = (color, base, strength) => {
 };
 
 // A cell mixed toward the cell under it, so a ghost over a picture sits on the picture.
-export const ghostCell = (cell, baseCell, strength = 0.35) => ({ ...cell, fg: dim(cell.fg, baseCell.fg, strength), bg: dim(cell.bg, baseCell.bg, strength) });
+// At 0 it's the cell under it: the character goes too.
+export const ghostCell = (cell, baseCell, strength = 0.35) => (strength <= 0 ? baseCell : { ...cell, fg: dim(cell.fg, baseCell.fg, strength), bg: dim(cell.bg, baseCell.bg, strength) });
 
 // cells with those isGhost(i) says ghosted over baseOf(i), or the same array when none are. memo: a WeakMap that
 // keeps a cell's ghost the same object from one call to the next, so what draws them redraws only what changed; it
