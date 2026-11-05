@@ -293,12 +293,14 @@ selects text in a text editor; a plain click still just places the cursor. Shift
 do the same from the cursor's cell. With the Select tool, Shift and the arrow keys grow or shrink
 the selection: they move its far corner, so it keeps the corner it started from (the top-left, for
 a selection drawn some other way). Each press is an undo step. The arrow keys alone then nudge the
-selection, as they always do with the Select tool. **T** or **K** goes back to Edit Mode, with the cursor where you
-left it. With a pen (the Apple
+selection, as they always do with the Select tool. A selection made from Edit Mode, by dragging or
+with Shift and the arrows, takes you back there when you set it down (**Escape** or **Enter**),
+with the cursor where you left it. With a pen (the Apple
 Pencil), a tap can wobble a few pixels, even across a cell's edge, and still only place the cursor.
 
 The selection stays as you change tools, and the painting tools (Pencil, Brush, Eraser, Paint
-Bucket, Shapes, Flip FG/BG), in either view, change only what's inside it; typing in Edit Mode isn't limited. Every
+Bucket, Shapes, Flip FG/BG), in either view, change only what's inside it. Choosing Edit Mode drops
+it (and the Magic Wand's), since typing goes anywhere; undo brings it back. Every
 tool's options row ends with **Deselect** while there's a selection, and Escape drops it too.
 
 ## The Magic Wand
@@ -421,7 +423,8 @@ A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the s
 Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Eyedropper, **H** Hand,
 **Z** Zoom, **W** Magic Wand, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
 (Edit Mode and Flip are the ANSI view's). Each tool's button shows its key.
-In Edit Mode letters type, so press **Escape** to put the cursor away first; with the Select tool
+In Edit Mode letters type, so press **Escape** to put the cursor away first. Choosing Edit Mode
+again brings the cursor back where it was (at the top-left the first time). With the Select tool
 and a selection, E, S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.
 
 Each view remembers its own tool, except that Select and the Magic Wand go with you: leave the
