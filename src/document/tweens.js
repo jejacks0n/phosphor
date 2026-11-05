@@ -73,3 +73,58 @@ export function tweenShape(a, b, t) {
     width: lerp(a.width, b.width, t),
   });
 }
+
+// Spans: a shape's key frames are the frames that own it (have its key in their changes). A tween runs from one key
+// frame to the shape's next, across Blank frames that don't change it; a Wipe or Duplicate between, or the shape erased
+// at the far end, ends it. The easing is kept on the key frame it starts from: frame.tweens, shape key to easing.
+const ownsShape = (frame, key) => !!frame.changes.get(key)?.cell;
+
+// The span frame i is in or starts, { from, to, easing } (easing null with no tween on it), or null.
+export function spanAt(frames, key, i) {
+  let from = i;
+  while (!frames[from].changes.has(key)) {
+    if (frames[from].kind !== 'blank' || from === 0) return null;
+    from--;
+  }
+  if (!ownsShape(frames[from], key)) return null;
+  let to = from + 1;
+  for (; to < frames.length && !frames[to].changes.has(key); to++) if (frames[to].kind !== 'blank') return null;
+  if (to === frames.length || !ownsShape(frames[to], key)) return null;
+  return { from, to, easing: frames[from].tweens?.get(key) ?? null };
+}
+
+const tweenedKeys = (frames) => new Set(frames.flatMap((frame) => [...(frame.tweens?.keys() ?? [])]));
+
+// Every shape a tween puts on frame i, key to { shape, easing }: its key frames' shapes mixed as far as the easing says.
+export function tweenedAt(frames, i) {
+  const out = new Map();
+  for (const key of tweenedKeys(frames)) {
+    const span = spanAt(frames, key, i);
+    if (!span?.easing || span.from === i) continue;
+    const t = ease(span.easing, (i - span.from) / (span.to - span.from));
+    out.set(key, { shape: tweenShape(frames[span.from].changes.get(key).cell, frames[span.to].changes.get(key).cell, t), easing: span.easing });
+  }
+  return out;
+}
+
+// A shape's tweens, in order.
+export function tweenBands(frames, key) {
+  const bands = [];
+  frames.forEach((frame, i) => {
+    const span = frame.tweens?.has(key) ? spanAt(frames, key, i) : null;
+    if (span?.easing && span.from === i) bands.push(span);
+  });
+  return bands;
+}
+
+// The earliest frame that may look different when frame i changes: the first frame between of a tween i is in or ends.
+export function tweenReach(frames, i) {
+  let reach = i;
+  if (i > 0) {
+    for (const key of tweenedKeys(frames)) {
+      const span = spanAt(frames, key, i - 1);
+      if (span?.easing) reach = Math.min(reach, span.from + 1);
+    }
+  }
+  return reach;
+}

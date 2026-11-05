@@ -2,7 +2,8 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { makeShape, rectShape, rotation, transformed, translation, withShape } from '../../src/document/shapes.js';
-import { EASINGS, ease, tweenShape } from '../../src/document/tweens.js';
+import { EASINGS, ease, spanAt, tweenBands, tweenReach, tweenShape, tweenedAt } from '../../src/document/tweens.js';
+import { EMPTY_STATE, cellState, newFrame } from '../../src/document/frames.js';
 
 const close = (a, b, eps = 1e-3) => assert.ok(Math.abs(a - b) <= eps, `${a} vs ${b}`);
 const A = rectShape(0, 0, 4, 4, { fill: '#ff0000' });
@@ -71,4 +72,58 @@ test('a gradient mixes with one of its kind and stop count, else switches', () =
   const radial = withShape(A, { fill: grad('radial', '#ffffff', '#000000', [8, 0, 0, 8, 2, 2]) });
   assert.equal(tweenShape(a, radial, 0.4).fill.type, 'linear');
   assert.equal(tweenShape(a, radial, 0.6).fill.type, 'radial');
+});
+
+// Frames 0..8: frame 0 owns shape A (its tween easing in), 1 to 5 are Blank and empty, frame 6 owns A moved down 24.
+function scene(easing = 'easeIn') {
+  const frames = Array.from({ length: 9 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
+  frames[0].changes.set('v:a', cellState(A, 0, 0));
+  frames[0].tweens = easing ? new Map([['v:a', easing]]) : null;
+  frames[6].changes.set('v:a', cellState(transformed(A, translation(0, 24)), 0, 0));
+  return frames;
+}
+
+test("a tween runs from a key frame to the shape's next, and puts the eased shape between", () => {
+  const frames = scene();
+  assert.deepEqual(spanAt(frames, 'v:a', 3), { from: 0, to: 6, easing: 'easeIn' });
+  assert.deepEqual(spanAt(frames, 'v:a', 0), { from: 0, to: 6, easing: 'easeIn' });
+  assert.equal(spanAt(frames, 'v:a', 6), null);
+  assert.equal(tweenedAt(frames, 3).get('v:a').shape.m[5], 3);
+  assert.equal(tweenedAt(frames, 3).get('v:a').easing, 'easeIn');
+  assert.equal(tweenedAt(frames, 6).size, 0);
+  assert.equal(tweenedAt(frames, 7).size, 0);
+  assert.deepEqual(tweenBands(frames, 'v:a'), [{ from: 0, to: 6, easing: 'easeIn' }]);
+});
+
+test('no easing, a Wipe or Duplicate between, or the shape erased at the far end: no tween', () => {
+  const plain = scene(null);
+  assert.equal(spanAt(plain, 'v:a', 3).easing, null);
+  assert.equal(tweenedAt(plain, 3).size, 0);
+  assert.deepEqual(tweenBands(plain, 'v:a'), []);
+  for (const kind of ['wipe', 'duplicate']) {
+    const cut = scene();
+    cut[4].kind = kind;
+    assert.equal(spanAt(cut, 'v:a', 3), null, kind);
+    assert.equal(tweenedAt(cut, 3).size, 0, kind);
+  }
+  const erased = scene();
+  erased[6].changes.set('v:a', EMPTY_STATE);
+  assert.equal(spanAt(erased, 'v:a', 3), null);
+});
+
+test('two shapes keep their own tweens', () => {
+  const frames = scene();
+  frames[0].changes.set('v:b', cellState(A, 0, 0));
+  frames[0].tweens.set('v:b', 'linear');
+  frames[8].changes.set('v:b', cellState(transformed(A, translation(8, 0)), 0, 0));
+  const at4 = tweenedAt(frames, 4);
+  assert.equal(at4.get('v:a').shape.m[5], Math.round(24 * ease('easeIn', 4 / 6) * 1e4) / 1e4);
+  assert.equal(at4.get('v:b').shape.m[4], 4);
+});
+
+test('a change reaches back to the start of the tween it ends or is in', () => {
+  const frames = scene();
+  assert.equal(tweenReach(frames, 6), 1);
+  assert.equal(tweenReach(frames, 3), 1);
+  assert.equal(tweenReach(frames, 7), 7);
 });
