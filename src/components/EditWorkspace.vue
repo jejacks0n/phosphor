@@ -40,6 +40,11 @@ const playback = usePlayback();
 
 onMounted(() => project.render());
 watch(() => project.processParams, () => project.render(), { deep: true });
+// With cells not carrying, the ghost is the frame before's picture: built when there's a new frame before, or it went
+// stale (a render).
+watch(() => [project.frame, project.frames, project.renderedCells, project.cellsCarry, project.animate, workspace.ghost, workspace.playing], () => {
+  if (!workspace.playing && workspace.ghost) project.buildGhost();
+});
 
 async function handleFileSelected(file) {
   // An art or SVG file over a drawing asks whether to add it or open it (artDrop), even in a room: adding is a

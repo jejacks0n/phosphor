@@ -13,17 +13,18 @@ const dim = (color, base, strength) => {
 // At 0 it's the cell under it: the character goes too.
 export const ghostCell = (cell, baseCell, strength = 0.35) => (strength <= 0 ? baseCell : { ...cell, fg: dim(cell.fg, baseCell.fg, strength), bg: dim(cell.bg, baseCell.bg, strength) });
 
-// cells with those isGhost(i) says ghosted over baseOf(i), or the same array when none are. memo: a WeakMap that
-// keeps a cell's ghost the same object from one call to the next, so what draws them redraws only what changed; it
-// goes with the strength.
-export function ghostedCells(cells, baseOf, isGhost, memo = new WeakMap(), strength = 0.35) {
+// cells with those isGhost(i) says ghosted over baseOf(i), or the same array when none are: each cell itself, or
+// ghostOf(i) (another frame's) in its place. memo: a WeakMap that keeps a ghost the same object from one call to the
+// next, so what draws them redraws only what changed; it goes with the strength.
+export function ghostedCells(cells, baseOf, isGhost, memo = new WeakMap(), strength = 0.35, ghostOf = (i) => cells[i]) {
   let out = null;
   for (let i = 0; i < cells.length; i++) {
     if (!isGhost(i)) continue;
     const base = baseOf(i);
     if (!base) continue;
-    let ghost = memo.get(cells[i]);
-    if (!ghost) memo.set(cells[i], ghost = ghostCell(cells[i], base, strength));
+    const cell = ghostOf(i);
+    let ghost = memo.get(cell);
+    if (!ghost) memo.set(cell, ghost = ghostCell(cell, base, strength));
     out ??= cells.slice();
     out[i] = ghost;
   }

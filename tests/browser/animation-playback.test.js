@@ -339,6 +339,47 @@ test('the PIXEL view dims what’s inherited on a Blank frame, drawn or typed, a
   host.remove();
 });
 
+test('with cells staying on their frame, PIXEL shows the frame before as the ghost, at its strength, and not with Ghost off', async () => {
+  const { project, workspace } = await animated();
+  workspace.editorTab = 'input';
+  project.addFrame('blank');
+  project.paintStroke([{ x: 8, y: 8, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  type(project, 1, 1, 'A');
+  project.addFrame('blank');
+  project.setCellsCarry(false);
+  const host = document.createElement('div');
+  host.style.cssText = 'width:400px;height:400px;position:fixed;left:0;top:0';
+  document.body.append(host);
+  const app = createApp({ render: () => h(InputEditor) });
+  app.use(getActivePinia());
+  app.mount(host);
+  await nextTick();
+  await project.buildGhost();
+  await settle(project);
+  const canvas = host.querySelector('canvas');
+  const px = (x, y) => {
+    const c = canvas.getContext('2d'), { width, height } = canvas;
+    return [...c.getImageData(Math.floor((x + 0.5) * (width / 20)), Math.floor((y + 0.5) * (height / 20)), 1, 1).data].slice(0, 3);
+  };
+  const set = async (percent) => { workspace.ghostStrength = percent; await settle(project); };
+  const { data, width } = project.renderer.basePixels, o = 4 * (8 * width + 8), base = [data[o], data[o + 1], data[o + 2]];
+  const near = (got, want) => got.forEach((value, i) => expect(Math.abs(value - want[i])).toBeLessThanOrEqual(2));
+
+  expect(project.renderer.outputCanvas.getContext('2d').getImageData(8, 8, 1, 1).data[0]).not.toBe(255); // not this frame's
+  await set(100);
+  expect(px(8, 8)).toEqual([255, 0, 0]);
+  const typed = px(1, 2); // the frame before's A, drawn as edit cells are
+  await set(50);
+  near(px(8, 8), [(base[0] + 255) / 2, base[1] / 2, base[2] / 2]);
+  workspace.ghost = false;
+  await settle(project);
+  near(px(8, 8), base);
+  expect(px(1, 2)).not.toEqual(typed);
+  app.unmount();
+  host.remove();
+});
+
 test('the ghost’s strength sets how far inherited cells dim, in both views, from gone to solid', async () => {
   const { project, workspace } = await animated();
   workspace.editorTab = 'input';

@@ -408,6 +408,20 @@ test('the frame menu can keep cells on the frame they were drawn on', async ({ p
   await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
 });
 
+test('with cells staying on their frame, the frame before shows as the ghost on the next, and only on screen', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  await type(page, 2, 2, 'A');
+  await addFrame(page, 'Blank');
+  await bar(page).getByRole('button', { name: 'Frame actions' }).click();
+  await page.getByRole('button', { name: 'Stay on their frame' }).click();
+  const ghost = () => store(page, 'project', '(p) => p.shownCells[2 * p.cols + 2].char');
+  await expect.poll(ghost).toBe('A');
+  expect(await chars(page, 2, 2, 2)).not.toBe('A'); // not frame 2's
+  await bar(page).getByRole('button', { name: 'Ghost' }).click();
+  await expect.poll(ghost).not.toBe('A');
+});
+
 test('the bar is hidden on SOCIAL and SAUCE', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
