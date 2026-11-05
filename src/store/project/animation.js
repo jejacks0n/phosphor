@@ -9,7 +9,7 @@ import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { isShapeKey, sameShape } from '@/document/shapes.js';
-import { shapeAt, spanAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
+import { MOTIONS, shapeAt, spanAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
 import { PARTS, changedParts, samePart } from '@/document/parts.js';
 import { newLedger } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
@@ -94,8 +94,8 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
 function inheritance(project) {
   const at = project.frame, frame = project.currentFrame, bare = project.frames.slice();
   bare[at] = { ...frame, changes: new Map([...frame.changes].filter(([key]) => !isShapeKey(key))) };
-  const tweened = tweenedAt(bare, at);
-  const shapeOf = (key) => shapeAt(bare, key, at);
+  const tweened = tweenedAt(bare, at, project.motion);
+  const shapeOf = (key) => shapeAt(bare, key, at, project.motion);
   const inherits = (key, shape) => sameShape(shape ?? undefined, shapeOf(key) ?? undefined)
     && (!tweened.has(key) || !frame.changes.has(key) || !!frame.splits?.has(key));
   const unsetOf = (key, shape) => {
@@ -106,7 +106,7 @@ function inheritance(project) {
       parts: new Map([...(frame.parts ?? []), [key, new Set()]]),
       ...(split && { tweens: new Map([...(frame.tweens ?? []), [key, split.easing]]) }),
     };
-    return shapeAt(none, key, at);
+    return shapeAt(none, key, at, project.motion);
   };
   return { shapeOf, unsetOf, inherits, tweened };
 }
@@ -340,7 +340,7 @@ export const animationActions = {
       if (frame.resolved) continue;
       frame.resolved = resolveOver(at ? this.frames[at - 1].resolved : NOTHING, frame);
       const kept = [];
-      for (const [key, shape] of workedOutAt(this.frames, at)) {
+      for (const [key, shape] of workedOutAt(this.frames, at, this.motion)) {
         frame.resolved.set(key, cellState(shape, 0, 0));
         // A key frame's whole shape is kept as it shows, for when what it carries from goes (the frame showing's is note's).
         const held = frame.changes.get(key)?.cell;
@@ -555,13 +555,26 @@ export const animationActions = {
     this.editVersion++;
   },
 
+  // How the movie's tweens move shapes (MOTIONS): every frame worked out again, the one showing shown so.
+  setMotion(mode) {
+    if (!MOTIONS.includes(mode) || mode === this.motion) return;
+    if (this.image) settleFrame(this);
+    this.motion = mode;
+    for (const frame of this.frames) frame.resolved = frame.built = null;
+    this.editVersion++;
+    if (this.image && this.hasFrames) {
+      arrive(this, this.frame, this.currentFrame);
+      this.pickPalette();
+    }
+  },
+
   setAnimate(on) {
     this.animate = !!on && this.canAnimate;
   },
 
   // The frames a file held (deserializeFrames), over the document just opened from it: the frame it was on shows,
   // from its own state, and Animate's on. The render that opens the document draws it.
-  openFrames({ frames, frame, fps }) {
+  openFrames({ frames, frame, fps, motion = 'smooth' }) {
     const leaving = this.currentFrame;
     this.ensureLayer();
     let cols = 0, rows = 0;
@@ -577,6 +590,7 @@ export const animationActions = {
     this.baseLayer.extend(this.paintLayer.cols, this.paintLayer.rows); // together, as ever
     this.frames = frames;
     this.fps = fps;
+    this.motion = motion;
     arrive(this, frame, leaving, { draw: false });
     this.setAnimate(true);
   },
@@ -586,6 +600,7 @@ export const animationActions = {
     this.frames = [newFrame('blank')];
     this.frame = 0;
     this.fps = 8;
+    this.motion = 'smooth';
     this._arrived = this._noted = this._moviePalette = null;
     this.renderer.usePalette(null);
   },

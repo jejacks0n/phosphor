@@ -14,7 +14,7 @@
 import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
 import { isShape, isShapeKey, sameShape, shapeFromStranger, isGoodShapeKey, MOST_SHAPES } from './shapes.js';
-import { EASINGS, lifeAt, shapeAt } from './tweens.js';
+import { EASINGS, MOTIONS, lifeAt, shapeAt } from './tweens.js';
 import { ALL_PARTS, PARTS, samePart, withParts } from './parts.js';
 import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf, maxFramesFor } from '../lib/Cells.js';
 
@@ -133,7 +133,7 @@ export function paintImage(resolved, cols, rows) {
 // frames only. A shape is saved as the frame shows it, so a copy from before parts shows each key frame right; parts:
 // [key, [part, …]] for the shapes the frame sets only some of, on every frame with shapes (a frame with shapes and no
 // parts was saved before them).
-export const serializeFrames = (frames) => frames.map((frame, i) => {
+export const serializeFrames = (frames, motion = 'smooth') => frames.map((frame, i) => {
   const { kind, hold, changes } = frame, drawn = [...drawnKeys(frame)].filter((key) => !changes.has(key));
   const all = [...changes], shapes = all.filter(([key]) => isShapeKey(key));
   const tweens = [...(frame.tweens ?? [])].filter(([key]) => changes.get(key)?.cell);
@@ -144,7 +144,7 @@ export const serializeFrames = (frames) => frames.map((frame, i) => {
     hold,
     changes: all.filter(([key]) => !isShapeKey(key)).map(([key, { cell, top, bottom }]) => [key, cell, top, bottom]),
     ...(drawn.length && { drawn }),
-    ...(shapes.length && { shapes: shapes.map(([key, { cell }]) => [key, cell && shapeAt(frames, key, i)]), parts }),
+    ...(shapes.length && { shapes: shapes.map(([key, { cell }]) => [key, cell && shapeAt(frames, key, i, motion)]), parts }),
     ...(tweens.length && { tweens }),
   };
 });
@@ -223,7 +223,7 @@ export function inferParts(frames, indices) {
   }
 }
 
-// { frames, frame, fps } from a file, or null when anything's wrong with them, or the grid (cols, rows) is too
+// { frames, frame, fps, motion } from a file (motion smooth unless it's one of MOTIONS), or null when anything's wrong with them, or the grid (cols, rows) is too
 // large to animate: the file's still holds what it needs to open as one. Files are untrusted.
 export function deserializeFrames(json, cols, rows) {
   const { frames, frame, fps } = json ?? {};
@@ -251,5 +251,5 @@ export function deserializeFrames(json, cols, rows) {
     read.push(next);
   }
   inferParts(read, old);
-  return { frames: read, frame, fps };
+  return { frames: read, frame, fps, motion: MOTIONS.includes(json.motion) ? json.motion : 'smooth' };
 }

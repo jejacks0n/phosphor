@@ -718,6 +718,12 @@
     "tween": "Tween",
     "tweenDisabled": "Select a shape with a later key frame to tween it",
     "tweenFrames": "Frames {from} to {to}",
+    "motion": "Every tween moves",
+    "motions": {
+      "smooth": "Smoothly",
+      "half": "By half cells",
+      "cells": "By whole cells"
+    },
     "easings": {
       "none": "No tween",
       "linear": "Linear",

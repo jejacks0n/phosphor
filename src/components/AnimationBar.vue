@@ -5,7 +5,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePlayback } from '@/composables/usePlayback';
 import { frameMarks } from '@/lib/frameMarks';
-import { EASINGS, spanAt, tweenBands } from '@/document/tweens.js';
+import { EASINGS, MOTIONS, spanAt, tweenBands } from '@/document/tweens.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 
 // Under the canvas while Animate is on: play, step, scrub, timing, and adding and arranging frames.
@@ -63,6 +63,7 @@ const add = paused((kind) => project.addFrame(kind));
 const move = paused((by) => project.moveFrame(project.frame, project.frame + by));
 const remove = paused(() => project.deleteFrame());
 const tween = paused((easing) => project.setTween(shapeKeys.value, easing));
+const moveBy = paused((mode) => project.setMotion(mode));
 const setHold = paused((event) => {
   project.setHold(project.frame, event.target.value);
   event.target.value = project.currentFrame.hold;
@@ -130,6 +131,8 @@ const setFps = (event) => {
         <svg class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[name]"/></svg>
         {{ t(`animation.easings.${name}`) }}
       </button>
+      <p class="tween-frames">{{ t('animation.motion') }}</p>
+      <button v-for="mode in MOTIONS" :key="mode" :aria-pressed="project.motion === mode" @click="moveBy(mode)">{{ t(`animation.motions.${mode}`) }}</button>
     </DropdownMenu>
     </div>
     <div class="settings">

@@ -361,3 +361,28 @@ test('fuzz: frames, edits, tweens and Clears stay drawn right, and undo and redo
   }
   expect(failures).toEqual([]);
 }, 300_000);
+
+test('tweens can move by whole cells: the frames between redraw, and visiting one keeps it no key frame', async () => {
+  const { project } = await animated();
+  const key = bounce(project, 'easeIn');
+  expect(project.resolvedOf(3).get(key).cell.m[5]).toBe(3);
+  project.setMotion('cells');
+  expect(project.resolvedOf(3).get(key).cell.m[5]).toBe(4);
+  project.showFrame(3);
+  expect(y(project, key)).toBe(4);
+  project.showFrame(0);
+  expect(project.frames[3].changes.has(key)).toBe(false);
+  project.setMotion('half');
+  expect(project.resolvedOf(3).get(key).cell.m[5]).toBe(3);
+});
+
+test('a project keeps how its tweens move', async () => {
+  const { project } = await animated();
+  bounce(project, 'easeIn');
+  project.setMotion('cells');
+  const { readProject } = await import('@/document/projectIO.js');
+  const parts = await readProject(new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'm.phosphor'));
+  expect(parts.animation.motion).toBe('cells');
+  const fresh = await animated();
+  expect(fresh.project.motion).toBe('smooth');
+});
