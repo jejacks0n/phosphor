@@ -18,7 +18,7 @@ The base layer is your image. When you load a picture (or start with a blank can
    describes all three.
 
 In Monochrome ASCII every cell shows white on black, but what you paint still picks the characters by its
-brightness, so on the ANSI tab the foreground and background show as the grays they act as.
+brightness (or its shape, with By shape), so on the ANSI tab the foreground and background show as the grays they act as.
 
 The color transforms, adjustments and effects in the sidebar (Brightness, Contrast, Levels, Hue Rotation,
 Colorize, Posterize, Threshold, Blur, Edges, Flatten, Sharpen…) change the picture before it's converted.
@@ -123,6 +123,9 @@ empty (a space, █, ▀ or ▄) has nothing to show through, so under paint it 
 instead. Typing or drawing cells (a line box, a Character or Full block shape) over paint replaces
 the paint in those cells, so what you wrote shows; with the background set to None, each cell keeps
 the background color the paint gave it, as it keeps the picture's or an earlier cell's.
+With **By shape** choosing the characters, paint doesn't show through a cell's character: the cell
+is chosen again with the paint in it, as it would be after Merge down
+([Characters](characters.md#how-the-converter-picks-characters)).
 
 The Pencil and Brush paint over each cell's own character, which shows through: **Colors only**,
 the default in their **Draw with** (ANSI view). With **Half-block** each cell they paint becomes a ▄
