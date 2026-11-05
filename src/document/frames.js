@@ -50,8 +50,9 @@ export function keepDrawn(frame, id) {
 export const frameDuration = ({ hold }, fps) => (hold > 0 ? hold * 1000 : 1000 / fps);
 
 // What a frame shows, given what the frame before it shows. Frame 0 goes over an empty map, so it acts as a wipe.
-export function resolveOver(previous, { kind, changes }) {
-  const resolved = kind === 'blank' ? new Map(previous) : new Map();
+// With cells not carrying (carry false), a Blank carries only the shapes before it.
+export function resolveOver(previous, { kind, changes }, carry = true) {
+  const resolved = kind !== 'blank' ? new Map() : carry ? new Map(previous) : new Map([...previous].filter(([key]) => isShapeKey(key)));
   for (const [key, state] of changes) {
     if (!isEmptyState(state)) resolved.set(key, state);
     else resolved.delete(key);
@@ -223,7 +224,8 @@ export function inferParts(frames, indices) {
   }
 }
 
-// { frames, frame, fps, motion } from a file (motion smooth unless it's one of MOTIONS), or null when anything's wrong with them, or the grid (cols, rows) is too
+// { frames, frame, fps, motion, cellsCarry } from a file (motion smooth unless it's one of MOTIONS; cells carry unless it says
+// false), or null when anything's wrong with them, or the grid (cols, rows) is too
 // large to animate: the file's still holds what it needs to open as one. Files are untrusted.
 export function deserializeFrames(json, cols, rows) {
   const { frames, frame, fps } = json ?? {};
@@ -251,5 +253,5 @@ export function deserializeFrames(json, cols, rows) {
     read.push(next);
   }
   inferParts(read, old);
-  return { frames: read, frame, fps, motion: MOTIONS.includes(json.motion) ? json.motion : 'smooth' };
+  return { frames: read, frame, fps, motion: MOTIONS.includes(json.motion) ? json.motion : 'smooth', cellsCarry: json.cellsCarry !== false };
 }

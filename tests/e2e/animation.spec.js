@@ -341,6 +341,24 @@ test('the Tween menu can make every tween move by whole cells', async ({ page })
   await expect(page.getByRole('button', { name: 'By whole cells' })).toHaveAttribute('aria-pressed', 'true');
 });
 
+test('the frame menu can keep cells on the frame they were drawn on', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  await type(page, 2, 2, 'A');
+  await addFrame(page, 'Blank');
+  await addFrame(page, 'Blank');
+  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A'); // carried on to frame 3
+  const menu = bar(page).getByRole('button', { name: 'Frame actions' });
+  await menu.click();
+  await expect(page.getByRole('button', { name: 'Carry on to later frames' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Stay on their frame' }).click();
+  await expect.poll(() => chars(page, 2, 2, 2)).not.toBe('A'); // frame 3 shows only frame 2's, which has none
+  await menu.click();
+  await expect(page.getByRole('button', { name: 'Stay on their frame' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Carry on to later frames' }).click();
+  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
+});
+
 test('the bar is hidden on SOCIAL and SAUCE', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();

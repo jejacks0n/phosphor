@@ -62,6 +62,7 @@ export const useProjectStore = defineStore('project', {
     frame: 0,    // which one's showing
     fps: 8,
     motion: 'smooth', // how tweens move shapes: MOTIONS (tweens.js)
+    cellsCarry: true, // a Blank frame shows the cells before it; false: only its own, the frame before its ghost
     animate: false, // the bar is up
     _frameSwaps: 0, // how many times the frame showing was swapped in: autosave doesn't count those as edits
     _ghost: markRaw({ memo: new WeakMap() }), // what shownCells worked out last, kept out of what it reacts to
@@ -109,13 +110,14 @@ export const useProjectStore = defineStore('project', {
     shownCells() {
       const workspace = useWorkspaceStore(), { cells } = this;
       if (workspace.playing && workspace.played) return workspace.played.cells;
-      if (!this.animate || !workspace.ghost || !this.frame || this.currentFrame?.kind !== 'blank') return cells;
+      // Ghost off: what's inherited shows solid, though with cells not carrying the frame before isn't this one's: it goes.
+      if (!this.animate || (!workspace.ghost && this.cellsCarry) || !this.frame || this.currentFrame?.kind !== 'blank') return cells;
       const held = this._ghost, frame = this.currentFrame, version = this.historyVersion, rendered = this.renderedCells;
       if (held.frame !== frame || (!this._stroke && (held.version !== version || held.rendered !== rendered))) {
         Object.assign(held, { frame, version, rendered, cells, inherited: this.inheritedCells() });
       }
       const still = (i) => held.inherited.has(i) && sameLook(cells[i], held.cells[i]); // a stroke's new object: no longer a ghost
-      const { cols } = this, params = this.processParams, strength = workspace.ghostStrength / 100;
+      const { cols } = this, params = this.processParams, strength = workspace.ghost ? workspace.ghostStrength / 100 : 0;
       if (held.strength !== strength) Object.assign(held, { strength, memo: new WeakMap() });
       return ghostedCells(
         cells,

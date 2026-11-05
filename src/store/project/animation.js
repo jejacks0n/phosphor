@@ -54,6 +54,16 @@ function liveStates(project) {
   return states;
 }
 
+// What frame i shows while it's edited: what it resolves to, and with cells not carrying, on a Blank, the cells of the
+// frame before that it doesn't change, to draw by as its ghost (they're the frame before's: noting leaves them out).
+function shownAt(project, i) {
+  const resolved = project.resolvedOf(i), frame = project.frames[i];
+  if (project.cellsCarry || !i || frame.kind !== 'blank') return resolved;
+  const shown = new Map(resolved);
+  for (const [key, state] of project.resolvedOf(i - 1)) if (!isShapeKey(key) && !frame.changes.has(key)) shown.set(key, state);
+  return shown;
+}
+
 // Frame i becomes the one showing: its state in editCells and the paint layer, its ledger in _ledger. Whatever
 // was showing has been noted already, or is going away. leaving: the frame whose ledger is out, when the list
 // has just changed under it.
@@ -66,7 +76,7 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
   frame.ledger = null;
   project.frame = i;
   project._noted = markRaw({ frame, history: version, edit: project.editVersion });
-  const resolved = project.resolvedOf(i);
+  const resolved = shownAt(project, i);
   const cells = new Map(), shapes = new Map();
   for (const [key, { cell }] of resolved) if (cell) (isShapeKey(key) ? shapes : cells).set(key, cell);
   project.editCells = cells;
@@ -130,7 +140,9 @@ function setParts(project, key, shape, { shapeOf, unsetOf }) {
 // parts of that are as they were stays its own, though the frames before have come to match it.
 // ponytail: each shape walks the frames back to its key frame; per-shape spans worked out once if huge movies lag.
 function ownChanges(project, previous) {
-  const own = frameDiff(previous, liveStates(project)), inherited = inheritance(project), parts = new Map();
+  const live = liveStates(project), own = frameDiff(previous, live), inherited = inheritance(project), parts = new Map();
+  // Not carrying, a cell drawn in just what the frame before has is this frame's, or it wouldn't play here.
+  if (!project.cellsCarry) for (const key of drawnKeys(project.currentFrame)) if (!own.has(key) && live.has(key)) own.set(key, live.get(key));
   const keys = new Set([...previous.keys(), ...project.shapes.keys(), ...project.currentFrame.changes.keys()].filter(isShapeKey));
   for (const key of keys) {
     const shape = project.shapes.get(key), had = project.currentFrame.changes.get(key)?.cell;
@@ -220,6 +232,19 @@ function settleFrame(project) {
   project._float = null;
   note(project);
   keepShown(project); // what's about to change which frames there are can cut a shape's key frames off
+}
+
+// A setting of the whole movie's (change sets it): what's open set down first, every frame worked out again, the one
+// showing shown so.
+function movieWide(project, change) {
+  if (project.image) settleFrame(project);
+  change();
+  for (const frame of project.frames) frame.resolved = frame.built = null;
+  project.editVersion++;
+  if (project.image && project.hasFrames) {
+    arrive(project, project.frame, project.currentFrame);
+    project.pickPalette();
+  }
 }
 
 const framesNow = (project) => ({ list: project.frames, states: project.frames.map(({ kind, changes, tweens, parts }) => ({ kind, changes, tweens, parts })), showing: project.currentFrame });
@@ -338,7 +363,7 @@ export const animationActions = {
     for (let at = from; at <= i; at++) {
       const frame = this.frames[at];
       if (frame.resolved) continue;
-      frame.resolved = resolveOver(at ? this.frames[at - 1].resolved : NOTHING, frame);
+      frame.resolved = resolveOver(at ? this.frames[at - 1].resolved : NOTHING, frame, this.cellsCarry);
       const kept = [];
       for (const [key, shape] of workedOutAt(this.frames, at, this.motion)) {
         frame.resolved.set(key, cellState(shape, 0, 0));
@@ -557,15 +582,12 @@ export const animationActions = {
 
   // How the movie's tweens move shapes (MOTIONS): every frame worked out again, the one showing shown so.
   setMotion(mode) {
-    if (!MOTIONS.includes(mode) || mode === this.motion) return;
-    if (this.image) settleFrame(this);
-    this.motion = mode;
-    for (const frame of this.frames) frame.resolved = frame.built = null;
-    this.editVersion++;
-    if (this.image && this.hasFrames) {
-      arrive(this, this.frame, this.currentFrame);
-      this.pickPalette();
-    }
+    if (MOTIONS.includes(mode) && mode !== this.motion) movieWide(this, () => { this.motion = mode; });
+  },
+
+  // Whether a Blank frame shows the cells before it (true), or only its own with the frame before as its ghost.
+  setCellsCarry(on) {
+    if (!!on !== this.cellsCarry) movieWide(this, () => { this.cellsCarry = !!on; });
   },
 
   setAnimate(on) {
@@ -574,7 +596,7 @@ export const animationActions = {
 
   // The frames a file held (deserializeFrames), over the document just opened from it: the frame it was on shows,
   // from its own state, and Animate's on. The render that opens the document draws it.
-  openFrames({ frames, frame, fps, motion = 'smooth' }) {
+  openFrames({ frames, frame, fps, motion = 'smooth', cellsCarry = true }) {
     const leaving = this.currentFrame;
     this.ensureLayer();
     let cols = 0, rows = 0;
@@ -591,6 +613,7 @@ export const animationActions = {
     this.frames = frames;
     this.fps = fps;
     this.motion = motion;
+    this.cellsCarry = cellsCarry;
     arrive(this, frame, leaving, { draw: false });
     this.setAnimate(true);
   },
@@ -601,6 +624,7 @@ export const animationActions = {
     this.frame = 0;
     this.fps = 8;
     this.motion = 'smooth';
+    this.cellsCarry = true;
     this._arrived = this._noted = this._moviePalette = null;
     this.renderer.usePalette(null);
   },

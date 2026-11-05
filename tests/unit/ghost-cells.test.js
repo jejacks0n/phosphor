@@ -51,3 +51,8 @@ test('veilPixels covers both halves of a ghost cell in what’s under it, enough
   veilPixels(veil, base, [1], 2, 0.35);
   assert.deepEqual([...veil], [0, 0, 0, 0, 40, 50, 60, 166, 0, 0, 0, 0, 100, 110, 120, 166]);
 });
+
+test('a ghost at strength 0 is the cell under it, character and all', () => {
+  const under = cell('▄', color(0, 0, 0), color(100, 100, 100));
+  assert.equal(ghostCell(cell('A', color(200, 100, 0), color(0, 0, 100)), under, 0), under);
+});
