@@ -46,6 +46,7 @@ const CURVES = {
   easeIn: 'M2 14C9 14 12 9 14 2',
   easeOut: 'M2 14C4 7 7 2 14 2',
   easeInOut: 'M2 14C8 14 8 2 14 2',
+  elastic: 'M2 14C3 4 4 0 6 1S8 4 10 2.5S13 1.8 14 2',
 };
 const easings = computed(() => [['none', null], ...EASINGS.map((easing) => [easing, easing])]);
 // Where the range's thumb sits for frame i: its travel stops half a thumb (--thumb, the global slider's) short of each end.

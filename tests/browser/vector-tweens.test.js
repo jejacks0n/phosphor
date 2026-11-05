@@ -320,7 +320,7 @@ async function tweenFuzz(seed, steps = 40) {
       const gradient = { type: 'linear', stops: [[0, pick(['#ff0000', '#00ff00'])], [1, '#0000ff']], m: [1, 0, 0, 1, 0, 0] };
       if (shape) project.updateShapes([[key, withShape(shape, { fill: r() < 0.6 ? gradient : '#ffffff' })]]);
     },
-    tween: () => project.setTween([pick(keys)], pick([null, 'linear', 'easeIn', 'easeOut', 'easeInOut'])),
+    tween: () => project.setTween([pick(keys)], pick([null, 'linear', 'easeIn', 'easeOut', 'easeInOut', 'elastic'])),
     add: () => project.addFrame(pick(['blank', 'blank', 'duplicate', 'wipe'])),
     delete: () => project.deleteFrame(),
     reorder: () => project.moveFrame(int(project.frames.length), int(project.frames.length)),

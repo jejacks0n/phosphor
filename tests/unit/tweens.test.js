@@ -229,3 +229,19 @@ test('every shape on a frame worked out from its parts or a tween', () => {
   assert.equal(workedOutAt(frames, 3).get(K).m[5], 6);
   assert.equal(workedOutAt(frames, 9).get(K).m[5], 12);
 });
+
+test('Elastic springs past its end and settles there', () => {
+  assert.ok(EASINGS.includes('elastic'));
+  assert.equal(ease('elastic', 0), 0);
+  assert.equal(ease('elastic', 1), 1);
+  close(ease('elastic', 0.1), 1.25); // past the end
+  close(ease('elastic', 0.5), 1.015625);
+});
+
+test('going past the end key frame keeps a stroke width and gradient stops a shape can have', () => {
+  const thick = withShape(RED, { width: 4, fill: { type: 'linear', stops: [[0.2, '#ff0000'], [0.9, '#0000ff']], m: [1, 0, 0, 1, 0, 0] } });
+  const thin = withShape(RED, { width: 1, fill: { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [1, 0, 0, 1, 0, 0] } });
+  assert.equal(tweenPart('width', thick, thin, 1.5).width, 0);
+  assert.deepEqual(tweenPart('fill', thick, thin, 1.5).fill.stops.map(([o]) => o), [0, 1]);
+  assert.deepEqual(tweenPart('fill', thin, thick, -0.5).fill.stops.map(([o]) => o), [0, 1]);
+});
