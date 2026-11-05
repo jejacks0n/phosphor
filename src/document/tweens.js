@@ -1,6 +1,7 @@
 // Tweens: a shape worked out part way between two of its versions (its key frames), with the timing that eases it.
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { allPoints, isGradient, outlines, withShape } from './shapes.js';
+import { ALL_PARTS, PARTS, PART_FIELDS } from './parts.js';
 
 export const EASINGS = Object.freeze(['linear', 'easeIn', 'easeOut', 'easeInOut']);
 
@@ -69,23 +70,65 @@ function pivot(shape) {
   return points.length ? [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2] : [0, 0];
 }
 
-// Shape a at t = 0 to b at t = 1 (t already eased). What can't be part way (the outlines' structure, a solid color
-// against a gradient, the cap, join, alignment, fill rule, stacking) is a's until half way, then b's.
+const fieldsOf = (shape, name) => Object.fromEntries(PART_FIELDS[name].map((field) => [field, shape[field]]));
+
+// One part (parts.js) of shape a at t = 0 to b at t = 1 (t already eased), as fields; turned about at (a's middle by
+// default). What can't be part way (the outlines' structure, a solid color against a gradient, the stroke's style, the
+// fill rule, stacking) is a's until half way, then b's.
+export function tweenPart(name, a, b, t, at = pivot(a)) {
+  const late = t < 0.5 ? a : b;
+  if (name === 'transform') return { m: tweenMatrix(a.m, b.m, t, at) };
+  if (name === 'outline') {
+    const mixed = tweenOutlines(a, b, t);
+    return mixed ? { ...mixed, closed: a.closed, rule: late.rule } : fieldsOf(late, name);
+  }
+  if (name === 'fill' || name === 'stroke') return { [name]: tweenFill(a[name], b[name], t) };
+  if (name === 'width') return { width: lerp(a.width, b.width, t) };
+  return fieldsOf(late, name);
+}
+
+// Shape a at t = 0 to b at t = 1, every part.
 export function tweenShape(a, b, t) {
-  const base = t < 0.5 ? a : b;
-  return withShape(base, {
-    ...tweenOutlines(a, b, t),
-    m: tweenMatrix(a.m, b.m, t, pivot(a)),
-    fill: tweenFill(a.fill, b.fill, t),
-    stroke: tweenFill(a.stroke, b.stroke, t),
-    width: lerp(a.width, b.width, t),
-  });
+  const at = pivot(a);
+  return withShape(t < 0.5 ? a : b, Object.assign({}, ...PARTS.map((name) => tweenPart(name, a, b, t, at))));
 }
 
 // Spans: a shape's key frames are the frames that own it (have its key in their changes). A tween runs from one key
 // frame to the shape's next, across Blank frames that don't change it; a Wipe or Duplicate between, or the shape erased
 // at the far end, ends it. The easing is kept on the key frame it starts from: frame.tweens, shape key to easing.
 const ownsShape = (frame, key) => !!frame.changes.get(key)?.cell;
+
+// A shape's life around frame i: its key frames, in order, linked as spans are (only Blank frames that don't have it
+// between); [] when frame i shows no such shape. An erase, or a Wipe or Duplicate that doesn't have it, ends a life.
+export function lifeAt(frames, key, i) {
+  let at = i;
+  while (!frames[at].changes.has(key)) {
+    if (frames[at].kind !== 'blank' || at === 0) return [];
+    at--;
+  }
+  if (!ownsShape(frames[at], key)) return [];
+  const life = [at];
+  for (let k = at; frames[k].kind === 'blank' && k > 0;) { // back: a Blank key frame carries from the one before
+    let j = k - 1;
+    while (j > 0 && !frames[j].changes.has(key) && frames[j].kind === 'blank') j--;
+    if (!ownsShape(frames[j], key)) break;
+    life.unshift(k = j);
+  }
+  for (let k = at; ;) { // on
+    let j = k + 1;
+    while (j < frames.length && !frames[j].changes.has(key) && frames[j].kind === 'blank') j++;
+    if (j === frames.length || !ownsShape(frames[j], key)) break;
+    life.push(k = j);
+  }
+  return life;
+}
+
+// The parts key frame i (in life) sets of a shape: every part on the life's first, and on a Wipe or Duplicate (they
+// don't carry); else what frame.parts says, all of them when it says nothing.
+export function setPartsAt(frames, key, i, life = lifeAt(frames, key, i)) {
+  if (life[0] === i || frames[i].kind !== 'blank') return ALL_PARTS;
+  return frames[i].parts?.get(key) ?? ALL_PARTS;
+}
 
 // The span frame i is in or starts, { from, to, easing } (easing null with no tween on it), or null.
 export function spanAt(frames, key, i) {
@@ -101,21 +144,54 @@ export function spanAt(frames, key, i) {
   return { from, to, easing: frames[from].tweens?.get(key) ?? null };
 }
 
-// A span's shape on frame i, between its key frames.
-const between = (frames, key, { from, to, easing }, i) => tweenShape(frames[from].changes.get(key).cell, frames[to].changes.get(key).cell, ease(easing, (i - from) / (to - from)));
-
-// What frame i shows of a shape: its own, the one carried to it, or where a tween puts it; null for none.
-export function shapeAt(frames, key, i) {
-  let from = i;
-  while (!frames[from].changes.has(key)) {
-    if (frames[from].kind !== 'blank' || from === 0) return null;
-    from--;
+// How far along frame i is from key frame a to key frame b (of life), as one clock over the spans between: each span
+// with a tween takes its share of the frames, eased as it is; one without takes none (it holds). 0 with none tweened.
+function clockAt(frames, key, life, a, b, i) {
+  let total = 0, done = 0;
+  for (let j = a; j < b; j++) {
+    const from = life[j], to = life[j + 1], easing = frames[from].tweens?.get(key);
+    if (!easing) continue;
+    total += to - from;
+    done += (to - from) * (i <= from ? 0 : i >= to ? 1 : ease(easing, (i - from) / (to - from)));
   }
-  const span = from < i ? spanAt(frames, key, i) : null;
-  return span?.easing ? between(frames, key, span, i) : frames[from].changes.get(key).cell ?? null;
+  return total ? done / total : 0;
+}
+
+// What frame i shows of a shape, part by part (parts.js), or null for none: each part from the last key frame at or
+// before i that set it, fading to the next that does, as clockAt has it. With nothing fading, the key frame's own.
+// ponytail: each call walks the shape's life; per-shape lives worked out once per movie if huge movies lag.
+export function shapeAt(frames, key, i) {
+  const life = lifeAt(frames, key, i);
+  if (!life.length) return null;
+  const stored = (j) => frames[life[j]].changes.get(key).cell;
+  const at = life.findLastIndex((k) => k <= i), sets = life.map((k) => setPartsAt(frames, key, k, life));
+  const fields = {};
+  let own = true, transformAt = at;
+  for (const name of PARTS) {
+    let a = at, b = at + 1;
+    while (!sets[a].has(name)) a--;
+    while (b < life.length && !sets[b].has(name)) b++;
+    if (name === 'transform') transformAt = a;
+    const t = life[a] === i || b === life.length ? 0 : clockAt(frames, key, life, a, b, i);
+    if (a !== at || t) own = false;
+    Object.assign(fields, t ? tweenPart(name, stored(a), stored(b), t) : fieldsOf(stored(a), name));
+  }
+  return own ? stored(at) : withShape(stored(transformAt), fields);
 }
 
 const tweenedKeys = (frames) => new Set(frames.flatMap((frame) => [...(frame.tweens?.keys() ?? [])]));
+const workedKeys = (frames) => new Set(frames.flatMap((frame) => [...(frame.tweens?.keys() ?? []), ...(frame.parts?.keys() ?? [])]));
+
+// Every shape on frame i that a tween or a key frame setting only some of it works out, key to shape (what frame i
+// shows of it over what its key frames hold).
+export function workedOutAt(frames, i) {
+  const out = new Map();
+  for (const key of workedKeys(frames)) {
+    const shape = shapeAt(frames, key, i);
+    if (shape) out.set(key, shape);
+  }
+  return out;
+}
 
 // Every shape a tween puts on frame i, key to { shape, easing }: its key frames' shapes mixed as far as the easing says.
 export function tweenedAt(frames, i) {
@@ -123,7 +199,7 @@ export function tweenedAt(frames, i) {
   for (const key of tweenedKeys(frames)) {
     const span = spanAt(frames, key, i);
     if (!span?.easing || span.from === i) continue;
-    out.set(key, { shape: between(frames, key, span, i), easing: span.easing });
+    out.set(key, { shape: shapeAt(frames, key, i), easing: span.easing });
   }
   return out;
 }
@@ -138,13 +214,15 @@ export function tweenBands(frames, key) {
   return bands;
 }
 
-// The earliest frame that may look different when frame i changes: the first frame between of a tween i is in or ends.
+// The earliest frame that may look different when frame i changes: a part can fade to frame i from as far back as
+// the first key frame of its shape's life, when that life has a tween or a key frame setting only some of it.
 export function tweenReach(frames, i) {
   let reach = i;
   if (i > 0) {
-    for (const key of tweenedKeys(frames)) {
-      const span = spanAt(frames, key, i - 1);
-      if (span?.easing) reach = Math.min(reach, span.from + 1);
+    for (const key of workedKeys(frames)) {
+      const life = lifeAt(frames, key, i - 1);
+      const worked = life.some((k, j) => (j < life.length - 1 && frames[k].tweens?.has(key)) || setPartsAt(frames, key, k, life) !== ALL_PARTS);
+      if (worked) reach = Math.min(reach, life[0] + 1);
     }
   }
   return reach;
