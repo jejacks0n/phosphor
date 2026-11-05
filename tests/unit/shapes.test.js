@@ -76,6 +76,14 @@ test('ellipseShape passes through the box edge midpoints, and polygonShape has i
   close(worldPoints(p)[0].y, 0, 0.01);
 });
 
+test('the Shape tool\'s shapes take the whole style: cap, join, miter limit and alignment too', () => {
+  const style = { fill: '#ff0000', stroke: '#ffffff', width: 2, cap: 'square', join: 'miter', miter: 2, align: 'outside' };
+  for (const shape of [rectShape(0, 0, 10, 10, style), ellipseShape(0, 0, 10, 10, style), polygonShape(0, 0, 10, 10, 6, style)]) {
+    assert.deepEqual(strokeOf(shape), { rule: 'nonzero', cap: 'square', join: 'miter', miter: 2, align: 'outside' });
+    assert.equal(shape.width, 2);
+  }
+});
+
 test('splitAt leaves the curve where it was', () => {
   const s = makeShape({ points: [[0, 0, 0, 0, 4, 0, 0], [10, 10, 0, -6, 0, 0, 0], [0, 10, 0, 0, 0, 0, 0]], closed: true });
   const split = splitAt(s, 0, 0.4);

@@ -356,12 +356,11 @@ export function dirtyRect(...bounds) {
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
-// What a shape's made with: its fill, stroke and width.
-const styleOf = ({ fill = null, stroke = null, width = 1 } = {}) => ({ fill, stroke, width });
+// The shapes below take a style as styleColors gives it: fill, stroke, width, cap, join, miter limit and alignment.
 const corner = (x, y) => [x, y, 0, 0, 0, 0, 0];
 
 export const rectShape = (x0, y0, x1, y1, style) => makeShape({
-  points: [corner(x0, y0), corner(x1, y0), corner(x1, y1), corner(x0, y1)], closed: true, ...styleOf(style),
+  points: [corner(x0, y0), corner(x1, y0), corner(x1, y1), corner(x0, y1)], closed: true, ...style,
 });
 
 // Four smooth points, top, right, bottom, left, each a quarter circle's handles long.
@@ -370,7 +369,7 @@ export function ellipseShape(x0, y0, x1, y1, style) {
   return makeShape({
     points: [[cx, y0, -hx, 0, hx, 0, 1], [x1, cy, 0, -hy, 0, hy, 1], [cx, y1, hx, 0, -hx, 0, 1], [x0, cy, 0, hy, 0, -hy, 1]],
     closed: true,
-    ...styleOf(style),
+    ...style,
   });
 }
 
@@ -381,7 +380,7 @@ export function polygonShape(x0, y0, x1, y1, sides, style) {
     const a = -Math.PI / 2 + (2 * Math.PI * i) / sides;
     return corner(cx + rx * Math.cos(a), cy + ry * Math.sin(a));
   });
-  return makeShape({ points, closed: true, ...styleOf(style) });
+  return makeShape({ points, closed: true, ...style });
 }
 
 // Segment i's four control points, local.
