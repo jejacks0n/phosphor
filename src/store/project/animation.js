@@ -4,7 +4,7 @@
 // frames. Owns _arrived (what the frame held on arrival), _noted (what noteFrame last saw) and _builder (what
 // builds frames for playing, and what it was prepared for).
 import FrameBuilder from '@/document/FrameBuilder.js';
-import { EMPTY_STATE, cellState, foldDeleted, frameDiff, newFrame, paintImage, resolveOver, sameChanges, drawnKeys } from '@/document/frames.js';
+import { BASE, EMPTY_STATE, cellState, foldDeleted, frameDiff, isEmptyState, newFrame, paintImage, passedOn, resolveOver, sameChanges, sameState, drawnKeys, staysAt } from '@/document/frames.js';
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
@@ -54,12 +54,12 @@ function liveStates(project) {
   return states;
 }
 
-// What the frame showing draws over: the frame before as it resolves, though with cells not carrying only its shapes
-// (its cells are the ghost, which is no part of this frame).
+// What the frame showing draws over: what the frame before passes on (its staying cells are the ghost, which is no
+// part of this frame).
 function carried(project) {
   if (!project.frame || project.currentFrame.kind !== 'blank') return NOTHING;
-  const previous = project.resolvedOf(project.frame - 1);
-  return project.cellsCarry ? previous : new Map([...previous].filter(([key]) => isShapeKey(key)));
+  project.resolvedOf(project.frame - 1);
+  return project.frames[project.frame - 1].passes;
 }
 
 // Frame i becomes the one showing: its state in editCells and the paint layer, its ledger in _ledger. Whatever
@@ -147,6 +147,8 @@ function setParts(project, key, shape, { shapeOf, unsetOf }) {
 // ponytail: each shape walks the frames back to its key frame; per-shape spans worked out once if huge movies lag.
 function ownChanges(project, previous) {
   const live = liveStates(project), own = frameDiff(previous, live), inherited = inheritance(project), parts = new Map();
+  const frame = project.currentFrame; // a cell stays as the edit that last changed it was drawn (staysAt)
+  if (frame.modes) for (const [key, state] of own) if (!isShapeKey(key) && staysAt(frame, key)) own.set(key, cellState(state.cell, state.top, state.bottom, true));
   const keys = new Set([...previous.keys(), ...project.shapes.keys(), ...project.currentFrame.changes.keys()].filter(isShapeKey));
   for (const key of keys) {
     const shape = project.shapes.get(key), had = project.currentFrame.changes.get(key)?.cell;
@@ -238,16 +240,21 @@ function settleFrame(project) {
   keepShown(project); // what's about to change which frames there are can cut a shape's key frames off
 }
 
-// A setting of the whole movie's (change sets it): what's open set down first, every frame worked out again, the one
-// showing shown so.
-function movieWide(project, change) {
-  if (project.image) settleFrame(project);
-  change();
-  for (const frame of project.frames) frame.resolved = frame.built = null;
-  project.editVersion++;
-  if (project.image && project.hasFrames) {
-    arrive(project, project.frame, project.currentFrame);
-    project.pickPalette();
+// After the frame before frame at went: what frame at's staying cells were over (handed, what the frame that went
+// passed on) is what the frames after them showed there, so where that's changed it goes on to the first of them that
+// doesn't draw over it too, as its own.
+function handOn(project, at, handed) {
+  const frame = project.frames[at], under = at && frame.kind === 'blank' ? (project.resolvedOf(at - 1), project.frames[at - 1].passes) : NOTHING;
+  for (const [key, state] of frame.changes) {
+    if (!state.stays) continue;
+    const was = handed.get(key) ?? EMPTY_STATE;
+    if (sameState(was, under.get(key) ?? EMPTY_STATE)) continue;
+    for (let i = at + 1; i < project.frames.length && project.frames[i].kind === 'blank'; i++) {
+      const later = project.frames[i], held = later.changes.get(key);
+      if (held?.stays) continue;
+      if (!held) later.changes = new Map(later.changes).set(key, cellState(was.cell, was.top, was.bottom));
+      break;
+    }
   }
 }
 
@@ -390,7 +397,8 @@ export const animationActions = {
     for (let at = from; at <= i; at++) {
       const frame = this.frames[at];
       if (frame.resolved) continue;
-      frame.resolved = resolveOver(at ? this.frames[at - 1].resolved : NOTHING, frame, this.cellsCarry);
+      const previous = at ? this.frames[at - 1].passes : NOTHING;
+      frame.resolved = resolveOver(previous, frame);
       const kept = [];
       for (const [key, shape] of workedOutAt(this.frames, at)) {
         frame.resolved.set(key, cellState(shape, 0, 0));
@@ -399,6 +407,7 @@ export const animationActions = {
         if (at !== this.frame && held && frame.parts?.has(key) && !sameShape(held, shape)) kept.push([key, cellState(shape, 0, 0)]);
       }
       if (kept.length) frame.changes = new Map([...frame.changes, ...kept]);
+      frame.passes = passedOn(previous, frame, frame.resolved);
     }
     return this.frames[i].resolved;
   },
@@ -437,10 +446,10 @@ export const animationActions = {
     }
   },
 
-  // With cells not carrying, the frame before's picture, built for shownCells to show as the ghost: ghostBefore.
+  // The frame before's picture, when cells of its stay, built for shownCells to show them as the ghost: ghostBefore.
   async buildGhost() {
     const at = this.frame, prior = this.frames[at - 1];
-    if (!this.animate || this.cellsCarry || !prior || this.currentFrame.kind !== 'blank') return;
+    if (!this.animate || !prior || this.currentFrame.kind !== 'blank' || ![...prior.changes.values()].some((state) => state.stays)) return;
     if (this.ghostBefore?.frame === prior && this.ghostBefore.built === prior.built) return;
     const built = await this.builtFrame(at - 1);
     if (built && this.frames[this.frame - 1] === prior) this.ghostBefore = markRaw({ frame: prior, built });
@@ -453,12 +462,11 @@ export const animationActions = {
     for (const { x, y } of pixels) drawn.add(cellKey(x, y >> 1));
   },
 
-  // The ghost's cells, by index on the grid: those the frame showing shows only because a frame before it did, or with
-  // cells not carrying, the frame before's cells where this frame has none.
+  // The cells the frame showing shows only because a frame before it did, by index on the grid: its ghost.
   inheritedCells() {
     const inherited = new Set();
     if (!this.frame || this.currentFrame.kind !== 'blank') return inherited;
-    const previous = this.resolvedOf(this.frame - 1), own = this.cellsCarry ? ownChanges(this, previous).own : liveStates(this);
+    const previous = carried(this), { own } = ownChanges(this, previous);
     const { cols } = this, rows = charRowsOf(this.rows);
     for (const key of previous.keys()) {
       if (own.has(key) || isShapeKey(key)) continue;
@@ -466,11 +474,25 @@ export const animationActions = {
       if (col < cols && row < rows) inherited.add(cellIndex(col, row, cols));
     }
     // Drawn here in exactly the color it inherited: the frame doesn't own it, but it's no ghost to whoever drew it.
-    if (this.cellsCarry) for (const key of drawnKeys(this.currentFrame)) {
+    for (const key of drawnKeys(this.currentFrame)) {
       const { col, row } = parseKey(key);
       if (col < cols) inherited.delete(cellIndex(col, row, cols));
     }
     return inherited;
+  },
+
+  // The frame before's staying cells where the frame showing shows nothing, by index on the grid: the picture ghost.
+  pictureCells() {
+    const picture = new Set();
+    if (!this.frame || this.currentFrame.kind !== 'blank') return picture;
+    const prior = this.frames[this.frame - 1], { cols } = this, rows = charRowsOf(this.rows);
+    let live = null;
+    for (const [key, state] of prior.changes) {
+      if (!state.stays || isEmptyState(state) || (live ??= liveStates(this)).has(key)) continue;
+      const { col, row } = parseKey(key);
+      if (col < cols && row < rows) picture.add(cellIndex(col, row, cols));
+    }
+    return picture;
   },
 
   // The shapes the frame showing shows only because a frame before it did (VECTOR dims their outlines).
@@ -500,6 +522,8 @@ export const animationActions = {
     frameStep(this, () => {
       const at = this.frame + 1;
       const added = newFrame(kind, kind === 'duplicate' ? new Map(this.resolvedOf(this.frame)) : new Map());
+      const staying = [...added.changes].filter(([, state]) => state.stays).map(([key]) => key); // its own copies stay too
+      if (staying.length) added.modes = new Map([[BASE, { stays: true, keys: new Set(staying) }]]);
       const before = this.frames;
       this.frames = [...this.frames.slice(0, at), added, ...this.frames.slice(at)];
       this.staleFrames(at);
@@ -515,10 +539,12 @@ export const animationActions = {
     frameStep(this, () => {
       const deleted = this.currentFrame, at = this.frame, next = this.frames[at + 1];
       const before = this.frames.map((frame) => ({ ...frame })); // as they were, next before its fold
-      if (next) Object.assign(next, foldDeleted(deleted, next, this.cellsCarry));
+      const handed = next?.kind === 'blank' ? (this.resolvedOf(at), deleted.passes) : null; // what next drew over
+      if (next) Object.assign(next, foldDeleted(deleted, next));
       this.frames = this.frames.filter((frame) => frame !== deleted);
       deleted.resolved = deleted.built = null; // history holds it, and these are only worked out
-      if (next) this.frames[at].resolved = this.frames[at].built = null;
+      if (handed) handOn(this, at, handed);
+      if (next) this.staleFrames(at);
       staleTweens(this, before, at);
       return this.frames[Math.min(at, this.frames.length - 1)];
     });
@@ -612,18 +638,13 @@ export const animationActions = {
     this.editVersion++;
   },
 
-  // Whether a Blank frame shows the cells before it (true), or only its own with the frame before as its ghost.
-  setCellsCarry(on) {
-    if (!!on !== this.cellsCarry) movieWide(this, () => { this.cellsCarry = !!on; });
-  },
-
   setAnimate(on) {
     this.animate = !!on && this.canAnimate;
   },
 
   // The frames a file held (deserializeFrames), over the document just opened from it: the frame it was on shows,
   // from its own state, and Animate's on. The render that opens the document draws it.
-  openFrames({ frames, frame, fps, cellsCarry = true }) {
+  openFrames({ frames, frame, fps }) {
     const leaving = this.currentFrame;
     this.ensureLayer();
     let cols = 0, rows = 0;
@@ -639,7 +660,6 @@ export const animationActions = {
     this.baseLayer.extend(this.paintLayer.cols, this.paintLayer.rows); // together, as ever
     this.frames = frames;
     this.fps = fps;
-    this.cellsCarry = cellsCarry;
     arrive(this, frame, leaving, { draw: false });
     this.setAnimate(true);
   },
@@ -649,7 +669,6 @@ export const animationActions = {
     this.frames = [newFrame('blank')];
     this.frame = 0;
     this.fps = 8;
-    this.cellsCarry = true;
     this._arrived = this._noted = this._moviePalette = null;
     this.renderer.usePalette(null);
   },

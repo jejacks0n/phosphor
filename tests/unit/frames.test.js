@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import assert from 'node:assert/strict';
-import { EMPTY_STATE, FRAME_KINDS, cellState, deserializeFrames, drawnKeys, foldDeleted, frameDiff, isEmptyState, newFrame, resolveOver, serializeFrames } from '../../src/document/frames.js';
+import { EMPTY_STATE, FRAME_KINDS, cellState, deserializeFrames, drawnKeys, foldDeleted, frameDiff, isEmptyState, newFrame, passedOn, resolveOver, serializeFrames } from '../../src/document/frames.js';
 import { MAX_CELLS, MAX_COLS, MAX_FRAMES, MAX_LINES } from '../../src/lib/Cells.js';
 import { rectShape, transformed, translation, withShape } from '../../src/document/shapes.js';
 import { shapeAt } from '../../src/document/tweens.js';
@@ -377,16 +377,30 @@ test("a file from when motion was the whole movie's gives it to every tween", ()
   assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, motion: 'smooth' }, 20, 20).frames[0].motions, null);
 });
 
-test("a Blank carries only the shapes before it when cells don't carry", () => {
+test('a staying cell shows on its frame, and passes on what was there before it', () => {
   const before = new Map([['1,1', cellState(A, 0, 0)], ['v:a', cellState(BALL, 0, 0)]]);
-  const shown = resolveOver(before, blank([['2,2', cellState(B, 0, 0)]]), false);
-  assert.deepEqual([...shown.keys()].sort(), ['2,2', 'v:a']);
-  assert.deepEqual([...resolveOver(before, blank()).keys()].sort(), ['1,1', 'v:a']); // carrying, as ever
+  const frame = blank([['1,1', cellState(B, 0, 0, true)], ['2,2', cellState(B, 0, 0, true)], ['3,3', cellState(A, 0, 0)]]);
+  const shown = resolveOver(before, frame);
+  assert.equal(shown.get('1,1').cell, B);
+  const passes = passedOn(before, frame, shown);
+  assert.equal(passes.get('1,1').cell, A);
+  assert.deepEqual([...passes.keys()].sort(), ['1,1', '3,3', 'v:a']);
+  assert.equal(passedOn(before, blank([['3,3', cellState(A, 0, 0)]]), shown), shown); // nothing staying: the same map
 });
 
-test("whether a movie's cells carry is read back; carrying unless a file says false", () => {
-  const frames = serializeFrames(ballFrames());
-  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, cellsCarry: false }, 20, 20).cellsCarry, false);
-  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, cellsCarry: 'no' }, 20, 20).cellsCarry, true);
-  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8 }, 20, 20).cellsCarry, true);
+test('which cells stay is saved and read back; a file whose whole movie stayed reads every cell staying', () => {
+  const frames = [blank([['1,1', cellState(A, 0, 0, true)], ['2,2', cellState(B, 0, 0)]])];
+  const json = serializeFrames(frames);
+  assert.deepEqual(json[0].stays, ['1,1']);
+  const read = deserializeFrames({ frames: json, frame: 0, fps: 8 }, 20, 20).frames[0];
+  assert.equal(read.changes.get('1,1').stays, true);
+  assert.equal(read.changes.get('2,2').stays, undefined);
+  const old = deserializeFrames({ frames: serializeFrames([blank([['2,2', cellState(B, 0, 0)]])]), frame: 0, fps: 8, cellsCarry: false }, 20, 20).frames[0];
+  assert.equal(old.changes.get('2,2').stays, true);
+  assert.equal(deserializeFrames({ frames: [{ ...json[0], stays: ['9,9'] }], frame: 0, fps: 8 }, 20, 20), null); // a cell it doesn't change
+});
+
+test('a deleted frame\'s staying cells aren\'t folded into the next', () => {
+  const deleted = blank([['1,1', cellState(A, 0, 0, true)], ['2,2', cellState(B, 0, 0)]]);
+  assert.deepEqual([...foldDeleted(deleted, blank()).changes.keys()], ['2,2']);
 });

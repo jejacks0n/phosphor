@@ -287,7 +287,7 @@ export const documentActions = {
     if (this.hasFrames) { // as of the call, as the rest is
       this.noteFrame();
       this.resolvedOf(this.frames.length - 1); // every key frame's shape as it shows, kept on it
-      parts.animation = { frames: serializeFrames(this.frames), frame: this.frame, fps: this.fps, ...(!this.cellsCarry && { cellsCarry: false }) };
+      parts.animation = { frames: serializeFrames(this.frames), frame: this.frame, fps: this.fps };
     }
     const paintBlob = this.paintLayer?.toBlob() ?? null, baseBlob = this.baseLayer?.hasPaint ? this.baseLayer.toBlob() : null;
     return { ...parts, paintBlob: await paintBlob, baseBlob: await baseBlob };

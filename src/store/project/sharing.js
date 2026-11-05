@@ -250,6 +250,11 @@ export const sharingActions = {
       return;
     }
     for (const [key] of own) stroke.keys.push(key); // the cells it's rebuilt over (commitEdit), not its shapes'
+    // Every cell it's changed, edit cell or paint: the mode it drew in goes with them (commitEdit).
+    stroke.cells ??= new Set();
+    for (const [key] of own) stroke.cells.add(key);
+    const k = this.paintLayer.scale; // runs are the layer's pixels, k to a grid pixel
+    for (const [x, y, length] of runs) for (let i = 0; i < length; i++) stroke.cells.add(`${Math.floor((x + i) / k)},${Math.floor(y / k) >> 1}`);
     stroke.sent = true;
 
     const change = { cells, runs }, { pending, screen } = this._sharing ?? {};

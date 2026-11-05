@@ -55,15 +55,22 @@ Undo works across frames: it goes back to the frame the edit was made on and und
 
 Carrying suits a picture that mostly stays put while something changes over it. For things that move (a word
 over a bouncing ball, a figure drawn pose by pose) it leaves a trail: what you typed on frame 5 is still there on
-frame 6. **Frame actions** on the bar has **Cells drawn on a frame**: **Carry on to later frames** (the default, as
-above) or **Stay on their frame**, for the whole movie.
+frame 6. **Frame actions** on the bar has **New cells**: **Carry on to later frames** (the default, as above) or
+**Stay on their frame**. It's how what you draw from then on behaves, like a brush's setting: each cell keeps the way
+it was drawn, so switching it never changes anything already drawn, and one movie can have both: a background that
+carries through every frame, with a word drawn to stay on each.
 
-When cells stay, each frame plays only the cells drawn on it. The picture under them and the shapes carry on as
-ever. On a Blank frame the frame just before shows as the ghost to draw by ([The ghost](#the-ghost)), but none of
-it is this frame's: selecting, moving or copying there doesn't pick it up, it doesn't play, and with **Ghost** off
-it doesn't show. To keep a character on the next frame too, type it there again. A Duplicate starts with its own
-copy of the frame before's cells, so it keeps them. Switching back to carrying shows
-every frame as carrying again; nothing drawn is lost either way. Projects and autosave keep the choice.
+A cell drawn to stay shows on its frame only. The frame after shows what was there before it: type P over a carried
+HELLO's second L to make HELPO, and the next frame shows HELLO again. Drawing over a staying cell to carry makes it carry
+from then on, and drawing over a carried one to stay covers it on that frame alone. Undo and redo put each cell back the
+way it was drawn, whatever New cells says now. The picture under the cells and the shapes carry on as ever.
+
+On the frame after, a staying cell shows as the ghost to draw by ([The ghost](#the-ghost)), but it isn't that frame's:
+selecting, moving or copying there doesn't pick it up, it doesn't play, and with **Ghost** off it doesn't show. To keep
+a character on the next frame too, type it there again. A Duplicate copies what its frame shows, staying cells and all,
+but not what they were over: after it, those spots show what's under the edit layer. Deleting a frame keeps the frames
+after it as they were, cells that stay or not. Projects and autosave keep which cells stay; a project saved when this
+was one choice for the whole movie opens with every cell staying, if that's what it said.
 
 Shapes ([Vector shapes](vector.md)) belong to frames by their parts. A Blank frame carries the shapes before it;
 changing one there makes that frame a **key frame** for it, and the frame keeps only the parts you changed:
@@ -135,9 +142,9 @@ drawing over. What you draw on this frame shows at full strength, as soon as you
 it never plays and never reaches an export. What you draw stays solid even in exactly the color a cell inherited, and the
 project file and autosave keep it that way; undoing that drawing dims it again. **Ghost** on the bar turns it off, and inherited cells show solid.
 
-With cells that stay on their frame, nothing's inherited, so the ghost is a picture of the frame just before instead,
-shown dimmed over this frame wherever the frame before has cells or paint and this one has none. It's only on screen:
-the frame's cells are its own, and **Ghost** off hides the picture.
+Cells the frame just before drew to stay ([Cells that stay on their frame](#cells-that-stay-on-their-frame)) aren't
+inherited, so they show as a picture of that frame instead, dimmed over this one wherever this frame shows nothing. It's
+only on screen: this frame's cells are its own, and **Ghost** off hides the picture too.
 
 The slider beside **Ghost** sets how strong the ghost is, from 0% (it doesn't show) to 100% (solid). It starts at 35%, and this browser remembers it.
 

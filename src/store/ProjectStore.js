@@ -61,8 +61,7 @@ export const useProjectStore = defineStore('project', {
     frames: shallowRef([newFrame('blank')]),
     frame: 0,    // which one's showing
     fps: 8,
-    cellsCarry: true, // a Blank frame shows the cells before it; false: only its own, the frame before its ghost
-    ghostBefore: null, // with cells not carrying, { frame, built }: the frame before the one showing, built (buildGhost)
+    ghostBefore: null, // { frame, built }: the frame before the one showing, built for its staying cells' ghost (buildGhost)
     animate: false, // the bar is up
     _frameSwaps: 0, // how many times the frame showing was swapped in: autosave doesn't count those as edits
     _ghost: markRaw({ memo: new WeakMap() }), // what shownCells worked out last, kept out of what it reacts to
@@ -105,40 +104,38 @@ export const useProjectStore = defineStore('project', {
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.
     hasEditLayer: (state) => state.editCells.size > 0 || state.hasPaint || (state.frames.length > 1 && state.frames.some((frame, i) => i !== state.frame && frame.changes.size > 0)),
     currentFrame: (state) => state.frames[state.frame],
-    // What the ANSI view shows: while playing, the built frame; on a Blank frame, its ghost: what's inherited dimmed, or
-    // with cells not carrying, the frame before's picture (ghostBefore) dimmed over this one where it has no cells.
-    // cells is never ghosted, so exports can't see one.
+    // What the ANSI view shows: while playing, the built frame; on a Blank frame, its ghost: what's inherited dimmed,
+    // and where the frame before has cells that stay and this one shows nothing, the frame before's picture
+    // (ghostBefore) dimmed over this one. cells is never ghosted, so exports can't see one.
     shownCells() {
       const workspace = useWorkspaceStore(), { cells } = this;
       if (workspace.playing && workspace.played) return workspace.played.cells;
-      if (!this.animate || (!workspace.ghost && this.cellsCarry) || !this.frame || this.currentFrame?.kind !== 'blank') return cells;
-      const before = this.ghostBefore, picture = !this.cellsCarry;
-      if (picture && (!this.ghostStrength || before?.frame !== this.frames[this.frame - 1] || before.built.cells.length !== cells.length)) return cells;
+      if (!this.animate || !workspace.ghost || !this.frame || this.currentFrame?.kind !== 'blank') return cells;
       const held = this._ghost, frame = this.currentFrame, version = this.historyVersion, rendered = this.renderedCells;
-      const strength = this.ghostStrength, built = picture ? before.built : null;
+      const before = this.ghostBefore, strength = this.ghostStrength;
+      const built = before?.frame === this.frames[this.frame - 1] && before.built.cells.length === cells.length ? before.built : null;
       if (held.frame !== frame || (!this._stroke && (held.version !== version || held.rendered !== rendered))) {
-        Object.assign(held, { frame, version, rendered, cells, inherited: this.inheritedCells() });
-        if (picture) held.memo = new WeakMap(); // its ghosts are over this frame's cells, which may have changed
+        Object.assign(held, { frame, version, rendered, cells, inherited: this.inheritedCells(), picture: this.pictureCells(), over: new WeakMap() });
       }
-      if (held.strength !== strength || held.built !== built) Object.assign(held, { strength, built, memo: new WeakMap() });
-      if (picture) {
-        const at = (i) => (built.cells[i].wide === 'trail' ? i - 1 : i);
-        const still = (i) => held.inherited.has(i) && cells[i] === held.cells[i]; // drawn on in a stroke: no longer a ghost
-        return ghostedCells(cells, (i) => cells[i], (i) => still(at(i)), held.memo, strength, (i) => built.cells[i]);
-      }
+      if (held.strength !== strength) Object.assign(held, { strength, memo: new WeakMap(), over: new WeakMap() });
+      if (held.built !== built) Object.assign(held, { built, over: new WeakMap() });
       const still = (i) => held.inherited.has(i) && sameLook(cells[i], held.cells[i]); // a stroke's new object: no longer a ghost
       const { cols } = this, params = this.processParams;
-      return ghostedCells(
+      const shown = ghostedCells(
         cells,
         (i) => this.renderer.underCell(i % cols, Math.floor(i / cols), params, rendered),
         (i) => (cells[i].wide === 'trail' ? still(i - 1) : still(i)),
         held.memo,
         strength,
       );
+      if (!built || !held.picture.size) return shown;
+      // The picture's ghosts are over this frame's cells, so they go (over) when those may have changed.
+      const at = (i) => (built.cells[i].wide === 'trail' ? i - 1 : i);
+      const pictured = (i) => held.picture.has(at(i)) && cells[i] === held.cells[i]; // drawn on in a stroke: no longer a ghost
+      return ghostedCells(shown, (i) => cells[i], pictured, held.over, strength, (i) => built.cells[i]);
     },
     hasFrames: (state) => state.frames.length > 1,
-    // How much of its own colors a ghost keeps, 0 to 1: the bar's strength, or with Ghost off none (shownCells only
-    // asks then when cells don't carry, and the frame before mustn't show).
+    // How much of its own colors a ghost keeps, 0 to 1: the bar's strength, or with Ghost off none.
     ghostStrength() {
       const workspace = useWorkspaceStore();
       return workspace.ghost ? workspace.ghostStrength / 100 : 0;
