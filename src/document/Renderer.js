@@ -45,6 +45,7 @@ export default class Renderer {
   #resolved = null;     // the base resolved to cells: { key, palette, raw, cells, carried, gpu } by Best match (raw: the #baseData they're from), { key, palette, cells, stale, gpu } by By shape (gpu: the GPU made them)
   #picture = null;      // By shape's samples of the picture alone (processImage), from the last render
   #samples = null;      // { picture, layer, key, version, data }: #picture with the base layer's own pixels over it (#shapeSamples)
+  #painted = null;      // { of, layer, version, cells }: By shape's cells under paint (#resolvePainted), of the #resolved they go over
   #baseSnapped = null;  // { from, palette, data }: #baseData (from) snapped to the palette, for basePixels under Best match
   #fontReady = false;   // the reference font has loaded: Best match and By shape can measure glyphs
   #glyphs = null;       // { chars, glyphs }: the set's glyphs with their inks and masks in the reference font
@@ -60,7 +61,7 @@ export default class Renderer {
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.pipelineCanvas = this.outputCanvas = this.palette = this.#chosen = null;
-    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = this.#picture = this.#samples = null;
+    this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = this.#picture = this.#samples = this.#painted = null;
     this.#effective = new Map();
   }
 
@@ -164,9 +165,11 @@ export default class Renderer {
     }, indexes && { indexes, palette: this.palette });
   }
 
-  // A resolved cell with any paint in it over it: paint colors the character, never changes it
-  // (coverCell). While a stroke is held, paint shows in its own colors, as #held has it.
+  // A resolved cell with any paint in it over it: under By shape the cell the paint makes
+  // (#resolvePainted), else paint colors the character, never changes it (coverCell). While a stroke
+  // is held, paint shows in its own colors, as #held has it.
   #shown(cell, col, row, params) {
+    if (params.charMode === 'shape') return (this.#painted?.of === this.#resolved && this.#painted.cells[row * params.cols + col]) || cell;
     const top = this.paintAt(col, 2 * row), bottom = this.paintAt(col, 2 * row + 1);
     if (!top && !bottom) return cell;
     return coverCell(cell, top, bottom, { renderStyle: params.renderStyle, palette: this.#heldData ? null : this.palette });
@@ -221,7 +224,7 @@ export default class Renderer {
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params, partial ? area : null) : null;
     const changed = !hold && params.quantize === 'count' && !this.#chosen && this.#recount(params);
     const moved = this.#ditherUnder(ctx, params, area, !!paintLayer);
-    const resolvedAgain = this.#resolveUnder(params, area, open);
+    const resolvedAgain = this.#resolveUnder(params, area, open, paintLayer);
     if (!hold) this.#heldData = null;
     else if (partial) putRows(this.#heldData, w, ctx.getImageData(x, y, area.w, area.h).data, area);
     else this.#heldData = ctx.getImageData(0, 0, w, h).data;
@@ -289,7 +292,7 @@ export default class Renderer {
   // palette change, else only where the base changed. Floyd–Steinberg's cells depend on every cell
   // before them: while an edit is open only the changed cells are resolved again, and with none open
   // the whole grid is. True when every cell may have changed (a full rebuild).
-  #resolveUnder(params, area, open) {
+  #resolveUnder(params, area, open, paintLayer) {
     if (!resolves(params) || !this.#fontReady || !this.#baseData) {
       this.#resolved = null;
       return false;
@@ -300,7 +303,7 @@ export default class Renderer {
     const palette = !!this.palette?.length; // without one Dither does nothing (as #ditherUnder), Bayer too
     const opts = { strength: palette ? params.dither / 100 : 0, style: params.ditherStyle };
     const carries = palette && carriesError(params);
-    if (params.charMode === 'shape') return this.#resolveShapes(params, area, open, { key, whole, glyphs, solids, light, opts, carries });
+    if (params.charMode === 'shape') return this.#resolveShapes(params, area, open, paintLayer, { key, whole, glyphs, solids, light, opts, carries });
 
     // Best match: each cell's two halves (#baseData). While an edit is open Floyd–Steinberg resolves
     // the area from the error that arrived there before, and raw stays as it was, so the edit's end
@@ -321,23 +324,76 @@ export default class Renderer {
   // By shape: each cell's samples (#shapeSamples), resolved again where they changed. Nothing of
   // Floyd–Steinberg's error is kept (12 bytes a sample): while an edit is open the changed cells are
   // resolved with no error coming in, and the grid is left stale, so the edit's end resolves it whole.
-  #resolveShapes(params, area, open, { key, whole, glyphs, solids, light, opts, carries }) {
+  // Then the cells under paint (#resolvePainted).
+  #resolveShapes(params, area, open, paintLayer, { key, whole, glyphs, solids, light, opts, carries }) {
     const samples = this.#shapeSamples(params);
     if (!samples) {
-      this.#resolved = null;
+      this.#resolved = this.#painted = null;
       return false;
     }
     const { width: w, height: h } = this.#baseData, r = this.#resolved, { changed } = samples;
-    if (!whole && !changed && !(r.stale && carries && !open)) return false;
     const matcher = shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle });
     const resolve = (o, gpu) => resolveBy(gpu, carries, () => resolveShapes(samples.data.data, w, charRowsOf(h), matcher, o), samples.data.data, w, charRowsOf(h), matcher, o);
-    if (whole || (carries && !open) || !resolve({ ...opts, area: changed, cells: r.cells }, r.gpu)) {
-      const { out: { cells }, gpu } = resolve(opts);
-      this.#resolved = { key, palette: this.palette, cells, stale: false, gpu };
-      return true;
+    let again = false;
+    if (whole || changed || (r.stale && carries && !open)) {
+      if (whole || (carries && !open) || !resolve({ ...opts, area: changed, cells: r.cells }, r.gpu)) {
+        const { out: { cells }, gpu } = resolve(opts);
+        this.#resolved = { key, palette: this.palette, cells, stale: false, gpu };
+        again = true;
+      } else {
+        r.stale ||= carries;
+        again = !inside(changed, area); // a change to the samples past the composite's area (all of them, as the base's last pixels go)
+      }
     }
-    r.stale ||= carries;
-    return !inside(changed, area); // a change to the samples past the composite's area (all of them, as the base's last pixels go)
+    this.#resolvePainted(params, paintLayer, samples, matcher, opts, area, changed);
+    return again;
+  }
+
+  // By shape under paint: each cell with paint in it matched from its samples with the paint over
+  // them (baseSamplesOver, as the base layer's own pixels go), so it's the cell Merge down leaves.
+  // Kept apart from the base's cells (#resolved): an edit cell still sits on the base's (underCell),
+  // and erasing the paint brings the base's back. None of Floyd–Steinberg's error comes in or goes on
+  // (as an open edit's cells: Merge down then carries it); Bayer's nudge is the base's. Worked out
+  // again where the paint changed (the composite's area, grid pixels) or the samples under it did
+  // (changed), and whole when the base's cells were. The samples are put back as they were.
+  #resolvePainted(params, paintLayer, samples, matcher, opts, composited, changed) {
+    const r = this.#resolved;
+    if (!paintLayer?.hasPaint) {
+      this.#painted = null;
+      return;
+    }
+    const { width: w, height: h } = this.#baseData, lines = charRowsOf(h), p = this.#painted;
+    let area;
+    if (p?.of !== r || p.layer !== paintLayer) area = null;
+    else if (p.version !== paintLayer.version) area = changed ? union(changed, composited) : composited;
+    else if (changed) area = changed;
+    else return;
+    const painted = area ? p : { of: r, layer: paintLayer, cells: new Array(w * lines).fill(null) };
+    painted.version = paintLayer.version;
+    this.#painted = painted;
+    // The area's whole cells, in grid pixels.
+    const y0 = area ? Math.floor(area.y / 2) * 2 : 0, y1 = Math.min(2 * lines, area ? Math.ceil((area.y + area.h) / 2) * 2 : 2 * lines);
+    const cellsIn = clipped({ x: area?.x ?? 0, y: y0, w: area?.w ?? w, h: y1 - y0 }, w, h);
+    if (!cellsIn.w || !cellsIn.h) return;
+    const n = SAMPLES.w, width = w * n, data = samples.data.data;
+    const inSamples = { x: cellsIn.x * n, y: cellsIn.y * n, w: cellsIn.w * n, h: cellsIn.h * n };
+    const saved = rowsOf(data, width, inSamples);
+    baseSamplesOver(data, width, paintLayer, params, cellsIn, n);
+    const o = { ...opts, area: cellsIn, cells: painted.cells };
+    if (!resolveBy(r.gpu, false, () => resolveShapes(data, w, lines, matcher, o), data, w, lines, matcher, o)) resolveShapes(data, w, lines, matcher, o);
+    // A cell the paint didn't change is the base's.
+    const rowBytes = SAMPLES.w * 4;
+    for (let line = cellsIn.y / 2; line < (cellsIn.y + cellsIn.h) / 2; line++) {
+      for (let col = cellsIn.x; col < cellsIn.x + cellsIn.w; col++) {
+        let same = true;
+        for (let sy = 0; sy < SAMPLES.h && same; sy++) {
+          const at = ((line * SAMPLES.h + sy) * width + col * n) * 4, from = ((line * SAMPLES.h + sy - inSamples.y) * inSamples.w + col * n - inSamples.x) * 4;
+          for (let b = 0; b < rowBytes; b++) if (data[at + b] !== saved[from + b]) { same = false; break; }
+        }
+        if (same) painted.cells[line * w + col] = null;
+      }
+    }
+    putRows(data, width, saved, inSamples);
   }
 
   // By shape's samples (SAMPLES: 4 a grid pixel each way): the picture's (#picture) with the base
@@ -748,6 +804,12 @@ function sameRows(a, b, width, { x, y, w, h }) {
 
 // Whether rect a lies inside rect b.
 const inside = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
+
+// The smallest rect holding rects a and b.
+function union(a, b) {
+  const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
+}
 
 // A rect clipped to a w x h grid.
 function clipped(rect, w, h) {

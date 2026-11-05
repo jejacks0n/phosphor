@@ -90,8 +90,13 @@ Floyd–Steinberg carries each cell's error on to the cells after it (it can lag
 documents, and while you edit the base layer, the cells under the edit settle when you let go), and
 Ordered (Bayer) nudges each cell by its place in the grid.
 
-Paint and typed cells aren't touched by any of this: paint colors a cell's halves through its
-character (or makes a `▄` over a solid cell), and a pinned character stays pinned.
+Typed cells aren't touched by any of this, and a pinned character stays pinned. With Random and
+Best match, paint colors a cell's halves through its character (or makes a `▄` over a solid cell).
+With **By shape**, a cell with paint in it is matched again with the paint over the picture, so it
+gets the character (and colors) it would have once merged down: white paint on black shows as
+characters in Monochrome ASCII, and a stroke over part of a cell gets the shape that fits it. Erase
+the paint and the cell is the picture's again. Floyd–Steinberg's error doesn't pass through painted
+cells; it does once they're merged down.
 
 In ANSI with a palette, the Pixel tab shows the cells Best match or By shape chose, each half its
 two colors blended by how much of it the character covers (as typed and drawn characters show

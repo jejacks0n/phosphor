@@ -359,3 +359,45 @@ test('By shape on a grid whose samples are taller than a canvas can be (rows x 4
   const lines = p.cells.slice(Math.ceil(dy / 2) * 4, Math.floor((dy + dh) / 2) * 4);
   expect(lines.some((c) => c.fg.hex.toLowerCase() !== '#000000' || c.bg.hex.toLowerCase() !== '#000000')).toBe(true);
 });
+
+// By shape picks the characters under paint as it picks them once the paint is merged down: the
+// cell's samples with the paint over them.
+const HIGH_RES = '▖▗▘▝▚▞▙▛▜▟▐▌▁▂▃▄▅▆▇█';
+const LONG_RAMP = ' .\'`^",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$';
+test('By shape in Monochrome ASCII: white paint on a blank canvas shows as characters', async () => {
+  const { project: p } = await createTestApp();
+  await p.setBlankCanvas({ cols: 20, rows: 20 });
+  Object.assign(p, { renderStyle: 'ascii', charChoiceAscii: 'shape', chars: LONG_RAMP });
+  await settle(p);
+  const row = () => p.cells.slice(4 * p.cols + 2, 4 * p.cols + 10).map((c) => c.char);
+  expect(row().join('')).toBe('        ');
+  p.paintStroke(Array.from({ length: 16 }, (_, k) => ({ x: 2 + (k >> 1), y: 8 + (k & 1), alpha: 1 })), '#ffffff');
+  p.commitEdit();
+  await settle(p);
+  expect(row().every((c) => c !== ' '), row().join('')).toBe(true);
+});
+
+for (const [renderStyle, shape, chars] of [['ansi', { charChoice: 'shape' }, HIGH_RES], ['colorAscii', { charChoiceAscii: 'shape' }, LONG_RAMP], ['ascii', { charChoiceAscii: 'shape' }, LONG_RAMP]]) {
+  test(`By shape in ${renderStyle}: painted cells are the ones Merge down gives, and erasing the paint brings the base's back`, async () => {
+    const p = await gradient({ renderStyle, quantize: 'cga', dither: 0, chars, ...shape });
+    const base = key(p.cells);
+    // The top halves of row 10's cells, and both halves of row 14's: whole and half cells over the picture.
+    p.paintStroke(Array.from({ length: 30 }, (_, k) => ({ x: 5 + k, y: 20, alpha: 1 })), '#ffffff');
+    p.paintStroke(Array.from({ length: 30 }, (_, k) => ({ x: 5 + k, y: 28 + (k & 1), alpha: 1 })), '#ff5555');
+    p.commitEdit();
+    await settle(p);
+    const painted = key(p.cells);
+    expect(painted).not.toEqual(base);
+    expect(painted).toEqual(key(fullRebuild(p)));
+    p.mergeDown();
+    await settle(p);
+    expect(key(p.cells)).toEqual(painted);
+    p.undo(); // the merge
+    await settle(p);
+    expect(key(p.cells)).toEqual(painted);
+    p.undo(); // the red
+    p.undo(); // the white
+    await settle(p);
+    expect(key(p.cells)).toEqual(base);
+  });
+}
