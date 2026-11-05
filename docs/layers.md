@@ -293,7 +293,8 @@ selects text in a text editor; a plain click still just places the cursor. Shift
 do the same from the cursor's cell. With the Select tool, Shift and the arrow keys grow or shrink
 the selection: they move its far corner, so it keeps the corner it started from (the top-left, for
 a selection drawn some other way). Each press is an undo step. The arrow keys alone then nudge the
-selection, as they always do with the Select tool. With a pen (the Apple
+selection, as they always do with the Select tool. **T** or **K** goes back to Edit Mode, with the cursor where you
+left it. With a pen (the Apple
 Pencil), a tap can wobble a few pixels, even across a cell's edge, and still only place the cursor.
 
 The selection stays as you change tools, and the painting tools (Pencil, Brush, Eraser, Paint

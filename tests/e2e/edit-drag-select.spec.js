@@ -20,3 +20,15 @@ test('Shift and the arrow keys in Edit Mode select from the cursor, and the arro
   await page.keyboard.press('ArrowRight');
   expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: 4, r0: 3, c1: 6, r1: 4 });
 });
+
+test('T after nudging a Shift selection goes back to Edit Mode without typing a T', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Edit Mode' }).click();
+  const at = await cellPoint(page, 3, 3);
+  await page.mouse.click(at.x, at.y);
+  await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('t');
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('text');
+  expect(await store(page, 'project', (p) => [...p.editCells.values()].map((e) => e.char).filter(Boolean))).not.toContain('t');
+});
