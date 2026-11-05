@@ -83,7 +83,7 @@ const backTo100 = () => {
       <template v-else v-for="([key, does], i) in hint" :key="key">{{ i ? ' · ' : '' }}<kbd>{{ key }}</kbd> {{ does }}</template>
     </span>
     <button
-        v-if="percent < 100"
+        v-if="percent !== 100"
         :title="t('status.zoomResetTitle')"
         :aria-label="t('status.zoomResetAria', { percent })"
         @click="backTo100"

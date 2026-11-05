@@ -286,6 +286,34 @@ test('Cmd+A selects every shape, with Vector select, and not the page\'s text', 
   expect(await page.evaluate(() => String(window.getSelection()))).toBe('');
 });
 
+test('zoomed in to 800%, the Pen puts a point where the pointer is, to a fraction of a cell', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await store(page, 'workspace', (w) => w.setAnsiZoom(8));
+  await settled(page);
+  const view = await page.locator('.ansi-editor > article').boundingBox();
+  const box = await page.locator('.ansi-editor .display').boundingBox();
+  const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: p.rows }));
+  const unit = box.width / cols;
+  expect(unit).toBeGreaterThan(40); // a grid pixel, many screen pixels wide
+  // Two points a quarter of a grid pixel off the grid, in the middle of the view.
+  const at = (dx) => ({ x: view.x + view.width / 2 + dx * unit, y: view.y + view.height / 2 });
+  const grid = ({ x, y }) => [(x - box.x) / (box.width / cols), (y - box.y) / (box.height / rows)];
+  await page.keyboard.press('p');
+  const a = at(0), b = at(2.25);
+  await page.mouse.click(a.x, a.y);
+  await page.mouse.click(b.x, b.y);
+  await page.keyboard.press('Enter');
+  const [shape] = await shapeList(page);
+  for (const [i, p] of [a, b].entries()) {
+    const [x, y] = grid(p);
+    expect(shape.points[i][0]).toBeCloseTo(x, 1);
+    expect(shape.points[i][1]).toBeCloseTo(y, 1);
+  }
+  expect(shape.points[1][0] - shape.points[0][0]).toBeCloseTo(2.25, 1);
+});
+
 test('Cmd+C and Cmd+V copy the selected shapes and paste them on top, selected; Cmd+X cuts', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

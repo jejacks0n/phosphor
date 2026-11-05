@@ -434,10 +434,10 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   selection's size and place, and the Eyedropper its last pick and where each color came from.
   On the right it shows the held-key shortcuts for the tool. When the view is too narrow for all of
   it, the bar scrolls sideways, like the toolbar's options row.
-- **Zoom**: the ANSI view zooms out, down to 25% of its cells' size (100% is the font at its size),
+- **Zoom**: the ANSI view zooms from 25% of its cells' size to 800% (100% is the font at its size),
   with Ctrl+wheel (a trackpad pinch), a pinch on a touch screen, or the Zoom tool (**Z**): drag left
-  to zoom out, right to zoom back in. Zoomed out, the status bar shows the zoom; press it to go back
-  to 100%. The zoom stays when you go to the pixel view and back, and a new font or font size keeps
+  to zoom out, right to zoom in, by half or double every 300 pixels. Away from 100%, the status bar
+  shows the zoom; press it to go back to 100%. A room's watchers see the art at up to 100%. The zoom stays when you go to the pixel view and back, and a new font or font size keeps
   it.
 
 ### Tool keys

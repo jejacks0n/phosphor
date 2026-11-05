@@ -38,6 +38,7 @@ export function useEditorInteractions(options) {
     activeTool,
     editZoom,
     clampZoom,
+    dragZoomBy = (from, dx) => dragZoom(from, dx, clampZoom), // the Zoom tool's drag: from, dx px from where it began
     callbacks,
     workspaceStore,
     disableZoom = false
@@ -329,7 +330,7 @@ export function useEditorInteractions(options) {
         _lastMousePos = { clientX, clientY };
         _refreshMousePos();
       } else if (!disableZoom) {
-        _zoomToPoint(dragZoom(_initialZoom, clientX - _lastMousePos.clientX, clampZoom), _lastMousePos.clientX, _lastMousePos.clientY);
+        _zoomToPoint(dragZoomBy(_initialZoom, clientX - _lastMousePos.clientX), _lastMousePos.clientX, _lastMousePos.clientY);
       }
       return;
     }

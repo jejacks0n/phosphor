@@ -3,7 +3,8 @@
 The **VECTOR** tab (between ANSI and SAUCE, at `/vector`) holds shapes and curves that stay editable: you
 can move, scale, rotate and reshape them as often as you like, and the art underneath converts them to
 characters as you go. The tab shows the art exactly as ANSI does, with the editing marks for the shapes on
-top. Zoom and pan work as they do on ANSI.
+top. Zoom and pan work as they do on ANSI: zoomed in as far as 800%, a cell is many screen pixels wide, for placing
+points between cells.
 
 ## Where shapes sit
 
@@ -146,7 +147,7 @@ several (a letter's counters, a ring's hole):
 - Hold Shift while you drag to keep a point on a line from where it was, straight across, straight up and down,
   or at 45°, or a handle on such a line from its point.
 - A press on a gradient's handle (an end or a stop) takes it, even with a point or a curve handle as near or
-  nearer (a gradient's end on a corner, say); otherwise it takes the point or curve handle nearest. There's no zooming in to part handles on top of each other, so click (or tap)
+  nearer (a gradient's end on a corner, say); otherwise it takes the point or curve handle nearest. Handles on top of each other part as you zoom in; or click (or tap)
   again in the same place for the next one there, and again for the one after; a drag then moves the one picked.
   The status bar says so while you edit points.
 - Click the outline to add a point there; the curve stays where it was, and the new point is selected.

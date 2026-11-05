@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
 import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
 import { familyOf } from '@/lib/userFonts';
-import { clampZoom, clampAnsiZoom } from '@/lib/zoom';
+import { clampZoom, clampViewZoom } from '@/lib/zoom';
 import { measureAdvance } from '@/lib/CellCanvas';
 import { charRowsOf } from '@/lib/Cells';
 import { snapCursor } from '@/document/wideChars';
@@ -87,7 +87,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     strokeEnd: null,         // where the last Pencil or Brush stroke ended (a grid position): Shift-click draws a line from there
     shapeDrag: null,         // { from, to, line? } grid positions while a shape (or the bucket's gradient line) is being dragged
     editZoom:  5,
-    ansiZoom:  1,            // the ANSI view's zoom: 25% to 100% of its cell size
+    ansiZoom:  1,            // the ANSI (and VECTOR) view's zoom: 25% to 800% of its cell size
     editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'vector', 'sauce' or 'social'
     viewTab: 'output',       // the art tab last shown, 'input' or 'output' (its view mounts and sets it)
     tabAddressed: false,     // the landing address named a tab (router.js)
@@ -265,7 +265,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.editZoom = clampZoom(z);
     },
     setAnsiZoom(z) {
-      this.ansiZoom = clampAnsiZoom(z);
+      this.ansiZoom = clampViewZoom(z);
     },
     toggleSettings() {
       this.settingsOpen = !this.settingsOpen;
