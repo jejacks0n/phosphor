@@ -131,7 +131,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _shiftSelect = (dc, dr) => {
     const sel = workspaceStore.selection;
     let { anchor, head } = sel && toRaw(sel) === _shiftRun?.rect ? _shiftRun : {};
-    if (!anchor && _typing()) anchor = head = workspaceStore.textCursor;
+    const fromText = !anchor && _typing();
+    if (fromText) anchor = head = workspaceStore.textCursor;
     else if (!anchor && workspaceStore.activeTool === 'select' && sel) [anchor, head] = [{ col: sel.c0, row: sel.r0 }, { col: sel.c1, row: sel.r1 }];
     if (!anchor) return false;
     const to = {
@@ -139,7 +140,10 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       row: Math.max(0, Math.min(charRowsOf(projectStore.rows) - 1, head.row + dr)),
     };
     if (to.col === head.col && to.row === head.row) return true; // at the edge
-    workspaceStore.setActiveTool('select');
+    if (fromText) {
+      workspaceStore.setActiveTool('select');
+      workspaceStore.selectFromText = true;
+    }
     projectStore.changeSelection((w) => { w.selection = normalizeRect(anchor, to); w.wand = null; });
     _shiftRun = { rect: toRaw(workspaceStore.selection), anchor, head: to };
     return true;
@@ -162,11 +166,12 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const command = e.metaKey || e.ctrlKey;
     if (!command) {
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      if (e.key === 'Escape' && sel) projectStore.changeSelection((w) => { w.selection = null; });
-      else if (e.key === 'Escape' && _typing()) workspaceStore.textCursor = null;
+      if ((e.key === 'Escape' || (selecting && e.key === 'Enter')) && sel) {
+        projectStore.changeSelection((w) => { w.selection = null; });
+        if (workspaceStore.activeTool === 'select' && workspaceStore.selectFromText) workspaceStore.setActiveTool('text'); // back to typing, at the cursor
+      } else if (e.key === 'Escape' && _typing()) [workspaceStore.lastTextCursor, workspaceStore.textCursor] = [workspaceStore.textCursor, null];
       else if (selecting && (e.key === 'Delete' || e.key === 'Backspace' || key === 'e')) projectStore.deleteSelection(sel, layers);
       else if (selecting && (key === 'c' || key === 's') && !e.repeat) workspaceStore.selection = projectStore.stampSelection(sel, layers) ?? sel;
-      else if (selecting && e.key === 'Enter') projectStore.changeSelection((w) => { w.selection = null; });
       else if (selecting && ARROWS[e.key]) {
         // A nudge stops at the grid's edge rather than pushing contents off it.
         const { dc, dr } = clampOffset(sel, ...ARROWS[e.key], projectStore.cols, charRowsOf(projectStore.rows));

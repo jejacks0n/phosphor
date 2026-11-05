@@ -5,6 +5,9 @@ import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
 import { familyOf } from '@/lib/userFonts';
 import { clampZoom, clampAnsiZoom } from '@/lib/zoom';
 import { measureAdvance } from '@/lib/CellCanvas';
+import { charRowsOf } from '@/lib/Cells';
+import { snapCursor } from '@/document/wideChars';
+import { useProjectStore } from '@/store/ProjectStore';
 
 const RECENT_COLORS = 12;
 
@@ -34,6 +37,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     pickLayers: { fg: true, bg: true }, // ANSI view: what a plain picker click picks (both lit: both)
     lastPick: null,          // the Color Picker's last ANSI pick, for the status bar: { col, row, fg, bg, fgFrom, bgFrom }
     textCursor: null,      // { col, row } of the Text tool's cursor
+    lastTextCursor: null,  // where it was when Escape put it away: choosing Edit Mode puts it back there
+    selectFromText: false, // the Select tool took over from Edit Mode (a drag, Shift+arrows): setting the selection down goes back
     insertMode: false,     // typing pushes the row right instead of overwriting
     paletteLayerOpen: false, // the character palette layer has the keyboard
     playing: false,          // an animation is playing (usePlayback)
@@ -154,10 +159,22 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.setActiveTool('select');
     },
     // The selection stays as you change tools: the painting tools change only what's inside it.
+    // Edit Mode chosen drops the selection and the Magic Wand's (typing ignores them; an undo step),
+    // and gets its cursor back where it was if Escape put it away (the top-left the first time), on
+    // the grid and on a wide character's lead.
     setActiveTool(tool) {
       this.heldTool = null; // a tool chosen while another is held stays chosen
+      this.selectFromText = false;
       if (this.editorTab === 'input') this.inputActiveTool = tool;
       else this.outputActiveTool = tool;
+      if (tool !== 'text' || this.editorTab !== 'output') return;
+      const project = useProjectStore();
+      if (this.selection || this.wand) project.changeSelection((w) => { w.selection = null; w.wand = null; });
+      if (!this.textCursor) {
+        const { col, row } = this.lastTextCursor ?? { col: 0, row: 0 };
+        const at = { col: Math.min(col, Math.max(0, project.cols - 1)), row: Math.min(row, Math.max(0, charRowsOf(project.rows) - 1)) };
+        this.textCursor = snapCursor(project.cells, project.cols, at, 0);
+      }
     },
     // A tool held with a key (Alt: the picker; Space: the hand) swaps in without what choosing a tool
     // does (the selection stays), and releaseTool puts the tool back. False when one is already held.

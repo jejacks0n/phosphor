@@ -279,3 +279,59 @@ test('with the Select tool, Shift+arrows grow or shrink the selection from its t
   key('ArrowUp', { shiftKey: true });
   expect(workspace.selection).toEqual({ c0: 27, r0: 2, c1: 29, r1: 2 });
 });
+
+// Edit Mode's cursor: choosing Edit Mode puts it back where it last was, or at the top-left.
+test('choosing Edit Mode with no cursor yet puts it at the top-left', async () => {
+  const { workspace } = await editor();
+  workspace.setActiveTool('text');
+  expect(workspace.textCursor).toEqual({ col: 0, row: 0 });
+});
+
+test('after Escape puts the cursor away, T brings it back where it was, kept on the grid', async () => {
+  const { project, workspace } = await editor();
+  workspace.setActiveTool('text');
+  workspace.textCursor = { col: 25, row: 7 };
+  key('Escape');
+  expect(workspace.textCursor).toBe(null);
+  key('t');
+  expect(workspace.activeTool).toBe('text');
+  expect(workspace.textCursor).toEqual({ col: 25, row: 7 });
+  key('Escape');
+  project.updateCols(20); project.render(); await settle(project); // the grid narrows while it's away
+  key('k');
+  expect(workspace.textCursor).toEqual({ col: 19, row: 7 });
+});
+
+test('Escape or Enter on a selection made from Edit Mode sets it down and goes back to Edit Mode, at the cursor', async () => {
+  const { workspace } = await editor();
+  for (const done of ['Escape', 'Enter']) {
+    workspace.setActiveTool('text');
+    workspace.textCursor = { col: 5, row: 5 };
+    key('ArrowRight', { shiftKey: true });
+    expect(workspace.activeTool).toBe('select');
+    key(done);
+    expect(workspace.selection, done).toBe(null);
+    expect(workspace.activeTool, done).toBe('text');
+    expect(workspace.textCursor, done).toEqual({ col: 5, row: 5 });
+  }
+});
+
+test('Escape on a selection made with the Select tool only clears it', async () => {
+  const { workspace } = await editor();
+  workspace.setActiveTool('select');
+  workspace.selectAll({ c0: 1, r0: 1, c1: 3, r1: 3 });
+  key('Escape');
+  expect(workspace.selection).toBe(null);
+  expect(workspace.activeTool).toBe('select');
+});
+
+test('choosing Edit Mode clears the selection and the Magic Wand, an undo step', async () => {
+  const { project, workspace } = await editor();
+  workspace.setActiveTool('select');
+  workspace.selectAll({ c0: 1, r0: 1, c1: 3, r1: 3 });
+  key('t');
+  expect(workspace.activeTool).toBe('text');
+  expect(workspace.selection).toBe(null);
+  project.undo();
+  expect(workspace.selection).toEqual({ c0: 1, r0: 1, c1: 3, r1: 3 });
+});

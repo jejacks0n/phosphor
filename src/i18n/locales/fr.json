@@ -859,7 +859,7 @@
       "growShrink": "Agrandir ou réduire la sélection",
       "deleteSelection": "Supprimer ce qui est sélectionné",
       "stamp": "Tampon : laisser une copie ici et continuer à déplacer le bloc",
-      "deselect": "Désélectionner, en déposant le bloc",
+      "deselect": "Désélectionner, en déposant le bloc (retour au mode Édition, si vous en venez)",
       "playPause": "Lecture ou pause (toute autre touche met aussi en pause)",
       "prevNextFrame": "Image précédente ou suivante",
       "switchTabs": "Lorsqu'un onglet a le focus : changer d'onglet"

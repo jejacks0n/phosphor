@@ -32,3 +32,20 @@ test('T after nudging a Shift selection goes back to Edit Mode without typing a 
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('text');
   expect(await store(page, 'project', (p) => [...p.editCells.values()].map((e) => e.char).filter(Boolean))).not.toContain('t');
 });
+
+test('Edit Mode chosen before any click types at the top-left', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Edit Mode' }).click();
+  await page.keyboard.type('a');
+  expect(await store(page, 'project', (p) => p.editCells.get('0,0')?.char)).toBe('a');
+});
+
+test('Escape after a drag from Edit Mode sets the selection down and goes back to typing', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Edit Mode' }).click();
+  await drag(page, await cellPoint(page, 3, 3), await cellPoint(page, 8, 6));
+  await page.keyboard.press('Escape');
+  expect(await store(page, 'workspace', (w) => [w.activeTool, w.selection, w.textCursor])).toEqual(['text', null, { col: 3, row: 3 }]);
+  await page.keyboard.type('a');
+  expect(await store(page, 'project', (p) => p.editCells.get('3,3')?.char)).toBe('a');
+});
