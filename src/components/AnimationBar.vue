@@ -69,7 +69,6 @@ const move = paused((by) => project.moveFrame(project.frame, project.frame + by)
 const remove = paused(() => project.deleteFrame());
 const tween = paused((easing) => project.setTween(shapeKeys.value, easing));
 const moveBy = paused((mode) => project.setTweenMotion(shapeKeys.value, mode));
-const carryCells = paused((on) => project.setCellsCarry(on));
 // What's being typed in FPS and Hold, until it's set or left: the bar redraws with every frame played, and a field
 // bound to the value alone would be written back over the typing.
 const typing = reactive({ fps: null, hold: null });
@@ -130,7 +129,7 @@ const setFps = (event) => {
       <button :disabled="at === count - 1" @click="move(1)">{{ t('animation.moveLater') }}</button>
       <button :disabled="count < 2" @click="remove">{{ t('animation.deleteFrame') }}</button>
       <p class="tween-frames">{{ t('animation.cellsCarry') }}</p>
-      <button v-for="on in [true, false]" :key="on" :aria-pressed="project.cellsCarry === on" @click="carryCells(on)">{{ t(on ? 'animation.cellsCarryOn' : 'animation.cellsCarryOff') }}</button>
+      <button v-for="on in [true, false]" :key="on" :aria-pressed="workspace.cellsStay !== on" @click="workspace.cellsStay = !on">{{ t(on ? 'animation.cellsCarryOn' : 'animation.cellsCarryOff') }}</button>
     </DropdownMenu>
     <DropdownMenu class="tween-menu" :label="tweenLabel" up :disabled="!span">
       <template #trigger>

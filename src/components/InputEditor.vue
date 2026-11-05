@@ -29,8 +29,8 @@ const zoom = { get: () => workspaceStore.editZoom, set: workspaceStore.setEditZo
 // One bitmap the grid's size, not redrawn on zoom or opacity; when the cells change, only those that
 // did are painted again (an edit keeps every other cell the same object), so a stroke costs its own
 // cells, not the grid's. A new grid size, or All cells switched, paints it all.
-// While an animation plays, the frame playing's own (FrameBuilder); otherwise with its ghost, if it has one. With
-// cells not carrying, the ghost's typed cells (the frame before's) are drawn as this frame's own are.
+// While an animation plays, the frame playing's own (FrameBuilder); otherwise with its ghost, if it has one: the frame
+// before's staying cells typed there (its picture ghost) are drawn as this frame's own are.
 const shownFrame = () => (workspaceStore.playing && workspaceStore.played) || { cells: projectStore.shownCells, editCells: projectStore.editCells };
 const overlay = { canvas: null, image: null, cells: null, editCells: null, edited: new Set(), all: null, cols: 0, rows: 0, empty: true };
 const updateOverlay = () => {
@@ -38,8 +38,8 @@ const updateOverlay = () => {
   const { cells, editCells } = shownFrame();
   const all = workspaceStore.ansiOverlayAll;
   if (overlay.cells === cells && overlay.editCells === editCells && overlay.all === all) return;
-  const plain = !workspaceStore.playing && !projectStore.cellsCarry && cells !== projectStore.cells ? projectStore.cells : null;
-  const typed = plain && projectStore.ghostBefore.built.editCells, ghost = (i) => plain[i] !== cells[i] && typed.has(cellKey(i % cols, Math.floor(i / cols)));
+  const picture = !workspaceStore.playing && cells !== projectStore.cells && projectStore._ghost.built, plain = projectStore.cells;
+  const ghost = (i) => plain[i] !== cells[i] && projectStore._ghost.picture.has(i) && picture.editCells.has(cellKey(i % cols, Math.floor(i / cols)));
 
   // The edit cells, by index (only those in the grid).
   let edited = overlay.edited;
@@ -50,7 +50,7 @@ const updateOverlay = () => {
       if (col < cols && row < charRowsOf(rows)) edited.add(row * cols + col);
     }
   }
-  const shown = (i) => (all || edited.has(i) || (plain && ghost(i)) ? cells[i] ?? null : null);
+  const shown = (i) => (all || edited.has(i) || (picture && ghost(i)) ? cells[i] ?? null : null);
   const whole = !overlay.image || overlay.cols !== cols || overlay.rows !== rows || overlay.all !== all || overlay.cells?.length !== cells.length;
   if (whole) {
     overlay.canvas ??= document.createElement('canvas');
@@ -75,7 +75,7 @@ const updateOverlay = () => {
     }
     if (changed.length) ctx2d(overlay.canvas).putImageData(overlay.image, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
   }
-  Object.assign(overlay, { cells, editCells, edited, all, cols, rows, empty: all ? !cells.length : !edited.size && !plain });
+  Object.assign(overlay, { cells, editCells, edited, all, cols, rows, empty: all ? !cells.length : !edited.size && !picture });
 };
 
 // The ghost on the art: what's under the cells that shownCells dims, laid over them. The cells only say which, since
@@ -85,15 +85,16 @@ const drawVeil = (ctx, win, width, height) => {
   const shown = projectStore.shownCells, { cells, cols, rows } = projectStore;
   if (workspaceStore.playing || shown === cells) return;
   if (veil.shown !== shown) {
-    // Carrying, what's under the inherited cells, over them; not, the frame before's art over this one's (opaque as
-    // strong as the ghost).
-    const output = !projectStore.cellsCarry && projectStore.ghostBefore.built.output;
-    const base = output ? ctx2d(output).getImageData(0, 0, output.width, output.height) : projectStore.renderer.basePixels; // read only when it's needed: under Best match it's snapped on asking
+    // Over the inherited cells, what's under them; over the picture ghost's, the frame before's art (opaque as strong
+    // as the ghost).
+    const base = projectStore.renderer.basePixels; // read only when it's needed: under Best match it's snapped on asking
     if (!base || base.width !== cols || base.height !== rows) return;
-    const indexes = [];
-    for (let i = 0; i < cells.length; i++) if (shown[i] !== cells[i]) indexes.push(i);
-    const image = new ImageData(cols, rows);
-    veilPixels(image.data, base.data, indexes, cols, output ? 1 - projectStore.ghostStrength : projectStore.ghostStrength);
+    const { picture, built } = projectStore._ghost, inherited = [], pictured = [];
+    const pic = (i) => built && picture.has(built.cells[i]?.wide === 'trail' ? i - 1 : i);
+    for (let i = 0; i < cells.length; i++) if (shown[i] !== cells[i]) (pic(i) ? pictured : inherited).push(i);
+    const image = new ImageData(cols, rows), strength = projectStore.ghostStrength;
+    veilPixels(image.data, base.data, inherited, cols, strength);
+    if (pictured.length) veilPixels(image.data, ctx2d(built.output).getImageData(0, 0, cols, rows).data, pictured, cols, 1 - strength);
     veil.canvas ??= document.createElement('canvas');
     veil.canvas.width = cols;
     veil.canvas.height = rows;

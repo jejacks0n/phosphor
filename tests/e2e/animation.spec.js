@@ -409,31 +409,35 @@ test('Alt+. and Alt+, step frames while typing, and the typing carries on there'
   expect(await chars(page, 2, 3, 3)).not.toBe('B'); // the B is frame 2's
 });
 
-test('the frame menu can keep cells on the frame they were drawn on', async ({ page }) => {
+test('New cells in the frame menu sets whether what is drawn next carries on or stays, and changes nothing drawn', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
   await type(page, 2, 2, 'A');
   await addFrame(page, 'Blank');
-  await addFrame(page, 'Blank');
-  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A'); // carried on to frame 3
+  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A'); // carried on to frame 2
   const menu = bar(page).getByRole('button', { name: 'Frame actions' });
   await menu.click();
   await expect(page.getByRole('button', { name: 'Carry on to later frames' })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Stay on their frame' }).click();
-  await expect.poll(() => chars(page, 2, 2, 2)).not.toBe('A'); // frame 3 shows only frame 2's, which has none
+  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A'); // still: it was drawn to carry
+  await type(page, 4, 2, 'B'); // drawn to stay
+  await addFrame(page, 'Blank');
+  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
+  expect(await chars(page, 2, 4, 4)).not.toBe('B');
   await menu.click();
   await expect(page.getByRole('button', { name: 'Stay on their frame' })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Carry on to later frames' }).click();
-  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
+  await bar(page).getByRole('button', { name: 'Previous frame' }).click();
+  await expect.poll(() => chars(page, 2, 2, 4)).toMatch(/^A.B$/); // and nothing drawn changed
 });
 
-test('with cells staying on their frame, the frame before shows as the ghost on the next, and only on screen', async ({ page }) => {
+test('cells drawn to stay show as the ghost on the next frame, and only on screen', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
-  await type(page, 2, 2, 'A');
-  await addFrame(page, 'Blank');
   await bar(page).getByRole('button', { name: 'Frame actions' }).click();
   await page.getByRole('button', { name: 'Stay on their frame' }).click();
+  await type(page, 2, 2, 'A');
+  await addFrame(page, 'Blank');
   const ghost = () => store(page, 'project', '(p) => p.shownCells[2 * p.cols + 2].char');
   await expect.poll(ghost).toBe('A');
   expect(await chars(page, 2, 2, 2)).not.toBe('A'); // not frame 2's

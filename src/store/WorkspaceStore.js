@@ -53,6 +53,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     playFrame: 0,            // and this frame is on screen
     played: shallowRef(null), // that frame, built (FrameBuilder): what the views show meanwhile
     ghost: true,             // earlier frames show dimmed on a Blank frame
+    cellsStay: false,        // cells drawn from now on show on their frame only (frames.js: stays)
     ghostStrength: useLocalStorage('phosphor.ghostStrength', 35), // % of their own colors they keep: 0 gone, 100 solid
     ansiOverlay: 100,        // % opacity of the edit cells drawn over the pixel view
     ansiOverlayAll: false,   // draw every cell over the pixel view, not just the edit cells

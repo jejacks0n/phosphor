@@ -7,7 +7,7 @@
 import { markRaw, toRaw } from 'vue';
 import { parseKey } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
-import { keepDrawn } from '@/document/frames.js';
+import { keepDrawn, keepMode, withModes } from '@/document/frames.js';
 import { carriesError } from '@/lib/CharResolver.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { ALONE, bytesHeld, newLedger, randomId, runsPatch } from '@/store/project/shared.js';
@@ -50,6 +50,11 @@ export const historyActions = {
       (this.currentFrame.drawn ??= new Map()).set(stroke.id, stroke.drawn);
       this._ghost.frame = null;
     }
+    // The mode it drew its cells in, which they keep through undo and redo (frames.js: modes). Only kept once a cell
+    // on the frame has stayed: before that, every cell carries.
+    const stays = !!(this.animate && useWorkspaceStore().cellsStay);
+    const mode = stroke?.cells?.size && (stays || this.currentFrame.modes) ? { stays, keys: stroke.cells } : null;
+    if (mode) withModes(this.currentFrame).set(stroke.id, mode);
     const patch = this.paintLayer?.endStroke();
     const basePatch = this.baseLayer?.endStroke();
     this.hasPaint = this.paintLayer?.hasPaint ?? false; // an erase may have left none
@@ -62,7 +67,10 @@ export const historyActions = {
       else this.rebuildCells();
     }
     if (!stroke || (!patch && !basePatch && !stroke.wroteCells && stroke.baseRecords === this.baseRecords)) {
-      if (stroke) keepDrawn(this.currentFrame, stroke.id); // no step to undo it
+      if (stroke) {
+        keepDrawn(this.currentFrame, stroke.id); // no step to undo it
+        keepMode(this.currentFrame, stroke.id);
+      }
       return;
     }
 
@@ -82,6 +90,10 @@ export const historyActions = {
         if (side === 'before') frame.drawn.delete(id);
         else frame.drawn.set(id, drawn);
         this._ghost.frame = null;
+      }
+      if (mode) {
+        if (side === 'before') frame.modes.delete(id);
+        else withModes(frame).set(id, mode);
       }
       if (side === 'before' && cursor) useWorkspaceStore().textCursor = cursor; // typing undone: the cursor goes back to where it started
       if (side === 'before' && chosen) useWorkspaceStore().vectorSelected = chosen; // a shapes edit undone: its selection back
@@ -103,7 +115,7 @@ export const historyActions = {
       stroke: id,
       undo: () => apply('before'),
       redo: () => apply('after'),
-      onDrop: () => { ledger.forget(id); keepDrawn(frame, id); }, // or while a merge holds its stacks, not found: see pushWholeLayer
+      onDrop: () => { ledger.forget(id); keepDrawn(frame, id); keepMode(frame, id); }, // or while a merge holds its stacks, not found: see pushWholeLayer
       bytes: this._ledger.bytesOf(id) + bytesHeld(basePatch),
     });
     if (basePatch || records.before !== records.after) this.sendBase(basePatch, 'after');

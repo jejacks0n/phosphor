@@ -354,15 +354,15 @@ test('the PIXEL view dims what’s inherited on a Blank frame, drawn or typed, a
   host.remove();
 });
 
-test('with cells staying on their frame, PIXEL shows the frame before as the ghost, at its strength, and not with Ghost off', async () => {
+test('cells drawn to stay on their frame show on PIXEL on the frame after as the ghost, at its strength, and not with Ghost off', async () => {
   const { project, workspace } = await animated();
   workspace.editorTab = 'input';
+  workspace.cellsStay = true;
   project.addFrame('blank');
   project.paintStroke([{ x: 8, y: 8, alpha: 1 }], '#ff0000');
   project.commitEdit();
   type(project, 1, 1, 'A');
   project.addFrame('blank');
-  project.setCellsCarry(false);
   const host = document.createElement('div');
   host.style.cssText = 'width:400px;height:400px;position:fixed;left:0;top:0';
   document.body.append(host);
