@@ -14,7 +14,8 @@
 import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
 import { isShape, isShapeKey, sameShape, shapeFromStranger, isGoodShapeKey, MOST_SHAPES } from './shapes.js';
-import { EASINGS } from './tweens.js';
+import { EASINGS, lifeAt, shapeAt } from './tweens.js';
+import { ALL_PARTS, PARTS, samePart, withParts } from './parts.js';
 import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf, maxFramesFor } from '../lib/Cells.js';
 
 export const FRAME_KINDS = ['blank', 'duplicate', 'wipe'];
@@ -82,13 +83,27 @@ export function sameChanges(a, b) {
 }
 
 // The frame after a deleted one, so the rest of the movie looks the same: a Blank takes in what it inherited
-// from the deleted frame, and the deleted frame's kind when that was what cut it off from the frames before; and the
-// tweens of the shapes it takes in, which start there now.
+// from the deleted frame, and the deleted frame's kind when that was what cut it off from the frames before; the
+// tweens of the shapes it takes in, which start there now; and of a shape both set parts of, the parts the deleted
+// frame set that it didn't.
 export function foldDeleted(deleted, next) {
-  if (next.kind !== 'blank') return { kind: next.kind, changes: next.changes, tweens: next.tweens };
+  if (next.kind !== 'blank') return { kind: next.kind, changes: next.changes, tweens: next.tweens, parts: next.parts };
   const tweens = new Map([...(deleted.tweens ?? [])].filter(([key]) => !next.changes.has(key)));
   for (const [key, easing] of next.tweens ?? []) tweens.set(key, easing);
-  return { kind: deleted.kind, changes: new Map([...deleted.changes, ...next.changes]), tweens: tweens.size ? tweens : null };
+  const changes = new Map([...deleted.changes, ...next.changes]);
+  const parts = new Map([...(deleted.parts ?? [])].filter(([key]) => !next.changes.has(key)));
+  for (const [key, { cell }] of next.changes) {
+    const own = next.parts?.get(key), was = deleted.changes.get(key)?.cell;
+    if (!own || !cell) continue; // all of it, or an erase
+    if (!was) {
+      parts.set(key, own);
+      continue;
+    }
+    const theirs = [...(deleted.parts?.get(key) ?? ALL_PARTS)].filter((name) => !own.has(name)), both = new Set([...own, ...theirs]);
+    changes.set(key, cellState(withParts(cell, was, theirs), 0, 0));
+    if (both.size < PARTS.length) parts.set(key, both);
+  }
+  return { kind: deleted.kind, changes, tweens: tweens.size ? tweens : null, parts: parts.size ? parts : null };
 }
 
 // A resolved frame's paint as an image cols x rows, a pixel a grid pixel (PaintLayer.loadGrid takes it).
@@ -115,17 +130,21 @@ export function paintImage(resolved, cols, rows) {
 // hold, if any (what changes holds was drawn, or the frame wouldn't own it). shapes: the frame's shape changes,
 // [key, shape | null], in a field of their own so that a copy of Phosphor from before shapes still reads changes.
 // tweens: [key, easing] for the tweens starting on the frame, of shapes it has; a copy from before tweens shows the key
-// frames only.
-export const serializeFrames = (frames) => frames.map((frame) => {
+// frames only. A shape is saved as the frame shows it, so a copy from before parts shows each key frame right; parts:
+// [key, [part, …]] for the shapes the frame sets only some of, on every frame with shapes (a frame with shapes and no
+// parts was saved before them).
+export const serializeFrames = (frames) => frames.map((frame, i) => {
   const { kind, hold, changes } = frame, drawn = [...drawnKeys(frame)].filter((key) => !changes.has(key));
   const all = [...changes], shapes = all.filter(([key]) => isShapeKey(key));
   const tweens = [...(frame.tweens ?? [])].filter(([key]) => changes.get(key)?.cell);
+  const parts = [...(frame.parts ?? [])].filter(([key, set]) => changes.get(key)?.cell && set.size < PARTS.length)
+    .map(([key, set]) => [key, PARTS.filter((name) => set.has(name))]);
   return {
     kind,
     hold,
     changes: all.filter(([key]) => !isShapeKey(key)).map(([key, { cell, top, bottom }]) => [key, cell, top, bottom]),
     ...(drawn.length && { drawn }),
-    ...(shapes.length && { shapes: shapes.map(([key, { cell }]) => [key, cell]) }),
+    ...(shapes.length && { shapes: shapes.map(([key, { cell }]) => [key, cell && shapeAt(frames, key, i)]), parts }),
     ...(tweens.length && { tweens }),
   };
 });
@@ -172,6 +191,37 @@ function readTweens(entries, changes) {
   return tweens.size ? tweens : null;
 }
 
+// A frame's parts, of the shapes it has, or null: an entry that can't be read is left out.
+function readParts(entries, changes) {
+  if (!Array.isArray(entries)) return null;
+  const parts = new Map();
+  for (const entry of entries.slice(0, MOST_SHAPES)) {
+    if (!Array.isArray(entry) || entry.length !== 2 || !isGoodShapeKey(entry[0]) || !changes.get(entry[0])?.cell) continue;
+    const [key, names] = entry;
+    if (!Array.isArray(names) || names.length >= PARTS.length || !names.every((name) => PARTS.includes(name))) continue;
+    parts.set(key, new Set(names));
+  }
+  return parts.size ? parts : null;
+}
+
+// The parts frames saved before parts set (frames at indices, of frames): on a Blank key frame that isn't its shape's
+// first, a part is set unless it's the same as on the key frames either side (or the one before, on the last), so
+// nothing can fade differently from how the file had it.
+export function inferParts(frames, indices) {
+  for (const i of indices) {
+    const frame = frames[i];
+    if (frame.kind !== 'blank') continue;
+    for (const [key, { cell }] of frame.changes) {
+      if (!isShapeKey(key) || !cell) continue;
+      const life = lifeAt(frames, key, i), j = life.indexOf(i);
+      if (j <= 0) continue;
+      const before = frames[life[j - 1]].changes.get(key).cell, after = frames[life[j + 1]]?.changes.get(key).cell;
+      const set = PARTS.filter((name) => !samePart(cell, before, name) || (after && !samePart(cell, after, name)));
+      if (set.length < PARTS.length) (frame.parts ??= new Map()).set(key, new Set(set));
+    }
+  }
+}
+
 // { frames, frame, fps } from a file, or null when anything's wrong with them, or the grid (cols, rows) is too
 // large to animate: the file's still holds what it needs to open as one. Files are untrusted.
 export function deserializeFrames(json, cols, rows) {
@@ -180,10 +230,10 @@ export function deserializeFrames(json, cols, rows) {
   if (!Number.isInteger(frame) || frame < 0 || frame >= frames.length) return null;
   if (!Number.isInteger(fps) || fps < 1 || fps > 60) return null;
   if (!(cols * charRowsOf(rows) <= MAX_ANIMATION_CELLS) || frames.length > maxFramesFor(cols * charRowsOf(rows))) return null;
-  const read = [];
+  const read = [], old = [];
   let shown = new Set(); // the shapes a frame shows: Blank frames carry them on, so each frame is counted whole
   for (const entry of frames) {
-    const { kind, hold, changes, drawn, shapes, tweens } = entry ?? {};
+    const { kind, hold, changes, drawn, shapes, tweens, parts } = entry ?? {};
     if (!FRAME_KINDS.includes(kind) || !Number.isFinite(hold) || hold < 0 || hold > 60) return null;
     const map = readChanges(changes);
     if (!map || !readShapes(shapes, map)) return null;
@@ -194,8 +244,11 @@ export function deserializeFrames(json, cols, rows) {
     const next = newFrame(kind, map);
     next.hold = hold;
     next.tweens = readTweens(tweens, map);
+    next.parts = readParts(parts, map);
+    if (parts === undefined && shapes?.length) old.push(read.length);
     if (drawn?.length) next.drawn = new Map([[KEPT, new Set(drawn)]]);
     read.push(next);
   }
+  inferParts(read, old);
   return { frames: read, frame, fps };
 }
