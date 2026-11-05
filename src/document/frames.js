@@ -4,9 +4,10 @@
  * 0 is none). A change owns the whole cell, so a later fix on an earlier frame stops there, all of it. An
  * empty state is an explicit erase, which carries forward like any change. Nothing here touches a canvas.
  *
- * Frame = { id, kind, hold, changes, ledger, drawn, resolved, built }: hold is in seconds (0 is one tick). The last
+ * Frame = { id, kind, hold, changes, tweens, ledger, drawn, resolved, built }: hold is in seconds (0 is one tick). The last
  * four belong to the store: the frame's undo while it's not showing, the cells drawn over on it (for the ghost: by
- * stroke while undo can take one back, then KEPT), and what's cached of it.
+ * stroke while undo can take one back, then KEPT), and what's cached of it. tweens maps a shape key to the easing of
+ * the tween that shape starts on this frame, or is null (tweens.js).
  */
 import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
@@ -20,7 +21,7 @@ export const EMPTY_STATE = cellState(null, 0, 0);
 export const isEmptyState = (state) => !state.cell && !state.top && !state.bottom;
 
 let nextId = 1;
-export const newFrame = (kind, changes = new Map()) => markRaw({ id: nextId++, kind, hold: 0, changes, ledger: null, drawn: null, resolved: null, built: null });
+export const newFrame = (kind, changes = new Map()) => markRaw({ id: nextId++, kind, hold: 0, changes, tweens: null, ledger: null, drawn: null, resolved: null, built: null });
 
 // Cells drawn over on a frame, whether or not that changed them: drawn maps a stroke's id to its cells, and KEPT to
 // those no undo can take back any more. A cell drawn in exactly what it inherited isn't owned, but it isn't a ghost.
