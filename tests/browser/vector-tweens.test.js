@@ -355,7 +355,7 @@ async function tweenFuzz(seed, steps = 40) {
 
 test('fuzz: frames, edits, tweens and Clears stay drawn right, and undo and redo go back through them', async () => {
   const count = Number(import.meta.env?.VITE_FUZZ_SEEDS ?? 0), failures = [];
-  for (const seed of count ? Array.from({ length: count }, (_, i) => i + 1) : [1, 2, 3, 11, 27, 30, 71, 78, 95]) {
+  for (const seed of count ? Array.from({ length: count }, (_, i) => i + 1) : [1, 2, 3, 11, 27, 30, 71, 78, 95, 167]) {
     const failure = await tweenFuzz(seed);
     if (failure) failures.push(failure);
   }
