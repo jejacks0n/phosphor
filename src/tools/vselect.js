@@ -1,6 +1,6 @@
 // Vector select (the VECTOR tab): click a shape to select it (Shift adds or takes it away), or drag a box over
 // empty canvas to select every shape it touches (Shift: adds them); each change of the selection is an undo
-// step (selectShapes). Then drag inside the box to move (Shift: straight across, up and down, or at 45°), a handle to scale (Shift keeps the proportions)
+// step (selectShapes). Then drag inside the box to move (Shift: straight across, up and down, or at 45°), a handle to scale (Shift keeps the proportions, Alt scales from the middle)
 // or the knob above it to rotate (Shift: one shape to angles in steps of 15°, several by them). A second click on a shape edits its points with the
 // Node tool (vnode.js). One shape selected, its gradient's ends and stops show and drag as the Node tool's do
 // (gradientHandles.js; a click on a stop selects it), ahead of the box's handles where they're near (handlePick: a
@@ -81,13 +81,14 @@ function reshape(project, drag, change) {
 // The scale handle i: which way it pulls ([-1, 0, 1] in x and y: left, none, right) and the handle opposite.
 const PULLS = [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -1], [1, 0], [0, 1], [-1, 0]];
 
-function scaleTo(project, drag, pos, shift) {
+function scaleTo(project, drag, pos, shift, fromMiddle) {
   const { box, handle } = drag, [px, py] = PULLS[handle];
   // In the box's own frame: one shape's local pixels, or the grid's.
   const frame = box.local?.m ?? [1, 0, 0, 1, 0, 0], back = invert(frame);
   const { x0, y0, x1, y1 } = box.local ?? { x0: box.corners[0].x, y0: box.corners[0].y, x1: box.corners[2].x, y1: box.corners[2].y };
   const p = apply(back, pos.x, pos.y);
-  const anchor = { x: px > 0 ? x0 : px < 0 ? x1 : (x0 + x1) / 2, y: py > 0 ? y0 : py < 0 ? y1 : (y0 + y1) / 2 };
+  const middle = { x: (x0 + x1) / 2, y: (y0 + y1) / 2 };
+  const anchor = fromMiddle ? middle : { x: px > 0 ? x0 : px < 0 ? x1 : middle.x, y: py > 0 ? y0 : py < 0 ? y1 : middle.y };
   const from = { x: px > 0 ? x1 : x0, y: py > 0 ? y1 : y0 };
   let sx = px && from.x !== anchor.x ? (p.x - anchor.x) / (from.x - anchor.x) : 1;
   let sy = py && from.y !== anchor.y ? (p.y - anchor.y) / (from.y - anchor.y) : 1;
@@ -208,7 +209,7 @@ export default {
     else if (drag.kind === 'scale') {
       // Snap to: the handle dragged on the grid, where it was grabbed moved with the pointer.
       const grip = snapPoint({ x: drag.grip.x + to.x - drag.from.x, y: drag.grip.y + to.y - drag.from.y }, snap);
-      scaleTo(project, drag, snap === 'none' ? to : grip, shift);
+      scaleTo(project, drag, snap === 'none' ? to : grip, shift, workspace.isAltPressed);
     }
     else rotateTo(project, drag, to, shift);
   },

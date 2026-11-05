@@ -111,7 +111,7 @@ on Windows and Linux) while you drag to place or move without snapping. The choi
 - Drag a box over empty canvas to select every shape it touches; with Shift, they're added to the selection.
 - The selection gets a box. Drag inside it to move the shapes (hold Shift once you're moving to keep them
   straight across, straight up and down, or at 45°), drag one of its eight handles to scale them
-  from the opposite side (Shift keeps the proportions), or drag the knob above it to rotate them (Shift
+  from the opposite side (Shift keeps the proportions; Alt, Option on a Mac, scales them from the middle), or drag the knob above it to rotate them (Shift
   keeps one shape at an angle in steps of 15°, so a turned one can be squared up again; several turn in steps of
   15° from where they were). One shape's box turns with it; several shapes share one box, square to the grid.
 - With one shape selected whose fill or outline is a gradient, its gradient's handles show too, as the
