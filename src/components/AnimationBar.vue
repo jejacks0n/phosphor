@@ -1,5 +1,5 @@
 <script setup>
-import { computed, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -70,11 +70,16 @@ const remove = paused(() => project.deleteFrame());
 const tween = paused((easing) => project.setTween(shapeKeys.value, easing));
 const moveBy = paused((mode) => project.setTweenMotion(shapeKeys.value, mode));
 const carryCells = paused((on) => project.setCellsCarry(on));
+// What's being typed in FPS and Hold, until it's set or left: the bar redraws with every frame played, and a field
+// bound to the value alone would be written back over the typing.
+const typing = reactive({ fps: null, hold: null });
 const setHold = paused((event) => {
+  typing.hold = null;
   project.setHold(project.frame, event.target.value);
   event.target.value = project.currentFrame.hold;
 });
 const setFps = (event) => {
+  typing.fps = null;
   project.setFps(event.target.value);
   event.target.value = project.fps;
 };
@@ -145,12 +150,12 @@ const setFps = (event) => {
     </div>
     <div class="settings">
     <label class="field fps" :title="t('animation.fpsTitle')">
-      <input type="number" :aria-label="t('animation.fpsTitle')" min="1" max="60" step="1" :value="project.fps" @change="setFps">
+      <input type="number" :aria-label="t('animation.fpsTitle')" min="1" max="60" step="1" :value="typing.fps ?? project.fps" @input="typing.fps = $event.target.value" @change="setFps" @blur="typing.fps = null">
       {{ t('animation.fpsUnit') }}
     </label>
     <label class="field" :title="t('animation.holdTitle')">
       {{ t('animation.hold') }}
-      <input type="number" :aria-label="t('animation.hold')" min="0" max="60" step="0.05" :value="project.frames[at]?.hold" @change="setHold">
+      <input type="number" :aria-label="t('animation.hold')" min="0" max="60" step="0.05" :value="typing.hold ?? project.frames[at]?.hold" @input="typing.hold = $event.target.value" @change="setHold" @blur="typing.hold = null">
       {{ t('animation.holdUnit') }}
     </label>
     <span v-if="full" class="full">{{ full }}</span>
