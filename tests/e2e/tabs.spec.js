@@ -48,11 +48,13 @@ test('the editor tabs are a tablist: Tab reaches the selected one, arrows move a
   const selection = await store(page, 'workspace', (w) => w.selection);
   expect(selection).toEqual({ c0: 2, r0: 2, c1: 5, r1: 5 }); // room to nudge, if an arrow got through
 
-  await tab(page, 'ANSI').focus();
+  await tab(page, 'PIXEL').focus(); // the order: PIXEL, VECTOR, ANSI, SAUCE, SOCIAL
   await page.keyboard.press('ArrowRight');
   await expect(tab(page, 'VECTOR')).toBeFocused();
   await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');
   expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('vector');
+  await page.keyboard.press('ArrowRight');
+  await expect(tab(page, 'ANSI')).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(tab(page, 'SAUCE')).toBeFocused();
   await expect(tab(page, 'SAUCE')).toHaveAttribute('aria-selected', 'true');
@@ -63,7 +65,7 @@ test('the editor tabs are a tablist: Tab reaches the selected one, arrows move a
   await expect(tab(page, 'PIXEL')).toBeFocused();
   await page.keyboard.press('End');
   await expect(tab(page, 'SOCIAL')).toBeFocused();
-  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowLeft');
+  for (let i = 0; i < 2; i++) await page.keyboard.press('ArrowLeft');
   await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
   expect(await store(page, 'workspace', (w) => w.selection)).toEqual(selection); // the arrows stayed with the tabs
   await expect(tab(page, 'PIXEL')).toHaveAttribute('tabindex', '-1');

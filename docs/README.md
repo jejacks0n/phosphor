@@ -20,7 +20,7 @@ stays on your last choice (Dark to begin with).
 
 The address: the address bar says which tab you're on and, on SOCIAL, which page, so Back and Forward
 move between them and a reload comes back to the same place. With nothing open you're on the start
-screen, not a tab: PIXEL, ANSI, VECTOR and SAUCE wait for something to show, none is selected, and the address
+screen, not a tab: PIXEL, VECTOR, ANSI and SAUCE wait for something to show, none is selected, and the address
 is plain (`/`). Whatever you open (an image, a project, an ANSI or text file, or a blank canvas) opens on
 ANSI. From SOCIAL, any of the four takes you back to the start screen. A narrow window has no SOCIAL
 tab, so its address shows PIXEL instead (or `/`, with nothing open).
