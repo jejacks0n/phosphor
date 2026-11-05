@@ -354,11 +354,27 @@ test('a key frame saved before parts, the same as its neighbors, stays a key fra
   assert.deepEqual(read(old).frames[6].parts.get('v:a'), new Set(['transform']));
 });
 
-test("a movie's motion is saved and read back; one that can't be read is smooth", () => {
-  const frames = serializeFrames(ballFrames());
-  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, motion: 'cells' }, 20, 20).motion, 'cells');
-  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, motion: 'wobbly' }, 20, 20).motion, 'smooth');
-  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8 }, 20, 20).motion, 'smooth');
+test("a tween's motion is saved and read back; one that can't be read is smooth", () => {
+  const ball = ballFrames();
+  ball[0].tweens = new Map([['v:a', 'easeIn']]);
+  ball[0].motions = new Map([['v:a', 'cells']]);
+  const frames = serializeFrames(ball);
+  assert.deepEqual(frames[0].motions, [['v:a', 'cells']]);
+  assert.equal(frames[6].motions, undefined); // smooth isn't written
+  const readBack = (json) => deserializeFrames({ frame: 0, fps: 8, ...json }, 20, 20).frames;
+  assert.deepEqual([...readBack({ frames })[0].motions], [['v:a', 'cells']]);
+  const wobbly = structuredClone(frames);
+  wobbly[0].motions = [['v:a', 'wobbly'], ['v:zz', 'cells']];
+  assert.equal(readBack({ frames: wobbly })[0].motions, null);
+});
+
+test("a file from when motion was the whole movie's gives it to every tween", () => {
+  const ball = ballFrames();
+  ball[0].tweens = new Map([['v:a', 'easeIn']]);
+  const frames = serializeFrames(ball);
+  const old = deserializeFrames({ frames, frame: 0, fps: 8, motion: 'half' }, 20, 20).frames;
+  assert.deepEqual(old.filter((frame) => frame.tweens).map((frame) => [...frame.motions]), [[['v:a', 'half']]]);
+  assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, motion: 'smooth' }, 20, 20).frames[0].motions, null);
 });
 
 test("a Blank carries only the shapes before it when cells don't carry", () => {

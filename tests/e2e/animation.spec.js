@@ -319,7 +319,7 @@ test('the Tween menu eases a selected shape between its key frames, and the bar 
   await expect.poll(() => store(page, 'project', `(p) => p.shapes.get('${key}').m[5]`)).toBe(0);
 });
 
-test('the Tween menu can make every tween move by whole cells', async ({ page }) => {
+test('the Tween menu can make a tween move by whole cells, as one undo step', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await animateSwitch(page).check();
@@ -331,12 +331,17 @@ test('the Tween menu can make every tween move by whole cells', async ({ page })
   await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
   const tween = bar(page).getByRole('button', { name: 'Tween' });
   await tween.click();
+  await expect(page.getByRole('button', { name: 'By whole cells' })).toBeDisabled(); // no tween yet to move
   await page.getByRole('button', { name: 'Ease in', exact: true }).click();
   await expect.poll(() => store(page, 'project', `(p) => p.shapes.get('${key}').m[5]`)).toBe(3); // half a cell down
   await tween.click();
   await expect(page.getByRole('button', { name: 'Smoothly' })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'By whole cells' }).click();
   await expect.poll(() => store(page, 'project', `(p) => p.shapes.get('${key}').m[5] % 2`)).toBe(0); // a whole cell
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => store(page, 'project', `(p) => p.shapes.get('${key}').m[5]`)).toBe(3);
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect.poll(() => store(page, 'project', `(p) => p.shapes.get('${key}').m[5] % 2`)).toBe(0);
   await tween.click();
   await expect(page.getByRole('button', { name: 'By whole cells' })).toHaveAttribute('aria-pressed', 'true');
 });

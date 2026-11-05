@@ -721,7 +721,7 @@
     "tween": "Interpolation",
     "tweenDisabled": "Sélectionnez une forme qui a une image clé plus loin pour l'interpoler",
     "tweenFrames": "Images {from} à {to}",
-    "motion": "Chaque interpolation se déplace",
+    "motion": "Cette interpolation se déplace",
     "motions": {
       "smooth": "En douceur",
       "half": "Par demi-cellules",

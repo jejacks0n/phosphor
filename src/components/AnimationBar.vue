@@ -63,7 +63,7 @@ const add = paused((kind) => project.addFrame(kind));
 const move = paused((by) => project.moveFrame(project.frame, project.frame + by));
 const remove = paused(() => project.deleteFrame());
 const tween = paused((easing) => project.setTween(shapeKeys.value, easing));
-const moveBy = paused((mode) => project.setMotion(mode));
+const moveBy = paused((mode) => project.setTweenMotion(shapeKeys.value, mode));
 const carryCells = paused((on) => project.setCellsCarry(on));
 const setHold = paused((event) => {
   project.setHold(project.frame, event.target.value);
@@ -135,7 +135,7 @@ const setFps = (event) => {
         {{ t(`animation.easings.${name}`) }}
       </button>
       <p class="tween-frames">{{ t('animation.motion') }}</p>
-      <button v-for="mode in MOTIONS" :key="mode" :aria-pressed="project.motion === mode" @click="moveBy(mode)">{{ t(`animation.motions.${mode}`) }}</button>
+      <button v-for="mode in MOTIONS" :key="mode" :disabled="!span?.easing" :aria-pressed="!!span?.easing && span.motion === mode" @click="moveBy(mode)">{{ t(`animation.motions.${mode}`) }}</button>
     </DropdownMenu>
     </div>
     <div class="settings">

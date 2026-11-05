@@ -61,7 +61,6 @@ export const useProjectStore = defineStore('project', {
     frames: shallowRef([newFrame('blank')]),
     frame: 0,    // which one's showing
     fps: 8,
-    motion: 'smooth', // how tweens move shapes: MOTIONS (tweens.js)
     cellsCarry: true, // a Blank frame shows the cells before it; false: only its own, the frame before its ghost
     animate: false, // the bar is up
     _frameSwaps: 0, // how many times the frame showing was swapped in: autosave doesn't count those as edits
