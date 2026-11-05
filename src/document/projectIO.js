@@ -39,7 +39,7 @@ export function loadImage(source, type) {
 // JSON as baseLength, so older readers just ignore it);
 // editCells: the edit layer's cells (saved under the file's original key, `cellEdits`);
 // baseRecords: the base layer's pinned characters (saved as `base`, left out when there are none);
-// animation: { frames (serializeFrames), frame, fps, motion?, cellsCarry? }, left out for a still. The rest holds the frame
+// animation: { frames (serializeFrames), frame, fps, cellsCarry? } (motion: the whole movie's, in files from before each tween had its own), left out for a still. The rest holds the frame
 // showing, so older copies open it as a still.
 export async function writeProject({ settings, imageBuffer, paintBlob, baseBlob = null, editCells, baseRecords = EMPTY_BASE, shapes = null, animation = null }) {
   const base = serializeBase(baseRecords);

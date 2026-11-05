@@ -3,7 +3,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { isShapeKey, rectShape, translation, transformed, rotation, withShape } from '@/document/shapes.js';
-import { ease } from '@/document/tweens.js';
+import { ease, spanAt } from '@/document/tweens.js';
 import { writeProject } from '@/document/projectIO.js';
 
 async function animated() {
@@ -321,13 +321,14 @@ async function tweenFuzz(seed, steps = 40) {
       if (shape) project.updateShapes([[key, withShape(shape, { fill: r() < 0.6 ? gradient : '#ffffff' })]]);
     },
     tween: () => project.setTween([pick(keys)], pick([null, 'linear', 'easeIn', 'easeOut', 'easeInOut', 'elastic'])),
+    snap: () => project.setTweenMotion([pick(keys)], pick(['smooth', 'half', 'cells'])),
     add: () => project.addFrame(pick(['blank', 'blank', 'duplicate', 'wipe'])),
     delete: () => project.deleteFrame(),
     reorder: () => project.moveFrame(int(project.frames.length), int(project.frames.length)),
     clear: () => project.clearEditLayer(),
   };
   // Weighted toward what makes tweens: shapes moved on frames apart, and easings chosen between them.
-  const names = ['show', 'show', 'show', 'move', 'move', 'move', 'tween', 'tween', 'tween', 'recolor', 'widen', 'regradient', 'add', 'add', 'delete', 'reorder', 'clear'], log = [];
+  const names = ['show', 'show', 'show', 'move', 'move', 'move', 'tween', 'tween', 'tween', 'snap', 'recolor', 'widen', 'regradient', 'add', 'add', 'delete', 'reorder', 'clear'], log = [];
   project.clearHistory();
   depth = 0;
   const stack = [movie(project)];
@@ -362,27 +363,46 @@ test('fuzz: frames, edits, tweens and Clears stay drawn right, and undo and redo
   expect(failures).toEqual([]);
 }, 300_000);
 
-test('tweens can move by whole cells: the frames between redraw, and visiting one keeps it no key frame', async () => {
+test('a tween can move by whole cells: the frames between redraw, visiting one keeps it no key frame, and undo puts it back', async () => {
   const { project } = await animated();
   const key = bounce(project, 'easeIn');
   expect(project.resolvedOf(3).get(key).cell.m[5]).toBe(3);
-  project.setMotion('cells');
+  project.setTweenMotion([key], 'cells');
   expect(project.resolvedOf(3).get(key).cell.m[5]).toBe(4);
   project.showFrame(3);
   expect(y(project, key)).toBe(4);
   project.showFrame(0);
   expect(project.frames[3].changes.has(key)).toBe(false);
-  project.setMotion('half');
+  project.setTweenMotion([key], 'half');
   expect(project.resolvedOf(3).get(key).cell.m[5]).toBe(3);
+  project.undo();
+  expect(project.resolvedOf(3).get(key).cell.m[5]).toBe(4);
+  project.undo();
+  expect(project.resolvedOf(3).get(key).cell.m[5]).toBe(3);
+  expect(spanAt(project.frames, key, 3).motion).toBe('smooth');
 });
 
-test('a project keeps how its tweens move', async () => {
+test('only the tween on the frame showing moves by cells: the next one stays smooth', async () => {
   const { project } = await animated();
-  bounce(project, 'easeIn');
-  project.setMotion('cells');
+  const key = bounce(project, 'linear'); // down 24 over frames 0 to 6
+  project.showFrame(6);
+  for (let i = 0; i < 4; i++) project.addFrame('blank');
+  moveBy(project, key, 0, -5); // back up 5 by frame 10
+  project.showFrame(6);
+  project.setTween([key], 'linear');
+  project.showFrame(0);
+  project.setTweenMotion([key], 'cells');
+  expect(project.resolvedOf(8).get(key).cell.m[5]).toBe(21.5); // smooth
+  project.showFrame(8);
+  project.setTweenMotion([key], 'cells');
+  expect(project.resolvedOf(8).get(key).cell.m[5]).toBe(22);
+});
+
+test('a project keeps how each tween moves', async () => {
+  const { project } = await animated();
+  const key = bounce(project, 'easeIn');
+  project.setTweenMotion([key], 'cells');
   const { readProject } = await import('@/document/projectIO.js');
   const parts = await readProject(new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'm.phosphor'));
-  expect(parts.animation.motion).toBe('cells');
-  const fresh = await animated();
-  expect(fresh.project.motion).toBe('smooth');
+  expect(parts.animation.frames[0].motions.get(key)).toBe('cells');
 });

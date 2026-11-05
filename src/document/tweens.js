@@ -135,7 +135,8 @@ export function setPartsAt(frames, key, i, life = lifeAt(frames, key, i)) {
   return frames[i].parts?.get(key) ?? ALL_PARTS;
 }
 
-// The span frame i is in or starts, { from, to, easing } (easing null with no tween on it), or null.
+// The span frame i is in or starts, { from, to, easing, motion } (easing null with no tween on it; motion as MOTIONS, kept
+// on the frame it starts from as the easing is: frame.motions), or null.
 export function spanAt(frames, key, i) {
   let from = i;
   while (!frames[from].changes.has(key)) {
@@ -146,7 +147,7 @@ export function spanAt(frames, key, i) {
   let to = from + 1;
   for (; to < frames.length && !frames[to].changes.has(key); to++) if (frames[to].kind !== 'blank') return null;
   if (to === frames.length || !ownsShape(frames[to], key)) return null;
-  return { from, to, easing: frames[from].tweens?.get(key) ?? null };
+  return { from, to, easing: frames[from].tweens?.get(key) ?? null, motion: frames[from].motions?.get(key) ?? 'smooth' };
 }
 
 // How far along frame i is from key frame a to key frame b (of life), as one clock over the spans between: each span
@@ -169,14 +170,16 @@ function snappedMove(from, m, motion) {
   return [m[0], m[1], m[2], m[3], m[4] + step.x - (now.x - was.x), m[5] + step.y - (now.y - was.y)];
 }
 
-// What frame i shows of a shape, part by part (parts.js), or null for none, moved as the movie's motion has it: each part from the last key frame at or
-// before i that set it, fading to the next that does, as clockAt has it. With nothing fading, the key frame's own.
+// What frame i shows of a shape, part by part (parts.js), or null for none: each part from the last key frame at or
+// before i that set it, fading to the next that does, as clockAt has it, its move snapped as the motion of the tween
+// frame i is in has it. With nothing fading, the key frame's own.
 // ponytail: each call walks the shape's life; per-shape lives worked out once per movie if huge movies lag.
-export function shapeAt(frames, key, i, motion = 'smooth') {
+export function shapeAt(frames, key, i) {
   const life = lifeAt(frames, key, i);
   if (!life.length) return null;
   const stored = (j) => frames[life[j]].changes.get(key).cell;
   const at = life.findLastIndex((k) => k <= i), sets = life.map((k) => setPartsAt(frames, key, k, life));
+  const motion = frames[life[at]].motions?.get(key) ?? 'smooth';
   const fields = {};
   let own = true, transformAt = at;
   for (const name of PARTS) {
@@ -197,22 +200,22 @@ const workedKeys = (frames) => new Set(frames.flatMap((frame) => [...(frame.twee
 
 // Every shape on frame i that a tween or a key frame setting only some of it works out, key to shape (what frame i
 // shows of it over what its key frames hold).
-export function workedOutAt(frames, i, motion = 'smooth') {
+export function workedOutAt(frames, i) {
   const out = new Map();
   for (const key of workedKeys(frames)) {
-    const shape = shapeAt(frames, key, i, motion);
+    const shape = shapeAt(frames, key, i);
     if (shape) out.set(key, shape);
   }
   return out;
 }
 
-// Every shape a tween puts on frame i, key to { shape, easing }: its key frames' shapes mixed as far as the easing says.
-export function tweenedAt(frames, i, motion = 'smooth') {
+// Every shape a tween puts on frame i, key to { shape, easing, motion }: its key frames' shapes mixed as far as the easing says.
+export function tweenedAt(frames, i) {
   const out = new Map();
   for (const key of tweenedKeys(frames)) {
     const span = spanAt(frames, key, i);
     if (!span?.easing || span.from === i) continue;
-    out.set(key, { shape: shapeAt(frames, key, i, motion), easing: span.easing });
+    out.set(key, { shape: shapeAt(frames, key, i), easing: span.easing, motion: span.motion });
   }
   return out;
 }

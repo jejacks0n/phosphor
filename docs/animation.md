@@ -120,11 +120,13 @@ tweens. The ball red on frame 1, moved on frame 7, blue on frame 13, with Ease i
 fill fades over all of frames 1 to 13, starting slow, half way on frame 7 and slowing into blue, as the ball moves. A
 stretch with no tween holds a part, as it holds the shape.
 
-For a steadier, older look, **Every tween moves** at the foot of the menu sets how the whole movie's tweens move:
-**Smoothly** (the default), **By half cells** or **By whole cells**. Snapped, a shape on its way jumps from cell to cell
-(or half cell), the way characters move on a terminal, rather than gliding and smearing across the cells it straddles.
-Only the move snaps: size, rotation, colors and the rest still tween smoothly, and key frames stay where you put them.
-Projects and autosave keep the choice.
+For a steadier, older look, **This tween moves** at the foot of the menu sets how the tween moves: **Smoothly** (the
+default), **By half cells** or **By whole cells**. Snapped, a shape on its way jumps from cell to cell (or half cell),
+the way characters move on a terminal, rather than gliding and smearing across the cells it straddles. Each tween has
+its own, set as its easing is (for each selected shape, one undo step; off while there's no tween), so a ball can
+snap on its way down and glide back up. Splitting a tween keeps it on both halves. Only the move snaps: size,
+rotation, colors and the rest still tween smoothly, and key frames stay where you put them. Projects and autosave keep
+it.
 
 ## The ghost
 

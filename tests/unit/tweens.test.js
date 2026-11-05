@@ -85,14 +85,14 @@ function scene(easing = 'easeIn') {
 
 test("a tween runs from a key frame to the shape's next, and puts the eased shape between", () => {
   const frames = scene();
-  assert.deepEqual(spanAt(frames, 'v:a', 3), { from: 0, to: 6, easing: 'easeIn' });
-  assert.deepEqual(spanAt(frames, 'v:a', 0), { from: 0, to: 6, easing: 'easeIn' });
+  assert.deepEqual(spanAt(frames, 'v:a', 3), { from: 0, to: 6, easing: 'easeIn', motion: 'smooth' });
+  assert.deepEqual(spanAt(frames, 'v:a', 0), { from: 0, to: 6, easing: 'easeIn', motion: 'smooth' });
   assert.equal(spanAt(frames, 'v:a', 6), null);
   assert.equal(tweenedAt(frames, 3).get('v:a').shape.m[5], 3);
   assert.equal(tweenedAt(frames, 3).get('v:a').easing, 'easeIn');
   assert.equal(tweenedAt(frames, 6).size, 0);
   assert.equal(tweenedAt(frames, 7).size, 0);
-  assert.deepEqual(tweenBands(frames, 'v:a'), [{ from: 0, to: 6, easing: 'easeIn' }]);
+  assert.deepEqual(tweenBands(frames, 'v:a'), [{ from: 0, to: 6, easing: 'easeIn', motion: 'smooth' }]);
 });
 
 test('no easing, a Wipe or Duplicate between, or the shape erased at the far end: no tween', () => {
@@ -246,25 +246,45 @@ test('going past the end key frame keeps a stroke width and gradient stops a sha
   assert.deepEqual(tweenPart('fill', thin, thick, -0.5).fill.stops.map(([o]) => o), [0, 1]);
 });
 
+// scene's tween moving as motion says (frame.motions, on the frame it starts from).
+const moving = (motion, easing = 'easeIn') => {
+  const frames = scene(easing);
+  frames[0].motions = new Map([['v:a', motion]]);
+  return frames;
+};
+
 test('a tween can move a shape by whole cells or half cells, from where its key frame has it', () => {
-  const frames = scene('linear'); // down 24 over frames 0 to 6
+  const frames = moving('cells', 'linear'); // down 24 over frames 0 to 6
   frames[6].changes.set('v:a', cellState(transformed(A, translation(5, 24)), 0, 0));
-  assert.equal(shapeAt(frames, 'v:a', 1).m[4], 0.8333); // smooth, as before
-  assert.deepEqual([shapeAt(frames, 'v:a', 1, 'cells').m[4], shapeAt(frames, 'v:a', 1, 'cells').m[5]], [1, 4]);
-  const eased = scene('easeIn');
-  assert.equal(shapeAt(eased, 'v:a', 3, 'smooth').m[5], 3);
-  assert.equal(shapeAt(eased, 'v:a', 3, 'cells').m[5], 4); // a cell is two pixels tall
-  assert.equal(shapeAt(eased, 'v:a', 3, 'half').m[5], 3);
-  assert.equal(shapeAt(eased, 'v:a', 1, 'cells').m[5], 0);
-  assert.equal(shapeAt(eased, 'v:a', 6, 'cells').m[5], 24); // a key frame is where it was put
-  assert.equal(workedOutAt(eased, 3, 'cells').get('v:a').m[5], 4);
-  assert.equal(tweenedAt(eased, 3, 'cells').get('v:a').shape.m[5], 4);
+  const smooth = scene('linear');
+  smooth[6].changes = frames[6].changes;
+  assert.equal(shapeAt(smooth, 'v:a', 1).m[4], 0.8333); // smooth, as before
+  assert.deepEqual([shapeAt(frames, 'v:a', 1).m[4], shapeAt(frames, 'v:a', 1).m[5]], [1, 4]);
+  assert.equal(shapeAt(scene('easeIn'), 'v:a', 3).m[5], 3);
+  assert.equal(shapeAt(moving('cells'), 'v:a', 3).m[5], 4); // a cell is two pixels tall
+  assert.equal(shapeAt(moving('half'), 'v:a', 3).m[5], 3);
+  assert.equal(shapeAt(moving('cells'), 'v:a', 1).m[5], 0);
+  assert.equal(shapeAt(moving('cells'), 'v:a', 6).m[5], 24); // a key frame is where it was put
+  assert.equal(workedOutAt(moving('cells'), 3).get('v:a').m[5], 4);
+  assert.equal(tweenedAt(moving('cells'), 3).get('v:a').shape.m[5], 4);
+  assert.equal(spanAt(moving('cells'), 'v:a', 3).motion, 'cells');
+  assert.equal(spanAt(scene('easeIn'), 'v:a', 3).motion, 'smooth');
+});
+
+test('each tween moves as its own motion says: one snapped, the next smooth', () => {
+  const frames = moving('cells', 'linear');
+  frames[6].changes.set('v:a', cellState(transformed(A, translation(0, 21)), 0, 0)); // down 21 over frames 0 to 6
+  frames[8].changes.set('v:a', cellState(transformed(A, translation(0, 26)), 0, 0)); // and 5 more over frames 6 to 8
+  frames[6].tweens = new Map([['v:a', 'linear']]);
+  assert.equal(shapeAt(frames, 'v:a', 5).m[5], 18); // 17.5, snapped to whole cells
+  assert.equal(shapeAt(frames, 'v:a', 7).m[5], 23.5); // smooth
 });
 
 test('a shape turning as it moves is snapped by where its middle goes', () => {
   const frames = scene('linear');
   frames[6].changes.set('v:a', cellState(transformed(transformed(A, rotation(Math.PI / 2, 2, 2)), translation(0, 18)), 0, 0));
-  const m = shapeAt(frames, 'v:a', 1, 'cells').m;
+  frames[0].motions = new Map([['v:a', 'cells']]);
+  const m = shapeAt(frames, 'v:a', 1).m;
   close(m[0] * 2 + m[2] * 2 + m[4], 2); // its middle, (2, 2), down 3 rounded to 4: whole cells
   close(m[1] * 2 + m[3] * 2 + m[5], 6);
 });

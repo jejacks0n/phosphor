@@ -101,11 +101,19 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
 // visiting a frame between key frames doesn't make it a key frame, and undoing the edit that split a tween gives the
 // shape back to it. tweened: the tweens across the frame, key to { shape, easing }. unsetOf(key, shape): what the
 // frame would show of the shape as a key frame for it (holding shape) that sets none of its parts.
+// motions (a frame's, shape key to motion, or null) with key's set to motion; smooth isn't kept.
+function withMotion(motions, key, motion) {
+  const next = new Map(motions ?? []);
+  if (motion && motion !== 'smooth') next.set(key, motion);
+  else next.delete(key);
+  return next.size ? next : null;
+}
+
 function inheritance(project) {
   const at = project.frame, frame = project.currentFrame, bare = project.frames.slice();
   bare[at] = { ...frame, changes: new Map([...frame.changes].filter(([key]) => !isShapeKey(key))) };
-  const tweened = tweenedAt(bare, at, project.motion);
-  const shapeOf = (key) => shapeAt(bare, key, at, project.motion);
+  const tweened = tweenedAt(bare, at);
+  const shapeOf = (key) => shapeAt(bare, key, at);
   const inherits = (key, shape) => sameShape(shape ?? undefined, shapeOf(key) ?? undefined)
     && (!tweened.has(key) || !frame.changes.has(key) || !!frame.splits?.has(key));
   const unsetOf = (key, shape) => {
@@ -114,9 +122,9 @@ function inheritance(project) {
       ...frame,
       changes: new Map(frame.changes).set(key, cellState(shape, 0, 0)),
       parts: new Map([...(frame.parts ?? []), [key, new Set()]]),
-      ...(split && { tweens: new Map([...(frame.tweens ?? []), [key, split.easing]]) }),
+      ...(split && { tweens: new Map([...(frame.tweens ?? []), [key, split.easing]]), motions: withMotion(frame.motions, key, split.motion) }),
     };
-    return shapeAt(none, key, at, project.motion);
+    return shapeAt(none, key, at);
   };
   return { shapeOf, unsetOf, inherits, tweened };
 }
@@ -206,13 +214,14 @@ function note(project) {
   // A shape the frame stops having can leave later key frames with nothing to carry from: they keep how they look.
   if ([...frame.changes].some(([key, { cell }]) => isShapeKey(key) && cell && !changes.get(key)?.cell)) keepShown(project);
   // A shape changed on a frame between its key frames makes this one a key frame: the tween splits, both halves eased
-  // alike (splits: the keys made so). A shape this frame starts changing anywhere else starts with no tween here.
+  // and moving alike (splits: the keys made so). A shape this frame starts changing anywhere else starts with no tween here.
   for (const key of changes.keys()) {
     if (!isShapeKey(key) || frame.changes.has(key)) continue;
     const split = tweened.get(key), tweens = new Map(frame.tweens ?? []);
     if (split) tweens.set(key, split.easing);
     else tweens.delete(key);
     frame.tweens = tweens.size ? tweens : null;
+    frame.motions = withMotion(frame.motions, key, split?.motion);
     frame.splits = new Set(frame.splits ?? []);
     frame.splits[split ? 'add' : 'delete'](key);
   }
@@ -247,7 +256,7 @@ function movieWide(project, change) {
   }
 }
 
-const framesNow = (project) => ({ list: project.frames, states: project.frames.map(({ kind, changes, tweens, parts }) => ({ kind, changes, tweens, parts })), showing: project.currentFrame });
+const framesNow = (project) => ({ list: project.frames, states: project.frames.map(({ kind, changes, tweens, motions, parts }) => ({ kind, changes, tweens, motions, parts })), showing: project.currentFrame });
 
 // After the list changed at index at (before: the list as it was): the frames between of a tween across there, before
 // or after, go stale too, and with tweens anywhere, those after at as far as staleFrames reaches.
@@ -262,7 +271,7 @@ function staleTweens(project, before, at) {
 function putFrames(project, { list, states, showing }) {
   const was = project.frames, leaving = project.currentFrame;
   for (const frame of was) if (!list.includes(frame)) frame.resolved = frame.built = null; // history holds it, and these are only worked out
-  const differs = (frame, at) => frame !== was[at] || frame.kind !== states[at].kind || frame.changes !== states[at].changes || frame.tweens !== states[at].tweens || frame.parts !== states[at].parts;
+  const differs = (frame, at) => frame !== was[at] || frame.kind !== states[at].kind || frame.changes !== states[at].changes || frame.tweens !== states[at].tweens || frame.motions !== states[at].motions || frame.parts !== states[at].parts;
   let first = list.findIndex(differs);
   if (first < 0 && list.length < was.length) first = list.length; // only frames off the end gone: a tween may have run to one
   const reach = first > 0 ? tweenReach(was, first) : first; // a tween across first, as it was
@@ -272,6 +281,29 @@ function putFrames(project, { list, states, showing }) {
   project.frames = list;
   project._float = null;
   arrive(project, list.indexOf(showing), leaving);
+}
+
+// The tween each shape (by key) is in, or starts, on the frame showing, changed (change(frame it starts from, key)) where
+// differs(span) says it isn't as asked: one undo step. The first shape's tween, and every other's between the same key
+// frames.
+function changeTweens(project, keys, differs, change) {
+  if (!project.image) return;
+  settleFrame(project);
+  const first = keys.length ? spanAt(project.frames, keys[0], project.frame) : null;
+  if (!first) return;
+  const spans = keys.map((key) => [key, spanAt(project.frames, key, project.frame)])
+    .filter(([, span]) => span && span.from === first.from && span.to === first.to && differs(span));
+  if (!spans.length) return;
+  frameStep(project, () => {
+    for (const [key, { from }] of spans) {
+      const reach = tweenReach(project.frames, from + 1); // a part fading across this span, before and after
+      change(project.frames[from], key);
+      project.staleFrames(Math.min(from, reach, tweenReach(project.frames, from + 1)));
+      project.staleFrames(from);
+    }
+    project.frames = [...project.frames];
+    return project.currentFrame;
+  });
 }
 
 // One undo step around a change to the frames: change makes the new list and says which frame shows.
@@ -365,7 +397,7 @@ export const animationActions = {
       if (frame.resolved) continue;
       frame.resolved = resolveOver(at ? this.frames[at - 1].resolved : NOTHING, frame, this.cellsCarry);
       const kept = [];
-      for (const [key, shape] of workedOutAt(this.frames, at, this.motion)) {
+      for (const [key, shape] of workedOutAt(this.frames, at)) {
         frame.resolved.set(key, cellState(shape, 0, 0));
         // A key frame's whole shape is kept as it shows, for when what it carries from goes (the frame showing's is note's).
         const held = frame.changes.get(key)?.cell;
@@ -505,26 +537,21 @@ export const animationActions = {
   // The tween each shape (by key) is in, or starts, on the frame showing gets an easing, or with null none: one undo
   // step. A shape with no later key frame to tween to is left as it is.
   setTween(keys, easing) {
-    if (!this.image) return;
-    settleFrame(this);
-    // The first shape's tween, and every other selected shape's with key frames at both its ends.
-    const first = keys.length ? spanAt(this.frames, keys[0], this.frame) : null;
-    if (!first) return;
-    const spans = keys.map((key) => [key, spanAt(this.frames, key, this.frame)])
-      .filter(([, span]) => span && span.from === first.from && span.to === first.to && span.easing !== easing);
-    if (!spans.length) return;
-    frameStep(this, () => {
-      for (const [key, { from }] of spans) {
-        const frame = this.frames[from], tweens = new Map(frame.tweens ?? []);
-        if (easing) tweens.set(key, easing);
-        else tweens.delete(key);
-        const reach = tweenReach(this.frames, from + 1); // a part fading across this span, before and after
-        frame.tweens = tweens.size ? tweens : null;
-        this.staleFrames(Math.min(from, reach, tweenReach(this.frames, from + 1)));
-        this.staleFrames(from);
-      }
-      this.frames = [...this.frames];
-      return this.currentFrame;
+    changeTweens(this, keys, (span) => span.easing !== easing, (frame, key) => {
+      const tweens = new Map(frame.tweens ?? []);
+      if (easing) tweens.set(key, easing);
+      else tweens.delete(key);
+      frame.tweens = tweens.size ? tweens : null;
+      if (!easing) frame.motions = withMotion(frame.motions, key, null);
+    });
+  },
+
+  // How the tween each shape (by key) is in, or starts, on the frame showing moves it (MOTIONS): one undo step. Only a
+  // tween has a motion.
+  setTweenMotion(keys, motion) {
+    if (!MOTIONS.includes(motion)) return;
+    changeTweens(this, keys, (span) => !!span.easing && span.motion !== motion, (frame, key) => {
+      frame.motions = withMotion(frame.motions, key, motion);
     });
   },
 
@@ -580,11 +607,6 @@ export const animationActions = {
     this.editVersion++;
   },
 
-  // How the movie's tweens move shapes (MOTIONS): every frame worked out again, the one showing shown so.
-  setMotion(mode) {
-    if (MOTIONS.includes(mode) && mode !== this.motion) movieWide(this, () => { this.motion = mode; });
-  },
-
   // Whether a Blank frame shows the cells before it (true), or only its own with the frame before as its ghost.
   setCellsCarry(on) {
     if (!!on !== this.cellsCarry) movieWide(this, () => { this.cellsCarry = !!on; });
@@ -596,7 +618,7 @@ export const animationActions = {
 
   // The frames a file held (deserializeFrames), over the document just opened from it: the frame it was on shows,
   // from its own state, and Animate's on. The render that opens the document draws it.
-  openFrames({ frames, frame, fps, motion = 'smooth', cellsCarry = true }) {
+  openFrames({ frames, frame, fps, cellsCarry = true }) {
     const leaving = this.currentFrame;
     this.ensureLayer();
     let cols = 0, rows = 0;
@@ -612,7 +634,6 @@ export const animationActions = {
     this.baseLayer.extend(this.paintLayer.cols, this.paintLayer.rows); // together, as ever
     this.frames = frames;
     this.fps = fps;
-    this.motion = motion;
     this.cellsCarry = cellsCarry;
     arrive(this, frame, leaving, { draw: false });
     this.setAnimate(true);
@@ -623,7 +644,6 @@ export const animationActions = {
     this.frames = [newFrame('blank')];
     this.frame = 0;
     this.fps = 8;
-    this.motion = 'smooth';
     this.cellsCarry = true;
     this._arrived = this._noted = this._moviePalette = null;
     this.renderer.usePalette(null);
