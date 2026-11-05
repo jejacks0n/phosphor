@@ -95,7 +95,10 @@ Best match, paint colors a cell's halves through its character (or makes a `▄`
 With **By shape**, a cell with paint in it is matched again with the paint over the picture, so it
 gets the character (and colors) it would have once merged down: white paint on black shows as
 characters in Monochrome ASCII, and a stroke over part of a cell gets the shape that fits it. Erase
-the paint and the cell is the picture's again. Floyd–Steinberg's error doesn't pass through painted
+the paint and the cell is the picture's again. Paint covers whole half cells, though, so there's no
+finer shape in it to find: on its own a stroke gives `▀`, `▄`, `█` and the like, as before, and the
+finer characters (quadrants, `▐ ▌`, the rising blocks) come only where paint and the picture share
+a cell. Detail finer than half a cell comes from the picture. Floyd–Steinberg's error doesn't pass through painted
 cells; it does once they're merged down.
 
 In ANSI with a palette, the Pixel tab shows the cells Best match or By shape chose, each half its
