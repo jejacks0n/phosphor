@@ -4,6 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { rectShape, translation, transformed } from '@/document/shapes.js';
 import { ease } from '@/document/tweens.js';
+import { writeProject } from '@/document/projectIO.js';
 
 async function animated() {
   const { project, workspace } = await createTestApp();
@@ -138,4 +139,14 @@ test('adding, deleting or moving a frame inside a tween redraws the frames it re
   project.undo();
   project.moveFrame(6, 2); // the far key moved to frame 2: 0 to 2
   expect(at(1)).toBe(eased(1 / 2));
+});
+
+test('a project keeps its tweens when saved and opened', async () => {
+  const { project } = await animated();
+  const key = bounce(project, 'easeIn');
+  const file = new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'ball.phosphor');
+  const { project: opened } = await createTestApp();
+  await opened.loadProject(file);
+  opened.showFrame(3);
+  expect(y(opened, key)).toBe(3);
 });

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import assert from 'node:assert/strict';
 import { EMPTY_STATE, FRAME_KINDS, cellState, deserializeFrames, drawnKeys, foldDeleted, frameDiff, isEmptyState, newFrame, resolveOver, serializeFrames } from '../../src/document/frames.js';
 import { MAX_CELLS, MAX_COLS, MAX_FRAMES, MAX_LINES } from '../../src/lib/Cells.js';
+import { rectShape, transformed, translation } from '../../src/document/shapes.js';
 
 const A = Object.freeze({ char: 'A' }), B = Object.freeze({ char: 'B' });
 const RED = 0xff0000ff, BLUE = 0x0000ffff;
@@ -245,4 +246,28 @@ test("a deleted key frame's tweens fold into the Blank frame after it", () => {
   const wipe = newFrame('wipe');
   wipe.tweens = new Map([['v:b', 'linear']]);
   assert.equal(foldDeleted(deleted, wipe).tweens, wipe.tweens);
+});
+
+test("tweens are saved for the shapes a frame owns, and read back; what can't be read is left out", () => {
+  const ball = rectShape(0, 0, 4, 4, { fill: '#ff0000' });
+  const frames = Array.from({ length: 9 }, () => newFrame('blank'));
+  frames[0].changes.set('v:a', cellState(ball, 0, 0));
+  frames[0].tweens = new Map([['v:a', 'easeIn']]);
+  frames[6].changes.set('v:a', cellState(transformed(ball, translation(0, 24)), 0, 0));
+  frames[3].tweens = new Map([['v:a', 'linear']]); // left from an edit undone: frame 3 doesn't own v:a
+  const saved = serializeFrames(frames);
+  assert.deepEqual(saved[0].tweens, [['v:a', 'easeIn']]);
+  assert.ok(saved.slice(1).every((frame) => !('tweens' in frame)));
+  const read = (list) => deserializeFrames({ frames: list, frame: 0, fps: 8 }, 20, 20);
+  assert.deepEqual(read(saved).frames[0].tweens, new Map([['v:a', 'easeIn']]));
+  assert.ok(read(saved).frames.slice(1).every((frame) => frame.tweens === null));
+  const odd = structuredClone(saved);
+  odd[0].tweens = [['v:a', 'bounceOut'], ['notakey', 'linear'], ['v:zz', 'linear'], 'nonsense', ['v:a']];
+  odd[1].tweens = [['v:a', 'linear']]; // frame 1 doesn't own v:a
+  odd[2].tweens = 'nonsense';
+  const opened = read(odd);
+  assert.ok(opened);
+  assert.ok(opened.frames.every((frame) => frame.tweens === null));
+  const old = saved.map(({ tweens, ...rest }) => rest);
+  assert.ok(read(old).frames.every((frame) => frame.tweens === null));
 });
