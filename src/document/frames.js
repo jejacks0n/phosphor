@@ -12,6 +12,7 @@
 import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
 import { isShape, isShapeKey, sameShape, shapeFromStranger, isGoodShapeKey, MOST_SHAPES } from './shapes.js';
+import { EASINGS } from './tweens.js';
 import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf, maxFramesFor } from '../lib/Cells.js';
 
 export const FRAME_KINDS = ['blank', 'duplicate', 'wipe'];
@@ -111,15 +112,19 @@ export function paintImage(resolved, cols, rows) {
 // Frames as a file holds them: an entry is [key, cell, top, bottom]. drawn: the cells drawn over that changes doesn't
 // hold, if any (what changes holds was drawn, or the frame wouldn't own it). shapes: the frame's shape changes,
 // [key, shape | null], in a field of their own so that a copy of Phosphor from before shapes still reads changes.
+// tweens: [key, easing] for the tweens starting on the frame, of shapes it has; a copy from before tweens shows the key
+// frames only.
 export const serializeFrames = (frames) => frames.map((frame) => {
   const { kind, hold, changes } = frame, drawn = [...drawnKeys(frame)].filter((key) => !changes.has(key));
   const all = [...changes], shapes = all.filter(([key]) => isShapeKey(key));
+  const tweens = [...(frame.tweens ?? [])].filter(([key]) => changes.get(key)?.cell);
   return {
     kind,
     hold,
     changes: all.filter(([key]) => !isShapeKey(key)).map(([key, { cell, top, bottom }]) => [key, cell, top, bottom]),
     ...(drawn.length && { drawn }),
     ...(shapes.length && { shapes: shapes.map(([key, { cell }]) => [key, cell]) }),
+    ...(tweens.length && { tweens }),
   };
 });
 
@@ -157,6 +162,14 @@ function readShapes(entries, changes) {
   return true;
 }
 
+// A frame's tweens, of the shapes it has, or null: one that can't be read (another copy's easing, say) is left out.
+function readTweens(entries, changes) {
+  if (!Array.isArray(entries)) return null;
+  const good = ([key, easing]) => isGoodShapeKey(key) && !!changes.get(key)?.cell && EASINGS.includes(easing);
+  const tweens = new Map(entries.slice(0, MOST_SHAPES).filter((entry) => Array.isArray(entry) && good(entry)));
+  return tweens.size ? tweens : null;
+}
+
 // { frames, frame, fps } from a file, or null when anything's wrong with them, or the grid (cols, rows) is too
 // large to animate: the file's still holds what it needs to open as one. Files are untrusted.
 export function deserializeFrames(json, cols, rows) {
@@ -168,7 +181,7 @@ export function deserializeFrames(json, cols, rows) {
   const read = [];
   let shown = new Set(); // the shapes a frame shows: Blank frames carry them on, so each frame is counted whole
   for (const entry of frames) {
-    const { kind, hold, changes, drawn, shapes } = entry ?? {};
+    const { kind, hold, changes, drawn, shapes, tweens } = entry ?? {};
     if (!FRAME_KINDS.includes(kind) || !Number.isFinite(hold) || hold < 0 || hold > 60) return null;
     const map = readChanges(changes);
     if (!map || !readShapes(shapes, map)) return null;
@@ -178,6 +191,7 @@ export function deserializeFrames(json, cols, rows) {
     if (drawn !== undefined && !(Array.isArray(drawn) && drawn.length <= MAX_CELLS && drawn.every(goodKey))) return null;
     const next = newFrame(kind, map);
     next.hold = hold;
+    next.tweens = readTweens(tweens, map);
     if (drawn?.length) next.drawn = new Map([[KEPT, new Set(drawn)]]);
     read.push(next);
   }
