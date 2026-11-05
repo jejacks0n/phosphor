@@ -512,6 +512,37 @@ test('a stroke inside or outside the outline takes its whole width there; an ope
   expect(shapeAt(outside, 11.5, 20, 0.1)).toBe(null);
 });
 
+test('an open path\'s stroke to its left or right, of the way it was drawn: its whole width there, a gradient too, no seams on a curve', async () => {
+  // East along y = 10 from x = 5 to 30, then south to y = 30: left is north, then east.
+  const ell = makeShape({ points: [[5, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 30, 0, 0, 0, 0, 0]], closed: false, fill: null, stroke: '#ffffff', width: 1, join: 'miter', cap: 'butt' });
+  const lit = (px, list) => list.filter(([x, y]) => px(x, y).some((v) => v > 128)).map(String);
+  const across = [[15, 8.75], [15, 9.25], [15, 9.75], [15, 10.25], [15, 10.75], [28.75, 20], [29.25, 20], [29.75, 20], [30.25, 20], [30.75, 20]];
+  expect(lit(painted(ell), across)).toEqual(['15,9.75', '15,10.25', '29.75,20', '30.25,20']);
+  expect(lit(painted(withShape(ell, { align: 'left' })), across)).toEqual(['15,9.25', '15,9.75', '30.25,20', '30.75,20']);
+  expect(lit(painted(withShape(ell, { align: 'right' })), across)).toEqual(['15,10.25', '15,10.75', '29.25,20', '29.75,20']);
+  expect(painted(withShape(ell, { align: 'left' }))(30.5, 9.5)).toEqual([255, 255, 255]); // the outer corner, mitered
+  // A gradient stroke, to the left: there, in its colors.
+  const stroke = { type: 'linear', stops: RED_TO_BLUE, m: [25, 0, 0, 25, 5, 10] };
+  const graded = painted(withShape(ell, { align: 'left', stroke }));
+  expect(near(graded(6, 9.5), [255, 0, 0], 40)).toBe(true);
+  expect(graded(6, 10.5)).toEqual([0, 0, 0]);
+  // A curve, 2 wide to its left: solid all along, no seams where its steps meet.
+  const arc = makeShape({ points: [[5, 5, 0, 0, 20, 0, 0], [35, 35, 0, -20, 0, 0, 0]], closed: false, fill: null, stroke: '#ffffff', width: 2, align: 'left' });
+  const curve = painted(arc);
+  const off = [];
+  for (let t = 0.05; t < 1; t += 0.05) { // a point a grid pixel to the left of the curve at t
+    const u = 1 - t, x = u * u * u * 5 + 3 * u * u * t * 25 + 3 * u * t * t * 35 + t * t * t * 35, y = u * u * u * 5 + 3 * u * u * t * 5 + 3 * u * t * t * 15 + t * t * t * 35;
+    const dx = 3 * u * u * 20 + 6 * u * t * 10 + 3 * t * t * 0, dy = 3 * u * u * 0 + 6 * u * t * 10 + 3 * t * t * 20, long = Math.hypot(dx, dy);
+    const [r, g, b] = curve(x + dy / long, y - dx / long);
+    if (r < 250 || g < 250 || b < 250) off.push([t.toFixed(2), r, g, b]);
+  }
+  expect(off).toEqual([]);
+  // Its hits go where it draws.
+  const shapes = new Map([['v:1', withShape(ell, { align: 'left' })]]);
+  expect(shapeAt(shapes, 15, 9.2, 0.1)).toBe('v:1');
+  expect(shapeAt(shapes, 15, 10.6, 0.1)).toBe(null);
+});
+
 test('a radial gradient stretched with its shape is an ellipse', async () => {
   // A circle of radius 10 about (20, 20), red in the middle to blue at the rim, then the shape stretched ×1.5
   // across about its middle.

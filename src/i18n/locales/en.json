@@ -1364,6 +1364,8 @@
     "alignInside": "Stroke inside",
     "alignCenter": "Stroke centered",
     "alignOutside": "Stroke outside",
+    "alignLeft": "Stroke left of the path",
+    "alignRight": "Stroke right of the path",
     "svgUnreadable": "Couldn't read this file as an SVG.",
     "svgEmpty": "Nothing in this SVG could come in.",
     "svgLeftOut": "Left out: {kinds}.",

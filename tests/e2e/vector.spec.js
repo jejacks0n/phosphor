@@ -772,7 +772,7 @@ test('the Stroke color box sets caps, joins and the miter limit on the selection
   expect(await height()).toBe(ansi);
 });
 
-test('the Stroke color box puts the stroke inside, centered on or outside the outline; with only open paths selected it can\'t', async ({ page }) => {
+test('the Stroke color box puts the stroke inside, centered on or outside the outline, and an open path\'s to its left or right', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
   await settled(page);
@@ -797,8 +797,13 @@ test('the Stroke color box puts the stroke inside, centered on or outside the ou
   await page.keyboard.press('Enter'); // an open path, selected
   expect(await selected(page)).not.toEqual([key]);
   await page.locator('.color-pair .chip.bg').click();
-  await expect(button('Stroke inside')).toBeDisabled();
-  await expect(button('Stroke outside')).toBeDisabled();
+  await expect(button('Stroke inside')).toHaveCount(0); // an open path: its sides instead
+  await expect(button('Stroke centered')).toHaveAttribute('aria-pressed', 'true');
+  await button('Stroke right of the path').click();
+  expect((await shapeList(page)).find((s) => s.key !== key)).toMatchObject({ align: 'right' });
+  await expect(button('Stroke right of the path')).toHaveAttribute('aria-pressed', 'true');
+  await button('Stroke left of the path').click();
+  expect((await shapeList(page)).find((s) => s.key !== key)).toMatchObject({ align: 'left' });
 });
 
 test('the Fill color box makes a gradient and takes it back to solid', async ({ page }) => {
