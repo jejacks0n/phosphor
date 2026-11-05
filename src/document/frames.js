@@ -79,10 +79,13 @@ export function sameChanges(a, b) {
 }
 
 // The frame after a deleted one, so the rest of the movie looks the same: a Blank takes in what it inherited
-// from the deleted frame, and the deleted frame's kind when that was what cut it off from the frames before.
+// from the deleted frame, and the deleted frame's kind when that was what cut it off from the frames before; and the
+// tweens of the shapes it takes in, which start there now.
 export function foldDeleted(deleted, next) {
-  if (next.kind !== 'blank') return { kind: next.kind, changes: next.changes };
-  return { kind: deleted.kind, changes: new Map([...deleted.changes, ...next.changes]) };
+  if (next.kind !== 'blank') return { kind: next.kind, changes: next.changes, tweens: next.tweens };
+  const tweens = new Map([...(deleted.tweens ?? [])].filter(([key]) => !next.changes.has(key)));
+  for (const [key, easing] of next.tweens ?? []) tweens.set(key, easing);
+  return { kind: deleted.kind, changes: new Map([...deleted.changes, ...next.changes]), tweens: tweens.size ? tweens : null };
 }
 
 // A resolved frame's paint as an image cols x rows, a pixel a grid pixel (PaintLayer.loadGrid takes it).
