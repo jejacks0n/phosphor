@@ -50,15 +50,29 @@ what it shows can change.
 
 Undo works across frames: it goes back to the frame the edit was made on and undoes it there.
 
-Shapes ([Vector shapes](vector.md)) belong to frames the same way. A Blank frame carries the shapes before it;
-moving, reshaping or recoloring one there makes it that frame's, and the change carries on until a frame that
-changed that shape itself. Deleting a shape carries forward too. A Duplicate starts with its own copy of every shape,
-and a Wipe with none.
+Shapes ([Vector shapes](vector.md)) belong to frames by their parts. A Blank frame carries the shapes before it;
+changing one there makes that frame a **key frame** for it, and the frame keeps only the parts you changed:
+
+- its position, size and turn
+- its outline (its points, and the fill rule)
+- its fill
+- its stroke color
+- its stroke width
+- its stroke's style (cap, join and alignment)
+- where it's stacked
+
+Everything else still comes from the frames before, and follows them. Move a ball on frames 7 and 13, then give it a
+gradient on frame 1: every frame shows the gradient, and the moves stay where you made them. A part you set on a key
+frame stays its own until you change it back to what the frame would show without it.
+
+The frame a shape first appears on keeps all of it, and so does a Duplicate, which starts with its own copy of every
+shape; a Wipe starts with none. Deleting a shape carries forward too. If the frames a key frame carries from go (the
+shape deleted before it, say), it keeps the shape as it last looked there.
 
 ## Tweens
 
 A tween moves a shape ([Vector shapes](vector.md)) from one of its key frames to the next, so you don't draw the frames
-between. A shape's **key frames** are the frames that change it. Place a ball on frame 1, add Blank frames, move it down
+between. A shape's **key frames** are the frames that change any part of it. Place a ball on frame 1, add Blank frames, move it down
 on frame 7, select it, and choose an easing from **Tween** on the bar: frames 2 to 6 now show it on its way down.
 
 The menu says which frames the tween covers ("Frames 1 to 7"), and has:
@@ -84,6 +98,11 @@ A tween's timing goes by frames: half way through is the middle frame, whatever 
 frames that don't change the shape; a Duplicate or a Wipe ends it. Change a key frame and the frames between follow.
 Moving the shape on a frame between makes that a key frame: the tween splits in two, both halves with its easing.
 Tweens play, and the exports show them; projects and autosave keep them.
+
+Each part goes from one key frame that set it to the next, across key frames that didn't, in step with the shape's
+tweens. The ball red on frame 1, moved on frame 7, blue on frame 13, with Ease in from frame 1 and Ease out from 7: the
+fill fades over all of frames 1 to 13, starting slow, half way on frame 7 and slowing into blue, as the ball moves. A
+stretch with no tween holds a part, as it holds the shape.
 
 ## The ghost
 
