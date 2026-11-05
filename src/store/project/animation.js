@@ -9,7 +9,7 @@ import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { isShapeKey, sameShape } from '@/document/shapes.js';
-import { tweenReach, tweenedAt } from '@/document/tweens.js';
+import { spanAt, tweenReach, tweenedAt } from '@/document/tweens.js';
 import { newLedger } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
 
@@ -122,17 +122,25 @@ function settleFrame(project) {
   note(project);
 }
 
-const framesNow = (project) => ({ list: project.frames, states: project.frames.map(({ kind, changes }) => ({ kind, changes })), showing: project.currentFrame });
+const framesNow = (project) => ({ list: project.frames, states: project.frames.map(({ kind, changes, tweens }) => ({ kind, changes, tweens })), showing: project.currentFrame });
+
+// After the list changed at index at (before: the list as it was): the frames between of a tween across there, before
+// or after, go stale too, and with tweens anywhere, those after at as far as staleFrames reaches.
+function staleTweens(project, before, at) {
+  if (!project.frames.some((frame) => frame.tweens?.size) && !before.some((frame) => frame.tweens?.size)) return;
+  project.staleFrames(Math.min(at, tweenReach(before, Math.min(at, before.length)), tweenReach(project.frames, Math.min(at, project.frames.length))));
+}
 
 // The frames as a step of history left them. Frame objects are kept, so a deleted frame's ledger comes back with
 // it. Holds aren't part of a step, and they live on the frame, so they stay.
 function putFrames(project, { list, states, showing }) {
   const was = project.frames, leaving = project.currentFrame;
   for (const frame of was) if (!list.includes(frame)) frame.resolved = frame.built = null; // history holds it, and these are only worked out
-  const differs = (frame, at) => frame !== was[at] || frame.kind !== states[at].kind || frame.changes !== states[at].changes;
-  const first = list.findIndex(differs);
+  const differs = (frame, at) => frame !== was[at] || frame.kind !== states[at].kind || frame.changes !== states[at].changes || frame.tweens !== states[at].tweens;
+  const first = list.findIndex(differs), reach = first > 0 ? tweenReach(was, first) : first; // a tween across first, as it was
   list.forEach((frame, at) => Object.assign(frame, states[at]));
-  if (first >= 0) for (let at = first; at < list.length; at++) list[at].resolved = list[at].built = null;
+  const from = first > 0 ? Math.min(reach, tweenReach(list, first)) : first; // and as it is now
+  if (first >= 0) for (let at = from; at < list.length; at++) list[at].resolved = list[at].built = null;
   project.frames = list;
   project._float = null;
   arrive(project, list.indexOf(showing), leaving);
@@ -318,8 +326,10 @@ export const animationActions = {
     frameStep(this, () => {
       const at = this.frame + 1;
       const added = newFrame(kind, kind === 'duplicate' ? new Map(this.resolvedOf(this.frame)) : new Map());
+      const before = this.frames;
       this.frames = [...this.frames.slice(0, at), added, ...this.frames.slice(at)];
       this.staleFrames(at);
+      staleTweens(this, before, at);
       return added;
     });
   },
@@ -330,10 +340,12 @@ export const animationActions = {
     settleFrame(this);
     frameStep(this, () => {
       const deleted = this.currentFrame, at = this.frame, next = this.frames[at + 1];
+      const before = this.frames.map((frame) => ({ ...frame })); // as they were, next before its fold
       if (next) Object.assign(next, foldDeleted(deleted, next));
       this.frames = this.frames.filter((frame) => frame !== deleted);
       deleted.resolved = deleted.built = null; // history holds it, and these are only worked out
       if (next) this.frames[at].resolved = this.frames[at].built = null;
+      staleTweens(this, before, at);
       return this.frames[Math.min(at, this.frames.length - 1)];
     });
   },
@@ -344,11 +356,32 @@ export const animationActions = {
     if (from === to || !this.frames[from] || !this.frames[to]) return;
     settleFrame(this);
     frameStep(this, () => {
-      const showing = this.currentFrame, frames = [...this.frames];
+      const showing = this.currentFrame, frames = [...this.frames], first = Math.min(from, to);
       frames.splice(to, 0, ...frames.splice(from, 1));
-      for (let at = Math.min(from, to); at < frames.length; at++) frames[at].resolved = frames[at].built = null;
+      const reach = Math.min(first, tweenReach(this.frames, first), tweenReach(frames, first)); // a tween across, before or after
+      for (let at = reach; at < frames.length; at++) frames[at].resolved = frames[at].built = null;
       this.frames = frames;
       return showing;
+    });
+  },
+
+  // The tween each shape (by key) is in, or starts, on the frame showing gets an easing, or with null none: one undo
+  // step. A shape with no later key frame to tween to is left as it is.
+  setTween(keys, easing) {
+    if (!this.image) return;
+    settleFrame(this);
+    const spans = keys.map((key) => [key, spanAt(this.frames, key, this.frame)]).filter(([, span]) => span && span.easing !== easing);
+    if (!spans.length) return;
+    frameStep(this, () => {
+      for (const [key, { from }] of spans) {
+        const frame = this.frames[from], tweens = new Map(frame.tweens ?? []);
+        if (easing) tweens.set(key, easing);
+        else tweens.delete(key);
+        frame.tweens = tweens.size ? tweens : null;
+        this.staleFrames(from);
+      }
+      this.frames = [...this.frames];
+      return this.currentFrame;
     });
   },
 

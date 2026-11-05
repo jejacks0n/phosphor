@@ -233,3 +233,16 @@ describe('saving frames', () => {
     expect(deserializeFrames({ fps: 8, frame: 0 }, 20, 20)).toBeNull();
   });
 });
+
+test("a deleted key frame's tweens fold into the Blank frame after it", () => {
+  const shape = Object.freeze({ points: [] });
+  const deleted = newFrame('blank', new Map([['v:a', cellState(shape, 0, 0)], ['v:c', cellState(shape, 0, 0)]]));
+  deleted.tweens = new Map([['v:a', 'easeIn'], ['v:b', 'easeOut'], ['v:c', 'linear']]);
+  const next = newFrame('blank', new Map([['v:b', cellState(shape, 0, 0)], ['v:c', cellState(shape, 0, 0)]]));
+  next.tweens = new Map([['v:b', 'linear']]);
+  // v:a goes on from the deleted frame; next's own shapes keep their own tweens, or none (v:c).
+  assert.deepEqual(foldDeleted(deleted, next).tweens, new Map([['v:a', 'easeIn'], ['v:b', 'linear']]));
+  const wipe = newFrame('wipe');
+  wipe.tweens = new Map([['v:b', 'linear']]);
+  assert.equal(foldDeleted(deleted, wipe).tweens, wipe.tweens);
+});

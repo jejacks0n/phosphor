@@ -14,14 +14,13 @@ const moveBy = (project, key, dx, dy) => project.updateShapes([[key, transformed
 const y = (project, key) => project.shapes.get(key).m[5];
 const cellsOf = (built) => built.cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`);
 
-// A ball: on frame 0, then six Blank frames, moved down 24 on frame 6, with a tween from frame 0 to frame 6.
+// A ball: on frame 0, then six Blank frames, moved down 24 on frame 6, with a tween from frame 0 to frame 6; frame 0 shows.
 function bounce(project, easing) {
   const key = project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }));
   for (let i = 0; i < 6; i++) project.addFrame('blank');
   moveBy(project, key, 0, 24);
   project.showFrame(0);
-  project.frames[0].tweens = new Map([[key, easing]]);
-  project.staleFrames(0);
+  project.setTween([key], easing);
   return key;
 }
 
@@ -82,4 +81,61 @@ test('playing and exporting build the tweened frame', async () => {
   project.frames[0].tweens = null;
   project.staleFrames(0);
   expect(cellsOf(await project.builtFrame(3))).not.toEqual(tweened);
+});
+
+test('the Tween choice is one undo step, and undo brings the frames between back', async () => {
+  const { project } = await animated();
+  const key = bounce(project, 'easeIn');
+  project.showFrame(3);
+  project.setTween([key], 'linear');
+  expect(y(project, key)).toBe(12);
+  project.undo();
+  expect(y(project, key)).toBe(3);
+  project.undo();
+  expect(y(project, key)).toBe(0);
+  project.redo();
+  project.redo();
+  expect(y(project, key)).toBe(12);
+});
+
+test("undoing the far key frame's edit brings the frames between back", async () => {
+  const { project } = await animated();
+  const key = bounce(project, 'easeIn');
+  project.showFrame(3);
+  project.showFrame(6);
+  moveBy(project, key, 0, 8);
+  project.showFrame(3);
+  expect(y(project, key)).toBe(4);
+  project.undo();
+  project.showFrame(3);
+  expect(y(project, key)).toBe(3);
+});
+
+test('adding, deleting or moving a frame inside a tween redraws the frames it reaches', async () => {
+  const { project } = await animated();
+  const key = bounce(project, 'easeIn');
+  const at = (i) => (project.showFrame(i), y(project, key));
+  const eased = (t) => Math.round(24 * ease('easeIn', t) * 1e4) / 1e4;
+  project.showFrame(6);
+  project.addFrame('blank'); // a frame after the far key, for it to fold into when deleted
+  for (let i = 1; i < 6; i++) at(i); // every frame between resolved, so a cache left behind would show
+  project.showFrame(3);
+  project.addFrame('blank'); // 0 to 7 now
+  expect(at(2)).toBe(eased(2 / 7));
+  expect(at(3)).toBe(eased(3 / 7));
+  project.undo();
+  expect(at(2)).toBe(eased(2 / 6));
+  expect(at(3)).toBe(3);
+  project.showFrame(3);
+  project.deleteFrame(); // 0 to 5
+  expect(at(2)).toBe(eased(2 / 5));
+  expect(at(4)).toBe(eased(4 / 5));
+  project.undo();
+  project.showFrame(6);
+  project.deleteFrame(); // the far key: the frame after it takes its shape, 0 to 6 again
+  expect(project.frames[6].changes.has(key)).toBe(true);
+  expect(at(3)).toBe(3);
+  project.undo();
+  project.moveFrame(6, 2); // the far key moved to frame 2: 0 to 2
+  expect(at(1)).toBe(eased(1 / 2));
 });
