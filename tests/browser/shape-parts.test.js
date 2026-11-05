@@ -254,3 +254,72 @@ test('a key frame keeps what it set when a frame before comes to match it, so un
   expect(shown(project, key, 9).fill).toBe('#0000ff');
   expect(shown(project, key, 6).fill).toBe('#ff0000');
 });
+
+// A red ball on frame 0 that is blue on frame 12 (that frame setting only its fill), with Ease in from frame 0; frame 0 shows.
+function fade(project) {
+  const key = project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }));
+  for (let at = 1; at <= 12; at++) project.addFrame('blank');
+  restyle(project, key, { fill: '#0000ff' });
+  project.showFrame(0);
+  project.setTween([key], 'easeIn');
+  return key;
+}
+
+test("splitting a tween with the far key frame's own value keeps the edit", async () => {
+  const { project } = await animated();
+  const key = fade(project);
+  project.showFrame(6);
+  restyle(project, key, { fill: '#0000ff' });
+  project.showFrame(0);
+  project.showFrame(6);
+  expect(project.shapes.get(key).fill).toBe('#0000ff');
+  expect(partsOf(project, 6, key)).toEqual(['fill']);
+});
+
+test('a key frame edited while it has nothing to carry from follows again when that is undone', async () => {
+  const { project } = await animated();
+  const key = ball(project);
+  project.deleteShapes([key]);
+  project.showFrame(6);
+  project.addShape(rectShape(10, 10, 12, 12, { fill: '#00ff00' })); // an edit on frame 6
+  project.showFrame(0);
+  project.undo(); // the other shape
+  project.undo(); // the delete
+  project.showFrame(0);
+  restyle(project, key, { fill: '#0000ff' });
+  project.noteFrame();
+  expect(shown(project, key, 6).fill).toBe('#0000ff');
+});
+
+test('a key frame left with nothing to carry from keeps the look it had after a split re-showed it', async () => {
+  const { project } = await animated();
+  const key = fade(project);
+  project.showFrame(6);
+  moveBy(project, key, 1, 0);
+  project.noteFrame();
+  const after = shown(project, key, 6);
+  project.showFrame(0);
+  project.deleteShapes([key]);
+  project.noteFrame();
+  expect(shown(project, key, 6)).toEqual(after);
+});
+
+test("a key frame left with nothing to carry from keeps a change it hadn't been drawn with yet", async () => {
+  const { project } = await animated();
+  const key = ball(project);
+  restyle(project, key, { fill: '#00ff00' });
+  project.noteFrame(); // as the frame bar does after each step
+  project.deleteShapes([key]);
+  project.noteFrame();
+  expect(shown(project, key, 6).fill).toBe('#00ff00');
+});
+
+test('a key frame moved ahead of where its shape starts keeps the look it carried', async () => {
+  const { project } = await animated();
+  const key = ball(project);
+  restyle(project, key, { fill: '#00ff00' });
+  project.noteFrame();
+  project.moveFrame(0, 12);
+  project.noteFrame();
+  expect(shown(project, key, 5).fill).toBe('#00ff00');
+});
