@@ -916,7 +916,7 @@
       "stamp": "Tampon : laisser une copie ici et continuer à déplacer le bloc",
       "deselect": "Désélectionner, en déposant le bloc (retour au mode Édition, si vous en venez)",
       "playPause": "Lecture ou pause (toute autre touche met aussi en pause)",
-      "prevNextFrame": "Image précédente ou suivante",
+      "prevNextFrame": "Image précédente ou suivante ({keys} pendant la saisie)",
       "switchTabs": "Lorsqu'un onglet a le focus : changer d'onglet"
     }
   },

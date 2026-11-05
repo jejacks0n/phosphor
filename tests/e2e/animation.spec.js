@@ -341,6 +341,27 @@ test('the Tween menu can make every tween move by whole cells', async ({ page })
   await expect(page.getByRole('button', { name: 'By whole cells' })).toHaveAttribute('aria-pressed', 'true');
 });
 
+test('Alt+. and Alt+, step frames while typing, and the typing carries on there', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  await addFrame(page, 'Blank');
+  await scrubTo(page, 0);
+  await expect(shown(page)).toHaveText('1 / 2');
+  await page.getByRole('button', { name: 'Edit Mode' }).click();
+  const at = await cellPoint(page, 2, 2);
+  await page.mouse.click(at.x, at.y);
+  await page.waitForFunction(() => document.activeElement?.dataset?.textInput !== undefined);
+  await page.keyboard.press('A');
+  await page.keyboard.press('Alt+Period');
+  await expect(shown(page)).toHaveText('2 / 2');
+  await page.keyboard.press('B'); // the cursor's still up, where it was
+  await expect.poll(() => chars(page, 2, 2, 3)).toBe('AB');
+  await page.keyboard.press('Alt+Comma');
+  await expect(shown(page)).toHaveText('1 / 2');
+  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
+  expect(await chars(page, 2, 3, 3)).not.toBe('B'); // the B is frame 2's
+});
+
 test('the frame menu can keep cells on the frame they were drawn on', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();

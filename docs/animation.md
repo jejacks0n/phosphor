@@ -24,7 +24,8 @@ nothing was, a block for a Duplicate, and a diamond for a Wipe. With a shape sel
 from key frame to key frame, with a dot for each frame between.
 
 The keys, with Animate on and not while you're typing: **L** plays and pauses, **,** and **.** step, wrapping around the
-ends. Any other key pauses first, and so does starting to draw, so what you do lands on the frame showing.
+ends. **Alt+,** and **Alt+.** (Option on a Mac) step too, and work while you're typing, where , and . type: the cursor
+stays where it is, so you can type on one frame, step, and go on typing on the next. Any other key pauses first, and so does starting to draw, so what you do lands on the frame showing.
 
 ## The three kinds of frame
 
