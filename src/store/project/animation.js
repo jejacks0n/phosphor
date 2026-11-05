@@ -8,7 +8,8 @@ import { cellState, foldDeleted, frameDiff, newFrame, paintImage, resolveOver, s
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
-import { isShapeKey } from '@/document/shapes.js';
+import { isShapeKey, sameShape } from '@/document/shapes.js';
+import { tweenReach, tweenedAt } from '@/document/tweens.js';
 import { newLedger } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
 
@@ -82,15 +83,33 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
   else if (!project.composite()) project.rebuildCells();
 }
 
+// What the frame showing changed over previous (what it inherits). A shape showing just where a tween would put it
+// there, if this frame didn't change it, isn't the frame's own: visiting a frame between key frames doesn't make it a
+// key frame, and undoing an edit there gives the shape back to its tween. tweened: those tweens, key to { shape, easing }.
+function ownChanges(project, previous) {
+  const at = project.frame, frame = project.currentFrame, own = frameDiff(previous, liveStates(project));
+  const bare = project.frames.slice();
+  bare[at] = { ...frame, changes: new Map([...frame.changes].filter(([key]) => !isShapeKey(key))) };
+  const tweened = tweenedAt(bare, at);
+  for (const [key, { shape }] of tweened) if (sameShape(own.get(key)?.cell, shape)) own.delete(key);
+  return { own, tweened };
+}
+
 // The frame showing's changes, from what it shows now. Skipped when nothing's happened since the last time.
 function note(project) {
   const frame = project.currentFrame, noted = project._noted;
   if (!project._stroke && noted?.frame === frame && noted.history === project.history.version && noted.edit === project.editVersion) return;
   project._noted = markRaw({ frame, history: project.history.version, edit: project.editVersion });
   const previous = project.frame > 0 && frame.kind === 'blank' ? project.resolvedOf(project.frame - 1) : NOTHING;
-  const changes = frameDiff(previous, liveStates(project));
+  const { own: changes, tweened } = ownChanges(project, previous);
   if (sameChanges(changes, frame.changes)) return;
+  // A shape moved on a frame between its key frames makes this one a key frame: the tween splits, both halves eased alike.
+  for (const [key, { easing }] of tweened) {
+    if (changes.has(key) && !frame.changes.has(key)) frame.tweens = new Map(frame.tweens ?? []).set(key, easing);
+  }
+  const reach = tweenReach(project.frames, project.frame); // the frames between that ended here, before and after
   frame.changes = changes;
+  project.staleFrames(Math.min(reach, tweenReach(project.frames, project.frame)));
   project.staleFrames(project.frame);
   project.frames = [...project.frames]; // the bar's marks, and hasEdits
 }
@@ -198,14 +217,17 @@ export const animationActions = {
     if (this.hasFrames) note(this);
   },
 
-  // What frame i shows, cached on the frame. An earlier frame can't have changed while another shows.
+  // What frame i shows, cached on the frame, with the shapes tweens put there. An earlier frame can't have changed
+  // while another shows, but it can look different: a frame between key frames follows the later one.
   resolvedOf(i) {
     if (i >= this.frame) this.noteFrame();
     let from = i;
     while (from > 0 && !this.frames[from].resolved) from--;
     for (let at = from; at <= i; at++) {
       const frame = this.frames[at];
-      frame.resolved ??= resolveOver(at ? this.frames[at - 1].resolved : NOTHING, frame);
+      if (frame.resolved) continue;
+      frame.resolved = resolveOver(at ? this.frames[at - 1].resolved : NOTHING, frame);
+      for (const [key, { shape }] of tweenedAt(this.frames, at)) frame.resolved.set(key, cellState(shape, 0, 0));
     }
     return this.frames[i].resolved;
   },
@@ -254,7 +276,7 @@ export const animationActions = {
   inheritedCells() {
     const inherited = new Set();
     if (!this.frame || this.currentFrame.kind !== 'blank') return inherited;
-    const previous = this.resolvedOf(this.frame - 1), own = frameDiff(previous, liveStates(this));
+    const previous = this.resolvedOf(this.frame - 1), { own } = ownChanges(this, previous);
     const { cols } = this, rows = charRowsOf(this.rows);
     for (const key of previous.keys()) {
       if (own.has(key) || isShapeKey(key)) continue;
@@ -273,7 +295,7 @@ export const animationActions = {
   inheritedShapes() {
     const inherited = new Set();
     if (!this.frame || this.currentFrame.kind !== 'blank') return inherited;
-    const previous = this.resolvedOf(this.frame - 1), own = frameDiff(previous, liveStates(this));
+    const previous = this.resolvedOf(this.frame - 1), { own } = ownChanges(this, previous);
     for (const key of previous.keys()) if (isShapeKey(key) && !own.has(key)) inherited.add(key);
     return inherited;
   },
