@@ -346,6 +346,28 @@ test('the Tween menu can make a tween move by whole cells, as one undo step', as
   await expect(page.getByRole('button', { name: 'By whole cells' })).toHaveAttribute('aria-pressed', 'true');
 });
 
+test('Escape closes the Tween menu and nothing else: the shape stays selected, and undo undoes the easing', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await animateSwitch(page).check();
+  const key = await store(page, 'project', (p) => p.addShape({ z: 0, closed: true, fill: '#ff0000', stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0],
+    points: [[2, 2, 0, 0, 0, 0, 0], [6, 2, 0, 0, 0, 0, 0], [6, 6, 0, 0, 0, 0, 0], [2, 6, 0, 0, 0, 0, 0]] }));
+  for (let i = 0; i < 6; i++) await addFrame(page, 'Blank');
+  await store(page, 'project', `(p) => p.updateShapes([['${key}', { ...p.shapes.get('${key}'), m: [1, 0, 0, 1, 0, 24] }]])`);
+  await scrubTo(page, 3);
+  await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
+  const tween = bar(page).getByRole('button', { name: 'Tween' });
+  await tween.click();
+  await page.getByRole('button', { name: 'Ease in', exact: true }).click();
+  await expect.poll(() => store(page, 'project', `(p) => p.shapes.get('${key}').m[5]`)).toBe(3);
+  await tween.click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.dropdown-content')).toHaveCount(0);
+  expect(await store(page, 'workspace', (w) => w.vectorSelected)).toEqual([key]);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => store(page, 'project', `(p) => p.shapes.get('${key}').m[5]`)).toBe(0);
+});
+
 test('Alt+. and Alt+, step frames while typing, and the typing carries on there', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
