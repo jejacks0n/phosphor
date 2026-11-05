@@ -289,7 +289,7 @@ function rng(seed) {
 // Every frame's shapes; a still (one frame) has no frames worked out, only what shows.
 function movie(project) {
   project.noteFrame();
-  const shapes = (states) => [...states].filter(([key]) => isShapeKey(key)).map(([key, state]) => [key, (state.cell ?? state).m, (state.cell ?? state).fill]);
+  const shapes = (states) => [...states].filter(([key]) => isShapeKey(key)).map(([key, state]) => [key, (state.cell ?? state).m, (state.cell ?? state).fill, (state.cell ?? state).width]);
   if (!project.hasFrames) return JSON.stringify([shapes(project.shapes)]);
   return JSON.stringify(project.frames.map((frame, i) => [frame.kind, shapes(project.resolvedOf(i))]));
 }
@@ -311,6 +311,15 @@ async function tweenFuzz(seed, steps = 40) {
       const key = pick(keys), shape = project.shapes.get(key);
       if (shape) project.updateShapes([[key, withShape(shape, { fill: pick(['#ff0000', '#00ff00', '#ffffff']) })]]);
     },
+    widen: () => {
+      const key = pick(keys), shape = project.shapes.get(key);
+      if (shape) project.updateShapes([[key, withShape(shape, { width: pick([1, 2, 4]) })]]);
+    },
+    regradient: () => {
+      const key = pick(keys), shape = project.shapes.get(key);
+      const gradient = { type: 'linear', stops: [[0, pick(['#ff0000', '#00ff00'])], [1, '#0000ff']], m: [1, 0, 0, 1, 0, 0] };
+      if (shape) project.updateShapes([[key, withShape(shape, { fill: r() < 0.6 ? gradient : '#ffffff' })]]);
+    },
     tween: () => project.setTween([pick(keys)], pick([null, 'linear', 'easeIn', 'easeOut', 'easeInOut'])),
     add: () => project.addFrame(pick(['blank', 'blank', 'duplicate', 'wipe'])),
     delete: () => project.deleteFrame(),
@@ -318,7 +327,7 @@ async function tweenFuzz(seed, steps = 40) {
     clear: () => project.clearEditLayer(),
   };
   // Weighted toward what makes tweens: shapes moved on frames apart, and easings chosen between them.
-  const names = ['show', 'show', 'show', 'move', 'move', 'move', 'tween', 'tween', 'tween', 'recolor', 'add', 'add', 'delete', 'reorder', 'clear'], log = [];
+  const names = ['show', 'show', 'show', 'move', 'move', 'move', 'tween', 'tween', 'tween', 'recolor', 'widen', 'regradient', 'add', 'add', 'delete', 'reorder', 'clear'], log = [];
   project.clearHistory();
   depth = 0;
   const stack = [movie(project)];
@@ -346,7 +355,7 @@ async function tweenFuzz(seed, steps = 40) {
 
 test('fuzz: frames, edits, tweens and Clears stay drawn right, and undo and redo go back through them', async () => {
   const count = Number(import.meta.env?.VITE_FUZZ_SEEDS ?? 0), failures = [];
-  for (const seed of count ? Array.from({ length: count }, (_, i) => i + 1) : [1, 2, 3, 11, 27, 30]) {
+  for (const seed of count ? Array.from({ length: count }, (_, i) => i + 1) : [1, 2, 3, 11, 27, 30, 71, 78, 95]) {
     const failure = await tweenFuzz(seed);
     if (failure) failures.push(failure);
   }

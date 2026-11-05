@@ -154,3 +154,103 @@ test("saving leaves every key frame's shape as it shows", async () => {
   await project.projectParts();
   expect(project.frames[12].changes.get(key).cell.fill).toBe('#00ff00');
 });
+
+test('undoing a fill set on a key frame gives the fill back to the frames before', async () => {
+  const { project } = await animated();
+  const key = ball(project);
+  project.showFrame(12);
+  restyle(project, key, { fill: '#0000ff' });
+  project.noteFrame();
+  project.undo();
+  expect(partsOf(project, 12, key)).toEqual(['transform']);
+  project.showFrame(0);
+  restyle(project, key, { fill: '#00ff00' });
+  project.noteFrame();
+  expect(shown(project, key, 12).fill).toBe('#00ff00');
+});
+
+test("undoing frame 1's fill takes it back off the later key frames, what they set kept", async () => {
+  const { project } = await animated();
+  const key = ball(project);
+  project.showFrame(12);
+  restyle(project, key, { width: 3 });
+  project.showFrame(0);
+  restyle(project, key, { fill: '#00ff00' });
+  project.noteFrame();
+  project.undo();
+  project.noteFrame();
+  expect(shown(project, key, 12).fill).toBe('#ff0000');
+  expect(shown(project, key, 12).width).toBe(3);
+});
+
+test('a key frame whose shape is deleted before it keeps its look, and follows again when that is undone', async () => {
+  const { project } = await animated();
+  const key = ball(project);
+  restyle(project, key, { fill: '#00ff00' });
+  project.noteFrame();
+  const was = looks(project, key);
+  project.deleteShapes([key]);
+  project.noteFrame();
+  expect(looks(project, key).slice(6)).toEqual(was.slice(6));
+  expect(shown(project, key, 3)).toBeUndefined();
+  project.undo();
+  restyle(project, key, { fill: '#0000ff' });
+  project.noteFrame();
+  expect(shown(project, key, 6).fill).toBe('#0000ff');
+  expect(shown(project, key, 12).fill).toBe('#0000ff');
+});
+
+test('undoing a Clear gives a key frame back what it set, and only that', async () => {
+  const { project } = await animated();
+  const key = ball(project);
+  project.showFrame(6);
+  project.clearEditLayer();
+  project.noteFrame();
+  project.undo();
+  expect(partsOf(project, 6, key)).toEqual(['transform']);
+  project.showFrame(0);
+  restyle(project, key, { fill: '#00ff00' });
+  project.noteFrame();
+  expect(shown(project, key, 6).fill).toBe('#00ff00');
+});
+
+test('deleting a Duplicate that starts a tween redraws the frames after it', async () => {
+  const { project } = await animated();
+  const key = project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }));
+  project.addFrame('blank');
+  project.addFrame('blank');
+  project.addFrame('duplicate'); // frame 3
+  for (let i = 0; i < 6; i++) project.addFrame('blank');
+  restyle(project, key, { width: 4 }); // frame 9
+  project.showFrame(3);
+  project.setTween([key], 'easeOut');
+  const all = () => project.frames.map((_, i) => JSON.stringify(shown(project, key, i)));
+  all();
+  project.deleteFrame(); // frame 4 takes it in, and the tween is a frame shorter
+  const cached = all();
+  for (const frame of project.frames) frame.resolved = null;
+  expect(cached).toEqual(all());
+});
+
+test('a key frame keeps what it set when a frame before comes to match it, so undoing that leaves it set', async () => {
+  const { project } = await animated();
+  const key = project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }));
+  for (let at = 1; at <= 12; at++) {
+    project.addFrame('blank');
+    if (at === 6) moveBy(project, key, 0, 12);
+  }
+  project.showFrame(9);
+  restyle(project, key, { fill: '#0000ff' });
+  project.showFrame(6);
+  restyle(project, key, { fill: '#0000ff' });
+  project.showFrame(9);
+  const other = project.addShape(rectShape(10, 10, 12, 12, { fill: '#00ff00' })); // an edit on frame 9 that isn't the ball
+  project.showFrame(0);
+  expect(partsOf(project, 9, key)).toEqual(['fill']);
+  project.undo(); // the other shape
+  project.undo(); // frame 6's fill
+  project.noteFrame();
+  expect(shown(project, other, 9)).toBeUndefined();
+  expect(shown(project, key, 9).fill).toBe('#0000ff');
+  expect(shown(project, key, 6).fill).toBe('#ff0000');
+});

@@ -217,6 +217,7 @@ export function inferParts(frames, indices) {
       if (j <= 0) continue;
       const before = frames[life[j - 1]].changes.get(key).cell, after = frames[life[j + 1]]?.changes.get(key).cell;
       const set = PARTS.filter((name) => !samePart(cell, before, name) || (after && !samePart(cell, after, name)));
+      if (!set.length) set.push('transform'); // the same as both: it sets nothing new, but stays a key frame, its tweens kept
       if (set.length < PARTS.length) (frame.parts ??= new Map()).set(key, new Set(set));
     }
   }
