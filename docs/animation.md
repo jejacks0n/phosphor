@@ -17,7 +17,7 @@ frame can't start a room.
 
 Left to right: play and pause, step back and forward, which frame you're on, the scrubber, **Add frame** (a frame of
 film with a plus), a menu to move or delete the frame, **Tween** (see [Tweens](#tweens)), frames per second, this frame's hold, and **Ghost** (a ghost, lit
-while it's on) with its strength beside it. On a narrow screen the bar takes two lines: the frame you're on, the scrubber, the menus and **Tween** (its curve only) first, then play and the steps with the timing and **Ghost**.
+while it's on) with its strength beside it. On a narrow screen the bar takes two lines: the frame you're on, the scrubber, the menus and **Tween** first, then play and the steps with the timing and **Ghost**.
 
 The marks under the scrubber say what each frame is: a tall tick where something was drawn, a short tick where
 nothing was, a block for a Duplicate, and a diamond for a Wipe. With a shape selected, its tweens show too: a band
