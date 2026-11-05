@@ -360,6 +360,37 @@ test('on a narrow screen the bar wraps and stays on screen', async ({ page }) =>
   expect(add.x + add.width).toBeLessThanOrEqual(600);
 });
 
+// Where play, the scrubber, the fps box and the ghost's slider are.
+async function barLayout(page) {
+  await openApp(page);
+  await animateSwitch(page).check();
+  await addFrame(page, 'Blank');
+  const box = (locator) => locator.boundingBox();
+  return {
+    play: await box(bar(page).getByRole('button', { name: 'Play' })),
+    scrubber: await box(bar(page).getByRole('slider', { name: 'Frame' })),
+    fps: await box(bar(page).getByRole('spinbutton', { name: 'Frames per second' })),
+    strength: await box(bar(page).getByRole('slider', { name: 'Ghost strength' })),
+  };
+}
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  test("on a phone, play and the steps start the bar's second line, and the ghost's slider is narrow", async ({ page }) => {
+    const { play, scrubber, fps, strength } = await barLayout(page);
+    expect(play.y).toBeGreaterThan(scrubber.y + scrubber.height);
+    expect(play.x).toBeLessThan(fps.x);
+    expect(strength.width).toBeLessThanOrEqual(80);
+  });
+});
+
+test('on a wide screen the bar is one line, play first', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { play, scrubber } = await barLayout(page);
+  expect(Math.abs((play.y + play.height / 2) - (scrubber.y + scrubber.height / 2))).toBeLessThan(8);
+  expect(play.x).toBeLessThan(scrubber.x);
+});
+
 // The open document's record: when it was last edited, and the frame it's on.
 const written = (page) => page.evaluate(async () => {
   const pinia = document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia;

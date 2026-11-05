@@ -74,8 +74,9 @@ const setFps = (event) => {
 
 <template>
   <div class="animation-bar" role="toolbar" :aria-label="t('animation.toolbarAria')">
-    <!-- Two groups, one line where they fit and a line each where they don't, so a narrow screen never strands a control. -->
-    <div class="transport">
+    <!-- Three groups, one line where they fit; on a narrow screen the frames get the first line, and play and the steps start
+         the second, so a narrow screen never strands a control. -->
+    <div class="playback">
     <button class="play" :aria-label="workspace.playing ? t('animation.pause') : t('animation.play')" :title="workspace.playing ? t('animation.pauseTitle') : t('animation.playTitle')" :disabled="count < 2" @click="playback.toggle()">
       <svg viewBox="0 0 16 16" aria-hidden="true">
         <path v-if="workspace.playing" d="M3 2h4v12H3zM9 2h4v12H9z"/>
@@ -88,6 +89,8 @@ const setFps = (event) => {
     <button class="step" :aria-label="t('animation.nextFrame')" :title="t('animation.nextFrameTitle')" :disabled="count < 2" @click="step(1)">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg>
     </button>
+    </div>
+    <div class="transport">
     <output class="indicator" data-testid="frame-indicator">{{ at + 1 }} / {{ count }}</output>
     <div class="scrubber">
       <div class="scrubber-marks" aria-hidden="true">
@@ -152,6 +155,7 @@ const setFps = (event) => {
 
 <style scoped>
 div.animation-bar {
+  container: animation-bar / inline-size; /* how wide the bar is, not the window, decides when it takes two lines */
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -161,14 +165,17 @@ div.animation-bar {
   background: var(--surface-2);
   border-top: 1px solid var(--accent);
 }
-div.transport, div.settings {
+div.playback, div.transport, div.settings {
   display: flex;
   align-items: center;
   gap: 6px 8px;
   min-width: 0;
 }
+div.playback {
+  margin-right: -4px; /* the transport's gap from it, not the bar's */
+}
 div.transport { /* takes the spare room beside the settings; on a line of its own, each fills its line */
-  flex: 9999 1 400px;
+  flex: 9999 1 304px; /* with play and the steps, 400px */
 }
 div.settings {
   flex: 1 1 auto;
@@ -376,11 +383,19 @@ button.ghost.active svg {
 }
 
 @media (max-width: 960px) { /* up to the largest phone on its side */
-  div.animation-bar, div.transport, div.settings {
+  div.animation-bar, div.playback, div.transport, div.settings {
     column-gap: 6px;
   }
   div.transport {
-    flex-basis: 300px;
+    flex-basis: 190px; /* with play and the steps, 300px */
+  }
+  div.playback {
+    margin-right: 0;
+  }
+  input.strength {
+    flex: 0 1 80px;
+    max-width: 80px;
+    min-width: 36px;
   }
   button.step { /* for a finger */
     width: 32px;
@@ -408,6 +423,21 @@ button.ghost.active svg {
   span.full {
     flex-basis: 100%;
     order: 1;
+  }
+}
+
+/* Where the bar can't be one line (play, the steps and the frames at 300px, beside the timing): the frames get the first
+   line to themselves, and play and the steps start the second. */
+@container animation-bar (max-width: 589px) {
+  div.transport {
+    flex-basis: 100%;
+  }
+  div.playback {
+    order: 1;
+  }
+  div.settings { /* beside them, its slider giving way */
+    order: 2;
+    flex: 1 1 0;
   }
 }
 
