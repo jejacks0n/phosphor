@@ -3,10 +3,12 @@ import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { allPoints, isGradient, outlines, withShape } from './shapes.js';
 import { ALL_PARTS, PARTS, PART_FIELDS } from './parts.js';
 
-export const EASINGS = Object.freeze(['linear', 'easeIn', 'easeOut', 'easeInOut']);
+export const EASINGS = Object.freeze(['linear', 'easeIn', 'easeOut', 'easeInOut', 'elastic']);
 
-// How far along a tween is at t (0..1 of its frames), as its easing has it: cubic, speeding up, slowing down, or both.
+// How far along a tween is at t (0..1 of its frames), as its easing has it: cubic, speeding up, slowing down, or both;
+// or elastic, springing past the end and back, settling there (so it can be past 1 on the way).
 export function ease(easing, t) {
+  if (easing === 'elastic') return t <= 0 ? 0 : t >= 1 ? 1 : 2 ** (-10 * t) * Math.sin((t * 10 - 0.75) * ((2 * Math.PI) / 3)) + 1;
   if (easing === 'easeIn') return t ** 3;
   if (easing === 'easeOut') return 1 - (1 - t) ** 3;
   if (easing === 'easeInOut') return t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
@@ -45,7 +47,7 @@ function tweenFill(a, b, t) {
     const fa = a.f ?? [0, 0], fb = b.f ?? [0, 0];
     return {
       type: a.type,
-      stops: a.stops.map(([o, c], i) => [lerp(o, b.stops[i][0], t), tweenColor(c, b.stops[i][1], t)]),
+      stops: a.stops.map(([o, c], i) => [Math.min(1, Math.max(0, lerp(o, b.stops[i][0], t))), tweenColor(c, b.stops[i][1], t)]), // past an end, still on the gradient
       m: a.m.map((v, i) => lerp(v, b.m[i], t)),
       f: [lerp(fa[0], fb[0], t), lerp(fa[1], fb[1], t)],
     };
@@ -83,7 +85,7 @@ export function tweenPart(name, a, b, t, at = pivot(a)) {
     return mixed ? { ...mixed, closed: a.closed, rule: late.rule } : fieldsOf(late, name);
   }
   if (name === 'fill' || name === 'stroke') return { [name]: tweenFill(a[name], b[name], t) };
-  if (name === 'width') return { width: lerp(a.width, b.width, t) };
+  if (name === 'width') return { width: Math.max(0, lerp(a.width, b.width, t)) };
   return fieldsOf(late, name);
 }
 

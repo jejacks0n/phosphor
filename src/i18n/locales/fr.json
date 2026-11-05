@@ -723,7 +723,8 @@
       "linear": "Linéaire",
       "easeIn": "Accélérer",
       "easeOut": "Ralentir",
-      "easeInOut": "Accélérer puis ralentir"
+      "easeInOut": "Accélérer puis ralentir",
+      "elastic": "Élastique"
     },
     "fpsTitle": "Images par seconde",
     "fpsUnit": "ips",

@@ -723,7 +723,8 @@
       "linear": "Linear",
       "easeIn": "Ease in",
       "easeOut": "Ease out",
-      "easeInOut": "Ease in and out"
+      "easeInOut": "Ease in and out",
+      "elastic": "Elastic"
     },
     "fpsTitle": "Frames per second",
     "fpsUnit": "fps",

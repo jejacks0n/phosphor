@@ -84,6 +84,7 @@ The menu says which frames the tween covers ("Frames 1 to 7"), and has:
 | **Ease in** | Starts slow and speeds up, as a ball falls |
 | **Ease out** | Starts fast and slows down, as a ball rising to its peak |
 | **Ease in and out** | Speeds up, then slows down |
+| **Elastic** | Springs past the later key frame and back, settling there, as a ball on a rubber band |
 
 On a key frame, the menu sets the tween that starts there. It's off with no shape selected, or on a shape's last key
 frame. With several shapes selected, the bar shows the first one's tweens, and a choice sets each selected shape's tween
