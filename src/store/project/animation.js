@@ -4,12 +4,12 @@
 // frames. Owns _arrived (what the frame held on arrival), _noted (what noteFrame last saw) and _builder (what
 // builds frames for playing, and what it was prepared for).
 import FrameBuilder from '@/document/FrameBuilder.js';
-import { cellState, foldDeleted, frameDiff, newFrame, paintImage, resolveOver, sameChanges, drawnKeys } from '@/document/frames.js';
+import { EMPTY_STATE, cellState, foldDeleted, frameDiff, newFrame, paintImage, resolveOver, sameChanges, drawnKeys } from '@/document/frames.js';
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { isShapeKey, sameShape } from '@/document/shapes.js';
-import { spanAt, tweenReach, tweenedAt } from '@/document/tweens.js';
+import { shapeAt, spanAt, tweenReach, tweenedAt } from '@/document/tweens.js';
 import { newLedger } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
 
@@ -83,15 +83,32 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
   else if (!project.composite()) project.rebuildCells();
 }
 
-// What the frame showing changed over previous (what it inherits). A shape showing just where a tween would put it
-// there, if this frame didn't change it, isn't the frame's own: visiting a frame between key frames doesn't make it a
-// key frame, and undoing an edit there gives the shape back to its tween. tweened: those tweens, key to { shape, easing }.
-function ownChanges(project, previous) {
-  const at = project.frame, frame = project.currentFrame, own = frameDiff(previous, liveStates(project));
-  const bare = project.frames.slice();
+// What the frame showing would show of each shape if it didn't change that shape itself, worked out from the frames
+// rather than the frame before's cache (which can hold a tween to this frame as it was): shapeOf(key), the shape or
+// null. inherits(key, shape): showing shape there isn't the frame's own: it's what's inherited, though just where a
+// tween puts it is the frame's own if the frame made it a key itself, other than by splitting that tween (splits). So
+// visiting a frame between key frames doesn't make it a key frame, and undoing the edit that split a tween gives the
+// shape back to it. tweened: the tweens across the frame, key to { shape, easing }.
+function inheritance(project) {
+  const at = project.frame, frame = project.currentFrame, bare = project.frames.slice();
   bare[at] = { ...frame, changes: new Map([...frame.changes].filter(([key]) => !isShapeKey(key))) };
   const tweened = tweenedAt(bare, at);
-  for (const [key, { shape }] of tweened) if (sameShape(own.get(key)?.cell, shape)) own.delete(key);
+  const shapeOf = (key) => shapeAt(bare, key, at);
+  const inherits = (key, shape) => sameShape(shape ?? undefined, shapeOf(key) ?? undefined)
+    && (!tweened.has(key) || !frame.changes.has(key) || !!frame.splits?.has(key));
+  return { shapeOf, inherits, tweened };
+}
+
+// What the frame showing changed over previous (what the frame before shows): its cells, and its shapes by inheritance.
+// ponytail: each shape walks the frames back to its key frame; per-shape spans worked out once if huge movies lag.
+function ownChanges(project, previous) {
+  const own = frameDiff(previous, liveStates(project)), { inherits, tweened } = inheritance(project);
+  const keys = new Set([...previous.keys(), ...project.shapes.keys(), ...project.currentFrame.changes.keys()].filter(isShapeKey));
+  for (const key of keys) {
+    const shape = project.shapes.get(key);
+    if (inherits(key, shape)) own.delete(key);
+    else own.set(key, shape ? cellState(shape, 0, 0) : EMPTY_STATE);
+  }
   return { own, tweened };
 }
 
@@ -103,9 +120,16 @@ function note(project) {
   const previous = project.frame > 0 && frame.kind === 'blank' ? project.resolvedOf(project.frame - 1) : NOTHING;
   const { own: changes, tweened } = ownChanges(project, previous);
   if (sameChanges(changes, frame.changes)) return;
-  // A shape moved on a frame between its key frames makes this one a key frame: the tween splits, both halves eased alike.
-  for (const [key, { easing }] of tweened) {
-    if (changes.has(key) && !frame.changes.has(key)) frame.tweens = new Map(frame.tweens ?? []).set(key, easing);
+  // A shape changed on a frame between its key frames makes this one a key frame: the tween splits, both halves eased
+  // alike (splits: the keys made so). A shape this frame starts changing anywhere else starts with no tween here.
+  for (const key of changes.keys()) {
+    if (!isShapeKey(key) || frame.changes.has(key)) continue;
+    const split = tweened.get(key), tweens = new Map(frame.tweens ?? []);
+    if (split) tweens.set(key, split.easing);
+    else tweens.delete(key);
+    frame.tweens = tweens.size ? tweens : null;
+    frame.splits = new Set(frame.splits ?? []);
+    frame.splits[split ? 'add' : 'delete'](key);
   }
   const reach = tweenReach(project.frames, project.frame); // the frames between that ended here, before and after
   frame.changes = changes;
@@ -137,7 +161,9 @@ function putFrames(project, { list, states, showing }) {
   const was = project.frames, leaving = project.currentFrame;
   for (const frame of was) if (!list.includes(frame)) frame.resolved = frame.built = null; // history holds it, and these are only worked out
   const differs = (frame, at) => frame !== was[at] || frame.kind !== states[at].kind || frame.changes !== states[at].changes || frame.tweens !== states[at].tweens;
-  const first = list.findIndex(differs), reach = first > 0 ? tweenReach(was, first) : first; // a tween across first, as it was
+  let first = list.findIndex(differs);
+  if (first < 0 && list.length < was.length) first = list.length; // only frames off the end gone: a tween may have run to one
+  const reach = first > 0 ? tweenReach(was, first) : first; // a tween across first, as it was
   list.forEach((frame, at) => Object.assign(frame, states[at]));
   const from = first > 0 ? Math.min(reach, tweenReach(list, first)) : first; // and as it is now
   if (first >= 0) for (let at = from; at < list.length; at++) list[at].resolved = list[at].built = null;
@@ -201,6 +227,7 @@ async function pick(project) {
   const builder = await readyBuilder(project);
   if (!project.hasFrames || project.quantize !== 'count' || project._stroke || !project.renderer.outputCanvas) return;
   const params = project.processParams;
+  project.noteFrame(); // the frame showing's edits, which tweens can carry back to frames before it
   const next = builder.moviePalette(project.frames.map((_, i) => project.resolvedOf(i)), params);
   builder.usePalette(next);
   if (samePalette(next, project._moviePalette)) return;
@@ -260,6 +287,7 @@ export const animationActions = {
   // something it depends on changes.
   async builtFrame(i) {
     this.ensureLayer();
+    this.noteFrame(); // the frame showing's edits, which tweens can carry back to frames before it
     for (;;) {
       if (!this.frames[i] || !this.image) return null;
       if (this.hasFrames && this.quantize === 'count' && !this._moviePalette) await this.pickPalette();
@@ -370,7 +398,11 @@ export const animationActions = {
   setTween(keys, easing) {
     if (!this.image) return;
     settleFrame(this);
-    const spans = keys.map((key) => [key, spanAt(this.frames, key, this.frame)]).filter(([, span]) => span && span.easing !== easing);
+    // The first shape's tween, and every other selected shape's with key frames at both its ends.
+    const first = keys.length ? spanAt(this.frames, keys[0], this.frame) : null;
+    if (!first) return;
+    const spans = keys.map((key) => [key, spanAt(this.frames, key, this.frame)])
+      .filter(([, span]) => span && span.from === first.from && span.to === first.to && span.easing !== easing);
     if (!spans.length) return;
     frameStep(this, () => {
       for (const [key, { from }] of spans) {
@@ -385,10 +417,35 @@ export const animationActions = {
     });
   },
 
+  // An edit's shapes on the frame showing, as they were before it: [key, shape | null] for those the frame had of its
+  // own (null: none), [key] for those it only inherited, which it inherits again as they are by now (a tween, or a
+  // frame folded in, can have changed them since). Nothing on a still: the ledger's values are right there.
+  shapesBefore(keys, shapes) {
+    if (!this.hasFrames) return [];
+    const { inherits } = inheritance(this);
+    return keys.map((key) => (inherits(key, shapes.get(key)) ? [key] : [key, shapes.get(key) ?? null]));
+  },
+
+  // Undoing an edit on a frame: its shapes as shapesBefore said, whatever the ledger kept from the frame's earlier
+  // strokes, which a frame change since can have left behind.
+  putShapesBack(before) {
+    if (!this.hasFrames || !before.length) return;
+    const { shapeOf } = inheritance(this), next = new Map(this.shapes);
+    for (const [key, shape] of before) {
+      const now = shape === undefined ? shapeOf(key) : shape;
+      if (now) next.set(key, now);
+      else next.delete(key);
+    }
+    this.shapes = next;
+    this._shapeLayer?.set(next);
+    this.refreshShapes();
+  },
+
   // A frame's kind and changes set from outside (a Clear, and its undo), and shown as the frame now resolves.
   setFrameState({ kind, changes }) {
-    const frame = this.currentFrame;
+    const frame = this.currentFrame, reach = tweenReach(this.frames, this.frame); // the frames between of a tween ending here
     Object.assign(frame, { kind, changes });
+    this.staleFrames(Math.min(reach, tweenReach(this.frames, this.frame)));
     this.staleFrames(this.frame);
     this.frames = [...this.frames];
     arrive(this, this.frame, frame);

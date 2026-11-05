@@ -2,7 +2,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { makeShape, rectShape, rotation, transformed, translation, withShape } from '../../src/document/shapes.js';
-import { EASINGS, ease, spanAt, tweenBands, tweenReach, tweenShape, tweenedAt } from '../../src/document/tweens.js';
+import { EASINGS, ease, shapeAt, spanAt, tweenBands, tweenReach, tweenShape, tweenedAt } from '../../src/document/tweens.js';
 import { EMPTY_STATE, cellState, newFrame } from '../../src/document/frames.js';
 
 const close = (a, b, eps = 1e-3) => assert.ok(Math.abs(a - b) <= eps, `${a} vs ${b}`);
@@ -126,4 +126,22 @@ test('a change reaches back to the start of the tween it ends or is in', () => {
   assert.equal(tweenReach(frames, 6), 1);
   assert.equal(tweenReach(frames, 3), 1);
   assert.equal(tweenReach(frames, 7), 7);
+});
+
+test('a shape turned about its center turns in place, wherever it is', () => {
+  const box = rectShape(10, 10, 16, 16, { fill: '#ff0000' });
+  const m = tweenShape(box, transformed(box, rotation(Math.PI / 2, 13, 13)), 0.5).m;
+  close(m[0] * 13 + m[2] * 13 + m[4], 13);
+  close(m[1] * 13 + m[3] * 13 + m[5], 13);
+});
+
+test('what a frame shows of a shape: its own, the one carried to it, or where a tween puts it', () => {
+  const frames = scene();
+  assert.equal(shapeAt(frames, 'v:a', 0), frames[0].changes.get('v:a').cell);
+  assert.equal(shapeAt(frames, 'v:a', 3).m[5], 3);
+  assert.equal(shapeAt(frames, 'v:a', 7).m[5], 24);
+  assert.equal(shapeAt(frames, 'v:b', 3), null);
+  frames[4].kind = 'wipe';
+  assert.equal(shapeAt(frames, 'v:a', 3).m[5], 0); // no tween across a Wipe: carried
+  assert.equal(shapeAt(frames, 'v:a', 5), null);
 });
