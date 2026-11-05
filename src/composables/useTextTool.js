@@ -112,7 +112,10 @@ export function useTextTool(project, workspace, textInput) {
     }
   };
 
+  // A key another handler took is done, even if it chose this tool: T or K after the Select tool
+  // comes back to the cursor without typing the letter.
   const onKeyDown = (event) => {
+    if (event.defaultPrevented) return;
     if (workspace.editorTab !== 'output' || workspace.activeTool !== 'text' || workspace.paletteLayerOpen) return;
     const action = textKeyAction(event, { editable: editableFocus() });
     if (!action) return;
