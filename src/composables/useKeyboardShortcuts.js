@@ -316,6 +316,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     }
     if (e.key === 'Meta') workspaceStore.isMetaPressed = true;
     if (e.key === 'Shift') workspaceStore.isShiftPressed = true;
+    if (e.key === 'Alt') workspaceStore.isAltPressed = true;
 
     if (_animationKeysApply(e) && e.key.toLowerCase() === 'l') {
       e.preventDefault();
@@ -353,6 +354,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (e.key === 'Meta') workspaceStore.isMetaPressed = false;
 
     if (e.key === 'Shift') workspaceStore.isShiftPressed = false;
+    if (e.key === 'Alt') workspaceStore.isAltPressed = false;
     const held = workspaceStore.heldTool?.by;
     if ((e.key === 'Alt' && held === 'alt') || (e.code === 'Space' && held === 'space')) {
       if (e.code === 'Space') e.preventDefault(); // a focused button isn't pressed by the Space that panned
@@ -363,7 +365,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _handleBlur = () => {
     workspaceStore.isCtrlPressed = workspaceStore.isMetaPressed = false;
     workspaceStore.isMiddleClick = false;
-    workspaceStore.isShiftPressed = false;
+    workspaceStore.isShiftPressed = workspaceStore.isAltPressed = false;
     if (workspaceStore.heldTool) _release(); // the keys were let go while the window was away
   };
 

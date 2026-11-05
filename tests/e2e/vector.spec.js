@@ -33,6 +33,24 @@ test('the VECTOR tab shows the ANSI art and its address is /vector', async ({ pa
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vselect');
 });
 
+test('Alt-dragging a handle scales the selection from its center', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  const key = await addRect(page, 10, 10, 20, 20);
+  await settled(page);
+  await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
+  // the bottom-right handle, from (20, 20) out to (25, 25): twice the size about the middle, (15, 15), not 1.5 from the top-left
+  await page.keyboard.down('Alt');
+  await dragPoints(page, await gridPoint(page, 20, 20), await gridPoint(page, 25, 25));
+  await page.keyboard.up('Alt');
+  const m = await matrix(page, key);
+  expect(m[0]).toBeCloseTo(2, 1);
+  expect(m[3]).toBeCloseTo(2, 1);
+  expect(m[4]).toBeCloseTo(-15, 0);
+  expect(m[5]).toBeCloseTo(-15, 0);
+});
+
 test('clicking a shape selects it, dragging moves it, a handle scales it, the knob rotates it, and undo takes each back', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

@@ -37,6 +37,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     smoothText: useLocalStorage('phosphor.smoothText', true), // the art's text anti-aliased (both views), or sharp
     activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
     isShiftPressed: false,
+    isAltPressed: false,     // Option on a Mac: Vector select scales from the middle
     pointerOverEditor: false, // the pointer is over the canvas (Space pans even with a button focused)
     pickLayers: { fg: true, bg: true }, // ANSI view: what a plain picker click picks (both lit: both)
     pixelPickSlot: { fg: true, bg: false }, // pixel view: what a plain picker click picks, one lit (Shift: the other)
