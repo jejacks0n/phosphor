@@ -14,7 +14,7 @@ import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { allClosed, allPoints, isGradient, setFree, setSmooth } from '@/document/shapes.js';
 import { loadBooleans } from '@/lib/shapeBooleans.js';
 import { gradientKey, gradientSlot, removeStop } from '@/tools/gradientHandles.js';
-import { deleteSelectedPoint } from '@/tools/vnode.js';
+import { deleteSelectedPoint, pickedPoints } from '@/tools/vnode.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
 import { shortcut } from '@/lib/keyLabels';
 import ToggleGroup from '@/components/ToggleGroup.vue';
@@ -62,7 +62,9 @@ const remove = () => {
 // The Point row: the shape whose points are edited, and its selected point.
 const pointsOf = computed(() => workspace.activeTool === 'vnode' && workspace.vectorPoints && project.shapes.get(workspace.vectorPoints));
 const point = computed(() => (pointsOf.value && workspace.vectorPoint !== null ? allPoints(pointsOf.value)[workspace.vectorPoint] : null));
-const smooth = (on) => project.updateShapes([[workspace.vectorPoints, setSmooth(pointsOf.value, workspace.vectorPoint, on)]]);
+// Each taken: those taken with it (Shift, a box) change with it.
+const eachPicked = (change) => project.updateShapes([[workspace.vectorPoints, pickedPoints(workspace, pointsOf.value).reduce(change, pointsOf.value)]]);
+const smooth = (on) => eachPicked((shape, i) => setSmooth(shape, i, on));
 // Smooth, Free or Sharp, the selected point's: its handles in line, apart (each moving on its own; Alt-dragging one
 // does that too), or none.
 const POINT_KINDS = computed(() => ['smooth', 'free', 'sharp'].map((key) => ({ key, label: t(`vector.${key}`), title: t(`vector.${key}Title`), disabled: !point.value })));
@@ -72,7 +74,7 @@ const pointKind = computed({
     return { smooth: !!p?.[6], free: !!p && !p[6] && handles, sharp: !!p && !p[6] && !handles };
   },
   set: (next) => {
-    if (next.free) project.updateShapes([[workspace.vectorPoints, setFree(pointsOf.value, workspace.vectorPoint)]]);
+    if (next.free) eachPicked(setFree);
     else smooth(next.smooth);
   },
 });

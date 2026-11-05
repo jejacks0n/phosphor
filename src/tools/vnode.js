@@ -2,7 +2,9 @@
 // points, its curve handles or (once it's being edited) its outline: drag a point or a handle (Alt: the handle
 // alone, broken from its partner; Shift: on a line across, up and down or at 45°; Snap to: a point on the grid),
 // click the outline to add a
-// point there, click empty canvas to stop. A shape with a gradient (made in the color box) shows its handles too
+// point there, click empty canvas to stop. Shift-click a point to take it too (or let it go), or drag a box from
+// empty canvas (or from inside the shape) over points to take them (Shift: as well); a drag of one moves them all,
+// and Delete deletes them all. With no shape edited, a box takes the top shape with points in it. A shape with a gradient (made in the color box) shows its handles too
 // (gradientHandles.js). A press takes the gradient's handle in reach, else the point or handle nearest it, else the
 // gradient's line, else the outline; with no zoom to part handles on top of each other, a click again in the same
 // place takes the next one there (pick), and a drag after moves that one. Each drag is one
@@ -10,7 +12,7 @@
 // selected stop or point, Esc lets a stop go or stops editing; the rest are Vector select's (the arrows, Delete
 // with nothing selected, Esc then).
 import { t } from '@/i18n/index.js';
-import { apply, deletePoint, invert, moveHandle, movePoint, nearestOnOutline, splitAt, worldPoints } from '@/document/shapes.js';
+import { allPoints, apply, deletePoint, invert, moveHandle, movePoint, nearestOnOutline, splitAt, stacked, worldPoints } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 import { shapeAt } from '@/lib/shapeHits.js';
@@ -18,28 +20,44 @@ import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
 import { handlePicker } from '@/tools/handlePick.js';
 import vselect, { handleRadius } from '@/tools/vselect.js';
 
-let drag = null; // { kind: 'point' | 'handle', key, i, at, from, start, which?, alone?, anchor? }
+let drag = null; // { kind: 'point' | 'handle', key, i, at, start, all?, which?, alone?, anchor? } or { kind: 'marquee', from, shift, empty }
 const pick = handlePicker();
+
+// The edited shape's points selected: vectorPoint (the last taken, the one the Point row shows) and those taken
+// with it (vectorPicked, by Shift or a box). A vectorPoint set on its own, not among them, is the only one. Given
+// the shape, only those it still has (an undo or a room's change may have taken some).
+export function pickedPoints({ vectorPoint: i, vectorPicked: all }, shape = null) {
+  const list = i === null ? [] : all.includes(i) ? all : [i];
+  return shape ? list.filter((j) => j < allPoints(shape).length) : list;
+}
+function choose(workspace, list) {
+  workspace.vectorPicked = [...new Set(list)];
+  workspace.vectorPoint = list.at(-1) ?? null;
+  workspace.vectorStop = null;
+}
 
 // The edited shape's points and curve handles in reach of pos, as handlePick's candidates (the drag in the
 // shape's own, local, pixels).
 function pointCandidates(project, workspace, pos, unit, radius, event) {
-  const key = workspace.vectorPoints, shape = project.shapes.get(key), out = [];
-  const take = (kind, i, extra = {}) => () => {
-    workspace.vectorPoint = i;
-    workspace.vectorStop = null;
+  const key = workspace.vectorPoints, shape = project.shapes.get(key), out = [], shift = !!event?.shiftKey;
+  const start = (kind, i, extra) => {
     project.beginEdit();
-    drag = { kind, key, i, at: pos, from: apply(invert(shape.m), pos.x, pos.y), start: project.shapes.get(key), ...extra };
+    drag = { kind, key, i, at: pos, start: project.shapes.get(key), ...extra };
     return true;
+  };
+  // A point: with Shift, taken too (or, taken already, let go); one of those taken keeps them all, to drag together.
+  const takePoint = (i) => () => {
+    const was = pickedPoints(workspace), on = was.includes(i), rest = was.filter((j) => j !== i);
+    if (shift && on) return choose(workspace, rest), true;
+    choose(workspace, shift || on ? [...rest, i] : [i]);
+    return start('point', i, { all: pickedPoints(workspace, shape) });
   };
   const d = (p) => Math.hypot((p.x - pos.x) * unit.x, (p.y - pos.y) * unit.y);
   worldPoints(shape).forEach((p, i) => {
-    const picked = () => {
-      workspace.vectorPoint = i;
-      workspace.vectorStop = null;
-    };
-    for (const which of ['in', 'out']) if (p[which]) out.push({ id: `${which}${i}`, d: d(p[which]), picked, take: take('handle', i, { which, alone: !!event?.altKey, anchor: p }) });
-    out.push({ id: `p${i}`, d: d(p), picked, take: take('point', i) });
+    const picked = () => choose(workspace, [i]);
+    const takeHandle = (which) => () => (choose(workspace, [i]), start('handle', i, { which, alone: !!event?.altKey, anchor: p }));
+    for (const which of ['in', 'out']) if (p[which]) out.push({ id: `${which}${i}`, d: d(p[which]), picked, take: takeHandle(which) });
+    out.push({ id: `p${i}`, d: d(p), picked, take: takePoint(i) });
   });
   return out.filter((c) => c.d <= radius);
 }
@@ -59,14 +77,39 @@ function outlinePress(project, workspace, pos, unit, radius) {
   return pointCandidates(project, workspace, pos, unit, radius).find((c) => c.id === `p${on.segment + 1}`).take();
 }
 
-// The point selected deleted; with under two left, the shape goes, and its points with it.
+// The points selected deleted, as one step; an outline left with under two goes, and the shape with its last.
 export function deleteSelectedPoint(project, workspace) {
-  const key = workspace.vectorPoints, shape = project.shapes.get(key);
-  if (!shape || workspace.vectorPoint === null) return;
-  const next = deletePoint(shape, workspace.vectorPoint);
+  const key = workspace.vectorPoints, shape = project.shapes.get(key), all = shape ? pickedPoints(workspace, shape) : [];
+  if (!shape || !all.length) return;
+  let next = shape;
+  for (const i of [...all].sort((a, b) => b - a)) if (next) next = deletePoint(next, i); // the last first: the rest keep their places
   project.updateShapes([[key, next]]);
-  workspace.vectorPoint = null;
+  choose(workspace, []);
   if (!next) workspace.vectorPoints = null;
+}
+
+// The points (indices) of a shape in a box, grid pixels.
+const pointsIn = (shape, { x0, y0, x1, y1 }) => worldPoints(shape).flatMap((p, i) => (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 ? [i] : []));
+
+// A box let go: the edited shape's points in it taken (Shift: as well); with none edited, the top shape with
+// points in it edited, those taken. Let go where it was pressed: a click, on empty canvas, stops editing.
+function endMarquee(project, workspace) {
+  const { shift, empty } = drag, box = workspace.vectorMarquee;
+  drag = workspace.vectorMarquee = null;
+  if (!box) {
+    if (empty && !shift) workspace.vectorPoints = workspace.vectorPoint = null;
+    return;
+  }
+  let key = project.shapes.has(workspace.vectorPoints) ? workspace.vectorPoints : null;
+  if (!key) {
+    key = stacked(project.shapes).reverse().find(([, shape]) => pointsIn(shape, box).length)?.[0];
+    if (!key) return;
+    workspace.vectorPoints = key;
+    project.selectShapes([key]);
+    choose(workspace, []);
+  }
+  const inside = pointsIn(project.shapes.get(key), box);
+  choose(workspace, shift ? [...pickedPoints(workspace), ...inside] : inside);
 }
 
 export default {
@@ -83,10 +126,12 @@ export default {
       if (handlesPress(ctx, pos, radius, event) || gradientDrag.line(ctx, pos, radius) || outlinePress(project, workspace, pos, unit, radius)) return true;
     }
     const hit = shapeAt(project.shapes, pos.x, pos.y, radius / unit.x);
-    if (hit === workspace.vectorPoints && hit) return false; // inside it: still editing its points
-    workspace.vectorPoint = workspace.vectorStop = null;
-    workspace.vectorPoints = hit; // another shape's points (a press on one of them takes it at once), or none
-    if (!hit) return false; // the selection stays
+    if (!hit || hit === workspace.vectorPoints) { // empty canvas, or inside the shape edited: a box over points (end)
+      drag = { kind: 'marquee', from: pos, shift: !!event?.shiftKey, empty: !hit };
+      return true;
+    }
+    choose(workspace, []);
+    workspace.vectorPoints = hit; // another shape's points (a press on one of them takes it at once)
     project.selectShapes([hit]);
     return handlesPress(ctx, pos, radius, event);
   },
@@ -96,6 +141,11 @@ export default {
     if (gradientDrag.active) return gradientDrag.move(ctx, from, to);
     const { project, workspace } = ctx;
     if (!drag) return;
+    if (drag.kind === 'marquee') {
+      const f = drag.from;
+      if (to.x !== f.x || to.y !== f.y) workspace.vectorMarquee = { x0: Math.min(f.x, to.x), y0: Math.min(f.y, to.y), x1: Math.max(f.x, to.x), y1: Math.max(f.y, to.y) };
+      return;
+    }
     // Shift: a point on a line from where it was pressed, a handle on one from its point.
     const shift = workspace.isShiftPressed;
     if (shift) to = snappedEnd(drag.kind === 'handle' ? drag.anchor : drag.at, to);
@@ -110,7 +160,7 @@ export default {
       const moved = { x: was.x + to.x - drag.at.x, y: was.y + to.y - drag.at.y };
       const at = shift ? snapAlong(was, moved, snap) : snapPoint(moved, snap);
       const a = apply(back, was.x, was.y), b = apply(back, at.x, at.y);
-      next = movePoint(start, i, b.x - a.x, b.y - a.y);
+      next = drag.all.reduce((shape, j) => movePoint(shape, j, b.x - a.x, b.y - a.y), start); // those taken with it too
     }
     project.updateShapes([[drag.key, next]]);
   },
@@ -118,6 +168,7 @@ export default {
   end(ctx) {
     const { project } = ctx;
     if (gradientDrag.active) gradientDrag.end(ctx);
+    else if (drag?.kind === 'marquee') endMarquee(project, ctx.workspace);
     else if (drag) {
       drag = null;
       project.commitEdit();
@@ -127,6 +178,7 @@ export default {
 
   cancel(ctx) {
     drag = null; // the viewport took the edit back
+    ctx.workspace.vectorMarquee = null;
     pick.reset();
     gradientDrag.cancel(ctx);
   },
@@ -143,7 +195,7 @@ export default {
         workspace.vectorPoints = workspace.vectorPoint = null;
         return true;
       }
-      if ((event.key === 'Delete' || event.key === 'Backspace') && workspace.vectorPoint !== null) {
+      if ((event.key === 'Delete' || event.key === 'Backspace') && pickedPoints(workspace).length) {
         deleteSelectedPoint(project, workspace);
         return true;
       }

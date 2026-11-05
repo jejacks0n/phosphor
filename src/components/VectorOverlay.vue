@@ -12,6 +12,7 @@ import { pathData, worldPoints } from '@/document/shapes.js';
 import { boxHandles, handleRadius, selectionBox } from '@/tools/vselect.js';
 import { gradientHandles, gradientKey, gradientSlot } from '@/tools/gradientHandles.js';
 import { snappedEnd } from '@/tools/shapes.js';
+import { pickedPoints } from '@/tools/vnode.js';
 
 const props = defineProps({
   unit: { type: Object, default: null },    // CSS px per grid pixel: { x, y }
@@ -75,7 +76,7 @@ const gradient = computed(() => {
   return { p0: px(p0), p1: px(p1), stops: stops.map((s) => ({ ...s, at: px(s.at) })) };
 });
 
-// Vector select's box over empty canvas, as it's dragged.
+// Vector select's box over empty canvas, or the Node tool's over points, as it's dragged.
 const marquee = computed(() => {
   const m = workspace.vectorMarquee;
   if (!m) return null;
@@ -83,6 +84,7 @@ const marquee = computed(() => {
   return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
 });
 
+const picked = computed(() => pickedPoints(workspace));
 const r = computed(() => handleRadius() / 2 + 1);
 </script>
 
@@ -102,7 +104,7 @@ const r = computed(() => handleRadius() / 2 + 1);
           <line :x1="a.from.x" :y1="a.from.y" :x2="a.to.x" :y2="a.to.y" class="arm"/>
           <circle :cx="a.to.x" :cy="a.to.y" :r="r * 0.8" class="handle"/>
         </g>
-        <rect v-for="p in points.all" :key="p.i" :x="p.at.x - r" :y="p.at.y - r" :width="2 * r" :height="2 * r" class="handle" :class="{ on: workspace.vectorPoint === p.i }"/>
+        <rect v-for="p in points.all" :key="p.i" :x="p.at.x - r" :y="p.at.y - r" :width="2 * r" :height="2 * r" class="handle" :class="{ on: picked.includes(p.i) }"/>
       </template>
       <template v-if="gradient">
         <line :x1="gradient.p0.x" :y1="gradient.p0.y" :x2="gradient.p1.x" :y2="gradient.p1.y" class="arm"/>
