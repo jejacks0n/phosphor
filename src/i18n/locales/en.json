@@ -1336,6 +1336,7 @@
     "strokeNoneTitle": "Stroke: none ({key})",
     "width": "Stroke width",
     "widthTitle": "The outline's width, in pixels",
+    "widthValue": "Stroke width in pixels",
     "forward": "Forward",
     "forwardTitle": "Bring the shapes one step forward",
     "back": "Back",

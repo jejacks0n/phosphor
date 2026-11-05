@@ -1336,6 +1336,7 @@
     "strokeNoneTitle": "Contour : aucun ({key})",
     "width": "Épaisseur du contour",
     "widthTitle": "L'épaisseur du contour, en pixels",
+    "widthValue": "Épaisseur du contour en pixels",
     "forward": "Avancer",
     "forwardTitle": "Avancer les formes d'un cran",
     "back": "Reculer",
