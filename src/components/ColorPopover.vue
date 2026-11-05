@@ -88,9 +88,14 @@ const CAPS = ['butt', 'round', 'square'].map((v) => ({ v, title: `vector.cap${v[
 // sharp, rounded or cut, is what differs).
 const corner = '<polyline points="12,22 12,12 22,12"'; // close in on the corner (its outer edge 10 from the path), 2 to 22, centered
 const JOINS = ['miter', 'round', 'bevel'].map((v) => ({ v, title: `vector.join${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`${corner} stroke-width="20" stroke-linejoin="${v}" opacity=".45"/>${corner} stroke-width="1.5"/>`) }));
-// An alignment: a square outline, a solid line, its stroke wide and faint inside it, on it or outside it.
-const band = { inside: 8, center: 6, outside: 4 };
-const ALIGNS = ['inside', 'center', 'outside'].map((v) => ({ v, title: `vector.align${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`<rect x="${band[v]}" y="${band[v]}" width="${24 - 2 * band[v]}" height="${24 - 2 * band[v]}" stroke-width="4" opacity=".45"/><rect x="6" y="6" width="12" height="12" stroke-width="1.5"/>`) }));
+// An alignment: a square outline, a solid line, its stroke wide and faint inside it, on it or outside it; for an
+// open path, a line drawn left to right (its arrow says which way), its stroke above it (its left), on it or below.
+const band = { inside: 8, center: 6, outside: 4 }, beside = { left: 9, center: 12, right: 15 };
+const title = (v) => `vector.align${v[0].toUpperCase()}${v.slice(1)}`;
+const ALIGNS = {
+  closed: ['inside', 'center', 'outside'].map((v) => ({ v, title: title(v), icon: ic(`<rect x="${band[v]}" y="${band[v]}" width="${24 - 2 * band[v]}" height="${24 - 2 * band[v]}" stroke-width="4" opacity=".45"/><rect x="6" y="6" width="12" height="12" stroke-width="1.5"/>`) })),
+  open: ['left', 'center', 'right'].map((v) => ({ v, title: title(v), icon: ic(`<line x1="3" y1="${beside[v]}" x2="21" y2="${beside[v]}" stroke-width="6" opacity=".45"/><polyline points="3,12 21,12" stroke-width="1.5"/><polyline points="17,9 21,12 17,15" stroke-width="1.5" fill="none"/>`) })),
+};
 const setWidth = (e) => {
   const v = Number(e.target.value);
   if (Number.isFinite(v) && e.target.value !== '') style.set('width', Math.min(64, Math.max(0.5, Math.round(v * 10) / 10)));
@@ -216,7 +221,7 @@ onBeforeUnmount(() => {
       <div class="settings">
         <span class="option-label">{{ t('vector.align') }}</span>
         <div class="icons">
-          <button v-for="a in ALIGNS" :key="a.v" class="icon" :title="t(a.title)" :aria-label="t(a.title)" :aria-pressed="style.value('align') === a.v" :disabled="!style.canAlign.value" @click="style.set('align', a.v)" v-html="a.icon"/>
+          <button v-for="a in ALIGNS[style.bySides.value ? 'open' : 'closed']" :key="a.v" class="icon" :title="t(a.title)" :aria-label="t(a.title)" :aria-pressed="style.value('align') === a.v" @click="style.set('align', a.v)" v-html="a.icon"/>
         </div>
         <span class="option-label">{{ t('vector.cap') }}</span>
         <div class="icons">

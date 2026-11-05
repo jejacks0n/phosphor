@@ -23,8 +23,11 @@ export function useVectorStyle() {
     return v === 'fg' ? (workspace.editFgNone ? null : workspace.editFgColor) : v;
   };
 
-  // Inside or Outside means something only to a closed shape: one selected, or the next shape's (which may be).
-  const canAlign = computed(() => !editing.value || selected.value.some((key) => allClosed(project.shapes.get(key))));
+  // Whether the stroke's alignment goes by sides (left or right of the way it was drawn) rather than inside and
+  // outside: for an open path, or a shape set to a side, the first selected; with none, while the Pen draws.
+  const bySides = computed(() => (first.value
+    ? !allClosed(first.value) || ['left', 'right'].includes(first.value.align)
+    : workspace.activeTool === 'pen'));
 
   const finish = () => {
     if (editing.value && project._stroke && !project._stroke.typing) project.commitEdit();
@@ -64,5 +67,5 @@ export function useVectorStyle() {
     }));
   };
 
-  return { selected, editing, first, value, set, finish, swap, kindOf, setKind, canAlign };
+  return { selected, editing, first, value, set, finish, swap, kindOf, setKind, bySides };
 }

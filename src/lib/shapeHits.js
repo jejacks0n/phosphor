@@ -1,19 +1,31 @@
 // Which shape is under a point, and how near a point is to one's outline: through Path2D on one 2D context
 // kept for it (the shapes' paths in grid pixels; tolerances in grid pixels).
-import { curveBounds, pathData, stacked, strokeAlign, strokeOf, strokeReach } from '@/document/shapes.js';
+import { curveBounds, pathData, sideReach, stacked, strokeAlign, strokeOf, strokeReach, strokeSide } from '@/document/shapes.js';
 
 let context = null;
 const ctx = () => (context ??= document.createElement('canvas').getContext('2d'));
 
+// A stroke's side (strokeSide, out to reach) as one Path2D at k canvas pixels a grid pixel, to fill (nonzero).
+export function sidePath(shape, side, reach, k = 1) {
+  const path = new Path2D();
+  for (const [first, ...rest] of strokeSide(shape, side, reach)) {
+    path.moveTo(first[0] * k, first[1] * k);
+    for (const [x, y] of rest) path.lineTo(x * k, y * k);
+    path.closePath();
+  }
+  return path;
+}
+
 // On its fill (under its fill rule: a hole isn't on it), or within tol of its outline (or of its stroke's edge,
-// caps and joins as it draws them; a stroke inside or outside the outline, only on that side of it).
+// caps and joins as it draws them; a stroke inside or outside the outline, or to a side of it, only there).
 export function hitsShape(shape, x, y, tol) {
   const c = ctx(), path = new Path2D(pathData(shape)), { rule, cap, join, miter } = strokeOf(shape);
   if (shape.fill && c.isPointInPath(path, x, y, rule)) return true;
   const align = shape.stroke ? strokeAlign(shape) : 'center';
   if (align !== 'center') {
     Object.assign(c, { lineWidth: 2 * (shape.width + tol), lineCap: cap, lineJoin: join, miterLimit: miter });
-    if (c.isPointInStroke(path, x, y) && c.isPointInPath(path, x, y, rule) === (align === 'inside')) return true;
+    const side = align === 'left' || align === 'right';
+    if (c.isPointInStroke(path, x, y) && (side ? c.isPointInPath(sidePath(shape, align, sideReach(shape) + tol), x, y) : c.isPointInPath(path, x, y, rule) === (align === 'inside'))) return true;
   }
   c.lineWidth = (align === 'center' && shape.stroke ? shape.width : 0) + 2 * tol;
   if (shape.stroke) Object.assign(c, { lineCap: cap, lineJoin: join, miterLimit: miter });

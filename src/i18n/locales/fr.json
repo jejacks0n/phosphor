@@ -1364,6 +1364,8 @@
     "alignInside": "Contour à l'intérieur",
     "alignCenter": "Contour centré",
     "alignOutside": "Contour à l'extérieur",
+    "alignLeft": "Contour à gauche du tracé",
+    "alignRight": "Contour à droite du tracé",
     "svgUnreadable": "Impossible de lire ce fichier comme un SVG.",
     "svgEmpty": "Rien dans ce SVG n'a pu être importé.",
     "svgLeftOut": "Laissé de côté : {kinds}.",

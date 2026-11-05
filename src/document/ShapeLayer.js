@@ -14,7 +14,8 @@
  */
 import { ctx2d } from '../lib/Canvas.js';
 import { charRowsOf } from '../lib/Cells.js';
-import { dirtyRect, invert, isGradient, multiply, pathData, scaling, shapeBounds, stacked, strokeAlign, strokeOf } from './shapes.js';
+import { dirtyRect, invert, isGradient, multiply, pathData, scaling, shapeBounds, sideReach, stacked, strokeAlign, strokeOf } from './shapes.js';
+import { sidePath } from '../lib/shapeHits.js';
 
 const newCanvas = (w, h) => Object.assign(document.createElement('canvas'), { width: Math.max(1, w), height: Math.max(1, h) });
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -252,7 +253,7 @@ function canvasGradient(ctx, { type, stops, f = [0, 0] }) {
 }
 
 // A gradient stroke, or one inside or outside the outline: stroked solid into a mask over the shape's bounds (an
-// aligned one at twice its width, then cut to the fill's inside or outside, under its rule), its color or gradient
+// aligned one at twice its width, then cut to the fill's inside or outside, under its rule, or to its side), its color or gradient
 // filled into that (a gradient under its unit space's transform, as a fill's is), and the mask drawn over. Drawn
 // in the gradient's space, as a fill is, the stroke's width would stretch with it. The mask is a ctx2d canvas, as
 // the layer's are: one the GPU might draw would come out a shade apart from one drawing to the next.
@@ -263,7 +264,10 @@ function paintMaskedStroke(ctx, shape, k, path, styled, align, rule) {
   const mask = ctx2d(new OffscreenCanvas(w, h));
   mask.translate(-x, -y);
   styled(mask).stroke(path);
-  if (align !== 'center') {
+  if (align === 'left' || align === 'right') {
+    mask.globalCompositeOperation = 'destination-in';
+    mask.fill(sidePath(shape, align, sideReach(shape), k));
+  } else if (align !== 'center') {
     mask.globalCompositeOperation = align === 'inside' ? 'destination-in' : 'destination-out';
     mask.fill(path, rule);
   }

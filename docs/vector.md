@@ -225,9 +225,9 @@ shape's:
 - **Align**, where that width goes: inside the outline, centered on it, or outside it. Centered, a stroke
   straddles its outline, so a rectangle snapped to cells and stroked 1 wide covers half of two cells at each
   side; inside, it fills exactly the column of cells just within each side (top and bottom, the half cells), and
-  outside, the one just past it. It's
-  only for closed shapes (an open path has no inside, so it strokes centered, and with only open paths selected
-  the buttons are off).
+  outside, the one just past it. An open path has no inside, so its buttons are Left, Center and Right instead:
+  the whole width on one side of the line, left or right of the way it was drawn (a mirrored path keeps its side).
+  A closed shape set to Left or Right keeps those buttons too.
 - **Cap**, the ends of an open outline: butt (cut off at the end point), round, or square (squared off half the
   width past it).
 - **Join**, the corners: miter (a sharp point), round, or bevel (cut across).

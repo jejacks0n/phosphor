@@ -11,8 +11,9 @@
  *   rule    'evenodd'; absent: 'nonzero', SVG's and canvas's default
  *   cap, join, miter  the stroke's: 'butt' | 'square', 'miter' | 'bevel', and the miter limit (1 to 100);
  *           absent: round, round and 4
- *   align   'inside' | 'outside': the stroke inside the outline or outside it, its whole width; absent: centered
- *           on it (SVG's only way). A shape with an open outline strokes centered whatever it says (strokeAlign)
+ *   align   'inside' | 'outside': the stroke inside the outline or outside it, its whole width (a shape with an
+ *           open outline strokes centered then: strokeAlign); 'left' | 'right': beside the path, on that side of
+ *           the way it was drawn, open or closed (strokeSide); absent: centered on it (SVG's only way)
  * The optional fields are written only when they aren't the default, so a shape that uses none of them is
  * exactly what it was before they existed (an older copy of Phosphor refuses a shape with a field it doesn't
  * know, and with it the whole file's shapes or a room's whole change). A point's index is flat: the first
@@ -46,7 +47,7 @@ const KEY = /^v:[A-Za-z0-9_-]{1,32}$/;
 const HEX = /^#[0-9a-f]{6}$/i;
 const FIELDS = ['z', 'closed', 'points', 'fill', 'stroke', 'width', 'm'];
 const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter', 'align'];
-const RULES = ['evenodd'], CAPS = ['butt', 'square'], JOINS = ['miter', 'bevel'], ALIGNS = ['inside', 'outside']; // the values other than the default
+const RULES = ['evenodd'], CAPS = ['butt', 'square'], JOINS = ['miter', 'bevel'], ALIGNS = ['inside', 'outside', 'left', 'right']; // the values other than the default
 const GRADIENTS = ['linear', 'radial'];
 export const MOST_STOPS = 16;
 const KAPPA = 0.5523; // a cubic's handle length for a quarter circle, as a share of its radius
@@ -130,11 +131,71 @@ export const strokeOf = ({ rule, cap, join, miter, align }) => ({
 });
 // Whether every outline closes: only then has the shape an inside for its stroke to go in or out of.
 export const allClosed = (shape) => shape.closed && (shape.more ?? []).every(([c]) => c);
-// Where the stroke is drawn: its alignment, or centered when an outline is open.
-export const strokeAlign = (shape) => (allClosed(shape) ? strokeOf(shape).align : 'center');
+// Where the stroke is drawn: its alignment, or centered when it's inside or outside and an outline is open.
+export function strokeAlign(shape) {
+  const { align } = strokeOf(shape);
+  return align === 'left' || align === 'right' || allClosed(shape) ? align : 'center';
+}
 // How far past its outline the stroke reaches, before caps and joins: half its width centered, none inside, all of
-// it outside.
-export const strokeReach = (shape) => (shape.stroke ? shape.width * { inside: 0, center: 0.5, outside: 1 }[strokeAlign(shape)] : 0);
+// it outside or to a side.
+export const strokeReach = (shape) => (shape.stroke ? shape.width * { inside: 0, center: 0.5, outside: 1, left: 1, right: 1 }[strokeAlign(shape)] : 0);
+
+const CURVE_STEPS = 16;
+// Each outline as a polyline in grid pixels, a curve in CURVE_STEPS steps: [{ closed, points: [[x, y], ...] }].
+function polylines(shape) {
+  return outlines(shape).map(({ closed, points }) => {
+    const w = worldOf(points, shape.m), out = w.length ? [[w[0].x, w[0].y]] : [];
+    for (let i = 0; i < (closed ? w.length : w.length - 1); i++) {
+      const a = w[i], b = w[(i + 1) % w.length], p1 = a.out ?? a, p2 = b.in ?? b;
+      if (!a.out && !b.in) out.push([b.x, b.y]);
+      else {
+        for (let k = 1; k <= CURVE_STEPS; k++) {
+          const t = k / CURVE_STEPS, u = 1 - t, at = (q) => u * u * u * a[q] + 3 * u * u * t * p1[q] + 3 * u * t * t * p2[q] + t * t * t * b[q];
+          out.push([at('x'), at('y')]);
+        }
+      }
+    }
+    return { closed, points: out };
+  });
+}
+
+const signedArea = (poly) => poly.reduce((sum, [ax, ay], i) => sum + ax * poly[(i + 1) % poly.length][1] - poly[(i + 1) % poly.length][0] * ay, 0) / 2;
+
+// How far a stroke to a side can reach from its path, drawn at twice its width: its width, a miter's point, a
+// square cap's corner, with room to spare (strokeSide's reach for it).
+export function sideReach(shape) {
+  const { join, cap, miter } = strokeOf(shape);
+  return shape.width * Math.max(1.5, join === 'miter' ? miter : 1, cap === 'square' ? Math.SQRT2 : 1);
+}
+
+// The area to one side ('left' or 'right' of the way it was drawn, as it shows: a mirrored shape's sides trade)
+// of the shape's outlines, out to reach (grid pixels): a quadrilateral beside each segment (an open outline's
+// first and last reaching past its ends, for caps), and a wedge across each corner that turns away from that side.
+// Polygons [[x, y], ...], each turned the same way, so that filled together (nonzero) they're one area with no
+// seams. A stroke at twice its width, cut to this, is a stroke to that side, its caps and joins as they were.
+// ponytail: an inner corner sharper than a right angle lets a little of the other side in; trim the quadrilaterals
+// against their neighbors if that's ever noticed.
+export function strokeSide(shape, side, reach) {
+  const m = shape.m, s = (side === 'left' ? 1 : -1) * Math.sign(m[0] * m[3] - m[1] * m[2] || 1), polys = [];
+  const normal = ([dx, dy]) => [s * dy * reach, -s * dx * reach];
+  const plus = ([x, y], [dx, dy], by = 1) => [x + dx * by, y + dy * by];
+  for (const { closed, points } of polylines(shape)) {
+    const segs = [];
+    for (let i = 0; i < (closed ? points.length : points.length - 1); i++) {
+      const a = points[i], b = points[(i + 1) % points.length], long = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (long > 1e-9) segs.push([a, b, [(b[0] - a[0]) / long, (b[1] - a[1]) / long]]);
+    }
+    segs.forEach(([a, b, d], i) => {
+      const n = normal(d), start = !closed && i === 0 ? plus(a, d, -reach) : a, end = !closed && i === segs.length - 1 ? plus(b, d, reach) : b;
+      polys.push([start, end, plus(end, n), plus(start, n)]);
+      const next = segs[i + 1] ?? (closed ? segs[0] : null);
+      if (!next) return;
+      const e = next[2], turn = d[0] * e[1] - d[1] * e[0], mid = [d[0] - e[0], d[1] - e[1]], midLong = Math.hypot(...mid);
+      if (s * turn > 1e-9 && midLong > 1e-9) polys.push([b, plus(b, n), plus(b, mid, (reach * 2) / midLong), plus(b, normal(e))]);
+    });
+  }
+  return polys.map((poly) => (signedArea(poly) < 0 ? poly.reverse() : poly));
+}
 
 // The shape's outlines, [{ closed, points }], the first one first.
 export const outlines = (shape) => [{ closed: shape.closed, points: shape.points }, ...(shape.more ?? []).map(([closed, points]) => ({ closed, points }))];
