@@ -2,7 +2,8 @@ import { describe, expect, test } from 'vitest';
 import assert from 'node:assert/strict';
 import { EMPTY_STATE, FRAME_KINDS, cellState, deserializeFrames, drawnKeys, foldDeleted, frameDiff, isEmptyState, newFrame, resolveOver, serializeFrames } from '../../src/document/frames.js';
 import { MAX_CELLS, MAX_COLS, MAX_FRAMES, MAX_LINES } from '../../src/lib/Cells.js';
-import { rectShape, transformed, translation } from '../../src/document/shapes.js';
+import { rectShape, transformed, translation, withShape } from '../../src/document/shapes.js';
+import { shapeAt } from '../../src/document/tweens.js';
 
 const A = Object.freeze({ char: 'A' }), B = Object.freeze({ char: 'B' });
 const RED = 0xff0000ff, BLUE = 0x0000ffff;
@@ -270,4 +271,77 @@ test("tweens are saved for the shapes a frame owns, and read back; what can't be
   assert.ok(opened.frames.every((frame) => frame.tweens === null));
   const old = saved.map((frame) => Object.fromEntries(Object.entries(frame).filter(([name]) => name !== 'tweens')));
   assert.ok(read(old).frames.every((frame) => frame.tweens === null));
+});
+
+// Parts: a key frame that sets only some of a shape keeps saying so, folded, saved and read.
+const BALL = rectShape(2, 2, 6, 6, { fill: '#ff0000' });
+const GRADIENT = { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [1, 0, 0, 1, 0, 0] };
+function ballFrames() {
+  const frames = Array.from({ length: 13 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
+  frames[0].changes.set('v:a', cellState(BALL, 0, 0));
+  for (const at of [6, 12]) {
+    frames[at].changes.set('v:a', cellState(transformed(BALL, translation(0, at * 2)), 0, 0));
+    frames[at].parts = new Map([['v:a', new Set(['transform'])]]);
+  }
+  return frames;
+}
+const read = (list) => deserializeFrames({ frames: list, frame: 0, fps: 8 }, 20, 20);
+const looks = (frames) => frames.map((_, i) => JSON.stringify(shapeAt(frames, 'v:a', i)));
+
+test('a deleted key frame folds what it set into the Blank frame after it', () => {
+  const deleted = newFrame('blank', new Map([['v:a', cellState(withShape(BALL, { fill: '#0000ff' }), 0, 0)]]));
+  deleted.parts = new Map([['v:a', new Set(['fill'])]]);
+  const next = newFrame('blank', new Map([['v:a', cellState(transformed(BALL, translation(0, 4)), 0, 0)]]));
+  next.parts = new Map([['v:a', new Set(['transform'])]]);
+  const folded = foldDeleted(deleted, next);
+  assert.deepEqual(folded.parts.get('v:a'), new Set(['transform', 'fill']));
+  assert.equal(folded.changes.get('v:a').cell.fill, '#0000ff');
+  assert.equal(folded.changes.get('v:a').cell.m[5], 4);
+});
+
+test('which parts a key frame set is saved and read back, and the saved shape is the one it shows', () => {
+  const frames = ballFrames();
+  frames[0].changes.set('v:a', cellState(withShape(BALL, { fill: GRADIENT }), 0, 0));
+  const saved = serializeFrames(frames);
+  assert.deepEqual(saved[0].parts, []);
+  assert.deepEqual(saved[6].parts, [['v:a', ['transform']]]);
+  assert.ok(!('parts' in saved[3]));
+  assert.deepEqual(saved[12].shapes[0][1].fill, frames[0].changes.get('v:a').cell.fill); // for a copy that can't read parts
+  const opened = read(JSON.parse(JSON.stringify(saved))).frames;
+  assert.deepEqual(opened[6].parts, new Map([['v:a', new Set(['transform'])]]));
+  assert.equal(opened[0].parts, null);
+  assert.deepEqual(looks(opened), looks(frames));
+});
+
+test("parts that can't be read are left out, and the file still opens", () => {
+  const saved = serializeFrames(ballFrames());
+  saved[6].parts = [['v:a', ['nose']], ['v:zz', ['fill']], 'nonsense', ['v:a']];
+  saved[12].parts = 'nonsense';
+  const opened = read(saved);
+  assert.ok(opened);
+  assert.equal(opened.frames[6].parts, null);
+  assert.equal(opened.frames[12].parts, null);
+});
+
+test('a movie saved before parts reads as it looked, its key frames setting only what differs along them', () => {
+  const old = (frames) => serializeFrames(frames).map((frame) => Object.fromEntries(Object.entries(frame).filter(([name]) => name !== 'parts')));
+  const whole = (fills) => {
+    const frames = ballFrames();
+    frames[0].tweens = new Map([['v:a', 'easeIn']]);
+    frames[6].tweens = new Map([['v:a', 'easeOut']]);
+    fills.forEach((fill, j) => {
+      const at = j * 6;
+      frames[at].changes.set('v:a', cellState(withShape(frames[at].changes.get('v:a').cell, { fill }), 0, 0));
+      frames[at].parts = null; // whole shapes, as before parts
+    });
+    return frames;
+  };
+  const changing = whole(['#ff0000', '#ff0000', '#0000ff']), opened = read(old(changing)).frames;
+  assert.deepEqual(opened[6].parts.get('v:a'), new Set(['transform', 'fill'])); // red as frame 0, not as frame 12
+  assert.equal(opened[12].parts.get('v:a').has('fill'), true);
+  assert.deepEqual(looks(opened), looks(changing));
+  const same = whole(['#ff0000', '#ff0000', '#ff0000']), reopened = read(old(same)).frames;
+  assert.deepEqual(reopened[6].parts.get('v:a'), new Set(['transform']));
+  assert.deepEqual(reopened[12].parts.get('v:a'), new Set(['transform']));
+  assert.deepEqual(looks(reopened), looks(same));
 });
