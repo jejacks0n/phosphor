@@ -2,7 +2,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { makeShape, rectShape, rotation, transformed, translation, withShape } from '../../src/document/shapes.js';
-import { EASINGS, ease, shapeAt, spanAt, tweenBands, tweenReach, tweenShape, tweenedAt } from '../../src/document/tweens.js';
+import { EASINGS, ease, lifeAt, setPartsAt, shapeAt, spanAt, tweenBands, tweenPart, tweenReach, tweenShape, tweenedAt, workedOutAt } from '../../src/document/tweens.js';
 import { EMPTY_STATE, cellState, newFrame } from '../../src/document/frames.js';
 
 const close = (a, b, eps = 1e-3) => assert.ok(Math.abs(a - b) <= eps, `${a} vs ${b}`);
@@ -125,7 +125,7 @@ test('a change reaches back to the start of the tween it ends or is in', () => {
   const frames = scene();
   assert.equal(tweenReach(frames, 6), 1);
   assert.equal(tweenReach(frames, 3), 1);
-  assert.equal(tweenReach(frames, 7), 7);
+  assert.equal(tweenReach(frames, 7), 1); // a part can fade to frame 7 across the shape's whole life
 });
 
 test('a shape turned about its center turns in place, wherever it is', () => {
@@ -144,4 +144,88 @@ test('what a frame shows of a shape: its own, the one carried to it, or where a 
   frames[4].kind = 'wipe';
   assert.equal(shapeAt(frames, 'v:a', 3).m[5], 0); // no tween across a Wipe: carried
   assert.equal(shapeAt(frames, 'v:a', 5), null);
+});
+
+// Parts: a key frame sets only some of a shape; the rest comes from the key frames that set it.
+const K = 'v:ball', RED = rectShape(2, 2, 6, 6, { fill: '#ff0000' });
+const GRADIENT = { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [1, 0, 0, 1, 0, 0] };
+// Frames 0 to 12: the ball red on 0, moved down 12 on 6 and 24 on 12, each of those setting only its transform.
+function ball(easings = {}) {
+  const frames = Array.from({ length: 13 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
+  frames[0].changes.set(K, cellState(RED, 0, 0));
+  for (const at of [6, 12]) {
+    frames[at].changes.set(K, cellState(transformed(RED, translation(0, at * 2)), 0, 0));
+    frames[at].parts = new Map([[K, new Set(['transform'])]]);
+  }
+  for (const [at, easing] of Object.entries(easings)) frames[at].tweens = new Map([[K, easing]]);
+  return frames;
+}
+
+test("a part a key frame didn't set comes from the one before that did", () => {
+  const frames = ball();
+  frames[0].changes.set(K, cellState(withShape(RED, { fill: GRADIENT }), 0, 0));
+  for (const [at, y] of [[3, 0], [6, 12], [9, 12], [12, 24]]) {
+    assert.deepEqual(shapeAt(frames, K, at).fill, frames[0].changes.get(K).cell.fill, `frame ${at}`);
+    assert.equal(shapeAt(frames, K, at).m[5], y, `frame ${at}`);
+  }
+  assert.deepEqual([...setPartsAt(frames, K, 6)], ['transform']);
+  assert.deepEqual(lifeAt(frames, K, 9), [0, 6, 12]);
+});
+
+test('a part fades between the key frames that set it, across one that did not, in step with the tweens', () => {
+  const frames = ball({ 0: 'easeIn', 6: 'easeOut' });
+  frames[12].changes.set(K, cellState(withShape(transformed(RED, translation(0, 24)), { fill: '#0000ff' }), 0, 0));
+  frames[12].parts = new Map([[K, new Set(['transform', 'fill'])]]);
+  assert.equal(shapeAt(frames, K, 6).fill, '#800080'); // half the frames, both spans tweened
+  assert.equal(shapeAt(frames, K, 3).fill, tweenPart('fill', RED, frames[12].changes.get(K).cell, (6 * ease('easeIn', 0.5)) / 12).fill);
+  assert.equal(shapeAt(frames, K, 6).m[5], 12);
+  assert.equal(shapeAt(frames, K, 12).fill, '#0000ff');
+});
+
+test('a span with no tween holds a part, and with none at all it switches at its key frame', () => {
+  const blue = (frames) => {
+    frames[12].changes.set(K, cellState(withShape(transformed(RED, translation(0, 24)), { fill: '#0000ff' }), 0, 0));
+    frames[12].parts = new Map([[K, new Set(['transform', 'fill'])]]);
+    return frames;
+  };
+  const first = blue(ball({ 0: 'linear' }));
+  assert.equal(shapeAt(first, K, 3).fill, '#800080');
+  for (const at of [6, 9, 12]) assert.equal(shapeAt(first, K, at).fill, '#0000ff', `frame ${at}`);
+  const none = blue(ball());
+  for (const at of [3, 6, 11]) assert.equal(shapeAt(none, K, at).fill, '#ff0000', `frame ${at}`);
+  assert.equal(shapeAt(none, K, 12).fill, '#0000ff');
+});
+
+test("a shape's first key frame, and a Duplicate, set every part", () => {
+  const frames = ball();
+  frames[0].changes.delete(K);
+  assert.deepEqual(shapeAt(frames, K, 6), frames[6].changes.get(K).cell);
+  assert.equal(setPartsAt(frames, K, 6).size, 7);
+  const dup = ball();
+  dup[6].kind = 'duplicate';
+  dup[0].changes.set(K, cellState(withShape(RED, { fill: GRADIENT }), 0, 0));
+  assert.equal(shapeAt(dup, K, 9).fill, '#ff0000'); // frame 0's fill doesn't reach past the Duplicate
+  assert.equal(setPartsAt(dup, K, 6).size, 7);
+});
+
+test("a shape first on a later frame shows itself, whatever another shape's key frames do", () => {
+  const frames = ball(), late = rectShape(10, 10, 14, 14, { fill: '#00ff00' });
+  frames[6].changes.set('v:late', cellState(late, 0, 0));
+  frames[0].changes.set(K, cellState(withShape(RED, { fill: GRADIENT }), 0, 0));
+  for (const at of [6, 9, 12]) assert.deepEqual(shapeAt(frames, 'v:late', at), late, `frame ${at}`);
+  assert.equal(shapeAt(frames, 'v:late', 3), null);
+});
+
+test('a change can reach back to the first key frame of a shape with tweens or parts', () => {
+  const faded = ball({ 0: 'easeIn', 6: 'easeOut' });
+  assert.equal(tweenReach(faded, 12), 1);
+  const plain = ball();
+  for (const frame of plain) frame.parts = null;
+  assert.equal(tweenReach(plain, 12), 12);
+});
+
+test('every shape on a frame worked out from its parts or a tween', () => {
+  const frames = ball({ 0: 'linear' });
+  assert.equal(workedOutAt(frames, 3).get(K).m[5], 6);
+  assert.equal(workedOutAt(frames, 9).get(K).m[5], 12);
 });
