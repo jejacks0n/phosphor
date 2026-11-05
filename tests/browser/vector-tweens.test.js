@@ -406,3 +406,14 @@ test('a project keeps how each tween moves', async () => {
   const parts = await readProject(new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'm.phosphor'));
   expect(parts.animation.frames[0].motions.get(key)).toBe('cells');
 });
+
+test('splitting a tween keeps how it moves on both halves', async () => {
+  const { project } = await animated();
+  const key = bounce(project, 'linear');
+  project.setTweenMotion([key], 'cells');
+  project.showFrame(3);
+  moveBy(project, key, 4, 0);
+  project.showFrame(0);
+  expect(spanAt(project.frames, key, 1)).toMatchObject({ to: 3, motion: 'cells' });
+  expect(spanAt(project.frames, key, 4)).toMatchObject({ from: 3, easing: 'linear', motion: 'cells' });
+});
