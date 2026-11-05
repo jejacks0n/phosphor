@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -8,6 +8,7 @@ import { swatchSections, drawingColors } from '@/lib/ColorUtils';
 import { nearestInDirection } from '@/lib/spatialFocus';
 import { shortcut } from '@/lib/keyLabels';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
+import { isGradient } from '@/document/shapes.js';
 import { gradientKey, gradientSlot, recolorStop } from '@/tools/gradientHandles.js';
 import RangeField from '@/components/RangeField.vue';
 
@@ -42,6 +43,13 @@ const stop = computed(() => {
   const slot = gradientSlot(shape, workspace);
   return (slot === SHAPE_SLOTS[props.slotName] && shape[slot].stops[workspace.vectorStop]?.[1]) || null;
 });
+// On a shape with two gradients, the side open here is the one whose handles show.
+watch(() => props.slotName, (name) => {
+  const key = vector.value && gradientKey(project, workspace), shape = key && project.shapes.get(key);
+  if (!shape || gradientSlot(shape, workspace) === SHAPE_SLOTS[name] || !isGradient(shape[SHAPE_SLOTS[name]])) return;
+  workspace.vectorGradientSlot = SHAPE_SLOTS[name];
+  workspace.vectorStop = null;
+}, { immediate: true });
 const current = computed(() => stop.value ?? (vector.value ? solidOf(style.value(SHAPE_SLOTS[props.slotName])) ?? '#000000' : props.slotName === 'fg' ? workspace.editFgColor : workspace.editBgColor));
 const KINDS = ['solid', 'linear', 'radial'];
 const isNone = computed(() => (vector.value ? !style.value(SHAPE_SLOTS[props.slotName]) : props.slotName === 'fg' ? ansiView.value && workspace.editFgNone : workspace.editBgNone));

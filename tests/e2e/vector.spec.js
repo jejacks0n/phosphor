@@ -916,6 +916,28 @@ test('the Stroke color box makes a gradient stroke, which the Node tool edits; w
   await expect(page.locator('.vector-overlay .stop').first()).toHaveCSS('fill', 'rgb(0, 255, 0)');
 });
 
+test('with a gradient fill and stroke, the color box\'s Fill or Stroke shows that gradient\'s handles', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, width: 2, m: [1, 0, 0, 1, 0, 0],
+    fill: { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [10, 0, 0, 10, 10, 15] },
+    stroke: { type: 'linear', stops: [[0, '#00ff00'], [1, '#ffff00']], m: [10, 0, 0, 10, 10, 15] },
+    points: [[10, 10, 0, 0, 0, 0, 0], [20, 10, 0, 0, 0, 0, 0], [20, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
+  await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
+  const firstStop = page.locator('.vector-overlay .stop').first();
+  const which = (name) => page.locator('.vector-options').getByRole('button', { name, exact: true });
+  await expect(firstStop).toHaveCSS('fill', 'rgb(255, 0, 0)');
+  await page.locator('.color-pair .chip.bg').click(); // the Stroke chip
+  await expect(firstStop).toHaveCSS('fill', 'rgb(0, 255, 0)');
+  await expect(which('Stroke')).toHaveAttribute('aria-pressed', 'true');
+  const box = page.locator('.color-popover');
+  await box.locator('.head').getByRole('button', { name: 'Fill', exact: true }).click();
+  await expect(firstStop).toHaveCSS('fill', 'rgb(255, 0, 0)');
+  await box.locator('.head').getByRole('button', { name: 'Stroke', exact: true }).click();
+  await expect(firstStop).toHaveCSS('fill', 'rgb(0, 255, 0)');
+});
+
 test('the Node tool shows a shape\'s gradient\'s handles with its points; recoloring a stop changes the art; one Delete for a stop or a point; G isn\'t a VECTOR tool', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();

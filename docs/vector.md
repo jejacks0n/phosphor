@@ -120,7 +120,8 @@ on Windows and Linux) while you drag to place or move without snapping. The choi
   and Esc lets it go). Its line isn't a handle here: a drag inside the box still moves the shape, and stops are
   added with the Node tool. Where a gradient's end sits on one of the box's handles (a Linear gradient's ends are
   on the left and right ones), the gradient's end comes first; click again in the same place for the box's handle. With both
-  a gradient fill and outline, **Fill** and **Stroke** in the options row choose which one's handles show.
+  a gradient fill and outline, **Fill** and **Stroke** in the options row choose which one's handles show, as
+  does the side open in the color box.
 - Click empty canvas to deselect. Cmd+A (Ctrl+A) selects every shape on the frame, from any VECTOR tool (it
   switches to Vector select), finishing a Pen shape under way first.
 - Cmd+C (Ctrl+C) copies the selected shapes and Cmd+X cuts them; Cmd+V pastes them on top, selected with
@@ -175,7 +176,7 @@ points: for a
 linear one, a line from where it starts to where it ends, a square at each end; for a radial one, a square at its
 middle and one at its edge, joined by a line. Each color stop is a dot on the line, in its color. A press on
 a point or a curve handle is the point's; then the gradient's handles; then the outline. When the fill and outline are both gradients, **Fill** and **Stroke** in the options row choose which one's
-handles show; a gradient you've just made is the one shown.
+handles show, as does the side open in the color box; a gradient you've just made is the one shown.
 
 - **Drag the line** (or a radial gradient's middle) to move the gradient.
 - **Drag an end** (or the edge) to stretch it and turn it about the other end (or the middle). Shift keeps it
