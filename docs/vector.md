@@ -219,7 +219,8 @@ PIXEL's colors are left as they were.
 The Stroke side of the color box also sets how the outline is drawn, again the selected shapes' or the next
 shape's:
 
-- **Stroke width**, the outline's width in pixels (0.5 to 64).
+- **Stroke width**, the outline's width in pixels: the slider goes from 0.5 to 16 in tenths, and the box beside it
+  takes any width from 0.5 to 64.
 - **Align**, where that width goes: inside the outline, centered on it, or outside it. Centered, a stroke
   straddles its outline, so a rectangle snapped to cells and stroked 1 wide covers half of two cells at each
   side; inside, it fills exactly the column of cells just within each side (top and bottom, the half cells), and

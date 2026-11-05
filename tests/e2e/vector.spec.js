@@ -696,6 +696,20 @@ test('the Stroke color box sets caps, joins and the miter limit on the selection
   await expect(row.getByRole('button', { name: 'Stroke', exact: true })).toHaveCount(0); // not in the row
   await page.locator('.color-pair .chip.bg').click();
   await expect(page.locator('.color-popover').getByLabel('Stroke width', { exact: true })).toBeVisible();
+  // Its width: the slider to 16 in tenths, a typed one to 64; each one undo step.
+  const slider = page.locator('.color-popover').getByLabel('Stroke width', { exact: true });
+  await expect(slider).toHaveAttribute('max', '16');
+  await expect(slider).toHaveAttribute('step', '0.1');
+  const typed = page.locator('.color-popover').getByLabel('Stroke width in pixels', { exact: true });
+  for (const [text, width] of [['2.3', 2.3], ['40', 40], ['100', 64], ['0', 0.5]]) {
+    await typed.fill(text);
+    await typed.press('Enter');
+    expect((await shapeList(page))[0].width, text).toBe(width);
+    await expect(typed).toHaveValue(String(width));
+  }
+  await undoSteps(page, 3);
+  expect((await shapeList(page))[0].width).toBe(2.3);
+  await undoSteps(page, 1);
   const miter = page.locator('.color-popover').getByLabel('Miter', { exact: true });
   await expect(page.getByRole('button', { name: 'Round cap', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(miter).toBeDisabled();

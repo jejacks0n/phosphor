@@ -73,7 +73,8 @@ const swap = () => (vector.value ? style.swap() : workspace.swapColors());
 // VECTOR's Stroke side: the stroke's width, caps, joins, miter limit and alignment (useVectorStyle: the selected shapes', or
 // the next shape's), each change one undo step (a Width drag when it's let go).
 const strokeSide = computed(() => vector.value && props.slotName === 'bg');
-const WIDTH = computed(() => ({ key: 'vectorWidth', label: t('vector.width'), title: t('vector.widthTitle'), min: 0.5, max: 64, step: 0.5, decimals: 1 }));
+// The slider reaches 16, in tenths; a width typed beside it, as far as a shape's goes (64).
+const WIDTH = computed(() => ({ key: 'vectorWidth', label: t('vector.width'), title: t('vector.widthTitle'), min: 0.5, max: 16, step: 0.1, decimals: 1 }));
 const width = computed({
   get: () => style.value('width'),
   set: (v) => style.set('width', v, { remember: false }),
@@ -90,6 +91,11 @@ const JOINS = ['miter', 'round', 'bevel'].map((v) => ({ v, title: `vector.join${
 // An alignment: a square outline, a solid line, its stroke wide and faint inside it, on it or outside it.
 const band = { inside: 8, center: 6, outside: 4 };
 const ALIGNS = ['inside', 'center', 'outside'].map((v) => ({ v, title: `vector.align${v[0].toUpperCase()}${v.slice(1)}`, icon: ic(`<rect x="${band[v]}" y="${band[v]}" width="${24 - 2 * band[v]}" height="${24 - 2 * band[v]}" stroke-width="4" opacity=".45"/><rect x="6" y="6" width="12" height="12" stroke-width="1.5"/>`) }));
+const setWidth = (e) => {
+  const v = Number(e.target.value);
+  if (Number.isFinite(v) && e.target.value !== '') style.set('width', Math.min(64, Math.max(0.5, Math.round(v * 10) / 10)));
+  e.target.value = style.value('width');
+};
 const setMiter = (e) => {
   const v = Number(e.target.value);
   if (Number.isFinite(v) && e.target.value !== '') style.set('miter', Math.min(100, Math.max(1, v)));
@@ -204,7 +210,9 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-if="strokeSide" class="stroke-settings">
-      <RangeField :setting="WIDTH" v-model="width" @commit="style.finish"/>
+      <RangeField :setting="WIDTH" v-model="width" @commit="style.finish">
+        <input type="number" class="width-value" min="0.5" max="64" step="0.1" :aria-label="t('vector.widthValue')" :title="t('vector.widthValue')" :value="style.value('width')" @change="setWidth"/>
+      </RangeField>
       <div class="settings">
         <span class="option-label">{{ t('vector.align') }}</span>
         <div class="icons">
@@ -308,16 +316,27 @@ div.stroke-settings :deep(div.label-row label) {
 }
 
 div.stroke-settings :deep(span.value) {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
+  display: none; /* the typed width beside the slider shows it */
+}
+
+div.stroke-settings :deep(div.row-inputs) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+div.stroke-settings :deep(div.range-wrapper) {
+  flex: 1;
+}
+
+div.stroke-settings input.width-value {
+  width: 64px;
 }
 
 div.stroke-settings :deep(span.value-tooltip) {
   display: none; /* the label row shows the value */
 }
 
-div.stroke-settings :deep(div.range-wrapper),
 div.stroke-settings :deep(input[type=range]) {
   width: 100%;
   accent-color: var(--accent);
