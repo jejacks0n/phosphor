@@ -219,6 +219,25 @@ test('FPS and Hold set the timing', async ({ page }) => {
   expect(await store(page, 'project', (p) => [p.fps, p.frames[0].hold])).toEqual([12, 0.5]);
 });
 
+test('FPS and Hold can be typed in while the movie plays', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  await addFrame(page, 'Blank');
+  await bar(page).getByRole('button', { name: 'Play' }).click();
+  await expect.poll(() => store(page, 'workspace', (w) => w.playing)).toBe(true);
+  const fps = bar(page).getByRole('spinbutton', { name: 'Frames per second' });
+  await fps.selectText();
+  await fps.pressSequentially('24', { delay: 150 }); // frames go by between the keys
+  await expect(fps).toHaveValue('24');
+  await fps.press('Enter');
+  expect(await store(page, 'project', (p) => p.fps)).toBe(24);
+  expect(await store(page, 'workspace', (w) => w.playing)).toBe(true);
+  const hold = bar(page).getByRole('spinbutton', { name: 'Hold' });
+  await hold.selectText();
+  await hold.pressSequentially('0.5', { delay: 150 });
+  await expect(hold).toHaveValue('0.5');
+});
+
 test('Ghost toggles', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
