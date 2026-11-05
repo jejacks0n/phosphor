@@ -140,7 +140,7 @@ export function paintImage(resolved, cols, rows) {
 // [key, [part, …]] for the shapes the frame sets only some of, on every frame with shapes (a frame with shapes and no
 // parts was saved before them).
 export const serializeFrames = (frames) => frames.map((frame, i) => {
-  const { kind, hold, changes } = frame, drawn = [...drawnKeys(frame)]; // all of them: with cells not carrying, a drawn cell is owned for being drawn
+  const { kind, hold, changes } = frame, drawn = [...drawnKeys(frame)].filter((key) => !changes.has(key));
   const all = [...changes], shapes = all.filter(([key]) => isShapeKey(key));
   const tweens = [...(frame.tweens ?? [])].filter(([key]) => changes.get(key)?.cell);
   const motions = [...(frame.motions ?? [])].filter(([key, motion]) => frame.tweens?.has(key) && changes.get(key)?.cell && motion !== 'smooth');

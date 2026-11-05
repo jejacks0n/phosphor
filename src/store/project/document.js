@@ -400,15 +400,9 @@ export const documentActions = {
     };
   },
 
-  // The cells a still export writes: the frame showing as it plays (with cells not carrying, the ghost of the frame
-  // before is only there to draw by).
-  async exportCells() {
-    return this.hasFrames && !this.cellsCarry ? (await this.builtFrame(this.frame)).cells : this.cells;
-  },
-
   // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first.
   async exportFile(ext, { filename = this.filename, ...opts } = {}) {
-    const blob = new AnsiFile(this.cols, charRowsOf(this.rows), await this.exportCells()).toBlob({
+    const blob = new AnsiFile(this.cols, charRowsOf(this.rows), this.cells).toBlob({
       sauce: this.sauceFields(),
       colorMode: this.quantize,
       utf8: ext === 'utf8ans',

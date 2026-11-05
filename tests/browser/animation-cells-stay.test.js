@@ -1,7 +1,8 @@
 // Cells that stay on their frame (the movie's cellsCarry off): a cell drawn on a frame plays there only, the frame
-// before shows as the ghost to draw by, and shapes and tweens carry as ever.
+// before's picture shows as the ghost to draw by (only on screen: it's no cell of this frame's), and shapes and
+// tweens carry as ever.
 import { test, expect } from 'vitest';
-import { createTestApp, loadImage, settle } from '../support/app.js';
+import { createTestApp, loadImage } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells.js';
 import { cellKey } from '@/document/editCells.js';
 import { writeProject, readProject } from '@/document/projectIO.js';
@@ -38,15 +39,49 @@ test('a cell drawn on a frame plays there only when cells stay, while shapes car
   expect(project.frames[2].changes.size).toBe(0);
 });
 
-test('the frame before shows as the ghost, owned by neither, and only the frame just before', async () => {
+test('the frame before isn\'t in the frame\'s cells: it shows as its picture, dimmed, only on screen', async () => {
   const { project } = await boing();
-  expect(charAt(project, 1, 1)).toBe('A');
-  expect(project.inheritedCells().has(cellIndex(1, 1, project.cols))).toBe(true);
+  const i = cellIndex(1, 1, project.cols);
+  expect(project.editCells.has(cellKey(1, 1))).toBe(false);
+  expect(charAt(project, 1, 1)).not.toBe('A'); // cells: what the frame is, and what exports
+  await project.buildGhost();
+  expect(project.shownCells[i].char).toBe('A');
+  expect(project.shownCells[i].fg.hex).not.toBe(INK.fg); // dimmed toward what's under it
+  project.addFrame('blank'); // only the frame just before
+  await project.buildGhost();
+  expect(project.shownCells[i].char).not.toBe('A');
+});
+
+test('moving a selection over the ghost doesn\'t make the frame own it', async () => {
+  const { project } = await boing();
+  await project.buildGhost();
+  project.moveSelection({ c0: 0, r0: 0, c1: 3, r1: 3 }, { base: false, edit: true }, 4, 4);
   project.showFrame(0);
-  project.showFrame(2);
   expect(project.frames[2].changes.size).toBe(0);
-  project.addFrame('blank');
-  expect(charAt(project, 1, 1)).not.toBe('A');
+});
+
+test('drawing beside the ghost leaves it the frame before\'s, and the ghost goes where this frame draws', async () => {
+  const { project } = await boing();
+  type(project, 5, 5, 'B');
+  await project.buildGhost();
+  expect(project.shownCells[cellIndex(1, 1, project.cols)].char).toBe('A');
+  type(project, 1, 1, 'C');
+  expect(project.shownCells[cellIndex(1, 1, project.cols)].char).toBe('C');
+  project.showFrame(0);
+  expect([...project.frames[2].changes.keys()].sort()).toEqual([cellKey(1, 1), cellKey(5, 5)].sort());
+});
+
+test('carrying switched on, a stroke undone and carrying switched off again leave the frame nothing of the frame before\'s', async () => {
+  const { project } = await boing();
+  type(project, 5, 5, 'B');
+  project.setCellsCarry(true); // the frame before's A carries into this one
+  type(project, 7, 7, 'C');
+  project.setCellsCarry(false);
+  project.undo(); // C
+  project.undo(); // B
+  project.showFrame(0);
+  expect(project.frames[2].changes.size).toBe(0);
+  expect(project.resolvedOf(2).has(cellKey(1, 1))).toBe(false);
 });
 
 test('typing the same character again on the next frame keeps it there', async () => {
@@ -57,9 +92,13 @@ test('typing the same character again on the next frame keeps it there', async (
   expect(project.resolvedOf(2).has(cellKey(1, 1))).toBe(true);
 });
 
-test('with the ghost off, the frame before doesn\'t show', async () => {
+test('with the ghost off, or at 0%, the frame before doesn\'t show', async () => {
   const { project, workspace } = await boing();
   const i = cellIndex(1, 1, project.cols);
+  await project.buildGhost();
+  workspace.ghostStrength = 0;
+  expect(project.shownCells[i].char).not.toBe('A');
+  workspace.ghostStrength = 35;
   workspace.ghost = false;
   expect(project.shownCells[i].char).not.toBe('A');
   project.setCellsCarry(true);
@@ -85,30 +124,17 @@ test('deleting a frame leaves the next playing only its own cells', async () => 
   expect(project.resolvedOf(1).has(cellKey(1, 1))).toBe(false); // frame 1's A went with it
 });
 
-test('a cell typed again on the next frame stays that frame\'s after the project is saved and opened', async () => {
-  const { project } = await boing();
-  type(project, 1, 1, 'A'); // as the frame before has it: kept here only because it was typed
-  const file = new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'm.phosphor');
-  await project.loadProject(file);
-  await settle(project);
-  project.showFrame(2);
-  type(project, 7, 7, 'Z');
-  project.showFrame(0);
-  expect(project.frames[2].changes.has(cellKey(1, 1))).toBe(true);
-});
-
-test('the still exports take the frame as it plays, not its ghost', async () => {
-  const { project } = await boing();
-  const i = cellIndex(1, 1, project.cols);
-  expect(project.cells[i].char).toBe('A'); // the ghost, there to draw by
-  expect((await project.exportCells())[i].char).not.toBe('A');
-  project.setCellsCarry(true);
-  expect((await project.exportCells())[i].char).toBe('A');
-});
-
 test('with the ghost off the ghost has no strength, on every view', async () => {
   const { project, workspace } = await boing();
   expect(project.ghostStrength).toBe(workspace.ghostStrength / 100);
   workspace.ghost = false;
   expect(project.ghostStrength).toBe(0);
+});
+
+test('what\'s drawn over the ghost shows at once, before the stroke ends', async () => {
+  const { project } = await boing();
+  await project.buildGhost();
+  expect(project.shownCells[cellIndex(1, 1, project.cols)].char).toBe('A');
+  project.typeAt(1, 1, 'C', INK); // the typing run still open
+  expect(project.shownCells[cellIndex(1, 1, project.cols)].char).toBe('C');
 });

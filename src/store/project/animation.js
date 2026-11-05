@@ -54,14 +54,12 @@ function liveStates(project) {
   return states;
 }
 
-// What frame i shows while it's edited: what it resolves to, and with cells not carrying, on a Blank, the cells of the
-// frame before that it doesn't change, to draw by as its ghost (they're the frame before's: noting leaves them out).
-function shownAt(project, i) {
-  const resolved = project.resolvedOf(i), frame = project.frames[i];
-  if (project.cellsCarry || !i || frame.kind !== 'blank') return resolved;
-  const shown = new Map(resolved);
-  for (const [key, state] of project.resolvedOf(i - 1)) if (!isShapeKey(key) && !frame.changes.has(key)) shown.set(key, state);
-  return shown;
+// What the frame showing draws over: the frame before as it resolves, though with cells not carrying only its shapes
+// (its cells are the ghost, which is no part of this frame).
+function carried(project) {
+  if (!project.frame || project.currentFrame.kind !== 'blank') return NOTHING;
+  const previous = project.resolvedOf(project.frame - 1);
+  return project.cellsCarry ? previous : new Map([...previous].filter(([key]) => isShapeKey(key)));
 }
 
 // Frame i becomes the one showing: its state in editCells and the paint layer, its ledger in _ledger. Whatever
@@ -76,7 +74,7 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
   frame.ledger = null;
   project.frame = i;
   project._noted = markRaw({ frame, history: version, edit: project.editVersion });
-  const resolved = shownAt(project, i);
+  const resolved = project.resolvedOf(i);
   const cells = new Map(), shapes = new Map();
   for (const [key, { cell }] of resolved) if (cell) (isShapeKey(key) ? shapes : cells).set(key, cell);
   project.editCells = cells;
@@ -149,8 +147,6 @@ function setParts(project, key, shape, { shapeOf, unsetOf }) {
 // ponytail: each shape walks the frames back to its key frame; per-shape spans worked out once if huge movies lag.
 function ownChanges(project, previous) {
   const live = liveStates(project), own = frameDiff(previous, live), inherited = inheritance(project), parts = new Map();
-  // Not carrying, a cell drawn in just what the frame before has is this frame's, or it wouldn't play here.
-  if (!project.cellsCarry) for (const key of drawnKeys(project.currentFrame)) if (!own.has(key) && live.has(key)) own.set(key, live.get(key));
   const keys = new Set([...previous.keys(), ...project.shapes.keys(), ...project.currentFrame.changes.keys()].filter(isShapeKey));
   for (const key of keys) {
     const shape = project.shapes.get(key), had = project.currentFrame.changes.get(key)?.cell;
@@ -208,8 +204,7 @@ function note(project) {
   const frame = project.currentFrame, noted = project._noted;
   if (!project._stroke && noted?.frame === frame && noted.history === project.history.version && noted.edit === project.editVersion) return;
   project._noted = markRaw({ frame, history: project.history.version, edit: project.editVersion });
-  const previous = project.frame > 0 && frame.kind === 'blank' ? project.resolvedOf(project.frame - 1) : NOTHING;
-  const { own: changes, tweened, parts } = ownChanges(project, previous);
+  const { own: changes, tweened, parts } = ownChanges(project, carried(project));
   if (sameChanges(changes, frame.changes) && sameParts(parts, frame.parts)) return reshow(project);
   // A shape the frame stops having can leave later key frames with nothing to carry from: they keep how they look.
   if ([...frame.changes].some(([key, { cell }]) => isShapeKey(key) && cell && !changes.get(key)?.cell)) keepShown(project);
@@ -442,6 +437,15 @@ export const animationActions = {
     }
   },
 
+  // With cells not carrying, the frame before's picture, built for shownCells to show as the ghost: ghostBefore.
+  async buildGhost() {
+    const at = this.frame, prior = this.frames[at - 1];
+    if (!this.animate || this.cellsCarry || !prior || this.currentFrame.kind !== 'blank') return;
+    if (this.ghostBefore?.frame === prior && this.ghostBefore.built === prior.built) return;
+    const built = await this.builtFrame(at - 1);
+    if (built && this.frames[this.frame - 1] === prior) this.ghostBefore = markRaw({ frame: prior, built });
+  },
+
   // The open stroke went over these pixels ({ x, y }), whether or not that changed them. Frame 0 has no ghost.
   noteDrawn(pixels) {
     if (!this.frame || !this._stroke) return;
@@ -449,11 +453,12 @@ export const animationActions = {
     for (const { x, y } of pixels) drawn.add(cellKey(x, y >> 1));
   },
 
-  // The cells the frame showing shows only because a frame before it did, by index on the grid: its ghost.
+  // The ghost's cells, by index on the grid: those the frame showing shows only because a frame before it did, or with
+  // cells not carrying, the frame before's cells where this frame has none.
   inheritedCells() {
     const inherited = new Set();
     if (!this.frame || this.currentFrame.kind !== 'blank') return inherited;
-    const previous = this.resolvedOf(this.frame - 1), { own } = ownChanges(this, previous);
+    const previous = this.resolvedOf(this.frame - 1), own = this.cellsCarry ? ownChanges(this, previous).own : liveStates(this);
     const { cols } = this, rows = charRowsOf(this.rows);
     for (const key of previous.keys()) {
       if (own.has(key) || isShapeKey(key)) continue;
@@ -461,7 +466,7 @@ export const animationActions = {
       if (col < cols && row < rows) inherited.add(cellIndex(col, row, cols));
     }
     // Drawn here in exactly the color it inherited: the frame doesn't own it, but it's no ghost to whoever drew it.
-    for (const key of drawnKeys(this.currentFrame)) {
+    if (this.cellsCarry) for (const key of drawnKeys(this.currentFrame)) {
       const { col, row } = parseKey(key);
       if (col < cols) inherited.delete(cellIndex(col, row, cols));
     }
@@ -472,7 +477,7 @@ export const animationActions = {
   inheritedShapes() {
     const inherited = new Set();
     if (!this.frame || this.currentFrame.kind !== 'blank') return inherited;
-    const previous = this.resolvedOf(this.frame - 1), { own } = ownChanges(this, previous);
+    const previous = carried(this), { own } = ownChanges(this, previous);
     for (const key of previous.keys()) if (isShapeKey(key) && !own.has(key)) inherited.add(key);
     return inherited;
   },

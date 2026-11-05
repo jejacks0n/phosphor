@@ -143,12 +143,12 @@ describe('saving frames', () => {
     expect(read.frames[1].changes.get('2,2')).toEqual({ cell: null, top: 0, bottom: 0x00ff00ff });
   });
 
-  test('what was drawn on a frame is kept, changed or not: with cells not carrying, a cell drawn as it was is owned for that', () => {
+  test('what was drawn on a frame without changing it is kept; what it changed is already in its changes', () => {
     const json = JSON.parse(JSON.stringify(good()));
-    expect(json.frames[0].drawn).toEqual(['0,0', '5,5', '6,1']);
+    expect(json.frames[0].drawn).toEqual(['5,5', '6,1']);
     expect(json.frames[1].drawn).toBeUndefined();
     const read = deserializeFrames(json, 20, 20);
-    expect([...drawnKeys(read.frames[0])]).toEqual(['0,0', '5,5', '6,1']);
+    expect([...drawnKeys(read.frames[0])]).toEqual(['5,5', '6,1']);
     expect([...drawnKeys(read.frames[1])]).toEqual([]);
   });
 
