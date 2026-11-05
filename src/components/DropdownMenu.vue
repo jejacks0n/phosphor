@@ -41,17 +41,23 @@ const handleScroll = (e) => { if (isOpen.value && !root.value.contains(e.target)
 // Pointer presses, in the capture phase: the canvas cancels its pointerdowns, so no mousedown
 // follows a click there.
 const handleOutsideClick = (e) => { if (isOpen.value && !root.value.contains(e.target)) close(); };
-const handleKeydown = (e) => { if (isOpen.value && e.key === 'Escape') close(); };
+// Escape, heard first (the capture phase): it closes an open menu and does nothing else, so what's selected stays.
+const handleKeydown = (e) => {
+  if (!isOpen.value || e.key !== 'Escape') return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  close();
+};
 
 onMounted(() => {
   document.addEventListener('pointerdown', handleOutsideClick, true);
-  window.addEventListener('keydown', handleKeydown);
+  window.addEventListener('keydown', handleKeydown, true);
   window.addEventListener('resize', close);
   document.addEventListener('scroll', handleScroll, true);
 });
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', handleOutsideClick, true);
-  window.removeEventListener('keydown', handleKeydown);
+  window.removeEventListener('keydown', handleKeydown, true);
   window.removeEventListener('resize', close);
   document.removeEventListener('scroll', handleScroll, true);
 });
