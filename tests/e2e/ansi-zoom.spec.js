@@ -1,5 +1,5 @@
-// The ANSI view zooms out, down to 25% of its cell size: Ctrl+wheel (a trackpad pinch arrives as
-// one), a pinch, or the Zoom tool's drag. Everything that maps the pointer to a cell follows the zoom.
+// The ANSI view (and VECTOR's, the same view) zooms from 25% of its cell size to 800%: Ctrl+wheel (a
+// trackpad pinch arrives as one), a pinch, or the Zoom tool's drag. Everything that maps the pointer to a cell follows the zoom.
 // tests/fixtures/images/tall.png opens at 80 x 2400 (1200 lines): the view scrolls down it.
 import { test, expect } from './support.js';
 import { openApp, store, tab, settled, cellPoint, drag } from './support.js';
@@ -55,7 +55,7 @@ async function halfZoom(page) {
   await frames(page);
 }
 
-test('Ctrl+wheel out shrinks the cells, keeps the cell under the pointer, and stops at 25%; in stops at 100%', async ({ page }) => {
+test('Ctrl+wheel out shrinks the cells, keeps the cell under the pointer, and stops at 25%; in stops at 800%', async ({ page }) => {
   await openApp(page, 'images/tall.png');
   await scroller(page).evaluate((el) => { el.scrollTop = el.scrollHeight / 2; });
   const view = await scroller(page).boundingBox();
@@ -81,13 +81,15 @@ test('Ctrl+wheel out shrinks the cells, keeps the cell under the pointer, and st
   expect(await cellHeight() / full).toBeGreaterThan(0.22);
   await expect.poll(async () => Math.abs(await lineAt(page, at.y) - before)).toBeLessThan(0.5);
 
-  for (let i = 0; i < 5; i++) await ctrlWheel(page, -100);
-  expect(await zoom(page)).toBe(1);
+  for (let i = 0; i < 3; i++) await ctrlWheel(page, -100);
+  expect(await zoom(page)).toBeCloseTo(0.25 * Math.exp(3), 6); // past 100%
+  await ctrlWheel(page, -100);
+  expect(await zoom(page)).toBe(8);
   await frames(page);
   const top = await scroller(page).evaluate((el) => el.scrollTop), size = await display(page).boundingBox();
-  await ctrlWheel(page, -100); // at 100%, in changes nothing
+  await ctrlWheel(page, -100); // at 800%, in changes nothing
   await frames(page);
-  expect(await zoom(page)).toBe(1);
+  expect(await zoom(page)).toBe(8);
   expect(await scroller(page).evaluate((el) => el.scrollTop)).toBe(top);
   expect(await display(page).boundingBox()).toEqual(size);
 });
@@ -143,7 +145,7 @@ test('a font-size change at 50% keeps the place and stays at 50%', async ({ page
   await expect.poll(async () => Math.abs(await middleLine(page) - line)).toBeLessThan(1);
 });
 
-test('the status bar shows 50%, and pressing it goes back to 100%, leaving the focus beside it', async ({ page }) => {
+test('the status bar shows 50% (or 400%), and pressing it goes back to 100%, leaving the focus beside it', async ({ page }) => {
   await openApp(page, 'images/tall.png');
   const zoomButton = page.locator('.ansi-status button', { hasText: /%$/ });
   await expect(zoomButton).toHaveCount(0); // at 100%, nothing to go back from
@@ -163,6 +165,10 @@ test('the status bar shows 50%, and pressing it goes back to 100%, leaving the f
   await expect(zoomButton).toHaveCount(0);
   await expect(page.locator('.ansi-status button').first()).toBeFocused(); // not lost with the button
   await expect.poll(async () => Math.abs(await middleLine(page) - line)).toBeLessThan(1); // the view keeps its middle
+
+  await store(page, 'workspace', (w) => w.setAnsiZoom(4)); // zoomed in, too
+  await page.getByRole('button', { name: 'Zoom 400%: back to 100%', exact: true }).click();
+  expect(await zoom(page)).toBe(1);
 });
 
 test('the zoom and the place survive going to PIXEL and back', async ({ page }) => {
@@ -190,7 +196,7 @@ test('Z picks Zoom on the ANSI view; a drag zooms', async ({ page }) => {
   const from = { x: view.x + view.width - 20, y: view.y + view.height / 2 };
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
-  await page.mouse.move(from.x - 600, from.y, { steps: 5 }); // left: out, the whole range in 1500 px, as on PIXEL
+  await page.mouse.move(from.x - 300, from.y, { steps: 5 }); // left: out, by half every 300 px
   await page.mouse.up();
-  expect(await zoom(page)).toBeCloseTo(0.7, 6);
+  expect(await zoom(page)).toBeCloseTo(0.5, 6);
 });

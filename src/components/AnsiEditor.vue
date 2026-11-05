@@ -11,7 +11,7 @@ import CellCanvas from '@/lib/CellCanvas';
 import { viewWindow, viewIn, wholeCellsIn, scrollToCell } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
-import { clampAnsiZoom } from '@/lib/zoom';
+import { clampViewZoom, dragViewZoom } from '@/lib/zoom';
 import { fitColumns } from '@/lib/DrawnWidth';
 import EditorViewport from '@/components/EditorViewport.vue';
 import VectorOverlay from '@/components/VectorOverlay.vue';
@@ -113,7 +113,8 @@ const zoom = {
     workspaceStore.setAnsiZoom(z);
     nextTick(() => { zoomGesture = false; }); // after the watcher below, which a change queues
   },
-  clamp: clampAnsiZoom,
+  clamp: clampViewZoom,
+  drag: dragViewZoom,
 };
 watch(() => workspaceStore.ansiZoom, (z) => {
   const was = metrics.value ?? sizedBy.value;

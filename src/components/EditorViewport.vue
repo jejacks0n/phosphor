@@ -23,7 +23,7 @@ import { withShape } from '@/document/shapes.js';
 const props = defineProps({
   display: { type: Object, default: null },                 // the sizer (or the DOM view's pre) that coordinates are measured against
   coordsAt: { type: Function, required: true },             // (event) => { x, y } in fractional grid pixels, or null
-  zoom: { type: Object, default: null },                    // { get, set, clamp } for the view's zoom; null: not zoomable
+  zoom: { type: Object, default: null },                    // { get, set, clamp, drag? } for the view's zoom; null: not zoomable
   scrollKey: { type: String, required: true },              // 'input' | 'ansi': where scroll position is remembered
   contentSize: { type: Object, default: null },             // { width, height } -> padded layout that keeps its center on resize
   view: { type: String, required: true },                   // 'input' (PIXEL) | 'output' (ANSI) | 'vector' (VECTOR), passed to tools
@@ -56,6 +56,7 @@ const {
   // The store's value, not a prop: several zoom events can land in one frame, before a prop would update.
   editZoom: computed(() => props.zoom?.get()),
   clampZoom: props.zoom?.clamp,
+  dragZoomBy: props.zoom?.drag,
   workspaceStore,
   disableZoom: !props.zoom,
   callbacks: {
