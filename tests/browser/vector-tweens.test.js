@@ -3,7 +3,8 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { isShapeKey, rectShape, translation, transformed, rotation, withShape } from '@/document/shapes.js';
-import { ease, spanAt, tweenPart } from '@/document/tweens.js';
+import { ease, spanAt, strayEasings, tweenPart } from '@/document/tweens.js';
+import { partKeys } from '@/document/keys.js';
 import { writeProject } from '@/document/projectIO.js';
 
 async function animated() {
@@ -337,7 +338,7 @@ test('undoing an edit on a frame puts back the shape it had then, though a frame
   expect(project.shapes.get(key)).toEqual(turned);
 });
 
-// Random frame changes, edits, tweens and Clears: after each, every frame's cached look is what a fresh look works
+// Random frame changes, edits, tweens, keys and Clears: after each, every frame's cached look is what a fresh look works
 // out; then undo all the way, and redo, go back through the same movies. By default a few seeds and those that once
 // failed (11: an undo putting back a shape from before a frame folded in; 27, 30: a tween's frames redrawn from a
 // stale cache); VITE_FUZZ_SEEDS=30 runs seeds 1 to 30.
@@ -362,6 +363,16 @@ async function tweenFuzz(seed, steps = 40) {
   const r = rng(seed), int = (n) => Math.floor(r() * n), pick = (list) => list[int(list.length)];
   const keys = [project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' })), project.addShape(rectShape(10, 10, 14, 13, { fill: '#0000ff' }))];
   for (let i = 0; i < 8; i++) project.addFrame('blank');
+  // One or two of a shape's keys around the frame showing, [key, refs], or [key, []] where it doesn't show.
+  const keysOf = () => {
+    const key = pick(keys), rows = [...(partKeys(project.frames, key, project.frame)?.rows ?? [])];
+    if (!rows.length) return [key, []];
+    const ref = () => {
+      const [part, row] = pick(rows);
+      return { part, at: pick(row).at };
+    };
+    return [key, r() < 0.3 ? [ref(), ref()] : [ref()]];
+  };
   let depth = 0;
   const h = project.history, push = h.push.bind(h);
   h.push = (e) => { push(e); depth++; };
@@ -390,9 +401,21 @@ async function tweenFuzz(seed, steps = 40) {
     delete: () => project.deleteFrame(),
     reorder: () => project.moveFrame(int(project.frames.length), int(project.frames.length)),
     clear: () => project.clearEditLayer(),
+    ease: () => project.setKeyEasing(...keysOf(), pick([null, 'linear', 'easeIn', 'easeOut', 'easeInOut', 'elastic'])),
+    unkey: () => project.deleteKeys(...keysOf()),
+    rekey: () => project.addKey(pick(keys), pick(['transform', 'transform', 'fill', 'outline', 'width'])),
+    slide: () => project.moveKeys(...keysOf(), int(5) - 2),
+    drag: () => {
+      const [key, refs] = keysOf(), drag = {};
+      project.moveKeys(key, refs, int(5) - 2, drag);
+      project.moveKeys(key, refs, int(5) - 2, drag);
+      project.endKeyDrag(drag);
+    },
   };
+  const keyed = new Set(['ease', 'unkey', 'rekey', 'slide', 'drag']); // what leaves no easing without a tween to use it
   // Weighted toward what makes tweens: shapes moved on frames apart, and easings chosen between them.
   const names = ['show', 'show', 'show', 'move', 'move', 'move', 'tween', 'tween', 'tween', 'snap', 'recolor', 'widen', 'regradient', 'add', 'add', 'delete', 'reorder', 'clear'], log = [];
+  for (const name of keyed) names.push(name, name, name); // as tween is
   project.clearHistory();
   depth = 0;
   const stack = [movie(project)];
@@ -403,6 +426,7 @@ async function tweenFuzz(seed, steps = 40) {
     log.push(`${name}@${project.frame}/${project.frames.length}${depth > was ? '+' : ''}`);
     for (const frame of project.frames) frame.resolved = null;
     if (movie(project) !== now) return { seed, log, problem: `step ${i} ${name}: a frame's cached look is stale` };
+    if (keyed.has(name) && keys.some((key) => strayEasings(project.frames, key).length)) return { seed, log, problem: `step ${i} ${name}: an easing with no tween` };
     if (depth === was + 1) stack.push(now);
     else if (depth === was) stack[stack.length - 1] = now;
     else return { seed, log, problem: `step ${i} ${name}: ${depth - was} steps` };

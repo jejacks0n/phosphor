@@ -32,6 +32,9 @@ function keysIn(frames, key, life) {
 // The life the refs are in: around the earliest (a life seen from a later frame can start at a Wipe in it).
 const lifeOf = (frames, key, refs) => (refs.length ? lifeAt(frames, key, Math.min(...refs.map(({ at }) => at))) : []);
 
+// The refs naming a key in rows (keysIn's).
+const matching = (refs, rows) => refs.filter(({ part, at }) => rows.get(part)?.some((k) => k.at === at));
+
 // Whether the refs move a part's key: a ref on the start brings every part's key there.
 function movingOf(refs, start) {
   const all = refs.some(({ at }) => at === start), named = new Set(refs.map(({ part, at }) => `${part}@${at}`));
@@ -62,8 +65,9 @@ export function listedParts(frames, key, i) {
 // frame after a Wipe, an erase or another life (not at all from a Wipe), and on to a frame short of the next key that
 // stays; the rest stay between the start and the life's end, and can't land on or cross a fixed key.
 export function moveRange(frames, key, refs) {
-  const life = lifeOf(frames, key, refs), start = life[0];
-  if (!life.length || refs.some(({ at }) => isFixed(frames, at, start))) return { least: 0, most: 0 };
+  const life = lifeOf(frames, key, refs), start = life[0], rows = life.length ? keysIn(frames, key, life) : null;
+  refs = rows ? matching(refs, rows) : [];
+  if (!refs.length || refs.some(({ at }) => isFixed(frames, at, start))) return { least: 0, most: 0 };
   const end = endOf(frames, key, life), moves = movingOf(refs, start), fixed = life.filter((at) => isFixed(frames, at, start));
   const startMoves = moves('transform', start);
   let least = -Infinity, most = Infinity;
@@ -72,7 +76,7 @@ export function moveRange(frames, key, refs) {
     while (before >= 0 && frames[before].kind === 'blank' && !frames[before].changes.has(key)) before--;
     least = frames[start].kind === 'blank' ? before + 1 - start : 0;
   }
-  for (const [part, row] of keysIn(frames, key, life)) {
+  for (const [part, row] of rows) {
     for (const { at } of row) {
       if (!moves(part, at)) {
         if (startMoves && at > start) most = Math.min(most, at - 1 - start);
@@ -148,11 +152,13 @@ function rewritten(frames, key, life, rows) {
 }
 
 // The refs' keys moved by `by` frames (within moveRange), { patch, refs }: each with its part's value, easing and
-// motion, replacing a key of its part where it lands; refs, where they landed. A moved start moves the whole shape.
+// motion, replacing a key of its part where it lands; refs, those naming a key, where they landed. A moved start moves
+// the whole shape.
 export function movedKeys(frames, key, refs, by) {
-  const life = lifeOf(frames, key, refs);
-  if (!life.length || !by) return { patch: new Map(), refs };
-  const moves = movingOf(refs, life[0]), rows = keysIn(frames, key, life);
+  const life = lifeOf(frames, key, refs), rows = life.length ? keysIn(frames, key, life) : null;
+  refs = rows ? matching(refs, rows) : [];
+  if (!refs.length || !by) return { patch: new Map(), refs };
+  const moves = movingOf(refs, life[0]);
   for (const [part, row] of rows) {
     const moved = row.filter(({ at }) => moves(part, at)).map((k) => ({ ...k, at: k.at + by })), landed = new Set(moved.map(({ at }) => at));
     rows.set(part, [...row.filter(({ at }) => !moves(part, at) && !landed.has(at)), ...moved].sort((a, b) => a.at - b.at));

@@ -11,6 +11,7 @@ import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { isShapeKey, sameShape } from '@/document/shapes.js';
 import { MOTIONS, lifeAt, setPartsAt, shapeAt, spanAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
 import { PARTS, changedParts, samePart } from '@/document/parts.js';
+import { addedKey, deletedKeys, moveRange, movedKeys, partKeys } from '@/document/keys.js';
 import { newLedger } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
 
@@ -188,10 +189,10 @@ function reshow(project) {
 // shows now, for when what it carries from goes.
 function keepShown(project) {
   if (!project.frames.some((frame) => frame.parts?.size)) return;
-  project.resolvedOf(project.frames.length - 1);
   project.frames.forEach((frame, at) => {
     if (at === project.frame || !frame.parts?.size) return;
-    const kept = [...frame.parts.keys()].map((key) => [key, frame.resolved.get(key)?.cell, frame.changes.get(key)?.cell])
+    const shown = project.resolvedOf(at); // a frame after one that isn't Blank can be worked out while one before isn't
+    const kept = [...frame.parts.keys()].map((key) => [key, shown.get(key)?.cell, frame.changes.get(key)?.cell])
       .filter(([, now, held]) => now && held && !sameShape(now, held));
     if (kept.length) frame.changes = new Map([...frame.changes, ...kept.map(([key, now]) => [key, cellState(now, 0, 0)])]);
   });
@@ -265,7 +266,8 @@ function handOn(project, at, handed) {
   }
 }
 
-const framesNow = (project) => ({ list: project.frames, states: project.frames.map(({ kind, changes, tweens, motions, parts }) => ({ kind, changes, tweens, motions, parts })), showing: project.currentFrame });
+const framesNow = (project) => ({ list: project.frames, states: project.frames.map(({ kind, changes, tweens, motions, parts, splits }) => ({ kind, changes, tweens, motions, parts, splits })), showing: project.currentFrame });
+const sameFrames = (a, b) => a.list === b.list && a.states.every((state, at) => Object.keys(state).every((name) => state[name] === b.states[at][name]));
 
 // After the list changed at index at (before: the list as it was): the frames between of a tween across there, before
 // or after, go stale too, and with tweens anywhere, those after at as far as staleFrames reaches.
@@ -277,7 +279,7 @@ function staleTweens(project, before, at) {
 
 // The frames as a step of history left them. Frame objects are kept, so a deleted frame's ledger comes back with
 // it. Holds aren't part of a step, and they live on the frame, so they stay.
-function putFrames(project, { list, states, showing }) {
+function putFrames(project, { list, states, showing }, { draw = true } = {}) {
   const was = project.frames, leaving = project.currentFrame;
   for (const frame of was) if (!list.includes(frame)) frame.resolved = frame.built = null; // history holds it, and these are only worked out
   const differs = (frame, at) => frame !== was[at] || frame.kind !== states[at].kind || frame.changes !== states[at].changes || frame.tweens !== states[at].tweens || frame.motions !== states[at].motions || frame.parts !== states[at].parts;
@@ -289,7 +291,7 @@ function putFrames(project, { list, states, showing }) {
   if (first >= 0) for (let at = from; at < list.length; at++) list[at].resolved = list[at].built = null;
   project.frames = list;
   project._float = null;
-  arrive(project, list.indexOf(showing), leaving);
+  arrive(project, list.indexOf(showing), leaving, { draw });
 }
 
 // The tween each shape (by key) is in, or starts, on the frame showing, changed (change(frame it starts from, key, its
@@ -313,6 +315,52 @@ function changeTweens(project, keys, differs, change) {
     project.frames = [...project.frames];
     return project.currentFrame;
   });
+}
+
+// A patch of a shape's keys (keys.js) set on the frames: what it reaches redrawn, and each key frame setting only some
+// of a shape keeping how it shows. A frame a key action changes is the shape's key there on purpose, so it's no split.
+function putKeys(project, key, patch) {
+  if (!patch?.size) return;
+  const reach = new Map([...patch.keys()].map((at) => [at, tweenReach(project.frames, at)])); // a tween across, before
+  for (const [at, state] of patch) {
+    const frame = project.frames[at];
+    Object.assign(frame, state);
+    if (frame.splits?.has(key)) frame.splits = new Set([...frame.splits].filter((each) => each !== key));
+  }
+  dropStrays(project.frames);
+  for (const [at, was] of reach) {
+    project.staleFrames(Math.min(at, was, tweenReach(project.frames, at))); // and after
+    project.staleFrames(at);
+  }
+  keepShown(project);
+  project.frames = [...project.frames];
+}
+
+// One undo step setting patchOf(frames)'s keys of a shape (null or empty: nothing to do, and no step).
+function keyStep(project, key, patchOf) {
+  if (!project.image) return;
+  settleFrame(project);
+  const patch = patchOf(project.frames);
+  if (!patch?.size) return;
+  frameStep(project, () => {
+    putKeys(project, key, patch);
+    return project.currentFrame;
+  });
+}
+
+// The patch changing each of a shape's keys refs name that has a next key of its part (row's key { at, easing, motion })
+// and differs(part, key) says isn't as asked: change(entry, part) sets the frame's { eases, motion } for the shape.
+function keyEntries(frames, key, refs, differs, change) {
+  const keys = refs.length ? partKeys(frames, key, Math.min(...refs.map(({ at }) => at))) : null, patch = new Map();
+  for (const { part, at } of refs) {
+    const row = keys?.rows.get(part) ?? [], j = row.findIndex((k) => k.at === at);
+    if (j < 0 || j === row.length - 1 || !differs(part, row[j])) continue;
+    const frame = { ...frames[at], ...patch.get(at) }, entry = { eases: new Map(frame.tweens?.get(key) ?? []), motion: frame.motions?.get(key) };
+    change(entry, part);
+    const tweens = withEases(frame.tweens, key, entry.eases);
+    patch.set(at, { changes: frame.changes, tweens, motions: withMotion(frame.motions, key, entry.eases.has('transform') && entry.motion), parts: frame.parts });
+  }
+  return patch;
 }
 
 // The parts a shape's key frame `from` sets that have a key after it to tween to (the Tween menu's, as one for them all).
@@ -603,6 +651,72 @@ export const animationActions = {
     changeTweens(this, keys, (key, span) => !!this.frames[span.from].tweens?.get(key)?.has('transform') && span.motion !== motion, (frame, key) => {
       frame.motions = withMotion(frame.motions, key, motion);
     });
+  },
+
+  // The tween leaving each of a shape's keys refs ({ part, at }) name gets easing, or with null none (and the Transform's
+  // no motion): one undo step. A part's last key has no tween to ease.
+  setKeyEasing(shapeKey, refs, easing) {
+    keyStep(this, shapeKey, (frames) => keyEntries(frames, shapeKey, refs, (part, k) => k.easing !== easing, ({ eases }, part) => {
+      if (easing) eases.set(part, easing);
+      else eases.delete(part);
+    }));
+  },
+
+  // How the tween leaving the Transform keys refs name moves (MOTIONS), where it's eased: one undo step.
+  setKeyMotion(shapeKey, refs, motion) {
+    if (!MOTIONS.includes(motion)) return;
+    keyStep(this, shapeKey, (frames) => keyEntries(frames, shapeKey, refs, (part, k) => part === 'transform' && !!k.easing && k.motion !== motion, (entry) => {
+      entry.motion = motion;
+    }));
+  },
+
+  // The keys refs name go, but the shape's first and fixed ones (deletedKeys): one undo step.
+  deleteKeys(shapeKey, refs) {
+    keyStep(this, shapeKey, (frames) => deletedKeys(frames, shapeKey, refs));
+  },
+
+  // A key for part on the frame showing, with the value it has there (addedKey): one undo step.
+  addKey(shapeKey, part) {
+    keyStep(this, shapeKey, (frames) => addedKey(frames, shapeKey, part, this.frame));
+  },
+
+  // The keys refs name moved by `by` frames, as far as they can go (moveRange): one undo step, or with drag (the
+  // gesture's own object) none until endKeyDrag, each move made from where the drag began. Returns the refs where they
+  // landed.
+  moveKeys(shapeKey, refs, by, drag = null) {
+    if (!this.image) return refs;
+    if (drag?.before) putFrames(this, drag.before, { draw: false });
+    else settleFrame(this);
+    if (drag) drag.before ??= framesNow(this);
+    const { least, most } = moveRange(this.frames, shapeKey, refs);
+    const moved = movedKeys(this.frames, shapeKey, refs, clamped(by, least, most));
+    if (drag) {
+      putKeys(this, shapeKey, moved.patch);
+      arrive(this, this.frame);
+    } else if (moved.patch.size) {
+      frameStep(this, () => {
+        putKeys(this, shapeKey, moved.patch);
+        return this.currentFrame;
+      });
+    }
+    return moved.refs;
+  },
+
+  // A drag's moves, one undo step, when it's left anything moved.
+  endKeyDrag(drag) {
+    const before = drag?.before, after = before && framesNow(this);
+    if (!before) return;
+    drag.before = null;
+    if (sameFrames(before, after)) return;
+    this.pushEdit({ frameOp: true, undo: () => putFrames(this, before), redo: () => putFrames(this, after), bytes: 0 });
+    this.pickPalette();
+  },
+
+  // A drag given up: the frames as it found them.
+  cancelKeyDrag(drag) {
+    if (!drag?.before) return;
+    putFrames(this, drag.before);
+    drag.before = null;
   },
 
   // An edit's shapes on the frame showing, as they were before it: [key, shape | null] for those the frame had of its

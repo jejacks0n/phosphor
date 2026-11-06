@@ -197,3 +197,71 @@ test('addedKey splits a tween: both halves keep the easing', () => {
   assert.equal(shapeAt(after, K, 13).m[5], 24);
   assert.deepEqual(strayEasings(after, K), []);
 });
+
+test('moveRange and movedKeys leave out refs that name no key', () => {
+  const frames = moving();
+  assert.deepEqual(moveRange(frames, K, [{ part: 'fill', at: 6 }]), { least: 0, most: 0 });
+  assert.deepEqual(movedKeys(frames, K, [{ part: 'fill', at: 6 }], 2), { patch: new Map(), refs: [] });
+  const { refs } = movedKeys(frames, K, [{ part: 'transform', at: 6 }, { part: 'fill', at: 6 }], 2);
+  assert.deepEqual(refs, [{ part: 'transform', at: 8 }]);
+});
+
+test("moveRange: a Wipe start can't move earlier", () => {
+  const frames = movie(16);
+  frames[4].kind = 'wipe';
+  put(frames, 4, RED);
+  put(frames, 10, down(12), ['transform']);
+  assert.deepEqual(moveRange(frames, K, [{ part: 'transform', at: 4 }]), { least: 0, most: 5 });
+});
+
+test('the start moves with other selected keys, keeping their spacing', () => {
+  const frames = movie(16);
+  put(frames, 4, RED, null, { transform: 'linear' });
+  put(frames, 8, down(8), ['transform']);
+  put(frames, 12, down(16), ['transform']);
+  const refs = [{ part: 'fill', at: 4 }, { part: 'transform', at: 8 }];
+  assert.deepEqual(moveRange(frames, K, refs), { least: -3, most: 7 });
+  const moved = movedKeys(frames, K, refs, -2), next = applied(frames, moved.patch);
+  assert.deepEqual(moved.refs, [{ part: 'fill', at: 2 }, { part: 'transform', at: 6 }]);
+  assert.deepEqual(ats(next, 'transform', 2), [2, 6, 12]);
+  assert.deepEqual(ats(next, 'fill', 2), [2]);
+  assert.equal(shapeAt(next, K, 1), null);
+  assert.equal(shapeAt(next, K, 4).m[5], 4);
+});
+
+test('keys of different parts move together', () => {
+  const frames = movie(13);
+  put(frames, 0, RED);
+  put(frames, 4, withShape(RED, { fill: '#0000ff' }), ['fill']);
+  put(frames, 6, down(12), ['transform']);
+  put(frames, 12, down(24), ['transform']);
+  const refs = [{ part: 'fill', at: 4 }, { part: 'transform', at: 6 }];
+  assert.deepEqual(moveRange(frames, K, refs), { least: -4, most: 6 });
+  const moved = movedKeys(frames, K, refs, 2), next = applied(frames, moved.patch);
+  assert.deepEqual(moved.refs, [{ part: 'fill', at: 6 }, { part: 'transform', at: 8 }]);
+  assert.deepEqual([ats(next, 'fill'), ats(next, 'transform')], [[0, 6], [0, 8, 12]]);
+  assert.deepEqual([[...next[6].parts.get(K)], [...next[8].parts.get(K)]], [['fill'], ['transform']]);
+  assert.equal(next[4].changes.has(K), false);
+  assert.equal(next[8].changes.get(K).cell.fill, '#0000ff');
+});
+
+test("a key dropped on the start replaces the start's value for its part", () => {
+  const frames = movie(13);
+  put(frames, 0, RED);
+  put(frames, 4, withShape(RED, { fill: '#0000ff' }), ['fill']);
+  put(frames, 8, down(8), ['transform']);
+  assert.equal(moveRange(frames, K, [{ part: 'fill', at: 4 }]).least, -4);
+  const next = applied(frames, movedKeys(frames, K, [{ part: 'fill', at: 4 }], -4).patch);
+  assert.deepEqual(ats(next, 'fill'), [0]);
+  assert.equal(next[0].changes.get(K).cell.fill, '#0000ff');
+  assert.equal(next[0].parts, null);
+  assert.equal(next[4].changes.has(K), false);
+  assert.equal(shapeAt(next, K, 8).m[5], 8);
+});
+
+test('a patch holds only the frames whose state changed', () => {
+  const frames = moving();
+  assert.deepEqual([...movedKeys(frames, K, [{ part: 'transform', at: 6 }], 2).patch.keys()].sort((a, b) => a - b), [6, 8]);
+  assert.deepEqual([...deletedKeys(frames, K, [{ part: 'transform', at: 6 }]).keys()], [6]);
+  assert.equal(deletedKeys(frames, K, [{ part: 'fill', at: 0 }]).size, 0);
+});
