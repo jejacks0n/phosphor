@@ -211,3 +211,36 @@ test("there's no Tween button on the bar", async ({ page }) => {
   await expect(bar(page).getByRole('button', { name: /^Tween/ })).toHaveCount(0);
   await expect(keysButton(page)).toBeVisible();
 });
+
+test('a frame added, deleted or moved leaves no key selected, so Delete takes none the selection slid onto', async ({ page }) => {
+  await ball(page, { 3: 6, 4: 12 });
+  expect(await keyFrames(page, 'transform')).toEqual([0, 3, 4, 6]);
+  await diamond(page, 'transform', 3).click();
+  await scrubTo(page, 1);
+  await bar(page).getByRole('button', { name: 'Frame actions' }).click();
+  await page.getByRole('button', { name: 'Delete frame' }).click();
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 2, 3, 5]);
+  await expect(selected(page)).toHaveCount(0); // not frame 4's key, now on the index frame 4 had
+  await panel(page).focus();
+  await page.keyboard.press('Delete');
+  expect(await keyFrames(page, 'transform')).toEqual([0, 2, 3, 5]);
+});
+
+test('Escape closes the easing menu and nothing else: the shape stays selected, and undo undoes the easing', async ({ page }) => {
+  const key = await ball(page);
+  await diamond(page, 'transform', 0).click();
+  const easing = panel(page).locator('.easing .dropdown-trigger');
+  await easing.click();
+  await expect(page.locator('.dropdown-content')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.dropdown-content')).toHaveCount(0);
+  expect(await store(page, 'workspace', (w) => w.vectorSelected)).toEqual([key]);
+  await expect(panel(page).locator('[data-part]')).toHaveCount(1);
+  await expect(diamond(page, 'transform', 0)).toHaveAttribute('aria-pressed', 'true');
+  await easing.click();
+  await menuItem(page, 'Ease in').click();
+  await expect.poll(() => y(page, key, 3)).toBe(3);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => y(page, key, 3)).toBe(0);
+  await expect(easing).toHaveText('No tween');
+});
