@@ -1,12 +1,13 @@
 // Tweens: a shape between two of its key frames shows where its tween puts it, shown, played or exported; only an
 // edit makes a frame a key frame, and the frames between follow their keys.
 import { test, expect } from 'vitest';
-import { createTestApp, loadImage } from '../support/app.js';
-import { isShapeKey, rectShape, translation, transformed, rotation, withShape } from '@/document/shapes.js';
+import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
+import { isShapeKey, rectShape, translation, transformed, rotation, withShape, worldPoints } from '@/document/shapes.js';
 import { MOTIONS, ease, strayEasings, tweenPart } from '@/document/tweens.js';
 import { PARTS } from '@/document/parts.js';
 import { partKeys } from '@/document/keys.js';
 import { writeProject } from '@/document/projectIO.js';
+import vnode from '@/tools/vnode.js';
 
 async function animated() {
   const { project, workspace } = await createTestApp();
@@ -83,6 +84,70 @@ test('a Node edit mid-tween keys only the outline, and the move runs on without 
   project.showFrame(0);
   expect([...project.frames[5].parts.get(key)]).toEqual(['outline']);
   xs().forEach((x, i) => expect(x).toBeCloseTo(want[i], 2)); // was 0, 0.32, 2.56, 7.44, 9.68, 10, 10.22…
+});
+
+// The ball above with frame 5's outline edited, as one change or as the Node tool's drag (an edit open across moves).
+async function outlineEdited(byDrag) {
+  const { project, workspace } = await animated();
+  const key = project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }));
+  for (let i = 0; i < 11; i++) project.addFrame('blank');
+  moveBy(project, key, 22, 0);
+  project.showFrame(0);
+  easeAt(project, key, 0, 'easeInOut');
+  project.showFrame(5);
+  await settle(project);
+  const shape = project.shapes.get(key);
+  if (byDrag) {
+    workspace.vectorPoints = key;
+    const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } }, at = worldPoints(shape)[0];
+    vnode.begin(ctx, at);
+    vnode.move(ctx, at, { x: at.x - 0.5, y: at.y });
+    vnode.move(ctx, at, { x: at.x - 1, y: at.y });
+    vnode.end(ctx);
+  } else {
+    project.updateShapes([[key, withShape(shape, { points: shape.points.map((p, j) => (j ? p : [p[0] - 1, ...p.slice(1)])) })]]);
+  }
+  await settle(project);
+  return { project, key };
+}
+// The frame showing's outline is the shape it's worked out to, and its cells are what building it fresh and rendering
+// it from scratch make.
+async function drawnAsWorkedOut(project, key) {
+  const cells = cellsKey(project);
+  expect(project.shapes.get(key)).toEqual(project.resolvedOf(5).get(key).cell); // as shown, then as the frame is set down
+  expect(cellsOf(await project.builtFrame(5))).toEqual(cells);
+  project.staleFrames(0);
+  expect(cellsOf(await project.builtFrame(5))).toEqual(cells);
+  project.renderer.reset();
+  project.render();
+  await settle(project);
+  expect(cellsKey(project)).toEqual(cells);
+}
+
+for (const [how, byDrag] of [['an edit', false], ['a Node drag', true]]) {
+  test(`after ${how} of the outline mid-tween, the outline and the cells are where the frame puts the shape, and after its undo`, async () => {
+    const { project, key } = await outlineEdited(byDrag);
+    const edited = project.shapes.get(key);
+    await drawnAsWorkedOut(project, key);
+    expect([...project.frames[5].parts.get(key)]).toEqual(['outline']);
+    project.undo();
+    await settle(project);
+    expect(project.shapes.get(key)).not.toEqual(edited);
+    await drawnAsWorkedOut(project, key);
+  });
+}
+
+test('shapes put back on the frame showing (an undo puts back what the frame has by now) are drawn there', async () => {
+  const { project } = await animated();
+  const key = bounce(project, 'easeIn');
+  project.showFrame(3);
+  await settle(project);
+  project.putShapesBack([[key, transformed(project.shapes.get(key), translation(3, 0))]]);
+  const cells = cellsKey(project);
+  project.renderer.reset();
+  project.render();
+  await settle(project);
+  expect(cells).toEqual(cellsKey(project)); // were the shape's cells from before, until something drew there
 });
 
 test("keying a second part on a frame that's already a key for another part splits that part's tween too", async () => {
