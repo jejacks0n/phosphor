@@ -180,8 +180,7 @@ function reshow(project) {
   if (!changed) return;
   project._frameSwaps++; // autosave: not an edit
   project.shapes = next;
-  project._shapeLayer?.set(next);
-  project.refreshShapes();
+  project.refreshShapes(); // which hands the layer the shapes, and draws what they changed
   project._ledger.refreshBases();
 }
 
@@ -687,7 +686,6 @@ export const animationActions = {
       else next.delete(key);
     }
     this.shapes = next;
-    this._shapeLayer?.set(next);
     this.refreshShapes();
   },
 
