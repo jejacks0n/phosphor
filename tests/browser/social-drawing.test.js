@@ -2647,8 +2647,8 @@ const listedUpTo = (room, left, also = [], tag = undefined) => {
   room.drawing.artistsNow([...others, ...also], tag);
 };
 
-// The host's list of who's here, with one watcher, and the button their ⋯ menu has for Make artist.
-async function makeArtistButton(room, watcher) {
+// The host's list of who's here, with one watcher, and the button their ⋯ menu has for Make artist (or `label`).
+async function makeArtistButton(room, watcher, label = 'Make artist') {
   const rooms = useRoomStore();
   rooms.$patch({ role: 'host', peopleOpen: true, watchers: [{ peer: watcher, sub: watcher, name: watcher, guest: false, tracking: false, connected: true }] });
   const app = createApp({ render: () => h(RoomPeople) });
@@ -2660,7 +2660,7 @@ async function makeArtistButton(room, watcher) {
   await nextTick();
   element.querySelector('.dropdown-trigger').click();
   await nextTick();
-  return () => [...element.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Make artist');
+  return () => [...element.querySelectorAll('button')].find((button) => button.textContent.trim() === label);
 }
 
 test('the host can\'t make more artists than the cap', async () => {
@@ -2737,6 +2737,19 @@ test('someone listed keeps their place: back on a new connection at the cap, the
 
   room.drawing.backToWatching('ann');
   expect(room.drawing.artistsFull).toBe(null);
+});
+
+test('Make host is off while drawing is paused, and says why', async () => {
+  const room = await hosting();
+  room.pinia = getActivePinia();
+  await artist(room, 'ann');
+  setActivePinia(room.pinia);
+  const button = await makeArtistButton(room, 'ann', 'Make host');
+  expect(button().disabled).toBe(false);
+  room.drawing.paused = true;
+  await nextTick();
+  expect(button().disabled).toBe(true);
+  expect(button().title).toBe('Not while drawing is paused.');
 });
 
 // A picture for the Host to show, with what it heard by each person kept: they have what `art` does as of now.

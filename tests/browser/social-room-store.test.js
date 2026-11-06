@@ -2255,6 +2255,32 @@ test('named while away, and the room moved on by the time the document\'s back, 
   expect(sockets).toHaveLength(1);
 });
 
+test('named host before their document is back, they wait for it; then, with no art and no artist here, the room ends', async () => {
+  ({ project } = await createTestApp());   // with nothing open yet
+  social = useSocialStore();
+  room = useRoomStore();
+  await social.boot();
+  const socket = await joining(1);
+  socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
+  useWorkspaceStore().documentAnswered = false;
+  socket.receive({ type: 'new-host', name: social.claims.name, sub: social.claims.sub, planned: true });
+  socket.receive({ type: 'hosting', room: info({ hostSub: social.claims.sub }), peers: [] });
+  socket.receive({ type: 'artists-now', subs: ['u_9'] });   // the old host, who isn't here
+  await wait(300);
+  expect(socket.sent.some((msg) => msg.type === 'end')).toBe(false);
+  useWorkspaceStore().documentAnswered = true;
+  await vi.waitFor(() => expect(socket.sent.some((msg) => msg.type === 'end')).toBe(true));
+});
+
+test('a watcher who isn\'t drawing has no answer to last-change?, and the room ending clears its role', async () => {
+  const socket = await watching();
+  socket.receive({ type: 'last-change?' });
+  await wait(50);
+  expect(socket.sent.some((msg) => msg.type === 'last-change')).toBe(false);
+  socket.receive({ type: 'ended' });
+  expect(room.role).toBe(null);
+});
+
 test('a list of artists longer than a room\'s can be is ignored, and the longest there can be is heard', async () => {
   await watching();
   const heard = vi.spyOn(room._watch, 'onArtists');
