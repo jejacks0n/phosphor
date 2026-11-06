@@ -253,23 +253,23 @@
     },
     "blur": {
       "label": "Flou",
-      "help": "Adoucit le bruit et le grain fin avant la conversion de l'image. Appliqué avant les autres effets."
+      "help": "Adoucit le bruit et le grain fin avant la conversion de l'image. Appliqué avant les autres effets. Le calque de base seulement : le calque d'édition ne change pas."
     },
     "flatten": {
       "label": "Aplatir",
-      "help": "Regroupe les tons proches en aplats nets et picturaux."
+      "help": "Regroupe les tons proches en aplats nets et picturaux. Le calque de base seulement : le calque d'édition ne change pas."
     },
     "sharpen": {
       "label": "Netteté",
-      "help": "Accentue les contours et les détails fins."
+      "help": "Accentue les contours et les détails fins. Le calque de base seulement : le calque d'édition ne change pas."
     },
     "edges": {
       "label": "Contours",
-      "help": "Trace les contours détectés dans la couleur de contour choisie."
+      "help": "Trace les contours détectés dans la couleur de contour choisie. Le calque de base seulement : le calque d'édition ne change pas."
     },
     "edgeThickness": {
       "label": "Épaisseur des contours",
-      "help": "Contrôle l'épaisseur des contours tracés."
+      "help": "Contrôle l'épaisseur des contours tracés. Le calque de base seulement : le calque d'édition ne change pas."
     },
     "charChoice": {
       "help": "Aléatoire choisit dans votre jeu selon la graine. La meilleure correspondance choisit le caractère et ses deux couleurs de palette qui se rapprochent le plus de l'image. Par forme compare la forme de chaque caractère au détail de l'image dans la cellule."
