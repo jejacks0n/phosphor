@@ -336,6 +336,12 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       projectStore.stepFrame(step);
       return;
     }
+    // N: a new frame after the one showing, of its kind (held, it goes on adding them).
+    if (_animationKeysApply(e) && e.key.toLowerCase() === 'n') {
+      e.preventDefault();
+      projectStore.addFrame(projectStore.currentFrame.kind);
+      return;
+    }
 
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;
