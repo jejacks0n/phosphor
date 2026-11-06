@@ -18,11 +18,24 @@ The first time, install the browser: `npx playwright install --with-deps chromiu
 | What you're testing | Layer | Where |
 | --- | --- | --- |
 | A function that takes values and returns values (cells, colors, bytes, widths, parsing) | unit | `tests/unit/*.test.js` |
-| The store, or anything that needs a real canvas, WebGL, fonts or image decoding | browser | `tests/browser/*.test.js` |
-| What happens when someone clicks, drags, types or presses a shortcut in the UI | end-to-end | `tests/e2e/*.spec.js` |
+| The store, anything that needs a real canvas, WebGL, fonts or image decoding, and a component or composable mounted on its own (what a key does, what a panel shows) | browser | `tests/browser/*.test.js` |
+| What only the whole page shows: focus and keys passing through fields and dialogs, real pointer events, downloads, loads, reloads and Back, layout | end-to-end | `tests/e2e/*.spec.js` |
 
-Pick the lowest layer that can see the bug. A unit test is fastest and says exactly what broke; an
-end-to-end test is for things only the real UI can get wrong (focus, events, dialogs, downloads).
+Pick the lowest layer that can see the bug. A unit test is fastest and says exactly what broke. Most
+features are started by a click or a key, but that alone doesn't make their test an end-to-end one: an
+end-to-end test takes a few seconds just to open the app, so it's for what only the real page can get
+wrong. When a feature has one:
+
+- One end-to-end test per flow checks that the UI reaches the feature and what comes out. Its variants
+  and edge cases (each palette, each kind of frame, each refusal) go a layer down, where they cost
+  milliseconds.
+- A new end-to-end check goes into an existing test with the same setup before it becomes a test of its
+  own: the setup is most of the time (a room's host and artist take about 6 s before anything is checked).
+- An end-to-end test doesn't check what the fake server decides (`tests/e2e/social-support.js` answers as
+  the server would): the client's side of each answer is a browser test against a fake socket.
+- No fixed waits. "Nothing happens for N seconds" is a browser test with a fake clock (`vi.useFakeTimers`);
+  in an end-to-end test, poll for what you're waiting for.
+- A bug fix starts with a failing test in the lowest layer that sees the bug, as anything else does.
 
 ### Unit
 
@@ -41,7 +54,7 @@ test('typing over a wide character\'s trail turns its lead into a space', () => 
 
 ### Browser
 
-Vitest in Chromium, driving the stores directly (no UI mounted). `createTestApp()` gives fresh
+Vitest in Chromium, driving the stores directly. `createTestApp()` gives fresh
 stores with the display font loaded; `loadImage` and `settle` load a fixture and wait for the render.
 Read results from `project.cells` (char, fg, bg), not from the screen. From
 `tests/browser/wide-chars.test.js` (shortened):
@@ -58,6 +71,11 @@ test('a wide character takes two columns; the last column refuses it', async () 
 
 `tests/support/scenes.js` has a ready-made document with a bit of everything drawn on it.
 
+A component or composable can be mounted on its own, with the stores behind it, to check what it shows
+or what a key does without opening the whole app: `tests/browser/social-chat-panel.test.js` mounts
+`ChatPanel` with `createApp(...).use(pinia).use(i18n)`, and the selection tests mount the keyboard
+shortcuts and dispatch `keydown`.
+
 ### End-to-end
 
 Playwright against `npm run build` served by `vite preview`. Act through the UI only (roles, labels,
@@ -71,12 +89,12 @@ second browser made in a spec comes from `otherBrowser(browser)`.
 `tests/e2e/path-addresses.spec.js` runs against the other way the app can be built, with path addresses
 (`/social` in place of `/#/social`): its own Playwright project, build and port.
 
-From `tests/e2e/edit-drag-select.spec.js`:
+From `tests/e2e/edit-drag-select.spec.js` (shortened):
 
 ```js
 import { test, expect, openApp, store, cellPoint, drag } from './support.js';
 
-test('a drag in Edit Mode becomes a Select selection', async ({ page }) => {
+test('a drag in Edit Mode becomes a Select selection; Escape sets it down and goes back to typing', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Edit Mode' }).click();
   await drag(page, await cellPoint(page, 3, 3), await cellPoint(page, 8, 6));
