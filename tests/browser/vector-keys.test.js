@@ -2,7 +2,7 @@
 // is one step, and a canceled one none.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
-import { rectShape, transformed, translation } from '@/document/shapes.js';
+import { rectShape, transformed, translation, withShape } from '@/document/shapes.js';
 import { ease } from '@/document/tweens.js';
 import { writeProject } from '@/document/projectIO.js';
 
@@ -240,3 +240,26 @@ test('moving a key before a Wipe keeps how every frame shows, those after the Wi
   project.moveKeys(key, [T(2)], 1);
   expect(ys(project, key)).toEqual([0, 0, 0, 12, undefined, undefined]);
 });
+
+// A key action changes the frame showing's shape without a stroke: an edit made after it, undone and redone, still
+// puts back what it drew there, though that's what the frame's earlier stroke drew too.
+for (const [how, act] of [
+  ['deleted', (project, key) => project.deleteKeys(key, [{ part: 'fill', at: 6 }])],
+  ['moved off', (project, key) => project.moveKeys(key, [{ part: 'fill', at: 6 }], 1)],
+]) {
+  test(`redoing an edit on a frame whose key was ${how} puts back what it drew`, async () => {
+    const project = await animated();
+    const key = ball(project, 12, {});
+    const recolor = (fill) => project.updateShapes([[key, withShape(project.shapes.get(key), { fill })]]);
+    project.showFrame(6);
+    recolor('#0000ff'); // a Fill key on frame 6
+    act(project, key);
+    expect(project.shapes.get(key).fill).toBe('#ff0000');
+    recolor('#0000ff');
+    project.undo();
+    expect(project.shapes.get(key).fill).toBe('#ff0000');
+    project.redo();
+    expect(project.shapes.get(key).fill).toBe('#0000ff');
+    expect(project.resolvedOf(6).get(key).cell.fill).toBe('#0000ff');
+  });
+}

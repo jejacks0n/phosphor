@@ -675,8 +675,8 @@ export const animationActions = {
     return keys.map((key) => (inherits(key, shapes.get(key)) ? [key] : [key, shapes.get(key) ?? null]));
   },
 
-  // Undoing an edit on a frame: its shapes as shapesBefore said, whatever the ledger kept from the frame's earlier
-  // strokes, which a frame change since can have left behind.
+  // Undoing or redoing an edit on a frame: its shapes as shapesBefore said, or as the edit left them, whatever the ledger
+  // kept from the frame's earlier strokes, which a frame change since can have left behind.
   putShapesBack(before) {
     if (!this.hasFrames || !before.length) return;
     const { shapeOf } = inheritance(this), next = new Map(this.shapes);
