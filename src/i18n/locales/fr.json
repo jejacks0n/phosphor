@@ -754,6 +754,8 @@
     "previous": "{part} : clé précédente",
     "next": "{part} : clé suivante",
     "here": "{part} : clé sur cette image",
+    "zoomOut": "Zoom arrière",
+    "zoomIn": "Zoom avant",
     "values": {
       "x": "X",
       "y": "Y",

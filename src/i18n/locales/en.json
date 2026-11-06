@@ -754,6 +754,8 @@
     "previous": "{part}: previous key",
     "next": "{part}: next key",
     "here": "{part}: key on this frame",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
     "values": {
       "x": "X",
       "y": "Y",

@@ -1,6 +1,6 @@
 import { shallowRef } from 'vue';
 import { defineStore } from 'pinia';
-import { useLocalStorage } from '@vueuse/core';
+import { StorageSerializers, useLocalStorage } from '@vueuse/core';
 import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
 import { familyOf } from '@/lib/userFonts';
 import { clampZoom, clampViewZoom } from '@/lib/zoom';
@@ -146,6 +146,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorShapeKind: 'rect', // the Shape tool: 'rect' | 'ellipse' | 'polygon'
     vectorSides: 5,          // a polygon's sides, 3 to 12
     keysOpen: useLocalStorage('phosphor.keysOpen', true), // the Keys panel (KeysPanel) open, or folded away
+    keysZoom: useLocalStorage('phosphor.keysZoom', null, { serializer: StorageSerializers.number }), // its lanes' px a frame, or null to fit (keyLanes.js)
+    keysScroll: 0,           // how far along they're scrolled, in px, when they don't fit
+    keysView: null,          // the frames in view while they don't fit, for the scrubber's band: { first, last, px }
     selectedKeys: [],        // the keys selected there, of the first selected shape: [{ part, at }] (keys.js's refs)
   }),
   getters: {
