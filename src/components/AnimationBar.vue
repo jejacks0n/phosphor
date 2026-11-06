@@ -45,14 +45,16 @@ const range = useTemplateRef('range');
 let viewDrag = null;
 function grabView(event) {
   if (event.button !== 0) return;
-  const travel = range.value.offsetWidth - parseFloat(getComputedStyle(range.value).getPropertyValue('--thumb'));
+  const travel = range.value.offsetWidth - parseFloat(getComputedStyle(range.value).getPropertyValue('--thumb')) || 0;
   viewDrag = { x: event.clientX, scroll: workspace.keysScroll, perPx: ((count.value - 1) / travel) * view.value.px, pointer: event.pointerId };
   event.currentTarget.setPointerCapture(event.pointerId);
 }
 const dragView = (event) => {
   if (viewDrag?.pointer === event.pointerId) workspace.keysScroll = viewDrag.scroll + (event.clientX - viewDrag.x) * viewDrag.perPx;
 };
-const dropView = () => { viewDrag = null; };
+const dropView = (event) => {
+  if (viewDrag?.pointer === event.pointerId) viewDrag = null;
+};
 
 // Anything that changes the frames lands on the frame showing.
 const paused = (act) => (...args) => {
