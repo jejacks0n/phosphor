@@ -212,7 +212,8 @@ function note(project) {
   frame.changes = changes;
   frame.parts = parts;
   // A part changed on a frame inside its tween makes this frame its key: the tween splits, both halves eased and moving
-  // alike (splits: the shapes this happened to). A part this frame starts setting anywhere else starts with no tween here.
+  // alike (splits: the shapes this made the frame a key for, not those it already was one for, which undo leaves as
+  // keys). A part this frame starts setting anywhere else starts with no tween here.
   for (const [key, was] of before) {
     const now = setPartsAt(project.frames, key, project.frame), across = tweened.get(key)?.parts;
     const eases = new Map([...(frame.tweens?.get(key) ?? [])].filter(([name]) => now.has(name)));
@@ -227,7 +228,7 @@ function note(project) {
     }
     frame.tweens = withEases(frame.tweens, key, eases);
     frame.motions = withMotion(frame.motions, key, eases.has('transform') && motion);
-    if (!split && was.size) continue;
+    if (was.size) continue;
     frame.splits = new Set(frame.splits ?? []);
     frame.splits[split ? 'add' : 'delete'](key);
   }

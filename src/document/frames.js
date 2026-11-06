@@ -263,12 +263,14 @@ function readEases(entries, changes) {
   return tweens.size ? tweens : null;
 }
 
-// A frame's motions, of its tweens, or null: smooth, or an entry that can't be read, is left out. A file from when the
-// motion was the whole movie's (movie) has it on every tween.
+// A frame's motions, of its tweens (a span's, from before each part had its own, or an eased Transform's), or null:
+// smooth, or an entry that can't be read, is left out. A file from when the motion was the whole movie's (movie) has it
+// on every tween.
 function readMotions(entries, tweens, movie) {
-  const good = ([key, motion]) => !!tweens?.has(key) && MOTIONS.includes(motion) && motion !== 'smooth';
+  const eased = (key) => typeof tweens?.get(key) === 'string' || !!tweens?.get(key)?.has('transform');
+  const good = ([key, motion]) => eased(key) && MOTIONS.includes(motion) && motion !== 'smooth';
   const list = Array.isArray(entries) ? entries.slice(0, MOST_SHAPES).filter((entry) => Array.isArray(entry) && good(entry))
-    : MOTIONS.includes(movie) && movie !== 'smooth' ? [...(tweens?.keys() ?? [])].map((key) => [key, movie]) : [];
+    : MOTIONS.includes(movie) && movie !== 'smooth' ? [...(tweens?.keys() ?? [])].filter(eased).map((key) => [key, movie]) : [];
   return list.length ? new Map(list) : null;
 }
 
@@ -293,18 +295,19 @@ export function withEases(tweens, key, eases) {
   return next.size ? next : null;
 }
 
-// Every easing no tween uses (strayEasings) goes, and every motion whose Transform isn't eased: in new Maps, so what
-// history holds of the frames stays as it was.
-export function dropStrays(frames) {
+// Every easing no tween uses (strayEasings) goes, and every motion whose Transform isn't eased, on every frame or those
+// at the indices in only: in new Maps, so what history holds of the frames stays as it was.
+export function dropStrays(frames, only = null) {
   const keys = new Set(frames.flatMap((frame) => [...(frame.tweens?.keys() ?? [])]));
   for (const key of keys) {
     for (const { at, part } of strayEasings(frames, key)) {
+      if (only && !only.has(at)) continue;
       const frame = frames[at], eases = new Map(frame.tweens.get(key));
       eases.delete(part);
       frame.tweens = withEases(frame.tweens, key, eases);
     }
   }
-  for (const frame of frames) {
+  for (const frame of only ? [...only].map((at) => frames[at]) : frames) {
     if (![...(frame.motions ?? [])].some(([key]) => !frame.tweens?.get(key)?.has('transform'))) continue;
     const motions = new Map([...frame.motions].filter(([key]) => frame.tweens?.get(key)?.has('transform')));
     frame.motions = motions.size ? motions : null;
@@ -365,14 +368,15 @@ export function deserializeFrames(json, cols, rows) {
     read.push(next);
   }
   inferParts(read, old);
-  // A span's easing, from before each part had its own, goes to every part its first frame sets; its motion stays on
-  // the Transform, if that's one of them (dropStrays).
+  // A span's easing, from before each part had its own, goes to every part its first frame sets, but those with no key
+  // after it; its motion stays on the Transform, if that's one of them (dropStrays). Easings saved part by part are kept
+  // as they were, so a project shows the same after a reload.
   for (const i of spans) {
     read[i].tweens = new Map([...read[i].tweens].map(([key, easing]) => {
       const set = setPartsAt(read, key, i);
       return [key, new Map(PARTS.filter((name) => set.has(name)).map((name) => [name, easing]))];
     }));
   }
-  dropStrays(read);
+  dropStrays(read, new Set(spans));
   return { frames: read, frame, fps };
 }

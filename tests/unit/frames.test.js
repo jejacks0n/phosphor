@@ -432,6 +432,20 @@ test("an old file's span easing goes to every part its start frame keys, and non
   assert.ok(opened.slice(7).every((frame) => frame.tweens === null));
 });
 
+test("a stray easing saved part by part comes back as it was; one from an old file's last key frame doesn't", () => {
+  const frames = ballFrames();
+  frames[12].tweens = new Map([['v:a', new Map([['transform', 'linear']])]]); // left by an edit: no key after 12
+  frames[12].motions = new Map([['v:a', 'cells']]);
+  const saved = serializeFrames(frames);
+  assert.deepEqual(saved[12].eases, [['v:a', [['transform', 'linear']]]]);
+  const opened = read(JSON.parse(JSON.stringify(saved))).frames;
+  assert.deepEqual(opened[12].tweens, frames[12].tweens);
+  assert.deepEqual(opened[12].motions, frames[12].motions);
+  const older = read(asOld(saved)).frames;
+  assert.equal(older[12].tweens, null);
+  assert.equal(older[12].motions, null);
+});
+
 test("an old file's motion goes to the Transform key on its frame, only if it keys Transform and has an easing", () => {
   const frames = ballFrames();
   frames[6].parts = new Map([['v:a', new Set(['fill'])]]);
