@@ -18,9 +18,18 @@ export const seedConsent = (context, version = CONSENT_VERSION) => context.addIn
   } catch { /* about:blank has no storage */ }
 }, [CONSENT_KEY, version]);
 
+// No backdrop blur behind the dialogs: software compositing redraws it every frame, which made every action under
+// a dialog several times slower on CI (no test looks at it).
+const noBlur = (context) => context.addInitScript(() => {
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync('* { backdrop-filter: none !important; }');
+  document.adoptedStyleSheets = [sheet];
+});
+
 export const test = base.extend({
   consented: [true, { option: true }],
   context: async ({ context, consented }, use) => {
+    await noBlur(context);
     if (consented) await seedConsent(context);
     await context.route('http://localhost:8787/**', (route) => route.abort());
     await context.routeWebSocket('ws://localhost:8787/**', (ws) => ws.close());
@@ -37,6 +46,7 @@ export const test = base.extend({
 // A second person's browser, in a spec that has one, who's been asked too.
 export async function otherBrowser(browser) {
   const context = await browser.newContext();
+  await noBlur(context);
   await seedConsent(context);
   return context;
 }

@@ -160,6 +160,10 @@ machine and can be compared exactly. If a Chromium update shifts its rendering, 
 fail everywhere at once: regenerate the references (below) and check the diff is a level here and
 there, not a changed picture.
 
+The end-to-end tests turn off the dialogs' backdrop blur (`noBlur` in `tests/e2e/support.js`): with
+software compositing it's redrawn every frame, and every action under a dialog was several times
+slower in CI for it. No test looks at the blur.
+
 ## Reference files
 
 `tests/fixtures/reference/` holds outputs the tests must reproduce exactly: export bytes, converted
