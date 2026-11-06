@@ -52,13 +52,13 @@ export function partKeys(frames, key, i) {
 }
 
 // The parts the life around frame i changes, in PARTS order: those whose keys don't all hold one value, and those a
-// Blank key frame after the start keys by name.
+// Blank key frame after the start keys (by name, or every part when it names none, as setPartsAt has it).
 export function listedParts(frames, key, i) {
   const life = lifeAt(frames, key, i);
   if (!life.length) return [];
   const rows = keysIn(frames, key, life);
   return PARTS.filter((part) => rows.get(part).some(({ at, cell }) => !samePart(cell, rows.get(part)[0].cell, part)
-    || (at !== life[0] && frames[at].kind === 'blank' && !!frames[at].parts?.get(key)?.has(part))));
+    || (at !== life[0] && frames[at].kind === 'blank')));
 }
 
 // How far the refs' keys may move together, { least, most } (least <= 0 <= most). The start goes back as far as the
