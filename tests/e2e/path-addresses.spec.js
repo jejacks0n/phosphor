@@ -1,7 +1,7 @@
 // The build with path addresses (VITE_ADDRESSES=path): its own project in playwright.config.js. There the room in
 // the address is in the same query a link from outside and a return from the server use.
 import { test, expect, tab, store, startScreen } from './support.js';
-import { fakeRoom, fakeServer, ROOM_ID, goLive, watcherPage, joinFromCard, followLink } from './social-support.js';
+import { fakeRoom, fakeServer, ROOM_ID, goLive, watcherPage, followLink } from './social-support.js';
 
 const selected = (page, label) => expect(tab(page, label)).toHaveAttribute('aria-selected', 'true');
 const at = (page, address) => expect.poll(() => { const url = new URL(page.url()); return url.pathname + url.search; }).toBe(address);
@@ -20,12 +20,12 @@ test('an address deep in the app loads on its own, and tabs are paths', async ({
   await at(page, '/social/sign-in');
 });
 
-test('a watcher\'s reload is back in the room, unasked, with the room still in the address', async ({ page: host, context }) => {
+test('a link followed joins, on the room\'s own address; a watcher\'s reload is back in the room, unasked, with the room still in the address', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room);
   const watcher = await watcherPage(context, room);
-  await watcher.goto('/');
-  await joinFromCard(watcher);
+  await followLink(watcher);
+  await live(watcher);
   await at(watcher, `/social?room=${ROOM_ID}`);
 
   await watcher.reload();
@@ -45,15 +45,6 @@ test('a link from outside asks, and Not now leaves a clean address', async ({ co
   await tab(watcher, 'PIXEL').click();
   await at(watcher, '/');
   expect(joins(room)).toBe(0);
-});
-
-test('a link followed joins, on the room\'s own address', async ({ page: host, context }) => {
-  const room = fakeRoom();
-  await goLive(host, room);
-  const watcher = await watcherPage(context, room);
-  await followLink(watcher);
-  await live(watcher);
-  await at(watcher, `/social?room=${ROOM_ID}`);
 });
 
 test('a return from the server is read once: it leaves the address, and no later step brings it back', async ({ page }) => {

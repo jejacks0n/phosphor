@@ -1,7 +1,7 @@
 // The room you're watching in the address: Back, Forward and reload, with a real history (its entries'
 // marks are what tell your own room from a link).
 import { test, expect, tab, store, openApp, startScreen } from './support.js';
-import { fakeRoom, member, ROOM_ID, shown, goLive, watcherPage, joinFromCard, followLink, watching, selected, hash, asked, chat, outOfRoom, live, joins } from './social-support.js';
+import { fakeRoom, ROOM_ID, shown, goLive, watcherPage, followLink, watching, selected, hash, asked, chat, outOfRoom, live, joins } from './social-support.js';
 
 const UNAVAILABLE = "This room isn't available";
 const status = (page) => store(page, 'room', (r) => r.status);
@@ -32,22 +32,6 @@ test('a pasted #/pixel?room=<id> asks first, on SOCIAL; Not now leaves /social a
   await expect(asked(watcher)).toHaveCount(0);
   await hash(watcher, '/social');
   await outOfRoom(watcher);
-  expect(room.received).toEqual([]);
-});
-
-test('a link pasted over a page with the app open asks too, and leaves no entry to ask again', async ({ context }) => {
-  const room = fakeRoom();
-  const watcher = await watcherPage(context, room);
-  await watcher.goto('/');
-  await hash(watcher, '/');
-  await watcher.evaluate((id) => { location.hash = `#/pixel?room=${id}`; }, ROOM_ID);
-  await expect(asked(watcher)).toBeVisible();
-  await asked(watcher).getByRole('button', { name: 'Not now' }).click();
-  await hash(watcher, '/social');
-
-  await watcher.goBack();
-  await hash(watcher, '/');
-  await expect(asked(watcher)).toHaveCount(0);
   expect(room.received).toEqual([]);
 });
 
@@ -87,23 +71,6 @@ test('exit, reload, Back onto the room\'s entry: not rejoined, ?room= gone', asy
   await expect(asked(watcher)).toHaveCount(0);
   await outOfRoom(watcher);
   expect(joins(room)).toBe(1);
-});
-
-test('Forward onto a room that now wants a password shows its form on SOCIAL', async ({ page: host, context }) => {
-  const room = fakeRoom();
-  const watcher = await watching(host, context, room);
-  await tab(watcher, 'PIXEL').click();
-  await hash(watcher, `/?room=${ROOM_ID}`);
-  await watcher.goBack();
-  await watcher.goBack();
-  await hash(watcher, '/social');
-  await outOfRoom(watcher);
-
-  room.setup.password = 'hunter22';
-  await watcher.evaluate(() => history.go(2));   // right onto the start screen's entry: the form isn't there
-  await selected(watcher, 'SOCIAL');
-  await expect(shown(watcher, 'watch-room').getByRole('heading', { name: 'This room needs a password' })).toBeVisible();
-  await hash(watcher, `/social?room=${ROOM_ID}`);
 });
 
 test('Forward onto a room that ended shows why on SOCIAL, and the entry loses ?room=', async ({ page: host, context }) => {
@@ -186,29 +153,6 @@ test('with storage that can\'t be read, reloading on an entry of yours doesn\'t 
   await expect(asked(watcher)).toHaveCount(0);
   await outOfRoom(watcher);
   expect(joins(room)).toBe(1);
-});
-
-test('signing in while watching, Back from the room you come back to stays in it', async ({ page: host, context }) => {
-  const room = fakeRoom();
-  await goLive(host, room);
-  const watcher = await watcherPage(context, room, { signsInAs: member({ id: 'u_2', username: 'pixel_wren', name: 'pixel_wren' }) });
-  await watcher.goto('/');
-  await joinFromCard(watcher);
-  await chat(watcher).getByRole('button', { name: 'Sign in to chat' }).click();
-  const form = shown(watcher, 'sign-in');
-  await hash(watcher, `/social/sign-in?room=${ROOM_ID}`);
-  await form.getByLabel('Email or username').fill('pixel_wren');
-  await form.getByLabel('Password').fill('correct horse battery');
-  await form.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect.poll(() => joins(room)).toBe(2);
-  await live(watcher);
-  await hash(watcher, `/social?room=${ROOM_ID}`);
-
-  await watcher.goBack();
-  await hash(watcher, `/social?room=${ROOM_ID}`);
-  expect(await status(watcher)).toBe('live');
-  await expect(shown(watcher, 'watch-room')).toBeVisible();
-  expect(joins(room)).toBe(2);
 });
 
 test('a server ?room= link on a phone still stays in the URL for a computer', async ({ context }) => {

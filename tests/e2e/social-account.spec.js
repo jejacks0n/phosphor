@@ -337,16 +337,6 @@ test('an account without a password says deleting needs a recent sign-in', async
   expect(server.sent('POST', '/api/auth/delete-user')[0].body).toEqual({});
 });
 
-test('coming back from connecting a provider opens Account without a crash while you are loading', async ({ page }) => {
-  const errors = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await fakeServer(page, { me: member({ providers: ['credential', 'discord'] }) });
-  await page.goto('/?social=linked');
-  await expect(shown(page, 'account')).toBeVisible();
-  await expect(shown(page, 'account').getByRole('button', { name: 'Disconnect Discord' })).toBeVisible();
-  expect(errors).toEqual([]);
-});
-
 test('Account is not shown when nobody is signed in: the lobby is', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));

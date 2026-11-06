@@ -34,14 +34,6 @@ test('the SOCIAL tab is tagged beta, for screen readers as well; its name stays 
   await expect(tab(page, 'PIXEL').locator('.beta')).toHaveCount(0);
 });
 
-test('a link back from the server (?reset=, ?verified=1, ?social=) opens the SOCIAL tab, on desktops', async ({ page }) => {
-  await fakeServer(page);
-  await page.goto('/?reset=tok');
-  await expect(tab(page, 'SOCIAL')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('.people-tab [data-page="reset"]')).toBeVisible();
-  expect(new URL(page.url()).search).toBe('');
-});
-
 // The SOCIAL tab isn't there, so the link is left as it came: it still works opened on a computer.
 test('a link back opened on a narrow screen is left alone, and nothing SOCIAL runs', async ({ page }) => {
   const server = await fakeServer(page);

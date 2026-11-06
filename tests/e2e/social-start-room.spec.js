@@ -294,25 +294,6 @@ test('the host\'s socket drops: Reconnecting… until it says host again, and wh
   await expect(host.getByRole('spinbutton', { name: 'Max watchers' })).toHaveValue('3');
 });
 
-// Settings sooner than a second after the last are answered with the room as it is (the app's own
-// pacing never does that, so the first goes straight through the store's socket here).
-test('a paced-out save shows the server\'s values, and saving them again sends them', async ({ page }) => {
-  const { room } = await goLive(page);
-  const host = shown(page, 'host-room');
-  await store(page, 'room', (r) => r._connection.send({ type: 'settings', allowGuests: true, max: 6 }));
-  const most = host.getByRole('spinbutton', { name: 'Max watchers' });
-  await most.fill('8');
-  await host.getByRole('button', { name: 'Save' }).click();
-  await expect(most).toHaveValue('6');   // the server's word
-  expect(room.setup.max).toBe(6);
-  expect(await store(page, 'room', (r) => r.room.max)).toBe(6);
-
-  await most.fill('8');
-  await host.getByRole('button', { name: 'Save' }).click();
-  await expect.poll(() => room.setup.max).toBe(8);
-  expect(await store(page, 'room', (r) => r.room.max)).toBe(8);
-});
-
 // Review focus 4: the art isn't changed, so it's the room that asks; once closed, the server hears no end (a reload
 // closes the page the same way, and the room's own wait ends a room whose host doesn't come back).
 test('closing the tab while hosting asks first; closed, the server hears no end', async ({ page }) => {

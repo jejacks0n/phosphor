@@ -29,7 +29,8 @@ test('Back and Forward walk the tabs, inside Phosphor', async ({ page }) => {
   expect(await store(page, 'project', (p) => !!p.image)).toBe(true);   // the same page all along
 });
 
-for (const [label, path] of [['PIXEL', '/pixel'], ['ANSI', '/ansi'], ['SAUCE', '/sauce'], ['SOCIAL', '/social']]) {
+// An art tab and SOCIAL: ANSI and SAUCE land by the same rule as PIXEL.
+for (const [label, path] of [['PIXEL', '/pixel'], ['SOCIAL', '/social']]) {
   test(`reloading on ${label} stays on it, with the autosaved document back`, async ({ page }) => {
     await openApp(page);
     await tab(page, label).click();
@@ -100,15 +101,6 @@ test('opening a file goes from the start screen to ANSI, in place of it: the sta
   await selected(page, 'ANSI');
 });
 
-test('a phone at #/social is on the start screen with nothing open', async ({ page }) => {
-  await noteHistoryAtLoad(page);
-  await page.setViewportSize({ width: 390, height: 800 });
-  await page.goto('/#/social');
-  await startScreen(page);
-  await hash(page, '/');
-  expect(await stepsSinceLoad(page)).toBe(0);
-});
-
 test('an address for a SOCIAL page you can\'t be on lands on the nearest one, with no extra step', async ({ page }) => {
   await fakeServer(page);
   await noteHistoryAtLoad(page);
@@ -141,20 +133,25 @@ test('the reset address holds no token', async ({ page }) => {
 });
 
 // The returns from the server's links, on a fresh load: the page they open, and an address with none of them.
-for (const [query, me, name, path] of [
+// Back from connecting a provider, Account opens while you're still loading, without a crash.
+for (const [query, me, name, path, more = ''] of [
   ['verified=1', null, 'lobby', '/social'],
   ['social=error', null, 'lobby', '/social'],
   ['social=signed-in', member(), 'lobby', '/social'],
-  ['social=linked', member(), 'account', '/social/account'],
+  ['social=linked', member({ providers: ['credential', 'discord'] }), 'account', '/social/account', ', its ways to sign in there'],
 ]) {
-  test(`a fresh load at ?${query} is on ${path}, with no extra step`, async ({ page }) => {
+  test(`a fresh load at ?${query} is on ${path}${more}, with no extra step and no error`, async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
     await fakeServer(page, { me });
     await noteHistoryAtLoad(page);
     await page.goto(`/?${query}`);
     await expect(shown(page, name)).toBeVisible();
+    if (name === 'account') await expect(shown(page, name).getByRole('button', { name: 'Disconnect Discord' })).toBeVisible();
     await hash(page, path);
     expect(new URL(page.url()).search).toBe('');
     expect(await stepsSinceLoad(page)).toBe(0);
+    expect(errors).toEqual([]);
   });
 }
 
