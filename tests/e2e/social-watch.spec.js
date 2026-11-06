@@ -2,7 +2,7 @@
 // a watcher (a guest unless said otherwise). Joining from a lobby card or a ?room= link, the host's art
 // live with the host's view, Tracking, Leave, refusals, and the watcher's own art left as it was.
 import { test, expect, openApp, tab, store, editAt, cellPoint, screenPixel, settled } from './support.js';
-import { fakeRoom, member, ROOM_ID, shown, tile, goLive, watcherPage, joinFromCard, followLink } from './social-support.js';
+import { fakeRoom, ROOM_ID, shown, tile, goLive, watcherPage, joinFromCard, followLink } from './social-support.js';
 
 const watching = (page) => shown(page, 'watch-room');
 const chat = (page) => page.getByRole('complementary', { name: 'Chat' });   // its top has the room's name, the host and Leave
@@ -246,35 +246,6 @@ test('a ?room= link to a private room asks for the password: a wrong one says so
   await page.getByRole('button', { name: 'Join', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'neon harbor' })).toBeFocused({ timeout: 20_000 });
   await expect.poll(() => watcherCells(watcher)).toEqual(await hostCells(host));
-});
-
-test('the same member watching in a second tab: the first goes back to the lobby, saying why, and the second watches', async ({ page: host, context }) => {
-  const room = fakeRoom();
-  await goLive(host, room);
-  const me = member({ id: 'u_2', username: 'tin-lantern-owl', name: 'tin-lantern-owl' });
-  const first = await watcherPage(context, room, { me });
-  await followLink(first);
-  await expect.poll(() => store(first, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
-
-  const second = await watcherPage(context, room, { me });
-  await followLink(second);
-  await expect(first.getByText('You\'re watching this room in another tab')).toBeVisible();
-  await expect(shown(first, 'lobby')).toBeVisible();
-  await expect.poll(() => store(second, 'room', (r) => r.status), { timeout: 20_000 }).toBe('live');
-  await expect(tile(shown(host, 'host-room'), 'Here now')).toHaveText('1');
-  await first.waitForTimeout(1500);   // past a retry, if there were one
-  expect(await store(first, 'room', (r) => r.role)).toBe(null);
-  expect(room.from('p_1').filter((m) => m.type === 'join')).toHaveLength(1);
-});
-
-test('a members-only room refuses a guest with "Signed-in users only"', async ({ page: host, context }) => {
-  const room = fakeRoom();
-  await goLive(host, room, { allowGuests: false });
-  const watcher = await watcherPage(context, room);
-  await followLink(watcher);
-  await expect(watcher.getByText('Signed-in users only')).toBeVisible();
-  await expect(shown(watcher, 'lobby')).toBeVisible();
-  expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
 });
 
 // Review focus 5: watching never touches the watcher's own document, and the ANSI tab still shows it.

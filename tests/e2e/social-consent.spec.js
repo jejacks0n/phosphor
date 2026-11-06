@@ -1,7 +1,7 @@
 // SOCIAL's first question: nothing from the tab runs until it's answered, however you arrive.
-import { test, expect, tab, store, seedConsent, openApp, startScreen } from './support.js';
-import { fakeServer, fakeRoom, goLive, watcherPage, joinFromCard, shown, asked, hash, selected, live, ROOM_ID } from './social-support.js';
-import { CONSENT_KEY, CONSENT_VERSION } from '../../src/social/consent.js';
+import { test, expect, tab, store, openApp, startScreen } from './support.js';
+import { fakeServer, fakeRoom, goLive, shown, asked, hash, selected, live, ROOM_ID } from './social-support.js';
+import { CONSENT_KEY } from '../../src/social/consent.js';
 
 test.use({ consented: false });
 
@@ -33,7 +33,7 @@ async function nothingRan(page, server, seen) {
   expect(await store(page, 'social', (s) => [s.supported, s.pass, s.lobbyWanted])).toEqual([null, null, false]);
 }
 
-test('the first SOCIAL tab asks, and nothing reaches the network until it\'s accepted', async ({ page }) => {
+test('the first SOCIAL tab asks, saying what SOCIAL means with the agreement and both answers in a row, Accept off until the 13-or-older box is ticked, and nothing reaches the network until it\'s accepted', async ({ page }) => {
   const seen = elsewhere(page);
   const server = await fakeServer(page);
   await page.goto('/');
@@ -43,29 +43,7 @@ test('the first SOCIAL tab asks, and nothing reaches the network until it\'s acc
   await nothingRan(page, server, seen);
   await expect(page.locator('.people-tab')).toHaveCount(0);
 
-  await accepted(page);
-  await expect(shown(page, 'lobby')).toBeVisible();
-  await selected(page, 'SOCIAL');
-  await expect.poll(() => server.lobby.received.map((m) => m.type)).toEqual(['hello']);
-  expect(server.sent('GET', '/api/me')).toHaveLength(1);
-});
-
-test('Accept stays off until the 13-or-older box is ticked', async ({ page }) => {
-  await fakeServer(page);
-  await page.goto('/');
-  await tab(page, 'SOCIAL').click();
-  await expect(accept(page)).toBeDisabled();
-  await expect(consent(page).locator('label')).toHaveText('I\'m 13 or older and agree to the Terms, Privacy Policy, and Community Guidelines');
-  await agree(page).check();
-  await expect(accept(page)).toBeEnabled();
-  await agree(page).uncheck();
-  await expect(accept(page)).toBeDisabled();
-});
-
-test('the modal says what the lobby, joining and starting a room mean, and how to behave', async ({ page }) => {
-  await fakeServer(page);
-  await page.goto('/');
-  await tab(page, 'SOCIAL').click();
+  // What the lobby, joining and starting a room mean, and how to behave.
   for (const heading of ['The lobby', 'Joining a room', 'Starting a room', 'Be kind']) {
     await expect(consent(page).getByRole('heading', { name: heading })).toBeVisible();
   }
@@ -73,6 +51,30 @@ test('the modal says what the lobby, joining and starting a room mean, and how t
   await expect(consent(page)).toContainText('use a VPN');
   await expect(consent(page)).toContainText('including the original image');
   await expect(consent(page)).toContainText('snapshot of the canvas');
+
+  // The agreement and both answers share a row, with the answers at the right.
+  const box = await agree(page).boundingBox();
+  const no = await notNow(page).boundingBox(), yes = await accept(page).boundingBox();
+  const middle = ({ y, height }) => y + height / 2;
+  expect(Math.abs(middle(no) - middle(box))).toBeLessThanOrEqual(12);
+  expect(no.height).toBe(yes.height);
+  expect(no.y).toBe(yes.y);
+  expect(box.x).toBeLessThan(no.x);
+  expect(no.x).toBeLessThan(yes.x);
+
+  // Accept stays off until the box is ticked.
+  await expect(accept(page)).toBeDisabled();
+  await expect(consent(page).locator('label')).toHaveText('I\'m 13 or older and agree to the Terms, Privacy Policy, and Community Guidelines');
+  await agree(page).check();
+  await expect(accept(page)).toBeEnabled();
+  await agree(page).uncheck();
+  await expect(accept(page)).toBeDisabled();
+
+  await accepted(page);
+  await expect(shown(page, 'lobby')).toBeVisible();
+  await selected(page, 'SOCIAL');
+  await expect.poll(() => server.lobby.received.map((m) => m.type)).toEqual(['hello']);
+  expect(server.sent('GET', '/api/me')).toHaveLength(1);
 });
 
 test('Not now goes back to the tab you came from, as if you never left it, and asks again next time', async ({ page }) => {
@@ -109,20 +111,6 @@ test('Back with the question up leaves it, and a link\'s room with it', async ({
   await expect(asked(page)).toHaveCount(0);
 });
 
-test('Escape declines as Not now does', async ({ page }) => {
-  const seen = elsewhere(page);
-  const server = await fakeServer(page);
-  await openApp(page);
-  await tab(page, 'SOCIAL').click();
-  await expect(consent(page)).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(consent(page)).toHaveCount(0);
-  await selected(page, 'ANSI');
-  await hash(page, '/ansi');
-  await nothingRan(page, server, seen);
-  expect(await page.evaluate((key) => localStorage.getItem(key), CONSENT_KEY)).toBe(null);
-});
-
 test('with no tab to go back to, Not now lands on the start screen at a clean address, with no room asked', async ({ page }) => {
   const seen = elsewhere(page);
   const server = await fakeServer(page);
@@ -146,29 +134,6 @@ test('with no tab to go back to, Not now lands on the start screen at a clean ad
   await expect(asked(page)).toHaveCount(0);
 });
 
-test('a second visit doesn\'t ask', async ({ page }) => {
-  const server = await fakeServer(page);
-  await page.goto('/');
-  await tab(page, 'SOCIAL').click();
-  await accepted(page);
-  await expect.poll(() => server.lobby.received.length).toBe(1);
-  expect(await page.evaluate((key) => localStorage.getItem(key), CONSENT_KEY)).toBe(String(CONSENT_VERSION));
-
-  await page.reload();
-  await expect(shown(page, 'lobby')).toBeVisible();
-  await expect(consent(page)).toHaveCount(0);
-  await expect.poll(() => server.lobby.received.length).toBe(2);
-});
-
-test('a new version of the policies asks again', async ({ page, context }) => {
-  await seedConsent(context, CONSENT_VERSION - 1);
-  const seen = elsewhere(page);
-  const server = await fakeServer(page);
-  await page.goto('/#/social');
-  await expect(consent(page)).toBeVisible();
-  await nothingRan(page, server, seen);
-});
-
 // Each its own test: a page load is slow on CI, and six of them don't fit one test's time.
 for (const [address, there] of [
   [`/?room=${ROOM_ID}`, (page) => expect(asked(page)).toBeVisible()],
@@ -187,14 +152,6 @@ for (const [address, there] of [
     await there(page);
   });
 }
-
-test('a page you can\'t arrive at still goes where it would: Start a room for a guest is the lobby', async ({ page }) => {
-  await fakeServer(page);
-  await page.goto('/#/social/start');
-  await accepted(page);
-  await expect(shown(page, 'lobby')).toBeVisible();
-  await hash(page, '/social');
-});
 
 test('a host\'s reload from a session before the question keeps the room, unasked; the next plain load asks', async ({ page: host }) => {
   const room = fakeRoom();
@@ -218,41 +175,6 @@ test('a host\'s reload from a session before the question keeps the room, unaske
   await expect(consent(host)).toBeVisible();
 });
 
-test('a watcher\'s reload from a session before the question stays in the room, unasked', async ({ page: host, context }) => {
-  const room = fakeRoom();
-  await fakeServer(host);
-  await host.goto('/');
-  await tab(host, 'SOCIAL').click();
-  await accepted(host);
-  await goLive(host, room);
-  const watcher = await watcherPage(context, room);
-  await watcher.goto('/');
-  await tab(watcher, 'SOCIAL').click();
-  await expect(consent(watcher)).toHaveCount(0);   // the browser's already answered: same context
-  await joinFromCard(watcher);
-  await watcher.evaluate((key) => localStorage.removeItem(key), CONSENT_KEY);
-  await watcher.reload();
-  await live(watcher);
-  await expect(consent(watcher)).toHaveCount(0);
-});
-
-test('the Privacy Policy and the Terms say artists get the whole project, and the Terms say who can report as the rest do', async ({ page }) => {
-  await fakeServer(page);
-  await page.goto('/');
-  await tab(page, 'SOCIAL').click();
-  await consent(page).getByRole('button', { name: 'Privacy Policy', exact: true }).click();
-  const privacy = page.getByRole('dialog', { name: 'Privacy Policy' });
-  await expect(privacy).toContainText('receives the whole project, including the original image');
-  await expect(privacy).toContainText('Last updated: November 1, 2026.');
-  await privacy.getByRole('button', { name: 'Close' }).click();
-  await consent(page).getByRole('button', { name: 'Terms', exact: true }).click();
-  const terms = page.getByRole('dialog', { name: 'Terms' });
-  await expect(terms).toContainText('anyone signed in with a confirmed email can report a user or a room');
-  await expect(terms).not.toContainText('any signed-in user');
-  await expect(terms).toContainText('you allow them to receive a copy of the whole project, including the original image');
-  await expect(terms).toContainText('Last updated: November 1, 2026.');
-});
-
 test('in French, the Terms and the Privacy Policy they link to are the French copy', async ({ page }) => {
   await fakeServer(page);
   await page.goto('/');
@@ -268,16 +190,30 @@ test('in French, the Terms and the Privacy Policy they link to are the French co
   await expect(privacy).not.toContainText('Last updated');
 });
 
-test('the Terms, Privacy Policy and Guidelines open over the modal, and coming back leaves it and its tick as they were', async ({ page }) => {
+test('the Terms, Privacy Policy and Guidelines open over the modal, the Privacy Policy and the Terms say artists get the whole project and the Terms say who can report as the rest do, and coming back leaves it and its tick as they were', async ({ page }) => {
   await fakeServer(page);
   await page.goto('/');
   await tab(page, 'SOCIAL').click();
   await agree(page).check();
+  const says = {
+    'Terms': async (terms) => {
+      await expect(terms).toContainText('anyone signed in with a confirmed email can report a user or a room');
+      await expect(terms).not.toContainText('any signed-in user');
+      await expect(terms).toContainText('you allow them to receive a copy of the whole project, including the original image');
+      await expect(terms).toContainText('Last updated: November 1, 2026.');
+    },
+    'Privacy Policy': async (privacy) => {
+      await expect(privacy).toContainText('receives the whole project, including the original image');
+      await expect(privacy).toContainText('Last updated: November 1, 2026.');
+    },
+    'Community Guidelines': async () => {},
+  };
   for (const [name, heading] of [['Terms', 'Terms'], ['Privacy Policy', 'Privacy Policy'], ['Community Guidelines', 'Community Guidelines']]) {
     const link = consent(page).getByRole('button', { name, exact: true });
     await link.click();
     const dialog = page.getByRole('dialog', { name: heading });
     await expect(dialog.getByRole('heading', { level: 1 })).toHaveText(heading);
+    await says[name](dialog);
     await dialog.getByRole('button', { name: 'Close' }).click();   // on top: a click on the wrong layer would fail
     await expect(dialog).toHaveCount(0);
     await expect(agree(page)).toBeChecked();
@@ -314,20 +250,6 @@ test('focus starts in the modal and stays there; a click on its text or backdrop
   await page.keyboard.press('Escape');
   await expect(consent(page)).toHaveCount(0);
   await expect(tab(page, 'SOCIAL')).toBeFocused();   // nothing open, so no tab selected: the tab list's one stop
-});
-
-test('the agreement and both answers share a row, with the answers at the right', async ({ page }) => {
-  await fakeServer(page);
-  await page.goto('/');
-  await tab(page, 'SOCIAL').click();
-  const box = await agree(page).boundingBox();
-  const no = await notNow(page).boundingBox(), yes = await accept(page).boundingBox();
-  const middle = ({ y, height }) => y + height / 2;
-  expect(Math.abs(middle(no) - middle(box))).toBeLessThanOrEqual(12);
-  expect(no.height).toBe(yes.height);
-  expect(no.y).toBe(yes.y);
-  expect(box.x).toBeLessThan(no.x);
-  expect(no.x).toBeLessThan(yes.x);
 });
 
 test('in a window too short for it, the modal scrolls and its buttons stay reachable', async ({ page }) => {

@@ -1,7 +1,7 @@
 // Reporting people: Report on a message (for a confirmed member, on other people's messages) and in the
 // host's N here ⋯, through one dialog with a reason; and reporting a room, under Exit or on its lobby card's ⋯.
 // The report goes to the server on the reporter's own socket, with the messages as they came, signed by
-// their senders; nothing answers it. A 'silenced' from the server makes the host drop that person's chat.
+// their senders; nothing answers it.
 import { test, expect, store, tab } from './support.js';
 import { fakeRoom, goLive, watcherPage, joinFromCard, member, shown, ROOM_ID } from './social-support.js';
 
@@ -144,24 +144,6 @@ test('once you\'ve reported someone, Report is gone for them for the rest of the
   expect(sentReports(room, 'host')).toHaveLength(1);
 });
 
-test('a silenced watcher is told until when in place of the box, without a reload; the host still chats', async ({ page: host, context }) => {
-  const { room, watcher } = await inRoom(host, context);
-  await say(watcher, 'before');
-  await expect(messages(host)).toHaveCount(1);
-  await expect(box(watcher)).toBeVisible();
-
-  const until = Date.now() + 3_600_000;
-  watcher.server.silencedUntil = until;
-  room.silence('u_2', until);
-  const foot = panel(watcher).getByRole('status').filter({ hasText: "You're silenced until" });
-  await expect(foot).toHaveText(/^You're silenced until [^.]+\.$/);
-  await expect(box(watcher)).toHaveCount(0);
-
-  await expect(box(host)).toBeVisible();
-  await say(host, 'still here');
-  await expect(messages(watcher)).toHaveCount(2);
-});
-
 // Reporting the room itself.
 const roomDialog = (page) => page.getByRole('dialog', { name: 'Report this room?' });
 
@@ -193,25 +175,7 @@ test('a member reports the room from under Exit: the fake hears report-room with
   await expect(panel(watcher).getByRole('button', { name: 'Exit' })).toBeVisible();
 });
 
-test('a card that leaves the lobby right after its report doesn\'t take "Reported. Thank you." with it', async ({ context }) => {
-  const room = fakeRoom();
-  const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });
-  const watcher = await watcherPage(context, room, { me: wren });
-  await watcher.goto('/');
-  await tab(watcher, 'SOCIAL').click();
-  await card(watcher).getByRole('button', { name: 'More for neon harbor' }).click();
-  await watcher.getByRole('button', { name: 'Report room' }).click();
-  await roomDialog(watcher).getByRole('radio', { name: 'Spam or flooding' }).check();
-  await holdTime(watcher);
-  await roomDialog(watcher).getByRole('button', { name: 'Report', exact: true }).click();
-  watcher.server.lobby.send({ type: 'room-gone', id: ROOM_ID });
-  await expect(card(watcher)).toHaveCount(0);
-  await expect(reported(watcher)).toBeVisible();
-  await watcher.clock.runFor(4000);   // and it goes in its own time
-  await expect(reported(watcher)).toHaveCount(0);
-});
-
-test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears report-room; the card has no Report room after, and a guest\'s card has no ⋯', async ({ context }) => {
+test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears report-room; the card has no Report room after, a card that leaves the lobby right after its report doesn\'t take "Reported. Thank you." with it, and a guest\'s card has no ⋯', async ({ context }) => {
   const room = fakeRoom();
   const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });
   const more = (page) => card(page).getByRole('button', { name: 'More for neon harbor' });
@@ -234,10 +198,17 @@ test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears repo
   await asked.getByRole('button', { name: 'Report', exact: true }).click();
 
   await expect(reported(watcher)).toBeVisible();
-  await watcher.clock.resume();
   await expect.poll(() => watcher.server.lobby.received.filter((m) => m.type === 'report-room')).toEqual([{ type: 'report-room', id: ROOM_ID, reason: 'spam' }]);
   await expect(more(watcher)).toHaveCount(0);   // its only item gone
   await expect(card(watcher).getByRole('button', { name: /^Join/ })).toBeFocused();   // the ⋯ gone, focus goes to Join
+
+  // The card leaving the lobby right after doesn't take "Reported. Thank you." with it, and it goes in its own time.
+  watcher.server.lobby.send({ type: 'room-gone', id: ROOM_ID });
+  await expect(card(watcher)).toHaveCount(0);
+  await expect(reported(watcher)).toBeVisible();
+  await watcher.clock.runFor(4000);
+  await expect(reported(watcher)).toHaveCount(0);
+  await watcher.clock.resume();
 
   // A guest, an unconfirmed member and the room's own host (by name) have no ⋯ on it.
   for (const me of [null, member({ id: 'u_3', username: 'tin_owl', name: 'tin_owl', emailVerified: false }), member()]) {

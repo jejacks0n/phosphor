@@ -60,34 +60,12 @@ test('a host\'s reload keeps the room: its art, chat, numbers and Live for, at t
   expect(await store(host, 'room', (r) => r.role)).toBe('host');
 });
 
-test('the watcher stays through it: no second join, the art, the edits after, one joined line', async ({ page: host, context }) => {
+test('the watcher stays through it: The host is reconnecting… during the reload, then the art, no second join, the edits after, one joined line', async ({ page: host, context }) => {
   const room = fakeRoom();
   const watcher = await watching(host, context, room);
   host.on('dialog', (dialog) => dialog.accept());
   await expect(joined(host)).toHaveCount(1);
   const cells = (page) => store(page, 'room', (r) => r.art?.cells.map((c) => c.char).join('') ?? null);
-
-  await host.reload();
-  await live(host);
-  await expect.poll(() => hosts(room)).toBe(2);
-  expect(joins(room)).toBe(1);
-  expect(await store(watcher, 'room', (r) => r.role)).toBe('watch');
-  await expect(watcher.getByLabel('The room\'s art')).toBeVisible();
-
-  await tab(host, 'ANSI').click();
-  await editAt(host, 3, 2);
-  await host.keyboard.type('Z');
-  const at = await store(host, 'project', (p) => 2 * p.cols + 3);
-  await expect.poll(async () => (await cells(watcher))?.[at]).toBe('Z');
-  await expect(joined(host)).toHaveCount(1);
-  await expect(chat(watcher).getByRole('log').getByText('You joined')).toHaveCount(1);
-  await expect(joined(watcher)).toHaveCount(0);
-});
-
-test('the watcher sees The host is reconnecting… during the reload, then the art', async ({ page: host, context }) => {
-  const room = fakeRoom();
-  const watcher = await watching(host, context, room);
-  host.on('dialog', (dialog) => dialog.accept());
   let release = null;
   const held = new Promise((resolve) => { release = resolve; });
   await host.route(/\/api\/me$/, async (route) => {   // who you are is held, so the host's return is too
@@ -102,6 +80,19 @@ test('the watcher sees The host is reconnecting… during the reload, then the a
   await live(host);
   await expect(watcher.getByRole('status').filter({ hasText: 'The host is reconnecting…' })).toHaveCount(0);
   await expect.poll(() => store(watcher, 'room', (r) => r.status)).toBe('live');
+  await expect.poll(() => hosts(room)).toBe(2);
+  expect(joins(room)).toBe(1);
+  expect(await store(watcher, 'room', (r) => r.role)).toBe('watch');
+  await expect(watcher.getByLabel('The room\'s art')).toBeVisible();
+
+  await tab(host, 'ANSI').click();
+  await editAt(host, 3, 2);
+  await host.keyboard.type('Z');
+  const at = await store(host, 'project', (p) => 2 * p.cols + 3);
+  await expect.poll(async () => (await cells(watcher))?.[at]).toBe('Z');
+  await expect(joined(host)).toHaveCount(1);
+  await expect(chat(watcher).getByRole('log').getByText('You joined')).toHaveCount(1);
+  await expect(joined(watcher)).toHaveCount(0);
 });
 
 test('closing the host\'s page ends the room for the watcher after the wait', async ({ page: host, context }) => {
