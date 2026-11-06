@@ -140,8 +140,8 @@ function setParts(project, key, shape, { shapeOf, unsetOf }) {
 }
 
 // What the frame showing changed over previous (what the frame before shows): its cells, and its shapes by inheritance,
-// with the parts it sets of those it doesn't set all of. A shape it would set no part of isn't its own; one it set
-// parts of that are as they were stays its own, though the frames before have come to match it.
+// with the parts it sets of those it doesn't set all of. A shape it would set no part of isn't its own; one with a part
+// it set that's as it was stays its own, though the frames before have come to match it (a hold keyed by hand).
 // ponytail: each shape walks the frames back to its key frame; per-shape spans worked out once if huge movies lag.
 function ownChanges(project, previous) {
   const live = liveStates(project), own = frameDiff(previous, live), inherited = inheritance(project), parts = new Map();
@@ -150,7 +150,7 @@ function ownChanges(project, previous) {
   const keys = new Set([...previous.keys(), ...project.shapes.keys(), ...project.currentFrame.changes.keys()].filter(isShapeKey));
   for (const key of keys) {
     const shape = project.shapes.get(key), had = project.currentFrame.changes.get(key)?.cell;
-    const kept = had && shape && [...(project.currentFrame.parts?.get(key) ?? PARTS)].every((name) => samePart(had, shape, name));
+    const kept = had && shape && [...(project.currentFrame.parts?.get(key) ?? PARTS)].some((name) => samePart(had, shape, name));
     const inherits = !kept && inherited.inherits(key, shape);
     const set = shape && !inherits ? setParts(project, key, shape, inherited) : null;
     if (inherits || set?.size === 0) own.delete(key);
