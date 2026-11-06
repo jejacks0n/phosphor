@@ -1,5 +1,6 @@
 // SVG files: from the start screen they open on VECTOR as shapes; dropped over a drawing they're added there,
-// or opened in its place. What couldn't come in is said, and a broken file changes nothing.
+// or opened in its place. A broken file says so and changes nothing. (What an SVG leaves out is said in
+// tests/browser/svg-import.test.js.)
 import { readFileSync } from 'node:fs';
 import { test, expect, imageInput, store, tab, settled, openApp, fixture } from './support.js';
 
@@ -59,15 +60,6 @@ test('an SVG dropped over a drawing asks Add or Open, and Add puts its shapes in
   await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('rose');
   expect(await shapeCount(page)).toBe(6);
   expect(await store(page, 'project', (p) => p.canUndo)).toBe(true); // the shapes, one step on the new canvas
-});
-
-test('an SVG with text says what was left out and how to bring it', async ({ page }) => {
-  await page.goto('/');
-  const text = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 20"><rect width="50" height="20" fill="red"/><text y="15">Hi</text></svg>';
-  await imageInput(page).setInputFiles({ name: 'words.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(text) });
-  await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');
-  await expect(toast(page)).toHaveText(/Left out: text\. .*convert it to curves/);
-  expect(await shapeCount(page)).toBe(1);
 });
 
 test('a broken SVG says so and changes nothing', async ({ page }) => {

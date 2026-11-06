@@ -4,6 +4,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { rectShape, translation, transformed } from '@/document/shapes.js';
+import { copyShapes, pasteShapes } from '@/composables/vectorClipboard.js';
 
 const RED = { fill: '#ff0000' };
 
@@ -102,4 +103,18 @@ test('undo of a shape edit on frame 2 from frame 0 goes back to frame 2', async 
   expect(x(project, key)).toBe(6);
   project.showFrame(1);
   expect(x(project, key)).toBe(0);
+});
+
+test('pasted on another frame, shapes land where they were copied from; on top of their copies, a little past them', async () => {
+  const { project, workspace } = await animated();
+  workspace.vectorSelected = [project.addShape(rectShape(10, 10, 20, 20, RED))];
+  expect(copyShapes(project, workspace)).toBe(true);
+  const newest = () => [...project.shapes.values()].at(-1).m[4]; // the last pasted's x offset
+  for (const kind of ['wipe', 'blank']) { // an empty frame, and one carrying the shapes from before it
+    project.addFrame(kind);
+    for (const offset of [0, 2, 4]) { // where it was copied from, then past each one pasted here
+      expect(pasteShapes(project, workspace)).toBe(true);
+      expect(newest(), `${kind} ${offset}`).toBe(offset);
+    }
+  }
 });

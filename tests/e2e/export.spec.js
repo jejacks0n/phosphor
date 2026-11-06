@@ -8,11 +8,12 @@ import { replay, terminalGrid } from '../support/terminal.js';
 // The art before SAUCE's end-of-file marker.
 const art = (bytes) => bytes.subarray(0, bytes.indexOf(0x1a));
 
-for (const ext of ['ans', 'utf8ans']) {
-  test(`export .${ext}: the download is the store's cells, byte for byte`, async ({ page }) => {
-    await openApp(page);
+test('export .ans, then .utf8ans: each download is the store\'s cells, byte for byte', async ({ page }) => {
+  await openApp(page);
+  for (const ext of ['ans', 'utf8ans']) {
     await editAt(page, 2, 2);
     await page.keyboard.insertText(ext === 'ans' ? 'Hé ░▒▓' : 'Hé 漢字 👍🏽');
+    await page.keyboard.press('Escape');
     await settled(page);
     const { cols, rows, cells, quantize } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2), cells: p.cells, quantize: p.quantize }));
 
@@ -28,15 +29,16 @@ for (const ext of ['ans', 'utf8ans']) {
     const sauce = readSauce(bytes);
     expect([sauce.width, sauce.height]).toEqual([cols, rows]);
     if (ext === 'utf8ans') expect(terminalGrid(bytes, cols)[2].slice(2, 10)).toEqual(['H', 'é', ' ', '漢', '', '字', '', ' ']);
-  });
-}
+  }
+});
 
 test('comments stop at what a SAUCE record holds, so a room\'s artists can always take them', async ({ page }) => {
   await openApp(page);
   await page.getByRole('tab', { name: /sauce/i }).click();
   await page.locator('#sauce-comments').click();
-  await page.keyboard.insertText('x'.repeat(255 * 65 + 10));
-  expect((await page.locator('#sauce-comments').inputValue()).length).toBe(255 * 65);
+  await expect(page.locator('#sauce-comments')).toHaveAttribute('maxlength', String(255 * 65));
+  await page.keyboard.insertText('x'.repeat(10));
+  await expect(page.locator('#sauce-comments')).toHaveValue('x'.repeat(10)); // the field takes typing
 });
 
 test('the animated export appears with frames, warns above 80x25 and downloads an .ans', async ({ page }) => {
@@ -77,19 +79,7 @@ test('at 80x25 or smaller the export says nothing about rows past the terminal',
   await expect(page.getByRole('dialog')).not.toContainText('clipped during playback');
 });
 
-test('a character on a frame not showing is listed before an animated .ans is written', async ({ page }) => {
-  await openApp(page);
-  await page.getByRole('switch', { name: 'Animate' }).check();
-  await page.getByRole('toolbar', { name: 'Animation' }).getByRole('button', { name: 'Add frame' }).click();
-  await page.getByRole('button', { name: /^Blank/ }).click();
-  await editAt(page, 2, 2);
-  await page.keyboard.insertText('漢');
-  await page.getByRole('slider', { name: 'Frame' }).fill('0');
-  await page.getByRole('button', { name: 'Export animated .ans' }).click();
-  await expect(page.getByRole('dialog').getByRole('list', { name: 'Replacements' })).toContainText('漢');
-});
-
-test('an animated .utf8ans keeps every character, warns above 80x25, and lists nothing to replace', async ({ page }) => {
+test('an animated .utf8ans keeps every character, warns above 80x25, and lists nothing to replace; an animated .ans lists a character on a frame not showing', async ({ page }) => {
   await openApp(page);
   await page.getByRole('switch', { name: 'Animate' }).check();
   await page.getByRole('toolbar', { name: 'Animation' }).getByRole('button', { name: 'Add frame' }).click();
@@ -112,9 +102,13 @@ test('an animated .utf8ans keeps every character, warns above 80x25, and lists n
   const played = replay(bytes, cols, rows, { utf8: true });
   expect(played.clears).toBe(1);
   expect(played.grid[2 * cols + 2].char).toBe('漢');
+
+  await page.getByRole('slider', { name: 'Frame' }).fill('0');
+  await page.getByRole('button', { name: 'Export animated .ans' }).click();
+  await expect(page.getByRole('dialog').getByRole('list', { name: 'Replacements' })).toContainText('漢');
 });
 
-test('a .cast download holds a frame per event at its time', async ({ page }) => {
+test('a .cast download holds a frame per event at its time, and a .gif download is a GIF', async ({ page }) => {
   await openApp(page);
   await page.getByRole('switch', { name: 'Animate' }).check();
   const bar = page.getByRole('toolbar', { name: 'Animation' });
@@ -129,18 +123,12 @@ test('a .cast download holds a frame per event at its time', async ({ page }) =>
   const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2) }));
   expect(lines[0]).toMatchObject({ version: 2, width: cols, height: rows });
   expect(lines.slice(1).map(([t]) => t)).toEqual([0, 0.125, 2.125]);
-});
 
-test('a .gif download is a GIF', async ({ page }) => {
-  await openApp(page);
-  await page.getByRole('switch', { name: 'Animate' }).check();
-  const bar = page.getByRole('toolbar', { name: 'Animation' });
-  await bar.getByRole('button', { name: 'Add frame' }).click();
-  await page.getByRole('button', { name: /^Wipe/ }).click();
   await page.getByRole('button', { name: 'Export .gif' }).click();
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('button', { name: 'Export' }).click()]);
-  expect(download.suggestedFilename()).toMatch(/\.gif$/);
-  const bytes = await readFile(await download.path());
+  const [gif] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog').getByRole('button', { name: 'Export' }).click()]);
+  expect(gif.suggestedFilename()).toMatch(/\.gif$/);
+  const bytes = await readFile(await gif.path());
   expect(bytes.subarray(0, 6).toString()).toBe('GIF89a');
   expect(bytes.at(-1)).toBe(0x3b);
 });
+

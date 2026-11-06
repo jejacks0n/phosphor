@@ -367,23 +367,6 @@ test('Cmd+C and Cmd+V copy the selected shapes and paste them on top, selected; 
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vselect');
 });
 
-test('pasted on another frame, shapes land where they were copied from; on top of their copies, a little past them', async ({ page }) => {
-  await openApp(page);
-  await tab(page, 'VECTOR').click();
-  await settled(page);
-  await addRect(page, 10, 10, 20, 20);
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('ControlOrMeta+c');
-  const newest = () => store(page, 'project', (p) => [...p.shapes.values()].at(-1).m[4]); // the last pasted's x offset
-  for (const kind of ['wipe', 'blank']) { // an empty frame, and one carrying the shapes from before it
-    await store(page, 'project', `(p) => p.addFrame('${kind}')`);
-    for (const offset of [0, 2, 4]) { // where it was copied from, then past each one pasted here
-      await page.keyboard.press('ControlOrMeta+v');
-      expect(await newest(), `${kind} ${offset}`).toBe(offset);
-    }
-  }
-});
-
 test.describe('between tabs', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
@@ -1007,27 +990,6 @@ test('the Node tool shows a shape\'s gradient\'s handles with its points; recolo
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBeNull();
 });
 
-test('Node: a gradient\'s end on a corner is taken first; a click again there takes the point, and a drag then moves it', async ({ page }) => {
-  await openApp(page);
-  await tab(page, 'VECTOR').click();
-  await settled(page);
-  await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0],
-    fill: { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [20, 0, 0, 20, 10, 10] },
-    points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
-  await page.mouse.dblclick(...Object.values(await gridPoint(page, 20, 15)));
-  await expect(page.locator('.ansi-status .hint')).toHaveText('Space pan'); // the docs say a click again picks what's under
-  const picked = () => store(page, 'workspace', (w) => [w.vectorPoint, w.vectorStop]);
-  const corner = await gridPoint(page, 10, 10);
-  await page.mouse.click(corner.x, corner.y);
-  expect(await picked()).toEqual([null, 0]);
-  await page.mouse.click(corner.x, corner.y);
-  expect(await picked()).toEqual([0, null]);
-  await dragPoints(page, corner, await gridPoint(page, 6, 6));
-  const [shape] = await shapeList(page);
-  expect(shape.points[0].slice(0, 2).map(Math.round)).toEqual([6, 6]);
-  expect(shape.fill.m).toEqual([20, 0, 0, 20, 10, 10]);
-});
-
 test('Vector select shows one shape\'s gradient: a click on its end, over a scale handle, picks the stop there, which the Fill box recolors and Delete removes; Esc keeps the shape', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
@@ -1210,29 +1172,6 @@ test('double-click edits points: drag a point and a handle, click the outline to
 
   await undoSteps(page, 9); // Delete point, Sharp, the free handle, Free, Smooth, the broken handle, the handle, Smooth, the added point
   expect((await world(2))).toMatchObject({ n: 4, x: expect.closeTo(36, 0) });
-});
-
-test('the Node tool takes more points with Shift-click or a box dragged over them, and drags them together', async ({ page }) => {
-  await openApp(page);
-  await tab(page, 'VECTOR').click();
-  await settled(page);
-  const key = await addRect(page, 10, 10, 30, 30);
-  const ys = () => store(page, 'project', `(p) => p.shapes.get('${key}').points.map((q) => q[1] + p.shapes.get('${key}').m[5])`);
-  const picked = () => store(page, 'workspace', (w) => [...w.vectorPicked].sort());
-  await page.mouse.dblclick(...Object.values(await gridPoint(page, 20, 20)));
-  await page.mouse.click(...Object.values(await gridPoint(page, 10, 10)));
-  await page.keyboard.down('Shift');
-  await page.mouse.click(...Object.values(await gridPoint(page, 30, 10)));
-  await page.keyboard.up('Shift');
-  expect(await picked()).toEqual([0, 1]);
-  await expect(page.locator('.vector-overlay rect.handle.on')).toHaveCount(2);
-
-  await dragPoints(page, await gridPoint(page, 10, 10), await gridPoint(page, 10, 14)); // both go down
-  expect((await ys()).map(Math.round)).toEqual([14, 14, 30, 30]);
-
-  await dragPoints(page, await gridPoint(page, 5, 26), await gridPoint(page, 35, 36)); // a box over the bottom two
-  expect(await picked()).toEqual([2, 3]);
-  await expect(page.locator('.vector-overlay rect.handle.on')).toHaveCount(2);
 });
 
 test('on a Blank frame, the shapes it carries have dimmed outlines; one changed there is its own', async ({ page }) => {

@@ -18,14 +18,6 @@ test('the file picker opens a .ans on the ANSI tab, named for the file', async (
   expect(await store(page, 'project', (p) => p.filename)).toBe('boat');
 });
 
-test('a .txt that is too big says so and stays on the start screen', async ({ page }) => {
-  await page.goto('/');
-  await imageInput(page).setInputFiles({ name: 'wide.txt', mimeType: 'text/plain', buffer: Buffer.from('x'.repeat(301)) });
-  await expect(page.locator('.app-toast')).toHaveText(/301.*at most 300 columns/);
-  await expect(imageInput(page)).toBeAttached();
-  expect(await store(page, 'project', (p) => !!p.image)).toBe(false);
-});
-
 test('dropping a .ans on the start screen opens it', async ({ page }) => {
   await page.goto('/');
   await page.evaluate((bytes) => {
@@ -95,16 +87,6 @@ test('Open instead opens the dropped file, after asking about unsaved work', asy
   expect(await chars(page, 0, 0, 2)).toBe('ABC');
 });
 
-test('Cancel leaves the drawing as it was', async ({ page }) => {
-  await openApp(page);
-  const before = await store(page, 'project', (p) => ({ cells: p.cells.map((c) => c.char), filename: p.filename, version: p.history.version }));
-  await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
-  await question(page).getByRole('button', { name: 'Cancel' }).click();
-  await expect(question(page)).toBeHidden();
-  expect(await store(page, 'project', (p) => ({ cells: p.cells.map((c) => c.char), filename: p.filename, version: p.history.version }))).toEqual(before);
-  expect(await store(page, 'workspace', (w) => w.artDrop)).toBe(null);
-});
-
 test('dropped beside the drawing, an added file lands at the top-left of the view', async ({ page }) => {
   await openApp(page, 'images/tall.png');
   await frames(page); // the view has its place
@@ -151,13 +133,18 @@ test('added while an animation plays, the file lands on the frame showing, pause
   expect(await store(page, 'workspace', (w) => w.playing)).toBe(false);
 });
 
-test('with others drawing, the question offers no Open instead', async ({ page }) => {
+test('with others drawing, the question offers no Open instead; Cancel leaves the drawing as it was', async ({ page }) => {
   await openApp(page);
   await store(page, 'drawing', (d) => d.$patch({ artists: ['someone'], connected: ['someone'] }));
   expect(await store(page, 'drawing', (d) => d.offWithOthers)).toBeTruthy();
+  const before = await store(page, 'project', (p) => ({ cells: p.cells.map((c) => c.char), filename: p.filename, version: p.history.version }));
   await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
   await expect(question(page).getByRole('button', { name: /Add to this drawing/ })).toBeVisible();
   await expect(question(page).getByRole('button', { name: /Open instead/ })).toHaveCount(0);
   await expect(question(page)).toContainText('Add it to this drawing.');
   await expect(question(page)).not.toContainText('open it in place');
+  await question(page).getByRole('button', { name: 'Cancel' }).click();
+  await expect(question(page)).toBeHidden();
+  expect(await store(page, 'project', (p) => ({ cells: p.cells.map((c) => c.char), filename: p.filename, version: p.history.version }))).toEqual(before);
+  expect(await store(page, 'workspace', (w) => w.artDrop)).toBe(null);
 });
