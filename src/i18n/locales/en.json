@@ -714,11 +714,6 @@
     "moveEarlier": "Move earlier",
     "moveLater": "Move later",
     "deleteFrame": "Delete frame",
-    "tween": "Tween",
-    "tweenNamed": "Tween: {easing}",
-    "tweenDisabled": "Select a shape with a later key frame to tween it",
-    "tweenFrames": "Frames {from} to {to}",
-    "motion": "This tween moves",
     "motions": {
       "smooth": "Smoothly",
       "half": "By half cells",
@@ -741,6 +736,33 @@
     "ghostTitle": "Onion skin: show previous frames dimmed behind Blank frames",
     "ghostStrength": "Ghost strength",
     "ghostStrengthTitle": "Onion skin opacity: {percent}%"
+  },
+  "keysPanel": {
+    "aria": "Keys",
+    "button": "Keys",
+    "buttonTitle": "Keys: show the selected shape's keys",
+    "fold": "Fold the keys away",
+    "addKey": "+ Add key",
+    "addKeyTitle": "Add a key on this frame for a part with no row",
+    "none": "Select a shape to see its keys.",
+    "easing": "Easing of the tweens leaving the selected keys",
+    "motion": "How the moves leaving the selected Transform keys go",
+    "delete": "Delete keys",
+    "deleteTitle": "Delete the selected keys (Delete)",
+    "frame": "Frame {frame}: select its keys",
+    "key": "{part} key, frame {frame}",
+    "previous": "{part}: previous key",
+    "next": "{part}: next key",
+    "here": "{part}: key on this frame",
+    "parts": {
+      "transform": "Transform",
+      "outline": "Outline",
+      "fill": "Fill",
+      "stroke": "Stroke",
+      "width": "Width",
+      "style": "Style",
+      "z": "Stack"
+    }
   },
   "actions": {
     "confirmNew": "You have unsaved changes. Start a new project anyway?",

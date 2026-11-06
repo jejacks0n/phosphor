@@ -16,8 +16,10 @@ frame can't start a room.
 ## The bar
 
 Left to right: play and pause, step back and forward, which frame you're on, the scrubber, **Add frame** (a frame of
-film with a plus), a menu to move or delete the frame, **Tween** (see [Tweens](#tweens)), frames per second, this frame's hold, and **Ghost** (a ghost, lit
-while it's on) with its strength beside it. On a narrow screen the bar takes two lines: the frame you're on, the scrubber, the menus and **Tween** first, then play and the steps with the timing and **Ghost**.
+film with a plus), a menu to move or delete the frame, on VECTOR **Keys** (a diamond, lit while the Keys panel is open;
+see [Tweens](#tweens)), frames per second, this frame's hold, and **Ghost** (a ghost, lit while it's on) with its
+strength beside it. On a narrow screen the bar takes two lines: the frame you're on, the scrubber, the menus and **Keys**
+first, then play and the steps with the timing and **Ghost**.
 
 The marks under the scrubber say what each frame is: a tall tick where something was drawn, a short tick where
 nothing was, a block for a Duplicate, and a diamond for a Wipe. With a shape selected, its tweens show too: a band
@@ -93,24 +95,43 @@ shape deleted before it, say), it keeps the shape as it last looked there.
 
 ## Tweens
 
-A tween moves a shape ([Vector shapes](vector.md)) from one of its key frames to the next, so you don't draw the frames
-between. A shape's **key frames** are the frames that change any part of it. Place a ball on frame 1, add Blank frames, move it down
-on frame 7, select it, and choose an easing from **Tween** on the bar: frames 2 to 6 now show it on its way down.
+A tween moves a shape ([Vector shapes](vector.md)) from one of its keys to the next, so you don't draw the frames
+between. A **key** sets one part of a shape on one frame; the parts are Transform (where it is, its size and turn),
+Outline, Fill, Stroke, Width, Style (caps, joins and alignment) and Stack (its place among the shapes). A shape's first
+frame keys every part, and so does a Duplicate or Wipe that has it; changing a shape on a frame keys only the parts you
+changed. Place a ball on frame 1, add Blank frames, move it down on frame 7, select it, and in the **Keys** panel click
+the Transform key on frame 1 and choose an easing: frames 2 to 6 now show it on its way down.
 
-The menu says which frames the tween covers ("Frames 1 to 7"), and has:
+### The Keys panel
 
-| Easing | The shape |
+On VECTOR with Animate on, the Keys panel sits over the bar, its frames lined up with the scrubber's. **Keys** on the bar
+opens and folds it, as does the **▾** at its top left; it stays as you left it. It shows the selected shape (with several
+selected, the first); with none, it says so.
+
+Each part that changes is a row: its name; **◀** and **▶**, which show the part's previous and next key; and between
+them **◇**, which keys the part on the frame showing with the value it has there (lit **◆** when there's a key there,
+which a click deletes). Then the lane: a diamond for each key, a bar where the part tweens (with its easing's curve in
+the middle), a thin line where it holds, and a line across the lanes at the frame showing. A Duplicate's keys are drawn
+in its color. Frames outside the shape's life (before it starts, after a Wipe or Duplicate without it, or after it's
+erased) are dimmed. **+ Add key** offers the parts with no row, and keys the one you pick on the frame showing.
+
+Click a diamond to select it and show its frame; Shift-click adds or removes one; click a frame number to select every
+key on that frame; click an empty lane to select none. Then, along the top:
+
+| Easing | The part, from the key to its next |
 | --- | --- |
-| **No tween** | Stays as the earlier key frame has it, then jumps (as without tweens) |
+| **No tween** | Stays as the key has it, then jumps (as without tweens) |
 | **Linear** | Moves at one speed |
 | **Ease in** | Starts slow and speeds up, as a ball falls |
 | **Ease out** | Starts fast and slows down, as a ball rising to its peak |
 | **Ease in and out** | Speeds up, then slows down |
-| **Elastic** | Springs past the later key frame and back, settling there, as a ball on a rubber band |
+| **Elastic** | Springs past the next key and back, settling there, as a ball on a rubber band |
 
-On a key frame, the menu sets the tween that starts there. It's off with no shape selected, or on a shape's last key
-frame. With several shapes selected, the bar shows the first one's tweens, and a choice sets each selected shape's tween
-on that frame. Each is one undo step.
+The easing goes to the tween leaving each selected key. A part's last key has no tween to ease, so with only last keys
+selected the easing is off; a key that becomes its part's last (its next deleted) loses its easing, and undo brings it
+back. The trash can (or Delete or Backspace, with the keys selected and the panel focused) deletes the selected keys:
+each part then tweens from the key before to the key after, eased as the key before is. A shape's first key stays
+(delete the shape for that), and so do a Duplicate's. Each of these is one undo step.
 
 What tweens: the shape's position, size and rotation (it turns the short way round, so more than half a turn between two
 key frames goes back the other way), its points and curve handles when both key frames have as many in each outline,
@@ -119,22 +140,21 @@ its fill and stroke colors, gradients of the same kind with as many stops, and i
 
 A tween's timing goes by frames: half way through is the middle frame, whatever the holds. It runs only across Blank
 frames that don't change the shape; a Duplicate or a Wipe ends it. Change a key frame and the frames between follow.
-Moving the shape on a frame between makes that a key frame: the tween splits in two, both halves with its easing.
+Changing a part on a frame between keys it there: its tween splits in two, both halves with its easing.
 Tweens play, and the exports show them; projects and autosave keep them.
 
 Each part of a shape tweens on its own: from a key frame that set it to the next one that sets it, eased as that first
 key frame says for it, and a key frame between that sets only other parts changes nothing about it. A ball moving from
 frame 1 to frame 13 with Ease in and out, with a point of its outline dragged on frame 7: frame 7 sets only the outline,
 and the ball still moves in one ease from frame 1 to 13, without slowing on frame 7, while the outline goes there and
-back. A part with no easing on its key frame holds until its next key frame, then jumps. On a key frame, the menu's
-choice goes to every part that frame sets that has a later key frame to go to. Projects saved before each part had its
+back. A part with no easing on its key holds until its next key, then jumps. Projects saved before each part had its
 own easing keep each key frame's easing, on the parts that key frame set.
 
-For a steadier, older look, **This tween moves** at the foot of the menu sets how the tween moves: **Smoothly** (the
-default), **By half cells** or **By whole cells**. Snapped, a shape on its way jumps from cell to cell (or half cell),
-the way characters move on a terminal, rather than gliding and smearing across the cells it straddles. Each tween has
-its own, set as its easing is (for each selected shape, one undo step; off while there's no tween), so a ball can
-snap on its way down and glide back up. Splitting a tween keeps it on both halves. Only the move snaps: size,
+For a steadier, older look, the menu beside the easing sets how a move goes: **Smoothly** (the default), **By half
+cells** or **By whole cells**. Snapped, a shape on its way jumps from cell to cell (or half cell), the way characters
+move on a terminal, rather than gliding and smearing across the cells it straddles. It's kept on a Transform key, for
+the tween leaving it, so it's off unless an eased Transform key is selected (one undo step), and a ball can snap on its
+way down and glide back up. Splitting a tween keeps it on both halves. Only the move snaps: size,
 rotation, colors and the rest still tween smoothly, and key frames stay where you put them. Projects and autosave keep
 it.
 

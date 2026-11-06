@@ -60,6 +60,19 @@ test('setKeyEasing with none drops the motion; setKeyMotion is only for an eased
   expect(project.frames[0].motions.get(key)).toBe('cells');
 });
 
+test("deleting a part's next key leaves the key before it last, its easing and motion gone; undo brings them back", async () => {
+  const project = await animated();
+  const key = ball(project, 12, { 6: 24, 12: 48 });
+  project.setKeyEasing(key, [T(6)], 'easeIn');
+  project.setKeyMotion(key, [T(6)], 'cells');
+  project.deleteKeys(key, [T(12)]);
+  expect(project.frames[6].tweens).toBe(null);
+  expect(project.frames[6].motions).toBe(null);
+  project.undo();
+  expect(project.frames[6].tweens.get(key).get('transform')).toBe('easeIn');
+  expect(project.frames[6].motions.get(key)).toBe('cells');
+});
+
 test('deleteKeys takes a key away, and undo brings it back with its easing', async () => {
   const project = await animated();
   const key = ball(project, 12, { 6: 12, 12: 48 });

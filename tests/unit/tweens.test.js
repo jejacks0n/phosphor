@@ -2,14 +2,17 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { makeShape, rectShape, rotation, transformed, translation, withShape } from '../../src/document/shapes.js';
-import { EASINGS, ease, lifeAt, setPartsAt, shapeAt, spanAt, strayEasings, tweenBands, tweenPart, tweenReach, tweenShape, tweenedAt, workedOutAt } from '../../src/document/tweens.js';
+import { EASINGS, ease, lifeAt, setPartsAt, shapeAt, strayEasings, tweenBands, tweenPart, tweenReach, tweenShape, tweenedAt, workedOutAt } from '../../src/document/tweens.js';
 import { PARTS } from '../../src/document/parts.js';
+import { partKeys } from '../../src/document/keys.js';
 import { EMPTY_STATE, cellState, newFrame } from '../../src/document/frames.js';
 
 const close = (a, b, eps = 1e-3) => assert.ok(Math.abs(a - b) <= eps, `${a} vs ${b}`);
 const A = rectShape(0, 0, 4, 4, { fill: '#ff0000' });
 // A key frame's easings: every part's (or those named) easing so.
 const eased = (easing, parts = PARTS) => new Map(parts.map((part) => [part, easing]));
+// The Transform's keys in shape A's life around frame i: [{ at, easing, motion }].
+const transformKeys = (frames, i) => partKeys(frames, 'v:a', i).rows.get('transform').map(({ at, easing, motion }) => ({ at, easing, motion }));
 
 test('the easings start at 0 and end at 1, cubic between', () => {
   for (const e of EASINGS) {
@@ -88,9 +91,7 @@ function scene(easing = 'easeIn') {
 
 test("a tween runs from a key frame to the shape's next, and puts the eased shape between", () => {
   const frames = scene();
-  assert.deepEqual(spanAt(frames, 'v:a', 3), { from: 0, to: 6, easing: 'easeIn', motion: 'smooth' });
-  assert.deepEqual(spanAt(frames, 'v:a', 0), { from: 0, to: 6, easing: 'easeIn', motion: 'smooth' });
-  assert.equal(spanAt(frames, 'v:a', 6), null);
+  assert.deepEqual(transformKeys(frames, 3), [{ at: 0, easing: 'easeIn', motion: 'smooth' }, { at: 6, easing: null, motion: 'smooth' }]);
   assert.equal(tweenedAt(frames, 3).get('v:a').shape.m[5], 3);
   assert.deepEqual(tweenedAt(frames, 3).get('v:a').parts.get('transform'), { easing: 'easeIn', motion: 'smooth' });
   assert.equal(tweenedAt(frames, 3).get('v:a').parts.size, PARTS.length);
@@ -101,18 +102,18 @@ test("a tween runs from a key frame to the shape's next, and puts the eased shap
 
 test('no easing, a Wipe or Duplicate between, or the shape erased at the far end: no tween', () => {
   const plain = scene(null);
-  assert.equal(spanAt(plain, 'v:a', 3).easing, null);
+  assert.equal(transformKeys(plain, 3)[0].easing, null);
   assert.equal(tweenedAt(plain, 3).size, 0);
   assert.deepEqual(tweenBands(plain, 'v:a'), []);
   for (const kind of ['wipe', 'duplicate']) {
     const cut = scene();
     cut[4].kind = kind;
-    assert.equal(spanAt(cut, 'v:a', 3), null, kind);
+    assert.deepEqual(transformKeys(cut, 3).map(({ at }) => at), [0], kind);
     assert.equal(tweenedAt(cut, 3).size, 0, kind);
   }
   const erased = scene();
   erased[6].changes.set('v:a', EMPTY_STATE);
-  assert.equal(spanAt(erased, 'v:a', 3), null);
+  assert.deepEqual(transformKeys(erased, 3).map(({ at }) => at), [0]);
 });
 
 test('two shapes keep their own tweens', () => {
@@ -319,8 +320,8 @@ test('a tween can move a shape by whole cells or half cells, from where its key 
   assert.equal(shapeAt(moving('cells'), 'v:a', 6).m[5], 24); // a key frame is where it was put
   assert.equal(workedOutAt(moving('cells'), 3).get('v:a').m[5], 4);
   assert.equal(tweenedAt(moving('cells'), 3).get('v:a').shape.m[5], 4);
-  assert.equal(spanAt(moving('cells'), 'v:a', 3).motion, 'cells');
-  assert.equal(spanAt(scene('easeIn'), 'v:a', 3).motion, 'smooth');
+  assert.equal(transformKeys(moving('cells'), 3)[0].motion, 'cells');
+  assert.equal(transformKeys(scene('easeIn'), 3)[0].motion, 'smooth');
 });
 
 test('each tween moves as its own motion says: one snapped, the next smooth', () => {

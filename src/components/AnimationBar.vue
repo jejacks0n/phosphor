@@ -5,7 +5,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePlayback } from '@/composables/usePlayback';
 import { frameMarks } from '@/lib/frameMarks';
-import { EASINGS, MOTIONS, spanAt, tweenBands } from '@/document/tweens.js';
+import { tweenBands } from '@/document/tweens.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 
 // Under the canvas while Animate is on: play, step, scrub, timing, and adding and arranging frames.
@@ -37,23 +37,6 @@ const marks = computed(() => {
   return project.hasFrames ? frameMarks(project.frames, shapeKeys.value[0]) : [project.hasEdits ? 'drawn' : 'empty'];
 });
 const bands = computed(() => (project.hasFrames && shapeKeys.value[0] ? tweenBands(project.frames, shapeKeys.value[0]) : []));
-// The tween the frame showing is in, or starts: what the Tween menu sets.
-const span = computed(() => (project.hasFrames && shapeKeys.value[0] ? spanAt(project.frames, shapeKeys.value[0], at.value) : null));
-// Each easing's curve, as a graph of how far along against time; and No tween's cross.
-const CURVES = {
-  none: 'M4 4l8 8M12 4l-8 8',
-  linear: 'M2 14L14 2',
-  easeIn: 'M2 14C9 14 12 9 14 2',
-  easeOut: 'M2 14C4 7 7 2 14 2',
-  easeInOut: 'M2 14C8 14 8 2 14 2',
-  elastic: 'M2 14C3 4 4 0 6 1S8 4 10 2.5S13 1.8 14 2',
-};
-const easings = computed(() => [['none', null], ...EASINGS.map((easing) => [easing, easing])]);
-// The Tween button shows only its curve, so its name says which easing that is.
-const tweenLabel = computed(() => {
-  if (!span.value) return t('animation.tweenDisabled');
-  return span.value.easing ? t('animation.tweenNamed', { easing: t(`animation.easings.${span.value.easing}`) }) : t('animation.tween');
-});
 // Where the range's thumb sits for frame i: its travel stops half a thumb (--thumb, the global slider's) short of each end.
 const markAt = (i) => `calc(var(--thumb) / 2 + (100% - var(--thumb)) * ${count.value > 1 ? i / (count.value - 1) : 0})`;
 
@@ -67,8 +50,6 @@ const step = paused((by) => project.stepFrame(by));
 const add = paused((kind) => project.addFrame(kind));
 const move = paused((by) => project.moveFrame(project.frame, project.frame + by));
 const remove = paused(() => project.deleteFrame());
-const tween = paused((easing) => project.setTween(shapeKeys.value, easing));
-const moveBy = paused((mode) => project.setTweenMotion(shapeKeys.value, mode));
 // What's being typed in FPS and Hold, until it's set or left: the bar redraws with every frame played, and a field
 // bound to the value alone would be written back over the typing.
 const typing = reactive({ fps: null, hold: null });
@@ -128,24 +109,12 @@ const setFps = (event) => {
       <button :disabled="at === 0" @click="move(-1)">{{ t('animation.moveEarlier') }}</button>
       <button :disabled="at === count - 1" @click="move(1)">{{ t('animation.moveLater') }}</button>
       <button :disabled="count < 2" @click="remove">{{ t('animation.deleteFrame') }}</button>
-      <p class="tween-frames">{{ t('animation.cellsCarry') }}</p>
+      <p class="heading">{{ t('animation.cellsCarry') }}</p>
       <button v-for="on in [true, false]" :key="on" :aria-pressed="workspace.cellsStay !== on" @click="workspace.cellsStay = !on">{{ t(on ? 'animation.cellsCarryOn' : 'animation.cellsCarryOff') }}</button>
     </DropdownMenu>
-    <DropdownMenu class="tween-menu" :label="tweenLabel" up :disabled="!span">
-      <template #trigger>
-        <svg class="curve" viewBox="0 0 16 16" aria-hidden="true">
-          <path :d="CURVES[span?.easing ?? 'easeInOut']"/>
-          <circle cx="2" cy="14" r="1.4"/><circle cx="14" cy="2" r="1.4"/>
-        </svg>
-      </template>
-      <p class="tween-frames">{{ span ? t('animation.tweenFrames', { from: span.from + 1, to: span.to + 1 }) : '' }}</p>
-      <button v-for="[name, easing] in easings" :key="name" :aria-pressed="(span?.easing ?? null) === easing" @click="tween(easing)">
-        <svg class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[name]"/></svg>
-        {{ t(`animation.easings.${name}`) }}
-      </button>
-      <p class="tween-frames">{{ t('animation.motion') }}</p>
-      <button v-for="mode in MOTIONS" :key="mode" :disabled="!span?.easing" :aria-pressed="!!span?.easing && span.motion === mode" @click="moveBy(mode)">{{ t(`animation.motions.${mode}`) }}</button>
-    </DropdownMenu>
+    <button v-if="workspace.editorTab === 'vector'" class="keys" :class="{ active: workspace.keysOpen }" :aria-label="t('keysPanel.button')" :aria-pressed="workspace.keysOpen" :title="t('keysPanel.buttonTitle')" @click="workspace.keysOpen = !workspace.keysOpen">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14.5 8 8 14.5 1.5 8z"/></svg>
+    </button>
     </div>
     <div class="settings">
     <label class="field fps" :title="t('animation.fpsTitle')">
@@ -330,30 +299,12 @@ span.full {
   color: var(--warning);
 }
 
-svg.curve {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-}
-.tween-menu :deep(.dropdown-trigger) > svg.curve {
-  width: 16px;
-  height: 16px;
-  fill: none;
-}
-svg.curve circle {
-  fill: currentColor;
-  stroke: none;
-}
-p.tween-frames {
+p.heading {
   margin: 2px 10px 4px;
   font-size: 11px;
   color: var(--text-muted);
   white-space: nowrap;
 }
-.tween-menu button[aria-pressed='true']::after,
 .frame-menu button[aria-pressed='true']::after {
   content: '✓';
   margin-left: 4px;
@@ -365,7 +316,7 @@ svg.add-frame {
 }
 
 /* As the toolbar's tool buttons: an icon, lit when it's on. */
-button.ghost {
+button.ghost, button.keys {
   display: flex;
   align-items: center;
   height: 26px;
@@ -373,22 +324,22 @@ button.ghost {
   border-radius: 3px;
   border: 1px solid var(--border);
 }
-button.ghost svg {
+button.ghost svg, button.keys svg {
   display: block;
   width: 16px;
   height: 16px;
   fill: var(--text-faint);
 }
 @media (hover: hover) {
-  button.ghost:hover svg {
+  button.ghost:hover svg, button.keys:hover svg {
     fill: var(--text);
   }
 }
-button.ghost.active {
+button.ghost.active, button.keys.active {
   background: var(--accent);
   border-color: var(--accent);
 }
-button.ghost.active svg {
+button.ghost.active svg, button.keys.active svg {
   fill: var(--white);
 }
 

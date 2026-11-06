@@ -17,6 +17,7 @@ import ZeroState from '@/components/ZeroState.vue';
 import SauceEditor from '@/components/SauceEditor.vue';
 import DropZone from '@/components/DropZone.vue';
 import AnimationBar from '@/components/AnimationBar.vue';
+import KeysPanel from '@/components/KeysPanel.vue';
 import AnsiEditor from '@/components/AnsiEditor.vue';
 import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
@@ -158,6 +159,7 @@ async function addSvg(file) {
           @choose="chooseArt"
           @cancel="workspace.artDrop = null"
       />
+      <KeysPanel v-if="project.image && project.animate && workspace.editMode && workspace.editorTab === 'vector' && workspace.keysOpen"/>
       <AnimationBar v-if="project.image && project.animate && workspace.editMode"/>
     </template>
   </section>

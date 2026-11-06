@@ -1,0 +1,213 @@
+import { test, expect, openApp, store, tab, autosaved } from './support.js';
+
+const animateSwitch = (page) => page.getByRole('switch', { name: 'Animate' });
+const bar = (page) => page.getByRole('toolbar', { name: 'Animation' });
+const addFrame = async (page, kind) => {
+  await bar(page).getByRole('button', { name: 'Add frame' }).click();
+  await page.getByRole('button', { name: new RegExp(`^${kind}`) }).click();
+};
+const scrubTo = (page, i) => bar(page).getByRole('slider', { name: 'Frame' }).fill(String(i));
+const shown = (page) => bar(page).getByTestId('frame-indicator');
+const panel = (page) => page.getByRole('region', { name: 'Keys' });
+const keysButton = (page) => bar(page).getByRole('button', { name: 'Keys', exact: true });
+const row = (page, part) => panel(page).locator(`[data-part="${part}"]`);
+const diamond = (page, part, at) => row(page, part).locator(`button.key[data-at="${at}"]`);
+const keyFrames = (page, part) => row(page, part).locator('button.key').evaluateAll((keys) => keys.map((k) => Number(k.dataset.at)));
+const selected = (page) => panel(page).locator('button.key[aria-pressed="true"]');
+const menuItem = (page, name) => page.locator('.dropdown-content').getByRole('button', { name, exact: true });
+const y = (page, key, at) => store(page, 'project', `(p) => p.resolvedOf(${at}).get('${key}').cell.m[5]`);
+
+// A ball on frame 1 of 7 Blank frames, moved down 24 on frame 7 and selected; more (frame to y) moves it on other
+// frames too. Frame 4 shows.
+async function ball(page, more = {}) {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await animateSwitch(page).check();
+  const key = await store(page, 'project', (p) => p.addShape({ z: 0, closed: true, fill: '#ff0000', stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0],
+    points: [[2, 2, 0, 0, 0, 0, 0], [6, 2, 0, 0, 0, 0, 0], [6, 6, 0, 0, 0, 0, 0], [2, 6, 0, 0, 0, 0, 0]] }));
+  for (let i = 0; i < 6; i++) await addFrame(page, 'Blank');
+  for (const [at, to] of Object.entries({ 6: 24, ...more })) {
+    await store(page, 'project', `(p) => { p.showFrame(${at}); p.updateShapes([['${key}', { ...p.shapes.get('${key}'), m: [1, 0, 0, 1, 0, ${to}] }]]); p.noteFrame(); }`);
+  }
+  await scrubTo(page, 3);
+  await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
+  return key;
+}
+
+test('the Keys button opens and folds the panel, and it stays as left across a reload', async ({ page }) => {
+  await ball(page);
+  await expect(panel(page)).toBeVisible();
+  await expect(keysButton(page)).toHaveAttribute('aria-pressed', 'true');
+  const box = await panel(page).boundingBox(), barBox = await bar(page).boundingBox();
+  expect(box.y + box.height).toBeLessThanOrEqual(barBox.y + 1); // just above the bar
+  await keysButton(page).click();
+  await expect(panel(page)).toBeHidden();
+  await expect(keysButton(page)).toHaveAttribute('aria-pressed', 'false');
+  await keysButton(page).click();
+  await expect(panel(page)).toBeVisible();
+  await panel(page).getByRole('button', { name: 'Fold the keys away' }).click();
+  await expect(panel(page)).toBeHidden();
+  await autosaved(page);
+  await page.reload();
+  await expect(page.locator('.ansi-editor .display')).toBeVisible();
+  await animateSwitch(page).check();
+  await expect(keysButton(page)).toHaveAttribute('aria-pressed', 'false');
+  await expect(panel(page)).toBeHidden();
+  await tab(page, 'ANSI').click();
+  await expect(keysButton(page)).toHaveCount(0); // VECTOR's
+});
+
+test('only the parts that change are rows; + Add key offers the others and keys one on the frame showing', async ({ page }) => {
+  const key = await ball(page);
+  await expect(panel(page).locator('[data-part]')).toHaveCount(1);
+  expect(await keyFrames(page, 'transform')).toEqual([0, 6]);
+  await panel(page).locator('.add-key .dropdown-trigger').click();
+  await expect(page.locator('.dropdown-content button')).toHaveText(['Outline', 'Fill', 'Stroke', 'Width', 'Style', 'Stack']);
+  await menuItem(page, 'Fill').click();
+  await expect(panel(page).locator('[data-part]')).toHaveCount(2);
+  expect(await keyFrames(page, 'fill')).toEqual([0, 3]);
+  expect(await store(page, 'project', `(p) => [...p.frames[3].parts.get('${key}')]`)).toEqual(['fill']);
+});
+
+test('clicking a diamond selects it and shows its frame; Shift-click adds one; empty lane deselects', async ({ page }) => {
+  await ball(page);
+  await diamond(page, 'transform', 6).click();
+  await expect(diamond(page, 'transform', 6)).toHaveAttribute('aria-pressed', 'true');
+  await expect(shown(page)).toHaveText('7 / 7');
+  await diamond(page, 'transform', 0).click({ modifiers: ['Shift'] });
+  await expect(selected(page)).toHaveCount(2);
+  await diamond(page, 'transform', 0).click({ modifiers: ['Shift'] });
+  await expect(selected(page)).toHaveCount(1);
+  await diamond(page, 'transform', 0).click();
+  await expect(selected(page)).toHaveCount(1);
+  await expect(diamond(page, 'transform', 0)).toHaveAttribute('aria-pressed', 'true');
+  await expect(shown(page)).toHaveText('1 / 7');
+  const lane = row(page, 'transform').locator('.lane'), box = await lane.boundingBox();
+  await lane.click({ position: { x: box.width / 2, y: 2 } });
+  await expect(selected(page)).toHaveCount(0);
+});
+
+test('clicking a frame number selects every key on that frame', async ({ page }) => {
+  const key = await ball(page);
+  await store(page, 'project', `(p) => { p.addKey('${key}', 'transform'); p.addKey('${key}', 'fill'); }`);
+  await panel(page).locator('button.frame[data-at="3"]').click();
+  await expect(selected(page)).toHaveCount(2);
+  await expect(diamond(page, 'transform', 3)).toHaveAttribute('aria-pressed', 'true');
+  await expect(diamond(page, 'fill', 3)).toHaveAttribute('aria-pressed', 'true');
+  await expect(diamond(page, 'transform', 0)).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('easing from the top line eases the tween leaving the selected key; undo undoes it', async ({ page }) => {
+  const key = await ball(page);
+  const easing = panel(page).locator('.easing .dropdown-trigger');
+  await expect(easing).toBeDisabled(); // nothing selected
+  await diamond(page, 'transform', 6).click();
+  await expect(easing).toBeDisabled(); // a last key: no tween leaves it
+  await diamond(page, 'transform', 0).click();
+  await expect(easing).toBeEnabled();
+  await expect(easing).toHaveText('No tween');
+  await easing.click();
+  await menuItem(page, 'Ease in').click();
+  await expect.poll(() => y(page, key, 3)).toBe(3);
+  await expect(easing).toHaveText('Ease in');
+  await expect(row(page, 'transform').locator('.tween')).toHaveCount(1);
+  await expect(bar(page).locator('.scrubber-marks .tween')).toHaveCount(5);
+  await expect(bar(page).locator('.scrubber-marks .band')).toHaveCount(1);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(bar(page).locator('.scrubber-marks .band')).toHaveCount(0);
+  await expect.poll(() => y(page, key, 3)).toBe(0);
+});
+
+test('motion is off unless a Transform key is selected; By whole cells snaps the move, one undo step', async ({ page }) => {
+  const key = await ball(page);
+  await store(page, 'project', `(p) => p.addKey('${key}', 'fill')`);
+  const motion = panel(page).locator('.motion .dropdown-trigger');
+  await diamond(page, 'fill', 0).click();
+  await expect(motion).toBeDisabled();
+  await diamond(page, 'transform', 0).click();
+  await expect(motion).toBeDisabled(); // no tween yet to move
+  await panel(page).locator('.easing .dropdown-trigger').click();
+  await menuItem(page, 'Ease in').click();
+  await expect.poll(() => y(page, key, 3)).toBe(3); // half a cell down
+  await expect(motion).toBeEnabled();
+  await expect(motion).toHaveText('Smoothly');
+  await motion.click();
+  await menuItem(page, 'By whole cells').click();
+  await expect.poll(() => y(page, key, 3)).toBe(4); // a whole cell
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => y(page, key, 3)).toBe(3);
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect.poll(() => y(page, key, 3)).toBe(4);
+  await expect(motion).toHaveText('By whole cells');
+});
+
+test('Delete, with focus in the panel, deletes the selected keys; the first key stays', async ({ page }) => {
+  const key = await ball(page, { 3: 6 });
+  expect(await keyFrames(page, 'transform')).toEqual([0, 3, 6]);
+  await diamond(page, 'transform', 3).click();
+  await page.keyboard.press('Delete');
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 6]);
+  await diamond(page, 'transform', 0).click();
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Delete');
+  expect(await keyFrames(page, 'transform')).toEqual([0, 6]);
+  expect(await store(page, 'project', `(p) => p.shapes.has('${key}')`)).toBe(true); // the shape's still there
+  await diamond(page, 'transform', 6).click();
+  await panel(page).getByRole('button', { name: 'Delete keys' }).click();
+  await expect(panel(page).locator('[data-part]')).toHaveCount(0); // it holds still now: no part changes
+});
+
+test("a row's ◇ keys the part on the frame showing; its lit ◆ deletes it", async ({ page }) => {
+  await ball(page);
+  const here = row(page, 'transform').getByRole('button', { name: 'Transform: key on this frame' });
+  await expect(here).toHaveAttribute('aria-pressed', 'false');
+  await expect(here).toHaveText('◇');
+  await here.click();
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 3, 6]);
+  await expect(here).toHaveAttribute('aria-pressed', 'true');
+  await expect(here).toHaveText('◆');
+  await here.click();
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 6]);
+  await scrubTo(page, 0);
+  await expect(here).toBeDisabled(); // the first key stays
+});
+
+test('◀ and ▶ step to the part\'s previous and next key', async ({ page }) => {
+  await ball(page);
+  const transform = row(page, 'transform');
+  await transform.getByRole('button', { name: 'Transform: next key' }).click();
+  await expect(shown(page)).toHaveText('7 / 7');
+  await expect(transform.getByRole('button', { name: 'Transform: next key' })).toBeDisabled();
+  await transform.getByRole('button', { name: 'Transform: previous key' }).click();
+  await expect(shown(page)).toHaveText('1 / 7');
+  await expect(transform.getByRole('button', { name: 'Transform: previous key' })).toBeDisabled();
+});
+
+test('undo after a delete leaves no stale key selected', async ({ page }) => {
+  await ball(page);
+  await row(page, 'transform').getByRole('button', { name: 'Transform: key on this frame' }).click(); // a key on frame 4
+  await diamond(page, 'transform', 3).click();
+  await page.keyboard.press('Delete');
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 6]);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 3, 6]);
+  await diamond(page, 'transform', 3).click();
+  await expect(selected(page)).toHaveCount(1);
+  await page.keyboard.press('ControlOrMeta+z'); // the key's add undone: it's gone, and so is its selection
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 6]);
+  expect(await store(page, 'workspace', (w) => w.selectedKeys)).toEqual([]);
+  await expect(panel(page).getByRole('button', { name: 'Delete keys' })).toBeDisabled();
+});
+
+test('with no shape selected the panel says so in one line', async ({ page }) => {
+  await ball(page);
+  await store(page, 'workspace', (w) => { w.vectorSelected = []; });
+  await expect(panel(page)).toContainText('Select a shape to see its keys.');
+  await expect(panel(page).locator('[data-part]')).toHaveCount(0);
+});
+
+test("there's no Tween button on the bar", async ({ page }) => {
+  await ball(page);
+  await expect(bar(page).getByRole('button', { name: /^Tween/ })).toHaveCount(0);
+  await expect(keysButton(page)).toBeVisible();
+});
