@@ -135,7 +135,8 @@ The edit layer is everything you draw: typed text (Edit Mode), shapes, pasted ce
 Paint covers half-cells, so it shows through a cell's character: paint on the top half colors the
 cell's background, paint on the bottom half its foreground. A cell whose character is solid or
 empty (a space, █, ▀ or ▄) has nothing to show through, so under paint it becomes a ▄ half-block
-instead. Typing or drawing cells (a line box, a Character or Full block shape) over paint replaces
+instead. The same goes for the base layer's pinned characters (an opened file's, or ones Merge down
+left), shown in the colors they show. Typing or drawing cells (a line box, a Character or Full block shape) over paint replaces
 the paint in those cells, so what you wrote shows; with the background set to None, each cell keeps
 the background color the paint gave it, as it keeps the picture's or an earlier cell's.
 With **By shape** choosing the characters, paint doesn't show through a cell's character: the cell
