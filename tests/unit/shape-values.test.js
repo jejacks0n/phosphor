@@ -1,7 +1,7 @@
 // The numbers the Keys panel shows for a shape's Transform, and what typing one does.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { rectShape, multiply, rotation, scaling, transformed, curveBounds } from '../../src/document/shapes.js';
+import { makeShape, rectShape, multiply, rotation, scaling, transformed, curveBounds } from '../../src/document/shapes.js';
 import { transformValues, withTransformValue } from '../../src/lib/shapeValues.js';
 
 const close = (a, b, eps = 0.06) => assert.ok(Math.abs(a - b) <= eps, `${a} vs ${b}`);
@@ -62,4 +62,40 @@ test('a scale of 0 is refused, and a negative Scale Y flips the shape', () => {
   const flipped = withTransformValue(rect, 'scaleY', -100);
   assert.equal(transformValues(flipped).scaleY, -100);
   assert.equal(transformValues(withTransformValue(flipped, 'scaleY', 100)).scaleY, 100);
+});
+
+// A closed outline with curved sides, nothing like a rect.
+const bean = () => makeShape({
+  points: [[0, 0, 0, 0, 8, -6, 1], [10, 2, -3, -3, 0, 0, 0], [4, 9, 0, 0, 0, 0, 0]], closed: true, fill: '#ff0000', m: multiply(rotation(0.4), scaling(1.5, 0.8)),
+});
+
+test('on an asymmetric curve, Turn and W leave X and Y where they were, and X reads back', () => {
+  const shape = bean(), { x, y } = transformValues(shape);
+  for (const [name, value] of [['turn', 120], ['scaleX', 230], ['scaleY', 40]]) {
+    const next = withTransformValue(shape, name, value), v = transformValues(next);
+    assert.equal(v[name], value);
+    assert.equal(v.x, x, name);
+    assert.equal(v.y, y, name);
+  }
+  const moved = withTransformValue(shape, 'x', 31.5), v = transformValues(moved);
+  assert.equal(v.x, 31.5);
+  assert.equal(v.y, y);
+  assert.equal(transformValues(withTransformValue(shape, 'y', -7)).y, -7);
+});
+
+test('a flipped shape keeps its flip through Turn and X', () => {
+  const flipped = withTransformValue(bean(), 'scaleY', -80);
+  assert.equal(transformValues(flipped).scaleY, -80);
+  const turned = withTransformValue(flipped, 'turn', 200);
+  assert.equal(transformValues(turned).scaleY, -80);
+  assert.equal(transformValues(turned).turn, 200);
+  assert.equal(transformValues(withTransformValue(turned, 'x', 5)).scaleY, -80);
+  assert.equal(transformValues(withTransformValue(turned, 'scaleX', 150)).scaleY, -80);
+});
+
+test('a value as it already reads is no change: the same shape comes back', () => {
+  for (const shape of [rectShape(0, 0, 10, 4, style), bean()]) {
+    const v = transformValues(shape);
+    for (const name of ['x', 'y', 'turn', 'scaleX', 'scaleY']) assert.equal(withTransformValue(shape, name, v[name]), shape, name);
+  }
 });

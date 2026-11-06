@@ -265,3 +265,37 @@ test('a Fill chip opens the color box', async ({ page }) => {
   await row(page, 'fill').getByRole('button', { name: /^Fill color/ }).click();
   expect(await store(page, 'workspace', (w) => w.colorBox)).toBe('fg');
 });
+
+test('the Style row shows the cap and join of a shape with the default ones', async ({ page }) => {
+  const key = await ball(page);
+  await store(page, 'project', `(p) => p.addKey('${key}', 'style')`);
+  await expect(row(page, 'style')).toContainText('Round cap · Round join');
+});
+
+test('retyping the value shown keys nothing and is no undo step', async ({ page }) => {
+  await ball(page);
+  const before = await store(page, 'project', (p) => p.historyVersion);
+  const field = row(page, 'transform').getByLabel(/^X:/);
+  await expect(field).toHaveValue('4');
+  await field.fill('4');
+  await field.press('Enter');
+  expect(await keyFrames(page, 'transform')).toEqual([0, 6]);
+  expect(await store(page, 'project', (p) => p.historyVersion)).toBe(before);
+});
+
+test('typing Width or W on an in-between frame keys only that part there', async ({ page }) => {
+  const key = await ball(page);
+  await store(page, 'project', `(p) => { p.showFrame(6); p.updateShapes([['${key}', { ...p.shapes.get('${key}'), width: 3 }]]); p.noteFrame(); p.showFrame(3); }`);
+  const parts = () => store(page, 'project', `(p) => [...p.frames[3].parts?.get('${key}') ?? []]`);
+  expect(await parts()).toEqual([]);
+  const width = row(page, 'width').getByLabel(/^Stroke width/);
+  await width.fill('5');
+  await width.press('Enter');
+  await expect.poll(parts).toEqual(['width']);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(parts).toEqual([]);
+  const wide = row(page, 'transform').getByLabel(/^Width, as/);
+  await wide.fill('150');
+  await wide.press('Enter');
+  await expect.poll(parts).toEqual(['transform']);
+});
