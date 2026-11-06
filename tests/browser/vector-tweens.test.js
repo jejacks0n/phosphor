@@ -108,7 +108,7 @@ async function outlineEdited(byDrag) {
     project.updateShapes([[key, withShape(shape, { points: shape.points.map((p, j) => (j ? p : [p[0] - 1, ...p.slice(1)])) })]]);
   }
   await settle(project);
-  return { project, key };
+  return { project, key, before: shape };
 }
 // The frame showing's outline is the shape it's worked out to, and its cells are what building it fresh and rendering
 // it from scratch make.
@@ -126,13 +126,12 @@ async function drawnAsWorkedOut(project, key) {
 
 for (const [how, byDrag] of [['an edit', false], ['a Node drag', true]]) {
   test(`after ${how} of the outline mid-tween, the outline and the cells are where the frame puts the shape, and after its undo`, async () => {
-    const { project, key } = await outlineEdited(byDrag);
-    const edited = project.shapes.get(key);
+    const { project, key, before } = await outlineEdited(byDrag);
     await drawnAsWorkedOut(project, key);
     expect([...project.frames[5].parts.get(key)]).toEqual(['outline']);
     project.undo();
     await settle(project);
-    expect(project.shapes.get(key)).not.toEqual(edited);
+    expect(project.shapes.get(key)).toEqual(before); // the whole drag, one step
     await drawnAsWorkedOut(project, key);
   });
 }
