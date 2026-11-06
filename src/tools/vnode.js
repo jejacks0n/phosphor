@@ -167,8 +167,9 @@ export default {
 
   end(ctx) {
     const { project } = ctx;
-    if (gradientDrag.active) gradientDrag.end(ctx);
-    else if (drag?.kind === 'marquee') endMarquee(project, ctx.workspace);
+    if (gradientDrag.active) {
+      if (gradientDrag.end(ctx)) return pick.reset(); // a stop's color opened
+    } else if (drag?.kind === 'marquee') endMarquee(project, ctx.workspace);
     else if (drag) {
       drag = null;
       project.commitEdit();

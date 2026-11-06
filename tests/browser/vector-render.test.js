@@ -1,7 +1,7 @@
 // The vector layer's shapes: drawn over the base layer's own pixels and converted with the picture, under
 // edit cells and paint; a change redraws only its area and comes out as a full render would; every change
 // is one undo step, through the ledger.
-import { test, expect } from 'vitest';
+import { test, expect, onTestFinished, vi } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
@@ -12,6 +12,16 @@ import { shapeAt } from '@/lib/shapeHits.js';
 import vnode, { pickedPoints } from '@/tools/vnode.js';
 import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
 import { gradientHandles, gradientKey } from '@/tools/gradientHandles.js';
+import { DOUBLE_MS } from '@/tools/handlePick.js';
+
+// performance.now, moved past a double-click's window by each call of what it returns: a click after that is a
+// click again (the next handle there), not a double-click (a stop's color).
+function doubleClickClock() {
+  let skew = 0;
+  const now = performance.now.bind(performance), spy = vi.spyOn(performance, 'now').mockImplementation(() => now() + skew);
+  onTestFinished(() => spy.mockRestore());
+  return () => { skew += DOUBLE_MS; };
+}
 
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
 const at = (project, col, row) => project.cells[row * project.cols + col];
@@ -655,15 +665,18 @@ test('the Node tool takes a gradient\'s handle in reach of a press first, else t
     }
     vnode.end(ctx);
   };
-  const picked = () => [workspace.vectorPoint, workspace.vectorStop];
+  const picked = () => [workspace.vectorPoint, workspace.vectorStop], wait = doubleClickClock();
 
   // A tie: the gradient's end (its stop selected). Again in the same place: the point under it; again: the end.
   drag({ x: 10, y: 10 });
   expect(picked()).toEqual([null, 0]);
+  wait();
   drag({ x: 10, y: 10 });
   expect(picked()).toEqual([0, null]);
+  wait();
   drag({ x: 10.2, y: 10 });
   expect(picked()).toEqual([null, 0]);
+  wait();
   drag({ x: 10, y: 10 });
   expect(picked()).toEqual([0, null]);
   // A drag then: the one picked (the point) moves, not the gradient.
@@ -678,6 +691,7 @@ test('the Node tool takes a gradient\'s handle in reach of a press first, else t
   project.updateShapes([[key, withShape(project.shapes.get(key), { fill: { ...fill, m: [20.5, 0, 0, 20.5, 10, 10] } })]]);
   drag({ x: 29.9, y: 10 });
   expect(picked()).toEqual([null, 1]);
+  wait();
   drag({ x: 29.9, y: 10 }); // again: the point
   expect(picked()).toEqual([1, null]);
 });
@@ -862,10 +876,13 @@ test('Vector select edits one selected shape\'s gradient: its ends and stops dra
   expect(workspace.vectorSelected).toEqual([key]);
 
   // The right end, on the right middle scale handle: a click is the end's (its stop), a click again the handle's.
+  const wait = doubleClickClock();
   drag({ x: 30, y: 15 });
   expect(workspace.vectorStop).toBe(2);
+  wait();
   drag({ x: 30, y: 15 });
   expect(workspace.vectorStop).toBe(null);
+  wait();
   drag({ x: 30, y: 15 });
   expect(workspace.vectorStop).toBe(2);
   drag({ x: 30, y: 15 }, { x: 30, y: 17 }, { x: 30, y: 19 }); // a drag then: the end, not the scale
