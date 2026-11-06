@@ -6,14 +6,13 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { getTool } from '@/tools';
-import { gradientKey } from '@/tools/gradientHandles.js';
 import { shortcut } from '@/lib/keyLabels';
 
 // Under the ANSI view, following the tool: Edit Mode shows its cursor's cell (each attribute from the
 // edit layer or the base) and the overwrite/insert toggle; Select, the selection's size and place; the
 // Color Picker, its last pick and where each color came from. On the right, with a mouse or trackpad,
-// the held-key shortcuts for the tool (they work in the pixel view too; this is where they're taught),
-// or what a held key is doing. Zoomed out, the zoom, which goes back to 100%.
+// Space's pan, or while a modifier's held, what it does with the tool (in the pixel view too); the rest is
+// in the docs, for the room it takes. Zoomed out, the zoom, which goes back to 100%.
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -29,7 +28,7 @@ const cell = computed(() => cursor.value && project.cells[cursor.value.row * pro
 const entry = computed(() => cursor.value && project.editCellAt(cursor.value.col, cursor.value.row));
 const origin = (attr) => (entry.value?.[attr] !== undefined ? 'edit' : 'base');
 
-const KEYS = { alt: shortcut('alt'), altShift: shortcut('alt', 'shift'), shift: shortcut('shift') };
+const KEYS = { alt: shortcut('alt'), shift: shortcut('shift') };
 const keyboard = useMediaQuery('(pointer: fine)');
 // [key, what it does] pairs, or a sentence while a key is held.
 const hint = computed(() => {
@@ -37,13 +36,13 @@ const hint = computed(() => {
   if (held === 'space') return t('status.panning');
   if (held === 'alt') return workspace.isShiftPressed ? t('status.pickingBg') : t('status.pickingFg', { shift: KEYS.shift });
   const current = getTool(tool.value);
-  if (current?.altPicks) {
-    const shift = current.shiftLines ? t('status.straightLine') : current.shiftHint?.(workspace);
-    return [[KEYS.alt, t('status.pickColor')], [KEYS.altShift, t('status.pickBackground')], ...(shift ? [[KEYS.shift, shift]] : []), [t('status.spaceKey'), t('status.pan')]];
+  if (workspace.isShiftPressed) {
+    const vector = tool.value === 'picker' && workspace.editorTab === 'vector';
+    const shift = current?.altPicks ? (current.shiftLines ? t('status.straightLine') : current.shiftHint?.(workspace))
+      : vector ? t(workspace.vectorPickSlot.stroke ? 'status.pickFill' : 'status.pickStroke') : null;
+    if (shift) return [[KEYS.shift, shift]];
   }
-  if (tool.value === 'picker' && workspace.editorTab === 'vector') return [[KEYS.shift, t(workspace.vectorPickSlot.stroke ? 'status.pickFill' : 'status.pickStroke')], [t('status.spaceKey'), t('status.pan')]];
-  if (tool.value === 'vselect' && gradientKey(project, workspace)) return [[t('status.clickKey'), t('status.clickAgain')], [t('status.spaceKey'), t('status.pan')]];
-  if (tool.value === 'vnode' && workspace.vectorPoints) return [[KEYS.alt, t('status.breakHandle')], [t('status.clickKey'), t('status.clickAgain')], [t('status.spaceKey'), t('status.pan')]];
+  if (workspace.isAltPressed && tool.value === 'vnode' && workspace.vectorPoints) return [[KEYS.alt, t('status.breakHandle')]];
   if (tool.value !== 'text' && tool.value !== 'hand') return [[t('status.spaceKey'), t('status.pan')]];
   return null;
 });

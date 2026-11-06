@@ -60,12 +60,12 @@ test('ANSI tab, Fill: Cells, Linear: blend characters in the two colors', async 
 test('Shift snaps the gradient\'s line to 45°', async ({ page }) => {
   await openApp(page);
   await gradientBucket(page, 'Linear');
-  await expect(page.locator('footer.ansi-status')).toContainText('snap to 45°');
   const from = await cellPoint(page, 2, 4, 0), to = await cellPoint(page, 20, 6, 0); // a little downhill
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(to.x, to.y, { steps: 4 });
   await page.keyboard.down('Shift');
+  await expect(page.locator('footer.ansi-status')).toContainText('snap to 45°'); // said while Shift's held
   const held = await store(page, 'workspace', (w) => w.shapeDrag);
   expect(held.to.y).toBe(held.from.y);
   await page.mouse.up();
