@@ -775,6 +775,15 @@
       "outline": "{n} point · à modifier avec l'outil Nœud | {n} points · à modifier avec l'outil Nœud",
       "stack": "{n} sur {m}"
     },
+    "partsShort": {
+      "transform": "Transfo.",
+      "outline": "Tracé",
+      "fill": "Remplis.",
+      "stroke": "Contour",
+      "width": "Épaisseur",
+      "style": "Style",
+      "z": "Empil."
+    },
     "parts": {
       "transform": "Transformation",
       "outline": "Tracé",

@@ -108,7 +108,7 @@ On VECTOR with Animate on, the Keys panel sits over the bar, its frames lined up
 opens and folds it, as does the **▾** at its top left; it stays as you left it. It shows the selected shape (with several
 selected, the first); with none, it says so.
 
-With more frames than fit at a usable width (about 14 pixels a frame, 20 on a phone), the lanes become a window onto
+With more frames than fit at a usable width (about 14 pixels a frame, 10 on a phone), the lanes become a window onto
 the movie: scroll it with the wheel or trackpad (Shift-wheel too) or by dragging the ruler of frame numbers where
 there's no number, and zoom with **−** and **+** on the top line, or Cmd/Ctrl-wheel or a pinch over the lanes, around
 the pointer. Zoomed out until every frame fits again, the lanes line up with the scrubber once more. When frames are
@@ -133,7 +133,7 @@ on the frame showing with it, as if you had edited the shape there; undo takes i
 
 On a phone there's no values column and no **◀** or **▶**: a **◇** (lit **◆** where there's a key) ends each row and does
 what the one between them does on a wide screen. The top line is the **▾**, **+ Add key**, then the easing, the motion and
-Delete; the ruler, with **−** and **+**, has the line under it. The diamonds are larger, for a finger.
+Delete; the ruler, with **−** and **+**, has the line under it. The diamonds are taller, for a finger.
 
 Click a diamond to select it and show its frame; Shift-click adds or removes one; click a frame number to select every
 key on that frame; click an empty lane to select none. Then, along the top:

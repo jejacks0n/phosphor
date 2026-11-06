@@ -55,6 +55,8 @@ const unlisted = computed(() => (keys.value ? PARTS.filter((part) => !rows.value
 const keyAt = (part, i) => keys.value?.rows.get(part).find((k) => k.at === i);
 const deletable = (k) => !!k && k.at !== keys.value.start && !k.fixed;
 const partName = (part) => t(`keysPanel.parts.${part}`);
+// What a row's name column, on a phone, has room for.
+const rowName = (part) => t(`keysPanel.${phone.value ? 'partsShort' : 'parts'}.${part}`);
 
 // The selected keys, each with whether a tween leaves it.
 const selected = computed(() => workspace.selectedKeys.map(({ part, at }) => {
@@ -110,7 +112,7 @@ onBeforeUnmount(() => observer?.disconnect());
 const layout = computed(() => laneLayout({ count: count.value, width: lane.width, thumb: lane.thumb, zoom: workspace.keysZoom,
   scroll: workspace.keysScroll, minPx: phone.value ? MIN_FRAME_PX_PHONE : MIN_FRAME_PX }));
 const x = (i) => xOf(i, layout.value);
-const keyW = computed(() => (phone.value ? 20 : 14)); // a finger's, on a phone
+const keyW = computed(() => (phone.value ? 16 : 14)); // wider on a phone, and taller
 const half = computed(() => layout.value.px / 2);
 const inView = (i) => i >= layout.value.first && i <= layout.value.last;
 const laneX = (clientX) => clientX - root.value.getBoundingClientRect().left - lane.left;
@@ -317,7 +319,7 @@ const focusIn = () => {
           <DropdownMenu class="easing" :label="t('keysPanel.easing')" :trigger-label="t('keysPanel.easingNow', { easing: easingName })" up :disabled="!easable.length">
             <template #trigger>
               <svg v-if="easing !== MIXED" class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[easing ?? 'none']"/></svg>
-              {{ easingName }}
+              <span class="shrinks">{{ easingName }}</span>
             </template>
             <button v-for="[name, choice] in easings" :key="name" :aria-pressed="easing === choice" @click="ease(choice)">
               <svg class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[name]"/></svg>
@@ -325,7 +327,7 @@ const focusIn = () => {
             </button>
           </DropdownMenu>
           <DropdownMenu class="motion" :label="t('keysPanel.motion')" :trigger-label="t('keysPanel.motionNow', { motion: t(`animation.motions.${motion}`) })" up :disabled="!movable.length">
-            <template #trigger>{{ t(`animation.motions.${motion}`) }}</template>
+            <template #trigger><span class="shrinks">{{ t(`animation.motions.${motion}`) }}</span></template>
             <button v-for="choice in MOTIONS" :key="choice" :aria-pressed="motion === choice" @click="moveBy(choice)">{{ t(`animation.motions.${choice}`) }}</button>
           </DropdownMenu>
           <button class="delete" :aria-label="t('keysPanel.delete')" :title="t('keysPanel.deleteTitle')" :disabled="!canDelete" @click="remove">
@@ -337,7 +339,7 @@ const focusIn = () => {
     <div v-if="shapeKey" class="rows">
       <div v-for="row in rows" :key="row.part" class="row" :class="{ picked: selected.some(({ part }) => part === row.part) }" :data-part="row.part">
         <div class="lead">
-          <span class="name">{{ partName(row.part) }}</span>
+          <span class="name">{{ rowName(row.part) }}</span>
           <span v-if="!phone" class="nav">
             <button :aria-label="t('keysPanel.previous', { part: partName(row.part) })" :disabled="previous(row) === undefined" @click="show(previous(row))">◀</button>
             <button class="here" :class="{ on: !!keyAt(row.part, at) }" :aria-label="t('keysPanel.here', { part: partName(row.part) })" :aria-pressed="!!keyAt(row.part, at)" :disabled="!!keyAt(row.part, at) && !deletable(keyAt(row.part, at))" @click="toggleHere(row.part)">{{ keyAt(row.part, at) ? '◆' : '◇' }}</button>
@@ -608,6 +610,7 @@ svg.curve {
   margin-left: 4px;
 }
 button.delete {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -648,11 +651,23 @@ div.row > button.here.on {
     width: auto;
     padding: 0 6px 0 8px;
   }
-  div.rest {
+  div.rest { /* beside the lead, whatever its words; the menus give way before Delete does */
     order: 1;
-    flex: 1 1 auto;
+    flex: 1 1 0;
+    min-width: 120px;
     justify-content: flex-end;
     padding: 0 8px 0 0;
+  }
+  div.rest article.dropdown {
+    min-width: 0;
+  }
+  div.rest :deep(.dropdown-trigger) {
+    max-width: 100%;
+  }
+  span.shrinks {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   div.ruler {
     order: 2;
@@ -667,8 +682,8 @@ div.row > button.here.on {
     height: 26px;
   }
   div.row div.lead {
-    padding: 0 6px 0 8px;
-    font-size: 11px;
+    padding: 0 0 0 6px;
+    font-size: 10px;
   }
   span.tick {
     top: 6px;
@@ -682,11 +697,11 @@ div.row > button.here.on {
   }
   button.key {
     top: 1px;
-    width: 20px;
+    width: 16px;
     height: 24px;
   }
   button.key::before {
-    inset: 7px 5px;
+    inset: 7px 3px;
   }
 }
 </style>

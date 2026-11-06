@@ -622,7 +622,7 @@ test.describe('on a phone', () => {
     await here.tap();
     await expect(here).toHaveText('◆');
     expect(await keyFrames(page, 'transform')).toEqual([0, 3, 6]);
-    await page.waitForTimeout(600); // a tap this soon after the last would be the browser's double tap
+    await page.waitForTimeout(500); // Chromium's touch emulation drops the click of a second tap under about 400ms, on any button
     await here.tap(); // lit: deletes it
     await expect(here).toHaveText('◇');
     expect(await keyFrames(page, 'transform')).toEqual([0, 6]);
@@ -641,9 +641,41 @@ test.describe('on a phone', () => {
     expect(ruler.y + ruler.height).toBeLessThanOrEqual(first.y + 1);
   });
 
-  test("the lanes line up with the scrubber's marks", async ({ page }) => {
+  test("a dozen frames fit and line up with the scrubber's marks, with no band", async ({ page }) => {
     await ball(page, { 3: 12 });
-    for (const at of [0, 3, 6]) expect(Math.abs(await centerX(diamond(page, 'transform', at)) - await centerX(markOf(page, at)))).toBeLessThan(1);
+    await store(page, 'project', (p) => { while (p.frames.length < 12) p.addFrame('blank'); });
+    await scrubTo(page, 3);
+    await expect(panel(page).locator('.ruler button.frame')).toHaveCount(12);
+    await expect(band(page)).toHaveCount(0);
+    for (const at of await keyFrames(page, 'transform')) expect(Math.abs(await centerX(diamond(page, 'transform', at)) - await centerX(markOf(page, at)))).toBeLessThan(1);
+    const name = row(page, 'transform').locator('.name');
+    expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true); // "Transform" isn't cut
+  });
+
+  test('on a narrower phone, and in French, the head is two lines at most and Delete stays in view', async ({ page }) => {
+    const key = await ball(page);
+    await store(page, 'project', `(p) => { for (const part of ['outline', 'fill', 'stroke', 'width', 'style', 'z']) p.addKey('${key}', part); }`);
+    await expect(panel(page).locator('[data-part]')).toHaveCount(7);
+    await store(page, 'project', (p) => { while (p.frames.length < 12) p.addFrame('blank'); });
+    await diamond(page, 'transform', 0).tap();
+    for (const width of [390, 360]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const language of ['en', 'fr']) {
+        await page.evaluate((code) => {
+          const select = document.querySelector('select:has(option[value="fr"])');
+          select.value = code;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        }, language);
+        await expect(page.locator('html')).toHaveAttribute('lang', language);
+        const keys = page.locator('section.keys-panel');
+        const delete_ = await keys.locator('button.delete').boundingBox(), ruler = await keys.locator('.ruler').boundingBox(), first = await keys.locator('.rows .row').first().boundingBox();
+        expect(delete_.x + delete_.width).toBeLessThanOrEqual(width);
+        const lines = new Set(await keys.locator('.head > *').evaluateAll((items) => items.map((el) => Math.round((el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) / 2 / 12))));
+        expect(lines.size).toBeLessThanOrEqual(2);
+        expect(ruler.y + ruler.height).toBeLessThanOrEqual(first.y + 1);
+        for (const name of await keys.locator('.row .name').all()) expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth), `${width} ${language}`).toBe(true);
+      }
+    }
   });
 
   test('a tap selects a diamond; a finger drags it', async ({ page }) => {
