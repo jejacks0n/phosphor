@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { rectShape, transformed, translation, withShape } from '../../src/document/shapes.js';
 import { ease, shapeAt, strayEasings } from '../../src/document/tweens.js';
 import { EMPTY_STATE, cellState, newFrame } from '../../src/document/frames.js';
+import { PARTS } from '../../src/document/parts.js';
 import { addedKey, deletedKeys, listedParts, moveRange, movedKeys, partKeys } from '../../src/document/keys.js';
 
 const close = (a, b, eps = 1e-3) => assert.ok(Math.abs(a - b) <= eps, `${a} vs ${b}`);
@@ -71,8 +72,16 @@ test("listedParts lists a part keyed by hand though its value doesn't change", (
   const frames = movie(13);
   put(frames, 0, RED);
   put(frames, 6, RED, ['fill']);
-  put(frames, 9, RED); // a Blank key frame keying every part, from before parts: no rows of its own
   assert.deepEqual(listedParts(frames, K, 3), ['fill']);
+});
+
+test('listedParts lists every part of a Blank key frame keyed by hand on all of them, which holds no parts', () => {
+  let frames = movie(13);
+  put(frames, 0, RED);
+  put(frames, 12, down(24), ['transform']);
+  for (const part of PARTS) frames = applied(frames, addedKey(frames, K, part, 6));
+  assert.equal(frames[6].parts, null); // every part: as setPartsAt has it
+  assert.deepEqual(listedParts(frames, K, 3), PARTS);
 });
 
 test("moveRange: a key can't cross a Duplicate", () => {
