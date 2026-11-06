@@ -139,6 +139,28 @@ test('moving the start later hides the shape on the frames it left; undo shows i
   expect(y(project, key, 1)).toBe(0);
 });
 
+test('a drag taking the start past the frame showing shows the frame the shape begins on; undo and cancel go back', async () => {
+  const project = await animated();
+  const key = ball(project, 8, { 6: 24 });
+  const drag = {};
+  project.moveKeys(key, [T(0)], 3, drag);
+  expect(project.frame).toBe(3); // frame 0 no longer shows the shape
+  expect(project.shapes.has(key)).toBe(true);
+  project.moveKeys(key, [T(0)], 1, drag);
+  expect(project.frame).toBe(1);
+  project.endKeyDrag(drag);
+  project.undo();
+  expect(project.frame).toBe(0);
+  const canceled = {};
+  project.showFrame(4);
+  project.moveKeys(key, [T(0)], 2, canceled);
+  expect(project.frame).toBe(4); // still in the shape's life
+  project.moveKeys(key, [T(0)], 5, canceled);
+  expect(project.frame).toBe(5);
+  project.cancelKeyDrag(canceled);
+  expect(project.frame).toBe(4);
+});
+
 test('a drag is one undo step; a canceled one is none', async () => {
   const project = await animated();
   const key = ball(project, 12, { 4: 8, 12: 24 });

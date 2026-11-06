@@ -634,11 +634,13 @@ export const animationActions = {
     if (drag?.before) putFrames(this, drag.before, { draw: false });
     else settleFrame(this);
     if (drag) drag.before ??= framesNow(this);
-    const { least, most } = moveRange(this.frames, shapeKey, refs);
-    const moved = movedKeys(this.frames, shapeKey, refs, clamped(by, least, most));
+    const { least, most } = moveRange(this.frames, shapeKey, refs), step = clamped(by, least, most);
+    const start = drag && refs.length ? partKeys(this.frames, shapeKey, refs[0].at)?.start : undefined;
+    const moved = movedKeys(this.frames, shapeKey, refs, step);
     if (drag) {
       putKeys(this, shapeKey, moved.patch);
-      arrive(this, this.frame);
+      // The shape's start dragged past the frame showing: the frame it now begins on shows, so it stays in view.
+      arrive(this, refs.some(({ at }) => at === start) ? Math.max(this.frame, start + step) : this.frame);
     } else if (moved.patch.size) {
       frameStep(this, () => {
         putKeys(this, shapeKey, moved.patch);

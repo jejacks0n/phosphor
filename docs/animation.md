@@ -140,6 +140,15 @@ back. The trash can (or Delete or Backspace, with the keys selected and the pane
 each part then tweens from the key before to the key after, eased as the key before is. A shape's first key stays
 (delete the shape for that), and so do a Duplicate's. Each of these is one undo step.
 
+Drag a diamond along its row to move the key, a frame at a time; selected keys move together, keeping their spacing,
+and dragging a frame number moves every key on that frame. A finger drags them too. The easing goes with the key, the
+tweens on either side stretch or shrink, and the canvas follows as you drag. A key can pass the part's other keys, and
+dropped on one, it replaces it. Keys stay within the shape's life, and a Duplicate's don't move. Dragging the first key
+of any row moves when the shape appears, and every part's first key with it: dragged later, the frames it leaves no
+longer show the shape (if the frame showing was one of them, the frame it now begins on shows); dragged earlier, it goes
+back as far as the frame after the Wipe, or the Duplicate without it, before it. It stops a frame short of the shape's
+next key. Escape, before you let go, puts the keys back. A drag is one undo step.
+
 What tweens: the shape's position, size and rotation (it turns the short way round, so more than half a turn between two
 key frames goes back the other way), its points and curve handles when both key frames have as many in each outline,
 its fill and stroke colors, gradients of the same kind with as many stops, and its stroke width. What can't go part way

@@ -299,3 +299,105 @@ test('typing Width or W on an in-between frame keys only that part there', async
   await wide.press('Enter');
   await expect.poll(parts).toEqual(['transform']);
 });
+
+// Drags what's at locator along the lanes by frames (the mouse); with escape, Escape is pressed before letting go.
+// during runs while the pointer's still down.
+async function dragBy(page, locator, frames, { escape = false, during } = {}) {
+  const [a, b] = await Promise.all([0, 1].map((at) => panel(page).locator(`button.frame[data-at="${at}"]`).boundingBox()));
+  const box = await locator.boundingBox(), x = box.x + box.width / 2, y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + frames * (b.x - a.x), y, { steps: 6 });
+  await during?.();
+  if (escape) await page.keyboard.press('Escape');
+  await page.mouse.up();
+}
+const version = (page) => store(page, 'project', (p) => p.historyVersion);
+const shows = (page, key, frames) => store(page, 'project', `(p) => ${JSON.stringify(frames)}.map((i) => !!p.resolvedOf(i).get('${key}')?.cell)`);
+
+test('dragging a diamond moves the key; the tween stretches; one undo puts it back', async ({ page }) => {
+  const key = await ball(page, { 3: 12 });
+  await store(page, 'project', `(p) => p.setKeyEasing('${key}', [{ part: 'transform', at: 0 }], 'linear')`);
+  expect(await y(page, key, 2)).toBe(8);
+  const before = await version(page);
+  await dragBy(page, diamond(page, 'transform', 3), 1, { during: () => expect.poll(() => y(page, key, 4)).toBe(12) }); // the canvas follows
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 4, 6]);
+  await expect(diamond(page, 'transform', 4)).toHaveAttribute('aria-pressed', 'true');
+  expect(await y(page, key, 2)).toBe(6); // 0 to 12 over four frames now
+  expect(await version(page)).toBe(before + 1);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 3, 6]);
+  expect(await y(page, key, 2)).toBe(8);
+});
+
+test('dragging several selected keys keeps their spacing', async ({ page }) => {
+  await ball(page, { 2: 6, 3: 12 });
+  await diamond(page, 'transform', 2).click();
+  await diamond(page, 'transform', 3).click({ modifiers: ['Shift'] });
+  await dragBy(page, diamond(page, 'transform', 3), 2);
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 4, 5, 6]);
+  await expect(selected(page)).toHaveCount(2);
+  await expect(diamond(page, 'transform', 4)).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('dragging a frame number drags every key on that frame', async ({ page }) => {
+  const key = await ball(page);
+  await store(page, 'project', `(p) => { p.addKey('${key}', 'transform'); p.addKey('${key}', 'fill'); }`);
+  await dragBy(page, panel(page).locator('button.frame[data-at="3"]'), 1);
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 4, 6]);
+  expect(await keyFrames(page, 'fill')).toEqual([0, 4]);
+  await expect(selected(page)).toHaveCount(2);
+});
+
+test("dragging the first diamond moves when the shape appears; the frames it left don't show it", async ({ page }) => {
+  const key = await ball(page);
+  await diamond(page, 'transform', 0).click(); // frame 1 shows, which the shape is about to leave
+  await dragBy(page, diamond(page, 'transform', 0), 2);
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([2, 6]);
+  expect(await shows(page, key, [0, 1, 2])).toEqual([false, false, true]);
+  expect(await store(page, 'workspace', (w) => w.vectorSelected)).toEqual([key]); // still selected, on the frame it begins
+  await expect(shown(page)).toHaveText('3 / 7');
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 6]);
+  expect(await shows(page, key, [0, 1, 2])).toEqual([true, true, true]);
+});
+
+test("a Duplicate's diamonds don't drag", async ({ page }) => {
+  await ball(page);
+  await addFrame(page, 'Duplicate');
+  const fixed = row(page, 'transform').locator('button.key.fixed');
+  await expect(fixed).toHaveCount(1);
+  const at = Number(await fixed.getAttribute('data-at')), frames = await keyFrames(page, 'transform'), before = await version(page);
+  await dragBy(page, fixed, 1);
+  await dragBy(page, row(page, 'transform').locator('button.key.fixed'), -1);
+  expect(await keyFrames(page, 'transform')).toEqual(frames);
+  await expect(row(page, 'transform').locator('button.key.fixed')).toHaveAttribute('data-at', String(at));
+  expect(await version(page)).toBe(before);
+});
+
+test('Escape during a drag puts the keys back and leaves no undo step', async ({ page }) => {
+  const key = await ball(page, { 3: 12 });
+  const before = await version(page);
+  await dragBy(page, diamond(page, 'transform', 3), 2, { escape: true });
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 3, 6]);
+  expect(await version(page)).toBe(before);
+  expect(await y(page, key, 3)).toBe(12);
+  expect(await store(page, 'workspace', (w) => w.vectorSelected)).toEqual([key]); // the Escape was the drag's
+  await expect(diamond(page, 'transform', 3)).toHaveAttribute('aria-pressed', 'true');
+});
+
+test.describe('on a touch screen', () => {
+  test.use({ hasTouch: true });
+
+  test('a finger drags a diamond', async ({ page }) => {
+    await ball(page, { 3: 12 });
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type, ...points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(({ x, y }, id) => ({ x, y, id })) });
+    const [a, b] = await Promise.all([0, 1].map((at) => panel(page).locator(`button.frame[data-at="${at}"]`).boundingBox()));
+    const box = await diamond(page, 'transform', 3).boundingBox(), x = box.x + box.width / 2, y = box.y + box.height / 2;
+    await touch('touchStart', { x, y });
+    for (let i = 1; i <= 6; i++) await touch('touchMove', { x: x + (i / 6) * 2 * (b.x - a.x), y });
+    await touch('touchEnd');
+    await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 5, 6]);
+  });
+});
