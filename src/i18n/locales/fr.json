@@ -762,7 +762,17 @@
     "artAddTopLeft": "Il arrive en haut à gauche de la vue, sur le calque d'édition, à faire glisser en place.",
     "svgAddText": "En formes sur VECTOR, dans l'image affichée, ajustées au canevas et sélectionnées.",
     "artOpen": "Ouvrir à la place",
-    "artOpenText": "À la place de ce dessin."
+    "artOpenText": "À la place de ce dessin.",
+    "artOpenTitle": "Ouvrir {name} ?",
+    "artOpenSub": "Modifier son dessin, ou dessiner par-dessus.",
+    "artEdit": "Le modifier",
+    "artEditText": "Le dessin va sur le calque d'édition, sur une base noire, comme si vous l'aviez dessiné.",
+    "artDrawOn": "Dessiner par-dessus",
+    "artDrawOnText": "Le dessin est le calque de base, et ce que vous dessinez va par-dessus.",
+    "artOpenEdit": "Ouvrir pour le modifier",
+    "artOpenEditText": "À la place de ce dessin : le dessin sur le calque d'édition, sur une base noire.",
+    "artOpenDrawOn": "Ouvrir pour dessiner par-dessus",
+    "artOpenDrawOnText": "À la place de ce dessin : le dessin en calque de base, sous ce que vous dessinez."
   },
   "sauce": {
     "heading": "Métadonnées SAUCE",
