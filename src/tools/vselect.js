@@ -13,10 +13,9 @@ import { snappedEnd } from '@/tools/shapes.js';
 import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
-import { handlePicker } from '@/tools/handlePick.js';
+import { DOUBLE_MS, DOUBLE_PX, handlePicker } from '@/tools/handlePick.js';
 
 const KNOB = 24;           // CSS px above the box's top edge
-const DOUBLE_MS = 400, DOUBLE_PX = 4;
 const SNAP = Math.PI / 12; // 15°
 
 // The handles' radius in CSS px: bigger under a finger.
@@ -216,8 +215,9 @@ export default {
 
   end(ctx) {
     const { project, workspace } = ctx;
-    if (gradientDrag.active) gradientDrag.end(ctx);
-    else endDrag(project, workspace);
+    if (gradientDrag.active) {
+      if (gradientDrag.end(ctx)) return pick.reset(); // a stop's color opened
+    } else endDrag(project, workspace);
     pick.end();
   },
 

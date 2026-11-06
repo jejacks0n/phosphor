@@ -4,6 +4,7 @@
 // a drag after it then moves. A tool keeps one picker; candidates are { id, d (CSS px), first?, take (starts the
 // drag, true), picked (shows it picked: what a click again selects) }.
 const MOVED = 2; // CSS px a press goes before it's a drag, not a click
+export const DOUBLE_MS = 400, DOUBLE_PX = 4; // a second click this soon and this near (CSS px) is a double-click
 
 const near = (a, b, unit) => Math.hypot((a.x - b.x) * unit.x, (a.y - b.y) * unit.y) <= MOVED;
 

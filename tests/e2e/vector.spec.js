@@ -929,6 +929,32 @@ test('with a gradient fill and stroke, the color box\'s Fill or Stroke shows tha
   await expect(firstStop).toHaveCSS('fill', 'rgb(0, 255, 0)');
 });
 
+test('a double-click on a gradient\'s stop opens its color in that side\'s box; on an end with no stop, the stop whose color shows there', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await settled(page);
+  // Linear from (10, 15) to (30, 15); its stops short of both ends, as an SVG can have them.
+  await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, width: 2, m: [1, 0, 0, 1, 0, 0], fill: '#888888',
+    stroke: { type: 'linear', stops: [[0.2, '#ff0000'], [0.5, '#00ff00'], [0.8, '#0000ff']], m: [20, 0, 0, 20, 10, 15] },
+    points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
+  await page.mouse.click(...Object.values(await gridPoint(page, 12, 12)));
+  await expect(page.locator('.vector-overlay .stop')).toHaveCount(3);
+  await expect(page.locator('.vector-halo .stop')).toHaveCount(3); // each drawn over a dark rim too
+  const box = page.locator('.color-popover'), picked = box.locator('input[type="color"]');
+
+  await page.mouse.dblclick(...Object.values(await gridPoint(page, 20, 15)));
+  await expect(box).toBeVisible();
+  expect(await store(page, 'workspace', (w) => [w.colorBox, w.vectorStop])).toEqual(['bg', 1]); // the Stroke's box
+  await expect(picked).toHaveValue('#00ff00');
+  await page.keyboard.press('Escape');
+  await expect(box).toBeHidden();
+
+  await page.mouse.dblclick(...Object.values(await gridPoint(page, 30, 15))); // the end, past the last stop
+  await expect(picked).toHaveValue('#0000ff');
+  expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(2);
+  expect((await shapeList(page))[0].stroke.stops).toHaveLength(3); // nothing added
+});
+
 test('the Node tool shows a shape\'s gradient\'s handles with its points; recoloring a stop changes the art; one Delete for a stop or a point; G isn\'t a VECTOR tool', async ({ page }) => {
   await openApp(page);
   await tab(page, 'VECTOR').click();
@@ -1007,8 +1033,10 @@ test('Vector select shows one shape\'s gradient: a click on its end, over a scal
   const end = await gridPoint(page, 30, 15);
   await page.mouse.click(end.x, end.y);
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(2);
+  await page.waitForTimeout(450); // not a double-click: that opens the stop's color
   await page.mouse.click(end.x, end.y);
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBeNull();
+  await page.waitForTimeout(450);
   await page.mouse.click(end.x, end.y);
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBe(2);
   await expect(page.locator('.vector-overlay .stop.on')).toHaveCount(1);

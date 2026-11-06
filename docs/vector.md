@@ -107,6 +107,9 @@ on Windows and Linux) while you drag to place or move without snapping. The choi
 
 ## Vector select (V)
 
+The tools' outlines, boxes and handles are drawn in color over a dark rim, so they read over any art, light or
+dark, ASCII included.
+
 - Click a shape to select it. Shift-click adds a shape to the selection, or takes it away.
 - Drag a box over empty canvas to select every shape it touches; with Shift, they're added to the selection.
 - The selection gets a box. Drag inside it to move the shapes (hold Shift once you're moving to keep them
@@ -117,9 +120,10 @@ on Windows and Linux) while you drag to place or move without snapping. The choi
 - With one shape selected whose fill or outline is a gradient, its gradient's handles show too, as the
   [Node tool](#node-a)'s do: drag an end to stretch and turn it, or a stop to slide or remove it, and click a
   stop to select it (its chip's color box then sets its color; Delete, Backspace or the row's Delete removes it,
-  and Esc lets it go). Its line isn't a handle here: a drag inside the box still moves the shape, and stops are
+  and Esc lets it go). Double-click a stop or an end to open its color, as with the Node tool. Its line isn't a handle here: a drag inside the box still moves the shape, and stops are
   added with the Node tool. Where a gradient's end sits on one of the box's handles (a Linear gradient's ends are
-  on the left and right ones), the gradient's end comes first; click again in the same place for the box's handle. With both
+  on the left and right ones), the gradient's end comes first; click again in the same place for the box's handle
+  (after a moment: two quick clicks are a double-click, which opens the end's color, below). With both
   a gradient fill and outline, **Fill** and **Stroke** in the options row choose which one's handles show, as
   does the side open in the color box.
 - Click empty canvas to deselect. Cmd+A (Ctrl+A) selects every shape on the frame, from any VECTOR tool (it
@@ -160,6 +164,7 @@ several (a letter's counters, a ring's hole):
 - A press on a gradient's handle (an end or a stop) takes it, even with a point or a curve handle as near or
   nearer (a gradient's end on a corner, say); otherwise it takes the point or curve handle nearest. Handles on top of each other part as you zoom in; or click (or tap)
   again in the same place for the next one there, and again for the one after; a drag then moves the one picked.
+  Leave a moment between the clicks: two quick ones on a gradient's handle are a double-click, which opens its color.
 - Click the outline to add a point there; the curve stays where it was, and the new point is selected.
 - The options row: **Smooth**, **Free** or **Sharp**, the selected point's (the last one selected), one of them
   lit; a choice changes every selected point. Smooth: its handles
@@ -185,6 +190,10 @@ handles show, as does the side open in the color box; a gradient you've just mad
   or Stroke) then sets that stop's color. **Drag a stop** along the line to slide it, or well off the line to
   remove it (a gradient keeps at least two). Delete or Backspace removes the
   selected stop; Esc lets it go. A stop or a point is selected, not both, and the row's **Delete** (the trash can) removes whichever it is.
+- **Double-click a stop** to select it and open its chip's color box for it. An end opens the stop on it; where
+  there's none (the stop there was deleted, or an imported SVG's stops start or end short of the ends), the stop
+  whose color shows there: the first at the start (a radial's middle), the last at the end (its edge).
+  Double-clicking the line adds a stop and opens its color.
 
 Each drag, added point or stop, and change is one undo step. This works on rotated and scaled shapes too: a point
 or a gradient goes where the pointer is.

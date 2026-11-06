@@ -4,7 +4,8 @@
 // handles of the shape whose points are being edited (the selected point filled) and its gradient's line, ends
 // and stops (each in its color, the selected one ringed), and the Pen's points (the first filled: a click there
 // closes) with its next segment, dashed, to the pointer. It takes no pointer events,
-// and shows nothing while the animation plays.
+// and shows nothing while the animation plays. It's drawn twice: first dark and wider (the halo, its own group so
+// nothing that looks for the overlay's handles finds it twice), then in color, so it reads over any art.
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -89,8 +90,9 @@ const r = computed(() => handleRadius() / 2 + 1);
 </script>
 
 <template>
-  <svg class="vector-overlay" :style="style" data-vector-overlay>
-    <g v-if="shown">
+  <svg class="vector-overlays" :style="style">
+    <g v-for="layer in ['vector-halo', 'vector-overlay']" :key="layer" :class="layer" :data-vector-overlay="layer === 'vector-overlay' || null">
+      <template v-if="shown">
       <path v-for="(d, i) in carried" :key="`c${i}`" :d="d" class="outline carried"/>
       <path v-for="(d, i) in outlines" :key="i" :d="d" class="outline"/>
       <template v-if="box">
@@ -117,16 +119,40 @@ const r = computed(() => handleRadius() / 2 + 1);
         <line v-if="pen.next" :x1="pen.next.from.x" :y1="pen.next.from.y" :x2="pen.next.to.x" :y2="pen.next.to.y" class="box"/>
         <rect v-for="(p, i) in pen.all" :key="i" :x="p.x - r" :y="p.y - r" :width="2 * r" :height="2 * r" class="handle" :class="{ on: i === 0 }"/>
       </template>
+      </template>
     </g>
   </svg>
 </template>
 
 <style scoped>
-svg.vector-overlay {
+svg.vector-overlays {
   position: absolute;
   overflow: visible;
   pointer-events: none;
   z-index: 1001;
+}
+
+/* Under each line and handle, a dark one 2px wider: a 1px rim on light art and dark alike. */
+.vector-halo {
+  --halo: rgb(0 0 0 / 0.7);
+}
+.vector-halo .outline, .vector-halo .box, .vector-halo .arm {
+  stroke: var(--halo);
+  stroke-width: 3px;
+  stroke-dasharray: none;
+}
+.vector-halo .handle {
+  fill: none;
+  stroke: var(--halo);
+  stroke-width: 3px;
+}
+.vector-halo .stop {
+  fill: none !important; /* over its own color, inline */
+  stroke: var(--halo);
+  stroke-width: 3.5px;
+}
+.vector-halo .stop.on {
+  stroke-width: 5px;
 }
 
 .outline, .box, .arm {
