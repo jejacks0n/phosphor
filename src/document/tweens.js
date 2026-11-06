@@ -136,22 +136,6 @@ export function setPartsAt(frames, key, i, life = lifeAt(frames, key, i)) {
   return frames[i].parts?.get(key) ?? ALL_PARTS;
 }
 
-// The span frame i is in or starts, { from, to, easing, motion } (easing: the first part, in PARTS order, that from
-// eases, null with none; motion as MOTIONS, from's Transform's: frame.motions), or null.
-export function spanAt(frames, key, i) {
-  let from = i;
-  while (!frames[from].changes.has(key)) {
-    if (frames[from].kind !== 'blank' || from === 0) return null;
-    from--;
-  }
-  if (!ownsShape(frames[from], key)) return null;
-  let to = from + 1;
-  for (; to < frames.length && !frames[to].changes.has(key); to++) if (frames[to].kind !== 'blank') return null;
-  if (to === frames.length || !ownsShape(frames[to], key)) return null;
-  const eases = frames[from].tweens?.get(key);
-  return { from, to, easing: PARTS.map((name) => eases?.get(name)).find(Boolean) ?? null, motion: frames[from].motions?.get(key) ?? 'smooth' };
-}
-
 // Each part's tween around frame i in a shape's life, part to { a, b, easing }: a the last key frame at or before i
 // that sets it, b the next (undefined on its last), easing a's for it (null: it holds).
 function partTweens(frames, key, life, i) {

@@ -714,11 +714,6 @@
     "moveEarlier": "Déplacer vers l'avant",
     "moveLater": "Déplacer vers l'arrière",
     "deleteFrame": "Supprimer l'image",
-    "tween": "Interpolation",
-    "tweenNamed": "Interpolation : {easing}",
-    "tweenDisabled": "Sélectionnez une forme qui a une image clé plus loin pour l'interpoler",
-    "tweenFrames": "Images {from} à {to}",
-    "motion": "Cette interpolation se déplace",
     "motions": {
       "smooth": "En douceur",
       "half": "Par demi-cellules",
@@ -741,6 +736,33 @@
     "ghostTitle": "Pelure d'oignon : afficher les images précédentes estompées derrière les images vierges",
     "ghostStrength": "Intensité du fantôme",
     "ghostStrengthTitle": "Opacité de la pelure d'oignon : {percent} %"
+  },
+  "keysPanel": {
+    "aria": "Clés",
+    "button": "Clés",
+    "buttonTitle": "Clés : afficher les clés de la forme sélectionnée",
+    "fold": "Replier les clés",
+    "addKey": "+ Ajouter une clé",
+    "addKeyTitle": "Ajouter une clé sur cette image pour une partie qui n'a pas de ligne",
+    "none": "Sélectionnez une forme pour voir ses clés.",
+    "easing": "Accélération des interpolations qui partent des clés sélectionnées",
+    "motion": "Comment se font les déplacements qui partent des clés Transformation sélectionnées",
+    "delete": "Supprimer les clés",
+    "deleteTitle": "Supprimer les clés sélectionnées (Suppr)",
+    "frame": "Image {frame} : sélectionner ses clés",
+    "key": "Clé {part}, image {frame}",
+    "previous": "{part} : clé précédente",
+    "next": "{part} : clé suivante",
+    "here": "{part} : clé sur cette image",
+    "parts": {
+      "transform": "Transformation",
+      "outline": "Tracé",
+      "fill": "Remplissage",
+      "stroke": "Contour",
+      "width": "Épaisseur",
+      "style": "Style",
+      "z": "Empilement"
+    }
   },
   "actions": {
     "confirmNew": "Vous avez des modifications non enregistrées. Commencer un nouveau projet quand même ?",

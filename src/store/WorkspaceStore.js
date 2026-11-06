@@ -145,6 +145,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorHover: null,       // where the pointer is over VECTOR's art, in grid pixels, for the Pen's next segment
     vectorShapeKind: 'rect', // the Shape tool: 'rect' | 'ellipse' | 'polygon'
     vectorSides: 5,          // a polygon's sides, 3 to 12
+    keysOpen: useLocalStorage('phosphor.keysOpen', true), // the Keys panel (KeysPanel) open, or folded away
+    selectedKeys: [],        // the keys selected there, of the first selected shape: [{ part, at }] (keys.js's refs)
   }),
   getters: {
     activeTool(state) {

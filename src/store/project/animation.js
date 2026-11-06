@@ -9,7 +9,7 @@ import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { isShapeKey, sameShape } from '@/document/shapes.js';
-import { MOTIONS, lifeAt, setPartsAt, shapeAt, spanAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
+import { MOTIONS, setPartsAt, shapeAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
 import { PARTS, changedParts, samePart } from '@/document/parts.js';
 import { addedKey, deletedKeys, moveRange, movedKeys, partKeys } from '@/document/keys.js';
 import { newLedger } from '@/store/project/shared.js';
@@ -294,29 +294,6 @@ function putFrames(project, { list, states, showing }, { draw = true } = {}) {
   arrive(project, list.indexOf(showing), leaving, { draw });
 }
 
-// The tween each shape (by key) is in, or starts, on the frame showing, changed (change(frame it starts from, key, its
-// index)) where differs(key, span) says it isn't as asked: one undo step. The first shape's tween, and every other's
-// between the same key frames.
-function changeTweens(project, keys, differs, change) {
-  if (!project.image) return;
-  settleFrame(project);
-  const first = keys.length ? spanAt(project.frames, keys[0], project.frame) : null;
-  if (!first) return;
-  const spans = keys.map((key) => [key, spanAt(project.frames, key, project.frame)])
-    .filter(([key, span]) => span && span.from === first.from && span.to === first.to && differs(key, span));
-  if (!spans.length) return;
-  frameStep(project, () => {
-    for (const [key, { from }] of spans) {
-      const reach = tweenReach(project.frames, from + 1); // a part fading across this span, before and after
-      change(project.frames[from], key, from);
-      project.staleFrames(Math.min(from, reach, tweenReach(project.frames, from + 1)));
-      project.staleFrames(from);
-    }
-    project.frames = [...project.frames];
-    return project.currentFrame;
-  });
-}
-
 // A patch of a shape's keys (keys.js) set on the frames: what it reaches redrawn, and each key frame setting only some
 // of a shape keeping how it shows. A frame a key action changes is the shape's key there on purpose, so it's no split.
 function putKeys(project, key, patch) {
@@ -361,12 +338,6 @@ function keyEntries(frames, key, refs, differs, change) {
     patch.set(at, { changes: frame.changes, tweens, motions: withMotion(frame.motions, key, entry.eases.has('transform') && entry.motion), parts: frame.parts });
   }
   return patch;
-}
-
-// The parts a shape's key frame `from` sets that have a key after it to tween to (the Tween menu's, as one for them all).
-function leaving(frames, key, from) {
-  const life = lifeAt(frames, key, from), sets = life.map((k) => setPartsAt(frames, key, k, life)), j = life.indexOf(from);
-  return PARTS.filter((name) => sets[j].has(name) && sets.slice(j + 1).some((set) => set.has(name)));
 }
 
 // One undo step around a change to the frames: change makes the new list and says which frame shows. Easings it leaves
@@ -625,31 +596,6 @@ export const animationActions = {
       for (let at = reach; at < frames.length; at++) frames[at].resolved = frames[at].built = null;
       this.frames = frames;
       return showing;
-    });
-  },
-
-  // The tween each shape (by key) is in, or starts, on the frame showing gets an easing, or with null none, on every
-  // part its first frame sets that has a key after it (leaving): one undo step. A shape with no later key frame to tween
-  // to is left as it is.
-  setTween(keys, easing) {
-    const differs = (key, { from }) => leaving(this.frames, key, from).some((name) => (this.frames[from].tweens?.get(key)?.get(name) ?? null) !== easing);
-    changeTweens(this, keys, differs, (frame, key, from) => {
-      const eases = new Map(frame.tweens?.get(key) ?? []);
-      for (const name of leaving(this.frames, key, from)) {
-        if (easing) eases.set(name, easing);
-        else eases.delete(name);
-      }
-      frame.tweens = withEases(frame.tweens, key, eases);
-      if (!eases.has('transform')) frame.motions = withMotion(frame.motions, key, null);
-    });
-  },
-
-  // How the tween each shape (by key) is in, or starts, on the frame showing moves it (MOTIONS): one undo step. Only an
-  // eased Transform has a motion.
-  setTweenMotion(keys, motion) {
-    if (!MOTIONS.includes(motion)) return;
-    changeTweens(this, keys, (key, span) => !!this.frames[span.from].tweens?.get(key)?.has('transform') && span.motion !== motion, (frame, key) => {
-      frame.motions = withMotion(frame.motions, key, motion);
     });
   },
 

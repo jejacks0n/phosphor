@@ -3,6 +3,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { rectShape, translation, transformed, withShape } from '@/document/shapes.js';
+import { PARTS } from '@/document/parts.js';
 
 async function animated() {
   const { project, workspace } = await createTestApp();
@@ -12,6 +13,8 @@ async function animated() {
 const GRADIENT = { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [1, 0, 0, 1, 0, 0] };
 const moveBy = (project, key, dx, dy) => project.updateShapes([[key, transformed(project.shapes.get(key), translation(dx, dy))]]);
 const restyle = (project, key, fields) => project.updateShapes([[key, withShape(project.shapes.get(key), fields)]]);
+// Every part's key on frame at eases the tween leaving it, as the Keys panel does with a frame's keys selected.
+const easeAt = (project, key, at, easing) => project.setKeyEasing(key, PARTS.map((part) => ({ part, at })), easing);
 const shown = (project, key, i) => project.resolvedOf(i).get(key)?.cell;
 const looks = (project, key) => project.frames.map((_, i) => JSON.stringify(shown(project, key, i)));
 const partsOf = (project, at, key) => {
@@ -27,10 +30,7 @@ function ball(project, easings = []) {
     project.addFrame('blank');
     if (at % 6 === 0) moveBy(project, key, 0, 12);
   }
-  easings.forEach((easing, j) => {
-    project.showFrame(j * 6);
-    project.setTween([key], easing);
-  });
+  easings.forEach((easing, j) => easeAt(project, key, j * 6, easing));
   project.showFrame(0);
   return key;
 }
@@ -223,7 +223,7 @@ test('deleting a Duplicate that starts a tween redraws the frames after it', asy
   for (let i = 0; i < 6; i++) project.addFrame('blank');
   restyle(project, key, { width: 4 }); // frame 9
   project.showFrame(3);
-  project.setTween([key], 'easeOut');
+  easeAt(project, key, 3, 'easeOut');
   const all = () => project.frames.map((_, i) => JSON.stringify(shown(project, key, i)));
   all();
   project.deleteFrame(); // frame 4 takes it in, and the tween is a frame shorter
@@ -261,7 +261,7 @@ function fade(project) {
   for (let at = 1; at <= 12; at++) project.addFrame('blank');
   restyle(project, key, { fill: '#0000ff' });
   project.showFrame(0);
-  project.setTween([key], 'easeIn');
+  easeAt(project, key, 0, 'easeIn');
   return key;
 }
 
