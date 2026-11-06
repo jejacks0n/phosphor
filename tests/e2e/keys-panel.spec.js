@@ -148,8 +148,10 @@ test('Delete, with focus in the panel, deletes the selected keys; the first key 
   await page.keyboard.press('Delete');
   await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 6]);
   await diamond(page, 'transform', 0).click();
+  const version = await store(page, 'project', (p) => p.history.version);
   await page.keyboard.press('Backspace');
   await page.keyboard.press('Delete');
+  expect(await store(page, 'project', (p) => p.history.version)).toBe(version); // nothing deleted: no undo step
   expect(await keyFrames(page, 'transform')).toEqual([0, 6]);
   expect(await store(page, 'project', `(p) => p.shapes.has('${key}')`)).toBe(true); // the shape's still there
   await diamond(page, 'transform', 6).click();
