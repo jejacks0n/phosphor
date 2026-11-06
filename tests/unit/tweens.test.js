@@ -249,20 +249,23 @@ test("strayEasings finds an easing on a part's last key, or on a part its frame 
   assert.equal(strayEasings(frames, K).length, 3);
 });
 
-// Each life is walked once: a 2000-frame movie keyed and eased on every frame takes a few milliseconds, where walking it
-// for every key took over a second.
+// Each life is walked once: a 2000-frame movie keyed and eased on every frame reads each frame a few dozen times, where
+// walking it for every key read it thousands of times. Counted, not timed, so a slow machine can't fail it.
 test('a long life keyed on every frame is walked once, not once a key', () => {
   const frames = Array.from({ length: 2000 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
   frames.forEach((frame, i) => {
     frame.changes.set(K, cellState(transformed(RED, translation(0, i % 9)), 0, 0));
     frame.tweens = new Map([[K, eased('linear')]]);
   });
-  const started = performance.now();
-  assert.deepEqual(strayEasings(frames, K).map(({ at }) => at), Array(PARTS.length).fill(1999));
-  assert.equal(tweenBands(frames, K).length, 1999); // one a frame: bands that only touch aren't merged
-  assert.equal(movedKeys(frames, K, [{ part: 'fill', at: 1000 }], 1).patch.size, 2);
-  const took = performance.now() - started;
-  assert.ok(took < 400, `${took} ms`);
+  let reads = 0; // frames read, which a walk per key makes millions of
+  const counted = new Proxy(frames, { get: (target, name, receiver) => {
+    if (typeof name === 'string' && /^\d+$/.test(name)) reads++;
+    return Reflect.get(target, name, receiver);
+  } });
+  assert.deepEqual(strayEasings(counted, K).map(({ at }) => at), Array(PARTS.length).fill(1999));
+  assert.equal(tweenBands(counted, K).length, 1999); // one a frame: bands that only touch aren't merged
+  assert.equal(movedKeys(counted, K, [{ part: 'fill', at: 1000 }], 1).patch.size, 2);
+  assert.ok(reads < 100 * frames.length, `${reads} frames read`); // about 35 a frame
 });
 
 test("a shape's first key frame, and a Duplicate, set every part", () => {
