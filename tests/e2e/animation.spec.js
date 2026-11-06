@@ -159,6 +159,20 @@ test('a key while playing pauses; the keys play, pause and step', async ({ page 
   await expect.poll(() => store(page, 'workspace', (w) => w.playing)).toBe(false);
 });
 
+test('N adds a frame after the one showing, of its kind', async ({ page }) => {
+  await openApp(page);
+  await animateSwitch(page).check();
+  await page.locator('.edit-viewport').click({ position: { x: 1, y: 1 } });
+  await page.keyboard.press('n');
+  await expect(shown(page)).toHaveText('2 / 2');
+  await addFrame(page, 'Duplicate');
+  await page.locator('.edit-viewport').click({ position: { x: 1, y: 1 } });
+  await page.keyboard.press('n');
+  await page.keyboard.press('n');
+  await expect(shown(page)).toHaveText('5 / 5');
+  expect(await store(page, 'project', (p) => p.frames.map((f) => f.kind))).toEqual(['blank', 'blank', 'duplicate', 'duplicate', 'duplicate']);
+});
+
 test('Enter on the focused Play button plays rather than pausing and playing', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();

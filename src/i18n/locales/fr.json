@@ -914,6 +914,7 @@
       "deselect": "Désélectionner, en déposant le bloc (retour au mode Édition, si vous en venez)",
       "playPause": "Lecture ou pause (toute autre touche met aussi en pause)",
       "prevNextFrame": "Image précédente ou suivante ({keys} pendant la saisie)",
+      "newFrame": "Ajouter une image après celle-ci, du même type (maintenir pour en ajouter d’autres)",
       "switchTabs": "Lorsqu'un onglet a le focus : changer d'onglet"
     }
   },

@@ -914,6 +914,7 @@
       "deselect": "Deselect, setting the block down (back to Edit Mode, if you came from there)",
       "playPause": "Play or pause (any other key pauses too)",
       "prevNextFrame": "Previous or next frame ({keys} while typing)",
+      "newFrame": "Add a frame after this one, of its kind (hold to add more)",
       "switchTabs": "With a tab focused: switch tabs"
     }
   },
