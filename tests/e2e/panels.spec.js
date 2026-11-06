@@ -49,7 +49,7 @@ test('a help tooltip shows on hover, on screen, and hides', async ({ page }) => 
   await expect(tip).toBeHidden();
 });
 
-test('the Actions menu (narrow screens) opens, and closes on Escape and outside clicks', async ({ page }) => {
+test('the Actions menu (narrow screens) opens, and closes on Escape and outside clicks; it stays when something beside it scrolls, and closes when what holds it scrolls', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 800 });
   await openApp(page);
   const trigger = page.getByTitle('Actions');
@@ -61,13 +61,8 @@ test('the Actions menu (narrow screens) opens, and closes on Escape and outside 
   await trigger.click();
   await page.mouse.click(700, 500);
   await expect(menu).toBeHidden();
-});
 
-test('an open menu stays when something beside it scrolls, and closes when what holds it scrolls', async ({ page }) => {
-  await page.setViewportSize({ width: 900, height: 800 });
-  await openApp(page);
-  await page.getByTitle('Actions').click();
-  const menu = page.locator('.dropdown-content');
+  await trigger.click();
   await expect(menu).toBeVisible();
   const scrollFrom = (selector) => page.evaluate((s) => {
     const from = s ? document.querySelector(s) : document;

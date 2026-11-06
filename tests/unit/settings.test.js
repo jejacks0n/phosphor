@@ -106,6 +106,10 @@ test('a setting\'s text from a host is as long as a person could have, and no lo
   assert.ok(settingsFromStranger({ seed: generateSlug(2) }));
 });
 
+test('the Blocks & shades preset sets ▄░▒▓█', () => {
+  assert.equal(ANSI_CHARSETS.find(({ name }) => name === 'Blocks & shades')?.chars, '▄░▒▓█');
+});
+
 test('Choose characters has its own help in the ASCII styles, about their ways of choosing, not Random or Best match', () => {
   const ascii = getSetting('charChoiceAscii').help;
   assert.match(ascii, /By intensity/);

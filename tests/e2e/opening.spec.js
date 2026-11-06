@@ -1,7 +1,7 @@
-// Opening files over open work, upper-case project names, and two tabs open at once.
+// Opening files over open work, what the file picker offers, and two tabs open at once.
 import { test, expect } from './support.js';
 import { readFile } from 'node:fs/promises';
-import { openApp, store, settled, editAt, fixture, imageInput } from './support.js';
+import { openApp, store, editAt, fixture, imageInput } from './support.js';
 
 // Drop a file on the workspace, as dragging one from the desktop does.
 async function dropFile(page, path, name) {
@@ -39,15 +39,7 @@ test('two tabs: changing a setting in one leaves the other tab\'s document alone
   expect(await store(b, 'project', (p) => ({ cols: p.cols, brightness: p.brightness, title: p.sauceTitle }))).toEqual(before);
 });
 
-test('a project named ART.PHOSPHOR (upper-case extension) opens', async ({ page }) => {
-  await page.goto('/');
-  const alerts = [];
-  page.on('dialog', (d) => { alerts.push(d.message()); d.accept(); });
-  await imageInput(page).setInputFiles({ name: 'ART.PHOSPHOR', mimeType: 'application/octet-stream', buffer: await readFile(fixture('projects/live-main.phosphor')) });
-  await page.waitForTimeout(1500);
-  expect(alerts).toEqual([]);
-  await settled(page);
-});
+// A project named ART.PHOSPHOR (upper-case extension) opens: isProjectFile, in tests/unit/project-io.test.js.
 
 test('on a computer the file picker offers images, SVG files, .phosphor files and art files', async ({ page }) => {
   await page.goto('/');

@@ -1,9 +1,11 @@
 // Undo and redo bring back every state exactly: a seeded fuzz of random edits (typing, paint, erase,
 // selections, merges, Bake, sliders, settings) undone and redone step by step, plus the cases it
 // found: Bake and Merge into the image racing other changes, slider steps surviving a grid resize,
-// and a removed pin no longer showing its character.
+// and a removed pin no longer showing its character; and the keys that undo and redo.
 import { test, expect, beforeAll } from 'vitest';
+import { createApp } from 'vue';
 import { createTestApp, settle, cellsKey } from '../support/app.js';
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { drawnDocument } from '../support/scenes.js';
 import { loadBooleans } from '@/lib/shapeBooleans.js';
 import { ellipseShape, fillAs, isGradient, polygonShape, rectShape, rotation, transformed, translation, withShape } from '@/document/shapes.js';
@@ -632,4 +634,26 @@ test('undo keeps steps up to its byte budget: a stroke counts its tiles, a merge
   let steps = 0;
   while (project.history.undo()) steps++;
   expect(steps).toBe(1);
+});
+
+// Shift makes the key 'Z', which redo must still see.
+test('Cmd/Ctrl+Z undoes, and Control+Shift+Z and Meta+Shift+Z redo what was undone', async () => {
+  const { project, workspace } = await createTestApp();
+  await drawnDocument(project, workspace);
+  workspace.editorTab = 'output';
+  const app = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
+  app.mount(document.createElement('div'));
+  const key = (k, extra) => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, cancelable: true, ...extra }));
+  try {
+    project.paintStroke([{ x: 3, y: 3, alpha: 1 }], '#ff0000');
+    project.commitEdit();
+    for (const held of [{ ctrlKey: true }, { metaKey: true }]) {
+      key('z', held);
+      expect(project.canRedo).toBe(true);
+      key('Z', { ...held, shiftKey: true });
+      expect(project.canRedo).toBe(false);
+    }
+  } finally {
+    app.unmount();
+  }
 });

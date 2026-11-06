@@ -33,21 +33,7 @@ test('an eyedropper pick puts the color it replaced and the color it picked in R
   expect(await workspace(page, (w) => w.editFgColor)).toBe(before.fg);
 });
 
-test('PIXEL view: the picker clicked off the canvas leaves the color alone', async ({ page }) => {
-  await openApp(page);
-  await tab(page, 'PIXEL').click();
-  await settled(page);
-  await page.getByRole('button', { name: 'Eyedropper' }).click();
-  const box = await page.locator('article .display').first().boundingBox();
-  const y = box.y + box.height * 0.5;
-  await page.mouse.click(box.x + box.width * 0.8, y);
-  const picked = await workspace(page, (w) => w.editFgColor);
-  expect(picked).not.toBe('#000000');
-  await page.mouse.click(box.x + box.width + 30, y); // in the padding right of the canvas
-  expect(await workspace(page, (w) => w.editFgColor)).toBe(picked);
-});
-
-test('PIXEL view: Pick FG or BG, one lit, chooses which color a click sets, and Shift the other', async ({ page }) => {
+test('PIXEL view: Pick FG or BG, one lit, chooses which color a click sets, and Shift the other; a click off the canvas leaves the color alone', async ({ page }) => {
   await openApp(page);
   await tab(page, 'PIXEL').click();
   await settled(page);
@@ -63,6 +49,12 @@ test('PIXEL view: Pick FG or BG, one lit, chooses which color a click sets, and 
   const box = await page.locator('article .display').first().boundingBox();
   const at = (fx) => [box.x + box.width * fx, box.y + box.height * 0.5];
   const colors = () => workspace(page, (w) => [w.editFgColor, w.editBgColor]);
+
+  await page.mouse.click(...at(0.8));
+  const picked = await workspace(page, (w) => w.editFgColor);
+  expect(picked).not.toBe('#000000');
+  await page.mouse.click(box.x + box.width + 30, box.y + box.height * 0.5); // in the padding right of the canvas
+  expect(await workspace(page, (w) => w.editFgColor)).toBe(picked);
 
   await row.getByRole('button', { name: 'BG', exact: true }).click();
   await expect(row.getByRole('button', { name: 'FG', exact: true })).toHaveAttribute('aria-pressed', 'false'); // one lit

@@ -55,25 +55,18 @@ test('a monospaced font from your computer is used and kept; a proportional one 
 });
 
 // Each toggle's tooltip says what's on now and what a click does (the renderer's button is named for the other one).
-test('the status bar\'s DOM/Canvas and Smooth tooltips say what\'s on and what a click does', async ({ page }) => {
+test('the status bar\'s Smooth button turns anti-aliasing off and on, in both views, and keeps it; its and DOM/Canvas\'s tooltips say what\'s on and what a click does', async ({ page }) => {
   await openApp(page);
   await expect(page.getByRole('button', { name: 'DOM', exact: true })).toHaveAttribute('title', 'Rendered on canvas. Click to switch to DOM text rendering (experimental).');
-  await page.getByRole('button', { name: 'DOM', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Canvas', exact: true })).toHaveAttribute('title', 'Rendered as DOM text (experimental). Click to switch to canvas rendering.');
-  const smooth = page.getByRole('button', { name: 'Smooth' });
-  await expect(smooth).toHaveAttribute('title', 'Smooth text is on (anti-aliased glyphs). Click for crisp 2-color pixel edges.');
-  await smooth.click();
-  await expect(smooth).toHaveAttribute('title', 'Smooth text is off (crisp 2-color pixels). Click for anti-aliased glyphs.');
-});
-
-test('the status bar\'s Smooth button turns anti-aliasing off and on, in both views, and keeps it', async ({ page }) => {
-  await openApp(page);
   const smooth = page.getByRole('button', { name: 'Smooth' });
   await expect(smooth).toHaveAttribute('aria-pressed', 'true'); // on by default
+  await expect(smooth).toHaveAttribute('title', 'Smooth text is on (anti-aliased glyphs). Click for crisp 2-color pixel edges.');
   await smooth.click();
   await expect(smooth).toHaveAttribute('aria-pressed', 'false');
+  await expect(smooth).toHaveAttribute('title', 'Smooth text is off (crisp 2-color pixels). Click for anti-aliased glyphs.');
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--display-font-smoothing').trim())).toBe('none');
   await page.getByRole('button', { name: 'DOM', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Canvas', exact: true })).toHaveAttribute('title', 'Rendered as DOM text (experimental). Click to switch to canvas rendering.');
   await expect(page.locator('.ansi-editor pre.display')).toHaveCSS('-webkit-font-smoothing', 'none');
   await openApp(page);
   await expect(page.getByRole('button', { name: 'Smooth' })).toHaveAttribute('aria-pressed', 'false');

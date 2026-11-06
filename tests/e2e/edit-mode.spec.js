@@ -53,20 +53,7 @@ test('in the color box typing stops and carries on after: once it closes, the te
   await expect.poll(() => typingFocused(page)).toBe(true);
 });
 
-test('after the save dialog is canceled with Escape, the text input has focus and Space types a space', async ({ page }) => {
-  await openApp(page);
-  await editAt(page, 2, 2);
-  await page.keyboard.type('a');
-  await page.keyboard.press('ControlOrMeta+s');
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog')).toBeHidden();
-  await page.keyboard.type(' b'); // right away
-  await expect.poll(() => chars(page, 2, 2, 4)).toBe('a b');
-  await expect.poll(() => typingFocused(page)).toBe(true);
-});
-
-test('Cmd+Z in the save dialog after typing stays in the dialog: its field undoes its own typing and no more, and Escape still closes it', async ({ page }) => {
+test('Cmd+Z in the save dialog after typing stays in the dialog: its field undoes its own typing and no more, and Escape still closes it: the text input has focus and Space types a space', async ({ page }) => {
   await openApp(page);
   await editAt(page, 2, 2);
   await page.keyboard.type('a');
@@ -84,8 +71,9 @@ test('Cmd+Z in the save dialog after typing stays in the dialog: its field undoe
 
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toBeHidden();
-  await page.keyboard.type(' b');
+  await page.keyboard.type(' b'); // right away
   await expect.poll(() => chars(page, 2, 2, 4)).toBe('a b');
+  await expect.poll(() => typingFocused(page)).toBe(true);
 });
 
 test('after Versions is canceled with Escape, the text input has focus and Space types a space', async ({ page }) => {

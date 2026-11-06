@@ -67,9 +67,4 @@ test('an unknown choice (from an old file or a room) shows its options as Random
   await expect(panel(page).getByRole('slider', { name: 'Pattern light' })).toHaveCount(0);
 });
 
-test('the Blocks & shades preset sets ▄░▒▓█', async ({ page }) => {
-  await openApp(page);
-  await page.getByRole('combobox', { name: 'Character presets' }).selectOption({ label: 'Blocks & shades · ▄░▒▓█' });
-  await expect(page.getByRole('textbox', { name: 'Characters' })).toHaveValue('▄░▒▓█');
-  expect(await store(page, 'project', (p) => p.chars)).toBe('▄░▒▓█');
-});
+// The Blocks & shades preset (▄░▒▓█): tests/unit/settings.test.js; choosing a preset: charset-field.spec.js.

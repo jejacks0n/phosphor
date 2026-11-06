@@ -2,7 +2,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { readProject, writeProject, fileStem, timestamped, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
+import { readProject, writeProject, fileStem, timestamped, isProjectFile, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
 import { EMPTY_BASE, withPins } from '../../src/document/baseRecords.js';
 import { MAX_COLS, maxRowsBeside } from '../../src/lib/Cells.js';
 
@@ -83,6 +83,15 @@ test('A typed filename: trimmed, its extension (if typed) dropped, slashes made 
   assert.equal(fileStem('a/b\\c', 'ans'), 'a-b-c');
   assert.equal(fileStem('   ', 'ans'), '');
   assert.equal(fileStem('.ans', 'ans'), '');
+});
+
+// Every way in (the file input, a drop, a project opened over another) asks isProjectFile.
+test('a project is a file named .phosphor, in any case: ART.PHOSPHOR opens', () => {
+  assert.ok(isProjectFile('ART.PHOSPHOR'));
+  assert.ok(isProjectFile('art.Phosphor'));
+  assert.ok(isProjectFile('live-main.phosphor'));
+  assert.ok(!isProjectFile('art.phosphor.png'));
+  assert.ok(!isProjectFile('art.ans'));
 });
 
 test('the name offered has the local time, in place of any it had', () => {

@@ -20,9 +20,10 @@ async function ctrlWheel(page, deltaY) {
   await page.keyboard.up('Control');
 }
 
-test('Ctrl+wheel: a notch out undoes a notch in', async ({ page }) => {
-  const box = await (await pixelView(page)).boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+test('Ctrl+wheel: a notch out undoes a notch in, and the zoom keeps the grid point under the pointer', async ({ page }) => {
+  const canvas = await pixelView(page);
+  const middle = await canvas.boundingBox();
+  await page.mouse.move(middle.x + middle.width / 2, middle.y + middle.height / 2);
   expect(await zoom(page)).toBe(5);
   await ctrlWheel(page, -100); // one mouse-wheel notch away from you: in
   const zoomedIn = await zoom(page);
@@ -31,10 +32,10 @@ test('Ctrl+wheel: a notch out undoes a notch in', async ({ page }) => {
   expect(await zoom(page)).toBeCloseTo(5, 6);
   await ctrlWheel(page, 100);
   expect(await zoom(page)).toBeCloseTo(25 / zoomedIn, 6); // out by as much again, not down to 1x
-});
+  await ctrlWheel(page, -100);
+  expect(await zoom(page)).toBeCloseTo(5, 6);
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))); // its scroll, landed
 
-test('Ctrl+wheel zoom keeps the grid point under the pointer', async ({ page }) => {
-  const canvas = await pixelView(page);
   const box = await canvas.boundingBox();
   const at = { x: box.x + box.width * 0.3, y: box.y + box.height * 0.3 };
   await page.mouse.move(at.x, at.y);

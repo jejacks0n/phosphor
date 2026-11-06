@@ -35,14 +35,6 @@ test('the Characters field: pick a ready-made set, or type your own', async ({ p
   await expect(sets(page).locator('option', { hasText: 'Custom' })).toHaveCount(0);
 });
 
-test('the ASCII styles have their own sets', async ({ page }) => {
-  await openApp(page);
-  await page.getByRole('combobox', { name: 'Art style' }).selectOption('ascii');
-  await expect(sets(page).locator('option')).toHaveText([/^Default/, /^Classic ramp/, /^Long ramp/]);
-  await sets(page).selectOption({ label: 'Classic ramp · .:-=+*#%@' });
-  expect(await store(page, 'project', (p) => p.charsAscii)).toBe(' .:-=+*#%@');
-});
-
 test.describe('on a touch screen', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
 
@@ -59,10 +51,11 @@ test.describe('on a touch screen', () => {
   });
 });
 
-test('every set\'s name fits whole on the line beside Characters', async ({ page }) => {
+test('the ASCII styles have their own sets; every set\'s name fits whole on the line beside Characters', async ({ page }) => {
   await openApp(page);
   for (const style of ['ansi', 'ascii']) {
     await page.getByRole('combobox', { name: 'Art Style' }).selectOption(style);
+    if (style === 'ascii') await expect(sets(page).locator('option')).toHaveText([/^Default/, /^Classic ramp/, /^Long ramp/]);
     for (const option of await sets(page).locator('option').allTextContents()) {
       await sets(page).selectOption({ label: option });
       await expect(label(page)).toHaveText(option.split(' · ')[0]);
@@ -74,4 +67,6 @@ test('every set\'s name fits whole on the line beside Characters', async ({ page
       expect({ name: option, lines, cut }).toEqual({ name: option, lines: 1, cut: false });
     }
   }
+  await sets(page).selectOption({ label: 'Classic ramp · .:-=+*#%@' });
+  expect(await store(page, 'project', (p) => p.charsAscii)).toBe(' .:-=+*#%@');
 });
