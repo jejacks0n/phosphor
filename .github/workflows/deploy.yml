@@ -43,8 +43,11 @@ jobs:
           if-no-files-found: ignore
 
   # The end-to-end tests are most of the time, so they run in shards, each on its own runner beside the job above.
+  # In Playwright's image, which has Chromium and the packages it needs: installing them from Ubuntu's mirror took
+  # nine minutes on some runners. The image's version is the Playwright in package-lock.json, and goes up with it.
   e2e:
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.64.1-noble
     timeout-minutes: 20
     strategy:
       fail-fast: false # one shard's failure still shows the others'
@@ -57,14 +60,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - id: playwright
-        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --shard=${{ matrix.shard }}/6
+      - run: node tests/support/shard.mjs ${{ matrix.shard }}/6
         env:
           CI: true
       - if: failure()
