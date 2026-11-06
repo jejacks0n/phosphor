@@ -136,13 +136,25 @@ export function setPartsAt(frames, key, i, life = lifeAt(frames, key, i)) {
   return frames[i].parts?.get(key) ?? ALL_PARTS;
 }
 
+// Each part's key frames in a shape's life, part to the frames that set it, in order.
+export function keyFramesOf(frames, key, life) {
+  const sets = life.map((k) => setPartsAt(frames, key, k, life));
+  return new Map(PARTS.map((name) => [name, life.filter((_, j) => sets[j].has(name))]));
+}
+
 // Each part's tween around frame i in a shape's life, part to { a, b, easing }: a the last key frame at or before i
 // that sets it, b the next (undefined on its last), easing a's for it (null: it holds).
-function partTweens(frames, key, life, i) {
-  const sets = life.map((k) => setPartsAt(frames, key, k, life));
+function partTweens(frames, key, life, i, keyed = keyFramesOf(frames, key, life)) {
   return new Map(PARTS.map((name) => {
-    const keys = life.filter((_, j) => sets[j].has(name)), a = keys.findLast((k) => k <= i);
-    return [name, { a, b: keys.find((k) => k > i), easing: frames[a].tweens?.get(key)?.get(name) ?? null }];
+    const keys = keyed.get(name);
+    let after = 0; // the first key after i, found by halves
+    for (let most = keys.length; after < most;) {
+      const mid = (after + most) >> 1;
+      if (keys[mid] <= i) after = mid + 1;
+      else most = mid;
+    }
+    const a = keys[after - 1];
+    return [name, { a, b: keys[after], easing: frames[a].tweens?.get(key)?.get(name) ?? null }];
   }));
 }
 
@@ -155,14 +167,14 @@ function snappedMove(from, m, motion) {
 
 // What frame i shows of a shape, part by part (parts.js), or null for none: each part from its key a (partTweens)
 // fading to its next as a's easing has it, the move snapped as the Transform's key's motion says. With nothing fading,
-// the key frame's own.
+// the key frame's own. life and keyed: the life around frame i and its key frames (keyFramesOf), when they're known
+// already, so frame after frame of one life doesn't walk it each time.
 // ponytail: each call walks the shape's life; per-shape lives worked out once per movie if huge movies lag.
-export function shapeAt(frames, key, i) {
-  const life = lifeAt(frames, key, i);
+export function shapeAt(frames, key, i, life = lifeAt(frames, key, i), keyed = undefined) {
   if (!life.length) return null;
   const stored = (k) => frames[k].changes.get(key).cell, at = life.findLast((k) => k <= i), fields = {};
   let own = true, transformAt = at;
-  for (const [name, { a, b, easing }] of partTweens(frames, key, life, i)) {
+  for (const [name, { a, b, easing }] of partTweens(frames, key, life, i, keyed)) {
     const t = easing && b !== undefined && a !== i ? ease(easing, (i - a) / (b - a)) : 0;
     if (a !== at || t) own = false;
     Object.assign(fields, t ? tweenPart(name, stored(a), stored(b), t) : fieldsOf(stored(a), name));
@@ -204,19 +216,21 @@ export function tweenedAt(frames, i) {
   return out;
 }
 
-// Each eased key of a shape's, [at, part, next] (next: the part's next key frame, undefined on its last), over every life.
+// Each eased key of a shape's, [at, part, next] (next: the part's next key frame, undefined on its last, or on a part
+// the frame doesn't set), over every life, in frame order. Each life is walked once, from its end.
 function easedKeys(frames, key) {
-  const out = [];
+  const out = [], seen = new Set();
   frames.forEach((frame, at) => {
-    const eases = frame.tweens?.get(key);
-    if (!eases || !ownsShape(frame, key)) return;
-    const tweens = partTweens(frames, key, lifeAt(frames, key, at), at);
-    for (const part of eases.keys()) {
-      const tween = tweens.get(part);
-      out.push([at, part, tween?.a === at ? tween.b : undefined]);
+    if (seen.has(at) || !frame.tweens?.get(key) || !ownsShape(frame, key)) return;
+    const life = lifeAt(frames, key, at), next = new Map(); // part to the next key frame setting it
+    for (let j = life.length - 1; j >= 0; j--) {
+      const k = life[j], sets = setPartsAt(frames, key, k, life);
+      seen.add(k);
+      for (const part of frames[k].tweens?.get(key)?.keys() ?? []) out.push([k, part, sets.has(part) ? next.get(part) : undefined]);
+      for (const part of sets) next.set(part, k);
     }
   });
-  return out;
+  return out.sort((x, y) => x[0] - y[0]); // stable: a frame's parts stay in order
 }
 
 // Where a shape tweens, in order: the stretches, { from, to }, where any of its parts does, those that overlap merged.

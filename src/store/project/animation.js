@@ -238,13 +238,14 @@ function note(project) {
   reshow(project);
 }
 
-// Before anything that changes which frames there are: what's open is set down on the frame it was done on.
-function settleFrame(project) {
+// Before anything that changes which frames there are: what's open is set down on the frame it was done on. keys: only
+// a shape's keys are about to change, and what does that keeps its key frames as they show (keys.js).
+function settleFrame(project, { keys = false } = {}) {
   project.ensureLayer();
   project.commitPending();
   project._float = null;
   note(project);
-  keepShown(project); // what's about to change which frames there are can cut a shape's key frames off
+  if (!keys) keepShown(project); // what's about to change which frames there are can cut a shape's key frames off
 }
 
 // After the frame before frame at went: what frame at's staying cells were over (handed, what the frame that went
@@ -293,8 +294,9 @@ function putFrames(project, { list, states, showing }, { draw = true } = {}) {
   arrive(project, list.indexOf(showing), leaving, { draw });
 }
 
-// A patch of a shape's keys (keys.js) set on the frames: what it reaches redrawn, and each key frame setting only some
-// of a shape keeping how it shows. A frame a key action changes is the shape's key there on purpose, so it's no split.
+// A patch of a shape's keys (keys.js) set on the frames: what it reaches redrawn. A frame a key action changes is the
+// shape's key there on purpose, so it's no split. The patch already leaves each of the shape's key frames holding its
+// whole shape as it shows, and the shape no easing without a tween; the other shapes are as they were.
 function putKeys(project, key, patch) {
   if (!patch?.size) return;
   const reach = new Map([...patch.keys()].map((at) => [at, tweenReach(project.frames, at)])); // a tween across, before
@@ -303,19 +305,17 @@ function putKeys(project, key, patch) {
     Object.assign(frame, state);
     if (frame.splits?.has(key)) frame.splits = new Set([...frame.splits].filter((each) => each !== key));
   }
-  dropStrays(project.frames);
   for (const [at, was] of reach) {
     project.staleFrames(Math.min(at, was, tweenReach(project.frames, at))); // and after
     project.staleFrames(at);
   }
-  keepShown(project);
   project.frames = [...project.frames];
 }
 
 // One undo step setting patchOf(frames)'s keys of a shape (null or empty: nothing to do, and no step).
 function keyStep(project, key, patchOf) {
   if (!project.image) return;
-  settleFrame(project);
+  settleFrame(project, { keys: true });
   const patch = patchOf(project.frames);
   if (!patch?.size) return;
   frameStep(project, () => {
@@ -631,7 +631,7 @@ export const animationActions = {
   moveKeys(shapeKey, refs, by, drag = null) {
     if (!this.image) return refs;
     if (drag?.before) putFrames(this, drag.before, { draw: false });
-    else settleFrame(this);
+    else settleFrame(this, { keys: true });
     if (drag) drag.before ??= framesNow(this);
     const { least, most } = moveRange(this.frames, shapeKey, refs), step = clamped(by, least, most);
     const start = drag && refs.length ? partKeys(this.frames, shapeKey, refs[0].at)?.start : undefined;
