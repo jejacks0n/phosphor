@@ -1,5 +1,6 @@
 import { ref, unref } from 'vue';
 import { dragZoom } from '@/lib/zoom';
+import { onIOS } from '@/lib/platform';
 import { usePlayback } from '@/composables/usePlayback';
 
 const TOUCH_DELAY_MS = 150; // a touch waits this long before drawing, in case a second finger makes it a pinch
@@ -44,10 +45,7 @@ export function useEditorInteractions(options) {
     disableZoom = false
   } = options;
 
-  const isIOS = typeof navigator !== 'undefined' && (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  );
+  const isIOS = onIOS();
 
   const isPainting = ref(false);
   const mousePos = ref(null);

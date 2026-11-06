@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { onIOS } from '@/lib/platform';
 
 // A text field you can type any characters into, with a ▾ that offers ready-made sets. The ▾ is a
 // native <select> laid invisibly over it, so the sets open in the system's own menu, like the other
@@ -14,6 +15,9 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue']);
 const { t } = useI18n();
 
+// iOS draws a select's options in its own font, whatever the page asks, so a set's characters wouldn't look as
+// they're drawn (and wrap onto more lines): there the sets go by their names alone.
+const named = onIOS();
 const current = computed(() => props.presets.findIndex((p) => p.chars === props.modelValue));
 const preview = (chars) => {
   const all = [...chars];
@@ -39,7 +43,7 @@ function pick(event) {
     >
     <select :aria-label="t('panel.chars.setsAria')" :value="current" @change="pick">
       <option v-if="current < 0" :value="-1" disabled>{{ t('common.custom') }}</option>
-      <option v-for="(preset, i) in presets" :key="preset.name" :value="i">{{ preset.name }} · {{ preview(preset.chars) }}</option>
+      <option v-for="(preset, i) in presets" :key="preset.name" :value="i">{{ named ? preset.name : `${preset.name} · ${preview(preset.chars)}` }}</option>
     </select>
     <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
   </div>
