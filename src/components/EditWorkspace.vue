@@ -52,6 +52,8 @@ async function handleFileSelected(file) {
   // paste. An SVG is never a picture: it's shapes.
   if (project.image && (isArtFile(file.name) || isSvgFile(file.name))) return (workspace.artDrop = { file, at: null });
   if (drawing.offWithOthers) return toast(drawing.offWithOthers);
+  // From the start screen, an art file asks whether to edit it or draw on top of it.
+  if (isArtFile(file.name)) return (workspace.artDrop = { file, at: null });
   project.commitPending(); // text typed a moment ago counts
   if (project.image && project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
   if (!project.image) workspace.editorTab = isSvgFile(file.name) ? 'vector' : 'output'; // from the start screen, chosen first: the address moves once
@@ -67,11 +69,11 @@ function startBlank() {
   project.setBlankCanvas();
 }
 
-// An art file opens on ANSI, an SVG on VECTOR (openSvgFile chooses it).
-async function openArt(file) {
+// An art file opens on ANSI, onto the layer chosen ('edit' or 'base'); an SVG on VECTOR (openSvgFile chooses it).
+async function openArt(file, layer) {
   const svg = isSvgFile(file.name);
   try {
-    await (svg ? project.openSvgFile(file) : project.openArtFile(file));
+    await (svg ? project.openSvgFile(file) : project.openArtFile(file, { layer }));
   } catch (error) {
     if (!error.userMessage) throw error;
     return toast(error.userMessage); // nothing changed, so stay where we are
@@ -79,21 +81,38 @@ async function openArt(file) {
   if (!svg) workspace.editorTab = 'output';
 }
 
-// The dropped art file's question: added as a paste is (floating and selected, where it was dropped or at the
-// view's top-left), or an SVG as shapes on VECTOR; or opened in place of this drawing (not in a room where
-// opening is off).
+// The art file's question. On the start screen: edit it (its art on the edit layer) or draw on top of it (its
+// art the base layer). Dropped on a drawing: added as a paste is (floating and selected, where it was dropped or at
+// the view's top-left), or an SVG as shapes on VECTOR; or opened in place of this drawing, an art file onto either
+// layer (not in a room where opening is off).
 const addText = (drop) => (isSvgFile(drop.file.name) ? t('actions.svgAddText') : drop.at ? t('actions.artAddWhere') : t('actions.artAddTopLeft'));
-const artChoices = computed(() => [
-  { id: 'add', title: t('actions.artAdd'), text: workspace.artDrop && addText(workspace.artDrop) },
-  ...(drawing.offWithOthers ? [] : [{ id: 'open', title: t('actions.artOpen'), text: t('actions.artOpenText') }]),
-]);
+const artChoices = computed(() => {
+  const drop = workspace.artDrop;
+  if (!drop) return [];
+  if (!project.image) {
+    return [
+      { id: 'edit', title: t('actions.artEdit'), text: t('actions.artEditText') },
+      { id: 'base', title: t('actions.artDrawOn'), text: t('actions.artDrawOnText') },
+    ];
+  }
+  const open = isSvgFile(drop.file.name) ? [{ id: 'open', title: t('actions.artOpen'), text: t('actions.artOpenText') }] : [
+    { id: 'edit', title: t('actions.artOpenEdit'), text: t('actions.artOpenEditText') },
+    { id: 'base', title: t('actions.artOpenDrawOn'), text: t('actions.artOpenDrawOnText') },
+  ];
+  return [{ id: 'add', title: t('actions.artAdd'), text: addText(drop) }, ...(drawing.offWithOthers ? [] : open)];
+});
+const artTitle = computed(() => t(project.image ? 'actions.artDropTitle' : 'actions.artOpenTitle', { name: workspace.artDrop?.file.name }));
+const artSub = computed(() => (!project.image ? t('actions.artOpenSub') : drawing.offWithOthers ? t('actions.artDropSubAddOnly') : t('actions.artDropSub')));
 async function chooseArt(choice) {
   const { file, at } = workspace.artDrop;
   workspace.artDrop = null;
-  if (choice === 'open') {
-    project.commitPending(); // text typed a moment ago counts
-    if (project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
-    return openArt(file);
+  if (choice !== 'add') { // 'edit' or 'base' (an art file's layer), or 'open' (an SVG)
+    if (!project.image) workspace.editorTab = 'output'; // from the start screen, chosen first: the address moves once
+    else {
+      project.commitPending(); // text typed a moment ago counts
+      if (project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
+    }
+    return openArt(file, choice);
   }
   if (playback.playing) playback.pause(); // it lands on the frame showing
   if (isSvgFile(file.name)) return addSvg(file);
@@ -153,8 +172,8 @@ async function addSvg(file) {
       </DropZone>
       <ChoiceDialog
           v-if="workspace.artDrop"
-          :title="t('actions.artDropTitle', { name: workspace.artDrop.file.name })"
-          :sub="drawing.offWithOthers ? t('actions.artDropSubAddOnly') : t('actions.artDropSub')"
+          :title="artTitle"
+          :sub="artSub"
           :choices="artChoices"
           @choose="chooseArt"
           @cancel="workspace.artDrop = null"

@@ -1,5 +1,6 @@
 // Opening an .ans, .utf8ans, .asc or .txt file as a document: its art on the base layer, every
-// character pinned, its palette and SAUCE in the settings, and nothing to undo or save.
+// character pinned, or on the edit layer over a black base; its palette and SAUCE in the settings,
+// and nothing to undo or save.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -80,6 +81,28 @@ test('a 24-bit .utf8ans opens in full color, wide characters and all', async () 
   expect([project.cols, project.rows]).toEqual([cols, 2 * rows]);
   expect(project.quantize).toBe('none');
   expectShows(project, cells);
+  expect(project.history.canUndo).toBe(false);
+  expect(project.isDirty).toBe(false);
+});
+
+test('opened to edit, the art is edit cells over a black base, as the file shows it, with nothing to undo or save', async () => {
+  const project = await afterAnotherDocument();
+  const cols = 12, rows = 4, cells = build(cols, rows, 'none', CHARS.utf8ans);
+  await project.openArtFile(await artFile('wide.utf8ans', cols, rows, cells, { utf8: true, colorMode: 'none', sauce: SAUCE }), { layer: 'edit' });
+  await settle(project);
+
+  expect([project.cols, project.rows]).toEqual([cols, 2 * rows]);
+  expect(project.quantize).toBe('none');
+  expect(project.sauceTitle).toBe('Boat');
+  expectShows(project, cells);
+  expect(project.editCells.size).toBe(cols * rows);
+  for (let i = 0; i < cells.length; i++) {
+    const col = i % cols, row = Math.floor(i / cols), where = `cell ${i}`;
+    expect(project.editCellAt(col, row)?.char, where).toBeDefined();
+    const { fg, bg } = project.baseCellAt(col, row);
+    expect({ fg, bg }, where).toEqual({ fg: '#000000', bg: '#000000' }); // a blank canvas's, nothing pinned
+    expect(project.renderer.pinAt(col, row), where).toBeUndefined();
+  }
   expect(project.history.canUndo).toBe(false);
   expect(project.isDirty).toBe(false);
 });

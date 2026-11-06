@@ -93,15 +93,24 @@ Merge down), pins it covers go, since its pixels are what shows there now.
 ## Opening ANSI and text files
 
 Drop a `.ans`, `.utf8ans`, `.asc` or `.txt` file on the start screen, or choose one with **Browse Files**,
-and it opens as a new document, with its art on the base layer.
+and it asks what you'd like to do with the art, then opens it as a new document:
+
+- **Edit it**: the art goes on the edit layer, over a plain black base, as if you'd drawn it. Every cell
+  is an edit cell, so the eraser's **Edit**, **Clear edit layer** and everything else that works on what
+  you've drawn works on it.
+- **Draw on top of it**: the art is the base layer, and what you draw goes on top of it. Merge up turns
+  it into edit cells later, if you change your mind.
+- **Cancel** opens nothing.
+
+Either way:
 
 - **The grid** is the file's size. Its width comes from the file's SAUCE record if it has one; otherwise
   it's 80 columns for a `.ans` and the widest line for the others. Its height is as many lines as the art
   reaches.
-- **The art is the base layer**, as if you'd used Merge down: every cell keeps its character and colors, so
-  it looks just as the file does. Opening a file isn't an edit, so there's nothing to undo. The color
-  sliders, the palette and Bake work on it as they do on any picture. **All cells** turns on in the PIXEL
-  view, so each cell shows there as it looks rather than as its two colors.
+- **Every cell keeps its character and colors**, so it looks just as the file does. Opening a file isn't an
+  edit, so there's nothing to undo. With **Draw on top of it**, the art is the base layer as if you'd used
+  Merge down, and the color sliders, the palette and Bake work on it as they do on any picture. **All cells** turns on
+  in the PIXEL view, so each cell shows there as it looks rather than as its two colors.
 - **The palette** follows the file: CGA when every color is one of the 16 classic colors written as a 16-color code, otherwise full color.
 - **SAUCE** fills the SAUCE tab: title, author, group, date, comments, font name and the 9px font setting.
   Your display font stays as you have it.
@@ -122,10 +131,11 @@ With a drawing open, dropping one of these files on it asks what to do:
   the cell you dropped it on (or the top-left of the view, when it's dropped beside the drawing), to drag into
   place. It goes on the edit layer, as one undo step. Whatever runs past the canvas edge is cut off. The
   drawing's SAUCE and palette stay as they are.
-- **Open instead**: it opens in place of this drawing, as above, asking first if there are unsaved changes.
+- **Open to edit** or **Open to draw on top**: it opens in place of this drawing, as **Edit it** or **Draw on
+  top of it** do above, asking first if there are unsaved changes. (An `.svg` has one **Open instead**.)
 - **Cancel** leaves everything as it was.
 
-In a room where opening isn't allowed, there's no **Open instead**; adding works as pasting does.
+In a room where opening isn't allowed, there's no opening; adding works as pasting does.
 
 ## The edit layer
 

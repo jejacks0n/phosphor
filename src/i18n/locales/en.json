@@ -814,7 +814,17 @@
     "artAddTopLeft": "It lands at the top-left of the view, on the edit layer, to drag into place.",
     "svgAddText": "As shapes on VECTOR, in the frame showing, fitted to the canvas and selected.",
     "artOpen": "Open instead",
-    "artOpenText": "In place of this drawing."
+    "artOpenText": "In place of this drawing.",
+    "artOpenTitle": "Open {name}?",
+    "artOpenSub": "Edit its art, or draw on top of it.",
+    "artEdit": "Edit it",
+    "artEditText": "The art goes on the edit layer, over a black base, as if you'd drawn it.",
+    "artDrawOn": "Draw on top of it",
+    "artDrawOnText": "The art is the base layer, and what you draw goes on top.",
+    "artOpenEdit": "Open to edit",
+    "artOpenEditText": "In place of this drawing: the art on the edit layer, over a black base.",
+    "artOpenDrawOn": "Open to draw on top",
+    "artOpenDrawOnText": "In place of this drawing: the art as the base layer, under what you draw."
   },
   "sauce": {
     "heading": "SAUCE metadata",

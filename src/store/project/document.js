@@ -140,10 +140,11 @@ export const documentActions = {
   },
 
   // An .ans, .utf8ans, .asc or .txt file as a new document: a blank canvas its size with the art on
-  // the base layer, its palette and SAUCE in the settings (the rest at their defaults, so the sliders
-  // leave it as the file shows it). Loading, not an edit: nothing to undo or save. A file that can't
-  // open throws (with its userMessage) before anything changes.
-  async openArtFile(file) {
+  // the base layer (layer 'base', to draw on top of), or as edit cells over the black base ('edit', to
+  // edit it), its palette and SAUCE in the settings (the rest at their defaults, so the sliders leave
+  // it as the file shows it). Loading, not an edit: nothing to undo or save. A file that can't open
+  // throws (with its userMessage) before anything changes.
+  async openArtFile(file, { layer = 'base' } = {}) {
     const art = readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
     const { sauce } = art;
     const opened = await this.setBlankCanvas({
@@ -165,7 +166,9 @@ export const documentActions = {
       }),
     });
     if (!opened) return;
-    this.writeBaseCells(art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell })));
+    const cells = art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell }));
+    if (layer === 'edit') this.writeEditCells(cells.map(({ col, row, char, fg, bg }) => ({ col, row, attrs: { char, fg, bg } })));
+    else this.writeBaseCells(cells);
     this.commitEdit();
     this.clearHistory();
     this.render();
