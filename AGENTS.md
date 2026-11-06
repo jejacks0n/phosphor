@@ -77,8 +77,10 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   exception is the Privacy Policy (in `src/components/LegalDialog.vue`), which names the services
   that handle people's data, Cloudflare among them, because the law asks it to.
 - **Every change comes with a test in the right layer**: pure logic in `tests/unit`, the store,
-  canvas or WebGL in `tests/browser`, real UI interactions in `tests/e2e`. A bug fix starts with a
-  test that fails. [docs/testing.md](docs/testing.md) says which layer and how.
+  canvas, WebGL and a component mounted on its own in `tests/browser`, and in `tests/e2e` only what
+  the whole page can get wrong (focus, real pointer events, downloads, reloads). A bug fix starts with
+  a test that fails, in the lowest layer that sees it. [docs/testing.md](docs/testing.md) says which
+  layer and how.
 - **Moderation can be described, never how it decides.** Docs and UI may say that reports exist,
   what a report sends, that people can be silenced or suspended and what they see then. Nothing in UI
   copy, `docs/`, comments, tests or commit messages says how reports lead to silencing (how many, how
