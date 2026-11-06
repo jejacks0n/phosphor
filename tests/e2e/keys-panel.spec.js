@@ -386,6 +386,22 @@ test('Escape during a drag puts the keys back and leaves no undo step', async ({
   await expect(diamond(page, 'transform', 3)).toHaveAttribute('aria-pressed', 'true');
 });
 
+test('keys pressed during a drag do nothing; after the drop one undo goes back to before it', async ({ page }) => {
+  const key = await ball(page, { 3: 12 });
+  const before = await version(page);
+  await dragBy(page, diamond(page, 'transform', 3), 1, { during: async () => {
+    await page.keyboard.press('ControlOrMeta+z');
+    await page.keyboard.press('Delete');
+    await page.keyboard.press('Backspace');
+  } });
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 4, 6]);
+  expect(await store(page, 'workspace', (w) => w.vectorSelected)).toEqual([key]);
+  expect(await version(page)).toBe(before + 1);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 3, 6]);
+  expect(await y(page, key, 3)).toBe(12);
+});
+
 test.describe('on a touch screen', () => {
   test.use({ hasTouch: true });
 
@@ -399,5 +415,27 @@ test.describe('on a touch screen', () => {
     for (let i = 1; i <= 6; i++) await touch('touchMove', { x: x + (i / 6) * 2 * (b.x - a.x), y });
     await touch('touchEnd');
     await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 5, 6]);
+  });
+
+  test('a second finger pressed during a drag is ignored; one undo puts the keys back', async ({ page }) => {
+    await ball(page, { 3: 12 });
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type, ...points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(({ x, y }, id) => ({ x, y, id })) });
+    const [a, b] = await Promise.all([0, 1].map((at) => panel(page).locator(`button.frame[data-at="${at}"]`).boundingBox()));
+    const step = b.x - a.x, center = async (locator) => {
+      const box = await locator.boundingBox();
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    };
+    const one = await center(diamond(page, 'transform', 3)), two = await center(panel(page).locator('button.frame[data-at="0"]'));
+    await touch('touchStart', one);
+    for (let i = 1; i <= 3; i++) await touch('touchMove', { x: one.x + (i / 3) * step, y: one.y });
+    await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 4, 6]);
+    const moved = { x: one.x + step, y: one.y };
+    await touch('touchStart', moved, two);
+    for (let i = 1; i <= 3; i++) await touch('touchMove', moved, { x: two.x + (i / 3) * step, y: two.y });
+    await touch('touchEnd');
+    await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 4, 6]);
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 3, 6]);
   });
 });
