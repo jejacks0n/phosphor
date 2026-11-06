@@ -16,10 +16,10 @@ frame can't start a room.
 ## The bar
 
 Left to right: play and pause, step back and forward, which frame you're on, the scrubber, **Add frame** (a frame of
-film with a plus), a menu to move or delete the frame, on VECTOR **Keys** (a diamond, lit while the Keys panel is open;
-see [Tweens](#tweens)), frames per second, this frame's hold, and **Ghost** (a ghost, lit while it's on) with its
-strength beside it. On a narrow screen the bar takes two lines: the frame you're on, the scrubber, the menus and **Keys**
-first, then play and the steps with the timing and **Ghost**.
+film with a plus), a menu to move or delete the frame, frames per second, this frame's hold, **Ghost** (a ghost, lit
+while it's on) with an arrow beside it that opens its strength while it's on, and on VECTOR **Keys** (a diamond, lit
+while the Keys panel is open; see [Tweens](#tweens)). On a narrow screen the bar takes two lines: the frame you're on,
+the scrubber and the menus first, then play and the steps with the timing, **Ghost** and **Keys**.
 
 The marks under the scrubber say what each frame is: a tall tick where something was drawn, a short tick where
 nothing was, a block for a Duplicate, and a diamond for a Wipe. With a shape selected, its tweens show too: a band
@@ -192,7 +192,7 @@ it.
 On a Blank frame, what's inherited shows dimmed on the PIXEL and ANSI tabs, in its own colors, so you can see what you're
 drawing over. What you draw on this frame shows at full strength, as soon as you draw it. The ghost is only there to draw by:
 it never plays and never reaches an export. What you draw stays solid even in exactly the color a cell inherited, and the
-project file and autosave keep it that way; undoing that drawing dims it again. **Ghost** on the bar turns it off, and inherited cells show solid.
+project file and autosave keep it that way; undoing that drawing dims it again. **Ghost** on the bar turns it off, and inherited cells show solid; the arrow beside it sets how strongly they dim.
 
 Cells the frame just before drew to stay ([Cells that stay on their frame](#cells-that-stay-on-their-frame)) aren't
 inherited, so they show as a picture of that frame instead, dimmed over this one wherever this frame shows nothing. It's

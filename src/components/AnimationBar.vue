@@ -129,9 +129,6 @@ const setFps = (event) => {
       <p class="heading">{{ t('animation.cellsCarry') }}</p>
       <button v-for="on in [true, false]" :key="on" :aria-pressed="workspace.cellsStay !== on" @click="workspace.cellsStay = !on">{{ t(on ? 'animation.cellsCarryOn' : 'animation.cellsCarryOff') }}</button>
     </DropdownMenu>
-    <button v-if="workspace.editorTab === 'vector'" class="keys" :class="{ active: workspace.keysOpen }" :aria-label="t('keysPanel.button')" :aria-pressed="workspace.keysOpen" :title="t('keysPanel.buttonTitle')" @click="workspace.keysOpen = !workspace.keysOpen">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14.5 8 8 14.5 1.5 8z"/></svg>
-    </button>
     </div>
     <div class="settings">
     <label class="field fps" :title="t('animation.fpsTitle')">
@@ -144,12 +141,26 @@ const setFps = (event) => {
       {{ t('animation.holdUnit') }}
     </label>
     <span v-if="full" class="full">{{ full }}</span>
+    <!-- Ghost, with its strength in a menu beside it that opens while it's on: a button's room. -->
+    <span class="ghost-group">
     <button class="ghost" :class="{ active: workspace.ghost }" :aria-label="t('animation.ghost')" :aria-pressed="workspace.ghost" :title="t('animation.ghostTitle')" @click="workspace.ghost = !workspace.ghost">
       <svg viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
         <path d="M8 1.5C5 1.5 3 3.9 3 7v7.5l1.67-1.25 1.66 1.25L8 13.25l1.67 1.25 1.66-1.25L13 14.5V7c0-3.1-2-5.5-5-5.5zM6.25 5.5a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zm3.5 0a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2z"/>
       </svg>
     </button>
-    <input v-model.number="workspace.ghostStrength" class="strength" type="range" :aria-label="t('animation.ghostStrength')" :title="t('animation.ghostStrengthTitle', { percent: workspace.ghostStrength })" min="0" max="100" step="1" :disabled="!workspace.ghost" @pointerup="$event.target.blur()">
+    <DropdownMenu class="strength-menu" :label="t('animation.ghostStrengthTitle', { percent: workspace.ghostStrength })" :trigger-label="t('animation.ghostStrength')" up :close-on-select="false" :disabled="!workspace.ghost">
+      <template #trigger>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5l5 6H3z"/></svg>
+      </template>
+      <label class="strength">
+        <input v-model.number="workspace.ghostStrength" type="range" :aria-label="t('animation.ghostStrength')" min="0" max="100" step="1" @pointerup="$event.target.blur()">
+        <output>{{ workspace.ghostStrength }}%</output>
+      </label>
+    </DropdownMenu>
+    </span>
+    <button v-if="workspace.editorTab === 'vector'" class="keys" :class="{ active: workspace.keysOpen }" :aria-label="t('keysPanel.button')" :aria-pressed="workspace.keysOpen" :title="t('keysPanel.buttonTitle')" @click="workspace.keysOpen = !workspace.keysOpen">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14.5 8 8 14.5 1.5 8z"/></svg>
+    </button>
     </div>
   </div>
 </template>
@@ -184,9 +195,6 @@ div.settings {
 div.settings > * {
   flex-shrink: 0;
   white-space: nowrap;
-}
-div.settings > input.strength {
-  flex-shrink: 1;
 }
 div.settings:has(span.full) {
   flex-wrap: wrap;
@@ -316,12 +324,45 @@ label.field input {
   padding: 2px 4px;
 }
 
-input.strength {
-  flex: 1 1 72px;
-  width: 72px;
-  min-width: 20px;
+span.ghost-group {
+  display: flex;
+}
+span.ghost-group button.ghost { /* joined to its strength's menu */
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+span.ghost-group :deep(.dropdown-trigger) {
+  height: 26px;
+  padding: 3px 6px;
+  border-left: none;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+span.ghost-group :deep(.dropdown-trigger) > svg {
+  width: 8px;
+  height: 8px;
+}
+span.ghost-group :deep(.dropdown-trigger:disabled) {
+  opacity: 0.4;
+  cursor: default;
+}
+label.strength {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+label.strength input {
+  width: 140px;
   margin: 0;
   accent-color: var(--accent);
+}
+label.strength output {
+  min-width: 34px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 span.full {
@@ -389,13 +430,11 @@ button.ghost.active svg, button.keys.active svg {
   div.playback {
     margin-right: 0;
   }
-  input.strength {
-    flex: 0 1 80px;
-    max-width: 80px;
-    min-width: 36px;
-  }
   button.step { /* for a finger */
     width: 32px;
+  }
+  span.ghost-group :deep(.dropdown-trigger) { /* for a finger */
+    padding: 3px 8px;
   }
   output.indicator {
     min-width: 44px;
@@ -417,6 +456,20 @@ button.ghost.active svg, button.keys.active svg {
   span.full {
     flex-basis: 100%;
     order: 1;
+  }
+}
+
+/* Phones under 390px (the bar's padding aside): the second line's buttons and gaps a little tighter, so Keys still fits
+   beside Ghost. */
+@container animation-bar (max-width: 369px) {
+  div.animation-bar, div.playback, div.settings {
+    column-gap: 4px;
+  }
+  button.ghost, button.keys {
+    padding: 3px 5px;
+  }
+  span.ghost-group :deep(.dropdown-trigger) {
+    padding: 3px 6px;
   }
 }
 
