@@ -1,6 +1,7 @@
 // Reading an art file into cells: encoding, width and wrapping, controls, escape sequences, colors and limits.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { ART_EXTENSIONS, isArtFile, readArtFile } from '../../src/lib/ArtFile.js';
 
 const cp = (text) => Uint8Array.from(text, (c) => c.charCodeAt(0));
@@ -71,6 +72,20 @@ test('writing the last column waits to wrap, so an 80-column line then CR LF is 
   assert.equal(moved.rows, 1);
   assert.equal(at(moved, 78).char, 'B');
   assert.equal(at(moved, 79).char, 'A');
+});
+
+test('a move right while waiting to wrap starts on the next line, as DOS art drawn past the edge expects', () => {
+  const art = read('A'.repeat(80) + '\x1b[5CB'); // the row after a full one, indented by a move (VD-HUMA.ANS)
+  assert.equal(art.rows, 2);
+  assert.equal(at(art, 79).char, 'A');
+  assert.equal(at(art, 5, 1).char, 'B');
+  assert.equal(at(art, 4, 1).char, ' ');
+
+  // A report's rows: line 16 is 159 columns, its second row indented by a move right from the edge (VD-HUMA.ANS, 1995).
+  const report = readArtFile(new Uint8Array(readFileSync(new URL('../fixtures/ansi/past-the-edge.ans', import.meta.url))), 'past-the-edge.ans');
+  assert.equal(report.rows, 18);
+  assert.equal(text(report, 15), '    ░▓▓▓    ░▐▓▓▓▌   ▓▓▓    ░▐▓▓▓▌  ▓▓▓    ░▐▓▓▓▌   ▓▓▓    ░▐▓▓▓▌ ░▓▓▓    ░▐▓▓▓▌');
+  assert.equal(text(report, 16), '     █▓█▄■  ▄▓█▓▀    █▓█▄■  ▄▓█▓▀   █▓█▄■  ▄▓█▓▀    █▓█▄■  ▄▓█▓▀   █▓█▄■  ▄▓█▓▀ ');
 });
 
 test('a wide character that does not fit in the last column wraps first', () => {

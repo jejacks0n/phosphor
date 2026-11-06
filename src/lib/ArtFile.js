@@ -149,7 +149,8 @@ export function readArtFile(bytes, name) {
     switch (final) {
       case 'A': row = Math.max(0, row - n); pending = false; break;
       case 'B': row += n; pending = false; break;
-      case 'C': col = clampCol(col + n); pending = false; break;
+      // DOS wrapped as the last column was written, so art that runs past the edge moves right from the next line's start.
+      case 'C': if (pending) { col = 0; row++; } col = clampCol(col + n); pending = false; break;
       case 'D': col = clampCol(col - n); pending = false; break;
       case 'H': case 'f': row = (params[0] || 1) - 1; col = clampCol((params[1] || 1) - 1); pending = false; break;
       case 's': saved = [col, row]; break;

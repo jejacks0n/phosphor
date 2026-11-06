@@ -1,0 +1,2 @@
+# Art files are bytes: their CR LF line ends are part of what a reader is tested on.
+*.ans -text
