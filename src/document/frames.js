@@ -9,15 +9,16 @@
  * Frame = { id, kind, hold, changes, tweens, motions, parts, ledger, drawn, modes, resolved, passes, built }: hold is in
  * seconds (0 is one tick). The rest belong to the store: the frame's undo while it's not showing, the cells drawn over
  * on it (for the ghost: by stroke while undo can take one back, then KEPT), the mode each edit drew in (modes), and
- * what's cached of it (passes: what it hands the frame after). tweens maps a shape key to the easing of
- * the tween that shape starts on this frame, or is null (tweens.js). parts maps a shape key to the Set of its parts
+ * what's cached of it (passes: what it hands the frame after). tweens maps a shape key to a Map of the parts it sets
+ * there to the easing of each one's tween from there, or is null (tweens.js); motions, a shape key to how its
+ * Transform's tween from there moves, or is null. parts maps a shape key to the Set of its parts
  * (parts.js) the frame sets, when that's not all of them, or is null; a frame's changes still hold the whole shape, as
  * the frame shows it.
  */
 import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
 import { isShape, isShapeKey, sameShape, shapeFromStranger, isGoodShapeKey, MOST_SHAPES } from './shapes.js';
-import { EASINGS, MOTIONS, lifeAt, shapeAt } from './tweens.js';
+import { EASINGS, MOTIONS, lifeAt, setPartsAt, shapeAt, strayEasings } from './tweens.js';
 import { ALL_PARTS, PARTS, samePart, withParts } from './parts.js';
 import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf, maxFramesFor } from '../lib/Cells.js';
 
@@ -121,7 +122,7 @@ export function sameChanges(a, b) {
 // The frame after a deleted one, so the rest of the movie looks the same: a Blank takes in what it inherited
 // from the deleted frame, and the deleted frame's kind when that was what cut it off from the frames before; the
 // tweens of the shapes it takes in, which start there now; and of a shape both set parts of, the parts the deleted
-// frame set that it didn't.
+// frame set that it didn't, with their easings (and the Transform's motion, if that's one of them).
 export function foldDeleted(deleted, next) {
   if (next.kind !== 'blank') return { kind: next.kind, changes: next.changes, tweens: next.tweens, motions: next.motions, parts: next.parts };
   const takeIn = (name) => {
@@ -129,7 +130,7 @@ export function foldDeleted(deleted, next) {
     for (const [key, value] of next[name] ?? []) map.set(key, value);
     return map.size ? map : null;
   };
-  const tweens = takeIn('tweens') ?? new Map(), motions = takeIn('motions');
+  const tweens = takeIn('tweens') ?? new Map(), motions = takeIn('motions') ?? new Map();
   // The next frame never showed the deleted one's staying cells: what was under them, which comes to it as before.
   const changes = new Map([...[...deleted.changes].filter(([, state]) => !state.stays), ...next.changes]);
   const parts = new Map([...(deleted.parts ?? [])].filter(([key]) => !next.changes.has(key)));
@@ -143,8 +144,17 @@ export function foldDeleted(deleted, next) {
     const theirs = [...(deleted.parts?.get(key) ?? ALL_PARTS)].filter((name) => !own.has(name)), both = new Set([...own, ...theirs]);
     changes.set(key, cellState(withParts(cell, was, theirs), 0, 0));
     if (both.size < PARTS.length) parts.set(key, both);
+    const eases = new Map(PARTS.flatMap((name) => {
+      const easing = (own.has(name) ? next : theirs.includes(name) ? deleted : null)?.tweens?.get(key)?.get(name);
+      return easing ? [[name, easing]] : [];
+    }));
+    if (eases.size) tweens.set(key, eases);
+    else tweens.delete(key);
+    const motion = (own.has('transform') ? next : deleted).motions?.get(key);
+    if (motion && eases.has('transform')) motions.set(key, motion);
+    else motions.delete(key);
   }
-  return { kind: deleted.kind, changes, tweens: tweens.size ? tweens : null, motions, parts: parts.size ? parts : null };
+  return { kind: deleted.kind, changes, tweens: tweens.size ? tweens : null, motions: motions.size ? motions : null, parts: parts.size ? parts : null };
 }
 
 // A resolved frame's paint as an image cols x rows, a pixel a grid pixel (PaintLayer.loadGrid takes it).
@@ -170,15 +180,18 @@ export function paintImage(resolved, cols, rows) {
 // Frames as a file holds them: an entry is [key, cell, top, bottom]. drawn: the cells drawn over that changes doesn't
 // hold, if any (what changes holds was drawn, or the frame wouldn't own it). shapes: the frame's shape changes,
 // [key, shape | null], in a field of their own so that a copy of Phosphor from before shapes still reads changes.
-// tweens: [key, easing] for the tweens starting on the frame, of shapes it has; a copy from before tweens shows the key
-// frames only. motions: [key, motion] for those of them that don't move smoothly (MOTIONS). A shape is saved as the frame shows it, so a copy from before parts shows each key frame right; parts:
+// eases: [key, [[part, easing], …]] for the parts' tweens starting on the frame, of shapes it has; a copy from before
+// tweens shows the key frames only, and one from before each part had its own (which wrote tweens, [key, easing] for
+// the whole shape) reads none. motions: [key, motion] for the Transform tweens of them that don't move smoothly
+// (MOTIONS). A shape is saved as the frame shows it, so a copy from before parts shows each key frame right; parts:
 // [key, [part, …]] for the shapes the frame sets only some of, on every frame with shapes (a frame with shapes and no
 // parts was saved before them).
 export const serializeFrames = (frames) => frames.map((frame, i) => {
   const { kind, hold, changes } = frame, drawn = [...drawnKeys(frame)].filter((key) => !changes.has(key));
   const all = [...changes], shapes = all.filter(([key]) => isShapeKey(key));
-  const tweens = [...(frame.tweens ?? [])].filter(([key]) => changes.get(key)?.cell);
-  const motions = [...(frame.motions ?? [])].filter(([key, motion]) => frame.tweens?.has(key) && changes.get(key)?.cell && motion !== 'smooth');
+  const eases = [...(frame.tweens ?? [])].filter(([key]) => changes.get(key)?.cell)
+    .map(([key, map]) => [key, PARTS.filter((name) => map.has(name)).map((name) => [name, map.get(name)])]);
+  const motions = [...(frame.motions ?? [])].filter(([key, motion]) => frame.tweens?.get(key)?.has('transform') && changes.get(key)?.cell && motion !== 'smooth');
   const parts = [...(frame.parts ?? [])].filter(([key, set]) => changes.get(key)?.cell && set.size < PARTS.length)
     .map(([key, set]) => [key, PARTS.filter((name) => set.has(name))]);
   const stays = all.filter(([, state]) => state.stays).map(([key]) => key);
@@ -189,7 +202,7 @@ export const serializeFrames = (frames) => frames.map((frame, i) => {
     ...(drawn.length && { drawn }),
     ...(stays.length && { stays }),
     ...(shapes.length && { shapes: shapes.map(([key, { cell }]) => [key, cell && shapeAt(frames, key, i)]), parts }),
-    ...(tweens.length && { tweens }),
+    ...(eases.length && { eases }),
     ...(motions.length && { motions }),
   };
 });
@@ -228,11 +241,25 @@ function readShapes(entries, changes) {
   return true;
 }
 
-// A frame's tweens, of the shapes it has, or null: one that can't be read (another copy's easing, say) is left out.
+// A frame's tweens from a file before each part had its own, of the shapes it has, key to easing, or null: one that
+// can't be read (another copy's easing, say) is left out.
 function readTweens(entries, changes) {
   if (!Array.isArray(entries)) return null;
   const good = ([key, easing]) => isGoodShapeKey(key) && !!changes.get(key)?.cell && EASINGS.includes(easing);
   const tweens = new Map(entries.slice(0, MOST_SHAPES).filter((entry) => Array.isArray(entry) && good(entry)));
+  return tweens.size ? tweens : null;
+}
+
+// A frame's easings, of the shapes it has, key to a Map of part to easing, or null: what can't be read (a part or
+// easing of another copy's, say) is left out.
+function readEases(entries, changes) {
+  if (!Array.isArray(entries)) return null;
+  const tweens = new Map();
+  for (const entry of entries.slice(0, MOST_SHAPES)) {
+    if (!Array.isArray(entry) || entry.length !== 2 || !isGoodShapeKey(entry[0]) || !changes.get(entry[0])?.cell || !Array.isArray(entry[1])) continue;
+    const eases = new Map(entry[1].slice(0, PARTS.length).filter((pair) => Array.isArray(pair) && PARTS.includes(pair[0]) && EASINGS.includes(pair[1])));
+    if (eases.size) tweens.set(entry[0], eases);
+  }
   return tweens.size ? tweens : null;
 }
 
@@ -256,6 +283,32 @@ function readParts(entries, changes) {
     parts.set(key, new Set(names));
   }
   return parts.size ? parts : null;
+}
+
+// A frame's tweens (as frame.tweens) with key's easings set to eases, part to easing (none: the key goes), or null.
+export function withEases(tweens, key, eases) {
+  const next = new Map(tweens ?? []);
+  if (eases.size) next.set(key, eases);
+  else next.delete(key);
+  return next.size ? next : null;
+}
+
+// Every easing no tween uses (strayEasings) goes, and every motion whose Transform isn't eased: in new Maps, so what
+// history holds of the frames stays as it was.
+export function dropStrays(frames) {
+  const keys = new Set(frames.flatMap((frame) => [...(frame.tweens?.keys() ?? [])]));
+  for (const key of keys) {
+    for (const { at, part } of strayEasings(frames, key)) {
+      const frame = frames[at], eases = new Map(frame.tweens.get(key));
+      eases.delete(part);
+      frame.tweens = withEases(frame.tweens, key, eases);
+    }
+  }
+  for (const frame of frames) {
+    if (![...(frame.motions ?? [])].some(([key]) => !frame.tweens?.get(key)?.has('transform'))) continue;
+    const motions = new Map([...frame.motions].filter(([key]) => frame.tweens?.get(key)?.has('transform')));
+    frame.motions = motions.size ? motions : null;
+  }
 }
 
 // The parts frames saved before parts set (frames at indices, of frames): on a Blank key frame that isn't its shape's
@@ -286,10 +339,10 @@ export function deserializeFrames(json, cols, rows) {
   if (!Number.isInteger(frame) || frame < 0 || frame >= frames.length) return null;
   if (!Number.isInteger(fps) || fps < 1 || fps > 60) return null;
   if (!(cols * charRowsOf(rows) <= MAX_ANIMATION_CELLS) || frames.length > maxFramesFor(cols * charRowsOf(rows))) return null;
-  const read = [], old = [];
+  const read = [], old = [], spans = [];
   let shown = new Set(); // the shapes a frame shows: Blank frames carry them on, so each frame is counted whole
   for (const entry of frames) {
-    const { kind, hold, changes, drawn, stays, shapes, tweens, motions, parts } = entry ?? {};
+    const { kind, hold, changes, drawn, stays, shapes, eases, tweens, motions, parts } = entry ?? {};
     if (!FRAME_KINDS.includes(kind) || !Number.isFinite(hold) || hold < 0 || hold > 60) return null;
     const map = readChanges(changes);
     if (!map || !readShapes(shapes, map)) return null;
@@ -303,13 +356,23 @@ export function deserializeFrames(json, cols, rows) {
     const next = newFrame(kind, map);
     if (staying.length) withModes(next).get(BASE).keys = new Set(staying);
     next.hold = hold;
-    next.tweens = readTweens(tweens, map);
+    next.tweens = eases === undefined ? readTweens(tweens, map) : readEases(eases, map);
     next.motions = readMotions(motions, next.tweens, json.motion);
     next.parts = readParts(parts, map);
     if (parts === undefined && shapes?.length) old.push(read.length);
+    if (eases === undefined && next.tweens) spans.push(read.length);
     if (drawn?.length) next.drawn = new Map([[KEPT, new Set(drawn)]]);
     read.push(next);
   }
   inferParts(read, old);
+  // A span's easing, from before each part had its own, goes to every part its first frame sets; its motion stays on
+  // the Transform, if that's one of them (dropStrays).
+  for (const i of spans) {
+    read[i].tweens = new Map([...read[i].tweens].map(([key, easing]) => {
+      const set = setPartsAt(read, key, i);
+      return [key, new Map(PARTS.filter((name) => set.has(name)).map((name) => [name, easing]))];
+    }));
+  }
+  dropStrays(read);
   return { frames: read, frame, fps };
 }

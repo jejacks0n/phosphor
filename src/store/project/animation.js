@@ -4,12 +4,12 @@
 // frames. Owns _arrived (what the frame held on arrival), _noted (what noteFrame last saw) and _builder (what
 // builds frames for playing, and what it was prepared for).
 import FrameBuilder from '@/document/FrameBuilder.js';
-import { BASE, EMPTY_STATE, cellState, foldDeleted, frameDiff, isEmptyState, newFrame, paintImage, passedOn, resolveOver, sameChanges, sameState, drawnKeys, staysAt } from '@/document/frames.js';
+import { BASE, EMPTY_STATE, cellState, dropStrays, foldDeleted, frameDiff, isEmptyState, newFrame, paintImage, passedOn, resolveOver, sameChanges, sameState, drawnKeys, staysAt, withEases } from '@/document/frames.js';
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { isShapeKey, sameShape } from '@/document/shapes.js';
-import { MOTIONS, shapeAt, spanAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
+import { MOTIONS, lifeAt, setPartsAt, shapeAt, spanAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
 import { PARTS, changedParts, samePart } from '@/document/parts.js';
 import { newLedger } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
@@ -97,8 +97,9 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
 // null. inherits(key, shape): showing shape there isn't the frame's own: it's what's inherited, though just where a
 // tween puts it is the frame's own if the frame made it a key itself, other than by splitting that tween (splits). So
 // visiting a frame between key frames doesn't make it a key frame, and undoing the edit that split a tween gives the
-// shape back to it. tweened: the tweens across the frame, key to { shape, easing }. unsetOf(key, shape): what the
-// frame would show of the shape as a key frame for it (holding shape) that sets none of its parts.
+// shape back to it. tweened: the tweens across the frame, key to { shape, parts } (tweenedAt). unsetOf(key, shape): what
+// the frame would show of the shape as a key frame for it (holding shape) that sets none of its parts, so none of its
+// own easings count.
 // motions (a frame's, shape key to motion, or null) with key's set to motion; smooth isn't kept.
 function withMotion(motions, key, motion) {
   const next = new Map(motions ?? []);
@@ -115,13 +116,8 @@ function inheritance(project) {
   const inherits = (key, shape) => sameShape(shape ?? undefined, shapeOf(key) ?? undefined)
     && (!tweened.has(key) || !frame.changes.has(key) || !!frame.splits?.has(key));
   const unsetOf = (key, shape) => {
-    const none = project.frames.slice(), split = !frame.changes.has(key) && tweened.get(key); // as note will split it
-    none[at] = {
-      ...frame,
-      changes: new Map(frame.changes).set(key, cellState(shape, 0, 0)),
-      parts: new Map([...(frame.parts ?? []), [key, new Set()]]),
-      ...(split && { tweens: new Map([...(frame.tweens ?? []), [key, split.easing]]), motions: withMotion(frame.motions, key, split.motion) }),
-    };
+    const none = project.frames.slice();
+    none[at] = { ...frame, changes: new Map(frame.changes).set(key, cellState(shape, 0, 0)), parts: new Map([...(frame.parts ?? []), [key, new Set()]]) };
     return shapeAt(none, key, at);
   };
   return { shapeOf, unsetOf, inherits, tweened };
@@ -210,21 +206,31 @@ function note(project) {
   if (sameChanges(changes, frame.changes) && sameParts(parts, frame.parts)) return reshow(project);
   // A shape the frame stops having can leave later key frames with nothing to carry from: they keep how they look.
   if ([...frame.changes].some(([key, { cell }]) => isShapeKey(key) && cell && !changes.get(key)?.cell)) keepShown(project);
-  // A shape changed on a frame between its key frames makes this one a key frame: the tween splits, both halves eased
-  // and moving alike (splits: the keys made so). A shape this frame starts changing anywhere else starts with no tween here.
-  for (const key of changes.keys()) {
-    if (!isShapeKey(key) || frame.changes.has(key)) continue;
-    const split = tweened.get(key), tweens = new Map(frame.tweens ?? []);
-    if (split) tweens.set(key, split.easing);
-    else tweens.delete(key);
-    frame.tweens = tweens.size ? tweens : null;
-    frame.motions = withMotion(frame.motions, key, split?.motion);
-    frame.splits = new Set(frame.splits ?? []);
-    frame.splits[split ? 'add' : 'delete'](key);
-  }
+  const setBefore = (key) => (frame.changes.get(key)?.cell ? setPartsAt(project.frames, key, project.frame) : new Set());
+  const before = new Map([...changes].filter(([key, { cell }]) => isShapeKey(key) && cell).map(([key]) => [key, setBefore(key)]));
   const reach = tweenReach(project.frames, project.frame); // the frames between that ended here, before and after
   frame.changes = changes;
   frame.parts = parts;
+  // A part changed on a frame inside its tween makes this frame its key: the tween splits, both halves eased and moving
+  // alike (splits: the shapes this happened to). A part this frame starts setting anywhere else starts with no tween here.
+  for (const [key, was] of before) {
+    const now = setPartsAt(project.frames, key, project.frame), across = tweened.get(key)?.parts;
+    const eases = new Map([...(frame.tweens?.get(key) ?? [])].filter(([name]) => now.has(name)));
+    let motion = frame.motions?.get(key), split = false;
+    for (const name of now) {
+      if (was.has(name)) continue;
+      const tween = across?.get(name);
+      if (tween) eases.set(name, tween.easing);
+      else eases.delete(name);
+      if (name === 'transform') motion = tween?.motion;
+      split ||= !!tween;
+    }
+    frame.tweens = withEases(frame.tweens, key, eases);
+    frame.motions = withMotion(frame.motions, key, eases.has('transform') && motion);
+    if (!split && was.size) continue;
+    frame.splits = new Set(frame.splits ?? []);
+    frame.splits[split ? 'add' : 'delete'](key);
+  }
   project.staleFrames(Math.min(reach, tweenReach(project.frames, project.frame)));
   project.staleFrames(project.frame);
   project.frames = [...project.frames]; // the bar's marks, and hasEdits
@@ -285,21 +291,21 @@ function putFrames(project, { list, states, showing }) {
   arrive(project, list.indexOf(showing), leaving);
 }
 
-// The tween each shape (by key) is in, or starts, on the frame showing, changed (change(frame it starts from, key)) where
-// differs(span) says it isn't as asked: one undo step. The first shape's tween, and every other's between the same key
-// frames.
+// The tween each shape (by key) is in, or starts, on the frame showing, changed (change(frame it starts from, key, its
+// index)) where differs(key, span) says it isn't as asked: one undo step. The first shape's tween, and every other's
+// between the same key frames.
 function changeTweens(project, keys, differs, change) {
   if (!project.image) return;
   settleFrame(project);
   const first = keys.length ? spanAt(project.frames, keys[0], project.frame) : null;
   if (!first) return;
   const spans = keys.map((key) => [key, spanAt(project.frames, key, project.frame)])
-    .filter(([, span]) => span && span.from === first.from && span.to === first.to && differs(span));
+    .filter(([key, span]) => span && span.from === first.from && span.to === first.to && differs(key, span));
   if (!spans.length) return;
   frameStep(project, () => {
     for (const [key, { from }] of spans) {
       const reach = tweenReach(project.frames, from + 1); // a part fading across this span, before and after
-      change(project.frames[from], key);
+      change(project.frames[from], key, from);
       project.staleFrames(Math.min(from, reach, tweenReach(project.frames, from + 1)));
       project.staleFrames(from);
     }
@@ -308,10 +314,18 @@ function changeTweens(project, keys, differs, change) {
   });
 }
 
-// One undo step around a change to the frames: change makes the new list and says which frame shows.
+// The parts a shape's key frame `from` sets that have a key after it to tween to (the Tween menu's, as one for them all).
+function leaving(frames, key, from) {
+  const life = lifeAt(frames, key, from), sets = life.map((k) => setPartsAt(frames, key, k, life)), j = life.indexOf(from);
+  return PARTS.filter((name) => sets[j].has(name) && sets.slice(j + 1).some((set) => set.has(name)));
+}
+
+// One undo step around a change to the frames: change makes the new list and says which frame shows. Easings it leaves
+// no tween for go (dropStrays).
 function frameStep(project, change) {
   const before = framesNow(project);
   const showing = change();
+  dropStrays(project.frames);
   const after = { ...framesNow(project), showing };
   project.pushEdit({ frameOp: true, undo: () => putFrames(project, before), redo: () => putFrames(project, after), bytes: 0 });
   arrive(project, project.frames.indexOf(showing), before.showing);
@@ -565,23 +579,27 @@ export const animationActions = {
     });
   },
 
-  // The tween each shape (by key) is in, or starts, on the frame showing gets an easing, or with null none: one undo
-  // step. A shape with no later key frame to tween to is left as it is.
+  // The tween each shape (by key) is in, or starts, on the frame showing gets an easing, or with null none, on every
+  // part its first frame sets that has a key after it (leaving): one undo step. A shape with no later key frame to tween
+  // to is left as it is.
   setTween(keys, easing) {
-    changeTweens(this, keys, (span) => span.easing !== easing, (frame, key) => {
-      const tweens = new Map(frame.tweens ?? []);
-      if (easing) tweens.set(key, easing);
-      else tweens.delete(key);
-      frame.tweens = tweens.size ? tweens : null;
-      if (!easing) frame.motions = withMotion(frame.motions, key, null);
+    const differs = (key, { from }) => leaving(this.frames, key, from).some((name) => (this.frames[from].tweens?.get(key)?.get(name) ?? null) !== easing);
+    changeTweens(this, keys, differs, (frame, key, from) => {
+      const eases = new Map(frame.tweens?.get(key) ?? []);
+      for (const name of leaving(this.frames, key, from)) {
+        if (easing) eases.set(name, easing);
+        else eases.delete(name);
+      }
+      frame.tweens = withEases(frame.tweens, key, eases);
+      if (!eases.has('transform')) frame.motions = withMotion(frame.motions, key, null);
     });
   },
 
-  // How the tween each shape (by key) is in, or starts, on the frame showing moves it (MOTIONS): one undo step. Only a
-  // tween has a motion.
+  // How the tween each shape (by key) is in, or starts, on the frame showing moves it (MOTIONS): one undo step. Only an
+  // eased Transform has a motion.
   setTweenMotion(keys, motion) {
     if (!MOTIONS.includes(motion)) return;
-    changeTweens(this, keys, (span) => !!span.easing && span.motion !== motion, (frame, key) => {
+    changeTweens(this, keys, (key, span) => !!this.frames[span.from].tweens?.get(key)?.has('transform') && span.motion !== motion, (frame, key) => {
       frame.motions = withMotion(frame.motions, key, motion);
     });
   },
@@ -611,10 +629,14 @@ export const animationActions = {
   },
 
   // A frame's kind, changes and parts set from outside (a Clear, and its undo), and shown as the frame now resolves.
-  setFrameState({ kind, changes, parts = null }) {
+  // Easings this leaves no tween for go (dropStrays), or with eases ([frame, tweens, motions] for every frame, from
+  // before) they come back.
+  setFrameState({ kind, changes, parts = null, eases = null }) {
     keepShown(this);
     const frame = this.currentFrame, reach = tweenReach(this.frames, this.frame); // the frames between of a tween ending here
     Object.assign(frame, { kind, changes, parts });
+    if (eases) for (const [each, tweens, motions] of eases) Object.assign(each, { tweens, motions });
+    else dropStrays(this.frames);
     this.staleFrames(Math.min(reach, tweenReach(this.frames, this.frame)));
     this.staleFrames(this.frame);
     this.frames = [...this.frames];

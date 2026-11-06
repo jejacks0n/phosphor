@@ -3,7 +3,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { isShapeKey, rectShape, translation, transformed, rotation, withShape } from '@/document/shapes.js';
-import { ease, spanAt } from '@/document/tweens.js';
+import { ease, spanAt, strayEasings, tweenPart } from '@/document/tweens.js';
 import { writeProject } from '@/document/projectIO.js';
 
 async function animated() {
@@ -56,9 +56,52 @@ test('moving the shape on an in-between frame makes it a key, and both halves ke
   moveBy(project, key, 10, 0);
   project.showFrame(0);
   expect(project.frames[3].changes.has(key)).toBe(true);
-  expect(project.frames[3].tweens.get(key)).toBe('easeIn');
+  expect(project.frames[3].tweens.get(key)).toEqual(new Map([['transform', 'easeIn']]));
   project.showFrame(2);
   expect(project.shapes.get(key).m[4]).toBeCloseTo(10 * ease('easeIn', 2 / 3), 3);
+});
+
+test('a Node edit mid-tween keys only the outline, and the move runs on without stopping', async () => {
+  const { project } = await animated();
+  const key = project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }));
+  for (let i = 0; i < 11; i++) project.addFrame('blank');
+  moveBy(project, key, 22, 0);
+  project.showFrame(0);
+  project.setTween([key], 'easeInOut');
+  const xs = () => project.frames.map((_, i) => project.resolvedOf(i).get(key).cell.m[4]);
+  const want = Array.from({ length: 12 }, (_, i) => 22 * ease('easeInOut', i / 11));
+  xs().forEach((x, i) => expect(x).toBeCloseTo(want[i], 2));
+  project.showFrame(5);
+  const shape = project.shapes.get(key), points = shape.points.map((p, j) => (j ? p : [p[0] - 1, ...p.slice(1)]));
+  project.updateShapes([[key, withShape(shape, { points })]]);
+  project.showFrame(0);
+  expect([...project.frames[5].parts.get(key)]).toEqual(['outline']);
+  xs().forEach((x, i) => expect(x).toBeCloseTo(want[i], 2)); // was 0, 0.32, 2.56, 7.44, 9.68, 10, 10.22…
+});
+
+test("keying a second part on a frame that's already a key for another part splits that part's tween too", async () => {
+  const { project } = await animated();
+  const key = project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }));
+  for (let i = 0; i < 12; i++) project.addFrame('blank');
+  project.updateShapes([[key, withShape(transformed(project.shapes.get(key), translation(0, 24)), { fill: '#0000ff' })]]);
+  project.showFrame(0);
+  project.setTween([key], 'linear');
+  const red = project.frames[0].changes.get(key).cell, blue = project.frames[12].changes.get(key).cell;
+  const fill = (i) => project.resolvedOf(i).get(key).cell.fill;
+  project.showFrame(6);
+  moveBy(project, key, 4, 0);
+  project.noteFrame();
+  expect([...project.frames[6].parts.get(key)]).toEqual(['transform']);
+  project.updateShapes([[key, withShape(project.shapes.get(key), { fill: '#00ff00' })]]);
+  project.showFrame(0);
+  expect(project.frames[6].tweens.get(key)).toEqual(new Map([['transform', 'linear'], ['fill', 'linear']]));
+  const green = project.frames[6].changes.get(key).cell;
+  expect(fill(3)).toBe(tweenPart('fill', red, green, 0.5).fill);
+  expect(fill(9)).toBe(tweenPart('fill', green, blue, 0.5).fill);
+  project.undo();
+  project.showFrame(0);
+  expect([...project.frames[6].parts.get(key)]).toEqual(['transform']);
+  expect(fill(9)).toBe(tweenPart('fill', red, blue, 0.75).fill);
 });
 
 test('undoing an edit on an in-between frame gives it back to the tween', async () => {
@@ -192,7 +235,7 @@ test('a tween given up leaves no easing behind to come back with the next key', 
   project.undo();
   project.showFrame(0);
   expect(project.frames[3].changes.has(key)).toBe(false);
-  expect(project.frames[3].tweens.get(key)).toBe('easeIn'); // left from the key the undo took back
+  expect(project.frames[3].tweens.get(key).get('transform')).toBe('easeIn'); // left from the key the undo took back
   project.setTween([key], null);
   project.showFrame(3);
   moveBy(project, key, 10, 0); // a key again, in no tween now
@@ -224,7 +267,7 @@ test("the Tween menu's choice goes to the selected shapes on the tween it shows,
   project.showFrame(3);
   expect(project.frames[7].changes.has(cloud)).toBe(true);
   project.setTween([ball, cloud], 'linear');
-  expect(project.frames[0].tweens.get(ball)).toBe('linear');
+  expect(project.frames[0].tweens.get(ball).get('transform')).toBe('linear');
   expect(project.frames[0].tweens.has(cloud)).toBe(false);
 });
 
@@ -339,6 +382,8 @@ async function tweenFuzz(seed, steps = 40) {
     log.push(`${name}@${project.frame}/${project.frames.length}${depth > was ? '+' : ''}`);
     for (const frame of project.frames) frame.resolved = null;
     if (movie(project) !== now) return { seed, log, problem: `step ${i} ${name}: a frame's cached look is stale` };
+    const strays = keys.flatMap((key) => strayEasings(project.frames, key));
+    if (strays.length) return { seed, log, problem: `step ${i} ${name}: easings no tween uses`, strays };
     if (depth === was + 1) stack.push(now);
     else if (depth === was) stack[stack.length - 1] = now;
     else return { seed, log, problem: `step ${i} ${name}: ${depth - was} steps` };

@@ -94,8 +94,8 @@ test('splitting a tween sets only what was changed, and the frame shows what it 
   project.showFrame(3);
   moveBy(project, key, 1, 0);
   expect(partsOf(project, 3, key)).toEqual(['transform']);
-  expect(project.frames[3].tweens.get(key)).toBe('easeIn');
-  expect(project.frames[0].tweens.get(key)).toBe('easeIn');
+  expect(project.frames[3].tweens.get(key)).toEqual(new Map([['transform', 'easeIn']]));
+  expect(project.frames[0].tweens.get(key).get('transform')).toBe('easeIn');
   expect(project.shapes.get(key)).toEqual(shown(project, key, 3));
 });
 

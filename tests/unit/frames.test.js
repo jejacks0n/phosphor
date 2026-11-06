@@ -4,6 +4,7 @@ import { EMPTY_STATE, FRAME_KINDS, cellState, deserializeFrames, drawnKeys, fold
 import { MAX_CELLS, MAX_COLS, MAX_FRAMES, MAX_LINES } from '../../src/lib/Cells.js';
 import { rectShape, transformed, translation, withShape } from '../../src/document/shapes.js';
 import { shapeAt } from '../../src/document/tweens.js';
+import { PARTS } from '../../src/document/parts.js';
 
 const A = Object.freeze({ char: 'A' }), B = Object.freeze({ char: 'B' });
 const RED = 0xff0000ff, BLUE = 0x0000ffff;
@@ -15,6 +16,10 @@ function resolveAll(frames) {
   return out;
 }
 const blank = (entries = []) => newFrame('blank', new Map(entries));
+// A key frame's easings: every part's (or those named) easing so.
+const eased = (easing, parts = PARTS) => new Map(parts.map((part) => [part, easing]));
+// Frames saved as a copy from before each part had its own easing saved them: one easing a shape, its Transform's.
+const asOld = (saved) => saved.map(({ eases, ...frame }) => ({ ...frame, ...(eases && { tweens: eases.map(([key, pairs]) => [key, pairs[0][1]]) }) }));
 
 test('the kinds are blank, duplicate and wipe', () => {
   assert.deepEqual(FRAME_KINDS, ['blank', 'duplicate', 'wipe']);
@@ -239,38 +244,73 @@ describe('saving frames', () => {
 test("a deleted key frame's tweens fold into the Blank frame after it", () => {
   const shape = Object.freeze({ points: [] });
   const deleted = newFrame('blank', new Map([['v:a', cellState(shape, 0, 0)], ['v:c', cellState(shape, 0, 0)]]));
-  deleted.tweens = new Map([['v:a', 'easeIn'], ['v:b', 'easeOut'], ['v:c', 'linear']]);
+  deleted.tweens = new Map([['v:a', eased('easeIn')], ['v:b', eased('easeOut')], ['v:c', eased('linear')]]);
   const next = newFrame('blank', new Map([['v:b', cellState(shape, 0, 0)], ['v:c', cellState(shape, 0, 0)]]));
-  next.tweens = new Map([['v:b', 'linear']]);
+  next.tweens = new Map([['v:b', eased('linear')]]);
   // v:a goes on from the deleted frame; next's own shapes keep their own tweens, or none (v:c).
-  assert.deepEqual(foldDeleted(deleted, next).tweens, new Map([['v:a', 'easeIn'], ['v:b', 'linear']]));
+  assert.deepEqual(foldDeleted(deleted, next).tweens, new Map([['v:a', eased('easeIn')], ['v:b', eased('linear')]]));
   const wipe = newFrame('wipe');
-  wipe.tweens = new Map([['v:b', 'linear']]);
+  wipe.tweens = new Map([['v:b', eased('linear')]]);
   assert.equal(foldDeleted(deleted, wipe).tweens, wipe.tweens);
 });
 
-test("tweens are saved for the shapes a frame owns, and read back; what can't be read is left out", () => {
+test('foldDeleted merges tweens per part, and the motion follows the Transform it keeps', () => {
+  const deleted = newFrame('blank', new Map([['v:a', cellState(withShape(BALL, { fill: '#0000ff' }), 0, 0)]]));
+  deleted.parts = new Map([['v:a', new Set(['transform', 'fill'])]]);
+  deleted.tweens = new Map([['v:a', new Map([['transform', 'easeIn'], ['fill', 'easeOut']])]]);
+  deleted.motions = new Map([['v:a', 'cells']]);
+  const next = newFrame('blank', new Map([['v:a', cellState(BALL, 0, 0)]]));
+  next.parts = new Map([['v:a', new Set(['outline'])]]);
+  next.tweens = new Map([['v:a', new Map([['outline', 'linear'], ['fill', 'elastic']])]]); // the fill isn't next's
+  const folded = foldDeleted(deleted, next);
+  assert.deepEqual(folded.tweens.get('v:a'), new Map([['transform', 'easeIn'], ['outline', 'linear'], ['fill', 'easeOut']]));
+  assert.deepEqual(folded.motions, new Map([['v:a', 'cells']]));
+  next.parts = new Map([['v:a', new Set(['transform'])]]);
+  next.tweens = new Map([['v:a', new Map([['transform', 'linear']])]]);
+  next.motions = new Map([['v:a', 'half']]);
+  const theirs = foldDeleted(deleted, next);
+  assert.deepEqual(theirs.tweens.get('v:a'), new Map([['transform', 'linear'], ['fill', 'easeOut']]));
+  assert.deepEqual(theirs.motions, new Map([['v:a', 'half']]));
+  next.motions = null;
+  assert.equal(foldDeleted(deleted, next).motions, null);
+});
+
+test('eases round-trip, parts in order; a frame without the shape writes none', () => {
   const ball = rectShape(0, 0, 4, 4, { fill: '#ff0000' });
   const frames = Array.from({ length: 9 }, () => newFrame('blank'));
   frames[0].changes.set('v:a', cellState(ball, 0, 0));
-  frames[0].tweens = new Map([['v:a', 'easeIn']]);
+  frames[0].tweens = new Map([['v:a', new Map([['fill', 'easeOut'], ['transform', 'easeIn']])]]);
   frames[6].changes.set('v:a', cellState(transformed(ball, translation(0, 24)), 0, 0));
-  frames[3].tweens = new Map([['v:a', 'linear']]); // left from an edit undone: frame 3 doesn't own v:a
+  frames[3].tweens = new Map([['v:a', eased('linear')]]); // left from an edit undone: frame 3 doesn't own v:a
   const saved = serializeFrames(frames);
-  assert.deepEqual(saved[0].tweens, [['v:a', 'easeIn']]);
-  assert.ok(saved.slice(1).every((frame) => !('tweens' in frame)));
+  assert.deepEqual(saved[0].eases, [['v:a', [['transform', 'easeIn'], ['fill', 'easeOut']]]]);
+  assert.ok(saved.every((frame) => !('tweens' in frame)));
+  assert.ok(saved.slice(1).every((frame) => !('eases' in frame)));
   const read = (list) => deserializeFrames({ frames: list, frame: 0, fps: 8 }, 20, 20);
-  assert.deepEqual(read(saved).frames[0].tweens, new Map([['v:a', 'easeIn']]));
+  assert.deepEqual(read(saved).frames[0].tweens, new Map([['v:a', new Map([['transform', 'easeIn'], ['fill', 'easeOut']])]]));
   assert.ok(read(saved).frames.slice(1).every((frame) => frame.tweens === null));
-  const odd = structuredClone(saved);
-  odd[0].tweens = [['v:a', 'bounceOut'], ['notakey', 'linear'], ['v:zz', 'linear'], 'nonsense', ['v:a']];
-  odd[1].tweens = [['v:a', 'linear']]; // frame 1 doesn't own v:a
-  odd[2].tweens = 'nonsense';
-  const opened = read(odd);
-  assert.ok(opened);
-  assert.ok(opened.frames.every((frame) => frame.tweens === null));
-  const old = saved.map((frame) => Object.fromEntries(Object.entries(frame).filter(([name]) => name !== 'tweens')));
+  const old = saved.map((frame) => Object.fromEntries(Object.entries(frame).filter(([name]) => name !== 'eases')));
   assert.ok(read(old).frames.every((frame) => frame.tweens === null));
+});
+
+test("easings that can't be read are left out, and the file still opens", () => {
+  const ball = rectShape(0, 0, 4, 4, { fill: '#ff0000' });
+  const frames = Array.from({ length: 9 }, () => newFrame('blank'));
+  frames[0].changes.set('v:a', cellState(ball, 0, 0));
+  frames[6].changes.set('v:a', cellState(transformed(ball, translation(0, 24)), 0, 0));
+  const saved = serializeFrames(frames), read = (list) => deserializeFrames({ frames: list, frame: 0, fps: 8 }, 20, 20);
+  const odd = structuredClone(saved);
+  odd[0].eases = [['v:a', [['nose', 'linear'], ['fill', 'bounceOut'], 'nonsense', ['transform']]], ['notakey', [['fill', 'linear']]], ['v:zz', [['fill', 'linear']]], 'nonsense', ['v:a']];
+  odd[1].eases = [['v:a', [['fill', 'linear']]]]; // frame 1 doesn't own v:a
+  odd[2].eases = 'nonsense';
+  assert.ok(read(odd).frames.every((frame) => frame.tweens === null));
+  odd[0].eases = [['v:a', [['nose', 'linear'], ['fill', 'linear']]]];
+  assert.deepEqual(read(odd).frames[0].tweens, new Map([['v:a', new Map([['fill', 'linear']])]]));
+  const older = structuredClone(saved); // from before each part had its own
+  older[0].tweens = [['v:a', 'bounceOut'], ['notakey', 'linear'], ['v:zz', 'linear'], 'nonsense', ['v:a']];
+  older[1].tweens = [['v:a', 'linear']];
+  older[2].tweens = 'nonsense';
+  assert.ok(read(older).frames.every((frame) => frame.tweens === null));
 });
 
 // Parts: a key frame that sets only some of a shape keeps saying so, folded, saved and read.
@@ -324,11 +364,11 @@ test("parts that can't be read are left out, and the file still opens", () => {
 });
 
 test('a movie saved before parts reads as it looked, its key frames setting only what differs along them', () => {
-  const old = (frames) => serializeFrames(frames).map((frame) => Object.fromEntries(Object.entries(frame).filter(([name]) => name !== 'parts')));
+  const old = (frames) => asOld(serializeFrames(frames)).map((frame) => Object.fromEntries(Object.entries(frame).filter(([name]) => name !== 'parts')));
   const whole = (fills) => {
     const frames = ballFrames();
-    frames[0].tweens = new Map([['v:a', 'easeIn']]);
-    frames[6].tweens = new Map([['v:a', 'easeOut']]);
+    frames[0].tweens = new Map([['v:a', eased('easeIn')]]);
+    frames[6].tweens = new Map([['v:a', eased('easeOut')]]);
     fills.forEach((fill, j) => {
       const at = j * 6;
       frames[at].changes.set('v:a', cellState(withShape(frames[at].changes.get('v:a').cell, { fill }), 0, 0));
@@ -349,14 +389,14 @@ test('a movie saved before parts reads as it looked, its key frames setting only
 test('a key frame saved before parts, the same as its neighbors, stays a key frame', () => {
   const frames = Array.from({ length: 13 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
   for (const at of [0, 6, 12]) frames[at].changes.set('v:a', cellState(BALL, 0, 0));
-  frames[0].tweens = new Map([['v:a', 'easeIn']]);
-  const old = serializeFrames(frames).map((frame) => Object.fromEntries(Object.entries(frame).filter(([name]) => name !== 'parts')));
+  frames[0].tweens = new Map([['v:a', eased('easeIn')]]);
+  const old = asOld(serializeFrames(frames)).map((frame) => Object.fromEntries(Object.entries(frame).filter(([name]) => name !== 'parts')));
   assert.deepEqual(read(old).frames[6].parts.get('v:a'), new Set(['transform']));
 });
 
 test("a tween's motion is saved and read back; one that can't be read is smooth", () => {
   const ball = ballFrames();
-  ball[0].tweens = new Map([['v:a', 'easeIn']]);
+  ball[0].tweens = new Map([['v:a', eased('easeIn', ['transform'])]]);
   ball[0].motions = new Map([['v:a', 'cells']]);
   const frames = serializeFrames(ball);
   assert.deepEqual(frames[0].motions, [['v:a', 'cells']]);
@@ -370,11 +410,47 @@ test("a tween's motion is saved and read back; one that can't be read is smooth"
 
 test("a file from when motion was the whole movie's gives it to every tween", () => {
   const ball = ballFrames();
-  ball[0].tweens = new Map([['v:a', 'easeIn']]);
-  const frames = serializeFrames(ball);
+  ball[0].tweens = new Map([['v:a', eased('easeIn', ['transform'])]]);
+  const frames = asOld(serializeFrames(ball));
   const old = deserializeFrames({ frames, frame: 0, fps: 8, motion: 'half' }, 20, 20).frames;
   assert.deepEqual(old.filter((frame) => frame.tweens).map((frame) => [...frame.motions]), [[['v:a', 'half']]]);
   assert.equal(deserializeFrames({ frames, frame: 0, fps: 8, motion: 'smooth' }, 20, 20).frames[0].motions, null);
+});
+
+test("an old file's span easing goes to every part its start frame keys, and none to a last key", () => {
+  const frames = ballFrames();
+  frames[6].changes.set('v:a', cellState(withShape(BALL, { closed: false }), 0, 0));
+  frames[6].parts = new Map([['v:a', new Set(['outline'])]]);
+  frames[12].parts = null; // the shape whole
+  const saved = serializeFrames(frames);
+  saved[0].tweens = [['v:a', 'easeIn']];
+  saved[6].tweens = [['v:a', 'easeOut']];
+  saved[12].tweens = [['v:a', 'linear']]; // the shape's last key frame: no tween from it
+  const opened = read(saved).frames;
+  assert.deepEqual(opened[0].tweens.get('v:a'), eased('easeIn'));
+  assert.deepEqual(opened[6].tweens.get('v:a'), new Map([['outline', 'easeOut']]));
+  assert.ok(opened.slice(7).every((frame) => frame.tweens === null));
+});
+
+test("an old file's motion goes to the Transform key on its frame, only if it keys Transform and has an easing", () => {
+  const frames = ballFrames();
+  frames[6].parts = new Map([['v:a', new Set(['fill'])]]);
+  frames[6].changes.set('v:a', cellState(withShape(BALL, { fill: '#0000ff' }), 0, 0));
+  frames[12].parts = null;
+  const saved = serializeFrames(frames);
+  saved[0].tweens = [['v:a', 'easeIn']];
+  saved[0].motions = [['v:a', 'cells']];
+  saved[6].tweens = [['v:a', 'easeOut']];
+  saved[6].motions = [['v:a', 'half']]; // frame 6 doesn't key the Transform
+  const opened = read(saved).frames;
+  assert.deepEqual(opened[0].motions, new Map([['v:a', 'cells']]));
+  assert.equal(opened[6].motions, null);
+  assert.deepEqual(opened[6].tweens.get('v:a'), new Map([['fill', 'easeOut']]));
+  const last = structuredClone(saved); // a span's motion on a frame whose Transform has no key after it
+  last[12].tweens = [['v:a', 'linear']];
+  last[12].motions = [['v:a', 'cells']];
+  assert.equal(read(last).frames[12].motions, null);
+  assert.equal(read(last).frames[12].tweens, null);
 });
 
 test('a staying cell shows on its frame, and passes on what was there before it', () => {

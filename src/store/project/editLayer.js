@@ -219,8 +219,9 @@ export const editLayerActions = {
     if (this.hasFrames) { // it's the frame that changes: to a Wipe, empty
       this.noteFrame();
       const { kind, changes, parts } = this.currentFrame, cleared = { kind: 'wipe', changes: new Map(), parts: null };
+      const eases = this.frames.map((frame) => [frame, frame.tweens, frame.motions]); // what the Clear leaves no tween for goes
       this.setFrameState(cleared);
-      this.pushWholeLayer(() => this.setFrameState({ kind, changes, parts }), () => this.setFrameState(cleared), bytesHeld(changes));
+      this.pushWholeLayer(() => this.setFrameState({ kind, changes, parts, eases }), () => this.setFrameState(cleared), bytesHeld(changes));
       return;
     }
     const before = { paintLayer: this.paintLayer.snapshot(), editCells: this.editCells };

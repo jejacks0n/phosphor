@@ -19,7 +19,7 @@ test("a selected shape's in-between frames are marked as a tween's", () => {
   const shape = Object.freeze({ points: [] });
   const frames = Array.from({ length: 9 }, () => newFrame('blank'));
   frames[0].changes.set('v:a', cellState(shape, 0, 0));
-  frames[0].tweens = new Map([['v:a', 'easeIn']]);
+  frames[0].tweens = new Map([['v:a', new Map([['transform', 'easeIn']])]]);
   frames[6].changes.set('v:a', cellState(shape, 0, 0));
   const plain = ['drawn', 'empty', 'empty', 'empty', 'empty', 'empty', 'drawn', 'empty', 'empty'];
   expect(frameMarks(frames, 'v:a')).toEqual(['drawn', 'tween', 'tween', 'tween', 'tween', 'tween', 'drawn', 'empty', 'empty']);
