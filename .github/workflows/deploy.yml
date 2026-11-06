@@ -30,7 +30,7 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium # not --with-deps: on these runners that only adds fonts, from a mirror that can take minutes, and the tests bring their own
       - run: npm run lint
       - run: npm run test:unit
       - run: npm run test:browser
