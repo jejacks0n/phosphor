@@ -105,15 +105,79 @@ const paused = (act) => (...args) => {
   act(...args);
 };
 const pick = paused((part, i, event) => {
+  if (dragged) return;
   if (!event.shiftKey) {
     workspace.selectedKeys = [{ part, at: i }];
     project.showFrame(i);
   } else if (isSelected(part, i)) workspace.selectedKeys = workspace.selectedKeys.filter((ref) => ref.part !== part || ref.at !== i);
   else workspace.selectedKeys = [...workspace.selectedKeys, { part, at: i }];
 });
+const keysOn = (i) => rows.value.filter((row) => row.keys.some((k) => k.at === i)).map(({ part }) => ({ part, at: i }));
 const pickFrame = paused((i) => {
-  workspace.selectedKeys = rows.value.filter((row) => row.keys.some((k) => k.at === i)).map(({ part }) => ({ part, at: i }));
+  if (dragged) return;
+  workspace.selectedKeys = keysOn(i);
   project.showFrame(i);
+});
+
+// A press on a diamond or a frame number that goes half a frame along is a drag of its keys (refs, selected as it
+// begins), snapping frame to frame; less is a click. Escape, or the browser taking the pointer, puts them back.
+let press = null, dragged = false;
+function pressKeys(event, refs) {
+  dragged = false;
+  if (event.button !== 0 || !keys.value || !half.value) return;
+  press = { x: event.clientX, pointer: event.pointerId, refs, by: 0, drag: null };
+  window.addEventListener('pointermove', dragKeys);
+  window.addEventListener('pointerup', dropKeys);
+  window.addEventListener('pointercancel', cancelKeys);
+  window.addEventListener('keydown', escapeKeys, true);
+}
+const pressKey = (event, part, i) => pressKeys(event, isSelected(part, i) ? workspace.selectedKeys
+  : event.shiftKey ? [...workspace.selectedKeys, { part, at: i }] : [{ part, at: i }]);
+function dragKeys(event) {
+  if (event.pointerId !== press.pointer) return;
+  const by = Math.round((event.clientX - press.x) / (2 * half.value));
+  if (by === press.by) return;
+  if (!press.drag) {
+    playback.pause();
+    press.drag = {};
+    root.value.setPointerCapture(press.pointer);
+  }
+  press.by = by;
+  workspace.selectedKeys = project.moveKeys(shapeKey.value, press.refs, by, press.drag);
+}
+function letGo() {
+  window.removeEventListener('pointermove', dragKeys);
+  window.removeEventListener('pointerup', dropKeys);
+  window.removeEventListener('pointercancel', cancelKeys);
+  window.removeEventListener('keydown', escapeKeys, true);
+  dragged = !!press.drag; // the click that follows isn't one
+  setTimeout(() => { dragged = false; });
+  press = null;
+}
+function dropKeys(event) {
+  if (event.pointerId !== press.pointer) return;
+  if (press.drag) project.endKeyDrag(press.drag);
+  letGo();
+}
+function cancelKeys(event) {
+  if (event && event.pointerId !== press.pointer) return;
+  if (press.drag) {
+    project.cancelKeyDrag(press.drag);
+    workspace.selectedKeys = press.refs;
+  }
+  letGo();
+}
+// Escape is the drag's alone: the shape stays selected.
+function escapeKeys(event) {
+  if (event.key !== 'Escape' || !press.drag) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  cancelKeys();
+}
+onBeforeUnmount(() => {
+  if (!press) return;
+  project.cancelKeyDrag(press.drag);
+  letGo();
 });
 const ease = paused((choice) => project.setKeyEasing(shapeKey.value, workspace.selectedKeys, choice));
 const moveBy = paused((choice) => project.setKeyMotion(shapeKey.value, workspace.selectedKeys, choice));
@@ -153,7 +217,7 @@ const focusIn = () => {
       <p v-if="!shapeKey" class="none">{{ t('keysPanel.none') }}</p>
       <template v-else>
         <div class="ruler">
-          <button v-for="i in count" :key="i" class="frame" :class="{ now: i - 1 === at, out: outside(i - 1) }" :data-at="i - 1" :style="{ left: `${x(i - 1) - 10}px` }" :aria-label="t('keysPanel.frame', { frame: i })" :disabled="!keys" @click="pickFrame(i - 1)">
+          <button v-for="i in count" :key="i" class="frame" :class="{ now: i - 1 === at, out: outside(i - 1) }" :data-at="i - 1" :style="{ left: `${x(i - 1) - 10}px` }" :aria-label="t('keysPanel.frame', { frame: i })" :disabled="!keys" @pointerdown="pressKeys($event, keysOn(i - 1))" @click="pickFrame(i - 1)">
             <span>{{ i }}</span>
           </button>
         </div>
@@ -188,14 +252,14 @@ const focusIn = () => {
             <button :aria-label="t('keysPanel.next', { part: partName(row.part) })" :disabled="next(row) === undefined" @click="show(next(row))">▶</button>
           </span>
         </div>
-        <div class="lane" @click.self="workspace.selectedKeys = []">
+        <div class="lane" @click.self="dragged || (workspace.selectedKeys = [])">
           <span v-if="keys.start > 0" class="out" :style="{ left: 0, width: `${x(keys.start) - half}px` }"></span>
           <span v-if="keys.end < count - 1" class="out" :style="{ left: `${x(keys.end) + half}px`, right: 0 }"></span>
           <span v-for="i in count" :key="`tick${i}`" class="tick" :style="{ left: `${x(i - 1)}px` }"></span>
           <span v-for="piece in piecesOf(row)" :key="`piece${piece.from}`" :class="piece.easing ? 'tween' : 'hold'" :style="{ left: `${x(piece.from)}px`, width: `${x(piece.to) - x(piece.from)}px` }">
             <svg v-if="piece.easing" class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[piece.easing]"/></svg>
           </span>
-          <button v-for="k in row.keys" :key="`key${k.at}`" class="key" :class="{ fixed: k.fixed }" :data-at="k.at" :style="{ left: `${x(k.at) - 7}px` }" :aria-pressed="isSelected(row.part, k.at)" :aria-label="t('keysPanel.key', { part: partName(row.part), frame: k.at + 1 })" @click="pick(row.part, k.at, $event)"></button>
+          <button v-for="k in row.keys" :key="`key${k.at}`" class="key" :class="{ fixed: k.fixed }" :data-at="k.at" :style="{ left: `${x(k.at) - 7}px` }" :aria-pressed="isSelected(row.part, k.at)" :aria-label="t('keysPanel.key', { part: partName(row.part), frame: k.at + 1 })" @pointerdown="pressKey($event, row.part, k.at)" @click="pick(row.part, k.at, $event)"></button>
         </div>
         <KeyValues v-if="!phone" :part="row.part" :shape-key="shapeKey"/>
       </div>
@@ -302,6 +366,9 @@ div.ruler, div.lane {
   flex: none;
   width: var(--lane);
   height: 100%;
+}
+button.frame, button.key {
+  touch-action: none; /* a finger drags them */
 }
 button.frame {
   position: absolute;
