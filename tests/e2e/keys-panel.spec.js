@@ -208,6 +208,22 @@ test('with no shape selected the panel says so in one line', async ({ page }) =>
   await expect(panel(page).locator('[data-part]')).toHaveCount(0);
 });
 
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  test("Keys sits just after Ghost's arrow on the bar's second line, inside the window down to 360 wide", async ({ page }) => {
+    await ball(page);
+    for (const width of [390, 375, 360]) {
+      await page.setViewportSize({ width, height: 700 });
+      const arrow = bar(page).getByRole('button', { name: 'Ghost strength' });
+      await expect.poll(async () => (await keysButton(page).boundingBox()).x + (await keysButton(page).boundingBox()).width, { message: `${width} wide` }).toBeLessThanOrEqual(width);
+      const keys = await keysButton(page).boundingBox(), after = await arrow.boundingBox();
+      const play = await bar(page).getByRole('button', { name: 'Play' }).boundingBox();
+      expect(keys.x, `${width} wide`).toBeGreaterThan(after.x + after.width);
+      expect(Math.abs(keys.y - play.y), `${width} wide`).toBeLessThan(6); // the line play starts
+    }
+  });
+});
+
 test("there's no Tween button on the bar", async ({ page }) => {
   await ball(page);
   await expect(bar(page).getByRole('button', { name: /^Tween/ })).toHaveCount(0);
