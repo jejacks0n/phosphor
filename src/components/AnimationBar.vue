@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -39,6 +39,20 @@ const marks = computed(() => {
 const bands = computed(() => (project.hasFrames && shapeKeys.value[0] ? tweenBands(project.frames, shapeKeys.value[0]) : []));
 // Where the range's thumb sits for frame i: its travel stops half a thumb (--thumb, the global slider's) short of each end.
 const markAt = (i) => `calc(var(--thumb) / 2 + (100% - var(--thumb)) * ${count.value > 1 ? i / (count.value - 1) : 0})`;
+// The Keys panel's frames in view, while they don't all fit there; dragging the band scrolls the panel.
+const view = computed(() => workspace.keysView);
+const range = useTemplateRef('range');
+let viewDrag = null;
+function grabView(event) {
+  if (event.button !== 0) return;
+  const travel = range.value.offsetWidth - parseFloat(getComputedStyle(range.value).getPropertyValue('--thumb'));
+  viewDrag = { x: event.clientX, scroll: workspace.keysScroll, perPx: ((count.value - 1) / travel) * view.value.px, pointer: event.pointerId };
+  event.currentTarget.setPointerCapture(event.pointerId);
+}
+const dragView = (event) => {
+  if (viewDrag?.pointer === event.pointerId) workspace.keysScroll = viewDrag.scroll + (event.clientX - viewDrag.x) * viewDrag.perPx;
+};
+const dropView = () => { viewDrag = null; };
 
 // Anything that changes the frames lands on the frame showing.
 const paused = (act) => (...args) => {
@@ -87,11 +101,12 @@ const setFps = (event) => {
     <output class="indicator" data-testid="frame-indicator">{{ at + 1 }} / {{ count }}</output>
     <div class="scrubber">
       <div class="scrubber-marks" aria-hidden="true">
+        <span v-if="view" class="view" :style="{ left: `calc(${markAt(view.first)} - 4px)`, width: `calc((100% - var(--thumb)) * ${(view.last - view.first) / (count - 1)} + 8px)` }" @pointerdown="grabView" @pointermove="dragView" @pointerup="dropView" @lostpointercapture="dropView"></span>
         <span v-for="band in bands" :key="`band${band.from}`" class="band" :style="{ left: `calc(${markAt(band.from)} + 3px)`, width: `calc((100% - var(--thumb)) * ${(band.to - band.from) / (count - 1)} - 6px)` }"></span>
         <span v-for="(mark, i) in marks" :key="i" :class="mark" :style="{ left: markAt(i) }"></span>
       </div>
       <!-- A pointer lets go of it, so the app's keys work again; the keyboard keeps its arrows. -->
-      <input type="range" :aria-label="t('animation.frameAria')" min="0" :max="count - 1" step="1" :value="at" @input="scrub" @pointerup="$event.target.blur()">
+      <input ref="range" type="range" :aria-label="t('animation.frameAria')" min="0" :max="count - 1" step="1" :value="at" @input="scrub" @pointerup="$event.target.blur()">
     </div>
     <DropdownMenu :label="t('animation.addFrame')" up :disabled="!!full">
       <template #trigger>
@@ -235,11 +250,24 @@ div.scrubber-marks {
 }
 div.scrubber-marks span {
   position: absolute;
+  pointer-events: none;
   top: 0;
   width: 2px;
   height: 9px;
   transform: translateX(-50%);
   background: var(--text);
+}
+div.scrubber-marks span.view { /* the Keys panel's frames in view */
+  top: -1px;
+  height: 11px;
+  transform: none;
+  box-sizing: border-box;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
 }
 div.scrubber-marks span.empty {
   top: 1px;

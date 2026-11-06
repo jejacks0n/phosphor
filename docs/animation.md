@@ -108,6 +108,15 @@ On VECTOR with Animate on, the Keys panel sits over the bar, its frames lined up
 opens and folds it, as does the **▾** at its top left; it stays as you left it. It shows the selected shape (with several
 selected, the first); with none, it says so.
 
+With more frames than fit at a usable width (about 14 pixels a frame, 20 on a phone), the lanes become a window onto
+the movie: scroll it with the wheel or trackpad (Shift-wheel too) or by dragging the ruler of frame numbers where
+there's no number, and zoom with **−** and **+** on the top line, or Cmd/Ctrl-wheel or a pinch over the lanes, around
+the pointer. Zoomed out until every frame fits again, the lanes line up with the scrubber once more. When frames are
+tight their numbers thin out to every 5th or 10th. Stepping, playing and scrubbing keep the frame showing in view, and
+the scrubber, still the whole movie, shows the stretch in view as a band; drag the band to scroll the panel. The zoom
+is remembered, like the fold. While the movie plays, the rows are those of the frame playing, so past a Wipe they show
+the shape's life there.
+
 Each part that changes is a row: its name; **◀** and **▶**, which show the part's previous and next key; and between
 them **◇**, which keys the part on the frame showing with the value it has there (lit **◆** when there's a key there,
 which a click deletes). Then the lane: a diamond for each key, a bar where the part tweens (with its easing's curve in

@@ -303,7 +303,7 @@ test('typing Width or W on an in-between frame keys only that part there', async
 // Drags what's at locator along the lanes by frames (the mouse); with escape, Escape is pressed before letting go.
 // during runs while the pointer's still down.
 async function dragBy(page, locator, frames, { escape = false, during } = {}) {
-  const [a, b] = await Promise.all([0, 1].map((at) => panel(page).locator(`button.frame[data-at="${at}"]`).boundingBox()));
+  const [a, b] = await Promise.all([0, 1].map((n) => panel(page).locator('button.frame').nth(n).boundingBox())); // two frames side by side
   const box = await locator.boundingBox(), x = box.x + box.width / 2, y = box.y + box.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
@@ -400,6 +400,124 @@ test('keys pressed during a drag do nothing; after the drop one undo goes back t
   await page.keyboard.press('ControlOrMeta+z');
   await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 3, 6]);
   expect(await y(page, key, 3)).toBe(12);
+});
+
+test('a press whose pointerup never comes leaves the panel usable', async ({ page }) => {
+  await ball(page, { 3: 12 });
+  const before = await version(page);
+  // The pointerup lost (a Ctrl-click's menu, a window switch) on the way to the panel.
+  const lose = () => page.evaluate(() => window.addEventListener('pointerup', (event) => event.stopImmediatePropagation(), { capture: true, once: true }));
+  await lose(); // during a drag: the browser taking the pointer back puts the keys back
+  await dragBy(page, diamond(page, 'transform', 3), 1);
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 3, 6]);
+  await lose(); // before a drag: the next move, with no button down, lets go
+  const box = await diamond(page, 'transform', 3).boundingBox(), x = box.x + box.width / 2, y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.up();
+  await page.mouse.move(x + 30, y);
+  expect(await version(page)).toBe(before);
+  await dragBy(page, diamond(page, 'transform', 3), 2);
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 5, 6]);
+  // The window losing focus during a drag puts the keys back.
+  await dragBy(page, diamond(page, 'transform', 5), -1, { during: () => page.evaluate(() => window.dispatchEvent(new Event('blur'))) });
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 5, 6]);
+  expect(await version(page)).toBe(before + 1);
+  await dragBy(page, diamond(page, 'transform', 5), -1);
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 4, 6]);
+});
+
+test('while playing, the rows are those of the frame the playhead shows', async ({ page }) => {
+  const key = await ball(page);
+  await scrubTo(page, 6);
+  await addFrame(page, 'Wipe'); // frame 8, without the ball
+  await scrubTo(page, 3);
+  await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
+  await expect(panel(page).locator('[data-part]')).toHaveCount(1);
+  await store(page, 'workspace', (w) => { w.playFrame = 7; w.playing = true; });
+  await expect(panel(page).locator('button.frame.now')).toHaveAttribute('data-at', '7');
+  await expect(panel(page).locator('[data-part]')).toHaveCount(0);
+  await store(page, 'workspace', (w) => { w.playFrame = 2; });
+  await expect(panel(page).locator('[data-part]')).toHaveCount(1);
+});
+
+// The ball, on 200 frames; frame 1 shows.
+async function long(page) {
+  const key = await ball(page);
+  await store(page, 'project', (p) => { p.showFrame(6); while (p.frames.length < 200) p.addFrame('blank'); });
+  await scrubTo(page, 0);
+  return key;
+}
+const band = (page) => bar(page).locator('.scrubber-marks .view');
+const framesInView = (page) => panel(page).locator('.ruler button.frame').evaluateAll((frames) => frames.map((f) => Number(f.dataset.at)));
+const spacing = async (page) => {
+  const [a, b] = await Promise.all([0, 1].map((n) => panel(page).locator('.ruler button.frame').nth(n).boundingBox()));
+  return b.x - a.x;
+};
+async function playheadInView(page) {
+  const head = await panel(page).locator('.playhead').boundingBox(), lane = await row(page, 'transform').locator('.lane').boundingBox();
+  expect(head.x).toBeGreaterThanOrEqual(lane.x);
+  expect(head.x + head.width).toBeLessThanOrEqual(lane.x + lane.width);
+}
+
+test('with 200 frames the lanes scroll and the scrubber shows the band; stepping keeps the playhead in view', async ({ page }) => {
+  await long(page);
+  await expect(band(page)).toBeVisible();
+  const frames = await framesInView(page);
+  expect(frames[0]).toBe(0);
+  expect(frames.length).toBeLessThan(100);
+  await expect.poll(() => spacing(page)).toBeCloseTo(14, 0);
+  const range = await bar(page).getByRole('slider', { name: 'Frame' }).boundingBox(), start = await band(page).boundingBox();
+  expect(start.x).toBeLessThan(range.x + 10);
+  expect(start.width).toBeLessThan(range.width / 2);
+  await playheadInView(page);
+  // Wheel scrolls.
+  const lane = await row(page, 'transform').locator('.lane').boundingBox();
+  await page.mouse.move(lane.x + 50, lane.y + 5);
+  await page.mouse.wheel(0, 140);
+  await expect.poll(async () => (await framesInView(page))[0]).toBeGreaterThan(5);
+  // Stepping past the last frame in view brings it into view.
+  const last = (await framesInView(page)).at(-1);
+  await scrubTo(page, last);
+  await bar(page).getByRole('button', { name: 'Next frame' }).click();
+  await expect(shown(page)).toHaveText(`${last + 2} / 200`);
+  await expect(panel(page).locator('button.frame.now')).toHaveAttribute('data-at', String(last + 1));
+  await playheadInView(page);
+  await scrubTo(page, 150);
+  await expect(panel(page).locator('button.frame.now')).toHaveAttribute('data-at', '150');
+  await playheadInView(page);
+  expect((await band(page).boundingBox()).x).toBeGreaterThan(range.x + range.width / 2);
+});
+
+test('Ctrl-wheel zooms; the zoom stays across a reload', async ({ page }) => {
+  await long(page);
+  const lane = await row(page, 'transform').locator('.lane').boundingBox();
+  await page.mouse.move(lane.x + 100, lane.y + 5);
+  await page.keyboard.down('Control');
+  await page.mouse.wheel(0, -100);
+  await page.keyboard.up('Control');
+  await expect.poll(() => store(page, 'workspace', (w) => w.keysZoom)).toBeCloseTo(17.5);
+  await expect.poll(() => spacing(page)).toBeCloseTo(17.5, 0);
+  await panel(page).getByRole('button', { name: 'Zoom in' }).click();
+  await expect.poll(() => spacing(page)).toBeCloseTo(21.9, 0);
+  await panel(page).getByRole('button', { name: 'Zoom out' }).click();
+  await long(page); // the app opened again
+  await expect.poll(() => spacing(page)).toBeCloseTo(17.5, 0);
+});
+
+test('dragging the band scrolls the lanes; keys there drag a frame at a time', async ({ page }) => {
+  const key = await long(page);
+  const range = await bar(page).getByRole('slider', { name: 'Frame' }).boundingBox(), start = await band(page).boundingBox();
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(start.x + start.width / 2 + range.width / 2, start.y + start.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => Math.abs((await band(page).boundingBox()).x - (start.x + range.width / 2))).toBeLessThan(8);
+  const frames = await framesInView(page), at = frames[5];
+  expect(at).toBeGreaterThan(90);
+  await store(page, 'project', `(p) => { p.showFrame(${at}); p.addKey('${key}', 'transform'); }`);
+  await dragBy(page, diamond(page, 'transform', at), 2);
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([at + 2]); // the diamonds in view
 });
 
 test.describe('on a touch screen', () => {

@@ -1,6 +1,6 @@
 <script setup>
 import { useMediaQuery } from '@vueuse/core';
-import { computed, onBeforeUnmount, onMounted, reactive, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, useTemplateRef, watch, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -8,6 +8,7 @@ import { usePlayback } from '@/composables/usePlayback';
 import { EASINGS, MOTIONS } from '@/document/tweens.js';
 import { PARTS } from '@/document/parts.js';
 import { listedParts, partKeys } from '@/document/keys.js';
+import { MIN_FRAME_PX, MIN_FRAME_PX_PHONE, frameAt, labelEvery, laneLayout, xOf, zoomAround } from '@/lib/keyLanes.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import KeyValues from '@/components/KeyValues.vue';
 
@@ -34,15 +35,15 @@ const easings = [['none', null], ...EASINGS.map((easing) => [easing, easing])];
 const shapeKey = computed(() => workspace.vectorSelected.find((key) => project.shapes.has(key)) ?? null);
 const at = computed(() => (workspace.playing ? workspace.playFrame : project.frame));
 const count = computed(() => project.frames.length);
-// The shape's life around the frame being edited (playing doesn't move it), and the parts that change in it.
+// The shape's life around the frame showing (the one playing, while it plays), and the parts that change in it.
 const keys = computed(() => {
   void project.historyVersion;
-  return shapeKey.value && project.hasFrames ? partKeys(project.frames, shapeKey.value, project.frame) : null;
+  return shapeKey.value && project.hasFrames ? partKeys(project.frames, shapeKey.value, at.value) : null;
 });
 const rows = computed(() => {
   void project.historyVersion;
   if (!keys.value) return [];
-  return listedParts(project.frames, shapeKey.value, project.frame).map((part) => ({ part, keys: keys.value.rows.get(part) }));
+  return listedParts(project.frames, shapeKey.value, at.value).map((part) => ({ part, keys: keys.value.rows.get(part) }));
 });
 const unlisted = computed(() => (keys.value ? PARTS.filter((part) => !rows.value.some((row) => row.part === part)) : []));
 const keyAt = (part, i) => keys.value?.rows.get(part).find((k) => k.at === i);
@@ -72,8 +73,9 @@ watch(rows, (now) => {
 }, { immediate: true });
 onBeforeUnmount(() => { workspace.selectedKeys = []; });
 
-// The lanes line up with the scrubber: frame i where its mark is, the range's thumb travel stopping half a thumb
-// (--thumb) short of each end.
+// The lanes line up with the scrubber, as wide as its range, frame i where its mark is (the thumb, --thumb, travels
+// half a thumb short of each end); or, with too many frames for that, they're a window that scrolls and zooms
+// (keyLanes.js).
 const lane = reactive({ left: 0, width: 0, thumb: 0 });
 const scrubber = () => document.querySelector('.animation-bar .scrubber input[type=range]');
 function measure() {
@@ -91,8 +93,65 @@ onMounted(() => {
   for (const el of [root.value, scrubber(), scrubber()?.closest('.animation-bar')]) if (el) observer.observe(el);
 });
 onBeforeUnmount(() => observer?.disconnect());
-const x = (i) => lane.thumb / 2 + (lane.width - lane.thumb) * (count.value > 1 ? i / (count.value - 1) : 0);
-const half = computed(() => (count.value > 1 ? (lane.width - lane.thumb) / (count.value - 1) / 2 : 0));
+const layout = computed(() => laneLayout({ count: count.value, width: lane.width, thumb: lane.thumb, zoom: workspace.keysZoom,
+  scroll: workspace.keysScroll, minPx: phone.value ? MIN_FRAME_PX_PHONE : MIN_FRAME_PX }));
+const x = (i) => xOf(i, layout.value);
+const half = computed(() => layout.value.px / 2);
+const inView = (i) => i >= layout.value.first && i <= layout.value.last;
+const laneX = (clientX) => clientX - root.value.getBoundingClientRect().left - lane.left;
+// The frames in view with a tick and a number, thinned out when they're tight; the one showing always has a number.
+const ticked = computed(() => {
+  const { first, last, px } = layout.value, every = labelEvery(px), shown = [];
+  for (let i = first; i <= last; i++) if (every === 1 || i === 0 || (i + 1) % every === 0) shown.push(i);
+  return shown;
+});
+const numbered = computed(() => (inView(at.value) && !ticked.value.includes(at.value) ? [...ticked.value, at.value].sort((a, b) => a - b) : ticked.value));
+
+// The scroll kept in range (the scrubber's band sets it too), and what's in view told to the band.
+watchEffect(() => {
+  if (workspace.keysScroll !== layout.value.scroll) workspace.keysScroll = layout.value.scroll;
+});
+watchEffect(() => {
+  const { fits, first, last, px } = layout.value;
+  workspace.keysView = fits || !shapeKey.value ? null : { first, last, px };
+});
+onBeforeUnmount(() => { workspace.keysView = null; });
+// The frame showing stays in view: stepping, playing and scrubbing scroll the lanes to it, and so does the lanes'
+// width changing (the frame counter beside the scrubber grows a digit, say).
+watch([at, () => lane.width], ([i]) => {
+  const { fits, px, width, thumb } = layout.value, xi = x(i);
+  if (fits) return;
+  if (xi < thumb / 2) workspace.keysScroll = i * px;
+  else if (xi > width - thumb / 2) workspace.keysScroll = i * px + thumb - width;
+});
+
+// − and + zoom around the frame showing (or the lanes' edge it's past); Cmd/Ctrl-wheel and pinch around the pointer.
+// The wheel and Shift-wheel scroll them, and so does dragging the ruler where there's no number.
+function zoomBy(factor, around) {
+  const { zoom, scroll } = zoomAround(layout.value, factor, around);
+  workspace.keysZoom = zoom;
+  workspace.keysScroll = scroll;
+}
+const zoomButton = (factor) => zoomBy(factor, Math.min(Math.max(x(at.value), 0), lane.width));
+function wheel(event) {
+  if (event.ctrlKey || event.metaKey) { // a pinch comes as a Ctrl-wheel
+    event.preventDefault();
+    zoomBy(1.25 ** (-event.deltaY / 100), laneX(event.clientX));
+  } else if (!layout.value.fits) {
+    event.preventDefault();
+    workspace.keysScroll = layout.value.scroll + (Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY);
+  }
+}
+let pan = null;
+function grabRuler(event) {
+  if (event.button !== 0 || layout.value.fits) return;
+  pan = { x: event.clientX, scroll: layout.value.scroll, pointer: event.pointerId };
+  event.currentTarget.setPointerCapture(event.pointerId);
+}
+const panRuler = (event) => {
+  if (pan?.pointer === event.pointerId) workspace.keysScroll = pan.scroll - (event.clientX - pan.x);
+};
+const dropRuler = () => { pan = null; };
 const outside = (i) => !!keys.value && (i < keys.value.start || i > keys.value.end);
 
 // Each row's tween bars and hold lines: from each key to its next, or on to the life's end after the last.
@@ -119,25 +178,31 @@ const pickFrame = paused((i) => {
   project.showFrame(i);
 });
 
-// A press on a diamond or a frame number that goes half a frame along is a drag of its keys (refs, selected as it
-// begins), snapping frame to frame; less is a click. Escape, or the browser taking the pointer, puts them back. A
+// A press on a diamond or a frame number (frame i) that goes half a frame along is a drag of its keys (refs, selected
+// as it begins), snapping to the frame under the pointer; less is a click. Escape, or the browser taking the pointer
+// (or the window losing focus), puts them back; a move with no button down is a drop whose pointerup went astray. A
 // second press (another finger) while one's held does nothing.
 let press = null, dragged = false;
-function pressKeys(event, refs) {
+function pressKeys(event, i, refs) {
   if (press) return;
   dragged = false;
   if (event.button !== 0 || !keys.value || !half.value) return;
-  press = { x: event.clientX, pointer: event.pointerId, shape: shapeKey.value, refs, by: 0, drag: null };
+  press = { off: laneX(event.clientX) - x(i), at: i, pointer: event.pointerId, shape: shapeKey.value, refs, by: 0, drag: null };
   window.addEventListener('pointermove', dragKeys);
   window.addEventListener('pointerup', dropKeys);
   window.addEventListener('pointercancel', cancelKeys);
+  window.addEventListener('blur', cancelKeys);
   window.addEventListener('keydown', escapeKeys, true);
 }
-const pressKey = (event, part, i) => pressKeys(event, isSelected(part, i) ? workspace.selectedKeys
+const pressKey = (event, part, i) => pressKeys(event, i, isSelected(part, i) ? workspace.selectedKeys
   : event.shiftKey ? [...workspace.selectedKeys, { part, at: i }] : [{ part, at: i }]);
 function dragKeys(event) {
   if (event.pointerId !== press.pointer) return;
-  const by = Math.round((event.clientX - press.x) / (2 * half.value));
+  if (!event.buttons) {
+    dropKeys(event);
+    return;
+  }
+  const by = frameAt(laneX(event.clientX) - press.off, layout.value) - press.at;
   if (by === press.by) return;
   if (!press.drag) {
     playback.pause();
@@ -151,6 +216,7 @@ function letGo() {
   window.removeEventListener('pointermove', dragKeys);
   window.removeEventListener('pointerup', dropKeys);
   window.removeEventListener('pointercancel', cancelKeys);
+  window.removeEventListener('blur', cancelKeys);
   window.removeEventListener('keydown', escapeKeys, true);
   dragged = !!press.drag; // the click that follows isn't one
   setTimeout(() => { dragged = false; });
@@ -162,7 +228,7 @@ function dropKeys(event) {
   letGo();
 }
 function cancelKeys(event) {
-  if (event && event.pointerId !== press.pointer) return;
+  if (event?.pointerId !== undefined && event.pointerId !== press.pointer) return;
   if (press.drag) {
     project.cancelKeyDrag(press.drag);
     workspace.selectedKeys = press.refs;
@@ -177,6 +243,9 @@ function escapeKeys(event) {
   event.stopImmediatePropagation();
   if (event.key === 'Escape') cancelKeys();
 }
+const lostKeys = (event) => {
+  if (press?.drag) cancelKeys(event);
+};
 onBeforeUnmount(() => {
   if (!press) return;
   project.cancelKeyDrag(press.drag);
@@ -209,7 +278,7 @@ const focusIn = () => {
 </script>
 
 <template>
-  <section ref="root" class="keys-panel" tabindex="0" :aria-label="t('keysPanel.aria')" :style="{ '--lead': `${lane.left}px`, '--lane': `${lane.width}px` }" @keydown="keydown" @pointerdown="focusIn">
+  <section ref="root" class="keys-panel" tabindex="0" :aria-label="t('keysPanel.aria')" :style="{ '--lead': `${lane.left}px`, '--lane': `${lane.width}px` }" @keydown="keydown" @pointerdown="focusIn" @lostpointercapture="lostKeys">
     <div class="head">
       <div class="lead">
         <button class="fold" :aria-label="t('keysPanel.fold')" :title="t('keysPanel.fold')" @click="workspace.keysOpen = false">▾</button>
@@ -219,12 +288,16 @@ const focusIn = () => {
       </div>
       <p v-if="!shapeKey" class="none">{{ t('keysPanel.none') }}</p>
       <template v-else>
-        <div class="ruler">
-          <button v-for="i in count" :key="i" class="frame" :class="{ now: i - 1 === at, out: outside(i - 1) }" :data-at="i - 1" :style="{ left: `${x(i - 1) - 10}px` }" :aria-label="t('keysPanel.frame', { frame: i })" :disabled="!keys" @pointerdown="pressKeys($event, keysOn(i - 1))" @click="pickFrame(i - 1)">
-            <span>{{ i }}</span>
+        <div class="ruler" @wheel="wheel" @pointerdown.self="grabRuler" @pointermove="panRuler" @pointerup="dropRuler" @lostpointercapture="dropRuler">
+          <button v-for="i in numbered" :key="i" class="frame" :class="{ now: i === at, out: outside(i) }" :data-at="i" :style="{ left: `${x(i) - 10}px` }" :aria-label="t('keysPanel.frame', { frame: i + 1 })" :disabled="!keys" @pointerdown="pressKeys($event, i, keysOn(i))" @click="pickFrame(i)">
+            <span>{{ i + 1 }}</span>
           </button>
         </div>
         <div class="rest">
+          <span class="zoom">
+            <button :aria-label="t('keysPanel.zoomOut')" :title="t('keysPanel.zoomOut')" :disabled="layout.fits" @click="zoomButton(1 / 1.25)">−</button>
+            <button :aria-label="t('keysPanel.zoomIn')" :title="t('keysPanel.zoomIn')" @click="zoomButton(1.25)">+</button>
+          </span>
           <DropdownMenu class="easing" :label="t('keysPanel.easing')" up :disabled="!easable.length">
             <template #trigger>
               <svg class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[easing ?? 'none']"/></svg>
@@ -255,18 +328,18 @@ const focusIn = () => {
             <button :aria-label="t('keysPanel.next', { part: partName(row.part) })" :disabled="next(row) === undefined" @click="show(next(row))">▶</button>
           </span>
         </div>
-        <div class="lane" @click.self="dragged || (workspace.selectedKeys = [])">
-          <span v-if="keys.start > 0" class="out" :style="{ left: 0, width: `${x(keys.start) - half}px` }"></span>
-          <span v-if="keys.end < count - 1" class="out" :style="{ left: `${x(keys.end) + half}px`, right: 0 }"></span>
-          <span v-for="i in count" :key="`tick${i}`" class="tick" :style="{ left: `${x(i - 1)}px` }"></span>
+        <div class="lane" @wheel="wheel" @click.self="dragged || (workspace.selectedKeys = [])">
+          <span v-if="keys.start > 0" class="out" :style="{ left: 0, width: `${Math.max(0, x(keys.start) - half)}px` }"></span>
+          <span v-if="keys.end < count - 1" class="out" :style="{ left: `${Math.max(0, x(keys.end) + half)}px`, right: 0 }"></span>
+          <span v-for="i in ticked" :key="`tick${i}`" class="tick" :style="{ left: `${x(i)}px` }"></span>
           <span v-for="piece in piecesOf(row)" :key="`piece${piece.from}`" :class="piece.easing ? 'tween' : 'hold'" :style="{ left: `${x(piece.from)}px`, width: `${x(piece.to) - x(piece.from)}px` }">
             <svg v-if="piece.easing" class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[piece.easing]"/></svg>
           </span>
-          <button v-for="k in row.keys" :key="`key${k.at}`" class="key" :class="{ fixed: k.fixed }" :data-at="k.at" :style="{ left: `${x(k.at) - 7}px` }" :aria-pressed="isSelected(row.part, k.at)" :aria-label="t('keysPanel.key', { part: partName(row.part), frame: k.at + 1 })" @pointerdown="pressKey($event, row.part, k.at)" @click="pick(row.part, k.at, $event)"></button>
+          <button v-for="k in row.keys.filter((k) => inView(k.at))" :key="`key${k.at}`" class="key" :class="{ fixed: k.fixed }" :data-at="k.at" :style="{ left: `${x(k.at) - 7}px` }" :aria-pressed="isSelected(row.part, k.at)" :aria-label="t('keysPanel.key', { part: partName(row.part), frame: k.at + 1 })" @pointerdown="pressKey($event, row.part, k.at)" @click="pick(row.part, k.at, $event)"></button>
         </div>
         <KeyValues v-if="!phone" :part="row.part" :shape-key="shapeKey"/>
       </div>
-      <span v-if="rows.length" class="playhead" :style="{ left: `${lane.left + x(at)}px` }"></span>
+      <span v-if="rows.length && inView(at)" class="playhead" :style="{ left: `${lane.left + x(at)}px` }"></span>
     </div>
   </section>
 </template>
@@ -369,6 +442,10 @@ div.ruler, div.lane {
   flex: none;
   width: var(--lane);
   height: 100%;
+  overflow: hidden; /* scrolled, the frames out of view */
+}
+div.ruler {
+  touch-action: pan-y; /* a finger drags it along */
 }
 button.frame, button.key {
   touch-action: none; /* a finger drags them */
@@ -470,6 +547,15 @@ span.playhead {
   pointer-events: none;
 }
 
+span.zoom {
+  display: flex;
+  flex: none;
+}
+span.zoom button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+}
 div.rest {
   flex: 1;
   display: flex;
