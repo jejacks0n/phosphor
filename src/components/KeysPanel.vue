@@ -1,4 +1,5 @@
 <script setup>
+import { useMediaQuery } from '@vueuse/core';
 import { computed, onBeforeUnmount, onMounted, reactive, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -8,6 +9,7 @@ import { EASINGS, MOTIONS } from '@/document/tweens.js';
 import { PARTS } from '@/document/parts.js';
 import { listedParts, partKeys } from '@/document/keys.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
+import KeyValues from '@/components/KeyValues.vue';
 
 // Over the animation bar on VECTOR: the first selected shape's parts as rows, each with its keys as diamonds on a lane
 // of frames lined up with the scrubber's marks below. Keys are selected, eased, deleted and added here.
@@ -16,6 +18,7 @@ const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const playback = usePlayback();
 const root = useTemplateRef('root');
+const phone = useMediaQuery('(max-width: 768px)');
 
 // Each easing's curve, as a graph of how far along against time; and No tween's cross.
 const CURVES = {
@@ -194,6 +197,7 @@ const focusIn = () => {
           </span>
           <button v-for="k in row.keys" :key="`key${k.at}`" class="key" :class="{ fixed: k.fixed }" :data-at="k.at" :style="{ left: `${x(k.at) - 7}px` }" :aria-pressed="isSelected(row.part, k.at)" :aria-label="t('keysPanel.key', { part: partName(row.part), frame: k.at + 1 })" @click="pick(row.part, k.at, $event)"></button>
         </div>
+        <KeyValues v-if="!phone" :part="row.part" :shape-key="shapeKey"/>
       </div>
       <span v-if="rows.length" class="playhead" :style="{ left: `${lane.left + x(at)}px` }"></span>
     </div>

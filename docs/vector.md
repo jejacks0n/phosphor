@@ -42,7 +42,7 @@ Each frame has its own shapes: a Blank frame carries the shapes before it, as it
 there makes it that frame's ([Animation](animation.md)). On VECTOR, the outlines of the shapes a Blank frame
 carries show dimmed. Playing and the exports show each frame's shapes. A shape can tween between its keys, moving,
 turning, reshaping and changing color on the frames between; the **Keys** panel over the animation bar shows the
-selected shape's keys, part by part, to select, ease, add and delete ([Tweens](animation.md#tweens)).
+selected shape's keys, part by part, to select, ease, add and delete, and shows each part's value to type over ([Tweens](animation.md#tweens)).
 
 ## Rooms
 

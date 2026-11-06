@@ -244,3 +244,24 @@ test('Escape closes the easing menu and nothing else: the shape stays selected, 
   await expect.poll(() => y(page, key, 3)).toBe(0);
   await expect(easing).toHaveText('No tween');
 });
+
+test('typing X keys Transform on the frame showing; undo takes it back', async ({ page }) => {
+  const key = await ball(page);
+  expect(await keyFrames(page, 'transform')).toEqual([0, 6]);
+  const field = row(page, 'transform').getByLabel(/^X:/);
+  await field.fill('10');
+  await field.press('Enter');
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 3, 6]);
+  expect(await store(page, 'project', `(p) => p.shapes.get('${key}').m[4]`)).toBe(6); // the middle was 4
+  await expect(field).toHaveValue('10');
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 6]);
+  await expect(field).toHaveValue('4');
+});
+
+test('a Fill chip opens the color box', async ({ page }) => {
+  const key = await ball(page);
+  await store(page, 'project', `(p) => p.addKey('${key}', 'fill')`);
+  await row(page, 'fill').getByRole('button', { name: /^Fill color/ }).click();
+  expect(await store(page, 'workspace', (w) => w.colorBox)).toBe('fg');
+});

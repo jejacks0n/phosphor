@@ -754,6 +754,23 @@
     "previous": "{part}: previous key",
     "next": "{part}: next key",
     "here": "{part}: key on this frame",
+    "values": {
+      "x": "X",
+      "y": "Y",
+      "turn": "Turn",
+      "scaleX": "W",
+      "scaleY": "H",
+      "xTitle": "X: where the middle of the shape is, in grid pixels",
+      "yTitle": "Y: where the middle of the shape is, in grid pixels",
+      "turnTitle": "Turn, in degrees",
+      "scaleXTitle": "Width, as a percentage, along the shape's own axes",
+      "scaleYTitle": "Height, as a percentage, along the shape's own axes (negative flips it)",
+      "widthTitle": "Stroke width, in grid pixels",
+      "fill": "Fill color: open the color box",
+      "stroke": "Stroke color: open the color box",
+      "outline": "{n} point · edit with the Node tool | {n} points · edit with the Node tool",
+      "stack": "{n} of {m}"
+    },
     "parts": {
       "transform": "Transform",
       "outline": "Outline",
