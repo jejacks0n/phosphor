@@ -190,6 +190,28 @@ test('a drag is one undo step; a canceled one is none', async () => {
   expect(project.history.version).toBe(version + 2);
 });
 
+// A key at the value the part already has there (a hold) is on purpose: another part edited on its frame and set back,
+// or the edit undone, takes only that part's key away.
+test('a hand key at the inherited value stays when another part edited on its frame is set back, or undone', async () => {
+  const project = await animated();
+  const key = ball(project, 6, { 6: 24 });
+  project.showFrame(3);
+  project.addKey(key, 'transform');
+  const parts = () => [...(project.frames[3].parts?.get(key) ?? [])].sort();
+  const recolor = (fill) => {
+    project.updateShapes([[key, withShape(project.shapes.get(key), { fill })]]);
+    project.noteFrame();
+  };
+  recolor('#00ff00');
+  expect(parts()).toEqual(['fill', 'transform']);
+  recolor('#ff0000');
+  expect(parts()).toEqual(['transform']);
+  recolor('#00ff00');
+  project.undo();
+  project.noteFrame();
+  expect(parts()).toEqual(['transform']);
+});
+
 // A split key (a frame keyed by an edit inside a tween) given back to the tween when the edit's undone, or the shape's
 // put back where the tween has it; a key action there is on purpose, so the frame stays the key it's given.
 test("a key moved onto a frame a split keyed stays when the split's part goes back where the tween puts it", async () => {
