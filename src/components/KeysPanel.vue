@@ -59,7 +59,10 @@ const motion = computed(() => movable.value[0]?.key.motion ?? 'smooth');
 const canDelete = computed(() => selected.value.some(({ key }) => deletable(key)));
 
 // A new shape, nothing selected; and only keys still there (an undo, say, takes some away), in rows still listed.
+// A frame added, deleted or moved (or that undone) shifts keys to other frames, so none stays selected: a ref names
+// a frame by index, and could land on another key.
 watch(shapeKey, () => { workspace.selectedKeys = []; });
+watch(() => project.frames.map(({ id }) => id).join(), () => { workspace.selectedKeys = []; });
 watch(rows, (now) => {
   const kept = workspace.selectedKeys.filter(({ part, at }) => now.some((row) => row.part === part && row.keys.some((k) => k.at === at)));
   if (kept.length < workspace.selectedKeys.length) workspace.selectedKeys = kept;
