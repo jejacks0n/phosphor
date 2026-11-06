@@ -8,7 +8,8 @@ import { usePlayback } from '@/composables/usePlayback';
 import { EASINGS, MOTIONS } from '@/document/tweens.js';
 import { PARTS } from '@/document/parts.js';
 import { listedParts, partKeys } from '@/document/keys.js';
-import { MIN_FRAME_PX, MIN_FRAME_PX_PHONE, frameAt, labelEvery, laneLayout, xOf, zoomAround } from '@/lib/keyLanes.js';
+import { lifeAt } from '@/document/tweens.js';
+import { MIN_FRAME_PX, MIN_FRAME_PX_PHONE, MOST_FRAME_PX, frameAt, labelEvery, laneLayout, xOf, zoomAround } from '@/lib/keyLanes.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import KeyValues from '@/components/KeyValues.vue';
 
@@ -35,15 +36,20 @@ const easings = [['none', null], ...EASINGS.map((easing) => [easing, easing])];
 const shapeKey = computed(() => workspace.vectorSelected.find((key) => project.shapes.has(key)) ?? null);
 const at = computed(() => (workspace.playing ? workspace.playFrame : project.frame));
 const count = computed(() => project.frames.length);
-// The shape's life around the frame showing (the one playing, while it plays), and the parts that change in it.
+// The shape's life around the frame showing (the one playing, while it plays), and the parts that change in it. They
+// follow the life's first frame, so playing within a life leaves them as they are.
+const lifeStart = computed(() => {
+  void project.historyVersion;
+  return shapeKey.value && project.hasFrames && project.frames[at.value] ? lifeAt(project.frames, shapeKey.value, at.value)[0] ?? null : null;
+});
 const keys = computed(() => {
   void project.historyVersion;
-  return shapeKey.value && project.hasFrames ? partKeys(project.frames, shapeKey.value, at.value) : null;
+  return lifeStart.value === null ? null : partKeys(project.frames, shapeKey.value, lifeStart.value);
 });
 const rows = computed(() => {
   void project.historyVersion;
   if (!keys.value) return [];
-  return listedParts(project.frames, shapeKey.value, at.value).map((part) => ({ part, keys: keys.value.rows.get(part) }));
+  return listedParts(project.frames, shapeKey.value, lifeStart.value).map((part) => ({ part, keys: keys.value.rows.get(part) }));
 });
 const unlisted = computed(() => (keys.value ? PARTS.filter((part) => !rows.value.some((row) => row.part === part)) : []));
 const keyAt = (part, i) => keys.value?.rows.get(part).find((k) => k.at === i);
@@ -58,7 +64,13 @@ const selected = computed(() => workspace.selectedKeys.map(({ part, at }) => {
 const isSelected = (part, i) => workspace.selectedKeys.some((ref) => ref.part === part && ref.at === i);
 const easable = computed(() => selected.value.filter(({ leaves }) => leaves));
 const movable = computed(() => easable.value.filter(({ part, key }) => part === 'transform' && key.easing));
-const easing = computed(() => easable.value[0]?.key.easing ?? null);
+// The easing of the selected keys that a tween leaves, or MIXED when they differ.
+const MIXED = 'mixed';
+const easing = computed(() => {
+  const all = easable.value.map(({ key }) => key.easing ?? null);
+  return all.every((one) => one === all[0]) ? all[0] ?? null : MIXED;
+});
+const easingName = computed(() => (easing.value === MIXED ? t('keysPanel.mixed') : t(`animation.easings.${easing.value ?? 'none'}`)));
 const motion = computed(() => movable.value[0]?.key.motion ?? 'smooth');
 const canDelete = computed(() => selected.value.some(({ key }) => deletable(key)));
 
@@ -98,6 +110,7 @@ onBeforeUnmount(() => observer?.disconnect());
 const layout = computed(() => laneLayout({ count: count.value, width: lane.width, thumb: lane.thumb, zoom: workspace.keysZoom,
   scroll: workspace.keysScroll, minPx: phone.value ? MIN_FRAME_PX_PHONE : MIN_FRAME_PX }));
 const x = (i) => xOf(i, layout.value);
+const keyW = computed(() => (phone.value ? 20 : 14)); // a finger's, on a phone
 const half = computed(() => layout.value.px / 2);
 const inView = (i) => i >= layout.value.first && i <= layout.value.last;
 const laneX = (clientX) => clientX - root.value.getBoundingClientRect().left - lane.left;
@@ -115,7 +128,7 @@ watchEffect(() => {
 });
 watchEffect(() => {
   const { fits, first, last, px } = layout.value;
-  workspace.keysView = fits || !shapeKey.value ? null : { first, last, px };
+  workspace.keysView = fits || !shapeKey.value || !lane.width ? null : { first, last, px };
 });
 onBeforeUnmount(() => { workspace.keysView = null; });
 // The frame showing stays in view: stepping, playing and scrubbing scroll the lanes to it, and so does the lanes'
@@ -134,6 +147,7 @@ function zoomBy(factor, around) {
   workspace.keysZoom = zoom;
   workspace.keysScroll = scroll;
 }
+const mostZoomed = computed(() => layout.value.px >= Math.max(MOST_FRAME_PX, layout.value.fit));
 const zoomButton = (factor) => zoomBy(factor, Math.min(Math.max(x(at.value), 0), lane.width));
 function wheel(event) {
   if (event.ctrlKey || event.metaKey) { // a pinch comes as a Ctrl-wheel
@@ -283,7 +297,7 @@ const focusIn = () => {
   <section ref="root" class="keys-panel" tabindex="0" :aria-label="t('keysPanel.aria')" :style="{ '--lead': `${lane.left}px`, '--lane': `${lane.width}px` }" @keydown="keydown" @pointerdown="focusIn" @lostpointercapture="lostKeys">
     <div class="head">
       <div class="lead">
-        <button class="fold" :aria-label="t('keysPanel.fold')" :title="t('keysPanel.fold')" @click="workspace.keysOpen = false">▾</button>
+        <button class="fold" :aria-label="t('keysPanel.fold')" aria-expanded="true" :title="t('keysPanel.fold')" @click="workspace.keysOpen = false">▾</button>
         <DropdownMenu v-if="shapeKey" class="add-key" :label="t('keysPanel.addKey')" align="left" up :disabled="!unlisted.length">
           <button v-for="part in unlisted" :key="part" :disabled="!!keyAt(part, project.frame)" @click="addKey(part)">{{ partName(part) }}</button>
         </DropdownMenu>
@@ -295,22 +309,22 @@ const focusIn = () => {
             <span>{{ i + 1 }}</span>
           </button>
         </div>
+        <span class="zoom">
+          <button :aria-label="t('keysPanel.zoomOut')" :title="t('keysPanel.zoomOut')" :disabled="layout.fits" @click="zoomButton(1 / 1.25)">−</button>
+          <button :aria-label="t('keysPanel.zoomIn')" :title="t('keysPanel.zoomIn')" :disabled="mostZoomed" @click="zoomButton(1.25)">+</button>
+        </span>
         <div class="rest">
-          <span class="zoom">
-            <button :aria-label="t('keysPanel.zoomOut')" :title="t('keysPanel.zoomOut')" :disabled="layout.fits" @click="zoomButton(1 / 1.25)">−</button>
-            <button :aria-label="t('keysPanel.zoomIn')" :title="t('keysPanel.zoomIn')" @click="zoomButton(1.25)">+</button>
-          </span>
-          <DropdownMenu class="easing" :label="t('keysPanel.easing')" up :disabled="!easable.length">
+          <DropdownMenu class="easing" :label="t('keysPanel.easing')" :trigger-label="t('keysPanel.easingNow', { easing: easingName })" up :disabled="!easable.length">
             <template #trigger>
-              <svg class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[easing ?? 'none']"/></svg>
-              {{ t(`animation.easings.${easing ?? 'none'}`) }}
+              <svg v-if="easing !== MIXED" class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[easing ?? 'none']"/></svg>
+              {{ easingName }}
             </template>
             <button v-for="[name, choice] in easings" :key="name" :aria-pressed="easing === choice" @click="ease(choice)">
               <svg class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[name]"/></svg>
               {{ t(`animation.easings.${name}`) }}
             </button>
           </DropdownMenu>
-          <DropdownMenu class="motion" :label="t('keysPanel.motion')" up :disabled="!movable.length">
+          <DropdownMenu class="motion" :label="t('keysPanel.motion')" :trigger-label="t('keysPanel.motionNow', { motion: t(`animation.motions.${motion}`) })" up :disabled="!movable.length">
             <template #trigger>{{ t(`animation.motions.${motion}`) }}</template>
             <button v-for="choice in MOTIONS" :key="choice" :aria-pressed="motion === choice" @click="moveBy(choice)">{{ t(`animation.motions.${choice}`) }}</button>
           </DropdownMenu>
@@ -324,7 +338,7 @@ const focusIn = () => {
       <div v-for="row in rows" :key="row.part" class="row" :class="{ picked: selected.some(({ part }) => part === row.part) }" :data-part="row.part">
         <div class="lead">
           <span class="name">{{ partName(row.part) }}</span>
-          <span class="nav">
+          <span v-if="!phone" class="nav">
             <button :aria-label="t('keysPanel.previous', { part: partName(row.part) })" :disabled="previous(row) === undefined" @click="show(previous(row))">◀</button>
             <button class="here" :class="{ on: !!keyAt(row.part, at) }" :aria-label="t('keysPanel.here', { part: partName(row.part) })" :aria-pressed="!!keyAt(row.part, at)" :disabled="!!keyAt(row.part, at) && !deletable(keyAt(row.part, at))" @click="toggleHere(row.part)">{{ keyAt(row.part, at) ? '◆' : '◇' }}</button>
             <button :aria-label="t('keysPanel.next', { part: partName(row.part) })" :disabled="next(row) === undefined" @click="show(next(row))">▶</button>
@@ -337,9 +351,10 @@ const focusIn = () => {
           <span v-for="piece in piecesOf(row)" :key="`piece${piece.from}`" :class="piece.easing ? 'tween' : 'hold'" :style="{ left: `${x(piece.from)}px`, width: `${x(piece.to) - x(piece.from)}px` }">
             <svg v-if="piece.easing" class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[piece.easing]"/></svg>
           </span>
-          <button v-for="k in row.keys.filter((k) => inView(k.at))" :key="`key${k.at}`" class="key" :class="{ fixed: k.fixed }" :data-at="k.at" :style="{ left: `${x(k.at) - 7}px` }" :aria-pressed="isSelected(row.part, k.at)" :aria-label="t('keysPanel.key', { part: partName(row.part), frame: k.at + 1 })" @pointerdown="pressKey($event, row.part, k.at)" @click="pick(row.part, k.at, $event)"></button>
+          <button v-for="k in row.keys.filter((k) => inView(k.at))" :key="`key${k.at}`" class="key" :class="{ fixed: k.fixed }" :data-at="k.at" :style="{ left: `${x(k.at) - keyW / 2}px` }" :aria-pressed="isSelected(row.part, k.at)" :aria-label="t('keysPanel.key', { part: partName(row.part), frame: k.at + 1 })" @pointerdown="pressKey($event, row.part, k.at)" @click="pick(row.part, k.at, $event)"></button>
         </div>
         <KeyValues v-if="!phone" :part="row.part" :shape-key="shapeKey"/>
+        <button v-else class="here" :class="{ on: !!keyAt(row.part, at) }" :aria-label="t('keysPanel.here', { part: partName(row.part) })" :aria-pressed="!!keyAt(row.part, at)" :disabled="!!keyAt(row.part, at) && !deletable(keyAt(row.part, at))" @click="toggleHere(row.part)">{{ keyAt(row.part, at) ? '◆' : '◇' }}</button>
       </div>
       <span v-if="rows.length && inView(at)" class="playhead" :style="{ left: `${lane.left + x(at)}px` }"></span>
     </div>
@@ -350,7 +365,7 @@ const focusIn = () => {
 section.keys-panel {
   position: relative;
   flex-shrink: 0;
-  overflow: hidden; /* on a phone the lanes are narrow and the rest gives way (the panel's own layout is to come) */
+  overflow: hidden;
   padding: 2px 0 6px;
   background: var(--surface-2);
   border-top: 1px solid var(--border);
@@ -552,6 +567,7 @@ span.playhead {
 span.zoom {
   display: flex;
   flex: none;
+  margin-left: 14px;
 }
 span.zoom button {
   width: 22px;
@@ -564,7 +580,7 @@ div.rest {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  padding-left: 14px;
+  padding-left: 6px;
 }
 p.none {
   margin: 0;
@@ -604,5 +620,73 @@ button.delete svg {
   width: 14px;
   height: 14px;
   fill: currentColor;
+}
+
+/* On a phone: no values and no ◀ ▶; a ◆ toggle ends each row. The top line is the fold, + Add key and the buttons; the
+   ruler (and the zoom) has the next, under the lanes' own columns. */
+div.row > button.here {
+  flex: none;
+  width: 34px;
+  height: 22px;
+  margin: 0 8px 0 auto;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+div.row > button.here.on {
+  color: var(--accent);
+}
+@media (max-width: 768px) {
+  div.head {
+    flex-wrap: wrap;
+    height: auto;
+    row-gap: 4px;
+    padding: 4px 0;
+  }
+  div.head > div.lead {
+    width: auto;
+    padding: 0 6px 0 8px;
+  }
+  div.rest {
+    order: 1;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    padding: 0 8px 0 0;
+  }
+  div.ruler {
+    order: 2;
+    height: 28px;
+    margin-left: var(--lead);
+  }
+  span.zoom {
+    order: 3;
+    margin-left: 6px;
+  }
+  div.row {
+    height: 26px;
+  }
+  div.row div.lead {
+    padding: 0 6px 0 8px;
+    font-size: 11px;
+  }
+  span.tick {
+    top: 6px;
+    bottom: 6px;
+  }
+  span.hold {
+    top: 12.5px;
+  }
+  span.tween {
+    top: 10px;
+  }
+  button.key {
+    top: 1px;
+    width: 20px;
+    height: 24px;
+  }
+  button.key::before {
+    inset: 7px 5px;
+  }
 }
 </style>

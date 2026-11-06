@@ -4,6 +4,7 @@ import { t } from '@/i18n';
 
 const props = defineProps({
   label: { type: String, default: () => t('common.actions') },
+  triggerLabel: { type: String, default: null }, // the trigger's name, where its text is a value
   icon: { type: String, default: null },
   disabled: { type: Boolean, default: false },
   closeOnSelect: { type: Boolean, default: true }, // false for panels of controls (sliders, checkboxes)
@@ -65,7 +66,7 @@ onBeforeUnmount(() => {
 
 <template>
   <article ref="root" class="dropdown" :class="{ open: isOpen }">
-    <button class="dropdown-trigger" @click="toggle" :disabled="disabled" :title="label">
+    <button class="dropdown-trigger" :aria-label="triggerLabel" @click="toggle" :disabled="disabled" :title="label">
       <slot name="trigger">
         <span v-if="icon">{{ icon }}</span>
         <span v-else>{{ label }}</span>

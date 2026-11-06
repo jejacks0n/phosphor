@@ -3,7 +3,7 @@
 // window, px a frame, scrolled along a strip as long as the frames, with the same half thumb at each end.
 
 export const MIN_FRAME_PX = 14, MIN_FRAME_PX_PHONE = 20; // usable: a diamond apart, or a fingertip
-const MOST_FRAME_PX = 60;
+export const MOST_FRAME_PX = 60;
 
 // { fits, px, scroll, first, last, fit } and what it was made of. zoom is px a frame (null: fit, at least minPx); a
 // zoom that's no wider than fitting fits. first and last are the frames in view.

@@ -131,6 +131,10 @@ and Stroke are color chips that open the color box, Outline and Style are text (
 the shape's place among the shapes, as "3 of 5". Type a value and press Enter, or leave the field, and the part is keyed
 on the frame showing with it, as if you had edited the shape there; undo takes it back.
 
+On a phone there's no values column and no **◀** or **▶**: a **◇** (lit **◆** where there's a key) ends each row and does
+what the one between them does on a wide screen. The top line is the **▾**, **+ Add key**, then the easing, the motion and
+Delete; the ruler, with **−** and **+**, has the line under it. The diamonds are larger, for a finger.
+
 Click a diamond to select it and show its frame; Shift-click adds or removes one; click a frame number to select every
 key on that frame; click an empty lane to select none. Then, along the top:
 
@@ -143,7 +147,7 @@ key on that frame; click an empty lane to select none. Then, along the top:
 | **Ease in and out** | Speeds up, then slows down |
 | **Elastic** | Springs past the next key and back, settling there, as a ball on a rubber band |
 
-The easing goes to the tween leaving each selected key. A part's last key has no tween to ease, so with only last keys
+The easing goes to the tween leaving each selected key. With keys selected that have different easings, the menu says **Mixed** and checks none. A part's last key has no tween to ease, so with only last keys
 selected the easing is off; a key that becomes its part's last (its next deleted) loses its easing, and undo brings it
 back. The trash can (or Delete or Backspace, with the keys selected and the panel focused) deletes the selected keys:
 each part then tweens from the key before to the key after, eased as the key before is. A shape's first key stays

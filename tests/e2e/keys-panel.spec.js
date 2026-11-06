@@ -536,6 +536,132 @@ test('dragging the band scrolls the lanes; keys there drag a frame at a time', a
   await expect.poll(() => keyFrames(page, 'transform')).toEqual([at + 2]); // the diamonds in view
 });
 
+// The center of an element's box.
+const centerX = async (locator) => {
+  const box = await locator.boundingBox();
+  return box.x + box.width / 2;
+};
+// The scrubber's mark for frame i, in the bar.
+const markOf = (page, i) => bar(page).locator('.scrubber-marks span:not(.view):not(.band)').nth(i);
+
+test("the lanes line up with the scrubber's marks", async ({ page }) => {
+  await ball(page, { 3: 12 });
+  for (const at of [0, 3, 6]) expect(Math.abs(await centerX(diamond(page, 'transform', at)) - await centerX(markOf(page, at)))).toBeLessThan(1);
+});
+
+test("frames outside the shape's life are dimmed", async ({ page }) => {
+  const key = await ball(page);
+  await scrubTo(page, 6);
+  await addFrame(page, 'Wipe'); // frame 8, without the ball
+  await scrubTo(page, 3);
+  await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
+  await expect(panel(page).locator('button.frame[data-at="7"]')).toHaveClass(/out/);
+  await expect(panel(page).locator('button.frame[data-at="6"]')).not.toHaveClass(/out/);
+  const dim = row(page, 'transform').locator('.lane span.out');
+  await expect(dim).toHaveCount(1);
+  const lane = await row(page, 'transform').locator('.lane').boundingBox(), shade = await dim.boundingBox();
+  expect(shade.x).toBeGreaterThan(await centerX(diamond(page, 'transform', 6)));
+  expect(shade.x + shade.width).toBeCloseTo(lane.x + lane.width, 0);
+});
+
+test("a Duplicate's diamond is fixed, and Delete in the panel leaves it", async ({ page }) => {
+  await ball(page);
+  await addFrame(page, 'Duplicate');
+  const fixed = row(page, 'transform').locator('button.key.fixed');
+  await expect(fixed).toHaveCount(1);
+  const frames = await keyFrames(page, 'transform');
+  await fixed.click();
+  await expect(fixed).toHaveAttribute('aria-pressed', 'true');
+  await expect(panel(page).getByRole('button', { name: 'Delete keys' })).toBeDisabled();
+  await page.keyboard.press('Delete');
+  expect(await keyFrames(page, 'transform')).toEqual(frames);
+  await expect(fixed).toHaveCount(1);
+});
+
+test('the easing and motion menus are named for their purpose, and the fold button says it is open', async ({ page }) => {
+  await ball(page);
+  await expect(panel(page).getByRole('button', { name: 'Fold the keys away' })).toHaveAttribute('aria-expanded', 'true');
+  await expect(panel(page).locator('.easing .dropdown-trigger')).toHaveAttribute('aria-label', /^Easing: /);
+  await expect(panel(page).locator('.motion .dropdown-trigger')).toHaveAttribute('aria-label', /^Motion: /);
+});
+
+test('keys with different easings selected show Mixed, with nothing checked in the menu', async ({ page }) => {
+  const key = await ball(page, { 3: 12 });
+  await store(page, 'project', `(p) => { p.setKeyEasing('${key}', [{ part: 'transform', at: 0 }], 'linear'); p.setKeyEasing('${key}', [{ part: 'transform', at: 3 }], 'easeIn'); }`);
+  const easing = panel(page).locator('.easing .dropdown-trigger');
+  await diamond(page, 'transform', 0).click();
+  await expect(easing).toHaveText('Linear');
+  await diamond(page, 'transform', 3).click({ modifiers: ['Shift'] });
+  await expect(easing).toHaveText('Mixed');
+  await easing.click();
+  await expect(page.locator('.dropdown-content button[aria-pressed="true"]')).toHaveCount(0);
+});
+
+test('+ is off at the closest zoom', async ({ page }) => {
+  await long(page);
+  const zoomIn = panel(page).getByRole('button', { name: 'Zoom in' });
+  await expect(zoomIn).toBeEnabled();
+  for (let i = 0; i < 8 && await zoomIn.isEnabled(); i++) await zoomIn.click();
+  await expect(zoomIn).toBeDisabled();
+  await expect.poll(() => spacing(page)).toBeCloseTo(60, 0);
+});
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  test('the rows have a key toggle at their end and no values', async ({ page }) => {
+    await ball(page);
+    await expect(row(page, 'transform').locator('.values')).toHaveCount(0);
+    await expect(panel(page).getByRole('button', { name: /key: (previous|next)/ })).toHaveCount(0);
+    const box = await panel(page).boundingBox(), lane = await row(page, 'transform').locator('.lane').boundingBox();
+    const here = row(page, 'transform').locator('button.here'), at = await here.boundingBox();
+    expect(at.x).toBeGreaterThan(lane.x + lane.width);
+    expect(at.x + at.width).toBeGreaterThan(box.x + box.width - 16); // the row's right end
+    expect(at.x + at.width).toBeLessThanOrEqual(box.x + box.width);
+    await expect(here).toHaveText('◇'); // frame 4 is no key
+    await here.tap();
+    await expect(here).toHaveText('◆');
+    expect(await keyFrames(page, 'transform')).toEqual([0, 3, 6]);
+    await page.waitForTimeout(600); // a tap this soon after the last would be the browser's double tap
+    await here.tap(); // lit: deletes it
+    await expect(here).toHaveText('◇');
+    expect(await keyFrames(page, 'transform')).toEqual([0, 6]);
+  });
+
+  test('the top line holds the fold, + Add key, easing, motion and Delete, and the ruler has a line of its own', async ({ page }) => {
+    await ball(page);
+    const boxes = await Promise.all(['.fold', '.add-key', '.easing', '.motion', '.delete'].map((c) => panel(page).locator(c).boundingBox()));
+    for (const b of boxes) {
+      expect(b.x).toBeGreaterThanOrEqual(0);
+      expect(b.x + b.width).toBeLessThanOrEqual(390);
+      expect(Math.abs(b.y - boxes[0].y)).toBeLessThan(12); // one line
+    }
+    const ruler = await panel(page).locator('.ruler').boundingBox(), first = await row(page, 'transform').boundingBox();
+    expect(ruler.y).toBeGreaterThanOrEqual(boxes[0].y + 20);
+    expect(ruler.y + ruler.height).toBeLessThanOrEqual(first.y + 1);
+  });
+
+  test("the lanes line up with the scrubber's marks", async ({ page }) => {
+    await ball(page, { 3: 12 });
+    for (const at of [0, 3, 6]) expect(Math.abs(await centerX(diamond(page, 'transform', at)) - await centerX(markOf(page, at)))).toBeLessThan(1);
+  });
+
+  test('a tap selects a diamond; a finger drags it', async ({ page }) => {
+    await ball(page, { 3: 12 });
+    await diamond(page, 'transform', 6).tap();
+    await expect(diamond(page, 'transform', 6)).toHaveAttribute('aria-pressed', 'true');
+    await expect(shown(page)).toHaveText('7 / 7');
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type, ...points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(({ x, y }, id) => ({ x, y, id })) });
+    const [a, b] = await Promise.all([0, 1].map((at) => panel(page).locator(`button.frame[data-at="${at}"]`).boundingBox()));
+    const box = await diamond(page, 'transform', 3).boundingBox(), x = box.x + box.width / 2, y = box.y + box.height / 2;
+    await touch('touchStart', { x, y });
+    for (let i = 1; i <= 6; i++) await touch('touchMove', { x: x - (i / 6) * (b.x - a.x), y });
+    await touch('touchEnd');
+    await expect.poll(() => keyFrames(page, 'transform')).toEqual([0, 2, 6]);
+  });
+});
+
 test.describe('on a touch screen', () => {
   test.use({ hasTouch: true });
 
