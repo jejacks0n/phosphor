@@ -103,3 +103,17 @@ test('a file over the limits rejects with its message, and the open document sta
   expect(cellsKey(project)).toEqual(cells);
   expect(useWorkspaceStore().ansiOverlayAll).toBe(false);
 });
+
+test('paint over a file\'s cells covers them as it covers typed ones: a space or block takes the paint on the half it covers', async () => {
+  const project = await afterAnotherDocument();
+  await project.openArtFile(new File(['ab  \nab  '], 'note.txt'));
+  await settle(project);
+  project.paintStroke([{ x: 2, y: 0, alpha: 1 }, { x: 3, y: 1, alpha: 1 }, { x: 0, y: 0, alpha: 1 }], '#ffffff'); // top of (2, 0), bottom of (3, 0), top of the a
+  await settle(project);
+  const shows = () => [0, 2, 3].map((col) => { const { char, fg, bg } = project.cells[col]; return [char, bg.hex.toLowerCase(), fg.hex.toLowerCase()]; });
+  const expected = [['a', '#ffffff', '#aaaaaa'], ['▄', '#ffffff', '#000000'], ['▄', '#000000', '#ffffff']]; // a letter keeps its character, tinted
+  expect(shows()).toEqual(expected);
+  project.render(); // a whole render composes them the same way
+  await settle(project);
+  expect(shows()).toEqual(expected);
+});

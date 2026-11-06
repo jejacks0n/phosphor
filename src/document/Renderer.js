@@ -610,6 +610,11 @@ export default class Renderer {
         next[i] = this.#composeOne(col, row, params, entry, baseCells);
         continue;
       }
+      const painted = this.#paintedPin(col, row, params);
+      if (painted) {
+        next[i] = painted;
+        continue;
+      }
 
       if (resolved) { // a pin as cellsFromOutput builds it, held paint in its own colors
         if (this.pinAt(col, row) === undefined) {
@@ -674,7 +679,7 @@ export default class Renderer {
     const rows = charRowsOf(params.rows);
     for (const key of this.baseRecords.pins.keys()) {
       const { col, row } = parseKey(key);
-      if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#onBase(col, row, cells[cellIndex(col, row, params.cols)]);
+      if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#paintedPin(col, row, params) ?? this.#onBase(col, row, cells[cellIndex(col, row, params.cols)]);
     }
     for (const [key, entry] of editCells) {
       const { col, row } = parseKey(key);
@@ -743,6 +748,17 @@ export default class Renderer {
     const top = pixelAt(2 * row), bottom = pixelAt(2 * row + 1);
     const char = keepsSeed(charMode) ? baseCells[cellIndex(col, row, cols)]?.char ?? ' ' : weightedChar(top, bottom, charset || '▄', charMode);
     return this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
+  }
+
+  // A pinned cell with paint in it, or null: the cell the base shows (underCell), the paint over it as
+  // over an edit cell (coverCell). A pin's colors are its two pixels, background over foreground, so
+  // paint mixed into them would color half a space or a block the wrong way (or not show at all).
+  #paintedPin(col, row, params) {
+    if (this.pinAt(col, row) === undefined) return null;
+    const top = this.paintAt(col, 2 * row), bottom = this.paintAt(col, 2 * row + 1);
+    if (!top && !bottom) return null;
+    const under = this.underCell(col, row, params, []);
+    return under && coverCell(under, top, bottom, { renderStyle: params.renderStyle, palette: this.#heldData ? null : this.palette });
   }
 
   // A converted cell with the base layer's pin (if any) as its character.
