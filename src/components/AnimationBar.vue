@@ -148,7 +148,7 @@ const setFps = (event) => {
         <path d="M8 1.5C5 1.5 3 3.9 3 7v7.5l1.67-1.25 1.66 1.25L8 13.25l1.67 1.25 1.66-1.25L13 14.5V7c0-3.1-2-5.5-5-5.5zM6.25 5.5a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zm3.5 0a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2z"/>
       </svg>
     </button>
-    <DropdownMenu class="strength-menu" :label="t('animation.ghostStrengthTitle', { percent: workspace.ghostStrength })" :trigger-label="t('animation.ghostStrength')" up :close-on-select="false" :disabled="!workspace.ghost">
+    <DropdownMenu class="strength-menu" :class="{ active: workspace.ghost }" :label="t('animation.ghostStrengthTitle', { percent: workspace.ghostStrength })" :trigger-label="t('animation.ghostStrength')" up :close-on-select="false" :disabled="!workspace.ghost">
       <template #trigger>
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5l5 6H3z"/></svg>
       </template>
@@ -341,6 +341,16 @@ span.ghost-group :deep(.dropdown-trigger) {
 span.ghost-group :deep(.dropdown-trigger) > svg {
   width: 8px;
   height: 8px;
+}
+span.ghost-group .active :deep(.dropdown-trigger) { /* lit with Ghost, a fine line between the two */
+  background: var(--accent);
+  border-color: var(--accent);
+  border-left: 1px solid color-mix(in srgb, var(--white) 30%, var(--accent));
+  color: var(--white);
+}
+span.ghost-group .active :deep(.dropdown-trigger:hover) {
+  background: color-mix(in srgb, var(--white) 12%, var(--accent));
+  color: var(--white);
 }
 span.ghost-group :deep(.dropdown-trigger:disabled) {
   opacity: 0.4;
