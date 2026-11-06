@@ -432,7 +432,8 @@ paint. **Base** swaps the two halves of each cell's base colors. With both on, b
   lit).
 - **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
   selection's size and place, and the Eyedropper its last pick and where each color came from.
-  On the right it shows the held-key shortcuts for the tool. When the view is too narrow for all of
+  On the right it shows that Space pans, and while you hold Alt (Option on a Mac) or Shift, what that key
+  does with the tool. When the view is too narrow for all of
   it, the bar scrolls sideways, like the toolbar's options row.
 - **Zoom**: the ANSI view zooms from 25% of its cells' size to 800% (100% is the font at its size),
   with Ctrl+wheel (a trackpad pinch), a pinch on a touch screen, or the Zoom tool (**Z**): drag left

@@ -12,7 +12,7 @@ test('Alt picks the foreground and Alt+Shift the background, from Pencil and Sha
   await openApp(page);
   for (const tool of ['Pencil', 'Shapes']) {
     await page.getByRole('button', { name: tool }).click();
-    await expect(hint(page)).toContainText('pick color');
+    await expect(hint(page)).toHaveText('Space pan'); // a modifier's hint shows while it's held
     const id = await ws(page, (w) => w.activeTool);
 
     const at = await cellPoint(page, 10, 3, 0);
@@ -100,10 +100,15 @@ test('Shift-click with the Pencil draws a straight line from the last point; Pen
   await openApp(page);
   for (const tool of ['Pencil', 'Brush']) {
     await page.getByRole('button', { name: tool }).click();
+    await expect(hint(page)).not.toContainText('straight line');
+    await page.keyboard.down('Shift'); // said while it's held
     await expect(hint(page)).toContainText('straight line');
+    await page.keyboard.up('Shift');
   }
   await page.getByRole('button', { name: 'Shapes' }).click();
+  await page.keyboard.down('Shift');
   await expect(hint(page)).not.toContainText('straight line');
+  await page.keyboard.up('Shift');
 
   await page.getByRole('button', { name: 'Pencil' }).click();
   const a = await cellPoint(page, 5, 4, 0), b = await cellPoint(page, 25, 4, 0);

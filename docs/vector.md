@@ -150,7 +150,7 @@ several (a letter's counters, a ring's hole):
 - Drag a point to move it, its handles with it. Drag a handle to bend the curves beside its point; on a
   smooth point the other handle turns with it. Alt-drag (Option-drag on a Mac) a handle to break it from its
   partner: it moves alone, and from then on the point's two handles bend the curves on their own. The status
-  bar says so while you edit points.
+  bar says so while you hold Alt as you edit points.
 - Shift-click a point to select it as well as those selected (Shift-click a selected one to let it go), or drag
   a box from empty canvas (or from inside the shape) over points to select those in it; with Shift, they're
   added. With no shape's points being edited, a box edits the top shape with points in it and selects them.
@@ -160,7 +160,6 @@ several (a letter's counters, a ring's hole):
 - A press on a gradient's handle (an end or a stop) takes it, even with a point or a curve handle as near or
   nearer (a gradient's end on a corner, say); otherwise it takes the point or curve handle nearest. Handles on top of each other part as you zoom in; or click (or tap)
   again in the same place for the next one there, and again for the one after; a drag then moves the one picked.
-  The status bar says so while you edit points.
 - Click the outline to add a point there; the curve stays where it was, and the new point is selected.
 - The options row: **Smooth**, **Free** or **Sharp**, the selected point's (the last one selected), one of them
   lit; a choice changes every selected point. Smooth: its handles
@@ -296,5 +295,5 @@ same, without the hint; a double tap on a shape edits its points.
 
 On VECTOR the Eyedropper picks the color the art shows under the pointer and makes it the selected
 shapes' Fill or Stroke, as one undo step: **Fill** or **Stroke** in the options row chooses which (Fill to start
-with), and Shift picks for the other one (while you hold it, that one is lit); the status bar says so. With nothing selected, it sets the next
+with), and Shift picks for the other one (while you hold it, that one is lit, and the status bar says so). With nothing selected, it sets the next
 shape's.

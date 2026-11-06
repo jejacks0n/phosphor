@@ -76,13 +76,14 @@ test('Shift while dragging a shape makes a square, a circle or a 45° line, and 
   const hint = page.locator('footer.ansi-status');
   const dragTo = async (kind, words) => {
     await store(page, 'workspace', `(w) => { w.shapeKind = '${kind}'; w.shapeDrawWith = 'half'; }`);
-    await expect(hint).toContainText(words);
+    await expect(hint).not.toContainText(words); // until Shift's held
     const from = await cellPoint(page, 4, 4), to = await cellPoint(page, 16, 7);
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     await page.mouse.move(to.x, to.y);
     const without = await store(page, 'workspace', (w) => w.shapeDrag);
     await page.keyboard.down('Shift');
+    await expect(hint).toContainText(words);
     const held = await store(page, 'workspace', (w) => w.shapeDrag);
     await page.keyboard.up('Shift');
     expect(await store(page, 'workspace', (w) => w.shapeDrag)).toEqual(without);

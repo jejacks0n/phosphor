@@ -475,7 +475,10 @@ test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', asy
   await page.keyboard.press('ControlOrMeta+z');
   expect((await shapeList(page))[0].stroke).toBe(null);
 
+  await expect(page.locator('.ansi-status .hint')).not.toContainText('pick the stroke'); // until Shift's held
+  await page.keyboard.down('Shift');
   await expect(page.locator('.ansi-status .hint')).toContainText('pick the stroke');
+  await page.keyboard.up('Shift');
 
   // Stroke chosen in the options row (a phone has no Shift): a click sets the stroke, and Shift the fill.
   const row = page.locator('.tool-setting-group').filter({ has: page.getByRole('button', { name: 'Stroke', exact: true }) });
@@ -486,7 +489,9 @@ test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', asy
   await page.keyboard.up('Shift');
   await expect(row.getByRole('button', { name: 'Fill', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await row.getByRole('button', { name: 'Stroke', exact: true }).click();
+  await page.keyboard.down('Shift');
   await expect(page.locator('.ansi-status .hint')).toContainText('pick the fill');
+  await page.keyboard.up('Shift');
   const other = await store(page, 'project', (p) => p.rawColorAt(5.5, 5.5));
   await page.mouse.click(...Object.values(await gridPoint(page, 5.5, 5.5)));
   expect((await shapeList(page))[0]).toMatchObject({ fill: color, stroke: other });
@@ -642,7 +647,10 @@ test('the Node tool (A) edits the points of the shape pressed, a two-point line\
   await dragPoints(page, await gridPoint(page, 30, 20), await gridPoint(page, 34, 26)); // one press: its points, and the end dragged
   expect(await store(page, 'workspace', (w) => w.vectorPoints)).toBe(line);
   expect((await lineEnds(page, line)).end).toMatchObject({ x: expect.closeTo(34, 0), y: expect.closeTo(26, 0) });
+  await expect(page.locator('.ansi-status .hint')).toHaveText('Space pan'); // Alt's hint shows while it's held
+  await page.keyboard.down('Alt');
   await expect(page.locator('.ansi-status .hint')).toContainText('drag a handle to break it from its partner');
+  await page.keyboard.up('Alt');
   await page.keyboard.press('Escape');
   expect(await store(page, 'workspace', (w) => w.vectorPoints)).toBe(null);
 
@@ -1007,7 +1015,7 @@ test('Node: a gradient\'s end on a corner is taken first; a click again there ta
     fill: { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [20, 0, 0, 20, 10, 10] },
     points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0], [10, 20, 0, 0, 0, 0, 0]] })`);
   await page.mouse.dblclick(...Object.values(await gridPoint(page, 20, 15)));
-  await expect(page.locator('.ansi-status .hint')).toContainText('again for the handle under it');
+  await expect(page.locator('.ansi-status .hint')).toHaveText('Space pan'); // the docs say a click again picks what's under
   const picked = () => store(page, 'workspace', (w) => [w.vectorPoint, w.vectorStop]);
   const corner = await gridPoint(page, 10, 10);
   await page.mouse.click(corner.x, corner.y);
@@ -1031,7 +1039,7 @@ test('Vector select shows one shape\'s gradient: a click on its end, over a scal
   await page.mouse.click(...Object.values(await gridPoint(page, 14, 12)));
   expect(await store(page, 'workspace', (w) => [w.activeTool, w.vectorSelected.length])).toEqual(['vselect', 1]);
   await expect(page.locator('.vector-overlay .stop')).toHaveCount(3);
-  await expect(page.locator('.ansi-status .hint')).toContainText('again for the handle under it');
+  await expect(page.locator('.ansi-status .hint')).toHaveText('Space pan');
 
   // The right end, on the right scale handle: a click is the end's stop, a click again the handle's.
   const end = await gridPoint(page, 30, 15);
@@ -1168,9 +1176,9 @@ test('double-click edits points: drag a point and a handle, click the outline to
   expect(Math.hypot(bent[2], bent[3])).toBeCloseTo(10 / 3, 1); // the in handle turned with it, at its own length
   expect(bent[3]).toBeGreaterThan(2);
   // Alt-dragging the in handle breaks it from the out handle, which stays where it is; the status bar says how.
-  await expect(page.locator('.ansi-status .hint')).toContainText('drag a handle to break it from its partner');
   const inHandle = { x: bent[0] + bent[2], y: bent[1] + bent[3] }, m = await matrix(page, key);
   await page.keyboard.down('Alt');
+  await expect(page.locator('.ansi-status .hint')).toContainText('drag a handle to break it from its partner');
   await dragPoints(page, await gridPoint(page, inHandle.x + m[4], inHandle.y + m[5]), await gridPoint(page, inHandle.x + m[4] - 4, inHandle.y + m[5]));
   await page.keyboard.up('Alt');
   const broke = await store(page, 'project', `(p) => p.shapes.get('${key}').points[1]`);
