@@ -115,6 +115,13 @@ the middle), a thin line where it holds, and a line across the lanes at the fram
 in its color. Frames outside the shape's life (before it starts, after a Wipe or Duplicate without it, or after it's
 erased) are dimmed. **+ Add key** offers the parts with no row, and keys the one you pick on the frame showing.
 
+On a wide screen each row ends with the part's value on the frame showing. Transform has **X** and **Y** (where the
+middle of the shape is, in grid pixels), **Turn** (degrees), and **W** and **H** (its width and height in percent,
+along the shape's own axes, so a turned shape stretches along itself; a negative H flips it). Width is a number, Fill
+and Stroke are color chips that open the color box, Outline and Style are text (the Node tool edits them) and Stack is
+the shape's place among the shapes, as "3 of 5". Type a value and press Enter, or leave the field, and the part is keyed
+on the frame showing with it, as if you had edited the shape there; undo takes it back.
+
 Click a diamond to select it and show its frame; Shift-click adds or removes one; click a frame number to select every
 key on that frame; click an empty lane to select none. Then, along the top:
 

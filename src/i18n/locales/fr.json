@@ -754,6 +754,23 @@
     "previous": "{part} : clé précédente",
     "next": "{part} : clé suivante",
     "here": "{part} : clé sur cette image",
+    "values": {
+      "x": "X",
+      "y": "Y",
+      "turn": "Rot.",
+      "scaleX": "L",
+      "scaleY": "H",
+      "xTitle": "X : où se trouve le milieu de la forme, en pixels de la grille",
+      "yTitle": "Y : où se trouve le milieu de la forme, en pixels de la grille",
+      "turnTitle": "Rotation, en degrés",
+      "scaleXTitle": "Largeur, en pourcentage, selon les axes de la forme",
+      "scaleYTitle": "Hauteur, en pourcentage, selon les axes de la forme (négatif la retourne)",
+      "widthTitle": "Épaisseur du contour, en pixels de la grille",
+      "fill": "Couleur de remplissage : ouvrir le sélecteur de couleur",
+      "stroke": "Couleur du contour : ouvrir le sélecteur de couleur",
+      "outline": "{n} point · à modifier avec l'outil Nœud | {n} points · à modifier avec l'outil Nœud",
+      "stack": "{n} sur {m}"
+    },
     "parts": {
       "transform": "Transformation",
       "outline": "Tracé",
