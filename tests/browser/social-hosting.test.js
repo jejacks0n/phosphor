@@ -1169,8 +1169,8 @@ test('a check goes to artists up to date, once for a number, and not to anyone b
   const r = await room(['p1', 'p2', 'p3']);
   drawingCalls(r);
   r.host.setArtists(['u_p1', 'u_p2']);
+  await seated(r, 'p3');   // a watcher, here first: its joining goes to everyone, so not onto the channels watched below
   const up = await artistOnFullChannel(r, 'p1'), behind = await artistOnFullChannel(r, 'p2');
-  await seated(r, 'p3');   // a watcher
   sends.clear();
   behind.channel.bufferedAmount = 8 * MIB + 1;
   r.host.sendAll({ t: 'numbered', n: 1 });
