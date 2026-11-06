@@ -441,6 +441,22 @@ test('while playing, the rows are those of the frame the playhead shows', async 
   await expect(panel(page).locator('[data-part]')).toHaveCount(1);
 });
 
+test('playing past a Wipe keeps the selected keys selected', async ({ page }) => {
+  const key = await ball(page);
+  await scrubTo(page, 6);
+  await addFrame(page, 'Wipe'); // frame 8, without the ball
+  await scrubTo(page, 3);
+  await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
+  await diamond(page, 'transform', 6).click();
+  await store(page, 'workspace', (w) => { w.playFrame = 7; w.playing = true; });
+  await expect(panel(page).locator('[data-part]')).toHaveCount(0);
+  await store(page, 'workspace', (w) => { w.playFrame = 2; }); // looped round
+  await expect(diamond(page, 'transform', 6)).toHaveAttribute('aria-pressed', 'true');
+  await store(page, 'workspace', (w) => { w.playing = false; });
+  await expect(diamond(page, 'transform', 6)).toHaveAttribute('aria-pressed', 'true');
+  expect(await store(page, 'workspace', (w) => w.selectedKeys)).toEqual([{ part: 'transform', at: 6 }]);
+});
+
 // The ball, on 200 frames; frame 1 shows.
 async function long(page) {
   const key = await ball(page);
