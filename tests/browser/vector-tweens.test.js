@@ -4,7 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { isShapeKey, rectShape, translation, transformed, rotation, withShape, worldPoints } from '@/document/shapes.js';
 import { MOTIONS, ease, shapeAt, strayEasings, tweenPart } from '@/document/tweens.js';
-import { deserializeFrames, serializeFrames } from '@/document/frames.js';
+import { cellState, deserializeFrames, serializeFrames } from '@/document/frames.js';
 import { PARTS } from '@/document/parts.js';
 import { partKeys } from '@/document/keys.js';
 import { writeProject } from '@/document/projectIO.js';
@@ -143,6 +143,33 @@ test('shapes put back on the frame showing (an undo puts back what the frame has
   project.showFrame(3);
   await settle(project);
   project.putShapesBack([[key, transformed(project.shapes.get(key), translation(3, 0))]]);
+  const cells = cellsKey(project);
+  project.renderer.reset();
+  project.render();
+  await settle(project);
+  expect(cells).toEqual(cellsKey(project)); // were the shape's cells from before, until something drew there
+});
+
+// No edit leaves the frame showing a shape other than it works out to today, so the frame's worked out look is made to
+// differ once, as a bug elsewhere could make it: setting the frame down shows the shape as worked out, drawn there.
+test('a shape the frame showing is set down with, other than it works out to, is shown and drawn as worked out', async () => {
+  const { project } = await animated();
+  const key = bounce(project, 'easeIn');
+  project.showFrame(3);
+  await settle(project);
+  const resolvedOf = project.resolvedOf, moved = transformed(project.shapes.get(key), translation(6, 0));
+  let once = true;
+  project.resolvedOf = (i) => {
+    const resolved = resolvedOf(i);
+    if (i !== project.frame || !once) return resolved;
+    once = false;
+    return new Map(resolved).set(key, cellState(moved, 0, 0));
+  };
+  project.editVersion++;
+  project.noteFrame();
+  project.resolvedOf = resolvedOf;
+  expect(once).toBe(false);
+  expect(project.shapes.get(key)).toEqual(moved);
   const cells = cellsKey(project);
   project.renderer.reset();
   project.render();
