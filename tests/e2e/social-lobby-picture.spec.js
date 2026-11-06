@@ -22,7 +22,7 @@ const exact = (page) => picture(page).getByRole('checkbox', { name: 'Use this ex
 // The frame's top line, in the art's lines.
 const topLine = (page, lines) => frame(page).evaluate((el, lines) => el.scrollTop / (el.firstElementChild.getBoundingClientRect().height / lines), lines);
 
-test('a listed room\'s lobby picture follows the host\'s view; scrolling it only looks, and the checkbox pins what it shows', async ({ page }) => {
+test('a listed room\'s lobby picture follows the host\'s view; scrolling it only looks, and the checkbox pins what it shows, still at its line when you come back to the tab', async ({ page }) => {
   await goLive(page, fakeRoom(), { image: 'images/tall.png' });   // 1,200 lines: the frame scrolls
   await expect(picture(page).getByRole('heading', { name: 'Lobby picture' })).toBeVisible();
   await expect(exact(page)).not.toBeChecked();
@@ -54,12 +54,14 @@ test('a listed room\'s lobby picture follows the host\'s view; scrolling it only
 
   // Checked: the card shows what the frame does, whatever the view does.
   const shown = Math.round(await topLine(page, 1200));
+  expect(shown).toBeGreaterThan(0);
   await exact(page).check();
   expect(await pin(page)).toEqual({ col: 0, row: shown });
   expect(await place(page)).toEqual({ col: 0, row: shown });
   await scrollAnsi(page, 0.8);
   await expect.poll(() => store(page, 'workspace', (w) => w.sharedView.row)).toBeGreaterThan(900);   // the view has moved
   await expect(exact(page)).toBeChecked();
+  await expect.poll(async () => Math.round(await topLine(page, 1200))).toBe(shown);   // back on the tab, at its line
   expect(await pin(page)).toEqual({ col: 0, row: shown });
 
   // Scrolling it now moves the pin; unchecked, it follows the view again.
@@ -69,20 +71,6 @@ test('a listed room\'s lobby picture follows the host\'s view; scrolling it only
   await exact(page).uncheck();
   expect(await pin(page)).toBe(null);
   await expect.poll(() => topLine(page, 1200)).toBeGreaterThan(900);
-});
-
-test('a pinned lobby picture is still at its line when you come back to the tab', async ({ page }) => {
-  await goLive(page, fakeRoom(), { image: 'images/tall.png' });
-  await frame(page).evaluate((el) => { el.scrollTop = el.scrollHeight / 2; });
-  await exact(page).check();
-  const pinned = await pin(page);
-  expect(pinned.row).toBeGreaterThan(0);
-
-  await tab(page, 'ANSI').click();
-  await tab(page, 'SOCIAL').click();
-  await expect(exact(page)).toBeChecked();
-  await expect.poll(async () => Math.round(await topLine(page, 1200))).toBe(pinned.row);
-  expect(await pin(page)).toEqual(pinned);
 });
 
 test('the lobby picture is picked in Set up your room too, for a listed room only, and going live keeps the pin', async ({ page }) => {

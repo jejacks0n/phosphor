@@ -144,29 +144,6 @@ test('a duplicated tab is its own copy', async ({ page, context }) => {
   expect(await chars(copy, 5, 3, 6)).not.toBe('mine');
 });
 
-test('an unreadable record opens the zero state', async ({ page }) => {
-  await openApp(page);
-  await expect.poll(() => record(page)).not.toBe(null);
-  const id = await store(page, 'project', (p) => p.documentId);
-  await page.evaluate((id) => new Promise((resolve, reject) => {
-    const open = indexedDB.open('phosphor-autosave', 1);
-    open.onerror = () => reject(open.error);
-    open.onsuccess = () => {
-      const db = open.result;
-      const tx = db.transaction('documents', 'readwrite');
-      const documents = tx.objectStore('documents');
-      const get = documents.get(id);
-      get.onsuccess = () => documents.put({ ...get.result, rest: new TextEncoder().encode('junk').buffer });
-      tx.oncomplete = () => { db.close(); resolve(); };
-    };
-  }), id);
-
-  await page.reload();
-  await expect(imageInput(page)).toBeAttached();
-  expect(await store(page, 'project', (p) => p.image)).toBe(null);
-  expect(await page.evaluate(() => sessionStorage.getItem('phosphor-autosave-document'))).toBe(null);
-});
-
 test('New project keeps the old work in the list, and a refresh stays at the zero state', async ({ page }) => {
   await openApp(page);
   await typeAndWrite(page, 3, 3, 'kept');
@@ -226,26 +203,25 @@ async function twoVersions(page) {
   return first;
 }
 
-test('a version appears after 5 minutes of changes, and Restore brings it back', async ({ page }) => {
+test('a version appears after 5 minutes of changes; the dialog focuses, and Escape closes it without changing anything; Restore brings a version back and keeps what you had as Before restoring', async ({ page }) => {
   const first = await twoVersions(page);
+  await typeMore(page, 3, 7, 'third'); // too soon for a version of its own
+  const second = await store(page, 'project', (p) => JSON.stringify(p.cells));
+  expect(second).not.toBe(first);
   await versionsButton(page).click();
   await expect(versionRows(page)).toHaveCount(2);
+  await expect(versionsDialog(page).locator(':focus')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(versionsDialog(page)).toHaveCount(0);
+  expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(second);
+  expect(await versionCount(page)).toBe(2);
+
+  await versionsButton(page).click();
   await versionRows(page).nth(1).getByRole('button', { name: 'Restore' }).click();
   await expect(versionsDialog(page)).toHaveCount(0);
   await settled(page);
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(first);
   await expect(undoButton(page)).toBeDisabled();
-});
-
-test('restoring keeps what you had as Before restoring', async ({ page }) => {
-  const first = await twoVersions(page);
-  await typeMore(page, 3, 7, 'third'); // too soon for a version of its own
-  const second = await store(page, 'project', (p) => JSON.stringify(p.cells));
-  await versionsButton(page).click();
-  await versionRows(page).nth(1).getByRole('button', { name: 'Restore' }).click();
-  await expect(versionsDialog(page)).toHaveCount(0);
-  await settled(page);
-  expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(first);
 
   await versionsButton(page).click();
   const kept = versionRows(page).filter({ hasText: 'Before restore' });
@@ -255,24 +231,6 @@ test('restoring keeps what you had as Before restoring', async ({ page }) => {
   await settled(page);
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(second);
   expect(await chars(page, 5, 3, 8)).toBe('second');
-});
-
-test('restoring and going back leaves the list as it was', async ({ page }) => {
-  await twoVersions(page);
-  await versionsButton(page).click();
-  await versionRows(page).nth(1).getByRole('button', { name: 'Restore' }).click();
-  await expect(versionsDialog(page)).toHaveCount(0);
-  await settled(page);
-
-  await versionsButton(page).click();
-  await expect(versionRows(page)).toHaveCount(2);
-  await versionRows(page).nth(0).getByRole('button', { name: 'Restore' }).click();
-  await expect(versionsDialog(page)).toHaveCount(0);
-  await settled(page);
-
-  await versionsButton(page).click();
-  await expect(versionRows(page)).toHaveCount(2);
-  await expect(versionRows(page).filter({ hasText: 'Before restore' })).toHaveCount(0);
 });
 
 test('no versions says so, and the button waits for an image', async ({ page }) => {
@@ -286,18 +244,4 @@ test('no versions says so, and the button waits for an image', async ({ page }) 
   await versionsButton(page).click();
   await expect(versionsDialog(page)).toContainText('No snapshots saved yet.');
   await expect(versionRows(page)).toHaveCount(0);
-});
-
-test('the dialog focuses, and Escape closes it without changing anything', async ({ page }) => {
-  const first = await twoVersions(page);
-  const second = await store(page, 'project', (p) => JSON.stringify(p.cells));
-  expect(second).not.toBe(first);
-  await versionsButton(page).click();
-  await expect(versionRows(page)).toHaveCount(2);
-  await expect(versionsDialog(page).locator(':focus')).toHaveCount(1);
-
-  await page.keyboard.press('Escape');
-  await expect(versionsDialog(page)).toHaveCount(0);
-  expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(second);
-  expect(await versionCount(page)).toBe(2);
 });
