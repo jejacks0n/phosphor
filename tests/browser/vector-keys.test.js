@@ -215,6 +215,29 @@ test("a key moved onto a frame a split keyed stays when the split's part goes ba
   expect([...project.frames[2].parts.get(key)]).toEqual(['transform']);
 });
 
+// Refs name frames, so after a move's undo or redo the keys selected where they landed could name another key.
+test('undoing or redoing a key move, dragged or not, leaves no key selected', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  const key = ball(project, 12, { 4: 8, 8: 16, 12: 24 });
+  const drag = {};
+  workspace.selectedKeys = project.moveKeys(key, [T(4)], 4, drag); // onto the key on 8
+  project.endKeyDrag(drag);
+  expect(workspace.selectedKeys).toEqual([T(8)]);
+  project.undo();
+  expect(workspace.selectedKeys).toEqual([]); // not the key the drop replaced, back on 8
+  workspace.selectedKeys = [T(4)];
+  project.redo();
+  expect(workspace.selectedKeys).toEqual([]);
+  workspace.selectedKeys = project.moveKeys(key, [T(8)], -2);
+  project.undo();
+  expect(workspace.selectedKeys).toEqual([]);
+  workspace.selectedKeys = [T(0)];
+  project.setKeyEasing(key, [T(0)], 'linear');
+  project.undo();
+  expect(workspace.selectedKeys).toEqual([T(0)]); // an easing's undo leaves the keys where they were
+});
+
 test('keys survive save and open', async () => {
   const project = await animated();
   const key = ball(project, 12, { 4: 8, 8: 16, 12: 24 });
