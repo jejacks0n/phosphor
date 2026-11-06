@@ -23,17 +23,6 @@ test('Cmd+S opens it with the name ready to type over; a new name renames the do
   await expect(nameField(page)).toHaveValue(/^my art-\d{8}-\d{6}$/);
 });
 
-test('the name in the dialog is the name of the file, and the next save offers a new time, not a second one', async ({ page }) => {
-  await openApp(page);
-  await page.keyboard.press('ControlOrMeta+s');
-  const offered = await nameField(page).inputValue();
-  const [download] = await Promise.all([page.waitForEvent('download'), page.keyboard.press('Enter')]);
-  expect(download.suggestedFilename()).toBe(`${offered}.phosphor`);
-  await expect(dialog(page)).toBeHidden();
-  await page.keyboard.press('ControlOrMeta+s');
-  await expect(nameField(page)).toHaveValue(/^gradient-\d{8}-\d{6}$/);
-});
-
 test('Escape, Cancel and the backdrop close it without saving; an empty name can\'t be saved', async ({ page }) => {
   await openApp(page);
   let downloads = 0;

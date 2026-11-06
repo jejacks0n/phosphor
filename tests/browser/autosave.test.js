@@ -1394,6 +1394,47 @@ test('a restored version\'s write is a change: it moves the edit time, and the v
   expect(await writtenChars(id)).toHaveLength(1);
 });
 
+// Frames go in the record: a Version brings them back, and going to another frame is kept but is no edit.
+const writtenFrame = async (id) => (await readProject(new Blob([(await readLatest(id)).record.rest]))).animation?.frame;
+
+test('a version restored brings its frames back', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  project.setAnimate(true);
+  edit(project, 2);
+  project.addFrame('blank');
+  await pass(SAVE_AFTER_MS);
+  expect(await listVersions(id)).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS);
+  project.addFrame('blank');
+  await pass(SAVE_AFTER_MS);
+  const versions = await listVersions(id);
+  expect(versions).toHaveLength(2);
+
+  await autosave.restoreVersion(versions[1].id);
+  await settle(project);
+  expect([project.frame, project.frames.length]).toEqual([1, 2]);
+  project.showFrame(0);
+  await settle(project);
+  expect(project.cells[2].char).toBe('a');
+});
+
+test('going to another frame alone isn\'t an edit for autosave, though the frame is kept', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  project.setAnimate(true);
+  project.addFrame('blank');
+  await pass(SAVE_AFTER_MS);
+  expect(await writtenFrame(id)).toBe(1);
+  const { editedAt } = (await readLatest(id)).record, version = project.editVersion;
+  await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS); // a change now would move the edit time
+  project.showFrame(0);
+  await pass(SAVE_AFTER_MS);
+  expect(await writtenFrame(id)).toBe(0);
+  expect((await readLatest(id)).record.editedAt).toBe(editedAt);
+  expect(project.editVersion).toBe(version);
+});
+
 test('a restore that fails partway puts back what was open, and rethrows', async () => {
   const { project } = await opened();
   const id = project.documentId;

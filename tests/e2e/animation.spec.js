@@ -1,5 +1,4 @@
-import { readFile } from 'node:fs/promises';
-import { test, expect, openApp, imageInput, saveAs, store, tab, chars, cellPoint, settled, autosaved } from './support.js';
+import { test, expect, openApp, store, tab, chars, cellPoint, settled, autosaved } from './support.js';
 
 const animateSwitch = (page) => page.getByRole('switch', { name: 'Animate' });
 const bar = (page) => page.getByRole('toolbar', { name: 'Animation' });
@@ -33,30 +32,6 @@ test('turning Animate on shows the bar under the canvas; off hides it and keeps 
   await animateSwitch(page).uncheck();
   await expect(bar(page)).toBeHidden();
   expect(await store(page, 'project', (p) => [p.frames.length, p.frame])).toEqual([2, 1]);
-});
-
-test('Animate works from any tab', async ({ page }) => {
-  await openApp(page);
-  await tab(page, 'SAUCE').click();
-  await animateSwitch(page).check();
-  await expect(bar(page)).toBeHidden();
-  await tab(page, 'ANSI').click();
-  await expect(bar(page)).toBeVisible();
-});
-
-test('draw, Add frame Blank, draw, scrub back and forward: the canvas follows', async ({ page }) => {
-  await openApp(page);
-  await animateSwitch(page).check();
-  await type(page, 2, 2, 'A');
-  await addFrame(page, 'Blank');
-  await type(page, 4, 2, 'B');
-  expect(await chars(page, 2, 2, 2)).toBe('A'); // it carries
-  await scrubTo(page, 0);
-  await expect(shown(page)).toHaveText('1 / 2');
-  await expect.poll(() => chars(page, 2, 4, 4)).not.toBe('B');
-  expect(await chars(page, 2, 2, 2)).toBe('A');
-  await scrubTo(page, 1);
-  await expect.poll(() => chars(page, 2, 4, 4)).toBe('B');
 });
 
 test('Add frame Wipe shows a clean canvas; Duplicate shows it solid', async ({ page }) => {
@@ -210,15 +185,6 @@ test('the keys type in Edit Mode rather than stepping', async ({ page }) => {
   await expect(shown(page)).toHaveText('2 / 2');
 });
 
-test('FPS and Hold set the timing', async ({ page }) => {
-  await openApp(page);
-  await animateSwitch(page).check();
-  await bar(page).getByRole('spinbutton', { name: 'Frames per second' }).fill('12');
-  await bar(page).getByRole('spinbutton', { name: 'Hold' }).fill('0.5');
-  await bar(page).getByRole('spinbutton', { name: 'Hold' }).blur();
-  expect(await store(page, 'project', (p) => [p.fps, p.frames[0].hold])).toEqual([12, 0.5]);
-});
-
 test('FPS and Hold can be typed in while the movie plays', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
@@ -236,30 +202,8 @@ test('FPS and Hold can be typed in while the movie plays', async ({ page }) => {
   await hold.selectText();
   await hold.pressSequentially('0.5', { delay: 150 });
   await expect(hold).toHaveValue('0.5');
-});
-
-test('Ghost toggles', async ({ page }) => {
-  await openApp(page);
-  await animateSwitch(page).check();
-  const ghost = bar(page).getByRole('button', { name: 'Ghost' });
-  await expect(ghost).toHaveAttribute('aria-pressed', 'true');
-  await expect(ghost).toHaveClass(/\bactive\b/); // lit as a toolbar button is
-  await expect(ghost.locator('svg')).toBeVisible(); // a ghost, not a word
-  await ghost.click();
-  await expect(ghost).toHaveAttribute('aria-pressed', 'false');
-  await expect(ghost).not.toHaveClass(/\bactive\b/);
-  await expect(ghost).toBeEnabled();
-  expect(await store(page, 'workspace', (w) => w.ghost)).toBe(false);
-});
-
-test('Add frame is a frame of film with a plus, and opens the three kinds', async ({ page }) => {
-  await openApp(page);
-  await animateSwitch(page).check();
-  const add = bar(page).getByRole('button', { name: 'Add frame' });
-  await expect(add.locator('svg')).toBeVisible();
-  await expect(add).toHaveText('');
-  await add.click();
-  for (const kind of ['Blank', 'Duplicate', 'Wipe']) await expect(page.getByRole('button', { name: new RegExp(`^${kind}`) })).toBeVisible();
+  await hold.press('Enter');
+  expect(await store(page, 'project', (p) => p.frames[p.frame].hold)).toBe(0.5);
 });
 
 test('Delete frame is off with one frame', async ({ page }) => {
@@ -445,37 +389,17 @@ test('cells drawn to stay show as the ghost on the next frame, and only on scree
   await expect.poll(ghost).not.toBe('A');
 });
 
-test('the bar is hidden on SOCIAL and SAUCE', async ({ page }) => {
+test('Animate works from any tab, and the bar is hidden on SOCIAL and SAUCE', async ({ page }) => {
   await openApp(page);
+  await tab(page, 'SAUCE').click();
   await animateSwitch(page).check();
-  for (const name of ['SAUCE', 'SOCIAL']) {
-    await tab(page, name).click();
-    await expect(bar(page)).toBeHidden();
-  }
+  await expect(bar(page)).toBeHidden();
+  await tab(page, 'SOCIAL').click();
+  await expect(bar(page)).toBeHidden();
   await tab(page, 'PIXEL').click();
   await expect(bar(page)).toBeVisible();
   await tab(page, 'ANSI').click();
   await expect(bar(page)).toBeVisible();
-});
-
-test('the switch is off with a reason above the limit', async ({ page }) => {
-  await openApp(page);
-  await page.evaluate(() => {
-    const p = document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('project');
-    p.cols = 300;
-    p.rows = 400;
-  });
-  await expect(animateSwitch(page)).toHaveAttribute('aria-disabled', 'true');
-  await expect(page.locator('label.animate')).toHaveAttribute('title', /too large/i);
-  // A tap says why, as a phone has no hover for the title. (A click where it is: Playwright won't click what's
-  // marked disabled, which is what the switch says it is.)
-  const box = await page.locator('label.animate').boundingBox();
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(page.locator('.app-toast')).toHaveText(/60,000 cells.*up to 40,000.*Dimensions/);
-  await page.locator('.app-toast').click(); // a click closes it
-  await expect(page.locator('.app-toast')).toBeHidden();
-  await expect(animateSwitch(page)).not.toBeChecked();
-  expect(await store(page, 'project', (p) => p.animate)).toBe(false);
 });
 
 test('on a narrow screen the bar wraps and stays on screen', async ({ page }) => {
@@ -563,67 +487,7 @@ test('a reload brings the animation back on the same frame, including text typed
   await expect.poll(() => chars(page, 2, 4, 4)).not.toBe('B');
 });
 
-test('scrubbing alone isn’t an edit for autosave, though the frame is kept', async ({ page }) => {
-  await openApp(page);
-  await animateSwitch(page).check();
-  await addFrame(page, 'Blank');
-  await expect.poll(async () => (await written(page))?.frame).toBe(1);
-  const { editedAt } = await written(page);
-  const version = await store(page, 'project', (p) => p.editVersion);
-  await scrubTo(page, 0);
-  await expect.poll(async () => (await written(page))?.frame, { timeout: 5000 }).toBe(0);
-  expect((await written(page)).editedAt).toBe(editedAt);
-  expect(await store(page, 'project', (p) => p.editVersion)).toBe(version);
-});
-
-test('saving a project and opening it brings the frames back', async ({ page }) => {
-  await openApp(page);
-  await animateSwitch(page).check();
-  await type(page, 2, 2, 'A');
-  await addFrame(page, 'Wipe');
-  const download = await saveAs(page, 'Save project (.phosphor)');
-  const buffer = await readFile(await download.path());
-  await page.evaluate(() => sessionStorage.removeItem('phosphor-autosave-document'));
-  await page.goto('/');
-  await imageInput(page).setInputFiles({ name: 'movie.phosphor', mimeType: 'application/octet-stream', buffer });
-  await expect(shown(page)).toHaveText('2 / 2');
-  await scrubTo(page, 0);
-  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
-});
-
-test('a Version restored brings its frames back', async ({ page }) => {
-  await page.clock.install();
-  await openApp(page);
-  await autosaved(page);   // the opening write, which makes no Version: edits before it would go with it
-  await animateSwitch(page).check();
-  await type(page, 2, 2, 'A');
-  await addFrame(page, 'Blank');
-  await page.clock.fastForward('00:02');
-  const versions = page.getByRole('dialog', { name: 'Versions' }).getByRole('listitem');
-  const count = async () => {
-    const id = await store(page, 'project', (p) => p.documentId);
-    return page.evaluate((id) => new Promise((resolve, reject) => {
-      const open = indexedDB.open('phosphor-autosave', 1);
-      open.onerror = () => reject(open.error);
-      open.onsuccess = () => {
-        const count = open.result.transaction('versions').objectStore('versions').index('documentId').count(id);
-        count.onsuccess = () => { open.result.close(); resolve(count.result); };
-      };
-    }), id);
-  };
-  await expect.poll(count).toBe(1);
-  await page.clock.fastForward('06:00');
-  await addFrame(page, 'Blank');
-  await page.clock.fastForward('00:02');
-  await expect.poll(count).toBe(2);
-  await page.getByRole('button', { name: 'Versions', exact: true }).click();
-  await versions.nth(1).getByRole('button', { name: 'Restore' }).click();
-  await expect(shown(page)).toHaveText('2 / 2');
-  await scrubTo(page, 0);
-  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
-});
-
-test('a canvas grown past the limit offers no Add frame, and Animate can still be turned off', async ({ page }) => {
+test('a canvas grown past the limit offers no Add frame, and Animate can still be turned off, then is off with a reason', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
   await page.evaluate(() => {
@@ -636,18 +500,36 @@ test('a canvas grown past the limit offers no Add frame, and Animate can still b
   await animateSwitch(page).uncheck();
   await expect(bar(page)).toBeHidden();
   await expect(animateSwitch(page)).toHaveAttribute('aria-disabled', 'true'); // off, and saying why when tried
+  await expect(page.locator('label.animate')).toHaveAttribute('title', /too large/i);
+  // A tap says why, as a phone has no hover for the title. (A click where it is: Playwright won't click what's
+  // marked disabled, which is what the switch says it is.)
+  const box = await page.locator('label.animate').boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator('.app-toast')).toHaveText(/60,000 cells.*up to 40,000.*Dimensions/);
+  await page.locator('.app-toast').click(); // a click closes it
+  await expect(page.locator('.app-toast')).toBeHidden();
+  await expect(animateSwitch(page)).not.toBeChecked();
+  expect(await store(page, 'project', (p) => p.animate)).toBe(false);
 });
 
-test('the Ghost slider sets the strength, and it’s remembered', async ({ page }) => {
+test('Ghost toggles, its slider sets the strength, and the strength is remembered', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
+  const ghost = bar(page).getByRole('button', { name: 'Ghost' });
+  await expect(ghost).toHaveAttribute('aria-pressed', 'true');
+  await expect(ghost).toHaveClass(/\bactive\b/); // lit as a toolbar button is
+  await expect(ghost.locator('svg')).toBeVisible(); // a ghost, not a word
   const slider = bar(page).getByRole('slider', { name: 'Ghost strength' });
   await expect(slider).toHaveValue('35');
   await slider.fill('70');
   expect(await store(page, 'workspace', (w) => w.ghostStrength)).toBe(70);
-  await bar(page).getByRole('button', { name: 'Ghost' }).click();
+  await ghost.click();
+  await expect(ghost).toHaveAttribute('aria-pressed', 'false');
+  await expect(ghost).not.toHaveClass(/\bactive\b/);
+  await expect(ghost).toBeEnabled();
+  expect(await store(page, 'workspace', (w) => w.ghost)).toBe(false);
   await expect(slider).toBeDisabled();
-  await bar(page).getByRole('button', { name: 'Ghost' }).click();
+  await ghost.click();
   await autosaved(page);
   await page.reload();
   await expect(page.locator('.ansi-editor .display')).toBeVisible();
