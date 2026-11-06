@@ -67,7 +67,9 @@ const canDelete = computed(() => selected.value.some(({ key }) => deletable(key)
 // a frame by index, and could land on another key.
 watch(shapeKey, () => { workspace.selectedKeys = []; });
 watch(() => project.frames.map(({ id }) => id).join(), () => { workspace.selectedKeys = []; });
-watch(rows, (now) => {
+// Not while playing: rows follow the frame playing, which may be past the shape's life; a pause checks the frame then.
+watch([rows, () => workspace.playing], ([now, playing]) => {
+  if (playing) return;
   const kept = workspace.selectedKeys.filter(({ part, at }) => now.some((row) => row.part === part && row.keys.some((k) => k.at === at)));
   if (kept.length < workspace.selectedKeys.length) workspace.selectedKeys = kept;
 }, { immediate: true });
