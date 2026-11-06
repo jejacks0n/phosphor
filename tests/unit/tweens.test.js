@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { makeShape, rectShape, rotation, transformed, translation, withShape } from '../../src/document/shapes.js';
 import { EASINGS, ease, lifeAt, setPartsAt, shapeAt, strayEasings, tweenBands, tweenPart, tweenReach, tweenShape, tweenedAt, workedOutAt } from '../../src/document/tweens.js';
 import { PARTS } from '../../src/document/parts.js';
-import { partKeys } from '../../src/document/keys.js';
+import { movedKeys, partKeys } from '../../src/document/keys.js';
 import { EMPTY_STATE, cellState, newFrame } from '../../src/document/frames.js';
 
 const close = (a, b, eps = 1e-3) => assert.ok(Math.abs(a - b) <= eps, `${a} vs ${b}`);
@@ -247,6 +247,22 @@ test("strayEasings finds an easing on a part's last key, or on a part its frame 
   assert.deepEqual(strayEasings(frames, K), [{ at: 0, part: 'fill' }, { at: 6, part: 'outline' }, { at: 12, part: 'transform' }]);
   frames[3].tweens = new Map([[K, eased('linear')]]); // left on a frame that isn't a key frame: no tween's, and none counted
   assert.equal(strayEasings(frames, K).length, 3);
+});
+
+// Each life is walked once: a 2000-frame movie keyed and eased on every frame takes a few milliseconds, where walking it
+// for every key took over a second.
+test('a long life keyed on every frame is walked once, not once a key', () => {
+  const frames = Array.from({ length: 2000 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
+  frames.forEach((frame, i) => {
+    frame.changes.set(K, cellState(transformed(RED, translation(0, i % 9)), 0, 0));
+    frame.tweens = new Map([[K, eased('linear')]]);
+  });
+  const started = performance.now();
+  assert.deepEqual(strayEasings(frames, K).map(({ at }) => at), Array(PARTS.length).fill(1999));
+  assert.equal(tweenBands(frames, K).length, 1999); // one a frame: bands that only touch aren't merged
+  assert.equal(movedKeys(frames, K, [{ part: 'fill', at: 1000 }], 1).patch.size, 2);
+  const took = performance.now() - started;
+  assert.ok(took < 400, `${took} ms`);
 });
 
 test("a shape's first key frame, and a Duplicate, set every part", () => {

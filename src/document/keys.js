@@ -3,7 +3,7 @@
 // frame's new { changes, tweens, motions, parts }, all new objects: frames are never changed here.
 import { EMPTY_STATE, cellState, sameState, withEases } from './frames.js';
 import { PARTS, samePart, withParts } from './parts.js';
-import { lifeAt, setPartsAt, shapeAt, strayEasings } from './tweens.js';
+import { keyFramesOf, lifeAt, setPartsAt, shapeAt, strayEasings } from './tweens.js';
 
 // A key that can't move or go: a Duplicate's, or a Wipe's past the life's start (each holds its own copy of the shape,
 // so nothing can carry through it).
@@ -136,7 +136,8 @@ function rewritten(frames, key, life, rows) {
       motion: transform?.easing && transform.motion,
     });
   }
-  for (const [at, keys] of own) next[at].changes.set(key, cellState(withParts(shapeAt(next, key, at), next[at].changes.get(key).cell, [...keys.keys()]), 0, 0));
+  const after = lifeAt(next, key, start), keyed = keyFramesOf(next, key, after); // one life, every key in it: walked once
+  for (const [at, keys] of own) next[at].changes.set(key, cellState(withParts(shapeAt(next, key, at, after, keyed), next[at].changes.get(key).cell, [...keys.keys()]), 0, 0));
   for (const { at, part } of strayEasings(next, key)) { // another life's, left by an edit
     const frame = next[at], eases = new Map(frame.tweens.get(key));
     eases.delete(part);
