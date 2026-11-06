@@ -2,11 +2,14 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { makeShape, rectShape, rotation, transformed, translation, withShape } from '../../src/document/shapes.js';
-import { EASINGS, ease, lifeAt, setPartsAt, shapeAt, spanAt, tweenBands, tweenPart, tweenReach, tweenShape, tweenedAt, workedOutAt } from '../../src/document/tweens.js';
+import { EASINGS, ease, lifeAt, setPartsAt, shapeAt, spanAt, strayEasings, tweenBands, tweenPart, tweenReach, tweenShape, tweenedAt, workedOutAt } from '../../src/document/tweens.js';
+import { PARTS } from '../../src/document/parts.js';
 import { EMPTY_STATE, cellState, newFrame } from '../../src/document/frames.js';
 
 const close = (a, b, eps = 1e-3) => assert.ok(Math.abs(a - b) <= eps, `${a} vs ${b}`);
 const A = rectShape(0, 0, 4, 4, { fill: '#ff0000' });
+// A key frame's easings: every part's (or those named) easing so.
+const eased = (easing, parts = PARTS) => new Map(parts.map((part) => [part, easing]));
 
 test('the easings start at 0 and end at 1, cubic between', () => {
   for (const e of EASINGS) {
@@ -78,7 +81,7 @@ test('a gradient mixes with one of its kind and stop count, else switches', () =
 function scene(easing = 'easeIn') {
   const frames = Array.from({ length: 9 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
   frames[0].changes.set('v:a', cellState(A, 0, 0));
-  frames[0].tweens = easing ? new Map([['v:a', easing]]) : null;
+  frames[0].tweens = easing ? new Map([['v:a', eased(easing)]]) : null;
   frames[6].changes.set('v:a', cellState(transformed(A, translation(0, 24)), 0, 0));
   return frames;
 }
@@ -89,10 +92,11 @@ test("a tween runs from a key frame to the shape's next, and puts the eased shap
   assert.deepEqual(spanAt(frames, 'v:a', 0), { from: 0, to: 6, easing: 'easeIn', motion: 'smooth' });
   assert.equal(spanAt(frames, 'v:a', 6), null);
   assert.equal(tweenedAt(frames, 3).get('v:a').shape.m[5], 3);
-  assert.equal(tweenedAt(frames, 3).get('v:a').easing, 'easeIn');
+  assert.deepEqual(tweenedAt(frames, 3).get('v:a').parts.get('transform'), { easing: 'easeIn', motion: 'smooth' });
+  assert.equal(tweenedAt(frames, 3).get('v:a').parts.size, PARTS.length);
   assert.equal(tweenedAt(frames, 6).size, 0);
   assert.equal(tweenedAt(frames, 7).size, 0);
-  assert.deepEqual(tweenBands(frames, 'v:a'), [{ from: 0, to: 6, easing: 'easeIn', motion: 'smooth' }]);
+  assert.deepEqual(tweenBands(frames, 'v:a'), [{ from: 0, to: 6 }]);
 });
 
 test('no easing, a Wipe or Duplicate between, or the shape erased at the far end: no tween', () => {
@@ -114,7 +118,7 @@ test('no easing, a Wipe or Duplicate between, or the shape erased at the far end
 test('two shapes keep their own tweens', () => {
   const frames = scene();
   frames[0].changes.set('v:b', cellState(A, 0, 0));
-  frames[0].tweens.set('v:b', 'linear');
+  frames[0].tweens.set('v:b', eased('linear'));
   frames[8].changes.set('v:b', cellState(transformed(A, translation(8, 0)), 0, 0));
   const at4 = tweenedAt(frames, 4);
   assert.equal(at4.get('v:a').shape.m[5], Math.round(24 * ease('easeIn', 4 / 6) * 1e4) / 1e4);
@@ -157,7 +161,7 @@ function ball(easings = {}) {
     frames[at].changes.set(K, cellState(transformed(RED, translation(0, at * 2)), 0, 0));
     frames[at].parts = new Map([[K, new Set(['transform'])]]);
   }
-  for (const [at, easing] of Object.entries(easings)) frames[at].tweens = new Map([[K, easing]]);
+  for (const [at, easing] of Object.entries(easings)) frames[at].tweens = new Map([[K, typeof easing === 'string' ? eased(easing) : easing]]);
   return frames;
 }
 
@@ -172,28 +176,76 @@ test("a part a key frame didn't set comes from the one before that did", () => {
   assert.deepEqual(lifeAt(frames, K, 9), [0, 6, 12]);
 });
 
-test('a part fades between the key frames that set it, across one that did not, in step with the tweens', () => {
+test('a part fades between the key frames that set it, eased by the first, across one that did not', () => {
   const frames = ball({ 0: 'easeIn', 6: 'easeOut' });
-  frames[12].changes.set(K, cellState(withShape(transformed(RED, translation(0, 24)), { fill: '#0000ff' }), 0, 0));
+  const blue = withShape(transformed(RED, translation(0, 24)), { fill: '#0000ff' });
+  frames[12].changes.set(K, cellState(blue, 0, 0));
   frames[12].parts = new Map([[K, new Set(['transform', 'fill'])]]);
-  assert.equal(shapeAt(frames, K, 6).fill, '#800080'); // half the frames, both spans tweened
-  assert.equal(shapeAt(frames, K, 3).fill, tweenPart('fill', RED, frames[12].changes.get(K).cell, (6 * ease('easeIn', 0.5)) / 12).fill);
+  for (const at of [3, 6, 9]) assert.equal(shapeAt(frames, K, at).fill, tweenPart('fill', RED, blue, ease('easeIn', at / 12)).fill, `frame ${at}`);
   assert.equal(shapeAt(frames, K, 6).m[5], 12);
+  assert.equal(shapeAt(frames, K, 9).m[5], 12 + 12 * ease('easeOut', 0.5));
   assert.equal(shapeAt(frames, K, 12).fill, '#0000ff');
 });
 
-test('a span with no tween holds a part, and with none at all it switches at its key frame', () => {
-  const blue = (frames) => {
-    frames[12].changes.set(K, cellState(withShape(transformed(RED, translation(0, 24)), { fill: '#0000ff' }), 0, 0));
-    frames[12].parts = new Map([[K, new Set(['transform', 'fill'])]]);
-    return frames;
-  };
-  const first = blue(ball({ 0: 'linear' }));
-  assert.equal(shapeAt(first, K, 3).fill, '#800080');
-  for (const at of [6, 9, 12]) assert.equal(shapeAt(first, K, at).fill, '#0000ff', `frame ${at}`);
-  const none = blue(ball());
-  for (const at of [3, 6, 11]) assert.equal(shapeAt(none, K, at).fill, '#ff0000', `frame ${at}`);
-  assert.equal(shapeAt(none, K, 12).fill, '#0000ff');
+test("each part tweens over its own keys: another part's key between changes nothing", () => {
+  const frames = Array.from({ length: 13 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
+  const bent = withShape(RED, { points: RED.points.map((p, j) => (j ? p : [p[0] - 6, ...p.slice(1)])) });
+  frames[0].changes.set(K, cellState(RED, 0, 0));
+  frames[6].changes.set(K, cellState(bent, 0, 0));
+  frames[6].parts = new Map([[K, new Set(['outline'])]]);
+  frames[12].changes.set(K, cellState(transformed(RED, translation(22, 0)), 0, 0));
+  frames[0].tweens = new Map([[K, new Map([['transform', 'easeInOut'], ['outline', 'linear']])]]);
+  frames[6].tweens = new Map([[K, new Map([['outline', 'linear']])]]);
+  for (let i = 0; i <= 12; i++) {
+    close(shapeAt(frames, K, i).m[4], 22 * ease('easeInOut', i / 12));
+    close(shapeAt(frames, K, i).points[0][0], RED.points[0][0] - (i <= 6 ? i : 12 - i));
+  }
+});
+
+test('a part with no easing on its key holds, then jumps', () => {
+  const frames = ball({ 6: 'linear' }); // the Transform eased from 6; nothing from 0
+  frames[12].changes.set(K, cellState(withShape(transformed(RED, translation(0, 24)), { fill: '#0000ff' }), 0, 0));
+  frames[12].parts = new Map([[K, new Set(['transform', 'fill'])]]);
+  for (const at of [3, 6, 9, 11]) assert.equal(shapeAt(frames, K, at).fill, '#ff0000', `frame ${at}`);
+  assert.equal(shapeAt(frames, K, 12).fill, '#0000ff');
+  assert.equal(shapeAt(frames, K, 3).m[5], 0);
+  assert.equal(shapeAt(frames, K, 9).m[5], 18);
+});
+
+test("motion snaps the Transform by its own key's motion", () => {
+  const plain = moving('cells', 'linear');
+  plain[6].changes.set('v:a', cellState(transformed(A, translation(5, 24)), 0, 0));
+  const keyed = moving('cells', 'linear');
+  keyed[6].changes = plain[6].changes;
+  keyed[3].changes.set('v:a', cellState(withShape(A, { fill: '#0000ff' }), 0, 0));
+  keyed[3].parts = new Map([['v:a', new Set(['fill'])]]);
+  for (let i = 1; i < 6; i++) assert.deepEqual(shapeAt(keyed, 'v:a', i).m, shapeAt(plain, 'v:a', i).m, `frame ${i}`);
+  assert.equal(shapeAt(keyed, 'v:a', 1).m[4], 1); // 0.8333, snapped to whole cells
+});
+
+test("tweenBands merges the parts' tweens", () => {
+  const frames = Array.from({ length: 13 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
+  frames[0].changes.set(K, cellState(RED, 0, 0));
+  for (const [at, fill] of [[4, '#0000ff'], [8, '#00ff00']]) {
+    frames[at].changes.set(K, cellState(withShape(RED, { fill }), 0, 0));
+    frames[at].parts = new Map([[K, new Set(['fill'])]]);
+  }
+  frames[12].changes.set(K, cellState(transformed(RED, translation(0, 24)), 0, 0));
+  frames[0].tweens = new Map([[K, eased('linear', ['transform', 'fill'])]]);
+  frames[8].tweens = new Map([[K, eased('linear', ['fill'])]]);
+  assert.deepEqual(tweenBands(frames, K), [{ from: 0, to: 12 }]);
+  frames[0].tweens = new Map([[K, eased('linear', ['fill'])]]);
+  assert.deepEqual(tweenBands(frames, K), [{ from: 0, to: 4 }, { from: 8, to: 12 }]);
+});
+
+test("strayEasings finds an easing on a part's last key, or on a part its frame doesn't set", () => {
+  const frames = ball();
+  frames[0].tweens = new Map([[K, eased('linear', ['transform', 'fill'])]]); // the fill has no key after 0
+  frames[6].tweens = new Map([[K, eased('linear', ['transform', 'outline'])]]); // 6 sets only the Transform
+  frames[12].tweens = new Map([[K, eased('easeIn', ['transform'])]]); // the last
+  assert.deepEqual(strayEasings(frames, K), [{ at: 0, part: 'fill' }, { at: 6, part: 'outline' }, { at: 12, part: 'transform' }]);
+  frames[3].tweens = new Map([[K, eased('linear')]]); // left on a frame that isn't a key frame: no tween's, and none counted
+  assert.equal(strayEasings(frames, K).length, 3);
 });
 
 test("a shape's first key frame, and a Duplicate, set every part", () => {
@@ -275,7 +327,7 @@ test('each tween moves as its own motion says: one snapped, the next smooth', ()
   const frames = moving('cells', 'linear');
   frames[6].changes.set('v:a', cellState(transformed(A, translation(0, 21)), 0, 0)); // down 21 over frames 0 to 6
   frames[8].changes.set('v:a', cellState(transformed(A, translation(0, 26)), 0, 0)); // and 5 more over frames 6 to 8
-  frames[6].tweens = new Map([['v:a', 'linear']]);
+  frames[6].tweens = new Map([['v:a', eased('linear')]]);
   assert.equal(shapeAt(frames, 'v:a', 5).m[5], 18); // 17.5, snapped to whole cells
   assert.equal(shapeAt(frames, 'v:a', 7).m[5], 23.5); // smooth
 });

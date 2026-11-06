@@ -122,10 +122,13 @@ frames that don't change the shape; a Duplicate or a Wipe ends it. Change a key 
 Moving the shape on a frame between makes that a key frame: the tween splits in two, both halves with its easing.
 Tweens play, and the exports show them; projects and autosave keep them.
 
-Each part goes from one key frame that set it to the next, across key frames that didn't, in step with the shape's
-tweens. The ball red on frame 1, moved on frame 7, blue on frame 13, with Ease in from frame 1 and Ease out from 7: the
-fill fades over all of frames 1 to 13, starting slow, half way on frame 7 and slowing into blue, as the ball moves. A
-stretch with no tween holds a part, as it holds the shape.
+Each part of a shape tweens on its own: from a key frame that set it to the next one that sets it, eased as that first
+key frame says for it, and a key frame between that sets only other parts changes nothing about it. A ball moving from
+frame 1 to frame 13 with Ease in and out, with a point of its outline dragged on frame 7: frame 7 sets only the outline,
+and the ball still moves in one ease from frame 1 to 13, without slowing on frame 7, while the outline goes there and
+back. A part with no easing on its key frame holds until its next key frame, then jumps. On a key frame, the menu's
+choice goes to every part that frame sets that has a later key frame to go to. Projects saved before each part had its
+own easing keep each key frame's easing, on the parts that key frame set.
 
 For a steadier, older look, **This tween moves** at the foot of the menu sets how the tween moves: **Smoothly** (the
 default), **By half cells** or **By whole cells**. Snapped, a shape on its way jumps from cell to cell (or half cell),
