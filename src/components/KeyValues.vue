@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePlayback } from '@/composables/usePlayback';
-import { allPoints, isGradient, stacked, withShape } from '@/document/shapes.js';
+import { allPoints, isGradient, stacked, strokeOf, withShape } from '@/document/shapes.js';
 import { transformValues, withTransformValue } from '@/lib/shapeValues.js';
 
 // One Keys panel row's values on the frame showing: typing one changes the shape there, which keys that part there
@@ -17,6 +17,7 @@ const playback = usePlayback();
 
 const shape = computed(() => project.shapes.get(props.shapeKey) ?? null);
 const values = computed(() => (shape.value ? transformValues(shape.value) : null));
+const look = computed(() => (shape.value ? strokeOf(shape.value) : null));
 const pointCount = computed(() => allPoints(shape.value).length);
 const place = computed(() => stacked(project.shapes).findIndex(([key]) => key === props.shapeKey) + 1);
 const FIELDS = [['x', 0.5], ['y', 0.5], ['turn', 1], ['scaleX', 1], ['scaleY', 1]];
@@ -64,7 +65,7 @@ const cased = (word) => word[0].toUpperCase() + word.slice(1);
     <button v-else-if="part === 'fill'" class="chip" :class="{ none: !shape.fill }" :style="chipStyle(shape.fill)" :aria-label="t('keysPanel.values.fill')" :title="t('keysPanel.values.fill')" @click="openColor('fg')"></button>
     <button v-else-if="part === 'stroke'" class="chip" :class="{ none: !shape.stroke }" :style="chipStyle(shape.stroke)" :aria-label="t('keysPanel.values.stroke')" :title="t('keysPanel.values.stroke')" @click="openColor('bg')"></button>
     <span v-else-if="part === 'outline'" class="dim">{{ t('keysPanel.values.outline', { n: pointCount }, pointCount) }}</span>
-    <span v-else-if="part === 'style'" class="dim">{{ t(`vector.cap${cased(shape.cap)}`) }} · {{ t(`vector.join${cased(shape.join)}`) }}</span>
+    <span v-else-if="part === 'style'" class="dim">{{ t(`vector.cap${cased(look.cap)}`) }} · {{ t(`vector.join${cased(look.join)}`) }}</span>
     <span v-else-if="part === 'z'" class="dim">{{ t('keysPanel.values.stack', { n: place, m: project.shapes.size }) }}</span>
   </div>
 </template>
