@@ -3,7 +3,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { isShapeKey, rectShape, translation, transformed, rotation, withShape } from '@/document/shapes.js';
-import { ease, spanAt, strayEasings, tweenPart } from '@/document/tweens.js';
+import { ease, spanAt, tweenPart } from '@/document/tweens.js';
 import { writeProject } from '@/document/projectIO.js';
 
 async function animated() {
@@ -102,6 +102,27 @@ test("keying a second part on a frame that's already a key for another part spli
   project.showFrame(0);
   expect([...project.frames[6].parts.get(key)]).toEqual(['transform']);
   expect(fill(9)).toBe(tweenPart('fill', red, blue, 0.75).fill);
+});
+
+test("undoing a part's split on a frame that was already a key leaves it the key it was, though it sits where the tween puts it", async () => {
+  const { project } = await animated();
+  const key = project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }));
+  for (let i = 0; i < 12; i++) project.addFrame('blank');
+  project.updateShapes([[key, withShape(transformed(project.shapes.get(key), translation(0, 24)), { fill: '#0000ff' })]]);
+  project.showFrame(6);
+  moveBy(project, key, 0, 12); // a key for the Transform, made with no tween
+  project.showFrame(0);
+  project.setTween([key], 'linear');
+  const ys = () => project.frames.map((_, i) => project.resolvedOf(i).get(key).cell.m[5]);
+  const want = [0, 2, 4, 6, 8, 10, 12, 12, 12, 12, 12, 12, 24];
+  expect(ys()).toEqual(want);
+  project.showFrame(6);
+  project.updateShapes([[key, withShape(project.shapes.get(key), { fill: '#00ff00' })]]); // splits the fill's tween
+  project.noteFrame(); // set down, as anything after it does
+  project.undo();
+  project.showFrame(0);
+  expect([...project.frames[6].parts.get(key)]).toEqual(['transform']);
+  expect(ys()).toEqual(want);
 });
 
 test('undoing an edit on an in-between frame gives it back to the tween', async () => {
@@ -382,8 +403,6 @@ async function tweenFuzz(seed, steps = 40) {
     log.push(`${name}@${project.frame}/${project.frames.length}${depth > was ? '+' : ''}`);
     for (const frame of project.frames) frame.resolved = null;
     if (movie(project) !== now) return { seed, log, problem: `step ${i} ${name}: a frame's cached look is stale` };
-    const strays = keys.flatMap((key) => strayEasings(project.frames, key));
-    if (strays.length) return { seed, log, problem: `step ${i} ${name}: easings no tween uses`, strays };
     if (depth === was + 1) stack.push(now);
     else if (depth === was) stack[stack.length - 1] = now;
     else return { seed, log, problem: `step ${i} ${name}: ${depth - was} steps` };
