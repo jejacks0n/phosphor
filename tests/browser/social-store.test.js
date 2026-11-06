@@ -10,6 +10,7 @@ import { ownSocialDatabase } from '../support/socialDatabase.js';
 import { verify, claimsOf, member, fakeServer, sockets, useFakeSockets, goLive, lastSocket, at } from '../support/socialServer.js';
 import { messageFor } from '@/social/messages';
 import { desktopQuery } from '@/social/config';
+import { CONSENT_KEY, CONSENT_VERSION } from '@/social/consent';
 import { seedConsent } from '../support/app.js';
 
 let deleteDatabase;
@@ -57,6 +58,25 @@ test('Until SOCIAL\'s question is answered, boot waits: no key, no IndexedDB, no
   expect([booted, social.allowed, social.supported]).toEqual([true, true, true]);
   expect(server.requests.length).toBeGreaterThan(0);
   expect(localStorage.getItem('phosphor.socialConsent')).toBe('1');
+});
+
+test('An answer to an older version of the question isn\'t one: boot waits, with no key, no IndexedDB and no request, until this one is accepted', async () => {
+  localStorage.clear();
+  localStorage.setItem(CONSENT_KEY, CONSENT_VERSION - 1);
+  setActivePinia(createPinia());
+  social = useSocialStore();
+  const server = fakeServer();
+  const opened = vi.spyOn(indexedDB, 'open');
+  let booted = false;
+  social.boot().then(() => { booted = true; });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect([booted, social.allowed, social.supported, social.pass, social.lobbyWanted]).toEqual([false, false, null, null, false]);
+  expect(opened).not.toHaveBeenCalled();
+  expect(server.requests).toEqual([]);
+
+  social.acceptConsent();
+  await social.boot();
+  expect(localStorage.getItem(CONSENT_KEY)).toBe(String(CONSENT_VERSION));
 });
 
 test('Not now forgets what a link was going to do, and goes back to the tab you came from', async () => {
