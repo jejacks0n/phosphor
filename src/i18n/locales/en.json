@@ -775,6 +775,15 @@
       "outline": "{n} point · edit with the Node tool | {n} points · edit with the Node tool",
       "stack": "{n} of {m}"
     },
+    "partsShort": {
+      "transform": "Transform",
+      "outline": "Outline",
+      "fill": "Fill",
+      "stroke": "Stroke",
+      "width": "Width",
+      "style": "Style",
+      "z": "Stack"
+    },
     "parts": {
       "transform": "Transform",
       "outline": "Outline",

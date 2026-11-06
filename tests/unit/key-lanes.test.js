@@ -1,9 +1,18 @@
 // The Keys panel's lanes: lined up with the scrubber while frames fit, a scrolling, zoomable window past that.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { MIN_FRAME_PX, frameAt, labelEvery, laneLayout, xOf, zoomAround } from '../../src/lib/keyLanes.js';
+import { MIN_FRAME_PX, MIN_FRAME_PX_PHONE, frameAt, labelEvery, laneLayout, xOf, zoomAround } from '../../src/lib/keyLanes.js';
 
 const lanes = (count, width, more = {}) => laneLayout({ count, width, thumb: 17, zoom: null, scroll: 0, minPx: MIN_FRAME_PX, ...more });
+
+test("a dozen frames fit a phone's scrubber, at about 16px a frame", () => {
+  const width = 205, phone = (count) => laneLayout({ count, width, thumb: 23, zoom: null, scroll: 0, minPx: MIN_FRAME_PX_PHONE }); // 182px over 11 gaps
+  assert.equal(MIN_FRAME_PX_PHONE, 10);
+  assert.equal(phone(12).fits, true);
+  assert.equal(laneLayout({ count: 12, width, thumb: 23, zoom: null, scroll: 0, minPx: 20 }).fits, false); // as it was
+  assert.equal(phone(19).fits, true); // 10px a frame
+  assert.equal(phone(20).fits, false);
+});
 
 test('fits while frames are 14px or more apart', () => {
   const fits = lanes(11, 157); // 140px of thumb travel over 10 gaps

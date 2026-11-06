@@ -2,7 +2,7 @@
 // marks: frame i where the range's thumb stops for it, its travel half a thumb short of each end. Past that they're a
 // window, px a frame, scrolled along a strip as long as the frames, with the same half thumb at each end.
 
-export const MIN_FRAME_PX = 14, MIN_FRAME_PX_PHONE = 20; // usable: a diamond apart, or a fingertip
+export const MIN_FRAME_PX = 14, MIN_FRAME_PX_PHONE = 10; // usable: a diamond apart (a dozen frames fit a phone's scrubber)
 export const MOST_FRAME_PX = 60;
 
 // { fits, px, scroll, first, last, fit } and what it was made of. zoom is px a frame (null: fit, at least minPx); a
