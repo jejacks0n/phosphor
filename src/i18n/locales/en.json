@@ -253,23 +253,23 @@
     },
     "blur": {
       "label": "Blur",
-      "help": "Softens noise and fine grain before the picture is converted. Applied before the other effects."
+      "help": "Softens noise and fine grain before the picture is converted. Applied before the other effects. The base layer only: the edit layer isn't changed."
     },
     "flatten": {
       "label": "Flatten",
-      "help": "Groups nearby tones into clean, painterly shapes."
+      "help": "Groups nearby tones into clean, painterly shapes. The base layer only: the edit layer isn't changed."
     },
     "sharpen": {
       "label": "Sharpen",
-      "help": "Crisps up edges and fine detail."
+      "help": "Crisps up edges and fine detail. The base layer only: the edit layer isn't changed."
     },
     "edges": {
       "label": "Edges",
-      "help": "Traces detected outlines in your chosen edge color."
+      "help": "Traces detected outlines in your chosen edge color. The base layer only: the edit layer isn't changed."
     },
     "edgeThickness": {
       "label": "Edge thickness",
-      "help": "Controls how bold the traced outlines appear."
+      "help": "Controls how bold the traced outlines appear. The base layer only: the edit layer isn't changed."
     },
     "charChoice": {
       "help": "Random picks from your set by the seed. Best match picks the character and its two palette colors that come closest to the picture. By shape compares each character's shape with the picture's detail in the cell."
