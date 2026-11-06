@@ -4,17 +4,17 @@ import { test, expect } from 'vitest';
 import { createTestApp } from '../support/app.js';
 
 const ACTIONS = [
-  'addFrame', 'addShape', 'addShapes', 'addSvg', 'animationCells', 'applyBase', 'applyChange', 'applyEditCells', 'applyNumbered', 'applySettings', 'askForStroke', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit', 'buildGhost', 'builtFrame',
-  'cancelEdit', 'catchUpFor', 'cellHasPaint', 'changeSelection', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect', 'combineShapes',
+  'addFrame', 'addKey', 'addShape', 'addShapes', 'addSvg', 'animationCells', 'applyBase', 'applyChange', 'applyEditCells', 'applyNumbered', 'applySettings', 'askForStroke', 'backspaceAt', 'bake', 'baseCellAt', 'baseColorAt', 'baseColorsOf', 'basePixelsOf', 'beginEdit', 'buildGhost', 'builtFrame',
+  'cancelEdit', 'cancelKeyDrag', 'catchUpFor', 'cellHasPaint', 'changeSelection', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect', 'combineShapes',
   'commitEdit', 'commitPending', 'commitSliders', 'compareCheck', 'completeAt', 'composite', 'continueAsArtist', 'copySelection',
-  'deleteAt', 'deleteFrame', 'deleteIn', 'deleteInWand', 'deleteSelection', 'deleteShapes', 'documentNumber', 'dropEdits', 'dropHeard', 'dropOldUndo', 'dropWaiting', 'editCell', 'editCellAt', 'editLayerSum', 'ensureLayer',
+  'deleteAt', 'deleteFrame', 'deleteIn', 'deleteInWand', 'deleteKeys', 'deleteSelection', 'deleteShapes', 'documentNumber', 'dropEdits', 'dropHeard', 'dropOldUndo', 'dropWaiting', 'editCell', 'editCellAt', 'editLayerSum', 'endKeyDrag', 'ensureLayer',
   'eraseBase', 'eraseBasePixels', 'eraseEditPixels', 'exportAnimation', 'exportFile', 'finishPen', 'fitFor', 'flipBase', 'flipCell',
   'flipPaint', 'floatSelection', 'flushHeard', 'forgetAsked', 'gridRect', 'hasCharacters', 'hasEditsIn', 'hearDrawing', 'imageColorAt', 'inheritedCells', 'inheritedShapes', 'joinShapes', 'keepLedger', 'keepMigratedLook', 'keptForHandOver', 'layersFor', 'leavePending',
   'loadProject', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'mergeUp',
-  'moveFrame', 'moveSelection', 'newConnection', 'newDocument', 'noteDrawn', 'noteFrame', 'numberWaiting', 'openArtFile', 'openFrames', 'openFromHost', 'openParts', 'openSvgFile', 'ownStroke', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
+  'moveFrame', 'moveKeys', 'moveSelection', 'newConnection', 'newDocument', 'noteDrawn', 'noteFrame', 'numberWaiting', 'openArtFile', 'openFrames', 'openFromHost', 'openParts', 'openSvgFile', 'ownStroke', 'paintEditPixels', 'paintStroke', 'pasteAt', 'pasteBase',
   'pasteSelection', 'penBack', 'penPoint', 'pickPalette', 'pictureCells', 'pressShapes', 'pressedKeys', 'processingScale', 'projectNow', 'projectParts', 'pushEdit', 'pushKeptStroke', 'pushWholeLayer', 'putShapesBack', 'randomizeSeed', 'rawColorAt', 'readCell', 'readHandOver', 'readTile', 'rebuildCells', 'recolorSelection', 'recompose', 'redo', 'redoStroke', 'refreshCells', 'refreshChanged', 'refreshShapes', 'rename',
   'render', 'replaceImage', 'replayOnPicture', 'resendPending', 'resetFrames', 'resetGroup', 'resetSliders', 'resolvedOf', 'restackShapes', 'restoreDocument', 'restoreLedger', 'sauceFields', 'saveProject', 'selectShapes', 'selectionEdit', 'sendBase', 'sendHeld', 'sendHeldSoon', 'sendNumbered', 'sendParts', 'sendSettings', 'sendSlice',
-  'separateShape', 'setAllFrames', 'setAnimate', 'setBaseRecords', 'setBlankCanvas', 'setCells', 'setEditCells', 'setFps', 'setFrameState', 'setHold', 'setImageFromFile', 'setPaused', 'setShapes', 'setSlider', 'setTween', 'setTweenMotion', 'shapesBefore', 'shareWholeDocument', 'shiftCells', 'showFrame',
+  'separateShape', 'setAllFrames', 'setAnimate', 'setBaseRecords', 'setBlankCanvas', 'setCells', 'setEditCells', 'setFps', 'setFrameState', 'setHold', 'setImageFromFile', 'setKeyEasing', 'setKeyMotion', 'setPaused', 'setShapes', 'setSlider', 'setTween', 'setTweenMotion', 'shapesBefore', 'shareWholeDocument', 'shiftCells', 'showFrame',
   'sliderValues', 'staleFrames', 'stampSelection', 'startSharing', 'stepFrame', 'stopSharing', 'strokeRefused', 'takeCatchUp', 'takeFromArtist', 'takeLedger', 'takeProject', 'throughPending', 'turnSelection', 'typeAt', 'typing', 'underlyingAt', 'undo', 'undoStroke', 'updateCols', 'updateRows', 'updateShapes', 'waitForAnswer', 'waitingBoxes', 'writeAt',
   'writeBase', 'writeBaseCells', 'writeEditCells',
 ];
