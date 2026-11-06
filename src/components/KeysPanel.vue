@@ -105,7 +105,7 @@ const paused = (act) => (...args) => {
   act(...args);
 };
 const pick = paused((part, i, event) => {
-  if (dragged) return;
+  if (dragged || press?.drag) return; // a drag's own click, or another finger's tap during one
   if (!event.shiftKey) {
     workspace.selectedKeys = [{ part, at: i }];
     project.showFrame(i);
@@ -114,18 +114,20 @@ const pick = paused((part, i, event) => {
 });
 const keysOn = (i) => rows.value.filter((row) => row.keys.some((k) => k.at === i)).map(({ part }) => ({ part, at: i }));
 const pickFrame = paused((i) => {
-  if (dragged) return;
+  if (dragged || press?.drag) return; // a drag's own click, or another finger's tap during one
   workspace.selectedKeys = keysOn(i);
   project.showFrame(i);
 });
 
 // A press on a diamond or a frame number that goes half a frame along is a drag of its keys (refs, selected as it
-// begins), snapping frame to frame; less is a click. Escape, or the browser taking the pointer, puts them back.
+// begins), snapping frame to frame; less is a click. Escape, or the browser taking the pointer, puts them back. A
+// second press (another finger) while one's held does nothing.
 let press = null, dragged = false;
 function pressKeys(event, refs) {
+  if (press) return;
   dragged = false;
   if (event.button !== 0 || !keys.value || !half.value) return;
-  press = { x: event.clientX, pointer: event.pointerId, refs, by: 0, drag: null };
+  press = { x: event.clientX, pointer: event.pointerId, shape: shapeKey.value, refs, by: 0, drag: null };
   window.addEventListener('pointermove', dragKeys);
   window.addEventListener('pointerup', dropKeys);
   window.addEventListener('pointercancel', cancelKeys);
@@ -143,7 +145,7 @@ function dragKeys(event) {
     root.value.setPointerCapture(press.pointer);
   }
   press.by = by;
-  workspace.selectedKeys = project.moveKeys(shapeKey.value, press.refs, by, press.drag);
+  workspace.selectedKeys = project.moveKeys(press.shape, press.refs, by, press.drag);
 }
 function letGo() {
   window.removeEventListener('pointermove', dragKeys);
@@ -167,12 +169,13 @@ function cancelKeys(event) {
   }
   letGo();
 }
-// Escape is the drag's alone: the shape stays selected.
+// While a drag's under way the keys are its own: Escape cancels it (the shape stays selected); the rest (undo, Delete)
+// do nothing, as the frames are mid-drag.
 function escapeKeys(event) {
-  if (event.key !== 'Escape' || !press.drag) return;
+  if (!press.drag) return;
   event.preventDefault();
   event.stopImmediatePropagation();
-  cancelKeys();
+  if (event.key === 'Escape') cancelKeys();
 }
 onBeforeUnmount(() => {
   if (!press) return;
