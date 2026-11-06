@@ -31,11 +31,22 @@ test('W selects every cell with the character clicked; the Bucket then fills onl
   expect(await screenPixel(page, out.x, out.y)).not.toEqual(MAGENTA);
 });
 
-test('the selection is tinted only while the Magic Wand is the tool, the outline stays on every tool; it stays when you switch views, and shows in the other one; the Select tool offers Deselect too', async ({ page }) => {
+test('undo takes back a wand click to the selection before it, and an Escape too; the selection is tinted only while the Magic Wand is the tool, the outline stays on every tool; it stays when you switch views, and shows in the other one; the Select tool offers Deselect too', async ({ page }) => {
   await openApp(page);
   await page.keyboard.press('w');
-  const at = await cellPoint(page, 4, 4);
+  const at = await cellPoint(page, 4, 4), b = await cellPoint(page, 20, 10);
+  const mask = () => store(page, 'workspace', (w) => [...w.wand.mask].join(''));
   await page.mouse.click(at.x, at.y);
+  const first = await mask();
+  await page.mouse.click(b.x, b.y);
+  expect(await mask()).not.toBe(first);
+  await page.keyboard.press('ControlOrMeta+z');
+  expect(await mask()).toBe(first);
+  await page.keyboard.press('Escape');
+  expect(await store(page, 'workspace', (w) => w.wand)).toBe(null);
+  await page.keyboard.press('ControlOrMeta+z');
+  expect(await mask()).toBe(first);
+
   const count = await wandCount(page);
   expect(count).toBeGreaterThan(0);
   await expect.poll(() => tinted(page)).toBeGreaterThan(0);
@@ -62,22 +73,6 @@ const tinted = (page) => page.locator('[data-wand-overlay]').evaluate((canvas) =
   let n = 0;
   for (let i = 0; i < data.length; i += 4) if (data[i + 3] && data[i + 2] > data[i] + 40) n++;
   return n;
-});
-
-test('undo takes back a wand click to the selection before it, and an Escape too', async ({ page }) => {
-  await openApp(page);
-  await page.keyboard.press('w');
-  const a = await cellPoint(page, 4, 4), b = await cellPoint(page, 20, 10);
-  await page.mouse.click(a.x, a.y);
-  const first = await store(page, 'workspace', (w) => [...w.wand.mask].join(''));
-  await page.mouse.click(b.x, b.y);
-  expect(await store(page, 'workspace', (w) => [...w.wand.mask].join(''))).not.toBe(first);
-  await page.keyboard.press('ControlOrMeta+z');
-  expect(await store(page, 'workspace', (w) => [...w.wand.mask].join(''))).toBe(first);
-  await page.keyboard.press('Escape');
-  expect(await store(page, 'workspace', (w) => w.wand)).toBe(null);
-  await page.keyboard.press('ControlOrMeta+z');
-  expect(await store(page, 'workspace', (w) => [...w.wand.mask].join(''))).toBe(first);
 });
 
 test("the wand's Layers choose what Delete takes away: with Base lit, the picture goes black", async ({ page }) => {

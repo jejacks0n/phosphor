@@ -1,8 +1,6 @@
 // A selection made with Select stays as you change tools; Deselect (on every tool's options row) or
 // Escape drops it.
-import { test, expect, openApp, store, cellPoint, pixelPoint, tab, settled, drag, chars, editAt } from './support.js';
-
-test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+import { test, expect, openApp, store, cellPoint, pixelPoint, tab, settled, drag } from './support.js';
 
 const selection = (page) => store(page, 'workspace', (w) => w.selection);
 
@@ -31,17 +29,7 @@ test('in Edit Mode, a drag that starts inside a kept selection selects, rather t
   expect(await selection(page)).toEqual({ c0: 6, r0: 6, c1: 12, r1: 6 });
 });
 
-test('in Edit Mode, a pasted block lands at the cursor, not at a kept selection', async ({ page }) => {
-  await openApp(page);
-  await editAt(page, 2, 2);
-  await page.keyboard.type('Copy me');
-  await page.getByRole('button', { name: 'Select', exact: true }).click();
-  await drag(page, await cellPoint(page, 2, 2), await cellPoint(page, 8, 3));
-  await page.keyboard.press('ControlOrMeta+c');
-  await editAt(page, 20, 10);
-  await page.keyboard.press('ControlOrMeta+v');
-  await expect.poll(() => chars(page, 10, 20, 26)).toBe('Copy me');
-});
+// In Edit Mode, a pasted block lands at the cursor, not at a kept selection: clipboard.spec.js.
 
 // The rectangle's line is the Magic Wand's: one still pixel, white dashes over black, inside the box.
 const line = (page, marquee) => page.locator(marquee).evaluate((el) => {

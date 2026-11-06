@@ -4,9 +4,16 @@ const adjustments = (page) => page.getByRole('group', { name: /Adjustments/ });
 const readout = (page, name) => adjustments(page).locator('.field').filter({ has: page.getByRole('slider', { name, exact: true }) }).locator('.value');
 const colors = (page) => store(page, 'project', (p) => [...new Set(p.cells.flatMap((c) => [c.fg.hex, c.bg.hex]))].sort());
 
+// White point starts at the slider's far end. On a computer the label row shows the value and the tooltip takes no
+// room, so it doesn't hang past the row; on a phone, where the finger covers the label row, it shows while dragging.
+const tooltip = (page, name) => adjustments(page).locator('.field').filter({ has: page.getByRole('slider', { name, exact: true }) }).locator('.value-tooltip');
+const wrapper = (page, name) => adjustments(page).locator('.range-wrapper').filter({ has: page.getByRole('slider', { name, exact: true }) });
+
 // Posterize and Threshold say Off at their neutral end; Threshold's two colors are what the picture splits into.
-test('Threshold splits the picture into its dark and light colors; Posterize and Threshold say Off when off', async ({ page }) => {
+test('Threshold splits the picture into its dark and light colors; Posterize and Threshold say Off when off; White point\'s hidden tooltip takes no room at the slider\'s far end', async ({ page }) => {
   await openApp(page);
+  await expect(tooltip(page, 'White point')).toBeHidden();
+  expect(await wrapper(page, 'White point').evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
   await expect(readout(page, 'Posterize')).toHaveText('Off');
   await expect(readout(page, 'Threshold')).toHaveText('Off');
   await expect(adjustments(page).getByRole('slider', { name: 'Black point' })).toBeVisible();
@@ -22,17 +29,6 @@ test('Threshold splits the picture into its dark and light colors; Posterize and
 
   await adjustments(page).getByRole('slider', { name: 'Posterize' }).fill('4');
   await expect(readout(page, 'Posterize')).toHaveText('4');
-});
-
-// White point starts at the slider's far end. On a computer the label row shows the value and the tooltip takes no
-// room, so it doesn't hang past the row; on a phone, where the finger covers the label row, it shows while dragging.
-const tooltip = (page, name) => adjustments(page).locator('.field').filter({ has: page.getByRole('slider', { name, exact: true }) }).locator('.value-tooltip');
-const wrapper = (page, name) => adjustments(page).locator('.range-wrapper').filter({ has: page.getByRole('slider', { name, exact: true }) });
-
-test('White point\'s hidden tooltip takes no room at the slider\'s far end', async ({ page }) => {
-  await openApp(page);
-  await expect(tooltip(page, 'White point')).toBeHidden();
-  expect(await wrapper(page, 'White point').evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
 });
 
 test.describe('on a phone', () => {

@@ -19,24 +19,21 @@ async function expectAt(page, selector, col, row) {
   expect(Math.abs(box.y - corner.y)).toBeLessThan(0.5);
 }
 
-test('the selection and the Shapes outline sit on their cells', async ({ page }) => {
+test('the selection and the Shapes outline sit on their cells; a Line drag shows a line from its first cell, snapped across for box lines, and draws it on release', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Select', exact: true }).click();
   await drag(page, await cellPoint(page, 3, 3), await cellPoint(page, 8, 6));
   await expectAt(page, '.marquee', 3, 3);
 
   await page.getByRole('button', { name: 'Shapes' }).click();
-  const from = await cellPoint(page, 10, 4), to = await cellPoint(page, 16, 8);
-  await page.mouse.move(from.x, from.y);
+  const start = await cellPoint(page, 10, 4), far = await cellPoint(page, 16, 8);
+  await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.mouse.move(to.x, to.y, { steps: 4 });
+  await page.mouse.move(far.x, far.y, { steps: 4 });
   await expectAt(page, '.shape-drag', 10, 4);
   await page.mouse.up();
-});
+  await page.keyboard.press('Escape'); // the selection, which keeps drawing inside it
 
-test('a Line drag shows a line from its first cell, snapped across for box lines, and draws it on release', async ({ page }) => {
-  await openApp(page);
-  await page.getByRole('button', { name: 'Shapes' }).click();
   await page.getByRole('button', { name: 'Line', exact: true }).click();
   const from = await cellPoint(page, 5, 10), to = await cellPoint(page, 20, 12);
   await page.mouse.move(from.x, from.y);
