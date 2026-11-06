@@ -16,6 +16,11 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # In Playwright's image, as the end-to-end jobs are: Chromium and the fonts the tests draw with (a CJK character
+    # has none of the app's own), with nothing fetched from Ubuntu's mirror, which took nine minutes on some runs.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host # Chromium's shared memory, as for the end-to-end jobs
     timeout-minutes: 20 # a hung test (an endless loop can't be timed out from inside) fails, not runs for hours
     steps:
       - uses: actions/checkout@v4
@@ -24,13 +29,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - id: playwright
-        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      - run: npx playwright install chromium # not --with-deps: on these runners that only adds fonts, from a mirror that can take minutes, and the tests bring their own
       - run: npm run lint
       - run: npm run test:unit
       - run: npm run test:browser
@@ -43,8 +41,7 @@ jobs:
           if-no-files-found: ignore
 
   # The end-to-end tests are most of the time, so they run in shards, each on its own runner beside the job above.
-  # In Playwright's image, which has Chromium and the packages it needs: installing them from Ubuntu's mirror took
-  # nine minutes on some runners. The image's version is the Playwright in package-lock.json, and goes up with it.
+  # In Playwright's image too. Its version is the Playwright in package-lock.json, and goes up with it (both jobs).
   e2e:
     runs-on: ubuntu-latest
     container:
