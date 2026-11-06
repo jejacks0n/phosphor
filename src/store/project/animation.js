@@ -13,6 +13,7 @@ import { MOTIONS, setPartsAt, shapeAt, tweenReach, tweenedAt, workedOutAt } from
 import { PARTS, changedParts, samePart } from '@/document/parts.js';
 import { addedKey, deletedKeys, moveRange, movedKeys, partKeys } from '@/document/keys.js';
 import { newLedger } from '@/store/project/shared.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { markRaw } from 'vue';
 
 const NOTHING = new Map();
@@ -339,14 +340,24 @@ function keyEntries(frames, key, refs, differs, change) {
   return patch;
 }
 
+// One undo step between two states of the frames (framesNow's); unselect: it moves keys, and a selected key names a
+// frame, so once it's undone or redone none stays selected.
+function pushFrames(project, before, after, unselect = false) {
+  const put = (state) => () => {
+    putFrames(project, state);
+    if (unselect) useWorkspaceStore().selectedKeys = [];
+  };
+  project.pushEdit({ frameOp: true, undo: put(before), redo: put(after), bytes: 0 });
+}
+
 // One undo step around a change to the frames: change makes the new list and says which frame shows. Easings it leaves
 // no tween for go (dropStrays).
-function frameStep(project, change) {
+function frameStep(project, change, unselect = false) {
   const before = framesNow(project);
   const showing = change();
   dropStrays(project.frames);
   const after = { ...framesNow(project), showing };
-  project.pushEdit({ frameOp: true, undo: () => putFrames(project, before), redo: () => putFrames(project, after), bytes: 0 });
+  pushFrames(project, before, after, unselect);
   arrive(project, project.frames.indexOf(showing), before.showing);
   project.pickPalette();
 }
@@ -644,7 +655,7 @@ export const animationActions = {
       frameStep(this, () => {
         putKeys(this, shapeKey, moved.patch);
         return this.currentFrame;
-      });
+      }, true);
     }
     return moved.refs;
   },
@@ -655,7 +666,7 @@ export const animationActions = {
     if (!before) return;
     drag.before = null;
     if (sameFrames(before, after)) return;
-    this.pushEdit({ frameOp: true, undo: () => putFrames(this, before), redo: () => putFrames(this, after), bytes: 0 });
+    pushFrames(this, before, after, true);
     this.pickPalette();
   },
 
