@@ -16,7 +16,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 40 # a hung test (an endless loop can't be timed out from inside) fails, not runs for hours
+    timeout-minutes: 20 # a hung test (an endless loop can't be timed out from inside) fails, not runs for hours
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,22 +34,50 @@ jobs:
       - run: npm run lint
       - run: npm run test:unit
       - run: npm run test:browser
-      - run: npm run test:e2e
-        env:
-          CI: true
       - run: npm run build
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
+          path: .vitest/attachments/
+          if-no-files-found: ignore
+
+  # The end-to-end tests are most of the time, so they run in shards, each on its own runner beside the job above.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false # one shard's failure still shows the others'
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - id: playwright
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --shard=${{ matrix.shard }}/6
+        env:
+          CI: true
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
-            .vitest/attachments/
           if-no-files-found: ignore
 
   build:
-    needs: test
+    needs: [test, e2e]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
