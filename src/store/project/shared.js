@@ -4,6 +4,8 @@ import { markRaw } from 'vue';
 import { Ledger } from '@/document/ledger.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { MOST_CHANGE_BYTES } from '@/social/wire.js';
+import { isShapeKey } from '@/document/shapes.js';
+import { t } from '@/i18n';
 
 export const DEFAULT_COLS = getSetting('cols').default;
 export const DEFAULT_ROWS = getSetting('rows').default;
@@ -86,3 +88,16 @@ export function bytesHeld(...held) {
   }
   return bytes;
 }
+
+// In a room, what refuses an edit to an art layer someone other than by is drawing in (lockedBy): the words saying
+// who, for the first of keys that reaches one, or null.
+export function lockedAmong(project, keys, by = project._by) {
+  for (const key of keys) {
+    const holder = isShapeKey(key) && project.lockedBy(key);
+    if (holder && holder !== by) return t('art.lockedBy', { name: project._locks[holder]?.name ?? holder });
+  }
+  return null;
+}
+
+// The same for anyone else inside any art layer: what a whole-layer action, sent as the project, would step out.
+export const anyoneInside = (project) => lockedAmong(project, Object.values(project._locks).map(({ key }) => key));

@@ -54,7 +54,7 @@ const box = computed(() => {
 });
 
 // The art layers someone else is drawing in: each one's box, and the words over its top-left corner.
-const locks = computed(() => (!props.unit ? [] : [...new Set(Object.values(project._locks))]).flatMap((key) => {
+const locks = computed(() => (!props.unit ? [] : [...new Set(Object.values(project._locks).map(({ key }) => key))]).flatMap((key) => {
   const words = drawing.lockedWords(key), b = words && selectionBox(project.shapes, [key]);
   if (!b) return [];
   const corners = b.corners.map(px);

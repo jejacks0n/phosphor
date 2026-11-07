@@ -1,6 +1,8 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { t } from '@/i18n';
+import { toast } from '@/composables/useToast';
+import { lockedAmong } from '@/store/project/shared';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { Pacer } from '@/social/lobby';
@@ -97,29 +99,40 @@ export const useDrawingStore = defineStore('drawing', () => {
   function viewMoved() {
     if (mayDraw.value && !paused.value) myCursor.push(cursorNow());
   }
-  watch(() => project.artInside, () => {
-    if (!project._sharing) return;
+  // A host's own goes with no room to send it to as well (the last artist gone), or it would stay behind for the next.
+  const sendNow = () => {
     myCursor.push(cursorNow());
     myCursor.flush();
+  };
+  watch(() => project.artInside, () => {
+    if (project._sharing || hostParts.hosting()) sendNow();
   }, { flush: 'sync' });
 
   // Who's drawing in an art layer: their sub, mine while I'm in it, or null. The project keeps who's in which, as the
-  // cursors say, for what it refuses (an edit to a layer someone else is in, stepping into one).
+  // cursors say, for what it refuses (an edit to a layer someone else is in, stepping into one). The host keeps the
+  // first to step into a layer (noteCursor), so someone who stepped in too, before hearing of it, hears it held by
+  // someone else: they're stepped out, and told who has it.
   watch(cursors, (all) => {
-    project._locks = Object.fromEntries(Object.entries(all).filter(([, { inside }]) => inside).map(([sub, { inside }]) => [sub, inside]));
+    project._locks = Object.fromEntries(Object.entries(all).filter(([, { inside }]) => inside).map(([sub, { inside, name }]) => [sub, { key: inside, name }]));
+    const inside = project.artInside, holder = inside && Object.keys(all).find((sub) => sub !== me() && all[sub].inside === inside);
+    if (!holder) return;
+    project.leaveArt();
+    workspace.editorTab = 'vector';
+    toast(t('art.lockedBy', { name: all[holder].name }));
   }, { flush: 'sync', immediate: true });
   const lockedBy = (key) => project.lockedBy(key);
   // What a layer someone else is drawing in says, or null.
-  const lockedWords = (key) => {
-    const sub = lockedBy(key);
-    return sub && sub !== me() ? t('art.lockedBy', { name: cursors.value[sub]?.name ?? artistNames.value[sub] ?? sub }) : null;
-  };
+  const lockedWords = (key) => lockedAmong(project, [key]);
 
+  // Drawing again, after a pause, a reconnect or the host's reload: what's sent while there's no one to hear it is lost,
+  // so the art layer I'm in (or that I've stepped out of it meanwhile) goes again.
   function goOn() {
     hostChanging.value = false;
     paused.value = false;
     waiting.value = [];
-    if (project._sharing) project.setPaused(false);
+    if (!project._sharing) return;
+    project.setPaused(false);
+    sendNow();
   }
 
   function pause() {

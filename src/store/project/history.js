@@ -10,7 +10,8 @@ import { isShapeKey } from '@/document/shapes.js';
 import { keepDrawn, keepMode, withModes } from '@/document/frames.js';
 import { carriesError } from '@/lib/CharResolver.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { ALONE, bytesHeld, newLedger, randomId, runsPatch } from '@/store/project/shared.js';
+import { toast } from '@/composables/useToast';
+import { ALONE, bytesHeld, lockedAmong, newLedger, randomId, runsPatch } from '@/store/project/shared.js';
 
 const NO_CHANGE = { cells: [], runs: [] };
 
@@ -289,6 +290,7 @@ export const historyActions = {
     if (this._stroke?.pen) return this.penBack(); // while the Pen draws: its last point, as Backspace
     this.commitPending();
     if (this._artInside && !this._artInside.entries.has(this.history.last)) return; // not past where you stepped in
+    if (lockedStep(this, this.history.last)) return;
     const entry = this.history.undo();
     if (!entry) return;
     this.historyVersion = this.history.version;
@@ -314,6 +316,7 @@ export const historyActions = {
   redo() {
     this.commitPending();
     if (this._artInside && !this._artInside.entries.has(this.history.next)) return; // only what was done inside
+    if (lockedStep(this, this.history.next)) return;
     const entry = this.history.redo();
     if (!entry) return;
     this.historyVersion = this.history.version;
@@ -327,6 +330,14 @@ export const historyActions = {
     if (!entry.selectionOnly && this.hasFrames && this.quantize === 'count') this.pickPalette();
   },
 };
+
+// Whether a step can't be undone or redone now: in a room, it reaches an art layer someone else is drawing in (a
+// host's, whose steps the ledger holds; an artist's is the host's to refuse). A toast says who.
+function lockedStep(project, entry) {
+  const words = entry?.stroke && project._sharing && lockedAmong(project, project._ledger.keysOf(entry.stroke));
+  if (words) toast(words);
+  return !!words;
+}
 
 // The grid pixels under patches' tiles ([patch, layer]: tiles in the layer's pixels), in the cells whose
 // value differs between each pair of maps ('col,row' keys) or named in keys, and in rect (grid pixels: the

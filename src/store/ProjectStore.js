@@ -20,7 +20,7 @@ import { readingActions } from '@/store/project/reading.js';
 import { baseLayerActions } from '@/store/project/baseLayer.js';
 import { sliderActions } from '@/store/project/sliders.js';
 import { historyActions } from '@/store/project/history.js';
-import { sharingActions, DRAWING_ACTIONS, HOST_ONLY_ACTIONS } from '@/store/project/sharing.js';
+import { sharingActions, DRAWING_ACTIONS, HOST_ONLY_ACTIONS, WHOLE_LAYER_ACTIONS, lockedOut } from '@/store/project/sharing.js';
 import { sharingHostActions } from '@/store/project/sharingHost.js';
 import { sharingArtistActions } from '@/store/project/sharingArtist.js';
 import { handoverActions } from '@/store/project/handover.js';
@@ -106,7 +106,7 @@ export const useProjectStore = defineStore('project', {
     _sameDocument: false, // and it's this document brought up to date, so undo and the selection stay
     _documentN: null, // the ledger's number the open document was autosaved at, as it came back (useAutosave)
     _artInside: null, // the art layer stepped into, and the drawing kept aside meanwhile (vector.js: enterArt)
-    _locks: {}, // in a room, sub -> the art layer they're drawing in, as their cursors say (DrawingStore keeps it)
+    _locks: {}, // in a room, sub -> { key, name }: the art layer they're drawing in, as their cursors say (DrawingStore keeps it)
   }),
 
   getters: {
@@ -122,7 +122,7 @@ export const useProjectStore = defineStore('project', {
     // Who's drawing in an art layer: me while I'm in it, or whoever else the room says is, or null. Only one at a time:
     // no one else steps in (enterArt) or changes it (setShapes, and a host what an artist sends: takeFromArtist).
     lockedBy: (state) => (key) => (state._artInside?.key === key ? state._by
-      : Object.keys(state._locks).find((sub) => sub !== state._by && state._locks[sub] === key) ?? null),
+      : Object.keys(state._locks).find((sub) => sub !== state._by && state._locks[sub].key === key) ?? null),
     // Anything on the edit layer or the vector layer, of any frame (a grid resize is then a canvas resize).
     hasEdits() { return this.hasEditLayer || this.shapes.size > 0; },
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.
@@ -201,7 +201,7 @@ export const useProjectStore = defineStore('project', {
   },
 
   // One file per area in store/project/ (AGENTS.md, "Where things live").
-  actions: guarded(guarded(combineActions(
+  actions: guarded(guarded(guarded(combineActions(
     documentActions,
     renderingActions,
     readingActions,
@@ -217,5 +217,5 @@ export const useProjectStore = defineStore('project', {
     handoverActions,
     animationActions,
     vectorActions,
-  ), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => !!store._sharing && (store._sharing.role === 'artist' || store._paused) && !store._takingProject),
+  ), WHOLE_LAYER_ACTIONS, lockedOut), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => !!store._sharing && (store._sharing.role === 'artist' || store._paused) && !store._takingProject),
 });
