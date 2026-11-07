@@ -49,7 +49,9 @@ screenful of detailed art); if the selection has more, Phosphor asks for a small
 - **Characters.** A cell's character shows exactly as drawn wherever the art layer is the topmost thing at that
   cell. Where a shape sits above the layer, or over the cell, the converter picks the character there, as it does for
   shapes. Where two art layers overlap, the upper one's character shows, and a cell of it with no character leaves the
-  lower one's. A wide character takes the next cell too, as it does on ANSI.
+  lower one's. A wide character takes the next cell too, as it does on ANSI. A cell you painted without typing a
+  character keeps the character it showed when you made the layer (or painted it inside the layer), so it no longer
+  changes with what's under it.
 - **Animation.** On an animation it starts on the frame you made it on, and a Blank frame carries it on, as it carries
   shapes. It keys and tweens its place and stacking as a shape does, a whole cell at a time
   ([The Keys panel](animation.md#the-keys-panel)).

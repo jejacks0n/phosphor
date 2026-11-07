@@ -69,6 +69,33 @@ test('makeArtLayer moves the selected drawing into one art layer above every sha
   expect(cellsKey(project)).toEqual(before);
 });
 
+// What a cell shows, by its place: its character and colors.
+const looks = (project, c0, r0, c1, r1) => {
+  const out = [];
+  for (let row = r0; row <= r1; row++) for (let col = c0; col <= c1; col++) {
+    const cell = project.cells[row * project.cols + col];
+    out.push(`${col},${row} ${cell.char} ${cell.fg.hex} ${cell.bg.hex}`);
+  }
+  return out;
+};
+
+test('cells painted with no character typed keep the character they showed, as typed ones do', async () => {
+  const { project, workspace } = await blank(); // the converter's characters chosen at random (charChoice), from ░▒▓■▄
+  project.typeAt(2, 1, 'Q', { fg: RED });
+  project.commitEdit();
+  const pixels = [];
+  for (let x = 2; x < 12; x++) for (let y = 2; y < 8; y++) pixels.push({ x, y, ...rgb(x % 2 ? '#00ff00' : '#0000ff'), alpha: 1 });
+  project.paintEditPixels(pixels);
+  project.commitEdit();
+  await settle(project);
+  const before = looks(project, 2, 1, 11, 3);
+  expect(before.some((look) => !/ [▄Q] /.test(look))).toBe(true); // some painted cell shows a character other than ▄
+  select(workspace, 0, 0, 12, 4);
+  expect(project.makeArtLayer()).toBeTruthy();
+  await settle(project);
+  expect(looks(project, 2, 1, 11, 3)).toEqual(before);
+});
+
 test('cells never drawn on, or erased, are see-through; black is drawn', async () => {
   const { project, workspace } = await blank();
   project.typeAt(3, 1, ' ', { bg: '#000000' });
