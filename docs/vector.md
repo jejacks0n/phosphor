@@ -39,7 +39,7 @@ layer selected. It's one undo step, and the canvas looks the same afterward. Wit
 shapes aren't taken along, and with nothing drawn in the selection nothing happens. A layer holds a limited amount (a piece about the size of a
 screenful of detailed art); if the selection has more, Phosphor asks for a smaller piece and leaves the drawing as it was.
 
-- **Moving it.** Drag it anywhere in its box, or use the arrow keys, and it moves by whole cells (an arrow moves a column across or a line down, and Shift moves ten times as far), whatever Snap to says. It has no size or turn handles, alone or selected with other shapes, which move with it by whole cells.
+- **Moving it.** Drag it anywhere in its box, or use the arrow keys, and it moves by whole cells (an arrow moves a column across or a line down, and Shift moves ten times as far), whatever Snap to says. It has no size or turn handles, alone or selected with other shapes, which move with it by whole cells. A layer right at its size limit may not move far or stack much higher; Phosphor says so.
 - **What's see-through.** A cell you never drew on is see-through, and so is a half of a cell with no color of its own
   (text typed with only a foreground color has no background, so what's under it shows). A black background you drew
   is a color like any other: it covers what's under it.
@@ -68,7 +68,7 @@ with a **Done** button.
   one showing.
 - **Growing and erasing.** Draw past the layer's edge and it grows to hold what you drew. Erase the cells at its edge and it
   shrinks to the cells that are left; the cells that stay don't move on the canvas. A layer holds a limited amount: if an
-  edit would make it too big, nothing changes and Phosphor says so.
+  edit would make it too big on any frame it's on, nothing changes and Phosphor says so.
 - **Undo.** Each edit is one undo step, and undo goes back to where you stepped in and no further. Step out, and the steps
   are in the history with the rest.
 - **What's off.** The settings panel, the Base toggle and the frame controls (the animation bar, and the keys that play, step

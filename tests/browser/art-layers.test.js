@@ -13,6 +13,7 @@ import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboar
 import { createApp } from 'vue';
 import VectorOptions from '@/components/VectorOptions.vue';
 import { i18n } from '@/i18n';
+import { writeProject } from '@/document/projectIO.js';
 
 const RED = '#ff0000';
 const rgb = (hex) => ({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
@@ -428,5 +429,73 @@ test('Join, Add, Subtract and Separate never take an art layer: nothing changes,
     await settle(project);
     expect(button('Join').disabled).toBe(false);
     options.unmount();
+  }
+});
+
+// A drawing of cols across whose record, at m and z, is exactly bytes long: 'x' cells, some of them 'é' (a byte more).
+function artOfBytes(bytes, { m = [1, 0, 0, 1, 0, 0], z = 0, cols = 100 } = {}) {
+  const cells = [];
+  while (artBytes({ z, m, art: { cols, rows: Math.ceil((cells.length + 1) / cols), cells: [...cells, [cells.length, 'x', '#123456', '#654321']] } }) <= bytes) {
+    cells.push([cells.length, 'x', '#123456', '#654321']);
+  }
+  const art = { cols, rows: Math.ceil(cells.length / cols), cells };
+  for (let i = 0, short = bytes - artBytes({ z, m, art }); i < short; i++) cells[i][1] = 'é';
+  expect(artBytes({ z, m, art })).toBe(bytes);
+  return art;
+}
+
+test('an edit that fits where the layer shows but not on another frame it is on is refused, so the file still opens with its frames', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 0, 0], art: { cols: 1, rows: 1, cells: [[0, 'A', RED, null]] } }));
+  project.addFrame('blank');
+  project.updateShapes([[key, withShape(project.shapes.get(key), { m: [1, 0, 0, 1, 123456, 246800] })]]); // frame 1's own copy, far off
+  project.showFrame(0);
+  const art = artOfBytes(MOST_ART_BYTES), version = project.history.version, shape = project.shapes.get(key);
+  expect(artBytes({ ...shape, art })).toBe(MOST_ART_BYTES); // fits here
+  expect(artBytes({ ...project.frames[1].changes.get(key).cell, art })).toBeGreaterThan(MOST_ART_BYTES); // not there
+  toastMessage.value = null;
+  const changed = project.setArtContent(key, art);
+  const file = new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'far.phosphor');
+  const { project: opened } = await createTestApp();
+  await opened.loadProject(file);
+  expect(opened.frames.length).toBe(2);
+  expect(changed).toBe(false);
+  expect(toastMessage.value).toBe("That's too much for one art layer. Select a smaller piece.");
+  expect(project.history.version).toBe(version);
+  expect(project.shapes.get(key)).toBe(shape);
+  // With room on every frame it's on, it's taken everywhere.
+  const fits = artOfBytes(MOST_ART_BYTES, { m: [1, 0, 0, 1, 123456, 246800] });
+  expect(project.setArtContent(key, fits)).toBe(true);
+  expect(project.frames[1].changes.get(key).cell.art).toEqual(fits);
+});
+
+test('Make art layer checks the record at the stacking it gets, so a drawing at the limit is refused, not erased', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 100, rows: 200 });
+  await settle(project);
+  const rect = project.addShape(rectShape(0, 0, 2, 2, { fill: '#0000ff' }));
+  project.updateShapes([[rect, withShape(project.shapes.get(rect), { z: 99 })]]); // the layer would be z 100
+  const art = artOfBytes(MOST_ART_BYTES);
+  project.writeEditCells(art.cells.map(([i, char, bg, fg]) => ({ col: i % 100, row: Math.floor(i / 100), attrs: { char, fg, bg } })));
+  project.commitEdit();
+  const edits = project.editCells, version = project.history.version;
+  select(workspace, 0, 0, 99, art.rows - 1);
+  toastMessage.value = null;
+  expect(project.makeArtLayer()).toBe(null);
+  expect(toastMessage.value).toBe("That's too much for one art layer. Select a smaller piece.");
+  expect(project.editCells).toBe(edits);
+  expect(project.history.version).toBe(version);
+});
+
+test('a move or restack an art layer at the limit has no room for is refused, and says so', async () => {
+  const { project } = await blank();
+  const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 0, 0], art: artOfBytes(MOST_ART_BYTES) }));
+  const shape = project.shapes.get(key);
+  for (const change of [{ m: [1, 0, 0, 1, 10, 0] }, { z: 10 }]) {
+    toastMessage.value = null;
+    project.updateShapes([[key, withShape(shape, change)]]);
+    expect(project.shapes.get(key)).toBe(shape);
+    expect(toastMessage.value).toBe("That's too much for one art layer. Select a smaller piece.");
   }
 });

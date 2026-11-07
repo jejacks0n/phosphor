@@ -140,12 +140,17 @@ export const vectorActions = {
   },
 
   // [[key, Shape | null]]: each shape there replaced, or deleted with null. A key that's gone stays gone, and a
-  // shape a file wouldn't keep (squashed flat, past the limits) stays as it was: a drag stops there.
+  // shape a file wouldn't keep (squashed flat, past the limits) stays as it was: a drag stops there. An art layer
+  // with no room left for its longer numbers (moved far, restacked high) says so.
   updateShapes(changes) {
     const own = ownsEdit(this);
     let next = this.shapes;
     for (const [key, shape] of changes) {
-      if (!this.shapes.has(key) || this.shapes.get(key) === shape || (shape && !keeps(shape))) continue;
+      if (!this.shapes.has(key) || this.shapes.get(key) === shape) continue;
+      if (shape && !keeps(shape)) {
+        if (isArt(shape)) toast(t('art.tooBig'));
+        continue;
+      }
       if (next === this.shapes) next = new Map(this.shapes);
       if (shape) next.set(key, shape);
       else next.delete(key);
@@ -158,11 +163,18 @@ export const vectorActions = {
   // An art layer's drawing (its art: cols, rows and cells) changed, and the layer moved by by ([dx, dy] grid pixels,
   // dy even: a drawing grown up or left keeps its cells where they were). It's one piece wherever the layer shows, so
   // with frames every frame it's on changes with it (setFramesArt). One step; false, and none, for a key that's no art
-  // layer on the frame showing, the drawing and place it has, or one a file wouldn't keep (too big for one layer, say).
+  // layer on the frame showing, or the drawing and place it has. Every copy of it (the frame showing's, and each frame's
+  // own, at its own place and stacking) must be one a file would keep, or nothing changes and a toast says it's too big.
   setArtContent(key, art, [dx, dy] = [0, 0]) {
-    const shape = this.shapes.get(key), m = shape?.m ?? [];
-    const next = isArt(shape) && artFromStranger({ ...shape, m: [m[0], m[1], m[2], m[3], m[4] + dx, m[5] + dy], art });
-    if (!next || sameShape(next, shape)) return false;
+    const shape = this.shapes.get(key);
+    if (!isArt(shape)) return false;
+    const moved = ({ z, m }) => artFromStranger({ z, m: [m[0], m[1], m[2], m[3], m[4] + dx, m[5] + dy], art });
+    const next = moved(shape);
+    if (next && sameShape(next, shape)) return false;
+    if (!next || (this.hasFrames && !this.frames.every(({ changes }) => !isArt(changes.get(key)?.cell) || moved(changes.get(key).cell)))) {
+      toast(t('art.tooBig'));
+      return false;
+    }
     if (this.hasFrames) this.setFramesArt(key, next.art, [dx, dy]);
     else this.updateShapes([[key, next]]);
     return true;
@@ -253,14 +265,11 @@ export const vectorActions = {
       if (col < 0 || row < 0 || col >= cols || row >= rows) drawn.push({ col, row, cell });
     }
     const made = drawn.length ? artOfCells(drawn) : { m: shape.m, art: { cols: 1, rows: 1, cells: [] } }; // all erased: an empty layer, where it was
-    if (!artFromStranger({ ...shape, ...made })) toast(t('art.tooBig'));
-    else {
-      inside.writing = true;
-      try {
-        this.setArtContent(key, made.art, [made.m[4] - shape.m[4], made.m[5] - shape.m[5]]);
-      } finally {
-        inside.writing = false;
-      }
+    inside.writing = true;
+    try {
+      this.setArtContent(key, made.art, [made.m[4] - shape.m[4], made.m[5] - shape.m[5]]); // too big: it says so
+    } finally {
+      inside.writing = false;
     }
     const now = this.shapes.get(key) ?? shape, changed = artBounds(now);
     this.loadArt(union({ x: onGrid.c0, y: 2 * onGrid.r0, w: Math.max(0, onGrid.c1 - onGrid.c0 + 1), h: Math.max(0, 2 * (onGrid.r1 - onGrid.r0 + 1)) }, changed));
@@ -423,7 +432,8 @@ export const vectorActions = {
       toast(t('vector.tooMany', { count: MOST_SHAPES }));
       return null;
     }
-    const art = artFromStranger({ z: 0, ...artOfCells(drawn) });
+    const z = Math.max(0, ...[...this.shapes.values()].map((s) => s.z + 1)); // as addShapes stacks it: its digits count
+    const art = artFromStranger({ z, ...artOfCells(drawn) });
     if (!art) {
       toast(t('art.tooBig'));
       return null;
