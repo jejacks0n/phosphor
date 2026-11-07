@@ -45,6 +45,7 @@ export const DRAWING_ACTIONS = [
   'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'deleteInWand', 'recolorSelection', 'moveSelection',
   'deleteIn', 'pasteAt', 'pasteBase', 'selectionEdit',
   'addShape', 'makeArtLayer', 'setArtContent', 'enterArt', 'updateShapes', 'deleteShapes', 'restackShapes', 'joinShapes', 'combineShapes', 'separateShape', 'addSvg', 'addShapes', 'penPoint', 'penBack',
+  'followPath', 'stopFollowing', 'setFollow', 'setGuide',
   'undo', 'redo',
 ];
 

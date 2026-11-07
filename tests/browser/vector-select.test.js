@@ -3,6 +3,8 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { makeShape, rectShape } from '@/document/shapes.js';
+import { makeArt } from '@/document/artLayers.js';
+import { centerOf, placedShapes } from '@/document/followers.js';
 import vselect from '@/tools/vselect.js';
 
 async function drawing() {
@@ -124,4 +126,83 @@ test('with no row for End, its corner is the box\'s handle and scales the line',
   press(ctx, { x: 30, y: 20 }, [{ x: 20, y: 20 }]);
   expect(project.shapes.get(key).end).toBeUndefined();
   expect(project.shapes.get(key).m).not.toEqual([1, 0, 0, 1, 0, 0]);
+});
+
+// Follow a path…: the first rectangle picking, with a line across at y = 20 and an art layer, Animate on.
+async function picking() {
+  const { project, workspace, ctx, keys: [a] } = await drawing();
+  project.setAnimate(true);
+  const line = project.addShape(makeShape({ points: [[4, 20, 0, 0, 0, 0, 0], [36, 20, 0, 0, 0, 0, 0]], closed: false, stroke: '#00ff00', width: 1 }));
+  const art = project.addShape(makeArt({ m: [1, 0, 0, 1, 30, 24], art: { cols: 4, rows: 2, cells: [[0, 'A', '#ff0000', null]] } }));
+  workspace.vectorSelected = [a];
+  workspace.pickingPath = a;
+  project.clearHistory();
+  return { project, workspace, ctx, a, line, art };
+}
+
+test('picking a path: a click on the line links the picker to it as one history entry, and ends picking', async () => {
+  const { project, workspace, ctx, a, line } = await picking();
+  const version = project.history.version;
+  press(ctx, { x: 20, y: 20.5 });
+  expect(project.shapes.get(a).follow).toEqual({ key: line });
+  expect(workspace.pickingPath).toBe(null);
+  expect(workspace.vectorSelected).toEqual([a]);
+  expect(project.history.version).toBe(version + 1);
+});
+
+test('picking a path: Esc, or a click on empty canvas, ends it with no history entry; a click on an art layer does nothing', async () => {
+  const { project, workspace, ctx, a } = await picking();
+  const version = project.history.version;
+  press(ctx, { x: 32, y: 26 }); // the art layer
+  expect(workspace.pickingPath).toBe(a);
+  expect(vselect.keydown(ctx, new KeyboardEvent('keydown', { key: 'Escape' }))).toBe(true);
+  expect(workspace.pickingPath).toBe(null);
+  expect(workspace.vectorSelected).toEqual([a]); // Esc ended the pick, and deselected nothing
+  workspace.pickingPath = a;
+  press(ctx, { x: 38, y: 36 }); // empty canvas
+  expect(workspace.pickingPath).toBe(null);
+  expect(workspace.vectorSelected).toEqual([a]);
+  expect(project.shapes.get(a)).not.toHaveProperty('follow');
+  expect(project.history.version).toBe(version);
+});
+
+// The first rectangle (its middle at (6, 6)) following the line across at y = 20, so at (6, 20), selected.
+async function onLine() {
+  const { project, workspace, ctx, keys: [a] } = await drawing();
+  const line = project.addShape(makeShape({ points: [[4, 20, 0, 0, 0, 0, 0], [36, 20, 0, 0, 0, 0, 0]], closed: false, stroke: '#00ff00', width: 1 }));
+  project.followPath(a, line);
+  workspace.vectorSelected = [a];
+  project.clearHistory();
+  return { project, workspace, ctx, a, line };
+}
+
+test('a follower dragged toward its path\'s far end slides along it to the end, as one undo step', async () => {
+  const { project, ctx, a } = await onLine();
+  const before = project.shapes.get(a), version = project.history.version;
+  expect(before.along).toBe(0.0625);
+  press(ctx, { x: 6, y: 20 }, [{ x: 20, y: 17 }, { x: 40, y: 18 }]);
+  expect(project.shapes.get(a).along).toBe(1);
+  expect(project.shapes.get(a).m).toEqual(before.m);
+  expect(centerOf(placedShapes(project).get(a))).toEqual({ x: 36, y: 20 });
+  expect(project.history.version).toBe(version + 1);
+  project.undo();
+  expect(project.shapes.get(a)).toEqual(before);
+});
+
+test('an arrow key steps a follower along its path by 1% (Shift: 10%), held to its ends', async () => {
+  const { project, ctx, a } = await onLine();
+  vselect.keydown(ctx, new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+  expect(project.shapes.get(a).along).toBe(0.0725);
+  vselect.keydown(ctx, new KeyboardEvent('keydown', { key: 'ArrowLeft', shiftKey: true }));
+  expect(project.shapes.get(a)).not.toHaveProperty('along'); // 0, the default
+  expect(project.shapes.get(a).m).toEqual([1, 0, 0, 1, 0, 0]);
+});
+
+test('moving with the line\'s end, a follower dragged or nudged stays put', async () => {
+  const { project, ctx, a } = await onLine();
+  project.setFollow([a], { ride: 'end' });
+  const before = project.shapes.get(a);
+  press(ctx, { x: 36, y: 20 }, [{ x: 20, y: 20 }]);
+  vselect.keydown(ctx, new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+  expect(project.shapes.get(a)).toEqual(before);
 });

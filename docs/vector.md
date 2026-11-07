@@ -100,6 +100,47 @@ carries show dimmed. Playing and the exports show each frame's shapes. A shape c
 turning, reshaping and changing color on the frames between; the **Keys** panel over the animation bar shows the
 selected shape's keys, part by part, to select, ease, add and delete, and shows each part's value to type over ([Tweens](animation.md#tweens)).
 
+## Following a path
+
+A shape or an art layer can follow a line or another shape, its path, so that it moves along it. It's an animation
+property, set in the **Keys** panel, so it's there only with Animate on ([Following a path in the Keys
+panel](animation.md#following-a-path)).
+
+- **Follow a path…**: select the shape or art layer, open **+ Add key** in the Keys panel and choose **Follow a
+  path…** at the bottom (it's there for one that isn't following anything). The hint says "Follow a path: click the
+  line or shape to follow. Esc cancels", and a shape that can be the path is drawn thick in the accent color under
+  the pointer. Click it, and the follower's middle goes onto the path at the point nearest where it was. **Esc**, a
+  click on empty canvas, another tool or tab, or turning Animate off cancels. An art layer can't be a path, nor can
+  a shape that follows one itself, and a shape that others follow can't follow one (a message says so).
+- The link lasts the follower's whole life: it's on its path on every frame it's on, whatever is done to the path
+  there (moved, reshaped, tweened). Where the path isn't on a frame, the follower sits where its own Transform has
+  it. A path can have any number of followers. Each of these is one undo step.
+- On VECTOR, a selected follower's path is outlined dashed in the accent color. Its own turn and size still apply
+  about its middle, and the box's handles turn and scale it as any shape's do. Dragging it in Vector select slides
+  it along its path, to the point nearest where you drag it (one undo step); the arrow keys step it along by 1%, with
+  Shift by 10%. Its X and Y in the Keys panel show where it is, and can't be typed while it follows. The Node tool
+  edits its points where it shows, and stepping into a follower art layer draws in it where it shows.
+- **Along ▾**: a follower's Keys panel has an **Along** row, and its name is a menu:
+  - **Moves**: **Along it, on its own keys** (the Along row's keys say how far along it is), **With the line's
+    start** or **With the line's end** (it sits on the path's Start or End as the path is trimmed on each frame, with
+    no keys of its own);
+  - **Face the path**: the follower turns the way the path runs there, its own turn on top, so a shape drawn
+    pointing right points along the path (shapes only);
+  - **Motion**: **Smoothly**, **By half cells** or **By whole cells**, as a Transform tween's motion, for its place
+    on the path (an art layer always lands on whole cells);
+  - **Stop following**: the follower lets go of its path on every frame and goes back to where its own Transform
+    has it. Undo brings the link back.
+
+  Each is one undo step, and the same on every frame of the follower's life.
+- **Guide**: a path you don't want drawn. With a shape selected that others follow (or that's a guide already),
+  **Guide** in the Keys panel's top line, before the easing, turns it into one: it draws nothing in the cells, the
+  exports, Merge down or Bake, and shows on VECTOR as a thin dashed outline, which is where you click it (on the
+  outline, not inside), even with Animate off. Merge down and Bake leave a guide a shape; merging a path presses its
+  followers with it.
+- **Copy and paste**: a follower copied with its path follows the pasted path; pasted alone in the same document it
+  follows the original; in another document, or where the link can't be made, it follows nothing. Join keeps the
+  bottom shape's link; Separate gives it to the piece that keeps the shape.
+
 ## Rooms
 
 In a room, everyone drawing can draw and change shapes, and everyone sees them as they're drawn. A shape is one

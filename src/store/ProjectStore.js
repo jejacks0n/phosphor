@@ -6,6 +6,7 @@ import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
 import { ghostedCells } from '@/lib/ghostCells.js';
 import { artBounds } from '@/document/artLayers.js';
+import { placedShapes } from '@/document/followers.js';
 import { MAX_ANIMATION_CELLS, MAX_FRAME_CELLS, maxFramesFor, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { charModeOf } from '@/lib/CharResolver.js';
 import { settingsState, slidersAtDefaults } from '@/store/settings.js';
@@ -39,7 +40,7 @@ const sameLook = (a, b) => a === b || (!!a?.wide && !!b && a.wide === b.wide && 
 // ponytail: still one pass of cheap compares over every cell per edit (about 6 ms at 500k), and an edit big enough to
 // rebuild every cell dims the snapshot again; keep the edit's cell range if large grids lag here.
 function insideCells(project, inside, cells) {
-  const { key, snapshot, entered } = inside, shape = project.shapes.get(key);
+  const { key, snapshot, entered } = inside, shape = placedShapes(project).get(key); // where it shows: a follower on its path
   if (!shape || snapshot.length !== cells.length) return cells;
   const { cols } = project, rendered = project.renderedCells, { x, y, w, h } = artBounds(shape);
   if (inside.dimmedOver !== rendered) {

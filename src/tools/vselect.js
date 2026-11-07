@@ -7,9 +7,14 @@
 // click again takes the next one there). Each drag is one edit, worked out each move from the shapes as they were at the press,
 // so nothing drifts. An art layer moves by whole cells (a column across, a line down, whatever Snap to says) and has no size or turn handles, alone or with other shapes. Keys: arrows nudge a grid pixel (Shift: 10; an art layer's a cell), Delete or Backspace deletes (the selected stop,
 // or else the shapes), Esc lets the stop go or deselects.
+// A follower (on its path: placedShapes) is shown, boxed and turned or scaled where it shows; the record keeps its own
+// transform under the placement (reshape). Dragged alone it slides along its path instead (slideTo), and the arrows
+// step its Along by 1% (Shift: 10%); moving with its path's Start or End, neither moves it. While Follow a path… picks
+// (workspace.pickingPath), a click on a shape that can be a path (pathAt) links the picker to it, and Esc or a click on
+// empty canvas ends the pick; either way nothing else happens.
 import { t } from '@/i18n/index.js';
 import { isArt } from '@/document/artLayers.js';
-import { apply, curveBounds, invert, localBounds, multiply, nearestOnOutline, rotation, scaling, translation, transformed, withShape } from '@/document/shapes.js';
+import { allClosed, apply, curveBounds, invert, localBounds, multiply, nearestOnOutline, rotation, scaling, translation, transformed, withShape } from '@/document/shapes.js';
 import { listedParts } from '@/document/keys.js';
 import { lifeAt } from '@/document/tweens.js';
 import { measure } from '@/document/pathLength.js';
@@ -17,7 +22,7 @@ import { snappedEnd } from '@/tools/shapes.js';
 import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
-import { placedShapes } from '@/document/followers.js';
+import { centerOf, placedShapes } from '@/document/followers.js';
 import { DOUBLE_MS, DOUBLE_PX, handlePicker } from '@/tools/handlePick.js';
 
 const REACH = 22;          // CSS px from a trim handle that a press takes it (a 44px hit area)
@@ -92,14 +97,39 @@ function inside(corners, { x, y }) {
   return true;
 }
 
-// The shapes as they were at the press, each changed by change(shape) → its new transform (or null: as it was).
+// The shapes as they were at the press, each changed by change(shown, placed) → its new transform (or null: as it
+// was), where it shows (placed: a follower on its path). A follower's record gets the transform that its placement
+// (shown.m over its own m: the move onto the path, and Face the path's turn) carries to that.
 function reshape(project, drag, change) {
   const changes = [];
-  for (const [key, shape] of drag.start) {
-    const m = change(shape);
-    if (m) changes.push([key, withShape(shape, { m })]); // one the document wouldn't keep, it doesn't take
+  for (const [key, shape, shown] of drag.start) {
+    const m = change(shown, shown !== shape);
+    if (m) changes.push([key, withShape(shape, { m: shown === shape ? m : multiply(shape.m, multiply(invert(shown.m), m)) })]); // one the document wouldn't keep, it doesn't take
   }
   project.updateShapes(changes);
+}
+
+// A share of a path held to it: 0 through 1 (on a closed path, round past either end), to 1/10000.
+function heldShare(path, share) {
+  const held = !allClosed(path) ? Math.min(1, Math.max(0, share)) : share < 0 || share > 1 ? share - Math.floor(share) : share;
+  return Math.round(held * 1e4) / 1e4;
+}
+
+// The one follower dragged: its Along set to the share of its path nearest where its middle is dragged, keyed on the
+// frame showing. Moving with the path's Start or End, it stays.
+function slideTo(project, drag, to) {
+  const [[key, shape, shown]] = drag.start, path = placedShapes(project).get(shape.follow.key);
+  if (shape.follow.ride || !path) return;
+  const c = centerOf(shown), near = nearestOnOutline(path, c.x + to.x - drag.from.x, c.y + to.y - drag.from.y);
+  if (near.segment < 0) return;
+  project.updateShapes([[key, withShape(shape, { along: heldShare(path, measure(path).shareOf(near.segment, near.t)) })]]);
+}
+
+// Follow a path…'s pick: the key of the shape under pos that the picker could follow (one with an outline, not an art
+// layer, not a follower, not the picker), or null. Hits are where shapes show, a guide on its outline.
+export function pathAt(project, picker, pos, tol) {
+  const placed = placedShapes(project), key = shapeAt(placed, pos.x, pos.y, tol), shape = placed.get(key);
+  return key && key !== picker && !isArt(shape) && !shape.follow ? key : null;
 }
 
 // The scale handle i: which way it pulls ([-1, 0, 1] in x and y: left, none, right) and the handle opposite.
@@ -187,11 +217,20 @@ export default {
   begin(ctx, pos, event) {
     const { project, workspace, unit } = ctx, shift = !!event?.shiftKey, radius = handleRadius(), tol = radius / unit.x;
     const placed = placedShapes(project), keys = selected(workspace, project), box = selectionBox(placed, keys); // where they show
+    // A drag of the shapes, each [key, record, where it shows]; of one follower on its path alone, a slide along it.
     const at = (kind, extra = {}) => {
-      drag = { kind, from: pos, box, start: (extra.keys ?? keys).map((key) => [key, project.shapes.get(key)]), shift, ...extra };
+      const start = (extra.keys ?? keys).map((key) => [key, project.shapes.get(key), placed.get(key)]);
+      if (kind === 'move' && start.length === 1 && start[0][1] !== start[0][2]) kind = 'slide';
+      drag = { kind, from: pos, box, start, shift, ...extra };
       project.beginEdit();
       return true;
     };
+    if (workspace.pickingPath) { // Follow a path…: a click picks the path, or on empty canvas, ends the pick
+      const path = pathAt(project, workspace.pickingPath, pos, tol);
+      if (path) project.followPath(workspace.pickingPath, path);
+      if (path || !shapeAt(placed, pos.x, pos.y, tol)) workspace.pickingPath = null;
+      return false;
+    }
     if (box && !shift) {
       // The box's handles and the knob, and (one shape) its gradient's, which come first; or a click again's.
       const { handles, knob } = boxHandles(box, unit), letStop = () => { workspace.vectorStop = null; };
@@ -237,19 +276,20 @@ export default {
       return;
     }
     if (drag.kind === 'trim') return trimTo(project, workspace, drag, to);
+    if (drag.kind === 'slide') return slideTo(project, drag, to);
     const snap = snapMode(workspace);
     if (drag.kind === 'move') {
       const end = shift ? snappedEnd(drag.from, to) : to;
       if (drag.box.cells) {
         // An art layer is on whole cells: the pointer's way, in whole cells, whatever Snap to says.
         const by = snapPoint({ x: end.x - drag.from.x, y: end.y - drag.from.y }, 'cells');
-        return reshape(project, drag, (shape) => transformed(shape, translation(by.x, by.y)).m);
+        return reshape(project, drag, (shape, placed) => !placed && transformed(shape, translation(by.x, by.y)).m);
       }
       // Snap to: the box's corner nearest the grab on the grid (along Shift's line), the shapes with it.
       const corner = drag.box.corners.reduce((a, b) => (Math.hypot(b.x - drag.from.x, b.y - drag.from.y) < Math.hypot(a.x - drag.from.x, a.y - drag.from.y) ? b : a));
       const moved = { x: corner.x + end.x - drag.from.x, y: corner.y + end.y - drag.from.y };
       const at = shift ? snapAlong(corner, moved, snap) : snapPoint(moved, snap);
-      reshape(project, drag, (shape) => transformed(shape, translation(at.x - corner.x, at.y - corner.y)).m);
+      reshape(project, drag, (shape, placed) => !placed && transformed(shape, translation(at.x - corner.x, at.y - corner.y)).m); // a follower stays on its path
     }
     else if (drag.kind === 'scale') {
       // Snap to: the handle dragged on the grid, where it was grabbed moved with the pointer.
@@ -277,6 +317,10 @@ export default {
 
   keydown({ project, workspace }, event) {
     const keys = selected(workspace, project), [dx, dy] = ARROWS[event.key] ?? [];
+    if (workspace.pickingPath && event.key === 'Escape') {
+      workspace.pickingPath = null;
+      return true;
+    }
     const stop = workspace.vectorStop !== null && !event.metaKey && !event.ctrlKey && !event.altKey;
     if (stop && event.key === 'Escape') workspace.vectorStop = null;
     else if (stop && (event.key === 'Delete' || event.key === 'Backspace')) removeStop(project, workspace);
@@ -295,7 +339,13 @@ export default {
     }
     if (dx === undefined) return false;
     const step = event.shiftKey ? 10 : 1, tall = keys.some((key) => isArt(project.shapes.get(key))) ? 2 : 1; // a cell is two grid pixels tall
-    project.updateShapes(keys.map((key) => [key, transformed(project.shapes.get(key), translation(dx * step, dy * step * tall))]));
+    const placed = placedShapes(project);
+    project.updateShapes(keys.map((key) => {
+      const shape = project.shapes.get(key);
+      if (placed.get(key) === shape) return [key, transformed(shape, translation(dx * step, dy * step * tall))];
+      const path = placed.get(shape.follow.key); // on its path: along it, right and down forward
+      return [key, shape.follow.ride ? shape : withShape(shape, { along: heldShare(path, (shape.along ?? 0) + (dx + dy) * step / 100) })];
+    }));
     return true;
   },
 };
