@@ -460,7 +460,7 @@ test('autosave writes the drawing kept aside, not the layer being edited', async
   expect(inside.shapes.get(key).art).toEqual(outside.shapes.get(key).art);
 });
 
-test('stepping in while an animation plays pauses it first, so a later pause does not step out again', async () => {
+test('stepping in while an animation plays pauses it first, so a later pause does not step out again; a refused step-in leaves it playing', async () => {
   const { project, workspace, key } = await withArt();
   const playback = usePlayback();
   project.setAnimate(true);
@@ -472,6 +472,13 @@ test('stepping in while an animation plays pauses it first, so a later pause doe
   expect(workspace.playing).toBe(true);
   for (let i = 0; i < 400 && workspace.playFrame === 0; i++) await new Promise((resolve) => requestAnimationFrame(resolve));
   expect(workspace.playFrame).not.toBe(0); // the frame showing is no longer the one edited
+
+  // Refused (no art layer, someone else in it), it doesn't pause.
+  project._locks = { ann: { key, name: 'Ann' } };
+  expect(project.enterArt(key)).toBe(false);
+  project._locks = {};
+  expect(project.enterArt('v:nothing')).toBe(false);
+  expect(workspace.playing).toBe(true);
 
   expect(project.enterArt(key)).toBe(true);
   expect(workspace.playing).toBe(false);

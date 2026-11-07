@@ -187,12 +187,13 @@ export const vectorActions = {
   // then one step changing the layer on every frame it's on (commitArt), and undo goes back no further than here.
   // What's pending is committed first; the selection and any float go. Leaving the ANSI tab steps out. False for a key
   // that's no art layer, when you're inside one already, or for one someone else in the room is drawing in
-  // (lockedBy): one person at a time. An animation playing is paused first, on the frame showing, as a press would,
-  // which would otherwise step out again.
+  // (lockedBy): one person at a time. An animation playing is paused first (once none of those refuses), on the frame
+  // showing, as a press would, which would otherwise step out again; false too if the layer isn't on that frame.
   enterArt(key) {
+    if (!isArt(this.shapes.get(key)) || this._artInside || this.lockedBy(key)) return false;
     usePlayback().pause();
     this.ensureLayer();
-    if (!isArt(this.shapes.get(key)) || !this.paintLayer || this._artInside || this.lockedBy(key)) return false;
+    if (!isArt(this.shapes.get(key)) || !this.paintLayer) return false;
     this.commitPending();
     this.noteFrame(); // the frame's drawing as it is, before it's put aside
     this._float = null;
