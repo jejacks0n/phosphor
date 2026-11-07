@@ -56,6 +56,29 @@ screenful of detailed art); if the selection has more, Phosphor asks for a small
 - **Copies.** Copy and paste (Cmd/Ctrl+C and V on VECTOR) make an art layer of its own: changing one leaves the other
   as it was.
 
+### Editing an art layer
+
+To draw in an art layer, step into it, as you'd edit a symbol in Flash. Select it on VECTOR with Vector select and press
+**Edit art** in the options row, or double-click it. The view goes to ANSI, and the bar under the tools says **Editing art layer**
+with a **Done** button.
+
+- **Drawing.** The usual drawing tools on ANSI (Pencil, Brush, Edit Mode, Eraser and the rest) draw into the layer,
+  and only it: the base layer is off while you're in. The rest of the drawing shows dimmed, and can't be changed from here.
+- **Every frame.** An art layer is one drawing wherever it shows, so each edit changes it on every frame it's on, not just the
+  one showing.
+- **Growing and erasing.** Draw past the layer's edge and it grows to hold what you drew. Erase the cells at its edge and it
+  shrinks to the cells that are left; the cells that stay don't move on the canvas. A layer holds a limited amount: if an
+  edit would make it too big, nothing changes and Phosphor says so.
+- **Undo.** Each edit is one undo step, and undo goes back to where you stepped in and no further. Step out, and the steps
+  are in the history with the rest.
+- **What's off.** The settings panel, the Base toggle and the frame controls (the animation bar, and the keys that play, step
+  and add frames) are off while you're in. Changing the picture or the frame would leave the dimmed drawing out of date. Stepping
+  in is off while the document is shared in a room.
+- **Stepping out.** Press **Done** or **Esc** (once nothing else is left to cancel: with the Text cursor showing, the first
+  **Esc** puts it away), and the view goes back to VECTOR with the layer selected. Changing tabs, opening or starting a
+  document, resizing the canvas, turning Animate off, exporting, and the whole-layer actions (Clear, Merge up and down,
+  Into the image, Bake and Make art layer) step out too.
+
 ## Bake and Merge down
 
 - **Merge down** on VECTOR presses the selected shapes (or, with none selected, all of them) into the base

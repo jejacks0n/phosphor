@@ -4,7 +4,7 @@
 // undo step, and on one shape with two gradients Fill or Stroke. Fill and Stroke, and the stroke's width, caps,
 // joins and miter limit, are the color pair's (ColorPopover, useVectorStyle). While a shape's points are edited,
 // the Point row: the selected point Smooth, Free or Sharp, and Delete (the selected stop of its gradient, or else the
-// point); Esc or empty canvas ends it. On a shape with two gradients, Fill or Stroke too. The buttons are icons, named in their titles; a phone's rows have no label or hint.
+// point); Esc or empty canvas ends it. With one art layer selected, Edit art steps into it. On a shape with two gradients, Fill or Stroke too. The buttons are icons, named in their titles; a phone's rows have no label or hint.
 import { computed } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
@@ -12,6 +12,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { allClosed, allPoints, isGradient, setFree, setSmooth } from '@/document/shapes.js';
+import { isArt } from '@/document/artLayers.js';
 import { loadBooleans } from '@/lib/shapeBooleans.js';
 import { gradientKey, gradientSlot, removeStop } from '@/tools/gradientHandles.js';
 import { deleteSelectedPoint, pickedPoints } from '@/tools/vnode.js';
@@ -54,6 +55,11 @@ const combine = async (op) => {
   if (key) workspace.vectorSelected = [key];
 };
 const back = () => project.restackShapes(selected.value, 'back');
+// Edit art: one art layer selected. Stepping in shows the ANSI tab, where the usual tools draw in it.
+const artKey = computed(() => (selected.value.length === 1 && isArt(project.shapes.get(selected.value[0])) ? selected.value[0] : null));
+const editArt = () => {
+  if (project.enterArt(artKey.value)) workspace.editorTab = 'output';
+};
 const remove = () => {
   if (workspace.vectorStop !== null) return removeStop(project, workspace);
   project.deleteShapes(selected.value);
@@ -119,6 +125,7 @@ const gradientOf = (slot) => {
       <button :title="t('vector.addTitle')" :aria-label="t('vector.add')" :disabled="!canCombine" @click="combine('add')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M96 96H384V256H544V544H256V384H96Z"/></svg></button>
       <button :title="t('vector.subtractTitle')" :aria-label="t('vector.subtract')" :disabled="!canCombine" @click="combine('subtract')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M96 96H384V256H256V384H96Z"/><path fill-rule="evenodd" opacity=".45" d="M256 256H544V544H256ZM296 296V504H504V296Z"/></svg></button>
       <button :title="t('vector.deleteTitle')" :aria-label="t('common.delete')" aria-keyshortcuts="Delete Backspace" @click="remove" v-html="TRASH"/>
+      <button v-if="artKey" class="text" :title="project._sharing ? t('art.editInRoom') : t('art.editTitle')" :disabled="!!project._sharing" @click="editArt">{{ t('art.edit') }}</button>
       <template v-if="twoGradients">
         <div class="divider"/>
         <span v-if="!phone" class="option-label">{{ t('vector.gradientLabel') }}</span>

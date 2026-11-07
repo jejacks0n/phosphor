@@ -102,9 +102,9 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // Typing in Edit Mode: the Text tool with its cursor placed, in the ANSI view.
   const _typing = () => workspaceStore.activeTool === 'text' && !!workspaceStore.textCursor && workspaceStore.editorTab === 'output';
 
-  // L plays and pauses, comma and period step: with Animate on, in the art views, never while typing. Alt+, and Alt+.
-  // step while typing too (typing: true).
-  const _animationKeysApply = (e, { typing = false } = {}) => projectStore.animate && projectStore.image
+  // L plays and pauses, comma and period step, N adds a frame: with Animate on, in the art views, never while typing
+  // or inside an art layer. Alt+, and Alt+. step while typing too (typing: true).
+  const _animationKeysApply = (e, { typing = false } = {}) => projectStore.animate && projectStore.image && !projectStore.artInside
     && (typing || (!e.ctrlKey && !e.metaKey && !e.altKey && !_typing()))
     && workspaceStore.editMode && !isField(e.target)
     && !workspaceStore.isPainting && !workspaceStore.paletteLayerOpen && !workspaceStore.colorBox;
@@ -247,6 +247,17 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
+  // Escape inside an art layer, with nothing else to cancel (the handlers before this one took it if there was): out of
+  // the layer, to VECTOR.
+  const _handleArtKeys = (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || !projectStore.artInside || isField(e.target)) return false;
+    if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || workspaceStore.paletteLayerOpen || workspaceStore.colorBox || workspaceStore.isPainting) return false;
+    projectStore.leaveArt();
+    workspaceStore.editorTab = 'vector';
+    e.preventDefault();
+    return true;
+  };
+
   // Tool keys (each tool's keys: P Pencil, B Brush, G Paint Bucket, T or K Edit Mode...): a plain
   // letter chooses the tool, when the view offers it. Not while typing (Edit Mode with its cursor, a
   // field), mid-drag, with a tool held by a key, or with the color box or palette layer open.
@@ -353,6 +364,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_handleSwapColors(e)) return;
     if (_handleWandKeys(e)) return;
     if (_handleSelectionKeys(e)) return;
+    if (_handleArtKeys(e)) return;
     if (_handleToolKeys(e)) return;
   };
 
