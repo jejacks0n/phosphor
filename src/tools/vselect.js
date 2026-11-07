@@ -17,6 +17,7 @@ import { snappedEnd } from '@/tools/shapes.js';
 import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
+import { placedShapes } from '@/store/project/shared.js';
 import { DOUBLE_MS, DOUBLE_PX, handlePicker } from '@/tools/handlePick.js';
 
 const REACH = 22;          // CSS px from a trim handle that a press takes it (a 44px hit area)
@@ -46,11 +47,12 @@ export function selectionBox(shapes, keys) {
 }
 
 // The one selected shape's Start and End handles, for the parts it has a row for in the Keys panel (so only with Animate
-// on): { key, shape, handles: [{ part, share, at }] } with at in grid pixels on the outline; or null.
+// on): { key, shape (where it shows: placedShapes), handles: [{ part, share, at }] } with at in grid pixels on the
+// outline; or null.
 export function trimHandles(project, workspace) {
   const chosen = workspace.vectorSelected.filter((key) => project.shapes.has(key));
   if (!project.animate || !project.hasFrames || workspace.activeTool !== 'vselect' || chosen.length !== 1) return null;
-  const [key] = chosen, shape = project.shapes.get(key), life = lifeAt(project.frames, key, project.frame)[0];
+  const [key] = chosen, shape = placedShapes(project).get(key), life = lifeAt(project.frames, key, project.frame)[0];
   if (isArt(shape) || life === undefined) return null;
   const listed = listedParts(project.frames, key, life), along = measure(shape);
   const handles = ['start', 'end'].filter((part) => listed.includes(part)).map((part) => {
@@ -135,11 +137,12 @@ function rotateTo(project, drag, pos, shift) {
   reshape(project, drag, (shape) => multiply(w, shape.m));
 }
 
-// A trim handle dragged: its part set to the share of the outline nearest the pointer, held to 0 through 1.
+// A trim handle dragged: its part set to the share of the outline nearest the pointer (on the shape where it shows),
+// held to 0 through 1.
 function trimTo(project, workspace, drag, pos) {
-  const [key, shape] = drag.start[0], near = nearestOnOutline(shape, pos.x, pos.y);
+  const [key, shape] = drag.start[0], near = nearestOnOutline(drag.placed, pos.x, pos.y);
   if (near.segment < 0) return;
-  const share = Math.min(1, Math.max(0, Math.round(measure(shape).shareOf(near.segment, near.t) * 1e4) / 1e4));
+  const share = Math.min(1, Math.max(0, Math.round(measure(drag.placed).shareOf(near.segment, near.t) * 1e4) / 1e4));
   workspace.vectorTrim = { part: drag.part, share };
   project.updateShapes([[key, withShape(shape, { [drag.part]: share })]]);
 }
@@ -156,7 +159,7 @@ function endDrag(project, workspace) {
   if (kind === 'marquee') {
     const box = workspace.vectorMarquee;
     workspace.vectorMarquee = null;
-    const touched = box ? shapesTouching(project.shapes, box) : [];
+    const touched = box ? shapesTouching(placedShapes(project), box) : [];
     if (box || !shift) project.selectShapes(shift ? [...keys, ...touched.filter((key) => !keys.includes(key))] : touched);
     return;
   }
@@ -183,7 +186,7 @@ export default {
 
   begin(ctx, pos, event) {
     const { project, workspace, unit } = ctx, shift = !!event?.shiftKey, radius = handleRadius(), tol = radius / unit.x;
-    const keys = selected(workspace, project), box = selectionBox(project.shapes, keys);
+    const placed = placedShapes(project), keys = selected(workspace, project), box = selectionBox(placed, keys); // where they show
     const at = (kind, extra = {}) => {
       drag = { kind, from: pos, box, start: (extra.keys ?? keys).map((key) => [key, project.shapes.get(key)]), shift, ...extra };
       project.beginEdit();
@@ -194,11 +197,11 @@ export default {
       const { handles, knob } = boxHandles(box, unit), letStop = () => { workspace.vectorStop = null; };
       const d = (p) => Math.hypot((p.x - pos.x) * unit.x, (p.y - pos.y) * unit.y);
       const trim = trimHandles(project, workspace);
-      const trims = (trim?.handles ?? []).map(({ part, at: place }) => ({ id: part, d: d(place), take: () => at('trim', { part }) }));
+      const trims = (trim?.handles ?? []).map(({ part, at: place }) => ({ id: part, d: d(place), take: () => at('trim', { part, placed: trim.shape }) }));
       const own = box.cells ? [] : [{ id: 'knob', d: d(knob), take: () => at('rotate'), picked: letStop }, ...handles.map((h, handle) => ({ id: `h${handle}`, d: d(h), take: () => at('scale', { handle, grip: h }), picked: letStop }))];
       if (pick.press([...trims.filter((c) => c.d <= REACH), ...own.filter((c) => c.d <= radius), ...gradientDrag.candidates(ctx, pos, radius)], pos, unit)) return true;
     } else pick.reset();
-    const hit = shapeAt(project.shapes, pos.x, pos.y, tol);
+    const hit = shapeAt(placed, pos.x, pos.y, tol);
     // A second click edits points; an art layer has none, so it steps into the layer (see endDrag).
     const now = performance.now(), second = hit && lastPress?.key === hit && now - lastPress.time < DOUBLE_MS && near(pos, lastPress.pos, unit, DOUBLE_PX);
     const art = isArt(project.shapes.get(hit)), again = second && !art, enter = second && art;
@@ -216,7 +219,7 @@ export default {
     if (box && inside(box.corners, pos)) return at('move', { again: again && hit, enter: enter && hit });
     if (hit) {
       project.selectShapes([hit]);
-      return at('move', { keys: [hit], box: selectionBox(project.shapes, [hit]), again: again && hit, enter: enter && hit });
+      return at('move', { keys: [hit], box: selectionBox(placed, [hit]), again: again && hit, enter: enter && hit });
     }
     return marquee(); // let go where it was pressed: a click on empty canvas, which deselects
   },

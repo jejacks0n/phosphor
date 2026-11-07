@@ -51,7 +51,7 @@ export const renderingActions = {
       this.baseLayer = markRaw(new PaintLayer({ cols, rows, scale: this.baseScale ?? this.processingScale(), smooth: false }));
       this.renderer.baseLayer = this.baseLayer;
       this._shapeLayer = markRaw(new ShapeLayer(this.baseLayer));
-      this._shapeLayer.set(this.shapes);
+      this._shapeLayer.set(drawnShapes(this));
       this.renderer.shapes = this._shapeLayer;
       this.baseScale = this.baseLayer.scale;
       this._layerGrid = { cols, rows };

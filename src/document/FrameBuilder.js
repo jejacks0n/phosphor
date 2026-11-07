@@ -11,6 +11,7 @@
 import PaintLayer from './PaintLayer.js';
 import ShapeLayer from './ShapeLayer.js';
 import { isShapeKey } from './shapes.js';
+import { shownShapes } from './followers.js';
 import Renderer from './Renderer.js';
 import { paintImage } from './frames.js';
 import { getPaletteColors } from '../lib/ImageProcessor.js';
@@ -20,11 +21,11 @@ import { ctx2d } from '../lib/Canvas.js';
 const sameColor = (a, b) => a === b || (a.hex === b.hex && (a.c === b.c || typeof a.c !== 'number'));
 const sameCell = (a, b) => a === b || (a.char === b.char && a.wide === b.wide && sameColor(a.fg, b.fg) && sameColor(a.bg, b.bg));
 
-// A frame's shapes, from its resolved states.
+// A frame's shapes, from its resolved states, as they're drawn: followers on their paths, guides left out.
 function shapesOf(resolved) {
   const shapes = new Map();
   for (const [key, { cell }] of resolved) if (cell && isShapeKey(key)) shapes.set(key, cell);
-  return shapes;
+  return shownShapes(shapes);
 }
 
 export default class FrameBuilder {

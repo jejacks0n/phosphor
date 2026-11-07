@@ -5,7 +5,8 @@
 // and stops (each in its color, the selected one ringed), and the Pen's points (the first filled: a click there
 // closes) with its next segment, dashed, to the pointer, and a selected shape's Start and End handles on its outline
 // (with the stretch not drawn dashed in its stroke color, and while one's dragged, its name and percent). In a room, an art layer someone else is drawing in shows its
-// box, saying who. It takes no pointer events,
+// box, saying who. Every guide shows its outline, thin and dashed, selected or not, since it draws nothing else. Shapes
+// are read where they show (placedShapes: a follower on its path). It takes no pointer events,
 // and shows nothing while the animation plays. It's drawn twice: first dark and wider (the halo, its own group so
 // nothing that looks for the overlay's handles finds it twice), then in color, so it reads over any art.
 import { computed } from 'vue';
@@ -15,6 +16,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { t } from '@/i18n';
 import { pathData, withOutlines, worldPoints } from '@/document/shapes.js';
 import { measure } from '@/document/pathLength.js';
+import { placedShapes } from '@/store/project/shared.js';
 import { boxHandles, handleRadius, selectionBox, trimHandles } from '@/tools/vselect.js';
 import { gradientHandles, gradientKey, gradientSlot } from '@/tools/gradientHandles.js';
 import { snappedEnd } from '@/tools/shapes.js';
@@ -39,18 +41,21 @@ const style = computed(() => {
 });
 
 const shown = computed(() => !!props.unit && !workspace.playing);
-const selected = computed(() => workspace.vectorSelected.filter((key) => project.shapes.has(key)));
-const outlines = computed(() => selected.value.map((key) => pathData(project.shapes.get(key), props.unit.x, props.unit.y)));
+const placed = computed(() => placedShapes(project)); // where they show: a follower on its path
+const selected = computed(() => workspace.vectorSelected.filter((key) => placed.value.has(key)));
+const outlines = computed(() => selected.value.map((key) => pathData(placed.value.get(key), props.unit.x, props.unit.y)));
+// Every guide's outline, thin and dashed, selected or not: it draws nothing else, so this is where it's found.
+const guides = computed(() => (!props.unit ? [] : [...placed.value.values()].filter((shape) => shape.guide).map((shape) => pathData(shape, props.unit.x, props.unit.y))));
 // On a Blank frame, the shapes it carries from the frame before: their outlines, dimmed. Only with Animate on.
 const carried = computed(() => {
   if (!props.unit || !project.hasFrames || !project.animate) return [];
   void project.shapes; void project.frames; // what the carried set is worked out from
-  return [...project.inheritedShapes()].filter((key) => !selected.value.includes(key)).map((key) => pathData(project.shapes.get(key), props.unit.x, props.unit.y));
+  return [...project.inheritedShapes()].filter((key) => !selected.value.includes(key)).map((key) => pathData(placed.value.get(key), props.unit.x, props.unit.y));
 });
 
 const box = computed(() => {
   if (workspace.activeTool === 'vnode' || !selected.value.length) return null;
-  const b = selectionBox(project.shapes, selected.value);
+  const b = selectionBox(placed.value, selected.value);
   if (!b) return null;
   const { handles, top, knob } = boxHandles(b, props.unit);
   return { corners: b.corners.map(px).map(({ x, y }) => `${x},${y}`).join(' '), handles: handles.map(px), top: px(top), knob: knob && px(knob) };
@@ -78,14 +83,14 @@ const trim = computed(() => {
 });
 
 const locks = computed(() => (!props.unit ? [] : [...new Set(Object.values(project._locks).map(({ key }) => key))]).flatMap((key) => {
-  const words = drawing.lockedWords(key), b = words && selectionBox(project.shapes, [key]);
+  const words = drawing.lockedWords(key), b = words && selectionBox(placed.value, [key]);
   if (!b) return [];
   const corners = b.corners.map(px);
   return [{ key, words, corners: corners.map(({ x, y }) => `${x},${y}`).join(' '), at: corners[0] }];
 }));
 
 const points = computed(() => {
-  const shape = workspace.vectorPoints && project.shapes.get(workspace.vectorPoints);
+  const shape = workspace.vectorPoints && placed.value.get(workspace.vectorPoints);
   if (!shape) return null;
   const all = worldPoints(shape).map((p, i) => ({ i, at: px(p), in: p.in && px(p.in), out: p.out && px(p.out) }));
   const arms = all.flatMap((p) => [p.in, p.out].filter(Boolean).map((h, j) => ({ key: `${p.i}.${j}`, from: p.at, to: h })));
@@ -96,7 +101,7 @@ const points = computed(() => {
 // finger leaves no pointer to follow), its points, and a dashed segment from the last to the pointer (with Shift,
 // to where a click puts the next point: across, up and down or at 45°).
 const pen = computed(() => {
-  const shape = workspace.vectorPen && project.shapes.get(workspace.vectorPen);
+  const shape = workspace.vectorPen && placed.value.get(workspace.vectorPen);
   if (!shape) return null;
   const world = worldPoints(shape), hover = workspace.vectorHover;
   const to = hover && (workspace.isShiftPressed && world.length ? snappedEnd(world.at(-1), hover) : hover);
@@ -107,7 +112,7 @@ const pen = computed(() => {
 const gradient = computed(() => {
   const key = gradientKey(project, workspace);
   if (!key) return null;
-  const shape = project.shapes.get(key), { p0, p1, stops } = gradientHandles(shape, gradientSlot(shape, workspace));
+  const shape = placed.value.get(key), { p0, p1, stops } = gradientHandles(shape, gradientSlot(shape, workspace));
   return { p0: px(p0), p1: px(p1), stops: stops.map((s) => ({ ...s, at: px(s.at) })) };
 });
 
@@ -127,6 +132,7 @@ const r = computed(() => handleRadius() / 2 + 1);
   <svg class="vector-overlays" :style="style">
     <g v-for="layer in ['vector-halo', 'vector-overlay']" :key="layer" :class="layer" :data-vector-overlay="layer === 'vector-overlay' || null">
       <template v-if="shown">
+      <path v-for="(d, i) in guides" :key="`g${i}`" :d="d" class="outline guide"/>
       <path v-for="(d, i) in carried" :key="`c${i}`" :d="d" class="outline carried"/>
       <path v-for="(d, i) in outlines" :key="i" :d="d" class="outline"/>
       <g v-for="lock in locks" :key="lock.key" :data-locked="lock.key">
@@ -220,6 +226,13 @@ svg.vector-overlays {
 
 .box {
   stroke-dasharray: 4 3;
+}
+
+.guide, .vector-halo .guide {
+  stroke-dasharray: 2 3;
+}
+.vector-halo .guide {
+  stroke-width: 2px;
 }
 
 .undrawn {

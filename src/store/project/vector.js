@@ -16,7 +16,7 @@ import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { bytesHeld, drawnShapes, lockedAmong } from '@/store/project/shared.js';
+import { bytesHeld, drawnShapes, lockedAmong, placedShapes } from '@/store/project/shared.js';
 import { readSvgFile, svgLeftOut, svgRefusal } from '@/lib/SvgFile.js';
 import { combined } from '@/lib/shapeBooleans.js';
 import { unitsOf, wandIn } from '@/lib/MagicWand.js';
@@ -364,25 +364,32 @@ export const vectorActions = {
     if (shape && shape.points.length >= 2 && this.shapes.has(key)) workspace.vectorSelected = [key];
   },
 
-  // The shapes keys, and every shape beneath one of them whose bounds overlap it, and so on down: what a merge
-  // presses into the base together, so that nothing shown changes.
+  // The shapes keys, every shape beneath one of them whose bounds overlap it where it shows, and each pressed path's
+  // followers (which would leave it otherwise), and so on: what a merge presses into the base together, so that nothing
+  // shown changes. Never a guide, which draws nothing and stays a shape.
   pressedKeys(keys) {
-    const order = stacked(this.shapes), pressed = new Set(keys.filter((key) => this.shapes.has(key)));
-    for (let i = order.length - 1; i >= 0; i--) { // top down: each one added is below, and looked at later
-      const [key, shape] = order[i];
-      if (!pressed.has(key)) continue;
-      const bounds = shapeBounds(shape);
-      for (let j = i - 1; j >= 0; j--) if (!pressed.has(order[j][0]) && meets(bounds, shapeBounds(order[j][1]))) pressed.add(order[j][0]);
+    const placed = placedShapes(this), order = stacked(placed).filter(([, shape]) => !shape.guide);
+    const pressed = new Set(keys.filter((key) => placed.has(key) && !placed.get(key).guide));
+    for (let size = -1; size !== pressed.size;) {
+      size = pressed.size;
+      for (const [key, shape] of order) if (shape.follow && pressed.has(shape.follow.key)) pressed.add(key);
+      for (let i = order.length - 1; i >= 0; i--) { // top down: each one added is below, and looked at later
+        const [key, shape] = order[i];
+        if (!pressed.has(key)) continue;
+        const bounds = shapeBounds(shape);
+        for (let j = i - 1; j >= 0; j--) if (!pressed.has(order[j][0]) && meets(bounds, shapeBounds(order[j][1]))) pressed.add(order[j][0]);
+      }
     }
     return pressed;
   },
 
-  // The layers with the shapes pressed (a Set) in the base: { base (a snapshot), shapes (the rest), baseRecords
-  // (without the pins they cover, since the shapes' pixels are what shows there, and with their art layers' characters) }.
+  // The layers with the shapes pressed (a Set) in the base, as they're drawn: { base (a snapshot), shapes (the rest, and
+  // every guide, which draws nothing), baseRecords (without the pins they cover, since the shapes' pixels are what shows
+  // there, and with their art layers' characters) }.
   pressShapes(pressed) {
-    this._shapeLayer.set(this.shapes);
+    this._shapeLayer.set(drawnShapes(this));
     const { canvas, covered, pins } = this._shapeLayer.pressed(pressed);
-    const shapes = new Map([...this.shapes].filter(([key]) => !pressed.has(key)));
+    const shapes = new Map([...this.shapes].filter(([key, shape]) => !pressed.has(key) || shape.guide));
     return { base: { canvas, hasPaint: true }, shapes, baseRecords: withPins(withoutPins(this.baseRecords, covered), pins) };
   },
 

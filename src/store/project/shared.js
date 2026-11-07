@@ -5,6 +5,7 @@ import { Ledger } from '@/document/ledger.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { MOST_CHANGE_BYTES } from '@/social/wire.js';
 import { isShapeKey } from '@/document/shapes.js';
+import { placeFollowers, shownShapes } from '@/document/followers.js';
 import { t } from '@/i18n';
 
 export const DEFAULT_COLS = getSetting('cols').default;
@@ -38,15 +39,18 @@ export const newLedger = (project) => markRaw(new Ledger({
   numbering: false,
   mostBytes: MOST_CHANGE_BYTES,
 }));
-// The shapes the shape layer draws: all of them, but the art layer stepped into (vector.js: enterArt), whose drawing is
-// the edit cells and paint while you're inside it.
+// The shapes the shape layer draws: all of them, followers on their paths and guides left out (followers.js), but the
+// art layer stepped into (vector.js: enterArt), whose drawing is the edit cells and paint while you're inside it.
 export function drawnShapes(project) {
-  const key = project._artInside?.key;
-  if (!key || !project.shapes.has(key)) return project.shapes;
-  const shapes = new Map(project.shapes);
-  shapes.delete(key);
-  return shapes;
+  const key = project._artInside?.key, shapes = shownShapes(project.shapes);
+  if (!key || !shapes.has(key)) return shapes;
+  const left = new Map(shapes);
+  left.delete(key);
+  return left;
 }
+// The shapes as VECTOR shows them, followers on their paths and guides kept: its overlay, hits, boxes and the Keys
+// panel's values. Edits change project.shapes, the records themselves.
+export const placedShapes = (project) => placeFollowers(project.shapes);
 // A color ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
 export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
 

@@ -18,7 +18,7 @@ import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over, bytesHeld } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld, placedShapes } from '@/store/project/shared.js';
 import { RESET_GROUPS, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
 
@@ -326,7 +326,7 @@ export const mergingActions = {
     this.ensureLayer();
     this.commitPending();
     const area = rect && { x: rect.c0, y: 2 * rect.r0, w: rect.c1 - rect.c0 + 1, h: 2 * (rect.r1 - rect.r0 + 1) };
-    const touching = [...this.shapes].filter(([, shape]) => !area || meets(shapeBounds(shape), area)).map(([key]) => key);
+    const touching = [...placedShapes(this)].filter(([, shape]) => !area || meets(shapeBounds(shape), area)).map(([key]) => key); // where they show
     const pressed = touching.length ? this.pressShapes(this.pressedKeys(touching)) : null;
 
     const rows = charRowsOf(this.rows);
