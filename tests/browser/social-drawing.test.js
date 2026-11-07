@@ -3639,7 +3639,7 @@ test('an artist\'s Follow path reaches the host and is taken; a link a file woul
   expect(room.project.shapes.get(f).along).toBeCloseTo(0.3, 3);
 
   const good = ann.project.shapes.get(f);
-  ann.project.setShapes(new Map(ann.project.shapes).set(f, Object.freeze({ ...good, along: 2 }))); // past the path's end
+  ann.project.setShapes(new Map(ann.project.shapes).set(f, Object.freeze({ ...good, along: 2.5 }))); // past what Along can be
   ann.project.commitEdit();
   await expect.poll(() => ann.project.shapes.get(f).along, PATIENT).toBe(good.along);
   expect(room.project.shapes.get(f)).toEqual(good);
@@ -3666,6 +3666,28 @@ test('an art layer someone is drawing in keeps following its path, and the host 
   expect(toastMessage.value).toBe('ann is drawing in this layer');
   expect(room.project.shapes.get(key)).toBe(held);
   ann.project.leaveArt();
+});
+
+test('an artist inside a follower art layer draws where it is now when another artist moves its path, keeping every cell', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  const key = await withArtLayer(room, ann, bob);
+  const p = room.project.addShape(await line());
+  expect(room.project.followPath(key, p)).toBe(true);
+  await sameShapes(room, ann, bob);
+  expect(ann.project.enterArt(key)).toBe(true);
+  await expect.poll(() => bob.drawing.lockedBy(key), PATIENT).toBe('ann');
+  const { placedShapes } = await import('@/document/followers.js'), { transformed, translation } = await import('@/document/shapes.js');
+  bob.project.updateShapes([[p, transformed(bob.project.shapes.get(p), translation(0, -8))]]); // the path isn't locked
+  await expect.poll(() => shapesOf(ann.project), PATIENT).toBe(shapesOf(bob.project));
+  const placed = placedShapes(ann.project).get(key), col = placed.m[4], row = placed.m[5] / 2;
+  expect(ann.project.editCells.get(`${col},${row}`)?.char).toBe('A'); // the layer's drawing, where it is now
+  ann.project.typeAt(col + 1, row, 'Z', { fg: '#ff0000' });
+  ann.project.commitEdit();
+  const layer = ann.project.shapes.get(key).art;
+  expect([layer.cols, layer.rows, layer.cells.map(([i, c]) => [i, c])]).toEqual([2, 1, [[0, 'A'], [1, 'Z']]]);
+  ann.project.leaveArt();
+  await sameShapes(room, ann, bob);
 });
 
 test('who\'s inside an art layer reaches an artist who joins later, and the host again after a reconnect, with no pointer moving', async () => {

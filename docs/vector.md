@@ -119,8 +119,9 @@ panel](animation.md#following-a-path)).
   about its middle, and the box's handles turn and scale it as any shape's do. Dragging it in Vector select slides
   it along its path, to the point nearest where you drag it (one undo step); the arrow keys step it along by 1%, with
   Shift by 10%. Its X and Y in the Keys panel show where it is, and can't be typed while it follows. The Node tool
-  edits its points where it shows, and stepping into a follower art layer draws in it where it shows. Drawing outside
-  a following art layer's box grows the layer, and it re-centers on its path, so its cells shift.
+  edits its points where it shows; moving them moves its middle, and it re-centers on its path, so the rest of it
+  shifts. Stepping into a follower art layer draws in it where it shows. Drawing outside a following art layer's box
+  grows the layer, and it re-centers on its path, so its cells shift.
 - **Along ▾**: a follower's Keys panel has an **Along** row, and its name is a menu:
   - **Moves**: **Along it, on its own keys** (the Along row's keys say how far along it is), **With the line's
     start** or **With the line's end** (it sits on the path's Start or End as the path is trimmed on each frame, with

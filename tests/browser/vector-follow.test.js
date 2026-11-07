@@ -11,6 +11,7 @@ import { PARTS } from '@/document/parts.js';
 import { centerOf, placedShapes } from '@/document/followers.js';
 import { makeArt } from '@/document/artLayers.js';
 import { listedParts } from '@/document/keys.js';
+import { ease } from '@/document/tweens.js';
 import { clipboardHtml, readClipboardHtml } from '@/lib/clipboardBlocks.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
 import { loadBooleans } from '@/lib/shapeBooleans.js';
@@ -358,6 +359,21 @@ test('riding the line\'s End, the follower stays on the End as the End tweens', 
     project.showFrame(at);
     near(centerAt(project, f), x, 20);
   }
+});
+
+test('Follow path takes a shape keyed where an Elastic End springs past 100%', async () => {
+  const { project } = await drawing();
+  const p = project.addShape(path());
+  const f = project.addShape(makeShape({ points: [[4, 4, 0, 0, 0, 0, 0], [24, 4, 0, 0, 0, 0, 0]], closed: false, stroke: '#ff0000', width: 1, end: 0 }));
+  for (let i = 0; i < 10; i++) project.addFrame('blank');
+  project.updateShapes([[f, withShape(project.shapes.get(f), { end: 1 })]]);
+  project.setKeyEasing(f, [{ part: 'end', at: 0 }], 'elastic');
+  const at = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((i) => ease('elastic', i / 10) > 1);
+  project.showFrame(at);
+  project.addKey(f, 'transform');
+  project.showFrame(at - 1);
+  expect(project.followPath(f, p)).toBe(true);
+  expect(recordsOf(project, f)[at].follow).toEqual({ key: p });
 });
 
 test('Guide hides a shape from the cells on every frame, as one undo step', async () => {

@@ -57,9 +57,11 @@ test('an art layer keeps follow and along, written only when not the default, an
   const plain = JSON.parse(JSON.stringify(art));
   const bad = [
     { follow: { key: 'path' } }, { follow: { key: 'v:path', ride: 'middle' } }, { follow: { key: 'v:path', ride: 'along' } },
-    { follow: { key: 'v:path', face: true } }, { follow: { key: 'v:path', motion: 'smooth' } }, { along: 0 }, { along: 1.5 }, { guide: true }, { guide: false },
+    { follow: { key: 'v:path', face: true } }, { follow: { key: 'v:path', motion: 'smooth' } }, { along: 0 }, { along: 2.5 }, { along: -1.5 }, { guide: true }, { guide: false },
   ];
   for (const v of bad) assert.equal(artFromStranger({ ...plain, ...v }), null, JSON.stringify(v));
+  assert.deepEqual(artFromStranger({ ...plain, along: 1.5 }), { ...art, along: 1.5 });
+  assert.equal(makeArt({ ...base, along: 2.7 }).along, 2);
 });
 test('shapes.js hands art records on: shapeFromStranger, isShape, shapeBounds; partsOf', () => {
   const art = makeArt({ m: [1, 0, 0, 1, 3, 6], art: { cols: 4, rows: 2, cells: [[0, 'A', null, null]] } });

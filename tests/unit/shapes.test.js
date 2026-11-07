@@ -267,10 +267,16 @@ test('follow, along and guide are written only when not the default, and round-t
     { follow: { key: 'path' } }, { follow: { key: 'v:' } }, { follow: {} }, { follow: 'v:path' }, { follow: { key: 'v:path', ride: 'middle' } },
     { follow: { key: 'v:path', ride: 'along' } }, { follow: { key: 'v:path', face: false } }, { follow: { key: 'v:path', motion: 'smooth' } },
     { follow: { key: 'v:path', motion: 'whole' } }, { follow: { key: 'v:path', other: 1 } },
-    { along: 0 }, { along: 1.5 }, { along: -0.1 }, { along: 'x' }, { guide: false }, { guide: 1 },
+    { along: 0 }, { along: 2.5 }, { along: -1.5 }, { along: 'x' }, { guide: false }, { guide: 1 },
   ];
   for (const v of bad) assert.equal(shapeFromStranger({ ...plain, ...v }), null, JSON.stringify(v));
   assert.deepEqual(shapeFromStranger({ ...plain, along: 1 }), { ...s, along: 1 });
+  for (const along of [1.5, -0.1, 2, -1]) assert.deepEqual(shapeFromStranger({ ...plain, along }), { ...s, along }); // past an end: a closed path wraps
+  assert.equal(withShape(s, { along: 2.7 }).along, 2);
+  assert.equal(withShape(s, { along: -3 }).along, -1);
+  assert.equal(withShape(s, { start: -0.2, end: 1.25 }).end, undefined); // a tween's overshoot is held to 0..1
+  assert.equal('start' in withShape(s, { start: -0.2 }), false);
+  assert.equal(withShape(s, { end: -0.3 }).end, 0);
 });
 
 test('shapeFromStranger takes the new fields and refuses bad ones', () => {

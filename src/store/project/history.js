@@ -7,6 +7,7 @@
 import { markRaw, toRaw } from 'vue';
 import { parseKey } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
+import { placedShapes } from '@/document/followers.js';
 import { keepDrawn, keepMode, withModes } from '@/document/frames.js';
 import { carriesError } from '@/lib/CharResolver.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -164,9 +165,10 @@ export const historyActions = {
   // Write a change's cells and runs and refresh only what changed. also: what's changed with it, for
   // one refresh to cover: patches ([patch, layer]) already applied, and pins ([before, after]). Inside an art layer
   // its cells and runs are the drawing's, kept aside: they show on stepping out (leaveArt redraws it all). A change
-  // to the layer itself (someone's undo, say) is drawn on again.
+  // to the layer itself (someone's undo, say), or to where it shows (a follower's path moved), is drawn on again.
   applyChange({ cells: all, runs }, { patches = [], pins = [] } = {}) {
     const cells = all.filter(([key]) => !isShapeKey(key)), shapes = all.filter(([key]) => isShapeKey(key));
+    const was = this._artInside && shapes.length ? placedShapes(this).get(this._artInside.key) : null; // where it shows: a follower's path can move
     if (shapes.length) {
       const next = new Map(this.shapes);
       for (const [key, shape] of shapes) {
@@ -190,7 +192,7 @@ export const historyActions = {
     drawing.hasPaint = drawing.paintLayer.hasPaint;
     if (!inside) this.refreshChanged([[runsPatch(runs), this.paintLayer], ...patches], pins.length ? [pins] : [], cells.map(([key]) => key));
     else if (pins.length) this.refreshChanged([], [pins]);
-    if (inside && shapes.some(([key]) => key === inside.key)) this.loadArt();
+    if (inside && (shapes.some(([key]) => key === inside.key) || placedShapes(this).get(inside.key) !== was)) this.loadArt();
     else if (shapes.length) this.refreshShapes();
   },
 

@@ -49,8 +49,10 @@ export function goodFollow(value, art) {
   if (('ride' in value && !RIDES.includes(value.ride)) || ('motion' in value && !MOTIONS.includes(value.motion))) return false;
   return !('face' in value) || (value.face === true && !art);
 }
-// How far along its path, a share 0 to 1 (the default 0 left out).
-export const goodAlong = (along) => typeof along === 'number' && along > 0 && along <= 1;
+// How far along its path, a share held to -1..2 (past 0 or 1 a closed path wraps, so a tween can go around it more
+// than once between keys), the default 0 left out.
+export const alongShare = (along) => rounded(Math.min(Math.max(along, -1), 2));
+export const goodAlong = (along) => typeof along === 'number' && along !== 0 && along >= -1 && along <= 2;
 
 export function makeArt({ z = 0, m, art, follow, along }) {
   const cells = art.cells.map((cell) => Object.freeze([...cell]));
@@ -60,7 +62,7 @@ export function makeArt({ z = 0, m, art, follow, along }) {
     art: Object.freeze({ cols: art.cols, rows: art.rows, cells: Object.freeze(cells) }),
   };
   if (follow) record.follow = makeFollow({ ...follow, face: false });
-  if (along && rounded(along)) record.along = rounded(along);
+  if (along && alongShare(along)) record.along = alongShare(along);
   return Object.freeze(record);
 }
 

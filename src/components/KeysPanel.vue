@@ -788,7 +788,7 @@ div.row > button.here.on {
   button.guide {
     z-index: 1; /* over the ruler's line, which a flex order paints later */
   }
-  button.guide::after { /* 26px, from the panel's top edge down into the ruler's line */
+  button.guide::after { /* 42px, from the panel's top edge down into the ruler's line */
     top: -6px;
     bottom: -10px;
   }
