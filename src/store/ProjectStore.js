@@ -33,17 +33,28 @@ const sameLook = (a, b) => a === b || (!!a?.wide && !!b && a.wide === b.wide && 
 
 // Stepped into an art layer: outside its box, and where nothing drawn inside has changed what shows since you stepped
 // in (entered), the cells show as they did then (snapshot, the drawing with them), dimmed toward what's under them as
-// the ghost is. Inside it, and wherever you've drawn, they show as they are.
-function insideCells(project, { key, snapshot, entered, memo }, cells) {
-  const shape = project.shapes.get(key);
+// the ghost is. Inside it, and wherever you've drawn, they show as they are. The drawing outside doesn't change while
+// you're in (the settings are off), so the whole snapshot is dimmed once (dimmed, for the render it was made over) and
+// an edit only picks, cell by cell, the dimmed one or the one as it is.
+// ponytail: still one pass of cheap compares over every cell per edit (about 6 ms at 500k), and an edit big enough to
+// rebuild every cell dims the snapshot again; keep the edit's cell range if large grids lag here.
+function insideCells(project, inside, cells) {
+  const { key, snapshot, entered } = inside, shape = project.shapes.get(key);
   if (!shape || snapshot.length !== cells.length) return cells;
-  const { cols } = project, params = project.processParams, rendered = project.renderedCells, { x, y, w, h } = artBounds(shape);
+  const { cols } = project, rendered = project.renderedCells, { x, y, w, h } = artBounds(shape);
+  if (inside.dimmedOver !== rendered) {
+    const params = project.processParams;
+    inside.dimmed = ghostedCells(snapshot, (i) => project.renderer.underCell(i % cols, Math.floor(i / cols), params, rendered), () => true);
+    inside.dimmedOver = rendered;
+  }
+  const { dimmed } = inside, kept = entered.length === cells.length && entered;
   const same = (a, b) => !b || a === b || (a.char === b.char && a.fg.hex === b.fg.hex && a.bg.hex === b.bg.hex);
-  const outside = (i) => {
+  return cells.map((cell, i) => {
+    if (dimmed[i] === snapshot[i]) return cell; // nothing under it to dim toward
     const col = i % cols, row = (i - col) / cols;
-    return (col < x || col >= x + w || 2 * row < y || 2 * row >= y + h) && same(cells[i], entered.length === cells.length && entered[i]);
-  };
-  return ghostedCells(cells, (i) => project.renderer.underCell(i % cols, Math.floor(i / cols), params, rendered), outside, memo, undefined, (i) => snapshot[i]);
+    const out = col < x || col >= x + w || 2 * row < y || 2 * row >= y + h;
+    return out && same(cell, kept && kept[i]) ? dimmed[i] : cell;
+  });
 }
 
 // While the state is made there's no store yet, but there is by the time the ledger reads.
