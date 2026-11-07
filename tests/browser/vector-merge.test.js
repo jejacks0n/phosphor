@@ -260,3 +260,32 @@ test('Into the image leaves an art layer alone', async () => {
   expect([...project.shapes.keys()]).toEqual([art]);
   expect(cellsKey(project)).toEqual(cells);
 });
+
+test('a base pin under an art cell with colors and no character is still there after Merge down, and the cells are the same', async () => {
+  const { project } = await drawing();
+  project.typeAt(5, 3, 'Q', { fg: '#ffff00', bg: '#000000' });
+  project.commitEdit();
+  project.mergeDown(); // the Q is a pin now
+  expect(project.baseRecords.pins.get('5,3')).toBe('Q');
+  project.addShape(makeArt({ z: 0, m: [1, 0, 0, 1, 5, 6], art: { cols: 1, rows: 1, cells: [[0, null, '#2040a0', '#a0a040']] } }));
+  await settle(project);
+  const cells = cellsKey(project);
+  expect(project.cells[cellIndex(5, 3, project.cols)].char).toBe('Q'); // the pin shows through the art's colors
+  project.mergeShapes();
+  await settle(project);
+  expect(project.shapes.size).toBe(0);
+  expect(project.baseRecords.pins.get('5,3')).toBe('Q');
+  expect(cellsKey(project)).toEqual(cells);
+});
+
+test('Merge down with paint over a solid art character shows the cell as before', async () => {
+  const { project } = await drawing();
+  project.addShape(makeArt({ z: 0, m: [1, 0, 0, 1, 5, 6], art: { cols: 1, rows: 1, cells: [[0, '█', '#2040a0', '#a0a040']] } }));
+  project.paintStroke([{ x: 5, y: 6, alpha: 1 }], '#00ff00');
+  project.commitEdit();
+  await settle(project);
+  const cells = cellsKey(project);
+  project.mergeDown();
+  await settle(project);
+  expect(cellsKey(project)).toEqual(cells);
+});
