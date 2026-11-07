@@ -7,6 +7,7 @@ import { usePlayback } from '@/composables/usePlayback';
 import { allPoints, isGradient, stacked, strokeOf, withShape } from '@/document/shapes.js';
 import { isArt } from '@/document/artLayers.js';
 import { transformValues, withTransformValue } from '@/lib/shapeValues.js';
+import { placedShapes } from '@/store/project/shared.js';
 
 // One Keys panel row's values on the frame showing: typing one changes the shape there, which keys that part there
 // (the store notes what an edit changed).
@@ -16,8 +17,9 @@ const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const playback = usePlayback();
 
-const shape = computed(() => project.shapes.get(props.shapeKey) ?? null);
-const values = computed(() => (shape.value ? transformValues(shape.value) : null));
+const shape = computed(() => project.shapes.get(props.shapeKey) ?? null); // the record, which typing changes
+// X and Y where it shows: a follower's on its path (placedShapes).
+const values = computed(() => (shape.value ? transformValues(placedShapes(project).get(props.shapeKey)) : null));
 const look = computed(() => (shape.value ? strokeOf(shape.value) : null));
 const pointCount = computed(() => allPoints(shape.value).length);
 const place = computed(() => stacked(project.shapes).findIndex(([key]) => key === props.shapeKey) + 1);
