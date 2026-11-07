@@ -165,6 +165,9 @@ export class Ledger {
     for (const record of this.#stacks.strokes.values()) if (record.by === from) record.by = to;
   }
 
+  // The cell keys a stroke has written: what its undo or redo could change.
+  keysOf(stroke) { return [...(this.#stacks.strokes.get(stroke)?.cells.keys() ?? [])]; }
+
   // About what a stroke holds, for History's byte limit.
   bytesOf(stroke) { return this.#stacks.strokes.get(stroke)?.bytes ?? 0; }
 

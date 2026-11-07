@@ -24,6 +24,12 @@ function tooManyShapes(project, cells) {
   return size > MOST_SHAPES;
 }
 
+// Whether keys reach an art layer someone other than by is drawing in (lockedBy): theirs alone until they step out.
+const locked = (project, by, keys) => keys.some((key) => {
+  const holder = isShapeKey(key) && project.lockedBy(key);
+  return holder && holder !== by;
+});
+
 export const sharingHostActions = {
   // The ledger as it is, written for this host's next reload, unless it's what was written last. Autosave calls
   // this after each write of the document, so what's kept is never behind that.
@@ -60,7 +66,8 @@ export const sharingHostActions = {
   },
 
   // An artist's change, undo or redo reaching the host, in the order they're heard. Null when it can't be
-  // taken, for the room to answer (hosting.js). Otherwise it's numbered and
+  // taken, for the room to answer (hosting.js): one that would change an art layer someone else is drawing in can't
+  // be, nor can one past the shapes a drawing holds. Otherwise it's numbered and
   // sent, and it's what was numbered that comes back. My open stroke's slice goes first, or the ledger would
   // read my unsent paint as what's beneath theirs.
   takeFromArtist(by, message) {
@@ -68,13 +75,15 @@ export const sharingHostActions = {
     if (sharing?.role !== 'host' || !this.paintLayer) return null;
     const change = message.t === 'change' ? readChange(message, boundsOf(this)) : message;
     if (!change || (change.cells && tooManyShapes(this, change.cells))) return null;
+    if (locked(this, by, change.cells?.map(([key]) => key) ?? this._ledger.keysOf(change.stroke))) return null;
     this.sendSlice();
     const numbered = change.t === 'undo' ? this._ledger.undo(by, change.stroke)
       : change.t === 'redo' ? this._ledger.redo(by, change.stroke)
         : this._ledger.submit(by, change.stroke, change);
     if (!numbered) return null;
-    this.paintLayer.writeRuns(numbered.runs);
-    this.hasPaint = this.paintLayer.hasPaint;
+    const drawing = this._artInside ?? this; // inside an art layer, the drawing's kept aside
+    drawing.paintLayer.writeRuns(numbered.runs);
+    drawing.hasPaint = drawing.paintLayer.hasPaint;
     for (const [key, entry] of numbered.cells) sharing.heardCells.set(key, entry ?? null);
     for (const run of numbered.runs) sharing.heardRuns.push(run);
     if (numbered.cells.length || numbered.runs.length) this.editVersion++;

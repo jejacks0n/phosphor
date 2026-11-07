@@ -3,11 +3,13 @@
 // of the shapes it carries), Vector select's box with its 8 handles and rotate knob, the Node tool's points and
 // handles of the shape whose points are being edited (the selected point filled) and its gradient's line, ends
 // and stops (each in its color, the selected one ringed), and the Pen's points (the first filled: a click there
-// closes) with its next segment, dashed, to the pointer. It takes no pointer events,
+// closes) with its next segment, dashed, to the pointer. In a room, an art layer someone else is drawing in shows its
+// box, saying who. It takes no pointer events,
 // and shows nothing while the animation plays. It's drawn twice: first dark and wider (the halo, its own group so
 // nothing that looks for the overlay's handles finds it twice), then in color, so it reads over any art.
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useDrawingStore } from '@/store/DrawingStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { pathData, worldPoints } from '@/document/shapes.js';
 import { boxHandles, handleRadius, selectionBox } from '@/tools/vselect.js';
@@ -20,6 +22,7 @@ const props = defineProps({
   display: { type: Object, default: null }, // the element the grid starts in
 });
 const project = useProjectStore();
+const drawing = useDrawingStore();
 const workspace = useWorkspaceStore();
 
 const px = (p) => ({ x: p.x * props.unit.x, y: p.y * props.unit.y });
@@ -49,6 +52,14 @@ const box = computed(() => {
   const { handles, top, knob } = boxHandles(b, props.unit);
   return { corners: b.corners.map(px).map(({ x, y }) => `${x},${y}`).join(' '), handles: handles.map(px), top: px(top), knob: knob && px(knob) };
 });
+
+// The art layers someone else is drawing in: each one's box, and the words over its top-left corner.
+const locks = computed(() => (!props.unit ? [] : [...new Set(Object.values(project._locks))]).flatMap((key) => {
+  const words = drawing.lockedWords(key), b = words && selectionBox(project.shapes, [key]);
+  if (!b) return [];
+  const corners = b.corners.map(px);
+  return [{ key, words, corners: corners.map(({ x, y }) => `${x},${y}`).join(' '), at: corners[0] }];
+}));
 
 const points = computed(() => {
   const shape = workspace.vectorPoints && project.shapes.get(workspace.vectorPoints);
@@ -95,6 +106,10 @@ const r = computed(() => handleRadius() / 2 + 1);
       <template v-if="shown">
       <path v-for="(d, i) in carried" :key="`c${i}`" :d="d" class="outline carried"/>
       <path v-for="(d, i) in outlines" :key="i" :d="d" class="outline"/>
+      <g v-for="lock in locks" :key="lock.key" :data-locked="lock.key">
+        <polygon :points="lock.corners" class="box"/>
+        <text :x="lock.at.x" :y="lock.at.y - 4" class="locked">{{ lock.words }}</text>
+      </g>
       <template v-if="box">
         <polygon :points="box.corners" class="box"/>
         <template v-if="box.knob">
@@ -153,6 +168,11 @@ svg.vector-overlays {
   stroke: var(--halo);
   stroke-width: 3.5px;
 }
+.vector-halo .locked {
+  fill: none;
+  stroke: var(--halo);
+  stroke-width: 3px;
+}
 .vector-halo .stop.on {
   stroke-width: 5px;
 }
@@ -166,6 +186,11 @@ svg.vector-overlays {
 
 .box {
   stroke-dasharray: 4 3;
+}
+
+.locked {
+  fill: var(--accent, #4aa3ff);
+  font-size: 12px;
 }
 
 .carried {

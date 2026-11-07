@@ -315,12 +315,25 @@ test('a whole-layer action that has nothing to do leaves you inside', async () =
   expect(project.artInside).toBe(key);
 });
 
-test('no stepping in while the document is shared, until rooms lock a layer someone draws in', async () => {
+test('in a room, a layer someone else is drawing in can be selected, not stepped into, moved or deleted', async () => {
   const { project, key } = await withArt();
   project.startSharing({ send: () => {}, role: 'host', me: 'me' });
+  project._locks = { ann: key }; // what ann's cursor says (DrawingStore)
+  expect(project.lockedBy(key)).toBe('ann');
+  const shape = project.shapes.get(key);
   expect(project.enterArt(key)).toBe(false);
-  project.stopSharing();
+  project.updateShapes([[key, withShape(shape, { m: [1, 0, 0, 1, 8, 4] })]]);
+  project.deleteShapes([key]);
+  project.restackShapes([key], 'back');
+  expect(project.shapes.get(key)).toBe(shape);
+  project.selectShapes([key]);
+  expect(project.history.last.selectionOnly).toBe(true);
+  project._locks = { me: key, ann: null }; // my own, heard back after I'd stepped out
+  expect(project.lockedBy(key)).toBe(null);
   expect(project.enterArt(key)).toBe(true);
+  expect(project.lockedBy(key)).toBe('me');
+  project.leaveArt();
+  project.stopSharing();
 });
 
 test('autosave writes the drawing kept aside, not the layer being edited', async () => {

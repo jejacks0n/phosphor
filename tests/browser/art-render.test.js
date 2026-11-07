@@ -11,6 +11,9 @@ import { rectShape, withShape } from '@/document/shapes.js';
 import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 import { selectionBox } from '@/tools/vselect.js';
 import VectorOverlay from '@/components/VectorOverlay.vue';
+import VectorOptions from '@/components/VectorOptions.vue';
+import { i18n } from '@/i18n';
+import { useDrawingStore } from '@/store/DrawingStore';
 
 const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}${c.wide ?? ''}`);
 const at = (project, col, row) => project.cells[row * project.cols + col];
@@ -161,4 +164,28 @@ test('an art layer selected in VECTOR draws its box, and hits and marquees pass 
   mounted.mount(host);
   await settle(project);
   expect(host.querySelector('[data-vector-overlay] polygon.box')).not.toBeNull();
+});
+
+test('in a room, an art layer someone else is drawing in shows its box saying who, and Edit art is off with it', async () => {
+  const { project, workspace } = await blank();
+  const art = project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 4], art: { cols: 3, rows: 2, cells: [[0, 'A', '#0000ff', '#ff0000']] } }));
+  Object.assign(workspace, { editorTab: 'vector', activeTool: 'vselect', vectorSelected: [art] });
+  const drawing = useDrawingStore();
+  drawing.cursors = { ann: { at: null, view: null, name: 'Ann', inside: art } };
+  expect(project._locks).toEqual({ ann: art });
+  const host = document.createElement('div'), row = document.createElement('div');
+  mounted = createApp(VectorOverlay, { unit: { x: 8, y: 8 } });
+  mounted.mount(host);
+  const options = createApp(VectorOptions).use(i18n);
+  options.mount(row);
+  await settle(project);
+  expect(host.querySelector(`[data-locked="${art}"] text`).textContent).toBe('Ann is drawing in this layer');
+  const edit = [...row.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Edit art');
+  expect(edit.disabled).toBe(true);
+  expect(edit.title).toBe('Ann is drawing in this layer');
+  drawing.cursors = { ann: { at: null, view: null, name: 'Ann', inside: null } }; // stepped out
+  await settle(project);
+  expect(host.querySelector('[data-locked]')).toBeNull();
+  expect(edit.disabled).toBe(false);
+  options.unmount();
 });

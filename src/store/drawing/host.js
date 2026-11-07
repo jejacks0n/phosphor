@@ -102,8 +102,8 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
     sendCursorsSoon();
   }
 
-  function noteCursor(sub, { at, view }, name) {
-    cursors.value = { ...cursors.value, [sub]: { at, view, name } };
+  function noteCursor(sub, { at, view, inside = null }, name) {
+    cursors.value = { ...cursors.value, [sub]: { at, view, name, inside } };
     sendCursorsSoon();
   }
 
@@ -261,8 +261,8 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
     return {
       project: () => project.projectNow(),
       onChange: take, onUndo: take, onRedo: take,
-      onCursor: (sub, { at, view }, name) => {
-        const cursor = readCursor({ at, view, name });
+      onCursor: (sub, { at, view, inside }, name) => {
+        const cursor = readCursor({ at, view, name, inside });
         if (cursor) noteCursor(sub, cursor, name);
       },
       // A host back from a reload or new to it: they wait until all of them have said, or the time's up.

@@ -9,6 +9,7 @@ import { computed } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useDrawingStore } from '@/store/DrawingStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { allClosed, allPoints, isGradient, setFree, setSmooth } from '@/document/shapes.js';
@@ -22,6 +23,7 @@ import ToggleGroup from '@/components/ToggleGroup.vue';
 
 const { t } = useI18n();
 const project = useProjectStore();
+const drawing = useDrawingStore();
 const workspace = useWorkspaceStore();
 const phone = useMediaQuery('(max-width: 768px)');
 const style = useVectorStyle(), { selected } = style;
@@ -55,8 +57,10 @@ const combine = async (op) => {
   if (key) workspace.vectorSelected = [key];
 };
 const back = () => project.restackShapes(selected.value, 'back');
-// Edit art: one art layer selected. Stepping in shows the ANSI tab, where the usual tools draw in it.
+// Edit art: one art layer selected. Stepping in shows the ANSI tab, where the usual tools draw in it. Off while someone
+// else in the room is drawing in it, and its title says who.
 const artKey = computed(() => (selected.value.length === 1 && isArt(project.shapes.get(selected.value[0])) ? selected.value[0] : null));
+const artLocked = computed(() => artKey.value && drawing.lockedWords(artKey.value));
 const editArt = () => {
   if (project.enterArt(artKey.value)) workspace.editorTab = 'output';
 };
@@ -117,7 +121,7 @@ const gradientOf = (slot) => {
       <button :title="pasteTitle" :aria-label="pasteTitle" :disabled="!workspace.vectorClipboard" @click="paste"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M160 96H208V176H432V96H480A64 64 0 0 1 544 160V528A64 64 0 0 1 480 592H160A64 64 0 0 1 96 528V160A64 64 0 0 1 160 96ZM160 224V528H480V224Z"/><path d="M256 48H384A32 32 0 0 1 416 80V144H224V80A32 32 0 0 1 256 48Z"/></svg></button>
     </template>
     <template v-if="editing">
-      <button v-if="artKey" class="text" :title="project._sharing ? t('art.editInRoom') : t('art.editTitle')" :disabled="!!project._sharing" @click="editArt">{{ t('art.edit') }}</button>
+      <button v-if="artKey" class="text" :title="artLocked || t('art.editTitle')" :disabled="!!artLocked" @click="editArt">{{ t('art.edit') }}</button>
       <div class="divider"/>
       <button :title="t('vector.forwardTitle')" :aria-label="t('vector.forward')" @click="forward"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M320 32 496 208H384V352H256V208H144ZM320 384 576 480 320 576 64 480ZM320 432 192 480 320 528 448 480Z"/></svg></button>
       <button :title="t('vector.backTitle')" :aria-label="t('vector.back')" @click="back"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M256 32H384V176H496L320 352 144 176H256ZM320 384 576 480 320 576 64 480ZM320 432 192 480 320 528 448 480Z"/></svg></button>

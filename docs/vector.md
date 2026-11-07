@@ -72,8 +72,8 @@ with a **Done** button.
 - **Undo.** Each edit is one undo step, and undo goes back to where you stepped in and no further. Step out, and the steps
   are in the history with the rest.
 - **What's off.** The settings panel, the Base toggle and the frame controls (the animation bar, and the keys that play, step
-  and add frames) are off while you're in. Changing the picture or the frame would leave the dimmed drawing out of date. Stepping
-  in is off while the document is shared in a room.
+  and add frames) are off while you're in. Changing the picture or the frame would leave the dimmed drawing out of date.
+- **In a room.** One person at a time draws in an art layer ([Rooms](#rooms)).
 - **Stepping out.** Press **Done** or **Esc** (once nothing else is left to cancel: with the Text cursor showing, the first
   **Esc** puts it away), and the view goes back to VECTOR with the layer selected. Changing tabs, opening or starting a
   document, resizing the canvas, turning Animate off, exporting, and the whole-layer actions (Clear, Merge up and down,
@@ -103,6 +103,12 @@ In a room, everyone drawing can draw and change shapes, and everyone sees them a
 piece of the drawing, like a cell: when two people change the same shape at once, the change heard last is the one
 that stays, and undo takes back only your own changes (yours to a shape someone has changed since stays theirs).
 Bake and Merge down are the host's. Watchers see the art the shapes make.
+
+Art layers travel the same way: each one is a single shape, and every edit made inside it reaches everyone as a change
+to that shape. One person at a time draws in an art layer. While someone is inside one, everyone else sees its box on
+VECTOR, labeled with who it is (for example, **Ann is drawing in this layer**). They can still select it, but they can't
+step in (**Edit art** is off, and its title says who is drawing), and they can't move, restack or delete it. The layer
+is free again once that person steps out, leaves the room or stops drawing.
 
 ## Saving
 
