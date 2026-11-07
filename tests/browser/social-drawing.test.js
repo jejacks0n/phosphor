@@ -3690,6 +3690,28 @@ test('an artist inside a follower art layer draws where it is now when another a
   await sameShapes(room, ann, bob);
 });
 
+test('inside a follower art layer, a heard change that leaves its place alone keeps the open stroke: cells only, or the path recolored', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  const key = await withArtLayer(room, ann, bob);
+  const p = room.project.addShape(await line());
+  expect(room.project.followPath(key, p)).toBe(true);
+  await sameShapes(room, ann, bob);
+  expect(ann.project.enterArt(key)).toBe(true);
+  await expect.poll(() => bob.drawing.lockedBy(key), PATIENT).toBe('ann');
+  const { withShape } = await import('@/document/shapes.js');
+  const loads = vi.spyOn(ann.project, 'loadArt');
+  ann.project.typeAt(5, 2, 'Z', { fg: '#ff0000' }); // open: not committed
+  ann.project.applyChange({ cells: [['10,10', { char: 'Q' }]], runs: [] }); // someone's drawing, heard
+  expect(ann.project.editCells.get('5,2')?.char).toBe('Z');
+  bob.project.updateShapes([[p, withShape(bob.project.shapes.get(p), { stroke: '#0000ff' })]]); // the path recolored: the layer stays put
+  await expect.poll(() => ann.project.shapes.get(p).stroke, PATIENT).toBe('#0000ff');
+  expect(ann.project.editCells.get('5,2')?.char).toBe('Z');
+  expect(loads).not.toHaveBeenCalled();
+  loads.mockRestore();
+  ann.project.leaveArt();
+});
+
 test('who\'s inside an art layer reaches an artist who joins later, and the host again after a reconnect, with no pointer moving', async () => {
   const room = await hosting();
   const ann = await artist(room, 'ann');
