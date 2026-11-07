@@ -38,9 +38,9 @@ export function hitsShape(shape, x, y, tol) {
   return c.isPointInStroke(path, x, y);
 }
 
-// The key of the topmost shape at (x, y), or null.
-export function shapeAt(shapes, x, y, tol) {
-  const order = stacked(shapes);
+// The key of the topmost shape at (x, y), or null. art false: art layers pass unseen (the Node tool has no points on them).
+export function shapeAt(shapes, x, y, tol, art = true) {
+  const order = stacked(shapes).filter(([, shape]) => art || !isArt(shape));
   for (let i = order.length - 1; i >= 0; i--) if (hitsShape(order[i][1], x, y, tol)) return order[i][0];
   return null;
 }
