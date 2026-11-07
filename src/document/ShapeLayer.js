@@ -7,13 +7,14 @@
  *
  * Shapes are drawn into a canvas of their own, then over a copy of the base's rect. A redraw covers whole
  * cells and draws every shape that reaches the rect, unclipped, so a part comes out as the whole would; it
- * reads back which cells any shape covers, where a pinned character gives way to the conversion
- * (Renderer.pinAt).
- * ponytail: two canvases the base layer's size while shapes exist (up to MAX_LAYER_DIM a side); tile them
- * if that's too much memory on large documents.
+ * reads back each cell's character (charAt): an art layer's where it's the topmost thing there, the conversion's
+ * where a shape reaches over it (or over a pinned character), the base's pin otherwise (Renderer.pinAt).
+ * ponytail: two canvases the base layer's size while shapes exist (up to MAX_LAYER_DIM a side), a third while
+ * an art layer does; tile them if that's too much memory on large documents.
  */
 import { ctx2d } from '../lib/Canvas.js';
 import { charRowsOf } from '../lib/Cells.js';
+import { isArt } from './artLayers.js';
 import { dirtyRect, invert, isGradient, multiply, pathData, scaling, shapeBounds, stacked, strokeAlign, strokeOf } from './shapes.js';
 import { sidePath } from '../lib/shapeHits.js';
 
@@ -29,7 +30,9 @@ export default class ShapeLayer {
   #size = null;         // the base canvas's size and scale they're drawn for
   #seen = -1;           // the base's version drawn
   #pending = [];        // grid rects to draw again
-  #covered = null;      // a byte a cell: some shape draws in it
+  #chars = null;        // a cell's character (charAt): undefined, null or an art layer's
+  #scratch = null;      // a band of shapes between art layers drawn alone, for which cells it covers
+  #hasArt = false;
   #paths = new WeakMap(); // shape -> { k, path }
   version = 0;
   #changes = [];
@@ -43,6 +46,7 @@ export default class ShapeLayer {
   get rows() { return this.#base.rows; }
   get drawsShapes() { return this.#shapes.size > 0; }
   get hasPaint() { return this.#base.hasPaint || this.drawsShapes; }
+  get hasArt() { return this.#hasArt; }
 
   // The shapes to draw (the store's map). The grid rect that changed, or null when none did.
   set(shapes) {
@@ -57,6 +61,7 @@ export default class ShapeLayer {
     for (const [key, shape] of this.#shapes) if (!shapes.has(key)) bounds.push(shapeBounds(shape));
     this.#shapes = shapes;
     this.#order = stacked(shapes).map(([key, shape]) => [key, shape, shapeBounds(shape)]);
+    this.#hasArt = this.#order.some(([, shape]) => isArt(shape));
     const rect = dirtyRect(...bounds);
     if (rect) this.#pending.push(rect);
     return rect;
@@ -76,7 +81,8 @@ export default class ShapeLayer {
       this.#size = size;
       this.#own = newCanvas(width, height);
       this.canvas = newCanvas(width, height);
-      this.#covered = new Uint8Array(base.cols * charRowsOf(base.rows));
+      this.#chars = new Array(base.cols * charRowsOf(base.rows));
+      this.#scratch = null;
       this.#pending = [];
       this.#seen = base.version;
       this.#draw({ x: 0, y: 0, w: width, h: height });
@@ -99,11 +105,27 @@ export default class ShapeLayer {
     }
   }
 
-  // Whether any shape draws in cell (col, row).
-  covers(col, row) {
-    if (!this.drawsShapes) return false;
+  // Cell (col, row)'s character, worked out bottom up: undefined where nothing sets one (the base's pin, if any,
+  // shows), null where a shape reaches over it (the converter picks), or the character of the topmost art layer
+  // over it. An art cell with no character leaves the one under it.
+  charAt(col, row) {
+    if (!this.drawsShapes) return undefined;
     this.sync();
-    return col < this.#base.cols && !!this.#covered[row * this.#base.cols + col];
+    return col < this.#base.cols ? this.#chars[row * this.#base.cols + col] : undefined;
+  }
+
+  // The grid cells ('col,row') an art layer gives a character: where the Renderer looks past its pins.
+  artCells() {
+    const cells = new Set(), cols = this.#base.cols, rows = charRowsOf(this.#base.rows);
+    for (const [, shape] of this.#order) {
+      if (!isArt(shape)) continue;
+      const { m, art } = shape;
+      for (const [i, char] of art.cells) {
+        const col = m[4] + (i % art.cols), row = m[5] / 2 + Math.floor(i / art.cols);
+        if (char !== null && col >= 0 && row >= 0 && col < cols && row < rows) cells.add(`${col},${row}`);
+      }
+    }
+    return cells;
   }
 
   // The base layer with the shapes keys (a Set) pressed in, drawn as this layer draws them (alone, then over
@@ -166,20 +188,22 @@ export default class ShapeLayer {
   }
 
   #paint(ctx, shape, k) {
-    paintShape(ctx, shape, k, this.#path(shape, k));
+    paintShape(ctx, shape, k, isArt(shape) ? null : this.#path(shape, k));
   }
 
   // Draw a rect (layer pixels, whole cells, inside the canvas) again: the shapes that meet it, then the base
-  // under them, then which cells they cover.
+  // under them, then the characters of its cells (charAt).
+  // ponytail: with art in the rect, each band of shapes between art layers is drawn again alone and read back;
+  // fold bands that no art cell's character sits over if that shows up in profiles.
   #draw(rect) {
     const k = this.#base.scale, { x, y, w, h } = rect;
     const grid = { x: x / k - 1, y: y / k - 1, w: w / k + 2, h: h / k + 2 }; // a grid pixel around: an edge's antialiasing reaches past its bounds
     // Unclipped and untranslated: either would antialias an edge a little differently from a drawing of the
     // whole. Shapes that reach past the rect leave pixels outside it on this canvas; only the rect is read, and
     // a later rect is cleared before it's drawn.
-    const own = ctx2d(this.#own);
+    const own = ctx2d(this.#own), drawn = this.#order.filter(([, , bounds]) => meets(bounds, grid)).map(([, shape]) => shape);
     own.clearRect(x, y, w, h);
-    for (const [, shape, bounds] of this.#order) if (meets(bounds, grid)) this.#paint(own, shape, k);
+    for (const shape of drawn) this.#paint(own, shape, k);
 
     // The base's bytes, not a drawImage of its canvas: two canvases that read back the same can hold a
     // semi-transparent pixel premultiplied a little differently (an undo puts tiles back with putImageData),
@@ -188,17 +212,53 @@ export default class ShapeLayer {
     ctx.putImageData(ctx2d(this.#base.canvas).getImageData(x, y, w, h), x, y);
     ctx.drawImage(this.#own, x, y, w, h, x, y, w, h);
 
-    const { data } = own.getImageData(x, y, w, h), cols = this.#base.cols, rows = charRowsOf(this.#base.rows);
+    const cols = this.#base.cols, rows = charRowsOf(this.#base.rows);
+    const c0 = x / k, r0 = y / (2 * k), c1 = Math.min(cols, c0 + w / k), r1 = Math.min(rows, r0 + h / (2 * k));
+    for (let row = r0; row < r1; row++) this.#chars.fill(undefined, row * cols + c0, row * cols + c1);
+    if (!drawn.some(isArt)) {
+      this.#reach(own, rect);
+      return;
+    }
+    const scratch = ctx2d(this.#scratch ??= newCanvas(this.#own.width, this.#own.height));
+    let band = [];
+    const flush = () => {
+      if (!band.length) return;
+      scratch.clearRect(x, y, w, h);
+      for (const shape of band) this.#paint(scratch, shape, k);
+      this.#reach(scratch, rect);
+      band = [];
+    };
+    for (const shape of drawn) {
+      if (!isArt(shape)) {
+        band.push(shape);
+        continue;
+      }
+      flush();
+      const { m, art } = shape;
+      for (const [i, char] of art.cells) {
+        const col = m[4] + (i % art.cols), row = m[5] / 2 + Math.floor(i / art.cols);
+        if (char !== null && col >= c0 && col < c1 && row >= r0 && row < r1) this.#chars[row * cols + col] = char;
+      }
+    }
+    flush();
+  }
+
+  // The cells of rect that what's drawn on ctx reaches (any alpha) given over to the conversion: null.
+  #reach(ctx, { x, y, w, h }) {
+    const k = this.#base.scale, { data } = ctx.getImageData(x, y, w, h), cols = this.#base.cols, rows = charRowsOf(this.#base.rows);
     const c0 = x / k, r0 = y / (2 * k), cw = w / k, rh = h / (2 * k);
     for (let r = 0; r < rh; r++) {
       if (r0 + r >= rows) break;
       for (let c = 0; c < cw; c++) {
         if (c0 + c >= cols) break;
-        let any = 0;
-        for (let py = r * 2 * k; py < (r + 1) * 2 * k && !any; py++) {
-          for (let px = c * k, o = (py * w + px) * 4 + 3; px < (c + 1) * k; px++, o += 4) if (data[o]) { any = 1; break; }
+        for (let py = r * 2 * k, any = false; py < (r + 1) * 2 * k && !any; py++) {
+          for (let px = c * k, o = (py * w + px) * 4 + 3; px < (c + 1) * k; px++, o += 4) {
+            if (!data[o]) continue;
+            this.#chars[(r0 + r) * cols + c0 + c] = null;
+            any = true;
+            break;
+          }
         }
-        this.#covered[(r0 + r) * cols + c0 + c] = any;
       }
     }
   }
@@ -224,10 +284,27 @@ function offHalfSteps(ctx, own, width, height) {
   if (moved) ctx.putImageData(image, 0, 0);
 }
 
+// An art layer at k canvas pixels per grid pixel: each cell's halves as solid blocks in their colors, nothing for
+// a see-through one. It sits on whole cells, so nothing is smoothed.
+function paintArt(ctx, { m, art }, k) {
+  for (const [i, , top, bottom] of art.cells) {
+    const x = (m[4] + (i % art.cols)) * k, y = (m[5] + 2 * Math.floor(i / art.cols)) * k;
+    if (top) {
+      ctx.fillStyle = top;
+      ctx.fillRect(x, y, k, k);
+    }
+    if (bottom) {
+      ctx.fillStyle = bottom;
+      ctx.fillRect(x, y + k, k, k);
+    }
+  }
+}
+
 // One shape drawn at k canvas pixels per grid pixel (path: its pathData at that scale, as a Path2D): its fill
 // under its fill rule, then its stroke with its width, caps, joins and miter limit, centered on the outline or
-// inside or outside it (strokeAlign).
+// inside or outside it (strokeAlign). An art layer, its cells (paintArt).
 export function paintShape(ctx, shape, k, path = new Path2D(pathData(shape, k, k))) {
+  if (isArt(shape)) return paintArt(ctx, shape, k);
   const { rule, cap, join, miter } = strokeOf(shape);
   if (isGradient(shape.fill)) paintGradient(ctx, shape, k, path, rule);
   else if (shape.fill) {
