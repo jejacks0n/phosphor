@@ -7,8 +7,10 @@ edit layer changes from frame to frame.
 ## Turning it on
 
 The **Animate** switch is on the tab bar, beside the color picker. Turning it on shows the bar under the
-canvas, on the PIXEL and ANSI tabs. Turning it off hides the bar and keeps the frames; the canvas stays on the
-frame it was on. A document opened with more than one frame has it on.
+canvas, on the PIXEL and ANSI tabs. Turning it off keeps the frames, and the canvas stays on the frame it was on, but
+everything of animation goes out of sight: the bar, the Keys panel, the ghost, the animated exports, the Animation
+shortcuts and their keys, and VECTOR's outlines of the shapes a Blank frame carries. A document opened with more than one
+frame has it on.
 
 The switch is off in a room and on a canvas over 40,000 cells, and clicking or tapping it says why. A document with more than one
 frame can't start a room.
@@ -234,7 +236,7 @@ A file whose frames are damaged or too large opens that way too, and says so; sa
 
 ## Exporting
 
-The usual exports, .ans and .utf8ans, write the frame showing. With more than one frame there are four more:
+The usual exports, .ans and .utf8ans, write the frame showing. With more than one frame and Animate on there are four more:
 
 - **Animated .ans** (an ANSiMation): the art draws itself in a viewer or terminal, frame by frame. A file like this has no
   clock, so timing is lost and its speed depends on the viewer. It moves the cursor instead of scrolling, so
