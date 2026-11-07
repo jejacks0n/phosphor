@@ -2,7 +2,7 @@
 // moving, deleting or adding one changes. A ref is { part, at }, at a frame index. A patch maps a frame index to the
 // frame's new { changes, tweens, motions, parts }, all new objects: frames are never changed here.
 import { EMPTY_STATE, cellState, sameState, withEases } from './frames.js';
-import { PARTS, samePart, withParts } from './parts.js';
+import { partsOf, samePart, withParts } from './parts.js';
 import { keyFramesOf, lifeAt, setPartsAt, shapeAt, strayEasings } from './tweens.js';
 
 // A key that can't move or go: a Duplicate's, or a Wipe's past the life's start (each holds its own copy of the shape,
@@ -16,11 +16,12 @@ function endOf(frames, key, life) {
   return end;
 }
 
-// Each part's keys in a life, in order, part to [{ at, cell, easing, motion }]: cell the frame's shape (holding the
-// part's value), easing null on a holding or last key, motion the eased Transform's (smooth on the rest).
+// Each part's keys in a life, in order, part to [{ at, cell, easing, motion }], for the parts the shape has (partsOf):
+// cell the frame's shape (holding the part's value), easing null on a holding or last key, motion the eased
+// Transform's (smooth on the rest).
 function keysIn(frames, key, life) {
   const sets = life.map((at) => setPartsAt(frames, key, at, life));
-  return new Map(PARTS.map((part) => {
+  return new Map(partsOf(frames[life[0]].changes.get(key).cell).map((part) => {
     const ats = life.filter((_, j) => sets[j].has(part));
     return [part, ats.map((at, j) => {
       const easing = (j < ats.length - 1 && frames[at].tweens?.get(key)?.get(part)) || null;
@@ -52,12 +53,12 @@ export function partKeys(frames, key, i) {
 }
 
 // The parts the life around frame i changes, in PARTS order: those whose keys don't all hold one value, and those a
-// Blank key frame after the start keys (by name, or every part when it names none, as setPartsAt has it).
+// Blank key frame after the start keys (by name, or every part the shape has when it names none, as setPartsAt has it).
 export function listedParts(frames, key, i) {
   const life = lifeAt(frames, key, i);
   if (!life.length) return [];
   const rows = keysIn(frames, key, life);
-  return PARTS.filter((part) => rows.get(part).some(({ at, cell }) => !samePart(cell, rows.get(part)[0].cell, part)
+  return [...rows.keys()].filter((part) => rows.get(part).some(({ at, cell }) => !samePart(cell, rows.get(part)[0].cell, part)
     || (at !== life[0] && frames[at].kind === 'blank')));
 }
 
@@ -131,7 +132,7 @@ function rewritten(frames, key, life, rows) {
     const transform = keys.get('transform');
     next[at] = withKey(frames[at], key, {
       cell,
-      parts: at === start || frames[at].kind !== 'blank' || keys.size === PARTS.length ? null : new Set(PARTS.filter((part) => keys.has(part))),
+      parts: at === start || frames[at].kind !== 'blank' || keys.size === rows.size ? null : new Set([...rows.keys()].filter((part) => keys.has(part))),
       eases: new Map([...keys].filter(([, k]) => k.easing).map(([part, k]) => [part, k.easing])),
       motion: transform?.easing && transform.motion,
     });
@@ -179,12 +180,13 @@ export function deletedKeys(frames, key, refs) {
 }
 
 // A key for part on frame at, with the value it shows there; inside the part's tween, eased and moving as that tween
-// (both halves keep it). Null when the part has a key there, or the frame doesn't show the shape.
+// (both halves keep it). Null when the shape has no such part (partsOf) or a key for it there, or the frame doesn't
+// show the shape.
 export function addedKey(frames, key, part, at) {
   const life = lifeAt(frames, key, at);
   if (!life.length) return null;
   const rows = keysIn(frames, key, life), row = rows.get(part);
-  if (row.some((k) => k.at === at)) return null;
+  if (!row || row.some((k) => k.at === at)) return null;
   const { easing, motion } = row.findLast((k) => k.at < at);
   rows.set(part, [...row, { at, cell: shapeAt(frames, key, at), easing, motion }].sort((a, b) => a.at - b.at));
   return rewritten(frames, key, life, rows);

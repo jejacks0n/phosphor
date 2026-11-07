@@ -6,7 +6,8 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePlayback } from '@/composables/usePlayback';
 import { EASINGS, MOTIONS } from '@/document/tweens.js';
-import { PARTS } from '@/document/parts.js';
+import { partsOf } from '@/document/parts.js';
+import { isArt } from '@/document/artLayers.js';
 import { listedParts, partKeys } from '@/document/keys.js';
 import { lifeAt } from '@/document/tweens.js';
 import { MIN_FRAME_PX, MIN_FRAME_PX_PHONE, MOST_FRAME_PX, frameAt, labelEvery, laneLayout, xOf, zoomAround } from '@/lib/keyLanes.js';
@@ -51,7 +52,7 @@ const rows = computed(() => {
   if (!keys.value) return [];
   return listedParts(project.frames, shapeKey.value, lifeStart.value).map((part) => ({ part, keys: keys.value.rows.get(part) }));
 });
-const unlisted = computed(() => (keys.value ? PARTS.filter((part) => !rows.value.some((row) => row.part === part)) : []));
+const unlisted = computed(() => (keys.value ? partsOf(project.shapes.get(shapeKey.value)).filter((part) => !rows.value.some((row) => row.part === part)) : []));
 const keyAt = (part, i) => keys.value?.rows.get(part).find((k) => k.at === i);
 const deletable = (k) => !!k && k.at !== keys.value.start && !k.fixed;
 const partName = (part) => t(`keysPanel.parts.${part}`);
@@ -65,7 +66,8 @@ const selected = computed(() => workspace.selectedKeys.map(({ part, at }) => {
 }).filter(({ key }) => key));
 const isSelected = (part, i) => workspace.selectedKeys.some((ref) => ref.part === part && ref.at === i);
 const easable = computed(() => selected.value.filter(({ leaves }) => leaves));
-const movable = computed(() => easable.value.filter(({ part, key }) => part === 'transform' && key.easing));
+// An art layer always moves by whole cells: it has no motion to choose.
+const movable = computed(() => (isArt(project.shapes.get(shapeKey.value)) ? [] : easable.value.filter(({ part, key }) => part === 'transform' && key.easing)));
 // The easing of the selected keys that a tween leaves, or MIXED when they differ.
 const MIXED = 'mixed';
 const easing = computed(() => {

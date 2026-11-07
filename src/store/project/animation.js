@@ -9,8 +9,9 @@ import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { isShapeKey, sameShape } from '@/document/shapes.js';
+import { isArt } from '@/document/artLayers.js';
 import { MOTIONS, setPartsAt, shapeAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
-import { PARTS, changedParts, samePart } from '@/document/parts.js';
+import { changedParts, partsOf, samePart } from '@/document/parts.js';
 import { addedKey, deletedKeys, moveRange, movedKeys, partKeys } from '@/document/keys.js';
 import { newLedger } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -133,7 +134,7 @@ function setParts(project, key, shape, { shapeOf, unsetOf }) {
     const own = had && frame.parts?.get(key);
     return own ? new Set([...own, ...changedParts(had, shape)]) : null;
   }
-  const before = had ? (frame.parts?.get(key) ?? new Set(PARTS)) : new Set(), edited = changedParts(had ?? inherited, shape);
+  const before = had ? (frame.parts?.get(key) ?? new Set(partsOf(had))) : new Set(), edited = changedParts(had ?? inherited, shape);
   const unset = unsetOf(key, shape), set = new Set([...before].filter((name) => !edited.has(name)));
   for (const name of edited) if (!samePart(shape, unset, name)) set.add(name);
   return set;
@@ -150,12 +151,12 @@ function ownChanges(project, previous) {
   const keys = new Set([...previous.keys(), ...project.shapes.keys(), ...project.currentFrame.changes.keys()].filter(isShapeKey));
   for (const key of keys) {
     const shape = project.shapes.get(key), had = project.currentFrame.changes.get(key)?.cell;
-    const kept = had && shape && [...(project.currentFrame.parts?.get(key) ?? PARTS)].some((name) => samePart(had, shape, name));
+    const kept = had && shape && [...(project.currentFrame.parts?.get(key) ?? partsOf(had))].some((name) => samePart(had, shape, name));
     const inherits = !kept && inherited.inherits(key, shape);
     const set = shape && !inherits ? setParts(project, key, shape, inherited) : null;
     if (inherits || set?.size === 0) own.delete(key);
     else own.set(key, shape ? cellState(shape, 0, 0) : EMPTY_STATE);
-    if (set?.size && set.size < PARTS.length) parts.set(key, set);
+    if (set?.size && set.size < partsOf(shape).length) parts.set(key, set);
   }
   return { own, tweened: inherited.tweened, parts: parts.size ? parts : null };
 }
@@ -618,9 +619,10 @@ export const animationActions = {
     }));
   },
 
-  // How the tween leaving the Transform keys refs name moves (MOTIONS), where it's eased: one undo step.
+  // How the tween leaving the Transform keys refs name moves (MOTIONS), where it's eased: one undo step. Not an art
+  // layer's: it always moves by whole cells.
   setKeyMotion(shapeKey, refs, motion) {
-    if (!MOTIONS.includes(motion)) return;
+    if (!MOTIONS.includes(motion) || isArt(this.shapes.get(shapeKey))) return;
     keyStep(this, shapeKey, (frames) => keyEntries(frames, shapeKey, refs, (part, k) => part === 'transform' && !!k.easing && k.motion !== motion, (entry) => {
       entry.motion = motion;
     }));

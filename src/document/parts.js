@@ -22,7 +22,7 @@ const valueOf = (shape, name) => JSON.stringify(PART_FIELDS[name].map((field) =>
 export const samePart = (a, b, name) => valueOf(a, name) === valueOf(b, name);
 
 // The parts that differ between two versions of a shape.
-export const changedParts = (a, b) => new Set(PARTS.filter((name) => !samePart(a, b, name)));
+export const changedParts = (a, b) => new Set(partsOf(a).filter((name) => !samePart(a, b, name)));
 
 // shape with the named parts' fields taken from `from` (an optional field `from` doesn't have goes too).
 export function withParts(shape, from, names) {
