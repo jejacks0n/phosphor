@@ -54,8 +54,8 @@ export const mergingActions = {
   // clipboard; recent colors are shared across projects and stay. One undo step (slider moves after
   // it are steps of their own).
   async bake({ lockPalette = false } = {}) {
-    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     if (!this.canBake || this._baking) return;
+    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this._baking = true;
     let again = false;
     try {
@@ -171,8 +171,8 @@ export const mergingActions = {
   // and anything outside the picture's area (the letterbox), merges exactly (mergeKind). The
   // sliders aren't touched. One undo step.
   async mergeIntoPicture(rect = null) {
-    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     if (!this.image || this._merging || this.hasFrames) return;
+    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this._merging = true;
     const sharing = this._sharing;
     sharing?.hold?.();
@@ -317,8 +317,8 @@ export const mergingActions = {
   // rect: only the edit layer inside a cell rect (a selection) is merged; the rest stays. Shapes go first, under
   // the edit cells and paint: every one touching rect (or all), whole, with those beneath that overlap them.
   mergeDown(rect = null) {
-    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     if (!this.image || this.hasFrames) return; // it would put one frame in the base, under all of them
+    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     this.commitPending();
     const area = rect && { x: rect.c0, y: 2 * rect.r0, w: rect.c1 - rect.c0 + 1, h: 2 * (rect.r1 - rect.r0 + 1) };

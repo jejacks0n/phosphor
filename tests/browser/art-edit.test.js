@@ -285,6 +285,35 @@ test('with Base lit, the Eraser or a Delete inside takes from the layer alone, a
   expect(project.baseLayer.version).toBe(version);
 });
 
+test('a paste inside of a block copied with Base lit draws in the layer alone, and the base stays', async () => {
+  const { project, workspace, key } = await withArt();
+  const block = project.copySelection({ c0: 0, r0: 0, c1: 2, r1: 2 }, { base: true, edit: true }); // as the clipboard copies
+  expect(block.base).toBeTruthy();
+  workspace.editorTab = 'output';
+  project.enterArt(key);
+  const records = project.baseRecords, version = project.baseLayer.version;
+  project.pasteSelection(block, 6, 6);
+  project.commitPending();
+  expect(project.shapes.get(key).art.cells.some(([, char]) => char === 'X')).toBe(true);
+  expect(project.baseRecords).toBe(records);
+  expect(project.baseLayer.version).toBe(version);
+});
+
+test('a whole-layer action that has nothing to do leaves you inside', async () => {
+  const { project, workspace, key } = await withArt();
+  project.addFrame('blank'); // in an animation these don't apply, and with no slider moved there's nothing to bake
+  project.showFrame(0);
+  workspace.editorTab = 'output';
+  project.enterArt(key);
+  workspace.selection = null;
+  await project.bake();
+  await project.mergeIntoPicture();
+  project.mergeDown();
+  project.mergeShapes();
+  project.makeArtLayer();
+  expect(project.artInside).toBe(key);
+});
+
 test('no stepping in while the document is shared, until rooms lock a layer someone draws in', async () => {
   const { project, key } = await withArt();
   project.startSharing({ send: () => {}, role: 'host', me: 'me' });

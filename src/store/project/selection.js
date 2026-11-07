@@ -117,6 +117,7 @@ export const selectionActions = {
   // undo after moving it puts it back where it was pasted, still floating, and undo again takes it away.
   // pasted: whether the paste was an undo step (one that changes nothing isn't).
   pasteSelection: floated(function (block, col, row) {
+    if (this._artInside && block.base) block = { ...block, base: null }; // inside an art layer, only it's drawn on (layersFor)
     this.ensureLayer();
     const rectAt = (c, r) => this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
     const landed = rectAt(col, row);

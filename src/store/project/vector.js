@@ -366,8 +366,8 @@ export const vectorActions = {
   // base layer's pixels, where they stop being shapes. One whole-layer step. A still only: in an animation the
   // base is under every frame.
   mergeShapes(keys = null) {
-    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     if (!this.image || this.hasFrames) return;
+    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     this.commitPending();
     const chosen = keys ?? [...this.shapes.keys()];
@@ -391,7 +391,6 @@ export const vectorActions = {
   // there, at the most shapes a frame holds, or a drawing too big or too wide for one layer (a toast says so). The
   // record is checked as a file would be before anything is taken out.
   makeArtLayer() {
-    if (this._artInside) this.leaveArt(); // made from the drawing, not the art layer you're in
     const workspace = useWorkspaceStore();
     const wand = workspace.activeTool === 'wand' && workspace.wand ? wandIn(workspace.wand, 'output', this.rows) : null;
     const picked = wand && unitsOf(wand.mask, wand.width).map(({ x, y }) => ({ col: x, row: y }));
@@ -407,6 +406,7 @@ export const vectorActions = {
     }
     const rect = box && this.clipRect(box);
     if (!rect) return null;
+    if (this._artInside) this.leaveArt(); // made from the drawing, not the art layer you're in
     const drawn = drawnIn(this, rect, wand ? new Set(picked.map(({ col, row }) => cellKey(col, row))) : null);
     if (!drawn.length) return null;
     if (this.shapes.size >= MOST_SHAPES) {
