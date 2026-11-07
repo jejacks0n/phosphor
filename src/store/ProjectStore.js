@@ -5,6 +5,7 @@ import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
 import { ghostedCells } from '@/lib/ghostCells.js';
+import { artBounds } from '@/document/artLayers.js';
 import { MAX_ANIMATION_CELLS, MAX_FRAME_CELLS, maxFramesFor, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { charModeOf } from '@/lib/CharResolver.js';
 import { settingsState, slidersAtDefaults } from '@/store/settings.js';
@@ -29,6 +30,21 @@ import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES, ALONE, newLedger } from
 
 // A cell an edit didn't touch stays the same object, except a wide one, which is laid out again with its row.
 const sameLook = (a, b) => a === b || (!!a?.wide && !!b && a.wide === b.wide && a.char === b.char && a.fg.hex === b.fg.hex && a.bg.hex === b.bg.hex);
+
+// Stepped into an art layer: outside its box, and where nothing drawn inside has changed what shows since you stepped
+// in (entered), the cells show as they did then (snapshot, the drawing with them), dimmed toward what's under them as
+// the ghost is. Inside it, and wherever you've drawn, they show as they are.
+function insideCells(project, { key, snapshot, entered, memo }, cells) {
+  const shape = project.shapes.get(key);
+  if (!shape || snapshot.length !== cells.length) return cells;
+  const { cols } = project, params = project.processParams, rendered = project.renderedCells, { x, y, w, h } = artBounds(shape);
+  const same = (a, b) => !b || a === b || (a.char === b.char && a.fg.hex === b.fg.hex && a.bg.hex === b.bg.hex);
+  const outside = (i) => {
+    const col = i % cols, row = (i - col) / cols;
+    return (col < x || col >= x + w || 2 * row < y || 2 * row >= y + h) && same(cells[i], entered.length === cells.length && entered[i]);
+  };
+  return ghostedCells(cells, (i) => project.renderer.underCell(i % cols, Math.floor(i / cols), params, rendered), outside, memo, undefined, (i) => snapshot[i]);
+}
 
 // While the state is made there's no store yet, but there is by the time the ledger reads.
 function firstLedger() {
@@ -89,16 +105,19 @@ export const useProjectStore = defineStore('project', {
     _takingProject: false, // a host's project is being written: the guard below doesn't apply (document.js)
     _sameDocument: false, // and it's this document brought up to date, so undo and the selection stay
     _documentN: null, // the ledger's number the open document was autosaved at, as it came back (useAutosave)
+    _artInside: null, // the art layer stepped into, and the drawing kept aside meanwhile (vector.js: enterArt)
   }),
 
   getters: {
-    canUndo: (state) => state.historyVersion >= 0 && state.history.canUndo,
+    // Inside an art layer, only as far back as where you stepped in, and on only to what was done inside.
+    canUndo: (state) => state.historyVersion >= 0 && state.history.canUndo && (!state._artInside || state._artInside.entries.has(state.history.last)),
     // Something to bake: an image, and a Transform, Adjustment or Effect slider off its default.
     // Shapes alone make a still bakeable (Bake presses them in); in an animation they stay shapes.
     canBake: (state) => !!state.image && (!slidersAtDefaults(state) || (state.shapes.size > 0 && state.frames.length <= 1)),
     // The image is still the one loaded, at its own size (the merge dialog says what Into the image costs).
     pictureIsOriginal: (state) => !state.imageIsWorkingCopy,
-    canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo,
+    canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo && (!state._artInside || state._artInside.entries.has(state.history.next)),
+    artInside: (state) => state._artInside?.key ?? null, // the art layer stepped into
     // Anything on the edit layer or the vector layer, of any frame (a grid resize is then a canvas resize).
     hasEdits() { return this.hasEditLayer || this.shapes.size > 0; },
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.
@@ -110,6 +129,7 @@ export const useProjectStore = defineStore('project', {
     shownCells() {
       const workspace = useWorkspaceStore(), { cells } = this;
       if (workspace.playing && workspace.played) return workspace.played.cells;
+      if (this._artInside) return insideCells(this, this._artInside, cells);
       if (!this.animate || !workspace.ghost || !this.frame || this.currentFrame?.kind !== 'blank') return cells;
       const held = this._ghost, frame = this.currentFrame, version = this.historyVersion, rendered = this.renderedCells;
       const before = this.ghostBefore, strength = this.ghostStrength;

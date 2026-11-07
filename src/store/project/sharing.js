@@ -43,7 +43,7 @@ export const DRAWING_ACTIONS = [
   'writeEditCells', 'clearEditCells', 'flipCell', 'flipPaint', 'clearEditLayer',
   'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'deleteInWand', 'recolorSelection', 'moveSelection',
   'deleteIn', 'pasteAt', 'pasteBase', 'selectionEdit',
-  'addShape', 'makeArtLayer', 'updateShapes', 'deleteShapes', 'restackShapes', 'joinShapes', 'combineShapes', 'separateShape', 'addSvg', 'addShapes', 'penPoint', 'penBack',
+  'addShape', 'makeArtLayer', 'setArtContent', 'enterArt', 'updateShapes', 'deleteShapes', 'restackShapes', 'joinShapes', 'combineShapes', 'separateShape', 'addSvg', 'addShapes', 'penPoint', 'penBack',
   'undo', 'redo',
 ];
 
@@ -226,16 +226,21 @@ export const sharingActions = {
 
   // What's changed since the last slice goes out. Also how anyone's stroke gets to the ledger at all, so
   // commitEdit calls it alone as well.
+  // Inside an art layer, what's drawn in it goes as the layer (commitArt), never as cells or paint: those stay the
+  // stroke's own until it's committed.
   sendSlice() {
     const stroke = this._stroke;
     if (!stroke) return;
-    const tiles = this.paintLayer?.strokeSlice() ?? [];
-    const own = changedCells(stroke, this.editCells), cells = [...own, ...cellChanges(stroke.shapes, this.shapes)];
+    const inside = !!this._artInside;
+    const tiles = inside ? [] : this.paintLayer?.strokeSlice() ?? [];
+    const own = inside ? [] : changedCells(stroke, this.editCells), cells = [...own, ...cellChanges(stroke.shapes, this.shapes)];
     const baseline = markRaw({ cells: stroke.editCells, shapes: stroke.shapes, tiles: new Map(tiles.map(({ x, y, before }) => [`${x},${y}`, before])) });
     stroke.wroteCells ||= stroke.editCells !== this.editCells || stroke.shapes !== this.shapes;
-    stroke.editCells = this.editCells;
+    if (!inside) {
+      stroke.editCells = this.editCells;
+      stroke.noted = null;
+    }
     stroke.shapes = this.shapes;
-    stroke.noted = null;
     const runs = tiles.flatMap(({ x, y, before, after }) => {
       if (!this._sharing) return pixelRuns(before.data, after.data, after.width, after.height, x, y, exactly);
       const changed = pixelRuns(before.data, after.data, after.width, after.height, x, y);

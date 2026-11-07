@@ -188,8 +188,9 @@ export const documentActions = {
     this.addSvg(text);
   },
 
-  // Swap in a new base image and start a fresh document around it.
+  // Swap in a new base image and start a fresh document around it (out of an art layer first).
   replaceImage(image, imageBuffer, patch = {}) {
+    if (this._artInside) this.leaveArt();
     this.renderer.reset();
     this.activePalette = [];
     this.$patch({
@@ -223,6 +224,7 @@ export const documentActions = {
   },
 
   clearImage() {
+    if (this._artInside) this.leaveArt();
     this.renderer.reset();
     this.activePalette = [];
     this.$patch({
@@ -279,11 +281,13 @@ export const documentActions = {
   },
 
   // What a .phosphor file holds besides the image, all of it as of the call (a canvas is copied when
-  // toBlob is called), since a room's changes go on while the blobs are made.
+  // toBlob is called), since a room's changes go on while the blobs are made. Inside an art layer, the drawing
+  // is the one kept aside (enterArt).
   async projectParts() {
+    const drawing = this._artInside ?? this;
     const parts = {
-      settings: { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, this[key]])), paintScale: this.paintLayer?.scale ?? null, baseScale: this.baseLayer?.scale ?? null },
-      editCells: this.editCells,
+      settings: { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, (key === 'hasPaint' ? drawing : this)[key]])), paintScale: drawing.paintLayer?.scale ?? null, baseScale: this.baseLayer?.scale ?? null },
+      editCells: drawing.editCells,
       baseRecords: this.baseRecords,
       shapes: this.shapes,
     };
@@ -292,7 +296,7 @@ export const documentActions = {
       this.resolvedOf(this.frames.length - 1); // every key frame's shape as it shows, kept on it
       parts.animation = { frames: serializeFrames(this.frames), frame: this.frame, fps: this.fps };
     }
-    const paintBlob = this.paintLayer?.toBlob() ?? null, baseBlob = this.baseLayer?.hasPaint ? this.baseLayer.toBlob() : null;
+    const paintBlob = drawing.paintLayer?.toBlob() ?? null, baseBlob = this.baseLayer?.hasPaint ? this.baseLayer.toBlob() : null;
     return { ...parts, paintBlob: await paintBlob, baseBlob: await baseBlob };
   },
 
@@ -403,8 +407,10 @@ export const documentActions = {
     };
   },
 
-  // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first.
+  // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first. Out of an art layer
+  // first: the cells then are the layer's alone, without the drawing.
   async exportFile(ext, { filename = this.filename, ...opts } = {}) {
+    if (this._artInside) this.leaveArt();
     const blob = new AnsiFile(this.cols, charRowsOf(this.rows), this.cells).toBlob({
       sauce: this.sauceFields(),
       colorMode: this.quantize,

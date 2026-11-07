@@ -10,7 +10,7 @@ import { fitRect } from '@/lib/Canvas.js';
 import { layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
-import { boundsOf } from '@/store/project/shared.js';
+import { boundsOf, drawnShapes } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
 
 export const renderingActions = {
@@ -59,6 +59,7 @@ export const renderingActions = {
     }
     if (this._layerGrid.cols === cols && this._layerGrid.rows === rows) return;
     this._layerGrid = { cols, rows };
+    if (this._artInside) this.leaveArt(); // stepped into an art layer: out first, its edits kept (on the old layers)
     this.commitPending(); // an open edit (a typing run) was recorded on the old layers
     if (this.hasEdits) {
       const kept = this.paintLayer.extend(cols, rows);
@@ -113,7 +114,7 @@ export const renderingActions = {
           this._moviePalette = null;
           this.renderer.usePalette(null);
         }
-        this._shapeLayer?.set(this.shapes);
+        this._shapeLayer?.set(drawnShapes(this));
         this.renderedCells = await this.renderer.render(this.image, this.processParams, this.paintLayer, baseParams(this.processParams));
         this.activePalette = this.renderer.palette;
         this.applyEditCells();

@@ -43,6 +43,7 @@ export const historyActions = {
   // one undo entry undoes them with its base pixel tiles and pin changes, and it counts as unsaved.
   commitEdit() {
     if (this._stroke?.pen) return this.finishPen(); // the Pen's shape, left an open curve
+    if (this._stroke && this._artInside && !this._artInside.writing) return this.commitArt(); // drawn in an art layer: it's the layer's
     const stroke = this._stroke;
     this.sendSlice();
     this._stroke = null;
@@ -228,6 +229,7 @@ export const historyActions = {
   },
 
   pushEdit(entry) {
+    this._artInside?.entries.add(entry); // undo inside an art layer goes back as far as these (canUndo)
     this.history.push(entry);
     this.historyVersion = this.history.version;
     this.editVersion++;
@@ -281,9 +283,11 @@ export const historyActions = {
   undo() {
     if (this._stroke?.pen) return this.penBack(); // while the Pen draws: its last point, as Backspace
     this.commitPending();
+    if (this._artInside && !this._artInside.entries.has(this.history.last)) return; // not past where you stepped in
     const entry = this.history.undo();
     if (!entry) return;
     this.historyVersion = this.history.version;
+    if (this._artInside) this.loadArt(); // what you're drawing on is the layer, as it now is
     // A selection step (changeSelection) isn't a change to the document. Undoing the one that ended a
     // move or paste picks that up again, so undoing it next puts its selection back too.
     if (entry.selectionOnly) {
@@ -304,9 +308,11 @@ export const historyActions = {
 
   redo() {
     this.commitPending();
+    if (this._artInside && !this._artInside.entries.has(this.history.next)) return; // only what was done inside
     const entry = this.history.redo();
     if (!entry) return;
     this.historyVersion = this.history.version;
+    if (this._artInside) this.loadArt();
     // Redoing a step of a move or paste: the block floats where it landed, selected, to move on from there.
     if (entry.floats) {
       this._float = { ...entry.floats.after, version: this.history.version };

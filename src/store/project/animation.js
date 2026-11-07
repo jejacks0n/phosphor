@@ -13,7 +13,7 @@ import { isArt } from '@/document/artLayers.js';
 import { MOTIONS, setPartsAt, shapeAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
 import { changedParts, partsOf, samePart } from '@/document/parts.js';
 import { addedKey, deletedKeys, moveRange, movedKeys, partKeys } from '@/document/keys.js';
-import { newLedger } from '@/store/project/shared.js';
+import { drawnShapes, newLedger } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { markRaw } from 'vue';
 
@@ -83,7 +83,7 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
   project.editCells = cells;
   project._frameSwaps++; // and before shapes: autosave hears each on its own
   project.shapes = shapes;
-  project._shapeLayer?.set(shapes); // drawn by the composite below
+  project._shapeLayer?.set(drawnShapes(project)); // drawn by the composite below
   const layer = project.paintLayer;
   layer.loadGrid(paintImage(resolved, layer.cols, layer.rows));
   project.hasPaint = layer.hasPaint;
@@ -199,9 +199,11 @@ function keepShown(project) {
   });
 }
 
-// The frame showing's changes, from what it shows now. Skipped when nothing's happened since the last time.
+// The frame showing's changes, from what it shows now. Skipped when nothing's happened since the last time, and
+// while you're inside an art layer: what shows then isn't the frame's drawing (noted on the way in).
 function note(project) {
   const frame = project.currentFrame, noted = project._noted;
+  if (project._artInside) return;
   if (!project._stroke && noted?.frame === frame && noted.history === project.history.version && noted.edit === project.editVersion) return;
   project._noted = markRaw({ frame, history: project.history.version, edit: project.editVersion });
   const { own: changes, tweened, parts } = ownChanges(project, carried(project));
@@ -240,9 +242,11 @@ function note(project) {
   reshow(project);
 }
 
-// Before anything that changes which frames there are: what's open is set down on the frame it was done on. keys: only
-// a shape's keys are about to change, and what does that keeps its key frames as they show (keys.js).
-function settleFrame(project, { keys = false } = {}) {
+// Before anything that changes which frames there are: what's open is set down on the frame it was done on, and
+// stepped into an art layer, you step out (but not with stay: the layer's own edit). keys: only a shape's keys are
+// about to change, and what does that keeps its key frames as they show (keys.js).
+function settleFrame(project, { keys = false, stay = false } = {}) {
+  if (project._artInside && !stay) project.leaveArt();
   project.ensureLayer();
   project.commitPending();
   project._float = null;
@@ -315,13 +319,15 @@ function putKeys(project, key, patch) {
 }
 
 // An art layer's drawing (art) put in every copy of its record the frames hold (each key frame keeps its own, and a
-// Duplicate's is its own too): one piece, the same on every frame it's on. What it reaches redrawn; its keys, easings
-// and splits as they were.
-function putArt(project, key, art) {
+// Duplicate's is its own too): one piece, the same on every frame it's on, each copy moved by [dx, dy] (grid pixels,
+// so the cells stay where they were as the drawing grows or shrinks). What it reaches redrawn; its keys, easings and
+// splits as they were.
+function putArt(project, key, art, [dx, dy]) {
   project.frames.forEach((frame, at) => {
     const cell = frame.changes.get(key)?.cell;
     if (!isArt(cell)) return;
-    frame.changes = new Map(frame.changes).set(key, cellState(withShape(cell, { art }), 0, 0));
+    const [a, b, c, d, e, f] = cell.m;
+    frame.changes = new Map(frame.changes).set(key, cellState(withShape(cell, { art, m: [a, b, c, d, e + dx, f + dy] }), 0, 0));
     project.staleFrames(at);
   });
   project.frames = [...project.frames];
@@ -641,11 +647,12 @@ export const animationActions = {
     }));
   },
 
-  // An art layer's drawing set on every frame it's on (putArt): one undo step. setArtContent's, with frames.
-  setFramesArt(shapeKey, art) {
-    settleFrame(this, { keys: true });
+  // An art layer's drawing set on every frame it's on, moved by by (putArt): one undo step. setArtContent's, with
+  // frames.
+  setFramesArt(shapeKey, art, by = [0, 0]) {
+    settleFrame(this, { keys: true, stay: true });
     frameStep(this, () => {
-      putArt(this, shapeKey, art);
+      putArt(this, shapeKey, art, by);
       return this.currentFrame;
     });
   },
@@ -756,7 +763,9 @@ export const animationActions = {
     this.editVersion++;
   },
 
+  // Off steps out of an art layer first.
   setAnimate(on) {
+    if (!on && this._artInside) this.leaveArt();
     this.animate = !!on && this.canAnimate;
   },
 
