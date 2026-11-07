@@ -358,6 +358,7 @@ With Vector select, **Copy**, **Cut** and **Paste**, and with shapes selected:
   meet exactly, as Snap to leaves them, join with no seam and no extra points. They take two or more shapes whose
   outlines are all closed. A Subtract that leaves nothing deletes them all. The first one you use takes a moment
   to load.
+- Join, Add and Subtract don't take an art layer, since it has no outline: with one selected, they're off.
 - **Delete** deletes the shapes.
 
 The buttons are icons, each named when you hover it. Each change is one undo step. On a phone the row is the
