@@ -735,7 +735,9 @@
     "ghost": "Ghost",
     "ghostTitle": "Onion skin: show previous frames dimmed behind Blank frames",
     "ghostStrength": "Ghost strength",
-    "ghostStrengthTitle": "Onion skin opacity: {percent}%"
+    "ghostOn": "Show the ghost",
+    "ghostOnTitle": "Onion skin: on, {percent}%",
+    "ghostOffTitle": "Onion skin: off"
   },
   "keysPanel": {
     "aria": "Keys",

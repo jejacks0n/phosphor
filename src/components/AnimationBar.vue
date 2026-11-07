@@ -23,6 +23,7 @@ const kinds = computed(() => [
 
 const at = computed(() => (workspace.playing ? workspace.playFrame : project.frame));
 const count = computed(() => project.frames.length);
+const ghostTitle = computed(() => (workspace.ghost ? t('animation.ghostOnTitle', { percent: workspace.ghostStrength }) : t('animation.ghostOffTitle')));
 const inside = computed(() => project.artInside !== null);
 // Why Add frame is off, if it is.
 const full = computed(() => {
@@ -143,23 +144,23 @@ const setFps = (event) => {
       {{ t('animation.holdUnit') }}
     </label>
     <span v-if="full" class="full">{{ full }}</span>
-    <!-- Ghost, with its strength in a menu beside it that opens while it's on: a button's room. -->
-    <span class="ghost-group">
-    <button class="ghost" :class="{ active: workspace.ghost }" :aria-label="t('animation.ghost')" :aria-pressed="workspace.ghost" :title="t('animation.ghostTitle')" @click="workspace.ghost = !workspace.ghost">
-      <svg viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
-        <path d="M8 1.5C5 1.5 3 3.9 3 7v7.5l1.67-1.25 1.66 1.25L8 13.25l1.67 1.25 1.66-1.25L13 14.5V7c0-3.1-2-5.5-5-5.5zM6.25 5.5a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zm3.5 0a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2z"/>
-      </svg>
-    </button>
-    <DropdownMenu class="strength-menu" :class="{ active: workspace.ghost }" :label="t('animation.ghostStrengthTitle', { percent: workspace.ghostStrength })" :trigger-label="t('animation.ghostStrength')" up :close-on-select="false" :disabled="!workspace.ghost">
+    <!-- Ghost: one button, lit while it's on, opening a box with both of its settings: on or off, and how strong. -->
+    <DropdownMenu class="ghost" :class="{ active: workspace.ghost }" :label="ghostTitle" :trigger-label="t('animation.ghost')" up :close-on-select="false">
       <template #trigger>
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5l5 6H3z"/></svg>
+        <svg viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
+          <path d="M8 1.5C5 1.5 3 3.9 3 7v7.5l1.67-1.25 1.66 1.25L8 13.25l1.67 1.25 1.66-1.25L13 14.5V7c0-3.1-2-5.5-5-5.5zM6.25 5.5a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zm3.5 0a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2z"/>
+        </svg>
+        <svg class="caret" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5l5 6H3z"/></svg>
       </template>
-      <label class="strength">
-        <input v-model.number="workspace.ghostStrength" type="range" :aria-label="t('animation.ghostStrength')" min="0" max="100" step="1" @pointerup="$event.target.blur()">
+      <label class="ghost-on" :title="t('animation.ghostTitle')">
+        <input v-model="workspace.ghost" type="checkbox">
+        {{ t('animation.ghostOn') }}
+      </label>
+      <label class="strength" :class="{ off: !workspace.ghost }">
+        <input v-model.number="workspace.ghostStrength" type="range" :aria-label="t('animation.ghostStrength')" min="0" max="100" step="1" :disabled="!workspace.ghost" @pointerup="$event.target.blur()">
         <output>{{ workspace.ghostStrength }}%</output>
       </label>
     </DropdownMenu>
-    </span>
     <button v-if="workspace.editorTab === 'vector'" class="keys" :class="{ active: workspace.keysOpen }" :aria-label="t('keysPanel.button')" :aria-pressed="workspace.keysOpen" :title="t('keysPanel.buttonTitle')" @click="workspace.keysOpen = !workspace.keysOpen">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14.5 8 8 14.5 1.5 8z"/></svg>
     </button>
@@ -326,37 +327,52 @@ label.field input {
   padding: 2px 4px;
 }
 
-span.ghost-group {
+/* Ghost: one button, the ghost and a small caret, as the toolbar's buttons are and lit while it's on. */
+.ghost :deep(.dropdown-trigger) {
   display: flex;
-}
-span.ghost-group button.ghost { /* joined to its strength's menu */
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-span.ghost-group :deep(.dropdown-trigger) {
+  align-items: center;
+  gap: 4px;
   height: 26px;
-  padding: 3px 6px;
-  border-left: none;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  padding: 3px 6px 3px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--text-faint);
 }
-span.ghost-group :deep(.dropdown-trigger) > svg {
+.ghost :deep(.dropdown-trigger) > svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+.ghost :deep(.dropdown-trigger) > svg.caret {
   width: 8px;
   height: 8px;
 }
-span.ghost-group .active :deep(.dropdown-trigger) { /* lit with Ghost, a fine line between the two */
+@media (hover: hover) {
+  .ghost :deep(.dropdown-trigger:hover) {
+    color: var(--text);
+  }
+}
+.ghost.active :deep(.dropdown-trigger) {
   background: var(--accent);
   border-color: var(--accent);
-  border-left: 1px solid color-mix(in srgb, var(--white) 30%, var(--accent));
   color: var(--white);
 }
-span.ghost-group .active :deep(.dropdown-trigger:hover) {
+.ghost.active :deep(.dropdown-trigger:hover) {
   background: color-mix(in srgb, var(--white) 12%, var(--accent));
-  color: var(--white);
 }
-span.ghost-group :deep(.dropdown-trigger:disabled) {
+label.ghost-on {
+  display: flex;
+  color: var(--text);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+label.strength.off {
   opacity: 0.4;
-  cursor: default;
 }
 label.strength {
   display: flex;
@@ -399,7 +415,7 @@ svg.add-frame {
 }
 
 /* As the toolbar's tool buttons: an icon, lit when it's on. */
-button.ghost, button.keys {
+button.keys {
   display: flex;
   align-items: center;
   height: 26px;
@@ -407,22 +423,22 @@ button.ghost, button.keys {
   border-radius: 3px;
   border: 1px solid var(--border);
 }
-button.ghost svg, button.keys svg {
+button.keys svg {
   display: block;
   width: 16px;
   height: 16px;
   fill: var(--text-faint);
 }
 @media (hover: hover) {
-  button.ghost:hover svg, button.keys:hover svg {
+  button.keys:hover svg {
     fill: var(--text);
   }
 }
-button.ghost.active, button.keys.active {
+button.keys.active {
   background: var(--accent);
   border-color: var(--accent);
 }
-button.ghost.active svg, button.keys.active svg {
+button.keys.active svg {
   fill: var(--white);
 }
 
@@ -445,7 +461,7 @@ button.ghost.active svg, button.keys.active svg {
   button.step { /* for a finger */
     width: 32px;
   }
-  span.ghost-group :deep(.dropdown-trigger) { /* for a finger */
+  .ghost :deep(.dropdown-trigger) { /* for a finger */
     padding: 3px 8px;
   }
   output.indicator {
@@ -477,11 +493,11 @@ button.ghost.active svg, button.keys.active svg {
   div.animation-bar, div.playback, div.settings {
     column-gap: 4px;
   }
-  button.ghost, button.keys {
+  button.keys {
     padding: 3px 5px;
   }
-  span.ghost-group :deep(.dropdown-trigger) {
-    padding: 3px 6px;
+  .ghost :deep(.dropdown-trigger) {
+    padding: 3px 4px 3px 5px;
   }
 }
 
