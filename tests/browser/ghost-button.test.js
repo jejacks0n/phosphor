@@ -53,6 +53,9 @@ test('its box turns the ghost on and off and sets its strength, and stays open w
   expect(check.checked).toBe(true);
   expect(slider.value).toBe('35');
   expect(box.textContent).toContain('35%');
+  expect(box.textContent).not.toContain('Show the ghost'); // the checkbox is named for screen readers, not labeled
+  expect(check.getAttribute('aria-label')).toBe('Show the ghost');
+  expect(check.parentElement).toBe(slider.closest('label').parentElement); // one row: the checkbox, then the slider
   slider.value = '70';
   slider.dispatchEvent(new Event('input'));
   await nextTick();

@@ -152,14 +152,13 @@ const setFps = (event) => {
         </svg>
         <svg class="caret" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5l5 6H3z"/></svg>
       </template>
-      <label class="ghost-on" :title="t('animation.ghostTitle')">
-        <input v-model="workspace.ghost" type="checkbox">
-        {{ t('animation.ghostOn') }}
-      </label>
-      <label class="strength" :class="{ off: !workspace.ghost }">
-        <input v-model.number="workspace.ghostStrength" type="range" :aria-label="t('animation.ghostStrength')" min="0" max="100" step="1" :disabled="!workspace.ghost" @pointerup="$event.target.blur()">
-        <output>{{ workspace.ghostStrength }}%</output>
-      </label>
+      <div class="ghost-row">
+        <input v-model="workspace.ghost" type="checkbox" :aria-label="t('animation.ghostOn')" :title="t('animation.ghostTitle')">
+        <label class="strength" :class="{ off: !workspace.ghost }">
+          <input v-model.number="workspace.ghostStrength" type="range" :aria-label="t('animation.ghostStrength')" min="0" max="100" step="1" :disabled="!workspace.ghost" @pointerup="$event.target.blur()">
+          <output>{{ workspace.ghostStrength }}%</output>
+        </label>
+      </div>
     </DropdownMenu>
     <button v-if="workspace.editorTab === 'vector'" class="keys" :class="{ active: workspace.keysOpen }" :aria-label="t('keysPanel.button')" :aria-pressed="workspace.keysOpen" :title="t('keysPanel.buttonTitle')" @click="workspace.keysOpen = !workspace.keysOpen">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14.5 8 8 14.5 1.5 8z"/></svg>
@@ -361,14 +360,16 @@ label.field input {
 .ghost.active :deep(.dropdown-trigger:hover) {
   background: color-mix(in srgb, var(--white) 12%, var(--accent));
 }
-label.ghost-on {
+/* The checkbox turns the ghost on and off; the slider beside it, on the same row, sets its strength. */
+div.ghost-row {
   display: flex;
-  color: var(--text);
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  font-size: 12px;
-  white-space: nowrap;
+}
+div.ghost-row > input[type=checkbox] {
+  margin: 0;
+  accent-color: var(--accent);
   cursor: pointer;
 }
 label.strength.off {
@@ -378,7 +379,6 @@ label.strength {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
   font-size: 12px;
   color: var(--text-dim);
 }
