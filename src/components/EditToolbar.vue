@@ -219,8 +219,9 @@ const selectionHasEdits = computed(() => {
   return !!workspace.selection && project.hasEditsIn(workspace.selection);
 });
 
-// Make art layer: the Select tool's selection, with something drawn in it.
-const artOn = computed(() => workspace.activeTool === 'select' && !!workspace.selection);
+// Make art layer: the Select tool's selection or the Magic Wand's, with something drawn in it.
+const artOn = computed(() => (workspace.activeTool === 'select' && !!workspace.selection) || (workspace.activeTool === 'wand' && wandHere.value));
+const artReady = computed(() => (workspace.activeTool === 'wand' ? project.hasEdits : selectionHasEdits.value)); // the wand's cells are checked when it's made
 
 // Rotate turns only pixels: not while the selection has characters on its layers.
 const selectionHasCharacters = computed(() => {
@@ -364,7 +365,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             :aria-label="t('art.make')"
             @click="project.makeArtLayer()"
             class="primary"
-            :disabled="!selectionHasEdits"
+            :disabled="!artReady"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill-rule="evenodd" d="M96 96H544V544H96ZM160 160V480H480V160Z"/><path d="M296 224H344V296H416V344H344V416H296V344H224V296H296Z"/></svg></button>
         <button
             v-if="workspace.editorTab !== 'vector'"
@@ -400,7 +401,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             </svg>
             {{ t('toolbar.mergeDown') }}
           </button>
-          <button v-if="artOn" :title="t('art.makeTitle')" @click="project.makeArtLayer()" :disabled="!selectionHasEdits">
+          <button v-if="artOn" :title="t('art.makeTitle')" @click="project.makeArtLayer()" :disabled="!artReady">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill-rule="evenodd" d="M96 96H544V544H96ZM160 160V480H480V160Z"/><path d="M296 224H344V296H416V344H344V416H296V344H224V296H296Z"/></svg>
             {{ t('art.make') }}
           </button>
@@ -433,7 +434,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
           <div class="divider"/>
           <button class="text" :title="t('toolbar.selection.mergeUpSelectionTitle')" v-bind="off(drawing.hostOnly, t('toolbar.selection.mergeUp'))" @click="project.mergeUp(workspace.selection)">{{ t('toolbar.selection.mergeUp') }}</button>
           <button class="text" :title="t('toolbar.selection.mergeDownSelectionTitle')" :disabled="!selectionHasEdits" v-bind="mergeOff()" @click="openMerge(workspace.selection)">{{ t('toolbar.mergeDown') }}</button>
-          <button class="text" :title="t('art.makeTitle')" :disabled="!selectionHasEdits" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
+          <button class="text" :title="t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
           <button class="text" :title="t('toolbar.selection.deselectBlockTitle')" aria-keyshortcuts="Escape Enter" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
         </template>
         <template v-else>
@@ -492,6 +493,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>
         <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('toolbar.selection.wandDeleteTitle')" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.selectLayers)">{{ t('common.delete') }}</button>
+        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
         <button class="text" :title="t('toolbar.selection.wandDeselectTitle')" aria-keyshortcuts="Escape" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
       </div>
     </div>

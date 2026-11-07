@@ -7,13 +7,15 @@ import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { IDENTITY, MOST_POINTS, MOST_SHAPES, allClosed, apply, isGradient, joined, multiply, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
-import { MOST_ART_BYTES, artBytes, artCellOf, makeArt } from '@/document/artLayers.js';
+import { artCellOf, artFromStranger } from '@/document/artLayers.js';
+import { cellKey } from '@/document/editCells.js';
 import { withoutPins } from '@/document/baseRecords.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
 import { bytesHeld } from '@/store/project/shared.js';
 import { readSvgFile, svgLeftOut, svgRefusal } from '@/lib/SvgFile.js';
 import { combined } from '@/lib/shapeBooleans.js';
+import { unitsOf, wandIn } from '@/lib/MagicWand.js';
 
 // What the document holds is what a file, a project or a room takes back: one check for both.
 const keeps = (shape) => !!shapeFromStranger(shape);
@@ -239,15 +241,30 @@ export const vectorActions = {
     this.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(before.base, after.base));
   },
 
-  // Make art layer: the drawing inside the Select tool's selection (the edit layer's cells and paint, as
-  // copySelection reads them) becomes one art layer above every shape, at the cells' place and trimmed to the ones
-  // that show something, and is taken out of the drawing: one step, with the layer selected on VECTOR. A cell
-  // nothing was drawn on stays see-through. The key, or null (no step) with nothing drawn there, at the most
-  // shapes a frame holds, or a drawing too big for one layer (a toast says so).
+  // Make art layer: the drawing inside the selection (the Select tool's rectangle, or the Magic Wand's cells; the edit
+  // layer's cells and paint, as copySelection reads them) becomes one art layer above every shape, at the cells'
+  // place and trimmed to the ones that show something, and is taken out of the drawing: one step, with the layer
+  // selected on VECTOR. A cell nothing was drawn on stays see-through. The key, or null (no step) with nothing drawn
+  // there, at the most shapes a frame holds, or a drawing too big or too wide for one layer (a toast says so). The
+  // record is checked as a file would be before anything is taken out.
   makeArtLayer() {
-    const workspace = useWorkspaceStore(), rect = workspace.selection && this.clipRect(workspace.selection);
+    const workspace = useWorkspaceStore();
+    const wand = workspace.activeTool === 'wand' && workspace.wand ? wandIn(workspace.wand, 'output', this.rows) : null;
+    const picked = wand && unitsOf(wand.mask, wand.width).map(({ x, y }) => ({ col: x, row: y }));
+    let box = workspace.selection;
+    if (wand) {
+      box = picked.length && { c0: Infinity, r0: Infinity, c1: -1, r1: -1 };
+      for (const { col, row } of picked) {
+        box.c0 = Math.min(box.c0, col);
+        box.r0 = Math.min(box.r0, row);
+        box.c1 = Math.max(box.c1, col);
+        box.r1 = Math.max(box.r1, row);
+      }
+    }
+    const rect = box && this.clipRect(box);
     if (!rect) return null;
     const block = this.copySelection(rect, { base: false, edit: true });
+    const inside = wand ? new Set(picked.map(({ col, row }) => cellKey(col, row))) : null;
     const paint = block.paint && ctx2d(block.paint).getImageData(0, 0, block.paint.width, block.paint.height).data, k = this.paintLayer?.scale ?? 1;
     // A half's paint: opaque where it's at least half there (artCellOf).
     const half = (x, y) => {
@@ -255,32 +272,44 @@ export const vectorActions = {
       return paint && paint[o + 3] >= 128 ? rgb2hex({ r: paint[o], g: paint[o + 1], b: paint[o + 2] }) : null;
     };
     const drawn = [];
+    let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
     block.cells.forEach((entry, i) => {
       const x = i % block.w, y = Math.floor(i / block.w);
+      if (inside && !inside.has(cellKey(rect.c0 + x, rect.r0 + y))) return;
       const cell = artCellOf(entry, half(x, 2 * y), half(x, 2 * y + 1));
-      if (cell) drawn.push({ x, y, cell });
+      if (!cell) return;
+      drawn.push({ x, y, cell });
+      x0 = Math.min(x0, x);
+      y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x);
+      y1 = Math.max(y1, y);
     });
     if (!drawn.length) return null;
     if (this.shapes.size >= MOST_SHAPES) {
       toast(t('vector.tooMany', { count: MOST_SHAPES }));
       return null;
     }
-    const x0 = Math.min(...drawn.map((d) => d.x)), y0 = Math.min(...drawn.map((d) => d.y));
-    const cols = Math.max(...drawn.map((d) => d.x)) - x0 + 1, rows = Math.max(...drawn.map((d) => d.y)) - y0 + 1;
-    const art = makeArt({
+    const cols = x1 - x0 + 1;
+    const art = artFromStranger({
       z: 0, m: [1, 0, 0, 1, rect.c0 + x0, 2 * (rect.r0 + y0)],
-      art: { cols, rows, cells: drawn.map(({ x, y, cell }) => [(y - y0) * cols + x - x0, ...cell]) },
+      art: { cols, rows: y1 - y0 + 1, cells: drawn.map(({ x, y, cell }) => [(y - y0) * cols + x - x0, ...cell]) },
     });
-    if (artBytes(art) > MOST_ART_BYTES) {
+    if (!art) {
       toast(t('art.tooBig'));
       return null;
     }
     let key = null;
     this.selectionEdit([rect], () => {
-      this.deleteIn(rect, { base: false, edit: true });
+      if (wand) {
+        this.eraseEditPixels(picked.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
+        this.clearEditCells(picked);
+      } else {
+        this.deleteIn(rect, { base: false, edit: true });
+      }
       [key] = this.addShapes([art]);
     });
     workspace.selection = null;
+    workspace.wand = null;
     workspace.editorTab = 'vector';
     return key ?? null;
   },

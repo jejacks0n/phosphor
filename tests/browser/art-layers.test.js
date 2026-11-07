@@ -4,6 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { isArt, makeArt, MOST_ART_BYTES, artBytes } from '@/document/artLayers.js';
 import { rectShape } from '@/document/shapes.js';
+import { toastMessage } from '@/composables/useToast';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
 
 const RED = '#ff0000';
@@ -114,7 +115,9 @@ test('too big for one layer: refused, the drawing untouched', async () => {
   project.commitEdit();
   const edits = project.editCells, version = project.history.version;
   select(workspace, 0, 0, 199, 39);
+  toastMessage.value = null;
   expect(project.makeArtLayer()).toBe(null);
+  expect(toastMessage.value).toBe("That's too much for one art layer. Select a smaller piece.");
   expect(project.history.version).toBe(version);
   expect(project.editCells).toBe(edits);
   expect(project.shapes.size).toBe(0);
@@ -164,4 +167,36 @@ test('pasting an art layer where a different one sits at the same place lands ex
   project.addShape(makeArt({ z: 0, m: original.m, art: { cols: 1, rows: 1, cells: [[0, 'B', '#ffffff', '#ffffff']] } }));
   expect(pasteShapes(project, workspace)).toBe(true);
   expect(project.shapes.get(workspace.vectorSelected[0]).m).toEqual(original.m);
+});
+
+test('a Magic Wand selection makes a layer of just its cells; the rest stays in the drawing, and one undo puts it all back', async () => {
+  const { project, workspace } = await blank();
+  'abcde'.split('').forEach((ch, i) => project.typeAt(2 + i, 2, ch, { fg: RED, bg: '#000000' }));
+  project.commitEdit();
+  project.paintEditPixels([{ x: 4, y: 4, ...rgb('#00ff00'), alpha: 1 }, { x: 8, y: 4, ...rgb('#00ff00'), alpha: 1 }]);
+  project.commitEdit();
+  const before = cellsKey(project), editBefore = project.editCells, version = project.history.version;
+  const mask = new Uint8Array(20 * 10);
+  for (const col of [3, 4, 5]) mask[2 * 20 + col] = 1; // b, c, d
+  workspace.editorTab = 'output';
+  workspace.setActiveTool('wand');
+  Object.assign(workspace, { wand: { view: 'output', width: 20, height: 10, mask } });
+  const key = project.makeArtLayer();
+  const art = project.shapes.get(key);
+  expect(isArt(art)).toBe(true);
+  expect(art.m).toEqual([1, 0, 0, 1, 3, 4]);
+  expect(art.art.cols).toBe(3);
+  expect(art.art.cells).toEqual([[0, 'b', '#000000', '#ff0000'], [1, 'c', '#00ff00', '#ff0000'], [2, 'd', '#000000', '#ff0000']]);
+  expect([...project.editCells.keys()].sort()).toEqual(['2,2', '6,2']); // a and e stay
+  expect(project.paintLayer.pixelAt(4, 4)).toBe(null);
+  expect(project.paintLayer.pixelAt(8, 4)).not.toBe(null); // painted outside the wand: stays
+  expect(cellsKey(project)).toEqual(before);
+  expect(project.history.version).toBe(version + 1);
+  expect(workspace.wand).toBe(null);
+
+  project.undo();
+  expect(arts(project)).toEqual([]);
+  expect(project.editCells).toEqual(editBefore);
+  expect(project.paintLayer.pixelAt(4, 4)).not.toBe(null);
+  expect(cellsKey(project)).toEqual(before);
 });
