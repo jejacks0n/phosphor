@@ -180,7 +180,7 @@ test('a slice inside sends none of the layer as drawing', async () => {
   expect(project.shapes.get(key).art.cells).toContainEqual([1, 'Z', null, RED]);
 });
 
-test('a tab change, opening a file, a new document, a canvas resize, Animate off or a frame change steps out first, keeping the edits', async () => {
+test('a tab change, opening a file, a new document, a canvas resize, Animate off, a frame change or an export steps out first, keeping the edits', async () => {
   const typed = (project, key) => project.shapes.get(key)?.art.cells.some(([, char]) => char === 'Z');
   const cases = {
     tab: async ({ workspace }) => { workspace.editorTab = 'vector'; },
@@ -190,6 +190,7 @@ test('a tab change, opening a file, a new document, a canvas resize, Animate off
     },
     animateOff: async ({ project }) => project.setAnimate(false),
     frame: async ({ project }) => project.showFrame(1),
+    export: async ({ project }) => project.exportFile('ans'), // its cells are the drawing's, with the layer
   };
   for (const [name, act] of Object.entries(cases)) {
     const app = await withArt(), { project, workspace, key } = app;
