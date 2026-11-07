@@ -14,6 +14,8 @@ import { createApp } from 'vue';
 import VectorOptions from '@/components/VectorOptions.vue';
 import { i18n } from '@/i18n';
 import { writeProject } from '@/document/projectIO.js';
+import { useVectorStyle } from '@/composables/useVectorStyle.js';
+import { useDrawingStore } from '@/store/DrawingStore';
 
 const RED = '#ff0000';
 const rgb = (hex) => ({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
@@ -498,4 +500,26 @@ test('a move or restack an art layer at the limit has no room for is refused, an
     expect(project.shapes.get(key)).toBe(shape);
     expect(toastMessage.value).toBe("That's too much for one art layer. Select a smaller piece.");
   }
+});
+
+test('Fill, Stroke and Swap leave an art layer as it is: no step, nothing unsaved, and in a room a mixed selection with a locked layer still restyles the rest', async () => {
+  const { project, workspace } = await blank();
+  const art = project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 2], art: { cols: 1, rows: 1, cells: [[0, 'A', RED, null]] } }));
+  project.markSaved();
+  Object.assign(workspace, { editorTab: 'vector', activeTool: 'vselect', vectorSelected: [art] });
+  const style = useVectorStyle(), shapes = project.shapes, version = project.history.version;
+  style.set('fill', '#00ff00');
+  style.set('stroke', '#0000ff');
+  style.swap();
+  expect(project.shapes).toBe(shapes);
+  expect(project.history.version).toBe(version);
+  expect(project.isDirty).toBe(false);
+
+  const rect = project.addShape(rectShape(10, 10, 16, 20, { fill: '#0000ff' }));
+  useDrawingStore().cursors = { ann: { at: null, view: null, name: 'Ann', inside: art } };
+  workspace.vectorSelected = [art, rect];
+  toastMessage.value = null;
+  style.set('fill', '#00ff00');
+  expect(project.shapes.get(rect).fill).toBe('#00ff00');
+  expect(toastMessage.value).toBe(null);
 });
