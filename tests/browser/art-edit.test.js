@@ -6,6 +6,7 @@ import eraser from '@/tools/eraser';
 import { makeArt } from '@/document/artLayers.js';
 import { withShape, isShapeKey } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
+import { usePlayback } from '@/composables/usePlayback.js';
 
 const RED = '#ff0000', GREEN = '#00ff00';
 const rgb = (hex) => ({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
@@ -338,4 +339,24 @@ test('autosave writes the drawing kept aside, not the layer being edited', async
   expect(inside.paintBuffer).not.toBe(null);
   expect(new Uint8Array(inside.paintBuffer)).toEqual(new Uint8Array(outside.paintBuffer));
   expect(inside.shapes.get(key).art).toEqual(outside.shapes.get(key).art);
+});
+
+test('stepping in while an animation plays pauses it first, so a later pause does not step out again', async () => {
+  const { project, workspace, key } = await withArt();
+  const playback = usePlayback();
+  project.setAnimate(true);
+  project.addFrame('blank');
+  project.addFrame('blank');
+  project.setFps(60);
+  project.showFrame(0);
+  await playback.play();
+  expect(workspace.playing).toBe(true);
+  for (let i = 0; i < 400 && workspace.playFrame === 0; i++) await new Promise((resolve) => requestAnimationFrame(resolve));
+  expect(workspace.playFrame).not.toBe(0); // the frame showing is no longer the one edited
+
+  expect(project.enterArt(key)).toBe(true);
+  expect(workspace.playing).toBe(false);
+  expect(project.frame).not.toBe(0); // paused on the frame it was showing
+  playback.pause(); // a canvas press or key would
+  expect(project.artInside).toBe(key);
 });
