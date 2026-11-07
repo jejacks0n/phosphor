@@ -18,7 +18,8 @@ import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over, bytesHeld, placedShapes } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld } from '@/store/project/shared.js';
+import { placedShapes } from '@/document/followers.js';
 import { RESET_GROUPS, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
 
@@ -327,7 +328,8 @@ export const mergingActions = {
     this.commitPending();
     const area = rect && { x: rect.c0, y: 2 * rect.r0, w: rect.c1 - rect.c0 + 1, h: 2 * (rect.r1 - rect.r0 + 1) };
     const touching = [...placedShapes(this)].filter(([, shape]) => !area || meets(shapeBounds(shape), area)).map(([key]) => key); // where they show
-    const pressed = touching.length ? this.pressShapes(this.pressedKeys(touching)) : null;
+    const keys = touching.length ? this.pressedKeys(touching) : null;
+    const pressed = keys?.size ? this.pressShapes(keys) : null; // guides alone press nothing
 
     const rows = charRowsOf(this.rows);
     const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);

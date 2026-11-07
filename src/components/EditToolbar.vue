@@ -15,6 +15,7 @@ import ToggleGroup from '@/components/ToggleGroup.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import VectorOptions from '@/components/VectorOptions.vue';
 import { shapeBounds } from '@/document/shapes.js';
+import { placedShapes } from '@/document/followers.js';
 import { shortcut } from '@/lib/keyLabels';
 import { snapsLate } from '@/lib/CharResolver';
 import { copySelection as copyToClipboards } from '@/composables/clipboard';
@@ -34,7 +35,10 @@ const mergeOff = () => off(insideOff.value ?? drawing.hostOnly ?? (project.hasFr
 // On VECTOR, Merge down presses the selected shapes (or all of them) into the base layer, without asking how.
 const onVector = computed(() => workspace.editorTab === 'vector');
 const vectorSelection = computed(() => workspace.vectorSelected.filter((key) => project.shapes.has(key)));
-const mergeOn = computed(() => (onVector.value ? project.shapes.size > 0 : project.hasEdits));
+// Shapes Merge down can press: any but guides, which draw nothing (a guide's followers are shapes of their own).
+const pressable = computed(() => [...project.shapes.values()].some((shape) => !shape.guide));
+const anyToMerge = computed(() => project.hasEditLayer || pressable.value);
+const mergeOn = computed(() => (onVector.value ? pressable.value : anyToMerge.value));
 const mergeTitle = computed(() => t(onVector.value ? 'toolbar.mergeShapesTitle' : 'toolbar.mergeDownTitle'));
 function mergeHere() {
   if (!onVector.value) return openMerge();
@@ -180,15 +184,17 @@ function merge(kind) {
   if (kind === 'exact') project.mergeDown(rect);
   else project.mergeIntoPicture(rect);
 }
-// Whether merging exactly takes shapes too: any touching the selection, or any at all.
+// Whether merging exactly takes shapes too: any it would press (pressedKeys) of those touching the selection where they
+// show, or any at all.
 const mergeTakesShapes = computed(() => {
   const rect = merging.value?.rect;
-  if (!rect) return project.shapes.size > 0;
+  if (!rect) return pressable.value;
   const area = { x: rect.c0, y: 2 * rect.r0, w: rect.c1 - rect.c0 + 1, h: 2 * (rect.r1 - rect.r0 + 1) };
-  return [...project.shapes.values()].some((shape) => {
+  const touching = [...placedShapes(project)].filter(([, shape]) => {
     const b = shapeBounds(shape);
     return b.x < area.x + area.w && area.x < b.x + b.w && b.y < area.y + area.h && area.y < b.y + b.h;
-  });
+  }).map(([key]) => key);
+  return touching.length > 0 && project.pressedKeys(touching).size > 0;
 });
 const mergeChoices = computed(() => {
   const choices = [
@@ -457,7 +463,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
           <span class="hint">{{ t('toolbar.selection.dragHint') }}</span>
           <button class="text" :title="t('toolbar.selection.selectAllTitle', { key: shortcut('mod', 'A') })" @click="project.changeSelection((w) => w.selectAll(project.gridRect()))">{{ t('toolbar.selection.selectAll') }}</button>
           <button class="text" :title="t('toolbar.selection.mergeUpAllTitle')" v-bind="off(insideOff ?? drawing.hostOnly, t('toolbar.selection.mergeUp'))" @click="project.mergeUp(null)">{{ t('toolbar.selection.mergeUp') }}</button>
-          <button class="text" :title="t('toolbar.selection.mergeDownAllTitle')" :disabled="!project.hasEdits" v-bind="mergeOff()" @click="openMerge()">{{ t('toolbar.mergeDown') }}</button>
+          <button class="text" :title="t('toolbar.selection.mergeDownAllTitle')" :disabled="!anyToMerge" v-bind="mergeOff()" @click="openMerge()">{{ t('toolbar.mergeDown') }}</button>
         </template>
       </div>
       <div v-if="toolOptions.length" class="tool-setting-group">

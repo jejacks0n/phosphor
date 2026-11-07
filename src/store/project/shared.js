@@ -5,7 +5,7 @@ import { Ledger } from '@/document/ledger.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { MOST_CHANGE_BYTES } from '@/social/wire.js';
 import { isShapeKey } from '@/document/shapes.js';
-import { placeFollowers, shownShapes } from '@/document/followers.js';
+import { shownShapes } from '@/document/followers.js';
 import { t } from '@/i18n';
 
 export const DEFAULT_COLS = getSetting('cols').default;
@@ -48,9 +48,6 @@ export function drawnShapes(project) {
   left.delete(key);
   return left;
 }
-// The shapes as VECTOR shows them, followers on their paths and guides kept: its overlay, hits, boxes and the Keys
-// panel's values. Edits change project.shapes, the records themselves.
-export const placedShapes = (project) => placeFollowers(project.shapes);
 // A color ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
 export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
 

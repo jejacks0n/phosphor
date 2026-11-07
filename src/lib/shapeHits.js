@@ -17,7 +17,7 @@ export function sidePath(shape, side, pad = 0, k = 1) {
   return path;
 }
 
-// An art layer: anywhere in its box. Otherwise on its fill (under its fill rule: a hole isn't on it), or within tol of its outline (or of its stroke's edge,
+// An art layer: anywhere in its box. A guide: within tol of its outline alone. Otherwise on its fill (under its fill rule: a hole isn't on it), or within tol of its outline (or of its stroke's edge,
 // caps and joins as it draws them; a stroke inside or outside the outline, or to a side of it, only there).
 export function hitsShape(shape, x, y, tol) {
   if (isArt(shape)) { // anywhere in its box, drawn on or not
@@ -25,6 +25,10 @@ export function hitsShape(shape, x, y, tol) {
     return x >= x0 - tol && x <= x1 + tol && y >= y0 - tol && y <= y1 + tol;
   }
   const c = ctx(), path = new Path2D(pathData(shape)), { rule, cap, join, miter } = strokeOf(shape);
+  if (shape.guide) { // it draws nothing: only its outline, as VECTOR shows it, within tol
+    Object.assign(c, { lineWidth: 2 * tol, lineCap: 'round', lineJoin: 'round' });
+    return c.isPointInStroke(path, x, y);
+  }
   if (shape.fill && c.isPointInPath(path, x, y, rule)) return true;
   const align = shape.stroke ? strokeAlign(shape) : 'center';
   if (align !== 'center') {

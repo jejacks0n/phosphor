@@ -8,10 +8,12 @@ import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { makeShape, rectShape, transformed, translation, withShape } from '@/document/shapes.js';
 import { PARTS } from '@/document/parts.js';
-import { placedShapes } from '@/store/project/shared.js';
+import { placedShapes } from '@/document/followers.js';
 import vselect, { selectionBox } from '@/tools/vselect.js';
 import VectorOverlay from '@/components/VectorOverlay.vue';
 import KeyValues from '@/components/KeyValues.vue';
+import EditToolbar from '@/components/EditToolbar.vue';
+import { shapeAt } from '@/lib/shapeHits.js';
 
 let app = null;
 afterEach(() => {
@@ -189,4 +191,58 @@ test('the Keys panel\'s X and Y read where a follower shows', async () => {
   const host = await mount(KeyValues, { part: 'transform', shapeKey: f });
   const [x, y] = [...host.querySelectorAll('input')].map((input) => input.value);
   expect([x, y]).toEqual(['14', '20']);
+});
+
+test('Merge down with only a guide selected presses its follower, leaves the guide, and is one undo step', async () => {
+  const { project } = await drawing();
+  const g = project.addShape(path({ guide: true }));
+  const f = project.addShape(follower(g));
+  await settle(project);
+  const cells = cellsKey(project);
+  project.clearHistory();
+  project.mergeShapes([g]);
+  await settle(project);
+  expect([...project.shapes.keys()]).toEqual([g]);
+  expect(cellsKey(project)).toEqual(cells);
+  project.undo();
+  await settle(project);
+  expect([...project.shapes.keys()].sort()).toEqual([g, f].sort());
+  expect(project.canUndo).toBe(false);
+});
+
+test('a lone guide has nothing to merge: no change and no undo step', async () => {
+  const { project } = await drawing();
+  const g = project.addShape(path({ guide: true }));
+  await settle(project);
+  project.clearHistory();
+  project.mergeShapes([g]);
+  project.mergeShapes();
+  project.mergeDown({ c0: 0, r0: 0, c1: 29, r1: 14 });
+  await settle(project);
+  expect([...project.shapes.keys()]).toEqual([g]);
+  expect(project.canUndo).toBe(false);
+});
+
+test('Merge down is off for a document whose only shapes are guides', async () => {
+  const { project, workspace } = await drawing();
+  project.addShape(path({ guide: true }));
+  const host = await mount(EditToolbar);
+  const merge = () => [...host.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'Merge down' || b.title.startsWith('Merge down:'));
+  for (const tab of ['vector', 'output']) {
+    workspace.editorTab = tab;
+    await nextTick();
+    expect([tab, merge().length > 0, merge().every((b) => b.disabled)]).toEqual([tab, true, true]);
+  }
+  project.addShape(square(5, 5));
+  await nextTick();
+  expect(merge().some((b) => !b.disabled)).toBe(true);
+});
+
+test('a guide is clicked on its outline, never on its fill', async () => {
+  const { project } = await drawing();
+  const g = project.addShape(square(14, 14, { guide: true }));
+  const placed = placedShapes(project);
+  expect(shapeAt(placed, 14, 14, 0.5)).toBe(null);
+  expect(shapeAt(placed, 12, 14, 0.5)).toBe(g);
+  expect(shapeAt(placed, 16.3, 14, 0.5)).toBe(g);
 });

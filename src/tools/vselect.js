@@ -17,7 +17,7 @@ import { snappedEnd } from '@/tools/shapes.js';
 import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
-import { placedShapes } from '@/store/project/shared.js';
+import { placedShapes } from '@/document/followers.js';
 import { DOUBLE_MS, DOUBLE_PX, handlePicker } from '@/tools/handlePick.js';
 
 const REACH = 22;          // CSS px from a trim handle that a press takes it (a 44px hit area)
