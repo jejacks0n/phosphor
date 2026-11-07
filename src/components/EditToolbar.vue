@@ -26,8 +26,11 @@ const drawing = useDrawingStore();
 
 // A control that's off for a reason: the reason in its title, and what it is still its name for screen readers.
 const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name } : {});
+// Inside an art layer, what changes the whole drawing (Clear, Merge up and down, Bake) is off: it would step out and
+// change the drawing kept aside, not the layer (the store steps out first all the same).
+const insideOff = computed(() => (project.artInside ? t('art.wholeLayerOff') : null));
 // Off with frames: it would put one frame in the base, under all of them.
-const mergeOff = () => off(drawing.hostOnly ?? (project.hasFrames ? t(onVector.value ? 'toolbar.mergeShapesOneFrame' : 'toolbar.mergeOneFrame') : null), t('toolbar.mergeDown'));
+const mergeOff = () => off(insideOff.value ?? drawing.hostOnly ?? (project.hasFrames ? t(onVector.value ? 'toolbar.mergeShapesOneFrame' : 'toolbar.mergeOneFrame') : null), t('toolbar.mergeDown'));
 // On VECTOR, Merge down presses the selected shapes (or all of them) into the base layer, without asking how.
 const onVector = computed(() => workspace.editorTab === 'vector');
 const vectorSelection = computed(() => workspace.vectorSelected.filter((key) => project.shapes.has(key)));
@@ -357,7 +360,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             @click="bake"
             class="primary"
             :disabled="!project.canBake"
-            v-bind="off(drawing.hostOnly, t('toolbar.bake'))"
+            v-bind="off(insideOff ?? drawing.hostOnly, t('toolbar.bake'))"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg></button>
         <button
             :title="mergeTitle"
@@ -380,7 +383,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             @click="confirmClear"
             class="primary"
             :disabled="!project.hasEditLayer"
-            v-bind="off(drawing.offWithOthers, t('toolbar.clearEdit'))"
+            v-bind="off(insideOff ?? drawing.offWithOthers, t('toolbar.clearEdit'))"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M431.2 476.5L163.5 208.8C141.1 240.2 128 278.6 128 320C128 426 214 512 320 512C361.5 512 399.9 498.9 431.2 476.5zM476.5 431.2C498.9 399.8 512 361.4 512 320C512 214 426 128 320 128C278.5 128 240.1 141.1 208.8 163.5L476.5 431.2zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z"/></svg></button>
       </div>
 
@@ -398,7 +401,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             </svg>
             {{ t('toolbar.redo') }}
           </button>
-          <button @click="bake" :disabled="!project.canBake" v-bind="off(drawing.hostOnly, t('toolbar.bake'))">
+          <button @click="bake" :disabled="!project.canBake" v-bind="off(insideOff ?? drawing.hostOnly, t('toolbar.bake'))">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg>
             {{ t('toolbar.bake') }}
           </button>
@@ -412,7 +415,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill-rule="evenodd" d="M96 96H544V544H96ZM160 160V480H480V160Z"/><path d="M296 224H344V296H416V344H344V416H296V344H224V296H296Z"/></svg>
             {{ t('art.make') }}
           </button>
-          <button v-if="workspace.editorTab !== 'vector'" @click="confirmClear" :disabled="!project.hasEditLayer" v-bind="off(drawing.offWithOthers, t('toolbar.clearEdit'))">
+          <button v-if="workspace.editorTab !== 'vector'" @click="confirmClear" :disabled="!project.hasEditLayer" v-bind="off(insideOff ?? drawing.offWithOthers, t('toolbar.clearEdit'))">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M431.2 476.5L163.5 208.8C141.1 240.2 128 278.6 128 320C128 426 214 512 320 512C361.5 512 399.9 498.9 431.2 476.5zM476.5 431.2C498.9 399.8 512 361.4 512 320C512 214 426 128 320 128C278.5 128 240.1 141.1 208.8 163.5L476.5 431.2zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z"/>
             </svg>
@@ -445,7 +448,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
           <button :title="t('toolbar.selection.flipV')" :aria-label="t('toolbar.selection.flipV')" @click="turnSelection('v')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M128 272H512L128 64Z"/><path fill-rule="evenodd" d="M128 368H512L128 576ZM320 416H176V494Z"/><path d="M64 304H576V336H64Z"/></svg></button>
           <button :title="selectionHasCharacters ? t('toolbar.selection.rotateCharsDisabled') : t('toolbar.selection.rotateTitle')" :aria-label="t('toolbar.selection.rotateAria')" :disabled="selectionHasCharacters" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
           <div class="divider"/>
-          <button class="text" :title="t('toolbar.selection.mergeUpSelectionTitle')" v-bind="off(drawing.hostOnly, t('toolbar.selection.mergeUp'))" @click="project.mergeUp(workspace.selection)">{{ t('toolbar.selection.mergeUp') }}</button>
+          <button class="text" :title="t('toolbar.selection.mergeUpSelectionTitle')" v-bind="off(insideOff ?? drawing.hostOnly, t('toolbar.selection.mergeUp'))" @click="project.mergeUp(workspace.selection)">{{ t('toolbar.selection.mergeUp') }}</button>
           <button class="text" :title="t('toolbar.selection.mergeDownSelectionTitle')" :disabled="!selectionHasEdits" v-bind="mergeOff()" @click="openMerge(workspace.selection)">{{ t('toolbar.mergeDown') }}</button>
           <button class="text" :title="t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
           <button class="text" :title="t('toolbar.selection.deselectBlockTitle')" aria-keyshortcuts="Escape Enter" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
@@ -453,7 +456,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
         <template v-else>
           <span class="hint">{{ t('toolbar.selection.dragHint') }}</span>
           <button class="text" :title="t('toolbar.selection.selectAllTitle', { key: shortcut('mod', 'A') })" @click="project.changeSelection((w) => w.selectAll(project.gridRect()))">{{ t('toolbar.selection.selectAll') }}</button>
-          <button class="text" :title="t('toolbar.selection.mergeUpAllTitle')" v-bind="off(drawing.hostOnly, t('toolbar.selection.mergeUp'))" @click="project.mergeUp(null)">{{ t('toolbar.selection.mergeUp') }}</button>
+          <button class="text" :title="t('toolbar.selection.mergeUpAllTitle')" v-bind="off(insideOff ?? drawing.hostOnly, t('toolbar.selection.mergeUp'))" @click="project.mergeUp(null)">{{ t('toolbar.selection.mergeUp') }}</button>
           <button class="text" :title="t('toolbar.selection.mergeDownAllTitle')" :disabled="!project.hasEdits" v-bind="mergeOff()" @click="openMerge()">{{ t('toolbar.mergeDown') }}</button>
         </template>
       </div>

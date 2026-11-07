@@ -1421,7 +1421,8 @@
     "doneTitle": "Sortir du calque d'art (Échap)",
     "framesOff": "Sortez du calque d'art pour changer d'image.",
     "settingsOff": "Sortez du calque d'art pour modifier ces réglages.",
-    "baseOff": "Dans un calque d'art, les outils dessinent uniquement sur le calque d'édition."
+    "baseOff": "Dans un calque d'art, les outils dessinent uniquement sur le calque d'édition.",
+    "wholeLayerOff": "Sortez d'abord du calque d'art : cela change tout le dessin."
   },
   "vector": {
     "tooMany": "Un dessin contient au plus {count} formes.",
