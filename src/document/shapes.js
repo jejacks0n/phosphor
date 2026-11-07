@@ -2,7 +2,7 @@
  * The vector layer's shapes, as data. A shape is a path of points with cubic Bézier handles, a fill and a
  * stroke, kept as shapes until it's baked or merged (docs/vector.md). Nothing here touches a canvas.
  *
- * Shape = { z, closed, points, fill, stroke, width, m, more?, rule?, cap?, join?, miter?, align? }, frozen:
+ * Shape = { z, closed, points, fill, stroke, width, m, more?, rule?, cap?, join?, miter?, align?, start?, end? }, frozen:
  *   points  [[x, y, inX, inY, outX, outY, smooth], ...] in the shape's own (local) grid pixels; a handle is an
  *           offset from its point, 0, 0 for none; smooth (1 or 0): its handles stay in line when one moves
  *   closed  whether that outline closes
@@ -14,6 +14,8 @@
  *   align   'inside' | 'outside': the stroke inside the outline or outside it, its whole width (a shape with an
  *           open outline strokes centered then: strokeAlign); 'left' | 'right': beside the path, on that side of
  *           the way it was drawn, open or closed (strokeSide); absent: centered on it (SVG's only way)
+ *   start, end  the stretch of the outlines that's drawn, as shares of their length, 0 to 1 (to 1/10000); absent:
+ *           0 and 1, all of it
  * The optional fields are written only when they aren't the default, so a shape that uses none of them is
  * exactly what it was before they existed (an older copy of Phosphor refuses a shape with a field it doesn't
  * know, and with it the whole file's shapes or a room's whole change). A point's index is flat: the first
@@ -49,7 +51,7 @@ const MOST_SHIFT = 1e7;   // and its move: turned or grown about a point far dow
 const KEY = /^v:[A-Za-z0-9_-]{1,32}$/;
 const HEX = /^#[0-9a-f]{6}$/i;
 const FIELDS = ['z', 'closed', 'points', 'fill', 'stroke', 'width', 'm'];
-const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter', 'align'];
+const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter', 'align', 'start', 'end'];
 const RULES = ['evenodd'], CAPS = ['butt', 'square'], JOINS = ['miter', 'bevel'], ALIGNS = ['inside', 'outside', 'left', 'right']; // the values other than the default
 const GRADIENTS = ['linear', 'radial'];
 export const MOST_STOPS = 16;
@@ -108,7 +110,7 @@ function roundFill(fill) {
 
 const roundPoints = (points) => Object.freeze(points.map((p) => Object.freeze(p.slice(0, 6).map((v) => round(v, 2)).concat(p[6] ? 1 : 0))));
 
-export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align, art }) {
+export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align, start, end, art }) {
   if (art) return makeArt({ z, m, art });
   const shape = {
     z,
@@ -125,6 +127,8 @@ export function makeShape({ points, closed, fill = null, stroke = null, width = 
   if (join && join !== STROKE_DEFAULTS.join) shape.join = join;
   if (miter !== undefined && round(miter, 2) !== STROKE_DEFAULTS.miter) shape.miter = round(miter, 2);
   if (align && align !== STROKE_DEFAULTS.align) shape.align = align;
+  if (start && round(start, 4)) shape.start = round(start, 4);
+  if (end !== undefined && round(end, 4) !== 1) shape.end = round(end, 4);
   return Object.freeze(shape);
 }
 
@@ -569,7 +573,7 @@ export function shapeFromStranger(value) {
   if ('art' in value) return artFromStranger(value);
   const keys = Object.keys(value);
   if (!FIELDS.every((f) => f in value) || !keys.every((k) => FIELDS.includes(k) || OPTIONAL.includes(k))) return null;
-  const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align } = value;
+  const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end } = value;
   if (!Number.isInteger(z) || Math.abs(z) > MOST_Z || typeof closed !== 'boolean') return null;
   if (!goodFill(fill) || !goodFill(stroke)) return null;
   if (!finite(width, MOST_WIDTH) || width < 0) return null;
@@ -587,7 +591,8 @@ export function shapeFromStranger(value) {
   // Only the values other than the default: a default is written by leaving the field out.
   if (('rule' in value && !RULES.includes(rule)) || ('cap' in value && !CAPS.includes(cap)) || ('join' in value && !JOINS.includes(join)) || ('align' in value && !ALIGNS.includes(align))) return null;
   if ('miter' in value && (!finite(miter, 100) || miter < 1 || miter === STROKE_DEFAULTS.miter)) return null;
-  return makeShape({ z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align });
+  if (('start' in value && (!finite(start, 1) || start <= 0)) || ('end' in value && (!finite(end, 1) || end < 0 || end === 1))) return null; // shares, the defaults 0 and 1 left out
+  return makeShape({ z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end });
 }
 
 export const isGoodShapeKey = (key) => typeof key === 'string' && KEY.test(key);

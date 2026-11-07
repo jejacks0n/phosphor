@@ -273,12 +273,12 @@ test("a shape's first key frame, and a Duplicate, set every part", () => {
   const frames = ball();
   frames[0].changes.delete(K);
   assert.deepEqual(shapeAt(frames, K, 6), frames[6].changes.get(K).cell);
-  assert.equal(setPartsAt(frames, K, 6).size, 7);
+  assert.equal(setPartsAt(frames, K, 6).size, 9);
   const dup = ball();
   dup[6].kind = 'duplicate';
   dup[0].changes.set(K, cellState(withShape(RED, { fill: GRADIENT }), 0, 0));
   assert.equal(shapeAt(dup, K, 9).fill, '#ff0000'); // frame 0's fill doesn't reach past the Duplicate
-  assert.equal(setPartsAt(dup, K, 6).size, 7);
+  assert.equal(setPartsAt(dup, K, 6).size, 9);
 });
 
 test("a shape first on a later frame shows itself, whatever another shape's key frames do", () => {
@@ -301,6 +301,20 @@ test('every shape on a frame worked out from its parts or a tween', () => {
   const frames = ball({ 0: 'linear' });
   assert.equal(workedOutAt(frames, 3).get(K).m[5], 6);
   assert.equal(workedOutAt(frames, 9).get(K).m[5], 12);
+});
+
+test('Start and End tween as shares, unclamped; a key frame can set only End', () => {
+  const frames = ball({ 0: 'linear' });
+  frames[0].changes.set(K, cellState(withShape(RED, { end: 0 }), 0, 0));
+  frames[10] = newFrame('blank');
+  frames[10].changes.set(K, cellState(withShape(RED, { end: 1 }), 0, 0));
+  frames[10].parts = new Map([[K, new Set(['end'])]]);
+  frames[0].tweens = new Map([[K, eased('linear', ['end'])]]);
+  close(shapeAt(frames, K, 5).end, 0.5);
+  assert.equal('end' in shapeAt(frames, K, 10), false); // 1 is the default, left out
+  assert.deepEqual(tweenPart('start', withShape(RED, { start: 0.2 }), RED, 0.5), { start: 0.1 });
+  assert.equal(tweenPart('end', RED, withShape(RED, { end: 0.5 }), 2).end, 0);
+  assert.equal(tweenPart('start', RED, withShape(RED, { start: 0.5 }), 3).start, 1.5);
 });
 
 test('Elastic springs past its end and settles there', () => {

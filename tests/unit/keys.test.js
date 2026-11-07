@@ -28,7 +28,7 @@ test("partKeys lists each part's keys, easing null on the last", () => {
   put(frames, 12, down(24), ['transform'], { transform: 'linear' }); // stray: nothing after it
   frames[14].changes.set(K, EMPTY_STATE);
   const { start, end, rows } = partKeys(frames, K, 3);
-  assert.deepEqual([start, end, rows.size], [0, 13, 7]);
+  assert.deepEqual([start, end, rows.size], [0, 13, 9]);
   assert.deepEqual(rows.get('transform'), [
     { at: 0, easing: 'easeIn', motion: 'cells', fixed: false },
     { at: 6, easing: 'easeOut', motion: 'smooth', fixed: false },

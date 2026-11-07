@@ -786,6 +786,8 @@
       "stroke": "Contour",
       "width": "Épaisseur",
       "style": "Style",
+      "start": "Début",
+      "end": "Fin",
       "z": "Empil."
     },
     "parts": {
@@ -795,6 +797,8 @@
       "stroke": "Contour",
       "width": "Épaisseur",
       "style": "Style",
+      "start": "Début",
+      "end": "Fin",
       "z": "Empilement"
     }
   },
