@@ -3624,6 +3624,50 @@ test('an artist inside an art layer when they\'re made host steps out, as starti
   await sameShapes(ann, bob);
 });
 
+// Followers: the link travels in the shape's record as any field does, and the host checks it as a file would.
+const line = async () => (await import('@/document/shapes.js')).makeShape({ points: [[4, 20, 0, 0, 0, 0, 0], [24, 20, 0, 0, 0, 0, 0]], closed: false, stroke: '#00ff00', width: 1 });
+
+test('an artist\'s Follow path reaches the host and is taken; a link a file wouldn\'t keep is refused and taken back', async () => {
+  const { rectShape } = await import('@/document/shapes.js');
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const p = room.project.addShape(await line()), f = room.project.addShape(rectShape(8, 6, 12, 10, { fill: '#ff0000' }));
+  await sameShapes(room, ann);
+  expect(ann.project.followPath(f, p)).toBe(true);
+  await expect.poll(() => room.project.shapes.get(f).follow?.key, PATIENT).toBe(p);
+  await sameShapes(room, ann);
+  expect(room.project.shapes.get(f).along).toBeCloseTo(0.3, 3);
+
+  const good = ann.project.shapes.get(f);
+  ann.project.setShapes(new Map(ann.project.shapes).set(f, Object.freeze({ ...good, along: 2 }))); // past the path's end
+  ann.project.commitEdit();
+  await expect.poll(() => ann.project.shapes.get(f).along, PATIENT).toBe(good.along);
+  expect(room.project.shapes.get(f)).toEqual(good);
+});
+
+test('an art layer someone is drawing in keeps following its path, and the host can\'t link it to another', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const key = await withArtLayer(room, ann);
+  const p = room.project.addShape(await line()), other = room.project.addShape(await line());
+  expect(room.project.followPath(key, p)).toBe(true);
+  await sameShapes(room, ann);
+  expect(ann.project.enterArt(key)).toBe(true);
+  await expect.poll(() => room.drawing.lockedBy(key), PATIENT).toBe('ann');
+  const { placedShapes } = await import('@/document/followers.js'), { transformed, translation } = await import('@/document/shapes.js');
+  const at = () => placedShapes(room.project).get(key).m[5];
+  const was = at();
+  room.project.updateShapes([[p, transformed(room.project.shapes.get(p), translation(0, -8))]]); // the path isn't locked
+  expect(at()).toBe(was - 8);
+  await expect.poll(() => shapesOf(ann.project), PATIENT).toBe(shapesOf(room.project)); // her edit cells are the layer's drawing
+  toastMessage.value = null;
+  const held = room.project.shapes.get(key);
+  expect(room.project.followPath(key, other)).toBe(false);
+  expect(toastMessage.value).toBe('ann is drawing in this layer');
+  expect(room.project.shapes.get(key)).toBe(held);
+  ann.project.leaveArt();
+});
+
 test('who\'s inside an art layer reaches an artist who joins later, and the host again after a reconnect, with no pointer moving', async () => {
   const room = await hosting();
   const ann = await artist(room, 'ann');

@@ -8,7 +8,12 @@ import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { makeShape, rectShape, transformed, translation, withShape } from '@/document/shapes.js';
 import { PARTS } from '@/document/parts.js';
-import { placedShapes } from '@/document/followers.js';
+import { centerOf, placedShapes } from '@/document/followers.js';
+import { makeArt } from '@/document/artLayers.js';
+import { listedParts } from '@/document/keys.js';
+import { clipboardHtml, readClipboardHtml } from '@/lib/clipboardBlocks.js';
+import { copyShapes, pasteShapes } from '@/composables/vectorClipboard.js';
+import { toastMessage } from '@/composables/useToast';
 import vselect, { selectionBox } from '@/tools/vselect.js';
 import VectorOverlay from '@/components/VectorOverlay.vue';
 import KeyValues from '@/components/KeyValues.vue';
@@ -245,4 +250,171 @@ test('a guide is clicked on its outline, never on its fill', async () => {
   expect(shapeAt(placed, 14, 14, 0.5)).toBe(null);
   expect(shapeAt(placed, 12, 14, 0.5)).toBe(g);
   expect(shapeAt(placed, 16.3, 14, 0.5)).toBe(g);
+});
+
+// Follow path, Stop following, Guide and the link's options, as store actions: each one undo step, on every frame.
+const recordsOf = (project, key) => project.frames.map((frame) => frame.changes.get(key)?.cell ?? null);
+const centerAt = (project, key) => centerOf(placedShapes(project).get(key));
+const near = (point, x, y) => expect([Math.round(point.x * 100) / 100, Math.round(point.y * 100) / 100]).toEqual([x, y]);
+
+test('Follow path on a still puts the follower on the path where it was nearest, as one undo step', async () => {
+  const { project } = await drawing();
+  const p = project.addShape(path());
+  const f = project.addShape(square(10, 8));
+  const before = project.shapes.get(f);
+  project.clearHistory();
+  expect(project.followPath(f, p)).toBe(true);
+  expect(project.shapes.get(f).follow).toEqual({ key: p });
+  expect(project.shapes.get(f).along).toBeCloseTo(0.3, 3);
+  near(centerAt(project, f), 10, 20);
+  await settle(project);
+  expect(red(project, 10, 10)).toBe(true);
+  project.undo();
+  expect(project.shapes.get(f)).toEqual(before);
+  expect(project.canUndo).toBe(false);
+});
+
+// The square keyed at three places on frames 0, 2 and 4 (its middle at x 10, 12 and 14), the path on all of them.
+async function threeKeys() {
+  const { project, workspace } = await drawing();
+  const p = project.addShape(path());
+  const f = project.addShape(square(10, 8));
+  for (let i = 0; i < 4; i++) project.addFrame('blank');
+  for (const at of [2, 4]) {
+    project.showFrame(at);
+    project.updateShapes([[f, transformed(project.shapes.get(f), translation(2, 0))]]);
+  }
+  project.showFrame(0);
+  return { project, workspace, p, f };
+}
+
+test('in a three-key movie, Follow path links every key frame, each where it was nearest; undo and redo take all three', async () => {
+  const { project, p, f } = await threeKeys();
+  const before = recordsOf(project, f);
+  project.clearHistory();
+  expect(project.followPath(f, p)).toBe(true);
+  const after = recordsOf(project, f);
+  expect([0, 2, 4].map((at) => [after[at].follow, Math.round(after[at].along * 1000) / 1000])).toEqual([[{ key: p }, 0.3], [{ key: p }, 0.4], [{ key: p }, 0.5]]); // nearestOnOutline's to 1/10000 or so
+  for (const [at, x] of [[0, 10], [2, 12], [4, 14]]) {
+    project.showFrame(at);
+    near(centerAt(project, f), x, 20);
+  }
+  project.undo();
+  expect(recordsOf(project, f)).toEqual(before);
+  expect(project.canUndo).toBe(false);
+  project.redo();
+  expect(recordsOf(project, f)).toEqual(after);
+});
+
+test('Stop following puts the follower back on its own Transform on every frame, and leaves no Along keys', async () => {
+  const { project, p, f } = await threeKeys();
+  const before = recordsOf(project, f);
+  project.followPath(f, p);
+  expect(listedParts(project.frames, f, 0)).toContain('along');
+  project.clearHistory();
+  expect(project.stopFollowing([f])).toBe(true);
+  expect(recordsOf(project, f)).toEqual(before);
+  expect(listedParts(project.frames, f, 0)).toEqual(['transform']);
+  for (const [at, x] of [[0, 10], [2, 12], [4, 14]]) {
+    project.showFrame(at);
+    near(centerAt(project, f), x, 8);
+  }
+  project.undo();
+  expect(project.shapes.get(f).follow).toEqual({ key: p });
+  expect(project.canUndo).toBe(false);
+});
+
+test('Follow path is refused, with a toast and no undo step, for a follower\'s path, a path\'s follower, and an art layer', async () => {
+  const { project } = await drawing();
+  const p = project.addShape(path()), other = project.addShape(path({ m: [1, 0, 0, 1, 0, 4] }));
+  const f = project.addShape(square(10, 8)), g = project.addShape(square(20, 8));
+  const art = project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 2], art: { cols: 2, rows: 1, cells: [[0, 'A', '#ff0000', null]] } }));
+  project.followPath(f, p);
+  project.clearHistory();
+  const shapes = project.shapes;
+  for (const [follower, to, words] of [[g, f, /follows a path itself/], [p, other, /Other shapes follow/], [g, art, /art layer/]]) {
+    toastMessage.value = null;
+    expect(project.followPath(follower, to)).toBe(false);
+    expect(toastMessage.value).toMatch(words);
+  }
+  expect(project.shapes).toBe(shapes);
+  expect(project.canUndo).toBe(false);
+});
+
+test('riding the line\'s End, the follower stays on the End as the End tweens', async () => {
+  const { project } = await drawing();
+  const p = project.addShape(path());
+  const f = project.addShape(square(10, 8));
+  for (let i = 0; i < 4; i++) project.addFrame('blank');
+  project.updateShapes([[p, withShape(project.shapes.get(p), { end: 0.5 })]]);
+  project.showFrame(0);
+  project.setKeyEasing(p, [{ part: 'end', at: 0 }], 'linear');
+  project.followPath(f, p);
+  expect(project.setFollow([f], { ride: 'end' })).toBe(true);
+  expect(recordsOf(project, f)[0].follow).toEqual({ key: p, ride: 'end' });
+  for (const [at, x] of [[0, 24], [2, 19], [4, 14]]) {
+    project.showFrame(at);
+    near(centerAt(project, f), x, 20);
+  }
+});
+
+test('Guide hides a shape from the cells on every frame, as one undo step', async () => {
+  const { project } = await drawing();
+  project.addFrame('blank');
+  project.addFrame('blank');
+  const bare = [cellsOf(await project.builtFrame(0)), cellsOf(await project.builtFrame(2))];
+  project.showFrame(0);
+  const p = project.addShape(path());
+  project.showFrame(2);
+  project.updateShapes([[p, transformed(project.shapes.get(p), translation(0, -6))]]);
+  const shown = async () => [cellsOf(await project.builtFrame(0)), cellsOf(await project.builtFrame(2))];
+  const drawn = await shown();
+  expect(drawn).not.toEqual(bare);
+  project.clearHistory();
+  expect(project.setGuide([p], true)).toBe(true);
+  expect(recordsOf(project, p).filter(Boolean).map((shape) => shape.guide)).toEqual([true, true]);
+  expect(await shown()).toEqual(bare);
+  project.undo();
+  expect(await shown()).toEqual(drawn);
+  expect(project.canUndo).toBe(false);
+});
+
+test('a follower copied with its path follows the pasted path; pasted alone, it follows the original', async () => {
+  const { project, workspace } = await drawing();
+  const p = project.addShape(path());
+  const f = project.addShape(square(10, 8));
+  project.followPath(f, p);
+  workspace.vectorSelected = [p, f];
+  expect(copyShapes(project, workspace)).toBe(true);
+  expect(pasteShapes(project, workspace)).toBe(true);
+  const [p2, f2] = workspace.vectorSelected;
+  expect(project.shapes.get(f2).follow).toEqual({ key: p2 });
+  workspace.vectorSelected = [f];
+  copyShapes(project, workspace);
+  pasteShapes(project, workspace);
+  expect(project.shapes.get(workspace.vectorSelected[0]).follow).toEqual({ key: p });
+});
+
+test('a follower pasted from another tab with its path follows the pasted path', async () => {
+  const { project, workspace } = await drawing();
+  const p = project.addShape(path());
+  const f = project.addShape(square(10, 8));
+  project.followPath(f, p);
+  const { shapes, keys } = readClipboardHtml(clipboardHtml({ phosphorShapes: { version: 1, id: 'x', shapes: [project.shapes.get(p), project.shapes.get(f)], keys: [p, f] } })).shapes;
+  expect(pasteShapes(project, workspace, shapes, keys)).toBe(true);
+  const [p2, f2] = workspace.vectorSelected;
+  expect(project.shapes.get(f2).follow).toEqual({ key: p2 });
+});
+
+test('Separate on a follower of two outlines leaves the link with the piece that keeps its key', async () => {
+  const { project } = await drawing();
+  const p = project.addShape(path());
+  const two = makeShape({ ...square(10, 8), more: [[true, square(20, 8).points]] });
+  const f = project.addShape(two);
+  project.followPath(f, p);
+  const [kept, other] = project.separateShape(f);
+  expect(kept).toBe(f);
+  expect(project.shapes.get(f).follow).toEqual({ key: p });
+  expect(project.shapes.get(other)).not.toHaveProperty('follow');
+  expect(project.shapes.get(other)).not.toHaveProperty('along');
 });

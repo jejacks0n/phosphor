@@ -77,6 +77,15 @@ test('shapes copied on VECTOR are recognized by their version, each checked as a
   assert.equal(readClipboardHtml(clipboardHtml({ phosphorShapes: { ...shapes, id: 5 } })), null);
 });
 
+test('copied shapes\' keys come with the shapes kept, and a field with a bad one, or too few, pastes as it would with none', () => {
+  const a = rectShape(1, 2, 5, 6, { fill: '#ff0000' }), b = rectShape(3, 3, 9, 9, { fill: '#00ff00' });
+  const shapes = { version: 1, id: 'xyz', shapes: [a, 'no', b], keys: ['v:a', 'v:no', 'v:b'] };
+  assert.deepEqual(readClipboardHtml(clipboardHtml({ phosphorShapes: shapes })).shapes.keys, ['v:a', 'v:b']);
+  assert.equal(readClipboardHtml(clipboardHtml({ phosphorShapes: { ...shapes, keys: ['v:a', 'nope', 'v:b'] } })).shapes.keys, undefined);
+  assert.equal(readClipboardHtml(clipboardHtml({ phosphorShapes: { ...shapes, keys: ['v:a'] } })).shapes.keys, undefined);
+  assert.deepEqual(readClipboardHtml(clipboardHtml({ phosphorShapes: { ...shapes, keys: undefined } })).shapes.shapes, [a, b]);
+});
+
 test('the JSON is written as plain ASCII, so no browser or charset changes it', () => {
   const value = { a: '<&>漢 😀' };
   const html = clipboardHtml(value);

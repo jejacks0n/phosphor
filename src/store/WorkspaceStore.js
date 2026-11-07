@@ -65,6 +65,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     vectorClipboard: null,   // VECTOR's copied shapes, bottom to top (Cmd/Ctrl+C or X there)
+    vectorClipboardKeys: null, // the keys they were copied from, so a follower pasted with its path follows the copy
     vectorClipboardId: null, // which copy that was, to know it on the system clipboard
     vectorTrim: null,        // the Start or End handle being dragged, { part, share }, for its label
     vectorMarquee: null,     // the box Vector select drags over empty canvas, { x0, y0, x1, y1 } in grid pixels

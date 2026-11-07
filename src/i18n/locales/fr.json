@@ -1437,6 +1437,9 @@
   },
   "vector": {
     "tooMany": "Un dessin contient au plus {count} formes.",
+    "followArt": "Un calque d'art ne peut pas être suivi : choisissez une ligne ou une forme.",
+    "followFollower": "Cette forme suit déjà un tracé, elle ne peut donc pas être suivie.",
+    "followIsPath": "D'autres formes suivent celle-ci, elle ne peut donc pas suivre de tracé.",
     "fill": "Remplissage",
     "stroke": "Contour",
     "fillChipTitle": "Remplissage : {color} ({key})",

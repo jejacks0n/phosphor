@@ -8,7 +8,7 @@ import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { usePlayback } from '@/composables/usePlayback.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { IDENTITY, MOST_POINTS, MOST_SHAPES, allClosed, apply, isGradient, joined, multiply, makeShape, newShapeKey, sameShape, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
+import { IDENTITY, MOST_POINTS, MOST_SHAPES, allClosed, apply, isGradient, joined, multiply, makeShape, nearestOnOutline, newShapeKey, sameShape, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
 import { artBounds, artCellOf, artFromStranger, isArt } from '@/document/artLayers.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import PaintLayer from '@/document/PaintLayer.js';
@@ -17,7 +17,8 @@ import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { bytesHeld, drawnShapes, lockedAmong } from '@/store/project/shared.js';
-import { placedShapes } from '@/document/followers.js';
+import { centerOf, placedShapes } from '@/document/followers.js';
+import { measure } from '@/document/pathLength.js';
 import { readSvgFile, svgLeftOut, svgRefusal } from '@/lib/SvgFile.js';
 import { combined } from '@/lib/shapeBooleans.js';
 import { unitsOf, wandIn } from '@/lib/MagicWand.js';
@@ -80,8 +81,9 @@ export const vectorActions = {
   },
 
   // Shapes on top, in their order (a paste's copies, an SVG's art), as one step; selected, with Vector select. One
-  // a file wouldn't keep is left out; past a frame's shapes none come in, and a toast says so. The keys.
-  addShapes(shapes) {
+  // a file wouldn't keep is left out; past a frame's shapes none come in, and a toast says so. fromKeys: the keys they
+  // were copied from, in their order, so a follower that comes in with its path follows the path's copy. The keys.
+  addShapes(shapes, fromKeys = null) {
     if (this.shapes.size + shapes.length > MOST_SHAPES) {
       toast(t('vector.tooMany', { count: MOST_SHAPES }));
       return [];
@@ -90,13 +92,19 @@ export const vectorActions = {
     if (!this.paintLayer) return [];
     const own = ownsEdit(this), next = new Map(this.shapes), keys = [], workspace = useWorkspaceStore();
     let z = Math.max(0, ...[...this.shapes.values()].map((shape) => shape.z + 1));
-    for (const shape of shapes) {
+    const copies = new Map(); // a key copied from to its copy's
+    shapes.forEach((shape, i) => {
       const made = makeShape({ ...shape, z });
-      if (!keeps(made)) continue;
+      if (!keeps(made)) return;
       const key = newShapeKey();
       next.set(key, made);
       keys.push(key);
+      if (fromKeys?.[i]) copies.set(fromKeys[i], key);
       z++;
+    });
+    for (const key of keys) {
+      const shape = next.get(key), to = shape.follow && copies.get(shape.follow.key);
+      if (to) next.set(key, withShape(shape, { follow: { ...shape.follow, key: to } }));
     }
     if (keys.length) this.setShapes(next);
     if (own) this.commitEdit();
@@ -503,12 +511,12 @@ export const vectorActions = {
     return shape ? bottomKey : null;
   },
 
-  // Separate: each of the shape's outlines a shape of its own, the first keeping its key, all where it was in
-  // the stacking order. One step; the keys, or null for a shape of one outline.
+  // Separate: each of the shape's outlines a shape of its own, the first keeping its key (and the path it follows, if
+  // any), all where it was in the stacking order. One step; the keys, or null for a shape of one outline.
   separateShape(key) {
     const shape = this.shapes.get(key);
     if (!shape?.more) return null;
-    const parts = separated(shape);
+    const parts = separated(shape).map((part, i) => (i ? withShape(part, { follow: undefined, along: undefined }) : part));
     if (this.shapes.size - 1 + parts.length > MOST_SHAPES) {
       toast(t('vector.tooMany', { count: MOST_SHAPES }));
       return null;
@@ -542,7 +550,52 @@ export const vectorActions = {
     }
     this.updateShapes(order.flatMap((key, z) => (this.shapes.get(key).z === z ? [] : [[key, withShape(this.shapes.get(key), { z })]])));
   },
+
+  // Follow path: the shape or art layer followerKey follows pathKey's outline for its whole life, every record of it
+  // linked (changeEverywhere), each set Along where that frame's path comes nearest the record's own middle (centerOf),
+  // so it shows where it was; on a frame without the path its Along stays as it was. One step; false, with a toast, for
+  // an art layer as the path, a path that follows one itself, or a follower other shapes follow (no chains), and with
+  // none for a key that isn't here, or the same key twice.
+  followPath(followerKey, pathKey) {
+    const follower = this.shapes.get(followerKey), path = this.shapes.get(pathKey);
+    if (!follower || !path || followerKey === pathKey) return false;
+    const refusal = isArt(path) ? 'vector.followArt' : path.follow ? 'vector.followFollower' : followedBy(this, followerKey) ? 'vector.followIsPath' : null;
+    if (refusal) {
+      toast(t(refusal));
+      return false;
+    }
+    const nearest = (shape, on) => {
+      const { x, y } = centerOf(shape), { segment, t: at } = nearestOnOutline(on, x, y);
+      return Math.min(1, Math.max(0, measure(on).shareOf(segment, at))); // withShape rounds it
+    };
+    return this.changeEverywhere([[followerKey, (shape, at) => {
+      const on = at === undefined ? path : this.resolvedOf(at).get(pathKey)?.cell;
+      return withShape(shape, { follow: { key: pathKey }, along: on ? nearest(shape, on) : shape.along });
+    }]]);
+  },
+
+  // Stop following: each of keys back on its own Transform on every frame, its link and Along gone, and Along keyed
+  // nowhere. One step.
+  stopFollowing(keys) {
+    return this.changeEverywhere(keys.map((key) => [key, (shape) => withShape(shape, { follow: undefined, along: undefined })]), { unkey: ['along'] });
+  },
+
+  // The link's options ({ ride, face, motion }, makeFollow's; one left out stays as it is) on every record of each of
+  // keys that follows a path. One step.
+  setFollow(keys, options) {
+    return this.changeEverywhere(keys.map((key) => [key, (shape) => (shape.follow ? withShape(shape, { follow: { ...shape.follow, ...options, key: shape.follow.key } }) : shape)]));
+  },
+
+  // Guide on (a shape that draws nothing, its outline on VECTOR) or off, on every record of each of keys; an art layer
+  // is never one. One step.
+  setGuide(keys, on) {
+    return this.changeEverywhere(keys.map((key) => [key, (shape) => (isArt(shape) ? shape : withShape(shape, { guide: !!on }))]));
+  },
 };
+
+// Whether any record of any shape follows key: the frame showing's, and with frames each frame's own.
+const followedBy = (project, key) => [...project.shapes.values()].some((shape) => shape.follow?.key === key)
+  || (project.hasFrames && project.frames.some((frame) => [...frame.changes.values()].some((state) => state.cell?.follow?.key === key)));
 
 // The cells drawn in a cell rect, by place: [{ col, row, cell }] (artCellOf, of the edit cells and their paint halves as
 // copySelection reads them; a half's paint counts where it's at least half there), only those keep (cell keys) has
