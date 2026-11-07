@@ -41,7 +41,8 @@ const fields = computed(() => (isArt(shape.value) ? ART_FIELDS : FIELDS));
 // What's being typed, until it's set or left: playing redraws the values with every frame, and a field bound to the
 // value alone would be written back over the typing.
 const typing = reactive({});
-// Start, End and Along are shown as percents (of the outline, or the path), and stored as shares held to 0 through 1.
+// Start, End and Along are shown as percents (of the outline, or the path), and stored as shares: Start and End held
+// to 0 through 1, Along to -1 through 2 (a tween can carry it around a closed path), shown as it is. Typed, each is held to 0..100%.
 const SHARES = ['start', 'end', 'along'];
 const percent = (name, of = shape.value) => Math.round((of[name] ?? (name === 'end' ? 1 : 0)) * 100);
 const alongPercent = computed(() => (tip.value ? percent(shape.value.follow.ride, tip.value) : percent('along')));
@@ -87,7 +88,7 @@ const cased = (word) => word[0].toUpperCase() + word.slice(1);
       %
     </label>
     <label v-else-if="part === 'along'" :title="t('keysPanel.values.alongTitle')">
-      <input type="number" :aria-label="t('keysPanel.values.alongTitle')" min="0" max="100" step="1" :disabled="!!tip" :value="shown('along', alongPercent)" @input="typing.along = $event.target.value" @change="set('along', $event)" @blur="typing.along = null">
+      <input type="number" :aria-label="t('keysPanel.values.alongTitle')" step="1" :disabled="!!tip" :value="shown('along', alongPercent)" @input="typing.along = $event.target.value" @change="set('along', $event)" @blur="typing.along = null">
       %
     </label>
     <button v-else-if="part === 'fill'" class="chip" :class="{ none: !shape.fill }" :style="chipStyle(shape.fill)" :aria-label="t('keysPanel.values.fill')" :title="t('keysPanel.values.fill')" @click="openColor('fg')"></button>
