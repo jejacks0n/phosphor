@@ -18,6 +18,7 @@ import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { bytesHeld, drawnShapes, lockedAmong } from '@/store/project/shared.js';
 import { centerOf, placedShapes } from '@/document/followers.js';
+import { setPartsAt } from '@/document/tweens.js';
 import { measure } from '@/document/pathLength.js';
 import { readSvgFile, svgLeftOut, svgRefusal } from '@/lib/SvgFile.js';
 import { combined } from '@/lib/shapeBooleans.js';
@@ -82,7 +83,9 @@ export const vectorActions = {
 
   // Shapes on top, in their order (a paste's copies, an SVG's art), as one step; selected, with Vector select. One
   // a file wouldn't keep is left out; past a frame's shapes none come in, and a toast says so. fromKeys: the keys they
-  // were copied from, in their order, so a follower that comes in with its path follows the path's copy. The keys.
+  // were copied from, in their order, so a follower that comes in with its path follows the path's copy; one whose link
+  // couldn't be made now (its path isn't here, is an art layer, follows one itself, or is the shape) follows none. The
+  // keys.
   addShapes(shapes, fromKeys = null) {
     if (this.shapes.size + shapes.length > MOST_SHAPES) {
       toast(t('vector.tooMany', { count: MOST_SHAPES }));
@@ -105,6 +108,10 @@ export const vectorActions = {
     for (const key of keys) {
       const shape = next.get(key), to = shape.follow && copies.get(shape.follow.key);
       if (to) next.set(key, withShape(shape, { follow: { ...shape.follow, key: to } }));
+    }
+    for (const key of keys) {
+      const shape = next.get(key), path = shape.follow && next.get(shape.follow.key);
+      if (shape.follow && (!path || isArt(path) || path.follow || shape.follow.key === key)) next.set(key, withShape(shape, { follow: undefined, along: undefined }));
     }
     if (keys.length) this.setShapes(next);
     if (own) this.commitEdit();
@@ -552,8 +559,10 @@ export const vectorActions = {
   },
 
   // Follow path: the shape or art layer followerKey follows pathKey's outline for its whole life, every record of it
-  // linked (changeEverywhere), each set Along where that frame's path comes nearest the record's own middle (centerOf),
-  // so it shows where it was; on a frame without the path its Along stays as it was. One step; false, with a toast, for
+  // linked (changeEverywhere), and Along keyed with each Transform key, eased as it is, at the share where that frame's
+  // path comes nearest the record's own middle (centerOf), so it shows where it was and glides as it did. Elsewhere (a
+  // key frame that doesn't key its Transform, whose own place isn't what shows, or a frame without the path) its Along
+  // stays as it was. One step; false, with a toast, for
   // an art layer as the path, a path that follows one itself, or a follower other shapes follow (no chains), and with
   // none for a key that isn't here, or the same key twice.
   followPath(followerKey, pathKey) {
@@ -569,9 +578,9 @@ export const vectorActions = {
       return Math.min(1, Math.max(0, measure(on).shareOf(segment, at))); // withShape rounds it
     };
     return this.changeEverywhere([[followerKey, (shape, at) => {
-      const on = at === undefined ? path : this.resolvedOf(at).get(pathKey)?.cell;
+      const on = at === undefined ? path : setPartsAt(this.frames, followerKey, at).has('transform') && this.resolvedOf(at).get(pathKey)?.cell;
       return withShape(shape, { follow: { key: pathKey }, along: on ? nearest(shape, on) : shape.along });
-    }]]);
+    }]], { keyLike: { along: 'transform' } });
   },
 
   // Stop following: each of keys back on its own Transform on every frame, its link and Along gone, and Along keyed

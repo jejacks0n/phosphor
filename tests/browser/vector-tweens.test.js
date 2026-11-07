@@ -422,15 +422,16 @@ test('undoing an edit on a frame puts back the shape it had then, though a frame
   expect(project.shapes.get(key)).toEqual(turned);
 });
 
-// Random frame changes, edits, tweens, keys, Clears, art layers made and drawn on, and shapes following a line, trimmed
-// and made guides: after each, every frame's cached look is what a fresh look works out, an art layer shows one drawing
-// on every frame, every shape following a path has its middle on that path, a save and open shows the same
-// and keeps the same keys, and an undo step has two undos and two redos go back and forth through the movies; then
-// undo all the way, and redo, go back through the same movies. By default a few seeds and those that once
-// failed (11: an undo putting back a shape from before a frame folded in; 27, 30: a tween's frames redrawn from a
+// Random frame changes, edits, tweens, keys, Clears, and art layers made and drawn on (and with followers, a line too,
+// that shapes follow, stop following, ride and slide along, and shapes trimmed and made guides): after each, every
+// frame's cached look is what a fresh look works out, an art layer shows one drawing on every frame, every shape
+// following a path has its middle on that path, a save and open shows the same and keeps the same keys, and an undo
+// step has two undos and two redos go back and forth through the movies; then undo all the way, and redo, go back
+// through the same movies. Without followers, by default a few seeds and those that once failed, which replay just as
+// they did (11: an undo putting back a shape from before a frame folded in; 27, 30: a tween's frames redrawn from a
 // stale cache; 297: a hand key at the inherited value lost when another part's edit there was undone; 67: a hand key's
 // Transform moved and undone, the key lost; 234: the same, its motion lost; 235: the same of a Fill, its easing lost);
-// VITE_FUZZ_SEEDS=30 runs seeds 1 to 30.
+// with followers, a few seeds. VITE_FUZZ_SEEDS=30 runs seeds 1 to 30 each way.
 function rng(seed) {
   let a = seed >>> 0;
   return () => {
@@ -450,12 +451,12 @@ function movie(project) {
   if (!project.hasFrames) return JSON.stringify([shapes(project.shapes)]);
   return JSON.stringify(project.frames.map((frame, i) => [frame.kind, shapes(project.resolvedOf(i))]));
 }
-async function tweenFuzz(seed, steps = 40) {
+async function tweenFuzz(seed, steps = 40, { followers = false } = {}) {
   const { project } = await animated();
   const r = rng(seed), int = (n) => Math.floor(r() * n), pick = (list) => list[int(list.length)];
   const keys = [project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' })), project.addShape(rectShape(10, 10, 14, 13, { fill: '#0000ff' }))];
-  const line = project.addShape(makeShape({ points: [[1, 16, 0, 0, 0, 0, 0], [18, 4, 0, 0, 0, 0, 0]], closed: false, stroke: '#00ff00', width: 1 }));
-  keys.push(line);
+  const line = followers && project.addShape(makeShape({ points: [[1, 16, 0, 0, 0, 0, 0], [18, 4, 0, 0, 0, 0, 0]], closed: false, stroke: '#00ff00', width: 1 }));
+  if (line) keys.push(line);
   for (let i = 0; i < 8; i++) project.addFrame('blank');
   // One or two of a shape's keys around the frame showing, [key, refs], or [key, []] where it doesn't show.
   const keysOf = () => {
@@ -544,7 +545,7 @@ async function tweenFuzz(seed, steps = 40) {
   const names = ['show', 'show', 'show', 'move', 'move', 'move', 'tween', 'tween', 'tween', 'snap', 'recolor', 'widen', 'regradient', 'add', 'add', 'delete', 'reorder', 'clear'], log = [];
   for (const name of ['ease', 'unkey', 'rekey', 'slide', 'drag']) names.push(name, name, name); // as tween is
   names.push('makeArt', 'editArt', 'editArt');
-  names.push('follow', 'follow', 'follow', 'follow', 'unfollow', 'ride', 'ride', 'guide', 'trim', 'along', 'along', 'keyTrim', 'keyTrim');
+  if (followers) names.push('follow', 'follow', 'follow', 'follow', 'unfollow', 'ride', 'ride', 'guide', 'trim', 'along', 'along', 'keyTrim', 'keyTrim');
   // Each frame's shapes and each part's keys, worked out from the frames alone (shapeOf(i, key): the shape frame i shows).
   const looks = (frames, shapeOf) => JSON.stringify(frames.map((_, i) => keys.map((key) => [shapeOf(i, key) ?? null, [...(partKeys(frames, key, i)?.rows ?? [])]])));
   // The drawings an art layer shows over the frames: one, the same piece wherever it is.
@@ -580,7 +581,8 @@ async function tweenFuzz(seed, steps = 40) {
     for (const frame of project.frames) frame.resolved = null;
     if (movie(project) !== now) return { seed, log, problem: `step ${i} ${name}: a frame's cached look is stale` };
     if (keys.some((key) => artsOf(key).size > 1)) return { seed, log, problem: `step ${i} ${name}: an art layer's drawing differs between frames` };
-    if (offPath()) return { seed, log, problem: `step ${i} ${name}: a follower off its path`, off: offPath() };
+    const off = offPath();
+    if (off) return { seed, log, problem: `step ${i} ${name}: a follower off its path`, off };
     if (keyed.has(name) && depth > was && keys.some((key) => strayEasings(project.frames, key).length)) return { seed, log, problem: `step ${i} ${name}: an easing with no tween` };
     if (reopened() !== looks(project.frames, (i, key) => project.resolvedOf(i).get(key)?.cell)) return { seed, log, problem: `step ${i} ${name}: saved and opened, it differs` };
     if (depth === was + 1) {
@@ -609,10 +611,19 @@ async function tweenFuzz(seed, steps = 40) {
   return null;
 }
 
-test('fuzz: frames, edits, tweens, Clears and followers stay drawn right, and undo and redo go back through them', async () => {
+test('fuzz: frames, edits, tweens and Clears stay drawn right, and undo and redo go back through them', async () => {
   const count = Number(import.meta.env?.VITE_FUZZ_SEEDS ?? 0), failures = [];
   for (const seed of count ? Array.from({ length: count }, (_, i) => i + 1) : [1, 2, 3, 11, 27, 30, 67, 71, 78, 95, 167, 234, 235, 297]) {
     const failure = await tweenFuzz(seed);
+    if (failure) failures.push(failure);
+  }
+  expect(failures).toEqual([]);
+}, 300_000);
+
+test('fuzz: with followers on a line, they stay on it, drawn right, and undo and redo go back through them', async () => {
+  const count = Number(import.meta.env?.VITE_FUZZ_SEEDS ?? 0), failures = [];
+  for (const seed of count ? Array.from({ length: count }, (_, i) => i + 1) : [1, 2, 3, 4, 5]) {
+    const failure = await tweenFuzz(seed, 40, { followers: true });
     if (failure) failures.push(failure);
   }
   expect(failures).toEqual([]);
