@@ -1,5 +1,6 @@
 // Which shape is under a point, and how near a point is to one's outline: through Path2D on one 2D context
 // kept for it (the shapes' paths in grid pixels; tolerances in grid pixels).
+import { isArt } from '@/document/artLayers.js';
 import { curveBounds, pathData, stacked, strokeAlign, strokeOf, strokeReach, strokeSide } from '@/document/shapes.js';
 
 let context = null;
@@ -16,9 +17,13 @@ export function sidePath(shape, side, pad = 0, k = 1) {
   return path;
 }
 
-// On its fill (under its fill rule: a hole isn't on it), or within tol of its outline (or of its stroke's edge,
+// An art layer: anywhere in its box. Otherwise on its fill (under its fill rule: a hole isn't on it), or within tol of its outline (or of its stroke's edge,
 // caps and joins as it draws them; a stroke inside or outside the outline, or to a side of it, only there).
 export function hitsShape(shape, x, y, tol) {
+  if (isArt(shape)) { // anywhere in its box, drawn on or not
+    const { x0, y0, x1, y1 } = curveBounds(shape);
+    return x >= x0 - tol && x <= x1 + tol && y >= y0 - tol && y <= y1 + tol;
+  }
   const c = ctx(), path = new Path2D(pathData(shape)), { rule, cap, join, miter } = strokeOf(shape);
   if (shape.fill && c.isPointInPath(path, x, y, rule)) return true;
   const align = shape.stroke ? strokeAlign(shape) : 'center';
@@ -48,6 +53,7 @@ export function shapesTouching(shapes, { x0, y0, x1, y1 }) {
   return stacked(shapes).filter(([, shape]) => {
     const b = curveBounds(shape), pad = strokeReach(shape);
     if (b.x0 >= x0 && b.y0 >= y0 && b.x1 <= x1 && b.y1 <= y1) return true;
+    if (isArt(shape)) return b.x0 <= x1 && b.x1 >= x0 && b.y0 <= y1 && b.y1 >= y0; // its box, touched
     const ax = Math.max(x0, b.x0 - pad), ay = Math.max(y0, b.y0 - pad), bx = Math.min(x1, b.x1 + pad), by = Math.min(y1, b.y1 + pad);
     if (ax > bx || ay > by) return false;
     const step = Math.max(0.5, Math.sqrt(((bx - ax) * (by - ay)) / 4000));

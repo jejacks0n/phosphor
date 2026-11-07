@@ -5,6 +5,8 @@ import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { isArt, makeArt, MOST_ART_BYTES, artBytes } from '@/document/artLayers.js';
 import { rectShape } from '@/document/shapes.js';
 import { toastMessage } from '@/composables/useToast';
+import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
+import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
 
 const RED = '#ff0000';
@@ -199,4 +201,73 @@ test('a Magic Wand selection makes a layer of just its cells; the rest stays in 
   expect(project.editCells).toEqual(editBefore);
   expect(project.paintLayer.pixelAt(4, 4)).not.toBe(null);
   expect(cellsKey(project)).toEqual(before);
+});
+
+// An art layer at (2, 2), four cells wide and one tall, selected with Vector select (Snap to off) and a rect far off.
+async function layer() {
+  const app = await blank();
+  const { project, workspace } = app;
+  drawn(project);
+  select(workspace, 1, 0, 6, 2);
+  const key = project.makeArtLayer();
+  project.clearHistory();
+  workspace.setActiveTool('vselect');
+  workspace.vectorSnap = 'none';
+  return { ...app, key, ctx: { project, workspace, view: 'vector', unit: { x: 8, y: 8 } } };
+}
+
+test('a drag or an arrow moves an art layer by whole cells, never half a line', async () => {
+  const { project, key, ctx } = await layer();
+  const key0 = (project.shapes.get(key).m);
+  const [e, f] = [key0[4], key0[5]];
+  vselect.begin(ctx, { x: 3, y: 3 }, {});
+  vselect.move(ctx, { x: 3, y: 3 }, { x: 6.4, y: 4.3 });
+  vselect.end(ctx);
+  expect(project.shapes.get(key).m).toEqual([1, 0, 0, 1, e + 3, f + 2]);
+  vselect.keydown(ctx, new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+  expect(project.shapes.get(key).m).toEqual([1, 0, 0, 1, e + 3, f + 4]);
+  vselect.keydown(ctx, new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true }));
+  expect(project.shapes.get(key).m).toEqual([1, 0, 0, 1, e + 13, f + 4]);
+  vselect.keydown(ctx, new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+  expect(project.shapes.get(key).m).toEqual([1, 0, 0, 1, e + 12, f + 4]);
+});
+
+test('a drag of an art layer with a path shape moves both by whole cells', async () => {
+  const { project, workspace, key, ctx } = await layer();
+  const rect = project.addShape(rectShape(10.5, 10.5, 16, 20, { fill: '#0000ff' }));
+  workspace.vectorSelected = [key, rect];
+  const was = project.shapes.get(rect).m;
+  vselect.begin(ctx, { x: 3, y: 3 }, {});
+  vselect.move(ctx, { x: 3, y: 3 }, { x: 6.4, y: 4.3 });
+  vselect.end(ctx);
+  expect(project.shapes.get(key).m.slice(4)).toEqual([5, 4]);
+  expect(project.shapes.get(rect).m.slice(4)).toEqual([was[4] + 3, was[5] + 2]);
+});
+
+test('an art layer has no size or turn handles, alone or with a path shape', async () => {
+  const { project, workspace, key, ctx } = await layer();
+  const rect = project.addShape(rectShape(10, 10, 16, 20, { fill: '#0000ff' }));
+  const unit = ctx.unit;
+  for (const keys of [[key], [key, rect]]) {
+    const { handles, knob } = boxHandles(selectionBox(project.shapes, keys), unit);
+    expect(handles).toEqual([]);
+    expect(knob).toBe(null);
+  }
+  expect(boxHandles(selectionBox(project.shapes, [rect]), unit).handles).toHaveLength(8);
+  // A press where a corner handle would be moves the layer, it doesn't scale it.
+  workspace.vectorSelected = [key];
+  vselect.begin(ctx, { x: 6, y: 4 }, {});
+  vselect.move(ctx, { x: 6, y: 4 }, { x: 8, y: 4 });
+  vselect.end(ctx);
+  expect(project.shapes.get(key).m).toEqual([1, 0, 0, 1, 4, 2]);
+});
+
+test('an art layer is hit anywhere in its box, even where nothing is drawn', async () => {
+  const { project, key } = await layer(); // cells at (2, 2) to (6, 4): H, I, then two cells with nothing
+  expect(shapeAt(project.shapes, 2.5, 2.2, 0.1)).toBe(key);
+  expect(shapeAt(project.shapes, 5.9, 3.9, 0.1)).toBe(key);
+  expect(shapeAt(project.shapes, 6.5, 3, 0.1)).toBe(null);
+  expect(shapesTouching(project.shapes, { x0: 5, y0: 3, x1: 9, y1: 9 })).toEqual([key]);
+  expect(shapesTouching(project.shapes, { x0: 7, y0: 3, x1: 9, y1: 9 })).toEqual([]);
+  expect(shapesTouching(project.shapes, { x0: 0, y0: 0, x1: 9, y1: 9 })).toEqual([key]);
 });
