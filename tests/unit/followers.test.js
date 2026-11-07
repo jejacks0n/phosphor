@@ -47,6 +47,12 @@ test('a closed path wraps past 100%, an open one holds at its end', () => {
   at(on(ring(), -0.25), 0, 10);
 });
 
+test("riding a closed path's End past 100% stays on the tip drawn there, held at the end", () => {
+  const ride = (path, along) => placed([['v:p', path], ['v:f', square(50, 50, { follow: { key: 'v:p', ride: along } })]]);
+  at(ride({ ...ring(), end: 1.25 }, 'end'), 0, 0); // a tween's overshoot, unclamped: trimmedPath draws all of it
+  at(ride({ ...ring(), start: -0.25 }, 'start'), 0, 0);
+});
+
 test('a follower is left as it is with no path to follow', () => {
   const f = square(50, 50, { follow: { key: 'v:p' }, along: 0.5 });
   assert.equal(placed([['v:f', f]]), f); // missing

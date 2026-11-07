@@ -3,7 +3,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { rectShape, transformed, translation, withShape } from '../../src/document/shapes.js';
 import { ease, shapeAt, strayEasings } from '../../src/document/tweens.js';
-import { EMPTY_STATE, cellState, newFrame } from '../../src/document/frames.js';
+import { EMPTY_STATE, cellState, deserializeFrames, newFrame, serializeFrames } from '../../src/document/frames.js';
 import { PARTS } from '../../src/document/parts.js';
 import { addedKey, deletedKeys, listedParts, moveRange, movedKeys, partKeys } from '../../src/document/keys.js';
 
@@ -205,6 +205,31 @@ test('addedKey splits a tween: both halves keep the easing', () => {
   assert.equal(after[12].tweens, null);
   assert.equal(shapeAt(after, K, 13).m[5], 24);
   assert.deepEqual(strayEasings(after, K), []);
+});
+
+// A key added where an Elastic tween springs past its end stores the shape as it shows, and the movie still reopens.
+function springsPast(part, shape, to) {
+  const frames = movie(12);
+  put(frames, 0, shape, null, { [part]: 'elastic' });
+  put(frames, 10, withShape(shape, { [part]: to }), [part]);
+  const at = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((i) => ease('elastic', i / 10) > 1);
+  const next = applied(frames, addedKey(frames, K, 'transform', at));
+  const json = JSON.parse(JSON.stringify({ frames: serializeFrames(next), frame: 0, fps: 12 }));
+  const read = deserializeFrames(json, 40, 40);
+  assert.ok(read, 'the movie reopens');
+  return { kept: read.frames[at].changes.get(K).cell, shown: shapeAt(next, K, at) };
+}
+
+test('a key added mid-Elastic on End round-trips, End held to 1', () => {
+  const { kept, shown } = springsPast('end', withShape(RED, { end: 0 }), 1);
+  assert.deepEqual(kept, shown);
+  assert.equal('end' in kept, false);
+});
+
+test('a key added mid-Elastic on Along round-trips, past 1', () => {
+  const { kept, shown } = springsPast('along', withShape(RED, { follow: { key: 'v:path' } }), 1);
+  assert.deepEqual(kept, shown);
+  assert.ok(kept.along > 1, `along ${kept.along}`);
 });
 
 test('moveRange and movedKeys leave out refs that name no key', () => {

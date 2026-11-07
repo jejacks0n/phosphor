@@ -18,7 +18,7 @@
  *           0 and 1, all of it
  *   follow  { key, ride?, face?, motion? }: the shape (another, a path) this one follows, and how: ride 'start' | 'end'
  *           (absent: along it, on this shape's own keys), face true (turned the way the path runs), motion 'half' | 'cells'
- *           (absent: smoothly); along, how far along that path it is, a share 0 to 1 (absent: 0); guide true: a path
+ *           (absent: smoothly); along, how far along that path it is, a share -1 to 2 (absent: 0); guide true: a path
  *           that only guides, never drawn. follow and guide are the same on every frame; along is a part (parts.js)
  * The optional fields are written only when they aren't the default, so a shape that uses none of them is
  * exactly what it was before they existed (an older copy of Phosphor refuses a shape with a field it doesn't
@@ -41,7 +41,7 @@
  */
 
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { SHAPE_KEY, artBounds, artFromStranger, goodAlong, goodFollow, isArt, makeArt, makeFollow } from './artLayers.js';
+import { SHAPE_KEY, alongShare, artBounds, artFromStranger, goodAlong, goodFollow, isArt, makeArt, makeFollow } from './artLayers.js';
 export const SHAPE_PREFIX = 'v:';
 export const MOST_SHAPES = 1000; // a frame's, from a file, a project or a room
 export const MOST_POINTS = 500;  // a shape's, across its outlines: the biggest still fits in one room message
@@ -111,6 +111,8 @@ function roundFill(fill) {
   return Object.freeze(out);
 }
 
+const share = (v) => round(Math.min(Math.max(v, 0), 1), 4); // a tween's overshoot is held to the stretch there is
+
 const roundPoints = (points) => Object.freeze(points.map((p) => Object.freeze(p.slice(0, 6).map((v) => round(v, 2)).concat(p[6] ? 1 : 0))));
 
 export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align, start, end, follow, along, guide, art }) {
@@ -130,10 +132,10 @@ export function makeShape({ points, closed, fill = null, stroke = null, width = 
   if (join && join !== STROKE_DEFAULTS.join) shape.join = join;
   if (miter !== undefined && round(miter, 2) !== STROKE_DEFAULTS.miter) shape.miter = round(miter, 2);
   if (align && align !== STROKE_DEFAULTS.align) shape.align = align;
-  if (start && round(start, 4)) shape.start = round(start, 4);
-  if (end !== undefined && round(end, 4) !== 1) shape.end = round(end, 4);
+  if (start && share(start)) shape.start = share(start);
+  if (end !== undefined && share(end) !== 1) shape.end = share(end);
   if (follow) shape.follow = makeFollow(follow);
-  if (along && round(along, 4)) shape.along = round(along, 4);
+  if (along && alongShare(along)) shape.along = alongShare(along);
   if (guide) shape.guide = true;
   return Object.freeze(shape);
 }

@@ -5,8 +5,8 @@
  * placeFollowers(shapes) gives the shapes with each follower (a record with `follow`) moved onto its path, or the same
  * Map when nothing changes. A follower's path is the shape `follow.key` names, if it's there, has an outline (no art
  * layer) and follows nothing itself (no chains); with none, the follower is left as it is, on its own Transform.
- *   where   the share of the path's length: its Start or End riding one (follow.ride), else the follower's own Along,
- *           held to 0..1 on an open path, round and round a closed one
+ *   where   the share of the path's length: its Start or End riding one (follow.ride), held to 0..1, else the
+ *           follower's own Along, held to 0..1 on an open path, around and around a closed one
  *   center  (centerOf) a shape's: the middle of its own box through its m (the Keys panel's X and Y); an art layer's: its box's
  *           middle, its corner then on whole cells
  *   motion  follow.motion snaps the center to half or whole cells
@@ -25,8 +25,8 @@ const placedOf = new WeakMap(); // follower record -> WeakMap(path record -> pla
 
 function shareOf(shape, path) {
   const ride = shape.follow.ride, s = ride === 'start' ? path.start ?? 0 : ride === 'end' ? path.end ?? 1 : shape.along ?? 0;
-  if (!allClosed(path)) return Math.min(Math.max(s, 0), 1);
-  return s < 0 || s > 1 ? s - Math.floor(s) : s; // 1 stays 1: a closed path's end, turned as it comes round
+  if (ride || !allClosed(path)) return Math.min(Math.max(s, 0), 1); // a tip past an end is drawn at it (trimmedPath)
+  return s < 0 || s > 1 ? s - Math.floor(s) : s; // 1 stays 1: a closed path's end, turned as it comes around
 }
 
 export function centerOf(shape) {
