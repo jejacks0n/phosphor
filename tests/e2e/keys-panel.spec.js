@@ -234,11 +234,11 @@ test('with no shape selected the panel says so in one line', async ({ page }) =>
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  test("Keys sits just after Ghost's arrow on the bar's second line, inside the window down to 360 wide", async ({ page }) => {
+  test("Keys sits just after Ghost on the bar's second line, inside the window down to 360 wide", async ({ page }) => {
     await ball(page);
     for (const width of [390, 375, 360]) {
       await page.setViewportSize({ width, height: 700 });
-      const arrow = bar(page).getByRole('button', { name: 'Ghost strength' });
+      const arrow = bar(page).getByRole('button', { name: 'Ghost', exact: true });
       await expect.poll(async () => (await keysButton(page).boundingBox()).x + (await keysButton(page).boundingBox()).width, { message: `${width} wide` }).toBeLessThanOrEqual(width);
       const keys = await keysButton(page).boundingBox(), after = await arrow.boundingBox();
       const play = await bar(page).getByRole('button', { name: 'Play' }).boundingBox();

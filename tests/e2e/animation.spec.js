@@ -322,6 +322,7 @@ test('cells drawn to stay show as the ghost on the next frame, and only on scree
   await expect.poll(ghost).toBe('A');
   expect(await chars(page, 2, 2, 2)).not.toBe('A'); // not frame 2's
   await bar(page).getByRole('button', { name: 'Ghost', exact: true }).click();
+  await bar(page).getByRole('checkbox', { name: 'Show the ghost' }).uncheck();
   await expect.poll(ghost).not.toBe('A');
 });
 
@@ -349,7 +350,7 @@ test('on a narrow screen the bar wraps and stays on screen', async ({ page }) =>
   expect(add.x + add.width).toBeLessThanOrEqual(600);
 });
 
-// Where play, the scrubber, the fps box and the arrow beside Ghost are.
+// Where play, the scrubber, the fps box and Ghost are.
 async function barLayout(page) {
   await openApp(page);
   await animateSwitch(page).check();
@@ -359,17 +360,17 @@ async function barLayout(page) {
     play: await box(bar(page).getByRole('button', { name: 'Play' })),
     scrubber: await box(bar(page).getByRole('slider', { name: 'Frame' })),
     fps: await box(bar(page).getByRole('spinbutton', { name: 'Frames per second' })),
-    arrow: await box(bar(page).getByRole('button', { name: 'Ghost strength' })),
+    ghost: await box(bar(page).getByRole('button', { name: 'Ghost', exact: true })),
   };
 }
 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  test("on a phone, play and the steps start the bar's second line, Ghost's arrow wide enough for a finger", async ({ page }) => {
-    const { play, scrubber, fps, arrow } = await barLayout(page);
+  test("on a phone, play and the steps start the bar's second line, Ghost wide enough for a finger", async ({ page }) => {
+    const { play, scrubber, fps, ghost } = await barLayout(page);
     expect(play.y).toBeGreaterThan(scrubber.y + scrubber.height);
     expect(play.x).toBeLessThan(fps.x);
-    expect(arrow.width).toBeGreaterThanOrEqual(24);
+    expect(ghost.width).toBeGreaterThanOrEqual(24);
   });
 });
 
@@ -448,35 +449,34 @@ test('a canvas grown past the limit offers no Add frame, and Animate can still b
   expect(await store(page, 'project', (p) => p.animate)).toBe(false);
 });
 
-test('Ghost toggles; the arrow beside it opens its strength while it\'s on, and the strength is remembered', async ({ page }) => {
+test('Ghost is one button that opens its on and off and its strength, lit while it\'s on, and the strength is remembered', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
-  const ghost = bar(page).getByRole('button', { name: 'Ghost', exact: true }), arrow = bar(page).getByRole('button', { name: 'Ghost strength' });
-  await expect(ghost).toHaveAttribute('aria-pressed', 'true');
-  await expect(ghost).toHaveClass(/\bactive\b/); // lit as a toolbar button is
-  await expect(ghost.locator('svg')).toBeVisible(); // a ghost, not a word
-  const slider = bar(page).getByRole('slider', { name: 'Ghost strength' });
+  const ghost = bar(page).getByRole('button', { name: 'Ghost', exact: true });
+  await expect(bar(page).getByRole('button', { name: 'Ghost strength' })).toHaveCount(0); // one button, no arrow beside it
+  await expect(ghost.locator('..')).toHaveClass(/\bactive\b/); // lit as a toolbar button is
+  await expect(ghost.locator('svg').first()).toBeVisible(); // a ghost, not a word
+  const show = bar(page).getByRole('checkbox', { name: 'Show the ghost' }), slider = bar(page).getByRole('slider', { name: 'Ghost strength' });
   await expect(slider).toHaveCount(0); // a button's room until it's asked for
-  await arrow.click();
+  await ghost.click();
+  await expect(show).toBeChecked();
   await expect(slider).toHaveValue('35');
   await slider.fill('70');
   await expect(bar(page).locator('.dropdown-content')).toContainText('70%');
   expect(await store(page, 'workspace', (w) => w.ghostStrength)).toBe(70);
+  await show.uncheck();
+  expect(await store(page, 'workspace', (w) => w.ghost)).toBe(false);
+  await expect(ghost.locator('..')).not.toHaveClass(/\bactive\b/);
+  await expect(slider).toBeDisabled(); // the box stays open, its strength off with the ghost
+  await show.check();
+  await expect(slider).toBeEnabled();
   await page.keyboard.press('Escape');
   await expect(slider).toHaveCount(0);
-  await ghost.click();
-  await expect(ghost).toHaveAttribute('aria-pressed', 'false');
-  await expect(ghost).not.toHaveClass(/\bactive\b/);
-  await expect(ghost).toBeEnabled();
-  expect(await store(page, 'workspace', (w) => w.ghost)).toBe(false);
-  await expect(arrow).toBeDisabled();
-  await ghost.click();
-  await expect(arrow).toBeEnabled();
   await autosaved(page);
   await page.reload();
   await expect(page.locator('.ansi-editor .display')).toBeVisible();
   await animateSwitch(page).check();
-  await bar(page).getByRole('button', { name: 'Ghost strength' }).click();
+  await bar(page).getByRole('button', { name: 'Ghost', exact: true }).click();
   await expect(bar(page).getByRole('slider', { name: 'Ghost strength' })).toHaveValue('70');
 });
 

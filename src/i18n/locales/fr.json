@@ -735,7 +735,9 @@
     "ghost": "Fantôme",
     "ghostTitle": "Pelure d'oignon : afficher les images précédentes estompées derrière les images vierges",
     "ghostStrength": "Intensité du fantôme",
-    "ghostStrengthTitle": "Opacité de la pelure d'oignon : {percent} %"
+    "ghostOn": "Afficher le fantôme",
+    "ghostOnTitle": "Pelure d'oignon : activée, {percent} %",
+    "ghostOffTitle": "Pelure d'oignon : désactivée"
   },
   "keysPanel": {
     "aria": "Clés",
