@@ -13,27 +13,31 @@ export const readingActions = {
   // What the ledger reads, the first time it meets a position: the value before what's being submitted.
   // sendSlice submits a slice that's already written, so for that long the answer is what the stroke
   // had as of its last slice, and only the tiles this slice touched can be asked for. An artist's change
-  // waiting for its frame (sharing.js) is already what's there.
+  // waiting for its frame (sharing.js) is already what's there. Inside an art layer they're the drawing kept aside:
+  // what's drawn in the layer goes as the layer, never as cells or paint (sendSlice).
   readCell(key) {
     const heard = this._sharing?.heardCells;
     if (heard?.has(key)) return heard.get(key);
     if (isShapeKey(key)) return (this._baseline?.shapes ?? this.shapes).get(key);
-    return (this._baseline?.cells ?? this.editCells).get(key);
+    return (this._artInside?.editCells ?? this._baseline?.cells ?? this.editCells).get(key);
   },
 
   readTile(x, y) {
+    if (this._artInside) return this._artInside.paintLayer.readTile(x, y);
     const before = this._baseline?.tiles.get(`${x},${y}`);
     return before ? wholeTile(before) : this.paintLayer.readTile(x, y);
   },
 
-  // The check over the edit layer as it is (changes.js), the slow way: what a sum is seeded with.
+  // The check over the edit layer as it is (changes.js), the slow way: what a sum is seeded with. Inside an art layer,
+  // over the drawing kept aside.
   editLayerSum() {
+    const { editCells, paintLayer } = this._artInside ?? this;
     let sum = 0;
-    for (const [key, entry] of this.editCells) sum ^= hashCell(key, entry);
+    for (const [key, entry] of editCells) sum ^= hashCell(key, entry);
     for (const [key, shape] of this.shapes) sum ^= hashCell(key, shape);
-    if (!this.paintLayer?.hasPaint) return sum;
-    const { width, height } = this.paintLayer.canvas;
-    const { data } = ctx2d(this.paintLayer.canvas).getImageData(0, 0, width, height);
+    if (!paintLayer?.hasPaint) return sum;
+    const { width, height } = paintLayer.canvas;
+    const { data } = ctx2d(paintLayer.canvas).getImageData(0, 0, width, height);
     for (let i = 3, at = 0; i < data.length; i += 4, at++) {
       if (data[i]) sum ^= hashPixel(at % width, Math.floor(at / width), pack(data, i - 3));
     }

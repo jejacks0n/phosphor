@@ -1414,7 +1414,7 @@
     "tooBig": "C'est trop pour un seul calque d'art. Sélectionnez une zone plus petite.",
     "edit": "Modifier l'art",
     "editTitle": "Dessiner dans ce calque d'art ; le changement apparaît sur toutes les images où il se trouve",
-    "editInRoom": "Les salles en direct ne permettent pas encore d'entrer dans un calque d'art.",
+    "lockedBy": "{name} dessine dans ce calque",
     "editing": "Modification du calque d'art",
     "done": "Terminé",
     "doneTitle": "Sortir du calque d'art (Échap)",

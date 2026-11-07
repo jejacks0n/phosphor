@@ -159,7 +159,9 @@ export const historyActions = {
   },
 
   // Write a change's cells and runs and refresh only what changed. also: what's changed with it, for
-  // one refresh to cover: patches ([patch, layer]) already applied, and pins ([before, after]).
+  // one refresh to cover: patches ([patch, layer]) already applied, and pins ([before, after]). Inside an art layer
+  // its cells and runs are the drawing's, kept aside: they show on stepping out (leaveArt redraws it all). A change
+  // to the layer itself (someone's undo, say) is drawn on again.
   applyChange({ cells: all, runs }, { patches = [], pins = [] } = {}) {
     const cells = all.filter(([key]) => !isShapeKey(key)), shapes = all.filter(([key]) => isShapeKey(key));
     if (shapes.length) {
@@ -171,19 +173,22 @@ export const historyActions = {
       this.shapes = next;
       if (this._stroke) this._stroke.shapes = next;
     }
+    const inside = this._artInside, drawing = inside ?? this;
     if (cells.length) {
-      const next = new Map(this.editCells);
+      const next = new Map(drawing.editCells);
       for (const [key, entry] of cells) {
         if (entry) next.set(key, entry);
         else next.delete(key);
       }
-      this.editCells = next;
-      if (this._stroke) this._stroke.editCells = next; // another's, written mid-stroke: not part of it (sharing.js)
+      drawing.editCells = next;
+      if (this._stroke && !inside) this._stroke.editCells = next; // another's, written mid-stroke: not part of it (sharing.js)
     }
-    this.paintLayer.writeRuns(runs);
-    this.hasPaint = this.paintLayer.hasPaint;
-    this.refreshChanged([[runsPatch(runs), this.paintLayer], ...patches], pins.length ? [pins] : [], cells.map(([key]) => key));
-    if (shapes.length) this.refreshShapes();
+    drawing.paintLayer.writeRuns(runs);
+    drawing.hasPaint = drawing.paintLayer.hasPaint;
+    if (!inside) this.refreshChanged([[runsPatch(runs), this.paintLayer], ...patches], pins.length ? [pins] : [], cells.map(([key]) => key));
+    else if (pins.length) this.refreshChanged([], [pins]);
+    if (inside && shapes.some(([key]) => key === inside.key)) this.loadArt();
+    else if (shapes.length) this.refreshShapes();
   },
 
   // Take back the open edit without recording it (a stroke a pinch interrupted): its paint, base

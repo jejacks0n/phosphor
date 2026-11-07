@@ -312,8 +312,8 @@ test('unpackProject refuses what isn\'t a project, with null', async () => {
 
 test('a cursor is read only if it can be drawn', () => {
   const at = { col: 3, row: 4 }, view = { col: 0, row: 0, cols: 80, rows: 40, zoom: 1.5 };
-  assert.deepEqual(readCursor({ at, view, name: 'ann' }), { at, view, name: 'ann' });
-  assert.deepEqual(readCursor({ at: null, view: null, name: 'ann' }), { at: null, view: null, name: 'ann' });
+  assert.deepEqual(readCursor({ at, view, name: 'ann' }), { at, view, name: 'ann', inside: null });
+  assert.deepEqual(readCursor({ at: null, view: null, name: 'ann' }), { at: null, view: null, name: 'ann', inside: null });
   for (const bad of [
     { at: { col: -1, row: 0 }, view, name: 'ann' }, { at: { col: 1.5, row: 0 }, view, name: 'ann' }, { at: { col: '1', row: 0 }, view, name: 'ann' }, { at: 'there', view, name: 'ann' },
     { at, view: { col: 0, row: 0, cols: 80 }, name: 'ann' }, { at, view: { ...view, zoom: 'big' }, name: 'ann' },
@@ -321,8 +321,14 @@ test('a cursor is read only if it can be drawn', () => {
   ]) assert.equal(readCursor(bad), null);
 });
 
+test('a cursor carries which art layer its artist is inside, and only a shape key', () => {
+  assert.deepEqual(readCursor({ t: 'cursor', at: null, view: null, name: 'ann', inside: 'v:abc' }), { at: null, view: null, name: 'ann', inside: 'v:abc' });
+  for (const inside of [5, 'x:1', 'v:', 'v:a b', {}, null]) assert.equal(readCursor({ at: null, view: null, name: 'ann', inside }).inside, null);
+  assert.equal(readCursors({ a: { at: null, view: null, name: 'ann', inside: 'v:abc' } }).a.inside, 'v:abc');
+});
+
 test('a host\'s cursors keep only the ones that are cursors, and only so many', () => {
-  const good = { at: { col: 1, row: 1 }, view: null, name: 'ann' };
+  const good = { at: { col: 1, row: 1 }, view: null, name: 'ann', inside: null };
   assert.deepEqual(readCursors({ a: good, b: { at: 'x', name: 'bob' }, c: 'nope', d: null }), { a: good });
   assert.deepEqual(readCursors(undefined), {});
   assert.equal(Object.keys(readCursors(Object.fromEntries(Array.from({ length: 500 }, (_, i) => [`u${i}`, good])))).length, 64);

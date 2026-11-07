@@ -26,10 +26,11 @@ const keeps = (shape) => !!shapeFromStranger(shape);
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
 export const vectorActions = {
-  // The shapes as they now are, part of the edit that's open (or one begun for them).
+  // The shapes as they now are, part of the edit that's open (or one begun for them). Not while it changes an art
+  // layer someone else in the room is drawing in (lockedBy): it can be selected, not moved, restacked or deleted.
   setShapes(next) {
     this.ensureLayer();
-    if (!this.paintLayer || next === this.shapes) return;
+    if (!this.paintLayer || next === this.shapes || lockedIn(this, next)) return;
     this.beginEdit();
     this.shapes = next;
     this.refreshShapes();
@@ -166,13 +167,13 @@ export const vectorActions = {
   // and the layer's drawing is the edit cells and paint (loadArt), where it sits on the frame showing. Each edit is
   // then one step changing the layer on every frame it's on (commitArt), and undo goes back no further than here.
   // What's pending is committed first; the selection and any float go. Leaving the ANSI tab steps out. False for a key
-  // that's no art layer, when you're inside one already, or in a room: until the room locks a layer while someone
-  // draws in it (the art layer locks task lifts this). An animation playing is paused first, on the frame showing, as
-  // a press would, which would otherwise step out again.
+  // that's no art layer, when you're inside one already, or for one someone else in the room is drawing in
+  // (lockedBy): one person at a time. An animation playing is paused first, on the frame showing, as a press would,
+  // which would otherwise step out again.
   enterArt(key) {
     usePlayback().pause();
     this.ensureLayer();
-    if (!isArt(this.shapes.get(key)) || !this.paintLayer || this._artInside || this._sharing) return false;
+    if (!isArt(this.shapes.get(key)) || !this.paintLayer || this._artInside || this.lockedBy(key)) return false;
     this.commitPending();
     this.noteFrame(); // the frame's drawing as it is, before it's put aside
     this._float = null;
@@ -559,6 +560,12 @@ function redraw(project, area = null) {
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) pixels.push({ x, y });
   project.refreshCells(pixels);
 }
+
+// Whether next changes an art layer someone else is drawing in.
+const lockedIn = (store, next) => Object.values(store._locks).some((key) => {
+  const by = next.get(key) !== store.shapes.get(key) && store.lockedBy(key);
+  return by && by !== store._by;
+});
 
 // Whether a change opens an edit of its own, committed with it: none's open, or a typing run is, which the
 // change ends (beginEdit).

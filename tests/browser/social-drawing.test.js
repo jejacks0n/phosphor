@@ -47,8 +47,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// The host, drawing on a 40 x 40 grid in its own pinia. Join people with join(room, sub).
-async function hosting({ cols = 40, rows = 40 } = {}) {
+// The host, drawing on a 40 x 40 grid in its own pinia, named name if it's given. Join people with join(room, sub).
+async function hosting({ cols = 40, rows = 40, name = null } = {}) {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols, rows });
   project.ensureLayer();
@@ -63,7 +63,7 @@ async function hosting({ cols = 40, rows = 40 } = {}) {
     },
     ...drawing.hostCallbacks(),
   });
-  drawing.hosted(room.host, { me: () => 'host' });
+  drawing.hosted(room.host, { me: () => 'host', name: () => name });
   room.host.setRoom({ name: 'Night shift', welcome: '' });
   toStop.push(() => { drawing.close(); room.host.close(); });
   return room;
@@ -761,7 +761,7 @@ test('cursors go to the artists with a name, at most about ten times a second', 
   const sent = vi.spyOn(room.host, 'sendAll');
   for (let i = 0; i < 10; i++) ann.watch.sendCursor({ col: i, row: 1 }, { col: 0, row: 0, cols: 9, rows: 9 });
   await expect.poll(() => bob.drawing.cursors.ann?.at?.col, PATIENT).toBe(9);
-  expect(bob.drawing.cursors.ann).toEqual({ at: { col: 9, row: 1 }, view: { col: 0, row: 0, cols: 9, rows: 9 }, name: 'ann' });
+  expect(bob.drawing.cursors.ann).toEqual({ at: { col: 9, row: 1 }, view: { col: 0, row: 0, cols: 9, rows: 9 }, name: 'ann', inside: null });
   expect(sent.mock.calls.filter(([m]) => m.t === 'cursors').length).toBeLessThan(4);
   expect(bob.drawing.showCursors).toBe(true);
 });
@@ -3486,6 +3486,154 @@ test('a host refuses an artist\'s shape past MOST_SHAPES', async () => {
   await expect.poll(() => ann.project.shapes.has(key), PATIENT).toBe(false); // refused, and taken back
   expect(room.project.shapes.size).toBe(MOST_SHAPES);
   expect(room.project.shapes.has(key)).toBe(false);
+});
+
+// Art layers: one record each, a shape like any, and while someone draws in one it's theirs alone.
+async function withArtLayer(room, ...people) {
+  const { makeArt } = await import('@/document/artLayers.js');
+  const key = room.project.addShape(makeArt({ m: [1, 0, 0, 1, 4, 4], art: { cols: 2, rows: 1, cells: [[0, 'A', '#ff0000', null]] } }));
+  await sameShapes(room, ...people);
+  return key;
+}
+
+test('an artist inside an art layer locks it: the host and other artists can\'t step in, and the host refuses another artist\'s move of it', async () => {
+  const { withShape } = await import('@/document/shapes.js');
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  const key = await withArtLayer(room, ann, bob);
+  const moved = (project, dx) => withShape(project.shapes.get(key), { m: [1, 0, 0, 1, 4 + dx, 4] });
+  bob.project.updateShapes([[key, moved(bob.project, 2)]]); // before anyone's in it: taken
+  await sameShapes(room, ann, bob);
+  const before = room.project.shapes.get(key);
+  expect(before.m[4]).toBe(6);
+
+  expect(ann.project.enterArt(key)).toBe(true);
+  await expect.poll(() => room.drawing.lockedBy(key), PATIENT).toBe('ann');
+  await expect.poll(() => bob.drawing.lockedBy(key), PATIENT).toBe('ann');
+  expect(ann.drawing.lockedBy(key)).toBe('ann');
+  expect(room.project.enterArt(key)).toBe(false);
+  expect(bob.project.enterArt(key)).toBe(false);
+  room.project.updateShapes([[key, moved(room.project, 8)]]); // the host's own tools can't either
+  expect(room.project.shapes.get(key)).toBe(before);
+  bob.project.undo(); // his move from before ann stepped in: refused
+  await expect.poll(() => toastMessage.value, PATIENT).toBeTruthy();
+  await wait(200);
+  expect(room.project.shapes.get(key)).toBe(before);
+
+  // Bob's move, sent as though he hadn't heard: the host refuses it, and it's taken back.
+  bob.drawing.cursors = {};
+  expect(bob.drawing.lockedBy(key)).toBe(null);
+  bob.project.updateShapes([[key, moved(bob.project, 10)]]);
+  expect(bob.project.shapes.get(key).m[4]).toBe(14);
+  await expect.poll(() => bob.project.shapes.get(key).m[4], PATIENT).toBe(6);
+  expect(room.project.shapes.get(key)).toBe(before);
+  ann.project.leaveArt();
+  await sameShapes(room, ann, bob);
+});
+
+test('the lock goes when its artist steps out or leaves', async () => {
+  const room = await hosting({ name: 'Hal' });
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  room.drawing.peopleHere([{ peer: 'ann', sub: 'ann', connected: true }, { peer: 'bob', sub: 'bob', connected: true }]);
+  const key = await withArtLayer(room, ann, bob);
+  expect(ann.project.enterArt(key)).toBe(true);
+  await expect.poll(() => bob.drawing.lockedBy(key), PATIENT).toBe('ann');
+  ann.project.leaveArt();
+  await expect.poll(() => room.drawing.lockedBy(key), PATIENT).toBe(null);
+  await expect.poll(() => bob.drawing.lockedBy(key), PATIENT).toBe(null);
+  expect(bob.project.enterArt(key)).toBe(true);
+  await expect.poll(() => ann.drawing.lockedBy(key), PATIENT).toBe('bob');
+  expect(ann.project.enterArt(key)).toBe(false);
+  room.drawing.peopleHere([{ peer: 'ann', sub: 'ann', connected: true }]); // bob's gone
+  await expect.poll(() => ann.drawing.lockedBy(key), PATIENT).toBe(null);
+  expect(room.drawing.lockedBy(key)).toBe(null);
+  room.drawing.pointAt({ col: 1, row: 1 }); // a cursor just sent: stepping in goes at once all the same
+  expect(room.project.enterArt(key)).toBe(true);
+  expect(room.drawing.cursors.host.inside).toBe(key);
+  await expect.poll(() => ann.drawing.lockedBy(key), PATIENT).toBe('host');
+  expect(ann.drawing.lockedWords(key)).toBe('Hal is drawing in this layer');
+  expect(room.drawing.lockedWords(key)).toBe(null); // mine
+  expect(ann.project.enterArt(key)).toBe(false);
+  room.project.leaveArt();
+  expect(room.drawing.cursors.host.inside).toBe(null);
+  await expect.poll(() => ann.drawing.lockedBy(key), PATIENT).toBe(null);
+  expect(ann.project.enterArt(key)).toBe(true);
+  await expect.poll(() => room.drawing.lockedBy(key), PATIENT).toBe('ann');
+  room.drawing.backToWatching('ann'); // not an artist now
+  await expect.poll(() => room.drawing.lockedBy(key), PATIENT).toBe(null);
+  expect(room.project.enterArt(key)).toBe(true);
+});
+
+test('an art layer and its edits travel to everyone in the room', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  ann.project.typeAt(2, 2, 'Q', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  useWorkspaceStore(ann.pinia).selection = { c0: 2, r0: 2, c1: 3, r1: 2 };
+  const key = ann.project.makeArtLayer();
+  expect(key).toBeTruthy();
+  await sameShapes(room, ann, bob);
+  expect(room.project.shapes.get(key).art.cells).toEqual([[0, 'Q', null, '#00ff00']]);
+  expect(char(room.project, 2, 2)).toBe(undefined);
+  expect(ann.project.enterArt(key)).toBe(true);
+  ann.project.typeAt(3, 2, 'R', { fg: '#ff0000' });
+  ann.project.commitEdit();
+  for (const person of [room, bob]) await expect.poll(() => shapesOf(person.project), PATIENT).toBe(shapesOf(ann.project));
+  expect(bob.project.shapes.get(key).art.cells).toEqual([[0, 'Q', null, '#00ff00'], [1, 'R', null, '#ff0000']]);
+  ann.project.leaveArt();
+  await sameShapes(room, ann, bob);
+});
+
+// What's heard while you're inside a layer is the drawing's: it goes in the drawing kept aside, and what the room
+// reads of yours (the ledger, a Pending, the check) is that drawing, not the layer.
+const alpha = (tile) => tile.some((value, i) => i % 4 === 3 && value > 0);
+test('an art layer: a change heard while an artist is inside one lands in the drawing kept aside, and the reads are of it', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  const key = await withArtLayer(room, ann, bob);
+  expect(ann.project.enterArt(key)).toBe(true);
+  bob.project.typeAt(10, 10, 'B', { fg: '#00ff00' });
+  bob.project.commitEdit();
+  dab(bob.project, 30, 30);
+  bob.project.commitEdit();
+  await expect.poll(() => ann.project.readCell('10,10')?.char, PATIENT).toBe('B');
+  await expect.poll(() => ann.project._sharing.pending.sum, PATIENT).toBe(room.project._ledger.sum);
+  expect(ann.project.editLayerSum()).toBe(ann.project._sharing.pending.sum);
+  expect(alpha(ann.project.readTile(0, 0))).toBe(true);
+  expect(alpha(ann.project.paintLayer.readTile(0, 0))).toBe(false);
+  expect(char(ann.project, 10, 10)).toBe(undefined); // not in the layer you're drawing in
+  ann.project.typeAt(5, 2, 'Z', { fg: '#ff0000' });
+  ann.project.commitEdit();
+  ann.project.leaveArt();
+  expect(char(ann.project, 10, 10)).toBe('B');
+  expect(painted(ann.project, 30, 30)).toEqual(painted(room.project, 30, 30));
+  expect(ann.project.shapes.get(key).art.cells.map(([, c]) => c)).toEqual(['A', 'Z']);
+  await sameShapes(room, ann, bob);
+});
+
+test('an art layer: a change heard while the host is inside one lands in the drawing kept aside, and the reads are of it', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const key = await withArtLayer(room, ann);
+  expect(room.project.enterArt(key)).toBe(true);
+  ann.project.typeAt(10, 10, 'B', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  dab(ann.project, 30, 30);
+  ann.project.commitEdit();
+  await expect.poll(() => room.project.readCell('10,10')?.char, PATIENT).toBe('B');
+  await expect.poll(() => alpha(room.project.readTile(0, 0)), PATIENT).toBe(true);
+  room.project.flushHeard();
+  expect(room.project.readCell('10,10')?.char).toBe('B');
+  expect(room.project.editLayerSum()).toBe(room.project._ledger.sum);
+  expect(char(room.project, 10, 10)).toBe(undefined);
+  expect(alpha(room.project.paintLayer.readTile(0, 0))).toBe(false);
+  room.project.typeAt(5, 2, 'Z', { fg: '#ff0000' });
+  room.project.commitEdit();
+  room.project.leaveArt();
+  expect(char(room.project, 10, 10)).toBe('B');
+  expect(painted(room.project, 30, 30)).toEqual(painted(ann.project, 30, 30));
+  expect(room.project.shapes.get(key).art.cells.map(([, c]) => c)).toEqual(['A', 'Z']);
+  await sameShapes(room, ann);
 });
 
 // The Pen's first click makes a shape of one point, and it goes out before the second.

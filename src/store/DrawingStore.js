@@ -32,7 +32,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   const paused = ref(false);      // an artist's: no host to number anything
   const waiting = ref([]);        // an artist's, while paused: a box in grid pixels for each stroke with no number
   const connected = ref([]);      // a host's: the subs with a connection now (an artist can have dropped out)
-  const cursors = ref({});        // sub -> { at, view, name }
+  const cursors = ref({});        // sub -> { at, view, name, inside }: inside, the art layer they're drawing in, or null
   const showCursors = ref(true);
   const notice = ref(null);
   let undoSaid = false;
@@ -85,15 +85,35 @@ export const useDrawingStore = defineStore('drawing', () => {
   }
 
   // Where this person's pointer is on the art, a cell or null: for others to see. Their view goes with it, and by
-  // itself when it moves without the pointer (a wheel, a scrollbar, the window): someone may be following it.
+  // itself when it moves without the pointer (a wheel, a scrollbar, the window): someone may be following it. So
+  // does the art layer they're drawing in, and stepping in or out sends it at once: until it's heard, others could
+  // change the layer under them.
   let pointedAt = null;
+  const cursorNow = () => ({ at: pointedAt, view: workspace.sharedView, inside: project.artInside });
   function pointAt(at) {
     pointedAt = at;
-    if (project._sharing && !paused.value) myCursor.push({ at, view: workspace.sharedView });
+    if (project._sharing && !paused.value) myCursor.push(cursorNow());
   }
   function viewMoved() {
-    if (mayDraw.value && !paused.value) myCursor.push({ at: pointedAt, view: workspace.sharedView });
+    if (mayDraw.value && !paused.value) myCursor.push(cursorNow());
   }
+  watch(() => project.artInside, () => {
+    if (!project._sharing) return;
+    myCursor.push(cursorNow());
+    myCursor.flush();
+  }, { flush: 'sync' });
+
+  // Who's drawing in an art layer: their sub, mine while I'm in it, or null. The project keeps who's in which, as the
+  // cursors say, for what it refuses (an edit to a layer someone else is in, stepping into one).
+  watch(cursors, (all) => {
+    project._locks = Object.fromEntries(Object.entries(all).filter(([, { inside }]) => inside).map(([sub, { inside }]) => [sub, inside]));
+  }, { flush: 'sync', immediate: true });
+  const lockedBy = (key) => project.lockedBy(key);
+  // What a layer someone else is drawing in says, or null.
+  const lockedWords = (key) => {
+    const sub = lockedBy(key);
+    return sub && sub !== me() ? t('art.lockedBy', { name: cursors.value[sub]?.name ?? artistNames.value[sub] ?? sub }) : null;
+  };
 
   function goOn() {
     hostChanging.value = false;
@@ -126,7 +146,7 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   return {
     artists, artistNames, invited, invitation, paused, hostChanging, gettingArt, waiting, connected, cursors, showCursors, notice, mayDraw, othersHere, hostOnly, offWithOthers, artistsFull, others,
-    hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, autosavedBy, autosaved,
+    hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, lockedBy, lockedWords, autosavedBy, autosaved,
     watchCallbacks, watching, knownNow, heardArtists, accept, decline, connection, close,
     makeHost, takeOver, hostChanged, becomeArtist, artistsNow, hostingAgain, lastChange, holdsTheArt, noteFormerHost,
   };

@@ -106,6 +106,7 @@ export const useProjectStore = defineStore('project', {
     _sameDocument: false, // and it's this document brought up to date, so undo and the selection stay
     _documentN: null, // the ledger's number the open document was autosaved at, as it came back (useAutosave)
     _artInside: null, // the art layer stepped into, and the drawing kept aside meanwhile (vector.js: enterArt)
+    _locks: {}, // in a room, sub -> the art layer they're drawing in, as their cursors say (DrawingStore keeps it)
   }),
 
   getters: {
@@ -118,6 +119,10 @@ export const useProjectStore = defineStore('project', {
     pictureIsOriginal: (state) => !state.imageIsWorkingCopy,
     canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo && (!state._artInside || state._artInside.entries.has(state.history.next)),
     artInside: (state) => state._artInside?.key ?? null, // the art layer stepped into
+    // Who's drawing in an art layer: me while I'm in it, or whoever else the room says is, or null. Only one at a time:
+    // no one else steps in (enterArt) or changes it (setShapes, and a host what an artist sends: takeFromArtist).
+    lockedBy: (state) => (key) => (state._artInside?.key === key ? state._by
+      : Object.keys(state._locks).find((sub) => sub !== state._by && state._locks[sub] === key) ?? null),
     // Anything on the edit layer or the vector layer, of any frame (a grid resize is then a canvas resize).
     hasEdits() { return this.hasEditLayer || this.shapes.size > 0; },
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.

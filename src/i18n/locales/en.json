@@ -1414,7 +1414,7 @@
     "tooBig": "That's too much for one art layer. Select a smaller piece.",
     "edit": "Edit art",
     "editTitle": "Draw in this art layer; the change shows on every frame it's on",
-    "editInRoom": "Live rooms can't step into an art layer yet.",
+    "lockedBy": "{name} is drawing in this layer",
     "editing": "Editing art layer",
     "done": "Done",
     "doneTitle": "Step out of the art layer (Esc)",
