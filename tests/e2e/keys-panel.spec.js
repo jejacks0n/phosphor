@@ -578,6 +578,28 @@ test('dragging the band scrolls the lanes; keys there drag a frame at a time', a
   await expect.poll(() => keyFrames(page, 'transform')).toEqual([at + 2]); // the diamonds in view
 });
 
+test('a key dragged to the end of a scrolled window scrolls it, and drops past what was in view; one undo puts it back', async ({ page }) => {
+  const key = await long(page);
+  const before = await framesInView(page), at = before[10], last = before.at(-1); // clear of the key at 6
+  await store(page, 'project', `(p) => { p.showFrame(${at}); p.addKey('${key}', 'transform'); }`);
+  const keyedAt = (i) => store(page, 'project', `(p) => !!p.frames[${i}].parts?.get('${key}')?.has('transform')`);
+  const box = await diamond(page, 'transform', at).boundingBox(), lane = await row(page, 'transform').locator('.lane').boundingBox();
+  const y = box.y + box.height / 2, was = await version(page);
+  await page.mouse.move(box.x + box.width / 2, y);
+  await page.mouse.down();
+  await page.mouse.move(lane.x + lane.width - 12, y, { steps: 6 }); // near the right end, and held there
+  await expect.poll(async () => (await framesInView(page))[0], { timeout: 5000 }).toBeGreaterThan(before[0] + 10);
+  await page.mouse.up();
+  const dropped = Math.max(...await keyFrames(page, 'transform')); // the key went with the window
+  expect(dropped).toBeGreaterThan(last);
+  expect(await keyedAt(dropped)).toBe(true);
+  expect(await keyedAt(at)).toBe(false);
+  expect(await version(page)).toBe(was + 1);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => keyedAt(at)).toBe(true);
+  expect(await keyedAt(dropped)).toBe(false);
+});
+
 // The center of an element's box.
 const centerX = async (locator) => {
   const box = await locator.boundingBox();
