@@ -26,6 +26,8 @@
  *   width   the stroke's width in grid pixels (it doesn't scale with the shape)
  *   m       [a, b, c, d, e, f]: local to grid pixels, x' = a x + c y + e, y' = b x + d y + f
  *   z       stacking order, low first (ties go by key)
+ * An art layer's record is a shape of another kind, { z, m, art } (artLayers.js): hand-drawn cells that only move on
+ * whole cells, with no points, fill or stroke; makeShape, withShape, shapeFromStranger and shapeBounds hand it on.
  * Grid pixels are a column wide and half a line tall. Numbers are rounded as they're written (points to
  * 1/100, m to 1/10000), so a trip through JSON gives back exactly the same shape, and every browser draws it
  * the same. A shape's key is 'v:' and its id: where a document travels (changes, the ledger, frames, rooms)
@@ -33,6 +35,7 @@
  */
 
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
+import { artBounds, artFromStranger, isArt, makeArt } from './artLayers.js';
 export const SHAPE_PREFIX = 'v:';
 export const MOST_SHAPES = 1000; // a frame's, from a file, a project or a room
 export const MOST_POINTS = 500;  // a shape's, across its outlines: the biggest still fits in one room message
@@ -54,7 +57,7 @@ const KAPPA = 0.5523; // a cubic's handle length for a quarter circle, as a shar
 
 export const IDENTITY = Object.freeze([1, 0, 0, 1, 0, 0]);
 export const isShapeKey = (key) => typeof key === 'string' && key.startsWith(SHAPE_PREFIX);
-export const isShape = (value) => !!value && Array.isArray(value.points);
+export const isShape = (value) => !!value && (Array.isArray(value.points) || isArt(value));
 export const isGradient = (fill) => !!fill && typeof fill === 'object';
 
 // A gradient's color at offset o, its stops mixed.
@@ -105,7 +108,8 @@ function roundFill(fill) {
 
 const roundPoints = (points) => Object.freeze(points.map((p) => Object.freeze(p.slice(0, 6).map((v) => round(v, 2)).concat(p[6] ? 1 : 0))));
 
-export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align }) {
+export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align, art }) {
+  if (art) return makeArt({ z, m, art });
   const shape = {
     z,
     closed: !!closed,
@@ -334,6 +338,7 @@ export const curveBounds = (shape) => pathBox(shape, shape.m);
 // around it: half its width (none inside, all of it outside), as far as a miter join can reach past a corner, and
 // a square cap past a diagonal end.
 export function shapeBounds(shape) {
+  if (isArt(shape)) return artBounds(shape);
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of worldPoints(shape)) {
     for (const q of [p, p.in, p.out]) {
@@ -556,6 +561,7 @@ const goodPoints = (points) => Array.isArray(points) && points.length > 0
   && points.every((p) => Array.isArray(p) && p.length === 7 && p.slice(0, 6).every((v) => finite(v, MOST_COORD)) && (p[6] === 0 || p[6] === 1));
 export function shapeFromStranger(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  if ('art' in value) return artFromStranger(value);
   const keys = Object.keys(value);
   if (!FIELDS.every((f) => f in value) || !keys.every((k) => FIELDS.includes(k) || OPTIONAL.includes(k))) return null;
   const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align } = value;
