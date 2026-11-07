@@ -353,6 +353,18 @@ test('which parts a key frame set is saved and read back, and the saved shape is
   assert.deepEqual(looks(opened), looks(frames));
 });
 
+test('a key frame setting only End is saved and read back', () => {
+  const frames = ballFrames();
+  frames[6].changes.set('v:a', cellState(withShape(BALL, { end: 0.4 }), 0, 0));
+  frames[6].parts = new Map([['v:a', new Set(['end'])]]);
+  const saved = serializeFrames(frames);
+  assert.deepEqual(saved[6].parts, [['v:a', ['end']]]);
+  const opened = read(JSON.parse(JSON.stringify(saved))).frames;
+  assert.deepEqual(opened[6].parts, new Map([['v:a', new Set(['end'])]]));
+  assert.equal(shapeAt(opened, 'v:a', 6).end, 0.4);
+  assert.deepEqual(looks(opened), looks(frames));
+});
+
 test("parts that can't be read are left out, and the file still opens", () => {
   const saved = serializeFrames(ballFrames());
   saved[6].parts = [['v:a', ['nose']], ['v:zz', ['fill']], 'nonsense', ['v:a']];

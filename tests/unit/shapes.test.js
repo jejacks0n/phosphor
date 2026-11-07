@@ -239,6 +239,19 @@ test('a shape that uses nothing new keeps exactly today\'s JSON', () => {
   assert.deepEqual(strokeOf(withShape(s, { join: 'miter', miter: 10 })), { rule: 'nonzero', cap: 'round', join: 'miter', miter: 10, align: 'center' });
 });
 
+test('Start and End are shares, written only when not 0 and 1, and round-trip through JSON', () => {
+  const s = makeShape({ points: sq(0, 4), closed: false, stroke: '#00ff00' });
+  assert.deepEqual(withShape(s, { start: 0, end: 1 }), s);
+  assert.equal(JSON.stringify(withShape(s, { start: 0, end: 1 })), JSON.stringify(s));
+  assert.equal(withShape(s, { end: 0.12345 }).end, 0.1235);
+  assert.equal('start' in withShape(s, { end: 0.5 }), false);
+  const cut = withShape(s, { start: 0.2, end: 0.9 });
+  assert.deepEqual(shapeFromStranger(JSON.parse(JSON.stringify(cut))), cut);
+  assert.deepEqual(shapeFromStranger({ ...JSON.parse(JSON.stringify(s)), start: 0.2, end: 0.9 }), { ...s, start: 0.2, end: 0.9 });
+  const plain = JSON.parse(JSON.stringify(s));
+  for (const v of [{ start: -0.1 }, { end: 1.1 }, { start: 'x' }, { start: 0 }, { end: 1 }, { end: null }]) assert.equal(shapeFromStranger({ ...plain, ...v }), null, JSON.stringify(v));
+});
+
 test('shapeFromStranger takes the new fields and refuses bad ones', () => {
   const plain = JSON.parse(JSON.stringify(makeShape({ points: sq(0, 4), closed: true, fill: '#ff0000' })));
   const good = [

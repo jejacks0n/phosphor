@@ -9,6 +9,8 @@ export const PART_FIELDS = Object.freeze({
   stroke: ['stroke'],
   width: ['width'],
   style: ['cap', 'join', 'miter', 'align'],
+  start: ['start'],
+  end: ['end'],
   z: ['z'],
 });
 export const PARTS = Object.freeze(Object.keys(PART_FIELDS));

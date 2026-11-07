@@ -89,6 +89,10 @@ export function tweenPart(name, a, b, t, at = pivot(a)) {
     return mixed ? { ...mixed, closed: a.closed, rule: late.rule } : fieldsOf(late, name);
   }
   if (name === 'fill' || name === 'stroke') return { [name]: tweenFill(a[name], b[name], t) };
+  if (name === 'start' || name === 'end') { // shares, unclamped: where the shape is drawn, an overshoot is clamped
+    const rest = name === 'end' ? 1 : 0;
+    return { [name]: lerp(a[name] ?? rest, b[name] ?? rest, t) };
+  }
   if (name === 'width') return { width: Math.max(0, lerp(a.width, b.width, t)) };
   return fieldsOf(late, name);
 }

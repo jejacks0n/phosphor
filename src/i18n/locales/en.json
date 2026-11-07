@@ -786,6 +786,8 @@
       "stroke": "Stroke",
       "width": "Width",
       "style": "Style",
+      "start": "Start",
+      "end": "End",
       "z": "Stack"
     },
     "parts": {
@@ -795,6 +797,8 @@
       "stroke": "Stroke",
       "width": "Width",
       "style": "Style",
+      "start": "Start",
+      "end": "End",
       "z": "Stack"
     }
   },
