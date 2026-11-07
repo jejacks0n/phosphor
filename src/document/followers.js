@@ -13,7 +13,8 @@
  *   face    a shape turned by the path's direction there about its center, on top of its own turn
  * A placed record is kept per (follower record, path record): records are frozen and replaced on change, so the same
  * pair gives the same object and ShapeLayer sees no change.
- * shownShapes(shapes) is that with guides then left out: what's drawn.
+ * shownShapes(shapes) is that with guides then left out: what's drawn. placedShapes(project) is a store's shapes placed,
+ * guides kept: what VECTOR shows (its overlay, hits, boxes, the Keys panel's values); edits change the records themselves.
  */
 import { allClosed, apply, localBounds, multiply, rotation, transformed, translation } from './shapes.js';
 import { isArt } from './artLayers.js';
@@ -56,6 +57,8 @@ export function placeFollowers(shapes) {
   }
   return out;
 }
+
+export const placedShapes = (project) => placeFollowers(project.shapes);
 
 export function shownShapes(shapes) {
   const placed = placeFollowers(shapes);

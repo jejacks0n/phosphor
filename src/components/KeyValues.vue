@@ -7,7 +7,7 @@ import { usePlayback } from '@/composables/usePlayback';
 import { allPoints, isGradient, stacked, strokeOf, withShape } from '@/document/shapes.js';
 import { isArt } from '@/document/artLayers.js';
 import { transformValues, withTransformValue } from '@/lib/shapeValues.js';
-import { placedShapes } from '@/store/project/shared.js';
+import { placedShapes } from '@/document/followers.js';
 
 // One Keys panel row's values on the frame showing: typing one changes the shape there, which keys that part there
 // (the store notes what an edit changed).

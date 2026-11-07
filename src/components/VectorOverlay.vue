@@ -16,7 +16,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { t } from '@/i18n';
 import { pathData, withOutlines, worldPoints } from '@/document/shapes.js';
 import { measure } from '@/document/pathLength.js';
-import { placedShapes } from '@/store/project/shared.js';
+import { placedShapes } from '@/document/followers.js';
 import { boxHandles, handleRadius, selectionBox, trimHandles } from '@/tools/vselect.js';
 import { gradientHandles, gradientKey, gradientSlot } from '@/tools/gradientHandles.js';
 import { snappedEnd } from '@/tools/shapes.js';
