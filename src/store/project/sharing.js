@@ -43,7 +43,7 @@ export const DRAWING_ACTIONS = [
   'writeEditCells', 'clearEditCells', 'flipCell', 'flipPaint', 'clearEditLayer',
   'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'deleteInWand', 'recolorSelection', 'moveSelection',
   'deleteIn', 'pasteAt', 'pasteBase', 'selectionEdit',
-  'addShape', 'updateShapes', 'deleteShapes', 'restackShapes', 'joinShapes', 'combineShapes', 'separateShape', 'addSvg', 'addShapes', 'penPoint', 'penBack',
+  'addShape', 'makeArtLayer', 'updateShapes', 'deleteShapes', 'restackShapes', 'joinShapes', 'combineShapes', 'separateShape', 'addSvg', 'addShapes', 'penPoint', 'penBack',
   'undo', 'redo',
 ];
 

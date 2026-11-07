@@ -90,6 +90,13 @@ They're converted with the picture, so the color sliders, the palette and dither
 don't). A shape over a pinned character shows its conversion there. When a shape is pressed into the base (Bake,
 Merge down), pins it covers go, since its pixels are what shows there now.
 
+### Art layers
+
+An [art layer](vector.md#art-layers) (**Make art layer**, with the Select tool) takes the drawing in a selection off the
+edit layer and puts it on VECTOR, where it's drawn with the shapes: above the base layer's own pixels, and below the edit
+cells and paint you draw afterward. Its cells keep their characters and colors exactly, where an art layer is the
+topmost thing at a cell.
+
 ## Opening ANSI and text files
 
 Drop a `.ans`, `.utf8ans`, `.asc` or `.txt` file on the start screen, or choose one with **Browse Files**,
