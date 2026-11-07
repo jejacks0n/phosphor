@@ -103,6 +103,34 @@ test('moving an art layer redraws exactly the cells it left and the ones it reac
   expect(await fromScratch(project)).toEqual(partial);
 });
 
+// Shades only (no half block): a cell the converter picks takes colors of its own, an art cell its halves'.
+for (const charChoice of ['best', 'shape']) test(`under ${charChoice === 'best' ? 'Best match' : 'By shape'}, an art character shows exactly where art is topmost and the converter picks elsewhere`, async () => {
+  const { project } = await blank();
+  Object.assign(project, { quantize: 'cga', charChoice, chars: '░▒▓', solids: 0 });
+  await settle(project);
+  const rect = project.addShape(rectShape(0, 0, 10, 20, { fill: '#aa0000' }));
+  const bare = look(at(project, 4, 2));
+  project.addShape(artAt(3, 2, ['A', '#0000aa', '#55ff55']));
+  expect(look(at(project, 3, 2))).toEqual({ char: 'A', fg: '#55ff55', bg: '#0000aa' });
+  expect(look(at(project, 4, 2))).toEqual(bare);
+  const same = async () => {
+    const partial = { output: outputKey(project), cells: key(project.cells) };
+    expect(await fromScratch(project)).toEqual(partial);
+  };
+  await same(); // a full render's cells (cellsFromOutput) too
+  expect(look(at(project, 3, 2))).toEqual({ char: 'A', fg: '#55ff55', bg: '#0000aa' });
+  project.updateShapes([[rect, withShape(project.shapes.get(rect), { z: 10 })]]);
+  expect(at(project, 3, 2).char).not.toBe('A');
+  await same();
+});
+
+test('a wide art character in the last column has no room for its trail: it shows as a space there, as a pinned one does', async () => {
+  const { project } = await blank();
+  project.addShape(artAt(19, 2, ['Ｗ', '#0000ff', '#ffffff']));
+  expect(look(at(project, 19, 2))).toEqual({ char: ' ', fg: '#ffffff', bg: '#0000ff' });
+  expect(at(project, 19, 2).wide).toBeUndefined();
+});
+
 test('a frame built for export shows an art layer as the editor does', async () => {
   const { project } = await blank();
   project.setAnimate(true);
