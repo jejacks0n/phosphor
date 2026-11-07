@@ -29,3 +29,15 @@ export function zoomAround(layout, factor, x) {
   const at = (layout.scroll + x - layout.thumb / 2) / layout.px;
   return { zoom, scroll: layout.thumb / 2 + at * zoom - x };
 }
+
+// A key dragged near either end of a scrolled window scrolls it: px a second, negative toward frame 0. It starts
+// EDGE_PX in from an end, quickens to the end, keeps quickening past it up to a limit, and stops where the strip does.
+export const EDGE_PX = 24;
+const EDGE_SPEED = 600, MOST_EDGE_SPEED = 2400; // px a second at the end, and at most
+export function edgeSpeed(x, layout) {
+  if (layout.fits) return 0;
+  const depth = x < EDGE_PX ? x - EDGE_PX : x > layout.width - EDGE_PX ? x - (layout.width - EDGE_PX) : 0;
+  if (depth < 0 && layout.scroll <= 0) return 0;
+  if (depth > 0 && layout.scroll >= (layout.count - 1) * layout.px + layout.thumb - layout.width) return 0;
+  return Math.sign(depth) * Math.min((Math.abs(depth) / EDGE_PX) * EDGE_SPEED, MOST_EDGE_SPEED);
+}

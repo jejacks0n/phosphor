@@ -10,7 +10,7 @@ import { PARTS, partsOf } from '@/document/parts.js';
 import { isArt } from '@/document/artLayers.js';
 import { listedParts, partKeys } from '@/document/keys.js';
 import { lifeAt } from '@/document/tweens.js';
-import { MIN_FRAME_PX, MIN_FRAME_PX_PHONE, MOST_FRAME_PX, frameAt, labelEvery, laneLayout, xOf, zoomAround } from '@/lib/keyLanes.js';
+import { MIN_FRAME_PX, MIN_FRAME_PX_PHONE, MOST_FRAME_PX, edgeSpeed, frameAt, labelEvery, laneLayout, xOf, zoomAround } from '@/lib/keyLanes.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import KeyValues from '@/components/KeyValues.vue';
 
@@ -227,7 +227,8 @@ const pickFrame = paused((i) => {
 // A press on a diamond or a frame number (frame i) that goes half a frame along is a drag of its keys (refs, selected
 // as it begins), snapping to the frame under the pointer; less is a click. Escape, or the browser taking the pointer
 // (or the window losing focus), puts them back; a move with no button down is a drop whose pointerup went astray. A
-// second press (another finger) while one's held does nothing.
+// second press (another finger) while one's held does nothing. Held near either end of a scrolled window, the drag
+// scrolls it (edgeSpeed), and the keys go on following the pointer to the frames that come into view.
 let press = null, dragged = false;
 function pressKeys(event, i, refs) {
   if (press) return;
@@ -248,7 +249,13 @@ function dragKeys(event) {
     dropKeys(event);
     return;
   }
-  const by = frameAt(laneX(event.clientX) - press.off, layout.value) - press.at;
+  press.x = laneX(event.clientX);
+  followPointer();
+  if (press.drag && !rolling) rolling = requestAnimationFrame(roll);
+}
+function followPointer() {
+  const { first, last } = layout.value; // a frame in view, so a key let go at an end lands where it's seen
+  const by = Math.min(Math.max(frameAt(press.x - press.off, layout.value), first), last) - press.at;
   if (by === press.by) return;
   if (!press.drag) {
     playback.pause();
@@ -258,7 +265,24 @@ function dragKeys(event) {
   press.by = by;
   workspace.selectedKeys = project.moveKeys(press.shape, press.refs, by, press.drag);
 }
+let rolling = 0, rolledAt = 0;
+function roll(now) {
+  rolling = 0;
+  const speed = press?.drag ? edgeSpeed(press.x, layout.value) : 0;
+  if (!speed) {
+    rolledAt = 0;
+    return;
+  }
+  if (rolledAt) {
+    workspace.keysScroll = layout.value.scroll + speed * Math.min(now - rolledAt, 50) / 1000; // a slow frame doesn't leap
+    followPointer();
+  }
+  rolledAt = now;
+  rolling = requestAnimationFrame(roll);
+}
 function letGo() {
+  cancelAnimationFrame(rolling);
+  rolling = rolledAt = 0;
   window.removeEventListener('pointermove', dragKeys);
   window.removeEventListener('pointerup', dropKeys);
   window.removeEventListener('pointercancel', cancelKeys);

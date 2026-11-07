@@ -1,7 +1,7 @@
 // The Keys panel's lanes: lined up with the scrubber while frames fit, a scrolling, zoomable window past that.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { MIN_FRAME_PX, MIN_FRAME_PX_PHONE, frameAt, labelEvery, laneLayout, xOf, zoomAround } from '../../src/lib/keyLanes.js';
+import { EDGE_PX, MIN_FRAME_PX, MIN_FRAME_PX_PHONE, edgeSpeed, frameAt, labelEvery, laneLayout, xOf, zoomAround } from '../../src/lib/keyLanes.js';
 
 const lanes = (count, width, more = {}) => laneLayout({ count, width, thumb: 17, zoom: null, scroll: 0, minPx: MIN_FRAME_PX, ...more });
 
@@ -63,4 +63,18 @@ test('zoomAround keeps the frame under the pointer', () => {
 
 test('labelEvery thins numbers', () => {
   assert.deepEqual([20, 14, 13.9, 4, 3.9, 1].map(labelEvery), [1, 1, 5, 5, 10, 10]);
+});
+
+test('edgeSpeed scrolls a drag near either end of the window, faster the deeper it goes, and not past the strip', () => {
+  const mid = lanes(200, 517, { scroll: 700 });
+  assert.equal(edgeSpeed(258, mid), 0); // the middle
+  assert.equal(edgeSpeed(EDGE_PX, mid), 0); // the zone's inner edge
+  assert.ok(edgeSpeed(517 - 4, mid) > 0); // near the right end: later frames
+  assert.ok(edgeSpeed(4, mid) < 0); // near the left: earlier
+  assert.ok(edgeSpeed(517 - 2, mid) > edgeSpeed(517 - 12, mid)); // deeper is faster
+  assert.ok(edgeSpeed(517 + 200, mid) >= edgeSpeed(517, mid)); // past the end too, up to a limit
+  assert.equal(edgeSpeed(517 + 5000, mid), edgeSpeed(517 + 9000, mid));
+  assert.equal(edgeSpeed(2, lanes(200, 517, { scroll: 0 })), 0); // already at the start
+  assert.equal(edgeSpeed(515, lanes(200, 517, { scroll: 99999 })), 0); // already at the end
+  assert.equal(edgeSpeed(515, lanes(11, 157)), 0); // fitting: nothing to scroll
 });

@@ -115,7 +115,8 @@ the movie: scroll it with the wheel or trackpad (Shift-wheel too) or by dragging
 there's no number, and zoom with **−** and **+** on the top line, or Cmd/Ctrl-wheel over the lanes (or a trackpad
 pinch, in Chrome and Firefox), around the pointer. Zoomed out until every frame fits again, the lanes line up with the scrubber once more. When frames are
 tight their numbers thin out to every 5th or 10th. Stepping, playing and scrubbing keep the frame showing in view, and
-the scrubber, still the whole movie, shows the stretch in view as a band; drag the band to scroll the panel. The zoom
+the scrubber, still the whole movie, shows the stretch in view as a band; drag the band to scroll the panel. A key
+dragged to either end of the window scrolls it, faster the closer you go, and lands on a frame in view. The zoom
 is remembered, like the fold. While the movie plays, the rows are those of the frame playing, so past a Wipe they show
 the shape's life there.
 
