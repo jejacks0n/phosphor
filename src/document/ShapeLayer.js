@@ -27,7 +27,7 @@ export default class ShapeLayer {
   #order = [];          // [key, shape, bounds] in stacking order
   #own = null;          // the shapes alone, right inside each rect last drawn
   canvas = null;        // the base with the shapes over it
-  #size = null;         // the base canvas's size and scale they're drawn for
+  #size = null;         // { width, height, k }: the base canvas's size and scale they're drawn for
   #seen = -1;           // the base's version drawn
   #pending = [];        // grid rects to draw again
   #chars = null;        // a cell's character (charAt): undefined, null or an art layer's
@@ -62,6 +62,7 @@ export default class ShapeLayer {
     this.#shapes = shapes;
     this.#order = stacked(shapes).map(([key, shape]) => [key, shape, shapeBounds(shape)]);
     this.#hasArt = this.#order.some(([, shape]) => isArt(shape));
+    if (!this.#hasArt) this.#scratch = null;
     const rect = dirtyRect(...bounds);
     if (rect) this.#pending.push(rect);
     return rect;
@@ -76,9 +77,9 @@ export default class ShapeLayer {
   sync() {
     if (!this.drawsShapes) return;
     const base = this.#base, k = base.scale, { width, height } = base.canvas;
-    const size = `${width}x${height}x${k}`;
-    if (size !== this.#size) {
-      this.#size = size;
+    const held = this.#size;
+    if (held?.width !== width || held.height !== height || held.k !== k) {
+      this.#size = { width, height, k };
       this.#own = newCanvas(width, height);
       this.canvas = newCanvas(width, height);
       this.#chars = new Array(base.cols * charRowsOf(base.rows));
@@ -89,6 +90,7 @@ export default class ShapeLayer {
       this.#changed(null);
       return;
     }
+    if (this.#seen === base.version && !this.#pending.length) return; // asked once a cell (Renderer.pinAt): nothing made
     const rects = [];
     if (this.#seen !== base.version) {
       const since = base.changedSince(this.#seen);
