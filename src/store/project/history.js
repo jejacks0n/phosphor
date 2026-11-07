@@ -22,7 +22,7 @@ export const historyActions = {
     if (this._stroke || !this.paintLayer) return;
     // Raw, so commitEdit's identity checks see the same objects. keys: the cells it's sent. A stroke begun
     // for a float's move is held for an artist (sharing.js).
-    this._stroke = markRaw({ id: randomId(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords, keys: [], hold: !!this._floating, startShapes: this.shapes, vectorSelected: useWorkspaceStore().vectorSelected });
+    this._stroke = markRaw({ id: randomId(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords, keys: [], hold: !!this._floating, startShapes: this.shapes, startFrame: this.hasFrames ? { ...this.currentFrame } : null, vectorSelected: useWorkspaceStore().vectorSelected });
     this.paintLayer.beginStroke();
     this.baseLayer.beginStroke();
   },
@@ -84,7 +84,7 @@ export const historyActions = {
     // On a frame, its shapes as they were before this edit, for undo (shapesBefore), and as it left them, for redo: a key
     // action since can have changed them with the ledger none the wiser, and its redo puts back only what it thinks differs.
     const changed = stroke.startShapes === this.shapes ? [] : [...new Set([...stroke.startShapes.keys(), ...this.shapes.keys()])].filter((key) => stroke.startShapes.get(key) !== this.shapes.get(key));
-    const shapesBefore = this.shapesBefore(changed, stroke.startShapes), shapesAfter = changed.map((key) => [key, this.shapes.get(key) ?? null]);
+    const shapesBefore = this.shapesBefore(changed, stroke.startShapes, stroke.startFrame), shapesAfter = changed.map((key) => [key, this.shapes.get(key) ?? null]);
     const also = { patches: [[basePatch, this.baseLayer]], pins: [records.before.pins, records.after.pins] };
     const apply = (side) => {
       if (!this.frames.includes(frame)) return;
