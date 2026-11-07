@@ -166,6 +166,17 @@ test('picking a path: Esc, or a click on empty canvas, ends it with no history e
   expect(project.history.version).toBe(version);
 });
 
+test('picking a path: a rectangle sitting on the line picks it by a click where the two overlap', async () => {
+  const { project, workspace, ctx, line } = await picking();
+  const dot = project.addShape({ ...rectShape(14, 16, 22, 24), fill: '#ff0000' }); // above the line, over it
+  project.addShape(makeArt({ m: [1, 0, 0, 1, 16, 18], art: { cols: 2, rows: 1, cells: [[0, 'A', '#ff0000', null]] } })); // and an art layer over both
+  workspace.vectorSelected = [dot];
+  workspace.pickingPath = dot;
+  press(ctx, { x: 17, y: 20 });
+  expect(project.shapes.get(dot).follow).toEqual({ key: line });
+  expect(workspace.pickingPath).toBe(null);
+});
+
 // The first rectangle (its middle at (6, 6)) following the line across at y = 20, so at (6, 20), selected.
 async function onLine() {
   const { project, workspace, ctx, keys: [a] } = await drawing();
@@ -187,6 +198,12 @@ test('a follower dragged toward its path\'s far end slides along it to the end, 
   expect(project.history.version).toBe(version + 1);
   project.undo();
   expect(project.shapes.get(a)).toEqual(before);
+});
+
+test('a follower pressed off its middle and dragged a little moves a little, without jumping to the pointer', async () => {
+  const { project, ctx, a } = await onLine();
+  press(ctx, { x: 9, y: 23 }, [{ x: 9.32, y: 23 }]); // its middle at (6, 20): moved 0.32 along
+  expect(project.shapes.get(a).along).toBe(0.0725);
 });
 
 test('an arrow key steps a follower along its path by 1% (Shift: 10%), held to its ends', async () => {

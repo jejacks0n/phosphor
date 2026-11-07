@@ -88,3 +88,41 @@ test('a rectangle follows a Pen curve picked with Follow a path…, drags along 
   await dragPoints(page, await gridPoint(page, 38, 30), await gridPoint(page, 22, 31));
   expect((await shape(page, curve)).end).toBeCloseTo(0.5, 1);
 });
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  // How tall a strip, down through the middle of what locator finds, a finger gets it in: the pixels from 30 above its
+  // middle to 30 below where the element there is it, or inside it.
+  const reach = (locator) => locator.evaluate((el) => {
+    const box = el.getBoundingClientRect(), x = box.left + box.width / 2, y = box.top + box.height / 2;
+    let n = 0;
+    for (let dy = -30; dy <= 30; dy++) n += el.contains(document.elementFromPoint(x, y + dy)) ? 1 : 0;
+    return n;
+  });
+
+  test('the Along menu\'s name and Guide take a finger 40px tall, and + Add key\'s items are each 40px', async ({ page }) => {
+    await openApp(page);
+    await tab(page, 'VECTOR').click();
+    await page.getByRole('switch', { name: 'Animate' }).check();
+    const [path, dot] = await store(page, 'project', (p) => [
+      p.addShape({ z: 0, closed: false, fill: null, stroke: '#00ff00', width: 1, m: [1, 0, 0, 1, 0, 0], points: [[4, 20, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0]] }),
+      p.addShape({ z: 1, closed: true, fill: '#ff0000', stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0], points: [[2, 2, 0, 0, 0, 0, 0], [6, 2, 0, 0, 0, 0, 0], [6, 6, 0, 0, 0, 0, 0], [2, 6, 0, 0, 0, 0, 0]] }),
+    ]);
+    await store(page, 'project', `(p) => { p.addFrame('blank'); p.followPath('${dot}', '${path}'); }`);
+    await store(page, 'workspace', `(w) => { w.vectorSelected = ['${dot}']; }`);
+    const along = panel(page).locator('.along .dropdown-trigger');
+    await expect(along).toBeVisible();
+    expect(await reach(along)).toBeGreaterThanOrEqual(40);
+
+    await store(page, 'workspace', `(w) => { w.vectorSelected = ['${path}']; }`);
+    const guide = panel(page).getByRole('button', { name: 'Guide', exact: true });
+    await expect(guide).toBeVisible();
+    expect(await reach(guide)).toBeGreaterThanOrEqual(40);
+
+    await panel(page).locator('.add-key .dropdown-trigger').click();
+    const heights = await page.locator('.dropdown-content button').evaluateAll((items) => items.map((b) => Math.round(b.getBoundingClientRect().height)));
+    expect(heights.length).toBeGreaterThan(1);
+    expect(new Set(heights)).toEqual(new Set([40]));
+  });
+});

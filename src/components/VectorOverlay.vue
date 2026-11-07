@@ -54,7 +54,7 @@ const followed = computed(() => (!props.unit ? [] : [...new Set(selected.value.m
 // Follow a path…: the shape under the pointer the picker could follow.
 const pickable = computed(() => {
   const at = workspace.pickingPath && props.unit && workspace.vectorHover;
-  const key = at && pathAt(project, workspace.pickingPath, at, handleRadius() / props.unit.x);
+  const key = at && pathAt(placed.value, workspace.pickingPath, at, handleRadius() / props.unit.x);
   return key ? pathData(placed.value.get(key), props.unit.x, props.unit.y) : null;
 });
 // On a Blank frame, the shapes it carries from the frame before: their outlines, dimmed. Only with Animate on.
