@@ -774,6 +774,8 @@
       "scaleXTitle": "Width, as a percentage, along the shape's own axes",
       "scaleYTitle": "Height, as a percentage, along the shape's own axes (negative flips it)",
       "widthTitle": "Stroke width, in grid pixels",
+      "startTitle": "Start, as a percentage of the way along the outline where drawing begins",
+      "endTitle": "End, as a percentage of the way along the outline where drawing stops",
       "fill": "Fill color: open the color box",
       "stroke": "Stroke color: open the color box",
       "outline": "{n} point · edit with the Node tool | {n} points · edit with the Node tool",

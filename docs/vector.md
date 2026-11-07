@@ -325,6 +325,13 @@ shape's:
   twice as far as it would centered (the whole width is on one side), and inside, a shape's inward corners (a
   star's) get the points.
 
+- **Start** and **End**, how much of the outline is drawn: the stretch between them, measured along the outline's
+  curves from its first point, 0 to 100%. A shape with neither draws all of it. A trimmed closed shape keeps its fill
+  with it (the fill is the shape the drawn stretch makes), and its stroke is aligned as the whole outline is. Hits
+  stay on the whole outline, so a shape can be clicked anywhere on it, and VECTOR still shows the whole outline, with
+  the stretch not drawn dashed. They aren't in the color box: with Animate on they're rows of the
+  [Keys panel](animation.md#the-keys-panel), set there or by dragging their handles along the outline.
+
 Drawn shapes start with round caps, round joins and centered strokes. Each press is one undo step; a Stroke width drag is one step
 when you let go.
 

@@ -3,19 +3,23 @@
 // step (selectShapes). Then drag inside the box to move (Shift: straight across, up and down, or at 45°), a handle to scale (Shift keeps the proportions, Alt scales from the middle)
 // or the knob above it to rotate (Shift: one shape to angles in steps of 15°, several by them). A second click on a shape edits its points with the
 // Node tool (vnode.js); on an art layer it steps into it instead (enterArt), to the ANSI tab. One shape selected, its gradient's ends and stops show and drag as the Node tool's do
-// (gradientHandles.js; a click on a stop selects it), ahead of the box's handles where they're near (handlePick: a
+// (gradientHandles.js; a click on a stop selects it), and so do the Start and End handles on the outline of a shape with those rows in the Keys panel (trimHandles), ahead of the box's handles where they're near (handlePick: a
 // click again takes the next one there). Each drag is one edit, worked out each move from the shapes as they were at the press,
 // so nothing drifts. An art layer moves by whole cells (a column across, a line down, whatever Snap to says) and has no size or turn handles, alone or with other shapes. Keys: arrows nudge a grid pixel (Shift: 10; an art layer's a cell), Delete or Backspace deletes (the selected stop,
 // or else the shapes), Esc lets the stop go or deselects.
 import { t } from '@/i18n/index.js';
 import { isArt } from '@/document/artLayers.js';
-import { apply, curveBounds, invert, localBounds, multiply, rotation, scaling, translation, transformed, withShape } from '@/document/shapes.js';
+import { apply, curveBounds, invert, localBounds, multiply, nearestOnOutline, rotation, scaling, translation, transformed, withShape } from '@/document/shapes.js';
+import { listedParts } from '@/document/keys.js';
+import { lifeAt } from '@/document/tweens.js';
+import { measure } from '@/document/pathLength.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
 import { DOUBLE_MS, DOUBLE_PX, handlePicker } from '@/tools/handlePick.js';
 
+const REACH = 22;          // CSS px from a trim handle that a press takes it (a 44px hit area)
 const KNOB = 24;           // CSS px above the box's top edge
 const SNAP = Math.PI / 12; // 15°
 
@@ -39,6 +43,21 @@ export function selectionBox(shapes, keys) {
     x0 = Math.min(x0, b.x0); y0 = Math.min(y0, b.y0); x1 = Math.max(x1, b.x1); y1 = Math.max(y1, b.y1);
   }
   return { corners: [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }], center: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, local: null, cells };
+}
+
+// The one selected shape's Start and End handles, for the parts it has a row for in the Keys panel (so only with Animate
+// on): { key, shape, handles: [{ part, share, at }] } with at in grid pixels on the outline; or null.
+export function trimHandles(project, workspace) {
+  const chosen = workspace.vectorSelected.filter((key) => project.shapes.has(key));
+  if (!project.animate || !project.hasFrames || workspace.activeTool !== 'vselect' || chosen.length !== 1) return null;
+  const [key] = chosen, shape = project.shapes.get(key), life = lifeAt(project.frames, key, project.frame)[0];
+  if (isArt(shape) || life === undefined) return null;
+  const listed = listedParts(project.frames, key, life), along = measure(shape);
+  const handles = ['start', 'end'].filter((part) => listed.includes(part)).map((part) => {
+    const share = shape[part] ?? (part === 'end' ? 1 : 0);
+    return { part, share, at: along.at(share) };
+  });
+  return handles.length ? { key, shape, handles } : null;
 }
 
 const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
@@ -116,6 +135,15 @@ function rotateTo(project, drag, pos, shift) {
   reshape(project, drag, (shape) => multiply(w, shape.m));
 }
 
+// A trim handle dragged: its part set to the share of the outline nearest the pointer, held to 0 through 1.
+function trimTo(project, workspace, drag, pos) {
+  const [key, shape] = drag.start[0], near = nearestOnOutline(shape, pos.x, pos.y);
+  if (near.segment < 0) return;
+  const share = Math.min(1, Math.max(0, Math.round(measure(shape).shareOf(near.segment, near.t) * 1e4) / 1e4));
+  workspace.vectorTrim = { part: drag.part, share };
+  project.updateShapes([[key, withShape(shape, { [drag.part]: share })]]);
+}
+
 let drag = null, lastPress = null;
 const pick = handlePicker();
 
@@ -132,6 +160,7 @@ function endDrag(project, workspace) {
     if (box || !shift) project.selectShapes(shift ? [...keys, ...touched.filter((key) => !keys.includes(key))] : touched);
     return;
   }
+  workspace.vectorTrim = null;
   project.commitEdit();
   if (again && !moved) {
     workspace.vectorSelected = [again];
@@ -164,8 +193,10 @@ export default {
       // The box's handles and the knob, and (one shape) its gradient's, which come first; or a click again's.
       const { handles, knob } = boxHandles(box, unit), letStop = () => { workspace.vectorStop = null; };
       const d = (p) => Math.hypot((p.x - pos.x) * unit.x, (p.y - pos.y) * unit.y);
+      const trim = trimHandles(project, workspace);
+      const trims = (trim?.handles ?? []).map(({ part, at: place }) => ({ id: part, d: d(place), take: () => at('trim', { part }) }));
       const own = box.cells ? [] : [{ id: 'knob', d: d(knob), take: () => at('rotate'), picked: letStop }, ...handles.map((h, handle) => ({ id: `h${handle}`, d: d(h), take: () => at('scale', { handle, grip: h }), picked: letStop }))];
-      if (pick.press([...own.filter((c) => c.d <= radius), ...gradientDrag.candidates(ctx, pos, radius)], pos, unit)) return true;
+      if (pick.press([...trims.filter((c) => c.d <= REACH), ...own.filter((c) => c.d <= radius), ...gradientDrag.candidates(ctx, pos, radius)], pos, unit)) return true;
     } else pick.reset();
     const hit = shapeAt(project.shapes, pos.x, pos.y, tol);
     // A second click edits points; an art layer has none, so it steps into the layer (see endDrag).
@@ -202,6 +233,7 @@ export default {
       if (drag.moved) workspace.vectorMarquee = { x0: Math.min(f.x, to.x), y0: Math.min(f.y, to.y), x1: Math.max(f.x, to.x), y1: Math.max(f.y, to.y) };
       return;
     }
+    if (drag.kind === 'trim') return trimTo(project, workspace, drag, to);
     const snap = snapMode(workspace);
     if (drag.kind === 'move') {
       const end = shift ? snappedEnd(drag.from, to) : to;
@@ -235,6 +267,7 @@ export default {
   cancel(ctx) {
     drag = null; // the viewport took the edit back
     ctx.workspace.vectorMarquee = null;
+    ctx.workspace.vectorTrim = null;
     gradientDrag.cancel(ctx);
     pick.reset();
   },

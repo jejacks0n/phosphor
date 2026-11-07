@@ -774,6 +774,8 @@
       "scaleXTitle": "Largeur, en pourcentage, selon les axes de la forme",
       "scaleYTitle": "Hauteur, en pourcentage, selon les axes de la forme (négatif la retourne)",
       "widthTitle": "Épaisseur du contour, en pixels de la grille",
+      "startTitle": "Début, en pourcentage du chemin le long du contour où le tracé commence",
+      "endTitle": "Fin, en pourcentage du chemin le long du contour où le tracé s'arrête",
       "fill": "Couleur de remplissage : ouvrir le sélecteur de couleur",
       "stroke": "Couleur du contour : ouvrir le sélecteur de couleur",
       "outline": "{n} point · à modifier avec l'outil Nœud | {n} points · à modifier avec l'outil Nœud",

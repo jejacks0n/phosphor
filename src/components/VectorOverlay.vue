@@ -3,7 +3,8 @@
 // of the shapes it carries), Vector select's box with its 8 handles and rotate knob, the Node tool's points and
 // handles of the shape whose points are being edited (the selected point filled) and its gradient's line, ends
 // and stops (each in its color, the selected one ringed), and the Pen's points (the first filled: a click there
-// closes) with its next segment, dashed, to the pointer. In a room, an art layer someone else is drawing in shows its
+// closes) with its next segment, dashed, to the pointer, and a selected shape's Start and End handles on its outline
+// (with the stretch not drawn dashed in its stroke color, and while one's dragged, its name and percent). In a room, an art layer someone else is drawing in shows its
 // box, saying who. It takes no pointer events,
 // and shows nothing while the animation plays. It's drawn twice: first dark and wider (the halo, its own group so
 // nothing that looks for the overlay's handles finds it twice), then in color, so it reads over any art.
@@ -11,8 +12,10 @@ import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { pathData, worldPoints } from '@/document/shapes.js';
-import { boxHandles, handleRadius, selectionBox } from '@/tools/vselect.js';
+import { t } from '@/i18n';
+import { pathData, withOutlines, worldPoints } from '@/document/shapes.js';
+import { measure } from '@/document/pathLength.js';
+import { boxHandles, handleRadius, selectionBox, trimHandles } from '@/tools/vselect.js';
 import { gradientHandles, gradientKey, gradientSlot } from '@/tools/gradientHandles.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { pickedPoints } from '@/tools/vnode.js';
@@ -54,6 +57,26 @@ const box = computed(() => {
 });
 
 // The art layers someone else is drawing in: each one's box, and the words over its top-left corner.
+// The one selected shape's Start and End handles, the outline between them left undrawn dashed, and the label of the one
+// being dragged.
+const trim = computed(() => {
+  void project.historyVersion; void project.frames; // what its rows are worked out from
+  const found = props.unit && trimHandles(project, workspace);
+  if (!found) return null;
+  const { shape, handles } = found, along = measure(shape), clamp = (v) => Math.min(1, Math.max(0, v));
+  const start = clamp(shape.start ?? 0), end = clamp(shape.end ?? 1);
+  const gone = start < end ? [along.cut(0, start), along.cut(end, 1)].flat() : along.cut(0, 1);
+  const left = gone.length ? withOutlines(shape, gone) : null;
+  const dragged = workspace.vectorTrim && handles.find(({ part }) => part === workspace.vectorTrim.part);
+  const label = dragged && `${t(`keysPanel.parts.${dragged.part}`)} ${Math.round(workspace.vectorTrim.share * 100)}%`;
+  return {
+    undrawn: left && pathData(left, props.unit.x, props.unit.y),
+    color: [shape.stroke, shape.fill].find((paint) => typeof paint === 'string'),
+    handles: handles.map(({ part, at }) => ({ part, at: px(at) })),
+    label: label && { text: label, at: px(dragged.at), width: label.length * 6.5 + 14 },
+  };
+});
+
 const locks = computed(() => (!props.unit ? [] : [...new Set(Object.values(project._locks).map(({ key }) => key))]).flatMap((key) => {
   const words = drawing.lockedWords(key), b = words && selectionBox(project.shapes, [key]);
   if (!b) return [];
@@ -118,6 +141,14 @@ const r = computed(() => handleRadius() / 2 + 1);
         </template>
         <rect v-for="(h, i) in box.handles" :key="i" :x="h.x - r" :y="h.y - r" :width="2 * r" :height="2 * r" class="handle"/>
       </template>
+      <template v-if="trim">
+        <path v-if="trim.undrawn" :d="trim.undrawn" class="undrawn" :style="trim.color && { stroke: trim.color }"/>
+        <circle v-for="h in trim.handles" :key="h.part" :cx="h.at.x" :cy="h.at.y" :r="r + 1" class="handle trim" :data-trim="h.part"/>
+        <g v-if="trim.label" class="trim-label">
+          <rect :x="trim.label.at.x - trim.label.width / 2" :y="trim.label.at.y - 34" :width="trim.label.width" height="18" rx="9"/>
+          <text :x="trim.label.at.x" :y="trim.label.at.y - 21">{{ trim.label.text }}</text>
+        </g>
+      </template>
       <template v-if="points">
         <g v-for="a in points.arms" :key="a.key">
           <line :x1="a.from.x" :y1="a.from.y" :x2="a.to.x" :y2="a.to.y" class="arm"/>
@@ -153,6 +184,9 @@ svg.vector-overlays {
 .vector-halo {
   --halo: rgb(0 0 0 / 0.7);
 }
+.vector-halo .undrawn, .vector-halo .trim-label {
+  display: none;
+}
 .vector-halo .outline, .vector-halo .box, .vector-halo .arm {
   stroke: var(--halo);
   stroke-width: 3px;
@@ -186,6 +220,23 @@ svg.vector-overlays {
 
 .box {
   stroke-dasharray: 4 3;
+}
+
+.undrawn {
+  fill: none;
+  stroke: var(--accent, #4aa3ff);
+  stroke-width: 1px;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.trim-label rect {
+  fill: var(--accent, #4aa3ff);
+}
+.trim-label text {
+  fill: white;
+  font-size: 11px;
+  text-anchor: middle;
 }
 
 .locked {
