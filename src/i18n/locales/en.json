@@ -1415,6 +1415,7 @@
     "edit": "Edit art",
     "editTitle": "Draw in this art layer; the change shows on every frame it's on",
     "lockedBy": "{name} is drawing in this layer",
+    "someoneInside": "{name} is drawing in an art layer",
     "editing": "Editing art layer",
     "done": "Done",
     "doneTitle": "Step out of the art layer (Esc)",

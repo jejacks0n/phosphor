@@ -3585,6 +3585,45 @@ test('two artists who step into one art layer before hearing each other: the fir
   expect(room.project.shapes.get(key).art.cells.map(([, c]) => c)).toEqual(['A', 'Z']);
 });
 
+test('turned away from an art layer whose holder steps out in the same broadcast, an artist still inside has it after all', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  room.drawing.peopleHere([{ peer: 'ann', sub: 'ann', connected: true }, { peer: 'bob', sub: 'bob', connected: true }]);
+  const key = await withArtLayer(room, ann, bob);
+  const sendAll = room.host.sendAll.bind(room.host);
+  let holding = true; // the host's cursors broadcast, held back so all of this lands in one
+  vi.spyOn(room.host, 'sendAll').mockImplementation((msg) => (holding && msg.t === 'cursors' ? undefined : sendAll(msg)));
+  expect(bob.project.enterArt(key)).toBe(true);
+  await expect.poll(() => room.drawing.cursors.bob?.inside, PATIENT).toBe(key);
+  expect(ann.project.enterArt(key)).toBe(true); // she hasn't heard
+  await expect.poll(() => room.drawing.cursors.ann && room.drawing.cursors.ann.inside, PATIENT).toBe(null); // turned away
+  bob.project.leaveArt();
+  await expect.poll(() => room.drawing.cursors.bob.inside, PATIENT).toBe(null);
+  holding = false;
+  room.drawing.pointAt({ col: 1, row: 1 }); // the next broadcast: no one inside
+  await expect.poll(() => room.drawing.lockedBy(key), PATIENT).toBe('ann');
+  expect(ann.project.artInside).toBe(key);
+  await expect.poll(() => bob.drawing.lockedBy(key), PATIENT).toBe('ann');
+});
+
+test('an artist inside an art layer when they\'re made host steps out, as starting to share does, and leaves it free', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  const key = await withArtLayer(room, ann, bob);
+  expect(ann.project.enterArt(key)).toBe(true);
+  ann.project.typeAt(5, 2, 'Z', { fg: '#ff0000' });
+  await expect.poll(() => bob.drawing.lockedBy(key), PATIENT).toBe('ann');
+  await newHostIs(room, ann, { planned: false });
+  expect(ann.project.artInside).toBe(null);
+  expect(ann.project.shapes.get(key).art.cells.map(([, c]) => c)).toEqual(['A', 'Z']); // what was open went in
+  expect(ann.project.lockedBy(key)).toBe(null);
+  await expect.poll(() => bob.drawing.lockedBy(key), PATIENT).toBe(null); // the new host's cursors, on his hello
+  expect(bob.project.enterArt(key)).toBe(true);
+  await expect.poll(() => ann.project.lockedBy(key), PATIENT).toBe('bob');
+  bob.project.leaveArt();
+  await sameShapes(ann, bob);
+});
+
 test('who\'s inside an art layer reaches an artist who joins later, and the host again after a reconnect, with no pointer moving', async () => {
   const room = await hosting();
   const ann = await artist(room, 'ann');
