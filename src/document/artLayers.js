@@ -7,6 +7,7 @@
  *   cells  [[i, char, top, bottom], ...] sorted by i, only cells with something in them: i is row * cols + col in
  *          the layer's own grid; char a one-character string, or null (no character: the converter's, or the
  *          cell's halves only); top and bottom the half-cells' colors, '#rrggbb' or null (see-through)
+ *   follow, along  the path it follows and how far along it is (followOf): absent when it follows none, and at 0
  * Nothing here touches a canvas, and shapes.js imports this, not the other way round.
  */
 
@@ -19,6 +20,10 @@ const MOST_SHIFT = 1e7;
 const HEX = /^#[0-9a-f]{6}$/i;
 const HALVES = new Set([' ', '█', '▀', '▄']);
 
+export const SHAPE_KEY = /^v:[A-Za-z0-9_-]{1,32}$/; // a shape's key (shapes.js)
+const RIDES = ['start', 'end'], MOTIONS = ['half', 'cells']; // the values other than the default: along it, on its own keys; smoothly
+const rounded = (v) => Math.round(v * 1e4) / 1e4 || 0; // 1/10000, no -0
+
 export const isArt = (shape) => !!shape && !!shape.art;
 
 const encoder = new TextEncoder();
@@ -29,13 +34,33 @@ const whole = (v) => (Math.round(v) || 0); // no -0: it reads back as 0
 // A transform's move to the nearest whole cell (e whole, f even), and nothing else.
 export const onCells = (m) => Object.freeze([1, 0, 0, 1, whole(m[4]), 2 * whole(m[5] / 2)]);
 
-export function makeArt({ z = 0, m, art }) {
+// A follow link (the path a shape or art layer follows, and how) frozen, its defaults left out. face: only a shape's.
+export const makeFollow = ({ key, ride, face, motion }) => Object.freeze({
+  key,
+  ...(RIDES.includes(ride) && { ride }),
+  ...(face && { face: true }),
+  ...(MOTIONS.includes(motion) && { motion }),
+});
+// Whether a stranger's follow link is exactly what makeFollow makes: a path's key, and only values other than the defaults.
+export function goodFollow(value, art) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !Object.keys(value).every((k) => ['key', 'ride', 'face', 'motion'].includes(k))) return false;
+  if (typeof value.key !== 'string' || !SHAPE_KEY.test(value.key)) return false;
+  if (('ride' in value && !RIDES.includes(value.ride)) || ('motion' in value && !MOTIONS.includes(value.motion))) return false;
+  return !('face' in value) || (value.face === true && !art);
+}
+// How far along its path, a share 0 to 1 (the default 0 left out).
+export const goodAlong = (along) => typeof along === 'number' && along > 0 && along <= 1;
+
+export function makeArt({ z = 0, m, art, follow, along }) {
   const cells = art.cells.map((cell) => Object.freeze([...cell]));
-  return Object.freeze({
+  const record = {
     z,
     m: onCells(m),
     art: Object.freeze({ cols: art.cols, rows: art.rows, cells: Object.freeze(cells) }),
-  });
+  };
+  if (follow) record.follow = makeFollow({ ...follow, face: false });
+  if (along && rounded(along)) record.along = rounded(along);
+  return Object.freeze(record);
 }
 
 const goodColor = (c) => c === null || (typeof c === 'string' && HEX.test(c));
@@ -45,8 +70,9 @@ const sameKeys = (value, keys) => Object.keys(value).length === keys.length && k
 
 // A record from a file, a project or another browser: exactly what makeArt makes, or null.
 export function artFromStranger(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value) || !sameKeys(value, ['z', 'm', 'art'])) return null;
-  const { z, m, art } = value;
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !['z', 'm', 'art'].every((k) => k in value) || !Object.keys(value).every((k) => ['z', 'm', 'art', 'follow', 'along'].includes(k))) return null;
+  const { z, m, art, follow, along } = value;
+  if (('follow' in value && !goodFollow(follow, true)) || ('along' in value && !goodAlong(along))) return null;
   if (!Number.isInteger(z) || Math.abs(z) > MOST_Z) return null;
   if (!Array.isArray(m) || m.length !== 6 || m[0] !== 1 || m[1] !== 0 || m[2] !== 0 || m[3] !== 1) return null;
   if (!Number.isInteger(m[4]) || !Number.isInteger(m[5] / 2) || Math.abs(m[4]) > MOST_SHIFT || Math.abs(m[5]) > MOST_SHIFT) return null;

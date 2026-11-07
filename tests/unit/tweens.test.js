@@ -273,12 +273,12 @@ test("a shape's first key frame, and a Duplicate, set every part", () => {
   const frames = ball();
   frames[0].changes.delete(K);
   assert.deepEqual(shapeAt(frames, K, 6), frames[6].changes.get(K).cell);
-  assert.equal(setPartsAt(frames, K, 6).size, 9);
+  assert.equal(setPartsAt(frames, K, 6).size, 10);
   const dup = ball();
   dup[6].kind = 'duplicate';
   dup[0].changes.set(K, cellState(withShape(RED, { fill: GRADIENT }), 0, 0));
   assert.equal(shapeAt(dup, K, 9).fill, '#ff0000'); // frame 0's fill doesn't reach past the Duplicate
-  assert.equal(setPartsAt(dup, K, 6).size, 9);
+  assert.equal(setPartsAt(dup, K, 6).size, 10);
 });
 
 test("a shape first on a later frame shows itself, whatever another shape's key frames do", () => {
@@ -315,6 +315,24 @@ test('Start and End tween as shares, unclamped; a key frame can set only End', (
   assert.deepEqual(tweenPart('start', withShape(RED, { start: 0.2 }), RED, 0.5), { start: 0.1 });
   assert.equal(tweenPart('end', RED, withShape(RED, { end: 0.5 }), 2).end, 0);
   assert.equal(tweenPart('start', RED, withShape(RED, { start: 0.5 }), 3).start, 1.5);
+});
+
+test('Along tweens as a share, unclamped, and leaves follow alone', () => {
+  const frames = ball({ 0: 'linear' });
+  const link = { key: 'v:path', ride: 'end' };
+  frames[0].changes.set(K, cellState(withShape(RED, { follow: link }), 0, 0));
+  frames[10] = newFrame('blank');
+  frames[10].changes.set(K, cellState(withShape(RED, { follow: link, along: 1 }), 0, 0));
+  frames[10].parts = new Map([[K, new Set(['along'])]]);
+  frames[0].tweens = new Map([[K, eased('linear', ['along'])]]);
+  close(shapeAt(frames, K, 5).along, 0.5);
+  assert.deepEqual(shapeAt(frames, K, 5).follow, link);
+  frames[0].tweens = new Map([[K, eased('elastic', ['along'])]]);
+  assert.ok([1, 2, 3, 4].some((i) => shapeAt(frames, K, i).along > 1), 'Elastic goes past 1 on the way');
+  assert.deepEqual(tweenPart('along', RED, withShape(RED, { along: 0.5 }), 0.5), { along: 0.25 });
+  assert.equal(tweenPart('along', RED, withShape(RED, { along: 0.5 }), 3).along, 1.5);
+  const art = makeArt({ m: [1, 0, 0, 1, 0, 0], art: { cols: 1, rows: 1, cells: [[0, 'A', null, null]] } });
+  assert.equal(tweenShape(art, withShape(art, { along: 1 }), 0.5).along, 0.5);
 });
 
 test('Elastic springs past its end and settles there', () => {

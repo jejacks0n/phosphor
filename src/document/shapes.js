@@ -2,7 +2,7 @@
  * The vector layer's shapes, as data. A shape is a path of points with cubic Bézier handles, a fill and a
  * stroke, kept as shapes until it's baked or merged (docs/vector.md). Nothing here touches a canvas.
  *
- * Shape = { z, closed, points, fill, stroke, width, m, more?, rule?, cap?, join?, miter?, align?, start?, end? }, frozen:
+ * Shape = { z, closed, points, fill, stroke, width, m, more?, rule?, cap?, join?, miter?, align?, start?, end?, follow?, along?, guide? }, frozen:
  *   points  [[x, y, inX, inY, outX, outY, smooth], ...] in the shape's own (local) grid pixels; a handle is an
  *           offset from its point, 0, 0 for none; smooth (1 or 0): its handles stay in line when one moves
  *   closed  whether that outline closes
@@ -16,6 +16,10 @@
  *           the way it was drawn, open or closed (strokeSide); absent: centered on it (SVG's only way)
  *   start, end  the stretch of the outlines that's drawn, as shares of their length, 0 to 1 (to 1/10000); absent:
  *           0 and 1, all of it
+ *   follow  { key, ride?, face?, motion? }: the shape (another, a path) this one follows, and how: ride 'start' | 'end'
+ *           (absent: along it, on this shape's own keys), face true (turned the way the path runs), motion 'half' | 'cells'
+ *           (absent: smoothly); along, how far along that path it is, a share 0 to 1 (absent: 0); guide true: a path
+ *           that only guides, never drawn. follow and guide are the same on every frame; along is a part (parts.js)
  * The optional fields are written only when they aren't the default, so a shape that uses none of them is
  * exactly what it was before they existed (an older copy of Phosphor refuses a shape with a field it doesn't
  * know, and with it the whole file's shapes or a room's whole change). A point's index is flat: the first
@@ -37,7 +41,7 @@
  */
 
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { artBounds, artFromStranger, isArt, makeArt } from './artLayers.js';
+import { SHAPE_KEY, artBounds, artFromStranger, goodAlong, goodFollow, isArt, makeArt, makeFollow } from './artLayers.js';
 export const SHAPE_PREFIX = 'v:';
 export const MOST_SHAPES = 1000; // a frame's, from a file, a project or a room
 export const MOST_POINTS = 500;  // a shape's, across its outlines: the biggest still fits in one room message
@@ -48,10 +52,9 @@ const MOST_WIDTH = 64;
 const MOST_Z = 1e6;
 const MOST_M = 1e4;       // a transform's stretch
 const MOST_SHIFT = 1e7;   // and its move: turned or grown about a point far down the grid, a shape moves further than any point is
-const KEY = /^v:[A-Za-z0-9_-]{1,32}$/;
 const HEX = /^#[0-9a-f]{6}$/i;
 const FIELDS = ['z', 'closed', 'points', 'fill', 'stroke', 'width', 'm'];
-const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter', 'align', 'start', 'end'];
+const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter', 'align', 'start', 'end', 'follow', 'along', 'guide'];
 const RULES = ['evenodd'], CAPS = ['butt', 'square'], JOINS = ['miter', 'bevel'], ALIGNS = ['inside', 'outside', 'left', 'right']; // the values other than the default
 const GRADIENTS = ['linear', 'radial'];
 export const MOST_STOPS = 16;
@@ -110,8 +113,8 @@ function roundFill(fill) {
 
 const roundPoints = (points) => Object.freeze(points.map((p) => Object.freeze(p.slice(0, 6).map((v) => round(v, 2)).concat(p[6] ? 1 : 0))));
 
-export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align, start, end, art }) {
-  if (art) return makeArt({ z, m, art });
+export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align, start, end, follow, along, guide, art }) {
+  if (art) return makeArt({ z, m, art, follow, along });
   const shape = {
     z,
     closed: !!closed,
@@ -129,6 +132,9 @@ export function makeShape({ points, closed, fill = null, stroke = null, width = 
   if (align && align !== STROKE_DEFAULTS.align) shape.align = align;
   if (start && round(start, 4)) shape.start = round(start, 4);
   if (end !== undefined && round(end, 4) !== 1) shape.end = round(end, 4);
+  if (follow) shape.follow = makeFollow(follow);
+  if (along && round(along, 4)) shape.along = round(along, 4);
+  if (guide) shape.guide = true;
   return Object.freeze(shape);
 }
 
@@ -573,7 +579,7 @@ export function shapeFromStranger(value) {
   if ('art' in value) return artFromStranger(value);
   const keys = Object.keys(value);
   if (!FIELDS.every((f) => f in value) || !keys.every((k) => FIELDS.includes(k) || OPTIONAL.includes(k))) return null;
-  const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end } = value;
+  const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end, follow, along, guide } = value;
   if (!Number.isInteger(z) || Math.abs(z) > MOST_Z || typeof closed !== 'boolean') return null;
   if (!goodFill(fill) || !goodFill(stroke)) return null;
   if (!finite(width, MOST_WIDTH) || width < 0) return null;
@@ -592,10 +598,11 @@ export function shapeFromStranger(value) {
   if (('rule' in value && !RULES.includes(rule)) || ('cap' in value && !CAPS.includes(cap)) || ('join' in value && !JOINS.includes(join)) || ('align' in value && !ALIGNS.includes(align))) return null;
   if ('miter' in value && (!finite(miter, 100) || miter < 1 || miter === STROKE_DEFAULTS.miter)) return null;
   if (('start' in value && (!finite(start, 1) || start <= 0)) || ('end' in value && (!finite(end, 1) || end < 0 || end === 1))) return null; // shares, the defaults 0 and 1 left out
-  return makeShape({ z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end });
+  if (('follow' in value && !goodFollow(follow, false)) || ('along' in value && !goodAlong(along)) || ('guide' in value && guide !== true)) return null;
+  return makeShape({ z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end, follow, along, guide });
 }
 
-export const isGoodShapeKey = (key) => typeof key === 'string' && KEY.test(key);
+export const isGoodShapeKey = (key) => typeof key === 'string' && SHAPE_KEY.test(key);
 
 export const serializeShapes = (map) => [...map];
 

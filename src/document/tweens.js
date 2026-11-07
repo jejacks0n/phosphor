@@ -93,6 +93,7 @@ export function tweenPart(name, a, b, t, at = pivot(a)) {
     const rest = name === 'end' ? 1 : 0;
     return { [name]: lerp(a[name] ?? rest, b[name] ?? rest, t) };
   }
+  if (name === 'along') return { along: lerp(a.along ?? 0, b.along ?? 0, t) }; // a share, unclamped
   if (name === 'width') return { width: Math.max(0, lerp(a.width, b.width, t)) };
   return fieldsOf(late, name);
 }
