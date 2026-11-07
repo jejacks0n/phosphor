@@ -272,6 +272,29 @@ function handOn(project, at, handed) {
   }
 }
 
+// An edit on the frame showing undone (before: shapesBefore's): what the frame set of each shape it had of its own, as
+// the edit found it, keys and easings, so a key the edit changed or took away comes back as it was, though the value it
+// holds is what the frame would have without it (a hold), which a frame worked out from the shapes alone would drop.
+function putKeysBack(project, before) {
+  const back = before.filter(([, shape, held]) => shape && held);
+  if (!back.length) return;
+  const frame = project.currentFrame, reach = tweenReach(project.frames, project.frame);
+  const changes = new Map(frame.changes), parts = new Map(frame.parts ?? []), splits = new Set(frame.splits ?? []);
+  let { tweens, motions } = frame;
+  for (const [key, shape, held] of back) {
+    changes.set(key, cellState(shape, 0, 0));
+    if (held.parts) parts.set(key, held.parts);
+    else parts.delete(key);
+    tweens = withEases(tweens, key, held.eases ?? NOTHING);
+    motions = withMotion(motions, key, held.motion);
+    splits[held.split ? 'add' : 'delete'](key);
+  }
+  Object.assign(frame, { changes, parts: parts.size ? parts : null, tweens, motions, splits });
+  project.staleFrames(Math.min(reach, tweenReach(project.frames, project.frame)));
+  project.staleFrames(project.frame);
+  project.frames = [...project.frames]; // the bar's marks
+}
+
 const framesNow = (project) => ({ list: project.frames, states: project.frames.map(({ kind, changes, tweens, motions, parts, splits }) => ({ kind, changes, tweens, motions, parts, splits })), showing: project.currentFrame });
 const sameFrames = (a, b) => a.list === b.list && a.states.every((state, at) => Object.keys(state).every((name) => state[name] === b.states[at][name]));
 
@@ -710,11 +733,19 @@ export const animationActions = {
 
   // An edit's shapes on the frame showing, as they were before it: [key, shape | null] for those the frame had of its
   // own (null: none), [key] for those it only inherited, which it inherits again as they are by now (a tween, or a
-  // frame folded in, can have changed them since). Nothing on a still: the ledger's values are right there.
-  shapesBefore(keys, shapes) {
+  // frame folded in, can have changed them since). start: the frame's state as the edit began (beginEdit's); a shape
+  // it had of its own then is [key, shape, held], held what it set of it, for putShapesBack. Nothing on a still: the
+  // ledger's values are right there.
+  shapesBefore(keys, shapes, start) {
     if (!this.hasFrames) return [];
     const { inherits } = inheritance(this);
-    return keys.map((key) => (inherits(key, shapes.get(key)) ? [key] : [key, shapes.get(key) ?? null]));
+    return keys.map((key) => {
+      if (start?.changes.get(key)?.cell) {
+        const { parts, tweens, motions, splits } = start;
+        return [key, shapes.get(key), { parts: parts?.get(key) ?? null, eases: tweens?.get(key), motion: motions?.get(key), split: !!splits?.has(key) }];
+      }
+      return inherits(key, shapes.get(key)) ? [key] : [key, shapes.get(key) ?? null];
+    });
   },
 
   // Undoing or redoing an edit on a frame: its shapes as shapesBefore said, or as the edit left them, whatever the ledger
@@ -728,6 +759,7 @@ export const animationActions = {
       else next.delete(key);
     }
     this.shapes = next;
+    putKeysBack(this, before);
     this.refreshShapes();
   },
 

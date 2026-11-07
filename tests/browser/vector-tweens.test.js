@@ -426,7 +426,9 @@ test('undoing an edit on a frame puts back the shape it had then, though a frame
 // and keeps the same keys, and an undo step has two undos and two redos go back and forth through the movies; then
 // undo all the way, and redo, go back through the same movies. By default a few seeds and those that once
 // failed (11: an undo putting back a shape from before a frame folded in; 27, 30: a tween's frames redrawn from a
-// stale cache; 297: a hand key at the inherited value lost when another part's edit there was undone); VITE_FUZZ_SEEDS=30 runs seeds 1 to 30.
+// stale cache; 297: a hand key at the inherited value lost when another part's edit there was undone; 67: a hand key's
+// Transform moved and undone, the key lost; 234: the same, its motion lost; 235: the same of a Fill, its easing lost);
+// VITE_FUZZ_SEEDS=30 runs seeds 1 to 30.
 function rng(seed) {
   let a = seed >>> 0;
   return () => {
@@ -572,7 +574,7 @@ async function tweenFuzz(seed, steps = 40) {
 
 test('fuzz: frames, edits, tweens and Clears stay drawn right, and undo and redo go back through them', async () => {
   const count = Number(import.meta.env?.VITE_FUZZ_SEEDS ?? 0), failures = [];
-  for (const seed of count ? Array.from({ length: count }, (_, i) => i + 1) : [1, 2, 3, 11, 27, 30, 71, 78, 95, 167, 297]) {
+  for (const seed of count ? Array.from({ length: count }, (_, i) => i + 1) : [1, 2, 3, 11, 27, 30, 67, 71, 78, 95, 167, 234, 235, 297]) {
     const failure = await tweenFuzz(seed);
     if (failure) failures.push(failure);
   }

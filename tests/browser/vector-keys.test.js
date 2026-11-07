@@ -237,6 +237,36 @@ test('a hand key at the inherited value stays when another part edited on its fr
   expect(parts()).toEqual(['transform']);
 });
 
+// Undoing an edit on a frame puts back what the frame keyed of the shape before it, eased as it was, though a part's
+// value is then what it'd have without the key: a hand key edited, or a key an edit set back to that value.
+test("undoing an edit of a keyed part puts the frame's keys and easings back as they were", async () => {
+  const project = await animated();
+  const key = ball(project, 6, { 6: 24 });
+  project.showFrame(3);
+  project.addKey(key, 'transform'); // a hold, at the inherited value
+  project.setKeyEasing(key, [T(3)], 'elastic');
+  project.setKeyMotion(key, [T(3)], 'half');
+  const keyed = () => [[...(project.frames[3].parts?.get(key) ?? [])], project.frames[3].tweens?.get(key)?.get('transform'), project.frames[3].motions?.get(key)];
+  const moveTo = (to) => {
+    project.updateShapes([[key, transformed(project.shapes.get(key), translation(0, to - project.shapes.get(key).m[5]))]]);
+    project.noteFrame();
+  };
+  const want = ys(project, key);
+  moveTo(4);
+  project.undo();
+  project.noteFrame();
+  expect(keyed()).toEqual([['transform'], 'elastic', 'half']);
+  expect(ys(project, key)).toEqual(want);
+  project.redo();
+  project.noteFrame();
+  expect(keyed()).toEqual([['transform'], 'elastic', 'half']);
+  moveTo(0); // back to the inherited value: the edit takes the key away
+  expect(keyed()[0]).toEqual([]);
+  project.undo();
+  project.noteFrame();
+  expect(keyed()).toEqual([['transform'], 'elastic', 'half']);
+});
+
 // A split key (a frame keyed by an edit inside a tween) given back to the tween when the edit's undone, or the shape's
 // put back where the tween has it; a key action there is on purpose, so the frame stays the key it's given.
 test("a key moved onto a frame a split keyed stays when the split's part goes back where the tween puts it", async () => {
