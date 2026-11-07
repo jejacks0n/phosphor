@@ -62,7 +62,7 @@ test('only the parts that change are rows; + Add key offers the others and keys 
   await expect(panel(page).locator('[data-part]')).toHaveCount(1);
   expect(await keyFrames(page, 'transform')).toEqual([0, 6]);
   await panel(page).locator('.add-key .dropdown-trigger').click();
-  await expect(page.locator('.dropdown-content button')).toHaveText(['Outline', 'Fill', 'Stroke', 'Width', 'Style', 'Stack']);
+  await expect(page.locator('.dropdown-content button')).toHaveText(['Outline', 'Fill', 'Stroke', 'Width', 'Style', 'Start', 'End', 'Stack']);
   await menuItem(page, 'Fill').click();
   await expect(panel(page).locator('[data-part]')).toHaveCount(2);
   expect(await keyFrames(page, 'fill')).toEqual([0, 3]);
