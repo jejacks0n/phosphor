@@ -36,6 +36,15 @@ export const newLedger = (project) => markRaw(new Ledger({
   numbering: false,
   mostBytes: MOST_CHANGE_BYTES,
 }));
+// The shapes the shape layer draws: all of them, but the art layer stepped into (vector.js: enterArt), whose drawing is
+// the edit cells and paint while you're inside it.
+export function drawnShapes(project) {
+  const key = project._artInside?.key;
+  if (!key || !project.shapes.has(key)) return project.shapes;
+  const shapes = new Map(project.shapes);
+  shapes.delete(key);
+  return shapes;
+}
 // A color ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
 export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
 

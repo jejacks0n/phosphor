@@ -136,7 +136,7 @@ export function useAutosave() {
       };
       const parts = await project.projectParts();
       // Empty layers don't come back from a restore, so they'd make the same art read as different.
-      if (!project.hasPaint && !parts.baseBlob) {
+      if (!parts.settings.hasPaint && !parts.baseBlob) { // the drawing's, kept aside inside an art layer
         parts.paintBlob = null;
         parts.settings = { ...parts.settings, paintScale: null, baseScale: null };
       }

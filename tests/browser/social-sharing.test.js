@@ -1224,10 +1224,10 @@ test('an action added to the edit layer or selection is listed or known to only 
     expect([name, DRAWING_ACTIONS.includes(name) || READS.includes(name)]).toEqual([name, true]);
   }
   expect(DRAWING_ACTIONS).toEqual(expect.arrayContaining(['undo', 'redo']));
-  // The shapes' too; finishPen ends what's open (commitEdit, which a pause runs first), and the rest is how they're
-  // written and pressed. Pressing them into the base is the host's.
+  // The shapes' too; finishPen ends what's open (commitEdit, which a pause runs first), as leaveArt and commitArt do,
+  // and the rest is how they're written and pressed. Pressing them into the base is the host's.
   for (const name of Object.keys(vectorActions)) {
-    expect([name, DRAWING_ACTIONS.includes(name) || HOST_ONLY_ACTIONS.includes(name) || ['setShapes', 'refreshShapes', 'finishPen', 'pressedKeys', 'pressShapes'].includes(name)]).toEqual([name, true]);
+    expect([name, DRAWING_ACTIONS.includes(name) || HOST_ONLY_ACTIONS.includes(name) || ['setShapes', 'refreshShapes', 'finishPen', 'leaveArt', 'commitArt', 'loadArt', 'pressedKeys', 'pressShapes'].includes(name)]).toEqual([name, true]);
   }
   expect(HOST_ONLY_ACTIONS).toContain('mergeShapes');
   for (const name of [...Object.keys(mergingActions), ...Object.keys(baseLayerActions), 'pasteBase', 'clearEditLayer', 'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'updateCols', 'updateRows', 'setImageFromFile', 'setBlankCanvas', 'loadProject', 'restoreDocument', 'openParts', 'replaceImage', 'newDocument', 'clearImage']) {
