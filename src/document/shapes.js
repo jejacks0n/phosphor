@@ -53,7 +53,7 @@ const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter', 'align'];
 const RULES = ['evenodd'], CAPS = ['butt', 'square'], JOINS = ['miter', 'bevel'], ALIGNS = ['inside', 'outside', 'left', 'right']; // the values other than the default
 const GRADIENTS = ['linear', 'radial'];
 export const MOST_STOPS = 16;
-const KAPPA = 0.5523; // a cubic's handle length for a quarter circle, as a share of its radius
+export const KAPPA = 0.5523; // a cubic's handle length for a quarter circle, as a share of its radius
 
 export const IDENTITY = Object.freeze([1, 0, 0, 1, 0, 0]);
 export const isShapeKey = (key) => typeof key === 'string' && key.startsWith(SHAPE_PREFIX);
@@ -398,7 +398,7 @@ export function polygonShape(x0, y0, x1, y1, sides, style) {
 }
 
 // Segment i's four control points, local.
-function controls(points, i) {
+export function controls(points, i) {
   const a = points[i], b = points[(i + 1) % points.length];
   return [[a[0], a[1]], [a[0] + a[4], a[1] + a[5]], [b[0] + b[2], b[1] + b[3]], [b[0], b[1]]];
 }
