@@ -2,7 +2,8 @@
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { allPoints, apply, isGradient, outlines, withShape } from './shapes.js';
 import { snapPoint } from '../lib/vectorSnap.js';
-import { ALL_PARTS, PARTS, PART_FIELDS } from './parts.js';
+import { ALL_PARTS, PART_FIELDS, partsOf } from './parts.js';
+import { isArt, onCells } from './artLayers.js';
 
 export const EASINGS = Object.freeze(['linear', 'easeIn', 'easeOut', 'easeInOut', 'elastic']);
 // How a movie's tweens move shapes: smoothly, or by half cells or whole cells (as VECTOR's Snap to steps them).
@@ -79,10 +80,10 @@ const fieldsOf = (shape, name) => Object.fromEntries(PART_FIELDS[name].map((fiel
 
 // One part (parts.js) of shape a at t = 0 to b at t = 1 (t already eased), as fields; turned about at (a's middle by
 // default). What can't be part way (the outlines' structure, a solid color against a gradient, the stroke's style, the
-// fill rule, stacking) is a's until half way, then b's.
+// fill rule, stacking) is a's until half way, then b's. An art layer's move lands on the nearest whole cell.
 export function tweenPart(name, a, b, t, at = pivot(a)) {
   const late = t < 0.5 ? a : b;
-  if (name === 'transform') return { m: tweenMatrix(a.m, b.m, t, at) };
+  if (name === 'transform') return { m: isArt(a) ? onCells(tweenMatrix(a.m, b.m, t)) : tweenMatrix(a.m, b.m, t, at) };
   if (name === 'outline') {
     const mixed = tweenOutlines(a, b, t);
     return mixed ? { ...mixed, closed: a.closed, rule: late.rule } : fieldsOf(late, name);
@@ -95,7 +96,7 @@ export function tweenPart(name, a, b, t, at = pivot(a)) {
 // Shape a at t = 0 to b at t = 1, every part.
 export function tweenShape(a, b, t) {
   const at = pivot(a);
-  return withShape(t < 0.5 ? a : b, Object.assign({}, ...PARTS.map((name) => tweenPart(name, a, b, t, at))));
+  return withShape(t < 0.5 ? a : b, Object.assign({}, ...partsOf(a).map((name) => tweenPart(name, a, b, t, at))));
 }
 
 // Spans: a shape's key frames are the frames that own it (have its key in their changes). A tween runs from one key
@@ -136,17 +137,16 @@ export function setPartsAt(frames, key, i, life = lifeAt(frames, key, i)) {
   return frames[i].parts?.get(key) ?? ALL_PARTS;
 }
 
-// Each part's key frames in a shape's life, part to the frames that set it, in order.
+// Each part's key frames in a shape's life, part to the frames that set it, in order: the parts it has (partsOf).
 export function keyFramesOf(frames, key, life) {
   const sets = life.map((k) => setPartsAt(frames, key, k, life));
-  return new Map(PARTS.map((name) => [name, life.filter((_, j) => sets[j].has(name))]));
+  return new Map(partsOf(frames[life[0]].changes.get(key).cell).map((name) => [name, life.filter((_, j) => sets[j].has(name))]));
 }
 
 // Each part's tween around frame i in a shape's life, part to { a, b, easing }: a the last key frame at or before i
 // that sets it, b the next (undefined on its last), easing a's for it (null: it holds).
 function partTweens(frames, key, life, i, keyed = keyFramesOf(frames, key, life)) {
-  return new Map(PARTS.map((name) => {
-    const keys = keyed.get(name);
+  return new Map([...keyed].map(([name, keys]) => {
     let after = 0; // the first key after i, found by halves
     for (let most = keys.length; after < most;) {
       const mid = (after + most) >> 1;
@@ -166,9 +166,10 @@ function snappedMove(from, m, motion) {
 }
 
 // What frame i shows of a shape, part by part (parts.js), or null for none: each part from its key a (partTweens)
-// fading to its next as a's easing has it, the move snapped as the Transform's key's motion says. With nothing fading,
-// the key frame's own. life and keyed: the life around frame i and its key frames (keyFramesOf), when they're known
-// already, so frame after frame of one life doesn't walk it each time.
+// fading to its next as a's easing has it, the move snapped as the Transform's key's motion says (an art layer's is
+// always on whole cells, tweenPart's, whatever the motion). With nothing fading, the key frame's own. life and keyed:
+// the life around frame i and its key frames (keyFramesOf), when they're known already, so frame after frame of one
+// life doesn't walk it each time.
 // ponytail: each call walks the shape's life; per-shape lives worked out once per movie if huge movies lag.
 export function shapeAt(frames, key, i, life = lifeAt(frames, key, i), keyed = undefined) {
   if (!life.length) return null;
@@ -181,7 +182,7 @@ export function shapeAt(frames, key, i, life = lifeAt(frames, key, i), keyed = u
     if (name !== 'transform') continue;
     const motion = frames[a].motions?.get(key) ?? 'smooth';
     transformAt = a;
-    if (t && motion !== 'smooth') fields.m = snappedMove(stored(a), fields.m, motion);
+    if (t && motion !== 'smooth' && !isArt(stored(a))) fields.m = snappedMove(stored(a), fields.m, motion);
   }
   return own ? stored(at) : withShape(stored(transformAt), fields);
 }

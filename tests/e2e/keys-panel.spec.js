@@ -69,6 +69,30 @@ test('only the parts that change are rows; + Add key offers the others and keys 
   expect(await store(page, 'project', `(p) => [...p.frames[3].parts.get('${key}')]`)).toEqual(['fill']);
 });
 
+test("an art layer's panel lists Transform with X and Y, and + Add key offers only Stack", async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'VECTOR').click();
+  await animateSwitch(page).check();
+  const key = await store(page, 'project', (p) => p.addShape({ z: 0, m: [1, 0, 0, 1, 0, 0], art: { cols: 3, rows: 1, cells: [[0, 'A', '#ff0000', null]] } }));
+  for (let i = 0; i < 6; i++) await addFrame(page, 'Blank');
+  await store(page, 'project', `(p) => { p.showFrame(6); p.updateShapes([['${key}', { ...p.shapes.get('${key}'), m: [1, 0, 0, 1, 8, 16] }]]); p.noteFrame(); }`);
+  await scrubTo(page, 3);
+  await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
+  await expect(panel(page).locator('[data-part]')).toHaveCount(1);
+  expect(await keyFrames(page, 'transform')).toEqual([0, 6]);
+  await expect(row(page, 'transform').locator('input')).toHaveCount(2);
+  await panel(page).locator('.add-key .dropdown-trigger').click();
+  await expect(page.locator('.dropdown-content button')).toHaveText(['Stack']);
+  await panel(page).locator('.add-key .dropdown-trigger').click();
+  await diamond(page, 'transform', 0).click();
+  await panel(page).locator('.easing .dropdown-trigger').click();
+  await menuItem(page, 'Linear').click();
+  await expect(panel(page).locator('.motion .dropdown-trigger')).toBeDisabled(); // an art layer always moves by whole cells
+  await scrubTo(page, 2); // a third of the way: 2.67 columns and 5.33 grid pixels, rounded to whole cells
+  await expect(row(page, 'transform').getByRole('spinbutton', { name: /^X/ })).toHaveValue('3');
+  await expect(row(page, 'transform').getByRole('spinbutton', { name: /^Y/ })).toHaveValue('6');
+});
+
 test('clicking a diamond selects it and shows its frame; Shift-click adds one; empty lane deselects', async ({ page }) => {
   await ball(page);
   await diamond(page, 'transform', 6).click();

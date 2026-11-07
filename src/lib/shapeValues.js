@@ -1,7 +1,9 @@
 // The numbers the Keys panel shows for a shape's Transform, and what typing one does. X and Y are the middle of the
 // shape's own box (as it is before its transform) carried through the transform, in grid pixels: the point Turn and
 // Scale pivot on, so neither moves it. Turn is in degrees, and Scale is a width and a height in percent along the shape's own
-// axes (so a turned shape stretches along itself). Shear isn't shown, and an edit keeps it.
+// axes (so a turned shape stretches along itself). Shear isn't shown, and an edit keeps it. An art layer has X and Y
+// only: its top left corner, which sits on whole cells (X a column, Y an even grid pixel), a typed one rounded there.
+import { isArt } from '../document/artLayers.js';
 import { apply, localBounds, multiply, rotation, scaling, transformed, translation, withShape } from '../document/shapes.js';
 
 const round = (v, places = 0) => Math.round(v * 10 ** places) / 10 ** places;
@@ -13,9 +15,10 @@ function parts([a, b, c, d]) {
   return { angle: Math.atan2(b, a), sx, sy: sx ? (a * d - b * c) / sx : 0 };
 }
 
-const pivot = (shape) => apply(shape.m, ...middleOf(localBounds(shape)));
+const pivot = (shape) => (isArt(shape) ? { x: shape.m[4], y: shape.m[5] } : apply(shape.m, ...middleOf(localBounds(shape))));
 
 export function transformValues(shape) {
+  if (isArt(shape)) return pivot(shape);
   const { x, y } = pivot(shape), { angle, sx, sy } = parts(shape.m);
   return { x: round(x, 1), y: round(y, 1), turn: (round((angle * 180) / Math.PI) + 360) % 360, scaleX: round(sx * 100), scaleY: round(sy * 100) };
 }
@@ -24,7 +27,7 @@ export function transformValues(shape) {
 // scale of 0 would flatten it for good, Scale X is no flip (that's Scale Y's, with a turn), and a value as it already
 // reads is no change.
 export function withTransformValue(shape, name, value) {
-  if (!Number.isFinite(value) || value === transformValues(shape)[name]) return shape;
+  if (!Number.isFinite(value) || value === transformValues(shape)[name] || (isArt(shape) && name !== 'x' && name !== 'y')) return shape;
   const { angle, sx, sy } = parts(shape.m), at = pivot(shape);
   let next;
   if (name === 'x' || name === 'y') next = transformed(shape, name === 'x' ? translation(value - at.x, 0) : translation(0, value - at.y));

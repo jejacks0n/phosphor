@@ -5,6 +5,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePlayback } from '@/composables/usePlayback';
 import { allPoints, isGradient, stacked, strokeOf, withShape } from '@/document/shapes.js';
+import { isArt } from '@/document/artLayers.js';
 import { transformValues, withTransformValue } from '@/lib/shapeValues.js';
 
 // One Keys panel row's values on the frame showing: typing one changes the shape there, which keys that part there
@@ -21,6 +22,9 @@ const look = computed(() => (shape.value ? strokeOf(shape.value) : null));
 const pointCount = computed(() => allPoints(shape.value).length);
 const place = computed(() => stacked(project.shapes).findIndex(([key]) => key === props.shapeKey) + 1);
 const FIELDS = [['x', 0.5], ['y', 0.5], ['turn', 1], ['scaleX', 1], ['scaleY', 1]];
+// An art layer's: its corner, on whole cells (a column across, two grid pixels down).
+const ART_FIELDS = [['x', 1, 'artX'], ['y', 2, 'artY']];
+const fields = computed(() => (isArt(shape.value) ? ART_FIELDS : FIELDS));
 
 // What's being typed, until it's set or left: playing redraws the values with every frame, and a field bound to the
 // value alone would be written back over the typing.
@@ -54,9 +58,9 @@ const cased = (word) => word[0].toUpperCase() + word.slice(1);
 <template>
   <div v-if="shape" class="values">
     <template v-if="part === 'transform'">
-      <label v-for="[name, step] in FIELDS" :key="name" :title="t(`keysPanel.values.${name}Title`)">
+      <label v-for="[name, step, title = name] in fields" :key="name" :title="t(`keysPanel.values.${title}Title`)">
         {{ t(`keysPanel.values.${name}`) }}
-        <input type="number" :aria-label="t(`keysPanel.values.${name}Title`)" :step="step" :min="name === 'scaleX' ? 1 : undefined" :value="shown(name, values[name])" @input="typing[name] = $event.target.value" @change="set(name, $event)" @blur="typing[name] = null">
+        <input type="number" :aria-label="t(`keysPanel.values.${title}Title`)" :step="step" :min="name === 'scaleX' ? 1 : undefined" :value="shown(name, values[name])" @input="typing[name] = $event.target.value" @change="set(name, $event)" @blur="typing[name] = null">
       </label>
     </template>
     <label v-else-if="part === 'width'" :title="t('keysPanel.values.widthTitle')">

@@ -19,7 +19,7 @@ import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
 import { isShape, isShapeKey, sameShape, shapeFromStranger, isGoodShapeKey, MOST_SHAPES } from './shapes.js';
 import { EASINGS, MOTIONS, lifeAt, setPartsAt, shapeAt, strayEasings } from './tweens.js';
-import { ALL_PARTS, PARTS, samePart, withParts } from './parts.js';
+import { PARTS, partsOf, samePart, withParts } from './parts.js';
 import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf, maxFramesFor } from '../lib/Cells.js';
 
 export const FRAME_KINDS = ['blank', 'duplicate', 'wipe'];
@@ -141,9 +141,9 @@ export function foldDeleted(deleted, next) {
       parts.set(key, own);
       continue;
     }
-    const theirs = [...(deleted.parts?.get(key) ?? ALL_PARTS)].filter((name) => !own.has(name)), both = new Set([...own, ...theirs]);
+    const theirs = [...(deleted.parts?.get(key) ?? partsOf(cell))].filter((name) => !own.has(name)), both = new Set([...own, ...theirs]);
     changes.set(key, cellState(withParts(cell, was, theirs), 0, 0));
-    if (both.size < PARTS.length) parts.set(key, both);
+    if (both.size < partsOf(cell).length) parts.set(key, both);
     const eases = new Map(PARTS.flatMap((name) => {
       const easing = (own.has(name) ? next : theirs.includes(name) ? deleted : null)?.tweens?.get(key)?.get(name);
       return easing ? [[name, easing]] : [];
@@ -192,7 +192,7 @@ export const serializeFrames = (frames) => frames.map((frame, i) => {
   const eases = [...(frame.tweens ?? [])].filter(([key]) => changes.get(key)?.cell)
     .map(([key, map]) => [key, PARTS.filter((name) => map.has(name)).map((name) => [name, map.get(name)])]);
   const motions = [...(frame.motions ?? [])].filter(([key, motion]) => frame.tweens?.get(key)?.has('transform') && changes.get(key)?.cell && motion !== 'smooth');
-  const parts = [...(frame.parts ?? [])].filter(([key, set]) => changes.get(key)?.cell && set.size < PARTS.length)
+  const parts = [...(frame.parts ?? [])].filter(([key, set]) => changes.get(key)?.cell && set.size < partsOf(changes.get(key).cell).length)
     .map(([key, set]) => [key, PARTS.filter((name) => set.has(name))]);
   const stays = all.filter(([, state]) => state.stays).map(([key]) => key);
   return {
@@ -250,14 +250,15 @@ function readTweens(entries, changes) {
   return tweens.size ? tweens : null;
 }
 
-// A frame's easings, of the shapes it has, key to a Map of part to easing, or null: what can't be read (a part or
-// easing of another copy's, say) is left out.
+// A frame's easings, of the shapes it has, key to a Map of part to easing, or null: what can't be read (a part its
+// shape doesn't have, or an easing of another copy's, say) is left out.
 function readEases(entries, changes) {
   if (!Array.isArray(entries)) return null;
   const tweens = new Map();
   for (const entry of entries.slice(0, MOST_SHAPES)) {
     if (!Array.isArray(entry) || entry.length !== 2 || !isGoodShapeKey(entry[0]) || !changes.get(entry[0])?.cell || !Array.isArray(entry[1])) continue;
-    const eases = new Map(entry[1].slice(0, PARTS.length).filter((pair) => Array.isArray(pair) && PARTS.includes(pair[0]) && EASINGS.includes(pair[1])));
+    const has = partsOf(changes.get(entry[0]).cell);
+    const eases = new Map(entry[1].slice(0, PARTS.length).filter((pair) => Array.isArray(pair) && has.includes(pair[0]) && EASINGS.includes(pair[1])));
     if (eases.size) tweens.set(entry[0], eases);
   }
   return tweens.size ? tweens : null;
@@ -274,14 +275,15 @@ function readMotions(entries, tweens, movie) {
   return list.length ? new Map(list) : null;
 }
 
-// A frame's parts, of the shapes it has, or null: an entry that can't be read is left out.
+// A frame's parts, of the shapes it has, or null: an entry that can't be read (one naming a part its shape doesn't
+// have, partsOf) is left out.
 function readParts(entries, changes) {
   if (!Array.isArray(entries)) return null;
   const parts = new Map();
   for (const entry of entries.slice(0, MOST_SHAPES)) {
     if (!Array.isArray(entry) || entry.length !== 2 || !isGoodShapeKey(entry[0]) || !changes.get(entry[0])?.cell) continue;
-    const [key, names] = entry;
-    if (!Array.isArray(names) || names.length >= PARTS.length || !names.every((name) => PARTS.includes(name))) continue;
+    const [key, names] = entry, has = partsOf(changes.get(key).cell);
+    if (!Array.isArray(names) || names.length >= has.length || !names.every((name) => has.includes(name))) continue;
     parts.set(key, new Set(names));
   }
   return parts.size ? parts : null;
@@ -326,9 +328,9 @@ export function inferParts(frames, indices) {
       const life = lifeAt(frames, key, i), j = life.indexOf(i);
       if (j <= 0) continue;
       const before = frames[life[j - 1]].changes.get(key).cell, after = frames[life[j + 1]]?.changes.get(key).cell;
-      const set = PARTS.filter((name) => !samePart(cell, before, name) || (after && !samePart(cell, after, name)));
+      const set = partsOf(cell).filter((name) => !samePart(cell, before, name) || (after && !samePart(cell, after, name)));
       if (!set.length) set.push('transform'); // the same as both: it sets nothing new, but stays a key frame, its tweens kept
-      if (set.length < PARTS.length) (frame.parts ??= new Map()).set(key, new Set(set));
+      if (set.length < partsOf(cell).length) (frame.parts ??= new Map()).set(key, new Set(set));
     }
   }
 }

@@ -766,6 +766,8 @@
       "scaleY": "H",
       "xTitle": "X : où se trouve le milieu de la forme, en pixels de la grille",
       "yTitle": "Y : où se trouve le milieu de la forme, en pixels de la grille",
+      "artXTitle": "X : le bord gauche du calque d'art, en colonnes",
+      "artYTitle": "Y : le bord du haut du calque d'art, en pixels de la grille (deux par ligne)",
       "turnTitle": "Rotation, en degrés",
       "scaleXTitle": "Largeur, en pourcentage, selon les axes de la forme",
       "scaleYTitle": "Hauteur, en pourcentage, selon les axes de la forme (négatif la retourne)",

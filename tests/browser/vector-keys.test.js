@@ -5,6 +5,8 @@ import { createTestApp, loadImage } from '../support/app.js';
 import { rectShape, transformed, translation, withShape } from '@/document/shapes.js';
 import { ease } from '@/document/tweens.js';
 import { writeProject } from '@/document/projectIO.js';
+import { makeArt } from '@/document/artLayers.js';
+import { transformValues, withTransformValue } from '@/lib/shapeValues.js';
 
 async function animated() {
   const { project } = await createTestApp();
@@ -58,6 +60,29 @@ test('setKeyEasing with none drops the motion; setKeyMotion is only for an eased
   expect(project.frames[0].motions).toBe(null);
   project.undo();
   expect(project.frames[0].motions.get(key)).toBe('cells');
+});
+
+test('setKeyMotion leaves an art layer alone; its Transform values are X and Y in whole cells', async () => {
+  const project = await animated();
+  const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 0, 0], art: { cols: 3, rows: 1, cells: [[0, 'A', '#ff0000', null]] } }));
+  for (let i = 0; i < 6; i++) project.addFrame('blank');
+  project.showFrame(6);
+  project.updateShapes([[key, withShape(project.shapes.get(key), { m: [1, 0, 0, 1, 8, 16] })]]);
+  project.showFrame(0);
+  expect([...project.frames[6].parts.get(key)]).toEqual(['transform']);
+  project.setKeyEasing(key, [T(0)], 'linear');
+  const version = project.history.version;
+  project.setKeyMotion(key, [T(0)], 'half');
+  expect(project.history.version).toBe(version);
+  expect(project.frames[0].motions).toBe(null);
+  expect(project.frames.map((_, at) => project.resolvedOf(at).get(key).cell.m.slice(4))).toEqual([[0, 0], [1, 2], [3, 6], [4, 8], [5, 10], [7, 14], [8, 16]]);
+  const art = project.shapes.get(key);
+  expect(transformValues(art)).toEqual({ x: 0, y: 0 });
+  expect(withTransformValue(art, 'x', 3.6).m).toEqual([1, 0, 0, 1, 4, 0]);
+  expect(withTransformValue(art, 'y', 2.2).m).toEqual([1, 0, 0, 1, 0, 2]);
+  expect(withTransformValue(art, 'y', 3).m[5] % 2).toBe(0);
+  expect(withTransformValue(art, 'turn', 90)).toBe(art);
+  expect(withTransformValue(art, 'scaleX', 200)).toBe(art);
 });
 
 test("deleting a part's next key leaves the key before it last, its easing and motion gone; undo brings them back", async () => {

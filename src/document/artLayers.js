@@ -26,12 +26,14 @@ const encoder = new TextEncoder();
 export const artBytes = (shape) => encoder.encode(JSON.stringify(shape)).length;
 
 const whole = (v) => (Math.round(v) || 0); // no -0: it reads back as 0
+// A transform's move to the nearest whole cell (e whole, f even), and nothing else.
+export const onCells = (m) => Object.freeze([1, 0, 0, 1, whole(m[4]), 2 * whole(m[5] / 2)]);
 
 export function makeArt({ z = 0, m, art }) {
   const cells = art.cells.map((cell) => Object.freeze([...cell]));
   return Object.freeze({
     z,
-    m: Object.freeze([1, 0, 0, 1, whole(m[4]), 2 * whole(m[5] / 2)]),
+    m: onCells(m),
     art: Object.freeze({ cols: art.cols, rows: art.rows, cells: Object.freeze(cells) }),
   });
 }

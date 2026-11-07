@@ -51,7 +51,8 @@ screenful of detailed art); if the selection has more, Phosphor asks for a small
   shapes. Where two art layers overlap, the upper one's character shows, and a cell of it with no character leaves the
   lower one's. A wide character takes the next cell too, as it does on ANSI.
 - **Animation.** On an animation it starts on the frame you made it on, and a Blank frame carries it on, as it carries
-  shapes.
+  shapes. It keys and tweens its place and stacking as a shape does, a whole cell at a time
+  ([The Keys panel](animation.md#the-keys-panel)).
 - **Copies.** Copy and paste (Cmd/Ctrl+C and V on VECTOR) make an art layer of its own: changing one leaves the other
   as it was.
 

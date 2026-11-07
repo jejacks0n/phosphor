@@ -2,7 +2,8 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { makeShape, rectShape, rotation, transformed, translation, withShape } from '../../src/document/shapes.js';
-import { EASINGS, ease, lifeAt, setPartsAt, shapeAt, strayEasings, tweenBands, tweenPart, tweenReach, tweenShape, tweenedAt, workedOutAt } from '../../src/document/tweens.js';
+import { makeArt } from '../../src/document/artLayers.js';
+import { EASINGS, MOTIONS, ease, lifeAt, setPartsAt, shapeAt, strayEasings, tweenBands, tweenPart, tweenReach, tweenShape, tweenedAt, workedOutAt } from '../../src/document/tweens.js';
 import { PARTS } from '../../src/document/parts.js';
 import { movedKeys, partKeys } from '../../src/document/keys.js';
 import { EMPTY_STATE, cellState, newFrame } from '../../src/document/frames.js';
@@ -359,4 +360,23 @@ test('a shape turning as it moves is snapped by where its middle goes', () => {
   const m = shapeAt(frames, 'v:a', 1).m;
   close(m[0] * 2 + m[2] * 2 + m[4], 2); // its middle, (2, 2), down 3 rounded to 4: whole cells
   close(m[1] * 2 + m[3] * 2 + m[5], 6);
+});
+
+test('a tweened art layer steps a whole cell at a time, eased', () => {
+  const art = (e, f) => makeArt({ m: [1, 0, 0, 1, e, f], art: { cols: 3, rows: 1, cells: [[0, 'A', '#ff0000', null]] } });
+  const frames = Array.from({ length: 7 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
+  frames[0].changes.set('v:a', cellState(art(0, 0), 0, 0));
+  frames[0].tweens = new Map([['v:a', eased('linear', ['transform'])]]);
+  frames[6].changes.set('v:a', cellState(art(6, 12), 0, 0));
+  frames[6].parts = new Map([['v:a', new Set(['transform'])]]);
+  const at = (i) => shapeAt(frames, 'v:a', i).m;
+  assert.deepEqual([1, 2, 3, 4, 5].map((i) => at(i).slice(4)), [[1, 2], [2, 4], [3, 6], [4, 8], [5, 10]]);
+  // Between whole cells: the eased position rounded (e to whole, f to even), whatever the motion says.
+  frames[6].changes.set('v:a', cellState(art(8, 16), 0, 0));
+  const rounded = [[1, 2], [3, 6], [4, 8], [5, 10], [7, 14]];
+  for (const motion of MOTIONS) {
+    frames[0].motions = new Map([['v:a', motion]]);
+    assert.deepEqual([1, 2, 3, 4, 5].map((i) => at(i).slice(4)), rounded, motion);
+  }
+  assert.deepEqual(tweenPart('transform', art(0, 0), art(8, 16), 1 / 6).m, [1, 0, 0, 1, 1, 2]);
 });

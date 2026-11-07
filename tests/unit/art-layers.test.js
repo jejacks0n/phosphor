@@ -2,7 +2,9 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { MOST_ART_BYTES, artBytes, artCellOf, artFromStranger, makeArt } from '../../src/document/artLayers.js';
-import { isShape, makeShape, shapeBounds, shapeFromStranger } from '../../src/document/shapes.js';
+import { isShape, makeShape, shapeBounds, shapeFromStranger, withShape } from '../../src/document/shapes.js';
+import { cellState, deserializeFrames, newFrame, serializeFrames } from '../../src/document/frames.js';
+import { addedKey, listedParts, partKeys } from '../../src/document/keys.js';
 import { PARTS, partsOf } from '../../src/document/parts.js';
 
 test('artCellOf: half blocks and paint become ▄ halves, a missing color see-through', () => {
@@ -48,4 +50,33 @@ test('shapes.js hands art records on: shapeFromStranger, isShape, shapeBounds; p
   assert.deepEqual(shapeBounds(art), { x: 3, y: 6, w: 4, h: 4 });
   assert.deepEqual(partsOf(art), ['transform', 'z']);
   assert.deepEqual(partsOf(makeShape({ points: [[0, 0, 0, 0, 0, 0, 0]], closed: false })), PARTS);
+});
+
+test('an art layer keys only Transform and Stack', () => {
+  const K = 'v:art', A = makeArt({ m: [1, 0, 0, 1, 0, 0], art: { cols: 2, rows: 1, cells: [[0, 'A', null, '#ff0000']] } });
+  const frames = Array.from({ length: 8 }, (_, i) => newFrame(i ? 'blank' : 'wipe'));
+  const put = (at, shape, parts) => {
+    frames[at].changes.set(K, cellState(shape, 0, 0));
+    frames[at].parts = parts && new Map([[K, new Set(parts)]]);
+  };
+  put(0, A);
+  put(4, withShape(A, { m: [1, 0, 0, 1, 3, 4] }), ['transform']);
+  assert.deepEqual(listedParts(frames, K, 0), ['transform']);
+  assert.deepEqual([...partKeys(frames, K, 0).rows.keys()], ['transform', 'z']);
+  assert.equal(addedKey(frames, K, 'fill', 2), null);
+  put(4, withShape(A, { m: [1, 0, 0, 1, 3, 4] }), null); // a Blank key frame setting all of it: all of an art layer
+  assert.deepEqual(listedParts(frames, K, 0), ['transform', 'z']);
+  put(4, withShape(A, { m: [1, 0, 0, 1, 3, 4] }), ['transform']);
+  put(6, withShape(A, { m: [1, 0, 0, 1, 3, 4], z: 2 }), ['z']); // a restack
+  assert.deepEqual(listedParts(frames, K, 0), ['transform', 'z']);
+  put(7, withShape(A, { m: [1, 0, 0, 1, 5, 6], z: 2 }), ['transform', 'z']); // every part an art layer has
+  const json = JSON.parse(JSON.stringify({ frames: serializeFrames(frames), frame: 0, fps: 12 }));
+  assert.deepEqual(json.frames[4].parts, [[K, ['transform']]]);
+  assert.deepEqual(json.frames[7].parts, []);
+  const read = deserializeFrames(json, 20, 20).frames;
+  assert.deepEqual([...read[4].parts.get(K)], ['transform']);
+  assert.deepEqual([...read[6].parts.get(K)], ['z']);
+  assert.equal(read[7].parts, null);
+  json.frames[4].parts = [[K, ['transform', 'fill']]]; // no part an art layer has: left out, so all of it
+  assert.equal(deserializeFrames(json, 20, 20).frames[4].parts, null);
 });

@@ -131,6 +131,10 @@ and Stroke are color chips that open the color box, Outline and Style are text (
 the shape's place among the shapes, as "3 of 5". Type a value and press Enter, or leave the field, and the part is keyed
 on the frame showing with it, as if you had edited the shape there; undo takes it back.
 
+An [art layer](vector.md#art-layers) has only two parts, Transform and Stack, so those are its only rows and all **+ Add key**
+offers. Its Transform has just **X** and **Y**, its top left corner: X a column, Y in grid pixels, two to a line. A
+value typed between cells lands on the nearest whole cell.
+
 On a phone there's no values column and no **◀** or **▶**: a **◇** (lit **◆** where there's a key) ends each row and does
 what the one between them does on a wide screen. The top line is the **▾**, **+ Add key**, then the easing, the motion and
 Delete; the ruler, with **−** and **+**, has the line under it. The diamonds are taller, for a finger.
@@ -186,6 +190,9 @@ the tween leaving it, so it's off unless an eased Transform key is selected (one
 way down and glide back up. Splitting a tween keeps it on both halves. Only the move snaps: size,
 rotation, colors and the rest still tween smoothly, and key frames stay where you put them. Projects and autosave keep
 it.
+
+An art layer always moves a whole cell at a time, so its hand-drawn characters never smear: on each frame between its
+keys it sits on the whole cell nearest where its easing puts it. The motion menu is off for it.
 
 ## The ghost
 

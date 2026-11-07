@@ -766,6 +766,8 @@
       "scaleY": "H",
       "xTitle": "X: where the middle of the shape is, in grid pixels",
       "yTitle": "Y: where the middle of the shape is, in grid pixels",
+      "artXTitle": "X: the art layer's left edge, in columns",
+      "artYTitle": "Y: the art layer's top edge, in grid pixels (two to a line)",
       "turnTitle": "Turn, in degrees",
       "scaleXTitle": "Width, as a percentage, along the shape's own axes",
       "scaleYTitle": "Height, as a percentage, along the shape's own axes (negative flips it)",
