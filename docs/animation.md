@@ -240,7 +240,7 @@ keys it sits on the whole cell nearest where its easing puts it. The motion menu
 On a Blank frame, what's inherited shows dimmed on the PIXEL and ANSI tabs, in its own colors, so you can see what you're
 drawing over. What you draw on this frame shows at full strength, as soon as you draw it. The ghost is only there to draw by:
 it never plays and never reaches an export. What you draw stays solid even in exactly the color a cell inherited, and the
-project file and autosave keep it that way; undoing that drawing dims it again. **Ghost** on the bar opens a box: **Show the ghost** turns it off, and inherited cells show solid; the slider beside it sets how strongly they dim.
+project file and autosave keep it that way; undoing that drawing dims it again. **Ghost** on the bar opens a box: its checkbox turns it off, and inherited cells show solid; the slider beside it sets how strongly they dim.
 
 Cells the frame just before drew to stay ([Cells that stay on their frame](#cells-that-stay-on-their-frame)) aren't
 inherited, so they show as a picture of that frame instead, dimmed over this one wherever this frame shows nothing. It's
