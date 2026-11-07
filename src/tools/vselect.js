@@ -20,7 +20,7 @@ import { lifeAt } from '@/document/tweens.js';
 import { measure } from '@/document/pathLength.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
-import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
+import { shapeAt, shapesAt, shapesTouching } from '@/lib/shapeHits.js';
 import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
 import { centerOf, placedShapes } from '@/document/followers.js';
 import { DOUBLE_MS, DOUBLE_PX, handlePicker } from '@/tools/handlePick.js';
@@ -109,7 +109,7 @@ function reshape(project, drag, change) {
   project.updateShapes(changes);
 }
 
-// A share of a path held to it: 0 through 1 (on a closed path, round past either end), to 1/10000.
+// A share of a path held to it: 0 through 1 (on a closed path, around past either end), to 1/10000.
 function heldShare(path, share) {
   const held = !allClosed(path) ? Math.min(1, Math.max(0, share)) : share < 0 || share > 1 ? share - Math.floor(share) : share;
   return Math.round(held * 1e4) / 1e4;
@@ -125,11 +125,15 @@ function slideTo(project, drag, to) {
   project.updateShapes([[key, withShape(shape, { along: heldShare(path, measure(path).shareOf(near.segment, near.t)) })]]);
 }
 
-// Follow a path…'s pick: the key of the shape under pos that the picker could follow (one with an outline, not an art
-// layer, not a follower, not the picker), or null. Hits are where shapes show, a guide on its outline.
-export function pathAt(project, picker, pos, tol) {
-  const placed = placedShapes(project), key = shapeAt(placed, pos.x, pos.y, tol), shape = placed.get(key);
-  return key && key !== picker && !isArt(shape) && !shape.follow ? key : null;
+// Follow a path…'s pick: the key of the topmost shape under pos that the picker could follow (one with an outline, not
+// an art layer, not a follower, not the picker), seen through any that can't (a dot on a line's tip picks the line), or
+// null. placed: the shapes where they show (placedShapes), a guide hit on its outline.
+export function pathAt(placed, picker, pos, tol) {
+  for (const key of shapesAt(placed, pos.x, pos.y, tol)) {
+    const shape = placed.get(key);
+    if (key !== picker && !isArt(shape) && !shape.follow) return key;
+  }
+  return null;
 }
 
 // The scale handle i: which way it pulls ([-1, 0, 1] in x and y: left, none, right) and the handle opposite.
@@ -226,7 +230,7 @@ export default {
       return true;
     };
     if (workspace.pickingPath) { // Follow a path…: a click picks the path, or on empty canvas, ends the pick
-      const path = pathAt(project, workspace.pickingPath, pos, tol);
+      const path = pathAt(placed, workspace.pickingPath, pos, tol);
       if (path) project.followPath(workspace.pickingPath, path);
       if (path || !shapeAt(placed, pos.x, pos.y, tol)) workspace.pickingPath = null;
       return false;

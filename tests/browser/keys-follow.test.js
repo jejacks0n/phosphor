@@ -42,11 +42,14 @@ async function drawing({ follow = false, along = 0.5 } = {}) {
 
 const items = () => [...document.querySelectorAll('.dropdown-content button')];
 const item = (text) => items().find((b) => b.textContent.trim() === text);
+// A menu opened, and a moment passed: Vue skips a click's handlers on an element whose listener was attached in the same
+// millisecond the click began (Date.now), so an item clicked at once might not close the menu as a person's click does.
 async function open(host, selector) {
-  if (document.querySelector('.dropdown-content')) return; // open already
   host.querySelector(`${selector} .dropdown-trigger`).click();
   await nextTick();
+  await new Promise((resolve) => setTimeout(resolve, 2));
 }
+const menuOpen = () => !!document.querySelector('.dropdown-content');
 
 test('+ Add key lists Follow a path… for a plain shape, after the parts, and choosing it starts the pick', async () => {
   const { workspace, f } = await drawing();
@@ -100,6 +103,9 @@ test('the Along menu sets Moves, Face the path and Motion, and Stop following, e
     'Smoothly', 'By half cells', 'By whole cells', 'Stop following']);
   expect([...document.querySelectorAll('.dropdown-content .heading')].map((e) => e.textContent.trim())).toEqual(['Moves', 'Motion']);
   expect(item('Along it, on its own keys').getAttribute('aria-pressed')).toBe('true');
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  await nextTick();
+  expect(menuOpen()).toBe(false);
   const steps = [["With the line's end", { key: p, ride: 'end' }], ['Face the path', { key: p, ride: 'end', face: true }],
     ['By whole cells', { key: p, ride: 'end', face: true, motion: 'cells' }]];
   for (const [name, follow] of steps) {
@@ -107,6 +113,7 @@ test('the Along menu sets Moves, Face the path and Motion, and Stop following, e
     await open(host, '.along');
     item(name).click();
     await nextTick();
+    expect(menuOpen()).toBe(false);
     expect(project.shapes.get(f).follow).toEqual(follow);
     expect(project.history.version).toBe(version + 1);
   }
@@ -117,6 +124,7 @@ test('the Along menu sets Moves, Face the path and Motion, and Stop following, e
   const version = project.history.version;
   item('Stop following').click();
   await nextTick();
+  expect(menuOpen()).toBe(false);
   expect(project.shapes.get(f)).not.toHaveProperty('follow');
   expect(project.history.version).toBe(version + 1);
   expect(host.querySelector('[data-part="along"]')).toBeNull();
@@ -184,4 +192,16 @@ test('moving with the line\'s end, the Along value is the tip\'s percent, and of
   const input = (await mount(KeyValues, { part: 'along', shapeKey: f })).querySelector('input');
   expect(input.value).toBe('70');
   expect(input.disabled).toBe(true);
+});
+
+test('deleting the picker mid-pick ends the pick, adding no history of its own', async () => {
+  const { project, workspace, f } = await drawing();
+  await mount(KeysPanel);
+  workspace.pickingPath = f;
+  await nextTick();
+  project.deleteShapes([f]);
+  const version = project.history.version;
+  await nextTick();
+  expect(workspace.pickingPath).toBe(null);
+  expect(project.history.version).toBe(version);
 });

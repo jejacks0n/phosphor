@@ -57,10 +57,10 @@ const rows = computed(() => {
   const listed = listedParts(project.frames, shapeKey.value, lifeStart.value);
   return PARTS.filter((part) => listed.includes(part) || (part === 'along' && shape.value?.follow)).map((part) => ({ part, keys: keys.value.rows.get(part) }));
 });
-// The parts + Add key offers: those without a row yet; Along only for a shape or art layer that follows a path.
+// The parts + Add key offers: those without a row yet (a follower's Along always has one).
 const unlisted = computed(() => {
   const one = keys.value && shape.value;
-  return one ? partsOf(one).filter((part) => (part !== 'along' || one.follow) && !rows.value.some((row) => row.part === part)) : [];
+  return one ? partsOf(one).filter((part) => part !== 'along' && !rows.value.some((row) => row.part === part)) : [];
 });
 // Follow a path…: one shape or art layer selected that follows nothing.
 const canFollow = computed(() => !!keys.value && !!shape.value && !shape.value.follow
@@ -764,8 +764,33 @@ div.row > button.here.on {
   div.row {
     height: 26px;
   }
-  .add-key button.follow, .along button { /* tall enough to tap */
+  .add-key button, .along button { /* every item tall enough to tap, and one height */
     min-height: 40px;
+  }
+  /* The Along menu's name and Guide, in rows too short for a finger: a 40px touch area around each, past the row. */
+  div.row[data-part='along'] div.lead {
+    overflow: visible;
+  }
+  .along :deep(.dropdown-trigger), button.guide {
+    position: relative;
+    max-width: 100%;
+  }
+  .along :deep(.dropdown-trigger)::after, button.guide::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+  }
+  .along :deep(.dropdown-trigger)::after { /* 20px, from 15px over it to 6px under (the panel's padding) */
+    top: -15px;
+    bottom: -6px;
+  }
+  button.guide {
+    z-index: 1; /* over the ruler's line, which a flex order paints later */
+  }
+  button.guide::after { /* 26px, from the panel's top edge down into the ruler's line */
+    top: -6px;
+    bottom: -10px;
   }
   div.row div.lead {
     padding: 0 0 0 6px;
