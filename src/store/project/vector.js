@@ -6,6 +6,7 @@
 import { markRaw, watch } from 'vue';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
+import { usePlayback } from '@/composables/usePlayback.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { IDENTITY, MOST_POINTS, MOST_SHAPES, allClosed, apply, isGradient, joined, multiply, makeShape, newShapeKey, sameShape, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
 import { artBounds, artCellOf, artFromStranger, isArt } from '@/document/artLayers.js';
@@ -166,8 +167,10 @@ export const vectorActions = {
   // then one step changing the layer on every frame it's on (commitArt), and undo goes back no further than here.
   // What's pending is committed first; the selection and any float go. Leaving the ANSI tab steps out. False for a key
   // that's no art layer, when you're inside one already, or in a room: until the room locks a layer while someone
-  // draws in it (the art layer locks task lifts this).
+  // draws in it (the art layer locks task lifts this). An animation playing is paused first, on the frame showing, as
+  // a press would, which would otherwise step out again.
   enterArt(key) {
+    usePlayback().pause();
     this.ensureLayer();
     if (!isArt(this.shapes.get(key)) || !this.paintLayer || this._artInside || this._sharing) return false;
     this.commitPending();

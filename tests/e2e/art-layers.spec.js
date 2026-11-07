@@ -87,7 +87,7 @@ test('the frame controls and the sliders are off while inside', async ({ page })
   await expect(bar.getByRole('slider', { name: 'Frame' })).toBeDisabled();
   await expect(page.getByRole('slider', { name: 'Brightness' })).toBeDisabled();
   await page.keyboard.press('n');
-  expect(await store(page, 'project', (p) => p.frames.length)).toBe(1);
+  await expect.poll(() => store(page, 'project', (p) => p.frames.length)).toBe(1);
   expect(await inside(page)).toBe(true);
 
   await page.getByRole('button', { name: 'Done' }).click();
