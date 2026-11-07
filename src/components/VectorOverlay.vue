@@ -47,7 +47,7 @@ const box = computed(() => {
   const b = selectionBox(project.shapes, selected.value);
   if (!b) return null;
   const { handles, top, knob } = boxHandles(b, props.unit);
-  return { corners: b.corners.map(px).map(({ x, y }) => `${x},${y}`).join(' '), handles: handles.map(px), top: px(top), knob: px(knob) };
+  return { corners: b.corners.map(px).map(({ x, y }) => `${x},${y}`).join(' '), handles: handles.map(px), top: px(top), knob: knob && px(knob) };
 });
 
 const points = computed(() => {
@@ -97,8 +97,10 @@ const r = computed(() => handleRadius() / 2 + 1);
       <path v-for="(d, i) in outlines" :key="i" :d="d" class="outline"/>
       <template v-if="box">
         <polygon :points="box.corners" class="box"/>
-        <line :x1="box.top.x" :y1="box.top.y" :x2="box.knob.x" :y2="box.knob.y" class="box"/>
-        <circle :cx="box.knob.x" :cy="box.knob.y" :r="r" class="handle"/>
+        <template v-if="box.knob">
+          <line :x1="box.top.x" :y1="box.top.y" :x2="box.knob.x" :y2="box.knob.y" class="box"/>
+          <circle :cx="box.knob.x" :cy="box.knob.y" :r="r" class="handle"/>
+        </template>
         <rect v-for="(h, i) in box.handles" :key="i" :x="h.x - r" :y="h.y - r" :width="2 * r" :height="2 * r" class="handle"/>
       </template>
       <template v-if="points">

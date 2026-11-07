@@ -5,9 +5,10 @@
 // Node tool (vnode.js). One shape selected, its gradient's ends and stops show and drag as the Node tool's do
 // (gradientHandles.js; a click on a stop selects it), ahead of the box's handles where they're near (handlePick: a
 // click again takes the next one there). Each drag is one edit, worked out each move from the shapes as they were at the press,
-// so nothing drifts. Keys: arrows nudge a grid pixel (Shift: 10), Delete or Backspace deletes (the selected stop,
+// so nothing drifts. An art layer moves by whole cells (a column across, a line down, whatever Snap to says) and has no size or turn handles, alone or with other shapes. Keys: arrows nudge a grid pixel (Shift: 10; an art layer's a cell), Delete or Backspace deletes (the selected stop,
 // or else the shapes), Esc lets the stop go or deselects.
 import { t } from '@/i18n/index.js';
+import { isArt } from '@/document/artLayers.js';
 import { apply, curveBounds, invert, localBounds, multiply, rotation, scaling, translation, transformed, withShape } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
@@ -22,29 +23,32 @@ const SNAP = Math.PI / 12; // 15°
 export const handleRadius = () => (matchMedia('(pointer: coarse)').matches ? 14 : 6);
 
 // The selection's box in grid pixels: one shape's own (turned with it), or several's together, square to the
-// grid. corners run top-left, top-right, bottom-right, bottom-left.
+// grid. corners run top-left, top-right, bottom-right, bottom-left. cells: an art layer is in it, so it only moves.
 export function selectionBox(shapes, keys) {
   const chosen = keys.map((key) => shapes.get(key)).filter(Boolean);
   if (!chosen.length) return null;
+  const cells = chosen.some(isArt);
   if (chosen.length === 1) {
     const shape = chosen[0], { x0, y0, x1, y1 } = localBounds(shape);
     const corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => apply(shape.m, x, y));
-    return { corners, center: apply(shape.m, (x0 + x1) / 2, (y0 + y1) / 2), local: { m: shape.m, x0, y0, x1, y1 } };
+    return { corners, center: apply(shape.m, (x0 + x1) / 2, (y0 + y1) / 2), local: { m: shape.m, x0, y0, x1, y1 }, cells };
   }
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const shape of chosen) {
     const b = curveBounds(shape); // round the curves, not their handles, as one shape's box is
     x0 = Math.min(x0, b.x0); y0 = Math.min(y0, b.y0); x1 = Math.max(x1, b.x1); y1 = Math.max(y1, b.y1);
   }
-  return { corners: [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }], center: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, local: null };
+  return { corners: [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }], center: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, local: null, cells };
 }
 
 const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 
 // The 8 handles (corners, then the edges' middles: top, right, bottom, left) and the knob, in grid pixels.
 // unit: CSS px per grid pixel, so the knob sits KNOB CSS px out from the top edge, along the box's own up.
+// A box with an art layer in it has none: no handles and no knob (knob null).
 export function boxHandles(box, unit) {
   const [tl, tr, br, bl] = box.corners, top = mid(tl, tr);
+  if (box.cells) return { handles: [], top, knob: null };
   const handles = [tl, tr, br, bl, top, mid(tr, br), mid(br, bl), mid(bl, tl)];
   let ux = (top.x - box.center.x) * unit.x, uy = (top.y - box.center.y) * unit.y;
   const length = Math.hypot(ux, uy);
@@ -159,7 +163,7 @@ export default {
       // The box's handles and the knob, and (one shape) its gradient's, which come first; or a click again's.
       const { handles, knob } = boxHandles(box, unit), letStop = () => { workspace.vectorStop = null; };
       const d = (p) => Math.hypot((p.x - pos.x) * unit.x, (p.y - pos.y) * unit.y);
-      const own = [{ id: 'knob', d: d(knob), take: () => at('rotate'), picked: letStop }, ...handles.map((h, handle) => ({ id: `h${handle}`, d: d(h), take: () => at('scale', { handle, grip: h }), picked: letStop }))];
+      const own = box.cells ? [] : [{ id: 'knob', d: d(knob), take: () => at('rotate'), picked: letStop }, ...handles.map((h, handle) => ({ id: `h${handle}`, d: d(h), take: () => at('scale', { handle, grip: h }), picked: letStop }))];
       if (pick.press([...own.filter((c) => c.d <= radius), ...gradientDrag.candidates(ctx, pos, radius)], pos, unit)) return true;
     } else pick.reset();
     const hit = shapeAt(project.shapes, pos.x, pos.y, tol);
@@ -199,6 +203,11 @@ export default {
     const snap = snapMode(workspace);
     if (drag.kind === 'move') {
       const end = shift ? snappedEnd(drag.from, to) : to;
+      if (drag.box.cells) {
+        // An art layer is on whole cells: the pointer's way, in whole cells, whatever Snap to says.
+        const by = snapPoint({ x: end.x - drag.from.x, y: end.y - drag.from.y }, 'cells');
+        return reshape(project, drag, (shape) => transformed(shape, translation(by.x, by.y)).m);
+      }
       // Snap to: the box's corner nearest the grab on the grid (along Shift's line), the shapes with it.
       const corner = drag.box.corners.reduce((a, b) => (Math.hypot(b.x - drag.from.x, b.y - drag.from.y) < Math.hypot(a.x - drag.from.x, a.y - drag.from.y) ? b : a));
       const moved = { x: corner.x + end.x - drag.from.x, y: corner.y + end.y - drag.from.y };
@@ -246,8 +255,8 @@ export default {
       return true;
     }
     if (dx === undefined) return false;
-    const step = event.shiftKey ? 10 : 1;
-    project.updateShapes(keys.map((key) => [key, transformed(project.shapes.get(key), translation(dx * step, dy * step))]));
+    const step = event.shiftKey ? 10 : 1, tall = keys.some((key) => isArt(project.shapes.get(key))) ? 2 : 1; // a cell is two grid pixels tall
+    project.updateShapes(keys.map((key) => [key, transformed(project.shapes.get(key), translation(dx * step, dy * step * tall))]));
     return true;
   },
 };
