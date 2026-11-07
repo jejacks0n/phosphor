@@ -343,7 +343,7 @@ export const mergingActions = {
       merged.push(this.mergeCellOf(col, row));
     }
     if (rect && !merged.length && !pressed && !this.paintLayer.hasPaintIn(rect)) return; // nothing drawn inside: no empty undo step
-    const paintedPins = [...this.baseRecords.pins.keys()].map(parseKey)
+    const paintedPins = [...(pressed?.baseRecords ?? this.baseRecords).pins.keys()].map(parseKey)
       .filter(({ col, row }) => inRect(col, row) && !this.editCells.has(cellKey(col, row)) && this.cellHasPaint(col, row))
       .map(({ col, row }) => ({ col, row, char: shownChar(col, row) ?? '▄' }));
 

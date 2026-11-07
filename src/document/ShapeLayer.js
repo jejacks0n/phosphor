@@ -131,8 +131,9 @@ export default class ShapeLayer {
   }
 
   // The base layer with the shapes keys (a Set) pressed in, drawn as this layer draws them (alone, then over
-  // the base's bytes), so nothing shown changes: { canvas, covered, pins }, covered the cells ({ col, row }) they draw
-  // in, pins the characters ({ col, row, char }) their art layers show: where no pressed shape reaches over them.
+  // the base's bytes), so nothing shown changes: { canvas, covered, pins }. covered: the cells ({ col, row }) a pressed
+  // shape reaches over, where the converter picks (a base pin there goes); pins: the characters ({ col, row, char })
+  // their art layers show, where nothing pressed is over them. An art cell with no character leaves a pin under it.
   pressed(keys) {
     const base = this.#base, k = base.scale, { width, height } = base.canvas;
     const own = newCanvas(width, height), ownCtx = ctx2d(own);
@@ -140,23 +141,13 @@ export default class ShapeLayer {
     const canvas = newCanvas(width, height), ctx = ctx2d(canvas);
     ctx.putImageData(ctx2d(base.canvas).getImageData(0, 0, width, height), 0, 0);
     ctx.drawImage(own, 0, 0);
-    const { data } = ownCtx.getImageData(0, 0, width, height), covered = [];
-    offHalfSteps(ctx, data, width, height);
-    for (let row = 0; row < charRowsOf(base.rows) && 2 * k * (row + 1) <= height; row++) {
-      for (let col = 0; col < base.cols && k * (col + 1) <= width; col++) {
-        let any = false;
-        for (let py = 2 * k * row; py < 2 * k * (row + 1) && !any; py++) {
-          for (let px = k * col; px < k * (col + 1); px++) if (data[(py * width + px) * 4 + 3]) { any = true; break; }
-        }
-        if (any) covered.push({ col, row });
-      }
-    }
-    return { canvas, covered, pins: this.#pressedPins(keys) };
+    offHalfSteps(ctx, ownCtx.getImageData(0, 0, width, height).data, width, height);
+    return { canvas, ...this.#pressedChars(keys) };
   }
 
   // The characters the art layers among keys show, worked out as #draw does (a shape stacked above has the converter
-  // pick). The cells they give are read back from the base's pixels: their halves' colors, or what is under.
-  #pressedPins(keys) {
+  // pick): { pins, covered } for pressed. The pins' colors are the base's pixels, which hold their halves' colors.
+  #pressedChars(keys) {
     const base = this.#base, k = base.scale, { width, height } = base.canvas, cols = base.cols, rows = charRowsOf(base.rows);
     const chars = [], scratch = ctx2d(newCanvas(width, height)), whole = { x: 0, y: 0, w: width, h: height };
     let band = false;
@@ -181,9 +172,9 @@ export default class ShapeLayer {
       }
     }
     flush();
-    const pins = [];
-    chars.forEach((char, i) => { if (char) pins.push({ col: i % cols, row: Math.floor(i / cols), char }); });
-    return pins;
+    const pins = [], covered = [];
+    chars.forEach((char, i) => (char === null ? covered : pins).push({ col: i % cols, row: Math.floor(i / cols), ...(char && { char }) }));
+    return { pins, covered };
   }
 
   changedSince(version) {
