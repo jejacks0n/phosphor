@@ -13,13 +13,17 @@
 import { MAX_COLS, MAX_LINES } from '../lib/Cells.js';
 import { graphemes } from '../lib/CharWidth.js';
 
-export const MOST_ART_BYTES = 60000; // a record from a stranger, as JSON: it fits in one room message
+export const MOST_ART_BYTES = 60000; // a record as JSON, in UTF-8 bytes: it fits in one room message
 const MOST_Z = 1e6;
 const MOST_SHIFT = 1e7;
 const HEX = /^#[0-9a-f]{6}$/i;
 const HALVES = new Set([' ', '█', '▀', '▄']);
 
 export const isArt = (shape) => !!shape && !!shape.art;
+
+const encoder = new TextEncoder();
+// The record's size as it travels: its JSON in UTF-8 bytes.
+export const artBytes = (shape) => encoder.encode(JSON.stringify(shape)).length;
 
 const whole = (v) => (Math.round(v) || 0); // no -0: it reads back as 0
 
@@ -52,7 +56,7 @@ export function artFromStranger(value) {
     if (!goodCell(cell, cols * rows) || cell[0] <= last) return null;
     last = cell[0];
   }
-  if (JSON.stringify(value).length > MOST_ART_BYTES) return null;
+  if (artBytes(value) > MOST_ART_BYTES) return null;
   return makeArt(value);
 }
 

@@ -1,7 +1,7 @@
 // Art layers' record: a block of hand-drawn cells on the vector layer.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { artCellOf, artFromStranger, makeArt } from '../../src/document/artLayers.js';
+import { MOST_ART_BYTES, artBytes, artCellOf, artFromStranger, makeArt } from '../../src/document/artLayers.js';
 import { isShape, makeShape, shapeBounds, shapeFromStranger } from '../../src/document/shapes.js';
 import { PARTS, partsOf } from '../../src/document/parts.js';
 
@@ -31,6 +31,15 @@ test('artFromStranger takes exactly what makeArt makes, and nothing past MOST_AR
   assert.equal(artFromStranger({ ...good, points: [] }), null);
   const big = { cols: 300, rows: 100, cells: Array.from({ length: 6000 }, (_, i) => [i, 'A', '#123456', '#654321']) };
   assert.equal(artFromStranger({ z: 0, m: [1, 0, 0, 1, 0, 0], art: big }), null);
+});
+test('artFromStranger counts UTF-8 bytes, not characters', () => {
+  const cells = Array.from({ length: 2700 }, (_, i) => [i, '字', null, null]);
+  const wide = { z: 0, m: [1, 0, 0, 1, 0, 0], art: { cols: 300, rows: 100, cells } };
+  assert.ok(JSON.stringify(wide).length <= MOST_ART_BYTES); // it fits by characters
+  assert.ok(artBytes(wide) > MOST_ART_BYTES); // and not by bytes
+  assert.equal(artFromStranger(wide), null);
+  const narrow = { ...wide, art: { ...wide.art, cells: cells.slice(0, 100) } };
+  assert.deepEqual(artFromStranger(narrow), makeArt(narrow));
 });
 test('shapes.js hands art records on: shapeFromStranger, isShape, shapeBounds; partsOf', () => {
   const art = makeArt({ m: [1, 0, 0, 1, 3, 6], art: { cols: 4, rows: 2, cells: [[0, 'A', null, null]] } });
