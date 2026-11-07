@@ -8,7 +8,7 @@ import { BASE, EMPTY_STATE, cellState, dropStrays, foldDeleted, frameDiff, isEmp
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
-import { isShapeKey, sameShape } from '@/document/shapes.js';
+import { isShapeKey, sameShape, withShape } from '@/document/shapes.js';
 import { isArt } from '@/document/artLayers.js';
 import { MOTIONS, setPartsAt, shapeAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
 import { changedParts, partsOf, samePart } from '@/document/parts.js';
@@ -311,6 +311,19 @@ function putKeys(project, key, patch) {
     project.staleFrames(Math.min(at, was, tweenReach(project.frames, at))); // and after
     project.staleFrames(at);
   }
+  project.frames = [...project.frames];
+}
+
+// An art layer's drawing (art) put in every copy of its record the frames hold (each key frame keeps its own, and a
+// Duplicate's is its own too): one piece, the same on every frame it's on. What it reaches redrawn; its keys, easings
+// and splits as they were.
+function putArt(project, key, art) {
+  project.frames.forEach((frame, at) => {
+    const cell = frame.changes.get(key)?.cell;
+    if (!isArt(cell)) return;
+    frame.changes = new Map(frame.changes).set(key, cellState(withShape(cell, { art }), 0, 0));
+    project.staleFrames(at);
+  });
   project.frames = [...project.frames];
 }
 
@@ -626,6 +639,15 @@ export const animationActions = {
     keyStep(this, shapeKey, (frames) => keyEntries(frames, shapeKey, refs, (part, k) => part === 'transform' && !!k.easing && k.motion !== motion, (entry) => {
       entry.motion = motion;
     }));
+  },
+
+  // An art layer's drawing set on every frame it's on (putArt): one undo step. setArtContent's, with frames.
+  setFramesArt(shapeKey, art) {
+    settleFrame(this, { keys: true });
+    frameStep(this, () => {
+      putArt(this, shapeKey, art);
+      return this.currentFrame;
+    });
   },
 
   // The keys refs name go, but the shape's first and fixed ones (deletedKeys): one undo step.

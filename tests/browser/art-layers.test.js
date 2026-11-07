@@ -3,7 +3,8 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { isArt, makeArt, MOST_ART_BYTES, artBytes } from '@/document/artLayers.js';
-import { rectShape } from '@/document/shapes.js';
+import { rectShape, withShape } from '@/document/shapes.js';
+import { partKeys } from '@/document/keys.js';
 import { toastMessage } from '@/composables/useToast';
 import vnode from '@/tools/vnode.js';
 import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
@@ -310,4 +311,83 @@ test('the Node tool passes over an art layer, and a double-click on one in Selec
   expect(workspace.activeTool).toBe('vselect');
   expect(workspace.vectorSelected).toEqual([key]);
   expect(workspace.vectorPoints).toBe(null);
+});
+
+// An art layer on frame 0 of frames 0 to 7: moved to (8, 16) on frame 6 with a linear tween there from frame 0, a Stack
+// key on frame 4, and frame 7 a Duplicate of frame 6 (its own copy of the record); frame 0 shows.
+async function tweenedArt() {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 0, 0], art: { cols: 2, rows: 1, cells: [[0, 'A', RED, null]] } }));
+  for (let i = 0; i < 6; i++) project.addFrame('blank');
+  project.updateShapes([[key, withShape(project.shapes.get(key), { m: [1, 0, 0, 1, 8, 16] })]]);
+  project.addFrame('duplicate');
+  project.showFrame(4);
+  project.addKey(key, 'z');
+  project.showFrame(0);
+  project.setKeyEasing(key, [{ part: 'transform', at: 0 }], 'linear');
+  return { project, key };
+}
+const artOn = (project, key) => project.frames.map((_, at) => project.resolvedOf(at).get(key)?.cell.art);
+const placesOf = (project, key) => project.frames.map((_, at) => project.resolvedOf(at).get(key)?.cell.m.slice(4));
+const keysOf = (project, key) => JSON.stringify([...partKeys(project.frames, key, 0).rows]);
+
+test('setArtContent changes an art layer on every frame it is on, keys kept, one undo step', async () => {
+  const { project, key } = await tweenedArt();
+  const old = project.shapes.get(key).art, places = placesOf(project, key), keys = keysOf(project, key);
+  const art = { cols: 2, rows: 1, cells: [[0, 'B', RED, null], [1, 'C', null, '#0000ff']] };
+  expect(places).toEqual([[0, 0], [1, 2], [3, 6], [4, 8], [5, 10], [7, 14], [8, 16], [8, 16]]);
+  project.showFrame(3);
+  const version = project.history.version;
+  expect(project.setArtContent(key, art)).toBe(true);
+  expect(project.history.version).toBe(version + 1);
+  expect(project.shapes.get(key).art).toEqual(art);
+  const changed = () => {
+    expect(artOn(project, key)).toEqual(project.frames.map(() => art));
+    expect(placesOf(project, key)).toEqual(places);
+    expect(keysOf(project, key)).toBe(keys);
+  };
+  changed();
+  for (const at of [6, 0, 7, 4, 3]) project.showFrame(at); // a frame left notes it, and shows what it resolves to
+  project.noteFrame();
+  changed();
+  for (const frame of project.frames) frame.resolved = null;
+  changed();
+
+  project.undo();
+  expect(artOn(project, key)).toEqual(project.frames.map(() => old));
+  expect(placesOf(project, key)).toEqual(places);
+  expect(keysOf(project, key)).toBe(keys);
+  project.redo();
+  changed();
+  expect(project.shapes.get(key).art).toEqual(art);
+});
+
+test('setArtContent on a still is one step', async () => {
+  const { project } = await blank();
+  const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 2], art: { cols: 1, rows: 1, cells: [[0, 'A', RED, null]] } }));
+  const old = project.shapes.get(key).art, art = { cols: 1, rows: 1, cells: [[0, 'Z', null, RED]] };
+  const version = project.history.version;
+  expect(project.setArtContent(key, art)).toBe(true);
+  expect(project.history.version).toBe(version + 1);
+  expect(project.shapes.get(key).art).toEqual(art);
+  expect(project.cells[20 + 2].char).toBe('Z');
+  project.undo();
+  expect(project.shapes.get(key).art).toEqual(old);
+  expect(project.cells[20 + 2].char).toBe('A');
+});
+
+test('the same art, or too big: no step', async () => {
+  for (const frames of [0, 2]) {
+    const { project } = await tweenedArt();
+    while (project.frames.length > frames + 1) project.deleteFrame(); // 0: a still
+    const key = [...project.shapes.keys()][0], shape = project.shapes.get(key), version = project.history.version;
+    expect(project.setArtContent(key, JSON.parse(JSON.stringify(shape.art)))).toBe(false);
+    const cells = Array.from({ length: 3000 }, (_, i) => [i, String.fromCharCode(0x4e00 + i), '#123456', '#654321']);
+    expect(artBytes({ ...shape, art: { cols: 60, rows: 50, cells } })).toBeGreaterThan(MOST_ART_BYTES);
+    expect(project.setArtContent(key, { cols: 60, rows: 50, cells })).toBe(false);
+    expect(project.setArtContent('v:nothing', shape.art)).toBe(false);
+    expect(project.history.version).toBe(version);
+    expect(project.shapes.get(key)).toBe(shape);
+  }
 });

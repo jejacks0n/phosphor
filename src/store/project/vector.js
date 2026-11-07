@@ -6,8 +6,8 @@
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { IDENTITY, MOST_POINTS, MOST_SHAPES, allClosed, apply, isGradient, joined, multiply, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
-import { artCellOf, artFromStranger } from '@/document/artLayers.js';
+import { IDENTITY, MOST_POINTS, MOST_SHAPES, allClosed, apply, isGradient, joined, multiply, makeShape, newShapeKey, sameShape, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
+import { artCellOf, artFromStranger, isArt } from '@/document/artLayers.js';
 import { cellKey } from '@/document/editCells.js';
 import { withoutPins } from '@/document/baseRecords.js';
 import { ctx2d } from '@/lib/Canvas.js';
@@ -142,6 +142,17 @@ export const vectorActions = {
     if (next === this.shapes) return;
     this.setShapes(next);
     if (own) this.commitEdit();
+  },
+
+  // An art layer's drawing (its art: cols, rows and cells) changed. It's one piece wherever the layer shows, so with
+  // frames every frame it's on changes with it (setFramesArt). One step; false, and none, for a key that's no art
+  // layer on the frame showing, the drawing it has, or one a file wouldn't keep (too big for one layer, say).
+  setArtContent(key, art) {
+    const shape = this.shapes.get(key), next = isArt(shape) && artFromStranger({ ...shape, art });
+    if (!next || sameShape(next, shape)) return false;
+    if (this.hasFrames) this.setFramesArt(key, next.art);
+    else this.updateShapes([[key, next]]);
+    return true;
   },
 
   deleteShapes(keys) {

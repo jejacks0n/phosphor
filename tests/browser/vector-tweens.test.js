@@ -8,6 +8,7 @@ import { cellState, deserializeFrames, serializeFrames } from '@/document/frames
 import { PARTS } from '@/document/parts.js';
 import { partKeys } from '@/document/keys.js';
 import { writeProject } from '@/document/projectIO.js';
+import { isArt, makeArt } from '@/document/artLayers.js';
 import vnode from '@/tools/vnode.js';
 
 async function animated() {
@@ -420,9 +421,10 @@ test('undoing an edit on a frame puts back the shape it had then, though a frame
   expect(project.shapes.get(key)).toEqual(turned);
 });
 
-// Random frame changes, edits, tweens, keys and Clears: after each, every frame's cached look is what a fresh look works
-// out, a save and open shows the same and keeps the same keys, and an undo step has two undos and two redos go back
-// and forth through the movies; then undo all the way, and redo, go back through the same movies. By default a few seeds and those that once
+// Random frame changes, edits, tweens, keys, Clears, and art layers made and drawn on: after each, every frame's cached
+// look is what a fresh look works out, an art layer shows one drawing on every frame, a save and open shows the same
+// and keeps the same keys, and an undo step has two undos and two redos go back and forth through the movies; then
+// undo all the way, and redo, go back through the same movies. By default a few seeds and those that once
 // failed (11: an undo putting back a shape from before a frame folded in; 27, 30: a tween's frames redrawn from a
 // stale cache; 297: a hand key at the inherited value lost when another part's edit there was undone); VITE_FUZZ_SEEDS=30 runs seeds 1 to 30.
 function rng(seed) {
@@ -437,7 +439,7 @@ function rng(seed) {
 // Every frame's shapes; a still (one frame) has no frames worked out, only what shows.
 function movie(project) {
   project.noteFrame();
-  const shapes = (states) => [...states].filter(([key]) => isShapeKey(key)).map(([key, state]) => [key, (state.cell ?? state).m, (state.cell ?? state).fill, (state.cell ?? state).width]);
+  const shapes = (states) => [...states].filter(([key]) => isShapeKey(key)).map(([key, state]) => [key, (state.cell ?? state).m, (state.cell ?? state).fill, (state.cell ?? state).width, (state.cell ?? state).art]);
   if (!project.hasFrames) return JSON.stringify([shapes(project.shapes)]);
   return JSON.stringify(project.frames.map((frame, i) => [frame.kind, shapes(project.resolvedOf(i))]));
 }
@@ -463,6 +465,11 @@ async function tweenFuzz(seed, steps = 40) {
     const at = Math.max(-1, ...ats.filter((at) => at <= project.frame));
     return [key, at < 0 ? [] : PARTS.map((part) => ({ part, at }))];
   };
+  // An art layer's drawing: 1 to 3 cells of its 3.
+  const drawing = () => {
+    const at = [0, 1, 2].filter(() => r() < 0.5), cells = at.length ? at : [int(3)];
+    return { cols: 3, rows: 1, cells: cells.map((i) => [i, pick(['A', 'B', null]), pick(['#ff0000', null]), pick(['#00ff00', '#0000ff'])]) };
+  };
   let depth = 0;
   const h = project.history, push = h.push.bind(h);
   h.push = (e) => { push(e); depth++; };
@@ -485,6 +492,14 @@ async function tweenFuzz(seed, steps = 40) {
       const gradient = { type: 'linear', stops: [[0, pick(['#ff0000', '#00ff00'])], [1, '#0000ff']], m: [1, 0, 0, 1, 0, 0] };
       if (shape) project.updateShapes([[key, withShape(shape, { fill: r() < 0.6 ? gradient : '#ffffff' })]]);
     },
+    makeArt: () => {
+      const key = keys.length < 5 && project.addShape(makeArt({ m: [1, 0, 0, 1, int(16), 2 * int(9)], art: drawing() }));
+      if (key) keys.push(key);
+    },
+    editArt: () => {
+      const arts = keys.filter((key) => isArt(project.shapes.get(key)));
+      if (arts.length) project.setArtContent(pick(arts), drawing());
+    },
     tween: () => project.setKeyEasing(...frameKeys(), pick([null, 'linear', 'easeIn', 'easeOut', 'easeInOut', 'elastic'])),
     snap: () => project.setKeyMotion(...frameKeys(), pick(MOTIONS)),
     add: () => project.addFrame(pick(['blank', 'blank', 'duplicate', 'wipe'])),
@@ -506,8 +521,11 @@ async function tweenFuzz(seed, steps = 40) {
   // Weighted toward what makes tweens: shapes moved on frames apart, and easings chosen between them.
   const names = ['show', 'show', 'show', 'move', 'move', 'move', 'tween', 'tween', 'tween', 'snap', 'recolor', 'widen', 'regradient', 'add', 'add', 'delete', 'reorder', 'clear'], log = [];
   for (const name of ['ease', 'unkey', 'rekey', 'slide', 'drag']) names.push(name, name, name); // as tween is
+  names.push('makeArt', 'editArt', 'editArt');
   // Each frame's shapes and each part's keys, worked out from the frames alone (shapeOf(i, key): the shape frame i shows).
   const looks = (frames, shapeOf) => JSON.stringify(frames.map((_, i) => keys.map((key) => [shapeOf(i, key) ?? null, [...(partKeys(frames, key, i)?.rows ?? [])]])));
+  // The drawings an art layer shows over the frames: one, the same piece wherever it is.
+  const artsOf = (key) => new Set(project.frames.map((_, at) => project.resolvedOf(at).get(key)?.cell?.art).filter(Boolean).map((art) => JSON.stringify(art)));
   const reopened = () => {
     const json = JSON.parse(JSON.stringify({ frames: serializeFrames(project.frames), frame: project.frame, fps: project.fps }));
     const { frames } = deserializeFrames(json, project.cols, project.rows) ?? {};
@@ -523,6 +541,7 @@ async function tweenFuzz(seed, steps = 40) {
     log.push(`${name}@${project.frame}/${project.frames.length}${depth > was ? '+' : ''}`);
     for (const frame of project.frames) frame.resolved = null;
     if (movie(project) !== now) return { seed, log, problem: `step ${i} ${name}: a frame's cached look is stale` };
+    if (keys.some((key) => artsOf(key).size > 1)) return { seed, log, problem: `step ${i} ${name}: an art layer's drawing differs between frames` };
     if (keyed.has(name) && depth > was && keys.some((key) => strayEasings(project.frames, key).length)) return { seed, log, problem: `step ${i} ${name}: an easing with no tween` };
     if (reopened() !== looks(project.frames, (i, key) => project.resolvedOf(i).get(key)?.cell)) return { seed, log, problem: `step ${i} ${name}: saved and opened, it differs` };
     if (depth === was + 1) {
