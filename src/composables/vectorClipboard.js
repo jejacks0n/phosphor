@@ -39,7 +39,7 @@ export function cutShapes(project, workspace) {
 // copied: another tab's shapes, else this tab's.
 export function pasteShapes(project, workspace, copied = workspace.vectorClipboard) {
   if (!copied) return false;
-  const spot = (shape) => JSON.stringify([shape.points, shape.more, shape.m]), carried = project.inheritedShapes();
+  const spot = (shape) => JSON.stringify([shape.points, shape.more, shape.m, shape.art]), carried = project.inheritedShapes();
   const here = new Set([...project.shapes].filter(([key]) => !carried.has(key)).map(([, shape]) => spot(shape)));
   let copies = copied;
   for (let k = 1; k <= 100 && copies.some((shape) => here.has(spot(shape))); k++) copies = moved(copied, k * OFFSET);

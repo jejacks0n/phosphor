@@ -7,7 +7,10 @@ import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { IDENTITY, MOST_POINTS, MOST_SHAPES, allClosed, apply, isGradient, joined, multiply, makeShape, newShapeKey, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
+import { MOST_ART_BYTES, artBytes, artCellOf, makeArt } from '@/document/artLayers.js';
 import { withoutPins } from '@/document/baseRecords.js';
+import { ctx2d } from '@/lib/Canvas.js';
+import { rgb2hex } from '@/lib/ColorUtils.js';
 import { bytesHeld } from '@/store/project/shared.js';
 import { readSvgFile, svgLeftOut, svgRefusal } from '@/lib/SvgFile.js';
 import { combined } from '@/lib/shapeBooleans.js';
@@ -234,6 +237,52 @@ export const vectorActions = {
     };
     apply(after);
     this.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(before.base, after.base));
+  },
+
+  // Make art layer: the drawing inside the Select tool's selection (the edit layer's cells and paint, as
+  // copySelection reads them) becomes one art layer above every shape, at the cells' place and trimmed to the ones
+  // that show something, and is taken out of the drawing: one step, with the layer selected on VECTOR. A cell
+  // nothing was drawn on stays see-through. The key, or null (no step) with nothing drawn there, at the most
+  // shapes a frame holds, or a drawing too big for one layer (a toast says so).
+  makeArtLayer() {
+    const workspace = useWorkspaceStore(), rect = workspace.selection && this.clipRect(workspace.selection);
+    if (!rect) return null;
+    const block = this.copySelection(rect, { base: false, edit: true });
+    const paint = block.paint && ctx2d(block.paint).getImageData(0, 0, block.paint.width, block.paint.height).data, k = this.paintLayer?.scale ?? 1;
+    // A half's paint: opaque where it's at least half there (artCellOf).
+    const half = (x, y) => {
+      const o = (Math.floor(y * k) * block.paint.width + Math.floor(x * k)) * 4;
+      return paint && paint[o + 3] >= 128 ? rgb2hex({ r: paint[o], g: paint[o + 1], b: paint[o + 2] }) : null;
+    };
+    const drawn = [];
+    block.cells.forEach((entry, i) => {
+      const x = i % block.w, y = Math.floor(i / block.w);
+      const cell = artCellOf(entry, half(x, 2 * y), half(x, 2 * y + 1));
+      if (cell) drawn.push({ x, y, cell });
+    });
+    if (!drawn.length) return null;
+    if (this.shapes.size >= MOST_SHAPES) {
+      toast(t('vector.tooMany', { count: MOST_SHAPES }));
+      return null;
+    }
+    const x0 = Math.min(...drawn.map((d) => d.x)), y0 = Math.min(...drawn.map((d) => d.y));
+    const cols = Math.max(...drawn.map((d) => d.x)) - x0 + 1, rows = Math.max(...drawn.map((d) => d.y)) - y0 + 1;
+    const art = makeArt({
+      z: 0, m: [1, 0, 0, 1, rect.c0 + x0, 2 * (rect.r0 + y0)],
+      art: { cols, rows, cells: drawn.map(({ x, y, cell }) => [(y - y0) * cols + x - x0, ...cell]) },
+    });
+    if (artBytes(art) > MOST_ART_BYTES) {
+      toast(t('art.tooBig'));
+      return null;
+    }
+    let key = null;
+    this.selectionEdit([rect], () => {
+      this.deleteIn(rect, { base: false, edit: true });
+      [key] = this.addShapes([art]);
+    });
+    workspace.selection = null;
+    workspace.editorTab = 'vector';
+    return key ?? null;
   },
 
   // Join: the shapes keys made one, the bottom one (its key, style and place) with every outline of the rest, so

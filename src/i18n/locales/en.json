@@ -1406,6 +1406,11 @@
       "hostReplaced": "This room is open in another tab"
     }
   },
+  "art": {
+    "make": "Make art layer",
+    "makeTitle": "Make the selected drawing an art layer you can move and animate",
+    "tooBig": "That's too much for one art layer. Select a smaller piece."
+  },
   "vector": {
     "tooMany": "A drawing holds at most {count} shapes.",
     "fill": "Fill",

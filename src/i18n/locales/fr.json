@@ -1406,6 +1406,11 @@
       "hostReplaced": "Cette salle est ouverte dans un autre onglet"
     }
   },
+  "art": {
+    "make": "Créer un calque d'art",
+    "makeTitle": "Transformer le dessin sélectionné en calque d'art que vous pouvez déplacer et animer",
+    "tooBig": "C'est trop pour un seul calque d'art. Sélectionnez une zone plus petite."
+  },
   "vector": {
     "tooMany": "Un dessin contient au plus {count} formes.",
     "fill": "Remplissage",

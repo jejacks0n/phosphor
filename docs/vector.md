@@ -26,6 +26,34 @@ Shapes are part of the edit layer: undo and redo take every change to them back 
 **Clear** on ANSI leaves them alone, and a drawing with shapes counts as drawn on when the canvas is
 resized (it grows or trims on the right and bottom, and shapes keep their place).
 
+## Art layers
+
+An **art layer** is a block of hand-drawn cells that lives on the vector layer as a shape does: you can select it,
+copy it and delete it, and it stacks with the shapes. It keeps its characters and colors exactly as you drew them,
+where a shape's art is converted.
+
+To make one, choose the Select tool (**M**) on ANSI, select the area, and press **Make art layer** (beside Merge down, or in
+the Actions menu on narrow screens). What's drawn in the selection (typed cells, drawn cells and paint, the edit layer) moves into a new
+art layer on top of every shape, trimmed to the cells that have something in them, and the view goes to VECTOR with the
+layer selected. It's one undo step, and the canvas looks the same afterward. The base layer and the shapes aren't taken
+along, and with nothing drawn in the selection nothing happens. A layer holds a limited amount (a piece about the size of a
+screenful of detailed art); if the selection has more, Phosphor asks for a smaller piece and leaves the drawing as it was.
+
+- **What's see-through.** A cell you never drew on is see-through, and so is a half of a cell with no color of its own
+  (text typed with only a foreground color has no background, so what's under it shows). A black background you drew
+  is a color like any other: it covers what's under it.
+- **How its cells blend.** Each half of a cell shows its own color solid, covering what's under it, and a half with no
+  color shows what's under it as it is. Paint that's partly transparent comes into the layer solid where it covers at least half the half-cell, and
+  is left out where it covers less.
+- **Characters.** A cell's character shows exactly as drawn wherever the art layer is the topmost thing at that
+  cell. Where a shape sits above the layer, or over the cell, the converter picks the character there, as it does for
+  shapes. Where two art layers overlap, the upper one's character shows, and a cell of it with no character leaves the
+  lower one's. A wide character takes the next cell too, as it does on ANSI.
+- **Animation.** On an animation it starts on the frame you made it on, and a Blank frame carries it on, as it carries
+  shapes.
+- **Copies.** Copy and paste (Cmd/Ctrl+C and V on VECTOR) make an art layer of its own: changing one leaves the other
+  as it was.
+
 ## Bake and Merge down
 
 - **Merge down** on VECTOR presses the selected shapes (or, with none selected, all of them) into the base
