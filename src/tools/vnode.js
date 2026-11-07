@@ -125,7 +125,7 @@ export default {
     if (workspace.vectorPoints && project.shapes.has(workspace.vectorPoints)) {
       if (handlesPress(ctx, pos, radius, event) || gradientDrag.line(ctx, pos, radius) || outlinePress(project, workspace, pos, unit, radius)) return true;
     }
-    const hit = shapeAt(project.shapes, pos.x, pos.y, radius / unit.x);
+    const hit = shapeAt(project.shapes, pos.x, pos.y, radius / unit.x, false); // an art layer has no points: passed over
     if (!hit || hit === workspace.vectorPoints) { // empty canvas, or inside the shape edited: a box over points (end)
       drag = { kind: 'marquee', from: pos, shift: !!event?.shiftKey, empty: !hit };
       return true;

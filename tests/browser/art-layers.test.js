@@ -5,6 +5,7 @@ import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { isArt, makeArt, MOST_ART_BYTES, artBytes } from '@/document/artLayers.js';
 import { rectShape } from '@/document/shapes.js';
 import { toastMessage } from '@/composables/useToast';
+import vnode from '@/tools/vnode.js';
 import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
 import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
@@ -270,4 +271,43 @@ test('an art layer is hit anywhere in its box, even where nothing is drawn', asy
   expect(shapesTouching(project.shapes, { x0: 5, y0: 3, x1: 9, y1: 9 })).toEqual([key]);
   expect(shapesTouching(project.shapes, { x0: 7, y0: 3, x1: 9, y1: 9 })).toEqual([]);
   expect(shapesTouching(project.shapes, { x0: 0, y0: 0, x1: 9, y1: 9 })).toEqual([key]);
+});
+
+test('an art layer moves by whole cells with Snap to on half cells, or Cmd held', async () => {
+  const { project, workspace, key, ctx } = await layer();
+  workspace.vectorSnap = 'half';
+  vselect.begin(ctx, { x: 3, y: 3 }, {});
+  vselect.move(ctx, { x: 3, y: 3 }, { x: 6.4, y: 4.3 });
+  vselect.end(ctx);
+  expect(project.shapes.get(key).m).toEqual([1, 0, 0, 1, 5, 4]);
+  workspace.isMetaPressed = true;
+  vselect.begin(ctx, { x: 5.5, y: 5 }, {});
+  vselect.move(ctx, { x: 5.5, y: 5 }, { x: 8.9, y: 5.9 });
+  vselect.end(ctx);
+  workspace.isMetaPressed = false;
+  expect(project.shapes.get(key).m).toEqual([1, 0, 0, 1, 8, 4]);
+});
+
+test('the Node tool passes over an art layer, and a double-click on one in Select does not go to the Node tool', async () => {
+  const { project, workspace, key, ctx } = await layer();
+  const rect = project.addShape(rectShape(1, 1, 7, 7, { fill: '#0000ff' })); // under the layer, round its box
+  workspace.vectorSelected = [];
+  workspace.setActiveTool('vnode');
+  vnode.begin(ctx, { x: 3, y: 3 }, {}); // over the layer and the rect: the rect's
+  vnode.end(ctx);
+  expect(workspace.vectorPoints).toBe(rect);
+  project.deleteShapes([rect]);
+  workspace.vectorPoints = null;
+  vnode.begin(ctx, { x: 3, y: 3 }, {}); // only the layer: nothing to edit
+  vnode.end(ctx);
+  expect(workspace.vectorPoints).toBe(null);
+
+  workspace.setActiveTool('vselect');
+  for (let i = 0; i < 2; i++) {
+    vselect.begin(ctx, { x: 3, y: 3 }, {});
+    vselect.end(ctx);
+  }
+  expect(workspace.activeTool).toBe('vselect');
+  expect(workspace.vectorSelected).toEqual([key]);
+  expect(workspace.vectorPoints).toBe(null);
 });

@@ -167,7 +167,8 @@ export default {
       if (pick.press([...own.filter((c) => c.d <= radius), ...gradientDrag.candidates(ctx, pos, radius)], pos, unit)) return true;
     } else pick.reset();
     const hit = shapeAt(project.shapes, pos.x, pos.y, tol);
-    const now = performance.now(), again = hit && lastPress?.key === hit && now - lastPress.time < DOUBLE_MS
+    // A second click edits points; an art layer has none (a double-click on it is for something else).
+    const now = performance.now(), again = hit && !isArt(project.shapes.get(hit)) && lastPress?.key === hit && now - lastPress.time < DOUBLE_MS
       && near(pos, lastPress.pos, unit, DOUBLE_PX);
     lastPress = { key: hit, time: now, pos };
     const marquee = () => {
