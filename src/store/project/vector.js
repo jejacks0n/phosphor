@@ -199,7 +199,7 @@ export const vectorActions = {
     workspace.selection = workspace.wand = null;
     const inside = markRaw({
       key, editCells: this.editCells, paintLayer: this.paintLayer, hasPaint: this.hasPaint, snapshot: this.cells,
-      entries: new WeakSet(), entered: [], memo: new WeakMap(), writing: false, stop: null,
+      entries: new WeakSet(), entered: [], dimmed: null, dimmedOver: null, writing: false, stop: null,
     });
     this._artInside = inside;
     this.paintLayer = markRaw(new PaintLayer({ cols: this.cols, rows: this.rows, scale: inside.paintLayer.scale }));

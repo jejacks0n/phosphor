@@ -174,6 +174,30 @@ test('the rest dims while inside: what the drawing showed outside the layer, and
   expect(project.shownCells).toBe(project.cells);
 });
 
+test('the dimmed drawing is worked out once on stepping in: an edit inside reads nothing under it again, and keeps its cells', async () => {
+  const { project, key } = await withArt();
+  project.enterArt(key);
+  const before = project.shownCells, renderer = project.renderer, under = renderer.underCell;
+  let reads = 0;
+  renderer.underCell = (...args) => {
+    reads++;
+    return under.apply(renderer, args);
+  };
+  try {
+    project.typeAt(4, 2, 'B', { fg: RED }); // inside the box
+    project.commitEdit();
+    reads = 0; // the edit's own redraw reads what's under the cells it changed
+    const after = project.shownCells;
+    expect(after).not.toBe(before);
+    expect(after[2 * 20 + 4].char).toBe('B');
+    expect(after[20 + 1]).toBe(before[20 + 1]); // the dimmed X, the same object
+    expect(after.filter((cell, i) => i !== 2 * 20 + 4 && cell !== before[i])).toEqual([]);
+    expect(reads).toBe(0);
+  } finally {
+    renderer.underCell = under;
+  }
+});
+
 test('a slice inside sends none of the layer as drawing', async () => {
   const { project, key } = await withArt();
   project.enterArt(key);
