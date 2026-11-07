@@ -252,8 +252,9 @@ export default {
     }
     if (!keys.length || event.metaKey || event.ctrlKey || event.altKey) return false;
     if (event.key === 'Delete' || event.key === 'Backspace') {
+      const before = project.shapes;
       project.deleteShapes(keys);
-      workspace.vectorSelected = [];
+      if (project.shapes !== before) workspace.vectorSelected = []; // or refused (a layer someone's drawing in): still selected
       return true;
     }
     if (dx === undefined) return false;

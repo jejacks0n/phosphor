@@ -172,7 +172,7 @@ test('in a room, an art layer someone else is drawing in shows its box saying wh
   Object.assign(workspace, { editorTab: 'vector', activeTool: 'vselect', vectorSelected: [art] });
   const drawing = useDrawingStore();
   drawing.cursors = { ann: { at: null, view: null, name: 'Ann', inside: art } };
-  expect(project._locks).toEqual({ ann: art });
+  expect(project._locks).toEqual({ ann: { key: art, name: 'Ann' } });
   const host = document.createElement('div'), row = document.createElement('div');
   mounted = createApp(VectorOverlay, { unit: { x: 8, y: 8 } });
   mounted.mount(host);

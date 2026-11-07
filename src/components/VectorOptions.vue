@@ -66,8 +66,9 @@ const editArt = () => {
 };
 const remove = () => {
   if (workspace.vectorStop !== null) return removeStop(project, workspace);
+  const before = project.shapes;
   project.deleteShapes(selected.value);
-  workspace.vectorSelected = [];
+  if (project.shapes !== before) workspace.vectorSelected = []; // or refused (a layer someone's drawing in): still selected
 };
 // The Point row: the shape whose points are edited, and its selected point.
 const pointsOf = computed(() => workspace.activeTool === 'vnode' && workspace.vectorPoints && project.shapes.get(workspace.vectorPoints));

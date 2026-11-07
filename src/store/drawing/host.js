@@ -102,8 +102,11 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
     sendCursorsSoon();
   }
 
+  // The first to step into an art layer has it: someone else inside it too, who stepped in before hearing, is inside
+  // none here, and hearing that steps them out (DrawingStore).
   function noteCursor(sub, { at, view, inside = null }, name) {
-    cursors.value = { ...cursors.value, [sub]: { at, view, name, inside } };
+    const taken = inside && Object.entries(cursors.value).some(([other, cursor]) => other !== sub && cursor.inside === inside);
+    cursors.value = { ...cursors.value, [sub]: { at, view, name, inside: taken ? null : inside } };
     sendCursorsSoon();
   }
 
@@ -265,8 +268,10 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
         const cursor = readCursor({ at, view, name, inside });
         if (cursor) noteCursor(sub, cursor, name);
       },
-      // A host back from a reload or new to it: they wait until all of them have said, or the time's up.
+      // A host back from a reload or new to it: they wait until all of them have said, or the time's up. Whoever says
+      // hello hears the cursors, and with them who's drawing in which art layer.
       onHello: (w, msg) => {
+        sendCursorsSoon();
         const now = gathering();
         if (!now) return answerHello(w, msg);
         now.hellos.push([w, msg]);

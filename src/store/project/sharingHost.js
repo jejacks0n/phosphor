@@ -3,7 +3,7 @@ import { serializeBase } from '@/document/baseRecords.js';
 import { exactly, pixelRuns, splitChange } from '@/document/changes.js';
 import { keepRoomLedger } from '@/document/autosaveStore.js';
 import { MOST_CHANGE_BYTES, packProject, readChange } from '@/social/wire.js';
-import { SAVED_KEYS, randomId } from '@/store/project/shared.js';
+import { SAVED_KEYS, lockedAmong, randomId } from '@/store/project/shared.js';
 import { boundsOf, flushSoon } from '@/store/project/sharing.js';
 import { MOST_SHAPES, isShapeKey } from '@/document/shapes.js';
 
@@ -23,12 +23,6 @@ function tooManyShapes(project, cells) {
   }
   return size > MOST_SHAPES;
 }
-
-// Whether keys reach an art layer someone other than by is drawing in (lockedBy): theirs alone until they step out.
-const locked = (project, by, keys) => keys.some((key) => {
-  const holder = isShapeKey(key) && project.lockedBy(key);
-  return holder && holder !== by;
-});
 
 export const sharingHostActions = {
   // The ledger as it is, written for this host's next reload, unless it's what was written last. Autosave calls
@@ -75,7 +69,7 @@ export const sharingHostActions = {
     if (sharing?.role !== 'host' || !this.paintLayer) return null;
     const change = message.t === 'change' ? readChange(message, boundsOf(this)) : message;
     if (!change || (change.cells && tooManyShapes(this, change.cells))) return null;
-    if (locked(this, by, change.cells?.map(([key]) => key) ?? this._ledger.keysOf(change.stroke))) return null;
+    if (lockedAmong(this, change.cells?.map(([key]) => key) ?? this._ledger.keysOf(change.stroke), by)) return null;
     this.sendSlice();
     const numbered = change.t === 'undo' ? this._ledger.undo(by, change.stroke)
       : change.t === 'redo' ? this._ledger.redo(by, change.stroke)

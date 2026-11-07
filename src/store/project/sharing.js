@@ -27,7 +27,8 @@ import { TILE } from '@/document/History.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
 import { MOST_CHANGE_BYTES, readChange } from '@/social/wire.js';
-import { ALONE, SAVED_KEYS, randomId, runsPatch } from '@/store/project/shared.js';
+import { ALONE, SAVED_KEYS, anyoneInside, randomId, runsPatch } from '@/store/project/shared.js';
+import { toast } from '@/composables/useToast';
 import { settingsFromStranger } from '@/store/settings.js';
 
 const SLICE_MS = 100;
@@ -55,6 +56,15 @@ export const HOST_ONLY_ACTIONS = [
   'updateCols', 'updateRows',
   'setImageFromFile', 'setBlankCanvas', 'replaceImage', 'newDocument', 'clearImage', 'loadProject', 'restoreDocument', 'openParts', 'openArtFile',
 ];
+
+// Refused while someone else is drawing in an art layer, with a toast saying who: a whole-layer action goes to the
+// room as the project, which would step them out and lose what they hadn't sent.
+export const WHOLE_LAYER_ACTIONS = ['clearEditLayer', 'mergeUp', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'bake'];
+export function lockedOut(project) {
+  const words = anyoneInside(project);
+  if (words) toast(words);
+  return !!words;
+}
 
 // What a Pending reads and writes. Its positions come one at a time, and a store write or a canvas read
 // per position won't do, so reads come from a tile kept for the batch and writes gather: take() hands

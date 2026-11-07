@@ -16,7 +16,7 @@ import { charRowsOf } from '@/lib/Cells.js';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { bytesHeld, drawnShapes } from '@/store/project/shared.js';
+import { bytesHeld, drawnShapes, lockedAmong } from '@/store/project/shared.js';
 import { readSvgFile, svgLeftOut, svgRefusal } from '@/lib/SvgFile.js';
 import { combined } from '@/lib/shapeBooleans.js';
 import { unitsOf, wandIn } from '@/lib/MagicWand.js';
@@ -27,10 +27,16 @@ const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h &&
 
 export const vectorActions = {
   // The shapes as they now are, part of the edit that's open (or one begun for them). Not while it changes an art
-  // layer someone else in the room is drawing in (lockedBy): it can be selected, not moved, restacked or deleted.
+  // layer someone else in the room is drawing in (lockedBy): it can be selected, not moved, restacked or deleted, and
+  // a toast says who's in it.
   setShapes(next) {
     this.ensureLayer();
-    if (!this.paintLayer || next === this.shapes || lockedIn(this, next)) return;
+    if (!this.paintLayer || next === this.shapes) return;
+    const locked = lockedAmong(this, Object.values(this._locks).map(({ key }) => key).filter((key) => next.get(key) !== this.shapes.get(key)));
+    if (locked) {
+      toast(locked);
+      return;
+    }
     this.beginEdit();
     this.shapes = next;
     this.refreshShapes();
@@ -560,12 +566,6 @@ function redraw(project, area = null) {
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) pixels.push({ x, y });
   project.refreshCells(pixels);
 }
-
-// Whether next changes an art layer someone else is drawing in.
-const lockedIn = (store, next) => Object.values(store._locks).some((key) => {
-  const by = next.get(key) !== store.shapes.get(key) && store.lockedBy(key);
-  return by && by !== store._by;
-});
 
 // Whether a change opens an edit of its own, committed with it: none's open, or a typing run is, which the
 // change ends (beginEdit).

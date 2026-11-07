@@ -7,6 +7,8 @@ import { makeArt } from '@/document/artLayers.js';
 import { withShape, isShapeKey } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { usePlayback } from '@/composables/usePlayback.js';
+import { toastMessage } from '@/composables/useToast';
+import vselect from '@/tools/vselect';
 
 const RED = '#ff0000', GREEN = '#00ff00';
 const rgb = (hex) => ({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
@@ -316,23 +318,62 @@ test('a whole-layer action that has nothing to do leaves you inside', async () =
 });
 
 test('in a room, a layer someone else is drawing in can be selected, not stepped into, moved or deleted', async () => {
-  const { project, key } = await withArt();
+  const { project, workspace, key } = await withArt();
   project.startSharing({ send: () => {}, role: 'host', me: 'me' });
-  project._locks = { ann: key }; // what ann's cursor says (DrawingStore)
+  project._locks = { ann: { key, name: 'Ann' } }; // what ann's cursor says (DrawingStore)
   expect(project.lockedBy(key)).toBe('ann');
   const shape = project.shapes.get(key);
   expect(project.enterArt(key)).toBe(false);
+  toastMessage.value = null;
   project.updateShapes([[key, withShape(shape, { m: [1, 0, 0, 1, 8, 4] })]]);
+  expect(toastMessage.value).toBe('Ann is drawing in this layer');
   project.deleteShapes([key]);
   project.restackShapes([key], 'back');
   expect(project.shapes.get(key)).toBe(shape);
   project.selectShapes([key]);
   expect(project.history.last.selectionOnly).toBe(true);
-  project._locks = { me: key, ann: null }; // my own, heard back after I'd stepped out
+  workspace.vectorSelected = [key];
+  expect(vselect.keydown({ project, workspace }, { key: 'Delete' })).toBe(true);
+  expect(project.shapes.get(key)).toBe(shape);
+  expect(workspace.vectorSelected).toEqual([key]); // refused: still selected
+  project._locks = { me: { key, name: 'Me' } }; // my own, heard back after I'd stepped out
   expect(project.lockedBy(key)).toBe(null);
   expect(project.enterArt(key)).toBe(true);
   expect(project.lockedBy(key)).toBe('me');
   project.leaveArt();
+  project.stopSharing();
+});
+
+test('in a room, the host can\'t undo or redo a step that reaches a layer someone else is drawing in, nor take a whole-layer step', async () => {
+  const { project, workspace } = await blank();
+  project.startSharing({ send: () => {}, sendDocument: () => {}, role: 'host', me: 'me' });
+  project.typeAt(1, 1, 'X', { fg: GREEN });
+  project.commitEdit();
+  project.typeAt(4, 2, 'A', { fg: RED });
+  project.commitEdit();
+  workspace.selection = { c0: 4, r0: 2, c1: 4, r1: 2 };
+  const key = project.makeArtLayer();
+  project._locks = { ann: { key, name: 'Ann' } }; // ann's stepped in
+  toastMessage.value = null;
+  project.undo();
+  expect(project.shapes.has(key)).toBe(true);
+  expect(toastMessage.value).toBe('Ann is drawing in this layer');
+  for (const act of [() => project.clearEditLayer(), () => project.mergeShapes(), () => project.mergeDown(), () => project.bake()]) {
+    toastMessage.value = null;
+    act();
+    expect(toastMessage.value).toBe('Ann is drawing in this layer');
+  }
+  expect(project.shapes.has(key)).toBe(true);
+  expect(project.editCellAt(1, 1)?.char).toBe('X');
+  project._locks = {};
+  project.undo();
+  expect(project.shapes.has(key)).toBe(false);
+  project._locks = { ann: { key, name: 'Ann' } };
+  project.redo();
+  expect(project.shapes.has(key)).toBe(false);
+  project._locks = {};
+  project.redo();
+  expect(project.shapes.has(key)).toBe(true);
   project.stopSharing();
 });
 
