@@ -213,6 +213,7 @@ export const editLayerActions = {
   },
 
   clearEditLayer() {
+    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     if (!this.paintLayer) return;
     this.commitPending();

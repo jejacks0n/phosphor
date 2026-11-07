@@ -735,6 +735,7 @@ export const animationActions = {
   // Easings this leaves no tween for go (dropStrays), or with eases ([frame, tweens, motions] for every frame, from
   // before) they come back.
   setFrameState({ kind, changes, parts = null, eases = null }) {
+    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     keepShown(this);
     const frame = this.currentFrame, reach = tweenReach(this.frames, this.frame); // the frames between of a tween ending here
     Object.assign(frame, { kind, changes, parts });
@@ -802,6 +803,7 @@ export const animationActions = {
 
   // Bake's before and after: every frame's kind and changes, set, and the frame showing shown from them.
   setAllFrames(states) {
+    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.frames.forEach((frame, at) => {
       Object.assign(frame, states[at]);
       frame.resolved = frame.built = null;

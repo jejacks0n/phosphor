@@ -161,21 +161,22 @@ export const vectorActions = {
   },
 
   // Step into an art layer, to draw in it with the usual tools (as you'd edit a symbol in Flash): the drawing is kept
-  // aside (_artInside: its edit cells and paint layer, hasPaint, and the history version and cells as you stepped in),
+  // aside (_artInside: its edit cells and paint layer, hasPaint, and the cells as you stepped in),
   // and the layer's drawing is the edit cells and paint (loadArt), where it sits on the frame showing. Each edit is
   // then one step changing the layer on every frame it's on (commitArt), and undo goes back no further than here.
   // What's pending is committed first; the selection and any float go. Leaving the ANSI tab steps out. False for a key
-  // that's no art layer, or when you're inside one already.
+  // that's no art layer, when you're inside one already, or in a room: until the room locks a layer while someone
+  // draws in it (the art layer locks task lifts this).
   enterArt(key) {
     this.ensureLayer();
-    if (!isArt(this.shapes.get(key)) || !this.paintLayer || this._artInside) return false;
+    if (!isArt(this.shapes.get(key)) || !this.paintLayer || this._artInside || this._sharing) return false;
     this.commitPending();
     this.noteFrame(); // the frame's drawing as it is, before it's put aside
     this._float = null;
     const workspace = useWorkspaceStore();
     workspace.selection = workspace.wand = null;
     const inside = markRaw({
-      key, editCells: this.editCells, paintLayer: this.paintLayer, hasPaint: this.hasPaint, version: this.history.version, snapshot: this.cells,
+      key, editCells: this.editCells, paintLayer: this.paintLayer, hasPaint: this.hasPaint, snapshot: this.cells,
       entries: new WeakSet(), entered: [], memo: new WeakMap(), writing: false, stop: null,
     });
     this._artInside = inside;
@@ -214,7 +215,7 @@ export const vectorActions = {
     const inside = this._artInside, stroke = this._stroke, key = inside.key, shape = this.shapes.get(key);
     this._stroke = null;
     const layer = this.paintLayer, patch = layer.endStroke();
-    this.baseLayer?.endStroke(); // ponytail: base pixels a tool drew meanwhile stay, unrecorded; tools inside draw on the edit layer
+    this.baseLayer?.endStroke(); // nothing on it: the tools inside draw on the edit layer alone (layersFor)
     this.hasPaint = layer.hasPaint;
     if (!stroke || !isArt(shape)) return;
     // What can hold the layer's drawing now: where it was, the edit cells, and the paint this stroke touched.
@@ -258,6 +259,8 @@ export const vectorActions = {
   // Inside an art layer: its drawing, as it is on the frame showing, made the edit cells and paint to draw on (a ▄
   // cell its paint halves, any other an edit cell of its character, its foreground the bottom half's color and its
   // background the top's), and shown: area, the grid pixels that can have changed ({ x, y, w, h }), or null for all.
+  // ponytail: the whole grid's paint is reloaded for every edit, undo and redo inside; load only the layer's box if
+  // large grids lag there.
   loadArt(area = null) {
     const inside = this._artInside, shape = this.shapes.get(inside?.key);
     if (!isArt(shape)) return;
@@ -363,6 +366,7 @@ export const vectorActions = {
   // base layer's pixels, where they stop being shapes. One whole-layer step. A still only: in an animation the
   // base is under every frame.
   mergeShapes(keys = null) {
+    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     if (!this.image || this.hasFrames) return;
     this.ensureLayer();
     this.commitPending();
@@ -387,6 +391,7 @@ export const vectorActions = {
   // there, at the most shapes a frame holds, or a drawing too big or too wide for one layer (a toast says so). The
   // record is checked as a file would be before anything is taken out.
   makeArtLayer() {
+    if (this._artInside) this.leaveArt(); // made from the drawing, not the art layer you're in
     const workspace = useWorkspaceStore();
     const wand = workspace.activeTool === 'wand' && workspace.wand ? wandIn(workspace.wand, 'output', this.rows) : null;
     const picked = wand && unitsOf(wand.mask, wand.width).map(({ x, y }) => ({ col: x, row: y }));
