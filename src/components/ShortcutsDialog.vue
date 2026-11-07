@@ -3,13 +3,15 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { isMac, shortcut } from '@/lib/keyLabels';
+import { useProjectStore } from '@/store/ProjectStore';
 
 // The keyboard shortcuts, opened with ? (Alt+? while typing in Edit Mode). Keys are written the
 // platform's way (⌘ and ⌥ on a Mac). Keep it in step with useKeyboardShortcuts, useTextTool and
-// TextKeys when a shortcut changes.
+// TextKeys when a shortcut changes. The Animation keys show only with Animate on, as they only work then.
 const emit = defineEmits(['close']);
 const { t } = useI18n();
 const k = shortcut;
+const project = useProjectStore();
 
 const groups = computed(() => [
   {
@@ -97,7 +99,7 @@ const groups = computed(() => [
       [['Esc'], t('shortcuts.rows.vectorEsc')],
     ],
   },
-  {
+  project.animate && {
     title: t('shortcuts.groups.animation'),
     rows: [
       [['L'], t('shortcuts.rows.playPause')],
@@ -111,7 +113,7 @@ const groups = computed(() => [
       [['← →', 'Home', 'End'], t('shortcuts.rows.switchTabs')],
     ],
   },
-]);
+].filter(Boolean));
 </script>
 
 <template>

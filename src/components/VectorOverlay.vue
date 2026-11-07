@@ -38,9 +38,9 @@ const style = computed(() => {
 const shown = computed(() => !!props.unit && !workspace.playing);
 const selected = computed(() => workspace.vectorSelected.filter((key) => project.shapes.has(key)));
 const outlines = computed(() => selected.value.map((key) => pathData(project.shapes.get(key), props.unit.x, props.unit.y)));
-// On a Blank frame, the shapes it carries from the frame before: their outlines, dimmed.
+// On a Blank frame, the shapes it carries from the frame before: their outlines, dimmed. Only with Animate on.
 const carried = computed(() => {
-  if (!props.unit || !project.hasFrames) return [];
+  if (!props.unit || !project.hasFrames || !project.animate) return [];
   void project.shapes; void project.frames; // what the carried set is worked out from
   return [...project.inheritedShapes()].filter((key) => !selected.value.includes(key)).map((key) => pathData(project.shapes.get(key), props.unit.x, props.unit.y));
 });
