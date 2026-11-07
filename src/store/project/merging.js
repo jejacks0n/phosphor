@@ -8,6 +8,7 @@
 import { t } from '@/i18n';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
+import { makeArt, isArt } from '@/document/artLayers.js';
 import { finerStops, isGradient, isShape, shapeBounds, withShape } from '@/document/shapes.js';
 import { cellKey, parseKey, rectCells, updateRect, bakeEditCells, bakeEntry, mergeKind } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
@@ -28,7 +29,10 @@ const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h &&
 const bakedPaint = (paint, params) => (isGradient(paint)
   ? { ...paint, stops: finerStops(paint.stops).map(([o, c]) => [o, getEffectiveColor(c, params)]) }
   : paint && getEffectiveColor(paint, params));
-const bakedShape = (shape, params) => withShape(shape, { fill: bakedPaint(shape.fill, params), stroke: bakedPaint(shape.stroke, params) });
+const bakedArt = (shape, params) => makeArt({
+  ...shape, art: { ...shape.art, cells: shape.art.cells.map(([i, char, top, bottom]) => [i, char, top && getEffectiveColor(top, params), bottom && getEffectiveColor(bottom, params)]) },
+});
+const bakedShape = (shape, params) => isArt(shape) ? bakedArt(shape, params) : withShape(shape, { fill: bakedPaint(shape.fill, params), stroke: bakedPaint(shape.stroke, params) });
 const bakedShapes = (shapes, params) => new Map([...shapes].map(([key, shape]) => [key, bakedShape(shape, params)]));
 
 // A frame's changes with the color transforms burnt in, as Bake does to the edit layer: a stored color, then

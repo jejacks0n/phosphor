@@ -13,7 +13,7 @@ import { artBounds, artCellOf, artFromStranger, isArt } from '@/document/artLaye
 import { cellKey, parseKey } from '@/document/editCells.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { charRowsOf } from '@/lib/Cells.js';
-import { withoutPins } from '@/document/baseRecords.js';
+import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { bytesHeld, drawnShapes } from '@/store/project/shared.js';
@@ -357,12 +357,12 @@ export const vectorActions = {
   },
 
   // The layers with the shapes pressed (a Set) in the base: { base (a snapshot), shapes (the rest), baseRecords
-  // (without the pins they cover, since the shapes' pixels are what shows there) }.
+  // (without the pins they cover, since the shapes' pixels are what shows there, and with their art layers' characters) }.
   pressShapes(pressed) {
     this._shapeLayer.set(this.shapes);
-    const { canvas, covered } = this._shapeLayer.pressed(pressed);
+    const { canvas, covered, pins } = this._shapeLayer.pressed(pressed);
     const shapes = new Map([...this.shapes].filter(([key]) => !pressed.has(key)));
-    return { base: { canvas, hasPaint: true }, shapes, baseRecords: withoutPins(this.baseRecords, covered) };
+    return { base: { canvas, hasPaint: true }, shapes, baseRecords: withPins(withoutPins(this.baseRecords, covered), pins) };
   },
 
   // VECTOR's Merge down: the shapes keys (or all of them), with those beneath that overlap them, pressed into the

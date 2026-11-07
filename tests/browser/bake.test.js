@@ -4,6 +4,8 @@
 // at full precision; with many sliders on a gradient that's ~13% of cells), so that test pins only
 // what's guaranteed; locking to the palette bakes it in, and nothing moves.
 import { describe, test, expect, vi } from 'vitest';
+import { makeArt } from '@/document/artLayers.js';
+import { getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { drawnDocument, outputKey } from '../support/scenes.js';
 
@@ -156,4 +158,58 @@ test('another image loaded while baking is left alone', async () => {
   await settle(project);
   expect(project.image).toBe(loaded);
   expect(project.canUndo).toBe(false);
+});
+
+// A block of art cells: A on blue over yellow, and C with only its bottom half colored.
+const BLOCK = () => makeArt({ z: 0, m: [1, 0, 0, 1, 5, 6], art: { cols: 3, rows: 1, cells: [[0, 'A', '#2040a0', '#a0a040'], [2, 'C', null, '#40a040']] } });
+
+test('Bake in an animation keeps an art layer, its colors through the sliders', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await settle(project);
+  const art = project.addShape(BLOCK());
+  project.setAnimate(true);
+  project.addFrame('blank');
+  project.addFrame('wipe');
+  project.showFrame(0);
+  project.brightness = 140;
+  const params = project.processParams;
+  await settle(project);
+  const looks = [];
+  for (let i = 0; i < project.frames.length; i++) {
+    project.showFrame(i);
+    await settle(project);
+    looks.push(cellsKey(project));
+  }
+  await project.bake();
+  project.showFrame(0);
+  await settle(project);
+  const { cells } = project.shapes.get(art).art;
+  expect(cells.map(([i, char]) => [i, char])).toEqual([[0, 'A'], [2, 'C']]);
+  expect(cells[0].slice(2)).toEqual(['#2040a0', '#a0a040'].map((c) => getEffectiveColor(c, params)));
+  expect(cells[0][2]).not.toBe('#2040a0');
+  expect(cells[1].slice(2)).toEqual([null, getEffectiveColor('#40a040', params)]);
+  expect(project.brightness).toBe(100);
+  for (let i = 0; i < project.frames.length; i++) {
+    project.showFrame(i);
+    await settle(project);
+    expect(cellsKey(project)).toEqual(looks[i]);
+  }
+  project.undo();
+  project.showFrame(0);
+  expect(project.shapes.get(art).art.cells[0][2]).toBe('#2040a0');
+});
+
+test('Bake on a still presses an art layer into the base, its characters pinned, and nothing changes', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+  project.addShape(BLOCK());
+  project.brightness = 140;
+  await settle(project);
+  const cells = cellsKey(project);
+  await project.bake();
+  await settle(project);
+  expect(project.shapes.size).toBe(0);
+  expect([...project.baseRecords.pins]).toEqual(expect.arrayContaining([['5,3', 'A'], ['7,3', 'C']]));
+  expect(cellsKey(project)).toEqual(cells);
 });
