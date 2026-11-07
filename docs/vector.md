@@ -73,11 +73,12 @@ with a **Done** button.
   are in the history with the rest.
 - **What's off.** The settings panel, the Base toggle and the frame controls (the animation bar, and the keys that play, step
   and add frames) are off while you're in. Changing the picture or the frame would leave the dimmed drawing out of date.
+  Clear, Merge up, Merge down (and with it Into the image) and Bake are off too, since they change the whole drawing,
+  not the layer: their titles say to step out first.
 - **In a room.** One person at a time draws in an art layer ([Rooms](#rooms)).
 - **Stepping out.** Press **Done** or **Esc** (once nothing else is left to cancel: with the Text cursor showing, the first
   **Esc** puts it away), and the view goes back to VECTOR with the layer selected. Changing tabs, opening or starting a
-  document, resizing the canvas, turning Animate off, exporting, and the whole-layer actions (Clear, Merge up and down,
-  Into the image, Bake and Make art layer) step out too.
+  document, resizing the canvas, turning Animate off, exporting, and Make art layer step out too.
 
 ## Bake and Merge down
 

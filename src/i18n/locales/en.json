@@ -1421,7 +1421,8 @@
     "doneTitle": "Step out of the art layer (Esc)",
     "framesOff": "Step out of the art layer to change frames.",
     "settingsOff": "Step out of the art layer to change these.",
-    "baseOff": "Inside an art layer, tools draw on the edit layer only."
+    "baseOff": "Inside an art layer, tools draw on the edit layer only.",
+    "wholeLayerOff": "Step out of the art layer first: this changes the whole drawing."
   },
   "vector": {
     "tooMany": "A drawing holds at most {count} shapes.",
