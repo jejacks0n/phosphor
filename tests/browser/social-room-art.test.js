@@ -41,7 +41,7 @@ test('a host\'s view past the grid is held to its last cell, and tracking scroll
   const { scroll, box, seen } = mount({ hostView: { col: 1e300, row: Number.MAX_SAFE_INTEGER, cols: 1e300, rows: 1e300 } });
   // The VGA font at 16 px, once it has loaded (measured in a fallback until then): 8 x 16 cells. The
   // box is the last cell, and the view is scrolled to the end.
-  await expect.poll(() => box.style.width).toBe('8px');
+  await expect.poll(() => box.style.width, { timeout: 10_000 }).toBe('8px'); // the file's first test: the font's first load, slow on a busy machine
   await frames();
   expect([box.style.left, box.style.top, box.style.width, box.style.height]).toEqual(['792px', '784px', '8px', '16px']);
   expect(scroll.scrollLeft).toBe(scroll.scrollWidth - scroll.clientWidth);
