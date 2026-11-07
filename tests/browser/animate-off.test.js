@@ -5,7 +5,7 @@ import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage } from '../support/app.js';
-import { rectShape } from '@/document/shapes.js';
+import { makeShape, rectShape } from '@/document/shapes.js';
 import ProjectActions from '@/components/ProjectActions.vue';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
 import VectorOverlay from '@/components/VectorOverlay.vue';
@@ -69,4 +69,19 @@ test('a Blank frame\'s carried shapes are outlined only with Animate on', async 
   project.setAnimate(true);
   await nextTick();
   expect(host.querySelectorAll('path.carried').length).toBeGreaterThan(0);
+});
+
+test('a trimmed line\'s Start and End handles show only with Animate on', async () => {
+  const { project, workspace } = await framesKept();
+  project.showFrame(0);
+  const key = project.addShape(makeShape({ points: [[2, 10, 0, 0, 0, 0, 0], [18, 10, 0, 0, 0, 0, 0]], closed: false, stroke: '#ff0000', width: 2 }));
+  project.setAnimate(true);
+  project.showFrame(1);
+  project.addKey(key, 'end');
+  Object.assign(workspace, { editorTab: 'vector', activeTool: 'vselect', vectorSelected: [key] });
+  const host = await mount(VectorOverlay, { unit: { x: 10, y: 10 } });
+  expect(host.querySelectorAll('circle.handle.trim').length).toBeGreaterThan(0);
+  project.setAnimate(false);
+  await nextTick();
+  expect(host.querySelectorAll('circle.handle.trim').length).toBe(0);
 });

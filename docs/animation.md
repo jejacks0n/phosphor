@@ -133,6 +133,20 @@ and Stroke are color chips that open the color box, Outline and Style are text (
 the shape's place among the shapes, as "3 of 5". Type a value and press Enter, or leave the field, and the part is keyed
 on the frame showing with it, as if you had edited the shape there; undo takes it back.
 
+**Start** and **End** are the stretch of a shape's outline that is drawn, as percents of its length (0 to 100; a typed
+value is held to that). They come after Style in **+ Add key**, and a shape has them like its other parts, keyed and
+tweened on their own. With one shape selected on VECTOR that has a Start or End row, a round handle sits on its outline
+at each, above the selection box, and the stretch not drawn shows dashed in the shape's stroke color. Drag a handle
+along the outline in Vector select and the part is set to the share of the outline nearest the pointer, keyed on the
+frame showing, with a label (such as "End 55%") while you drag; a drag is one undo step. Where a handle sits over one of
+the box's handles, the Start and End handle wins, and a click in the same place again picks the one beneath. The
+handles show only with Animate on, as the rows do.
+
+To draw a line on: key **Start** at 0 on its first frame and **End** from 0 on that frame to 100% on a later one, eased
+as you like, and the line grows out along its length. To run a streak along it: key **End** from 0 to 100% over frames 1
+to 15, and **Start** from 0 to 100% over frames 1 to 20, so the streak's head leads and its tail follows and the line is
+gone by frame 20.
+
 An [art layer](vector.md#art-layers) has only two parts, Transform and Stack, so those are its only rows and all **+ Add key**
 offers. Its Transform has just **X** and **Y**, its top left corner: X a column, Y in grid pixels, two to a line. A
 value typed between cells lands on the nearest whole cell.

@@ -2,7 +2,7 @@
 // empty canvas) is an undo step of its own, and undoing an edit brings back the selection it started with.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
-import { rectShape } from '@/document/shapes.js';
+import { makeShape, rectShape } from '@/document/shapes.js';
 import vselect from '@/tools/vselect.js';
 
 async function drawing() {
@@ -80,4 +80,48 @@ test('a box dragged over empty canvas selects every shape it touches, as one ste
   project.undo();
   expect(workspace.vectorSelected).toEqual([a]);
   expect(project.shapes.size).toBe(3); // selecting never changed a shape
+});
+
+// A straight 20-long line across the picture with a Blank frame after it, showing: End keyed on that frame.
+async function trimmedLine(parts = ['end']) {
+  const { project, workspace, ctx } = await drawing();
+  project.setAnimate(true);
+  const key = project.addShape(makeShape({ points: [[10, 20, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0]], closed: false, stroke: '#ff0000', width: 2 }));
+  project.addFrame('blank');
+  for (const part of parts) project.addKey(key, part);
+  workspace.vectorSelected = [key];
+  project.clearHistory();
+  return { project, workspace, ctx, key };
+}
+
+test('dragging the End handle along a line sets End to the share under the pointer on the frame showing, as one undo step', async () => {
+  const { project, workspace, ctx, key } = await trimmedLine();
+  const version = project.history.version;
+  vselect.begin(ctx, { x: 30, y: 20 }, {});
+  vselect.move(ctx, { x: 30, y: 20 }, { x: 25, y: 20 });
+  vselect.move(ctx, { x: 25, y: 20 }, { x: 20, y: 20.5 });
+  expect(workspace.vectorTrim.part).toBe('end');
+  expect(workspace.vectorTrim.share).toBeCloseTo(0.5, 2);
+  vselect.end(ctx);
+  expect(workspace.vectorTrim).toBe(null);
+  expect(project.shapes.get(key).end).toBeCloseTo(0.5, 2);
+  expect(project.frame).toBe(1);
+  expect(project.frames[1].parts.get(key).has('end')).toBe(true);
+  expect(project.history.version).toBe(version + 1);
+  project.undo();
+  expect(project.shapes.get(key).end).toBeUndefined();
+  expect(project.canUndo).toBe(false);
+});
+
+test('a trim handle is held to the outline: past its far end it stops at 100%', async () => {
+  const { project, ctx, key } = await trimmedLine(['start']);
+  press(ctx, { x: 10, y: 20 }, [{ x: 40, y: 20 }]);
+  expect(project.shapes.get(key).start).toBe(1);
+});
+
+test('with no row for End, its corner is the box\'s handle and scales the line', async () => {
+  const { project, ctx, key } = await trimmedLine(['start']);
+  press(ctx, { x: 30, y: 20 }, [{ x: 20, y: 20 }]);
+  expect(project.shapes.get(key).end).toBeUndefined();
+  expect(project.shapes.get(key).m).not.toEqual([1, 0, 0, 1, 0, 0]);
 });
