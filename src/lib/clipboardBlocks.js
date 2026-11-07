@@ -14,15 +14,16 @@
  * block (ProjectStore's copySelection) with its canvases as PNGs. id says which copy it was, so the
  * tab that made it can paste its own block instead.
  *
- * ShapesField = { version: 1, id, shapes: Shape[] } (document/shapes.js), in a `phosphorShapes` field: shapes
- * copied on VECTOR, bottom to top, for another Phosphor tab; id as a block's.
+ * ShapesField = { version: 1, id, shapes: Shape[], keys?: string[] } (document/shapes.js), in a `phosphorShapes` field:
+ * shapes copied on VECTOR, bottom to top, for another Phosphor tab, and the keys they had there (a follower pasted with
+ * its path follows the copy); id as a block's.
  */
 import { CP437, cp437Byte, cp437Substitute } from './Cp437.js';
 import { CGA, VGA, paletteIndex, rgb2hex } from './ColorUtils.js';
 import { MAX_CELLS, cellIndex } from './Cells.js';
 import { usableChar } from './CharWidth.js';
 import { cleanEntry } from '../document/editCells.js';
-import { MOST_SHAPES, shapeFromStranger } from '../document/shapes.js';
+import { MOST_SHAPES, isGoodShapeKey, shapeFromStranger } from '../document/shapes.js';
 
 export const VERSION = 1;
 
@@ -120,12 +121,16 @@ function phosphorField(p) {
   return out;
 }
 
-// A `phosphorShapes` field with the shapes that are shapes, or null when it isn't one this version reads or none
-// of them is.
+// A `phosphorShapes` field with the shapes that are shapes, and their keys when it has one for each, or null when it
+// isn't one this version reads or none of them is.
 function shapesField(p) {
   if (!p || p.version !== VERSION || typeof p.id !== 'string' || !Array.isArray(p.shapes) || p.shapes.length > MOST_SHAPES) return null;
-  const shapes = p.shapes.map(shapeFromStranger).filter(Boolean);
-  return shapes.length ? { version: VERSION, id: p.id, shapes } : null;
+  const keyed = Array.isArray(p.keys) && p.keys.length === p.shapes.length && p.keys.every(isGoodShapeKey);
+  const pairs = p.shapes.map((shape, i) => [keyed ? p.keys[i] : null, shapeFromStranger(shape)]).filter(([, shape]) => shape);
+  if (!pairs.length) return null;
+  const out = { version: VERSION, id: p.id, shapes: pairs.map(([, shape]) => shape) };
+  if (keyed) out.keys = pairs.map(([key]) => key);
+  return out;
 }
 
 // What the HTML slot holds: { phosphor: PhosphorField }, { shapes: ShapesField }, { moebius: Block }, or null (empty, a web

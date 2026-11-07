@@ -1437,6 +1437,9 @@
   },
   "vector": {
     "tooMany": "A drawing holds at most {count} shapes.",
+    "followArt": "An art layer can't be followed: pick a line or a shape.",
+    "followFollower": "That shape follows a path itself, so it can't be followed.",
+    "followIsPath": "Other shapes follow this one, so it can't follow a path.",
     "fill": "Fill",
     "stroke": "Stroke",
     "fillChipTitle": "Fill: {color} ({key})",

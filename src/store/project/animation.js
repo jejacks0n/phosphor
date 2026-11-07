@@ -8,12 +8,14 @@ import { BASE, EMPTY_STATE, cellState, dropStrays, foldDeleted, frameDiff, isEmp
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
-import { isShapeKey, sameShape, withShape } from '@/document/shapes.js';
+import { isShapeKey, sameShape, shapeFromStranger, withShape } from '@/document/shapes.js';
 import { isArt } from '@/document/artLayers.js';
-import { MOTIONS, setPartsAt, shapeAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
+import { MOTIONS, lifeAt, setPartsAt, shapeAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
 import { changedParts, partsOf, samePart } from '@/document/parts.js';
 import { addedKey, deletedKeys, moveRange, movedKeys, partKeys } from '@/document/keys.js';
-import { drawnShapes, newLedger } from '@/store/project/shared.js';
+import { drawnShapes, lockedAmong, newLedger } from '@/store/project/shared.js';
+import { t } from '@/i18n';
+import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { markRaw } from 'vue';
 
@@ -358,6 +360,48 @@ function putArt(project, key, art, [dx, dy]) {
   project.frames = [...project.frames];
 }
 
+// Records of shapes put in the frames' changes ([at, key, shape]): a part a record gives a new value is keyed there
+// where the frame keys only some of the shape, so it shows as it was set. Then the parts unkey names ([key, parts]) are
+// keyed nowhere, their easings with them, and a Blank key frame past its life's start left keying none of the shape is
+// no key frame of it. Every frame's look goes: a record can reach any frame its tweens cross.
+function putRecords(project, records, unkey) {
+  const frames = project.frames;
+  for (const [at, key, shape] of records) {
+    const frame = frames[at], was = frame.changes.get(key).cell, set = frame.parts?.get(key);
+    frame.changes = new Map(frame.changes).set(key, cellState(shape, 0, 0));
+    const added = set ? [...changedParts(was, shape)].filter((name) => !set.has(name)) : [];
+    if (added.length) frame.parts = new Map(frame.parts).set(key, new Set([...set, ...added]));
+  }
+  frames.forEach((frame, at) => {
+    for (const [key, names] of unkey) {
+      const eases = frame.tweens?.get(key), set = frame.parts?.get(key);
+      if (eases && names.some((name) => eases.has(name))) frame.tweens = withEases(frame.tweens, key, new Map([...eases].filter(([name]) => !names.includes(name))));
+      if (!set || !names.some((name) => set.has(name))) continue;
+      const left = new Set([...set].filter((name) => !names.includes(name))), parts = new Map(frame.parts);
+      if (left.size) parts.set(key, left);
+      else {
+        parts.delete(key);
+        if (frame.kind === 'blank' && lifeAt(frames, key, at)[0] !== at) {
+          frame.changes = new Map(frame.changes);
+          frame.changes.delete(key);
+          frame.tweens = withEases(frame.tweens, key, NOTHING);
+          if (frame.splits?.has(key)) frame.splits = new Set([...frame.splits].filter((each) => each !== key));
+        }
+      }
+      frame.parts = parts.size ? parts : null;
+    }
+  });
+  for (const frame of frames) frame.resolved = frame.built = null;
+  project.frames = [...frames];
+}
+
+// Whether every record a change makes is one a file would keep; an art layer's that isn't says it's too big.
+function kept(shapes) {
+  const bad = shapes.find((shape) => !shapeFromStranger(shape));
+  if (isArt(bad)) toast(t('art.tooBig'));
+  return !bad;
+}
+
 // One undo step setting patchOf(frames)'s keys of a shape (null or empty: nothing to do, and no step).
 function keyStep(project, key, patchOf) {
   if (!project.image) return;
@@ -680,6 +724,43 @@ export const animationActions = {
       putArt(this, shapeKey, art, by);
       return this.currentFrame;
     });
+  },
+
+  // changes, [[key, change(shape, at)]]: every record of each shape changed wherever it's held, each frame's own (a key
+  // frame's, a Duplicate's, at its index) or the still's (at undefined): one undo step, putRecords's with frames, else
+  // updateShapes's. unkey: parts of those shapes keyed nowhere after it. False, and no step, when nothing changes, for an
+  // art layer someone else in the room is drawing in (a toast says who, as setShapes's), or when a record it makes is
+  // one a file wouldn't keep.
+  changeEverywhere(changes, { unkey = [] } = {}) {
+    const locked = lockedAmong(this, changes.map(([key]) => key));
+    if (locked) {
+      toast(locked);
+      return false;
+    }
+    if (!this.hasFrames) {
+      const next = changes.filter(([key]) => this.shapes.has(key)).map(([key, change]) => [key, change(this.shapes.get(key))]);
+      if (!kept(next.map(([, shape]) => shape))) return false;
+      const before = this.shapes;
+      this.updateShapes(next);
+      return this.shapes !== before;
+    }
+    if (!this.image) return false;
+    settleFrame(this, { keys: true });
+    const records = [], unkeyed = unkey.length ? changes.map(([key]) => [key, unkey]) : [];
+    this.frames.forEach((frame, at) => {
+      for (const [key, change] of changes) {
+        const cell = frame.changes.get(key)?.cell, next = cell && change(cell, at);
+        if (cell && !sameShape(next, cell)) records.push([at, key, next]);
+      }
+    });
+    const keyedThere = (frame, key, name) => frame.parts?.get(key)?.has(name) || frame.tweens?.get(key)?.has(name);
+    if (!records.length && !this.frames.some((frame) => unkeyed.some(([key, names]) => names.some((name) => keyedThere(frame, key, name))))) return false;
+    if (!kept(records.map(([, , shape]) => shape))) return false;
+    frameStep(this, () => {
+      putRecords(this, records, unkeyed);
+      return this.currentFrame;
+    });
+    return true;
   },
 
   // The keys refs name go, but the shape's first and fixed ones (deletedKeys): one undo step.

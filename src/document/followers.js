@@ -7,7 +7,7 @@
  * layer) and follows nothing itself (no chains); with none, the follower is left as it is, on its own Transform.
  *   where   the share of the path's length: its Start or End riding one (follow.ride), else the follower's own Along,
  *           held to 0..1 on an open path, round and round a closed one
- *   center  a shape's: the middle of its own box through its m (the Keys panel's X and Y); an art layer's: its box's
+ *   center  (centerOf) a shape's: the middle of its own box through its m (the Keys panel's X and Y); an art layer's: its box's
  *           middle, its corner then on whole cells
  *   motion  follow.motion snaps the center to half or whole cells
  *   face    a shape turned by the path's direction there about its center, on top of its own turn
@@ -29,7 +29,7 @@ function shareOf(shape, path) {
   return s < 0 || s > 1 ? s - Math.floor(s) : s; // 1 stays 1: a closed path's end, turned as it comes round
 }
 
-function centerOf(shape) {
+export function centerOf(shape) {
   if (isArt(shape)) return { x: shape.m[4] + shape.art.cols / 2, y: shape.m[5] + shape.art.rows };
   const { x0, y0, x1, y1 } = localBounds(shape);
   return apply(shape.m, (x0 + x1) / 2, (y0 + y1) / 2);

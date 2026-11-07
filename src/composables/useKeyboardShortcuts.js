@@ -298,7 +298,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (projectStore._paused) return; // refused: nothing moves to where it would have gone
     if (vector) { // another tab's shapes, else this tab's
       const shapes = readClipboardHtml(e.clipboardData?.getData('text/html'))?.shapes;
-      pasteShapes(projectStore, workspaceStore, shapes && shapes.id !== workspaceStore.vectorClipboardId ? shapes.shapes : undefined);
+      const theirs = shapes && shapes.id !== workspaceStore.vectorClipboardId;
+      pasteShapes(projectStore, workspaceStore, theirs ? shapes.shapes : undefined, theirs ? shapes.keys : undefined);
       return;
     }
     const text = (e.clipboardData?.getData('text/plain') ?? '').replace(/\r\n/g, '\n'); // Windows' clipboard adds CRs
