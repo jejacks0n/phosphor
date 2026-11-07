@@ -21,6 +21,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const HALVES = new Set([' ', '█', '▀', '▄']);
 
 export const SHAPE_KEY = /^v:[A-Za-z0-9_-]{1,32}$/; // a shape's key (shapes.js)
+const FOLLOW_KEYS = ['key', 'ride', 'face', 'motion'];
 const RIDES = ['start', 'end'], MOTIONS = ['half', 'cells']; // the values other than the default: along it, on its own keys; smoothly
 const rounded = (v) => Math.round(v * 1e4) / 1e4 || 0; // 1/10000, no -0
 
@@ -43,7 +44,7 @@ export const makeFollow = ({ key, ride, face, motion }) => Object.freeze({
 });
 // Whether a stranger's follow link is exactly what makeFollow makes: a path's key, and only values other than the defaults.
 export function goodFollow(value, art) {
-  if (!value || typeof value !== 'object' || Array.isArray(value) || !Object.keys(value).every((k) => ['key', 'ride', 'face', 'motion'].includes(k))) return false;
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !Object.keys(value).every((k) => FOLLOW_KEYS.includes(k))) return false;
   if (typeof value.key !== 'string' || !SHAPE_KEY.test(value.key)) return false;
   if (('ride' in value && !RIDES.includes(value.ride)) || ('motion' in value && !MOTIONS.includes(value.motion))) return false;
   return !('face' in value) || (value.face === true && !art);

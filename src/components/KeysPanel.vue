@@ -52,7 +52,11 @@ const rows = computed(() => {
   if (!keys.value) return [];
   return listedParts(project.frames, shapeKey.value, lifeStart.value).map((part) => ({ part, keys: keys.value.rows.get(part) }));
 });
-const unlisted = computed(() => (keys.value ? partsOf(project.shapes.get(shapeKey.value)).filter((part) => !rows.value.some((row) => row.part === part)) : []));
+// The parts + Add key offers: those without a row yet; Along only for a shape or art layer that follows a path.
+const unlisted = computed(() => {
+  const shape = keys.value && project.shapes.get(shapeKey.value);
+  return shape ? partsOf(shape).filter((part) => (part !== 'along' || shape.follow) && !rows.value.some((row) => row.part === part)) : [];
+});
 const keyAt = (part, i) => keys.value?.rows.get(part).find((k) => k.at === i);
 const deletable = (k) => !!k && k.at !== keys.value.start && !k.fixed;
 const partName = (part) => t(`keysPanel.parts.${part}`);

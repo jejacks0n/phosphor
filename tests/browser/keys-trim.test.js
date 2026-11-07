@@ -49,12 +49,22 @@ test('+ Add key lists Start and End after Style for a line, and choosing End key
   const { project, key } = await animatedLine();
   const host = await mount(KeysPanel);
   const items = await menu(host);
-  expect(items).toEqual(['Transform', 'Along', 'Outline', 'Fill', 'Stroke', 'Width', 'Style', 'Start', 'End', 'Stack']);
+  expect(items).toEqual(['Transform', 'Outline', 'Fill', 'Stroke', 'Width', 'Style', 'Start', 'End', 'Stack']);
   [...document.querySelectorAll('.dropdown-content button')].find((b) => b.textContent.trim() === 'End').click();
   await nextTick();
   expect(host.querySelector('[data-part="end"]')).not.toBeNull();
   expect(host.querySelector('[data-part="start"]')).toBeNull();
   expect(project.frames[1].parts.get(key).has('end')).toBe(true);
+});
+
+test('+ Add key lists Along only for a shape or art layer that follows a path', async () => {
+  await animatedLine(makeShape({ ...LINE, follow: { key: 'v:path' } }));
+  expect(await menu(await mount(KeysPanel))).toContain('Along');
+  app.unmount();
+  app = null;
+  const art = makeArt({ m: [1, 0, 0, 1, 0, 0], art: { cols: 3, rows: 1, cells: [[0, 'A', '#ff0000', null]] }, follow: { key: 'v:path' } });
+  await animatedLine(art);
+  expect(await menu(await mount(KeysPanel))).toEqual(['Transform', 'Along', 'Stack']);
 });
 
 test('+ Add key gives an art layer neither Start nor End', async () => {
