@@ -4,6 +4,7 @@ import { withShape } from './shapes.js';
 
 export const PART_FIELDS = Object.freeze({
   transform: ['m'],
+  along: ['along'],
   outline: ['points', 'closed', 'more', 'rule'],
   fill: ['fill'],
   stroke: ['stroke'],
@@ -15,7 +16,7 @@ export const PART_FIELDS = Object.freeze({
 });
 export const PARTS = Object.freeze(Object.keys(PART_FIELDS));
 export const ALL_PARTS = Object.freeze(new Set(PARTS));
-const ART_PARTS = Object.freeze(['transform', 'z']);
+const ART_PARTS = Object.freeze(['transform', 'along', 'z']);
 
 // The parts a shape has: an art layer's record moves and stacks only.
 export const partsOf = (shape) => (isArt(shape) ? ART_PARTS : PARTS);

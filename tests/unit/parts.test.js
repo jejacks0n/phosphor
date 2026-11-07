@@ -7,8 +7,9 @@ import { ALL_PARTS, PARTS, PART_FIELDS, changedParts, withParts } from '../../sr
 const A = rectShape(0, 0, 4, 4, { fill: '#ff0000', stroke: '#000000' });
 const GRADIENT = { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [1, 0, 0, 1, 0, 0] };
 
-test('a shape has nine parts, each its own fields', () => {
-  assert.deepEqual(PARTS, ['transform', 'outline', 'fill', 'stroke', 'width', 'style', 'start', 'end', 'z']);
+test('a shape has ten parts, each its own fields', () => {
+  assert.deepEqual(PARTS, ['transform', 'along', 'outline', 'fill', 'stroke', 'width', 'style', 'start', 'end', 'z']);
+  assert.deepEqual(PART_FIELDS.along, ['along']);
   assert.deepEqual([PART_FIELDS.start, PART_FIELDS.end], [['start'], ['end']]);
   assert.deepEqual(PART_FIELDS.outline, ['points', 'closed', 'more', 'rule']);
   assert.deepEqual(PART_FIELDS.style, ['cap', 'join', 'miter', 'align']);
@@ -21,6 +22,8 @@ test('the parts that differ between two versions of a shape', () => {
   assert.deepEqual([...changedParts(A, withShape(A, { fill: GRADIENT }))], ['fill']);
   assert.deepEqual([...changedParts(A, withShape(A, { end: 0.5 }))], ['end']);
   assert.deepEqual([...changedParts(A, withShape(A, { start: 0.25 }))], ['start']);
+  assert.deepEqual([...changedParts(A, withShape(A, { along: 0.5 }))], ['along']);
+  assert.deepEqual([...changedParts(A, withShape(A, { follow: { key: 'v:p' }, guide: true }))], []); // follow and guide belong to no part
   assert.deepEqual([...changedParts(A, A)], []);
 });
 

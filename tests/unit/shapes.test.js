@@ -252,6 +252,27 @@ test('Start and End are shares, written only when not 0 and 1, and round-trip th
   for (const v of [{ start: -0.1 }, { end: 1.1 }, { start: 'x' }, { start: 0 }, { end: 1 }, { end: null }]) assert.equal(shapeFromStranger({ ...plain, ...v }), null, JSON.stringify(v));
 });
 
+test('follow, along and guide are written only when not the default, and round-trip through JSON', () => {
+  const s = makeShape({ points: sq(0, 4), closed: false, stroke: '#00ff00' });
+  assert.deepEqual(withShape(s, { along: 0, guide: undefined }), s);
+  assert.equal(JSON.stringify(withShape(s, { along: 0, guide: false, follow: undefined })), JSON.stringify(s));
+  assert.equal(withShape(s, { along: 0.12345 }).along, 0.1235);
+  const rides = withShape(s, { follow: { key: 'v:path', ride: 'end', face: true, motion: 'cells', junk: 1 }, along: 0.5, guide: true });
+  assert.deepEqual(rides.follow, { key: 'v:path', ride: 'end', face: true, motion: 'cells' });
+  assert.ok(Object.isFrozen(rides.follow));
+  assert.deepEqual(withShape(s, { follow: { key: 'v:path', ride: 'along', motion: 'smooth' } }).follow, { key: 'v:path' });
+  assert.deepEqual(shapeFromStranger(JSON.parse(JSON.stringify(rides))), rides);
+  const plain = JSON.parse(JSON.stringify(s));
+  const bad = [
+    { follow: { key: 'path' } }, { follow: { key: 'v:' } }, { follow: {} }, { follow: 'v:path' }, { follow: { key: 'v:path', ride: 'middle' } },
+    { follow: { key: 'v:path', ride: 'along' } }, { follow: { key: 'v:path', face: false } }, { follow: { key: 'v:path', motion: 'smooth' } },
+    { follow: { key: 'v:path', motion: 'whole' } }, { follow: { key: 'v:path', other: 1 } },
+    { along: 0 }, { along: 1.5 }, { along: -0.1 }, { along: 'x' }, { guide: false }, { guide: 1 },
+  ];
+  for (const v of bad) assert.equal(shapeFromStranger({ ...plain, ...v }), null, JSON.stringify(v));
+  assert.deepEqual(shapeFromStranger({ ...plain, along: 1 }), { ...s, along: 1 });
+});
+
 test('shapeFromStranger takes the new fields and refuses bad ones', () => {
   const plain = JSON.parse(JSON.stringify(makeShape({ points: sq(0, 4), closed: true, fill: '#ff0000' })));
   const good = [

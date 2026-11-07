@@ -783,6 +783,7 @@
     },
     "partsShort": {
       "transform": "Transform",
+      "along": "Along",
       "outline": "Outline",
       "fill": "Fill",
       "stroke": "Stroke",
@@ -794,6 +795,7 @@
     },
     "parts": {
       "transform": "Transform",
+      "along": "Along",
       "outline": "Outline",
       "fill": "Fill",
       "stroke": "Stroke",

@@ -49,7 +49,7 @@ test('+ Add key lists Start and End after Style for a line, and choosing End key
   const { project, key } = await animatedLine();
   const host = await mount(KeysPanel);
   const items = await menu(host);
-  expect(items).toEqual(['Transform', 'Outline', 'Fill', 'Stroke', 'Width', 'Style', 'Start', 'End', 'Stack']);
+  expect(items).toEqual(['Transform', 'Along', 'Outline', 'Fill', 'Stroke', 'Width', 'Style', 'Start', 'End', 'Stack']);
   [...document.querySelectorAll('.dropdown-content button')].find((b) => b.textContent.trim() === 'End').click();
   await nextTick();
   expect(host.querySelector('[data-part="end"]')).not.toBeNull();
