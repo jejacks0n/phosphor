@@ -126,6 +126,40 @@ test('erasing all of it leaves an empty layer where it was, gone from view as it
   expect(at(project, 4, 2).char).not.toBe('A');
 });
 
+// What a cell shows, by its place: its character and colors.
+const looks = (project, c0, r0, c1, r1) => {
+  const out = [];
+  for (let row = r0; row <= r1; row++) for (let col = c0; col <= c1; col++) {
+    const cell = at(project, col, row);
+    out.push(`${col},${row} ${cell.char} ${cell.fg.hex} ${cell.bg.hex}`);
+  }
+  return out;
+};
+
+test('inside, the layer shows as it did outside, and paint drawn in it keeps the character it showed', async () => {
+  const { project } = await blank(); // the converter's characters chosen at random (charChoice), from ░▒▓■▄
+  const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 2], art: { cols: 3, rows: 1, cells: [[0, '▄', RED, GREEN], [1, '▄', null, GREEN], [2, 'A', RED, GREEN]] } }));
+  await settle(project);
+  const outside = looks(project, 2, 1, 4, 1);
+  expect(project.enterArt(key)).toBe(true);
+  await settle(project);
+  expect(looks(project, 2, 1, 4, 1)).toEqual(outside);
+
+  const pixels = [];
+  for (let x = 2; x < 12; x++) for (let y = 4; y < 8; y++) pixels.push({ x, y, ...rgb(x % 2 ? '#00ff00' : '#0000ff'), alpha: 1 });
+  project.paintEditPixels(pixels);
+  await settle(project);
+  const painted = looks(project, 2, 2, 11, 3);
+  expect(painted.some((look) => !/ ▄ /.test(look))).toBe(true); // some painted cell shows a character other than ▄
+  project.commitEdit();
+  await settle(project);
+  expect(looks(project, 2, 2, 11, 3)).toEqual(painted);
+  project.leaveArt();
+  await settle(project);
+  expect(looks(project, 2, 1, 11, 3).slice(0, 3)).toEqual(outside);
+  expect(looks(project, 2, 2, 11, 3)).toEqual(painted);
+});
+
 test('undo inside stops at the step-in', async () => {
   const { project, key } = await withArt();
   expect(project.canUndo).toBe(true);

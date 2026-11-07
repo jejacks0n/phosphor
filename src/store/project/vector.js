@@ -12,7 +12,7 @@ import { IDENTITY, MOST_POINTS, MOST_SHAPES, allClosed, apply, isGradient, joine
 import { artBounds, artCellOf, artFromStranger, isArt } from '@/document/artLayers.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import PaintLayer from '@/document/PaintLayer.js';
-import { charRowsOf } from '@/lib/Cells.js';
+import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
@@ -278,8 +278,10 @@ export const vectorActions = {
   },
 
   // Inside an art layer: its drawing, as it is on the frame showing, made the edit cells and paint to draw on (a ▄
-  // cell its paint halves, any other an edit cell of its character, its foreground the bottom half's color and its
-  // background the top's), and shown: area, the grid pixels that can have changed ({ x, y, w, h }), or null for all.
+  // cell its paint halves under a ▄ that's there only to show them, as the Half-block tool leaves, so it shows as ▄
+  // and not the character the converter would pick for paint, and erasing a half still takes it; any other an edit
+  // cell of its character, its foreground the bottom half's color and its background the top's), and shown: area,
+  // the grid pixels that can have changed ({ x, y, w, h }), or null for all.
   // ponytail: the whole grid's paint is reloaded for every edit, undo and redo inside; load only the layer's box if
   // large grids lag there.
   loadArt(area = null) {
@@ -298,6 +300,7 @@ export const vectorActions = {
       if (char === '▄') {
         put(col, 2 * row, top);
         put(col, 2 * row + 1, bottom);
+        cells.set(cellKey(col, row), { char }); // isPaintBlock: it shows the paint, as ▄
       } else if (char || top || bottom) cells.set(cellKey(col, row), { ...(char && { char }), ...(bottom && { fg: bottom }), ...(top && { bg: top }) });
     }
     this._frameSwaps++; // autosave: not an edit of the document's drawing
@@ -545,7 +548,7 @@ function drawnIn(project, rect, keep = null) {
   block.cells.forEach((entry, i) => {
     const x = i % block.w, y = Math.floor(i / block.w), col = rect.c0 + x, row = rect.r0 + y;
     if (keep && !keep.has(cellKey(col, row))) return;
-    const cell = artCellOf(entry, half(x, 2 * y), half(x, 2 * y + 1));
+    const cell = artCellOf(entry, half(x, 2 * y), half(x, 2 * y + 1), project.composedCells[cellIndex(col, row, project.cols)]?.char);
     if (cell) drawn.push({ col, row, cell });
   });
   return drawn;

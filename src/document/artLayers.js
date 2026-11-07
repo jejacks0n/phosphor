@@ -63,12 +63,14 @@ export function artFromStranger(value) {
 }
 
 // One drawn cell, [char, top, bottom] in the layer's form, from an edit-layer entry { char?, fg?, bg? } (or null)
-// and its paint halves (opaque '#rrggbb' or null); null when nothing shows. A solid or half glyph, or paint alone,
-// becomes '▄' with each half's color; any other character keeps itself, its background on top and its foreground
-// below. A painted half replaces that half's color.
+// and its paint halves (opaque '#rrggbb' or null); null when nothing shows. shown: the character the cell shows, for
+// one with no character of its own (paint alone, or colors alone), so it keeps the one the drawing showed there. A
+// solid or half glyph becomes '▄' with each half's color; any other character keeps itself, its background on top and
+// its foreground below. A painted half replaces that half's color.
 // ponytail: soft paint is flattened at the half (taken where its alpha is at least half, opaque); keep alpha if art needs soft edges.
-export function artCellOf(entry, top, bottom) {
-  const { char, fg = null, bg = null } = entry ?? {};
+export function artCellOf(entry, top, bottom, shown = null) {
+  if (!entry && !top && !bottom) return null; // never drawn on, or erased: see-through
+  const { fg = null, bg = null } = entry ?? {}, char = entry?.char ?? shown;
   if (char && !HALVES.has(char)) return [char, top ?? bg, bottom ?? fg];
   const [t, b] = { '▀': [fg, bg], '▄': [bg, fg], '█': [fg, fg] }[char] ?? [bg, bg];
   const cell = ['▄', top ?? t, bottom ?? b];
